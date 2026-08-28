@@ -12,9 +12,10 @@ import {
 } from '@pkg/domain';
 import {
   DateIso,
+  DateOnlyIsoString,
   type JobDepartmentTiming,
   JobDepartmentTimingCompleteInput,
-  JobDepartmentTimingCorrectionFormValues,
+  JobDepartmentTimingCorrectionValues,
 } from '@pkg/schema';
 import { IconCircleCheck, IconPencil, IconPlayerPlay, IconX } from '@tabler/icons-react-native';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -49,7 +50,25 @@ import { useColorMode } from '@/theme/use-color-mode';
 const DoneFormValues = z.object({ crewUserIds: JobDepartmentTimingCompleteInput.shape.crewUserIds });
 type DoneFormValues = z.infer<typeof DoneFormValues>;
 
-type CorrectionFormValues = z.infer<typeof JobDepartmentTimingCorrectionFormValues>;
+const CorrectionFormValues = z
+  .object({
+    completedOn: z.union([DateOnlyIsoString, z.literal('')]),
+    crewUserIds: JobDepartmentTimingCorrectionValues.shape.crewUserIds,
+    startedOn: z.union([DateOnlyIsoString, z.literal('')]),
+  })
+  .superRefine((value, ctx) => {
+    const result = JobDepartmentTimingCorrectionValues.safeParse({
+      completedOn: value.completedOn || null,
+      crewUserIds: value.crewUserIds,
+      startedOn: value.startedOn || null,
+    });
+    if (!result.success) {
+      for (const issue of result.error.issues) {
+        ctx.addIssue({ code: 'custom', message: issue.message, path: issue.path });
+      }
+    }
+  });
+type CorrectionFormValues = z.infer<typeof CorrectionFormValues>;
 
 /**
  * One Department's Timing stamps on the Job Detail screen. The same collapsible card handles every
@@ -318,7 +337,7 @@ function CorrectionModal({
       crewUserIds: timing.crew.map((member) => member.userId),
       startedOn: timing.startedAt ? toPlantDateOnly(new Date(timing.startedAt)) : '',
     } satisfies CorrectionFormValues,
-    validators: { onSubmit: JobDepartmentTimingCorrectionFormValues },
+    validators: { onSubmit: CorrectionFormValues },
     onSubmit: async ({ value }) => {
       setSubmitError(null);
       try {

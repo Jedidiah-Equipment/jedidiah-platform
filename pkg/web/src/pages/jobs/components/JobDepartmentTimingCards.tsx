@@ -14,9 +14,10 @@ import {
 } from '@pkg/domain';
 import {
   DateIso,
+  DateOnlyIsoString,
   type JobDepartmentTiming,
   JobDepartmentTimingCompleteInput,
-  JobDepartmentTimingCorrectionFormValues,
+  JobDepartmentTimingCorrectionValues,
   type JobDetail,
   type WorkItemDepartment,
 } from '@pkg/schema';
@@ -55,7 +56,25 @@ import { cn } from '@/lib/utils.js';
 const DoneFormValues = z.object({ crewUserIds: JobDepartmentTimingCompleteInput.shape.crewUserIds });
 type DoneFormValues = z.infer<typeof DoneFormValues>;
 
-type CorrectionFormValues = z.infer<typeof JobDepartmentTimingCorrectionFormValues>;
+const CorrectionFormValues = z
+  .object({
+    completedOn: z.union([DateOnlyIsoString, z.literal('')]),
+    crewUserIds: JobDepartmentTimingCorrectionValues.shape.crewUserIds,
+    startedOn: z.union([DateOnlyIsoString, z.literal('')]),
+  })
+  .superRefine((value, ctx) => {
+    const result = JobDepartmentTimingCorrectionValues.safeParse({
+      completedOn: value.completedOn || null,
+      crewUserIds: value.crewUserIds,
+      startedOn: value.startedOn || null,
+    });
+    if (!result.success) {
+      for (const issue of result.error.issues) {
+        ctx.addIssue({ code: 'custom', message: issue.message, path: issue.path });
+      }
+    }
+  });
+type CorrectionFormValues = z.infer<typeof CorrectionFormValues>;
 
 /** The four Department Timing observation cards shown on the Job sheet. */
 export const JobDepartmentTimingCards: React.FC<{ job: JobDetail }> = ({ job }) => {
@@ -370,7 +389,7 @@ const CorrectDepartmentButton: React.FC<{ job: JobDetail; timing: JobDepartmentT
         open={isOpen}
         submitLabel="Save times"
         title={`Edit ${lowerDepartmentLabel} times`}
-        validator={JobDepartmentTimingCorrectionFormValues}
+        validator={CorrectionFormValues}
       >
         {(form) => (
           <>

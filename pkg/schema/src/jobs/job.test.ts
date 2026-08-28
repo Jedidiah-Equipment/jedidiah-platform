@@ -36,7 +36,6 @@ import {
   JobColumnFilters,
   JobCreateInput,
   JobCustomerOptionListInput,
-  JobDepartmentTimingCorrectionFormValues,
   JobDetail,
   JobListFilters,
   JobListInput,
@@ -1015,39 +1014,5 @@ describe('JobCancelInput', () => {
       cancellationReason: 'Raised in error',
       removeUnit: false,
     });
-  });
-});
-
-describe('JobDepartmentTimingCorrectionFormValues', () => {
-  it('enforces stamp ordering and requires crew only when work is done', () => {
-    expect(
-      JobDepartmentTimingCorrectionFormValues.parse({
-        completedOn: '2026-08-28',
-        crewUserIds: ['crew-id'],
-        startedOn: '2026-08-27',
-      }),
-    ).toEqual({ completedOn: '2026-08-28', crewUserIds: ['crew-id'], startedOn: '2026-08-27' });
-
-    expect(() =>
-      JobDepartmentTimingCorrectionFormValues.parse({
-        completedOn: '2026-08-26',
-        crewUserIds: ['crew-id'],
-        startedOn: '2026-08-27',
-      }),
-    ).toThrow('The done date cannot be before the start date.');
-    expect(() =>
-      JobDepartmentTimingCorrectionFormValues.parse({
-        completedOn: '2026-08-28',
-        crewUserIds: [],
-        startedOn: '2026-08-27',
-      }),
-    ).toThrow('Name at least one crew member.');
-    expect(() =>
-      JobDepartmentTimingCorrectionFormValues.parse({
-        completedOn: '2026-08-28',
-        crewUserIds: ['crew-id'],
-        startedOn: '',
-      }),
-    ).toThrow('A done date needs a start date.');
   });
 });

@@ -750,24 +750,24 @@ export const JobDepartmentTimingUpdateInput = z.object({
   crewUserIds: z.array(AuthId),
 });
 
-/** Shared browser form state for correcting one Department's stamps on web or mobile. */
-export type JobDepartmentTimingCorrectionFormValues = z.infer<typeof JobDepartmentTimingCorrectionFormValues>;
-export const JobDepartmentTimingCorrectionFormValues = z
+/** Normalized correction values shared by clients before they construct the API timestamps. */
+export type JobDepartmentTimingCorrectionValues = z.infer<typeof JobDepartmentTimingCorrectionValues>;
+export const JobDepartmentTimingCorrectionValues = z
   .object({
-    completedOn: z.union([DateOnlyIsoString, z.literal('')]),
+    completedOn: DateOnlyIsoString.nullable(),
     crewUserIds: JobDepartmentTimingUpdateInput.shape.crewUserIds,
-    startedOn: z.union([DateOnlyIsoString, z.literal('')]),
+    startedOn: DateOnlyIsoString.nullable(),
   })
   .superRefine((value, ctx) => {
-    if (!value.startedOn) {
-      if (value.completedOn) {
+    if (value.startedOn === null) {
+      if (value.completedOn !== null) {
         ctx.addIssue({ code: 'custom', message: 'A done date needs a start date.', path: ['startedOn'] });
       }
 
       return;
     }
 
-    if (value.completedOn && value.completedOn < value.startedOn) {
+    if (value.completedOn !== null && value.completedOn < value.startedOn) {
       ctx.addIssue({
         code: 'custom',
         message: 'The done date cannot be before the start date.',
@@ -775,7 +775,7 @@ export const JobDepartmentTimingCorrectionFormValues = z
       });
     }
 
-    if (value.completedOn && value.crewUserIds.length === 0) {
+    if (value.completedOn !== null && value.crewUserIds.length === 0) {
       ctx.addIssue({ code: 'custom', message: 'Name at least one crew member.', path: ['crewUserIds'] });
     }
   });

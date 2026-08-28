@@ -17,9 +17,8 @@ If Fabrication was due to be on the floor and nobody has stamped a start, the se
 
 1. In the Department's section, choose **Fabrication done**, **Paint done**, **Assembly done**, or
    **Workshop done**.
-2. Check the **Fabricators** for Fabrication or **Crew members** for the other Departments. Whoever is
-   currently assigned to that Department's Bays for this Job is filled in for you. Add or remove
-   people so the list is who actually crewed it.
+2. Check the **Crew members**. Whoever is currently assigned to that Department's Bays for this Job
+   is filled in for you. Add or remove people so the list is who actually crewed it.
 3. Choose the same **done** button again. At least one crew member is required.
 
 Only Bay Operators can be named as Department Crew.
@@ -27,9 +26,9 @@ Only Bay Operators can be named as Department Crew.
 ## Correct a mistake
 
 1. In the Department's section, choose **Edit times**.
-2. Change the start date, the done date, or the Fabricators/Crew members, then save.
+2. Change the start date, the done date, or the Crew members, then save.
 3. To remove the stamps altogether, clear the **Started** date and save. The done date and the
-   Fabricators/Crew members go with it.
+   Crew members go with it.
 
 Dates cannot be in the future, and the done date cannot be before the start date.
 
@@ -38,6 +37,6 @@ section becomes read-only.
 
 One exception: if Department work was started but never stamped done, its **done** button stays
 available on a completed Job, so work that ran past its planned dates can still be recorded. That
-stamp cannot be corrected afterwards, so check the Fabricators/Crew members before saving it.
+stamp cannot be corrected afterwards, so check the Crew members before saving it.
 
 Cancelled Jobs cannot be stamped at all.

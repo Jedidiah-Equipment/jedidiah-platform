@@ -1,4 +1,4 @@
-import { formatDate, formatPhoneNumber } from '@pkg/domain';
+import { formatDate, formatPhoneNumber, JEDIDIAH_BUSINESS_DETAILS } from '@pkg/domain';
 import type { QuoteDocumentModel } from '@pkg/schema';
 import { Image, StyleSheet, Text, View } from '@react-pdf/renderer';
 
@@ -117,7 +117,7 @@ export function QuoteDocumentHeader({ document }: QuoteDocumentHeaderProps) {
         </Text>
         <Text style={[pdfStyles.colorMutedOnDark, pdfStyles.textBodyXs, styles.brandLine]}>Jedidiah Equipment</Text>
         <Text style={[pdfStyles.colorMutedOnDark, pdfStyles.textBodyXs, styles.brandLine]}>
-          Stoneybrook Farm, Kokstad, 4700
+          {JEDIDIAH_BUSINESS_DETAILS.address}
         </Text>
         {contactLine ? (
           <Text style={[pdfStyles.colorMutedOnDark, pdfStyles.textBodyXs, styles.brandLine, styles.salesContactLine]}>
@@ -125,7 +125,7 @@ export function QuoteDocumentHeader({ document }: QuoteDocumentHeaderProps) {
           </Text>
         ) : null}
         <Text style={[pdfStyles.colorMutedOnDark, pdfStyles.textBodyXs, styles.brandLine]}>
-          C/K 2019/513612/07 | VAT No. 4420294821
+          {`${JEDIDIAH_BUSINESS_DETAILS.companyRegistrationNumber} | VAT No. ${JEDIDIAH_BUSINESS_DETAILS.vatRegistrationNumber}`}
         </Text>
         <View style={[pdfStyles.bgBrandYellow, styles.brandStripe]} />
       </View>

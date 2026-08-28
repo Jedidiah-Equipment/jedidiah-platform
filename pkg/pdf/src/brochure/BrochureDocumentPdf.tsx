@@ -1,3 +1,4 @@
+import { JEDIDIAH_BUSINESS_DETAILS } from '@pkg/domain';
 import { type BrochureDocumentImage, type BrochureDocumentModel, PRODUCT_KEY_FEATURES_MAX_COUNT } from '@pkg/schema';
 import { Document, Image, Page, Path, StyleSheet, type Styles, Svg, Text, View } from '@react-pdf/renderer';
 
@@ -823,8 +824,8 @@ function Footer({ messages }: { messages: Messages }) {
           <Text style={styles.footerContact}>factory@jedidiahequipment.co.za</Text>
         </View>
         <View>
-          <Text style={styles.footerContact}>Jed Van Niekerk 082 419 4464</Text>
-          <Text style={styles.footerContact}>jed@jedidiahequipment.co.za</Text>
+          <Text style={styles.footerContact}>Jed Van Niekerk {JEDIDIAH_BUSINESS_DETAILS.cellphone}</Text>
+          <Text style={styles.footerContact}>{JEDIDIAH_BUSINESS_DETAILS.email}</Text>
         </View>
       </View>
       <View style={styles.footerRight}>

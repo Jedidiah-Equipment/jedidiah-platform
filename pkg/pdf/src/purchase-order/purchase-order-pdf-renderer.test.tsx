@@ -23,6 +23,21 @@ describe('Purchase Order PDF', () => {
     expect(text.join(' ')).not.toMatch(/Unit price|Subtotal|Total|R 900\.00|R 1 800\.00|South African rand/);
   });
 
+  test('prints Jedidiah business details beside the order number', () => {
+    const text = collectText(PurchaseOrderPdf({ document: model() }));
+
+    expect(text).toEqual(
+      expect.arrayContaining([
+        'Jedidiah Equipment Pty Ltd',
+        'VAT registration: 4420294821',
+        'Company registration: C/K 2019/513612/07',
+        'Address: Stoneybrook Farm, Kokstad, 4700',
+        'Email: jed@jedidiahequipment.co.za',
+        'Cell: 082 419 4464',
+      ]),
+    );
+  });
+
   test('prints the revision number so the Supplier knows which page supersedes which', () => {
     const text = collectText(PurchaseOrderPdf({ document: model({ revision: 3 }) }));
 

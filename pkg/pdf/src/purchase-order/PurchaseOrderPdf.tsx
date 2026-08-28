@@ -1,4 +1,4 @@
-import { formatDate } from '@pkg/domain';
+import { formatDate, JEDIDIAH_BUSINESS_DETAILS } from '@pkg/domain';
 import { PART_UNIT_OF_MEASURE_LABELS, type PurchaseOrderPdfModel } from '@pkg/schema';
 import { Document, Image, Page, StyleSheet, Text, View } from '@react-pdf/renderer';
 
@@ -6,27 +6,37 @@ import { pdfFontFamily, pdfTitleFontFamily } from '../pdf-fonts.js';
 import { jedidiahLogoSrc } from '../pdf-logo.js';
 import { pdfColors } from '../quote-document/pdf-theme.js';
 
+const layout = { pagePadding: 24, sectionGap: 8 } as const;
+
 const styles = StyleSheet.create({
   page: {
     color: pdfColors.black,
     fontFamily: pdfFontFamily,
     fontSize: 9,
-    padding: 36,
+    padding: layout.pagePadding,
   },
   header: {
-    alignItems: 'flex-end',
+    alignItems: 'flex-start',
     backgroundColor: pdfColors.black,
     color: pdfColors.white,
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 24,
+    marginBottom: layout.sectionGap,
     padding: 18,
   },
   // Sized to render at the same width as the logo on the Quote document.
   logo: { height: 29, marginBottom: 10, objectFit: 'contain', width: 132 },
   title: { fontFamily: pdfTitleFontFamily, fontSize: 24, fontWeight: 700 },
-  code: { color: pdfColors.yellow, fontFamily: pdfTitleFontFamily, fontSize: 18, fontWeight: 700 },
-  metaGrid: { flexDirection: 'row', gap: 12, marginBottom: 24 },
+  businessDetails: { alignItems: 'flex-end', fontSize: 7, gap: 2, textAlign: 'right' },
+  businessName: { fontWeight: 700 },
+  code: {
+    color: pdfColors.yellow,
+    fontFamily: pdfTitleFontFamily,
+    fontSize: 18,
+    fontWeight: 700,
+    marginBottom: 4,
+  },
+  metaGrid: { flexDirection: 'row', gap: 12, marginBottom: layout.sectionGap },
   panel: { backgroundColor: pdfColors.panel, flex: 1, minHeight: 92, padding: 12 },
   label: { color: pdfColors.muted, fontSize: 7, marginBottom: 4, textTransform: 'uppercase' },
   strong: { fontWeight: 700, marginBottom: 3 },
@@ -48,7 +58,15 @@ const styles = StyleSheet.create({
   },
   description: { flex: 1 },
   quantity: { textAlign: 'right', width: 92 },
-  footer: { bottom: 22, color: pdfColors.muted, fontSize: 7, gap: 2, left: 36, position: 'absolute', right: 36 },
+  footer: {
+    bottom: 22,
+    color: pdfColors.muted,
+    fontSize: 7,
+    gap: 2,
+    left: layout.pagePadding,
+    position: 'absolute',
+    right: layout.pagePadding,
+  },
 });
 
 export function PurchaseOrderPdf({ document }: { document: PurchaseOrderPdfModel }) {
@@ -60,9 +78,17 @@ export function PurchaseOrderPdf({ document }: { document: PurchaseOrderPdfModel
             <Image src={jedidiahLogoSrc} style={styles.logo} />
             <Text style={styles.title}>PURCHASE ORDER</Text>
           </View>
-          <Text style={styles.code}>
-            {document.revision > 1 ? `${document.code} REV ${document.revision}` : document.code}
-          </Text>
+          <View style={styles.businessDetails}>
+            <Text style={styles.code}>
+              {document.revision > 1 ? `${document.code} REV ${document.revision}` : document.code}
+            </Text>
+            <Text style={styles.businessName}>{JEDIDIAH_BUSINESS_DETAILS.registeredName}</Text>
+            <Text>{`VAT registration: ${JEDIDIAH_BUSINESS_DETAILS.vatRegistrationNumber}`}</Text>
+            <Text>{`Company registration: ${JEDIDIAH_BUSINESS_DETAILS.companyRegistrationNumber}`}</Text>
+            <Text>{`Address: ${JEDIDIAH_BUSINESS_DETAILS.address}`}</Text>
+            <Text>{`Email: ${JEDIDIAH_BUSINESS_DETAILS.email}`}</Text>
+            <Text>{`Cell: ${JEDIDIAH_BUSINESS_DETAILS.cellphone}`}</Text>
+          </View>
         </View>
 
         <View style={styles.metaGrid}>

@@ -82,11 +82,11 @@ The visual pipeline is fixed: Fabrication -> Procurement -> Supply -> Paint -> A
 
 **Product Bay** is a Product's default Bay plus working-day duration. It seeds Job scheduling, but it is not required and does not derive from quote lead time.
 
-**Department Timing** is a Job's observed `startedAt`/`completedAt` for one work Department (`fabrication`, `paint`, `assembly`, `workshop` — the same set Product Labor Hours restricts to), stamped by hand (`job:update`), never derived from the schedule, and never read by the Board or the scheduler — an observation log, not the removed per-job stage rows. The done-stamp is the department's manager stopping that work, distinct from Job Completion, which the factory manager records later. Stamps and crew stay editable while the Job is live and lock when `completedOn` latches. Only Fabrication has UI.
+**Department Timing** is a Job's observed `startedAt`/`completedAt` for one work Department (`fabrication`, `paint`, `assembly`, `workshop` — the same set Product Labor Hours restricts to), stamped by hand (`job:update`), never derived from the schedule, and never read by the Board or the scheduler — an observation log, not the removed per-job stage rows. The done-stamp is the department's manager stopping that work, distinct from Job Completion, which the factory manager records later. Stamps and crew stay editable while the Job is live and lock when `completedOn` latches. All four work Departments share the same Job-sheet card.
 
-**Department Crew** is the set of Bay Operators recorded on a done-stamp as having crewed that Department's work; a Fabrication crew member is a **Fabricator**. At least one per done-stamp, role-validated like Operator Assignment.
+**Department Crew** is the set of Bay Operators recorded on a done-stamp as having crewed that Department's work. Each person is a **Crew member**, regardless of Department. At least one per done-stamp, role-validated like Operator Assignment.
 
-**Product Build Metrics** are the elapsed working days between a Department's stamps across a Product's Build Jobs, with the per-Fabricator ranking behind `job_metrics:read`. Live-computed, never stored — the same rule Dashboard Metrics follow — and Build Jobs only.
+**Product Build Metrics** are the elapsed working days between a Department's stamps across a Product's Build Jobs, with the per-Crew-member ranking behind `job_metrics:read`. Live-computed, never stored — the same rule Dashboard Metrics follow — and Build Jobs only.
 
 ## Scheduling
 
@@ -133,7 +133,7 @@ App Role owns authorization. Department Membership is descriptive only and must 
 - **super-admin**: everything admin can do, plus the exclusive ability to review Corrective Feedback and Internal Notes through the Feedback inbox. The only role that can see Corrective Feedback — admins cannot. Only a super-admin may grant or remove the super-admin role; admins manage every other role but cannot mint a super-admin (which would otherwise be an escalation path to Corrective Feedback).
 - **admin**: full operational access; owns Bay scheduling, calendar updates, Job creation and updates, admin Bay configuration, Suppliers, Product Unit identity and Ownership Transfers — recording a Transfer by hand is admin-only, since it asserts ownership with no commercial document behind it. Sees General Feedback on subjects it can read, like any subject reader; cannot see Corrective Feedback.
 - **procurement-manager**: full Purchase Order access except approval, including posting a PO-bound Return to Supplier; inventory read/adjust and cost read/revalue, but no general inventory move; Customer directory and Product, Part, and Supplier management; Quote create/read/update, but never as the Quote's own salesperson and not cancelling a Locked Quote; Product Unit and Job reads; no scheduling mutation.
-- **job-manager**: Job updates, including fabrication timing stamps, plus Job and Product Unit reads; cannot create, schedule, calendar-manage, or cancel Jobs.
+- **job-manager**: Job updates, including Department Timing stamps, plus Job and Product Unit reads; cannot create, schedule, calendar-manage, or cancel Jobs.
 - **job-viewer**: Job, Product Unit, and Bay schedule reads only.
 - **sales**: Quote create/read/update, Product Unit reads (stock must be selectable on a Quote), and assistant-authored email sending.
 - **stores**: Purchase Order read/receive and physical inventory read/move/adjust/count/build/close-out; cannot read inventory costs.

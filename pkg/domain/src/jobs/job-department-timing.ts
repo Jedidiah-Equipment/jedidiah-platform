@@ -1,12 +1,13 @@
-import type { DateIso, DateOnlyIso, JobDepartmentTiming } from '@pkg/schema';
+import type { DateIso, DateOnlyIso, JobDepartmentTiming, WorkItemDepartment } from '@pkg/schema';
 
+import { departmentLabels } from '../departments.js';
 import { formatDate, toPlantDateOnly } from '../formatting/date.js';
 import { addDateOnlyDays } from '../formatting/date-only.js';
 import { countWorkingDaysBetween, type WorkingCalendar } from './working-calendar.js';
 
-export type FabricationTimingState = 'not-started' | 'in-progress' | 'complete';
+export type DepartmentTimingState = 'not-started' | 'in-progress' | 'complete';
 
-export const FABRICATION_TIMING_STATUS = {
+export const DEPARTMENT_TIMING_STATUS = {
   'not-started': { color: 'gray', label: 'Not started' },
   'in-progress': { color: 'yellow', label: 'In progress' },
   complete: { color: 'green', label: 'Complete' },
@@ -25,29 +26,33 @@ export function timingWorkingDays(
   return Math.max(1, countWorkingDaysBetween(startedOn, addDateOnlyDays(completedOn, 1), workingCalendar));
 }
 
-/** Shared state and headline for the web and mobile Fabrication timing cards. */
-export function getFabricationTimingPresentation({
+/** Shared state and headline for the web and mobile Department Timing cards. */
+export function getDepartmentTimingPresentation({
+  department,
   timing,
   today,
   workingCalendar,
 }: {
+  department: WorkItemDepartment;
   timing: Pick<JobDepartmentTiming, 'completedAt' | 'startedAt'>;
   today: DateOnlyIso;
   workingCalendar: WorkingCalendar;
 }): {
   durationDays: number | null;
   headline: string;
-  state: FabricationTimingState;
+  state: DepartmentTimingState;
 } {
+  const departmentLabel = departmentLabels[department];
+
   if (timing.startedAt === null) {
-    return { durationDays: null, headline: 'Fabrication has not started', state: 'not-started' };
+    return { durationDays: null, headline: `${departmentLabel} has not started`, state: 'not-started' };
   }
 
   if (timing.completedAt === null) {
     const startedOn = timingDateOnly(timing.startedAt);
     const when = startedOn === today ? 'today' : formatDate(timing.startedAt, 'short');
 
-    return { durationDays: null, headline: `Fabrication started ${when}`, state: 'in-progress' };
+    return { durationDays: null, headline: `${departmentLabel} started ${when}`, state: 'in-progress' };
   }
 
   const durationDays = timingWorkingDays(
@@ -58,7 +63,7 @@ export function getFabricationTimingPresentation({
 
   return {
     durationDays,
-    headline: `Fabrication took ${durationDays} ${durationDays === 1 ? 'day' : 'days'}`,
+    headline: `${departmentLabel} took ${durationDays} ${durationDays === 1 ? 'day' : 'days'}`,
     state: 'complete',
   };
 }

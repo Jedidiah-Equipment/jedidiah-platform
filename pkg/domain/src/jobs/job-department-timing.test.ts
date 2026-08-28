@@ -1,7 +1,7 @@
 import type { DateIso, DateOnlyIso } from '@pkg/schema';
 import { describe, expect, it } from 'vitest';
 
-import { getFabricationTimingPresentation, timingWorkingDays } from './job-department-timing.js';
+import { getDepartmentTimingPresentation, timingWorkingDays } from './job-department-timing.js';
 
 const day = (value: string) => value as DateOnlyIso;
 const instant = (value: string) => value as DateIso;
@@ -29,22 +29,24 @@ describe('timingWorkingDays', () => {
   });
 });
 
-describe('getFabricationTimingPresentation', () => {
+describe('getDepartmentTimingPresentation', () => {
   const today = day('2026-08-18');
 
-  it('presents an observation started today as in progress', () => {
+  it('presents an observation started today with its Department name', () => {
     expect(
-      getFabricationTimingPresentation({
+      getDepartmentTimingPresentation({
+        department: 'paint',
         timing: { completedAt: null, startedAt: instant('2026-08-18T08:00:00.000+02:00') },
         today,
         workingCalendar: {},
       }),
-    ).toEqual({ durationDays: null, headline: 'Fabrication started today', state: 'in-progress' });
+    ).toEqual({ durationDays: null, headline: 'Paint started today', state: 'in-progress' });
   });
 
   it('presents a completed observation with its inclusive working duration', () => {
     expect(
-      getFabricationTimingPresentation({
+      getDepartmentTimingPresentation({
+        department: 'assembly',
         timing: {
           completedAt: instant('2026-08-18T15:00:00.000+02:00'),
           startedAt: instant('2026-08-18T08:00:00.000+02:00'),
@@ -52,16 +54,17 @@ describe('getFabricationTimingPresentation', () => {
         today,
         workingCalendar: {},
       }),
-    ).toEqual({ durationDays: 1, headline: 'Fabrication took 1 day', state: 'complete' });
+    ).toEqual({ durationDays: 1, headline: 'Assembly took 1 day', state: 'complete' });
   });
 
   it('presents an unstamped observation explicitly', () => {
     expect(
-      getFabricationTimingPresentation({
+      getDepartmentTimingPresentation({
+        department: 'workshop',
         timing: { completedAt: null, startedAt: null },
         today,
         workingCalendar: {},
       }),
-    ).toEqual({ durationDays: null, headline: 'Fabrication has not started', state: 'not-started' });
+    ).toEqual({ durationDays: null, headline: 'Workshop has not started', state: 'not-started' });
   });
 });

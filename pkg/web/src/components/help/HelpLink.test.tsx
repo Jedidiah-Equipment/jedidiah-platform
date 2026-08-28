@@ -18,9 +18,9 @@ describe('HelpLink', () => {
   it('opens a specifically labelled topic in the public docs', () => {
     stubClientConfig('https://help.example.com');
 
-    const html = renderToStaticMarkup(<HelpLink label="How to stamp fabrication times" topic="jobFabrication" />);
+    const html = renderToStaticMarkup(<HelpLink label="How to stamp work times" topic="jobDepartmentTimes" />);
 
-    expect(html).toContain('aria-label="How to stamp fabrication times"');
+    expect(html).toContain('aria-label="How to stamp work times"');
     expect(html).toContain('href="https://help.example.com/production/stamp-fabrication-times"');
     expect(html).toContain('target="_blank"');
     expect(html).toContain('tabler-icon-help-circle');

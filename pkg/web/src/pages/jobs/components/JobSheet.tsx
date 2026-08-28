@@ -48,7 +48,7 @@ import { JobVarianceTab } from '../../inventory/job-variance/components/JobVaria
 import { CustomJobWorkItems } from './CustomJobWorkItems.js';
 import { JobActivityFeed } from './JobActivityFeed.js';
 import { JobCancellationAction } from './JobCancellationAction.js';
-import { JobFabricationAction } from './JobFabricationAction.js';
+import { JobDepartmentTimingCards } from './JobDepartmentTimingCards.js';
 import { InfoList, InfoRow } from './JobInfoList.js';
 import { JobQuoteCode } from './JobQuoteCode.js';
 import { JobStockTab } from './JobStockTab.js';
@@ -214,7 +214,7 @@ const JobDetailsTab: React.FC<{ canOpenQuote: boolean; job: JobDetail; onOpenQuo
         <ReadOnlyJobDetails canOpenQuote={canOpenQuote} job={job} onOpenQuote={onOpenQuote} />
       )}
       <CustomJobWorkItems job={job} />
-      <JobFabricationAction job={job} />
+      <JobDepartmentTimingCards job={job} />
       <Section
         action={
           !isJobCancelled(job) ? (

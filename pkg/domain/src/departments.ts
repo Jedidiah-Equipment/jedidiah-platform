@@ -1,4 +1,4 @@
-import type { Department } from '@pkg/schema';
+import type { Department, WorkItemDepartment } from '@pkg/schema';
 
 export const departmentLabels: Record<Department, string> = {
   procurement: 'Procurement',
@@ -16,6 +16,17 @@ export const departmentShortLabels: Record<Department, string> = {
   paint: 'Paint',
   assembly: 'Asm',
   workshop: 'Wksp',
+};
+
+/** Department Crew wording for internal work-time and build-metric surfaces. */
+export const departmentCrewLabels: Record<
+  WorkItemDepartment,
+  { collection: string; plural: string; singular: string }
+> = {
+  assembly: { collection: 'Assembly crew', plural: 'Crew members', singular: 'Crew member' },
+  fabrication: { collection: 'Fabrication crew', plural: 'Crew members', singular: 'Crew member' },
+  paint: { collection: 'Paint crew', plural: 'Crew members', singular: 'Crew member' },
+  workshop: { collection: 'Workshop crew', plural: 'Crew members', singular: 'Crew member' },
 };
 
 /**

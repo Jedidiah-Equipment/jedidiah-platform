@@ -109,7 +109,7 @@ const ProductEditTabs: React.FC<ProductEditTabsProps> = ({ onProductSave, onTabC
           <ProductAssembliesTabTrigger productId={product.id} />
           <TabsTrigger value="costing">Costing</TabsTrigger>
           {/* Only `product:read`, which this page already demands: the metrics gate applies to the
-              Fabricator ranking inside the tab, not to the build times themselves. */}
+              Crew-member ranking inside the tab, not to the build times themselves. */}
           <TabsTrigger value="build-times">Build times</TabsTrigger>
           <TabsTrigger value="images">Images</TabsTrigger>
           <ProductDocumentsTabTrigger productId={product.id} />

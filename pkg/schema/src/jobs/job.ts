@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { AuthId } from '../auth/auth-id.js';
 import { UserSummary } from '../auth/authorization.js';
-import { DateIso, DateOnlyIso } from '../common/date.js';
+import { DateIso, DateOnlyIso, DateOnlyIsoString } from '../common/date.js';
 import { DEPARTMENTS, Department, WORK_ITEM_DEPARTMENTS, WorkItemDepartment } from '../common/departments.js';
 import { createCursorQueryResult, createSearchedSortedCursorQueryInput } from '../common/pagination.js';
 import { JobCode, QuoteCode } from '../common/public-code.js';
@@ -749,6 +749,36 @@ export const JobDepartmentTimingUpdateInput = z.object({
   completedAt: DateIso.nullable(),
   crewUserIds: z.array(AuthId),
 });
+
+/** Normalized correction values shared by clients before they construct the API timestamps. */
+export type JobDepartmentTimingCorrectionValues = z.infer<typeof JobDepartmentTimingCorrectionValues>;
+export const JobDepartmentTimingCorrectionValues = z
+  .object({
+    completedOn: DateOnlyIsoString.nullable(),
+    crewUserIds: JobDepartmentTimingUpdateInput.shape.crewUserIds,
+    startedOn: DateOnlyIsoString.nullable(),
+  })
+  .superRefine((value, ctx) => {
+    if (value.startedOn === null) {
+      if (value.completedOn !== null) {
+        ctx.addIssue({ code: 'custom', message: 'A done date needs a start date.', path: ['startedOn'] });
+      }
+
+      return;
+    }
+
+    if (value.completedOn !== null && value.completedOn < value.startedOn) {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'The done date cannot be before the start date.',
+        path: ['completedOn'],
+      });
+    }
+
+    if (value.completedOn !== null && value.crewUserIds.length === 0) {
+      ctx.addIssue({ code: 'custom', message: 'Name at least one crew member.', path: ['crewUserIds'] });
+    }
+  });
 
 export type JobDetail = z.infer<typeof JobDetail>;
 export const JobDetail = JobSummary.extend({

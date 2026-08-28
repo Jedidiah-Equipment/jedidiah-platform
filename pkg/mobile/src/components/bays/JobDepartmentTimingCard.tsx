@@ -1,14 +1,22 @@
 import {
-  FABRICATION_TIMING_STATUS,
-  type FabricationTimingState,
+  DEPARTMENT_TIMING_STATUS,
+  type DepartmentTimingState,
+  departmentCrewLabels,
+  departmentLabels,
   formatDate,
-  getFabricationTimingPresentation,
+  getDepartmentTimingPresentation,
   getFirstName,
   getPlantDateNow,
   statusBadgeColorClassNames,
   toPlantDateOnly,
 } from '@pkg/domain';
-import { AuthId, DateIso, type JobDepartmentTiming } from '@pkg/schema';
+import {
+  DateIso,
+  DateOnlyIsoString,
+  type JobDepartmentTiming,
+  JobDepartmentTimingCompleteInput,
+  JobDepartmentTimingCorrectionValues,
+} from '@pkg/schema';
 import { IconCircleCheck, IconPencil, IconPlayerPlay, IconX } from '@tabler/icons-react-native';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
@@ -39,44 +47,34 @@ import { useCan } from '@/lib/use-access';
 import { gluestackConfig } from '@/theme/gluestack-config';
 import { useColorMode } from '@/theme/use-color-mode';
 
-const DoneFormValues = z.object({ crewUserIds: z.array(AuthId).min(1, 'Name at least one fabricator') });
+const DoneFormValues = z.object({ crewUserIds: JobDepartmentTimingCompleteInput.shape.crewUserIds });
 type DoneFormValues = z.infer<typeof DoneFormValues>;
 
 const CorrectionFormValues = z
   .object({
-    completedOn: z.string(),
-    crewUserIds: z.array(AuthId),
-    startedOn: z.string(),
+    completedOn: z.union([DateOnlyIsoString, z.literal('')]),
+    crewUserIds: JobDepartmentTimingCorrectionValues.shape.crewUserIds,
+    startedOn: z.union([DateOnlyIsoString, z.literal('')]),
   })
   .superRefine((value, ctx) => {
-    if (!value.startedOn) {
-      if (value.completedOn) {
-        ctx.addIssue({ code: 'custom', message: 'A done date needs a start date.', path: ['startedOn'] });
+    const result = JobDepartmentTimingCorrectionValues.safeParse({
+      completedOn: value.completedOn || null,
+      crewUserIds: value.crewUserIds,
+      startedOn: value.startedOn || null,
+    });
+    if (!result.success) {
+      for (const issue of result.error.issues) {
+        ctx.addIssue({ code: 'custom', message: issue.message, path: issue.path });
       }
-
-      return;
-    }
-
-    if (value.completedOn && value.completedOn < value.startedOn) {
-      ctx.addIssue({
-        code: 'custom',
-        message: 'The done date cannot be before the start date.',
-        path: ['completedOn'],
-      });
-    }
-
-    if (value.completedOn && value.crewUserIds.length === 0) {
-      ctx.addIssue({ code: 'custom', message: 'Name at least one fabricator.', path: ['crewUserIds'] });
     }
   });
 type CorrectionFormValues = z.infer<typeof CorrectionFormValues>;
 
 /**
- * Fabrication's Department Timing stamps on the Job Detail screen — the first Job mutation on mobile.
- * Mirrors web's three states: not started, started, done. Hidden entirely without `job:update`, which
- * today's mobile Job readers do not hold; the stamps are an observation log and move no schedule.
+ * One Department's Timing stamps on the Job Detail screen. The same collapsible card handles every
+ * work Department; stamps remain an observation log and move no schedule.
  */
-export function JobFabricationCard({
+export function JobDepartmentTimingCard({
   isCancelled,
   isCompleted,
   jobCode,
@@ -93,10 +91,11 @@ export function JobFabricationCard({
   const offDays = useOrgOffDays(timing.completedAt !== null);
   // A completed Job still accepts the one stamp that closes an observation already open, mirroring
   // core and web exactly: the completion sweep latches `completedOn` the day after the last Slot
-  // ends, so an overrunning fabrication run would otherwise have no way to record that it finished.
+  // ends, so Department work that overran its Slot would otherwise have no way to record that it finished.
   const hasOpenObservation = timing.startedAt !== null && timing.completedAt === null;
   const canStamp = canUpdate && !isCancelled && (!isCompleted || hasOpenObservation);
-  const presentation = getFabricationTimingPresentation({
+  const presentation = getDepartmentTimingPresentation({
+    department: timing.department,
     timing,
     today: getPlantDateNow(),
     workingCalendar: { orgOffDays: offDays },
@@ -104,7 +103,10 @@ export function JobFabricationCard({
   const duration = presentation.durationDays;
 
   return (
-    <CardCollapse headerAccessory={<FabricationStatusBadge state={presentation.state} />} title="Fabrication">
+    <CardCollapse
+      headerAccessory={<DepartmentTimingStatusBadge state={presentation.state} />}
+      title={departmentLabels[timing.department]}
+    >
       <View className="gap-4">
         <Text className="text-sm leading-5 text-surface-foreground" weight="semibold">
           {presentation.headline}
@@ -145,21 +147,21 @@ export function JobFabricationCard({
         ) : null}
 
         {canStamp ? (
-          <FabricationAction isCompleted={isCompleted} jobCode={jobCode} jobId={jobId} timing={timing} />
+          <DepartmentTimingAction isCompleted={isCompleted} jobCode={jobCode} jobId={jobId} timing={timing} />
         ) : null}
       </View>
     </CardCollapse>
   );
 }
 
-function FabricationStatusBadge({ state }: { state: FabricationTimingState }) {
-  const status = FABRICATION_TIMING_STATUS[state];
+function DepartmentTimingStatusBadge({ state }: { state: DepartmentTimingState }) {
+  const status = DEPARTMENT_TIMING_STATUS[state];
   const color = statusBadgeColorClassNames[status.color];
 
   return <StatusBadge classNames={color} label={status.label} />;
 }
 
-function FabricationAction({
+function DepartmentTimingAction({
   isCompleted,
   jobCode,
   jobId,
@@ -175,31 +177,38 @@ function FabricationAction({
   const showToast = useAppToast();
   const trpc = useTRPC();
   const startMutation = useMutation(trpc.jobs.startDepartmentTiming.mutationOptions());
+  const departmentLabel = departmentLabels[timing.department];
+  const lowerDepartmentLabel = departmentLabel.toLowerCase();
 
   if (timing.startedAt === null) {
     return (
       <AccentButton
         icon={IconPlayerPlay}
-        label="Start fabrication"
+        label={`Start ${lowerDepartmentLabel}`}
         onPress={() =>
-          Alert.alert('Start fabrication', `Record that fabrication on ${jobCode} started now?`, [
-            { style: 'cancel', text: 'Cancel' },
-            {
-              onPress: () => {
-                startMutation.mutate(
-                  { department: 'fabrication', id: jobId },
-                  {
-                    onError: (error) => showToast('error', toErrorMessage(error, 'Unable to start fabrication.')),
-                    onSuccess: async () => {
-                      await invalidate();
-                      showToast('success', 'Fabrication started');
+          Alert.alert(
+            `Start ${lowerDepartmentLabel}`,
+            `Record that ${lowerDepartmentLabel} on ${jobCode} started now?`,
+            [
+              { style: 'cancel', text: 'Cancel' },
+              {
+                onPress: () => {
+                  startMutation.mutate(
+                    { department: timing.department, id: jobId },
+                    {
+                      onError: (error) =>
+                        showToast('error', toErrorMessage(error, `Unable to start ${lowerDepartmentLabel}.`)),
+                      onSuccess: async () => {
+                        await invalidate();
+                        showToast('success', `${departmentLabel} started`);
+                      },
                     },
-                  },
-                );
+                  );
+                },
+                text: 'Start',
               },
-              text: 'Start',
-            },
-          ])
+            ],
+          )
         }
         pending={startMutation.isPending}
       />
@@ -209,7 +218,7 @@ function FabricationAction({
   if (timing.completedAt === null) {
     return (
       <>
-        <AccentButton icon={IconCircleCheck} label="Fabrication done" onPress={() => setOpenDialog('done')} />
+        <AccentButton icon={IconCircleCheck} label={`${departmentLabel} done`} onPress={() => setOpenDialog('done')} />
         {openDialog === 'done' ? (
           <DoneModal
             isCompleted={isCompleted}
@@ -252,6 +261,9 @@ function DoneModal({
   const [submitError, setSubmitError] = useState<string | null>(null);
   const crewOptions = useCrewOptions(timing);
   const completeMutation = useMutation(trpc.jobs.completeDepartmentTiming.mutationOptions());
+  const departmentLabel = departmentLabels[timing.department];
+  const lowerDepartmentLabel = departmentLabel.toLowerCase();
+  const crewLabel = departmentCrewLabels[timing.department].plural;
 
   const form = useAppForm({
     defaultValues: { crewUserIds: timing.suggestedCrew.map((member) => member.userId) } satisfies DoneFormValues,
@@ -261,16 +273,16 @@ function DoneModal({
       try {
         await completeMutation.mutateAsync({
           crewUserIds: value.crewUserIds,
-          department: 'fabrication',
+          department: timing.department,
           id: jobId,
         });
       } catch (error) {
-        setSubmitError(toErrorMessage(error, 'Unable to record fabrication as done.'));
+        setSubmitError(toErrorMessage(error, `Unable to record ${lowerDepartmentLabel} as done.`));
         return;
       }
       onClose();
       await invalidate();
-      showToast('success', 'Fabrication done');
+      showToast('success', `${departmentLabel} done`);
     },
   });
 
@@ -282,20 +294,16 @@ function DoneModal({
         // Corrections are refused on a completed Job, so this stamp is frozen the moment it lands.
         isCompleted
           ? `${jobCode} · already completed, so this cannot be corrected`
-          : `${jobCode} · fabrication done now`
+          : `${jobCode} · ${lowerDepartmentLabel} done now`
       }
-      submitLabel="Fabrication done"
+      submitLabel={`${departmentLabel} done`}
       submitting={form.state.isSubmitting}
       submitError={submitError}
-      title="Fabrication done"
+      title={`${departmentLabel} done`}
     >
       <form.AppField name="crewUserIds">
         {(field) => (
-          <field.MultiSelectField
-            emptyMessage="No Bay Operators available."
-            label="Fabricators"
-            options={crewOptions}
-          />
+          <field.MultiSelectField emptyMessage="No Bay Operators available." label={crewLabel} options={crewOptions} />
         )}
       </form.AppField>
     </StampModal>
@@ -319,6 +327,9 @@ function CorrectionModal({
   const [submitError, setSubmitError] = useState<string | null>(null);
   const crewOptions = useCrewOptions(timing);
   const updateMutation = useMutation(trpc.jobs.updateDepartmentTiming.mutationOptions());
+  const departmentLabel = departmentLabels[timing.department];
+  const lowerDepartmentLabel = departmentLabel.toLowerCase();
+  const crewLabel = departmentCrewLabels[timing.department].plural;
 
   const form = useAppForm({
     defaultValues: {
@@ -335,17 +346,17 @@ function CorrectionModal({
           // Crew only exists against a done stamp, so clearing the dates has to clear the crew with
           // them — otherwise the dialog's own "removes the stamps" path is refused by core.
           crewUserIds: value.completedOn ? value.crewUserIds : [],
-          department: 'fabrication',
+          department: timing.department,
           id: jobId,
           startedAt: value.startedOn ? DateIso.parse(value.startedOn) : null,
         });
       } catch (error) {
-        setSubmitError(toErrorMessage(error, 'Unable to correct the fabrication times.'));
+        setSubmitError(toErrorMessage(error, `Unable to correct the ${lowerDepartmentLabel} times.`));
         return;
       }
       onClose();
       await invalidate();
-      showToast('success', 'Fabrication times updated');
+      showToast('success', `${departmentLabel} times updated`);
     },
   });
 
@@ -357,7 +368,7 @@ function CorrectionModal({
       submitLabel="Save times"
       submitting={form.state.isSubmitting}
       submitError={submitError}
-      title="Edit fabrication times"
+      title={`Edit ${lowerDepartmentLabel} times`}
     >
       <form.AppField name="startedOn">
         {(field) => <field.DateField label="Started" placeholder="Not started" />}
@@ -367,11 +378,7 @@ function CorrectionModal({
       </form.AppField>
       <form.AppField name="crewUserIds">
         {(field) => (
-          <field.MultiSelectField
-            emptyMessage="No Bay Operators available."
-            label="Fabricators"
-            options={crewOptions}
-          />
+          <field.MultiSelectField emptyMessage="No Bay Operators available." label={crewLabel} options={crewOptions} />
         )}
       </form.AppField>
     </StampModal>
@@ -462,7 +469,7 @@ function useCrewOptions(timing: JobDepartmentTiming): { label: string; value: st
   const operatorsQuery = useQuery(trpc.jobs.listBayOperators.queryOptions());
   const known = new Map((operatorsQuery.data?.operators ?? []).map((operator) => [operator.id, operator.name]));
 
-  // A recorded Fabricator whose role has since changed still has to render, or editing the dates
+  // A recorded crew member whose role has since changed still has to render, or editing the dates
   // would silently drop them from the crew.
   for (const member of timing.crew) {
     if (!known.has(member.userId)) known.set(member.userId, member.name);

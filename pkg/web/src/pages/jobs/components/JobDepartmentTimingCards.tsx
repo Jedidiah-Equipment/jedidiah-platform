@@ -11,7 +11,14 @@ import {
   toPlantDateOnly,
   WORK_ITEM_DEPARTMENTS,
 } from '@pkg/domain';
-import { AuthId, DateIso, type JobDepartmentTiming, type JobDetail, type WorkItemDepartment } from '@pkg/schema';
+import {
+  AuthId,
+  DateIso,
+  type JobDepartmentTiming,
+  JobDepartmentTimingCompleteInput,
+  type JobDetail,
+  type WorkItemDepartment,
+} from '@pkg/schema';
 import { IconAlertTriangle, IconChevronDown, IconPencil } from '@tabler/icons-react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import type React from 'react';
@@ -44,7 +51,7 @@ import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { cn } from '@/lib/utils.js';
 
-const DoneFormValues = z.object({ crewUserIds: z.array(AuthId).min(1, 'Name at least one crew member') });
+const DoneFormValues = z.object({ crewUserIds: JobDepartmentTimingCompleteInput.shape.crewUserIds });
 type DoneFormValues = z.infer<typeof DoneFormValues>;
 
 const CorrectionFormValues = z
@@ -284,6 +291,7 @@ const CompleteDepartmentButton: React.FC<{ job: JobDetail; timing: JobDepartment
   const crewOptions = useCrewOptions(isOpen, timing);
   const departmentLabel = departmentLabels[timing.department];
   const lowerDepartmentLabel = departmentLabel.toLowerCase();
+  const crewLabel = timing.department === 'fabrication' ? 'Fabricators' : 'Crew members';
   const completeMutation = useMutation(
     trpc.jobs.completeDepartmentTiming.mutationOptions({
       onError: (error) => showMutationError(error, `Unable to record ${lowerDepartmentLabel} as done.`),
@@ -300,8 +308,8 @@ const CompleteDepartmentButton: React.FC<{ job: JobDetail; timing: JobDepartment
         description={
           // Corrections are refused on a completed Job, so this stamp is frozen the moment it lands.
           job.completedOn === null
-            ? `Record ${lowerDepartmentLabel} on ${job.code} as done now, and name the crew members.`
-            : `Record ${lowerDepartmentLabel} on ${job.code} as done now, and name the crew members. ${job.code} is already completed, so this cannot be corrected afterwards — check the names before saving.`
+            ? `Record ${lowerDepartmentLabel} on ${job.code} as done now, and name the ${crewLabel.toLowerCase()}.`
+            : `Record ${lowerDepartmentLabel} on ${job.code} as done now, and name the ${crewLabel.toLowerCase()}. ${job.code} is already completed, so this cannot be corrected afterwards — check the names before saving.`
         }
         key={isOpen ? 'open' : 'closed'}
         onCreate={(values: DoneFormValues) =>
@@ -327,7 +335,7 @@ const CompleteDepartmentButton: React.FC<{ job: JobDetail; timing: JobDepartment
             {(field) => (
               <field.MultiComboboxField
                 emptyMessage="No Bay Operators found."
-                label="Crew members"
+                label={crewLabel}
                 options={crewOptions}
                 placeholder="Choose who crewed this"
               />
@@ -348,6 +356,7 @@ const CorrectDepartmentButton: React.FC<{ job: JobDetail; timing: JobDepartmentT
   const plantToday = getPlantDateNow();
   const departmentLabel = departmentLabels[timing.department];
   const lowerDepartmentLabel = departmentLabel.toLowerCase();
+  const crewLabel = timing.department === 'fabrication' ? 'Fabricators' : 'Crew members';
   const updateMutation = useMutation(
     trpc.jobs.updateDepartmentTiming.mutationOptions({
       onError: (error) => showMutationError(error, `Unable to correct the ${lowerDepartmentLabel} times.`),
@@ -401,7 +410,7 @@ const CorrectDepartmentButton: React.FC<{ job: JobDetail; timing: JobDepartmentT
               {(field) => (
                 <field.MultiComboboxField
                   emptyMessage="No Bay Operators found."
-                  label="Crew members"
+                  label={crewLabel}
                   options={crewOptions}
                   placeholder="Choose who crewed this"
                 />

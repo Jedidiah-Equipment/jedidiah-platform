@@ -9,7 +9,7 @@ import {
   statusBadgeColorClassNames,
   toPlantDateOnly,
 } from '@pkg/domain';
-import { AuthId, DateIso, type JobDepartmentTiming } from '@pkg/schema';
+import { AuthId, DateIso, type JobDepartmentTiming, JobDepartmentTimingCompleteInput } from '@pkg/schema';
 import { IconCircleCheck, IconPencil, IconPlayerPlay, IconX } from '@tabler/icons-react-native';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
@@ -40,7 +40,7 @@ import { useCan } from '@/lib/use-access';
 import { gluestackConfig } from '@/theme/gluestack-config';
 import { useColorMode } from '@/theme/use-color-mode';
 
-const DoneFormValues = z.object({ crewUserIds: z.array(AuthId).min(1, 'Name at least one crew member') });
+const DoneFormValues = z.object({ crewUserIds: JobDepartmentTimingCompleteInput.shape.crewUserIds });
 type DoneFormValues = z.infer<typeof DoneFormValues>;
 
 const CorrectionFormValues = z
@@ -265,6 +265,7 @@ function DoneModal({
   const completeMutation = useMutation(trpc.jobs.completeDepartmentTiming.mutationOptions());
   const departmentLabel = departmentLabels[timing.department];
   const lowerDepartmentLabel = departmentLabel.toLowerCase();
+  const crewLabel = timing.department === 'fabrication' ? 'Fabricators' : 'Crew members';
 
   const form = useAppForm({
     defaultValues: { crewUserIds: timing.suggestedCrew.map((member) => member.userId) } satisfies DoneFormValues,
@@ -304,11 +305,7 @@ function DoneModal({
     >
       <form.AppField name="crewUserIds">
         {(field) => (
-          <field.MultiSelectField
-            emptyMessage="No Bay Operators available."
-            label="Crew members"
-            options={crewOptions}
-          />
+          <field.MultiSelectField emptyMessage="No Bay Operators available." label={crewLabel} options={crewOptions} />
         )}
       </form.AppField>
     </StampModal>
@@ -334,6 +331,7 @@ function CorrectionModal({
   const updateMutation = useMutation(trpc.jobs.updateDepartmentTiming.mutationOptions());
   const departmentLabel = departmentLabels[timing.department];
   const lowerDepartmentLabel = departmentLabel.toLowerCase();
+  const crewLabel = timing.department === 'fabrication' ? 'Fabricators' : 'Crew members';
 
   const form = useAppForm({
     defaultValues: {
@@ -382,11 +380,7 @@ function CorrectionModal({
       </form.AppField>
       <form.AppField name="crewUserIds">
         {(field) => (
-          <field.MultiSelectField
-            emptyMessage="No Bay Operators available."
-            label="Crew members"
-            options={crewOptions}
-          />
+          <field.MultiSelectField emptyMessage="No Bay Operators available." label={crewLabel} options={crewOptions} />
         )}
       </form.AppField>
     </StampModal>

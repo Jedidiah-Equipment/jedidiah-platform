@@ -14,7 +14,7 @@ const styles = StyleSheet.create({
     padding: 36,
   },
   header: {
-    alignItems: 'flex-end',
+    alignItems: 'flex-start',
     backgroundColor: pdfColors.black,
     color: pdfColors.white,
     flexDirection: 'row',
@@ -25,7 +25,15 @@ const styles = StyleSheet.create({
   // Sized to render at the same width as the logo on the Quote document.
   logo: { height: 29, marginBottom: 10, objectFit: 'contain', width: 132 },
   title: { fontFamily: pdfTitleFontFamily, fontSize: 24, fontWeight: 700 },
-  code: { color: pdfColors.yellow, fontFamily: pdfTitleFontFamily, fontSize: 18, fontWeight: 700 },
+  businessDetails: { alignItems: 'flex-end', fontSize: 7, gap: 2, textAlign: 'right' },
+  businessName: { fontWeight: 700 },
+  code: {
+    color: pdfColors.yellow,
+    fontFamily: pdfTitleFontFamily,
+    fontSize: 18,
+    fontWeight: 700,
+    marginBottom: 4,
+  },
   metaGrid: { flexDirection: 'row', gap: 12, marginBottom: 24 },
   panel: { backgroundColor: pdfColors.panel, flex: 1, minHeight: 92, padding: 12 },
   label: { color: pdfColors.muted, fontSize: 7, marginBottom: 4, textTransform: 'uppercase' },
@@ -60,9 +68,17 @@ export function PurchaseOrderPdf({ document }: { document: PurchaseOrderPdfModel
             <Image src={jedidiahLogoSrc} style={styles.logo} />
             <Text style={styles.title}>PURCHASE ORDER</Text>
           </View>
-          <Text style={styles.code}>
-            {document.revision > 1 ? `${document.code} REV ${document.revision}` : document.code}
-          </Text>
+          <View style={styles.businessDetails}>
+            <Text style={styles.code}>
+              {document.revision > 1 ? `${document.code} REV ${document.revision}` : document.code}
+            </Text>
+            <Text style={styles.businessName}>Jedidiah Equipment Pty Ltd</Text>
+            <Text>VAT registration: 4420294821</Text>
+            <Text>Company registration: C/K 2019/513612/07</Text>
+            <Text>Address: Stoneybrook Farm, Kokstad, 4700</Text>
+            <Text>Email: Jed@jedidiahequipment.co.za</Text>
+            <Text>Cell: 082 419 4464</Text>
+          </View>
         </View>
 
         <View style={styles.metaGrid}>

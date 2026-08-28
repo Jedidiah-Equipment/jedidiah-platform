@@ -13,10 +13,10 @@ import {
   WORK_ITEM_DEPARTMENTS,
 } from '@pkg/domain';
 import {
-  AuthId,
   DateIso,
   type JobDepartmentTiming,
   JobDepartmentTimingCompleteInput,
+  JobDepartmentTimingCorrectionFormValues,
   type JobDetail,
   type WorkItemDepartment,
 } from '@pkg/schema';
@@ -55,34 +55,7 @@ import { cn } from '@/lib/utils.js';
 const DoneFormValues = z.object({ crewUserIds: JobDepartmentTimingCompleteInput.shape.crewUserIds });
 type DoneFormValues = z.infer<typeof DoneFormValues>;
 
-const CorrectionFormValues = z
-  .object({
-    completedOn: z.string(),
-    crewUserIds: z.array(AuthId),
-    startedOn: z.string(),
-  })
-  .superRefine((value, ctx) => {
-    if (!value.startedOn) {
-      if (value.completedOn) {
-        ctx.addIssue({ code: 'custom', message: 'A done date needs a start date.', path: ['startedOn'] });
-      }
-
-      return;
-    }
-
-    if (value.completedOn && value.completedOn < value.startedOn) {
-      ctx.addIssue({
-        code: 'custom',
-        message: 'The done date cannot be before the start date.',
-        path: ['completedOn'],
-      });
-    }
-
-    if (value.completedOn && value.crewUserIds.length === 0) {
-      ctx.addIssue({ code: 'custom', message: 'Name at least one crew member.', path: ['crewUserIds'] });
-    }
-  });
-type CorrectionFormValues = z.infer<typeof CorrectionFormValues>;
+type CorrectionFormValues = z.infer<typeof JobDepartmentTimingCorrectionFormValues>;
 
 /** The four Department Timing observation cards shown on the Job sheet. */
 export const JobDepartmentTimingCards: React.FC<{ job: JobDetail }> = ({ job }) => {
@@ -397,7 +370,7 @@ const CorrectDepartmentButton: React.FC<{ job: JobDetail; timing: JobDepartmentT
         open={isOpen}
         submitLabel="Save times"
         title={`Edit ${lowerDepartmentLabel} times`}
-        validator={CorrectionFormValues}
+        validator={JobDepartmentTimingCorrectionFormValues}
       >
         {(form) => (
           <>

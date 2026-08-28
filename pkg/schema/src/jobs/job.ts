@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { AuthId } from '../auth/auth-id.js';
 import { UserSummary } from '../auth/authorization.js';
-import { DateIso, DateOnlyIso } from '../common/date.js';
+import { DateIso, DateOnlyIso, DateOnlyIsoString } from '../common/date.js';
 import { DEPARTMENTS, Department, WORK_ITEM_DEPARTMENTS, WorkItemDepartment } from '../common/departments.js';
 import { createCursorQueryResult, createSearchedSortedCursorQueryInput } from '../common/pagination.js';
 import { JobCode, QuoteCode } from '../common/public-code.js';
@@ -749,6 +749,36 @@ export const JobDepartmentTimingUpdateInput = z.object({
   completedAt: DateIso.nullable(),
   crewUserIds: z.array(AuthId),
 });
+
+/** Shared browser form state for correcting one Department's stamps on web or mobile. */
+export type JobDepartmentTimingCorrectionFormValues = z.infer<typeof JobDepartmentTimingCorrectionFormValues>;
+export const JobDepartmentTimingCorrectionFormValues = z
+  .object({
+    completedOn: z.union([DateOnlyIsoString, z.literal('')]),
+    crewUserIds: JobDepartmentTimingUpdateInput.shape.crewUserIds,
+    startedOn: z.union([DateOnlyIsoString, z.literal('')]),
+  })
+  .superRefine((value, ctx) => {
+    if (!value.startedOn) {
+      if (value.completedOn) {
+        ctx.addIssue({ code: 'custom', message: 'A done date needs a start date.', path: ['startedOn'] });
+      }
+
+      return;
+    }
+
+    if (value.completedOn && value.completedOn < value.startedOn) {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'The done date cannot be before the start date.',
+        path: ['completedOn'],
+      });
+    }
+
+    if (value.completedOn && value.crewUserIds.length === 0) {
+      ctx.addIssue({ code: 'custom', message: 'Name at least one crew member.', path: ['crewUserIds'] });
+    }
+  });
 
 export type JobDetail = z.infer<typeof JobDetail>;
 export const JobDetail = JobSummary.extend({

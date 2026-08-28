@@ -10,7 +10,12 @@ import {
   statusBadgeColorClassNames,
   toPlantDateOnly,
 } from '@pkg/domain';
-import { AuthId, DateIso, type JobDepartmentTiming, JobDepartmentTimingCompleteInput } from '@pkg/schema';
+import {
+  DateIso,
+  type JobDepartmentTiming,
+  JobDepartmentTimingCompleteInput,
+  JobDepartmentTimingCorrectionFormValues,
+} from '@pkg/schema';
 import { IconCircleCheck, IconPencil, IconPlayerPlay, IconX } from '@tabler/icons-react-native';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
@@ -44,34 +49,7 @@ import { useColorMode } from '@/theme/use-color-mode';
 const DoneFormValues = z.object({ crewUserIds: JobDepartmentTimingCompleteInput.shape.crewUserIds });
 type DoneFormValues = z.infer<typeof DoneFormValues>;
 
-const CorrectionFormValues = z
-  .object({
-    completedOn: z.string(),
-    crewUserIds: z.array(AuthId),
-    startedOn: z.string(),
-  })
-  .superRefine((value, ctx) => {
-    if (!value.startedOn) {
-      if (value.completedOn) {
-        ctx.addIssue({ code: 'custom', message: 'A done date needs a start date.', path: ['startedOn'] });
-      }
-
-      return;
-    }
-
-    if (value.completedOn && value.completedOn < value.startedOn) {
-      ctx.addIssue({
-        code: 'custom',
-        message: 'The done date cannot be before the start date.',
-        path: ['completedOn'],
-      });
-    }
-
-    if (value.completedOn && value.crewUserIds.length === 0) {
-      ctx.addIssue({ code: 'custom', message: 'Name at least one crew member.', path: ['crewUserIds'] });
-    }
-  });
-type CorrectionFormValues = z.infer<typeof CorrectionFormValues>;
+type CorrectionFormValues = z.infer<typeof JobDepartmentTimingCorrectionFormValues>;
 
 /**
  * One Department's Timing stamps on the Job Detail screen. The same collapsible card handles every
@@ -340,7 +318,7 @@ function CorrectionModal({
       crewUserIds: timing.crew.map((member) => member.userId),
       startedOn: timing.startedAt ? toPlantDateOnly(new Date(timing.startedAt)) : '',
     } satisfies CorrectionFormValues,
-    validators: { onSubmit: CorrectionFormValues },
+    validators: { onSubmit: JobDepartmentTimingCorrectionFormValues },
     onSubmit: async ({ value }) => {
       setSubmitError(null);
       try {

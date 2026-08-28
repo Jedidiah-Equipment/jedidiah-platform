@@ -84,9 +84,9 @@ The visual pipeline is fixed: Fabrication -> Procurement -> Supply -> Paint -> A
 
 **Department Timing** is a Job's observed `startedAt`/`completedAt` for one work Department (`fabrication`, `paint`, `assembly`, `workshop` — the same set Product Labor Hours restricts to), stamped by hand (`job:update`), never derived from the schedule, and never read by the Board or the scheduler — an observation log, not the removed per-job stage rows. The done-stamp is the department's manager stopping that work, distinct from Job Completion, which the factory manager records later. Stamps and crew stay editable while the Job is live and lock when `completedOn` latches. All four work Departments share the same Job-sheet card.
 
-**Department Crew** is the set of Bay Operators recorded on a done-stamp as having crewed that Department's work; a Fabrication crew member is a **Fabricator**. At least one per done-stamp, role-validated like Operator Assignment.
+**Department Crew** is the set of Bay Operators recorded on a done-stamp as having crewed that Department's work. Each person is a **Crew member**, regardless of Department. At least one per done-stamp, role-validated like Operator Assignment.
 
-**Product Build Metrics** are the elapsed working days between a Department's stamps across a Product's Build Jobs, with the per-Fabricator ranking behind `job_metrics:read`. Live-computed, never stored — the same rule Dashboard Metrics follow — and Build Jobs only.
+**Product Build Metrics** are the elapsed working days between a Department's stamps across a Product's Build Jobs, with the per-Crew-member ranking behind `job_metrics:read`. Live-computed, never stored — the same rule Dashboard Metrics follow — and Build Jobs only.
 
 ## Scheduling
 

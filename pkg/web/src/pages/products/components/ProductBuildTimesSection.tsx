@@ -1,4 +1,4 @@
-import { departmentLabels, formatDate, formatNumber, WORK_ITEM_DEPARTMENTS } from '@pkg/domain';
+import { departmentCrewLabels, departmentLabels, formatDate, formatNumber, WORK_ITEM_DEPARTMENTS } from '@pkg/domain';
 import type { ProductBuildMetrics, UUID, WorkItemDepartment } from '@pkg/schema';
 import { formatJobCode } from '@pkg/schema';
 import { useQuery } from '@tanstack/react-query';
@@ -7,6 +7,7 @@ import { useMemo, useState } from 'react';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { DataTable } from '@/components/data-table/DataTable.js';
 import { type DataTableColumnDef, useDataTable } from '@/components/data-table/features.js';
+import { HelpLink } from '@/components/help/index.js';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs.js';
@@ -43,7 +44,10 @@ export const ProductBuildTimesSection: React.FC<{ productId: UUID }> = ({ produc
 
       <Card>
         <CardHeader>
-          <CardTitle>Average {lowerDepartmentLabel} build time</CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            Average {lowerDepartmentLabel} build time
+            <HelpLink label="How to read Product build times" topic="productBuildTimes" />
+          </CardTitle>
           <CardDescription>
             Elapsed working days between the {lowerDepartmentLabel} start and done stamps, across this Product's builds.
             Builds with no stamps are not counted.
@@ -149,11 +153,10 @@ const DepartmentCrewRankingCard: React.FC<{ department: WorkItemDepartment; rank
   department,
   ranking,
 }) => {
-  const crewMemberLabel = department === 'fabrication' ? 'Fabricator' : 'Crew member';
-  const crewMemberLabelPlural = department === 'fabrication' ? 'Fabricators' : 'Crew members';
+  const crewLabels = departmentCrewLabels[department];
   const columns = useMemo<DataTableColumnDef<RankingRow>[]>(
     () => [
-      { accessorKey: 'name', header: crewMemberLabel },
+      { accessorKey: 'name', header: crewLabels.singular },
       {
         accessorFn: (row) => formatNumber(row.averageWorkingDays, { decimals: 1 }),
         header: 'Average days',
@@ -166,7 +169,7 @@ const DepartmentCrewRankingCard: React.FC<{ department: WorkItemDepartment; rank
         id: 'averageCrewSize',
       },
     ],
-    [crewMemberLabel],
+    [crewLabels.singular],
   );
   const table = useDataTable({
     columns,
@@ -179,10 +182,10 @@ const DepartmentCrewRankingCard: React.FC<{ department: WorkItemDepartment; rank
   return (
     <Card>
       <CardHeader>
-        <CardTitle>{department === 'fabrication' ? 'Fabricators' : `${departmentLabels[department]} crew`}</CardTitle>
+        <CardTitle>{crewLabels.collection}</CardTitle>
         <CardDescription>
-          Each {crewMemberLabel.toLowerCase()} carries the full elapsed time of every build they crewed — the average
-          crew size beside it says what that time was worked under.
+          Each {crewLabels.singular.toLowerCase()} carries the full elapsed time of every build they crewed — the
+          average crew size beside it says what that time was worked under.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -193,7 +196,7 @@ const DepartmentCrewRankingCard: React.FC<{ department: WorkItemDepartment; rank
           table={table}
           total={ranking.length}
           totalLabel={(value) =>
-            `${value} ${value === 1 ? crewMemberLabel.toLowerCase() : crewMemberLabelPlural.toLowerCase()}`
+            `${value} ${value === 1 ? crewLabels.singular.toLowerCase() : crewLabels.plural.toLowerCase()}`
           }
         />
       </CardContent>

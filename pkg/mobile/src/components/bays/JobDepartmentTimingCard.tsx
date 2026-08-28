@@ -1,6 +1,7 @@
 import {
   DEPARTMENT_TIMING_STATUS,
   type DepartmentTimingState,
+  departmentCrewLabels,
   departmentLabels,
   formatDate,
   getDepartmentTimingPresentation,
@@ -265,7 +266,7 @@ function DoneModal({
   const completeMutation = useMutation(trpc.jobs.completeDepartmentTiming.mutationOptions());
   const departmentLabel = departmentLabels[timing.department];
   const lowerDepartmentLabel = departmentLabel.toLowerCase();
-  const crewLabel = timing.department === 'fabrication' ? 'Fabricators' : 'Crew members';
+  const crewLabel = departmentCrewLabels[timing.department].plural;
 
   const form = useAppForm({
     defaultValues: { crewUserIds: timing.suggestedCrew.map((member) => member.userId) } satisfies DoneFormValues,
@@ -331,7 +332,7 @@ function CorrectionModal({
   const updateMutation = useMutation(trpc.jobs.updateDepartmentTiming.mutationOptions());
   const departmentLabel = departmentLabels[timing.department];
   const lowerDepartmentLabel = departmentLabel.toLowerCase();
-  const crewLabel = timing.department === 'fabrication' ? 'Fabricators' : 'Crew members';
+  const crewLabel = departmentCrewLabels[timing.department].plural;
 
   const form = useAppForm({
     defaultValues: {

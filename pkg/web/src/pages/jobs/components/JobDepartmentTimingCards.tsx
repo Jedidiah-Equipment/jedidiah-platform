@@ -1,6 +1,7 @@
 import {
   DEPARTMENT_TIMING_STATUS,
   type DepartmentTimingState,
+  departmentCrewLabels,
   departmentLabels,
   formatDate,
   getDepartmentTimingPresentation,
@@ -291,7 +292,7 @@ const CompleteDepartmentButton: React.FC<{ job: JobDetail; timing: JobDepartment
   const crewOptions = useCrewOptions(isOpen, timing);
   const departmentLabel = departmentLabels[timing.department];
   const lowerDepartmentLabel = departmentLabel.toLowerCase();
-  const crewLabel = timing.department === 'fabrication' ? 'Fabricators' : 'Crew members';
+  const crewLabel = departmentCrewLabels[timing.department].plural;
   const completeMutation = useMutation(
     trpc.jobs.completeDepartmentTiming.mutationOptions({
       onError: (error) => showMutationError(error, `Unable to record ${lowerDepartmentLabel} as done.`),
@@ -356,7 +357,7 @@ const CorrectDepartmentButton: React.FC<{ job: JobDetail; timing: JobDepartmentT
   const plantToday = getPlantDateNow();
   const departmentLabel = departmentLabels[timing.department];
   const lowerDepartmentLabel = departmentLabel.toLowerCase();
-  const crewLabel = timing.department === 'fabrication' ? 'Fabricators' : 'Crew members';
+  const crewLabel = departmentCrewLabels[timing.department].plural;
   const updateMutation = useMutation(
     trpc.jobs.updateDepartmentTiming.mutationOptions({
       onError: (error) => showMutationError(error, `Unable to correct the ${lowerDepartmentLabel} times.`),

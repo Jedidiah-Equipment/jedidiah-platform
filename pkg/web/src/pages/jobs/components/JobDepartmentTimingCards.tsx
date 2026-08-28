@@ -110,6 +110,8 @@ const JobDepartmentTimingCard: React.FC<{
     today: getPlantDateNow(),
     workingCalendar: { orgOffDays: offDays },
   });
+  const showOverdueStartNudge =
+    department === 'fabrication' && presentation.state === 'not-started' && isFabricationOverdueToStart(job);
 
   return (
     <Collapsible onOpenChange={setIsOpen} open={isOpen}>
@@ -118,7 +120,7 @@ const JobDepartmentTimingCard: React.FC<{
           <CardTitle className="flex min-w-0 items-center gap-2">
             <CollapsibleTrigger className="flex min-w-0 flex-1 items-center gap-2 rounded-sm text-left outline-none focus-visible:ring-3 focus-visible:ring-ring/50">
               <DepartmentIcon className="size-5 shrink-0" department={department} />
-              <span className="truncate">{departmentLabel}</span>
+              <span className="truncate">{presentation.headline}</span>
               <IconChevronDown
                 aria-hidden="true"
                 className={cn('size-4 shrink-0 text-muted-foreground transition-transform', isOpen && 'rotate-180')}
@@ -130,6 +132,12 @@ const JobDepartmentTimingCard: React.FC<{
             className="col-start-1 row-start-2 mt-2 flex flex-wrap items-center gap-2 justify-self-stretch sm:col-start-2 sm:row-start-1 sm:mt-0 sm:justify-self-end"
             span="title"
           >
+            {showOverdueStartNudge ? (
+              <Badge variant="outline">
+                <IconAlertTriangle data-icon="inline-start" />
+                Fabrication not started?
+              </Badge>
+            ) : null}
             <DepartmentTimingStatusBadge state={presentation.state} />
             {canStamp ? <DepartmentTimingStampAction job={job} timing={timing} /> : null}
           </CardAction>
@@ -137,7 +145,7 @@ const JobDepartmentTimingCard: React.FC<{
         <CollapsibleContent>
           <CardSeparator />
           <CardContent className="pt-4">
-            <DepartmentTimingSummary job={job} presentation={presentation} timing={timing} />
+            <DepartmentTimingSummary presentation={presentation} timing={timing} />
           </CardContent>
         </CollapsibleContent>
       </Card>
@@ -146,25 +154,12 @@ const JobDepartmentTimingCard: React.FC<{
 };
 
 const DepartmentTimingSummary: React.FC<{
-  job: JobDetail;
   presentation: ReturnType<typeof getDepartmentTimingPresentation>;
   timing: JobDepartmentTiming;
-}> = ({ job, presentation, timing }) => {
+}> = ({ presentation, timing }) => {
   const duration = presentation.durationDays;
   return (
     <div className="grid gap-4">
-      <div className="flex flex-wrap items-center gap-2 py-1">
-        <h3 className="text-sm leading-normal font-medium">{presentation.headline}</h3>
-        {timing.department === 'fabrication' &&
-        presentation.state === 'not-started' &&
-        isFabricationOverdueToStart(job) ? (
-          <Badge variant="outline">
-            <IconAlertTriangle data-icon="inline-start" />
-            Fabrication not started?
-          </Badge>
-        ) : null}
-      </div>
-      <Separator className="-mx-4 w-[calc(100%+2rem)] max-w-none" />
       <dl className="grid gap-3 sm:grid-cols-3 sm:gap-0">
         <TimingFact label="Started" value={formatDate(timing.startedAt, 'short', '—')} />
         <TimingFact

@@ -1,0 +1,47 @@
+{
+  "releasedAt": "2026-08-28T12:50:08.255Z",
+  "sections": [
+    {
+      "surface": "app",
+      "entries": [
+        {
+          "title": "Recognize service work consistently",
+          "description": "Quotes and Jobs for custom work are now labelled “Service Work” throughout the app."
+        },
+        {
+          "title": "Reuse existing part categories",
+          "description": "The New Part dialog now suggests categories already in the catalog while still allowing new ones."
+        },
+        {
+          "title": "Reach every dialog action",
+          "description": "Dialog footers remain accessible on shorter screens and no longer overlap the scrollbar."
+        },
+        {
+          "title": "See locked measurement units up front",
+          "description": "Parts with stock history now show their unit of measure as locked before you save. Imports also identify affected rows clearly."
+        },
+        {
+          "title": "Track work across every department",
+          "description": "Record start and finish times and crews for every production department on a Job. Product pages now show build-time summaries for each department."
+        },
+        {
+          "title": "Send complete purchase orders",
+          "description": "Purchase order PDFs now include Jedidiah’s registered business name, registration and VAT numbers, address, email, and cellphone number."
+        }
+      ]
+    },
+    {
+      "surface": "mobile",
+      "entries": [
+        {
+          "title": "Recognize service work consistently",
+          "description": "Quotes and Jobs for custom work are now labelled “Service Work” throughout the mobile app."
+        },
+        {
+          "title": "Track work across every department",
+          "description": "Record and review start times, finish times, durations, and crews for every production department from Job details."
+        }
+      ]
+    }
+  ]
+}

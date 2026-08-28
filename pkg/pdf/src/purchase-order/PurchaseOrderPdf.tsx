@@ -1,4 +1,4 @@
-import { formatDate } from '@pkg/domain';
+import { formatDate, JEDIDIAH_BUSINESS_DETAILS } from '@pkg/domain';
 import { PART_UNIT_OF_MEASURE_LABELS, type PurchaseOrderPdfModel } from '@pkg/schema';
 import { Document, Image, Page, StyleSheet, Text, View } from '@react-pdf/renderer';
 
@@ -72,12 +72,12 @@ export function PurchaseOrderPdf({ document }: { document: PurchaseOrderPdfModel
             <Text style={styles.code}>
               {document.revision > 1 ? `${document.code} REV ${document.revision}` : document.code}
             </Text>
-            <Text style={styles.businessName}>Jedidiah Equipment Pty Ltd</Text>
-            <Text>VAT registration: 4420294821</Text>
-            <Text>Company registration: C/K 2019/513612/07</Text>
-            <Text>Address: Stoneybrook Farm, Kokstad, 4700</Text>
-            <Text>Email: Jed@jedidiahequipment.co.za</Text>
-            <Text>Cell: 082 419 4464</Text>
+            <Text style={styles.businessName}>{JEDIDIAH_BUSINESS_DETAILS.registeredName}</Text>
+            <Text>{`VAT registration: ${JEDIDIAH_BUSINESS_DETAILS.vatRegistrationNumber}`}</Text>
+            <Text>{`Company registration: ${JEDIDIAH_BUSINESS_DETAILS.companyRegistrationNumber}`}</Text>
+            <Text>{`Address: ${JEDIDIAH_BUSINESS_DETAILS.address}`}</Text>
+            <Text>{`Email: ${JEDIDIAH_BUSINESS_DETAILS.email}`}</Text>
+            <Text>{`Cell: ${JEDIDIAH_BUSINESS_DETAILS.cellphone}`}</Text>
           </View>
         </View>
 

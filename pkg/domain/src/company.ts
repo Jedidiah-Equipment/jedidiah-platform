@@ -1,5 +1,13 @@
-// Shared company contact facts. Consumed by the lander and any app surface that
-// needs the canonical location, phone number, or social links.
+// Shared company facts consumed by documents and public-facing surfaces.
+
+export const JEDIDIAH_BUSINESS_DETAILS = {
+  address: 'Stoneybrook Farm, Kokstad, 4700',
+  cellphone: '082 419 4464',
+  companyRegistrationNumber: 'C/K 2019/513612/07',
+  email: 'jed@jedidiahequipment.co.za',
+  registeredName: 'Jedidiah Equipment Pty Ltd',
+  vatRegistrationNumber: '4420294821',
+} as const;
 
 export const JEDIDIAH_LOCATION = 'KZN, South Africa';
 

@@ -21,7 +21,7 @@ export const HELP_TOPICS = {
   inventoryPriceVariance: '/inventory/cross-check-a-supplier-invoice',
   inventoryStocktake: '/inventory/run-a-stocktake-session',
   jobActivity: '/production/catch-up-on-job-activity',
-  jobFabrication: '/production/stamp-fabrication-times',
+  jobDepartmentTimes: '/production/stamp-department-times',
   jobs: '/production/find-a-job',
   parts: '/inventory/export-and-import-parts',
   plan: '/production/open-a-bay-plan',

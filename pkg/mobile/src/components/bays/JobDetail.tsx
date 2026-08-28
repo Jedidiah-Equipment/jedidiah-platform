@@ -10,8 +10,8 @@ import type { ReactNode } from 'react';
 import { ScrollView, useWindowDimensions, View } from 'react-native';
 
 import { Avatar } from '@/components/Avatar';
+import { JobDepartmentTimingCard } from '@/components/bays/JobDepartmentTimingCard';
 import { JobDetailSections } from '@/components/bays/JobDetailSections';
-import { JobFabricationCard } from '@/components/bays/JobFabricationCard';
 import { JobWorkCard } from '@/components/bays/JobWorkCard';
 import { DaysLeftChip, STATUS_TONE, StatusChip, type StatusTone } from '@/components/bays/status-chip';
 import { SecondaryPageToolbar } from '@/components/TopToolbar';
@@ -290,7 +290,6 @@ function DetailPane({ isWide, jobId, state }: { isWide: boolean; jobId: string; 
   const status = isCancelled
     ? { tone: 'cancelled' as const, label: 'Cancelled' }
     : jobStatus(progress, state.totalCount);
-  const fabricationTiming = state.departmentTimings.find((timing) => timing.department === 'fabrication');
 
   return (
     <View className="gap-4">
@@ -329,17 +328,16 @@ function DetailPane({ isWide, jobId, state }: { isWide: boolean; jobId: string; 
       {isWide ? null : <RoutePane isCancelled={isCancelled} route={state.route} />}
 
       <JobDetailSections
-        afterJobFacts={
-          fabricationTiming ? (
-            <JobFabricationCard
-              isCancelled={isCancelled}
-              isCompleted={state.completedOn !== null}
-              jobCode={state.jobCode}
-              jobId={jobId}
-              timing={fabricationTiming}
-            />
-          ) : null
-        }
+        afterJobFacts={state.departmentTimings.map((timing) => (
+          <JobDepartmentTimingCard
+            isCancelled={isCancelled}
+            isCompleted={state.completedOn !== null}
+            jobCode={state.jobCode}
+            jobId={jobId}
+            key={timing.department}
+            timing={timing}
+          />
+        ))}
         customerCompanyName={state.customerCompanyName}
         description={state.description}
         jobCode={state.jobCode}

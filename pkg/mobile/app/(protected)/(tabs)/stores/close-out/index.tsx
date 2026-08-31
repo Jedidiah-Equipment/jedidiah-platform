@@ -1,11 +1,11 @@
 import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
-import { ActivityIndicator, Pressable, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 
 import { StoresScreen } from '@/components/stores/StoresScreen';
+import { ActivityIndicator } from '@/components/ui/activity-indicator';
 import { Text } from '@/components/ui/text';
 import { useTRPC } from '@/lib/trpc';
-import { loadingSpinnerColor } from '@/theme/brand-colors';
 
 /**
  * The Jobs whose stock life should be ending: completed, not yet closed out, still holding
@@ -29,7 +29,7 @@ export default function StoresCloseOutQueueRoute() {
     >
       {queue.isPending ? (
         <View className="items-center py-10">
-          <ActivityIndicator accessibilityLabel="Loading the queue" color={loadingSpinnerColor} size="large" />
+          <ActivityIndicator accessibilityLabel="Loading the queue" size="large" />
         </View>
       ) : queue.isError ? (
         <Text className="py-10 text-center text-sm text-danger">Couldn’t load the queue. Pull down to retry.</Text>

@@ -2,13 +2,14 @@ import { IconArrowUp, IconPlayerStopFilled } from '@tabler/icons-react-native';
 import type { UIMessage } from 'ai';
 import type { ReactNode } from 'react';
 import { useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, FlatList, type ListRenderItem, Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { FlatList, type ListRenderItem, Pressable, StyleSheet, TextInput, View } from 'react-native';
 import Markdown, { type ASTNode, type RenderRules } from 'react-native-markdown-display';
 
 import { AssistantMarkdownLink } from '@/components/assistant/assistant-markdown-link';
+import { ActivityIndicator } from '@/components/ui/activity-indicator';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
-import { loadingSpinnerColor, primaryColorTriplets } from '@/theme/brand-colors';
+import { primaryColorTriplets } from '@/theme/brand-colors';
 import { foregroundColors, mutedColors, navigationColors } from '@/theme/gluestack-config';
 import { useColorMode } from '@/theme/use-color-mode';
 
@@ -200,7 +201,7 @@ function ToolActivity({ part }: { part: ToolPart }) {
 
   return (
     <View className="flex-row items-center gap-2 rounded-xl border border-border bg-surface px-3 py-2">
-      {pending ? <ActivityIndicator color={loadingSpinnerColor} size="small" /> : null}
+      {pending ? <ActivityIndicator size="small" /> : null}
       <Text className={failed ? 'text-xs text-danger' : 'text-xs text-muted-foreground'} mono>
         {failed ? 'Failed: ' : pending ? 'Using ' : 'Used '}
         {formatToolName(toolName(part))}

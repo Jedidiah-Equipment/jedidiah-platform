@@ -1,4 +1,4 @@
-import { statusBadgeColorClassNames } from '@pkg/domain';
+import { statusBadgeColorClassNames, textClassNameForScheme } from '@pkg/domain';
 import type { JobSummary, Product, ProductUnitSummary, QuoteSummary } from '@pkg/schema';
 import { describe, expect, test, vi } from 'vitest';
 
@@ -161,7 +161,7 @@ describe('catalog card mappings', () => {
     expect(renderedPrimitive.props.className).toContain('px-2 py-1');
     expect(renderedPrimitive.props.className).toContain(statusBadgeColorClassNames.orange.chip);
     expect(badgeText.props.className).toContain('text-[10px] tracking-wide');
-    expect(badgeText.props.className).toContain(statusBadgeColorClassNames.orange.text);
+    expect(badgeText.props.className).toContain(textClassNameForScheme(statusBadgeColorClassNames.orange.text, 'dark'));
     expect(badgeText.props.mono).toBe(true);
   });
 

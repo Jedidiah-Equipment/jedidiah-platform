@@ -1,4 +1,4 @@
-import { statusBadgeColorClassNames } from '@pkg/domain';
+import { statusBadgeColorClassNames, textClassNameForScheme } from '@pkg/domain';
 import { type GeneralFeedbackActivityItem, type JobActivityItem, JobChangeActivityItem } from '@pkg/schema';
 import { act, create, type ReactTestRenderer } from 'react-test-renderer';
 import { describe, expect, test, vi } from 'vitest';
@@ -17,6 +17,7 @@ vi.mock('@/components/CustomerName', () => ({ CustomerName: 'CustomerName' }));
 vi.mock('@/components/OfferingAvatar', () => ({ OfferingAvatar: 'OfferingAvatar' }));
 vi.mock('@/components/ui/icon', () => ({ Icon: 'Icon' }));
 vi.mock('@/components/ui/text', () => ({ Text: 'Text' }));
+vi.mock('@/theme/use-color-mode', () => ({ useColorMode: () => ({ resolved: 'light' }) }));
 
 import { JobActivityEntry } from './JobActivityEntry';
 
@@ -30,7 +31,7 @@ describe('JobActivityEntry', () => {
     const renderer = await renderEntry(buildChangeItem(type));
     const renderedIcon = renderer.root.findByProps({ icon });
 
-    expect(renderedIcon.props.className).toBe(textClassName);
+    expect(renderedIcon.props.className).toBe(textClassNameForScheme(textClassName, 'light'));
     expect(renderedIcon.parent?.props.className).toContain(chipClassName);
   });
 

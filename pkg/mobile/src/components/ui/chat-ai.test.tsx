@@ -6,7 +6,6 @@ vi.mock('react', async (importOriginal) => ({
   useRef: () => ({ current: null }),
 }));
 vi.mock('react-native', () => ({
-  ActivityIndicator: 'ActivityIndicator',
   FlatList: 'FlatList',
   Pressable: 'Pressable',
   StyleSheet: { create: (styles: unknown) => styles },
@@ -19,9 +18,10 @@ vi.mock('@tabler/icons-react-native', () => ({
 }));
 vi.mock('react-native-markdown-display', () => ({ default: 'Markdown' }));
 vi.mock('@/components/assistant/assistant-markdown-link', () => ({ AssistantMarkdownLink: 'AssistantMarkdownLink' }));
+vi.mock('@/components/ui/activity-indicator', () => ({ ActivityIndicator: 'ActivityIndicator' }));
 vi.mock('@/components/ui/icon', () => ({ Icon: 'Icon' }));
 vi.mock('@/components/ui/text', () => ({ Text: 'Text' }));
-vi.mock('@/theme/brand-colors', () => ({ loadingSpinnerColor: '#fff', primaryColorTriplets: { dark: '0 0 0' } }));
+vi.mock('@/theme/brand-colors', () => ({ primaryColorTriplets: { dark: '0 0 0' } }));
 vi.mock('@/theme/gluestack-config', () => ({
   foregroundColors: { dark: '#fff' },
   mutedColors: { dark: '#000' },

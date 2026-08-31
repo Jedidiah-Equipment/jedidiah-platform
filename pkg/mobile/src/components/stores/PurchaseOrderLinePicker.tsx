@@ -1,11 +1,11 @@
 import { formatDate } from '@pkg/domain';
 import type { PartPurchaseOrderLine } from '@pkg/schema';
 import { useQuery } from '@tanstack/react-query';
-import { ActivityIndicator, Pressable, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 
+import { ActivityIndicator } from '@/components/ui/activity-indicator';
 import { Text } from '@/components/ui/text';
 import { useTRPC } from '@/lib/trpc';
-import { loadingSpinnerColor } from '@/theme/brand-colors';
 
 /**
  * Which sent Purchase Order line this delivery — or this return — belongs to.
@@ -79,7 +79,7 @@ export function PurchaseOrderLinePicker({
       </Text>
       {lines.isPending ? (
         <View className="items-center py-4">
-          <ActivityIndicator accessibilityLabel="Loading orders" color={loadingSpinnerColor} size="small" />
+          <ActivityIndicator accessibilityLabel="Loading orders" size="small" />
         </View>
       ) : lines.isError ? (
         <Text className="py-4 text-center text-sm text-danger">Couldn’t load orders. Pull down to retry.</Text>

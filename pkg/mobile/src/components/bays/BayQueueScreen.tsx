@@ -23,6 +23,7 @@ import {
 } from '@/lib/use-bay-schedule';
 import { useGlobalRefresh } from '@/lib/use-global-refresh';
 import { useColorMode } from '@/theme/use-color-mode';
+import { useTextClassNameForScheme } from '@/theme/use-scheme-class-name';
 
 /** Tablet breakpoint: at/above this width the list and detail panes sit side by side. */
 const WIDE_BREAKPOINT = 760;
@@ -283,6 +284,7 @@ function ActiveHero({
   onSelect: () => void;
 }) {
   const { resolved } = useColorMode();
+  const textForScheme = useTextClassNameForScheme();
   const heroTone = active.isCancelled ? 'cancelled' : 'live';
   const selectionState = selected ? 'selected' : 'resting';
   // The hero is the Job running today, so its countdown/bar use the in-progress accent.
@@ -309,7 +311,10 @@ function ActiveHero({
           {active.isCancelled ? (
             <View className="flex-row items-center gap-1.5">
               <View className={`h-1.5 w-1.5 rounded-full ${STATUS_TONE.cancelled.dot}`} />
-              <Text className={`text-[10px] tracking-wide ${STATUS_TONE.cancelled.text}`} weight="semibold">
+              <Text
+                className={`text-[10px] tracking-wide ${textForScheme(STATUS_TONE.cancelled.text)}`}
+                weight="semibold"
+              >
                 Cancelled
               </Text>
             </View>

@@ -1,3 +1,4 @@
+import { quoteKindColorClassNames } from '@pkg/domain';
 import type { Product, ProductImageSlot } from '@pkg/schema';
 import { IconPackage } from '@tabler/icons-react-native';
 import { useState } from 'react';
@@ -6,6 +7,7 @@ import { Image, StyleSheet, View } from 'react-native';
 import { Icon } from '@/components/ui/icon';
 import type { ProductImageKey } from '@/lib/product-image-cache';
 import { useProductImageSource } from '@/lib/product-image-source';
+import { useTextClassNameForScheme } from '@/theme/use-scheme-class-name';
 
 const MOBILE_CARD_IMAGE_SLOTS = [
   'primary',
@@ -50,15 +52,23 @@ function ResolvedProductImage({ productName, imageKey }: { productName: string; 
   );
 }
 
+/**
+ * Stands in for a Product with no photo. It reads the same offering-kind palette web's
+ * `OfferingThumbnail` paints a Product with, rather than the `primary` token — which is brand chrome,
+ * and turns pink on staging.
+ */
 function ProductImagePlaceholder() {
+  const { chip, text } = quoteKindColorClassNames.product;
+  const textForScheme = useTextClassNameForScheme();
+
   return (
     <View
       accessibilityLabel="Product image unavailable"
       accessibilityRole="image"
       className="flex-1 items-center justify-center bg-image-backdrop"
     >
-      <View className="h-14 w-14 items-center justify-center rounded-2xl border border-primary/30 bg-primary/10">
-        <Icon className="text-primary" icon={IconPackage} size={28} strokeWidth={1.6} />
+      <View className={`h-14 w-14 items-center justify-center rounded-2xl border ${chip}`}>
+        <Icon className={textForScheme(text)} icon={IconPackage} size={28} strokeWidth={1.6} />
       </View>
     </View>
   );

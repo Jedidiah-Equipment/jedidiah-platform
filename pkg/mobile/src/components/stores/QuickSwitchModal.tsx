@@ -1,14 +1,14 @@
 import type { QuickSwitchActor } from '@pkg/schema';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
+import { Pressable, ScrollView, View } from 'react-native';
 
 import { Avatar } from '@/components/Avatar';
+import { ActivityIndicator } from '@/components/ui/activity-indicator';
 import { Text } from '@/components/ui/text';
 import { ThemedModal } from '@/components/ui/themed-modal';
 import { resolveBadgeScan } from '@/lib/stores-scan-resolution';
 import { useTRPC } from '@/lib/trpc';
-import { loadingSpinnerColor } from '@/theme/brand-colors';
 
 import { ScanField } from './ScanField';
 
@@ -84,7 +84,7 @@ export function QuickSwitchModal({
 
         {actors.isPending ? (
           <View className="items-center py-10">
-            <ActivityIndicator accessibilityLabel="Loading names" color={loadingSpinnerColor} size="large" />
+            <ActivityIndicator accessibilityLabel="Loading names" size="large" />
           </View>
         ) : actors.isError ? (
           <Text className="py-10 text-center text-sm text-danger">Couldn’t load the names. Pull down to retry.</Text>

@@ -2,13 +2,14 @@ import { STOCKTAKE_SCOPE_LABELS, type StocktakeUncountedPart } from '@pkg/schema
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { ActivityIndicator, Pressable, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 
 import { ScanField } from '@/components/stores/ScanField';
 import { StockCountPanel } from '@/components/stores/StockCountPanel';
 import { StoresConfirmModal } from '@/components/stores/StoresConfirmModal';
 import { StoresLoadMoreButton } from '@/components/stores/StoresLoadMoreButton';
 import { StoresScreen } from '@/components/stores/StoresScreen';
+import { ActivityIndicator } from '@/components/ui/activity-indicator';
 import { Text } from '@/components/ui/text';
 import { useAppToast } from '@/components/ui/toast';
 import { invalidateQueryCache } from '@/lib/query-client';
@@ -16,7 +17,6 @@ import { useMovementActorUserId, useStoresActor } from '@/lib/stores-actor';
 import { resolveScan } from '@/lib/stores-scan-resolution';
 import { useTRPC } from '@/lib/trpc';
 import { usePartByCode } from '@/lib/use-stores-post';
-import { loadingSpinnerColor } from '@/theme/brand-colors';
 
 /**
  * The walk itself: scan a bin, key the count, confirm, move on — with the session's uncounted list
@@ -99,7 +99,7 @@ export default function StoresStocktakeSessionRoute() {
         title="Stocktake"
       >
         <View className="items-center py-10">
-          <ActivityIndicator accessibilityLabel="Loading the session" color={loadingSpinnerColor} size="large" />
+          <ActivityIndicator accessibilityLabel="Loading the session" size="large" />
         </View>
       </StoresScreen>
     );
@@ -163,11 +163,7 @@ export default function StoresStocktakeSessionRoute() {
             </Text>
             {uncountedPages.isPending ? (
               <View className="items-center py-6">
-                <ActivityIndicator
-                  accessibilityLabel="Loading what is left to count"
-                  color={loadingSpinnerColor}
-                  size="small"
-                />
+                <ActivityIndicator accessibilityLabel="Loading what is left to count" size="small" />
               </View>
             ) : uncounted.length === 0 ? (
               <Text className="py-4 text-sm text-muted-foreground">
@@ -257,7 +253,7 @@ function CountingPart({ onDone, partCode, sessionId }: { onDone: () => void; par
 
       {part.isPending ? (
         <View className="items-center py-8">
-          <ActivityIndicator accessibilityLabel="Loading Part" color={loadingSpinnerColor} size="large" />
+          <ActivityIndicator accessibilityLabel="Loading Part" size="large" />
         </View>
       ) : part.isError ? (
         <Text className="py-6 text-center text-sm text-danger">Couldn’t load this Part. Scan it again.</Text>

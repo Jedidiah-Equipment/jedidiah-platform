@@ -1,9 +1,10 @@
-type PrimaryColorTriplets = {
+/** A colour pair keyed by the scheme that paints it. */
+type ColorsByScheme = {
   light: string;
   dark: string;
 };
 
-export function resolvePrimaryColorTriplets(isStaging: boolean): PrimaryColorTriplets {
+export function resolvePrimaryColorTriplets(isStaging: boolean): ColorsByScheme {
   return isStaging
     ? {
         light: '236 72 153',
@@ -26,6 +27,19 @@ export function resolveAccentActionColor(isStaging: boolean): string {
 
 export function resolveLoadingSpinnerColor(isStaging: boolean): string {
   return isStaging ? '#ff6bbf' : '#fff000';
+}
+
+/**
+ * The brand accent wherever it paints a foreground on a themed surface — spinners, the selected tab,
+ * accent icons and text. Dark mode carries the brand primary itself; light mode takes the same
+ * hand-darkened accent {@link resolveAccentActionColor} gives card actions, because neither brand
+ * primary is legible against a light surface.
+ */
+export function resolveBrandForegroundColors(isStaging: boolean): ColorsByScheme {
+  return {
+    dark: resolveLoadingSpinnerColor(isStaging),
+    light: resolveAccentActionColor(isStaging),
+  };
 }
 
 /** Tile behind the app-icon scarab; mirrors the icon assets' own background fill. */

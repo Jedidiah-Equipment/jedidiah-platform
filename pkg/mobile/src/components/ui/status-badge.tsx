@@ -1,6 +1,7 @@
 import { View } from 'react-native';
 
 import { Text } from '@/components/ui/text';
+import { useTextClassNameForScheme } from '@/theme/use-scheme-class-name';
 
 export type StatusBadgeClassNames = {
   chip: string;
@@ -25,11 +26,12 @@ export function StatusBadge({
   size?: keyof typeof BADGE_SIZE;
 }) {
   const badgeSize = BADGE_SIZE[size];
+  const textForScheme = useTextClassNameForScheme();
 
   return (
     <View className={`flex-row items-center rounded-full border ${badgeSize.chip} ${classNames.chip}`}>
       <Text
-        className={`${badgeSize.text} tracking-wide ${classNames.text}`}
+        className={`${badgeSize.text} tracking-wide ${textForScheme(classNames.text)}`}
         mono
         numberOfLines={numberOfLines}
         weight="semibold"

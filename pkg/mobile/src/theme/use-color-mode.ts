@@ -1,6 +1,6 @@
 import { useContext } from 'react';
 
-import { ColorModeContext } from './ColorModeProvider';
+import { ColorModeContext } from './color-mode-context';
 
 // Read/override the persisted explicit theme preference.
 export function useColorMode() {

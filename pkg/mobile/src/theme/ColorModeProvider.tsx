@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { createContext, type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
+import { colorScheme as nativeWindColorScheme } from 'nativewind';
+import { type ReactNode, useCallback, useEffect, useLayoutEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Platform, Text, View } from 'react-native';
 
 import { loadingSpinnerColor } from './brand-colors';
@@ -7,22 +8,15 @@ import {
   type ColorModePreference,
   DEFAULT_COLOR_MODE,
   parseColorModePreference,
-  type ResolvedColorScheme,
   resolveColorModePreference,
 } from './color-mode';
+import { ColorModeContext, type ColorModeContextValue } from './color-mode-context';
 
 export type { ColorModePreference, ResolvedColorScheme } from './color-mode';
 export { resolveColorModePreference } from './color-mode';
-
-export type ColorModeContextValue = {
-  preference: ColorModePreference;
-  resolved: ResolvedColorScheme;
-  setPreference: (preference: ColorModePreference) => void;
-};
+export type { ColorModeContextValue } from './color-mode-context';
 
 const STORAGE_KEY = 'jedidiah-color-mode';
-
-export const ColorModeContext = createContext<ColorModeContextValue | null>(null);
 
 /**
  * Persists the user's explicit color-mode preference. Invalid and legacy values
@@ -66,6 +60,15 @@ export function ColorModeProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (Platform.OS !== 'web') return;
     globalThis.document?.documentElement.classList.toggle('dark', resolved === 'dark');
+  }, [resolved]);
+
+  // GluestackUIProvider only swaps the CSS variable set, which the semantic tokens read. NativeWind
+  // resolves `dark:` utilities from its own colour-scheme store instead, and on native that store
+  // follows the device unless told otherwise — so a light-mode app on a dark-mode phone painted
+  // every `dark:` class the shared palettes in @pkg/domain carry (status chips, activity icons)
+  // with its dark value. Hand NativeWind the preference before the tree paints.
+  useLayoutEffect(() => {
+    nativeWindColorScheme.set(resolved);
   }, [resolved]);
 
   const value = useMemo<ColorModeContextValue>(

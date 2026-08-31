@@ -1,11 +1,11 @@
 import type { StockOnHandRow } from '@pkg/schema';
 import { useRouter } from 'expo-router';
 import type React from 'react';
-import { ActivityIndicator, View } from 'react-native';
+import { View } from 'react-native';
 
+import { ActivityIndicator } from '@/components/ui/activity-indicator';
 import { Text } from '@/components/ui/text';
 import { usePartByCode } from '@/lib/use-stores-post';
-import { loadingSpinnerColor } from '@/theme/brand-colors';
 
 import { StoresScreen } from './StoresScreen';
 
@@ -42,7 +42,7 @@ export function StoresPartScreen({
     return (
       <StoresScreen onBack={resolvedParent.onBack} parentLabel={resolvedParent.label} subtitle={partCode} title={title}>
         <View className="items-center py-10">
-          <ActivityIndicator accessibilityLabel="Loading Part" color={loadingSpinnerColor} size="large" />
+          <ActivityIndicator accessibilityLabel="Loading Part" size="large" />
         </View>
       </StoresScreen>
     );

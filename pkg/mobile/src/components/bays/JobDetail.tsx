@@ -25,6 +25,7 @@ import { useGlobalRefresh } from '@/lib/use-global-refresh';
 import { type JobDetailState, type JobRouteStopCard, useJobDetail } from '@/lib/use-job-detail';
 import { createLiteralGuard, usePersistedState } from '@/lib/use-persisted-state';
 import { useColorMode } from '@/theme/use-color-mode';
+import { useTextClassNameForScheme } from '@/theme/use-scheme-class-name';
 
 type ReadyState = Extract<JobDetailState, { status: 'ready' }>;
 
@@ -241,6 +242,7 @@ function RoutePane({ isCancelled, route }: { isCancelled: boolean; route: JobRou
 
 function RouteStop({ isCancelled, stop }: { isCancelled: boolean; stop: JobRouteStopCard }) {
   const tone = STATUS_TONE[isCancelled ? 'cancelled' : ROUTE_STATE_TONE[stop.state]];
+  const textForScheme = useTextClassNameForScheme();
   const progressTone = isCancelled
     ? 'muted'
     : resolveJobStatusTone({
@@ -279,7 +281,7 @@ function RouteStop({ isCancelled, stop }: { isCancelled: boolean; stop: JobRoute
           <Text className="text-[10px] text-muted-foreground" mono>
             {formatDate(stop.firstWorkDay, 'd MMM')} – {formatDate(stop.lastWorkDay, 'd MMM')}
           </Text>
-          <Text className={`text-[10px] ${progressAppearance.text}`} mono>
+          <Text className={`text-[10px] ${textForScheme(progressAppearance.text)}`} mono>
             {routeDaysLabel(stop, isCancelled)}
           </Text>
         </View>

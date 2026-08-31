@@ -2,14 +2,14 @@ import { derivePartStockActions, formatEstimatedStockOnHand } from '@pkg/domain'
 import { IconArrowBackUp, IconArrowDownToArc, IconTruckReturn, IconWheel } from '@tabler/icons-react-native';
 import { useQuery } from '@tanstack/react-query';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ActivityIndicator, Pressable, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 
 import { StoresScreen } from '@/components/stores/StoresScreen';
+import { ActivityIndicator } from '@/components/ui/activity-indicator';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { useStoresActor } from '@/lib/stores-actor';
 import { useTRPC } from '@/lib/trpc';
-import { loadingSpinnerColor } from '@/theme/brand-colors';
 
 /**
  * What a scan resolved to: the Part, what is on the shelf, and the four things that can be done to
@@ -35,7 +35,7 @@ export default function StoresPartRoute() {
         title={partCode}
       >
         <View className="items-center py-10">
-          <ActivityIndicator accessibilityLabel="Loading Part" color={loadingSpinnerColor} size="large" />
+          <ActivityIndicator accessibilityLabel="Loading Part" size="large" />
         </View>
       </StoresScreen>
     );

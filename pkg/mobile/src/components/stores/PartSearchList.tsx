@@ -1,12 +1,12 @@
 import type { PartSearchRow } from '@pkg/schema';
 import { keepPreviousData, useInfiniteQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
-import { ActivityIndicator, Pressable, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 
+import { ActivityIndicator } from '@/components/ui/activity-indicator';
 import { Text } from '@/components/ui/text';
 import { useTRPC } from '@/lib/trpc';
 import { useDebouncedSearch } from '@/lib/use-debounced-search';
-import { loadingSpinnerColor } from '@/theme/brand-colors';
 
 import { StoresLoadMoreButton } from './StoresLoadMoreButton';
 
@@ -49,7 +49,7 @@ export function PartSearchList({ onSelect, search }: { onSelect: (partCode: stri
   if (results.isPending) {
     return (
       <View className="items-center py-6">
-        <ActivityIndicator accessibilityLabel="Searching Parts" color={loadingSpinnerColor} size="small" />
+        <ActivityIndicator accessibilityLabel="Searching Parts" size="small" />
       </View>
     );
   }

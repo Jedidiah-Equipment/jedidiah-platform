@@ -21,10 +21,14 @@ stock that has actually landed.
 1. Open a Purchase Order that contains received stock.
 2. Click **Print Part labels**.
 3. Review the received Parts and their label counts. Each count starts at the total quantity currently
-   received for that Part on this Purchase Order.
+   received for that Part on this Purchase Order. A fractional measured quantity starts at the next
+   whole label because a physical label cannot be split.
 4. Change a count when the stock needs a different number of labels. Set it to zero to leave that Part
    out.
 5. Click **Open printable PDF**. One PDF opens with every included Part Label repeated by its count.
+
+One PDF can contain up to 1,000 labels. Reduce the counts before opening the PDF if their total is
+higher.
 
 ## A batch
 

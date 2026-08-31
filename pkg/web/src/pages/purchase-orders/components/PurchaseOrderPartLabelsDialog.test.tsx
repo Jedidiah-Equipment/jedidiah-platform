@@ -55,6 +55,20 @@ describe('PurchaseOrderPartLabelsDialog', () => {
     expect(new URL(findPdfLink().href).searchParams.get('copies')).toBe(`${OTHER_RECEIVED_PART_ID}:4`);
   });
 
+  it('starts fractional received quantities at the next printable whole-label count', async () => {
+    const trigger = await renderDialog([
+      line(RECEIVED_PART_ID, 'W-100', 'Welding wire', 12.5),
+      line(OTHER_RECEIVED_PART_ID, 'P-100', 'Main bearing', 2),
+    ]);
+
+    await act(async () => trigger.click());
+
+    expect(findCountInput('W-100').value).toBe('13');
+    expect(new URL(findPdfLink().href).searchParams.get('copies')).toBe(
+      `${RECEIVED_PART_ID}:13,${OTHER_RECEIVED_PART_ID}:2`,
+    );
+  });
+
   it('does not offer the action when no stock has been received', async () => {
     const container = await mount(
       <PurchaseOrderPartLabelsDialog lines={[line(UNRECEIVED_PART_ID, 'P-200', 'Unused bearing', 0)]} />,

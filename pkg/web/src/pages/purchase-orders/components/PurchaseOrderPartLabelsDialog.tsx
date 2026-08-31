@@ -1,4 +1,9 @@
-import { type PartLabelBatchSelection, PartLabelCount, type PurchaseOrderLineView } from '@pkg/schema';
+import {
+  PART_LABEL_BATCH_MAX_COPIES,
+  PartLabelBatchSelection,
+  PartLabelCount,
+  type PurchaseOrderLineView,
+} from '@pkg/schema';
 import { IconPrinter } from '@tabler/icons-react';
 import { useMemo, useState } from 'react';
 
@@ -29,7 +34,7 @@ export function PurchaseOrderPartLabelsDialog({ lines }: { lines: PurchaseOrderL
     () =>
       receivedLines.map((line) => ({
         ...line,
-        copies: copiesByPartId[line.partId] ?? line.receivedQuantity,
+        copies: copiesByPartId[line.partId] ?? defaultLabelCount(line.receivedQuantity),
       })),
     [copiesByPartId, receivedLines],
   );
@@ -55,6 +60,7 @@ export function PurchaseOrderPartLabelsDialog({ lines }: { lines: PurchaseOrderL
               aria-label={`Labels for ${line.partCode}`}
               className="ml-auto w-24 text-right tabular-nums"
               inputMode="numeric"
+              max={PART_LABEL_BATCH_MAX_COPIES}
               min={0}
               onChange={(event) => {
                 const value = event.target.value === '' ? Number.NaN : Number(event.target.value);
@@ -85,7 +91,9 @@ export function PurchaseOrderPartLabelsDialog({ lines }: { lines: PurchaseOrderL
   if (receivedLines.length === 0) return null;
 
   const openDialog = () => {
-    setCopiesByPartId(Object.fromEntries(receivedLines.map((line) => [line.partId, line.receivedQuantity])));
+    setCopiesByPartId(
+      Object.fromEntries(receivedLines.map((line) => [line.partId, defaultLabelCount(line.receivedQuantity)])),
+    );
     setIsOpen(true);
   };
 
@@ -111,7 +119,10 @@ export function PurchaseOrderPartLabelsDialog({ lines }: { lines: PurchaseOrderL
             total={rows.length}
             totalLabel={(value) => `${value} received ${value === 1 ? 'Part' : 'Parts'}`}
           />
-          <p className="text-xs text-muted-foreground">Label counts must be whole numbers of zero or more.</p>
+          <p className="text-xs text-muted-foreground">
+            Label counts must be whole numbers. A PDF can contain up to {PART_LABEL_BATCH_MAX_COPIES.toLocaleString()}{' '}
+            labels.
+          </p>
           <DialogFooter>
             <DialogClose render={<Button variant="outline" />}>Close</DialogClose>
             {selection ? (
@@ -136,12 +147,19 @@ function toLabelSelection(rows: PartLabelRow[]): PartLabelBatchSelection | null 
   const selected = rows.filter((row) => row.copies > 0);
   if (selected.length === 0) return null;
 
-  return {
+  const selection = {
     copies: selected.map((row) => ({ copies: row.copies, partId: row.partId })),
     selection: 'ids',
-  };
+  } as const;
+  const parsed = PartLabelBatchSelection.safeParse(selection);
+  return parsed.success ? parsed.data : null;
 }
 
 function isLabelCount(value: number): boolean {
   return PartLabelCount.safeParse(value).success;
+}
+
+function defaultLabelCount(receivedQuantity: number): number {
+  // A fraction describes measured stock, but a physical label count can only be whole.
+  return Math.min(Math.ceil(receivedQuantity), PART_LABEL_BATCH_MAX_COPIES);
 }

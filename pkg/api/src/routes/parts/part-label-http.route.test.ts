@@ -120,6 +120,22 @@ describe('Part label HTTP routes', () => {
     ]);
   });
 
+  test('rejects a label batch above the printable copy limit before rendering', async ({ context }) => {
+    const rendered: PartLabelPdfModel[][] = [];
+    const app = await createApp(capturingRenderer(rendered));
+
+    const overSinglePartLimit = await app.inject(
+      `/api/parts/labels?selection=ids&copies=${context.ids.get('P-100')}:1001`,
+    );
+    const overBatchLimit = await app.inject(
+      `/api/parts/labels?selection=ids&copies=${context.ids.get('P-100')}:600,${context.ids.get('T-100')}:401`,
+    );
+
+    expect(overSinglePartLimit.statusCode, overSinglePartLimit.body).toBe(400);
+    expect(overBatchLimit.statusCode, overBatchLimit.body).toBe(400);
+    expect(rendered).toEqual([]);
+  });
+
   test('requires part or inventory read access before rendering labels', async ({ context }) => {
     const rendered: PartLabelPdfModel[][] = [];
     const app = await createApp(capturingRenderer(rendered));

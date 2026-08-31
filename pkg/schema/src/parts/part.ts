@@ -338,11 +338,21 @@ export type PartLabelSelectionMode = z.infer<typeof PartLabelSelectionMode>;
 export const PartLabelSelectionMode = z.enum(['all', 'category', 'storageLocation', 'ids']);
 
 /** A dialog may hold zero to omit a Part; only positive counts cross into a rendered selection. */
+export const PART_LABEL_BATCH_MAX_COPIES = 1_000;
+
 export type PartLabelCount = z.infer<typeof PartLabelCount>;
-export const PartLabelCount = z.int().nonnegative();
+export const PartLabelCount = z.int().nonnegative().max(PART_LABEL_BATCH_MAX_COPIES);
 
 export type PartLabelCopySelection = z.infer<typeof PartLabelCopySelection>;
-export const PartLabelCopySelection = z.object({ copies: z.int().positive(), partId: UUID }).strict();
+export const PartLabelCopySelection = z.object({ copies: PartLabelCount.min(1), partId: UUID }).strict();
+
+const PartLabelCopiesSelection = z
+  .object({ copies: z.array(PartLabelCopySelection).min(1), selection: z.literal(PartLabelSelectionMode.enum.ids) })
+  .strict()
+  .refine(({ copies }) => copies.reduce((total, copy) => total + copy.copies, 0) <= PART_LABEL_BATCH_MAX_COPIES, {
+    message: `A PDF can contain at most ${PART_LABEL_BATCH_MAX_COPIES} labels`,
+    path: ['copies'],
+  });
 
 export type PartLabelBatchSelection = z.infer<typeof PartLabelBatchSelection>;
 export const PartLabelBatchSelection = z.union([
@@ -357,9 +367,7 @@ export const PartLabelBatchSelection = z.union([
       .strict(),
     z.object({ ids: z.array(UUID).min(1), selection: z.literal(PartLabelSelectionMode.enum.ids) }).strict(),
   ]),
-  z
-    .object({ copies: z.array(PartLabelCopySelection).min(1), selection: z.literal(PartLabelSelectionMode.enum.ids) })
-    .strict(),
+  PartLabelCopiesSelection,
 ]);
 
 /**

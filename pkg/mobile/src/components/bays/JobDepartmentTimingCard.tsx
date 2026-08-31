@@ -80,6 +80,8 @@ export function JobDepartmentTimingCard({
   isCompleted,
   jobCode,
   jobId,
+  onOpenChange,
+  open,
   timing,
 }: {
   defaultOpen?: boolean;
@@ -87,6 +89,8 @@ export function JobDepartmentTimingCard({
   isCompleted: boolean;
   jobCode: string;
   jobId: string;
+  onOpenChange?: (open: boolean) => void;
+  open?: boolean;
   timing: JobDepartmentTiming;
 }) {
   const canUpdate = useCan('job:update').can;
@@ -108,6 +112,8 @@ export function JobDepartmentTimingCard({
     <CardCollapse
       defaultOpen={defaultOpen}
       headerAccessory={<DepartmentTimingStatusBadge state={presentation.state} />}
+      onOpenChange={onOpenChange}
+      open={open}
       title={departmentLabels[timing.department]}
     >
       <View className="gap-4">

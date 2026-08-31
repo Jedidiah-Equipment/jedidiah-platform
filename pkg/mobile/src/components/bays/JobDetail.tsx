@@ -7,7 +7,6 @@ import {
   resolveJobStatusTone,
 } from '@pkg/domain';
 import type { ReactNode } from 'react';
-import { useState } from 'react';
 import { ScrollView, useWindowDimensions, View } from 'react-native';
 import { Avatar } from '@/components/Avatar';
 import { JobActivityFeed } from '@/components/activity/JobActivityFeed';
@@ -24,6 +23,7 @@ import { StatusBadge } from '@/components/ui/status-badge';
 import { Text } from '@/components/ui/text';
 import { useGlobalRefresh } from '@/lib/use-global-refresh';
 import { type JobDetailState, type JobRouteStopCard, useJobDetail } from '@/lib/use-job-detail';
+import { createLiteralGuard, usePersistedState } from '@/lib/use-persisted-state';
 import { useColorMode } from '@/theme/use-color-mode';
 
 type ReadyState = Extract<JobDetailState, { status: 'ready' }>;
@@ -31,7 +31,10 @@ type ReadyState = Extract<JobDetailState, { status: 'ready' }>;
 /** Tablet breakpoint: at/above this width the route and detail panes sit side by side. */
 const WIDE_BREAKPOINT = 760;
 
-type JobDetailTab = 'activity' | 'details' | 'work-times';
+const JOB_DETAIL_TAB_VALUES = ['details', 'activity', 'work-times'] as const;
+type JobDetailTab = (typeof JOB_DETAIL_TAB_VALUES)[number];
+const isJobDetailTab = createLiteralGuard(JOB_DETAIL_TAB_VALUES);
+const isBoolean = (value: unknown): value is boolean => typeof value === 'boolean';
 
 const JOB_DETAIL_TABS: readonly SubTabOption<JobDetailTab>[] = [
   { label: 'Details', value: 'details' },
@@ -110,7 +113,11 @@ function Ready({
   onBack: () => void;
   refresh: ReturnType<typeof useGlobalRefresh>;
 }) {
-  const [activeTab, setActiveTab] = useState<JobDetailTab>('details');
+  const [activeTab, setActiveTab] = usePersistedState<JobDetailTab>(
+    'jedidiah-job-detail-tab',
+    'details',
+    isJobDetailTab,
+  );
   const header = (
     <SecondaryPageToolbar
       helpTopic="jobs"
@@ -372,8 +379,7 @@ function WorkTimesPane({ jobId, state }: { jobId: string; state: ReadyState }) {
   return (
     <View className="gap-4">
       {state.departmentTimings.map((timing) => (
-        <JobDepartmentTimingCard
-          defaultOpen
+        <PersistedWorkTimeCard
           isCancelled={isCancelled}
           isCompleted={state.completedOn !== null}
           jobCode={state.jobCode}
@@ -383,6 +389,34 @@ function WorkTimesPane({ jobId, state }: { jobId: string; state: ReadyState }) {
         />
       ))}
     </View>
+  );
+}
+
+function PersistedWorkTimeCard({
+  isCancelled,
+  isCompleted,
+  jobCode,
+  jobId,
+  timing,
+}: {
+  isCancelled: boolean;
+  isCompleted: boolean;
+  jobCode: string;
+  jobId: string;
+  timing: ReadyState['departmentTimings'][number];
+}) {
+  const [open, setOpen] = usePersistedState(`jedidiah-job-work-time-${timing.department}-open`, true, isBoolean);
+
+  return (
+    <JobDepartmentTimingCard
+      isCancelled={isCancelled}
+      isCompleted={isCompleted}
+      jobCode={jobCode}
+      jobId={jobId}
+      onOpenChange={setOpen}
+      open={open}
+      timing={timing}
+    />
   );
 }
 

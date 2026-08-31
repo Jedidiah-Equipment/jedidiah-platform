@@ -6,6 +6,7 @@ import { AssemblyName, type Part, PriceDelta, UUID } from '@pkg/schema';
 import { IconChevronDown, IconGripVertical, IconPlus, IconTrash, IconWorld } from '@tabler/icons-react';
 import React, { useMemo } from 'react';
 import { FieldUsageLabel, PRODUCT_FIELD_USAGE } from '@/components/catalog/index.js';
+import { RemoveEntityButton } from '@/components/common/RemoveEntityButton.js';
 import { DataTable } from '@/components/data-table/DataTable.js';
 import { type DataTableColumnDef, useDataTable } from '@/components/data-table/features.js';
 import { fieldContext } from '@/components/form/hooks/form-context.js';
@@ -397,9 +398,7 @@ const AssemblyRow: React.FC<AssemblyRowProps> = ({
                   />
                   {isExpanded ? 'Done' : 'Edit'}
                 </CollapsibleTrigger>
-                <Button aria-label="Remove assembly" size="icon-sm" type="button" variant="ghost" onClick={onRemove}>
-                  <IconTrash />
-                </Button>
+                <AssemblyRemoveButton onConfirm={onRemove} partCount={assembly.parts.length} />
               </div>
             </CardHeader>
             <CollapsibleContent keepMounted>
@@ -468,6 +467,31 @@ const AssemblyRow: React.FC<AssemblyRowProps> = ({
     </productForm.Subscribe>
   );
 };
+
+type AssemblyRemoveButtonProps = {
+  onConfirm: () => void;
+  partCount: number;
+};
+
+export function AssemblyRemoveButton({ onConfirm, partCount }: AssemblyRemoveButtonProps): React.ReactElement {
+  return (
+    <RemoveEntityButton
+      confirmLabel="Delete"
+      description={
+        partCount > 0
+          ? `This Assembly contains ${partCount} ${partCount === 1 ? 'Part' : 'Parts'}. Are you sure you want to delete it?`
+          : 'Are you sure you want to delete this Assembly?'
+      }
+      isPending={false}
+      onConfirm={onConfirm}
+      title="Delete Assembly"
+      triggerIconOnly
+      triggerLabel="Remove assembly"
+      triggerSize="icon-sm"
+      triggerVariant="ghost"
+    />
+  );
+}
 
 type AssemblyNameFieldProps = {
   assemblyNames: string[];

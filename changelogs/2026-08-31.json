@@ -1,0 +1,31 @@
+{
+  "releasedAt": "2026-08-31T10:38:43.714Z",
+  "sections": [
+    {
+      "surface": "app",
+      "entries": [
+        {
+          "title": "Confirm assembly deletion",
+          "description": "Deleting an assembly now requires confirmation, helping prevent accidental removal."
+        },
+        {
+          "title": "Print labels for received parts",
+          "description": "Print labels directly from received purchase orders, with adjustable copy counts for stock currently on hand."
+        }
+      ]
+    },
+    {
+      "surface": "mobile",
+      "entries": [
+        {
+          "title": "Navigate job details with tabs",
+          "description": "Job details are now organised into tabs, and your preferred view is remembered. Activity stays scoped to the job you are viewing."
+        },
+        {
+          "title": "Improve light mode visibility",
+          "description": "Status badges, tabs, product placeholders, and other interface elements now use clearer, consistent colours in light mode."
+        }
+      ]
+    }
+  ]
+}

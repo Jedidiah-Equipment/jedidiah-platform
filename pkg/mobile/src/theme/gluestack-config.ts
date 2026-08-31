@@ -8,8 +8,9 @@ const mutedForegroundTriplets = { dark: '122 122 130', light: '115 115 115' } as
 const backgroundTriplets = { dark: '10 10 11', light: '247 247 247' } as const;
 const foregroundTriplets = { dark: '250 250 250', light: '10 10 10' } as const;
 const mutedTriplets = { dark: '27 27 31', light: '245 245 245' } as const;
-// Letterbox behind photos and the placeholder that stands in for a missing one. It reads as recessed
-// in either scheme, so it sits a step below the surface rather than staying dark on a light theme.
+// Letterbox behind photos and the placeholder that stands in for a missing one: one step below the
+// scheme's surface, rather than staying dark on a light theme. The light value coincides with
+// `muted` but is not the same token — either may move without the other.
 const imageBackdropTriplets = { dark: '15 15 17', light: '245 245 245' } as const;
 const borderColors = { dark: 'rgba(255, 255, 255, 0.08)', light: 'rgb(229 229 229)' } as const;
 export const mutedForegroundColors = {

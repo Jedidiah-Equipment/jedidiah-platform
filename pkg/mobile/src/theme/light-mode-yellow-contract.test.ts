@@ -3,34 +3,39 @@ import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, test } from 'vitest';
 
-import { listTsxFiles } from '../components/test-file-utils';
+import { listSourceFiles } from '../components/test-file-utils';
 
 const MOBILE_DIR = join(dirname(fileURLToPath(import.meta.url)), '../..');
 
+/** Where the raw brand yellow is declared, before anything decides which scheme paints it. */
+const BRAND_PALETTE_MODULES = ['src/theme/brand-colors.ts', 'src/theme/brand-palette.ts'];
+
 /**
- * The brightest brand yellow is unreadable on a light surface, so only the pre-theme splash screens
- * — which paint their own hard-coded dark backdrop before a preference is known — may reach for it.
- * Every themed surface takes the scheme-aware brand foreground instead.
+ * The splash screens that carry their own hard-coded dark backdrop. They paint before a colour-mode
+ * preference is known, so the brightest yellow is safe there and nowhere else: on a themed surface
+ * it is unreadable in light mode, which is what {@link useBrandForegroundColor} exists to prevent.
  */
 const HARD_CODED_DARK_SPLASH_SCREENS = [
   'app/(protected)/_layout.tsx',
   'app/_layout.tsx',
   'src/theme/ColorModeProvider.tsx',
+  'src/theme/use-brand-foreground.ts',
 ];
 
 describe('light-mode yellow contract', () => {
   test('keeps the brightest brand yellow off themed surfaces', () => {
-    const offenders = mobileTsxFiles()
+    const allowed = new Set([...BRAND_PALETTE_MODULES, ...HARD_CODED_DARK_SPLASH_SCREENS]);
+    const offenders = mobileSourceFiles()
       .filter((file) => /#fff000|\bloadingSpinnerColor\b/.test(readFileSync(file, 'utf8')))
       .map((file) => relative(MOBILE_DIR, file))
-      .filter((file) => !HARD_CODED_DARK_SPLASH_SCREENS.includes(file));
+      .filter((file) => !allowed.has(file));
 
     expect(offenders).toEqual([]);
   });
 });
 
-function mobileTsxFiles(): string[] {
-  return [...listTsxFiles(join(MOBILE_DIR, 'app')), ...listTsxFiles(join(MOBILE_DIR, 'src'))].filter(
-    (file) => !file.endsWith('.test.tsx'),
+function mobileSourceFiles(): string[] {
+  return [...listSourceFiles(join(MOBILE_DIR, 'app')), ...listSourceFiles(join(MOBILE_DIR, 'src'))].filter(
+    (file) => !/\.test\.tsx?$/.test(file),
   );
 }

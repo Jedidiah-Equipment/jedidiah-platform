@@ -7,8 +7,8 @@ import { useBrandForegroundColor } from '@/theme/use-brand-foreground';
  * light-mode screen never spins the raw brand yellow against near-white. The splash screens that
  * carry their own hard-coded dark backdrop use React Native's `ActivityIndicator` directly.
  */
-export function ActivityIndicator(props: ActivityIndicatorProps) {
+export function ActivityIndicator(props: Omit<ActivityIndicatorProps, 'color'>) {
   const color = useBrandForegroundColor();
 
-  return <NativeActivityIndicator color={color} {...props} />;
+  return <NativeActivityIndicator {...props} color={color} />;
 }

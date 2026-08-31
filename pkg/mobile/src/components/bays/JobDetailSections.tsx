@@ -1,5 +1,3 @@
-import type { ReactNode } from 'react';
-
 import { JobAssemblies } from '@/components/bays/JobAssemblies';
 import { JobDocuments } from '@/components/bays/JobDocuments';
 import { FactCard, JobFactsCard } from '@/components/bays/job-facts';
@@ -7,7 +5,6 @@ import { JobFeedbackList } from '@/components/feedback/JobFeedbackList';
 import { Text } from '@/components/ui/text';
 
 type JobDetailSectionsProps = {
-  afterJobFacts?: ReactNode;
   customerCompanyName: string | null;
   description: string | null;
   jobCode: string;
@@ -16,12 +13,12 @@ type JobDetailSectionsProps = {
   jobId: string;
   productSerialNumber: string | null;
   quoteCode: string;
+  showFeedback?: boolean;
   workName: string;
 };
 
 /** Shared Job cards for the standalone Job detail and Bay Slot detail panes. */
 export function JobDetailSections({
-  afterJobFacts,
   customerCompanyName,
   description,
   jobCode,
@@ -29,6 +26,7 @@ export function JobDetailSections({
   jobId,
   productSerialNumber,
   quoteCode,
+  showFeedback = true,
   workName,
 }: JobDetailSectionsProps) {
   return (
@@ -42,8 +40,6 @@ export function JobDetailSections({
         quoteCode={quoteCode}
       />
 
-      {afterJobFacts}
-
       {description ? (
         <FactCard title="Description">
           <Text className="text-sm leading-5 text-surface-foreground">{description}</Text>
@@ -54,7 +50,7 @@ export function JobDetailSections({
 
       <JobAssemblies jobId={jobId} />
 
-      <JobFeedbackList jobCode={jobCode} jobId={jobId} />
+      {showFeedback ? <JobFeedbackList jobCode={jobCode} jobId={jobId} /> : null}
     </>
   );
 }

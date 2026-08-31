@@ -65,8 +65,11 @@ function FeedbackModal({ jobCode, jobId, onClose }: { jobCode: string; jobId: st
       }
       onClose();
       showToast('success', 'Feedback submitted');
-      // Refresh the Job's public feedback list so a just-submitted general item appears.
-      await queryClient.invalidateQueries({ queryKey: trpc.feedback.pathKey() });
+      // General feedback is also Job Activity, so both subject views must see a new entry immediately.
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: trpc.feedback.pathKey() }),
+        queryClient.invalidateQueries({ queryKey: trpc.jobActivity.pathKey() }),
+      ]);
     },
   });
 

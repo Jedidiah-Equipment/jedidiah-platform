@@ -19,13 +19,15 @@ describe('route layout contract', () => {
 
   test('shows and clears the Activity unread indicator through the shared last-seen endpoints', () => {
     const tabBar = readFileSync(join(MOBILE_DIR, 'src/components/AppTabBar.tsx'), 'utf8');
-    const activity = readFileSync(join(MOBILE_DIR, 'app/(protected)/(tabs)/activity/index.tsx'), 'utf8');
+    const activityFeed = readFileSync(join(MOBILE_DIR, 'src/components/activity/JobActivityFeed.tsx'), 'utf8');
+    const activityRoute = readFileSync(join(MOBILE_DIR, 'app/(protected)/(tabs)/activity/index.tsx'), 'utf8');
 
     expect(tabBar).toContain('trpc.jobActivity.getLastActivitySeen.queryOptions()');
     expect(tabBar).toContain('<UnreadActivityDot />');
     expect(tabBar).toContain('bg-orange-500');
-    expect(activity).toContain('trpc.jobActivity.setLastActivitySeen.mutationOptions');
-    expect(activity).toContain('useFocusEffect');
+    expect(activityFeed).toContain('trpc.jobActivity.setLastActivitySeen.mutationOptions');
+    expect(activityFeed).toContain('useFocusEffect');
+    expect(activityRoute).toContain('trackGlobalView');
   });
 
   test('configures each explicit Stack initial route with its full registered child name', () => {
@@ -68,29 +70,20 @@ describe('route layout contract', () => {
 
   test('keeps flat and sectioned list toolbars at the same gap below the page header', () => {
     const catalogList = readFileSync(join(MOBILE_DIR, 'src/components/CatalogList.tsx'), 'utf8');
-    const activity = readFileSync(join(MOBILE_DIR, 'app/(protected)/(tabs)/activity/index.tsx'), 'utf8');
+    const activityFeed = readFileSync(join(MOBILE_DIR, 'src/components/activity/JobActivityFeed.tsx'), 'utf8');
 
     expect(catalogList).toContain('contentContainerClassName="w-full px-4 pb-8 pt-1"');
     // NativeWind remaps this prop for FlatList but not SectionList, so Activity must use native style.
-    expect(activity).toContain('contentContainerStyle={{');
-    expect(activity).toContain('paddingBottom: 32');
-    expect(activity).toContain('paddingHorizontal: 16');
-    expect(activity).toContain('paddingTop: 4');
-  });
-
-  test('shows Job details before Fabrication on the mobile Job screen', () => {
-    const jobDetail = readFileSync(join(MOBILE_DIR, 'src/components/bays/JobDetail.tsx'), 'utf8');
-    const detailSections = readFileSync(join(MOBILE_DIR, 'src/components/bays/JobDetailSections.tsx'), 'utf8');
-
-    expect(jobDetail).toContain('afterJobFacts={');
-    expect(detailSections.indexOf('<JobFactsCard')).toBeLessThan(detailSections.indexOf('{afterJobFacts}'));
-    expect(detailSections.indexOf('{afterJobFacts}')).toBeLessThan(detailSections.indexOf('<JobDocuments'));
+    expect(activityFeed).toContain('contentContainerStyle={{');
+    expect(activityFeed).toContain('paddingBottom: 32');
+    expect(activityFeed).toContain('paddingHorizontal: 16');
+    expect(activityFeed).toContain('paddingTop: 4');
   });
 
   test('keeps Activity results visible while a new search or filter loads', () => {
-    const activity = readFileSync(join(MOBILE_DIR, 'app/(protected)/(tabs)/activity/index.tsx'), 'utf8');
+    const activityFeed = readFileSync(join(MOBILE_DIR, 'src/components/activity/JobActivityFeed.tsx'), 'utf8');
 
-    expect(activity).toContain('placeholderData: keepPreviousData');
+    expect(activityFeed).toContain('placeholderData: keepPreviousData');
   });
 
   test('never clamps mobile feedback when no expansion control is available', () => {

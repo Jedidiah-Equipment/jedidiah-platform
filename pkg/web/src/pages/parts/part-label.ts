@@ -1,21 +1,23 @@
 import type { PartLabelBatchSelection, UUID } from '@pkg/schema';
 
 import { getClientConfig } from '@/lib/app-config.js';
+import { readApiErrorMessage } from '@/utils/document.js';
 
-type PartLabelBatchMode = PartLabelBatchSelection['selection'];
+/** The modes small enough to ride a query string; a copy-count selection is posted instead. */
+export type PartLabelUrlSelection = Exclude<PartLabelBatchSelection, { selection: 'copies' }>;
 
 export const partLabelBatchModeLabels = {
   all: 'All Parts',
   category: 'By category',
   ids: 'Choose Parts',
   storageLocation: 'By storage location',
-} satisfies Record<PartLabelBatchMode, string>;
+} satisfies Record<PartLabelUrlSelection['selection'], string>;
 
 export function partLabelUrl(partId: UUID): string {
   return `${getClientConfig().apiBaseUrl}/api/parts/${encodeURIComponent(partId)}/label`;
 }
 
-export function partLabelBatchUrl(selection: PartLabelBatchSelection): string {
+export function partLabelBatchUrl(selection: PartLabelUrlSelection): string {
   const params = new URLSearchParams({ selection: selection.selection });
 
   switch (selection.selection) {
@@ -33,4 +35,27 @@ export function partLabelBatchUrl(selection: PartLabelBatchSelection): string {
   }
 
   return `${getClientConfig().apiBaseUrl}/api/parts/labels?${params.toString()}`;
+}
+
+/** Copy-count batches can outgrow an HTTP request target, so their structural selection rides in JSON. */
+export async function fetchPartLabelsBlob({
+  selection,
+  signal,
+}: {
+  selection: PartLabelBatchSelection;
+  signal?: AbortSignal;
+}): Promise<Blob> {
+  const response = await fetch(`${getClientConfig().apiBaseUrl}/api/parts/labels`, {
+    body: JSON.stringify(selection),
+    credentials: 'include',
+    headers: { 'content-type': 'application/json' },
+    method: 'POST',
+    ...(signal ? { signal } : {}),
+  });
+
+  if (!response.ok) {
+    throw new Error(await readApiErrorMessage(response, 'Unable to generate the printable Part labels.'));
+  }
+
+  return response.blob();
 }

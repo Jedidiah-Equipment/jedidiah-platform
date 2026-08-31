@@ -1,11 +1,11 @@
-import type { Part, PartLabelBatchSelection, UUID } from '@pkg/schema';
+import type { Part, UUID } from '@pkg/schema';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, describe, expect, test, vi } from 'vitest';
 import { DataTable } from '@/components/data-table/DataTable.js';
 import { useDataTable } from '@/components/data-table/features.js';
 import { createPartLabelActionColumn } from './components/PartTable.js';
 import { PartLabelPrintButton } from './PartLabelPrintButton.js';
-import { partLabelBatchModeLabels, partLabelBatchUrl, partLabelUrl } from './part-label.js';
+import { fetchPartLabelsBlob, type PartLabelUrlSelection, partLabelBatchUrl, partLabelUrl } from './part-label.js';
 
 const PART_ID = '22222222-2222-4222-8222-222222222222' as UUID;
 const OTHER_PART_ID = '33333333-3333-4333-8333-333333333333' as UUID;
@@ -15,15 +15,6 @@ afterEach(() => {
 });
 
 describe('Part label actions', () => {
-  test('uses user-facing labels for batch selection modes', () => {
-    expect(partLabelBatchModeLabels).toEqual({
-      all: 'All Parts',
-      category: 'By category',
-      ids: 'Choose Parts',
-      storageLocation: 'By storage location',
-    });
-  });
-
   test('exports a single-Part print affordance that opens the label PDF', () => {
     stubClientConfig();
 
@@ -51,11 +42,36 @@ describe('Part label actions', () => {
       'selection=storageLocation&amp;storageLocation=Rack+A%2F04',
     ],
     [{ ids: [PART_ID, OTHER_PART_ID], selection: 'ids' }, `selection=ids&amp;ids=${PART_ID}%2C${OTHER_PART_ID}`],
-  ] satisfies Array<[PartLabelBatchSelection, string]>)('serializes the %s batch selection', (selection, query) => {
+  ] satisfies Array<[PartLabelUrlSelection, string]>)('serializes the %s batch selection', (selection, query) => {
     stubClientConfig();
     expect(partLabelBatchUrl(selection)).toBe(
       `http://localhost:7002/api/parts/labels?${query.replaceAll('&amp;', '&')}`,
     );
+  });
+
+  test('posts copy-count selections as JSON instead of a request URL', async () => {
+    const pdf = new Blob(['%PDF-label'], { type: 'application/pdf' });
+    const fetchMock = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => new Response(pdf));
+    stubClientConfig();
+    vi.stubGlobal('fetch', fetchMock);
+
+    const copies = [
+      { copies: 2, partId: PART_ID },
+      { copies: 3, partId: OTHER_PART_ID },
+    ];
+    const blob = await fetchPartLabelsBlob({ selection: { copies, selection: 'copies' } });
+
+    const call = fetchMock.mock.calls[0];
+    if (!call) throw new Error('Part label request was not sent');
+    const [url, request] = call;
+    expect(url).toBe('http://localhost:7002/api/parts/labels');
+    expect(request).toMatchObject({
+      body: JSON.stringify({ copies, selection: 'copies' }),
+      credentials: 'include',
+      headers: { 'content-type': 'application/json' },
+      method: 'POST',
+    });
+    expect(await blob.text()).toBe('%PDF-label');
   });
 });
 

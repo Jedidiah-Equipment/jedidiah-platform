@@ -68,12 +68,18 @@ async function listLabelModels({
   selection: PartLabelBatchSelection;
 }): Promise<PartLabelPdfModel[]> {
   const rows = await db
-    .select({ code: parts.code, name: parts.name, storageLocation: parts.storageLocation })
+    .select({ code: parts.code, id: parts.id, name: parts.name, storageLocation: parts.storageLocation })
     .from(parts)
     .where(getSelectionCondition(selection))
     .orderBy(asc(parts.code));
 
-  return rows.map((row) => PartLabelPdfModelSchema.parse(row));
+  const copiesByPartId =
+    selection.selection === 'copies' ? new Map(selection.copies.map((copy) => [copy.partId, copy.copies])) : null;
+
+  return rows.flatMap((row) => {
+    const model = PartLabelPdfModelSchema.parse(row);
+    return Array.from({ length: copiesByPartId?.get(row.id) ?? 1 }, () => model);
+  });
 }
 
 function getSelectionCondition(selection: PartLabelBatchSelection): SQL | undefined {
@@ -86,5 +92,10 @@ function getSelectionCondition(selection: PartLabelBatchSelection): SQL | undefi
       return eq(parts.storageLocation, selection.storageLocation);
     case 'ids':
       return inArray(parts.id, selection.ids);
+    case 'copies':
+      return inArray(
+        parts.id,
+        selection.copies.map((copy) => copy.partId),
+      );
   }
 }

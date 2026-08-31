@@ -24,6 +24,7 @@ export const HELP_TOPICS = {
   jobDepartmentTimes: '/production/stamp-fabrication-times',
   jobs: '/production/find-a-job',
   parts: '/inventory/export-and-import-parts',
+  partLabels: '/inventory/print-part-labels',
   plan: '/production/open-a-bay-plan',
   products: '/inventory/maintain-a-product-cost-estimate',
   productBuildTimes: '/production/read-product-build-times',

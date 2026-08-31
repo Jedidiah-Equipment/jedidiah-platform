@@ -106,6 +106,45 @@ describe('Part label HTTP routes', () => {
     ]);
   });
 
+  test('repeats posted copy-count selections by their requested counts', async ({ context }) => {
+    const rendered: PartLabelPdfModel[][] = [];
+    const app = await createApp(capturingRenderer(rendered));
+
+    const response = await app.inject({
+      method: 'POST',
+      payload: {
+        copies: [
+          { copies: 2, partId: context.ids.get('P-100') },
+          { copies: 3, partId: context.ids.get('T-100') },
+        ],
+        selection: 'copies',
+      },
+      url: '/api/parts/labels',
+    });
+
+    expect(response.statusCode, response.body).toBe(200);
+    expect(rendered.map((labels) => labels.map((label) => label.code))).toEqual([
+      ['P-100', 'P-100', 'T-100', 'T-100', 'T-100'],
+    ]);
+  });
+
+  test('rejects a label batch above the printable copy limit before rendering', async ({ context }) => {
+    const rendered: PartLabelPdfModel[][] = [];
+    const app = await createApp(capturingRenderer(rendered));
+    const postCopies = (copies: Array<{ copies: number; partId: string | undefined }>) =>
+      app.inject({ method: 'POST', payload: { copies, selection: 'copies' }, url: '/api/parts/labels' });
+
+    const overSinglePartLimit = await postCopies([{ copies: 1001, partId: context.ids.get('P-100') }]);
+    const overBatchLimit = await postCopies([
+      { copies: 600, partId: context.ids.get('P-100') },
+      { copies: 401, partId: context.ids.get('T-100') },
+    ]);
+
+    expect(overSinglePartLimit.statusCode, overSinglePartLimit.body).toBe(400);
+    expect(overBatchLimit.statusCode, overBatchLimit.body).toBe(400);
+    expect(rendered).toEqual([]);
+  });
+
   test('requires part or inventory read access before rendering labels', async ({ context }) => {
     const rendered: PartLabelPdfModel[][] = [];
     const app = await createApp(capturingRenderer(rendered));

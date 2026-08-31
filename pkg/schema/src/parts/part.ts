@@ -335,10 +335,26 @@ export type PartLabelPdfModel = z.infer<typeof PartLabelPdfModel>;
 export const PartLabelPdfModel = Part.pick({ code: true, name: true, storageLocation: true });
 
 export type PartLabelSelectionMode = z.infer<typeof PartLabelSelectionMode>;
-export const PartLabelSelectionMode = z.enum(['all', 'category', 'storageLocation', 'ids']);
+export const PartLabelSelectionMode = z.enum(['all', 'category', 'storageLocation', 'ids', 'copies']);
 
-export type PartLabelBatchSelection = z.infer<typeof PartLabelBatchSelection>;
-export const PartLabelBatchSelection = z.discriminatedUnion('selection', [
+/** A dialog may hold zero to omit a Part; only positive counts cross into a rendered selection. */
+export const PART_LABEL_BATCH_MAX_COPIES = 1_000;
+
+export type PartLabelCount = z.infer<typeof PartLabelCount>;
+export const PartLabelCount = z.int().nonnegative().max(PART_LABEL_BATCH_MAX_COPIES);
+
+export type PartLabelCopySelection = z.infer<typeof PartLabelCopySelection>;
+export const PartLabelCopySelection = z.object({ copies: PartLabelCount.min(1), partId: UUID }).strict();
+
+const PartLabelCopiesSelection = z
+  .object({ copies: z.array(PartLabelCopySelection).min(1), selection: z.literal(PartLabelSelectionMode.enum.copies) })
+  .strict()
+  .refine(({ copies }) => copies.reduce((total, copy) => total + copy.copies, 0) <= PART_LABEL_BATCH_MAX_COPIES, {
+    message: `A PDF can contain at most ${PART_LABEL_BATCH_MAX_COPIES} labels`,
+    path: ['copies'],
+  });
+
+const partLabelUrlSelectionVariants = [
   z.object({ selection: z.literal(PartLabelSelectionMode.enum.all) }).strict(),
   z.object({ category: PartCategory, selection: z.literal(PartLabelSelectionMode.enum.category) }).strict(),
   z
@@ -348,18 +364,28 @@ export const PartLabelBatchSelection = z.discriminatedUnion('selection', [
     })
     .strict(),
   z.object({ ids: z.array(UUID).min(1), selection: z.literal(PartLabelSelectionMode.enum.ids) }).strict(),
+] as const;
+
+/** The modes small enough to ride a query string; a copy-count selection is posted as JSON instead. */
+const PartLabelUrlSelection = z.discriminatedUnion('selection', [...partLabelUrlSelectionVariants]);
+
+export type PartLabelBatchSelection = z.infer<typeof PartLabelBatchSelection>;
+export const PartLabelBatchSelection = z.discriminatedUnion('selection', [
+  ...partLabelUrlSelectionVariants,
+  PartLabelCopiesSelection,
 ]);
 
 /**
  * The batch selection as it arrives on a query string: every mode's field is flat and optional, and
- * `ids` is comma-separated. Narrowing to the union belongs here, not in the route.
+ * `ids` is comma-separated. Narrowing to the union belongs here, not in the route. A copy-count
+ * selection can outgrow a request target, so it only ever arrives as a posted body — never here.
  */
 export type PartLabelBatchQuery = z.infer<typeof PartLabelBatchQuery>;
 export const PartLabelBatchQuery = z
   .object({
     category: PartCategory.optional(),
     ids: z.string().optional(),
-    selection: PartLabelSelectionMode,
+    selection: PartLabelSelectionMode.exclude(['copies']),
     storageLocation: PartStorageLocation.unwrap().optional(),
   })
   .transform((query) => ({
@@ -368,6 +394,6 @@ export const PartLabelBatchQuery = z
     ...(query.selection === 'ids' ? { ids: query.ids?.split(',').filter(Boolean) } : {}),
     selection: query.selection,
   }))
-  .pipe(PartLabelBatchSelection);
+  .pipe(PartLabelUrlSelection);
 
 export type PartLabelPdfRenderer = (input: { document: PartLabelPdfModel[]; filename: string }) => Promise<Uint8Array>;

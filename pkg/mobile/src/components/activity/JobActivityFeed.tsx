@@ -181,7 +181,7 @@ export function JobActivityFeed({
         onEndReachedThreshold={0.4}
         refreshControl={<RefreshControl onRefresh={refresh.onRefresh} refreshing={refresh.refreshing} />}
         renderItem={({ index, item, section }) => (
-          <JobActivityEntry item={item} last={index === section.data.length - 1} />
+          <JobActivityEntry item={item} last={index === section.data.length - 1} linkToJob={jobId === undefined} />
         )}
         renderSectionHeader={({ section }) => (
           <View

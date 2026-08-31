@@ -369,17 +369,6 @@ function DetailPane({ isWide, jobId, state }: { isWide: boolean; jobId: string; 
 function WorkTimesPane({ jobId, state }: { jobId: string; state: ReadyState }) {
   const isCancelled = isJobCancelled(state);
 
-  if (state.departmentTimings.length === 0) {
-    return (
-      <View className="rounded-2xl border border-dashed border-border px-4 py-10">
-        <Text className="text-center text-sm text-foreground" weight="semibold">
-          No Department work times
-        </Text>
-        <Text className="mt-1 text-center text-sm text-muted-foreground">This Job has no Department timing cards.</Text>
-      </View>
-    );
-  }
-
   return (
     <View className="gap-4">
       {state.departmentTimings.map((timing) => (

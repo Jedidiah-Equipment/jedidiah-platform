@@ -10,7 +10,7 @@ Use the mobile app's **Jobs** tab to find open or completed production work and 
    order.
 5. Tap a Job. **Details** opens first with its production route, progress, facts, documents, and
    assemblies. Choose **Activity** for that Job's Activity and **Send Feedback**, or **Work Times** for
-   its Department timing cards and stamp actions.
+   its Department Timing cards and stamp actions.
 
 The schedule badges match the web Job List: **Not scheduled** means the Job has no Work Slots, while
 **Scheduled**, **Active**, and **Done** count its Work Slots in each state. A completed Job keeps those

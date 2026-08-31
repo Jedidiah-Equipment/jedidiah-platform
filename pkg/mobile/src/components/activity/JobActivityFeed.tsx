@@ -31,16 +31,16 @@ const FILTER_OPTIONS: readonly ListControlOption<JobActivityFilter>[] = [
 ];
 
 export function JobActivityFeed({
-  header,
   jobId,
+  listHeader,
+  renderPageToolbar,
   showControls = true,
-  toolbar,
   trackGlobalView = false,
 }: {
-  header?: ReactNode;
   jobId?: string;
+  listHeader?: ReactNode;
+  renderPageToolbar?: (total: number | null) => ReactNode;
   showControls?: boolean;
-  toolbar?: (total: number | null) => ReactNode;
   trackGlobalView?: boolean;
 }) {
   const trpc = useTRPC();
@@ -114,7 +114,7 @@ export function JobActivityFeed({
 
   return (
     <>
-      {toolbar?.(total)}
+      {renderPageToolbar?.(total)}
       <SectionList
         className="flex-1"
         // NativeWind does not remap contentContainerClassName for SectionList.
@@ -148,9 +148,9 @@ export function JobActivityFeed({
           ) : null
         }
         ListHeaderComponent={
-          header || showControls ? (
+          listHeader || showControls ? (
             <View className="z-10 mb-4 gap-4">
-              {header}
+              {listHeader}
               {showControls ? (
                 <ListControlRow
                   leading={

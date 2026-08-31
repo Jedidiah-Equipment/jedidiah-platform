@@ -163,8 +163,8 @@ function Ready({
         )
       ) : activeTab === 'activity' ? (
         <JobActivityFeed
-          header={<GiveFeedbackButton jobCode={state.jobCode} jobId={jobId} />}
           jobId={jobId}
+          listHeader={<GiveFeedbackButton jobCode={state.jobCode} jobId={jobId} />}
           showControls={false}
         />
       ) : (

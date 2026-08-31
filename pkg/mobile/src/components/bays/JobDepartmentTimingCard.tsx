@@ -75,7 +75,6 @@ type CorrectionFormValues = z.infer<typeof CorrectionFormValues>;
  * work Department; stamps remain an observation log and move no schedule.
  */
 export function JobDepartmentTimingCard({
-  defaultOpen = false,
   isCancelled,
   isCompleted,
   jobCode,
@@ -84,7 +83,6 @@ export function JobDepartmentTimingCard({
   open,
   timing,
 }: {
-  defaultOpen?: boolean;
   isCancelled: boolean;
   isCompleted: boolean;
   jobCode: string;
@@ -110,7 +108,6 @@ export function JobDepartmentTimingCard({
 
   return (
     <CardCollapse
-      defaultOpen={defaultOpen}
       headerAccessory={<DepartmentTimingStatusBadge state={presentation.state} />}
       onOpenChange={onOpenChange}
       open={open}

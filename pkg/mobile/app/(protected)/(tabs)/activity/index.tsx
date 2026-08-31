@@ -9,7 +9,7 @@ export default function ActivityRoute() {
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top', 'left', 'right']}>
       <JobActivityFeed
-        toolbar={(total) => (
+        renderPageToolbar={(total) => (
           <MainTabToolbar
             assistantParent={MAIN_TAB_PARENTS.activity}
             helpTopic="jobActivity"

@@ -19,7 +19,6 @@ const HARD_CODED_DARK_SPLASH_SCREENS = [
   'app/(protected)/_layout.tsx',
   'app/_layout.tsx',
   'src/theme/ColorModeProvider.tsx',
-  'src/theme/use-brand-foreground.ts',
 ];
 
 describe('light-mode yellow contract', () => {

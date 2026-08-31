@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { colorScheme as nativeWindColorScheme } from 'nativewind';
-import { createContext, type ReactNode, useCallback, useEffect, useLayoutEffect, useMemo, useState } from 'react';
+import { type ReactNode, useCallback, useEffect, useLayoutEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Platform, Text, View } from 'react-native';
 
 import { loadingSpinnerColor } from './brand-colors';
@@ -8,22 +8,15 @@ import {
   type ColorModePreference,
   DEFAULT_COLOR_MODE,
   parseColorModePreference,
-  type ResolvedColorScheme,
   resolveColorModePreference,
 } from './color-mode';
+import { ColorModeContext, type ColorModeContextValue } from './color-mode-context';
 
 export type { ColorModePreference, ResolvedColorScheme } from './color-mode';
 export { resolveColorModePreference } from './color-mode';
-
-export type ColorModeContextValue = {
-  preference: ColorModePreference;
-  resolved: ResolvedColorScheme;
-  setPreference: (preference: ColorModePreference) => void;
-};
+export type { ColorModeContextValue } from './color-mode-context';
 
 const STORAGE_KEY = 'jedidiah-color-mode';
-
-export const ColorModeContext = createContext<ColorModeContextValue | null>(null);
 
 /**
  * Persists the user's explicit color-mode preference. Invalid and legacy values

@@ -5,11 +5,11 @@ import {
   type PurchaseOrderLineView,
 } from '@pkg/schema';
 import { IconPrinter } from '@tabler/icons-react';
-import { useMemo, useState } from 'react';
-import { toast } from 'sonner';
+import { useCallback, useMemo, useState } from 'react';
 
 import { DataTable } from '@/components/data-table/DataTable.js';
 import { type DataTableColumnDef, useDataTable } from '@/components/data-table/features.js';
+import { FilePreviewSheet } from '@/components/documents/FilePreviewSheet.js';
 import { HelpLink } from '@/components/help/index.js';
 import { Button } from '@/components/ui/button.js';
 import {
@@ -22,7 +22,8 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog.js';
 import { Input } from '@/components/ui/input.js';
-import { openPartLabelBatchPdf } from '../../parts/part-label.js';
+import { fetchPartLabelsBlob } from '../../parts/part-label.js';
+import { outstandingReceivedForLine } from './types.js';
 
 type ReceivedPartLabelLine = Pick<PurchaseOrderLineView, 'partCode' | 'partId' | 'partName'> & {
   heldQuantity: number;
@@ -37,7 +38,7 @@ export function PurchaseOrderPartLabelsDialog({ lines }: { lines: PurchaseOrderL
     () =>
       lines
         .map((line) => ({
-          heldQuantity: heldQuantityFor(line),
+          heldQuantity: outstandingReceivedForLine(line),
           partCode: line.partCode,
           partId: line.partId,
           partName: line.partName,
@@ -46,15 +47,17 @@ export function PurchaseOrderPartLabelsDialog({ lines }: { lines: PurchaseOrderL
     [lines],
   );
   const [isOpen, setIsOpen] = useState(false);
-  const [isOpeningPdf, setIsOpeningPdf] = useState(false);
-  const [copiesByPartId, setCopiesByPartId] = useState<Record<string, number>>({});
+  // Only the counts the user has edited; a missing entry falls back to the line's own default.
+  const [copyOverrides, setCopyOverrides] = useState<Record<string, number>>({});
+  // Snapshotted when the preview opens, so edits behind the sheet don't re-render its PDF.
+  const [previewSelection, setPreviewSelection] = useState<PartLabelBatchSelection | null>(null);
   const rows = useMemo(
     () =>
       receivedLines.map((line) => ({
         ...line,
-        copies: copiesByPartId[line.partId] ?? defaultLabelCount(line.heldQuantity),
+        copies: copyOverrides[line.partId] ?? defaultLabelCount(line.heldQuantity),
       })),
-    [copiesByPartId, receivedLines],
+    [copyOverrides, receivedLines],
   );
   const columns = useMemo<DataTableColumnDef<PartLabelRow>[]>(
     () => [
@@ -82,7 +85,7 @@ export function PurchaseOrderPartLabelsDialog({ lines }: { lines: PurchaseOrderL
               min={0}
               onChange={(event) => {
                 const value = event.target.value === '' ? Number.NaN : Number(event.target.value);
-                setCopiesByPartId((current) => ({ ...current, [line.partId]: value }));
+                setCopyOverrides((current) => ({ ...current, [line.partId]: value }));
               }}
               step={1}
               type="number"
@@ -104,24 +107,20 @@ export function PurchaseOrderPartLabelsDialog({ lines }: { lines: PurchaseOrderL
     enableSorting: false,
     getRowId: (line) => line.partId,
   });
-  const selection = toLabelSelection(rows);
+  const selection = isOpen ? toLabelSelection(rows) : null;
+  const fetchBlob = useCallback(
+    ({ signal }: { signal: AbortSignal }) =>
+      previewSelection
+        ? fetchPartLabelsBlob({ selection: previewSelection, signal })
+        : Promise.reject(new Error('No Part label selection to render.')),
+    [previewSelection],
+  );
 
   if (receivedLines.length === 0) return null;
 
   const openDialog = () => {
-    setCopiesByPartId(
-      Object.fromEntries(receivedLines.map((line) => [line.partId, defaultLabelCount(line.heldQuantity)])),
-    );
+    setCopyOverrides({});
     setIsOpen(true);
-  };
-  const openPdf = () => {
-    if (!selection) return;
-    setIsOpeningPdf(true);
-    void openPartLabelBatchPdf(selection)
-      .catch((error: unknown) => {
-        toast.error(error instanceof Error ? error.message : 'Unable to open the printable Part labels.');
-      })
-      .finally(() => setIsOpeningPdf(false));
   };
 
   return (
@@ -155,18 +154,25 @@ export function PurchaseOrderPartLabelsDialog({ lines }: { lines: PurchaseOrderL
           </p>
           <DialogFooter>
             <DialogClose render={<Button variant="outline" />}>Close</DialogClose>
-            {selection ? (
-              <Button disabled={isOpeningPdf} onClick={openPdf} type="button">
-                <IconPrinter data-icon="inline-start" /> {isOpeningPdf ? 'Opening PDF…' : 'Open printable PDF'}
-              </Button>
-            ) : (
-              <Button disabled>
-                <IconPrinter data-icon="inline-start" /> Open printable PDF
-              </Button>
-            )}
+            <Button disabled={!selection} onClick={() => setPreviewSelection(selection)} type="button">
+              <IconPrinter data-icon="inline-start" /> Open printable PDF
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <FilePreviewSheet
+        description="Generated PDF"
+        downloadFilename="part-labels.pdf"
+        fetchBlob={fetchBlob}
+        kind="pdf"
+        onOpenChange={(open) => {
+          if (!open) setPreviewSelection(null);
+        }}
+        open={previewSelection !== null}
+        queryKey={['purchase-order-part-labels', previewSelection]}
+        subject="Part labels"
+        title="part-labels.pdf"
+      />
     </>
   );
 }
@@ -174,14 +180,10 @@ export function PurchaseOrderPartLabelsDialog({ lines }: { lines: PurchaseOrderL
 function toLabelSelection(rows: PartLabelRow[]): PartLabelBatchSelection | null {
   if (!rows.every((row) => isLabelCount(row.copies))) return null;
 
-  const selected = rows.filter((row) => row.copies > 0);
-  if (selected.length === 0) return null;
+  const copies = rows.filter((row) => row.copies > 0).map((row) => ({ copies: row.copies, partId: row.partId }));
+  if (copies.length === 0) return null;
 
-  const selection = {
-    copies: selected.map((row) => ({ copies: row.copies, partId: row.partId })),
-    selection: 'ids',
-  } as const;
-  const parsed = PartLabelBatchSelection.safeParse(selection);
+  const parsed = PartLabelBatchSelection.safeParse({ copies, selection: 'copies' });
   return parsed.success ? parsed.data : null;
 }
 
@@ -192,11 +194,4 @@ function isLabelCount(value: number): boolean {
 function defaultLabelCount(heldQuantity: number): number {
   // A fraction describes measured stock, but a physical label count can only be whole.
   return Math.min(Math.ceil(heldQuantity), PART_LABEL_BATCH_MAX_COPIES);
-}
-
-function heldQuantityFor(line: PurchaseOrderLineView): number {
-  return Math.max(
-    0,
-    line.receiptBuckets.reduce((total, bucket) => total + bucket.outstandingReceivedQuantity, 0),
-  );
 }

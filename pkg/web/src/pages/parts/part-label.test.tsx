@@ -1,11 +1,11 @@
-import type { Part, PartLabelBatchSelection, UUID } from '@pkg/schema';
+import type { Part, UUID } from '@pkg/schema';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, describe, expect, test, vi } from 'vitest';
 import { DataTable } from '@/components/data-table/DataTable.js';
 import { useDataTable } from '@/components/data-table/features.js';
 import { createPartLabelActionColumn } from './components/PartTable.js';
 import { PartLabelPrintButton } from './PartLabelPrintButton.js';
-import { openPartLabelBatchPdf, partLabelBatchUrl, partLabelUrl } from './part-label.js';
+import { fetchPartLabelsBlob, type PartLabelUrlSelection, partLabelBatchUrl, partLabelUrl } from './part-label.js';
 
 const PART_ID = '22222222-2222-4222-8222-222222222222' as UUID;
 const OTHER_PART_ID = '33333333-3333-4333-8333-333333333333' as UUID;
@@ -42,38 +42,36 @@ describe('Part label actions', () => {
       'selection=storageLocation&amp;storageLocation=Rack+A%2F04',
     ],
     [{ ids: [PART_ID, OTHER_PART_ID], selection: 'ids' }, `selection=ids&amp;ids=${PART_ID}%2C${OTHER_PART_ID}`],
-  ] satisfies Array<[PartLabelBatchSelection, string]>)('serializes the %s batch selection', (selection, query) => {
+  ] satisfies Array<[PartLabelUrlSelection, string]>)('serializes the %s batch selection', (selection, query) => {
     stubClientConfig();
     expect(partLabelBatchUrl(selection)).toBe(
       `http://localhost:7002/api/parts/labels?${query.replaceAll('&amp;', '&')}`,
     );
   });
 
-  test('posts high-cardinality copy selections without putting them in the request URL', async () => {
+  test('posts copy-count selections as JSON instead of a request URL', async () => {
     const pdf = new Blob(['%PDF-label'], { type: 'application/pdf' });
     const fetchMock = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => new Response(pdf));
-    const replace = vi.fn();
-    const preview = { close: vi.fn(), location: { replace }, opener: {} };
-    stubClientConfig({ open: vi.fn(() => preview) });
+    stubClientConfig();
     vi.stubGlobal('fetch', fetchMock);
-    const createObjectURL = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:part-labels');
 
-    const copies = Array.from({ length: 380 }, (_, index) => ({ copies: 1, partId: uuidFor(index) }));
-    await openPartLabelBatchPdf({ copies, selection: 'ids' });
+    const copies = [
+      { copies: 2, partId: PART_ID },
+      { copies: 3, partId: OTHER_PART_ID },
+    ];
+    const blob = await fetchPartLabelsBlob({ selection: { copies, selection: 'copies' } });
 
     const call = fetchMock.mock.calls[0];
     if (!call) throw new Error('Part label request was not sent');
     const [url, request] = call;
     expect(url).toBe('http://localhost:7002/api/parts/labels');
     expect(request).toMatchObject({
-      body: JSON.stringify({ copies, selection: 'ids' }),
+      body: JSON.stringify({ copies, selection: 'copies' }),
       credentials: 'include',
       headers: { 'content-type': 'application/json' },
       method: 'POST',
     });
-    expect(String(request?.body).length).toBeGreaterThan(16_384);
-    expect(createObjectURL).toHaveBeenCalledWith(pdf);
-    expect(replace).toHaveBeenCalledWith('blob:part-labels');
+    expect(await blob.text()).toBe('%PDF-label');
   });
 });
 
@@ -86,7 +84,7 @@ function PartLabelActionTable() {
   return <DataTable emptyMessage="No parts" hideGlobalFilter paginationMode="complete" table={table} total={1} />;
 }
 
-function stubClientConfig(overrides: Record<string, unknown> = {}): void {
+function stubClientConfig(): void {
   vi.stubGlobal('window', {
     __APP_CONFIG__: {
       appBaseUrl: 'http://localhost:7001',
@@ -95,10 +93,5 @@ function stubClientConfig(overrides: Record<string, unknown> = {}): void {
       authBaseUrl: 'http://localhost:7002/api/auth',
       docsBaseUrl: 'http://localhost:7006',
     },
-    ...overrides,
   });
-}
-
-function uuidFor(index: number): UUID {
-  return `00000000-0000-4000-8000-${String(index).padStart(12, '0')}` as UUID;
 }

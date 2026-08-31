@@ -1,4 +1,4 @@
-import { PartLabelBatchSelection, type PartLabelBatchSelection as PartLabelSelection } from '@pkg/schema';
+import { PartLabelBatchSelection } from '@pkg/schema';
 import { IconPrinter } from '@tabler/icons-react';
 import type React from 'react';
 import { useMemo, useState } from 'react';
@@ -27,9 +27,9 @@ import {
 import { Field, FieldDescription, FieldLabel } from '@/components/ui/field.js';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select.js';
 import { usePartCategoryOptions, usePartOptions, usePartStorageLocationOptions } from '@/hooks/options/index.js';
-import { partLabelBatchModeLabels, partLabelBatchUrl } from './part-label.js';
+import { type PartLabelUrlSelection, partLabelBatchModeLabels, partLabelBatchUrl } from './part-label.js';
 
-type BatchMode = PartLabelSelection['selection'];
+type BatchMode = PartLabelUrlSelection['selection'];
 
 type PartLabelBatchDialogProps = {
   buttonSize?: ButtonSize;
@@ -182,7 +182,7 @@ function resolveSelection({
   mode: BatchMode;
   partIds: string[];
   storageLocation: string;
-}): PartLabelSelection | null {
+}): PartLabelUrlSelection | null {
   const candidate =
     mode === 'all'
       ? { selection: mode }
@@ -192,5 +192,5 @@ function resolveSelection({
           ? { selection: mode, storageLocation }
           : { ids: partIds, selection: mode };
   const parsed = PartLabelBatchSelection.safeParse(candidate);
-  return parsed.success ? parsed.data : null;
+  return parsed.success && parsed.data.selection !== 'copies' ? parsed.data : null;
 }

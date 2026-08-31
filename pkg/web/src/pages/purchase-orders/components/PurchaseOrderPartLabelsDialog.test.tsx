@@ -1,14 +1,19 @@
 // @vitest-environment jsdom
 
-import type { PurchaseOrderLineView, UUID } from '@pkg/schema';
+import type { PartLabelCopySelection, PurchaseOrderLineView, UUID } from '@pkg/schema';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { openPartLabelBatchPdf } from '../../parts/part-label.js';
+import { fetchPartLabelsBlob } from '../../parts/part-label.js';
 import { PurchaseOrderPartLabelsDialog } from './PurchaseOrderPartLabelsDialog.js';
 
-vi.mock('../../parts/part-label.js', () => ({ openPartLabelBatchPdf: vi.fn(async () => undefined) }));
+vi.mock('../../parts/part-label.js', () => ({
+  fetchPartLabelsBlob: vi.fn(async () => new Blob(['%PDF-label'], { type: 'application/pdf' })),
+}));
+// Reads the client config at import time, which jsdom only holds once a test has stubbed it.
+vi.mock('@/hooks/use-api-mutation-error-toast.js', () => ({ useApiMutationErrorToast: () => vi.fn() }));
 
 const RECEIVED_PART_ID = '22222222-2222-4222-8222-222222222222' as UUID;
 const OTHER_RECEIVED_PART_ID = '33333333-3333-4333-8333-333333333333' as UUID;
@@ -26,6 +31,7 @@ afterEach(() => {
   containers.length = 0;
   delete (window as unknown as { __APP_CONFIG__?: unknown }).__APP_CONFIG__;
   vi.unstubAllGlobals();
+  vi.restoreAllMocks();
   vi.clearAllMocks();
 });
 
@@ -47,13 +53,10 @@ describe('PurchaseOrderPartLabelsDialog', () => {
       'http://localhost:7006/inventory/print-part-labels',
     );
     await clickPdfButton();
-    expect(openPartLabelBatchPdf).toHaveBeenCalledWith({
-      copies: [{ copies: 2, partId: RECEIVED_PART_ID }],
-      selection: 'ids',
-    });
+    expectPdfRequestedWith([{ copies: 2, partId: RECEIVED_PART_ID }]);
   });
 
-  it('excludes zero-count Parts and opens one PDF for the remaining edited counts', async () => {
+  it('excludes zero-count Parts and requests one PDF for the remaining edited counts', async () => {
     const trigger = await renderDialog([
       line(RECEIVED_PART_ID, 'P-100', 'Main bearing', 2),
       line(OTHER_RECEIVED_PART_ID, 'T-100', 'Hydraulic tube', 3),
@@ -64,10 +67,7 @@ describe('PurchaseOrderPartLabelsDialog', () => {
     await setCount('T-100', '4');
 
     await clickPdfButton();
-    expect(openPartLabelBatchPdf).toHaveBeenCalledWith({
-      copies: [{ copies: 4, partId: OTHER_RECEIVED_PART_ID }],
-      selection: 'ids',
-    });
+    expectPdfRequestedWith([{ copies: 4, partId: OTHER_RECEIVED_PART_ID }]);
   });
 
   it('starts fractional received quantities at the next printable whole-label count', async () => {
@@ -80,13 +80,10 @@ describe('PurchaseOrderPartLabelsDialog', () => {
 
     expect(findCountInput('W-100').value).toBe('13');
     await clickPdfButton();
-    expect(openPartLabelBatchPdf).toHaveBeenCalledWith({
-      copies: [
-        { copies: 13, partId: RECEIVED_PART_ID },
-        { copies: 2, partId: OTHER_RECEIVED_PART_ID },
-      ],
-      selection: 'ids',
-    });
+    expectPdfRequestedWith([
+      { copies: 13, partId: RECEIVED_PART_ID },
+      { copies: 2, partId: OTHER_RECEIVED_PART_ID },
+    ]);
   });
 
   it('excludes stock that was returned to the Supplier even when the order line stays fulfilled', async () => {
@@ -100,10 +97,7 @@ describe('PurchaseOrderPartLabelsDialog', () => {
     expect(document.body.textContent).not.toContain('Misordered bearing');
     expect(document.body.textContent).toContain('Hydraulic tube');
     await clickPdfButton();
-    expect(openPartLabelBatchPdf).toHaveBeenCalledWith({
-      copies: [{ copies: 2, partId: OTHER_RECEIVED_PART_ID }],
-      selection: 'ids',
-    });
+    expectPdfRequestedWith([{ copies: 2, partId: OTHER_RECEIVED_PART_ID }]);
   });
 
   it('does not offer the action when no stock has been received', async () => {
@@ -114,6 +108,13 @@ describe('PurchaseOrderPartLabelsDialog', () => {
     expect(container.textContent).not.toContain('Print Part labels');
   });
 });
+
+function expectPdfRequestedWith(copies: PartLabelCopySelection[]): void {
+  expect(fetchPartLabelsBlob).toHaveBeenCalledWith({
+    selection: { copies, selection: 'copies' },
+    signal: expect.any(AbortSignal),
+  });
+}
 
 async function renderDialog(lines: PurchaseOrderLineView[]): Promise<HTMLButtonElement> {
   stubClientConfig();
@@ -126,12 +127,15 @@ async function renderDialog(lines: PurchaseOrderLineView[]): Promise<HTMLButtonE
 }
 
 async function mount(node: React.ReactNode): Promise<HTMLDivElement> {
+  vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:part-labels');
+  vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => undefined);
   const container = document.createElement('div');
   document.body.append(container);
   containers.push(container);
   const root = createRoot(container);
   roots.push(root);
-  await act(async () => root.render(node));
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  await act(async () => root.render(<QueryClientProvider client={client}>{node}</QueryClientProvider>));
   return container;
 }
 

@@ -119,6 +119,7 @@ async function mount(): Promise<HTMLDivElement> {
         canCancel
         canCloseShort
         canEdit={false}
+        canPrintPartLabels={false}
         canReadCosts={false}
         canRevertToDraft
         canSend

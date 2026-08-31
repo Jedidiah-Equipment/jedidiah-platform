@@ -74,13 +74,12 @@ async function listLabelModels({
     .orderBy(asc(parts.code));
 
   const copiesByPartId =
-    selection.selection === 'ids' && 'copies' in selection
-      ? new Map(selection.copies.map((copy) => [copy.partId, copy.copies]))
-      : null;
+    selection.selection === 'copies' ? new Map(selection.copies.map((copy) => [copy.partId, copy.copies])) : null;
 
-  return rows.flatMap((row) =>
-    Array.from({ length: copiesByPartId?.get(row.id) ?? 1 }, () => PartLabelPdfModelSchema.parse(row)),
-  );
+  return rows.flatMap((row) => {
+    const model = PartLabelPdfModelSchema.parse(row);
+    return Array.from({ length: copiesByPartId?.get(row.id) ?? 1 }, () => model);
+  });
 }
 
 function getSelectionCondition(selection: PartLabelBatchSelection): SQL | undefined {
@@ -92,6 +91,11 @@ function getSelectionCondition(selection: PartLabelBatchSelection): SQL | undefi
     case 'storageLocation':
       return eq(parts.storageLocation, selection.storageLocation);
     case 'ids':
-      return inArray(parts.id, 'ids' in selection ? selection.ids : selection.copies.map((copy) => copy.partId));
+      return inArray(parts.id, selection.ids);
+    case 'copies':
+      return inArray(
+        parts.id,
+        selection.copies.map((copy) => copy.partId),
+      );
   }
 }

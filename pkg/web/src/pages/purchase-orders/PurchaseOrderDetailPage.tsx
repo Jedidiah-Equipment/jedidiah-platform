@@ -113,6 +113,10 @@ const PurchaseOrderDetail: React.FC<{ purchaseOrder: PurchaseOrderView; queryErr
   const canReturn =
     actions.returnToSupplier.allowed &&
     (hasPermission(accessQuery.data, 'inventory:move') || hasPermission(accessQuery.data, 'purchase_order:amend'));
+  // The same either-read gate the label route applies: a label carries no cost, so the price-blind
+  // stores role prints as readily as the catalog ones.
+  const canPrintPartLabels =
+    hasPermission(accessQuery.data, 'part:read') || hasPermission(accessQuery.data, 'inventory:read');
   // The same single gate the upload route applies — filing the paperwork is procurement's job, and
   // it is the amend right that says who does it.
   const canFileCreditNote = actions.fileDocuments.allowed && hasPermission(accessQuery.data, 'purchase_order:amend');
@@ -164,6 +168,7 @@ const PurchaseOrderDetail: React.FC<{ purchaseOrder: PurchaseOrderView; queryErr
             canCancel={canCancel}
             canCloseShort={canCloseShort}
             canEdit={canEdit}
+            canPrintPartLabels={canPrintPartLabels}
             canReadCosts={canReadCosts}
             canRevertToDraft={canRevertToDraft}
             canSend={canSend}
@@ -343,6 +348,7 @@ export const PurchaseOrderActions: React.FC<{
   canCancel: boolean;
   canCloseShort: boolean;
   canEdit: boolean;
+  canPrintPartLabels: boolean;
   canReadCosts: boolean;
   canRevertToDraft: boolean;
   canSend: boolean;
@@ -354,6 +360,7 @@ export const PurchaseOrderActions: React.FC<{
   canCancel,
   canCloseShort,
   canEdit,
+  canPrintPartLabels,
   canReadCosts,
   canRevertToDraft,
   canSend,
@@ -460,7 +467,7 @@ export const PurchaseOrderActions: React.FC<{
           purchaseOrderId={purchaseOrder.id}
         />
       ) : null}
-      <PurchaseOrderPartLabelsDialog lines={purchaseOrder.lines} />
+      {canPrintPartLabels ? <PurchaseOrderPartLabelsDialog lines={purchaseOrder.lines} /> : null}
       {canRevertToDraft ? (
         <Button
           disabled={disabled}

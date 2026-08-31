@@ -18,6 +18,7 @@ import { StockMovementWarningPrompt } from '../../inventory/components/StockMove
 import {
   isLinearLine,
   outstandingReceivedForLength,
+  outstandingReceivedForLine,
   type PurchaseOrderReturnFormValues,
   PurchaseOrderReturnFormValues as PurchaseOrderReturnFormValuesSchema,
   toReturnToSupplierInput,
@@ -64,7 +65,7 @@ export function PurchaseOrderReturnDialog({
 
   // The line's own total, which is what the Returns card offered a return against. What one length
   // still holds is bucket-scoped and follows the keyed length, so it is shown live below instead.
-  const lineOutstanding = line.receiptBuckets.reduce((total, bucket) => total + bucket.outstandingReceivedQuantity, 0);
+  const lineOutstanding = outstandingReceivedForLine(line);
   const standardLengthOutstanding = outstandingReceivedForLength({ lengthMm: null, line });
 
   return (

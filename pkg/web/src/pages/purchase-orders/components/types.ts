@@ -204,6 +204,11 @@ export function outstandingReceivedForLength({
   return line.receiptBuckets.find((bucket) => bucket.lengthMm === bucketLength)?.outstandingReceivedQuantity ?? 0;
 }
 
+/** The line's whole outstanding total across every bucket — what is still on hand from this order. */
+export function outstandingReceivedForLine(line: Pick<PurchaseOrderLineView, 'receiptBuckets'>): number {
+  return line.receiptBuckets.reduce((total, bucket) => total + bucket.outstandingReceivedQuantity, 0);
+}
+
 /**
  * A blank length on a linear line means "the length we buy it in", which the ledger fills from the
  * Part's standard purchase length — so the dock only keys one when the delivery is not that.

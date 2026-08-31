@@ -1,8 +1,14 @@
 import { isPartCoreError, renderPartLabel, renderPartLabelBatch } from '@pkg/core';
 import { db } from '@pkg/db';
 import { renderPartLabelsPdf } from '@pkg/pdf';
-import { PartLabelBatchQuery, type PartLabelPdfRenderer, UUID } from '@pkg/schema';
-import type { FastifyInstance, FastifyReply } from 'fastify';
+import {
+  PartLabelBatchQuery,
+  PartLabelBatchSelection,
+  type PartLabelBatchSelection as PartLabelBatchSelectionInput,
+  type PartLabelPdfRenderer,
+  UUID,
+} from '@pkg/schema';
+import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 
 import {
@@ -19,18 +25,30 @@ export async function registerPartLabelHttpRoutes(
   app: FastifyInstance,
   { pdfRenderer = renderPartLabelsPdf }: { pdfRenderer?: PartLabelPdfRenderer } = {},
 ): Promise<void> {
-  app.get('/api/parts/labels', async (request, reply) => {
+  const sendPartLabelBatch = async (
+    request: FastifyRequest,
+    reply: FastifyReply,
+    readSelection: () => PartLabelBatchSelectionInput,
+  ) => {
     const auth = await requireRouteAuth(request, reply);
     if (!auth) return;
 
     try {
       requirePartLabelAccess(auth);
-      const selection = PartLabelBatchQuery.parse(request.query);
+      const selection = readSelection();
       const result = await mapPartLabelErrors(() => renderPartLabelBatch({ db, pdfRenderer, selection }));
       return sendPdf(reply, result);
     } catch (error) {
       sendPartLabelHttpError(reply, error);
     }
+  };
+
+  app.get('/api/parts/labels', async (request, reply) => {
+    return sendPartLabelBatch(request, reply, () => PartLabelBatchQuery.parse(request.query));
+  });
+
+  app.post('/api/parts/labels', async (request, reply) => {
+    return sendPartLabelBatch(request, reply, () => PartLabelBatchSelection.parse(request.body));
   });
 
   app.get('/api/parts/:partId/label', async (request, reply) => {

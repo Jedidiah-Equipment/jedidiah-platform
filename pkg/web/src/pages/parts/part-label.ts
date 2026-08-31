@@ -1,6 +1,7 @@
 import type { PartLabelBatchSelection, UUID } from '@pkg/schema';
 
 import { getClientConfig } from '@/lib/app-config.js';
+import { readApiErrorMessage } from '@/utils/document.js';
 
 type PartLabelBatchMode = PartLabelBatchSelection['selection'];
 
@@ -29,9 +30,35 @@ export function partLabelBatchUrl(selection: PartLabelBatchSelection): string {
       break;
     case 'ids':
       if ('ids' in selection) params.set('ids', selection.ids.join(','));
-      else params.set('copies', selection.copies.map((copy) => `${copy.partId}:${copy.copies}`).join(','));
+      else throw new Error('Copy-count Part label batches must be posted.');
       break;
   }
 
   return `${getClientConfig().apiBaseUrl}/api/parts/labels?${params.toString()}`;
+}
+
+/** Copy-count batches can outgrow an HTTP request target, so their structural selection rides in JSON. */
+export async function openPartLabelBatchPdf(selection: PartLabelBatchSelection): Promise<void> {
+  const preview = window.open('', '_blank');
+  if (!preview) throw new Error('Allow pop-ups to open the printable Part labels.');
+  preview.opener = null;
+
+  try {
+    const response = await fetch(`${getClientConfig().apiBaseUrl}/api/parts/labels`, {
+      body: JSON.stringify(selection),
+      credentials: 'include',
+      headers: { 'content-type': 'application/json' },
+      method: 'POST',
+    });
+    if (!response.ok) {
+      throw new Error(await readApiErrorMessage(response, 'Unable to generate the printable Part labels.'));
+    }
+
+    const url = URL.createObjectURL(await response.blob());
+    preview.location.replace(url);
+    setTimeout(() => URL.revokeObjectURL(url), 60_000);
+  } catch (error) {
+    preview.close();
+    throw error;
+  }
 }

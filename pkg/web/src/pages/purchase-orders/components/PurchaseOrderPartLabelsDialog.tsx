@@ -6,6 +6,7 @@ import {
 } from '@pkg/schema';
 import { IconPrinter } from '@tabler/icons-react';
 import { useMemo, useState } from 'react';
+import { toast } from 'sonner';
 
 import { DataTable } from '@/components/data-table/DataTable.js';
 import { type DataTableColumnDef, useDataTable } from '@/components/data-table/features.js';
@@ -21,7 +22,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog.js';
 import { Input } from '@/components/ui/input.js';
-import { partLabelBatchUrl } from '../../parts/part-label.js';
+import { openPartLabelBatchPdf } from '../../parts/part-label.js';
 
 type PartLabelRow = Pick<PurchaseOrderLineView, 'partCode' | 'partId' | 'partName' | 'receivedQuantity'> & {
   copies: number;
@@ -30,6 +31,7 @@ type PartLabelRow = Pick<PurchaseOrderLineView, 'partCode' | 'partId' | 'partNam
 export function PurchaseOrderPartLabelsDialog({ lines }: { lines: PurchaseOrderLineView[] }) {
   const receivedLines = useMemo(() => lines.filter((line) => line.receivedQuantity > 0), [lines]);
   const [isOpen, setIsOpen] = useState(false);
+  const [isOpeningPdf, setIsOpeningPdf] = useState(false);
   const [copiesByPartId, setCopiesByPartId] = useState<Record<string, number>>({});
   const rows = useMemo(
     () =>
@@ -97,6 +99,15 @@ export function PurchaseOrderPartLabelsDialog({ lines }: { lines: PurchaseOrderL
     );
     setIsOpen(true);
   };
+  const openPdf = () => {
+    if (!selection) return;
+    setIsOpeningPdf(true);
+    void openPartLabelBatchPdf(selection)
+      .catch((error: unknown) => {
+        toast.error(error instanceof Error ? error.message : 'Unable to open the printable Part labels.');
+      })
+      .finally(() => setIsOpeningPdf(false));
+  };
 
   return (
     <>
@@ -130,8 +141,8 @@ export function PurchaseOrderPartLabelsDialog({ lines }: { lines: PurchaseOrderL
           <DialogFooter>
             <DialogClose render={<Button variant="outline" />}>Close</DialogClose>
             {selection ? (
-              <Button render={<a href={partLabelBatchUrl(selection)} rel="noreferrer" target="_blank" />}>
-                <IconPrinter data-icon="inline-start" /> Open printable PDF
+              <Button disabled={isOpeningPdf} onClick={openPdf} type="button">
+                <IconPrinter data-icon="inline-start" /> {isOpeningPdf ? 'Opening PDF…' : 'Open printable PDF'}
               </Button>
             ) : (
               <Button disabled>

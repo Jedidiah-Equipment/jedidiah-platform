@@ -120,6 +120,28 @@ describe('Part label HTTP routes', () => {
     ]);
   });
 
+  test('accepts copy selections in a POST body instead of the request URL', async ({ context }) => {
+    const rendered: PartLabelPdfModel[][] = [];
+    const app = await createApp(capturingRenderer(rendered));
+
+    const response = await app.inject({
+      method: 'POST',
+      payload: {
+        copies: [
+          { copies: 2, partId: context.ids.get('P-100') },
+          { copies: 3, partId: context.ids.get('T-100') },
+        ],
+        selection: 'ids',
+      },
+      url: '/api/parts/labels',
+    });
+
+    expect(response.statusCode, response.body).toBe(200);
+    expect(rendered.map((labels) => labels.map((label) => label.code))).toEqual([
+      ['P-100', 'P-100', 'T-100', 'T-100', 'T-100'],
+    ]);
+  });
+
   test('rejects a label batch above the printable copy limit before rendering', async ({ context }) => {
     const rendered: PartLabelPdfModel[][] = [];
     const app = await createApp(capturingRenderer(rendered));

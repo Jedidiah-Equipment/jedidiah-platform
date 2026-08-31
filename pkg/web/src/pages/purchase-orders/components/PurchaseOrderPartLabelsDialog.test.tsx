@@ -5,7 +5,10 @@ import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import { openPartLabelBatchPdf } from '../../parts/part-label.js';
 import { PurchaseOrderPartLabelsDialog } from './PurchaseOrderPartLabelsDialog.js';
+
+vi.mock('../../parts/part-label.js', () => ({ openPartLabelBatchPdf: vi.fn(async () => undefined) }));
 
 const RECEIVED_PART_ID = '22222222-2222-4222-8222-222222222222' as UUID;
 const OTHER_RECEIVED_PART_ID = '33333333-3333-4333-8333-333333333333' as UUID;
@@ -23,6 +26,7 @@ afterEach(() => {
   containers.length = 0;
   delete (window as unknown as { __APP_CONFIG__?: unknown }).__APP_CONFIG__;
   vi.unstubAllGlobals();
+  vi.clearAllMocks();
 });
 
 describe('PurchaseOrderPartLabelsDialog', () => {
@@ -42,7 +46,11 @@ describe('PurchaseOrderPartLabelsDialog', () => {
     expect(document.querySelector<HTMLAnchorElement>('a[aria-label="How to print Part labels"]')?.href).toBe(
       'http://localhost:7006/inventory/print-part-labels',
     );
-    expect(new URL(findPdfLink().href).searchParams.get('copies')).toBe(`${RECEIVED_PART_ID}:2`);
+    await clickPdfButton();
+    expect(openPartLabelBatchPdf).toHaveBeenCalledWith({
+      copies: [{ copies: 2, partId: RECEIVED_PART_ID }],
+      selection: 'ids',
+    });
   });
 
   it('excludes zero-count Parts and opens one PDF for the remaining edited counts', async () => {
@@ -55,7 +63,11 @@ describe('PurchaseOrderPartLabelsDialog', () => {
     await setCount('P-100', '0');
     await setCount('T-100', '4');
 
-    expect(new URL(findPdfLink().href).searchParams.get('copies')).toBe(`${OTHER_RECEIVED_PART_ID}:4`);
+    await clickPdfButton();
+    expect(openPartLabelBatchPdf).toHaveBeenCalledWith({
+      copies: [{ copies: 4, partId: OTHER_RECEIVED_PART_ID }],
+      selection: 'ids',
+    });
   });
 
   it('starts fractional received quantities at the next printable whole-label count', async () => {
@@ -67,9 +79,14 @@ describe('PurchaseOrderPartLabelsDialog', () => {
     await act(async () => trigger.click());
 
     expect(findCountInput('W-100').value).toBe('13');
-    expect(new URL(findPdfLink().href).searchParams.get('copies')).toBe(
-      `${RECEIVED_PART_ID}:13,${OTHER_RECEIVED_PART_ID}:2`,
-    );
+    await clickPdfButton();
+    expect(openPartLabelBatchPdf).toHaveBeenCalledWith({
+      copies: [
+        { copies: 13, partId: RECEIVED_PART_ID },
+        { copies: 2, partId: OTHER_RECEIVED_PART_ID },
+      ],
+      selection: 'ids',
+    });
   });
 
   it('does not offer the action when no stock has been received', async () => {
@@ -107,12 +124,12 @@ function findCountInput(partCode: string): HTMLInputElement {
   return input;
 }
 
-function findPdfLink(): HTMLAnchorElement {
-  const link = [...document.querySelectorAll<HTMLAnchorElement>('a')].find((candidate) =>
+async function clickPdfButton(): Promise<void> {
+  const button = [...document.querySelectorAll<HTMLButtonElement>('button')].find((candidate) =>
     candidate.textContent?.includes('Open printable PDF'),
   );
-  if (!link) throw new Error('Open printable PDF link missing');
-  return link;
+  if (!button) throw new Error('Open printable PDF button missing');
+  await act(async () => button.click());
 }
 
 async function setCount(partCode: string, value: string): Promise<void> {

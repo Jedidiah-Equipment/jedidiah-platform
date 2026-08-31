@@ -8,8 +8,8 @@ done across every Job, newest first, without opening each Job in turn.
    **All**, **User Feedback**, **Job Events**, or **Work Times**.
 3. Read down the feed. Each entry names who it was, when it happened, and the Job it is about.
 4. Choose **Show more** on a long piece of feedback to read the rest of it.
-5. Choose an entry to open that Job, where you can read its full feedback and submit your own with
-   **Give feedback**.
+5. Choose an entry to open that Job. On the web, use **Send Feedback** in its Details. On mobile,
+   choose its **Activity** tab to see only that Job's Activity and use **Send Feedback** there.
 6. On the web, choose **Open on the Gantt** on an entry to open that Job in Planning instead.
 7. Scroll to the end of the feed to load the next batch of entries automatically.
 

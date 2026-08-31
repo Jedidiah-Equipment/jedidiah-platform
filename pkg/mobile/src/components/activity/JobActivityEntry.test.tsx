@@ -1,5 +1,5 @@
 import { statusBadgeColorClassNames } from '@pkg/domain';
-import { JobChangeActivityItem } from '@pkg/schema';
+import { type GeneralFeedbackActivityItem, type JobActivityItem, JobChangeActivityItem } from '@pkg/schema';
 import { act, create, type ReactTestRenderer } from 'react-test-renderer';
 import { describe, expect, test, vi } from 'vitest';
 
@@ -74,14 +74,48 @@ describe('JobActivityEntry', () => {
 
     expect(JSON.stringify(renderer.toJSON())).toContain('Aug 9, 2026');
   });
+
+  test.each([buildChangeItem('job-completed'), buildFeedbackItem()])(
+    'does not link back to the Job from a feed already scoped to it',
+    async (item) => {
+      const renderer = await renderEntry(item, false);
+
+      expect(renderer.root.findAllByProps({ accessibilityHint: 'Opens Job details' })).toHaveLength(0);
+    },
+  );
 });
 
-async function renderEntry(item: JobChangeActivityItem): Promise<ReactTestRenderer> {
+async function renderEntry(item: JobActivityItem, linkToJob = true): Promise<ReactTestRenderer> {
   let renderer!: ReactTestRenderer;
   await act(async () => {
-    renderer = create(<JobActivityEntry item={item} last />);
+    renderer = create(<JobActivityEntry item={item} last linkToJob={linkToJob} />);
   });
   return renderer;
+}
+
+function buildFeedbackItem(): GeneralFeedbackActivityItem {
+  return {
+    feedback: {
+      submitter: {
+        email: 'thabo@example.com',
+        id: 'user-1' as GeneralFeedbackActivityItem['feedback']['submitter']['id'],
+        name: 'Thabo Mokoena',
+        thumbnailDataUrl: null,
+      },
+      text: 'Paint bay handover was missed.' as GeneralFeedbackActivityItem['feedback']['text'],
+    },
+    id: '10000000-0000-4000-8000-000000000000' as GeneralFeedbackActivityItem['id'],
+    job: {
+      code: 'JOB-00042' as GeneralFeedbackActivityItem['job']['code'],
+      customerCompanyName: 'Acme Mining',
+      displayName: 'Cane 8 ton',
+      id: '30000000-0000-4000-8000-000000000000' as GeneralFeedbackActivityItem['job']['id'],
+      offeringKind: 'product',
+      thumbnailDataUrl: null,
+    },
+    occurredAt: '2026-08-10T09:00:00.000Z' as GeneralFeedbackActivityItem['occurredAt'],
+    type: 'general-feedback',
+  };
 }
 
 function buildChangeItem(

@@ -19,6 +19,7 @@ import { QuoteStatusChip } from '@/components/quotes/QuoteStatusChip';
 import { QuoteSummaryDrawer } from '@/components/quotes/QuoteSummaryDrawer';
 import { QuoteWorkItemsEditor } from '@/components/quotes/QuoteWorkItemsEditor';
 import { SalespersonSelectField } from '@/components/quotes/SalespersonSelectField';
+import { SubTabControl, type SubTabOption } from '@/components/SubTabControl';
 import { SecondaryPageToolbar } from '@/components/TopToolbar';
 import { Icon } from '@/components/ui/icon';
 import { Switch } from '@/components/ui/switch';
@@ -33,6 +34,13 @@ import {
 } from '@/lib/quote-presentation';
 import { useTRPC } from '@/lib/trpc';
 import { useCan } from '@/lib/use-access';
+
+type QuoteDetailTab = 'details' | 'documents';
+
+const QUOTE_DETAIL_TABS: readonly SubTabOption<QuoteDetailTab>[] = [
+  { label: 'Details', value: 'details' },
+  { label: 'Documents', value: 'documents' },
+];
 
 export function QuoteDetailsScreen({ quoteId }: { quoteId: string }) {
   const parsedId = UUID.safeParse(quoteId);
@@ -119,7 +127,7 @@ function QuoteEditor({
 }) {
   const router = useRouter();
   const showToast = useAppToast();
-  const [activeTab, setActiveTab] = useState<'details' | 'documents'>('details');
+  const [activeTab, setActiveTab] = useState<QuoteDetailTab>('details');
   const [summaryOpen, setSummaryOpen] = useState(false);
   const [cancelConfirmationOpen, setCancelConfirmationOpen] = useState(false);
   const isLocked = isQuoteLocked({
@@ -167,14 +175,7 @@ function QuoteEditor({
 
       <View className="border-b border-border px-4 py-3">
         <View className="w-full flex-row items-center gap-3">
-          <View className="flex-row rounded-xl border border-border bg-muted p-1">
-            <QuoteTabButton active={activeTab === 'details'} label="Details" onPress={() => setActiveTab('details')} />
-            <QuoteTabButton
-              active={activeTab === 'documents'}
-              label="Documents"
-              onPress={() => setActiveTab('documents')}
-            />
-          </View>
+          <SubTabControl activeValue={activeTab} onChange={setActiveTab} tabs={QUOTE_DETAIL_TABS} />
           <View className="flex-1" />
           <Pressable
             accessibilityRole="button"
@@ -203,11 +204,6 @@ function QuoteEditor({
                 ) : isLocked ? (
                   <InfoBanner message={describeLockedQuote({ canEdit, kind: quote.kind })} />
                 ) : null}
-                <QuoteCancellationAction
-                  canCancel={canCancel}
-                  onPress={() => setCancelConfirmationOpen(true)}
-                  quote={quote}
-                />
                 {priorityQuote ? <QuotePriorityAlert quote={priorityQuote} /> : null}
 
                 <Section title="Quote setup">
@@ -414,6 +410,12 @@ function QuoteEditor({
                     </form.Field>
                   </Section>
                 ) : null}
+
+                <QuoteCancellationAction
+                  canCancel={canCancel}
+                  onPress={() => setCancelConfirmationOpen(true)}
+                  quote={quote}
+                />
               </>
             ) : (
               <QuoteDocumentsTab
@@ -454,21 +456,6 @@ function QuoteEditor({
         quote={quote}
       />
     </SafeAreaView>
-  );
-}
-
-function QuoteTabButton({ active, label, onPress }: { active: boolean; label: string; onPress: () => void }) {
-  return (
-    <Pressable
-      accessibilityRole="tab"
-      accessibilityState={{ selected: active }}
-      className={`rounded-lg px-4 py-2 ${active ? 'bg-surface' : ''}`}
-      onPress={onPress}
-    >
-      <Text className={`text-xs ${active ? 'text-foreground' : 'text-muted-foreground'}`} weight="semibold">
-        {label}
-      </Text>
-    </Pressable>
   );
 }
 

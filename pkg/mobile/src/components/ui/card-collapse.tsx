@@ -14,6 +14,8 @@ export function CardCollapse({
   children,
   defaultOpen = false,
   headerAccessory,
+  onOpenChange,
+  open,
   title,
 }: {
   children: ReactNode;
@@ -21,10 +23,21 @@ export function CardCollapse({
   defaultOpen?: boolean;
   /** Rendered between the heading and the chevron — for a status that has to survive collapsing. */
   headerAccessory?: ReactNode;
+  /** Reports the next state; pair with `open` when a parent owns persistence. */
+  onOpenChange?: (open: boolean) => void;
+  /** Controlled open state. Omit to retain the card's local state. */
+  open?: boolean;
   /** Card heading, rendered uppercase by the heading style; carry any count in it. */
   title: string;
 }) {
-  const [isOpen, setIsOpen] = useState(defaultOpen);
+  const [internalOpen, setInternalOpen] = useState(defaultOpen);
+  const isOpen = open ?? internalOpen;
+
+  function toggleOpen() {
+    const nextOpen = !isOpen;
+    if (open === undefined) setInternalOpen(nextOpen);
+    onOpenChange?.(nextOpen);
+  }
 
   return (
     <View className="rounded-2xl border border-border bg-surface">
@@ -33,7 +46,7 @@ export function CardCollapse({
         accessibilityRole="button"
         accessibilityState={{ expanded: isOpen }}
         className="flex-row items-center gap-3 p-4 active:opacity-70"
-        onPress={() => setIsOpen((open) => !open)}
+        onPress={toggleOpen}
       >
         <Text className="min-w-0 flex-1 text-[11px] uppercase tracking-widest text-muted-foreground" weight="semibold">
           {title}

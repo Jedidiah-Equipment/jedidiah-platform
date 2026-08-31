@@ -8,12 +8,14 @@ import {
 } from '@pkg/domain';
 import type { ReactNode } from 'react';
 import { ScrollView, useWindowDimensions, View } from 'react-native';
-
 import { Avatar } from '@/components/Avatar';
+import { JobActivityFeed } from '@/components/activity/JobActivityFeed';
 import { JobDepartmentTimingCard } from '@/components/bays/JobDepartmentTimingCard';
 import { JobDetailSections } from '@/components/bays/JobDetailSections';
 import { JobWorkCard } from '@/components/bays/JobWorkCard';
 import { DaysLeftChip, STATUS_TONE, StatusChip, type StatusTone } from '@/components/bays/status-chip';
+import { GiveFeedbackButton } from '@/components/feedback/GiveFeedbackButton';
+import { SubTabControl, type SubTabOption } from '@/components/SubTabControl';
 import { SecondaryPageToolbar } from '@/components/TopToolbar';
 import { Pulse } from '@/components/ui/pulse';
 import { RefreshControl } from '@/components/ui/refresh-control';
@@ -21,12 +23,24 @@ import { StatusBadge } from '@/components/ui/status-badge';
 import { Text } from '@/components/ui/text';
 import { useGlobalRefresh } from '@/lib/use-global-refresh';
 import { type JobDetailState, type JobRouteStopCard, useJobDetail } from '@/lib/use-job-detail';
+import { createLiteralGuard, usePersistedState } from '@/lib/use-persisted-state';
 import { useColorMode } from '@/theme/use-color-mode';
 
 type ReadyState = Extract<JobDetailState, { status: 'ready' }>;
 
 /** Tablet breakpoint: at/above this width the route and detail panes sit side by side. */
 const WIDE_BREAKPOINT = 760;
+
+const JOB_DETAIL_TAB_VALUES = ['details', 'activity', 'work-times'] as const;
+type JobDetailTab = (typeof JOB_DETAIL_TAB_VALUES)[number];
+const isJobDetailTab = createLiteralGuard(JOB_DETAIL_TAB_VALUES);
+const isBoolean = (value: unknown): value is boolean => typeof value === 'boolean';
+
+const JOB_DETAIL_TABS: readonly SubTabOption<JobDetailTab>[] = [
+  { label: 'Details', value: 'details' },
+  { label: 'Activity', value: 'activity' },
+  { label: 'Work Times', value: 'work-times' },
+];
 
 /**
  * Job Detail as one responsive master–detail screen (#615): the production-route timeline (every
@@ -99,6 +113,11 @@ function Ready({
   onBack: () => void;
   refresh: ReturnType<typeof useGlobalRefresh>;
 }) {
+  const [activeTab, setActiveTab] = usePersistedState<JobDetailTab>(
+    'jedidiah-job-detail-tab',
+    'details',
+    isJobDetailTab,
+  );
   const header = (
     <SecondaryPageToolbar
       helpTopic="jobs"
@@ -109,37 +128,50 @@ function Ready({
     />
   );
 
-  if (isWide) {
-    return (
-      <>
-        {header}
-        <View className="flex-1 flex-row">
-          <ScrollView
-            className="border-border"
-            contentContainerClassName="w-full px-4 pb-10 pt-4"
-            refreshControl={<RefreshControl {...refresh} />}
-            style={{ borderRightWidth: 1, flex: 42 }}
-          >
-            <RoutePane isCancelled={isJobCancelled(state)} route={state.route} />
-          </ScrollView>
-          <ScrollView
-            contentContainerClassName="w-full px-4 pb-10 pt-4"
-            refreshControl={<RefreshControl {...refresh} />}
-            style={{ flex: 58 }}
-          >
-            <DetailPane isWide jobId={jobId} state={state} />
-          </ScrollView>
-        </View>
-      </>
-    );
-  }
-
   return (
     <>
       {header}
-      <ScrollView contentContainerClassName="w-full px-4 pb-10 pt-4" refreshControl={<RefreshControl {...refresh} />}>
-        <DetailPane isWide={false} jobId={jobId} state={state} />
-      </ScrollView>
+      <View className="border-b border-border px-4 py-3">
+        <SubTabControl activeValue={activeTab} onChange={setActiveTab} tabs={JOB_DETAIL_TABS} />
+      </View>
+      {activeTab === 'details' ? (
+        isWide ? (
+          <View className="flex-1 flex-row">
+            <ScrollView
+              className="border-border"
+              contentContainerClassName="w-full px-4 pb-10 pt-4"
+              refreshControl={<RefreshControl {...refresh} />}
+              style={{ borderRightWidth: 1, flex: 42 }}
+            >
+              <RoutePane isCancelled={isJobCancelled(state)} route={state.route} />
+            </ScrollView>
+            <ScrollView
+              contentContainerClassName="w-full px-4 pb-10 pt-4"
+              refreshControl={<RefreshControl {...refresh} />}
+              style={{ flex: 58 }}
+            >
+              <DetailPane isWide jobId={jobId} state={state} />
+            </ScrollView>
+          </View>
+        ) : (
+          <ScrollView
+            contentContainerClassName="w-full px-4 pb-10 pt-4"
+            refreshControl={<RefreshControl {...refresh} />}
+          >
+            <DetailPane isWide={false} jobId={jobId} state={state} />
+          </ScrollView>
+        )
+      ) : activeTab === 'activity' ? (
+        <JobActivityFeed
+          jobId={jobId}
+          listHeader={<GiveFeedbackButton jobCode={state.jobCode} jobId={jobId} />}
+          showControls={false}
+        />
+      ) : (
+        <ScrollView contentContainerClassName="w-full px-4 pb-10 pt-4" refreshControl={<RefreshControl {...refresh} />}>
+          <WorkTimesPane jobId={jobId} state={state} />
+        </ScrollView>
+      )}
     </>
   );
 }
@@ -274,7 +306,7 @@ function routeDaysLabel(stop: JobRouteStopCard, isCancelled: boolean): string {
 }
 
 /**
- * Right pane: work card, progress, facts, feedback, documents, and assemblies.
+ * Right pane: work card, progress, facts, documents, and assemblies.
  *
  * On a phone the route is not a second pane but the next card down, directly under overall progress,
  * where it answers "who has it and when" while that number is still on screen. It also makes the
@@ -328,16 +360,6 @@ function DetailPane({ isWide, jobId, state }: { isWide: boolean; jobId: string; 
       {isWide ? null : <RoutePane isCancelled={isCancelled} route={state.route} />}
 
       <JobDetailSections
-        afterJobFacts={state.departmentTimings.map((timing) => (
-          <JobDepartmentTimingCard
-            isCancelled={isCancelled}
-            isCompleted={state.completedOn !== null}
-            jobCode={state.jobCode}
-            jobId={jobId}
-            key={timing.department}
-            timing={timing}
-          />
-        ))}
         customerCompanyName={state.customerCompanyName}
         description={state.description}
         jobCode={state.jobCode}
@@ -345,8 +367,56 @@ function DetailPane({ isWide, jobId, state }: { isWide: boolean; jobId: string; 
         workName={state.jobDisplayName}
         productSerialNumber={state.productSerialNumber}
         quoteCode={state.quoteCode}
+        showFeedback={false}
       />
     </View>
+  );
+}
+
+function WorkTimesPane({ jobId, state }: { jobId: string; state: ReadyState }) {
+  const isCancelled = isJobCancelled(state);
+
+  return (
+    <View className="gap-4">
+      {state.departmentTimings.map((timing) => (
+        <PersistedWorkTimeCard
+          isCancelled={isCancelled}
+          isCompleted={state.completedOn !== null}
+          jobCode={state.jobCode}
+          jobId={jobId}
+          key={timing.department}
+          timing={timing}
+        />
+      ))}
+    </View>
+  );
+}
+
+function PersistedWorkTimeCard({
+  isCancelled,
+  isCompleted,
+  jobCode,
+  jobId,
+  timing,
+}: {
+  isCancelled: boolean;
+  isCompleted: boolean;
+  jobCode: string;
+  jobId: string;
+  timing: ReadyState['departmentTimings'][number];
+}) {
+  const [open, setOpen] = usePersistedState(`jedidiah-job-work-time-${timing.department}-open`, true, isBoolean);
+
+  return (
+    <JobDepartmentTimingCard
+      isCancelled={isCancelled}
+      isCompleted={isCompleted}
+      jobCode={jobCode}
+      jobId={jobId}
+      onOpenChange={setOpen}
+      open={open}
+      timing={timing}
+    />
   );
 }
 

@@ -91,4 +91,27 @@ describe('CardCollapse', () => {
     expect(renderer.root.findAllByType(Badge)).toHaveLength(1);
     expect(renderer.root.findAllByType(Body)).toHaveLength(0);
   });
+
+  test('reports a controlled state change and waits for the caller to apply it', () => {
+    const onOpenChange = vi.fn();
+    const renderer = render(
+      <CardCollapse onOpenChange={onOpenChange} open={false} title="FABRICATION">
+        <Body />
+      </CardCollapse>,
+    );
+
+    press(renderer);
+
+    expect(onOpenChange).toHaveBeenCalledWith(true);
+    expect(renderer.root.findAllByType(Body)).toHaveLength(0);
+
+    act(() => {
+      renderer.update(
+        <CardCollapse onOpenChange={onOpenChange} open title="FABRICATION">
+          <Body />
+        </CardCollapse>,
+      );
+    });
+    expect(renderer.root.findAllByType(Body)).toHaveLength(1);
+  });
 });

@@ -28,15 +28,31 @@ import { OfferingAvatar } from '@/components/OfferingAvatar';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 
-export function JobActivityEntry({ item, last }: { item: JobActivityItem; last: boolean }) {
+export function JobActivityEntry({
+  item,
+  last,
+  linkToJob = true,
+}: {
+  item: JobActivityItem;
+  last: boolean;
+  linkToJob?: boolean;
+}) {
   if (item.type === 'general-feedback') {
-    return <FeedbackEntry item={item} last={last} />;
+    return <FeedbackEntry item={item} last={last} linkToJob={linkToJob} />;
   }
 
-  return <JobEventEntry item={item} last={last} />;
+  return <JobEventEntry item={item} last={last} linkToJob={linkToJob} />;
 }
 
-function FeedbackEntry({ item, last }: { item: GeneralFeedbackActivityItem; last: boolean }) {
+function FeedbackEntry({
+  item,
+  last,
+  linkToJob,
+}: {
+  item: GeneralFeedbackActivityItem;
+  last: boolean;
+  linkToJob: boolean;
+}) {
   const [expanded, setExpanded] = useState(false);
   const expandable = item.feedback.text.length > 180;
 
@@ -74,19 +90,46 @@ function FeedbackEntry({ item, last }: { item: GeneralFeedbackActivityItem; last
               </Text>
             </Pressable>
           ) : null}
-          <JobDetail item={item} />
+          <JobDetail item={item} linkToJob={linkToJob} />
         </View>
       </View>
     </ActivityEntryShell>
   );
 }
 
-function JobEventEntry({ item, last }: { item: JobChangeActivityItem; last: boolean }) {
+function JobEventEntry({ item, last, linkToJob }: { item: JobChangeActivityItem; last: boolean; linkToJob: boolean }) {
   const router = useRouter();
   const presentation = getJobEventPresentation(item);
   const actorName = item.actor ? getFirstName(item.actor.name) : 'System';
   const EventIcon = presentation.icon;
   const iconTone = statusBadgeColorClassNames[jobActivityEventTone[item.type]];
+  const content = (
+    <>
+      <Text className="text-sm leading-5 text-foreground" numberOfLines={2}>
+        <Text weight="semibold">{actorName}</Text> {presentation.sentence}
+      </Text>
+      <View className="mt-0.5 min-w-0 flex-row items-center gap-1.5">
+        <OfferingAvatar
+          className="h-5 w-5 rounded-md"
+          iconSize={11}
+          kind={item.job.offeringKind}
+          name={item.job.displayName}
+          uri={item.job.thumbnailDataUrl}
+        />
+        <Text className="shrink-0 text-sm text-muted-foreground" mono>
+          {item.job.code}
+        </Text>
+        <Text className="min-w-0 flex-1 text-sm text-muted-foreground" numberOfLines={1}>
+          {item.job.displayName}
+        </Text>
+      </View>
+      {presentation.detail === null ? null : (
+        <Text className="mt-0.5 text-xs leading-4 text-muted-foreground" numberOfLines={2}>
+          {presentation.detail}
+        </Text>
+      )}
+    </>
+  );
 
   return (
     <ActivityEntryShell
@@ -99,37 +142,19 @@ function JobEventEntry({ item, last }: { item: JobChangeActivityItem; last: bool
         </View>
       }
     >
-      <Pressable
-        accessibilityHint="Opens Job details"
-        accessibilityLabel={`${actorName} ${presentation.sentence} on ${item.job.code}`}
-        accessibilityRole="button"
-        className="min-w-0 flex-1 rounded-lg px-1 active:bg-muted"
-        onPress={() => router.push({ pathname: '/jobs/[jobId]', params: { jobId: item.job.id } })}
-      >
-        <Text className="text-sm leading-5 text-foreground" numberOfLines={2}>
-          <Text weight="semibold">{actorName}</Text> {presentation.sentence}
-        </Text>
-        <View className="mt-0.5 min-w-0 flex-row items-center gap-1.5">
-          <OfferingAvatar
-            className="h-5 w-5 rounded-md"
-            iconSize={11}
-            kind={item.job.offeringKind}
-            name={item.job.displayName}
-            uri={item.job.thumbnailDataUrl}
-          />
-          <Text className="shrink-0 text-sm text-muted-foreground" mono>
-            {item.job.code}
-          </Text>
-          <Text className="min-w-0 flex-1 text-sm text-muted-foreground" numberOfLines={1}>
-            {item.job.displayName}
-          </Text>
-        </View>
-        {presentation.detail === null ? null : (
-          <Text className="mt-0.5 text-xs leading-4 text-muted-foreground" numberOfLines={2}>
-            {presentation.detail}
-          </Text>
-        )}
-      </Pressable>
+      {linkToJob ? (
+        <Pressable
+          accessibilityHint="Opens Job details"
+          accessibilityLabel={`${actorName} ${presentation.sentence} on ${item.job.code}`}
+          accessibilityRole="button"
+          className="min-w-0 flex-1 rounded-lg px-1 active:bg-muted"
+          onPress={() => router.push({ pathname: '/jobs/[jobId]', params: { jobId: item.job.id } })}
+        >
+          {content}
+        </Pressable>
+      ) : (
+        <View className="min-w-0 flex-1 px-1">{content}</View>
+      )}
     </ActivityEntryShell>
   );
 }
@@ -164,17 +189,10 @@ function ActivityEntryShell({
   );
 }
 
-function JobDetail({ item }: { item: GeneralFeedbackActivityItem }) {
+function JobDetail({ item, linkToJob }: { item: GeneralFeedbackActivityItem; linkToJob: boolean }) {
   const router = useRouter();
-
-  return (
-    <Pressable
-      accessibilityHint="Opens Job details"
-      accessibilityLabel={`Open ${item.job.code} ${item.job.displayName}`}
-      accessibilityRole="button"
-      className="min-w-0 flex-row items-center gap-1.5 border-t border-border bg-muted/50 px-2.5 py-1.5 active:bg-muted"
-      onPress={() => router.push({ pathname: '/jobs/[jobId]', params: { jobId: item.job.id } })}
-    >
+  const content = (
+    <>
       <OfferingAvatar
         className="h-5 w-5 rounded-md"
         iconSize={11}
@@ -193,6 +211,26 @@ function JobDetail({ item }: { item: GeneralFeedbackActivityItem }) {
         companyName={item.job.customerCompanyName}
         numberOfLines={1}
       />
+    </>
+  );
+
+  if (!linkToJob) {
+    return (
+      <View className="min-w-0 flex-row items-center gap-1.5 border-t border-border bg-muted/50 px-2.5 py-1.5">
+        {content}
+      </View>
+    );
+  }
+
+  return (
+    <Pressable
+      accessibilityHint="Opens Job details"
+      accessibilityLabel={`Open ${item.job.code} ${item.job.displayName}`}
+      accessibilityRole="button"
+      className="min-w-0 flex-row items-center gap-1.5 border-t border-border bg-muted/50 px-2.5 py-1.5 active:bg-muted"
+      onPress={() => router.push({ pathname: '/jobs/[jobId]', params: { jobId: item.job.id } })}
+    >
+      {content}
     </Pressable>
   );
 }

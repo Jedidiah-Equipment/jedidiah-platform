@@ -1,0 +1,791 @@
+# Jedidiah Contracting
+
+## Summary
+### Flow Summary
+Scoped a new JedConOps contracting app for job cards, machine hours, breakdowns and servicing. Deano to spec schema and decide whether to build inside JedOps or standalone.
+
+### JetConOps Job Card Flow
+- Foreman opens job card in app, selects machine by code, logs start/stop hours; Henk signs off, Jed van Niekerk applies rates, Karen invoices in PESTEL
+- Machine hours run sequentially: closing hours on job A = opening hours on job B; farmer at destination pays travel
+    - Unaccounted-for gaps flagged; only Jed van Niekerk/Henk can resolve with a reason
+- Photo of hour meter preferred, AI reads value; manual entry allowed but flagged as missing photo evidence
+- Jobs pre-created by admin (customer, description); foreman selects from list, job auto-starts on first machine start
+
+### Breakdowns, Servicing & Notifications
+- Separate breakdown reporting from scheduled servicing; both tracked per machine with history
+- Voice notes transcribed via AI with tunable prompt for local names/dialects; users can edit, diffs feed back to improve
+- Notifications via read-only WhatsApp broadcast channel instead of building in-app push
+- Mechanic performance tracked by time-to-close; workshop manager (Connor) assigns one primary mechanic per breakdown
+
+### Architecture & Roles
+- Undecided: build inside JedOps (shared codebase, mode switcher) vs fully standalone app
+    - Only Jed van Niekerk, Reino, Karen need cross-access; staff otherwise fully separated
+- Roles: super admin, contracting manager (Henk), foreman, workshop manager (Connor), mechanics and drivers as non-login users
+- Machine availability derived from active jobs; categories (excavator, TLB, etc.) enable utilisation reporting over time
+
+### Next Steps
+- (Jed van Niekerk) Motivate pros and cons of shared vs standalone app before build starts
+- (Jed van Niekerk) Call Reinhard Zellhuber tonight to catch up on the breakdown
+- (Reinhard Zellhuber) Decide where the contracting app will live (inside JedOps or standalone)
+- (Reinhard Zellhuber) Draft rough spec and schema (jobs, fleet, machines, drivers, roles) for agreement
+
+### Decisions Made
+- Promote Bon Gauze to run fabrication; Sean moves from CNC to supply
+- Foreman selects jobs from pre-created list; only Henk closes jobs and stamps final start/end dates
+- Notifications via read-only WhatsApp broadcast channel, not a custom in-app system
+- Photo of hour meter is primary capture method; manual entry allowed but flagged
+- One primary mechanic assigned per breakdown to keep performance metrics clean
+
+## Transcript
+[13:04] Jed van Niekerk:  Um, Dean, so, okay, Jed, I don't know if you're happy with the na the title first, but JetCon ops— con ops, just basically meaning for the contracting. Um, okay, here's the, the current— yeah, the current system we have, Deano, is that we have— we've got foremen on the ground, like, 4 or 5 foremen.
+[13:30] Jed van Niekerk:  And these guys are running different jobs in different locations, different farms. They've got different equipment, drivers.
+[13:38] Jed van Niekerk:  So we've got those guys on the ground. We've got Henk who's managing them.
+[13:43] Jed van Niekerk:  Uh, I've obviously got myself, uh, who's then overseeing everything. And then basically, Karen is at the end of the cycle, basically doing the invoicing on that.
+[13:53] Jed van Niekerk:  So the problem— let me state the problem first that we're having— is, obviously, we've got all this equipment out there, and it's becoming actually quite difficult for me to remember, okay, where's the grader or where's the TLV or whatever the case is. So we've got these machines spread out in different areas and locations, um, all under some form of, uh, like, a foreman who's, who's, who's managing them.
+[14:19] Jed van Niekerk:  So what would happen is that we, we get a job. A farmer wants to build a dam.
+[14:24] Jed van Niekerk:  We move, uh, 5 or 6 machines there. The foreman supervises that job on the dam.
+[14:30] Jed van Niekerk:  When the machines arrive, he writes down the hours of that equipment. Then Henk opens up a job card.
+[14:40] Jed van Niekerk:  So it's a very basic, simple job card, just detailing the information. So it would be, like, the date the machines started, the hours that they started with, uh, the driver, um, and then basically, when the job finishes, the guy closes up the job card, and he puts in the closing hours, which then gives you a total hours for that machine.
+[15:01] Jed van Niekerk:  So every machine's got an hour meter, and he just writes the hours when it started. So if it's— if it was on 2,500, um, and the job ended on 2,600, that machine did 100 hours on that job.
+[15:15] Jed van Niekerk:  So then Henk gathers that information. Then once that job is complete, Henk will send me that job card.
+[15:22] Jed van Niekerk:  Then I take that job card, and I take the hours. Then I do a handwritten, like, invoice, handwritten, and then I apply rates to those hours.
+[15:35] Jed van Niekerk:  So that machine did 100 hours. We charge, um, 500 rand per hour, and we go through all the machines.
+[15:43] Jed van Niekerk:  Then I give that job card to Karen, who then converts it into an invoice on PESTEL. So the issue with that whole system, it's obviously, it's time-consuming.
+[15:54] Jed van Niekerk:  It's, it's slow because you, you're always, like, having to redo, redo. In terms of, I take Henk's job card, I convert it into a, uh, you know, my handwritten invoice, and then Karen obviously then puts it onto PESTEL.
+[16:08] Jed van Niekerk:  But there's been cases, first of all, where Henk's actually forgotten a job. So I'll say, "Henk, where's that job for Mr.
+[16:14] Jed van Niekerk:  Rowley?" And Henk will say, "But I gave you the job card."
+[16:17] Jed van Niekerk:  I'll say, "Henk, no, you, you haven't. I've got all your job cards.
+[16:20] Jed van Niekerk:  You haven't given it to me." And then it'll come out that he's actually forgotten to open a job card.
+[16:24] Jed van Niekerk:  And it might have just been a small job. It might have been one machine for two days.
+[16:28] Jed van Niekerk:  So it's slipped his mind. He hasn't done it.
+[16:31] Jed van Niekerk:  Now, we, we've obviously run into an issue where work actually literally disappears. It goes missing.
+[16:36] Jed van Niekerk:  Whereas, had we had the app, so what would happen is that the foreman or who's ever responsible for that machine would basically open up a job card on his phone. So you would have each of the foremen having the app.
+[16:54] Jed van Niekerk:  It would be a very, very simplified app where the guy will basically open up a job. He would, um, put the farm name, the farmer's name, and he'd put what type of work they're doing.
+[17:07] Jed van Niekerk:  So is it dam building, disking, planting, whatever the case is, he'll put in what type of work they're doing. Then he would select from, like, a pre, um, like, a pre-stored, like, what I'd call, like, a fleet list.
+[17:24] Jed van Niekerk:  So on our fleet list, uh, we would have all our vehicles in our contracting that are stored on the fleet list. And I, I manage that list, so I can edit it.
+[17:36] Jed van Niekerk:  So it would basically have, like, the make of the machine. So it's a John Deere.
+[17:43] Jed van Niekerk:  It would be the model. It will be a 6140M.
+[17:46] Jed van Niekerk:  Then it would have a driver. It would have a registration number.
+[17:50] Jed van Niekerk:  Um, it, yeah, uh, basically, it would have certain details that apply to that machine. But then it would also have a code.
+[17:57] Jed van Niekerk:  So our codes are basically, for example, if it's a John Deere, uh, 6140M, uh, our code is basically JD6140M. And then it would either be a dash 1, dash 2, dash 3.
+[18:16] Jed van Niekerk:  So depending on how many tractors we have of that model, it'll always be a dash 1 or 2 or 3 or whatever. If there's only one in that model, then it'll just it'll just be the dash 1.
+[18:26] Jed van Niekerk:  So basically, what the foreman does is that he, he basically opens up a job card. He only can only view his job cards.
+[18:37] Jed van Niekerk:  Um, obviously, myself and Henk can view everyone's job cards, but he's only responsible for his job. So he'll basically select the machine, uh, and it'll only be a code.
+[18:49] Jed van Niekerk:  He doesn't have to know all the other details of that machine. It'll basically just be the machine code.
+[18:54] Jed van Niekerk:  Then he will he will type in the start hours and then the stop hours when that machine's done that job. Then it'll give you a total.
+[19:03] Jed van Niekerk:  Um, and when he's then completed that job, he will submit that job card. Once it's submitted, it goes to Henk for sign-off.
+[19:12] Jed van Niekerk:  Henk will just double-check that everything is correct. And Henk may possibly wanna add something onto that job card.
+[19:18] Jed van Niekerk:  So, for example, um, if we had to use the low bed to move the excavator to the job site, Henk will then make a note, um, that the excavator moved from whatever, such and such a place. It was 100 kilometers that we used the, the low bed, uh, as long as that information is compiled in that job card.
+[19:40] Jed van Niekerk:  Um, and then once Henk's approved it, then it'll come for me for, like, the final, um, I'll then I'll then add the rates. So Henk's given me all the hours, all the information.
+[19:52] Jed van Niekerk:  Then I basically apply rates to it. There can be, like, a preset rate.
+[19:56] Jed van Niekerk:  So we know that our excavators are hired out at 600 rand an hour. It will give me, like, a preselected rate.
+[20:03] Jed van Niekerk:  I can then obviously edit that, edit that rate, or I can discount the rate or whatever the case is. Um, and then once that's done, it basically I can then print that, hand it to Karen, and then she can transfer that onto PESTEL.
+[20:18] Jed van Niekerk:  Um, yeah. So it's basically.
+[20:21] Reinhard Zellhuber:  So.
+[20:21] Jed van Niekerk:  We just don't wanna lose work.
+[20:23] Reinhard Zellhuber:  Sorry.
+[20:24] Jed van Niekerk:  I just wanna make.
+[20:25] Reinhard Zellhuber:  Sorry, Jed, just to jump in quickly. So that document, it's not, like, a it's not an, like, an invoice. It's more just, like, something for Karen to read.
+[20:35] Reinhard Zellhuber:  It doesn't leave it doesn't get sent to, like, the, the client.
+[20:41] Jed van Niekerk:  No, no. So what's nice about it is that it's, it, it, it would that document will obviously have the hours, the actual machine hours. So if the client has a dispute and, and says, "But Jed, how did the guy do 50 hours?"
+[20:57] Jed van Niekerk:  I can say, "But here's the hour reading when he got there. Here's it.
+[21:00] Jed van Niekerk:  Here it is when it left." So basically, it gives the, the customer more information with regards to it.
+[21:06] Jed van Niekerk:  'Cause the invoice, when Karen does it, it'll basically say, um, "Excavator hired 50 hours." That's all it'll say with the rate.
+[21:14] Jed van Niekerk:  But mine will have a bit more detail. So what that would also allow us to do, Deano, is that we won't have missing hours.
+[21:25] Jed van Niekerk:  So when a machine, a certain machine leaves a job, the guy closes the hours. Let's say it's on job A, but now it's moving to job B.
+[21:38] Jed van Niekerk:  When you close the hours on job A, those closing hours should be the starting hours for job B. So let's say he drives an hour down the road to job B.
+[21:48] Jed van Niekerk:  That hour must be paid for by the customer who's at job B. So basically, like, you've you want to ensure that all machine hours are actually allocated for and accounted for.
+[22:02] Jed van Niekerk:  Because let's say the foreman at job B doesn't read the hour meter correctly. It can flag or indicate, "Hey, there's a problem here.
+[22:13] Jed van Niekerk:  This machine left on 4,002 hours, but he's written, um, 4,012. He's misread the hour meter."
+[22:23] Jed van Niekerk:  So there should be a system where the machine hours, you have these start and stop periods. If there was, for some reason, an hour or two hour between the stop and the start, there must be a reason for that, like, why or there must just be, like, you must be able to see, uh, there was a break in this machine's hours.
+[22:42] Jed van Niekerk:  You don't want hours to actually go missing.
+[22:45] Reinhard Zellhuber:  Yeah. Do sorry, quickly. So how do you account for the hours of getting the machine from location to location?
+[22:54] Jed van Niekerk:  So the, the, the, the, the farmer where the machine is going to, he's gonna fit the bill for the hours.
+[23:01] Reinhard Zellhuber:  Oh, interesting. Okay.
+[23:03] Jed van Niekerk:  Yeah.
+[23:03] Reinhard Zellhuber:  So.
+[23:04] Jed van Niekerk:  Yeah.
+[23:04] Reinhard Zellhuber:  Okay. So the farmer pays to get the machine basically to his location.
+[23:11] Jed van Niekerk:  Correct.
+[23:11] Reinhard Zellhuber:  Okay.
+[23:12] Jed van Niekerk:  Correct.
+[23:12] Reinhard Zellhuber:  Okay. So in that way, you, um so do you ever want that kind of tracked in some way, like, that travel distance, or it's not really interesting?
+[23:25] Jed van Niekerk:  Uh, so, Deano, it's not, not really necessary, eh? So the current way we're doing it is basically, when the guy closes the job, we're using those same hours to open the next job. Um, that farmer, if we're coming to you, you've gotta cover my cost to get to you.
+[23:42] Jed van Niekerk:  So and then the next farmer, job C, he'll pay for himself. So you basically.
+[23:47] Reinhard Zellhuber:  Yeah.
+[23:48] Jed van Niekerk:  Pay for the equipment to get to you. Once it's done with you, and we fill up fuel, and we leave your farm, the job's closed for you. Then you're done.
+[23:56] Jed van Niekerk:  Now it begins for the next guy.
+[23:58] Reinhard Zellhuber:  Good. Understand?
+[23:59] Jed van Niekerk:  Yeah.
+[24:01] Reinhard Zellhuber:  So it'll always stay it'll move from that farmer's land to the next customer.
+[24:06] Jed van Niekerk:  Correct.
+[24:06] Reinhard Zellhuber:  Even if there's a day or two, it'll sit there for a day or two and then move on.
+[24:09] Jed van Niekerk:  Yes.
+[24:09] Reinhard Zellhuber:  Okay.
+[24:10] Jed van Niekerk:  Yeah.
+[24:10] Reinhard Zellhuber:  Cool.
+[24:11] Jed van Niekerk:  But, Deano, there is times where, let's say, okay, we, we finish a job. Okay. We've got no more work left for that machine.
+[24:17] Jed van Niekerk:  Okay. Cool.
+[24:18] Jed van Niekerk:  Send the machine back to Stony Brook. It comes back to Stony Brook.
+[24:21] Reinhard Zellhuber:  Yeah.
+[24:21] Jed van Niekerk:  Let's say it gets there, and it's the TLB and flip. I need it to dig a hole or whatever. And it digs a hole and whatever around the yard, and it cleans up.
+[24:28] Jed van Niekerk:  And, like, we're not really logging those hours. And then let's say, okay, a, a month later, we get a farmer wanting a TLB.
+[24:35] Jed van Niekerk:  Okay. TLB.
+[24:36] Jed van Niekerk:  So we put the start hours on. But there are these hours in between that are basically grayed out.
+[24:41] Jed van Niekerk:  They're unaccounted for. But it's fine.
+[24:44] Jed van Niekerk:  As long as we're aware and can say, "Look, well, the machine wasn't in our yard during that period."
+[24:49] Reinhard Zellhuber:  Okay. So but, but we would want to wait for the system to flag, like, on this unit, we've got missing hours, and it's unflagged.
+[24:58] Jed van Niekerk:  Correct.
+[24:59] Reinhard Zellhuber:  You can go in there and then just label it to say, "Look, it came back to Stony Brook."
+[25:03] Jed van Niekerk:  Correct.
+[25:03] Reinhard Zellhuber:  So then it's clear, and then maybe the flag goes away.
+[25:06] Jed van Niekerk:  Correct.
+[25:06] Reinhard Zellhuber:  Maybe only based on your role, like, you or Henk are the only people that can.
+[25:13] Jed van Niekerk:  Yes.
+[25:13] Reinhard Zellhuber:  Kind of, um, mark that section as being, "Okay. It's resolved. Don't flag it anymore because we've put a reason in there why there's a gap."
+[25:25] Reinhard Zellhuber:  Um.
+[25:25] Jed van Niekerk:  Yes.
+[25:26] Reinhard Zellhuber:  But okay. Good. That, that, that, that, that's all sounds fine.
+[25:29] Reinhard Zellhuber:  Okay. So that at least just handles 'cause they will like, in my mind, and it's just what you brought up, there's gonna be the times where there's some unaccounted-for time, and how do we handle it?
+[25:39] Jed van Niekerk:  Yes.
+[25:40] Reinhard Zellhuber:  And this is how we'll handle it. Um.
+[25:42] Jed van Niekerk:  Yes.
+[25:44] Reinhard Zellhuber:  The just going back to the hours, is it overkill to force a picture of the hours when someone presses start or end? Like, I'm just thinking you could do something where, like, the system reads the photo. So they just take a photo, and it reads from the photo.
+[26:05] Reinhard Zellhuber:  I'm just, like, exploring this.
+[26:07] Jed van Niekerk:  Yeah.
+[26:07] Reinhard Zellhuber:  I'm not suggesting it.
+[26:08] Jed van Niekerk:  No.
+[26:09] Reinhard Zellhuber:  It's obviously a little bit more work. But if they've got their phone, they could just take a picture. Then that's, like, that is, like, max evidence there of having the actual picture because then, yeah, we could just get the system to read the hours from their pre-populated, um, just throwing it out there as something to do because then you actually have, um.
+[26:31] Jed van Niekerk:  Yes. So the only thing there, Deano, so you've got site A and site B, two different foremen. So when it leaves site A, he's obviously taking a photo.
+[26:43] Jed van Niekerk:  But the guy at site B is waiting for this equipment to arrive. So he once it arrives at them, the hours have already started working.
+[26:51] Jed van Niekerk:  So when he takes it there, there's gonna be that accounted, that unaccounted-for period that he doesn't know because he's not really linked to the other guy. Um, so the only, like, currently, the only way we're doing it is Henk's basically taking job cards and taking the closing and then just using that as the opening.
+[27:12] Jed van Niekerk:  So it will, yeah, it's something I actually haven't really thought of.
+[27:15] Reinhard Zellhuber:  You could do it where you're just taking a picture. You don't have to take a picture for the opening, just the closing. Um, or no.
+[27:25] Reinhard Zellhuber:  But, but, but just, uh, yeah. So the guy that ends, he you only really care about the end hours because your start is the previous end.
+[27:38] Jed van Niekerk:  Yes.
+[27:38] Reinhard Zellhuber:  So you're just really tracking the end.
+[27:41] Jed van Niekerk:  Correct.
+[27:41] Reinhard Zellhuber:  It's just.
+[27:43] Jed van Niekerk:  Correct.
+[27:43] Reinhard Zellhuber:  That there's a problem when the thing comes home. Now you need, you know, when it there, you know.
+[27:52] Jed van Niekerk:  Mm-hmm.
+[27:53] Reinhard Zellhuber:  I'm just saying, when the guy presses start, um, it's almost like, why do you need the start button if you just if you're not.
+[28:02] Jed van Niekerk:  Yeah.
+[28:02] Reinhard Zellhuber:  You're not tracking anything there.
+[28:03] Jed van Niekerk:  Correct. Correct.
+[28:09] Reinhard Zellhuber:  You might just need to do something where you're quite disciplined with when the machine comes back or be able to, like, go in and edit something. I almost feel like you need a, you know so you only ever track an end time because the thing is sequential. So you always want a picture of the, the, like, an end time.
+[28:30] Reinhard Zellhuber:  And.
+[28:30] Jed van Niekerk:  Yeah.
+[28:31] Reinhard Zellhuber:  Um, but then you'd need to be disciplined when the thing now comes home for a few days, and then just before it leaves, you say, "Okay. It's ended." Oh, like, internal.
+[28:43] Jed van Niekerk:  Yeah. Yes.
+[28:44] Reinhard Zellhuber:  Or, like, custom or some other job where you have a, a, a.
+[28:48] Jed van Niekerk:  Mm-hmm.
+[28:48] Reinhard Zellhuber:  Yeah. But then the problem there is, you know, you might forget to do that. And then during the next job, then the guy takes the picture.
+[28:56] Reinhard Zellhuber:  But we could build something in where it's like, "Oh, we, you know, we forgot to do check the hours before it left." And then you go in, and it's, like, manually captured.
+[29:06] Reinhard Zellhuber:  But that would be, like, very limited to, like, admin staff where you could go in and but then at that point, you'd you've already lost yeah, you don't know what the hours are at that point already. Um.
+[29:18] Jed van Niekerk:  Yeah.
+[29:18] Reinhard Zellhuber:  If it's left, and you haven't tracked it.
+[29:20] Jed van Niekerk:  Yes.
+[29:21] Reinhard Zellhuber:  Yes.
+[29:22] Jed van Niekerk:  But so we would know that a job was allocated because the job would essentially it would have to start somewhere. So it, it would be able to you'd be able to start another job. So when it comes home, you automatically just start a job.
+[29:40] Jed van Niekerk:  But you can't have two jobs running at the same time for the same machine because then it has to be closed before you're allowed to start the next job.
+[29:47] Reinhard Zellhuber:  Yeah. Yeah.
+[29:49] Jed van Niekerk:  So that'll force that. I don't know what you're thinking there, Dean.
+[29:52] Reinhard Zellhuber:  Um, yeah.
+[29:56] Reinhard Zellhuber:  I'm thinking of the so, so when you close the, the job, um, yeah, if you were just disciplined about when that thing comes back to actually, yeah.
+[30:12] Reinhard Zellhuber:  But the start in this case is just it's more like a flag to say, "This is where it's at currently." Um, but yeah.
+[30:24] Reinhard Zellhuber:  But you can't start a new one before you end, end one, obviously. Yeah.
+[30:29] Jed van Niekerk:  Deano, what if we, um, do a start and a stop? So when the machine arrives on site, the guy does a start, and he does a stop, and so forth. You keep going like that.
+[30:40] Jed van Niekerk:  Now, the difference between, let's say, site A stop and site B start, there's gonna be one hour, two hours, three hours.
+[30:51] Reinhard Zellhuber:  Yes.
+[30:51] Jed van Niekerk:  What if you do like, when it gets to the sign-off or, like, Henk's stage, managerial stage, that it's only gonna calculate the actual start of that actual job when you arrive on site and the actual finish. It'll only calculate that. Then you have an option where you basically will select the like, it'll say, "Include, uh, include travel hours."
+[31:23] Reinhard Zellhuber:  Yeah. Yeah.
+[31:24] Jed van Niekerk:  Then it'll automatically know that model. It will go work out that travel hour for you.
+[31:30] Reinhard Zellhuber:  Well, it will work out the travel hour. If you press start, if you capture the, the start, then you know.
+[31:36] Jed van Niekerk:  Yes.
+[31:37] Reinhard Zellhuber:  The exact travel hours, which is great.
+[31:39] Jed van Niekerk:  Yes.
+[31:39] Reinhard Zellhuber:  What we what we could do is also have some type of threshold in there and, like, a flag because if you see it's two hours, okay, clearly.
+[31:47] Jed van Niekerk:  Yes.
+[31:47] Reinhard Zellhuber:  That makes sense. It traveled from here to here. But if you see, oh, there's, like, 10 hours here, that thing.
+[31:53] Jed van Niekerk:  Yes.
+[31:53] Reinhard Zellhuber:  Obviously went somewhere else.
+[31:55] Jed van Niekerk:  Correct.
+[31:55] Reinhard Zellhuber:  It didn't come straight here. So let me adjust or go and tweak some, some, some settings there.
+[32:01] Jed van Niekerk:  Correct.
+[32:02] Reinhard Zellhuber:  But yeah. So I think let's and I think it's nice just to also have a breakdown of, um.
+[32:08] Jed van Niekerk:  Yes.
+[32:09] Reinhard Zellhuber:  Of, like, 'cause if you're just capturing the end date, you don't know if the thing's actually busy because it might be still traveling to that location. But if you actually press start.
+[32:19] Jed van Niekerk:  Yes.
+[32:20] Reinhard Zellhuber:  And capture the hours, then what's nice is you also know the breakdown between the actual hours and the tr and the travel hours to get to the location.
+[32:28] Jed van Niekerk:  Correct.
+[32:28] Reinhard Zellhuber:  Yeah.
+[32:29] Jed van Niekerk:  Correct. Correct. Yeah.
+[32:31] Jed van Niekerk:  And then but we can have that option if we wanna include it. It'll always be there.
+[32:35] Jed van Niekerk:  It'll always be the travel hours. Um, and it yeah.
+[32:39] Jed van Niekerk:  And yeah, Deano, yeah. And it might even be it might even be zero.
+[32:46] Jed van Niekerk:  For example, an excavator doesn't travel. We load it on a truck.
+[32:50] Jed van Niekerk:  So.
+[32:50] Reinhard Zellhuber:  Interesting.
+[32:51] Jed van Niekerk:  When it gets onto the truck, the guy switches it off. When it gets to the next site, the guy switches on. The hours are still the same.
+[32:56] Jed van Niekerk:  It didn't travel. It moved by truck.
+[32:58] Jed van Niekerk:  So there are times where it will be zero.
+[33:01] Reinhard Zellhuber:  Nice. Yeah. And we can default it to, like, always include that time.
+[33:05] Reinhard Zellhuber:  Um.
+[33:06] Jed van Niekerk:  Yes.
+[33:06] Reinhard Zellhuber:  Uh, but at least, yeah, you, you it'll be clear to Henk or his ever drawing up the hours, like, what, what the, the, the sep the, the, the you know, the you know the two hours. Um.
+[33:18] Jed van Niekerk:  Yeah. Yeah.
+[33:19] Reinhard Zellhuber:  Uh. Yeah. That.
+[33:21] Jed van Niekerk:  Yeah.
+[33:21] Reinhard Zellhuber:  That's all good. What's your feeling just going back to the photo? Do you want that as something to look at later, or do you feel like that would be nice initially?
+[33:31] Reinhard Zellhuber:  Like, so instead of.
+[33:31] Jed van Niekerk:  So.
+[33:32] Reinhard Zellhuber:  Changing the time, you take a photo.
+[33:34] Jed van Niekerk:  Yeah. Deano, so, so maybe if I if I go onto this sort of next little avenue, so one of the features that the app will have is that the foreman is able to take a photo of a breakdown on the machine. So he can if there's an oil leak, he can 'cause we've got we currently got a, a workshop WhatsApp group.
+[33:53] Jed van Niekerk:  What's, what's tending to happen is that this WhatsApp group just grows and grows and grows. And if it's not urgent, Connor can actually lose it in the hundreds of messages.
+[34:02] Jed van Niekerk:  So if there's a tractor with an oil leak, the guy can go take a photo of the leak, and then however, it can notify Connor that such-and-such a vehicle, such-and-such a location. Um, and it's easy because the guy's already loaded that machine onto his profile onto that job.
+[34:18] Jed van Niekerk:  So it, it automatically gives you where it's at. Um, yeah.
+[34:22] Jed van Niekerk:  So the a camera feature is gonna be nice. So if you are thinking about that, we're gonna need some sort of camera feature for that for that anyway.
+[34:33] Jed van Niekerk:  Um, so yeah. I, I coming back to taking photos of the oil meter, I think it I think it definitely works, Deano.
+[34:40] Jed van Niekerk:  Um, it, it will el-eliminate it'll obviously make it a lot easier. Um, the guy's not gonna mis-type it.
+[34:46] Jed van Niekerk:  Um, so you're gonna be a lot more accurate with that. Yeah.
+[34:50] Jed van Niekerk:  If, if you feel that it's not gonna be an issue or even, Deano, if, if you wanna manually or camera, like, have two options, um, maybe, maybe the camera doesn't quite pick up the hours or.
+[35:03] Reinhard Zellhuber:  Yeah. Or the guy's camera's broken or the screen's.
+[35:07] Jed van Niekerk:  Correct.
+[35:07] Reinhard Zellhuber:  Or something like that, then, yeah.
+[35:08] Jed van Niekerk:  Yes.
+[35:09] Reinhard Zellhuber:  You need but we almost I feel like it would be nice to put, like, encourage the, the, the use of the camera. But if you can't, then you still have to just do it manually.
+[35:18] Jed van Niekerk:  Yes.
+[35:18] Reinhard Zellhuber:  But what we can also do is, like, also put a flag on a time when a time is captured if it doesn't have a photo. Then we also know.
+[35:27] Jed van Niekerk:  Yes.
+[35:28] Reinhard Zellhuber:  Like, okay, why is this guy he's doing times, but what's up with this camera or something like that.
+[35:34] Jed van Niekerk:  Yes.
+[35:34] Reinhard Zellhuber:  But yeah. Maybe it's, like, the primary way of doing it is the photo. But if you can't, then you can just do it manually.
+[35:43] Reinhard Zellhuber:  But then we'll mark it as this doesn't have, like it basically will be at a time with but it doesn't have, like, photo evidence, I should say.
+[35:52] Jed van Niekerk:  Yes.
+[35:52] Reinhard Zellhuber:  Yeah.
+[35:53] Jed van Niekerk:  Yeah. Yeah. Sure.
+[35:54] Jed van Niekerk:  Sure. And then when he selects machines, we obviously, Deano, some of these oils, they I mean, they're not some of them don't even have a metric.
+[36:02] Jed van Niekerk:  So they, they we've gotta just try to keep that whole process for them as simple as possible. So basically, they only view their jobs.
+[36:10] Jed van Niekerk:  They might have one, two, I doubt not more than three jobs that they'll be managing at once. So, um, quite keep it simple, uh, user-friendly.
+[36:23] Jed van Niekerk:  And then once they submit, once the job's done and they submit, it must just be removed from their profile. They mustn't don't even need to be able to view it.
+[36:31] Jed van Niekerk:  Like, you don't wanna make it too complex for them. Um.
+[36:34] Reinhard Zellhuber:  Yeah. W-we'll do similar to the current app where you'll have, like, multiple tabs. Or for them, like, they might not even have tabs, you know, based on your role.
+[36:45] Reinhard Zellhuber:  So what we'll do is, like, we can have, like, the same job list, and one is, like, a very stripped-down, simplified version for you, and then one is, like, for admins, and you see more detail there. So all that, that, that kind of thing is fine.
+[36:58] Reinhard Zellhuber:  Like, we can have views that are stripped down for, like, the operators.
+[37:02] Jed van Niekerk:  Yeah.
+[37:02] Reinhard Zellhuber:  Or the drivers where they're just seeing, um, uh, so, so just remind me. A, a driver let's call them drivers. If they, um are they so, so they can be linked to multiple machines.
+[37:22] Jed van Niekerk:  Yes. A driver can I, I think that drivers, Deano, it's more drivers can change from time to time. But I think drivers would be more or maybe possibly later capturing data where you can select a driver and say, like, what machines is this driver driven in his time here at Jedida?
+[37:42] Jed van Niekerk:  Um, so and that can change. So I don't really need it so much for, uh, like, the actual job.
+[37:53] Jed van Niekerk:  I just what's most important. Machine.
+[37:57] Jed van Niekerk:  The driver would, would just mean that he's maybe done some of this on a disk because that data will be obviously saved that at that time when that machine was working, it had that driver on it.
+[38:12] Reinhard Zellhuber:  S-sorry. Okay. So I was maybe misunderstanding.
+[38:14] Reinhard Zellhuber:  So the, the that simplified phone app is not for each driver. It's for, like, the.
+[38:19] Jed van Niekerk:  No.
+[38:20] Reinhard Zellhuber:  The manager of.
+[38:21] Jed van Niekerk:  Foreman. Foreman.
+[38:22] Reinhard Zellhuber:  Okay.
+[38:22] Jed van Niekerk:  Manager. Correct.
+[38:23] Reinhard Zellhuber:  For the foreman, he's gonna be responsible for, like, a set of machines. Um.
+[38:29] Jed van Niekerk:  Correct.
+[38:29] Reinhard Zellhuber:  And then he can go onto, um you know, when okay. So but, but then each for each job, the job is gonna have a like, the machine and then the driver. But those drivers are never logging into the system.
+[38:46] Reinhard Zellhuber:  I mean, they're are they ever.
+[38:47] Jed van Niekerk:  No.
+[38:47] Reinhard Zellhuber:  Gonna need access, like, a driver?
+[38:49] Jed van Niekerk:  No.
+[38:50] Reinhard Zellhuber:  No.
+[38:50] Jed van Niekerk:  No.
+[38:51] Reinhard Zellhuber:  Okay. We'll, we'll just need to see.
+[38:52] Jed van Niekerk:  Yes.
+[38:52] Reinhard Zellhuber:  If how we create those as if they're, like you know, like, currently, we have the bay operators. They're still considered as, like, users in the system, but they just don't have login access. So we might do the same just to follow that same type of pattern.
+[39:07] Reinhard Zellhuber:  But, um, yeah. That's fine.
+[39:09] Reinhard Zellhuber:  So the foreman, um, he yeah. We he's the he's the guy that's doing, um he's, he's the one capturing the hours.
+[39:18] Reinhard Zellhuber:  Um.
+[39:18] Jed van Niekerk:  Correct. Correct.
+[39:20] Reinhard Zellhuber:  Okay. Good.
+[39:22] Jed van Niekerk:  So I mean, obviously, the if, if he submits it, you automatically know that he was the foreman responsible. So all that is, is obviously being documented. Um, he, he basically the options he'll have, Deano, when he logs onto his app, it's like, um, start a new job or, like, it'll be like maintain job card, which, um or it'll be like report, uh, report to the workshop type of thing.
+[39:47] Jed van Niekerk:  Like, very simplified. Those are the three like, basically, the three options that he'll have.
+[39:53] Jed van Niekerk:  Um.
+[39:53] Reinhard Zellhuber:  Um.
+[39:54] Jed van Niekerk:  When he comes up as it's like it's not too complex for him. Like.
+[39:58] Reinhard Zellhuber:  Yeah.
+[39:58] Jed van Niekerk:  I'm just trying to really simplify it. So if it's, like, report problem, then it might just, like, then give him, like, two options. It might say breakdown, or it might say service due.
+[40:12] Jed van Niekerk:  Um.
+[40:12] Reinhard Zellhuber:  Yeah.
+[40:12] Jed van Niekerk:  Obviously, it, it all that's doing is just, like, trying to filter down to Connor, the workshop, what's going on. So for example, if it's a breakdown, it's it might just want a photo from him and maybe a block where he can type the problem. Um, and obviously, he'll just select the machine.
+[40:32] Reinhard Zellhuber:  Yeah. So.
+[40:32] Jed van Niekerk:  And then.
+[40:33] Reinhard Zellhuber:  And then sorry. Just going into that type of so, so a breakdown, that is attached to, like, a specific job, so you know when that breakdown happened.
+[40:43] Jed van Niekerk:  Right.
+[40:43] Reinhard Zellhuber:  And then on the job, you have the, the obviously, the machine and the driver associated to it. So through the job, you know, like, obviously, it's on this machine.
+[40:52] Jed van Niekerk:  Yes. Yes.
+[40:53] Reinhard Zellhuber:  Now, sorry. Do you ever have w-will there ever be multi, multiple machines on a job?
+[41:02] Jed van Niekerk:  Yeah.
+[41:03] Reinhard Zellhuber:  Okay.
+[41:03] Jed van Niekerk:  You can have from 1 to 12.
+[41:07] Reinhard Zellhuber:  Okay. Okay. So good.
+[41:09] Reinhard Zellhuber:  So when you say there's this breakdown, you, you would it's more like on this machine. Um, do you care about, like, when you log in a breakdown, like, you have the breakdown form, do you care to say it, it broke down on this job, or do you it's just the breakdown is just for a machine?
+[41:30] Reinhard Zellhuber:  You don't care, like I mean, it might have a date.
+[41:33] Jed van Niekerk:  Yes.
+[41:33] Reinhard Zellhuber:  Which you could then roughly tie to the job, or do you want it linked to the actual job itself?
+[41:40] Jed van Niekerk:  Deano, look, the reas the only reason Connor would wanna know what job it is, you it'll help him with the location. So.
+[41:48] Reinhard Zellhuber:  Okay.
+[41:48] Jed van Niekerk:  You know, the other option is if the if the foreman's got his location on, it can actually when he takes a photo, it's also giving you a location automatically. But he would or, or it will automatically know it's on such-and-such a farm. So it'll be on Scott Farm.
+[42:07] Jed van Niekerk:  And then and then Connor will know where Scott Farm is.
+[42:10] Reinhard Zellhuber:  Hmm. Okay. So.
+[42:12] Jed van Niekerk:  So.
+[42:14] Reinhard Zellhuber:  Yeah. I just wanna go back to that breakdown. So the breakdown at the moment is you can have one or many photos.
+[42:20] Reinhard Zellhuber:  You can have a description of the breakdown. It's linked to a single machine.
+[42:25] Reinhard Zellhuber:  And let's just say the, the job I don't think there's a reason not to include that. Then.
+[42:32] Jed van Niekerk:  Sure.
+[42:33] Reinhard Zellhuber:  Then do we want some type of chat within that job? Like, we do.
+[42:40] Jed van Niekerk:  Yes.
+[42:40] Reinhard Zellhuber:  Currently with the feedback on a job within the op site where people can add their notes there, and you'd know.
+[42:48] Jed van Niekerk:  Yeah.
+[42:48] Reinhard Zellhuber:  Like, a, a chat within that.
+[42:50] Jed van Niekerk:  Yes. Yeah. So I, I think I think we must just make sure that, like, the job cards and workshop reporting is almost on two separate like, they're sort of separate departments.
+[43:03] Jed van Niekerk:  But if I want to log onto a certain machine, I wanna be able to see what was ever reported about that machine and has it been solved. So yes, there will be, like, a report.
+[43:17] Jed van Niekerk:  Um, and then Connor must say he must either tick solved.
+[43:23] Reinhard Zellhuber:  Yeah.
+[43:23] Jed van Niekerk:  Or he must have different options or, or in working or something like that. Um, and then he can make a note there, um, found, uh, hose clamp was faulty, replaced hose clamp, uh, problem sorted.
+[43:38] Reinhard Zellhuber:  Yeah.
+[43:38] Jed van Niekerk:  And then basically, that job, it'll always be on the history of that machine so that we always can refer back to it. Um, and it also helps to see how many jobs are outstanding for that machine. So for example, if it's a minor problem, let's say the globe or the or the windscreen wiper, the tractor's still working.
+[43:57] Jed van Niekerk:  It's not an urgent breakdown. But those, those are the jobs that are getting lost on the WhatsApp group because they're not urgent, so you never really deal with it.
+[44:06] Jed van Niekerk:  But the foreman, if he logs it, at least it's saved, and it's on the system. So when that vehicle eventually gets back to the workshop, Connor can click on that vehicle and pulls up all the issues that have been reported on that vehicle.
+[44:20] Reinhard Zellhuber:  So just, um.
+[44:21] Jed van Niekerk:  Yeah.
+[44:21] Reinhard Zellhuber:  On that note.
+[44:22] Jed van Niekerk:  Yeah.
+[44:23] Reinhard Zellhuber:  If you when you set up your product or your machine or whatever, do you want to add in service intervals onto that so that it'll also come up as an issue automatically? So the, the hydraulic fluid needs to be replaced at X amount of hours, then it automatically opens an issue for Connor to know, "I need to go out and service this machine."
+[44:41] Jed van Niekerk:  Yes.
+[44:41] Reinhard Zellhuber:  Or how do you guys manage that?
+[44:43] Jed van Niekerk:  So, so if it's a service so every, every vehicle has a service sticker on it on the dash.
+[44:49] Reinhard Zellhuber:  Hmm.
+[44:49] Jed van Niekerk:  When it reaches, for example, 3,000 hours, what the current procedure is that the foreman on site puts a message on the group to say, "Such-and-such a vehicle, the next service is at 3,000 hours. We've got 20 hours to go." That's the that's, like, the general way we're doing it now.
+[45:08] Jed van Niekerk:  Then Connor gets the filters ready. Then when it reaches service, the foreman then puts it on again and says, "Okay.
+[45:13] Jed van Niekerk:  This vehicle's reached service." Connor, by then, has all the filters.
+[45:16] Jed van Niekerk:  He sends the mechanic out. He does the service.
+[45:18] Jed van Niekerk:  We have a book, a service book, where the service gets then recorded into a service book. So I think we must split service and breakdowns.
+[45:28] Reinhard Zellhuber:  Yeah.
+[45:29] Jed van Niekerk:  'Cause a service is a is a continual procedure that happens from time to time, and it yeah. And then a breakdown is obviously different. It's, it's out of the norm where service is, like, a normal function.
+[45:42] Jed van Niekerk:  And we have a book that we go by. So the mechanic takes the file.
+[45:46] Jed van Niekerk:  He fills in the file. He says he does he did all these filters.
+[45:49] Jed van Niekerk:  He did all these oils. Service complete.
+[45:52] Jed van Niekerk:  But if there was a problem reported that's got nothing to do with the service, then obviously, when he does the service, he can just fix the reported problem at the same time.
+[46:04] Reinhard Zellhuber:  Yeah. But. But.
+[46:05] Jed van Niekerk:  I th I think definitely makes sense to build that the servicing, um, management side of it into the app as well.
+[46:13] Reinhard Zellhuber:  Yeah.
+[46:16] Jed van Niekerk:  Um, yeah. Deano, so basically, then Connor can be alerted. Obviously, the WhatsApp group, it, it goes all day.
+[46:22] Jed van Niekerk:  I'm on the group as well, but it's going all day. So Connor will obviously need to know if there's an issue.
+[46:30] Jed van Niekerk:  Like, he might have to get notified. Like, you need to check the group, you know.
+[46:37] Reinhard Zellhuber:  Y-yeah. So ma so then going back, like, currently on the JedOps app, we have, like, that activity, which at the moment, like, it'll just show a little orange dot if there's, like, unread activity stuff within that you haven't yet seen. So we have very sim have a very basic, like, when last did you look at the activity page, and then we know if there's something new since then.
+[47:03] Reinhard Zellhuber:  Like, do we want.
+[47:04] Jed van Niekerk:  Okay.
+[47:04] Reinhard Zellhuber:  Something more, um, s um, uh, like, more involved than that where we actually tie into the phone's notification system.
+[47:19] Reinhard Zellhuber:  So a notification actually pops up on the phone. Um, is that or, or are you okay with people just you know, 'cause right now on WhatsApp, that's gonna ping you even when you don't have the app open.
+[47:33] Reinhard Zellhuber:  Um, is it okay for people to have to manually go into the app to see, like, any new stuff that happened?
+[47:42] Jed van Niekerk:  You see, if a guy's got a breakdown, and it's urgent, and he's standing next to the road, you, you need Connor to be alerted immediately to the problem. I just I'm trying to avoid guys, like, having to double, like, report it on the app, then still WhatsApp or try call Connor.
+[47:56] Reinhard Zellhuber:  Yeah.
+[47:56] Jed van Niekerk:  So he needs to be pinged, "Hey, something's on the group. Check it out." So there must be a notification.
+[48:03] Reinhard Zellhuber:  Would the, um would the app be able to WhatsApp the group the exact message that was typed out with the photos and just forward that onto WhatsApp? So the, the source of tr or where you fill the information is on the app, but it just gets forwarded onto WhatsApp.
+[48:18] Jed van Niekerk:  Yeah.
+[48:18] Reinhard Zellhuber:  As, like.
+[48:20] Jed van Niekerk:  S-so maybe what I would actually suggest there is that I was gonna push back there because then people might be tempted to respond there. But what you could have is a new, purely broadcasting WhatsApp channel that people can't respond to so they only get notified. So we notify through WhatsApp, and it gives a quick summary there.
+[48:42] Jed van Niekerk:  Then people go into the app and do what, like, talk or update via the app. Um, but there's if it just yeah.
+[48:52] Jed van Niekerk:  You wouldn't want people to get receive it on WhatsApp and then start chatting below that thing now. But if it's purely a broadcast, which is, like, a read-only for most people other than, like, one the admin or whatever it is or the channel, like, we could do something like that.
+[49:07] Jed van Niekerk:  If we do that, then we can then we don't have to worry about doing a whole, like, dedicated notification system because we're basically using WhatsApp to, to do our notifications. I mean, that can work.
+[49:22] Jed van Niekerk:  I don't know how you feel about that.
+[49:24] Reinhard Zellhuber:  Yeah.
+[49:25] Jed van Niekerk:  I'm happy, Deano. Sounds good. Yeah.
+[49:29] Reinhard Zellhuber:  Okay. So instead of building out a full-on notification system, like, on mobile, what we will do is there'll be specific, um, actions that will then send, um, a summary to a WhatsApp group.
+[49:54] Reinhard Zellhuber:  So, like, if you click start the job, like, that one, we don't have to like, okay. So you would be able to decide.
+[50:02] Reinhard Zellhuber:  But obviously, you don't want now every single action you perform on the thing to send a notification to WhatsApp. But there will be a subset of actions.
+[50:12] Reinhard Zellhuber:  The clear one is breakdown, new breakdown.
+[50:16] Jed van Niekerk:  Yeah.
+[50:16] Reinhard Zellhuber:  That the minute someone adds that in, we broadcast that to the, the WhatsApp channel.
+[50:21] Jed van Niekerk:  Yeah.
+[50:22] Reinhard Zellhuber:  Um, but when it's, like, I don't know, like, someone ends the job and or, like, changes the driver, like, there's certain like, obviously, you'll be able to do quite a few things. Not everything is, is broadcast, but we'll be able to say I mean, it'll be dynamic in that well, not d-dynamic, but I'll, I'll build it so that it's easy for you to say, "Hey, include this. When someone does this, let's add that to the broadcast."
+[50:48] Jed van Niekerk:  Mm-hmm.
+[50:48] Reinhard Zellhuber:  That type of thing. Yeah.
+[50:50] Jed van Niekerk:  Yeah.
+[50:50] Reinhard Zellhuber:  We'll, we'll keep it thin initially and then grow it. I mean, you just gotta be careful that that doesn't become the thing that people just want to use the whole time. But, um, but I think it that will be easier than doing the mobile notification thing, I think, um, because you basically you know, the whole red you know, otherwise, I need to build in, you know, like, the double the, the, the blue ticks and two ticks and all this kind of stuff.
+[51:21] Reinhard Zellhuber:  Like, I now we need to track that. So there's a whole lot of stuff you're getting for free by using WhatsApp to do the notifications.
+[51:29] Reinhard Zellhuber:  Um, and at least through WhatsApp, you can see who's read it, who hasn't. Otherwise, like, that whole that whole system needs to be built, which is not small.
+[51:41] Jed van Niekerk:  Yeah. No, I'm, I'm happy, Deano. That'll be fine.
+[51:44] Jed van Niekerk:  That's honest.
+[51:47] Reinhard Zellhuber:  Okay. Um, good. Um, so from my side, like, some of the, the, the big decision to make, and it needs to be made before we really do anything, is to decide whether or not we build this into the current JedOps app.
+[52:09] Reinhard Zellhuber:  And I'm not saying it would live along uh, like, be side by side, but you would switch modes, for example. So you would you would either be in the JedOps mode or the Jed contracting mode, and stuff wouldn't be, um, shared.
+[52:29] Reinhard Zellhuber:  Or there might be one or two things shared, like maybe your list of users and customers, for example, but everything else and we could even, like, change colors so you know what mode you're in. Um, and the same idea on the app.
+[52:42] Reinhard Zellhuber:  So you would switch modes in the app. What we could also do is on the use when you set up a user, you could say, "This person only is allowed to use the contracting app," which means that they don't even see the switcher.
+[52:55] Reinhard Zellhuber:  So from their point of view, this, this is all the app does because that we only give them access to the one mode. Okay?
+[53:03] Reinhard Zellhuber:  Now, there's some benefits to that, which is, like, we don't have to manage multiple, multiple services, multiple databases. Um, but then it is not potentially overloading stuff.
+[53:15] Reinhard Zellhuber:  And these are two separate businesses. You know, what happens if there's, like, a real split in the businesses one day?
+[53:23] Reinhard Zellhuber:  Um, how do you like, how do you deal with that? Um, so there are pros and cons.
+[53:30] Reinhard Zellhuber:  The other option is it's completely standalone. It's its own thing.
+[53:34] Reinhard Zellhuber:  It's got its own services, own login details, own set of users, own set of customers, own mobile app. And that is quite nice in that it's, it's its own thing.
+[53:48] Reinhard Zellhuber:  But then the drawbacks there are quite big in that you're now managing you've, like, doubled the amount of code. Not doubled, but you're close to doubling the amount of code that you're maintaining now.
+[54:02] Reinhard Zellhuber:  It's like yeah. It's just, you know, there are two mobile apps now that we need to deploy.
+[54:09] Reinhard Zellhuber:  Um, and, uh, yeah. I've been really going back and forth and trying to think through, like, what are the commonalities between what you've asked for now with the contracting app versus the operations app.
+[54:27] Reinhard Zellhuber:  Like, at the moment, the only things that feel like they are shared is potentially some of the user logins. And it's, it's actually just some.
+[54:37] Reinhard Zellhuber:  It's really just probably, like, two or three people that I mean, I don't know how many people, like, would, would need access to both. Um, but it doesn't feel like I feel majority of the users would be on one or the other.
+[54:49] Reinhard Zellhuber:  So even that is limited. And then potentially customers, um, like, you know, maybe there's the same customer, um, across the two businesses.
+[55:02] Reinhard Zellhuber:  The other thing that I thought might be nice to tie together is, you know, on the operations side, uh, we have that the concept of units. So all, all the stuff built there is, uh, uh, recorded as a unit, and it has its own VIN and whatever else.
+[55:19] Reinhard Zellhuber:  So we know about this particular machine. On the contracting side, you also have this concept of a unit or a machine.
+[55:26] Reinhard Zellhuber:  Um, and, you know, clearly, some of those units on the contracting side are coming over to the, um, uh, operations side for repairs and things like that. So you could in that way, like, maybe, you know, the units that we're building and then the units on the operation on the contracting side are, like, the same.
+[55:51] Reinhard Zellhuber:  It's, it's just a machine. And they it could then more be easily tracked on the operations side.
+[56:00] Reinhard Zellhuber:  Like, if so if, if, like, some work is done on it, you would know, "Oh, it's this machine that contracting uses." Um, but outside of that, I'm really not hearing a, a lot of, um, things that overlap out of out of those kind of three things.
+[56:18] Reinhard Zellhuber:  Is do you guys have any thoughts there?
+[56:26] Jed van Niekerk:  Yeah. Deano, yeah. I agree.
+[56:28] Jed van Niekerk:  That's very they're two very different businesses. Um, yeah.
+[56:32] Jed van Niekerk:  My, my thought was just if there is a split later on you know, we are trying to split the businesses. We're trying to split them.
+[56:42] Jed van Niekerk:  And we have even, even just on the physically on the premises, yeah, we-we're, we're splitting them slowly. Uh.
+[56:52] Dean van Niekerk:  So just on that split. So Dean and I had a, a quite a not a long chat, but we chatted on Friday, um, about that. And we could just copy and paste the code from, uh if the if they are the same, copy and paste that code over, send it to the new client, but then just delete, um, or just hide the JedOps side.
+[57:17] Jed van Niekerk:  Mm-hmm.
+[57:17] Dean van Niekerk:  And delete all the data on that side. So it, it wouldn't be you would still be able to transfer for over the machines. You'd be able to transfer over the customer data, like, all, all of the history and all that sort of thing on the Jed on ops side.
+[57:29] Dean van Niekerk:  Um, but you would just hide the.
+[57:31] Jed van Niekerk:  Mm-hmm.
+[57:31] Dean van Niekerk:  The actual JedOps side.
+[57:33] Jed van Niekerk:  Okay.
+[57:33] Dean van Niekerk:  So it would it would be a, a job, but it's not it's not impossible to do as far as I understand, Dean.
+[57:40] Jed van Niekerk:  Uh, yeah. I mean, that's kind of what we discussed, but I'm still so torn on this. Like, I literally don't know.
+[57:45] Jed van Niekerk:  But what's been great now is that we've got some good spec. Um, you know, all of everything you've said is recorded.
+[57:51] Jed van Niekerk:  So I'm I what I'm gonna do is try and motivate for both sides and, um, and pros and cons of either side. But, but it-it's the decision we really must make sure we are comfortable with as we go forward.
+[58:10] Jed van Niekerk:  Um, I don't wanna do anything until we decide that. And I'm, I'm to be honest, I'm undecided.
+[58:14] Jed van Niekerk:  Like, there are times that I'm like, you know, it's a lot less it's like, as an example, like, in the current system, um, we know how, like, the styling works, and we know how to generate PDFs. And, like, there's all code that knows how to do certain things.
+[58:34] Jed van Niekerk:  Now, if we make it separate, that all needs to be duplicated and copied and, and then say, like, we, we have a big fix on the ops side with how we render PDFs. Now, oh, we need to fix that on the other side as well because that bug is gonna most probably be the same.
+[58:51] Jed van Niekerk:  So it's like you're dealing with one code base.
+[58:56] Jed van Niekerk:  You know, your deployments are, like it's like if you if someone else needs to take over from me, like, to give them one repository, the current one is complex as, as it is. Like, now, now it's handled two separate things that have their own 'cause don't forget we've got an A like, an API service, a web front-end service, a database, somewhere we will store files.
+[59:20] Jed van Niekerk:  You know, we've got the, the where we put the source code and how the source code gets compiled and built and sent to the hosting services. You know, we've got do like, domain names and DNS and Cloudflare and it's like a massive thing to so we're doubling that, okay, to have the other thing.
+[59:39] Jed van Niekerk:  Mm-hmm.
+[59:40] Reinhard Zellhuber:  So it's a lot. Um, it's you're paying a lot. So it's like you really need to know, "Okay.
+[59:47] Reinhard Zellhuber:  We must do that." I am a little bit it, it is less work.
+[59:53] Reinhard Zellhuber:  It feels a little bit messy to chuck it all in one, but it is ultimately will be less work. Um, and, uh, but it would need to be designed in a way that if there is a, a, a full split between the two businesses, that we have a strategy to on, on how to handle that.
+[60:18] Reinhard Zellhuber:  But as Reino said, like, um, if the app can handle, for example, someone logging in and only having access to the one side 'cause most users are gonna have that type of thing set up, then if you ever did the split, well, the app knows how to sp-split the two modes up and have only you know what I mean? So, like, you could just say, "Okay.
+[60:40] Reinhard Zellhuber:  When it splits, you just effectively make everyone only have access to the one app." You've got a whole lot of dead code then.
+[60:48] Reinhard Zellhuber:  You can clean out data that's, that's irrelevant. But that can work because the system is already set up to have those things, like, from a user viewing point of view, completely separate.
+[61:03] Jed van Niekerk:  Mm-hmm.
+[61:04] Reinhard Zellhuber:  But the code base now is also gonna, like, mushroom. And the amount of stuff we're doing and I've gotta be careful that, you know obviously, we do wanna share some stuff, but there's some stuff we don't wanna share. Like, you know, now we have jobs on operations, and we have jobs on contracting.
+[61:24] Reinhard Zellhuber:  Those are both jobs, but they are completely different things. You know, we're gonna have units, production units on this side, and we're gonna have machine units on this side.
+[61:33] Reinhard Zellhuber:  They it's kind of the same thing, but they're actually different. You know, so we're, like, dealing with similar concepts, but they must be completely se-separated within the code.
+[61:47] Jed van Niekerk:  You know, yeah. For me, I think this more comes down to you.
+[61:51] Reinhard Zellhuber:  Mm-hmm.
+[61:51] Jed van Niekerk:  Like, in terms of how you feel. I don't like, the, the splitting thing I mean, it may never happen. It might continue like this for 20 years, you know?
+[62:02] Jed van Niekerk:  Then it's fine. You know, so it, it could never happen, the split.
+[62:07] Jed van Niekerk:  We don't you know, so I don't wanna try and plan on something thinking it'll happen if it's if I'm not really I don't even know. So I think as long as there is an exit strategy if, if one had to, for example, sell the contracting off.
+[62:23] Jed van Niekerk:  Um, not that there not that you'd sell the business. There's no real value in it anyway.
+[62:28] Jed van Niekerk:  So you'd probably just discontinue that part of the app. Um, but no, I Deano, I think at the end of it, it comes down to you.
+[62:36] Jed van Niekerk:  I think as long as whatever your decision is, as long as we just get it to work accurately, I what for me, that's obviously a priority.
+[62:47] Reinhard Zellhuber:  Yeah. And to.
+[62:48] Jed van Niekerk:  Yeah.
+[62:49] Reinhard Zellhuber:  And, and you still want these things to so let-let's just be clear. You don't want to have an interface where you're seeing those things mixed. Are you you want these things to be very separated?
+[63:01] Jed van Niekerk:  I, I want them to be split, Deo-Deano, yeah. They're very I mean, they're different staff. It's different business.
+[63:08] Jed van Niekerk:  They're very different businesses.
+[63:10] Reinhard Zellhuber:  Yeah.
+[63:10] Jed van Niekerk:  Yeah.
+[63:11] Reinhard Zellhuber:  Okay.
+[63:11] Jed van Niekerk:  So I and, and it's nice in my head to split them as well. I, I don't want there to be, like, a gray area between them. Yeah.
+[63:20] Reinhard Zellhuber:  How many people would realistically have access to both modes, roughly?
+[63:26] Jed van Niekerk:  Oh, just, just me and Reino. Well, I mean, Reino just in terms of, like, an assistance.
+[63:32] Reinhard Zellhuber:  Mm-hmm.
+[63:32] Jed van Niekerk:  Monitoring, but, but not so much using it, but more just as an assistant if I need something done. But just us two, Deano, and then Karen possibly just on the invoicing side.
+[63:45] Reinhard Zellhuber:  Okay. So it's very minimal people that actually have access to both 'cause as you're saying.
+[63:51] Jed van Niekerk:  Yeah.
+[63:51] Reinhard Zellhuber:  They're completely separate staff.
+[63:55] Jed van Niekerk:  Yeah.
+[63:55] Reinhard Zellhuber:  You don't really have staff I mean, each the staff is employed by one of the two businesses but not both.
+[64:01] Jed van Niekerk:  Mm-hmm.
+[64:02] Reinhard Zellhuber:  Um, yeah.
+[64:03] Jed van Niekerk:  Yeah. Yeah. Yeah.
+[64:06] Reinhard Zellhuber:  Okay. Good. Um, I've definitely got enough to start speccing things out.
+[64:14] Reinhard Zellhuber:  Um, firstly, I'm gonna decide where, where it's gonna to live. But from your point of view, it's you're not really gonna see the difference, you know?
+[64:27] Reinhard Zellhuber:  I mean, that-that's the idea. Like, it's gonna be a compe it's gonna you're gonna have, like, two apps.
+[64:33] Reinhard Zellhuber:  Um, the only difference would be, like, the one would have a different URL, so you browse to a different URL, and you have a different login. And the other one would be you just switch in the top left to, to the different app, different mode.
+[64:45] Jed van Niekerk:  Yeah.
+[64:45] Reinhard Zellhuber:  But.
+[64:46] Jed van Niekerk:  Okay.
+[64:47] Reinhard Zellhuber:  But so from your point of view, that decision isn't gonna have really any impact when it comes to how it'll look and feel and work ultimately.
+[64:57] Jed van Niekerk:  Yes. Okay.
+[64:58] Reinhard Zellhuber:  Um, but we'll.
+[64:59] Jed van Niekerk:  Yeah.
+[64:59] Reinhard Zellhuber:  We'll get that decided. And then the next thing is to, yeah, make sure that we, um, do they say, like, a rough spec, and I wanna just get agreement on the schema. So, like, these are the entities.
+[65:17] Reinhard Zellhuber:  Like, we have a, a job entity. We have, like, a fleet, and we have a machine, and we have a driver.
+[65:24] Reinhard Zellhuber:  And these are the diff roughly the different roles. And, you know, on a job, these are the things that we are gonna capture.
+[65:31] Reinhard Zellhuber:  Like, so not what it'll look like, but what I if we can get close, not, like, obviously comprehensive, but if we can agree on some of the, the core fields within the schema, um, that'll be a nice place. Okay.
+[65:48] Reinhard Zellhuber:  Once we agree on that, then we can slowly start building stuff out.
+[65:52] Jed van Niekerk:  Okay. Yeah.
+[65:57] Reinhard Zellhuber:  Um, but.
+[65:57] Jed van Niekerk:  Yeah.
+[65:59] Reinhard Zellhuber:  Yeah.
+[65:59] Jed van Niekerk:  Yeah. This will be.
+[66:00] Reinhard Zellhuber:  Okay.
+[66:00] Jed van Niekerk:  Yeah. This will be this will be nice. There will be also, like earlier, you mentioned about, like, location.
+[66:06] Jed van Niekerk:  I mean, there are definitely some interesting things we can do there, I'm sure. Like, um, you know, when someone logs a breakdown, um, from the phone, we could just include, like, the GPS coordinates of where that thing was logged.
+[66:21] Jed van Niekerk:  Um, obviously, like, someone might log a breakdown and not be right there next to the, the machine.
+[66:26] Reinhard Zellhuber:  Yeah.
+[66:26] Jed van Niekerk:  But there, there's some nice things about having, like, logging stuff through the app, you know, by, like, using the camera or using the GPS and things like that.
+[66:35] Reinhard Zellhuber:  Yeah.
+[66:35] Jed van Niekerk:  Yeah.
+[66:36] Reinhard Zellhuber:  Yeah.
+[66:36] Jed van Niekerk:  And then also, Deano, just as a, a the guys on the on the workshop group also use a lot of voice notes. So instead of typing it, they'll take the phone and just say, "Okay. I'm standing here with the machine body part.
+[66:47] Jed van Niekerk:  This is what's wrong with it." So I don't know if that's also a possibility.
+[66:51] Jed van Niekerk:  Um.
+[66:52] Reinhard Zellhuber:  Uh, d uh, definitely. So, um, I mean, there are kind of two options there. One is to just save the audio file, um, like WhatsApp does it, or else what we can rather do, which I feel is most probably better, is just to do some we can use, um, AI to just transcribe the audio file into text.
+[67:17] Jed van Niekerk:  Yeah.
+[67:17] Reinhard Zellhuber:  So they.
+[67:18] Jed van Niekerk:  Yeah.
+[67:18] Reinhard Zellhuber:  T-t-talk, they talk, talk, talk, press stop, and then in the i-in the box shows everything they've said. Then they like to send the consent.
+[67:26] Jed van Niekerk:  Yeah.
+[67:26] Reinhard Zellhuber:  The nice thing with the audio transcribing via AI is that it can often, like, clean up the text. So if you, like, say, um, uh, uh it can, like, actually strip all of that and just make it.
+[67:41] Jed van Niekerk:  Okay.
+[67:41] Reinhard Zellhuber:  And, like, all kind of voice-to-text would include all of those kind of.
+[67:46] Jed van Niekerk:  Yes. Okay.
+[67:47] Reinhard Zellhuber:  Um, uh, like, ums and ahs, but we can clean it up and get it, like, at least, like, um, uh.
+[67:56] Jed van Niekerk:  The only issue there, Dean, would be I don't know how and you, you'd have to answer the question here. It's I don't know how well-trained the AI model is on, like, African languages, um, because and also, like, the local dialects 'cause I think it is.
+[68:10] Reinhard Zellhuber:  Yeah.
+[68:10] Jed van Niekerk:  There are small changes that it might incorrectly transcribe, um, for, like, this area's Sudur or Sudur or, or so, whatever.
+[68:20] Reinhard Zellhuber:  Yeah. Um.
+[68:21] Jed van Niekerk:  Yeah.
+[68:22] Reinhard Zellhuber:  You see, they did.
+[68:25] Jed van Niekerk:  Yeah.
+[68:25] Reinhard Zellhuber:  Yeah. So what's nice with these AIs is, like, often, if you give it you don't just give it text. Uh, I mean, a voice note and say, "Transcribe it."
+[68:34] Reinhard Zellhuber:  You can give it a voice note and say, "This is the driver. This is his background.
+[68:40] Reinhard Zellhuber:  And then these are, like, frequently used words." Um, and it might take some time, but we could then tweak that prompt to then get it very, very close, you know?
+[68:53] Reinhard Zellhuber:  So we could also, like, say, like, within the prompt, like, "These are all the drivers. These are all the people within the system."
+[68:59] Reinhard Zellhuber:  The person might be mentioning their name if you're struggling to, like, work out what word it is. Um, so, uh, yeah.
+[69:09] Reinhard Zellhuber:  But I still think i-i-it w it basically, what I'm saying is we can tune it to get better. Um.
+[69:16] Jed van Niekerk:  Okay.
+[69:17] Reinhard Zellhuber:  And, uh, and then what we'll do is also just this might be completely overkill, but as an example, we can transcribe, paste the text into the input field, okay, save that, and then a person can go and edit it. If we pick up that the person changed it, then we have a diff between what the AI wrote and what the actual, um.
+[69:48] Jed van Niekerk:  Mm-hmm.
+[69:48] Reinhard Zellhuber:  What he actually said.
+[69:50] Jed van Niekerk:  Right.
+[69:50] Reinhard Zellhuber:  Then we can basically use that and say when we pass future stuff through, we can say, "Look. These are some common fixes that users have made. Don't make the same mistake."
+[70:03] Jed van Niekerk:  Mm-hmm.
+[70:04] Reinhard Zellhuber:  And then as peo then it just gets better and better the more people use it 'cause then we keep passing back stuff to say we build up that library of, "Don't make this mistake again." And then it will actually it'll just get better. Yeah.
+[70:18] Jed van Niekerk:  Okay. Okay. Excellent, Deano.
+[70:30] Jed van Niekerk:  Yeah. And then that, that job obviously, Deano, now, that would just be an automated job number.
+[70:35] Jed van Niekerk:  When that foreman starts a job, it would obviously just allocate a job number.
+[70:40] Reinhard Zellhuber:  Yeah. Same as operations. It'll just be automated.
+[70:44] Reinhard Zellhuber:  Maybe we can have a slightly different format if you want. So it's not, like, confused with, with ops.
+[70:51] Reinhard Zellhuber:  Maybe.
+[70:52] Jed van Niekerk:  Yeah.
+[70:52] Reinhard Zellhuber:  I don't know, job C or something like that. I don't know. But, um.
+[70:57] Jed van Niekerk:  Yeah.
+[70:58] Reinhard Zellhuber:  Yeah. We, we it can, like, increment as, as we do on operations. Um.
+[71:03] Jed van Niekerk:  Okay.
+[71:03] Reinhard Zellhuber:  The one thing that I just have in my notes here is that do we care about any, like, planning or forecasting? So everything we do now is, like, everything is, is historical. So you can see this machine and everything that it's done in the past, but there's nothing in the system currently that is saying, "Okay.
+[71:28] Reinhard Zellhuber:  This, this is what's up next for this machine."
+[71:33] Jed van Niekerk:  Deano, yes. It would be nice. So currently, like, with future work, the way we're doing it, we've just got a Google Sheet where me and Hank just if, if I get a call, I write on there, "Such-and-such a farmer needs 2Ks of roads graveled," and I'll just load it on there.
+[71:49] Jed van Niekerk:  And then and then as we work through it, I'll just tick it off the list. So there is no real that's the only way we're doing it currently.
+[71:56] Jed van Niekerk:  But I think if you do plan, I'd it's not something that'd be necessary to have to do now, but I think just keep that in your mind that at some stage, it would be nice to you see, the problem is, is it gets so tricky because.
+[72:09] Reinhard Zellhuber:  Mm-hmm.
+[72:11] Jed van Niekerk:  It's not like one mach so remember, these machines are, like, crisscrossing each other the whole time. So, like, you've got jobs and machines. Machines can go to any jobs.
+[72:23] Jed van Niekerk:  They, they don't work together. They can crisscross.
+[72:27] Jed van Niekerk:  They're on the move the whole time. And then there's also timing involved where, yes, you might need this machine.
+[72:33] Jed van Niekerk:  It is available for this job, but it needs tip trailers. But the trailers are still on another job, and it's still another two weeks.
+[72:39] Jed van Niekerk:  So the planning of it is almost an impossibility to try to plan because you don't know exactly when that job will be done. A farmer tells you, "You, you need the machines for another week," and that drags on for another three weeks because he found more work to do.
+[72:52] Jed van Niekerk:  So, uh, it's not for me it's, it's not it's not a problem. Our planning is fine.
+[72:58] Jed van Niekerk:  We, we, we plan well. And the planning's continually changing, like, all the time.
+[73:05] Reinhard Zellhuber:  Yeah. It feels like maintaining the yeah. Because the planning is changing the whole time, i-i yeah.
+[73:13] Reinhard Zellhuber:  It's almost easier to do it in that spreadsheet. Like, maybe what we can do later on is bring that spreadsheet the way you work in the spreadsheet to b bring that spreadsheet into the app itself.
+[73:26] Reinhard Zellhuber:  So it's not a job, but it's just your future planning. And then on one of those, you can say, "Okay.
+[73:31] Reinhard Zellhuber:  Start this one." But it's not.
+[73:33] Jed van Niekerk:  Yes.
+[73:33] Reinhard Zellhuber:  Like a job yet, but it's a way for you to ma eas it's like basically your spreadsheet in, in the app.
+[73:39] Jed van Niekerk:  Yes.
+[73:40] Reinhard Zellhuber:  But, but for now, let's okay. So now, I, I would say, as a start, let's just do you start a job, um, and you give it the date or set the date start date as today, but you can change it.
+[73:56] Jed van Niekerk:  Yeah.
+[73:57] Reinhard Zellhuber:  I suppose then, like, what how do you know when a job is finished? Because, uh, it, it must just be marked as finished. So there can be an end job, and then, um, you click end, and then it can give, like, a it'll set today's date, but you can change it.
+[74:18] Jed van Niekerk:  Yeah. So, so remember, like, when a guy's on a job, machines come and go. So he might start with three machines, but next week, another two machines might arrive.
+[74:28] Jed van Niekerk:  So those particular machines start to that different dates, although the job initially started at such a date.
+[74:34] Reinhard Zellhuber:  Yeah.
+[74:34] Jed van Niekerk:  And the job ended at a date. Certain machines came and went during that time. So they'll have all s different dates there, start dates.
+[74:43] Jed van Niekerk:  Then I think once he's done, once he's complete the job, and they've driven off the farm, and the job's done, we've finished, he can then either click submit or, or end job or whatever the case is.
+[74:56] Reinhard Zellhuber:  Okay. End job.
+[74:57] Jed van Niekerk:  Yeah.
+[74:57] Reinhard Zellhuber:  Okay. Th-th-th sorry. That's when it then goes into the review.
+[75:00] Reinhard Zellhuber:  So it'll then go to Hank, um.
+[75:02] Jed van Niekerk:  Go to Hank. Yeah.
+[75:03] Reinhard Zellhuber:  Yeah.
+[75:03] Jed van Niekerk:  Um, so if we rather than it on, on JetOps, we've got this, like, um, almost like a canva. It's not really a Gantt chart, but we've got this chart, and we're actually tracking the number of days. If in JetConOps, we just literally list the jobs.
+[75:18] Jed van Niekerk:  So you don't specify a start date or an end date or anything like that. You just list the job with a brief description of what needs to be done and who the customer is and that sort of thing.
+[75:27] Jed van Niekerk:  I think it's quite a good starting point if we can have that for the foreman to select from. So they can select, "It's this guy, and this is the job," with a description of what needs to be done.
+[75:38] Jed van Niekerk:  And the job automatically starts when the first machine starts on that job. So that would be the start of that job.
+[75:47] Jed van Niekerk:  So when, when the, the foreman starts the grader.
+[75:52] Reinhard Zellhuber:  Yeah.
+[75:52] Jed van Niekerk:  That job then starts.
+[75:54] Reinhard Zellhuber:  Yeah.
+[75:54] Jed van Niekerk:  You can then start and stop jobs as they go. Um, so as the machines come on or go off, they're just using that as the reference point. So they're saying, "This is the job."
+[76:04] Jed van Niekerk:  Um, all of those jobs are all of those machines are, are sort of working for that job. So they'd select it.
+[76:09] Reinhard Zellhuber:  Yeah.
+[76:10] Jed van Niekerk:  And then when it's complete, like, completed, they don't the foreman doesn't actually complete the job. Hank would then go through, and he'd have a list of open jobs that he would need to go through and say, "Okay. That is actually done."
+[76:23] Jed van Niekerk:  Um, even though the last machine has was completed on that day, it'll show that that was the last machine.
+[76:28] Reinhard Zellhuber:  Yeah.
+[76:28] Jed van Niekerk:  But they he can then go through and say, "That's done. Complete." And it was completed at the hour that that last machine was finished.
+[76:35] Reinhard Zellhuber:  Okay.
+[76:36] Jed van Niekerk:  Um, I don't know what your, your, your thoughts are on that, but I think it's quite a nice way for you guys to keep track of future jobs without the slip of having to say, "Oh, it's gonna be extended by X month," or, "This is the actual start date," and keep jumping and changing. It's quite a dynamic it's all based on the starts and stuff of the machines.
+[76:56] Reinhard Zellhuber:  Yeah. I, I, I, I kinda like that. Do you do you have the thing where, like, if machines are coming in and out, you might be midway on a job where all the machines are suddenly out.
+[77:07] Reinhard Zellhuber:  Then it looks like that job is finished, but y it's not finished. It's just the new ones are on their way.
+[77:12] Jed van Niekerk:  Yeah.
+[77:12] Reinhard Zellhuber:  Um, but yeah. I-it that's if we drawing the dates from the out from the, the, the machine times. Yeah.
+[77:23] Jed van Niekerk:  Because Hank would know that that job is still active.
+[77:26] Reinhard Zellhuber:  Yeah.
+[77:26] Jed van Niekerk:  He's just waiting on another machine. So that's that would kind of why I've shifted it from away from the foreman and onto Hank, um, where he could then actually say similar to, to how you've all can complete a job even though it hasn't been stamped by Justin.
+[77:40] Reinhard Zellhuber:  Yes.
+[77:40] Jed van Niekerk:  Um.
+[77:41] Reinhard Zellhuber:  Yes.
+[77:42] Jed van Niekerk:  Yeah.
+[77:43] Reinhard Zellhuber:  Okay.
+[77:43] Jed van Niekerk:  Okay. That's done.
+[77:44] Reinhard Zellhuber:  Yeah. W-w-what I think would be nice is when it, it, it comes to Hank, um, and he basically when he signs it off, he then stamps the start and end date.
+[77:56] Reinhard Zellhuber:  So it's gonna give him suggestions. It started on this date, and it ended on this date based on the hours from the drivers.
+[78:04] Jed van Niekerk:  Yeah.
+[78:04] Reinhard Zellhuber:  But then he has the final say to tweak those dates, and then he stamps it, and then those are, like, the ones that are set in stone. Because maybe there are also a case where you want to shift the start date slightly or the end date slightly, then he has the final say there. And then because it would be nice to actually stamp those dates on the job just for, like, search reasons later instead of having to go to see, "Is a job done?
+[78:29] Reinhard Zellhuber:  I need to go and find all, all the machines." And you know, whereas, yeah, I think it'll be nice to, you know, when it goes past Hank, that we actually stamp those, those start and end dates.
+[78:41] Jed van Niekerk:  Yeah. So, sorry, sorry. Just to clear up, I actually I'm, I'm right now, I'm getting where you're coming from.
+[78:47] Jed van Niekerk:  So to have this similar planning, but you basically are gonna have job one, and you'll have. Similar to that.
+[78:54] Jed van Niekerk:  So this is just the list view. So I'm just showing Jen the, the job list.
+[78:58] Jed van Niekerk:  So it's just the list view. You would just go in, and you would just add a job, and they would just keep piling up there.
+[79:04] Reinhard Zellhuber:  Okay.
+[79:04] Jed van Niekerk:  Um, and that's the list that the foreman would then select from to say, "This is the job," and then essentially allocate a machine to that job.
+[79:11] Reinhard Zellhuber:  Okay.
+[79:12] Jed van Niekerk:  And then start, stop, and then add the next one. Start, stop.
+[79:16] Reinhard Zellhuber:  Okay. Yeah. I, I, I don't think the foreman should be creating the job.
+[79:22] Reinhard Zellhuber:  He can start, like, say, "This machine has started," but I feel like the setup of that job.
+[79:29] Jed van Niekerk:  Yes.
+[79:29] Reinhard Zellhuber:  Is done by someone else to say, "This is the customer," because is the foreman gonna know, "Oh, this is a new customer?" I'm just like.
+[79:35] Jed van Niekerk:  Yeah. I mean, the spelling is wrong and all that job. Yeah.
+[79:38] Jed van Niekerk:  I agree. Yeah.
+[79:40] Jed van Niekerk:  That's, that sounds good. Yeah.
+[79:42] Jed van Niekerk:  It's almost like he must only have access to pre-saved information.
+[79:47] Reinhard Zellhuber:  Yeah.
+[79:48] Jed van Niekerk:  He must only select. He shouldn't really be typing unless he has to type hours or something.
+[79:53] Reinhard Zellhuber:  Yeah. And, and the minute Hank closes that job and it has an end date, then it drops off his rate, like, his radar. He, he doesn't see that.
+[80:00] Reinhard Zellhuber:  Or maybe he can go to, like, a past jobs or something like that, but his main view is gonna be the jobs that he has machines currently busy on is, like, his main view. And then they're, like, upcoming or, like, start a new job.
+[80:16] Reinhard Zellhuber:  Basically, you pick from existing ones that have already been set up.
+[80:20] Jed van Niekerk:  Yes.
+[80:20] Reinhard Zellhuber:  Yeah.
+[80:20] Jed van Niekerk:  Yeah. Okay. Okay.
+[80:22] Jed van Niekerk:  Yeah. That sounds good.
+[80:25] Jed van Niekerk:  Yeah. I like it.
+[80:26] Reinhard Zellhuber:  Okay.
+[80:27] Jed van Niekerk:  Yeah.
+[80:30] Reinhard Zellhuber:  O-o-one last thing. If we can just go I just wanna confirm the roles for this app. So we have clearly a super admin, which is super admin, which is just everything.
+[80:43] Reinhard Zellhuber:  Then below that, below let's say below you is Hank. Um, is that right?
+[80:53] Jed van Niekerk:  Yeah.
+[80:53] Reinhard Zellhuber:  And what is Hank's like, what is that name of that position?
+[80:59] Jed van Niekerk:  I, I thought man-management or manager. And then the other guys would be foreman.
+[81:08] Reinhard Zellhuber:  Okay. So it's really at we've only just spoken of so it's really just those three roles, maybe four if we consider the driver as a user within the system even though they can't log in. So driver above it, but there's no login there.
+[81:23] Reinhard Zellhuber:  But above that, we have the foreman. And then above that, we have the, um, oppo uh, the contracting manager.
+[81:31] Reinhard Zellhuber:  And, um, and then right at the top is the super admin. But we did say the.
+[81:39] Jed van Niekerk:  Sorry. Uh, mechanic workshop. Workshop.
+[81:43] Reinhard Zellhuber:  But they, they also need to log in. Okay. So, so there's a, a, uh, um, a contracting mechanic, but okay.
+[81:53] Reinhard Zellhuber:  But they have access to, obviously, um, workshop, uh, or breakdown-type logs, but that would also be like, do you have anything that you would worry about them seeing on a job?
+[82:08] Jed van Niekerk:  Job cards? No.
+[82:09] Reinhard Zellhuber:  No. They.
+[82:10] Jed van Niekerk:  Nothing.
+[82:10] Reinhard Zellhuber:  They have access to basically everything. Maybe we just limit some of what they can edit, but the main thing is they wanna see all, um, all, like, breakdowns or servicing and be able to make changes there.
+[82:22] Jed van Niekerk:  Yeah. O-one last thing. You know, le-let's say there's a breakdown on, on, on an excavator.
+[82:29] Jed van Niekerk:  It would be nice for him to see on that particular job or on that site currently, are there any other machines that have got faults that have been reported? You know, just like a quick reference so that if he's sending the mechanic to that job, then he's able to quickly see, "Oh, but flipped.
+[82:46] Jed van Niekerk:  There was an issue reported on this machine, and they actually write it down the same job together."
+[82:50] Reinhard Zellhuber:  Mm-hmm.
+[82:51] Jed van Niekerk:  It just and however that is, as long as he is able to identify what machines are actually with that one currently as well.
+[82:58] Reinhard Zellhuber:  Yeah.
+[82:59] Jed van Niekerk:  'Cause what tends to happen is that Connor will do will send the mechanic out. He'll say, "You're going to site X, Y, and Z today." But it is nice for him to know, "Okay.
+[83:07] Jed van Niekerk:  But flip. This machine's on the same site.
+[83:09] Jed van Niekerk:  Why don't we just do the job while we're there?" So that is one nice feature, but obviously, it'll be on that job card.
+[83:16] Jed van Niekerk:  Whatever machines are currently on that job card, that it'll be able to pull through to them.
+[83:21] Reinhard Zellhuber:  Yeah. Def-definitely.
+[83:24] Jed van Niekerk:  Um, and then just another thing that Jen mentioned in, in the previous meeting was, um, that you wanted some sort of, like, stock yard or set, uh, um, a machine yard showing all of the machines that are currently available for work. Um, I don't know if you wanna just.
+[83:40] Reinhard Zellhuber:  Yeah.
+[83:40] Jed van Niekerk:  Go through that a little.
+[83:41] Reinhard Zellhuber:  So, so basically, Deano, like, a machine is gonna be in basically two states. Um, it'll either be, like, in an active state where it's on a job in a certain location, or there'll be the machine will be in the in the yard, basically. So it often happens Hank will say, "Flip.
+[84:02] Reinhard Zellhuber:  We need a tractor to go to go do a job." And you'll say, like, "What's available?"
+[84:06] Reinhard Zellhuber:  And so it's hard to try and think, "Well, whatever we actually what's actually around here?" So basically, I can just do a quick reference, "Okay.
+[84:13] Reinhard Zellhuber:  These are the tractors we currently have in the yard." Now, obviously, it's the fleet list minus what's active leaves you the balance of.
+[84:26] Reinhard Zellhuber:  Okay. Then, then that's fine.
+[84:27] Reinhard Zellhuber:  That-that's kinda what I wanted you to ask. Is there something that we can that you wanna manually turn on and off on every machine, or can we just look at the current like, what machines are on jobs?
+[84:40] Reinhard Zellhuber:  And basically, the ones that aren't busy on a job are ones that are available. Is that.
+[84:47] Jed van Niekerk:  Correct.
+[84:48] Reinhard Zellhuber:  Is that okay?
+[84:48] Jed van Niekerk:  Yeah.
+[84:48] Reinhard Zellhuber:  Yeah. Then that's easy to do. Yeah.
+[84:50] Reinhard Zellhuber:  So we're not.
+[84:51] Jed van Niekerk:  So.
+[84:51] Reinhard Zellhuber:  Tracking like a, a separate flag. It's, it's gonna be just, um, calculated based on.
+[84:57] Jed van Niekerk:  Yeah.
+[84:58] Reinhard Zellhuber:  The data we already have there. Yeah.
+[85:00] Jed van Niekerk:  Yeah. And then, Deano, with these machines, we'll have categories. So we'll have, like, excavator ca-category.
+[85:07] Jed van Niekerk:  There's, like, six excavators. So it's just also ease of reference.
+[85:11] Jed van Niekerk:  So if the guy's looking for an excavator, he just types in category, and then just the six come up because there might be, like, 70-something, 80 machines. So you don't want him to scroll through that, but if he can shortlist it.
+[85:23] Jed van Niekerk:  So you've got, like, categories such as excavators. You've got hauler tractors, TLVs, whatever.
+[85:29] Jed van Niekerk:  Um, and then what would be nice is that over time, we can actually start getting some good data as to, like, in terms of our excavators, we can do a, a graph through the year. And say, "Look, these excavators are working 90% of the time," or, "This one excavator is actually working 90% of the time," or, like, our equipment load.
+[85:53] Jed van Niekerk:  Like, we can have an overall load to say, "Look, 80 machines in the yard, but you're only utilizing them."
+[85:59] Reinhard Zellhuber:  Mm-hmm.
+[86:00] Jed van Niekerk:  And, and June was only 40 of them actually worked. Or you only accumul yeah. So it-it's also gonna help me, like, make more informed decisions to say, "Look, do we need another excavator?"
+[86:11] Jed van Niekerk:  Because for five months of the year, the excavators are only a-and I know I know 'cause you're not logging the hours every single day. Um, it's not gonna be 100% accurate because if you have a job that extends from June to July, um, it's not really gonna give you I know it's not gonna give you an exact month bas-basic, but yeah.
+[86:35] Jed van Niekerk:  I don't know how you'll work that out, Deano, but it's more of, like, a.
+[86:39] Reinhard Zellhuber:  Do you have the hours, though? Um.
+[86:42] Jed van Niekerk:  We've, we've got the hours. Yeah. Yeah.
+[86:45] Jed van Niekerk:  So unless when it calculates, it's calculating, let's say it started on the 15th of June to the 15th of July, and it did 100 hours. Well, then you can say, "Well, 50 were done in June, 50 in July on average," but you don't know exactly.
+[86:59] Reinhard Zellhuber:  Yeah.
+[86:59] Jed van Niekerk:  'Cause you're not logging hours daily. Um, but, but what is nice is, is even if it even if we're able to identify and say, "Look, these machines were on active jobs for 300 days out of 365 days."
+[87:15] Reinhard Zellhuber:  Yeah.
+[87:15] Jed van Niekerk:  They were on an active job, even if it's days. Days is still way better than what we're currently going by.
+[87:20] Reinhard Zellhuber:  Mm-hmm.
+[87:21] Jed van Niekerk:  Yeah. Um, yeah. And obviously, we wanna try and get more and more equipment out the yard.
+[87:27] Jed van Niekerk:  So the more jobs that are on active more machines that are on active jobs, the better. You know, we're obviously trying to reach a target as well.
+[87:38] Reinhard Zellhuber:  And then also.
+[87:38] Jed van Niekerk:  Yeah.
+[87:39] Reinhard Zellhuber:  Just the diesel. Um, you had a, like, a, an input when the job was closed, how much diesel that they've put into the machine.
+[87:46] Jed van Niekerk:  Yes.
+[87:47] Reinhard Zellhuber:  After that order.
+[87:47] Jed van Niekerk:  Uh.
+[87:48] Reinhard Zellhuber:  Unless I'm misunderstanding.
+[87:49] Jed van Niekerk:  Yeah. So with diesel, Deano, the farmer always puts fuel in. Doesn't affect us in any way.
+[87:54] Jed van Niekerk:  We arrive on the farm. We obviously filled up when we left the last farm.
+[87:58] Jed van Niekerk:  We arrive on the farm. We work.
+[88:01] Jed van Niekerk:  When we leave the farm, we fill up again at the farmer's bows, and we drive off. Doesn't it doesn't have anything to do with us.
+[88:08] Jed van Niekerk:  There's one or two cases where a farmer will say, "Jed, look, I don't have diesel." Um, it-it'll obviously just be a small job we did there.
+[88:17] Jed van Niekerk:  He'll ask us to put in diesel. So then we'll buy diesel on our account, and then we put our own diesel in there.
+[88:24] Jed van Niekerk:  So at the bottom of a job card, it would be nice to just have a diesel column to say, "Look, 200 liters of diesel used on that." So above the actual start and stop hours for each machine, we're gonna have a diesel usage.
+[88:39] Jed van Niekerk:  If there was, it might even not even be applicable. So if the farmer put in diesel, then you just leave it blank or not applicable.
+[88:47] Jed van Niekerk:  And then also, the other thing would be transport. Those are the, the other costs that can happen as well.
+[88:54] Jed van Niekerk:  So was then excavator moved? Did we move the machines there by truck as well?
+[89:00] Jed van Niekerk:  I need to obviously know that information, but that's something Hank will then be able to just add on.
+[89:06] Reinhard Zellhuber:  Okay.
+[89:09] Jed van Niekerk:  Yeah.
+[89:12] Reinhard Zellhuber:  And then on that reporting tab, Jen also just said that there would, like, a result issue score per mechanic. So if we can say, like, this mechanic was allocated to that issue, and then just track how much time it takes from start from when the issue was, was flagged to where the issue is completed by the mechanic, then we can just build, like, a, a, like, a performance.
+[89:33] Jed van Niekerk:  Mm-hmm. Yeah.
+[89:34] Reinhard Zellhuber:  Score on which mechanic has got issue. Where's, where's the least come back?
+[89:38] Jed van Niekerk:  Yeah.
+[89:39] Reinhard Zellhuber:  So, so for each breakdown, we'll know when it when it was open and when it was closed. So this also means s uh, we need to assign a mechanic to a breakdown. Okay.
+[89:50] Reinhard Zellhuber:  So questions or, you know, can you have two mecha one or more mechanics assigned to a breakdown?
+[90:00] Jed van Niekerk:  I, I think we need to just assign one. You may go with the second guy, but there will be a, a primary mechanic who will be responsible.
+[90:09] Reinhard Zellhuber:  Okay. Yeah. That does make it simpler because if you've got two people, then how do you split the, the times?
+[90:14] Jed van Niekerk:  Yeah.
+[90:14] Reinhard Zellhuber:  Um, the other th yeah. So then who assigns can a mechanic assign himself or someone else to a.
+[90:25] Jed van Niekerk:  No. I, I think your workshop head, that one role that you have, the workshop head, he's the one that will assign the mechanic, and he's the one that will close the job, uh, and give a report on it. So basically, he'll give a report to say, "Problem solved.
+[90:42] Jed van Niekerk:  We found, uh, a faulty, uh, hose." And then basically, he's clicked, "This certain guy fixed it," um, or himself.
+[90:52] Jed van Niekerk:  He might even assign himself onto that.
+[90:55] Reinhard Zellhuber:  Okay. Is this a new role? This is this Hank Hank's role?
+[90:59] Reinhard Zellhuber:  Was this a different role?
+[91:01] Jed van Niekerk:  No, the mechanic. I wo-workshop.
+[91:03] Reinhard Zellhuber:  So this it would be Connor, who would be, like, a workshop manager.
+[91:06] Jed van Niekerk:  Yeah.
+[91:07] Reinhard Zellhuber:  And then you'd have, like, a mechanic under that. So in, in mechanics, you'd have two as far as I understand.
+[91:12] Jed van Niekerk:  Yeah. Yeah. I mean, yeah.
+[91:15] Jed van Niekerk:  But the mechanics won't have access to the app. You know, they take instructions.
+[91:18] Reinhard Zellhuber:  Ah, okay. Sorry. I thought.
+[91:20] Jed van Niekerk:  They take instructions.
+[91:22] Reinhard Zellhuber:  I, I understand. I thought the mechanics would have access, but no. It's the, uh, the mechanic manager has access.
+[91:29] Reinhard Zellhuber:  Um, and similar.
+[91:31] Jed van Niekerk:  Yeah.
+[91:31] Reinhard Zellhuber:  To the foreman and the drivers.
+[91:34] Jed van Niekerk:  Correct.
+[91:34] Reinhard Zellhuber:  We will also have mechanics.
+[91:37] Jed van Niekerk:  Yes.
+[91:37] Reinhard Zellhuber:  Listed, but they won't have access to the, the, um, uh, they won't have login access. Okay. That, that makes sense.
+[91:45] Reinhard Zellhuber:  Okay. Good.
+[91:46] Jed van Niekerk:  Yeah. Yeah. Yeah.
+[91:50] Jed van Niekerk:  All right.
+[91:51] Reinhard Zellhuber:  Okay. Good. I'm happy.

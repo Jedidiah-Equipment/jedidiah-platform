@@ -2,13 +2,13 @@ import { getJobDisplayName } from '@pkg/domain';
 import type { JobPickerOption, JobStockMovementType } from '@pkg/schema';
 import { keepPreviousData, useInfiniteQuery } from '@tanstack/react-query';
 import { forwardRef, useCallback, useImperativeHandle, useMemo } from 'react';
-import { ActivityIndicator, Pressable, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 
+import { ActivityIndicator } from '@/components/ui/activity-indicator';
 import { Text } from '@/components/ui/text';
 import { TextInput } from '@/components/ui/text-input';
 import { useTRPC } from '@/lib/trpc';
 import { useDebouncedSearch } from '@/lib/use-debounced-search';
-import { loadingSpinnerColor } from '@/theme/brand-colors';
 
 /**
  * Which Job the stock is going to, or coming back from.
@@ -103,7 +103,7 @@ export const JobPicker = forwardRef<
       />
       {jobs.isPending ? (
         <View className="items-center py-4">
-          <ActivityIndicator accessibilityLabel="Loading Jobs" color={loadingSpinnerColor} size="small" />
+          <ActivityIndicator accessibilityLabel="Loading Jobs" size="small" />
         </View>
       ) : jobs.isError ? (
         <Text className="py-4 text-center text-sm text-danger">Couldn’t load Jobs. Pull down to retry.</Text>
@@ -138,7 +138,7 @@ export const JobPicker = forwardRef<
           ))}
           {jobs.isFetchingNextPage ? (
             <View className="items-center py-3">
-              <ActivityIndicator accessibilityLabel="Loading more Jobs" color={loadingSpinnerColor} size="small" />
+              <ActivityIndicator accessibilityLabel="Loading more Jobs" size="small" />
             </View>
           ) : null}
         </View>

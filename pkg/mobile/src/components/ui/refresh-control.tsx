@@ -1,8 +1,10 @@
 import { RefreshControl as NativeRefreshControl, type RefreshControlProps } from 'react-native';
 
-import { loadingSpinnerColor } from '@/theme/brand-colors';
+import { useBrandForegroundColor } from '@/theme/use-brand-foreground';
 
-/** Native pull-to-refresh control using the app variant's existing spinner colour. */
+/** Native pull-to-refresh control tinted by the brand accent for the scheme currently painting. */
 export function RefreshControl(props: RefreshControlProps) {
-  return <NativeRefreshControl {...props} colors={[loadingSpinnerColor]} tintColor={loadingSpinnerColor} />;
+  const color = useBrandForegroundColor();
+
+  return <NativeRefreshControl {...props} colors={[color]} tintColor={color} />;
 }

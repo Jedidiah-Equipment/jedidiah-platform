@@ -22,8 +22,8 @@ import { type AppTab, activeAppTab, appTabHref, appTabLabel, showTabBar, visible
 import { fitAppTabs, OVERFLOW_TAB_LABEL } from '@/lib/tab-bar-fit';
 import { useTRPC } from '@/lib/trpc';
 import { useAccess } from '@/lib/use-access';
-import { loadingSpinnerColor } from '@/theme/brand-colors';
 import { navigationColors } from '@/theme/gluestack-config';
+import { useBrandForegroundColor } from '@/theme/use-brand-foreground';
 import { useColorMode } from '@/theme/use-color-mode';
 
 const TAB_ICONS = {
@@ -73,6 +73,7 @@ export function AppTabBar() {
   const active = activeAppTab(segments);
   const { resolved } = useColorMode();
   const colors = navigationColors[resolved];
+  const activeTint = useBrandForegroundColor();
   const insets = useSafeAreaInsets();
   const keyboardShown = useKeyboardShown();
   const [width, setWidth] = useState(0);
@@ -89,7 +90,7 @@ export function AppTabBar() {
 
   if (!showTabBar(tabs) || keyboardShown) return null;
 
-  const tintFor = (tab: AppTab) => (tab === active ? loadingSpinnerColor : colors.mutedForeground);
+  const tintFor = (tab: AppTab) => (tab === active ? activeTint : colors.mutedForeground);
   const openTab = (tab: AppTab) => {
     setMenuOpen(false);
     router.navigate(appTabHref(tab));
@@ -124,7 +125,7 @@ export function AppTabBar() {
       {hasOverflow ? (
         <TabBarSlot
           // The menu owns the active tab whenever the current one is hidden inside it.
-          color={overflow.some((tab) => tab === active) ? loadingSpinnerColor : colors.mutedForeground}
+          color={overflow.some((tab) => tab === active) ? activeTint : colors.mutedForeground}
           icon={IconDots}
           label={OVERFLOW_TAB_LABEL}
           onPress={() => setMenuOpen(true)}

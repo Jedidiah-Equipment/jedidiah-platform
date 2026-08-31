@@ -1,15 +1,15 @@
 import { STOCKTAKE_SCOPE_LABELS, type StocktakeOverdueRow, StocktakeScope, type StocktakeSession } from '@pkg/schema';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
-import { ActivityIndicator, Pressable, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 
 import { StoresScreen } from '@/components/stores/StoresScreen';
+import { ActivityIndicator } from '@/components/ui/activity-indicator';
 import { Text } from '@/components/ui/text';
 import { useAppToast } from '@/components/ui/toast';
 import { invalidateQueryCache } from '@/lib/query-client';
 import { useMovementActorUserId, useStoresActor } from '@/lib/stores-actor';
 import { useTRPC } from '@/lib/trpc';
-import { loadingSpinnerColor } from '@/theme/brand-colors';
 
 /**
  * The two standing rhythms, each with one button: resume the walk in progress, or start the next
@@ -46,7 +46,7 @@ export default function StoresStocktakeRoute() {
     >
       {sessions.isPending ? (
         <View className="items-center py-10">
-          <ActivityIndicator accessibilityLabel="Loading stocktake sessions" color={loadingSpinnerColor} size="large" />
+          <ActivityIndicator accessibilityLabel="Loading stocktake sessions" size="large" />
         </View>
       ) : sessions.isError ? (
         <Text className="py-10 text-center text-sm text-danger">Couldn’t load the sessions. Pull down to retry.</Text>

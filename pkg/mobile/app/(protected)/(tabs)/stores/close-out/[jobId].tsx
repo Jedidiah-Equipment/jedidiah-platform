@@ -2,17 +2,17 @@ import type { JobStockRow } from '@pkg/schema';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
-import { ActivityIndicator, Pressable, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 
 import { PostButton } from '@/components/stores/PostButton';
 import { StoresScreen } from '@/components/stores/StoresScreen';
+import { ActivityIndicator } from '@/components/ui/activity-indicator';
 import { Text } from '@/components/ui/text';
 import { TextInput } from '@/components/ui/text-input';
 import { useAppToast } from '@/components/ui/toast';
 import { invalidateQueryCache } from '@/lib/query-client';
 import { useMovementActorUserId, useStoresActor } from '@/lib/stores-actor';
 import { useTRPC } from '@/lib/trpc';
-import { loadingSpinnerColor } from '@/theme/brand-colors';
 
 /**
  * Return-and-close, the same composition the web screen offers: put the leftovers back first, then
@@ -53,7 +53,7 @@ export default function StoresJobCloseOutRoute() {
         title="Close out"
       >
         <View className="items-center py-10">
-          <ActivityIndicator accessibilityLabel="Loading Job stock" color={loadingSpinnerColor} size="large" />
+          <ActivityIndicator accessibilityLabel="Loading Job stock" size="large" />
         </View>
       </StoresScreen>
     );

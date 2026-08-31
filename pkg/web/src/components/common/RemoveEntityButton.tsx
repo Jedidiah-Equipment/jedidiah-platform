@@ -20,8 +20,10 @@ type RemoveEntityButtonProps = {
   isPending: boolean;
   onConfirm: () => void;
   title: string;
-  trigger?: React.ReactElement;
+  triggerIconOnly?: boolean;
   triggerLabel: string;
+  triggerSize?: React.ComponentProps<typeof Button>['size'];
+  triggerVariant?: React.ComponentProps<typeof Button>['variant'];
 };
 
 export const RemoveEntityButton: React.FC<RemoveEntityButtonProps> = ({
@@ -30,21 +32,28 @@ export const RemoveEntityButton: React.FC<RemoveEntityButtonProps> = ({
   isPending,
   onConfirm,
   title,
-  trigger,
+  triggerIconOnly = false,
   triggerLabel,
+  triggerSize,
+  triggerVariant = 'destructive',
 }) => {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
     <Dialog onOpenChange={setIsOpen} open={isOpen}>
-      {trigger ? (
-        <DialogTrigger render={trigger} />
-      ) : (
-        <DialogTrigger render={<Button type="button" variant="destructive" />}>
-          <IconTrash data-icon="inline-start" />
-          {triggerLabel}
-        </DialogTrigger>
-      )}
+      <DialogTrigger
+        render={
+          <Button
+            aria-label={triggerIconOnly ? triggerLabel : undefined}
+            size={triggerSize}
+            type="button"
+            variant={triggerVariant}
+          />
+        }
+      >
+        <IconTrash data-icon={triggerIconOnly ? undefined : 'inline-start'} />
+        {triggerIconOnly ? null : triggerLabel}
+      </DialogTrigger>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>

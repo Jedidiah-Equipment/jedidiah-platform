@@ -485,12 +485,10 @@ export function AssemblyRemoveButton({ onConfirm, partCount }: AssemblyRemoveBut
       isPending={false}
       onConfirm={onConfirm}
       title="Delete Assembly"
-      trigger={
-        <Button aria-label="Remove assembly" size="icon-sm" type="button" variant="ghost">
-          <IconTrash />
-        </Button>
-      }
+      triggerIconOnly
       triggerLabel="Remove assembly"
+      triggerSize="icon-sm"
+      triggerVariant="ghost"
     />
   );
 }

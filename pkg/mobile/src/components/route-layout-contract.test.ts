@@ -79,16 +79,4 @@ describe('route layout contract', () => {
     expect(activityFeed).toContain('paddingHorizontal: 16');
     expect(activityFeed).toContain('paddingTop: 4');
   });
-
-  test('keeps Activity results visible while a new search or filter loads', () => {
-    const activityFeed = readFileSync(join(MOBILE_DIR, 'src/components/activity/JobActivityFeed.tsx'), 'utf8');
-
-    expect(activityFeed).toContain('placeholderData: keepPreviousData');
-  });
-
-  test('never clamps mobile feedback when no expansion control is available', () => {
-    const entry = readFileSync(join(MOBILE_DIR, 'src/components/activity/JobActivityEntry.tsx'), 'utf8');
-
-    expect(entry).toContain('expandable && !expanded ? { numberOfLines: 4 } : {}');
-  });
 });

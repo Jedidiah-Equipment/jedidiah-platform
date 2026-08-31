@@ -74,8 +74,8 @@ async function listLabelModels({
     .orderBy(asc(parts.code));
 
   const copiesByPartId =
-    selection.selection === 'ids' && selection.copies
-      ? new Map(selection.ids.map((id, index) => [id, selection.copies?.[index] ?? 1]))
+    selection.selection === 'ids' && 'copies' in selection
+      ? new Map(selection.copies.map((copy) => [copy.partId, copy.copies]))
       : null;
 
   return rows.flatMap((row) =>
@@ -92,6 +92,6 @@ function getSelectionCondition(selection: PartLabelBatchSelection): SQL | undefi
     case 'storageLocation':
       return eq(parts.storageLocation, selection.storageLocation);
     case 'ids':
-      return inArray(parts.id, selection.ids);
+      return inArray(parts.id, 'ids' in selection ? selection.ids : selection.copies.map((copy) => copy.partId));
   }
 }

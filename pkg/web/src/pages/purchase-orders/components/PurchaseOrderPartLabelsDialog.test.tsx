@@ -39,8 +39,7 @@ describe('PurchaseOrderPartLabelsDialog', () => {
     expect(document.body.textContent).not.toContain('P-200');
     expect(document.body.textContent).not.toContain('Unused bearing');
     expect(findCountInput('P-100').value).toBe('2');
-    expect(findPdfLink().href).toContain(`ids=${RECEIVED_PART_ID}`);
-    expect(findPdfLink().href).toContain('copies=2');
+    expect(new URL(findPdfLink().href).searchParams.get('copies')).toBe(`${RECEIVED_PART_ID}:2`);
   });
 
   it('excludes zero-count Parts and opens one PDF for the remaining edited counts', async () => {
@@ -53,10 +52,7 @@ describe('PurchaseOrderPartLabelsDialog', () => {
     await setCount('P-100', '0');
     await setCount('T-100', '4');
 
-    const href = findPdfLink().href;
-    expect(href).not.toContain(RECEIVED_PART_ID);
-    expect(href).toContain(`ids=${OTHER_RECEIVED_PART_ID}`);
-    expect(href).toContain('copies=4');
+    expect(new URL(findPdfLink().href).searchParams.get('copies')).toBe(`${OTHER_RECEIVED_PART_ID}:4`);
   });
 
   it('does not offer the action when no stock has been received', async () => {

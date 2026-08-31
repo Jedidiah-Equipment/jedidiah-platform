@@ -112,7 +112,7 @@ describe('Part label HTTP routes', () => {
     const firstId = context.ids.get('P-100');
     const secondId = context.ids.get('T-100');
 
-    const response = await app.inject(`/api/parts/labels?selection=ids&ids=${firstId},${secondId}&copies=2,3`);
+    const response = await app.inject(`/api/parts/labels?selection=ids&copies=${firstId}:2,${secondId}:3`);
 
     expect(response.statusCode, response.body).toBe(200);
     expect(rendered.map((labels) => labels.map((label) => label.code))).toEqual([

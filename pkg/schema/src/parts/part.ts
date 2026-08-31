@@ -337,9 +337,16 @@ export const PartLabelPdfModel = Part.pick({ code: true, name: true, storageLoca
 export type PartLabelSelectionMode = z.infer<typeof PartLabelSelectionMode>;
 export const PartLabelSelectionMode = z.enum(['all', 'category', 'storageLocation', 'ids']);
 
+/** A dialog may hold zero to omit a Part; only positive counts cross into a rendered selection. */
+export type PartLabelCount = z.infer<typeof PartLabelCount>;
+export const PartLabelCount = z.int().nonnegative();
+
+export type PartLabelCopySelection = z.infer<typeof PartLabelCopySelection>;
+export const PartLabelCopySelection = z.object({ copies: z.int().positive(), partId: UUID }).strict();
+
 export type PartLabelBatchSelection = z.infer<typeof PartLabelBatchSelection>;
-export const PartLabelBatchSelection = z
-  .discriminatedUnion('selection', [
+export const PartLabelBatchSelection = z.union([
+  z.discriminatedUnion('selection', [
     z.object({ selection: z.literal(PartLabelSelectionMode.enum.all) }).strict(),
     z.object({ category: PartCategory, selection: z.literal(PartLabelSelectionMode.enum.category) }).strict(),
     z
@@ -348,24 +355,12 @@ export const PartLabelBatchSelection = z
         storageLocation: PartStorageLocation.unwrap(),
       })
       .strict(),
-    z
-      .object({
-        /** Omitted means one label per Part, preserving the Parts-page batch contract. */
-        copies: z.array(z.int().positive()).min(1).optional(),
-        ids: z.array(UUID).min(1),
-        selection: z.literal(PartLabelSelectionMode.enum.ids),
-      })
-      .strict(),
-  ])
-  .superRefine((selection, context) => {
-    if (selection.selection === 'ids' && selection.copies && selection.copies.length !== selection.ids.length) {
-      context.addIssue({
-        code: 'custom',
-        message: 'Give one label copy count for every selected Part',
-        path: ['copies'],
-      });
-    }
-  });
+    z.object({ ids: z.array(UUID).min(1), selection: z.literal(PartLabelSelectionMode.enum.ids) }).strict(),
+  ]),
+  z
+    .object({ copies: z.array(PartLabelCopySelection).min(1), selection: z.literal(PartLabelSelectionMode.enum.ids) })
+    .strict(),
+]);
 
 /**
  * The batch selection as it arrives on a query string: every mode's field is flat and optional, and
@@ -384,13 +379,22 @@ export const PartLabelBatchQuery = z
     ...(query.selection === 'category' ? { category: query.category } : {}),
     ...(query.selection === 'storageLocation' ? { storageLocation: query.storageLocation } : {}),
     ...(query.selection === 'ids'
-      ? {
-          copies: query.copies?.split(',').filter(Boolean).map(Number),
-          ids: query.ids?.split(',').filter(Boolean),
-        }
+      ? query.copies
+        ? { copies: parsePartLabelCopies(query.copies) }
+        : { ids: query.ids?.split(',').filter(Boolean) }
       : {}),
     selection: query.selection,
   }))
   .pipe(PartLabelBatchSelection);
+
+function parsePartLabelCopies(value: string): Array<{ copies: number; partId: string }> {
+  return value
+    .split(',')
+    .filter(Boolean)
+    .map((entry) => {
+      const separator = entry.lastIndexOf(':');
+      return { copies: Number(entry.slice(separator + 1)), partId: entry.slice(0, separator) };
+    });
+}
 
 export type PartLabelPdfRenderer = (input: { document: PartLabelPdfModel[]; filename: string }) => Promise<Uint8Array>;

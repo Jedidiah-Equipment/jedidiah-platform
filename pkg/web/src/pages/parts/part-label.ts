@@ -28,8 +28,8 @@ export function partLabelBatchUrl(selection: PartLabelBatchSelection): string {
       params.set('storageLocation', selection.storageLocation);
       break;
     case 'ids':
-      params.set('ids', selection.ids.join(','));
-      if (selection.copies) params.set('copies', selection.copies.join(','));
+      if ('ids' in selection) params.set('ids', selection.ids.join(','));
+      else params.set('copies', selection.copies.map((copy) => `${copy.partId}:${copy.copies}`).join(','));
       break;
   }
 

@@ -1,4 +1,4 @@
-import type { PartLabelBatchSelection, PurchaseOrderLineView } from '@pkg/schema';
+import { type PartLabelBatchSelection, PartLabelCount, type PurchaseOrderLineView } from '@pkg/schema';
 import { IconPrinter } from '@tabler/icons-react';
 import { useMemo, useState } from 'react';
 
@@ -137,12 +137,11 @@ function toLabelSelection(rows: PartLabelRow[]): PartLabelBatchSelection | null 
   if (selected.length === 0) return null;
 
   return {
-    copies: selected.map((row) => row.copies),
-    ids: selected.map((row) => row.partId),
+    copies: selected.map((row) => ({ copies: row.copies, partId: row.partId })),
     selection: 'ids',
   };
 }
 
 function isLabelCount(value: number): boolean {
-  return Number.isInteger(value) && value >= 0;
+  return PartLabelCount.safeParse(value).success;
 }

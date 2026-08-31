@@ -39,6 +39,9 @@ describe('PurchaseOrderPartLabelsDialog', () => {
     expect(document.body.textContent).not.toContain('P-200');
     expect(document.body.textContent).not.toContain('Unused bearing');
     expect(findCountInput('P-100').value).toBe('2');
+    expect(document.querySelector<HTMLAnchorElement>('a[aria-label="How to print Part labels"]')?.href).toBe(
+      'http://localhost:7006/inventory/print-part-labels',
+    );
     expect(new URL(findPdfLink().href).searchParams.get('copies')).toBe(`${RECEIVED_PART_ID}:2`);
   });
 

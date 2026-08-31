@@ -9,6 +9,7 @@ import { useMemo, useState } from 'react';
 
 import { DataTable } from '@/components/data-table/DataTable.js';
 import { type DataTableColumnDef, useDataTable } from '@/components/data-table/features.js';
+import { HelpLink } from '@/components/help/index.js';
 import { Button } from '@/components/ui/button.js';
 import {
   Dialog,
@@ -105,7 +106,10 @@ export function PurchaseOrderPartLabelsDialog({ lines }: { lines: PurchaseOrderL
       <Dialog onOpenChange={setIsOpen} open={isOpen}>
         <DialogContent className="sm:max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Print Part labels</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              Print Part labels
+              <HelpLink label="How to print Part labels" topic="partLabels" />
+            </DialogTitle>
             <DialogDescription>
               Choose how many labels to print for each Part received on this Purchase Order. Set a count to zero to
               leave that Part out.

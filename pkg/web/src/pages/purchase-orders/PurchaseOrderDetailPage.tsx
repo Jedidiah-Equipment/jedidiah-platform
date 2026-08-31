@@ -56,6 +56,7 @@ import { PurchaseOrderAmendDialog } from './components/PurchaseOrderAmendDialog.
 import { PurchaseOrderAmendmentsCard } from './components/PurchaseOrderAmendmentsCard.js';
 import { PurchaseOrderDocumentsCard } from './components/PurchaseOrderDocumentsCard.js';
 import { PurchaseOrderInvoiceCrossCheckCard } from './components/PurchaseOrderInvoiceCrossCheckCard.js';
+import { PurchaseOrderPartLabelsDialog } from './components/PurchaseOrderPartLabelsDialog.js';
 import { PurchaseOrderReceivingCard } from './components/PurchaseOrderReceivingCard.js';
 import { PurchaseOrderReturnsCard } from './components/PurchaseOrderReturnsCard.js';
 import { PurchaseOrderStatusBadge } from './components/PurchaseOrderStatusBadge.js';
@@ -459,6 +460,7 @@ export const PurchaseOrderActions: React.FC<{
           purchaseOrderId={purchaseOrder.id}
         />
       ) : null}
+      <PurchaseOrderPartLabelsDialog lines={purchaseOrder.lines} />
       {canRevertToDraft ? (
         <Button
           disabled={disabled}

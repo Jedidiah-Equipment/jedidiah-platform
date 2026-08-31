@@ -338,17 +338,34 @@ export type PartLabelSelectionMode = z.infer<typeof PartLabelSelectionMode>;
 export const PartLabelSelectionMode = z.enum(['all', 'category', 'storageLocation', 'ids']);
 
 export type PartLabelBatchSelection = z.infer<typeof PartLabelBatchSelection>;
-export const PartLabelBatchSelection = z.discriminatedUnion('selection', [
-  z.object({ selection: z.literal(PartLabelSelectionMode.enum.all) }).strict(),
-  z.object({ category: PartCategory, selection: z.literal(PartLabelSelectionMode.enum.category) }).strict(),
-  z
-    .object({
-      selection: z.literal(PartLabelSelectionMode.enum.storageLocation),
-      storageLocation: PartStorageLocation.unwrap(),
-    })
-    .strict(),
-  z.object({ ids: z.array(UUID).min(1), selection: z.literal(PartLabelSelectionMode.enum.ids) }).strict(),
-]);
+export const PartLabelBatchSelection = z
+  .discriminatedUnion('selection', [
+    z.object({ selection: z.literal(PartLabelSelectionMode.enum.all) }).strict(),
+    z.object({ category: PartCategory, selection: z.literal(PartLabelSelectionMode.enum.category) }).strict(),
+    z
+      .object({
+        selection: z.literal(PartLabelSelectionMode.enum.storageLocation),
+        storageLocation: PartStorageLocation.unwrap(),
+      })
+      .strict(),
+    z
+      .object({
+        /** Omitted means one label per Part, preserving the Parts-page batch contract. */
+        copies: z.array(z.int().positive()).min(1).optional(),
+        ids: z.array(UUID).min(1),
+        selection: z.literal(PartLabelSelectionMode.enum.ids),
+      })
+      .strict(),
+  ])
+  .superRefine((selection, context) => {
+    if (selection.selection === 'ids' && selection.copies && selection.copies.length !== selection.ids.length) {
+      context.addIssue({
+        code: 'custom',
+        message: 'Give one label copy count for every selected Part',
+        path: ['copies'],
+      });
+    }
+  });
 
 /**
  * The batch selection as it arrives on a query string: every mode's field is flat and optional, and
@@ -358,6 +375,7 @@ export type PartLabelBatchQuery = z.infer<typeof PartLabelBatchQuery>;
 export const PartLabelBatchQuery = z
   .object({
     category: PartCategory.optional(),
+    copies: z.string().optional(),
     ids: z.string().optional(),
     selection: PartLabelSelectionMode,
     storageLocation: PartStorageLocation.unwrap().optional(),
@@ -365,7 +383,12 @@ export const PartLabelBatchQuery = z
   .transform((query) => ({
     ...(query.selection === 'category' ? { category: query.category } : {}),
     ...(query.selection === 'storageLocation' ? { storageLocation: query.storageLocation } : {}),
-    ...(query.selection === 'ids' ? { ids: query.ids?.split(',').filter(Boolean) } : {}),
+    ...(query.selection === 'ids'
+      ? {
+          copies: query.copies?.split(',').filter(Boolean).map(Number),
+          ids: query.ids?.split(',').filter(Boolean),
+        }
+      : {}),
     selection: query.selection,
   }))
   .pipe(PartLabelBatchSelection);

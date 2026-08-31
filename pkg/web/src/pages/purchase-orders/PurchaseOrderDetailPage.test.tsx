@@ -52,6 +52,7 @@ const purchaseOrder = {
   code: 'PO-00024',
   documentId: null,
   id: '00000000-0000-4000-8000-000000000024',
+  lines: [],
 } as unknown as PurchaseOrderView;
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;

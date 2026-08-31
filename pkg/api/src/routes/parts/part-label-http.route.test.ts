@@ -106,6 +106,20 @@ describe('Part label HTTP routes', () => {
     ]);
   });
 
+  test('repeats explicitly selected Part labels by their requested copy counts', async ({ context }) => {
+    const rendered: PartLabelPdfModel[][] = [];
+    const app = await createApp(capturingRenderer(rendered));
+    const firstId = context.ids.get('P-100');
+    const secondId = context.ids.get('T-100');
+
+    const response = await app.inject(`/api/parts/labels?selection=ids&ids=${firstId},${secondId}&copies=2,3`);
+
+    expect(response.statusCode, response.body).toBe(200);
+    expect(rendered.map((labels) => labels.map((label) => label.code))).toEqual([
+      ['P-100', 'P-100', 'T-100', 'T-100', 'T-100'],
+    ]);
+  });
+
   test('requires part or inventory read access before rendering labels', async ({ context }) => {
     const rendered: PartLabelPdfModel[][] = [];
     const app = await createApp(capturingRenderer(rendered));

@@ -16,6 +16,16 @@ something:
 On a Purchase Order the button only appears once the line has received something, so labels follow
 stock that has actually landed.
 
+## Received Parts on a Purchase Order
+
+1. Open a Purchase Order that contains received stock.
+2. Click **Print Part labels**.
+3. Review the received Parts and their label counts. Each count starts at the total quantity currently
+   received for that Part on this Purchase Order.
+4. Change a count when the stock needs a different number of labels. Set it to zero to leave that Part
+   out.
+5. Click **Open printable PDF**. One PDF opens with every included Part Label repeated by its count.
+
 ## A batch
 
 1. Open **Parts**.

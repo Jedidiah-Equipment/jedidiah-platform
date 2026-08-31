@@ -68,12 +68,19 @@ async function listLabelModels({
   selection: PartLabelBatchSelection;
 }): Promise<PartLabelPdfModel[]> {
   const rows = await db
-    .select({ code: parts.code, name: parts.name, storageLocation: parts.storageLocation })
+    .select({ code: parts.code, id: parts.id, name: parts.name, storageLocation: parts.storageLocation })
     .from(parts)
     .where(getSelectionCondition(selection))
     .orderBy(asc(parts.code));
 
-  return rows.map((row) => PartLabelPdfModelSchema.parse(row));
+  const copiesByPartId =
+    selection.selection === 'ids' && selection.copies
+      ? new Map(selection.ids.map((id, index) => [id, selection.copies?.[index] ?? 1]))
+      : null;
+
+  return rows.flatMap((row) =>
+    Array.from({ length: copiesByPartId?.get(row.id) ?? 1 }, () => PartLabelPdfModelSchema.parse(row)),
+  );
 }
 
 function getSelectionCondition(selection: PartLabelBatchSelection): SQL | undefined {

@@ -24,12 +24,27 @@ import {
 import { Input } from '@/components/ui/input.js';
 import { openPartLabelBatchPdf } from '../../parts/part-label.js';
 
-type PartLabelRow = Pick<PurchaseOrderLineView, 'partCode' | 'partId' | 'partName' | 'receivedQuantity'> & {
+type ReceivedPartLabelLine = Pick<PurchaseOrderLineView, 'partCode' | 'partId' | 'partName'> & {
+  heldQuantity: number;
+};
+
+type PartLabelRow = ReceivedPartLabelLine & {
   copies: number;
 };
 
 export function PurchaseOrderPartLabelsDialog({ lines }: { lines: PurchaseOrderLineView[] }) {
-  const receivedLines = useMemo(() => lines.filter((line) => line.receivedQuantity > 0), [lines]);
+  const receivedLines = useMemo(
+    () =>
+      lines
+        .map((line) => ({
+          heldQuantity: heldQuantityFor(line),
+          partCode: line.partCode,
+          partId: line.partId,
+          partName: line.partName,
+        }))
+        .filter((line) => line.heldQuantity > 0),
+    [lines],
+  );
   const [isOpen, setIsOpen] = useState(false);
   const [isOpeningPdf, setIsOpeningPdf] = useState(false);
   const [copiesByPartId, setCopiesByPartId] = useState<Record<string, number>>({});
@@ -37,7 +52,7 @@ export function PurchaseOrderPartLabelsDialog({ lines }: { lines: PurchaseOrderL
     () =>
       receivedLines.map((line) => ({
         ...line,
-        copies: copiesByPartId[line.partId] ?? defaultLabelCount(line.receivedQuantity),
+        copies: copiesByPartId[line.partId] ?? defaultLabelCount(line.heldQuantity),
       })),
     [copiesByPartId, receivedLines],
   );
@@ -95,7 +110,7 @@ export function PurchaseOrderPartLabelsDialog({ lines }: { lines: PurchaseOrderL
 
   const openDialog = () => {
     setCopiesByPartId(
-      Object.fromEntries(receivedLines.map((line) => [line.partId, defaultLabelCount(line.receivedQuantity)])),
+      Object.fromEntries(receivedLines.map((line) => [line.partId, defaultLabelCount(line.heldQuantity)])),
     );
     setIsOpen(true);
   };
@@ -174,7 +189,14 @@ function isLabelCount(value: number): boolean {
   return PartLabelCount.safeParse(value).success;
 }
 
-function defaultLabelCount(receivedQuantity: number): number {
+function defaultLabelCount(heldQuantity: number): number {
   // A fraction describes measured stock, but a physical label count can only be whole.
-  return Math.min(Math.ceil(receivedQuantity), PART_LABEL_BATCH_MAX_COPIES);
+  return Math.min(Math.ceil(heldQuantity), PART_LABEL_BATCH_MAX_COPIES);
+}
+
+function heldQuantityFor(line: PurchaseOrderLineView): number {
+  return Math.max(
+    0,
+    line.receiptBuckets.reduce((total, bucket) => total + bucket.outstandingReceivedQuantity, 0),
+  );
 }

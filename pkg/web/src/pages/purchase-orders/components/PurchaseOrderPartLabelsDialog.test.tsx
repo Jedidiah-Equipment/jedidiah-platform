@@ -89,6 +89,23 @@ describe('PurchaseOrderPartLabelsDialog', () => {
     });
   });
 
+  it('excludes stock that was returned to the Supplier even when the order line stays fulfilled', async () => {
+    const trigger = await renderDialog([
+      line(RECEIVED_PART_ID, 'P-100', 'Misordered bearing', 10, 0),
+      line(OTHER_RECEIVED_PART_ID, 'T-100', 'Hydraulic tube', 2),
+    ]);
+
+    await act(async () => trigger.click());
+
+    expect(document.body.textContent).not.toContain('Misordered bearing');
+    expect(document.body.textContent).toContain('Hydraulic tube');
+    await clickPdfButton();
+    expect(openPartLabelBatchPdf).toHaveBeenCalledWith({
+      copies: [{ copies: 2, partId: OTHER_RECEIVED_PART_ID }],
+      selection: 'ids',
+    });
+  });
+
   it('does not offer the action when no stock has been received', async () => {
     const container = await mount(
       <PurchaseOrderPartLabelsDialog lines={[line(UNRECEIVED_PART_ID, 'P-200', 'Unused bearing', 0)]} />,
@@ -142,11 +159,18 @@ async function setCount(partCode: string, value: string): Promise<void> {
   });
 }
 
-function line(partId: UUID, partCode: string, partName: string, receivedQuantity: number): PurchaseOrderLineView {
+function line(
+  partId: UUID,
+  partCode: string,
+  partName: string,
+  receivedQuantity: number,
+  heldQuantity = receivedQuantity,
+): PurchaseOrderLineView {
   return {
     partCode,
     partId,
     partName,
+    receiptBuckets: heldQuantity === 0 ? [] : [{ lengthMm: null, outstandingReceivedQuantity: heldQuantity }],
     receivedQuantity,
   } as PurchaseOrderLineView;
 }

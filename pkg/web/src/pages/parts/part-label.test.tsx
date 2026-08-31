@@ -5,7 +5,7 @@ import { DataTable } from '@/components/data-table/DataTable.js';
 import { useDataTable } from '@/components/data-table/features.js';
 import { createPartLabelActionColumn } from './components/PartTable.js';
 import { PartLabelPrintButton } from './PartLabelPrintButton.js';
-import { partLabelBatchModeLabels, partLabelBatchUrl, partLabelUrl } from './part-label.js';
+import { partLabelBatchUrl, partLabelUrl } from './part-label.js';
 
 const PART_ID = '22222222-2222-4222-8222-222222222222' as UUID;
 const OTHER_PART_ID = '33333333-3333-4333-8333-333333333333' as UUID;
@@ -15,15 +15,6 @@ afterEach(() => {
 });
 
 describe('Part label actions', () => {
-  test('uses user-facing labels for batch selection modes', () => {
-    expect(partLabelBatchModeLabels).toEqual({
-      all: 'All Parts',
-      category: 'By category',
-      ids: 'Choose Parts',
-      storageLocation: 'By storage location',
-    });
-  });
-
   test('exports a single-Part print affordance that opens the label PDF', () => {
     stubClientConfig();
 

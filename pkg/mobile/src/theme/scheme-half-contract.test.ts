@@ -26,8 +26,10 @@ describe('scheme half contract', () => {
     const halves = schemeHalfClassNames();
     const stylesheet = compileStylesheet();
 
+    const rules = new Set(stylesheet.split('\n').filter((line) => line.endsWith(' {')));
+
     expect(halves.length).toBeGreaterThan(0);
-    expect(halves.filter((className) => !new RegExp(`^\\.${className} \\{`, 'm').test(stylesheet))).toEqual([]);
+    expect(halves.filter((className) => !rules.has(`${selectorFor(className)} {`))).toEqual([]);
   });
 });
 
@@ -47,11 +49,19 @@ function schemeHalfClassNames(): string[] {
   return [...new Set(found)];
 }
 
+/**
+ * The selector Tailwind writes for a class, which is not the class name: everything outside
+ * `[A-Za-z0-9_-]` is backslash-escaped, so `text-white/70` is emitted as `.text-white\\/70`.
+ */
+function selectorFor(className: string): string {
+  return `.${className.replace(/[^\w-]/g, (character) => `\\${character}`)}`;
+}
+
 function compileStylesheet(): string {
   const out = join(mkdtempSync(join(tmpdir(), 'scheme-half-')), 'compiled.css');
   execFileSync(join(MOBILE_DIR, 'node_modules/.bin/tailwindcss'), ['-i', './global.css', '-o', out], {
     cwd: MOBILE_DIR,
-    stdio: 'ignore',
+    stdio: ['ignore', 'ignore', 'inherit'],
   });
 
   return readFileSync(out, 'utf8');

@@ -11,11 +11,12 @@ import {
   ListDropdownControl,
   ListSearchControl,
 } from '@/components/ListControls';
-import { useOfferingAvatarProps } from '@/components/OfferingAvatar';
+import { offeringAvatarProps } from '@/components/OfferingAvatar';
 import { QuoteStatusChip } from '@/components/quotes/QuoteStatusChip';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { QUOTE_STATUS_OPTIONS, type QuoteSort, type QuoteStatusFilter } from '@/lib/quote-presentation';
+import { useColorMode } from '@/theme/use-color-mode';
 
 const WIDE_BREAKPOINT = 760;
 const STATUS_OPTIONS: readonly ListControlOption<QuoteStatusFilter>[] = [
@@ -114,7 +115,8 @@ export function QuoteCatalogCard({ quote }: { quote: QuoteSummary }) {
   const router = useRouter();
   const offering = quote.kind === 'custom' ? quote.workTitle : (quote.product?.name ?? 'Product unavailable');
   const total = pricePersistedQuote(quote).total;
-  const avatar = useOfferingAvatarProps(quote.kind);
+  const { resolved } = useColorMode();
+  const avatar = offeringAvatarProps(quote.kind, resolved);
 
   return (
     <CatalogListCard

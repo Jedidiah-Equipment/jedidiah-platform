@@ -63,10 +63,10 @@ export function ColorModeProvider({ children }: { children: ReactNode }) {
   }, [resolved]);
 
   // GluestackUIProvider only swaps the CSS variable set, which the semantic tokens read. NativeWind
-  // resolves `dark:` utilities from its own colour-scheme store instead, and on native that store
-  // follows the device unless told otherwise. Shared palettes no longer rely on that — each surface
-  // names the half its scheme paints — but any `dark:` class written inline still does, so hand
-  // NativeWind the preference before the tree paints.
+  // keeps its own colour-scheme store, and on native that store follows the device unless told
+  // otherwise. No palette in this repo reads it any more — every surface names the half its scheme
+  // paints — but it still backs `dark:` inside dependencies and NativeWind's own `useColorScheme`,
+  // so hand it the preference before the tree paints.
   useLayoutEffect(() => {
     nativeWindColorScheme.set(resolved);
   }, [resolved]);

@@ -1,0 +1,383 @@
+<!-- Prototype asset for wayfinder ticket #1366 (map #1359). Throwaway: structure to react to, not production code. -->
+<title>Jedidiah Contracting Screens</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;600&display=swap">
+<style>
+:root{
+  --ground:#F6F8F4; --surface:#FFFFFF; --surface2:#EEF1EA; --ink:#22261F; --ink2:#5B6355;
+  --line:#DCE1D6; --accent:#3D7A3F; --accent-ink:#FFFFFF; --accent-soft:#E4EFE2;
+  --warn:#B87A1E; --warn-soft:#F6ECDC; --danger:#B03A2E; --danger-soft:#F5E3E1;
+  --phone:#1B1E19; --paper:#FFFDF7;
+}
+:root:not([data-theme="light"]){}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --ground:#191D17; --surface:#22271F; --surface2:#2A3026; --ink:#E8EBE2; --ink2:#9AA292;
+    --line:#39402F; --accent:#7CC280; --accent-ink:#14210F; --accent-soft:#2C3A2A;
+    --warn:#D9A24C; --warn-soft:#3A3120; --danger:#D97A6C; --danger-soft:#3C2622;
+    --phone:#0E100D; --paper:#262B21;
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#191D17; --surface:#22271F; --surface2:#2A3026; --ink:#E8EBE2; --ink2:#9AA292;
+  --line:#39402F; --accent:#7CC280; --accent-ink:#14210F; --accent-soft:#2C3A2A;
+  --warn:#D9A24C; --warn-soft:#3A3120; --danger:#D97A6C; --danger-soft:#3C2622;
+  --phone:#0E100D; --paper:#262B21;
+}
+*{box-sizing:border-box;margin:0}
+body{background:var(--ground);color:var(--ink);font:15px/1.5 Archivo,system-ui,sans-serif;padding:0 0 80px}
+.mono{font-family:"IBM Plex Mono",ui-monospace,monospace;font-variant-numeric:tabular-nums}
+header.page{max-width:1160px;margin:0 auto;padding:40px 24px 8px}
+header.page h1{font-size:28px;font-weight:700;letter-spacing:-.01em;text-wrap:balance}
+header.page p{color:var(--ink2);max-width:64ch;margin-top:6px}
+.protochip{display:inline-block;background:var(--warn-soft);color:var(--warn);border:1px solid color-mix(in srgb,var(--warn) 40%,transparent);border-radius:4px;padding:2px 8px;font-size:12px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;margin-bottom:12px}
+nav.tabs{position:sticky;top:0;z-index:9;background:var(--ground);border-bottom:1px solid var(--line);margin-top:20px}
+nav.tabs .in{max-width:1160px;margin:0 auto;padding:0 24px;display:flex;gap:4px;overflow-x:auto}
+nav.tabs button{appearance:none;border:0;background:none;color:var(--ink2);font:600 14px Archivo,sans-serif;padding:12px 14px;border-bottom:2px solid transparent;cursor:pointer;white-space:nowrap}
+nav.tabs button.on{color:var(--accent);border-bottom-color:var(--accent)}
+nav.tabs button:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+section.role{max-width:1160px;margin:0 auto;padding:28px 24px;display:none}
+section.role.on{display:block}
+.rolehead{margin-bottom:20px;max-width:70ch}
+.rolehead h2{font-size:20px;font-weight:700}
+.rolehead p{color:var(--ink2);font-size:14px;margin-top:4px}
+.shots{display:flex;flex-wrap:wrap;gap:28px;align-items:flex-start}
+.shot{display:flex;flex-direction:column;gap:10px}
+.shot>figcaption{max-width:34ch;font-size:13px;color:var(--ink2)}
+.shot>figcaption b{color:var(--ink);display:block;font-size:14px}
+/* phone frame */
+.phone{width:300px;background:var(--phone);border-radius:26px;padding:10px;box-shadow:0 8px 24px rgba(0,0,0,.18)}
+.phone .scr{background:var(--surface);border-radius:18px;overflow:hidden;min-height:520px;display:flex;flex-direction:column;font-size:13px}
+.appbar{background:var(--accent);color:var(--accent-ink);padding:12px 14px;font-weight:600;display:flex;justify-content:space-between;align-items:center;font-size:13px}
+.appbar small{font-weight:400;opacity:.85}
+.scr .bodypad{padding:12px;display:flex;flex-direction:column;gap:10px;flex:1}
+.card{background:var(--surface2);border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+.card h4{font-size:13px;font-weight:600}
+.card .sub{color:var(--ink2);font-size:12px}
+.bigbtn{display:block;width:100%;background:var(--accent);color:var(--accent-ink);border:0;border-radius:10px;padding:14px;font:600 14px Archivo,sans-serif;text-align:center}
+.bigbtn.ghost{background:var(--surface2);color:var(--ink);border:1px solid var(--line)}
+.bigbtn.danger{background:var(--danger);color:#fff}
+.tabbar{display:flex;border-top:1px solid var(--line)}
+.tabbar div{flex:1;text-align:center;padding:9px 0;font-size:11px;color:var(--ink2)}
+.tabbar div.on{color:var(--accent);font-weight:600}
+/* desktop frame */
+.desk{width:100%;max-width:660px;background:var(--surface);border:1px solid var(--line);border-radius:10px;overflow:hidden;box-shadow:0 6px 18px rgba(0,0,0,.08);font-size:13px}
+.desk .chrome{background:var(--surface2);border-bottom:1px solid var(--line);padding:8px 12px;display:flex;align-items:center;gap:8px;font-size:12px;color:var(--ink2)}
+.dots{display:flex;gap:4px}.dots i{width:8px;height:8px;border-radius:50%;background:var(--line)}
+.modechip{margin-left:auto;background:var(--accent-soft);color:var(--accent);font-weight:600;border-radius:4px;padding:1px 8px}
+.desk .bodypad{padding:14px;display:flex;flex-direction:column;gap:12px}
+table{border-collapse:collapse;width:100%;font-size:12.5px}
+th{color:var(--ink2);font-weight:600;text-align:left;padding:6px 8px;border-bottom:1px solid var(--line);font-size:11px;text-transform:uppercase;letter-spacing:.05em}
+td{padding:7px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+tr:last-child td{border-bottom:0}
+.chip{display:inline-block;border-radius:20px;padding:1px 9px;font-size:11px;font-weight:600}
+.chip.ok{background:var(--accent-soft);color:var(--accent)}
+.chip.warn{background:var(--warn-soft);color:var(--warn)}
+.chip.bad{background:var(--danger-soft);color:var(--danger)}
+.chip.dim{background:var(--surface2);color:var(--ink2);border:1px solid var(--line)}
+.btn{display:inline-block;background:var(--accent);color:var(--accent-ink);border:0;border-radius:7px;padding:6px 12px;font:600 12px Archivo,sans-serif}
+.btn.ghost{background:var(--surface2);color:var(--ink);border:1px solid var(--line)}
+.cols{display:flex;gap:12px}.cols>div{flex:1;min-width:0}
+.qhead{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--ink2);padding-bottom:6px}
+.qhead .n{color:var(--accent)}
+.gapline{background:var(--warn-soft);border:1px solid color-mix(in srgb,var(--warn) 35%,transparent);border-radius:8px;padding:8px 10px;font-size:12px}
+input.mock,select.mock{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:5px 8px;font:12.5px Archivo,sans-serif;color:var(--ink);width:100%}
+input.mock:focus-visible,select.mock:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.seg{display:flex;border:1px solid var(--line);border-radius:9px;overflow:hidden}
+.seg div{flex:1;text-align:center;padding:9px 4px;font-weight:600;font-size:12px;color:var(--ink2)}
+.seg .on.down{background:var(--danger-soft);color:var(--danger)}
+.seg .on{background:var(--accent-soft);color:var(--accent)}
+.cam{background:#111;min-height:200px;border-radius:10px;position:relative;display:flex;align-items:center;justify-content:center;color:#ddd;font-size:12px}
+.cam .bracket{position:absolute;inset:44px 30px;border:2px dashed rgba(255,255,255,.65);border-radius:8px}
+.readbig{font-size:34px;font-weight:600;text-align:center;letter-spacing:.02em}
+.bars{display:flex;flex-direction:column;gap:8px}
+.bar{display:grid;grid-template-columns:92px 1fr 44px;gap:8px;align-items:center;font-size:12px}
+.bar .track{background:var(--surface2);border-radius:4px;height:14px;position:relative;overflow:visible}
+.bar .fill{position:absolute;inset:0 auto 0 0;background:var(--accent);border-radius:4px}
+.bar .tgt{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--warn)}
+.paperdoc{background:var(--paper);border:1px solid var(--line);border-radius:6px;padding:16px;font-size:12px}
+.paperdoc .lh{display:flex;justify-content:space-between;border-bottom:2px solid var(--accent);padding-bottom:8px;margin-bottom:10px}
+.paperdoc .lh b{font-size:14px;letter-spacing:.06em}
+.note{font-size:11px;color:var(--ink2)}
+.timeline{display:flex;flex-direction:column;gap:0}
+.tl{display:grid;grid-template-columns:14px 1fr;gap:10px}
+.tl .dot{width:8px;height:8px;border-radius:50%;background:var(--accent);margin-top:5px;justify-self:center}
+.tl .dot.warnd{background:var(--warn)}.tl .dot.badd{background:var(--danger)}
+.tl .stem{width:2px;background:var(--line);flex:1;justify-self:center}
+.tl .tlb{padding-bottom:14px;font-size:12.5px}
+@media (max-width:720px){.cols{flex-direction:column}}
+</style>
+
+<header class="page">
+  <span class="protochip">Prototype — react, don't approve</span>
+  <h1>Jedidiah Contracting Screens</h1>
+  <p>The core screens per role, rendering the decisions on map #1359. Structure and flow are the question; visual polish is not. Every frame is annotated with the decision it draws from.</p>
+</header>
+
+<nav class="tabs"><div class="in">
+  <button class="on" data-t="foreman">Foreman · mobile</button>
+  <button data-t="henk">Henk · manager</button>
+  <button data-t="connor">Connor · workshop</button>
+  <button data-t="jed">Jed · admin</button>
+  <button data-t="karen">Karen · invoicing</button>
+</div></nav>
+
+<!-- ═════════ FOREMAN ═════════ -->
+<section class="role on" id="foreman">
+  <div class="rolehead"><h2>Foreman — the phone in the field</h2>
+  <p>Sees only jobs assigned to him. Selects, never types (hours excepted); money never appears. Two home-screen variants below — pick one.</p></div>
+  <div class="shots">
+
+  <figure class="shot"><div class="phone"><div class="scr">
+    <div class="appbar">Jedidiah Contracting <small>Petrus</small></div>
+    <div class="bodypad">
+      <div class="qhead">My jobs</div>
+      <div class="card"><h4 class="mono">CJOB-00041 · Scott Farm</h4><div class="sub">Dam building · 3 machines · 2 running</div></div>
+      <div class="card"><h4 class="mono">CJOB-00038 · Rooikraal</h4><div class="sub">Disking · 1 machine · running</div></div>
+      <div style="flex:1"></div>
+      <button class="bigbtn danger">Report a problem</button>
+    </div>
+    <div class="tabbar"><div class="on">Jobs</div><div>Report</div></div>
+  </div></div>
+  <figcaption><b>Home — Variant A: jobs first</b>His 1–3 assigned jobs are the screen; reporting is the one big secondary action.</figcaption></figure>
+
+  <figure class="shot"><div class="phone"><div class="scr">
+    <div class="appbar">Jedidiah Contracting <small>Petrus</small></div>
+    <div class="bodypad" style="justify-content:center;gap:14px">
+      <button class="bigbtn" style="padding:26px">My jobs <span class="chip dim" style="margin-left:6px">2</span></button>
+      <button class="bigbtn ghost" style="padding:26px">Report a problem</button>
+      <button class="bigbtn ghost" style="padding:26px">Service due</button>
+    </div>
+  </div></div>
+  <figcaption><b>Home — Variant B: three buttons</b>The meeting's "three options" telling, taken literally. Service due raises a spot reading.</figcaption></figure>
+
+  <figure class="shot"><div class="phone"><div class="scr">
+    <div class="appbar"><span class="mono">CJOB-00041</span> <small>Scott Farm · Dam building</small></div>
+    <div class="bodypad">
+      <div class="card"><h4 class="mono">CAT320-1 <span class="chip ok">Running</span></h4>
+        <div class="sub">Excavator · Johannes M. · arrived <span class="mono">4 002.6</span> ✓</div>
+        <div style="margin-top:8px"><span class="btn ghost">Stop — capture departure</span></div></div>
+      <div class="card"><h4 class="mono">JD6140M-2 <span class="chip ok">Running</span></h4>
+        <div class="sub">Tractor · Willem K. · arrived <span class="mono">7 110.0</span> ✓</div></div>
+      <div class="card"><h4 class="mono">TIP-TRAIL-3 <span class="chip dim">Left site</span></h4>
+        <div class="sub">Tip trailer · departed <span class="mono">1 204.0</span> ✓</div></div>
+      <div style="flex:1"></div>
+      <button class="bigbtn ghost">+ Add machine</button>
+    </div>
+  </div></div>
+  <figcaption><b>Job detail</b>Assignments as cards; add-machine opens the code picker filtered by Category. Start/stop are the only verbs.</figcaption></figure>
+
+  <figure class="shot"><div class="phone"><div class="scr">
+    <div class="appbar">Capture hours <small>CAT320-1</small></div>
+    <div class="bodypad">
+      <div class="cam"><div class="bracket"></div>Frame the hour meter</div>
+      <div class="card" style="text-align:center">
+        <div class="note">AI read — confirm</div>
+        <div class="readbig mono">4 051.2</div>
+        <div style="display:flex;gap:8px;justify-content:center;margin-top:8px">
+          <span class="btn">Use 4 051.2</span><span class="btn ghost">Retake</span>
+        </div>
+      </div>
+      <div class="note" style="text-align:center">Type it manually instead — flagged as missing photo evidence</div>
+    </div>
+  </div></div>
+  <figcaption><b>Reading capture</b>Photo-first with one-tap confirm (per the hour-meter research); a value below the last reading is refused with a retake prompt.</figcaption></figure>
+
+  <figure class="shot"><div class="phone"><div class="scr">
+    <div class="appbar">Report a problem</div>
+    <div class="bodypad">
+      <div class="seg"><div class="on down">Machine down</div><div>Still working</div></div>
+      <select class="mock"><option>JD6140M-2 — Tractor</option></select>
+      <div class="card" style="display:flex;gap:8px;align-items:center"><span class="chip dim">📷 2 photos</span><span class="btn ghost">Add photo</span></div>
+      <div class="card"><div class="note">🎙 Voice note — transcribed, edit if wrong</div>
+        <div style="margin-top:4px">Hydraulic pipe by the loader arm is leaking badly, machine is standing.</div></div>
+      <div style="flex:1"></div>
+      <button class="bigbtn">Send to workshop</button>
+    </div>
+  </div></div>
+  <figcaption><b>Breakdown report</b>Urgency up front; his own words allowed here (voice → editable text). Job and farm attach automatically from the open Assignment.</figcaption></figure>
+
+  </div>
+</section>
+
+<!-- ═════════ HENK ═════════ -->
+<section class="role" id="henk">
+  <div class="rolehead"><h2>Henk — contracting manager</h2>
+  <p>Creates and assigns jobs, watches the queues, signs off. The sign-off screen is where gaps get resolved and dates get stamped.</p></div>
+  <div class="shots">
+
+  <figure class="shot"><div class="desk">
+    <div class="chrome"><span class="dots"><i></i><i></i><i></i></span> /contracting/jobs <span class="modechip">Jedidiah Contracting</span></div>
+    <div class="bodypad"><div class="cols">
+      <div><div class="qhead">Upcoming <span class="n">4</span></div>
+        <div class="card"><h4>Mr Rowley — Gravel roads</h4><div class="sub">2 km farm roads · <select class="mock" style="margin-top:4px"><option>Assign foreman…</option></select></div></div>
+        <div class="card" style="margin-top:8px"><h4>D. Botha — Dam building</h4><div class="sub">Foreman: Sipho</div></div></div>
+      <div><div class="qhead">Active <span class="n">6</span></div>
+        <div class="card"><h4 class="mono">CJOB-00041</h4><div class="sub">Scott Farm · 3 machines</div></div>
+        <div class="card" style="margin-top:8px"><h4 class="mono">CJOB-00039</h4><div class="sub">Welgevonden · 2 machines</div><span class="chip warn">Gap flag</span></div></div>
+      <div><div class="qhead">Looks finished <span class="n">2</span></div>
+        <div class="card"><h4 class="mono">CJOB-00037</h4><div class="sub">All machines stopped · 2 days</div><span class="btn" style="margin-top:6px">Review &amp; sign off</span></div></div>
+    </div></div>
+  </div>
+  <figcaption><b>Jobs overview</b>The three queues that make work impossible to lose. "Looks finished" is derived — Henk decides if it's actually done or waiting on a machine.</figcaption></figure>
+
+  <figure class="shot"><div class="desk">
+    <div class="chrome"><span class="dots"><i></i><i></i><i></i></span> /contracting/jobs/CJOB-00037 · sign-off <span class="modechip">Jedidiah Contracting</span></div>
+    <div class="bodypad">
+      <table><thead><tr><th>Machine</th><th>Arrival</th><th>Departure</th><th>Work h</th><th>Travel h</th><th></th></tr></thead><tbody>
+        <tr><td class="mono">CAT320-1</td><td class="mono">4 002.6</td><td class="mono">4 051.2</td><td class="mono">48.6</td><td class="mono">2.0 ☑</td><td><span class="chip ok">✓ photo</span></td></tr>
+        <tr><td class="mono">GRAD140K-1</td><td class="mono">7 110.0</td><td class="mono">7 152.4</td><td class="mono">42.4</td><td class="mono">9.5 ☑</td><td><span class="chip warn">Gap flag</span></td></tr>
+      </tbody></table>
+      <div class="gapline"><b>9.5 h gap on GRAD140K-1</b> — over the 4 h threshold. Split: <span class="mono">2.5</span> h billable travel · <span class="mono">7.0</span> h unaccounted — reason: <i>"Returned to Stony Brook for yard work."</i> <span class="btn ghost">Resolve</span></div>
+      <table><tbody>
+        <tr><td>Charge line — Low-bed move, Stony Brook → Welgevonden</td><td class="mono" style="text-align:right">R 3 500.00</td></tr>
+        <tr><td>Charge line — Diesel supplied, 210 L</td><td class="mono" style="text-align:right">R 4 830.00</td></tr>
+      </tbody></table>
+      <div style="display:flex;gap:10px;align-items:center">
+        <span class="note">Start <b>12 Aug</b> · End <b>28 Aug</b> (suggested from machine hours — editable)</span>
+        <span class="btn" style="margin-left:auto">Stamp dates &amp; complete</span>
+      </div>
+    </div>
+  </div>
+  <figcaption><b>Sign-off</b>Hours with evidence markers, the gap split with its mandatory reason, charge lines, and the date stamp — Henk's whole job on one screen. No rates yet: pricing is Jed's step.</figcaption></figure>
+
+  </div>
+</section>
+
+<!-- ═════════ CONNOR ═════════ -->
+<section class="role" id="connor">
+  <div class="rolehead"><h2>Connor — workshop manager</h2>
+  <p>Owns every breakdown transition, assigns one primary mechanic, records services. Reads everything; writes workshop.</p></div>
+  <div class="shots">
+
+  <figure class="shot"><div class="desk">
+    <div class="chrome"><span class="dots"><i></i><i></i><i></i></span> /contracting/workshop <span class="modechip">Jedidiah Contracting</span></div>
+    <div class="bodypad">
+      <div class="card"><h4><span class="chip bad">Machine down</span> <span class="mono">JD6140M-2</span> · Scott Farm (<span class="mono">CJOB-00041</span>)</h4>
+        <div class="sub">2 h ago · Petrus · 📷 2 · "Hydraulic pipe by the loader arm is leaking badly…"</div>
+        <div style="display:flex;gap:8px;margin-top:8px"><select class="mock" style="max-width:160px"><option>Assign: Danie</option><option>Lucas</option></select><span class="btn">Start</span></div>
+        <div class="gapline" style="margin-top:8px">Also at Scott Farm: <span class="mono">TIP-TRAIL-3</span> has an open fault — same trip?</div></div>
+      <div class="card"><h4><span class="chip warn">Still working</span> <span class="mono">CAT320-2</span> · In Yard</h4>
+        <div class="sub">3 d · wiper motor dead · Lucas · <span class="chip dim">In progress</span></div></div>
+      <div class="note">Solved (12 this month) ▸</div>
+    </div>
+  </div>
+  <figcaption><b>Breakdown queue</b>Urgency leads; the dispatch cross-reference ("same trip?") is derived from open faults on the same Job. Closing demands the close-out note.</figcaption></figure>
+
+  <figure class="shot"><div class="desk">
+    <div class="chrome"><span class="dots"><i></i><i></i><i></i></span> /contracting/fleet/CAT320-1 <span class="modechip">Jedidiah Contracting</span></div>
+    <div class="bodypad">
+      <div style="display:flex;gap:10px;align-items:baseline;flex-wrap:wrap">
+        <h4 class="mono" style="font-size:16px">CAT320-1</h4><span class="sub">Excavator · CAT 320 · On Job @ Scott Farm</span>
+        <span class="chip warn" style="margin-left:auto">Service due soon — 48.8 h</span>
+      </div>
+      <div class="note">Latest known hours <span class="mono">4 051.2</span> (spot reading, 30 Aug) · Next service <span class="mono">4 100</span> · Interval <span class="mono">500</span> h</div>
+      <div class="timeline">
+        <div class="tl"><div style="display:flex;flex-direction:column"><div class="dot"></div><div class="stem"></div></div><div class="tlb"><b>30 Aug</b> — Spot reading <span class="mono">4 051.2</span> ✓ photo (Petrus)</div></div>
+        <div class="tl"><div style="display:flex;flex-direction:column"><div class="dot badd"></div><div class="stem"></div></div><div class="tlb"><b>28 Aug</b> — Breakdown solved · hose clamp replaced · Danie · 1.2 days</div></div>
+        <div class="tl"><div style="display:flex;flex-direction:column"><div class="dot"></div></div><div class="tlb"><b>15 Jul</b> — Service @ <span class="mono">3 600</span> · filters + oils · Danie</div></div>
+      </div>
+    </div>
+  </div>
+  <figcaption><b>Machine history</b>One machine's whole story: readings, breakdowns, services, and the due-soon chip fed by spot readings — the sticker on the dash, digitized.</figcaption></figure>
+
+  </div>
+</section>
+
+<!-- ═════════ JED ═════════ -->
+<section class="role" id="jed">
+  <div class="rolehead"><h2>Jed — pricing, fleet, utilisation</h2>
+  <p>Pricing and Preset Rates sit with contracting-admin and super-admin alone. Fleet and the utilisation view answer "what do we own and is it working?"</p></div>
+  <div class="shots">
+
+  <figure class="shot"><div class="desk">
+    <div class="chrome"><span class="dots"><i></i><i></i><i></i></span> /contracting/jobs/CJOB-00037 · pricing <span class="modechip">Jedidiah Contracting</span></div>
+    <div class="bodypad">
+      <table><thead><tr><th>Machine</th><th>Hours (work + travel)</th><th>Rate /h</th><th>Amount</th></tr></thead><tbody>
+        <tr><td class="mono">CAT320-1</td><td class="mono">50.6</td><td><input class="mock mono" style="width:88px" value="R 600"></td><td class="mono" style="text-align:right">R 30 360.00</td></tr>
+        <tr><td class="mono">GRAD140K-1</td><td class="mono">44.9</td><td><input class="mock mono" style="width:88px" value="R 550"></td><td class="mono" style="text-align:right">R 24 695.00</td></tr>
+        <tr><td>Low-bed move</td><td></td><td></td><td class="mono" style="text-align:right">R 3 500.00</td></tr>
+        <tr><td>Diesel supplied, 210 L</td><td></td><td></td><td class="mono" style="text-align:right">R 4 830.00</td></tr>
+      </tbody></table>
+      <div style="display:flex;align-items:center"><span class="note">Rates prefill from Category presets — edit the number, that's the discount</span>
+      <b class="mono" style="margin-left:auto">Total R 63 385.00 <span class="note">ex VAT</span></b></div>
+      <div><span class="btn">Mark as Priced</span> <span class="note">amounts freeze; Karen's queue picks it up</span></div>
+    </div>
+  </div>
+  <figcaption><b>Pricing</b>Prefilled from Preset Rates, editable per Assignment, frozen on Mark as Priced. No formal discount machinery — the rate is the knob.</figcaption></figure>
+
+  <figure class="shot"><div class="desk">
+    <div class="chrome"><span class="dots"><i></i><i></i><i></i></span> /contracting/fleet <span class="modechip">Jedidiah Contracting</span></div>
+    <div class="bodypad">
+      <div style="display:flex;gap:6px;flex-wrap:wrap"><span class="chip ok">All 78</span><span class="chip dim">Excavators 6</span><span class="chip dim">Graders 3</span><span class="chip dim">Tractors 38</span><span class="chip dim">TLBs 4</span><span class="chip dim">In Yard only</span></div>
+      <table><thead><tr><th>Code</th><th>Machine</th><th>Category</th><th>Driver</th><th>Status</th></tr></thead><tbody>
+        <tr><td class="mono">CAT320-1</td><td>CAT 320</td><td>Excavator</td><td>Johannes M.</td><td><span class="chip ok">On Job · Scott Farm</span></td></tr>
+        <tr><td class="mono">CAT320-2</td><td>CAT 320</td><td>Excavator</td><td>—</td><td><span class="chip dim">In Yard</span> <span class="chip warn">1 fault</span></td></tr>
+        <tr><td class="mono">JD6140M-1</td><td>John Deere 6140M</td><td>Tractor</td><td>Willem K.</td><td><span class="chip dim">In Yard</span></td></tr>
+        <tr><td class="mono">GRAD140K-1</td><td>CAT 140K</td><td>Grader</td><td>Piet S.</td><td><span class="chip ok">On Job · Welgevonden</span></td></tr>
+      </tbody></table>
+    </div>
+  </div>
+  <figcaption><b>Fleet &amp; Machine Yard</b>Availability is derived — the "In Yard only" filter <i>is</i> the yard view. Faults ride along as chips, never a third state. Make/model come from creatable selects.</figcaption></figure>
+
+  <figure class="shot"><div class="desk">
+    <div class="chrome"><span class="dots"><i></i><i></i><i></i></span> /contracting/utilisation <span class="modechip">Jedidiah Contracting</span></div>
+    <div class="bodypad">
+      <div style="display:flex;gap:8px"><span class="chip ok">August</span><span class="chip dim">Quarter</span><span class="chip dim">Year</span><span class="chip dim" style="margin-left:auto">Mechanic performance ▸</span></div>
+      <div class="card"><b>Fleet Load — 41 of 78 machines worked in August (53%)</b><div class="note">Target 65%</div></div>
+      <div class="bars">
+        <div class="bar"><span>Excavators</span><span class="track"><span class="fill" style="width:82%"></span><span class="tgt" style="left:65%"></span></span><span class="mono">82%</span></div>
+        <div class="bar"><span>Graders</span><span class="track"><span class="fill" style="width:74%"></span><span class="tgt" style="left:65%"></span></span><span class="mono">74%</span></div>
+        <div class="bar"><span>Tractors</span><span class="track"><span class="fill" style="width:48%"></span><span class="tgt" style="left:65%"></span></span><span class="mono">48%</span></div>
+        <div class="bar"><span>TLBs</span><span class="track"><span class="fill" style="width:31%"></span><span class="tgt" style="left:65%"></span></span><span class="mono">31%</span></div>
+      </div>
+      <div class="note">Active Days ÷ days in fleet, exact month attribution. Rows expand to per-machine %.</div>
+    </div>
+  </div>
+  <figcaption><b>Utilisation</b>Days-based, three altitudes (fleet → category → machine), the single global target line, and mechanic performance one tab over.</figcaption></figure>
+
+  </div>
+</section>
+
+<!-- ═════════ KAREN ═════════ -->
+<section class="role" id="karen">
+  <div class="rolehead"><h2>Karen — invoicing</h2>
+  <p>Reads Priced and Completed job cards, stamps the PESTEL invoice number. Her stamp is the wall — and the last queue in the no-work-vanishes chain.</p></div>
+  <div class="shots">
+
+  <figure class="shot"><div class="desk">
+    <div class="chrome"><span class="dots"><i></i><i></i><i></i></span> /contracting/invoicing <span class="modechip">Jedidiah Contracting</span></div>
+    <div class="bodypad">
+      <div class="qhead">Awaiting invoice <span class="n">2</span></div>
+      <table><thead><tr><th>Job</th><th>Customer</th><th>Total ex VAT</th><th>Priced</th><th>Invoice №</th><th></th></tr></thead><tbody>
+        <tr><td class="mono">CJOB-00037</td><td>D. Botha</td><td class="mono">R 63 385.00</td><td>2 Sep</td><td><input class="mock mono" style="width:110px" placeholder="INV-…"></td><td><span class="btn">Stamp</span></td></tr>
+        <tr><td class="mono">CJOB-00035</td><td>Mr Rowley</td><td class="mono">R 18 200.00</td><td>29 Aug</td><td><input class="mock mono" style="width:110px" placeholder="INV-…"></td><td><span class="btn ghost">Job card</span></td></tr>
+      </tbody></table>
+      <div class="note">Invoiced this month (7) ▸</div>
+    </div>
+  </div>
+  <figcaption><b>Invoice queue</b>Priced jobs wait here until Karen stamps the PESTEL number; the stamp freezes everything. Open the job card beside PESTEL and key it in.</figcaption></figure>
+
+  <figure class="shot"><div class="desk" style="max-width:520px">
+    <div class="chrome"><span class="dots"><i></i><i></i><i></i></span> Job Card · <span class="chip ok">Internal</span> <span class="chip dim">Customer copy</span></div>
+    <div class="bodypad"><div class="paperdoc">
+      <div class="lh"><b>JEDIDIAH CONTRACTING</b><span class="note">Works summary — not an invoice</span></div>
+      <div style="display:flex;justify-content:space-between"><span><b class="mono">CJOB-00037</b> · D. Botha · Welgevonden</span><span class="note">12–28 Aug</span></div>
+      <div class="note">Dam building · Foreman: Sipho</div>
+      <table style="margin-top:8px"><thead><tr><th>Machine</th><th>Arrival</th><th>Departure</th><th>Hours</th><th>Rate</th><th>Amount</th></tr></thead><tbody>
+        <tr><td class="mono">CAT320-1 ✓</td><td class="mono">4 002.6</td><td class="mono">4 051.2</td><td class="mono">50.6</td><td class="mono">600</td><td class="mono">30 360.00</td></tr>
+        <tr><td class="mono">GRAD140K-1 ⚠</td><td class="mono">7 110.0</td><td class="mono">7 152.4</td><td class="mono">44.9</td><td class="mono">550</td><td class="mono">24 695.00</td></tr>
+        <tr><td colspan="5">Low-bed move · Diesel 210 L</td><td class="mono">8 330.00</td></tr>
+        <tr><td colspan="5"><b>Total ex VAT</b></td><td class="mono"><b>63 385.00</b></td></tr>
+      </tbody></table>
+      <div class="note" style="margin-top:8px">⚠ manual entry, no photo · gap resolved: 7.0 h unaccounted "yard work at Stony Brook" — internal variant only</div>
+    </div></div>
+  </div>
+  <figcaption><b>The Job Card document</b>On-demand PDF, two variants — internal with evidence markers and gap notes, customer copy clean. Readings printed, photos stay in the app.</figcaption></figure>
+
+  </div>
+</section>
+
+<script>
+const tabs=document.querySelectorAll('nav.tabs button'),secs=document.querySelectorAll('section.role');
+tabs.forEach(b=>b.addEventListener('click',()=>{tabs.forEach(x=>x.classList.toggle('on',x===b));secs.forEach(s=>s.classList.toggle('on',s.id===b.dataset.t));}));
+</script>

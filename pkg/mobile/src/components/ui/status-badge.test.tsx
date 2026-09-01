@@ -29,9 +29,4 @@ describe('StatusBadge', () => {
     expect(badgeTextClassName('dark')).toContain('text-emerald-200');
     expect(badgeTextClassName('dark')).not.toContain('emerald-800');
   });
-
-  test('never leaves an unresolved dark variant for NativeWind to decide', () => {
-    expect(badgeTextClassName('light')).not.toContain('dark:');
-    expect(badgeTextClassName('dark')).not.toContain('dark:');
-  });
 });

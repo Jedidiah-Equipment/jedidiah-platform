@@ -14,7 +14,6 @@ import { darkStatusColors, lightStatusColors, type StatusColors } from './status
 export * from './color.js';
 export * from './colors.js';
 export * from './scale.js';
-export * from './scheme-class-names.js';
 export * from './status.js';
 export * from './status-badge.js';
 

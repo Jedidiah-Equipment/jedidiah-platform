@@ -1,6 +1,6 @@
 import type { PurchaseOrderDerivedStatus } from '@pkg/schema';
 
-import { statusBadgeColorClassNames } from '../theme/status-badge.js';
+import { type BadgeColorClassNames, statusBadgeColorClassNames } from '../theme/status-badge.js';
 
 export const purchaseOrderStatusLabels: Record<PurchaseOrderDerivedStatus, string> = {
   approved: 'Approved',
@@ -12,11 +12,11 @@ export const purchaseOrderStatusLabels: Record<PurchaseOrderDerivedStatus, strin
 };
 
 /**
- * Tailwind classes split so native surfaces can put `text` on the Text element, the same shape
+ * Tailwind classes split so native surfaces can put the text colour on the Text element, the same shape
  * `quoteStatusColorClassNames` uses. An order's status is a fact about where it sits in its life,
  * never a call to action, so none of these reach for the brand colour.
  */
-export const purchaseOrderStatusColorClassNames: Record<PurchaseOrderDerivedStatus, { chip: string; text: string }> = {
+export const purchaseOrderStatusColorClassNames: Record<PurchaseOrderDerivedStatus, BadgeColorClassNames> = {
   // Cleared to go, and not yet the green of stock that has actually landed.
   approved: statusBadgeColorClassNames.teal,
   cancelled: statusBadgeColorClassNames.red,

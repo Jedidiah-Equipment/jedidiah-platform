@@ -7,7 +7,7 @@ import { Image, StyleSheet, View } from 'react-native';
 import { Icon } from '@/components/ui/icon';
 import type { ProductImageKey } from '@/lib/product-image-cache';
 import { useProductImageSource } from '@/lib/product-image-source';
-import { useTextClassNameForScheme } from '@/theme/use-scheme-class-name';
+import { useColorMode } from '@/theme/use-color-mode';
 
 const MOBILE_CARD_IMAGE_SLOTS = [
   'primary',
@@ -58,8 +58,8 @@ function ResolvedProductImage({ productName, imageKey }: { productName: string; 
  * and turns pink on staging.
  */
 function ProductImagePlaceholder() {
-  const { chip, text } = quoteKindColorClassNames.product;
-  const textForScheme = useTextClassNameForScheme();
+  const { chip, textByScheme } = quoteKindColorClassNames.product;
+  const { resolved } = useColorMode();
 
   return (
     <View
@@ -68,7 +68,7 @@ function ProductImagePlaceholder() {
       className="flex-1 items-center justify-center bg-image-backdrop"
     >
       <View className={`h-14 w-14 items-center justify-center rounded-2xl border ${chip}`}>
-        <Icon className={textForScheme(text)} icon={IconPackage} size={28} strokeWidth={1.6} />
+        <Icon className={textByScheme[resolved]} icon={IconPackage} size={28} strokeWidth={1.6} />
       </View>
     </View>
   );

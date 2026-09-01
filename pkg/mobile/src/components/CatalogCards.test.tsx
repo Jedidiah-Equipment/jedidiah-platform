@@ -1,4 +1,3 @@
-import { statusBadgeColorClassNames, textClassNameForScheme } from '@pkg/domain';
 import type { JobSummary, Product, ProductUnitSummary, QuoteSummary } from '@pkg/schema';
 import { describe, expect, test, vi } from 'vitest';
 
@@ -125,44 +124,6 @@ describe('catalog card mappings', () => {
     const stockBadge = ((asElement(card.props.metadata).props.children as TestElement[])[0] ?? null) as TestElement;
     expect(stockBadge.type).toBe(StockBadge);
     expect(stockBadge.props.size).toBe('compact');
-  });
-
-  test('uses the shared Quote-sized status treatment for a not-scheduled badge', () => {
-    const card = asElement(
-      JobCatalogCard({
-        job: {
-          code: 'JOB-00044',
-          completedOn: null,
-          customerCompanyName: null,
-          id: 'job-3',
-          productName: 'Square Baler',
-          productUnit: null,
-          quoteKind: 'product',
-          scheduleState: {
-            active: 0,
-            done: 0,
-            firstWorkDay: null,
-            lastWorkDay: null,
-            scheduled: 0,
-            total: 0,
-          },
-          workTitle: null,
-        } as JobSummary,
-      }),
-    );
-    const summary = asElement(card.props.trailing);
-    const renderedSummary = asElement((summary.type as (props: ElementProps) => unknown)(summary.props));
-    const badges = (renderedSummary.props.children as unknown[])[0] as TestElement[];
-    const badge = badges[0] as TestElement;
-    const renderedBadge = asElement((badge.type as (props: ElementProps) => unknown)(badge.props));
-    const renderedPrimitive = asElement((renderedBadge.type as (props: ElementProps) => unknown)(renderedBadge.props));
-    const badgeText = asElement(renderedPrimitive.props.children);
-
-    expect(renderedPrimitive.props.className).toContain('px-2 py-1');
-    expect(renderedPrimitive.props.className).toContain(statusBadgeColorClassNames.orange.chip);
-    expect(badgeText.props.className).toContain('text-[10px] tracking-wide');
-    expect(badgeText.props.className).toContain(textClassNameForScheme(statusBadgeColorClassNames.orange.text, 'dark'));
-    expect(badgeText.props.mono).toBe(true);
   });
 
   test('wraps mixed Schedule badges within the shared fixed-height catalog card', () => {

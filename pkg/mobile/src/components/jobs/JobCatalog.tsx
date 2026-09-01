@@ -17,6 +17,7 @@ import { Icon } from '@/components/ui/icon';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { Text } from '@/components/ui/text';
 import { getJobSchedulePresentation, type JobCatalogSort, type JobCompletionFilter } from '@/lib/job-catalog';
+import { useColorMode } from '@/theme/use-color-mode';
 
 const COMPLETION_OPTIONS: readonly ListControlOption<JobCompletionFilter>[] = [
   { label: 'Exclude Complete', value: 'exclude-complete' },
@@ -82,7 +83,8 @@ export function JobCatalogCard({ job }: { job: JobSummary }) {
   const router = useRouter();
   const displayName = getJobDisplayName(job);
   const serial = job.productUnit?.productSerialNumber;
-  const avatar = offeringAvatarProps(getJobOfferingKind(job));
+  const { resolved } = useColorMode();
+  const avatar = offeringAvatarProps(getJobOfferingKind(job), resolved);
 
   return (
     <CatalogListCard

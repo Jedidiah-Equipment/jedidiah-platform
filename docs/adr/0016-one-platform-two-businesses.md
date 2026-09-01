@@ -18,11 +18,17 @@ codebase says so everywhere the same way:
   symmetry: with only a `contracting/` namespace, "outside" would ambiguously mean equipment *or*
   shared, and the boundary could not be linted from both sides.
 - **Database.** Two named Postgres schemas, `equipment` and `contracting`, via Drizzle `pgSchema`.
-  `public` stays the shared home (user/auth, audit, feedback, files, changelog — the phase-0
-  migration classifies the full list) because that is where better-auth and tooling defaults
-  already point; only the two businesses get named schemas. Cross-schema foreign keys into
-  `public` are ordinary; foreign keys *between* `equipment` and `contracting` are the enumerated
-  exceptions below.
+  `public` stays the shared home because that is where better-auth and tooling defaults already
+  point; only the two businesses get named schemas. The classification principle for phase 0:
+  `public` holds only **business-blind mechanism** — user/auth, changelog, the stored-file blob
+  store. A table whose *rows* attach to business entities is business-scoped even when its
+  mechanism looks shared: feedback and documents reference equipment Jobs, Quotes, Products, and
+  Purchase Orders today, so they move into the `equipment` schema (contracting grows its own
+  counterparts if it ever needs them). The one deliberate spanning table is `audit_events` — one
+  audit mechanism serves both businesses, every row is business-attributable through the entity it
+  records, and that attributability is a phase-0 invariant, not an accident. Cross-schema foreign
+  keys into `public` are ordinary; foreign keys *between* `equipment` and `contracting` are the
+  enumerated exceptions below.
 - **URLs.** `/equipment/…` and `/contracting/…`, so the mode is visible in every address and deep
   links are unambiguous. Legacy paths (`/jobs`, `/inventory`, …) permanently redirect.
 - **Permissions.** One flat App Role set and one `resource:verb` grammar, with symmetric families:
@@ -50,8 +56,10 @@ at nothing).
 **The exit is designed in.** If the businesses ever split: fork the repo, keep one side's
 namespace folders, `pg_dump --schema=` the departing business's schema (or `DROP SCHEMA` the
 remaining one's counterpart), collapse the `business` field so every user holds one value, and
-retire the switcher. Nothing in the shared home carries business meaning that would need
-untangling — that is what the classification in phase 0 protects.
+retire the switcher. The shared home then needs no untangling beyond one filtered extraction:
+`audit_events` rows follow the business whose entities they record, which the attributability
+invariant above keeps possible; everything else in `public` is business-blind mechanism — that is
+what the classification principle in phase 0 protects.
 
 **Phase 0 precedes any contracting code.** The symmetric standard is set by moving the existing
 equipment mass — folders, routes with redirects, `ALTER TABLE … SET SCHEMA equipment` (an atomic

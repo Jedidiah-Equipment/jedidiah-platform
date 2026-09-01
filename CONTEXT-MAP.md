@@ -15,8 +15,7 @@ Customer) for different concepts; never treat a same-named term as shared.
 - **User** is one person (or Device Account) across both businesses. A user's **business access**
   — Equipment, Contracting, or both — decides which context's surfaces they see; only both-access
   users see the mode switcher. App Roles remain one flat set spanning both contexts.
-- **Machine ↔ Product Unit link**: a Contracting Machine that Jedidiah Equipment built may
-  reference its Product Unit. Most of the contracting fleet is bought, not built, and references
-  nothing. This is the only deliberate data crossing between the two business contexts.
-- Customers are **not** shared: each business keeps its own directory, and the same real-world
-  farmer may appear in both.
+- There is **no data crossing between the two business contexts**: a Contracting Machine holds no
+  reference to an Equipment Product Unit (a machine Jedidiah Equipment built is still just a
+  Machine on the contracting side), and Customers are not shared — each business keeps its own
+  directory, and the same real-world farmer may appear in both.

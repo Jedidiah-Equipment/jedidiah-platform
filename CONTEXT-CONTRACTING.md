@@ -47,9 +47,25 @@ included. Discounts are edited numbers, not a mechanism.
 **Invoice Number** is the terminal stamp on a Job, recorded by the invoicing user from the
 external accounting system. Stamping it is what makes a Job Invoiced.
 
-**Machine** is one piece of the contracting fleet, identified by its code. Its full model
-(categories, drivers, availability, the optional Product Unit link) is specified in the fleet
-model; only what other terms here need is stated: a Machine is what an Assignment assigns.
+**Machine** is one piece of the contracting fleet: a make and model (entered via creatable
+selects so spelling stays consistent), a registration number, a hand-entered unique **Machine
+Code** following the fleet's `JD6140M-1` convention, a **Category**, an optional current
+**Driver**, and notes. A Machine is what an Assignment assigns. It has no reference to the
+Equipment context: the two businesses share no machine identity. A Machine is **On Job** while it
+has an open Assignment and otherwise **In Yard** — derived, never stored, with no manual flag;
+the **Machine Yard** view lists In Yard machines by Category, and an open fault shows as an
+indicator, not a third state. A Machine with any history is never deleted: it is **Retired** with
+a mandatory reason, hidden from every picker and the yard view, history intact and un-retirable;
+only a never-used entry may be deleted. Avoid Unit, Product Unit, Vehicle, or Asset.
+
+**Category** is the admin-managed grouping of Machines (excavator, TLB, hauler tractor, grader,
+…): the shortlist dimension in pickers, the grouping of the Machine Yard, the future utilisation
+dimension, and the home of the Preset Rate.
+
+**Driver** is a non-login user record (the bay-operator pattern): drivers take instructions and
+never sign in. The Machine carries its current Driver; each Machine Assignment snapshots its
+driver at start — defaulted from the Machine, overridable by the Foreman from the pre-saved list
+— so a driver's history is derivable from Assignments and survives reshuffles.
 
 **Job Number** is the Job's `CJOB-xxxxx` code, an automatic sequence distinct from the Equipment
 context's `JOB-xxxxx`.

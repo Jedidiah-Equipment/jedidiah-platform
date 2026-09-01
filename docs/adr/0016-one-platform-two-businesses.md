@@ -27,8 +27,8 @@ codebase says so everywhere the same way:
   counterparts if it ever needs them). The one deliberate spanning table is `audit_events` — one
   audit mechanism serves both businesses, every row is business-attributable through the entity it
   records, and that attributability is a phase-0 invariant, not an accident. Cross-schema foreign
-  keys into `public` are ordinary; foreign keys *between* `equipment` and `contracting` are the
-  enumerated exceptions below.
+  keys into `public` are ordinary; foreign keys *between* `equipment` and `contracting` do not
+  exist at all.
 - **URLs.** `/equipment/…` and `/contracting/…`, so the mode is visible in every address and deep
   links are unambiguous. Legacy paths (`/jobs`, `/inventory`, …) permanently redirect.
 - **Permissions.** One flat App Role set and one `resource:verb` grammar, with symmetric families:
@@ -48,10 +48,9 @@ codebase says so everywhere the same way:
 **The wall is enforced, not reviewed.** A lint boundary rule fails CI when equipment code imports
 from `contracting/` or contracting code imports from `equipment/`; both may import shared
 infrastructure. App wiring (route registry, root router, navigation shell) is the one place both
-namespaces are named together. The deliberate crossings are enumerated and small: the shared
-`user`, and contracting's optional Machine → Product Unit link (a contracting Machine that
-equipment built may point at its Product Unit; most of the fleet is bought, not built, and points
-at nothing).
+namespaces are named together. The businesses share nothing beyond the business-blind mechanisms
+in `public`: the fleet-model decision dropped the once-considered Machine → Product Unit link, so
+no row in either business schema references the other.
 
 **The exit is designed in.** If the businesses ever split: fork the repo, keep one side's
 namespace folders, `pg_dump --schema=` the departing business's schema (or `DROP SCHEMA` the
@@ -91,5 +90,6 @@ everywhere, rather than defining the pattern by exception.
 - **One shared machine identity (contracting fleet as Product Units)** — rejected; a Product Unit
   is defined by its Build Job, while the contracting fleet is overwhelmingly bought equipment the
   plant never built. Forcing one identity would grow equipment's model a "bought" origin for
-  another business's benefit. The optional Machine → Product Unit link covers the built minority
-  without touching the equipment model.
+  another business's benefit. An optional Machine → Product Unit link for the built minority was
+  considered next and dropped by the fleet-model decision as speculative — a machine equipment
+  built is still just a Machine on the contracting side.

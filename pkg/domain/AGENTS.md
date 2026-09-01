@@ -7,6 +7,9 @@
 - Shared palettes here are Tailwind class strings (`src/theme/status-badge.ts`), so both apps must scan
   this package for them: `@source` in `pkg/web/src/styles/globals.css`, `content` in
   `pkg/mobile/tailwind.config.js`. A class neither scans still renders — it just paints nothing, and no
-  test catches that. Prefer reusing an existing palette entry over introducing a new colour.
+  test catches that. Tailwind emits a rule per candidate it scans, so `dark:text-blue-200` yields only
+  the `.dark`-scoped rule: a scheme half native names must be authored as its own bare literal
+  (`textByScheme`), never sliced off the two-tone class at runtime. Prefer reusing an existing palette
+  entry over introducing a new colour.
 
 Canonical examples: `src/auth/authorization.ts`, `src/demo.ts`, `src/index.ts`.

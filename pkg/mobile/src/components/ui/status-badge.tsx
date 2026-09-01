@@ -1,11 +1,12 @@
+import type { SchemeTextClassNames } from '@pkg/domain';
 import { View } from 'react-native';
 
 import { Text } from '@/components/ui/text';
-import { useTextClassNameForScheme } from '@/theme/use-scheme-class-name';
+import { useColorMode } from '@/theme/use-color-mode';
 
 export type StatusBadgeClassNames = {
   chip: string;
-  text: string;
+  textByScheme: SchemeTextClassNames;
 };
 
 const BADGE_SIZE = {
@@ -26,12 +27,12 @@ export function StatusBadge({
   size?: keyof typeof BADGE_SIZE;
 }) {
   const badgeSize = BADGE_SIZE[size];
-  const textForScheme = useTextClassNameForScheme();
+  const { resolved } = useColorMode();
 
   return (
     <View className={`flex-row items-center rounded-full border ${badgeSize.chip} ${classNames.chip}`}>
       <Text
-        className={`${badgeSize.text} tracking-wide ${textForScheme(classNames.text)}`}
+        className={`${badgeSize.text} tracking-wide ${classNames.textByScheme[resolved]}`}
         mono
         numberOfLines={numberOfLines}
         weight="semibold"

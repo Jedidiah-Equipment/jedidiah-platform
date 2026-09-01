@@ -1,6 +1,6 @@
 import { type JobStatusTone, statusBadgeColorClassNames } from '@pkg/domain';
 
-import { StatusBadge } from '@/components/ui/status-badge';
+import { StatusBadge, type StatusBadgeClassNames } from '@/components/ui/status-badge';
 
 /** The semantic accent a board status chip, dot, or label carries. */
 export type StatusTone = JobStatusTone;
@@ -15,27 +15,11 @@ export type ChipTone = StatusTone | 'cancelled';
  * Tailwind class fragments per status tone — the single source for the chip/dot/label accents the
  * Bay and Job board screens share, so a status colour is declared once instead of restated inline.
  */
-export const STATUS_TONE: Record<ChipTone, { chip: string; dot: string; text: string }> = {
-  'in-progress': {
-    chip: statusBadgeColorClassNames.blue.chip,
-    dot: 'bg-status-in-progress',
-    text: statusBadgeColorClassNames.blue.text,
-  },
-  next: {
-    chip: statusBadgeColorClassNames.green.chip,
-    dot: 'bg-status-next',
-    text: statusBadgeColorClassNames.green.text,
-  },
-  muted: {
-    chip: statusBadgeColorClassNames.gray.chip,
-    dot: 'bg-muted-foreground',
-    text: statusBadgeColorClassNames.gray.text,
-  },
-  cancelled: {
-    chip: statusBadgeColorClassNames.orange.chip,
-    dot: statusBadgeColorClassNames.orange.dot,
-    text: statusBadgeColorClassNames.orange.text,
-  },
+export const STATUS_TONE: Record<ChipTone, StatusBadgeClassNames & { dot: string }> = {
+  'in-progress': { ...statusBadgeColorClassNames.blue, dot: 'bg-status-in-progress' },
+  next: { ...statusBadgeColorClassNames.green, dot: 'bg-status-next' },
+  muted: { ...statusBadgeColorClassNames.gray, dot: 'bg-muted-foreground' },
+  cancelled: statusBadgeColorClassNames.orange,
 };
 
 /** The shared status badge used by the Bay slot and Job detail panes. */

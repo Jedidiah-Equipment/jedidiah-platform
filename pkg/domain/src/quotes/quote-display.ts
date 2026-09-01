@@ -1,6 +1,10 @@
 import type { QuoteKind, QuoteProductSource, QuoteStatus } from '@pkg/schema';
 
-import { cancelledBadgeColorClassNames, statusBadgeColorClassNames } from '../theme/status-badge.js';
+import {
+  type BadgeColorClassNames,
+  cancelledBadgeColorClassNames,
+  statusBadgeColorClassNames,
+} from '../theme/status-badge.js';
 
 export const quoteStatusLabels: Record<QuoteStatus, string> = {
   accepted: 'Accepted',
@@ -10,8 +14,8 @@ export const quoteStatusLabels: Record<QuoteStatus, string> = {
   sent: 'Sent',
 };
 
-/** Tailwind classes split so native surfaces can put `text` on the Text element. */
-export const quoteStatusColorClassNames: Record<QuoteStatus, { chip: string; text: string }> = {
+/** Tailwind classes split so native surfaces can put the text colour on the Text element. */
+export const quoteStatusColorClassNames: Record<QuoteStatus, BadgeColorClassNames> = {
   accepted: statusBadgeColorClassNames.green,
   cancelled: cancelledBadgeColorClassNames,
   draft: statusBadgeColorClassNames.gray,
@@ -29,7 +33,7 @@ export const quoteKindLabels: Record<QuoteKind, string> = {
  * yellow for a Product build. Deliberately not the `primary` token — web's staging theme repaints
  * that pink, and the offering kind must not follow brand chrome.
  */
-export const quoteKindColorClassNames: Record<QuoteKind, { chip: string; text: string }> = {
+export const quoteKindColorClassNames: Record<QuoteKind, BadgeColorClassNames> = {
   custom: statusBadgeColorClassNames.teal,
   product: statusBadgeColorClassNames.yellow,
 };
@@ -44,7 +48,7 @@ export const quoteProductSourceLabels: Record<QuoteProductSource, string> = {
  * we already hold it. From Order takes purple, a colour no Quote or Job status uses, so a Product
  * Source chip can never be misread as a status.
  */
-export const quoteProductSourceColorClassNames: Record<QuoteProductSource, { chip: string; text: string }> = {
+export const quoteProductSourceColorClassNames: Record<QuoteProductSource, BadgeColorClassNames> = {
   order: statusBadgeColorClassNames.purple,
   stock: statusBadgeColorClassNames.yellow,
 };

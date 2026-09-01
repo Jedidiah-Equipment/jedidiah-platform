@@ -1,4 +1,4 @@
-import { statusBadgeColorClassNames, textClassNameForScheme } from '@pkg/domain';
+import { statusBadgeColorClassNames } from '@pkg/domain';
 import { type GeneralFeedbackActivityItem, type JobActivityItem, JobChangeActivityItem } from '@pkg/schema';
 import { act, create, type ReactTestRenderer } from 'react-test-renderer';
 import { describe, expect, test, vi } from 'vitest';
@@ -25,13 +25,23 @@ import { JobActivityEntry } from './JobActivityEntry';
 
 describe('JobActivityEntry', () => {
   test.each([
-    ['job-completed', statusBadgeColorClassNames.purple.chip, statusBadgeColorClassNames.purple.text, 'IconCheck'],
-    ['job-work-time-updated', statusBadgeColorClassNames.blue.chip, statusBadgeColorClassNames.blue.text, 'IconClock'],
+    [
+      'job-completed',
+      statusBadgeColorClassNames.purple.chip,
+      statusBadgeColorClassNames.purple.textByScheme.light,
+      'IconCheck',
+    ],
+    [
+      'job-work-time-updated',
+      statusBadgeColorClassNames.blue.chip,
+      statusBadgeColorClassNames.blue.textByScheme.light,
+      'IconClock',
+    ],
   ] as const)('colors a %s icon by its activity category', async (type, chipClassName, textClassName, icon) => {
     const renderer = await renderEntry(buildChangeItem(type));
     const renderedIcon = renderer.root.findByProps({ icon });
 
-    expect(renderedIcon.props.className).toBe(textClassNameForScheme(textClassName, 'light'));
+    expect(renderedIcon.props.className).toBe(textClassName);
     expect(renderedIcon.parent?.props.className).toContain(chipClassName);
   });
 

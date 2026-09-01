@@ -27,7 +27,7 @@ import { CustomerName } from '@/components/CustomerName';
 import { OfferingAvatar } from '@/components/OfferingAvatar';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
-import { useTextClassNameForScheme } from '@/theme/use-scheme-class-name';
+import { useColorMode } from '@/theme/use-color-mode';
 
 export function JobActivityEntry({
   item,
@@ -104,7 +104,7 @@ function JobEventEntry({ item, last, linkToJob }: { item: JobChangeActivityItem;
   const actorName = item.actor ? getFirstName(item.actor.name) : 'System';
   const EventIcon = presentation.icon;
   const iconTone = statusBadgeColorClassNames[jobActivityEventTone[item.type]];
-  const textForScheme = useTextClassNameForScheme();
+  const { resolved } = useColorMode();
   const content = (
     <>
       <Text className="text-sm leading-5 text-foreground" numberOfLines={2}>
@@ -140,7 +140,7 @@ function JobEventEntry({ item, last, linkToJob }: { item: JobChangeActivityItem;
       occurredAt={item.occurredAt}
       who={
         <View className={`h-7 w-7 items-center justify-center rounded-full border ${iconTone.chip}`}>
-          <Icon className={textForScheme(iconTone.text)} icon={EventIcon} size={13} strokeWidth={1.8} />
+          <Icon className={iconTone.textByScheme[resolved]} icon={EventIcon} size={13} strokeWidth={1.8} />
         </View>
       }
     >

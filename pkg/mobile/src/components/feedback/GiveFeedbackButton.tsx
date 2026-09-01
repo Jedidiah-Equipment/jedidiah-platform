@@ -15,7 +15,6 @@ import { useAppToast } from '@/components/ui/toast';
 import { useTRPC } from '@/lib/trpc';
 import { gluestackConfig } from '@/theme/gluestack-config';
 import { useColorMode } from '@/theme/use-color-mode';
-import { useTextClassNameForScheme } from '@/theme/use-scheme-class-name';
 import { FEEDBACK_DEFAULT_VALUES, FeedbackFormValues, toSubmitInput } from './types';
 
 const KIND_OPTIONS: ReadonlyArray<{ label: string; value: FeedbackKind }> = [
@@ -183,15 +182,29 @@ function FeedbackModal({ jobCode, jobId, onClose }: { jobCode: string; jobId: st
   );
 }
 
+/**
+ * Mirrors web's FeedbackVisibilityBanner, which owns these two tints. Each scheme's half is written
+ * out on its own the way the shared badge palettes are: native picks one by name, and only a class
+ * Tailwind scanned as its own literal has a rule behind it.
+ */
+const VISIBILITY_PALETTE = {
+  private: {
+    container: 'border-amber-500/50 bg-amber-500/10',
+    textByScheme: { dark: 'text-amber-200', light: 'text-amber-800' },
+  },
+  public: {
+    container: 'border-sky-500/50 bg-sky-500/10',
+    textByScheme: { dark: 'text-sky-200', light: 'text-sky-800' },
+  },
+} as const;
+
 /** Mobile mirror of web's FeedbackVisibilityBanner; this form is always Job-scoped. */
 function FeedbackVisibilityBanner({ kind }: { kind: FeedbackKind }) {
   const notice = getFeedbackVisibilityNotice(kind, 'job');
   const isPublic = notice.visibility === 'public';
-  const textForScheme = useTextClassNameForScheme();
-  const palette = isPublic
-    ? { container: 'border-sky-500/50 bg-sky-500/10', text: 'text-sky-800 dark:text-sky-200' }
-    : { container: 'border-amber-500/50 bg-amber-500/10', text: 'text-amber-800 dark:text-amber-200' };
-  const chrome = { container: palette.container, text: textForScheme(palette.text) };
+  const { resolved } = useColorMode();
+  const palette = isPublic ? VISIBILITY_PALETTE.public : VISIBILITY_PALETTE.private;
+  const chrome = { container: palette.container, text: palette.textByScheme[resolved] };
 
   return (
     <View className={`flex-row items-center gap-2.5 rounded-xl border px-3 py-2.5 ${chrome.container}`}>

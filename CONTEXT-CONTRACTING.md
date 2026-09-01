@@ -22,10 +22,11 @@ finished. Every stage has a visible queue, so work cannot vanish between a forem
 the invoice — that chain is the app's core promise.
 
 **Machine Assignment** is one Machine's stint on one Job: created when the Foreman puts the
-machine on the Job, closed when it leaves, carrying its own start and end. A Machine has **at most
-one open Machine Assignment**, which is what enforces that a machine is never on two Jobs at once.
-The Foreman edits only his own Job's Assignments and only while the Job is Active; after
-Completion only management amends. Avoid Slot (an Equipment scheduling term).
+machine on the Job, closed when it leaves, carrying its arrival and departure Hour Readings. A
+Machine has **at most one open Machine Assignment**, which is what enforces that a machine is
+never on two Jobs at once. The Foreman edits only his own Job's Assignments and only while the
+Job is Active; after Completion only management amends. Avoid Slot (an Equipment scheduling
+term).
 
 **Job Card** is the rendered document of a Job — its Assignments, hours, travel, Charge Lines,
 rates, and totals — reviewed at sign-off, priced, and keyed into the invoicing system. It is a
@@ -52,3 +53,30 @@ model; only what other terms here need is stated: a Machine is what an Assignmen
 
 **Job Number** is the Job's `CJOB-xxxxx` code, an automatic sequence distinct from the Equipment
 context's `JOB-xxxxx`.
+
+## Hours
+
+**Hour Reading** is one captured value of a Machine's hour meter: the value, when and by whom it
+was captured, and its evidence — a photo whose AI-read value the Foreman confirmed, or a manual
+entry, which stamps the reading **Missing Photo Evidence**. A reading plays one of two roles on a
+Machine Assignment: **arrival** (machine on site) or **departure** (machine leaving). The
+pre-travel opening is never captured: it is the machine's previous departure reading, so travel
+and work time are derived and no hour can vanish between Jobs. A Machine's readings only ever
+increase: a capture at or below the latest reading is refused with a re-take prompt, unless the
+Foreman asserts the previous reading is wrong, which saves his value as disputed and flags the
+pair for management. A photo reading the server's later verification disagrees with carries an
+evidence warning into sign-off; the Foreman is never re-interrupted in the field. The Foreman may
+re-capture a reading only while his Assignment is open; from Completion onward only management
+amends, with a mandatory reason, and Invoiced freezes everything. Derived values always recompute
+after an amendment.
+
+**Baseline Reading** is a Machine's anchoring first Hour Reading, recorded when the Machine
+enters the fleet.
+
+**Hour Gap** is the derived interval between one Assignment's departure reading and the machine's
+next arrival reading. By default the whole gap is **Travel Hours**, billed to the destination Job
+at the Assignment's rate under an include toggle that defaults on; a machine moved by truck simply
+has a zero gap. A gap above the single global threshold raises a **Gap Flag**, surfaced at
+sign-off and blocking nothing; management resolves it by splitting the gap into billable Travel
+Hours and an **Unaccounted Interval** with a mandatory reason, which clears the flag. Time in the
+yard is an Unaccounted Interval — there are no internal Jobs.

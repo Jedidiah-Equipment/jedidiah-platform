@@ -152,3 +152,13 @@ Server-side checks are the security boundary; browser checks are UX only.
 
 Drivers and Mechanics are non-login user records holding no role. Pricing and Preset Rates
 deliberately sit with contracting-admin and super-admin alone; foremen are money-blind by design.
+
+## Reporting
+
+An **Active Day** is a calendar day on which a Machine had an open Assignment. **Utilisation %**
+is active days over days in the window, counting only days the Machine was in the fleet — days,
+never hours, and month attribution is exact. **Fleet Load** is the share of Machines with at
+least one Active Day in the window. **Utilisation Target %** is the single global reference line
+management sets on the utilisation charts. Mechanic performance — solved count, average
+report-to-Solved time, open count — is derived from Breakdowns and never stored. Reporting is
+readable by every role that reads all Jobs; Foremen and invoicing never see it.

@@ -77,8 +77,10 @@ context's `JOB-xxxxx`.
 
 **Hour Reading** is one captured value of a Machine's hour meter: the value, when and by whom it
 was captured, and its evidence — a photo whose AI-read value the Foreman confirmed, or a manual
-entry, which stamps the reading **Missing Photo Evidence**. A reading plays one of two roles on a
-Machine Assignment: **arrival** (machine on site) or **departure** (machine leaving). The
+entry, which stamps the reading **Missing Photo Evidence**. A reading plays one of three roles:
+**arrival** (machine on site) and **departure** (machine leaving) on a Machine Assignment, or
+**spot** — an ad-hoc field capture with no billing effect, existing to keep a Machine's known
+hours current for service tracking. The
 pre-travel opening is never captured: it is the machine's previous departure reading, so travel
 and work time are derived and no hour can vanish between Jobs. A Machine's readings only ever
 increase: a capture at or below the latest reading is refused with a re-take prompt, unless the
@@ -93,9 +95,38 @@ after an amendment.
 enters the fleet.
 
 **Hour Gap** is the derived interval between one Assignment's departure reading and the machine's
-next arrival reading. By default the whole gap is **Travel Hours**, billed to the destination Job
+next arrival reading; spot readings never bound a gap. By default the whole gap is **Travel Hours**, billed to the destination Job
 at the Assignment's rate under an include toggle that defaults on; a machine moved by truck simply
 has a zero gap. A gap above the single global threshold raises a **Gap Flag**, surfaced at
 sign-off and blocking nothing; management resolves it by splitting the gap into billable Travel
 Hours and an **Unaccounted Interval** with a mandatory reason, which clears the flag. Time in the
 yard is an Unaccounted Interval — there are no internal Jobs.
+
+## Workshop
+
+**Breakdown** is one reported problem on one Machine — there is no separate "fault" type; an open
+Breakdown *is* an outstanding fault. Any login user may report one (usually the Foreman): photos,
+a description in the reporter's own words (typed, or a transcribed voice note the reporter can
+edit), an optional link to the Job it happened on (defaulted from the machine's open Assignment,
+which is what locates it for the workshop), optional GPS, and an **urgency** — *machine down* or
+*still working*. Status runs **Open → In Progress → Solved**; the workshop manager owns every
+transition and closes with a mandatory close-out note. A Machine's Breakdown history is
+permanent. The dispatch cross-reference — other machines on the same Job with open Breakdowns —
+is derived, never stored. New Breakdowns notify the workshop manager by push notification;
+machine-down urgency also notifies management.
+
+**Breakdown Note** is one entry in a Breakdown's append-only note thread: author, text (voice
+note supported), time. Contracting's own mechanism — never the Equipment context's Feedback.
+
+**Mechanic** is a non-login user record, like Driver: mechanics take instructions and never sign
+in. Exactly one primary Mechanic is assigned per Breakdown by the workshop manager, possibly
+himself; a second body on site is never recorded. Mechanic performance — report-to-Solved time —
+is derived, never stored.
+
+**Service Record** is the digitized page of the paper service book: one service performed on one
+Machine — date, the hour reading at service, the primary Mechanic, and free-text notes. A
+Service is a recurring, expected event and deliberately not a Breakdown. Recording one stamps the
+Machine's **Next Service Due** forward by its **Service Interval** (both in hours; the dash
+sticker, digitized). **Service Due Soon** is the derived flag raised when the Machine's latest
+known Hour Reading comes within a threshold of Next Service Due — kept honest mid-job by spot
+readings from the field — and it notifies the workshop manager by push notification.

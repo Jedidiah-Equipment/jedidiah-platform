@@ -33,7 +33,12 @@ term).
 
 **Job Card** is the rendered document of a Job — its Assignments, hours, travel, Charge Lines,
 rates, and totals — reviewed at sign-off, priced, and keyed into the invoicing system. It is a
-presentation of the Job, never a second record: "send me the job card" means the document.
+presentation of the Job, never a second record: "send me the job card" means the document. It
+renders on demand (never stored — priced amounts are frozen, so regeneration is deterministic)
+under the Jedidiah Contracting letterhead, in two variants: **internal**, carrying evidence
+markers, gap resolutions, and attribution; and the **customer copy**, the clean dispute trail of
+readings, hours, and amounts. Reading values print; meter photos stay in the app. Its ex-VAT
+total is a works summary — a Job Card is never an invoice.
 
 **Charge Line** is a non-hourly amount on a Job — transport (e.g. a low-bed move) or diesel the
 business supplied (diesel may record litres) — description plus amount, added by management at

@@ -33,7 +33,12 @@ term).
 
 **Job Card** is the rendered document of a Job — its Assignments, hours, travel, Charge Lines,
 rates, and totals — reviewed at sign-off, priced, and keyed into the invoicing system. It is a
-presentation of the Job, never a second record: "send me the job card" means the document.
+presentation of the Job, never a second record: "send me the job card" means the document. It
+renders on demand (never stored — priced amounts are frozen, so regeneration is deterministic)
+under the Jedidiah Contracting letterhead, in two variants: **internal**, carrying evidence
+markers, gap resolutions, and attribution; and the **customer copy**, the clean dispute trail of
+readings, hours, and amounts. Reading values print; meter photos stay in the app. Its ex-VAT
+total is a works summary — a Job Card is never an invoice.
 
 **Charge Line** is a non-hourly amount on a Job — transport (e.g. a low-bed move) or diesel the
 business supplied (diesel may record litres) — description plus amount, added by management at
@@ -77,8 +82,10 @@ context's `JOB-xxxxx`.
 
 **Hour Reading** is one captured value of a Machine's hour meter: the value, when and by whom it
 was captured, and its evidence — a photo whose AI-read value the Foreman confirmed, or a manual
-entry, which stamps the reading **Missing Photo Evidence**. A reading plays one of two roles on a
-Machine Assignment: **arrival** (machine on site) or **departure** (machine leaving). The
+entry, which stamps the reading **Missing Photo Evidence**. A reading plays one of three roles:
+**arrival** (machine on site) and **departure** (machine leaving) on a Machine Assignment, or
+**spot** — an ad-hoc field capture with no billing effect, existing to keep a Machine's known
+hours current for service tracking. The
 pre-travel opening is never captured: it is the machine's previous departure reading, so travel
 and work time are derived and no hour can vanish between Jobs. A Machine's readings only ever
 increase: a capture at or below the latest reading is refused with a re-take prompt, unless the
@@ -93,9 +100,71 @@ after an amendment.
 enters the fleet.
 
 **Hour Gap** is the derived interval between one Assignment's departure reading and the machine's
-next arrival reading. By default the whole gap is **Travel Hours**, billed to the destination Job
+next arrival reading; spot readings never bound a gap. By default the whole gap is **Travel Hours**, billed to the destination Job
 at the Assignment's rate under an include toggle that defaults on; a machine moved by truck simply
 has a zero gap. A gap above the single global threshold raises a **Gap Flag**, surfaced at
 sign-off and blocking nothing; management resolves it by splitting the gap into billable Travel
 Hours and an **Unaccounted Interval** with a mandatory reason, which clears the flag. Time in the
 yard is an Unaccounted Interval — there are no internal Jobs.
+
+## Workshop
+
+**Breakdown** is one reported problem on one Machine — there is no separate "fault" type; an open
+Breakdown *is* an outstanding fault. Any user with Contracting access may report one (usually the
+Foreman): photos,
+a description in the reporter's own words (typed, or a transcribed voice note the reporter can
+edit), an optional link to the Job it happened on (defaulted from the machine's open Assignment,
+which is what locates it for the workshop), optional GPS, and an **urgency** — *machine down* or
+*still working*. Status runs **Open → In Progress → Solved**; the workshop manager owns every
+transition and closes with a mandatory close-out note. A Machine's Breakdown history is
+permanent. The dispatch cross-reference — other machines on the same Job with open Breakdowns —
+is derived, never stored. New Breakdowns notify the workshop manager by push notification;
+machine-down urgency also notifies management.
+
+**Breakdown Note** is one entry in a Breakdown's append-only note thread: author, text (voice
+note supported), time. Contracting's own mechanism — never the Equipment context's Feedback.
+
+**Mechanic** is a non-login user record, like Driver: mechanics take instructions and never sign
+in. Exactly one primary Mechanic is assigned per Breakdown by the workshop manager, possibly
+himself; a second body on site is never recorded. Mechanic performance — report-to-Solved time —
+is derived, never stored.
+
+**Service Record** is the digitized page of the paper service book: one service performed on one
+Machine — date, the hour reading at service, the primary Mechanic, and free-text notes. A
+Service is a recurring, expected event and deliberately not a Breakdown. Recording one stamps the
+Machine's **Next Service Due** forward by its **Service Interval** (both in hours; the dash
+sticker, digitized). **Service Due Soon** is the derived flag raised when the Machine's latest
+known Hour Reading comes within a threshold of Next Service Due — kept honest mid-job by spot
+readings from the field — and it notifies the workshop manager by push notification.
+
+## Access
+
+A user's contracting role fills one of the two role slots defined in
+[CONTEXT-MAP.md](CONTEXT-MAP.md); holding one is what grants Jedidiah Contracting access at all.
+Server-side checks are the security boundary; browser checks are UX only.
+
+- **contracting-admin**: every contracting permission the spanning super-admin has — Pricing,
+  Preset Rates, fleet, invoice stamping, all of it — without user administration and without any
+  Equipment reach.
+- **contracting-manager**: all operations — Job create/edit/assign/complete/cancel, reading
+  amendments and gap resolution, breakdowns and servicing, fleet management — but no Pricing and
+  no Preset Rates; sees priced amounts.
+- **workshop-manager**: reads everything contracting; writes Breakdowns (mechanic assignment,
+  transitions, close-out) and Servicing (records, interval and due fields); reports Breakdowns.
+- **foreman**: sees only Jobs assigned to him; manages his own Assignments and captures readings;
+  reports Breakdowns; never sees money — no rates and no priced amounts.
+- **contracting-invoicing**: reads Priced and Completed Job Cards and stamps the Invoice Number;
+  nothing else.
+
+Drivers and Mechanics are non-login user records holding no role. Pricing and Preset Rates
+deliberately sit with contracting-admin and super-admin alone; foremen are money-blind by design.
+
+## Reporting
+
+An **Active Day** is a calendar day on which a Machine had an open Assignment. **Utilisation %**
+is active days over days in the window, counting only days the Machine was in the fleet — days,
+never hours, and month attribution is exact. **Fleet Load** is the share of Machines with at
+least one Active Day in the window. **Utilisation Target %** is the single global reference line
+management sets on the utilisation charts. Mechanic performance — solved count, average
+report-to-Solved time, open count — is derived from Breakdowns and never stored. Reporting is
+readable by every role that reads all Jobs; Foremen and invoicing never see it.

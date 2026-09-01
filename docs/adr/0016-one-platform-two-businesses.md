@@ -35,9 +35,11 @@ codebase says so everywhere the same way:
   `equipment_job:read`, `contracting_job:read`, `contracting_machine:update`. Contingency: if
   phase 0 finds permission strings persisted anywhere (audit rows, stored config), equipment names
   stay bare and this ADR gains the exception.
-- **Access.** A user carries a `business` field — `equipment`, `contracting`, or `both`. Only
-  `both` holders (a handful of principals) see the mode switcher; everyone else experiences a
-  single-business app. Server-side checks remain the security boundary, as ever.
+- **Access.** A user holds up to two role slots — an equipment role and a contracting role — and
+  business access is derived from role presence (the roles decision refined the originally
+  stored `business` field into this derivation). Only users with both slots filled (a handful of
+  principals) see the mode switcher; everyone else experiences a single-business app. One
+  `super-admin` role spans the split. Server-side checks remain the security boundary, as ever.
 - **Vocabulary.** Two bounded contexts under a root `CONTEXT-MAP.md`: the existing glossary
   becomes the Equipment context, contracting gets its own, and the map holds the shared concepts
   and collision rules (an unqualified "Job" means the context you are standing in; crossing

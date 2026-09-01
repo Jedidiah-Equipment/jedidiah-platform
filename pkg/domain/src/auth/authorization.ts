@@ -209,7 +209,7 @@ export const appRoleAccess = {
   // super-admin is admin plus exclusive Feedback review. Composed by spread so the two can never
   // drift: any permission added to admin is inherited here, while feedback stays admin-exclusive.
   // This is still a fully explicit static declaration (resolved at module load), not the runtime
-  // role inheritance ADR 0001 rules out.
+  // role inheritance ADR 0017 rules out.
   'super-admin': {
     ...adminAccess,
     feedback: ['read', 'update'],

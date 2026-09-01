@@ -130,3 +130,25 @@ Machine's **Next Service Due** forward by its **Service Interval** (both in hour
 sticker, digitized). **Service Due Soon** is the derived flag raised when the Machine's latest
 known Hour Reading comes within a threshold of Next Service Due — kept honest mid-job by spot
 readings from the field — and it notifies the workshop manager by push notification.
+
+## Access
+
+A user's contracting role fills one of the two role slots defined in
+[CONTEXT-MAP.md](CONTEXT-MAP.md); holding one is what grants Jedidiah Contracting access at all.
+Server-side checks are the security boundary; browser checks are UX only.
+
+- **contracting-admin**: every contracting permission the spanning super-admin has — Pricing,
+  Preset Rates, fleet, invoice stamping, all of it — without user administration and without any
+  Equipment reach.
+- **contracting-manager**: all operations — Job create/edit/assign/complete/cancel, reading
+  amendments and gap resolution, breakdowns and servicing, fleet management — but no Pricing and
+  no Preset Rates; sees priced amounts.
+- **workshop-manager**: reads everything contracting; writes Breakdowns (mechanic assignment,
+  transitions, close-out) and Servicing (records, interval and due fields); reports Breakdowns.
+- **foreman**: sees only Jobs assigned to him; manages his own Assignments and captures readings;
+  reports Breakdowns; never sees money — no rates and no priced amounts.
+- **contracting-invoicing**: reads Priced and Completed Job Cards and stamps the Invoice Number;
+  nothing else.
+
+Drivers and Mechanics are non-login user records holding no role. Pricing and Preset Rates
+deliberately sit with contracting-admin and super-admin alone; foremen are money-blind by design.

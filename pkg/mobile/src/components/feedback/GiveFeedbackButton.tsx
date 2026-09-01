@@ -204,14 +204,14 @@ function FeedbackVisibilityBanner({ kind }: { kind: FeedbackKind }) {
   const isPublic = notice.visibility === 'public';
   const { resolved } = useColorMode();
   const palette = isPublic ? VISIBILITY_PALETTE.public : VISIBILITY_PALETTE.private;
-  const chrome = { container: palette.container, text: palette.textByScheme[resolved] };
+  const textClassName = palette.textByScheme[resolved];
 
   return (
-    <View className={`flex-row items-center gap-2.5 rounded-xl border px-3 py-2.5 ${chrome.container}`}>
-      <Icon className={chrome.text} icon={isPublic ? IconEye : IconLock} size={18} />
+    <View className={`flex-row items-center gap-2.5 rounded-xl border px-3 py-2.5 ${palette.container}`}>
+      <Icon className={textClassName} icon={isPublic ? IconEye : IconLock} size={18} />
       <View className="min-w-0 flex-1">
-        <Text className={`text-xs ${chrome.text}`}>
-          <Text className={chrome.text} weight="bold">
+        <Text className={`text-xs ${textClassName}`}>
+          <Text className={textClassName} weight="bold">
             {toSentenceCase(notice.title)}:{' '}
           </Text>
           {notice.description}

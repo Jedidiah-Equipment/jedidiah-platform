@@ -11,7 +11,7 @@ import {
   ListDropdownControl,
   ListSearchControl,
 } from '@/components/ListControls';
-import { offeringAvatarProps } from '@/components/OfferingAvatar';
+import { useOfferingAvatarProps } from '@/components/OfferingAvatar';
 import { StockBadge } from '@/components/StockBadge';
 import { Icon } from '@/components/ui/icon';
 import { StatusBadge } from '@/components/ui/status-badge';
@@ -82,7 +82,7 @@ export function JobCatalogCard({ job }: { job: JobSummary }) {
   const router = useRouter();
   const displayName = getJobDisplayName(job);
   const serial = job.productUnit?.productSerialNumber;
-  const avatar = offeringAvatarProps(getJobOfferingKind(job));
+  const avatar = useOfferingAvatarProps(getJobOfferingKind(job));
 
   return (
     <CatalogListCard

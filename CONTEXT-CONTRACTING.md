@@ -8,8 +8,11 @@ The app's modes display as **Jedidiah Equipment** and **Jedidiah Contracting**; 
 
 **Job** is one piece of contracted field work for one **Customer**: a Work Type, a freeform
 description, a status, and one responsible **Foreman**. Jobs are pre-created by management into
-the **Upcoming** list — foremen never create Jobs and never type anything except hours. Across
-contexts, say **Contracting Job**; it is unrelated to the Equipment context's Job. A Job's
+the **Upcoming** list — foremen never create Jobs, and on Job data they select from pre-saved
+information, typing only hours. That select-don't-type rule is a Job-data rule, not a gag:
+breakdown reporting is where a Foreman writes his own words — fault descriptions and voice-note
+transcription corrections. Across contexts, say **Contracting Job**; it is unrelated to the
+Equipment context's Job. A Job's
 statuses: **Upcoming** (pre-created; freely editable and deletable; the future-work list; visible
 to management only until a Foreman is assigned), **Active** (entered automatically when its first
 machine starts; cancellable by management with a mandatory reason), **Completed** (the

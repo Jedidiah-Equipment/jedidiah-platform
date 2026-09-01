@@ -52,13 +52,17 @@ namespaces are named together. The businesses share nothing beyond the business-
 in `public`: the fleet-model decision dropped the once-considered Machine → Product Unit link, so
 no row in either business schema references the other.
 
-**The exit is designed in.** If the businesses ever split: fork the repo, keep one side's
-namespace folders, `pg_dump --schema=` the departing business's schema (or `DROP SCHEMA` the
-remaining one's counterpart), collapse the `business` field so every user holds one value, and
-retire the switcher. The shared home then needs no untangling beyond one filtered extraction:
-`audit_events` rows follow the business whose entities they record, which the attributability
-invariant above keeps possible; everything else in `public` is business-blind mechanism — that is
-what the classification principle in phase 0 protects.
+**The exit is designed in**, in two grades. The likely one is **discontinuation** (the owner's
+own read): the retired business's schema is dropped, its users lose that access as the `business`
+field collapses to one value, and the switcher retires — `public` stays put, nothing is
+extracted. The stronger one is **departure**: the leaving business takes its schema dump *plus a
+filtered slice of `public`* — its users (duplicating the handful of `both` users into both
+worlds), their auth rows, the stored-file blobs its schema's rows reference, and its
+`audit_events` rows via the attributability invariant above. A schema dump alone is deliberately
+not the story: business-blind mechanism still gets *referenced* by business rows, so the exit is
+"schema + filtered shared slice," and what phase 0's classification principle protects is that
+the filter stays expressible — every `public` row either serves all businesses identically or is
+attributable through what references it.
 
 **Phase 0 precedes any contracting code.** The symmetric standard is set by moving the existing
 equipment mass — folders, routes with redirects, `ALTER TABLE … SET SCHEMA equipment` (an atomic

@@ -267,7 +267,7 @@ export type UserRoleAssignmentPolicyResult =
   | { allowed: false; bayNames: string[]; reason: 'open-bay-operator-assignments' }
   | { allowed: false; reason: 'reserved-super-admin' };
 
-// Single source of truth for the reserved super-admin rule (ADR 0001/0008): only a super-admin may
+// Single source of truth for the reserved super-admin rule (ADR 0017/0008): only a super-admin may
 // grant the super-admin role or change a user who currently holds it. `currentRole` is omitted when
 // creating a brand-new user, where there is no role to move away from.
 export function isReservedSuperAdminAssignment({

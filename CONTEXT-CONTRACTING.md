@@ -110,7 +110,8 @@ yard is an Unaccounted Interval — there are no internal Jobs.
 ## Workshop
 
 **Breakdown** is one reported problem on one Machine — there is no separate "fault" type; an open
-Breakdown *is* an outstanding fault. Any login user may report one (usually the Foreman): photos,
+Breakdown *is* an outstanding fault. Any user with Contracting access may report one (usually the
+Foreman): photos,
 a description in the reporter's own words (typed, or a transcribed voice note the reporter can
 edit), an optional link to the Job it happened on (defaulted from the machine's open Assignment,
 which is what locates it for the workshop), optional GPS, and an **urgency** — *machine down* or

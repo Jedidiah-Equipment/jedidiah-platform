@@ -87,7 +87,7 @@ export const JobSheet: React.FC<JobSheetProps> = ({ jobId, onClose }) => {
         className="gap-0 p-0 data-[side=right]:!w-[min(100vw,56rem)] data-[side=right]:!max-w-[56rem]"
         side="right"
       >
-        <JobSheetHeader canOpenQuote={canReadQuotes} job={jobQuery.data} onOpenQuote={onClose} />
+        <JobSheetHeader job={jobQuery.data} />
         <ErrorMessage error={jobQuery.error} fallbackMessage="Unable to load job." />
         {jobQuery.isPending ? <JobSheetSkeleton /> : null}
         {jobQuery.data ? (
@@ -142,10 +142,8 @@ export const JobSheet: React.FC<JobSheetProps> = ({ jobId, onClose }) => {
 };
 
 const JobSheetHeader: React.FC<{
-  canOpenQuote: boolean;
   job: JobDetail | undefined;
-  onOpenQuote: () => void;
-}> = ({ canOpenQuote, job, onOpenQuote }) => (
+}> = ({ job }) => (
   <SheetHeader className="border-b pr-12">
     <div className="flex min-w-0 items-center gap-3">
       <OfferingThumbnail
@@ -167,18 +165,8 @@ const JobSheetHeader: React.FC<{
             </Badge>
           ) : null}
         </div>
-        <SheetDescription className="truncate font-mono">
-          {job ? (
-            <JobQuoteCode
-              canOpenQuote={canOpenQuote}
-              onOpenQuote={onOpenQuote}
-              quoteCode={job.quoteCode}
-              quoteId={job.quoteId}
-            />
-          ) : (
-            'Loading job...'
-          )}
-        </SheetDescription>
+        {/* The Quote code lives on the Details tab; the header names the work instead. */}
+        <SheetDescription className="truncate">{job ? getJobDisplayName(job) : 'Loading job...'}</SheetDescription>
       </div>
     </div>
   </SheetHeader>

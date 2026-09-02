@@ -58,7 +58,9 @@ describe('email sign-in eligibility', () => {
       },
     });
   });
+});
 
+describe('auth cookies', () => {
   test('names the session cookie for Jedidiah', async ({ context }) => {
     await createUserWithCredential(context.db, {
       email: 'cookie-prefix@example.com',

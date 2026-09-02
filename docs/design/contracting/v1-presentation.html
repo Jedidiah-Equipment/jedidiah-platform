@@ -244,7 +244,7 @@ ol.phases b{font-weight:600}
 
   <div class="scen"><h3>1 · Mr Rowley's dam, call to invoice<span class="who">the happy path</span></h3>
     <ul>
-      <li>Mr Rowley (farmer, the customer) phones Jed (owner): a dam at Rooikraal. Henk (contracting manager) pre-creates job <span class="mono">CJOB-00042</span> — customer, farm <i>Rooikraal</i>, work type <i>Dam building</i> — and assigns <b>Sipho</b> (foreman). It sits in <b>Upcoming</b>; only Sipho sees it.</li>
+      <li>Mr Rowley (farmer, the customer) phones Jed (owner): a dam at Rooikraal. Henk (contracting manager) pre-creates job <span class="mono">CJOB-00042</span> — customer, farm <i>Rooikraal</i>, work type <i>Dam building</i> — and assigns <b>Sipho</b> (foreman). It sits in <b>Upcoming</b>; Sipho is the only <i>foreman</i> who sees it — management sees every job at every stage.</li>
       <li>The lowbed drops <span class="mono">CAT320-1</span> (excavator) on site. Sipho assigns it from the Category-filtered picker and photographs the meter; the AI reads <span class="mono">4002.6</span>, one tap confirms — the job flips <b>Active</b> by itself. Trucked in means a zero Hour Gap: no travel line.</li>
       <li><span class="mono">GRAD140K-1</span> (grader) drives itself over: arrival <span class="mono">7110.0</span>, 2.1 h past its last departure — under the 4 h threshold, so it quietly becomes a travel line billed to Mr Rowley, the farmer it drove <i>to</i> (the include-travel toggle defaults on).</li>
       <li><span class="mono">JD6140M-2</span> (tractor) arrives towing the tip trailer: Sipho assigns it (arrival <span class="mono">7102.5</span>, a 1.2 h drive) and attaches the tip trailer as its <b>Implement</b>.</li>

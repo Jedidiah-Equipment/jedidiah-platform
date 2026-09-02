@@ -73,8 +73,9 @@ only a never-used entry may be deleted. Avoid Unit, Product Unit, Vehicle, or As
 …): the shortlist dimension in pickers, the grouping of the Machine Yard, the future utilisation
 dimension, and the home of the Preset Rate.
 
-**Implement** is one un-metered attachment in the fleet — a disc, planter, or ripper: a code, a
-Category, and notes. It attaches to a Machine Assignment beside the Machine and has no hour
+**Implement** is one un-metered attachment in the fleet — a disc, planter, or ripper: a code, an
+**Implement Type** (a creatable select like make and model — never the Machine **Category**,
+which groups metered Machines and carries the Preset Rate), and notes. It attaches to a Machine Assignment beside the Machine and has no hour
 meter, no readings, and no availability of its own. Whether a towed unit is a Machine or an
 Implement is decided by whether it has a meter.
 

@@ -60,6 +60,29 @@ describe('email sign-in eligibility', () => {
   });
 });
 
+describe('auth cookies', () => {
+  test('names the session cookie for Jedidiah', async ({ context }) => {
+    await createUserWithCredential(context.db, {
+      email: 'cookie-prefix@example.com',
+      emailVerified: true,
+      id: '00000000-0000-4000-8000-000000000042',
+      name: 'Cookie Prefix User',
+      password: DEFAULT_DEMO_USER_PASSWORD,
+      role: 'sales',
+    });
+
+    const { headers } = await context.auth.api.signInEmail({
+      body: {
+        email: 'cookie-prefix@example.com',
+        password: DEFAULT_DEMO_USER_PASSWORD,
+      },
+      returnHeaders: true,
+    });
+
+    expect(headers.get('set-cookie')).toContain('jedidiah.session_token=');
+  });
+});
+
 describe('password reset email callback', () => {
   beforeEach(() => {
     clearMockEmailMessages();

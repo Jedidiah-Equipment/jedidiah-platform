@@ -20,6 +20,7 @@ const authClient = createAuthClient({
   baseURL: authBaseUrl,
   plugins: [
     expoClient({
+      cookiePrefix: 'jedidiah',
       scheme: authScheme,
       storagePrefix: authScheme,
       storage: SecureStore,

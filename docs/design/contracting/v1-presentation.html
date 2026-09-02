@@ -45,6 +45,12 @@ ol.phases{margin:10px 0 0 0;padding:0;list-style:none;counter-reset:p;display:fl
 ol.phases li{counter-increment:p;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 14px 10px 46px;position:relative;font-size:14px}
 ol.phases li::before{content:counter(p);position:absolute;left:12px;top:9px;width:24px;height:24px;border-radius:50%;background:var(--accent);color:var(--accent-ink);font:700 13px/24px Geist;text-align:center}
 ol.phases b{font-weight:600}
+.scen{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px 18px;font-size:14px}
+.scen h3{font-size:15px;font-weight:700;margin-bottom:8px}
+.scen ul{margin:0;padding-left:18px;max-width:82ch;display:flex;flex-direction:column;gap:6px}
+.scen li::marker{color:var(--accent-strong)}
+.scen .who{color:var(--ink2);font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin-left:8px}
+.scenlist{display:flex;flex-direction:column;gap:14px}
 .oos{columns:2;column-gap:32px;font-size:13.5px;color:var(--ink2);margin-top:8px}
 .oos div{break-inside:avoid;padding:3px 0}
 @media (max-width:640px){.oos{columns:1}}
@@ -83,11 +89,14 @@ ol.phases b{font-weight:600}
         <rect x="486" y="80" width="150" height="40" rx="7" fill="var(--surface2)" stroke="currentColor" stroke-opacity=".45"/>
         <text x="561" y="98" text-anchor="middle" class="svgtxt" fill="currentColor">Category</text>
         <text x="561" y="112" text-anchor="middle" class="svgsub" fill="var(--ink2)">carries Preset Rate</text>
+        <rect x="372" y="80" width="106" height="40" rx="7" fill="var(--surface2)" stroke="currentColor" stroke-opacity=".45"/>
+        <text x="425" y="98" text-anchor="middle" class="svgtxt" fill="currentColor">Implement</text>
+        <text x="425" y="112" text-anchor="middle" class="svgsub" fill="var(--ink2)">un-metered</text>
       </g>
       <!-- row 2: JOB / MACHINE -->
       <rect x="140" y="196" width="160" height="48" rx="8" fill="var(--accent-soft)" stroke="var(--accent-strong)" stroke-width="1.4"/>
       <text x="220" y="216" text-anchor="middle" class="svgtxt" fill="currentColor">Job</text>
-      <text x="220" y="232" text-anchor="middle" class="svgsub" fill="var(--ink2)">CJOB-xxxxx · status · foreman</text>
+      <text x="220" y="232" text-anchor="middle" class="svgsub" fill="var(--ink2)">CJOB-xxxxx · farm · foreman</text>
       <rect x="486" y="196" width="150" height="48" rx="8" fill="var(--accent-soft)" stroke="var(--accent-strong)" stroke-width="1.4"/>
       <text x="561" y="216" text-anchor="middle" class="svgtxt" fill="currentColor">Machine</text>
       <text x="561" y="232" text-anchor="middle" class="svgsub" fill="var(--ink2)">code · service due · retired</text>
@@ -97,7 +106,7 @@ ol.phases b{font-weight:600}
       <text x="104" y="350" text-anchor="middle" class="svgsub" fill="var(--ink2)">diesel · transport</text>
       <rect x="252" y="312" width="180" height="52" rx="8" fill="var(--surface)" stroke="currentColor" stroke-opacity=".6"/>
       <text x="342" y="332" text-anchor="middle" class="svgtxt" fill="currentColor">Machine Assignment</text>
-      <text x="342" y="348" text-anchor="middle" class="svgsub" fill="var(--ink2)">driver snapshot · gap split · rate</text>
+      <text x="342" y="348" text-anchor="middle" class="svgsub" fill="var(--ink2)">driver · implement · loads/ha · rate</text>
       <rect x="500" y="312" width="150" height="52" rx="8" fill="var(--surface)" stroke="currentColor" stroke-opacity=".6"/>
       <text x="575" y="332" text-anchor="middle" class="svgtxt" fill="currentColor">Hour Reading</text>
       <text x="575" y="348" text-anchor="middle" class="svgsub" fill="var(--ink2)">photo · AI · monotonic</text>
@@ -122,6 +131,8 @@ ol.phases b{font-weight:600}
       <text x="222" y="288" class="svgedge" fill="var(--ink2)">1…12 machines</text>
       <line x1="540" y1="244" x2="410" y2="312" stroke="var(--accent-strong)" stroke-width="1.6" marker-end="url(#arA)"/>
       <text x="452" y="272" class="svgedge" fill="var(--accent-strong)">at most 1 open</text>
+      <line x1="425" y1="120" x2="380" y2="312" stroke="currentColor" stroke-opacity=".55" marker-end="url(#ar)"/>
+      <text x="380" y="164" class="svgedge" fill="var(--ink2)">attaches</text>
       <line x1="432" y1="338" x2="500" y2="338" stroke="currentColor" stroke-opacity=".55" marker-end="url(#ar)"/>
       <text x="437" y="330" class="svgedge" fill="var(--ink2)">arrival · departure</text>
       <line x1="588" y1="244" x2="578" y2="312" stroke="currentColor" stroke-opacity=".55" marker-end="url(#ar)"/>
@@ -193,13 +204,13 @@ ol.phases b{font-weight:600}
       <line x1="40" y1="80" x2="940" y2="80" stroke="currentColor" stroke-opacity=".5" marker-end="url(#ar3)"/>
       <g>
         <circle cx="140" cy="80" r="7" fill="var(--accent-strong)"/>
-        <text x="140" y="58" text-anchor="middle" class="svgmono" fill="currentColor">4 002.6</text>
+        <text x="140" y="58" text-anchor="middle" class="svgmono" fill="currentColor">4002.6</text>
         <text x="140" y="42" text-anchor="middle" class="svgedge" fill="var(--ink2)">Job A · departure 📷</text>
         <circle cx="400" cy="80" r="7" fill="var(--accent-strong)"/>
-        <text x="400" y="58" text-anchor="middle" class="svgmono" fill="currentColor">4 004.6</text>
+        <text x="400" y="58" text-anchor="middle" class="svgmono" fill="currentColor">4004.6</text>
         <text x="400" y="42" text-anchor="middle" class="svgedge" fill="var(--ink2)">Job B · arrival 📷</text>
         <circle cx="820" cy="80" r="7" fill="var(--accent-strong)"/>
-        <text x="820" y="58" text-anchor="middle" class="svgmono" fill="currentColor">4 053.2</text>
+        <text x="820" y="58" text-anchor="middle" class="svgmono" fill="currentColor">4053.2</text>
         <text x="820" y="42" text-anchor="middle" class="svgedge" fill="var(--ink2)">Job B · departure 📷</text>
       </g>
       <line x1="150" y1="104" x2="390" y2="104" stroke="var(--warn)" stroke-width="2"/>
@@ -227,6 +238,47 @@ ol.phases b{font-weight:600}
   </table></div>
   <p class="claim" style="margin-top:10px">Drivers and mechanics are people in the system without logins — they appear in pickers and history, never on a screen of their own. Business access is simply which role slots a user holds; only both-slot users ever see the mode switcher.</p>
 
+  <h2>Three stories to walk through</h2>
+  <p class="claim">Each one exercises the rules above with the actual people. Follow them on the screens mockup.</p>
+  <div class="scenlist">
+
+  <div class="scen"><h3>1 · Mr Rowley's dam, call to invoice<span class="who">the happy path</span></h3>
+    <ul>
+      <li>Mr Rowley (farmer, the customer) phones Jed (owner): a dam at Rooikraal. Henk (contracting manager) pre-creates job <span class="mono">CJOB-00042</span> — customer, farm <i>Rooikraal</i>, work type <i>Dam building</i> — and assigns <b>Sipho</b> (foreman). It sits in <b>Upcoming</b>; only Sipho sees it.</li>
+      <li>The lowbed drops <span class="mono">CAT320-1</span> (excavator) on site. Sipho assigns it from the Category-filtered picker and photographs the meter; the AI reads <span class="mono">4002.6</span>, one tap confirms — the job flips <b>Active</b> by itself. Trucked in means a zero Hour Gap: no travel line.</li>
+      <li><span class="mono">GRAD140K-1</span> (grader) drives itself over: arrival <span class="mono">7110.0</span>, 2.1 h past its last departure — under the 4 h threshold, so it quietly becomes a travel line billed to Mr Rowley, the farmer it drove <i>to</i> (the include-travel toggle defaults on).</li>
+      <li><span class="mono">JD6140M-2</span> (tractor) arrives towing the tip trailer: Sipho assigns it (arrival <span class="mono">7102.5</span>, a 1.2 h drive) and attaches the tip trailer as its <b>Implement</b>.</li>
+      <li>He keys <i>18 loads</i> hauled on that assignment — production for the record, never billed.</li>
+      <li>The work wraps: Sipho captures each departure — <span class="mono">CAT320-1</span> at <span class="mono">4051.2</span>, <span class="mono">GRAD140K-1</span> at <span class="mono">7152.4</span>, <span class="mono">JD6140M-2</span> at <span class="mono">7141.3</span>. Work hours derive themselves: 48.6, 42.4, 38.8 — nobody typed a total. The job surfaces in <b>Henk's looks-finished queue</b>.</li>
+      <li>Sign-off: every reading photo-backed. Henk adds Charge Lines — lowbed move R 3,500.00, diesel 210 L R 4,830.00 — writes a site note, tweaks the end date, stamps <b>Completed</b>.</li>
+      <li><b>Jed's pricing queue</b>: rates prefill from Category presets and the lines compute — <span class="mono">CAT320-1</span> 48.6 h × R 600 = <span class="mono">R 29,160.00</span>; <span class="mono">GRAD140K-1</span> (42.4 + 2.1 travel) 44.5 h × R 550 = <span class="mono">R 24,475.00</span>; <span class="mono">JD6140M-2</span> (38.8 + 1.2) 40.0 h × R 450 = <span class="mono">R 18,000.00</span> — the grader rate trimmed as a favour, because the edit <i>is</i> the discount. With Charge Lines: <b class="mono">R 79,965.00 ex VAT</b>. <b>Priced</b> — figures freeze.</li>
+      <li><b>Karen</b> (office — invoicing) opens the Job Card — a works summary, explicitly not an invoice — keys it into PESTEL, stamps <span class="mono">INV-4471</span>: <b>Invoiced</b>, the wall.</li>
+      <li>Months later Rowley disputes the hours; Jed prints the customer copy — <span class="mono">CAT320-1</span> arrived at <span class="mono">4002.6</span>, left at <span class="mono">4051.2</span>: there when it got there, there when it left.</li>
+    </ul></div>
+
+  <div class="scen"><h3>2 · The TLB that came home<span class="who">gaps and the yard</span></h3>
+    <ul>
+      <li><span class="mono">JCB3CX-1</span> (TLB) leaves Welgevonden with a departure photo at <span class="mono">6204.4</span> and, with nothing booked, drives back to Stony Brook. Nobody logs anything — there is no internal job, on purpose. Five weeks of yard digging.</li>
+      <li>Mr Steyn (farmer) wants a TLB at Klipdrift. Henk creates the job, assigns <b>Sipho</b>; the arrival photo reads <span class="mono">6241.8</span> — 37.4 h past the last departure, way over the 4 h threshold.</li>
+      <li>A <b>Gap Flag</b> rides the assignment. Sipho keys on, unbothered — flags surface at sign-off and never block the field.</li>
+      <li>The hole gets dug; departure <span class="mono">6263.0</span> — 21.2 work hours, derived.</li>
+      <li>At sign-off Henk splits the gap: 1.6 h billable travel, 35.8 h <b>Unaccounted — "yard work at Stony Brook"</b> — flag cleared. Mr Steyn's card shows 21.2 work hours and a 1.6 h travel line; the yard weeks are his to never see.</li>
+      <li>Had Sipho fat-fingered <span class="mono">6141.8</span> — below the last reading — the capture would have <b>refused</b>: meters don't run backwards; retake, or assert "the previous reading is wrong," which saves his value as disputed and flags the pair for Henk.</li>
+    </ul></div>
+
+  <div class="scen"><h3>3 · Code Red at Scott Farm<span class="who">the workshop loop</span></h3>
+    <ul>
+      <li><span class="mono">JD6140M-2</span> pours hydraulic oil at Scott Farm, Willem (driver) at the wheel. Sipho taps <b>Report a problem</b>, holds the mic — a mixed Afrikaans-English voice note. He fixes one mangled word in the transcript (the correction teaches the transcriber), adds two photos, marks it <b>Code Red</b>, sends. Job and farm attach themselves from the open Assignment.</li>
+      <li>Connor (workshop manager) gets the push — Code Red also pings Henk and Jed. A Code Green would have pinged Connor alone.</li>
+      <li>The queue shows the report, photos, and farm — and the derived hint: <span class="mono">JD6140M-1</span> (tractor) <i>on the same job has an open Code Green (brake light)</i>. One trip, two fixes. Connor assigns <b>Danie</b> (mechanic), marks In Progress.</li>
+      <li>Connor drops a question into the <b>Breakdown Notes</b> thread — <i>"which side is the leak?"</i> — and Sipho answers by voice note, transcribed. The back-and-forth lives on the Breakdown, not in a WhatsApp scroll.</li>
+      <li>Danie replaces the burst pipe, sorts the brake light while he's there. Connor closes both with close-out notes; each lands permanently on its machine's history.</li>
+      <li>The tap-to-close clock becomes Danie's number on the mechanic performance tab: 0.8 days, no comebacks.</li>
+      <li>While Danie works, Sipho snaps a <b>spot reading</b> — <span class="mono">7148.9</span>, 51 h from the next service (mechanics have no login; field captures are the foreman's). The profile turns amber — <i>Service due soon</i> — and Connor gets that ping too. Filters are ordered before anyone asks.</li>
+    </ul></div>
+
+  </div>
+
   <h2>Build order</h2>
   <ol class="phases">
     <li><b>Phase 0 — set the symmetric standard.</b> Move the existing equipment app into its namespace (folders, URLs with redirects, database schema, permission names) before any contracting code lands.</li>
@@ -246,5 +298,6 @@ ol.phases b{font-weight:600}
     <div>· Per-machine rate overrides — the category rate is the rule</div>
     <div>· Hour-based utilisation — days are the v1 metric</div>
     <div>· Driver-history reporting beyond assignment snapshots</div>
+    <div>· Team attendance register — a later idea from Jed's brief</div>
   </div>
 </div>

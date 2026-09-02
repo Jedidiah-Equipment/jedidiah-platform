@@ -6,7 +6,8 @@ The app's modes display as **Jedidiah Equipment** and **Jedidiah Contracting**; 
 
 ## Core Model
 
-**Job** is one piece of contracted field work for one **Customer**: a Work Type, a freeform
+**Job** is one piece of contracted field work for one **Customer**: a Work Type, a **Farm** (the
+place the work happens — first-class, because the workshop reads it as the location), a freeform
 description, a status, and one responsible **Foreman**. Jobs are pre-created by management into
 the **Upcoming** list — foremen never create Jobs, and on Job data they select from pre-saved
 information, typing only hours. That select-don't-type rule is a Job-data rule, not a gag:
@@ -25,7 +26,9 @@ finished. Every stage has a visible queue, so work cannot vanish between a forem
 the invoice — that chain is the app's core promise.
 
 **Machine Assignment** is one Machine's stint on one Job: created when the Foreman puts the
-machine on the Job, closed when it leaves, carrying its arrival and departure Hour Readings. A
+machine on the Job, closed when it leaves, carrying its arrival and departure Hour Readings. It
+may name an **Implement** and a **Production Quantity** — a number and unit from a managed list
+(loads, hectares, bales) captured for the record and never priced automatically. A
 Machine has **at most one open Machine Assignment**, which is what enforces that a machine is
 never on two Jobs at once. The Foreman edits only his own Job's Assignments and only while the
 Job is Active; after Completion only management amends. Avoid Slot (an Equipment scheduling
@@ -56,9 +59,9 @@ included. Discounts are edited numbers, not a mechanism.
 external accounting system. Stamping it is what makes a Job Invoiced.
 
 **Machine** is one piece of the contracting fleet: a make and model (entered via creatable
-selects so spelling stays consistent), a registration number, a hand-entered unique **Machine
-Code** following the fleet's `JD6140M-1` convention, a **Category**, an optional current
-**Driver**, and notes. A Machine is what an Assignment assigns. It has no reference to the
+selects so spelling stays consistent), a year, a registration number, a hand-entered unique
+**Machine Code** following the fleet's `JD6140M-1` convention, a **Category**, an optional
+current **Driver**, and notes. A Machine is what an Assignment assigns. It has no reference to the
 Equipment context: the two businesses share no machine identity. A Machine is **On Job** while it
 has an open Assignment and otherwise **In Yard** — derived, never stored, with no manual flag;
 the **Machine Yard** view lists In Yard machines by Category, and an open fault shows as an
@@ -69,6 +72,11 @@ only a never-used entry may be deleted. Avoid Unit, Product Unit, Vehicle, or As
 **Category** is the admin-managed grouping of Machines (excavator, TLB, hauler tractor, grader,
 …): the shortlist dimension in pickers, the grouping of the Machine Yard, the future utilisation
 dimension, and the home of the Preset Rate.
+
+**Implement** is one un-metered attachment in the fleet — a disc, planter, or ripper: a code, a
+Category, and notes. It attaches to a Machine Assignment beside the Machine and has no hour
+meter, no readings, and no availability of its own. Whether a towed unit is a Machine or an
+Implement is decided by whether it has a meter.
 
 **Driver** is a non-login user record (the bay-operator pattern): drivers take instructions and
 never sign in. The Machine carries its current Driver; each Machine Assignment snapshots its
@@ -114,12 +122,12 @@ Breakdown *is* an outstanding fault. Any user with Contracting access may report
 Foreman): photos,
 a description in the reporter's own words (typed, or a transcribed voice note the reporter can
 edit), an optional link to the Job it happened on (defaulted from the machine's open Assignment,
-which is what locates it for the workshop), optional GPS, and an **urgency** — *machine down* or
-*still working*. Status runs **Open → In Progress → Solved**; the workshop manager owns every
+which is what locates it for the workshop), optional GPS, and an **urgency** — **Code Red**
+(machine down) or **Code Green** (still working). Status runs **Open → In Progress → Solved**; the workshop manager owns every
 transition and closes with a mandatory close-out note. A Machine's Breakdown history is
 permanent. The dispatch cross-reference — other machines on the same Job with open Breakdowns —
 is derived, never stored. New Breakdowns notify the workshop manager by push notification;
-machine-down urgency also notifies management.
+Code Red also notifies management.
 
 **Breakdown Note** is one entry in a Breakdown's append-only note thread: author, text (voice
 note supported), time. Contracting's own mechanism — never the Equipment context's Feedback.

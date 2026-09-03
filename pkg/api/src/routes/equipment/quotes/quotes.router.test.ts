@@ -20,9 +20,8 @@ import {
 import { pricePersistedQuote, priceQuote } from '@pkg/domain';
 import type { QuoteDetail } from '@pkg/schema';
 import { describe, expect, vi } from 'vitest';
-
+import { createProductRangeFixture } from '@/equipment/test/product-range-fixtures.js';
 import { type AppRouterCaller, createTester } from '@/test/create-tester.js';
-import { createProductRangeFixture } from '@/test/product-range-fixtures.js';
 import { mockSession } from '@/test/test-utils.js';
 
 const PRODUCT_THUMBNAIL_DATA_URL = 'data:image/webp;base64,aaaa';

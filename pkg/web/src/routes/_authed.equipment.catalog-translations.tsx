@@ -1,7 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router';
-
+import { CatalogTranslationsPage } from '@/equipment/pages/catalog-translations/CatalogTranslationsPage.js';
 import { requireRoutePermission } from '@/lib/route-auth.js';
-import { CatalogTranslationsPage } from '@/pages/catalog-translations/CatalogTranslationsPage.js';
 
 export const Route = createFileRoute('/_authed/equipment/catalog-translations')({
   beforeLoad: async ({ context }) => {

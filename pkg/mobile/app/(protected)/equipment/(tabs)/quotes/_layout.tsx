@@ -1,7 +1,7 @@
 import { Redirect, Stack } from 'expo-router';
 
-import { TabAccessLoadingScreen } from '@/components/TabAccessLoadingScreen';
-import { MAIN_TAB_PARENTS } from '@/lib/toolbar-navigation';
+import { TabAccessLoadingScreen } from '@/equipment/components/TabAccessLoadingScreen';
+import { MAIN_TAB_PARENTS } from '@/equipment/lib/toolbar-navigation';
 import { useCan } from '@/lib/use-access';
 
 /** Owns the Quotes permission gate so every screen in the stack can assume Quote read access. */

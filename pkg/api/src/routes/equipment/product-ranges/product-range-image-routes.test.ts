@@ -3,9 +3,8 @@ import type { StorageAdapter, StoragePutInput, StoredObject } from '@pkg/core';
 import { type Db, user } from '@pkg/db';
 import Fastify, { type FastifyInstance } from 'fastify';
 import { afterEach, beforeEach, describe, expect, vi } from 'vitest';
-
+import { createProductRangeFixture } from '@/equipment/test/product-range-fixtures.js';
 import { createTester } from '@/test/create-tester.js';
-import { createProductRangeFixture } from '@/test/product-range-fixtures.js';
 import { mockSession } from '@/test/test-utils.js';
 
 const routeTestState = vi.hoisted(() => ({

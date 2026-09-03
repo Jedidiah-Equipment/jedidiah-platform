@@ -2,19 +2,18 @@ import { keepPreviousData, useInfiniteQuery } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
 import { View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-
-import { CatalogListSkeleton, PaginatedCatalogList } from '@/components/CatalogList';
-import { JobCatalogCard, JobCatalogControls } from '@/components/jobs/JobCatalog';
-import { MainTabToolbar } from '@/components/TopToolbar';
 import { Text } from '@/components/ui/text';
+import { CatalogListSkeleton, PaginatedCatalogList } from '@/equipment/components/CatalogList';
+import { JobCatalogCard, JobCatalogControls } from '@/equipment/components/jobs/JobCatalog';
+import { MainTabToolbar } from '@/equipment/components/TopToolbar';
 import {
   getJobCatalogListPresentation,
   isJobCatalogSort,
   isJobCompletionFilter,
   type JobCatalogSort,
   type JobCompletionFilter,
-} from '@/lib/job-catalog';
-import { MAIN_TAB_PARENTS } from '@/lib/toolbar-navigation';
+} from '@/equipment/lib/job-catalog';
+import { MAIN_TAB_PARENTS } from '@/equipment/lib/toolbar-navigation';
 import { useTRPC } from '@/lib/trpc';
 import { useDebouncedSearch } from '@/lib/use-debounced-search';
 import { useGlobalRefresh } from '@/lib/use-global-refresh';

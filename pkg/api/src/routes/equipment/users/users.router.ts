@@ -10,12 +10,10 @@ import {
 import { AuthId, Department, NullableThumbnailDataUrl } from '@pkg/schema';
 import { TRPCError } from '@trpc/server';
 import { z } from 'zod';
-
+import { createAuth } from '@/app-auth.js';
 import { getApiConfig } from '@/env.js';
-
-import { createAuth } from '../../../app-auth.js';
-import { type CoreErrorMapping, mapKnownCoreError } from '../../../trpc/errors.js';
-import { authorizedProcedure, router } from '../../../trpc/init.js';
+import { type CoreErrorMapping, mapKnownCoreError } from '@/trpc/errors.js';
+import { authorizedProcedure, router } from '@/trpc/init.js';
 
 const config = getApiConfig();
 

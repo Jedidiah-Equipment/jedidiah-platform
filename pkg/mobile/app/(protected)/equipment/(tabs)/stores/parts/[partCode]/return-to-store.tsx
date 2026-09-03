@@ -1,7 +1,7 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 
-import { JobMovementScreen } from '@/components/stores/JobMovementScreen';
-import { resolveStoresMovementParent } from '@/lib/toolbar-navigation';
+import { JobMovementScreen } from '@/equipment/components/stores/JobMovementScreen';
+import { resolveStoresMovementParent } from '@/equipment/lib/toolbar-navigation';
 
 export default function StoresReturnToStoreRoute() {
   // `jobId` arrives only from the close-out screen, which already knows the Job the leftovers

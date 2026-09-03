@@ -3,12 +3,11 @@ import { IconArrowBackUp, IconArrowDownToArc, IconTruckReturn, IconWheel } from 
 import { useQuery } from '@tanstack/react-query';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Pressable, View } from 'react-native';
-
-import { StoresScreen } from '@/components/stores/StoresScreen';
 import { ActivityIndicator } from '@/components/ui/activity-indicator';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
-import { useStoresActor } from '@/lib/stores-actor';
+import { StoresScreen } from '@/equipment/components/stores/StoresScreen';
+import { useStoresActor } from '@/equipment/lib/stores-actor';
 import { useTRPC } from '@/lib/trpc';
 
 /**

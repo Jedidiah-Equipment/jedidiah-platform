@@ -1,8 +1,8 @@
 import { UUID } from '@pkg/schema';
 import { createFileRoute } from '@tanstack/react-router';
 
-import { ProductRangeEditPage } from '@/pages/product-ranges/ProductRangeEditPage.js';
-import { ProductRangeEditSearch } from '@/pages/product-ranges/product-range-edit-tabs.js';
+import { ProductRangeEditPage } from '@/equipment/pages/product-ranges/ProductRangeEditPage.js';
+import { ProductRangeEditSearch } from '@/equipment/pages/product-ranges/product-range-edit-tabs.js';
 
 export const Route = createFileRoute('/_authed/equipment/product-ranges/$id/edit')({
   params: {

@@ -8,13 +8,13 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert.js';
 import { Button } from '@/components/ui/button.js';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card.js';
 import { FieldGroup } from '@/components/ui/field.js';
-import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
+import { useClearQueryCache } from '@/hooks/use-clear-query-cache.js';
 import { authClient } from '@/lib/auth-client.js';
 import { LoginForm } from './types.js';
 
 export const LoginPage: React.FC = () => {
   const navigate = useNavigate();
-  const { clearQueryCache } = useQueryInvalidation();
+  const clearQueryCache = useClearQueryCache();
   const [error, setError] = useState<string | null>(null);
 
   const form = useAppForm({

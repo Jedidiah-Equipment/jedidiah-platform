@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router';
+import { FeedbackPage } from '@/equipment/pages/feedback/FeedbackPage.js';
 import { requireRoutePermission } from '@/lib/route-auth.js';
-import { FeedbackPage } from '@/pages/feedback/FeedbackPage.js';
 
 export const Route = createFileRoute('/_authed/equipment/feedback')({
   beforeLoad: async ({ context }) => {

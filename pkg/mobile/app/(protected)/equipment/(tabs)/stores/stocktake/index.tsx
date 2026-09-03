@@ -2,13 +2,12 @@ import { STOCKTAKE_SCOPE_LABELS, type StocktakeOverdueRow, StocktakeScope, type 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import { Pressable, View } from 'react-native';
-
-import { StoresScreen } from '@/components/stores/StoresScreen';
 import { ActivityIndicator } from '@/components/ui/activity-indicator';
 import { Text } from '@/components/ui/text';
 import { useAppToast } from '@/components/ui/toast';
+import { StoresScreen } from '@/equipment/components/stores/StoresScreen';
+import { useMovementActorUserId, useStoresActor } from '@/equipment/lib/stores-actor';
 import { invalidateQueryCache } from '@/lib/query-client';
-import { useMovementActorUserId, useStoresActor } from '@/lib/stores-actor';
 import { useTRPC } from '@/lib/trpc';
 
 /**

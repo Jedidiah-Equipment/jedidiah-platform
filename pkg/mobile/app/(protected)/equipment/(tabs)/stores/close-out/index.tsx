@@ -1,10 +1,9 @@
 import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import { Pressable, View } from 'react-native';
-
-import { StoresScreen } from '@/components/stores/StoresScreen';
 import { ActivityIndicator } from '@/components/ui/activity-indicator';
 import { Text } from '@/components/ui/text';
+import { StoresScreen } from '@/equipment/components/stores/StoresScreen';
 import { useTRPC } from '@/lib/trpc';
 
 /**

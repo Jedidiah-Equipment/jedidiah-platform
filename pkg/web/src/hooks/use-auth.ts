@@ -3,14 +3,14 @@ import { usePostHog } from 'posthog-js/react';
 import { useEffect } from 'react';
 import { getClientConfig } from '@/lib/app-config.js';
 import { authClient } from '@/lib/auth-client.js';
-import { useQueryInvalidation } from './use-query-invalidation.js';
+import { useClearQueryCache } from './use-clear-query-cache.js';
 
 const config = getClientConfig();
 
 export function useAuth() {
   const navigate = useNavigate();
   const posthog = usePostHog();
-  const { clearQueryCache } = useQueryInvalidation();
+  const clearQueryCache = useClearQueryCache();
   const { data: session, isPending } = authClient.useSession();
   const userName = session?.user.name || 'Signed in';
   const userEmail = session?.user.email || 'Account active';

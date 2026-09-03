@@ -1,6 +1,6 @@
 import { useLocalSearchParams } from 'expo-router';
 
-import { JobMovementScreen } from '@/components/stores/JobMovementScreen';
+import { JobMovementScreen } from '@/equipment/components/stores/JobMovementScreen';
 
 export default function StoresCheckoutRoute() {
   const { partCode } = useLocalSearchParams<{ partCode: string }>();

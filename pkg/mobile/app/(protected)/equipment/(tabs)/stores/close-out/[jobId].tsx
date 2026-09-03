@@ -3,15 +3,14 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, View } from 'react-native';
-
-import { PostButton } from '@/components/stores/PostButton';
-import { StoresScreen } from '@/components/stores/StoresScreen';
 import { ActivityIndicator } from '@/components/ui/activity-indicator';
 import { Text } from '@/components/ui/text';
 import { TextInput } from '@/components/ui/text-input';
 import { useAppToast } from '@/components/ui/toast';
+import { PostButton } from '@/equipment/components/stores/PostButton';
+import { StoresScreen } from '@/equipment/components/stores/StoresScreen';
+import { useMovementActorUserId, useStoresActor } from '@/equipment/lib/stores-actor';
 import { invalidateQueryCache } from '@/lib/query-client';
-import { useMovementActorUserId, useStoresActor } from '@/lib/stores-actor';
 import { useTRPC } from '@/lib/trpc';
 
 /**

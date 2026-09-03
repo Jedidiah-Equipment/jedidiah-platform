@@ -1,9 +1,8 @@
 import { auditEvents, type Db, products, productUnitOwnershipTransfers, productUnits, quotes, user } from '@pkg/db';
 import type { Customer } from '@pkg/schema';
 import { describe, expect } from 'vitest';
-
+import { createProductRangeFixture } from '@/equipment/test/product-range-fixtures.js';
 import { type AppRouterCaller, createTester } from '@/test/create-tester.js';
-import { createProductRangeFixture } from '@/test/product-range-fixtures.js';
 import { expectIsoDatetime, mockSession } from '@/test/test-utils.js';
 
 const test = createTester(async ({ db }) => {

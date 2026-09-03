@@ -2,7 +2,7 @@ import { UUID } from '@pkg/schema';
 import { createFileRoute } from '@tanstack/react-router';
 import { z } from 'zod';
 
-import { CustomerEditPage } from '@/pages/customers/CustomerEditPage.js';
+import { CustomerEditPage } from '@/equipment/pages/customers/CustomerEditPage.js';
 
 export const Route = createFileRoute('/_authed/equipment/customers/$id/edit')({
   params: {

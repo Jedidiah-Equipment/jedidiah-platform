@@ -1,7 +1,7 @@
 import { type Href, useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { BayQueueScreen } from '@/components/bays/BayQueueScreen';
+import { BayQueueScreen } from '@/equipment/components/bays/BayQueueScreen';
 
 /** Existing Bay schedule, now owned by the root Plan tab. */
 export default function BayScheduleRoute() {

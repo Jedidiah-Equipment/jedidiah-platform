@@ -1,0 +1,160 @@
+import { getJobDisplayNameWithModel, getJobWorkLabel } from '@pkg/domain';
+import type { JobCode, JobListInput, JobSummary, UUID } from '@pkg/schema';
+import { useQuery } from '@tanstack/react-query';
+import type React from 'react';
+import { useMemo, useState } from 'react';
+import { ErrorMessage } from '@/components/common/ErrorMessage.js';
+import { PrimaryLink } from '@/components/common/PrimaryLink.js';
+import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card.js';
+import { Skeleton } from '@/components/ui/skeleton.js';
+import { StockBadge } from '@/equipment/components/common/StockBadge.js';
+import { useTRPC } from '@/lib/trpc.js';
+import { cn } from '@/lib/utils.js';
+
+import { JobScheduleStateBadges } from './JobScheduleStateBadges.js';
+
+type JobCodeDisplayProps = {
+  canOpenJob: boolean;
+  className?: string;
+  jobCode: JobCode | null;
+  jobId: UUID | null;
+  withHoverCard?: boolean;
+};
+
+export const JobCodeDisplay: React.FC<JobCodeDisplayProps> = ({
+  canOpenJob,
+  className,
+  jobCode,
+  jobId,
+  withHoverCard = false,
+}) => {
+  if (!jobCode) {
+    return <span className="text-muted-foreground">None</span>;
+  }
+
+  const codeDisplay =
+    canOpenJob && jobId ? (
+      <JobCodeLink className={className} jobCode={jobCode} jobId={jobId} />
+    ) : (
+      <JobCodeText className={className} jobCode={jobCode} />
+    );
+
+  if (!withHoverCard || !canOpenJob || !jobId) {
+    return codeDisplay;
+  }
+
+  return (
+    <JobCodeHoverCard jobCode={jobCode} jobId={jobId}>
+      {codeDisplay}
+    </JobCodeHoverCard>
+  );
+};
+
+const JobCodeLink: React.FC<{ className?: string | undefined; jobCode: JobCode; jobId: UUID }> = ({
+  className,
+  jobCode,
+  jobId,
+}) => (
+  <PrimaryLink className={cn('font-mono', className)} search={{ job: jobId }} to="/equipment/jobs">
+    {jobCode}
+  </PrimaryLink>
+);
+
+const JobCodeText: React.FC<{ className?: string | undefined; jobCode: JobCode }> = ({ className, jobCode }) => (
+  <span className={cn('font-medium', className)}>{jobCode}</span>
+);
+
+const JobCodeHoverCard: React.FC<{
+  children: React.ReactElement;
+  jobCode: JobCode;
+  jobId: UUID;
+}> = ({ children, jobCode, jobId }) => {
+  const trpc = useTRPC();
+  const [isOpen, setIsOpen] = useState(false);
+  const input = useMemo(
+    () =>
+      ({
+        columnFilters: {},
+        filters: {
+          jobId,
+        },
+        include: {
+          scheduleState: true,
+        },
+        cursor: 0,
+        limit: 1,
+        search: '',
+        sortBy: 'createdAt',
+        sortDirection: 'asc',
+      }) satisfies JobListInput,
+    [jobId],
+  );
+  const jobQuery = useQuery(
+    trpc.jobs.list.queryOptions(input, {
+      enabled: isOpen,
+    }),
+  );
+  const job = jobQuery.data?.items[0] ?? null;
+
+  return (
+    <HoverCard onOpenChange={setIsOpen}>
+      <HoverCardTrigger render={<span className="inline-flex">{children}</span>} />
+      <HoverCardContent align="start" className="w-96 max-w-[calc(100vw-2rem)]" side="top">
+        <div className="flex flex-col gap-3">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <div className="truncate font-medium">{jobCode}</div>
+            </div>
+            {jobQuery.isFetching ? <Skeleton className="h-7 w-20 shrink-0 rounded-full" /> : null}
+          </div>
+          <ErrorMessage error={jobQuery.error} fallbackMessage="Unable to load job preview." />
+          {jobQuery.isFetching ? <JobPreviewSkeleton /> : null}
+          {!jobQuery.isFetching && job ? <JobPreview job={job} /> : null}
+          {!jobQuery.isFetching && !job && !jobQuery.error ? (
+            <div className="text-sm text-muted-foreground">No job preview found.</div>
+          ) : null}
+        </div>
+      </HoverCardContent>
+    </HoverCard>
+  );
+};
+
+const JobPreview: React.FC<{ job: JobSummary }> = ({ job }) => {
+  const displayName = getJobDisplayNameWithModel(job);
+
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="grid grid-cols-2 gap-2 text-sm">
+        <JobPreviewFact label="Customer" value={job.customerCompanyName ?? <StockBadge />} />
+        <JobPreviewFact label={getJobWorkLabel(job)} value={displayName} />
+        <JobPreviewFact label="Quote" value={job.quoteCode} />
+        {job.productUnit ? <JobPreviewFact label="Serial" value={job.productUnit.productSerialNumber} /> : null}
+      </div>
+      <div className="rounded-md border p-2">
+        <div className="text-xs font-medium text-muted-foreground">Schedule</div>
+        <div className="mt-1 flex flex-wrap gap-1.5">
+          <JobScheduleStateBadges scheduleState={job.scheduleState} />
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const JobPreviewFact: React.FC<{ label: string; value: React.ReactNode }> = ({ label, value }) => (
+  <div className="min-w-0 rounded-md border p-2">
+    <div className="text-xs font-medium text-muted-foreground">{label}</div>
+    <div className="mt-1 truncate">{value}</div>
+  </div>
+);
+
+const JobPreviewSkeleton: React.FC = () => (
+  <div className="flex flex-col gap-3">
+    <div className="grid grid-cols-2 gap-2">
+      <Skeleton className="h-14" />
+      <Skeleton className="h-14" />
+      <Skeleton className="h-14" />
+      <Skeleton className="h-14" />
+    </div>
+    <Skeleton className="h-8" />
+  </div>
+);

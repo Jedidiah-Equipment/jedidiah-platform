@@ -2,19 +2,19 @@ import { keepPreviousData, useInfiniteQuery } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
 import { View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { CatalogListSkeleton, PaginatedCatalogList } from '@/components/CatalogList';
-import { MainTabToolbar } from '@/components/TopToolbar';
 import { Text } from '@/components/ui/text';
-import { UnitCatalogCard, UnitCatalogControls } from '@/components/units/UnitCatalog';
-import { MAIN_TAB_PARENTS } from '@/lib/toolbar-navigation';
-import { useTRPC } from '@/lib/trpc';
+import { CatalogListSkeleton, PaginatedCatalogList } from '@/equipment/components/CatalogList';
+import { MainTabToolbar } from '@/equipment/components/TopToolbar';
+import { UnitCatalogCard, UnitCatalogControls } from '@/equipment/components/units/UnitCatalog';
+import { MAIN_TAB_PARENTS } from '@/equipment/lib/toolbar-navigation';
 import {
   getUnitListPresentation,
   isUnitBuildStateFilter,
   isUnitSort,
   type UnitBuildStateFilter,
   type UnitSort,
-} from '@/lib/unit-presentation';
+} from '@/equipment/lib/unit-presentation';
+import { useTRPC } from '@/lib/trpc';
 import { useDebouncedSearch } from '@/lib/use-debounced-search';
 import { useGlobalRefresh } from '@/lib/use-global-refresh';
 import { usePersistedState } from '@/lib/use-persisted-state';

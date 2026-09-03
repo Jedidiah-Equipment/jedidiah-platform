@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router';
 
-import { StocktakeSessionsPage } from '@/pages/inventory/stocktake/StocktakeSessionsPage.js';
+import { StocktakeSessionsPage } from '@/equipment/pages/inventory/stocktake/StocktakeSessionsPage.js';
 
 export const Route = createFileRoute('/_authed/equipment/inventory/stocktake/')({
   staticData: {

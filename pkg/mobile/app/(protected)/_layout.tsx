@@ -2,7 +2,7 @@ import { Redirect, Stack } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { AssistantProvider } from '@/components/assistant/AssistantProvider';
+import { AssistantProvider } from '@/equipment/components/assistant/AssistantProvider';
 import { useSession } from '@/lib/auth';
 import { AuthSessionProvider } from '@/lib/auth-session';
 import { useIsOffline } from '@/lib/connectivity';

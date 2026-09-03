@@ -1,0 +1,204 @@
+import type { Product, UUID } from '@pkg/schema';
+import { useMutation, useQuery } from '@tanstack/react-query';
+import { useNavigate } from '@tanstack/react-router';
+import type React from 'react';
+import { useMemo } from 'react';
+import { toast } from 'sonner';
+import { ErrorMessage } from '@/components/common/ErrorMessage.js';
+import { RemoveEntityButton } from '@/components/common/RemoveEntityButton.js';
+import { PageLayout } from '@/components/page-layout/PageLayout.js';
+import { Skeleton } from '@/components/ui/skeleton.js';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs.js';
+import { AuditTable, useProductAuditTableStore } from '@/equipment/components/audit/AuditTable.js';
+import { useQueryInvalidation } from '@/equipment/hooks/use-query-invalidation.js';
+import { useCan } from '@/hooks/use-access.js';
+import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
+import { useTRPC } from '@/lib/trpc.js';
+import { cn } from '@/lib/utils.js';
+import { ProductAssembliesTabTrigger } from './components/ProductAssembliesTabTrigger.js';
+import { ProductBaysTabTrigger } from './components/ProductBaysTabTrigger.js';
+import { ProductBuildTimesSection } from './components/ProductBuildTimesSection.js';
+import { ProductCostEstimatePanel } from './components/ProductCostEstimatePanel.js';
+import { ProductDocumentsSection } from './components/ProductDocumentsSection.js';
+import { ProductDocumentsTabTrigger } from './components/ProductDocumentsTabTrigger.js';
+import { ProductForm } from './components/ProductForm.js';
+import { ProductImagesSection } from './components/ProductImagesSection.js';
+import { isProductFullyReady, ProductReadinessAside } from './components/ProductReadinessAside.js';
+import { ProductTranslationsEditor } from './components/ProductTranslationsEditor.js';
+import { ProductTranslationsTabTrigger } from './components/ProductTranslationsTabTrigger.js';
+import { ProductEditTab, resolveProductEditTab } from './product-edit-tabs.js';
+
+type ProductEditPageProps = {
+  onTabChange: (tab: ProductEditTab) => void;
+  productId: UUID;
+  tab: ProductEditTab;
+};
+
+export const ProductEditPage: React.FC<ProductEditPageProps> = ({ onTabChange, productId, tab }) => {
+  const trpc = useTRPC();
+  const { invalidateCatalogTranslations, invalidateProducts } = useQueryInvalidation();
+
+  const productQuery = useQuery(trpc.products.get.queryOptions({ id: productId }));
+
+  const updateProductMutation = useMutation(
+    trpc.products.update.mutationOptions({
+      onSuccess: async () => {
+        await Promise.all([invalidateProducts(), invalidateCatalogTranslations()]);
+      },
+    }),
+  );
+
+  // Widen the page while the readiness aside is showing so the form keeps its breathing room beside the
+  // 22rem aside column; once the Product is fully ready (no aside) it returns to the standard width.
+  const showAside = productQuery.data ? !isProductFullyReady(productQuery.data) : false;
+
+  return (
+    <PageLayout
+      description="Edit Product"
+      size={showAside ? 'lg' : 'md'}
+      title={productQuery.data?.name ?? 'Loading product...'}
+    >
+      {productQuery.isPending ? <ProductFormSkeleton /> : null}
+      <ErrorMessage error={productQuery.error} fallbackMessage="Unable to load product." />
+      {productQuery.data ? (
+        <ProductEditTabs
+          onProductSave={(value) => updateProductMutation.mutateAsync(value)}
+          onTabChange={onTabChange}
+          product={productQuery.data}
+          tab={tab}
+        />
+      ) : null}
+    </PageLayout>
+  );
+};
+
+type ProductEditTabsProps = {
+  onProductSave: React.ComponentProps<typeof ProductForm>['onSave'];
+  onTabChange: (tab: ProductEditTab) => void;
+  product: Product;
+  tab: ProductEditTab;
+};
+
+const ProductEditTabs: React.FC<ProductEditTabsProps> = ({ onProductSave, onTabChange, product, tab }) => {
+  const auditAccess = useCan('audit:read');
+  const canRemoveProduct = useCan('product:update').can;
+  const productAuditFilters = useMemo(
+    () => ({
+      entityIds: [product.id],
+      entityTypes: ['product' as const],
+    }),
+    [product.id],
+  );
+
+  // The URL-controlled tabs let readiness links remain shareable while the aside stays mounted until the
+  // Product is fully ready, then the tabs reclaim the full width.
+  const showAside = !isProductFullyReady(product);
+  const activeTab = resolveProductEditTab(tab, auditAccess.can);
+
+  return (
+    <div className={cn('grid gap-4', showAside && 'xl:grid-cols-[minmax(0,1fr)_22rem]')}>
+      <Tabs
+        className="w-full"
+        onValueChange={(value) => onTabChange(ProductEditTab.parse(value))}
+        size="sm"
+        value={activeTab}
+      >
+        <TabsList variant="default">
+          <TabsTrigger value="details">Details</TabsTrigger>
+          <ProductBaysTabTrigger productId={product.id} />
+          <ProductAssembliesTabTrigger productId={product.id} />
+          <TabsTrigger value="costing">Costing</TabsTrigger>
+          {/* Only `product:read`, which this page already demands: the metrics gate applies to the
+              Crew-member ranking inside the tab, not to the build times themselves. */}
+          <TabsTrigger value="build-times">Build times</TabsTrigger>
+          <TabsTrigger value="images">Images</TabsTrigger>
+          <ProductDocumentsTabTrigger productId={product.id} />
+          <ProductTranslationsTabTrigger productId={product.id} />
+          {auditAccess.can ? <TabsTrigger value="audit">Audit</TabsTrigger> : null}
+        </TabsList>
+        <ProductForm
+          costingFooter={<ProductCostEstimatePanel productId={product.id} />}
+          detailsFooter={
+            canRemoveProduct ? (
+              <div className="mt-4 flex justify-end border-t pt-4">
+                <RemoveProductButton product={product} />
+              </div>
+            ) : null
+          }
+          key={product.id}
+          onSave={onProductSave}
+          product={product}
+        />
+        <TabsContent className="pt-4" value="build-times">
+          <ProductBuildTimesSection productId={product.id} />
+        </TabsContent>
+        <TabsContent className="pt-4" value="images">
+          <ProductImagesSection product={product} />
+        </TabsContent>
+        <TabsContent className="pt-4" value="documents">
+          <ProductDocumentsSection product={product} />
+        </TabsContent>
+        <ProductTranslationsEditor productId={product.id} />
+        {auditAccess.can ? (
+          <TabsContent className="pt-4" value="audit">
+            <AuditTable
+              emptyMessage="No audit events found for this product."
+              fixedFilters={productAuditFilters}
+              showEntityTypeFilter={false}
+              store={useProductAuditTableStore}
+            />
+          </TabsContent>
+        ) : null}
+      </Tabs>
+      {showAside ? (
+        <aside className="min-w-0 xl:sticky xl:top-4 xl:self-start">
+          <ProductReadinessAside onNavigate={onTabChange} product={product} />
+        </aside>
+      ) : null}
+    </div>
+  );
+};
+
+const RemoveProductButton: React.FC<{ product: Product }> = ({ product }) => {
+  const trpc = useTRPC();
+  const navigate = useNavigate();
+  const { invalidateProducts, invalidateQuotes } = useQueryInvalidation();
+  const showMutationError = useApiMutationErrorToast();
+
+  const removeProductMutation = useMutation(
+    trpc.products.remove.mutationOptions({
+      onSuccess: async () => {
+        await Promise.all([invalidateProducts(), invalidateQuotes()]);
+        toast.success('Product removed');
+        await navigate({ to: '/equipment/products' });
+      },
+      onError: (error) => {
+        showMutationError(error, 'Unable to remove Product.');
+      },
+    }),
+  );
+
+  return (
+    <RemoveEntityButton
+      description={
+        <>Remove {product.name} from active Products. Historical quotes and jobs will keep their Product details.</>
+      }
+      isPending={removeProductMutation.isPending}
+      onConfirm={() => removeProductMutation.mutate({ id: product.id })}
+      title="Remove Product"
+      triggerLabel="Remove product"
+    />
+  );
+};
+
+function ProductFormSkeleton() {
+  return (
+    <div className="flex flex-col gap-4">
+      <Skeleton className="h-10 w-full" />
+      <Skeleton className="h-10 w-full" />
+      <Skeleton className="h-10 w-full" />
+      <Skeleton className="h-10 w-full" />
+      <Skeleton className="h-24 w-full" />
+    </div>
+  );
+}

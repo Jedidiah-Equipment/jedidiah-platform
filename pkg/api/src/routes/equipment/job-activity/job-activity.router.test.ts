@@ -1,10 +1,9 @@
 import { auditEvents, customers, type Db, eq, feedback, jobs, products, productUnits, quotes, user } from '@pkg/db';
 import { DateIso } from '@pkg/schema';
 import { describe, expect } from 'vitest';
-
+import { createProductRangeFixture } from '@/equipment/test/product-range-fixtures.js';
 import { createActorUser } from '@/test/actor-user.js';
 import { createTester, type TesterContext } from '@/test/create-tester.js';
-import { createProductRangeFixture } from '@/test/product-range-fixtures.js';
 import { mockSession } from '@/test/test-utils.js';
 
 const test = createTester(async ({ db }) => {

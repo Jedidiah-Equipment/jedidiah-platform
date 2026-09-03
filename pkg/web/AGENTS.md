@@ -3,7 +3,7 @@
 - Browser access checks are UX only; the server/API is the authorization boundary.
 - Login is email/password only unless asked otherwise.
 - Use `@pkg/domain` `formatDate` and `formatCurrency`; do not add one-off `Intl` or locale formatting in components.
-- Route all React Query invalidation through `src/hooks/use-query-invalidation.ts`; invalidate whole affected tRPC root paths.
+- Route Equipment React Query invalidation through `src/equipment/hooks/use-query-invalidation.ts`; invalidate whole affected tRPC root paths. Shared auth cache clearing stays in `src/hooks/use-clear-query-cache.ts`.
 - Use shared UI primitives for standard surfaces: `Card` composition from `src/components/ui/card.tsx` and `ScrollArea` for page/panel scrolling.
 - Whenever the UI presents tabular data, render it through `src/components/data-table/DataTable.tsx`;
   feature and page code must not compose `src/components/ui/table.tsx` directly. Build the table with
@@ -14,14 +14,14 @@
   features the primitive calls. `DataTable` supports three list shapes, all configured by building the
   table in the feature and passing it in:
   - `paginationMode="cursor"` — the API owns filtering, sorting, and pagination. Follow
-    `src/pages/products/components/ProductTable.tsx`.
+    `src/equipment/pages/products/components/ProductTable.tsx`.
   - `paginationMode="complete"` — the browser owns them and every row renders. Follow
-    `src/pages/users/components/UserTable.tsx`.
+    `src/equipment/pages/users/components/UserTable.tsx`.
   - `paginationMode="incremental"` — the browser owns them but only a window of rows paints, with a
-    Load more button (`pageSize`, default 25). Follow `src/pages/inventory/buy-list/components/BuyListTable.tsx`.
+    Load more button (`pageSize`, default 25). Follow `src/equipment/pages/inventory/buy-list/components/BuyListTable.tsx`.
     Reach for it over `complete` when one server snapshot must stay whole — sorting, searching and
     row selection still span every row — but the row count would flood the DOM.
-- For TanStack Form descendants, use `useTypedAppFormContext` from `src/components/form/use-app-form.ts`.
+- For TanStack Form descendants, use `useTypedAppFormContext` from `src/components/form/hooks/use-app-form.ts`.
 - Keep `vite.config.ts` `resolve.dedupe: ['react', 'react-dom']`. `pkg/mobile` pins a different React version than web; without deduping a second React copy leaks into the bundle and breaks hooks ("Invalid hook call" / `useRef` of null). If you still see that error after a branch switch, clear the stale Vite cache (`rm -rf node_modules/.vite`) and restart the dev server.
 
 ## Help affordances
@@ -41,8 +41,8 @@
 ## Validation
 
 - `@pkg/schema` owns field rules. Form-value schemas may define browser shape and messages, but per-field constraints must reference schema exports.
-- Use helpers from `src/components/form/form-schema.ts` for UI/API shape bridges such as nullable strings and required selections.
+- Use helpers from `src/components/form/utils/form-schema.ts` for UI/API shape bridges such as nullable strings and required selections.
 - Keep complex form mappers in a nearby `types.ts` with unit tests.
 - Image uploads have two paths: small images that ride the entity payload use `ImageField`/`ThumbnailField` (inline data URL, autosaved); large replace-in-place images use the object-storage upload routes (see `BrochureImageSlotTile`). Reuse `@pkg/domain` image-policy message helpers in both rather than re-typing format/size copy.
 
-Canonical examples: `src/pages/products/ProductsPage.tsx`, `src/pages/suppliers/SupplierCreateDialog.tsx`, `src/pages/suppliers/SupplierEditPage.tsx`, `src/pages/suppliers/components/types.ts`.
+Canonical examples: `src/equipment/pages/products/ProductsPage.tsx`, `src/equipment/pages/suppliers/SupplierCreateDialog.tsx`, `src/equipment/pages/suppliers/SupplierEditPage.tsx`, `src/equipment/pages/suppliers/components/types.ts`.

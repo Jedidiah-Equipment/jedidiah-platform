@@ -1,18 +1,27 @@
 import { useState } from 'react';
 import { View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { CatalogListSkeleton, PaginatedCatalogList } from '@/components/CatalogList';
-import { NewQuoteModal } from '@/components/quotes/NewQuoteModal';
-import { QuoteCatalogCard, QuoteCatalogControls, QuotePriorityHeader } from '@/components/quotes/QuoteCatalog';
-import { MainTabToolbar } from '@/components/TopToolbar';
 import { Text } from '@/components/ui/text';
-import { isQuoteSort, isQuoteStatusFilter, type QuoteSort, type QuoteStatusFilter } from '@/lib/quote-presentation';
-import { MAIN_TAB_PARENTS } from '@/lib/toolbar-navigation';
+import { CatalogListSkeleton, PaginatedCatalogList } from '@/equipment/components/CatalogList';
+import { NewQuoteModal } from '@/equipment/components/quotes/NewQuoteModal';
+import {
+  QuoteCatalogCard,
+  QuoteCatalogControls,
+  QuotePriorityHeader,
+} from '@/equipment/components/quotes/QuoteCatalog';
+import { MainTabToolbar } from '@/equipment/components/TopToolbar';
+import {
+  isQuoteSort,
+  isQuoteStatusFilter,
+  type QuoteSort,
+  type QuoteStatusFilter,
+} from '@/equipment/lib/quote-presentation';
+import { MAIN_TAB_PARENTS } from '@/equipment/lib/toolbar-navigation';
+import { useQuoteList } from '@/equipment/lib/use-quote-list';
 import { useCan } from '@/lib/use-access';
 import { useDebouncedSearch } from '@/lib/use-debounced-search';
 import { useGlobalRefresh } from '@/lib/use-global-refresh';
 import { usePersistedState } from '@/lib/use-persisted-state';
-import { useQuoteList } from '@/lib/use-quote-list';
 
 /** Quote list. The Quotes layout owns the route-level permission gate. */
 export default function QuotesRoute() {

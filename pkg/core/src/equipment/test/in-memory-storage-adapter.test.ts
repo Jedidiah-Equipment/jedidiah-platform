@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import { InMemoryStorageAdapter } from '../equipment/test/in-memory-storage-adapter.js';
-import { StorageKeyAlreadyExistsError } from './storage-adapter.js';
+import { StorageKeyAlreadyExistsError } from '../../storage/storage-adapter.js';
+import { InMemoryStorageAdapter } from './in-memory-storage-adapter.js';
 
 describe('InMemoryStorageAdapter', () => {
   it('round-trips bytes and content type by key', async () => {

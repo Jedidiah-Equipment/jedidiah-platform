@@ -5,7 +5,6 @@ import fastifyStatic from '@fastify/static';
 import type { FastifyReply } from 'fastify';
 import Fastify from 'fastify';
 
-import { namespaceLegacyEquipmentPath } from '../equipment-route-namespace.js';
 import type { InjectedClientConfig, ServerConfig } from './env.js';
 
 type WebServerOptions = {
@@ -75,11 +74,6 @@ export function buildWebServer(config: ServerConfig, options: WebServerOptions =
   app.get('/*', async (request, reply) => {
     const requestUrl = new URL(request.url, 'http://localhost');
     const pathname = requestUrl.pathname;
-    const namespacedPath = namespaceLegacyEquipmentPath(pathname);
-
-    if (namespacedPath !== pathname) {
-      return reply.code(308).header('Location', `${namespacedPath}${requestUrl.search}`).send();
-    }
 
     if (pathname !== '/' && extname(pathname) !== '') {
       return reply.sendFile(pathname.slice(1));

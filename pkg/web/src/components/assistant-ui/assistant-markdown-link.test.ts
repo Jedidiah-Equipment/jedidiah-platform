@@ -33,7 +33,9 @@ describe('getInternalRouterHref', () => {
   });
 
   it('normalizes same-origin absolute urls to app hrefs', () => {
-    expect(getInternalRouterHref('https://jedidiah.test/quotes/quote-id', ORIGIN)).toBe('/equipment/quotes/quote-id');
+    expect(getInternalRouterHref('https://jedidiah.test/equipment/quotes/quote-id', ORIGIN)).toBe(
+      '/equipment/quotes/quote-id',
+    );
   });
 
   it('returns null for external urls', () => {

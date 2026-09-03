@@ -36,7 +36,7 @@ codebase says so everywhere the same way:
   keys into `public` are ordinary; foreign keys *between* `equipment` and `contracting` do not
   exist at all.
 - **URLs.** `/equipment/…` and `/contracting/…`, so the mode is visible in every address and deep
-  links are unambiguous. Legacy paths (`/jobs`, `/inventory`, …) permanently redirect.
+  links are unambiguous. Legacy paths are unsupported; old bookmarks must be updated.
 - **Permissions.** One flat App Role set and one `resource:verb` grammar, with symmetric families:
   `equipment_job:read`, `contracting_job:read`, `contracting_machine:update`. Contingency: if
   phase 0 finds permission strings persisted anywhere (audit rows, stored config), equipment names
@@ -73,7 +73,7 @@ the filter stays expressible — every `public` row either serves all businesses
 attributable through what references it.
 
 **Phase 0 precedes any contracting code.** The symmetric standard is set by moving the existing
-equipment mass — folders, routes with redirects, `ALTER TABLE … SET SCHEMA equipment` (an atomic
+equipment mass — folders and routes, `ALTER TABLE … SET SCHEMA equipment` (an atomic
 metadata change), permission renames, seed snapshot regeneration, template DB rebuild, blame-noise
 mitigation via `.git-blame-ignore-revs` — as behavior-preserving migration work before the first
 contracting table lands. Contracting arrives into a codebase that already says `equipment/`

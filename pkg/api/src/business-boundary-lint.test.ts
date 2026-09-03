@@ -37,4 +37,14 @@ describe('business namespace import boundary', () => {
 
     expect(result.status, result.stdout + result.stderr).toBe(0);
   });
+
+  it.each(['@pkg/core', '@pkg/domain'])(
+    'rejects the equipment-heavy %s barrel from contracting code',
+    (packageName) => {
+      const result = lintAt('pkg/api/src/routes/contracting', `import '${packageName}';`);
+
+      expect(result.status, result.stdout + result.stderr).not.toBe(0);
+      expect(result.stdout + result.stderr).toContain('Business namespaces may import shared code, never each other.');
+    },
+  );
 });

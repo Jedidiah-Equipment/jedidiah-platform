@@ -60,7 +60,7 @@ const SIGNED_IN_ROUTE_TOOLBARS = {
   'equipment/documents/[documentId].tsx': toolbar('secondary', 'app/(protected)/equipment/documents/[documentId].tsx'),
 } as const;
 
-const REDIRECT_ONLY_ROUTES = new Set(['[...legacy].tsx', 'index.tsx']);
+const REDIRECT_ONLY_ROUTES = new Set(['index.tsx']);
 
 describe('signed-in toolbar contract', () => {
   test('classifies every protected page as main or secondary', () => {

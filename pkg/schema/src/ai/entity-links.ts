@@ -14,32 +14,32 @@ export type ParsedInternalAppHref =
 
 const HREF_PATTERNS = [
   {
-    regex: /^\/(?:equipment\/)?products\/([^/]+)\/edit$/,
+    regex: /^\/equipment\/products\/([^/]+)\/edit$/,
     parse: (match: RegExpExecArray): ParsedInternalAppHref => ({
       kind: 'product',
       productId: readCapture(match, 1),
     }),
   },
   {
-    regex: /^\/(?:equipment\/)?customers\/([^/]+)\/edit$/,
+    regex: /^\/equipment\/customers\/([^/]+)\/edit$/,
     parse: (match: RegExpExecArray): ParsedInternalAppHref => ({
       kind: 'customer',
       customerId: readCapture(match, 1),
     }),
   },
   {
-    regex: /^\/(?:equipment\/)?quotes\/([^/]+)\/edit$/,
+    regex: /^\/equipment\/quotes\/([^/]+)\/edit$/,
     parse: (match: RegExpExecArray): ParsedInternalAppHref => ({
       kind: 'quote',
       quoteId: readCapture(match, 1),
     }),
   },
   {
-    regex: /^\/(?:equipment\/)?jobs\/([^/]+)$/,
+    regex: /^\/equipment\/jobs\/([^/]+)$/,
     parse: (match: RegExpExecArray): ParsedInternalAppHref => ({ kind: 'job', jobId: readCapture(match, 1) }),
   },
   {
-    regex: /^\/(?:equipment\/)?units\/([^/]+)$/,
+    regex: /^\/equipment\/units\/([^/]+)$/,
     parse: (match: RegExpExecArray): ParsedInternalAppHref => ({
       kind: 'product-unit',
       productUnitId: readCapture(match, 1),

@@ -61,14 +61,12 @@ import {
   SupplierInvoiceDismissFlagInput,
   SupplierInvoiceReviewResult,
 } from '@pkg/schema';
-
-import { mapCoreErrors } from '../../../trpc/errors.js';
 import {
-  authorizedProcedure,
   type InventoryCostAccess,
   projectInventoryCostFields,
-  router,
-} from '../../../trpc/init.js';
+} from '../../../equipment/trpc/inventory-cost-projection.js';
+import { mapCoreErrors } from '../../../trpc/errors.js';
+import { authorizedProcedure, router } from '../../../trpc/init.js';
 import { assertedActorErrorFamily, stockMovementErrorFamily } from '../inventory/inventory-error-families.js';
 import {
   assertCanReadInventoryCost,

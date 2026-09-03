@@ -1,7 +1,10 @@
 import { type StockMovement, StockMovementCostFields } from '@pkg/schema';
-
+import {
+  canReadInventoryCosts,
+  type InventoryCostAccess,
+  projectInventoryCostFields,
+} from '../../../equipment/trpc/inventory-cost-projection.js';
 import { createAuthTRPCError } from '../../../trpc/errors.js';
-import { canReadInventoryCosts, type InventoryCostAccess, projectInventoryCostFields } from '../../../trpc/init.js';
 
 // The ledger's transport rules, shared by every router that writes a movement — the inventory
 // surface and the Purchase Order receiving one — so a movement cannot mean two different things

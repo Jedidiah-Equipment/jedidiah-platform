@@ -5,8 +5,9 @@ import { z } from 'zod';
 
 import { mockSession } from '@/test/test-utils.js';
 
-import type { Context } from './context.js';
-import { createCallerFactory, projectInventoryCostFields, protectedProcedure, router } from './init.js';
+import type { Context } from '../../trpc/context.js';
+import { createCallerFactory, protectedProcedure, router } from '../../trpc/init.js';
+import { projectInventoryCostFields } from './inventory-cost-projection.js';
 
 const InventoryValuation = z.object({
   quantity: z.number(),

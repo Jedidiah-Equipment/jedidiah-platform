@@ -1,6 +1,6 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 
-import { auth } from './auth.js';
+import { auth } from '../app-auth.js';
 
 function createHeaders(request: FastifyRequest): Headers {
   const headers = new Headers();

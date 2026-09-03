@@ -27,16 +27,6 @@ describe('Assistant App Links', () => {
   });
 
   test.each([
-    ['/products/p1/edit', { kind: 'product', productId: 'p1' }],
-    ['/customers/c1/edit', { kind: 'customer', customerId: 'c1' }],
-    ['/quotes/q1/edit', { kind: 'quote', quoteId: 'q1' }],
-    ['/jobs/j1', { kind: 'job', jobId: 'j1' }],
-    ['/units/u1', { kind: 'product-unit', productUnitId: 'u1' }],
-  ])('continues to parse the legacy equipment href %s', (href, expected) => {
-    expect(parseInternalAppHref(href)).toEqual(expected);
-  });
-
-  test.each([
     'https://example.com/quotes/q1/edit',
     '//example.com/quotes/q1/edit',
     '/quotes/q1',
@@ -46,6 +36,11 @@ describe('Assistant App Links', () => {
     '/units/%2e%2e',
     '/api/quotes/q1/documents/../download',
     '/products/p1/edit?from=assistant',
+    '/products/p1/edit',
+    '/customers/c1/edit',
+    '/quotes/q1/edit',
+    '/jobs/j1',
+    '/units/u1',
   ])('rejects an unsupported or unsafe href: %s', (href) => {
     expect(parseInternalAppHref(href)).toBeNull();
   });

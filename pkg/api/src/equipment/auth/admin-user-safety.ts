@@ -4,7 +4,7 @@ import { AppRole } from '@pkg/schema';
 import type { BetterAuthPlugin } from 'better-auth';
 import { APIError, createAuthMiddleware, getSessionFromCtx } from 'better-auth/api';
 
-import { parseBetterAuthRole } from '../../auth/session.js';
+import { parseBetterAuthRole } from '../../auth/sign-in-eligibility.js';
 
 const SELF_ROLE_CHANGE_ERROR = {
   code: 'YOU_CANNOT_CHANGE_YOUR_OWN_ROLE',

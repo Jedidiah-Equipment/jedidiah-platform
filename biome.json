@@ -120,7 +120,7 @@
               "options": {
                 "patterns": [
                   {
-                    "group": ["equipment/**", "**/equipment/**"],
+                    "group": ["equipment/**", "**/equipment/**", "@pkg/core", "@pkg/domain"],
                     "message": "Business namespaces may import shared code, never each other."
                   }
                 ]

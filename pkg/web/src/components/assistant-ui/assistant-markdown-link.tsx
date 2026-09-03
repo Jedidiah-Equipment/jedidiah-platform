@@ -1,7 +1,6 @@
 import { useNavigate } from '@tanstack/react-router';
 import type React from 'react';
 
-import { namespaceLegacyEquipmentPath } from '@/equipment-route-namespace.js';
 import { getClientConfig } from '@/lib/app-config.js';
 import { cn } from '@/lib/utils.js';
 
@@ -54,7 +53,7 @@ export function getInternalRouterHref(href: string | undefined, origin = window.
       return null;
     }
 
-    return `${namespaceLegacyEquipmentPath(url.pathname)}${url.search}${url.hash}`;
+    return `${url.pathname}${url.search}${url.hash}`;
   } catch {
     return null;
   }

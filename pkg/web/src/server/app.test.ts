@@ -72,21 +72,6 @@ async function buildAppWithEnv(appEnv: AppEnv) {
 }
 
 describe('web server', () => {
-  it.each([
-    ['/dashboard', '/equipment/dashboard'],
-    ['/jobs/123?tab=documents', '/equipment/jobs/123?tab=documents'],
-    ['/inventory/stocktake/session-1', '/equipment/inventory/stocktake/session-1'],
-    ['/quotes/quote-1/edit?tab=pricing', '/equipment/quotes/quote-1/edit?tab=pricing'],
-  ])('permanently redirects the legacy equipment URL %s', async (legacyUrl, equipmentUrl) => {
-    const app = await buildAppWithEnv('production');
-
-    const response = await app.inject(legacyUrl);
-
-    expect(response.statusCode).toBe(308);
-    expect(response.headers.location).toBe(equipmentUrl);
-    await app.close();
-  });
-
   it('proxies PostHog API requests before the SPA fallback', async () => {
     const distDir = await mkdtemp(join(tmpdir(), 'jed-web-'));
     await writeFile(join(distDir, 'index.html'), '<html><head></head><body>app</body></html>');

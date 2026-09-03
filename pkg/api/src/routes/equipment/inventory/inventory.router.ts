@@ -72,16 +72,14 @@ import {
   StocktakeUncountedInput,
   StocktakeUncountedResult,
 } from '@pkg/schema';
-
-import { mapCoreErrors } from '../../../trpc/errors.js';
 import {
-  authorizedProcedure,
   canReadInventoryCosts,
   type InventoryCostAccess,
   projectInventoryCostFields,
   projectInventoryCostReport,
-  router,
-} from '../../../trpc/init.js';
+} from '../../../equipment/trpc/inventory-cost-projection.js';
+import { mapCoreErrors } from '../../../trpc/errors.js';
+import { authorizedProcedure, router } from '../../../trpc/init.js';
 import { partBomErrorFamily, partCoreErrorFamily } from '../parts/part-error-families.js';
 import {
   assertedActorErrorFamily,

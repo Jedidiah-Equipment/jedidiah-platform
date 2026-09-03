@@ -12,7 +12,7 @@ import { type PriorityQuote, QuoteInvoicedFilter, QuoteKind, QuoteStatus, type Q
 import { IconAlertTriangle } from '@tabler/icons-react';
 import { DateDisplay } from '@/components/common/DateDisplay.js';
 import type { DataTableColumnDef } from '@/components/data-table/features.js';
-import { EntityThumbnail } from '@/equipment/components/thumbnail/EntityThumbnail.js';
+import { EntityThumbnail } from '@/components/thumbnail/EntityThumbnail.js';
 import { OfferingThumbnail } from '@/equipment/components/thumbnail/OfferingThumbnail.js';
 import { cn } from '@/lib/utils.js';
 

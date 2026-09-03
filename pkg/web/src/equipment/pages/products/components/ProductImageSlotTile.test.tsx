@@ -13,7 +13,7 @@ vi.mock('@/equipment/hooks/use-credentialed-image-preview.js', () => ({
   useCredentialedImagePreview: () => null,
 }));
 
-vi.mock('@/hooks/use-query-invalidation.js', () => ({
+vi.mock('@/equipment/hooks/use-query-invalidation.js', () => ({
   useQueryInvalidation: () => ({ invalidateProducts: vi.fn() }),
 }));
 

@@ -21,8 +21,8 @@ import {
 } from '@/components/ui/dialog.js';
 import { Field, FieldLabel } from '@/components/ui/field.js';
 import { useSupplierOptions } from '@/equipment/hooks/options/use-supplier-options.js';
+import { useQueryInvalidation } from '@/equipment/hooks/use-query-invalidation.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
-import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { formatSupplierMergeConfirmation, getSupplierMergeOptions } from './supplier-merge.js';
 

@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button.js';
 import { Field, FieldDescription, FieldLabel } from '@/components/ui/field.js';
 import { FieldUsageLabel, PRODUCT_RANGE_FIELD_USAGE } from '@/equipment/components/catalog/index.js';
 import { useCredentialedImagePreview } from '@/equipment/hooks/use-credentialed-image-preview.js';
+import { useQueryInvalidation } from '@/equipment/hooks/use-query-invalidation.js';
 import {
   fetchProductRangeLogoBlob,
   IMAGE_ACCEPT,
@@ -15,7 +16,6 @@ import {
   validateSelectedRangeLogo,
 } from '@/equipment/utils/range-logo.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
-import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
 import { cn } from '@/lib/utils.js';
 
 type RangeLogoUploadProps = {

@@ -13,9 +13,8 @@ import {
 } from '@pkg/db';
 import type { FeedbackStatus } from '@pkg/schema';
 import { describe, expect } from 'vitest';
-
+import { createProductRangeFixture } from '@/equipment/test/product-range-fixtures.js';
 import { createTester, type TesterContext } from '@/test/create-tester.js';
-import { createProductRangeFixture } from '@/test/product-range-fixtures.js';
 import { mockSession } from '@/test/test-utils.js';
 
 const ACTOR_THUMBNAIL_DATA_URL = 'data:image/webp;base64,YWN0b3I=';

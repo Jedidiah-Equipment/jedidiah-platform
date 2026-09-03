@@ -27,7 +27,10 @@ vi.mock('react-native-safe-area-context', () => ({
 vi.mock('@/equipment/components/assistant/AssistantProvider', () => ({
   useAssistant: () => ({ chat: {}, reset: vi.fn() }),
 }));
-vi.mock('@/components/ui/chat-ai', () => ({ Conversation: 'Conversation', PromptInput: 'PromptInput' }));
+vi.mock('@/equipment/components/assistant/chat-ai', () => ({
+  Conversation: 'Conversation',
+  PromptInput: 'PromptInput',
+}));
 vi.mock('@/components/ui/icon', () => ({ Icon: 'Icon' }));
 vi.mock('@/components/ui/text', () => ({ Text: 'Text' }));
 vi.mock('@/equipment/components/TopToolbar', () => ({ SecondaryPageToolbar: 'SecondaryPageToolbar' }));

@@ -19,10 +19,10 @@ import { useAppToast } from '@/components/ui/toast';
 import { ProductImage } from '@/equipment/components/products/ProductImage';
 import { useDocumentDownload } from '@/equipment/hooks/use-document-download';
 import { getDocumentListAction } from '@/equipment/lib/document-content';
+import { productBrochurePreviewPath, productDocumentDownloadPath } from '@/equipment/lib/equipment-http-paths';
 import { PRODUCT_BROCHURE_DOCUMENT_ID, productBrochureFilename } from '@/equipment/lib/product-brochure';
 import { landerProductUrls } from '@/equipment/lib/product-presentation';
 import { landerOrigin } from '@/lib/app-env';
-import { productBrochurePreviewPath, productDocumentDownloadPath } from '@/lib/authed-fetch';
 import { useTRPC } from '@/lib/trpc';
 
 export function ProductDetail({ product }: { product: Product }) {

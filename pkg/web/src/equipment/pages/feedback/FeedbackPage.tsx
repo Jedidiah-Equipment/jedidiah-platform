@@ -18,15 +18,15 @@ import { DataTable } from '@/components/data-table/DataTable.js';
 import { type DataTableColumnDef, useDataTable } from '@/components/data-table/features.js';
 import { AutosaveStatus, useAutosaveForm } from '@/components/form/index.js';
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
+import { EntityThumbnail } from '@/components/thumbnail/EntityThumbnail.js';
 import { Card, CardContent, CardHeader, CardSeparator, CardTitle } from '@/components/ui/card.js';
 import {
   FeedbackStatusBadge,
   FeedbackStatusSelect,
   feedbackStatusLabels,
 } from '@/equipment/components/feedback/FeedbackStatusBadge.js';
-import { EntityThumbnail } from '@/equipment/components/thumbnail/EntityThumbnail.js';
+import { useQueryInvalidation } from '@/equipment/hooks/use-query-invalidation.js';
 import { feedbackPageDescription } from '@/equipment/utils/page-descriptions.js';
-import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
 import { getApiQueryErrorMessage } from '@/lib/api-errors.js';
 import { useTRPC } from '@/lib/trpc.js';
 

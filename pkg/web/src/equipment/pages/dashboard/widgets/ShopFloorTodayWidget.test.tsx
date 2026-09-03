@@ -2,7 +2,7 @@ import { statusBadgeColorClassNames } from '@pkg/domain';
 import { DateOnlyIso, ProjectedBayQueue, ProjectedJobSlot } from '@pkg/schema';
 import { describe, expect, it } from 'vitest';
 
-import { buildJobSummary } from '@/test/job-fixtures.js';
+import { buildJobSummary } from '@/equipment/test/job-fixtures.js';
 import { renderWithRouter } from '@/test/router-harness.js';
 
 import { SHOP_FLOOR_BAND_HEIGHT_PX } from '../dashboard-widget-layout.js';

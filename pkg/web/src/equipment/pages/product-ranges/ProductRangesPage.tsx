@@ -25,10 +25,10 @@ import {
 import { FieldGroup } from '@/components/ui/field.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
 import { FieldUsageLabel, PRODUCT_RANGE_FIELD_USAGE } from '@/equipment/components/catalog/index.js';
+import { useQueryInvalidation } from '@/equipment/hooks/use-query-invalidation.js';
 import { productRangesPageDescription } from '@/equipment/utils/page-descriptions.js';
 import { useAccess } from '@/hooks/use-access.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
-import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { cn } from '@/lib/utils.js';
 import { RangeThumbnail } from './components/RangeThumbnail.js';

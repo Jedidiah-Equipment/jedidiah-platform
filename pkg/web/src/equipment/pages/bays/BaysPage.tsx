@@ -15,6 +15,7 @@ import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
+import { EntityThumbnail } from '@/components/thumbnail/EntityThumbnail.js';
 import { Badge } from '@/components/ui/badge.js';
 import { Button } from '@/components/ui/button.js';
 import {
@@ -43,11 +44,10 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { bayNameWithOperator } from '@/equipment/components/bays/bay-label.js';
 import { BayOperatorIndicator } from '@/equipment/components/bays/index.js';
 import { DepartmentIcon } from '@/equipment/components/departments/index.js';
-import { EntityThumbnail } from '@/equipment/components/thumbnail/EntityThumbnail.js';
+import { useQueryInvalidation } from '@/equipment/hooks/use-query-invalidation.js';
 import { baysPageDescription } from '@/equipment/utils/page-descriptions.js';
 import { useAccess } from '@/hooks/use-access.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
-import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
 import { useTRPC } from '@/lib/trpc.js';
 
 // What the user wants done to the Bay's operator on save. 'assign' on a Bay that already has an

@@ -75,11 +75,8 @@ export function useQueryInvalidation() {
     () => queryClient.invalidateQueries({ queryKey: trpc.users.pathKey() }),
     [queryClient, trpc],
   );
-  const clearQueryCache = useCallback(() => queryClient.clear(), [queryClient]);
-
   return useMemo(
     () => ({
-      clearQueryCache,
       invalidateAudit,
       invalidateAuth,
       invalidateCatalogTranslations,
@@ -99,7 +96,6 @@ export function useQueryInvalidation() {
       invalidateUsers,
     }),
     [
-      clearQueryCache,
       invalidateAudit,
       invalidateAuth,
       invalidateCatalogTranslations,

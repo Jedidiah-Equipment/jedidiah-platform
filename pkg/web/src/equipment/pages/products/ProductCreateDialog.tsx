@@ -6,8 +6,8 @@ import { toast } from 'sonner';
 import { CreateEntityDialog } from '@/components/form/index.js';
 import { FieldUsageLabel, PRODUCT_FIELD_USAGE } from '@/equipment/components/catalog/index.js';
 import { useProductRangeOptions } from '@/equipment/hooks/options/use-product-range-options.js';
+import { useQueryInvalidation } from '@/equipment/hooks/use-query-invalidation.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
-import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { ProductCreateFormValues, toProductMinimalCreateInput } from './components/types.js';
 

@@ -54,6 +54,18 @@ describe('business namespace import boundary', () => {
     expect(result.stdout + result.stderr).toContain('Business namespaces may import shared code, never each other.');
   });
 
+  it.each([
+    ['web shared components', 'pkg/web/src/components/probe'],
+    ['mobile shared libraries', 'pkg/mobile/src/lib/probe'],
+  ])('rejects business imports from %s', (_surface, path) => {
+    const result = lintAt(path, `import '../../equipment/feature.js';`);
+
+    expect(result.status, result.stdout + result.stderr).not.toBe(0);
+    expect(result.stdout + result.stderr).toContain(
+      'Shared frontend modules cannot import a business namespace; keep business composition in explicit route wiring.',
+    );
+  });
+
   it.each(['equipment', 'contracting'] as const)('allows %s modules to import shared infrastructure', (owner) => {
     const result = lintAt(`pkg/domain/src/${owner}`, `import '../../formatting/date.js';`);
 

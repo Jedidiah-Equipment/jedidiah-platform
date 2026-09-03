@@ -18,7 +18,7 @@ vi.mock('@/hooks/use-access.js', () => ({
   useAccess: vi.fn(),
   useCan: () => ({ can: access.canReadAudit }),
 }));
-vi.mock('@/hooks/use-query-invalidation.js', () => ({
+vi.mock('@/equipment/hooks/use-query-invalidation.js', () => ({
   useQueryInvalidation: () => ({ invalidateJobs: vi.fn(), invalidatePurchaseOrders: vi.fn() }),
 }));
 vi.mock('@/lib/trpc.js', () => {

@@ -3,9 +3,9 @@ import type { JobSummary } from '@pkg/schema';
 import { IconCheck, IconPencil, IconSubtask } from '@tabler/icons-react';
 import { Link } from '@tanstack/react-router';
 import type { DataTableColumnDef } from '@/components/data-table/features.js';
+import { EntityThumbnail } from '@/components/thumbnail/EntityThumbnail.js';
 import { Button } from '@/components/ui/button.js';
 import { StockBadge } from '@/equipment/components/common/StockBadge.js';
-import { EntityThumbnail } from '@/equipment/components/thumbnail/EntityThumbnail.js';
 import { OfferingThumbnail } from '@/equipment/components/thumbnail/OfferingThumbnail.js';
 
 import { JobCodeDisplay } from './JobCodeDisplay.js';

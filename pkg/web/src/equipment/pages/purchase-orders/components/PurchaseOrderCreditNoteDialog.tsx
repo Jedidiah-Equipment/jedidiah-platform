@@ -18,9 +18,9 @@ import {
 } from '@/components/ui/dialog.js';
 import { Field, FieldLabel } from '@/components/ui/field.js';
 import { Input } from '@/components/ui/input.js';
+import { useQueryInvalidation } from '@/equipment/hooks/use-query-invalidation.js';
 import { uploadCreditNote, validateSelectedFile } from '@/equipment/utils/document.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
-import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
 
 const CREDIT_NOTE_ACCEPT = getDocumentPolicy('purchase_order').allowedContentTypes.join(',');
 

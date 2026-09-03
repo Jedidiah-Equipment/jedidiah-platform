@@ -13,10 +13,10 @@ import { IconCheck, IconClock, IconFileText, IconPencil, IconPlus, IconSubtask }
 import { Link } from '@tanstack/react-router';
 import type React from 'react';
 import { useEffect, useRef, useState } from 'react';
+import { EntityThumbnail } from '@/components/thumbnail/EntityThumbnail.js';
 import { Button } from '@/components/ui/button.js';
 import { Separator } from '@/components/ui/separator.js';
 import { StockBadge } from '@/equipment/components/common/StockBadge.js';
-import { EntityThumbnail } from '@/equipment/components/thumbnail/EntityThumbnail.js';
 import { OfferingThumbnail } from '@/equipment/components/thumbnail/OfferingThumbnail.js';
 import { cn } from '@/lib/utils.js';
 

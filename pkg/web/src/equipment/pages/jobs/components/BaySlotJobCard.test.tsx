@@ -1,7 +1,7 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { expect, test } from 'vitest';
 
-import { buildJobSummary } from '@/test/job-fixtures.js';
+import { buildJobSummary } from '@/equipment/test/job-fixtures.js';
 
 import { BaySlotJobCard } from './BaySlotJobCard.js';
 

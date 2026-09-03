@@ -131,6 +131,35 @@
       }
     },
     {
+      "includes": [
+        "pkg/web/src/**",
+        "!pkg/web/src/equipment/**",
+        "!pkg/web/src/contracting/**",
+        "!pkg/web/src/routes/**",
+        "!pkg/web/src/app/route-tree.gen.ts",
+        "pkg/mobile/src/**",
+        "!pkg/mobile/src/equipment/**",
+        "!pkg/mobile/src/contracting/**"
+      ],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "patterns": [
+                  {
+                    "group": ["equipment/**", "**/equipment/**", "contracting/**", "**/contracting/**"],
+                    "message": "Shared frontend modules cannot import a business namespace; keep business composition in explicit route wiring."
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
       "includes": ["pkg/lander/src/**/*.test.ts"],
       "linter": {
         "rules": {

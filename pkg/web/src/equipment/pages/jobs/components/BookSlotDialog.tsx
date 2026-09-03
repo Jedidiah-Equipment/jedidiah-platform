@@ -14,9 +14,9 @@ import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectVa
 import { bayOperatorName } from '@/equipment/components/bays/bay-label.js';
 import { JobPicker, JobPickerTrigger, useJobPicker } from '@/equipment/components/job-picker/index.js';
 import { useBayCalendars } from '@/equipment/hooks/use-bay-calendars.js';
+import { useQueryInvalidation } from '@/equipment/hooks/use-query-invalidation.js';
 import { useAccess } from '@/hooks/use-access.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
-import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { allJobsInput } from './all-jobs-input.js';
 import { BookSlotJobFilterSelect } from './BookSlotJobFilterSelect.js';

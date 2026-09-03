@@ -3,7 +3,7 @@
 - Browser access checks are UX only; the server/API is the authorization boundary.
 - Login is email/password only unless asked otherwise.
 - Use `@pkg/domain` `formatDate` and `formatCurrency`; do not add one-off `Intl` or locale formatting in components.
-- Route all React Query invalidation through `src/hooks/use-query-invalidation.ts`; invalidate whole affected tRPC root paths.
+- Route Equipment React Query invalidation through `src/equipment/hooks/use-query-invalidation.ts`; invalidate whole affected tRPC root paths. Shared auth cache clearing stays in `src/hooks/use-clear-query-cache.ts`.
 - Use shared UI primitives for standard surfaces: `Card` composition from `src/components/ui/card.tsx` and `ScrollArea` for page/panel scrolling.
 - Whenever the UI presents tabular data, render it through `src/components/data-table/DataTable.tsx`;
   feature and page code must not compose `src/components/ui/table.tsx` directly. Build the table with

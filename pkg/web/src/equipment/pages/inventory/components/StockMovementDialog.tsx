@@ -15,8 +15,8 @@ import { Field, FieldLabel } from '@/components/ui/field.js';
 import { JobPicker, JobPickerTrigger } from '@/equipment/components/job-picker/index.js';
 import { useInventoryJobPicker } from '@/equipment/hooks/options/index.js';
 import { useMovementWarnings } from '@/equipment/hooks/use-movement-warnings.js';
+import { useQueryInvalidation } from '@/equipment/hooks/use-query-invalidation.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
-import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
 import { useTRPC } from '@/lib/trpc.js';
 
 import { StockMovementWarningPrompt } from './StockMovementWarningPrompt.js';

@@ -7,7 +7,7 @@ vi.mock('@/equipment/hooks/options/index.js', () => ({
   usePartCategoryOptions: () => ({ isPending: false, items: [] }),
   useSupplierOptions: () => ({ isPending: false, selectOptions: [] }),
 }));
-vi.mock('@/hooks/use-query-invalidation.js', () => ({
+vi.mock('@/equipment/hooks/use-query-invalidation.js', () => ({
   useQueryInvalidation: () => ({ invalidateParts: vi.fn() }),
 }));
 vi.mock('@/lib/trpc.js', () => ({

@@ -18,8 +18,8 @@ import { z } from 'zod';
 import { CreateEntityDialog } from '@/components/form/index.js';
 import { Button } from '@/components/ui/button.js';
 import { FeedbackVisibilityBanner } from '@/equipment/components/feedback/FeedbackVisibilityBanner.js';
+import { useQueryInvalidation } from '@/equipment/hooks/use-query-invalidation.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
-import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
 import { useTRPC } from '@/lib/trpc.js';
 
 type FeedbackSubject = FeedbackSubmitInput['subject'];

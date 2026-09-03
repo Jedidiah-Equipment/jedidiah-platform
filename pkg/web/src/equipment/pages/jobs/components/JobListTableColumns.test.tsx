@@ -3,7 +3,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import { DataTable } from '@/components/data-table/DataTable.js';
 import { useDataTable } from '@/components/data-table/features.js';
-import { buildJobSummary } from '@/test/job-fixtures.js';
+import { buildJobSummary } from '@/equipment/test/job-fixtures.js';
 
 import { createJobListColumns, jobTablePinnedEndColumns, jobTablePinnedStartColumns } from './JobListTableColumns.js';
 

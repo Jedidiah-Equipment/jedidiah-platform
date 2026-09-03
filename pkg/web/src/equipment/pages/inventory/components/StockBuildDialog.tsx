@@ -8,8 +8,8 @@ import { CreateEntityDialog } from '@/components/form/index.js';
 import { Field, FieldError, FieldLabel } from '@/components/ui/field.js';
 import { Input } from '@/components/ui/input.js';
 import { useMovementWarnings } from '@/equipment/hooks/use-movement-warnings.js';
+import { useQueryInvalidation } from '@/equipment/hooks/use-query-invalidation.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
-import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
 import { useTRPC } from '@/lib/trpc.js';
 
 import { StockMovementWarningPrompt } from './StockMovementWarningPrompt.js';

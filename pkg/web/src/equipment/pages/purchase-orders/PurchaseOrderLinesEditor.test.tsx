@@ -8,7 +8,7 @@ import { afterEach, expect, it, vi } from 'vitest';
 import { useAppForm } from '@/components/form/index.js';
 
 vi.mock('@/hooks/use-api-mutation-error-toast.js', () => ({ useApiMutationErrorToast: () => vi.fn() }));
-vi.mock('@/hooks/use-query-invalidation.js', () => ({
+vi.mock('@/equipment/hooks/use-query-invalidation.js', () => ({
   useQueryInvalidation: () => ({ invalidateJobs: vi.fn(), invalidatePurchaseOrders: vi.fn() }),
 }));
 vi.mock('@/lib/trpc.js', () => ({ useTRPC: () => ({}) }));

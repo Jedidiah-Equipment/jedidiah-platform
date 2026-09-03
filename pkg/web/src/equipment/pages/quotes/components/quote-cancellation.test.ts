@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { describeSlotRelease, describeUnit } from '@/components/common/cancellation.js';
+import { describeSlotRelease, describeUnit } from '@/equipment/components/common/cancellation.js';
 
 describe('cancellation copy', () => {
   it('names how many bay slots come back, and says none are owed when there are none', () => {

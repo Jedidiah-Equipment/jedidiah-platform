@@ -8,8 +8,8 @@ import { DataTable } from '@/components/data-table/DataTable.js';
 import { type DataTableColumnDef, useDataTable } from '@/components/data-table/features.js';
 import { createPersistedDataTableStore } from '@/components/data-table/store.js';
 import { constrainSorting, type SortOptions } from '@/components/data-table/table-state.js';
+import { EntityThumbnail } from '@/components/thumbnail/EntityThumbnail.js';
 import { Badge } from '@/components/ui/badge.js';
-import { EntityThumbnail } from '@/equipment/components/thumbnail/EntityThumbnail.js';
 
 type UserTableProps = {
   currentUserId: AuthId | undefined;

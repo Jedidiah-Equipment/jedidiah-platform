@@ -1,5 +1,5 @@
 import { apiBaseUrl } from '@/lib/api-base-url';
-import { productImageDownloadPath } from '@/lib/authed-fetch';
+import { productImageDownloadPath } from './equipment-http-paths';
 
 import type { ProductImageKey } from './product-image-cache';
 import type { ProductImageSource } from './product-image-source';

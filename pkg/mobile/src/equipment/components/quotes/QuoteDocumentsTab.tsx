@@ -18,13 +18,13 @@ import { Text } from '@/components/ui/text';
 import { useAppToast } from '@/components/ui/toast';
 import { GenerateQuoteDocumentModal } from '@/equipment/components/quotes/GenerateQuoteDocumentModal';
 import { saveDocument } from '@/equipment/lib/document-actions';
+import { quoteDocumentDownloadPath } from '@/equipment/lib/equipment-http-paths';
 import {
   presentQuoteDocuments,
   type QuoteDocumentSort,
   quoteDocumentCountLabel,
   quoteDocumentMetaLine,
 } from '@/equipment/lib/quote-documents';
-import { quoteDocumentDownloadPath } from '@/lib/authed-fetch';
 import { useTRPC } from '@/lib/trpc';
 
 const DOCUMENT_SORT_OPTIONS: readonly ListControlOption<QuoteDocumentSort>[] = [

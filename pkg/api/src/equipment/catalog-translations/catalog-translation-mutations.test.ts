@@ -3,9 +3,8 @@ import { type Db, eq, productRanges, productRangeVariants, products, user } from
 import type { Product } from '@pkg/schema';
 import { MockLanguageModelV4 } from 'ai/test';
 import { describe, expect } from 'vitest';
-
+import { createProductRangeFixture } from '@/equipment/test/product-range-fixtures.js';
 import { type AppRouterCaller, createTester } from '@/test/create-tester.js';
-import { createProductRangeFixture } from '@/test/product-range-fixtures.js';
 
 import { createCatalogTranslationRunner } from './catalog-translation-runner.js';
 import { TranslationScheduler } from './translation-scheduler.js';

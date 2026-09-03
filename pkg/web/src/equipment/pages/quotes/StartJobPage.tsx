@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/button.js';
 import { Empty, EmptyDescription, EmptyHeader, EmptyIcon, EmptyTitle } from '@/components/ui/empty.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
 import { useBayCalendars } from '@/equipment/hooks/use-bay-calendars.js';
+import { useQueryInvalidation } from '@/equipment/hooks/use-query-invalidation.js';
 import { BoardGantt } from '@/equipment/pages/jobs/components/BoardGantt.js';
 import { JobBaySeedsCard } from '@/equipment/pages/jobs/components/JobBaySeedsCard.js';
 import {
@@ -26,7 +27,6 @@ import {
 } from '@/equipment/pages/jobs/components/job-bay-seeds.js';
 import { useAccess } from '@/hooks/use-access.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
-import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
 import { useTRPC } from '@/lib/trpc.js';
 
 import { canStartJobFromQuote, getStartJobUnavailableMessage } from './components/start-job-eligibility.js';

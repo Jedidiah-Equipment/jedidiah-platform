@@ -17,8 +17,8 @@ import { type DataTableColumnDef, useDataTable } from '@/components/data-table/f
 import { useServerSideTableController } from '@/components/data-table/hooks/use-server-side-table-controller.js';
 import { createPersistedDataTableStore } from '@/components/data-table/store.js';
 import type { SortOptions } from '@/components/data-table/table-state.js';
+import { EntityThumbnail } from '@/components/thumbnail/EntityThumbnail.js';
 import { Button } from '@/components/ui/button.js';
-import { EntityThumbnail } from '@/equipment/components/thumbnail/EntityThumbnail.js';
 import { toSelectOptions } from '@/equipment/hooks/options/helpers.js';
 import { useAccess } from '@/hooks/use-access.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';

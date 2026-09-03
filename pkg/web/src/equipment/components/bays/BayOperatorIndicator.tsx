@@ -1,8 +1,8 @@
 import type { BayOperator } from '@pkg/schema';
 import { IconUserOff } from '@tabler/icons-react';
 import type React from 'react';
+import { EntityThumbnail } from '@/components/thumbnail/EntityThumbnail.js';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip.js';
-import { EntityThumbnail } from '@/equipment/components/thumbnail/EntityThumbnail.js';
 import { cn } from '@/lib/utils.js';
 
 type BayOperatorIndicatorProps = {

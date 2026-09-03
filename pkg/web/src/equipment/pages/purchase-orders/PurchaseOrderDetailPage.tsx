@@ -45,11 +45,11 @@ import { FilePreviewSheet } from '@/equipment/components/documents/FilePreviewSh
 import { useFilePreview } from '@/equipment/components/documents/use-file-preview.js';
 import { JobMultiPicker, useJobPicker } from '@/equipment/components/job-picker/index.js';
 import { usePartOptions, useSupplierOptions } from '@/equipment/hooks/options/index.js';
+import { useQueryInvalidation } from '@/equipment/hooks/use-query-invalidation.js';
 import { fetchDocumentPreviewBlob } from '@/equipment/utils/document.js';
 import { formatPurchaseUnitLabel } from '@/equipment/utils/part-quantity-format.js';
 import { useAccess, useCan } from '@/hooks/use-access.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
-import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { allJobsInput } from '../jobs/components/all-jobs-input.js';
 import { PurchaseOrderAmendDialog } from './components/PurchaseOrderAmendDialog.js';

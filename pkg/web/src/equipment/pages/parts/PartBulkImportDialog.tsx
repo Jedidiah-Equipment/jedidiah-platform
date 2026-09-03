@@ -21,8 +21,8 @@ import {
 import { Field, FieldContent, FieldDescription, FieldLabel } from '@/components/ui/field.js';
 import { Input } from '@/components/ui/input.js';
 import { ScrollArea } from '@/components/ui/scroll-area.js';
+import { useQueryInvalidation } from '@/equipment/hooks/use-query-invalidation.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
-import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { PART_BULK_CSV_COLUMNS, type ParsePartBulkImportCsvResult, parsePartBulkImportCsv } from './part-bulk-csv.js';
 

@@ -8,8 +8,8 @@ import { Button } from '@/components/ui/button.js';
 import { ScrollArea } from '@/components/ui/scroll-area.js';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
+import type { DocumentPreviewKind } from '@/equipment/utils/document.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
-import type { DocumentPreviewKind } from '@/utils/document.js';
 import { saveBlobAsFile } from '@/utils/download.js';
 
 type FilePreviewSheetProps = {

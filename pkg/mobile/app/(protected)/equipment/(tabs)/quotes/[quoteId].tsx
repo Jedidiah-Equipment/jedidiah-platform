@@ -1,6 +1,6 @@
 import { useLocalSearchParams } from 'expo-router';
 
-import { QuoteDetailsScreen } from '@/components/quotes/QuoteDetailsScreen';
+import { QuoteDetailsScreen } from '@/equipment/components/quotes/QuoteDetailsScreen';
 
 export default function QuoteDetailRoute() {
   const { quoteId } = useLocalSearchParams<{ quoteId: string }>();

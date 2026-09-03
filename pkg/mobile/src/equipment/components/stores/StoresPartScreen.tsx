@@ -5,7 +5,7 @@ import { View } from 'react-native';
 
 import { ActivityIndicator } from '@/components/ui/activity-indicator';
 import { Text } from '@/components/ui/text';
-import { usePartByCode } from '@/lib/use-stores-post';
+import { usePartByCode } from '@/equipment/lib/use-stores-post';
 
 import { StoresScreen } from './StoresScreen';
 

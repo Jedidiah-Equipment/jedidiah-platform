@@ -3,10 +3,10 @@ import type { Product } from '@pkg/schema';
 import { IconEye } from '@tabler/icons-react';
 import type React from 'react';
 import { useCallback } from 'react';
-import { FilePreviewSheet } from '@/components/documents/FilePreviewSheet.js';
-import { useFilePreview } from '@/components/documents/use-file-preview.js';
 import { Button } from '@/components/ui/button.js';
-import { fetchProductBrochurePreviewBlob } from '@/utils/brochure.js';
+import { FilePreviewSheet } from '@/equipment/components/documents/FilePreviewSheet.js';
+import { useFilePreview } from '@/equipment/components/documents/use-file-preview.js';
+import { fetchProductBrochurePreviewBlob } from '@/equipment/utils/brochure.js';
 
 type ProductBrochurePreviewProps = {
   product: Product;

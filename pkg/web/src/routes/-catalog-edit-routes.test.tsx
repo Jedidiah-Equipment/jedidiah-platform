@@ -3,8 +3,8 @@ import type React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { ProductRangeEditTab } from '@/pages/product-ranges/product-range-edit-tabs.js';
-import type { ProductEditTab } from '@/pages/products/product-edit-tabs.js';
+import type { ProductRangeEditTab } from '@/equipment/pages/product-ranges/product-range-edit-tabs.js';
+import type { ProductEditTab } from '@/equipment/pages/products/product-edit-tabs.js';
 
 type ProductEditPageProps = {
   onTabChange: (tab: ProductEditTab) => void;
@@ -21,14 +21,14 @@ const captured = vi.hoisted(() => ({
   range: undefined as ProductRangeEditPageProps | undefined,
 }));
 
-vi.mock('@/pages/products/ProductEditPage.js', () => ({
+vi.mock('@/equipment/pages/products/ProductEditPage.js', () => ({
   ProductEditPage: (props: ProductEditPageProps) => {
     captured.product = props;
     return <p>{props.tab}</p>;
   },
 }));
 
-vi.mock('@/pages/product-ranges/ProductRangeEditPage.js', () => ({
+vi.mock('@/equipment/pages/product-ranges/ProductRangeEditPage.js', () => ({
   ProductRangeEditPage: (props: ProductRangeEditPageProps) => {
     captured.range = props;
     return <p>{props.tab}</p>;

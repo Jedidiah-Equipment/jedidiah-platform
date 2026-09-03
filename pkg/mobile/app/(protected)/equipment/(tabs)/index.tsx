@@ -1,12 +1,11 @@
 import { type Href, Redirect } from 'expo-router';
 import { View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-
-import { TabAccessErrorScreen, TabAccessLoadingScreen } from '@/components/TabAccessLoadingScreen';
-import { MainTabToolbar } from '@/components/TopToolbar';
 import { Text } from '@/components/ui/text';
-import { appTabHref, visibleTabs } from '@/lib/app-tabs';
-import { MAIN_TAB_PARENTS } from '@/lib/toolbar-navigation';
+import { TabAccessErrorScreen, TabAccessLoadingScreen } from '@/equipment/components/TabAccessLoadingScreen';
+import { MainTabToolbar } from '@/equipment/components/TopToolbar';
+import { appTabHref, visibleTabs } from '@/equipment/lib/app-tabs';
+import { MAIN_TAB_PARENTS } from '@/equipment/lib/toolbar-navigation';
 import { useAccess } from '@/lib/use-access';
 
 /** Permission-aware signed-in landing; Activity is first whenever the user can read Jobs. */

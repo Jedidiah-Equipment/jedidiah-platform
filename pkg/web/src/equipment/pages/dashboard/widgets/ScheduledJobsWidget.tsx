@@ -1,12 +1,11 @@
 import { formatDate, getJobDisplayName, getJobOfferingKind, listScheduledJobs, type ScheduledJob } from '@pkg/domain';
 import type { JobSummary } from '@pkg/schema';
 import type React from 'react';
-
-import { OfferingThumbnail } from '@/components/thumbnail/OfferingThumbnail.js';
 import { ScrollArea } from '@/components/ui/scroll-area.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
+import { OfferingThumbnail } from '@/equipment/components/thumbnail/OfferingThumbnail.js';
+import { JobCodeDisplay } from '@/equipment/pages/jobs/components/JobCodeDisplay.js';
 import { useCan } from '@/hooks/use-access.js';
-import { JobCodeDisplay } from '@/pages/jobs/components/JobCodeDisplay.js';
 
 import { DashboardList, DashboardListItem } from '../DashboardList.js';
 import { DashboardWidgetEmpty, DashboardWidgetError } from '../DashboardWidgetCard.js';

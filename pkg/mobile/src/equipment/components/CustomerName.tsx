@@ -1,5 +1,5 @@
-import { StockBadge } from '@/components/StockBadge';
 import { type AppTextProps, Text } from '@/components/ui/text';
+import { StockBadge } from '@/equipment/components/StockBadge';
 
 /** The colour a real Customer name carries, chosen by the surface it sits on. */
 const NAME_TONE = {

@@ -16,7 +16,7 @@ import { type DataTableColumnDef, useDataTable } from '@/components/data-table/f
 import { useServerSideTableController } from '@/components/data-table/hooks/use-server-side-table-controller.js';
 import { createPersistedDataTableStore } from '@/components/data-table/store.js';
 import type { SortOptions } from '@/components/data-table/table-state.js';
-import { usePartCategoryOptions, usePartStorageLocationOptions } from '@/hooks/options/index.js';
+import { usePartCategoryOptions, usePartStorageLocationOptions } from '@/equipment/hooks/options/index.js';
 import { getApiQueryErrorMessage } from '@/lib/api-errors.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { PartLabelPrintButton } from '../PartLabelPrintButton.js';

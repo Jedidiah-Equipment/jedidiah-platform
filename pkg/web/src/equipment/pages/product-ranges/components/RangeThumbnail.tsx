@@ -1,12 +1,11 @@
 import type { EntityFile, UUID } from '@pkg/schema';
 import type React from 'react';
-
-import { getInitials } from '@/components/thumbnail/EntityThumbnail.js';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar.js';
-import { useCredentialedImagePreview } from '@/hooks/use-credentialed-image-preview.js';
+import { getInitials } from '@/equipment/components/thumbnail/EntityThumbnail.js';
+import { useCredentialedImagePreview } from '@/equipment/hooks/use-credentialed-image-preview.js';
+import { fetchProductRangeImageBlob } from '@/equipment/utils/range-image.js';
+import { fetchProductRangeLogoBlob } from '@/equipment/utils/range-logo.js';
 import { cn } from '@/lib/utils.js';
-import { fetchProductRangeImageBlob } from '@/utils/range-image.js';
-import { fetchProductRangeLogoBlob } from '@/utils/range-logo.js';
 
 type RangeThumbnailProps = {
   asset: 'image' | 'logo';

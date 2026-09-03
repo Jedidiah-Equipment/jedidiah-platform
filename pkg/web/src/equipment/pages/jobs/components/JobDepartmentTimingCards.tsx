@@ -27,11 +27,8 @@ import type React from 'react';
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { z } from 'zod';
-
-import { DepartmentIcon } from '@/components/departments/index.js';
 import { CreateEntityDialog } from '@/components/form/index.js';
 import { HelpLink } from '@/components/help/index.js';
-import { EntityThumbnail } from '@/components/thumbnail/EntityThumbnail.js';
 import { Badge } from '@/components/ui/badge.js';
 import { Button } from '@/components/ui/button.js';
 import { Card, CardAction, CardContent, CardHeader, CardSeparator, CardTitle } from '@/components/ui/card.js';
@@ -47,6 +44,8 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog.js';
 import { Separator } from '@/components/ui/separator.js';
+import { DepartmentIcon } from '@/equipment/components/departments/index.js';
+import { EntityThumbnail } from '@/equipment/components/thumbnail/EntityThumbnail.js';
 import { useCan } from '@/hooks/use-access.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';

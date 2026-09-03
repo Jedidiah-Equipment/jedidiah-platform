@@ -3,7 +3,7 @@ import { dirname, extname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, test } from 'vitest';
 
-import { listTsxFiles } from './test-file-utils';
+import { listTsxFiles } from '@/components/test-file-utils';
 
 const MOBILE_DIR = join(dirname(fileURLToPath(import.meta.url)), '../..');
 
@@ -19,7 +19,10 @@ describe('route layout contract', () => {
 
   test('shows and clears the Activity unread indicator through the shared last-seen endpoints', () => {
     const tabBar = readFileSync(join(MOBILE_DIR, 'src/components/AppTabBar.tsx'), 'utf8');
-    const activityFeed = readFileSync(join(MOBILE_DIR, 'src/components/activity/JobActivityFeed.tsx'), 'utf8');
+    const activityFeed = readFileSync(
+      join(MOBILE_DIR, 'src/equipment/components/activity/JobActivityFeed.tsx'),
+      'utf8',
+    );
     const activityRoute = readFileSync(join(MOBILE_DIR, 'app/(protected)/equipment/(tabs)/activity/index.tsx'), 'utf8');
 
     expect(tabBar).toContain('trpc.jobActivity.getLastActivitySeen.queryOptions()');
@@ -61,7 +64,7 @@ describe('route layout contract', () => {
 
   test('counts only the Bays visible after Plan search and uses Plan help on Bay schedules', () => {
     const plan = readFileSync(join(MOBILE_DIR, 'app/(protected)/equipment/(tabs)/(plan)/plan/index.tsx'), 'utf8');
-    const baySchedule = readFileSync(join(MOBILE_DIR, 'src/components/bays/BayQueueScreen.tsx'), 'utf8');
+    const baySchedule = readFileSync(join(MOBILE_DIR, 'src/equipment/components/bays/BayQueueScreen.tsx'), 'utf8');
 
     expect(plan).toContain("const total = state.status === 'ready' ? bays.length : null;");
     expect(baySchedule).toContain('helpTopic="plan"');
@@ -70,7 +73,10 @@ describe('route layout contract', () => {
 
   test('keeps flat and sectioned list toolbars at the same gap below the page header', () => {
     const catalogList = readFileSync(join(MOBILE_DIR, 'src/components/CatalogList.tsx'), 'utf8');
-    const activityFeed = readFileSync(join(MOBILE_DIR, 'src/components/activity/JobActivityFeed.tsx'), 'utf8');
+    const activityFeed = readFileSync(
+      join(MOBILE_DIR, 'src/equipment/components/activity/JobActivityFeed.tsx'),
+      'utf8',
+    );
 
     expect(catalogList).toContain('contentContainerClassName="w-full px-4 pb-8 pt-1"');
     // NativeWind remaps this prop for FlatList but not SectionList, so Activity must use native style.

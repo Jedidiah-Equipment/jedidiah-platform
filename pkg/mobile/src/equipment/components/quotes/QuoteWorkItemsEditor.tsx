@@ -18,7 +18,7 @@ import {
   OTHER_WORK_ITEM_DEPARTMENT,
   type QuoteEditFormValues,
   toQuoteWorkItemInput,
-} from '@/lib/quote-presentation';
+} from '@/equipment/lib/quote-presentation';
 
 type QuoteEditAutosaveForm = ReturnType<typeof useAutosaveForm<QuoteEditFormValues, QuoteUpdateInput, QuoteDetail>>;
 

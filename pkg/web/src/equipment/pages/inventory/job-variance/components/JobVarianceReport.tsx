@@ -4,7 +4,7 @@ import { useMemo } from 'react';
 import { DataTable } from '@/components/data-table/DataTable.js';
 import { type DataTableColumnDef, useDataTable } from '@/components/data-table/features.js';
 import { Badge } from '@/components/ui/badge.js';
-import { formatPartQuantity } from '@/utils/part-quantity-format.js';
+import { formatPartQuantity } from '@/equipment/utils/part-quantity-format.js';
 
 /**
  * What the Job planned against what it actually drew, and what those draws cost (spec §3). Variances

@@ -3,7 +3,7 @@ import type { StocktakeSessionCount } from '@pkg/schema';
 import { useMemo } from 'react';
 import { DataTable } from '@/components/data-table/DataTable.js';
 import { type DataTableColumnDef, useDataTable } from '@/components/data-table/features.js';
-import { formatLengthBucket, formatPartQuantity } from '@/utils/part-quantity-format.js';
+import { formatLengthBucket, formatPartQuantity } from '@/equipment/utils/part-quantity-format.js';
 
 /**
  * The session variance report: what was expected, what was counted, and what the correction was

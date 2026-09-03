@@ -6,9 +6,9 @@ import { useState } from 'react';
 
 import { useAppToast } from '@/components/ui/toast';
 
-import { invalidateQueryCache } from './query-client';
+import { invalidateQueryCache } from '@/lib/query-client';
+import { useTRPC } from '@/lib/trpc';
 import { useStoresActor } from './stores-actor';
-import { useTRPC } from './trpc';
 
 /** The scanned Part a posting screen is working on, loaded the same way the Part screen loaded it. */
 export function usePartByCode(partCode: string) {

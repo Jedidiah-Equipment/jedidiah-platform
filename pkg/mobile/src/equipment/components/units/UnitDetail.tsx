@@ -3,11 +3,10 @@ import type { ProductUnitDetail, ProductUnitJob, ProductUnitOwnershipTransfer } 
 import { IconChevronRight } from '@tabler/icons-react-native';
 import { useRouter } from 'expo-router';
 import { Pressable, ScrollView, View } from 'react-native';
-
-import { CustomerName } from '@/components/CustomerName';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
-import { UnitBuildStateChip } from '@/components/units/UnitBuildStateChip';
+import { CustomerName } from '@/equipment/components/CustomerName';
+import { UnitBuildStateChip } from '@/equipment/components/units/UnitBuildStateChip';
 import { useCan } from '@/lib/use-access';
 
 /** Read-only Product Unit screen. Mirrors the web Unit page; the VIN is shown, never edited. */

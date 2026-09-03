@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import { ProductRangeEditSearch } from '@/pages/product-ranges/product-range-edit-tabs.js';
-import { ProductEditSearch, resolveProductEditTab } from '@/pages/products/product-edit-tabs.js';
+import { ProductRangeEditSearch } from '@/equipment/pages/product-ranges/product-range-edit-tabs.js';
+import { ProductEditSearch, resolveProductEditTab } from '@/equipment/pages/products/product-edit-tabs.js';
 
 describe('catalog edit tab search params', () => {
   it('selects a requested Product tab', () => {

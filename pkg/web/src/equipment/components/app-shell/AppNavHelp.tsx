@@ -4,8 +4,8 @@ import type React from 'react';
 
 import { HelpIcon } from '@/components/help/index.js';
 import { SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar.js';
+import { helpTopicForPath } from '@/equipment/lib/help-topics.js';
 import { getClientConfig } from '@/lib/app-config.js';
-import { helpTopicForPath } from '@/lib/help-topics.js';
 
 /**
  * Persistent Help affordance. It opens the docs page for the area the user is standing in, in a new

@@ -9,7 +9,6 @@ import { useCallback, useMemo, useState } from 'react';
 
 import { DataTable } from '@/components/data-table/DataTable.js';
 import { type DataTableColumnDef, useDataTable } from '@/components/data-table/features.js';
-import { FilePreviewSheet } from '@/components/documents/FilePreviewSheet.js';
 import { HelpLink } from '@/components/help/index.js';
 import { Button } from '@/components/ui/button.js';
 import {
@@ -22,6 +21,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog.js';
 import { Input } from '@/components/ui/input.js';
+import { FilePreviewSheet } from '@/equipment/components/documents/FilePreviewSheet.js';
 import { fetchPartLabelsBlob } from '../../parts/part-label.js';
 import { outstandingReceivedForLine } from './types.js';
 

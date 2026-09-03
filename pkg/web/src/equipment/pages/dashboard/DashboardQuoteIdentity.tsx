@@ -2,8 +2,8 @@ import { getQuoteOfferingName } from '@pkg/domain';
 import type { JobCode, QuoteCode, QuoteKind, UUID } from '@pkg/schema';
 import { Link } from '@tanstack/react-router';
 
-import { OfferingThumbnail } from '@/components/thumbnail/OfferingThumbnail.js';
-import { JobCodeDisplay } from '@/pages/jobs/components/JobCodeDisplay.js';
+import { OfferingThumbnail } from '@/equipment/components/thumbnail/OfferingThumbnail.js';
+import { JobCodeDisplay } from '@/equipment/pages/jobs/components/JobCodeDisplay.js';
 
 type DashboardQuoteIdentityProps = {
   canOpenJob: boolean;

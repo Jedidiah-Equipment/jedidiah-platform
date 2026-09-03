@@ -4,9 +4,9 @@ import { View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Avatar } from '@/components/Avatar';
-import { SecondaryPageToolbar } from '@/components/TopToolbar';
 import { Text } from '@/components/ui/text';
-import { UnitDetail } from '@/components/units/UnitDetail';
+import { SecondaryPageToolbar } from '@/equipment/components/TopToolbar';
+import { UnitDetail } from '@/equipment/components/units/UnitDetail';
 import { useTRPC } from '@/lib/trpc';
 
 /** Read-only Product Unit view. The units layout owns the permission gate. */

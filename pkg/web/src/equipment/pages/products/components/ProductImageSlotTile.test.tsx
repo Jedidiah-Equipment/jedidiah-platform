@@ -9,7 +9,7 @@ vi.mock('@/hooks/use-api-mutation-error-toast.js', () => ({
   useApiMutationErrorToast: () => vi.fn(),
 }));
 
-vi.mock('@/hooks/use-credentialed-image-preview.js', () => ({
+vi.mock('@/equipment/hooks/use-credentialed-image-preview.js', () => ({
   useCredentialedImagePreview: () => null,
 }));
 

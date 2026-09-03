@@ -1,8 +1,8 @@
 import type React from 'react';
-import { AppSidebar } from '@/components/app-shell/AppSidebar.js';
 import { ChangelogDialog } from '@/components/changelog/ChangelogDialog.js';
 import { ScrollArea } from '@/components/ui/scroll-area.js';
 import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar.js';
+import { AppSidebar } from '@/equipment/components/app-shell/AppSidebar.js';
 
 type AuthenticatedRouteShellProps = {
   children: React.ReactNode;

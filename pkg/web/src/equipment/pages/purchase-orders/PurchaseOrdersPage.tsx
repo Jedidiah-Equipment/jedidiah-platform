@@ -9,10 +9,10 @@ import { DataTable } from '@/components/data-table/DataTable.js';
 import { type DataTableColumnDef, useDataTable } from '@/components/data-table/features.js';
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
 import { Button } from '@/components/ui/button.js';
+import { purchaseOrdersPageDescription } from '@/equipment/utils/page-descriptions.js';
 import { useCan } from '@/hooks/use-access.js';
 import { getApiQueryErrorMessage } from '@/lib/api-errors.js';
 import { useTRPC } from '@/lib/trpc.js';
-import { purchaseOrdersPageDescription } from '@/utils/page-descriptions.js';
 import { PurchaseOrderStatusBadge } from './components/PurchaseOrderStatusBadge.js';
 import { PurchaseOrderCreateDialog } from './PurchaseOrderCreateDialog.js';
 

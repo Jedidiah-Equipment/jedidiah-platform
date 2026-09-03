@@ -3,20 +3,19 @@ import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-
-import { PartSearchList } from '@/components/stores/PartSearchList';
-import { QuickSwitchModal } from '@/components/stores/QuickSwitchModal';
-import { ScanField } from '@/components/stores/ScanField';
-import { StoresActorHeader } from '@/components/stores/StoresActorHeader';
-import { MainTabToolbar } from '@/components/TopToolbar';
 import { Icon } from '@/components/ui/icon';
 import { RefreshControl } from '@/components/ui/refresh-control';
 import { Text } from '@/components/ui/text';
 import { TextInput } from '@/components/ui/text-input';
-import { useStoresActor } from '@/lib/stores-actor';
-import { MAIN_TAB_PARENTS } from '@/lib/toolbar-navigation';
+import { PartSearchList } from '@/equipment/components/stores/PartSearchList';
+import { QuickSwitchModal } from '@/equipment/components/stores/QuickSwitchModal';
+import { ScanField } from '@/equipment/components/stores/ScanField';
+import { StoresActorHeader } from '@/equipment/components/stores/StoresActorHeader';
+import { MainTabToolbar } from '@/equipment/components/TopToolbar';
+import { useStoresActor } from '@/equipment/lib/stores-actor';
+import { MAIN_TAB_PARENTS } from '@/equipment/lib/toolbar-navigation';
+import { useStoresScan } from '@/equipment/lib/use-stores-scan';
 import { useGlobalRefresh } from '@/lib/use-global-refresh';
-import { useStoresScan } from '@/lib/use-stores-scan';
 
 /**
  * The tablet's home: who is at it, one scan field, and the two places a shift starts somewhere

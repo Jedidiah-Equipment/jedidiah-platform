@@ -5,10 +5,10 @@ import { useMemo, useState } from 'react';
 
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
 import { Button } from '@/components/ui/button.js';
+import { buyListPageDescription } from '@/equipment/utils/page-descriptions.js';
 import { useCan } from '@/hooks/use-access.js';
 import { getApiQueryErrorMessage } from '@/lib/api-errors.js';
 import { useTRPC } from '@/lib/trpc.js';
-import { buyListPageDescription } from '@/utils/page-descriptions.js';
 
 import { CreatePurchaseOrdersDialog } from '../components/CreatePurchaseOrdersDialog.js';
 import { BuyListTable } from './components/BuyListTable.js';

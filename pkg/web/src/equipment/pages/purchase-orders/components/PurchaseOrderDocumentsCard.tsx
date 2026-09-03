@@ -5,11 +5,11 @@ import { useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
 import { DataTable } from '@/components/data-table/DataTable.js';
 import { type DataTableColumnDef, useDataTable } from '@/components/data-table/features.js';
-import { DocumentPreviewSheet } from '@/components/documents/DocumentPreviewSheet.js';
-import { useFilePreview } from '@/components/documents/use-file-preview.js';
 import { Badge } from '@/components/ui/badge.js';
 import { Button } from '@/components/ui/button.js';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card.js';
+import { DocumentPreviewSheet } from '@/equipment/components/documents/DocumentPreviewSheet.js';
+import { useFilePreview } from '@/equipment/components/documents/use-file-preview.js';
 import { useTRPC } from '@/lib/trpc.js';
 
 /**

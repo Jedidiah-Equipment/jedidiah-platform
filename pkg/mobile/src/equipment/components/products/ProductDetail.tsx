@@ -13,16 +13,16 @@ import * as Clipboard from 'expo-clipboard';
 import { useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, ScrollView, View } from 'react-native';
-import { ProductImage } from '@/components/products/ProductImage';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { useAppToast } from '@/components/ui/toast';
-import { useDocumentDownload } from '@/hooks/use-document-download';
+import { ProductImage } from '@/equipment/components/products/ProductImage';
+import { useDocumentDownload } from '@/equipment/hooks/use-document-download';
+import { getDocumentListAction } from '@/equipment/lib/document-content';
+import { PRODUCT_BROCHURE_DOCUMENT_ID, productBrochureFilename } from '@/equipment/lib/product-brochure';
+import { landerProductUrls } from '@/equipment/lib/product-presentation';
 import { landerOrigin } from '@/lib/app-env';
 import { productBrochurePreviewPath, productDocumentDownloadPath } from '@/lib/authed-fetch';
-import { getDocumentListAction } from '@/lib/document-content';
-import { PRODUCT_BROCHURE_DOCUMENT_ID, productBrochureFilename } from '@/lib/product-brochure';
-import { landerProductUrls } from '@/lib/product-presentation';
 import { useTRPC } from '@/lib/trpc';
 
 export function ProductDetail({ product }: { product: Product }) {

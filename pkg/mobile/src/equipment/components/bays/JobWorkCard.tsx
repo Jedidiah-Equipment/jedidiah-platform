@@ -1,9 +1,8 @@
 import type { QuoteKind } from '@pkg/schema';
 import { View } from 'react-native';
-
-import { CustomerName } from '@/components/CustomerName';
-import { OfferingAvatar } from '@/components/OfferingAvatar';
 import { Text } from '@/components/ui/text';
+import { CustomerName } from '@/equipment/components/CustomerName';
+import { OfferingAvatar } from '@/equipment/components/OfferingAvatar';
 
 export type JobWorkCardProps = {
   customerCompanyName: string | null;

@@ -2,14 +2,13 @@ import { groupBaysByDepartmentPipeline } from '@pkg/domain';
 import { useMemo, useState } from 'react';
 import { View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-
-import { PlanCatalogCard, PlanCatalogControls, PlanDepartmentHeader } from '@/components/bays/PlanCatalog';
-import { CatalogListSkeleton, PaginatedCatalogList } from '@/components/CatalogList';
-import { MainTabToolbar } from '@/components/TopToolbar';
 import { Text } from '@/components/ui/text';
-import { type BaySort, filterBayCards, isBaySort, sortBayCards } from '@/lib/bay-sort';
-import { MAIN_TAB_PARENTS } from '@/lib/toolbar-navigation';
-import { useBayList } from '@/lib/use-bay-list';
+import { PlanCatalogCard, PlanCatalogControls, PlanDepartmentHeader } from '@/equipment/components/bays/PlanCatalog';
+import { CatalogListSkeleton, PaginatedCatalogList } from '@/equipment/components/CatalogList';
+import { MainTabToolbar } from '@/equipment/components/TopToolbar';
+import { type BaySort, filterBayCards, isBaySort, sortBayCards } from '@/equipment/lib/bay-sort';
+import { MAIN_TAB_PARENTS } from '@/equipment/lib/toolbar-navigation';
+import { useBayList } from '@/equipment/lib/use-bay-list';
 import { useGlobalRefresh } from '@/lib/use-global-refresh';
 import { usePersistedState } from '@/lib/use-persisted-state';
 

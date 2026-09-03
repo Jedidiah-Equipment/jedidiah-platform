@@ -4,11 +4,10 @@ import type { ReactNode } from 'react';
 import { useMemo, useRef, useState } from 'react';
 import { FlatList, type ListRenderItem, Pressable, StyleSheet, TextInput, View } from 'react-native';
 import Markdown, { type ASTNode, type RenderRules } from 'react-native-markdown-display';
-
-import { AssistantMarkdownLink } from '@/components/assistant/assistant-markdown-link';
 import { ActivityIndicator } from '@/components/ui/activity-indicator';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
+import { AssistantMarkdownLink } from '@/equipment/components/assistant/assistant-markdown-link';
 import { primaryColorTriplets } from '@/theme/brand-colors';
 import { foregroundColors, mutedColors, navigationColors } from '@/theme/gluestack-config';
 import { useColorMode } from '@/theme/use-color-mode';

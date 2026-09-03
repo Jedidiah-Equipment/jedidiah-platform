@@ -7,7 +7,7 @@ import { Avatar } from '@/components/Avatar';
 import { ActivityIndicator } from '@/components/ui/activity-indicator';
 import { Text } from '@/components/ui/text';
 import { ThemedModal } from '@/components/ui/themed-modal';
-import { resolveBadgeScan } from '@/lib/stores-scan-resolution';
+import { resolveBadgeScan } from '@/equipment/lib/stores-scan-resolution';
 import { useTRPC } from '@/lib/trpc';
 
 import { ScanField } from './ScanField';

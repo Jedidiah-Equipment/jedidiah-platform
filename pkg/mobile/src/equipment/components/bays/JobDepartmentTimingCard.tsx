@@ -34,7 +34,6 @@ import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { z } from 'zod';
 
 import { Avatar } from '@/components/Avatar';
-import { FactField, FactRow } from '@/components/bays/job-facts';
 import { useAppForm } from '@/components/form';
 import { AccentButton } from '@/components/ui/accent-button';
 import { CardCollapse } from '@/components/ui/card-collapse';
@@ -42,6 +41,7 @@ import { Icon } from '@/components/ui/icon';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { Text } from '@/components/ui/text';
 import { useAppToast } from '@/components/ui/toast';
+import { FactField, FactRow } from '@/equipment/components/bays/job-facts';
 import { useTRPC } from '@/lib/trpc';
 import { useCan } from '@/lib/use-access';
 import { gluestackConfig } from '@/theme/gluestack-config';

@@ -1,8 +1,8 @@
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { JobActivityFeed } from '@/components/activity/JobActivityFeed';
-import { MainTabToolbar } from '@/components/TopToolbar';
-import { MAIN_TAB_PARENTS } from '@/lib/toolbar-navigation';
+import { JobActivityFeed } from '@/equipment/components/activity/JobActivityFeed';
+import { MainTabToolbar } from '@/equipment/components/TopToolbar';
+import { MAIN_TAB_PARENTS } from '@/equipment/lib/toolbar-navigation';
 
 /** Cross-Job feed. The Activity layout owns the route-level permission gate. */
 export default function ActivityRoute() {

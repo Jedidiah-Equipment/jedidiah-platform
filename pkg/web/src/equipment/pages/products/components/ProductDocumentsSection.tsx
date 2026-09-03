@@ -4,23 +4,22 @@ import { IconLoader2, IconUpload } from '@tabler/icons-react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { type RefObject, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
-
-import { DocumentCardList } from '@/components/documents/DocumentCardList.js';
 import { Button } from '@/components/ui/button.js';
 import { Input } from '@/components/ui/input.js';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select.js';
-import { useAccess } from '@/hooks/use-access.js';
-import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
-import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
-import { getApiQueryErrorMessage } from '@/lib/api-errors.js';
-import { useTRPC } from '@/lib/trpc.js';
+import { DocumentCardList } from '@/equipment/components/documents/DocumentCardList.js';
 import {
   getReadyProductDocumentUpload,
   PRODUCT_DOCUMENT_ACCEPT,
   type ReadyProductDocumentUpload,
   uploadProductDocument,
   validateSelectedFile,
-} from '@/utils/document.js';
+} from '@/equipment/utils/document.js';
+import { useAccess } from '@/hooks/use-access.js';
+import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
+import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
+import { getApiQueryErrorMessage } from '@/lib/api-errors.js';
+import { useTRPC } from '@/lib/trpc.js';
 
 import { ProductBrochurePreview } from './ProductBrochurePreview.js';
 

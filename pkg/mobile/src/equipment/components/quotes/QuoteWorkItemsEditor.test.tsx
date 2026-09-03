@@ -19,7 +19,7 @@ vi.mock('@/components/ui/text', () => ({ Text: 'Text' }));
 vi.mock('@/theme/use-color-mode', () => ({ useColorMode: () => ({ resolved: 'light' }) }));
 
 import { useAutosaveForm } from '@/components/form';
-import { getQuoteEditFormValuesValidator, type QuoteEditFormValues } from '@/lib/quote-presentation';
+import { getQuoteEditFormValuesValidator, type QuoteEditFormValues } from '@/equipment/lib/quote-presentation';
 import { QuoteWorkItemsEditor } from './QuoteWorkItemsEditor';
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;

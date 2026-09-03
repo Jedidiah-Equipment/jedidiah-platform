@@ -6,8 +6,8 @@ import { Pressable, View } from 'react-native';
 import { Text } from '@/components/ui/text';
 import { TextInput } from '@/components/ui/text-input';
 import { useAppToast } from '@/components/ui/toast';
+import { useMovementActorUserId, useStoresActor } from '@/equipment/lib/stores-actor';
 import { invalidateQueryCache } from '@/lib/query-client';
-import { useMovementActorUserId, useStoresActor } from '@/lib/stores-actor';
 import { useTRPC } from '@/lib/trpc';
 
 import { PostButton } from './PostButton';

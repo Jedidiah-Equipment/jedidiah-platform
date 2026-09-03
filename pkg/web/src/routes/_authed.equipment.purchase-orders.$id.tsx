@@ -1,7 +1,7 @@
 import { UUID } from '@pkg/schema';
 import { createFileRoute } from '@tanstack/react-router';
 
-import { PurchaseOrderDetailPage } from '@/pages/purchase-orders/PurchaseOrderDetailPage.js';
+import { PurchaseOrderDetailPage } from '@/equipment/pages/purchase-orders/PurchaseOrderDetailPage.js';
 
 export const Route = createFileRoute('/_authed/equipment/purchase-orders/$id')({
   params: {

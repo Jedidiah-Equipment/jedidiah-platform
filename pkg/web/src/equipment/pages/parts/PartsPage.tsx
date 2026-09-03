@@ -5,8 +5,8 @@ import { useState } from 'react';
 
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
 import { Button } from '@/components/ui/button.js';
+import { partsPageDescription } from '@/equipment/utils/page-descriptions.js';
 import { useCan } from '@/hooks/use-access.js';
-import { partsPageDescription } from '@/utils/page-descriptions.js';
 import { PartTable } from './components/PartTable.js';
 import { PartBulkExportButton } from './PartBulkExportButton.js';
 import { PartBulkImportDialog } from './PartBulkImportDialog.js';

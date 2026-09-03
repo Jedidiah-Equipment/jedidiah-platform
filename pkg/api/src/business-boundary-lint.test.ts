@@ -44,6 +44,16 @@ describe('business namespace import boundary', () => {
     expect(result.stdout + result.stderr).toContain('Business namespaces may import shared code, never each other.');
   });
 
+  it.each([
+    ['web Equipment pages', 'pkg/web/src/equipment/pages/jobs'],
+    ['mobile Equipment components', 'pkg/mobile/src/equipment/components/jobs'],
+  ])('rejects Contracting imports from %s', (_surface, path) => {
+    const result = lintAt(path, `import '../../../contracting/feature.js';`);
+
+    expect(result.status, result.stdout + result.stderr).not.toBe(0);
+    expect(result.stdout + result.stderr).toContain('Business namespaces may import shared code, never each other.');
+  });
+
   it.each(['equipment', 'contracting'] as const)('allows %s modules to import shared infrastructure', (owner) => {
     const result = lintAt(`pkg/domain/src/${owner}`, `import '../../formatting/date.js';`);
 

@@ -4,8 +4,8 @@ import { keepPreviousData, useInfiniteQuery } from '@tanstack/react-query';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { cursorInfiniteQueryOptions, useCombinedCursorQueryPages } from '@/components/data-table/cursor-query.js';
-import type { JobPickerController } from '@/components/job-picker/index.js';
-import { JOB_PICKER_PAGE_SIZE } from '@/components/job-picker/index.js';
+import type { JobPickerController } from '@/equipment/components/job-picker/index.js';
+import { JOB_PICKER_PAGE_SIZE } from '@/equipment/components/job-picker/index.js';
 import { useTRPC } from '@/lib/trpc.js';
 
 const JOB_SEARCH_DEBOUNCE_MS = 250;

@@ -18,8 +18,6 @@ import { useMutation } from '@tanstack/react-query';
 import type React from 'react';
 import { useMemo, useState } from 'react';
 import { DataTableLoadMore } from '@/components/data-table/components/DataTableLoadMore.js';
-import { DocumentPreviewSheet } from '@/components/documents/DocumentPreviewSheet.js';
-import { useFilePreview } from '@/components/documents/use-file-preview.js';
 import { Button } from '@/components/ui/button.js';
 import { Card, CardAction, CardContent, CardHeader, CardSeparator, CardTitle } from '@/components/ui/card.js';
 import {
@@ -36,9 +34,11 @@ import { Empty, EmptyDescription, EmptyHeader, EmptyIcon, EmptyTitle } from '@/c
 import { Input } from '@/components/ui/input.js';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
+import { DocumentPreviewSheet } from '@/equipment/components/documents/DocumentPreviewSheet.js';
+import { useFilePreview } from '@/equipment/components/documents/use-file-preview.js';
+import { type DocumentPreviewOwner, downloadDocument, getDocumentPreviewKind } from '@/equipment/utils/document.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { cn } from '@/lib/utils.js';
-import { type DocumentPreviewOwner, downloadDocument, getDocumentPreviewKind } from '@/utils/document.js';
 import {
   DEFAULT_DOCUMENT_CARD_SORT,
   DOCUMENT_CARD_SORT_OPTIONS,

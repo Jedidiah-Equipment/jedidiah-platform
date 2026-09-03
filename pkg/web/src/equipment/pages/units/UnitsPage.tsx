@@ -2,7 +2,7 @@ import { useNavigate } from '@tanstack/react-router';
 import type React from 'react';
 
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
-import { unitsPageDescription } from '@/utils/page-descriptions.js';
+import { unitsPageDescription } from '@/equipment/utils/page-descriptions.js';
 import { ProductUnitTable } from './components/ProductUnitTable.js';
 
 export const UnitsPage: React.FC = () => {

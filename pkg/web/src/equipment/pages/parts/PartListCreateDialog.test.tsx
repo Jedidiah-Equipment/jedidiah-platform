@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('@tanstack/react-query', () => ({ useMutation: () => ({ mutateAsync: vi.fn() }) }));
 vi.mock('@/hooks/use-api-mutation-error-toast.js', () => ({ useApiMutationErrorToast: () => vi.fn() }));
-vi.mock('@/hooks/options/index.js', () => ({
+vi.mock('@/equipment/hooks/options/index.js', () => ({
   usePartCategoryOptions: () => ({ isPending: false, items: [] }),
   useSupplierOptions: () => ({ isPending: false, selectOptions: [] }),
 }));

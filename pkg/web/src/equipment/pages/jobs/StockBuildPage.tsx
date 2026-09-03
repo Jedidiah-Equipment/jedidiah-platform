@@ -18,10 +18,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardSeparator, CardTitl
 import { Empty, EmptyDescription, EmptyHeader, EmptyIcon, EmptyTitle } from '@/components/ui/empty.js';
 import { Field, FieldLabel } from '@/components/ui/field.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
-import { type ProductOption, useProductOptions } from '@/hooks/options/index.js';
+import { type ProductOption, useProductOptions } from '@/equipment/hooks/options/index.js';
+import { useBayCalendars } from '@/equipment/hooks/use-bay-calendars.js';
 import { useAccess } from '@/hooks/use-access.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
-import { useBayCalendars } from '@/hooks/use-bay-calendars.js';
 import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
 import { useTRPC } from '@/lib/trpc.js';
 

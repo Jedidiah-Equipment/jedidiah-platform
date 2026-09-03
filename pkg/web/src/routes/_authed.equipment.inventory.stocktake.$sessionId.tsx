@@ -1,7 +1,7 @@
 import { UUID } from '@pkg/schema';
 import { createFileRoute } from '@tanstack/react-router';
 
-import { StocktakeSessionPage } from '@/pages/inventory/stocktake/StocktakeSessionPage.js';
+import { StocktakeSessionPage } from '@/equipment/pages/inventory/stocktake/StocktakeSessionPage.js';
 
 export const Route = createFileRoute('/_authed/equipment/inventory/stocktake/$sessionId')({
   params: {

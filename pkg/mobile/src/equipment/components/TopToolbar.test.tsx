@@ -3,8 +3,10 @@ import { describe, expect, test, vi } from 'vitest';
 vi.mock('@tabler/icons-react-native', () => ({ IconChevronLeft: 'IconChevronLeft' }));
 vi.mock('react-native', () => ({ Pressable: 'Pressable', View: 'View' }));
 vi.mock('@/components/AppLogo', () => ({ AppIcon: 'AppIcon' }));
-vi.mock('@/components/assistant/AssistantEntryButton', () => ({ AssistantEntryButton: 'AssistantEntryButton' }));
-vi.mock('@/components/ProfileMenuButton', () => ({ ProfileMenuButton: 'ProfileMenuButton' }));
+vi.mock('@/equipment/components/assistant/AssistantEntryButton', () => ({
+  AssistantEntryButton: 'AssistantEntryButton',
+}));
+vi.mock('@/equipment/components/ProfileMenuButton', () => ({ ProfileMenuButton: 'ProfileMenuButton' }));
 vi.mock('@/components/ui/icon', () => ({ Icon: 'Icon' }));
 vi.mock('@/components/ui/text', () => ({ Text: 'Text' }));
 

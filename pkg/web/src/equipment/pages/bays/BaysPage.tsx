@@ -13,12 +13,8 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import type React from 'react';
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
-import { bayNameWithOperator } from '@/components/bays/bay-label.js';
-import { BayOperatorIndicator } from '@/components/bays/index.js';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
-import { DepartmentIcon } from '@/components/departments/index.js';
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
-import { EntityThumbnail } from '@/components/thumbnail/EntityThumbnail.js';
 import { Badge } from '@/components/ui/badge.js';
 import { Button } from '@/components/ui/button.js';
 import {
@@ -44,11 +40,15 @@ import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectVa
 import { Skeleton } from '@/components/ui/skeleton.js';
 import { Switch } from '@/components/ui/switch.js';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip.js';
+import { bayNameWithOperator } from '@/equipment/components/bays/bay-label.js';
+import { BayOperatorIndicator } from '@/equipment/components/bays/index.js';
+import { DepartmentIcon } from '@/equipment/components/departments/index.js';
+import { EntityThumbnail } from '@/equipment/components/thumbnail/EntityThumbnail.js';
+import { baysPageDescription } from '@/equipment/utils/page-descriptions.js';
 import { useAccess } from '@/hooks/use-access.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
 import { useTRPC } from '@/lib/trpc.js';
-import { baysPageDescription } from '@/utils/page-descriptions.js';
 
 // What the user wants done to the Bay's operator on save. 'assign' on a Bay that already has an
 // operator means unassign-then-assign, matching the API's two explicit steps.

@@ -1,4 +1,4 @@
-import { createLiteralGuard } from './use-persisted-state';
+import { createLiteralGuard } from '@/lib/use-persisted-state';
 
 export type ProductSort = 'name' | 'price';
 /** The literal 'all' or a Product Range id. Honestly a string — a literal union would collapse. */

@@ -12,12 +12,11 @@ import {
 import type { DateOnlyIso, JobSummary, OffDay, ProjectedBayQueue } from '@pkg/schema';
 import { Link } from '@tanstack/react-router';
 import type React from 'react';
-
-import { BayOperatorIndicator } from '@/components/bays/index.js';
-import { OfferingThumbnail } from '@/components/thumbnail/OfferingThumbnail.js';
 import { Badge } from '@/components/ui/badge.js';
 import { ScrollArea } from '@/components/ui/scroll-area.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
+import { BayOperatorIndicator } from '@/equipment/components/bays/index.js';
+import { OfferingThumbnail } from '@/equipment/components/thumbnail/OfferingThumbnail.js';
 import { cn } from '@/lib/utils.js';
 
 import { getSlotLabel } from '../../jobs/components/board-summary.js';

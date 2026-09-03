@@ -1,9 +1,9 @@
 import { DefaultChatTransport } from 'ai';
 import { fetch as expoFetch } from 'expo/fetch';
 
-import { apiBaseUrl } from './api-base-url';
-import { sessionCookieHeader } from './auth';
-import { withSessionCookie } from './authed-fetch';
+import { apiBaseUrl } from '@/lib/api-base-url';
+import { sessionCookieHeader } from '@/lib/auth';
+import { withSessionCookie } from '@/lib/authed-fetch';
 
 type FetchLike = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
 

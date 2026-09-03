@@ -2,7 +2,7 @@ import { useRouter } from 'expo-router';
 import type { ReactNode } from 'react';
 
 import { Text } from '@/components/ui/text';
-import { resolveAssistantLink } from '@/lib/assistant-links';
+import { resolveAssistantLink } from '@/equipment/lib/assistant-links';
 
 export function AssistantMarkdownLink({ children, href }: { children: ReactNode; href: string }) {
   const router = useRouter();

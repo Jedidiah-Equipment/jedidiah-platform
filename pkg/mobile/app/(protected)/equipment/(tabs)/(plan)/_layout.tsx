@@ -1,7 +1,7 @@
 import { Redirect, Stack } from 'expo-router';
 
-import { TabAccessErrorScreen, TabAccessLoadingScreen } from '@/components/TabAccessLoadingScreen';
-import { MAIN_TAB_PARENTS } from '@/lib/toolbar-navigation';
+import { TabAccessErrorScreen, TabAccessLoadingScreen } from '@/equipment/components/TabAccessLoadingScreen';
+import { MAIN_TAB_PARENTS } from '@/equipment/lib/toolbar-navigation';
 import { useCan } from '@/lib/use-access';
 
 /** Owns the Job read gate for the Plan catalog and existing Bay schedule screen. */

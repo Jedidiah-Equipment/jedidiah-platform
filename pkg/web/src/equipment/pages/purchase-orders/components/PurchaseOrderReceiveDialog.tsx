@@ -4,8 +4,8 @@ import { useMutation } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
 import { CreateEntityDialog } from '@/components/form/index.js';
+import { useMovementWarnings } from '@/equipment/hooks/use-movement-warnings.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
-import { useMovementWarnings } from '@/hooks/use-movement-warnings.js';
 import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { StockMovementWarningPrompt } from '../../inventory/components/StockMovementWarningPrompt.js';

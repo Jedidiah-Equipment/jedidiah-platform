@@ -2,7 +2,6 @@ import type { Bay, Product } from '@pkg/schema';
 import { useQuery } from '@tanstack/react-query';
 import type React from 'react';
 import { useMemo } from 'react';
-import { AddBaySelect, BayRowCard } from '@/components/bays/index.js';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { useTypedAppFormContext } from '@/components/form/index.js';
 import type { ArrayFieldApi } from '@/components/form/types.js';
@@ -18,6 +17,7 @@ import {
 import { Empty, EmptyDescription, EmptyHeader, EmptyIcon, EmptyTitle } from '@/components/ui/empty.js';
 import { Field, FieldLabel } from '@/components/ui/field.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
+import { AddBaySelect, BayRowCard } from '@/equipment/components/bays/index.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { emptyProductFormValues, type ProductBayFormInput } from './types.js';
 

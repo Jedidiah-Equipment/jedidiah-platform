@@ -6,9 +6,9 @@ import { DataTable } from '@/components/data-table/DataTable.js';
 import { type DataTableColumnDef, useDataTable } from '@/components/data-table/features.js';
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
 import { Badge } from '@/components/ui/badge.js';
+import { priceVariancePageDescription } from '@/equipment/utils/page-descriptions.js';
 import { getApiQueryErrorMessage } from '@/lib/api-errors.js';
 import { useTRPC } from '@/lib/trpc.js';
-import { priceVariancePageDescription } from '@/utils/page-descriptions.js';
 
 const columns: DataTableColumnDef<InvoicePriceVarianceRow>[] = [
   {

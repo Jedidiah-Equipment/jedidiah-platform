@@ -3,7 +3,7 @@ import type { QuoteKind } from '@pkg/schema';
 import { IconPackage, IconTools } from '@tabler/icons-react';
 import type React from 'react';
 
-import { EntityThumbnail } from '@/components/thumbnail/EntityThumbnail.js';
+import { EntityThumbnail } from '@/equipment/components/thumbnail/EntityThumbnail.js';
 import { cn } from '@/lib/utils.js';
 
 const offeringKindIcons = {

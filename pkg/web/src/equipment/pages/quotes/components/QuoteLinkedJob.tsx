@@ -1,7 +1,7 @@
 import type { QuoteSummary } from '@pkg/schema';
 import type React from 'react';
 
-import { JobCodeDisplay } from '@/pages/jobs/components/JobCodeDisplay.js';
+import { JobCodeDisplay } from '@/equipment/pages/jobs/components/JobCodeDisplay.js';
 
 type QuoteLinkedJobProps = {
   canOpenJobs: boolean;

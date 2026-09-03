@@ -1,7 +1,7 @@
 import { Directory, File, Paths } from 'expo-file-system';
 import { useEffect, useState } from 'react';
 
-import { authedFetch, productImageDownloadPath } from './authed-fetch';
+import { authedFetch, productImageDownloadPath } from '@/lib/authed-fetch';
 import { type ProductImageKey, productImageCachePath } from './product-image-cache';
 
 export type ProductImageSource = { kind: 'failed' | 'loading' } | { kind: 'ready'; uri: string };

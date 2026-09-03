@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router';
 
-import { AuditPage } from '@/pages/audit/AuditPage.js';
+import { AuditPage } from '@/equipment/pages/audit/AuditPage.js';
 
 export const Route = createFileRoute('/_authed/equipment/audit')({
   staticData: {

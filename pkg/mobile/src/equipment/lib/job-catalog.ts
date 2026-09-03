@@ -1,7 +1,7 @@
 import type { StatusBadgeColor } from '@pkg/domain';
 import type { JobListInput, JobSummary } from '@pkg/schema';
 
-import { createLiteralGuard } from './use-persisted-state';
+import { createLiteralGuard } from '@/lib/use-persisted-state';
 
 export type JobCompletionFilter = 'exclude-complete' | 'include-complete';
 export type JobCatalogSort = 'code' | 'schedule';

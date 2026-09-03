@@ -5,7 +5,7 @@ import { DataTable } from '@/components/data-table/DataTable.js';
 import { type DataTableColumnDef, useDataTable } from '@/components/data-table/features.js';
 import { Badge } from '@/components/ui/badge.js';
 import { Checkbox } from '@/components/ui/checkbox.js';
-import { formatPartQuantity } from '@/utils/part-quantity-format.js';
+import { formatPartQuantity } from '@/equipment/utils/part-quantity-format.js';
 
 type BuyListTableProps = {
   canSelect: boolean;

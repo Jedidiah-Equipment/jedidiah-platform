@@ -6,10 +6,10 @@ import { useState } from 'react';
 
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
 import { Button } from '@/components/ui/button.js';
+import { productsPageDescription } from '@/equipment/utils/page-descriptions.js';
 import { useCan } from '@/hooks/use-access.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useTRPC } from '@/lib/trpc.js';
-import { productsPageDescription } from '@/utils/page-descriptions.js';
 import { ProductTable } from './components/ProductTable.js';
 import { ProductCreateDialog } from './ProductCreateDialog.js';
 import { downloadProductAssemblyExport } from './product-assembly-export.js';

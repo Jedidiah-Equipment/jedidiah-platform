@@ -5,7 +5,11 @@ import type React from 'react';
 import { useAppForm } from '@/components/form/index.js';
 import { EditFormActions, EditFormFullWidth, EditFormGrid } from '@/components/page-layout/EditFormLayout.js';
 import { Button } from '@/components/ui/button.js';
-import { usePartCategoryOptions, usePartStorageLocationOptions, useSupplierOptions } from '@/hooks/options/index.js';
+import {
+  usePartCategoryOptions,
+  usePartStorageLocationOptions,
+  useSupplierOptions,
+} from '@/equipment/hooks/options/index.js';
 import { PartFormValues, partStockTrackingModeOptions, partUnitOfMeasureOptions, toPartFormValues } from './types.js';
 
 type PartFormProps = {

@@ -3,20 +3,19 @@ import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tansta
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { Pressable, View } from 'react-native';
-
-import { ScanField } from '@/components/stores/ScanField';
-import { StockCountPanel } from '@/components/stores/StockCountPanel';
-import { StoresConfirmModal } from '@/components/stores/StoresConfirmModal';
-import { StoresLoadMoreButton } from '@/components/stores/StoresLoadMoreButton';
-import { StoresScreen } from '@/components/stores/StoresScreen';
 import { ActivityIndicator } from '@/components/ui/activity-indicator';
 import { Text } from '@/components/ui/text';
 import { useAppToast } from '@/components/ui/toast';
+import { ScanField } from '@/equipment/components/stores/ScanField';
+import { StockCountPanel } from '@/equipment/components/stores/StockCountPanel';
+import { StoresConfirmModal } from '@/equipment/components/stores/StoresConfirmModal';
+import { StoresLoadMoreButton } from '@/equipment/components/stores/StoresLoadMoreButton';
+import { StoresScreen } from '@/equipment/components/stores/StoresScreen';
+import { useMovementActorUserId, useStoresActor } from '@/equipment/lib/stores-actor';
+import { resolveScan } from '@/equipment/lib/stores-scan-resolution';
+import { usePartByCode } from '@/equipment/lib/use-stores-post';
 import { invalidateQueryCache } from '@/lib/query-client';
-import { useMovementActorUserId, useStoresActor } from '@/lib/stores-actor';
-import { resolveScan } from '@/lib/stores-scan-resolution';
 import { useTRPC } from '@/lib/trpc';
-import { usePartByCode } from '@/lib/use-stores-post';
 
 /**
  * The walk itself: scan a bin, key the count, confirm, move on — with the session's uncounted list

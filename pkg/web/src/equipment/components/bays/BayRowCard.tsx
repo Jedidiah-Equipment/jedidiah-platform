@@ -2,10 +2,10 @@ import { departmentLabels } from '@pkg/domain';
 import type { Bay } from '@pkg/schema';
 import { IconTrash } from '@tabler/icons-react';
 import type React from 'react';
-import { BayOperatorIndicator } from '@/components/bays/BayOperatorIndicator.js';
 import { Badge } from '@/components/ui/badge.js';
 import { Button } from '@/components/ui/button.js';
 import { Card, CardContent } from '@/components/ui/card.js';
+import { BayOperatorIndicator } from '@/equipment/components/bays/BayOperatorIndicator.js';
 
 type BayRowCardProps = {
   bay: Bay | undefined;

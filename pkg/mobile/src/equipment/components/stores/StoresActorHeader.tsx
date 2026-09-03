@@ -4,7 +4,7 @@ import { Pressable, View } from 'react-native';
 import { Avatar } from '@/components/Avatar';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
-import { useStoresActor } from '@/lib/stores-actor';
+import { useStoresActor } from '@/equipment/lib/stores-actor';
 
 /**
  * Who the tablet thinks is standing at it, in the largest type on the screen (spec §11).

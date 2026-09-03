@@ -2,8 +2,8 @@ import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import { Platform } from 'react-native';
 
-import { apiBaseUrl } from './api-base-url';
-import { sessionCookieHeader } from './auth';
+import { apiBaseUrl } from '@/lib/api-base-url';
+import { sessionCookieHeader } from '@/lib/auth';
 import { getDocumentPlatformType } from './document-content';
 
 /**

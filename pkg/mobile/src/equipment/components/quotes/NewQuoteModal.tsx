@@ -8,20 +8,20 @@ import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
 
 import { useAppForm } from '@/components/form';
 import { getFieldErrors } from '@/components/form/utils/field-errors';
-import { CustomerPicker } from '@/components/quotes/CustomerPicker';
-import { ProductPicker, type ProductSelection } from '@/components/quotes/ProductPicker';
-import { SalespersonSelectField } from '@/components/quotes/SalespersonSelectField';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { ThemedModal } from '@/components/ui/themed-modal';
 import { useAppToast } from '@/components/ui/toast';
+import { CustomerPicker } from '@/equipment/components/quotes/CustomerPicker';
+import { ProductPicker, type ProductSelection } from '@/equipment/components/quotes/ProductPicker';
+import { SalespersonSelectField } from '@/equipment/components/quotes/SalespersonSelectField';
 import {
   clearQuoteKindFields,
   QUOTE_CREATE_DEFAULT_VALUES,
   QuoteCreateFormValues,
   QuoteCreateStatus,
   toQuoteCreateInput,
-} from '@/lib/quote-create';
+} from '@/equipment/lib/quote-create';
 import { useTRPC } from '@/lib/trpc';
 
 const KIND_OPTIONS = [

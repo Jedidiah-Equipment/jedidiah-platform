@@ -1,13 +1,13 @@
 import { formatBytes } from '@pkg/domain';
 import { useCallback } from 'react';
 
-import { FilePreviewSheet } from '@/components/documents/FilePreviewSheet.js';
+import { FilePreviewSheet } from '@/equipment/components/documents/FilePreviewSheet.js';
 import {
   type DocumentPreviewOwner,
   fetchDocumentPreviewBlob,
   getDocumentPreviewKind,
   type PreviewableDocument,
-} from '@/utils/document.js';
+} from '@/equipment/utils/document.js';
 
 type DocumentPreviewSheetProps = {
   document: PreviewableDocument | null;

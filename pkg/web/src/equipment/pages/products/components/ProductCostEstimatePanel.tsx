@@ -15,9 +15,9 @@ import { type DataTableColumnDef, useDataTable } from '@/components/data-table/f
 import { Badge } from '@/components/ui/badge.js';
 import { Card, CardContent, CardDescription, CardHeader, CardSeparator, CardTitle } from '@/components/ui/card.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
+import { formatPartQuantity, formatUnitCostBasis } from '@/equipment/utils/part-quantity-format.js';
 import { useCan } from '@/hooks/use-access.js';
 import { useTRPC } from '@/lib/trpc.js';
-import { formatPartQuantity, formatUnitCostBasis } from '@/utils/part-quantity-format.js';
 import {
   estimateTermCompleteness,
   formatEstimateCeiling,

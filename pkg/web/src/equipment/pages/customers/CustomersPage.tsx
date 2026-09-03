@@ -5,7 +5,7 @@ import { useState } from 'react';
 
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
 import { Button } from '@/components/ui/button.js';
-import { customersPageDescription } from '@/utils/page-descriptions.js';
+import { customersPageDescription } from '@/equipment/utils/page-descriptions.js';
 import { CustomerCreateDialog } from './CustomerCreateDialog.js';
 import { CustomerTable } from './components/CustomerTable.js';
 

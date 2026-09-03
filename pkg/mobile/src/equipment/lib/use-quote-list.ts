@@ -8,7 +8,7 @@ import {
   type QuoteStatusFilter,
   quoteSortDirection,
   shouldPinPriorityQuotes,
-} from '@/lib/quote-presentation';
+} from '@/equipment/lib/quote-presentation';
 import { useTRPC } from '@/lib/trpc';
 
 const PAGE_SIZE = 20;

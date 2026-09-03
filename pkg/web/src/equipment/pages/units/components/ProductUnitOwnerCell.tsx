@@ -1,7 +1,7 @@
 import type { ProductUnitOwner } from '@pkg/schema';
 import type React from 'react';
 
-import { StockBadge } from '@/components/common/StockBadge.js';
+import { StockBadge } from '@/equipment/components/common/StockBadge.js';
 
 /**
  * A Unit nobody owns is Stock — we hold it. That is a derived state of the Unit, not a customer, so it

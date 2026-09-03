@@ -1,7 +1,6 @@
 import type { UUID } from '@pkg/schema';
-
+import { readApiErrorMessage } from '@/equipment/utils/document.js';
 import { getClientConfig } from '@/lib/app-config.js';
-import { readApiErrorMessage } from '@/utils/document.js';
 
 /**
  * Both PO PDFs are served by the API, not by the origin serving the app, so they carry the API base

@@ -1,7 +1,7 @@
 import { UUID } from '@pkg/schema';
 import { createFileRoute } from '@tanstack/react-router';
 
-import { StartJobPage } from '@/pages/quotes/StartJobPage.js';
+import { StartJobPage } from '@/equipment/pages/quotes/StartJobPage.js';
 
 export const Route = createFileRoute('/_authed/equipment/quotes/$id_/start-job')({
   params: {

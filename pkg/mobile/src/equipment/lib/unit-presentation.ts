@@ -3,7 +3,7 @@ import { ProductUnitDisplayBuildState } from '@pkg/schema';
 
 import type { ListControlOption } from '@/components/ListControls';
 
-import { createLiteralGuard } from './use-persisted-state';
+import { createLiteralGuard } from '@/lib/use-persisted-state';
 
 /** The Build dropdown offers exactly the states the list displays, plus the unfiltered choice. */
 export type UnitBuildStateFilter = 'all' | ProductUnitDisplayBuildState;

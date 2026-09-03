@@ -1,9 +1,12 @@
 import { quoteKindColorClassNames, quoteKindLabels, statusBadgeColorClassNames } from '@pkg/domain';
 import { View } from 'react-native';
-import { JobSectionCard } from '@/components/bays/JobSectionCard';
-import { getJobAssemblyAndWorkRows, type JobAssemblyAndWorkRow } from '@/components/bays/job-assembly-and-work-rows';
 import { StatusBadge, type StatusBadgeClassNames } from '@/components/ui/status-badge';
 import { Text } from '@/components/ui/text';
+import { JobSectionCard } from '@/equipment/components/bays/JobSectionCard';
+import {
+  getJobAssemblyAndWorkRows,
+  type JobAssemblyAndWorkRow,
+} from '@/equipment/components/bays/job-assembly-and-work-rows';
 
 const KIND_TONES = {
   custom: { ...quoteKindColorClassNames.custom, dot: statusBadgeColorClassNames.teal.dot },

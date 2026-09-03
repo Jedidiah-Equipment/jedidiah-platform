@@ -3,7 +3,7 @@ import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, test } from 'vitest';
 
-import { listTsxFiles } from './test-file-utils';
+import { listTsxFiles } from '@/components/test-file-utils';
 
 const MOBILE_DIR = join(dirname(fileURLToPath(import.meta.url)), '../..');
 

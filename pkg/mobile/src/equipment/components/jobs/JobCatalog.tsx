@@ -3,20 +3,19 @@ import type { JobSummary } from '@pkg/schema';
 import { IconArrowsSort, IconCheck, IconFilter } from '@tabler/icons-react-native';
 import { useRouter } from 'expo-router';
 import { View } from 'react-native';
-
-import { CatalogListCard } from '@/components/CatalogList';
 import {
   type ListControlOption,
   ListControlRow,
   ListDropdownControl,
   ListSearchControl,
 } from '@/components/ListControls';
-import { offeringAvatarProps } from '@/components/OfferingAvatar';
-import { StockBadge } from '@/components/StockBadge';
 import { Icon } from '@/components/ui/icon';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { Text } from '@/components/ui/text';
-import { getJobSchedulePresentation, type JobCatalogSort, type JobCompletionFilter } from '@/lib/job-catalog';
+import { CatalogListCard } from '@/equipment/components/CatalogList';
+import { offeringAvatarProps } from '@/equipment/components/OfferingAvatar';
+import { StockBadge } from '@/equipment/components/StockBadge';
+import { getJobSchedulePresentation, type JobCatalogSort, type JobCompletionFilter } from '@/equipment/lib/job-catalog';
 import { useColorMode } from '@/theme/use-color-mode';
 
 const COMPLETION_OPTIONS: readonly ListControlOption<JobCompletionFilter>[] = [

@@ -1,7 +1,7 @@
 import { UUID } from '@pkg/schema';
 import { createFileRoute } from '@tanstack/react-router';
 
-import { JobCloseOutPage } from '@/pages/inventory/close-out/JobCloseOutPage.js';
+import { JobCloseOutPage } from '@/equipment/pages/inventory/close-out/JobCloseOutPage.js';
 
 export const Route = createFileRoute('/_authed/equipment/inventory/close-out/$jobId')({
   params: {

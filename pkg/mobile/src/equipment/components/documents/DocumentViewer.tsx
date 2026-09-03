@@ -2,13 +2,12 @@ import type { DocumentSummary } from '@pkg/schema';
 import { IconDownload, IconShare, type Icon as TablerIcon } from '@tabler/icons-react-native';
 import { useState } from 'react';
 import { ActivityIndicator, Pressable, View } from 'react-native';
-
-import { DocumentPage } from '@/components/documents/DocumentPage';
-import { SecondaryPageToolbar } from '@/components/TopToolbar';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
-import { type DocumentAction, saveDocument, shareDocument } from '@/lib/document-actions';
-import { canPreviewDocument } from '@/lib/document-content';
+import { DocumentPage } from '@/equipment/components/documents/DocumentPage';
+import { SecondaryPageToolbar } from '@/equipment/components/TopToolbar';
+import { type DocumentAction, saveDocument, shareDocument } from '@/equipment/lib/document-actions';
+import { canPreviewDocument } from '@/equipment/lib/document-content';
 
 /**
  * In-app document reader (#521): the DOCUMENT VIEWER screen from the mockup —

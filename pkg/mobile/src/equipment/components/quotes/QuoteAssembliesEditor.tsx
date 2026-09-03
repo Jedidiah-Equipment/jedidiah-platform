@@ -11,7 +11,7 @@ import { Pressable, View } from 'react-native';
 
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
-import type { QuoteEditFormValues } from '@/lib/quote-presentation';
+import type { QuoteEditFormValues } from '@/equipment/lib/quote-presentation';
 
 export function QuoteAssembliesEditor({
   catalogAssemblies,

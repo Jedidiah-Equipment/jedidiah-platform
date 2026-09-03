@@ -1,8 +1,8 @@
 import type { CatalogProductTranslation, UUID } from '@pkg/schema';
 import { useQuery } from '@tanstack/react-query';
 import type React from 'react';
-import { translationFieldsNeedAttention } from '@/components/catalog-translations/translation-attention.js';
 import { AttentionTabTrigger } from '@/components/common/AttentionTabTrigger.js';
+import { translationFieldsNeedAttention } from '@/equipment/components/catalog-translations/translation-attention.js';
 import { useTRPC } from '@/lib/trpc.js';
 
 type ProductTranslationsTabTriggerProps = {

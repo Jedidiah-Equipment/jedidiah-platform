@@ -16,7 +16,7 @@ import { Button } from '@/components/ui/button.js';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog.js';
 import { ScrollArea } from '@/components/ui/scroll-area.js';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip.js';
-import { useUserOptions } from '@/hooks/options/index.js';
+import { useUserOptions } from '@/equipment/hooks/options/index.js';
 import { getApiQueryErrorMessage } from '@/lib/api-errors.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { cn } from '@/lib/utils.js';

@@ -13,8 +13,8 @@ vi.mock('@tabler/icons-react-native', () => ({
 vi.mock('expo-router', () => ({ useRouter: () => ({ push: vi.fn() }) }));
 vi.mock('react-native', () => ({ Pressable: 'Pressable', View: 'View' }));
 vi.mock('@/components/Avatar', () => ({ Avatar: 'Avatar' }));
-vi.mock('@/components/CustomerName', () => ({ CustomerName: 'CustomerName' }));
-vi.mock('@/components/OfferingAvatar', () => ({ OfferingAvatar: 'OfferingAvatar' }));
+vi.mock('@/equipment/components/CustomerName', () => ({ CustomerName: 'CustomerName' }));
+vi.mock('@/equipment/components/OfferingAvatar', () => ({ OfferingAvatar: 'OfferingAvatar' }));
 vi.mock('@/components/ui/icon', () => ({ Icon: 'Icon' }));
 vi.mock('@/components/ui/text', () => ({ Text: 'Text' }));
 vi.mock('@/theme/use-color-mode', () => ({ useColorMode: () => ({ resolved: 'light' }) }));

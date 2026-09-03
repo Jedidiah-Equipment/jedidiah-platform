@@ -4,8 +4,6 @@ import { IconAlertTriangle } from '@tabler/icons-react';
 import { useQuery } from '@tanstack/react-query';
 import type React from 'react';
 import { useMemo } from 'react';
-
-import { AddBaySelect, BayRowCard } from '@/components/bays/index.js';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { type DatePickerFieldProps, withFieldGroup } from '@/components/form/index.js';
 import {
@@ -20,6 +18,7 @@ import {
 import { Empty, EmptyDescription, EmptyHeader, EmptyIcon, EmptyTitle } from '@/components/ui/empty.js';
 import { Switch } from '@/components/ui/switch.js';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip.js';
+import { AddBaySelect, BayRowCard } from '@/equipment/components/bays/index.js';
 import { useTRPC } from '@/lib/trpc.js';
 
 import { createBoardPreviewRequest } from './board-ghosts.js';

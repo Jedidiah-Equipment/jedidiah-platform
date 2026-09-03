@@ -12,8 +12,8 @@ import type { BayOperator, DateOnlyIso, Department } from '@pkg/schema';
 import { useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
 
-import { useTRPC } from './trpc';
-import { useAccess } from './use-access';
+import { useTRPC } from '@/lib/trpc';
+import { useAccess } from '@/lib/use-access';
 import { useBayCalendars } from './use-bay-calendars';
 
 /** A Bay card's active Job, joined from `jobs.listBays` detail and projected for days-left. */

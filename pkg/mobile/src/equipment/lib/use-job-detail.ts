@@ -2,9 +2,9 @@ import { hasPermission } from '@pkg/domain';
 import type { UUID } from '@pkg/schema';
 import { useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
+import { useTRPC } from '@/lib/trpc';
+import { useAccess } from '@/lib/use-access';
 import { isJobNotFoundError, type JobDetailReadyState, projectJobDetail } from './job-detail-projection';
-import { useTRPC } from './trpc';
-import { useAccess } from './use-access';
 
 export type { JobDetailReadyState, JobRouteStopCard } from './job-detail-projection';
 

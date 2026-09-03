@@ -1,7 +1,7 @@
 import { type Href, useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { JobDetail } from '@/components/bays/JobDetail';
+import { JobDetail } from '@/equipment/components/bays/JobDetail';
 
 /** Existing Job detail, now owned by the root Jobs tab. */
 export default function JobDetailRoute() {

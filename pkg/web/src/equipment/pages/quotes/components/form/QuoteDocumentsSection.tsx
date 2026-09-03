@@ -2,10 +2,9 @@ import type { QuoteDetail, QuoteDocument, QuoteDocumentGenerationWarning } from 
 import { IconAlertTriangle } from '@tabler/icons-react';
 import { useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
-
-import { DocumentCardList } from '@/components/documents/DocumentCardList.js';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert.js';
 import { Card, CardContent } from '@/components/ui/card.js';
+import { DocumentCardList } from '@/equipment/components/documents/DocumentCardList.js';
 import { getApiQueryErrorMessage } from '@/lib/api-errors.js';
 import { useTRPC } from '@/lib/trpc.js';
 

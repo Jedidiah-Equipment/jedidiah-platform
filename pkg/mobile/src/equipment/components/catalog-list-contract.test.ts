@@ -3,7 +3,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, test } from 'vitest';
 
-const MOBILE_DIR = join(dirname(fileURLToPath(import.meta.url)), '../..');
+const MOBILE_DIR = join(dirname(fileURLToPath(import.meta.url)), '../../..');
 const CATALOG_SURFACES = [
   {
     component: 'src/equipment/components/jobs/JobCatalog.tsx',

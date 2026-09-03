@@ -21,7 +21,7 @@ describe('toDisplayBuildState', () => {
   });
 });
 
-describe('product Unit build-state badge palette', () => {
+describe('Product Unit build-state badge palette', () => {
   /**
    * The bug behind #1373: native had been assembling the dark half by dropping `dark:` from the
    * two-tone class at runtime, producing a class name with no generated Tailwind rule.

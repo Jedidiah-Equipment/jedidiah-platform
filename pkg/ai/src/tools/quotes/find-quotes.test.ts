@@ -118,18 +118,18 @@ describe('findQuotes contract', () => {
     expect(FindQuotesResponse.parse(response)).toEqual(response);
     expect(response[0]).toMatchObject({
       links: {
-        app: `/quotes/${QUOTE_ID}/edit`,
-        customer: `/customers/${CUSTOMER_ID}/edit`,
-        job: `/jobs/${JOB_ID}`,
-        product: `/products/${PRODUCT_ID}/edit`,
+        app: `/equipment/quotes/${QUOTE_ID}/edit`,
+        customer: `/equipment/customers/${CUSTOMER_ID}/edit`,
+        job: `/equipment/jobs/${JOB_ID}`,
+        product: `/equipment/products/${PRODUCT_ID}/edit`,
       },
     });
     expect(response[0]?.product).not.toHaveProperty('thumbnailDataUrl');
     expect(response[1]).toMatchObject({
       kind: 'custom',
       links: {
-        app: `/quotes/${CUSTOM_QUOTE_ID}/edit`,
-        customer: `/customers/${CUSTOMER_ID}/edit`,
+        app: `/equipment/quotes/${CUSTOM_QUOTE_ID}/edit`,
+        customer: `/equipment/customers/${CUSTOMER_ID}/edit`,
       },
       product: null,
       workTitle: 'Hydraulic repair',
@@ -138,6 +138,6 @@ describe('findQuotes contract', () => {
 
     expect(
       toFindQuotesResponse(result, createUserAccessSummary({ role: 'sales', userId: 'test-user-id' }))[0]?.links,
-    ).toEqual({ app: `/quotes/${QUOTE_ID}/edit` });
+    ).toEqual({ app: `/equipment/quotes/${QUOTE_ID}/edit` });
   });
 });

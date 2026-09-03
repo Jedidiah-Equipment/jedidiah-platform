@@ -151,7 +151,7 @@ export const ProductRangesPage: React.FC = () => {
                     canUpdate={canUpdateRanges}
                     dragDisabled={reorderMutation.isPending}
                     key={range.id}
-                    onEdit={() => navigate({ to: '/product-ranges/$id/edit', params: { id: range.id } })}
+                    onEdit={() => navigate({ to: '/equipment/product-ranges/$id/edit', params: { id: range.id } })}
                     range={range}
                   />
                 ))}
@@ -272,7 +272,7 @@ const CreateProductRangeForm: React.FC<CreateProductRangeFormProps> = ({ onClose
       await invalidateProductRanges();
       onClose();
       toast.success('Product Range created');
-      await navigate({ to: '/product-ranges/$id/edit', params: { id: created.id } });
+      await navigate({ to: '/equipment/product-ranges/$id/edit', params: { id: created.id } });
     },
   });
 

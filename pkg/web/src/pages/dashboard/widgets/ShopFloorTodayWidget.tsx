@@ -166,7 +166,7 @@ function ShopFloorOccupancyCell({
           <Link
             className="block truncate font-medium hover:underline"
             params={{ id: occupancy.slot.jobId }}
-            to="/jobs/$id"
+            to="/equipment/jobs/$id"
           >
             {occupancy.slot.jobCode}
           </Link>

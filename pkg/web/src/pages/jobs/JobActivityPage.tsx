@@ -63,7 +63,7 @@ export const JobActivityPage: React.FC<{ selectedJobId?: UUID | undefined }> = (
         <JobSheet
           key={selectedJobId}
           jobId={selectedJobId}
-          onClose={() => navigate({ search: {}, to: '/jobs/activity' })}
+          onClose={() => navigate({ search: {}, to: '/equipment/jobs/activity' })}
         />
       ) : null}
     </PageLayout>

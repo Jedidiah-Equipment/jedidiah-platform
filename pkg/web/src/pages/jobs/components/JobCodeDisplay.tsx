@@ -55,7 +55,7 @@ const JobCodeLink: React.FC<{ className?: string | undefined; jobCode: JobCode; 
   jobCode,
   jobId,
 }) => (
-  <PrimaryLink className={cn('font-mono', className)} search={{ job: jobId }} to="/jobs">
+  <PrimaryLink className={cn('font-mono', className)} search={{ job: jobId }} to="/equipment/jobs">
     {jobCode}
   </PrimaryLink>
 );

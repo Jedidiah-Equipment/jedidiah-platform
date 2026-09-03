@@ -114,7 +114,7 @@ const RemoveCustomerButton: React.FC<{ customer: Customer }> = ({ customer }) =>
     trpc.customers.remove.mutationOptions({
       onSuccess: async () => {
         await invalidateCustomers();
-        await navigate({ to: '/customers' });
+        await navigate({ to: '/equipment/customers' });
       },
       onError: (error) => {
         showMutationError(error, 'Unable to remove customer.');

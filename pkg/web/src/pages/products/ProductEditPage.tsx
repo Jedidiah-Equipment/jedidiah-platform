@@ -170,7 +170,7 @@ const RemoveProductButton: React.FC<{ product: Product }> = ({ product }) => {
       onSuccess: async () => {
         await Promise.all([invalidateProducts(), invalidateQuotes()]);
         toast.success('Product removed');
-        await navigate({ to: '/products' });
+        await navigate({ to: '/equipment/products' });
       },
       onError: (error) => {
         showMutationError(error, 'Unable to remove Product.');

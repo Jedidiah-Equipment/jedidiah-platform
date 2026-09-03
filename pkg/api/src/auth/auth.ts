@@ -1,12 +1,11 @@
 import { drizzleAdapter } from '@better-auth/drizzle-adapter';
 import { expo } from '@better-auth/expo';
-import { type Db, db, schema } from '@pkg/db';
-import { type Auth as BetterAuth, betterAuth } from 'better-auth';
+import { type Db, schema } from '@pkg/db';
+import { type Auth as BetterAuth, type BetterAuthPlugin, betterAuth } from 'better-auth';
 import { admin as adminPlugin } from 'better-auth/plugins';
 import { emailSender } from '../email/index.js';
 import { getApiConfig } from '../env.js';
 import { ac, authRoles, defaultAuthRole } from './access-control.js';
-import { adminUserSafetyPlugin } from './admin-user-safety.js';
 import { assertUserCanCreateSession } from './sign-in-eligibility.js';
 import { userPhoneValidationPlugin } from './user-phone-validation.js';
 
@@ -15,7 +14,7 @@ const config = getApiConfig();
 type BetterAuthSessionCreateInput = { userId: string };
 type BetterAuthEmailCallbackInput = { user: { email: string }; token: string };
 
-function createAuthOptions(database: Db) {
+function createAuthOptions(database: Db, businessPlugins: readonly BetterAuthPlugin[]) {
   return {
     appName: 'Jedidah Ops',
     baseURL: config.API_BASE_URL,
@@ -70,7 +69,7 @@ function createAuthOptions(database: Db) {
         defaultRole: defaultAuthRole,
         roles: authRoles,
       }),
-      adminUserSafetyPlugin(database),
+      ...businessPlugins,
       userPhoneValidationPlugin(),
       expo(),
     ],
@@ -113,8 +112,6 @@ type AuthOptions = ReturnType<typeof createAuthOptions>;
 
 export type Auth = BetterAuth<AuthOptions>;
 
-export function createAuth(database: Db): Auth {
-  return betterAuth(createAuthOptions(database));
+export function createSharedAuth(database: Db, businessPlugins: readonly BetterAuthPlugin[]): Auth {
+  return betterAuth(createAuthOptions(database, businessPlugins));
 }
-
-export const auth = createAuth(db);

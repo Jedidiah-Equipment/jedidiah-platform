@@ -42,7 +42,7 @@ export const PurchaseOrderCreateDialog: React.FC<PurchaseOrderCreateDialogProps>
         await invalidatePurchaseOrders();
         onOpenChange(false);
         toast.success(`${purchaseOrder.code} created`);
-        await navigate({ params: { id: purchaseOrder.id }, to: '/purchase-orders/$id' });
+        await navigate({ params: { id: purchaseOrder.id }, to: '/equipment/purchase-orders/$id' });
       }}
       onOpenChange={onOpenChange}
       open={open}

@@ -49,7 +49,7 @@ export const ProductCreateDialog: React.FC<ProductCreateDialogProps> = ({ onOpen
         await invalidateProducts();
         onOpenChange(false);
         toast.success('Product created');
-        await navigate({ to: '/products/$id/edit', params: { id: product.id } });
+        await navigate({ to: '/equipment/products/$id/edit', params: { id: product.id } });
       }}
       onOpenChange={onOpenChange}
       open={open}

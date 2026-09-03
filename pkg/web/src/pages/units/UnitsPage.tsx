@@ -10,7 +10,7 @@ export const UnitsPage: React.FC = () => {
 
   return (
     <ProductUnitTable
-      onOpenUnit={(unit) => navigate({ to: '/units/$id', params: { id: unit.id } })}
+      onOpenUnit={(unit) => navigate({ to: '/equipment/units/$id', params: { id: unit.id } })}
       render={({ exportAction, tableContent }) => (
         <PageLayout actions={exportAction} description={unitsPageDescription} size="lg" title="Units">
           {tableContent}

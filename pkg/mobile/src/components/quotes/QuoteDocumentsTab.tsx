@@ -58,7 +58,7 @@ export function QuoteDocumentsTab({
 
   const openDocument = (document: QuoteDocument) => {
     router.push({
-      pathname: '/documents/[documentId]',
+      pathname: '/equipment/documents/[documentId]',
       params: { documentId: document.id, quoteId: quote.id },
     });
   };

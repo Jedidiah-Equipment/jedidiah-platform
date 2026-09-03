@@ -5,4 +5,4 @@
 - Map expected core errors at the feature boundary with public messages and stable `appCode`s. Preserve the core error as `cause`.
 - List inputs use `limit: 0` for unpaged picker reads instead of exceeding shared caps.
 
-Canonical examples: `src/routes/products/products.router.ts`, `src/trpc/init.ts`, `src/test/create-tester.ts`.
+Canonical examples: `src/routes/equipment/products/products.router.ts`, `src/trpc/init.ts`, `src/test/create-tester.ts`.

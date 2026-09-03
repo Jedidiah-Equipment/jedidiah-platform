@@ -98,7 +98,7 @@ export function PriceVarianceReportPage() {
         errorMessage={getApiQueryErrorMessage(query.error, 'Unable to load the price variance report.')}
         getRowAriaLabel={(item) => `Open ${item.purchaseOrderCode}`}
         isLoading={query.isPending}
-        onRowClick={(item) => navigate({ params: { id: item.purchaseOrderId }, to: '/purchase-orders/$id' })}
+        onRowClick={(item) => navigate({ params: { id: item.purchaseOrderId }, to: '/equipment/purchase-orders/$id' })}
         paginationMode="incremental"
         table={table}
         total={table.getFilteredRowModel().rows.length}

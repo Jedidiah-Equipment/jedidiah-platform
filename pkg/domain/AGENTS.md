@@ -13,4 +13,4 @@
   `scheme-half-contract` test compiles the stylesheet and checks every half against it. Prefer reusing
   an existing palette entry over introducing a new colour.
 
-Canonical examples: `src/auth/authorization.ts`, `src/demo.ts`, `src/index.ts`.
+Canonical examples: `src/auth/authorization.ts`, `src/equipment/demo.ts`, `src/index.ts`.

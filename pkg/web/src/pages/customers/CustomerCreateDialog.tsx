@@ -43,7 +43,7 @@ export const CustomerCreateDialog: React.FC<CustomerCreateDialogProps> = ({ onOp
         await invalidateCustomers();
         onOpenChange(false);
         toast.success('Customer created');
-        await navigate({ to: '/customers/$id/edit', params: { id: customer.id } });
+        await navigate({ to: '/equipment/customers/$id/edit', params: { id: customer.id } });
       }}
       onOpenChange={onOpenChange}
       open={open}

@@ -128,7 +128,7 @@ export function QuoteCatalogCard({ quote }: { quote: QuoteSummary }) {
       avatarUri={quote.kind === 'product' ? quote.product?.thumbnailDataUrl : null}
       mainText={quote.customerCompanyName}
       monoText={`${quote.code} · ${formatDate(quote.createdAt, 'd MMM yyyy')}`}
-      onPress={() => router.push({ pathname: '/quotes/[quoteId]', params: { quoteId: quote.id } })}
+      onPress={() => router.push({ pathname: '/equipment/quotes/[quoteId]', params: { quoteId: quote.id } })}
       subText={offering}
       trailing={
         <View className="items-end gap-1.5">

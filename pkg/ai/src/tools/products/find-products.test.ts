@@ -84,7 +84,7 @@ describe('findProducts contract', () => {
     expect(response).toEqual([
       {
         id: PRODUCT_ID,
-        links: { app: `/products/${PRODUCT_ID}/edit` },
+        links: { app: `/equipment/products/${PRODUCT_ID}/edit` },
         modelCode: 'CL-100',
         name: 'Compact Loader',
       },

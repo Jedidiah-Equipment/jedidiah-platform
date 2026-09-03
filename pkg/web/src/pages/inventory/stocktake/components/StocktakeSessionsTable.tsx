@@ -10,7 +10,11 @@ const sessionColumns: DataTableColumnDef<StocktakeSession>[] = [
   {
     accessorFn: (item) => STOCKTAKE_SCOPE_LABELS[item.scope],
     cell: ({ row }) => (
-      <Link className="block font-medium" params={{ sessionId: row.original.id }} to="/inventory/stocktake/$sessionId">
+      <Link
+        className="block font-medium"
+        params={{ sessionId: row.original.id }}
+        to="/equipment/inventory/stocktake/$sessionId"
+      >
         {STOCKTAKE_SCOPE_LABELS[row.original.scope]}
       </Link>
     ),
@@ -77,7 +81,9 @@ export function StocktakeSessionsTable({
       getRowAriaLabel={(item) => `Open the ${STOCKTAKE_SCOPE_LABELS[item.scope]} session`}
       globalFilterPlaceholder="Search stocktake sessions..."
       isLoading={isLoading}
-      onRowClick={(item) => navigate({ params: { sessionId: item.id }, to: '/inventory/stocktake/$sessionId' })}
+      onRowClick={(item) =>
+        navigate({ params: { sessionId: item.id }, to: '/equipment/inventory/stocktake/$sessionId' })
+      }
       paginationMode="complete"
       table={table}
       total={total}

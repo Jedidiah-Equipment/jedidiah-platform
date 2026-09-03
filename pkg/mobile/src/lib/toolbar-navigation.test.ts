@@ -10,7 +10,7 @@ import {
 
 describe('toolbar navigation', () => {
   test('resolves Assistant origins and falls back to Jobs', () => {
-    expect(resolveAssistantParent('/stores')).toBe(MAIN_TAB_PARENTS.stores);
+    expect(resolveAssistantParent('/equipment/stores')).toBe(MAIN_TAB_PARENTS.stores);
     expect(resolveAssistantParent('/not-a-tab')).toBe(MAIN_TAB_PARENTS.jobs);
     expect(resolveAssistantParent(undefined)).toBe(MAIN_TAB_PARENTS.jobs);
   });
@@ -19,17 +19,17 @@ describe('toolbar navigation', () => {
     expect(resolveDocumentParent({ productId: 'product-1' })).toMatchObject({
       kind: 'product',
       parentLabel: 'Product',
-      returnTo: { pathname: '/products/[productId]', params: { productId: 'product-1' } },
+      returnTo: { pathname: '/equipment/products/[productId]', params: { productId: 'product-1' } },
     });
     expect(resolveDocumentParent({ jobId: 'job-1' })).toMatchObject({
       kind: 'job',
       parentLabel: 'Job',
-      returnTo: { pathname: '/jobs/[jobId]', params: { jobId: 'job-1' } },
+      returnTo: { pathname: '/equipment/jobs/[jobId]', params: { jobId: 'job-1' } },
     });
     expect(resolveDocumentParent({ quoteId: 'quote-1' })).toMatchObject({
       kind: 'quote',
       parentLabel: 'Quote',
-      returnTo: { pathname: '/quotes/[quoteId]', params: { quoteId: 'quote-1' } },
+      returnTo: { pathname: '/equipment/quotes/[quoteId]', params: { quoteId: 'quote-1' } },
     });
     expect(resolveDocumentParent({})).toBeNull();
   });
@@ -37,11 +37,11 @@ describe('toolbar navigation', () => {
   test('preserves nested Stores and Bay parents', () => {
     expect(resolveStoresMovementParent({ jobId: 'job-1', partCode: 'P-1' })).toEqual({
       label: 'Close-out Job',
-      returnTo: { pathname: '/stores/close-out/[jobId]', params: { jobId: 'job-1' } },
+      returnTo: { pathname: '/equipment/stores/close-out/[jobId]', params: { jobId: 'job-1' } },
     });
     expect(resolveStoresMovementParent({ partCode: 'P-1' })).toEqual({
       label: 'Part',
-      returnTo: { pathname: '/stores/parts/[partCode]', params: { partCode: 'P-1' } },
+      returnTo: { pathname: '/equipment/stores/parts/[partCode]', params: { partCode: 'P-1' } },
     });
     expect(bayToolbarParentLabel(false)).toBe('Plan');
     expect(bayToolbarParentLabel(true)).toBe('Bay schedule');

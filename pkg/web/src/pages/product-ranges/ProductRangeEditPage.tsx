@@ -88,7 +88,7 @@ const RemoveProductRangeButton: React.FC<{ range: ProductRange }> = ({ range }) 
       onSuccess: async () => {
         await Promise.all([invalidateProductRanges(), invalidateProducts(), invalidateQuotes()]);
         toast.success('Product Range removed');
-        await navigate({ to: '/product-ranges' });
+        await navigate({ to: '/equipment/product-ranges' });
       },
       onError: (error) => {
         showMutationError(error, 'Unable to remove Product Range.');

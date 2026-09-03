@@ -75,19 +75,29 @@ describe('appTabHref', () => {
   it('maps the permission order to each root route', () => {
     const tabs: AppTab[] = ['activity', 'jobs', 'plan', 'quotes', 'products', 'units', 'stores'];
 
-    expect(tabs.map(appTabHref)).toEqual(['/activity', '/jobs', '/plan', '/quotes', '/products', '/units', '/stores']);
+    expect(tabs.map(appTabHref)).toEqual([
+      '/equipment/activity',
+      '/equipment/jobs',
+      '/equipment/plan',
+      '/equipment/quotes',
+      '/equipment/products',
+      '/equipment/units',
+      '/equipment/stores',
+    ]);
   });
 });
 
 describe('activeAppTab', () => {
   it('reads the tab from the segment below the tabs group', () => {
-    expect(activeAppTab(['(protected)', '(tabs)', 'activity'])).toBe('activity');
-    expect(activeAppTab(['(protected)', '(tabs)', 'jobs', '[jobId]'])).toBe('jobs');
-    expect(activeAppTab(['(protected)', '(tabs)', 'stores', 'parts', '[partCode]', 'checkout'])).toBe('stores');
+    expect(activeAppTab(['(protected)', 'equipment', '(tabs)', 'activity'])).toBe('activity');
+    expect(activeAppTab(['(protected)', 'equipment', '(tabs)', 'jobs', '[jobId]'])).toBe('jobs');
+    expect(activeAppTab(['(protected)', 'equipment', '(tabs)', 'stores', 'parts', '[partCode]', 'checkout'])).toBe(
+      'stores',
+    );
   });
 
   it('keeps a Bay schedule on Plan, which owns the route group', () => {
-    expect(activeAppTab(['(protected)', '(tabs)', '(plan)', 'bays', '[bayId]'])).toBe('plan');
+    expect(activeAppTab(['(protected)', 'equipment', '(tabs)', '(plan)', 'bays', '[bayId]'])).toBe('plan');
   });
 
   it('has no active tab outside the tabs group', () => {

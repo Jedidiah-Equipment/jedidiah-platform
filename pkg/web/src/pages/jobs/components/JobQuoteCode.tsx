@@ -24,7 +24,7 @@ export const JobQuoteCode: React.FC<{
       className="inline-flex items-center gap-1"
       onClick={onOpenQuote}
       params={{ id: quoteId }}
-      to="/quotes/$id/edit"
+      to="/equipment/quotes/$id/edit"
     >
       {quoteCode}
       <IconExternalLink aria-hidden size={16} />

@@ -142,13 +142,13 @@ describe('StockMovementHistoryTable', () => {
     expect(html).toContain('Checkout');
     expect(html).toContain('Receipt');
     expect(html).toContain('PO-00042');
-    expect(html).toContain('/purchase-orders/00000000-0000-4000-8000-000000000098');
+    expect(html).toContain('/equipment/purchase-orders/00000000-0000-4000-8000-000000000098');
     // Every reference kind is followable, not only the order one: a draw names its Job and a
     // stock count names the walk that posted it.
     expect(html).toContain('JOB-00018');
-    expect(html).toContain('/jobs/00000000-0000-4000-8000-000000000099');
+    expect(html).toContain('/equipment/jobs/00000000-0000-4000-8000-000000000099');
     expect(html).toContain('Stores count');
-    expect(html).toContain('/inventory/stocktake/00000000-0000-4000-8000-000000000097');
+    expect(html).toContain('/equipment/inventory/stocktake/00000000-0000-4000-8000-000000000097');
     expect(html).toContain('10 pc');
     expect(html).toContain('Test User');
     expect(html).toContain('Supplier repriced');
@@ -176,8 +176,8 @@ describe('StockMovementHistoryTable', () => {
     // Stores reads this ledger and holds no `job:read`; the link would only reach a sheet that
     // refuses to load. The other references are unaffected.
     expect(html).toContain('JOB-00018');
-    expect(html).not.toContain('/jobs/00000000-0000-4000-8000-000000000099');
-    expect(html).toContain('/purchase-orders/00000000-0000-4000-8000-000000000098');
-    expect(html).toContain('/inventory/stocktake/00000000-0000-4000-8000-000000000097');
+    expect(html).not.toContain('/equipment/jobs/00000000-0000-4000-8000-000000000099');
+    expect(html).toContain('/equipment/purchase-orders/00000000-0000-4000-8000-000000000098');
+    expect(html).toContain('/equipment/inventory/stocktake/00000000-0000-4000-8000-000000000097');
   });
 });

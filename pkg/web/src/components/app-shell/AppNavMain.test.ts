@@ -51,13 +51,13 @@ describe('AppNavMain', () => {
   });
 
   it('highlights Inventory history without highlighting the routes that own a nav item', () => {
-    expect(isInventoryNavPath('/inventory')).toBe(true);
-    expect(isInventoryNavPath('/inventory/9bd0c2cb-d97f-4b34-beba-c03e5541c96d')).toBe(true);
-    expect(isInventoryNavPath('/inventory/close-out')).toBe(false);
-    expect(isInventoryNavPath('/inventory/close-out/job-id')).toBe(false);
-    expect(isInventoryNavPath('/inventory/buy-list')).toBe(false);
-    expect(isInventoryNavPath('/inventory/price-variance')).toBe(false);
-    expect(isInventoryNavPath('/inventory/stocktake')).toBe(false);
-    expect(isInventoryNavPath('/inventory/stocktake/session-id')).toBe(false);
+    expect(isInventoryNavPath('/equipment/inventory')).toBe(true);
+    expect(isInventoryNavPath('/equipment/inventory/9bd0c2cb-d97f-4b34-beba-c03e5541c96d')).toBe(true);
+    expect(isInventoryNavPath('/equipment/inventory/close-out')).toBe(false);
+    expect(isInventoryNavPath('/equipment/inventory/close-out/job-id')).toBe(false);
+    expect(isInventoryNavPath('/equipment/inventory/buy-list')).toBe(false);
+    expect(isInventoryNavPath('/equipment/inventory/price-variance')).toBe(false);
+    expect(isInventoryNavPath('/equipment/inventory/stocktake')).toBe(false);
+    expect(isInventoryNavPath('/equipment/inventory/stocktake/session-id')).toBe(false);
   });
 });

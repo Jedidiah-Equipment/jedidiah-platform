@@ -143,7 +143,7 @@ function QuoteJobCard({
               <IconFileDescription data-icon="inline-start" />
               Open
             </Button>
-            <Button render={<Link search={{ job: job.jobId }} to="/jobs" />} variant="outline">
+            <Button render={<Link search={{ job: job.jobId }} to="/equipment/jobs" />} variant="outline">
               <IconSubtask data-icon="inline-start" />
               Planner
             </Button>
@@ -166,7 +166,7 @@ function QuoteAllocationCard({ quote }: { quote: Extract<QuoteDetail, { kind: 'p
           <Link
             className="block truncate underline-offset-4 hover:underline"
             params={{ id: quote.productUnit.id }}
-            to="/units/$id"
+            to="/equipment/units/$id"
           >
             {quote.productUnit.productSerialNumber}
           </Link>
@@ -190,7 +190,7 @@ function QuoteAllocationCard({ quote }: { quote: Extract<QuoteDetail, { kind: 'p
                 className="grid rounded-md border p-2 underline-offset-4 hover:bg-muted hover:underline"
                 key={competitor.id}
                 params={{ id: competitor.id }}
-                to="/quotes/$id/edit"
+                to="/equipment/quotes/$id/edit"
               >
                 <span className="font-medium">{competitor.code}</span>
                 <span className="truncate text-muted-foreground text-xs">

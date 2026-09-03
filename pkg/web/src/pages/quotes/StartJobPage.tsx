@@ -87,7 +87,7 @@ const StartJobContent: React.FC<{ quote: QuoteDetail }> = ({ quote }) => {
         // after navigation so this page never flashes its not-startable state.
         await Promise.all([invalidateJobs(), invalidateJobActivity()]);
         toast.success(isRework ? 'Rework Job started' : 'Job started');
-        await navigate({ search: { job: job.id }, to: '/jobs' });
+        await navigate({ search: { job: job.id }, to: '/equipment/jobs' });
         await invalidateQuotes();
       },
       onError: (error) => showMutationError(error, 'Unable to start job.'),
@@ -102,7 +102,7 @@ const StartJobContent: React.FC<{ quote: QuoteDetail }> = ({ quote }) => {
           <EmptyTitle>This quote cannot start a {isRework ? 'Rework Job' : 'Job'}.</EmptyTitle>
           <EmptyDescription>{getStartJobUnavailableMessage(quote, canCreateJob)}</EmptyDescription>
         </EmptyHeader>
-        <Button render={<Link params={{ id: quote.id }} to="/quotes/$id/edit" />} variant="outline">
+        <Button render={<Link params={{ id: quote.id }} to="/equipment/quotes/$id/edit" />} variant="outline">
           Back to quote
         </Button>
       </Empty>
@@ -200,7 +200,7 @@ const StartJobForm: React.FC<StartJobFormProps> = ({
           <div className="flex items-center justify-end gap-2">
             <Button
               disabled={isPending}
-              render={<Link params={{ id: quote.id }} to="/quotes/$id/edit" />}
+              render={<Link params={{ id: quote.id }} to="/equipment/quotes/$id/edit" />}
               variant="outline"
             >
               Cancel

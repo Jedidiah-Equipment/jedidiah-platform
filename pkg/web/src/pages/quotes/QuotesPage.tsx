@@ -159,7 +159,8 @@ export const QuoteTable: React.FC<{ customerId?: UUID }> = ({ customerId }) => {
     },
   });
 
-  const handleQuoteClick = (row: QuoteTableRow) => navigate({ params: { id: row.quote.id }, to: '/quotes/$id/edit' });
+  const handleQuoteClick = (row: QuoteTableRow) =>
+    navigate({ params: { id: row.quote.id }, to: '/equipment/quotes/$id/edit' });
   const quoteRowClick = canUpdateQuote ? handleQuoteClick : undefined;
   const errorMessage =
     getApiQueryErrorMessage(quotesQuery.error, 'Unable to load quotes.') ??

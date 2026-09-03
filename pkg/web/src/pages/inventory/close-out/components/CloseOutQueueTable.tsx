@@ -16,7 +16,11 @@ const closeOutQueueColumns: DataTableColumnDef<CloseOutQueueRow>[] = [
     accessorFn: (item) => `${item.displayName} ${item.code}`,
     cell: ({ row }) => (
       <>
-        <Link className="block font-medium" params={{ jobId: row.original.jobId }} to="/inventory/close-out/$jobId">
+        <Link
+          className="block font-medium"
+          params={{ jobId: row.original.jobId }}
+          to="/equipment/inventory/close-out/$jobId"
+        >
           {row.original.displayName}
         </Link>
         <span className="block font-mono text-muted-foreground text-xs">{row.original.code}</span>
@@ -79,7 +83,7 @@ export function CloseOutQueueTable({ errorMessage, isLoading, items }: CloseOutQ
       getRowAriaLabel={(item) => `Open close-out for ${item.code}`}
       globalFilterPlaceholder="Search close-out queue..."
       isLoading={isLoading}
-      onRowClick={(item) => navigate({ params: { jobId: item.jobId }, to: '/inventory/close-out/$jobId' })}
+      onRowClick={(item) => navigate({ params: { jobId: item.jobId }, to: '/equipment/inventory/close-out/$jobId' })}
       paginationMode="complete"
       table={table}
       total={total}

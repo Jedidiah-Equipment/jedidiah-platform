@@ -54,7 +54,7 @@ export function NewQuoteModal({ onClose }: { onClose: () => void }) {
       ]);
       onClose();
       showToast('success', 'Quote created');
-      router.push({ pathname: '/quotes/[quoteId]', params: { quoteId: created.id } });
+      router.push({ pathname: '/equipment/quotes/[quoteId]', params: { quoteId: created.id } });
     },
   });
 

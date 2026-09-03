@@ -1,0 +1,19 @@
+import { UUID } from '@pkg/schema';
+import { createFileRoute } from '@tanstack/react-router';
+import { z } from 'zod';
+
+import { JobsPage } from '@/pages/jobs/JobsPage.js';
+
+export const Route = createFileRoute('/_authed/equipment/jobs/')({
+  validateSearch: z.object({ job: UUID.optional() }),
+  staticData: {
+    pageLabel: 'Jobs',
+  },
+  component: JobsRoute,
+});
+
+function JobsRoute() {
+  const { job } = Route.useSearch();
+
+  return <JobsPage selectedJobId={job} />;
+}

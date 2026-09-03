@@ -48,13 +48,13 @@ describe('getProductUnit contract', () => {
       // Everything the machine is, minus the Product thumbnail the assistant has no use for.
       product: PRODUCT_RESPONSE,
       links: {
-        app: `/units/${UNIT_ID}`,
-        owner: `/customers/${CUSTOMER_ID}/edit`,
-        product: `/products/${PRODUCT_ID}/edit`,
+        app: `/equipment/units/${UNIT_ID}`,
+        owner: `/equipment/customers/${CUSTOMER_ID}/edit`,
+        product: `/equipment/products/${PRODUCT_ID}/edit`,
       },
     });
     expect(
       toGetProductUnitResponse(unit, createUserAccessSummary({ role: 'job-viewer', userId: 'test-user-id' })).links,
-    ).toEqual({ app: `/units/${UNIT_ID}` });
+    ).toEqual({ app: `/equipment/units/${UNIT_ID}` });
   });
 });

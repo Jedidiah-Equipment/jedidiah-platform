@@ -30,8 +30,8 @@ describe('JobActivityEntry', () => {
   it('links the whole entry to the Job Sheet and the icon to the Gantt', async () => {
     const html = await renderWithRouter(<JobActivityEntry item={buildItem()} />);
 
-    expect(html).toContain('href="/jobs/activity?job=30000000-0000-4000-8000-000000000000"');
-    expect(html).toContain('href="/jobs?job=30000000-0000-4000-8000-000000000000"');
+    expect(html).toContain('href="/equipment/jobs/activity?job=30000000-0000-4000-8000-000000000000"');
+    expect(html).toContain('href="/equipment/jobs?job=30000000-0000-4000-8000-000000000000"');
   });
 
   it('can hide repeated Job detail while keeping the feedback', async () => {
@@ -41,8 +41,8 @@ describe('JobActivityEntry', () => {
     expect(html).not.toContain('>JOB-00042<');
     expect(html).not.toContain('aria-label="Cane 8 ton"');
     expect(html).not.toContain('Acme Mining');
-    expect(html).not.toContain('href="/jobs/activity?job=30000000-0000-4000-8000-000000000000"');
-    expect(html).not.toContain('href="/jobs?job=30000000-0000-4000-8000-000000000000"');
+    expect(html).not.toContain('href="/equipment/jobs/activity?job=30000000-0000-4000-8000-000000000000"');
+    expect(html).not.toContain('href="/equipment/jobs?job=30000000-0000-4000-8000-000000000000"');
   });
 
   it('keeps the submitter discoverable when their avatar has no image', async () => {
@@ -142,8 +142,8 @@ describe('JobActivityEntry', () => {
 
     expect(html).toContain('Fit the heavy-duty boom.');
     expect(html).not.toContain('>JOB-00042<');
-    expect(html).not.toContain('href="/jobs/activity?job=30000000-0000-4000-8000-000000000000"');
-    expect(html).not.toContain('href="/jobs?job=30000000-0000-4000-8000-000000000000"');
+    expect(html).not.toContain('href="/equipment/jobs/activity?job=30000000-0000-4000-8000-000000000000"');
+    expect(html).not.toContain('href="/equipment/jobs?job=30000000-0000-4000-8000-000000000000"');
   });
 
   // The nightly completion sweep audits with a null actor deliberately, and a deleted user's row is

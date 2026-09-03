@@ -114,7 +114,7 @@ export function JobCatalogCard({ job }: { job: JobSummary }) {
             ? `${job.customerCompanyName} · ${serial}`
             : job.customerCompanyName
       }
-      onPress={() => router.push({ pathname: '/jobs/[jobId]', params: { jobId: job.id } })}
+      onPress={() => router.push({ pathname: '/equipment/jobs/[jobId]', params: { jobId: job.id } })}
       subText={displayName}
       trailing={<JobScheduleSummary job={job} />}
     />

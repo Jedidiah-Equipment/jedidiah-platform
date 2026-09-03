@@ -67,9 +67,9 @@ describe('findProductUnits contract', () => {
 
     expect(FindProductUnitsResponse.parse(response)).toEqual(response);
     expect(response[0]?.links).toEqual({
-      app: `/units/${UNIT_ID}`,
-      owner: `/customers/${CUSTOMER_ID}/edit`,
-      product: `/products/${PRODUCT_ID}/edit`,
+      app: `/equipment/units/${UNIT_ID}`,
+      owner: `/equipment/customers/${CUSTOMER_ID}/edit`,
+      product: `/equipment/products/${PRODUCT_ID}/edit`,
     });
   });
 
@@ -87,12 +87,15 @@ describe('findProductUnits contract', () => {
       createListResult(null),
       createUserAccessSummary({ role: 'admin', userId: 'test-user-id' }),
     );
-    expect(stockUnit[0]?.links).toEqual({ app: `/units/${UNIT_ID}`, product: `/products/${PRODUCT_ID}/edit` });
+    expect(stockUnit[0]?.links).toEqual({
+      app: `/equipment/units/${UNIT_ID}`,
+      product: `/equipment/products/${PRODUCT_ID}/edit`,
+    });
 
     const jobViewer = toFindProductUnitsResponse(
       createListResult({ companyName: 'Acme Mining', id: CUSTOMER_ID }),
       createUserAccessSummary({ role: 'job-viewer', userId: 'test-user-id' }),
     );
-    expect(jobViewer[0]?.links).toEqual({ app: `/units/${UNIT_ID}` });
+    expect(jobViewer[0]?.links).toEqual({ app: `/equipment/units/${UNIT_ID}` });
   });
 });

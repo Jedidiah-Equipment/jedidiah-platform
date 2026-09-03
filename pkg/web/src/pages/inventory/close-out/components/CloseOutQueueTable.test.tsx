@@ -57,7 +57,7 @@ describe('CloseOutQueueTable', () => {
     expect(html).toContain('64 days');
     expect(html).toContain('1 day<');
     // Every row links into the close-out screen, which is the only way a Job leaves the queue.
-    expect(html).toContain('/inventory/close-out/00000000-0000-4000-8000-000000000001');
-    expect(html).toContain('/inventory/close-out/00000000-0000-4000-8000-000000000002');
+    expect(html).toContain('/equipment/inventory/close-out/00000000-0000-4000-8000-000000000001');
+    expect(html).toContain('/equipment/inventory/close-out/00000000-0000-4000-8000-000000000002');
   });
 });

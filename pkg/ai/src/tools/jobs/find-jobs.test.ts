@@ -63,15 +63,15 @@ describe('findJobs contract', () => {
       {
         ...result.items[0],
         links: {
-          app: `/jobs/${JOB_ID}`,
-          customer: `/customers/${CUSTOMER_ID}/edit`,
-          quote: `/quotes/${QUOTE_ID}/edit`,
+          app: `/equipment/jobs/${JOB_ID}`,
+          customer: `/equipment/customers/${CUSTOMER_ID}/edit`,
+          quote: `/equipment/quotes/${QUOTE_ID}/edit`,
         },
       },
     ]);
     expect(response[0]?.links).not.toHaveProperty('product');
     expect(
       toFindJobsResponse(result, createUserAccessSummary({ role: 'job-viewer', userId: 'test-user-id' }))[0]?.links,
-    ).toEqual({ app: `/jobs/${JOB_ID}` });
+    ).toEqual({ app: `/equipment/jobs/${JOB_ID}` });
   });
 });

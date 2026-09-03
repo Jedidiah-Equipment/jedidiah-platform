@@ -110,7 +110,11 @@ const UnitDetail: React.FC<{ unit: ProductUnitDetail }> = ({ unit }) => {
               {unit.jobs.map((job) => (
                 <li className="flex items-center gap-3" key={job.id}>
                   {canReadJobs ? (
-                    <Link className="font-medium underline underline-offset-4" params={{ id: job.id }} to="/jobs/$id">
+                    <Link
+                      className="font-medium underline underline-offset-4"
+                      params={{ id: job.id }}
+                      to="/equipment/jobs/$id"
+                    >
                       {job.code}
                     </Link>
                   ) : (
@@ -151,7 +155,7 @@ const RemoveUnitButton: React.FC<{ unit: ProductUnitDetail }> = ({ unit }) => {
     trpc.productUnits.remove.mutationOptions({
       onSuccess: async () => {
         await Promise.all([invalidateProductUnits(), invalidateJobs()]);
-        await navigate({ to: '/units' });
+        await navigate({ to: '/equipment/units' });
       },
       onError: (error) => {
         showMutationError(error, 'Unable to remove unit.');

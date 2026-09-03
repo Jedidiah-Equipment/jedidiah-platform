@@ -1,0 +1,372 @@
+import {
+  type customers,
+  type Db,
+  type products,
+  quoteSelectedAssemblies,
+  quotes,
+  quoteWorkItemParts,
+  quoteWorkItems,
+  type user,
+} from '@pkg/db';
+import {
+  computeAdditionalDeliveryPrice,
+  formatCurrency,
+  formatPercent,
+  isQuoteDocumentGenerationAllowed,
+  priceQuoteWithCatalog,
+  quoteWorkItemSummaryRows,
+} from '@pkg/domain';
+import { mergePdfBytes } from '@pkg/pdf';
+import {
+  type AuthId,
+  type BrochurePdfRenderer,
+  formatQuoteCode,
+  type QuoteDocumentGenerationInput,
+  type QuoteDocumentGenerationResult,
+  type QuoteDocumentGenerationWarning,
+  type QuoteDocumentModel,
+  type QuoteDocumentPdfRenderer,
+  type QuoteDocumentPricingRow,
+  type QuoteDocumentWorkItem,
+  type UUID,
+} from '@pkg/schema';
+import { asc, eq } from 'drizzle-orm';
+
+import type { StorageAdapter } from '../../storage/storage-adapter.js';
+import { listAssemblies } from '../products/product-assembly-service.js';
+import { generateHistoricalProductBrochureIfComplete } from '../products/product-brochure-document.js';
+import { createQuoteDocument, getQuoteDocuments } from './quote-document.js';
+import {
+  QuoteDocumentGenerationNotAllowedError,
+  QuoteNotFoundError,
+  QuoteOfferingInvariantError,
+} from './quote-errors.js';
+import { narrowQuoteOffering } from './quote-offering.js';
+import type { QuoteSelectedAssemblyRow } from './quote-selected-assemblies.js';
+import type { QuoteWorkItemRow } from './quote-work-items.js';
+
+type QuoteDocumentGenerationRow = typeof quotes.$inferSelect & {
+  customer: Pick<
+    typeof customers.$inferSelect,
+    'address' | 'companyName' | 'contactPerson' | 'email' | 'phone' | 'vatNumber'
+  >;
+  product: Pick<typeof products.$inferSelect, 'modelCode' | 'name'> | null;
+  salesPerson: Pick<typeof user.$inferSelect, 'email' | 'name' | 'phoneNumber'> | null;
+  selectedAssemblies: QuoteSelectedAssemblyRow[];
+  workItems: QuoteWorkItemRow[];
+};
+
+type QuoteRow = typeof quotes.$inferSelect;
+
+// The offering narrowed once for a document render: the product variant carries the facts the brochure,
+// assemblies, and base description all read, so none of them re-guard `kind`/`productId` downstream.
+type QuoteDocumentSource =
+  | { kind: 'product'; productId: UUID; product: NonNullable<QuoteDocumentGenerationRow['product']> }
+  | { kind: 'custom'; workTitle: string };
+
+function resolveQuoteDocumentSource(quote: QuoteDocumentGenerationRow): QuoteDocumentSource {
+  const offering = narrowQuoteOffering(quote);
+
+  if (offering.kind === 'custom') {
+    return { kind: 'custom', workTitle: offering.workTitle };
+  }
+
+  if (!quote.product) {
+    throw new QuoteOfferingInvariantError('Product Quote is missing its Product.');
+  }
+
+  return { kind: 'product', productId: offering.productId, product: quote.product };
+}
+
+type RenderedQuoteDocument = {
+  bytes: Uint8Array;
+  filename: string;
+  revision: number;
+  warnings: QuoteDocumentGenerationWarning[];
+};
+
+async function renderQuoteDocument({
+  brochureRenderer,
+  db,
+  input,
+  pdfRenderer,
+  storage,
+}: {
+  brochureRenderer: BrochurePdfRenderer;
+  db: Db;
+  input: QuoteDocumentGenerationInput;
+  pdfRenderer: QuoteDocumentPdfRenderer;
+  storage: StorageAdapter;
+}): Promise<RenderedQuoteDocument> {
+  const quote = await getQuoteDocumentGenerationRow({ db, quoteId: input.quoteId });
+  assertQuoteDocumentGenerationAllowed(quote);
+  const source = resolveQuoteDocumentSource(quote);
+
+  const existingDocuments = await getQuoteDocuments({ db, quoteId: input.quoteId });
+  const revision =
+    existingDocuments.reduce((highest, document) => Math.max(highest, document.metadata.revision), 0) + 1;
+  const filename = `${formatQuoteCode(quote.code)}-rev-${revision}.pdf`;
+  const document = await getQuoteDocumentModel({ db, input, quote, source });
+  const renderedQuoteBytes = await pdfRenderer({ document, filename });
+  const brochure =
+    source.kind === 'product'
+      ? await generateHistoricalProductBrochureIfComplete({
+          db,
+          pdfRenderer: brochureRenderer,
+          productId: source.productId,
+          storage,
+        })
+      : null;
+  const packet = await buildQuoteDocumentPacket({
+    brochure,
+    renderedQuoteBytes,
+    warnWhenMissingBrochure: source.kind === 'product',
+  });
+
+  return {
+    bytes: packet.bytes,
+    filename,
+    revision,
+    warnings: packet.warnings,
+  };
+}
+
+export async function generateQuoteDocument({
+  actorUserId,
+  brochureRenderer,
+  db,
+  input,
+  pdfRenderer,
+  storage,
+}: {
+  actorUserId: AuthId;
+  brochureRenderer: BrochurePdfRenderer;
+  db: Db;
+  input: QuoteDocumentGenerationInput;
+  pdfRenderer: QuoteDocumentPdfRenderer;
+  storage: StorageAdapter;
+}): Promise<QuoteDocumentGenerationResult> {
+  const rendered = await renderQuoteDocument({ brochureRenderer, db, input, pdfRenderer, storage });
+  const document = await createQuoteDocument({
+    actorUserId,
+    db,
+    input: {
+      bytes: rendered.bytes,
+      filename: rendered.filename,
+      metadata: { revision: rendered.revision },
+      quoteId: input.quoteId,
+    },
+    storage,
+  });
+
+  return {
+    document,
+    warnings: rendered.warnings,
+  };
+}
+
+async function buildQuoteDocumentPacket({
+  brochure,
+  renderedQuoteBytes,
+  warnWhenMissingBrochure,
+}: {
+  brochure: { bytes: Uint8Array } | null;
+  renderedQuoteBytes: Uint8Array;
+  warnWhenMissingBrochure: boolean;
+}): Promise<{ bytes: Uint8Array; warnings: QuoteDocumentGenerationWarning[] }> {
+  if (!brochure) {
+    return {
+      bytes: renderedQuoteBytes,
+      warnings: warnWhenMissingBrochure
+        ? [
+            {
+              code: 'quote_document.brochure_config_incomplete',
+              message:
+                "This Quote Product's Brochure is not fully configured, so the Quote Document was generated without one.",
+            },
+          ]
+        : [],
+    };
+  }
+
+  return {
+    bytes: await mergePdfBytes([renderedQuoteBytes, brochure.bytes]),
+    warnings: [],
+  };
+}
+
+async function getQuoteDocumentModel({
+  db,
+  input,
+  quote,
+  source,
+}: {
+  db: Db;
+  input: QuoteDocumentGenerationInput;
+  quote: QuoteDocumentGenerationRow;
+  source: QuoteDocumentSource;
+}): Promise<QuoteDocumentModel> {
+  const productAssemblies =
+    source.kind === 'product' ? await listAssemblies({ productId: source.productId, tx: db }) : [];
+  // Optional rows and their money both come from the catalog-resolved live set, so a selection that
+  // goes stale drops from the PDF rows and the subtotal together.
+  const pricing = priceQuoteWithCatalog(
+    {
+      ...quote,
+      ...(source.kind === 'custom' ? { workItems: quote.workItems } : { workItems: undefined }),
+    },
+    productAssemblies,
+  );
+  const selectedOptionalAssemblies = pricing.liveSelections.map((selection) => ({
+    amount: selection.quotedPrice,
+    label: selection.quotedName,
+  }));
+  const workItems = source.kind === 'custom' ? toQuoteDocumentWorkItems({ workItems: quote.workItems }) : [];
+  const discountAmount = pricing.discountAmount;
+  const additionalDeliveryPrice = computeAdditionalDeliveryPrice(quote);
+  const pricingRows: QuoteDocumentPricingRow[] = [
+    {
+      amount: quote.quotedBasePrice,
+      descriptionLines: [getQuoteDocumentBaseDescription(source)],
+      kind: 'base',
+      quantity: 1,
+      unitPrice: quote.quotedBasePrice,
+    },
+    ...selectedOptionalAssemblies.map((item) => ({
+      amount: item.amount,
+      descriptionLines: [item.label],
+      kind: 'optional' as const,
+      quantity: 1,
+      unitPrice: item.amount,
+    })),
+    ...(discountAmount > 0
+      ? [
+          {
+            amount: -discountAmount,
+            descriptionLines: [`Discount (${formatPercent(quote.discountPercent)})`],
+            kind: 'discount' as const,
+            quantity: 1,
+            unitPrice: -discountAmount,
+          },
+        ]
+      : []),
+    ...(additionalDeliveryPrice > 0
+      ? [
+          {
+            amount: additionalDeliveryPrice,
+            descriptionLines: ['Delivery'],
+            kind: 'charge' as const,
+            quantity: 1,
+            unitPrice: additionalDeliveryPrice,
+          },
+        ]
+      : []),
+  ];
+  return {
+    customer: quote.customer,
+    issueDate: quote.createdAt,
+    leadTime: input.leadTime,
+    pricingRows,
+    notes: toDisplayLines(quote.documentNotes),
+    paymentTerms: `${formatPercent(quote.depositPercent)} deposit`,
+    quoteCode: formatQuoteCode(quote.code),
+    salesPerson: quote.salesPerson,
+    staleSelectionNotes: pricing.staleSelections.map((selection) => `${selection.quotedName} unavailable`),
+    subtotal: pricing.subtotal,
+    total: pricing.total,
+    transport: quote.deliveryIncluded
+      ? 'Included in sale price'
+      : `Additional charge (${formatCurrency(additionalDeliveryPrice, quote.quotedCurrencyCode)})`,
+    vatAmount: pricing.vatAmount,
+    currencyCode: quote.quotedCurrencyCode,
+    workItems,
+  };
+}
+
+function toQuoteDocumentWorkItems({ workItems }: { workItems: readonly QuoteWorkItemRow[] }): QuoteDocumentWorkItem[] {
+  // `name` arrives already resolved to the Department's quote-facing label, so the document never
+  // exposes the internal department vocabulary the shop floor uses.
+  return quoteWorkItemSummaryRows({ workItems }).map((row) => ({
+    amount: row.total,
+    // Charges are copied field by field so the document model carries presentation data alone,
+    // never the Work Item Part rows the summary rows keep for row identity.
+    charges: row.charges.map(({ amount, kind, label, quantity, unitPrice }) => ({
+      amount,
+      kind,
+      label,
+      quantity,
+      unitPrice,
+    })),
+    description: row.description,
+    name: row.name,
+  }));
+}
+
+function toDisplayLines(value: string | null | undefined): string[] {
+  return value
+    ? value
+        .split(/\r?\n/)
+        .map((line) => line.trim())
+        .filter(Boolean)
+    : [];
+}
+
+async function getQuoteDocumentGenerationRow({ db, quoteId }: { db: Db; quoteId: UUID }) {
+  const row = await db.query.quotes.findFirst({
+    where: eq(quotes.id, quoteId),
+    with: {
+      customer: {
+        columns: {
+          address: true,
+          companyName: true,
+          contactPerson: true,
+          email: true,
+          phone: true,
+          vatNumber: true,
+        },
+      },
+      product: {
+        columns: {
+          modelCode: true,
+          name: true,
+        },
+      },
+      salesPerson: {
+        columns: {
+          email: true,
+          name: true,
+          phoneNumber: true,
+        },
+      },
+      selectedAssemblies: {
+        orderBy: [asc(quoteSelectedAssemblies.createdAt), asc(quoteSelectedAssemblies.id)],
+      },
+      workItems: {
+        orderBy: [asc(quoteWorkItems.position), asc(quoteWorkItems.createdAt), asc(quoteWorkItems.id)],
+        with: {
+          parts: {
+            orderBy: [asc(quoteWorkItemParts.position), asc(quoteWorkItemParts.createdAt), asc(quoteWorkItemParts.id)],
+          },
+        },
+      },
+    },
+  });
+
+  if (!row) {
+    throw new QuoteNotFoundError(quoteId);
+  }
+
+  return row satisfies QuoteDocumentGenerationRow;
+}
+
+function getQuoteDocumentBaseDescription(source: QuoteDocumentSource): string {
+  return source.kind === 'custom' ? source.workTitle : `${source.product.modelCode} ${source.product.name}`.trim();
+}
+
+function assertQuoteDocumentGenerationAllowed(quote: Pick<QuoteRow, 'status'>): void {
+  if (!isQuoteDocumentGenerationAllowed(quote.status)) {
+    throw new QuoteDocumentGenerationNotAllowedError(
+      'Quote Documents can only be generated for draft, sent, or accepted Quotes.',
+    );
+  }
+}

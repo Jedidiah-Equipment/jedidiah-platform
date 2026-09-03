@@ -1,4 +1,27 @@
-import { documentContentTypeLabel, formatBytes, sniffDocumentContentType } from '../documents/document-policy.js';
+export const DOCUMENT_PDF_CONTENT_TYPE = 'application/pdf';
+export const DOCUMENT_PNG_CONTENT_TYPE = 'image/png';
+export const DOCUMENT_JPEG_CONTENT_TYPE = 'image/jpeg';
+export const DOCUMENT_WEBP_CONTENT_TYPE = 'image/webp';
+export const DOCUMENT_ZIP_CONTENT_TYPE = 'application/zip';
+export const DOCUMENT_CONTENT_TYPE_LABELS = {
+  [DOCUMENT_JPEG_CONTENT_TYPE]: 'JPEG',
+  [DOCUMENT_PDF_CONTENT_TYPE]: 'PDF',
+  [DOCUMENT_PNG_CONTENT_TYPE]: 'PNG',
+  [DOCUMENT_WEBP_CONTENT_TYPE]: 'WebP',
+  [DOCUMENT_ZIP_CONTENT_TYPE]: 'ZIP',
+} as const;
+
+const PDF_MAGIC_BYTES = new Uint8Array([0x25, 0x50, 0x44, 0x46, 0x2d]);
+const PNG_MAGIC_BYTES = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+const JPEG_MAGIC_BYTES = new Uint8Array([0xff, 0xd8, 0xff]);
+const WEBP_RIFF_BYTES = new Uint8Array([0x52, 0x49, 0x46, 0x46]);
+const WEBP_FORMAT_BYTES = new Uint8Array([0x57, 0x45, 0x42, 0x50]);
+// ZIP archives may begin with a local file header, an empty-archive marker, or a spanned-archive marker.
+const ZIP_MAGIC_BYTES = [
+  new Uint8Array([0x50, 0x4b, 0x03, 0x04]),
+  new Uint8Array([0x50, 0x4b, 0x05, 0x06]),
+  new Uint8Array([0x50, 0x4b, 0x07, 0x08]),
+] as const;
 
 // Per-feature upload rules for stored files. Compose one of these where an entity owns uploaded files and
 // pass it to {@link validateFile}; the entity decides its allowed formats and size cap. Content-type
@@ -58,4 +81,52 @@ export function describeFileContentTypes(contentTypes: readonly string[]): strin
   }
 
   return `${labels.slice(0, -1).join(', ')} or ${labels[labels.length - 1]}`;
+}
+
+export function sniffDocumentContentType(bytes: Uint8Array): string | null {
+  if (startsWithBytes(bytes, PDF_MAGIC_BYTES)) {
+    return DOCUMENT_PDF_CONTENT_TYPE;
+  }
+
+  if (startsWithBytes(bytes, PNG_MAGIC_BYTES)) {
+    return DOCUMENT_PNG_CONTENT_TYPE;
+  }
+
+  if (startsWithBytes(bytes, JPEG_MAGIC_BYTES)) {
+    return DOCUMENT_JPEG_CONTENT_TYPE;
+  }
+
+  if (startsWithBytes(bytes, WEBP_RIFF_BYTES) && startsWithBytes(bytes.subarray(8), WEBP_FORMAT_BYTES)) {
+    return DOCUMENT_WEBP_CONTENT_TYPE;
+  }
+
+  if (ZIP_MAGIC_BYTES.some((signature) => startsWithBytes(bytes, signature))) {
+    return DOCUMENT_ZIP_CONTENT_TYPE;
+  }
+
+  return null;
+}
+
+export function formatBytes(bytes: number): string {
+  if (bytes < 1024 * 1024) {
+    const kilobytes = bytes / 1024;
+
+    return `${Number.isInteger(kilobytes) ? kilobytes : kilobytes.toFixed(1)} KB`;
+  }
+
+  const megabytes = bytes / (1024 * 1024);
+
+  return `${Number.isInteger(megabytes) ? megabytes : megabytes.toFixed(1)} MB`;
+}
+
+export function documentContentTypeLabel(contentType: string): string {
+  return DOCUMENT_CONTENT_TYPE_LABELS[contentType as keyof typeof DOCUMENT_CONTENT_TYPE_LABELS] ?? contentType;
+}
+
+function startsWithBytes(bytes: Uint8Array, prefix: Uint8Array): boolean {
+  if (bytes.byteLength < prefix.byteLength) {
+    return false;
+  }
+
+  return prefix.every((byte, index) => bytes[index] === byte);
 }

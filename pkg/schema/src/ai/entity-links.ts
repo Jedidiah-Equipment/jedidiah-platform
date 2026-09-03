@@ -14,32 +14,32 @@ export type ParsedInternalAppHref =
 
 const HREF_PATTERNS = [
   {
-    regex: /^\/products\/([^/]+)\/edit$/,
+    regex: /^\/equipment\/products\/([^/]+)\/edit$/,
     parse: (match: RegExpExecArray): ParsedInternalAppHref => ({
       kind: 'product',
       productId: readCapture(match, 1),
     }),
   },
   {
-    regex: /^\/customers\/([^/]+)\/edit$/,
+    regex: /^\/equipment\/customers\/([^/]+)\/edit$/,
     parse: (match: RegExpExecArray): ParsedInternalAppHref => ({
       kind: 'customer',
       customerId: readCapture(match, 1),
     }),
   },
   {
-    regex: /^\/quotes\/([^/]+)\/edit$/,
+    regex: /^\/equipment\/quotes\/([^/]+)\/edit$/,
     parse: (match: RegExpExecArray): ParsedInternalAppHref => ({
       kind: 'quote',
       quoteId: readCapture(match, 1),
     }),
   },
   {
-    regex: /^\/jobs\/([^/]+)$/,
+    regex: /^\/equipment\/jobs\/([^/]+)$/,
     parse: (match: RegExpExecArray): ParsedInternalAppHref => ({ kind: 'job', jobId: readCapture(match, 1) }),
   },
   {
-    regex: /^\/units\/([^/]+)$/,
+    regex: /^\/equipment\/units\/([^/]+)$/,
     parse: (match: RegExpExecArray): ParsedInternalAppHref => ({
       kind: 'product-unit',
       productUnitId: readCapture(match, 1),
@@ -63,23 +63,23 @@ const HREF_PATTERNS = [
 ] as const;
 
 export function createProductAppHref(productId: string): InternalAppHref {
-  return InternalAppHref.parse(`/products/${productId}/edit`);
+  return InternalAppHref.parse(`/equipment/products/${productId}/edit`);
 }
 
 export function createCustomerAppHref(customerId: string): InternalAppHref {
-  return InternalAppHref.parse(`/customers/${customerId}/edit`);
+  return InternalAppHref.parse(`/equipment/customers/${customerId}/edit`);
 }
 
 export function createQuoteAppHref(quoteId: string): InternalAppHref {
-  return InternalAppHref.parse(`/quotes/${quoteId}/edit`);
+  return InternalAppHref.parse(`/equipment/quotes/${quoteId}/edit`);
 }
 
 export function createJobAppHref(jobId: string): InternalAppHref {
-  return InternalAppHref.parse(`/jobs/${jobId}`);
+  return InternalAppHref.parse(`/equipment/jobs/${jobId}`);
 }
 
 export function createProductUnitAppHref(productUnitId: string): InternalAppHref {
-  return InternalAppHref.parse(`/units/${productUnitId}`);
+  return InternalAppHref.parse(`/equipment/units/${productUnitId}`);
 }
 
 export function createQuoteDocumentDownloadHref(quoteId: string, documentId: string): InternalAppHref {

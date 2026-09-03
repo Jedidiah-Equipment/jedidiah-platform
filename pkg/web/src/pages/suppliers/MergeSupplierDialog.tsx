@@ -68,7 +68,7 @@ export const MergeSupplierDialog: React.FC<{ supplier: Supplier }> = ({ supplier
     await Promise.all([invalidateSuppliers(), invalidateParts(), invalidatePurchaseOrders(), invalidateAudit()]);
     handleOpenChange(false);
     toast.success(`${supplier.companyName} merged into ${merged.companyName}`);
-    await navigate({ to: '/suppliers/$id/edit', params: { id: merged.id } });
+    await navigate({ to: '/equipment/suppliers/$id/edit', params: { id: merged.id } });
   };
 
   return (

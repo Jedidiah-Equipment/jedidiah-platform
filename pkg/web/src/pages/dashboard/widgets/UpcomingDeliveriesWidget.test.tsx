@@ -31,7 +31,7 @@ describe('UpcomingDeliveryRow', () => {
     expect(html).toContain('text-inherit');
     expect(html).not.toContain('text-primary');
     expect(html.indexOf('Jedidiah Contracting')).toBeLessThan(html.indexOf('QUO-00030'));
-    expect(html.match(/href="\/quotes\/20000000-0000-4000-8000-000000000000\/edit"/g)).toHaveLength(2);
+    expect(html.match(/href="\/equipment\/quotes\/20000000-0000-4000-8000-000000000000\/edit"/g)).toHaveLength(2);
     expect(html).toContain('job=30000000-0000-4000-8000-000000000000');
   });
 });

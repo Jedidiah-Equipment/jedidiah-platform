@@ -17,54 +17,56 @@ import { Route as PrivacyRouteImport } from './../routes/privacy'
 import { Route as ResetPasswordRouteImport } from './../routes/reset-password'
 import { Route as SupportRouteImport } from './../routes/support'
 import { Route as VerifyEmailRouteImport } from './../routes/verify-email'
-import { Route as AuthedAuditRouteImport } from './../routes/_authed.audit'
-import { Route as AuthedBaysRouteImport } from './../routes/_authed.bays'
-import { Route as AuthedCatalogTranslationsRouteImport } from './../routes/_authed.catalog-translations'
-import { Route as AuthedCustomersRouteImport } from './../routes/_authed.customers'
-import { Route as AuthedDashboardRouteImport } from './../routes/_authed.dashboard'
-import { Route as AuthedFeedbackRouteImport } from './../routes/_authed.feedback'
-import { Route as AuthedInventoryRouteImport } from './../routes/_authed.inventory'
-import { Route as AuthedJobsRouteImport } from './../routes/_authed.jobs'
-import { Route as AuthedPartsRouteImport } from './../routes/_authed.parts'
-import { Route as AuthedProductRangesRouteImport } from './../routes/_authed.product-ranges'
-import { Route as AuthedProductsRouteImport } from './../routes/_authed.products'
-import { Route as AuthedPurchaseOrdersRouteImport } from './../routes/_authed.purchase-orders'
-import { Route as AuthedQuotesRouteImport } from './../routes/_authed.quotes'
-import { Route as AuthedSuppliersRouteImport } from './../routes/_authed.suppliers'
-import { Route as AuthedUnitsRouteImport } from './../routes/_authed.units'
-import { Route as AuthedUsersRouteImport } from './../routes/_authed.users'
-import { Route as AuthedCustomersIndexRouteImport } from './../routes/_authed.customers.index'
-import { Route as AuthedInventoryIndexRouteImport } from './../routes/_authed.inventory.index'
-import { Route as AuthedInventoryPartIdRouteImport } from './../routes/_authed.inventory.$partId'
-import { Route as AuthedInventoryBuyListRouteImport } from './../routes/_authed.inventory.buy-list'
-import { Route as AuthedInventoryCloseOutRouteImport } from './../routes/_authed.inventory.close-out'
-import { Route as AuthedInventoryPriceVarianceRouteImport } from './../routes/_authed.inventory.price-variance'
-import { Route as AuthedInventoryStocktakeRouteImport } from './../routes/_authed.inventory.stocktake'
-import { Route as AuthedJobsIndexRouteImport } from './../routes/_authed.jobs.index'
-import { Route as AuthedJobsIdRouteImport } from './../routes/_authed.jobs.$id'
-import { Route as AuthedJobsActivityRouteImport } from './../routes/_authed.jobs.activity'
-import { Route as AuthedJobsCalendarRouteImport } from './../routes/_authed.jobs.calendar'
-import { Route as AuthedJobsListRouteImport } from './../routes/_authed.jobs.list'
-import { Route as AuthedJobsStockBuildRouteImport } from './../routes/_authed.jobs.stock-build'
-import { Route as AuthedProductRangesIndexRouteImport } from './../routes/_authed.product-ranges.index'
-import { Route as AuthedProductsIndexRouteImport } from './../routes/_authed.products.index'
-import { Route as AuthedPurchaseOrdersIndexRouteImport } from './../routes/_authed.purchase-orders.index'
-import { Route as AuthedPurchaseOrdersIdRouteImport } from './../routes/_authed.purchase-orders.$id'
-import { Route as AuthedQuotesIndexRouteImport } from './../routes/_authed.quotes.index'
-import { Route as AuthedSuppliersIndexRouteImport } from './../routes/_authed.suppliers.index'
-import { Route as AuthedUnitsIndexRouteImport } from './../routes/_authed.units.index'
-import { Route as AuthedUnitsIdRouteImport } from './../routes/_authed.units.$id'
-import { Route as AuthedCustomersIdEditRouteImport } from './../routes/_authed.customers.$id.edit'
-import { Route as AuthedInventoryCloseOutIndexRouteImport } from './../routes/_authed.inventory.close-out.index'
-import { Route as AuthedInventoryCloseOutJobIdRouteImport } from './../routes/_authed.inventory.close-out.$jobId'
-import { Route as AuthedInventoryJobVarianceJobIdRouteImport } from './../routes/_authed.inventory.job-variance.$jobId'
-import { Route as AuthedInventoryStocktakeIndexRouteImport } from './../routes/_authed.inventory.stocktake.index'
-import { Route as AuthedInventoryStocktakeSessionIdRouteImport } from './../routes/_authed.inventory.stocktake.$sessionId'
-import { Route as AuthedProductRangesIdEditRouteImport } from './../routes/_authed.product-ranges.$id.edit'
-import { Route as AuthedProductsIdEditRouteImport } from './../routes/_authed.products.$id.edit'
-import { Route as AuthedQuotesIdEditRouteImport } from './../routes/_authed.quotes.$id_.edit'
-import { Route as AuthedQuotesIdStartJobRouteImport } from './../routes/_authed.quotes.$id_.start-job'
-import { Route as AuthedSuppliersIdEditRouteImport } from './../routes/_authed.suppliers.$id.edit'
+import { Route as AuthedContractingRouteImport } from './../routes/_authed.contracting'
+import { Route as AuthedEquipmentRouteImport } from './../routes/_authed.equipment'
+import { Route as AuthedEquipmentAuditRouteImport } from './../routes/_authed.equipment.audit'
+import { Route as AuthedEquipmentBaysRouteImport } from './../routes/_authed.equipment.bays'
+import { Route as AuthedEquipmentCatalogTranslationsRouteImport } from './../routes/_authed.equipment.catalog-translations'
+import { Route as AuthedEquipmentCustomersRouteImport } from './../routes/_authed.equipment.customers'
+import { Route as AuthedEquipmentDashboardRouteImport } from './../routes/_authed.equipment.dashboard'
+import { Route as AuthedEquipmentFeedbackRouteImport } from './../routes/_authed.equipment.feedback'
+import { Route as AuthedEquipmentInventoryRouteImport } from './../routes/_authed.equipment.inventory'
+import { Route as AuthedEquipmentJobsRouteImport } from './../routes/_authed.equipment.jobs'
+import { Route as AuthedEquipmentPartsRouteImport } from './../routes/_authed.equipment.parts'
+import { Route as AuthedEquipmentProductRangesRouteImport } from './../routes/_authed.equipment.product-ranges'
+import { Route as AuthedEquipmentProductsRouteImport } from './../routes/_authed.equipment.products'
+import { Route as AuthedEquipmentPurchaseOrdersRouteImport } from './../routes/_authed.equipment.purchase-orders'
+import { Route as AuthedEquipmentQuotesRouteImport } from './../routes/_authed.equipment.quotes'
+import { Route as AuthedEquipmentSuppliersRouteImport } from './../routes/_authed.equipment.suppliers'
+import { Route as AuthedEquipmentUnitsRouteImport } from './../routes/_authed.equipment.units'
+import { Route as AuthedEquipmentUsersRouteImport } from './../routes/_authed.equipment.users'
+import { Route as AuthedEquipmentCustomersIndexRouteImport } from './../routes/_authed.equipment.customers.index'
+import { Route as AuthedEquipmentInventoryIndexRouteImport } from './../routes/_authed.equipment.inventory.index'
+import { Route as AuthedEquipmentInventoryPartIdRouteImport } from './../routes/_authed.equipment.inventory.$partId'
+import { Route as AuthedEquipmentInventoryBuyListRouteImport } from './../routes/_authed.equipment.inventory.buy-list'
+import { Route as AuthedEquipmentInventoryCloseOutRouteImport } from './../routes/_authed.equipment.inventory.close-out'
+import { Route as AuthedEquipmentInventoryPriceVarianceRouteImport } from './../routes/_authed.equipment.inventory.price-variance'
+import { Route as AuthedEquipmentInventoryStocktakeRouteImport } from './../routes/_authed.equipment.inventory.stocktake'
+import { Route as AuthedEquipmentJobsIndexRouteImport } from './../routes/_authed.equipment.jobs.index'
+import { Route as AuthedEquipmentJobsIdRouteImport } from './../routes/_authed.equipment.jobs.$id'
+import { Route as AuthedEquipmentJobsActivityRouteImport } from './../routes/_authed.equipment.jobs.activity'
+import { Route as AuthedEquipmentJobsCalendarRouteImport } from './../routes/_authed.equipment.jobs.calendar'
+import { Route as AuthedEquipmentJobsListRouteImport } from './../routes/_authed.equipment.jobs.list'
+import { Route as AuthedEquipmentJobsStockBuildRouteImport } from './../routes/_authed.equipment.jobs.stock-build'
+import { Route as AuthedEquipmentProductRangesIndexRouteImport } from './../routes/_authed.equipment.product-ranges.index'
+import { Route as AuthedEquipmentProductsIndexRouteImport } from './../routes/_authed.equipment.products.index'
+import { Route as AuthedEquipmentPurchaseOrdersIndexRouteImport } from './../routes/_authed.equipment.purchase-orders.index'
+import { Route as AuthedEquipmentPurchaseOrdersIdRouteImport } from './../routes/_authed.equipment.purchase-orders.$id'
+import { Route as AuthedEquipmentQuotesIndexRouteImport } from './../routes/_authed.equipment.quotes.index'
+import { Route as AuthedEquipmentSuppliersIndexRouteImport } from './../routes/_authed.equipment.suppliers.index'
+import { Route as AuthedEquipmentUnitsIndexRouteImport } from './../routes/_authed.equipment.units.index'
+import { Route as AuthedEquipmentUnitsIdRouteImport } from './../routes/_authed.equipment.units.$id'
+import { Route as AuthedEquipmentCustomersIdEditRouteImport } from './../routes/_authed.equipment.customers.$id.edit'
+import { Route as AuthedEquipmentInventoryCloseOutIndexRouteImport } from './../routes/_authed.equipment.inventory.close-out.index'
+import { Route as AuthedEquipmentInventoryCloseOutJobIdRouteImport } from './../routes/_authed.equipment.inventory.close-out.$jobId'
+import { Route as AuthedEquipmentInventoryJobVarianceJobIdRouteImport } from './../routes/_authed.equipment.inventory.job-variance.$jobId'
+import { Route as AuthedEquipmentInventoryStocktakeIndexRouteImport } from './../routes/_authed.equipment.inventory.stocktake.index'
+import { Route as AuthedEquipmentInventoryStocktakeSessionIdRouteImport } from './../routes/_authed.equipment.inventory.stocktake.$sessionId'
+import { Route as AuthedEquipmentProductRangesIdEditRouteImport } from './../routes/_authed.equipment.product-ranges.$id.edit'
+import { Route as AuthedEquipmentProductsIdEditRouteImport } from './../routes/_authed.equipment.products.$id.edit'
+import { Route as AuthedEquipmentQuotesIdEditRouteImport } from './../routes/_authed.equipment.quotes.$id_.edit'
+import { Route as AuthedEquipmentQuotesIdStartJobRouteImport } from './../routes/_authed.equipment.quotes.$id_.start-job'
+import { Route as AuthedEquipmentSuppliersIdEditRouteImport } from './../routes/_authed.equipment.suppliers.$id.edit'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -105,257 +107,292 @@ const VerifyEmailRoute = VerifyEmailRouteImport.update({
   path: '/verify-email',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AuthedAuditRoute = AuthedAuditRouteImport.update({
+const AuthedContractingRoute = AuthedContractingRouteImport.update({
+  id: '/contracting',
+  path: '/contracting',
+  getParentRoute: () => AuthedRoute,
+} as any)
+const AuthedEquipmentRoute = AuthedEquipmentRouteImport.update({
+  id: '/equipment',
+  path: '/equipment',
+  getParentRoute: () => AuthedRoute,
+} as any)
+const AuthedEquipmentAuditRoute = AuthedEquipmentAuditRouteImport.update({
   id: '/audit',
   path: '/audit',
-  getParentRoute: () => AuthedRoute,
+  getParentRoute: () => AuthedEquipmentRoute,
 } as any)
-const AuthedBaysRoute = AuthedBaysRouteImport.update({
+const AuthedEquipmentBaysRoute = AuthedEquipmentBaysRouteImport.update({
   id: '/bays',
   path: '/bays',
-  getParentRoute: () => AuthedRoute,
+  getParentRoute: () => AuthedEquipmentRoute,
 } as any)
-const AuthedCatalogTranslationsRoute =
-  AuthedCatalogTranslationsRouteImport.update({
+const AuthedEquipmentCatalogTranslationsRoute =
+  AuthedEquipmentCatalogTranslationsRouteImport.update({
     id: '/catalog-translations',
     path: '/catalog-translations',
-    getParentRoute: () => AuthedRoute,
+    getParentRoute: () => AuthedEquipmentRoute,
   } as any)
-const AuthedCustomersRoute = AuthedCustomersRouteImport.update({
-  id: '/customers',
-  path: '/customers',
-  getParentRoute: () => AuthedRoute,
-} as any)
-const AuthedDashboardRoute = AuthedDashboardRouteImport.update({
-  id: '/dashboard',
-  path: '/dashboard',
-  getParentRoute: () => AuthedRoute,
-} as any)
-const AuthedFeedbackRoute = AuthedFeedbackRouteImport.update({
+const AuthedEquipmentCustomersRoute =
+  AuthedEquipmentCustomersRouteImport.update({
+    id: '/customers',
+    path: '/customers',
+    getParentRoute: () => AuthedEquipmentRoute,
+  } as any)
+const AuthedEquipmentDashboardRoute =
+  AuthedEquipmentDashboardRouteImport.update({
+    id: '/dashboard',
+    path: '/dashboard',
+    getParentRoute: () => AuthedEquipmentRoute,
+  } as any)
+const AuthedEquipmentFeedbackRoute = AuthedEquipmentFeedbackRouteImport.update({
   id: '/feedback',
   path: '/feedback',
-  getParentRoute: () => AuthedRoute,
+  getParentRoute: () => AuthedEquipmentRoute,
 } as any)
-const AuthedInventoryRoute = AuthedInventoryRouteImport.update({
-  id: '/inventory',
-  path: '/inventory',
-  getParentRoute: () => AuthedRoute,
-} as any)
-const AuthedJobsRoute = AuthedJobsRouteImport.update({
+const AuthedEquipmentInventoryRoute =
+  AuthedEquipmentInventoryRouteImport.update({
+    id: '/inventory',
+    path: '/inventory',
+    getParentRoute: () => AuthedEquipmentRoute,
+  } as any)
+const AuthedEquipmentJobsRoute = AuthedEquipmentJobsRouteImport.update({
   id: '/jobs',
   path: '/jobs',
-  getParentRoute: () => AuthedRoute,
+  getParentRoute: () => AuthedEquipmentRoute,
 } as any)
-const AuthedPartsRoute = AuthedPartsRouteImport.update({
+const AuthedEquipmentPartsRoute = AuthedEquipmentPartsRouteImport.update({
   id: '/parts',
   path: '/parts',
-  getParentRoute: () => AuthedRoute,
+  getParentRoute: () => AuthedEquipmentRoute,
 } as any)
-const AuthedProductRangesRoute = AuthedProductRangesRouteImport.update({
-  id: '/product-ranges',
-  path: '/product-ranges',
-  getParentRoute: () => AuthedRoute,
-} as any)
-const AuthedProductsRoute = AuthedProductsRouteImport.update({
+const AuthedEquipmentProductRangesRoute =
+  AuthedEquipmentProductRangesRouteImport.update({
+    id: '/product-ranges',
+    path: '/product-ranges',
+    getParentRoute: () => AuthedEquipmentRoute,
+  } as any)
+const AuthedEquipmentProductsRoute = AuthedEquipmentProductsRouteImport.update({
   id: '/products',
   path: '/products',
-  getParentRoute: () => AuthedRoute,
+  getParentRoute: () => AuthedEquipmentRoute,
 } as any)
-const AuthedPurchaseOrdersRoute = AuthedPurchaseOrdersRouteImport.update({
-  id: '/purchase-orders',
-  path: '/purchase-orders',
-  getParentRoute: () => AuthedRoute,
-} as any)
-const AuthedQuotesRoute = AuthedQuotesRouteImport.update({
+const AuthedEquipmentPurchaseOrdersRoute =
+  AuthedEquipmentPurchaseOrdersRouteImport.update({
+    id: '/purchase-orders',
+    path: '/purchase-orders',
+    getParentRoute: () => AuthedEquipmentRoute,
+  } as any)
+const AuthedEquipmentQuotesRoute = AuthedEquipmentQuotesRouteImport.update({
   id: '/quotes',
   path: '/quotes',
-  getParentRoute: () => AuthedRoute,
+  getParentRoute: () => AuthedEquipmentRoute,
 } as any)
-const AuthedSuppliersRoute = AuthedSuppliersRouteImport.update({
-  id: '/suppliers',
-  path: '/suppliers',
-  getParentRoute: () => AuthedRoute,
-} as any)
-const AuthedUnitsRoute = AuthedUnitsRouteImport.update({
+const AuthedEquipmentSuppliersRoute =
+  AuthedEquipmentSuppliersRouteImport.update({
+    id: '/suppliers',
+    path: '/suppliers',
+    getParentRoute: () => AuthedEquipmentRoute,
+  } as any)
+const AuthedEquipmentUnitsRoute = AuthedEquipmentUnitsRouteImport.update({
   id: '/units',
   path: '/units',
-  getParentRoute: () => AuthedRoute,
+  getParentRoute: () => AuthedEquipmentRoute,
 } as any)
-const AuthedUsersRoute = AuthedUsersRouteImport.update({
+const AuthedEquipmentUsersRoute = AuthedEquipmentUsersRouteImport.update({
   id: '/users',
   path: '/users',
-  getParentRoute: () => AuthedRoute,
+  getParentRoute: () => AuthedEquipmentRoute,
 } as any)
-const AuthedCustomersIndexRoute = AuthedCustomersIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => AuthedCustomersRoute,
-} as any)
-const AuthedInventoryIndexRoute = AuthedInventoryIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => AuthedInventoryRoute,
-} as any)
-const AuthedInventoryPartIdRoute = AuthedInventoryPartIdRouteImport.update({
-  id: '/$partId',
-  path: '/$partId',
-  getParentRoute: () => AuthedInventoryRoute,
-} as any)
-const AuthedInventoryBuyListRoute = AuthedInventoryBuyListRouteImport.update({
-  id: '/buy-list',
-  path: '/buy-list',
-  getParentRoute: () => AuthedInventoryRoute,
-} as any)
-const AuthedInventoryCloseOutRoute = AuthedInventoryCloseOutRouteImport.update({
-  id: '/close-out',
-  path: '/close-out',
-  getParentRoute: () => AuthedInventoryRoute,
-} as any)
-const AuthedInventoryPriceVarianceRoute =
-  AuthedInventoryPriceVarianceRouteImport.update({
+const AuthedEquipmentCustomersIndexRoute =
+  AuthedEquipmentCustomersIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AuthedEquipmentCustomersRoute,
+  } as any)
+const AuthedEquipmentInventoryIndexRoute =
+  AuthedEquipmentInventoryIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AuthedEquipmentInventoryRoute,
+  } as any)
+const AuthedEquipmentInventoryPartIdRoute =
+  AuthedEquipmentInventoryPartIdRouteImport.update({
+    id: '/$partId',
+    path: '/$partId',
+    getParentRoute: () => AuthedEquipmentInventoryRoute,
+  } as any)
+const AuthedEquipmentInventoryBuyListRoute =
+  AuthedEquipmentInventoryBuyListRouteImport.update({
+    id: '/buy-list',
+    path: '/buy-list',
+    getParentRoute: () => AuthedEquipmentInventoryRoute,
+  } as any)
+const AuthedEquipmentInventoryCloseOutRoute =
+  AuthedEquipmentInventoryCloseOutRouteImport.update({
+    id: '/close-out',
+    path: '/close-out',
+    getParentRoute: () => AuthedEquipmentInventoryRoute,
+  } as any)
+const AuthedEquipmentInventoryPriceVarianceRoute =
+  AuthedEquipmentInventoryPriceVarianceRouteImport.update({
     id: '/price-variance',
     path: '/price-variance',
-    getParentRoute: () => AuthedInventoryRoute,
+    getParentRoute: () => AuthedEquipmentInventoryRoute,
   } as any)
-const AuthedInventoryStocktakeRoute =
-  AuthedInventoryStocktakeRouteImport.update({
+const AuthedEquipmentInventoryStocktakeRoute =
+  AuthedEquipmentInventoryStocktakeRouteImport.update({
     id: '/stocktake',
     path: '/stocktake',
-    getParentRoute: () => AuthedInventoryRoute,
+    getParentRoute: () => AuthedEquipmentInventoryRoute,
   } as any)
-const AuthedJobsIndexRoute = AuthedJobsIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => AuthedJobsRoute,
-} as any)
-const AuthedJobsIdRoute = AuthedJobsIdRouteImport.update({
+const AuthedEquipmentJobsIndexRoute =
+  AuthedEquipmentJobsIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AuthedEquipmentJobsRoute,
+  } as any)
+const AuthedEquipmentJobsIdRoute = AuthedEquipmentJobsIdRouteImport.update({
   id: '/$id',
   path: '/$id',
-  getParentRoute: () => AuthedJobsRoute,
+  getParentRoute: () => AuthedEquipmentJobsRoute,
 } as any)
-const AuthedJobsActivityRoute = AuthedJobsActivityRouteImport.update({
-  id: '/activity',
-  path: '/activity',
-  getParentRoute: () => AuthedJobsRoute,
-} as any)
-const AuthedJobsCalendarRoute = AuthedJobsCalendarRouteImport.update({
-  id: '/calendar',
-  path: '/calendar',
-  getParentRoute: () => AuthedJobsRoute,
-} as any)
-const AuthedJobsListRoute = AuthedJobsListRouteImport.update({
+const AuthedEquipmentJobsActivityRoute =
+  AuthedEquipmentJobsActivityRouteImport.update({
+    id: '/activity',
+    path: '/activity',
+    getParentRoute: () => AuthedEquipmentJobsRoute,
+  } as any)
+const AuthedEquipmentJobsCalendarRoute =
+  AuthedEquipmentJobsCalendarRouteImport.update({
+    id: '/calendar',
+    path: '/calendar',
+    getParentRoute: () => AuthedEquipmentJobsRoute,
+  } as any)
+const AuthedEquipmentJobsListRoute = AuthedEquipmentJobsListRouteImport.update({
   id: '/list',
   path: '/list',
-  getParentRoute: () => AuthedJobsRoute,
+  getParentRoute: () => AuthedEquipmentJobsRoute,
 } as any)
-const AuthedJobsStockBuildRoute = AuthedJobsStockBuildRouteImport.update({
-  id: '/stock-build',
-  path: '/stock-build',
-  getParentRoute: () => AuthedJobsRoute,
-} as any)
-const AuthedProductRangesIndexRoute =
-  AuthedProductRangesIndexRouteImport.update({
+const AuthedEquipmentJobsStockBuildRoute =
+  AuthedEquipmentJobsStockBuildRouteImport.update({
+    id: '/stock-build',
+    path: '/stock-build',
+    getParentRoute: () => AuthedEquipmentJobsRoute,
+  } as any)
+const AuthedEquipmentProductRangesIndexRoute =
+  AuthedEquipmentProductRangesIndexRouteImport.update({
     id: '/',
     path: '/',
-    getParentRoute: () => AuthedProductRangesRoute,
+    getParentRoute: () => AuthedEquipmentProductRangesRoute,
   } as any)
-const AuthedProductsIndexRoute = AuthedProductsIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => AuthedProductsRoute,
-} as any)
-const AuthedPurchaseOrdersIndexRoute =
-  AuthedPurchaseOrdersIndexRouteImport.update({
+const AuthedEquipmentProductsIndexRoute =
+  AuthedEquipmentProductsIndexRouteImport.update({
     id: '/',
     path: '/',
-    getParentRoute: () => AuthedPurchaseOrdersRoute,
+    getParentRoute: () => AuthedEquipmentProductsRoute,
   } as any)
-const AuthedPurchaseOrdersIdRoute = AuthedPurchaseOrdersIdRouteImport.update({
+const AuthedEquipmentPurchaseOrdersIndexRoute =
+  AuthedEquipmentPurchaseOrdersIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AuthedEquipmentPurchaseOrdersRoute,
+  } as any)
+const AuthedEquipmentPurchaseOrdersIdRoute =
+  AuthedEquipmentPurchaseOrdersIdRouteImport.update({
+    id: '/$id',
+    path: '/$id',
+    getParentRoute: () => AuthedEquipmentPurchaseOrdersRoute,
+  } as any)
+const AuthedEquipmentQuotesIndexRoute =
+  AuthedEquipmentQuotesIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AuthedEquipmentQuotesRoute,
+  } as any)
+const AuthedEquipmentSuppliersIndexRoute =
+  AuthedEquipmentSuppliersIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AuthedEquipmentSuppliersRoute,
+  } as any)
+const AuthedEquipmentUnitsIndexRoute =
+  AuthedEquipmentUnitsIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AuthedEquipmentUnitsRoute,
+  } as any)
+const AuthedEquipmentUnitsIdRoute = AuthedEquipmentUnitsIdRouteImport.update({
   id: '/$id',
   path: '/$id',
-  getParentRoute: () => AuthedPurchaseOrdersRoute,
+  getParentRoute: () => AuthedEquipmentUnitsRoute,
 } as any)
-const AuthedQuotesIndexRoute = AuthedQuotesIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => AuthedQuotesRoute,
-} as any)
-const AuthedSuppliersIndexRoute = AuthedSuppliersIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => AuthedSuppliersRoute,
-} as any)
-const AuthedUnitsIndexRoute = AuthedUnitsIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => AuthedUnitsRoute,
-} as any)
-const AuthedUnitsIdRoute = AuthedUnitsIdRouteImport.update({
-  id: '/$id',
-  path: '/$id',
-  getParentRoute: () => AuthedUnitsRoute,
-} as any)
-const AuthedCustomersIdEditRoute = AuthedCustomersIdEditRouteImport.update({
-  id: '/$id/edit',
-  path: '/$id/edit',
-  getParentRoute: () => AuthedCustomersRoute,
-} as any)
-const AuthedInventoryCloseOutIndexRoute =
-  AuthedInventoryCloseOutIndexRouteImport.update({
-    id: '/',
-    path: '/',
-    getParentRoute: () => AuthedInventoryCloseOutRoute,
-  } as any)
-const AuthedInventoryCloseOutJobIdRoute =
-  AuthedInventoryCloseOutJobIdRouteImport.update({
-    id: '/$jobId',
-    path: '/$jobId',
-    getParentRoute: () => AuthedInventoryCloseOutRoute,
-  } as any)
-const AuthedInventoryJobVarianceJobIdRoute =
-  AuthedInventoryJobVarianceJobIdRouteImport.update({
-    id: '/job-variance/$jobId',
-    path: '/job-variance/$jobId',
-    getParentRoute: () => AuthedInventoryRoute,
-  } as any)
-const AuthedInventoryStocktakeIndexRoute =
-  AuthedInventoryStocktakeIndexRouteImport.update({
-    id: '/',
-    path: '/',
-    getParentRoute: () => AuthedInventoryStocktakeRoute,
-  } as any)
-const AuthedInventoryStocktakeSessionIdRoute =
-  AuthedInventoryStocktakeSessionIdRouteImport.update({
-    id: '/$sessionId',
-    path: '/$sessionId',
-    getParentRoute: () => AuthedInventoryStocktakeRoute,
-  } as any)
-const AuthedProductRangesIdEditRoute =
-  AuthedProductRangesIdEditRouteImport.update({
+const AuthedEquipmentCustomersIdEditRoute =
+  AuthedEquipmentCustomersIdEditRouteImport.update({
     id: '/$id/edit',
     path: '/$id/edit',
-    getParentRoute: () => AuthedProductRangesRoute,
+    getParentRoute: () => AuthedEquipmentCustomersRoute,
   } as any)
-const AuthedProductsIdEditRoute = AuthedProductsIdEditRouteImport.update({
-  id: '/$id/edit',
-  path: '/$id/edit',
-  getParentRoute: () => AuthedProductsRoute,
-} as any)
-const AuthedQuotesIdEditRoute = AuthedQuotesIdEditRouteImport.update({
-  id: '/$id_/edit',
-  path: '/$id/edit',
-  getParentRoute: () => AuthedQuotesRoute,
-} as any)
-const AuthedQuotesIdStartJobRoute = AuthedQuotesIdStartJobRouteImport.update({
-  id: '/$id_/start-job',
-  path: '/$id/start-job',
-  getParentRoute: () => AuthedQuotesRoute,
-} as any)
-const AuthedSuppliersIdEditRoute = AuthedSuppliersIdEditRouteImport.update({
-  id: '/$id/edit',
-  path: '/$id/edit',
-  getParentRoute: () => AuthedSuppliersRoute,
-} as any)
+const AuthedEquipmentInventoryCloseOutIndexRoute =
+  AuthedEquipmentInventoryCloseOutIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AuthedEquipmentInventoryCloseOutRoute,
+  } as any)
+const AuthedEquipmentInventoryCloseOutJobIdRoute =
+  AuthedEquipmentInventoryCloseOutJobIdRouteImport.update({
+    id: '/$jobId',
+    path: '/$jobId',
+    getParentRoute: () => AuthedEquipmentInventoryCloseOutRoute,
+  } as any)
+const AuthedEquipmentInventoryJobVarianceJobIdRoute =
+  AuthedEquipmentInventoryJobVarianceJobIdRouteImport.update({
+    id: '/job-variance/$jobId',
+    path: '/job-variance/$jobId',
+    getParentRoute: () => AuthedEquipmentInventoryRoute,
+  } as any)
+const AuthedEquipmentInventoryStocktakeIndexRoute =
+  AuthedEquipmentInventoryStocktakeIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AuthedEquipmentInventoryStocktakeRoute,
+  } as any)
+const AuthedEquipmentInventoryStocktakeSessionIdRoute =
+  AuthedEquipmentInventoryStocktakeSessionIdRouteImport.update({
+    id: '/$sessionId',
+    path: '/$sessionId',
+    getParentRoute: () => AuthedEquipmentInventoryStocktakeRoute,
+  } as any)
+const AuthedEquipmentProductRangesIdEditRoute =
+  AuthedEquipmentProductRangesIdEditRouteImport.update({
+    id: '/$id/edit',
+    path: '/$id/edit',
+    getParentRoute: () => AuthedEquipmentProductRangesRoute,
+  } as any)
+const AuthedEquipmentProductsIdEditRoute =
+  AuthedEquipmentProductsIdEditRouteImport.update({
+    id: '/$id/edit',
+    path: '/$id/edit',
+    getParentRoute: () => AuthedEquipmentProductsRoute,
+  } as any)
+const AuthedEquipmentQuotesIdEditRoute =
+  AuthedEquipmentQuotesIdEditRouteImport.update({
+    id: '/$id_/edit',
+    path: '/$id/edit',
+    getParentRoute: () => AuthedEquipmentQuotesRoute,
+  } as any)
+const AuthedEquipmentQuotesIdStartJobRoute =
+  AuthedEquipmentQuotesIdStartJobRouteImport.update({
+    id: '/$id_/start-job',
+    path: '/$id/start-job',
+    getParentRoute: () => AuthedEquipmentQuotesRoute,
+  } as any)
+const AuthedEquipmentSuppliersIdEditRoute =
+  AuthedEquipmentSuppliersIdEditRouteImport.update({
+    id: '/$id/edit',
+    path: '/$id/edit',
+    getParentRoute: () => AuthedEquipmentSuppliersRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -365,54 +402,56 @@ export interface FileRoutesByFullPath {
   '/reset-password': typeof ResetPasswordRoute
   '/support': typeof SupportRoute
   '/verify-email': typeof VerifyEmailRoute
-  '/audit': typeof AuthedAuditRoute
-  '/bays': typeof AuthedBaysRoute
-  '/catalog-translations': typeof AuthedCatalogTranslationsRoute
-  '/customers': typeof AuthedCustomersRouteWithChildren
-  '/dashboard': typeof AuthedDashboardRoute
-  '/feedback': typeof AuthedFeedbackRoute
-  '/inventory': typeof AuthedInventoryRouteWithChildren
-  '/jobs': typeof AuthedJobsRouteWithChildren
-  '/parts': typeof AuthedPartsRoute
-  '/product-ranges': typeof AuthedProductRangesRouteWithChildren
-  '/products': typeof AuthedProductsRouteWithChildren
-  '/purchase-orders': typeof AuthedPurchaseOrdersRouteWithChildren
-  '/quotes': typeof AuthedQuotesRouteWithChildren
-  '/suppliers': typeof AuthedSuppliersRouteWithChildren
-  '/units': typeof AuthedUnitsRouteWithChildren
-  '/users': typeof AuthedUsersRoute
-  '/inventory/$partId': typeof AuthedInventoryPartIdRoute
-  '/inventory/buy-list': typeof AuthedInventoryBuyListRoute
-  '/inventory/close-out': typeof AuthedInventoryCloseOutRouteWithChildren
-  '/inventory/price-variance': typeof AuthedInventoryPriceVarianceRoute
-  '/inventory/stocktake': typeof AuthedInventoryStocktakeRouteWithChildren
-  '/jobs/$id': typeof AuthedJobsIdRoute
-  '/jobs/activity': typeof AuthedJobsActivityRoute
-  '/jobs/calendar': typeof AuthedJobsCalendarRoute
-  '/jobs/list': typeof AuthedJobsListRoute
-  '/jobs/stock-build': typeof AuthedJobsStockBuildRoute
-  '/purchase-orders/$id': typeof AuthedPurchaseOrdersIdRoute
-  '/units/$id': typeof AuthedUnitsIdRoute
-  '/customers/': typeof AuthedCustomersIndexRoute
-  '/inventory/': typeof AuthedInventoryIndexRoute
-  '/jobs/': typeof AuthedJobsIndexRoute
-  '/product-ranges/': typeof AuthedProductRangesIndexRoute
-  '/products/': typeof AuthedProductsIndexRoute
-  '/purchase-orders/': typeof AuthedPurchaseOrdersIndexRoute
-  '/quotes/': typeof AuthedQuotesIndexRoute
-  '/suppliers/': typeof AuthedSuppliersIndexRoute
-  '/units/': typeof AuthedUnitsIndexRoute
-  '/customers/$id/edit': typeof AuthedCustomersIdEditRoute
-  '/inventory/close-out/$jobId': typeof AuthedInventoryCloseOutJobIdRoute
-  '/inventory/job-variance/$jobId': typeof AuthedInventoryJobVarianceJobIdRoute
-  '/inventory/stocktake/$sessionId': typeof AuthedInventoryStocktakeSessionIdRoute
-  '/product-ranges/$id/edit': typeof AuthedProductRangesIdEditRoute
-  '/products/$id/edit': typeof AuthedProductsIdEditRoute
-  '/quotes/$id/edit': typeof AuthedQuotesIdEditRoute
-  '/quotes/$id/start-job': typeof AuthedQuotesIdStartJobRoute
-  '/suppliers/$id/edit': typeof AuthedSuppliersIdEditRoute
-  '/inventory/close-out/': typeof AuthedInventoryCloseOutIndexRoute
-  '/inventory/stocktake/': typeof AuthedInventoryStocktakeIndexRoute
+  '/contracting': typeof AuthedContractingRoute
+  '/equipment': typeof AuthedEquipmentRouteWithChildren
+  '/equipment/audit': typeof AuthedEquipmentAuditRoute
+  '/equipment/bays': typeof AuthedEquipmentBaysRoute
+  '/equipment/catalog-translations': typeof AuthedEquipmentCatalogTranslationsRoute
+  '/equipment/customers': typeof AuthedEquipmentCustomersRouteWithChildren
+  '/equipment/dashboard': typeof AuthedEquipmentDashboardRoute
+  '/equipment/feedback': typeof AuthedEquipmentFeedbackRoute
+  '/equipment/inventory': typeof AuthedEquipmentInventoryRouteWithChildren
+  '/equipment/jobs': typeof AuthedEquipmentJobsRouteWithChildren
+  '/equipment/parts': typeof AuthedEquipmentPartsRoute
+  '/equipment/product-ranges': typeof AuthedEquipmentProductRangesRouteWithChildren
+  '/equipment/products': typeof AuthedEquipmentProductsRouteWithChildren
+  '/equipment/purchase-orders': typeof AuthedEquipmentPurchaseOrdersRouteWithChildren
+  '/equipment/quotes': typeof AuthedEquipmentQuotesRouteWithChildren
+  '/equipment/suppliers': typeof AuthedEquipmentSuppliersRouteWithChildren
+  '/equipment/units': typeof AuthedEquipmentUnitsRouteWithChildren
+  '/equipment/users': typeof AuthedEquipmentUsersRoute
+  '/equipment/inventory/$partId': typeof AuthedEquipmentInventoryPartIdRoute
+  '/equipment/inventory/buy-list': typeof AuthedEquipmentInventoryBuyListRoute
+  '/equipment/inventory/close-out': typeof AuthedEquipmentInventoryCloseOutRouteWithChildren
+  '/equipment/inventory/price-variance': typeof AuthedEquipmentInventoryPriceVarianceRoute
+  '/equipment/inventory/stocktake': typeof AuthedEquipmentInventoryStocktakeRouteWithChildren
+  '/equipment/jobs/$id': typeof AuthedEquipmentJobsIdRoute
+  '/equipment/jobs/activity': typeof AuthedEquipmentJobsActivityRoute
+  '/equipment/jobs/calendar': typeof AuthedEquipmentJobsCalendarRoute
+  '/equipment/jobs/list': typeof AuthedEquipmentJobsListRoute
+  '/equipment/jobs/stock-build': typeof AuthedEquipmentJobsStockBuildRoute
+  '/equipment/purchase-orders/$id': typeof AuthedEquipmentPurchaseOrdersIdRoute
+  '/equipment/units/$id': typeof AuthedEquipmentUnitsIdRoute
+  '/equipment/customers/': typeof AuthedEquipmentCustomersIndexRoute
+  '/equipment/inventory/': typeof AuthedEquipmentInventoryIndexRoute
+  '/equipment/jobs/': typeof AuthedEquipmentJobsIndexRoute
+  '/equipment/product-ranges/': typeof AuthedEquipmentProductRangesIndexRoute
+  '/equipment/products/': typeof AuthedEquipmentProductsIndexRoute
+  '/equipment/purchase-orders/': typeof AuthedEquipmentPurchaseOrdersIndexRoute
+  '/equipment/quotes/': typeof AuthedEquipmentQuotesIndexRoute
+  '/equipment/suppliers/': typeof AuthedEquipmentSuppliersIndexRoute
+  '/equipment/units/': typeof AuthedEquipmentUnitsIndexRoute
+  '/equipment/customers/$id/edit': typeof AuthedEquipmentCustomersIdEditRoute
+  '/equipment/inventory/close-out/$jobId': typeof AuthedEquipmentInventoryCloseOutJobIdRoute
+  '/equipment/inventory/job-variance/$jobId': typeof AuthedEquipmentInventoryJobVarianceJobIdRoute
+  '/equipment/inventory/stocktake/$sessionId': typeof AuthedEquipmentInventoryStocktakeSessionIdRoute
+  '/equipment/product-ranges/$id/edit': typeof AuthedEquipmentProductRangesIdEditRoute
+  '/equipment/products/$id/edit': typeof AuthedEquipmentProductsIdEditRoute
+  '/equipment/quotes/$id/edit': typeof AuthedEquipmentQuotesIdEditRoute
+  '/equipment/quotes/$id/start-job': typeof AuthedEquipmentQuotesIdStartJobRoute
+  '/equipment/suppliers/$id/edit': typeof AuthedEquipmentSuppliersIdEditRoute
+  '/equipment/inventory/close-out/': typeof AuthedEquipmentInventoryCloseOutIndexRoute
+  '/equipment/inventory/stocktake/': typeof AuthedEquipmentInventoryStocktakeIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -422,43 +461,45 @@ export interface FileRoutesByTo {
   '/reset-password': typeof ResetPasswordRoute
   '/support': typeof SupportRoute
   '/verify-email': typeof VerifyEmailRoute
-  '/audit': typeof AuthedAuditRoute
-  '/bays': typeof AuthedBaysRoute
-  '/catalog-translations': typeof AuthedCatalogTranslationsRoute
-  '/dashboard': typeof AuthedDashboardRoute
-  '/feedback': typeof AuthedFeedbackRoute
-  '/parts': typeof AuthedPartsRoute
-  '/users': typeof AuthedUsersRoute
-  '/inventory/$partId': typeof AuthedInventoryPartIdRoute
-  '/inventory/buy-list': typeof AuthedInventoryBuyListRoute
-  '/inventory/price-variance': typeof AuthedInventoryPriceVarianceRoute
-  '/jobs/$id': typeof AuthedJobsIdRoute
-  '/jobs/activity': typeof AuthedJobsActivityRoute
-  '/jobs/calendar': typeof AuthedJobsCalendarRoute
-  '/jobs/list': typeof AuthedJobsListRoute
-  '/jobs/stock-build': typeof AuthedJobsStockBuildRoute
-  '/purchase-orders/$id': typeof AuthedPurchaseOrdersIdRoute
-  '/units/$id': typeof AuthedUnitsIdRoute
-  '/customers': typeof AuthedCustomersIndexRoute
-  '/inventory': typeof AuthedInventoryIndexRoute
-  '/jobs': typeof AuthedJobsIndexRoute
-  '/product-ranges': typeof AuthedProductRangesIndexRoute
-  '/products': typeof AuthedProductsIndexRoute
-  '/purchase-orders': typeof AuthedPurchaseOrdersIndexRoute
-  '/quotes': typeof AuthedQuotesIndexRoute
-  '/suppliers': typeof AuthedSuppliersIndexRoute
-  '/units': typeof AuthedUnitsIndexRoute
-  '/customers/$id/edit': typeof AuthedCustomersIdEditRoute
-  '/inventory/close-out/$jobId': typeof AuthedInventoryCloseOutJobIdRoute
-  '/inventory/job-variance/$jobId': typeof AuthedInventoryJobVarianceJobIdRoute
-  '/inventory/stocktake/$sessionId': typeof AuthedInventoryStocktakeSessionIdRoute
-  '/product-ranges/$id/edit': typeof AuthedProductRangesIdEditRoute
-  '/products/$id/edit': typeof AuthedProductsIdEditRoute
-  '/quotes/$id/edit': typeof AuthedQuotesIdEditRoute
-  '/quotes/$id/start-job': typeof AuthedQuotesIdStartJobRoute
-  '/suppliers/$id/edit': typeof AuthedSuppliersIdEditRoute
-  '/inventory/close-out': typeof AuthedInventoryCloseOutIndexRoute
-  '/inventory/stocktake': typeof AuthedInventoryStocktakeIndexRoute
+  '/contracting': typeof AuthedContractingRoute
+  '/equipment': typeof AuthedEquipmentRouteWithChildren
+  '/equipment/audit': typeof AuthedEquipmentAuditRoute
+  '/equipment/bays': typeof AuthedEquipmentBaysRoute
+  '/equipment/catalog-translations': typeof AuthedEquipmentCatalogTranslationsRoute
+  '/equipment/dashboard': typeof AuthedEquipmentDashboardRoute
+  '/equipment/feedback': typeof AuthedEquipmentFeedbackRoute
+  '/equipment/parts': typeof AuthedEquipmentPartsRoute
+  '/equipment/users': typeof AuthedEquipmentUsersRoute
+  '/equipment/inventory/$partId': typeof AuthedEquipmentInventoryPartIdRoute
+  '/equipment/inventory/buy-list': typeof AuthedEquipmentInventoryBuyListRoute
+  '/equipment/inventory/price-variance': typeof AuthedEquipmentInventoryPriceVarianceRoute
+  '/equipment/jobs/$id': typeof AuthedEquipmentJobsIdRoute
+  '/equipment/jobs/activity': typeof AuthedEquipmentJobsActivityRoute
+  '/equipment/jobs/calendar': typeof AuthedEquipmentJobsCalendarRoute
+  '/equipment/jobs/list': typeof AuthedEquipmentJobsListRoute
+  '/equipment/jobs/stock-build': typeof AuthedEquipmentJobsStockBuildRoute
+  '/equipment/purchase-orders/$id': typeof AuthedEquipmentPurchaseOrdersIdRoute
+  '/equipment/units/$id': typeof AuthedEquipmentUnitsIdRoute
+  '/equipment/customers': typeof AuthedEquipmentCustomersIndexRoute
+  '/equipment/inventory': typeof AuthedEquipmentInventoryIndexRoute
+  '/equipment/jobs': typeof AuthedEquipmentJobsIndexRoute
+  '/equipment/product-ranges': typeof AuthedEquipmentProductRangesIndexRoute
+  '/equipment/products': typeof AuthedEquipmentProductsIndexRoute
+  '/equipment/purchase-orders': typeof AuthedEquipmentPurchaseOrdersIndexRoute
+  '/equipment/quotes': typeof AuthedEquipmentQuotesIndexRoute
+  '/equipment/suppliers': typeof AuthedEquipmentSuppliersIndexRoute
+  '/equipment/units': typeof AuthedEquipmentUnitsIndexRoute
+  '/equipment/customers/$id/edit': typeof AuthedEquipmentCustomersIdEditRoute
+  '/equipment/inventory/close-out/$jobId': typeof AuthedEquipmentInventoryCloseOutJobIdRoute
+  '/equipment/inventory/job-variance/$jobId': typeof AuthedEquipmentInventoryJobVarianceJobIdRoute
+  '/equipment/inventory/stocktake/$sessionId': typeof AuthedEquipmentInventoryStocktakeSessionIdRoute
+  '/equipment/product-ranges/$id/edit': typeof AuthedEquipmentProductRangesIdEditRoute
+  '/equipment/products/$id/edit': typeof AuthedEquipmentProductsIdEditRoute
+  '/equipment/quotes/$id/edit': typeof AuthedEquipmentQuotesIdEditRoute
+  '/equipment/quotes/$id/start-job': typeof AuthedEquipmentQuotesIdStartJobRoute
+  '/equipment/suppliers/$id/edit': typeof AuthedEquipmentSuppliersIdEditRoute
+  '/equipment/inventory/close-out': typeof AuthedEquipmentInventoryCloseOutIndexRoute
+  '/equipment/inventory/stocktake': typeof AuthedEquipmentInventoryStocktakeIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -470,54 +511,56 @@ export interface FileRoutesById {
   '/reset-password': typeof ResetPasswordRoute
   '/support': typeof SupportRoute
   '/verify-email': typeof VerifyEmailRoute
-  '/_authed/audit': typeof AuthedAuditRoute
-  '/_authed/bays': typeof AuthedBaysRoute
-  '/_authed/catalog-translations': typeof AuthedCatalogTranslationsRoute
-  '/_authed/customers': typeof AuthedCustomersRouteWithChildren
-  '/_authed/dashboard': typeof AuthedDashboardRoute
-  '/_authed/feedback': typeof AuthedFeedbackRoute
-  '/_authed/inventory': typeof AuthedInventoryRouteWithChildren
-  '/_authed/jobs': typeof AuthedJobsRouteWithChildren
-  '/_authed/parts': typeof AuthedPartsRoute
-  '/_authed/product-ranges': typeof AuthedProductRangesRouteWithChildren
-  '/_authed/products': typeof AuthedProductsRouteWithChildren
-  '/_authed/purchase-orders': typeof AuthedPurchaseOrdersRouteWithChildren
-  '/_authed/quotes': typeof AuthedQuotesRouteWithChildren
-  '/_authed/suppliers': typeof AuthedSuppliersRouteWithChildren
-  '/_authed/units': typeof AuthedUnitsRouteWithChildren
-  '/_authed/users': typeof AuthedUsersRoute
-  '/_authed/inventory/$partId': typeof AuthedInventoryPartIdRoute
-  '/_authed/inventory/buy-list': typeof AuthedInventoryBuyListRoute
-  '/_authed/inventory/close-out': typeof AuthedInventoryCloseOutRouteWithChildren
-  '/_authed/inventory/price-variance': typeof AuthedInventoryPriceVarianceRoute
-  '/_authed/inventory/stocktake': typeof AuthedInventoryStocktakeRouteWithChildren
-  '/_authed/jobs/$id': typeof AuthedJobsIdRoute
-  '/_authed/jobs/activity': typeof AuthedJobsActivityRoute
-  '/_authed/jobs/calendar': typeof AuthedJobsCalendarRoute
-  '/_authed/jobs/list': typeof AuthedJobsListRoute
-  '/_authed/jobs/stock-build': typeof AuthedJobsStockBuildRoute
-  '/_authed/purchase-orders/$id': typeof AuthedPurchaseOrdersIdRoute
-  '/_authed/units/$id': typeof AuthedUnitsIdRoute
-  '/_authed/customers/': typeof AuthedCustomersIndexRoute
-  '/_authed/inventory/': typeof AuthedInventoryIndexRoute
-  '/_authed/jobs/': typeof AuthedJobsIndexRoute
-  '/_authed/product-ranges/': typeof AuthedProductRangesIndexRoute
-  '/_authed/products/': typeof AuthedProductsIndexRoute
-  '/_authed/purchase-orders/': typeof AuthedPurchaseOrdersIndexRoute
-  '/_authed/quotes/': typeof AuthedQuotesIndexRoute
-  '/_authed/suppliers/': typeof AuthedSuppliersIndexRoute
-  '/_authed/units/': typeof AuthedUnitsIndexRoute
-  '/_authed/customers/$id/edit': typeof AuthedCustomersIdEditRoute
-  '/_authed/inventory/close-out/$jobId': typeof AuthedInventoryCloseOutJobIdRoute
-  '/_authed/inventory/job-variance/$jobId': typeof AuthedInventoryJobVarianceJobIdRoute
-  '/_authed/inventory/stocktake/$sessionId': typeof AuthedInventoryStocktakeSessionIdRoute
-  '/_authed/product-ranges/$id/edit': typeof AuthedProductRangesIdEditRoute
-  '/_authed/products/$id/edit': typeof AuthedProductsIdEditRoute
-  '/_authed/quotes/$id_/edit': typeof AuthedQuotesIdEditRoute
-  '/_authed/quotes/$id_/start-job': typeof AuthedQuotesIdStartJobRoute
-  '/_authed/suppliers/$id/edit': typeof AuthedSuppliersIdEditRoute
-  '/_authed/inventory/close-out/': typeof AuthedInventoryCloseOutIndexRoute
-  '/_authed/inventory/stocktake/': typeof AuthedInventoryStocktakeIndexRoute
+  '/_authed/contracting': typeof AuthedContractingRoute
+  '/_authed/equipment': typeof AuthedEquipmentRouteWithChildren
+  '/_authed/equipment/audit': typeof AuthedEquipmentAuditRoute
+  '/_authed/equipment/bays': typeof AuthedEquipmentBaysRoute
+  '/_authed/equipment/catalog-translations': typeof AuthedEquipmentCatalogTranslationsRoute
+  '/_authed/equipment/customers': typeof AuthedEquipmentCustomersRouteWithChildren
+  '/_authed/equipment/dashboard': typeof AuthedEquipmentDashboardRoute
+  '/_authed/equipment/feedback': typeof AuthedEquipmentFeedbackRoute
+  '/_authed/equipment/inventory': typeof AuthedEquipmentInventoryRouteWithChildren
+  '/_authed/equipment/jobs': typeof AuthedEquipmentJobsRouteWithChildren
+  '/_authed/equipment/parts': typeof AuthedEquipmentPartsRoute
+  '/_authed/equipment/product-ranges': typeof AuthedEquipmentProductRangesRouteWithChildren
+  '/_authed/equipment/products': typeof AuthedEquipmentProductsRouteWithChildren
+  '/_authed/equipment/purchase-orders': typeof AuthedEquipmentPurchaseOrdersRouteWithChildren
+  '/_authed/equipment/quotes': typeof AuthedEquipmentQuotesRouteWithChildren
+  '/_authed/equipment/suppliers': typeof AuthedEquipmentSuppliersRouteWithChildren
+  '/_authed/equipment/units': typeof AuthedEquipmentUnitsRouteWithChildren
+  '/_authed/equipment/users': typeof AuthedEquipmentUsersRoute
+  '/_authed/equipment/inventory/$partId': typeof AuthedEquipmentInventoryPartIdRoute
+  '/_authed/equipment/inventory/buy-list': typeof AuthedEquipmentInventoryBuyListRoute
+  '/_authed/equipment/inventory/close-out': typeof AuthedEquipmentInventoryCloseOutRouteWithChildren
+  '/_authed/equipment/inventory/price-variance': typeof AuthedEquipmentInventoryPriceVarianceRoute
+  '/_authed/equipment/inventory/stocktake': typeof AuthedEquipmentInventoryStocktakeRouteWithChildren
+  '/_authed/equipment/jobs/$id': typeof AuthedEquipmentJobsIdRoute
+  '/_authed/equipment/jobs/activity': typeof AuthedEquipmentJobsActivityRoute
+  '/_authed/equipment/jobs/calendar': typeof AuthedEquipmentJobsCalendarRoute
+  '/_authed/equipment/jobs/list': typeof AuthedEquipmentJobsListRoute
+  '/_authed/equipment/jobs/stock-build': typeof AuthedEquipmentJobsStockBuildRoute
+  '/_authed/equipment/purchase-orders/$id': typeof AuthedEquipmentPurchaseOrdersIdRoute
+  '/_authed/equipment/units/$id': typeof AuthedEquipmentUnitsIdRoute
+  '/_authed/equipment/customers/': typeof AuthedEquipmentCustomersIndexRoute
+  '/_authed/equipment/inventory/': typeof AuthedEquipmentInventoryIndexRoute
+  '/_authed/equipment/jobs/': typeof AuthedEquipmentJobsIndexRoute
+  '/_authed/equipment/product-ranges/': typeof AuthedEquipmentProductRangesIndexRoute
+  '/_authed/equipment/products/': typeof AuthedEquipmentProductsIndexRoute
+  '/_authed/equipment/purchase-orders/': typeof AuthedEquipmentPurchaseOrdersIndexRoute
+  '/_authed/equipment/quotes/': typeof AuthedEquipmentQuotesIndexRoute
+  '/_authed/equipment/suppliers/': typeof AuthedEquipmentSuppliersIndexRoute
+  '/_authed/equipment/units/': typeof AuthedEquipmentUnitsIndexRoute
+  '/_authed/equipment/customers/$id/edit': typeof AuthedEquipmentCustomersIdEditRoute
+  '/_authed/equipment/inventory/close-out/$jobId': typeof AuthedEquipmentInventoryCloseOutJobIdRoute
+  '/_authed/equipment/inventory/job-variance/$jobId': typeof AuthedEquipmentInventoryJobVarianceJobIdRoute
+  '/_authed/equipment/inventory/stocktake/$sessionId': typeof AuthedEquipmentInventoryStocktakeSessionIdRoute
+  '/_authed/equipment/product-ranges/$id/edit': typeof AuthedEquipmentProductRangesIdEditRoute
+  '/_authed/equipment/products/$id/edit': typeof AuthedEquipmentProductsIdEditRoute
+  '/_authed/equipment/quotes/$id_/edit': typeof AuthedEquipmentQuotesIdEditRoute
+  '/_authed/equipment/quotes/$id_/start-job': typeof AuthedEquipmentQuotesIdStartJobRoute
+  '/_authed/equipment/suppliers/$id/edit': typeof AuthedEquipmentSuppliersIdEditRoute
+  '/_authed/equipment/inventory/close-out/': typeof AuthedEquipmentInventoryCloseOutIndexRoute
+  '/_authed/equipment/inventory/stocktake/': typeof AuthedEquipmentInventoryStocktakeIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -529,54 +572,56 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/support'
     | '/verify-email'
-    | '/audit'
-    | '/bays'
-    | '/catalog-translations'
-    | '/customers'
-    | '/dashboard'
-    | '/feedback'
-    | '/inventory'
-    | '/jobs'
-    | '/parts'
-    | '/product-ranges'
-    | '/products'
-    | '/purchase-orders'
-    | '/quotes'
-    | '/suppliers'
-    | '/units'
-    | '/users'
-    | '/inventory/$partId'
-    | '/inventory/buy-list'
-    | '/inventory/close-out'
-    | '/inventory/price-variance'
-    | '/inventory/stocktake'
-    | '/jobs/$id'
-    | '/jobs/activity'
-    | '/jobs/calendar'
-    | '/jobs/list'
-    | '/jobs/stock-build'
-    | '/purchase-orders/$id'
-    | '/units/$id'
-    | '/customers/'
-    | '/inventory/'
-    | '/jobs/'
-    | '/product-ranges/'
-    | '/products/'
-    | '/purchase-orders/'
-    | '/quotes/'
-    | '/suppliers/'
-    | '/units/'
-    | '/customers/$id/edit'
-    | '/inventory/close-out/$jobId'
-    | '/inventory/job-variance/$jobId'
-    | '/inventory/stocktake/$sessionId'
-    | '/product-ranges/$id/edit'
-    | '/products/$id/edit'
-    | '/quotes/$id/edit'
-    | '/quotes/$id/start-job'
-    | '/suppliers/$id/edit'
-    | '/inventory/close-out/'
-    | '/inventory/stocktake/'
+    | '/contracting'
+    | '/equipment'
+    | '/equipment/audit'
+    | '/equipment/bays'
+    | '/equipment/catalog-translations'
+    | '/equipment/customers'
+    | '/equipment/dashboard'
+    | '/equipment/feedback'
+    | '/equipment/inventory'
+    | '/equipment/jobs'
+    | '/equipment/parts'
+    | '/equipment/product-ranges'
+    | '/equipment/products'
+    | '/equipment/purchase-orders'
+    | '/equipment/quotes'
+    | '/equipment/suppliers'
+    | '/equipment/units'
+    | '/equipment/users'
+    | '/equipment/inventory/$partId'
+    | '/equipment/inventory/buy-list'
+    | '/equipment/inventory/close-out'
+    | '/equipment/inventory/price-variance'
+    | '/equipment/inventory/stocktake'
+    | '/equipment/jobs/$id'
+    | '/equipment/jobs/activity'
+    | '/equipment/jobs/calendar'
+    | '/equipment/jobs/list'
+    | '/equipment/jobs/stock-build'
+    | '/equipment/purchase-orders/$id'
+    | '/equipment/units/$id'
+    | '/equipment/customers/'
+    | '/equipment/inventory/'
+    | '/equipment/jobs/'
+    | '/equipment/product-ranges/'
+    | '/equipment/products/'
+    | '/equipment/purchase-orders/'
+    | '/equipment/quotes/'
+    | '/equipment/suppliers/'
+    | '/equipment/units/'
+    | '/equipment/customers/$id/edit'
+    | '/equipment/inventory/close-out/$jobId'
+    | '/equipment/inventory/job-variance/$jobId'
+    | '/equipment/inventory/stocktake/$sessionId'
+    | '/equipment/product-ranges/$id/edit'
+    | '/equipment/products/$id/edit'
+    | '/equipment/quotes/$id/edit'
+    | '/equipment/quotes/$id/start-job'
+    | '/equipment/suppliers/$id/edit'
+    | '/equipment/inventory/close-out/'
+    | '/equipment/inventory/stocktake/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -586,43 +631,45 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/support'
     | '/verify-email'
-    | '/audit'
-    | '/bays'
-    | '/catalog-translations'
-    | '/dashboard'
-    | '/feedback'
-    | '/parts'
-    | '/users'
-    | '/inventory/$partId'
-    | '/inventory/buy-list'
-    | '/inventory/price-variance'
-    | '/jobs/$id'
-    | '/jobs/activity'
-    | '/jobs/calendar'
-    | '/jobs/list'
-    | '/jobs/stock-build'
-    | '/purchase-orders/$id'
-    | '/units/$id'
-    | '/customers'
-    | '/inventory'
-    | '/jobs'
-    | '/product-ranges'
-    | '/products'
-    | '/purchase-orders'
-    | '/quotes'
-    | '/suppliers'
-    | '/units'
-    | '/customers/$id/edit'
-    | '/inventory/close-out/$jobId'
-    | '/inventory/job-variance/$jobId'
-    | '/inventory/stocktake/$sessionId'
-    | '/product-ranges/$id/edit'
-    | '/products/$id/edit'
-    | '/quotes/$id/edit'
-    | '/quotes/$id/start-job'
-    | '/suppliers/$id/edit'
-    | '/inventory/close-out'
-    | '/inventory/stocktake'
+    | '/contracting'
+    | '/equipment'
+    | '/equipment/audit'
+    | '/equipment/bays'
+    | '/equipment/catalog-translations'
+    | '/equipment/dashboard'
+    | '/equipment/feedback'
+    | '/equipment/parts'
+    | '/equipment/users'
+    | '/equipment/inventory/$partId'
+    | '/equipment/inventory/buy-list'
+    | '/equipment/inventory/price-variance'
+    | '/equipment/jobs/$id'
+    | '/equipment/jobs/activity'
+    | '/equipment/jobs/calendar'
+    | '/equipment/jobs/list'
+    | '/equipment/jobs/stock-build'
+    | '/equipment/purchase-orders/$id'
+    | '/equipment/units/$id'
+    | '/equipment/customers'
+    | '/equipment/inventory'
+    | '/equipment/jobs'
+    | '/equipment/product-ranges'
+    | '/equipment/products'
+    | '/equipment/purchase-orders'
+    | '/equipment/quotes'
+    | '/equipment/suppliers'
+    | '/equipment/units'
+    | '/equipment/customers/$id/edit'
+    | '/equipment/inventory/close-out/$jobId'
+    | '/equipment/inventory/job-variance/$jobId'
+    | '/equipment/inventory/stocktake/$sessionId'
+    | '/equipment/product-ranges/$id/edit'
+    | '/equipment/products/$id/edit'
+    | '/equipment/quotes/$id/edit'
+    | '/equipment/quotes/$id/start-job'
+    | '/equipment/suppliers/$id/edit'
+    | '/equipment/inventory/close-out'
+    | '/equipment/inventory/stocktake'
   id:
     | '__root__'
     | '/'
@@ -633,54 +680,56 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/support'
     | '/verify-email'
-    | '/_authed/audit'
-    | '/_authed/bays'
-    | '/_authed/catalog-translations'
-    | '/_authed/customers'
-    | '/_authed/dashboard'
-    | '/_authed/feedback'
-    | '/_authed/inventory'
-    | '/_authed/jobs'
-    | '/_authed/parts'
-    | '/_authed/product-ranges'
-    | '/_authed/products'
-    | '/_authed/purchase-orders'
-    | '/_authed/quotes'
-    | '/_authed/suppliers'
-    | '/_authed/units'
-    | '/_authed/users'
-    | '/_authed/inventory/$partId'
-    | '/_authed/inventory/buy-list'
-    | '/_authed/inventory/close-out'
-    | '/_authed/inventory/price-variance'
-    | '/_authed/inventory/stocktake'
-    | '/_authed/jobs/$id'
-    | '/_authed/jobs/activity'
-    | '/_authed/jobs/calendar'
-    | '/_authed/jobs/list'
-    | '/_authed/jobs/stock-build'
-    | '/_authed/purchase-orders/$id'
-    | '/_authed/units/$id'
-    | '/_authed/customers/'
-    | '/_authed/inventory/'
-    | '/_authed/jobs/'
-    | '/_authed/product-ranges/'
-    | '/_authed/products/'
-    | '/_authed/purchase-orders/'
-    | '/_authed/quotes/'
-    | '/_authed/suppliers/'
-    | '/_authed/units/'
-    | '/_authed/customers/$id/edit'
-    | '/_authed/inventory/close-out/$jobId'
-    | '/_authed/inventory/job-variance/$jobId'
-    | '/_authed/inventory/stocktake/$sessionId'
-    | '/_authed/product-ranges/$id/edit'
-    | '/_authed/products/$id/edit'
-    | '/_authed/quotes/$id_/edit'
-    | '/_authed/quotes/$id_/start-job'
-    | '/_authed/suppliers/$id/edit'
-    | '/_authed/inventory/close-out/'
-    | '/_authed/inventory/stocktake/'
+    | '/_authed/contracting'
+    | '/_authed/equipment'
+    | '/_authed/equipment/audit'
+    | '/_authed/equipment/bays'
+    | '/_authed/equipment/catalog-translations'
+    | '/_authed/equipment/customers'
+    | '/_authed/equipment/dashboard'
+    | '/_authed/equipment/feedback'
+    | '/_authed/equipment/inventory'
+    | '/_authed/equipment/jobs'
+    | '/_authed/equipment/parts'
+    | '/_authed/equipment/product-ranges'
+    | '/_authed/equipment/products'
+    | '/_authed/equipment/purchase-orders'
+    | '/_authed/equipment/quotes'
+    | '/_authed/equipment/suppliers'
+    | '/_authed/equipment/units'
+    | '/_authed/equipment/users'
+    | '/_authed/equipment/inventory/$partId'
+    | '/_authed/equipment/inventory/buy-list'
+    | '/_authed/equipment/inventory/close-out'
+    | '/_authed/equipment/inventory/price-variance'
+    | '/_authed/equipment/inventory/stocktake'
+    | '/_authed/equipment/jobs/$id'
+    | '/_authed/equipment/jobs/activity'
+    | '/_authed/equipment/jobs/calendar'
+    | '/_authed/equipment/jobs/list'
+    | '/_authed/equipment/jobs/stock-build'
+    | '/_authed/equipment/purchase-orders/$id'
+    | '/_authed/equipment/units/$id'
+    | '/_authed/equipment/customers/'
+    | '/_authed/equipment/inventory/'
+    | '/_authed/equipment/jobs/'
+    | '/_authed/equipment/product-ranges/'
+    | '/_authed/equipment/products/'
+    | '/_authed/equipment/purchase-orders/'
+    | '/_authed/equipment/quotes/'
+    | '/_authed/equipment/suppliers/'
+    | '/_authed/equipment/units/'
+    | '/_authed/equipment/customers/$id/edit'
+    | '/_authed/equipment/inventory/close-out/$jobId'
+    | '/_authed/equipment/inventory/job-variance/$jobId'
+    | '/_authed/equipment/inventory/stocktake/$sessionId'
+    | '/_authed/equipment/product-ranges/$id/edit'
+    | '/_authed/equipment/products/$id/edit'
+    | '/_authed/equipment/quotes/$id_/edit'
+    | '/_authed/equipment/quotes/$id_/start-job'
+    | '/_authed/equipment/suppliers/$id/edit'
+    | '/_authed/equipment/inventory/close-out/'
+    | '/_authed/equipment/inventory/stocktake/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -752,558 +801,612 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof VerifyEmailRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_authed/audit': {
-      id: '/_authed/audit'
+    '/_authed/contracting': {
+      id: '/_authed/contracting'
+      path: '/contracting'
+      fullPath: '/contracting'
+      preLoaderRoute: typeof AuthedContractingRouteImport
+      parentRoute: typeof AuthedRoute
+    }
+    '/_authed/equipment': {
+      id: '/_authed/equipment'
+      path: '/equipment'
+      fullPath: '/equipment'
+      preLoaderRoute: typeof AuthedEquipmentRouteImport
+      parentRoute: typeof AuthedRoute
+    }
+    '/_authed/equipment/audit': {
+      id: '/_authed/equipment/audit'
       path: '/audit'
-      fullPath: '/audit'
-      preLoaderRoute: typeof AuthedAuditRouteImport
-      parentRoute: typeof AuthedRoute
+      fullPath: '/equipment/audit'
+      preLoaderRoute: typeof AuthedEquipmentAuditRouteImport
+      parentRoute: typeof AuthedEquipmentRoute
     }
-    '/_authed/bays': {
-      id: '/_authed/bays'
+    '/_authed/equipment/bays': {
+      id: '/_authed/equipment/bays'
       path: '/bays'
-      fullPath: '/bays'
-      preLoaderRoute: typeof AuthedBaysRouteImport
-      parentRoute: typeof AuthedRoute
+      fullPath: '/equipment/bays'
+      preLoaderRoute: typeof AuthedEquipmentBaysRouteImport
+      parentRoute: typeof AuthedEquipmentRoute
     }
-    '/_authed/catalog-translations': {
-      id: '/_authed/catalog-translations'
+    '/_authed/equipment/catalog-translations': {
+      id: '/_authed/equipment/catalog-translations'
       path: '/catalog-translations'
-      fullPath: '/catalog-translations'
-      preLoaderRoute: typeof AuthedCatalogTranslationsRouteImport
-      parentRoute: typeof AuthedRoute
+      fullPath: '/equipment/catalog-translations'
+      preLoaderRoute: typeof AuthedEquipmentCatalogTranslationsRouteImport
+      parentRoute: typeof AuthedEquipmentRoute
     }
-    '/_authed/customers': {
-      id: '/_authed/customers'
+    '/_authed/equipment/customers': {
+      id: '/_authed/equipment/customers'
       path: '/customers'
-      fullPath: '/customers'
-      preLoaderRoute: typeof AuthedCustomersRouteImport
-      parentRoute: typeof AuthedRoute
+      fullPath: '/equipment/customers'
+      preLoaderRoute: typeof AuthedEquipmentCustomersRouteImport
+      parentRoute: typeof AuthedEquipmentRoute
     }
-    '/_authed/dashboard': {
-      id: '/_authed/dashboard'
+    '/_authed/equipment/dashboard': {
+      id: '/_authed/equipment/dashboard'
       path: '/dashboard'
-      fullPath: '/dashboard'
-      preLoaderRoute: typeof AuthedDashboardRouteImport
-      parentRoute: typeof AuthedRoute
+      fullPath: '/equipment/dashboard'
+      preLoaderRoute: typeof AuthedEquipmentDashboardRouteImport
+      parentRoute: typeof AuthedEquipmentRoute
     }
-    '/_authed/feedback': {
-      id: '/_authed/feedback'
+    '/_authed/equipment/feedback': {
+      id: '/_authed/equipment/feedback'
       path: '/feedback'
-      fullPath: '/feedback'
-      preLoaderRoute: typeof AuthedFeedbackRouteImport
-      parentRoute: typeof AuthedRoute
+      fullPath: '/equipment/feedback'
+      preLoaderRoute: typeof AuthedEquipmentFeedbackRouteImport
+      parentRoute: typeof AuthedEquipmentRoute
     }
-    '/_authed/inventory': {
-      id: '/_authed/inventory'
+    '/_authed/equipment/inventory': {
+      id: '/_authed/equipment/inventory'
       path: '/inventory'
-      fullPath: '/inventory'
-      preLoaderRoute: typeof AuthedInventoryRouteImport
-      parentRoute: typeof AuthedRoute
+      fullPath: '/equipment/inventory'
+      preLoaderRoute: typeof AuthedEquipmentInventoryRouteImport
+      parentRoute: typeof AuthedEquipmentRoute
     }
-    '/_authed/jobs': {
-      id: '/_authed/jobs'
+    '/_authed/equipment/jobs': {
+      id: '/_authed/equipment/jobs'
       path: '/jobs'
-      fullPath: '/jobs'
-      preLoaderRoute: typeof AuthedJobsRouteImport
-      parentRoute: typeof AuthedRoute
+      fullPath: '/equipment/jobs'
+      preLoaderRoute: typeof AuthedEquipmentJobsRouteImport
+      parentRoute: typeof AuthedEquipmentRoute
     }
-    '/_authed/parts': {
-      id: '/_authed/parts'
+    '/_authed/equipment/parts': {
+      id: '/_authed/equipment/parts'
       path: '/parts'
-      fullPath: '/parts'
-      preLoaderRoute: typeof AuthedPartsRouteImport
-      parentRoute: typeof AuthedRoute
+      fullPath: '/equipment/parts'
+      preLoaderRoute: typeof AuthedEquipmentPartsRouteImport
+      parentRoute: typeof AuthedEquipmentRoute
     }
-    '/_authed/product-ranges': {
-      id: '/_authed/product-ranges'
+    '/_authed/equipment/product-ranges': {
+      id: '/_authed/equipment/product-ranges'
       path: '/product-ranges'
-      fullPath: '/product-ranges'
-      preLoaderRoute: typeof AuthedProductRangesRouteImport
-      parentRoute: typeof AuthedRoute
+      fullPath: '/equipment/product-ranges'
+      preLoaderRoute: typeof AuthedEquipmentProductRangesRouteImport
+      parentRoute: typeof AuthedEquipmentRoute
     }
-    '/_authed/products': {
-      id: '/_authed/products'
+    '/_authed/equipment/products': {
+      id: '/_authed/equipment/products'
       path: '/products'
-      fullPath: '/products'
-      preLoaderRoute: typeof AuthedProductsRouteImport
-      parentRoute: typeof AuthedRoute
+      fullPath: '/equipment/products'
+      preLoaderRoute: typeof AuthedEquipmentProductsRouteImport
+      parentRoute: typeof AuthedEquipmentRoute
     }
-    '/_authed/purchase-orders': {
-      id: '/_authed/purchase-orders'
+    '/_authed/equipment/purchase-orders': {
+      id: '/_authed/equipment/purchase-orders'
       path: '/purchase-orders'
-      fullPath: '/purchase-orders'
-      preLoaderRoute: typeof AuthedPurchaseOrdersRouteImport
-      parentRoute: typeof AuthedRoute
+      fullPath: '/equipment/purchase-orders'
+      preLoaderRoute: typeof AuthedEquipmentPurchaseOrdersRouteImport
+      parentRoute: typeof AuthedEquipmentRoute
     }
-    '/_authed/quotes': {
-      id: '/_authed/quotes'
+    '/_authed/equipment/quotes': {
+      id: '/_authed/equipment/quotes'
       path: '/quotes'
-      fullPath: '/quotes'
-      preLoaderRoute: typeof AuthedQuotesRouteImport
-      parentRoute: typeof AuthedRoute
+      fullPath: '/equipment/quotes'
+      preLoaderRoute: typeof AuthedEquipmentQuotesRouteImport
+      parentRoute: typeof AuthedEquipmentRoute
     }
-    '/_authed/suppliers': {
-      id: '/_authed/suppliers'
+    '/_authed/equipment/suppliers': {
+      id: '/_authed/equipment/suppliers'
       path: '/suppliers'
-      fullPath: '/suppliers'
-      preLoaderRoute: typeof AuthedSuppliersRouteImport
-      parentRoute: typeof AuthedRoute
+      fullPath: '/equipment/suppliers'
+      preLoaderRoute: typeof AuthedEquipmentSuppliersRouteImport
+      parentRoute: typeof AuthedEquipmentRoute
     }
-    '/_authed/units': {
-      id: '/_authed/units'
+    '/_authed/equipment/units': {
+      id: '/_authed/equipment/units'
       path: '/units'
-      fullPath: '/units'
-      preLoaderRoute: typeof AuthedUnitsRouteImport
-      parentRoute: typeof AuthedRoute
+      fullPath: '/equipment/units'
+      preLoaderRoute: typeof AuthedEquipmentUnitsRouteImport
+      parentRoute: typeof AuthedEquipmentRoute
     }
-    '/_authed/users': {
-      id: '/_authed/users'
+    '/_authed/equipment/users': {
+      id: '/_authed/equipment/users'
       path: '/users'
-      fullPath: '/users'
-      preLoaderRoute: typeof AuthedUsersRouteImport
-      parentRoute: typeof AuthedRoute
+      fullPath: '/equipment/users'
+      preLoaderRoute: typeof AuthedEquipmentUsersRouteImport
+      parentRoute: typeof AuthedEquipmentRoute
     }
-    '/_authed/customers/': {
-      id: '/_authed/customers/'
+    '/_authed/equipment/customers/': {
+      id: '/_authed/equipment/customers/'
       path: '/'
-      fullPath: '/customers/'
-      preLoaderRoute: typeof AuthedCustomersIndexRouteImport
-      parentRoute: typeof AuthedCustomersRoute
+      fullPath: '/equipment/customers/'
+      preLoaderRoute: typeof AuthedEquipmentCustomersIndexRouteImport
+      parentRoute: typeof AuthedEquipmentCustomersRoute
     }
-    '/_authed/inventory/': {
-      id: '/_authed/inventory/'
+    '/_authed/equipment/inventory/': {
+      id: '/_authed/equipment/inventory/'
       path: '/'
-      fullPath: '/inventory/'
-      preLoaderRoute: typeof AuthedInventoryIndexRouteImport
-      parentRoute: typeof AuthedInventoryRoute
+      fullPath: '/equipment/inventory/'
+      preLoaderRoute: typeof AuthedEquipmentInventoryIndexRouteImport
+      parentRoute: typeof AuthedEquipmentInventoryRoute
     }
-    '/_authed/inventory/$partId': {
-      id: '/_authed/inventory/$partId'
+    '/_authed/equipment/inventory/$partId': {
+      id: '/_authed/equipment/inventory/$partId'
       path: '/$partId'
-      fullPath: '/inventory/$partId'
-      preLoaderRoute: typeof AuthedInventoryPartIdRouteImport
-      parentRoute: typeof AuthedInventoryRoute
+      fullPath: '/equipment/inventory/$partId'
+      preLoaderRoute: typeof AuthedEquipmentInventoryPartIdRouteImport
+      parentRoute: typeof AuthedEquipmentInventoryRoute
     }
-    '/_authed/inventory/buy-list': {
-      id: '/_authed/inventory/buy-list'
+    '/_authed/equipment/inventory/buy-list': {
+      id: '/_authed/equipment/inventory/buy-list'
       path: '/buy-list'
-      fullPath: '/inventory/buy-list'
-      preLoaderRoute: typeof AuthedInventoryBuyListRouteImport
-      parentRoute: typeof AuthedInventoryRoute
+      fullPath: '/equipment/inventory/buy-list'
+      preLoaderRoute: typeof AuthedEquipmentInventoryBuyListRouteImport
+      parentRoute: typeof AuthedEquipmentInventoryRoute
     }
-    '/_authed/inventory/close-out': {
-      id: '/_authed/inventory/close-out'
+    '/_authed/equipment/inventory/close-out': {
+      id: '/_authed/equipment/inventory/close-out'
       path: '/close-out'
-      fullPath: '/inventory/close-out'
-      preLoaderRoute: typeof AuthedInventoryCloseOutRouteImport
-      parentRoute: typeof AuthedInventoryRoute
+      fullPath: '/equipment/inventory/close-out'
+      preLoaderRoute: typeof AuthedEquipmentInventoryCloseOutRouteImport
+      parentRoute: typeof AuthedEquipmentInventoryRoute
     }
-    '/_authed/inventory/price-variance': {
-      id: '/_authed/inventory/price-variance'
+    '/_authed/equipment/inventory/price-variance': {
+      id: '/_authed/equipment/inventory/price-variance'
       path: '/price-variance'
-      fullPath: '/inventory/price-variance'
-      preLoaderRoute: typeof AuthedInventoryPriceVarianceRouteImport
-      parentRoute: typeof AuthedInventoryRoute
+      fullPath: '/equipment/inventory/price-variance'
+      preLoaderRoute: typeof AuthedEquipmentInventoryPriceVarianceRouteImport
+      parentRoute: typeof AuthedEquipmentInventoryRoute
     }
-    '/_authed/inventory/stocktake': {
-      id: '/_authed/inventory/stocktake'
+    '/_authed/equipment/inventory/stocktake': {
+      id: '/_authed/equipment/inventory/stocktake'
       path: '/stocktake'
-      fullPath: '/inventory/stocktake'
-      preLoaderRoute: typeof AuthedInventoryStocktakeRouteImport
-      parentRoute: typeof AuthedInventoryRoute
+      fullPath: '/equipment/inventory/stocktake'
+      preLoaderRoute: typeof AuthedEquipmentInventoryStocktakeRouteImport
+      parentRoute: typeof AuthedEquipmentInventoryRoute
     }
-    '/_authed/jobs/': {
-      id: '/_authed/jobs/'
+    '/_authed/equipment/jobs/': {
+      id: '/_authed/equipment/jobs/'
       path: '/'
-      fullPath: '/jobs/'
-      preLoaderRoute: typeof AuthedJobsIndexRouteImport
-      parentRoute: typeof AuthedJobsRoute
+      fullPath: '/equipment/jobs/'
+      preLoaderRoute: typeof AuthedEquipmentJobsIndexRouteImport
+      parentRoute: typeof AuthedEquipmentJobsRoute
     }
-    '/_authed/jobs/$id': {
-      id: '/_authed/jobs/$id'
+    '/_authed/equipment/jobs/$id': {
+      id: '/_authed/equipment/jobs/$id'
       path: '/$id'
-      fullPath: '/jobs/$id'
-      preLoaderRoute: typeof AuthedJobsIdRouteImport
-      parentRoute: typeof AuthedJobsRoute
+      fullPath: '/equipment/jobs/$id'
+      preLoaderRoute: typeof AuthedEquipmentJobsIdRouteImport
+      parentRoute: typeof AuthedEquipmentJobsRoute
     }
-    '/_authed/jobs/activity': {
-      id: '/_authed/jobs/activity'
+    '/_authed/equipment/jobs/activity': {
+      id: '/_authed/equipment/jobs/activity'
       path: '/activity'
-      fullPath: '/jobs/activity'
-      preLoaderRoute: typeof AuthedJobsActivityRouteImport
-      parentRoute: typeof AuthedJobsRoute
+      fullPath: '/equipment/jobs/activity'
+      preLoaderRoute: typeof AuthedEquipmentJobsActivityRouteImport
+      parentRoute: typeof AuthedEquipmentJobsRoute
     }
-    '/_authed/jobs/calendar': {
-      id: '/_authed/jobs/calendar'
+    '/_authed/equipment/jobs/calendar': {
+      id: '/_authed/equipment/jobs/calendar'
       path: '/calendar'
-      fullPath: '/jobs/calendar'
-      preLoaderRoute: typeof AuthedJobsCalendarRouteImport
-      parentRoute: typeof AuthedJobsRoute
+      fullPath: '/equipment/jobs/calendar'
+      preLoaderRoute: typeof AuthedEquipmentJobsCalendarRouteImport
+      parentRoute: typeof AuthedEquipmentJobsRoute
     }
-    '/_authed/jobs/list': {
-      id: '/_authed/jobs/list'
+    '/_authed/equipment/jobs/list': {
+      id: '/_authed/equipment/jobs/list'
       path: '/list'
-      fullPath: '/jobs/list'
-      preLoaderRoute: typeof AuthedJobsListRouteImport
-      parentRoute: typeof AuthedJobsRoute
+      fullPath: '/equipment/jobs/list'
+      preLoaderRoute: typeof AuthedEquipmentJobsListRouteImport
+      parentRoute: typeof AuthedEquipmentJobsRoute
     }
-    '/_authed/jobs/stock-build': {
-      id: '/_authed/jobs/stock-build'
+    '/_authed/equipment/jobs/stock-build': {
+      id: '/_authed/equipment/jobs/stock-build'
       path: '/stock-build'
-      fullPath: '/jobs/stock-build'
-      preLoaderRoute: typeof AuthedJobsStockBuildRouteImport
-      parentRoute: typeof AuthedJobsRoute
+      fullPath: '/equipment/jobs/stock-build'
+      preLoaderRoute: typeof AuthedEquipmentJobsStockBuildRouteImport
+      parentRoute: typeof AuthedEquipmentJobsRoute
     }
-    '/_authed/product-ranges/': {
-      id: '/_authed/product-ranges/'
+    '/_authed/equipment/product-ranges/': {
+      id: '/_authed/equipment/product-ranges/'
       path: '/'
-      fullPath: '/product-ranges/'
-      preLoaderRoute: typeof AuthedProductRangesIndexRouteImport
-      parentRoute: typeof AuthedProductRangesRoute
+      fullPath: '/equipment/product-ranges/'
+      preLoaderRoute: typeof AuthedEquipmentProductRangesIndexRouteImport
+      parentRoute: typeof AuthedEquipmentProductRangesRoute
     }
-    '/_authed/products/': {
-      id: '/_authed/products/'
+    '/_authed/equipment/products/': {
+      id: '/_authed/equipment/products/'
       path: '/'
-      fullPath: '/products/'
-      preLoaderRoute: typeof AuthedProductsIndexRouteImport
-      parentRoute: typeof AuthedProductsRoute
+      fullPath: '/equipment/products/'
+      preLoaderRoute: typeof AuthedEquipmentProductsIndexRouteImport
+      parentRoute: typeof AuthedEquipmentProductsRoute
     }
-    '/_authed/purchase-orders/': {
-      id: '/_authed/purchase-orders/'
+    '/_authed/equipment/purchase-orders/': {
+      id: '/_authed/equipment/purchase-orders/'
       path: '/'
-      fullPath: '/purchase-orders/'
-      preLoaderRoute: typeof AuthedPurchaseOrdersIndexRouteImport
-      parentRoute: typeof AuthedPurchaseOrdersRoute
+      fullPath: '/equipment/purchase-orders/'
+      preLoaderRoute: typeof AuthedEquipmentPurchaseOrdersIndexRouteImport
+      parentRoute: typeof AuthedEquipmentPurchaseOrdersRoute
     }
-    '/_authed/purchase-orders/$id': {
-      id: '/_authed/purchase-orders/$id'
+    '/_authed/equipment/purchase-orders/$id': {
+      id: '/_authed/equipment/purchase-orders/$id'
       path: '/$id'
-      fullPath: '/purchase-orders/$id'
-      preLoaderRoute: typeof AuthedPurchaseOrdersIdRouteImport
-      parentRoute: typeof AuthedPurchaseOrdersRoute
+      fullPath: '/equipment/purchase-orders/$id'
+      preLoaderRoute: typeof AuthedEquipmentPurchaseOrdersIdRouteImport
+      parentRoute: typeof AuthedEquipmentPurchaseOrdersRoute
     }
-    '/_authed/quotes/': {
-      id: '/_authed/quotes/'
+    '/_authed/equipment/quotes/': {
+      id: '/_authed/equipment/quotes/'
       path: '/'
-      fullPath: '/quotes/'
-      preLoaderRoute: typeof AuthedQuotesIndexRouteImport
-      parentRoute: typeof AuthedQuotesRoute
+      fullPath: '/equipment/quotes/'
+      preLoaderRoute: typeof AuthedEquipmentQuotesIndexRouteImport
+      parentRoute: typeof AuthedEquipmentQuotesRoute
     }
-    '/_authed/suppliers/': {
-      id: '/_authed/suppliers/'
+    '/_authed/equipment/suppliers/': {
+      id: '/_authed/equipment/suppliers/'
       path: '/'
-      fullPath: '/suppliers/'
-      preLoaderRoute: typeof AuthedSuppliersIndexRouteImport
-      parentRoute: typeof AuthedSuppliersRoute
+      fullPath: '/equipment/suppliers/'
+      preLoaderRoute: typeof AuthedEquipmentSuppliersIndexRouteImport
+      parentRoute: typeof AuthedEquipmentSuppliersRoute
     }
-    '/_authed/units/': {
-      id: '/_authed/units/'
+    '/_authed/equipment/units/': {
+      id: '/_authed/equipment/units/'
       path: '/'
-      fullPath: '/units/'
-      preLoaderRoute: typeof AuthedUnitsIndexRouteImport
-      parentRoute: typeof AuthedUnitsRoute
+      fullPath: '/equipment/units/'
+      preLoaderRoute: typeof AuthedEquipmentUnitsIndexRouteImport
+      parentRoute: typeof AuthedEquipmentUnitsRoute
     }
-    '/_authed/units/$id': {
-      id: '/_authed/units/$id'
+    '/_authed/equipment/units/$id': {
+      id: '/_authed/equipment/units/$id'
       path: '/$id'
-      fullPath: '/units/$id'
-      preLoaderRoute: typeof AuthedUnitsIdRouteImport
-      parentRoute: typeof AuthedUnitsRoute
+      fullPath: '/equipment/units/$id'
+      preLoaderRoute: typeof AuthedEquipmentUnitsIdRouteImport
+      parentRoute: typeof AuthedEquipmentUnitsRoute
     }
-    '/_authed/customers/$id/edit': {
-      id: '/_authed/customers/$id/edit'
+    '/_authed/equipment/customers/$id/edit': {
+      id: '/_authed/equipment/customers/$id/edit'
       path: '/$id/edit'
-      fullPath: '/customers/$id/edit'
-      preLoaderRoute: typeof AuthedCustomersIdEditRouteImport
-      parentRoute: typeof AuthedCustomersRoute
+      fullPath: '/equipment/customers/$id/edit'
+      preLoaderRoute: typeof AuthedEquipmentCustomersIdEditRouteImport
+      parentRoute: typeof AuthedEquipmentCustomersRoute
     }
-    '/_authed/inventory/close-out/': {
-      id: '/_authed/inventory/close-out/'
+    '/_authed/equipment/inventory/close-out/': {
+      id: '/_authed/equipment/inventory/close-out/'
       path: '/'
-      fullPath: '/inventory/close-out/'
-      preLoaderRoute: typeof AuthedInventoryCloseOutIndexRouteImport
-      parentRoute: typeof AuthedInventoryCloseOutRoute
+      fullPath: '/equipment/inventory/close-out/'
+      preLoaderRoute: typeof AuthedEquipmentInventoryCloseOutIndexRouteImport
+      parentRoute: typeof AuthedEquipmentInventoryCloseOutRoute
     }
-    '/_authed/inventory/close-out/$jobId': {
-      id: '/_authed/inventory/close-out/$jobId'
+    '/_authed/equipment/inventory/close-out/$jobId': {
+      id: '/_authed/equipment/inventory/close-out/$jobId'
       path: '/$jobId'
-      fullPath: '/inventory/close-out/$jobId'
-      preLoaderRoute: typeof AuthedInventoryCloseOutJobIdRouteImport
-      parentRoute: typeof AuthedInventoryCloseOutRoute
+      fullPath: '/equipment/inventory/close-out/$jobId'
+      preLoaderRoute: typeof AuthedEquipmentInventoryCloseOutJobIdRouteImport
+      parentRoute: typeof AuthedEquipmentInventoryCloseOutRoute
     }
-    '/_authed/inventory/job-variance/$jobId': {
-      id: '/_authed/inventory/job-variance/$jobId'
+    '/_authed/equipment/inventory/job-variance/$jobId': {
+      id: '/_authed/equipment/inventory/job-variance/$jobId'
       path: '/job-variance/$jobId'
-      fullPath: '/inventory/job-variance/$jobId'
-      preLoaderRoute: typeof AuthedInventoryJobVarianceJobIdRouteImport
-      parentRoute: typeof AuthedInventoryRoute
+      fullPath: '/equipment/inventory/job-variance/$jobId'
+      preLoaderRoute: typeof AuthedEquipmentInventoryJobVarianceJobIdRouteImport
+      parentRoute: typeof AuthedEquipmentInventoryRoute
     }
-    '/_authed/inventory/stocktake/': {
-      id: '/_authed/inventory/stocktake/'
+    '/_authed/equipment/inventory/stocktake/': {
+      id: '/_authed/equipment/inventory/stocktake/'
       path: '/'
-      fullPath: '/inventory/stocktake/'
-      preLoaderRoute: typeof AuthedInventoryStocktakeIndexRouteImport
-      parentRoute: typeof AuthedInventoryStocktakeRoute
+      fullPath: '/equipment/inventory/stocktake/'
+      preLoaderRoute: typeof AuthedEquipmentInventoryStocktakeIndexRouteImport
+      parentRoute: typeof AuthedEquipmentInventoryStocktakeRoute
     }
-    '/_authed/inventory/stocktake/$sessionId': {
-      id: '/_authed/inventory/stocktake/$sessionId'
+    '/_authed/equipment/inventory/stocktake/$sessionId': {
+      id: '/_authed/equipment/inventory/stocktake/$sessionId'
       path: '/$sessionId'
-      fullPath: '/inventory/stocktake/$sessionId'
-      preLoaderRoute: typeof AuthedInventoryStocktakeSessionIdRouteImport
-      parentRoute: typeof AuthedInventoryStocktakeRoute
+      fullPath: '/equipment/inventory/stocktake/$sessionId'
+      preLoaderRoute: typeof AuthedEquipmentInventoryStocktakeSessionIdRouteImport
+      parentRoute: typeof AuthedEquipmentInventoryStocktakeRoute
     }
-    '/_authed/product-ranges/$id/edit': {
-      id: '/_authed/product-ranges/$id/edit'
+    '/_authed/equipment/product-ranges/$id/edit': {
+      id: '/_authed/equipment/product-ranges/$id/edit'
       path: '/$id/edit'
-      fullPath: '/product-ranges/$id/edit'
-      preLoaderRoute: typeof AuthedProductRangesIdEditRouteImport
-      parentRoute: typeof AuthedProductRangesRoute
+      fullPath: '/equipment/product-ranges/$id/edit'
+      preLoaderRoute: typeof AuthedEquipmentProductRangesIdEditRouteImport
+      parentRoute: typeof AuthedEquipmentProductRangesRoute
     }
-    '/_authed/products/$id/edit': {
-      id: '/_authed/products/$id/edit'
+    '/_authed/equipment/products/$id/edit': {
+      id: '/_authed/equipment/products/$id/edit'
       path: '/$id/edit'
-      fullPath: '/products/$id/edit'
-      preLoaderRoute: typeof AuthedProductsIdEditRouteImport
-      parentRoute: typeof AuthedProductsRoute
+      fullPath: '/equipment/products/$id/edit'
+      preLoaderRoute: typeof AuthedEquipmentProductsIdEditRouteImport
+      parentRoute: typeof AuthedEquipmentProductsRoute
     }
-    '/_authed/quotes/$id_/edit': {
-      id: '/_authed/quotes/$id_/edit'
+    '/_authed/equipment/quotes/$id_/edit': {
+      id: '/_authed/equipment/quotes/$id_/edit'
       path: '/$id/edit'
-      fullPath: '/quotes/$id/edit'
-      preLoaderRoute: typeof AuthedQuotesIdEditRouteImport
-      parentRoute: typeof AuthedQuotesRoute
+      fullPath: '/equipment/quotes/$id/edit'
+      preLoaderRoute: typeof AuthedEquipmentQuotesIdEditRouteImport
+      parentRoute: typeof AuthedEquipmentQuotesRoute
     }
-    '/_authed/quotes/$id_/start-job': {
-      id: '/_authed/quotes/$id_/start-job'
+    '/_authed/equipment/quotes/$id_/start-job': {
+      id: '/_authed/equipment/quotes/$id_/start-job'
       path: '/$id/start-job'
-      fullPath: '/quotes/$id/start-job'
-      preLoaderRoute: typeof AuthedQuotesIdStartJobRouteImport
-      parentRoute: typeof AuthedQuotesRoute
+      fullPath: '/equipment/quotes/$id/start-job'
+      preLoaderRoute: typeof AuthedEquipmentQuotesIdStartJobRouteImport
+      parentRoute: typeof AuthedEquipmentQuotesRoute
     }
-    '/_authed/suppliers/$id/edit': {
-      id: '/_authed/suppliers/$id/edit'
+    '/_authed/equipment/suppliers/$id/edit': {
+      id: '/_authed/equipment/suppliers/$id/edit'
       path: '/$id/edit'
-      fullPath: '/suppliers/$id/edit'
-      preLoaderRoute: typeof AuthedSuppliersIdEditRouteImport
-      parentRoute: typeof AuthedSuppliersRoute
+      fullPath: '/equipment/suppliers/$id/edit'
+      preLoaderRoute: typeof AuthedEquipmentSuppliersIdEditRouteImport
+      parentRoute: typeof AuthedEquipmentSuppliersRoute
     }
   }
 }
 
-interface AuthedCustomersRouteChildren {
-  AuthedCustomersIndexRoute: typeof AuthedCustomersIndexRoute
-  AuthedCustomersIdEditRoute: typeof AuthedCustomersIdEditRoute
+interface AuthedEquipmentCustomersRouteChildren {
+  AuthedEquipmentCustomersIndexRoute: typeof AuthedEquipmentCustomersIndexRoute
+  AuthedEquipmentCustomersIdEditRoute: typeof AuthedEquipmentCustomersIdEditRoute
 }
 
-const AuthedCustomersRouteChildren: AuthedCustomersRouteChildren = {
-  AuthedCustomersIndexRoute: AuthedCustomersIndexRoute,
-  AuthedCustomersIdEditRoute: AuthedCustomersIdEditRoute,
-}
-
-const AuthedCustomersRouteWithChildren = AuthedCustomersRoute._addFileChildren(
-  AuthedCustomersRouteChildren,
-)
-
-interface AuthedInventoryCloseOutRouteChildren {
-  AuthedInventoryCloseOutJobIdRoute: typeof AuthedInventoryCloseOutJobIdRoute
-  AuthedInventoryCloseOutIndexRoute: typeof AuthedInventoryCloseOutIndexRoute
-}
-
-const AuthedInventoryCloseOutRouteChildren: AuthedInventoryCloseOutRouteChildren =
+const AuthedEquipmentCustomersRouteChildren: AuthedEquipmentCustomersRouteChildren =
   {
-    AuthedInventoryCloseOutJobIdRoute: AuthedInventoryCloseOutJobIdRoute,
-    AuthedInventoryCloseOutIndexRoute: AuthedInventoryCloseOutIndexRoute,
+    AuthedEquipmentCustomersIndexRoute: AuthedEquipmentCustomersIndexRoute,
+    AuthedEquipmentCustomersIdEditRoute: AuthedEquipmentCustomersIdEditRoute,
   }
 
-const AuthedInventoryCloseOutRouteWithChildren =
-  AuthedInventoryCloseOutRoute._addFileChildren(
-    AuthedInventoryCloseOutRouteChildren,
+const AuthedEquipmentCustomersRouteWithChildren =
+  AuthedEquipmentCustomersRoute._addFileChildren(
+    AuthedEquipmentCustomersRouteChildren,
   )
 
-interface AuthedInventoryStocktakeRouteChildren {
-  AuthedInventoryStocktakeSessionIdRoute: typeof AuthedInventoryStocktakeSessionIdRoute
-  AuthedInventoryStocktakeIndexRoute: typeof AuthedInventoryStocktakeIndexRoute
+interface AuthedEquipmentInventoryCloseOutRouteChildren {
+  AuthedEquipmentInventoryCloseOutJobIdRoute: typeof AuthedEquipmentInventoryCloseOutJobIdRoute
+  AuthedEquipmentInventoryCloseOutIndexRoute: typeof AuthedEquipmentInventoryCloseOutIndexRoute
 }
 
-const AuthedInventoryStocktakeRouteChildren: AuthedInventoryStocktakeRouteChildren =
+const AuthedEquipmentInventoryCloseOutRouteChildren: AuthedEquipmentInventoryCloseOutRouteChildren =
   {
-    AuthedInventoryStocktakeSessionIdRoute:
-      AuthedInventoryStocktakeSessionIdRoute,
-    AuthedInventoryStocktakeIndexRoute: AuthedInventoryStocktakeIndexRoute,
+    AuthedEquipmentInventoryCloseOutJobIdRoute:
+      AuthedEquipmentInventoryCloseOutJobIdRoute,
+    AuthedEquipmentInventoryCloseOutIndexRoute:
+      AuthedEquipmentInventoryCloseOutIndexRoute,
   }
 
-const AuthedInventoryStocktakeRouteWithChildren =
-  AuthedInventoryStocktakeRoute._addFileChildren(
-    AuthedInventoryStocktakeRouteChildren,
+const AuthedEquipmentInventoryCloseOutRouteWithChildren =
+  AuthedEquipmentInventoryCloseOutRoute._addFileChildren(
+    AuthedEquipmentInventoryCloseOutRouteChildren,
   )
 
-interface AuthedInventoryRouteChildren {
-  AuthedInventoryPartIdRoute: typeof AuthedInventoryPartIdRoute
-  AuthedInventoryBuyListRoute: typeof AuthedInventoryBuyListRoute
-  AuthedInventoryCloseOutRoute: typeof AuthedInventoryCloseOutRouteWithChildren
-  AuthedInventoryPriceVarianceRoute: typeof AuthedInventoryPriceVarianceRoute
-  AuthedInventoryStocktakeRoute: typeof AuthedInventoryStocktakeRouteWithChildren
-  AuthedInventoryIndexRoute: typeof AuthedInventoryIndexRoute
-  AuthedInventoryJobVarianceJobIdRoute: typeof AuthedInventoryJobVarianceJobIdRoute
+interface AuthedEquipmentInventoryStocktakeRouteChildren {
+  AuthedEquipmentInventoryStocktakeSessionIdRoute: typeof AuthedEquipmentInventoryStocktakeSessionIdRoute
+  AuthedEquipmentInventoryStocktakeIndexRoute: typeof AuthedEquipmentInventoryStocktakeIndexRoute
 }
 
-const AuthedInventoryRouteChildren: AuthedInventoryRouteChildren = {
-  AuthedInventoryPartIdRoute: AuthedInventoryPartIdRoute,
-  AuthedInventoryBuyListRoute: AuthedInventoryBuyListRoute,
-  AuthedInventoryCloseOutRoute: AuthedInventoryCloseOutRouteWithChildren,
-  AuthedInventoryPriceVarianceRoute: AuthedInventoryPriceVarianceRoute,
-  AuthedInventoryStocktakeRoute: AuthedInventoryStocktakeRouteWithChildren,
-  AuthedInventoryIndexRoute: AuthedInventoryIndexRoute,
-  AuthedInventoryJobVarianceJobIdRoute: AuthedInventoryJobVarianceJobIdRoute,
+const AuthedEquipmentInventoryStocktakeRouteChildren: AuthedEquipmentInventoryStocktakeRouteChildren =
+  {
+    AuthedEquipmentInventoryStocktakeSessionIdRoute:
+      AuthedEquipmentInventoryStocktakeSessionIdRoute,
+    AuthedEquipmentInventoryStocktakeIndexRoute:
+      AuthedEquipmentInventoryStocktakeIndexRoute,
+  }
+
+const AuthedEquipmentInventoryStocktakeRouteWithChildren =
+  AuthedEquipmentInventoryStocktakeRoute._addFileChildren(
+    AuthedEquipmentInventoryStocktakeRouteChildren,
+  )
+
+interface AuthedEquipmentInventoryRouteChildren {
+  AuthedEquipmentInventoryPartIdRoute: typeof AuthedEquipmentInventoryPartIdRoute
+  AuthedEquipmentInventoryBuyListRoute: typeof AuthedEquipmentInventoryBuyListRoute
+  AuthedEquipmentInventoryCloseOutRoute: typeof AuthedEquipmentInventoryCloseOutRouteWithChildren
+  AuthedEquipmentInventoryPriceVarianceRoute: typeof AuthedEquipmentInventoryPriceVarianceRoute
+  AuthedEquipmentInventoryStocktakeRoute: typeof AuthedEquipmentInventoryStocktakeRouteWithChildren
+  AuthedEquipmentInventoryIndexRoute: typeof AuthedEquipmentInventoryIndexRoute
+  AuthedEquipmentInventoryJobVarianceJobIdRoute: typeof AuthedEquipmentInventoryJobVarianceJobIdRoute
 }
 
-const AuthedInventoryRouteWithChildren = AuthedInventoryRoute._addFileChildren(
-  AuthedInventoryRouteChildren,
-)
+const AuthedEquipmentInventoryRouteChildren: AuthedEquipmentInventoryRouteChildren =
+  {
+    AuthedEquipmentInventoryPartIdRoute: AuthedEquipmentInventoryPartIdRoute,
+    AuthedEquipmentInventoryBuyListRoute: AuthedEquipmentInventoryBuyListRoute,
+    AuthedEquipmentInventoryCloseOutRoute:
+      AuthedEquipmentInventoryCloseOutRouteWithChildren,
+    AuthedEquipmentInventoryPriceVarianceRoute:
+      AuthedEquipmentInventoryPriceVarianceRoute,
+    AuthedEquipmentInventoryStocktakeRoute:
+      AuthedEquipmentInventoryStocktakeRouteWithChildren,
+    AuthedEquipmentInventoryIndexRoute: AuthedEquipmentInventoryIndexRoute,
+    AuthedEquipmentInventoryJobVarianceJobIdRoute:
+      AuthedEquipmentInventoryJobVarianceJobIdRoute,
+  }
 
-interface AuthedJobsRouteChildren {
-  AuthedJobsIdRoute: typeof AuthedJobsIdRoute
-  AuthedJobsActivityRoute: typeof AuthedJobsActivityRoute
-  AuthedJobsCalendarRoute: typeof AuthedJobsCalendarRoute
-  AuthedJobsListRoute: typeof AuthedJobsListRoute
-  AuthedJobsStockBuildRoute: typeof AuthedJobsStockBuildRoute
-  AuthedJobsIndexRoute: typeof AuthedJobsIndexRoute
+const AuthedEquipmentInventoryRouteWithChildren =
+  AuthedEquipmentInventoryRoute._addFileChildren(
+    AuthedEquipmentInventoryRouteChildren,
+  )
+
+interface AuthedEquipmentJobsRouteChildren {
+  AuthedEquipmentJobsIdRoute: typeof AuthedEquipmentJobsIdRoute
+  AuthedEquipmentJobsActivityRoute: typeof AuthedEquipmentJobsActivityRoute
+  AuthedEquipmentJobsCalendarRoute: typeof AuthedEquipmentJobsCalendarRoute
+  AuthedEquipmentJobsListRoute: typeof AuthedEquipmentJobsListRoute
+  AuthedEquipmentJobsStockBuildRoute: typeof AuthedEquipmentJobsStockBuildRoute
+  AuthedEquipmentJobsIndexRoute: typeof AuthedEquipmentJobsIndexRoute
 }
 
-const AuthedJobsRouteChildren: AuthedJobsRouteChildren = {
-  AuthedJobsIdRoute: AuthedJobsIdRoute,
-  AuthedJobsActivityRoute: AuthedJobsActivityRoute,
-  AuthedJobsCalendarRoute: AuthedJobsCalendarRoute,
-  AuthedJobsListRoute: AuthedJobsListRoute,
-  AuthedJobsStockBuildRoute: AuthedJobsStockBuildRoute,
-  AuthedJobsIndexRoute: AuthedJobsIndexRoute,
+const AuthedEquipmentJobsRouteChildren: AuthedEquipmentJobsRouteChildren = {
+  AuthedEquipmentJobsIdRoute: AuthedEquipmentJobsIdRoute,
+  AuthedEquipmentJobsActivityRoute: AuthedEquipmentJobsActivityRoute,
+  AuthedEquipmentJobsCalendarRoute: AuthedEquipmentJobsCalendarRoute,
+  AuthedEquipmentJobsListRoute: AuthedEquipmentJobsListRoute,
+  AuthedEquipmentJobsStockBuildRoute: AuthedEquipmentJobsStockBuildRoute,
+  AuthedEquipmentJobsIndexRoute: AuthedEquipmentJobsIndexRoute,
 }
 
-const AuthedJobsRouteWithChildren = AuthedJobsRoute._addFileChildren(
-  AuthedJobsRouteChildren,
-)
+const AuthedEquipmentJobsRouteWithChildren =
+  AuthedEquipmentJobsRoute._addFileChildren(AuthedEquipmentJobsRouteChildren)
 
-interface AuthedProductRangesRouteChildren {
-  AuthedProductRangesIndexRoute: typeof AuthedProductRangesIndexRoute
-  AuthedProductRangesIdEditRoute: typeof AuthedProductRangesIdEditRoute
+interface AuthedEquipmentProductRangesRouteChildren {
+  AuthedEquipmentProductRangesIndexRoute: typeof AuthedEquipmentProductRangesIndexRoute
+  AuthedEquipmentProductRangesIdEditRoute: typeof AuthedEquipmentProductRangesIdEditRoute
 }
 
-const AuthedProductRangesRouteChildren: AuthedProductRangesRouteChildren = {
-  AuthedProductRangesIndexRoute: AuthedProductRangesIndexRoute,
-  AuthedProductRangesIdEditRoute: AuthedProductRangesIdEditRoute,
+const AuthedEquipmentProductRangesRouteChildren: AuthedEquipmentProductRangesRouteChildren =
+  {
+    AuthedEquipmentProductRangesIndexRoute:
+      AuthedEquipmentProductRangesIndexRoute,
+    AuthedEquipmentProductRangesIdEditRoute:
+      AuthedEquipmentProductRangesIdEditRoute,
+  }
+
+const AuthedEquipmentProductRangesRouteWithChildren =
+  AuthedEquipmentProductRangesRoute._addFileChildren(
+    AuthedEquipmentProductRangesRouteChildren,
+  )
+
+interface AuthedEquipmentProductsRouteChildren {
+  AuthedEquipmentProductsIndexRoute: typeof AuthedEquipmentProductsIndexRoute
+  AuthedEquipmentProductsIdEditRoute: typeof AuthedEquipmentProductsIdEditRoute
 }
 
-const AuthedProductRangesRouteWithChildren =
-  AuthedProductRangesRoute._addFileChildren(AuthedProductRangesRouteChildren)
+const AuthedEquipmentProductsRouteChildren: AuthedEquipmentProductsRouteChildren =
+  {
+    AuthedEquipmentProductsIndexRoute: AuthedEquipmentProductsIndexRoute,
+    AuthedEquipmentProductsIdEditRoute: AuthedEquipmentProductsIdEditRoute,
+  }
 
-interface AuthedProductsRouteChildren {
-  AuthedProductsIndexRoute: typeof AuthedProductsIndexRoute
-  AuthedProductsIdEditRoute: typeof AuthedProductsIdEditRoute
+const AuthedEquipmentProductsRouteWithChildren =
+  AuthedEquipmentProductsRoute._addFileChildren(
+    AuthedEquipmentProductsRouteChildren,
+  )
+
+interface AuthedEquipmentPurchaseOrdersRouteChildren {
+  AuthedEquipmentPurchaseOrdersIdRoute: typeof AuthedEquipmentPurchaseOrdersIdRoute
+  AuthedEquipmentPurchaseOrdersIndexRoute: typeof AuthedEquipmentPurchaseOrdersIndexRoute
 }
 
-const AuthedProductsRouteChildren: AuthedProductsRouteChildren = {
-  AuthedProductsIndexRoute: AuthedProductsIndexRoute,
-  AuthedProductsIdEditRoute: AuthedProductsIdEditRoute,
+const AuthedEquipmentPurchaseOrdersRouteChildren: AuthedEquipmentPurchaseOrdersRouteChildren =
+  {
+    AuthedEquipmentPurchaseOrdersIdRoute: AuthedEquipmentPurchaseOrdersIdRoute,
+    AuthedEquipmentPurchaseOrdersIndexRoute:
+      AuthedEquipmentPurchaseOrdersIndexRoute,
+  }
+
+const AuthedEquipmentPurchaseOrdersRouteWithChildren =
+  AuthedEquipmentPurchaseOrdersRoute._addFileChildren(
+    AuthedEquipmentPurchaseOrdersRouteChildren,
+  )
+
+interface AuthedEquipmentQuotesRouteChildren {
+  AuthedEquipmentQuotesIndexRoute: typeof AuthedEquipmentQuotesIndexRoute
+  AuthedEquipmentQuotesIdEditRoute: typeof AuthedEquipmentQuotesIdEditRoute
+  AuthedEquipmentQuotesIdStartJobRoute: typeof AuthedEquipmentQuotesIdStartJobRoute
 }
 
-const AuthedProductsRouteWithChildren = AuthedProductsRoute._addFileChildren(
-  AuthedProductsRouteChildren,
-)
-
-interface AuthedPurchaseOrdersRouteChildren {
-  AuthedPurchaseOrdersIdRoute: typeof AuthedPurchaseOrdersIdRoute
-  AuthedPurchaseOrdersIndexRoute: typeof AuthedPurchaseOrdersIndexRoute
+const AuthedEquipmentQuotesRouteChildren: AuthedEquipmentQuotesRouteChildren = {
+  AuthedEquipmentQuotesIndexRoute: AuthedEquipmentQuotesIndexRoute,
+  AuthedEquipmentQuotesIdEditRoute: AuthedEquipmentQuotesIdEditRoute,
+  AuthedEquipmentQuotesIdStartJobRoute: AuthedEquipmentQuotesIdStartJobRoute,
 }
 
-const AuthedPurchaseOrdersRouteChildren: AuthedPurchaseOrdersRouteChildren = {
-  AuthedPurchaseOrdersIdRoute: AuthedPurchaseOrdersIdRoute,
-  AuthedPurchaseOrdersIndexRoute: AuthedPurchaseOrdersIndexRoute,
+const AuthedEquipmentQuotesRouteWithChildren =
+  AuthedEquipmentQuotesRoute._addFileChildren(
+    AuthedEquipmentQuotesRouteChildren,
+  )
+
+interface AuthedEquipmentSuppliersRouteChildren {
+  AuthedEquipmentSuppliersIndexRoute: typeof AuthedEquipmentSuppliersIndexRoute
+  AuthedEquipmentSuppliersIdEditRoute: typeof AuthedEquipmentSuppliersIdEditRoute
 }
 
-const AuthedPurchaseOrdersRouteWithChildren =
-  AuthedPurchaseOrdersRoute._addFileChildren(AuthedPurchaseOrdersRouteChildren)
+const AuthedEquipmentSuppliersRouteChildren: AuthedEquipmentSuppliersRouteChildren =
+  {
+    AuthedEquipmentSuppliersIndexRoute: AuthedEquipmentSuppliersIndexRoute,
+    AuthedEquipmentSuppliersIdEditRoute: AuthedEquipmentSuppliersIdEditRoute,
+  }
 
-interface AuthedQuotesRouteChildren {
-  AuthedQuotesIndexRoute: typeof AuthedQuotesIndexRoute
-  AuthedQuotesIdEditRoute: typeof AuthedQuotesIdEditRoute
-  AuthedQuotesIdStartJobRoute: typeof AuthedQuotesIdStartJobRoute
+const AuthedEquipmentSuppliersRouteWithChildren =
+  AuthedEquipmentSuppliersRoute._addFileChildren(
+    AuthedEquipmentSuppliersRouteChildren,
+  )
+
+interface AuthedEquipmentUnitsRouteChildren {
+  AuthedEquipmentUnitsIdRoute: typeof AuthedEquipmentUnitsIdRoute
+  AuthedEquipmentUnitsIndexRoute: typeof AuthedEquipmentUnitsIndexRoute
 }
 
-const AuthedQuotesRouteChildren: AuthedQuotesRouteChildren = {
-  AuthedQuotesIndexRoute: AuthedQuotesIndexRoute,
-  AuthedQuotesIdEditRoute: AuthedQuotesIdEditRoute,
-  AuthedQuotesIdStartJobRoute: AuthedQuotesIdStartJobRoute,
+const AuthedEquipmentUnitsRouteChildren: AuthedEquipmentUnitsRouteChildren = {
+  AuthedEquipmentUnitsIdRoute: AuthedEquipmentUnitsIdRoute,
+  AuthedEquipmentUnitsIndexRoute: AuthedEquipmentUnitsIndexRoute,
 }
 
-const AuthedQuotesRouteWithChildren = AuthedQuotesRoute._addFileChildren(
-  AuthedQuotesRouteChildren,
-)
+const AuthedEquipmentUnitsRouteWithChildren =
+  AuthedEquipmentUnitsRoute._addFileChildren(AuthedEquipmentUnitsRouteChildren)
 
-interface AuthedSuppliersRouteChildren {
-  AuthedSuppliersIndexRoute: typeof AuthedSuppliersIndexRoute
-  AuthedSuppliersIdEditRoute: typeof AuthedSuppliersIdEditRoute
+interface AuthedEquipmentRouteChildren {
+  AuthedEquipmentAuditRoute: typeof AuthedEquipmentAuditRoute
+  AuthedEquipmentBaysRoute: typeof AuthedEquipmentBaysRoute
+  AuthedEquipmentCatalogTranslationsRoute: typeof AuthedEquipmentCatalogTranslationsRoute
+  AuthedEquipmentCustomersRoute: typeof AuthedEquipmentCustomersRouteWithChildren
+  AuthedEquipmentDashboardRoute: typeof AuthedEquipmentDashboardRoute
+  AuthedEquipmentFeedbackRoute: typeof AuthedEquipmentFeedbackRoute
+  AuthedEquipmentInventoryRoute: typeof AuthedEquipmentInventoryRouteWithChildren
+  AuthedEquipmentJobsRoute: typeof AuthedEquipmentJobsRouteWithChildren
+  AuthedEquipmentPartsRoute: typeof AuthedEquipmentPartsRoute
+  AuthedEquipmentProductRangesRoute: typeof AuthedEquipmentProductRangesRouteWithChildren
+  AuthedEquipmentProductsRoute: typeof AuthedEquipmentProductsRouteWithChildren
+  AuthedEquipmentPurchaseOrdersRoute: typeof AuthedEquipmentPurchaseOrdersRouteWithChildren
+  AuthedEquipmentQuotesRoute: typeof AuthedEquipmentQuotesRouteWithChildren
+  AuthedEquipmentSuppliersRoute: typeof AuthedEquipmentSuppliersRouteWithChildren
+  AuthedEquipmentUnitsRoute: typeof AuthedEquipmentUnitsRouteWithChildren
+  AuthedEquipmentUsersRoute: typeof AuthedEquipmentUsersRoute
 }
 
-const AuthedSuppliersRouteChildren: AuthedSuppliersRouteChildren = {
-  AuthedSuppliersIndexRoute: AuthedSuppliersIndexRoute,
-  AuthedSuppliersIdEditRoute: AuthedSuppliersIdEditRoute,
+const AuthedEquipmentRouteChildren: AuthedEquipmentRouteChildren = {
+  AuthedEquipmentAuditRoute: AuthedEquipmentAuditRoute,
+  AuthedEquipmentBaysRoute: AuthedEquipmentBaysRoute,
+  AuthedEquipmentCatalogTranslationsRoute:
+    AuthedEquipmentCatalogTranslationsRoute,
+  AuthedEquipmentCustomersRoute: AuthedEquipmentCustomersRouteWithChildren,
+  AuthedEquipmentDashboardRoute: AuthedEquipmentDashboardRoute,
+  AuthedEquipmentFeedbackRoute: AuthedEquipmentFeedbackRoute,
+  AuthedEquipmentInventoryRoute: AuthedEquipmentInventoryRouteWithChildren,
+  AuthedEquipmentJobsRoute: AuthedEquipmentJobsRouteWithChildren,
+  AuthedEquipmentPartsRoute: AuthedEquipmentPartsRoute,
+  AuthedEquipmentProductRangesRoute:
+    AuthedEquipmentProductRangesRouteWithChildren,
+  AuthedEquipmentProductsRoute: AuthedEquipmentProductsRouteWithChildren,
+  AuthedEquipmentPurchaseOrdersRoute:
+    AuthedEquipmentPurchaseOrdersRouteWithChildren,
+  AuthedEquipmentQuotesRoute: AuthedEquipmentQuotesRouteWithChildren,
+  AuthedEquipmentSuppliersRoute: AuthedEquipmentSuppliersRouteWithChildren,
+  AuthedEquipmentUnitsRoute: AuthedEquipmentUnitsRouteWithChildren,
+  AuthedEquipmentUsersRoute: AuthedEquipmentUsersRoute,
 }
 
-const AuthedSuppliersRouteWithChildren = AuthedSuppliersRoute._addFileChildren(
-  AuthedSuppliersRouteChildren,
-)
-
-interface AuthedUnitsRouteChildren {
-  AuthedUnitsIdRoute: typeof AuthedUnitsIdRoute
-  AuthedUnitsIndexRoute: typeof AuthedUnitsIndexRoute
-}
-
-const AuthedUnitsRouteChildren: AuthedUnitsRouteChildren = {
-  AuthedUnitsIdRoute: AuthedUnitsIdRoute,
-  AuthedUnitsIndexRoute: AuthedUnitsIndexRoute,
-}
-
-const AuthedUnitsRouteWithChildren = AuthedUnitsRoute._addFileChildren(
-  AuthedUnitsRouteChildren,
+const AuthedEquipmentRouteWithChildren = AuthedEquipmentRoute._addFileChildren(
+  AuthedEquipmentRouteChildren,
 )
 
 interface AuthedRouteChildren {
-  AuthedAuditRoute: typeof AuthedAuditRoute
-  AuthedBaysRoute: typeof AuthedBaysRoute
-  AuthedCatalogTranslationsRoute: typeof AuthedCatalogTranslationsRoute
-  AuthedCustomersRoute: typeof AuthedCustomersRouteWithChildren
-  AuthedDashboardRoute: typeof AuthedDashboardRoute
-  AuthedFeedbackRoute: typeof AuthedFeedbackRoute
-  AuthedInventoryRoute: typeof AuthedInventoryRouteWithChildren
-  AuthedJobsRoute: typeof AuthedJobsRouteWithChildren
-  AuthedPartsRoute: typeof AuthedPartsRoute
-  AuthedProductRangesRoute: typeof AuthedProductRangesRouteWithChildren
-  AuthedProductsRoute: typeof AuthedProductsRouteWithChildren
-  AuthedPurchaseOrdersRoute: typeof AuthedPurchaseOrdersRouteWithChildren
-  AuthedQuotesRoute: typeof AuthedQuotesRouteWithChildren
-  AuthedSuppliersRoute: typeof AuthedSuppliersRouteWithChildren
-  AuthedUnitsRoute: typeof AuthedUnitsRouteWithChildren
-  AuthedUsersRoute: typeof AuthedUsersRoute
+  AuthedContractingRoute: typeof AuthedContractingRoute
+  AuthedEquipmentRoute: typeof AuthedEquipmentRouteWithChildren
 }
 
 const AuthedRouteChildren: AuthedRouteChildren = {
-  AuthedAuditRoute: AuthedAuditRoute,
-  AuthedBaysRoute: AuthedBaysRoute,
-  AuthedCatalogTranslationsRoute: AuthedCatalogTranslationsRoute,
-  AuthedCustomersRoute: AuthedCustomersRouteWithChildren,
-  AuthedDashboardRoute: AuthedDashboardRoute,
-  AuthedFeedbackRoute: AuthedFeedbackRoute,
-  AuthedInventoryRoute: AuthedInventoryRouteWithChildren,
-  AuthedJobsRoute: AuthedJobsRouteWithChildren,
-  AuthedPartsRoute: AuthedPartsRoute,
-  AuthedProductRangesRoute: AuthedProductRangesRouteWithChildren,
-  AuthedProductsRoute: AuthedProductsRouteWithChildren,
-  AuthedPurchaseOrdersRoute: AuthedPurchaseOrdersRouteWithChildren,
-  AuthedQuotesRoute: AuthedQuotesRouteWithChildren,
-  AuthedSuppliersRoute: AuthedSuppliersRouteWithChildren,
-  AuthedUnitsRoute: AuthedUnitsRouteWithChildren,
-  AuthedUsersRoute: AuthedUsersRoute,
+  AuthedContractingRoute: AuthedContractingRoute,
+  AuthedEquipmentRoute: AuthedEquipmentRouteWithChildren,
 }
 
 const AuthedRouteWithChildren =

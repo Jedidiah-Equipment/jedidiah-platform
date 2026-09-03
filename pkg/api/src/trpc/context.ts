@@ -5,7 +5,7 @@ import type { AppEnv, Changelog, UserAccessSummary } from '@pkg/schema';
 import type { CreateFastifyContextOptions } from '@trpc/server/adapters/fastify';
 
 import { type AppSession, getSessionFromHeaders, parseBetterAuthRole } from '../auth/session.js';
-import type { TranslationMarker } from '../catalog-translations/translation-scheduler.js';
+import type { TranslationMarker } from '../equipment/catalog-translations/translation-scheduler.js';
 
 /** Reads the bundled Changelog files. Injected so the changelog router can be tested without the filesystem. */
 export type ChangelogLoader = () => Changelog[];

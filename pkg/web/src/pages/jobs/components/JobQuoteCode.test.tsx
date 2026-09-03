@@ -19,7 +19,7 @@ test('links the Job Sheet Quote code back to the Quote form and closes the sheet
   const html = await renderWithRouter(link);
   link.props.onClick();
 
-  expect(html).toContain('href="/quotes/550e8400-e29b-41d4-a716-446655440000/edit"');
+  expect(html).toContain('href="/equipment/quotes/550e8400-e29b-41d4-a716-446655440000/edit"');
   expect(html).toContain('QUO-00033');
   expect(html).toContain('text-primary');
   expect(html).toContain('tabler-icon-external-link');

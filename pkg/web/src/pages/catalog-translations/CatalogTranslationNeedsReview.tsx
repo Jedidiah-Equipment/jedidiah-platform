@@ -108,7 +108,7 @@ function NeedsReviewButton({ item }: { item: CatalogTranslationNeedsReviewItem }
   if (item.kind === 'product') {
     return (
       <Button
-        render={<Link params={{ id: item.id }} search={search} to="/products/$id/edit" />}
+        render={<Link params={{ id: item.id }} search={search} to="/equipment/products/$id/edit" />}
         size="sm"
         variant="outline"
       >
@@ -123,7 +123,7 @@ function NeedsReviewButton({ item }: { item: CatalogTranslationNeedsReviewItem }
         <Link
           params={{ id: item.kind === 'range' ? item.id : item.rangeId }}
           search={search}
-          to="/product-ranges/$id/edit"
+          to="/equipment/product-ranges/$id/edit"
         />
       }
       size="sm"

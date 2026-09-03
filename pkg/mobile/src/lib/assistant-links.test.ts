@@ -4,18 +4,18 @@ import { PRODUCT_BROCHURE_DOCUMENT_ID } from './product-brochure';
 
 describe('resolveAssistantLink', () => {
   test.each([
-    ['/quotes/q1/edit', { pathname: '/quotes/[quoteId]', params: { quoteId: 'q1' } }],
-    ['/products/p1/edit', { pathname: '/products/[productId]', params: { productId: 'p1' } }],
-    ['/jobs/j1', { pathname: '/jobs/[jobId]', params: { jobId: 'j1' } }],
-    ['/units/u1', { pathname: '/units/[unitId]', params: { unitId: 'u1' } }],
+    ['/equipment/quotes/q1/edit', { pathname: '/equipment/quotes/[quoteId]', params: { quoteId: 'q1' } }],
+    ['/equipment/products/p1/edit', { pathname: '/equipment/products/[productId]', params: { productId: 'p1' } }],
+    ['/equipment/jobs/j1', { pathname: '/equipment/jobs/[jobId]', params: { jobId: 'j1' } }],
+    ['/equipment/units/u1', { pathname: '/equipment/units/[unitId]', params: { unitId: 'u1' } }],
     [
       '/api/quotes/q1/documents/d1/download',
-      { pathname: '/documents/[documentId]', params: { documentId: 'd1', quoteId: 'q1' } },
+      { pathname: '/equipment/documents/[documentId]', params: { documentId: 'd1', quoteId: 'q1' } },
     ],
     [
       '/api/products/p1/brochure-preview',
       {
-        pathname: '/documents/[documentId]',
+        pathname: '/equipment/documents/[documentId]',
         params: { documentId: PRODUCT_BROCHURE_DOCUMENT_ID, productId: 'p1' },
       },
     ],
@@ -30,7 +30,7 @@ describe('resolveAssistantLink', () => {
     expect(push).toHaveBeenCalledWith(expectedRoute);
   });
 
-  test.each(['/customers/c1/edit', '/quotes/q1', 'https://example.com/quotes/q1/edit'])(
+  test.each(['/customers/c1/edit', '/equipment/quotes/q1', 'https://example.com/quotes/q1/edit'])(
     'leaves unsupported or unrecognized hrefs as plain text: %s',
     (href) => {
       const router = { push: vi.fn() } as unknown as AssistantRouter;

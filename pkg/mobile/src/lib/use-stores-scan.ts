@@ -38,7 +38,7 @@ export function useStoresScan() {
           selectActor(resolution.actor);
           break;
         case 'part':
-          router.push({ params: { partCode: resolution.partCode }, pathname: '/stores/parts/[partCode]' });
+          router.push({ params: { partCode: resolution.partCode }, pathname: '/equipment/stores/parts/[partCode]' });
           break;
         case 'error':
           setScanError(resolution.message);

@@ -62,7 +62,7 @@ describe('patchCustomer contract', () => {
 
     const response = toPatchCustomerResponse(customer);
     expect(PatchCustomerResponse.parse(response)).toEqual(response);
-    expect(response.links.app).toBe(`/customers/${CUSTOMER_ID}/edit`);
+    expect(response.links.app).toBe(`/equipment/customers/${CUSTOMER_ID}/edit`);
     expect(patchCustomerDefinition.anyOfPermissions).toEqual(['customer:update']);
     expect(patchCustomerDefinition.description).toContain('only the fields');
     expect(patchCustomerDefinition.description).toContain('findCustomers');

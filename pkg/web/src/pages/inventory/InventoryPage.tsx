@@ -40,7 +40,7 @@ export function InventoryPage() {
         errorMessage={getApiQueryErrorMessage(stockOnHandQuery.error, 'Unable to load stock on hand.')}
         isLoading={stockOnHandQuery.isPending}
         items={stockOnHandQuery.data?.items ?? []}
-        onOpenHistory={(partId) => navigate({ params: { partId }, to: '/inventory/$partId' })}
+        onOpenHistory={(partId) => navigate({ params: { partId }, to: '/equipment/inventory/$partId' })}
         showCosts={showCosts}
       />
     </PageLayout>

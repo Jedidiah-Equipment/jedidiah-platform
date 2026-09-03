@@ -71,7 +71,7 @@ export const JobListPage: React.FC<{ selectedJobId?: UUID | undefined }> = ({ se
               <>
                 {exportAction}
                 {canCreateJob ? (
-                  <Button render={<Link to="/jobs/stock-build" />} size="default">
+                  <Button render={<Link to="/equipment/jobs/stock-build" />} size="default">
                     <IconPlus data-icon="inline-start" />
                     New Stock Build
                   </Button>
@@ -88,7 +88,7 @@ export const JobListPage: React.FC<{ selectedJobId?: UUID | undefined }> = ({ se
             <JobSheet
               key={selectedJobId}
               jobId={selectedJobId}
-              onClose={() => navigate({ search: {}, to: '/jobs/list' })}
+              onClose={() => navigate({ search: {}, to: '/equipment/jobs/list' })}
             />
           ) : null}
         </PageLayout>
@@ -266,7 +266,9 @@ export const JobListTable: React.FC<JobListTableProps> = ({ customerId, render }
         loadedCount: jobs.length,
         onLoadMore: () => void jobsQuery.fetchNextPage(),
       }}
-      onRowClick={canOpenJobs ? (job) => void navigate({ search: { job: job.id }, to: '/jobs/list' }) : undefined}
+      onRowClick={
+        canOpenJobs ? (job) => void navigate({ search: { job: job.id }, to: '/equipment/jobs/list' }) : undefined
+      }
       rightSection={
         <div className="flex items-center gap-4">
           <label className="flex items-center gap-2 text-sm font-medium" htmlFor="jobs-include-completed">

@@ -66,7 +66,7 @@ describe('findCustomers contract', () => {
         contactPerson: 'A. Person',
         email: 'buyer@example.com',
         id: CUSTOMER_ID,
-        links: { app: `/customers/${CUSTOMER_ID}/edit` },
+        links: { app: `/equipment/customers/${CUSTOMER_ID}/edit` },
         phone: '+27110000000',
         vatNumber: 'VAT-1',
       },

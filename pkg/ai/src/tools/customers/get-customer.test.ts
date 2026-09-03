@@ -34,7 +34,7 @@ describe('getCustomer contract', () => {
       address: '1 Quarry Road',
       companyName: 'Acme Mining',
       id: CUSTOMER_ID,
-      links: { app: `/customers/${CUSTOMER_ID}/edit` },
+      links: { app: `/equipment/customers/${CUSTOMER_ID}/edit` },
       notes: 'Internal note',
     });
     expect(JSON.stringify(response)).not.toContain('thumbnailDataUrl');

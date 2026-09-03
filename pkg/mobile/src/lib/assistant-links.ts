@@ -11,25 +11,26 @@ export function resolveAssistantLink(href: string, router: AssistantRouter): (()
 
   switch (parsed.kind) {
     case 'quote':
-      return () => router.push({ pathname: '/quotes/[quoteId]', params: { quoteId: parsed.quoteId } });
+      return () => router.push({ pathname: '/equipment/quotes/[quoteId]', params: { quoteId: parsed.quoteId } });
     case 'product':
-      return () => router.push({ pathname: '/products/[productId]', params: { productId: parsed.productId } });
+      return () =>
+        router.push({ pathname: '/equipment/products/[productId]', params: { productId: parsed.productId } });
     case 'job':
-      return () => router.push({ pathname: '/jobs/[jobId]', params: { jobId: parsed.jobId } });
+      return () => router.push({ pathname: '/equipment/jobs/[jobId]', params: { jobId: parsed.jobId } });
     case 'quote-document':
       return () =>
         router.push({
-          pathname: '/documents/[documentId]',
+          pathname: '/equipment/documents/[documentId]',
           params: { documentId: parsed.documentId, quoteId: parsed.quoteId },
         });
     case 'product-brochure':
       return () =>
         router.push({
-          pathname: '/documents/[documentId]',
+          pathname: '/equipment/documents/[documentId]',
           params: { documentId: PRODUCT_BROCHURE_DOCUMENT_ID, productId: parsed.productId },
         });
     case 'product-unit':
-      return () => router.push({ pathname: '/units/[unitId]', params: { unitId: parsed.productUnitId } });
+      return () => router.push({ pathname: '/equipment/units/[unitId]', params: { unitId: parsed.productUnitId } });
     // No mobile surface: Customers stay on web, so their links render as plain text.
     case 'customer':
       return null;

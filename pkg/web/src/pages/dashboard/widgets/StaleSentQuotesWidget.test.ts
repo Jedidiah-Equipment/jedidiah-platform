@@ -46,6 +46,6 @@ describe('StaleSentQuoteRowContent', () => {
     expect(html).toContain(expectedIcon);
     expect(html).not.toContain(otherIcon);
     expect(html.indexOf('Tim Gibson')).toBeLessThan(html.indexOf('QUO-00034'));
-    expect(html.match(/href="\/quotes\/10000000-0000-4000-8000-000000000000\/edit"/g)).toHaveLength(2);
+    expect(html.match(/href="\/equipment\/quotes\/10000000-0000-4000-8000-000000000000\/edit"/g)).toHaveLength(2);
   });
 });

@@ -162,7 +162,7 @@ describe('web server', () => {
     await writeFile(join(distDir, 'index.html'), '<html><head></head><body>app</body></html>');
     const app = buildWebServer(mockConfig(), { distDir });
 
-    const response = await app.inject('/jobs');
+    const response = await app.inject('/equipment/jobs');
 
     expect(response.statusCode).toBe(200);
     expect(response.body).toContain('window.__APP_CONFIG__');
@@ -173,7 +173,7 @@ describe('web server', () => {
   it('marks staging HTML and swaps the favicon before the SPA fallback response is sent', async () => {
     const app = await buildAppWithEnv('staging');
 
-    const response = await app.inject('/jobs');
+    const response = await app.inject('/equipment/jobs');
 
     expect(response.statusCode).toBe(200);
     expect(response.body).toContain('<html data-app-env="staging" lang="en">');
@@ -187,7 +187,7 @@ describe('web server', () => {
     async (appEnv) => {
       const app = await buildAppWithEnv(appEnv);
 
-      const response = await app.inject('/jobs');
+      const response = await app.inject('/equipment/jobs');
 
       expect(response.statusCode).toBe(200);
       expect(response.body).not.toContain('data-app-env=');
@@ -202,7 +202,7 @@ describe('web server', () => {
     it('sends X-Robots-Tag on the SPA document, an asset route, and a JSON endpoint alike', async () => {
       const app = await buildAppWithEnv('production');
 
-      for (const url of ['/jobs', '/app-version', '/robots.txt']) {
+      for (const url of ['/equipment/jobs', '/app-version', '/robots.txt']) {
         const response = await app.inject(url);
 
         expect(response.headers['x-robots-tag'], url).toBe('noindex, nofollow');

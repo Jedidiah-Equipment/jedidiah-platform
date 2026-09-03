@@ -42,7 +42,7 @@ export function JobCloseOutDialog({
         await invalidateInventory();
         onOpenChange(false);
         toast.success('Job closed out');
-        await navigate({ to: '/inventory/close-out' });
+        await navigate({ to: '/equipment/inventory/close-out' });
       }}
       onOpenChange={onOpenChange}
       open={open}

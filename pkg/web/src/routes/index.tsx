@@ -7,7 +7,7 @@ export const Route = createFileRoute('/')({
     const session = await getRouteSession(context);
 
     throw redirect({
-      to: session ? '/dashboard' : '/login',
+      to: session ? '/equipment/dashboard' : '/login',
     });
   },
 });

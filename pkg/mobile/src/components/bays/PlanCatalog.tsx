@@ -98,7 +98,7 @@ export function PlanCatalogCard({ bay }: { bay: BayListCard }) {
         ) : undefined
       }
       monoText={activeSummary}
-      onPress={() => router.push({ pathname: '/bays/[bayId]', params: { bayId: bay.id } })}
+      onPress={() => router.push({ pathname: '/equipment/bays/[bayId]', params: { bayId: bay.id } })}
       subText={bay.active?.jobCode ?? 'NO ACTIVE JOB'}
       trailing={<PlanScheduleSummary bay={bay} />}
     />

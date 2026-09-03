@@ -89,7 +89,7 @@ export function UnitCatalogCard({ unit }: { unit: ProductUnitSummary }) {
         ) : undefined
       }
       monoText={unit.owner ? `${unit.owner.companyName} · ${createdOn}` : undefined}
-      onPress={() => router.push({ pathname: '/units/[unitId]', params: { unitId: unit.id } })}
+      onPress={() => router.push({ pathname: '/equipment/units/[unitId]', params: { unitId: unit.id } })}
       subText={unit.product.name}
       trailing={<UnitBuildStateChip buildState={unit.buildState} owner={unit.owner} />}
     />

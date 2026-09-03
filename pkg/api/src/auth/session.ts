@@ -2,7 +2,7 @@ import type { IncomingHttpHeaders } from 'node:http';
 
 import { fromNodeHeaders } from 'better-auth/node';
 
-import { type Auth, auth } from './auth.js';
+import { type Auth, auth } from '../app-auth.js';
 import { isBetterAuthRoleSignInEligible } from './sign-in-eligibility.js';
 
 export { parseBetterAuthRole } from './sign-in-eligibility.js';

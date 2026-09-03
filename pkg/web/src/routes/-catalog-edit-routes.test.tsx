@@ -35,8 +35,8 @@ vi.mock('@/pages/product-ranges/ProductRangeEditPage.js', () => ({
   },
 }));
 
-import { Route as ProductRangeEditRoute } from './_authed.product-ranges.$id.edit.js';
-import { Route as ProductEditRoute } from './_authed.products.$id.edit.js';
+import { Route as ProductRangeEditRoute } from './_authed.equipment.product-ranges.$id.edit.js';
+import { Route as ProductEditRoute } from './_authed.equipment.products.$id.edit.js';
 
 const entityId = '123e4567-e89b-12d3-a456-426614174000' as UUID;
 

@@ -29,7 +29,7 @@ export function JobDocuments({ jobId }: { jobId: string }) {
           downloadPath={jobDocumentDownloadPath(jobId, document.id)}
           key={document.id}
           onOpen={() =>
-            router.push({ pathname: '/documents/[documentId]', params: { documentId: document.id, jobId } })
+            router.push({ pathname: '/equipment/documents/[documentId]', params: { documentId: document.id, jobId } })
           }
         />
       )}

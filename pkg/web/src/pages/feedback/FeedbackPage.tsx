@@ -423,7 +423,7 @@ function SubjectLink({ item }: { item: FeedbackListItem }) {
       <Link
         className="block truncate font-medium hover:underline"
         search={{ job: item.subject.id }}
-        to="/jobs"
+        to="/equipment/jobs"
         onClick={(event) => event.stopPropagation()}
       >
         {item.subject.label}
@@ -435,7 +435,7 @@ function SubjectLink({ item }: { item: FeedbackListItem }) {
     <Link
       className="block truncate font-medium hover:underline"
       params={{ id: item.subject.id }}
-      to="/quotes/$id/edit"
+      to="/equipment/quotes/$id/edit"
       onClick={(event) => event.stopPropagation()}
     >
       {item.subject.label}

@@ -13,7 +13,7 @@ vi.mock('@ai-sdk/react', () => ({
 }));
 vi.mock('@tabler/icons-react-native', () => ({ IconPlus: 'IconPlus', IconX: 'IconX' }));
 vi.mock('expo-router', () => ({
-  useLocalSearchParams: () => ({ parentHref: '/stores' }),
+  useLocalSearchParams: () => ({ parentHref: '/equipment/stores' }),
   useRouter: () => ({ dismissTo: vi.fn() }),
 }));
 vi.mock('react-native', () => ({
@@ -33,7 +33,7 @@ vi.mock('@/components/ui/text', () => ({ Text: 'Text' }));
 vi.mock('@/components/TopToolbar', () => ({ SecondaryPageToolbar: 'SecondaryPageToolbar' }));
 vi.mock('@/lib/assistant-keyboard', () => ({ useAssistantKeyboardBottomPadding: () => 301 }));
 
-import AssistantRoute from '../../../app/(protected)/assistant';
+import AssistantRoute from '../../../app/(protected)/equipment/assistant';
 
 describe('AssistantRoute keyboard layout', () => {
   test('applies the measured keyboard inset to the modal content', () => {

@@ -1,8 +1,8 @@
 import { describe, expect, test, vi } from 'vitest';
 
 vi.mock('expo/fetch', () => ({ fetch: globalThis.fetch }));
-vi.mock('./api-base-url', () => ({ apiBaseUrl: 'https://api.jedidiah.test' }));
-vi.mock('./auth', () => ({ sessionCookieHeader: async () => null }));
+vi.mock('@/lib/api-base-url', () => ({ apiBaseUrl: 'https://api.jedidiah.test' }));
+vi.mock('@/lib/auth', () => ({ sessionCookieHeader: async () => null }));
 
 import { assistantChatFetch, getAssistantChatEndpoint, readableAssistantChatError } from './assistant-chat';
 

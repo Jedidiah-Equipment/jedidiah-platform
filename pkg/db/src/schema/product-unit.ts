@@ -1,13 +1,14 @@
 import { type AnyColumn, relations, type SQL, sql } from 'drizzle-orm';
-import { check, date, index, integer, pgTable, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
+import { check, date, index, integer, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
 
 import { user } from './auth.js';
 import { customers } from './customer.js';
+import { equipmentSchema } from './equipment.js';
 import { jobs } from './job.js';
 import { products } from './product.js';
 import { quotes } from './quote.js';
 
-export const productUnits = pgTable(
+export const productUnits = equipmentSchema.table(
   'product_unit',
   {
     id: uuid('id').defaultRandom().primaryKey(),
@@ -33,7 +34,7 @@ export const productUnits = pgTable(
   ],
 );
 
-export const productUnitOwnershipTransfers = pgTable(
+export const productUnitOwnershipTransfers = equipmentSchema.table(
   'product_unit_ownership_transfer',
   {
     id: uuid('id').defaultRandom().primaryKey(),

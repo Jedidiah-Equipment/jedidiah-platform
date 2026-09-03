@@ -1,8 +1,9 @@
 import type { StockMovementReason, StockMovementType } from '@pkg/schema';
 import { relations, sql } from 'drizzle-orm';
-import { check, foreignKey, index, integer, numeric, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
+import { check, foreignKey, index, integer, numeric, text, timestamp, uuid } from 'drizzle-orm/pg-core';
 
 import { user } from './auth.js';
+import { equipmentSchema } from './equipment.js';
 import { jobs } from './job.js';
 import { parts } from './part.js';
 import { purchaseOrderLines } from './purchase-order.js';
@@ -13,7 +14,7 @@ import { stocktakeSessions } from './stocktake.js';
  * movements carry the value across (spec §6), so the header is insert-only like the ledger itself —
  * there is no planned-build entity to amend, you record the build you actually did.
  */
-export const stockBuilds = pgTable(
+export const stockBuilds = equipmentSchema.table(
   'stock_build',
   {
     actorUserId: text('actor_user_id')
@@ -40,7 +41,7 @@ export const stockBuildRelations = relations(stockBuilds, ({ one }) => ({
   }),
 }));
 
-export const stockMovements = pgTable(
+export const stockMovements = equipmentSchema.table(
   'stock_movement',
   {
     actorUserId: text('actor_user_id')

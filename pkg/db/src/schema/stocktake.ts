@@ -1,8 +1,9 @@
 import type { StocktakeScope } from '@pkg/schema';
 import { relations, sql } from 'drizzle-orm';
-import { check, pgTable, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
+import { check, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
 
 import { user } from './auth.js';
+import { equipmentSchema } from './equipment.js';
 
 /**
  * One walk of a standing counting rhythm: opened with a scope, counted item by item, closed once
@@ -16,7 +17,7 @@ import { user } from './auth.js';
  * At most one session per scope may be open at a time: the two rhythms are shop-wide walks, and a
  * second open walk would split one scope's uncounted list across two to-dos nobody reconciles.
  */
-export const stocktakeSessions = pgTable(
+export const stocktakeSessions = equipmentSchema.table(
   'stocktake_session',
   {
     closedAt: timestamp('closed_at', { mode: 'date', withTimezone: true }),

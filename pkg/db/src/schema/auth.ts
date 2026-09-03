@@ -3,6 +3,8 @@ import type { Department } from '@pkg/schema';
 import { relations } from 'drizzle-orm';
 import { boolean, index, pgTable, primaryKey, text, timestamp, uniqueIndex } from 'drizzle-orm/pg-core';
 
+import { equipmentSchema } from './equipment.js';
+
 export const user = pgTable(
   'user',
   {
@@ -98,7 +100,7 @@ export const verification = pgTable(
   (table) => [index('verification_identifier_idx').on(table.identifier)],
 );
 
-export const userDepartment = pgTable(
+export const userDepartment = equipmentSchema.table(
   'user_department',
   {
     userId: text('user_id')

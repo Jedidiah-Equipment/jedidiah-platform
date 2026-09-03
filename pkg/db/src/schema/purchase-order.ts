@@ -6,8 +6,6 @@ import {
   index,
   integer,
   numeric,
-  pgSequence,
-  pgTable,
   primaryKey,
   text,
   timestamp,
@@ -15,13 +13,14 @@ import {
   uuid,
 } from 'drizzle-orm/pg-core';
 
+import { equipmentSchema } from './equipment.js';
 import { jobs } from './job.js';
 import { parts } from './part.js';
 import { supplier } from './supplier.js';
 
-export const purchaseOrderCodeSequence = pgSequence('purchase_order_code_seq');
+export const purchaseOrderCodeSequence = equipmentSchema.sequence('purchase_order_code_seq');
 
-export const purchaseOrders = pgTable(
+export const purchaseOrders = equipmentSchema.table(
   'purchase_order',
   {
     /** When an admin signed the draft off. Set on approve, cleared by revert-to-draft, kept on send. */
@@ -32,7 +31,7 @@ export const purchaseOrders = pgTable(
      * partially received order.
      */
     closedShortAt: timestamp('closed_short_at', { mode: 'date', withTimezone: true }),
-    code: integer('code').notNull().default(sql`nextval('purchase_order_code_seq'::regclass)`),
+    code: integer('code').notNull().default(sql`nextval('equipment.purchase_order_code_seq'::regclass)`),
     createdAt: timestamp('created_at', { mode: 'date', withTimezone: true }).defaultNow().notNull(),
     expectedDeliveryDate: date('expected_delivery_date', { mode: 'string' }),
     id: uuid('id').defaultRandom().primaryKey(),
@@ -62,7 +61,7 @@ export const purchaseOrders = pgTable(
   ],
 );
 
-export const purchaseOrderLines = pgTable(
+export const purchaseOrderLines = equipmentSchema.table(
   'purchase_order_line',
   {
     partId: uuid('part_id')
@@ -81,7 +80,7 @@ export const purchaseOrderLines = pgTable(
   ],
 );
 
-export const purchaseOrderJobLinks = pgTable(
+export const purchaseOrderJobLinks = equipmentSchema.table(
   'purchase_order_job_link',
   {
     jobId: uuid('job_id')

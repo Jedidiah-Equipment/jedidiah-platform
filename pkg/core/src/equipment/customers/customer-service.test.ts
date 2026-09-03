@@ -114,7 +114,7 @@ describe('Customer removal constraints', () => {
         constraint_name as "name",
         delete_rule as "deleteAction"
       from information_schema.referential_constraints
-      where unique_constraint_schema = current_schema()
+      where unique_constraint_schema = 'equipment'
         and unique_constraint_name = 'customers_pkey'
       order by constraint_name
     `);

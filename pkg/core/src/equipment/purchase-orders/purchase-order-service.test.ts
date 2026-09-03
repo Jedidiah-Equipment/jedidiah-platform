@@ -1,4 +1,15 @@
-import { auditEvents, customers, type Db, documents, jobs, parts, quotes, supplier, user } from '@pkg/db';
+import {
+  auditEvents,
+  customers,
+  type Db,
+  documents,
+  jobs,
+  parts,
+  purchaseOrders,
+  quotes,
+  supplier,
+  user,
+} from '@pkg/db';
 import { DateOnlyIso, type PurchaseOrderPdfModel } from '@pkg/schema';
 import { eq, sql } from 'drizzle-orm';
 import { describe, expect, vi } from 'vitest';
@@ -436,7 +447,7 @@ describe('Purchase Order send and cancel', () => {
     `);
     await context.db.execute(sql`
       create trigger fail_purchase_order_send
-      before update on purchase_order
+      before update on ${purchaseOrders}
       for each row execute function fail_purchase_order_send()
     `);
 

@@ -10,6 +10,7 @@ import { seedDemoUsers } from './seed-users.js';
 export async function resetRemoteDatabase(database: Db): Promise<void> {
   await database.execute(sql`
     DROP SCHEMA IF EXISTS drizzle CASCADE;
+    DROP SCHEMA IF EXISTS equipment CASCADE;
     DROP SCHEMA public CASCADE;
     CREATE SCHEMA public;
     GRANT ALL ON SCHEMA public TO PUBLIC;

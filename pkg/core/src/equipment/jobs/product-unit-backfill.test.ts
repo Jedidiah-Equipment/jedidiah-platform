@@ -22,9 +22,14 @@ const ACTOR_USER_ID = '00000000-0000-4000-8000-0000000000c1';
 const test = createTester(async ({ db }) => ({ db, seed: await seedLegacyShape(db) }));
 
 async function runBuildSpecBackfill(db: Db): Promise<void> {
-  for (const statement of readMigrationStatements('0097_job_build_spec_backfill')) {
-    await db.execute(sql.raw(statement));
-  }
+  await db.transaction(async (tx) => {
+    // This historical migration predates the equipment schema, so replay it with its original
+    // unqualified names resolving to the tables that now live there.
+    await tx.execute(sql.raw('SET LOCAL search_path TO equipment, public'));
+    for (const statement of readMigrationStatements('0097_job_build_spec_backfill')) {
+      await tx.execute(sql.raw(statement));
+    }
+  });
 }
 
 /**

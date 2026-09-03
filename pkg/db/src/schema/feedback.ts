@@ -1,12 +1,13 @@
 import type { Department, FeedbackKind, FeedbackStatus, FeedbackSubjectType } from '@pkg/schema';
 import { relations, sql } from 'drizzle-orm';
-import { check, index, pgTable, primaryKey, text, timestamp, uuid } from 'drizzle-orm/pg-core';
+import { check, index, primaryKey, text, timestamp, uuid } from 'drizzle-orm/pg-core';
 
 import { user } from './auth.js';
+import { equipmentSchema } from './equipment.js';
 import { jobs } from './job.js';
 import { quotes } from './quote.js';
 
-export const feedback = pgTable(
+export const feedback = equipmentSchema.table(
   'feedback',
   {
     id: uuid('id').defaultRandom().primaryKey(),
@@ -46,7 +47,7 @@ export const feedback = pgTable(
 
 // Corrective-department targets. The department enum is the only value, so the row key is
 // (feedback, department); deleting the feedback cascades the links away.
-export const feedbackDepartment = pgTable(
+export const feedbackDepartment = equipmentSchema.table(
   'feedback_department',
   {
     feedbackId: uuid('feedback_id')
@@ -65,7 +66,7 @@ export const feedbackDepartment = pgTable(
 
 // Corrective-user targets. Deleting a targeted user cascades only this link, leaving the feedback
 // and its other targets intact.
-export const feedbackUser = pgTable(
+export const feedbackUser = equipmentSchema.table(
   'feedback_user',
   {
     feedbackId: uuid('feedback_id')

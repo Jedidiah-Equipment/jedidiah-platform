@@ -14,7 +14,7 @@ begin;
 delete from audit_events where summary like '%[mock]';
 
 with job_ref as (
-  select code::int as code, id, completed_on from job
+  select code::int as code, id, completed_on from equipment.job
 ),
 actor as (
   select name, id from "user"

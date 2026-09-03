@@ -232,7 +232,7 @@ export const snapshotTableDefinitions = [
     seedRowDefaults: (row) => ({
       cancellationReason: row.status === 'cancelled' ? LEGACY_QUOTE_CANCELLATION_REASON : null,
     }),
-    resetSequence: { sequenceName: 'quote_code_seq', columnName: 'code' },
+    resetSequence: { sequenceName: 'equipment.quote_code_seq', columnName: 'code' },
   },
   {
     fileName: 'quote_work_items.json',
@@ -259,7 +259,7 @@ export const snapshotTableDefinitions = [
     // preceding schema and the read is retried without it.
     optionalReadColumns: ['productUnitId'],
     seedRowDefaults: () => ({ productUnitId: null }),
-    resetSequence: { sequenceName: 'job_code_seq', columnName: 'code' },
+    resetSequence: { sequenceName: 'equipment.job_code_seq', columnName: 'code' },
   },
   {
     // References Jobs and Users, so cleanup must reach close-outs before either parent.

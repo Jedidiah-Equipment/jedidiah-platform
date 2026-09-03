@@ -8,8 +8,6 @@ import {
   index,
   integer,
   numeric,
-  pgSequence,
-  pgTable,
   text,
   timestamp,
   uniqueIndex,
@@ -18,17 +16,18 @@ import {
 
 import { user } from './auth.js';
 import { customers } from './customer.js';
+import { equipmentSchema } from './equipment.js';
 import { jobs } from './job.js';
 import { productAssemblies, products } from './product.js';
 import { productUnits } from './product-unit.js';
 
-export const quoteCodeSequence = pgSequence('quote_code_seq');
+export const quoteCodeSequence = equipmentSchema.sequence('quote_code_seq');
 
-export const quotes = pgTable(
+export const quotes = equipmentSchema.table(
   'quote',
   {
     id: uuid('id').defaultRandom().primaryKey(),
-    code: integer('code').notNull().default(sql`nextval('quote_code_seq'::regclass)`),
+    code: integer('code').notNull().default(sql`nextval('equipment.quote_code_seq'::regclass)`),
     customerId: uuid('customer_id')
       .notNull()
       .references(() => customers.id, { onDelete: 'restrict' }),
@@ -97,7 +96,7 @@ export const quotes = pgTable(
   ],
 );
 
-export const quoteSelectedAssemblies = pgTable(
+export const quoteSelectedAssemblies = equipmentSchema.table(
   'quote_selected_assemblies',
   {
     id: uuid('id').defaultRandom().primaryKey(),
@@ -116,7 +115,7 @@ export const quoteSelectedAssemblies = pgTable(
   ],
 );
 
-export const quoteWorkItems = pgTable(
+export const quoteWorkItems = equipmentSchema.table(
   'quote_work_items',
   {
     id: uuid('id').defaultRandom().primaryKey(),
@@ -155,7 +154,7 @@ export const quoteWorkItems = pgTable(
   ],
 );
 
-export const quoteWorkItemParts = pgTable(
+export const quoteWorkItemParts = equipmentSchema.table(
   'quote_work_item_parts',
   {
     id: uuid('id').defaultRandom().primaryKey(),

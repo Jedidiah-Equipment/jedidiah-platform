@@ -7,8 +7,6 @@ import {
   index,
   integer,
   jsonb,
-  pgSequence,
-  pgTable,
   primaryKey,
   text,
   timestamp,
@@ -17,14 +15,15 @@ import {
   uuid,
 } from 'drizzle-orm/pg-core';
 import { user } from './auth.js';
+import { equipmentSchema } from './equipment.js';
 import { parts } from './part.js';
 import { productAssemblies, products } from './product.js';
 import { productUnits } from './product-unit.js';
 import { quotes } from './quote.js';
 
-export const jobCodeSequence = pgSequence('job_code_seq');
+export const jobCodeSequence = equipmentSchema.sequence('job_code_seq');
 
-export const productSerialSequences = pgTable(
+export const productSerialSequences = equipmentSchema.table(
   'product_serial_sequence',
   {
     productId: uuid('product_id')
@@ -36,7 +35,7 @@ export const productSerialSequences = pgTable(
   (table) => [check('product_serial_sequence_last_sequence_positive', sql`${table.lastSequence} > 0`)],
 );
 
-export const jobBays = pgTable(
+export const jobBays = equipmentSchema.table(
   'job_bay',
   {
     id: uuid('id').defaultRandom().primaryKey(),
@@ -57,7 +56,7 @@ export const jobBays = pgTable(
   ],
 );
 
-export const jobBayOperatorAssignments = pgTable(
+export const jobBayOperatorAssignments = equipmentSchema.table(
   'job_bay_operator_assignment',
   {
     id: uuid('id').defaultRandom().primaryKey(),
@@ -81,7 +80,7 @@ export const jobBayOperatorAssignments = pgTable(
   ],
 );
 
-export const productBays = pgTable(
+export const productBays = equipmentSchema.table(
   'product_bay',
   {
     productId: uuid('product_id')
@@ -100,7 +99,7 @@ export const productBays = pgTable(
   ],
 );
 
-export const workingCalendarOffDays = pgTable(
+export const workingCalendarOffDays = equipmentSchema.table(
   'working_calendar_off_day',
   {
     date: date('date', { mode: 'string' }).primaryKey(),
@@ -113,7 +112,7 @@ export const workingCalendarOffDays = pgTable(
   ],
 );
 
-export const jobBayCalendarExceptions = pgTable(
+export const jobBayCalendarExceptions = equipmentSchema.table(
   'job_bay_calendar_exception',
   {
     bayId: uuid('bay_id')
@@ -134,11 +133,11 @@ export const jobBayCalendarExceptions = pgTable(
   ],
 );
 
-export const jobs = pgTable(
+export const jobs = equipmentSchema.table(
   'job',
   {
     id: uuid('id').defaultRandom().primaryKey(),
-    code: integer('code').notNull().default(sql`nextval('job_code_seq'::regclass)`),
+    code: integer('code').notNull().default(sql`nextval('equipment.job_code_seq'::regclass)`),
     // The physical machine this Job builds or works on, and the only thing that makes this a Product
     // Job. Null for a Custom Job, which produces no machine. Serial, Product, and VIN live on the Unit.
     productUnitId: uuid('product_unit_id').references(() => productUnits.id, { onDelete: 'restrict' }),
@@ -181,7 +180,7 @@ export const jobs = pgTable(
   ],
 );
 
-export const jobEstimateSnapshots = pgTable(
+export const jobEstimateSnapshots = equipmentSchema.table(
   'job_estimate_snapshot',
   {
     createdAt: timestamp('created_at', { mode: 'date', withTimezone: true }).defaultNow().notNull(),
@@ -195,7 +194,7 @@ export const jobEstimateSnapshots = pgTable(
 
 // A Job's own selection of Optional Assemblies, and the only source its CFO is snapshotted from.
 // It carries no price: pricing stays a Quote concern.
-export const jobBuildSpecAssemblies = pgTable(
+export const jobBuildSpecAssemblies = equipmentSchema.table(
   'job_build_spec_assembly',
   {
     id: uuid('id').defaultRandom().primaryKey(),
@@ -212,7 +211,7 @@ export const jobBuildSpecAssemblies = pgTable(
   ],
 );
 
-export const jobCfoAssemblies = pgTable(
+export const jobCfoAssemblies = equipmentSchema.table(
   'job_cfo_assembly',
   {
     id: uuid('id').defaultRandom().primaryKey(),
@@ -229,7 +228,7 @@ export const jobCfoAssemblies = pgTable(
   ],
 );
 
-export const jobCfoParts = pgTable(
+export const jobCfoParts = equipmentSchema.table(
   'job_cfo_part',
   {
     cfoAssemblyId: uuid('cfo_assembly_id')
@@ -246,7 +245,7 @@ export const jobCfoParts = pgTable(
   ],
 );
 
-export const jobSlots = pgTable(
+export const jobSlots = equipmentSchema.table(
   'job_slot',
   {
     id: uuid('id').defaultRandom().primaryKey(),
@@ -282,7 +281,7 @@ const workItemDepartmentSql = WORK_ITEM_DEPARTMENTS.map((department) => `'${depa
 // board or slot-state derivations — the per-job stage rows removed in migration 0037 stay
 // removed. Stamps lock once the Job's completedOn latches. Timestamps, not plant dates: the
 // metrics convert to plant business dates at read time. Row absence means "not started".
-export const jobDepartmentTimings = pgTable(
+export const jobDepartmentTimings = equipmentSchema.table(
   'job_department_timing',
   {
     jobId: uuid('job_id')
@@ -308,7 +307,7 @@ export const jobDepartmentTimings = pgTable(
 // The people who crewed one Department's work on a Job, recorded with the done-stamp. Crew
 // exists only while the timing row's completedAt is set — enforced in core, not expressible
 // as a table check. Cascades with its timing row.
-export const jobDepartmentCrew = pgTable(
+export const jobDepartmentCrew = equipmentSchema.table(
   'job_department_crew',
   {
     jobId: uuid('job_id').notNull(),

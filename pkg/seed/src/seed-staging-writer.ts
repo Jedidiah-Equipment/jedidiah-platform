@@ -22,7 +22,7 @@ export async function writeLocalSeedToStaging(): Promise<void> {
     // transaction fails, the extra immutable objects are harmless and can be reused by the next attempt.
     await copySnapshotObjectsToStaging(snapshots, localStorage, stagingStorage);
     await replaceDatabaseWithSeedSnapshot(stagingClient.db, snapshots, {
-      clearAllPublicTables: true,
+      clearAllApplicationTables: true,
       logPrefix: 'seed:write:staging',
     });
   } finally {

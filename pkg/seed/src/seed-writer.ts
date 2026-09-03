@@ -3,6 +3,7 @@ import { pathToFileURL } from 'node:url';
 import './load-write-env.js';
 import { createDatabaseClient, type DatabaseTransaction, type Db, getDatabaseUrl, sql } from '@pkg/db';
 import { hashPassword } from 'better-auth/crypto';
+import { getTableUniqueName } from 'drizzle-orm';
 import { assertLocalSeedStorageTarget, assertLocalSeedTarget } from './seed-target-guards.js';
 import { deserializeSnapshotRows } from './snapshot-json.js';
 import { objectFilePath, snapshotDirectory } from './snapshot-paths.js';
@@ -13,7 +14,6 @@ import {
   type SnapshotRow,
   type SnapshotTableConfig,
   snapshotCleanupTables,
-  snapshotTableNames,
   snapshotTables,
 } from './snapshot-tables.js';
 import { createStorageFromEnv, readSeedStorageConfig, type SeedStorage, uploadObject } from './storage.js';
@@ -21,7 +21,7 @@ import { createStorageFromEnv, readSeedStorageConfig, type SeedStorage, uploadOb
 export type SnapshotWithRows = { config: SnapshotTableConfig; rows: SnapshotRow[] };
 
 type ReplaceSeedSnapshotOptions = {
-  clearAllPublicTables?: boolean;
+  clearAllApplicationTables?: boolean;
   logPrefix?: string;
 };
 
@@ -92,13 +92,13 @@ export function prepareRowsForSeed(config: SnapshotTableConfig, rows: readonly S
 export async function replaceDatabaseWithSeedSnapshot(
   database: Db,
   snapshots: readonly SnapshotWithRows[],
-  { clearAllPublicTables = false, logPrefix = 'db:seed' }: ReplaceSeedSnapshotOptions = {},
+  { clearAllApplicationTables = false, logPrefix = 'db:seed' }: ReplaceSeedSnapshotOptions = {},
 ): Promise<void> {
   const seedPasswordHash = await hashPassword(SEED_USER_PASSWORD);
 
   await database.transaction(async (tx) => {
-    if (clearAllPublicTables) {
-      await clearAllPublicTablesForStaging(tx);
+    if (clearAllApplicationTables) {
+      await clearAllApplicationTablesForStaging(tx);
     } else {
       await clearSnapshotTables(tx);
     }
@@ -159,7 +159,7 @@ function withSeedPassword(rows: readonly SnapshotRow[], passwordHash: string): S
 }
 
 export async function clearSnapshotTables(tx: DatabaseTransaction): Promise<void> {
-  await clearUnsnapshottedPublicTables(tx);
+  await clearUnsnapshottedApplicationTables(tx);
 
   for (const config of snapshotCleanupTables) {
     await tx.delete(config.table);
@@ -169,45 +169,48 @@ export async function clearSnapshotTables(tx: DatabaseTransaction): Promise<void
 // A local database also holds rows the snapshot never captures — Purchase Orders, the stock ledger,
 // Documents, department stamps — and several of those reference snapshot parents with ON DELETE
 // RESTRICT, so leaving them in place fails the next re-seed. Registering each new table here by hand
-// only defers the same failure, so the sweep is derived from the catalog: everything in `public` that
-// the snapshot does not own is truncated before the ordered snapshot cleanup runs.
-async function clearUnsnapshottedPublicTables(tx: DatabaseTransaction): Promise<void> {
-  const publicTables = await tx.execute<{ tablename: string }>(
-    sql`SELECT tablename FROM pg_tables WHERE schemaname = 'public'`,
+// only defers the same failure, so the sweep is derived from the catalog across both application schemas:
+// everything the snapshot does not own is truncated before the ordered snapshot cleanup runs.
+async function clearUnsnapshottedApplicationTables(tx: DatabaseTransaction): Promise<void> {
+  const applicationTables = await tx.execute<{ schemaname: string; tablename: string }>(
+    sql`SELECT schemaname, tablename FROM pg_tables WHERE schemaname IN ('equipment', 'public')`,
   );
-  const snapshotted = new Set<string>(snapshotTableNames);
-  const tableNames = [...publicTables]
-    .map((row) => row.tablename)
-    .filter((tableName) => !snapshotted.has(tableName))
-    .sort();
+  const snapshotted = new Set(snapshotTables.map((config) => getTableUniqueName(config.table)));
+  const tableNames = [...applicationTables]
+    .filter(({ schemaname, tablename }) => !snapshotted.has(`${schemaname}.${tablename}`))
+    .sort((left, right) =>
+      left.schemaname === right.schemaname
+        ? left.tablename.localeCompare(right.tablename)
+        : left.schemaname.localeCompare(right.schemaname),
+    );
 
   if (tableNames.length === 0) {
     return;
   }
 
   const identifiers = sql.join(
-    tableNames.map((tableName) => sql.identifier(tableName)),
+    tableNames.map(({ schemaname, tablename }) => sql`${sql.identifier(schemaname)}.${sql.identifier(tablename)}`),
     sql`, `,
   );
 
   await tx.execute(sql`TRUNCATE TABLE ${identifiers} CASCADE`);
 }
 
-async function clearAllPublicTablesForStaging(tx: DatabaseTransaction): Promise<void> {
+async function clearAllApplicationTablesForStaging(tx: DatabaseTransaction): Promise<void> {
   // Staging may contain rows in newer/non-snapshotted tables that restrict deletion of snapshot parents.
-  // The dynamic list also keeps this destructive path current as new public tables are added.
+  // The dynamic list also keeps this destructive path current as either application schema grows.
   await tx.execute(sql`
     DO $$
     DECLARE
-      public_tables text;
+      application_tables text;
     BEGIN
       SELECT string_agg(format('%I.%I', schemaname, tablename), ', ')
-      INTO public_tables
+      INTO application_tables
       FROM pg_tables
-      WHERE schemaname = 'public';
+      WHERE schemaname IN ('equipment', 'public');
 
-      IF public_tables IS NOT NULL THEN
-        EXECUTE 'TRUNCATE TABLE ' || public_tables || ' RESTART IDENTITY CASCADE';
+      IF application_tables IS NOT NULL THEN
+        EXECUTE 'TRUNCATE TABLE ' || application_tables || ' RESTART IDENTITY CASCADE';
       END IF;
     END
     $$;

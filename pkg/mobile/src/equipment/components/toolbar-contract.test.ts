@@ -5,17 +5,17 @@ import { describe, expect, test } from 'vitest';
 
 import { listTsxFiles } from '@/components/test-file-utils';
 
-const MOBILE_DIR = join(dirname(fileURLToPath(import.meta.url)), '../..');
+const MOBILE_DIR = join(dirname(fileURLToPath(import.meta.url)), '../../..');
 const PROTECTED_ROUTES_DIR = join(MOBILE_DIR, 'app/(protected)');
 
 const SIGNED_IN_PERMISSION_LOADING_SURFACES = {
-  'equipment/(tabs)/(plan)/_layout.tsx': toolbar('main', 'src/components/TabAccessLoadingScreen.tsx'),
-  'equipment/(tabs)/activity/_layout.tsx': toolbar('main', 'src/components/TabAccessLoadingScreen.tsx'),
-  'equipment/(tabs)/jobs/_layout.tsx': toolbar('main', 'src/components/TabAccessLoadingScreen.tsx'),
-  'equipment/(tabs)/products/_layout.tsx': toolbar('main', 'src/components/TabAccessLoadingScreen.tsx'),
-  'equipment/(tabs)/quotes/_layout.tsx': toolbar('main', 'src/components/TabAccessLoadingScreen.tsx'),
-  'equipment/(tabs)/stores/_layout.tsx': toolbar('main', 'src/components/TabAccessLoadingScreen.tsx'),
-  'equipment/(tabs)/units/_layout.tsx': toolbar('main', 'src/components/TabAccessLoadingScreen.tsx'),
+  'equipment/(tabs)/(plan)/_layout.tsx': toolbar('main', 'src/equipment/components/TabAccessLoadingScreen.tsx'),
+  'equipment/(tabs)/activity/_layout.tsx': toolbar('main', 'src/equipment/components/TabAccessLoadingScreen.tsx'),
+  'equipment/(tabs)/jobs/_layout.tsx': toolbar('main', 'src/equipment/components/TabAccessLoadingScreen.tsx'),
+  'equipment/(tabs)/products/_layout.tsx': toolbar('main', 'src/equipment/components/TabAccessLoadingScreen.tsx'),
+  'equipment/(tabs)/quotes/_layout.tsx': toolbar('main', 'src/equipment/components/TabAccessLoadingScreen.tsx'),
+  'equipment/(tabs)/stores/_layout.tsx': toolbar('main', 'src/equipment/components/TabAccessLoadingScreen.tsx'),
+  'equipment/(tabs)/units/_layout.tsx': toolbar('main', 'src/equipment/components/TabAccessLoadingScreen.tsx'),
 } as const;
 
 const SIGNED_IN_ROUTE_TOOLBARS = {
@@ -120,7 +120,7 @@ describe('signed-in toolbar contract', () => {
   test('assembles signed-in toolbar chrome only in TopToolbar', () => {
     const files = [...listTsxFiles(join(MOBILE_DIR, 'app')), ...listTsxFiles(join(MOBILE_DIR, 'src'))];
     const offenders = files
-      .filter((file) => file !== join(MOBILE_DIR, 'src/components/TopToolbar.tsx'))
+      .filter((file) => file !== join(MOBILE_DIR, 'src/equipment/components/TopToolbar.tsx'))
       .filter((file) => {
         const source = readFileSync(file, 'utf8');
         return /from ['"]@\/components\/(?:ProfileMenuButton|assistant\/AssistantEntryButton)['"]/.test(source);

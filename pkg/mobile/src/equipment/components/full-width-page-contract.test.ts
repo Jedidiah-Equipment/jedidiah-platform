@@ -5,7 +5,7 @@ import { describe, expect, test } from 'vitest';
 
 import { listTsxFiles } from '@/components/test-file-utils';
 
-const MOBILE_DIR = join(dirname(fileURLToPath(import.meta.url)), '../..');
+const MOBILE_DIR = join(dirname(fileURLToPath(import.meta.url)), '../../..');
 
 describe('full-width page contract', () => {
   test('does not center route or scrolling content surfaces with automatic margins', () => {

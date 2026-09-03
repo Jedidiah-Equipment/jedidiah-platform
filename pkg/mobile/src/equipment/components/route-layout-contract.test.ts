@@ -5,11 +5,11 @@ import { describe, expect, test } from 'vitest';
 
 import { listTsxFiles } from '@/components/test-file-utils';
 
-const MOBILE_DIR = join(dirname(fileURLToPath(import.meta.url)), '../..');
+const MOBILE_DIR = join(dirname(fileURLToPath(import.meta.url)), '../../..');
 
 describe('route layout contract', () => {
   test('uses distinct Activity, Jobs, and Plan icons', () => {
-    const tabBar = readFileSync(join(MOBILE_DIR, 'src/components/AppTabBar.tsx'), 'utf8');
+    const tabBar = readFileSync(join(MOBILE_DIR, 'src/equipment/components/AppTabBar.tsx'), 'utf8');
 
     expect(tabBar).toContain('activity: IconActivity');
     expect(tabBar).toContain('jobs: IconBriefcase2');
@@ -18,7 +18,7 @@ describe('route layout contract', () => {
   });
 
   test('shows and clears the Activity unread indicator through the shared last-seen endpoints', () => {
-    const tabBar = readFileSync(join(MOBILE_DIR, 'src/components/AppTabBar.tsx'), 'utf8');
+    const tabBar = readFileSync(join(MOBILE_DIR, 'src/equipment/components/AppTabBar.tsx'), 'utf8');
     const activityFeed = readFileSync(
       join(MOBILE_DIR, 'src/equipment/components/activity/JobActivityFeed.tsx'),
       'utf8',
@@ -72,7 +72,7 @@ describe('route layout contract', () => {
   });
 
   test('keeps flat and sectioned list toolbars at the same gap below the page header', () => {
-    const catalogList = readFileSync(join(MOBILE_DIR, 'src/components/CatalogList.tsx'), 'utf8');
+    const catalogList = readFileSync(join(MOBILE_DIR, 'src/equipment/components/CatalogList.tsx'), 'utf8');
     const activityFeed = readFileSync(
       join(MOBILE_DIR, 'src/equipment/components/activity/JobActivityFeed.tsx'),
       'utf8',

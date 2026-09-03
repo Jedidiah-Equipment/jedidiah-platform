@@ -1,8 +1,9 @@
 import type { PurchaseOrderAmendmentKind } from '@pkg/schema';
 import { relations, sql } from 'drizzle-orm';
-import { check, date, index, numeric, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
+import { check, date, index, numeric, text, timestamp, uuid } from 'drizzle-orm/pg-core';
 
 import { user } from './auth.js';
+import { equipmentSchema } from './equipment.js';
 import { parts } from './part.js';
 import { purchaseOrders } from './purchase-order.js';
 
@@ -14,7 +15,7 @@ import { purchaseOrders } from './purchase-order.js';
  * Drafts never reach this table; they stay freely editable through the draft save, so an empty log
  * is exactly what "this order has not changed since it went out" looks like.
  */
-export const purchaseOrderAmendments = pgTable(
+export const purchaseOrderAmendments = equipmentSchema.table(
   'purchase_order_amendment',
   {
     actorUserId: text('actor_user_id')

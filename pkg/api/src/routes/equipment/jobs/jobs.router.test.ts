@@ -1500,7 +1500,7 @@ describe('jobs.bookSlot', () => {
       quoteId: context.quote.id,
     });
     await context.db.execute(sql`
-      UPDATE "job_bay"
+      UPDATE ${jobBays}
       SET "schedule_origin" = '2026-06-01T00:00:00.000Z'
       WHERE "id" = '00000000-0000-4000-8000-000000000b04'
     `);
@@ -2624,7 +2624,7 @@ function getBoardPreviewBay(preview: BoardPreviewResult, bayId: string) {
 
 async function setBayScheduleOrigin(db: Db, bayId: string, scheduleOrigin: string): Promise<void> {
   await db.execute(sql`
-    UPDATE "job_bay"
+    UPDATE ${jobBays}
     SET "schedule_origin" = ${scheduleOrigin}
     WHERE "id" = ${bayId}
   `);

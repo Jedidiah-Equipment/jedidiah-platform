@@ -1,7 +1,9 @@
 import { sql } from 'drizzle-orm';
-import { pgTable, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
+import { text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
 
-export const supplier = pgTable(
+import { equipmentSchema } from './equipment.js';
+
+export const supplier = equipmentSchema.table(
   'supplier',
   {
     id: uuid('id').defaultRandom().primaryKey(),

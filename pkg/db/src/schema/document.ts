@@ -5,27 +5,17 @@ import type {
   SupplierInvoiceExtraction,
 } from '@pkg/schema';
 import { relations, sql } from 'drizzle-orm';
-import {
-  check,
-  index,
-  integer,
-  jsonb,
-  pgTable,
-  primaryKey,
-  text,
-  timestamp,
-  uniqueIndex,
-  uuid,
-} from 'drizzle-orm/pg-core';
+import { check, index, integer, jsonb, primaryKey, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
 
 import { user } from './auth.js';
+import { equipmentSchema } from './equipment.js';
 import { jobs } from './job.js';
 import { products } from './product.js';
 import { purchaseOrders } from './purchase-order.js';
 import { quotes } from './quote.js';
 import { stockMovements } from './stock-movement.js';
 
-export const documents = pgTable(
+export const documents = equipmentSchema.table(
   'documents',
   {
     byteSize: integer('byte_size').notNull(),
@@ -87,7 +77,7 @@ export const documents = pgTable(
  * stock that left. A return takes at most one credit note: the supplier credits the original
  * invoice one-to-one, and the returns-awaiting-credit signal keys on the absence of a row here.
  */
-export const creditNoteSettlements = pgTable(
+export const creditNoteSettlements = equipmentSchema.table(
   'credit_note_settlement',
   {
     documentId: uuid('document_id')
@@ -115,7 +105,7 @@ export const creditNoteSettlements = pgTable(
  * from having no row at all, and it is why the row is written whether or not the model succeeded.
  * The document id is the key because the read is re-runnable — a second attempt replaces the first.
  */
-export const invoiceExtractions = pgTable('invoice_extraction', {
+export const invoiceExtractions = equipmentSchema.table('invoice_extraction', {
   createdAt: timestamp('created_at', { mode: 'date', withTimezone: true }).defaultNow().notNull(),
   documentId: uuid('document_id')
     .primaryKey()
@@ -131,7 +121,7 @@ export const invoiceExtractions = pgTable('invoice_extraction', {
  * applied again. `flagKey` is the flag's own stable identity (`@pkg/schema`'s `invoiceFlagKey`),
  * keyed on the Part for a line-level flag and on the invoice line's position for the rest.
  */
-export const invoiceFlagResolutions = pgTable(
+export const invoiceFlagResolutions = equipmentSchema.table(
   'invoice_flag_resolution',
   {
     actorUserId: text('actor_user_id')

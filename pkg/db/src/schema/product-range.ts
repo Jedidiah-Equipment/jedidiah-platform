@@ -1,8 +1,9 @@
 import { relations, sql } from 'drizzle-orm';
-import { check, integer, jsonb, pgTable, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
+import { check, integer, jsonb, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
+import { equipmentSchema } from './equipment.js';
 import type { TranslationEnvelope, TranslationsColumn } from './translation-envelope.js';
 
-export const productRanges = pgTable(
+export const productRanges = equipmentSchema.table(
   'product_ranges',
   {
     id: uuid('id').defaultRandom().primaryKey(),
@@ -37,7 +38,7 @@ export const productRanges = pgTable(
   ],
 );
 
-export const productRangeVariants = pgTable(
+export const productRangeVariants = equipmentSchema.table(
   'product_range_variants',
   {
     id: uuid('id').defaultRandom().primaryKey(),

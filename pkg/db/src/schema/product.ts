@@ -7,13 +7,13 @@ import {
   integer,
   jsonb,
   numeric,
-  pgTable,
   primaryKey,
   text,
   timestamp,
   uniqueIndex,
   uuid,
 } from 'drizzle-orm/pg-core';
+import { equipmentSchema } from './equipment.js';
 import { parts } from './part.js';
 import { productRanges, productRangeVariants } from './product-range.js';
 import type { StoredFile } from './stored-file.js';
@@ -23,7 +23,7 @@ import type { TranslationEnvelope, TranslationsColumn } from './translation-enve
 // place, so a missing key means "no current image".
 export type ProductImageStore = Partial<Record<string, StoredFile>>;
 
-export const products = pgTable(
+export const products = equipmentSchema.table(
   'products',
   {
     basePrice: numeric('base_price', { mode: 'number', precision: 12, scale: 2 }).notNull(),
@@ -82,7 +82,7 @@ export const products = pgTable(
   ],
 );
 
-export const productAssemblies = pgTable(
+export const productAssemblies = equipmentSchema.table(
   'product_assemblies',
   {
     createdAt: timestamp('created_at', { mode: 'date', withTimezone: true }).defaultNow().notNull(),
@@ -113,7 +113,7 @@ export const productAssemblies = pgTable(
   ],
 );
 
-export const assemblyParts = pgTable(
+export const assemblyParts = equipmentSchema.table(
   'assembly_parts',
   {
     assemblyId: uuid('assembly_id')
@@ -130,7 +130,7 @@ export const assemblyParts = pgTable(
   ],
 );
 
-export const productMaterialLines = pgTable(
+export const productMaterialLines = equipmentSchema.table(
   'product_material_line',
   {
     partId: uuid('part_id')
@@ -149,7 +149,7 @@ export const productMaterialLines = pgTable(
 
 const workItemDepartmentSql = WORK_ITEM_DEPARTMENTS.map((department) => `'${department}'`).join(', ');
 
-export const productLaborHours = pgTable(
+export const productLaborHours = equipmentSchema.table(
   'product_labor_hours',
   {
     department: text('department').notNull().$type<WorkItemDepartment>(),
@@ -165,7 +165,7 @@ export const productLaborHours = pgTable(
   ],
 );
 
-export const assemblyOverrides = pgTable(
+export const assemblyOverrides = equipmentSchema.table(
   'assembly_overrides',
   {
     optionalAssemblyId: uuid('optional_assembly_id').notNull(),

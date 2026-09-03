@@ -8,7 +8,7 @@ import {
   type ProductUnitReassignResult,
   type UUID,
 } from '@pkg/schema';
-import { and, asc, eq, inArray, isNull, or } from 'drizzle-orm';
+import { aliasedTable, and, asc, eq, inArray, isNull, or } from 'drizzle-orm';
 
 import { recordAuditEvent } from '../audit/audit-service.js';
 import { jobAuditDescriptor } from '../jobs/job-audit.js';
@@ -281,20 +281,28 @@ async function lockJobsForReassignment(
   tx: DatabaseTransaction,
   { productUnitId, quoteId }: { productUnitId: UUID; quoteId: string },
 ): Promise<LockedReassignJobs> {
+  // PostgreSQL requires FOR UPDATE OF to name an unqualified relation; aliasing keeps the lock
+  // scoped to Job rows without losing the equipment schema on the FROM clause.
+  const lockedJobs = aliasedTable(jobs, 'locked_reassign_jobs');
   const rows = await tx
     .select({
-      code: jobs.code,
-      createdAt: jobs.createdAt,
-      id: jobs.id,
-      productUnitId: jobs.productUnitId,
-      quoteId: jobs.quoteId,
+      code: lockedJobs.code,
+      createdAt: lockedJobs.createdAt,
+      id: lockedJobs.id,
+      productUnitId: lockedJobs.productUnitId,
+      quoteId: lockedJobs.quoteId,
       quoteProductUnitId: quotes.productUnitId,
     })
-    .from(jobs)
-    .leftJoin(quotes, eq(quotes.id, jobs.quoteId))
-    .where(and(isNull(jobs.cancelledAt), or(eq(jobs.quoteId, quoteId), eq(jobs.productUnitId, productUnitId))))
-    .orderBy(asc(jobs.id))
-    .for('update', { of: jobs });
+    .from(lockedJobs)
+    .leftJoin(quotes, eq(quotes.id, lockedJobs.quoteId))
+    .where(
+      and(
+        isNull(lockedJobs.cancelledAt),
+        or(eq(lockedJobs.quoteId, quoteId), eq(lockedJobs.productUnitId, productUnitId)),
+      ),
+    )
+    .orderBy(asc(lockedJobs.id))
+    .for('update', { of: lockedJobs });
 
   // `job_quote_id_live_unique` makes this at most one row.
   const displacedJob = rows.find((row) => row.quoteId === quoteId) ?? null;

@@ -40,9 +40,14 @@ const UUID_LITERAL_PATTERN = /'[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[
 const test = createTester(async ({ db }) => ({ db, seed: await seedPlaceholderShape(db) }));
 
 async function runCleanup(db: Db): Promise<void> {
-  for (const statement of readMigrationStatements('0096_retire_stock_customer')) {
-    await db.execute(sql.raw(statement));
-  }
+  await db.transaction(async (tx) => {
+    // This historical migration predates the equipment schema, so replay it with its original
+    // unqualified names resolving to the tables that now live there.
+    await tx.execute(sql.raw('SET LOCAL search_path TO equipment, public'));
+    for (const statement of readMigrationStatements('0096_retire_stock_customer')) {
+      await tx.execute(sql.raw(statement));
+    }
+  });
 }
 
 describe('stock customer retirement', () => {

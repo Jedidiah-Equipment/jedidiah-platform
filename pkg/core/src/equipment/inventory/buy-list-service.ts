@@ -67,7 +67,7 @@ async function listBuyListSnapshot(db: DatabaseTransaction, now: Date, today: Da
         // can establish the estimator's demand origin before stock first arrives.
         originAt: sql<
           string | null
-        >`(select min(origin_movement.created_at) from stock_movement origin_movement where origin_movement.part_id = ${parts.id})`,
+        >`(select min(origin_movement.created_at) from ${stockMovements} origin_movement where origin_movement.part_id = ${parts.id})`,
         // A revaluation moves cost, never quantity, so it must not reach a stock-on-hand sum.
         quantity: sql<number>`coalesce(sum(${stockMovements.delta}), 0)::double precision`,
         supplierId: parts.supplierId,

@@ -1,6 +1,8 @@
-import { pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
+import { text, timestamp, uuid } from 'drizzle-orm/pg-core';
 
-export const customers = pgTable('customers', {
+import { equipmentSchema } from './equipment.js';
+
+export const customers = equipmentSchema.table('customers', {
   id: uuid('id').defaultRandom().primaryKey(),
   companyName: text('company_name').notNull(),
   email: text('email'),

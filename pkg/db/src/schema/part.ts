@@ -1,21 +1,10 @@
 import type { PartStockTrackingMode, PartUnitOfMeasure } from '@pkg/schema';
 import { relations, sql } from 'drizzle-orm';
-import {
-  boolean,
-  check,
-  index,
-  integer,
-  numeric,
-  pgTable,
-  primaryKey,
-  text,
-  uniqueIndex,
-  uuid,
-} from 'drizzle-orm/pg-core';
-
+import { boolean, check, index, integer, numeric, primaryKey, text, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
+import { equipmentSchema } from './equipment.js';
 import { supplier } from './supplier.js';
 
-export const parts = pgTable(
+export const parts = equipmentSchema.table(
   'parts',
   {
     averageUtilizationPercent: integer('average_utilization_percent'),
@@ -86,7 +75,7 @@ export const partsRelations = relations(parts, ({ one }) => ({
  * consumes. BOMs nest but builds never recurse (spec §6), so the graph must stay acyclic — the
  * table can only forbid the self-reference, and the transitive walk lives in the service.
  */
-export const partBom = pgTable(
+export const partBom = equipmentSchema.table(
   'part_bom',
   {
     componentPartId: uuid('component_part_id')

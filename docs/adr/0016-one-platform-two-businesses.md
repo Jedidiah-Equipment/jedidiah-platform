@@ -16,7 +16,13 @@ codebase says so everywhere the same way:
   Anything outside both namespaces is **shared infrastructure by definition** — auth, db client,
   UI kit, files, theme, formatting, AI, audit. That absence-means-shared rule is the point of
   symmetry: with only a `contracting/` namespace, "outside" would ambiguously mean equipment *or*
-  shared, and the boundary could not be linted from both sides.
+  shared, and the boundary could not be linted from both sides. **Shared is earned, never
+  presumed**: phase 0 classifies code by what it provably serves *today*, and ambiguity defaults
+  *into* `equipment/` — even code everyone knows will eventually be common (document services,
+  audit-writing helpers) moves into the mode folder if only equipment uses it now. Code graduates
+  to the shared space only at the moment contracting actually calls it, as its own deliberate,
+  reviewed extraction — never as a phase-0 prediction. No mode-specific feature may live outside
+  its mode folder.
 - **Database.** Two named Postgres schemas, `equipment` and `contracting`, via Drizzle `pgSchema`.
   `public` stays the shared home because that is where better-auth and tooling defaults already
   point; only the two businesses get named schemas. The classification principle for phase 0:

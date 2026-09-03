@@ -8,4 +8,4 @@
 
 - Write an audited update through `mutateEntity` (`src/equipment/audit/mutate-entity.ts`), which owns the transaction, the row lock, the skip-on-no-change branch, and the audit event. Hand-roll `diffAuditUpdate` + `recordAuditUpdate` only when real logic must run between the diff and the write; that module's doc names the paths that do.
 
-Canonical examples: `src/equipment/products/product-service.ts`, `src/equipment/products/product-errors.ts`, `src/auth/authorization.ts`.
+Canonical examples: `src/equipment/products/product-service.ts`, `src/equipment/products/product-errors.ts`, `src/changelog/changelog-service.ts`.

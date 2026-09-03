@@ -1,23 +1,35 @@
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
-import { describe, expect, it } from 'vitest';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { dirname, join } from 'node:path';
+import type { StorageAdapter } from '@pkg/core/shared';
+import { hasPermission } from '@pkg/domain/shared';
+import { describe, expect, expectTypeOf, it } from 'vitest';
 
 const repoRoot = join(import.meta.dirname, '..', '..', '..');
 const biome = join(repoRoot, 'node_modules', '.bin', 'biome');
 
 function lintAt(path: string, source: string) {
-  const fixtureDir = mkdtempSync(join(repoRoot, path, '.boundary-test-'));
-  const fixturePath = join(fixtureDir, 'probe.ts');
+  const fixtureRoot = mkdtempSync(join(tmpdir(), 'business-boundary-lint-'));
+  const fixturePath = join(fixtureRoot, path, 'probe.ts');
+  const configPath = join(fixtureRoot, 'biome.json');
 
   try {
+    mkdirSync(dirname(fixturePath), { recursive: true });
+    writeFileSync(configPath, readFileSync(join(repoRoot, 'biome.json')));
     writeFileSync(fixturePath, `${source}\n`);
-    return spawnSync(biome, ['lint', '--only=lint/style/noRestrictedImports', fixturePath], {
-      cwd: repoRoot,
-      encoding: 'utf8',
-    });
+
+    return spawnSync(
+      biome,
+      ['lint', '--config-path', configPath, '--only=lint/style/noRestrictedImports', fixturePath],
+      {
+        cwd: repoRoot,
+        encoding: 'utf8',
+      },
+    );
   } finally {
-    rmSync(fixtureDir, { recursive: true });
+    // An interrupted process can only strand an inert OS-temp fixture, never a source file.
+    rmSync(fixtureRoot, { recursive: true });
   }
 }
 
@@ -38,6 +50,12 @@ describe('business namespace import boundary', () => {
     expect(result.status, result.stdout + result.stderr).toBe(0);
   });
 
+  it.each(['@pkg/core/shared', '@pkg/domain/shared'])('allows contracting modules to import %s', (packageName) => {
+    const result = lintAt('pkg/api/src/routes/contracting', `import '${packageName}';`);
+
+    expect(result.status, result.stdout + result.stderr).toBe(0);
+  });
+
   it.each(['@pkg/core', '@pkg/domain'])(
     'rejects the equipment-heavy %s barrel from contracting code',
     (packageName) => {
@@ -47,4 +65,9 @@ describe('business namespace import boundary', () => {
       expect(result.stdout + result.stderr).toContain('Business namespaces may import shared code, never each other.');
     },
   );
+
+  it('exposes shared package entrypoints independently of the Equipment-heavy root barrels', () => {
+    expect(hasPermission).toBeTypeOf('function');
+    expectTypeOf<StorageAdapter['get']>().toBeFunction();
+  });
 });

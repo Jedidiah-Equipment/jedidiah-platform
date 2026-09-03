@@ -72,8 +72,7 @@ export function buildWebServer(config: ServerConfig, options: WebServerOptions =
   });
 
   app.get('/*', async (request, reply) => {
-    const requestUrl = new URL(request.url, 'http://localhost');
-    const pathname = requestUrl.pathname;
+    const pathname = new URL(request.url, 'http://localhost').pathname;
 
     if (pathname !== '/' && extname(pathname) !== '') {
       return reply.sendFile(pathname.slice(1));

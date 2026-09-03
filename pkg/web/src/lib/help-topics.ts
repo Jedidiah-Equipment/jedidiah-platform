@@ -3,7 +3,7 @@ import type { HelpTopic } from '@pkg/domain';
 /**
  * Which docs topic a screen belongs to, by route prefix. Deliberately coarse: an area gets one
  * topic and its detail routes inherit it. Order here does not matter — the longest matching prefix
- * wins, so a route nested under another area (`/inventory/close-out`) beats the area it sits in.
+ * wins, so a route nested under another area (`/equipment/inventory/close-out`) beats the area it sits in.
  */
 const TOPIC_ROUTES: ReadonlyArray<readonly [prefix: string, topic: HelpTopic]> = [
   ['/equipment/bays', 'bays'],

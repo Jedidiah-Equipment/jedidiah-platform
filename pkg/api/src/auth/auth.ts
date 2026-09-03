@@ -112,6 +112,6 @@ type AuthOptions = ReturnType<typeof createAuthOptions>;
 
 export type Auth = BetterAuth<AuthOptions>;
 
-export function createAuth(database: Db, businessPlugins: readonly BetterAuthPlugin[] = []): Auth {
+export function createSharedAuth(database: Db, businessPlugins: readonly BetterAuthPlugin[]): Auth {
   return betterAuth(createAuthOptions(database, businessPlugins));
 }

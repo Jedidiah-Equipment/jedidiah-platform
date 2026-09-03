@@ -123,7 +123,9 @@ describe('signed-in toolbar contract', () => {
       .filter((file) => file !== join(MOBILE_DIR, 'src/equipment/components/TopToolbar.tsx'))
       .filter((file) => {
         const source = readFileSync(file, 'utf8');
-        return /from ['"]@\/components\/(?:ProfileMenuButton|assistant\/AssistantEntryButton)['"]/.test(source);
+        return /from ['"]@\/equipment\/components\/(?:ProfileMenuButton|assistant\/AssistantEntryButton)['"]/.test(
+          source,
+        );
       })
       .map((file) => relative(MOBILE_DIR, file));
 

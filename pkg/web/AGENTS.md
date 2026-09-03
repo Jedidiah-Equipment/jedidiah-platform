@@ -21,7 +21,7 @@
     Load more button (`pageSize`, default 25). Follow `src/equipment/pages/inventory/buy-list/components/BuyListTable.tsx`.
     Reach for it over `complete` when one server snapshot must stay whole — sorting, searching and
     row selection still span every row — but the row count would flood the DOM.
-- For TanStack Form descendants, use `useTypedAppFormContext` from `src/components/form/use-app-form.ts`.
+- For TanStack Form descendants, use `useTypedAppFormContext` from `src/components/form/hooks/use-app-form.ts`.
 - Keep `vite.config.ts` `resolve.dedupe: ['react', 'react-dom']`. `pkg/mobile` pins a different React version than web; without deduping a second React copy leaks into the bundle and breaks hooks ("Invalid hook call" / `useRef` of null). If you still see that error after a branch switch, clear the stale Vite cache (`rm -rf node_modules/.vite`) and restart the dev server.
 
 ## Help affordances
@@ -41,7 +41,7 @@
 ## Validation
 
 - `@pkg/schema` owns field rules. Form-value schemas may define browser shape and messages, but per-field constraints must reference schema exports.
-- Use helpers from `src/components/form/form-schema.ts` for UI/API shape bridges such as nullable strings and required selections.
+- Use helpers from `src/components/form/utils/form-schema.ts` for UI/API shape bridges such as nullable strings and required selections.
 - Keep complex form mappers in a nearby `types.ts` with unit tests.
 - Image uploads have two paths: small images that ride the entity payload use `ImageField`/`ThumbnailField` (inline data URL, autosaved); large replace-in-place images use the object-storage upload routes (see `BrochureImageSlotTile`). Reuse `@pkg/domain` image-policy message helpers in both rather than re-typing format/size copy.
 

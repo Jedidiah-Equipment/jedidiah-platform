@@ -36,7 +36,6 @@ import { z } from 'zod';
 
 import { getApiConfig } from '@/env.js';
 import { log } from '@/logger.js';
-import { serializeError } from '@/trpc/errors.js';
 import {
   createContentDisposition,
   RouteHttpError,
@@ -45,7 +44,8 @@ import {
   requireRouteAuth,
   sendUploadHttpError,
   streamObjectBody,
-} from '../../http-route-helpers.js';
+} from '@/routes/http-route-helpers.js';
+import { serializeError } from '@/trpc/errors.js';
 import { mapDocumentCoreError } from './documents.router.js';
 
 const JobDocumentUploadInput = JobDocumentInput.pick({ jobId: true });

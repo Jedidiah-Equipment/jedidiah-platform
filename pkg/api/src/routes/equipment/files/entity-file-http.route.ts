@@ -8,10 +8,10 @@ import {
   requireRouteAuth,
   sendUploadHttpError,
   streamObjectBody,
-} from '../../http-route-helpers.js';
+} from '@/routes/http-route-helpers.js';
 
 // Re-exported so an entity's route config can build its owner-error mapping from one import.
-export { RouteHttpError } from '../../http-route-helpers.js';
+export { RouteHttpError } from '@/routes/http-route-helpers.js';
 
 // Describes one entity's replace-in-place file routes. The registrar owns the shared transport
 // concerns (auth, permission gating, multipart read, streaming, error mapping); the config supplies the

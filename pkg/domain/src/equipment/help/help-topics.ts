@@ -1,4 +1,6 @@
 import type { AppEnv } from '@pkg/schema';
+// This package has no internal alias, and self-importing @pkg/domain/shared would target build output.
+// biome-ignore lint/style/noRestrictedImports: Keep the source dependency direct during package compilation.
 import { isRemoteAppEnv } from '../../environment.js';
 
 /**

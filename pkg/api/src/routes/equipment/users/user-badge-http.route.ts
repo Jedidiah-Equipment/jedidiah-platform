@@ -11,7 +11,7 @@ import {
   requirePermission,
   requireRouteAuth,
   sendHttpError,
-} from '../../http-route-helpers.js';
+} from '@/routes/http-route-helpers.js';
 
 const UserBadgeParams = z.object({ userId: AuthId });
 

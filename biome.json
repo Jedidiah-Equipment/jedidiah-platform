@@ -91,6 +91,10 @@
               "options": {
                 "patterns": [
                   {
+                    "group": ["../../*", "../../../*"],
+                    "message": "Use the @/* alias instead of imports that traverse more than one parent directory."
+                  },
+                  {
                     "group": ["contracting/**", "**/contracting/**"],
                     "message": "Business namespaces may import shared code, never each other."
                   }
@@ -120,6 +124,10 @@
               "options": {
                 "patterns": [
                   {
+                    "group": ["../../*", "../../../*"],
+                    "message": "Use the @/* alias instead of imports that traverse more than one parent directory."
+                  },
+                  {
                     "group": ["equipment/**", "**/equipment/**", "@pkg/core", "@pkg/domain"],
                     "message": "Business namespaces may import shared code, never each other."
                   }
@@ -148,6 +156,10 @@
               "level": "error",
               "options": {
                 "patterns": [
+                  {
+                    "group": ["../../*", "../../../*"],
+                    "message": "Use the @/* alias instead of imports that traverse more than one parent directory."
+                  },
                   {
                     "group": ["equipment/**", "**/equipment/**", "contracting/**", "**/contracting/**"],
                     "message": "Shared frontend modules cannot import a business namespace; keep business composition in explicit route wiring."

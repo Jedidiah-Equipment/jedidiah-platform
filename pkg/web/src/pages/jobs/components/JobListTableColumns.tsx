@@ -176,7 +176,7 @@ function JobActionsCell({ canEditJobs, job }: { canEditJobs: boolean; job: JobSu
     <div className="flex items-center justify-end gap-1">
       <Button
         aria-label={`Open ${job.code} on the Gantt`}
-        render={<Link search={{ job: job.id }} to="/jobs" onClick={(event) => event.stopPropagation()} />}
+        render={<Link search={{ job: job.id }} to="/equipment/jobs" onClick={(event) => event.stopPropagation()} />}
         size="icon"
         variant="ghost"
       >
@@ -185,7 +185,9 @@ function JobActionsCell({ canEditJobs, job }: { canEditJobs: boolean; job: JobSu
       {canEditJobs ? (
         <Button
           aria-label={`Open ${job.code} details`}
-          render={<Link search={{ job: job.id }} to="/jobs/list" onClick={(event) => event.stopPropagation()} />}
+          render={
+            <Link search={{ job: job.id }} to="/equipment/jobs/list" onClick={(event) => event.stopPropagation()} />
+          }
           size="icon"
           variant="ghost"
         >

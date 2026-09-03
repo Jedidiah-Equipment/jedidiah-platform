@@ -6,10 +6,9 @@ import type {
   JobWorkTimeActivityState,
   WorkItemDepartment,
 } from '@pkg/schema';
-
+import { formatDate, toPlantDateOnly } from '../../formatting/date.js';
+import type { StatusBadgeColor } from '../../theme/status-badge.js';
 import { departmentLabels } from '../departments.js';
-import { formatDate, toPlantDateOnly } from '../formatting/date.js';
-import type { StatusBadgeColor } from '../theme/status-badge.js';
 
 export const JOB_ACTIVITY_EVENT_SENTENCES = {
   completed: 'completed this Job',

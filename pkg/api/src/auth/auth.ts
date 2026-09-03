@@ -5,8 +5,8 @@ import { type Auth as BetterAuth, betterAuth } from 'better-auth';
 import { admin as adminPlugin } from 'better-auth/plugins';
 import { emailSender } from '../email/index.js';
 import { getApiConfig } from '../env.js';
+import { adminUserSafetyPlugin } from '../equipment/auth/admin-user-safety.js';
 import { ac, authRoles, defaultAuthRole } from './access-control.js';
-import { adminUserSafetyPlugin } from './admin-user-safety.js';
 import { assertUserCanCreateSession } from './sign-in-eligibility.js';
 import { userPhoneValidationPlugin } from './user-phone-validation.js';
 

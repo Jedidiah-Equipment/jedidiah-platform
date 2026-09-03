@@ -39,7 +39,7 @@ export default function StoresJobCloseOutRoute() {
     onSuccess: async () => {
       await invalidateQueryCache(queryClient);
       toast('success', 'Job stock closed out');
-      router.dismissTo('/stores/close-out');
+      router.dismissTo('/equipment/stores/close-out');
     },
   });
 
@@ -47,7 +47,7 @@ export default function StoresJobCloseOutRoute() {
     return (
       <StoresScreen
         helpTopic="inventoryCloseOut"
-        onBack={() => router.dismissTo('/stores/close-out')}
+        onBack={() => router.dismissTo('/equipment/stores/close-out')}
         parentLabel="Close-out queue"
         subtitle="LOADING JOB STOCK"
         title="Close out"
@@ -63,7 +63,7 @@ export default function StoresJobCloseOutRoute() {
     return (
       <StoresScreen
         helpTopic="inventoryCloseOut"
-        onBack={() => router.dismissTo('/stores/close-out')}
+        onBack={() => router.dismissTo('/equipment/stores/close-out')}
         parentLabel="Close-out queue"
         subtitle="JOB STOCK UNAVAILABLE"
         title="Close out"
@@ -83,7 +83,7 @@ export default function StoresJobCloseOutRoute() {
   return (
     <StoresScreen
       helpTopic="inventoryCloseOut"
-      onBack={() => router.dismissTo('/stores/close-out')}
+      onBack={() => router.dismissTo('/equipment/stores/close-out')}
       parentLabel="Close-out queue"
       subtitle={job.code}
       title={job.displayName}
@@ -105,7 +105,7 @@ export default function StoresJobCloseOutRoute() {
                 onReturn={() =>
                   router.push({
                     params: { jobId, partCode: row.partCode },
-                    pathname: '/stores/parts/[partCode]/return-to-store',
+                    pathname: '/equipment/stores/parts/[partCode]/return-to-store',
                   })
                 }
                 row={row}

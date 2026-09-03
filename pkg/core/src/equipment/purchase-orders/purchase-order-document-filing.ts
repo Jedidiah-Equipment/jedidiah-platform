@@ -2,10 +2,9 @@ import { type DatabaseTransaction, type Db, getUniqueViolationConstraint, user }
 import type { AuthId, PurchaseOrderDocumentMetadata, PurchaseOrderDocumentRow, UUID } from '@pkg/schema';
 import { PurchaseOrderDocumentRow as PurchaseOrderDocumentRowSchema } from '@pkg/schema';
 import { eq } from 'drizzle-orm';
-
+import type { StorageAdapter } from '../../storage/storage-adapter.js';
 import { DuplicateDocumentFilenameError } from '../documents/document-errors.js';
 import { collectDocumentErrorText, createDocumentRecord, type DocumentBaseRow } from '../documents/document-service.js';
-import type { StorageAdapter } from '../documents/storage-adapter.js';
 import { purchaseOrderDocumentStorageKey } from './purchase-order-service.js';
 
 /**

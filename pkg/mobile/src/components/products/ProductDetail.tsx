@@ -283,7 +283,7 @@ function ProductBrochureRow({ product }: { product: Product }) {
   const filename = productBrochureFilename(product.modelCode);
   const open = () =>
     router.push({
-      pathname: '/documents/[documentId]',
+      pathname: '/equipment/documents/[documentId]',
       params: { documentId: PRODUCT_BROCHURE_DOCUMENT_ID, productId: product.id },
     });
 
@@ -302,7 +302,7 @@ function ProductDocumentRow({ document, product }: { document: ProductDocument; 
   const router = useRouter();
   const open = () =>
     router.push({
-      pathname: '/documents/[documentId]',
+      pathname: '/equipment/documents/[documentId]',
       params: { documentId: document.id, productId: product.id },
     });
 

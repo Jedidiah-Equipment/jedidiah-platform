@@ -56,7 +56,7 @@ export const StockBuildPage: React.FC = () => {
             <EmptyTitle>You cannot start a Stock Build.</EmptyTitle>
             <EmptyDescription>Creating a Job needs the Create jobs permission.</EmptyDescription>
           </EmptyHeader>
-          <Button render={<Link to="/jobs/list" />} variant="outline">
+          <Button render={<Link to="/equipment/jobs/list" />} variant="outline">
             Back to Job List
           </Button>
         </Empty>
@@ -87,7 +87,7 @@ const StockBuildContent: React.FC = () => {
         // Jobs first so the Board and list are fresh on arrival; the Unit it just minted follows.
         await Promise.all([invalidateJobs(), invalidateJobActivity()]);
         toast.success('Stock Build started');
-        await navigate({ search: { job: job.id }, to: '/jobs/list' });
+        await navigate({ search: { job: job.id }, to: '/equipment/jobs/list' });
         await invalidateProductUnits();
       },
       onError: (error) => showMutationError(error, 'Unable to start stock build.'),
@@ -228,7 +228,7 @@ const StockBuildForm: React.FC<StockBuildFormProps> = ({ baysError, enabledBays,
       <form.Subscribe selector={(state) => ({ canSubmit: state.canSubmit, isSubmitting: state.isSubmitting })}>
         {({ canSubmit, isSubmitting }) => (
           <div className="flex items-center justify-end gap-2">
-            <Button disabled={isPending} render={<Link to="/jobs/list" />} variant="outline">
+            <Button disabled={isPending} render={<Link to="/equipment/jobs/list" />} variant="outline">
               Cancel
             </Button>
             <Button disabled={isPending || isSubmitting || !canSubmit} type="submit">

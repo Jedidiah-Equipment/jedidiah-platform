@@ -45,7 +45,7 @@ import {
   unitClassFor,
 } from '@pkg/schema';
 import { and, count, desc, eq, inArray, isNull, or, type SQL, type SQLWrapper, sql } from 'drizzle-orm';
-
+import type { StorageAdapter } from '../../storage/storage-adapter.js';
 import {
   defineAuditDescriptor,
   diffAuditUpdate,
@@ -61,7 +61,6 @@ import {
   mapDocumentSummary,
   sanitizeDocumentStorageKeySuffix,
 } from '../documents/document-service.js';
-import type { StorageAdapter } from '../documents/storage-adapter.js';
 import { assertPartStockAction } from '../inventory/part-stock-action-errors.js';
 import { JobNotFoundError } from '../jobs/job-errors.js';
 import {

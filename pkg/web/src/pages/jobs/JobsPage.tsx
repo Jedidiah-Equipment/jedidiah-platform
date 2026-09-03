@@ -29,10 +29,14 @@ export const JobsPage: React.FC<JobsPageProps> = ({ selectedJobId }) => {
       <BoardGantt
         fullscreen={isFullscreen}
         onFullscreenChange={setIsFullscreen}
-        onSelectSlot={(jobId) => navigate({ search: { job: jobId }, to: '/jobs' })}
+        onSelectSlot={(jobId) => navigate({ search: { job: jobId }, to: '/equipment/jobs' })}
       />
       {selectedJobId ? (
-        <JobSheet key={selectedJobId} jobId={selectedJobId} onClose={() => navigate({ search: {}, to: '/jobs' })} />
+        <JobSheet
+          key={selectedJobId}
+          jobId={selectedJobId}
+          onClose={() => navigate({ search: {}, to: '/equipment/jobs' })}
+        />
       ) : null}
     </PageLayout>
   );

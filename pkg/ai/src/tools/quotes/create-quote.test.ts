@@ -175,13 +175,13 @@ describe('createQuote contract', () => {
     const response = toCreateQuoteResponse(quote, createContext().access);
     expect(CreateQuoteResponse.parse(response)).toEqual(response);
     expect(response.links).toEqual({
-      app: `/quotes/${QUOTE_ID}/edit`,
-      customer: `/customers/${CUSTOMER_ID}/edit`,
-      product: `/products/${PRODUCT_ID}/edit`,
+      app: `/equipment/quotes/${QUOTE_ID}/edit`,
+      customer: `/equipment/customers/${CUSTOMER_ID}/edit`,
+      product: `/equipment/products/${PRODUCT_ID}/edit`,
     });
     expect(
       toCreateQuoteResponse(quote, createUserAccessSummary({ role: 'sales', userId: 'test-user-id' })).links,
-    ).toEqual({ app: `/quotes/${QUOTE_ID}/edit` });
+    ).toEqual({ app: `/equipment/quotes/${QUOTE_ID}/edit` });
     expect(JSON.stringify(response)).not.toContain('thumbnailDataUrl');
     expect(createQuoteDefinition.anyOfPermissions).toEqual(['quote:create']);
     expect(createQuoteDefinition.description).toContain('inline Customer');

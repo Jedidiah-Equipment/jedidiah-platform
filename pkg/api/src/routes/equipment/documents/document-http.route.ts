@@ -45,7 +45,7 @@ import {
   requireRouteAuth,
   sendUploadHttpError,
   streamObjectBody,
-} from '../http-route-helpers.js';
+} from '../../http-route-helpers.js';
 import { mapDocumentCoreError } from './documents.router.js';
 
 const JobDocumentUploadInput = JobDocumentInput.pick({ jobId: true });

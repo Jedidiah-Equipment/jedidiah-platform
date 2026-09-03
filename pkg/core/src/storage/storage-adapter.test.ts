@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { InMemoryStorageAdapter } from '../test/in-memory-storage-adapter.js';
+import { InMemoryStorageAdapter } from '../equipment/test/in-memory-storage-adapter.js';
 import { StorageKeyAlreadyExistsError } from './storage-adapter.js';
 
 describe('InMemoryStorageAdapter', () => {

@@ -3,7 +3,7 @@ import { createFileRoute } from '@tanstack/react-router';
 
 import { UnitDetailPage } from '@/pages/units/UnitDetailPage.js';
 
-export const Route = createFileRoute('/_authed/units/$id')({
+export const Route = createFileRoute('/_authed/equipment/units/$id')({
   params: {
     parse: (params) => ({
       id: UUID.parse(params.id),

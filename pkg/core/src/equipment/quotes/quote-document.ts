@@ -14,7 +14,7 @@ import {
   type UUID,
 } from '@pkg/schema';
 import { and, eq, sql } from 'drizzle-orm';
-
+import type { StorageAdapter } from '../../storage/storage-adapter.js';
 import {
   DocumentNotFoundError,
   DocumentPolicyViolationError,
@@ -29,7 +29,6 @@ import {
   type ReadDocumentResult,
   sanitizeDocumentStorageKeySuffix,
 } from '../documents/document-service.js';
-import type { StorageAdapter } from '../documents/storage-adapter.js';
 import { QuoteNotFoundError } from './quote-errors.js';
 
 const QUOTE_DOCUMENT_FILENAME_UNIQUE_INDEX = 'documents_quote_id_filename_ci_unique';

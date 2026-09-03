@@ -88,7 +88,7 @@ export function ProductCatalogCard({ product }: { product: Product }) {
       avatarUri={product.thumbnailDataUrl}
       mainText={product.name}
       monoText={product.modelCode}
-      onPress={() => router.push({ pathname: '/products/[productId]', params: { productId: product.id } })}
+      onPress={() => router.push({ pathname: '/equipment/products/[productId]', params: { productId: product.id } })}
       subText={rangeAndCategory}
       trailing={
         <Text className="text-[15px] text-primary" numberOfLines={1} weight="bold">

@@ -28,7 +28,7 @@ import {
 } from '@pkg/schema';
 import { and, asc, eq, inArray, isNull } from 'drizzle-orm';
 
-import type { StorageAdapter } from '../documents/storage-adapter.js';
+import type { StorageAdapter } from '../../storage/storage-adapter.js';
 import { CreditNoteAlreadySettledError, CreditNoteReturnNotFoundError } from './credit-note-errors.js';
 import { filePurchaseOrderDocument } from './purchase-order-document-filing.js';
 import { getPurchaseOrder, newestPurchaseOrderDocumentFirst } from './purchase-order-service.js';

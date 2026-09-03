@@ -1,8 +1,8 @@
 import type { DateOnlyIso, StocktakeOverdueRow, StocktakeScope, StocktakeSessionStatus } from '@pkg/schema';
 
-import { addDateOnlyDays, addDateOnlyMonths, diffDateOnlyDays } from '../formatting/date-only.js';
+import { addDateOnlyDays, addDateOnlyMonths, diffDateOnlyDays } from '../../formatting/date-only.js';
+import { type BadgeColorClassNames, statusBadgeColorClassNames } from '../../theme/status-badge.js';
 import { addWorkingDays, type WorkingCalendar } from '../jobs/working-calendar.js';
-import { type BadgeColorClassNames, statusBadgeColorClassNames } from '../theme/status-badge.js';
 
 /** A session's status is derived, so every surface asks the same question of the same field. */
 export function stocktakeSessionStatusOf(session: { closedAt: string | null }): StocktakeSessionStatus {

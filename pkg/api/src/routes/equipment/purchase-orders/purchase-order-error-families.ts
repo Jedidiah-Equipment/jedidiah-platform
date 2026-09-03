@@ -8,7 +8,7 @@ import {
   type SupplierInvoiceCoreError,
 } from '@pkg/core';
 
-import { defineCoreErrorFamily } from '../../trpc/errors.js';
+import { defineCoreErrorFamily } from '../../../trpc/errors.js';
 
 /** Every Purchase Order failure already carries a public message; only the shape differs. */
 export const purchaseOrderErrorFamily = defineCoreErrorFamily<PurchaseOrderCoreError>({

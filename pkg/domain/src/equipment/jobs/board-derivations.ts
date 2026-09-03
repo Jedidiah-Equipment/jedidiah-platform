@@ -9,7 +9,7 @@ import type {
   UUID,
 } from '@pkg/schema';
 
-import { addDateOnlyDays, endOfDateOnlyWeek } from '../formatting/date-only.js';
+import { addDateOnlyDays, endOfDateOnlyWeek } from '../../formatting/date-only.js';
 import { JOB_DEPARTMENT_PIPELINE } from './job-department-pipeline.js';
 import { isWorkingDay, type WorkingCalendar } from './working-calendar.js';
 

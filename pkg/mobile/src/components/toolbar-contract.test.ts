@@ -9,50 +9,65 @@ const MOBILE_DIR = join(dirname(fileURLToPath(import.meta.url)), '../..');
 const PROTECTED_ROUTES_DIR = join(MOBILE_DIR, 'app/(protected)');
 
 const SIGNED_IN_PERMISSION_LOADING_SURFACES = {
-  '(tabs)/(plan)/_layout.tsx': toolbar('main', 'src/components/TabAccessLoadingScreen.tsx'),
-  '(tabs)/activity/_layout.tsx': toolbar('main', 'src/components/TabAccessLoadingScreen.tsx'),
-  '(tabs)/jobs/_layout.tsx': toolbar('main', 'src/components/TabAccessLoadingScreen.tsx'),
-  '(tabs)/products/_layout.tsx': toolbar('main', 'src/components/TabAccessLoadingScreen.tsx'),
-  '(tabs)/quotes/_layout.tsx': toolbar('main', 'src/components/TabAccessLoadingScreen.tsx'),
-  '(tabs)/stores/_layout.tsx': toolbar('main', 'src/components/TabAccessLoadingScreen.tsx'),
-  '(tabs)/units/_layout.tsx': toolbar('main', 'src/components/TabAccessLoadingScreen.tsx'),
+  'equipment/(tabs)/(plan)/_layout.tsx': toolbar('main', 'src/components/TabAccessLoadingScreen.tsx'),
+  'equipment/(tabs)/activity/_layout.tsx': toolbar('main', 'src/components/TabAccessLoadingScreen.tsx'),
+  'equipment/(tabs)/jobs/_layout.tsx': toolbar('main', 'src/components/TabAccessLoadingScreen.tsx'),
+  'equipment/(tabs)/products/_layout.tsx': toolbar('main', 'src/components/TabAccessLoadingScreen.tsx'),
+  'equipment/(tabs)/quotes/_layout.tsx': toolbar('main', 'src/components/TabAccessLoadingScreen.tsx'),
+  'equipment/(tabs)/stores/_layout.tsx': toolbar('main', 'src/components/TabAccessLoadingScreen.tsx'),
+  'equipment/(tabs)/units/_layout.tsx': toolbar('main', 'src/components/TabAccessLoadingScreen.tsx'),
 } as const;
 
 const SIGNED_IN_ROUTE_TOOLBARS = {
-  '(tabs)/(plan)/bays/[bayId].tsx': toolbar('secondary', 'src/components/bays/BayQueueScreen.tsx'),
-  '(tabs)/(plan)/plan/index.tsx': toolbar('main', 'app/(protected)/(tabs)/(plan)/plan/index.tsx'),
-  '(tabs)/activity/index.tsx': toolbar('main', 'app/(protected)/(tabs)/activity/index.tsx'),
-  '(tabs)/index.tsx': toolbar('main', 'app/(protected)/(tabs)/index.tsx'),
-  '(tabs)/jobs/[jobId].tsx': toolbar('secondary', 'src/components/bays/JobDetail.tsx'),
-  '(tabs)/jobs/index.tsx': toolbar('main', 'app/(protected)/(tabs)/jobs/index.tsx'),
-  '(tabs)/products/[productId].tsx': toolbar('secondary', 'app/(protected)/(tabs)/products/[productId].tsx'),
-  '(tabs)/products/index.tsx': toolbar('main', 'app/(protected)/(tabs)/products/index.tsx'),
-  '(tabs)/quotes/[quoteId].tsx': toolbar('secondary', 'src/components/quotes/QuoteDetailsScreen.tsx'),
-  '(tabs)/quotes/index.tsx': toolbar('main', 'app/(protected)/(tabs)/quotes/index.tsx'),
-  '(tabs)/stores/close-out/[jobId].tsx': toolbar('secondary', 'src/components/stores/StoresScreen.tsx'),
-  '(tabs)/stores/close-out/index.tsx': toolbar('secondary', 'src/components/stores/StoresScreen.tsx'),
-  '(tabs)/stores/stocktake/[sessionId].tsx': toolbar('secondary', 'src/components/stores/StoresScreen.tsx'),
-  '(tabs)/stores/stocktake/index.tsx': toolbar('secondary', 'src/components/stores/StoresScreen.tsx'),
-  '(tabs)/stores/index.tsx': toolbar('main', 'app/(protected)/(tabs)/stores/index.tsx'),
-  '(tabs)/stores/parts/[partCode]/checkout.tsx': toolbar('secondary', 'src/components/stores/StoresScreen.tsx'),
-  '(tabs)/stores/parts/[partCode]/index.tsx': toolbar('secondary', 'src/components/stores/StoresScreen.tsx'),
-  '(tabs)/stores/parts/[partCode]/receive.tsx': toolbar('secondary', 'src/components/stores/StoresScreen.tsx'),
-  '(tabs)/stores/parts/[partCode]/return-to-store.tsx': toolbar('secondary', 'src/components/stores/StoresScreen.tsx'),
-  '(tabs)/stores/parts/[partCode]/return-to-supplier.tsx': toolbar(
+  'equipment/(tabs)/(plan)/bays/[bayId].tsx': toolbar('secondary', 'src/components/bays/BayQueueScreen.tsx'),
+  'equipment/(tabs)/(plan)/plan/index.tsx': toolbar('main', 'app/(protected)/equipment/(tabs)/(plan)/plan/index.tsx'),
+  'equipment/(tabs)/activity/index.tsx': toolbar('main', 'app/(protected)/equipment/(tabs)/activity/index.tsx'),
+  'equipment/(tabs)/index.tsx': toolbar('main', 'app/(protected)/equipment/(tabs)/index.tsx'),
+  'equipment/(tabs)/jobs/[jobId].tsx': toolbar('secondary', 'src/components/bays/JobDetail.tsx'),
+  'equipment/(tabs)/jobs/index.tsx': toolbar('main', 'app/(protected)/equipment/(tabs)/jobs/index.tsx'),
+  'equipment/(tabs)/products/[productId].tsx': toolbar(
+    'secondary',
+    'app/(protected)/equipment/(tabs)/products/[productId].tsx',
+  ),
+  'equipment/(tabs)/products/index.tsx': toolbar('main', 'app/(protected)/equipment/(tabs)/products/index.tsx'),
+  'equipment/(tabs)/quotes/[quoteId].tsx': toolbar('secondary', 'src/components/quotes/QuoteDetailsScreen.tsx'),
+  'equipment/(tabs)/quotes/index.tsx': toolbar('main', 'app/(protected)/equipment/(tabs)/quotes/index.tsx'),
+  'equipment/(tabs)/stores/close-out/[jobId].tsx': toolbar('secondary', 'src/components/stores/StoresScreen.tsx'),
+  'equipment/(tabs)/stores/close-out/index.tsx': toolbar('secondary', 'src/components/stores/StoresScreen.tsx'),
+  'equipment/(tabs)/stores/stocktake/[sessionId].tsx': toolbar('secondary', 'src/components/stores/StoresScreen.tsx'),
+  'equipment/(tabs)/stores/stocktake/index.tsx': toolbar('secondary', 'src/components/stores/StoresScreen.tsx'),
+  'equipment/(tabs)/stores/index.tsx': toolbar('main', 'app/(protected)/equipment/(tabs)/stores/index.tsx'),
+  'equipment/(tabs)/stores/parts/[partCode]/checkout.tsx': toolbar(
     'secondary',
     'src/components/stores/StoresScreen.tsx',
   ),
-  '(tabs)/units/[unitId].tsx': toolbar('secondary', 'app/(protected)/(tabs)/units/[unitId].tsx'),
-  '(tabs)/units/index.tsx': toolbar('main', 'app/(protected)/(tabs)/units/index.tsx'),
-  'assistant.tsx': toolbar('secondary', 'app/(protected)/assistant.tsx'),
-  'documents/[documentId].tsx': toolbar('secondary', 'app/(protected)/documents/[documentId].tsx'),
+  'equipment/(tabs)/stores/parts/[partCode]/index.tsx': toolbar('secondary', 'src/components/stores/StoresScreen.tsx'),
+  'equipment/(tabs)/stores/parts/[partCode]/receive.tsx': toolbar(
+    'secondary',
+    'src/components/stores/StoresScreen.tsx',
+  ),
+  'equipment/(tabs)/stores/parts/[partCode]/return-to-store.tsx': toolbar(
+    'secondary',
+    'src/components/stores/StoresScreen.tsx',
+  ),
+  'equipment/(tabs)/stores/parts/[partCode]/return-to-supplier.tsx': toolbar(
+    'secondary',
+    'src/components/stores/StoresScreen.tsx',
+  ),
+  'equipment/(tabs)/units/[unitId].tsx': toolbar('secondary', 'app/(protected)/equipment/(tabs)/units/[unitId].tsx'),
+  'equipment/(tabs)/units/index.tsx': toolbar('main', 'app/(protected)/equipment/(tabs)/units/index.tsx'),
+  'equipment/assistant.tsx': toolbar('secondary', 'app/(protected)/equipment/assistant.tsx'),
+  'equipment/documents/[documentId].tsx': toolbar('secondary', 'app/(protected)/equipment/documents/[documentId].tsx'),
 } as const;
+
+const REDIRECT_ONLY_ROUTES = new Set(['[...legacy].tsx', 'index.tsx']);
 
 describe('signed-in toolbar contract', () => {
   test('classifies every protected page as main or secondary', () => {
     const routes = listTsxFiles(PROTECTED_ROUTES_DIR)
       .map((file) => relative(PROTECTED_ROUTES_DIR, file))
       .filter((file) => !file.endsWith('_layout.tsx'))
+      .filter((file) => !REDIRECT_ONLY_ROUTES.has(file))
       .sort();
 
     expect(routes).toEqual(Object.keys(SIGNED_IN_ROUTE_TOOLBARS).sort());

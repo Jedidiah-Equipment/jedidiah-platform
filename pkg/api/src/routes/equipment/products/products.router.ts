@@ -26,8 +26,8 @@ import {
 import { z } from 'zod';
 import { log } from '@/logger.js';
 
-import { assertNever, type CoreErrorMapping, mapKnownCoreError } from '../../trpc/errors.js';
-import { authorizedProcedure, router } from '../../trpc/init.js';
+import { assertNever, type CoreErrorMapping, mapKnownCoreError } from '../../../trpc/errors.js';
+import { authorizedProcedure, router } from '../../../trpc/init.js';
 
 export const productsRouter = router({
   list: authorizedProcedure('product:read')

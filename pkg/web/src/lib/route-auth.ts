@@ -34,7 +34,7 @@ export async function requireRoutePermission(context: RouterContext, permission:
 
   if (!hasPermission(access, permission)) {
     throw redirect({
-      to: '/dashboard',
+      to: '/equipment/dashboard',
     });
   }
 

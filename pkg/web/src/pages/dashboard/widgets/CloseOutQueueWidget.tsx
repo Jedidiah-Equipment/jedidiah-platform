@@ -24,7 +24,7 @@ export const CloseOutQueueWidget: React.FC = () => {
   const staleCount = items.filter((item) => item.isStale).length;
 
   return (
-    <Link className="flex flex-1 hover:underline" to="/inventory/close-out">
+    <Link className="flex flex-1 hover:underline" to="/equipment/inventory/close-out">
       <StatCard sublabel={describeQueue(items.length, staleCount)} value={items.length} />
     </Link>
   );

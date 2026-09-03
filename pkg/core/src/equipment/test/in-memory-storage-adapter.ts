@@ -4,7 +4,7 @@ import {
   StorageObjectNotFoundError,
   type StoragePutInput,
   type StoredObject,
-} from '../documents/storage-adapter.js';
+} from '../../storage/storage-adapter.js';
 
 export class InMemoryStorageAdapter implements StorageAdapter {
   readonly objects = new Map<string, { body: Uint8Array; byteSize: number; contentType: string }>();

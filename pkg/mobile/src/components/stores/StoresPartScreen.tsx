@@ -35,7 +35,7 @@ export function StoresPartScreen({
     parent ??
     ({
       label: 'Part',
-      onBack: () => router.dismissTo({ pathname: '/stores/parts/[partCode]', params: { partCode } }),
+      onBack: () => router.dismissTo({ pathname: '/equipment/stores/parts/[partCode]', params: { partCode } }),
     } as const);
 
   if (part.isPending) {

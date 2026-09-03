@@ -1,19 +1,23 @@
 import { describe, expect, it } from 'vitest';
 
-import { CustomerInUseError, CustomerNotFoundError, isCustomerCoreError } from './customers/customer-errors.js';
+import {
+  CustomerInUseError,
+  CustomerNotFoundError,
+  isCustomerCoreError,
+} from './equipment/customers/customer-errors.js';
 import {
   isJobCoreError,
   JobBayNotFoundError,
   JobCreateFromQuoteDeniedError,
   JobNotFoundError,
   JobSlotBookingDeniedError,
-} from './jobs/job-errors.js';
+} from './equipment/jobs/job-errors.js';
 import {
   DuplicatePartCodeError,
   isPartCoreError,
   PartNotFoundError,
   PartSupplierNotFoundError,
-} from './parts/part-errors.js';
+} from './equipment/parts/part-errors.js';
 import {
   DuplicateProductRangeNameError,
   DuplicateProductRangeVariantNameError,
@@ -22,28 +26,28 @@ import {
   ProductRangeNotFoundError,
   ProductRangeVariantHasProductsError,
   ProductRangeVariantNotFoundError,
-} from './product-ranges/product-range-errors.js';
+} from './equipment/product-ranges/product-range-errors.js';
 import {
   DuplicateProductModelCodeError,
   DuplicateProductNameError,
   isProductCoreError,
   ProductNotFoundError,
-} from './products/product-errors.js';
+} from './equipment/products/product-errors.js';
 import {
   isQuoteCoreError,
   QuoteDiscountInvalidError,
   QuoteInvalidReferenceError,
   QuoteNotFoundError,
   QuoteProductBayAvailabilityNotApplicableError,
-} from './quotes/quote-errors.js';
+} from './equipment/quotes/quote-errors.js';
 import {
   DuplicateSupplierNameError,
   isSupplierCoreError,
   SupplierHasDraftPurchaseOrdersError,
   SupplierNotFoundError,
-} from './suppliers/supplier-errors.js';
-import { isProductUnitCoreError, ProductUnitProductNotFoundError } from './units/product-unit-errors.js';
-import { isUserCoreError, UserNotFoundError } from './users/user-errors.js';
+} from './equipment/suppliers/supplier-errors.js';
+import { isProductUnitCoreError, ProductUnitProductNotFoundError } from './equipment/units/product-unit-errors.js';
+import { isUserCoreError, UserNotFoundError } from './equipment/users/user-errors.js';
 
 describe('core error codes and guards', () => {
   it('identifies product core errors', () => {

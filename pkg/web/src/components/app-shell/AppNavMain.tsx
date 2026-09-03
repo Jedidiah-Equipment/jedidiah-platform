@@ -81,7 +81,7 @@ const navSections = [
     items: [
       {
         title: 'Dashboard',
-        link: linkOptions({ to: '/dashboard' }),
+        link: linkOptions({ to: '/equipment/dashboard' }),
         icon: IconGauge,
       },
     ],
@@ -92,56 +92,56 @@ const navSections = [
       {
         title: 'Quotes',
         permission: 'quote:read',
-        link: linkOptions({ to: '/quotes' }),
+        link: linkOptions({ to: '/equipment/quotes' }),
         icon: IconFileText,
         indicator: QuotesPriorityNavIndicator,
       },
       {
         title: 'Jobs',
         permission: 'job:read',
-        link: linkOptions({ to: '/jobs' }),
+        link: linkOptions({ to: '/equipment/jobs' }),
         icon: IconBriefcase2,
         indicator: ActivityUnreadNavIndicator,
         children: [
           {
             title: 'Planning',
             permission: 'job:read',
-            link: linkOptions({ to: '/jobs' }),
+            link: linkOptions({ to: '/equipment/jobs' }),
           },
           {
             title: 'List',
             permission: 'job:read',
-            link: linkOptions({ to: '/jobs/list' }),
+            link: linkOptions({ to: '/equipment/jobs/list' }),
           },
           {
             title: 'Activity',
             permission: 'job:read',
-            link: linkOptions({ to: '/jobs/activity' }),
+            link: linkOptions({ to: '/equipment/jobs/activity' }),
             indicator: ActivityUnreadNavIndicator,
           },
           {
             title: 'Calendar',
             permission: 'job:read',
-            link: linkOptions({ to: '/jobs/calendar' }),
+            link: linkOptions({ to: '/equipment/jobs/calendar' }),
           },
         ],
       },
       {
         title: 'Units',
         permission: 'product_unit:read',
-        link: linkOptions({ to: '/units' }),
+        link: linkOptions({ to: '/equipment/units' }),
         icon: IconBuildingWarehouse,
       },
       {
         title: 'Customers',
         permission: 'customer:read',
-        link: linkOptions({ to: '/customers' }),
+        link: linkOptions({ to: '/equipment/customers' }),
         icon: IconBuilding,
       },
       {
         title: 'Products',
         permission: 'product:read',
-        link: linkOptions({ to: '/products' }),
+        link: linkOptions({ to: '/equipment/products' }),
         icon: IconPackages,
       },
     ],
@@ -152,53 +152,53 @@ const navSections = [
       {
         title: 'Suppliers',
         permission: 'supplier:read',
-        link: linkOptions({ to: '/suppliers' }),
+        link: linkOptions({ to: '/equipment/suppliers' }),
         icon: IconHeartHandshake,
       },
       {
         title: 'Parts',
         permission: 'part:read',
-        link: linkOptions({ to: '/parts' }),
+        link: linkOptions({ to: '/equipment/parts' }),
         icon: IconTool,
       },
       {
         title: 'Inventory',
         permission: 'inventory:read',
-        link: linkOptions({ activeOptions: { exact: true }, to: '/inventory' }),
+        link: linkOptions({ activeOptions: { exact: true }, to: '/equipment/inventory' }),
         icon: IconBuildingWarehouse,
         isActive: isInventoryNavPath,
       },
       {
         title: 'Buy list',
         permission: 'inventory:read',
-        link: linkOptions({ to: '/inventory/buy-list' }),
+        link: linkOptions({ to: '/equipment/inventory/buy-list' }),
         icon: IconShoppingCartPlus,
         indicator: BuyListSignalNavIndicator,
       },
       {
         title: 'Purchase Orders',
         permission: 'purchase_order:read',
-        link: linkOptions({ to: '/purchase-orders' }),
+        link: linkOptions({ to: '/equipment/purchase-orders' }),
         icon: IconShoppingCart,
         indicator: ReturnsAwaitingCreditNavIndicator,
       },
       {
         title: 'PO vs invoiced',
         permission: 'inventory_cost:read',
-        link: linkOptions({ to: '/inventory/price-variance' }),
+        link: linkOptions({ to: '/equipment/inventory/price-variance' }),
         icon: IconReceipt2,
       },
       {
         title: 'Stocktake',
         permission: 'inventory:read',
-        link: linkOptions({ to: '/inventory/stocktake' }),
+        link: linkOptions({ to: '/equipment/inventory/stocktake' }),
         icon: IconClipboardCheck,
         indicator: StocktakeOverdueNavIndicator,
       },
       {
         title: 'Close-out',
         permission: 'inventory:close-out',
-        link: linkOptions({ to: '/inventory/close-out' }),
+        link: linkOptions({ to: '/equipment/inventory/close-out' }),
         icon: IconFlagCheck,
       },
     ],
@@ -209,38 +209,38 @@ const navSections = [
       {
         title: 'Bays',
         permission: 'job_bay:read',
-        link: linkOptions({ to: '/bays' }),
+        link: linkOptions({ to: '/equipment/bays' }),
         icon: IconLayoutKanban,
       },
       {
         title: 'Users',
         permission: 'user:list',
-        link: linkOptions({ to: '/users' }),
+        link: linkOptions({ to: '/equipment/users' }),
         icon: IconUsers,
       },
       {
         title: 'Product Ranges',
         permission: 'product_range:read',
-        link: linkOptions({ to: '/product-ranges' }),
+        link: linkOptions({ to: '/equipment/product-ranges' }),
         icon: IconCategory2,
       },
       {
         title: 'Translations',
         permission: 'product_range:update',
-        link: linkOptions({ to: '/catalog-translations' }),
+        link: linkOptions({ to: '/equipment/catalog-translations' }),
         icon: IconLanguage,
       },
       {
         title: 'Feedback',
         permission: 'feedback:read',
-        link: linkOptions({ to: '/feedback' }),
+        link: linkOptions({ to: '/equipment/feedback' }),
         icon: IconMessageReport,
         indicator: FeedbackOpenNavIndicator,
       },
       {
         title: 'Audit',
         permission: 'audit:read',
-        link: linkOptions({ to: '/audit' }),
+        link: linkOptions({ to: '/equipment/audit' }),
         icon: IconClipboardList,
       },
     ],
@@ -460,10 +460,10 @@ export function getVisibleNavSections(canSee: (permission?: AppPermission) => bo
 
 /** Inventory routes that are their own nav item, so the Part-history match must not claim them. */
 const inventorySiblingRoutes = [
-  '/inventory/buy-list',
-  '/inventory/close-out',
-  '/inventory/price-variance',
-  '/inventory/stocktake',
+  '/equipment/inventory/buy-list',
+  '/equipment/inventory/close-out',
+  '/equipment/inventory/price-variance',
+  '/equipment/inventory/stocktake',
 ];
 
 export function isInventoryNavPath(pathname: string): boolean {
@@ -471,5 +471,5 @@ export function isInventoryNavPath(pathname: string): boolean {
     return false;
   }
 
-  return pathname === '/inventory' || /^\/inventory\/[^/]+\/?$/.test(pathname);
+  return pathname === '/equipment/inventory' || /^\/equipment\/inventory\/[^/]+\/?$/.test(pathname);
 }

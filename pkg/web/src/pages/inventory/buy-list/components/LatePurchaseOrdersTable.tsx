@@ -62,7 +62,7 @@ export function LatePurchaseOrdersTable({
       getRowAriaLabel={(item) => `Open ${item.code}`}
       hideGlobalFilter={true}
       isLoading={isLoading}
-      onRowClick={(item) => navigate({ params: { id: item.id }, to: '/purchase-orders/$id' })}
+      onRowClick={(item) => navigate({ params: { id: item.id }, to: '/equipment/purchase-orders/$id' })}
       paginationMode="complete"
       table={table}
       total={table.getFilteredRowModel().rows.length}

@@ -78,7 +78,7 @@ export default function StoresScanHomeRoute() {
           <PartSearchList
             onSelect={(partCode) => {
               setSearch('');
-              router.push({ params: { partCode }, pathname: '/stores/parts/[partCode]' });
+              router.push({ params: { partCode }, pathname: '/equipment/stores/parts/[partCode]' });
             }}
             search={search}
           />
@@ -94,13 +94,13 @@ export default function StoresScanHomeRoute() {
           <DestinationTile
             caption="Return leftovers and end a Job’s stock life"
             icon={IconChecklist}
-            onPress={() => router.push('/stores/close-out')}
+            onPress={() => router.push('/equipment/stores/close-out')}
             title="Close-out queue"
           />
           <DestinationTile
             caption="Count the shelf and correct what the ledger holds"
             icon={IconClipboardCheck}
-            onPress={() => router.push('/stores/stocktake')}
+            onPress={() => router.push('/equipment/stores/stocktake')}
             title="Stocktake"
           />
         </View>

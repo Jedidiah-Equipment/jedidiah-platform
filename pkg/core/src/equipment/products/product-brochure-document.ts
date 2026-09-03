@@ -17,13 +17,12 @@ import {
   type UUID,
 } from '@pkg/schema';
 import sharp from 'sharp';
-
+import type { StorageAdapter } from '../../storage/storage-adapter.js';
 import {
   createDocumentRecord,
   readStoredObjectBytes,
   sanitizeDocumentStorageKeySuffix,
 } from '../documents/document-service.js';
-import type { StorageAdapter } from '../documents/storage-adapter.js';
 import { ProductBrochureIncompleteError } from './product-errors.js';
 import { getHistoricalProductBrochureSource, getProductBrochureSource } from './product-service.js';
 

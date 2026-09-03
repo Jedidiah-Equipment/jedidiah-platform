@@ -180,7 +180,7 @@ function UnitJobRow({ canOpen, job }: { canOpen: boolean; job: ProductUnitJob })
         accessibilityLabel={`Job ${job.code}`}
         accessibilityRole="button"
         className="min-w-0 flex-1 flex-row items-center gap-2 active:opacity-70"
-        onPress={() => router.push({ pathname: '/jobs/[jobId]', params: { jobId: job.id } })}
+        onPress={() => router.push({ pathname: '/equipment/jobs/[jobId]', params: { jobId: job.id } })}
       >
         <View className="min-w-0 flex-1">{details}</View>
         <Icon className="text-muted-foreground" icon={IconChevronRight} size={16} />

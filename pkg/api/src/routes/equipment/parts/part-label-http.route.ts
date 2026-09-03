@@ -17,7 +17,7 @@ import {
   requireAnyPermission,
   requireRouteAuth,
   sendHttpError,
-} from '../http-route-helpers.js';
+} from '../../http-route-helpers.js';
 
 const PartLabelParams = z.object({ partId: UUID });
 

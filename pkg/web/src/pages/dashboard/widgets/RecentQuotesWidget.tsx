@@ -64,7 +64,7 @@ function RecentQuoteRow({ canUpdateQuote, quote }: { canUpdateQuote: boolean; qu
   }
 
   return (
-    <Link className={className} params={{ id: quote.id }} to="/quotes/$id/edit">
+    <Link className={className} params={{ id: quote.id }} to="/equipment/quotes/$id/edit">
       {content}
     </Link>
   );

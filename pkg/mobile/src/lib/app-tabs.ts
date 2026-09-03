@@ -23,15 +23,22 @@ export function showTabBar(tabs: AppTab[]): boolean {
 
 export function appTabHref(
   tab: AppTab,
-): '/activity' | '/jobs' | '/plan' | '/products' | '/quotes' | '/stores' | '/units' {
+):
+  | '/equipment/activity'
+  | '/equipment/jobs'
+  | '/equipment/plan'
+  | '/equipment/products'
+  | '/equipment/quotes'
+  | '/equipment/stores'
+  | '/equipment/units' {
   const hrefs = {
-    activity: '/activity',
-    jobs: '/jobs',
-    plan: '/plan',
-    products: '/products',
-    quotes: '/quotes',
-    stores: '/stores',
-    units: '/units',
+    activity: '/equipment/activity',
+    jobs: '/equipment/jobs',
+    plan: '/equipment/plan',
+    products: '/equipment/products',
+    quotes: '/equipment/quotes',
+    stores: '/equipment/stores',
+    units: '/equipment/units',
   } as const satisfies Record<AppTab, string>;
 
   return hrefs[tab];

@@ -6,7 +6,7 @@ import { convertArrayToReadableStream, MockLanguageModelV4 } from 'ai/test';
 import Fastify from 'fastify';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 
-import { registerAiChatRoute } from '@/routes/ai/ai-chat.route.js';
+import { registerAiChatRoute } from '@/routes/equipment/ai/ai-chat.route.js';
 import { createSilentLogger, mockSession } from '@/test/test-utils.js';
 
 // The tools' core reads are stubbed so the route test stays DB-free; the route still exercises the

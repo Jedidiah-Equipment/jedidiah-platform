@@ -1,6 +1,6 @@
 import { isPartBomError, isPartCoreError, type PartBomError, type PartCoreError } from '@pkg/core';
 
-import { defineCoreErrorFamily } from '../../trpc/errors.js';
+import { defineCoreErrorFamily } from '../../../trpc/errors.js';
 
 /**
  * The Part boundary's two error families. They live here rather than in the Part router because a

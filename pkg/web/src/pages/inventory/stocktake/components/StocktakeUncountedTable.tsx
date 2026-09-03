@@ -16,7 +16,7 @@ const uncountedColumns: DataTableColumnDef<StocktakeUncountedPart>[] = [
     accessorFn: (item) => `${item.partName} ${item.partCode}`,
     cell: ({ row }) => (
       <>
-        <Link className="block font-medium" params={{ partId: row.original.partId }} to="/inventory/$partId">
+        <Link className="block font-medium" params={{ partId: row.original.partId }} to="/equipment/inventory/$partId">
           {row.original.partName}
         </Link>
         <span className="block text-muted-foreground text-xs">{row.original.partCode}</span>

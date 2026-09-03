@@ -1,6 +1,6 @@
 import type { PurchaseOrderDerivedStatus } from '@pkg/schema';
 
-import { type BadgeColorClassNames, statusBadgeColorClassNames } from '../theme/status-badge.js';
+import { type BadgeColorClassNames, statusBadgeColorClassNames } from '../../theme/status-badge.js';
 
 export const purchaseOrderStatusLabels: Record<PurchaseOrderDerivedStatus, string> = {
   approved: 'Approved',

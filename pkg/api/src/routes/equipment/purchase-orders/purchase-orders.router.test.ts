@@ -2,8 +2,8 @@ import type { Db } from '@pkg/db';
 import { customers, documents, invoiceExtractions, jobs, parts, quotes, supplier, user } from '@pkg/db';
 import { describe, expect } from 'vitest';
 
-import { type AppRouterCaller, createTester } from '../../test/create-tester.js';
-import { mockSession } from '../../test/test-utils.js';
+import { type AppRouterCaller, createTester } from '../../../test/create-tester.js';
+import { mockSession } from '../../../test/test-utils.js';
 
 const SUPPLIER_ID = '00000000-0000-4000-8000-000000000301';
 const PART_ID = '00000000-0000-4000-8000-000000000302';

@@ -28,7 +28,7 @@ export const StartJobLink: React.FC<StartJobLinkProps> = ({ className, quote, si
     <Button
       aria-label={`${label} from quote ${quote.code}`}
       className={className}
-      render={<Link params={{ id: quote.id }} to="/quotes/$id/start-job" />}
+      render={<Link params={{ id: quote.id }} to="/equipment/quotes/$id/start-job" />}
       size={size}
       variant={size === 'icon-sm' ? 'outline' : 'default'}
     >

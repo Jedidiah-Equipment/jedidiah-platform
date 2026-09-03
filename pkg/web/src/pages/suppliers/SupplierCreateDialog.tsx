@@ -43,7 +43,7 @@ export const SupplierCreateDialog: React.FC<SupplierCreateDialogProps> = ({ onOp
         await invalidateSuppliers();
         onOpenChange(false);
         toast.success('Supplier created');
-        await navigate({ to: '/suppliers/$id/edit', params: { id: supplier.id } });
+        await navigate({ to: '/equipment/suppliers/$id/edit', params: { id: supplier.id } });
       }}
       onOpenChange={onOpenChange}
       open={open}

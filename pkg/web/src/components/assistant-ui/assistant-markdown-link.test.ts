@@ -12,7 +12,9 @@ describe('resolveAssistantLinkHref', () => {
   });
 
   it('leaves app and external links unchanged', () => {
-    expect(resolveAssistantLinkHref('/quotes/quote-id/edit', 'http://localhost:7002')).toBe('/quotes/quote-id/edit');
+    expect(resolveAssistantLinkHref('/equipment/quotes/quote-id/edit', 'http://localhost:7002')).toBe(
+      '/equipment/quotes/quote-id/edit',
+    );
     expect(resolveAssistantLinkHref('https://example.com/document.pdf', 'http://localhost:7002')).toBe(
       'https://example.com/document.pdf',
     );
@@ -21,15 +23,17 @@ describe('resolveAssistantLinkHref', () => {
 
 describe('getInternalRouterHref', () => {
   it('returns relative internal paths unchanged', () => {
-    expect(getInternalRouterHref('/jobs/job-id', ORIGIN)).toBe('/jobs/job-id');
+    expect(getInternalRouterHref('/equipment/jobs/job-id', ORIGIN)).toBe('/equipment/jobs/job-id');
   });
 
   it('preserves search params and hash fragments', () => {
-    expect(getInternalRouterHref('/jobs/job-id?tab=events#latest', ORIGIN)).toBe('/jobs/job-id?tab=events#latest');
+    expect(getInternalRouterHref('/equipment/jobs/job-id?tab=events#latest', ORIGIN)).toBe(
+      '/equipment/jobs/job-id?tab=events#latest',
+    );
   });
 
   it('normalizes same-origin absolute urls to app hrefs', () => {
-    expect(getInternalRouterHref('https://jedidiah.test/quotes/quote-id', ORIGIN)).toBe('/quotes/quote-id');
+    expect(getInternalRouterHref('https://jedidiah.test/quotes/quote-id', ORIGIN)).toBe('/equipment/quotes/quote-id');
   });
 
   it('returns null for external urls', () => {

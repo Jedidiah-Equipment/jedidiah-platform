@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { productUnitBuildStateColorClassNames } from '../units/product-unit-build-state.js';
+import { productUnitBuildStateColorClassNames } from '../equipment/units/product-unit-build-state.js';
 import { statusBadgeColorClassNames } from './status-badge.js';
 
 /**

@@ -3,7 +3,7 @@ import { createFileRoute } from '@tanstack/react-router';
 
 import { StockMovementHistoryPage } from '@/pages/inventory/StockMovementHistoryPage.js';
 
-export const Route = createFileRoute('/_authed/inventory/$partId')({
+export const Route = createFileRoute('/_authed/equipment/inventory/$partId')({
   params: {
     parse: (params) => ({ partId: UUID.parse(params.partId) }),
     stringify: (params) => ({ partId: params.partId }),

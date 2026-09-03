@@ -1,4 +1,4 @@
-import { type DateFormat, formatDate } from '../formatting/date.js';
+import { type DateFormat, formatDate } from '../../formatting/date.js';
 
 /** A Job (or a Slot's Job summary) carrying the cancellation timestamp, however each layer types it. */
 export type JobCancellationFact = { cancelledAt: Date | string | null };

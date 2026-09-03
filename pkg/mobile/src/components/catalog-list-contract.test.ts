@@ -7,23 +7,23 @@ const MOBILE_DIR = join(dirname(fileURLToPath(import.meta.url)), '../..');
 const CATALOG_SURFACES = [
   {
     component: 'src/components/jobs/JobCatalog.tsx',
-    route: 'app/(protected)/(tabs)/jobs/index.tsx',
+    route: 'app/(protected)/equipment/(tabs)/jobs/index.tsx',
   },
   {
     component: 'src/components/bays/PlanCatalog.tsx',
-    route: 'app/(protected)/(tabs)/(plan)/plan/index.tsx',
+    route: 'app/(protected)/equipment/(tabs)/(plan)/plan/index.tsx',
   },
   {
     component: 'src/components/products/ProductCatalog.tsx',
-    route: 'app/(protected)/(tabs)/products/index.tsx',
+    route: 'app/(protected)/equipment/(tabs)/products/index.tsx',
   },
   {
     component: 'src/components/quotes/QuoteCatalog.tsx',
-    route: 'app/(protected)/(tabs)/quotes/index.tsx',
+    route: 'app/(protected)/equipment/(tabs)/quotes/index.tsx',
   },
   {
     component: 'src/components/units/UnitCatalog.tsx',
-    route: 'app/(protected)/(tabs)/units/index.tsx',
+    route: 'app/(protected)/equipment/(tabs)/units/index.tsx',
   },
 ] as const;
 

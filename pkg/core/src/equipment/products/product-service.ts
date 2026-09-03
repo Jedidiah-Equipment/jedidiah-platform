@@ -53,7 +53,7 @@ import {
 } from '@pkg/schema';
 import { and, asc, eq, inArray, type SQL, sql } from 'drizzle-orm';
 import { format } from 'sql-formatter';
-
+import type { StorageAdapter } from '../../storage/storage-adapter.js';
 import {
   defineAuditDescriptor,
   diffAuditUpdate,
@@ -76,7 +76,6 @@ import {
   type ReadDocumentResult,
   sanitizeDocumentStorageKeySuffix,
 } from '../documents/document-service.js';
-import type { StorageAdapter } from '../documents/storage-adapter.js';
 import {
   type AssemblyListRow,
   listAssemblies,

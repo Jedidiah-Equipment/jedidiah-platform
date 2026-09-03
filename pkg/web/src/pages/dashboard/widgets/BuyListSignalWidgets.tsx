@@ -34,7 +34,7 @@ const BuyListReasonWidget: React.FC<{
   const count = buyListQuery.data.items.filter((item) => item.reasons.includes(reason)).length;
 
   return (
-    <Link className="flex flex-1 hover:underline" to="/inventory/buy-list">
+    <Link className="flex flex-1 hover:underline" to="/equipment/inventory/buy-list">
       <StatCard sublabel={count === 0 ? emptyLabel : count === 1 ? singular : `${count} ${plural}`} value={count} />
     </Link>
   );

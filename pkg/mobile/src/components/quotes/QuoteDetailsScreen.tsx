@@ -167,7 +167,7 @@ function QuoteEditor({
     <SafeAreaView className="flex-1 bg-background" edges={['top', 'left', 'right']}>
       <SecondaryPageToolbar
         badge={<QuoteStatusChip status={values.status} />}
-        onBack={() => void autosave.flush().finally(() => router.dismissTo('/quotes'))}
+        onBack={() => void autosave.flush().finally(() => router.dismissTo('/equipment/quotes'))}
         parentLabel="Quotes"
         subtitle={getQuoteOfferingName(quote)}
         title={quote.code}
@@ -570,7 +570,7 @@ function StateMessage({ loading = false, message }: { loading?: boolean; message
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top', 'left', 'right']}>
       <SecondaryPageToolbar
-        onBack={() => router.dismissTo('/quotes')}
+        onBack={() => router.dismissTo('/equipment/quotes')}
         parentLabel="Quotes"
         subtitle="QUOTE DETAIL"
         title="Quote"

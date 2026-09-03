@@ -1,6 +1,6 @@
 import type { BayCalendarExceptionDirection, DateOnlyIso } from '@pkg/schema';
 
-import { addDateOnlyDays } from '../formatting/date-only.js';
+import { addDateOnlyDays } from '../../formatting/date-only.js';
 
 export type WorkingCalendar = {
   bayExceptions?: ReadonlyMap<string, BayCalendarExceptionDirection>;

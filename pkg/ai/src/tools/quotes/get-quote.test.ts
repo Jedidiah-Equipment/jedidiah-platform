@@ -73,15 +73,15 @@ describe('getQuote contract', () => {
       customerAddress: '1 Quarry Road',
       id: QUOTE_ID,
       links: {
-        app: `/quotes/${QUOTE_ID}/edit`,
-        customer: `/customers/${CUSTOMER_ID}/edit`,
-        product: `/products/${PRODUCT_ID}/edit`,
+        app: `/equipment/quotes/${QUOTE_ID}/edit`,
+        customer: `/equipment/customers/${CUSTOMER_ID}/edit`,
+        product: `/equipment/products/${PRODUCT_ID}/edit`,
       },
       quotedBasePrice: 1000,
     });
     expect(JSON.stringify(response)).not.toContain('thumbnailDataUrl');
     expect(toGetQuoteResponse(quote, createUserAccessSummary({ role: 'sales', userId: 'test-user-id' })).links).toEqual(
-      { app: `/quotes/${QUOTE_ID}/edit` },
+      { app: `/equipment/quotes/${QUOTE_ID}/edit` },
     );
   });
 
@@ -94,9 +94,9 @@ describe('getQuote contract', () => {
 
     expect(
       toGetQuoteResponse(allocationQuote, createUserAccessSummary({ role: 'admin', userId: 'test-user-id' })).links,
-    ).toMatchObject({ productUnit: `/units/${UNIT_ID}` });
+    ).toMatchObject({ productUnit: `/equipment/units/${UNIT_ID}` });
     expect(
       toGetQuoteResponse(allocationQuote, createUserAccessSummary({ role: 'sales', userId: 'test-user-id' })).links,
-    ).toEqual({ app: `/quotes/${QUOTE_ID}/edit`, productUnit: `/units/${UNIT_ID}` });
+    ).toEqual({ app: `/equipment/quotes/${QUOTE_ID}/edit`, productUnit: `/equipment/units/${UNIT_ID}` });
   });
 });

@@ -35,8 +35,8 @@ vi.mock('@pkg/db', async (importOriginal) => {
   };
 });
 
-vi.mock('../../auth/session.js', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../auth/session.js')>();
+vi.mock('../../../auth/session.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../auth/session.js')>();
 
   return {
     ...actual,

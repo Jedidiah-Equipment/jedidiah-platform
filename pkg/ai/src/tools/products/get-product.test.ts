@@ -59,7 +59,7 @@ describe('getProduct contract', () => {
       description: 'Compact articulated loader',
       id: PRODUCT_ID,
       keyFeatures: ['Tight turning circle'],
-      links: { app: `/products/${PRODUCT_ID}/edit` },
+      links: { app: `/equipment/products/${PRODUCT_ID}/edit` },
       modelCode: 'CL-100',
       name: 'Compact Loader',
     });

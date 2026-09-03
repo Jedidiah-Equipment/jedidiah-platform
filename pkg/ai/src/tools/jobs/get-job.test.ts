@@ -80,9 +80,9 @@ describe('getJob contract', () => {
       description: 'Repair hydraulic leak',
       id: JOB_ID,
       links: {
-        app: `/jobs/${JOB_ID}`,
-        customer: `/customers/${CUSTOMER_ID}/edit`,
-        quote: `/quotes/${QUOTE_ID}/edit`,
+        app: `/equipment/jobs/${JOB_ID}`,
+        customer: `/equipment/customers/${CUSTOMER_ID}/edit`,
+        quote: `/equipment/quotes/${QUOTE_ID}/edit`,
       },
       schedule: [
         { department: 'procurement' },
@@ -98,7 +98,7 @@ describe('getJob contract', () => {
     expect(JSON.stringify(response)).not.toContain('thumbnailDataUrl');
     expect(
       toGetJobResponse(job, createUserAccessSummary({ role: 'job-viewer', userId: 'test-user-id' })).links,
-    ).toEqual({ app: `/jobs/${JOB_ID}` });
+    ).toEqual({ app: `/equipment/jobs/${JOB_ID}` });
   });
 
   test('links a Unit-bound Job to the machine it builds', () => {
@@ -116,8 +116,8 @@ describe('getJob contract', () => {
 
     expect(response.productUnit).toMatchObject({ id: UNIT_ID, productSerialNumber: 'SG1836260009' });
     expect(response.links).toMatchObject({
-      product: `/products/${PRODUCT_ID}/edit`,
-      productUnit: `/units/${UNIT_ID}`,
+      product: `/equipment/products/${PRODUCT_ID}/edit`,
+      productUnit: `/equipment/units/${UNIT_ID}`,
     });
   });
 });

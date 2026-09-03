@@ -51,7 +51,7 @@ export const PurchaseOrdersPage: React.FC = () => {
           errorMessage={getApiQueryErrorMessage(purchaseOrdersQuery.error, 'Unable to load Purchase Orders.')}
           isLoading={purchaseOrdersQuery.isPending}
           items={purchaseOrdersQuery.data?.items ?? []}
-          onOpen={(id) => navigate({ params: { id }, to: '/purchase-orders/$id' })}
+          onOpen={(id) => navigate({ params: { id }, to: '/equipment/purchase-orders/$id' })}
         />
       </PageLayout>
       {canCreate ? <PurchaseOrderCreateDialog onOpenChange={setIsCreateOpen} open={isCreateOpen} /> : null}

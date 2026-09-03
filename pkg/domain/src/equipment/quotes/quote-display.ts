@@ -4,7 +4,7 @@ import {
   type BadgeColorClassNames,
   cancelledBadgeColorClassNames,
   statusBadgeColorClassNames,
-} from '../theme/status-badge.js';
+} from '../../theme/status-badge.js';
 
 export const quoteStatusLabels: Record<QuoteStatus, string> = {
   accepted: 'Accepted',

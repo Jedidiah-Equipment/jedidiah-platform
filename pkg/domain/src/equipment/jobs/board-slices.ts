@@ -10,7 +10,7 @@ import {
   type UUID,
 } from '@pkg/schema';
 
-import { addDateOnlyDays } from '../formatting/date-only.js';
+import { addDateOnlyDays } from '../../formatting/date-only.js';
 import { JOB_DEPARTMENT_PIPELINE } from './job-department-pipeline.js';
 
 const SCHEDULE_HISTORY_WINDOW_DAYS = 365;

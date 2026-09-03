@@ -70,7 +70,7 @@ export default function StoresStocktakeSessionRoute() {
         await invalidateQueryCache(queryClient);
         setIsClosing(false);
         toast('success', 'Stocktake session closed');
-        router.dismissTo('/stores/stocktake');
+        router.dismissTo('/equipment/stores/stocktake');
       },
     }),
   );
@@ -93,7 +93,7 @@ export default function StoresStocktakeSessionRoute() {
     return (
       <StoresScreen
         helpTopic="inventoryStocktake"
-        onBack={() => router.dismissTo('/stores/stocktake')}
+        onBack={() => router.dismissTo('/equipment/stores/stocktake')}
         parentLabel="Stocktake"
         subtitle="LOADING THE SESSION"
         title="Stocktake"
@@ -109,7 +109,7 @@ export default function StoresStocktakeSessionRoute() {
     return (
       <StoresScreen
         helpTopic="inventoryStocktake"
-        onBack={() => router.dismissTo('/stores/stocktake')}
+        onBack={() => router.dismissTo('/equipment/stores/stocktake')}
         parentLabel="Stocktake"
         subtitle="SESSION UNAVAILABLE"
         title="Stocktake"
@@ -128,7 +128,7 @@ export default function StoresStocktakeSessionRoute() {
     // scroll toward them appends rows and pushes them further down.
     <StoresScreen
       helpTopic="inventoryStocktake"
-      onBack={() => router.dismissTo('/stores/stocktake')}
+      onBack={() => router.dismissTo('/equipment/stores/stocktake')}
       parentLabel="Stocktake"
       subtitle={`${session.countedPartCount} COUNTED · ${uncountedTotal} TO GO`}
       title={`${STOCKTAKE_SCOPE_LABELS[session.scope]} count`}

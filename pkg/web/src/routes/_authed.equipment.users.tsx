@@ -2,7 +2,7 @@ import { createFileRoute } from '@tanstack/react-router';
 
 import { UsersPage } from '@/pages/users/UsersPage.js';
 
-export const Route = createFileRoute('/_authed/users')({
+export const Route = createFileRoute('/_authed/equipment/users')({
   staticData: {
     pageLabel: 'Users',
   },

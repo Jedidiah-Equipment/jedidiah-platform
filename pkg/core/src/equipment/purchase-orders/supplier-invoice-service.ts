@@ -23,9 +23,8 @@ import {
   SupplierInvoiceReviewResult as SupplierInvoiceReviewResultSchema,
 } from '@pkg/schema';
 import { and, eq, inArray, sql } from 'drizzle-orm';
-
+import type { StorageAdapter } from '../../storage/storage-adapter.js';
 import { assertDocumentAcceptable } from '../documents/document-service.js';
-import type { StorageAdapter } from '../documents/storage-adapter.js';
 import { insertMovement, loadMovingAverages, loadStockPart } from '../inventory/ledger.js';
 import { assertPartStockAction } from '../inventory/part-stock-action-errors.js';
 import { filePurchaseOrderDocument } from './purchase-order-document-filing.js';

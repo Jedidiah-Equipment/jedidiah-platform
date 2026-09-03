@@ -29,7 +29,7 @@ export default function AppTabsLayout() {
       />
       <Tabs.Screen
         name="(plan)"
-        options={{ href: tabs.includes('plan') ? ('/plan' as Href) : null, title: appTabLabel('plan') }}
+        options={{ href: tabs.includes('plan') ? ('/equipment/plan' as Href) : null, title: appTabLabel('plan') }}
       />
       <Tabs.Screen
         name="quotes"

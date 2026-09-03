@@ -129,12 +129,12 @@ describe('patchQuote contract', () => {
     const response = toPatchQuoteResponse(quote, createContext().access);
     expect(PatchQuoteResponse.parse(response)).toEqual(response);
     expect(response.links).toEqual({
-      app: `/quotes/${QUOTE_ID}/edit`,
-      customer: `/customers/${CUSTOMER_ID}/edit`,
+      app: `/equipment/quotes/${QUOTE_ID}/edit`,
+      customer: `/equipment/customers/${CUSTOMER_ID}/edit`,
     });
     expect(
       toPatchQuoteResponse(quote, createUserAccessSummary({ role: 'sales', userId: 'test-user-id' })).links,
-    ).toEqual({ app: `/quotes/${QUOTE_ID}/edit` });
+    ).toEqual({ app: `/equipment/quotes/${QUOTE_ID}/edit` });
     expect(patchQuoteDefinition.anyOfPermissions).toEqual(['quote:update']);
     expect(patchQuoteDefinition.description).toContain('findQuotes');
     expect(patchQuoteDefinition.description).toContain('accepted or rejected');

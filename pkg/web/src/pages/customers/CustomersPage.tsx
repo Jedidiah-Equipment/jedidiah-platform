@@ -27,7 +27,7 @@ export const CustomersPage: React.FC = () => {
         title="Customers"
       >
         <CustomerTable
-          onEditCustomer={(customer) => navigate({ to: '/customers/$id/edit', params: { id: customer.id } })}
+          onEditCustomer={(customer) => navigate({ to: '/equipment/customers/$id/edit', params: { id: customer.id } })}
         />
       </PageLayout>
       <CustomerCreateDialog onOpenChange={setIsCreateDialogOpen} open={isCreateDialogOpen} />

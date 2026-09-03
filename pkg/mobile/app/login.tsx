@@ -58,7 +58,7 @@ export default function LoginScreen() {
 
   // Already signed in (including right after a successful sign-in): leave /login.
   if (isHydratedSession(session)) {
-    return <Redirect href="/" />;
+    return <Redirect href="/equipment" />;
   }
 
   return (

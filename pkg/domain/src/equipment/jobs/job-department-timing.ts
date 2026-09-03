@@ -1,8 +1,7 @@
 import type { DateIso, DateOnlyIso, JobDepartmentTiming, WorkItemDepartment } from '@pkg/schema';
-
+import { formatDate, toPlantDateOnly } from '../../formatting/date.js';
+import { addDateOnlyDays } from '../../formatting/date-only.js';
 import { departmentLabels } from '../departments.js';
-import { formatDate, toPlantDateOnly } from '../formatting/date.js';
-import { addDateOnlyDays } from '../formatting/date-only.js';
 import { countWorkingDaysBetween, type WorkingCalendar } from './working-calendar.js';
 
 export type DepartmentTimingState = 'not-started' | 'in-progress' | 'complete';

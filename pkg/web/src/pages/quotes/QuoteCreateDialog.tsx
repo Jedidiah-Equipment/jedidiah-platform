@@ -65,7 +65,7 @@ export const QuoteCreateDialog: React.FC<QuoteCreateDialogProps> = ({ onOpenChan
         await invalidateQuotes();
         onOpenChange(false);
         toast.success('Quote created');
-        await navigate({ params: { id: quote.id }, to: '/quotes/$id/edit' });
+        await navigate({ params: { id: quote.id }, to: '/equipment/quotes/$id/edit' });
       }}
       onOpenChange={onOpenChange}
       open={open}

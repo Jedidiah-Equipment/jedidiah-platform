@@ -17,7 +17,7 @@ export function AssistantEntryButton({ parent }: { parent: MainTabParent }) {
       accessibilityLabel="Open Assistant"
       accessibilityRole="button"
       className="h-10 w-10 items-center justify-center rounded-xl border border-border bg-surface active:bg-muted"
-      onPress={() => router.push({ pathname: '/assistant', params: { parentHref: parent.href } })}
+      onPress={() => router.push({ pathname: '/equipment/assistant', params: { parentHref: parent.href } })}
     >
       <Icon className="text-primary" icon={IconSparkles} size={20} />
     </Pressable>

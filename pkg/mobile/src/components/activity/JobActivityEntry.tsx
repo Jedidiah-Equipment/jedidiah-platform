@@ -150,7 +150,7 @@ function JobEventEntry({ item, last, linkToJob }: { item: JobChangeActivityItem;
           accessibilityLabel={`${actorName} ${presentation.sentence} on ${item.job.code}`}
           accessibilityRole="button"
           className="min-w-0 flex-1 rounded-lg px-1 active:bg-muted"
-          onPress={() => router.push({ pathname: '/jobs/[jobId]', params: { jobId: item.job.id } })}
+          onPress={() => router.push({ pathname: '/equipment/jobs/[jobId]', params: { jobId: item.job.id } })}
         >
           {content}
         </Pressable>
@@ -230,7 +230,7 @@ function JobDetail({ item, linkToJob }: { item: GeneralFeedbackActivityItem; lin
       accessibilityLabel={`Open ${item.job.code} ${item.job.displayName}`}
       accessibilityRole="button"
       className="min-w-0 flex-row items-center gap-1.5 border-t border-border bg-muted/50 px-2.5 py-1.5 active:bg-muted"
-      onPress={() => router.push({ pathname: '/jobs/[jobId]', params: { jobId: item.job.id } })}
+      onPress={() => router.push({ pathname: '/equipment/jobs/[jobId]', params: { jobId: item.job.id } })}
     >
       {content}
     </Pressable>

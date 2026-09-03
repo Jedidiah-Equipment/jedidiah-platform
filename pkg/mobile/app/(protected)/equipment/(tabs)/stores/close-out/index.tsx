@@ -22,7 +22,7 @@ export default function StoresCloseOutQueueRoute() {
   return (
     <StoresScreen
       helpTopic="inventoryCloseOut"
-      onBack={() => router.dismissTo('/stores')}
+      onBack={() => router.dismissTo('/equipment/stores')}
       parentLabel="Stores"
       subtitle="JOBS WAITING TO BE CLOSED OUT"
       title="Close-out queue"
@@ -45,7 +45,9 @@ export default function StoresCloseOutQueueRoute() {
               accessibilityRole="button"
               className="gap-1 rounded-2xl border border-border bg-surface px-4 py-4"
               key={row.jobId}
-              onPress={() => router.push({ params: { jobId: row.jobId }, pathname: '/stores/close-out/[jobId]' })}
+              onPress={() =>
+                router.push({ params: { jobId: row.jobId }, pathname: '/equipment/stores/close-out/[jobId]' })
+              }
             >
               <View className="flex-row items-center justify-between gap-3">
                 <Text className="text-base text-surface-foreground" mono weight="semibold">

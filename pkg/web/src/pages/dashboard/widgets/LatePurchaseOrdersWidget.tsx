@@ -24,7 +24,7 @@ export const LatePurchaseOrdersWidget: React.FC = () => {
   const worst = items.reduce((longest, item) => Math.max(longest, item.daysLate), 0);
 
   return (
-    <Link className="flex flex-1 hover:underline" to="/inventory/buy-list">
+    <Link className="flex flex-1 hover:underline" to="/equipment/inventory/buy-list">
       <StatCard sublabel={describeLate(items.length, worst)} value={items.length} />
     </Link>
   );

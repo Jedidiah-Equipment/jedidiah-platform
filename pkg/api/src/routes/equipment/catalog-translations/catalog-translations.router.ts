@@ -21,9 +21,9 @@ import {
 } from '@pkg/schema';
 import { z } from 'zod';
 
-import type { TranslationMarker } from '../../catalog-translations/translation-scheduler.js';
-import { type CoreErrorMapping, mapKnownCoreError } from '../../trpc/errors.js';
-import { authorizedProcedure, router } from '../../trpc/init.js';
+import type { TranslationMarker } from '../../../equipment/catalog-translations/translation-scheduler.js';
+import { type CoreErrorMapping, mapKnownCoreError } from '../../../trpc/errors.js';
+import { authorizedProcedure, router } from '../../../trpc/init.js';
 
 export const catalogTranslationsRouter = router({
   getProduct: authorizedProcedure('product:update')

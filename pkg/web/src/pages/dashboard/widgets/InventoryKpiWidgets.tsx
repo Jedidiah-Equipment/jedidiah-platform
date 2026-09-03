@@ -14,7 +14,7 @@ export const InventoryValueWidget: React.FC = () => {
   return (
     <InventoryKpiQuery>
       {(data) => (
-        <Link className="flex flex-1 hover:underline" to="/inventory">
+        <Link className="flex flex-1 hover:underline" to="/equipment/inventory">
           <StatCard
             sublabel={
               data.inventoryValue === null
@@ -33,7 +33,7 @@ export const InventoryTurnsWidget: React.FC = () => {
   return (
     <InventoryKpiQuery>
       {(data) => (
-        <Link className="flex flex-1 hover:underline" to="/inventory">
+        <Link className="flex flex-1 hover:underline" to="/equipment/inventory">
           <StatCard
             sublabel="Annualized, trailing 90d, perpetual stock"
             value={data.inventoryTurns === null ? '—' : `${data.inventoryTurns.toFixed(2)}×`}
@@ -99,7 +99,7 @@ function KpiListLink({
   hasItems: boolean;
 }) {
   return (
-    <Link className="flex flex-1 flex-col gap-3 hover:underline" to="/inventory">
+    <Link className="flex flex-1 flex-col gap-3 hover:underline" to="/equipment/inventory">
       {hasItems ? (
         <div className="flex flex-col gap-2">{children}</div>
       ) : (

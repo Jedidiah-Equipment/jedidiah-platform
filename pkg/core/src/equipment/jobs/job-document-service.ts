@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { type Db, documents, getUniqueViolationConstraint } from '@pkg/db';
 import type { AuthId, JobDocument, UUID } from '@pkg/schema';
 import { and, eq } from 'drizzle-orm';
+import type { StorageAdapter } from '../../storage/storage-adapter.js';
 import {
   DocumentDeleteNotAllowedError,
   DocumentNotFoundError,
@@ -14,7 +15,6 @@ import {
   documentBaseSelect,
   sanitizeDocumentStorageKeySuffix,
 } from '../documents/document-service.js';
-import type { StorageAdapter } from '../documents/storage-adapter.js';
 import { lockMutableJob } from './job-mutation-guards.js';
 import { getJobDocuments } from './job-read-service.js';
 

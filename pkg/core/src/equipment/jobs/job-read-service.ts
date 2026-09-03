@@ -60,6 +60,7 @@ import {
   WORK_ITEM_DEPARTMENTS,
 } from '@pkg/schema';
 import { and, asc, desc, eq, gte, inArray, isNull, lte, or, type SQL, type SQLWrapper, sql } from 'drizzle-orm';
+import type { StorageAdapter } from '../../storage/storage-adapter.js';
 import { DocumentNotFoundError } from '../documents/document-errors.js';
 import {
   type DocumentSummaryRow,
@@ -67,7 +68,6 @@ import {
   mapDocumentSummary,
   type ReadDocumentResult,
 } from '../documents/document-service.js';
-import type { StorageAdapter } from '../documents/storage-adapter.js';
 import { isPurchaseOrderPdf } from '../purchase-orders/purchase-order-service.js';
 import {
   findBoardBayRows,

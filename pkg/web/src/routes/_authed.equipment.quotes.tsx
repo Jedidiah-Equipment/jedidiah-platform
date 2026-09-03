@@ -1,6 +1,6 @@
 import { createFileRoute, Outlet } from '@tanstack/react-router';
 
-export const Route = createFileRoute('/_authed/quotes')({
+export const Route = createFileRoute('/_authed/equipment/quotes')({
   staticData: {
     pageLabel: 'Quotes',
   },

@@ -26,7 +26,7 @@ export const AppSidebar: React.FC<AppSidebarProps> = (props) => {
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton render={<Link to="/dashboard" />} size="lg">
+            <SidebarMenuButton render={<Link to="/equipment/dashboard" />} size="lg">
               <AppBrand size="sm" />
             </SidebarMenuButton>
           </SidebarMenuItem>

@@ -13,7 +13,7 @@ import {
   type StocktakeError,
 } from '@pkg/core';
 
-import { defineCoreErrorFamily } from '../../trpc/errors.js';
+import { defineCoreErrorFamily } from '../../../trpc/errors.js';
 
 /**
  * The inventory boundary's error families. Each procedure names only the families it can actually

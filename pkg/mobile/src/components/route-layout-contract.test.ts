@@ -20,7 +20,7 @@ describe('route layout contract', () => {
   test('shows and clears the Activity unread indicator through the shared last-seen endpoints', () => {
     const tabBar = readFileSync(join(MOBILE_DIR, 'src/components/AppTabBar.tsx'), 'utf8');
     const activityFeed = readFileSync(join(MOBILE_DIR, 'src/components/activity/JobActivityFeed.tsx'), 'utf8');
-    const activityRoute = readFileSync(join(MOBILE_DIR, 'app/(protected)/(tabs)/activity/index.tsx'), 'utf8');
+    const activityRoute = readFileSync(join(MOBILE_DIR, 'app/(protected)/equipment/(tabs)/activity/index.tsx'), 'utf8');
 
     expect(tabBar).toContain('trpc.jobActivity.getLastActivitySeen.queryOptions()');
     expect(tabBar).toContain('<UnreadActivityDot />');
@@ -31,7 +31,7 @@ describe('route layout contract', () => {
   });
 
   test('configures each explicit Stack initial route with its full registered child name', () => {
-    const planDirectory = join(MOBILE_DIR, 'app/(protected)/(tabs)/(plan)');
+    const planDirectory = join(MOBILE_DIR, 'app/(protected)/equipment/(tabs)/(plan)');
     const layout = readFileSync(join(planDirectory, '_layout.tsx'), 'utf8');
     const initialRouteName = layout.match(/initialRouteName="([^"]+)"/)?.[1];
     const childNames = listTsxFiles(planDirectory)
@@ -44,10 +44,10 @@ describe('route layout contract', () => {
 
   test('keeps access-query failures distinct from resolved permission denial', () => {
     const accessGates = [
-      'app/(protected)/(tabs)/index.tsx',
-      'app/(protected)/(tabs)/activity/_layout.tsx',
-      'app/(protected)/(tabs)/jobs/_layout.tsx',
-      'app/(protected)/(tabs)/(plan)/_layout.tsx',
+      'app/(protected)/equipment/(tabs)/index.tsx',
+      'app/(protected)/equipment/(tabs)/activity/_layout.tsx',
+      'app/(protected)/equipment/(tabs)/jobs/_layout.tsx',
+      'app/(protected)/equipment/(tabs)/(plan)/_layout.tsx',
     ];
 
     for (const file of accessGates) {
@@ -60,7 +60,7 @@ describe('route layout contract', () => {
   });
 
   test('counts only the Bays visible after Plan search and uses Plan help on Bay schedules', () => {
-    const plan = readFileSync(join(MOBILE_DIR, 'app/(protected)/(tabs)/(plan)/plan/index.tsx'), 'utf8');
+    const plan = readFileSync(join(MOBILE_DIR, 'app/(protected)/equipment/(tabs)/(plan)/plan/index.tsx'), 'utf8');
     const baySchedule = readFileSync(join(MOBILE_DIR, 'src/components/bays/BayQueueScreen.tsx'), 'utf8');
 
     expect(plan).toContain("const total = state.status === 'ready' ? bays.length : null;");

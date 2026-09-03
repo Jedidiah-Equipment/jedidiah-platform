@@ -38,7 +38,7 @@ export function DashboardQuoteIdentity({ canOpenJob, quote }: DashboardQuoteIden
         <Link
           className="block truncate font-medium text-foreground hover:underline"
           params={{ id: quote.id }}
-          to="/quotes/$id/edit"
+          to="/equipment/quotes/$id/edit"
         >
           {quote.customerCompanyName}
         </Link>
@@ -46,7 +46,7 @@ export function DashboardQuoteIdentity({ canOpenJob, quote }: DashboardQuoteIden
           <Link
             className="shrink-0 hover:text-foreground hover:underline"
             params={{ id: quote.id }}
-            to="/quotes/$id/edit"
+            to="/equipment/quotes/$id/edit"
           >
             {quote.code}
           </Link>

@@ -54,7 +54,7 @@ function MovementReferenceCell({ canReadJobs, item }: { canReadJobs: boolean; it
 
   if (reference.kind === 'purchase-order') {
     return (
-      <Link className={REFERENCE_LINK_CLASS} params={{ id: reference.id }} to="/purchase-orders/$id">
+      <Link className={REFERENCE_LINK_CLASS} params={{ id: reference.id }} to="/equipment/purchase-orders/$id">
         {reference.label}
       </Link>
     );
@@ -62,14 +62,18 @@ function MovementReferenceCell({ canReadJobs, item }: { canReadJobs: boolean; it
 
   if (reference.kind === 'job') {
     return (
-      <Link className={REFERENCE_LINK_CLASS} params={{ id: reference.id }} to="/jobs/$id">
+      <Link className={REFERENCE_LINK_CLASS} params={{ id: reference.id }} to="/equipment/jobs/$id">
         {reference.label}
       </Link>
     );
   }
 
   return (
-    <Link className={REFERENCE_LINK_CLASS} params={{ sessionId: reference.id }} to="/inventory/stocktake/$sessionId">
+    <Link
+      className={REFERENCE_LINK_CLASS}
+      params={{ sessionId: reference.id }}
+      to="/equipment/inventory/stocktake/$sessionId"
+    >
       {reference.label}
     </Link>
   );

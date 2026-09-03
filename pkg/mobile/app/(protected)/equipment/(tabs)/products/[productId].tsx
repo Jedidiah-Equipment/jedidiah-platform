@@ -15,7 +15,7 @@ export default function ProductDetailRoute() {
   const router = useRouter();
   const trpc = useTRPC();
   const query = useQuery(trpc.products.get.queryOptions({ id: productId }));
-  const handleBack = () => router.dismissTo('/products');
+  const handleBack = () => router.dismissTo('/equipment/products');
 
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top', 'left', 'right']}>

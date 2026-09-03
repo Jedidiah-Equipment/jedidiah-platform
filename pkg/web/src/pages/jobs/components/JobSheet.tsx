@@ -329,7 +329,11 @@ const ImmutableJobRows: React.FC<{ canOpenQuote: boolean; job: JobDetail; onOpen
         <InfoRow
           label="Product serial"
           value={
-            <Link className="underline-offset-4 hover:underline" params={{ id: job.productUnit.id }} to="/units/$id">
+            <Link
+              className="underline-offset-4 hover:underline"
+              params={{ id: job.productUnit.id }}
+              to="/equipment/units/$id"
+            >
               {job.productUnit.productSerialNumber}
             </Link>
           }

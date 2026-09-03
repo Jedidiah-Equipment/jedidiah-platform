@@ -1,7 +1,7 @@
 import { DateOnlyIso } from '@pkg/schema';
 import { describe, expect, it, vi } from 'vitest';
 
-import { formatDate, toPlantDateOnly } from '../formatting/date.js';
+import { formatDate, toPlantDateOnly } from '../../formatting/date.js';
 import { resolveInsertAtDatePlacement } from './job-slot-insert-at-date.js';
 import { projectJobSlots } from './job-slot-projection.js';
 

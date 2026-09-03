@@ -1,6 +1,6 @@
 import type { DateOnlyIso } from '@pkg/schema';
 
-import { diffDateOnlyDays } from '../formatting/date-only.js';
+import { diffDateOnlyDays } from '../../formatting/date-only.js';
 
 /**
  * How long a completed Job may sit uncleared before its commitment reads as stale (spec §3). The

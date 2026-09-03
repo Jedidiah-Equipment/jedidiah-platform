@@ -41,11 +41,10 @@ import {
   type UUID,
 } from '@pkg/schema';
 import { and, asc, desc, eq, gt, inArray, isNull, lt } from 'drizzle-orm';
-
+import type { StorageAdapter } from '../../storage/storage-adapter.js';
 import { recordAuditCreate, recordAuditDelete, recordAuditEvent } from '../audit/audit-service.js';
 import { mutateEntity } from '../audit/mutate-entity.js';
 import { documentBaseSelect } from '../documents/document-service.js';
-import type { StorageAdapter } from '../documents/storage-adapter.js';
 import { listAssemblies } from '../products/product-assembly-service.js';
 import { snapshotJobBrochureDocument } from '../products/product-brochure-document.js';
 import { getProductCostEstimate } from '../products/product-cost-estimate-service.js';

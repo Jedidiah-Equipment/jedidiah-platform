@@ -1,6 +1,6 @@
 import type { DateOnlyIso } from '@pkg/schema';
 
-import { addDateOnlyDays } from '../formatting/date-only.js';
+import { addDateOnlyDays } from '../../formatting/date-only.js';
 import {
   firstWorkingDayOnOrAfter,
   isWorkingDay,

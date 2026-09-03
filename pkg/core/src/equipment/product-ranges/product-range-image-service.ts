@@ -4,10 +4,9 @@ import { type Db, notRemoved, productRanges } from '@pkg/db';
 import { RANGE_IMAGE_POLICY, RANGE_LOGO_POLICY } from '@pkg/domain';
 import type { ProductRange, UUID } from '@pkg/schema';
 import { and, eq } from 'drizzle-orm';
-
-import type { StorageAdapter, StoredObject } from '../documents/storage-adapter.js';
-import { FileNotFoundError } from '../files/file-errors.js';
-import { fileExtensionFor, replaceFile } from '../files/stored-file-service.js';
+import { FileNotFoundError } from '../../files/file-errors.js';
+import { fileExtensionFor, replaceFile } from '../../files/stored-file-service.js';
+import type { StorageAdapter, StoredObject } from '../../storage/storage-adapter.js';
 import { ProductRangeNotFoundError } from './product-range-errors.js';
 import { getProductRange } from './product-range-service.js';
 

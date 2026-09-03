@@ -4,17 +4,16 @@ import { type Db, notRemoved, products, type StoredFile } from '@pkg/db';
 import { PRODUCT_IMAGE_POLICY } from '@pkg/domain';
 import type { AuthId, Product, ProductImageSlot, UUID } from '@pkg/schema';
 import { and, eq } from 'drizzle-orm';
-
-import { recordAuditEvent } from '../audit/audit-service.js';
+import { FileNotFoundError } from '../../files/file-errors.js';
+import { fileExtensionFor, replaceFile } from '../../files/stored-file-service.js';
+import { type ImageCacheOptions, readOptimizedImage } from '../../media/image-cache.js';
 import {
   readStoredObject,
   type StorageAdapter,
   type StoredObject,
   storedObjectFromBytes,
-} from '../documents/storage-adapter.js';
-import { FileNotFoundError } from '../files/file-errors.js';
-import { fileExtensionFor, replaceFile } from '../files/stored-file-service.js';
-import { type ImageCacheOptions, readOptimizedImage } from '../media/image-cache.js';
+} from '../../storage/storage-adapter.js';
+import { recordAuditEvent } from '../audit/audit-service.js';
 import { ProductNotFoundError } from './product-errors.js';
 import { getProduct, productAuditDescriptor } from './product-service.js';
 

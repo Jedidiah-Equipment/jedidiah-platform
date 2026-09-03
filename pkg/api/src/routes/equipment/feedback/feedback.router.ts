@@ -19,8 +19,8 @@ import {
   JobFeedbackUpdateInput,
 } from '@pkg/schema';
 
-import { type CoreErrorMapping, mapKnownCoreError } from '../../trpc/errors.js';
-import { authorizedProcedure, protectedProcedure, router } from '../../trpc/init.js';
+import { type CoreErrorMapping, mapKnownCoreError } from '../../../trpc/errors.js';
+import { authorizedProcedure, protectedProcedure, router } from '../../../trpc/init.js';
 
 export const feedbackRouter = router({
   // No `feedback:create` permission: any authenticated caller may submit.

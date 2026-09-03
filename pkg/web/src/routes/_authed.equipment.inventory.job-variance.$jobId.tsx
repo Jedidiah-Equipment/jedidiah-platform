@@ -3,7 +3,7 @@ import { createFileRoute } from '@tanstack/react-router';
 
 import { JobVarianceReportPage } from '@/pages/inventory/job-variance/JobVarianceReportPage.js';
 
-export const Route = createFileRoute('/_authed/inventory/job-variance/$jobId')({
+export const Route = createFileRoute('/_authed/equipment/inventory/job-variance/$jobId')({
   params: {
     parse: (params) => ({ jobId: UUID.parse(params.jobId) }),
     stringify: (params) => ({ jobId: params.jobId }),

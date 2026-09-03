@@ -3,7 +3,7 @@ import { createFileRoute } from '@tanstack/react-router';
 
 import { SupplierEditPage } from '@/pages/suppliers/SupplierEditPage.js';
 
-export const Route = createFileRoute('/_authed/suppliers/$id/edit')({
+export const Route = createFileRoute('/_authed/equipment/suppliers/$id/edit')({
   params: {
     parse: (params) => ({
       id: UUID.parse(params.id),

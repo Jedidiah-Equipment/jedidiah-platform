@@ -20,9 +20,8 @@ import type {
 } from '@pkg/schema';
 import { PurchaseOrderAmendmentListResult as PurchaseOrderAmendmentListResultSchema } from '@pkg/schema';
 import { aliasedTable, and, asc, eq } from 'drizzle-orm';
-
+import type { StorageAdapter } from '../../storage/storage-adapter.js';
 import { diffAuditUpdate, recordAuditUpdate } from '../audit/audit-service.js';
-import type { StorageAdapter } from '../documents/storage-adapter.js';
 import {
   assertPurchaseOrderAction,
   PurchaseOrderAmendmentBelowReceivedError,

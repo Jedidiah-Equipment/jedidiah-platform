@@ -1,5 +1,5 @@
 import type { AppEnv } from '@pkg/schema';
-import { isRemoteAppEnv } from '../environment.js';
+import { isRemoteAppEnv } from '../../environment.js';
 
 /**
  * The docs path each app area sends its Help affordance to, keyed by topic.

@@ -29,7 +29,7 @@ export default function StoresPartRoute() {
   if (part.isPending) {
     return (
       <StoresScreen
-        onBack={() => router.dismissTo('/stores')}
+        onBack={() => router.dismissTo('/equipment/stores')}
         parentLabel="Stores"
         subtitle={partCode}
         title={partCode}
@@ -44,7 +44,7 @@ export default function StoresPartRoute() {
   if (part.isError) {
     return (
       <StoresScreen
-        onBack={() => router.dismissTo('/stores')}
+        onBack={() => router.dismissTo('/equipment/stores')}
         parentLabel="Stores"
         subtitle={partCode}
         title={partCode}
@@ -62,7 +62,7 @@ export default function StoresPartRoute() {
 
   return (
     <StoresScreen
-      onBack={() => router.dismissTo('/stores')}
+      onBack={() => router.dismissTo('/equipment/stores')}
       parentLabel="Stores"
       subtitle={row.partCode}
       title={row.partName}
@@ -127,28 +127,32 @@ export default function StoresPartRoute() {
           caption="Draw this Part from stock against a Job"
           disabled={actor === null || !actions.checkout.allowed}
           icon={IconWheel}
-          onPress={() => router.push({ params: { partCode }, pathname: '/stores/parts/[partCode]/checkout' })}
+          onPress={() => router.push({ params: { partCode }, pathname: '/equipment/stores/parts/[partCode]/checkout' })}
           title="Check out to a Job"
         />
         <ActionTile
           caption="Put leftovers back on the rack"
           disabled={actor === null || !actions.returnToStore.allowed}
           icon={IconArrowBackUp}
-          onPress={() => router.push({ params: { partCode }, pathname: '/stores/parts/[partCode]/return-to-store' })}
+          onPress={() =>
+            router.push({ params: { partCode }, pathname: '/equipment/stores/parts/[partCode]/return-to-store' })
+          }
           title="Return to store"
         />
         <ActionTile
           caption="Sign for a delivery against its Purchase Order"
           disabled={actor === null || !actions.receive.allowed}
           icon={IconArrowDownToArc}
-          onPress={() => router.push({ params: { partCode }, pathname: '/stores/parts/[partCode]/receive' })}
+          onPress={() => router.push({ params: { partCode }, pathname: '/equipment/stores/parts/[partCode]/receive' })}
           title="Receive against an order"
         />
         <ActionTile
           caption="Send stock back off a Purchase Order line"
           disabled={actor === null || !actions.returnToSupplier.allowed}
           icon={IconTruckReturn}
-          onPress={() => router.push({ params: { partCode }, pathname: '/stores/parts/[partCode]/return-to-supplier' })}
+          onPress={() =>
+            router.push({ params: { partCode }, pathname: '/equipment/stores/parts/[partCode]/return-to-supplier' })
+          }
           title="Return to Supplier"
         />
       </View>

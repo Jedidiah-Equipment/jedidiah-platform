@@ -37,7 +37,7 @@ export const LoginPage: React.FC = () => {
         }
 
         clearQueryCache();
-        await navigate({ to: '/dashboard' });
+        await navigate({ to: '/equipment/dashboard' });
       } catch {
         setError('Unable to sign in.');
       }

@@ -28,8 +28,8 @@ import {
 } from '@pkg/schema';
 import { z } from 'zod';
 
-import { type CoreErrorMapping, mapKnownCoreError } from '../../trpc/errors.js';
-import { authorizedProcedure, fullyAuthorizedProcedure, router } from '../../trpc/init.js';
+import { type CoreErrorMapping, mapKnownCoreError } from '../../../trpc/errors.js';
+import { authorizedProcedure, fullyAuthorizedProcedure, router } from '../../../trpc/init.js';
 
 export const productUnitsRouter = router({
   list: authorizedProcedure('product_unit:read')

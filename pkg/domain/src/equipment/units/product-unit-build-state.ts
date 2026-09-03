@@ -1,6 +1,6 @@
 import type { ProductUnitBuildState, ProductUnitDisplayBuildState, ProductUnitOwner } from '@pkg/schema';
 
-import type { BadgeColorClassNames } from '../theme/status-badge.js';
+import type { BadgeColorClassNames } from '../../theme/status-badge.js';
 
 /**
  * How a Unit's build reads to a person: Complete is On Hand plus an Owner. The machine has no third

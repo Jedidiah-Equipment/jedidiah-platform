@@ -13,9 +13,9 @@ import { z } from 'zod';
 
 import { getApiConfig } from '@/env.js';
 
-import { createAuth } from '../../auth/auth.js';
-import { type CoreErrorMapping, mapKnownCoreError } from '../../trpc/errors.js';
-import { authorizedProcedure, router } from '../../trpc/init.js';
+import { createAuth } from '../../../auth/auth.js';
+import { type CoreErrorMapping, mapKnownCoreError } from '../../../trpc/errors.js';
+import { authorizedProcedure, router } from '../../../trpc/init.js';
 
 const config = getApiConfig();
 

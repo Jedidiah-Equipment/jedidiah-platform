@@ -24,8 +24,8 @@ import {
 } from '@pkg/schema';
 import { z } from 'zod';
 
-import { type CoreErrorMapping, mapKnownCoreError } from '../../trpc/errors.js';
-import { authorizedProcedure, router } from '../../trpc/init.js';
+import { type CoreErrorMapping, mapKnownCoreError } from '../../../trpc/errors.js';
+import { authorizedProcedure, router } from '../../../trpc/init.js';
 
 export const productRangesRouter = router({
   list: authorizedProcedure('product_range:read').query(({ ctx }) => listProductRanges({ db: ctx.db })),

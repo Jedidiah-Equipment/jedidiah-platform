@@ -10,7 +10,7 @@ export default function JobDetailRoute() {
 
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top', 'left', 'right']}>
-      <JobDetail jobId={jobId} onBack={() => router.dismissTo('/jobs' as Href)} />
+      <JobDetail jobId={jobId} onBack={() => router.dismissTo('/equipment/jobs' as Href)} />
     </SafeAreaView>
   );
 }

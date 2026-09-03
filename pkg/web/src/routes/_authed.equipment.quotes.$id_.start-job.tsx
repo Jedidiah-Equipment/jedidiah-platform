@@ -3,7 +3,7 @@ import { createFileRoute } from '@tanstack/react-router';
 
 import { StartJobPage } from '@/pages/quotes/StartJobPage.js';
 
-export const Route = createFileRoute('/_authed/quotes/$id_/start-job')({
+export const Route = createFileRoute('/_authed/equipment/quotes/$id_/start-job')({
   params: {
     parse: (params) => ({
       id: UUID.parse(params.id),

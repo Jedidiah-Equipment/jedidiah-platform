@@ -12,7 +12,7 @@ import { type TestAPI, type TestContext, test as testBase } from 'vitest';
 
 import { type Auth, createAuth } from '@/auth/auth.js';
 import { parseBetterAuthRole } from '@/auth/session.js';
-import type { TranslationMarker } from '@/catalog-translations/translation-scheduler.js';
+import type { TranslationMarker } from '@/equipment/catalog-translations/translation-scheduler.js';
 import type { ChangelogLoader, Context } from '@/trpc/context.js';
 import { type AppRouter, createAppRouterCaller } from '@/trpc/router.js';
 

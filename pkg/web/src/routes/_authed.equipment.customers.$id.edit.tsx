@@ -4,7 +4,7 @@ import { z } from 'zod';
 
 import { CustomerEditPage } from '@/pages/customers/CustomerEditPage.js';
 
-export const Route = createFileRoute('/_authed/customers/$id/edit')({
+export const Route = createFileRoute('/_authed/equipment/customers/$id/edit')({
   params: {
     parse: (params) => z.object({ id: UUID }).parse(params),
   },

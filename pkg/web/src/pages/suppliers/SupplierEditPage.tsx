@@ -133,7 +133,7 @@ const RemoveSupplierButton: React.FC<{ supplier: Supplier }> = ({ supplier }) =>
     trpc.suppliers.remove.mutationOptions({
       onSuccess: async () => {
         await invalidateSuppliers();
-        await navigate({ to: '/suppliers' });
+        await navigate({ to: '/equipment/suppliers' });
       },
       onError: (error) => {
         showMutationError(error, 'Unable to remove supplier.');

@@ -31,7 +31,7 @@ export default function StoresStocktakeRoute() {
       onError: (error) => toast('error', error.message),
       onSuccess: async (session) => {
         await invalidateQueryCache(queryClient);
-        router.push({ params: { sessionId: session.id }, pathname: '/stores/stocktake/[sessionId]' });
+        router.push({ params: { sessionId: session.id }, pathname: '/equipment/stores/stocktake/[sessionId]' });
       },
     }),
   );
@@ -39,7 +39,7 @@ export default function StoresStocktakeRoute() {
   return (
     <StoresScreen
       helpTopic="inventoryStocktake"
-      onBack={() => router.dismissTo('/stores')}
+      onBack={() => router.dismissTo('/equipment/stores')}
       parentLabel="Stores"
       subtitle="COUNT THE SHELF"
       title="Stocktake"
@@ -62,7 +62,7 @@ export default function StoresStocktakeRoute() {
                 openSession.mutate({ actorUserId, scope });
               }}
               onResume={(sessionId) =>
-                router.push({ params: { sessionId }, pathname: '/stores/stocktake/[sessionId]' })
+                router.push({ params: { sessionId }, pathname: '/equipment/stores/stocktake/[sessionId]' })
               }
               openSession={sessions.data.items.find((item) => item.scope === scope && item.closedAt === null) ?? null}
               overdue={overdue.data?.items.find((item) => item.scope === scope) ?? null}

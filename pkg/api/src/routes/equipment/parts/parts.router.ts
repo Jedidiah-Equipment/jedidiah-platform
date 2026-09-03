@@ -24,8 +24,8 @@ import {
 } from '@pkg/schema';
 import { z } from 'zod';
 
-import { mapCoreErrors } from '../../trpc/errors.js';
-import { authorizedProcedure, router } from '../../trpc/init.js';
+import { mapCoreErrors } from '../../../trpc/errors.js';
+import { authorizedProcedure, router } from '../../../trpc/init.js';
 import { partBomErrorFamily, partCoreErrorFamily } from './part-error-families.js';
 
 export const partsRouter = router({

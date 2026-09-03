@@ -4,7 +4,7 @@ import { z } from 'zod';
 
 import { JobActivityPage } from '@/pages/jobs/JobActivityPage.js';
 
-export const Route = createFileRoute('/_authed/jobs/activity')({
+export const Route = createFileRoute('/_authed/equipment/jobs/activity')({
   validateSearch: z.object({ job: UUID.optional() }),
   staticData: {
     pageLabel: 'Job Activity',

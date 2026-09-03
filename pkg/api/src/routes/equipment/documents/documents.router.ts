@@ -20,8 +20,8 @@ import {
   ProductDocumentInput,
 } from '@pkg/schema';
 
-import { assertNever, type CoreErrorMapping, mapKnownCoreError } from '../../trpc/errors.js';
-import { authorizedProcedure, router } from '../../trpc/init.js';
+import { assertNever, type CoreErrorMapping, mapKnownCoreError } from '../../../trpc/errors.js';
+import { authorizedProcedure, router } from '../../../trpc/init.js';
 
 export const documentsRouter = router({
   listByProduct: authorizedProcedure('product:read')

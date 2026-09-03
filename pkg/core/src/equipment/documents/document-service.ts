@@ -3,19 +3,18 @@ import { getDocumentPolicy, sniffDocumentContentType, validateDocumentPolicy } f
 import type { AuthId, DocumentOwnerType, DocumentSummary, UUID } from '@pkg/schema';
 import { DocumentSummary as DocumentSummarySchema } from '@pkg/schema';
 import { eq } from 'drizzle-orm';
-
+import {
+  readStoredObject,
+  type StorageAdapter,
+  StorageKeyAlreadyExistsError,
+  type StoredObject,
+} from '../../storage/storage-adapter.js';
 import { defineAuditDescriptor, recordAuditCreate, recordAuditDelete } from '../audit/audit-service.js';
 import {
   DocumentNotFoundError,
   DocumentPolicyViolationError,
   DocumentStorageConflictError,
 } from './document-errors.js';
-import {
-  readStoredObject,
-  type StorageAdapter,
-  StorageKeyAlreadyExistsError,
-  type StoredObject,
-} from './storage-adapter.js';
 
 type DocumentRow = typeof documents.$inferSelect;
 export type DocumentDb = Db | DatabaseTransaction;

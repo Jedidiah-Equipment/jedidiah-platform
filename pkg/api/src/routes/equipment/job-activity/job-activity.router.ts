@@ -1,7 +1,7 @@
 import { getLastActivitySeen, listJobActivity, setLastActivitySeen } from '@pkg/core';
 import { JobActivityListInput, JobActivitySeenInput } from '@pkg/schema';
 
-import { authorizedProcedure, router } from '../../trpc/init.js';
+import { authorizedProcedure, router } from '../../../trpc/init.js';
 
 export const jobActivityRouter = router({
   getLastActivitySeen: authorizedProcedure('job:read').query(({ ctx }) =>

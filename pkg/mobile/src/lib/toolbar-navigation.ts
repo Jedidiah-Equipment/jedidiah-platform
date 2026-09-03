@@ -1,13 +1,13 @@
 import type { Href } from 'expo-router';
 
 export const MAIN_TAB_PARENTS = {
-  activity: { href: '/activity', label: 'Activity' },
-  jobs: { href: '/jobs', label: 'Jobs' },
-  plan: { href: '/plan', label: 'Plan' },
-  products: { href: '/products', label: 'Products' },
-  quotes: { href: '/quotes', label: 'Quotes' },
-  stores: { href: '/stores', label: 'Stores' },
-  units: { href: '/units', label: 'Units' },
+  activity: { href: '/equipment/activity', label: 'Activity' },
+  jobs: { href: '/equipment/jobs', label: 'Jobs' },
+  plan: { href: '/equipment/plan', label: 'Plan' },
+  products: { href: '/equipment/products', label: 'Products' },
+  quotes: { href: '/equipment/quotes', label: 'Quotes' },
+  stores: { href: '/equipment/stores', label: 'Stores' },
+  units: { href: '/equipment/units', label: 'Units' },
 } as const;
 
 export type MainTabParent = (typeof MAIN_TAB_PARENTS)[keyof typeof MAIN_TAB_PARENTS];
@@ -42,7 +42,7 @@ export function resolveDocumentParent({
       id: productId,
       kind: 'product',
       parentLabel: 'Product',
-      returnTo: { pathname: '/products/[productId]', params: { productId } },
+      returnTo: { pathname: '/equipment/products/[productId]', params: { productId } },
     };
   }
   if (jobId) {
@@ -50,7 +50,7 @@ export function resolveDocumentParent({
       id: jobId,
       kind: 'job',
       parentLabel: 'Job',
-      returnTo: { pathname: '/jobs/[jobId]', params: { jobId } },
+      returnTo: { pathname: '/equipment/jobs/[jobId]', params: { jobId } },
     };
   }
   if (quoteId) {
@@ -58,7 +58,7 @@ export function resolveDocumentParent({
       id: quoteId,
       kind: 'quote',
       parentLabel: 'Quote',
-      returnTo: { pathname: '/quotes/[quoteId]', params: { quoteId } },
+      returnTo: { pathname: '/equipment/quotes/[quoteId]', params: { quoteId } },
     };
   }
   return null;
@@ -71,10 +71,10 @@ export function resolveStoresMovementParent({ jobId, partCode }: { jobId?: strin
   return jobId
     ? {
         label: 'Close-out Job',
-        returnTo: { pathname: '/stores/close-out/[jobId]', params: { jobId } },
+        returnTo: { pathname: '/equipment/stores/close-out/[jobId]', params: { jobId } },
       }
     : {
         label: 'Part',
-        returnTo: { pathname: '/stores/parts/[partCode]', params: { partCode } },
+        returnTo: { pathname: '/equipment/stores/parts/[partCode]', params: { partCode } },
       };
 }

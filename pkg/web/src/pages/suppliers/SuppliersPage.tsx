@@ -39,7 +39,7 @@ export const SuppliersPage: React.FC = () => {
         <SupplierTable
           onEditSupplier={
             canUpdateSupplier
-              ? (supplier) => navigate({ to: '/suppliers/$id/edit', params: { id: supplier.id } })
+              ? (supplier) => navigate({ to: '/equipment/suppliers/$id/edit', params: { id: supplier.id } })
               : undefined
           }
         />

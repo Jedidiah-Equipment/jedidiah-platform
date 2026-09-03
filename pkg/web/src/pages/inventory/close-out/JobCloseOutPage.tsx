@@ -69,7 +69,7 @@ export function JobCloseOutPage({ jobId }: { jobId: UUID }) {
         <div className="flex flex-wrap gap-2">
           {/* Close-out is when planned-against-drawn gets read, so the report is one hop from here —
               and on an inventory route, which the price-blind storeman working this page can reach. */}
-          <Button render={<Link params={{ jobId }} to="/inventory/job-variance/$jobId" />} variant="outline">
+          <Button render={<Link params={{ jobId }} to="/equipment/inventory/job-variance/$jobId" />} variant="outline">
             <IconChartBar data-icon="inline-start" />
             Material variance
           </Button>

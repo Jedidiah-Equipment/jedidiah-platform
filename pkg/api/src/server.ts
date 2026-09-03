@@ -8,24 +8,24 @@ import { type FastifyTRPCPluginOptions, fastifyTRPCPlugin } from '@trpc/server/a
 import Fastify, { type FastifyBaseLogger } from 'fastify';
 
 import { registerAuthHandler } from './auth/handler.js';
-import { createCatalogTranslationRunner } from './catalog-translations/catalog-translation-runner.js';
-import { TranslationScheduler } from './catalog-translations/translation-scheduler.js';
 import { type ApiConfig, getApiConfig } from './env.js';
+import { createCatalogTranslationRunner } from './equipment/catalog-translations/catalog-translation-runner.js';
+import { TranslationScheduler } from './equipment/catalog-translations/translation-scheduler.js';
+import { JobCompletionSweeper } from './equipment/jobs/job-completion-sweeper.js';
 import { registerHealthRoutes } from './health.js';
-import { JobCompletionSweeper } from './jobs/job-completion-sweeper.js';
 import { log } from './logger.js';
 import { createObservability, type Observability } from './observability.js';
-import { registerAiChatRoute } from './routes/ai/ai-chat.route.js';
 import { createFileChangelogLoader } from './routes/changelog/changelog-loader.js';
-import { registerDocumentHttpRoutes } from './routes/documents/document-http.route.js';
-import { registerEntityFileRoutes } from './routes/files/entity-file-http.route.js';
-import { registerPartLabelHttpRoutes } from './routes/parts/part-label-http.route.js';
+import { registerAiChatRoute } from './routes/equipment/ai/ai-chat.route.js';
+import { registerDocumentHttpRoutes } from './routes/equipment/documents/document-http.route.js';
+import { registerEntityFileRoutes } from './routes/equipment/files/entity-file-http.route.js';
+import { registerPartLabelHttpRoutes } from './routes/equipment/parts/part-label-http.route.js';
 import {
   createProductRangeImageRouteConfig,
   createProductRangeLogoRouteConfig,
-} from './routes/product-ranges/product-range-image-routes.js';
-import { createProductImageRouteConfig } from './routes/products/product-image-routes.js';
-import { registerUserBadgeHttpRoutes } from './routes/users/user-badge-http.route.js';
+} from './routes/equipment/product-ranges/product-range-image-routes.js';
+import { createProductImageRouteConfig } from './routes/equipment/products/product-image-routes.js';
+import { registerUserBadgeHttpRoutes } from './routes/equipment/users/user-badge-http.route.js';
 import { createDocumentStorageAdapter } from './storage/s3-storage-adapter.js';
 import { createContextFactory } from './trpc/context.js';
 import { serializeError, shouldLogTRPCError } from './trpc/errors.js';

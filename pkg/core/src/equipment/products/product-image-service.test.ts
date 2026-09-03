@@ -3,7 +3,7 @@ import { PRODUCT_IMAGE_MAX_BYTES } from '@pkg/schema';
 import { eq } from 'drizzle-orm';
 import { describe, expect } from 'vitest';
 
-import { FileNotFoundError, FilePolicyViolationError } from '../files/file-errors.js';
+import { FileNotFoundError, FilePolicyViolationError } from '../../files/file-errors.js';
 import { createTester } from '../test/create-tester.js';
 import { InMemoryStorageAdapter } from '../test/in-memory-storage-adapter.js';
 import { createProductRangeFixture } from '../test/product-range-fixtures.js';

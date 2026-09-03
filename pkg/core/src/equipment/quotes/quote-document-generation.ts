@@ -32,7 +32,7 @@ import {
 } from '@pkg/schema';
 import { asc, eq } from 'drizzle-orm';
 
-import type { StorageAdapter } from '../documents/storage-adapter.js';
+import type { StorageAdapter } from '../../storage/storage-adapter.js';
 import { listAssemblies } from '../products/product-assembly-service.js';
 import { generateHistoricalProductBrochureIfComplete } from '../products/product-brochure-document.js';
 import { createQuoteDocument, getQuoteDocuments } from './quote-document.js';

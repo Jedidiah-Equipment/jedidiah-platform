@@ -96,7 +96,11 @@ const BuildBreakdownCard: React.FC<{ builds: Build[]; department: WorkItemDepart
     () => [
       {
         cell: ({ row }) => (
-          <Link className="underline-offset-4 hover:underline" search={{ job: row.original.jobId }} to="/jobs">
+          <Link
+            className="underline-offset-4 hover:underline"
+            search={{ job: row.original.jobId }}
+            to="/equipment/jobs"
+          >
             {formatJobCode(row.original.jobCode)}
           </Link>
         ),

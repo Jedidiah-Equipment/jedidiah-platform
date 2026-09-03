@@ -309,7 +309,7 @@ const ActivityRow: React.FC<{
           aria-label={`Open ${formatJobLabel(item.job)}`}
           className="absolute inset-0 rounded-lg focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
           search={{ job: item.job.id }}
-          to="/jobs/activity"
+          to="/equipment/jobs/activity"
         />
       ) : null}
     </div>
@@ -328,7 +328,7 @@ const GanttButton: React.FC<{ job: JobActivityItem['job'] }> = ({ job }) => (
   <Button
     aria-label={`Open ${formatJobLabel(job)} on the Gantt`}
     className="relative z-10 shrink-0"
-    render={<Link search={{ job: job.id }} to="/jobs" />}
+    render={<Link search={{ job: job.id }} to="/equipment/jobs" />}
     size="icon"
     variant="ghost"
   >

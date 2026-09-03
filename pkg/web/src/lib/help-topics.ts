@@ -6,22 +6,22 @@ import type { HelpTopic } from '@pkg/domain';
  * wins, so a route nested under another area (`/inventory/close-out`) beats the area it sits in.
  */
 const TOPIC_ROUTES: ReadonlyArray<readonly [prefix: string, topic: HelpTopic]> = [
-  ['/bays', 'bays'],
-  ['/customers', 'customers'],
-  ['/inventory', 'inventory'],
-  ['/inventory/buy-list', 'inventoryBuyList'],
-  ['/inventory/close-out', 'inventoryCloseOut'],
-  ['/inventory/job-variance', 'inventoryJobVariance'],
-  ['/inventory/price-variance', 'inventoryPriceVariance'],
-  ['/inventory/stocktake', 'inventoryStocktake'],
-  ['/jobs', 'jobs'],
-  ['/jobs/activity', 'jobActivity'],
-  ['/parts', 'parts'],
-  ['/products', 'products'],
-  ['/purchase-orders', 'purchaseOrders'],
-  ['/quotes', 'quotes'],
-  ['/suppliers', 'suppliers'],
-  ['/units', 'units'],
+  ['/equipment/bays', 'bays'],
+  ['/equipment/customers', 'customers'],
+  ['/equipment/inventory', 'inventory'],
+  ['/equipment/inventory/buy-list', 'inventoryBuyList'],
+  ['/equipment/inventory/close-out', 'inventoryCloseOut'],
+  ['/equipment/inventory/job-variance', 'inventoryJobVariance'],
+  ['/equipment/inventory/price-variance', 'inventoryPriceVariance'],
+  ['/equipment/inventory/stocktake', 'inventoryStocktake'],
+  ['/equipment/jobs', 'jobs'],
+  ['/equipment/jobs/activity', 'jobActivity'],
+  ['/equipment/parts', 'parts'],
+  ['/equipment/products', 'products'],
+  ['/equipment/purchase-orders', 'purchaseOrders'],
+  ['/equipment/quotes', 'quotes'],
+  ['/equipment/suppliers', 'suppliers'],
+  ['/equipment/units', 'units'],
 ];
 
 const byLongestPrefix = [...TOPIC_ROUTES].sort(([a], [b]) => b.length - a.length);

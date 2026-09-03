@@ -1,6 +1,6 @@
 import type { DateOnlyIso } from '@pkg/schema';
 
-import { addDateOnlyDays, maxDateOnly } from '../formatting/date-only.js';
+import { addDateOnlyDays, maxDateOnly } from '../../formatting/date-only.js';
 import { type ProjectableJobSlot, type ProjectedSlot, projectJobSlots } from './job-slot-projection.js';
 import { countWorkingDaysBetween, firstWorkingDayOnOrAfter, type WorkingCalendar } from './working-calendar.js';
 

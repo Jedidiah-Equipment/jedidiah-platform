@@ -1,7 +1,7 @@
 import { UUID } from '@pkg/schema';
 import { createFileRoute, redirect } from '@tanstack/react-router';
 
-export const Route = createFileRoute('/_authed/jobs/$id')({
+export const Route = createFileRoute('/_authed/equipment/jobs/$id')({
   params: {
     parse: (params) => ({
       id: UUID.parse(params.id),
@@ -15,6 +15,6 @@ export const Route = createFileRoute('/_authed/jobs/$id')({
   },
   beforeLoad: ({ params }) => {
     // The standalone job detail page was dropped; jobs now open in the aside on the jobs list.
-    throw redirect({ search: { job: params.id }, to: '/jobs' });
+    throw redirect({ search: { job: params.id }, to: '/equipment/jobs' });
   },
 });

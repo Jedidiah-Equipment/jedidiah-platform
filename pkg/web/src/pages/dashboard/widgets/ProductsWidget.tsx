@@ -67,7 +67,7 @@ function ProductRow({ canUpdateProduct, product }: { canUpdateProduct: boolean; 
   }
 
   return (
-    <Link className={className} params={{ id: product.id }} to="/products/$id/edit">
+    <Link className={className} params={{ id: product.id }} to="/equipment/products/$id/edit">
       {content}
     </Link>
   );

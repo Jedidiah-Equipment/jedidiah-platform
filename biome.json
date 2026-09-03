@@ -73,6 +73,64 @@
   },
   "overrides": [
     {
+      "includes": [
+        "pkg/core/src/equipment/**",
+        "pkg/api/src/equipment/**",
+        "pkg/api/src/routes/equipment/**",
+        "pkg/domain/src/equipment/**",
+        "pkg/web/src/equipment/**",
+        "pkg/web/src/routes/_authed.equipment*",
+        "pkg/mobile/app/**/equipment/**",
+        "pkg/mobile/src/equipment/**"
+      ],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "patterns": [
+                  {
+                    "group": ["contracting/**", "**/contracting/**"],
+                    "message": "Business namespaces may import shared code, never each other."
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": [
+        "pkg/core/src/contracting/**",
+        "pkg/api/src/contracting/**",
+        "pkg/api/src/routes/contracting/**",
+        "pkg/domain/src/contracting/**",
+        "pkg/web/src/contracting/**",
+        "pkg/web/src/routes/_authed.contracting*",
+        "pkg/mobile/app/**/contracting/**",
+        "pkg/mobile/src/contracting/**"
+      ],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "patterns": [
+                  {
+                    "group": ["equipment/**", "**/equipment/**"],
+                    "message": "Business namespaces may import shared code, never each other."
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
       "includes": ["pkg/lander/src/**/*.test.ts"],
       "linter": {
         "rules": {

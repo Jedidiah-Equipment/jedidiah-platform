@@ -15,7 +15,7 @@ export default function UnitDetailRoute() {
   const router = useRouter();
   const trpc = useTRPC();
   const query = useQuery(trpc.productUnits.get.queryOptions({ id: unitId }));
-  const handleBack = () => router.dismissTo('/units');
+  const handleBack = () => router.dismissTo('/equipment/units');
 
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top', 'left', 'right']}>

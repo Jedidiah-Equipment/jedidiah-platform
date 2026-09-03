@@ -6,6 +6,6 @@
 - Export feature-specific errors and type guards beside the behavior that raises them.
 - Name a partial update `patchXxxx` (paired with a `XxxxPatchInput` schema). A patch reads the current row under the same `.for('update')` lock as the write and merges only the provided fields — `undefined` keeps the current value, an explicit `null` clears a nullable field. Use it instead of a caller-side get-then-merge, which reads outside the lock and can revert a concurrent edit to an omitted field. Reserve `updateXxxx` for full-replacement writes. See `patchQuote` / `patchCustomer`.
 
-- Write an audited update through `mutateEntity` (`src/audit/mutate-entity.ts`), which owns the transaction, the row lock, the skip-on-no-change branch, and the audit event. Hand-roll `diffAuditUpdate` + `recordAuditUpdate` only when real logic must run between the diff and the write; that module's doc names the paths that do.
+- Write an audited update through `mutateEntity` (`src/equipment/audit/mutate-entity.ts`), which owns the transaction, the row lock, the skip-on-no-change branch, and the audit event. Hand-roll `diffAuditUpdate` + `recordAuditUpdate` only when real logic must run between the diff and the write; that module's doc names the paths that do.
 
-Canonical examples: `src/products/product-service.ts`, `src/products/product-errors.ts`, `src/auth/authorization.ts`.
+Canonical examples: `src/equipment/products/product-service.ts`, `src/equipment/products/product-errors.ts`, `src/auth/authorization.ts`.

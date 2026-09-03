@@ -6,3 +6,6 @@
 # Move frontend Equipment feature implementations into their namespace folders.
 d9083f4c18adb5fde23f5d996043c8031d832043
 c76c3c0256e1b3af48e8249e6fe45049fb0cef6b
+
+# Move Equipment database definitions into their named PostgreSQL schema.
+fd3f7ad45f91594f8650aaae2446f844a143aba5

@@ -1,13 +1,13 @@
 import { getTableUniqueName, is, Table } from 'drizzle-orm';
 import { describe, expect, it } from 'vitest';
 
-import { schema } from './schema.js';
+import * as schemaExports from './schema.js';
 
 describe('database schema namespaces', () => {
   it('keeps only business-blind mechanism in public and classifies every other table as equipment', () => {
     const tableNames = [
       ...new Set(
-        (Object.values(schema) as unknown[])
+        (Object.values(schemaExports) as unknown[])
           .filter((value): value is Table => is(value, Table))
           .map(getTableUniqueName),
       ),

@@ -1,5 +1,5 @@
 import type { DatabaseTransaction } from '@pkg/db';
-import { getTableName } from 'drizzle-orm';
+import { getTableName, getTableUniqueName } from 'drizzle-orm';
 import { PgDialect, type PgTable } from 'drizzle-orm/pg-core';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -7,6 +7,16 @@ import { clearSnapshotTables } from './seed-writer.js';
 import { snapshotCleanupTables } from './snapshot-tables.js';
 
 type CatalogTable = { schemaname: string; tablename: string };
+
+function catalogTable(table: PgTable): CatalogTable {
+  const [schemaname, tablename] = getTableUniqueName(table).split('.');
+
+  if (!schemaname || !tablename) {
+    throw new Error(`Expected a schema-qualified table name, received ${getTableUniqueName(table)}`);
+  }
+
+  return { schemaname, tablename };
+}
 
 function createClearingTransaction(catalogTables: readonly CatalogTable[]) {
   const calls: string[] = [];
@@ -34,10 +44,7 @@ function createClearingTransaction(catalogTables: readonly CatalogTable[]) {
 describe('clearSnapshotTables', () => {
   it('truncates tables in public and equipment that the snapshot does not own before deleting snapshot rows', async () => {
     const { calls, statements, tx } = createClearingTransaction([
-      ...snapshotCleanupTables.map((config) => ({
-        schemaname: config.tableName === 'user' || config.tableName === 'account' ? 'public' : 'equipment',
-        tablename: config.tableName,
-      })),
+      ...snapshotCleanupTables.map((config) => catalogTable(config.table)),
       { schemaname: 'public', tablename: 'audit_events' },
       { schemaname: 'equipment', tablename: 'purchase_order' },
       { schemaname: 'equipment', tablename: 'purchase_order_job_link' },
@@ -59,10 +66,7 @@ describe('clearSnapshotTables', () => {
 
   it('skips the truncate when every application table is snapshotted', async () => {
     const { statements, tx } = createClearingTransaction(
-      snapshotCleanupTables.map((config) => ({
-        schemaname: config.tableName === 'user' || config.tableName === 'account' ? 'public' : 'equipment',
-        tablename: config.tableName,
-      })),
+      snapshotCleanupTables.map((config) => catalogTable(config.table)),
     );
 
     await clearSnapshotTables(tx);

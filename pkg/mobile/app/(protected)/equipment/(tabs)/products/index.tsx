@@ -2,11 +2,10 @@ import { keepPreviousData, useInfiniteQuery, useQuery } from '@tanstack/react-qu
 import { useMemo, useState } from 'react';
 import { View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-
-import { CatalogListSkeleton, PaginatedCatalogList } from '@/components/CatalogList';
-import { ProductCatalogCard, ProductCatalogControls } from '@/components/products/ProductCatalog';
-import { MainTabToolbar } from '@/components/TopToolbar';
 import { Text } from '@/components/ui/text';
+import { CatalogListSkeleton, PaginatedCatalogList } from '@/equipment/components/CatalogList';
+import { ProductCatalogCard, ProductCatalogControls } from '@/equipment/components/products/ProductCatalog';
+import { MainTabToolbar } from '@/equipment/components/TopToolbar';
 import {
   getProductListPresentation,
   isProductSort,
@@ -14,8 +13,8 @@ import {
   normalizeRangeFilter,
   type ProductSort,
   type RangeFilter,
-} from '@/lib/product-presentation';
-import { MAIN_TAB_PARENTS } from '@/lib/toolbar-navigation';
+} from '@/equipment/lib/product-presentation';
+import { MAIN_TAB_PARENTS } from '@/equipment/lib/toolbar-navigation';
 import { useTRPC } from '@/lib/trpc';
 import { useDebouncedSearch } from '@/lib/use-debounced-search';
 import { useGlobalRefresh } from '@/lib/use-global-refresh';

@@ -1,12 +1,12 @@
 import type { JobPickerOption, JobStockMovementType, StockOnHandRow } from '@pkg/schema';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { type RefObject, useRef, useState } from 'react';
-import { previewJobMovementWarnings } from '@/lib/movement-preview';
-import { useMovementActorUserId } from '@/lib/stores-actor';
-import { resolveStoresMovementParent } from '@/lib/toolbar-navigation';
+import { previewJobMovementWarnings } from '@/equipment/lib/movement-preview';
+import { useMovementActorUserId } from '@/equipment/lib/stores-actor';
+import { resolveStoresMovementParent } from '@/equipment/lib/toolbar-navigation';
+import { useMovementConfirm } from '@/equipment/lib/use-movement-confirm';
+import { useStoresPostOutcome } from '@/equipment/lib/use-stores-post';
 import { useTRPC } from '@/lib/trpc';
-import { useMovementConfirm } from '@/lib/use-movement-confirm';
-import { useStoresPostOutcome } from '@/lib/use-stores-post';
 
 import { JobPicker, type JobPickerHandle } from './JobPicker';
 import { LengthBucketField } from './LengthBucketField';

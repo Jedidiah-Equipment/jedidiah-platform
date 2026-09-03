@@ -1,7 +1,6 @@
 import type { PartLabelBatchSelection, UUID } from '@pkg/schema';
-
+import { readApiErrorMessage } from '@/equipment/utils/document.js';
 import { getClientConfig } from '@/lib/app-config.js';
-import { readApiErrorMessage } from '@/utils/document.js';
 
 /** The modes small enough to ride a query string; a copy-count selection is posted instead. */
 export type PartLabelUrlSelection = Exclude<PartLabelBatchSelection, { selection: 'copies' }>;

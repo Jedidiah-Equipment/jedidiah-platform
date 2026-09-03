@@ -1,7 +1,7 @@
 import type React from 'react';
 
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
-import { catalogTranslationsPageDescription } from '@/utils/page-descriptions.js';
+import { catalogTranslationsPageDescription } from '@/equipment/utils/page-descriptions.js';
 
 import { CatalogTranslationHealth } from './CatalogTranslationHealth.js';
 import { CatalogTranslationNeedsReview } from './CatalogTranslationNeedsReview.js';

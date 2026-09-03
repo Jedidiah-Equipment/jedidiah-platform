@@ -15,12 +15,12 @@ import type { SortOptions } from '@/components/data-table/table-state.js';
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
 import { Button } from '@/components/ui/button.js';
 import { Switch } from '@/components/ui/switch.js';
-import { toSelectOptions } from '@/hooks/options/index.js';
+import { toSelectOptions } from '@/equipment/hooks/options/index.js';
+import { jobListPageDescription } from '@/equipment/utils/page-descriptions.js';
 import { useAccess } from '@/hooks/use-access.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { getApiQueryErrorMessage } from '@/lib/api-errors.js';
 import { useTRPC } from '@/lib/trpc.js';
-import { jobListPageDescription } from '@/utils/page-descriptions.js';
 
 import {
   createJobListColumns,

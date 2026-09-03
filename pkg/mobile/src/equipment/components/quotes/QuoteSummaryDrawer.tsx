@@ -14,11 +14,11 @@ import type React from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 
 import { Avatar } from '@/components/Avatar';
-import { OfferingAvatar } from '@/components/OfferingAvatar';
-import { QuoteProductSourceChip } from '@/components/quotes/QuoteProductSourceChip';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { ThemedModal } from '@/components/ui/themed-modal';
+import { OfferingAvatar } from '@/equipment/components/OfferingAvatar';
+import { QuoteProductSourceChip } from '@/equipment/components/quotes/QuoteProductSourceChip';
 
 const getSummaryWorkItemKey = createStableRowKeys<QuoteComputedSummary['workItems'][number]>('quote-summary-work-item');
 

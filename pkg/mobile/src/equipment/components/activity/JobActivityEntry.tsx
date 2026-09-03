@@ -23,10 +23,10 @@ import { useState } from 'react';
 import { Pressable, View } from 'react-native';
 
 import { Avatar } from '@/components/Avatar';
-import { CustomerName } from '@/components/CustomerName';
-import { OfferingAvatar } from '@/components/OfferingAvatar';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
+import { CustomerName } from '@/equipment/components/CustomerName';
+import { OfferingAvatar } from '@/equipment/components/OfferingAvatar';
 import { useColorMode } from '@/theme/use-color-mode';
 
 export function JobActivityEntry({

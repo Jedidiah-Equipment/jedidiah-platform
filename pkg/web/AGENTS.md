@@ -14,11 +14,11 @@
   features the primitive calls. `DataTable` supports three list shapes, all configured by building the
   table in the feature and passing it in:
   - `paginationMode="cursor"` — the API owns filtering, sorting, and pagination. Follow
-    `src/pages/products/components/ProductTable.tsx`.
+    `src/equipment/pages/products/components/ProductTable.tsx`.
   - `paginationMode="complete"` — the browser owns them and every row renders. Follow
-    `src/pages/users/components/UserTable.tsx`.
+    `src/equipment/pages/users/components/UserTable.tsx`.
   - `paginationMode="incremental"` — the browser owns them but only a window of rows paints, with a
-    Load more button (`pageSize`, default 25). Follow `src/pages/inventory/buy-list/components/BuyListTable.tsx`.
+    Load more button (`pageSize`, default 25). Follow `src/equipment/pages/inventory/buy-list/components/BuyListTable.tsx`.
     Reach for it over `complete` when one server snapshot must stay whole — sorting, searching and
     row selection still span every row — but the row count would flood the DOM.
 - For TanStack Form descendants, use `useTypedAppFormContext` from `src/components/form/use-app-form.ts`.
@@ -45,4 +45,4 @@
 - Keep complex form mappers in a nearby `types.ts` with unit tests.
 - Image uploads have two paths: small images that ride the entity payload use `ImageField`/`ThumbnailField` (inline data URL, autosaved); large replace-in-place images use the object-storage upload routes (see `BrochureImageSlotTile`). Reuse `@pkg/domain` image-policy message helpers in both rather than re-typing format/size copy.
 
-Canonical examples: `src/pages/products/ProductsPage.tsx`, `src/pages/suppliers/SupplierCreateDialog.tsx`, `src/pages/suppliers/SupplierEditPage.tsx`, `src/pages/suppliers/components/types.ts`.
+Canonical examples: `src/equipment/pages/products/ProductsPage.tsx`, `src/equipment/pages/suppliers/SupplierCreateDialog.tsx`, `src/equipment/pages/suppliers/SupplierEditPage.tsx`, `src/equipment/pages/suppliers/components/types.ts`.

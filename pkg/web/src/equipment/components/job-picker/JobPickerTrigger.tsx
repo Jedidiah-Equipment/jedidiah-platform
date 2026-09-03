@@ -1,10 +1,9 @@
 import { getJobDisplayName, getJobOfferingKind } from '@pkg/domain';
 import type { JobPickerOption } from '@pkg/schema';
 import { IconX } from '@tabler/icons-react';
-
-import { OfferingThumbnail } from '@/components/thumbnail/OfferingThumbnail.js';
 import { Button } from '@/components/ui/button.js';
 import { ComboboxTrigger } from '@/components/ui/combobox.js';
+import { OfferingThumbnail } from '@/equipment/components/thumbnail/OfferingThumbnail.js';
 import { cn } from '@/lib/utils.js';
 
 /**

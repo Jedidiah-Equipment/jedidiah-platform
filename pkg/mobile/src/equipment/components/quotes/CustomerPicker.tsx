@@ -10,7 +10,7 @@ import { Icon } from '@/components/ui/icon';
 import { PickerDropdown } from '@/components/ui/picker-dropdown';
 import { Text } from '@/components/ui/text';
 import { TextInput } from '@/components/ui/text-input';
-import type { CustomerSelection } from '@/lib/quote-create';
+import type { CustomerSelection } from '@/equipment/lib/quote-create';
 import { useTRPC } from '@/lib/trpc';
 import { useDebouncedSearch } from '@/lib/use-debounced-search';
 

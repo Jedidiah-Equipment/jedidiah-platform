@@ -11,7 +11,7 @@ import {
   formatPartQuantity,
   formatUnitCost,
   getPartQuantityUnitDisplay,
-} from '@/utils/part-quantity-format.js';
+} from '@/equipment/utils/part-quantity-format.js';
 
 export function StockOnHandTable({
   errorMessage,

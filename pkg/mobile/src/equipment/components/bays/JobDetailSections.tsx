@@ -1,8 +1,8 @@
-import { JobAssemblies } from '@/components/bays/JobAssemblies';
-import { JobDocuments } from '@/components/bays/JobDocuments';
-import { FactCard, JobFactsCard } from '@/components/bays/job-facts';
-import { JobFeedbackList } from '@/components/feedback/JobFeedbackList';
 import { Text } from '@/components/ui/text';
+import { JobAssemblies } from '@/equipment/components/bays/JobAssemblies';
+import { JobDocuments } from '@/equipment/components/bays/JobDocuments';
+import { FactCard, JobFactsCard } from '@/equipment/components/bays/job-facts';
+import { JobFeedbackList } from '@/equipment/components/feedback/JobFeedbackList';
 
 type JobDetailSectionsProps = {
   customerCompanyName: string | null;

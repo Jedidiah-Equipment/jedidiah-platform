@@ -1,11 +1,11 @@
 import { formatDate } from '@pkg/domain';
 import { View } from 'react-native';
 
-import { JobDetailSections } from '@/components/bays/JobDetailSections';
-import { JobWorkCard } from '@/components/bays/JobWorkCard';
-import { FactCard, FactField, FactRow } from '@/components/bays/job-facts';
-import { DaysLeftChip, StatusChip } from '@/components/bays/status-chip';
-import type { BaySlotDetail } from '@/lib/use-bay-schedule';
+import { JobDetailSections } from '@/equipment/components/bays/JobDetailSections';
+import { JobWorkCard } from '@/equipment/components/bays/JobWorkCard';
+import { FactCard, FactField, FactRow } from '@/equipment/components/bays/job-facts';
+import { DaysLeftChip, StatusChip } from '@/equipment/components/bays/status-chip';
+import type { BaySlotDetail } from '@/equipment/lib/use-bay-schedule';
 
 /**
  * The read-only Job Slot detail pane (#520): status chip(s), a product card, the Slot facts,

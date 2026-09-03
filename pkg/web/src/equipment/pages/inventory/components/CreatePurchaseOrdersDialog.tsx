@@ -17,10 +17,10 @@ import {
 } from '@/components/ui/dialog.js';
 import { Input } from '@/components/ui/input.js';
 import { ScrollArea } from '@/components/ui/scroll-area.js';
+import { formatPurchaseUnitLabel } from '@/equipment/utils/part-quantity-format.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
 import { useTRPC } from '@/lib/trpc.js';
-import { formatPurchaseUnitLabel } from '@/utils/part-quantity-format.js';
 
 /** One offered Part on its way to a draft line. Supplier-blind: the split is the server's to make. */
 export type PurchaseSelectionCandidate = {

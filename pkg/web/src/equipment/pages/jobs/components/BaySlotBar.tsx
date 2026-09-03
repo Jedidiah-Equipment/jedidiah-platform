@@ -20,9 +20,7 @@ import type {
 import { IconArrowLeft, IconArrowRight, IconClockPlus, IconLoader2, IconTrash } from '@tabler/icons-react';
 import type React from 'react';
 import { useMemo, useState } from 'react';
-import { StockBadge } from '@/components/common/StockBadge.js';
 import { useGanttContext } from '@/components/kibo-ui/gantt/index.js';
-import { OfferingThumbnail } from '@/components/thumbnail/OfferingThumbnail.js';
 import { Button } from '@/components/ui/button.js';
 import {
   ContextMenu,
@@ -41,6 +39,8 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog.js';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card.js';
+import { StockBadge } from '@/equipment/components/common/StockBadge.js';
+import { OfferingThumbnail } from '@/equipment/components/thumbnail/OfferingThumbnail.js';
 import { cn } from '@/lib/utils.js';
 import { BaySlotDayHatch, BaySlotJobCard } from './BaySlotJobCard.js';
 import { getSlotLabel } from './board-summary.js';

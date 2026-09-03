@@ -4,7 +4,7 @@ import type React from 'react';
 import { useState } from 'react';
 
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
-import { baySchedulePageDescription } from '@/utils/page-descriptions.js';
+import { baySchedulePageDescription } from '@/equipment/utils/page-descriptions.js';
 import { BoardGantt } from './components/BoardGantt.js';
 import { BookSlotDialog } from './components/BookSlotDialog.js';
 import { JobSheet } from './components/JobSheet.js';

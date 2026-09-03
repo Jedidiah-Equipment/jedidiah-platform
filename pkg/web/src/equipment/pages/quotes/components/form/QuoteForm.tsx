@@ -26,19 +26,18 @@ import {
 import { useQuery } from '@tanstack/react-query';
 import type React from 'react';
 import { useMemo, useState } from 'react';
-
-import { AuditTable, useQuoteAuditTableStore } from '@/components/audit/AuditTable.js';
-import { GiveFeedbackButton } from '@/components/feedback/GiveFeedbackButton.js';
 import { AutosaveStatus, useAutosaveForm } from '@/components/form/index.js';
 import { getFieldErrors } from '@/components/form/utils/field-errors.js';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert.js';
 import { Checkbox } from '@/components/ui/checkbox.js';
 import { Field, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field.js';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs.js';
-import { useSalesPersonOptions } from '@/hooks/options/index.js';
+import { AuditTable, useQuoteAuditTableStore } from '@/equipment/components/audit/AuditTable.js';
+import { GiveFeedbackButton } from '@/equipment/components/feedback/GiveFeedbackButton.js';
+import { useSalesPersonOptions } from '@/equipment/hooks/options/index.js';
+import { JobSheet } from '@/equipment/pages/jobs/components/JobSheet.js';
 import { useCan } from '@/hooks/use-access.js';
 import { useTRPC } from '@/lib/trpc.js';
-import { JobSheet } from '@/pages/jobs/components/JobSheet.js';
 import { QuoteCancellationDialog } from '../QuoteCancellationAction.js';
 import { getQuoteFormValuesValidator, toQuoteFormValues, toQuoteUpdateInput, toQuoteWorkItemInput } from '../types.js';
 import { QuoteAssembliesSelector } from './QuoteAssembliesSelector.js';

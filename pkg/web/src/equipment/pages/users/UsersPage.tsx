@@ -6,10 +6,10 @@ import { useState } from 'react';
 
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs.js';
+import { usersPageDescription } from '@/equipment/utils/page-descriptions.js';
 import { useAccess } from '@/hooks/use-access.js';
 import { getApiQueryErrorMessage } from '@/lib/api-errors.js';
 import { useTRPC } from '@/lib/trpc.js';
-import { usersPageDescription } from '@/utils/page-descriptions.js';
 import { PermissionMatrix } from './components/PermissionMatrix.js';
 import { UserTable } from './components/UserTable.js';
 import { UserCreateDialog } from './UserCreateDialog.js';

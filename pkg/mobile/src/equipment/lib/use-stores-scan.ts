@@ -1,10 +1,9 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
-
+import { useTRPC } from '@/lib/trpc';
 import { useStoresActor } from './stores-actor';
 import { resolveScan } from './stores-scan-resolution';
-import { useTRPC } from './trpc';
 
 /**
  * Wires a scan at the tablet to what should happen next.

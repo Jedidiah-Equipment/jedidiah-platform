@@ -18,8 +18,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AnchoredMenu } from '@/components/ui/anchored-menu';
 import { Text } from '@/components/ui/text';
-import { type AppTab, activeAppTab, appTabHref, appTabLabel, showTabBar, visibleTabs } from '@/lib/app-tabs';
-import { fitAppTabs, OVERFLOW_TAB_LABEL } from '@/lib/tab-bar-fit';
+import { type AppTab, activeAppTab, appTabHref, appTabLabel, showTabBar, visibleTabs } from '@/equipment/lib/app-tabs';
+import { fitAppTabs, OVERFLOW_TAB_LABEL } from '@/equipment/lib/tab-bar-fit';
 import { useTRPC } from '@/lib/trpc';
 import { useAccess } from '@/lib/use-access';
 import { navigationColors } from '@/theme/gluestack-config';

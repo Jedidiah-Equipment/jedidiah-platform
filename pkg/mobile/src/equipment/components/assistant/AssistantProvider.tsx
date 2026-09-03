@@ -2,7 +2,7 @@ import { Chat } from '@ai-sdk/react';
 import type { UIMessage } from 'ai';
 import { createContext, type ReactNode, useCallback, useContext, useMemo, useState } from 'react';
 
-import { createAssistantTransport } from '@/lib/assistant-chat';
+import { createAssistantTransport } from '@/equipment/lib/assistant-chat';
 
 type AssistantContextValue = {
   chat: Chat<UIMessage>;

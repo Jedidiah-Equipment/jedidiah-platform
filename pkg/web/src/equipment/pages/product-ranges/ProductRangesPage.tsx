@@ -9,7 +9,6 @@ import { useNavigate } from '@tanstack/react-router';
 import type React from 'react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
-import { FieldUsageLabel, PRODUCT_RANGE_FIELD_USAGE } from '@/components/catalog/index.js';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { useAppForm } from '@/components/form/index.js';
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
@@ -25,12 +24,13 @@ import {
 } from '@/components/ui/dialog.js';
 import { FieldGroup } from '@/components/ui/field.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
+import { FieldUsageLabel, PRODUCT_RANGE_FIELD_USAGE } from '@/equipment/components/catalog/index.js';
+import { productRangesPageDescription } from '@/equipment/utils/page-descriptions.js';
 import { useAccess } from '@/hooks/use-access.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { cn } from '@/lib/utils.js';
-import { productRangesPageDescription } from '@/utils/page-descriptions.js';
 import { RangeThumbnail } from './components/RangeThumbnail.js';
 import { ProductRangeFormValues, toProductRangeCreateInput } from './components/types.js';
 

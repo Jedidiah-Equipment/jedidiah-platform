@@ -2,11 +2,10 @@ import { useQuery } from '@tanstack/react-query';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-
-import { ProductDetail } from '@/components/products/ProductDetail';
-import { ProductImage } from '@/components/products/ProductImage';
-import { SecondaryPageToolbar } from '@/components/TopToolbar';
 import { Text } from '@/components/ui/text';
+import { ProductDetail } from '@/equipment/components/products/ProductDetail';
+import { ProductImage } from '@/equipment/components/products/ProductImage';
+import { SecondaryPageToolbar } from '@/equipment/components/TopToolbar';
 import { useTRPC } from '@/lib/trpc';
 
 /** Read-only Product view. The products layout owns the permission gate. */

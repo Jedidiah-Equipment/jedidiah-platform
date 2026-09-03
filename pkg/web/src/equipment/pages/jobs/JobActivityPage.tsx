@@ -9,8 +9,8 @@ import { useCallback, useState } from 'react';
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
 import { Input } from '@/components/ui/input.js';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select.js';
+import { jobActivityPageDescription } from '@/equipment/utils/page-descriptions.js';
 import { useTRPC } from '@/lib/trpc.js';
-import { jobActivityPageDescription } from '@/utils/page-descriptions.js';
 
 import { JobActivityFeed } from './components/JobActivityFeed.js';
 import { JobSheet } from './components/JobSheet.js';

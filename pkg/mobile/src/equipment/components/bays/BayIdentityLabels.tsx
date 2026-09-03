@@ -1,7 +1,7 @@
 import { View } from 'react-native';
 
 import { Text } from '@/components/ui/text';
-import { stripOperatorSuffix } from '@/lib/bay-name';
+import { stripOperatorSuffix } from '@/equipment/lib/bay-name';
 
 export function BayIdentityLabels({ bayName, operatorName }: { bayName: string; operatorName: string | null }) {
   return (

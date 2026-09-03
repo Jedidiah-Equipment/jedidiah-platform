@@ -2,15 +2,15 @@ import type { CatalogTranslationNeedsReviewItem } from '@pkg/schema';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import type React from 'react';
-import {
-  PRODUCT_RANGE_TRANSLATION_FIELD_LABELS,
-  PRODUCT_RANGE_VARIANT_TRANSLATION_FIELD_LABELS,
-  PRODUCT_TRANSLATION_FIELD_LABELS,
-} from '@/components/catalog-translations/catalog-translation-labels.js';
 import { DataTable } from '@/components/data-table/DataTable.js';
 import { type DataTableColumnDef, useDataTable } from '@/components/data-table/features.js';
 import { Button } from '@/components/ui/button.js';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card.js';
+import {
+  PRODUCT_RANGE_TRANSLATION_FIELD_LABELS,
+  PRODUCT_RANGE_VARIANT_TRANSLATION_FIELD_LABELS,
+  PRODUCT_TRANSLATION_FIELD_LABELS,
+} from '@/equipment/components/catalog-translations/catalog-translation-labels.js';
 import { useTRPC } from '@/lib/trpc.js';
 
 export const CatalogTranslationNeedsReview: React.FC = () => {

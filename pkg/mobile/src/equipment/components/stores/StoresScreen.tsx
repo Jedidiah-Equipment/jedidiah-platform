@@ -3,11 +3,11 @@ import type React from 'react';
 import { useState } from 'react';
 import { ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { StoresActorHeader } from '@/components/stores/StoresActorHeader';
-import { SecondaryPageToolbar } from '@/components/TopToolbar';
 import { RefreshControl } from '@/components/ui/refresh-control';
+import { StoresActorHeader } from '@/equipment/components/stores/StoresActorHeader';
+import { SecondaryPageToolbar } from '@/equipment/components/TopToolbar';
+import { useStoresActor } from '@/equipment/lib/stores-actor';
 import { isNearVerticalScrollEnd } from '@/lib/scroll-pagination';
-import { useStoresActor } from '@/lib/stores-actor';
 import { useGlobalRefresh } from '@/lib/use-global-refresh';
 import { QuickSwitchModal } from './QuickSwitchModal';
 

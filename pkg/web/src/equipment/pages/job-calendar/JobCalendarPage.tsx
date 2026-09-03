@@ -15,11 +15,11 @@ import {
 } from '@/components/kibo-ui/calendar/index.js';
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
+import { jobCalendarPageDescription } from '@/equipment/utils/page-descriptions.js';
 import { useAccess } from '@/hooks/use-access.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
 import { useTRPC } from '@/lib/trpc.js';
-import { jobCalendarPageDescription } from '@/utils/page-descriptions.js';
 import { toJobCalendarDateKey } from '../jobs/components/job-date-key.js';
 import { getBayCalendarException, groupBayExceptionChipsByDate } from './bay-exceptions.js';
 import { BayExceptionDialog } from './components/BayExceptionDialog.js';

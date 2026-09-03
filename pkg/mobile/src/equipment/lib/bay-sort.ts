@@ -1,5 +1,5 @@
+import { createLiteralGuard } from '@/lib/use-persisted-state';
 import type { BayListCard } from './use-bay-list';
-import { createLiteralGuard } from './use-persisted-state';
 
 /** Client-side ordering for the Bay grid: by the active Job's days-left, or by Bay name. */
 export type BaySort = 'days-left' | 'name';

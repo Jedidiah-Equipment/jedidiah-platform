@@ -26,7 +26,11 @@ import {
 } from '@/components/ui/dialog.js';
 import { Field, FieldDescription, FieldLabel } from '@/components/ui/field.js';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select.js';
-import { usePartCategoryOptions, usePartOptions, usePartStorageLocationOptions } from '@/hooks/options/index.js';
+import {
+  usePartCategoryOptions,
+  usePartOptions,
+  usePartStorageLocationOptions,
+} from '@/equipment/hooks/options/index.js';
 import { type PartLabelUrlSelection, partLabelBatchModeLabels, partLabelBatchUrl } from './part-label.js';
 
 type BatchMode = PartLabelUrlSelection['selection'];

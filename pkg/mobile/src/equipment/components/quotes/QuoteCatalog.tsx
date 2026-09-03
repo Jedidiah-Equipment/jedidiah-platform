@@ -3,19 +3,18 @@ import type { QuoteSummary } from '@pkg/schema';
 import { IconAlertTriangle, IconArrowsSort, IconFilter, IconPlus } from '@tabler/icons-react-native';
 import { useRouter } from 'expo-router';
 import { Pressable, useWindowDimensions, View } from 'react-native';
-
-import { CatalogListCard } from '@/components/CatalogList';
 import {
   type ListControlOption,
   ListControlRow,
   ListDropdownControl,
   ListSearchControl,
 } from '@/components/ListControls';
-import { offeringAvatarProps } from '@/components/OfferingAvatar';
-import { QuoteStatusChip } from '@/components/quotes/QuoteStatusChip';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
-import { QUOTE_STATUS_OPTIONS, type QuoteSort, type QuoteStatusFilter } from '@/lib/quote-presentation';
+import { CatalogListCard } from '@/equipment/components/CatalogList';
+import { offeringAvatarProps } from '@/equipment/components/OfferingAvatar';
+import { QuoteStatusChip } from '@/equipment/components/quotes/QuoteStatusChip';
+import { QUOTE_STATUS_OPTIONS, type QuoteSort, type QuoteStatusFilter } from '@/equipment/lib/quote-presentation';
 import { useColorMode } from '@/theme/use-color-mode';
 
 const WIDE_BREAKPOINT = 760;

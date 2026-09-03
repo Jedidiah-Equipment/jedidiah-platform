@@ -10,19 +10,19 @@ import { useMutation } from '@tanstack/react-query';
 import type React from 'react';
 import { useRef } from 'react';
 import { toast } from 'sonner';
-import { type FieldUsage, FieldUsageLabel } from '@/components/catalog/index.js';
 import { Button } from '@/components/ui/button.js';
 import { Field, FieldLabel } from '@/components/ui/field.js';
-import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
-import { useCredentialedImagePreview } from '@/hooks/use-credentialed-image-preview.js';
-import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
-import { cn } from '@/lib/utils.js';
+import { type FieldUsage, FieldUsageLabel } from '@/equipment/components/catalog/index.js';
+import { useCredentialedImagePreview } from '@/equipment/hooks/use-credentialed-image-preview.js';
 import {
   fetchProductImageBlob,
   IMAGE_ACCEPT,
   uploadProductImage,
   validateSelectedProductImage,
-} from '@/utils/product-image.js';
+} from '@/equipment/utils/product-image.js';
+import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
+import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
+import { cn } from '@/lib/utils.js';
 
 type ProductImageSlotTileProps = {
   canEdit: boolean;

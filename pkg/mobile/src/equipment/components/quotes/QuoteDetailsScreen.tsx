@@ -10,28 +10,28 @@ import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useAutosaveForm } from '@/components/form';
-import { QuoteAssembliesEditor } from '@/components/quotes/QuoteAssembliesEditor';
-import { QuoteCancellationAction } from '@/components/quotes/QuoteCancellationAction';
-import { QuoteCancellationConfirmation } from '@/components/quotes/QuoteCancellationConfirmation';
-import { QuoteDocumentsTab } from '@/components/quotes/QuoteDocumentsTab';
-import { QuotePriorityAlert } from '@/components/quotes/QuotePriorityAlert';
-import { QuoteStatusChip } from '@/components/quotes/QuoteStatusChip';
-import { QuoteSummaryDrawer } from '@/components/quotes/QuoteSummaryDrawer';
-import { QuoteWorkItemsEditor } from '@/components/quotes/QuoteWorkItemsEditor';
-import { SalespersonSelectField } from '@/components/quotes/SalespersonSelectField';
-import { SubTabControl, type SubTabOption } from '@/components/SubTabControl';
-import { SecondaryPageToolbar } from '@/components/TopToolbar';
 import { Icon } from '@/components/ui/icon';
 import { Switch } from '@/components/ui/switch';
 import { Text } from '@/components/ui/text';
 import { useAppToast } from '@/components/ui/toast';
+import { QuoteAssembliesEditor } from '@/equipment/components/quotes/QuoteAssembliesEditor';
+import { QuoteCancellationAction } from '@/equipment/components/quotes/QuoteCancellationAction';
+import { QuoteCancellationConfirmation } from '@/equipment/components/quotes/QuoteCancellationConfirmation';
+import { QuoteDocumentsTab } from '@/equipment/components/quotes/QuoteDocumentsTab';
+import { QuotePriorityAlert } from '@/equipment/components/quotes/QuotePriorityAlert';
+import { QuoteStatusChip } from '@/equipment/components/quotes/QuoteStatusChip';
+import { QuoteSummaryDrawer } from '@/equipment/components/quotes/QuoteSummaryDrawer';
+import { QuoteWorkItemsEditor } from '@/equipment/components/quotes/QuoteWorkItemsEditor';
+import { SalespersonSelectField } from '@/equipment/components/quotes/SalespersonSelectField';
+import { SubTabControl, type SubTabOption } from '@/equipment/components/SubTabControl';
+import { SecondaryPageToolbar } from '@/equipment/components/TopToolbar';
 import {
   getQuoteEditFormValuesValidator,
   QUOTE_STATUS_OPTIONS,
   toQuoteEditFormValues,
   toQuoteUpdateInput,
   toQuoteWorkItemInput,
-} from '@/lib/quote-presentation';
+} from '@/equipment/lib/quote-presentation';
 import { useTRPC } from '@/lib/trpc';
 import { useCan } from '@/lib/use-access';
 

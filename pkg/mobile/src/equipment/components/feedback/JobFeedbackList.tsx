@@ -3,10 +3,10 @@ import { useQuery } from '@tanstack/react-query';
 import { View } from 'react-native';
 
 import { Avatar } from '@/components/Avatar';
-import { FactCard } from '@/components/bays/job-facts';
-import { GiveFeedbackButton } from '@/components/feedback/GiveFeedbackButton';
 import { Pulse } from '@/components/ui/pulse';
 import { Text } from '@/components/ui/text';
+import { FactCard } from '@/equipment/components/bays/job-facts';
+import { GiveFeedbackButton } from '@/equipment/components/feedback/GiveFeedbackButton';
 import { useTRPC } from '@/lib/trpc';
 
 /**

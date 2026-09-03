@@ -4,7 +4,6 @@ import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { PRODUCT_KEY_FEATURES_MAX_COUNT, ProductKeyFeature } from '@pkg/schema';
 import { IconPlus } from '@tabler/icons-react';
 import type React from 'react';
-import { FieldUsageLabel, PRODUCT_FIELD_USAGE } from '@/components/catalog/index.js';
 import { useSortableFieldRows } from '@/components/form/hooks/use-sortable-field-rows.js';
 import { useTypedAppFormContext } from '@/components/form/index.js';
 import type { ArrayFieldApi, FieldApi } from '@/components/form/types.js';
@@ -20,6 +19,7 @@ import {
   CardTitle,
 } from '@/components/ui/card.js';
 import { Empty, EmptyDescription, EmptyHeader, EmptyIcon, EmptyTitle } from '@/components/ui/empty.js';
+import { FieldUsageLabel, PRODUCT_FIELD_USAGE } from '@/equipment/components/catalog/index.js';
 import { EditorTextField } from './EditorTextField.js';
 import { SortableEditorRow } from './SortableEditorRow.js';
 import { emptyProductFormValues } from './types.js';

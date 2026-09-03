@@ -15,10 +15,9 @@ import type React from 'react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { z } from 'zod';
-
-import { FeedbackVisibilityBanner } from '@/components/feedback/FeedbackVisibilityBanner.js';
 import { CreateEntityDialog } from '@/components/form/index.js';
 import { Button } from '@/components/ui/button.js';
+import { FeedbackVisibilityBanner } from '@/equipment/components/feedback/FeedbackVisibilityBanner.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
 import { useTRPC } from '@/lib/trpc.js';

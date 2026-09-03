@@ -5,22 +5,22 @@ import { useState } from 'react';
 import { Pressable, ScrollView, useWindowDimensions, View } from 'react-native';
 
 import { Avatar } from '@/components/Avatar';
-import { SlotDetailPane } from '@/components/bays/SlotDetailPane';
-import { STATUS_TONE } from '@/components/bays/status-chip';
-import { CustomerName } from '@/components/CustomerName';
-import { OfferingAvatar } from '@/components/OfferingAvatar';
-import { SecondaryPageToolbar } from '@/components/TopToolbar';
 import { Icon } from '@/components/ui/icon';
 import { Pulse } from '@/components/ui/pulse';
 import { RefreshControl } from '@/components/ui/refresh-control';
 import { Text } from '@/components/ui/text';
-import { bayToolbarParentLabel } from '@/lib/toolbar-navigation';
+import { SlotDetailPane } from '@/equipment/components/bays/SlotDetailPane';
+import { STATUS_TONE } from '@/equipment/components/bays/status-chip';
+import { CustomerName } from '@/equipment/components/CustomerName';
+import { OfferingAvatar } from '@/equipment/components/OfferingAvatar';
+import { SecondaryPageToolbar } from '@/equipment/components/TopToolbar';
+import { bayToolbarParentLabel } from '@/equipment/lib/toolbar-navigation';
 import {
   type BayQueueActiveJob,
   type BayQueueState,
   type BayQueueTimelineSlot,
   useBaySchedule,
-} from '@/lib/use-bay-schedule';
+} from '@/equipment/lib/use-bay-schedule';
 import { useGlobalRefresh } from '@/lib/use-global-refresh';
 import { useColorMode } from '@/theme/use-color-mode';
 

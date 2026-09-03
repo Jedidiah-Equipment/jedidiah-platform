@@ -3,7 +3,7 @@ import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, test } from 'vitest';
 
-import { listTsxFiles } from './test-file-utils';
+import { listTsxFiles } from '@/components/test-file-utils';
 
 const MOBILE_DIR = join(dirname(fileURLToPath(import.meta.url)), '../..');
 const PROTECTED_ROUTES_DIR = join(MOBILE_DIR, 'app/(protected)');
@@ -19,40 +19,58 @@ const SIGNED_IN_PERMISSION_LOADING_SURFACES = {
 } as const;
 
 const SIGNED_IN_ROUTE_TOOLBARS = {
-  'equipment/(tabs)/(plan)/bays/[bayId].tsx': toolbar('secondary', 'src/components/bays/BayQueueScreen.tsx'),
+  'equipment/(tabs)/(plan)/bays/[bayId].tsx': toolbar('secondary', 'src/equipment/components/bays/BayQueueScreen.tsx'),
   'equipment/(tabs)/(plan)/plan/index.tsx': toolbar('main', 'app/(protected)/equipment/(tabs)/(plan)/plan/index.tsx'),
   'equipment/(tabs)/activity/index.tsx': toolbar('main', 'app/(protected)/equipment/(tabs)/activity/index.tsx'),
   'equipment/(tabs)/index.tsx': toolbar('main', 'app/(protected)/equipment/(tabs)/index.tsx'),
-  'equipment/(tabs)/jobs/[jobId].tsx': toolbar('secondary', 'src/components/bays/JobDetail.tsx'),
+  'equipment/(tabs)/jobs/[jobId].tsx': toolbar('secondary', 'src/equipment/components/bays/JobDetail.tsx'),
   'equipment/(tabs)/jobs/index.tsx': toolbar('main', 'app/(protected)/equipment/(tabs)/jobs/index.tsx'),
   'equipment/(tabs)/products/[productId].tsx': toolbar(
     'secondary',
     'app/(protected)/equipment/(tabs)/products/[productId].tsx',
   ),
   'equipment/(tabs)/products/index.tsx': toolbar('main', 'app/(protected)/equipment/(tabs)/products/index.tsx'),
-  'equipment/(tabs)/quotes/[quoteId].tsx': toolbar('secondary', 'src/components/quotes/QuoteDetailsScreen.tsx'),
+  'equipment/(tabs)/quotes/[quoteId].tsx': toolbar(
+    'secondary',
+    'src/equipment/components/quotes/QuoteDetailsScreen.tsx',
+  ),
   'equipment/(tabs)/quotes/index.tsx': toolbar('main', 'app/(protected)/equipment/(tabs)/quotes/index.tsx'),
-  'equipment/(tabs)/stores/close-out/[jobId].tsx': toolbar('secondary', 'src/components/stores/StoresScreen.tsx'),
-  'equipment/(tabs)/stores/close-out/index.tsx': toolbar('secondary', 'src/components/stores/StoresScreen.tsx'),
-  'equipment/(tabs)/stores/stocktake/[sessionId].tsx': toolbar('secondary', 'src/components/stores/StoresScreen.tsx'),
-  'equipment/(tabs)/stores/stocktake/index.tsx': toolbar('secondary', 'src/components/stores/StoresScreen.tsx'),
+  'equipment/(tabs)/stores/close-out/[jobId].tsx': toolbar(
+    'secondary',
+    'src/equipment/components/stores/StoresScreen.tsx',
+  ),
+  'equipment/(tabs)/stores/close-out/index.tsx': toolbar(
+    'secondary',
+    'src/equipment/components/stores/StoresScreen.tsx',
+  ),
+  'equipment/(tabs)/stores/stocktake/[sessionId].tsx': toolbar(
+    'secondary',
+    'src/equipment/components/stores/StoresScreen.tsx',
+  ),
+  'equipment/(tabs)/stores/stocktake/index.tsx': toolbar(
+    'secondary',
+    'src/equipment/components/stores/StoresScreen.tsx',
+  ),
   'equipment/(tabs)/stores/index.tsx': toolbar('main', 'app/(protected)/equipment/(tabs)/stores/index.tsx'),
   'equipment/(tabs)/stores/parts/[partCode]/checkout.tsx': toolbar(
     'secondary',
-    'src/components/stores/StoresScreen.tsx',
+    'src/equipment/components/stores/StoresScreen.tsx',
   ),
-  'equipment/(tabs)/stores/parts/[partCode]/index.tsx': toolbar('secondary', 'src/components/stores/StoresScreen.tsx'),
+  'equipment/(tabs)/stores/parts/[partCode]/index.tsx': toolbar(
+    'secondary',
+    'src/equipment/components/stores/StoresScreen.tsx',
+  ),
   'equipment/(tabs)/stores/parts/[partCode]/receive.tsx': toolbar(
     'secondary',
-    'src/components/stores/StoresScreen.tsx',
+    'src/equipment/components/stores/StoresScreen.tsx',
   ),
   'equipment/(tabs)/stores/parts/[partCode]/return-to-store.tsx': toolbar(
     'secondary',
-    'src/components/stores/StoresScreen.tsx',
+    'src/equipment/components/stores/StoresScreen.tsx',
   ),
   'equipment/(tabs)/stores/parts/[partCode]/return-to-supplier.tsx': toolbar(
     'secondary',
-    'src/components/stores/StoresScreen.tsx',
+    'src/equipment/components/stores/StoresScreen.tsx',
   ),
   'equipment/(tabs)/units/[unitId].tsx': toolbar('secondary', 'app/(protected)/equipment/(tabs)/units/[unitId].tsx'),
   'equipment/(tabs)/units/index.tsx': toolbar('main', 'app/(protected)/equipment/(tabs)/units/index.tsx'),

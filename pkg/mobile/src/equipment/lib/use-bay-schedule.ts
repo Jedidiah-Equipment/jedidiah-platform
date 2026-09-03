@@ -12,8 +12,8 @@ import type { BayOperator, DateOnlyIso, ProjectedWorkJobSlot, QuoteKind } from '
 import { useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
 
-import { useTRPC } from './trpc';
-import { useAccess } from './use-access';
+import { useTRPC } from '@/lib/trpc';
+import { useAccess } from '@/lib/use-access';
 import { useBayCalendars } from './use-bay-calendars';
 
 /** The in-progress Work Slot a Bay is running today, projected for the ACTIVE NOW hero. */

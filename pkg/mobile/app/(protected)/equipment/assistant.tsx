@@ -3,14 +3,13 @@ import { IconPlus } from '@tabler/icons-react-native';
 import { type Href, useLocalSearchParams, useRouter } from 'expo-router';
 import { Pressable, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-
-import { useAssistant } from '@/components/assistant/AssistantProvider';
-import { SecondaryPageToolbar } from '@/components/TopToolbar';
 import { Conversation, PromptInput } from '@/components/ui/chat-ai';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
-import { useAssistantKeyboardBottomPadding } from '@/lib/assistant-keyboard';
-import { resolveAssistantParent } from '@/lib/toolbar-navigation';
+import { useAssistant } from '@/equipment/components/assistant/AssistantProvider';
+import { SecondaryPageToolbar } from '@/equipment/components/TopToolbar';
+import { useAssistantKeyboardBottomPadding } from '@/equipment/lib/assistant-keyboard';
+import { resolveAssistantParent } from '@/equipment/lib/toolbar-navigation';
 
 export default function AssistantRoute() {
   const router = useRouter();

@@ -1,9 +1,5 @@
 import { Link } from '@tanstack/react-router';
 import type React from 'react';
-import { AppNavHelp } from '@/components/app-shell/AppNavHelp.js';
-import { AppNavMain } from '@/components/app-shell/AppNavMain.js';
-import { AppNavUser } from '@/components/app-shell/AppNavUser.js';
-import { SidebarAssistant } from '@/components/assistant-ui/SidebarAssistant.js';
 import { AppBrand } from '@/components/common/AppBrand.js';
 import {
   Sidebar,
@@ -14,6 +10,10 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from '@/components/ui/sidebar.js';
+import { AppNavHelp } from '@/equipment/components/app-shell/AppNavHelp.js';
+import { AppNavMain } from '@/equipment/components/app-shell/AppNavMain.js';
+import { AppNavUser } from '@/equipment/components/app-shell/AppNavUser.js';
+import { SidebarAssistant } from '@/equipment/components/assistant-ui/SidebarAssistant.js';
 import { useAuth } from '@/hooks/use-auth.js';
 
 type AppSidebarProps = React.ComponentProps<typeof Sidebar>;

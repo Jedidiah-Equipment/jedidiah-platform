@@ -23,19 +23,19 @@ vi.mock('@tabler/icons-react-native', () => ({
 }));
 vi.mock('expo-router', () => ({ useRouter: () => ({ push: vi.fn() }) }));
 vi.mock('react-native', () => ({ Pressable: 'Pressable', useWindowDimensions: () => ({ width: 400 }), View: 'View' }));
-vi.mock('@/components/CatalogList', () => ({ CatalogListCard: 'CatalogListCard' }));
+vi.mock('@/equipment/components/CatalogList', () => ({ CatalogListCard: 'CatalogListCard' }));
 vi.mock('@/components/ListControls', () => ({
   ListControlRow: 'ListControlRow',
   ListDropdownControl: 'ListDropdownControl',
   ListSearchControl: 'ListSearchControl',
 }));
-vi.mock('@/components/quotes/QuoteStatusChip', () => ({ QuoteStatusChip: 'QuoteStatusChip' }));
+vi.mock('@/equipment/components/quotes/QuoteStatusChip', () => ({ QuoteStatusChip: 'QuoteStatusChip' }));
 vi.mock('@/components/ui/icon', () => ({ Icon: 'Icon' }));
 vi.mock('@/components/ui/text', () => ({ Text: 'Text' }));
-vi.mock('@/components/units/UnitBuildStateChip', () => ({ UnitBuildStateChip: 'UnitBuildStateChip' }));
+vi.mock('@/equipment/components/units/UnitBuildStateChip', () => ({ UnitBuildStateChip: 'UnitBuildStateChip' }));
 vi.mock('@/theme/use-color-mode', () => ({ useColorMode: () => ({ resolved: 'dark' }) }));
 
-import type { BayListCard } from '@/lib/use-bay-list';
+import type { BayListCard } from '@/equipment/lib/use-bay-list';
 import { PlanCatalogCard } from './bays/PlanCatalog';
 import { JobCatalogCard } from './jobs/JobCatalog';
 import { ProductCatalogCard } from './products/ProductCatalog';

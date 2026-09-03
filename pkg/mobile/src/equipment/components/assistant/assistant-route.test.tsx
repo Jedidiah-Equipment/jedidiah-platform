@@ -24,16 +24,16 @@ vi.mock('react-native-safe-area-context', () => ({
   SafeAreaView: 'SafeAreaView',
   useSafeAreaInsets: () => ({ bottom: 34 }),
 }));
-vi.mock('@/components/assistant/AssistantProvider', () => ({
+vi.mock('@/equipment/components/assistant/AssistantProvider', () => ({
   useAssistant: () => ({ chat: {}, reset: vi.fn() }),
 }));
 vi.mock('@/components/ui/chat-ai', () => ({ Conversation: 'Conversation', PromptInput: 'PromptInput' }));
 vi.mock('@/components/ui/icon', () => ({ Icon: 'Icon' }));
 vi.mock('@/components/ui/text', () => ({ Text: 'Text' }));
-vi.mock('@/components/TopToolbar', () => ({ SecondaryPageToolbar: 'SecondaryPageToolbar' }));
-vi.mock('@/lib/assistant-keyboard', () => ({ useAssistantKeyboardBottomPadding: () => 301 }));
+vi.mock('@/equipment/components/TopToolbar', () => ({ SecondaryPageToolbar: 'SecondaryPageToolbar' }));
+vi.mock('@/equipment/lib/assistant-keyboard', () => ({ useAssistantKeyboardBottomPadding: () => 301 }));
 
-import AssistantRoute from '../../../app/(protected)/equipment/assistant';
+import AssistantRoute from '../../../../app/(protected)/equipment/assistant';
 
 describe('AssistantRoute keyboard layout', () => {
   test('applies the measured keyboard inset to the modal content', () => {

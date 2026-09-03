@@ -2,11 +2,11 @@ import { formatDate, getJobDisplayName, getJobDisplaySubtitle, getJobOfferingKin
 import type { JobSummary } from '@pkg/schema';
 import { IconCheck, IconPencil, IconSubtask } from '@tabler/icons-react';
 import { Link } from '@tanstack/react-router';
-import { StockBadge } from '@/components/common/StockBadge.js';
 import type { DataTableColumnDef } from '@/components/data-table/features.js';
-import { EntityThumbnail } from '@/components/thumbnail/EntityThumbnail.js';
-import { OfferingThumbnail } from '@/components/thumbnail/OfferingThumbnail.js';
 import { Button } from '@/components/ui/button.js';
+import { StockBadge } from '@/equipment/components/common/StockBadge.js';
+import { EntityThumbnail } from '@/equipment/components/thumbnail/EntityThumbnail.js';
+import { OfferingThumbnail } from '@/equipment/components/thumbnail/OfferingThumbnail.js';
 
 import { JobCodeDisplay } from './JobCodeDisplay.js';
 import { JobScheduleStateBadges } from './JobScheduleStateBadges.js';

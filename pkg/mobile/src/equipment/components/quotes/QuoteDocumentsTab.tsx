@@ -13,18 +13,18 @@ import { type ReactNode, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, View } from 'react-native';
 
 import { type ListControlOption, ListDropdownControl, ListSearchControl } from '@/components/ListControls';
-import { GenerateQuoteDocumentModal } from '@/components/quotes/GenerateQuoteDocumentModal';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { useAppToast } from '@/components/ui/toast';
-import { quoteDocumentDownloadPath } from '@/lib/authed-fetch';
-import { saveDocument } from '@/lib/document-actions';
+import { GenerateQuoteDocumentModal } from '@/equipment/components/quotes/GenerateQuoteDocumentModal';
+import { saveDocument } from '@/equipment/lib/document-actions';
 import {
   presentQuoteDocuments,
   type QuoteDocumentSort,
   quoteDocumentCountLabel,
   quoteDocumentMetaLine,
-} from '@/lib/quote-documents';
+} from '@/equipment/lib/quote-documents';
+import { quoteDocumentDownloadPath } from '@/lib/authed-fetch';
 import { useTRPC } from '@/lib/trpc';
 
 const DOCUMENT_SORT_OPTIONS: readonly ListControlOption<QuoteDocumentSort>[] = [

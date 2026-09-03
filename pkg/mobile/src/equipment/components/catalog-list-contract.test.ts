@@ -6,23 +6,23 @@ import { describe, expect, test } from 'vitest';
 const MOBILE_DIR = join(dirname(fileURLToPath(import.meta.url)), '../..');
 const CATALOG_SURFACES = [
   {
-    component: 'src/components/jobs/JobCatalog.tsx',
+    component: 'src/equipment/components/jobs/JobCatalog.tsx',
     route: 'app/(protected)/equipment/(tabs)/jobs/index.tsx',
   },
   {
-    component: 'src/components/bays/PlanCatalog.tsx',
+    component: 'src/equipment/components/bays/PlanCatalog.tsx',
     route: 'app/(protected)/equipment/(tabs)/(plan)/plan/index.tsx',
   },
   {
-    component: 'src/components/products/ProductCatalog.tsx',
+    component: 'src/equipment/components/products/ProductCatalog.tsx',
     route: 'app/(protected)/equipment/(tabs)/products/index.tsx',
   },
   {
-    component: 'src/components/quotes/QuoteCatalog.tsx',
+    component: 'src/equipment/components/quotes/QuoteCatalog.tsx',
     route: 'app/(protected)/equipment/(tabs)/quotes/index.tsx',
   },
   {
-    component: 'src/components/units/UnitCatalog.tsx',
+    component: 'src/equipment/components/units/UnitCatalog.tsx',
     route: 'app/(protected)/equipment/(tabs)/units/index.tsx',
   },
 ] as const;
@@ -33,9 +33,9 @@ describe('catalog list contract', () => {
       const route = source(surface.route);
       const component = source(surface.component);
 
-      expect(route).toContain("from '@/components/CatalogList'");
+      expect(route).toContain("from '@/equipment/components/CatalogList'");
       expect(route).toContain('<PaginatedCatalogList');
-      expect(component).toContain("from '@/components/CatalogList'");
+      expect(component).toContain("from '@/equipment/components/CatalogList'");
       expect(component).toContain('<CatalogListCard');
       expect(`${route}\n${component}`).not.toContain('BoardGrid');
     }

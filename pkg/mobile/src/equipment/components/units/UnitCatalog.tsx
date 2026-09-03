@@ -3,18 +3,17 @@ import type { ProductUnitSummary } from '@pkg/schema';
 import { IconArrowsSort, IconFilter } from '@tabler/icons-react-native';
 import { useRouter } from 'expo-router';
 import { View } from 'react-native';
-
-import { CatalogListCard } from '@/components/CatalogList';
 import { ListControlRow, ListDropdownControl, ListSearchControl } from '@/components/ListControls';
-import { StockBadge } from '@/components/StockBadge';
 import { Text } from '@/components/ui/text';
-import { UnitBuildStateChip } from '@/components/units/UnitBuildStateChip';
+import { CatalogListCard } from '@/equipment/components/CatalogList';
+import { StockBadge } from '@/equipment/components/StockBadge';
+import { UnitBuildStateChip } from '@/equipment/components/units/UnitBuildStateChip';
 import {
   UNIT_BUILD_STATE_OPTIONS,
   UNIT_SORT_OPTIONS,
   type UnitBuildStateFilter,
   type UnitSort,
-} from '@/lib/unit-presentation';
+} from '@/equipment/lib/unit-presentation';
 
 export function UnitCatalogControls({
   buildState,

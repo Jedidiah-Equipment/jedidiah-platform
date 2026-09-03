@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Alert } from 'react-native';
 
-import { type DocumentAction, saveDocument } from '@/lib/document-actions';
+import { type DocumentAction, saveDocument } from '@/equipment/lib/document-actions';
 
 export function useDocumentDownload(action: DocumentAction): { download: () => Promise<void>; isDownloading: boolean } {
   const [isDownloading, setIsDownloading] = useState(false);

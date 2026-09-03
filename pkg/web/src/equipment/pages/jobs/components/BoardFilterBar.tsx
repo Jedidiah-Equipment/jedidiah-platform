@@ -3,9 +3,7 @@ import type { Bay, Department, JobPickerOption, JobSummary, UUID } from '@pkg/sc
 import type React from 'react';
 import type { ReactNode } from 'react';
 import { useMemo, useState } from 'react';
-import { bayOperatorName } from '@/components/bays/bay-label.js';
 import { ResetFiltersButton } from '@/components/common/ResetFiltersButton.js';
-import { JobPicker, JobPickerTrigger, useJobPicker } from '@/components/job-picker/index.js';
 import {
   Combobox,
   ComboboxContent,
@@ -14,6 +12,8 @@ import {
   ComboboxItem,
   ComboboxList,
 } from '@/components/ui/combobox.js';
+import { bayOperatorName } from '@/equipment/components/bays/bay-label.js';
+import { JobPicker, JobPickerTrigger, useJobPicker } from '@/equipment/components/job-picker/index.js';
 import { type BoardFilter, emptyBoardFilter, hasActiveBoardFilter } from './board-filter.js';
 
 type FilterOption<TId extends string> = {

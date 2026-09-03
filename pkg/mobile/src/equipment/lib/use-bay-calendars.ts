@@ -3,7 +3,7 @@ import type { BoardListResult } from '@pkg/schema';
 import { useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
 
-import { useTRPC } from './trpc';
+import { useTRPC } from '@/lib/trpc';
 
 export type BayCalendars = {
   offDays: BoardListResult['offDays'];

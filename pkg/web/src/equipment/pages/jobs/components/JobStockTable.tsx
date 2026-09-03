@@ -3,7 +3,7 @@ import { useMemo } from 'react';
 import { DataTable } from '@/components/data-table/DataTable.js';
 import { type DataTableColumnDef, useDataTable } from '@/components/data-table/features.js';
 import { Button } from '@/components/ui/button.js';
-import { formatLengthBucket, formatPartQuantity } from '@/utils/part-quantity-format.js';
+import { formatLengthBucket, formatPartQuantity } from '@/equipment/utils/part-quantity-format.js';
 
 /** `onReturn` turns each drawn row into a leftover the close-out screen can hand straight back. */
 export function JobStockTable({

@@ -13,8 +13,6 @@ import { keepPreviousData, useMutation, useQuery } from '@tanstack/react-query';
 import type React from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
-import { bayNameWithOperatorFirstName } from '@/components/bays/bay-label.js';
-import { BayOperatorIndicator } from '@/components/bays/index.js';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import {
   GanttHeader,
@@ -28,9 +26,11 @@ import { PageLayoutFullscreenToggle } from '@/components/page-layout/PageLayoutF
 import { Card, CardContent, CardHeader, CardSeparator } from '@/components/ui/card.js';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
+import { bayNameWithOperatorFirstName } from '@/equipment/components/bays/bay-label.js';
+import { BayOperatorIndicator } from '@/equipment/components/bays/index.js';
+import { useBayCalendars } from '@/equipment/hooks/use-bay-calendars.js';
 import { useAccess } from '@/hooks/use-access.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
-import { useBayCalendars } from '@/hooks/use-bay-calendars.js';
 import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { OffDayBands } from './BayCalendarOverlays.js';

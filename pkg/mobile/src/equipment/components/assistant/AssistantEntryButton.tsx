@@ -3,7 +3,7 @@ import { useRouter } from 'expo-router';
 import { Pressable } from 'react-native';
 
 import { Icon } from '@/components/ui/icon';
-import type { MainTabParent } from '@/lib/toolbar-navigation';
+import type { MainTabParent } from '@/equipment/lib/toolbar-navigation';
 import { useAssistantEnabled } from '@/lib/use-access';
 
 export function AssistantEntryButton({ parent }: { parent: MainTabParent }) {

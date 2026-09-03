@@ -2,20 +2,6 @@ import type { CatalogProductTranslation, CatalogProductTranslationPatchInput, UU
 import { useMutation, useQuery } from '@tanstack/react-query';
 import type React from 'react';
 import { useEffect, useMemo } from 'react';
-
-import {
-  CatalogTranslationCanonicalStringList,
-  CatalogTranslationCanonicalText,
-  CatalogTranslationFieldFrame,
-  CatalogTranslationRevertDialog,
-  CatalogTranslationStringListInputs,
-} from '@/components/catalog-translations/CatalogTranslationField.js';
-import { PRODUCT_TRANSLATION_FIELD_LABELS } from '@/components/catalog-translations/catalog-translation-labels.js';
-import {
-  useAutosaveServerSync,
-  useManualOverrideToggle,
-  useTranslationRegeneration,
-} from '@/components/catalog-translations/use-translation-overrides.js';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { AutosaveStatus, useAutosaveForm } from '@/components/form/index.js';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card.js';
@@ -23,6 +9,19 @@ import { Input } from '@/components/ui/input.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
 import { TabsContent } from '@/components/ui/tabs.js';
 import { Textarea } from '@/components/ui/textarea.js';
+import {
+  CatalogTranslationCanonicalStringList,
+  CatalogTranslationCanonicalText,
+  CatalogTranslationFieldFrame,
+  CatalogTranslationRevertDialog,
+  CatalogTranslationStringListInputs,
+} from '@/equipment/components/catalog-translations/CatalogTranslationField.js';
+import { PRODUCT_TRANSLATION_FIELD_LABELS } from '@/equipment/components/catalog-translations/catalog-translation-labels.js';
+import {
+  useAutosaveServerSync,
+  useManualOverrideToggle,
+  useTranslationRegeneration,
+} from '@/equipment/components/catalog-translations/use-translation-overrides.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
 import { useTRPC } from '@/lib/trpc.js';

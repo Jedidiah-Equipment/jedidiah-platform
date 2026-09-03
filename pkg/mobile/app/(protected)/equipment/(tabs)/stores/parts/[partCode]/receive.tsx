@@ -3,18 +3,18 @@ import { useMutation } from '@tanstack/react-query';
 import { useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 
-import { LengthBucketField } from '@/components/stores/LengthBucketField';
-import { MovementWarningModal } from '@/components/stores/MovementWarningModal';
-import { PostButton } from '@/components/stores/PostButton';
-import { PurchaseOrderLinePicker } from '@/components/stores/PurchaseOrderLinePicker';
-import { hasRequiredLength, parseQuantity, QuantityField } from '@/components/stores/QuantityField';
-import { NoActorNotice, StoresPartScreen } from '@/components/stores/StoresPartScreen';
-import { previewReceiptWarnings } from '@/lib/movement-preview';
-import { useMovementActorUserId } from '@/lib/stores-actor';
-import { resolveStoresMovementParent } from '@/lib/toolbar-navigation';
+import { LengthBucketField } from '@/equipment/components/stores/LengthBucketField';
+import { MovementWarningModal } from '@/equipment/components/stores/MovementWarningModal';
+import { PostButton } from '@/equipment/components/stores/PostButton';
+import { PurchaseOrderLinePicker } from '@/equipment/components/stores/PurchaseOrderLinePicker';
+import { hasRequiredLength, parseQuantity, QuantityField } from '@/equipment/components/stores/QuantityField';
+import { NoActorNotice, StoresPartScreen } from '@/equipment/components/stores/StoresPartScreen';
+import { previewReceiptWarnings } from '@/equipment/lib/movement-preview';
+import { useMovementActorUserId } from '@/equipment/lib/stores-actor';
+import { resolveStoresMovementParent } from '@/equipment/lib/toolbar-navigation';
+import { useMovementConfirm } from '@/equipment/lib/use-movement-confirm';
+import { useStoresPostOutcome } from '@/equipment/lib/use-stores-post';
 import { useTRPC } from '@/lib/trpc';
-import { useMovementConfirm } from '@/lib/use-movement-confirm';
-import { useStoresPostOutcome } from '@/lib/use-stores-post';
 
 /**
  * Signing for a delivery at the dock. Receiving *is* the ledger write (spec §11) — there is no

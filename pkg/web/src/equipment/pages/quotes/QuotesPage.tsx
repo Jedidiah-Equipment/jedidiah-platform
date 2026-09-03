@@ -14,11 +14,15 @@ import { createPersistedDataTableStore } from '@/components/data-table/store.js'
 import type { SortOptions } from '@/components/data-table/table-state.js';
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
 import { Button } from '@/components/ui/button.js';
-import { useCustomerForQuoteOptions, useProductForQuoteOptions, useSalesPersonOptions } from '@/hooks/options/index.js';
+import {
+  useCustomerForQuoteOptions,
+  useProductForQuoteOptions,
+  useSalesPersonOptions,
+} from '@/equipment/hooks/options/index.js';
+import { quotesPageDescription } from '@/equipment/utils/page-descriptions.js';
 import { useAccess } from '@/hooks/use-access.js';
 import { getApiQueryErrorMessage } from '@/lib/api-errors.js';
 import { useTRPC } from '@/lib/trpc.js';
-import { quotesPageDescription } from '@/utils/page-descriptions.js';
 import {
   createPriorityQuoteTableRow,
   createQuoteTableColumns,

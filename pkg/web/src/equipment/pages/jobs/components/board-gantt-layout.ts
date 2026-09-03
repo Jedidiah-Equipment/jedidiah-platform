@@ -1,7 +1,7 @@
 import { type BayDepartmentGroup, groupBaysByDepartmentPipeline } from '@pkg/domain';
 import type { ProjectedBayQueue, UUID } from '@pkg/schema';
 
-import { sortBaysByDepartmentPipeline } from '@/components/bays/sort-bays.js';
+import { sortBaysByDepartmentPipeline } from '@/equipment/components/bays/sort-bays.js';
 
 // Department headings are deliberately shorter than Bay lanes so they read as labels, not empty Bays.
 export const DEPARTMENT_HEADER_HEIGHT = 32;

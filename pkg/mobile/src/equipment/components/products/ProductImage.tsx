@@ -5,8 +5,8 @@ import { useState } from 'react';
 import { Image, StyleSheet, View } from 'react-native';
 
 import { Icon } from '@/components/ui/icon';
-import type { ProductImageKey } from '@/lib/product-image-cache';
-import { useProductImageSource } from '@/lib/product-image-source';
+import type { ProductImageKey } from '@/equipment/lib/product-image-cache';
+import { useProductImageSource } from '@/equipment/lib/product-image-source';
 import { useColorMode } from '@/theme/use-color-mode';
 
 const MOBILE_CARD_IMAGE_SLOTS = [

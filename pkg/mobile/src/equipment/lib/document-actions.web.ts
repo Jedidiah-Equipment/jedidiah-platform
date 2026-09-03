@@ -1,4 +1,4 @@
-import { authedFetch } from './authed-fetch';
+import { authedFetch } from '@/lib/authed-fetch';
 
 import type { DocumentAction } from './document-actions';
 

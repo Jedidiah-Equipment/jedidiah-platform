@@ -1,13 +1,18 @@
 import type { Product, ProductUpdateInput } from '@pkg/schema';
 import type React from 'react';
 import { useEffect, useState } from 'react';
-import { BROCHURE_USAGE, FieldUsageLabel, LANDER_USAGE, PRODUCT_FIELD_USAGE } from '@/components/catalog/index.js';
 import { AutosaveIssuesProvider, AutosaveStatus, useAutosaveForm } from '@/components/form/index.js';
 import { EditFormFullWidth, EditFormGrid } from '@/components/page-layout/EditFormLayout.js';
 import { Card, CardContent, CardDescription, CardHeader, CardSeparator, CardTitle } from '@/components/ui/card.js';
 import { TabsContent } from '@/components/ui/tabs.js';
-import { useProductRangeVariantOptions } from '@/hooks/options/index.js';
-import { useProductRangeOptions } from '@/hooks/options/use-product-range-options.js';
+import {
+  BROCHURE_USAGE,
+  FieldUsageLabel,
+  LANDER_USAGE,
+  PRODUCT_FIELD_USAGE,
+} from '@/equipment/components/catalog/index.js';
+import { useProductRangeVariantOptions } from '@/equipment/hooks/options/index.js';
+import { useProductRangeOptions } from '@/equipment/hooks/options/use-product-range-options.js';
 import { ProductAssembliesEditor } from './ProductAssembliesEditor.js';
 import { ProductBaysEditor } from './ProductBaysEditor.js';
 import { ProductCostingEditor } from './ProductCostingEditor.js';

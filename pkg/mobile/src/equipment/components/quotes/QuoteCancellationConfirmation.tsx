@@ -5,7 +5,7 @@ import { Pressable, View } from 'react-native';
 import { Text } from '@/components/ui/text';
 import { TextInput } from '@/components/ui/text-input';
 import { ThemedModal } from '@/components/ui/themed-modal';
-import { parseQuoteCancellationReason } from '@/lib/quote-presentation';
+import { parseQuoteCancellationReason } from '@/equipment/lib/quote-presentation';
 
 export function QuoteCancellationConfirmation({
   onClose,

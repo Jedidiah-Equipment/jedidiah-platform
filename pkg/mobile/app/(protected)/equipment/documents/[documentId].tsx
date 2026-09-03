@@ -4,18 +4,17 @@ import { useQuery } from '@tanstack/react-query';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
-
-import { DocumentViewer } from '@/components/documents/DocumentViewer';
-import { SecondaryPageToolbar } from '@/components/TopToolbar';
 import { Text } from '@/components/ui/text';
+import { DocumentViewer } from '@/equipment/components/documents/DocumentViewer';
+import { SecondaryPageToolbar } from '@/equipment/components/TopToolbar';
+import { PRODUCT_BROCHURE_DOCUMENT_ID, productBrochureFilename } from '@/equipment/lib/product-brochure';
+import { type DocumentParent, resolveDocumentParent } from '@/equipment/lib/toolbar-navigation';
 import {
   jobDocumentDownloadPath,
   productBrochurePreviewPath,
   productDocumentDownloadPath,
   quoteDocumentDownloadPath,
 } from '@/lib/authed-fetch';
-import { PRODUCT_BROCHURE_DOCUMENT_ID, productBrochureFilename } from '@/lib/product-brochure';
-import { type DocumentParent, resolveDocumentParent } from '@/lib/toolbar-navigation';
 import { useTRPC } from '@/lib/trpc';
 
 /**

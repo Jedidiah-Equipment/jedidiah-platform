@@ -3,10 +3,10 @@ import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
+import { inventoryPageDescription } from '@/equipment/utils/page-descriptions.js';
 import { useAccess } from '@/hooks/use-access.js';
 import { getApiQueryErrorMessage } from '@/lib/api-errors.js';
 import { useTRPC } from '@/lib/trpc.js';
-import { inventoryPageDescription } from '@/utils/page-descriptions.js';
 import { StockMovementActions } from './components/StockMovementActions.js';
 import { StockOnHandTable } from './components/StockOnHandTable.js';
 

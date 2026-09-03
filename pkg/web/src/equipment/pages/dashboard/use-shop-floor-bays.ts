@@ -3,7 +3,7 @@ import type { DateOnlyIso, JobSummary, OffDay, ProjectedBayQueue } from '@pkg/sc
 import { useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
 
-import { useBayCalendars } from '@/hooks/use-bay-calendars.js';
+import { useBayCalendars } from '@/equipment/hooks/use-bay-calendars.js';
 import { useTRPC } from '@/lib/trpc.js';
 
 export type ShopFloorBays =

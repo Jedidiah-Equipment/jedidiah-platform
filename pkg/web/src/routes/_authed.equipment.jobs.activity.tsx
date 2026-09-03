@@ -2,7 +2,7 @@ import { UUID } from '@pkg/schema';
 import { createFileRoute } from '@tanstack/react-router';
 import { z } from 'zod';
 
-import { JobActivityPage } from '@/pages/jobs/JobActivityPage.js';
+import { JobActivityPage } from '@/equipment/pages/jobs/JobActivityPage.js';
 
 export const Route = createFileRoute('/_authed/equipment/jobs/activity')({
   validateSearch: z.object({ job: UUID.optional() }),

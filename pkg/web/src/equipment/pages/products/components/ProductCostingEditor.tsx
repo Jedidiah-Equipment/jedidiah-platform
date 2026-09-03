@@ -19,8 +19,8 @@ import {
   CardTitle,
 } from '@/components/ui/card.js';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select.js';
-import { usePartOptions } from '@/hooks/options/index.js';
-import { formatPurchaseUnitLabel } from '@/utils/part-quantity-format.js';
+import { usePartOptions } from '@/equipment/hooks/options/index.js';
+import { formatPurchaseUnitLabel } from '@/equipment/utils/part-quantity-format.js';
 import { emptyProductFormValues, rawMaterialPlaceholder, toProductRawMaterialOptions } from './types.js';
 
 type ProductCostingEditorProps = {

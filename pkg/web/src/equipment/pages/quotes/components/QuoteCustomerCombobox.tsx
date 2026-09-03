@@ -12,7 +12,7 @@ import {
   ComboboxItem,
   ComboboxList,
 } from '@/components/ui/combobox.js';
-import { useCustomerForQuoteOptions } from '@/hooks/options/index.js';
+import { useCustomerForQuoteOptions } from '@/equipment/hooks/options/index.js';
 
 export type QuoteCustomerOption = Pick<Customer, 'companyName' | 'email' | 'id'>;
 export type QuoteCustomerSelection =

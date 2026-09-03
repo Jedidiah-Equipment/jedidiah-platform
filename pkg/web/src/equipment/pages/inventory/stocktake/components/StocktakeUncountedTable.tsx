@@ -4,9 +4,9 @@ import { Link } from '@tanstack/react-router';
 import { cursorInfiniteQueryOptions, useCombinedCursorQueryPages } from '@/components/data-table/cursor-query.js';
 import { DataTable } from '@/components/data-table/DataTable.js';
 import { type DataTableColumnDef, useDataTable } from '@/components/data-table/features.js';
+import { formatPartQuantity } from '@/equipment/utils/part-quantity-format.js';
 import { getApiQueryErrorMessage } from '@/lib/api-errors.js';
 import { useTRPC } from '@/lib/trpc.js';
-import { formatPartQuantity } from '@/utils/part-quantity-format.js';
 
 /** A page of the scope, not the scope. The list is as long as the Parts the walk has to cover. */
 const UNCOUNTED_PAGE_SIZE = 25;

@@ -1,10 +1,9 @@
 import { Pressable, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-
-import { MainTabToolbar } from '@/components/TopToolbar';
 import { ActivityIndicator } from '@/components/ui/activity-indicator';
 import { Text } from '@/components/ui/text';
-import type { MainTabParent } from '@/lib/toolbar-navigation';
+import { MainTabToolbar } from '@/equipment/components/TopToolbar';
+import type { MainTabParent } from '@/equipment/lib/toolbar-navigation';
 
 export function TabAccessLoadingScreen({ parent, title }: { parent: MainTabParent; title: string }) {
   return (

@@ -5,9 +5,9 @@ import type React from 'react';
 import { useMemo, useState } from 'react';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { PrimaryLink } from '@/components/common/PrimaryLink.js';
-import { StockBadge } from '@/components/common/StockBadge.js';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
+import { StockBadge } from '@/equipment/components/common/StockBadge.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { cn } from '@/lib/utils.js';
 

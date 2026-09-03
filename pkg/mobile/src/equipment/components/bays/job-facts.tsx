@@ -1,9 +1,8 @@
 import type { ReactNode } from 'react';
 import { View } from 'react-native';
-
-import { CustomerName } from '@/components/CustomerName';
 import { CardCollapse } from '@/components/ui/card-collapse';
 import { Text } from '@/components/ui/text';
+import { CustomerName } from '@/equipment/components/CustomerName';
 
 /** A titled detail card, matching the Bay slot and Job detail panes. */
 export function FactCard({ title, children }: { title: string; children: ReactNode }) {

@@ -5,8 +5,6 @@ import { useFocusEffect } from 'expo-router';
 import type { ReactNode } from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { SectionList, View } from 'react-native';
-
-import { JobActivityEntry } from '@/components/activity/JobActivityEntry';
 import {
   type ListControlOption,
   ListControlRow,
@@ -16,7 +14,8 @@ import {
 import { Pulse } from '@/components/ui/pulse';
 import { RefreshControl } from '@/components/ui/refresh-control';
 import { Text } from '@/components/ui/text';
-import { groupJobActivityByDay } from '@/lib/job-activity';
+import { JobActivityEntry } from '@/equipment/components/activity/JobActivityEntry';
+import { groupJobActivityByDay } from '@/equipment/lib/job-activity';
 import { useTRPC } from '@/lib/trpc';
 import { useDebouncedSearch } from '@/lib/use-debounced-search';
 import { useGlobalRefresh } from '@/lib/use-global-refresh';

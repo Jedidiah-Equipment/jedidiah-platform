@@ -5,7 +5,6 @@ import { createStableRowKeys, formatCurrency, getFormIssuesForField, hasFormIssu
 import { AssemblyName, type Part, PriceDelta, UUID } from '@pkg/schema';
 import { IconChevronDown, IconGripVertical, IconPlus, IconTrash, IconWorld } from '@tabler/icons-react';
 import React, { useMemo } from 'react';
-import { FieldUsageLabel, PRODUCT_FIELD_USAGE } from '@/components/catalog/index.js';
 import { RemoveEntityButton } from '@/components/common/RemoveEntityButton.js';
 import { DataTable } from '@/components/data-table/DataTable.js';
 import { type DataTableColumnDef, useDataTable } from '@/components/data-table/features.js';
@@ -52,9 +51,10 @@ import { Empty, EmptyDescription, EmptyHeader, EmptyIcon, EmptyTitle } from '@/c
 import { Field, FieldError, FieldLabel } from '@/components/ui/field.js';
 import { Input } from '@/components/ui/input.js';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select.js';
-import { useAssemblyNameOptions, usePartCategoryOptions, usePartOptions } from '@/hooks/options/index.js';
+import { FieldUsageLabel, PRODUCT_FIELD_USAGE } from '@/equipment/components/catalog/index.js';
+import { useAssemblyNameOptions, usePartCategoryOptions, usePartOptions } from '@/equipment/hooks/options/index.js';
+import { getPartQuantityUnitDisplay } from '@/equipment/utils/part-quantity-format.js';
 import { cn } from '@/lib/utils.js';
-import { getPartQuantityUnitDisplay } from '@/utils/part-quantity-format.js';
 import {
   type ProductAssemblyFormInput as AssemblyInput,
   emptyProductFormValues,

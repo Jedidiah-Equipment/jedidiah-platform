@@ -3,20 +3,19 @@ import type { Department } from '@pkg/schema';
 import { IconArrowsSort } from '@tabler/icons-react-native';
 import { useRouter } from 'expo-router';
 import { View } from 'react-native';
-
-import { CatalogListCard } from '@/components/CatalogList';
-import { DepartmentIcon } from '@/components/departments/DepartmentIcon';
 import {
   type ListControlOption,
   ListControlRow,
   ListDropdownControl,
   ListSearchControl,
 } from '@/components/ListControls';
-import { StockBadge } from '@/components/StockBadge';
 import { Text } from '@/components/ui/text';
-import { stripOperatorSuffix } from '@/lib/bay-name';
-import type { BaySort } from '@/lib/bay-sort';
-import type { BayListCard } from '@/lib/use-bay-list';
+import { CatalogListCard } from '@/equipment/components/CatalogList';
+import { DepartmentIcon } from '@/equipment/components/departments/DepartmentIcon';
+import { StockBadge } from '@/equipment/components/StockBadge';
+import { stripOperatorSuffix } from '@/equipment/lib/bay-name';
+import type { BaySort } from '@/equipment/lib/bay-sort';
+import type { BayListCard } from '@/equipment/lib/use-bay-list';
 
 const SORT_OPTIONS: readonly ListControlOption<BaySort>[] = [
   { label: 'Days left', value: 'days-left' },

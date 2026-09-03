@@ -2,10 +2,9 @@ import { IconPencil, IconPhoto, IconTrash, IconUpload } from '@tabler/icons-reac
 import type * as React from 'react';
 import { useRef, useState } from 'react';
 import { toast } from 'sonner';
-
-import { EntityThumbnail } from '@/components/thumbnail/EntityThumbnail.js';
 import { Button } from '@/components/ui/button.js';
 import { Input } from '@/components/ui/input.js';
+import { EntityThumbnail } from '@/equipment/components/thumbnail/EntityThumbnail.js';
 
 export type ImageUploadControlProps = {
   accept: string;

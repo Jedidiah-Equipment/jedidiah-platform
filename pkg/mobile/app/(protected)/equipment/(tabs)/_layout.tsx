@@ -1,7 +1,7 @@
 import { type Href, Tabs } from 'expo-router';
 
-import { AppTabBar } from '@/components/AppTabBar';
-import { appTabLabel, visibleTabs } from '@/lib/app-tabs';
+import { AppTabBar } from '@/equipment/components/AppTabBar';
+import { appTabLabel, visibleTabs } from '@/equipment/lib/app-tabs';
 import { useAccess } from '@/lib/use-access';
 import { navigationColors } from '@/theme/gluestack-config';
 import { useColorMode } from '@/theme/use-color-mode';

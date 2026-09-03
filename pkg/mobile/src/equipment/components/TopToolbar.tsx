@@ -4,11 +4,11 @@ import type React from 'react';
 import { Pressable, View } from 'react-native';
 
 import { AppIcon } from '@/components/AppLogo';
-import { AssistantEntryButton } from '@/components/assistant/AssistantEntryButton';
-import { ProfileMenuButton } from '@/components/ProfileMenuButton';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
-import type { MainTabParent } from '@/lib/toolbar-navigation';
+import { AssistantEntryButton } from '@/equipment/components/assistant/AssistantEntryButton';
+import { ProfileMenuButton } from '@/equipment/components/ProfileMenuButton';
+import type { MainTabParent } from '@/equipment/lib/toolbar-navigation';
 
 export function MainTabToolbar({
   assistantParent,

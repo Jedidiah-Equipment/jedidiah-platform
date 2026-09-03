@@ -3,8 +3,6 @@ import { DEPARTMENTS, type Department } from '@pkg/schema';
 import { IconChevronDown } from '@tabler/icons-react';
 import type React from 'react';
 import { useId } from 'react';
-
-import { DepartmentIcon } from '@/components/departments/index.js';
 import { Button } from '@/components/ui/button.js';
 import {
   DropdownMenu,
@@ -14,6 +12,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu.js';
 import { Field, FieldLabel } from '@/components/ui/field.js';
+import { DepartmentIcon } from '@/equipment/components/departments/index.js';
 
 type UserDepartmentsFormProps = {
   initialDepartments: readonly Department[];

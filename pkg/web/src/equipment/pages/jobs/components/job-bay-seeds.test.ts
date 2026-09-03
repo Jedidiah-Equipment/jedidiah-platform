@@ -9,7 +9,7 @@ import {
 } from '@pkg/schema';
 import { describe, expect, it } from 'vitest';
 
-import { selectBayCalendars } from '@/hooks/use-bay-calendars.js';
+import { selectBayCalendars } from '@/equipment/hooks/use-bay-calendars.js';
 import {
   createBaySeedScheduling,
   getBaySeedBayMap,

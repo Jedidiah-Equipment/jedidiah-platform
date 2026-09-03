@@ -17,7 +17,9 @@ vi.mock('@tabler/icons-react-native', () => ({
   IconPlayerStopFilled: 'IconPlayerStopFilled',
 }));
 vi.mock('react-native-markdown-display', () => ({ default: 'Markdown' }));
-vi.mock('@/components/assistant/assistant-markdown-link', () => ({ AssistantMarkdownLink: 'AssistantMarkdownLink' }));
+vi.mock('@/equipment/components/assistant/assistant-markdown-link', () => ({
+  AssistantMarkdownLink: 'AssistantMarkdownLink',
+}));
 vi.mock('@/components/ui/activity-indicator', () => ({ ActivityIndicator: 'ActivityIndicator' }));
 vi.mock('@/components/ui/icon', () => ({ Icon: 'Icon' }));
 vi.mock('@/components/ui/text', () => ({ Text: 'Text' }));

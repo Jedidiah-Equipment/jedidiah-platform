@@ -21,7 +21,6 @@ function createAuthOptions(database: Db, businessPlugins: readonly BetterAuthPlu
     secret: config.AUTH_SECRET,
     trustedOrigins: config.AUTH_TRUSTED_ORIGINS,
     advanced: {
-      cookiePrefix: 'jedidiah',
       defaultCookieAttributes: {
         partitioned: config.APP_ENV !== 'development',
         sameSite: config.APP_ENV === 'development' ? ('lax' as const) : ('none' as const),

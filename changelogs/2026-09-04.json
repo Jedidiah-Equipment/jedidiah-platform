@@ -1,0 +1,31 @@
+{
+  "releasedAt": "2026-09-04T07:56:32.414Z",
+  "sections": [
+    {
+      "surface": "app",
+      "entries": [
+        {
+          "title": "Manage access by business",
+          "description": "Assign separate Equipment and Contracting roles to each user while keeping access within the correct business area."
+        },
+        {
+          "title": "Identify jobs at a glance",
+          "description": "Job Sheet headers now show the product name or service work title instead of repeating the quote code."
+        }
+      ]
+    },
+    {
+      "surface": "mobile",
+      "entries": [
+        {
+          "title": "Read badges clearly in dark mode",
+          "description": "Status badges and offering avatars now use the correct contrasting text colors in dark mode."
+        },
+        {
+          "title": "Handle access changes cleanly",
+          "description": "Accounts that are no longer eligible to use the mobile app are now signed out instead of encountering repeated access errors."
+        }
+      ]
+    }
+  ]
+}

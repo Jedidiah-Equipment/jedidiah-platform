@@ -1,4 +1,4 @@
-import { createUserAccessSummary, roleSlotsForRole } from '@pkg/domain';
+import { accessForRole } from '@pkg/domain/testing';
 import type { JobListResult } from '@pkg/schema/equipment';
 import { describe, expect, test } from 'vitest';
 
@@ -56,10 +56,7 @@ describe('findJobs contract', () => {
       ],
     } as JobListResult;
 
-    const response = toFindJobsResponse(
-      result,
-      createUserAccessSummary({ ...roleSlotsForRole('admin'), userId: 'test-user-id' }),
-    );
+    const response = toFindJobsResponse(result, accessForRole('admin', 'test-user-id'));
 
     expect(FindJobsResponse.parse(response)).toEqual(response);
     expect(response).toEqual([
@@ -73,11 +70,8 @@ describe('findJobs contract', () => {
       },
     ]);
     expect(response[0]?.links).not.toHaveProperty('product');
-    expect(
-      toFindJobsResponse(
-        result,
-        createUserAccessSummary({ ...roleSlotsForRole('job-viewer'), userId: 'test-user-id' }),
-      )[0]?.links,
-    ).toEqual({ app: `/equipment/jobs/${JOB_ID}` });
+    expect(toFindJobsResponse(result, accessForRole('job-viewer', 'test-user-id'))[0]?.links).toEqual({
+      app: `/equipment/jobs/${JOB_ID}`,
+    });
   });
 });

@@ -1,5 +1,5 @@
 import * as quotesCore from '@pkg/core/equipment';
-import { createUserAccessSummary, roleSlotsForRole } from '@pkg/domain';
+import { accessForRole } from '@pkg/domain/testing';
 import { QuoteDetail } from '@pkg/schema/equipment';
 import { describe, expect, test, vi } from 'vitest';
 import { z } from 'zod';
@@ -69,7 +69,7 @@ const quote = QuoteDetail.parse({
 
 function createContext(): AiContext {
   return {
-    access: createUserAccessSummary({ ...roleSlotsForRole('admin'), userId: 'test-user-id' }),
+    access: accessForRole('admin', 'test-user-id'),
     db: {} as AiContext['db'],
     session: {
       user: {
@@ -184,10 +184,9 @@ describe('createQuote contract', () => {
       customer: `/equipment/customers/${CUSTOMER_ID}/edit`,
       product: `/equipment/products/${PRODUCT_ID}/edit`,
     });
-    expect(
-      toCreateQuoteResponse(quote, createUserAccessSummary({ ...roleSlotsForRole('sales'), userId: 'test-user-id' }))
-        .links,
-    ).toEqual({ app: `/equipment/quotes/${QUOTE_ID}/edit` });
+    expect(toCreateQuoteResponse(quote, accessForRole('sales', 'test-user-id')).links).toEqual({
+      app: `/equipment/quotes/${QUOTE_ID}/edit`,
+    });
     expect(JSON.stringify(response)).not.toContain('thumbnailDataUrl');
     expect(createQuoteDefinition.anyOfPermissions).toEqual(['equipment_quote:create']);
     expect(createQuoteDefinition.description).toContain('inline Customer');

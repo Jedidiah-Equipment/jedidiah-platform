@@ -1,6 +1,6 @@
 import { isQuoteSalespersonRole, quoteKindLabels, quoteStatusLabels } from '@pkg/domain/equipment';
 import type { Quote } from '@pkg/schema/equipment';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import type React from 'react';
 import { useMemo } from 'react';
@@ -11,6 +11,7 @@ import { Field, FieldError, FieldLabel } from '@/components/ui/field.js';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select.js';
 import { useProductRangeForQuoteOptions, useSalesPersonOptions } from '@/equipment/hooks/options/index.js';
 import { useQueryInvalidation } from '@/equipment/hooks/use-query-invalidation.js';
+import { useAccess } from '@/hooks/use-access.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { QuoteCustomerCombobox } from './components/QuoteCustomerCombobox.js';
@@ -34,19 +35,19 @@ export const QuoteCreateDialog: React.FC<QuoteCreateDialogProps> = ({ onOpenChan
   const trpc = useTRPC();
   const navigate = useNavigate();
   const { invalidateQuotes } = useQueryInvalidation();
-  const currentUserQuery = useQuery(trpc.auth.me.queryOptions());
+  const accessQuery = useAccess();
   const productRangeOptions = useProductRangeForQuoteOptions();
   const salespeopleOptions = useSalesPersonOptions();
   const showMutationError = useApiMutationErrorToast();
 
   const defaultValues = useMemo((): QuoteCreateFormValues => {
-    const currentUser = currentUserQuery.data;
+    const access = accessQuery.data;
 
     return {
       ...QUOTE_CREATE_DEFAULT_VALUES,
-      salesPersonId: isQuoteSalespersonRole(currentUser?.role) ? (currentUser?.id ?? '') : '',
+      salesPersonId: isQuoteSalespersonRole(access?.equipmentRole) ? (access?.userId ?? '') : '',
     };
-  }, [currentUserQuery.data]);
+  }, [accessQuery.data]);
 
   const createQuoteMutation = useMutation(
     trpc.quotes.create.mutationOptions({

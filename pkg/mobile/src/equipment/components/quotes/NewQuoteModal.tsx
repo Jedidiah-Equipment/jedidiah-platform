@@ -1,7 +1,7 @@
 import { isQuoteSalespersonRole, quoteKindLabels, quoteStatusLabels } from '@pkg/domain/equipment';
 import { IconX } from '@tabler/icons-react-native';
 import { useStore } from '@tanstack/react-form';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
@@ -23,6 +23,7 @@ import {
   toQuoteCreateInput,
 } from '@/equipment/lib/quote-create';
 import { useTRPC } from '@/lib/trpc';
+import { useAccess } from '@/lib/use-access';
 
 const KIND_OPTIONS = [
   { label: quoteKindLabels.product, value: 'product' },
@@ -35,7 +36,7 @@ export function NewQuoteModal({ onClose }: { onClose: () => void }) {
   const queryClient = useQueryClient();
   const showToast = useAppToast();
   const [productSelection, setProductSelection] = useState<ProductSelection | null>(null);
-  const currentUser = useQuery(trpc.auth.me.queryOptions());
+  const access = useAccess();
   const createQuote = useMutation(trpc.quotes.create.mutationOptions());
 
   const form = useAppForm({
@@ -65,9 +66,9 @@ export function NewQuoteModal({ onClose }: { onClose: () => void }) {
   useEffect(() => {
     // Only a salesperson is prefilled as one: procurement may raise a Quote, but its Salesperson has
     // to come off the roster, and prefilling an id the picker never offers fails on submit.
-    const defaultSalesPersonId = isQuoteSalespersonRole(currentUser.data?.role) ? (currentUser.data?.id ?? '') : '';
+    const defaultSalesPersonId = isQuoteSalespersonRole(access.data?.equipmentRole) ? (access.data?.userId ?? '') : '';
     if (!salesPersonId && defaultSalesPersonId) form.setFieldValue('salesPersonId', defaultSalesPersonId);
-  }, [currentUser.data, form, salesPersonId]);
+  }, [access.data, form, salesPersonId]);
 
   const close = () => {
     if (!isSubmitting) onClose();

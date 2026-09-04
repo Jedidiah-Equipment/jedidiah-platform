@@ -1,5 +1,5 @@
 import * as productsCore from '@pkg/core/equipment';
-import { createUserAccessSummary, roleSlotsForRole } from '@pkg/domain';
+import { accessForRole } from '@pkg/domain/testing';
 import { describe, expect, test, vi } from 'vitest';
 import { z } from 'zod';
 
@@ -11,7 +11,7 @@ const PRODUCT_ID = '00000000-0000-4000-8000-000000000201';
 
 function createContext(): AiContext {
   return {
-    access: createUserAccessSummary({ ...roleSlotsForRole('admin'), userId: 'test-user-id' }),
+    access: accessForRole('admin', 'test-user-id'),
     brochureRenderer: vi.fn(),
     db: {} as AiContext['db'],
     log: {} as AiContext['log'],

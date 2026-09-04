@@ -389,14 +389,6 @@ export type RoleSlots = {
   equipmentRole: EquipmentRole | null;
 };
 
-export function roleSlotsForRole(role: AppRole): RoleSlots {
-  const equipmentRole = EquipmentRole.safeParse(role);
-
-  return equipmentRole.success
-    ? { contractingRole: null, equipmentRole: equipmentRole.data }
-    : { contractingRole: ContractingRole.parse(role), equipmentRole: null };
-}
-
 /**
  * Reads the two role columns as Better Auth hands them back. Its admin plugin types `role` as
  * `string | string[]`; this app stores exactly one equipment role there.
@@ -427,6 +419,14 @@ export function getRoleSlotsPermissions({ contractingRole, equipmentRole }: Role
 
 export function isRoleSlotsSignInEligible(slots: RoleSlots): boolean {
   return getRoleSlotsPermissions(slots).length > 0;
+}
+
+// The one sign-in test, shared by the API session hooks and the mobile session gate. Fails closed:
+// a user whose roles do not parse is ineligible rather than an error.
+export function isStoredUserSignInEligible(user: object): boolean {
+  const slots = tryParseRoleSlots(user);
+
+  return slots !== null && isRoleSlotsSignInEligible(slots);
 }
 
 /** The access summary for a stored user row or session user: the one line that turns roles into permissions. */
@@ -460,6 +460,14 @@ export function hasBusinessAccess(access: BusinessAccess, business: Business): b
 
 export function hasBothBusinessAccess(access: BusinessAccess): boolean {
   return hasBusinessAccess(access, 'equipment') && hasBusinessAccess(access, 'contracting');
+}
+
+/** Where a signed-in user lands: Equipment when they hold it, otherwise Contracting, otherwise nowhere. */
+export function defaultBusiness(access: BusinessAccess): Business | null {
+  if (hasBusinessAccess(access, 'equipment')) return 'equipment';
+  if (hasBusinessAccess(access, 'contracting')) return 'contracting';
+
+  return null;
 }
 
 // `user:*` permissions administer both businesses but live on the Equipment side (ADR 0017).

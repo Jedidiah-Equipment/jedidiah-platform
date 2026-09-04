@@ -16,6 +16,10 @@
       "types": "./dist/contracting/index.d.ts",
       "import": "./dist/contracting/index.js"
     },
+    "./testing": {
+      "types": "./dist/testing/index.d.ts",
+      "import": "./dist/testing/index.js"
+    },
     "./assets/*": "./assets/*",
     "./fonts/*": "./fonts/*"
   },

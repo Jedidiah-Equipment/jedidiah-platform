@@ -1,4 +1,4 @@
-import { createUserAccessSummary, roleSlotsForRole } from '@pkg/domain';
+import { accessForRole } from '@pkg/domain/testing';
 import type { QuoteListResult } from '@pkg/schema/equipment';
 import { describe, expect, test } from 'vitest';
 
@@ -113,10 +113,7 @@ describe('findQuotes contract', () => {
       ],
     } as QuoteListResult;
 
-    const response = toFindQuotesResponse(
-      result,
-      createUserAccessSummary({ ...roleSlotsForRole('admin'), userId: 'test-user-id' }),
-    );
+    const response = toFindQuotesResponse(result, accessForRole('admin', 'test-user-id'));
 
     expect(FindQuotesResponse.parse(response)).toEqual(response);
     expect(response[0]).toMatchObject({
@@ -139,9 +136,8 @@ describe('findQuotes contract', () => {
     });
     expect(response[1]?.links).not.toHaveProperty('product');
 
-    expect(
-      toFindQuotesResponse(result, createUserAccessSummary({ ...roleSlotsForRole('sales'), userId: 'test-user-id' }))[0]
-        ?.links,
-    ).toEqual({ app: `/equipment/quotes/${QUOTE_ID}/edit` });
+    expect(toFindQuotesResponse(result, accessForRole('sales', 'test-user-id'))[0]?.links).toEqual({
+      app: `/equipment/quotes/${QUOTE_ID}/edit`,
+    });
   });
 });

@@ -1,7 +1,7 @@
 import type { LanguageModelV4FinishReason, LanguageModelV4StreamPart, LanguageModelV4Usage } from '@ai-sdk/provider';
 import fastifyCors from '@fastify/cors';
 import type { AiContext } from '@pkg/ai/equipment';
-import { createUserAccessSummary, roleSlotsForRole } from '@pkg/domain';
+import { accessForRole } from '@pkg/domain/testing';
 import { convertArrayToReadableStream, MockLanguageModelV4 } from 'ai/test';
 import Fastify from 'fastify';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
@@ -63,7 +63,7 @@ vi.mock('@pkg/core', async (importOriginal) => {
 
 function createChatContext(session: ReturnType<typeof mockSession> | null = mockSession()): AiContext {
   return {
-    access: session ? createUserAccessSummary({ ...roleSlotsForRole('admin'), userId: session.user.id }) : null,
+    access: session ? accessForRole('admin', session.user.id) : null,
     brochureRenderer: vi.fn(),
     db: {} as AiContext['db'],
     log: createSilentLogger(),

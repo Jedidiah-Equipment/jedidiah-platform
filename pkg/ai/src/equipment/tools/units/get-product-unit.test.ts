@@ -1,4 +1,4 @@
-import { createUserAccessSummary, roleSlotsForRole } from '@pkg/domain';
+import { accessForRole } from '@pkg/domain/testing';
 import { ProductUnitDetail } from '@pkg/schema/equipment';
 import { describe, expect, test } from 'vitest';
 
@@ -41,10 +41,7 @@ describe('getProductUnit contract', () => {
   });
 
   test('keeps the Unit detail intact and adds the links the caller can open', () => {
-    const response = toGetProductUnitResponse(
-      unit,
-      createUserAccessSummary({ ...roleSlotsForRole('admin'), userId: 'test-user-id' }),
-    );
+    const response = toGetProductUnitResponse(unit, accessForRole('admin', 'test-user-id'));
 
     expect(response).toEqual({
       ...unit,
@@ -56,11 +53,8 @@ describe('getProductUnit contract', () => {
         product: `/equipment/products/${PRODUCT_ID}/edit`,
       },
     });
-    expect(
-      toGetProductUnitResponse(
-        unit,
-        createUserAccessSummary({ ...roleSlotsForRole('job-viewer'), userId: 'test-user-id' }),
-      ).links,
-    ).toEqual({ app: `/equipment/units/${UNIT_ID}` });
+    expect(toGetProductUnitResponse(unit, accessForRole('job-viewer', 'test-user-id')).links).toEqual({
+      app: `/equipment/units/${UNIT_ID}`,
+    });
   });
 });

@@ -1,4 +1,4 @@
-import { createUserAccessSummary, roleSlotsForRole } from '@pkg/domain';
+import { accessForRole } from '@pkg/domain/testing';
 import type { ProductUnitListResult } from '@pkg/schema/equipment';
 import { describe, expect, test } from 'vitest';
 
@@ -60,10 +60,7 @@ describe('findProductUnits contract', () => {
   test('links an owned Unit to its Owner and Product', () => {
     const result = createListResult({ companyName: 'Acme Mining', id: CUSTOMER_ID });
 
-    const response = toFindProductUnitsResponse(
-      result,
-      createUserAccessSummary({ ...roleSlotsForRole('admin'), userId: 'test-user-id' }),
-    );
+    const response = toFindProductUnitsResponse(result, accessForRole('admin', 'test-user-id'));
 
     expect(FindProductUnitsResponse.parse(response)).toEqual(response);
     expect(response[0]?.links).toEqual({
@@ -76,17 +73,14 @@ describe('findProductUnits contract', () => {
   test('leaves the Product thumbnail out of the payload', () => {
     const response = toFindProductUnitsResponse(
       createListResult({ companyName: 'Acme Mining', id: CUSTOMER_ID }),
-      createUserAccessSummary({ ...roleSlotsForRole('admin'), userId: 'test-user-id' }),
+      accessForRole('admin', 'test-user-id'),
     );
 
     expect(response[0]?.product).toEqual({ id: PRODUCT_ID, modelCode: 'CL-120', name: 'Compact Loader' });
   });
 
   test('omits links the caller cannot open, and the Owner link for a Unit in Stock', () => {
-    const stockUnit = toFindProductUnitsResponse(
-      createListResult(null),
-      createUserAccessSummary({ ...roleSlotsForRole('admin'), userId: 'test-user-id' }),
-    );
+    const stockUnit = toFindProductUnitsResponse(createListResult(null), accessForRole('admin', 'test-user-id'));
     expect(stockUnit[0]?.links).toEqual({
       app: `/equipment/units/${UNIT_ID}`,
       product: `/equipment/products/${PRODUCT_ID}/edit`,
@@ -94,7 +88,7 @@ describe('findProductUnits contract', () => {
 
     const jobViewer = toFindProductUnitsResponse(
       createListResult({ companyName: 'Acme Mining', id: CUSTOMER_ID }),
-      createUserAccessSummary({ ...roleSlotsForRole('job-viewer'), userId: 'test-user-id' }),
+      accessForRole('job-viewer', 'test-user-id'),
     );
     expect(jobViewer[0]?.links).toEqual({ app: `/equipment/units/${UNIT_ID}` });
   });

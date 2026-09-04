@@ -1,5 +1,5 @@
 import * as core from '@pkg/core/equipment';
-import { createUserAccessSummary, roleSlotsForRole } from '@pkg/domain';
+import { accessForRole } from '@pkg/domain/testing';
 import { QuoteDocument } from '@pkg/schema/equipment';
 import { describe, expect, test, vi } from 'vitest';
 import { z } from 'zod';
@@ -32,7 +32,7 @@ const document = QuoteDocument.parse({
 
 function createContext(): AiContext {
   return {
-    access: createUserAccessSummary({ ...roleSlotsForRole('sales'), userId: 'test-user-id' }),
+    access: accessForRole('sales', 'test-user-id'),
     brochureRenderer: vi.fn(),
     db: {} as AiContext['db'],
     log: {} as AiContext['log'],

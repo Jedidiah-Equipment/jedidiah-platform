@@ -1,4 +1,4 @@
-import { createUserAccessSummary, roleSlotsForRole } from '@pkg/domain';
+import { accessForRole } from '@pkg/domain/testing';
 import { QuoteDetail } from '@pkg/schema/equipment';
 import { describe, expect, test } from 'vitest';
 
@@ -66,10 +66,7 @@ describe('getQuote contract', () => {
   });
 
   test('returns full Quote details and relationships without thumbnail data', () => {
-    const response = toGetQuoteResponse(
-      quote,
-      createUserAccessSummary({ ...roleSlotsForRole('admin'), userId: 'test-user-id' }),
-    );
+    const response = toGetQuoteResponse(quote, accessForRole('admin', 'test-user-id'));
 
     expect(GetQuoteResponse.parse(response)).toEqual(response);
     expect(response).toMatchObject({
@@ -83,10 +80,9 @@ describe('getQuote contract', () => {
       quotedBasePrice: 1000,
     });
     expect(JSON.stringify(response)).not.toContain('thumbnailDataUrl');
-    expect(
-      toGetQuoteResponse(quote, createUserAccessSummary({ ...roleSlotsForRole('sales'), userId: 'test-user-id' }))
-        .links,
-    ).toEqual({ app: `/equipment/quotes/${QUOTE_ID}/edit` });
+    expect(toGetQuoteResponse(quote, accessForRole('sales', 'test-user-id')).links).toEqual({
+      app: `/equipment/quotes/${QUOTE_ID}/edit`,
+    });
   });
 
   test('links the machine an Allocation Quote is selling', () => {
@@ -96,17 +92,12 @@ describe('getQuote contract', () => {
       productUnitId: UNIT_ID,
     });
 
-    expect(
-      toGetQuoteResponse(
-        allocationQuote,
-        createUserAccessSummary({ ...roleSlotsForRole('admin'), userId: 'test-user-id' }),
-      ).links,
-    ).toMatchObject({ productUnit: `/equipment/units/${UNIT_ID}` });
-    expect(
-      toGetQuoteResponse(
-        allocationQuote,
-        createUserAccessSummary({ ...roleSlotsForRole('sales'), userId: 'test-user-id' }),
-      ).links,
-    ).toEqual({ app: `/equipment/quotes/${QUOTE_ID}/edit`, productUnit: `/equipment/units/${UNIT_ID}` });
+    expect(toGetQuoteResponse(allocationQuote, accessForRole('admin', 'test-user-id')).links).toMatchObject({
+      productUnit: `/equipment/units/${UNIT_ID}`,
+    });
+    expect(toGetQuoteResponse(allocationQuote, accessForRole('sales', 'test-user-id')).links).toEqual({
+      app: `/equipment/quotes/${QUOTE_ID}/edit`,
+      productUnit: `/equipment/units/${UNIT_ID}`,
+    });
   });
 });

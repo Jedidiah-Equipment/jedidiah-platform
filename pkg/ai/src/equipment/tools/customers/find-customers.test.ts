@@ -1,4 +1,4 @@
-import { createUserAccessSummary, roleSlotsForRole } from '@pkg/domain';
+import { accessForRole } from '@pkg/domain/testing';
 import { CustomerListResult } from '@pkg/schema/equipment';
 import { describe, expect, test } from 'vitest';
 
@@ -58,10 +58,7 @@ describe('findCustomers contract', () => {
       total: 1,
     });
 
-    const response = toFindCustomersResponse(
-      result,
-      createUserAccessSummary({ ...roleSlotsForRole('admin'), userId: 'test-user-id' }),
-    );
+    const response = toFindCustomersResponse(result, accessForRole('admin', 'test-user-id'));
 
     expect(FindCustomersResponse.parse(response)).toEqual(response);
     expect(response).toEqual([
@@ -76,12 +73,7 @@ describe('findCustomers contract', () => {
       },
     ]);
     expect(JSON.stringify(response)).not.toMatch(/address|notes|thumbnail/);
-    expect(
-      toFindCustomersResponse(
-        result,
-        createUserAccessSummary({ ...roleSlotsForRole('sales'), userId: 'test-user-id' }),
-      ),
-    ).toEqual([
+    expect(toFindCustomersResponse(result, accessForRole('sales', 'test-user-id'))).toEqual([
       {
         companyName: 'Acme Mining',
         contactPerson: 'A. Person',

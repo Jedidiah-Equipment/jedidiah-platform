@@ -1,4 +1,4 @@
-import { createUserAccessSummary, roleSlotsForRole } from '@pkg/domain';
+import { accessForRole } from '@pkg/domain/testing';
 import { JobDetail } from '@pkg/schema/equipment';
 import { describe, expect, test } from 'vitest';
 
@@ -71,10 +71,7 @@ describe('getJob contract', () => {
   });
 
   test('returns full Job details and relationships without thumbnail data', () => {
-    const response = toGetJobResponse(
-      job,
-      createUserAccessSummary({ ...roleSlotsForRole('admin'), userId: 'test-user-id' }),
-    );
+    const response = toGetJobResponse(job, accessForRole('admin', 'test-user-id'));
 
     expect(GetJobResponse.parse(response)).toEqual(response);
     expect(response).toMatchObject({
@@ -99,10 +96,9 @@ describe('getJob contract', () => {
       workTitle: 'Hydraulic repair',
     });
     expect(JSON.stringify(response)).not.toContain('thumbnailDataUrl');
-    expect(
-      toGetJobResponse(job, createUserAccessSummary({ ...roleSlotsForRole('job-viewer'), userId: 'test-user-id' }))
-        .links,
-    ).toEqual({ app: `/equipment/jobs/${JOB_ID}` });
+    expect(toGetJobResponse(job, accessForRole('job-viewer', 'test-user-id')).links).toEqual({
+      app: `/equipment/jobs/${JOB_ID}`,
+    });
   });
 
   test('links a Unit-bound Job to the machine it builds', () => {
@@ -116,10 +112,7 @@ describe('getJob contract', () => {
       },
     });
 
-    const response = toGetJobResponse(
-      productJob,
-      createUserAccessSummary({ ...roleSlotsForRole('admin'), userId: 'test-user-id' }),
-    );
+    const response = toGetJobResponse(productJob, accessForRole('admin', 'test-user-id'));
 
     expect(response.productUnit).toMatchObject({ id: UNIT_ID, productSerialNumber: 'SG1836260009' });
     expect(response.links).toMatchObject({

@@ -1,10 +1,10 @@
+import { isStoredUserSignInEligible } from '@pkg/domain';
 import { Redirect, Stack } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { AssistantProvider } from '@/equipment/components/assistant/AssistantProvider';
 import { signOut, useSession } from '@/lib/auth';
-import { AuthSessionProvider, isSessionSignInEligible } from '@/lib/auth-session';
+import { AuthSessionProvider } from '@/lib/auth-session';
 import { useIsOffline } from '@/lib/connectivity';
 import { isHydratedSession } from '@/lib/session-state';
 
@@ -62,18 +62,16 @@ export default function ProtectedLayout() {
     return <Redirect href="/login" />;
   }
 
-  if (!isSessionSignInEligible(session)) {
+  if (!isStoredUserSignInEligible(session.user)) {
     return <SignOutIneligibleSession />;
   }
 
   return (
     <AuthSessionProvider session={session}>
-      <AssistantProvider>
-        <Stack screenOptions={{ headerShown: false }}>
-          <Stack.Screen name="contracting" />
-          <Stack.Screen name="equipment" />
-        </Stack>
-      </AssistantProvider>
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="contracting" />
+        <Stack.Screen name="equipment" />
+      </Stack>
     </AuthSessionProvider>
   );
 }

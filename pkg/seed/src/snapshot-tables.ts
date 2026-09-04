@@ -88,5 +88,4 @@ export const snapshotTables: readonly SnapshotTableConfig[] = snapshotTableDefin
   table: dbTablesByName[config.tableName],
 }));
 
-export const snapshotTableNames = snapshotTables.map((table) => table.tableName);
 export const snapshotCleanupTables: readonly SnapshotTableConfig[] = [...snapshotTables].reverse();

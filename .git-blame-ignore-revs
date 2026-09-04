@@ -5,6 +5,6 @@
 # refactor(namespaces): isolate equipment application (#1416)
 5aaa8a921f73f87bbc8f0b2681a79de16243eae1
 # refactor(namespaces): classify frontend equipment features (#1417)
-0337707c
+0337707c998ac188c88fbf418d071285978661c1
 # refactor(db): move equipment tables into named schema (#1418)
-08b59dba
+08b59dbafb16d68e592cb598277b2dc3c1febef9

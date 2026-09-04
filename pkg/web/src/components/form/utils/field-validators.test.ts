@@ -18,6 +18,6 @@ describe('validateStructuralFieldOnMount', () => {
 
     field.mount();
 
-    expect(field.state.meta.errors).toContainEqual(expect.objectContaining({ message: 'Assembly name is required' }));
+    expect(field.state.meta.errors).toContainEqual(expect.objectContaining({ message: 'Name is required' }));
   });
 });

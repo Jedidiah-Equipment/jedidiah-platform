@@ -1,5 +1,8 @@
 // The one place both business schemas are named together: the relational schema object handed to
 // Drizzle. Everything else reaches tables through `@pkg/db` (shared) or `@pkg/db/equipment`.
+import { is } from 'drizzle-orm';
+import { getTableConfig, PgTable } from 'drizzle-orm/pg-core';
+
 import * as auditSchema from './schema/audit.js';
 import * as authSchema from './schema/auth.js';
 import * as changelogSchema from './schema/changelog.js';
@@ -41,3 +44,13 @@ export const schema = {
   ...supplierSchema,
   ...userDepartmentSchema,
 };
+
+// Every Postgres schema the application owns tables in, so catalog sweeps and resets never keep a
+// hand-written schema list.
+export const applicationSchemas: readonly string[] = [
+  ...new Set(
+    (Object.values(schema) as unknown[])
+      .filter((value): value is PgTable => is(value, PgTable))
+      .map((table) => getTableConfig(table).schema ?? 'public'),
+  ),
+].sort();

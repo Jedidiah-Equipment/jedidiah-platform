@@ -1,4 +1,4 @@
-import { type HelpTopic, helpUrl } from '@pkg/domain';
+import { type Business, type HelpTopic, hasBothBusinessAccess, helpUrl } from '@pkg/domain';
 import { IconHelpCircle, IconLogout, IconSwitchHorizontal } from '@tabler/icons-react-native';
 import * as Linking from 'expo-linking';
 import { router, usePathname } from 'expo-router';
@@ -12,7 +12,8 @@ import { Text } from '@/components/ui/text';
 import { useAppToast } from '@/components/ui/toast';
 import { docsOrigin } from '@/lib/app-env';
 import { signOut } from '@/lib/auth';
-import { getSessionBusinessAccess, useAuthSession } from '@/lib/auth-session';
+import { getSessionRoleSlots, useAuthSession } from '@/lib/auth-session';
+import { BUSINESS_HOME } from '@/lib/business-home';
 import type { ColorModePreference } from '@/theme/ColorModeProvider';
 import { useColorMode } from '@/theme/use-color-mode';
 
@@ -20,6 +21,12 @@ const THEME_OPTIONS: { label: string; value: ColorModePreference }[] = [
   { label: 'Dark', value: 'dark' },
   { label: 'Light', value: 'light' },
 ];
+
+const BUSINESS_LABELS: Record<Business, string> = { contracting: 'Contracting', equipment: 'Equipment' };
+
+function currentBusiness(pathname: string): Business {
+  return pathname.startsWith(BUSINESS_HOME.contracting) ? 'contracting' : 'equipment';
+}
 
 type ProfileUser = {
   name: string;
@@ -43,10 +50,8 @@ export function ProfileMenu({
   const insets = useSafeAreaInsets();
   const showToast = useAppToast();
   const helpOrigin = docsOrigin;
-  const businessAccess = getSessionBusinessAccess(useAuthSession());
-  const pathname = usePathname();
-  const isContracting = pathname.startsWith('/contracting');
-  const showBusinessSwitcher = businessAccess.contracting && businessAccess.equipment;
+  const showBusinessSwitcher = hasBothBusinessAccess(getSessionRoleSlots(useAuthSession()));
+  const otherBusiness = currentBusiness(usePathname()) === 'contracting' ? 'equipment' : 'contracting';
 
   return (
     // Anchor below the header's overflow button, clear of the status bar.
@@ -70,12 +75,12 @@ export function ProfileMenu({
             className="flex-row items-center gap-3 rounded-xl px-3 py-3 active:bg-muted"
             onPress={() => {
               onClose();
-              router.replace(isContracting ? '/equipment' : '/contracting');
+              router.replace(BUSINESS_HOME[otherBusiness]);
             }}
           >
             <Icon className="text-muted-foreground" icon={IconSwitchHorizontal} size={18} />
             <Text className="text-sm text-surface-foreground" weight="semibold">
-              Switch to {isContracting ? 'Equipment' : 'Contracting'}
+              Switch to {BUSINESS_LABELS[otherBusiness]}
             </Text>
           </Pressable>
         </View>

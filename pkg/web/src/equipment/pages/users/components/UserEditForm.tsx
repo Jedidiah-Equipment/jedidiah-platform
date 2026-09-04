@@ -1,4 +1,3 @@
-import { CONTRACTING_ROLES, ContractingRole, EQUIPMENT_ROLES, EquipmentRole } from '@pkg/schema';
 import { UserSummary, type UserSummary as UserSummaryType } from '@pkg/schema/equipment';
 import type React from 'react';
 import type { z } from 'zod';
@@ -6,9 +5,9 @@ import type { z } from 'zod';
 import { useAppForm } from '@/components/form/index.js';
 import { FieldGroup } from '@/components/ui/field.js';
 import { Separator } from '@/components/ui/separator.js';
+import { RoleSlotFields } from './RoleSlotFields.js';
 import { UserDepartmentsForm } from './UserDepartmentsForm.js';
 import { UserPasswordForm, type UserPasswordFormValues } from './UserPasswordForm.js';
-import { RoleField } from './UserRoleField.js';
 
 export type UserEditFormValues = z.infer<typeof UserEditFormValues>;
 export const UserEditFormValues = UserSummary.pick({
@@ -134,39 +133,13 @@ export const UserEditForm: React.FC<UserEditFormProps> = ({
               </form.AppField>
             ) : null}
             {canSetRole ? (
-              <form.AppField name="equipmentRole">
-                {(field) => (
-                  <RoleField
-                    disabled={isPending}
-                    errors={[...field.state.meta.errors, ...(roleError ? [{ message: roleError }] : [])]}
-                    label="Equipment role"
-                    name={field.name}
-                    onRoleChange={(role) => {
-                      onRoleChange?.();
-                      const equipmentRole = EquipmentRole.nullable().parse(role);
-                      field.handleChange(equipmentRole);
-                      if (equipmentRole === 'super-admin') form.setFieldValue('contractingRole', null);
-                    }}
-                    roles={EQUIPMENT_ROLES}
-                    value={field.state.value}
-                  />
-                )}
-              </form.AppField>
-            ) : null}
-            {canSetRole ? (
-              <form.AppField name="contractingRole">
-                {(field) => (
-                  <RoleField
-                    disabled={isPending || form.state.values.equipmentRole === 'super-admin'}
-                    errors={field.state.meta.errors}
-                    label="Contracting role"
-                    name={field.name}
-                    onRoleChange={(role) => field.handleChange(ContractingRole.nullable().parse(role))}
-                    roles={CONTRACTING_ROLES}
-                    value={field.state.value}
-                  />
-                )}
-              </form.AppField>
+              <RoleSlotFields
+                disabled={isPending}
+                equipmentRoleError={roleError}
+                fields={{ contractingRole: 'contractingRole', equipmentRole: 'equipmentRole' }}
+                form={form}
+                onEquipmentRoleChange={onRoleChange}
+              />
             ) : null}
             {canAssignDepartments ? (
               <form.AppField name="departments">

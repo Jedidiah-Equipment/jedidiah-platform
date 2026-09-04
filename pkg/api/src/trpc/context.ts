@@ -12,7 +12,6 @@ export type ChangelogLoader = () => Changelog[];
 
 export type ContextDependencies = {
   appEnv: AppEnv;
-  auth: Auth;
   changelogLoader: ChangelogLoader;
   storage: StorageAdapter;
 };
@@ -30,13 +29,14 @@ export type Context = {
 
 export function createContextFactory(dependencies: ContextDependencies) {
   return async function createContext({ req }: CreateFastifyContextOptions): Promise<Context> {
-    const session = await getSessionFromHeaders(req.headers, dependencies.auth.api);
+    const auth = req.server.auth;
+    const session = await getSessionFromHeaders(req.headers, auth.api);
     const access = session ? createUserAccessSummaryForUser(session.user) : null;
 
     return {
       access,
       appEnv: dependencies.appEnv,
-      auth: dependencies.auth,
+      auth,
       changelogLoader: dependencies.changelogLoader,
       db,
       log: req.log,

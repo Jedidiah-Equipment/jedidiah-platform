@@ -1,9 +1,9 @@
 import type { IncomingHttpHeaders } from 'node:http';
 
+import { isStoredUserSignInEligible } from '@pkg/domain';
 import { fromNodeHeaders } from 'better-auth/node';
 
 import type { Auth } from './auth.js';
-import { isStoredRoleSignInEligible } from './sign-in-eligibility.js';
 
 type BetterAuthSession = Auth['$Infer']['Session'];
 type AuthApi = Pick<Auth['api'], 'getSession'>;
@@ -32,5 +32,5 @@ export function filterSignInEligibleSession(session: AppSession | null): AppSess
     return null;
   }
 
-  return isStoredRoleSignInEligible(session.user) ? session : null;
+  return isStoredUserSignInEligible(session.user) ? session : null;
 }

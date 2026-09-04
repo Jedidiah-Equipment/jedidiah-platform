@@ -77,7 +77,7 @@ export const UserTable: React.FC<UserTableProps> = ({ currentUserId, errorMessag
         cell: ({ row }) => <span>{formatRole(row.original.equipmentRole)}</span>,
         enableColumnFilter: true,
         enableSorting: true,
-        filterFn: userEquipmentRoleFilter,
+        filterFn: roleColumnFilter('equipmentRole'),
         header: 'Equipment role',
       },
       {
@@ -85,7 +85,7 @@ export const UserTable: React.FC<UserTableProps> = ({ currentUserId, errorMessag
         cell: ({ row }) => <span>{formatRole(row.original.contractingRole)}</span>,
         enableColumnFilter: true,
         enableSorting: true,
-        filterFn: userContractingRoleFilter,
+        filterFn: roleColumnFilter('contractingRole'),
         header: 'Contracting role',
       },
       {
@@ -188,28 +188,18 @@ function userGlobalFilter(row: { original: UserSummary }, _columnId: string, fil
   ].some((value) => value.toLowerCase().includes(search));
 }
 
-function userEquipmentRoleFilter(row: { original: UserSummary }, _columnId: string, filterValue: unknown) {
-  const search = normalizeFilterValue(filterValue);
+function roleColumnFilter(slot: 'contractingRole' | 'equipmentRole') {
+  return (row: { original: UserSummary }, _columnId: string, filterValue: unknown) => {
+    const search = normalizeFilterValue(filterValue);
 
-  if (!search) {
-    return true;
-  }
+    if (!search) {
+      return true;
+    }
 
-  return [row.original.equipmentRole ?? '', formatRole(row.original.equipmentRole)].some((value) =>
-    value.toLowerCase().includes(search),
-  );
-}
+    const role = row.original[slot];
 
-function userContractingRoleFilter(row: { original: UserSummary }, _columnId: string, filterValue: unknown) {
-  const search = normalizeFilterValue(filterValue);
-
-  if (!search) {
-    return true;
-  }
-
-  return [row.original.contractingRole ?? '', formatRole(row.original.contractingRole)].some((value) =>
-    value.toLowerCase().includes(search),
-  );
+    return [role ?? '', formatRole(role)].some((value) => value.toLowerCase().includes(search));
+  };
 }
 
 function formatRole(role: UserSummary['equipmentRole'] | UserSummary['contractingRole']): string {

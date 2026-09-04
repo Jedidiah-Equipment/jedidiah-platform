@@ -19,7 +19,7 @@ export * from './schema/audit.js';
 export * from './schema/auth.js';
 export * from './schema/changelog.js';
 export * from './schema/stored-file.js';
-export { schema } from './schema.js';
+export { applicationSchemas, schema } from './schema.js';
 export {
   buildDatabaseUrl,
   type CreateEphemeralTestDatabaseOptions,

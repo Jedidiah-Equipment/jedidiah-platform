@@ -1,8 +1,4 @@
-import {
-  canAssignUserRoleSlots,
-  isContractingRoleBesideSuperAdmin,
-  isReservedSuperAdminAssignment,
-} from '@pkg/core/equipment';
+import { canAssignUserRoleSlots } from '@pkg/core/equipment';
 import type { Db } from '@pkg/db';
 import { createUserAccessSummaryForUser, hasPermission, parseRoleSlots, type RoleSlots } from '@pkg/domain';
 import { ContractingRole, EquipmentRole } from '@pkg/schema';
@@ -98,29 +94,10 @@ export function adminUserSafetyPlugin(database: Db): BetterAuthPlugin {
               throw APIError.from('FORBIDDEN', SELF_ROLE_CHANGE_ERROR);
             }
 
-            if (isContractingRoleBesideSuperAdmin(change)) {
-              throw APIError.from('BAD_REQUEST', SUPER_ADMIN_SPANS_CONTRACTING_ERROR);
-            }
-
-            if (!change.userId) {
-              // Create-user has no existing user to look up, so only the reserved-role rule applies.
-              if (
-                isReservedSuperAdminAssignment({
-                  actorRole: actor.equipmentRole,
-                  targetRole: change.equipmentRole ?? null,
-                })
-              ) {
-                throw APIError.from('FORBIDDEN', RESERVED_SUPER_ADMIN_ERROR);
-              }
-              return;
-            }
-
-            const { userId, ...slots } = change;
             const policy = await canAssignUserRoleSlots({
-              ...slots,
+              ...change,
               actorRole: actor.equipmentRole,
               db: database,
-              userId,
             });
 
             if (policy.allowed) {

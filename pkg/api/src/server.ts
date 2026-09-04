@@ -104,7 +104,6 @@ export async function buildServer(
     router: createAppRouter({ catalogTranslationScheduler }),
     createContext: createContextFactory({
       appEnv: config.APP_ENV,
-      auth,
       changelogLoader: createFileChangelogLoader(),
       storage,
     }),

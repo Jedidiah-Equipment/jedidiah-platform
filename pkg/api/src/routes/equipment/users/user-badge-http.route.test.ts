@@ -5,10 +5,12 @@ import type { UserBadgePdfModel, UserBadgePdfRenderer } from '@pkg/schema/equipm
 import Fastify, { type FastifyInstance } from 'fastify';
 import { afterEach, beforeEach, describe, expect, vi } from 'vitest';
 
+import type { Auth } from '@/auth/auth.js';
 import { createTester } from '@/test/create-tester.js';
 import { mockSession } from '@/test/test-utils.js';
 
 const routeTestState = vi.hoisted(() => ({
+  auth: null as unknown,
   db: null as unknown,
   session: null as unknown,
 }));
@@ -32,7 +34,8 @@ vi.mock('../../../auth/session.js', async (importOriginal) => {
   return { ...actual, getSessionFromHeaders: vi.fn(async () => routeTestState.session) };
 });
 
-const test = createTester(async ({ db }) => {
+const test = createTester(async ({ auth, db }) => {
+  routeTestState.auth = auth;
   routeTestState.db = db;
   routeTestState.session = mockSession();
   const now = new Date('2026-08-01T08:00:00.000Z');
@@ -112,6 +115,7 @@ describe('stores badge HTTP route', () => {
 async function createApp(pdfRenderer: UserBadgePdfRenderer) {
   const { registerUserBadgeHttpRoutes } = await import('./user-badge-http.route.js');
   const app = Fastify();
+  app.decorate('auth', routeTestState.auth as Auth);
   await app.register(fastifyMultipart);
   await registerUserBadgeHttpRoutes(app, { pdfRenderer });
   await app.ready();

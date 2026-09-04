@@ -7,9 +7,10 @@
   `app.config.ts` thin and keep its explicit `.ts` resolver import.
 - Routes live under `app/`; all other source lives under `src/` and imports through `@/*`.
   Protected routes stay in `app/(protected)/`; `/login` is public.
-- Every signed-in page must use exactly one fixed, edge-to-edge toolbar through its business wrapper
-  (`src/equipment/components/TopToolbar.tsx` or `src/contracting/components/TopToolbar.tsx`); both compose
-  the business-blind frame in `src/components/TopToolbar.tsx`. `/login` keeps its authentication-specific
+- Every signed-in page must use exactly one fixed, edge-to-edge toolbar. The business-blind frame in
+  `src/components/TopToolbar.tsx` renders the profile menu by default; Equipment pages go through
+  `src/equipment/components/TopToolbar.tsx`, which adds its own actions, and Contracting pages render the
+  frame directly until they need business-specific actions. `/login` keeps its authentication-specific
   brand header.
   - Main tab pages use `MainTabToolbar`: Jedidiah icon, title and mono subtitle on the left;
     business-specific actions and the profile menu on the right. Equipment exposes its Assistant action

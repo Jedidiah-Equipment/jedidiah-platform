@@ -13,12 +13,16 @@
       "@/*": ["./src/*"],
       "@pkg/core": ["../core/src/index.ts"],
       "@pkg/core/equipment": ["../core/src/equipment/index.ts"],
+      "@pkg/core/contracting": ["../core/src/contracting/index.ts"],
       "@pkg/db": ["../db/src/index.ts"],
       "@pkg/db/equipment": ["../db/src/equipment/index.ts"],
+      "@pkg/db/contracting": ["../db/src/contracting/index.ts"],
       "@pkg/domain": ["../domain/src/index.ts"],
       "@pkg/domain/equipment": ["../domain/src/equipment/index.ts"],
+      "@pkg/domain/contracting": ["../domain/src/contracting/index.ts"],
       "@pkg/schema": ["../schema/src/index.ts"],
-      "@pkg/schema/equipment": ["../schema/src/equipment/index.ts"]
+      "@pkg/schema/equipment": ["../schema/src/equipment/index.ts"],
+      "@pkg/schema/contracting": ["../schema/src/contracting/index.ts"]
     },
     "types": ["node", "vite/client", "vitest"]
   },

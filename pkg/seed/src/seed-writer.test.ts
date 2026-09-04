@@ -3,7 +3,7 @@ import { getTableName, getTableUniqueName } from 'drizzle-orm';
 import { PgDialect, type PgTable } from 'drizzle-orm/pg-core';
 import { describe, expect, it, vi } from 'vitest';
 
-import { clearSnapshotTables } from './seed-writer.js';
+import { clearApplicationTables, clearSnapshotTables } from './seed-writer.js';
 import { snapshotCleanupTables } from './snapshot-tables.js';
 
 type CatalogTable = { schemaname: string; tablename: string };
@@ -72,5 +72,22 @@ describe('clearSnapshotTables', () => {
     await clearSnapshotTables(tx);
 
     expect(statements.some((statement) => statement.startsWith('TRUNCATE TABLE'))).toBe(false);
+  });
+});
+
+describe('clearApplicationTables', () => {
+  it('truncates snapshotted tables too and restarts identities without per-table deletes', async () => {
+    const { statements, tx } = createClearingTransaction([
+      { schemaname: 'public', tablename: 'user' },
+      { schemaname: 'equipment', tablename: 'stock_movement' },
+      { schemaname: 'equipment', tablename: 'customers' },
+    ]);
+
+    await clearApplicationTables(tx);
+
+    expect(statements.find((statement) => statement.startsWith('TRUNCATE TABLE'))).toBe(
+      'TRUNCATE TABLE "equipment"."customers", "equipment"."stock_movement", "public"."user" RESTART IDENTITY CASCADE',
+    );
+    expect(tx.delete).not.toHaveBeenCalled();
   });
 });

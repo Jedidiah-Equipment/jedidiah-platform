@@ -8,9 +8,7 @@ export const Route = createFileRoute('/login')({
     const session = await getRouteSession(context);
 
     if (session) {
-      throw redirect({
-        to: '/equipment/dashboard',
-      });
+      throw redirect({ to: '/' });
     }
   },
   component: LoginPage,

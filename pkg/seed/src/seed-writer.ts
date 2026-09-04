@@ -1,7 +1,14 @@
 import { readFile } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
 import './load-write-env.js';
-import { createDatabaseClient, type DatabaseTransaction, type Db, getDatabaseUrl, sql } from '@pkg/db';
+import {
+  applicationSchemas,
+  createDatabaseClient,
+  type DatabaseTransaction,
+  type Db,
+  getDatabaseUrl,
+  sql,
+} from '@pkg/db';
 import { hashPassword } from 'better-auth/crypto';
 import { getTableUniqueName } from 'drizzle-orm';
 import { assertLocalSeedStorageTarget, assertLocalSeedTarget } from './seed-target-guards.js';
@@ -98,7 +105,7 @@ export async function replaceDatabaseWithSeedSnapshot(
 
   await database.transaction(async (tx) => {
     if (clearAllApplicationTables) {
-      await clearAllApplicationTablesForStaging(tx);
+      await clearApplicationTables(tx);
     } else {
       await clearSnapshotTables(tx);
     }
@@ -158,24 +165,41 @@ function withSeedPassword(rows: readonly SnapshotRow[], passwordHash: string): S
   return rows.map((row) => (row.providerId === 'credential' ? { ...row, password: passwordHash } : row));
 }
 
+// Local re-seed: sweep what the snapshot does not own, then delete snapshot rows in reverse
+// dependency order so seeded parents go last.
 export async function clearSnapshotTables(tx: DatabaseTransaction): Promise<void> {
-  await clearUnsnapshottedApplicationTables(tx);
+  await truncateApplicationTables(tx);
 
   for (const config of snapshotCleanupTables) {
     await tx.delete(config.table);
   }
 }
 
-// A local database also holds rows the snapshot never captures — Purchase Orders, the stock ledger,
-// Documents, department stamps — and several of those reference snapshot parents with ON DELETE
-// RESTRICT, so leaving them in place fails the next re-seed. Registering each new table here by hand
-// only defers the same failure, so the sweep is derived from the catalog across both application schemas:
-// everything the snapshot does not own is truncated before the ordered snapshot cleanup runs.
-async function clearUnsnapshottedApplicationTables(tx: DatabaseTransaction): Promise<void> {
-  const applicationTables = await tx.execute<{ schemaname: string; tablename: string }>(
-    sql`SELECT schemaname, tablename FROM pg_tables WHERE schemaname IN ('equipment', 'public')`,
+// Staging replacement: every application table goes, snapshotted or not, with identities restarted.
+export async function clearApplicationTables(tx: DatabaseTransaction): Promise<void> {
+  await truncateApplicationTables(tx, { includeSnapshotted: true, restartIdentity: true });
+}
+
+type TruncateApplicationTablesOptions = { includeSnapshotted?: boolean; restartIdentity?: boolean };
+
+// A database also holds rows the snapshot never captures — Purchase Orders, the stock ledger, Documents,
+// department stamps — and several of those reference snapshot parents with ON DELETE RESTRICT, so
+// leaving them in place fails the next re-seed. Registering each new table by hand only defers the same
+// failure, so the sweep is read out of the catalog across every application schema.
+async function truncateApplicationTables(
+  tx: DatabaseTransaction,
+  { includeSnapshotted = false, restartIdentity = false }: TruncateApplicationTablesOptions = {},
+): Promise<void> {
+  const schemaNames = sql.join(
+    applicationSchemas.map((schemaName) => sql`${schemaName}`),
+    sql`, `,
   );
-  const snapshotted = new Set(snapshotTables.map((config) => getTableUniqueName(config.table)));
+  const applicationTables = await tx.execute<{ schemaname: string; tablename: string }>(
+    sql`SELECT schemaname, tablename FROM pg_tables WHERE schemaname IN (${schemaNames})`,
+  );
+  const snapshotted = new Set(
+    includeSnapshotted ? [] : snapshotTables.map((config) => getTableUniqueName(config.table)),
+  );
   const tableNames = [...applicationTables]
     .filter(({ schemaname, tablename }) => !snapshotted.has(`${schemaname}.${tablename}`))
     .sort((left, right) =>
@@ -192,40 +216,27 @@ async function clearUnsnapshottedApplicationTables(tx: DatabaseTransaction): Pro
     tableNames.map(({ schemaname, tablename }) => sql`${sql.identifier(schemaname)}.${sql.identifier(tablename)}`),
     sql`, `,
   );
+  const restart = restartIdentity ? sql` RESTART IDENTITY` : sql``;
 
-  await tx.execute(sql`TRUNCATE TABLE ${identifiers} CASCADE`);
-}
-
-async function clearAllApplicationTablesForStaging(tx: DatabaseTransaction): Promise<void> {
-  // Staging may contain rows in newer/non-snapshotted tables that restrict deletion of snapshot parents.
-  // The dynamic list also keeps this destructive path current as either application schema grows.
-  await tx.execute(sql`
-    DO $$
-    DECLARE
-      application_tables text;
-    BEGIN
-      SELECT string_agg(format('%I.%I', schemaname, tablename), ', ')
-      INTO application_tables
-      FROM pg_tables
-      WHERE schemaname IN ('equipment', 'public');
-
-      IF application_tables IS NOT NULL THEN
-        EXECUTE 'TRUNCATE TABLE ' || application_tables || ' RESTART IDENTITY CASCADE';
-      END IF;
-    END
-    $$;
-  `);
+  await tx.execute(sql`TRUNCATE TABLE ${identifiers}${restart} CASCADE`);
 }
 
 // Advance a code sequence past the seeded rows so the next app-created row gets a fresh, non-colliding
 // code. With rows present, setval(max, true) makes the next nextval return max + 1; with no rows,
-// setval(1, false) leaves the next nextval at 1.
+// setval(1, false) leaves the next nextval at 1. setval takes a regclass, and a bare identifier there
+// parses as a column reference, so the name is quoted server-side with format('%I.%I').
 async function resetSnapshotSequence(tx: DatabaseTransaction, config: SnapshotTableConfig): Promise<void> {
   if (!config.resetSequence) {
     return;
   }
 
-  const { sequenceName, columnName } = config.resetSequence;
+  const { sequence, columnName } = config.resetSequence;
+
+  if (!sequence.seqName) {
+    throw new Error(`Snapshot table ${config.tableName} resets an unnamed sequence`);
+  }
+
+  const sequenceName = sql`format('%I.%I', ${sequence.schema ?? 'public'}::text, ${sequence.seqName}::text)`;
 
   await tx.execute(
     sql`SELECT setval(${sequenceName}, COALESCE((SELECT MAX(${sql.identifier(columnName)}) FROM ${config.table}), 1), (SELECT COUNT(*) FROM ${config.table}) > 0)`,

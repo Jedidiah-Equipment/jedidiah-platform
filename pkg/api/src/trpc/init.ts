@@ -1,4 +1,4 @@
-import { hasBusinessAccess, hasPermission } from '@pkg/domain';
+import { type Business, hasBusinessAccess, hasPermission } from '@pkg/domain';
 import type { AppPermission } from '@pkg/schema';
 import { initTRPC } from '@trpc/server';
 
@@ -23,8 +23,6 @@ const t = initTRPC.context<Context>().create({
 export const router = t.router;
 export const publicProcedure = t.procedure;
 export const createCallerFactory = t.createCallerFactory;
-
-type Business = 'contracting' | 'equipment';
 
 export const protectedProcedure = t.procedure.use(({ ctx, next }) => {
   if (!ctx.session) {

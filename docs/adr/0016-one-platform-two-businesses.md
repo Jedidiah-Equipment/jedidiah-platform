@@ -20,7 +20,8 @@ codebase says so everywhere the same way:
   `contracting/` namespace, "outside" would ambiguously mean equipment *or* shared, and the boundary
   could not be linted from both sides. **Package entrypoints say the same thing**: `@pkg/<package>` is
   the shared root, `@pkg/<package>/equipment` and `@pkg/<package>/contracting` are the businesses, and
-  there is no entrypoint that is shared-plus-one-business under a neutral name. `pkg/lander`, `pkg/seed`
+  there is no entrypoint that is shared-plus-one-business under a neutral name (`@pkg/domain/testing` is the one
+  extra, carrying test fixtures that production code never imports). `pkg/lander`, `pkg/seed`
   and `pkg/docs` are whole-package Equipment surfaces and tooling rather than layers: they sit outside
   the wall, consume `@pkg/*/equipment` freely, and gain a contracting counterpart only if one is ever
   needed. **Shared is earned, never presumed**: phase 0 classifies code by what it provably serves
@@ -73,7 +74,7 @@ and index routes, the `_authed` layout, and the mobile root, protected and index
 a business needs (the catalog translation scheduler, the composed Better Auth instance) are injected by
 that wiring — routers that need them are factories, HTTP routes read `request.server.auth` — so no shared
 type names a business module. `.git-blame-ignore-revs` lists the squash commits of the rename PRs, and a
-test verifies each is reachable from `main`. The businesses share nothing beyond the business-blind
+test verifies each is an ancestor of HEAD. The businesses share nothing beyond the business-blind
 mechanisms in `public`: the fleet-model decision dropped the once-considered Machine → Product Unit link,
 so no row in either business schema references the other.
 

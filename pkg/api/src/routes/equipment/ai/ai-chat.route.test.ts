@@ -52,8 +52,8 @@ const listProductsMock = vi.fn(async () => ({
 }));
 const getProductMock = vi.fn(async () => PRODUCT);
 
-vi.mock('@pkg/core', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@pkg/core')>();
+vi.mock('@pkg/core/equipment', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@pkg/core/equipment')>();
   return {
     ...actual,
     getProduct: () => getProductMock(),

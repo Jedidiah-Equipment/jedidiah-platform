@@ -1,5 +1,8 @@
 import type { Href } from 'expo-router';
 
+import type { AppTab } from '@/equipment/lib/app-tabs';
+
+/** The one table of main tab roots; `appTabHref` and `appTabLabel` read it rather than repeating the routes. */
 export const MAIN_TAB_PARENTS = {
   activity: { href: '/equipment/activity', label: 'Activity' },
   jobs: { href: '/equipment/jobs', label: 'Jobs' },
@@ -8,7 +11,7 @@ export const MAIN_TAB_PARENTS = {
   quotes: { href: '/equipment/quotes', label: 'Quotes' },
   stores: { href: '/equipment/stores', label: 'Stores' },
   units: { href: '/equipment/units', label: 'Units' },
-} as const;
+} as const satisfies Record<AppTab, { href: Href; label: string }>;
 
 export type MainTabParent = (typeof MAIN_TAB_PARENTS)[keyof typeof MAIN_TAB_PARENTS];
 

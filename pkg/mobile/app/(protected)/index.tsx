@@ -1,9 +1,12 @@
+import { defaultBusiness } from '@pkg/domain';
 import { Redirect } from 'expo-router';
-import { getSessionBusinessAccess, useAuthSession } from '@/lib/auth-session';
+import { getSessionRoleSlots, useAuthSession } from '@/lib/auth-session';
+import { BUSINESS_HOME } from '@/lib/business-home';
 
 export default function ProtectedIndex() {
   const session = useAuthSession();
-  const access = getSessionBusinessAccess(session);
+  // The protected layout already signed out anyone without a business, so the fallback is unreachable.
+  const business = defaultBusiness(getSessionRoleSlots(session)) ?? 'equipment';
 
-  return <Redirect href={access.equipment ? '/equipment' : '/contracting'} />;
+  return <Redirect href={BUSINESS_HOME[business]} />;
 }

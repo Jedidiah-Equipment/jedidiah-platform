@@ -71,12 +71,20 @@ export const UserTable: React.FC<UserTableProps> = ({ currentUserId, errorMessag
         header: 'Full Name',
       },
       {
-        accessorKey: 'role',
-        cell: ({ row }) => <span>{roleLabels[row.original.role]}</span>,
+        accessorKey: 'equipmentRole',
+        cell: ({ row }) => <span>{formatRole(row.original.equipmentRole)}</span>,
         enableColumnFilter: true,
         enableSorting: true,
-        filterFn: userRoleFilter,
-        header: 'Role',
+        filterFn: userEquipmentRoleFilter,
+        header: 'Equipment role',
+      },
+      {
+        accessorKey: 'contractingRole',
+        cell: ({ row }) => <span>{formatRole(row.original.contractingRole)}</span>,
+        enableColumnFilter: true,
+        enableSorting: true,
+        filterFn: userContractingRoleFilter,
+        header: 'Contracting role',
       },
       {
         accessorKey: 'departments',
@@ -169,21 +177,41 @@ function userGlobalFilter(row: { original: UserSummary }, _columnId: string, fil
 
   return [
     row.original.name,
-    row.original.role,
-    roleLabels[row.original.role],
+    row.original.equipmentRole ?? '',
+    formatRole(row.original.equipmentRole),
+    row.original.contractingRole ?? '',
+    formatRole(row.original.contractingRole),
     ...row.original.departments.map((department) => departmentLabels[department]),
     row.original.emailVerified ? 'verified' : 'unverified',
   ].some((value) => value.toLowerCase().includes(search));
 }
 
-function userRoleFilter(row: { original: UserSummary }, _columnId: string, filterValue: unknown) {
+function userEquipmentRoleFilter(row: { original: UserSummary }, _columnId: string, filterValue: unknown) {
   const search = normalizeFilterValue(filterValue);
 
   if (!search) {
     return true;
   }
 
-  return [row.original.role, roleLabels[row.original.role]].some((value) => value.toLowerCase().includes(search));
+  return [row.original.equipmentRole ?? '', formatRole(row.original.equipmentRole)].some((value) =>
+    value.toLowerCase().includes(search),
+  );
+}
+
+function userContractingRoleFilter(row: { original: UserSummary }, _columnId: string, filterValue: unknown) {
+  const search = normalizeFilterValue(filterValue);
+
+  if (!search) {
+    return true;
+  }
+
+  return [row.original.contractingRole ?? '', formatRole(row.original.contractingRole)].some((value) =>
+    value.toLowerCase().includes(search),
+  );
+}
+
+function formatRole(role: UserSummary['equipmentRole'] | UserSummary['contractingRole']): string {
+  return role ? roleLabels[role] : 'No access';
 }
 
 function userEmailVerifiedFilter(row: { original: UserSummary }, _columnId: string, filterValue: unknown) {

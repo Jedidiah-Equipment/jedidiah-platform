@@ -39,7 +39,7 @@ export const sendEmailDefinition = {
   ].join('\n'),
   inputSchema: SendEmailInput,
   outputSchema: SendEmailResponse,
-  anyOfPermissions: ['email:send'],
+  anyOfPermissions: ['equipment_email:send'],
   async handler(args: unknown, ctx: AiContext): Promise<SendEmailResponse> {
     const input = SendEmailInput.parse(args);
     const to = resolveRecipient(input.to, ctx);
@@ -77,7 +77,7 @@ async function resolveAttachment(
 ): Promise<AiEmailAttachment> {
   switch (attachment.type) {
     case 'quoteDocument': {
-      if (!hasPermission(ctx.access, 'quote:read')) {
+      if (!hasPermission(ctx.access, 'equipment_quote:read')) {
         throw new Error('You do not have permission to attach Quote Documents.');
       }
 
@@ -95,7 +95,10 @@ async function resolveAttachment(
       };
     }
     case 'productBrochureDocument': {
-      if (!hasPermission(ctx.access, 'product:read') && !hasPermission(ctx.access, 'quote:create')) {
+      if (
+        !hasPermission(ctx.access, 'equipment_product:read') &&
+        !hasPermission(ctx.access, 'equipment_quote:create')
+      ) {
         throw new Error('You do not have permission to attach Product Brochures.');
       }
 

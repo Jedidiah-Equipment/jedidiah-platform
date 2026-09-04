@@ -19,8 +19,8 @@ import { PurchaseOrderCreateDialog } from './PurchaseOrderCreateDialog.js';
 export const PurchaseOrdersPage: React.FC = () => {
   const trpc = useTRPC();
   const navigate = useNavigate();
-  const canCreate = useCan('purchase_order:create').can;
-  const canReadCosts = useCan('inventory_cost:read').can;
+  const canCreate = useCan('equipment_purchase_order:create').can;
+  const canReadCosts = useCan('equipment_inventory_cost:read').can;
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const purchaseOrdersQuery = useQuery(
     trpc.purchaseOrders.list.queryOptions({

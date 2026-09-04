@@ -29,7 +29,7 @@ export const getCustomerDefinition = {
   ].join('\n'),
   inputSchema: GetCustomerInput,
   outputSchema: GetCustomerResponse,
-  anyOfPermissions: ['customer:read'],
+  anyOfPermissions: ['equipment_customer:read'],
   async handler(args: unknown, ctx: AiContext): Promise<GetCustomerResponse> {
     const input = GetCustomerInput.parse(args);
     const customer = await customersCore.getCustomer({ db: ctx.db, id: input.id });

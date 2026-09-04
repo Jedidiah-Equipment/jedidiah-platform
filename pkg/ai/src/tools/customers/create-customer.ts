@@ -53,7 +53,7 @@ export const createCustomerDefinition = {
   ].join('\n'),
   inputSchema: CreateCustomerInput,
   outputSchema: CreateCustomerResponse,
-  anyOfPermissions: ['customer:create'],
+  anyOfPermissions: ['equipment_customer:create'],
   async handler(args: unknown, ctx: AiContext): Promise<CreateCustomerResponse> {
     const input = toCoreCustomerCreateInput(CreateCustomerInput.parse(args));
     const customer = await customersCore.createCustomer({

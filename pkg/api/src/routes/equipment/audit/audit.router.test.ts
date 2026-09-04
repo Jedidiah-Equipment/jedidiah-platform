@@ -1,4 +1,5 @@
 import { auditEvents, type Db, user } from '@pkg/db';
+import type { EquipmentRole } from '@pkg/schema';
 import { describe, expect } from 'vitest';
 
 import { createTester } from '@/test/create-tester.js';
@@ -150,7 +151,7 @@ async function createActorUser(
     email: string;
     id: string;
     name: string;
-    role: string;
+    role: EquipmentRole;
   },
 ) {
   const now = new Date();

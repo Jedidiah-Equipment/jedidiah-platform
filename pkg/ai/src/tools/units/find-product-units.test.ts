@@ -39,7 +39,7 @@ function createListResult(owner: { id: string; companyName: string } | null): Pr
 describe('findProductUnits contract', () => {
   test('describes the find-before-get workflow and its stock selector', () => {
     expect(findProductUnitsDefinition.name).toBe('findProductUnits');
-    expect(findProductUnitsDefinition.anyOfPermissions).toEqual(['product_unit:read']);
+    expect(findProductUnitsDefinition.anyOfPermissions).toEqual(['equipment_product_unit:read']);
     expect(findProductUnitsDefinition.description).toContain('stock');
     expect(findProductUnitsDefinition.description).toContain('getProductUnit');
   });

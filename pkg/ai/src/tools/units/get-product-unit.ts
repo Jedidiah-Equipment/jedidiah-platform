@@ -32,7 +32,7 @@ export const getProductUnitDefinition = {
   ].join('\n'),
   inputSchema: GetProductUnitInput,
   outputSchema: GetProductUnitResponse,
-  anyOfPermissions: ['product_unit:read'],
+  anyOfPermissions: ['equipment_product_unit:read'],
   async handler(args: unknown, ctx: AiContext): Promise<GetProductUnitResponse> {
     const input = GetProductUnitInput.parse(args);
     const unit = await productUnitsCore.getProductUnit({ db: ctx.db, id: input.id });

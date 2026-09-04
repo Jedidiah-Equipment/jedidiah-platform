@@ -5,7 +5,7 @@ import type { AppPermission } from '@pkg/schema';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 
-import { type AppSession, getSessionFromHeaders, parseBetterAuthRole } from '../auth/session.js';
+import { type AppSession, getSessionFromHeaders, parseBetterAuthRoleSlots } from '../auth/session.js';
 
 // Shared transport helpers for the file-upload/download HTTP routes (documents, images). These own the
 // concerns every such route repeats — session auth, permission gating, body streaming, and turning a
@@ -41,7 +41,7 @@ export async function requireRouteAuth(request: FastifyRequest, reply: FastifyRe
   }
 
   const access = createUserAccessSummary({
-    role: parseBetterAuthRole(session.user.role),
+    ...parseBetterAuthRoleSlots(session.user),
     userId: session.user.id,
   });
 

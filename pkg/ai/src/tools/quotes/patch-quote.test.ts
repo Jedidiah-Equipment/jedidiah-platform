@@ -135,7 +135,7 @@ describe('patchQuote contract', () => {
     expect(
       toPatchQuoteResponse(quote, createUserAccessSummary({ role: 'sales', userId: 'test-user-id' })).links,
     ).toEqual({ app: `/equipment/quotes/${QUOTE_ID}/edit` });
-    expect(patchQuoteDefinition.anyOfPermissions).toEqual(['quote:update']);
+    expect(patchQuoteDefinition.anyOfPermissions).toEqual(['equipment_quote:update']);
     expect(patchQuoteDefinition.description).toContain('findQuotes');
     expect(patchQuoteDefinition.description).toContain('accepted or rejected');
     expect(patchQuoteDefinition.description).toContain('replace the complete collection');

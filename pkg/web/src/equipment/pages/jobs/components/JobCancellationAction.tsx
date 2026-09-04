@@ -31,7 +31,7 @@ import { useTRPC } from '@/lib/trpc.js';
  */
 export const JobCancellationAction: React.FC<{ job: JobDetail }> = ({ job }) => {
   const trpc = useTRPC();
-  const canCancel = useCan('job:cancel').can;
+  const canCancel = useCan('equipment_job:cancel').can;
   const { invalidateInventory, invalidateJobs, invalidateProductUnits, invalidateQuotes } = useQueryInvalidation();
   const showMutationError = useApiMutationErrorToast();
   const [isOpen, setIsOpen] = useState(false);

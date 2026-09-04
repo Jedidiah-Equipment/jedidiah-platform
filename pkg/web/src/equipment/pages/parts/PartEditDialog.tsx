@@ -23,7 +23,7 @@ type PartEditDialogProps = {
 
 export const PartEditDialog: React.FC<PartEditDialogProps> = ({ onClose, part, supplier }) => {
   const trpc = useTRPC();
-  const canUpdatePart = useCan('part:update').can;
+  const canUpdatePart = useCan('equipment_part:update').can;
   const { invalidateParts } = useQueryInvalidation();
   const showMutationError = useApiMutationErrorToast();
 

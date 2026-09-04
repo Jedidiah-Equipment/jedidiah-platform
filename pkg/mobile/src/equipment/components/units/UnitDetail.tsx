@@ -138,7 +138,7 @@ function OwnershipTransferRow({ transfer }: { transfer: ProductUnitOwnershipTran
 }
 
 function UnitJobsCard({ unit }: { unit: ProductUnitDetail }) {
-  const canReadJobs = useCan('job:read').can;
+  const canReadJobs = useCan('equipment_job:read').can;
 
   return (
     <SectionCard title={`JOBS · ${unit.jobs.length}`}>

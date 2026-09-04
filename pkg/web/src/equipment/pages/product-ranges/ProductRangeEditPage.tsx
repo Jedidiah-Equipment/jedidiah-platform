@@ -27,7 +27,7 @@ type ProductRangeEditPageProps = {
 
 export const ProductRangeEditPage: React.FC<ProductRangeEditPageProps> = ({ onTabChange, rangeId, tab }) => {
   const trpc = useTRPC();
-  const canEdit = useCan('product_range:update').can;
+  const canEdit = useCan('equipment_product_range:update').can;
   const { invalidateCatalogTranslations, invalidateProductRanges } = useQueryInvalidation();
   const rangeQuery = useQuery(trpc.productRanges.get.queryOptions({ id: rangeId }));
   const updateMutation = useMutation(

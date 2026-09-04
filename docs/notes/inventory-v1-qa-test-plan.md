@@ -53,7 +53,7 @@ The seed contains **no stores user and no device user** — creating them is par
 
 ## 1 · Parts catalog (PART)
 
-Web `/parts`, permission `part:read` / `part:update`.
+Web `/parts`, permission `equipment_part:read` / `equipment_part:update`.
 
 - [ ] **PART-01 — Create a piece-counted Part.** New part with a Supplier, Unit `piece`,
   Stock tracking **perpetual**, Minimum stock 5, Storage location, Category. Expect: appears in
@@ -155,13 +155,13 @@ take is disabled, and the server refuses the same write (same derivation on both
 - [ ] **COST-03 — Internally fabricated.** Mark a Part internally fabricated. Expect: zero
   material cost carried.
 - [ ] **COST-04 — Cost gate nulls everything.** Sign in as "QA Stores" (no
-  `inventory_cost:read`). Sweep: `/inventory` (no cost/value columns), part history (no costs),
+  `equipment_inventory_cost:read`). Sweep: `/inventory` (no cost/value columns), part history (no costs),
   stocktake session (no Value column), PO detail (no line prices, no PDF download), Job cost
   comparison (absent). Expect: every cost field reads as empty/absent on every surface — one
   gate, no leaks.
 - [ ] **COST-05 — Revalue gate.** As "QA Stores" try to reach the Revalue action; as
   Procurement, revalue succeeds. Expect: stores blocked, procurement allowed
-  (`inventory_cost:revalue`).
+  (`equipment_inventory_cost:revalue`).
 
 ## 5 · Purchase Orders — draft to sent (PO)
 
@@ -173,7 +173,7 @@ Web `/purchase-orders`.
   Supplier, and for the Built Part. Expect: both impossible — every line's Part must belong to
   the order's Supplier, and a Built Part never sits on a PO line.
 - [ ] **PO-03 — Draft editing needs cost read.** As "QA Stores", open the draft. Expect: cannot
-  edit it (line prices are stored facts; editing a draft needs `inventory_cost:read`).
+  edit it (line prices are stored facts; editing a draft needs `equipment_inventory_cost:read`).
 - [ ] **PO-04 — Cancel only with no history.** Create a throwaway draft, **Cancel** (confirm
   dialog). Expect: cancelled. After a PO has received anything (RCV-01), Cancel is gone.
 - [ ] **PO-05 — Mark sent freezes.** **Mark sent** on PO-01's order. Expect: editing controls
@@ -225,9 +225,9 @@ Web `/purchase-orders`.
 - [ ] **RCV-14 — Credit note.** **Record a credit note** and settle the RCV-09 return. Expect:
   the Awaiting-credit badge clears for that return (keyed per movement); the credit note stays
   on the PO — it is never projected onto Jobs.
-- [ ] **RCV-15 — Return permission alternatives.** As "QA Stores" (has `inventory:move`, lacks
-  `purchase_order:amend`) post a web Return to Supplier. Expect: allowed. Procurement can post the
-  same PO-bound flow under `purchase_order:amend` without gaining general Checkout rights.
+- [ ] **RCV-15 — Return permission alternatives.** As "QA Stores" (has `equipment_inventory:move`, lacks
+  `equipment_purchase_order:amend`) post a web Return to Supplier. Expect: allowed. Procurement can post the
+  same PO-bound flow under `equipment_purchase_order:amend` without gaining general Checkout rights.
 - [ ] **RCV-16 — PO audit trail.** Check `/audit`. Expect: the PO lifecycle above left audit
   entries.
 
@@ -246,15 +246,15 @@ Web `/purchase-orders`.
   one flag takes one answer.
 - [ ] **INV-06 — Price variance report.** Open `/inventory/price-variance` as Procurement.
   Expect: PO-vs-invoiced comparison rows. As "QA Stores": the page is inaccessible
-  (`inventory_cost:read`).
+  (`equipment_inventory_cost:read`).
 
 ## 8 · Suppliers (SUP)
 
 - [ ] **SUP-01 — Create & edit.** Create a Supplier; edit its details. Expect: both work
-  under `supplier:update`; audit entries at `/audit`.
+  under `equipment_supplier:update`; audit entries at `/audit`.
 - [ ] **SUP-02 — Removal blocked by draft PO.** Give the Supplier a draft PO, try to remove
   the Supplier. Expect: refused while a draft PO exists.
-- [ ] **SUP-03 — Removal gate.** As Procurement (no `supplier:remove`), try to remove any
+- [ ] **SUP-03 — Removal gate.** As Procurement (no `equipment_supplier:remove`), try to remove any
   Supplier. Expect: refused; as Admin on a Supplier with no draft POs it succeeds.
 
 ## 9 · Buy list & on-order (BUY)
@@ -284,7 +284,7 @@ Web `/inventory/buy-list`.
 ## 10 · Jobs — checkout, commitment, close-out (JOB)
 
 - [ ] **JOB-01 — Job Stock tab.** Open a live Job's sheet as Admin. Expect: **Stock** and
-  **Variance** tabs (hidden from users without `inventory:read`); Stock tab lists CFO demand,
+  **Variance** tabs (hidden from users without `equipment_inventory:read`); Stock tab lists CFO demand,
   drawn, committed; offers Check out / Return to store / Create Purchase Orders from unmet
   demand.
 - [ ] **JOB-02 — Commitment math.** For a Job whose CFO wants 10 of a Part: draw 4. Expect:
@@ -304,7 +304,7 @@ Web `/inventory/buy-list`.
   rises.
 - [ ] **JOB-08 — Close-out is once, no reopen.** Revisit the closed-out Job. Expect: no
   close-out affordance again, no reopen anywhere; it is a recorded event, not a status.
-- [ ] **JOB-09 — Close-out permission.** "QA Stores" can work the queue (`inventory:close-out`
+- [ ] **JOB-09 — Close-out permission.** "QA Stores" can work the queue (`equipment_inventory:close-out`
   in the stores role); Procurement cannot see `/inventory/close-out`.
 
 ## 11 · Job material variance (VAR)
@@ -319,7 +319,7 @@ Web `/inventory/buy-list`.
 - [ ] **VAR-04 — Same report at every stage.** Check the report on a live, a completed, and a
   closed-out Job. Expect: reads identically at all three.
 - [ ] **VAR-05 — Cost comparison gate.** The Job cost comparison summary shows for Admin/
-  Procurement, is absent for "QA Stores" (`inventory_cost:read`).
+  Procurement, is absent for "QA Stores" (`equipment_inventory_cost:read`).
 
 ## 12 · Built Parts & builds (BLD)
 
@@ -338,7 +338,7 @@ Web `/inventory/buy-list`.
 - [ ] **BLD-06 — Builds never recurse.** Build the nested Built Part (PART-08). Expect: it
   consumes the *first-level* components only — PART-06 units come from stock, never built
   implicitly.
-- [ ] **BLD-07 — Build permission.** "QA Stores" can build (`inventory:build`); Procurement
+- [ ] **BLD-07 — Build permission.** "QA Stores" can build (`equipment_inventory:build`); Procurement
   cannot.
 - [ ] **BLD-08 — Stock Build Job.** Create a stock build via `/jobs/stock-build` from a Build
   Spec. Expect: spec selector seeds the Job; resulting Job behaves like other Jobs in the
@@ -377,7 +377,7 @@ only. Scopes: **raw material** (weekly cadence) and **stores** (monthly).
 - [ ] **ST-11 — Overdue signals.** With no closed raw-material session inside a week + 2
   working days (or a scope never counted at all). Expect: overdue indicator on the web
   sessions page, the tablet scopes screen, and the nav badge.
-- [ ] **ST-12 — Count permission.** Counting requires `inventory:count` — "QA Stores" counts;
+- [ ] **ST-12 — Count permission.** Counting requires `equipment_inventory:count` — "QA Stores" counts;
   Procurement cannot post counts (web offers no counting anyway).
 
 ## 14 · Stores tablet — device, actor, scans (TAB)
@@ -424,7 +424,7 @@ Signed in as the "Stores Tablet" device (SETUP-05).
   estimate labels itself as a `≥` floor while any material/labor/bought-Part cost is missing.
 - [ ] **EST-03 — Optional Assembly partial.** A Product with an Optional Assembly: its cost
   contribution is always labelled partial.
-- [ ] **EST-04 — Estimate panel gate.** The live estimate panel requires `inventory_cost:read`
+- [ ] **EST-04 — Estimate panel gate.** The live estimate panel requires `equipment_inventory_cost:read`
   — absent for "QA Stores".
 - [ ] **EST-05 — Rate card seeds only.** On a Quote, add a Work Item: the Department seeds its
   rate from the rate card, the row snapshots it, and editing the card later never changes

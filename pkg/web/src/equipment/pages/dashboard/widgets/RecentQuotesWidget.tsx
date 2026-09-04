@@ -29,7 +29,7 @@ export const RecentQuotesWidget: React.FC = () => {
   const trpc = useTRPC();
   const accessQuery = useAccess();
   const quotesQuery = useQuery(trpc.quotes.list.queryOptions(RECENT_QUOTES_LIST_INPUT));
-  const canUpdateQuote = hasPermission(accessQuery.data, 'quote:update');
+  const canUpdateQuote = hasPermission(accessQuery.data, 'equipment_quote:update');
   const quotes = quotesQuery.data?.items ?? [];
 
   if (quotesQuery.error) {

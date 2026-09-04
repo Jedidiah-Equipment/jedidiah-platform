@@ -43,7 +43,11 @@ const TRANSLATORS: {
     validate: (source: CatalogTranslationSourceByKind[Kind], output: CatalogTranslationOutputByKind[Kind]) => string;
   };
 } = {
-  product: { schema: ProductTranslationOutput, schemaName: 'ProductTranslation', validate: validateProductOutput },
+  product: {
+    schema: ProductTranslationOutput,
+    schemaName: 'ProductTranslation',
+    validate: validateProductOutput,
+  },
   range: { schema: ProductRangeTranslationOutput, schemaName: 'ProductRangeTranslation', validate: () => '' },
   variant: {
     schema: ProductRangeVariantTranslationOutput,

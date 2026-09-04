@@ -33,8 +33,8 @@ export function createProductRangeImageRouteConfig(storage: StorageAdapter): Ent
   return {
     uploadPath: '/api/product-ranges/:rangeId/image',
     downloadPath: '/api/product-ranges/:rangeId/image/download',
-    uploadPermission: 'product_range:update',
-    readPermission: 'product_range:read',
+    uploadPermission: 'equipment_product_range:update',
+    readPermission: 'equipment_product_range:read',
     uploadForbiddenMessage: 'You do not have permission to update Product Range images.',
     readForbiddenMessage: 'You do not have permission to view this Product Range image.',
     noFileMessage: 'Choose an image to upload.',
@@ -58,8 +58,8 @@ export function createProductRangeLogoRouteConfig(storage: StorageAdapter): Enti
   return {
     uploadPath: '/api/product-ranges/:rangeId/logo',
     downloadPath: '/api/product-ranges/:rangeId/logo/download',
-    uploadPermission: 'product_range:update',
-    readPermission: 'product_range:read',
+    uploadPermission: 'equipment_product_range:update',
+    readPermission: 'equipment_product_range:read',
     uploadForbiddenMessage: 'You do not have permission to update Product Range logos.',
     readForbiddenMessage: 'You do not have permission to view this Product Range logo.',
     noFileMessage: 'Choose a logo to upload.',

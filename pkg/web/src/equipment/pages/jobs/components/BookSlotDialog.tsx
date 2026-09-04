@@ -44,7 +44,7 @@ export const BookSlotDialog: React.FC = () => {
   const schedulableBays = useMemo(
     () =>
       (baysQuery.data?.items ?? []).filter(
-        (bay) => enabledBayIds.has(bay.id) && hasPermission(accessQuery.data, 'job:schedule'),
+        (bay) => enabledBayIds.has(bay.id) && hasPermission(accessQuery.data, 'equipment_job:schedule'),
       ),
     [accessQuery.data, baysQuery.data?.items, enabledBayIds],
   );

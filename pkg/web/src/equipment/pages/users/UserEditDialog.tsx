@@ -48,6 +48,7 @@ export const UserEditDialog: React.FC<UserEditDialogProps> = ({ user, onClose })
   const canSetPassword = hasPermission(access, 'user:set-password');
   const canSaveUser = canUpdateProfile || canSetEmail || canSetRole;
   const setDepartmentsMutation = useMutation(trpc.users.setDepartments.mutationOptions());
+  const clearEquipmentRoleMutation = useMutation(trpc.users.clearEquipmentRole.mutationOptions());
   const setDeviceMutation = useMutation(trpc.users.setDevice.mutationOptions());
   const updateThumbnailMutation = useMutation(trpc.users.updateThumbnail.mutationOptions());
 
@@ -68,6 +69,16 @@ export const UserEditDialog: React.FC<UserEditDialogProps> = ({ user, onClose })
     mutationFn: async (value: UserEditFormValues) => {
       let didUpdate = false;
       const profileData = buildProfileUpdateData({ baselineUser, canSetEmail, canUpdateProfile, value });
+      if (canSetRole) {
+        const storedContractingRole = value.equipmentRole === 'super-admin' ? null : value.contractingRole;
+
+        if (value.equipmentRole !== null && value.equipmentRole !== baselineUser.equipmentRole) {
+          profileData.role = value.equipmentRole;
+        }
+        if (storedContractingRole !== baselineUser.contractingRole || baselineUser.equipmentRole === 'super-admin') {
+          profileData.contractingRole = storedContractingRole;
+        }
+      }
       const thumbnailChanged = value.thumbnailDataUrl !== baselineUser.thumbnailDataUrl;
 
       if (Object.keys(profileData).length > 0) {
@@ -77,6 +88,11 @@ export const UserEditDialog: React.FC<UserEditDialogProps> = ({ user, onClose })
             userId: baselineUser.id,
           }),
         );
+        didUpdate = true;
+      }
+
+      if (value.equipmentRole === null && baselineUser.equipmentRole !== null) {
+        await clearEquipmentRoleMutation.mutateAsync({ userId: baselineUser.id });
         didUpdate = true;
       }
 
@@ -90,12 +106,6 @@ export const UserEditDialog: React.FC<UserEditDialogProps> = ({ user, onClose })
 
       if (canSetRole && value.isDevice !== baselineUser.isDevice) {
         await setDeviceMutation.mutateAsync({ isDevice: value.isDevice, userId: baselineUser.id });
-        didUpdate = true;
-      }
-
-      if (canSetRole && value.role !== baselineUser.role) {
-        setRoleError(null);
-        await unwrapAuthResult(await authClient.admin.setRole({ role: value.role, userId: baselineUser.id }));
         didUpdate = true;
       }
 
@@ -180,7 +190,7 @@ export const UserEditDialog: React.FC<UserEditDialogProps> = ({ user, onClose })
             onSubmit={(value) => saveUserMutation.mutateAsync(value)}
             roleError={roleError}
           />
-          {canSetRole && baselineUser.role === 'stores' && !baselineUser.isDevice ? (
+          {canSetRole && baselineUser.equipmentRole === 'stores' && !baselineUser.isDevice ? (
             <UserBadgePrintButton userId={baselineUser.id} />
           ) : null}
           {canUpdateProfile && !baselineUser.emailVerified ? (
@@ -214,7 +224,10 @@ function isOpenBayOperatorAssignmentRoleError(error: unknown): error is AuthAdmi
 
 type ProfileUpdateData = Partial<
   Pick<UserEditFormValues, 'assistantEnabled' | 'email' | 'emailVerified' | 'name' | 'phoneNumber'>
->;
+> & {
+  contractingRole?: UserEditFormValues['contractingRole'];
+  role?: UserEditFormValues['equipmentRole'];
+};
 
 function buildProfileUpdateData({
   baselineUser,

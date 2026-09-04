@@ -17,7 +17,7 @@ type StartJobLinkProps = {
 /** Entry point to the Start Job page; rendered only when this quote can start a Job. */
 export const StartJobLink: React.FC<StartJobLinkProps> = ({ className, quote, size = 'default' }) => {
   const accessQuery = useAccess();
-  const canCreateJob = hasPermission(accessQuery.data, 'job:create');
+  const canCreateJob = hasPermission(accessQuery.data, 'equipment_job:create');
   const label = isReworkQuote(quote) ? 'Start Rework Job' : 'Start Job';
 
   if (!canCreateJob || !canStartJobFromQuote(quote)) {

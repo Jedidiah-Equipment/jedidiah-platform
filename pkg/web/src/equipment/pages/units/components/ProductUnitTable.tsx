@@ -61,12 +61,12 @@ export const ProductUnitTable: React.FC<ProductUnitTableProps> = ({ onOpenUnit, 
   });
 
   // One row crosses the ledger, the Unit, the Product's price and the sourcing Quote, so the button
-  // mirrors the API's all-of gate rather than `product_unit:read` alone — see `productUnits.stockExport`.
+  // mirrors the API's all-of gate rather than `equipment_product_unit:read` alone — see `productUnits.stockExport`.
   const canExportStock =
-    hasPermission(accessQuery.data, 'inventory_cost:read') &&
-    hasPermission(accessQuery.data, 'product:read') &&
-    hasPermission(accessQuery.data, 'product_unit:read') &&
-    hasPermission(accessQuery.data, 'quote:read');
+    hasPermission(accessQuery.data, 'equipment_inventory_cost:read') &&
+    hasPermission(accessQuery.data, 'equipment_product:read') &&
+    hasPermission(accessQuery.data, 'equipment_product_unit:read') &&
+    hasPermission(accessQuery.data, 'equipment_quote:read');
   const stockExportMutation = useMutation({
     mutationFn: () =>
       queryClient.fetchQuery(

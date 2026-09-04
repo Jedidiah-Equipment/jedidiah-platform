@@ -20,7 +20,7 @@ export function StocktakeSessionPage({ sessionId }: { sessionId: UUID }) {
   const trpc = useTRPC();
   const accessQuery = useAccess();
   const reportQuery = useQuery(trpc.inventory.stocktakeSessionReport.queryOptions({ sessionId }));
-  const showCosts = hasPermission(accessQuery.data, 'inventory_cost:read');
+  const showCosts = hasPermission(accessQuery.data, 'equipment_inventory_cost:read');
 
   if (reportQuery.isPending) {
     return (

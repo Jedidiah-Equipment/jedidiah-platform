@@ -35,7 +35,7 @@ const unit = ProductUnitDetail.parse({
 describe('getProductUnit contract', () => {
   test('follows findProductUnits and reads one machine by UUID', () => {
     expect(getProductUnitDefinition.name).toBe('getProductUnit');
-    expect(getProductUnitDefinition.anyOfPermissions).toEqual(['product_unit:read']);
+    expect(getProductUnitDefinition.anyOfPermissions).toEqual(['equipment_product_unit:read']);
     expect(getProductUnitDefinition.description).toContain('findProductUnits');
     expect(() => GetProductUnitInput.parse({ id: 'not-a-uuid' })).toThrow();
   });

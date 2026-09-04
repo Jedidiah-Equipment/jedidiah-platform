@@ -1,4 +1,11 @@
-import { UserSummary, type UserSummary as UserSummaryType } from '@pkg/schema';
+import {
+  CONTRACTING_ROLES,
+  ContractingRole,
+  EQUIPMENT_ROLES,
+  EquipmentRole,
+  UserSummary,
+  type UserSummary as UserSummaryType,
+} from '@pkg/schema';
 import type React from 'react';
 import type { z } from 'zod';
 
@@ -18,7 +25,8 @@ export const UserEditFormValues = UserSummary.pick({
   isDevice: true,
   name: true,
   phoneNumber: true,
-  role: true,
+  contractingRole: true,
+  equipmentRole: true,
   thumbnailDataUrl: true,
 });
 
@@ -33,7 +41,7 @@ type UserEditFormProps = {
   isPending: boolean;
   isPasswordPending: boolean;
   onPasswordSubmit: (value: UserPasswordFormValues) => Promise<unknown>;
-  onRoleChange?: (role: UserEditFormValues['role']) => void;
+  onRoleChange?: () => void;
   onSubmit: (value: UserEditFormValues) => Promise<unknown>;
   roleError?: string | null;
 };
@@ -63,7 +71,8 @@ export const UserEditForm: React.FC<UserEditFormProps> = ({
       name: initialUser.name,
       phoneNumber: initialUser.phoneNumber,
       isDevice: initialUser.isDevice,
-      role: initialUser.role,
+      contractingRole: initialUser.contractingRole,
+      equipmentRole: initialUser.equipmentRole,
       thumbnailDataUrl: initialUser.thumbnailDataUrl,
     } satisfies UserEditFormValues,
     validators: {
@@ -131,16 +140,33 @@ export const UserEditForm: React.FC<UserEditFormProps> = ({
               </form.AppField>
             ) : null}
             {canSetRole ? (
-              <form.AppField name="role">
+              <form.AppField name="equipmentRole">
                 {(field) => (
                   <RoleField
                     disabled={isPending}
                     errors={[...field.state.meta.errors, ...(roleError ? [{ message: roleError }] : [])]}
+                    label="Equipment role"
                     name={field.name}
                     onRoleChange={(role) => {
-                      onRoleChange?.(role);
-                      field.handleChange(role);
+                      onRoleChange?.();
+                      field.handleChange(EquipmentRole.nullable().parse(role));
                     }}
+                    roles={EQUIPMENT_ROLES}
+                    value={field.state.value}
+                  />
+                )}
+              </form.AppField>
+            ) : null}
+            {canSetRole ? (
+              <form.AppField name="contractingRole">
+                {(field) => (
+                  <RoleField
+                    disabled={isPending || form.state.values.equipmentRole === 'super-admin'}
+                    errors={field.state.meta.errors}
+                    label="Contracting role"
+                    name={field.name}
+                    onRoleChange={(role) => field.handleChange(ContractingRole.nullable().parse(role))}
+                    roles={CONTRACTING_ROLES.filter((role) => role !== 'super-admin')}
                     value={field.state.value}
                   />
                 )}

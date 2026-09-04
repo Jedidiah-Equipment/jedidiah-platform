@@ -41,7 +41,7 @@ const STOCK_BUILD_DESCRIPTION =
 
 export const StockBuildPage: React.FC = () => {
   const accessQuery = useAccess();
-  const canCreateJob = hasPermission(accessQuery.data, 'job:create');
+  const canCreateJob = hasPermission(accessQuery.data, 'equipment_job:create');
 
   return (
     <PageLayout description={STOCK_BUILD_DESCRIPTION} size="full" title="New Stock Build">

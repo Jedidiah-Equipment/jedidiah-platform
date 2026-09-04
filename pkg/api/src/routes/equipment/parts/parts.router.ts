@@ -29,51 +29,51 @@ import { authorizedProcedure, router } from '../../../trpc/init.js';
 import { partBomErrorFamily, partCoreErrorFamily } from './part-error-families.js';
 
 export const partsRouter = router({
-  list: authorizedProcedure('part:read')
+  list: authorizedProcedure('equipment_part:read')
     .input(PartListInput)
     .query(({ ctx, input }) => listParts({ db: ctx.db, input })),
 
-  categories: authorizedProcedure('part:read').query(({ ctx }) => listPartCategories({ db: ctx.db })),
+  categories: authorizedProcedure('equipment_part:read').query(({ ctx }) => listPartCategories({ db: ctx.db })),
 
-  locations: authorizedProcedure('part:read').query(({ ctx }) => listPartStorageLocations({ db: ctx.db })),
+  locations: authorizedProcedure('equipment_part:read').query(({ ctx }) => listPartStorageLocations({ db: ctx.db })),
 
-  get: authorizedProcedure('part:read')
+  get: authorizedProcedure('equipment_part:read')
     .input(z.object({ id: UUID }))
     .query(({ ctx, input }) => mapPartErrors(() => getPart({ db: ctx.db, id: input.id }))),
 
-  create: authorizedProcedure('part:update')
+  create: authorizedProcedure('equipment_part:update')
     .input(PartCreateInput)
     .mutation(({ ctx, input }) =>
       mapPartErrors(() => createPart({ db: ctx.db, input, actorUserId: ctx.session.user.id })),
     ),
 
-  update: authorizedProcedure('part:update')
+  update: authorizedProcedure('equipment_part:update')
     .input(PartUpdateInput)
     .mutation(({ ctx, input }) =>
       mapPartErrors(() => updatePart({ db: ctx.db, input, actorUserId: ctx.session.user.id })),
     ),
 
   // Stores needs the BOM to post Builds even though the Parts catalogue itself remains hidden.
-  bom: authorizedProcedure(['part:read', 'inventory:build'])
+  bom: authorizedProcedure(['equipment_part:read', 'equipment_inventory:build'])
     .input(PartBomInput)
     .output(PartBomResult)
     .query(({ ctx, input }) => getPartBom({ db: ctx.db, partId: input.partId })),
 
-  saveBom: authorizedProcedure('part:update')
+  saveBom: authorizedProcedure('equipment_part:update')
     .input(SavePartBomInput)
     .output(PartBomResult)
     .mutation(({ ctx, input }) =>
       mapPartErrors(() => savePartBom({ actorUserId: ctx.session.user.id, db: ctx.db, input })),
     ),
 
-  bulkImport: authorizedProcedure('part:update')
+  bulkImport: authorizedProcedure('equipment_part:update')
     .input(PartBulkImportInput)
     .mutation(({ ctx, input }) =>
       mapPartErrors(() => bulkImportParts({ db: ctx.db, input, actorUserId: ctx.session.user.id })),
     ),
 
-  // Reading the catalog out, so `part:read` — the same rows `list` already hands a reader.
-  bulkExport: authorizedProcedure('part:read')
+  // Reading the catalog out, so `equipment_part:read` — the same rows `list` already hands a reader.
+  bulkExport: authorizedProcedure('equipment_part:read')
     .input(PartBulkExportInput)
     .query(({ ctx, input }): Promise<PartBulkExportRow[]> => bulkExportParts({ db: ctx.db, input })),
 });

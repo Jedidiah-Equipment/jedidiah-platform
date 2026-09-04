@@ -57,7 +57,7 @@ describe('createAiSdkTools', () => {
       'findProductUnits',
       'getProductUnit',
     ]);
-    expect(Object.keys(createAiSdkTools(createContextWithPermissions(['quote:create'])))).toEqual([
+    expect(Object.keys(createAiSdkTools(createContextWithPermissions(['equipment_quote:create'])))).toEqual([
       'findProducts',
       'generateProductBrochureDocument',
       'findCustomers',

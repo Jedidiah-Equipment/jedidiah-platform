@@ -128,7 +128,7 @@ export const InvoicePriceCorrectionCostFields = declareInventoryCostFields(
 /**
  * One row of the panel: an order line, the invoice line matched to it, or neither side matched.
  *
- * Prices are cost leaves even though the whole panel is gated on `inventory_cost:read` — the gate
+ * Prices are cost leaves even though the whole panel is gated on `equipment_inventory_cost:read` — the gate
  * on the procedure is what actually hides them, and declaring them keeps this contract honest if
  * the row ever reaches a surface with a wider gate.
  */

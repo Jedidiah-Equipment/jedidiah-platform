@@ -92,7 +92,7 @@ import {
 import { assertCanWriteInventoryCost, projectMovement } from './stock-movement-transport.js';
 
 export const inventoryRouter = router({
-  jobOptions: authorizedProcedure('inventory:move')
+  jobOptions: authorizedProcedure('equipment_inventory:move')
     .input(InventoryJobOptionListInput)
     .output(InventoryJobOptionListResult)
     .query(({ ctx, input }) => listInventoryJobOptions({ db: ctx.db, input })),
@@ -101,15 +101,15 @@ export const inventoryRouter = router({
    * Quantity-only by design: the row carries what is short and what is coming, never a price. That
    * keeps it readable by the stores role the cost gate holds prices back from (spec §11).
    */
-  buyList: authorizedProcedure('inventory:read')
+  buyList: authorizedProcedure('equipment_inventory:read')
     .output(BuyListResult)
     .query(({ ctx }) => listBuyList({ db: ctx.db })),
 
-  inventoryKpis: authorizedProcedure('inventory_cost:read')
+  inventoryKpis: authorizedProcedure('equipment_inventory_cost:read')
     .output(InventoryKpis)
     .query(({ ctx }) => getInventoryKpis({ db: ctx.db })),
 
-  stockOnHand: authorizedProcedure('inventory:read')
+  stockOnHand: authorizedProcedure('equipment_inventory:read')
     .output(StockOnHandResult)
     .query(async ({ ctx }) => {
       const result = await listStockOnHand({ db: ctx.db });
@@ -118,11 +118,11 @@ export const inventoryRouter = router({
     }),
 
   /**
-   * What a scanned Part label resolves to on the stores tablet. Read under `inventory:read` and
+   * What a scanned Part label resolves to on the stores tablet. Read under `equipment_inventory:read` and
    * cost-projected exactly as the stock report is, so the price-blind scanner sees a Part's
    * quantities and its length buckets and nothing about what it is worth.
    */
-  partByCode: authorizedProcedure('inventory:read')
+  partByCode: authorizedProcedure('equipment_inventory:read')
     .input(PartStockByCodeInput)
     .output(StockOnHandRow)
     .query(async ({ ctx, input }) => {
@@ -136,21 +136,21 @@ export const inventoryRouter = router({
    * no cost projection to apply — and deliberately not the stock report with a search term bolted
    * on, which would replay the whole ledger for a moving average nobody on this device may read.
    */
-  partSearch: authorizedProcedure('inventory:read')
+  partSearch: authorizedProcedure('equipment_inventory:read')
     .input(PartSearchInput)
     .output(PartSearchResult)
     .query(({ ctx, input }) => searchPartStock({ db: ctx.db, input })),
 
   /**
-   * The names the tablet's quick-switch offers. Gated on `inventory:move` rather than `user:list`:
+   * The names the tablet's quick-switch offers. Gated on `equipment_inventory:move` rather than `user:list`:
    * the device holding this session posts movements and needs to know whose name to put on them,
    * which is not the same right as reading the platform's user administration.
    */
-  quickSwitchActors: authorizedProcedure('inventory:move')
+  quickSwitchActors: authorizedProcedure('equipment_inventory:move')
     .output(QuickSwitchActorListResult)
     .query(({ ctx }) => listQuickSwitchActors({ db: ctx.db })),
 
-  history: authorizedProcedure('inventory:read')
+  history: authorizedProcedure('equipment_inventory:read')
     .input(StockMovementHistoryInput)
     .output(StockMovementHistoryResult)
     .query(async ({ ctx, input }) => {
@@ -168,17 +168,17 @@ export const inventoryRouter = router({
       };
     }),
 
-  jobStock: authorizedProcedure('inventory:read')
+  jobStock: authorizedProcedure('equipment_inventory:read')
     .input(JobStockInput)
     .output(JobStockResult)
     .query(({ ctx, input }) => mapJobStockErrors(() => listJobStock({ db: ctx.db, jobId: input.jobId }))),
 
   /**
    * Planned against drawn for one Job, priced at what the draws were stamped with (spec §3). Read
-   * under `inventory:read` like every other Job stock surface — a storeman may see how far a Job ran
+   * under `equipment_inventory:read` like every other Job stock surface — a storeman may see how far a Job ran
    * past its plan — while the money it ran past it by stays behind the cost gate, row and total both.
    */
-  jobVariance: authorizedProcedure('inventory:read')
+  jobVariance: authorizedProcedure('equipment_inventory:read')
     .input(JobStockInput)
     .output(JobMaterialVarianceResult)
     .query(async ({ ctx, input }) => {
@@ -193,16 +193,16 @@ export const inventoryRouter = router({
       });
     }),
 
-  jobCostComparison: authorizedProcedure('inventory_cost:read')
+  jobCostComparison: authorizedProcedure('equipment_inventory_cost:read')
     .input(JobStockInput)
     .output(JobCostComparison)
     .query(({ ctx, input }) => mapJobStockErrors(() => getJobCostComparison({ db: ctx.db, jobId: input.jobId }))),
 
-  closeOutQueue: authorizedProcedure('inventory:close-out')
+  closeOutQueue: authorizedProcedure('equipment_inventory:close-out')
     .output(CloseOutQueueResult)
     .query(({ ctx }) => listCloseOutQueue({ db: ctx.db })),
 
-  closeOutJob: authorizedProcedure('inventory:close-out')
+  closeOutJob: authorizedProcedure('equipment_inventory:close-out')
     .input(CloseOutJobInput)
     .output(JobCloseOut)
     .mutation(({ ctx, input }) =>
@@ -210,16 +210,16 @@ export const inventoryRouter = router({
     ),
 
   /**
-   * The counting rhythms and their walks. Reading a session is `inventory:read` because the variance
+   * The counting rhythms and their walks. Reading a session is `equipment_inventory:read` because the variance
    * report is a *report* — procurement and management read it without ever walking a shelf — while
-   * opening, counting, and closing are the physical act and stay on `inventory:count` (spec §11).
+   * opening, counting, and closing are the physical act and stay on `equipment_inventory:count` (spec §11).
    */
-  stocktakeSessions: authorizedProcedure('inventory:read')
+  stocktakeSessions: authorizedProcedure('equipment_inventory:read')
     .output(StocktakeSessionListResult)
     .query(({ ctx }) => listStocktakeSessions({ db: ctx.db })),
 
   /** The session's own facts, cheap enough for the tablet to hold while it works through a walk. */
-  stocktakeSession: authorizedProcedure('inventory:read')
+  stocktakeSession: authorizedProcedure('equipment_inventory:read')
     .input(StocktakeSessionInput)
     .output(StocktakeSession)
     .query(({ ctx, input }) =>
@@ -230,7 +230,7 @@ export const inventoryRouter = router({
    * The variance report, which replays the ledger of every Part the walk touched. Desk-side and
    * read once — the tablet takes the session header and the paged uncounted list instead.
    */
-  stocktakeSessionReport: authorizedProcedure('inventory:read')
+  stocktakeSessionReport: authorizedProcedure('equipment_inventory:read')
     .input(StocktakeSessionInput)
     .output(StocktakeSessionReport)
     .query(async ({ ctx, input }) => {
@@ -254,7 +254,7 @@ export const inventoryRouter = router({
    * What the walk still has to reach, and afterwards what it skipped. Paged and quantity-only, so
    * the tablet can re-read it after every count without shipping the catalogue each time.
    */
-  stocktakeUncounted: authorizedProcedure('inventory:read')
+  stocktakeUncounted: authorizedProcedure('equipment_inventory:read')
     .input(StocktakeUncountedInput)
     .output(StocktakeUncountedResult)
     .query(({ ctx, input }) => mapStocktakeErrors(() => listStocktakeUncounted({ db: ctx.db, input }))),
@@ -263,18 +263,18 @@ export const inventoryRouter = router({
    * Quantity-free and cost-free, so the storeman the signal nags reads exactly what the manager
    * tuning the cadence reads.
    */
-  stocktakeOverdue: authorizedProcedure('inventory:read')
+  stocktakeOverdue: authorizedProcedure('equipment_inventory:read')
     .output(StocktakeOverdueResult)
     .query(({ ctx }) => listStocktakeOverdue({ db: ctx.db })),
 
-  openStocktakeSession: authorizedProcedure('inventory:count')
+  openStocktakeSession: authorizedProcedure('equipment_inventory:count')
     .input(OpenStocktakeSessionInput)
     .output(StocktakeSession)
     .mutation(({ ctx, input }) =>
       mapStocktakeErrors(() => openStocktakeSession({ actorUserId: ctx.session.user.id, db: ctx.db, input })),
     ),
 
-  closeStocktakeSession: authorizedProcedure('inventory:count')
+  closeStocktakeSession: authorizedProcedure('equipment_inventory:count')
     .input(CloseStocktakeSessionInput)
     .output(StocktakeSession)
     .mutation(({ ctx, input }) =>
@@ -285,7 +285,7 @@ export const inventoryRouter = router({
    * A count carries no cost of its own — the correction is priced from the Part's average on the
    * report — so the movements it returns need only the ordinary ledger projection.
    */
-  postStockCount: authorizedProcedure('inventory:count')
+  postStockCount: authorizedProcedure('equipment_inventory:count')
     .input(PostStockCountInput)
     .output(StockCountResult)
     .mutation(async ({ ctx, input }) => {
@@ -300,7 +300,7 @@ export const inventoryRouter = router({
    * The produced cost is derived from what the build consumed rather than keyed, so it is gated on
    * the way out with no `assertCanWriteInventoryCost` counterpart on the way in.
    */
-  postBuild: authorizedProcedure('inventory:build')
+  postBuild: authorizedProcedure('equipment_inventory:build')
     .input(PostBuildInput)
     .output(BuildPostResult)
     .mutation(async ({ ctx, input }) => {
@@ -313,7 +313,7 @@ export const inventoryRouter = router({
       });
     }),
 
-  postAdjustment: authorizedProcedure('inventory:adjust')
+  postAdjustment: authorizedProcedure('equipment_inventory:adjust')
     .input(PostAdjustmentInput)
     .output(StockMovement)
     .mutation(async ({ ctx, input }) => {
@@ -326,7 +326,7 @@ export const inventoryRouter = router({
       return projectMovement(movement, ctx.access);
     }),
 
-  postCheckout: authorizedProcedure('inventory:move')
+  postCheckout: authorizedProcedure('equipment_inventory:move')
     .input(PostJobMovementInput)
     .output(StockMovementPostResult)
     .mutation(async ({ ctx, input }) => {
@@ -337,7 +337,7 @@ export const inventoryRouter = router({
       return { ...result, movement: projectMovement(result.movement, ctx.access) };
     }),
 
-  postReturnToStore: authorizedProcedure('inventory:move')
+  postReturnToStore: authorizedProcedure('equipment_inventory:move')
     .input(PostJobMovementInput)
     .output(StockMovementPostResult)
     .mutation(async ({ ctx, input }) => {
@@ -348,7 +348,7 @@ export const inventoryRouter = router({
       return { ...result, movement: projectMovement(result.movement, ctx.access) };
     }),
 
-  postRevaluation: authorizedProcedure('inventory_cost:revalue')
+  postRevaluation: authorizedProcedure('equipment_inventory_cost:revalue')
     .input(PostRevaluationInput)
     .output(StockMovement)
     .mutation(async ({ ctx, input }) => {

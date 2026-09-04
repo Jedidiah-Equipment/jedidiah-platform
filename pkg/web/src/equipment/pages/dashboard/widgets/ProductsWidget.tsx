@@ -26,7 +26,7 @@ export const ProductsWidget: React.FC = () => {
   const trpc = useTRPC();
   const accessQuery = useAccess();
   const productsQuery = useQuery(trpc.products.list.queryOptions(PRODUCTS_WIDGET_LIST_INPUT));
-  const canUpdateProduct = hasPermission(accessQuery.data, 'product:update');
+  const canUpdateProduct = hasPermission(accessQuery.data, 'equipment_product:update');
   const products = productsQuery.data?.items ?? [];
 
   if (productsQuery.error) {

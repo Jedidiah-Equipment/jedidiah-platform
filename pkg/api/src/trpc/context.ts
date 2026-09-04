@@ -4,7 +4,7 @@ import { createUserAccessSummary } from '@pkg/domain';
 import type { AppEnv, Changelog, UserAccessSummary } from '@pkg/schema';
 import type { CreateFastifyContextOptions } from '@trpc/server/adapters/fastify';
 
-import { type AppSession, getSessionFromHeaders, parseBetterAuthRole } from '../auth/session.js';
+import { type AppSession, getSessionFromHeaders, parseBetterAuthRoleSlots } from '../auth/session.js';
 import type { TranslationMarker } from '../equipment/catalog-translations/translation-scheduler.js';
 
 /** Reads the bundled Changelog files. Injected so the changelog router can be tested without the filesystem. */
@@ -33,7 +33,7 @@ export function createContextFactory(dependencies: ContextDependencies) {
     const session = await getSessionFromHeaders(req.headers);
     const access: UserAccessSummary | null = session
       ? createUserAccessSummary({
-          role: parseBetterAuthRole(session.user.role),
+          ...parseBetterAuthRoleSlots(session.user),
           userId: session.user.id,
         })
       : null;

@@ -26,28 +26,28 @@ import { type CoreErrorMapping, mapKnownCoreError } from '../../../trpc/errors.j
 import { authorizedProcedure, router } from '../../../trpc/init.js';
 
 export const catalogTranslationsRouter = router({
-  getProduct: authorizedProcedure('product:update')
+  getProduct: authorizedProcedure('equipment_product:update')
     .input(z.object({ id: UUID }))
     .output(CatalogProductTranslation)
     .query(async ({ ctx, input }) =>
       mapCatalogTranslationErrors(() => getCatalogProductTranslation({ db: ctx.db, id: input.id })),
     ),
 
-  updateProduct: authorizedProcedure('product:update')
+  updateProduct: authorizedProcedure('equipment_product:update')
     .input(CatalogProductTranslationPatchInput)
     .output(CatalogProductTranslation)
     .mutation(async ({ ctx, input }) =>
       patchAndRequeue(ctx.catalogTranslationScheduler, () => patchCatalogProductTranslation({ db: ctx.db, input })),
     ),
 
-  getRange: authorizedProcedure('product_range:update')
+  getRange: authorizedProcedure('equipment_product_range:update')
     .input(z.object({ id: UUID }))
     .output(CatalogProductRangeTranslation)
     .query(async ({ ctx, input }) =>
       mapCatalogTranslationErrors(() => getCatalogProductRangeTranslation({ db: ctx.db, id: input.id })),
     ),
 
-  updateRange: authorizedProcedure('product_range:update')
+  updateRange: authorizedProcedure('equipment_product_range:update')
     .input(CatalogProductRangeTranslationPatchInput)
     .output(CatalogProductRangeTranslation)
     .mutation(async ({ ctx, input }) =>
@@ -56,15 +56,15 @@ export const catalogTranslationsRouter = router({
       ),
     ),
 
-  translationStatus: authorizedProcedure('product_range:update')
+  translationStatus: authorizedProcedure('equipment_product_range:update')
     .output(CatalogTranslationStatus)
     .query(({ ctx }) => getCatalogTranslationStatus({ db: ctx.db })),
 
-  listNeedsReview: authorizedProcedure('product_range:update')
+  listNeedsReview: authorizedProcedure('equipment_product_range:update')
     .output(CatalogTranslationNeedsReviewList)
     .query(({ ctx }) => listCatalogTranslationsNeedingReview({ db: ctx.db })),
 
-  retranslateStale: authorizedProcedure('product_range:update').mutation(async ({ ctx }) => {
+  retranslateStale: authorizedProcedure('equipment_product_range:update').mutation(async ({ ctx }) => {
     const keys = await listCatalogTranslationKeysNeedingTranslation({ db: ctx.db });
     for (const key of keys) ctx.catalogTranslationScheduler.markNow(key);
     return { queued: keys.length };

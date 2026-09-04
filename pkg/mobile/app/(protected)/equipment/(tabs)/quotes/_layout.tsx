@@ -6,7 +6,7 @@ import { useCan } from '@/lib/use-access';
 
 /** Owns the Quotes permission gate so every screen in the stack can assume Quote read access. */
 export default function QuotesLayout() {
-  const access = useCan('quote:read');
+  const access = useCan('equipment_quote:read');
 
   if (access.isPending) {
     return <TabAccessLoadingScreen parent={MAIN_TAB_PARENTS.quotes} title="Quotes" />;

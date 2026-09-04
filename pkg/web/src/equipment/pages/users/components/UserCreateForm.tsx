@@ -1,4 +1,11 @@
-import { UserPassword, UserSummary } from '@pkg/schema';
+import {
+  CONTRACTING_ROLES,
+  ContractingRole,
+  EQUIPMENT_ROLES,
+  EquipmentRole,
+  UserPassword,
+  UserSummary,
+} from '@pkg/schema';
 import type React from 'react';
 import type { z } from 'zod';
 
@@ -38,7 +45,8 @@ export const UserCreateForm: React.FC<UserCreateFormProps> = ({
     name: '',
     password: '',
     phoneNumber: null,
-    role: 'sales',
+    contractingRole: null,
+    equipmentRole: 'sales',
   };
   const form = useAppForm({
     defaultValues,
@@ -77,13 +85,28 @@ export const UserCreateForm: React.FC<UserCreateFormProps> = ({
             )}
           </form.AppField>
         ) : null}
-        <form.AppField name="role">
+        <form.AppField name="equipmentRole">
           {(field) => (
             <RoleField
               disabled={isPending}
               errors={field.state.meta.errors}
+              label="Equipment role"
               name={field.name}
-              onRoleChange={(role) => field.handleChange(role)}
+              onRoleChange={(role) => field.handleChange(EquipmentRole.nullable().parse(role))}
+              roles={EQUIPMENT_ROLES}
+              value={field.state.value}
+            />
+          )}
+        </form.AppField>
+        <form.AppField name="contractingRole">
+          {(field) => (
+            <RoleField
+              disabled={isPending || form.state.values.equipmentRole === 'super-admin'}
+              errors={field.state.meta.errors}
+              label="Contracting role"
+              name={field.name}
+              onRoleChange={(role) => field.handleChange(ContractingRole.nullable().parse(role))}
+              roles={CONTRACTING_ROLES.filter((role) => role !== 'super-admin')}
               value={field.state.value}
             />
           )}

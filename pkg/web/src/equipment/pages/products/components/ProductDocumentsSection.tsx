@@ -39,7 +39,7 @@ export function ProductDocumentsSection({ product }: ProductDocumentsSectionProp
   const showMutationError = useApiMutationErrorToast();
 
   const accessQuery = useAccess();
-  const canDeleteDocuments = hasPermission(accessQuery.data, 'product:update');
+  const canDeleteDocuments = hasPermission(accessQuery.data, 'equipment_product:update');
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 

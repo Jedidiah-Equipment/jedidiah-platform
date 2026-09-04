@@ -34,13 +34,13 @@ export function createQuoteLinks(
 ): QuoteLinks {
   return QuoteLinks.parse({
     app: createQuoteAppHref(quote.id),
-    ...(hasPermission(access, 'customer:read') ? { customer: createCustomerAppHref(quote.customerId) } : {}),
-    ...(quote.job && hasPermission(access, 'job:read') ? { job: createJobAppHref(quote.job.jobId) } : {}),
-    ...(quote.productId && hasPermission(access, 'product:read')
+    ...(hasPermission(access, 'equipment_customer:read') ? { customer: createCustomerAppHref(quote.customerId) } : {}),
+    ...(quote.job && hasPermission(access, 'equipment_job:read') ? { job: createJobAppHref(quote.job.jobId) } : {}),
+    ...(quote.productId && hasPermission(access, 'equipment_product:read')
       ? { product: createProductAppHref(quote.productId) }
       : {}),
     // Only an Allocation Quote sells a machine we already hold, so only it has a Unit to link to.
-    ...(quote.productUnitId && hasPermission(access, 'product_unit:read')
+    ...(quote.productUnitId && hasPermission(access, 'equipment_product_unit:read')
       ? { productUnit: createProductUnitAppHref(quote.productUnitId) }
       : {}),
   });

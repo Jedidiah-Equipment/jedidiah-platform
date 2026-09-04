@@ -46,50 +46,56 @@ import { assertNever, type CoreErrorMapping, mapKnownCoreError } from '../../../
 import { authorizedProcedure, router } from '../../../trpc/init.js';
 
 export const quotesRouter = router({
-  list: authorizedProcedure('quote:read')
+  list: authorizedProcedure('equipment_quote:read')
     .input(QuoteListInput)
     .query(({ ctx, input }) => listQuotes({ db: ctx.db, input })),
 
-  priorityList: authorizedProcedure('quote:read')
+  priorityList: authorizedProcedure('equipment_quote:read')
     .input(QuotePriorityListInput)
     .query(({ ctx, input }) =>
       listPriorityQuotes({ ...(input.customerId ? { customerId: input.customerId } : {}), db: ctx.db }),
     ),
 
-  awaitingJobCreation: authorizedProcedure('quote:read').query(({ ctx }) =>
+  awaitingJobCreation: authorizedProcedure('equipment_quote:read').query(({ ctx }) =>
     listAwaitingJobCreationQuotes({ db: ctx.db }),
   ),
 
-  upcomingDeliveries: authorizedProcedure('quote:read').query(({ ctx }) => listUpcomingDeliveryQuotes({ db: ctx.db })),
+  upcomingDeliveries: authorizedProcedure('equipment_quote:read').query(({ ctx }) =>
+    listUpcomingDeliveryQuotes({ db: ctx.db }),
+  ),
 
-  get: authorizedProcedure('quote:read')
+  get: authorizedProcedure('equipment_quote:read')
     .input(z.object({ id: UUID }))
     .query(({ ctx, input }) => mapQuoteErrors(() => getQuote({ db: ctx.db, id: input.id }))),
 
   /** What the cancel dialog is about to touch: the live Job, and the machine that Job is building. */
-  cancellationPlan: authorizedProcedure('quote:read')
+  cancellationPlan: authorizedProcedure('equipment_quote:read')
     .input(z.object({ id: UUID }))
     .query(({ ctx, input }) => mapQuoteErrors(() => getQuoteCancellationPlan({ db: ctx.db, id: input.id }))),
 
-  salespeople: authorizedProcedure('quote:read').query(({ ctx }) => listQuoteSalespeople({ db: ctx.db })),
+  salespeople: authorizedProcedure('equipment_quote:read').query(({ ctx }) => listQuoteSalespeople({ db: ctx.db })),
 
-  summaryByStatus: authorizedProcedure('quote:read').query(({ ctx }) => summarizeQuotesByStatus({ db: ctx.db })),
+  summaryByStatus: authorizedProcedure('equipment_quote:read').query(({ ctx }) =>
+    summarizeQuotesByStatus({ db: ctx.db }),
+  ),
 
-  pipelineSummary: authorizedProcedure('quote:read').query(({ ctx }) => summarizeQuotePipeline({ db: ctx.db })),
+  pipelineSummary: authorizedProcedure('equipment_quote:read').query(({ ctx }) =>
+    summarizeQuotePipeline({ db: ctx.db }),
+  ),
 
-  weeklyFlow: authorizedProcedure('quote:read').query(({ ctx }) => summarizeQuoteWeeklyFlow({ db: ctx.db })),
+  weeklyFlow: authorizedProcedure('equipment_quote:read').query(({ ctx }) => summarizeQuoteWeeklyFlow({ db: ctx.db })),
 
-  staleSent: authorizedProcedure('quote:read').query(({ ctx }) => listStaleSentQuotes({ db: ctx.db })),
+  staleSent: authorizedProcedure('equipment_quote:read').query(({ ctx }) => listStaleSentQuotes({ db: ctx.db })),
 
-  customers: authorizedProcedure('quote:read')
+  customers: authorizedProcedure('equipment_quote:read')
     .input(CustomerListInput)
     .query(({ ctx, input }) => listCustomers({ db: ctx.db, input })),
 
-  products: authorizedProcedure('quote:read')
+  products: authorizedProcedure('equipment_quote:read')
     .input(ProductListInput)
     .query(({ ctx, input }) => listProducts({ db: ctx.db, input, log })),
 
-  productOption: authorizedProcedure('quote:read')
+  productOption: authorizedProcedure('equipment_quote:read')
     .input(z.object({ id: UUID }))
     .query(async ({ ctx, input }) => {
       try {
@@ -103,13 +109,13 @@ export const quotesRouter = router({
       }
     }),
 
-  rangeOptions: authorizedProcedure('quote:read').query(({ ctx }) => listProductRangeOptions({ db: ctx.db })),
+  rangeOptions: authorizedProcedure('equipment_quote:read').query(({ ctx }) => listProductRangeOptions({ db: ctx.db })),
 
-  productBayAvailability: authorizedProcedure('quote:read')
+  productBayAvailability: authorizedProcedure('equipment_quote:read')
     .input(QuoteProductBayAvailabilityInput)
     .query(({ ctx, input }) => mapQuoteErrors(() => getQuoteProductBayAvailability({ db: ctx.db, input }))),
 
-  create: authorizedProcedure('quote:create')
+  create: authorizedProcedure('equipment_quote:create')
     .input(QuoteCreateInput)
     .mutation(({ ctx, input }) =>
       mapQuoteMutationErrors(() => createQuote({ actorUserId: ctx.session.user.id, db: ctx.db, input })),
@@ -117,23 +123,23 @@ export const quotesRouter = router({
 
   /**
    * One mutation for both surfaces, gated by the weaker permission and narrowed inside. Cancelling a
-   * Quote nobody has acted on is undoing paperwork, which `quote:update` covers; once it is Locked the
-   * cascade unwinds a sale or a build, and core refuses without `quote:cancel`.
+   * Quote nobody has acted on is undoing paperwork, which `equipment_quote:update` covers; once it is Locked the
+   * cascade unwinds a sale or a build, and core refuses without `equipment_quote:cancel`.
    */
-  cancel: authorizedProcedure(['quote:update', 'quote:cancel'])
+  cancel: authorizedProcedure(['equipment_quote:update', 'equipment_quote:cancel'])
     .input(QuoteCancelInput)
     .mutation(({ ctx, input }) =>
       mapQuoteMutationErrors(() =>
         cancelQuote({
           actorUserId: ctx.session.user.id,
           db: ctx.db,
-          mayCancelLockedQuote: hasPermission(ctx.access, 'quote:cancel'),
+          mayCancelLockedQuote: hasPermission(ctx.access, 'equipment_quote:cancel'),
           ...input,
         }),
       ),
     ),
 
-  update: authorizedProcedure('quote:update')
+  update: authorizedProcedure('equipment_quote:update')
     .input(QuoteUpdateInput)
     .mutation(({ ctx, input }) =>
       mapQuoteMutationErrors(() =>
@@ -145,7 +151,7 @@ export const quotesRouter = router({
       ),
     ),
 
-  generateDocument: authorizedProcedure('quote:update')
+  generateDocument: authorizedProcedure('equipment_quote:update')
     .input(QuoteDocumentGenerationInput)
     .mutation(({ ctx, input }) =>
       mapQuoteErrors(() =>

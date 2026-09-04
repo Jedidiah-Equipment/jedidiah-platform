@@ -43,7 +43,14 @@ describe('toCustomerFormValues', () => {
 
   it('collapses null fields to empty strings', () => {
     const values = toCustomerFormValues(
-      buildCustomer({ email: null, address: null, contactPerson: null, phone: null, notes: null, vatNumber: null }),
+      buildCustomer({
+        email: null,
+        address: null,
+        contactPerson: null,
+        phone: null,
+        notes: null,
+        vatNumber: null,
+      }),
     );
 
     expect(values).toEqual({

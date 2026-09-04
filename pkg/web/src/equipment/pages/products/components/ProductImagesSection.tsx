@@ -38,7 +38,7 @@ type ProductImagesSectionProps = {
 // each tile owns its replace-in-place upload mutation and product-query invalidation, reading the current
 // images straight from the persisted Product.
 export const ProductImagesSection: React.FC<ProductImagesSectionProps> = ({ product }) => {
-  const canEdit = useCan('product:update').can;
+  const canEdit = useCan('equipment_product:update').can;
 
   return (
     <Card>

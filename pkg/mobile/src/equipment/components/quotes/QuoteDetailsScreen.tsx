@@ -53,9 +53,9 @@ export function QuoteDetailsScreen({ quoteId }: { quoteId: string }) {
 function QuoteDetailsData({ id }: { id: UUID }) {
   const trpc = useTRPC();
   const queryClient = useQueryClient();
-  const readAccess = useCan('quote:read');
-  const updateAccess = useCan('quote:update');
-  const cancelAccess = useCan('quote:cancel');
+  const readAccess = useCan('equipment_quote:read');
+  const updateAccess = useCan('equipment_quote:update');
+  const cancelAccess = useCan('equipment_quote:cancel');
   const quoteOptions = trpc.quotes.get.queryOptions({ id }, { enabled: readAccess.can });
   const quoteQuery = useQuery(quoteOptions);
   const priorityQuery = useQuery(trpc.quotes.priorityList.queryOptions(undefined, { enabled: readAccess.can }));

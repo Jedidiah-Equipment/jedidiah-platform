@@ -85,7 +85,7 @@ A PO is an order on **one Supplier** — never owned by or scoped to a single Jo
 - Everything works unchanged because a Built Part is a part: code, catalog, labels, ledger, checkout, CFO representation, commitment, cost gate.
 - **BOMs nest; builds never recurse.** One level, from stock: inner batches (brake cylinders) are built to the rack before outer builds (walking beam suspensions) consume them. Insufficient stock warns and goes negative.
 - **Raw-material BOM lines are informational** (periodic items post no consumption) — so fabricated components are producible by trivial builds at zero cost.
-- **The Build**: one transaction; consumption prefills at BOM × N, editable to what actually left the rack (deviation shown, never blocking); produce at consumed value ÷ N. Posted from the tablet under `inventory:build`.
+- **The Build**: one transaction; consumption prefills at BOM × N, editable to what actually left the rack (deviation shown, never blocking); produce at consumed value ÷ N. Posted from the tablet under `equipment_inventory:build`.
 
 ## 7. Raw material & the Product's material list (#953)
 
@@ -104,7 +104,7 @@ estimate = Σ material lines × ledger cost
 
 The middle term covers **every part in the effective BOM at its ledger cost**: bought parts at their receipt-fed average; **Built Parts included at their ledger cost** (not exploded — their cost already carries their bought components and honestly excludes fabricated content, §6); fabricated non-BOM parts contribute zero by design (§5).
 
-- **Department labor hours live on the Product** (Fabrication / Paint / Workshop), maintained under `product:update`. Not derived from `product_bays.defaultWorkingDays` — scheduling days are elapsed time, not labor.
+- **Department labor hours live on the Product** (Fabrication / Paint / Workshop), maintained under `equipment_product:update`. Not derived from `product_bays.defaultWorkingDays` — scheduling days are elapsed time, not labor.
 - **The rate card is shared with quote work items** (#996: Fabrication 550 / Paint 375 / Workshop 320) — stored once, two consumers. Charge-out rates knowingly used in v1: the labor line is margin-neutral; the margin signal comes from materials.
 - **Product-level roll-up** with a line breakdown (parts grouped by assembly; an Optional Assembly's bought-parts cost shows beside its upgrade price, labeled partial).
 - **Live on the Product screen; snapshots onto the Job at creation** — estimated-vs-actual compares two stable numbers at close-out.
@@ -130,9 +130,9 @@ The middle term covers **every part in the effective BOM at its ledger cost**: b
 - **New `stores` role** (`bay-operator` untouched — granting it anything would make every bay-operator account sign-in eligible).
 - **The quick-switch: the device authorizes, the person attributes.** The tablet holds a normal session as a "Stores Tablet" user; the quick-switch (name tap / badge card) sets the required `actor_user_id`. No person → reads only. Idle timeout clears the actor. No PIN in v1 (deferred ratchet).
 - **New resources**: `purchase_order` (read/create/send/amend/receive/close), `inventory` (read/move/adjust/count/build/close-out), `inventory_cost` (read/revalue).
-- **The cost gate is one server-side projection rule**: without `inventory_cost:read`, cost fields are stripped from every surface — including PO lines on the tablet.
-- **Matrix**: admin all; procurement-manager = PO surface + `inventory:read`,`adjust` + `inventory_cost` both; stores = `purchase_order:read`,`receive` + `inventory` read/move/adjust/count/build/close-out, no cost read; sales and job-viewer nothing.
-- **Invariant**: `purchase_order:receive` implies posting receipt movements.
+- **The cost gate is one server-side projection rule**: without `equipment_inventory_cost:read`, cost fields are stripped from every surface — including PO lines on the tablet.
+- **Matrix**: admin all; procurement-manager = PO surface + `equipment_inventory:read`,`adjust` + `inventory_cost` both; stores = `equipment_purchase_order:read`,`receive` + `inventory` read/move/adjust/count/build/close-out, no cost read; sales and job-viewer nothing.
+- **Invariant**: `equipment_purchase_order:receive` implies posting receipt movements.
 
 ## 12. Reports, signals & the KPI dashboard
 
@@ -140,7 +140,7 @@ The middle term covers **every part in the effective BOM at its ledger cost**: b
 
 Beyond the flow-level reports, inventory ships **KPI dashboard widgets** on the platform's existing permission-gated widget registry, grouped by audience (product ask, 2026-08-01):
 
-- **Stores**: close-out queue (§3) · negative-SOH flags · stale commitments · **parts below minimum** (a `minimumStock` field per part — a Part-form field edited under `part:update` like every other part attribute, no new permission; below-minimum joins the zero-SOH signal) · **stocktake overdue** (no closed session covering a standing scope within its cadence plus grace — **hard-coded v1 constants per §9's two rhythms**: raw material weekly + 2 working days' grace, stores monthly + 5 working days' grace; configurable cadence is deferred).
+- **Stores**: close-out queue (§3) · negative-SOH flags · stale commitments · **parts below minimum** (a `minimumStock` field per part — a Part-form field edited under `equipment_part:update` like every other part attribute, no new permission; below-minimum joins the zero-SOH signal) · **stocktake overdue** (no closed session covering a standing scope within its cadence plus grace — **hard-coded v1 constants per §9's two rhythms**: raw material weekly + 2 working days' grace, stores monthly + 5 working days' grace; configurable cadence is deferred).
 - **Procurement**: buy list (negative free, ranked by earliest Slot date, on-order aware) · out-of-stock list · **late POs** (sent, past expected date, open lines) · **supplier returns awaiting credit** (`return-to-supplier` movements **not referenced by any settling credit note** — the per-return reference from §4; a PO-level "has a credit note" test would go blind after the first credit on a multi-return PO) · PO-vs-invoiced price variance.
 - **Management** (cost-gated): SOH valuation · **inventory turns** (perpetual items only — periodic raw material has no consumption events by design, and the tile says so) · **top adjustments and top scrap items** (adjustments grouped by reason, priced) · Job drawn-vs-planned variance · stocktake session variance · expected-vs-actual raw-material drift · estimated-vs-actual per Job.
 

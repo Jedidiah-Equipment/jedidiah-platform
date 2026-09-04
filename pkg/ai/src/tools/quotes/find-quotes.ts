@@ -114,7 +114,7 @@ export const findQuotesDefinition = {
   ].join('\n'),
   inputSchema: FindQuotesInput,
   outputSchema: FindQuotesResponse,
-  anyOfPermissions: ['quote:read'],
+  anyOfPermissions: ['equipment_quote:read'],
   async handler(args: unknown, ctx: AiContext): Promise<FindQuotesResponse> {
     const input = FindQuotesInput.parse(args ?? {});
     const result = await quotesCore.listQuotes({ db: ctx.db, input: toCoreQuoteListInput(input) });

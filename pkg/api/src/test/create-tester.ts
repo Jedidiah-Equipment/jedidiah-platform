@@ -11,7 +11,7 @@ import pino from 'pino';
 import { type TestAPI, type TestContext, test as testBase } from 'vitest';
 
 import { type Auth, createAuth } from '@/app-auth.js';
-import { parseBetterAuthRole } from '@/auth/session.js';
+import { parseBetterAuthRoleSlots } from '@/auth/session.js';
 import type { TranslationMarker } from '@/equipment/catalog-translations/translation-scheduler.js';
 import type { ChangelogLoader, Context } from '@/trpc/context.js';
 import { type AppRouter, createAppRouterCaller } from '@/trpc/router.js';
@@ -81,7 +81,7 @@ export function createTester<T extends object = Record<string, never>>(
                 access:
                   overrides.access ??
                   createUserAccessSummary({
-                    role: parseBetterAuthRole(session.user.role),
+                    ...parseBetterAuthRoleSlots(session.user),
                     userId: session.user.id,
                   }),
                 appEnv: overrides.appEnv ?? 'production',

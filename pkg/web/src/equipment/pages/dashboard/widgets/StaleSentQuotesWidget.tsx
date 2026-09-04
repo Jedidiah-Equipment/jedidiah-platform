@@ -15,7 +15,7 @@ const STALE_SENT_SKELETON_ROWS = ['first', 'second', 'third', 'fourth', 'fifth']
 
 export const StaleSentQuotesWidget: React.FC = () => {
   const trpc = useTRPC();
-  const jobAccess = useCan('job:read');
+  const jobAccess = useCan('equipment_job:read');
   const staleSentQuery = useQuery(trpc.quotes.staleSent.queryOptions());
   const staleQuotes = staleSentQuery.data?.items ?? [];
 

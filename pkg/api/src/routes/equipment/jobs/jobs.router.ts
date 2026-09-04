@@ -74,37 +74,37 @@ import { assertNever, type CoreErrorMapping, mapKnownCoreError } from '../../../
 import { authorizedProcedure, fullyAuthorizedProcedure, router } from '../../../trpc/init.js';
 
 export const jobsRouter = router({
-  listBays: authorizedProcedure('job:read')
+  listBays: authorizedProcedure('equipment_job:read')
     .input(BoardListInput)
     .query(({ ctx, input }) => listBays({ db: ctx.db, input })),
 
-  previewSchedule: authorizedProcedure('job:read')
+  previewSchedule: authorizedProcedure('equipment_job:read')
     .input(BoardPreviewInput)
     .query(({ ctx, input }) => mapJobErrors(() => previewBoard({ db: ctx.db, input }))),
 
-  listJobBays: authorizedProcedure(['job:read', 'job_bay:read'])
+  listJobBays: authorizedProcedure(['equipment_job:read', 'equipment_job_bay:read'])
     .input(JobBayListInput)
     .query(({ ctx, input }) => listJobBays({ db: ctx.db, input })),
 
-  createBay: authorizedProcedure('job_bay:update')
+  createBay: authorizedProcedure('equipment_job_bay:update')
     .input(JobBayCreateInput)
     .mutation(({ ctx, input }) =>
       mapJobErrors(() => createJobBay({ db: ctx.db, actorUserId: ctx.session.user.id, input })),
     ),
 
-  renameBay: authorizedProcedure('job_bay:update')
+  renameBay: authorizedProcedure('equipment_job_bay:update')
     .input(JobBayRenameInput)
     .mutation(({ ctx, input }) =>
       mapJobErrors(() => renameJobBay({ db: ctx.db, actorUserId: ctx.session.user.id, input })),
     ),
 
-  deleteBay: authorizedProcedure('job_bay:update')
+  deleteBay: authorizedProcedure('equipment_job_bay:update')
     .input(JobBayDeleteInput)
     .mutation(({ ctx, input }) =>
       mapJobErrors(() => deleteJobBay({ db: ctx.db, actorUserId: ctx.session.user.id, input })),
     ),
 
-  setBayDisabled: authorizedProcedure('job_bay:update')
+  setBayDisabled: authorizedProcedure('equipment_job_bay:update')
     .input(JobBaySetDisabledInput)
     .mutation(({ ctx, input }) =>
       mapJobErrors(() => setJobBayDisabled({ db: ctx.db, actorUserId: ctx.session.user.id, input })),
@@ -112,35 +112,35 @@ export const jobsRouter = router({
 
   /**
    * Any-of: Bay administration names operators against Bays, and Department Timing names them as a
-   * Job's crew. Coupling the crew picker to `job_bay:update` would fail silently if the two roles ever
+   * Job's crew. Coupling the crew picker to `equipment_job_bay:update` would fail silently if the two roles ever
    * diverge — the query 403s and the picker just reads empty. Nothing new leaks: a caller holding
    * `job:update` already sees operator names on every Job sheet and Bay schedule.
    */
-  listBayOperators: authorizedProcedure(['job_bay:update', 'job:update']).query(({ ctx }) =>
+  listBayOperators: authorizedProcedure(['equipment_job_bay:update', 'equipment_job:update']).query(({ ctx }) =>
     listBayOperators({ db: ctx.db }),
   ),
 
-  listBayOperatorAssignmentHistory: authorizedProcedure('job_bay:read')
+  listBayOperatorAssignmentHistory: authorizedProcedure('equipment_job_bay:read')
     .input(JobBayOperatorAssignmentHistoryInput)
     .query(({ ctx, input }) => mapJobErrors(() => listBayOperatorAssignmentHistory({ db: ctx.db, input }))),
 
-  assignBayOperator: authorizedProcedure('job_bay:update')
+  assignBayOperator: authorizedProcedure('equipment_job_bay:update')
     .input(JobBayAssignOperatorInput)
     .mutation(({ ctx, input }) =>
       mapJobErrors(() => assignJobBayOperator({ db: ctx.db, actorUserId: ctx.session.user.id, input })),
     ),
 
-  unassignBayOperator: authorizedProcedure('job_bay:update')
+  unassignBayOperator: authorizedProcedure('equipment_job_bay:update')
     .input(JobBayUnassignOperatorInput)
     .mutation(({ ctx, input }) =>
       mapJobErrors(() => unassignJobBayOperator({ db: ctx.db, actorUserId: ctx.session.user.id, input })),
     ),
 
-  toggleOffDay: authorizedProcedure('job:update-calendar')
+  toggleOffDay: authorizedProcedure('equipment_job:update-calendar')
     .input(ToggleOffDayInput)
     .mutation(({ ctx, input }) => mapJobErrors(() => toggleOffDay({ db: ctx.db, input }))),
 
-  list: authorizedProcedure('job:read')
+  list: authorizedProcedure('equipment_job:read')
     .input(JobListInput)
     .query(({ ctx, input }) => listJobs({ db: ctx.db, input })),
 
@@ -151,26 +151,26 @@ export const jobsRouter = router({
    * other screen. Gated whole rather than field by field: a caller who cannot read cost would be
    * downloading the report with its point cut out of it.
    */
-  salesExport: fullyAuthorizedProcedure(['inventory_cost:read', 'job:read', 'quote:read'])
+  salesExport: fullyAuthorizedProcedure(['equipment_inventory_cost:read', 'equipment_job:read', 'equipment_quote:read'])
     .input(JobSalesExportInput)
     .query(({ ctx, input }) => listCompletedJobSales({ db: ctx.db, input })),
 
-  customerOptions: authorizedProcedure('job:read')
+  customerOptions: authorizedProcedure('equipment_job:read')
     .input(JobCustomerOptionListInput)
     .query(({ ctx, input }) => listJobCustomerOptions({ db: ctx.db, input })),
 
-  get: authorizedProcedure('job:read')
+  get: authorizedProcedure('equipment_job:read')
     .input(z.object({ id: UUID }))
     .query(({ ctx, input }) =>
       mapJobErrors(() => getJob({ db: ctx.db, id: input.id })).then((job) => ({
         ...job,
-        documents: hasPermission(ctx.access, 'inventory_cost:read')
+        documents: hasPermission(ctx.access, 'equipment_inventory_cost:read')
           ? job.documents
           : job.documents.filter((document) => document.ownerType !== 'purchase_order'),
       })),
     ),
 
-  create: authorizedProcedure('job:create')
+  create: authorizedProcedure('equipment_job:create')
     .input(JobCreateInput)
     .mutation(({ ctx, input }) =>
       mapCreateJobErrors(() =>
@@ -184,7 +184,7 @@ export const jobsRouter = router({
       ),
     ),
 
-  update: authorizedProcedure('job:update')
+  update: authorizedProcedure('equipment_job:update')
     .input(JobUpdateInput)
     .mutation(({ ctx, input }) =>
       mapJobErrors(() => updateJob({ actorUserId: ctx.session.user.id, db: ctx.db, input })),
@@ -194,66 +194,66 @@ export const jobsRouter = router({
    * Department Timing stamps ride `job:update` rather than a gate of their own: recording that
    * fabrication started is day-to-day Job upkeep, unlike the terminal `job:cancel`.
    */
-  startDepartmentTiming: authorizedProcedure('job:update')
+  startDepartmentTiming: authorizedProcedure('equipment_job:update')
     .input(JobDepartmentTimingStartInput)
     .mutation(({ ctx, input }) =>
       mapJobErrors(() => startDepartmentTiming({ actorUserId: ctx.session.user.id, db: ctx.db, input })),
     ),
 
-  completeDepartmentTiming: authorizedProcedure('job:update')
+  completeDepartmentTiming: authorizedProcedure('equipment_job:update')
     .input(JobDepartmentTimingCompleteInput)
     .mutation(({ ctx, input }) =>
       mapJobErrors(() => completeDepartmentTiming({ actorUserId: ctx.session.user.id, db: ctx.db, input })),
     ),
 
-  updateDepartmentTiming: authorizedProcedure('job:update')
+  updateDepartmentTiming: authorizedProcedure('equipment_job:update')
     .input(JobDepartmentTimingUpdateInput)
     .mutation(({ ctx, input }) =>
       mapJobErrors(() => updateDepartmentTiming({ actorUserId: ctx.session.user.id, db: ctx.db, input })),
     ),
 
   /** What the cancel dialog is about to touch. A Job with a Quote is never offered its machine. */
-  cancellationPlan: authorizedProcedure('job:read')
+  cancellationPlan: authorizedProcedure('equipment_job:read')
     .input(z.object({ id: UUID }))
     .query(({ ctx, input }) => mapJobErrors(() => getJobCancellationPlan({ db: ctx.db, id: input.id }))),
 
   /**
    * Its own gate rather than `job:update`: this is terminal and irreversible, so it sits with
-   * `quote:cancel` and `product_unit:remove` rather than with day-to-day Job edits.
+   * `equipment_quote:cancel` and `equipment_product_unit:remove` rather than with day-to-day Job edits.
    */
-  cancel: authorizedProcedure('job:cancel')
+  cancel: authorizedProcedure('equipment_job:cancel')
     .input(JobCancelInput)
     .mutation(({ ctx, input }) =>
       mapJobErrors(() => cancelJob({ actorUserId: ctx.session.user.id, db: ctx.db, input })),
     ),
 
-  bookSlot: authorizedProcedure('job:schedule')
+  bookSlot: authorizedProcedure('equipment_job:schedule')
     .input(BookJobSlotInput)
     .mutation(({ ctx, input }) => mapJobErrors(() => bookJobSlot({ db: ctx.db, input }))),
 
-  addIdleSlot: authorizedProcedure('job:schedule')
+  addIdleSlot: authorizedProcedure('equipment_job:schedule')
     .input(AddIdleJobSlotInput)
     .mutation(({ ctx, input }) => mapJobErrors(() => addIdleJobSlot({ db: ctx.db, input }))),
 
-  addBayException: authorizedProcedure('job:schedule')
+  addBayException: authorizedProcedure('equipment_job:schedule')
     .input(AddBayCalendarExceptionInput)
     .mutation(({ ctx, input }) => mapJobErrors(() => addBayCalendarException({ db: ctx.db, input }))),
 
-  removeBayException: authorizedProcedure('job:schedule')
+  removeBayException: authorizedProcedure('equipment_job:schedule')
     .input(RemoveBayCalendarExceptionInput)
     .mutation(({ ctx, input }) => mapJobErrors(() => removeBayCalendarException({ db: ctx.db, input }))),
 
-  resizeSlot: authorizedProcedure('job:schedule')
+  resizeSlot: authorizedProcedure('equipment_job:schedule')
     .input(ResizeJobSlotInput)
     .mutation(({ ctx, input }) => mapJobErrors(() => resizeJobSlot({ db: ctx.db, input }))),
 
-  moveSlot: authorizedProcedure('job:schedule')
+  moveSlot: authorizedProcedure('equipment_job:schedule')
     .input(MoveJobSlotInput)
     .mutation(({ ctx, input }) =>
       mapJobErrors(() => moveJobSlot({ db: ctx.db, actorUserId: ctx.session.user.id, input })),
     ),
 
-  removeSlot: authorizedProcedure('job:schedule')
+  removeSlot: authorizedProcedure('equipment_job:schedule')
     .input(RemoveJobSlotInput)
     .mutation(({ ctx, input }) => mapJobErrors(() => removeJobSlot({ db: ctx.db, input }))),
 });

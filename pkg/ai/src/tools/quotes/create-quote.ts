@@ -127,7 +127,7 @@ export const createQuoteDefinition = {
   ].join('\n'),
   inputSchema: CreateQuoteInput,
   outputSchema: CreateQuoteResponse,
-  anyOfPermissions: ['quote:create'],
+  anyOfPermissions: ['equipment_quote:create'],
   async handler(args: unknown, ctx: AiContext): Promise<CreateQuoteResponse> {
     const actorUserId = requireAiActorId(ctx);
     const input = toCoreQuoteCreateInput(CreateQuoteInput.parse(args), actorUserId);

@@ -16,8 +16,8 @@ import { LatePurchaseOrdersTable } from './components/LatePurchaseOrdersTable.js
 
 export function BuyListPage() {
   const trpc = useTRPC();
-  const canSeed = useCan('purchase_order:create').can;
-  const canReadPurchaseOrders = useCan('purchase_order:read').can;
+  const canSeed = useCan('equipment_purchase_order:create').can;
+  const canReadPurchaseOrders = useCan('equipment_purchase_order:read').can;
   const buyListQuery = useQuery(trpc.inventory.buyList.queryOptions());
   const lateQuery = useQuery({ ...trpc.purchaseOrders.late.queryOptions(), enabled: canReadPurchaseOrders });
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});

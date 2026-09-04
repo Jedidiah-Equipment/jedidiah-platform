@@ -48,7 +48,14 @@ describe('Quote Work Item form helpers', () => {
       {
         charges: [
           { amount: 1275, kind: 'labour', label: 'Labour', part: null, quantity: 1.5, unitPrice: 850 },
-          { amount: 250, kind: 'part', label: 'Seal kit', part: labourItem.parts[0], quantity: 2, unitPrice: 125 },
+          {
+            amount: 250,
+            kind: 'part',
+            label: 'Seal kit',
+            part: labourItem.parts[0],
+            quantity: 2,
+            unitPrice: 125,
+          },
         ],
         description: null,
         name: 'Fabrication',

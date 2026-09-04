@@ -91,7 +91,7 @@ export function JobDepartmentTimingCard({
   open?: boolean;
   timing: JobDepartmentTiming;
 }) {
-  const canUpdate = useCan('job:update').can;
+  const canUpdate = useCan('equipment_job:update').can;
   const offDays = useOrgOffDays(timing.completedAt !== null);
   // A completed Job still accepts the one stamp that closes an observation already open, mirroring
   // core and web exactly: the completion sweep latches `completedOn` the day after the last Slot

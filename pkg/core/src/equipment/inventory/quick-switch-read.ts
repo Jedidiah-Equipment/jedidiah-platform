@@ -8,7 +8,7 @@ import { and, asc, eq, isNull, or } from 'drizzle-orm';
  *
  * Scoped to the `stores` role rather than to "anyone who could post a movement", and that is the
  * point: the tablet is the stores surface, and the grid is a shift's worth of names to tap. Widening
- * it to every role holding `inventory:move` would put procurement and admin faces on a shared
+ * it to every role holding `equipment_inventory:move` would put procurement and admin faces on a shared
  * warehouse screen, which is a directory of the office rather than a way to sign for stock.
  *
  * Disabled accounts and shared devices are excluded here for the same reason `resolveMovementActor`

@@ -22,7 +22,9 @@ export function createProductUnitLinks(
   return ProductUnitLinks.parse({
     app: createProductUnitAppHref(unit.id),
     // A Unit in Stock has no Owner to link to.
-    ...(unit.owner && hasPermission(access, 'customer:read') ? { owner: createCustomerAppHref(unit.owner.id) } : {}),
-    ...(hasPermission(access, 'product:read') ? { product: createProductAppHref(unit.product.id) } : {}),
+    ...(unit.owner && hasPermission(access, 'equipment_customer:read')
+      ? { owner: createCustomerAppHref(unit.owner.id) }
+      : {}),
+    ...(hasPermission(access, 'equipment_product:read') ? { product: createProductAppHref(unit.product.id) } : {}),
   });
 }

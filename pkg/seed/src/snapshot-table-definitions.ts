@@ -78,13 +78,16 @@ const legacyPartStandardPurchaseLengthsMm: Readonly<Record<string, number>> = {
 
 export const snapshotTableDefinitions = [
   {
-    // `assistantEnabled` may be absent when the selected source lags this checkout; omit it and derive it
-    // from role so seed:read remains compatible across that deployment boundary.
+    // These columns may be absent when the selected source lags this checkout; omit them so a
+    // phase-zero seed read remains compatible across that deployment boundary.
     fileName: 'user.json',
     tableName: 'user',
     timestampColumns: ['lastActivitySeen', ...authTimestampColumns],
-    omitReadColumns: ['assistantEnabled'],
-    seedRowDefaults: (row) => ({ assistantEnabled: row.role === 'admin' || row.role === 'super-admin' }),
+    omitReadColumns: ['assistantEnabled', 'contractingRole'],
+    seedRowDefaults: (row) => ({
+      assistantEnabled: row.role === 'admin' || row.role === 'super-admin',
+      contractingRole: null,
+    }),
   },
   {
     fileName: 'user_department.json',

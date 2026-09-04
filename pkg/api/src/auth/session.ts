@@ -5,7 +5,7 @@ import { fromNodeHeaders } from 'better-auth/node';
 import { type Auth, auth } from '../app-auth.js';
 import { isBetterAuthRoleSignInEligible } from './sign-in-eligibility.js';
 
-export { parseBetterAuthRole } from './sign-in-eligibility.js';
+export { parseBetterAuthRole, parseBetterAuthRoleSlots } from './sign-in-eligibility.js';
 
 type BetterAuthSession = Auth['$Infer']['Session'];
 type AuthApi = Pick<Auth['api'], 'getSession'>;
@@ -13,6 +13,7 @@ type AuthApi = Pick<Auth['api'], 'getSession'>;
 export type AppSession = BetterAuthSession & {
   user: BetterAuthSession['user'] & {
     role?: string | string[] | null;
+    contractingRole?: string | null;
     assistantEnabled?: boolean | null;
   };
 };
@@ -33,5 +34,5 @@ export function filterSignInEligibleSession(session: AppSession | null): AppSess
     return null;
   }
 
-  return isBetterAuthRoleSignInEligible(session.user.role) ? session : null;
+  return isBetterAuthRoleSignInEligible(session.user.role, session.user.contractingRole) ? session : null;
 }

@@ -92,7 +92,7 @@ describe('sendEmail contract', () => {
       subject: 'Draft quote QUO-00008 — Acme Mining',
       to: 'sales@example.com',
     });
-    expect(sendEmailDefinition.anyOfPermissions).toEqual(['email:send']);
+    expect(sendEmailDefinition.anyOfPermissions).toEqual(['equipment_email:send']);
     expect(() => z.toJSONSchema(sendEmailDefinition.inputSchema)).not.toThrow();
   });
 
@@ -142,8 +142,9 @@ describe('sendEmail contract', () => {
   test('rechecks attachment-specific read access before sending', async () => {
     const ctx = createContext();
     ctx.access = {
-      permissions: ['email:send'],
-      role: 'sales',
+      contractingRole: null,
+      equipmentRole: 'sales',
+      permissions: ['equipment_email:send'],
       userId: 'test-user-id',
     };
 

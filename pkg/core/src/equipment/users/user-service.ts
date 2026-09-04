@@ -1,9 +1,10 @@
 import { type DatabaseTransaction, type Db, user, userDepartment } from '@pkg/db';
 import {
-  AppRole,
   type AuditChanges,
   AuthId,
+  ContractingRole,
   Department,
+  EquipmentRole,
   NullablePhoneNumber,
   NullableThumbnailDataUrl,
   UserAccount,
@@ -42,11 +43,19 @@ type UserRow = Pick<
   typeof user.$inferSelect,
   'assistantEnabled' | 'email' | 'emailVerified' | 'id' | 'image' | 'isDevice' | 'name' | 'phoneNumber'
 > & {
+  contractingRole?: unknown;
   departments: readonly Department[];
+  equipmentRole?: unknown;
   role?: unknown;
 };
 
 export function mapUser(row: UserRow): UserSummary {
+  const equipmentRole = EquipmentRole.nullable().parse(
+    (row.equipmentRole !== undefined ? row.equipmentRole : row.role) ?? null,
+  );
+  const contractingRole = ContractingRole.nullable().parse(row.contractingRole ?? null);
+  const isSuperAdmin = equipmentRole === 'super-admin' || contractingRole === 'super-admin';
+
   return {
     assistantEnabled: row.assistantEnabled,
     departments: row.departments.map((department) => Department.parse(department)),
@@ -56,7 +65,8 @@ export function mapUser(row: UserRow): UserSummary {
     isDevice: row.isDevice,
     name: row.name,
     phoneNumber: NullablePhoneNumber.parse(row.phoneNumber),
-    role: AppRole.parse(row.role),
+    contractingRole: isSuperAdmin ? 'super-admin' : contractingRole,
+    equipmentRole: isSuperAdmin ? 'super-admin' : equipmentRole,
     thumbnailDataUrl: NullableThumbnailDataUrl.parse(row.image),
   };
 }
@@ -72,7 +82,8 @@ export async function getUserById({ db, userId }: { db: Db; userId: AuthId }): P
       isDevice: user.isDevice,
       name: user.name,
       phoneNumber: user.phoneNumber,
-      role: user.role,
+      contractingRole: user.contractingRole,
+      equipmentRole: user.role,
       thumbnailDataUrl: user.image,
     })
     .from(user)
@@ -97,6 +108,7 @@ export async function listUsers({ db }: { db: Db }): Promise<UserListResult> {
       isDevice: true,
       name: true,
       phoneNumber: true,
+      contractingRole: true,
       role: true,
     },
     orderBy: [asc(user.email)],
@@ -275,9 +287,9 @@ export function isReservedSuperAdminAssignment({
   currentRole,
   targetRole,
 }: {
-  actorRole: AppRole;
-  currentRole?: AppRole;
-  targetRole: AppRole;
+  actorRole: EquipmentRole;
+  currentRole?: EquipmentRole | null;
+  targetRole: EquipmentRole | null;
 }): boolean {
   return (targetRole === 'super-admin' || currentRole === 'super-admin') && actorRole !== 'super-admin';
 }
@@ -292,16 +304,16 @@ export async function canAssignUserRole({
   role,
   userId,
 }: {
-  actorRole: AppRole;
+  actorRole: EquipmentRole;
   db: Db;
-  role: AppRole;
+  role: EquipmentRole | null;
   userId: AuthId;
 }): Promise<UserRoleAssignmentPolicyResult> {
   return db.transaction(async (tx) => {
     const [targetUser] = await tx
       .select({
         id: user.id,
-        role: user.role,
+        equipmentRole: user.role,
       })
       .from(user)
       .where(eq(user.id, userId))
@@ -311,7 +323,7 @@ export async function canAssignUserRole({
       return { allowed: true };
     }
 
-    const currentRole = AppRole.parse(targetUser.role);
+    const currentRole = EquipmentRole.nullable().parse(targetUser.equipmentRole);
 
     if (currentRole === role) {
       return { allowed: true };
@@ -355,6 +367,36 @@ export async function canAssignUserRole({
 
     return { allowed: true };
   });
+}
+
+export async function setUserEquipmentRole({
+  actorRole,
+  db,
+  role,
+  userId,
+}: {
+  actorRole: EquipmentRole;
+  db: Db;
+  role: EquipmentRole | null;
+  userId: AuthId;
+}): Promise<UserRoleAssignmentPolicyResult> {
+  const policy = await canAssignUserRole({ actorRole, db, role, userId });
+
+  if (!policy.allowed) {
+    return policy;
+  }
+
+  const [updated] = await db
+    .update(user)
+    .set({ role, updatedAt: new Date() })
+    .where(eq(user.id, userId))
+    .returning({ id: user.id });
+
+  if (!updated) {
+    throw new UserNotFoundError(userId);
+  }
+
+  return policy;
 }
 
 async function setUserDepartmentsInTransaction({

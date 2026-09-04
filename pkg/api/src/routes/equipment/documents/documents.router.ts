@@ -24,15 +24,15 @@ import { assertNever, type CoreErrorMapping, mapKnownCoreError } from '../../../
 import { authorizedProcedure, router } from '../../../trpc/init.js';
 
 export const documentsRouter = router({
-  listByProduct: authorizedProcedure('product:read')
+  listByProduct: authorizedProcedure('equipment_product:read')
     .input(DocumentListByProductInput)
     .query(({ ctx, input }) =>
       mapDocumentErrors(() => getProductDocuments({ db: ctx.db, productId: input.productId })),
     ),
-  listByQuote: authorizedProcedure('quote:read')
+  listByQuote: authorizedProcedure('equipment_quote:read')
     .input(DocumentListByQuoteInput)
     .query(({ ctx, input }) => mapDocumentErrors(() => getQuoteDocuments({ db: ctx.db, quoteId: input.quoteId }))),
-  deleteByProduct: authorizedProcedure('product:update')
+  deleteByProduct: authorizedProcedure('equipment_product:update')
     .input(ProductDocumentInput)
     .mutation(({ ctx, input }) =>
       mapDocumentErrors(() =>
@@ -44,7 +44,7 @@ export const documentsRouter = router({
         }),
       ),
     ),
-  deleteByJob: authorizedProcedure('job:update')
+  deleteByJob: authorizedProcedure('equipment_job:update')
     .input(JobDocumentInput)
     .mutation(({ ctx, input }) =>
       mapDocumentErrors(() =>

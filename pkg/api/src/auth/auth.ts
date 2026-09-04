@@ -43,6 +43,7 @@ function createAuthOptions(database: Db, businessPlugins: readonly BetterAuthPlu
     },
     user: {
       additionalFields: {
+        contractingRole: { type: 'string' as const, required: false as const, input: false as const },
         phoneNumber: { type: 'string' as const, required: false as const, input: true as const },
         // Admin create-user accepts server-owned data fields, while input:false keeps ordinary
         // profile endpoints from letting a signed-in account make itself a shared device.

@@ -45,7 +45,7 @@ type FeedbackReadRow = FeedbackRow & {
   users: { user: { id: string; image: string | null; name: string } | null; userId: string }[];
 };
 
-// There is no `feedback:create` permission: any authenticated caller may submit. The subject is
+// There is no `equipment_feedback:create` permission: any authenticated caller may submit. The subject is
 // resolved here on the server so feedback always attaches to a real Quote or Job. Corrective targets
 // are written to their join tables in the same transaction as the parent row.
 export async function submitFeedback({

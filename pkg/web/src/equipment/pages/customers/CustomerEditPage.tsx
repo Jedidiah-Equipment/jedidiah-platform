@@ -53,10 +53,10 @@ type CustomerEditTabsProps = {
 };
 
 const CustomerEditTabs: React.FC<CustomerEditTabsProps> = ({ customer, onCustomerSave }) => {
-  const canRemoveCustomer = useCan('customer:remove').can;
-  const canReadJobs = useCan('job:read').can;
-  const canReadQuotes = useCan('quote:read').can;
-  const auditAccess = useCan('audit:read');
+  const canRemoveCustomer = useCan('equipment_customer:remove').can;
+  const canReadJobs = useCan('equipment_job:read').can;
+  const canReadQuotes = useCan('equipment_quote:read').can;
+  const auditAccess = useCan('equipment_audit:read');
   const customerAuditFilters = useMemo(
     () => ({
       entityIds: [customer.id],

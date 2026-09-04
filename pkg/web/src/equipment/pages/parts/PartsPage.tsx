@@ -15,7 +15,7 @@ import { PartLabelBatchDialog } from './PartLabelBatchDialog.js';
 import { PartListCreateDialog } from './PartListCreateDialog.js';
 
 export const PartsPage: React.FC = () => {
-  const canUpdatePart = useCan('part:update').can;
+  const canUpdatePart = useCan('equipment_part:update').can;
   const [editingPart, setEditingPart] = useState<Part | null>(null);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
 

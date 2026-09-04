@@ -28,8 +28,8 @@ export function JobCloseOutPage({ jobId }: { jobId: UUID }) {
   const jobStockQuery = useQuery(trpc.inventory.jobStock.queryOptions({ jobId }));
   const [returningPartId, setReturningPartId] = useState<string | null>(null);
   const [isClosing, setIsClosing] = useState(false);
-  const canMove = hasPermission(accessQuery.data, 'inventory:move');
-  const canCloseOut = hasPermission(accessQuery.data, 'inventory:close-out');
+  const canMove = hasPermission(accessQuery.data, 'equipment_inventory:move');
+  const canCloseOut = hasPermission(accessQuery.data, 'equipment_inventory:close-out');
   // The stock-on-hand report replays the whole ledger; only a return needs it, so the screen does
   // not pay for it until one opens.
   const stockOnHandQuery = useQuery(

@@ -14,27 +14,27 @@ import { type CoreErrorMapping, mapKnownCoreError } from '../../../trpc/errors.j
 import { authorizedProcedure, router } from '../../../trpc/init.js';
 
 export const customersRouter = router({
-  list: authorizedProcedure('customer:read')
+  list: authorizedProcedure('equipment_customer:read')
     .input(CustomerListInput)
     .query(({ ctx, input }) => listCustomers({ db: ctx.db, input })),
 
-  get: authorizedProcedure('customer:read')
+  get: authorizedProcedure('equipment_customer:read')
     .input(z.object({ id: UUID }))
     .query(({ ctx, input }) => mapCustomerErrors(() => getCustomer({ db: ctx.db, id: input.id }))),
 
-  create: authorizedProcedure('customer:create')
+  create: authorizedProcedure('equipment_customer:create')
     .input(CustomerCreateInput)
     .mutation(({ ctx, input }) =>
       mapCustomerErrors(() => createCustomer({ db: ctx.db, input, actorUserId: ctx.session.user.id })),
     ),
 
-  update: authorizedProcedure('customer:update')
+  update: authorizedProcedure('equipment_customer:update')
     .input(CustomerUpdateInput)
     .mutation(({ ctx, input }) =>
       mapCustomerErrors(() => updateCustomer({ db: ctx.db, input, actorUserId: ctx.session.user.id })),
     ),
 
-  remove: authorizedProcedure('customer:remove')
+  remove: authorizedProcedure('equipment_customer:remove')
     .input(z.object({ id: UUID }))
     .mutation(({ ctx, input }) =>
       mapCustomerErrors(() => removeCustomer({ db: ctx.db, id: input.id, actorUserId: ctx.session.user.id })),

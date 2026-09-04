@@ -1,11 +1,11 @@
 import { listUserDepartments } from '@pkg/core';
-import { auditEvents, type Db, user } from '@pkg/db';
+import { auditEvents, type Db, sql, user } from '@pkg/db';
 import { createUserAccessSummary } from '@pkg/domain';
-import type { AppRole } from '@pkg/schema';
+import type { ContractingRole, EquipmentRole } from '@pkg/schema';
 import pino from 'pino';
 import { beforeEach, describe, expect } from 'vitest';
 
-import { parseBetterAuthRole } from '@/auth/session.js';
+import { parseBetterAuthRoleSlots } from '@/auth/session.js';
 import { clearMockEmailMessages, getMockEmailMessages } from '@/email/mock-email.js';
 import { createTester } from '@/test/create-tester.js';
 import { mockSession } from '@/test/test-utils.js';
@@ -36,14 +36,15 @@ describe('users.list', () => {
     expect(result.users).toEqual([
       {
         assistantEnabled: false,
+        contractingRole: null,
         departments: [],
         email: 'viewer@example.com',
         emailVerified: true,
+        equipmentRole: 'sales',
         id: 'viewer-user-id',
         isDevice: false,
         name: 'Viewer User',
         phoneNumber: null,
-        role: 'sales',
         thumbnailDataUrl: null,
       },
     ]);
@@ -219,7 +220,7 @@ describe('users.list', () => {
     });
 
     const access = createUserAccessSummary({
-      role: parseBetterAuthRole(session.user.role),
+      ...parseBetterAuthRoleSlots(session.user),
       userId: session.user.id,
     });
     const caller = createAppRouterCaller({
@@ -240,8 +241,9 @@ describe('users.list', () => {
     });
 
     await expect(caller.auth.access()).resolves.toEqual({
-      permissions: ['job:read', 'product_unit:read'],
-      role: 'job-viewer',
+      contractingRole: null,
+      equipmentRole: 'job-viewer',
+      permissions: ['equipment_job:read', 'equipment_product_unit:read'],
       userId: currentDepartmentUserId,
     });
 
@@ -263,6 +265,49 @@ describe('users.list', () => {
         userId: currentDepartmentUserId,
       }),
     ).resolves.toEqual([]);
+  });
+});
+
+describe('users.clearEquipmentRole', () => {
+  test('clears Equipment access while preserving Contracting access', async ({ context }) => {
+    await createUser(context.db, {
+      contractingRole: 'foreman',
+      email: 'contracting-only-target@example.com',
+      id: 'contracting-only-target-id',
+      name: 'Contracting Only Target',
+      role: 'sales',
+    });
+
+    await context.createCaller().users.clearEquipmentRole({ userId: 'contracting-only-target-id' });
+
+    const [updated] = await context.db
+      .select({ contractingRole: user.contractingRole, equipmentRole: user.role })
+      .from(user)
+      .where(sql`${user.id} = 'contracting-only-target-id'`);
+
+    expect(updated).toEqual({ contractingRole: 'foreman', equipmentRole: null });
+  });
+
+  test('rejects clearing your own Equipment role', async ({ context }) => {
+    const session = mockSession('admin');
+
+    await expect(
+      context.createCaller(session).users.clearEquipmentRole({ userId: session.user.id }),
+    ).rejects.toMatchObject({ appCode: 'user.self_role_change', code: 'FORBIDDEN' });
+  });
+
+  test('rejects clearing the last administrator role', async ({ context }) => {
+    await createUser(context.db, {
+      email: 'only-admin@example.com',
+      id: 'only-admin-id',
+      name: 'Only Admin',
+      role: 'admin',
+    });
+
+    await expect(context.createCaller().users.clearEquipmentRole({ userId: 'only-admin-id' })).rejects.toMatchObject({
+      appCode: 'user.last_admin',
+      code: 'FORBIDDEN',
+    });
   });
 });
 
@@ -397,13 +442,14 @@ async function createUser(
   db: Db,
   input: {
     assistantEnabled?: boolean;
+    contractingRole?: ContractingRole;
     email: string;
     emailVerified?: boolean;
     id: string;
     image?: string | null;
     name: string;
     phoneNumber?: string | null;
-    role: AppRole | string;
+    role: EquipmentRole | string;
   },
 ) {
   const now = new Date();
@@ -412,13 +458,14 @@ async function createUser(
     .insert(user)
     .values({
       assistantEnabled: input.assistantEnabled ?? false,
+      contractingRole: input.contractingRole ?? null,
       email: input.email,
       emailVerified: input.emailVerified ?? true,
       id: input.id,
       image: input.image ?? null,
       name: input.name,
       phoneNumber: input.phoneNumber ?? null,
-      role: input.role,
+      role: input.role as EquipmentRole,
       createdAt: now,
       updatedAt: now,
     })

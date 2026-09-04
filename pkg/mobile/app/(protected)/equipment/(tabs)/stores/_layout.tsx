@@ -14,7 +14,7 @@ import { useCan } from '@/lib/use-access';
  * every screen below can assume there is somewhere to read them from.
  */
 export default function StoresLayout() {
-  const access = useCan('inventory:move');
+  const access = useCan('equipment_inventory:move');
 
   if (access.isPending) {
     return <TabAccessLoadingScreen parent={MAIN_TAB_PARENTS.stores} title="Stores" />;

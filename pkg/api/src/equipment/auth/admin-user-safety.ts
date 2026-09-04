@@ -1,10 +1,10 @@
 import { canAssignUserRole, isReservedSuperAdminAssignment } from '@pkg/core';
-import type { Db } from '@pkg/db';
-import { AppRole } from '@pkg/schema';
+import { type Db, sql, user } from '@pkg/db';
+import { ContractingRole, EquipmentRole } from '@pkg/schema';
 import type { BetterAuthPlugin } from 'better-auth';
 import { APIError, createAuthMiddleware, getSessionFromCtx } from 'better-auth/api';
 
-import { parseBetterAuthRole } from '../../auth/sign-in-eligibility.js';
+import { parseBetterAuthRoleSlots } from '../../auth/sign-in-eligibility.js';
 
 const SELF_ROLE_CHANGE_ERROR = {
   code: 'YOU_CANNOT_CHANGE_YOUR_OWN_ROLE',
@@ -44,42 +44,83 @@ export function adminUserSafetyPlugin(database: Db): BetterAuthPlugin {
               return;
             }
 
-            const currentRole = parseBetterAuthRole(session.user.role);
-            const nextRole = AppRole.parse(roleChange.role);
+            const currentRoles = parseBetterAuthRoleSlots({
+              contractingRole: (session.user as Record<string, unknown>).contractingRole,
+              role: (session.user as Record<string, unknown>).role,
+            });
+            const actorEquipmentRole = EquipmentRole.parse(currentRoles.equipmentRole);
+            const nextEquipmentRole = roleChange.hasEquipmentRole
+              ? EquipmentRole.nullable().parse(roleChange.equipmentRole)
+              : undefined;
+            const nextContractingRole = roleChange.hasContractingRole
+              ? ContractingRole.nullable().parse(roleChange.contractingRole)
+              : undefined;
 
-            if (roleChange.userId && session.user.id === roleChange.userId && currentRole !== nextRole) {
+            if (
+              roleChange.userId &&
+              session.user.id === roleChange.userId &&
+              ((roleChange.hasEquipmentRole && currentRoles.equipmentRole !== nextEquipmentRole) ||
+                (roleChange.hasContractingRole && currentRoles.contractingRole !== nextContractingRole))
+            ) {
               throw APIError.from('FORBIDDEN', SELF_ROLE_CHANGE_ERROR);
             }
 
-            // Create-user has no existing user to look up, so the reserved-role rule is checked
-            // directly here; modifications route through canAssignUserRole below.
-            if (!roleChange.userId) {
-              if (isReservedSuperAdminAssignment({ actorRole: currentRole, targetRole: nextRole })) {
-                throw APIError.from('FORBIDDEN', RESERVED_SUPER_ADMIN_ERROR);
-              }
-              return;
+            if (nextContractingRole === 'super-admin') {
+              // Super-admin is represented by the equipment slot and projected into both businesses.
+              // Persisting it in Contracting would create a second, competing source of truth.
+              throw APIError.from('FORBIDDEN', RESERVED_SUPER_ADMIN_ERROR);
             }
 
-            const roleAssignmentPolicy = await canAssignUserRole({
-              actorRole: currentRole,
-              db: database,
-              role: nextRole,
-              userId: roleChange.userId,
-            });
+            if (roleChange.hasEquipmentRole && nextEquipmentRole !== undefined) {
+              // Create-user has no existing user to look up, so the reserved-role rule is checked
+              // directly here; modifications route through canAssignUserRole below.
+              if (!roleChange.userId) {
+                if (
+                  isReservedSuperAdminAssignment({
+                    actorRole: actorEquipmentRole,
+                    targetRole: nextEquipmentRole,
+                  })
+                ) {
+                  throw APIError.from('FORBIDDEN', RESERVED_SUPER_ADMIN_ERROR);
+                }
+              } else {
+                const roleAssignmentPolicy = await canAssignUserRole({
+                  actorRole: actorEquipmentRole,
+                  db: database,
+                  role: nextEquipmentRole,
+                  userId: roleChange.userId,
+                });
 
-            if (!roleAssignmentPolicy.allowed) {
-              if (roleAssignmentPolicy.reason === 'last-admin') {
-                throw APIError.from('FORBIDDEN', LAST_ADMIN_ERROR);
+                if (!roleAssignmentPolicy.allowed) {
+                  if (roleAssignmentPolicy.reason === 'last-admin') {
+                    throw APIError.from('FORBIDDEN', LAST_ADMIN_ERROR);
+                  }
+
+                  if (roleAssignmentPolicy.reason === 'reserved-super-admin') {
+                    throw APIError.from('FORBIDDEN', RESERVED_SUPER_ADMIN_ERROR);
+                  }
+
+                  throw APIError.from('FORBIDDEN', {
+                    code: OPEN_BAY_OPERATOR_ASSIGNMENTS_ERROR_CODE,
+                    message: `Unassign from ${formatList(roleAssignmentPolicy.bayNames)} first`,
+                  });
+                }
               }
+            }
 
-              if (roleAssignmentPolicy.reason === 'reserved-super-admin') {
+            if (roleChange.hasContractingRole && roleChange.userId) {
+              const [targetUser] = await database
+                .select({ contractingRole: user.contractingRole, equipmentRole: user.role })
+                .from(user)
+                .where(sql`${user.id} = ${roleChange.userId}`)
+                .limit(1);
+
+              if (
+                actorEquipmentRole !== 'super-admin' &&
+                (targetUser?.equipmentRole === 'super-admin' || targetUser?.contractingRole === 'super-admin')
+              ) {
                 throw APIError.from('FORBIDDEN', RESERVED_SUPER_ADMIN_ERROR);
               }
-
-              throw APIError.from('FORBIDDEN', {
-                code: OPEN_BAY_OPERATOR_ASSIGNMENTS_ERROR_CODE,
-                message: `Unassign from ${formatList(roleAssignmentPolicy.bayNames)} first`,
-              });
             }
           }),
         },
@@ -89,7 +130,10 @@ export function adminUserSafetyPlugin(database: Db): BetterAuthPlugin {
 }
 
 type RoleChangeInput = {
-  role: string;
+  contractingRole: string | null | undefined;
+  equipmentRole: string | null | undefined;
+  hasContractingRole: boolean;
+  hasEquipmentRole: boolean;
   userId?: string;
 };
 
@@ -100,41 +144,42 @@ function getRoleChangeInput(path: string | undefined, body: unknown): RoleChange
 
   if (path === '/admin/set-role' && typeof body.role === 'string' && typeof body.userId === 'string') {
     return {
-      role: body.role,
+      contractingRole: undefined,
+      equipmentRole: body.role,
+      hasContractingRole: false,
+      hasEquipmentRole: true,
       userId: body.userId,
     };
   }
 
-  const createUserRole = path === '/admin/create-user' ? getCreateUserRole(body) : null;
+  if (path === '/admin/create-user') {
+    const data = isRecord(body.data) ? body.data : {};
+    const hasEquipmentRole = hasNullableString(body, 'role') || hasNullableString(data, 'role');
+    const hasContractingRole = hasNullableString(data, 'contractingRole');
 
-  if (createUserRole) {
-    return {
-      role: createUserRole,
-    };
+    if (hasEquipmentRole || hasContractingRole) {
+      return {
+        contractingRole: hasContractingRole ? (data.contractingRole as string | null) : undefined,
+        equipmentRole: hasNullableString(data, 'role') ? (data.role as string | null) : (body.role as string | null),
+        hasContractingRole,
+        hasEquipmentRole,
+      };
+    }
   }
 
-  if (
-    path === '/admin/update-user' &&
-    typeof body.userId === 'string' &&
-    isRecord(body.data) &&
-    typeof body.data.role === 'string'
-  ) {
-    return {
-      role: body.data.role,
-      userId: body.userId,
-    };
-  }
+  if (path === '/admin/update-user' && typeof body.userId === 'string' && isRecord(body.data)) {
+    const hasEquipmentRole = hasNullableString(body.data, 'role');
+    const hasContractingRole = hasNullableString(body.data, 'contractingRole');
 
-  return null;
-}
-
-function getCreateUserRole(body: Record<string, unknown>): string | null {
-  if (typeof body.role === 'string') {
-    return body.role;
-  }
-
-  if (isRecord(body.data) && typeof body.data.role === 'string') {
-    return body.data.role;
+    if (hasEquipmentRole || hasContractingRole) {
+      return {
+        contractingRole: hasContractingRole ? (body.data.contractingRole as string | null) : undefined,
+        equipmentRole: hasEquipmentRole ? (body.data.role as string | null) : undefined,
+        hasContractingRole,
+        hasEquipmentRole,
+        userId: body.userId,
+      };
+    }
   }
 
   return null;
@@ -142,6 +187,10 @@ function getCreateUserRole(body: Record<string, unknown>): string | null {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
+}
+
+function hasNullableString(record: Record<string, unknown>, key: string): boolean {
+  return Object.hasOwn(record, key) && (typeof record[key] === 'string' || record[key] === null);
 }
 
 function formatList(values: readonly string[]): string {

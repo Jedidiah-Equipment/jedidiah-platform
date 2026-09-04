@@ -17,7 +17,11 @@ describe('findCustomers contract', () => {
     expect(findCustomersDefinition.name).toBe('findCustomers');
     expect(findCustomersDefinition.description).toContain('lightweight');
     expect(findCustomersDefinition.description).toContain('getCustomer');
-    expect(findCustomersDefinition.anyOfPermissions).toEqual(['customer:read', 'quote:read', 'quote:create']);
+    expect(findCustomersDefinition.anyOfPermissions).toEqual([
+      'equipment_customer:read',
+      'equipment_quote:read',
+      'equipment_quote:create',
+    ]);
   });
 
   test('maps search onto an unpaged Customer read', () => {

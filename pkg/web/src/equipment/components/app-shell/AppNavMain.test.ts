@@ -36,7 +36,7 @@ describe('AppNavMain', () => {
   });
 
   it('shows the Inventory section when any permitted item is visible', () => {
-    const permissions = new Set<AppPermission>(['supplier:read']);
+    const permissions = new Set<AppPermission>(['equipment_supplier:read']);
     const sections = getVisibleNavSections((permission) => permission === undefined || permissions.has(permission));
     const inventory = sections.find((section) => section.label === 'Inventory');
 

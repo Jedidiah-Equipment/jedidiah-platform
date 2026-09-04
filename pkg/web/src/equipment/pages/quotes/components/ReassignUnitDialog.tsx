@@ -45,7 +45,7 @@ export function describeReassignCandidate(candidate: ProductUnitReassignCandidat
  */
 export const ReassignUnitDialog: React.FC<{ quote: QuoteDetail }> = ({ quote }) => {
   const accessQuery = useAccess();
-  const canReassign = hasPermission(accessQuery.data, 'product_unit:reassign');
+  const canReassign = hasPermission(accessQuery.data, 'equipment_product_unit:reassign');
 
   if (!canReassign || !canReceiveReassignedUnit(quote)) {
     return null;

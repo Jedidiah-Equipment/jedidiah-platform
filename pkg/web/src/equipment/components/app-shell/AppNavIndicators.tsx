@@ -31,7 +31,7 @@ const ACTIVITY_INDICATOR_REFETCH_INTERVAL_MS = 60_000;
 
 export const ActivityUnreadNavIndicator: React.FC = () => {
   const trpc = useTRPC();
-  const activityAccess = useCan('job:read');
+  const activityAccess = useCan('equipment_job:read');
   const lastSeenQuery = useQuery({
     ...trpc.jobActivity.getLastActivitySeen.queryOptions(),
     enabled: activityAccess.can,
@@ -54,7 +54,7 @@ export const ActivityUnreadNavIndicator: React.FC = () => {
 
 export const QuotesPriorityNavIndicator: React.FC = () => {
   const trpc = useTRPC();
-  const quoteAccess = useCan('quote:read');
+  const quoteAccess = useCan('equipment_quote:read');
   const priorityQuotesQuery = useQuery({
     ...trpc.quotes.priorityList.queryOptions(),
     enabled: quoteAccess.can,
@@ -81,7 +81,7 @@ function plural(count: number, singular: string, pluralForm: string): string {
  */
 export const BuyListSignalNavIndicator: React.FC = () => {
   const trpc = useTRPC();
-  const inventoryAccess = useCan('inventory:read');
+  const inventoryAccess = useCan('equipment_inventory:read');
   const buyListQuery = useQuery({
     ...trpc.inventory.buyList.queryOptions(),
     enabled: inventoryAccess.can,
@@ -102,7 +102,7 @@ export const BuyListSignalNavIndicator: React.FC = () => {
  */
 export const StocktakeOverdueNavIndicator: React.FC = () => {
   const trpc = useTRPC();
-  const inventoryAccess = useCan('inventory:read');
+  const inventoryAccess = useCan('equipment_inventory:read');
   const overdueQuery = useQuery({
     ...trpc.inventory.stocktakeOverdue.queryOptions(),
     enabled: inventoryAccess.can,
@@ -119,7 +119,7 @@ export const StocktakeOverdueNavIndicator: React.FC = () => {
 /** Returns are settled per movement, so the dot counts the same unresolved rows as the PO chase list. */
 export const ReturnsAwaitingCreditNavIndicator: React.FC = () => {
   const trpc = useTRPC();
-  const purchaseOrderAccess = useCan('purchase_order:read');
+  const purchaseOrderAccess = useCan('equipment_purchase_order:read');
   const returnsQuery = useQuery({
     ...trpc.purchaseOrders.returnsAwaitingCredit.queryOptions(),
     enabled: purchaseOrderAccess.can,
@@ -133,7 +133,7 @@ export const ReturnsAwaitingCreditNavIndicator: React.FC = () => {
 
 export const FeedbackOpenNavIndicator: React.FC = () => {
   const trpc = useTRPC();
-  const feedbackAccess = useCan('feedback:read');
+  const feedbackAccess = useCan('equipment_feedback:read');
   const openFeedbackQuery = useQuery({
     ...trpc.feedback.openCount.queryOptions(),
     enabled: feedbackAccess.can,

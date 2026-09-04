@@ -75,7 +75,7 @@ export const AppNavUser: React.FC<AppNavUserProps> = ({ user, onSignOut }) => {
                 <span className="flex min-w-0 flex-col">
                   <span>Role</span>
                   <span className="truncate text-muted-foreground text-xs">
-                    {access ? roleLabels[access.role] : 'Loading'}
+                    {access?.equipmentRole ? roleLabels[access.equipmentRole] : 'No Equipment access'}
                   </span>
                 </span>
               </DropdownMenuItem>

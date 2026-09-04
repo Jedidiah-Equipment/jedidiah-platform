@@ -117,7 +117,12 @@ function buildBay({
     calendarExceptions: [],
     createdAt: '2026-08-01T08:00:00.000Z',
     currentOperator: operatorName
-      ? { email: 'operator@example.com', id: `operator-${operatorName}`, name: operatorName, thumbnailDataUrl: null }
+      ? {
+          email: 'operator@example.com',
+          id: `operator-${operatorName}`,
+          name: operatorName,
+          thumbnailDataUrl: null,
+        }
       : null,
     department,
     disabledAt: null,

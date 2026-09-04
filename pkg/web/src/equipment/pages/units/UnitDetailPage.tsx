@@ -44,10 +44,10 @@ export const UnitDetailPage: React.FC<UnitDetailPageProps> = ({ unitId }) => {
 };
 
 const UnitDetail: React.FC<{ unit: ProductUnitDetail }> = ({ unit }) => {
-  const canReadJobs = useCan('job:read').can;
-  const canUpdateUnit = useCan('product_unit:update').can;
-  const canTransferUnit = useCan('product_unit:transfer').can;
-  const canRemoveUnit = useCan('product_unit:remove').can;
+  const canReadJobs = useCan('equipment_job:read').can;
+  const canUpdateUnit = useCan('equipment_product_unit:update').can;
+  const canTransferUnit = useCan('equipment_product_unit:transfer').can;
+  const canRemoveUnit = useCan('equipment_product_unit:remove').can;
   const [isTransferOpen, setIsTransferOpen] = useState(false);
 
   return (

@@ -53,7 +53,7 @@ export const JobActivityActor = FeedbackSubmitter;
 /**
  * What every change event carries. The payload beyond this is curated per type: the raw
  * `audit_events.changes` jsonb never crosses the API boundary, which is what lets the whole feed
- * stay gated `job:read` while raw audit reads stay `audit:read` (ADR 0015).
+ * stay gated `job:read` while raw audit reads stay `equipment_audit:read` (ADR 0015).
  */
 const jobChangeActivityShape = {
   id: UUID,

@@ -94,37 +94,42 @@ const PurchaseOrderDetail: React.FC<{ purchaseOrder: PurchaseOrderView; queryErr
 }) => {
   const trpc = useTRPC();
   const accessQuery = useAccess();
-  const canReadCosts = hasPermission(accessQuery.data, 'inventory_cost:read');
+  const canReadCosts = hasPermission(accessQuery.data, 'equipment_inventory_cost:read');
   // What the order's own state allows, derived once on the server and read here — so a control is
   // never offered for a write the post would refuse. The role half of each rule stays local.
   const { actions } = purchaseOrder;
   // Line prices are part of the draft, so editing needs the cost gate open as well as create rights.
-  const canEdit = actions.edit.allowed && canReadCosts && hasPermission(accessQuery.data, 'purchase_order:create');
+  const canEdit =
+    actions.edit.allowed && canReadCosts && hasPermission(accessQuery.data, 'equipment_purchase_order:create');
   // Approving and withdrawing an approval are the same right: only someone who could sign the order
   // off may un-sign it, which is what keeps the revert an audited step rather than a way around the gate.
-  const canApprove = actions.approve.allowed && hasPermission(accessQuery.data, 'purchase_order:approve');
-  const canRevertToDraft = actions.revertToDraft.allowed && hasPermission(accessQuery.data, 'purchase_order:approve');
-  const canSend = actions.send.allowed && hasPermission(accessQuery.data, 'purchase_order:send');
-  const canCancel = actions.cancel.allowed && hasPermission(accessQuery.data, 'purchase_order:close');
-  const canCloseShort = actions.closeShort.allowed && hasPermission(accessQuery.data, 'purchase_order:close');
-  const canReceive = actions.receive.allowed && hasPermission(accessQuery.data, 'purchase_order:receive');
-  const canAmend = actions.amend.allowed && hasPermission(accessQuery.data, 'purchase_order:amend');
+  const canApprove = actions.approve.allowed && hasPermission(accessQuery.data, 'equipment_purchase_order:approve');
+  const canRevertToDraft =
+    actions.revertToDraft.allowed && hasPermission(accessQuery.data, 'equipment_purchase_order:approve');
+  const canSend = actions.send.allowed && hasPermission(accessQuery.data, 'equipment_purchase_order:send');
+  const canCancel = actions.cancel.allowed && hasPermission(accessQuery.data, 'equipment_purchase_order:close');
+  const canCloseShort = actions.closeShort.allowed && hasPermission(accessQuery.data, 'equipment_purchase_order:close');
+  const canReceive = actions.receive.allowed && hasPermission(accessQuery.data, 'equipment_purchase_order:receive');
+  const canAmend = actions.amend.allowed && hasPermission(accessQuery.data, 'equipment_purchase_order:amend');
   // The server accepts either the physical move right or the PO amendment right for this PO-bound flow.
   const canReturn =
     actions.returnToSupplier.allowed &&
-    (hasPermission(accessQuery.data, 'inventory:move') || hasPermission(accessQuery.data, 'purchase_order:amend'));
+    (hasPermission(accessQuery.data, 'equipment_inventory:move') ||
+      hasPermission(accessQuery.data, 'equipment_purchase_order:amend'));
   // The same either-read gate the label route applies: a label carries no cost, so the price-blind
   // stores role prints as readily as the catalog ones.
   const canPrintPartLabels =
-    hasPermission(accessQuery.data, 'part:read') || hasPermission(accessQuery.data, 'inventory:read');
+    hasPermission(accessQuery.data, 'equipment_part:read') ||
+    hasPermission(accessQuery.data, 'equipment_inventory:read');
   // The same single gate the upload route applies — filing the paperwork is procurement's job, and
   // it is the amend right that says who does it.
-  const canFileCreditNote = actions.fileDocuments.allowed && hasPermission(accessQuery.data, 'purchase_order:amend');
+  const canFileCreditNote =
+    actions.fileDocuments.allowed && hasPermission(accessQuery.data, 'equipment_purchase_order:amend');
   // A Supplier invoice is filed by the same procurement hands the credit note is. Reading the
   // cross-check it feeds is the narrower cost question, and confirming a price needs the right to
   // revalue on top of that.
   const canFileSupplierInvoice = canFileCreditNote;
-  const canApplyInvoicePrices = canReadCosts && hasPermission(accessQuery.data, 'inventory_cost:revalue');
+  const canApplyInvoicePrices = canReadCosts && hasPermission(accessQuery.data, 'equipment_inventory_cost:revalue');
   const { invalidatePurchaseOrders, invalidateJobs } = useQueryInvalidation();
   const [isLifecycleActionPending, setIsLifecycleActionPending] = useState(false);
 
@@ -245,7 +250,7 @@ export const PurchaseOrderDetailTabs: React.FC<{ children: React.ReactNode; purc
   children,
   purchaseOrderId,
 }) => {
-  const auditAccess = useCan('audit:read');
+  const auditAccess = useCan('equipment_audit:read');
   const purchaseOrderAuditFilters = useMemo(
     () => ({
       entityIds: [purchaseOrderId],

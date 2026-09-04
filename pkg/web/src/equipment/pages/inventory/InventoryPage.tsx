@@ -15,11 +15,11 @@ export function InventoryPage() {
   const navigate = useNavigate();
   const accessQuery = useAccess();
   const stockOnHandQuery = useQuery(trpc.inventory.stockOnHand.queryOptions());
-  const showCosts = hasPermission(accessQuery.data, 'inventory_cost:read');
-  const canAdjust = hasPermission(accessQuery.data, 'inventory:adjust');
-  const canBuild = hasPermission(accessQuery.data, 'inventory:build');
-  const canMove = hasPermission(accessQuery.data, 'inventory:move');
-  const canRevalue = hasPermission(accessQuery.data, 'inventory_cost:revalue');
+  const showCosts = hasPermission(accessQuery.data, 'equipment_inventory_cost:read');
+  const canAdjust = hasPermission(accessQuery.data, 'equipment_inventory:adjust');
+  const canBuild = hasPermission(accessQuery.data, 'equipment_inventory:build');
+  const canMove = hasPermission(accessQuery.data, 'equipment_inventory:move');
+  const canRevalue = hasPermission(accessQuery.data, 'equipment_inventory_cost:revalue');
 
   return (
     <PageLayout

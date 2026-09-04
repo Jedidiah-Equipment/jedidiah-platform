@@ -19,7 +19,7 @@ type QuoteEditPageProps = {
 
 export const QuoteEditPage: React.FC<QuoteEditPageProps> = ({ quoteId }) => {
   const trpc = useTRPC();
-  const canCancelQuote = useCan('quote:cancel').can;
+  const canCancelQuote = useCan('equipment_quote:cancel').can;
   const { invalidateQuotes } = useQueryInvalidation();
   const quoteQuery = useQuery(trpc.quotes.get.queryOptions({ id: quoteId }));
   const priorityQuotesQuery = useQuery(trpc.quotes.priorityList.queryOptions());

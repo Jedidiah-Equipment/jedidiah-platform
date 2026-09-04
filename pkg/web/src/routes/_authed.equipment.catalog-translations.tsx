@@ -4,7 +4,7 @@ import { requireRoutePermission } from '@/lib/route-auth.js';
 
 export const Route = createFileRoute('/_authed/equipment/catalog-translations')({
   beforeLoad: async ({ context }) => {
-    await requireRoutePermission(context, 'product_range:update');
+    await requireRoutePermission(context, 'equipment_product_range:update');
   },
   staticData: {
     pageLabel: 'Translations',

@@ -34,21 +34,21 @@ const fixtureWidgets: DashboardWidget[] = [
   {
     Component: WidgetComponent,
     id: 'quotes',
-    requires: 'quote:read',
+    requires: 'equipment_quote:read',
     size: 'md',
     title: 'Quotes',
   },
   {
     Component: WidgetComponent,
     id: 'products',
-    requires: 'product:read',
+    requires: 'equipment_product:read',
     size: 'md',
     title: 'Products',
   },
   {
     Component: WidgetComponent,
     id: 'audit',
-    requires: 'audit:read',
+    requires: 'equipment_audit:read',
     size: 'sm',
     title: 'Audit',
   },
@@ -92,7 +92,7 @@ describe('dashboardWidgets', () => {
     const quotesByStatusWidget = dashboardWidgets.find((widget) => widget.id === 'quotes-by-status');
 
     expect(quotesByStatusWidget).toMatchObject({
-      requires: 'quote:read',
+      requires: 'equipment_quote:read',
       size: 'md',
       title: 'Quotes by status',
     });
@@ -105,14 +105,14 @@ describe('dashboardWidgets', () => {
     const awaitingJobCreationWidget = dashboardWidgets.find((widget) => widget.id === 'awaiting-job-creation');
 
     expect(openPipelineWidget).toMatchObject({
-      requires: 'quote:read',
+      requires: 'equipment_quote:read',
       size: 'xs',
       title: 'Open pipeline (retail, excl. VAT)',
     });
-    expect(quoteFlowWidget).toMatchObject({ requires: 'quote:read', size: 'md', title: 'Quote flow' });
-    expect(staleSentWidget).toMatchObject({ requires: 'quote:read', size: 'sm', title: 'Stale sent quotes' });
+    expect(quoteFlowWidget).toMatchObject({ requires: 'equipment_quote:read', size: 'md', title: 'Quote flow' });
+    expect(staleSentWidget).toMatchObject({ requires: 'equipment_quote:read', size: 'sm', title: 'Stale sent quotes' });
     expect(awaitingJobCreationWidget).toMatchObject({
-      requires: 'quote:read',
+      requires: 'equipment_quote:read',
       size: 'sm',
       title: 'Awaiting Job creation',
     });
@@ -147,15 +147,15 @@ describe('dashboardWidgets', () => {
         )
         .map(({ id, requires, size, title }) => ({ id, requires, size, title })),
     ).toEqual([
-      { id: 'inventory-value', requires: 'inventory_cost:read', size: 'xs', title: 'Inventory value' },
-      { id: 'inventory-turns', requires: 'inventory_cost:read', size: 'xs', title: 'Inventory turns' },
+      { id: 'inventory-value', requires: 'equipment_inventory_cost:read', size: 'xs', title: 'Inventory value' },
+      { id: 'inventory-turns', requires: 'equipment_inventory_cost:read', size: 'xs', title: 'Inventory turns' },
       {
         id: 'top-inventory-adjustments',
-        requires: 'inventory_cost:read',
+        requires: 'equipment_inventory_cost:read',
         size: 'xs',
         title: 'Top adjustments this month',
       },
-      { id: 'top-scrap-items', requires: 'inventory_cost:read', size: 'xs', title: 'Top scrap this month' },
+      { id: 'top-scrap-items', requires: 'equipment_inventory_cost:read', size: 'xs', title: 'Top scrap this month' },
     ]);
 
     const managementIds = widgetIds(
@@ -210,11 +210,11 @@ describe('dashboardWidgets', () => {
     const bayLoadWidget = dashboardWidgets.find((widget) => widget.id === 'bay-load-today');
     const scheduledJobsWidget = dashboardWidgets.find((widget) => widget.id === 'scheduled-jobs');
 
-    expect(shopFloorWidget).toMatchObject({ requires: 'job:read', size: 'md', title: 'Shop floor today' });
-    expect(bayRunwayWidget).toMatchObject({ requires: 'job:read', size: 'md', title: 'Bay runway' });
-    expect(activeJobsWidget).toMatchObject({ requires: 'job:read', size: 'xs', title: 'Active jobs' });
-    expect(bayLoadWidget).toMatchObject({ requires: 'job:read', size: 'xs', title: 'Bay load today' });
-    expect(scheduledJobsWidget).toMatchObject({ requires: 'job:read', size: 'xs', title: 'Scheduled jobs' });
+    expect(shopFloorWidget).toMatchObject({ requires: 'equipment_job:read', size: 'md', title: 'Shop floor today' });
+    expect(bayRunwayWidget).toMatchObject({ requires: 'equipment_job:read', size: 'md', title: 'Bay runway' });
+    expect(activeJobsWidget).toMatchObject({ requires: 'equipment_job:read', size: 'xs', title: 'Active jobs' });
+    expect(bayLoadWidget).toMatchObject({ requires: 'equipment_job:read', size: 'xs', title: 'Bay load today' });
+    expect(scheduledJobsWidget).toMatchObject({ requires: 'equipment_job:read', size: 'xs', title: 'Scheduled jobs' });
   });
 
   it('shows the shop-floor band to job viewers and procurement managers and hides it from sales', () => {

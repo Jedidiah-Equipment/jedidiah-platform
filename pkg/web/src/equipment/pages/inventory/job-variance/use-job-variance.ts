@@ -16,5 +16,5 @@ export function useJobVariance(jobId: UUID) {
   const trpc = useTRPC();
   const query = useQuery(trpc.inventory.jobVariance.queryOptions({ jobId }));
 
-  return { query, showCosts: useCan('inventory_cost:read').can };
+  return { query, showCosts: useCan('equipment_inventory_cost:read').can };
 }

@@ -72,7 +72,7 @@ describe('generateQuoteDocument contract', () => {
       pdfRenderer: ctx.quoteDocumentRenderer,
       storage: ctx.storage,
     });
-    expect(generateQuoteDocumentDefinition.anyOfPermissions).toEqual(['quote:update']);
+    expect(generateQuoteDocumentDefinition.anyOfPermissions).toEqual(['equipment_quote:update']);
     expect(() => z.toJSONSchema(generateQuoteDocumentDefinition.inputSchema)).not.toThrow();
   });
 });

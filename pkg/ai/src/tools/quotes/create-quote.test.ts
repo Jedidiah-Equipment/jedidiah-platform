@@ -136,7 +136,12 @@ describe('createQuote contract', () => {
 
   test('defaults and normalizes Quote input, creates it as the actor, and returns linked details', async () => {
     const input = CreateQuoteInput.parse({
-      customer: { type: 'inline', companyName: ' Acme Mining ', contactPerson: ' Jane Buyer ', email: null },
+      customer: {
+        type: 'inline',
+        companyName: ' Acme Mining ',
+        contactPerson: ' Jane Buyer ',
+        email: null,
+      },
       offering: { kind: 'product', productId: PRODUCT_ID },
     });
     const coreInput = toCoreQuoteCreateInput(input, 'test-user-id');
@@ -183,7 +188,7 @@ describe('createQuote contract', () => {
       toCreateQuoteResponse(quote, createUserAccessSummary({ role: 'sales', userId: 'test-user-id' })).links,
     ).toEqual({ app: `/equipment/quotes/${QUOTE_ID}/edit` });
     expect(JSON.stringify(response)).not.toContain('thumbnailDataUrl');
-    expect(createQuoteDefinition.anyOfPermissions).toEqual(['quote:create']);
+    expect(createQuoteDefinition.anyOfPermissions).toEqual(['equipment_quote:create']);
     expect(createQuoteDefinition.description).toContain('inline Customer');
     expect(createQuoteDefinition.description).toContain('findProducts');
     expect(createQuoteDefinition.description).toContain('findCustomers');

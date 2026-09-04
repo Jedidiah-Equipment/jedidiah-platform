@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'vitest';
 import { mockSession } from '@/test/test-utils.js';
 
-import { filterSignInEligibleSession, parseBetterAuthRole } from './session.js';
+import { filterSignInEligibleSession, parseBetterAuthRole, parseBetterAuthRoleSlots } from './session.js';
 
 describe('parseBetterAuthRole', () => {
   test('parses supported role strings', () => {
@@ -25,6 +25,19 @@ describe('parseBetterAuthRole', () => {
   });
 });
 
+describe('parseBetterAuthRoleSlots', () => {
+  test('parses independent optional roles and expands the spanning super-admin', () => {
+    expect(parseBetterAuthRoleSlots({ contractingRole: 'foreman', role: null })).toEqual({
+      contractingRole: 'foreman',
+      equipmentRole: null,
+    });
+    expect(parseBetterAuthRoleSlots({ contractingRole: null, role: 'super-admin' })).toEqual({
+      contractingRole: 'super-admin',
+      equipmentRole: 'super-admin',
+    });
+  });
+});
+
 describe('filterSignInEligibleSession', () => {
   test('keeps sessions for roles with permissions', () => {
     const session = mockSession('job-viewer');
@@ -34,5 +47,12 @@ describe('filterSignInEligibleSession', () => {
 
   test('denies existing sessions for permissionless roles', () => {
     expect(filterSignInEligibleSession(mockSession('bay-operator'))).toBeNull();
+  });
+
+  test('keeps a Contracting-only session when its role grants permissions', () => {
+    const session = mockSession(null);
+    session.user.contractingRole = 'foreman';
+
+    expect(filterSignInEligibleSession(session)).toBe(session);
   });
 });

@@ -80,8 +80,8 @@ type ProductEditTabsProps = {
 };
 
 const ProductEditTabs: React.FC<ProductEditTabsProps> = ({ onProductSave, onTabChange, product, tab }) => {
-  const auditAccess = useCan('audit:read');
-  const canRemoveProduct = useCan('product:update').can;
+  const auditAccess = useCan('equipment_audit:read');
+  const canRemoveProduct = useCan('equipment_product:update').can;
   const productAuditFilters = useMemo(
     () => ({
       entityIds: [product.id],
@@ -108,7 +108,7 @@ const ProductEditTabs: React.FC<ProductEditTabsProps> = ({ onProductSave, onTabC
           <ProductBaysTabTrigger productId={product.id} />
           <ProductAssembliesTabTrigger productId={product.id} />
           <TabsTrigger value="costing">Costing</TabsTrigger>
-          {/* Only `product:read`, which this page already demands: the metrics gate applies to the
+          {/* Only `equipment_product:read`, which this page already demands: the metrics gate applies to the
               Crew-member ranking inside the tab, not to the build times themselves. */}
           <TabsTrigger value="build-times">Build times</TabsTrigger>
           <TabsTrigger value="images">Images</TabsTrigger>

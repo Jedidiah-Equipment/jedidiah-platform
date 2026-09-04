@@ -40,7 +40,7 @@ export const JobCalendarPage: React.FC = () => {
     [enabledBaysQuery.data?.items],
   );
   const schedulableBays = useMemo(
-    () => bays.filter((bay) => enabledBayIds.has(bay.id) && hasPermission(accessQuery.data, 'job:schedule')),
+    () => bays.filter((bay) => enabledBayIds.has(bay.id) && hasPermission(accessQuery.data, 'equipment_job:schedule')),
     [accessQuery.data, bays, enabledBayIds],
   );
   const schedulableBayIds = useMemo(() => new Set(schedulableBays.map((bay) => bay.id)), [schedulableBays]);
@@ -50,7 +50,7 @@ export const JobCalendarPage: React.FC = () => {
     [offDays],
   );
   const bayExceptionChipsByDate = useMemo(() => groupBayExceptionChipsByDate(bays), [bays]);
-  const canEditCalendar = hasPermission(accessQuery.data, 'job:update-calendar');
+  const canEditCalendar = hasPermission(accessQuery.data, 'equipment_job:update-calendar');
   const canEditBaySchedule = schedulableBays.length > 0;
   const [selectedDay, setSelectedDay] = useState<SelectedCalendarDay | null>(null);
   const [bayExceptionDialog, setBayExceptionDialog] = useState<BayExceptionDialogState | null>(null);

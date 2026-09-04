@@ -1,4 +1,4 @@
-import type { Part, PurchaseOrderAmendmentKind, PurchaseOrderLineView, PurchaseOrderView } from '@pkg/schema';
+import type { Part, PurchaseOrderAmendmentKind, PurchaseOrderLineView, PurchaseOrderView } from '@pkg/schema/equipment';
 import { useMutation } from '@tanstack/react-query';
 import { toast } from 'sonner';
 

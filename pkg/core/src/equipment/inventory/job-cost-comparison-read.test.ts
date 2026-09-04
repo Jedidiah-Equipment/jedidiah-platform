@@ -1,5 +1,5 @@
-import { jobEstimateSnapshots } from '@pkg/db';
-import type { ProductCostEstimate } from '@pkg/schema';
+import { jobEstimateSnapshots } from '@pkg/db/equipment';
+import type { ProductCostEstimate } from '@pkg/schema/equipment';
 import { describe, expect } from 'vitest';
 
 import { actorUserId, adjustmentInput, test } from '../test/inventory-fixtures.js';

@@ -8,9 +8,17 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     },
-    "./shared": {
-      "types": "./dist/shared.d.ts",
-      "import": "./dist/shared.js"
+    "./equipment": {
+      "types": "./dist/equipment/index.d.ts",
+      "import": "./dist/equipment/index.js"
+    },
+    "./contracting": {
+      "types": "./dist/contracting/index.d.ts",
+      "import": "./dist/contracting/index.js"
+    },
+    "./testing": {
+      "types": "./dist/testing/index.d.ts",
+      "import": "./dist/testing/index.js"
     },
     "./assets/*": "./assets/*",
     "./fonts/*": "./fonts/*"

@@ -1,13 +1,13 @@
-import { departmentLabels, formatDate, hasPermission, type WorkingCalendar } from '@pkg/domain';
+import { formatDate, hasPermission } from '@pkg/domain';
+import { departmentLabels, type WorkingCalendar } from '@pkg/domain/equipment';
+import type { DateOnlyIso, UUID } from '@pkg/schema';
 import type {
-  DateOnlyIso,
   JobSlotMoveDirection,
   JobSlotPlacement,
   JobSummary,
   ProjectedBayQueue,
   ProjectedJobSlot,
-  UUID,
-} from '@pkg/schema';
+} from '@pkg/schema/equipment';
 import { IconAlertTriangle } from '@tabler/icons-react';
 import { keepPreviousData, useMutation, useQuery } from '@tanstack/react-query';
 import type React from 'react';

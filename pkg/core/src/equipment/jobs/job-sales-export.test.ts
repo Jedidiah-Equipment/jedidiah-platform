@@ -1,6 +1,6 @@
+import { type Db, user } from '@pkg/db';
 import {
   customers,
-  type Db,
   jobs,
   parts,
   productAssemblies,
@@ -12,8 +12,7 @@ import {
   quoteWorkItemParts,
   quoteWorkItems,
   supplier,
-  user,
-} from '@pkg/db';
+} from '@pkg/db/equipment';
 import { DateOnlyIso, UUID } from '@pkg/schema';
 import { eq } from 'drizzle-orm';
 import { describe, expect } from 'vitest';

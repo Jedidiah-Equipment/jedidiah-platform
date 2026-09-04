@@ -1,11 +1,11 @@
+import type { UUID } from '@pkg/schema';
 import {
   PART_UNIT_OF_MEASURE_LABELS,
   type Part,
   type PartListInput,
   PartSortBy,
   PartUnitOfMeasure,
-  type UUID,
-} from '@pkg/schema';
+} from '@pkg/schema/equipment';
 import { keepPreviousData, useInfiniteQuery } from '@tanstack/react-query';
 import type { ColumnFiltersState } from '@tanstack/react-table';
 import type React from 'react';

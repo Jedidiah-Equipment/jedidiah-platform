@@ -1,4 +1,4 @@
-import type { parts } from '@pkg/db';
+import type { parts } from '@pkg/db/equipment';
 
 /** The columns every seeded Part needs, with the Supplier XOR BOM invariant already satisfied. */
 export function partValues({

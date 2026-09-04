@@ -1,7 +1,8 @@
-import { auditEvents, createDatabaseClient, parts, purchaseOrders, supplier, user } from '@pkg/db';
+import { auditEvents, createDatabaseClient, user } from '@pkg/db';
+import { parts, purchaseOrders, supplier } from '@pkg/db/equipment';
 import { eq, sql } from 'drizzle-orm';
 import { describe, expect } from 'vitest';
-
+import { InMemoryStorageAdapter } from '../../storage/in-memory-storage-adapter.js';
 import { createPart, getPart } from '../parts/part-service.js';
 import { amendPurchaseOrderQuantity } from '../purchase-orders/purchase-order-amendment-service.js';
 import {
@@ -11,7 +12,6 @@ import {
   savePurchaseOrderDraft,
 } from '../purchase-orders/purchase-order-service.js';
 import { createTester } from '../test/create-tester.js';
-import { InMemoryStorageAdapter } from '../test/in-memory-storage-adapter.js';
 import { partValues } from '../test/part-fixtures.js';
 import {
   createSupplier,

@@ -1,8 +1,8 @@
-import { listAllProducts, listProductRanges } from '@pkg/core';
+import { listAllProducts, listProductRanges } from '@pkg/core/equipment';
 import type { Db } from '@pkg/db';
-import { isBrochureReady, isLanderReady, localizeFields } from '@pkg/domain';
-import type { AssemblyKind, ProductImageSlot } from '@pkg/schema';
-import { CANONICAL_LOCALE, type Locale } from '../../lib/locale.js';
+import { isBrochureReady, isLanderReady, localizeFields } from '@pkg/domain/equipment';
+import type { AssemblyKind, ProductImageSlot } from '@pkg/schema/equipment';
+import { CANONICAL_LOCALE, type Locale } from '@/lib/locale.js';
 import { OG_IMAGE_FORMAT } from '../media/image-format.js';
 import {
   type CatalogProduct,

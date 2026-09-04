@@ -1,22 +1,22 @@
 import {
   createEscapedContainsSearchCondition,
   createGlobalSearchCondition,
-  customers,
   type Db,
   getForeignKeyViolationConstraint,
   getPaginationQueryOptions,
   getSortOrder,
 } from '@pkg/db';
+import { customers } from '@pkg/db/equipment';
+import type { AuthId, UUID } from '@pkg/schema';
+import { getNextCursor } from '@pkg/schema';
 import type {
-  AuthId,
   CustomerCreateInput,
   CustomerListInput,
   CustomerListResult,
   CustomerPatchInput,
   CustomerUpdateInput,
-  UUID,
-} from '@pkg/schema';
-import { Customer, getNextCursor } from '@pkg/schema';
+} from '@pkg/schema/equipment';
+import { Customer } from '@pkg/schema/equipment';
 import { and, asc, eq, type SQL, sql } from 'drizzle-orm';
 
 import { defineAuditDescriptor, recordAuditCreate, recordAuditDelete } from '../audit/audit-service.js';

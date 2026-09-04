@@ -1,4 +1,4 @@
-import type { StockOnHandBucket } from '@pkg/schema';
+import type { StockOnHandBucket } from '@pkg/schema/equipment';
 import { Pressable, View } from 'react-native';
 
 import { Text } from '@/components/ui/text';

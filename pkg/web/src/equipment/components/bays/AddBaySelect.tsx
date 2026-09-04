@@ -1,5 +1,6 @@
-import { departmentLabels } from '@pkg/domain';
-import type { Bay, UUID } from '@pkg/schema';
+import { departmentLabels } from '@pkg/domain/equipment';
+import type { UUID } from '@pkg/schema';
+import type { Bay } from '@pkg/schema/equipment';
 import { IconPlus } from '@tabler/icons-react';
 import type React from 'react';
 import { useMemo, useState } from 'react';

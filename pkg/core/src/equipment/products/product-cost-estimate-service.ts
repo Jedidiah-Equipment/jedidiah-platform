@@ -1,5 +1,7 @@
-import { type DatabaseTransaction, type Db, notRemoved, parts, products } from '@pkg/db';
-import { buildCfo, buildReworkCfo, WORK_ITEM_DEPARTMENT_RATES } from '@pkg/domain';
+import { type DatabaseTransaction, type Db, notRemoved } from '@pkg/db';
+import { parts, products } from '@pkg/db/equipment';
+import { buildCfo, buildReworkCfo, WORK_ITEM_DEPARTMENT_RATES } from '@pkg/domain/equipment';
+import type { UUID } from '@pkg/schema';
 import type {
   Assembly,
   PartUnitOfMeasure,
@@ -7,9 +9,8 @@ import type {
   ProductCostEstimateAssembly,
   ProductCostEstimateMissingPart,
   ProductCostEstimatePartLine,
-  UUID,
-} from '@pkg/schema';
-import { ProductCostEstimate as ProductCostEstimateSchema } from '@pkg/schema';
+} from '@pkg/schema/equipment';
+import { ProductCostEstimate as ProductCostEstimateSchema } from '@pkg/schema/equipment';
 import { and, asc, eq, inArray } from 'drizzle-orm';
 
 import { loadMovingAverages, scaleUnitCost } from '../inventory/ledger.js';

@@ -1,5 +1,6 @@
-import { hasPermission, isReworkQuote } from '@pkg/domain';
-import type { QuoteDetail } from '@pkg/schema';
+import { hasPermission } from '@pkg/domain';
+import { isReworkQuote } from '@pkg/domain/equipment';
+import type { QuoteDetail } from '@pkg/schema/equipment';
 import { IconBriefcase2 } from '@tabler/icons-react';
 import { Link } from '@tanstack/react-router';
 import type React from 'react';

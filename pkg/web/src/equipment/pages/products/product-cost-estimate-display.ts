@@ -1,5 +1,5 @@
 import { formatCurrency } from '@pkg/domain';
-import type { ProductCostEstimate } from '@pkg/schema';
+import type { ProductCostEstimate } from '@pkg/schema/equipment';
 
 export function estimateTermCompleteness(estimate: {
   assemblies: ReadonlyArray<{ complete: boolean }>;

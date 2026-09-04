@@ -4,7 +4,7 @@ import { useMemo } from 'react';
 import { useTRPC } from '@/lib/trpc.js';
 import { toSelectOptions } from './helpers.js';
 
-export type { ProductRangeOption } from '@pkg/schema';
+export type { ProductRangeOption } from '@pkg/schema/equipment';
 
 export function useProductRangeForQuoteOptions() {
   const trpc = useTRPC();

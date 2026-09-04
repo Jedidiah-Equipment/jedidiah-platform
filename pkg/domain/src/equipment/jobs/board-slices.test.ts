@@ -1,13 +1,5 @@
-import {
-  DateIso,
-  DateOnlyIso,
-  JobCode,
-  type JobSlotState,
-  ProjectedBayQueue,
-  SlotDurationDays,
-  SlotSequence,
-  UUID,
-} from '@pkg/schema';
+import { DateIso, DateOnlyIso, UUID } from '@pkg/schema';
+import { JobCode, type JobSlotState, ProjectedBayQueue, SlotDurationDays, SlotSequence } from '@pkg/schema/equipment';
 import { describe, expect, it } from 'vitest';
 import {
   foldJobScheduleStates,

@@ -1,6 +1,6 @@
+import { type Db, user } from '@pkg/db';
 import {
   customers,
-  type Db,
   jobBays,
   jobSlots,
   jobs,
@@ -8,9 +8,8 @@ import {
   quotes,
   quoteWorkItemParts,
   quoteWorkItems,
-  user,
-} from '@pkg/db';
-import type { QuoteStatus } from '@pkg/schema';
+} from '@pkg/db/equipment';
+import type { QuoteStatus } from '@pkg/schema/equipment';
 import { describe, expect } from 'vitest';
 
 import { createTester } from '../test/create-tester.js';

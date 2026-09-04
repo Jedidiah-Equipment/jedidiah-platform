@@ -1,11 +1,11 @@
+import { formatDate } from '@pkg/domain';
 import {
   computeQuoteSummary,
   editableLockedQuoteFields,
-  formatDate,
   isQuoteLocked,
   quoteKindLabels,
   quoteStatusLabels,
-} from '@pkg/domain';
+} from '@pkg/domain/equipment';
 import {
   type JobListInput,
   type PriorityQuote,
@@ -13,7 +13,7 @@ import {
   type QuoteDocumentGenerationWarning,
   QuoteStatus,
   type QuoteUpdateInput,
-} from '@pkg/schema';
+} from '@pkg/schema/equipment';
 import {
   IconAlertTriangle,
   IconComponents,

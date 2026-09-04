@@ -1,5 +1,6 @@
 import type { Db } from '@pkg/db';
-import { parts, supplier, user } from '@pkg/db';
+import { user } from '@pkg/db';
+import { parts, supplier } from '@pkg/db/equipment';
 import { postAdjustment } from '../inventory/stock-movement-service.js';
 import { savePartBom } from '../parts/part-bom-service.js';
 import { createTester } from './create-tester.js';

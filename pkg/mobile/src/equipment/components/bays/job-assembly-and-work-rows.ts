@@ -1,4 +1,4 @@
-import type { JobDetail } from '@pkg/schema';
+import type { JobDetail } from '@pkg/schema/equipment';
 
 export type JobAssemblyAndWorkRow = {
   key: string;

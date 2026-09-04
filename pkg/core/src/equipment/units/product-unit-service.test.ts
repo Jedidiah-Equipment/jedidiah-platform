@@ -1,16 +1,15 @@
+import { auditEvents, type Db, user } from '@pkg/db';
 import {
-  auditEvents,
   customers,
-  type Db,
   jobs,
   productSerialSequences,
   products,
   productUnitOwnershipTransfers,
   productUnits,
   quotes,
-  user,
-} from '@pkg/db';
-import { DateOnlyIso, formatJobCode, JobListInput, ProductUnitTransferInput } from '@pkg/schema';
+} from '@pkg/db/equipment';
+import { DateOnlyIso } from '@pkg/schema';
+import { formatJobCode, JobListInput, ProductUnitTransferInput } from '@pkg/schema/equipment';
 import { asc, eq } from 'drizzle-orm';
 import { describe, expect } from 'vitest';
 

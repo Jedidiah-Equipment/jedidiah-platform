@@ -1,5 +1,9 @@
-import { productUnitBuildStateColorClassNames, productUnitBuildStateLabels, toDisplayBuildState } from '@pkg/domain';
-import type { ProductUnitBuildState, ProductUnitOwner } from '@pkg/schema';
+import {
+  productUnitBuildStateColorClassNames,
+  productUnitBuildStateLabels,
+  toDisplayBuildState,
+} from '@pkg/domain/equipment';
+import type { ProductUnitBuildState, ProductUnitOwner } from '@pkg/schema/equipment';
 
 import { StatusBadge } from '@/components/ui/status-badge';
 

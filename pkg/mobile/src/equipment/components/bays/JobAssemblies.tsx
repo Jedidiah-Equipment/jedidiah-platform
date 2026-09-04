@@ -1,4 +1,5 @@
-import { quoteKindColorClassNames, quoteKindLabels, statusBadgeColorClassNames } from '@pkg/domain';
+import { statusBadgeColorClassNames } from '@pkg/domain';
+import { quoteKindColorClassNames, quoteKindLabels } from '@pkg/domain/equipment';
 import { View } from 'react-native';
 import { StatusBadge, type StatusBadgeClassNames } from '@/components/ui/status-badge';
 import { Text } from '@/components/ui/text';

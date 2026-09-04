@@ -1,4 +1,4 @@
-import type { BayOperator } from '@pkg/schema';
+import type { BayOperator } from '@pkg/schema/equipment';
 import { IconUserOff } from '@tabler/icons-react';
 import type React from 'react';
 import { EntityThumbnail } from '@/components/thumbnail/EntityThumbnail.js';

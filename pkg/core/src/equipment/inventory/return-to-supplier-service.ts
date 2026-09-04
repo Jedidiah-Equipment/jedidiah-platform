@@ -1,7 +1,13 @@
-import { type DatabaseTransaction, type Db, purchaseOrderLines, purchaseOrders, stockMovements } from '@pkg/db';
-import { deriveMovementWarnings, deriveOutstandingReceiptUnitCost, derivePurchaseOrderActions } from '@pkg/domain';
-import type { AuthId, PostReturnToSupplierInput, StockMovementPostResult, UUID } from '@pkg/schema';
-import { StockMovementPostResult as StockMovementPostResultSchema, unitClassFor } from '@pkg/schema';
+import type { DatabaseTransaction, Db } from '@pkg/db';
+import { purchaseOrderLines, purchaseOrders, stockMovements } from '@pkg/db/equipment';
+import {
+  deriveMovementWarnings,
+  deriveOutstandingReceiptUnitCost,
+  derivePurchaseOrderActions,
+} from '@pkg/domain/equipment';
+import type { AuthId, UUID } from '@pkg/schema';
+import type { PostReturnToSupplierInput, StockMovementPostResult } from '@pkg/schema/equipment';
+import { StockMovementPostResult as StockMovementPostResultSchema, unitClassFor } from '@pkg/schema/equipment';
 import { and, asc, eq, inArray } from 'drizzle-orm';
 
 import {

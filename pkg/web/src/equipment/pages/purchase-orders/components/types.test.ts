@@ -1,5 +1,5 @@
-import { derivePurchaseOrderActions } from '@pkg/domain';
-import { PurchaseOrderView } from '@pkg/schema';
+import { derivePurchaseOrderActions } from '@pkg/domain/equipment';
+import { PurchaseOrderView } from '@pkg/schema/equipment';
 import { describe, expect, it } from 'vitest';
 
 import {

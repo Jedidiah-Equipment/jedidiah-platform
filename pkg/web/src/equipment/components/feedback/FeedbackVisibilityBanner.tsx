@@ -1,5 +1,6 @@
-import { getFeedbackVisibilityNotice, toSentenceCase } from '@pkg/domain';
-import type { FeedbackKind, FeedbackSubjectType } from '@pkg/schema';
+import { toSentenceCase } from '@pkg/domain';
+import { getFeedbackVisibilityNotice } from '@pkg/domain/equipment';
+import type { FeedbackKind, FeedbackSubjectType } from '@pkg/schema/equipment';
 import { IconEye, IconLock } from '@tabler/icons-react';
 import type React from 'react';
 

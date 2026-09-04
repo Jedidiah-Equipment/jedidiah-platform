@@ -1,5 +1,6 @@
-import { formatDate, stocktakeSessionStatusOf } from '@pkg/domain';
-import { STOCKTAKE_SCOPE_LABELS, type StocktakeSession } from '@pkg/schema';
+import { formatDate } from '@pkg/domain';
+import { stocktakeSessionStatusOf } from '@pkg/domain/equipment';
+import { STOCKTAKE_SCOPE_LABELS, type StocktakeSession } from '@pkg/schema/equipment';
 import { Link, useNavigate } from '@tanstack/react-router';
 import { DataTable } from '@/components/data-table/DataTable.js';
 import { type DataTableColumnDef, useDataTable } from '@/components/data-table/features.js';

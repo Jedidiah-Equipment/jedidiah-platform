@@ -1,4 +1,5 @@
-import { account, CREDENTIAL_ACCOUNT_ISSUER, type Db, jobBayOperatorAssignments, jobBays, sql, user } from '@pkg/db';
+import { account, CREDENTIAL_ACCOUNT_ISSUER, type Db, sql, user } from '@pkg/db';
+import { jobBayOperatorAssignments, jobBays } from '@pkg/db/equipment';
 import { DEFAULT_DEMO_USER_PASSWORD, toPlantDateOnly } from '@pkg/domain';
 import { type ContractingRole, EquipmentRole, type EquipmentRole as EquipmentRoleType } from '@pkg/schema';
 import { hashPassword } from 'better-auth/crypto';

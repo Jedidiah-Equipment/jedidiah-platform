@@ -1,13 +1,13 @@
-import { type DatabaseTransaction, type Db, jobs, quotes } from '@pkg/db';
+import type { DatabaseTransaction, Db } from '@pkg/db';
+import { jobs, quotes } from '@pkg/db/equipment';
 import { getPlantDateNow } from '@pkg/domain';
+import type { AuthId, UUID } from '@pkg/schema';
 import {
-  type AuthId,
   formatJobCode,
   ProductSerialNumber,
   type ProductUnitReassignInput,
   type ProductUnitReassignResult,
-  type UUID,
-} from '@pkg/schema';
+} from '@pkg/schema/equipment';
 import { aliasedTable, and, asc, eq, inArray, isNull, or } from 'drizzle-orm';
 
 import { recordAuditEvent } from '../audit/audit-service.js';

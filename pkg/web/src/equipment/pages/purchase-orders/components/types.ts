@@ -1,6 +1,5 @@
+import { DateOnlyIso, DateOnlyIsoString, UUID } from '@pkg/schema';
 import {
-  DateOnlyIso,
-  DateOnlyIsoString,
   hasUniquePartIds,
   InventoryUnitCost,
   type Part,
@@ -19,9 +18,8 @@ import {
   StockMovementLengthMm,
   StockMovementQuantity,
   StockReturnToSupplierReason,
-  UUID,
   unitClassFor,
-} from '@pkg/schema';
+} from '@pkg/schema/equipment';
 import { z } from 'zod';
 
 import { roundNumberFieldValue } from '@/components/form/fields/NumberField.js';

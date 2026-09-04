@@ -1,6 +1,6 @@
-import { listCatalogTranslationKeysNeedingTranslation } from '@pkg/core';
+import { listCatalogTranslationKeysNeedingTranslation } from '@pkg/core/equipment';
 import type { Db } from '@pkg/db';
-import type { CatalogTranslationKey } from '@pkg/domain';
+import type { CatalogTranslationKey } from '@pkg/domain/equipment';
 
 import type { CatalogTranslationRunResult } from './catalog-translation-runner.js';
 import { ConcurrencyLimit } from './concurrency-limit.js';

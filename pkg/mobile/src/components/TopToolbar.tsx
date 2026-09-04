@@ -3,11 +3,12 @@ import type React from 'react';
 import { Pressable, View } from 'react-native';
 
 import { AppIcon } from '@/components/AppLogo';
+import { ProfileMenuButton } from '@/components/ProfileMenuButton';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 
 export function MainToolbar({
-  actions,
+  actions = <ProfileMenuButton />,
   subtitle,
   title,
 }: {

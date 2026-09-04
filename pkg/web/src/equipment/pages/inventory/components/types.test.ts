@@ -1,4 +1,4 @@
-import type { StockOnHandRow } from '@pkg/schema';
+import type { StockOnHandRow } from '@pkg/schema/equipment';
 import { describe, expect, it } from 'vitest';
 
 import {

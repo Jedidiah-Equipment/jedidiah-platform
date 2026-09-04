@@ -1,6 +1,6 @@
 import { type Db, user } from '@pkg/db';
-import type { QuickSwitchActorListResult } from '@pkg/schema';
-import { QuickSwitchActorListResult as QuickSwitchActorListResultSchema } from '@pkg/schema';
+import type { QuickSwitchActorListResult } from '@pkg/schema/equipment';
+import { QuickSwitchActorListResult as QuickSwitchActorListResultSchema } from '@pkg/schema/equipment';
 import { and, asc, eq, isNull, or } from 'drizzle-orm';
 
 /**

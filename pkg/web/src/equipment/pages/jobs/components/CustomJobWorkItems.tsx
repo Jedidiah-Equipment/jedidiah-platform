@@ -1,4 +1,4 @@
-import type { JobDetail } from '@pkg/schema';
+import type { JobDetail } from '@pkg/schema/equipment';
 import { IconChecklist } from '@tabler/icons-react';
 
 import { Card, CardContent, CardHeader, CardSeparator, CardTitle } from '@/components/ui/card.js';

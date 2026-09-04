@@ -1,8 +1,8 @@
-import { listAllProducts, listProductRanges } from '@pkg/core';
+import { listAllProducts, listProductRanges } from '@pkg/core/equipment';
 import type { Db } from '@pkg/db';
-import { isLanderReady, localizeFields } from '@pkg/domain';
+import { isLanderReady, localizeFields } from '@pkg/domain/equipment';
 
-import type { Locale } from '../../lib/locale.js';
+import type { Locale } from '@/lib/locale.js';
 import { imageSrcSet, imageUrl, toRangeLabel, toRangeSlug } from './products-data.js';
 
 export type HomeRange = {

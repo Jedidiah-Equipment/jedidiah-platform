@@ -1,25 +1,11 @@
-import {
-  type DatabaseTransaction,
-  type Db,
-  isUniqueViolation,
-  jobEstimateSnapshots,
-  jobs,
-  parts,
-  stockMovements,
-  stocktakeSessions,
-  user,
-  withPagination,
-} from '@pkg/db';
-import type { MovingAverageMovement } from '@pkg/domain';
-import {
-  deriveMovingAverageTimeline,
-  deriveStocktakeOverdue,
-  groupBy,
-  toPlantDateOnly,
-  valueStockMovement,
-} from '@pkg/domain';
+import { type DatabaseTransaction, type Db, isUniqueViolation, user, withPagination } from '@pkg/db';
+import { jobEstimateSnapshots, jobs, parts, stockMovements, stocktakeSessions } from '@pkg/db/equipment';
+import { groupBy, toPlantDateOnly } from '@pkg/domain';
+import type { MovingAverageMovement } from '@pkg/domain/equipment';
+import { deriveMovingAverageTimeline, deriveStocktakeOverdue, valueStockMovement } from '@pkg/domain/equipment';
+import type { AuthId, UUID } from '@pkg/schema';
+import { getNextCursor } from '@pkg/schema';
 import type {
-  AuthId,
   CloseStocktakeSessionInput,
   OpenStocktakeSessionInput,
   PostStockCountInput,
@@ -33,10 +19,8 @@ import type {
   StocktakeSessionReport,
   StocktakeUncountedInput,
   StocktakeUncountedResult,
-  UUID,
-} from '@pkg/schema';
+} from '@pkg/schema/equipment';
 import {
-  getNextCursor,
   STOCKTAKE_SCOPE_TRACKING_MODE,
   StockCountResult as StockCountResultSchema,
   StocktakeOverdueResult as StocktakeOverdueResultSchema,
@@ -46,7 +30,7 @@ import {
   StocktakeSession as StocktakeSessionSchema,
   StocktakeUncountedResult as StocktakeUncountedResultSchema,
   unitClassFor,
-} from '@pkg/schema';
+} from '@pkg/schema/equipment';
 import {
   aliasedTable,
   and,

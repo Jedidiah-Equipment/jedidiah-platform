@@ -1,5 +1,5 @@
-import { departmentLabels } from '@pkg/domain';
-import type { Bay } from '@pkg/schema';
+import { departmentLabels } from '@pkg/domain/equipment';
+import type { Bay } from '@pkg/schema/equipment';
 import { IconTrash } from '@tabler/icons-react';
 import type React from 'react';
 import { Badge } from '@/components/ui/badge.js';

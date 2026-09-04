@@ -4,7 +4,7 @@ import { demoUsers } from './demo.js';
 
 describe('demoUsers', () => {
   it('keeps seeded users on current app roles', () => {
-    expect(demoUsers.map((user) => user.role).sort()).toEqual([
+    expect(demoUsers.map((user) => user.equipmentRole).sort()).toEqual([
       'admin',
       'bay-operator',
       'bay-operator',
@@ -23,7 +23,7 @@ describe('demoUsers', () => {
    */
   it('seeds exactly one device, and stores people for it to attribute to', () => {
     const devices = demoUsers.filter((user) => user.isDevice === true);
-    const storesPeople = demoUsers.filter((user) => user.role === 'stores' && user.isDevice !== true);
+    const storesPeople = demoUsers.filter((user) => user.equipmentRole === 'stores' && user.isDevice !== true);
 
     expect(devices.map((user) => user.name)).toEqual(['Stores Tablet']);
     expect(storesPeople).toHaveLength(2);

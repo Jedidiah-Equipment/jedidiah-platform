@@ -1,6 +1,7 @@
 import { type Db, user } from '@pkg/db';
-import type { AuthId, UserBadgePdfModel, UserBadgePdfRenderer } from '@pkg/schema';
-import { UserBadgePdfModel as UserBadgePdfModelSchema } from '@pkg/schema';
+import type { AuthId } from '@pkg/schema';
+import type { UserBadgePdfModel, UserBadgePdfRenderer } from '@pkg/schema/equipment';
+import { UserBadgePdfModel as UserBadgePdfModelSchema } from '@pkg/schema/equipment';
 import { eq } from 'drizzle-orm';
 
 import { UserIsDeviceError, UserNotFoundError } from './user-errors.js';

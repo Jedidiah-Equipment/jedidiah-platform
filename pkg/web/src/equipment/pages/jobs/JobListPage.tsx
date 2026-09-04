@@ -1,5 +1,6 @@
 import { hasPermission } from '@pkg/domain';
-import { DateOnlyIso, type JobListInput, JobSortBy, type UUID } from '@pkg/schema';
+import { DateOnlyIso, type UUID } from '@pkg/schema';
+import { type JobListInput, JobSortBy } from '@pkg/schema/equipment';
 import { IconDownload, IconLoader2, IconPlus } from '@tabler/icons-react';
 import { keepPreviousData, useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate } from '@tanstack/react-router';

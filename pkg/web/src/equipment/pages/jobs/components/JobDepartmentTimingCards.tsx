@@ -1,26 +1,21 @@
+import { formatDate, getFirstName, getPlantDateNow, statusBadgeColorClassNames, toPlantDateOnly } from '@pkg/domain';
 import {
   DEPARTMENT_TIMING_STATUS,
   type DepartmentTimingState,
   departmentCrewLabels,
   departmentLabels,
-  formatDate,
   getDepartmentTimingPresentation,
-  getFirstName,
-  getPlantDateNow,
   isJobCancelled,
-  statusBadgeColorClassNames,
-  toPlantDateOnly,
   WORK_ITEM_DEPARTMENTS,
-} from '@pkg/domain';
+} from '@pkg/domain/equipment';
+import { DateIso, DateOnlyIsoString } from '@pkg/schema';
 import {
-  DateIso,
-  DateOnlyIsoString,
   type JobDepartmentTiming,
   JobDepartmentTimingCompleteInput,
   JobDepartmentTimingCorrectionValues,
   type JobDetail,
   type WorkItemDepartment,
-} from '@pkg/schema';
+} from '@pkg/schema/equipment';
 import { IconAlertTriangle, IconChevronDown, IconPencil } from '@tabler/icons-react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import type React from 'react';

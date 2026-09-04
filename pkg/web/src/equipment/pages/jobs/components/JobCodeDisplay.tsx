@@ -1,5 +1,6 @@
-import { getJobDisplayNameWithModel, getJobWorkLabel } from '@pkg/domain';
-import type { JobCode, JobListInput, JobSummary, UUID } from '@pkg/schema';
+import { getJobDisplayNameWithModel, getJobWorkLabel } from '@pkg/domain/equipment';
+import type { UUID } from '@pkg/schema';
+import type { JobCode, JobListInput, JobSummary } from '@pkg/schema/equipment';
 import { useQuery } from '@tanstack/react-query';
 import type React from 'react';
 import { useMemo, useState } from 'react';

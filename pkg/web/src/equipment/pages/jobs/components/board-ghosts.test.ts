@@ -1,11 +1,5 @@
-import {
-  type BoardPreviewResult,
-  DateIso,
-  type DateOnlyIso,
-  JobCode,
-  type ProjectedBayQueue,
-  type UUID,
-} from '@pkg/schema';
+import { DateIso, type DateOnlyIso, type UUID } from '@pkg/schema';
+import { type BoardPreviewResult, JobCode, type ProjectedBayQueue } from '@pkg/schema/equipment';
 import { describe, expect, it } from 'vitest';
 
 import {

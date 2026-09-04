@@ -9,7 +9,7 @@ import {
   submitFeedback,
   updateFeedback,
   updateJobFeedback,
-} from '@pkg/core';
+} from '@pkg/core/equipment';
 import {
   FeedbackDetailInput,
   FeedbackListInput,
@@ -17,7 +17,7 @@ import {
   FeedbackUpdateInput,
   JobFeedbackListInput,
   JobFeedbackUpdateInput,
-} from '@pkg/schema';
+} from '@pkg/schema/equipment';
 
 import { type CoreErrorMapping, mapKnownCoreError } from '../../../trpc/errors.js';
 import { authorizedProcedure, businessProcedure, router } from '../../../trpc/init.js';

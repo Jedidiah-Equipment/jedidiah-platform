@@ -1,8 +1,10 @@
 import { randomUUID } from 'node:crypto';
 
-import { type Db, notRemoved, productRanges } from '@pkg/db';
-import { RANGE_IMAGE_POLICY, RANGE_LOGO_POLICY } from '@pkg/domain';
-import type { ProductRange, UUID } from '@pkg/schema';
+import { type Db, notRemoved } from '@pkg/db';
+import { productRanges } from '@pkg/db/equipment';
+import { RANGE_IMAGE_POLICY, RANGE_LOGO_POLICY } from '@pkg/domain/equipment';
+import type { UUID } from '@pkg/schema';
+import type { ProductRange } from '@pkg/schema/equipment';
 import { and, eq } from 'drizzle-orm';
 import { FileNotFoundError } from '../../files/file-errors.js';
 import { fileExtensionFor, replaceFile } from '../../files/stored-file-service.js';

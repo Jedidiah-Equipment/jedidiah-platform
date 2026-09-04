@@ -1,11 +1,13 @@
-import { type Db, jobBays, jobDepartmentCrew, jobDepartmentTimings, jobSlots, jobs, productUnits, user } from '@pkg/db';
-import { timingWorkingDays, toPlantDateOnly } from '@pkg/domain';
+import { type Db, user } from '@pkg/db';
+import { jobBays, jobDepartmentCrew, jobDepartmentTimings, jobSlots, jobs, productUnits } from '@pkg/db/equipment';
+import { toPlantDateOnly } from '@pkg/domain';
+import { timingWorkingDays } from '@pkg/domain/equipment';
+import { DateIso } from '@pkg/schema';
 import {
-  DateIso,
   type ProductBuildMetrics,
   type ProductBuildMetricsInput,
   ProductBuildMetrics as ProductBuildMetricsSchema,
-} from '@pkg/schema';
+} from '@pkg/schema/equipment';
 import { and, asc, eq, inArray, isNotNull, isNull, sql } from 'drizzle-orm';
 
 import { createOrgWorkingCalendar, listWorkingCalendarOffDays } from '../jobs/working-calendar-service.js';

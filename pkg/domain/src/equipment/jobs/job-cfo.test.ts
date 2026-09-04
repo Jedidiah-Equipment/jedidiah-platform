@@ -1,4 +1,5 @@
-import type { Assembly, AssemblyPart, OptionalAssembly, StandardAssembly, UUID } from '@pkg/schema';
+import type { UUID } from '@pkg/schema';
+import type { Assembly, AssemblyPart, OptionalAssembly, StandardAssembly } from '@pkg/schema/equipment';
 import { describe, expect, it } from 'vitest';
 
 import { buildCfo, buildReworkCfo, selectReworkBuildSpec } from './job-cfo.js';

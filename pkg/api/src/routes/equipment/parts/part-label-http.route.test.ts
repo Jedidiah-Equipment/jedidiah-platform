@@ -1,14 +1,17 @@
 import fastifyMultipart from '@fastify/multipart';
 import type { Db } from '@pkg/db';
-import { parts, supplier, user } from '@pkg/db';
-import type { PartLabelPdfModel, PartLabelPdfRenderer } from '@pkg/schema';
+import { user } from '@pkg/db';
+import { parts, supplier } from '@pkg/db/equipment';
+import type { PartLabelPdfModel, PartLabelPdfRenderer } from '@pkg/schema/equipment';
 import Fastify, { type FastifyInstance } from 'fastify';
 import { afterEach, beforeEach, describe, expect, vi } from 'vitest';
 
+import type { Auth } from '@/auth/auth.js';
 import { createTester } from '@/test/create-tester.js';
 import { mockSession } from '@/test/test-utils.js';
 
 const routeTestState = vi.hoisted(() => ({
+  auth: null as unknown,
   db: null as unknown,
   session: null as unknown,
 }));
@@ -32,7 +35,8 @@ vi.mock('../../../auth/session.js', async (importOriginal) => {
   return { ...actual, getSessionFromHeaders: vi.fn(async () => routeTestState.session) };
 });
 
-const test = createTester(async ({ db }) => {
+const test = createTester(async ({ auth, db }) => {
+  routeTestState.auth = auth;
   routeTestState.db = db;
   routeTestState.session = mockSession();
   await db.insert(user).values({
@@ -181,6 +185,7 @@ describe('Part label HTTP routes', () => {
 async function createApp(pdfRenderer: PartLabelPdfRenderer) {
   const { registerPartLabelHttpRoutes } = await import('./part-label-http.route.js');
   const app = Fastify();
+  app.decorate('auth', routeTestState.auth as Auth);
   await app.register(fastifyMultipart);
   await registerPartLabelHttpRoutes(app, { pdfRenderer });
   await app.ready();

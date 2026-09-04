@@ -1,4 +1,4 @@
-import type { JobPickerOption, JobStockMovementType, StockOnHandRow } from '@pkg/schema';
+import type { JobPickerOption, JobStockMovementType, StockOnHandRow } from '@pkg/schema/equipment';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { type RefObject, useRef, useState } from 'react';
 import { previewJobMovementWarnings } from '@/equipment/lib/movement-preview';

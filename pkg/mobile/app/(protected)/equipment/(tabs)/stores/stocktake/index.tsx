@@ -1,4 +1,9 @@
-import { STOCKTAKE_SCOPE_LABELS, type StocktakeOverdueRow, StocktakeScope, type StocktakeSession } from '@pkg/schema';
+import {
+  STOCKTAKE_SCOPE_LABELS,
+  type StocktakeOverdueRow,
+  StocktakeScope,
+  type StocktakeSession,
+} from '@pkg/schema/equipment';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import { Pressable, View } from 'react-native';

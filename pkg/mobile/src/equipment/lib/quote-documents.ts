@@ -1,5 +1,5 @@
 import { formatBytes, formatDate } from '@pkg/domain';
-import type { QuoteDocument } from '@pkg/schema';
+import type { QuoteDocument } from '@pkg/schema/equipment';
 
 export type QuoteDocumentSort = 'uploaded-newest' | 'uploaded-oldest';
 

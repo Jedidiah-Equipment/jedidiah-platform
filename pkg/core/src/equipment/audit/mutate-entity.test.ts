@@ -1,4 +1,5 @@
-import { auditEvents, customers, type Db, user } from '@pkg/db';
+import { auditEvents, type Db, user } from '@pkg/db';
+import { customers } from '@pkg/db/equipment';
 import { eq } from 'drizzle-orm';
 import { describe, expect } from 'vitest';
 

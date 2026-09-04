@@ -1,5 +1,7 @@
-import { type DatabaseTransaction, type Db, quoteWorkItemParts, quoteWorkItems } from '@pkg/db';
-import { QuoteWorkItem, type QuoteWorkItemInput, type UUID } from '@pkg/schema';
+import type { DatabaseTransaction, Db } from '@pkg/db';
+import { quoteWorkItemParts, quoteWorkItems } from '@pkg/db/equipment';
+import type { UUID } from '@pkg/schema';
+import { QuoteWorkItem, type QuoteWorkItemInput } from '@pkg/schema/equipment';
 import { asc, eq, inArray } from 'drizzle-orm';
 
 export type QuoteWorkItemPartRow = typeof quoteWorkItemParts.$inferSelect;

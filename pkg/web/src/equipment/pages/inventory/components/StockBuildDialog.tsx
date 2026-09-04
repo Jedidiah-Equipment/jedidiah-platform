@@ -1,4 +1,4 @@
-import type { StockMovementWarningCode, StockOnHandRow } from '@pkg/schema';
+import type { StockMovementWarningCode, StockOnHandRow } from '@pkg/schema/equipment';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';

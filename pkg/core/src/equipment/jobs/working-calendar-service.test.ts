@@ -1,13 +1,12 @@
+import { type Db, user } from '@pkg/db';
 import {
   customers,
-  type Db,
   jobBayCalendarExceptions,
   jobBays,
   products,
   quotes,
-  user,
   workingCalendarOffDays,
-} from '@pkg/db';
+} from '@pkg/db/equipment';
 import {
   AddBayCalendarExceptionInput,
   type BrochurePdfRenderer,
@@ -15,10 +14,10 @@ import {
   type JobDetail,
   RemoveBayCalendarExceptionInput,
   ToggleOffDayInput,
-} from '@pkg/schema';
+} from '@pkg/schema/equipment';
 import { afterEach, beforeEach, describe, expect, vi } from 'vitest';
+import { InMemoryStorageAdapter } from '../../storage/in-memory-storage-adapter.js';
 import { createTester } from '../test/create-tester.js';
-import { InMemoryStorageAdapter } from '../test/in-memory-storage-adapter.js';
 import { createProductRangeFixture } from '../test/product-range-fixtures.js';
 import { listBays } from './job-read-service.js';
 import { bookJobSlot, createJob } from './job-service.js';

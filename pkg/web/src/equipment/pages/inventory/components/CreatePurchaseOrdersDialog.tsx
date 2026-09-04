@@ -1,4 +1,4 @@
-import type { PartUnitOfMeasure } from '@pkg/schema';
+import type { PartUnitOfMeasure } from '@pkg/schema/equipment';
 import { IconLoader2 } from '@tabler/icons-react';
 import { useMutation } from '@tanstack/react-query';
 import { useState } from 'react';

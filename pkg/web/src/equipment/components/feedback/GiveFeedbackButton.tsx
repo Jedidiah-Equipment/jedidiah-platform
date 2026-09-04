@@ -1,6 +1,6 @@
-import { departmentLabels, getFeedbackVisibilityNotice } from '@pkg/domain';
+import { departmentLabels, getFeedbackVisibilityNotice } from '@pkg/domain/equipment';
+import { AuthId } from '@pkg/schema';
 import {
-  AuthId,
   DEPARTMENTS,
   Department,
   FeedbackDepartmentTargets,
@@ -8,7 +8,7 @@ import {
   type FeedbackSubmitInput,
   FeedbackText,
   FeedbackUserTargets,
-} from '@pkg/schema';
+} from '@pkg/schema/equipment';
 import { IconMessagePlus } from '@tabler/icons-react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import type React from 'react';

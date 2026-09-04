@@ -1,4 +1,5 @@
-import type { DateIso, DateOnlyIso, JobDepartmentTiming, WorkItemDepartment } from '@pkg/schema';
+import type { DateIso, DateOnlyIso } from '@pkg/schema';
+import type { JobDepartmentTiming, WorkItemDepartment } from '@pkg/schema/equipment';
 import { formatDate, toPlantDateOnly } from '../../formatting/date.js';
 import { addDateOnlyDays } from '../../formatting/date-only.js';
 import { departmentLabels } from '../departments.js';

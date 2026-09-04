@@ -1,4 +1,4 @@
-import { QuoteDocument } from '@pkg/schema';
+import { QuoteDocument } from '@pkg/schema/equipment';
 import { describe, expect, it } from 'vitest';
 
 import { presentQuoteDocuments, quoteDocumentCountLabel, quoteDocumentMetaLine } from './quote-documents';

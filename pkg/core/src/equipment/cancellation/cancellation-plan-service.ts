@@ -1,23 +1,18 @@
+import type { DatabaseTransaction, Db } from '@pkg/db';
 import {
   currentOwnerCustomerId,
   customers,
-  type DatabaseTransaction,
-  type Db,
   jobBays,
   jobSlots,
   jobs,
   productUnits,
   quotes,
   stockMovements,
-} from '@pkg/db';
-import { getPlantDateNow, isReleasableJobSlot, projectJobSlots, resolveUnitRemovalOffer } from '@pkg/domain';
-import {
-  type CancellationLinkedUnit,
-  DateOnlyIso,
-  JobCancellationPlan,
-  QuoteCancellationPlan,
-  type UUID,
-} from '@pkg/schema';
+} from '@pkg/db/equipment';
+import { getPlantDateNow } from '@pkg/domain';
+import { isReleasableJobSlot, projectJobSlots, resolveUnitRemovalOffer } from '@pkg/domain/equipment';
+import { DateOnlyIso, type UUID } from '@pkg/schema';
+import { type CancellationLinkedUnit, JobCancellationPlan, QuoteCancellationPlan } from '@pkg/schema/equipment';
 import { and, asc, eq, isNull } from 'drizzle-orm';
 
 import { JobNotFoundError } from '../jobs/job-errors.js';

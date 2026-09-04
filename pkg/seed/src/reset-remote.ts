@@ -1,17 +1,19 @@
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import './load-write-env.js';
 import './load-read-env.js';
-import { createDatabaseClient, type Db } from '@pkg/db';
+import { applicationSchemas, createDatabaseClient, type Db } from '@pkg/db';
 import { sql } from 'drizzle-orm';
 import { migrate } from 'drizzle-orm/postgres-js/migrator';
 import { resolveStagingResetDatabaseUrl } from './seed-target-guards.js';
 import { seedDemoUsers } from './seed-users.js';
 
 export async function resetRemoteDatabase(database: Db): Promise<void> {
+  // Migrations recreate every business schema; only `public` (and its grants) must exist beforehand.
+  for (const schemaName of ['drizzle', ...applicationSchemas]) {
+    await database.execute(sql`DROP SCHEMA IF EXISTS ${sql.identifier(schemaName)} CASCADE`);
+  }
+
   await database.execute(sql`
-    DROP SCHEMA IF EXISTS drizzle CASCADE;
-    DROP SCHEMA IF EXISTS equipment CASCADE;
-    DROP SCHEMA public CASCADE;
     CREATE SCHEMA public;
     GRANT ALL ON SCHEMA public TO PUBLIC;
     GRANT ALL ON SCHEMA public TO CURRENT_USER;

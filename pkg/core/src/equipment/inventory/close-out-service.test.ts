@@ -1,4 +1,5 @@
 import type { Db } from '@pkg/db';
+import { user } from '@pkg/db';
 import {
   customers,
   jobCfoAssemblies,
@@ -8,8 +9,7 @@ import {
   parts,
   quotes,
   supplier,
-  user,
-} from '@pkg/db';
+} from '@pkg/db/equipment';
 import { eq } from 'drizzle-orm';
 import { describe, expect } from 'vitest';
 

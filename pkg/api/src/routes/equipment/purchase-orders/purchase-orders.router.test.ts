@@ -1,5 +1,6 @@
 import type { Db } from '@pkg/db';
-import { customers, documents, invoiceExtractions, jobs, parts, quotes, supplier, user } from '@pkg/db';
+import { user } from '@pkg/db';
+import { customers, documents, invoiceExtractions, jobs, parts, quotes, supplier } from '@pkg/db/equipment';
 import { describe, expect } from 'vitest';
 
 import { type AppRouterCaller, createTester } from '../../../test/create-tester.js';

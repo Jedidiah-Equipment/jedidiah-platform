@@ -1,13 +1,13 @@
 import { describe, expect, test, vi } from 'vitest';
 
-import { captureEvent } from '../../../lib/analytics.js';
-import type { CatalogGroup } from '../../../server/catalog/products-data.js';
+import { captureEvent } from '@/lib/analytics.js';
+import type { CatalogGroup } from '@/server/catalog/products-data.js';
 import { captureCatalogView, catalogFilterChangeProperties, resolveProductsCatalogView } from './index.js';
 
 const trackMetaViewContent = vi.hoisted(() => vi.fn());
 
-vi.mock('../../../lib/analytics.js', () => ({ captureEvent: vi.fn() }));
-vi.mock('../../../lib/meta-pixel.js', () => ({
+vi.mock('@/lib/analytics.js', () => ({ captureEvent: vi.fn() }));
+vi.mock('@/lib/meta-pixel.js', () => ({
   createMetaEventId: () => 'catalog-view-123',
   metaMatchKeys: () => ({ metaBrowserId: 'fb.1.1755000000000.9876543210' }),
   trackMetaViewContent,

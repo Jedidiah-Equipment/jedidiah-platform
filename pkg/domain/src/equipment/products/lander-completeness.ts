@@ -4,7 +4,7 @@ import {
   type LanderRequiredField,
   type Product,
   type ProductImages,
-} from '@pkg/schema';
+} from '@pkg/schema/equipment';
 
 // The inputs the lander-completeness verdict is computed from: the Product marketing fields, lander gallery
 // image slots, and standard-assembly count. Kept as a flat, framework-free shape so the same predicate runs

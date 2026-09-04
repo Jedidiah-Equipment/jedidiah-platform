@@ -1,5 +1,6 @@
-import { productAssemblies, productRanges, productRangeVariants, products, user } from '@pkg/db';
-import { catalogSourceHashes } from '@pkg/domain';
+import { user } from '@pkg/db';
+import { productAssemblies, productRanges, productRangeVariants, products } from '@pkg/db/equipment';
+import { catalogSourceHashes } from '@pkg/domain/equipment';
 import { describe, expect, vi } from 'vitest';
 
 import { createTester } from '@/test/create-tester.js';

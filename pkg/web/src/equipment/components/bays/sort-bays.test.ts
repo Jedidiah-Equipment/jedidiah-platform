@@ -1,4 +1,4 @@
-import { Bay } from '@pkg/schema';
+import { Bay } from '@pkg/schema/equipment';
 import { describe, expect, it } from 'vitest';
 
 import { sortBaysByDepartmentPipeline } from './sort-bays.js';

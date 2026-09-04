@@ -1,5 +1,5 @@
 import { hasPermission } from '@pkg/domain';
-import type { Department, UserSummary } from '@pkg/schema';
+import type { Department, UserSummary } from '@pkg/schema/equipment';
 import { IconLoader2, IconMailCheck } from '@tabler/icons-react';
 import { useMutation } from '@tanstack/react-query';
 import type React from 'react';

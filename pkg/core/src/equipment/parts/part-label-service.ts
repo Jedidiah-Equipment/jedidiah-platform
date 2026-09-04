@@ -1,12 +1,12 @@
 import type { Db } from '@pkg/db';
-import { parts } from '@pkg/db';
+import { parts } from '@pkg/db/equipment';
+import type { UUID } from '@pkg/schema';
 import {
   type PartLabelBatchSelection,
   type PartLabelPdfModel,
   PartLabelPdfModel as PartLabelPdfModelSchema,
   type PartLabelPdfRenderer,
-  type UUID,
-} from '@pkg/schema';
+} from '@pkg/schema/equipment';
 import { asc, eq, inArray, type SQL } from 'drizzle-orm';
 
 import { PartLabelSelectionEmptyError, PartNotFoundError } from './part-errors.js';

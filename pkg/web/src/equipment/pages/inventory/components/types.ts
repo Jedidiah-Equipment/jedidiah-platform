@@ -1,4 +1,10 @@
-import { type BuildBomLine, deriveBuildConsumption, deriveMovementWarnings, derivePartStockActions } from '@pkg/domain';
+import {
+  type BuildBomLine,
+  deriveBuildConsumption,
+  deriveMovementWarnings,
+  derivePartStockActions,
+} from '@pkg/domain/equipment';
+import { Price, UUID } from '@pkg/schema';
 import {
   CloseOutJobInput,
   InventoryUnitCost,
@@ -8,16 +14,14 @@ import {
   PostBuildInput,
   PostJobMovementInput,
   PostRevaluationInput,
-  Price,
   StockAdjustmentReason,
   StockMovementDelta,
   StockMovementLengthMm,
   StockMovementQuantity,
   type StockMovementWarningCode,
   type StockOnHandRow,
-  UUID,
   unitClassFor,
-} from '@pkg/schema';
+} from '@pkg/schema/equipment';
 import { z } from 'zod';
 
 import { optionalNumber, requiredSelection } from '@/components/form/utils/form-schema.js';

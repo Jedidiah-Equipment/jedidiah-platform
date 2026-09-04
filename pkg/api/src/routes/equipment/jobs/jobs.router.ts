@@ -35,9 +35,10 @@ import {
   unassignJobBayOperator,
   updateDepartmentTiming,
   updateJob,
-} from '@pkg/core';
+} from '@pkg/core/equipment';
 import { hasPermission } from '@pkg/domain';
-import { renderBrochurePdf } from '@pkg/pdf';
+import { renderBrochurePdf } from '@pkg/pdf/equipment';
+import { UUID } from '@pkg/schema';
 import {
   AddBayCalendarExceptionInput,
   AddIdleJobSlotInput,
@@ -66,8 +67,7 @@ import {
   RemoveJobSlotInput,
   ResizeJobSlotInput,
   ToggleOffDayInput,
-  UUID,
-} from '@pkg/schema';
+} from '@pkg/schema/equipment';
 import { z } from 'zod';
 
 import { assertNever, type CoreErrorMapping, mapKnownCoreError } from '../../../trpc/errors.js';

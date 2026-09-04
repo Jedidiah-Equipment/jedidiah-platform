@@ -1,4 +1,4 @@
-import { STOCKTAKE_SCOPE_LABELS, type StocktakeUncountedPart } from '@pkg/schema';
+import { STOCKTAKE_SCOPE_LABELS, type StocktakeUncountedPart } from '@pkg/schema/equipment';
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';

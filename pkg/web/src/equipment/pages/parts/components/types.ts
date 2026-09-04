@@ -1,3 +1,4 @@
+import { type UUID, UUID as UUIDSchema } from '@pkg/schema';
 import {
   PART_STOCK_TRACKING_MODE_LABELS,
   PART_UNIT_OF_MEASURE_LABELS,
@@ -20,9 +21,7 @@ import {
   refinePartBuiltIsNotLinear,
   refinePartStandardPurchaseLength,
   refinePartSupplier,
-  type UUID,
-  UUID as UUIDSchema,
-} from '@pkg/schema';
+} from '@pkg/schema/equipment';
 import { z } from 'zod';
 
 import { emptyStringOr } from '@/components/form/utils/form-schema.js';

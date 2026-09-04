@@ -3,7 +3,7 @@ import {
   PartLabelBatchSelection,
   PartLabelCount,
   type PurchaseOrderLineView,
-} from '@pkg/schema';
+} from '@pkg/schema/equipment';
 import { IconPrinter } from '@tabler/icons-react';
 import { useCallback, useMemo, useState } from 'react';
 
@@ -22,7 +22,7 @@ import {
 } from '@/components/ui/dialog.js';
 import { Input } from '@/components/ui/input.js';
 import { FilePreviewSheet } from '@/equipment/components/documents/FilePreviewSheet.js';
-import { fetchPartLabelsBlob } from '../../parts/part-label.js';
+import { fetchPartLabelsBlob } from '@/equipment/pages/parts/part-label.js';
 import { outstandingReceivedForLine } from './types.js';
 
 type ReceivedPartLabelLine = Pick<PurchaseOrderLineView, 'partCode' | 'partId' | 'partName'> & {

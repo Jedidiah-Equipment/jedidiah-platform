@@ -1,5 +1,5 @@
-import { quoteKindColorClassNames } from '@pkg/domain';
-import type { QuoteKind } from '@pkg/schema';
+import { quoteKindColorClassNames } from '@pkg/domain/equipment';
+import type { QuoteKind } from '@pkg/schema/equipment';
 import { IconPackage, IconTools } from '@tabler/icons-react';
 import type React from 'react';
 

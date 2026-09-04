@@ -1,7 +1,8 @@
-import { type Db, feedback, feedbackDepartment, feedbackUser, jobs, quotes, user } from '@pkg/db';
-import { getJobCodeWithHint } from '@pkg/domain';
+import { type Db, user } from '@pkg/db';
+import { feedback, feedbackDepartment, feedbackUser, jobs, quotes } from '@pkg/db/equipment';
+import { getJobCodeWithHint } from '@pkg/domain/equipment';
+import type { AuthId } from '@pkg/schema';
 import type {
-  AuthId,
   Department,
   FeedbackDetailInput,
   FeedbackListInput,
@@ -16,7 +17,7 @@ import type {
   JobFeedbackUpdateInput,
   JobFeedbackUpdateResult,
   QuoteKind,
-} from '@pkg/schema';
+} from '@pkg/schema/equipment';
 import {
   FeedbackDetail,
   FeedbackListItem,
@@ -26,7 +27,7 @@ import {
   JobCode,
   JobFeedbackItem,
   QuoteCode,
-} from '@pkg/schema';
+} from '@pkg/schema/equipment';
 import { and, asc, desc, eq, isNull, ne, or } from 'drizzle-orm';
 
 import { FeedbackNotFoundError, FeedbackSubjectNotFoundError } from './feedback-errors.js';

@@ -6,14 +6,13 @@ import {
   dropTestDatabase,
   getTestTemplateDatabaseUrl,
 } from '@pkg/db';
-import { createUserAccessSummary, parseRoleSlots } from '@pkg/domain';
+import { createUserAccessSummaryForUser } from '@pkg/domain';
 import pino from 'pino';
 import { type TestAPI, type TestContext, test as testBase } from 'vitest';
 
 import { type Auth, createAuth } from '@/app-auth.js';
-import type { TranslationMarker } from '@/equipment/catalog-translations/translation-scheduler.js';
 import type { ChangelogLoader, Context } from '@/trpc/context.js';
-import { type AppRouter, createAppRouterCaller } from '@/trpc/router.js';
+import { type AppRouter, type AppRouterDependencies, createAppRouterCaller } from '@/trpc/router.js';
 
 import { mockSession } from './test-utils.js';
 
@@ -24,11 +23,13 @@ export type AppRouterCaller = ReturnType<AppRouter['createCaller']>;
 export type CallerOverrides = {
   access?: Context['access'];
   appEnv?: Context['appEnv'];
-  catalogTranslationScheduler?: TranslationMarker;
+  catalogTranslationScheduler?: AppRouterDependencies['catalogTranslationScheduler'];
   changelogLoader?: ChangelogLoader;
 };
 
-const NOOP_TRANSLATION_MARKER: TranslationMarker = { mark: () => undefined, markNow: () => undefined };
+const NOOP_ROUTER_DEPENDENCIES: AppRouterDependencies = {
+  catalogTranslationScheduler: { mark: () => undefined, markNow: () => undefined },
+};
 
 export type TesterScope = {
   auth: Auth;
@@ -65,10 +66,10 @@ export function createTester<T extends object = Record<string, never>>(
           // empty changelog set; the changelog router tests override these per caller.
           const callerContext: TesterContext = {
             createAnonCaller: () =>
-              createAppRouterCaller({
+              createAppRouterCaller(NOOP_ROUTER_DEPENDENCIES)({
                 access: null,
                 appEnv: 'production',
-                catalogTranslationScheduler: NOOP_TRANSLATION_MARKER,
+                auth,
                 changelogLoader: () => [],
                 db: databaseClient.db,
                 log: testLog,
@@ -77,14 +78,12 @@ export function createTester<T extends object = Record<string, never>>(
               }),
             createCaller: (session = mockSession(), overrides = {}) => {
               return createAppRouterCaller({
-                access:
-                  overrides.access ??
-                  createUserAccessSummary({
-                    ...parseRoleSlots(session.user),
-                    userId: session.user.id,
-                  }),
+                catalogTranslationScheduler:
+                  overrides.catalogTranslationScheduler ?? NOOP_ROUTER_DEPENDENCIES.catalogTranslationScheduler,
+              })({
+                access: overrides.access ?? createUserAccessSummaryForUser(session.user),
                 appEnv: overrides.appEnv ?? 'production',
-                catalogTranslationScheduler: overrides.catalogTranslationScheduler ?? NOOP_TRANSLATION_MARKER,
+                auth,
                 changelogLoader: overrides.changelogLoader ?? (() => []),
                 db: databaseClient.db,
                 log: testLog,

@@ -3,11 +3,13 @@ import type { StorageAdapter, StoragePutInput, StoredObject } from '@pkg/core';
 import { type Db, user } from '@pkg/db';
 import Fastify, { type FastifyInstance } from 'fastify';
 import { afterEach, beforeEach, describe, expect, vi } from 'vitest';
+import type { Auth } from '@/auth/auth.js';
 import { createProductRangeFixture } from '@/equipment/test/product-range-fixtures.js';
 import { createTester } from '@/test/create-tester.js';
 import { mockSession } from '@/test/test-utils.js';
 
 const routeTestState = vi.hoisted(() => ({
+  auth: null as unknown,
   db: null as unknown,
   session: null as unknown,
 }));
@@ -43,7 +45,8 @@ vi.mock('../../../auth/session.js', async (importOriginal) => {
   };
 });
 
-const test = createTester(async ({ db }) => {
+const test = createTester(async ({ auth, db }) => {
+  routeTestState.auth = auth;
   routeTestState.db = db;
   routeTestState.session = mockSession();
   await db.insert(user).values({
@@ -272,6 +275,7 @@ async function createApp(storage: StorageAdapter) {
     './product-range-image-routes.js'
   );
   const app = Fastify();
+  app.decorate('auth', routeTestState.auth as Auth);
 
   await app.register(fastifyMultipart);
   await registerEntityFileRoutes(app, [

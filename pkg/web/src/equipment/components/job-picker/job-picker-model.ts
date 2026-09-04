@@ -1,5 +1,5 @@
-import { parseJobCodeSearch } from '@pkg/domain';
-import { formatJobCode, type JobPickerOption, type JobPickerTab } from '@pkg/schema';
+import { parseJobCodeSearch } from '@pkg/domain/equipment';
+import { formatJobCode, type JobPickerOption, type JobPickerTab } from '@pkg/schema/equipment';
 
 export const JOB_PICKER_TABS = [
   { label: 'Last updated', tab: 'updated' },

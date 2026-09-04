@@ -6,11 +6,11 @@ import {
   setUserIsDevice,
   type UserCoreError,
   updateUserThumbnail,
-} from '@pkg/core';
-import { AuthId, Department, NullableThumbnailDataUrl } from '@pkg/schema';
+} from '@pkg/core/equipment';
+import { AuthId, NullableThumbnailDataUrl } from '@pkg/schema';
+import { Department } from '@pkg/schema/equipment';
 import { TRPCError } from '@trpc/server';
 import { z } from 'zod';
-import { createAuth } from '@/app-auth.js';
 import { getApiConfig } from '@/env.js';
 import { type CoreErrorMapping, mapKnownCoreError } from '@/trpc/errors.js';
 import { authorizedProcedure, router } from '@/trpc/init.js';
@@ -84,7 +84,7 @@ export const usersRouter = router({
         throw new TRPCError({ code: 'BAD_REQUEST', message: 'Email is already verified.' });
       }
 
-      await createAuth(ctx.db).api.sendVerificationEmail({
+      await ctx.auth.api.sendVerificationEmail({
         body: {
           callbackURL: `${config.APP_BASE_URL}/login`,
           email: targetUser.email,

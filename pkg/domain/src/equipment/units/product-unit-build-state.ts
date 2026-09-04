@@ -1,4 +1,4 @@
-import type { ProductUnitBuildState, ProductUnitDisplayBuildState, ProductUnitOwner } from '@pkg/schema';
+import type { ProductUnitBuildState, ProductUnitDisplayBuildState, ProductUnitOwner } from '@pkg/schema/equipment';
 
 import type { BadgeColorClassNames } from '../../theme/status-badge.js';
 

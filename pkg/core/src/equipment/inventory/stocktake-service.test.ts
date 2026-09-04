@@ -1,3 +1,4 @@
+import { user } from '@pkg/db';
 import {
   jobEstimateSnapshots,
   jobs,
@@ -9,8 +10,7 @@ import {
   stockMovements,
   stocktakeSessions,
   supplier,
-  user,
-} from '@pkg/db';
+} from '@pkg/db/equipment';
 import { and, eq } from 'drizzle-orm';
 import { describe, expect } from 'vitest';
 import { getProductCostEstimate } from '../products/product-cost-estimate-service.js';

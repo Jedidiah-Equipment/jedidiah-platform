@@ -1,5 +1,5 @@
+import { account, user } from '@pkg/db';
 import {
-  account,
   assemblyOverrides,
   assemblyParts,
   customers,
@@ -30,10 +30,9 @@ import {
   quoteWorkItemParts,
   quoteWorkItems,
   supplier,
-  user,
   userDepartment,
   workingCalendarOffDays,
-} from '@pkg/db';
+} from '@pkg/db/equipment';
 import type { PgTable } from 'drizzle-orm/pg-core';
 import { type SnapshotTableConfig, snapshotTableDefinitions } from './snapshot-table-definitions.js';
 
@@ -89,5 +88,4 @@ export const snapshotTables: readonly SnapshotTableConfig[] = snapshotTableDefin
   table: dbTablesByName[config.tableName],
 }));
 
-export const snapshotTableNames = snapshotTables.map((table) => table.tableName);
 export const snapshotCleanupTables: readonly SnapshotTableConfig[] = [...snapshotTables].reverse();

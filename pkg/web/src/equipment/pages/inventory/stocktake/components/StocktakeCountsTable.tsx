@@ -1,5 +1,6 @@
-import { formatCurrency, formatDate, formatEstimatedStockOnHand } from '@pkg/domain';
-import type { StocktakeSessionCount } from '@pkg/schema';
+import { formatCurrency, formatDate } from '@pkg/domain';
+import { formatEstimatedStockOnHand } from '@pkg/domain/equipment';
+import type { StocktakeSessionCount } from '@pkg/schema/equipment';
 import { useMemo } from 'react';
 import { DataTable } from '@/components/data-table/DataTable.js';
 import { type DataTableColumnDef, useDataTable } from '@/components/data-table/features.js';

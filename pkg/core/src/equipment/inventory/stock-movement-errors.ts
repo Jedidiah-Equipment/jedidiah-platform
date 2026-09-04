@@ -1,4 +1,5 @@
-import type { JobStockMovementType, PartUnitClass, StockAdjustmentReason, UUID } from '@pkg/schema';
+import type { UUID } from '@pkg/schema';
+import type { JobStockMovementType, PartUnitClass, StockAdjustmentReason } from '@pkg/schema/equipment';
 
 export class StockMovementPartNotFoundError extends Error {
   readonly code = 'inventory.part_not_found';

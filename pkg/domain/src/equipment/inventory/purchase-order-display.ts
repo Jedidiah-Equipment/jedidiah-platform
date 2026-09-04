@@ -1,4 +1,4 @@
-import type { PurchaseOrderDerivedStatus } from '@pkg/schema';
+import type { PurchaseOrderDerivedStatus } from '@pkg/schema/equipment';
 
 import { type BadgeColorClassNames, statusBadgeColorClassNames } from '../../theme/status-badge.js';
 

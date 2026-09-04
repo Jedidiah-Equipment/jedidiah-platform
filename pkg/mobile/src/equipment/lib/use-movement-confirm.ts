@@ -1,4 +1,4 @@
-import type { StockMovementWarningCode } from '@pkg/schema';
+import type { StockMovementWarningCode } from '@pkg/schema/equipment';
 import { useState } from 'react';
 
 /**

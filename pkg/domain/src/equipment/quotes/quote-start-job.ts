@@ -1,4 +1,5 @@
-import type { QuoteKind, QuoteStatus, UUID } from '@pkg/schema';
+import type { UUID } from '@pkg/schema';
+import type { QuoteKind, QuoteStatus } from '@pkg/schema/equipment';
 
 export type QuoteStartJobEligibility =
   | {

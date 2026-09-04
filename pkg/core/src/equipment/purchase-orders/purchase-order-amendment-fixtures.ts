@@ -1,9 +1,9 @@
-import { type Db, parts, supplier, user } from '@pkg/db';
-import type { PurchaseOrder } from '@pkg/schema';
-
+import { type Db, user } from '@pkg/db';
+import { parts, supplier } from '@pkg/db/equipment';
+import type { PurchaseOrder } from '@pkg/schema/equipment';
+import { InMemoryStorageAdapter } from '../../storage/in-memory-storage-adapter.js';
 import { postReceipt } from '../inventory/receipt-service.js';
 import { createTester } from '../test/create-tester.js';
-import { InMemoryStorageAdapter } from '../test/in-memory-storage-adapter.js';
 import {
   approvePurchaseOrder,
   createPurchaseOrder,

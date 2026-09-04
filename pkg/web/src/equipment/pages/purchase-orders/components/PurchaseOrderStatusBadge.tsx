@@ -1,5 +1,5 @@
-import { purchaseOrderStatusColorClassNames, purchaseOrderStatusLabels } from '@pkg/domain';
-import type { PurchaseOrderDerivedStatus } from '@pkg/schema';
+import { purchaseOrderStatusColorClassNames, purchaseOrderStatusLabels } from '@pkg/domain/equipment';
+import type { PurchaseOrderDerivedStatus } from '@pkg/schema/equipment';
 import type React from 'react';
 
 import { Badge } from '@/components/ui/badge.js';

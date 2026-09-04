@@ -1,5 +1,6 @@
-import { formatDate, formatJobLifecycleStatus } from '@pkg/domain';
-import type { ProductUnitDetail, ProductUnitJob, ProductUnitOwnershipTransfer } from '@pkg/schema';
+import { formatDate } from '@pkg/domain';
+import { formatJobLifecycleStatus } from '@pkg/domain/equipment';
+import type { ProductUnitDetail, ProductUnitJob, ProductUnitOwnershipTransfer } from '@pkg/schema/equipment';
 import { IconChevronRight } from '@tabler/icons-react-native';
 import { useRouter } from 'expo-router';
 import { Pressable, ScrollView, View } from 'react-native';

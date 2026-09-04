@@ -2,17 +2,11 @@ import {
   auditEvents,
   createEscapedContainsSearchCondition,
   createGlobalSearchCondition,
-  currentOwnerCustomerId,
-  customers,
   type Db,
-  feedback,
-  jobs,
-  products,
-  productUnits,
-  quotes,
   user,
   withPagination,
 } from '@pkg/db';
+import { currentOwnerCustomerId, customers, feedback, jobs, products, productUnits, quotes } from '@pkg/db/equipment';
 import {
   departmentLabels,
   getJobDisplayName,
@@ -21,20 +15,18 @@ import {
   jobWorkTimeActivitySentence,
   resolveJobCustomer,
   resolveNewestOwnershipTransfer,
-} from '@pkg/domain';
+} from '@pkg/domain/equipment';
+import type { AuditChanges, AuthId } from '@pkg/schema';
+import { DateIso, getNextCursor } from '@pkg/schema';
 import type {
-  AuditChanges,
-  AuthId,
   JobActivityItem,
   JobActivityJobRef,
   JobActivityListResult,
   JobWorkTimeActivityAction,
   JobWorkTimeActivityState,
   WorkItemDepartment,
-} from '@pkg/schema';
+} from '@pkg/schema/equipment';
 import {
-  DateIso,
-  getNextCursor,
   JobActivityItem as JobActivityItemSchema,
   JobActivityJobRef as JobActivityJobRefSchema,
   JobActivityListInput,
@@ -42,7 +34,7 @@ import {
   JobWorkTimeActivityState as JobWorkTimeActivityStateSchema,
   WORK_ITEM_DEPARTMENTS,
   WorkItemDepartment as WorkItemDepartmentSchema,
-} from '@pkg/schema';
+} from '@pkg/schema/equipment';
 import { and, asc, desc, eq, inArray, or, type SQL, sql } from 'drizzle-orm';
 import { unionAll } from 'drizzle-orm/pg-core';
 

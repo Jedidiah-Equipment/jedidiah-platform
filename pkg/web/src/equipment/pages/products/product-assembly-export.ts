@@ -1,5 +1,5 @@
 import { formatDate } from '@pkg/domain';
-import type { AssemblyKind } from '@pkg/schema';
+import type { AssemblyKind } from '@pkg/schema/equipment';
 import Papa from 'papaparse';
 
 import { downloadFile } from '@/utils/download.js';

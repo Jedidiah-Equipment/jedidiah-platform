@@ -1,5 +1,5 @@
 import { formatCurrency, formatNumber } from '@pkg/domain';
-import { PART_UNIT_OF_MEASURE_LABELS, type PartUnitOfMeasure } from '@pkg/schema';
+import { PART_UNIT_OF_MEASURE_LABELS, type PartUnitOfMeasure } from '@pkg/schema/equipment';
 
 export type PartQuantityUnitDisplay = {
   label: string;

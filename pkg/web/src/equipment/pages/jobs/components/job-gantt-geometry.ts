@@ -1,4 +1,4 @@
-import { addJobSlotDuration, type WorkingCalendar } from '@pkg/domain';
+import { addJobSlotDuration, type WorkingCalendar } from '@pkg/domain/equipment';
 import type { DateOnlyIso } from '@pkg/schema';
 import { addDays } from 'date-fns';
 import { type GanttContextProps, getGanttOffset, getGanttWidth } from '@/components/kibo-ui/gantt/index.js';

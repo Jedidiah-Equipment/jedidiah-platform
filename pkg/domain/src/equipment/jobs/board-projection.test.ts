@@ -1,4 +1,5 @@
-import { DateIso, DateOnlyIso, JobCode, SlotDurationDays, SlotSequence, UUID } from '@pkg/schema';
+import { DateIso, DateOnlyIso, UUID } from '@pkg/schema';
+import { JobCode, SlotDurationDays, SlotSequence } from '@pkg/schema/equipment';
 import { describe, expect, it } from 'vitest';
 import { type BoardBayFacts, type ProjectableBoardSlot, projectBoard } from './board-projection.js';
 import { projectJobSlots } from './job-slot-projection.js';

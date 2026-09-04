@@ -1,4 +1,4 @@
-import { ProductUnitStockExportRow } from '@pkg/schema';
+import { ProductUnitStockExportRow } from '@pkg/schema/equipment';
 import { describe, expect, it } from 'vitest';
 
 import { buildProductUnitStockExportCsv, createProductUnitStockExportFilename } from './product-unit-stock-export.js';

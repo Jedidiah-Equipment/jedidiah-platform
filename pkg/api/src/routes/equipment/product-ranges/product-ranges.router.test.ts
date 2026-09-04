@@ -1,5 +1,6 @@
-import { type Db, eq, productRangeVariants, products } from '@pkg/db';
-import type { ProductRange } from '@pkg/schema';
+import { type Db, eq } from '@pkg/db';
+import { productRangeVariants, products } from '@pkg/db/equipment';
+import type { ProductRange } from '@pkg/schema/equipment';
 import { describe, expect } from 'vitest';
 
 import { type AppRouterCaller, createTester } from '@/test/create-tester.js';

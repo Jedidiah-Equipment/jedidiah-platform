@@ -1,15 +1,16 @@
 // @vitest-environment jsdom
 
-import type { PartLabelCopySelection, PurchaseOrderLineView, UUID } from '@pkg/schema';
+import type { UUID } from '@pkg/schema';
+import type { PartLabelCopySelection, PurchaseOrderLineView } from '@pkg/schema/equipment';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { fetchPartLabelsBlob } from '../../parts/part-label.js';
+import { fetchPartLabelsBlob } from '@/equipment/pages/parts/part-label.js';
 import { PurchaseOrderPartLabelsDialog } from './PurchaseOrderPartLabelsDialog.js';
 
-vi.mock('../../parts/part-label.js', () => ({
+vi.mock('@/equipment/pages/parts/part-label.js', () => ({
   fetchPartLabelsBlob: vi.fn(async () => new Blob(['%PDF-label'], { type: 'application/pdf' })),
 }));
 // Reads the client config at import time, which jsdom only holds once a test has stubbed it.

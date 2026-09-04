@@ -1,5 +1,5 @@
 import { formatCurrency, hasPermission } from '@pkg/domain';
-import type { Product, ProductListInput } from '@pkg/schema';
+import type { Product, ProductListInput } from '@pkg/schema/equipment';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import type React from 'react';

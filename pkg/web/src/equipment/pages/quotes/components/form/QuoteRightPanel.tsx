@@ -1,16 +1,13 @@
+import { createStableRowKeys, formatCurrency, formatNumber, formatPercent } from '@pkg/domain';
 import {
-  createStableRowKeys,
-  formatCurrency,
-  formatNumber,
-  formatPercent,
   getQuoteOfferingName,
   type QuoteComputedSummary,
   quoteKindLabels,
   quoteProductSourceOf,
   quoteStatusLabels,
   quoteWorkItemSummaryRows,
-} from '@pkg/domain';
-import type { JobScheduleState, QuoteDetail, QuoteWorkItemCharge } from '@pkg/schema';
+} from '@pkg/domain/equipment';
+import type { JobScheduleState, QuoteDetail, QuoteWorkItemCharge } from '@pkg/schema/equipment';
 import {
   IconBuildingWarehouse,
   IconClock,

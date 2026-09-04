@@ -1,8 +1,6 @@
+import { auditEvents, type Db, eq, sql, user } from '@pkg/db';
 import {
-  auditEvents,
   customers,
-  type Db,
-  eq,
   jobBayCalendarExceptions,
   jobBayOperatorAssignments,
   jobBays,
@@ -12,11 +10,9 @@ import {
   products,
   productUnits,
   quotes,
-  sql,
-  user,
-} from '@pkg/db';
+} from '@pkg/db/equipment';
 import { toPlantDateOnly } from '@pkg/domain';
-import { type BoardListResult, type BoardPreviewResult, type Product, ProjectedBayQueue } from '@pkg/schema';
+import { type BoardListResult, type BoardPreviewResult, type Product, ProjectedBayQueue } from '@pkg/schema/equipment';
 import { afterEach, beforeEach, describe, expect, vi } from 'vitest';
 import { createProductRangeFixture } from '@/equipment/test/product-range-fixtures.js';
 import { createActorUser } from '@/test/actor-user.js';

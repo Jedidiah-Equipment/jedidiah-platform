@@ -1,7 +1,10 @@
-import { type DatabaseTransaction, type Db, documents } from '@pkg/db';
-import { getDocumentPolicy, sniffDocumentContentType, validateDocumentPolicy } from '@pkg/domain';
-import type { AuthId, DocumentOwnerType, DocumentSummary, UUID } from '@pkg/schema';
-import { DocumentSummary as DocumentSummarySchema } from '@pkg/schema';
+import type { DatabaseTransaction, Db } from '@pkg/db';
+import { documents } from '@pkg/db/equipment';
+import { sniffDocumentContentType } from '@pkg/domain';
+import { getDocumentPolicy, validateDocumentPolicy } from '@pkg/domain/equipment';
+import type { AuthId, UUID } from '@pkg/schema';
+import type { DocumentOwnerType, DocumentSummary } from '@pkg/schema/equipment';
+import { DocumentSummary as DocumentSummarySchema } from '@pkg/schema/equipment';
 import { eq } from 'drizzle-orm';
 import {
   readStoredObject,

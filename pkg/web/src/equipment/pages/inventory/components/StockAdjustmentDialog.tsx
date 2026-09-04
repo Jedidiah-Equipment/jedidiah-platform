@@ -1,4 +1,4 @@
-import { STOCK_ADJUSTMENT_REASON_LABELS, StockAdjustmentReason } from '@pkg/schema';
+import { STOCK_ADJUSTMENT_REASON_LABELS, StockAdjustmentReason } from '@pkg/schema/equipment';
 import { useMutation } from '@tanstack/react-query';
 import { useMemo } from 'react';
 import { toast } from 'sonner';

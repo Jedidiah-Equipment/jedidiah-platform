@@ -1,4 +1,4 @@
-import { createUserAccessSummary, roleSlotsForRole } from '@pkg/domain';
+import { accessForRole } from '@pkg/domain/testing';
 import { describe, expect, it, vi } from 'vitest';
 
 import type { DashboardWidget } from './dashboard-widget-types.js';
@@ -64,19 +64,19 @@ describe('filterDashboardWidgets', () => {
   });
 
   it('keeps role-visible widgets in registry order for sales', () => {
-    const access = createUserAccessSummary({ ...roleSlotsForRole('sales'), userId: 'user-1' });
+    const access = accessForRole('sales', 'user-1');
 
     expect(widgetIds(filterDashboardWidgets(access, fixtureWidgets))).toEqual(['welcome', 'quotes']);
   });
 
   it('keeps role-visible widgets in registry order for procurement managers', () => {
-    const access = createUserAccessSummary({ ...roleSlotsForRole('procurement-manager'), userId: 'user-1' });
+    const access = accessForRole('procurement-manager', 'user-1');
 
     expect(widgetIds(filterDashboardWidgets(access, fixtureWidgets))).toEqual(['welcome', 'quotes', 'products']);
   });
 
   it('keeps all registered widgets for admins without reordering them', () => {
-    const access = createUserAccessSummary({ ...roleSlotsForRole('admin'), userId: 'user-1' });
+    const access = accessForRole('admin', 'user-1');
 
     expect(widgetIds(filterDashboardWidgets(access, fixtureWidgets))).toEqual([
       'welcome',
@@ -159,17 +159,9 @@ describe('dashboardWidgets', () => {
     ]);
 
     const managementIds = widgetIds(
-      filterDashboardWidgets(
-        createUserAccessSummary({ ...roleSlotsForRole('procurement-manager'), userId: 'user-1' }),
-        dashboardWidgets,
-      ),
+      filterDashboardWidgets(accessForRole('procurement-manager', 'user-1'), dashboardWidgets),
     );
-    const storesIds = widgetIds(
-      filterDashboardWidgets(
-        createUserAccessSummary({ ...roleSlotsForRole('stores'), userId: 'user-1' }),
-        dashboardWidgets,
-      ),
-    );
+    const storesIds = widgetIds(filterDashboardWidgets(accessForRole('stores', 'user-1'), dashboardWidgets));
 
     expect(managementIds).toEqual(expect.arrayContaining(['inventory-value', 'inventory-turns']));
     expect(storesIds).not.toEqual(expect.arrayContaining(['inventory-value', 'inventory-turns']));
@@ -180,9 +172,9 @@ describe('dashboardWidgets', () => {
   });
 
   it('shows Quotes by status to quote readers and hides it from job viewers', () => {
-    const salesAccess = createUserAccessSummary({ ...roleSlotsForRole('sales'), userId: 'user-1' });
-    const procurementAccess = createUserAccessSummary({ ...roleSlotsForRole('procurement-manager'), userId: 'user-1' });
-    const jobViewerAccess = createUserAccessSummary({ ...roleSlotsForRole('job-viewer'), userId: 'user-1' });
+    const salesAccess = accessForRole('sales', 'user-1');
+    const procurementAccess = accessForRole('procurement-manager', 'user-1');
+    const jobViewerAccess = accessForRole('job-viewer', 'user-1');
 
     expect(widgetIds(filterDashboardWidgets(salesAccess, dashboardWidgets))).toContain('quotes-by-status');
     expect(widgetIds(filterDashboardWidgets(procurementAccess, dashboardWidgets))).toContain('quotes-by-status');
@@ -191,9 +183,9 @@ describe('dashboardWidgets', () => {
 
   it('shows the sales metrics widgets to quote readers and hides them from job viewers', () => {
     const salesMetricsWidgetIds = ['open-pipeline', 'quote-flow', 'stale-sent-quotes', 'awaiting-job-creation'];
-    const salesAccess = createUserAccessSummary({ ...roleSlotsForRole('sales'), userId: 'user-1' });
-    const procurementAccess = createUserAccessSummary({ ...roleSlotsForRole('procurement-manager'), userId: 'user-1' });
-    const jobViewerAccess = createUserAccessSummary({ ...roleSlotsForRole('job-viewer'), userId: 'user-1' });
+    const salesAccess = accessForRole('sales', 'user-1');
+    const procurementAccess = accessForRole('procurement-manager', 'user-1');
+    const jobViewerAccess = accessForRole('job-viewer', 'user-1');
 
     const salesIds = widgetIds(filterDashboardWidgets(salesAccess, dashboardWidgets));
     const procurementIds = widgetIds(filterDashboardWidgets(procurementAccess, dashboardWidgets));
@@ -222,9 +214,9 @@ describe('dashboardWidgets', () => {
 
   it('shows the shop-floor band to job viewers and procurement managers and hides it from sales', () => {
     const shopFloorWidgetIds = ['active-jobs', 'bay-load-today', 'shop-floor-today', 'bay-runway', 'scheduled-jobs'];
-    const jobViewerAccess = createUserAccessSummary({ ...roleSlotsForRole('job-viewer'), userId: 'user-1' });
-    const procurementAccess = createUserAccessSummary({ ...roleSlotsForRole('procurement-manager'), userId: 'user-1' });
-    const salesAccess = createUserAccessSummary({ ...roleSlotsForRole('sales'), userId: 'user-1' });
+    const jobViewerAccess = accessForRole('job-viewer', 'user-1');
+    const procurementAccess = accessForRole('procurement-manager', 'user-1');
+    const salesAccess = accessForRole('sales', 'user-1');
 
     const jobViewerIds = widgetIds(filterDashboardWidgets(jobViewerAccess, dashboardWidgets));
     const procurementIds = widgetIds(filterDashboardWidgets(procurementAccess, dashboardWidgets));

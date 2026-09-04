@@ -1,14 +1,12 @@
+import { createStableRowKeys, formatCurrency, formatPercent } from '@pkg/domain';
 import {
-  createStableRowKeys,
-  formatCurrency,
-  formatPercent,
   getQuoteOfferingName,
   type QuoteComputedSummary,
   quoteKindLabels,
   quoteProductSourceOf,
   quoteWorkItemSummaryRows,
-} from '@pkg/domain';
-import type { QuoteDetail } from '@pkg/schema';
+} from '@pkg/domain/equipment';
+import type { QuoteDetail } from '@pkg/schema/equipment';
 import { IconX } from '@tabler/icons-react-native';
 import type React from 'react';
 import { Pressable, ScrollView, View } from 'react-native';

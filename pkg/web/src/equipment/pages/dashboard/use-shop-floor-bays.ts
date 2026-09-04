@@ -1,5 +1,6 @@
-import { isJobCancelled, listEnabledBays, type WorkingCalendar } from '@pkg/domain';
-import type { DateOnlyIso, JobSummary, OffDay, ProjectedBayQueue } from '@pkg/schema';
+import { isJobCancelled, listEnabledBays, type WorkingCalendar } from '@pkg/domain/equipment';
+import type { DateOnlyIso } from '@pkg/schema';
+import type { JobSummary, OffDay, ProjectedBayQueue } from '@pkg/schema/equipment';
 import { useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
 

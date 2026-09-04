@@ -1,4 +1,5 @@
-import { Bay, DateOnlyIso, ProductBay, ProjectedBayQueue } from '@pkg/schema';
+import { DateOnlyIso } from '@pkg/schema';
+import { Bay, ProductBay, ProjectedBayQueue } from '@pkg/schema/equipment';
 import { describe, expect, it } from 'vitest';
 
 import { selectBayCalendars } from '@/equipment/hooks/use-bay-calendars.js';

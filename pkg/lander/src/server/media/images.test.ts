@@ -1,7 +1,7 @@
-import { productRanges, products } from '@pkg/db';
+import { productRanges, products } from '@pkg/db/equipment';
 import { expect } from 'vitest';
 
-import { test } from '../../test/tester.js';
+import { test } from '@/test/tester.js';
 import { resolveProductImageRef, resolveRangeImageRef } from './images.js';
 
 test('resolveRangeImageRef returns the storage key for a Range that has an image', async ({ db }) => {

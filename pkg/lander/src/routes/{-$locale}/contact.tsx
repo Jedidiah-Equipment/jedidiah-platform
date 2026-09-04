@@ -5,7 +5,7 @@ import {
   JEDIDIAH_INSTAGRAM_URL,
   JEDIDIAH_LOCATION,
   JEDIDIAH_WHATSAPP_NUMBER,
-} from '@pkg/domain';
+} from '@pkg/domain/equipment';
 import {
   IconArrowRight,
   IconBrandFacebook,
@@ -19,14 +19,14 @@ import {
 import { createFileRoute } from '@tanstack/react-router';
 import { type FormEvent, useRef, useState } from 'react';
 
-import { HERO_BACKDROP_IMAGE } from '../../assets/images.js';
-import { PageHero } from '../../components/page-hero.js';
-import { SandWatermarkSection } from '../../components/sand-watermark-section.js';
-import { captureEvent, captureEventForNavigation } from '../../lib/analytics.js';
-import { createMetaEventId, metaMatchKeys, trackMetaLead } from '../../lib/meta-pixel.js';
-import { seoHead } from '../../lib/seo.js';
-import { messagesForLocale, useLocale, useMessages } from '../../messages/index.js';
-import { getRangeOptions } from '../../server/catalog/ranges.js';
+import { HERO_BACKDROP_IMAGE } from '@/assets/images.js';
+import { PageHero } from '@/components/page-hero.js';
+import { SandWatermarkSection } from '@/components/sand-watermark-section.js';
+import { captureEvent, captureEventForNavigation } from '@/lib/analytics.js';
+import { createMetaEventId, metaMatchKeys, trackMetaLead } from '@/lib/meta-pixel.js';
+import { seoHead } from '@/lib/seo.js';
+import { messagesForLocale, useLocale, useMessages } from '@/messages/index.js';
+import { getRangeOptions } from '@/server/catalog/ranges.js';
 
 export const Route = createFileRoute('/{-$locale}/contact')({
   loader: async ({ context }) => ({ equipmentOptions: await getRangeOptions({ data: { locale: context.locale } }) }),

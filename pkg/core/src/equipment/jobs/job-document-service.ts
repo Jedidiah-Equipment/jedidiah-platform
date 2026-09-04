@@ -1,6 +1,8 @@
 import { randomUUID } from 'node:crypto';
-import { type Db, documents, getUniqueViolationConstraint } from '@pkg/db';
-import type { AuthId, JobDocument, UUID } from '@pkg/schema';
+import { type Db, getUniqueViolationConstraint } from '@pkg/db';
+import { documents } from '@pkg/db/equipment';
+import type { AuthId, UUID } from '@pkg/schema';
+import type { JobDocument } from '@pkg/schema/equipment';
 import { and, eq } from 'drizzle-orm';
 import type { StorageAdapter } from '../../storage/storage-adapter.js';
 import {

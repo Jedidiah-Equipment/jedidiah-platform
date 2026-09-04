@@ -1,4 +1,4 @@
-import type { Department, WorkItemDepartment } from '@pkg/schema';
+import type { Department, WorkItemDepartment } from '@pkg/schema/equipment';
 
 export const departmentLabels: Record<Department, string> = {
   procurement: 'Procurement',

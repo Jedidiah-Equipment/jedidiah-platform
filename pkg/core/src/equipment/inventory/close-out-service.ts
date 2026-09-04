@@ -1,6 +1,5 @@
+import type { DatabaseTransaction, Db } from '@pkg/db';
 import {
-  type DatabaseTransaction,
-  type Db,
   jobCfoAssemblies,
   jobCfoParts,
   jobStockCloseOuts,
@@ -9,15 +8,17 @@ import {
   productUnits,
   quotes,
   stockMovements,
-} from '@pkg/db';
-import { deriveCloseOutAge, deriveCommitment, toPlantDateOnly } from '@pkg/domain';
-import type { AuthId, CloseOutJobInput, CloseOutQueueResult, JobCloseOut, UUID } from '@pkg/schema';
+} from '@pkg/db/equipment';
+import { toPlantDateOnly } from '@pkg/domain';
+import { deriveCloseOutAge, deriveCommitment } from '@pkg/domain/equipment';
+import type { AuthId, UUID } from '@pkg/schema';
+import { DateOnlyIso } from '@pkg/schema';
+import type { CloseOutJobInput, CloseOutQueueResult, JobCloseOut } from '@pkg/schema/equipment';
 import {
   CloseOutQueueResult as CloseOutQueueResultSchema,
-  DateOnlyIso,
   JOB_STOCK_MOVEMENT_TYPES,
   JobCloseOut as JobCloseOutSchema,
-} from '@pkg/schema';
+} from '@pkg/schema/equipment';
 import { type AnyColumn, and, asc, eq, inArray, isNotNull, isNull, type SQL, sql } from 'drizzle-orm';
 
 import { jobDisplayNameOf, jobDisplaySelection } from '../jobs/job-display.js';

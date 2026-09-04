@@ -1,4 +1,4 @@
-import type { BayCalendarException, ProjectedBayQueue } from '@pkg/schema';
+import type { BayCalendarException, ProjectedBayQueue } from '@pkg/schema/equipment';
 import { toJobCalendarDateKey } from '../jobs/components/job-date-key.js';
 import type { BayExceptionChip } from './types.js';
 

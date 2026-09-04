@@ -11,8 +11,9 @@ import {
   reorderProductRangeVariants,
   updateProductRange,
   updateProductRangeVariant,
-} from '@pkg/core';
-import { catalogTranslationKey } from '@pkg/domain';
+} from '@pkg/core/equipment';
+import { catalogTranslationKey } from '@pkg/domain/equipment';
+import { UUID } from '@pkg/schema';
 import {
   ProductRangeCreateInput,
   ProductRangeReorderInput,
@@ -20,70 +21,71 @@ import {
   ProductRangeVariantCreateInput,
   ProductRangeVariantReorderInput,
   ProductRangeVariantUpdateInput,
-  UUID,
-} from '@pkg/schema';
+} from '@pkg/schema/equipment';
 import { z } from 'zod';
-
+import type { TranslationMarker } from '../../../equipment/catalog-translations/translation-scheduler.js';
 import { type CoreErrorMapping, mapKnownCoreError } from '../../../trpc/errors.js';
 import { authorizedProcedure, router } from '../../../trpc/init.js';
 
-export const productRangesRouter = router({
-  list: authorizedProcedure('equipment_product_range:read').query(({ ctx }) => listProductRanges({ db: ctx.db })),
+export function createProductRangesRouter(catalogTranslationScheduler: TranslationMarker) {
+  return router({
+    list: authorizedProcedure('equipment_product_range:read').query(({ ctx }) => listProductRanges({ db: ctx.db })),
 
-  get: authorizedProcedure('equipment_product_range:read')
-    .input(z.object({ id: UUID }))
-    .query(({ ctx, input }) => mapProductRangeErrors(() => getProductRange({ db: ctx.db, id: input.id }))),
+    get: authorizedProcedure('equipment_product_range:read')
+      .input(z.object({ id: UUID }))
+      .query(({ ctx, input }) => mapProductRangeErrors(() => getProductRange({ db: ctx.db, id: input.id }))),
 
-  create: authorizedProcedure('equipment_product_range:create')
-    .input(ProductRangeCreateInput)
-    .mutation(async ({ ctx, input }) => {
-      const range = await mapProductRangeErrors(() => createProductRange({ db: ctx.db, input }));
-      ctx.catalogTranslationScheduler.mark(catalogTranslationKey('range', range.id));
-      return range;
-    }),
+    create: authorizedProcedure('equipment_product_range:create')
+      .input(ProductRangeCreateInput)
+      .mutation(async ({ ctx, input }) => {
+        const range = await mapProductRangeErrors(() => createProductRange({ db: ctx.db, input }));
+        catalogTranslationScheduler.mark(catalogTranslationKey('range', range.id));
+        return range;
+      }),
 
-  update: authorizedProcedure('equipment_product_range:update')
-    .input(ProductRangeUpdateInput)
-    .mutation(async ({ ctx, input }) => {
-      const range = await mapProductRangeErrors(() => updateProductRange({ db: ctx.db, input }));
-      ctx.catalogTranslationScheduler.mark(catalogTranslationKey('range', range.id));
-      return range;
-    }),
+    update: authorizedProcedure('equipment_product_range:update')
+      .input(ProductRangeUpdateInput)
+      .mutation(async ({ ctx, input }) => {
+        const range = await mapProductRangeErrors(() => updateProductRange({ db: ctx.db, input }));
+        catalogTranslationScheduler.mark(catalogTranslationKey('range', range.id));
+        return range;
+      }),
 
-  remove: authorizedProcedure('equipment_product_range:update')
-    .input(z.object({ id: UUID }))
-    .mutation(({ ctx, input }) => mapProductRangeErrors(() => removeProductRange({ db: ctx.db, id: input.id }))),
+    remove: authorizedProcedure('equipment_product_range:update')
+      .input(z.object({ id: UUID }))
+      .mutation(({ ctx, input }) => mapProductRangeErrors(() => removeProductRange({ db: ctx.db, id: input.id }))),
 
-  reorder: authorizedProcedure('equipment_product_range:update')
-    .input(ProductRangeReorderInput)
-    .mutation(({ ctx, input }) => mapProductRangeErrors(() => reorderProductRanges({ db: ctx.db, input }))),
+    reorder: authorizedProcedure('equipment_product_range:update')
+      .input(ProductRangeReorderInput)
+      .mutation(({ ctx, input }) => mapProductRangeErrors(() => reorderProductRanges({ db: ctx.db, input }))),
 
-  createVariant: authorizedProcedure('equipment_product_range:update')
-    .input(ProductRangeVariantCreateInput)
-    .mutation(async ({ ctx, input }) => {
-      const variant = await mapProductRangeErrors(() => createProductRangeVariant({ db: ctx.db, input }));
-      ctx.catalogTranslationScheduler.mark(catalogTranslationKey('variant', variant.id));
-      return variant;
-    }),
+    createVariant: authorizedProcedure('equipment_product_range:update')
+      .input(ProductRangeVariantCreateInput)
+      .mutation(async ({ ctx, input }) => {
+        const variant = await mapProductRangeErrors(() => createProductRangeVariant({ db: ctx.db, input }));
+        catalogTranslationScheduler.mark(catalogTranslationKey('variant', variant.id));
+        return variant;
+      }),
 
-  updateVariant: authorizedProcedure('equipment_product_range:update')
-    .input(ProductRangeVariantUpdateInput)
-    .mutation(async ({ ctx, input }) => {
-      const variant = await mapProductRangeErrors(() => updateProductRangeVariant({ db: ctx.db, input }));
-      ctx.catalogTranslationScheduler.mark(catalogTranslationKey('variant', variant.id));
-      return variant;
-    }),
+    updateVariant: authorizedProcedure('equipment_product_range:update')
+      .input(ProductRangeVariantUpdateInput)
+      .mutation(async ({ ctx, input }) => {
+        const variant = await mapProductRangeErrors(() => updateProductRangeVariant({ db: ctx.db, input }));
+        catalogTranslationScheduler.mark(catalogTranslationKey('variant', variant.id));
+        return variant;
+      }),
 
-  removeVariant: authorizedProcedure('equipment_product_range:update')
-    .input(z.object({ id: UUID, rangeId: UUID }))
-    .mutation(({ ctx, input }) =>
-      mapProductRangeErrors(() => removeProductRangeVariant({ db: ctx.db, id: input.id, rangeId: input.rangeId })),
-    ),
+    removeVariant: authorizedProcedure('equipment_product_range:update')
+      .input(z.object({ id: UUID, rangeId: UUID }))
+      .mutation(({ ctx, input }) =>
+        mapProductRangeErrors(() => removeProductRangeVariant({ db: ctx.db, id: input.id, rangeId: input.rangeId })),
+      ),
 
-  reorderVariants: authorizedProcedure('equipment_product_range:update')
-    .input(ProductRangeVariantReorderInput)
-    .mutation(({ ctx, input }) => mapProductRangeErrors(() => reorderProductRangeVariants({ db: ctx.db, input }))),
-});
+    reorderVariants: authorizedProcedure('equipment_product_range:update')
+      .input(ProductRangeVariantReorderInput)
+      .mutation(({ ctx, input }) => mapProductRangeErrors(() => reorderProductRangeVariants({ db: ctx.db, input }))),
+  });
+}
 
 async function mapProductRangeErrors<T>(action: () => Promise<T>): Promise<T> {
   return mapKnownCoreError(action, isProductRangeCoreError, mapProductRangeCoreError);

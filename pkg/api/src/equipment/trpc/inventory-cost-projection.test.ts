@@ -1,5 +1,5 @@
-import { createUserAccessSummary, roleSlotsForRole } from '@pkg/domain';
-import { InventoryCost } from '@pkg/schema';
+import { accessForRole } from '@pkg/domain/testing';
+import { InventoryCost } from '@pkg/schema/equipment';
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 
@@ -53,7 +53,7 @@ function callValuationAs(role: 'procurement-manager' | 'stores') {
   const session = mockSession(role);
 
   return createCaller({
-    access: createUserAccessSummary({ ...roleSlotsForRole(role), userId: session.user.id }),
+    access: accessForRole(role, session.user.id),
     session,
   } as Context).valuation();
 }

@@ -1,4 +1,4 @@
-import { countActiveJobs } from '@pkg/domain';
+import { countActiveJobs } from '@pkg/domain/equipment';
 import type React from 'react';
 
 import { DashboardWidgetError } from '../DashboardWidgetCard.js';

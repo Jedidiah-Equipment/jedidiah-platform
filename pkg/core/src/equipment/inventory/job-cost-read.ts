@@ -1,5 +1,7 @@
-import { type Db, stockMovements } from '@pkg/db';
-import { JOB_STOCK_MOVEMENT_TYPES, type UUID } from '@pkg/schema';
+import type { Db } from '@pkg/db';
+import { stockMovements } from '@pkg/db/equipment';
+import type { UUID } from '@pkg/schema';
+import { JOB_STOCK_MOVEMENT_TYPES } from '@pkg/schema/equipment';
 import { and, inArray } from 'drizzle-orm';
 
 import { drawnCostedValueExpression, uncostedDrawnQuantityExpression } from './job-stock-facts.js';

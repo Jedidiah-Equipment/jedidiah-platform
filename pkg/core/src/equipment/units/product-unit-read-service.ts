@@ -1,26 +1,27 @@
 import {
   createEscapedContainsSearchCondition,
-  currentOwnerCustomerId,
-  customers,
   type DatabaseTransaction,
   type Db,
   getSortOrder,
+  withPagination,
+} from '@pkg/db';
+import {
+  currentOwnerCustomerId,
+  customers,
   jobs,
   products,
   productUnitOwnershipTransfers,
   productUnits,
-  withPagination,
-} from '@pkg/db';
+} from '@pkg/db/equipment';
+import { getNextCursor, UUID } from '@pkg/schema';
 import {
-  getNextCursor,
   type ProductUnitBuildState,
   ProductUnitDetail,
   ProductUnitFilterOptions,
   type ProductUnitListInput,
   type ProductUnitListResult,
   ProductUnitSummary,
-  UUID,
-} from '@pkg/schema';
+} from '@pkg/schema/equipment';
 import { and, asc, eq, inArray, or, type SQL, sql } from 'drizzle-orm';
 import type { PgColumn } from 'drizzle-orm/pg-core';
 

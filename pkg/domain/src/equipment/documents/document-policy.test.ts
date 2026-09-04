@@ -6,9 +6,11 @@ import {
   DOCUMENT_PNG_CONTENT_TYPE,
   DOCUMENT_WEBP_CONTENT_TYPE,
   DOCUMENT_ZIP_CONTENT_TYPE,
+  sniffDocumentContentType,
+} from '../../files/file-policy.js';
+import {
   JOB_DOCUMENT_TYPE_LABELS,
   PRODUCT_DOCUMENT_MAX_BYTES,
-  sniffDocumentContentType,
   validateDocumentMetadata,
   validateDocumentPolicy,
 } from './document-policy.js';

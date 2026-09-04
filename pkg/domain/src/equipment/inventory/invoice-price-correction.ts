@@ -1,4 +1,4 @@
-import type { InvoicePriceCorrection } from '@pkg/schema';
+import type { InvoicePriceCorrection } from '@pkg/schema/equipment';
 
 /**
  * What confirming an invoiced price does to a Part's moving average (spec §5).

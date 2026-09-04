@@ -1,5 +1,5 @@
 import { formatDate } from '@pkg/domain';
-import type { PartPurchaseOrderLine } from '@pkg/schema';
+import type { PartPurchaseOrderLine } from '@pkg/schema/equipment';
 import { useQuery } from '@tanstack/react-query';
 import { Pressable, View } from 'react-native';
 

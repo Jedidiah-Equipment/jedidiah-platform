@@ -1,6 +1,9 @@
-import { type Db, jobs, products, productUnitOwnershipTransfers, productUnits } from '@pkg/db';
-import { computeQuoteVatAmount, groupBy, resolveNewestOwnershipTransfer } from '@pkg/domain';
-import { type ProductUnitStockExportInput, ProductUnitStockExportRow, UUID } from '@pkg/schema';
+import type { Db } from '@pkg/db';
+import { jobs, products, productUnitOwnershipTransfers, productUnits } from '@pkg/db/equipment';
+import { groupBy } from '@pkg/domain';
+import { computeQuoteVatAmount, resolveNewestOwnershipTransfer } from '@pkg/domain/equipment';
+import { UUID } from '@pkg/schema';
+import { type ProductUnitStockExportInput, ProductUnitStockExportRow } from '@pkg/schema/equipment';
 import { and, asc, eq, inArray, isNull, sql } from 'drizzle-orm';
 
 import { readJobDrawnCost, sumJobDrawnCosts } from '../inventory/job-cost-read.js';

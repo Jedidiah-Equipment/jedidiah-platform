@@ -1,5 +1,6 @@
-import { formatDate, getJobDisplayName, getJobOfferingKind, statusBadgeColorClassNames } from '@pkg/domain';
-import type { JobSummary } from '@pkg/schema';
+import { formatDate, statusBadgeColorClassNames } from '@pkg/domain';
+import { getJobDisplayName, getJobOfferingKind } from '@pkg/domain/equipment';
+import type { JobSummary } from '@pkg/schema/equipment';
 import { IconArrowsSort, IconCheck, IconFilter } from '@tabler/icons-react-native';
 import { useRouter } from 'expo-router';
 import { View } from 'react-native';

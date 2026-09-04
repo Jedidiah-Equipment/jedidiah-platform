@@ -1,5 +1,6 @@
-import { type ColorScheme, quoteKindColorClassNames } from '@pkg/domain';
-import type { QuoteKind } from '@pkg/schema';
+import type { ColorScheme } from '@pkg/domain';
+import { quoteKindColorClassNames } from '@pkg/domain/equipment';
+import type { QuoteKind } from '@pkg/schema/equipment';
 import type { Icon as TablerIcon } from '@tabler/icons-react-native';
 import { IconPackage, IconTools } from '@tabler/icons-react-native';
 import type { ReactNode } from 'react';

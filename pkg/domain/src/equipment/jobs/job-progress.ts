@@ -1,4 +1,5 @@
-import type { DateOnlyIso, JobScheduleState, ProjectedWorkJobSlot } from '@pkg/schema';
+import type { DateOnlyIso } from '@pkg/schema';
+import type { JobScheduleState, ProjectedWorkJobSlot } from '@pkg/schema/equipment';
 
 import { deriveActiveJobProgress } from './bay-active-job.js';
 import { countWorkingDaysBetween, type WorkingCalendar } from './working-calendar.js';

@@ -36,6 +36,7 @@ vi.mock('@/components/ui/text', () => ({ Text: 'Text' }));
 vi.mock('@/equipment/components/TopToolbar', () => ({ SecondaryPageToolbar: 'SecondaryPageToolbar' }));
 vi.mock('@/equipment/lib/assistant-keyboard', () => ({ useAssistantKeyboardBottomPadding: () => 301 }));
 
+// biome-ignore lint/style/noRestrictedImports: the @/* alias covers src/ only; this is the one test that renders an app/ route file directly.
 import AssistantRoute from '../../../../app/(protected)/equipment/assistant';
 
 describe('AssistantRoute keyboard layout', () => {

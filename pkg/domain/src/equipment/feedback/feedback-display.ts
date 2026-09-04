@@ -1,4 +1,4 @@
-import type { FeedbackStatus } from '@pkg/schema';
+import type { FeedbackStatus } from '@pkg/schema/equipment';
 
 import { type BadgeColorClassNames, statusBadgeColorClassNames } from '../../theme/status-badge.js';
 

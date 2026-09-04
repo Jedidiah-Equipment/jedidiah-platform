@@ -5,18 +5,18 @@ import { createRoot, type Root } from 'react-dom/client';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, describe, expect, test, vi } from 'vitest';
 
-import { LocaleProvider } from '../../../messages/index.js';
-import type { ProductDetail } from '../../../server/catalog/product-detail-data.js';
+import { LocaleProvider } from '@/messages/index.js';
+import type { ProductDetail } from '@/server/catalog/product-detail-data.js';
 import { AssembliesAndDownloads, captureProductView, Downloads, ProductShareButton } from './$modelCode.js';
 
 const captureEvent = vi.hoisted(() => vi.fn());
 const trackMetaViewContent = vi.hoisted(() => vi.fn());
 
-vi.mock('../../../lib/analytics.js', () => ({
+vi.mock('@/lib/analytics.js', () => ({
   captureEvent,
   captureEventForNavigation: vi.fn(),
 }));
-vi.mock('../../../lib/meta-pixel.js', () => ({
+vi.mock('@/lib/meta-pixel.js', () => ({
   createMetaEventId: () => 'product-view-123',
   metaMatchKeys: () => ({ metaBrowserId: 'fb.1.1755000000000.9876543210' }),
   trackMetaViewContent,

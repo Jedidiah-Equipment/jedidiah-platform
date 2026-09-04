@@ -1,5 +1,5 @@
-import { isStoresActorExpired } from '@pkg/domain';
-import type { QuickSwitchActor } from '@pkg/schema';
+import { isStoresActorExpired } from '@pkg/domain/equipment';
+import type { QuickSwitchActor } from '@pkg/schema/equipment';
 import type React from 'react';
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { AppState, View } from 'react-native';

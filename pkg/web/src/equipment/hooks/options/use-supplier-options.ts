@@ -1,4 +1,4 @@
-import type { SupplierListInput } from '@pkg/schema';
+import type { SupplierListInput } from '@pkg/schema/equipment';
 import { useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
 

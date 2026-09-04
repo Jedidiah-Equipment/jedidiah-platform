@@ -1,4 +1,5 @@
-import type { BayCalendarException, BayCalendarExceptionDirection, DateOnlyIso, OffDay } from '@pkg/schema';
+import type { DateOnlyIso } from '@pkg/schema';
+import type { BayCalendarException, BayCalendarExceptionDirection, OffDay } from '@pkg/schema/equipment';
 
 export type SelectedCalendarDay = {
   date: Date;

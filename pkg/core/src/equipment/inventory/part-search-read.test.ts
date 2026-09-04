@@ -1,4 +1,4 @@
-import { parts } from '@pkg/db';
+import { parts } from '@pkg/db/equipment';
 import { describe, expect } from 'vitest';
 
 import { actorUserId, adjustmentInput, test } from '../test/inventory-fixtures.js';

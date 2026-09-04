@@ -1,5 +1,5 @@
-import { productUnitBuildStateLabels } from '@pkg/domain';
-import { ProductUnitDisplayBuildState } from '@pkg/schema';
+import { productUnitBuildStateLabels } from '@pkg/domain/equipment';
+import { ProductUnitDisplayBuildState } from '@pkg/schema/equipment';
 
 import type { ListControlOption } from '@/components/ListControls';
 

@@ -1,5 +1,7 @@
-import { formatDate, formatJobLifecycleStatus } from '@pkg/domain';
-import type { ProductUnitDetail, ProductUnitOwnershipTransfer, ProductUnitUpdateInput, UUID } from '@pkg/schema';
+import { formatDate } from '@pkg/domain';
+import { formatJobLifecycleStatus } from '@pkg/domain/equipment';
+import type { UUID } from '@pkg/schema';
+import type { ProductUnitDetail, ProductUnitOwnershipTransfer, ProductUnitUpdateInput } from '@pkg/schema/equipment';
 import { IconArrowsExchange } from '@tabler/icons-react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { Link, useNavigate } from '@tanstack/react-router';

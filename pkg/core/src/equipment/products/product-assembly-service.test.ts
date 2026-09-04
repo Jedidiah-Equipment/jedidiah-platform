@@ -1,5 +1,6 @@
-import { auditEvents, type Db, productAssemblies, user } from '@pkg/db';
-import { type AssemblyInput, ProductCreateInput, ProductUpdateInput } from '@pkg/schema';
+import { auditEvents, type Db, user } from '@pkg/db';
+import { productAssemblies } from '@pkg/db/equipment';
+import { type AssemblyInput, ProductCreateInput, ProductUpdateInput } from '@pkg/schema/equipment';
 import { and, asc, eq } from 'drizzle-orm';
 import { describe, expect } from 'vitest';
 

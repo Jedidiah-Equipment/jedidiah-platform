@@ -1,6 +1,8 @@
 import { hasPermission } from '@pkg/domain';
 import type { UserAccessSummary } from '@pkg/schema';
 
+import { MAIN_TAB_PARENTS, type MainTabParent } from '@/equipment/lib/toolbar-navigation';
+
 export type AppTab = 'activity' | 'jobs' | 'plan' | 'quotes' | 'products' | 'units' | 'stores';
 
 export function visibleTabs(access: UserAccessSummary | null | undefined): AppTab[] {
@@ -21,41 +23,12 @@ export function showTabBar(tabs: AppTab[]): boolean {
   return tabs.length > 1;
 }
 
-export function appTabHref(
-  tab: AppTab,
-):
-  | '/equipment/activity'
-  | '/equipment/jobs'
-  | '/equipment/plan'
-  | '/equipment/products'
-  | '/equipment/quotes'
-  | '/equipment/stores'
-  | '/equipment/units' {
-  const hrefs = {
-    activity: '/equipment/activity',
-    jobs: '/equipment/jobs',
-    plan: '/equipment/plan',
-    products: '/equipment/products',
-    quotes: '/equipment/quotes',
-    stores: '/equipment/stores',
-    units: '/equipment/units',
-  } as const satisfies Record<AppTab, string>;
-
-  return hrefs[tab];
+export function appTabHref(tab: AppTab): MainTabParent['href'] {
+  return MAIN_TAB_PARENTS[tab].href;
 }
 
-const TAB_LABELS = {
-  activity: 'ACTIVITY',
-  jobs: 'JOBS',
-  plan: 'PLAN',
-  products: 'PRODUCTS',
-  quotes: 'QUOTES',
-  stores: 'STORES',
-  units: 'UNITS',
-} as const satisfies Record<AppTab, string>;
-
 export function appTabLabel(tab: AppTab): string {
-  return TAB_LABELS[tab];
+  return MAIN_TAB_PARENTS[tab].label.toUpperCase();
 }
 
 // The route directly under the `(tabs)` group, so Plan carries its route-group parentheses.

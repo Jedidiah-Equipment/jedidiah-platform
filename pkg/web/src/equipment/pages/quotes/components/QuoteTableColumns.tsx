@@ -1,14 +1,19 @@
+import { formatCurrency, formatPercent } from '@pkg/domain';
 import {
-  formatCurrency,
-  formatPercent,
   getQuoteOfferingName,
   getQuoteOfferingSubtitle,
   pricePersistedQuote,
   quoteKindLabels,
   quoteProductSourceOf,
   quoteStatusLabels,
-} from '@pkg/domain';
-import { type PriorityQuote, QuoteInvoicedFilter, QuoteKind, QuoteStatus, type QuoteSummary } from '@pkg/schema';
+} from '@pkg/domain/equipment';
+import {
+  type PriorityQuote,
+  QuoteInvoicedFilter,
+  QuoteKind,
+  QuoteStatus,
+  type QuoteSummary,
+} from '@pkg/schema/equipment';
 import { IconAlertTriangle } from '@tabler/icons-react';
 import { DateDisplay } from '@/components/common/DateDisplay.js';
 import type { DataTableColumnDef } from '@/components/data-table/features.js';

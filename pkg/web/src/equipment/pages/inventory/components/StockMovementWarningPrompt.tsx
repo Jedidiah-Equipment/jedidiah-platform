@@ -1,5 +1,5 @@
-import { warningMessageFor } from '@pkg/domain';
-import type { StockMovementWarningCode } from '@pkg/schema';
+import { warningMessageFor } from '@pkg/domain/equipment';
+import type { StockMovementWarningCode } from '@pkg/schema/equipment';
 import { IconAlertTriangle } from '@tabler/icons-react';
 
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert.js';

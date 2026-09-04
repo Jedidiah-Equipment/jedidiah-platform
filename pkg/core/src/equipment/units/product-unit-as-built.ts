@@ -1,4 +1,5 @@
-import { type DatabaseTransaction, type Db, jobBuildSpecAssemblies, jobs } from '@pkg/db';
+import type { DatabaseTransaction, Db } from '@pkg/db';
+import { jobBuildSpecAssemblies, jobs } from '@pkg/db/equipment';
 import { UUID } from '@pkg/schema';
 import { and, asc, eq, isNull } from 'drizzle-orm';
 

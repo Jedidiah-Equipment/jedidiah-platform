@@ -1,5 +1,6 @@
-import { formatDate, getJobDisplayName, getJobDisplaySubtitle, getJobOfferingKind } from '@pkg/domain';
-import type { JobSummary } from '@pkg/schema';
+import { formatDate } from '@pkg/domain';
+import { getJobDisplayName, getJobDisplaySubtitle, getJobOfferingKind } from '@pkg/domain/equipment';
+import type { JobSummary } from '@pkg/schema/equipment';
 import { IconCheck, IconPencil, IconSubtask } from '@tabler/icons-react';
 import { Link } from '@tanstack/react-router';
 import type { DataTableColumnDef } from '@/components/data-table/features.js';

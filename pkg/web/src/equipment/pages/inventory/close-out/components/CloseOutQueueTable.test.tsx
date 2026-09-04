@@ -1,4 +1,4 @@
-import { CloseOutQueueResult } from '@pkg/schema';
+import { CloseOutQueueResult } from '@pkg/schema/equipment';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
 

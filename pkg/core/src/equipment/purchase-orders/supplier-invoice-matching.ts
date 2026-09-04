@@ -1,3 +1,4 @@
+import { user } from '@pkg/db';
 import {
   documents,
   invoiceExtractions,
@@ -6,11 +7,11 @@ import {
   purchaseOrderLines,
   purchaseOrders,
   supplier,
-  user,
-} from '@pkg/db';
-import { matchInvoiceLines } from '@pkg/domain';
-import type { InvoiceFlagResolution, SupplierInvoiceExtraction, UUID } from '@pkg/schema';
-import { SupplierInvoiceExtraction as SupplierInvoiceExtractionSchema } from '@pkg/schema';
+} from '@pkg/db/equipment';
+import { matchInvoiceLines } from '@pkg/domain/equipment';
+import type { UUID } from '@pkg/schema';
+import type { InvoiceFlagResolution, SupplierInvoiceExtraction } from '@pkg/schema/equipment';
+import { SupplierInvoiceExtraction as SupplierInvoiceExtractionSchema } from '@pkg/schema/equipment';
 import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 
 import { newestPurchaseOrderDocumentFirst, type PurchaseOrderDb } from './purchase-order-service.js';

@@ -1,5 +1,5 @@
 import { type Db, sql, user } from '@pkg/db';
-import { isRoleSlotsSignInEligible, tryParseRoleSlots } from '@pkg/domain';
+import { isStoredUserSignInEligible } from '@pkg/domain';
 import { AuthId } from '@pkg/schema';
 import { APIError } from 'better-auth/api';
 
@@ -24,14 +24,7 @@ export async function assertUserCanCreateSession({ db, userId }: { db: Db; userI
     return;
   }
 
-  if (!isStoredRoleSignInEligible(targetUser)) {
+  if (!isStoredUserSignInEligible(targetUser)) {
     throw APIError.from('FORBIDDEN', SIGN_IN_DISABLED_ERROR);
   }
-}
-
-// Eligibility fails closed: a role we cannot parse is treated as ineligible rather than an error.
-export function isStoredRoleSignInEligible(userRoles: object): boolean {
-  const slots = tryParseRoleSlots(userRoles);
-
-  return slots !== null && isRoleSlotsSignInEligible(slots);
 }

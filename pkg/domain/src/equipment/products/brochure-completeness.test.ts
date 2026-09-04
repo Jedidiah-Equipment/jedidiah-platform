@@ -1,4 +1,5 @@
-import { EntityFile, Product, type ProductImages } from '@pkg/schema';
+import { EntityFile } from '@pkg/schema';
+import { Product, type ProductImages } from '@pkg/schema/equipment';
 import { describe, expect, it } from 'vitest';
 
 import {

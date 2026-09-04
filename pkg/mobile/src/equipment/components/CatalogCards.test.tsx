@@ -1,10 +1,14 @@
-import type { JobSummary, Product, ProductUnitSummary, QuoteSummary } from '@pkg/schema';
+import type { JobSummary, Product, ProductUnitSummary, QuoteSummary } from '@pkg/schema/equipment';
 import { describe, expect, test, vi } from 'vitest';
 
 vi.mock('@pkg/domain', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@pkg/domain')>()),
   formatCurrency: (amount: number, currencyCode: string) => `${currencyCode} ${amount}`,
   formatDate: () => '5 Aug 2026',
+}));
+
+vi.mock('@pkg/domain/equipment', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@pkg/domain/equipment')>()),
   pricePersistedQuote: () => ({ total: 125_000 }),
 }));
 vi.mock('@tabler/icons-react-native', () => ({

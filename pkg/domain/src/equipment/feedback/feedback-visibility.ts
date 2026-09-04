@@ -1,4 +1,4 @@
-import type { FeedbackKind, FeedbackSubjectType } from '@pkg/schema';
+import type { FeedbackKind, FeedbackSubjectType } from '@pkg/schema/equipment';
 
 /**
  * Shared submission-form copy for the Feedback visibility split (ADR 0010). Job general feedback is

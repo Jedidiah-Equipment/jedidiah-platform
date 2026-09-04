@@ -1,5 +1,5 @@
-import { getLastActivitySeen, listJobActivity, setLastActivitySeen } from '@pkg/core';
-import { JobActivityListInput, JobActivitySeenInput } from '@pkg/schema';
+import { getLastActivitySeen, listJobActivity, setLastActivitySeen } from '@pkg/core/equipment';
+import { JobActivityListInput, JobActivitySeenInput } from '@pkg/schema/equipment';
 
 import { authorizedProcedure, router } from '../../../trpc/init.js';
 

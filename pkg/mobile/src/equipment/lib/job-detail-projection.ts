@@ -1,3 +1,4 @@
+import { type JobStatusTone, resolveJobStatusTone } from '@pkg/domain';
 import {
   bayWorkingCalendars,
   byBayDepartmentPipeline,
@@ -8,22 +9,19 @@ import {
   getNextJobIds,
   type JobProgress,
   type JobRouteStop,
-  type JobStatusTone,
   type JobWorkSlotEntry,
   listEnabledBays,
   listNextWorkSlots,
-  resolveJobStatusTone,
-} from '@pkg/domain';
+} from '@pkg/domain/equipment';
+import type { DateOnlyIso, UUID } from '@pkg/schema';
 import type {
   BayOperator,
   BoardListResult,
-  DateOnlyIso,
   Department,
   JobDepartmentTiming,
   JobDetail,
   QuoteKind,
-  UUID,
-} from '@pkg/schema';
+} from '@pkg/schema/equipment';
 
 /** One Bay on the Job's production-route timeline, projected from its Work Slot. */
 export type JobRouteStopCard = JobRouteStop & {

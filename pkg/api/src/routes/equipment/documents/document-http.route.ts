@@ -1,4 +1,6 @@
-import { createOpenAiChatModel, extractSupplierInvoice } from '@pkg/ai';
+import { createOpenAiChatModel } from '@pkg/ai';
+import { extractSupplierInvoice } from '@pkg/ai/equipment';
+import type { StorageAdapter } from '@pkg/core';
 import {
   createJobPurchaseOrder,
   createProductDocument,
@@ -14,14 +16,13 @@ import {
   readQuoteDocument,
   renderProductBrochurePreview,
   renderPurchaseOrderPreview,
-  type StorageAdapter,
   type SupplierInvoiceExtractor,
   uploadCreditNote,
   uploadSupplierInvoice,
-} from '@pkg/core';
+} from '@pkg/core/equipment';
 import { db } from '@pkg/db';
-import { validateDocumentPolicy } from '@pkg/domain';
-import { renderBrochurePdf, renderPurchaseOrderPdf } from '@pkg/pdf';
+import { validateDocumentPolicy } from '@pkg/domain/equipment';
+import { renderBrochurePdf, renderPurchaseOrderPdf } from '@pkg/pdf/equipment';
 import {
   CreditNoteSettlementInput,
   DocumentListByProductInput,
@@ -30,7 +31,7 @@ import {
   PurchaseOrderActionInput,
   PurchaseOrderDocumentInput,
   QuoteDocumentInput,
-} from '@pkg/schema';
+} from '@pkg/schema/equipment';
 import type { FastifyInstance, FastifyReply } from 'fastify';
 import { z } from 'zod';
 

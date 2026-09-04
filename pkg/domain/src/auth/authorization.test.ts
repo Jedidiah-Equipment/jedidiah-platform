@@ -1,5 +1,6 @@
 import { APP_PERMISSIONS, APP_ROLES } from '@pkg/schema';
 import { describe, expect, it } from 'vitest';
+import { accessForRole, roleSlotsForRole } from '../testing/index.js';
 import {
   createUserAccessSummary,
   getBusinessRole,
@@ -14,7 +15,6 @@ import {
   permissionLabels,
   roleDescriptions,
   roleLabels,
-  roleSlotsForRole,
   tryParseRoleSlots,
 } from './authorization.js';
 
@@ -326,7 +326,7 @@ describe('parseRoleSlots', () => {
 
 describe('createUserAccessSummary', () => {
   it('builds a serialized access summary', () => {
-    expect(createUserAccessSummary({ ...roleSlotsForRole('sales'), userId: 'user_123' })).toEqual({
+    expect(accessForRole('sales', 'user_123')).toEqual({
       contractingRole: null,
       equipmentRole: 'sales',
       permissions: [
@@ -354,7 +354,7 @@ describe('createUserAccessSummary', () => {
 
 describe('business access', () => {
   it('derives each business boundary from role presence', () => {
-    const contractingOnly = createUserAccessSummary({ ...roleSlotsForRole('foreman'), userId: 'user_789' });
+    const contractingOnly = accessForRole('foreman', 'user_789');
 
     expect(hasBusinessAccess(contractingOnly, 'contracting')).toBe(true);
     expect(hasBusinessAccess(contractingOnly, 'equipment')).toBe(false);
@@ -363,7 +363,7 @@ describe('business access', () => {
   });
 
   it('spans both businesses for a super-admin stored in the equipment slot', () => {
-    const superAdmin = createUserAccessSummary({ ...roleSlotsForRole('super-admin'), userId: 'user_456' });
+    const superAdmin = accessForRole('super-admin', 'user_456');
 
     expect(superAdmin.contractingRole).toBeNull();
     expect(getBusinessRole(superAdmin, 'contracting')).toBe('super-admin');
@@ -381,7 +381,7 @@ describe('business access', () => {
 
 describe('hasPermission', () => {
   it('checks access summaries', () => {
-    const access = createUserAccessSummary({ ...roleSlotsForRole('procurement-manager'), userId: 'user_123' });
+    const access = accessForRole('procurement-manager', 'user_123');
 
     expect(hasPermission(access, 'equipment_product:update')).toBe(true);
     expect(hasPermission(access, 'user:list')).toBe(false);
@@ -395,9 +395,9 @@ describe('hasPermission', () => {
 
 describe('job authorization policy', () => {
   it('grants only admins the job schedule permission', () => {
-    const admin = createUserAccessSummary({ ...roleSlotsForRole('admin'), userId: 'user_123' });
-    const viewer = createUserAccessSummary({ ...roleSlotsForRole('job-viewer'), userId: 'user_123' });
-    const sales = createUserAccessSummary({ ...roleSlotsForRole('sales'), userId: 'user_123' });
+    const admin = accessForRole('admin', 'user_123');
+    const viewer = accessForRole('job-viewer', 'user_123');
+    const sales = accessForRole('sales', 'user_123');
 
     expect(hasPermission(admin, 'equipment_job:schedule')).toBe(true);
     expect(getRolePermissions('super-admin')).toContain('equipment_job:schedule');

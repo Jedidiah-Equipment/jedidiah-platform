@@ -1,12 +1,12 @@
 import { IconArrowRight } from '@tabler/icons-react';
 import { createFileRoute, Link } from '@tanstack/react-router';
 
-import { ABOUT_STAFF_IMAGE } from '../../assets/images.js';
-import { PageHero } from '../../components/page-hero.js';
-import { SandWatermarkSection } from '../../components/sand-watermark-section.js';
-import { seoHead } from '../../lib/seo.js';
-import { messagesForLocale, useMessages } from '../../messages/index.js';
-import { getProductRangeCount } from '../../server/catalog/ranges.js';
+import { ABOUT_STAFF_IMAGE } from '@/assets/images.js';
+import { PageHero } from '@/components/page-hero.js';
+import { SandWatermarkSection } from '@/components/sand-watermark-section.js';
+import { seoHead } from '@/lib/seo.js';
+import { messagesForLocale, useMessages } from '@/messages/index.js';
+import { getProductRangeCount } from '@/server/catalog/ranges.js';
 
 export const Route = createFileRoute('/{-$locale}/about')({
   head: ({ match }) => {

@@ -1,4 +1,4 @@
-import { JobStockResult } from '@pkg/schema';
+import { JobStockResult } from '@pkg/schema/equipment';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 

@@ -1,12 +1,13 @@
+import { cancelledBadgeColorClassNames } from '@pkg/domain';
 import {
-  cancelledBadgeColorClassNames,
   getJobDisplayName,
   getJobOfferingKind,
   isJobCancelled,
   type SlotCalendarDaySegment,
   type SlotCalendarDays,
-} from '@pkg/domain';
-import type { DateOnlyIso, JobSummary } from '@pkg/schema';
+} from '@pkg/domain/equipment';
+import type { DateOnlyIso } from '@pkg/schema';
+import type { JobSummary } from '@pkg/schema/equipment';
 import type React from 'react';
 import { useGanttContext } from '@/components/kibo-ui/gantt/index.js';
 import { Badge } from '@/components/ui/badge.js';

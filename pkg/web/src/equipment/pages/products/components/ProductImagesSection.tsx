@@ -1,4 +1,4 @@
-import { PRODUCT_IMAGE_SLOT_SPECS, type Product, type ProductImageSlot } from '@pkg/schema';
+import { PRODUCT_IMAGE_SLOT_SPECS, type Product, type ProductImageSlot } from '@pkg/schema/equipment';
 import type React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardSeparator, CardTitle } from '@/components/ui/card.js';
 import { PRODUCT_IMAGE_SLOT_USAGE } from '@/equipment/components/catalog/index.js';

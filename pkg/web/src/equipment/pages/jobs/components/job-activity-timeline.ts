@@ -1,5 +1,5 @@
 import { formatDate, parseDate } from '@pkg/domain';
-import type { JobActivityItem } from '@pkg/schema';
+import type { JobActivityItem } from '@pkg/schema/equipment';
 import { isSameDay, isSameYear, subDays } from 'date-fns';
 
 /** One calendar day of the feed, in the order the feed delivered it. */

@@ -1,5 +1,6 @@
-import { formatCurrency, formatDate, pricePersistedQuote } from '@pkg/domain';
-import type { QuoteSummary } from '@pkg/schema';
+import { formatCurrency, formatDate } from '@pkg/domain';
+import { pricePersistedQuote } from '@pkg/domain/equipment';
+import type { QuoteSummary } from '@pkg/schema/equipment';
 import { IconAlertTriangle, IconArrowsSort, IconFilter, IconPlus } from '@tabler/icons-react-native';
 import { useRouter } from 'expo-router';
 import { Pressable, useWindowDimensions, View } from 'react-native';

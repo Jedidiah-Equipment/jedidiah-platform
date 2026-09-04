@@ -1,4 +1,5 @@
-import type { BuyListReason, DateOnlyIso } from '@pkg/schema';
+import type { DateOnlyIso } from '@pkg/schema';
+import type { BuyListReason } from '@pkg/schema/equipment';
 
 /** The stock facts a buy-list row is judged on, all in the Part's own counting unit. */
 export type BuyListDemand = {

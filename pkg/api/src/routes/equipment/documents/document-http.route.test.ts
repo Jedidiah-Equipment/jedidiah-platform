@@ -1,8 +1,8 @@
 import fastifyMultipart from '@fastify/multipart';
 import type { StorageAdapter, StoragePutInput, StoredObject } from '@pkg/core';
+import { type Db, sql, user } from '@pkg/db';
 import {
   customers,
-  type Db,
   documents,
   jobs,
   parts,
@@ -13,20 +13,20 @@ import {
   purchaseOrderLines,
   purchaseOrders,
   quotes,
-  sql,
   stockMovements,
   supplier,
-  user,
-} from '@pkg/db';
+} from '@pkg/db/equipment';
 import type { UUID } from '@pkg/schema';
 import Fastify, { type FastifyInstance } from 'fastify';
 import { afterEach, beforeEach, describe, expect, vi } from 'vitest';
+import type { Auth } from '@/auth/auth.js';
 import { createProductRangeFixture } from '@/equipment/test/product-range-fixtures.js';
 import { createTester } from '@/test/create-tester.js';
 import { mockSession } from '@/test/test-utils.js';
 import type { RegisterDocumentHttpRoutesOptions } from './document-http.route.js';
 
 const routeTestState = vi.hoisted(() => ({
+  auth: null as unknown,
   db: null as unknown,
   session: null as unknown,
 }));
@@ -62,7 +62,8 @@ vi.mock('../../../auth/session.js', async (importOriginal) => {
   };
 });
 
-const test = createTester(async ({ db }) => {
+const test = createTester(async ({ auth, db }) => {
+  routeTestState.auth = auth;
   routeTestState.db = db;
   routeTestState.session = mockSession();
   await db.insert(user).values({
@@ -640,6 +641,7 @@ describe('document HTTP routes', () => {
 async function createDocumentApp(storage: StorageAdapter, options: RegisterDocumentHttpRoutesOptions = {}) {
   const { registerDocumentHttpRoutes } = await import('./document-http.route.js');
   const app = Fastify();
+  app.decorate('auth', routeTestState.auth as Auth);
 
   await app.register(fastifyMultipart);
   await registerDocumentHttpRoutes(app, storage, options);

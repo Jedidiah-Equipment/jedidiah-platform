@@ -1,13 +1,14 @@
-import { departmentLabels, formatDate, hasPermission, JOB_DEPARTMENT_PIPELINE } from '@pkg/domain';
+import { formatDate, hasPermission } from '@pkg/domain';
+import { departmentLabels, JOB_DEPARTMENT_PIPELINE } from '@pkg/domain/equipment';
+import type { AuthId } from '@pkg/schema';
 import {
-  type AuthId,
   type Bay,
   type BayOperator,
   type Department,
   JobBayCreateInput,
   type JobBayOperatorAssignmentHistoryItem,
   JobBayRenameInput,
-} from '@pkg/schema';
+} from '@pkg/schema/equipment';
 import { IconHistory, IconLoader2, IconPencil, IconPlus, IconTrash, IconUserMinus } from '@tabler/icons-react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import type React from 'react';

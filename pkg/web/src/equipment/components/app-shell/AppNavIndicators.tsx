@@ -1,5 +1,5 @@
-import { hasUnreadActivity } from '@pkg/domain';
-import { buyListReasonsNotify, STOCKTAKE_SCOPE_LABELS } from '@pkg/schema';
+import { hasUnreadActivity } from '@pkg/domain/equipment';
+import { buyListReasonsNotify, STOCKTAKE_SCOPE_LABELS } from '@pkg/schema/equipment';
 import { useQuery } from '@tanstack/react-query';
 import type React from 'react';
 

@@ -5,10 +5,9 @@ import { toast } from 'sonner';
 
 import { CreateEntityDialog } from '@/components/form/index.js';
 import { useQueryInvalidation } from '@/equipment/hooks/use-query-invalidation.js';
+import { JobCloseOutFormValues, toCloseOutJobInput } from '@/equipment/pages/inventory/components/types.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useTRPC } from '@/lib/trpc.js';
-
-import { JobCloseOutFormValues, toCloseOutJobInput } from '../../components/types.js';
 
 export function JobCloseOutDialog({
   committedPartCount,

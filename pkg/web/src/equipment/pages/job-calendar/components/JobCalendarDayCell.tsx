@@ -1,5 +1,5 @@
 import { formatDate } from '@pkg/domain';
-import type { BayCalendarExceptionDirection, OffDay } from '@pkg/schema';
+import type { BayCalendarExceptionDirection, OffDay } from '@pkg/schema/equipment';
 import { IconMoon, IconSun, IconTrash } from '@tabler/icons-react';
 import type React from 'react';
 import {

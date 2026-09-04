@@ -1,14 +1,14 @@
-import { type DatabaseTransaction, type Db, partBom, parts, stockBuilds, stockMovements } from '@pkg/db';
-import { type BuildBomComponent, type BuildPostedLine, deriveBuild, derivePartStockActions } from '@pkg/domain';
-import type {
-  AuthId,
-  BuildPostResult,
-  PartStockTrackingMode,
-  PartUnitOfMeasure,
-  PostBuildInput,
-  UUID,
-} from '@pkg/schema';
-import { BuildPostResult as BuildPostResultSchema, unitClassFor } from '@pkg/schema';
+import type { DatabaseTransaction, Db } from '@pkg/db';
+import { partBom, parts, stockBuilds, stockMovements } from '@pkg/db/equipment';
+import {
+  type BuildBomComponent,
+  type BuildPostedLine,
+  deriveBuild,
+  derivePartStockActions,
+} from '@pkg/domain/equipment';
+import type { AuthId, UUID } from '@pkg/schema';
+import type { BuildPostResult, PartStockTrackingMode, PartUnitOfMeasure, PostBuildInput } from '@pkg/schema/equipment';
+import { BuildPostResult as BuildPostResultSchema, unitClassFor } from '@pkg/schema/equipment';
 import { asc, eq, inArray } from 'drizzle-orm';
 
 import { PartNotFoundError } from '../parts/part-errors.js';

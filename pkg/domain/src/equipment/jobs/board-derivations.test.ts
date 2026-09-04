@@ -1,4 +1,5 @@
-import type { DateOnlyIso, Department, ProjectedBayQueue, ProjectedJobSlot, UUID } from '@pkg/schema';
+import type { DateOnlyIso, UUID } from '@pkg/schema';
+import type { Department, ProjectedBayQueue, ProjectedJobSlot } from '@pkg/schema/equipment';
 import { describe, expect, it } from 'vitest';
 
 import {

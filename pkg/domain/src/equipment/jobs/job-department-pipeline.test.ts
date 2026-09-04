@@ -1,4 +1,4 @@
-import { DEPARTMENTS } from '@pkg/schema';
+import { DEPARTMENTS } from '@pkg/schema/equipment';
 import { describe, expect, it } from 'vitest';
 
 import { JOB_DEPARTMENT_PIPELINE } from './job-department-pipeline.js';

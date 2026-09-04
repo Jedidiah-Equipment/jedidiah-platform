@@ -8,15 +8,9 @@ import {
   segmentSlotCalendarDays,
   summarizeSlotCalendarDays,
   type WorkingCalendar,
-} from '@pkg/domain';
-import type {
-  DateOnlyIso,
-  JobSlotMoveDirection,
-  JobSlotPlacement,
-  JobSummary,
-  ProjectedJobSlot,
-  UUID,
-} from '@pkg/schema';
+} from '@pkg/domain/equipment';
+import type { DateOnlyIso, UUID } from '@pkg/schema';
+import type { JobSlotMoveDirection, JobSlotPlacement, JobSummary, ProjectedJobSlot } from '@pkg/schema/equipment';
 import { IconArrowLeft, IconArrowRight, IconClockPlus, IconLoader2, IconTrash } from '@tabler/icons-react';
 import type React from 'react';
 import { useMemo, useState } from 'react';

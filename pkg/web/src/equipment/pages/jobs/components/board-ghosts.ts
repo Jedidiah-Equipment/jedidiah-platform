@@ -1,5 +1,6 @@
-import type { BoardPreviewInput, BoardPreviewResult, ProjectedBayQueue, UUID } from '@pkg/schema';
+import type { UUID } from '@pkg/schema';
 import { DateOnlyIso } from '@pkg/schema';
+import type { BoardPreviewInput, BoardPreviewResult, ProjectedBayQueue } from '@pkg/schema/equipment';
 
 export type BoardGhostSeed = {
   bayId: UUID;

@@ -4,7 +4,7 @@ import {
   type BrochureRequiredField,
   type Product,
   type ProductImages,
-} from '@pkg/schema';
+} from '@pkg/schema/equipment';
 
 // The inputs the brochure-completeness verdict is computed from: the Product marketing fields (category,
 // key features, the brochure image slots) plus the owning Product's description and assembly count. Kept

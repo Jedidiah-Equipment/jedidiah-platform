@@ -129,7 +129,11 @@ A new Draft Purchase Order line takes its first unit price from the Part's curre
 ## Access
 
 A User holds up to two optional App Role slots: an **Equipment Role** and a **Contracting Role**. Role
-presence grants access to that business, and the permissions from both held roles are combined. The single
+presence grants access to that business, and the permissions from both held roles are combined. Access is
+role *presence*, not permission presence: a permissionless role (bay-operator, driver, mechanic) still opens
+its business, so a user holding bay-operator beside foreman lands on the Equipment dashboard with nothing to
+do there and sees the mode switcher — by design, since the slot says which business the person belongs to.
+The **Default Business** a signed-in user lands on is Equipment when held, otherwise Contracting. The single
 `super-admin` role spans both slots by definition; it is stored once, in the Equipment slot, and its Contracting
 access is derived from that, never persisted. Department Membership is descriptive only and must not be
 used to scope permissions. Contracting roles live in `CONTEXT-CONTRACTING.md`; the Equipment roles are:

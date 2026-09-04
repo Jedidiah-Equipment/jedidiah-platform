@@ -1,12 +1,11 @@
+import { createStableRowKeys, formatCurrency } from '@pkg/domain';
 import {
-  createStableRowKeys,
-  formatCurrency,
   getWorkItemFormTotal,
   quoteDepartmentLabels,
   WORK_ITEM_DEPARTMENTS,
   workItemDepartmentRate,
-} from '@pkg/domain';
-import type { Department } from '@pkg/schema';
+} from '@pkg/domain/equipment';
+import type { Department } from '@pkg/schema/equipment';
 import { IconPlus, IconTrash } from '@tabler/icons-react';
 import type React from 'react';
 import { useTypedAppFormContext } from '@/components/form/index.js';

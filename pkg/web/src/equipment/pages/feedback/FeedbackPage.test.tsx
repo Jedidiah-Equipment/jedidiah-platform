@@ -1,4 +1,4 @@
-import { FeedbackListItem, type FeedbackListItem as FeedbackListItemType } from '@pkg/schema';
+import { FeedbackListItem, type FeedbackListItem as FeedbackListItemType } from '@pkg/schema/equipment';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import { DataTable } from '@/components/data-table/DataTable.js';

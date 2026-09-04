@@ -1,7 +1,9 @@
-import { type DatabaseTransaction, type Db, partBom, parts } from '@pkg/db';
-import { findBomCycle } from '@pkg/domain';
-import type { AuditChanges, AuthId, PartBomResult, SavePartBomInput, UUID } from '@pkg/schema';
-import { isWholeUnitQuantity, PartBomResult as PartBomResultSchema, unitClassFor } from '@pkg/schema';
+import type { DatabaseTransaction, Db } from '@pkg/db';
+import { partBom, parts } from '@pkg/db/equipment';
+import { findBomCycle } from '@pkg/domain/equipment';
+import type { AuditChanges, AuthId, UUID } from '@pkg/schema';
+import type { PartBomResult, SavePartBomInput } from '@pkg/schema/equipment';
+import { isWholeUnitQuantity, PartBomResult as PartBomResultSchema, unitClassFor } from '@pkg/schema/equipment';
 import { asc, eq, inArray, sql } from 'drizzle-orm';
 import { recordAuditUpdate } from '../audit/audit-service.js';
 import {

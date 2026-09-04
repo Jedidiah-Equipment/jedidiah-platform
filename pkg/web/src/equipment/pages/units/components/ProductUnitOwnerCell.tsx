@@ -1,4 +1,4 @@
-import type { ProductUnitOwner } from '@pkg/schema';
+import type { ProductUnitOwner } from '@pkg/schema/equipment';
 import type React from 'react';
 
 import { StockBadge } from '@/equipment/components/common/StockBadge.js';

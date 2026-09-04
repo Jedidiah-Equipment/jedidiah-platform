@@ -1,4 +1,5 @@
-import { formatDate, type SlotCalendarDays } from '@pkg/domain';
+import { formatDate } from '@pkg/domain';
+import type { SlotCalendarDays } from '@pkg/domain/equipment';
 import type { DateOnlyIso } from '@pkg/schema';
 import type React from 'react';
 

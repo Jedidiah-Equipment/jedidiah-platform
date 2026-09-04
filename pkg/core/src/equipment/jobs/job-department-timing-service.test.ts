@@ -1,6 +1,5 @@
+import { auditEvents, type Db, user } from '@pkg/db';
 import {
-  auditEvents,
-  type Db,
   jobBayOperatorAssignments,
   jobBays,
   jobDepartmentCrew,
@@ -9,8 +8,7 @@ import {
   jobs,
   products,
   productUnits,
-  user,
-} from '@pkg/db';
+} from '@pkg/db/equipment';
 import { DateIso } from '@pkg/schema';
 import { eq } from 'drizzle-orm';
 import { afterEach, beforeEach, describe, expect, vi } from 'vitest';

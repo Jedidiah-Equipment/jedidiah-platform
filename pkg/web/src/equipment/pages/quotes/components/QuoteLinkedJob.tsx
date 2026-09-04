@@ -1,4 +1,4 @@
-import type { QuoteSummary } from '@pkg/schema';
+import type { QuoteSummary } from '@pkg/schema/equipment';
 import type React from 'react';
 
 import { JobCodeDisplay } from '@/equipment/pages/jobs/components/JobCodeDisplay.js';

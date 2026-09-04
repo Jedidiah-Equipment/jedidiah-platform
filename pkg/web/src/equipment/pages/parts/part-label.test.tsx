@@ -1,4 +1,5 @@
-import type { Part, UUID } from '@pkg/schema';
+import type { UUID } from '@pkg/schema';
+import type { Part } from '@pkg/schema/equipment';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, describe, expect, test, vi } from 'vitest';
 import { DataTable } from '@/components/data-table/DataTable.js';

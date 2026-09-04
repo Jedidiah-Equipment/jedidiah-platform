@@ -1,4 +1,4 @@
-import type { PartPurchaseOrderLine, StockOnHandRow } from '@pkg/schema';
+import type { PartPurchaseOrderLine, StockOnHandRow } from '@pkg/schema/equipment';
 import { useMutation } from '@tanstack/react-query';
 import { useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';

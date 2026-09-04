@@ -1,6 +1,9 @@
-import { type DatabaseTransaction, type Db, jobBays } from '@pkg/db';
-import { getPlantDateNow, resolveBoardWindowFrom, windowActiveBoard } from '@pkg/domain';
-import { type BoardPreviewInput, BoardPreviewResult, type UUID } from '@pkg/schema';
+import type { DatabaseTransaction, Db } from '@pkg/db';
+import { jobBays } from '@pkg/db/equipment';
+import { getPlantDateNow } from '@pkg/domain';
+import { resolveBoardWindowFrom, windowActiveBoard } from '@pkg/domain/equipment';
+import type { UUID } from '@pkg/schema';
+import { type BoardPreviewInput, BoardPreviewResult } from '@pkg/schema/equipment';
 import { inArray } from 'drizzle-orm';
 import {
   findBoardBayRows,

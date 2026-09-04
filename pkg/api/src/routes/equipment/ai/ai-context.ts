@@ -1,8 +1,8 @@
-import type { AiContext, AiSession } from '@pkg/ai';
+import type { AiContext, AiSession } from '@pkg/ai/equipment';
 import type { StorageAdapter } from '@pkg/core';
 import { db } from '@pkg/db';
-import { createUserAccessSummary, parseRoleSlots } from '@pkg/domain';
-import { renderBrochurePdf, renderQuoteDocumentPdf } from '@pkg/pdf';
+import { createUserAccessSummaryForUser } from '@pkg/domain';
+import { renderBrochurePdf, renderQuoteDocumentPdf } from '@pkg/pdf/equipment';
 import type { UserAccessSummary } from '@pkg/schema';
 import type { FastifyRequest } from 'fastify';
 
@@ -51,13 +51,8 @@ export function createAiContext({ access, db, session, storage }: CreateAiContex
 }
 
 export async function buildAiContext(req: FastifyRequest, dependencies: AiContextDependencies): Promise<AiContext> {
-  const session = await getSessionFromHeaders(req.headers);
-  const access: UserAccessSummary | null = session
-    ? createUserAccessSummary({
-        ...parseRoleSlots(session.user),
-        userId: session.user.id,
-      })
-    : null;
+  const session = await getSessionFromHeaders(req.headers, req.server.auth.api);
+  const access = session ? createUserAccessSummaryForUser(session.user) : null;
 
   return createAiContext({ access, db, session, storage: dependencies.storage });
 }

@@ -1,4 +1,4 @@
-import type { QuoteDetail, QuoteUpdateInput } from '@pkg/schema';
+import type { QuoteDetail, QuoteUpdateInput } from '@pkg/schema/equipment';
 import { useStore } from '@tanstack/react-form';
 import { act, create, type ReactTestRenderer } from 'react-test-renderer';
 import { describe, expect, test, vi } from 'vitest';

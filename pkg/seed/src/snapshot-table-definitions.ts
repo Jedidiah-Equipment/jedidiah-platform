@@ -1,6 +1,7 @@
 import { CREDENTIAL_ACCOUNT_ISSUER } from '@pkg/db';
-import { LEGACY_QUOTE_CANCELLATION_REASON } from '@pkg/schema';
-import type { PgTable } from 'drizzle-orm/pg-core';
+import { jobCodeSequence, quoteCodeSequence } from '@pkg/db/equipment';
+import { LEGACY_QUOTE_CANCELLATION_REASON } from '@pkg/schema/equipment';
+import type { PgSequence, PgTable } from 'drizzle-orm/pg-core';
 
 export type SnapshotRow = Record<string, unknown>;
 
@@ -33,7 +34,7 @@ export type SnapshotTableDefinition = {
   seedCredentialPassword?: boolean;
   // Advances a Postgres sequence to MAX(columnName) after seeding, so app-created rows do not collide
   // with seeded `code` values. Needed for tables whose code column defaults from a pgSequence.
-  resetSequence?: { sequenceName: string; columnName: string };
+  resetSequence?: { sequence: PgSequence; columnName: string };
   // Extracts doc-store object references from a row so seed:read can download the bytes from its selected
   // source and seed:write can upload them to the local store. Only for StoredFile-shaped columns.
   storageFiles?: (row: SnapshotRow) => SnapshotStorageFile[];
@@ -236,7 +237,7 @@ export const snapshotTableDefinitions = [
     seedRowDefaults: (row) => ({
       cancellationReason: row.status === 'cancelled' ? LEGACY_QUOTE_CANCELLATION_REASON : null,
     }),
-    resetSequence: { sequenceName: 'equipment.quote_code_seq', columnName: 'code' },
+    resetSequence: { sequence: quoteCodeSequence, columnName: 'code' },
   },
   {
     fileName: 'quote_work_items.json',
@@ -263,7 +264,7 @@ export const snapshotTableDefinitions = [
     // preceding schema and the read is retried without it.
     optionalReadColumns: ['productUnitId'],
     seedRowDefaults: () => ({ productUnitId: null }),
-    resetSequence: { sequenceName: 'equipment.job_code_seq', columnName: 'code' },
+    resetSequence: { sequence: jobCodeSequence, columnName: 'code' },
   },
   {
     // References Jobs and Users, so cleanup must reach close-outs before either parent.

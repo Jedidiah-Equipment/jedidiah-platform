@@ -1,5 +1,6 @@
-import type { PartBomLine, UUID } from '@pkg/schema';
-import { SavePartBomInput } from '@pkg/schema';
+import type { UUID } from '@pkg/schema';
+import type { PartBomLine } from '@pkg/schema/equipment';
+import { SavePartBomInput } from '@pkg/schema/equipment';
 import { IconPlus, IconTrash } from '@tabler/icons-react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useState } from 'react';

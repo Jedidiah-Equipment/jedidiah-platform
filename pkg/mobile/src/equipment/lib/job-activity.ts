@@ -1,5 +1,5 @@
 import { formatDate, parseDate } from '@pkg/domain';
-import type { JobActivityItem } from '@pkg/schema';
+import type { JobActivityItem } from '@pkg/schema/equipment';
 
 export type JobActivityDaySection = {
   data: JobActivityItem[];

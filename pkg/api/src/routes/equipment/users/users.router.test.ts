@@ -1,6 +1,6 @@
-import { listUserDepartments } from '@pkg/core';
+import { listUserDepartments } from '@pkg/core/equipment';
 import { auditEvents, type Db, user } from '@pkg/db';
-import { createUserAccessSummary, parseRoleSlots } from '@pkg/domain';
+import { createUserAccessSummaryForUser } from '@pkg/domain';
 import type { ContractingRole, EquipmentRole } from '@pkg/schema';
 import pino from 'pino';
 import { beforeEach, describe, expect } from 'vitest';
@@ -9,7 +9,7 @@ import { createTester } from '@/test/create-tester.js';
 import { mockSession } from '@/test/test-utils.js';
 import { createAppRouterCaller } from '@/trpc/router.js';
 
-const test = createTester(({ db }) => ({ db }));
+const test = createTester(({ auth, db }) => ({ auth, db }));
 
 const THUMBNAIL_DATA_URL = 'data:image/webp;base64,aaaa';
 
@@ -217,14 +217,12 @@ describe('users.list', () => {
       userId: currentDepartmentUserId,
     });
 
-    const access = createUserAccessSummary({
-      ...parseRoleSlots(session.user),
-      userId: session.user.id,
-    });
     const caller = createAppRouterCaller({
-      access,
-      appEnv: 'production',
       catalogTranslationScheduler: { mark: () => undefined, markNow: () => undefined },
+    })({
+      access: createUserAccessSummaryForUser(session.user),
+      appEnv: 'production',
+      auth: context.auth,
       changelogLoader: () => [],
       db: context.db,
       log: pino({ level: 'silent' }),

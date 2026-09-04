@@ -1,4 +1,4 @@
-import type { QuoteDetail } from '@pkg/schema';
+import type { QuoteDetail } from '@pkg/schema/equipment';
 
 /** The facts that decide whether a deal can be handed someone else's machine. */
 export type ReceivableQuote = Pick<QuoteDetail, 'invoiceNumber' | 'kind' | 'productUnitId' | 'status'>;

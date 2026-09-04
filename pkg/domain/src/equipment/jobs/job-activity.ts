@@ -1,11 +1,10 @@
+import type { DateIso, DateOnlyIso } from '@pkg/schema';
 import type {
-  DateIso,
-  DateOnlyIso,
   JobChangeActivityItem,
   JobWorkTimeActivityAction,
   JobWorkTimeActivityState,
   WorkItemDepartment,
-} from '@pkg/schema';
+} from '@pkg/schema/equipment';
 import { formatDate, toPlantDateOnly } from '../../formatting/date.js';
 import type { StatusBadgeColor } from '../../theme/status-badge.js';
 import { departmentLabels } from '../departments.js';

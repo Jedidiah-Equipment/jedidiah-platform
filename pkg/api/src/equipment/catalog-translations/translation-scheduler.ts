@@ -1,4 +1,4 @@
-import type { CatalogTranslationKey } from '@pkg/domain';
+import type { CatalogTranslationKey } from '@pkg/domain/equipment';
 
 import { ConcurrencyLimit } from './concurrency-limit.js';
 

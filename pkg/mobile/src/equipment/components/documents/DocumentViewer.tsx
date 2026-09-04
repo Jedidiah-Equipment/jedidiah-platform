@@ -1,4 +1,4 @@
-import type { DocumentSummary } from '@pkg/schema';
+import type { DocumentSummary } from '@pkg/schema/equipment';
 import { IconDownload, IconShare, type Icon as TablerIcon } from '@tabler/icons-react-native';
 import { useState } from 'react';
 import { ActivityIndicator, Pressable, View } from 'react-native';

@@ -1,6 +1,13 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 
-import { auth } from '../app-auth.js';
+import type { Auth } from './auth.js';
+
+declare module 'fastify' {
+  interface FastifyInstance {
+    /** The composed Better Auth instance; HTTP routes read sessions through `request.server.auth`. */
+    auth: Auth;
+  }
+}
 
 function createHeaders(request: FastifyRequest): Headers {
   const headers = new Headers();
@@ -30,7 +37,7 @@ function createBody(request: FastifyRequest): string | undefined {
   return JSON.stringify(request.body);
 }
 
-async function handleAuthRequest(request: FastifyRequest, reply: FastifyReply): Promise<void> {
+async function handleAuthRequest(auth: Auth, request: FastifyRequest, reply: FastifyReply): Promise<void> {
   try {
     const url = new URL(request.url, `http://${request.headers.host ?? 'localhost'}`);
     const body = createBody(request);
@@ -65,10 +72,11 @@ async function handleAuthRequest(request: FastifyRequest, reply: FastifyReply): 
   }
 }
 
-export async function registerAuthHandler(app: FastifyInstance): Promise<void> {
+export async function registerAuthHandler(app: FastifyInstance, auth: Auth): Promise<void> {
+  app.decorate('auth', auth);
   app.route({
     method: ['GET', 'POST'],
     url: '/api/auth/*',
-    handler: handleAuthRequest,
+    handler: (request, reply) => handleAuthRequest(auth, request, reply),
   });
 }

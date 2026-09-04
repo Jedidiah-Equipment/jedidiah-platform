@@ -1,12 +1,12 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { Locale } from '@pkg/schema';
 import {
   type BrochureDocumentImage,
   type BrochureDocumentModel,
-  Locale,
   PRODUCT_KEY_FEATURES_MAX_COUNT,
-} from '@pkg/schema';
+} from '@pkg/schema/equipment';
 
 import { renderBrochurePdf } from '../src/brochure/brochure-pdf-renderer.js';
 

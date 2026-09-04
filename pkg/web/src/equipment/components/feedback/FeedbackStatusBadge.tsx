@@ -1,5 +1,5 @@
-import { feedbackStatusColorClassNames, feedbackStatusLabels } from '@pkg/domain';
-import type { FeedbackStatus } from '@pkg/schema';
+import { feedbackStatusColorClassNames, feedbackStatusLabels } from '@pkg/domain/equipment';
+import type { FeedbackStatus } from '@pkg/schema/equipment';
 import type React from 'react';
 
 import { Badge } from '@/components/ui/badge.js';

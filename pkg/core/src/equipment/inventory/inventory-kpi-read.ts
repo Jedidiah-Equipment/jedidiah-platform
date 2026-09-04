@@ -1,7 +1,8 @@
-import { type DatabaseTransaction, type Db, parts, stockMovements } from '@pkg/db';
+import type { DatabaseTransaction, Db } from '@pkg/db';
+import { parts, stockMovements } from '@pkg/db/equipment';
 import { getZonedDateParts, JOHANNESBURG_TIME_ZONE, zonedDateStartToUtcInstant } from '@pkg/domain';
-import type { InventoryKpis, StockAdjustmentReason as StockAdjustmentReasonType } from '@pkg/schema';
-import { InventoryKpis as InventoryKpisSchema, StockAdjustmentReason } from '@pkg/schema';
+import type { InventoryKpis, StockAdjustmentReason as StockAdjustmentReasonType } from '@pkg/schema/equipment';
+import { InventoryKpis as InventoryKpisSchema, StockAdjustmentReason } from '@pkg/schema/equipment';
 import { subDays } from 'date-fns';
 import { and, eq, gte, inArray, lte } from 'drizzle-orm';
 

@@ -1,5 +1,5 @@
-import { isJobCancellable } from '@pkg/domain';
-import { JobCancellationReason, type JobDetail } from '@pkg/schema';
+import { isJobCancellable } from '@pkg/domain/equipment';
+import { JobCancellationReason, type JobDetail } from '@pkg/schema/equipment';
 import { IconLoader2, IconTrash } from '@tabler/icons-react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import type React from 'react';

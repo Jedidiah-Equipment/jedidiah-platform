@@ -1,5 +1,5 @@
 import type { StatusBadgeColor } from '@pkg/domain';
-import type { JobListInput, JobSummary } from '@pkg/schema';
+import type { JobListInput, JobSummary } from '@pkg/schema/equipment';
 
 import { createLiteralGuard } from '@/lib/use-persisted-state';
 

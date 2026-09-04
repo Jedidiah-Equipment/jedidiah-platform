@@ -1,6 +1,5 @@
+import type { DatabaseTransaction, Db } from '@pkg/db';
 import {
-  type DatabaseTransaction,
-  type Db,
   documents,
   jobBuildSpecAssemblies,
   jobCfoAssemblies,
@@ -9,24 +8,23 @@ import {
   jobSlots,
   jobs,
   productUnits,
-} from '@pkg/db';
+} from '@pkg/db/equipment';
+import { getPlantDateNow } from '@pkg/domain';
 import {
   type BuildSpecAssembly,
   buildCfo,
   buildReworkCfo,
   type CfoEntry,
-  getPlantDateNow,
   isReleasableJobSlot,
   projectJobSlots,
-} from '@pkg/domain';
+} from '@pkg/domain/equipment';
+import { type AuthId, DateOnlyIso, type UUID } from '@pkg/schema';
 import {
   type AddIdleJobSlotInput,
   AddIdleJobSlotResult,
-  type AuthId,
   type BookJobSlotInput,
   BookJobSlotResult,
   type BrochurePdfRenderer,
-  DateOnlyIso,
   type JobCancelInput,
   type JobCreateInput,
   type JobDetail,
@@ -38,8 +36,7 @@ import {
   RemoveJobSlotResult,
   type ResizeJobSlotInput,
   ResizeJobSlotResult,
-  type UUID,
-} from '@pkg/schema';
+} from '@pkg/schema/equipment';
 import { and, asc, desc, eq, gt, inArray, isNull, lt } from 'drizzle-orm';
 import type { StorageAdapter } from '../../storage/storage-adapter.js';
 import { recordAuditCreate, recordAuditDelete, recordAuditEvent } from '../audit/audit-service.js';

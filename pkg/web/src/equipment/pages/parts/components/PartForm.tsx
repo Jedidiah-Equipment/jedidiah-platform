@@ -1,4 +1,10 @@
-import { type Part, PartAverageUtilizationPercent, PartUnitOfMeasure, type Supplier, unitClassFor } from '@pkg/schema';
+import {
+  type Part,
+  PartAverageUtilizationPercent,
+  PartUnitOfMeasure,
+  type Supplier,
+  unitClassFor,
+} from '@pkg/schema/equipment';
 import { IconLoader2 } from '@tabler/icons-react';
 import type React from 'react';
 

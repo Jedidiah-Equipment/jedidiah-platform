@@ -1,5 +1,5 @@
 import { formatDate } from '@pkg/domain';
-import type { CloseOutQueueRow } from '@pkg/schema';
+import type { CloseOutQueueRow } from '@pkg/schema/equipment';
 import { Link, useNavigate } from '@tanstack/react-router';
 import { DataTable } from '@/components/data-table/DataTable.js';
 import { type DataTableColumnDef, useDataTable } from '@/components/data-table/features.js';

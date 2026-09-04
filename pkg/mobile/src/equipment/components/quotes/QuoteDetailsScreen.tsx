@@ -1,5 +1,11 @@
-import { computeQuoteSummary, editableLockedQuoteFields, getQuoteOfferingName, isQuoteLocked } from '@pkg/domain';
-import { type PriorityQuote, type QuoteDetail, QuoteStatus, type QuoteUpdateInput, UUID } from '@pkg/schema';
+import {
+  computeQuoteSummary,
+  editableLockedQuoteFields,
+  getQuoteOfferingName,
+  isQuoteLocked,
+} from '@pkg/domain/equipment';
+import { UUID } from '@pkg/schema';
+import { type PriorityQuote, type QuoteDetail, QuoteStatus, type QuoteUpdateInput } from '@pkg/schema/equipment';
 import { IconLayoutSidebarRight } from '@tabler/icons-react-native';
 import { useStore } from '@tanstack/react-form';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';

@@ -1,7 +1,8 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 
-import { DateIso, DateOnlyIso, JobCode, PurchaseOrderCode, type PurchaseOrderPdfModel } from '@pkg/schema';
+import { DateIso, DateOnlyIso } from '@pkg/schema';
+import { JobCode, PurchaseOrderCode, type PurchaseOrderPdfModel } from '@pkg/schema/equipment';
 
 import { renderPurchaseOrderPdf } from '../src/purchase-order/purchase-order-pdf-renderer.js';
 

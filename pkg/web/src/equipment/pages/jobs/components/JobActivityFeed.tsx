@@ -1,4 +1,5 @@
-import type { DateIso, JobActivityFilter, UUID } from '@pkg/schema';
+import type { DateIso, UUID } from '@pkg/schema';
+import type { JobActivityFilter } from '@pkg/schema/equipment';
 import { keepPreviousData, useInfiniteQuery } from '@tanstack/react-query';
 import type React from 'react';
 import { useEffect, useRef } from 'react';

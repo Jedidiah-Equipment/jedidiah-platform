@@ -1,4 +1,4 @@
-import type { QuoteKind, QuoteStatus } from '@pkg/schema';
+import type { QuoteKind, QuoteStatus } from '@pkg/schema/equipment';
 
 const EDITABLE_LOCKED_QUOTE_FIELDS: ReadonlySet<string> = new Set([
   'invoiceNumber',

@@ -1,5 +1,6 @@
-import { formatCurrency, getQuoteOfferingName, hasPermission, pricePersistedQuote } from '@pkg/domain';
-import type { QuoteListInput, QuoteSummary } from '@pkg/schema';
+import { formatCurrency, hasPermission } from '@pkg/domain';
+import { getQuoteOfferingName, pricePersistedQuote } from '@pkg/domain/equipment';
+import type { QuoteListInput, QuoteSummary } from '@pkg/schema/equipment';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import type React from 'react';

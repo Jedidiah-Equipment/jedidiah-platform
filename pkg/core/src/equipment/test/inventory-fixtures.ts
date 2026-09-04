@@ -1,4 +1,5 @@
 import type { Db } from '@pkg/db';
+import { user } from '@pkg/db';
 import {
   customers,
   jobCfoAssemblies,
@@ -12,9 +13,8 @@ import {
   purchaseOrders,
   quotes,
   supplier,
-  user,
-} from '@pkg/db';
-import type { PostAdjustmentInput, ProductCostEstimate } from '@pkg/schema';
+} from '@pkg/db/equipment';
+import type { PostAdjustmentInput, ProductCostEstimate } from '@pkg/schema/equipment';
 
 import { createTester } from './create-tester.js';
 import { partValues } from './part-fixtures.js';

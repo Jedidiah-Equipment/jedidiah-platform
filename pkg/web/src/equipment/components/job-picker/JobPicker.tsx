@@ -1,5 +1,5 @@
-import { getJobDisplayName, getJobOfferingKind } from '@pkg/domain';
-import type { JobPickerOption, JobPickerTab } from '@pkg/schema';
+import { getJobDisplayName, getJobOfferingKind } from '@pkg/domain/equipment';
+import type { JobPickerOption, JobPickerTab } from '@pkg/schema/equipment';
 import type React from 'react';
 
 import { EntityComboboxLoadMore } from '@/components/common/EntityCombobox.js';

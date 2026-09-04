@@ -1,4 +1,5 @@
-import type { Assembly, UUID } from '@pkg/schema';
+import type { UUID } from '@pkg/schema';
+import type { Assembly } from '@pkg/schema/equipment';
 
 import { resolveEffectiveBom } from '../quotes/effective-bom.js';
 

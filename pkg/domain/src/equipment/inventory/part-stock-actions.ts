@@ -4,8 +4,8 @@ import type {
   PartStockActionVerdict,
   PartStockTrackingMode,
   PartUnitOfMeasure,
-} from '@pkg/schema';
-import { unitClassFor } from '@pkg/schema';
+} from '@pkg/schema/equipment';
+import { unitClassFor } from '@pkg/schema/equipment';
 
 /**
  * What every verdict is judged against: the three stored Part facts that decide what may move

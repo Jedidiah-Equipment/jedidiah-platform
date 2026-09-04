@@ -1,4 +1,4 @@
-import type { Department } from '@pkg/schema';
+import type { Department } from '@pkg/schema/equipment';
 import type React from 'react';
 
 import { AssemblyDepartmentIcon } from './AssemblyDepartmentIcon.js';

@@ -1,7 +1,6 @@
+import { auditEvents, type Db, user } from '@pkg/db';
 import {
-  auditEvents,
   customers,
-  type Db,
   documents,
   feedback,
   jobs,
@@ -9,9 +8,9 @@ import {
   productUnitOwnershipTransfers,
   productUnits,
   quotes,
-  user,
-} from '@pkg/db';
-import { DateIso, DateOnlyIso, formatJobCode, type JobActivityItem, type JobDocumentType } from '@pkg/schema';
+} from '@pkg/db/equipment';
+import { DateIso, DateOnlyIso } from '@pkg/schema';
+import { formatJobCode, type JobActivityItem, type JobDocumentType } from '@pkg/schema/equipment';
 import { desc, eq } from 'drizzle-orm';
 import { describe, expect } from 'vitest';
 

@@ -1,11 +1,11 @@
+import { UUID } from '@pkg/schema';
 import {
   type CatalogProductRangeTranslation,
   type CatalogProductRangeTranslationPatchInput,
   type CatalogTranslationFieldState,
   TranslatableProductRangeFields,
   TranslatableProductRangeVariantFields,
-  UUID,
-} from '@pkg/schema';
+} from '@pkg/schema/equipment';
 import { z } from 'zod';
 
 import { emptyStringOr } from '@/components/form/utils/form-schema.js';

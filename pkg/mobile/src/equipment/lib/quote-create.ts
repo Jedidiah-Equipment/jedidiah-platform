@@ -1,5 +1,5 @@
+import { AuthId, UUID } from '@pkg/schema';
 import {
-  AuthId,
   Customer,
   CustomerCompanyName,
   QuoteCreateInput,
@@ -7,8 +7,7 @@ import {
   QuoteKind,
   QuoteStatus,
   QuoteWorkTitle,
-  UUID,
-} from '@pkg/schema';
+} from '@pkg/schema/equipment';
 import { z } from 'zod';
 
 const CustomerOption = Customer.pick({ companyName: true, email: true, id: true, thumbnailDataUrl: true });

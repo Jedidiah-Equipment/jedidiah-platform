@@ -1,5 +1,5 @@
-import { quoteWorkItemSummaryRows } from '@pkg/domain';
-import { QuoteDetail, type QuoteSummary } from '@pkg/schema';
+import { quoteWorkItemSummaryRows } from '@pkg/domain/equipment';
+import { QuoteDetail, type QuoteSummary } from '@pkg/schema/equipment';
 import { describe, expect, it } from 'vitest';
 
 import {

@@ -1,6 +1,6 @@
-import { jobs, products, quotes } from '@pkg/db';
-import { getJobDisplayName } from '@pkg/domain';
-import { formatJobCode } from '@pkg/schema';
+import { jobs, products, quotes } from '@pkg/db/equipment';
+import { getJobDisplayName } from '@pkg/domain/equipment';
+import { formatJobCode } from '@pkg/schema/equipment';
 
 /**
  * The four columns a Job's display name is read from, and the mapper that reads them. Shared so a

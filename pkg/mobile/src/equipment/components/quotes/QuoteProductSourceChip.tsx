@@ -1,5 +1,5 @@
-import { quoteProductSourceColorClassNames, quoteProductSourceLabels } from '@pkg/domain';
-import type { QuoteProductSource } from '@pkg/schema';
+import { quoteProductSourceColorClassNames, quoteProductSourceLabels } from '@pkg/domain/equipment';
+import type { QuoteProductSource } from '@pkg/schema/equipment';
 
 import { StatusBadge } from '@/components/ui/status-badge';
 

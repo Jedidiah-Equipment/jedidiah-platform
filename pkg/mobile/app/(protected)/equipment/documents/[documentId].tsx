@@ -1,5 +1,5 @@
-import { getJobDisplayName, getQuoteOfferingName, isBrochureReady } from '@pkg/domain';
-import type { DocumentSummary } from '@pkg/schema';
+import { getJobDisplayName, getQuoteOfferingName, isBrochureReady } from '@pkg/domain/equipment';
+import type { DocumentSummary } from '@pkg/schema/equipment';
 import { useQuery } from '@tanstack/react-query';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { View } from 'react-native';

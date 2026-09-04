@@ -1,4 +1,4 @@
-import type { JobStockRow } from '@pkg/schema';
+import type { JobStockRow } from '@pkg/schema/equipment';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';

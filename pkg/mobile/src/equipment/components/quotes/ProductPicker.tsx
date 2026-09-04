@@ -1,4 +1,4 @@
-import type { Product } from '@pkg/schema';
+import type { Product } from '@pkg/schema/equipment';
 import { IconCheck, IconChevronDown } from '@tabler/icons-react-native';
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { useCallback, useMemo, useState } from 'react';

@@ -1,5 +1,5 @@
-import { quoteStatusLabels } from '@pkg/domain';
-import type { QuoteStatusSummary } from '@pkg/schema';
+import { quoteStatusLabels } from '@pkg/domain/equipment';
+import type { QuoteStatusSummary } from '@pkg/schema/equipment';
 import { useQuery } from '@tanstack/react-query';
 import type React from 'react';
 import { Skeleton } from '@/components/ui/skeleton.js';

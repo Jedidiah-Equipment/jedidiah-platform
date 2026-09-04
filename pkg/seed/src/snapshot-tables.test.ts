@@ -7,9 +7,10 @@ import {
   projectWritableRow,
   type SnapshotTableConfig,
   snapshotCleanupTables,
-  snapshotTableNames,
   snapshotTables,
 } from './snapshot-tables.js';
+
+const snapshotTableNames = snapshotTables.map((table) => table.tableName);
 
 function configFor(tableName: string): SnapshotTableConfig {
   const config = snapshotTables.find((table) => table.tableName === tableName);

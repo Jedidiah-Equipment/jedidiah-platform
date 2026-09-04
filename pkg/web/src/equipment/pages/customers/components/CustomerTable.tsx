@@ -1,4 +1,4 @@
-import { type Customer, type CustomerListInput, CustomerSortBy } from '@pkg/schema';
+import { type Customer, type CustomerListInput, CustomerSortBy } from '@pkg/schema/equipment';
 import { keepPreviousData, useInfiniteQuery } from '@tanstack/react-query';
 import type { ColumnFiltersState } from '@tanstack/react-table';
 import type React from 'react';

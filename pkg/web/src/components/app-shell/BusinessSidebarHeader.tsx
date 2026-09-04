@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/dropdown-menu.js';
 import { SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar.js';
 import { useAccess } from '@/hooks/use-access.js';
+import { BUSINESS_HOME } from '@/lib/route-auth.js';
 
 type BusinessSidebarHeaderProps = {
   activeBusiness: Business;
@@ -21,7 +22,7 @@ type BusinessSidebarHeaderProps = {
 export const BusinessSidebarHeader: React.FC<BusinessSidebarHeaderProps> = ({ activeBusiness }) => {
   const navigate = useNavigate();
   const hasBothBusinesses = hasBothBusinessAccess(useAccess().data);
-  const home = activeBusiness === 'contracting' ? '/contracting' : '/equipment/dashboard';
+  const home = BUSINESS_HOME[activeBusiness];
 
   return (
     <SidebarHeader>
@@ -35,12 +36,12 @@ export const BusinessSidebarHeader: React.FC<BusinessSidebarHeaderProps> = ({ ac
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start" className="min-w-56">
                 <DropdownMenuLabel>Business</DropdownMenuLabel>
-                <DropdownMenuItem onClick={() => navigate({ to: '/equipment/dashboard' })}>
+                <DropdownMenuItem onClick={() => navigate({ to: BUSINESS_HOME.equipment })}>
                   <IconBuildingFactory />
                   Jedidiah Equipment
                   {activeBusiness === 'equipment' ? <IconCheck className="ml-auto" /> : null}
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => navigate({ to: '/contracting' })}>
+                <DropdownMenuItem onClick={() => navigate({ to: BUSINESS_HOME.contracting })}>
                   <IconBuildingWarehouse />
                   Jedidiah Contracting
                   {activeBusiness === 'contracting' ? <IconCheck className="ml-auto" /> : null}

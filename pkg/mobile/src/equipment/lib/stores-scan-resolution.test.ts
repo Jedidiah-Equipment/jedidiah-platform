@@ -1,4 +1,4 @@
-import { badgeScanToken } from '@pkg/domain';
+import { badgeScanToken } from '@pkg/domain/equipment';
 import { describe, expect, it, vi } from 'vitest';
 
 import { resolveBadgeScan, resolveScan } from './stores-scan-resolution';

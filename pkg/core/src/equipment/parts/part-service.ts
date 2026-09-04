@@ -5,16 +5,12 @@ import {
   type Db,
   getSortOrder,
   getUniqueViolationConstraint,
-  partBom,
-  parts,
-  purchaseOrderLines,
-  purchaseOrders,
-  stockMovements,
-  supplier,
   withPagination,
 } from '@pkg/db';
+import { partBom, parts, purchaseOrderLines, purchaseOrders, stockMovements, supplier } from '@pkg/db/equipment';
+import type { AuthId, UUID } from '@pkg/schema';
+import { getNextCursor } from '@pkg/schema';
 import type {
-  AuthId,
   Part,
   PartBulkExportInput,
   PartBulkExportRow,
@@ -26,9 +22,8 @@ import type {
   PartListResult,
   PartStorageLocationListResult,
   PartUpdateInput,
-  UUID,
-} from '@pkg/schema';
-import { getNextCursor, Part as PartSchema, unitClassFor } from '@pkg/schema';
+} from '@pkg/schema/equipment';
+import { Part as PartSchema, unitClassFor } from '@pkg/schema/equipment';
 import { and, asc, count, eq, inArray, isNotNull, isNull, ne, or, type SQL, sql } from 'drizzle-orm';
 
 import {

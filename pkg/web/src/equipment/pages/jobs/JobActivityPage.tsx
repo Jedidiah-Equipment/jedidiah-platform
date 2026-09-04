@@ -1,5 +1,6 @@
 import { useDebouncedValue } from '@mantine/hooks';
-import type { DateIso, JobActivityFilter, UUID } from '@pkg/schema';
+import type { DateIso, UUID } from '@pkg/schema';
+import type { JobActivityFilter } from '@pkg/schema/equipment';
 import { IconSearch } from '@tabler/icons-react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';

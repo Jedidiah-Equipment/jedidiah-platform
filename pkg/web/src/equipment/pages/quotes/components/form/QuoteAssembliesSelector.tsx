@@ -1,10 +1,10 @@
+import { formatCurrency } from '@pkg/domain';
 import {
-  formatCurrency,
   resolveEffectiveBom,
   resolveSelectedAssemblySnapshots,
   type SelectedAssemblySnapshot,
-} from '@pkg/domain';
-import type { Assembly, QuoteSelectedAssembly } from '@pkg/schema';
+} from '@pkg/domain/equipment';
+import type { Assembly, QuoteSelectedAssembly } from '@pkg/schema/equipment';
 import { IconX } from '@tabler/icons-react';
 import type React from 'react';
 

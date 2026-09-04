@@ -1,9 +1,10 @@
 import { randomUUID } from 'node:crypto';
 
-import { type Db, documents, getUniqueViolationConstraint, quotes, user } from '@pkg/db';
-import { validateDocumentMetadata } from '@pkg/domain';
+import { type Db, getUniqueViolationConstraint, user } from '@pkg/db';
+import { documents, quotes } from '@pkg/db/equipment';
+import { validateDocumentMetadata } from '@pkg/domain/equipment';
+import type { AuthId, UUID } from '@pkg/schema';
 import {
-  type AuthId,
   type QuoteDocument,
   type QuoteDocumentCreateInput,
   QuoteDocumentMetadata,
@@ -11,8 +12,7 @@ import {
   type QuoteDocumentPdfRenderer,
   type QuoteDocumentPricingRow,
   QuoteDocument as QuoteDocumentSchema,
-  type UUID,
-} from '@pkg/schema';
+} from '@pkg/schema/equipment';
 import { and, eq, sql } from 'drizzle-orm';
 import type { StorageAdapter } from '../../storage/storage-adapter.js';
 import {

@@ -1,4 +1,4 @@
-export { formatJobCode } from '@pkg/schema';
+export { formatJobCode } from '@pkg/schema/equipment';
 
 export function parseJobCodeSearch(search: string): number | undefined {
   const normalized = search.trim().replace(/^JOB-/i, '');

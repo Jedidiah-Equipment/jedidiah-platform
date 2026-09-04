@@ -1,5 +1,5 @@
-import { shouldOfferQuoteCancellation } from '@pkg/domain';
-import { QuoteCancellationReason, type QuoteDetail } from '@pkg/schema';
+import { shouldOfferQuoteCancellation } from '@pkg/domain/equipment';
+import { QuoteCancellationReason, type QuoteDetail } from '@pkg/schema/equipment';
 import { IconLoader2, IconTrash } from '@tabler/icons-react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import type React from 'react';

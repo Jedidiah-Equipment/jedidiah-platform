@@ -24,7 +24,7 @@ import {
   postRevaluation,
   postStockCount,
   searchPartStock,
-} from '@pkg/core';
+} from '@pkg/core/equipment';
 import {
   BuildPostResult,
   BuildPostResultCostFields,
@@ -71,7 +71,7 @@ import {
   StocktakeSessionReportCostFields,
   StocktakeUncountedInput,
   StocktakeUncountedResult,
-} from '@pkg/schema';
+} from '@pkg/schema/equipment';
 import {
   canReadInventoryCosts,
   type InventoryCostAccess,

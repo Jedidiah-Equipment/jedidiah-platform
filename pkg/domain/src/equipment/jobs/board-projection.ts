@@ -1,11 +1,11 @@
+import type { DateOnlyIso } from '@pkg/schema';
 import type {
   BayCalendarExceptionDirection,
-  DateOnlyIso,
   JobSlotState,
   ProjectedIdleJobSlot,
   ProjectedJobSlot,
   ProjectedWorkJobSlot,
-} from '@pkg/schema';
+} from '@pkg/schema/equipment';
 
 import { bayWorkingCalendars } from './bay-working-calendars.js';
 import { type InsertAtDatePlacement, resolveInsertAtDatePlacement } from './job-slot-insert-at-date.js';

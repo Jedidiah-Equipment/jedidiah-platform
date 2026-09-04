@@ -1,5 +1,5 @@
 import { formatDate } from '@pkg/domain';
-import { STOCKTAKE_SCOPE_LABELS, type StocktakeOverdueRow } from '@pkg/schema';
+import { STOCKTAKE_SCOPE_LABELS, type StocktakeOverdueRow } from '@pkg/schema/equipment';
 import { IconAlertTriangle, IconCircleCheck } from '@tabler/icons-react';
 import { useQuery } from '@tanstack/react-query';
 

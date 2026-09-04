@@ -1,4 +1,4 @@
-import type { Customer, CustomerUpdateInput } from '@pkg/schema';
+import type { Customer, CustomerUpdateInput } from '@pkg/schema/equipment';
 import type React from 'react';
 
 import { AutosaveStatus, useAutosaveForm } from '@/components/form/index.js';

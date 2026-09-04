@@ -1,6 +1,7 @@
-import { jobCfoAssemblies, jobCfoParts, jobs, stockMovements } from '@pkg/db';
-import { deriveCommitment } from '@pkg/domain';
-import { JOB_STOCK_MOVEMENT_TYPES, type UUID } from '@pkg/schema';
+import { jobCfoAssemblies, jobCfoParts, jobs, stockMovements } from '@pkg/db/equipment';
+import { deriveCommitment } from '@pkg/domain/equipment';
+import type { UUID } from '@pkg/schema';
+import { JOB_STOCK_MOVEMENT_TYPES } from '@pkg/schema/equipment';
 import { and, eq, inArray, isNull, sql } from 'drizzle-orm';
 
 import { jobIsNotClosedOut } from './close-out-service.js';

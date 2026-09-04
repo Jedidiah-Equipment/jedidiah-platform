@@ -1,5 +1,6 @@
-import { type BayDepartmentGroup, groupBaysByDepartmentPipeline } from '@pkg/domain';
-import type { ProjectedBayQueue, UUID } from '@pkg/schema';
+import { type BayDepartmentGroup, groupBaysByDepartmentPipeline } from '@pkg/domain/equipment';
+import type { UUID } from '@pkg/schema';
+import type { ProjectedBayQueue } from '@pkg/schema/equipment';
 
 import { sortBaysByDepartmentPipeline } from '@/equipment/components/bays/sort-bays.js';
 

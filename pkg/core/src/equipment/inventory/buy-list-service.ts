@@ -1,17 +1,10 @@
-import {
-  type DatabaseTransaction,
-  type Db,
-  jobs,
-  parts,
-  products,
-  productUnits,
-  quotes,
-  stockMovements,
-  supplier,
-} from '@pkg/db';
-import { compareBuyListRows, compareNullableDateOnly, deriveBuyListSignal, toPlantDateOnly } from '@pkg/domain';
-import type { BuyListResult, DateOnlyIso } from '@pkg/schema';
-import { BuyListResult as BuyListResultSchema } from '@pkg/schema';
+import type { DatabaseTransaction, Db } from '@pkg/db';
+import { jobs, parts, products, productUnits, quotes, stockMovements, supplier } from '@pkg/db/equipment';
+import { toPlantDateOnly } from '@pkg/domain';
+import { compareBuyListRows, compareNullableDateOnly, deriveBuyListSignal } from '@pkg/domain/equipment';
+import type { DateOnlyIso } from '@pkg/schema';
+import type { BuyListResult } from '@pkg/schema/equipment';
+import { BuyListResult as BuyListResultSchema } from '@pkg/schema/equipment';
 import { and, asc, eq, inArray, ne, sql } from 'drizzle-orm';
 
 import { findBoardBayRowsForJobs, toProjectedBoard } from '../jobs/board-read.js';

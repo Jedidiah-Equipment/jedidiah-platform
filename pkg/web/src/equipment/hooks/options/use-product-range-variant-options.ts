@@ -1,11 +1,12 @@
-import type { ProductRangeVariantOption, UUID } from '@pkg/schema';
+import type { UUID } from '@pkg/schema';
+import type { ProductRangeVariantOption } from '@pkg/schema/equipment';
 import { skipToken, useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
 
 import { useTRPC } from '@/lib/trpc.js';
 import { toSelectOptions } from './helpers.js';
 
-export type { ProductRangeVariantOption } from '@pkg/schema';
+export type { ProductRangeVariantOption } from '@pkg/schema/equipment';
 
 export function useProductRangeVariantOptions(rangeId: UUID | '') {
   const trpc = useTRPC();

@@ -1,5 +1,6 @@
-import { departmentLabels, formatDate } from '@pkg/domain';
-import type { Department } from '@pkg/schema';
+import { formatDate } from '@pkg/domain';
+import { departmentLabels } from '@pkg/domain/equipment';
+import type { Department } from '@pkg/schema/equipment';
 import { IconArrowsSort } from '@tabler/icons-react-native';
 import { useRouter } from 'expo-router';
 import { View } from 'react-native';

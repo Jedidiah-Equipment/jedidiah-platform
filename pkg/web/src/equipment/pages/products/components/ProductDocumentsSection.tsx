@@ -1,5 +1,6 @@
-import { hasPermission, JOB_DOCUMENT_TYPE_LABELS } from '@pkg/domain';
-import { type Product, type ProductDocument, ProductDocumentType } from '@pkg/schema';
+import { hasPermission } from '@pkg/domain';
+import { JOB_DOCUMENT_TYPE_LABELS } from '@pkg/domain/equipment';
+import { type Product, type ProductDocument, ProductDocumentType } from '@pkg/schema/equipment';
 import { IconLoader2, IconUpload } from '@tabler/icons-react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { type RefObject, useMemo, useRef, useState } from 'react';

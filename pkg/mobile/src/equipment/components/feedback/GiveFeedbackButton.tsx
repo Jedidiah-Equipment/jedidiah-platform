@@ -1,5 +1,6 @@
-import { departmentLabels, getFeedbackVisibilityNotice, toSentenceCase } from '@pkg/domain';
-import { DEPARTMENTS, type FeedbackKind } from '@pkg/schema';
+import { toSentenceCase } from '@pkg/domain';
+import { departmentLabels, getFeedbackVisibilityNotice } from '@pkg/domain/equipment';
+import { DEPARTMENTS, type FeedbackKind } from '@pkg/schema/equipment';
 import { IconEye, IconLock, IconMessagePlus, IconX } from '@tabler/icons-react-native';
 import { useStore } from '@tanstack/react-form';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';

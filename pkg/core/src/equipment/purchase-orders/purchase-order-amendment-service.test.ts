@@ -1,5 +1,6 @@
 import { auditEvents, user } from '@pkg/db';
-import { DateOnlyIso, type PurchaseOrderPdfModel } from '@pkg/schema';
+import { DateOnlyIso } from '@pkg/schema';
+import type { PurchaseOrderPdfModel } from '@pkg/schema/equipment';
 import { and, eq } from 'drizzle-orm';
 import { describe, expect, vi } from 'vitest';
 

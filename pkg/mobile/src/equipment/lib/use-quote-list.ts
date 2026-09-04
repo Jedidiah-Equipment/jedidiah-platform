@@ -1,4 +1,4 @@
-import type { QuoteSummary } from '@pkg/schema';
+import type { QuoteSummary } from '@pkg/schema/equipment';
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { useCallback } from 'react';
 

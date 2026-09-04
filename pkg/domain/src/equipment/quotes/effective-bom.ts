@@ -1,4 +1,5 @@
-import type { Assembly, OptionalAssembly, UUID } from '@pkg/schema';
+import type { UUID } from '@pkg/schema';
+import type { Assembly, OptionalAssembly } from '@pkg/schema/equipment';
 
 /**
  * The minimum a selection must carry to be resolved against the catalog: a reference to a

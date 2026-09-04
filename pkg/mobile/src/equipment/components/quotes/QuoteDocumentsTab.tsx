@@ -1,5 +1,5 @@
-import { canGenerateQuoteDocument } from '@pkg/domain';
-import type { QuoteDetail, QuoteDocument, QuoteDocumentGenerationWarning } from '@pkg/schema';
+import { canGenerateQuoteDocument } from '@pkg/domain/equipment';
+import type { QuoteDetail, QuoteDocument, QuoteDocumentGenerationWarning } from '@pkg/schema/equipment';
 import {
   IconArrowsSort,
   IconDownload,

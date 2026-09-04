@@ -1,9 +1,9 @@
-import { listProductRanges } from '@pkg/core';
-import { productAssemblies, productRanges, products } from '@pkg/db';
+import { listProductRanges } from '@pkg/core/equipment';
+import { productAssemblies, productRanges, products } from '@pkg/db/equipment';
 import { expect } from 'vitest';
 
-import { translationEnvelope } from '../../test/catalog-translation.js';
-import { test } from '../../test/tester.js';
+import { translationEnvelope } from '@/test/catalog-translation.js';
+import { test } from '@/test/tester.js';
 import { toRangeLabel, toRangeSlug } from './products-data.js';
 import { loadFooterRanges, loadHomeRanges, loadProductRangeCount, loadRangeOptions } from './ranges-data.js';
 

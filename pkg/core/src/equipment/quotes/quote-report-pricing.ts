@@ -1,4 +1,4 @@
-import { pricePersistedQuote } from '@pkg/domain';
+import { pricePersistedQuote } from '@pkg/domain/equipment';
 import type { UUID } from '@pkg/schema';
 
 /** The stored pricing facts a report needs off a Quote row, and nothing else. */

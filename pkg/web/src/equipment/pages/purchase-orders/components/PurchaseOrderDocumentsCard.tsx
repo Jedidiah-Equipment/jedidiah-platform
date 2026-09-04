@@ -1,5 +1,6 @@
 import { formatBytes, formatDate } from '@pkg/domain';
-import { PURCHASE_ORDER_DOCUMENT_TYPE_LABELS, type PurchaseOrderDocumentRow, type UUID } from '@pkg/schema';
+import type { UUID } from '@pkg/schema';
+import { PURCHASE_ORDER_DOCUMENT_TYPE_LABELS, type PurchaseOrderDocumentRow } from '@pkg/schema/equipment';
 import { IconEye } from '@tabler/icons-react';
 import { useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';

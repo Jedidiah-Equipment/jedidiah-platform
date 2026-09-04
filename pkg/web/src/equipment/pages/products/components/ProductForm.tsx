@@ -1,4 +1,4 @@
-import type { Product, ProductUpdateInput } from '@pkg/schema';
+import type { Product, ProductUpdateInput } from '@pkg/schema/equipment';
 import type React from 'react';
 import { useEffect, useState } from 'react';
 import { AutosaveIssuesProvider, AutosaveStatus, useAutosaveForm } from '@/components/form/index.js';

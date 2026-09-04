@@ -1,4 +1,5 @@
-import { type BoardPlacement, DateIso, DateOnlyIso, JobCode } from '@pkg/schema';
+import { DateIso, DateOnlyIso } from '@pkg/schema';
+import { type BoardPlacement, JobCode } from '@pkg/schema/equipment';
 import { describe, expect, it, vi } from 'vitest';
 
 import { describeInsertAtDatePlacement, getInsertAtDatePickerBounds } from './book-slot-insert-at-date.js';

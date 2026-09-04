@@ -1,6 +1,6 @@
-import { canAssignUserRoleSlots, isContractingRoleBesideSuperAdmin, isReservedSuperAdminAssignment } from '@pkg/core';
+import { canAssignUserRoleSlots } from '@pkg/core/equipment';
 import type { Db } from '@pkg/db';
-import { createUserAccessSummary, hasPermission, parseRoleSlots, type RoleSlots } from '@pkg/domain';
+import { createUserAccessSummaryForUser, hasPermission, parseRoleSlots, type RoleSlots } from '@pkg/domain';
 import { ContractingRole, EquipmentRole } from '@pkg/schema';
 import type { BetterAuthPlugin } from 'better-auth';
 import { APIError, createAuthMiddleware, getSessionFromCtx } from 'better-auth/api';
@@ -85,7 +85,7 @@ export function adminUserSafetyPlugin(database: Db): BetterAuthPlugin {
             }
 
             const actor = parseRoleSlots(session.user);
-            const actorAccess = createUserAccessSummary({ ...actor, userId: session.user.id });
+            const actorAccess = createUserAccessSummaryForUser(session.user);
             if (!hasPermission(actorAccess, 'user:set-role') || actor.equipmentRole === null) {
               throw APIError.from('FORBIDDEN', ROLE_PERMISSION_ERROR);
             }
@@ -94,29 +94,10 @@ export function adminUserSafetyPlugin(database: Db): BetterAuthPlugin {
               throw APIError.from('FORBIDDEN', SELF_ROLE_CHANGE_ERROR);
             }
 
-            if (isContractingRoleBesideSuperAdmin(change)) {
-              throw APIError.from('BAD_REQUEST', SUPER_ADMIN_SPANS_CONTRACTING_ERROR);
-            }
-
-            if (!change.userId) {
-              // Create-user has no existing user to look up, so only the reserved-role rule applies.
-              if (
-                isReservedSuperAdminAssignment({
-                  actorRole: actor.equipmentRole,
-                  targetRole: change.equipmentRole ?? null,
-                })
-              ) {
-                throw APIError.from('FORBIDDEN', RESERVED_SUPER_ADMIN_ERROR);
-              }
-              return;
-            }
-
-            const { userId, ...slots } = change;
             const policy = await canAssignUserRoleSlots({
-              ...slots,
+              ...change,
               actorRole: actor.equipmentRole,
               db: database,
-              userId,
             });
 
             if (policy.allowed) {

@@ -1,4 +1,5 @@
-import { type BoardPlacement, DateOnlyIso, ProjectedJobSlot } from '@pkg/schema';
+import { DateOnlyIso } from '@pkg/schema';
+import { type BoardPlacement, ProjectedJobSlot } from '@pkg/schema/equipment';
 import { describe, expect, it } from 'vitest';
 
 import {

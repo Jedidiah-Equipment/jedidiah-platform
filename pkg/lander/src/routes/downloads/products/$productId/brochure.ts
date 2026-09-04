@@ -7,9 +7,7 @@ export const Route = createFileRoute('/downloads/products/$productId/brochure')(
   server: {
     handlers: {
       GET: async ({ params, request }) => {
-        const { resolveBrochureLocale, serveProductBrochure } = await import(
-          '../../../../server/media/brochure-handlers.js'
-        );
+        const { resolveBrochureLocale, serveProductBrochure } = await import('@/server/media/brochure-handlers.js');
 
         return serveProductBrochure(params.productId, resolveBrochureLocale(request.url));
       },

@@ -1,4 +1,4 @@
-import { PartBulkExportRow } from '@pkg/schema';
+import { PartBulkExportRow } from '@pkg/schema/equipment';
 import { describe, expect, it } from 'vitest';
 
 import {

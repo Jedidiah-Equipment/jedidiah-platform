@@ -1,4 +1,4 @@
-import { deriveMovementWarnings } from '@pkg/domain';
+import { deriveMovementWarnings } from '@pkg/domain/equipment';
 import { describe, expect } from 'vitest';
 
 import { postReceipt } from '../inventory/receipt-service.js';

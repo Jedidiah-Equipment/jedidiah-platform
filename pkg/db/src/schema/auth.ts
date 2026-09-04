@@ -1,8 +1,6 @@
-import type { ContractingRole, Department, EquipmentRole } from '@pkg/schema';
+import type { ContractingRole, EquipmentRole } from '@pkg/schema';
 import { relations } from 'drizzle-orm';
-import { boolean, index, pgTable, primaryKey, text, timestamp, uniqueIndex } from 'drizzle-orm/pg-core';
-
-import { equipmentSchema } from './equipment.js';
+import { boolean, index, pgTable, text, timestamp, uniqueIndex } from 'drizzle-orm/pg-core';
 
 export const user = pgTable(
   'user',
@@ -102,26 +100,9 @@ export const verification = pgTable(
   (table) => [index('verification_identifier_idx').on(table.identifier)],
 );
 
-export const userDepartment = equipmentSchema.table(
-  'user_department',
-  {
-    userId: text('user_id')
-      .notNull()
-      .references(() => user.id, { onDelete: 'cascade' }),
-    department: text('department').notNull().$type<Department>(),
-  },
-  (table) => [
-    primaryKey({
-      columns: [table.userId, table.department],
-      name: 'user_department_user_id_department_pk',
-    }),
-  ],
-);
-
 export const userRelations = relations(user, ({ many }) => ({
   sessions: many(session),
   accounts: many(account),
-  departments: many(userDepartment),
 }));
 
 export const sessionRelations = relations(session, ({ one }) => ({
@@ -134,13 +115,6 @@ export const sessionRelations = relations(session, ({ one }) => ({
 export const accountRelations = relations(account, ({ one }) => ({
   user: one(user, {
     fields: [account.userId],
-    references: [user.id],
-  }),
-}));
-
-export const userDepartmentRelations = relations(userDepartment, ({ one }) => ({
-  user: one(user, {
-    fields: [userDepartment.userId],
     references: [user.id],
   }),
 }));

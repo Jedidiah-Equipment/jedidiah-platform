@@ -1,9 +1,9 @@
 import type { IncomingHttpHeaders } from 'node:http';
 
+import { isStoredUserSignInEligible } from '@pkg/domain';
 import { fromNodeHeaders } from 'better-auth/node';
 
-import { type Auth, auth } from '../app-auth.js';
-import { isStoredRoleSignInEligible } from './sign-in-eligibility.js';
+import type { Auth } from './auth.js';
 
 type BetterAuthSession = Auth['$Infer']['Session'];
 type AuthApi = Pick<Auth['api'], 'getSession'>;
@@ -18,7 +18,7 @@ export type AppSession = BetterAuthSession & {
 
 export async function getSessionFromHeaders(
   headers: IncomingHttpHeaders,
-  authApi: AuthApi = auth.api,
+  authApi: AuthApi,
 ): Promise<AppSession | null> {
   const session = (await authApi.getSession({
     headers: fromNodeHeaders(headers),
@@ -32,5 +32,5 @@ export function filterSignInEligibleSession(session: AppSession | null): AppSess
     return null;
   }
 
-  return isStoredRoleSignInEligible(session.user) ? session : null;
+  return isStoredUserSignInEligible(session.user) ? session : null;
 }

@@ -3,14 +3,14 @@ import {
   evaluateProductLanderCompleteness,
   isBrochureReady,
   isLanderReady,
-} from '@pkg/domain';
+} from '@pkg/domain/equipment';
 import {
   BROCHURE_REQUIRED_FIELDS,
   type BrochureRequiredField,
   LANDER_REQUIRED_FIELDS,
   type LanderRequiredField,
   type Product,
-} from '@pkg/schema';
+} from '@pkg/schema/equipment';
 import { IconCircleCheck, IconCircleDashed, IconFileText, IconWorld } from '@tabler/icons-react';
 import type React from 'react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert.js';

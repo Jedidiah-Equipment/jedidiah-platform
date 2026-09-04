@@ -1,6 +1,6 @@
 import { Readable } from 'node:stream';
 
-import { createUserAccessSummary, hasPermission, parseRoleSlots } from '@pkg/domain';
+import { createUserAccessSummaryForUser, hasPermission } from '@pkg/domain';
 import type { AppPermission } from '@pkg/schema';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
@@ -13,7 +13,7 @@ import { type AppSession, getSessionFromHeaders } from '../auth/session.js';
 // and core-service calls. Entity-specific error mapping is supplied by the caller, never hardcoded here.
 
 export type RouteAuthContext = {
-  access: ReturnType<typeof createUserAccessSummary>;
+  access: ReturnType<typeof createUserAccessSummaryForUser>;
   session: AppSession;
 };
 
@@ -33,19 +33,14 @@ export class RouteHttpError extends Error {
 
 // Resolves the session and access summary, or sends a 401 and returns null when there is no session.
 export async function requireRouteAuth(request: FastifyRequest, reply: FastifyReply): Promise<RouteAuthContext | null> {
-  const session = await getSessionFromHeaders(request.headers);
+  const session = await getSessionFromHeaders(request.headers, request.server.auth.api);
 
   if (!session) {
     reply.status(401).send({ message: 'Please sign in to continue.' });
     return null;
   }
 
-  const access = createUserAccessSummary({
-    ...parseRoleSlots(session.user),
-    userId: session.user.id,
-  });
-
-  return { access, session };
+  return { access: createUserAccessSummaryForUser(session.user), session };
 }
 
 // Throws a 403 {@link RouteHttpError} unless the actor holds the permission.

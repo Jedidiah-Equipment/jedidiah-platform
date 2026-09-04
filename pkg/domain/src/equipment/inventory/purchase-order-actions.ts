@@ -4,7 +4,7 @@ import type {
   PurchaseOrderActionVerdict,
   PurchaseOrderProgress,
   PurchaseOrderStatus,
-} from '@pkg/schema';
+} from '@pkg/schema/equipment';
 
 /**
  * What every action verdict is judged against: the two stored facts, whether the order carries any

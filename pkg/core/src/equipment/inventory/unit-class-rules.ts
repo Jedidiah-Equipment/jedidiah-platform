@@ -1,4 +1,4 @@
-import { isWholeUnitQuantity, type PartUnitClass } from '@pkg/schema';
+import { isWholeUnitQuantity, type PartUnitClass } from '@pkg/schema/equipment';
 
 import { StockMovementDeltaError, StockMovementLengthError } from './stock-movement-errors.js';
 

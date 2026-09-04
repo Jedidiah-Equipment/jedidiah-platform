@@ -1,17 +1,7 @@
-import { listAllProducts } from '@pkg/core';
-import {
-  auditEvents,
-  type Db,
-  jobBays,
-  parts,
-  productRanges,
-  productRangeVariants,
-  products,
-  sql,
-  supplier,
-  user,
-} from '@pkg/db';
-import { EMPTY_PRODUCT_IMAGES, type Product } from '@pkg/schema';
+import { listAllProducts } from '@pkg/core/equipment';
+import { auditEvents, type Db, sql, user } from '@pkg/db';
+import { jobBays, parts, productRanges, productRangeVariants, products, supplier } from '@pkg/db/equipment';
+import { EMPTY_PRODUCT_IMAGES, type Product } from '@pkg/schema/equipment';
 import { describe, expect } from 'vitest';
 import { createProductRangeFixture } from '@/equipment/test/product-range-fixtures.js';
 import { type AppRouterCaller, createTester } from '@/test/create-tester.js';

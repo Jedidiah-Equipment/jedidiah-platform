@@ -1,4 +1,4 @@
-import type { FeedbackSubjectType } from '@pkg/schema';
+import type { FeedbackSubjectType } from '@pkg/schema/equipment';
 
 export class FeedbackNotFoundError extends Error {
   readonly code = 'feedback.not_found';

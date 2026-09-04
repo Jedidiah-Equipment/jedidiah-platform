@@ -1,8 +1,7 @@
-import { listPriorityQuotes } from '@pkg/core';
+import { listPriorityQuotes } from '@pkg/core/equipment';
+import { auditEvents, type Db, sql, user } from '@pkg/db';
 import {
-  auditEvents,
   customers,
-  type Db,
   jobBays,
   jobSlots,
   jobs,
@@ -14,11 +13,9 @@ import {
   quotes,
   quoteWorkItemParts,
   quoteWorkItems,
-  sql,
-  user,
-} from '@pkg/db';
-import { pricePersistedQuote, priceQuote } from '@pkg/domain';
-import type { QuoteDetail } from '@pkg/schema';
+} from '@pkg/db/equipment';
+import { pricePersistedQuote, priceQuote } from '@pkg/domain/equipment';
+import type { QuoteDetail } from '@pkg/schema/equipment';
 import { describe, expect, vi } from 'vitest';
 import { createProductRangeFixture } from '@/equipment/test/product-range-fixtures.js';
 import { type AppRouterCaller, createTester } from '@/test/create-tester.js';

@@ -1,4 +1,5 @@
-import { type ProductUnitDetail, ProductUnitUpdateInput, ProductUnitVinNumber, type UUID } from '@pkg/schema';
+import type { UUID } from '@pkg/schema';
+import { type ProductUnitDetail, ProductUnitUpdateInput, ProductUnitVinNumber } from '@pkg/schema/equipment';
 import { z } from 'zod';
 
 import { emptyStringOr } from '@/components/form/utils/form-schema.js';

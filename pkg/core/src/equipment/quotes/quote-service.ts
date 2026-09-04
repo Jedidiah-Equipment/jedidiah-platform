@@ -1,15 +1,15 @@
-import { customers, type DatabaseTransaction, type Db, jobs, notRemoved, products, quotes, user } from '@pkg/db';
+import { type DatabaseTransaction, type Db, notRemoved, user } from '@pkg/db';
+import { customers, jobs, products, quotes } from '@pkg/db/equipment';
+import { getPlantDateNow } from '@pkg/domain';
 import {
   assertQuoteEditable,
-  getPlantDateNow,
   isQuoteLocked,
   QUOTE_SALESPERSON_ROLES,
   quoteKindLabels,
   validateDiscount,
-} from '@pkg/domain';
+} from '@pkg/domain/equipment';
+import type { AuditChanges, AuthId, UUID } from '@pkg/schema';
 import {
-  type AuditChanges,
-  type AuthId,
   DEFAULT_PRODUCT_CURRENCY_CODE,
   type QuoteCreateInput,
   type QuoteDetail,
@@ -19,8 +19,7 @@ import {
   type QuoteStatus,
   type QuoteUpdateInput,
   type QuoteWorkItemInput,
-  type UUID,
-} from '@pkg/schema';
+} from '@pkg/schema/equipment';
 import { and, eq, inArray, isNull } from 'drizzle-orm';
 import { diffAuditUpdate, recordAuditCreate, recordAuditUpdate } from '../audit/audit-service.js';
 import { customerAuditDescriptor } from '../customers/customer-service.js';

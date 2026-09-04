@@ -1,16 +1,14 @@
-import { type DatabaseTransaction, type Db, user, userDepartment } from '@pkg/db';
+import { type DatabaseTransaction, type Db, user } from '@pkg/db';
+import { userDepartment } from '@pkg/db/equipment';
 import {
   type AuditChanges,
   AuthId,
   ContractingRole,
-  Department,
   EquipmentRole,
   NullablePhoneNumber,
   NullableThumbnailDataUrl,
-  UserAccount,
-  type UserListResult,
-  type UserSummary,
 } from '@pkg/schema';
+import { Department, type UserAccount, type UserListResult, type UserSummary } from '@pkg/schema/equipment';
 import { asc, eq } from 'drizzle-orm';
 
 import { defineAuditDescriptor, recordAuditEvent } from '../audit/audit-service.js';
@@ -39,7 +37,7 @@ export const userAuditDescriptor = defineAuditDescriptor<UserAuditInput>({
   }),
 });
 
-type UserRow = Pick<
+type UserAccountRow = Pick<
   typeof user.$inferSelect,
   | 'assistantEnabled'
   | 'contractingRole'
@@ -51,14 +49,15 @@ type UserRow = Pick<
   | 'name'
   | 'phoneNumber'
   | 'role'
-> & {
+>;
+
+type UserRow = UserAccountRow & {
   departments: readonly Department[];
 };
 
-export function mapUser(row: UserRow): UserSummary {
+function mapUserAccount(row: UserAccountRow): UserAccount {
   return {
     assistantEnabled: row.assistantEnabled,
-    departments: row.departments.map((department) => Department.parse(department)),
     email: row.email,
     emailVerified: row.emailVerified,
     id: AuthId.parse(row.id),
@@ -68,6 +67,13 @@ export function mapUser(row: UserRow): UserSummary {
     contractingRole: ContractingRole.nullable().parse(row.contractingRole),
     equipmentRole: EquipmentRole.nullable().parse(row.role),
     thumbnailDataUrl: NullableThumbnailDataUrl.parse(row.image),
+  };
+}
+
+export function mapUser(row: UserRow): UserSummary {
+  return {
+    ...mapUserAccount(row),
+    departments: row.departments.map((department) => Department.parse(department)),
   };
 }
 
@@ -93,42 +99,36 @@ export async function getUserById({ db, userId }: { db: Db; userId: AuthId }): P
     throw new UserNotFoundError(userId);
   }
 
-  return UserAccount.parse(mapUser({ ...row, departments: [] }));
+  return mapUserAccount(row);
 }
 
 export async function listUsers({ db }: { db: Db }): Promise<UserListResult> {
-  const rows = await db.query.user.findMany({
-    columns: {
-      assistantEnabled: true,
-      email: true,
-      emailVerified: true,
-      id: true,
-      image: true,
-      isDevice: true,
-      name: true,
-      phoneNumber: true,
-      contractingRole: true,
-      role: true,
-    },
-    orderBy: [asc(user.email)],
-    with: {
-      departments: {
-        columns: {
-          department: true,
-        },
-        orderBy: [asc(userDepartment.department)],
-      },
-    },
-  });
+  const rows = await db
+    .select({
+      assistantEnabled: user.assistantEnabled,
+      department: userDepartment.department,
+      email: user.email,
+      emailVerified: user.emailVerified,
+      id: user.id,
+      image: user.image,
+      isDevice: user.isDevice,
+      name: user.name,
+      phoneNumber: user.phoneNumber,
+      contractingRole: user.contractingRole,
+      role: user.role,
+    })
+    .from(user)
+    .leftJoin(userDepartment, eq(userDepartment.userId, user.id))
+    .orderBy(asc(user.email), asc(userDepartment.department));
+  const users = new Map<string, UserSummary>();
 
-  return {
-    users: rows.map((row) =>
-      mapUser({
-        ...row,
-        departments: row.departments.map((department) => department.department),
-      }),
-    ),
-  };
+  for (const { department, ...row } of rows) {
+    const summary = users.get(row.id) ?? mapUser({ ...row, departments: [] });
+    if (department !== null) summary.departments.push(department);
+    users.set(row.id, summary);
+  }
+
+  return { users: [...users.values()] };
 }
 
 export async function setUserDepartments({
@@ -204,7 +204,7 @@ export async function setUserIsDevice({
     descriptor: userAuditDescriptor,
     id: userId,
     notFound: () => new UserNotFoundError(userId),
-    project: (_tx, row) => UserAccount.parse(mapUser({ ...row, departments: [] })),
+    project: (_tx, row) => mapUserAccount(row),
     set: () => ({ isDevice, updatedAt: new Date() }),
     table: user,
   });
@@ -227,7 +227,7 @@ export async function updateUserThumbnail({
     descriptor: userAuditDescriptor,
     id: userId,
     notFound: () => new UserNotFoundError(userId),
-    project: (_tx, row) => UserAccount.parse(mapUser({ ...row, departments: [] })),
+    project: (_tx, row) => mapUserAccount(row),
     set: () => ({ image: thumbnailDataUrl, updatedAt: new Date() }),
     table: user,
   });
@@ -281,7 +281,7 @@ export type UserRoleAssignmentPolicyResult =
 
 // super-admin fills both slots by definition (ADR 0017), so a contracting role beside it is a
 // contradiction rather than a grant.
-export function isContractingRoleBesideSuperAdmin({
+function isContractingRoleBesideSuperAdmin({
   contractingRole,
   equipmentRole,
 }: {
@@ -291,25 +291,30 @@ export function isContractingRoleBesideSuperAdmin({
   return equipmentRole === 'super-admin' && contractingRole != null;
 }
 
-// Shared reserved-role predicate (ADR 0017/0008): only a super-admin may
-// grant the super-admin role or change a user who currently holds it. `currentRole` is omitted when
-// creating a brand-new user, where there is no role to move away from.
-export function isReservedSuperAdminAssignment({
+// Reserved-role predicate (ADR 0017/0008): only a super-admin may grant the super-admin role or
+// change a user who currently holds it.
+function isReservedSuperAdminAssignment({
   actorRole,
   currentRole,
   targetRole,
 }: {
   actorRole: EquipmentRole;
-  currentRole?: EquipmentRole | null;
+  currentRole: EquipmentRole | null;
   targetRole: EquipmentRole | null;
 }): boolean {
   return (targetRole === 'super-admin' || currentRole === 'super-admin') && actorRole !== 'super-admin';
 }
 
-// This policy check runs in its own transaction, but the role write it guards happens later inside
-// better-auth, outside any lock taken here. A concurrent operator assignment can land between this
-// check and that write — an accepted race: the window is tiny, the flow is admin-only, and the
-// one-operator-per-bay invariant itself is enforced by the database.
+/**
+ * The one role-assignment decision for create-user, update-user and set-role. `userId` is omitted
+ * when creating a user, where there is no stored role to move away from; the same rules then run
+ * against empty slots.
+ *
+ * This policy check runs in its own transaction, but the role write it guards happens later inside
+ * better-auth, outside any lock taken here. A concurrent operator assignment can land between this
+ * check and that write — an accepted race: the window is tiny, the flow is admin-only, and the
+ * one-operator-per-bay invariant itself is enforced by the database.
+ */
 export async function canAssignUserRoleSlots({
   actorRole,
   contractingRole,
@@ -321,25 +326,24 @@ export async function canAssignUserRoleSlots({
   contractingRole?: ContractingRole | null;
   db: Db;
   equipmentRole?: EquipmentRole | null;
-  userId: AuthId;
+  userId?: AuthId;
 }): Promise<UserRoleAssignmentPolicyResult> {
   return db.transaction(async (tx) => {
-    const [targetUser] = await tx
-      .select({
-        contractingRole: user.contractingRole,
-        id: user.id,
-        equipmentRole: user.role,
-      })
-      .from(user)
-      .where(eq(user.id, userId))
-      .for('update');
+    const [targetUser] =
+      userId === undefined
+        ? []
+        : await tx
+            .select({
+              contractingRole: user.contractingRole,
+              id: user.id,
+              equipmentRole: user.role,
+            })
+            .from(user)
+            .where(eq(user.id, userId))
+            .for('update');
 
-    if (!targetUser) {
-      return { allowed: true };
-    }
-
-    const currentEquipmentRole = EquipmentRole.nullable().parse(targetUser.equipmentRole);
-    const currentContractingRole = ContractingRole.nullable().parse(targetUser.contractingRole);
+    const currentEquipmentRole = EquipmentRole.nullable().parse(targetUser?.equipmentRole ?? null);
+    const currentContractingRole = ContractingRole.nullable().parse(targetUser?.contractingRole ?? null);
     const nextEquipmentRole = equipmentRole === undefined ? currentEquipmentRole : equipmentRole;
     const nextContractingRole = contractingRole === undefined ? currentContractingRole : contractingRole;
 
@@ -359,10 +363,14 @@ export async function canAssignUserRoleSlots({
       return { allowed: false, reason: 'super-admin-spans-contracting' };
     }
 
+    if (!targetUser) {
+      return { allowed: true };
+    }
+
     if (equipmentRole !== undefined && currentEquipmentRole === 'bay-operator') {
       const openBayOperatorAssignmentBayNames = await listOpenBayOperatorAssignmentBayNames({
         db: tx,
-        userId,
+        userId: targetUser.id,
       });
 
       if (openBayOperatorAssignmentBayNames.length > 0) {
@@ -387,7 +395,7 @@ export async function canAssignUserRoleSlots({
       .orderBy(asc(user.id))
       .for('update');
 
-    if (adminRows.length <= 1 && adminRows.some((adminUser) => adminUser.id === userId)) {
+    if (adminRows.length <= 1 && adminRows.some((adminUser) => adminUser.id === targetUser.id)) {
       return { allowed: false, reason: 'last-admin' };
     }
 

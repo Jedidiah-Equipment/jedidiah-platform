@@ -1,4 +1,5 @@
-import { DateIso, DateOnlyIso, JobMaterialVarianceResult } from '@pkg/schema';
+import { DateIso, DateOnlyIso } from '@pkg/schema';
+import { JobMaterialVarianceResult } from '@pkg/schema/equipment';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 

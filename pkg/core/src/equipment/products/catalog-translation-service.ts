@@ -1,12 +1,5 @@
-import {
-  type DatabaseTransaction,
-  type Db,
-  notRemoved,
-  productAssemblies,
-  productRanges,
-  productRangeVariants,
-  products,
-} from '@pkg/db';
+import { type DatabaseTransaction, type Db, notRemoved } from '@pkg/db';
+import { productAssemblies, productRanges, productRangeVariants, products } from '@pkg/db/equipment';
 import {
   type CatalogSourceHashes,
   type CatalogTranslationKey,
@@ -20,30 +13,30 @@ import {
   catalogTranslationNeedsAi,
   catalogTranslationState,
   parseCatalogTranslationKey,
-} from '@pkg/domain';
-import {
-  type CatalogProductNeedsReviewField,
-  type CatalogProductRangeNeedsReviewField,
-  type CatalogProductRangeTranslation,
-  type CatalogProductRangeTranslationPatchInput,
-  type CatalogProductRangeVariantNeedsReviewField,
-  type CatalogProductTranslation,
-  type CatalogProductTranslationPatchInput,
-  type CatalogTranslationEnvelope,
-  type CatalogTranslationNeedsReviewItem,
-  type CatalogTranslationStatus,
-  TRANSLATED_LOCALE,
-  type TranslatableAssembly,
-  type TranslatableProductFields,
-  type TranslatableProductRangeFields,
-  type TranslatableProductRangeVariantFields,
-} from '@pkg/schema';
+} from '@pkg/domain/equipment';
+import { TRANSLATED_LOCALE } from '@pkg/schema';
+import type {
+  CatalogProductNeedsReviewField,
+  CatalogProductRangeNeedsReviewField,
+  CatalogProductRangeTranslation,
+  CatalogProductRangeTranslationPatchInput,
+  CatalogProductRangeVariantNeedsReviewField,
+  CatalogProductTranslation,
+  CatalogProductTranslationPatchInput,
+  CatalogTranslationEnvelope,
+  CatalogTranslationNeedsReviewItem,
+  CatalogTranslationStatus,
+  TranslatableAssembly,
+  TranslatableProductFields,
+  TranslatableProductRangeFields,
+  TranslatableProductRangeVariantFields,
+} from '@pkg/schema/equipment';
 import { and, asc, eq, sql } from 'drizzle-orm';
 import { ProductRangeNotFoundError } from '../product-ranges/product-range-errors.js';
 
 import { ProductNotFoundError } from './product-errors.js';
 
-export type { CatalogTranslationState } from '@pkg/domain';
+export type { CatalogTranslationState } from '@pkg/domain/equipment';
 
 export type ProductCatalogTranslation = TranslatableProductFields & { assemblies: TranslatableAssembly[] };
 export type ProductRangeCatalogTranslation = TranslatableProductRangeFields;

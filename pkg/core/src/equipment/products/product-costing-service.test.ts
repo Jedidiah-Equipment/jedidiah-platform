@@ -1,5 +1,6 @@
-import { auditEvents, parts, supplier, user } from '@pkg/db';
-import type { ProductCreateInput, ProductUpdateInput } from '@pkg/schema';
+import { auditEvents, user } from '@pkg/db';
+import { parts, supplier } from '@pkg/db/equipment';
+import type { ProductCreateInput, ProductUpdateInput } from '@pkg/schema/equipment';
 import { and, eq } from 'drizzle-orm';
 import { describe, expect } from 'vitest';
 import { postAdjustment } from '../inventory/stock-movement-service.js';

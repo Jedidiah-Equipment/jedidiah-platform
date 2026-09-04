@@ -1,11 +1,11 @@
-import { deriveMovementWarnings, type JobMovementFacts } from '@pkg/domain';
+import { deriveMovementWarnings, type JobMovementFacts } from '@pkg/domain/equipment';
 import type {
   JobPickerOption,
   JobStockMovementType,
   JobStockRow,
   StockMovementWarningCode,
   StockOnHandRow,
-} from '@pkg/schema';
+} from '@pkg/schema/equipment';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';

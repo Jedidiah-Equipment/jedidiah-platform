@@ -1,4 +1,5 @@
-import type { JobStockMovementType, PartStockActions, PartStockActionVerdict, UUID } from '@pkg/schema';
+import type { UUID } from '@pkg/schema';
+import type { JobStockMovementType, PartStockActions, PartStockActionVerdict } from '@pkg/schema/equipment';
 import { PartNotBuiltError } from '../parts/part-bom-errors.js';
 import { PurchaseOrderPartNotPurchasableError } from '../purchase-orders/purchase-order-errors.js';
 import { BuildLinearPartError, BuildPeriodicPartError } from './build-errors.js';

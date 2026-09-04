@@ -5,7 +5,7 @@ import {
   type PartBulkImportRow as PartBulkImportRowValue,
   PartUnitOfMeasure,
   type PartUnitOfMeasure as PartUnitOfMeasureValue,
-} from '@pkg/schema';
+} from '@pkg/schema/equipment';
 import Papa from 'papaparse';
 
 import { downloadCsv } from '@/utils/csv-export.js';

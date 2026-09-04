@@ -1,4 +1,5 @@
-import { DateOnlyIsoString, type Job, JobDescription, JobUpdateInput, type UUID } from '@pkg/schema';
+import { DateOnlyIsoString, type UUID } from '@pkg/schema';
+import { type Job, JobDescription, JobUpdateInput } from '@pkg/schema/equipment';
 import { z } from 'zod';
 
 import { emptyStringOr } from '@/components/form/utils/form-schema.js';

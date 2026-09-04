@@ -1,4 +1,5 @@
-import type { DateOnlyIso, ProjectedWorkJobSlot } from '@pkg/schema';
+import type { DateOnlyIso } from '@pkg/schema';
+import type { ProjectedWorkJobSlot } from '@pkg/schema/equipment';
 
 import { countWorkingDaysBetween, type WorkingCalendar } from './working-calendar.js';
 

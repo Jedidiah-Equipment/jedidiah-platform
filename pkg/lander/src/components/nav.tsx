@@ -1,4 +1,4 @@
-import { contactNumberE164, formatContactNumber, JEDIDIAH_LOCATION } from '@pkg/domain';
+import { contactNumberE164, formatContactNumber, JEDIDIAH_LOCATION } from '@pkg/domain/equipment';
 import { IconMapPin, IconMenu2, IconPhone, IconSwitchHorizontal, IconX } from '@tabler/icons-react';
 import { Link, useMatch, useMatchRoute, useRouterState } from '@tanstack/react-router';
 import { useState } from 'react';

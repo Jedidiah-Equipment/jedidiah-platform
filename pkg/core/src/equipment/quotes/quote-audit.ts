@@ -1,6 +1,6 @@
-import type { quotes } from '@pkg/db';
-import { quoteWorkItemName } from '@pkg/domain';
-import { type Department, formatQuoteCode, QuoteCode } from '@pkg/schema';
+import type { quotes } from '@pkg/db/equipment';
+import { quoteWorkItemName } from '@pkg/domain/equipment';
+import { type Department, formatQuoteCode, QuoteCode } from '@pkg/schema/equipment';
 
 import { defineAuditDescriptor } from '../audit/audit-service.js';
 import type { QuoteSelectedAssemblyRow } from './quote-selected-assemblies.js';

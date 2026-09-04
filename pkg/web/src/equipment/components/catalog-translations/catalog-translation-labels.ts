@@ -2,7 +2,7 @@ import type {
   CatalogProductRangeTranslation,
   CatalogProductTranslation,
   TranslatableProductRangeVariantFields,
-} from '@pkg/schema';
+} from '@pkg/schema/equipment';
 
 export const PRODUCT_TRANSLATION_FIELD_LABELS = {
   category: 'Category',

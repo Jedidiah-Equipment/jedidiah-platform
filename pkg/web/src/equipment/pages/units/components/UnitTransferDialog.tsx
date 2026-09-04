@@ -1,6 +1,6 @@
 import { useDebouncedValue } from '@mantine/hooks';
 import { getPlantDateNow } from '@pkg/domain';
-import type { ProductUnitDetail } from '@pkg/schema';
+import type { ProductUnitDetail } from '@pkg/schema/equipment';
 import { useMutation } from '@tanstack/react-query';
 import type React from 'react';
 import { useState } from 'react';

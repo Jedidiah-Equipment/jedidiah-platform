@@ -4,7 +4,7 @@ import type {
   QuoteSelectedAssembly,
   QuoteSelectedAssemblyInput,
   QuoteWorkItemInput,
-} from '@pkg/schema';
+} from '@pkg/schema/equipment';
 
 import { computeAdditionalDeliveryPrice, priceQuoteWithCatalog } from './quote-pricing.js';
 

@@ -1,5 +1,6 @@
-import type { Bay, UUID } from '@pkg/schema';
+import type { UUID } from '@pkg/schema';
 import { DateOnlyIsoString } from '@pkg/schema';
+import type { Bay } from '@pkg/schema/equipment';
 import { IconAlertTriangle } from '@tabler/icons-react';
 import { useQuery } from '@tanstack/react-query';
 import type React from 'react';

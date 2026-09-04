@@ -1,8 +1,9 @@
-import type { customers, jobs, products, productUnits, quotes, user } from '@pkg/db';
+import type { user } from '@pkg/db';
+import type { customers, jobs, products, productUnits, quotes } from '@pkg/db/equipment';
+import { DateOnlyIso } from '@pkg/schema';
 import {
   type Assembly,
   type CompetingAllocationQuote,
-  DateOnlyIso,
   JobCode,
   type PriorityQuote,
   type ProductBay,
@@ -13,7 +14,7 @@ import {
   type QuoteProductSummaryFacts,
   QuoteSummary,
   UpcomingDeliveryQuote,
-} from '@pkg/schema';
+} from '@pkg/schema/equipment';
 
 import { narrowQuoteOffering } from './quote-offering.js';
 import { mapQuoteSelectedAssembly, type QuoteSelectedAssemblyRow } from './quote-selected-assemblies.js';

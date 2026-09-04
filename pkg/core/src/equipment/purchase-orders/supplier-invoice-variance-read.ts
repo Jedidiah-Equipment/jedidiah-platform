@@ -1,6 +1,6 @@
 import type { Db } from '@pkg/db';
-import type { InvoicePriceVarianceResult } from '@pkg/schema';
-import { InvoicePriceVarianceResult as InvoicePriceVarianceResultSchema } from '@pkg/schema';
+import type { InvoicePriceVarianceResult } from '@pkg/schema/equipment';
+import { InvoicePriceVarianceResult as InvoicePriceVarianceResultSchema } from '@pkg/schema/equipment';
 
 import {
   loadInvoiceDocuments,

@@ -1,8 +1,8 @@
+import { DateOnlyIso } from '@pkg/schema';
 import {
-  DateOnlyIso,
   type UpcomingDeliveryQuote,
   UpcomingDeliveryQuote as UpcomingDeliveryQuoteSchema,
-} from '@pkg/schema';
+} from '@pkg/schema/equipment';
 import { describe, expect, it } from 'vitest';
 
 import { renderWithRouter } from '@/test/router-harness.js';

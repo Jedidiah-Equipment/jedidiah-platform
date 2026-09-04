@@ -1,9 +1,8 @@
+import { auditEvents, type Db, user } from '@pkg/db';
 import {
   assemblyOverrides,
   assemblyParts,
-  auditEvents,
   customers,
-  type Db,
   documents,
   jobBayOperatorAssignments,
   jobBays,
@@ -24,13 +23,13 @@ import {
   quoteWorkItemParts,
   quoteWorkItems,
   supplier,
-  user,
-} from '@pkg/db';
-import { addDateOnlyDays, getPlantDateNow, resolveProductUnitOwnerId } from '@pkg/domain';
+} from '@pkg/db/equipment';
+import { addDateOnlyDays, getPlantDateNow } from '@pkg/domain';
+import { resolveProductUnitOwnerId } from '@pkg/domain/equipment';
+import { DateOnlyIso } from '@pkg/schema';
 import {
   AddBayCalendarExceptionInput,
   type BrochurePdfRenderer,
-  DateOnlyIso,
   type Department,
   JobBayCreateInput,
   JobBayRenameInput,
@@ -44,14 +43,14 @@ import {
   type QuoteStatus,
   QuoteUpdateInput,
   ToggleOffDayInput,
-} from '@pkg/schema';
+} from '@pkg/schema/equipment';
 import { and, asc, eq } from 'drizzle-orm';
 import { afterEach, beforeEach, describe, expect, vi } from 'vitest';
+import { InMemoryStorageAdapter } from '../../storage/in-memory-storage-adapter.js';
 import { getJobCancellationPlan } from '../cancellation/cancellation-plan-service.js';
 import { deleteProductDocument } from '../products/product-service.js';
 import { updateQuote } from '../quotes/quote-service.js';
 import { createTester } from '../test/create-tester.js';
-import { InMemoryStorageAdapter } from '../test/in-memory-storage-adapter.js';
 import { createProductRangeFixture } from '../test/product-range-fixtures.js';
 import { getProductUnit } from '../units/product-unit-read-service.js';
 import { removeProductUnit, transferProductUnitOwnership } from '../units/product-unit-service.js';

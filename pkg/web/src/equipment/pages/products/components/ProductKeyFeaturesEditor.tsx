@@ -1,7 +1,7 @@
 import { closestCenter, DndContext } from '@dnd-kit/core';
 import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
-import { PRODUCT_KEY_FEATURES_MAX_COUNT, ProductKeyFeature } from '@pkg/schema';
+import { PRODUCT_KEY_FEATURES_MAX_COUNT, ProductKeyFeature } from '@pkg/schema/equipment';
 import { IconPlus } from '@tabler/icons-react';
 import type React from 'react';
 import { useSortableFieldRows } from '@/components/form/hooks/use-sortable-field-rows.js';

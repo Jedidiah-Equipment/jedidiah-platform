@@ -1,15 +1,6 @@
-import {
-  customers,
-  type Db,
-  eq,
-  jobs,
-  products,
-  productUnitOwnershipTransfers,
-  productUnits,
-  quotes,
-  user,
-} from '@pkg/db';
-import { formatJobCode } from '@pkg/schema';
+import { type Db, eq, user } from '@pkg/db';
+import { customers, jobs, products, productUnitOwnershipTransfers, productUnits, quotes } from '@pkg/db/equipment';
+import { formatJobCode } from '@pkg/schema/equipment';
 import { describe, expect } from 'vitest';
 import { createProductRangeFixture } from '@/equipment/test/product-range-fixtures.js';
 import { createActorUser } from '@/test/actor-user.js';

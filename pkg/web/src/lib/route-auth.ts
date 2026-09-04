@@ -1,5 +1,5 @@
-import { type Business, getPermissionBusiness, hasBusinessAccess, hasPermission } from '@pkg/domain';
-import type { AppPermission } from '@pkg/schema';
+import { type Business, defaultBusiness, getPermissionBusiness, hasBusinessAccess, hasPermission } from '@pkg/domain';
+import type { AppPermission, UserAccessSummary } from '@pkg/schema';
 import { redirect } from '@tanstack/react-router';
 
 import type { RouterContext } from '@/app/router-context.js';
@@ -33,16 +33,25 @@ export async function getRouteAccess(context: RouterContext) {
   return context.queryClient.ensureQueryData(context.trpc.auth.access.queryOptions(undefined));
 }
 
-const BUSINESS_HOME = {
+export const BUSINESS_HOME = {
   contracting: '/contracting',
   equipment: '/equipment/dashboard',
 } as const satisfies Record<Business, string>;
+
+type BusinessAccess = Pick<UserAccessSummary, 'contractingRole' | 'equipmentRole'> | null | undefined;
+
+// Sign-in eligibility keeps a session with no business out; `/login` is where such a session belongs anyway.
+export function businessHomeFor(access: BusinessAccess) {
+  const business = defaultBusiness(access);
+
+  return business ? BUSINESS_HOME[business] : '/login';
+}
 
 export async function requireRouteBusinessAccess(context: RouterContext, business: Business) {
   const access = await getRouteAccess(context);
 
   if (!hasBusinessAccess(access, business)) {
-    throw redirect({ to: BUSINESS_HOME[business === 'equipment' ? 'contracting' : 'equipment'] });
+    throw redirect({ to: businessHomeFor(access) });
   }
 
   return access;
@@ -52,7 +61,9 @@ export async function requireRoutePermission(context: RouterContext, permission:
   const access = await getRouteAccess(context);
 
   if (!hasPermission(access, permission)) {
-    throw redirect({ to: BUSINESS_HOME[getPermissionBusiness(permission)] });
+    const business = getPermissionBusiness(permission);
+
+    throw redirect({ to: hasBusinessAccess(access, business) ? BUSINESS_HOME[business] : businessHomeFor(access) });
   }
 
   return access;

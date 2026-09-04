@@ -1,6 +1,6 @@
 import type { LanguageModelV4GenerateResult } from '@ai-sdk/provider';
-import { type CatalogSourceHashes, catalogSourceHashes } from '@pkg/domain';
-import type { CatalogTranslationEnvelope } from '@pkg/schema';
+import { type CatalogSourceHashes, catalogSourceHashes } from '@pkg/domain/equipment';
+import type { CatalogTranslationEnvelope } from '@pkg/schema/equipment';
 import type { MockLanguageModelV4 } from 'ai/test';
 import { expect } from 'vitest';
 

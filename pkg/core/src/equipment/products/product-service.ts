@@ -5,27 +5,29 @@ import {
   createGlobalSearchCondition,
   type DatabaseTransaction,
   type Db,
-  documents,
   getForeignKeyViolationConstraint,
   getPaginationQueryOptions,
   getSortOrder,
   getUniqueViolationConstraint,
-  jobBays,
   notRemoved,
+  type StoredFile,
+  user,
+  withPagination,
+} from '@pkg/db';
+import {
+  documents,
+  jobBays,
   type ProductImageStore,
   productBays,
   productRanges,
   productRangeVariants,
   products,
-  type StoredFile,
-  user,
-  withPagination,
-} from '@pkg/db';
-import { JOB_DEPARTMENT_PIPELINE, validateDocumentMetadata, WORK_ITEM_DEPARTMENTS } from '@pkg/domain';
+} from '@pkg/db/equipment';
+import { JOB_DEPARTMENT_PIPELINE, validateDocumentMetadata, WORK_ITEM_DEPARTMENTS } from '@pkg/domain/equipment';
+import type { AuthId, Logger, UUID } from '@pkg/schema';
+import { getNextCursor } from '@pkg/schema';
 import type {
   Assembly,
-  AuthId,
-  Logger,
   ProductBay,
   ProductBayInput,
   ProductCreateInput,
@@ -38,10 +40,8 @@ import type {
   ProductRangeOption,
   ProductRangeVariantOption,
   ProductUpdateInput,
-  UUID,
-} from '@pkg/schema';
+} from '@pkg/schema/equipment';
 import {
-  getNextCursor,
   Product,
   ProductBay as ProductBaySchema,
   ProductCurrencyCode,
@@ -50,7 +50,7 @@ import {
   ProductImages,
   ProductRangeOption as ProductRangeOptionSchema,
   ProductRangeVariantOption as ProductRangeVariantOptionSchema,
-} from '@pkg/schema';
+} from '@pkg/schema/equipment';
 import { and, asc, eq, inArray, type SQL, sql } from 'drizzle-orm';
 import { format } from 'sql-formatter';
 import type { StorageAdapter } from '../../storage/storage-adapter.js';

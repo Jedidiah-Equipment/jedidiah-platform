@@ -1,5 +1,5 @@
 import { formatCurrency } from '@pkg/domain';
-import type { StaleSentQuote } from '@pkg/schema';
+import type { StaleSentQuote } from '@pkg/schema/equipment';
 import { useQuery } from '@tanstack/react-query';
 import type React from 'react';
 

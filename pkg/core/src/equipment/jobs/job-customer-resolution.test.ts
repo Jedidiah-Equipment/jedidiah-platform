@@ -1,5 +1,6 @@
-import { customers, type Db, jobs, products, productUnitOwnershipTransfers, productUnits, quotes, user } from '@pkg/db';
-import { JobListInput } from '@pkg/schema';
+import { type Db, user } from '@pkg/db';
+import { customers, jobs, products, productUnitOwnershipTransfers, productUnits, quotes } from '@pkg/db/equipment';
+import { JobListInput } from '@pkg/schema/equipment';
 import { describe, expect } from 'vitest';
 
 import { createTester } from '../test/create-tester.js';

@@ -8,8 +8,9 @@ import {
   ProductRangeNotFoundError,
   patchCatalogProductRangeTranslation,
   patchCatalogProductTranslation,
-} from '@pkg/core';
-import type { CatalogTranslationKey } from '@pkg/domain';
+} from '@pkg/core/equipment';
+import type { CatalogTranslationKey } from '@pkg/domain/equipment';
+import { UUID } from '@pkg/schema';
 import {
   CatalogProductRangeTranslation,
   CatalogProductRangeTranslationPatchInput,
@@ -17,59 +18,58 @@ import {
   CatalogProductTranslationPatchInput,
   CatalogTranslationNeedsReviewList,
   CatalogTranslationStatus,
-  UUID,
-} from '@pkg/schema';
+} from '@pkg/schema/equipment';
 import { z } from 'zod';
 
 import type { TranslationMarker } from '../../../equipment/catalog-translations/translation-scheduler.js';
 import { type CoreErrorMapping, mapKnownCoreError } from '../../../trpc/errors.js';
 import { authorizedProcedure, router } from '../../../trpc/init.js';
 
-export const catalogTranslationsRouter = router({
-  getProduct: authorizedProcedure('equipment_product:update')
-    .input(z.object({ id: UUID }))
-    .output(CatalogProductTranslation)
-    .query(async ({ ctx, input }) =>
-      mapCatalogTranslationErrors(() => getCatalogProductTranslation({ db: ctx.db, id: input.id })),
-    ),
-
-  updateProduct: authorizedProcedure('equipment_product:update')
-    .input(CatalogProductTranslationPatchInput)
-    .output(CatalogProductTranslation)
-    .mutation(async ({ ctx, input }) =>
-      patchAndRequeue(ctx.catalogTranslationScheduler, () => patchCatalogProductTranslation({ db: ctx.db, input })),
-    ),
-
-  getRange: authorizedProcedure('equipment_product_range:update')
-    .input(z.object({ id: UUID }))
-    .output(CatalogProductRangeTranslation)
-    .query(async ({ ctx, input }) =>
-      mapCatalogTranslationErrors(() => getCatalogProductRangeTranslation({ db: ctx.db, id: input.id })),
-    ),
-
-  updateRange: authorizedProcedure('equipment_product_range:update')
-    .input(CatalogProductRangeTranslationPatchInput)
-    .output(CatalogProductRangeTranslation)
-    .mutation(async ({ ctx, input }) =>
-      patchAndRequeue(ctx.catalogTranslationScheduler, () =>
-        patchCatalogProductRangeTranslation({ db: ctx.db, input }),
+export function createCatalogTranslationsRouter(catalogTranslationScheduler: TranslationMarker) {
+  return router({
+    getProduct: authorizedProcedure('equipment_product:update')
+      .input(z.object({ id: UUID }))
+      .output(CatalogProductTranslation)
+      .query(async ({ ctx, input }) =>
+        mapCatalogTranslationErrors(() => getCatalogProductTranslation({ db: ctx.db, id: input.id })),
       ),
-    ),
 
-  translationStatus: authorizedProcedure('equipment_product_range:update')
-    .output(CatalogTranslationStatus)
-    .query(({ ctx }) => getCatalogTranslationStatus({ db: ctx.db })),
+    updateProduct: authorizedProcedure('equipment_product:update')
+      .input(CatalogProductTranslationPatchInput)
+      .output(CatalogProductTranslation)
+      .mutation(async ({ ctx, input }) =>
+        patchAndRequeue(catalogTranslationScheduler, () => patchCatalogProductTranslation({ db: ctx.db, input })),
+      ),
 
-  listNeedsReview: authorizedProcedure('equipment_product_range:update')
-    .output(CatalogTranslationNeedsReviewList)
-    .query(({ ctx }) => listCatalogTranslationsNeedingReview({ db: ctx.db })),
+    getRange: authorizedProcedure('equipment_product_range:update')
+      .input(z.object({ id: UUID }))
+      .output(CatalogProductRangeTranslation)
+      .query(async ({ ctx, input }) =>
+        mapCatalogTranslationErrors(() => getCatalogProductRangeTranslation({ db: ctx.db, id: input.id })),
+      ),
 
-  retranslateStale: authorizedProcedure('equipment_product_range:update').mutation(async ({ ctx }) => {
-    const keys = await listCatalogTranslationKeysNeedingTranslation({ db: ctx.db });
-    for (const key of keys) ctx.catalogTranslationScheduler.markNow(key);
-    return { queued: keys.length };
-  }),
-});
+    updateRange: authorizedProcedure('equipment_product_range:update')
+      .input(CatalogProductRangeTranslationPatchInput)
+      .output(CatalogProductRangeTranslation)
+      .mutation(async ({ ctx, input }) =>
+        patchAndRequeue(catalogTranslationScheduler, () => patchCatalogProductRangeTranslation({ db: ctx.db, input })),
+      ),
+
+    translationStatus: authorizedProcedure('equipment_product_range:update')
+      .output(CatalogTranslationStatus)
+      .query(({ ctx }) => getCatalogTranslationStatus({ db: ctx.db })),
+
+    listNeedsReview: authorizedProcedure('equipment_product_range:update')
+      .output(CatalogTranslationNeedsReviewList)
+      .query(({ ctx }) => listCatalogTranslationsNeedingReview({ db: ctx.db })),
+
+    retranslateStale: authorizedProcedure('equipment_product_range:update').mutation(async ({ ctx }) => {
+      const keys = await listCatalogTranslationKeysNeedingTranslation({ db: ctx.db });
+      for (const key of keys) catalogTranslationScheduler.markNow(key);
+      return { queued: keys.length };
+    }),
+  });
+}
 
 // A field handed back to the AI is left with no value, so its translation unit is queued immediately
 // rather than waiting for the scheduler's debounce.

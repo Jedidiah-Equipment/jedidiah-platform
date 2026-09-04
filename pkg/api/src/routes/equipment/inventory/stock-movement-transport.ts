@@ -1,4 +1,4 @@
-import { type StockMovement, StockMovementCostFields } from '@pkg/schema';
+import { type StockMovement, StockMovementCostFields } from '@pkg/schema/equipment';
 import {
   canReadInventoryCosts,
   type InventoryCostAccess,

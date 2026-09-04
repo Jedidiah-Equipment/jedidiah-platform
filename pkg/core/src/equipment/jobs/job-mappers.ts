@@ -1,5 +1,5 @@
-import type { jobs } from '@pkg/db';
-import { Job } from '@pkg/schema';
+import type { jobs } from '@pkg/db/equipment';
+import { Job } from '@pkg/schema/equipment';
 
 export type JobRow = typeof jobs.$inferSelect;
 

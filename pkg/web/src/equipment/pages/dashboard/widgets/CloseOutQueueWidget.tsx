@@ -1,4 +1,4 @@
-import { STALE_CLOSE_OUT_DAYS } from '@pkg/domain';
+import { STALE_CLOSE_OUT_DAYS } from '@pkg/domain/equipment';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import type React from 'react';

@@ -1,4 +1,4 @@
-import type { JobDetail } from '@pkg/schema';
+import type { JobDetail } from '@pkg/schema/equipment';
 import { describe, expect, it } from 'vitest';
 
 import { getJobAssemblyAndWorkRows } from './job-assembly-and-work-rows';

@@ -1,21 +1,19 @@
+import { cancelledBadgeColorClassNames, formatDate, getPlantDateNow } from '@pkg/domain';
 import {
-  cancelledBadgeColorClassNames,
   departmentLabels,
-  formatDate,
   getJobDisplayName,
   getJobOfferingKind,
   getJobWorkLabel,
-  getPlantDateNow,
   isJobCancelled,
   JOB_DOCUMENT_TYPE_LABELS,
-} from '@pkg/domain';
+} from '@pkg/domain/equipment';
+import type { UUID } from '@pkg/schema';
 import {
   type JobDetail,
   type JobUpdateInput,
   JobUploadDocumentType,
   type JobVisibleDocument,
-  type UUID,
-} from '@pkg/schema';
+} from '@pkg/schema/equipment';
 import { IconActivity, IconInfoCircle, IconLoader2, IconUpload } from '@tabler/icons-react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
@@ -39,12 +37,12 @@ import { DocumentCardList } from '@/equipment/components/documents/DocumentCardL
 import { GiveFeedbackButton } from '@/equipment/components/feedback/GiveFeedbackButton.js';
 import { OfferingThumbnail } from '@/equipment/components/thumbnail/OfferingThumbnail.js';
 import { useQueryInvalidation } from '@/equipment/hooks/use-query-invalidation.js';
+import { JobVarianceTab } from '@/equipment/pages/inventory/job-variance/components/JobVarianceTab.js';
 import { JOB_DOCUMENT_ACCEPT, uploadJobPurchaseOrder, validateSelectedFile } from '@/equipment/utils/document.js';
 import { useCan } from '@/hooks/use-access.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { cn } from '@/lib/utils.js';
-import { JobVarianceTab } from '../../inventory/job-variance/components/JobVarianceTab.js';
 import { CustomJobWorkItems } from './CustomJobWorkItems.js';
 import { JobActivityFeed } from './JobActivityFeed.js';
 import { JobCancellationAction } from './JobCancellationAction.js';

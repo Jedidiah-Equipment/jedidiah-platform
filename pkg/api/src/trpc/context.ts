@@ -1,17 +1,16 @@
 import type { StorageAdapter } from '@pkg/core';
 import { db } from '@pkg/db';
-import { createUserAccessSummary, parseRoleSlots } from '@pkg/domain';
+import { createUserAccessSummaryForUser } from '@pkg/domain';
 import type { AppEnv, Changelog, UserAccessSummary } from '@pkg/schema';
 import type { CreateFastifyContextOptions } from '@trpc/server/adapters/fastify';
 
+import type { Auth } from '../auth/auth.js';
 import { type AppSession, getSessionFromHeaders } from '../auth/session.js';
-import type { TranslationMarker } from '../equipment/catalog-translations/translation-scheduler.js';
 
 /** Reads the bundled Changelog files. Injected so the changelog router can be tested without the filesystem. */
 export type ChangelogLoader = () => Changelog[];
 
 export type ContextDependencies = {
-  catalogTranslationScheduler: TranslationMarker;
   appEnv: AppEnv;
   changelogLoader: ChangelogLoader;
   storage: StorageAdapter;
@@ -20,7 +19,7 @@ export type ContextDependencies = {
 export type Context = {
   access: UserAccessSummary | null;
   appEnv: AppEnv;
-  catalogTranslationScheduler: TranslationMarker;
+  auth: Auth;
   changelogLoader: ChangelogLoader;
   db: typeof db;
   log: CreateFastifyContextOptions['req']['log'];
@@ -30,18 +29,14 @@ export type Context = {
 
 export function createContextFactory(dependencies: ContextDependencies) {
   return async function createContext({ req }: CreateFastifyContextOptions): Promise<Context> {
-    const session = await getSessionFromHeaders(req.headers);
-    const access: UserAccessSummary | null = session
-      ? createUserAccessSummary({
-          ...parseRoleSlots(session.user),
-          userId: session.user.id,
-        })
-      : null;
+    const auth = req.server.auth;
+    const session = await getSessionFromHeaders(req.headers, auth.api);
+    const access = session ? createUserAccessSummaryForUser(session.user) : null;
 
     return {
       access,
       appEnv: dependencies.appEnv,
-      catalogTranslationScheduler: dependencies.catalogTranslationScheduler,
+      auth,
       changelogLoader: dependencies.changelogLoader,
       db,
       log: req.log,

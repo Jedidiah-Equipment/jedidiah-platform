@@ -1,4 +1,4 @@
-import type { Department, WorkItemDepartment } from '@pkg/schema';
+import type { Department, WorkItemDepartment } from '@pkg/schema/equipment';
 
 import { quoteDepartmentLabels } from '../departments.js';
 
@@ -14,7 +14,7 @@ export const WORK_ITEM_DEPARTMENT_RATES = {
   workshop: 320,
 } as const satisfies Record<WorkItemDepartment, number>;
 
-export { WORK_ITEM_DEPARTMENTS, type WorkItemDepartment } from '@pkg/schema';
+export { WORK_ITEM_DEPARTMENTS, type WorkItemDepartment } from '@pkg/schema/equipment';
 
 export function isWorkItemDepartment(department: Department): department is WorkItemDepartment {
   return department in WORK_ITEM_DEPARTMENT_RATES;

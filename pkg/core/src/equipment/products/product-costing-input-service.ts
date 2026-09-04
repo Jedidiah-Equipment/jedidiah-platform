@@ -1,6 +1,8 @@
-import { type DatabaseTransaction, type Db, parts, productLaborHours, productMaterialLines } from '@pkg/db';
-import { WORK_ITEM_DEPARTMENTS } from '@pkg/domain';
-import type { ProductLaborHour, ProductMaterialLine, UUID } from '@pkg/schema';
+import type { DatabaseTransaction, Db } from '@pkg/db';
+import { parts, productLaborHours, productMaterialLines } from '@pkg/db/equipment';
+import { WORK_ITEM_DEPARTMENTS } from '@pkg/domain/equipment';
+import type { UUID } from '@pkg/schema';
+import type { ProductLaborHour, ProductMaterialLine } from '@pkg/schema/equipment';
 import { asc, eq, inArray } from 'drizzle-orm';
 import { ProductMaterialPartInvalidError } from './product-errors.js';
 

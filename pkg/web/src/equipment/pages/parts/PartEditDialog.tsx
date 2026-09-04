@@ -1,4 +1,4 @@
-import type { Part, Supplier } from '@pkg/schema';
+import type { Part, Supplier } from '@pkg/schema/equipment';
 import { useMutation } from '@tanstack/react-query';
 import type React from 'react';
 import { toast } from 'sonner';

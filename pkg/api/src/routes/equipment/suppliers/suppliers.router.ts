@@ -8,8 +8,9 @@ import {
   removeSupplier,
   type SupplierCoreError,
   updateSupplier,
-} from '@pkg/core';
-import { SupplierCreateInput, SupplierListInput, SupplierMergeInput, SupplierUpdateInput, UUID } from '@pkg/schema';
+} from '@pkg/core/equipment';
+import { UUID } from '@pkg/schema';
+import { SupplierCreateInput, SupplierListInput, SupplierMergeInput, SupplierUpdateInput } from '@pkg/schema/equipment';
 import { z } from 'zod';
 
 import { type CoreErrorMapping, mapKnownCoreError } from '../../../trpc/errors.js';

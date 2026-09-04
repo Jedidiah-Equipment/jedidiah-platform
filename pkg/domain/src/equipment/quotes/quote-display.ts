@@ -1,4 +1,4 @@
-import type { QuoteKind, QuoteProductSource, QuoteStatus } from '@pkg/schema';
+import type { QuoteKind, QuoteProductSource, QuoteStatus } from '@pkg/schema/equipment';
 
 import {
   type BadgeColorClassNames,

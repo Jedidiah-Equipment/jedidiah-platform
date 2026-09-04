@@ -1,5 +1,5 @@
-import { customers, jobs, quotes } from '@pkg/db';
-import type { InventoryJobOptionListInput } from '@pkg/schema';
+import { customers, jobs, quotes } from '@pkg/db/equipment';
+import type { InventoryJobOptionListInput } from '@pkg/schema/equipment';
 import { eq } from 'drizzle-orm';
 import { describe, expect } from 'vitest';
 

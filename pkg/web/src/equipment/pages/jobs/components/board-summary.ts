@@ -3,8 +3,9 @@ import {
   type SlotCalendarDays,
   summarizeSlotCalendarDays,
   type WorkingCalendar,
-} from '@pkg/domain';
-import type { DateOnlyIso, ProjectedBayQueue, ProjectedJobSlot } from '@pkg/schema';
+} from '@pkg/domain/equipment';
+import type { DateOnlyIso } from '@pkg/schema';
+import type { ProjectedBayQueue, ProjectedJobSlot } from '@pkg/schema/equipment';
 
 export function getSlotLabel(slot: ProjectedJobSlot): string {
   return slot.kind === 'idle' ? (slot.label ?? DEFAULT_IDLE_SLOT_LABEL) : slot.jobCode;

@@ -1,4 +1,4 @@
-import type { Product } from '@pkg/schema';
+import type { Product } from '@pkg/schema/equipment';
 import { useMutation } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import type React from 'react';

@@ -1,7 +1,8 @@
-import { isUserCoreError, renderUserBadge } from '@pkg/core';
+import { isUserCoreError, renderUserBadge } from '@pkg/core/equipment';
 import { db } from '@pkg/db';
-import { renderUserBadgesPdf } from '@pkg/pdf';
-import { AuthId, type UserBadgePdfRenderer } from '@pkg/schema';
+import { renderUserBadgesPdf } from '@pkg/pdf/equipment';
+import { AuthId } from '@pkg/schema';
+import type { UserBadgePdfRenderer } from '@pkg/schema/equipment';
 import type { FastifyInstance, FastifyReply } from 'fastify';
 import { z } from 'zod';
 

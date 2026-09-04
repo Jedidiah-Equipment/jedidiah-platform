@@ -1,31 +1,21 @@
-import {
-  creditNoteSettlements,
-  type DatabaseTransaction,
-  type Db,
-  documents,
-  parts,
-  purchaseOrders,
-  stockMovements,
-  supplier,
-  user,
-} from '@pkg/db';
+import { type DatabaseTransaction, type Db, user } from '@pkg/db';
+import { creditNoteSettlements, documents, parts, purchaseOrders, stockMovements, supplier } from '@pkg/db/equipment';
 import { diffDateOnlyDays, toPlantDateOnly } from '@pkg/domain';
+import type { AuthId, UUID } from '@pkg/schema';
+import { DateOnlyIso } from '@pkg/schema';
 import type {
-  AuthId,
   CreditNoteSettlementInput,
   PurchaseOrderDocumentListResult,
   PurchaseOrderDocumentRow,
   PurchaseOrderReturnListResult,
   ReturnsAwaitingCreditResult,
-  UUID,
-} from '@pkg/schema';
+} from '@pkg/schema/equipment';
 import {
-  DateOnlyIso,
   PurchaseOrderDocumentListResult as PurchaseOrderDocumentListResultSchema,
   PurchaseOrderDocumentMetadata,
   PurchaseOrderReturnListResult as PurchaseOrderReturnListResultSchema,
   ReturnsAwaitingCreditResult as ReturnsAwaitingCreditResultSchema,
-} from '@pkg/schema';
+} from '@pkg/schema/equipment';
 import { and, asc, eq, inArray, isNull } from 'drizzle-orm';
 
 import type { StorageAdapter } from '../../storage/storage-adapter.js';

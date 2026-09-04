@@ -1,14 +1,7 @@
-import {
-  assemblyOverrides,
-  assemblyParts,
-  type DatabaseTransaction,
-  type Db,
-  notRemoved,
-  type parts,
-  productAssemblies,
-  products,
-} from '@pkg/db';
-import type { Assembly, AssemblyInput, AssemblyKind, AssemblyNameListResult, UUID } from '@pkg/schema';
+import { type DatabaseTransaction, type Db, notRemoved } from '@pkg/db';
+import { assemblyOverrides, assemblyParts, type parts, productAssemblies, products } from '@pkg/db/equipment';
+import type { UUID } from '@pkg/schema';
+import type { Assembly, AssemblyInput, AssemblyKind, AssemblyNameListResult } from '@pkg/schema/equipment';
 import { asc, eq, inArray, sql } from 'drizzle-orm';
 
 import {

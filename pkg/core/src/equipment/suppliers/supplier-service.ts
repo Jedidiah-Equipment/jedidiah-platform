@@ -5,12 +5,11 @@ import {
   getPaginationQueryOptions,
   getSortOrder,
   getUniqueViolationConstraint,
-  parts,
-  purchaseOrders,
-  supplier,
 } from '@pkg/db';
+import { parts, purchaseOrders, supplier } from '@pkg/db/equipment';
+import type { AuthId, UUID } from '@pkg/schema';
+import { getNextCursor } from '@pkg/schema';
 import type {
-  AuthId,
   Supplier,
   SupplierCreateInput,
   SupplierListInput,
@@ -18,9 +17,8 @@ import type {
   SupplierMergeInput,
   SupplierMergePreview,
   SupplierUpdateInput,
-  UUID,
-} from '@pkg/schema';
-import { getNextCursor, Supplier as SupplierSchema } from '@pkg/schema';
+} from '@pkg/schema/equipment';
+import { Supplier as SupplierSchema } from '@pkg/schema/equipment';
 import { and, asc, eq, inArray, isNull, type SQL, sql } from 'drizzle-orm';
 
 import {

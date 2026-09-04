@@ -1,5 +1,6 @@
-import { departmentLabels, JOB_DEPARTMENT_PIPELINE } from '@pkg/domain';
-import type { Bay, Department, JobPickerOption, JobSummary, UUID } from '@pkg/schema';
+import { departmentLabels, JOB_DEPARTMENT_PIPELINE } from '@pkg/domain/equipment';
+import type { UUID } from '@pkg/schema';
+import type { Bay, Department, JobPickerOption, JobSummary } from '@pkg/schema/equipment';
 import type React from 'react';
 import type { ReactNode } from 'react';
 import { useMemo, useState } from 'react';

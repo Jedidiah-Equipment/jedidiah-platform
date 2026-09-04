@@ -1,5 +1,6 @@
 import { getPlantDateNow } from '@pkg/domain';
-import { DateOnlyIsoString, ProductUnitTransferInput, UUID } from '@pkg/schema';
+import { DateOnlyIsoString, UUID } from '@pkg/schema';
+import { ProductUnitTransferInput } from '@pkg/schema/equipment';
 import { z } from 'zod';
 
 import { requiredSelection } from '@/components/form/utils/form-schema.js';

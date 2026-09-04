@@ -1,8 +1,9 @@
-import { eq, productAssemblies, productRanges, products } from '@pkg/db';
+import { eq } from '@pkg/db';
+import { productAssemblies, productRanges, products } from '@pkg/db/equipment';
 import { describe, expect } from 'vitest';
 
-import { SITE_URL } from '../../lib/seo.js';
-import { test } from '../../test/tester.js';
+import { SITE_URL } from '@/lib/seo.js';
+import { test } from '@/test/tester.js';
 import { listSitemapEntries, renderSitemap, SITEMAP_STATIC_PATHS } from './sitemap-data.js';
 
 type Db = Parameters<typeof listSitemapEntries>[0];

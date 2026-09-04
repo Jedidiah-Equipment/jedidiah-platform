@@ -2,7 +2,8 @@ import { closestCenter, DndContext, type DragEndEvent, PointerSensor, useSensor,
 import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
 import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { createStableRowKeys, formatCurrency, getFormIssuesForField, hasFormIssuesWithin } from '@pkg/domain';
-import { AssemblyName, type Part, PriceDelta, UUID } from '@pkg/schema';
+import { PriceDelta, UUID } from '@pkg/schema';
+import { AssemblyName, type Part } from '@pkg/schema/equipment';
 import { IconChevronDown, IconGripVertical, IconPlus, IconTrash, IconWorld } from '@tabler/icons-react';
 import React, { useMemo } from 'react';
 import { RemoveEntityButton } from '@/components/common/RemoveEntityButton.js';

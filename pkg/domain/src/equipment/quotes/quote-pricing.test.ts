@@ -1,4 +1,4 @@
-import type { Assembly, OptionalAssembly } from '@pkg/schema';
+import type { Assembly, OptionalAssembly } from '@pkg/schema/equipment';
 import { describe, expect, it } from 'vitest';
 
 import {

@@ -1,5 +1,5 @@
-import { getJobDisplayName, getJobOfferingKind } from '@pkg/domain';
-import type { JobPickerOption } from '@pkg/schema';
+import { getJobDisplayName, getJobOfferingKind } from '@pkg/domain/equipment';
+import type { JobPickerOption } from '@pkg/schema/equipment';
 import { IconX } from '@tabler/icons-react';
 import { Button } from '@/components/ui/button.js';
 import { ComboboxTrigger } from '@/components/ui/combobox.js';

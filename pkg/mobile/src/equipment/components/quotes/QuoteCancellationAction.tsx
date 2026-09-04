@@ -1,5 +1,5 @@
-import { shouldOfferQuoteCancellation } from '@pkg/domain';
-import type { QuoteDetail } from '@pkg/schema';
+import { shouldOfferQuoteCancellation } from '@pkg/domain/equipment';
+import type { QuoteDetail } from '@pkg/schema/equipment';
 import { IconTrash } from '@tabler/icons-react-native';
 import { Pressable, View } from 'react-native';
 

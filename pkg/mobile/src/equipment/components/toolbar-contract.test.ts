@@ -19,7 +19,7 @@ const SIGNED_IN_PERMISSION_LOADING_SURFACES = {
 } as const;
 
 const SIGNED_IN_ROUTE_TOOLBARS = {
-  'contracting/index.tsx': toolbar('main', 'app/(protected)/contracting/index.tsx'),
+  'contracting/index.tsx': toolbar('main', 'app/(protected)/contracting/index.tsx', 'MainToolbar'),
   'equipment/(tabs)/(plan)/bays/[bayId].tsx': toolbar('secondary', 'src/equipment/components/bays/BayQueueScreen.tsx'),
   'equipment/(tabs)/(plan)/plan/index.tsx': toolbar('main', 'app/(protected)/equipment/(tabs)/(plan)/plan/index.tsx'),
   'equipment/(tabs)/activity/index.tsx': toolbar('main', 'app/(protected)/equipment/(tabs)/activity/index.tsx'),
@@ -121,7 +121,7 @@ describe('signed-in toolbar contract', () => {
   test('assembles signed-in toolbar chrome only in TopToolbar', () => {
     const files = [...listTsxFiles(join(MOBILE_DIR, 'app')), ...listTsxFiles(join(MOBILE_DIR, 'src'))];
     const toolbarFiles = new Set([
-      join(MOBILE_DIR, 'src/contracting/components/TopToolbar.tsx'),
+      join(MOBILE_DIR, 'src/components/TopToolbar.tsx'),
       join(MOBILE_DIR, 'src/equipment/components/TopToolbar.tsx'),
     ]);
     const offenders = files
@@ -139,16 +139,23 @@ describe('signed-in toolbar contract', () => {
 });
 
 type ToolbarKind = 'main' | 'secondary';
-type ToolbarContract = { kind: ToolbarKind; owner: string };
+type ToolbarComponent = 'MainTabToolbar' | 'MainToolbar' | 'SecondaryPageToolbar';
+type ToolbarContract = { component: ToolbarComponent; kind: ToolbarKind; owner: string };
 
-function toolbar(kind: ToolbarKind, owner: string): ToolbarContract {
-  return { kind, owner };
+// Equipment pages go through their business wrapper; Contracting has no business-specific actions yet, so
+// its pages render the shared frame directly.
+function toolbar(
+  kind: ToolbarKind,
+  owner: string,
+  component: ToolbarComponent = kind === 'main' ? 'MainTabToolbar' : 'SecondaryPageToolbar',
+): ToolbarContract {
+  return { component, kind, owner };
 }
 
 function expectToolbarKinds(contracts: Record<string, ToolbarContract>): void {
   for (const [route, contract] of Object.entries(contracts)) {
     const source = readFileSync(join(MOBILE_DIR, contract.owner), 'utf8');
-    const expected = contract.kind === 'main' ? '<MainTabToolbar' : '<SecondaryPageToolbar';
+    const expected = `<${contract.component}`;
     const unexpected = contract.kind === 'main' ? '<SecondaryPageToolbar' : '<MainTabToolbar';
 
     expect({ owner: contract.owner, route, usesExpectedToolbar: source.includes(expected) }).toEqual({

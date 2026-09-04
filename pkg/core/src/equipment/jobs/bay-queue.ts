@@ -1,5 +1,7 @@
-import { type DatabaseTransaction, jobBays, jobSlots } from '@pkg/db';
-import { getPlantDateNow, resolveInsertAtDatePlacement } from '@pkg/domain';
+import type { DatabaseTransaction } from '@pkg/db';
+import { jobBays, jobSlots } from '@pkg/db/equipment';
+import { getPlantDateNow } from '@pkg/domain';
+import { resolveInsertAtDatePlacement } from '@pkg/domain/equipment';
 import { DateOnlyIso, type UUID } from '@pkg/schema';
 import { and, asc, desc, eq, gt, gte, lt, sql } from 'drizzle-orm';
 

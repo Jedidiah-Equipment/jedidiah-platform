@@ -1,0 +1,14 @@
+{
+  "releasedAt": "2026-09-04T09:42:00.205Z",
+  "sections": [
+    {
+      "surface": "mobile",
+      "entries": [
+        {
+          "title": "Stay signed in on mobile",
+          "description": "The mobile app now correctly restores your saved session, preventing unexpected sign-in prompts."
+        }
+      ]
+    }
+  ]
+}

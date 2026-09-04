@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'vitest';
 
 import type { AuthSession } from './auth';
-import { getSessionBusinessAccess } from './auth-session';
+import { getSessionBusinessAccess, isSessionSignInEligible } from './auth-session';
 
 function sessionWithRoles(role: string | string[] | null, contractingRole: string | null): AuthSession {
   return { user: { contractingRole, role } } as AuthSession;
@@ -25,5 +25,16 @@ describe('getSessionBusinessAccess', () => {
       contracting: false,
       equipment: true,
     });
+  });
+});
+
+describe('isSessionSignInEligible', () => {
+  test('requires a role that grants permissions, not merely a business', () => {
+    expect(isSessionSignInEligible(sessionWithRoles('sales', null))).toBe(true);
+    expect(isSessionSignInEligible(sessionWithRoles(null, 'foreman'))).toBe(true);
+    expect(isSessionSignInEligible(sessionWithRoles(null, 'driver'))).toBe(false);
+    expect(isSessionSignInEligible(sessionWithRoles('bay-operator', 'mechanic'))).toBe(false);
+    expect(isSessionSignInEligible(sessionWithRoles(null, null))).toBe(false);
+    expect(isSessionSignInEligible(sessionWithRoles('bogus', null))).toBe(false);
   });
 });

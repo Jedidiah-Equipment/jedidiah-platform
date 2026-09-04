@@ -4,7 +4,7 @@ import { ActivityIndicator, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AssistantProvider } from '@/equipment/components/assistant/AssistantProvider';
 import { signOut, useSession } from '@/lib/auth';
-import { AuthSessionProvider, getSessionBusinessAccess } from '@/lib/auth-session';
+import { AuthSessionProvider, isSessionSignInEligible } from '@/lib/auth-session';
 import { useIsOffline } from '@/lib/connectivity';
 import { isHydratedSession } from '@/lib/session-state';
 
@@ -15,8 +15,8 @@ import { isHydratedSession } from '@/lib/session-state';
  * `useAuthSession`) instead of each repeating a loading/redirect guard.
  *
  * Better Auth's own session endpoint is not filtered by sign-in eligibility, so a signed-in account
- * whose roles were all removed still resolves a session here; it is signed out rather than left to
- * bounce between the two business guards.
+ * whose roles no longer grant any permission still resolves a session here; it is signed out rather
+ * than left to bounce between the two business guards or collect 401s.
  *
  * Offline-aware so the app-wide OfflineScreen cover can't hide a wrong auth decision:
  * `useSession`'s fetch fails offline, so we hold rather than bounce a signed-in operator
@@ -62,8 +62,7 @@ export default function ProtectedLayout() {
     return <Redirect href="/login" />;
   }
 
-  const businessAccess = getSessionBusinessAccess(session);
-  if (!businessAccess.equipment && !businessAccess.contracting) {
+  if (!isSessionSignInEligible(session)) {
     return <SignOutIneligibleSession />;
   }
 

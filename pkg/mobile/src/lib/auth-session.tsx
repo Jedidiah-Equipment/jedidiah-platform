@@ -1,4 +1,4 @@
-import { hasBusinessAccess, tryParseRoleSlots } from '@pkg/domain';
+import { hasBusinessAccess, isRoleSlotsSignInEligible, tryParseRoleSlots } from '@pkg/domain';
 import { createContext, type ReactNode, useContext } from 'react';
 
 import type { AuthSession } from './auth';
@@ -20,6 +20,14 @@ export function useAuthSession(): AuthSession {
   }
 
   return session;
+}
+
+// Better Auth's session endpoint is not eligibility-filtered, so a session whose roles were all
+// removed or reduced to permissionless ones still resolves; this is the same test the API applies.
+export function isSessionSignInEligible(session: AuthSession): boolean {
+  const slots = tryParseRoleSlots(session.user);
+
+  return slots !== null && isRoleSlotsSignInEligible(slots);
 }
 
 export function getSessionBusinessAccess(session: AuthSession) {

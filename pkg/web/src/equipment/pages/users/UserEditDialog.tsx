@@ -48,7 +48,6 @@ export const UserEditDialog: React.FC<UserEditDialogProps> = ({ user, onClose })
   const canSetPassword = hasPermission(access, 'user:set-password');
   const canSaveUser = canUpdateProfile || canSetEmail || canSetRole;
   const setDepartmentsMutation = useMutation(trpc.users.setDepartments.mutationOptions());
-  const clearEquipmentRoleMutation = useMutation(trpc.users.clearEquipmentRole.mutationOptions());
   const setDeviceMutation = useMutation(trpc.users.setDevice.mutationOptions());
   const updateThumbnailMutation = useMutation(trpc.users.updateThumbnail.mutationOptions());
 
@@ -72,8 +71,12 @@ export const UserEditDialog: React.FC<UserEditDialogProps> = ({ user, onClose })
       if (canSetRole) {
         const storedContractingRole = value.equipmentRole === 'super-admin' ? null : value.contractingRole;
 
-        if (value.equipmentRole !== null && value.equipmentRole !== baselineUser.equipmentRole) {
-          profileData.role = value.equipmentRole;
+        if (value.equipmentRole !== baselineUser.equipmentRole) {
+          if (value.equipmentRole === null) {
+            profileData.equipmentRole = null;
+          } else {
+            profileData.role = value.equipmentRole;
+          }
         }
         if (storedContractingRole !== baselineUser.contractingRole || baselineUser.equipmentRole === 'super-admin') {
           profileData.contractingRole = storedContractingRole;
@@ -88,11 +91,6 @@ export const UserEditDialog: React.FC<UserEditDialogProps> = ({ user, onClose })
             userId: baselineUser.id,
           }),
         );
-        didUpdate = true;
-      }
-
-      if (value.equipmentRole === null && baselineUser.equipmentRole !== null) {
-        await clearEquipmentRoleMutation.mutateAsync({ userId: baselineUser.id });
         didUpdate = true;
       }
 
@@ -226,6 +224,7 @@ type ProfileUpdateData = Partial<
   Pick<UserEditFormValues, 'assistantEnabled' | 'email' | 'emailVerified' | 'name' | 'phoneNumber'>
 > & {
   contractingRole?: UserEditFormValues['contractingRole'];
+  equipmentRole?: null;
   role?: UserEditFormValues['equipmentRole'];
 };
 

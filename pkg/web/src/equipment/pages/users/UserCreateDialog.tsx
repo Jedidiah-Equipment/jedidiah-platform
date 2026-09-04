@@ -25,7 +25,6 @@ export const UserCreateDialog: React.FC = () => {
   const canSetRole = hasPermission(accessQuery.data, 'user:set-role');
   const [isOpen, setIsOpen] = useState(false);
   const setDepartmentsMutation = useMutation(trpc.users.setDepartments.mutationOptions());
-  const clearEquipmentRoleMutation = useMutation(trpc.users.clearEquipmentRole.mutationOptions());
 
   const createUserMutation = useMutation({
     mutationFn: async (value: UserCreateFormValues) => {
@@ -36,20 +35,17 @@ export const UserCreateDialog: React.FC = () => {
           data: {
             contractingRole: value.equipmentRole === 'super-admin' ? null : value.contractingRole,
             emailVerified: value.emailVerified,
+            ...(value.equipmentRole === null ? { equipmentRole: null } : {}),
             isDevice: canSetRole ? value.isDevice : false,
             phoneNumber: value.phoneNumber,
           },
           email: value.email,
           name: value.name,
           password: value.password,
-          role: value.equipmentRole ?? 'bay-operator',
+          role: value.equipmentRole ?? undefined,
         }),
       );
       const userId = AuthId.parse(result.user.id);
-
-      if (value.equipmentRole === null) {
-        await clearEquipmentRoleMutation.mutateAsync({ userId });
-      }
 
       if (canAssignDepartments) {
         await setDepartmentsMutation.mutateAsync({

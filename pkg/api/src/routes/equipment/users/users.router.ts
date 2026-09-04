@@ -3,17 +3,16 @@ import {
   isUserCoreError,
   listUsers,
   setUserDepartments,
-  setUserEquipmentRole,
   setUserIsDevice,
   type UserCoreError,
   updateUserThumbnail,
 } from '@pkg/core';
-import { AuthId, Department, EquipmentRole, NullableThumbnailDataUrl } from '@pkg/schema';
+import { AuthId, Department, NullableThumbnailDataUrl } from '@pkg/schema';
 import { TRPCError } from '@trpc/server';
 import { z } from 'zod';
 import { createAuth } from '@/app-auth.js';
 import { getApiConfig } from '@/env.js';
-import { type CoreErrorMapping, createAuthTRPCError, mapKnownCoreError } from '@/trpc/errors.js';
+import { type CoreErrorMapping, mapKnownCoreError } from '@/trpc/errors.js';
 import { authorizedProcedure, router } from '@/trpc/init.js';
 
 const config = getApiConfig();
@@ -35,52 +34,6 @@ const UserThumbnailInput = z.object({
 
 export const usersRouter = router({
   list: authorizedProcedure('user:list').query(({ ctx }) => listUsers({ db: ctx.db })),
-  clearEquipmentRole: authorizedProcedure('user:set-role')
-    .input(z.object({ userId: AuthId }))
-    .mutation(async ({ ctx, input }) => {
-      if (ctx.session.user.id === input.userId) {
-        throw createAuthTRPCError({
-          appCode: 'user.self_role_change',
-          code: 'FORBIDDEN',
-          message: 'You cannot change your own role.',
-        });
-      }
-
-      const policy = await mapUserErrors(() =>
-        setUserEquipmentRole({
-          actorRole: EquipmentRole.parse(ctx.access.equipmentRole),
-          db: ctx.db,
-          role: null,
-          userId: input.userId,
-        }),
-      );
-
-      if (policy.allowed) {
-        return;
-      }
-
-      if (policy.reason === 'last-admin') {
-        throw createAuthTRPCError({
-          appCode: 'user.last_admin',
-          code: 'FORBIDDEN',
-          message: 'You cannot remove the last admin.',
-        });
-      }
-
-      if (policy.reason === 'reserved-super-admin') {
-        throw createAuthTRPCError({
-          appCode: 'user.reserved_super_admin',
-          code: 'FORBIDDEN',
-          message: 'Only a super admin can assign or remove the super admin role.',
-        });
-      }
-
-      throw createAuthTRPCError({
-        appCode: 'user.open_bay_operator_assignments',
-        code: 'FORBIDDEN',
-        message: `Unassign from ${formatList(policy.bayNames)} first`,
-      });
-    }),
   setDepartments: authorizedProcedure('user:update')
     .input(UserDepartmentInput)
     .mutation(async ({ ctx, input }) => {
@@ -162,11 +115,3 @@ const userErrorMappings = {
 } satisfies {
   [TCode in UserCoreError['code']]: CoreErrorMapping<TCode>;
 };
-
-function formatList(values: readonly string[]): string {
-  if (values.length <= 1) {
-    return values[0] ?? '';
-  }
-
-  return `${values.slice(0, -1).join(', ')} and ${values.at(-1)}`;
-}

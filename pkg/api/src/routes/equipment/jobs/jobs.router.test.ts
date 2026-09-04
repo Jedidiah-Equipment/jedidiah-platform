@@ -1302,7 +1302,7 @@ describe('jobs.list scheduleState', () => {
     expect(sorted.nextCursor).toBeNull();
   });
 
-  test('rejects callers without job:read', async ({ context }) => {
+  test('rejects callers without equipment_job:read', async ({ context }) => {
     const salesCaller = context.createCaller(mockSession('sales'));
 
     await expect(salesCaller.jobs.list({ filters: {} })).rejects.toMatchObject({
@@ -2452,7 +2452,7 @@ describe('jobs.update', () => {
 });
 
 describe('jobs department timing', () => {
-  test('stamps fabrication start and done under job:update', async ({ context }) => {
+  test('stamps fabrication start and done under equipment_job:update', async ({ context }) => {
     const caller = context.createCaller(mockSession('admin'));
     const job = await caller.jobs.create({ quoteId: context.quote.id });
     await createUser(context.db, {

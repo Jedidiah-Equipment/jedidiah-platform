@@ -348,6 +348,7 @@ export const appRoleAccess = {
   },
   'workshop-manager': {
     contracting_job: ['read'],
+    contracting_machine: ['read'],
     contracting_breakdown: ['read', 'report', 'update'],
     contracting_service: ['read', 'update'],
     contracting_report: ['read'],

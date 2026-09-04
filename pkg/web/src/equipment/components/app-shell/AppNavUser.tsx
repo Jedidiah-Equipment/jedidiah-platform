@@ -1,5 +1,6 @@
 import { roleLabels } from '@pkg/domain';
 import { IconLogout, IconMoon, IconSelector, IconShield, IconSun } from '@tabler/icons-react';
+import { useLocation } from '@tanstack/react-router';
 import type React from 'react';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar.js';
@@ -32,6 +33,8 @@ export const AppNavUser: React.FC<AppNavUserProps> = ({ user, onSignOut }) => {
   const accessQuery = useAccess();
   const access = accessQuery.data;
   const isDark = theme === 'dark';
+  const isContracting = useLocation({ select: (location) => location.pathname.startsWith('/contracting') });
+  const activeRole = isContracting ? access?.contractingRole : access?.equipmentRole;
 
   return (
     <SidebarMenu>
@@ -75,7 +78,7 @@ export const AppNavUser: React.FC<AppNavUserProps> = ({ user, onSignOut }) => {
                 <span className="flex min-w-0 flex-col">
                   <span>Role</span>
                   <span className="truncate text-muted-foreground text-xs">
-                    {access?.equipmentRole ? roleLabels[access.equipmentRole] : 'No Equipment access'}
+                    {activeRole ? roleLabels[activeRole] : `No ${isContracting ? 'Contracting' : 'Equipment'} access`}
                   </span>
                 </span>
               </DropdownMenuItem>

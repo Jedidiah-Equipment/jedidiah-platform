@@ -19,6 +19,7 @@ const SIGNED_IN_PERMISSION_LOADING_SURFACES = {
 } as const;
 
 const SIGNED_IN_ROUTE_TOOLBARS = {
+  'contracting/index.tsx': toolbar('main', 'app/(protected)/contracting/index.tsx'),
   'equipment/(tabs)/(plan)/bays/[bayId].tsx': toolbar('secondary', 'src/equipment/components/bays/BayQueueScreen.tsx'),
   'equipment/(tabs)/(plan)/plan/index.tsx': toolbar('main', 'app/(protected)/equipment/(tabs)/(plan)/plan/index.tsx'),
   'equipment/(tabs)/activity/index.tsx': toolbar('main', 'app/(protected)/equipment/(tabs)/activity/index.tsx'),
@@ -119,11 +120,15 @@ describe('signed-in toolbar contract', () => {
 
   test('assembles signed-in toolbar chrome only in TopToolbar', () => {
     const files = [...listTsxFiles(join(MOBILE_DIR, 'app')), ...listTsxFiles(join(MOBILE_DIR, 'src'))];
+    const toolbarFiles = new Set([
+      join(MOBILE_DIR, 'src/contracting/components/TopToolbar.tsx'),
+      join(MOBILE_DIR, 'src/equipment/components/TopToolbar.tsx'),
+    ]);
     const offenders = files
-      .filter((file) => file !== join(MOBILE_DIR, 'src/equipment/components/TopToolbar.tsx'))
+      .filter((file) => !toolbarFiles.has(file))
       .filter((file) => {
         const source = readFileSync(file, 'utf8');
-        return /from ['"]@\/equipment\/components\/(?:ProfileMenuButton|assistant\/AssistantEntryButton)['"]/.test(
+        return /from ['"]@\/(?:components\/ProfileMenuButton|equipment\/components\/assistant\/AssistantEntryButton)['"]/.test(
           source,
         );
       })

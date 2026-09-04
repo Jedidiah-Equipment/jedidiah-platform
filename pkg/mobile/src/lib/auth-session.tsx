@@ -1,3 +1,4 @@
+import { ContractingRole, EquipmentRole } from '@pkg/schema';
 import { createContext, type ReactNode, useContext } from 'react';
 
 import type { AuthSession } from './auth';
@@ -19,4 +20,19 @@ export function useAuthSession(): AuthSession {
   }
 
   return session;
+}
+
+export function getSessionBusinessAccess(session: AuthSession) {
+  const equipmentRole = EquipmentRole.nullable()
+    .catch(null)
+    .parse(session.user.role ?? null);
+  const contractingRole = ContractingRole.nullable()
+    .catch(null)
+    .parse(session.user.contractingRole ?? null);
+  const isSuperAdmin = equipmentRole === 'super-admin' || contractingRole === 'super-admin';
+
+  return {
+    contracting: isSuperAdmin || contractingRole !== null,
+    equipment: isSuperAdmin || equipmentRole !== null,
+  };
 }

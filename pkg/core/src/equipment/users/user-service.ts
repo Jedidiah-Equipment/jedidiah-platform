@@ -298,20 +298,23 @@ export function isReservedSuperAdminAssignment({
 // better-auth, outside any lock taken here. A concurrent operator assignment can land between this
 // check and that write — an accepted race: the window is tiny, the flow is admin-only, and the
 // one-operator-per-bay invariant itself is enforced by the database.
-export async function canAssignUserRole({
+export async function canAssignUserRoleSlots({
   actorRole,
+  contractingRole,
   db,
-  role,
+  equipmentRole,
   userId,
 }: {
   actorRole: EquipmentRole;
+  contractingRole?: ContractingRole | null;
   db: Db;
-  role: EquipmentRole | null;
+  equipmentRole?: EquipmentRole | null;
   userId: AuthId;
 }): Promise<UserRoleAssignmentPolicyResult> {
   return db.transaction(async (tx) => {
     const [targetUser] = await tx
       .select({
+        contractingRole: user.contractingRole,
         id: user.id,
         equipmentRole: user.role,
       })
@@ -323,17 +326,26 @@ export async function canAssignUserRole({
       return { allowed: true };
     }
 
-    const currentRole = EquipmentRole.nullable().parse(targetUser.equipmentRole);
+    const currentEquipmentRole = EquipmentRole.nullable().parse(targetUser.equipmentRole);
+    const currentContractingRole = ContractingRole.nullable().parse(targetUser.contractingRole);
+    const nextEquipmentRole = equipmentRole === undefined ? currentEquipmentRole : equipmentRole;
+    const nextContractingRole = contractingRole === undefined ? currentContractingRole : contractingRole;
 
-    if (currentRole === role) {
+    if (currentEquipmentRole === nextEquipmentRole && currentContractingRole === nextContractingRole) {
       return { allowed: true };
     }
 
-    if (isReservedSuperAdminAssignment({ actorRole, currentRole, targetRole: role })) {
+    if (
+      actorRole !== 'super-admin' &&
+      (currentEquipmentRole === 'super-admin' ||
+        currentContractingRole === 'super-admin' ||
+        nextEquipmentRole === 'super-admin' ||
+        nextContractingRole === 'super-admin')
+    ) {
       return { allowed: false, reason: 'reserved-super-admin' };
     }
 
-    if (currentRole === 'bay-operator') {
+    if (equipmentRole !== undefined && currentEquipmentRole === 'bay-operator') {
       const openBayOperatorAssignmentBayNames = await listOpenBayOperatorAssignmentBayNames({
         db: tx,
         userId,
@@ -348,7 +360,7 @@ export async function canAssignUserRole({
       }
     }
 
-    if (role === 'admin' || currentRole !== 'admin') {
+    if (equipmentRole === undefined || equipmentRole === 'admin' || currentEquipmentRole !== 'admin') {
       return { allowed: true };
     }
 
@@ -367,36 +379,6 @@ export async function canAssignUserRole({
 
     return { allowed: true };
   });
-}
-
-export async function setUserEquipmentRole({
-  actorRole,
-  db,
-  role,
-  userId,
-}: {
-  actorRole: EquipmentRole;
-  db: Db;
-  role: EquipmentRole | null;
-  userId: AuthId;
-}): Promise<UserRoleAssignmentPolicyResult> {
-  const policy = await canAssignUserRole({ actorRole, db, role, userId });
-
-  if (!policy.allowed) {
-    return policy;
-  }
-
-  const [updated] = await db
-    .update(user)
-    .set({ role, updatedAt: new Date() })
-    .where(eq(user.id, userId))
-    .returning({ id: user.id });
-
-  if (!updated) {
-    throw new UserNotFoundError(userId);
-  }
-
-  return policy;
 }
 
 async function setUserDepartmentsInTransaction({

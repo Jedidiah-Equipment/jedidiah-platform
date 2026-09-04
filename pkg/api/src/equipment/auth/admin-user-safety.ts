@@ -1,5 +1,5 @@
-import { canAssignUserRole, isReservedSuperAdminAssignment } from '@pkg/core';
-import { type Db, sql, user } from '@pkg/db';
+import { canAssignUserRoleSlots, isReservedSuperAdminAssignment } from '@pkg/core';
+import type { Db } from '@pkg/db';
 import { ContractingRole, EquipmentRole } from '@pkg/schema';
 import type { BetterAuthPlugin } from 'better-auth';
 import { APIError, createAuthMiddleware, getSessionFromCtx } from 'better-auth/api';
@@ -26,6 +26,20 @@ const RESERVED_SUPER_ADMIN_ERROR = {
 export function adminUserSafetyPlugin(database: Db): BetterAuthPlugin {
   return {
     id: 'admin-user-safety',
+    init: () => ({
+      options: {
+        databaseHooks: {
+          user: {
+            create: {
+              before: (createdUser, context) => applyNullableEquipmentRole(createdUser, context?.path, context?.body),
+            },
+            update: {
+              before: (updatedUser, context) => applyNullableEquipmentRole(updatedUser, context?.path, context?.body),
+            },
+          },
+        },
+      },
+    }),
     hooks: {
       before: [
         {
@@ -71,55 +85,41 @@ export function adminUserSafetyPlugin(database: Db): BetterAuthPlugin {
               throw APIError.from('FORBIDDEN', RESERVED_SUPER_ADMIN_ERROR);
             }
 
-            if (roleChange.hasEquipmentRole && nextEquipmentRole !== undefined) {
+            if (roleChange.hasEquipmentRole && nextEquipmentRole !== undefined && !roleChange.userId) {
               // Create-user has no existing user to look up, so the reserved-role rule is checked
-              // directly here; modifications route through canAssignUserRole below.
-              if (!roleChange.userId) {
-                if (
-                  isReservedSuperAdminAssignment({
-                    actorRole: actorEquipmentRole,
-                    targetRole: nextEquipmentRole,
-                  })
-                ) {
-                  throw APIError.from('FORBIDDEN', RESERVED_SUPER_ADMIN_ERROR);
-                }
-              } else {
-                const roleAssignmentPolicy = await canAssignUserRole({
+              // directly here; modifications route through the shared core policy below.
+              if (
+                isReservedSuperAdminAssignment({
                   actorRole: actorEquipmentRole,
-                  db: database,
-                  role: nextEquipmentRole,
-                  userId: roleChange.userId,
-                });
-
-                if (!roleAssignmentPolicy.allowed) {
-                  if (roleAssignmentPolicy.reason === 'last-admin') {
-                    throw APIError.from('FORBIDDEN', LAST_ADMIN_ERROR);
-                  }
-
-                  if (roleAssignmentPolicy.reason === 'reserved-super-admin') {
-                    throw APIError.from('FORBIDDEN', RESERVED_SUPER_ADMIN_ERROR);
-                  }
-
-                  throw APIError.from('FORBIDDEN', {
-                    code: OPEN_BAY_OPERATOR_ASSIGNMENTS_ERROR_CODE,
-                    message: `Unassign from ${formatList(roleAssignmentPolicy.bayNames)} first`,
-                  });
-                }
+                  targetRole: nextEquipmentRole,
+                })
+              ) {
+                throw APIError.from('FORBIDDEN', RESERVED_SUPER_ADMIN_ERROR);
               }
             }
 
-            if (roleChange.hasContractingRole && roleChange.userId) {
-              const [targetUser] = await database
-                .select({ contractingRole: user.contractingRole, equipmentRole: user.role })
-                .from(user)
-                .where(sql`${user.id} = ${roleChange.userId}`)
-                .limit(1);
+            if (roleChange.userId) {
+              const roleAssignmentPolicy = await canAssignUserRoleSlots({
+                actorRole: actorEquipmentRole,
+                db: database,
+                ...(nextContractingRole !== undefined ? { contractingRole: nextContractingRole } : {}),
+                ...(nextEquipmentRole !== undefined ? { equipmentRole: nextEquipmentRole } : {}),
+                userId: roleChange.userId,
+              });
 
-              if (
-                actorEquipmentRole !== 'super-admin' &&
-                (targetUser?.equipmentRole === 'super-admin' || targetUser?.contractingRole === 'super-admin')
-              ) {
-                throw APIError.from('FORBIDDEN', RESERVED_SUPER_ADMIN_ERROR);
+              if (!roleAssignmentPolicy.allowed) {
+                if (roleAssignmentPolicy.reason === 'last-admin') {
+                  throw APIError.from('FORBIDDEN', LAST_ADMIN_ERROR);
+                }
+
+                if (roleAssignmentPolicy.reason === 'reserved-super-admin') {
+                  throw APIError.from('FORBIDDEN', RESERVED_SUPER_ADMIN_ERROR);
+                }
+
+                throw APIError.from('FORBIDDEN', {
+                  code: OPEN_BAY_OPERATOR_ASSIGNMENTS_ERROR_CODE,
+                  message: `Unassign from ${formatList(roleAssignmentPolicy.bayNames)} first`,
+                });
               }
             }
           }),
@@ -154,13 +154,18 @@ function getRoleChangeInput(path: string | undefined, body: unknown): RoleChange
 
   if (path === '/admin/create-user') {
     const data = isRecord(body.data) ? body.data : {};
-    const hasEquipmentRole = hasNullableString(body, 'role') || hasNullableString(data, 'role');
+    const hasEquipmentRole =
+      hasNullableString(data, 'equipmentRole') || hasNullableString(body, 'role') || hasNullableString(data, 'role');
     const hasContractingRole = hasNullableString(data, 'contractingRole');
 
     if (hasEquipmentRole || hasContractingRole) {
       return {
         contractingRole: hasContractingRole ? (data.contractingRole as string | null) : undefined,
-        equipmentRole: hasNullableString(data, 'role') ? (data.role as string | null) : (body.role as string | null),
+        equipmentRole: hasNullableString(data, 'equipmentRole')
+          ? (data.equipmentRole as string | null)
+          : hasNullableString(data, 'role')
+            ? (data.role as string | null)
+            : (body.role as string | null),
         hasContractingRole,
         hasEquipmentRole,
       };
@@ -168,13 +173,17 @@ function getRoleChangeInput(path: string | undefined, body: unknown): RoleChange
   }
 
   if (path === '/admin/update-user' && typeof body.userId === 'string' && isRecord(body.data)) {
-    const hasEquipmentRole = hasNullableString(body.data, 'role');
+    const hasEquipmentRole = hasNullableString(body.data, 'equipmentRole') || hasNullableString(body.data, 'role');
     const hasContractingRole = hasNullableString(body.data, 'contractingRole');
 
     if (hasEquipmentRole || hasContractingRole) {
       return {
         contractingRole: hasContractingRole ? (body.data.contractingRole as string | null) : undefined,
-        equipmentRole: hasEquipmentRole ? (body.data.role as string | null) : undefined,
+        equipmentRole: hasNullableString(body.data, 'equipmentRole')
+          ? (body.data.equipmentRole as string | null)
+          : hasEquipmentRole
+            ? (body.data.role as string | null)
+            : undefined,
         hasContractingRole,
         hasEquipmentRole,
         userId: body.userId,
@@ -191,6 +200,30 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function hasNullableString(record: Record<string, unknown>, key: string): boolean {
   return Object.hasOwn(record, key) && (typeof record[key] === 'string' || record[key] === null);
+}
+
+async function applyNullableEquipmentRole<T extends Record<string, unknown>>(
+  userData: T,
+  path: string | undefined,
+  body: unknown,
+) {
+  if (
+    (path !== '/admin/create-user' && path !== '/admin/update-user') ||
+    !isRecord(body) ||
+    !isRecord(body.data) ||
+    !hasNullableString(body.data, 'equipmentRole')
+  ) {
+    return;
+  }
+
+  const { equipmentRole: _transportField, ...persistedUser } = userData;
+
+  return {
+    data: {
+      ...persistedUser,
+      role: body.data.equipmentRole,
+    },
+  };
 }
 
 function formatList(values: readonly string[]): string {

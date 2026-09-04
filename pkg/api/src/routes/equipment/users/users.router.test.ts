@@ -1,5 +1,5 @@
 import { listUserDepartments } from '@pkg/core';
-import { auditEvents, type Db, sql, user } from '@pkg/db';
+import { auditEvents, type Db, user } from '@pkg/db';
 import { createUserAccessSummary } from '@pkg/domain';
 import type { ContractingRole, EquipmentRole } from '@pkg/schema';
 import pino from 'pino';
@@ -265,49 +265,6 @@ describe('users.list', () => {
         userId: currentDepartmentUserId,
       }),
     ).resolves.toEqual([]);
-  });
-});
-
-describe('users.clearEquipmentRole', () => {
-  test('clears Equipment access while preserving Contracting access', async ({ context }) => {
-    await createUser(context.db, {
-      contractingRole: 'foreman',
-      email: 'contracting-only-target@example.com',
-      id: 'contracting-only-target-id',
-      name: 'Contracting Only Target',
-      role: 'sales',
-    });
-
-    await context.createCaller().users.clearEquipmentRole({ userId: 'contracting-only-target-id' });
-
-    const [updated] = await context.db
-      .select({ contractingRole: user.contractingRole, equipmentRole: user.role })
-      .from(user)
-      .where(sql`${user.id} = 'contracting-only-target-id'`);
-
-    expect(updated).toEqual({ contractingRole: 'foreman', equipmentRole: null });
-  });
-
-  test('rejects clearing your own Equipment role', async ({ context }) => {
-    const session = mockSession('admin');
-
-    await expect(
-      context.createCaller(session).users.clearEquipmentRole({ userId: session.user.id }),
-    ).rejects.toMatchObject({ appCode: 'user.self_role_change', code: 'FORBIDDEN' });
-  });
-
-  test('rejects clearing the last administrator role', async ({ context }) => {
-    await createUser(context.db, {
-      email: 'only-admin@example.com',
-      id: 'only-admin-id',
-      name: 'Only Admin',
-      role: 'admin',
-    });
-
-    await expect(context.createCaller().users.clearEquipmentRole({ userId: 'only-admin-id' })).rejects.toMatchObject({
-      appCode: 'user.last_admin',
-      code: 'FORBIDDEN',
-    });
   });
 });
 

@@ -114,7 +114,7 @@ export const jobsRouter = router({
    * Any-of: Bay administration names operators against Bays, and Department Timing names them as a
    * Job's crew. Coupling the crew picker to `equipment_job_bay:update` would fail silently if the two roles ever
    * diverge — the query 403s and the picker just reads empty. Nothing new leaks: a caller holding
-   * `job:update` already sees operator names on every Job sheet and Bay schedule.
+   * `equipment_job:update` already sees operator names on every Job sheet and Bay schedule.
    */
   listBayOperators: authorizedProcedure(['equipment_job_bay:update', 'equipment_job:update']).query(({ ctx }) =>
     listBayOperators({ db: ctx.db }),
@@ -191,8 +191,8 @@ export const jobsRouter = router({
     ),
 
   /**
-   * Department Timing stamps ride `job:update` rather than a gate of their own: recording that
-   * fabrication started is day-to-day Job upkeep, unlike the terminal `job:cancel`.
+   * Department Timing stamps ride `equipment_job:update` rather than a gate of their own: recording that
+   * fabrication started is day-to-day Job upkeep, unlike the terminal `equipment_job:cancel`.
    */
   startDepartmentTiming: authorizedProcedure('equipment_job:update')
     .input(JobDepartmentTimingStartInput)
@@ -218,7 +218,7 @@ export const jobsRouter = router({
     .query(({ ctx, input }) => mapJobErrors(() => getJobCancellationPlan({ db: ctx.db, id: input.id }))),
 
   /**
-   * Its own gate rather than `job:update`: this is terminal and irreversible, so it sits with
+   * Its own gate rather than `equipment_job:update`: this is terminal and irreversible, so it sits with
    * `equipment_quote:cancel` and `equipment_product_unit:remove` rather than with day-to-day Job edits.
    */
   cancel: authorizedProcedure('equipment_job:cancel')

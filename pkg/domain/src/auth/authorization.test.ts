@@ -239,6 +239,7 @@ describe('getRolePermissions', () => {
       'contracting_breakdown:report',
       'contracting_breakdown:update',
       'contracting_job:read',
+      'contracting_machine:read',
       'contracting_report:read',
       'contracting_service:read',
       'contracting_service:update',

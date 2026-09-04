@@ -150,7 +150,7 @@ export const JobListTable: React.FC<JobListTableProps> = ({ customerId, render }
   );
 
   // One row crosses the ledger, the Job and the Quote, so the button mirrors the API's all-of gate
-  // rather than `job:read` alone — see `jobs.salesExport`.
+  // rather than `equipment_job:read` alone — see `jobs.salesExport`.
   const canExportSales =
     hasPermission(accessQuery.data, 'equipment_inventory_cost:read') &&
     hasPermission(accessQuery.data, 'equipment_job:read') &&

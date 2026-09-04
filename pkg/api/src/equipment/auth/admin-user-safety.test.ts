@@ -1,6 +1,6 @@
 import { account, CREDENTIAL_ACCOUNT_ISSUER, type Db, jobBayOperatorAssignments, jobBays, sql, user } from '@pkg/db';
 import { DEFAULT_DEMO_USER_PASSWORD, toPlantDateOnly } from '@pkg/domain';
-import { EquipmentRole, type EquipmentRole as EquipmentRoleType } from '@pkg/schema';
+import { type ContractingRole, EquipmentRole, type EquipmentRole as EquipmentRoleType } from '@pkg/schema';
 import { hashPassword } from 'better-auth/crypto';
 import { describe, expect } from 'vitest';
 
@@ -267,6 +267,27 @@ describe('admin user safety policy', () => {
     expect(created?.isDevice).toBe(true);
   });
 
+  test('creates a contracting-only user without temporary Equipment access', async ({ context }) => {
+    const headers = await createSignedInAdmin(context);
+
+    await context.auth.api.createUser({
+      body: {
+        data: { contractingRole: 'foreman', equipmentRole: null },
+        email: 'contracting-only@example.com',
+        name: 'Contracting Only',
+        password: DEFAULT_DEMO_USER_PASSWORD,
+      },
+      headers,
+    });
+
+    const [created] = await context.db
+      .select({ contractingRole: user.contractingRole, equipmentRole: user.role })
+      .from(user)
+      .where(sql`${user.email} = 'contracting-only@example.com'`);
+
+    expect(created).toEqual({ contractingRole: 'foreman', equipmentRole: null });
+  });
+
   test('rejects role removal from the last admin through adminUpdateUser', async ({ context }) => {
     const admin = mockSession('admin');
     const headers = await createSignedInAdmin(context, admin);
@@ -308,13 +329,70 @@ describe('admin user safety policy', () => {
       context.auth.api.adminUpdateUser({
         body: {
           data: {
-            role: null,
+            equipmentRole: null,
           },
           userId: 'only-nullable-admin-user-id',
         },
         headers,
       }),
     ).rejects.toThrow('You cannot remove the last admin.');
+  });
+
+  test('clears Equipment access while preserving Contracting access', async ({ context }) => {
+    const headers = await createSignedInAdmin(context);
+    await createUser(context.db, {
+      contractingRole: 'foreman',
+      email: 'contracting-only-target@example.com',
+      id: 'contracting-only-target-id',
+      name: 'Contracting Only Target',
+      role: 'sales',
+    });
+
+    await context.auth.api.adminUpdateUser({
+      body: {
+        data: { equipmentRole: null },
+        userId: 'contracting-only-target-id',
+      },
+      headers,
+    });
+
+    const [updated] = await context.db
+      .select({ contractingRole: user.contractingRole, equipmentRole: user.role })
+      .from(user)
+      .where(sql`${user.id} = 'contracting-only-target-id'`);
+
+    expect(updated).toEqual({ contractingRole: 'foreman', equipmentRole: null });
+  });
+
+  test('rejects clearing your own Equipment role', async ({ context }) => {
+    const admin = mockSession('admin');
+    const headers = await createSignedInAdmin(context, admin);
+
+    await expect(
+      context.auth.api.adminUpdateUser({
+        body: { data: { equipmentRole: null }, userId: admin.user.id },
+        headers,
+      }),
+    ).rejects.toThrow('You cannot change your own role.');
+  });
+
+  test('does not treat the nullable admin transport field as an ordinary profile field', async ({ context }) => {
+    const admin = mockSession('admin');
+    const headers = await createSignedInAdmin(context, admin);
+
+    await expect(
+      context.auth.api.updateUser({
+        body: { equipmentRole: 'super-admin' } as never,
+        headers,
+      }),
+    ).rejects.toThrow();
+
+    const [stored] = await context.db
+      .select({ equipmentRole: user.role })
+      .from(user)
+      .where(sql`${user.id} = ${admin.user.id}`);
+
+    expect(stored?.equipmentRole).toBe('admin');
   });
 
   test('persists an independently assigned contracting role', async ({ context }) => {
@@ -732,6 +810,7 @@ async function createBayOperatorAssignment(
 async function createUser(
   db: Db,
   input: {
+    contractingRole?: ContractingRole;
     email: string;
     emailVerified?: boolean;
     id: string;
@@ -747,6 +826,7 @@ async function createUser(
     .values({
       email: input.email,
       emailVerified: input.emailVerified ?? true,
+      contractingRole: input.contractingRole,
       id: input.id,
       name: input.name,
       role: EquipmentRole.parse(input.role),

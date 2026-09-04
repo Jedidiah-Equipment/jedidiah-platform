@@ -48,7 +48,7 @@ export type UseBayListResult = {
  * carry each scheduled Job's product detail, deriving each Bay's active Job and
  * days-left. Mirrors web's `useShopFloorBays` + `ShopFloorTodayWidget`.
  *
- * `jobs.listBays` requires `job:read`, so we gate it on the user's access summary
+ * `jobs.listBays` requires `equipment_job:read`, so we gate it on the user's access summary
  * and surface a `forbidden` state rather than firing a request that 403s and reads
  * as a connection error (mirrors web gating shop-floor widgets with `hasPermission`).
  */
@@ -62,7 +62,7 @@ export function useBayList(): UseBayListResult {
   const state = useMemo<BayListState>(() => {
     if (accessQuery.isPending) return { status: 'pending' };
     // Access genuinely failed to load (e.g. offline first open) — distinct from a resolved
-    // summary that simply lacks `job:read`, which is `forbidden` below.
+    // summary that simply lacks `equipment_job:read`, which is `forbidden` below.
     if (accessQuery.error && accessQuery.data === undefined) return { status: 'error', error: accessQuery.error };
     if (!canReadJobs) return { status: 'forbidden' };
 

@@ -8,7 +8,7 @@ import { useJobVariance } from './use-job-variance.js';
 /**
  * One Job's material variance as an inventory screen (spec §3, §12). It exists beside the Job
  * sheet's own tab because the people who read this report at close-out are exactly the ones the Job
- * surfaces are closed to: `stores` holds `equipment_inventory:read` and no `job:read`, and this read carries
+ * surfaces are closed to: `stores` holds `equipment_inventory:read` and no `equipment_job:read`, and this read carries
  * the Job facts it needs itself rather than asking a Job procedure for them.
  */
 export function JobVarianceReportPage({ jobId }: { jobId: UUID }) {

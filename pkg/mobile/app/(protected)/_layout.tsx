@@ -74,6 +74,7 @@ export default function ProtectedLayout() {
     <AuthSessionProvider session={session}>
       <AssistantProvider>
         <Stack screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="contracting" />
           <Stack.Screen name="equipment" />
         </Stack>
       </AssistantProvider>

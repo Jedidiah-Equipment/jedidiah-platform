@@ -9,7 +9,7 @@ import { getJobCloseOutAt } from './close-out-service.js';
 
 /**
  * The Job facts every Job-scoped inventory read carries, close-out included. They ride the stock
- * reads rather than a Job read because `stores` works a Job's stock without holding `job:read`, and
+ * reads rather than a Job read because `stores` works a Job's stock without holding `equipment_job:read`, and
  * they are loaded here rather than per read so the stock tab and the variance report cannot come to
  * different conclusions about whether a Job's stock life has ended.
  */

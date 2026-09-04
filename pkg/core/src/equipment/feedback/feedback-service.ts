@@ -187,7 +187,7 @@ export async function updateFeedback({
   return detail;
 }
 
-// General feedback on a Job is public to `job:read` holders (ADR 0010). This read returns only
+// General feedback on a Job is public to `equipment_job:read` holders (ADR 0010). This read returns only
 // `kind: 'general'` rows for every caller — super-admins included — so the payload never varies by
 // role; corrective feedback stays on the inbox reads above. Ordered newest-first, matching the Job
 // activity feed.
@@ -209,7 +209,7 @@ export async function listJobFeedback({
   };
 }
 
-// Status-only update for a Job's general feedback, open to `job:update` holders (ADR 0010). Scoped
+// Status-only update for a Job's general feedback, open to `equipment_job:update` holders (ADR 0010). Scoped
 // to `kind: 'general'` + job subjects so corrective (or quote) feedback reads as not-found here;
 // internal notes are never touched through this path.
 export async function updateJobFeedback({

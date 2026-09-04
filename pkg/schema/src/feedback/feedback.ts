@@ -137,7 +137,7 @@ export const FeedbackTargetUserList = z.object({
   users: z.array(FeedbackTargetUser),
 });
 
-// Subject-scoped read of a Job's `general` (public) feedback for `job:read` holders. Deliberately
+// Subject-scoped read of a Job's `general` (public) feedback for `equipment_job:read` holders. Deliberately
 // narrower than FeedbackDetail: no kind (always general), no targets, and no internal notes.
 export type JobFeedbackListInput = z.infer<typeof JobFeedbackListInput>;
 export const JobFeedbackListInput = z

@@ -95,7 +95,7 @@ export async function getUserById({ db, userId }: { db: Db; userId: AuthId }): P
     throw new UserNotFoundError(userId);
   }
 
-  return UserAccount.parse(row);
+  return UserAccount.parse(mapUser({ ...row, departments: [] }));
 }
 
 export async function listUsers({ db }: { db: Db }): Promise<UserListResult> {
@@ -280,7 +280,7 @@ export type UserRoleAssignmentPolicyResult =
   | { allowed: false; bayNames: string[]; reason: 'open-bay-operator-assignments' }
   | { allowed: false; reason: 'reserved-super-admin' };
 
-// Single source of truth for the reserved super-admin rule (ADR 0017/0008): only a super-admin may
+// Shared reserved-role predicate (ADR 0017/0008): only a super-admin may
 // grant the super-admin role or change a user who currently holds it. `currentRole` is omitted when
 // creating a brand-new user, where there is no role to move away from.
 export function isReservedSuperAdminAssignment({
@@ -289,8 +289,8 @@ export function isReservedSuperAdminAssignment({
   targetRole,
 }: {
   actorRole: EquipmentRole;
-  currentRole?: EquipmentRole | null;
-  targetRole: EquipmentRole | null;
+  currentRole?: EquipmentRole | ContractingRole | null;
+  targetRole: EquipmentRole | ContractingRole | null;
 }): boolean {
   return (targetRole === 'super-admin' || currentRole === 'super-admin') && actorRole !== 'super-admin';
 }
@@ -337,11 +337,16 @@ export async function canAssignUserRoleSlots({
     }
 
     if (
-      actorRole !== 'super-admin' &&
-      (currentEquipmentRole === 'super-admin' ||
-        currentContractingRole === 'super-admin' ||
-        nextEquipmentRole === 'super-admin' ||
-        nextContractingRole === 'super-admin')
+      isReservedSuperAdminAssignment({
+        actorRole,
+        currentRole: currentEquipmentRole,
+        targetRole: nextEquipmentRole,
+      }) ||
+      isReservedSuperAdminAssignment({
+        actorRole,
+        currentRole: currentContractingRole,
+        targetRole: nextContractingRole,
+      })
     ) {
       return { allowed: false, reason: 'reserved-super-admin' };
     }

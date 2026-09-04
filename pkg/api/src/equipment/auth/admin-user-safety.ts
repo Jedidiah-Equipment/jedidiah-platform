@@ -1,5 +1,6 @@
 import { canAssignUserRoleSlots, isReservedSuperAdminAssignment } from '@pkg/core';
 import type { Db } from '@pkg/db';
+import { createUserAccessSummary, hasPermission } from '@pkg/domain';
 import { ContractingRole, EquipmentRole } from '@pkg/schema';
 import type { BetterAuthPlugin } from 'better-auth';
 import { APIError, createAuthMiddleware, getSessionFromCtx } from 'better-auth/api';
@@ -21,6 +22,16 @@ const OPEN_BAY_OPERATOR_ASSIGNMENTS_ERROR_CODE = 'USER_HAS_OPEN_BAY_OPERATOR_ASS
 const RESERVED_SUPER_ADMIN_ERROR = {
   code: 'ONLY_SUPER_ADMIN_CAN_ASSIGN_SUPER_ADMIN',
   message: 'Only a super admin can assign or remove the super admin role.',
+} as const;
+
+const ROLE_PERMISSION_ERROR = {
+  code: 'ROLE_PERMISSION_REQUIRED',
+  message: 'You do not have permission to change user roles.',
+} as const;
+
+const INVALID_ROLE_ERROR = {
+  code: 'INVALID_ROLE',
+  message: 'The requested role is invalid.',
 } as const;
 
 export function adminUserSafetyPlugin(database: Db): BetterAuthPlugin {
@@ -62,12 +73,17 @@ export function adminUserSafetyPlugin(database: Db): BetterAuthPlugin {
               contractingRole: (session.user as Record<string, unknown>).contractingRole,
               role: (session.user as Record<string, unknown>).role,
             });
-            const actorEquipmentRole = EquipmentRole.parse(currentRoles.equipmentRole);
+            const actorAccess = createUserAccessSummary({ ...currentRoles, userId: session.user.id });
+            if (!hasPermission(actorAccess, 'user:set-role') || currentRoles.equipmentRole === null) {
+              throw APIError.from('FORBIDDEN', ROLE_PERMISSION_ERROR);
+            }
+
+            const actorEquipmentRole = currentRoles.equipmentRole;
             const nextEquipmentRole = roleChange.hasEquipmentRole
-              ? EquipmentRole.nullable().parse(roleChange.equipmentRole)
+              ? parseEquipmentRole(roleChange.equipmentRole)
               : undefined;
             const nextContractingRole = roleChange.hasContractingRole
-              ? ContractingRole.nullable().parse(roleChange.contractingRole)
+              ? parseContractingRole(roleChange.contractingRole)
               : undefined;
 
             if (
@@ -200,6 +216,18 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function hasNullableString(record: Record<string, unknown>, key: string): boolean {
   return Object.hasOwn(record, key) && (typeof record[key] === 'string' || record[key] === null);
+}
+
+function parseEquipmentRole(value: string | null | undefined) {
+  const result = EquipmentRole.nullable().safeParse(value);
+  if (!result.success) throw APIError.from('BAD_REQUEST', INVALID_ROLE_ERROR);
+  return result.data;
+}
+
+function parseContractingRole(value: string | null | undefined) {
+  const result = ContractingRole.nullable().safeParse(value);
+  if (!result.success) throw APIError.from('BAD_REQUEST', INVALID_ROLE_ERROR);
+  return result.data;
 }
 
 async function applyNullableEquipmentRole<T extends Record<string, unknown>>(

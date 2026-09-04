@@ -128,7 +128,10 @@ A new Draft Purchase Order line takes its first unit price from the Part's curre
 
 ## Access
 
-App Role owns authorization. Department Membership is descriptive only and must not be used to scope permissions.
+A User holds up to two optional App Role slots: an **Equipment Role** and a **Contracting Role**. Role
+presence grants access to that business, and the permissions from both held roles are combined. The single
+`super-admin` role spans both slots by definition. Department Membership is descriptive only and must not be
+used to scope permissions. Contracting roles live in `CONTEXT-CONTRACTING.md`; the Equipment roles are:
 
 - **super-admin**: everything admin can do, plus the exclusive ability to review Corrective Feedback and Internal Notes through the Feedback inbox. The only role that can see Corrective Feedback — admins cannot. Only a super-admin may grant or remove the super-admin role; admins manage every other role but cannot mint a super-admin (which would otherwise be an escalation path to Corrective Feedback).
 - **admin**: full operational access; owns Bay scheduling, calendar updates, Job creation and updates, admin Bay configuration, Suppliers, Product Unit identity and Ownership Transfers — recording a Transfer by hand is admin-only, since it asserts ownership with no commercial document behind it. Sees General Feedback on subjects it can read, like any subject reader; cannot see Corrective Feedback.
@@ -137,7 +140,8 @@ App Role owns authorization. Department Membership is descriptive only and must 
 - **job-viewer**: Job, Product Unit, and Bay schedule reads only.
 - **sales**: Quote create/read/update, Product Unit reads (stock must be selectable on a Quote), and assistant-authored email sending.
 - **stores**: Purchase Order read/receive and physical inventory read/move/adjust/count/build/close-out; cannot read inventory costs.
-- **bay-operator**: no app permissions and cannot sign in unless the role gains permissions later.
+- **bay-operator**: no Equipment permissions. It cannot enable sign-in by itself, but the same User may sign
+  in through a permission-bearing Contracting Role.
 
 Server/API checks are the security boundary. Browser access checks are UX only.
 
@@ -151,7 +155,7 @@ Server/API checks are the security boundary. Browser access checks are UX only.
 
 ## Feedback
 
-**Feedback** is an internal report a signed-in user submits about one subject — currently a Quote or a Job. It always has a submitter (the author) and exactly one subject, attached polymorphically the way a Document is (`subjectType ∈ {quote, job}`). Avoid Complaint, Comment, Review, Ticket, or Issue for the domain object. Visibility splits by Kind: Job General Feedback is public within the workspace (readable by anyone who can read the Job), while Quote General Feedback stays private until quote-scoped read paths exist; Corrective Feedback is readable only by super-admins. Submission requires only an authenticated session: there is no `equipment_feedback:create` permission and no subject-read gate, so any signed-in user can submit feedback about any Quote or Job. See ADR 0010.
+**Feedback** is an internal Equipment report a signed-in Equipment user submits about one subject — currently a Quote or a Job. It always has a submitter (the author) and exactly one subject, attached polymorphically the way a Document is (`subjectType ∈ {quote, job}`). Avoid Complaint, Comment, Review, Ticket, or Issue for the domain object. Visibility splits by Kind: Job General Feedback is public within the Equipment workspace (readable by anyone who can read the Job), while Quote General Feedback stays private until quote-scoped read paths exist; Corrective Feedback is readable only by super-admins. Submission requires Equipment Role presence but no `equipment_feedback:create` permission and no subject-read gate, so any signed-in Equipment user can submit feedback about any Equipment Quote or Job. See ADR 0010.
 
 **Feedback Kind** is exactly one of `general`, `corrective-feedback-department`, or `corrective-feedback-user`. It selects which targets the Feedback carries and who may see it.
 

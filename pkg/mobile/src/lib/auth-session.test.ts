@@ -3,7 +3,7 @@ import { describe, expect, test } from 'vitest';
 import type { AuthSession } from './auth';
 import { getSessionBusinessAccess } from './auth-session';
 
-function sessionWithRoles(role: string | null, contractingRole: string | null): AuthSession {
+function sessionWithRoles(role: string | string[] | null, contractingRole: string | null): AuthSession {
   return { user: { contractingRole, role } } as AuthSession;
 }
 
@@ -19,6 +19,10 @@ describe('getSessionBusinessAccess', () => {
     });
     expect(getSessionBusinessAccess(sessionWithRoles('super-admin', null))).toEqual({
       contracting: true,
+      equipment: true,
+    });
+    expect(getSessionBusinessAccess(sessionWithRoles(['sales'], null))).toEqual({
+      contracting: false,
       equipment: true,
     });
   });

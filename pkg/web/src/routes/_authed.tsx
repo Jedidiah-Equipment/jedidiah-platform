@@ -1,6 +1,5 @@
 import { createFileRoute, Outlet } from '@tanstack/react-router';
 
-import { AuthenticatedRouteShell } from '@/equipment/components/app-shell/AuthenticatedRouteShell.js';
 import { requireRouteSession } from '@/lib/route-auth.js';
 
 export const Route = createFileRoute('/_authed')({
@@ -12,9 +11,5 @@ export const Route = createFileRoute('/_authed')({
 });
 
 function AuthedRoute() {
-  return (
-    <AuthenticatedRouteShell>
-      <Outlet />
-    </AuthenticatedRouteShell>
-  );
+  return <Outlet />;
 }

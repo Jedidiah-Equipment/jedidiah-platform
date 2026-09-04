@@ -16,10 +16,6 @@ const SIGN_IN_DISABLED_ERROR = {
   message: SIGN_IN_DISABLED_MESSAGE,
 } as const;
 
-export function parseBetterAuthRole(role: unknown): EquipmentRoleType {
-  return EquipmentRole.parse(Array.isArray(role) ? role[0] : role);
-}
-
 export function parseBetterAuthRoleSlots(input: { contractingRole?: unknown; role?: unknown }): {
   contractingRole: ContractingRoleType | null;
   equipmentRole: EquipmentRoleType | null;

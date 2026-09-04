@@ -20,17 +20,19 @@ import {
 } from '@pkg/schema';
 
 import { type CoreErrorMapping, mapKnownCoreError } from '../../../trpc/errors.js';
-import { authorizedProcedure, protectedProcedure, router } from '../../../trpc/init.js';
+import { authorizedProcedure, businessProcedure, router } from '../../../trpc/init.js';
+
+const equipmentProcedure = businessProcedure('equipment');
 
 export const feedbackRouter = router({
-  // No `equipment_feedback:create` permission: any authenticated caller may submit.
-  submit: protectedProcedure
+  // No `equipment_feedback:create` permission: any authenticated Equipment caller may submit.
+  submit: equipmentProcedure
     .input(FeedbackSubmitInput)
     .mutation(({ ctx, input }) =>
       mapFeedbackErrors(() => submitFeedback({ db: ctx.db, input, submitterId: ctx.session.user.id })),
     ),
   // Minimal user list any submitter may read to populate the corrective-user target picker.
-  listTargetUsers: protectedProcedure.query(({ ctx }) => listFeedbackTargetUsers({ db: ctx.db })),
+  listTargetUsers: equipmentProcedure.query(({ ctx }) => listFeedbackTargetUsers({ db: ctx.db })),
   list: authorizedProcedure('equipment_feedback:read')
     .input(FeedbackListInput)
     .query(({ ctx, input }) => listFeedback({ db: ctx.db, input })),

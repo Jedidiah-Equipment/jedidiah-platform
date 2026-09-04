@@ -1,29 +1,7 @@
 import { describe, expect, test } from 'vitest';
 import { mockSession } from '@/test/test-utils.js';
 
-import { filterSignInEligibleSession, parseBetterAuthRole, parseBetterAuthRoleSlots } from './session.js';
-
-describe('parseBetterAuthRole', () => {
-  test('parses supported role strings', () => {
-    expect(parseBetterAuthRole('admin')).toBe('admin');
-    expect(parseBetterAuthRole('procurement-manager')).toBe('procurement-manager');
-    expect(parseBetterAuthRole('job-viewer')).toBe('job-viewer');
-    expect(parseBetterAuthRole('stores')).toBe('stores');
-    expect(parseBetterAuthRole('bay-operator')).toBe('bay-operator');
-  });
-
-  test('accepts the first role from better-auth array-shaped values', () => {
-    expect(parseBetterAuthRole(['admin', 'admin'])).toBe('admin');
-  });
-
-  test('rejects unsupported role strings', () => {
-    expect(() => parseBetterAuthRole('manager')).toThrow();
-  });
-
-  test('rejects non-string role values', () => {
-    expect(() => parseBetterAuthRole({ role: 'admin' })).toThrow();
-  });
-});
+import { filterSignInEligibleSession, parseBetterAuthRoleSlots } from './session.js';
 
 describe('parseBetterAuthRoleSlots', () => {
   test('parses independent optional roles and expands the spanning super-admin', () => {

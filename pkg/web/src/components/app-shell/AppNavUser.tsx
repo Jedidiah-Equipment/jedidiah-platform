@@ -1,6 +1,6 @@
 import { roleLabels } from '@pkg/domain';
+import type { AppRole } from '@pkg/schema';
 import { IconLogout, IconMoon, IconSelector, IconShield, IconSun } from '@tabler/icons-react';
-import { useLocation } from '@tanstack/react-router';
 import type React from 'react';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar.js';
@@ -14,10 +14,11 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu.js';
 import { SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar } from '@/components/ui/sidebar.js';
-import { useAccess } from '@/hooks/use-access.js';
 import { useTheme } from '@/hooks/use-theme.js';
 
 type AppNavUserProps = {
+  activeRole: AppRole | null | undefined;
+  businessName: 'Contracting' | 'Equipment';
   user: {
     name: string;
     email: string;
@@ -27,14 +28,10 @@ type AppNavUserProps = {
   onSignOut: () => void | Promise<void>;
 };
 
-export const AppNavUser: React.FC<AppNavUserProps> = ({ user, onSignOut }) => {
+export const AppNavUser: React.FC<AppNavUserProps> = ({ activeRole, businessName, user, onSignOut }) => {
   const { isMobile } = useSidebar();
   const { setTheme, theme } = useTheme();
-  const accessQuery = useAccess();
-  const access = accessQuery.data;
   const isDark = theme === 'dark';
-  const isContracting = useLocation({ select: (location) => location.pathname.startsWith('/contracting') });
-  const activeRole = isContracting ? access?.contractingRole : access?.equipmentRole;
 
   return (
     <SidebarMenu>
@@ -78,7 +75,7 @@ export const AppNavUser: React.FC<AppNavUserProps> = ({ user, onSignOut }) => {
                 <span className="flex min-w-0 flex-col">
                   <span>Role</span>
                   <span className="truncate text-muted-foreground text-xs">
-                    {activeRole ? roleLabels[activeRole] : `No ${isContracting ? 'Contracting' : 'Equipment'} access`}
+                    {activeRole ? roleLabels[activeRole] : `No ${businessName} access`}
                   </span>
                 </span>
               </DropdownMenuItem>

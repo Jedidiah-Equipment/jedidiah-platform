@@ -135,6 +135,17 @@ describe('snapshot table registry', () => {
     ).toMatchObject({ cancellationReason: 'Captured' });
   });
 
+  it('preserves Contracting roles once the rollout column exists', () => {
+    const userConfig = configFor('user');
+
+    expect(userConfig.optionalReadColumns).toContain('contractingRole');
+    expect(userConfig.omitReadColumns ?? []).not.toContain('contractingRole');
+    expect(prepareSnapshotRow(userConfig, { contractingRole: 'foreman', role: null }, 0)).toMatchObject({
+      contractingRole: 'foreman',
+    });
+    expect(prepareSnapshotRow(userConfig, { role: 'sales' }, 0)).toMatchObject({ contractingRole: null });
+  });
+
   it('backfills assembly visibility while the rollout column is absent from the source snapshot', () => {
     const assemblyConfig = configFor('product_assemblies');
 

@@ -1,4 +1,4 @@
-import { APP_PERMISSIONS, APP_ROLES } from '@pkg/schema';
+import { APP_PERMISSIONS, APP_ROLES, ContractingRole, EquipmentRole } from '@pkg/schema';
 import { describe, expect, it } from 'vitest';
 import {
   createUserAccessSummary,
@@ -6,7 +6,6 @@ import {
   hasBusinessAccess,
   hasPermission,
   isPermissionSetSignInEligible,
-  isRoleSignInEligible,
   isRoleSlotsSignInEligible,
   normalizeRoleSlots,
   permissionDescriptions,
@@ -292,11 +291,17 @@ describe('sign-in eligibility', () => {
 
   it('allows roles with permissions and denies Bay Operators', () => {
     for (const role of APP_ROLES.filter((role) => !['bay-operator', 'driver', 'mechanic'].includes(role))) {
-      expect(isRoleSignInEligible(role), role).toBe(true);
+      expect(
+        isRoleSlotsSignInEligible({
+          contractingRole: ContractingRole.safeParse(role).data ?? null,
+          equipmentRole: EquipmentRole.safeParse(role).data ?? null,
+        }),
+        role,
+      ).toBe(true);
     }
-    expect(isRoleSignInEligible('bay-operator')).toBe(false);
-    expect(isRoleSignInEligible('driver')).toBe(false);
-    expect(isRoleSignInEligible('mechanic')).toBe(false);
+    expect(isRoleSlotsSignInEligible({ contractingRole: null, equipmentRole: 'bay-operator' })).toBe(false);
+    expect(isRoleSlotsSignInEligible({ contractingRole: 'driver', equipmentRole: null })).toBe(false);
+    expect(isRoleSlotsSignInEligible({ contractingRole: 'mechanic', equipmentRole: null })).toBe(false);
   });
 
   it('allows sign-in when either role slot grants permissions', () => {

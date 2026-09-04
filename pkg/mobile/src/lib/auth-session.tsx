@@ -24,9 +24,10 @@ export function useAuthSession(): AuthSession {
 }
 
 export function getSessionBusinessAccess(session: AuthSession) {
+  const rawEquipmentRole = Array.isArray(session.user.role) ? session.user.role[0] : session.user.role;
   const equipmentRole = EquipmentRole.nullable()
     .catch(null)
-    .parse(session.user.role ?? null);
+    .parse(rawEquipmentRole ?? null);
   const contractingRole = ContractingRole.nullable()
     .catch(null)
     .parse(session.user.contractingRole ?? null);

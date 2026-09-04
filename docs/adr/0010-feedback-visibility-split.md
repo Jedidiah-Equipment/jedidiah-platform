@@ -9,7 +9,7 @@ The submission form labels the two paths explicitly because a submitter must kno
 Carried forward unchanged from ADR 0008:
 
 - `super-admin` is a single superset role (every `admin` permission plus `equipment_feedback:read`/`equipment_feedback:update`), not an orthogonal flag — a shape preserved under the per-business role-slot model (ADR 0017, superseding ADR 0001's one-role-per-user rule). Granting or removing `super-admin` remains reserved to super-admins to close the escalation path through `user:set-role`.
-- Submission requires only an authenticated session: no `equipment_feedback:create` permission, no subject-read gate. Any signed-in user can submit feedback about any Quote or Job.
+- Submission requires Equipment Role presence but no `equipment_feedback:create` permission and no subject-read gate. Any signed-in Equipment user can submit feedback about any Equipment Quote or Job.
 - Feedback status changes are not audited (Jobs are; Feedback is not), and Feedback carries no updated-by attribution.
 
 ## Considered Options

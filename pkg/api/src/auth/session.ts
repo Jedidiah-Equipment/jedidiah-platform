@@ -5,7 +5,7 @@ import { fromNodeHeaders } from 'better-auth/node';
 import { type Auth, auth } from '../app-auth.js';
 import { isBetterAuthRoleSignInEligible } from './sign-in-eligibility.js';
 
-export { parseBetterAuthRole, parseBetterAuthRoleSlots } from './sign-in-eligibility.js';
+export { parseBetterAuthRoleSlots } from './sign-in-eligibility.js';
 
 type BetterAuthSession = Auth['$Infer']['Session'];
 type AuthApi = Pick<Auth['api'], 'getSession'>;

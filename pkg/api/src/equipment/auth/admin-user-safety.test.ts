@@ -52,6 +52,29 @@ describe('admin user safety policy', () => {
     ).rejects.toThrow();
   });
 
+  test('forbids role changes from a Contracting-only account instead of throwing a parse error', async ({
+    context,
+  }) => {
+    await createUser(context.db, {
+      contractingRole: 'foreman',
+      email: 'foreman@example.com',
+      id: 'foreman-user-id',
+      name: 'Foreman User',
+      password: DEFAULT_DEMO_USER_PASSWORD,
+    });
+    const { headers } = await context.auth.api.signInEmail({
+      body: { email: 'foreman@example.com', password: DEFAULT_DEMO_USER_PASSWORD },
+      returnHeaders: true,
+    });
+
+    await expect(
+      context.auth.api.setRole({
+        body: { role: 'sales', userId: 'target-user-id' },
+        headers: convertSetCookieToCookie(headers),
+      }),
+    ).rejects.toMatchObject({ status: 'FORBIDDEN' });
+  });
+
   test('assigns the Stores role and allows the user to sign in', async ({ context }) => {
     const headers = await createSignedInAdmin(context);
     await createUser(context.db, {
@@ -82,15 +105,13 @@ describe('admin user safety policy', () => {
   });
 
   test('rejects demoting the last admin through setRole', async ({ context }) => {
-    const admin = mockSession('admin');
-    const headers = await createSignedInAdmin(context, admin);
+    const headers = await createSignedInAdmin(context, mockSession('super-admin'));
     await createUser(context.db, {
       email: 'other-admin@example.com',
       id: 'other-admin-user-id',
       name: 'Other Admin',
       role: 'admin',
     });
-    await setStoredRole(context.db, admin.user.id, 'sales');
 
     await expect(
       context.auth.api.setRole({
@@ -289,8 +310,7 @@ describe('admin user safety policy', () => {
   });
 
   test('rejects role removal from the last admin through adminUpdateUser', async ({ context }) => {
-    const admin = mockSession('admin');
-    const headers = await createSignedInAdmin(context, admin);
+    const headers = await createSignedInAdmin(context, mockSession('super-admin'));
 
     await createUser(context.db, {
       email: 'only-other-admin@example.com',
@@ -298,8 +318,6 @@ describe('admin user safety policy', () => {
       name: 'Only Other Admin',
       role: 'admin',
     });
-    await setStoredRole(context.db, admin.user.id, 'sales');
-
     await expect(
       context.auth.api.adminUpdateUser({
         body: {
@@ -314,8 +332,7 @@ describe('admin user safety policy', () => {
   });
 
   test('rejects removing the equipment role from the last admin', async ({ context }) => {
-    const admin = mockSession('admin');
-    const headers = await createSignedInAdmin(context, admin);
+    const headers = await createSignedInAdmin(context, mockSession('super-admin'));
 
     await createUser(context.db, {
       email: 'only-nullable-admin@example.com',
@@ -323,8 +340,6 @@ describe('admin user safety policy', () => {
       name: 'Only Nullable Admin',
       role: 'admin',
     });
-    await setStoredRole(context.db, admin.user.id, 'sales');
-
     await expect(
       context.auth.api.adminUpdateUser({
         body: {
@@ -393,6 +408,20 @@ describe('admin user safety policy', () => {
       .where(sql`${user.id} = ${admin.user.id}`);
 
     expect(stored?.equipmentRole).toBe('admin');
+  });
+
+  test('rejects invalid role transport values as a bad request', async ({ context }) => {
+    const headers = await createSignedInAdmin(context);
+
+    await expect(
+      context.auth.api.adminUpdateUser({
+        body: {
+          data: { equipmentRole: 'bogus-role' },
+          userId: 'target-user-id',
+        },
+        headers,
+      }),
+    ).rejects.toMatchObject({ status: 'BAD_REQUEST' });
   });
 
   test('persists an independently assigned contracting role', async ({ context }) => {
@@ -763,10 +792,6 @@ function convertSetCookieToCookie(headers: Headers): Headers {
   return cookieHeaders;
 }
 
-async function setStoredRole(db: Db, userId: string, role: EquipmentRoleType): Promise<void> {
-  await db.update(user).set({ role, updatedAt: new Date() }).where(sql`${user.id} = ${userId}`);
-}
-
 async function createBay(
   db: Db,
   input: {
@@ -816,7 +841,7 @@ async function createUser(
     id: string;
     name: string;
     password?: string;
-    role: EquipmentRoleType | string;
+    role?: EquipmentRoleType | string;
   },
 ) {
   const now = new Date();
@@ -829,7 +854,7 @@ async function createUser(
       contractingRole: input.contractingRole,
       id: input.id,
       name: input.name,
-      role: EquipmentRole.parse(input.role),
+      role: input.role === undefined ? null : EquipmentRole.parse(input.role),
       createdAt: now,
       updatedAt: now,
     })

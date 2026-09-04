@@ -1,4 +1,4 @@
-import { hasPermission } from '@pkg/domain';
+import { hasBusinessAccess, hasPermission } from '@pkg/domain';
 import type { AppPermission } from '@pkg/schema';
 import { initTRPC } from '@trpc/server';
 
@@ -24,6 +24,8 @@ export const router = t.router;
 export const publicProcedure = t.procedure;
 export const createCallerFactory = t.createCallerFactory;
 
+type Business = 'contracting' | 'equipment';
+
 export const protectedProcedure = t.procedure.use(({ ctx, next }) => {
   if (!ctx.session) {
     throw createAuthTRPCError({
@@ -39,6 +41,20 @@ export const protectedProcedure = t.procedure.use(({ ctx, next }) => {
     },
   });
 });
+
+export function businessProcedure(business: Business) {
+  return protectedProcedure.use(({ ctx, next }) => {
+    if (!hasBusinessAccess(ctx.access, business)) {
+      throw createAuthTRPCError({
+        appCode: 'auth.forbidden',
+        code: 'FORBIDDEN',
+        message: 'You do not have permission to perform this action.',
+      });
+    }
+
+    return next({ ctx: { access: ctx.access } });
+  });
+}
 
 export function authorizedProcedure(permission: AppPermission | readonly AppPermission[]) {
   const permissions = Array.isArray(permission) ? permission : [permission];

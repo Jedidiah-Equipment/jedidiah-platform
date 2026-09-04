@@ -388,10 +388,6 @@ export function isPermissionSetSignInEligible(permissions: readonly AppPermissio
   return permissions.length > 0;
 }
 
-export function isRoleSignInEligible(role: AppRole): boolean {
-  return isPermissionSetSignInEligible(getRolePermissions(role));
-}
-
 export function isRoleSlotsSignInEligible(input: {
   contractingRole: ContractingRole | null;
   equipmentRole: EquipmentRole | null;

@@ -1,4 +1,3 @@
-import { DEFAULT_APP_ROLE } from '@pkg/domain';
 import type { ContractingRole, Department, EquipmentRole } from '@pkg/schema';
 import { relations } from 'drizzle-orm';
 import { boolean, index, pgTable, primaryKey, text, timestamp, uniqueIndex } from 'drizzle-orm/pg-core';
@@ -14,7 +13,9 @@ export const user = pgTable(
     emailVerified: boolean('email_verified').notNull(),
     image: text('image'),
     phoneNumber: text('phone_number'),
-    role: text('equipment_role').$type<EquipmentRole | null>().default(DEFAULT_APP_ROLE),
+    // Better Auth's admin plugin owns this column under the name `role`; the app reads it as the
+    // Equipment role slot. No default: an omitted role grants nothing.
+    role: text('role').$type<EquipmentRole | null>(),
     contractingRole: text('contracting_role').$type<ContractingRole | null>(),
     /**
      * A shared device rather than a person — today the stores tablet, which signs in as itself and

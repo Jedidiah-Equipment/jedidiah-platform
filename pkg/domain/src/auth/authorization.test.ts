@@ -1,17 +1,21 @@
-import { APP_PERMISSIONS, APP_ROLES, ContractingRole, EquipmentRole } from '@pkg/schema';
+import { APP_PERMISSIONS, APP_ROLES } from '@pkg/schema';
 import { describe, expect, it } from 'vitest';
 import {
   createUserAccessSummary,
+  getBusinessRole,
+  getPermissionBusiness,
   getRolePermissions,
+  hasBothBusinessAccess,
   hasBusinessAccess,
   hasPermission,
-  isPermissionSetSignInEligible,
   isRoleSlotsSignInEligible,
-  normalizeRoleSlots,
+  parseRoleSlots,
   permissionDescriptions,
   permissionLabels,
   roleDescriptions,
   roleLabels,
+  roleSlotsForRole,
+  tryParseRoleSlots,
 } from './authorization.js';
 
 const nonAdminRoles = APP_ROLES.filter((role) => role !== 'admin' && role !== 'super-admin');
@@ -284,24 +288,14 @@ describe('permissionDescriptions', () => {
 });
 
 describe('sign-in eligibility', () => {
-  it('derives sign-in eligibility from the permission set', () => {
-    expect(isPermissionSetSignInEligible([])).toBe(false);
-    expect(isPermissionSetSignInEligible(['equipment_quote:read'])).toBe(true);
-  });
-
-  it('allows roles with permissions and denies Bay Operators', () => {
+  it('allows roles with permissions and denies permissionless roles', () => {
     for (const role of APP_ROLES.filter((role) => !['bay-operator', 'driver', 'mechanic'].includes(role))) {
-      expect(
-        isRoleSlotsSignInEligible({
-          contractingRole: ContractingRole.safeParse(role).data ?? null,
-          equipmentRole: EquipmentRole.safeParse(role).data ?? null,
-        }),
-        role,
-      ).toBe(true);
+      expect(isRoleSlotsSignInEligible(roleSlotsForRole(role)), role).toBe(true);
     }
     expect(isRoleSlotsSignInEligible({ contractingRole: null, equipmentRole: 'bay-operator' })).toBe(false);
     expect(isRoleSlotsSignInEligible({ contractingRole: 'driver', equipmentRole: null })).toBe(false);
     expect(isRoleSlotsSignInEligible({ contractingRole: 'mechanic', equipmentRole: null })).toBe(false);
+    expect(isRoleSlotsSignInEligible({ contractingRole: null, equipmentRole: null })).toBe(false);
   });
 
   it('allows sign-in when either role slot grants permissions', () => {
@@ -310,14 +304,29 @@ describe('sign-in eligibility', () => {
   });
 });
 
+describe('roleSlotsForRole', () => {
+  it('places every role in exactly one slot', () => {
+    expect(roleSlotsForRole('sales')).toEqual({ contractingRole: null, equipmentRole: 'sales' });
+    expect(roleSlotsForRole('foreman')).toEqual({ contractingRole: 'foreman', equipmentRole: null });
+    expect(roleSlotsForRole('super-admin')).toEqual({ contractingRole: null, equipmentRole: 'super-admin' });
+  });
+});
+
+describe('parseRoleSlots', () => {
+  it('reads the stored slots, unwrapping the Better Auth role array', () => {
+    expect(parseRoleSlots({ contractingRole: 'foreman', role: null })).toEqual({
+      contractingRole: 'foreman',
+      equipmentRole: null,
+    });
+    expect(parseRoleSlots({ role: ['sales'] })).toEqual({ contractingRole: null, equipmentRole: 'sales' });
+    expect(() => parseRoleSlots({ contractingRole: 'super-admin', role: null })).toThrow();
+    expect(tryParseRoleSlots({ role: 'bogus' })).toBeNull();
+  });
+});
+
 describe('createUserAccessSummary', () => {
   it('builds a serialized access summary', () => {
-    expect(
-      createUserAccessSummary({
-        role: 'sales',
-        userId: 'user_123',
-      }),
-    ).toEqual({
+    expect(createUserAccessSummary({ ...roleSlotsForRole('sales'), userId: 'user_123' })).toEqual({
       contractingRole: null,
       equipmentRole: 'sales',
       permissions: [
@@ -331,7 +340,7 @@ describe('createUserAccessSummary', () => {
     });
   });
 
-  it('combines two role slots and projects a spanning super-admin into both', () => {
+  it('combines two role slots', () => {
     const dualAccess = createUserAccessSummary({
       contractingRole: 'contracting-invoicing',
       equipmentRole: 'sales',
@@ -340,41 +349,39 @@ describe('createUserAccessSummary', () => {
     expect(dualAccess.permissions).toEqual(
       expect.arrayContaining(['equipment_quote:read', 'contracting_job:read-priced', 'contracting_invoice:update']),
     );
-
-    expect(createUserAccessSummary({ role: 'super-admin', userId: 'user_456' })).toMatchObject({
-      contractingRole: 'super-admin',
-      equipmentRole: 'super-admin',
-    });
-  });
-
-  it('derives each business boundary from role presence', () => {
-    const contractingOnly = createUserAccessSummary({
-      contractingRole: 'foreman',
-      equipmentRole: null,
-      userId: 'user_789',
-    });
-
-    expect(hasBusinessAccess(contractingOnly, 'contracting')).toBe(true);
-    expect(hasBusinessAccess(contractingOnly, 'equipment')).toBe(false);
   });
 });
 
-describe('normalizeRoleSlots', () => {
-  it('projects the spanning super-admin role into both business slots', () => {
-    expect(normalizeRoleSlots({ contractingRole: null, equipmentRole: 'super-admin' })).toEqual({
-      contractingRole: 'super-admin',
-      equipmentRole: 'super-admin',
-    });
-    expect(normalizeRoleSlots({ contractingRole: 'super-admin', equipmentRole: null })).toEqual({
-      contractingRole: 'super-admin',
-      equipmentRole: 'super-admin',
-    });
+describe('business access', () => {
+  it('derives each business boundary from role presence', () => {
+    const contractingOnly = createUserAccessSummary({ ...roleSlotsForRole('foreman'), userId: 'user_789' });
+
+    expect(hasBusinessAccess(contractingOnly, 'contracting')).toBe(true);
+    expect(hasBusinessAccess(contractingOnly, 'equipment')).toBe(false);
+    expect(hasBothBusinessAccess(contractingOnly)).toBe(false);
+    expect(hasBusinessAccess(null, 'equipment')).toBe(false);
+  });
+
+  it('spans both businesses for a super-admin stored in the equipment slot', () => {
+    const superAdmin = createUserAccessSummary({ ...roleSlotsForRole('super-admin'), userId: 'user_456' });
+
+    expect(superAdmin.contractingRole).toBeNull();
+    expect(getBusinessRole(superAdmin, 'contracting')).toBe('super-admin');
+    expect(getBusinessRole(superAdmin, 'equipment')).toBe('super-admin');
+    expect(hasBothBusinessAccess(superAdmin)).toBe(true);
+    expect(superAdmin.permissions).toEqual(expect.arrayContaining(['contracting_rate:update', 'user:set-role']));
+  });
+
+  it('assigns permissions to the business that owns them', () => {
+    expect(getPermissionBusiness('contracting_job:read')).toBe('contracting');
+    expect(getPermissionBusiness('equipment_job:read')).toBe('equipment');
+    expect(getPermissionBusiness('user:set-role')).toBe('equipment');
   });
 });
 
 describe('hasPermission', () => {
   it('checks access summaries', () => {
-    const access = createUserAccessSummary({ role: 'procurement-manager', userId: 'user_123' });
+    const access = createUserAccessSummary({ ...roleSlotsForRole('procurement-manager'), userId: 'user_123' });
 
     expect(hasPermission(access, 'equipment_product:update')).toBe(true);
     expect(hasPermission(access, 'user:list')).toBe(false);
@@ -388,9 +395,9 @@ describe('hasPermission', () => {
 
 describe('job authorization policy', () => {
   it('grants only admins the job schedule permission', () => {
-    const admin = createUserAccessSummary({ role: 'admin', userId: 'user_123' });
-    const viewer = createUserAccessSummary({ role: 'job-viewer', userId: 'user_123' });
-    const sales = createUserAccessSummary({ role: 'sales', userId: 'user_123' });
+    const admin = createUserAccessSummary({ ...roleSlotsForRole('admin'), userId: 'user_123' });
+    const viewer = createUserAccessSummary({ ...roleSlotsForRole('job-viewer'), userId: 'user_123' });
+    const sales = createUserAccessSummary({ ...roleSlotsForRole('sales'), userId: 'user_123' });
 
     expect(hasPermission(admin, 'equipment_job:schedule')).toBe(true);
     expect(getRolePermissions('super-admin')).toContain('equipment_job:schedule');

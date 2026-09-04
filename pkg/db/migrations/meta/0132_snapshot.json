@@ -1,5 +1,5 @@
 {
-  "id": "b89e127c-9fde-4fac-9be8-f99a8fae9e47",
+  "id": "0d8781fa-a3c3-429d-8021-95934030b4dc",
   "prevId": "954f0efb-0862-4a2b-bf7a-e5bb75b4712b",
   "version": "7",
   "dialect": "postgresql",
@@ -465,12 +465,11 @@
           "primaryKey": false,
           "notNull": false
         },
-        "equipment_role": {
-          "name": "equipment_role",
+        "role": {
+          "name": "role",
           "type": "text",
           "primaryKey": false,
-          "notNull": false,
-          "default": "'sales'"
+          "notNull": false
         },
         "contracting_role": {
           "name": "contracting_role",

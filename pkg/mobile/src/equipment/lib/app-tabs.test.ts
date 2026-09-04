@@ -1,4 +1,4 @@
-import { createUserAccessSummary } from '@pkg/domain';
+import { createUserAccessSummary, roleSlotsForRole } from '@pkg/domain';
 import { describe, expect, it } from 'vitest';
 
 import { type AppTab, activeAppTab, appTabHref, showTabBar, visibleTabs } from './app-tabs';
@@ -10,25 +10,25 @@ describe('visibleTabs', () => {
   });
 
   it('shows Activity first, then Jobs, Plan, and Units to a Job Viewer', () => {
-    const access = createUserAccessSummary({ role: 'job-viewer', userId: 'viewer-1' });
+    const access = createUserAccessSummary({ ...roleSlotsForRole('job-viewer'), userId: 'viewer-1' });
 
     expect(visibleTabs(access)).toEqual(['activity', 'jobs', 'plan', 'units']);
   });
 
   it('shows Quotes and Units to Sales', () => {
-    const access = createUserAccessSummary({ role: 'sales', userId: 'sales-1' });
+    const access = createUserAccessSummary({ ...roleSlotsForRole('sales'), userId: 'sales-1' });
 
     expect(visibleTabs(access)).toEqual(['quotes', 'units']);
   });
 
   it('shows Activity first, then Jobs, Plan, Quotes, Products, and Units to a Procurement Manager', () => {
-    const access = createUserAccessSummary({ role: 'procurement-manager', userId: 'buyer-1' });
+    const access = createUserAccessSummary({ ...roleSlotsForRole('procurement-manager'), userId: 'buyer-1' });
 
     expect(visibleTabs(access)).toEqual(['activity', 'jobs', 'plan', 'quotes', 'products', 'units']);
   });
 
   it('shows every tab to an Admin', () => {
-    const access = createUserAccessSummary({ role: 'admin', userId: 'admin-1' });
+    const access = createUserAccessSummary({ ...roleSlotsForRole('admin'), userId: 'admin-1' });
 
     expect(visibleTabs(access)).toEqual(['activity', 'jobs', 'plan', 'quotes', 'products', 'units', 'stores']);
   });
@@ -39,14 +39,14 @@ describe('visibleTabs', () => {
    * than the no-access screen, which would leave the tablet with no way in at all.
    */
   it('shows only Stores to the Stores Tablet', () => {
-    const access = createUserAccessSummary({ role: 'stores', userId: 'tablet-1' });
+    const access = createUserAccessSummary({ ...roleSlotsForRole('stores'), userId: 'tablet-1' });
 
     expect(visibleTabs(access)).toEqual(['stores']);
     expect(showTabBar(visibleTabs(access))).toBe(false);
   });
 
   it('keeps Stores away from a Procurement Manager, who has no right to move stock', () => {
-    const access = createUserAccessSummary({ role: 'procurement-manager', userId: 'buyer-1' });
+    const access = createUserAccessSummary({ ...roleSlotsForRole('procurement-manager'), userId: 'buyer-1' });
 
     expect(visibleTabs(access)).not.toContain('stores');
   });

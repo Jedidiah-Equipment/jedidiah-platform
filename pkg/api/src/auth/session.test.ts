@@ -1,20 +1,7 @@
 import { describe, expect, test } from 'vitest';
 import { mockSession } from '@/test/test-utils.js';
 
-import { filterSignInEligibleSession, parseBetterAuthRoleSlots } from './session.js';
-
-describe('parseBetterAuthRoleSlots', () => {
-  test('parses independent optional roles and expands the spanning super-admin', () => {
-    expect(parseBetterAuthRoleSlots({ contractingRole: 'foreman', role: null })).toEqual({
-      contractingRole: 'foreman',
-      equipmentRole: null,
-    });
-    expect(parseBetterAuthRoleSlots({ contractingRole: null, role: 'super-admin' })).toEqual({
-      contractingRole: 'super-admin',
-      equipmentRole: 'super-admin',
-    });
-  });
-});
+import { filterSignInEligibleSession } from './session.js';
 
 describe('filterSignInEligibleSession', () => {
   test('keeps sessions for roles with permissions', () => {

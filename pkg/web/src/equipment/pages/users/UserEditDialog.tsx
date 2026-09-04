@@ -25,7 +25,6 @@ import { UserBadgePrintButton } from './components/UserBadgePrintButton.js';
 import { UserEditForm, type UserEditFormValues } from './components/UserEditForm.js';
 import type { UserPasswordFormValues } from './components/UserPasswordForm.js';
 import { AuthAdminError, unwrapAuthResult } from './user-admin-client.js';
-import { buildUserRoleUpdateData, type UserRoleUpdateData } from './user-role-update.js';
 
 type UserEditDialogProps = {
   user: UserSummary;
@@ -68,10 +67,7 @@ export const UserEditDialog: React.FC<UserEditDialogProps> = ({ user, onClose })
   const saveUserMutation = useMutation({
     mutationFn: async (value: UserEditFormValues) => {
       let didUpdate = false;
-      const profileData = buildProfileUpdateData({ baselineUser, canSetEmail, canUpdateProfile, value });
-      if (canSetRole) {
-        Object.assign(profileData, buildUserRoleUpdateData({ baseline: baselineUser, value }));
-      }
+      const profileData = buildProfileUpdateData({ baselineUser, canSetEmail, canSetRole, canUpdateProfile, value });
       const thumbnailChanged = value.thumbnailDataUrl !== baselineUser.thumbnailDataUrl;
 
       if (Object.keys(profileData).length > 0) {
@@ -211,18 +207,22 @@ function isOpenBayOperatorAssignmentRoleError(error: unknown): error is AuthAdmi
 }
 
 type ProfileUpdateData = Partial<
-  Pick<UserEditFormValues, 'assistantEnabled' | 'email' | 'emailVerified' | 'name' | 'phoneNumber'>
-> &
-  UserRoleUpdateData;
+  Pick<
+    UserEditFormValues,
+    'assistantEnabled' | 'contractingRole' | 'email' | 'emailVerified' | 'equipmentRole' | 'name' | 'phoneNumber'
+  >
+>;
 
 function buildProfileUpdateData({
   baselineUser,
   canSetEmail,
+  canSetRole,
   canUpdateProfile,
   value,
 }: {
   baselineUser: UserSummary;
   canSetEmail: boolean;
+  canSetRole: boolean;
   canUpdateProfile: boolean;
   value: UserEditFormValues;
 }): ProfileUpdateData {
@@ -244,6 +244,12 @@ function buildProfileUpdateData({
   }
   if (canUpdateProfile && value.assistantEnabled !== baselineUser.assistantEnabled) {
     data.assistantEnabled = value.assistantEnabled;
+  }
+  if (canSetRole && value.equipmentRole !== baselineUser.equipmentRole) {
+    data.equipmentRole = value.equipmentRole;
+  }
+  if (canSetRole && value.contractingRole !== baselineUser.contractingRole) {
+    data.contractingRole = value.contractingRole;
   }
 
   return data;

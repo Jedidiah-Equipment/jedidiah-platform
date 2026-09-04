@@ -18,8 +18,9 @@ export const EQUIPMENT_ROLES = [
 export type EquipmentRole = z.infer<typeof EquipmentRole>;
 export const EquipmentRole = z.enum(EQUIPMENT_ROLES);
 
+// `super-admin` spans both businesses but is stored once, in the equipment slot (ADR 0017); it is
+// never a contracting role value.
 export const CONTRACTING_ROLES = [
-  'super-admin',
   'contracting-admin',
   'contracting-manager',
   'workshop-manager',
@@ -32,7 +33,7 @@ export const CONTRACTING_ROLES = [
 export type ContractingRole = z.infer<typeof ContractingRole>;
 export const ContractingRole = z.enum(CONTRACTING_ROLES);
 
-export const APP_ROLES = [...EQUIPMENT_ROLES, ...CONTRACTING_ROLES.filter((role) => role !== 'super-admin')] as const;
+export const APP_ROLES = [...EQUIPMENT_ROLES, ...CONTRACTING_ROLES] as const;
 
 export type AppRole = z.infer<typeof AppRole>;
 export const AppRole = z.enum(APP_ROLES);

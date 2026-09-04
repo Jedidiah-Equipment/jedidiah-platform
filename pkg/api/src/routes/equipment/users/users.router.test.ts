@@ -1,11 +1,9 @@
 import { listUserDepartments } from '@pkg/core';
 import { auditEvents, type Db, user } from '@pkg/db';
-import { createUserAccessSummary } from '@pkg/domain';
+import { createUserAccessSummary, parseRoleSlots } from '@pkg/domain';
 import type { ContractingRole, EquipmentRole } from '@pkg/schema';
 import pino from 'pino';
 import { beforeEach, describe, expect } from 'vitest';
-
-import { parseBetterAuthRoleSlots } from '@/auth/session.js';
 import { clearMockEmailMessages, getMockEmailMessages } from '@/email/mock-email.js';
 import { createTester } from '@/test/create-tester.js';
 import { mockSession } from '@/test/test-utils.js';
@@ -220,7 +218,7 @@ describe('users.list', () => {
     });
 
     const access = createUserAccessSummary({
-      ...parseBetterAuthRoleSlots(session.user),
+      ...parseRoleSlots(session.user),
       userId: session.user.id,
     });
     const caller = createAppRouterCaller({

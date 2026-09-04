@@ -191,32 +191,67 @@ describe('admin user safety policy', () => {
     await expect(
       context.auth.api.createUser({
         body: {
+          data: { equipmentRole: 'super-admin' },
           email: 'created-super-admin@example.com',
           name: 'Created Super Admin',
           password: DEFAULT_DEMO_USER_PASSWORD,
-          role: 'super-admin',
         },
         headers,
       }),
     ).rejects.toThrow('Only a super admin can assign or remove the super admin role.');
   });
 
-  test('rejects creating a super-admin from an admin account through data role', async ({ context }) => {
-    const headers = await createSignedInAdmin(context);
+  test('rejects Better Auth role spellings on create-user and update-user', async ({ context }) => {
+    const headers = await createSignedInAdmin(context, mockSession('super-admin'));
 
     await expect(
       context.auth.api.createUser({
         body: {
-          data: {
-            role: 'super-admin',
-          },
-          email: 'created-super-admin-data-role@example.com',
-          name: 'Created Super Admin Data Role',
+          email: 'native-role@example.com',
+          name: 'Native Role',
+          password: DEFAULT_DEMO_USER_PASSWORD,
+          role: 'sales',
+        },
+        headers,
+      }),
+    ).rejects.toMatchObject({ status: 'BAD_REQUEST' });
+    await expect(
+      context.auth.api.createUser({
+        body: {
+          data: { role: 'sales' },
+          email: 'data-role@example.com',
+          name: 'Data Role',
           password: DEFAULT_DEMO_USER_PASSWORD,
         },
         headers,
       }),
-    ).rejects.toThrow('Only a super admin can assign or remove the super admin role.');
+    ).rejects.toMatchObject({ status: 'BAD_REQUEST' });
+    await expect(
+      context.auth.api.adminUpdateUser({
+        body: { data: { role: 'sales' }, userId: 'target-user-id' },
+        headers,
+      }),
+    ).rejects.toMatchObject({ status: 'BAD_REQUEST' });
+  });
+
+  test('creates a user with no equipment role as having none, not the Better Auth default', async ({ context }) => {
+    const headers = await createSignedInAdmin(context);
+
+    await context.auth.api.createUser({
+      body: {
+        email: 'no-role@example.com',
+        name: 'No Role',
+        password: DEFAULT_DEMO_USER_PASSWORD,
+      },
+      headers,
+    });
+
+    const [created] = await context.db
+      .select({ contractingRole: user.contractingRole, equipmentRole: user.role })
+      .from(user)
+      .where(sql`${user.email} = 'no-role@example.com'`);
+
+    expect(created).toEqual({ contractingRole: null, equipmentRole: null });
   });
 
   test('allows a super-admin to assign and remove super-admin', async ({ context }) => {
@@ -255,10 +290,10 @@ describe('admin user safety policy', () => {
 
     const created = await context.auth.api.createUser({
       body: {
+        data: { equipmentRole: 'super-admin' },
         email: 'created-by-super-admin@example.com',
         name: 'Created By Super Admin',
         password: DEFAULT_DEMO_USER_PASSWORD,
-        role: 'super-admin',
       },
       headers,
     });
@@ -271,11 +306,10 @@ describe('admin user safety policy', () => {
 
     await context.auth.api.createUser({
       body: {
-        data: { isDevice: true },
+        data: { equipmentRole: 'stores', isDevice: true },
         email: 'stores-device@example.com',
         name: 'Stores Device',
         password: DEFAULT_DEMO_USER_PASSWORD,
-        role: 'stores',
       },
       headers,
     });
@@ -322,7 +356,7 @@ describe('admin user safety policy', () => {
       context.auth.api.adminUpdateUser({
         body: {
           data: {
-            role: 'sales',
+            equipmentRole: 'sales',
           },
           userId: 'only-other-admin-user-id',
         },
@@ -468,7 +502,7 @@ describe('admin user safety policy', () => {
     ).rejects.toThrow('You cannot change your own role.');
   });
 
-  test('rejects storing super-admin in the contracting slot', async ({ context }) => {
+  test('rejects super-admin as a contracting role value', async ({ context }) => {
     const headers = await createSignedInAdmin(context, mockSession('super-admin'));
     await createUser(context.db, {
       email: 'contracting-super-admin@example.com',
@@ -487,7 +521,7 @@ describe('admin user safety policy', () => {
         },
         headers,
       }),
-    ).rejects.toThrow('Only a super admin can assign or remove the super admin role.');
+    ).rejects.toMatchObject({ status: 'BAD_REQUEST' });
   });
 
   test('rejects changing a bay operator role while they hold an open assignment', async ({ context }) => {
@@ -543,7 +577,7 @@ describe('admin user safety policy', () => {
       context.auth.api.adminUpdateUser({
         body: {
           data: {
-            role: 'sales',
+            equipmentRole: 'sales',
           },
           userId: 'update-assigned-operator-user-id',
         },
@@ -727,8 +761,7 @@ describe('user phone number validation', () => {
           email: 'invalid-phone@example.com',
           name: 'Invalid Phone',
           password: DEFAULT_DEMO_USER_PASSWORD,
-          role: 'sales',
-          data: { phoneNumber: '0821234567' },
+          data: { equipmentRole: 'sales', phoneNumber: '0821234567' },
         },
         headers,
       }),
@@ -743,8 +776,7 @@ describe('user phone number validation', () => {
         email: 'valid-phone@example.com',
         name: 'Valid Phone',
         password: DEFAULT_DEMO_USER_PASSWORD,
-        role: 'sales',
-        data: { phoneNumber: '+27821234567' },
+        data: { equipmentRole: 'sales', phoneNumber: '+27821234567' },
       },
       headers,
     });

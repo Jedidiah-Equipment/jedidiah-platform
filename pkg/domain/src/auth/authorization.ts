@@ -1,7 +1,5 @@
 import { type AppPermission, type AppRole, ContractingRole, EquipmentRole, type UserAccessSummary } from '@pkg/schema';
 
-export const DEFAULT_APP_ROLE = 'sales' satisfies AppRole;
-
 export const roleLabels = {
   admin: 'Administrator',
   'super-admin': 'Super Administrator',
@@ -384,67 +382,84 @@ export function getRolePermissions(role: AppRole): AppPermission[] {
   return [...permissions].sort();
 }
 
-export function isPermissionSetSignInEligible(permissions: readonly AppPermission[]): boolean {
-  return permissions.length > 0;
-}
-
-export function isRoleSlotsSignInEligible(input: {
-  contractingRole: ContractingRole | null;
-  equipmentRole: EquipmentRole | null;
-}): boolean {
-  return isPermissionSetSignInEligible(getRoleSlotsPermissions(input));
-}
+export type Business = 'contracting' | 'equipment';
 
 export type RoleSlots = {
   contractingRole: ContractingRole | null;
   equipmentRole: EquipmentRole | null;
 };
 
-export function normalizeRoleSlots(input: RoleSlots): RoleSlots {
-  if (input.equipmentRole === 'super-admin' || input.contractingRole === 'super-admin') {
-    return { contractingRole: 'super-admin', equipmentRole: 'super-admin' };
-  }
+export function roleSlotsForRole(role: AppRole): RoleSlots {
+  const equipmentRole = EquipmentRole.safeParse(role);
 
-  return input;
+  return equipmentRole.success
+    ? { contractingRole: null, equipmentRole: equipmentRole.data }
+    : { contractingRole: ContractingRole.parse(role), equipmentRole: null };
 }
 
-export function getRoleSlotsPermissions(input: RoleSlots): AppPermission[] {
-  const slots = normalizeRoleSlots(input);
-  const roles = new Set<AppRole>();
-
-  if (slots.equipmentRole) roles.add(slots.equipmentRole);
-  if (slots.contractingRole) roles.add(slots.contractingRole);
-
-  return [...new Set([...roles].flatMap((role) => getRolePermissions(role)))].sort();
-}
-
-export function createUserAccessSummary(
-  input:
-    | { contractingRole: ContractingRole | null; equipmentRole: EquipmentRole | null; userId: string }
-    | { role: AppRole; userId: string },
-): UserAccessSummary {
-  const slots = normalizeRoleSlots(
-    'role' in input
-      ? {
-          contractingRole: ContractingRole.safeParse(input.role).success ? ContractingRole.parse(input.role) : null,
-          equipmentRole: EquipmentRole.safeParse(input.role).success ? EquipmentRole.parse(input.role) : null,
-        }
-      : input,
-  );
+/**
+ * Reads the two role columns as Better Auth hands them back. Its admin plugin types `role` as
+ * `string | string[]`; this app stores exactly one equipment role there.
+ */
+export function parseRoleSlots(user: object): RoleSlots {
+  const { contractingRole, role } = user as { contractingRole?: unknown; role?: unknown };
 
   return {
-    contractingRole: slots.contractingRole,
-    equipmentRole: slots.equipmentRole,
-    permissions: getRoleSlotsPermissions(slots),
+    contractingRole: ContractingRole.nullable().parse(contractingRole ?? null),
+    equipmentRole: EquipmentRole.nullable().parse((Array.isArray(role) ? role[0] : role) ?? null),
+  };
+}
+
+// Fails closed: a role that does not parse grants nothing rather than throwing.
+export function tryParseRoleSlots(user: object): RoleSlots | null {
+  try {
+    return parseRoleSlots(user);
+  } catch {
+    return null;
+  }
+}
+
+export function getRoleSlotsPermissions({ contractingRole, equipmentRole }: RoleSlots): AppPermission[] {
+  const roles = [equipmentRole, contractingRole].filter((role): role is AppRole => role !== null);
+
+  return [...new Set(roles.flatMap((role) => getRolePermissions(role)))].sort();
+}
+
+export function isRoleSlotsSignInEligible(slots: RoleSlots): boolean {
+  return getRoleSlotsPermissions(slots).length > 0;
+}
+
+export function createUserAccessSummary(input: RoleSlots & { userId: string }): UserAccessSummary {
+  return {
+    contractingRole: input.contractingRole,
+    equipmentRole: input.equipmentRole,
+    permissions: getRoleSlotsPermissions(input),
     userId: input.userId,
   };
 }
 
-export function hasBusinessAccess(
-  access: Pick<UserAccessSummary, 'contractingRole' | 'equipmentRole'> | null | undefined,
-  business: 'contracting' | 'equipment',
-): boolean {
-  return business === 'equipment' ? access?.equipmentRole != null : access?.contractingRole != null;
+type BusinessAccess = Pick<UserAccessSummary, 'contractingRole' | 'equipmentRole'> | null | undefined;
+
+// super-admin is stored once, in the equipment slot, and spans both businesses (ADR 0017): its
+// contracting access is derived here rather than persisted.
+export function getBusinessRole(access: BusinessAccess, business: Business): AppRole | null {
+  if (!access) return null;
+  if (business === 'equipment') return access.equipmentRole;
+
+  return access.equipmentRole === 'super-admin' ? 'super-admin' : access.contractingRole;
+}
+
+export function hasBusinessAccess(access: BusinessAccess, business: Business): boolean {
+  return getBusinessRole(access, business) !== null;
+}
+
+export function hasBothBusinessAccess(access: BusinessAccess): boolean {
+  return hasBusinessAccess(access, 'equipment') && hasBusinessAccess(access, 'contracting');
+}
+
+// `user:*` permissions administer both businesses but live on the Equipment side (ADR 0017).
+export function getPermissionBusiness(permission: AppPermission): Business {
+  return permission.startsWith('contracting_') ? 'contracting' : 'equipment';
 }
 
 function flattenRolePermissions(role: AppRole): AppPermission[] {

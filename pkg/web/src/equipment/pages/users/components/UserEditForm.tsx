@@ -150,11 +150,8 @@ export const UserEditForm: React.FC<UserEditFormProps> = ({
                     onRoleChange={(role) => {
                       onRoleChange?.();
                       const equipmentRole = EquipmentRole.nullable().parse(role);
-                      const wasSuperAdmin = form.state.values.equipmentRole === 'super-admin';
                       field.handleChange(equipmentRole);
-                      if (wasSuperAdmin && equipmentRole !== 'super-admin') {
-                        form.setFieldValue('contractingRole', null);
-                      }
+                      if (equipmentRole === 'super-admin') form.setFieldValue('contractingRole', null);
                     }}
                     roles={EQUIPMENT_ROLES}
                     value={field.state.value}
@@ -171,7 +168,7 @@ export const UserEditForm: React.FC<UserEditFormProps> = ({
                     label="Contracting role"
                     name={field.name}
                     onRoleChange={(role) => field.handleChange(ContractingRole.nullable().parse(role))}
-                    roles={CONTRACTING_ROLES.filter((role) => role !== 'super-admin')}
+                    roles={CONTRACTING_ROLES}
                     value={field.state.value}
                   />
                 )}

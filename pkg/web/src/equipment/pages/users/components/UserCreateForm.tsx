@@ -92,7 +92,11 @@ export const UserCreateForm: React.FC<UserCreateFormProps> = ({
               errors={field.state.meta.errors}
               label="Equipment role"
               name={field.name}
-              onRoleChange={(role) => field.handleChange(EquipmentRole.nullable().parse(role))}
+              onRoleChange={(role) => {
+                const equipmentRole = EquipmentRole.nullable().parse(role);
+                field.handleChange(equipmentRole);
+                if (equipmentRole === 'super-admin') form.setFieldValue('contractingRole', null);
+              }}
               roles={EQUIPMENT_ROLES}
               value={field.state.value}
             />
@@ -106,7 +110,7 @@ export const UserCreateForm: React.FC<UserCreateFormProps> = ({
               label="Contracting role"
               name={field.name}
               onRoleChange={(role) => field.handleChange(ContractingRole.nullable().parse(role))}
-              roles={CONTRACTING_ROLES.filter((role) => role !== 'super-admin')}
+              roles={CONTRACTING_ROLES}
               value={field.state.value}
             />
           )}

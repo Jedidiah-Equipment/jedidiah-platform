@@ -1,5 +1,5 @@
 import { roleDescriptions, roleLabels } from '@pkg/domain';
-import { APP_ROLES, AppRole } from '@pkg/schema';
+import { AppRole } from '@pkg/schema';
 import { IconChevronDown } from '@tabler/icons-react';
 import type React from 'react';
 
@@ -17,13 +17,13 @@ type UserRoleMenuProps = {
   disabled: boolean;
   id: string;
   onRoleChange: (role: AppRole | null) => void;
-  roles?: readonly AppRole[];
+  roles: readonly AppRole[];
   value: AppRole | null;
 };
 
 const NO_ROLE_VALUE = '__none__';
 
-export const UserRoleMenu: React.FC<UserRoleMenuProps> = ({ disabled, id, onRoleChange, roles = APP_ROLES, value }) => (
+export const UserRoleMenu: React.FC<UserRoleMenuProps> = ({ disabled, id, onRoleChange, roles, value }) => (
   <DropdownMenu>
     <DropdownMenuTrigger
       render={<Button className="w-full justify-between" disabled={disabled} id={id} type="button" variant="outline" />}

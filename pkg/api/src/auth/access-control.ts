@@ -1,4 +1,4 @@
-import { appRoleAccess, authorizationStatement, DEFAULT_APP_ROLE } from '@pkg/domain';
+import { appRoleAccess, authorizationStatement } from '@pkg/domain';
 import type { EquipmentRole } from '@pkg/schema';
 import { createAccessControl } from 'better-auth/plugins/access';
 
@@ -14,5 +14,3 @@ export const authRoles = {
   sales: ac.newRole(appRoleAccess.sales),
   stores: ac.newRole(appRoleAccess.stores),
 } as const satisfies Record<EquipmentRole, ReturnType<typeof ac.newRole>>;
-
-export const defaultAuthRole = DEFAULT_APP_ROLE;

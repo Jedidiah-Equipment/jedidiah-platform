@@ -1,3 +1,4 @@
+import { type Business, hasBothBusinessAccess } from '@pkg/domain';
 import { IconBuildingFactory, IconBuildingWarehouse, IconCheck, IconSelector } from '@tabler/icons-react';
 import { Link, useNavigate } from '@tanstack/react-router';
 import type React from 'react';
@@ -11,14 +12,15 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu.js';
 import { SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar.js';
+import { useAccess } from '@/hooks/use-access.js';
 
 type BusinessSidebarHeaderProps = {
-  activeBusiness: 'contracting' | 'equipment';
-  hasBothBusinesses: boolean;
+  activeBusiness: Business;
 };
 
-export const BusinessSidebarHeader: React.FC<BusinessSidebarHeaderProps> = ({ activeBusiness, hasBothBusinesses }) => {
+export const BusinessSidebarHeader: React.FC<BusinessSidebarHeaderProps> = ({ activeBusiness }) => {
   const navigate = useNavigate();
+  const hasBothBusinesses = hasBothBusinessAccess(useAccess().data);
   const home = activeBusiness === 'contracting' ? '/contracting' : '/equipment/dashboard';
 
   return (

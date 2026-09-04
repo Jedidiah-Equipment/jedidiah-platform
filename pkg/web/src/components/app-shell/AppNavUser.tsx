@@ -1,5 +1,4 @@
-import { roleLabels } from '@pkg/domain';
-import type { AppRole } from '@pkg/schema';
+import { type Business, getBusinessRole, roleLabels } from '@pkg/domain';
 import { IconLogout, IconMoon, IconSelector, IconShield, IconSun } from '@tabler/icons-react';
 import type React from 'react';
 
@@ -14,11 +13,16 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu.js';
 import { SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar } from '@/components/ui/sidebar.js';
+import { useAccess } from '@/hooks/use-access.js';
 import { useTheme } from '@/hooks/use-theme.js';
 
+const BUSINESS_NAMES = { contracting: 'Contracting', equipment: 'Equipment' } as const satisfies Record<
+  Business,
+  string
+>;
+
 type AppNavUserProps = {
-  activeRole: AppRole | null | undefined;
-  businessName: 'Contracting' | 'Equipment';
+  business: Business;
   user: {
     name: string;
     email: string;
@@ -28,8 +32,9 @@ type AppNavUserProps = {
   onSignOut: () => void | Promise<void>;
 };
 
-export const AppNavUser: React.FC<AppNavUserProps> = ({ activeRole, businessName, user, onSignOut }) => {
+export const AppNavUser: React.FC<AppNavUserProps> = ({ business, user, onSignOut }) => {
   const { isMobile } = useSidebar();
+  const activeRole = getBusinessRole(useAccess().data, business);
   const { setTheme, theme } = useTheme();
   const isDark = theme === 'dark';
 
@@ -75,7 +80,7 @@ export const AppNavUser: React.FC<AppNavUserProps> = ({ activeRole, businessName
                 <span className="flex min-w-0 flex-col">
                   <span>Role</span>
                   <span className="truncate text-muted-foreground text-xs">
-                    {activeRole ? roleLabels[activeRole] : `No ${businessName} access`}
+                    {activeRole ? roleLabels[activeRole] : `No ${BUSINESS_NAMES[business]} access`}
                   </span>
                 </span>
               </DropdownMenuItem>

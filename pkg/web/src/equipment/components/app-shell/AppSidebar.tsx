@@ -5,26 +5,23 @@ import { Sidebar, SidebarContent, SidebarFooter } from '@/components/ui/sidebar.
 import { AppNavHelp } from '@/equipment/components/app-shell/AppNavHelp.js';
 import { AppNavMain } from '@/equipment/components/app-shell/AppNavMain.js';
 import { SidebarAssistant } from '@/equipment/components/assistant-ui/SidebarAssistant.js';
-import { useAccess } from '@/hooks/use-access.js';
 import { useAuth } from '@/hooks/use-auth.js';
 
 type AppSidebarProps = React.ComponentProps<typeof Sidebar>;
 
 export const AppSidebar: React.FC<AppSidebarProps> = (props) => {
   const { onSignOut, session, user } = useAuth();
-  const access = useAccess().data;
-  const hasBothBusinesses = access?.equipmentRole != null && access.contractingRole != null;
 
   return (
     <Sidebar collapsible="icon" variant="inset" {...props}>
-      <BusinessSidebarHeader activeBusiness="equipment" hasBothBusinesses={hasBothBusinesses} />
+      <BusinessSidebarHeader activeBusiness="equipment" />
       <SidebarContent>
         <AppNavMain />
       </SidebarContent>
       <SidebarFooter>
         <AppNavHelp />
         <SidebarAssistant enabled={session?.user.assistantEnabled === true} />
-        <AppNavUser activeRole={access?.equipmentRole} businessName="Equipment" onSignOut={onSignOut} user={user} />
+        <AppNavUser business="equipment" onSignOut={onSignOut} user={user} />
       </SidebarFooter>
     </Sidebar>
   );

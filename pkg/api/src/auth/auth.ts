@@ -5,7 +5,7 @@ import { type Auth as BetterAuth, type BetterAuthPlugin, betterAuth } from 'bett
 import { admin as adminPlugin } from 'better-auth/plugins';
 import { emailSender } from '../email/index.js';
 import { getApiConfig } from '../env.js';
-import { ac, authRoles, defaultAuthRole } from './access-control.js';
+import { ac, authRoles } from './access-control.js';
 import { assertUserCanCreateSession } from './sign-in-eligibility.js';
 import { userPhoneValidationPlugin } from './user-phone-validation.js';
 
@@ -67,7 +67,6 @@ function createAuthOptions(database: Db, businessPlugins: readonly BetterAuthPlu
       adminPlugin({
         ac,
         adminRoles: ['admin'],
-        defaultRole: defaultAuthRole,
         roles: authRoles,
       }),
       ...businessPlugins,

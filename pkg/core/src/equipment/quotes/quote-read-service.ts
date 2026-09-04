@@ -524,7 +524,7 @@ export async function listQuoteSalespeople({ db }: { db: Db }): Promise<UserList
         isDevice: row.isDevice,
         name: row.name,
         phoneNumber: row.phoneNumber,
-        equipmentRole: row.role,
+        role: row.role,
         image: row.image,
       }),
     ),

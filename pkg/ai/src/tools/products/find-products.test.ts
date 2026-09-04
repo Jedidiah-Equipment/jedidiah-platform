@@ -1,4 +1,4 @@
-import { createUserAccessSummary } from '@pkg/domain';
+import { createUserAccessSummary, roleSlotsForRole } from '@pkg/domain';
 import { ProductListResult } from '@pkg/schema';
 import { describe, expect, test } from 'vitest';
 
@@ -81,7 +81,7 @@ describe('findProducts contract', () => {
 
     const response = toFindProductsResponse(
       coreResult,
-      createUserAccessSummary({ role: 'admin', userId: 'test-user-id' }),
+      createUserAccessSummary({ ...roleSlotsForRole('admin'), userId: 'test-user-id' }),
     );
 
     expect(FindProductsResponse.parse(response)).toEqual(response);
@@ -95,7 +95,10 @@ describe('findProducts contract', () => {
     ]);
     expect(JSON.stringify(response)).not.toMatch(/thumbnail|images|assemblies|productBays/);
     expect(
-      toFindProductsResponse(coreResult, createUserAccessSummary({ role: 'sales', userId: 'test-user-id' })),
+      toFindProductsResponse(
+        coreResult,
+        createUserAccessSummary({ ...roleSlotsForRole('sales'), userId: 'test-user-id' }),
+      ),
     ).toEqual([
       {
         id: PRODUCT_ID,

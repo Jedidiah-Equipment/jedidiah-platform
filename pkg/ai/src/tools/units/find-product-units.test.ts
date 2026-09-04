@@ -1,4 +1,4 @@
-import { createUserAccessSummary } from '@pkg/domain';
+import { createUserAccessSummary, roleSlotsForRole } from '@pkg/domain';
 import type { ProductUnitListResult } from '@pkg/schema';
 import { describe, expect, test } from 'vitest';
 
@@ -62,7 +62,7 @@ describe('findProductUnits contract', () => {
 
     const response = toFindProductUnitsResponse(
       result,
-      createUserAccessSummary({ role: 'admin', userId: 'test-user-id' }),
+      createUserAccessSummary({ ...roleSlotsForRole('admin'), userId: 'test-user-id' }),
     );
 
     expect(FindProductUnitsResponse.parse(response)).toEqual(response);
@@ -76,7 +76,7 @@ describe('findProductUnits contract', () => {
   test('leaves the Product thumbnail out of the payload', () => {
     const response = toFindProductUnitsResponse(
       createListResult({ companyName: 'Acme Mining', id: CUSTOMER_ID }),
-      createUserAccessSummary({ role: 'admin', userId: 'test-user-id' }),
+      createUserAccessSummary({ ...roleSlotsForRole('admin'), userId: 'test-user-id' }),
     );
 
     expect(response[0]?.product).toEqual({ id: PRODUCT_ID, modelCode: 'CL-120', name: 'Compact Loader' });
@@ -85,7 +85,7 @@ describe('findProductUnits contract', () => {
   test('omits links the caller cannot open, and the Owner link for a Unit in Stock', () => {
     const stockUnit = toFindProductUnitsResponse(
       createListResult(null),
-      createUserAccessSummary({ role: 'admin', userId: 'test-user-id' }),
+      createUserAccessSummary({ ...roleSlotsForRole('admin'), userId: 'test-user-id' }),
     );
     expect(stockUnit[0]?.links).toEqual({
       app: `/equipment/units/${UNIT_ID}`,
@@ -94,7 +94,7 @@ describe('findProductUnits contract', () => {
 
     const jobViewer = toFindProductUnitsResponse(
       createListResult({ companyName: 'Acme Mining', id: CUSTOMER_ID }),
-      createUserAccessSummary({ role: 'job-viewer', userId: 'test-user-id' }),
+      createUserAccessSummary({ ...roleSlotsForRole('job-viewer'), userId: 'test-user-id' }),
     );
     expect(jobViewer[0]?.links).toEqual({ app: `/equipment/units/${UNIT_ID}` });
   });

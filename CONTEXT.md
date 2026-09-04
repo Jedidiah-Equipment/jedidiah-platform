@@ -130,7 +130,8 @@ A new Draft Purchase Order line takes its first unit price from the Part's curre
 
 A User holds up to two optional App Role slots: an **Equipment Role** and a **Contracting Role**. Role
 presence grants access to that business, and the permissions from both held roles are combined. The single
-`super-admin` role spans both slots by definition. Department Membership is descriptive only and must not be
+`super-admin` role spans both slots by definition; it is stored once, in the Equipment slot, and its Contracting
+access is derived from that, never persisted. Department Membership is descriptive only and must not be
 used to scope permissions. Contracting roles live in `CONTEXT-CONTRACTING.md`; the Equipment roles are:
 
 - **super-admin**: everything admin can do, plus the exclusive ability to review Corrective Feedback and Internal Notes through the Feedback inbox. The only role that can see Corrective Feedback — admins cannot. Only a super-admin may grant or remove the super-admin role; admins manage every other role but cannot mint a super-admin (which would otherwise be an escalation path to Corrective Feedback).

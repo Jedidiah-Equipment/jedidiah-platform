@@ -1,4 +1,4 @@
-import { createUserAccessSummary } from '@pkg/domain';
+import { createUserAccessSummary, roleSlotsForRole } from '@pkg/domain';
 import { describe, expect, test } from 'vitest';
 
 import { createAiSdkTools } from './ai-sdk-tools.js';
@@ -6,7 +6,7 @@ import type { AiContext } from './context.js';
 
 function createContext(role: 'admin' | 'job-viewer' | 'sales'): AiContext {
   return {
-    access: createUserAccessSummary({ role, userId: '00000000-0000-4000-8000-000000000001' }),
+    access: createUserAccessSummary({ ...roleSlotsForRole(role), userId: '00000000-0000-4000-8000-000000000001' }),
   } as AiContext;
 }
 

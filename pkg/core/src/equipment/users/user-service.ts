@@ -1,5 +1,4 @@
 import { type DatabaseTransaction, type Db, user, userDepartment } from '@pkg/db';
-import { normalizeRoleSlots } from '@pkg/domain';
 import {
   type AuditChanges,
   AuthId,
@@ -42,21 +41,21 @@ export const userAuditDescriptor = defineAuditDescriptor<UserAuditInput>({
 
 type UserRow = Pick<
   typeof user.$inferSelect,
-  'assistantEnabled' | 'email' | 'emailVerified' | 'id' | 'image' | 'isDevice' | 'name' | 'phoneNumber'
+  | 'assistantEnabled'
+  | 'contractingRole'
+  | 'email'
+  | 'emailVerified'
+  | 'id'
+  | 'image'
+  | 'isDevice'
+  | 'name'
+  | 'phoneNumber'
+  | 'role'
 > & {
-  contractingRole?: unknown;
   departments: readonly Department[];
-  equipmentRole?: unknown;
-  role?: unknown;
 };
 
 export function mapUser(row: UserRow): UserSummary {
-  const equipmentRole = EquipmentRole.nullable().parse(
-    (row.equipmentRole !== undefined ? row.equipmentRole : row.role) ?? null,
-  );
-  const contractingRole = ContractingRole.nullable().parse(row.contractingRole ?? null);
-  const roleSlots = normalizeRoleSlots({ contractingRole, equipmentRole });
-
   return {
     assistantEnabled: row.assistantEnabled,
     departments: row.departments.map((department) => Department.parse(department)),
@@ -66,8 +65,8 @@ export function mapUser(row: UserRow): UserSummary {
     isDevice: row.isDevice,
     name: row.name,
     phoneNumber: NullablePhoneNumber.parse(row.phoneNumber),
-    contractingRole: roleSlots.contractingRole,
-    equipmentRole: roleSlots.equipmentRole,
+    contractingRole: ContractingRole.nullable().parse(row.contractingRole),
+    equipmentRole: EquipmentRole.nullable().parse(row.role),
     thumbnailDataUrl: NullableThumbnailDataUrl.parse(row.image),
   };
 }
@@ -84,8 +83,7 @@ export async function getUserById({ db, userId }: { db: Db; userId: AuthId }): P
       name: user.name,
       phoneNumber: user.phoneNumber,
       contractingRole: user.contractingRole,
-      equipmentRole: user.role,
-      thumbnailDataUrl: user.image,
+      role: user.role,
     })
     .from(user)
     .where(eq(user.id, userId))
@@ -289,8 +287,8 @@ export function isReservedSuperAdminAssignment({
   targetRole,
 }: {
   actorRole: EquipmentRole;
-  currentRole?: EquipmentRole | ContractingRole | null;
-  targetRole: EquipmentRole | ContractingRole | null;
+  currentRole?: EquipmentRole | null;
+  targetRole: EquipmentRole | null;
 }): boolean {
   return (targetRole === 'super-admin' || currentRole === 'super-admin') && actorRole !== 'super-admin';
 }
@@ -337,16 +335,7 @@ export async function canAssignUserRoleSlots({
     }
 
     if (
-      isReservedSuperAdminAssignment({
-        actorRole,
-        currentRole: currentEquipmentRole,
-        targetRole: nextEquipmentRole,
-      }) ||
-      isReservedSuperAdminAssignment({
-        actorRole,
-        currentRole: currentContractingRole,
-        targetRole: nextContractingRole,
-      })
+      isReservedSuperAdminAssignment({ actorRole, currentRole: currentEquipmentRole, targetRole: nextEquipmentRole })
     ) {
       return { allowed: false, reason: 'reserved-super-admin' };
     }

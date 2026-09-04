@@ -1,4 +1,4 @@
-import { createUserAccessSummary } from '@pkg/domain';
+import { createUserAccessSummary, roleSlotsForRole } from '@pkg/domain';
 import { QuoteDetail } from '@pkg/schema';
 import { describe, expect, test } from 'vitest';
 
@@ -66,7 +66,10 @@ describe('getQuote contract', () => {
   });
 
   test('returns full Quote details and relationships without thumbnail data', () => {
-    const response = toGetQuoteResponse(quote, createUserAccessSummary({ role: 'admin', userId: 'test-user-id' }));
+    const response = toGetQuoteResponse(
+      quote,
+      createUserAccessSummary({ ...roleSlotsForRole('admin'), userId: 'test-user-id' }),
+    );
 
     expect(GetQuoteResponse.parse(response)).toEqual(response);
     expect(response).toMatchObject({
@@ -80,9 +83,10 @@ describe('getQuote contract', () => {
       quotedBasePrice: 1000,
     });
     expect(JSON.stringify(response)).not.toContain('thumbnailDataUrl');
-    expect(toGetQuoteResponse(quote, createUserAccessSummary({ role: 'sales', userId: 'test-user-id' })).links).toEqual(
-      { app: `/equipment/quotes/${QUOTE_ID}/edit` },
-    );
+    expect(
+      toGetQuoteResponse(quote, createUserAccessSummary({ ...roleSlotsForRole('sales'), userId: 'test-user-id' }))
+        .links,
+    ).toEqual({ app: `/equipment/quotes/${QUOTE_ID}/edit` });
   });
 
   test('links the machine an Allocation Quote is selling', () => {
@@ -93,10 +97,16 @@ describe('getQuote contract', () => {
     });
 
     expect(
-      toGetQuoteResponse(allocationQuote, createUserAccessSummary({ role: 'admin', userId: 'test-user-id' })).links,
+      toGetQuoteResponse(
+        allocationQuote,
+        createUserAccessSummary({ ...roleSlotsForRole('admin'), userId: 'test-user-id' }),
+      ).links,
     ).toMatchObject({ productUnit: `/equipment/units/${UNIT_ID}` });
     expect(
-      toGetQuoteResponse(allocationQuote, createUserAccessSummary({ role: 'sales', userId: 'test-user-id' })).links,
+      toGetQuoteResponse(
+        allocationQuote,
+        createUserAccessSummary({ ...roleSlotsForRole('sales'), userId: 'test-user-id' }),
+      ).links,
     ).toEqual({ app: `/equipment/quotes/${QUOTE_ID}/edit`, productUnit: `/equipment/units/${UNIT_ID}` });
   });
 });

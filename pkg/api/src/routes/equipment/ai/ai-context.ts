@@ -1,12 +1,12 @@
 import type { AiContext, AiSession } from '@pkg/ai';
 import type { StorageAdapter } from '@pkg/core';
 import { db } from '@pkg/db';
-import { createUserAccessSummary } from '@pkg/domain';
+import { createUserAccessSummary, parseRoleSlots } from '@pkg/domain';
 import { renderBrochurePdf, renderQuoteDocumentPdf } from '@pkg/pdf';
 import type { UserAccessSummary } from '@pkg/schema';
 import type { FastifyRequest } from 'fastify';
 
-import { type AppSession, getSessionFromHeaders, parseBetterAuthRoleSlots } from '@/auth/session.js';
+import { type AppSession, getSessionFromHeaders } from '@/auth/session.js';
 import { log } from '@/logger.js';
 import { sendAiEmail } from './ai-email.js';
 
@@ -54,7 +54,7 @@ export async function buildAiContext(req: FastifyRequest, dependencies: AiContex
   const session = await getSessionFromHeaders(req.headers);
   const access: UserAccessSummary | null = session
     ? createUserAccessSummary({
-        ...parseBetterAuthRoleSlots(session.user),
+        ...parseRoleSlots(session.user),
         userId: session.user.id,
       })
     : null;

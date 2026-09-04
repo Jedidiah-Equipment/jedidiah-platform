@@ -1,4 +1,4 @@
-import { canAssignUserRoleSlots, isReservedSuperAdminAssignment } from '@pkg/core';
+import { canAssignUserRoleSlots, isContractingRoleBesideSuperAdmin, isReservedSuperAdminAssignment } from '@pkg/core';
 import type { Db } from '@pkg/db';
 import { createUserAccessSummary, hasPermission, parseRoleSlots, type RoleSlots } from '@pkg/domain';
 import { ContractingRole, EquipmentRole } from '@pkg/schema';
@@ -33,6 +33,11 @@ const INVALID_ROLE_ERROR = {
   message: 'The requested role is invalid.',
 } as const;
 
+const SUPER_ADMIN_SPANS_CONTRACTING_ERROR = {
+  code: 'SUPER_ADMIN_SPANS_CONTRACTING',
+  message: 'A super admin spans both businesses and cannot hold a separate contracting role.',
+} as const;
+
 const ROLE_SPELLING_ERROR = {
   code: 'INVALID_ROLE',
   message: 'Send the equipment role as `data.equipmentRole`.',
@@ -42,7 +47,7 @@ const ROLE_SPELLING_ERROR = {
  * Role slots travel as `data.equipmentRole` and `data.contractingRole` on create-user and
  * update-user (Better Auth's own `role` cannot carry null), and as `role` on set-role, which is
  * Better Auth's native single-slot endpoint. The database hook below maps `equipmentRole` onto the
- * `role` column Better Auth owns.
+ * `role` column Better Auth owns and clears the contracting slot whenever super-admin lands.
  */
 export function adminUserSafetyPlugin(database: Db): BetterAuthPlugin {
   return {
@@ -52,10 +57,10 @@ export function adminUserSafetyPlugin(database: Db): BetterAuthPlugin {
         databaseHooks: {
           user: {
             create: {
-              before: (createdUser, context) => applyEquipmentRole(createdUser, context?.path, context?.body),
+              before: (createdUser, context) => applyRoleSlots(createdUser, context?.path, context?.body),
             },
             update: {
-              before: (updatedUser, context) => applyEquipmentRole(updatedUser, context?.path, context?.body),
+              before: (updatedUser, context) => applyRoleSlots(updatedUser, context?.path, context?.body),
             },
           },
         },
@@ -89,6 +94,10 @@ export function adminUserSafetyPlugin(database: Db): BetterAuthPlugin {
               throw APIError.from('FORBIDDEN', SELF_ROLE_CHANGE_ERROR);
             }
 
+            if (isContractingRoleBesideSuperAdmin(change)) {
+              throw APIError.from('BAD_REQUEST', SUPER_ADMIN_SPANS_CONTRACTING_ERROR);
+            }
+
             if (!change.userId) {
               // Create-user has no existing user to look up, so only the reserved-role rule applies.
               if (
@@ -120,6 +129,10 @@ export function adminUserSafetyPlugin(database: Db): BetterAuthPlugin {
 
             if (policy.reason === 'reserved-super-admin') {
               throw APIError.from('FORBIDDEN', RESERVED_SUPER_ADMIN_ERROR);
+            }
+
+            if (policy.reason === 'super-admin-spans-contracting') {
+              throw APIError.from('BAD_REQUEST', SUPER_ADMIN_SPANS_CONTRACTING_ERROR);
             }
 
             throw APIError.from('FORBIDDEN', {
@@ -181,26 +194,25 @@ function parseSlot<T>(schema: z.ZodType<T>, value: unknown): T | null {
 }
 
 // Better Auth inserts its own `role` default on create-user, so an omitted equipment role must be
-// written as null rather than left to that default.
-async function applyEquipmentRole<T extends Record<string, unknown>>(
-  userData: T,
-  path: string | undefined,
-  body: unknown,
-) {
+// written as null rather than left to that default. Set-role writes `role` itself; it is included
+// so super-admin clears the contracting slot on that path too.
+async function applyRoleSlots<T extends Record<string, unknown>>(userData: T, path: string | undefined, body: unknown) {
   const data = isRecord(body) && isRecord(body.data) ? body.data : {};
-  const applies =
+  const carriesEquipmentRole =
     path === '/admin/create-user' || (path === '/admin/update-user' && Object.hasOwn(data, 'equipmentRole'));
 
-  if (!applies) {
+  if (!carriesEquipmentRole && !(path === '/admin/set-role' && Object.hasOwn(userData, 'role'))) {
     return;
   }
 
   const { equipmentRole: _transportField, ...persistedUser } = userData;
+  const role = carriesEquipmentRole ? (data.equipmentRole ?? null) : userData.role;
 
   return {
     data: {
       ...persistedUser,
-      role: data.equipmentRole ?? null,
+      role,
+      ...(role === 'super-admin' ? { contractingRole: null } : {}),
     },
   };
 }

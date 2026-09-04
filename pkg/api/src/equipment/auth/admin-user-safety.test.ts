@@ -502,6 +502,54 @@ describe('admin user safety policy', () => {
     ).rejects.toThrow('You cannot change your own role.');
   });
 
+  test('clears a stored contracting role when super-admin is assigned through setRole', async ({ context }) => {
+    const headers = await createSignedInAdmin(context, mockSession('super-admin'));
+    await createUser(context.db, {
+      contractingRole: 'foreman',
+      email: 'promoted-foreman@example.com',
+      id: 'promoted-foreman-id',
+      name: 'Promoted Foreman',
+      role: 'sales',
+    });
+
+    await context.auth.api.setRole({ body: { role: 'super-admin', userId: 'promoted-foreman-id' }, headers });
+
+    const [stored] = await context.db
+      .select({ contractingRole: user.contractingRole, equipmentRole: user.role })
+      .from(user)
+      .where(sql`${user.id} = 'promoted-foreman-id'`);
+
+    expect(stored).toEqual({ contractingRole: null, equipmentRole: 'super-admin' });
+  });
+
+  test('rejects a contracting role beside super-admin', async ({ context }) => {
+    const headers = await createSignedInAdmin(context, mockSession('super-admin'));
+    await createUser(context.db, {
+      email: 'spanning-target@example.com',
+      id: 'spanning-target-id',
+      name: 'Spanning Target',
+      role: 'super-admin',
+    });
+
+    await expect(
+      context.auth.api.adminUpdateUser({
+        body: { data: { contractingRole: 'foreman' }, userId: 'spanning-target-id' },
+        headers,
+      }),
+    ).rejects.toMatchObject({ status: 'BAD_REQUEST' });
+    await expect(
+      context.auth.api.createUser({
+        body: {
+          data: { contractingRole: 'foreman', equipmentRole: 'super-admin' },
+          email: 'spanning-create@example.com',
+          name: 'Spanning Create',
+          password: DEFAULT_DEMO_USER_PASSWORD,
+        },
+        headers,
+      }),
+    ).rejects.toMatchObject({ status: 'BAD_REQUEST' });
+  });
+
   test('rejects super-admin as a contracting role value', async ({ context }) => {
     const headers = await createSignedInAdmin(context, mockSession('super-admin'));
     await createUser(context.db, {

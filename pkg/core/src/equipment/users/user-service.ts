@@ -276,7 +276,20 @@ export type UserRoleAssignmentPolicyResult =
   | { allowed: true }
   | { allowed: false; reason: 'last-admin' }
   | { allowed: false; bayNames: string[]; reason: 'open-bay-operator-assignments' }
-  | { allowed: false; reason: 'reserved-super-admin' };
+  | { allowed: false; reason: 'reserved-super-admin' }
+  | { allowed: false; reason: 'super-admin-spans-contracting' };
+
+// super-admin fills both slots by definition (ADR 0017), so a contracting role beside it is a
+// contradiction rather than a grant.
+export function isContractingRoleBesideSuperAdmin({
+  contractingRole,
+  equipmentRole,
+}: {
+  contractingRole?: ContractingRole | null | undefined;
+  equipmentRole?: EquipmentRole | null | undefined;
+}): boolean {
+  return equipmentRole === 'super-admin' && contractingRole != null;
+}
 
 // Shared reserved-role predicate (ADR 0017/0008): only a super-admin may
 // grant the super-admin role or change a user who currently holds it. `currentRole` is omitted when
@@ -338,6 +351,12 @@ export async function canAssignUserRoleSlots({
       isReservedSuperAdminAssignment({ actorRole, currentRole: currentEquipmentRole, targetRole: nextEquipmentRole })
     ) {
       return { allowed: false, reason: 'reserved-super-admin' };
+    }
+
+    // Only an explicit contracting value is contradictory; a contracting role already stored when
+    // super-admin arrives is cleared by the write itself.
+    if (isContractingRoleBesideSuperAdmin({ contractingRole, equipmentRole: nextEquipmentRole })) {
+      return { allowed: false, reason: 'super-admin-spans-contracting' };
     }
 
     if (equipmentRole !== undefined && currentEquipmentRole === 'bay-operator') {

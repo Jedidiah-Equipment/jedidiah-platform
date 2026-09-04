@@ -56,9 +56,10 @@ export default function LoginScreen() {
     // the button in its submitting state until this screen unmounts.
   }
 
-  // Already signed in (including right after a successful sign-in): leave /login.
+  // Already signed in (including right after a successful sign-in): leave /login and let the
+  // protected index pick the business.
   if (isHydratedSession(session)) {
-    return <Redirect href="/equipment" />;
+    return <Redirect href="/" />;
   }
 
   return (

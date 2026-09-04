@@ -25,6 +25,7 @@ import { UserBadgePrintButton } from './components/UserBadgePrintButton.js';
 import { UserEditForm, type UserEditFormValues } from './components/UserEditForm.js';
 import type { UserPasswordFormValues } from './components/UserPasswordForm.js';
 import { AuthAdminError, unwrapAuthResult } from './user-admin-client.js';
+import { buildUserRoleUpdateData, type UserRoleUpdateData } from './user-role-update.js';
 
 type UserEditDialogProps = {
   user: UserSummary;
@@ -69,18 +70,7 @@ export const UserEditDialog: React.FC<UserEditDialogProps> = ({ user, onClose })
       let didUpdate = false;
       const profileData = buildProfileUpdateData({ baselineUser, canSetEmail, canUpdateProfile, value });
       if (canSetRole) {
-        const storedContractingRole = value.equipmentRole === 'super-admin' ? null : value.contractingRole;
-
-        if (value.equipmentRole !== baselineUser.equipmentRole) {
-          if (value.equipmentRole === null) {
-            profileData.equipmentRole = null;
-          } else {
-            profileData.role = value.equipmentRole;
-          }
-        }
-        if (storedContractingRole !== baselineUser.contractingRole || baselineUser.equipmentRole === 'super-admin') {
-          profileData.contractingRole = storedContractingRole;
-        }
+        Object.assign(profileData, buildUserRoleUpdateData({ baseline: baselineUser, value }));
       }
       const thumbnailChanged = value.thumbnailDataUrl !== baselineUser.thumbnailDataUrl;
 
@@ -222,11 +212,8 @@ function isOpenBayOperatorAssignmentRoleError(error: unknown): error is AuthAdmi
 
 type ProfileUpdateData = Partial<
   Pick<UserEditFormValues, 'assistantEnabled' | 'email' | 'emailVerified' | 'name' | 'phoneNumber'>
-> & {
-  contractingRole?: UserEditFormValues['contractingRole'];
-  equipmentRole?: null;
-  role?: UserEditFormValues['equipmentRole'];
-};
+> &
+  UserRoleUpdateData;
 
 function buildProfileUpdateData({
   baselineUser,

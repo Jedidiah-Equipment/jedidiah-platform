@@ -8,6 +8,7 @@ import {
   isPermissionSetSignInEligible,
   isRoleSignInEligible,
   isRoleSlotsSignInEligible,
+  normalizeRoleSlots,
   permissionDescriptions,
   permissionLabels,
   roleDescriptions,
@@ -350,6 +351,19 @@ describe('createUserAccessSummary', () => {
 
     expect(hasBusinessAccess(contractingOnly, 'contracting')).toBe(true);
     expect(hasBusinessAccess(contractingOnly, 'equipment')).toBe(false);
+  });
+});
+
+describe('normalizeRoleSlots', () => {
+  it('projects the spanning super-admin role into both business slots', () => {
+    expect(normalizeRoleSlots({ contractingRole: null, equipmentRole: 'super-admin' })).toEqual({
+      contractingRole: 'super-admin',
+      equipmentRole: 'super-admin',
+    });
+    expect(normalizeRoleSlots({ contractingRole: 'super-admin', equipmentRole: null })).toEqual({
+      contractingRole: 'super-admin',
+      equipmentRole: 'super-admin',
+    });
   });
 });
 

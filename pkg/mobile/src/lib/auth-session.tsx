@@ -1,3 +1,4 @@
+import { normalizeRoleSlots } from '@pkg/domain';
 import { ContractingRole, EquipmentRole } from '@pkg/schema';
 import { createContext, type ReactNode, useContext } from 'react';
 
@@ -29,10 +30,10 @@ export function getSessionBusinessAccess(session: AuthSession) {
   const contractingRole = ContractingRole.nullable()
     .catch(null)
     .parse(session.user.contractingRole ?? null);
-  const isSuperAdmin = equipmentRole === 'super-admin' || contractingRole === 'super-admin';
+  const roleSlots = normalizeRoleSlots({ contractingRole, equipmentRole });
 
   return {
-    contracting: isSuperAdmin || contractingRole !== null,
-    equipment: isSuperAdmin || equipmentRole !== null,
+    contracting: roleSlots.contractingRole !== null,
+    equipment: roleSlots.equipmentRole !== null,
   };
 }

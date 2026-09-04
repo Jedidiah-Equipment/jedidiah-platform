@@ -1,5 +1,5 @@
 import { type Db, sql, user } from '@pkg/db';
-import { isRoleSlotsSignInEligible } from '@pkg/domain';
+import { isRoleSlotsSignInEligible, normalizeRoleSlots } from '@pkg/domain';
 import {
   AuthId,
   ContractingRole,
@@ -29,11 +29,7 @@ export function parseBetterAuthRoleSlots(input: { contractingRole?: unknown; rol
   );
   const contractingRole = ContractingRole.nullable().parse(input.contractingRole ?? null);
 
-  if (equipmentRole === 'super-admin' || contractingRole === 'super-admin') {
-    return { contractingRole: 'super-admin', equipmentRole: 'super-admin' };
-  }
-
-  return { contractingRole, equipmentRole };
+  return normalizeRoleSlots({ contractingRole, equipmentRole });
 }
 
 export async function assertUserCanCreateSession({ db, userId }: { db: Db; userId: string }): Promise<void> {

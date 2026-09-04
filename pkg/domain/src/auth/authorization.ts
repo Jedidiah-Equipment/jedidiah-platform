@@ -399,18 +399,25 @@ export function isRoleSlotsSignInEligible(input: {
   return isPermissionSetSignInEligible(getRoleSlotsPermissions(input));
 }
 
-export function getRoleSlotsPermissions(input: {
+export type RoleSlots = {
   contractingRole: ContractingRole | null;
   equipmentRole: EquipmentRole | null;
-}): AppPermission[] {
+};
+
+export function normalizeRoleSlots(input: RoleSlots): RoleSlots {
+  if (input.equipmentRole === 'super-admin' || input.contractingRole === 'super-admin') {
+    return { contractingRole: 'super-admin', equipmentRole: 'super-admin' };
+  }
+
+  return input;
+}
+
+export function getRoleSlotsPermissions(input: RoleSlots): AppPermission[] {
+  const slots = normalizeRoleSlots(input);
   const roles = new Set<AppRole>();
 
-  if (input.equipmentRole === 'super-admin' || input.contractingRole === 'super-admin') {
-    roles.add('super-admin');
-  } else {
-    if (input.equipmentRole) roles.add(input.equipmentRole);
-    if (input.contractingRole) roles.add(input.contractingRole);
-  }
+  if (slots.equipmentRole) roles.add(slots.equipmentRole);
+  if (slots.contractingRole) roles.add(slots.contractingRole);
 
   return [...new Set([...roles].flatMap((role) => getRolePermissions(role)))].sort();
 }
@@ -420,18 +427,18 @@ export function createUserAccessSummary(
     | { contractingRole: ContractingRole | null; equipmentRole: EquipmentRole | null; userId: string }
     | { role: AppRole; userId: string },
 ): UserAccessSummary {
-  const slots =
+  const slots = normalizeRoleSlots(
     'role' in input
       ? {
           contractingRole: ContractingRole.safeParse(input.role).success ? ContractingRole.parse(input.role) : null,
           equipmentRole: EquipmentRole.safeParse(input.role).success ? EquipmentRole.parse(input.role) : null,
         }
-      : input;
-  const isSuperAdmin = slots.equipmentRole === 'super-admin' || slots.contractingRole === 'super-admin';
+      : input,
+  );
 
   return {
-    contractingRole: isSuperAdmin ? 'super-admin' : slots.contractingRole,
-    equipmentRole: isSuperAdmin ? 'super-admin' : slots.equipmentRole,
+    contractingRole: slots.contractingRole,
+    equipmentRole: slots.equipmentRole,
     permissions: getRoleSlotsPermissions(slots),
     userId: input.userId,
   };

@@ -1,4 +1,5 @@
 import { type DatabaseTransaction, type Db, user, userDepartment } from '@pkg/db';
+import { normalizeRoleSlots } from '@pkg/domain';
 import {
   type AuditChanges,
   AuthId,
@@ -54,7 +55,7 @@ export function mapUser(row: UserRow): UserSummary {
     (row.equipmentRole !== undefined ? row.equipmentRole : row.role) ?? null,
   );
   const contractingRole = ContractingRole.nullable().parse(row.contractingRole ?? null);
-  const isSuperAdmin = equipmentRole === 'super-admin' || contractingRole === 'super-admin';
+  const roleSlots = normalizeRoleSlots({ contractingRole, equipmentRole });
 
   return {
     assistantEnabled: row.assistantEnabled,
@@ -65,8 +66,8 @@ export function mapUser(row: UserRow): UserSummary {
     isDevice: row.isDevice,
     name: row.name,
     phoneNumber: NullablePhoneNumber.parse(row.phoneNumber),
-    contractingRole: isSuperAdmin ? 'super-admin' : contractingRole,
-    equipmentRole: isSuperAdmin ? 'super-admin' : equipmentRole,
+    contractingRole: roleSlots.contractingRole,
+    equipmentRole: roleSlots.equipmentRole,
     thumbnailDataUrl: NullableThumbnailDataUrl.parse(row.image),
   };
 }

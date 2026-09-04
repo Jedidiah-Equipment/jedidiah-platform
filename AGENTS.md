@@ -5,6 +5,13 @@
 - Keep `pnpm test` at `--concurrency=2`: each package's Vitest sizes its worker pool from the whole
   machine, so more packages in flight oversubscribe the box until DB-backed tests time out.
 - Do not add CI, deployment, or production infrastructure unless explicitly asked.
+- The platform serves two businesses behind a symmetric wall (ADR 0016): every layer package has
+  `equipment/` and `contracting/` folders and matching `@pkg/<name>/equipment` / `@pkg/<name>/contracting`
+  entrypoints; the package root and everything outside both folders is shared. Shared code never imports
+  a business, businesses never import each other, and only the wiring files the ADR names compose both.
+  Biome enforces this; when it fails, move the code or the consumer rather than widening an override.
+- Mass renames go into `.git-blame-ignore-revs` as the squash commit that landed on `main`, added after
+  the merge; a test in `pkg/api` rejects hashes that are not ancestors of HEAD.
 - `CONTEXT.md` holds the domain vocabulary and invariants; `docs/adr/` holds the decisions behind them.
   Search both for the term you need rather than loading either wholesale, and use their terms in issues,
   tests, and planning. If a needed term is missing, or a recommendation conflicts with an ADR, say so

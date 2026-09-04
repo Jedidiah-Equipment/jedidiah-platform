@@ -10,19 +10,26 @@ We decided **contracting is built into this platform** — one repo, one API/web
 one database — **behind a symmetric namespace wall**. The platform serves two businesses, and the
 codebase says so everywhere the same way:
 
-- **Folders.** Every layer package namespaces by business: `pkg/core/src/equipment/…` and
-  `pkg/core/src/contracting/…`, `pkg/api/src/routes/equipment/…` and
-  `pkg/api/src/routes/contracting/…`, likewise `pkg/domain`, web routes, and mobile route groups.
-  Anything outside both namespaces is **shared infrastructure by definition** — auth, db client,
-  UI kit, files, theme, formatting, AI, audit. That absence-means-shared rule is the point of
-  symmetry: with only a `contracting/` namespace, "outside" would ambiguously mean equipment *or*
-  shared, and the boundary could not be linted from both sides. **Shared is earned, never
-  presumed**: phase 0 classifies code by what it provably serves *today*, and ambiguity defaults
-  *into* `equipment/` — even code everyone knows will eventually be common (document services,
-  audit-writing helpers) moves into the mode folder if only equipment uses it now. Code graduates
-  to the shared space only at the moment contracting actually calls it, as its own deliberate,
-  reviewed extraction — never as a phase-0 prediction. No mode-specific feature may live outside
-  its mode folder.
+- **Folders.** Every layer package namespaces by business — `pkg/core`, `pkg/api` (both `src/` and
+  `src/routes/`), `pkg/domain`, `pkg/schema`, `pkg/db` (`src/schema/`), `pkg/pdf`, `pkg/ai`, web
+  (`src/` and the `_authed.<business>` routes) and mobile (`src/` and the `(protected)/<business>` route
+  group) — each with an `equipment/` and a `contracting/` folder. Anything outside both namespaces is
+  **shared infrastructure by definition** — auth, db client, UI kit, files, theme, formatting, the AI
+  model client, audit, and the platform registries whose entries both businesses will populate (audit
+  entity types, help topics). That absence-means-shared rule is the point of symmetry: with only a
+  `contracting/` namespace, "outside" would ambiguously mean equipment *or* shared, and the boundary
+  could not be linted from both sides. **Package entrypoints say the same thing**: `@pkg/<package>` is
+  the shared root, `@pkg/<package>/equipment` and `@pkg/<package>/contracting` are the businesses, and
+  there is no entrypoint that is shared-plus-one-business under a neutral name. `pkg/lander`, `pkg/seed`
+  and `pkg/docs` are whole-package Equipment surfaces and tooling rather than layers: they sit outside
+  the wall, consume `@pkg/*/equipment` freely, and gain a contracting counterpart only if one is ever
+  needed. **Shared is earned, never presumed**: phase 0 classifies code by what it provably serves
+  *today*, and ambiguity defaults *into* `equipment/` — even code everyone knows will eventually be
+  common (document services, audit-writing helpers) moves into the mode folder if only equipment uses
+  it now. Code graduates to the shared space at the moment a shared consumer or contracting actually
+  calls it, as its own deliberate, reviewed extraction — never as a phase-0 prediction. A test double
+  lives beside the contract it fakes, not beside its first caller. No mode-specific feature may live
+  outside its mode folder.
 - **Database.** Two named Postgres schemas, `equipment` and `contracting`, via Drizzle `pgSchema`.
   `public` stays the shared home because that is where better-auth and tooling defaults already
   point; only the two businesses get named schemas. The classification principle for phase 0:
@@ -53,12 +60,22 @@ codebase says so everywhere the same way:
   into code or UI: the app remains JedidiahOps and the modes display as Jedidiah Equipment and
   Jedidiah Contracting.
 
-**The wall is enforced, not reviewed.** A lint boundary rule fails CI when equipment code imports
-from `contracting/` or contracting code imports from `equipment/`; both may import shared
-infrastructure. App wiring (route registry, root router, navigation shell) is the one place both
-namespaces are named together. The businesses share nothing beyond the business-blind mechanisms
-in `public`: the fleet-model decision dropped the once-considered Machine → Product Unit link, so
-no row in either business schema references the other.
+**The wall is enforced, not reviewed.** Biome `noRestrictedImports` overrides fail the build in all
+three directions: equipment code may not import `contracting/` or `@pkg/*/contracting`, contracting
+code may not import `equipment/` or `@pkg/*/equipment`, and shared code — every file outside both
+namespaces in the layer packages, web and mobile — may import neither business. The overrides are
+disjoint file sets that each carry their full pattern list, because a Biome override replaces rule
+options rather than merging them; a test asserts that no frontend override drops the `@/*` alias rule.
+The only files allowed to name both businesses are app wiring: the tRPC router registry
+(`pkg/api/src/trpc/router.ts`), the server (`pkg/api/src/server.ts`), the auth composition root
+(`pkg/api/src/app-auth.ts`), the Drizzle relational schema object (`pkg/db/src/schema.ts`), the web root
+and index routes, the `_authed` layout, and the mobile root, protected and index layouts. Runtime services
+a business needs (the catalog translation scheduler, the composed Better Auth instance) are injected by
+that wiring — routers that need them are factories, HTTP routes read `request.server.auth` — so no shared
+type names a business module. `.git-blame-ignore-revs` lists the squash commits of the rename PRs, and a
+test verifies each is reachable from `main`. The businesses share nothing beyond the business-blind
+mechanisms in `public`: the fleet-model decision dropped the once-considered Machine → Product Unit link,
+so no row in either business schema references the other.
 
 **The exit is designed in**, in two grades. The likely one is **discontinuation** (the owner's
 own read): the retired business's schema is dropped, its users lose that access as the `business`

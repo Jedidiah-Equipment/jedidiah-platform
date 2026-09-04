@@ -28,7 +28,7 @@ describe('Assistant chat transport', () => {
     await assistantChatFetch(
       'https://api.jedidiah.test/ai/chat',
       { headers: { Accept: 'text/event-stream' }, method: 'POST' },
-      'jedidiah.session_token=secret',
+      'better-auth.session_token=secret',
       fetchImpl,
     );
 
@@ -36,7 +36,7 @@ describe('Assistant chat transport', () => {
     const headers = new Headers(init?.headers);
     expect(init).toEqual(expect.objectContaining({ credentials: 'include', method: 'POST' }));
     expect(headers.get('Accept')).toBe('text/event-stream');
-    expect(headers.get('Cookie')).toBe('jedidiah.session_token=secret');
+    expect(headers.get('Cookie')).toBe('better-auth.session_token=secret');
   });
 
   test('throws readable server failures into the chat error state', async () => {

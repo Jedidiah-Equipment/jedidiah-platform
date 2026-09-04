@@ -80,7 +80,7 @@ describe('email sign-in eligibility', () => {
 });
 
 describe('auth cookies', () => {
-  test('names the session cookie for Jedidiah', async ({ context }) => {
+  test('keeps the legacy session cookie name used by released mobile builds', async ({ context }) => {
     await createUserWithCredential(context.db, {
       email: 'cookie-prefix@example.com',
       emailVerified: true,
@@ -98,7 +98,7 @@ describe('auth cookies', () => {
       returnHeaders: true,
     });
 
-    expect(headers.get('set-cookie')).toContain('jedidiah.session_token=');
+    expect(headers.get('set-cookie')).toContain('better-auth.session_token=');
   });
 });
 

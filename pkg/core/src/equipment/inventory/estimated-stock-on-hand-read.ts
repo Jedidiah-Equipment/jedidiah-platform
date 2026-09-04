@@ -1,6 +1,8 @@
-import { type DatabaseTransaction, jobEstimateSnapshots, jobs } from '@pkg/db';
-import { deriveEstimatedStockOnHand } from '@pkg/domain';
-import type { EstimatedStockOnHand, UUID } from '@pkg/schema';
+import type { DatabaseTransaction } from '@pkg/db';
+import { jobEstimateSnapshots, jobs } from '@pkg/db/equipment';
+import { deriveEstimatedStockOnHand } from '@pkg/domain/equipment';
+import type { UUID } from '@pkg/schema';
+import type { EstimatedStockOnHand } from '@pkg/schema/equipment';
 import { and, eq, gte, lte, or, sql } from 'drizzle-orm';
 
 export type EstimatedStockRequest = {

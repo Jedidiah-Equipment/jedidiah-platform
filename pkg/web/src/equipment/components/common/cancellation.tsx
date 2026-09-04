@@ -1,4 +1,4 @@
-import type { CancellationLinkedUnit } from '@pkg/schema';
+import type { CancellationLinkedUnit } from '@pkg/schema/equipment';
 
 import { Checkbox } from '@/components/ui/checkbox.js';
 import { Label } from '@/components/ui/label.js';

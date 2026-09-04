@@ -2,8 +2,8 @@ import { EmailAddress, requiredTrimmedText } from '@pkg/schema';
 import { Resend } from 'resend';
 import { z } from 'zod';
 
-import { CANONICAL_LOCALE, type Locale } from '../../lib/locale.js';
-import { messagesForLocale } from '../../messages/index.js';
+import { CANONICAL_LOCALE, type Locale } from '@/lib/locale.js';
+import { messagesForLocale } from '@/messages/index.js';
 import { getLanderConfig } from '../runtime/env.js';
 
 // The enquiry form payload. Name, email, and message are required; phone and equipment are optional

@@ -1,6 +1,8 @@
-import { type Db, jobEstimateSnapshots } from '@pkg/db';
-import type { JobCostComparison, UUID } from '@pkg/schema';
-import { JobCostComparison as JobCostComparisonSchema } from '@pkg/schema';
+import type { Db } from '@pkg/db';
+import { jobEstimateSnapshots } from '@pkg/db/equipment';
+import type { UUID } from '@pkg/schema';
+import type { JobCostComparison } from '@pkg/schema/equipment';
+import { JobCostComparison as JobCostComparisonSchema } from '@pkg/schema/equipment';
 import { eq } from 'drizzle-orm';
 
 import { getJobMaterialVariance } from './job-variance-read.js';

@@ -1,4 +1,5 @@
-import type { PartLabelBatchSelection, UUID } from '@pkg/schema';
+import type { UUID } from '@pkg/schema';
+import type { PartLabelBatchSelection } from '@pkg/schema/equipment';
 import { readApiErrorMessage } from '@/equipment/utils/document.js';
 import { getClientConfig } from '@/lib/app-config.js';
 

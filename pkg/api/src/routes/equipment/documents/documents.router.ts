@@ -11,14 +11,14 @@ import {
   type JobCoreError,
   type ProductCoreError,
   type QuoteCoreError,
-} from '@pkg/core';
+} from '@pkg/core/equipment';
 import {
   DocumentListByProductInput,
   DocumentListByQuoteInput,
   type DocumentOwnerType,
   JobDocumentInput,
   ProductDocumentInput,
-} from '@pkg/schema';
+} from '@pkg/schema/equipment';
 
 import { assertNever, type CoreErrorMapping, mapKnownCoreError } from '../../../trpc/errors.js';
 import { authorizedProcedure, router } from '../../../trpc/init.js';

@@ -1,5 +1,5 @@
-import { bayWorkingCalendars, type WorkingCalendar } from '@pkg/domain';
-import type { BoardListInput, BoardListResult } from '@pkg/schema';
+import { bayWorkingCalendars, type WorkingCalendar } from '@pkg/domain/equipment';
+import type { BoardListInput, BoardListResult } from '@pkg/schema/equipment';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
 

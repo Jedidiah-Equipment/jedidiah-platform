@@ -1,4 +1,5 @@
-import type { CatalogProductRangeTranslation, UUID } from '@pkg/schema';
+import type { UUID } from '@pkg/schema';
+import type { CatalogProductRangeTranslation } from '@pkg/schema/equipment';
 import { useQuery } from '@tanstack/react-query';
 import type React from 'react';
 import { AttentionTabTrigger } from '@/components/common/AttentionTabTrigger.js';

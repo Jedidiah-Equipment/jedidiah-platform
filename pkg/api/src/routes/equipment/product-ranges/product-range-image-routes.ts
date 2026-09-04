@@ -1,13 +1,13 @@
+import type { StorageAdapter } from '@pkg/core';
 import {
   isProductRangeCoreError,
   readProductRangeImage,
   readProductRangeLogo,
   replaceProductRangeImage,
   replaceProductRangeLogo,
-  type StorageAdapter,
-} from '@pkg/core';
+} from '@pkg/core/equipment';
 import { db } from '@pkg/db';
-import { ProductRangeImageParams, ProductRangeLogoParams } from '@pkg/schema';
+import { ProductRangeImageParams, ProductRangeLogoParams } from '@pkg/schema/equipment';
 
 import { type EntityFileRouteConfig, RouteHttpError } from '../files/entity-file-http.route.js';
 

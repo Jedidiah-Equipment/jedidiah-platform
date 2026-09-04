@@ -1,4 +1,5 @@
-import type { ProjectedBayQueue, UUID } from '@pkg/schema';
+import type { UUID } from '@pkg/schema';
+import type { ProjectedBayQueue } from '@pkg/schema/equipment';
 import { describe, expect, it } from 'vitest';
 
 import { BAY_ROW_HEIGHT, createBoardGanttLayout, DEPARTMENT_HEADER_HEIGHT } from './board-gantt-layout.js';

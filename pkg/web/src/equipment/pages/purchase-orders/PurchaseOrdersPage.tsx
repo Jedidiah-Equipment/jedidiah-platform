@@ -1,5 +1,5 @@
 import { formatCurrency, formatDate } from '@pkg/domain';
-import { type PurchaseOrderView, purchaseOrderHasUnpricedLines } from '@pkg/schema';
+import { type PurchaseOrderView, purchaseOrderHasUnpricedLines } from '@pkg/schema/equipment';
 import { IconCheck, IconPlus } from '@tabler/icons-react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';

@@ -1,26 +1,16 @@
-import {
-  auditEvents,
-  customers,
-  type Db,
-  documents,
-  jobs,
-  parts,
-  purchaseOrders,
-  quotes,
-  supplier,
-  user,
-} from '@pkg/db';
-import { DateOnlyIso, type PurchaseOrderPdfModel } from '@pkg/schema';
+import { auditEvents, type Db, user } from '@pkg/db';
+import { customers, documents, jobs, parts, purchaseOrders, quotes, supplier } from '@pkg/db/equipment';
+import { DateOnlyIso } from '@pkg/schema';
+import type { PurchaseOrderPdfModel } from '@pkg/schema/equipment';
 import { eq, sql } from 'drizzle-orm';
 import { describe, expect, vi } from 'vitest';
-
+import { InMemoryStorageAdapter } from '../../storage/in-memory-storage-adapter.js';
 import { postReceipt } from '../inventory/receipt-service.js';
 import { postReturnToSupplier } from '../inventory/return-to-supplier-service.js';
 import { getJobDocuments } from '../jobs/job-read-service.js';
 import { updatePart } from '../parts/part-service.js';
 import { removeSupplier } from '../suppliers/supplier-service.js';
 import { createTester } from '../test/create-tester.js';
-import { InMemoryStorageAdapter } from '../test/in-memory-storage-adapter.js';
 import {
   approvePurchaseOrder,
   cancelPurchaseOrder,

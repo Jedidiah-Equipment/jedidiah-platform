@@ -1,6 +1,6 @@
+import { type Db, readMigrationStatements, user } from '@pkg/db';
 import {
   customers,
-  type Db,
   jobBuildSpecAssemblies,
   jobs,
   productAssemblies,
@@ -8,9 +8,7 @@ import {
   productUnits,
   quoteSelectedAssemblies,
   quotes,
-  readMigrationStatements,
-  user,
-} from '@pkg/db';
+} from '@pkg/db/equipment';
 import { asc, eq, sql } from 'drizzle-orm';
 import { describe, expect } from 'vitest';
 

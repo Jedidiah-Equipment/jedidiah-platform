@@ -1,4 +1,5 @@
-import { type Db, productRanges, type StoredFile } from '@pkg/db';
+import type { Db, StoredFile } from '@pkg/db';
+import { productRanges } from '@pkg/db/equipment';
 
 export async function createProductRangeFixture(
   db: Db,

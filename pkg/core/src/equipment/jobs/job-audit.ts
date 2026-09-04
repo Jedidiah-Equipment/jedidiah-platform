@@ -1,4 +1,4 @@
-import { formatJobCode, JobCode } from '@pkg/schema';
+import { formatJobCode, JobCode } from '@pkg/schema/equipment';
 
 import { defineAuditDescriptor } from '../audit/audit-service.js';
 import type { JobRow } from './job-mappers.js';

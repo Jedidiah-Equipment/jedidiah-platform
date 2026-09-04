@@ -1,16 +1,14 @@
-import { type DatabaseTransaction, type Db, user, userDepartment } from '@pkg/db';
+import { type DatabaseTransaction, type Db, user } from '@pkg/db';
+import { userDepartment } from '@pkg/db/equipment';
 import {
   type AuditChanges,
   AuthId,
   ContractingRole,
-  Department,
   EquipmentRole,
   NullablePhoneNumber,
   NullableThumbnailDataUrl,
-  UserAccount,
-  type UserListResult,
-  type UserSummary,
 } from '@pkg/schema';
+import { Department, UserAccount, type UserListResult, type UserSummary } from '@pkg/schema/equipment';
 import { asc, eq } from 'drizzle-orm';
 
 import { defineAuditDescriptor, recordAuditEvent } from '../audit/audit-service.js';
@@ -97,37 +95,35 @@ export async function getUserById({ db, userId }: { db: Db; userId: AuthId }): P
 }
 
 export async function listUsers({ db }: { db: Db }): Promise<UserListResult> {
-  const rows = await db.query.user.findMany({
-    columns: {
-      assistantEnabled: true,
-      email: true,
-      emailVerified: true,
-      id: true,
-      image: true,
-      isDevice: true,
-      name: true,
-      phoneNumber: true,
-      contractingRole: true,
-      role: true,
-    },
-    orderBy: [asc(user.email)],
-    with: {
-      departments: {
-        columns: {
-          department: true,
-        },
-        orderBy: [asc(userDepartment.department)],
-      },
-    },
-  });
+  const [rows, departmentRows] = await Promise.all([
+    db
+      .select({
+        assistantEnabled: user.assistantEnabled,
+        email: user.email,
+        emailVerified: user.emailVerified,
+        id: user.id,
+        image: user.image,
+        isDevice: user.isDevice,
+        name: user.name,
+        phoneNumber: user.phoneNumber,
+        contractingRole: user.contractingRole,
+        role: user.role,
+      })
+      .from(user)
+      .orderBy(asc(user.email)),
+    db
+      .select({ department: userDepartment.department, userId: userDepartment.userId })
+      .from(userDepartment)
+      .orderBy(asc(userDepartment.department)),
+  ]);
+  const departmentsByUser = new Map<string, Department[]>();
+
+  for (const row of departmentRows) {
+    departmentsByUser.set(row.userId, [...(departmentsByUser.get(row.userId) ?? []), row.department]);
+  }
 
   return {
-    users: rows.map((row) =>
-      mapUser({
-        ...row,
-        departments: row.departments.map((department) => department.department),
-      }),
-    ),
+    users: rows.map((row) => mapUser({ ...row, departments: departmentsByUser.get(row.id) ?? [] })),
   };
 }
 

@@ -1,5 +1,7 @@
-import { hasPermission, isReworkQuote } from '@pkg/domain';
-import type { Bay, JobCreateInput, QuoteDetail, UUID } from '@pkg/schema';
+import { hasPermission } from '@pkg/domain';
+import { isReworkQuote } from '@pkg/domain/equipment';
+import type { UUID } from '@pkg/schema';
+import type { Bay, JobCreateInput, QuoteDetail } from '@pkg/schema/equipment';
 import { IconLoader2 } from '@tabler/icons-react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { Link, useNavigate } from '@tanstack/react-router';

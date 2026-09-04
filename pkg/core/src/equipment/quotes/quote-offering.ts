@@ -1,5 +1,5 @@
-import { quoteKindLabels } from '@pkg/domain';
-import type { QuoteKind, QuoteOffering } from '@pkg/schema';
+import { quoteKindLabels } from '@pkg/domain/equipment';
+import type { QuoteKind, QuoteOffering } from '@pkg/schema/equipment';
 
 import { QuoteOfferingInvariantError } from './quote-errors.js';
 

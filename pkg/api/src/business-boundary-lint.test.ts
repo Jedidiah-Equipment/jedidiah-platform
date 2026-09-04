@@ -2,8 +2,8 @@ import { spawnSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
-import type { StorageAdapter } from '@pkg/core/shared';
-import { hasPermission } from '@pkg/domain/shared';
+import type { StorageAdapter } from '@pkg/core';
+import { hasPermission } from '@pkg/domain';
 import { describe, expect, expectTypeOf, it } from 'vitest';
 
 const repoRoot = join(import.meta.dirname, '..', '..', '..');

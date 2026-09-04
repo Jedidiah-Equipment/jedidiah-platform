@@ -1,4 +1,4 @@
-import type { QuoteDetail } from '@pkg/schema';
+import type { QuoteDetail } from '@pkg/schema/equipment';
 import { describe, expect, test, vi } from 'vitest';
 
 vi.mock('@tabler/icons-react-native', () => ({ IconTrash: 'IconTrash' }));

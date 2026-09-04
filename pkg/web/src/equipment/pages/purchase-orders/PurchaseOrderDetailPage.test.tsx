@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import type { PurchaseOrderView } from '@pkg/schema';
+import type { PurchaseOrderView } from '@pkg/schema/equipment';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, type ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';

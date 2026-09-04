@@ -1,4 +1,5 @@
-import { eq, partBom } from '@pkg/db';
+import { eq } from '@pkg/db';
+import { partBom } from '@pkg/db/equipment';
 import { describe, expect } from 'vitest';
 
 import { actorUserId, test } from '../test/build-fixtures.js';

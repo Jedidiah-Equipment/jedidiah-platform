@@ -1,13 +1,7 @@
-import {
-  type ImageCacheOptions,
-  isProductCoreError,
-  readMobileProductImage,
-  readProductImage,
-  replaceProductImage,
-  type StorageAdapter,
-} from '@pkg/core';
+import type { ImageCacheOptions, StorageAdapter } from '@pkg/core';
+import { isProductCoreError, readMobileProductImage, readProductImage, replaceProductImage } from '@pkg/core/equipment';
 import { db } from '@pkg/db';
-import { ProductImageSlotParams } from '@pkg/schema';
+import { ProductImageSlotParams } from '@pkg/schema/equipment';
 import { z } from 'zod';
 
 import { type EntityFileRouteConfig, RouteHttpError } from '../files/entity-file-http.route.js';

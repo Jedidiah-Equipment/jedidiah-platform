@@ -1,5 +1,7 @@
-import { formatCurrency, formatDate, formatEstimatedStockOnHand } from '@pkg/domain';
-import type { StockOnHandRow, UUID } from '@pkg/schema';
+import { formatCurrency, formatDate } from '@pkg/domain';
+import { formatEstimatedStockOnHand } from '@pkg/domain/equipment';
+import type { UUID } from '@pkg/schema';
+import type { StockOnHandRow } from '@pkg/schema/equipment';
 import { IconAlertTriangle } from '@tabler/icons-react';
 import { useMemo } from 'react';
 import { DataTable } from '@/components/data-table/DataTable.js';

@@ -6,8 +6,9 @@ import {
   listCustomers,
   removeCustomer,
   updateCustomer,
-} from '@pkg/core';
-import { CustomerCreateInput, CustomerListInput, CustomerUpdateInput, UUID } from '@pkg/schema';
+} from '@pkg/core/equipment';
+import { UUID } from '@pkg/schema';
+import { CustomerCreateInput, CustomerListInput, CustomerUpdateInput } from '@pkg/schema/equipment';
 import { z } from 'zod';
 
 import { type CoreErrorMapping, mapKnownCoreError } from '../../../trpc/errors.js';

@@ -1,5 +1,5 @@
 import { formatCurrency } from '@pkg/domain';
-import type { Product, ProductRangeOption } from '@pkg/schema';
+import type { Product, ProductRangeOption } from '@pkg/schema/equipment';
 import { IconArrowsSort, IconFilter } from '@tabler/icons-react-native';
 import { useRouter } from 'expo-router';
 import { View } from 'react-native';

@@ -1,5 +1,5 @@
 import { formatCurrency, formatNumber } from '@pkg/domain';
-import type { InvoicePriceVarianceRow } from '@pkg/schema';
+import type { InvoicePriceVarianceRow } from '@pkg/schema/equipment';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import { DataTable } from '@/components/data-table/DataTable.js';

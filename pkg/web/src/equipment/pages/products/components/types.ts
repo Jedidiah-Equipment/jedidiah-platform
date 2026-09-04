@@ -1,11 +1,9 @@
+import { NullableThumbnailDataUrl, Price, PriceDelta, UUID, type UUID as UUIDType } from '@pkg/schema';
 import {
   AssemblyName,
   AssemblyPart,
   AssemblyPubliclyVisible,
-  NullableThumbnailDataUrl,
   type PartStockTrackingMode as PartStockTrackingModeValue,
-  Price,
-  PriceDelta,
   type Product,
   ProductBayDefaultWorkingDays,
   ProductBayInput,
@@ -28,10 +26,8 @@ import {
   refineProductBays,
   refineProductLaborHours,
   refineProductMaterialLines,
-  UUID,
-  type UUID as UUIDType,
   WorkItemDepartment,
-} from '@pkg/schema';
+} from '@pkg/schema/equipment';
 import { z } from 'zod';
 
 import type { SearchableComboboxOption } from '@/components/common/SearchableCombobox.js';

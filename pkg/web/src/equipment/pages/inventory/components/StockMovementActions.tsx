@@ -1,5 +1,5 @@
-import { derivePartStockActions } from '@pkg/domain';
-import type { StockOnHandRow } from '@pkg/schema';
+import { derivePartStockActions } from '@pkg/domain/equipment';
+import type { StockOnHandRow } from '@pkg/schema/equipment';
 import { IconAdjustments, IconArrowDown, IconArrowUp, IconCash, IconTool } from '@tabler/icons-react';
 import { useMemo, useState } from 'react';
 

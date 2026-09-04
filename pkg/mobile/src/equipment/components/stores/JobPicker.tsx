@@ -1,5 +1,5 @@
-import { getJobDisplayName } from '@pkg/domain';
-import type { JobPickerOption, JobStockMovementType } from '@pkg/schema';
+import { getJobDisplayName } from '@pkg/domain/equipment';
+import type { JobPickerOption, JobStockMovementType } from '@pkg/schema/equipment';
 import { keepPreviousData, useInfiniteQuery } from '@tanstack/react-query';
 import { forwardRef, useCallback, useImperativeHandle, useMemo } from 'react';
 import { Pressable, View } from 'react-native';

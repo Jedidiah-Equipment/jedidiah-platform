@@ -1,4 +1,4 @@
-import type { FilePolicyViolationCode } from '@pkg/domain/shared';
+import type { FilePolicyViolationCode } from '@pkg/domain';
 
 // Errors for the generic stored-file service, shared by every entity that stores uploaded files. Owner-not
 // -found (e.g. a missing Product) stays an entity-specific error raised by the binding; these cover only

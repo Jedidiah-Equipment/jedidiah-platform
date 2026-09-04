@@ -1,4 +1,4 @@
-import type { StockMovementReason } from '@pkg/schema';
+import type { StockMovementReason } from '@pkg/schema/equipment';
 
 export type MovingAverageMovement = {
   delta: number;

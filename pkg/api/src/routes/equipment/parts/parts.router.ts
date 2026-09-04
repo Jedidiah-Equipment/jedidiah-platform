@@ -9,7 +9,8 @@ import {
   listParts,
   savePartBom,
   updatePart,
-} from '@pkg/core';
+} from '@pkg/core/equipment';
+import { UUID } from '@pkg/schema';
 import {
   PartBomInput,
   PartBomResult,
@@ -20,8 +21,7 @@ import {
   PartListInput,
   PartUpdateInput,
   SavePartBomInput,
-  UUID,
-} from '@pkg/schema';
+} from '@pkg/schema/equipment';
 import { z } from 'zod';
 
 import { mapCoreErrors } from '../../../trpc/errors.js';

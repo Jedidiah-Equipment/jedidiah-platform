@@ -1,12 +1,12 @@
+import { StorageObjectNotFoundError } from '@pkg/core';
 import {
   type BrochurePreviewResult,
   generateProductBrochureIfComplete,
   getProduct,
   ProductNotFoundError,
-  StorageObjectNotFoundError,
-} from '@pkg/core';
-import { isBrochureReady } from '@pkg/domain';
-import { renderBrochurePdf } from '@pkg/pdf';
+} from '@pkg/core/equipment';
+import { isBrochureReady } from '@pkg/domain/equipment';
+import { renderBrochurePdf } from '@pkg/pdf/equipment';
 import { CANONICAL_LOCALE, Locale, UUID } from '@pkg/schema';
 
 import { getDb } from '../runtime/db.js';

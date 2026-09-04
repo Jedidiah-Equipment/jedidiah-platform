@@ -1,14 +1,15 @@
+import { hasPermission } from '@pkg/domain';
 import {
   type ActiveJobProgress,
   byBayDepartmentPipeline,
   deriveActiveJobProgress,
   findActiveWorkSlot,
   getJobDisplayName,
-  hasPermission,
   isJobCancelled,
   listEnabledBays,
-} from '@pkg/domain';
-import type { BayOperator, DateOnlyIso, Department } from '@pkg/schema';
+} from '@pkg/domain/equipment';
+import type { DateOnlyIso } from '@pkg/schema';
+import type { BayOperator, Department } from '@pkg/schema/equipment';
 import { useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
 

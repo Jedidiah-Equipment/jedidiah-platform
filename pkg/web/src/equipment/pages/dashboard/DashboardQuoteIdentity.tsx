@@ -1,5 +1,6 @@
-import { getQuoteOfferingName } from '@pkg/domain';
-import type { JobCode, QuoteCode, QuoteKind, UUID } from '@pkg/schema';
+import { getQuoteOfferingName } from '@pkg/domain/equipment';
+import type { UUID } from '@pkg/schema';
+import type { JobCode, QuoteCode, QuoteKind } from '@pkg/schema/equipment';
 import { Link } from '@tanstack/react-router';
 
 import { OfferingThumbnail } from '@/equipment/components/thumbnail/OfferingThumbnail.js';

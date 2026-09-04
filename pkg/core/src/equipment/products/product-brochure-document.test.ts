@@ -1,9 +1,9 @@
 import type { StoredFile } from '@pkg/db';
-import { Product } from '@pkg/schema';
+import { Product } from '@pkg/schema/equipment';
 import sharp from 'sharp';
 import { describe, expect, test } from 'vitest';
 
-import { InMemoryStorageAdapter } from '../test/in-memory-storage-adapter.js';
+import { InMemoryStorageAdapter } from '../../storage/in-memory-storage-adapter.js';
 import { getBrochureDocumentModel } from './product-brochure-document.js';
 
 const PRODUCT_ID = '11111111-1111-4111-8111-111111111111';

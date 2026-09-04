@@ -1,5 +1,6 @@
 import { formatDate, formatNumber } from '@pkg/domain';
-import { PURCHASE_ORDER_AMENDMENT_KIND_LABELS, type PurchaseOrderAmendment, type UUID } from '@pkg/schema';
+import type { UUID } from '@pkg/schema';
+import { PURCHASE_ORDER_AMENDMENT_KIND_LABELS, type PurchaseOrderAmendment } from '@pkg/schema/equipment';
 import { useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
 import { DataTable } from '@/components/data-table/DataTable.js';

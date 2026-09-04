@@ -1,5 +1,6 @@
-import { getQuoteOfferingName } from '@pkg/domain';
-import type { PriorityQuote, UUID } from '@pkg/schema';
+import { getQuoteOfferingName } from '@pkg/domain/equipment';
+import type { UUID } from '@pkg/schema';
+import type { PriorityQuote } from '@pkg/schema/equipment';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import type React from 'react';
 

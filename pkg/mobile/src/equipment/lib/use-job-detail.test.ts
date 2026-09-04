@@ -1,4 +1,4 @@
-import type { BoardListResult, JobDetail } from '@pkg/schema';
+import type { BoardListResult, JobDetail } from '@pkg/schema/equipment';
 import { describe, expect, it } from 'vitest';
 
 import { isJobNotFoundError, projectJobDetail } from './job-detail-projection';

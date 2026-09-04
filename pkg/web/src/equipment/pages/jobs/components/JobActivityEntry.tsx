@@ -1,14 +1,12 @@
+import { formatDate, getFirstName, statusBadgeColorClassNames } from '@pkg/domain';
 import {
-  formatDate,
-  getFirstName,
   JOB_ACTIVITY_EVENT_SENTENCES,
   jobActivityEventTone,
   jobCompletionActivityDetail,
   jobWorkTimeActivityDetail,
   jobWorkTimeActivitySentence,
-  statusBadgeColorClassNames,
-} from '@pkg/domain';
-import type { GeneralFeedbackActivityItem, JobActivityItem, JobChangeActivityItem } from '@pkg/schema';
+} from '@pkg/domain/equipment';
+import type { GeneralFeedbackActivityItem, JobActivityItem, JobChangeActivityItem } from '@pkg/schema/equipment';
 import { IconCheck, IconClock, IconFileText, IconPencil, IconPlus, IconSubtask } from '@tabler/icons-react';
 import { Link } from '@tanstack/react-router';
 import type React from 'react';

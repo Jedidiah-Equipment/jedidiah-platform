@@ -1,4 +1,4 @@
-import type { Customer } from '@pkg/schema';
+import type { Customer } from '@pkg/schema/equipment';
 import { describe, expect, it } from 'vitest';
 
 import {

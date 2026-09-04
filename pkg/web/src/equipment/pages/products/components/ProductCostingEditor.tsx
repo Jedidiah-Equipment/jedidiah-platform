@@ -1,5 +1,5 @@
-import { departmentLabels, WORK_ITEM_DEPARTMENTS } from '@pkg/domain';
-import type { ProductLaborHour, ProductMaterialLine, WorkItemDepartment } from '@pkg/schema';
+import { departmentLabels, WORK_ITEM_DEPARTMENTS } from '@pkg/domain/equipment';
+import type { ProductLaborHour, ProductMaterialLine, WorkItemDepartment } from '@pkg/schema/equipment';
 import { IconPlus, IconTrash } from '@tabler/icons-react';
 import type React from 'react';
 import { useMemo, useState } from 'react';

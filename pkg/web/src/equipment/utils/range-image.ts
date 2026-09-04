@@ -1,4 +1,5 @@
-import { ProductRange, RANGE_IMAGE_MAX_BYTES, type UUID } from '@pkg/schema';
+import type { UUID } from '@pkg/schema';
+import { ProductRange, RANGE_IMAGE_MAX_BYTES } from '@pkg/schema/equipment';
 
 import { getClientConfig } from '@/lib/app-config.js';
 

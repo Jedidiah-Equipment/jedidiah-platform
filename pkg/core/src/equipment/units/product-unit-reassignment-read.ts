@@ -1,19 +1,20 @@
+import type { Db } from '@pkg/db';
 import {
   customers,
-  type Db,
   jobs,
   productUnitOwnershipTransfers,
   productUnits,
   quoteSelectedAssemblies,
   quotes,
-} from '@pkg/db';
-import { groupBy, resolveNewestOwnershipTransfer } from '@pkg/domain';
+} from '@pkg/db/equipment';
+import { groupBy } from '@pkg/domain';
+import { resolveNewestOwnershipTransfer } from '@pkg/domain/equipment';
+import type { UUID } from '@pkg/schema';
 import {
   ProductUnitReassignCandidate,
   ProductUnitReassignPreview,
   type ProductUnitReassignSpecDiff,
-  type UUID,
-} from '@pkg/schema';
+} from '@pkg/schema/equipment';
 import { and, asc, eq, inArray, isNull } from 'drizzle-orm';
 import { QuoteNotFoundError } from '../quotes/quote-errors.js';
 import { loadAsBuiltSpec } from './product-unit-as-built.js';

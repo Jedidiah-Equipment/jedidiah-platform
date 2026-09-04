@@ -1,0 +1,79 @@
+import * as jobsCore from '@pkg/core/equipment';
+import { quoteKindLabels } from '@pkg/domain/equipment';
+import type { UserAccessSummary } from '@pkg/schema';
+import { JobListInput, type JobListResult, JobSummary } from '@pkg/schema/equipment';
+import { z } from 'zod';
+
+import type { AiContext } from '@/equipment/context.js';
+
+import { createJobLinks, JobLinks } from './job-links.js';
+
+export type FindJobsInput = z.infer<typeof FindJobsInput>;
+export const FindJobsInput = JobListInput.pick({ search: true }).strict();
+
+const FindJobItem = JobSummary.pick({
+  code: true,
+  createdAt: true,
+  customerCompanyName: true,
+  customerId: true,
+  description: true,
+  id: true,
+  productModelCode: true,
+  productName: true,
+  productUnit: true,
+  quoteCode: true,
+  quoteId: true,
+  quoteKind: true,
+  workTitle: true,
+}).extend({ links: JobLinks });
+
+export type FindJobsResponse = z.infer<typeof FindJobsResponse>;
+export const FindJobsResponse = z.array(FindJobItem);
+
+export function toCoreJobListInput(input: FindJobsInput): JobListInput {
+  return {
+    columnFilters: {},
+    filters: {},
+    cursor: 0,
+    limit: 0,
+    search: input.search,
+    sortBy: 'code',
+    sortDirection: 'asc',
+  };
+}
+
+export function toFindJobsResponse(result: JobListResult, access: UserAccessSummary | null): FindJobsResponse {
+  return result.items.map((job) => ({
+    code: job.code,
+    createdAt: job.createdAt,
+    customerCompanyName: job.customerCompanyName,
+    customerId: job.customerId,
+    description: job.description,
+    id: job.id,
+    links: createJobLinks(job, access),
+    productModelCode: job.productModelCode,
+    productName: job.productName,
+    productUnit: job.productUnit,
+    quoteCode: job.quoteCode,
+    quoteId: job.quoteId,
+    quoteKind: job.quoteKind,
+    workTitle: job.workTitle,
+  }));
+}
+
+export const findJobsDefinition = {
+  name: 'findJobs',
+  description: [
+    `Search for Product Jobs or ${quoteKindLabels.custom} Jobs by Job Code, Product serial number, Work Title for ${quoteKindLabels.custom}, or UUID.`,
+    'Returns lightweight identity and relationship matches with code-owned app links.',
+    'Call getJob with the selected id when full Job details are needed.',
+  ].join('\n'),
+  inputSchema: FindJobsInput,
+  outputSchema: FindJobsResponse,
+  anyOfPermissions: ['equipment_job:read'],
+  async handler(args: unknown, ctx: AiContext): Promise<FindJobsResponse> {
+    const input = FindJobsInput.parse(args ?? {});
+    const result = await jobsCore.listJobs({ db: ctx.db, input: toCoreJobListInput(input) });
+    return toFindJobsResponse(result, ctx.access);
+  },
+} as const;

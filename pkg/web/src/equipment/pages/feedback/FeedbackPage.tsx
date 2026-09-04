@@ -1,12 +1,12 @@
-import { departmentLabels } from '@pkg/domain';
+import { departmentLabels } from '@pkg/domain/equipment';
+import type { UUID } from '@pkg/schema';
 import {
   type FeedbackDetail,
   type FeedbackKind,
   type FeedbackListItem,
   FeedbackStatus as FeedbackStatusSchema,
   type FeedbackUpdateInput,
-  type UUID,
-} from '@pkg/schema';
+} from '@pkg/schema/equipment';
 import { keepPreviousData, skipToken, useMutation, useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import type { ColumnFiltersState, SortingState } from '@tanstack/react-table';

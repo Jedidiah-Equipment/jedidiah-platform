@@ -24,9 +24,10 @@ import {
   summarizeQuotesByStatus,
   summarizeQuoteWeeklyFlow,
   updateQuote,
-} from '@pkg/core';
+} from '@pkg/core/equipment';
 import { hasPermission } from '@pkg/domain';
-import { renderBrochurePdf, renderQuoteDocumentPdf } from '@pkg/pdf';
+import { renderBrochurePdf, renderQuoteDocumentPdf } from '@pkg/pdf/equipment';
+import { UUID } from '@pkg/schema';
 import {
   CustomerListInput,
   ProductListInput,
@@ -37,8 +38,7 @@ import {
   QuotePriorityListInput,
   QuoteProductBayAvailabilityInput,
   QuoteUpdateInput,
-  UUID,
-} from '@pkg/schema';
+} from '@pkg/schema/equipment';
 import { z } from 'zod';
 
 import { log } from '@/logger.js';

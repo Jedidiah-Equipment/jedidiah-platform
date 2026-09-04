@@ -1,5 +1,5 @@
 import { formatDate, jobStatusAccentColor } from '@pkg/domain';
-import type { BayOperator } from '@pkg/schema';
+import type { BayOperator } from '@pkg/schema/equipment';
 import { IconChevronRight } from '@tabler/icons-react-native';
 import { useState } from 'react';
 import { Pressable, ScrollView, useWindowDimensions, View } from 'react-native';

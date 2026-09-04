@@ -1,4 +1,4 @@
-import { type Assembly, QuoteDetail, type QuoteSelectedAssembly } from '@pkg/schema';
+import { type Assembly, QuoteDetail, type QuoteSelectedAssembly } from '@pkg/schema/equipment';
 import { describe, expect, it } from 'vitest';
 
 import { computeQuoteSummary, type QuoteSummaryFormValues, resolveSelectedAssemblySnapshots } from './quote-summary.js';

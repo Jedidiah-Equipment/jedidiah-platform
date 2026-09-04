@@ -1,4 +1,4 @@
-import type { QuoteKind } from '@pkg/schema';
+import type { QuoteKind } from '@pkg/schema/equipment';
 import { View } from 'react-native';
 import { Text } from '@/components/ui/text';
 import { CustomerName } from '@/equipment/components/CustomerName';

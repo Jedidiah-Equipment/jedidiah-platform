@@ -1,7 +1,7 @@
 import { closestCenter, DndContext, type DragEndEvent, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
 import { arrayMove, SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
-import type { ProductRange, ProductRangeVariant } from '@pkg/schema';
+import type { ProductRange, ProductRangeVariant } from '@pkg/schema/equipment';
 import { IconGripVertical, IconLoader2, IconPlus, IconTrash } from '@tabler/icons-react';
 import { useMutation } from '@tanstack/react-query';
 import type React from 'react';

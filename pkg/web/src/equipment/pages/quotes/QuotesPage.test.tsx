@@ -1,5 +1,5 @@
 import { formatCurrency, formatDate } from '@pkg/domain';
-import { PriorityQuote, type PriorityQuote as PriorityQuoteType } from '@pkg/schema';
+import { PriorityQuote, type PriorityQuote as PriorityQuoteType } from '@pkg/schema/equipment';
 import { addDays, format as formatDateFns } from 'date-fns';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';

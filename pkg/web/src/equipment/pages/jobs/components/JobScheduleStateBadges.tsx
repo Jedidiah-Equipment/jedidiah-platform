@@ -1,4 +1,4 @@
-import type { JobScheduleState } from '@pkg/schema';
+import type { JobScheduleState } from '@pkg/schema/equipment';
 import type React from 'react';
 
 import { Badge } from '@/components/ui/badge.js';

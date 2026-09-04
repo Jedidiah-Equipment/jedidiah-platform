@@ -1,5 +1,7 @@
-import { departmentLabels, roleLabels } from '@pkg/domain';
-import { type AuthId, UserSortBy, type UserSummary } from '@pkg/schema';
+import { roleLabels } from '@pkg/domain';
+import { departmentLabels } from '@pkg/domain/equipment';
+import type { AuthId } from '@pkg/schema';
+import { UserSortBy, type UserSummary } from '@pkg/schema/equipment';
 import { IconDeviceTablet } from '@tabler/icons-react';
 import type React from 'react';
 import { useMemo } from 'react';

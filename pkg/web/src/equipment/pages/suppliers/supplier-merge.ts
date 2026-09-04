@@ -1,4 +1,4 @@
-import type { Supplier, SupplierMergePreview } from '@pkg/schema';
+import type { Supplier, SupplierMergePreview } from '@pkg/schema/equipment';
 
 export function getSupplierMergeOptions(suppliers: readonly Supplier[], sourceId: string) {
   return suppliers

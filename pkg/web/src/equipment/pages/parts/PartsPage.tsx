@@ -1,4 +1,4 @@
-import type { Part } from '@pkg/schema';
+import type { Part } from '@pkg/schema/equipment';
 import { IconPlus } from '@tabler/icons-react';
 import type React from 'react';
 import { useState } from 'react';

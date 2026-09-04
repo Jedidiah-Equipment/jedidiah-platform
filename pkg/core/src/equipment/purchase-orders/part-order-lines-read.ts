@@ -1,7 +1,8 @@
-import { purchaseOrderLines, purchaseOrders, supplier } from '@pkg/db';
-import { compareNullableDateOnly } from '@pkg/domain';
-import type { PartPurchaseOrderLineResult, UUID } from '@pkg/schema';
-import { PartPurchaseOrderLineResult as PartPurchaseOrderLineResultSchema } from '@pkg/schema';
+import { purchaseOrderLines, purchaseOrders, supplier } from '@pkg/db/equipment';
+import { compareNullableDateOnly } from '@pkg/domain/equipment';
+import type { UUID } from '@pkg/schema';
+import type { PartPurchaseOrderLineResult } from '@pkg/schema/equipment';
+import { PartPurchaseOrderLineResult as PartPurchaseOrderLineResultSchema } from '@pkg/schema/equipment';
 import { and, eq } from 'drizzle-orm';
 
 import { loadReceivedQuantities, type PurchaseOrderDb, receivedQuantityKey } from './purchase-order-service.js';

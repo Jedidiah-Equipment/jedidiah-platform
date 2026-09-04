@@ -1,4 +1,4 @@
-import type { StockOnHandRow } from '@pkg/schema';
+import type { StockOnHandRow } from '@pkg/schema/equipment';
 import { useRouter } from 'expo-router';
 import type React from 'react';
 import { View } from 'react-native';

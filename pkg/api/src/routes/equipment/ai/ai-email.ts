@@ -1,4 +1,4 @@
-import type { AiEmailSender } from '@pkg/ai';
+import type { AiEmailSender } from '@pkg/ai/equipment';
 import { renderPlainTextEmailHtml } from '@pkg/domain';
 
 import { emailSender } from '@/email/index.js';

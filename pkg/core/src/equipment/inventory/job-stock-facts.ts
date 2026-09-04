@@ -1,6 +1,8 @@
-import { type Db, jobCfoAssemblies, jobCfoParts, jobs, products, productUnits, quotes, stockMovements } from '@pkg/db';
-import type { JobStockJob, UUID } from '@pkg/schema';
-import { JobStockJob as JobStockJobSchema } from '@pkg/schema';
+import type { Db } from '@pkg/db';
+import { jobCfoAssemblies, jobCfoParts, jobs, products, productUnits, quotes, stockMovements } from '@pkg/db/equipment';
+import type { UUID } from '@pkg/schema';
+import type { JobStockJob } from '@pkg/schema/equipment';
+import { JobStockJob as JobStockJobSchema } from '@pkg/schema/equipment';
 import { eq, sql } from 'drizzle-orm';
 
 import { jobDisplayNameOf, jobDisplaySelection } from '../jobs/job-display.js';

@@ -1,11 +1,5 @@
-import {
-  CONTRACTING_ROLES,
-  ContractingRole,
-  EQUIPMENT_ROLES,
-  EquipmentRole,
-  UserPassword,
-  UserSummary,
-} from '@pkg/schema';
+import { CONTRACTING_ROLES, ContractingRole, EQUIPMENT_ROLES, EquipmentRole, UserPassword } from '@pkg/schema';
+import { UserSummary } from '@pkg/schema/equipment';
 import type React from 'react';
 import type { z } from 'zod';
 

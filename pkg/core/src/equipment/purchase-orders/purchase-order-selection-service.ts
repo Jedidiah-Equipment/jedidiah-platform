@@ -1,11 +1,13 @@
-import { type Db, parts, supplier } from '@pkg/db';
-import { defaultPurchaseOrderUnitPrice, derivePartStockActions } from '@pkg/domain';
-import type { AuthId, PurchaseOrderSelectionInput, PurchaseOrderSelectionResult, UUID } from '@pkg/schema';
+import type { Db } from '@pkg/db';
+import { parts, supplier } from '@pkg/db/equipment';
+import { defaultPurchaseOrderUnitPrice, derivePartStockActions } from '@pkg/domain/equipment';
+import type { AuthId, UUID } from '@pkg/schema';
+import type { PurchaseOrderSelectionInput, PurchaseOrderSelectionResult } from '@pkg/schema/equipment';
 import {
   isWholeUnitQuantity,
   PurchaseOrderSelectionResult as PurchaseOrderSelectionResultSchema,
   unitClassFor,
-} from '@pkg/schema';
+} from '@pkg/schema/equipment';
 import { eq, inArray } from 'drizzle-orm';
 import { loadMovingAverages } from '../inventory/ledger.js';
 import { assertPartStockAction } from '../inventory/part-stock-action-errors.js';

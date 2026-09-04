@@ -1,4 +1,4 @@
-import { getDocumentPolicy } from '@pkg/domain';
+import { getDocumentPolicy } from '@pkg/domain/equipment';
 import type { UUID } from '@pkg/schema';
 import { IconLoader2 } from '@tabler/icons-react';
 import { useMutation } from '@tanstack/react-query';

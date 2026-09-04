@@ -1,4 +1,4 @@
-import type { JobPickerOption } from '@pkg/schema';
+import type { JobPickerOption } from '@pkg/schema/equipment';
 import { describe, expect, it } from 'vitest';
 
 import { buildJobPickerModel } from './job-picker-model.js';

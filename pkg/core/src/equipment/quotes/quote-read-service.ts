@@ -1,9 +1,13 @@
 import {
   createGlobalSearchCondition,
-  customers,
   type DatabaseTransaction,
   type Db,
   getSortOrder,
+  user,
+  withPagination,
+} from '@pkg/db';
+import {
+  customers,
   jobBuildSpecAssemblies,
   jobs,
   products,
@@ -11,21 +15,12 @@ import {
   quotes,
   quoteWorkItemParts,
   quoteWorkItems,
-  user,
-  withPagination,
-} from '@pkg/db';
-import {
-  addDateOnlyDays,
-  parseDateOnlyParts,
-  parseJobCodeSearch,
-  QUOTE_SALESPERSON_ROLES,
-  selectReworkBuildSpec,
-  toPlantDateOnly,
-} from '@pkg/domain';
+} from '@pkg/db/equipment';
+import { addDateOnlyDays, parseDateOnlyParts, toPlantDateOnly } from '@pkg/domain';
+import { parseJobCodeSearch, QUOTE_SALESPERSON_ROLES, selectReworkBuildSpec } from '@pkg/domain/equipment';
+import { DateOnlyIso, getNextCursor, UUID } from '@pkg/schema';
 import {
   CompetingAllocationQuote,
-  DateOnlyIso,
-  getNextCursor,
   type PriorityQuote,
   parseQuoteCodeNumber,
   type QuoteDetail,
@@ -37,8 +32,7 @@ import {
   type QuoteSummary,
   UpcomingDeliveryQuotesResult,
   type UserListResult,
-  UUID,
-} from '@pkg/schema';
+} from '@pkg/schema/equipment';
 import { and, asc, eq, inArray, isNotNull, isNull, ne, or, type SQL, sql } from 'drizzle-orm';
 
 import { listBayQueueAvailability } from '../jobs/job-read-service.js';

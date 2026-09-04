@@ -1,4 +1,4 @@
-import { jobs } from '@pkg/db';
+import { jobs } from '@pkg/db/equipment';
 import { eq } from 'drizzle-orm';
 import { describe, expect } from 'vitest';
 

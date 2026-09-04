@@ -1,21 +1,19 @@
 import { randomUUID } from 'node:crypto';
 
-import type { DatabaseTransaction, Db, ProductImageStore, StoredFile } from '@pkg/db';
-import { evaluateProductBrochureCompleteness, localizeFields } from '@pkg/domain';
+import type { DatabaseTransaction, Db, StoredFile } from '@pkg/db';
+import type { ProductImageStore } from '@pkg/db/equipment';
+import { evaluateProductBrochureCompleteness, localizeFields } from '@pkg/domain/equipment';
+import { type AuthId, CANONICAL_LOCALE, type Locale, type UUID } from '@pkg/schema';
 import {
   type AssemblyKind,
-  type AuthId,
   BROCHURE_IMAGE_SLOTS,
   type BrochureDocumentImage,
   type BrochureDocumentImages,
   type BrochureDocumentModel,
   type BrochurePdfRenderer,
-  CANONICAL_LOCALE,
-  type Locale,
   PRODUCT_IMAGE_SLOT_SPECS,
   type Product,
-  type UUID,
-} from '@pkg/schema';
+} from '@pkg/schema/equipment';
 import sharp from 'sharp';
 import type { StorageAdapter } from '../../storage/storage-adapter.js';
 import {

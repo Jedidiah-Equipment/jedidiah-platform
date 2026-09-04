@@ -1,10 +1,6 @@
-import {
-  createStableRowKeys,
-  defaultPurchaseOrderUnitPrice,
-  formatCurrency,
-  formatDate,
-  hasPermission,
-} from '@pkg/domain';
+import { createStableRowKeys, formatCurrency, formatDate, hasPermission } from '@pkg/domain';
+import { defaultPurchaseOrderUnitPrice } from '@pkg/domain/equipment';
+import type { UUID } from '@pkg/schema';
 import type {
   Part,
   PurchaseOrderAmendmentKind,
@@ -12,9 +8,8 @@ import type {
   PurchaseOrderSaveDraftInput,
   PurchaseOrderView,
   StockOnHandRow,
-  UUID,
-} from '@pkg/schema';
-import { isPurchaseOrderLineUnpriced, purchaseOrderHasUnpricedLines } from '@pkg/schema';
+} from '@pkg/schema/equipment';
+import { isPurchaseOrderLineUnpriced, purchaseOrderHasUnpricedLines } from '@pkg/schema/equipment';
 import {
   IconArrowBackUp,
   IconBan,

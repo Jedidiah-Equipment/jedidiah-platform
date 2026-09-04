@@ -1,5 +1,5 @@
-import type { InvoiceMatchFlag, InvoiceMatchMethod } from '@pkg/schema';
-import { invoiceFlagKey } from '@pkg/schema';
+import type { InvoiceMatchFlag, InvoiceMatchMethod } from '@pkg/schema/equipment';
+import { invoiceFlagKey } from '@pkg/schema/equipment';
 
 /**
  * Ties what a Supplier billed to what the order agreed (spec §5).

@@ -1,4 +1,4 @@
-import { jobEstimateSnapshots, jobs, parts, stockMovements } from '@pkg/db';
+import { jobEstimateSnapshots, jobs, parts, stockMovements } from '@pkg/db/equipment';
 import { eq } from 'drizzle-orm';
 import { describe, expect } from 'vitest';
 

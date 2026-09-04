@@ -1,6 +1,6 @@
+import { type Db, readMigrationStatements, user } from '@pkg/db';
 import {
   customers,
-  type Db,
   documents,
   feedback,
   jobBays,
@@ -14,11 +14,9 @@ import {
   productUnitOwnershipTransfers,
   productUnits,
   quotes,
-  readMigrationStatements,
   supplier,
-  user,
-} from '@pkg/db';
-import { isProductUnitInStock, resolveProductUnitOwnerId } from '@pkg/domain';
+} from '@pkg/db/equipment';
+import { isProductUnitInStock, resolveProductUnitOwnerId } from '@pkg/domain/equipment';
 import { asc, eq, sql } from 'drizzle-orm';
 import { describe, expect } from 'vitest';
 

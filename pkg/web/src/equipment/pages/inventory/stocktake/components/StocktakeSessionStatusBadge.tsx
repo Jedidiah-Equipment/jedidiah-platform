@@ -1,5 +1,5 @@
-import { stocktakeSessionStatusColorClassNames, stocktakeSessionStatusLabels } from '@pkg/domain';
-import type { StocktakeSessionStatus } from '@pkg/schema';
+import { stocktakeSessionStatusColorClassNames, stocktakeSessionStatusLabels } from '@pkg/domain/equipment';
+import type { StocktakeSessionStatus } from '@pkg/schema/equipment';
 import type React from 'react';
 
 import { Badge } from '@/components/ui/badge.js';

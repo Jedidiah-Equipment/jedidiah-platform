@@ -1,15 +1,15 @@
-import type { JobStockMovementType } from '@pkg/schema';
+import type { JobStockMovementType } from '@pkg/schema/equipment';
 import { IconArrowDown, IconArrowUp, IconShoppingCartPlus } from '@tabler/icons-react';
 import { useQuery } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
 
 import { Button } from '@/components/ui/button.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
+import { CreatePurchaseOrdersDialog } from '@/equipment/pages/inventory/components/CreatePurchaseOrdersDialog.js';
+import { StockMovementDialog } from '@/equipment/pages/inventory/components/StockMovementDialog.js';
+import { partOptionsAllowing } from '@/equipment/pages/inventory/components/types.js';
 import { useCan } from '@/hooks/use-access.js';
 import { useTRPC } from '@/lib/trpc.js';
-import { CreatePurchaseOrdersDialog } from '../../inventory/components/CreatePurchaseOrdersDialog.js';
-import { StockMovementDialog } from '../../inventory/components/StockMovementDialog.js';
-import { partOptionsAllowing } from '../../inventory/components/types.js';
 import { JobStockTable } from './JobStockTable.js';
 import { toJobStockPurchaseCandidates } from './job-stock-purchase-selection.js';
 

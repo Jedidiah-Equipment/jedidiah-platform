@@ -11,7 +11,7 @@ import {
   JobNotFoundError,
   type StockMovementCoreError,
   type StocktakeError,
-} from '@pkg/core';
+} from '@pkg/core/equipment';
 
 import { defineCoreErrorFamily } from '../../../trpc/errors.js';
 

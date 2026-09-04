@@ -1,4 +1,5 @@
-import type { CustomerListInput, UUID } from '@pkg/schema';
+import type { UUID } from '@pkg/schema';
+import type { CustomerListInput } from '@pkg/schema/equipment';
 import { useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
 

@@ -1,13 +1,9 @@
 import { sha256 } from '@noble/hashes/sha2.js';
 import { bytesToHex, utf8ToBytes } from '@noble/hashes/utils.js';
-import {
-  CANONICAL_LOCALE,
-  type CatalogTranslationEnvelope,
-  type CatalogTranslationFieldState,
-  type Locale,
-} from '@pkg/schema';
+import { CANONICAL_LOCALE, type Locale } from '@pkg/schema';
+import type { CatalogTranslationEnvelope, CatalogTranslationFieldState } from '@pkg/schema/equipment';
 
-export type { CatalogTranslationEnvelope } from '@pkg/schema';
+export type { CatalogTranslationEnvelope } from '@pkg/schema/equipment';
 
 const CATALOG_TRANSLATION_KINDS = ['product', 'range', 'variant'] as const;
 

@@ -4,15 +4,15 @@ import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, describe, expect, test, vi } from 'vitest';
 
-import { captureEvent } from '../../lib/analytics.js';
-import { trackMetaLead } from '../../lib/meta-pixel.js';
+import { captureEvent } from '@/lib/analytics.js';
+import { trackMetaLead } from '@/lib/meta-pixel.js';
 import { EnquiryForm } from './contact.js';
 
-vi.mock('../../lib/analytics.js', () => ({
+vi.mock('@/lib/analytics.js', () => ({
   captureEvent: vi.fn(),
   captureEventForNavigation: vi.fn(),
 }));
-vi.mock('../../lib/meta-pixel.js', () => ({
+vi.mock('@/lib/meta-pixel.js', () => ({
   createMetaEventId: () => 'meta-lead-123',
   metaMatchKeys: () => ({ metaBrowserId: 'fb.1.1755000000000.9876543210' }),
   trackMetaLead: vi.fn(),

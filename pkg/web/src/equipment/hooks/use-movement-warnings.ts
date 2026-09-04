@@ -1,5 +1,5 @@
-import { unacknowledgedWarnings, warningMessageFor } from '@pkg/domain';
-import type { StockMovementWarningCode } from '@pkg/schema';
+import { unacknowledgedWarnings, warningMessageFor } from '@pkg/domain/equipment';
+import type { StockMovementWarningCode } from '@pkg/schema/equipment';
 import { useRef } from 'react';
 import { toast } from 'sonner';
 

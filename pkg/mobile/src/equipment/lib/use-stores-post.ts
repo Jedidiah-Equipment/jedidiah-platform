@@ -1,5 +1,5 @@
-import { unacknowledgedWarnings } from '@pkg/domain';
-import type { StockMovementPostResult, StockMovementWarningCode } from '@pkg/schema';
+import { unacknowledgedWarnings } from '@pkg/domain/equipment';
+import type { StockMovementPostResult, StockMovementWarningCode } from '@pkg/schema/equipment';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { type Href, useRouter } from 'expo-router';
 import { useState } from 'react';

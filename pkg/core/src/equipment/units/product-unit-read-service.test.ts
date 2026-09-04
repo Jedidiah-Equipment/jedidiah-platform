@@ -1,15 +1,15 @@
+import { type Db, user } from '@pkg/db';
 import {
   customers,
-  type Db,
   jobBuildSpecAssemblies,
   jobCfoAssemblies,
   jobs,
   products,
   productUnitOwnershipTransfers,
   quotes,
-  user,
-} from '@pkg/db';
-import { DateOnlyIso, ProductUnitListInput } from '@pkg/schema';
+} from '@pkg/db/equipment';
+import { DateOnlyIso } from '@pkg/schema';
+import { ProductUnitListInput } from '@pkg/schema/equipment';
 import { eq } from 'drizzle-orm';
 import { describe, expect } from 'vitest';
 

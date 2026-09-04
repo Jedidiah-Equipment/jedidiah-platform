@@ -1,4 +1,5 @@
-import { IMAGE_CONTENT_TYPES, PRODUCT_IMAGE_MAX_BYTES } from '@pkg/schema';
+import { IMAGE_CONTENT_TYPES } from '@pkg/schema';
+import { PRODUCT_IMAGE_MAX_BYTES } from '@pkg/schema/equipment';
 
 import type { FilePolicy } from '../../files/file-policy.js';
 

@@ -1,6 +1,6 @@
 import type { LanguageModelV4FinishReason, LanguageModelV4StreamPart, LanguageModelV4Usage } from '@ai-sdk/provider';
 import fastifyCors from '@fastify/cors';
-import type { AiContext } from '@pkg/ai';
+import type { AiContext } from '@pkg/ai/equipment';
 import { createUserAccessSummary, roleSlotsForRole } from '@pkg/domain';
 import { convertArrayToReadableStream, MockLanguageModelV4 } from 'ai/test';
 import Fastify from 'fastify';

@@ -1,9 +1,10 @@
-import { CATALOG_IMAGE_WIDTHS, listAllProducts, listProductRanges, transformSignature } from '@pkg/core';
+import { CATALOG_IMAGE_WIDTHS, transformSignature } from '@pkg/core';
+import { listAllProducts, listProductRanges } from '@pkg/core/equipment';
 import type { Db } from '@pkg/db';
-import { isLanderReady, localizeFields } from '@pkg/domain';
-import type { Product, ProductRangeVariantTranslations, ProductTranslations } from '@pkg/schema';
+import { isLanderReady, localizeFields } from '@pkg/domain/equipment';
+import type { Product, ProductRangeVariantTranslations, ProductTranslations } from '@pkg/schema/equipment';
 
-import type { Locale } from '../../lib/locale.js';
+import type { Locale } from '@/lib/locale.js';
 import { resolveImageTransform } from '../media/image-format.js';
 
 export type CatalogProduct = {

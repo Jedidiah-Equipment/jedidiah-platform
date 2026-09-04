@@ -1,7 +1,9 @@
-import { type DatabaseTransaction, type Db, parts, stockMovements } from '@pkg/db';
-import { deriveMovingAverage } from '@pkg/domain';
-import type { StockMovement, UUID } from '@pkg/schema';
-import { StockMovement as StockMovementSchema } from '@pkg/schema';
+import type { DatabaseTransaction, Db } from '@pkg/db';
+import { parts, stockMovements } from '@pkg/db/equipment';
+import { deriveMovingAverage } from '@pkg/domain/equipment';
+import type { UUID } from '@pkg/schema';
+import type { StockMovement } from '@pkg/schema/equipment';
+import { StockMovement as StockMovementSchema } from '@pkg/schema/equipment';
 import { and, asc, eq, inArray, isNull, ne, type SQL, sql } from 'drizzle-orm';
 
 import { FabricatedPartCostError, StockMovementPartNotFoundError } from './stock-movement-errors.js';

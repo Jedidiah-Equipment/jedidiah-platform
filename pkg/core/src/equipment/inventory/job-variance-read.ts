@@ -1,10 +1,12 @@
-import { type Db, parts, stockMovements } from '@pkg/db';
-import type { JobMaterialVarianceResult, UUID } from '@pkg/schema';
+import type { Db } from '@pkg/db';
+import { parts, stockMovements } from '@pkg/db/equipment';
+import type { UUID } from '@pkg/schema';
+import type { JobMaterialVarianceResult } from '@pkg/schema/equipment';
 import {
   isOffCfo,
   JOB_STOCK_MOVEMENT_TYPES,
   JobMaterialVarianceResult as JobMaterialVarianceResultSchema,
-} from '@pkg/schema';
+} from '@pkg/schema/equipment';
 import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 
 import {

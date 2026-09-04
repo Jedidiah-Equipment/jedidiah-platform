@@ -1,4 +1,4 @@
-import { parseInternalAppHref } from '@pkg/schema';
+import { parseInternalAppHref } from '@pkg/schema/equipment';
 import type { useRouter } from 'expo-router';
 
 import { PRODUCT_BROCHURE_DOCUMENT_ID } from './product-brochure';

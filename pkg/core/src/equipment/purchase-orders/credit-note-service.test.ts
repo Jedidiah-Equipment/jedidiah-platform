@@ -1,4 +1,4 @@
-import type { PostReturnToSupplierInput } from '@pkg/schema';
+import type { PostReturnToSupplierInput } from '@pkg/schema/equipment';
 import { describe, expect } from 'vitest';
 
 import { postReturnToSupplier } from '../inventory/return-to-supplier-service.js';

@@ -1,4 +1,5 @@
-import { auditEvents, customers, type Db, eq, feedback, jobs, products, productUnits, quotes, user } from '@pkg/db';
+import { auditEvents, type Db, eq, user } from '@pkg/db';
+import { customers, feedback, jobs, products, productUnits, quotes } from '@pkg/db/equipment';
 import { DateIso } from '@pkg/schema';
 import { describe, expect } from 'vitest';
 import { createProductRangeFixture } from '@/equipment/test/product-range-fixtures.js';

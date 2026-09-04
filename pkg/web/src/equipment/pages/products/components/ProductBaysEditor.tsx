@@ -1,4 +1,4 @@
-import type { Bay, Product } from '@pkg/schema';
+import type { Bay, Product } from '@pkg/schema/equipment';
 import { useQuery } from '@tanstack/react-query';
 import type React from 'react';
 import { useMemo } from 'react';

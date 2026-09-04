@@ -1,22 +1,22 @@
-import { customers, type Db, jobs, products, quotes } from '@pkg/db';
+import type { Db } from '@pkg/db';
+import { customers, jobs, products, quotes } from '@pkg/db/equipment';
 import {
   addDateOnlyDays,
   diffDateOnlyDays,
-  foldJobScheduleStates,
   JOHANNESBURG_TIME_ZONE,
   startOfDateOnlyWeek,
   toPlantDateOnly,
   zonedDateStartToUtcInstant,
 } from '@pkg/domain';
+import { foldJobScheduleStates } from '@pkg/domain/equipment';
+import type { DateOnlyIso, UUID } from '@pkg/schema';
 import {
-  type DateOnlyIso,
   QuotePipelineSummary,
   QuoteStatus,
   QuoteStatusSummary,
   QuoteWeeklyFlowSummary,
   StaleSentQuoteList,
-  type UUID,
-} from '@pkg/schema';
+} from '@pkg/schema/equipment';
 import { and, asc, eq, gte, inArray, isNull, lt, sql } from 'drizzle-orm';
 
 import { findBoardBayRows, toProjectedBoard } from '../jobs/board-read.js';

@@ -1,4 +1,4 @@
-import { QuoteDetail, QuoteUpdateInput } from '@pkg/schema';
+import { QuoteDetail, QuoteUpdateInput } from '@pkg/schema/equipment';
 import { describe, expect, it } from 'vitest';
 
 import {

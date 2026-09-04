@@ -1,13 +1,14 @@
+import { statusBadgeColorClassNames } from '@pkg/domain';
 import {
   BAY_RUNWAY_CAP_WORKING_DAYS,
   byBayDepartmentPipeline,
   computeBayRunway,
   departmentLabels,
   groupBaysByDepartmentPipeline,
-  statusBadgeColorClassNames,
   type WorkingCalendar,
-} from '@pkg/domain';
-import type { DateOnlyIso, ProjectedBayQueue } from '@pkg/schema';
+} from '@pkg/domain/equipment';
+import type { DateOnlyIso } from '@pkg/schema';
+import type { ProjectedBayQueue } from '@pkg/schema/equipment';
 import type React from 'react';
 import { Bar, BarChart, CartesianGrid, LabelList, XAxis, YAxis } from 'recharts';
 

@@ -1,5 +1,6 @@
 import { statusBadgeColorClassNames } from '@pkg/domain';
-import { DateOnlyIso, ProjectedBayQueue, ProjectedJobSlot } from '@pkg/schema';
+import { DateOnlyIso } from '@pkg/schema';
+import { ProjectedBayQueue, ProjectedJobSlot } from '@pkg/schema/equipment';
 import { describe, expect, it } from 'vitest';
 
 import { buildJobSummary } from '@/equipment/test/job-fixtures.js';

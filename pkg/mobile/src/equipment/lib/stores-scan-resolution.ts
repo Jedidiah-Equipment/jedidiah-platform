@@ -1,5 +1,5 @@
-import { parseScanToken } from '@pkg/domain';
-import type { QuickSwitchActor } from '@pkg/schema';
+import { parseScanToken } from '@pkg/domain/equipment';
+import type { QuickSwitchActor } from '@pkg/schema/equipment';
 
 /**
  * What a scan at the stores tablet should *do*, decided apart from the doing of it.

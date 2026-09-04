@@ -1,4 +1,4 @@
-import { isQuoteSalespersonRole, quoteKindLabels, quoteStatusLabels } from '@pkg/domain';
+import { isQuoteSalespersonRole, quoteKindLabels, quoteStatusLabels } from '@pkg/domain/equipment';
 import { IconX } from '@tabler/icons-react-native';
 import { useStore } from '@tanstack/react-form';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';

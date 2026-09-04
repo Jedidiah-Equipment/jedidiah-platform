@@ -1,5 +1,6 @@
 import { useDebouncedValue } from '@mantine/hooks';
-import type { Customer, UUID } from '@pkg/schema';
+import type { UUID } from '@pkg/schema';
+import type { Customer } from '@pkg/schema/equipment';
 import { IconPlus } from '@tabler/icons-react';
 import type React from 'react';
 import { useMemo, useState } from 'react';

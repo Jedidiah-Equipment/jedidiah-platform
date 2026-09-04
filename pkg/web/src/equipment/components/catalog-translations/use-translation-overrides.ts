@@ -1,4 +1,4 @@
-import type { CatalogTranslationFieldState } from '@pkg/schema';
+import type { CatalogTranslationFieldState } from '@pkg/schema/equipment';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 const REGENERATION_POLL_INTERVAL_MS = 2_000;

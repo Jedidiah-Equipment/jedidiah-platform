@@ -1,5 +1,5 @@
-import { quoteKindColorClassNames } from '@pkg/domain';
-import type { Product, ProductImageSlot } from '@pkg/schema';
+import { quoteKindColorClassNames } from '@pkg/domain/equipment';
+import type { Product, ProductImageSlot } from '@pkg/schema/equipment';
 import { IconPackage } from '@tabler/icons-react-native';
 import { useState } from 'react';
 import { Image, StyleSheet, View } from 'react-native';

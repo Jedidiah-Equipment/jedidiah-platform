@@ -1,6 +1,7 @@
 import type { LanguageModelV4CallOptions, LanguageModelV4GenerateResult } from '@ai-sdk/provider';
-import { type Db, productAssemblies, productRanges, productRangeVariants, products } from '@pkg/db';
-import { catalogSourceHashes } from '@pkg/domain';
+import type { Db } from '@pkg/db';
+import { productAssemblies, productRanges, productRangeVariants, products } from '@pkg/db/equipment';
+import { catalogSourceHashes } from '@pkg/domain/equipment';
 import { MockLanguageModelV4 } from 'ai/test';
 import { describe, expect } from 'vitest';
 

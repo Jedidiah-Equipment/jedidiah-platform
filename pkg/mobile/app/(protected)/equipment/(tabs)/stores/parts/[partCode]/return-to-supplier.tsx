@@ -1,5 +1,8 @@
-import type { PartPurchaseOrderLine, StockOnHandRow, StockReturnToSupplierReason } from '@pkg/schema';
-import { StockReturnToSupplierReason as ReasonEnum, STOCK_RETURN_TO_SUPPLIER_REASON_LABELS } from '@pkg/schema';
+import type { PartPurchaseOrderLine, StockOnHandRow, StockReturnToSupplierReason } from '@pkg/schema/equipment';
+import {
+  StockReturnToSupplierReason as ReasonEnum,
+  STOCK_RETURN_TO_SUPPLIER_REASON_LABELS,
+} from '@pkg/schema/equipment';
 import { useMutation } from '@tanstack/react-query';
 import { useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';

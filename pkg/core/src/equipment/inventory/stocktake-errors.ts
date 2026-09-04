@@ -1,4 +1,4 @@
-import { STOCKTAKE_SCOPE_LABELS, type StocktakeScope } from '@pkg/schema';
+import { STOCKTAKE_SCOPE_LABELS, type StocktakeScope } from '@pkg/schema/equipment';
 
 export class StocktakeSessionNotFoundError extends Error {
   readonly code = 'inventory.stocktake_session_not_found';

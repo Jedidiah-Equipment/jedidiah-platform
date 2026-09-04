@@ -1,11 +1,11 @@
 import { formatCurrency, formatDate, formatNumber } from '@pkg/domain';
+import type { UUID } from '@pkg/schema';
 import {
   INVOICE_MATCH_FLAG_LABELS,
   type InvoiceMatchFlag,
   type SupplierInvoiceMatchRow,
   type SupplierInvoiceReview,
-  type UUID,
-} from '@pkg/schema';
+} from '@pkg/schema/equipment';
 import { IconFileInvoice, IconLoader2 } from '@tabler/icons-react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';

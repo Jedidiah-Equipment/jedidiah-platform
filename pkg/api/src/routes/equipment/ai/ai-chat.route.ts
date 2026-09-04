@@ -1,9 +1,11 @@
 import type { OutgoingHttpHeaders } from 'node:http';
 import { Readable } from 'node:stream';
 
-import { type AiChatModel, type AiContext, createOpenAiChatModel, streamAiChat, validateAiUiMessages } from '@pkg/ai';
+import { type AiChatModel, createOpenAiChatModel } from '@pkg/ai';
+import { type AiContext, streamAiChat, validateAiUiMessages } from '@pkg/ai/equipment';
 import type { StorageAdapter } from '@pkg/core';
-import { AiChatInput, type AiReasoningEffort } from '@pkg/schema';
+import type { AiReasoningEffort } from '@pkg/schema';
+import { AiChatInput } from '@pkg/schema/equipment';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 

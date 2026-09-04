@@ -1,5 +1,5 @@
 import { useDebouncedValue } from '@mantine/hooks';
-import type { JobPickerTab, JobStockMovementType } from '@pkg/schema';
+import type { JobPickerTab, JobStockMovementType } from '@pkg/schema/equipment';
 import { keepPreviousData, useInfiniteQuery } from '@tanstack/react-query';
 import { useCallback, useEffect, useRef, useState } from 'react';
 

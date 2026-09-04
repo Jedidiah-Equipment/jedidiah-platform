@@ -1,6 +1,8 @@
-import { type Db, jobs } from '@pkg/db';
-import { computeQuoteVatAmount, resolveJobCustomer, resolveNewestOwnershipTransfer } from '@pkg/domain';
-import { type JobSalesExportInput, JobSalesExportRow, UUID } from '@pkg/schema';
+import type { Db } from '@pkg/db';
+import { jobs } from '@pkg/db/equipment';
+import { computeQuoteVatAmount, resolveJobCustomer, resolveNewestOwnershipTransfer } from '@pkg/domain/equipment';
+import { UUID } from '@pkg/schema';
+import { type JobSalesExportInput, JobSalesExportRow } from '@pkg/schema/equipment';
 import { and, asc, isNotNull } from 'drizzle-orm';
 
 import { readJobDrawnCost, sumJobDrawnCosts } from '../inventory/job-cost-read.js';

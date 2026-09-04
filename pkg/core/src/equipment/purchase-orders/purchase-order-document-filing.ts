@@ -1,6 +1,7 @@
 import { type DatabaseTransaction, type Db, getUniqueViolationConstraint, user } from '@pkg/db';
-import type { AuthId, PurchaseOrderDocumentMetadata, PurchaseOrderDocumentRow, UUID } from '@pkg/schema';
-import { PurchaseOrderDocumentRow as PurchaseOrderDocumentRowSchema } from '@pkg/schema';
+import type { AuthId, UUID } from '@pkg/schema';
+import type { PurchaseOrderDocumentMetadata, PurchaseOrderDocumentRow } from '@pkg/schema/equipment';
+import { PurchaseOrderDocumentRow as PurchaseOrderDocumentRowSchema } from '@pkg/schema/equipment';
 import { eq } from 'drizzle-orm';
 import type { StorageAdapter } from '../../storage/storage-adapter.js';
 import { DuplicateDocumentFilenameError } from '../documents/document-errors.js';

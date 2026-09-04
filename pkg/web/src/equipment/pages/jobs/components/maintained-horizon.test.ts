@@ -1,4 +1,4 @@
-import type { WorkingCalendar } from '@pkg/domain';
+import type { WorkingCalendar } from '@pkg/domain/equipment';
 import { DateOnlyIso } from '@pkg/schema';
 import { describe, expect, it } from 'vitest';
 

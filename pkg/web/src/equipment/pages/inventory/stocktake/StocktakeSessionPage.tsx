@@ -1,5 +1,7 @@
-import { formatCurrency, formatDate, hasPermission, stocktakeSessionStatusOf } from '@pkg/domain';
-import { STOCKTAKE_SCOPE_LABELS, type StocktakeSession, type UUID } from '@pkg/schema';
+import { formatCurrency, formatDate, hasPermission } from '@pkg/domain';
+import { stocktakeSessionStatusOf } from '@pkg/domain/equipment';
+import type { UUID } from '@pkg/schema';
+import { STOCKTAKE_SCOPE_LABELS, type StocktakeSession } from '@pkg/schema/equipment';
 import { useQuery } from '@tanstack/react-query';
 
 import { PageLayout } from '@/components/page-layout/PageLayout.js';

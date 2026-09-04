@@ -1,4 +1,4 @@
-import { AssemblyName } from '@pkg/schema';
+import { requiredTrimmedText } from '@pkg/schema';
 import { FieldApi, FormApi } from '@tanstack/react-form';
 import { describe, expect, it } from 'vitest';
 import { validateStructuralFieldOnMount } from './field-validators.js';
@@ -13,7 +13,7 @@ describe('validateStructuralFieldOnMount', () => {
     const field = new FieldApi({
       form,
       name: 'assemblies[0].name',
-      validators: validateStructuralFieldOnMount(AssemblyName),
+      validators: validateStructuralFieldOnMount(requiredTrimmedText('Name is required')),
     });
 
     field.mount();

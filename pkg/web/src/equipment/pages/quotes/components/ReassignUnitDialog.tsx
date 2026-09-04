@@ -1,5 +1,5 @@
 import { hasPermission } from '@pkg/domain';
-import type { ProductUnitReassignCandidate, QuoteDetail } from '@pkg/schema';
+import type { ProductUnitReassignCandidate, QuoteDetail } from '@pkg/schema/equipment';
 import { IconArrowsExchange, IconLoader2 } from '@tabler/icons-react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import type React from 'react';

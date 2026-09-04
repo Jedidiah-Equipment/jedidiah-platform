@@ -1,4 +1,3 @@
-import { ProductNotFoundError } from '@pkg/core';
 import { TRPCError } from '@trpc/server';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -11,6 +10,14 @@ import {
   shouldLogTRPCError,
   UNEXPECTED_ERROR_MESSAGE,
 } from './errors.js';
+
+class ProductNotFoundError extends Error {
+  readonly code = 'product.not_found';
+
+  constructor(readonly productId: string) {
+    super(`Product ${productId} not found`);
+  }
+}
 
 describe('tRPC error helpers', () => {
   it('maps expected core errors with public app codes and preserves cause', async () => {

@@ -1,5 +1,7 @@
-import { formatDate, getJobProjectedFinishDates, isJobDeliveryAtRisk, listEnabledBays } from '@pkg/domain';
-import type { DateOnlyIso, UpcomingDeliveryQuote, UUID } from '@pkg/schema';
+import { formatDate } from '@pkg/domain';
+import { getJobProjectedFinishDates, isJobDeliveryAtRisk, listEnabledBays } from '@pkg/domain/equipment';
+import type { DateOnlyIso, UUID } from '@pkg/schema';
+import type { UpcomingDeliveryQuote } from '@pkg/schema/equipment';
 import { useQuery } from '@tanstack/react-query';
 import type React from 'react';
 import { useMemo } from 'react';

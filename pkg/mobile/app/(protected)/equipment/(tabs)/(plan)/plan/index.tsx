@@ -1,4 +1,4 @@
-import { groupBaysByDepartmentPipeline } from '@pkg/domain';
+import { groupBaysByDepartmentPipeline } from '@pkg/domain/equipment';
 import { useMemo, useState } from 'react';
 import { View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';

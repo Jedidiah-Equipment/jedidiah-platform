@@ -1,4 +1,4 @@
-import { StockMovementHistoryResult } from '@pkg/schema';
+import { StockMovementHistoryResult } from '@pkg/schema/equipment';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
 

@@ -1,4 +1,7 @@
-import { type ContractingRole, type Department, type EquipmentRole, UserPassword } from '@pkg/schema';
+import type { ContractingRole, EquipmentRole, UserPassword } from '@pkg/schema';
+import type { Department } from '@pkg/schema/equipment';
+
+import { DEFAULT_DEMO_USER_PASSWORD } from '../demo.js';
 
 export type DemoUser = {
   contractingRole?: ContractingRole;
@@ -9,10 +12,8 @@ export type DemoUser = {
   isDevice?: boolean;
   name: string;
   password: UserPassword;
-  role: EquipmentRole;
+  equipmentRole: EquipmentRole;
 };
-
-export const DEFAULT_DEMO_USER_PASSWORD: UserPassword = UserPassword.parse('stoneybrook');
 
 export const demoUsers: readonly DemoUser[] = [
   {
@@ -21,7 +22,7 @@ export const demoUsers: readonly DemoUser[] = [
     name: 'Dean van Niekerk',
     email: 'dean@jedidiahequipment.co.za',
     password: DEFAULT_DEMO_USER_PASSWORD,
-    role: 'super-admin',
+    equipmentRole: 'super-admin',
   },
   {
     contractingRole: 'contracting-admin',
@@ -30,7 +31,7 @@ export const demoUsers: readonly DemoUser[] = [
     name: 'Reinhard Zellhuber',
     email: 'design@jedidiahequipment.co.za',
     password: DEFAULT_DEMO_USER_PASSWORD,
-    role: 'admin',
+    equipmentRole: 'admin',
   },
   {
     departments: [],
@@ -38,7 +39,7 @@ export const demoUsers: readonly DemoUser[] = [
     name: 'Jed van Niekerk',
     email: 'jed@jedidiahequipment.co.za',
     password: DEFAULT_DEMO_USER_PASSWORD,
-    role: 'super-admin',
+    equipmentRole: 'super-admin',
   },
   {
     departments: [],
@@ -46,7 +47,7 @@ export const demoUsers: readonly DemoUser[] = [
     name: 'Fabrication Bay Operator',
     email: 'fabrication.operator@jedidiahequipment.co.za',
     password: DEFAULT_DEMO_USER_PASSWORD,
-    role: 'bay-operator',
+    equipmentRole: 'bay-operator',
   },
   {
     departments: [],
@@ -54,7 +55,7 @@ export const demoUsers: readonly DemoUser[] = [
     name: 'Assembly Bay Operator',
     email: 'assembly.operator@jedidiahequipment.co.za',
     password: DEFAULT_DEMO_USER_PASSWORD,
-    role: 'bay-operator',
+    equipmentRole: 'bay-operator',
   },
   // The stores tablet and two people to quick-switch between. Without all three a fresh seed leaves
   // every device rule inert and the tablet impossible to exercise — the flag only bites when some
@@ -66,7 +67,7 @@ export const demoUsers: readonly DemoUser[] = [
     name: 'Stores Tablet',
     email: 'stores.tablet@jedidiahequipment.co.za',
     password: DEFAULT_DEMO_USER_PASSWORD,
-    role: 'stores',
+    equipmentRole: 'stores',
   },
   {
     departments: [],
@@ -74,7 +75,7 @@ export const demoUsers: readonly DemoUser[] = [
     name: 'Stores Person One',
     email: 'stores.one@jedidiahequipment.co.za',
     password: DEFAULT_DEMO_USER_PASSWORD,
-    role: 'stores',
+    equipmentRole: 'stores',
   },
   {
     departments: [],
@@ -82,6 +83,6 @@ export const demoUsers: readonly DemoUser[] = [
     name: 'Stores Person Two',
     email: 'stores.two@jedidiahequipment.co.za',
     password: DEFAULT_DEMO_USER_PASSWORD,
-    role: 'stores',
+    equipmentRole: 'stores',
   },
 ];

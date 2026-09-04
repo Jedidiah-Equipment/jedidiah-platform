@@ -8,9 +8,9 @@ import {
   db,
   getDatabaseUrl,
   user,
-  userDepartment,
 } from '@pkg/db';
-import { demoUsers } from '@pkg/domain';
+import { userDepartment } from '@pkg/db/equipment';
+import { demoUsers } from '@pkg/domain/equipment';
 import { hashPassword } from 'better-auth/crypto';
 import { eq, or } from 'drizzle-orm';
 import { assertLocalSeedTarget } from './seed-target-guards.js';
@@ -39,10 +39,10 @@ export async function seedDemoUsers(database?: Db): Promise<void> {
         email: demoUser.email,
         emailVerified: true,
         image: null,
-        role: demoUser.role,
+        role: demoUser.equipmentRole,
         contractingRole: demoUser.contractingRole ?? null,
         isDevice: demoUser.isDevice ?? false,
-        assistantEnabled: demoUser.role === 'admin' || demoUser.role === 'super-admin',
+        assistantEnabled: demoUser.equipmentRole === 'admin' || demoUser.equipmentRole === 'super-admin',
         banned: false,
         banReason: null,
         banExpires: null,

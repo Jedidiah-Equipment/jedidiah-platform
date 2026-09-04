@@ -1,5 +1,6 @@
 import { hasPermission } from '@pkg/domain';
-import type { BayCalendarExceptionDirection, DateOnlyIso, OffDay } from '@pkg/schema';
+import type { DateOnlyIso } from '@pkg/schema';
+import type { BayCalendarExceptionDirection, OffDay } from '@pkg/schema/equipment';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import type React from 'react';
 import { useCallback, useMemo, useState } from 'react';

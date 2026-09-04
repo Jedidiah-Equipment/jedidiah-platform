@@ -1,4 +1,4 @@
-import type { BrochureRequiredField } from '@pkg/schema';
+import type { BrochureRequiredField } from '@pkg/schema/equipment';
 
 export class DuplicateProductNameError extends Error {
   readonly code = 'product.duplicate_name';

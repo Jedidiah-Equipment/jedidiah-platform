@@ -1,4 +1,5 @@
-import { QuoteInvoicedFilter, QuoteKind, type QuoteListInput, QuoteStatus, type UUID } from '@pkg/schema';
+import type { UUID } from '@pkg/schema';
+import { QuoteInvoicedFilter, QuoteKind, type QuoteListInput, QuoteStatus } from '@pkg/schema/equipment';
 import type { ColumnFiltersState } from '@tanstack/react-table';
 import type { z } from 'zod';
 

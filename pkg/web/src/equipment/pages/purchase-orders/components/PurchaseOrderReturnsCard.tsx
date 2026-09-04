@@ -3,7 +3,7 @@ import {
   type PurchaseOrderReturnRow,
   type PurchaseOrderView,
   STOCK_RETURN_TO_SUPPLIER_REASON_LABELS,
-} from '@pkg/schema';
+} from '@pkg/schema/equipment';
 import { IconArrowBackUp, IconReceipt2 } from '@tabler/icons-react';
 import { useQuery } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';

@@ -1,4 +1,4 @@
-import type { JobPickerOption, JobPickerTab } from '@pkg/schema';
+import type { JobPickerOption, JobPickerTab } from '@pkg/schema/equipment';
 import { useCallback, useMemo, useState } from 'react';
 
 import {

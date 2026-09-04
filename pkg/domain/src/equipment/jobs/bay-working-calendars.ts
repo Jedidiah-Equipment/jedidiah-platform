@@ -1,4 +1,4 @@
-import type { BayCalendarExceptionDirection } from '@pkg/schema';
+import type { BayCalendarExceptionDirection } from '@pkg/schema/equipment';
 
 import type { WorkingCalendar } from './working-calendar.js';
 

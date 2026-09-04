@@ -1,7 +1,7 @@
-import { translateCatalogSourceToAfrikaans } from '@pkg/ai';
-import { loadCatalogTranslationSource, persistCatalogTranslation } from '@pkg/core';
+import { translateCatalogSourceToAfrikaans } from '@pkg/ai/equipment';
+import { loadCatalogTranslationSource, persistCatalogTranslation } from '@pkg/core/equipment';
 import type { Db } from '@pkg/db';
-import { type CatalogTranslationKey, catalogTranslationNeedsAi } from '@pkg/domain';
+import { type CatalogTranslationKey, catalogTranslationNeedsAi } from '@pkg/domain/equipment';
 import type { LanguageModel } from 'ai';
 
 export type CatalogTranslationRunResult = 'skipped' | 'translated';

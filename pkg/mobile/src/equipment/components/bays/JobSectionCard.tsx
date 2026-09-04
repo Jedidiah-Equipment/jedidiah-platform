@@ -1,4 +1,4 @@
-import type { JobDetail } from '@pkg/schema';
+import type { JobDetail } from '@pkg/schema/equipment';
 import { useQuery } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 

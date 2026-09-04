@@ -1,11 +1,11 @@
-import type { PurchaseOrderView } from '@pkg/schema';
+import type { PurchaseOrderView } from '@pkg/schema/equipment';
 import { IconTruckDelivery } from '@tabler/icons-react';
 import { useMemo, useState } from 'react';
 import { DataTable } from '@/components/data-table/DataTable.js';
 import { type DataTableColumnDef, useDataTable } from '@/components/data-table/features.js';
 import { Button } from '@/components/ui/button.js';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card.js';
-import { PartLabelPrintButton } from '../../parts/PartLabelPrintButton.js';
+import { PartLabelPrintButton } from '@/equipment/pages/parts/PartLabelPrintButton.js';
 import { PurchaseOrderReceiveDialog } from './PurchaseOrderReceiveDialog.js';
 import { outstandingQuantity } from './types.js';
 

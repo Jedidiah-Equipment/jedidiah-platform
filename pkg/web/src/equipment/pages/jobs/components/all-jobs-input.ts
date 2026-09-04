@@ -1,4 +1,4 @@
-import type { JobListInput } from '@pkg/schema';
+import type { JobListInput } from '@pkg/schema/equipment';
 
 // The booking dialog needs a full Job picker plus schedule state for its active/unscheduled filters.
 export const allJobsInput = {

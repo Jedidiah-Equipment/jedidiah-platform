@@ -1,10 +1,10 @@
+import type { UUID } from '@pkg/schema';
 import {
   PRODUCT_IMAGE_SLOT_SPECS,
   type ProductImage,
   type ProductImageSlot,
   type ProductImageSlotSpec,
-  type UUID,
-} from '@pkg/schema';
+} from '@pkg/schema/equipment';
 import { IconLoader2, IconPhoto, IconUpload } from '@tabler/icons-react';
 import { useMutation } from '@tanstack/react-query';
 import type React from 'react';

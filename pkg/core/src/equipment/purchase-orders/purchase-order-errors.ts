@@ -1,4 +1,5 @@
-import type { PurchaseOrderActionVerdict, UUID } from '@pkg/schema';
+import type { UUID } from '@pkg/schema';
+import type { PurchaseOrderActionVerdict } from '@pkg/schema/equipment';
 
 export class PurchaseOrderNotFoundError extends Error {
   readonly code = 'purchase_order.not_found' as const;

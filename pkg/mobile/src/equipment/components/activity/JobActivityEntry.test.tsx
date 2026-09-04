@@ -1,5 +1,5 @@
 import { statusBadgeColorClassNames } from '@pkg/domain';
-import { type GeneralFeedbackActivityItem, type JobActivityItem, JobChangeActivityItem } from '@pkg/schema';
+import { type GeneralFeedbackActivityItem, type JobActivityItem, JobChangeActivityItem } from '@pkg/schema/equipment';
 import { act, create, type ReactTestRenderer } from 'react-test-renderer';
 import { describe, expect, test, vi } from 'vitest';
 

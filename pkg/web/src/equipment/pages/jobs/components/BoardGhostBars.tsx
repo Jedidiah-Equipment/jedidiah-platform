@@ -1,5 +1,6 @@
 import { formatDate } from '@pkg/domain';
-import type { DateOnlyIso, ProjectedBayQueue } from '@pkg/schema';
+import type { DateOnlyIso } from '@pkg/schema';
+import type { ProjectedBayQueue } from '@pkg/schema/equipment';
 import type React from 'react';
 import { useEffect, useRef } from 'react';
 import { useGanttContext } from '@/components/kibo-ui/gantt/index.js';

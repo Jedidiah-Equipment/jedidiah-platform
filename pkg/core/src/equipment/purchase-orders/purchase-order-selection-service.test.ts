@@ -1,8 +1,9 @@
-import { customers, type Db, jobs, parts, purchaseOrders, quotes, supplier, user } from '@pkg/db';
+import { type Db, user } from '@pkg/db';
+import { customers, jobs, parts, purchaseOrders, quotes, supplier } from '@pkg/db/equipment';
 import { describe, expect } from 'vitest';
+import { InMemoryStorageAdapter } from '../../storage/in-memory-storage-adapter.js';
 import { postAdjustment } from '../inventory/stock-movement-service.js';
 import { createTester } from '../test/create-tester.js';
-import { InMemoryStorageAdapter } from '../test/in-memory-storage-adapter.js';
 import { partValues } from '../test/part-fixtures.js';
 import { createPurchaseOrderDraftsFromSelection } from './purchase-order-selection-service.js';
 import {

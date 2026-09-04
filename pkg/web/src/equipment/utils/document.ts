@@ -1,4 +1,6 @@
-import { formatBytes, getDocumentPolicy } from '@pkg/domain';
+import { formatBytes } from '@pkg/domain';
+import { getDocumentPolicy } from '@pkg/domain/equipment';
+import type { UUID } from '@pkg/schema';
 import {
   type DocumentOwnerType,
   type DocumentSummary,
@@ -6,8 +8,7 @@ import {
   ProductDocument,
   type ProductDocumentType,
   PurchaseOrderDocumentRow,
-  type UUID,
-} from '@pkg/schema';
+} from '@pkg/schema/equipment';
 import { toast } from 'sonner';
 
 import { getClientConfig } from '@/lib/app-config.js';

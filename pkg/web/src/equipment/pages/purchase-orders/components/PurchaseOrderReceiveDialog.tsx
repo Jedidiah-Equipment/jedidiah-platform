@@ -1,14 +1,14 @@
-import { deriveMovementWarnings } from '@pkg/domain';
-import type { PurchaseOrderLineView, PurchaseOrderView, StockMovementWarningCode } from '@pkg/schema';
+import { deriveMovementWarnings } from '@pkg/domain/equipment';
+import type { PurchaseOrderLineView, PurchaseOrderView, StockMovementWarningCode } from '@pkg/schema/equipment';
 import { useMutation } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
 import { CreateEntityDialog } from '@/components/form/index.js';
 import { useMovementWarnings } from '@/equipment/hooks/use-movement-warnings.js';
 import { useQueryInvalidation } from '@/equipment/hooks/use-query-invalidation.js';
+import { StockMovementWarningPrompt } from '@/equipment/pages/inventory/components/StockMovementWarningPrompt.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useTRPC } from '@/lib/trpc.js';
-import { StockMovementWarningPrompt } from '../../inventory/components/StockMovementWarningPrompt.js';
 import {
   isLinearLine,
   outstandingQuantity,

@@ -1,21 +1,12 @@
-import {
-  createGlobalSearchCondition,
-  currentOwnerCustomerId,
-  customers,
-  type Db,
-  jobs,
-  products,
-  productUnits,
-  quotes,
-  withPagination,
-} from '@pkg/db';
-import { parseJobCodeSearch } from '@pkg/domain';
-import type { InventoryJobOptionListInput, InventoryJobOptionListResult, JobPickerTab } from '@pkg/schema';
+import { createGlobalSearchCondition, type Db, withPagination } from '@pkg/db';
+import { currentOwnerCustomerId, customers, jobs, products, productUnits, quotes } from '@pkg/db/equipment';
+import { parseJobCodeSearch } from '@pkg/domain/equipment';
+import { getNextCursor } from '@pkg/schema';
+import type { InventoryJobOptionListInput, InventoryJobOptionListResult, JobPickerTab } from '@pkg/schema/equipment';
 import {
   formatJobCode,
-  getNextCursor,
   InventoryJobOptionListResult as InventoryJobOptionListResultSchema,
-} from '@pkg/schema';
+} from '@pkg/schema/equipment';
 import { and, asc, count, desc, eq, isNull, or, type SQL, sql } from 'drizzle-orm';
 
 import { jobIsNotClosedOut } from './close-out-service.js';

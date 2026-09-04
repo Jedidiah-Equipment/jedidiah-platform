@@ -1,4 +1,4 @@
-import type { QuickSwitchActor } from '@pkg/schema';
+import type { QuickSwitchActor } from '@pkg/schema/equipment';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';

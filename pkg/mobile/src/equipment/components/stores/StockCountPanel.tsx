@@ -1,4 +1,4 @@
-import type { StockCountBucketVariance, StockOnHandRow } from '@pkg/schema';
+import type { StockCountBucketVariance, StockOnHandRow } from '@pkg/schema/equipment';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Pressable, View } from 'react-native';

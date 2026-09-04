@@ -1,4 +1,4 @@
-import type { Department } from '@pkg/schema';
+import type { Department } from '@pkg/schema/equipment';
 
 export type JobDepartmentPipelineStep = {
   sequence: number;

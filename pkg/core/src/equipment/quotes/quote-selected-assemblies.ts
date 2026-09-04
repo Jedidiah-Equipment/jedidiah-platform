@@ -1,5 +1,7 @@
-import { type DatabaseTransaction, type Db, productAssemblies, quoteSelectedAssemblies } from '@pkg/db';
-import { QuoteSelectedAssembly, type QuoteSelectedAssemblyInput, type UUID } from '@pkg/schema';
+import type { DatabaseTransaction, Db } from '@pkg/db';
+import { productAssemblies, quoteSelectedAssemblies } from '@pkg/db/equipment';
+import type { UUID } from '@pkg/schema';
+import { QuoteSelectedAssembly, type QuoteSelectedAssemblyInput } from '@pkg/schema/equipment';
 import { asc, eq, inArray } from 'drizzle-orm';
 
 import { QuoteInvalidReferenceError } from './quote-errors.js';

@@ -1,4 +1,5 @@
-import type { StocktakeUncountedPart, UUID } from '@pkg/schema';
+import type { UUID } from '@pkg/schema';
+import type { StocktakeUncountedPart } from '@pkg/schema/equipment';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import { cursorInfiniteQueryOptions, useCombinedCursorQueryPages } from '@/components/data-table/cursor-query.js';

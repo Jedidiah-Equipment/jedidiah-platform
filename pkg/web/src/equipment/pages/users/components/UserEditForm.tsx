@@ -1,11 +1,5 @@
-import {
-  CONTRACTING_ROLES,
-  ContractingRole,
-  EQUIPMENT_ROLES,
-  EquipmentRole,
-  UserSummary,
-  type UserSummary as UserSummaryType,
-} from '@pkg/schema';
+import { CONTRACTING_ROLES, ContractingRole, EQUIPMENT_ROLES, EquipmentRole } from '@pkg/schema';
+import { UserSummary, type UserSummary as UserSummaryType } from '@pkg/schema/equipment';
 import type React from 'react';
 import type { z } from 'zod';
 

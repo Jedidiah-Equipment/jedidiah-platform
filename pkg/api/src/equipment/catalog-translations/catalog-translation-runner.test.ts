@@ -1,5 +1,6 @@
-import { eq, productAssemblies, productRanges, products } from '@pkg/db';
-import { catalogSourceHashes } from '@pkg/domain';
+import { eq } from '@pkg/db';
+import { productAssemblies, productRanges, products } from '@pkg/db/equipment';
+import { catalogSourceHashes } from '@pkg/domain/equipment';
 import { MockLanguageModelV4 } from 'ai/test';
 import { describe, expect, vi } from 'vitest';
 

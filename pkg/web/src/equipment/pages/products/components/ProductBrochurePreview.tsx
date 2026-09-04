@@ -1,5 +1,5 @@
-import { evaluateProductBrochureCompleteness } from '@pkg/domain';
-import type { Product } from '@pkg/schema';
+import { evaluateProductBrochureCompleteness } from '@pkg/domain/equipment';
+import type { Product } from '@pkg/schema/equipment';
 import { IconEye } from '@tabler/icons-react';
 import type React from 'react';
 import { useCallback } from 'react';

@@ -1,7 +1,7 @@
-import { derivePartStockActions } from '@pkg/domain';
-import type { JobStockRow } from '@pkg/schema';
+import { derivePartStockActions } from '@pkg/domain/equipment';
+import type { JobStockRow } from '@pkg/schema/equipment';
 
-import type { PurchaseSelectionCandidate } from '../../inventory/components/CreatePurchaseOrdersDialog.js';
+import type { PurchaseSelectionCandidate } from '@/equipment/pages/inventory/components/CreatePurchaseOrdersDialog.js';
 
 type JobStockPurchaseRow = Pick<
   JobStockRow,

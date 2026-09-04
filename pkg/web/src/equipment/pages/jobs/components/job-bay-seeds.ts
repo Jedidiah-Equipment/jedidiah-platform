@@ -1,18 +1,16 @@
-import type { WorkingCalendar } from '@pkg/domain';
+import type { WorkingCalendar } from '@pkg/domain/equipment';
+import { DateOnlyIso, DateOnlyIsoString, UUID } from '@pkg/schema';
 import {
   type Bay,
   type BoardListResult,
   type BoardPlacement,
-  DateOnlyIso,
-  DateOnlyIsoString,
   type JobBaySeedInput,
   JobCreateInput,
   type OffDay,
   type ProductBay,
   type ProjectedBayQueue,
   SlotDurationDays,
-  UUID,
-} from '@pkg/schema';
+} from '@pkg/schema/equipment';
 import { z } from 'zod';
 
 import { emptyStringOr } from '@/components/form/utils/form-schema.js';

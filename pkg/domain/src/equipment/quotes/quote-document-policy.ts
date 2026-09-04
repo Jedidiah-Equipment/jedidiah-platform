@@ -1,4 +1,4 @@
-import type { QuoteKind, QuoteStatus } from '@pkg/schema';
+import type { QuoteKind, QuoteStatus } from '@pkg/schema/equipment';
 
 /** Server-enforced status gate for Quote Document generation; UI mirrors it for gating only. */
 export function isQuoteDocumentGenerationAllowed(status: QuoteStatus): boolean {

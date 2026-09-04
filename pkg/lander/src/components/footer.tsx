@@ -4,7 +4,7 @@ import {
   JEDIDIAH_FACEBOOK_URL,
   JEDIDIAH_INSTAGRAM_URL,
   JEDIDIAH_LOCATION,
-} from '@pkg/domain';
+} from '@pkg/domain/equipment';
 import { IconBrandFacebook, IconBrandInstagram, IconMapPin, IconPhone } from '@tabler/icons-react';
 import { Link, useRouterState } from '@tanstack/react-router';
 import { type MouseEvent, useEffect, useRef, useState } from 'react';

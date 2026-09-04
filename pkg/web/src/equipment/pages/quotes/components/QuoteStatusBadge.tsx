@@ -1,5 +1,5 @@
-import { quoteStatusColorClassNames, quoteStatusLabels } from '@pkg/domain';
-import type { QuoteStatus } from '@pkg/schema';
+import { quoteStatusColorClassNames, quoteStatusLabels } from '@pkg/domain/equipment';
+import type { QuoteStatus } from '@pkg/schema/equipment';
 import type React from 'react';
 
 import { Badge } from '@/components/ui/badge.js';

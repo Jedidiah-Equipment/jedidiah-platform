@@ -1,4 +1,4 @@
-import type { Bay } from '@pkg/schema';
+import type { Bay } from '@pkg/schema/equipment';
 import { describe, expect, it } from 'vitest';
 
 import { bayNameWithOperator, bayNameWithOperatorFirstName } from './bay-label.js';

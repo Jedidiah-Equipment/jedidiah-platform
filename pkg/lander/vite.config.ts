@@ -5,7 +5,7 @@ import { defineConfig, type Plugin } from 'vite';
 
 import { getLanderConfig } from './src/server/runtime/env.js';
 
-const SERVER_WORKSPACE_EXTERNALS = new Set(['@pkg/core', '@pkg/pdf']);
+const SERVER_WORKSPACE_EXTERNALS = new Set(['@pkg/core', '@pkg/core/equipment', '@pkg/pdf', '@pkg/pdf/equipment']);
 
 function preserveServerWorkspacePackageBoundaries(): Plugin {
   return {

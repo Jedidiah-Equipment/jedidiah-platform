@@ -1,5 +1,7 @@
-import { type DatabaseTransaction, type Db, jobBays, jobSlots, jobs } from '@pkg/db';
-import { foldJobScheduleStates, getPlantDateNow, isJobScheduleComplete } from '@pkg/domain';
+import type { DatabaseTransaction, Db } from '@pkg/db';
+import { jobBays, jobSlots, jobs } from '@pkg/db/equipment';
+import { getPlantDateNow } from '@pkg/domain';
+import { foldJobScheduleStates, isJobScheduleComplete } from '@pkg/domain/equipment';
 import { type DateOnlyIso, UUID } from '@pkg/schema';
 import { and, asc, eq, exists, isNull, sql } from 'drizzle-orm';
 import { diffAuditUpdate, recordAuditUpdate } from '../audit/audit-service.js';

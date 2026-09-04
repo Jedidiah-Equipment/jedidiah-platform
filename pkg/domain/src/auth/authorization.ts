@@ -429,6 +429,11 @@ export function isRoleSlotsSignInEligible(slots: RoleSlots): boolean {
   return getRoleSlotsPermissions(slots).length > 0;
 }
 
+/** The access summary for a stored user row or session user: the one line that turns roles into permissions. */
+export function createUserAccessSummaryForUser(user: { id: string }): UserAccessSummary {
+  return createUserAccessSummary({ ...parseRoleSlots(user), userId: user.id });
+}
+
 export function createUserAccessSummary(input: RoleSlots & { userId: string }): UserAccessSummary {
   return {
     contractingRole: input.contractingRole,

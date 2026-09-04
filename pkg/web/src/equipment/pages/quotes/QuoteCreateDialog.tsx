@@ -1,5 +1,5 @@
-import { isQuoteSalespersonRole, quoteKindLabels, quoteStatusLabels } from '@pkg/domain';
-import type { Quote } from '@pkg/schema';
+import { isQuoteSalespersonRole, quoteKindLabels, quoteStatusLabels } from '@pkg/domain/equipment';
+import type { Quote } from '@pkg/schema/equipment';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import type React from 'react';

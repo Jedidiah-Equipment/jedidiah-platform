@@ -1,4 +1,5 @@
-import type { QuoteCode, UUID } from '@pkg/schema';
+import type { UUID } from '@pkg/schema';
+import type { QuoteCode } from '@pkg/schema/equipment';
 import { IconExternalLink } from '@tabler/icons-react';
 import type React from 'react';
 

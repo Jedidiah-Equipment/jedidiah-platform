@@ -1,7 +1,6 @@
+import { auditEvents, type Db, user } from '@pkg/db';
 import {
-  auditEvents,
   customers,
-  type Db,
   jobBayCalendarExceptions,
   jobBays,
   jobBuildSpecAssemblies,
@@ -13,19 +12,18 @@ import {
   productUnitOwnershipTransfers,
   productUnits,
   quotes,
-  user,
   workingCalendarOffDays,
-} from '@pkg/db';
-import { addDateOnlyDays, addJobSlotDuration, getPlantDateNow, pricePersistedQuote, priceQuote } from '@pkg/domain';
+} from '@pkg/db/equipment';
+import { addDateOnlyDays, getPlantDateNow } from '@pkg/domain';
+import { addJobSlotDuration, pricePersistedQuote, priceQuote } from '@pkg/domain/equipment';
+import { DateIso, DateOnlyIso } from '@pkg/schema';
 import {
-  DateIso,
-  DateOnlyIso,
   formatJobCode,
   QuoteCreateInput,
   type QuoteDetail,
   type QuoteStatus,
   QuoteUpdateInput,
-} from '@pkg/schema';
+} from '@pkg/schema/equipment';
 import { and, asc, eq } from 'drizzle-orm';
 import { describe, expect } from 'vitest';
 import { getQuoteCancellationPlan } from '../cancellation/cancellation-plan-service.js';

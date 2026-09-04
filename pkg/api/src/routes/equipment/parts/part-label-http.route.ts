@@ -1,13 +1,13 @@
-import { isPartCoreError, renderPartLabel, renderPartLabelBatch } from '@pkg/core';
+import { isPartCoreError, renderPartLabel, renderPartLabelBatch } from '@pkg/core/equipment';
 import { db } from '@pkg/db';
-import { renderPartLabelsPdf } from '@pkg/pdf';
+import { renderPartLabelsPdf } from '@pkg/pdf/equipment';
+import { UUID } from '@pkg/schema';
 import {
   PartLabelBatchQuery,
   PartLabelBatchSelection,
   type PartLabelBatchSelection as PartLabelBatchSelectionInput,
   type PartLabelPdfRenderer,
-  UUID,
-} from '@pkg/schema';
+} from '@pkg/schema/equipment';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 

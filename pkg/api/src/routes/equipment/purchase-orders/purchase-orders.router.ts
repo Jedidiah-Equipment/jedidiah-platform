@@ -25,8 +25,8 @@ import {
   postReturnToSupplier,
   revertPurchaseOrderToDraft,
   savePurchaseOrderDraft,
-} from '@pkg/core';
-import { renderPurchaseOrderPdf } from '@pkg/pdf';
+} from '@pkg/core/equipment';
+import { renderPurchaseOrderPdf } from '@pkg/pdf/equipment';
 import {
   InvoiceFlagResolution,
   InvoicePriceVarianceResult,
@@ -60,7 +60,7 @@ import {
   SupplierInvoiceCorrectionInput,
   SupplierInvoiceDismissFlagInput,
   SupplierInvoiceReviewResult,
-} from '@pkg/schema';
+} from '@pkg/schema/equipment';
 import {
   type InventoryCostAccess,
   projectInventoryCostFields,

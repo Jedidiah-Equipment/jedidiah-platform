@@ -1,30 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { Department } from '../common/departments.js';
 import {
   AppPermission,
   AppRole,
   ContractingRole,
   EquipmentRole,
   UserAccessSummary,
-  UserAccount,
   UserPassword,
-  UserSummary,
 } from './authorization.js';
-
-describe('Department', () => {
-  it('accepts supported job departments', () => {
-    expect(Department.parse('procurement')).toBe('procurement');
-    expect(Department.parse('fabrication')).toBe('fabrication');
-    expect(Department.parse('paint')).toBe('paint');
-    expect(Department.parse('assembly')).toBe('assembly');
-    expect(Department.parse('workshop')).toBe('workshop');
-    expect(Department.parse('supply')).toBe('supply');
-  });
-
-  it('rejects unsupported department values', () => {
-    expect(() => Department.parse('engineering')).toThrow();
-  });
-});
 
 describe('AppRole', () => {
   it('accepts app roles', () => {
@@ -93,68 +75,6 @@ describe('UserAccessSummary', () => {
       contractingRole: null,
       equipmentRole: 'sales',
       userId: 'user_123',
-    });
-  });
-});
-
-describe('UserSummary', () => {
-  it('requires department memberships', () => {
-    expect(() =>
-      UserSummary.parse({
-        email: 'user@example.com',
-        emailVerified: true,
-        isDevice: false,
-        id: 'user_123',
-        name: 'User Example',
-        contractingRole: null,
-        equipmentRole: 'sales',
-      }),
-    ).toThrow();
-
-    expect(
-      UserSummary.parse({
-        assistantEnabled: false,
-        departments: ['supply'],
-        email: 'user@example.com',
-        emailVerified: true,
-        isDevice: false,
-        id: 'user_123',
-        name: 'User Example',
-        phoneNumber: null,
-        contractingRole: null,
-        equipmentRole: 'sales',
-        thumbnailDataUrl: null,
-      }).departments,
-    ).toEqual(['supply']);
-  });
-});
-
-describe('UserAccount', () => {
-  it('parses a user without department memberships', () => {
-    expect(
-      UserAccount.parse({
-        assistantEnabled: false,
-        email: 'user@example.com',
-        emailVerified: true,
-        isDevice: false,
-        id: 'user_123',
-        name: 'User Example',
-        phoneNumber: null,
-        contractingRole: null,
-        equipmentRole: 'sales',
-        thumbnailDataUrl: null,
-      }),
-    ).toEqual({
-      assistantEnabled: false,
-      email: 'user@example.com',
-      emailVerified: true,
-      isDevice: false,
-      id: 'user_123',
-      name: 'User Example',
-      phoneNumber: null,
-      contractingRole: null,
-      equipmentRole: 'sales',
-      thumbnailDataUrl: null,
     });
   });
 });

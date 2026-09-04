@@ -1,3 +1,4 @@
+import { statusBadgeColorClassNames } from '@pkg/domain';
 import {
   type BayTodayOccupancy,
   departmentLabels,
@@ -6,10 +7,10 @@ import {
   getJobOfferingKind,
   getOffDayLabel,
   JOB_DEPARTMENT_PIPELINE,
-  statusBadgeColorClassNames,
   type WorkingCalendar,
-} from '@pkg/domain';
-import type { DateOnlyIso, JobSummary, OffDay, ProjectedBayQueue } from '@pkg/schema';
+} from '@pkg/domain/equipment';
+import type { DateOnlyIso } from '@pkg/schema';
+import type { JobSummary, OffDay, ProjectedBayQueue } from '@pkg/schema/equipment';
 import { Link } from '@tanstack/react-router';
 import type React from 'react';
 import { Badge } from '@/components/ui/badge.js';
@@ -17,9 +18,8 @@ import { ScrollArea } from '@/components/ui/scroll-area.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
 import { BayOperatorIndicator } from '@/equipment/components/bays/index.js';
 import { OfferingThumbnail } from '@/equipment/components/thumbnail/OfferingThumbnail.js';
+import { getSlotLabel } from '@/equipment/pages/jobs/components/board-summary.js';
 import { cn } from '@/lib/utils.js';
-
-import { getSlotLabel } from '../../jobs/components/board-summary.js';
 import { DashboardList, DashboardListItem } from '../DashboardList.js';
 import { DashboardWidgetEmpty, DashboardWidgetError } from '../DashboardWidgetCard.js';
 import { SHOP_FLOOR_BAND_HEIGHT_PX } from '../dashboard-widget-layout.js';

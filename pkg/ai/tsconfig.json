@@ -7,10 +7,15 @@
     "paths": {
       "@/*": ["./src/*"],
       "@pkg/ai": ["./src/index.ts"],
+      "@pkg/ai/equipment": ["./src/equipment/index.ts"],
       "@pkg/core": ["../core/src/index.ts"],
+      "@pkg/core/equipment": ["../core/src/equipment/index.ts"],
       "@pkg/db": ["../db/src/index.ts"],
+      "@pkg/db/equipment": ["../db/src/equipment/index.ts"],
       "@pkg/domain": ["../domain/src/index.ts"],
-      "@pkg/schema": ["../schema/src/index.ts"]
+      "@pkg/domain/equipment": ["../domain/src/equipment/index.ts"],
+      "@pkg/schema": ["../schema/src/index.ts"],
+      "@pkg/schema/equipment": ["../schema/src/equipment/index.ts"]
     },
     "types": ["node", "vitest"]
   },

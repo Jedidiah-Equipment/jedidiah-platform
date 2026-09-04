@@ -1,4 +1,4 @@
-import type { EstimatedStockOnHand, PartUnitOfMeasure } from '@pkg/schema';
+import type { EstimatedStockOnHand, PartUnitOfMeasure } from '@pkg/schema/equipment';
 
 export function deriveEstimatedStockOnHand({
   cumulativeDemandAtAnchor,

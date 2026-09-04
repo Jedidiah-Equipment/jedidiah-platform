@@ -13,7 +13,9 @@
       "@/*": ["./src/*"],
       "@pkg/api": ["../api/src/index.ts"],
       "@pkg/domain": ["../domain/src/index.ts"],
-      "@pkg/schema": ["../schema/src/index.ts"]
+      "@pkg/domain/equipment": ["../domain/src/equipment/index.ts"],
+      "@pkg/schema": ["../schema/src/index.ts"],
+      "@pkg/schema/equipment": ["../schema/src/equipment/index.ts"]
     },
     "types": ["node", "vite/client", "vitest"]
   },

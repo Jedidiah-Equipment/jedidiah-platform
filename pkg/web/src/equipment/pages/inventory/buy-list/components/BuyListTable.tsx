@@ -1,5 +1,6 @@
-import { compareNullableDateOnly, derivePartStockActions, formatDate } from '@pkg/domain';
-import { BUY_LIST_REASONS, type BuyListReason, type BuyListRow } from '@pkg/schema';
+import { formatDate } from '@pkg/domain';
+import { compareNullableDateOnly, derivePartStockActions } from '@pkg/domain/equipment';
+import { BUY_LIST_REASONS, type BuyListReason, type BuyListRow } from '@pkg/schema/equipment';
 import type { RowSelectionState } from '@tanstack/react-table';
 import { DataTable } from '@/components/data-table/DataTable.js';
 import { type DataTableColumnDef, useDataTable } from '@/components/data-table/features.js';

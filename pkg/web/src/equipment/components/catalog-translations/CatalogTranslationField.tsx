@@ -1,5 +1,5 @@
 // biome-ignore-all lint/suspicious/noArrayIndexKey: Translation rows mirror read-only canonical arrays and never reorder locally.
-import type { CatalogTranslationFieldState } from '@pkg/schema';
+import type { CatalogTranslationFieldState } from '@pkg/schema/equipment';
 import type React from 'react';
 
 import { Badge } from '@/components/ui/badge.js';

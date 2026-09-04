@@ -1,13 +1,12 @@
+import type { DateOnlyIso, UUID } from '@pkg/schema';
 import type {
-  DateOnlyIso,
   Department,
   OffDay,
   ProjectedBayQueue,
   ProjectedIdleJobSlot,
   ProjectedJobSlot,
   ProjectedWorkJobSlot,
-  UUID,
-} from '@pkg/schema';
+} from '@pkg/schema/equipment';
 
 import { addDateOnlyDays, endOfDateOnlyWeek } from '../../formatting/date-only.js';
 import { JOB_DEPARTMENT_PIPELINE } from './job-department-pipeline.js';

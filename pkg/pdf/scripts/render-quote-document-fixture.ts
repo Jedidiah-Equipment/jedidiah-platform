@@ -1,7 +1,7 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 
-import type { QuoteDocumentModel } from '@pkg/schema';
+import type { QuoteDocumentModel } from '@pkg/schema/equipment';
 
 import { renderQuoteDocumentPdf } from '../src/quote-document/quote-document-pdf-renderer.js';
 

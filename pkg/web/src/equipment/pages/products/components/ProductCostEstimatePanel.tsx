@@ -1,11 +1,12 @@
-import { departmentLabels, formatCurrency } from '@pkg/domain';
+import { formatCurrency } from '@pkg/domain';
+import { departmentLabels } from '@pkg/domain/equipment';
+import type { UUID } from '@pkg/schema';
 import type {
   ProductCostEstimateAssembly,
   ProductCostEstimateLaborLine,
   ProductCostEstimateMaterialLine,
   ProductCostEstimatePartLine,
-  UUID,
-} from '@pkg/schema';
+} from '@pkg/schema/equipment';
 import { useQuery } from '@tanstack/react-query';
 import type { RowData } from '@tanstack/react-table';
 import type React from 'react';

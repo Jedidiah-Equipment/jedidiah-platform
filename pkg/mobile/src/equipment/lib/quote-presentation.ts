@@ -1,11 +1,8 @@
-import { quoteKindLabels, quoteStatusLabels, toQuoteWorkItemFormState } from '@pkg/domain';
+import { quoteKindLabels, quoteStatusLabels, toQuoteWorkItemFormState } from '@pkg/domain/equipment';
+import { AuthId, DateIsoString, DateOnlyIsoString, Price, type UUID } from '@pkg/schema';
 import {
-  AuthId,
-  DateIsoString,
-  DateOnlyIsoString,
   Department,
   getQuoteDeliveryPricingError,
-  Price,
   QuoteCancellationReason,
   QuoteDepositPercent,
   type QuoteDetail,
@@ -25,8 +22,7 @@ import {
   QuoteWorkItemPartName,
   QuoteWorkItemPartQuantity,
   QuoteWorkTitle,
-  type UUID,
-} from '@pkg/schema';
+} from '@pkg/schema/equipment';
 import { z } from 'zod';
 
 export type QuoteStatusFilter = 'all' | QuoteSummary['status'];

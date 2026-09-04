@@ -1,5 +1,6 @@
-import { productUnitBuildStateLabels, toDisplayBuildState } from '@pkg/domain';
-import { ProductUnitListInput, UUID } from '@pkg/schema';
+import { productUnitBuildStateLabels, toDisplayBuildState } from '@pkg/domain/equipment';
+import { UUID } from '@pkg/schema';
+import { ProductUnitListInput } from '@pkg/schema/equipment';
 import { useQuery } from '@tanstack/react-query';
 import type React from 'react';
 

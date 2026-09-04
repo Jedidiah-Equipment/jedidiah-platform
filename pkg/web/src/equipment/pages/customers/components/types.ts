@@ -1,3 +1,4 @@
+import { NullableThumbnailDataUrl, type UUID } from '@pkg/schema';
 import {
   type Customer,
   CustomerCompanyName,
@@ -6,9 +7,7 @@ import {
   CustomerOptionalText,
   CustomerUpdateInput,
   CustomerVatNumber,
-  NullableThumbnailDataUrl,
-  type UUID,
-} from '@pkg/schema';
+} from '@pkg/schema/equipment';
 import { z } from 'zod';
 
 import { emptyStringOr } from '@/components/form/utils/form-schema.js';

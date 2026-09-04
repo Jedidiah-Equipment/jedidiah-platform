@@ -1,4 +1,4 @@
-import { DocumentSummary, type DocumentSummary as DocumentSummaryModel } from '@pkg/schema';
+import { DocumentSummary, type DocumentSummary as DocumentSummaryModel } from '@pkg/schema/equipment';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';

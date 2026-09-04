@@ -1,5 +1,6 @@
-import { type DatabaseTransaction, jobs } from '@pkg/db';
-import { isJobCancelled } from '@pkg/domain';
+import type { DatabaseTransaction } from '@pkg/db';
+import { jobs } from '@pkg/db/equipment';
+import { isJobCancelled } from '@pkg/domain/equipment';
 import type { UUID } from '@pkg/schema';
 import { eq } from 'drizzle-orm';
 

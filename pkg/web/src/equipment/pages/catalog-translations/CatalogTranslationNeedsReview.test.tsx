@@ -1,4 +1,4 @@
-import type { CatalogTranslationNeedsReviewItem } from '@pkg/schema';
+import type { CatalogTranslationNeedsReviewItem } from '@pkg/schema/equipment';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
 

@@ -1,4 +1,4 @@
-import type { ProductRange, ProductRangeUpdateInput } from '@pkg/schema';
+import type { ProductRange, ProductRangeUpdateInput } from '@pkg/schema/equipment';
 import type React from 'react';
 import { AutosaveStatus, useAutosaveForm } from '@/components/form/index.js';
 import { EditFormFullWidth, EditFormGrid } from '@/components/page-layout/EditFormLayout.js';

@@ -1,19 +1,17 @@
+import { type DatabaseTransaction, type Db, getForeignKeyViolationConstraint } from '@pkg/db';
 import {
   customers,
-  type DatabaseTransaction,
-  type Db,
-  getForeignKeyViolationConstraint,
   jobs,
   productSerialSequences,
   products,
   productUnitOwnershipTransfers,
   productUnits,
   quotes,
-} from '@pkg/db';
-import { getPlantDateNow, isJobCancelled, resolveNewestOwnershipTransfer } from '@pkg/domain';
+} from '@pkg/db/equipment';
+import { getPlantDateNow } from '@pkg/domain';
+import { isJobCancelled, resolveNewestOwnershipTransfer } from '@pkg/domain/equipment';
+import type { AuthId, DateOnlyIso, UUID } from '@pkg/schema';
 import {
-  type AuthId,
-  type DateOnlyIso,
   formatJobCode,
   formatProductSerialNumber,
   ProductSerialPrefix,
@@ -23,8 +21,7 @@ import {
   type ProductUnitTransferResult,
   type ProductUnitUpdateInput,
   type ProductUnitUpdateResult,
-  type UUID,
-} from '@pkg/schema';
+} from '@pkg/schema/equipment';
 import { eq, sql } from 'drizzle-orm';
 
 import {

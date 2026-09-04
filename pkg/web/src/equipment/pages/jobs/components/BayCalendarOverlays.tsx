@@ -1,5 +1,5 @@
 import { formatDate } from '@pkg/domain';
-import type { OffDay } from '@pkg/schema';
+import type { OffDay } from '@pkg/schema/equipment';
 import type React from 'react';
 import { useGanttContext } from '@/components/kibo-ui/gantt/index.js';
 import { fromJobCalendarDateKey } from './job-date-key.js';

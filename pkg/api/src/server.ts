@@ -1,12 +1,14 @@
 import fastifyCors from '@fastify/cors';
 import fastifyMultipart from '@fastify/multipart';
 import { createOpenAiChatModel } from '@pkg/ai';
-import { type StorageAdapter, sweepJobCompletions } from '@pkg/core';
+import type { StorageAdapter } from '@pkg/core';
+import { sweepJobCompletions } from '@pkg/core/equipment';
 import { db } from '@pkg/db';
-import { PRODUCT_DOCUMENT_MAX_BYTES } from '@pkg/domain';
+import { PRODUCT_DOCUMENT_MAX_BYTES } from '@pkg/domain/equipment';
 import { type FastifyTRPCPluginOptions, fastifyTRPCPlugin } from '@trpc/server/adapters/fastify';
 import Fastify, { type FastifyBaseLogger } from 'fastify';
 
+import { type Auth, auth as appAuth } from './app-auth.js';
 import { registerAuthHandler } from './auth/handler.js';
 import { type ApiConfig, getApiConfig } from './env.js';
 import { createCatalogTranslationRunner } from './equipment/catalog-translations/catalog-translation-runner.js';
@@ -29,12 +31,13 @@ import { registerUserBadgeHttpRoutes } from './routes/equipment/users/user-badge
 import { createDocumentStorageAdapter } from './storage/s3-storage-adapter.js';
 import { createContextFactory } from './trpc/context.js';
 import { serializeError, shouldLogTRPCError } from './trpc/errors.js';
-import { appRouter } from './trpc/router.js';
+import { type AppRouter, createAppRouter } from './trpc/router.js';
 
 export async function buildServer(
   config: ApiConfig = getApiConfig(),
   observability: Observability = createObservability(config),
   storage: StorageAdapter = createDocumentStorageAdapter(config),
+  auth: Auth = appAuth,
 ) {
   log.root.info({ config }, 'Building server');
   const catalogTranslationScheduler = new TranslationScheduler({
@@ -80,7 +83,7 @@ export async function buildServer(
     maxAge: 86400,
   });
 
-  await registerAuthHandler(app);
+  await registerAuthHandler(app, auth);
   await app.register(fastifyMultipart, {
     limits: {
       fileSize: PRODUCT_DOCUMENT_MAX_BYTES,
@@ -98,10 +101,10 @@ export async function buildServer(
   await registerHealthRoutes(app, config);
 
   const trpcOptions = {
-    router: appRouter,
+    router: createAppRouter({ catalogTranslationScheduler }),
     createContext: createContextFactory({
       appEnv: config.APP_ENV,
-      catalogTranslationScheduler,
+      auth,
       changelogLoader: createFileChangelogLoader(),
       storage,
     }),
@@ -111,7 +114,7 @@ export async function buildServer(
       log.root.error({ error: serializeError(error), path, type }, 'Unexpected tRPC error');
       observability.captureException(error, { properties: { path, type, source: 'trpc' } });
     },
-  } satisfies FastifyTRPCPluginOptions<typeof appRouter>['trpcOptions'];
+  } satisfies FastifyTRPCPluginOptions<AppRouter>['trpcOptions'];
 
   await app.register(fastifyTRPCPlugin, {
     prefix: '/trpc',

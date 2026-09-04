@@ -1,5 +1,5 @@
+import { auditEvents, user } from '@pkg/db';
 import {
-  auditEvents,
   customers,
   documents,
   jobs,
@@ -9,19 +9,19 @@ import {
   quoteSelectedAssemblies,
   quotes,
   quoteWorkItems,
-  user,
-} from '@pkg/db';
-import { PRODUCT_DOCUMENT_MAX_BYTES } from '@pkg/domain';
+} from '@pkg/db/equipment';
+import { PRODUCT_DOCUMENT_MAX_BYTES } from '@pkg/domain/equipment';
 import { createPdfBytesWithPageSizes, getPdfPageSizes } from '@pkg/pdf';
+import type { UUID } from '@pkg/schema';
 import {
   BROCHURE_IMAGE_SLOTS,
   type BrochurePdfRenderer,
   formatQuoteCode,
   type ProductImageSlot,
-  type UUID,
-} from '@pkg/schema';
+} from '@pkg/schema/equipment';
 import { eq } from 'drizzle-orm';
 import { describe, expect } from 'vitest';
+import { InMemoryStorageAdapter } from '../../storage/in-memory-storage-adapter.js';
 import { createJobPurchaseOrder, deleteJobPurchaseOrder } from '../jobs/job-document-service.js';
 import { JobNotFoundError } from '../jobs/job-errors.js';
 import { readJobDocument } from '../jobs/job-read-service.js';
@@ -35,7 +35,6 @@ import {
 import { createQuoteDocument, getQuoteDocuments, readQuoteDocument } from '../quotes/quote-document.js';
 import { generateQuoteDocument } from '../quotes/quote-document-generation.js';
 import { createTester } from '../test/create-tester.js';
-import { InMemoryStorageAdapter } from '../test/in-memory-storage-adapter.js';
 import { createProductRangeFixture } from '../test/product-range-fixtures.js';
 import {
   DocumentDeleteNotAllowedError,

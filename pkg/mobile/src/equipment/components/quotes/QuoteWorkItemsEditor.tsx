@@ -1,11 +1,11 @@
+import { formatCurrency } from '@pkg/domain';
 import {
-  formatCurrency,
   getWorkItemFormTotal,
   quoteDepartmentLabels,
   WORK_ITEM_DEPARTMENTS,
   workItemDepartmentRate,
-} from '@pkg/domain';
-import type { Department, QuoteDetail, QuoteUpdateInput } from '@pkg/schema';
+} from '@pkg/domain/equipment';
+import type { Department, QuoteDetail, QuoteUpdateInput } from '@pkg/schema/equipment';
 import { IconPlus, IconTrash } from '@tabler/icons-react-native';
 import type React from 'react';
 import { Pressable, View } from 'react-native';

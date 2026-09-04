@@ -1,4 +1,5 @@
-import type { BayCalendarExceptionDirection, DateOnlyIso } from '@pkg/schema';
+import type { DateOnlyIso } from '@pkg/schema';
+import type { BayCalendarExceptionDirection } from '@pkg/schema/equipment';
 
 import { addDateOnlyDays } from '../../formatting/date-only.js';
 

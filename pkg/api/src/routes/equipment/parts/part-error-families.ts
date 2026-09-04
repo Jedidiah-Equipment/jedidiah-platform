@@ -1,4 +1,4 @@
-import { isPartBomError, isPartCoreError, type PartBomError, type PartCoreError } from '@pkg/core';
+import { isPartBomError, isPartCoreError, type PartBomError, type PartCoreError } from '@pkg/core/equipment';
 
 import { defineCoreErrorFamily } from '../../../trpc/errors.js';
 

@@ -1,4 +1,4 @@
-import type { JobActivityItem } from '@pkg/schema';
+import type { JobActivityItem } from '@pkg/schema/equipment';
 import { describe, expect, it } from 'vitest';
 
 import { formatJobActivityDayLabel, groupJobActivityByDay } from './job-activity-timeline.js';

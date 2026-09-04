@@ -1,4 +1,4 @@
-import type { PurchaseOrderDerivedStatus, PurchaseOrderProgress, PurchaseOrderStatus } from '@pkg/schema';
+import type { PurchaseOrderDerivedStatus, PurchaseOrderProgress, PurchaseOrderStatus } from '@pkg/schema/equipment';
 
 /** One ordered line, reduced to the two facts progress is read from. */
 export type PurchaseOrderProgressLine = {

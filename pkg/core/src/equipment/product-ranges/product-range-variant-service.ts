@@ -1,20 +1,13 @@
-import {
-  type DatabaseTransaction,
-  type Db,
-  getUniqueViolationConstraint,
-  notRemoved,
-  productRanges,
-  productRangeVariants,
-  products,
-} from '@pkg/db';
+import { type DatabaseTransaction, type Db, getUniqueViolationConstraint, notRemoved } from '@pkg/db';
+import { productRanges, productRangeVariants, products } from '@pkg/db/equipment';
+import type { UUID } from '@pkg/schema';
 import type {
   ProductRangeVariant,
   ProductRangeVariantCreateInput,
   ProductRangeVariantReorderInput,
   ProductRangeVariantUpdateInput,
-  UUID,
-} from '@pkg/schema';
-import { ProductRangeVariant as ProductRangeVariantSchema } from '@pkg/schema';
+} from '@pkg/schema/equipment';
+import { ProductRangeVariant as ProductRangeVariantSchema } from '@pkg/schema/equipment';
 import { and, asc, eq, type SQL, sql } from 'drizzle-orm';
 
 import {

@@ -1,5 +1,5 @@
-import type { DocumentPolicyViolationCode } from '@pkg/domain';
-import type { DocumentOwnerType } from '@pkg/schema';
+import type { DocumentPolicyViolationCode } from '@pkg/domain/equipment';
+import type { DocumentOwnerType } from '@pkg/schema/equipment';
 
 export class DuplicateDocumentFilenameError extends Error {
   readonly code = 'document.duplicate_filename';

@@ -1,5 +1,5 @@
-import { type QuoteComputedSummary, quoteKindLabels } from '@pkg/domain';
-import type { QuoteDetail } from '@pkg/schema';
+import { type QuoteComputedSummary, quoteKindLabels } from '@pkg/domain/equipment';
+import type { QuoteDetail } from '@pkg/schema/equipment';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { expect, test, vi } from 'vitest';
 import { renderWithRouter } from '@/test/router-harness.js';

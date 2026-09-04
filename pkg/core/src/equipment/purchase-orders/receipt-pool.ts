@@ -1,5 +1,7 @@
-import { type DatabaseTransaction, type Db, stockMovements } from '@pkg/db';
-import type { PurchaseOrderReceiptBucket, UUID } from '@pkg/schema';
+import type { DatabaseTransaction, Db } from '@pkg/db';
+import { stockMovements } from '@pkg/db/equipment';
+import type { UUID } from '@pkg/schema';
+import type { PurchaseOrderReceiptBucket } from '@pkg/schema/equipment';
 import { and, inArray, sql } from 'drizzle-orm';
 
 /**

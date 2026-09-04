@@ -1,22 +1,17 @@
+import { formatDate, getFirstName, getPlantDateNow, statusBadgeColorClassNames, toPlantDateOnly } from '@pkg/domain';
 import {
   DEPARTMENT_TIMING_STATUS,
   type DepartmentTimingState,
   departmentCrewLabels,
   departmentLabels,
-  formatDate,
   getDepartmentTimingPresentation,
-  getFirstName,
-  getPlantDateNow,
-  statusBadgeColorClassNames,
-  toPlantDateOnly,
-} from '@pkg/domain';
+} from '@pkg/domain/equipment';
+import { DateIso, DateOnlyIsoString } from '@pkg/schema';
 import {
-  DateIso,
-  DateOnlyIsoString,
   type JobDepartmentTiming,
   JobDepartmentTimingCompleteInput,
   JobDepartmentTimingCorrectionValues,
-} from '@pkg/schema';
+} from '@pkg/schema/equipment';
 import { IconCircleCheck, IconPencil, IconPlayerPlay, IconX } from '@tabler/icons-react-native';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';

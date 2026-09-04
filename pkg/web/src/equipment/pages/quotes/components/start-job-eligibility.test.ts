@@ -1,4 +1,4 @@
-import { QuoteLinkedJob } from '@pkg/schema';
+import { QuoteLinkedJob } from '@pkg/schema/equipment';
 import { describe, expect, it } from 'vitest';
 
 import { canStartJobFromQuote, getStartJobUnavailableMessage, type StartableQuote } from './start-job-eligibility.js';

@@ -1,4 +1,5 @@
-import { addDateOnlyDays, lastWorkingDayOnOrBefore, type WorkingCalendar } from '@pkg/domain';
+import { addDateOnlyDays } from '@pkg/domain';
+import { lastWorkingDayOnOrBefore, type WorkingCalendar } from '@pkg/domain/equipment';
 import type { DateOnlyIso } from '@pkg/schema';
 
 export type MaintainedHorizonWarning = {

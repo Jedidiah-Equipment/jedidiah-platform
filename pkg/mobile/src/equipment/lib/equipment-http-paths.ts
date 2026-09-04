@@ -1,4 +1,4 @@
-import type { ProductImageSlot } from '@pkg/schema';
+import type { ProductImageSlot } from '@pkg/schema/equipment';
 
 /** URL of a Job Document's authenticated download route. */
 export function jobDocumentDownloadPath(jobId: string, documentId: string): string {

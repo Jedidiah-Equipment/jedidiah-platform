@@ -1,4 +1,4 @@
-import type { ProductImageSlot } from '@pkg/schema';
+import type { ProductImageSlot } from '@pkg/schema/equipment';
 
 export type ProductImageKey = {
   productId: string;

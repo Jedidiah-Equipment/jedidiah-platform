@@ -1,4 +1,4 @@
-import { PART_UNIT_OF_MEASURE_LABELS, type Supplier } from '@pkg/schema';
+import { PART_UNIT_OF_MEASURE_LABELS, type Supplier } from '@pkg/schema/equipment';
 import { IconLoader2, IconUpload } from '@tabler/icons-react';
 import { useMutation } from '@tanstack/react-query';
 import type React from 'react';

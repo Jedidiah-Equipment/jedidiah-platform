@@ -1,5 +1,5 @@
 import { formatCurrency, formatDate } from '@pkg/domain';
-import { isOffCfo, type JobMaterialVarianceResult, type JobMaterialVarianceRow } from '@pkg/schema';
+import { isOffCfo, type JobMaterialVarianceResult, type JobMaterialVarianceRow } from '@pkg/schema/equipment';
 import { useMemo } from 'react';
 import { DataTable } from '@/components/data-table/DataTable.js';
 import { type DataTableColumnDef, useDataTable } from '@/components/data-table/features.js';

@@ -1,14 +1,7 @@
-import {
-  type DatabaseTransaction,
-  type Db,
-  parts,
-  purchaseOrderAmendments,
-  purchaseOrderLines,
-  purchaseOrders,
-  user,
-} from '@pkg/db';
+import { type DatabaseTransaction, type Db, user } from '@pkg/db';
+import { parts, purchaseOrderAmendments, purchaseOrderLines, purchaseOrders } from '@pkg/db/equipment';
+import type { AuthId, UUID } from '@pkg/schema';
 import type {
-  AuthId,
   PurchaseOrder,
   PurchaseOrderAmendAddLineInput,
   PurchaseOrderAmendExpectedDateInput,
@@ -16,9 +9,8 @@ import type {
   PurchaseOrderAmendQuantityInput,
   PurchaseOrderAmendSubstitutePartInput,
   PurchaseOrderPdfRenderer,
-  UUID,
-} from '@pkg/schema';
-import { PurchaseOrderAmendmentListResult as PurchaseOrderAmendmentListResultSchema } from '@pkg/schema';
+} from '@pkg/schema/equipment';
+import { PurchaseOrderAmendmentListResult as PurchaseOrderAmendmentListResultSchema } from '@pkg/schema/equipment';
 import { aliasedTable, and, asc, eq } from 'drizzle-orm';
 import type { StorageAdapter } from '../../storage/storage-adapter.js';
 import { diffAuditUpdate, recordAuditUpdate } from '../audit/audit-service.js';

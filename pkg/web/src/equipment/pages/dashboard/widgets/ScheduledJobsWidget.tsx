@@ -1,5 +1,6 @@
-import { formatDate, getJobDisplayName, getJobOfferingKind, listScheduledJobs, type ScheduledJob } from '@pkg/domain';
-import type { JobSummary } from '@pkg/schema';
+import { formatDate } from '@pkg/domain';
+import { getJobDisplayName, getJobOfferingKind, listScheduledJobs, type ScheduledJob } from '@pkg/domain/equipment';
+import type { JobSummary } from '@pkg/schema/equipment';
 import type React from 'react';
 import { ScrollArea } from '@/components/ui/scroll-area.js';
 import { Skeleton } from '@/components/ui/skeleton.js';

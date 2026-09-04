@@ -1,5 +1,6 @@
 import { formatCurrency } from '@pkg/domain';
-import { type Product, type ProductListInput, ProductSortBy, type UUID } from '@pkg/schema';
+import type { UUID } from '@pkg/schema';
+import { type Product, type ProductListInput, ProductSortBy } from '@pkg/schema/equipment';
 import { keepPreviousData, useInfiniteQuery } from '@tanstack/react-query';
 import { type ColumnFiltersState, functionalUpdate, type Updater } from '@tanstack/react-table';
 import type React from 'react';

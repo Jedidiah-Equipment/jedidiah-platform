@@ -17,15 +17,15 @@ import {
   removeProductUnit,
   transferProductUnitOwnership,
   updateProductUnit,
-} from '@pkg/core';
+} from '@pkg/core/equipment';
+import { UUID } from '@pkg/schema';
 import {
   ProductUnitListInput,
   ProductUnitReassignInput,
   ProductUnitStockExportInput,
   ProductUnitTransferInput,
   ProductUnitUpdateInput,
-  UUID,
-} from '@pkg/schema';
+} from '@pkg/schema/equipment';
 import { z } from 'zod';
 
 import { type CoreErrorMapping, mapKnownCoreError } from '../../../trpc/errors.js';

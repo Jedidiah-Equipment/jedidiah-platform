@@ -1,6 +1,8 @@
-import { customers, type DatabaseTransaction, productUnitOwnershipTransfers } from '@pkg/db';
+import type { DatabaseTransaction } from '@pkg/db';
+import { customers, productUnitOwnershipTransfers } from '@pkg/db/equipment';
 import { getPlantDateNow } from '@pkg/domain';
-import type { AuthId, QuoteSelectedAssemblyInput, QuoteStatus, UUID } from '@pkg/schema';
+import type { AuthId, UUID } from '@pkg/schema';
+import type { QuoteSelectedAssemblyInput, QuoteStatus } from '@pkg/schema/equipment';
 import { and, eq, isNull } from 'drizzle-orm';
 
 import { loadAsBuiltSpec } from '../units/product-unit-as-built.js';

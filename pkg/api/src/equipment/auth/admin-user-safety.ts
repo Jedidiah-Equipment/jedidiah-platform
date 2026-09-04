@@ -1,6 +1,10 @@
-import { canAssignUserRoleSlots, isContractingRoleBesideSuperAdmin, isReservedSuperAdminAssignment } from '@pkg/core';
+import {
+  canAssignUserRoleSlots,
+  isContractingRoleBesideSuperAdmin,
+  isReservedSuperAdminAssignment,
+} from '@pkg/core/equipment';
 import type { Db } from '@pkg/db';
-import { createUserAccessSummary, hasPermission, parseRoleSlots, type RoleSlots } from '@pkg/domain';
+import { createUserAccessSummaryForUser, hasPermission, parseRoleSlots, type RoleSlots } from '@pkg/domain';
 import { ContractingRole, EquipmentRole } from '@pkg/schema';
 import type { BetterAuthPlugin } from 'better-auth';
 import { APIError, createAuthMiddleware, getSessionFromCtx } from 'better-auth/api';
@@ -85,7 +89,7 @@ export function adminUserSafetyPlugin(database: Db): BetterAuthPlugin {
             }
 
             const actor = parseRoleSlots(session.user);
-            const actorAccess = createUserAccessSummary({ ...actor, userId: session.user.id });
+            const actorAccess = createUserAccessSummaryForUser(session.user);
             if (!hasPermission(actorAccess, 'user:set-role') || actor.equipmentRole === null) {
               throw APIError.from('FORBIDDEN', ROLE_PERMISSION_ERROR);
             }

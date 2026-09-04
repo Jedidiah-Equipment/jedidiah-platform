@@ -1,4 +1,4 @@
-import type { QuoteDetail } from '@pkg/schema';
+import type { QuoteDetail } from '@pkg/schema/equipment';
 import { useEffect, useState } from 'react';
 import { Pressable, View } from 'react-native';
 

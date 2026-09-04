@@ -1,4 +1,5 @@
-import type { CatalogProductTranslation, CatalogProductTranslationPatchInput, UUID } from '@pkg/schema';
+import type { UUID } from '@pkg/schema';
+import type { CatalogProductTranslation, CatalogProductTranslationPatchInput } from '@pkg/schema/equipment';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import type React from 'react';
 import { useEffect, useMemo } from 'react';

@@ -1,5 +1,5 @@
-import { departmentLabels } from '@pkg/domain';
-import { DEPARTMENTS, type Department } from '@pkg/schema';
+import { departmentLabels } from '@pkg/domain/equipment';
+import { DEPARTMENTS, type Department } from '@pkg/schema/equipment';
 import { IconChevronDown } from '@tabler/icons-react';
 import type React from 'react';
 import { useId } from 'react';

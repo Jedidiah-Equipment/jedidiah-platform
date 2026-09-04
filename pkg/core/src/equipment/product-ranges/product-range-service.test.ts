@@ -1,5 +1,5 @@
-import { productRanges } from '@pkg/db';
-import { ProductRangeCreateInput, ProductRangeVariantCreateInput } from '@pkg/schema';
+import { productRanges } from '@pkg/db/equipment';
+import { ProductRangeCreateInput, ProductRangeVariantCreateInput } from '@pkg/schema/equipment';
 import { eq } from 'drizzle-orm';
 import { describe, expect } from 'vitest';
 

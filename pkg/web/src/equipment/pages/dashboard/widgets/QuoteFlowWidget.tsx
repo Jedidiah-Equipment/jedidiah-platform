@@ -1,5 +1,5 @@
 import { formatDate } from '@pkg/domain';
-import type { QuoteWeeklyFlowSummary } from '@pkg/schema';
+import type { QuoteWeeklyFlowSummary } from '@pkg/schema/equipment';
 import { useQuery } from '@tanstack/react-query';
 import type React from 'react';
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from 'recharts';

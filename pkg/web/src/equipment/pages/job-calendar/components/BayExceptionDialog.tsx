@@ -1,5 +1,5 @@
 import { formatDate } from '@pkg/domain';
-import type { ProjectedBayQueue } from '@pkg/schema';
+import type { ProjectedBayQueue } from '@pkg/schema/equipment';
 import { IconLoader2, IconMoon, IconSun, IconTrash } from '@tabler/icons-react';
 import type React from 'react';
 import { Button } from '@/components/ui/button.js';
@@ -16,7 +16,7 @@ import { Field, FieldLabel } from '@/components/ui/field.js';
 import { Input } from '@/components/ui/input.js';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select.js';
 import { bayOperatorName } from '@/equipment/components/bays/bay-label.js';
-import { fromJobCalendarDateKey } from '../../jobs/components/job-date-key.js';
+import { fromJobCalendarDateKey } from '@/equipment/pages/jobs/components/job-date-key.js';
 import { getBayCalendarException } from '../bay-exceptions.js';
 import type { BayExceptionDialogState } from '../types.js';
 

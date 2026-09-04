@@ -1,4 +1,4 @@
-import type { Department, QuoteWorkItemCharge, QuoteWorkItemFormValue } from '@pkg/schema';
+import type { Department, QuoteWorkItemCharge, QuoteWorkItemFormValue } from '@pkg/schema/equipment';
 
 import { computeWorkItemLabourCost, computeWorkItemPartAmount, computeWorkItemTotal } from './quote-pricing.js';
 import { quoteWorkItemName } from './work-item-departments.js';

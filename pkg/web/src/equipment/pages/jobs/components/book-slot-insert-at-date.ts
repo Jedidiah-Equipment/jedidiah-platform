@@ -1,12 +1,7 @@
-import {
-  addDateOnlyDays,
-  firstWorkingDayOnOrAfter,
-  formatDate,
-  isWorkingDay,
-  maxDateOnly,
-  type WorkingCalendar,
-} from '@pkg/domain';
-import type { BoardPlacement, DateOnlyIso } from '@pkg/schema';
+import { addDateOnlyDays, formatDate, maxDateOnly } from '@pkg/domain';
+import { firstWorkingDayOnOrAfter, isWorkingDay, type WorkingCalendar } from '@pkg/domain/equipment';
+import type { DateOnlyIso } from '@pkg/schema';
+import type { BoardPlacement } from '@pkg/schema/equipment';
 
 import { getSlotLabel } from './board-summary.js';
 import { toJobCalendarDateKey } from './job-date-key.js';

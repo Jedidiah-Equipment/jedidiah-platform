@@ -1,8 +1,10 @@
 import { randomUUID } from 'node:crypto';
 
-import { type Db, notRemoved, products, type StoredFile } from '@pkg/db';
-import { PRODUCT_IMAGE_POLICY } from '@pkg/domain';
-import type { AuthId, Product, ProductImageSlot, UUID } from '@pkg/schema';
+import { type Db, notRemoved, type StoredFile } from '@pkg/db';
+import { products } from '@pkg/db/equipment';
+import { PRODUCT_IMAGE_POLICY } from '@pkg/domain/equipment';
+import type { AuthId, UUID } from '@pkg/schema';
+import type { Product, ProductImageSlot } from '@pkg/schema/equipment';
 import { and, eq } from 'drizzle-orm';
 import { FileNotFoundError } from '../../files/file-errors.js';
 import { fileExtensionFor, replaceFile } from '../../files/stored-file-service.js';

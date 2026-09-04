@@ -1,4 +1,5 @@
-import { type Db, productRanges } from '@pkg/db';
+import type { Db } from '@pkg/db';
+import { productRanges } from '@pkg/db/equipment';
 
 export async function createProductRangeFixture(db: Db, name = `Test Range ${crypto.randomUUID()}`): Promise<string> {
   // Append to the end: the next slot is the current row count (fixtures create contiguous orders).

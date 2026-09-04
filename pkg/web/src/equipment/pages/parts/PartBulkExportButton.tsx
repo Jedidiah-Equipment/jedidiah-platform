@@ -1,4 +1,4 @@
-import type { Supplier } from '@pkg/schema';
+import type { Supplier } from '@pkg/schema/equipment';
 import { IconDownload, IconLoader2 } from '@tabler/icons-react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type React from 'react';

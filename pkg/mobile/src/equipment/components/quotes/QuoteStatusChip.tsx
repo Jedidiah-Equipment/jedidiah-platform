@@ -1,5 +1,5 @@
-import { quoteStatusColorClassNames, quoteStatusLabels } from '@pkg/domain';
-import type { QuoteStatus } from '@pkg/schema';
+import { quoteStatusColorClassNames, quoteStatusLabels } from '@pkg/domain/equipment';
+import type { QuoteStatus } from '@pkg/schema/equipment';
 
 import { StatusBadge } from '@/components/ui/status-badge';
 

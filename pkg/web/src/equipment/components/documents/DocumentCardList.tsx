@@ -1,6 +1,6 @@
 import { useElementSize } from '@mantine/hooks';
 import { DOCUMENT_ZIP_CONTENT_TYPE, documentContentTypeLabel, formatBytes, formatDate } from '@pkg/domain';
-import type { DocumentSummary } from '@pkg/schema';
+import type { DocumentSummary } from '@pkg/schema/equipment';
 import {
   IconDownload,
   IconEye,

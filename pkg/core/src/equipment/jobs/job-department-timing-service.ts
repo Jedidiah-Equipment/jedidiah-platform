@@ -1,13 +1,13 @@
-import { type DatabaseTransaction, type Db, jobDepartmentCrew, jobDepartmentTimings, user } from '@pkg/db';
+import { type DatabaseTransaction, type Db, user } from '@pkg/db';
+import { jobDepartmentCrew, jobDepartmentTimings } from '@pkg/db/equipment';
 import { getPlantDateNow, toPlantDateOnly } from '@pkg/domain';
+import type { AuthId, UUID } from '@pkg/schema';
 import type {
-  AuthId,
   JobDepartmentTimingCompleteInput,
   JobDepartmentTimingStartInput,
   JobDepartmentTimingUpdateInput,
-  UUID,
   WorkItemDepartment,
-} from '@pkg/schema';
+} from '@pkg/schema/equipment';
 import { and, asc, eq } from 'drizzle-orm';
 
 import { recordAuditEvent } from '../audit/audit-service.js';

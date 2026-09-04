@@ -1,4 +1,4 @@
-import { StaleSentQuote } from '@pkg/schema';
+import { StaleSentQuote } from '@pkg/schema/equipment';
 import { createElement } from 'react';
 import { describe, expect, it } from 'vitest';
 

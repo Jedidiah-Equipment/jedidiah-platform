@@ -1,12 +1,13 @@
-import { type DatabaseTransaction, jobs, notRemoved, products, quoteSelectedAssemblies, quotes } from '@pkg/db';
-import { type BuildSpecAssembly, canStartJobFromQuote, selectReworkBuildSpec } from '@pkg/domain';
+import { type DatabaseTransaction, notRemoved } from '@pkg/db';
+import { jobs, products, quoteSelectedAssemblies, quotes } from '@pkg/db/equipment';
+import { type BuildSpecAssembly, canStartJobFromQuote, selectReworkBuildSpec } from '@pkg/domain/equipment';
+import type { UUID } from '@pkg/schema';
 import {
   isStockBuildCreateInput,
   type JobCreateInput,
   type QuoteKind,
   type QuoteOffering,
-  type UUID,
-} from '@pkg/schema';
+} from '@pkg/schema/equipment';
 import { and, asc, desc, eq } from 'drizzle-orm';
 
 import { listAssemblies } from '../products/product-assembly-service.js';

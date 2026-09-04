@@ -1,5 +1,5 @@
-import { parts, stockMovements } from '@pkg/db';
-import type { SupplierInvoiceExtraction } from '@pkg/schema';
+import { parts, stockMovements } from '@pkg/db/equipment';
+import type { SupplierInvoiceExtraction } from '@pkg/schema/equipment';
 import { eq } from 'drizzle-orm';
 import { describe, expect } from 'vitest';
 

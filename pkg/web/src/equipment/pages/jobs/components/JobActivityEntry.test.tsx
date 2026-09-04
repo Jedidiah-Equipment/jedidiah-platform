@@ -1,5 +1,5 @@
 import { formatDate, statusBadgeColorClassNames } from '@pkg/domain';
-import { type GeneralFeedbackActivityItem, JobChangeActivityItem } from '@pkg/schema';
+import { type GeneralFeedbackActivityItem, JobChangeActivityItem } from '@pkg/schema/equipment';
 import { describe, expect, it } from 'vitest';
 
 import { renderWithRouter } from '@/test/router-harness.js';

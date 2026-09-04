@@ -1,4 +1,5 @@
-import type { JobActivityFilter, JobActivityItem, UUID } from '@pkg/schema';
+import type { UUID } from '@pkg/schema';
+import type { JobActivityFilter, JobActivityItem } from '@pkg/schema/equipment';
 import { IconFilter } from '@tabler/icons-react-native';
 import { keepPreviousData, useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useFocusEffect } from 'expo-router';

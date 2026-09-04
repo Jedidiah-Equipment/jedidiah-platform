@@ -1,17 +1,17 @@
 import { createFileRoute, useElementScrollRestoration } from '@tanstack/react-router';
 import { type RefObject, useCallback, useEffect, useRef } from 'react';
 
-import { type FilterChip, FilterChipRow } from '../../../components/filter-chip-row.js';
-import { PageHero } from '../../../components/page-hero.js';
-import { ProductCard } from '../../../components/product-card.js';
-import { SandWatermarkSection } from '../../../components/sand-watermark-section.js';
-import { hasFilterableVariants, VariantFilterBar } from '../../../components/variant-filter-bar.js';
-import { type AnalyticsEventProperties, captureEvent } from '../../../lib/analytics.js';
-import { createMetaEventId, metaMatchKeys, trackMetaViewContent } from '../../../lib/meta-pixel.js';
-import { seoHead } from '../../../lib/seo.js';
-import { messagesForLocale, useMessages } from '../../../messages/index.js';
-import { getProductsCatalog } from '../../../server/catalog/products.js';
-import type { CatalogGroup, CatalogVariant } from '../../../server/catalog/products-data.js';
+import { type FilterChip, FilterChipRow } from '@/components/filter-chip-row.js';
+import { PageHero } from '@/components/page-hero.js';
+import { ProductCard } from '@/components/product-card.js';
+import { SandWatermarkSection } from '@/components/sand-watermark-section.js';
+import { hasFilterableVariants, VariantFilterBar } from '@/components/variant-filter-bar.js';
+import { type AnalyticsEventProperties, captureEvent } from '@/lib/analytics.js';
+import { createMetaEventId, metaMatchKeys, trackMetaViewContent } from '@/lib/meta-pixel.js';
+import { seoHead } from '@/lib/seo.js';
+import { messagesForLocale, useMessages } from '@/messages/index.js';
+import { getProductsCatalog } from '@/server/catalog/products.js';
+import type { CatalogGroup, CatalogVariant } from '@/server/catalog/products-data.js';
 
 type ProductsSearch = { range?: string; variant?: string };
 type ProductsCatalogView = {

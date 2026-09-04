@@ -1,5 +1,6 @@
-import { auditEvents, type Db, partBom, parts, stockMovements, supplier, user } from '@pkg/db';
-import { type PartBulkImportRow, PartListInput } from '@pkg/schema';
+import { auditEvents, type Db, user } from '@pkg/db';
+import { partBom, parts, stockMovements, supplier } from '@pkg/db/equipment';
+import { type PartBulkImportRow, PartListInput } from '@pkg/schema/equipment';
 import { eq, isNull } from 'drizzle-orm';
 import { describe, expect } from 'vitest';
 

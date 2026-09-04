@@ -1,16 +1,13 @@
+import { auditEvents, createDatabaseClient, type Db, user } from '@pkg/db';
 import {
-  auditEvents,
-  createDatabaseClient,
   customers,
-  type Db,
   jobBuildSpecAssemblies,
   jobs,
   products,
   productUnitOwnershipTransfers,
   quoteSelectedAssemblies,
   quotes,
-  user,
-} from '@pkg/db';
+} from '@pkg/db/equipment';
 import { getPlantDateNow } from '@pkg/domain';
 import type { UUID } from '@pkg/schema';
 import { and, asc, eq, sql } from 'drizzle-orm';

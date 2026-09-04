@@ -1,5 +1,5 @@
-import { isLocale, localePath, switchLocaleHref } from '../../lib/locale.js';
-import { localePreferenceCookie } from '../../lib/locale-preference.js';
+import { isLocale, localePath, switchLocaleHref } from '@/lib/locale.js';
+import { localePreferenceCookie } from '@/lib/locale-preference.js';
 
 function safeReturnTo(requestUrl: URL): string {
   const returnTo = requestUrl.searchParams.get('returnTo');

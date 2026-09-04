@@ -1,12 +1,12 @@
+import { AuthId } from '@pkg/schema';
 import {
-  AuthId,
   Department,
   FeedbackDepartmentTargets,
   FeedbackKind,
   type FeedbackSubmitInput,
   FeedbackText,
   FeedbackUserTargets,
-} from '@pkg/schema';
+} from '@pkg/schema/equipment';
 import { z } from 'zod';
 
 // Mobile mirror of pkg/web's feedback form-values schema. Per-field constraints come

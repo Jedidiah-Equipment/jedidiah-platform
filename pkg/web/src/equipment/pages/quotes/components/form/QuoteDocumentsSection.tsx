@@ -1,4 +1,4 @@
-import type { QuoteDetail, QuoteDocument, QuoteDocumentGenerationWarning } from '@pkg/schema';
+import type { QuoteDetail, QuoteDocument, QuoteDocumentGenerationWarning } from '@pkg/schema/equipment';
 import { IconAlertTriangle } from '@tabler/icons-react';
 import { useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';

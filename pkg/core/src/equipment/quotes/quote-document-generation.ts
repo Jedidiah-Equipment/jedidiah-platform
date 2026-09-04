@@ -1,24 +1,22 @@
+import type { Db, user } from '@pkg/db';
 import {
   type customers,
-  type Db,
   type products,
   quoteSelectedAssemblies,
   quotes,
   quoteWorkItemParts,
   quoteWorkItems,
-  type user,
-} from '@pkg/db';
+} from '@pkg/db/equipment';
+import { formatCurrency, formatPercent } from '@pkg/domain';
 import {
   computeAdditionalDeliveryPrice,
-  formatCurrency,
-  formatPercent,
   isQuoteDocumentGenerationAllowed,
   priceQuoteWithCatalog,
   quoteWorkItemSummaryRows,
-} from '@pkg/domain';
+} from '@pkg/domain/equipment';
 import { mergePdfBytes } from '@pkg/pdf';
+import type { AuthId, UUID } from '@pkg/schema';
 import {
-  type AuthId,
   type BrochurePdfRenderer,
   formatQuoteCode,
   type QuoteDocumentGenerationInput,
@@ -28,8 +26,7 @@ import {
   type QuoteDocumentPdfRenderer,
   type QuoteDocumentPricingRow,
   type QuoteDocumentWorkItem,
-  type UUID,
-} from '@pkg/schema';
+} from '@pkg/schema/equipment';
 import { asc, eq } from 'drizzle-orm';
 
 import type { StorageAdapter } from '../../storage/storage-adapter.js';

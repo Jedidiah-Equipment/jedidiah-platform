@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import type { Part } from '@pkg/schema';
+import type { Part } from '@pkg/schema/equipment';
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, expect, it, vi } from 'vitest';

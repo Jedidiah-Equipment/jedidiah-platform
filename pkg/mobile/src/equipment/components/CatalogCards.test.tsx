@@ -1,4 +1,4 @@
-import type { JobSummary, Product, ProductUnitSummary, QuoteSummary } from '@pkg/schema';
+import type { JobSummary, Product, ProductUnitSummary, QuoteSummary } from '@pkg/schema/equipment';
 import { describe, expect, test, vi } from 'vitest';
 
 vi.mock('@pkg/domain', async (importOriginal) => ({

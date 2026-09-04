@@ -8,7 +8,7 @@ import {
   type StockMovementHistoryRow,
   type StockMovementReason,
   type StockReturnToSupplierReason,
-} from '@pkg/schema';
+} from '@pkg/schema/equipment';
 import { Link } from '@tanstack/react-router';
 import { useMemo } from 'react';
 import { DataTable } from '@/components/data-table/DataTable.js';

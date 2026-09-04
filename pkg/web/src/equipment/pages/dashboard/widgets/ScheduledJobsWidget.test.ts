@@ -1,4 +1,4 @@
-import type { ScheduledJob } from '@pkg/domain';
+import type { ScheduledJob } from '@pkg/domain/equipment';
 import { DateOnlyIso } from '@pkg/schema';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';

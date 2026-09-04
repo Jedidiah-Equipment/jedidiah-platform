@@ -4,13 +4,13 @@ import { useQuery } from '@tanstack/react-query';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
-import { useTRPC } from '@/lib/trpc.js';
 import {
   estimateTermCompleteness,
   formatEstimateCeiling,
   formatEstimateFloor,
   missingEstimateLabels,
-} from '../../../products/product-cost-estimate-display.js';
+} from '@/equipment/pages/products/product-cost-estimate-display.js';
+import { useTRPC } from '@/lib/trpc.js';
 
 export function JobCostComparisonSummary({ jobId }: { jobId: UUID }) {
   const trpc = useTRPC();

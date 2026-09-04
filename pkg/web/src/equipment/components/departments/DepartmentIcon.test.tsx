@@ -1,4 +1,4 @@
-import { DEPARTMENTS } from '@pkg/schema';
+import { DEPARTMENTS } from '@pkg/schema/equipment';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 

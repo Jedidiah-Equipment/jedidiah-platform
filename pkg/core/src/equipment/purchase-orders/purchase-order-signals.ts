@@ -1,10 +1,11 @@
-import { type Db, purchaseOrders, supplier } from '@pkg/db';
+import type { Db } from '@pkg/db';
+import { purchaseOrders, supplier } from '@pkg/db/equipment';
 import { diffDateOnlyDays, toPlantDateOnly } from '@pkg/domain';
+import { DateOnlyIso } from '@pkg/schema';
 import {
-  DateOnlyIso,
   type LatePurchaseOrderResult,
   LatePurchaseOrderResult as LatePurchaseOrderResultSchema,
-} from '@pkg/schema';
+} from '@pkg/schema/equipment';
 import { and, asc, eq, isNotNull, isNull, lt } from 'drizzle-orm';
 
 import { loadOpenOrderLines } from './purchase-order-service.js';

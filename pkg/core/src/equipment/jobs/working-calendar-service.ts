@@ -1,5 +1,7 @@
-import { type DatabaseTransaction, type Db, jobBayCalendarExceptions, jobBays, workingCalendarOffDays } from '@pkg/db';
-import type { WorkingCalendar } from '@pkg/domain';
+import type { DatabaseTransaction, Db } from '@pkg/db';
+import { jobBayCalendarExceptions, jobBays, workingCalendarOffDays } from '@pkg/db/equipment';
+import type { WorkingCalendar } from '@pkg/domain/equipment';
+import type { UUID } from '@pkg/schema';
 import {
   type AddBayCalendarExceptionInput,
   AddBayCalendarExceptionResult,
@@ -10,8 +12,7 @@ import {
   RemoveBayCalendarExceptionResult,
   type ToggleOffDayInput,
   ToggleOffDayResult,
-  type UUID,
-} from '@pkg/schema';
+} from '@pkg/schema/equipment';
 import { and, asc, eq } from 'drizzle-orm';
 
 import { JobBayNotFoundError } from './job-errors.js';

@@ -1,4 +1,4 @@
-import type { Part, PartListInput } from '@pkg/schema';
+import type { Part, PartListInput } from '@pkg/schema/equipment';
 import { useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
 

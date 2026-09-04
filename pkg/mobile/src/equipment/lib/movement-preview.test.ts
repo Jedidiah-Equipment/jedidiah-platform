@@ -1,5 +1,5 @@
-import type { JobStockResult, PartPurchaseOrderLine, StockOnHandRow } from '@pkg/schema';
-import { JobCode, PurchaseOrderCode } from '@pkg/schema';
+import type { JobStockResult, PartPurchaseOrderLine, StockOnHandRow } from '@pkg/schema/equipment';
+import { JobCode, PurchaseOrderCode } from '@pkg/schema/equipment';
 import { describe, expect, test } from 'vitest';
 
 import {

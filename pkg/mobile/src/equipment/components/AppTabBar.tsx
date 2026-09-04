@@ -1,4 +1,4 @@
-import { hasUnreadActivity } from '@pkg/domain';
+import { hasUnreadActivity } from '@pkg/domain/equipment';
 import {
   IconActivity,
   IconBarcode,

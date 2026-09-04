@@ -1,12 +1,5 @@
-import {
-  type DatabaseTransaction,
-  type Db,
-  jobBayCalendarExceptions,
-  jobBayOperatorAssignments,
-  jobBays,
-  jobSlots,
-  type jobs,
-} from '@pkg/db';
+import type { DatabaseTransaction, Db } from '@pkg/db';
+import { jobBayCalendarExceptions, jobBayOperatorAssignments, jobBays, jobSlots, type jobs } from '@pkg/db/equipment';
 import {
   type BoardGhost,
   type BoardPlacement,
@@ -15,8 +8,9 @@ import {
   type ProjectableBoardSlot,
   projectBoard,
   type WorkingCalendar,
-} from '@pkg/domain';
-import { Bay, type DateOnlyIso, JobCode, JobSlot, type OffDay, ProjectedBayQueue, UUID } from '@pkg/schema';
+} from '@pkg/domain/equipment';
+import { type DateOnlyIso, UUID } from '@pkg/schema';
+import { Bay, JobCode, JobSlot, type OffDay, ProjectedBayQueue } from '@pkg/schema/equipment';
 import { asc, inArray, isNull, type SQL } from 'drizzle-orm';
 import { getCurrentBayOperator, type OpenOperatorAssignmentsRow } from './job-bay-service.js';
 

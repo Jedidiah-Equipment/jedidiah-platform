@@ -1,0 +1,60 @@
+import * as productUnitsCore from '@pkg/core/equipment';
+import type { UserAccessSummary } from '@pkg/schema';
+import { ProductUnitListInput, type ProductUnitListResult, ProductUnitSummary } from '@pkg/schema/equipment';
+import { z } from 'zod';
+
+import type { AiContext } from '@/equipment/context.js';
+
+import { createProductUnitLinks, ProductUnitLinks } from './product-unit-links.js';
+import { ProductUnitProductResponse } from './product-unit-response.js';
+
+export type FindProductUnitsInput = z.infer<typeof FindProductUnitsInput>;
+export const FindProductUnitsInput = ProductUnitListInput.pick({ columnFilters: true, search: true }).strict();
+
+const FindProductUnitItem = ProductUnitSummary.extend({
+  links: ProductUnitLinks,
+  product: ProductUnitProductResponse,
+});
+
+export type FindProductUnitsResponse = z.infer<typeof FindProductUnitsResponse>;
+export const FindProductUnitsResponse = z.array(FindProductUnitItem);
+
+export function toCoreProductUnitListInput(input: FindProductUnitsInput): ProductUnitListInput {
+  return {
+    columnFilters: input.columnFilters,
+    cursor: 0,
+    limit: 0,
+    search: input.search,
+    sortBy: 'productSerialNumber',
+    sortDirection: 'asc',
+  };
+}
+
+export function toFindProductUnitsResponse(
+  result: ProductUnitListResult,
+  access: UserAccessSummary | null,
+): FindProductUnitsResponse {
+  return FindProductUnitsResponse.parse(
+    result.items.map((unit) => ({ ...unit, links: createProductUnitLinks(unit, access) })),
+  );
+}
+
+export const findProductUnitsDefinition = {
+  name: 'findProductUnits',
+  description: [
+    'Search for Product Units — the physical machines — by Product Serial Number, VIN, Owner company name, Product name, or Product model code, optionally narrowed by build state, Owner, or Product.',
+    'In columnFilters, pass owner "stock" for the machines we hold, or an Owner Customer UUID for the ones a Customer holds.',
+    'The buildState filter takes "in-build" for machines still being built, "on-hand" for built machines we still hold, and "complete" for built machines a Customer owns.',
+    'Returns serial number, VIN, build state, Owner, Product, and app links.',
+    'The build state it returns is only "in-build" or "on-hand": an on-hand machine that has an Owner is the one the app calls Complete.',
+    'Call getProductUnit with the selected id when the As-Built Spec, Jobs, or ownership history are needed.',
+  ].join('\n'),
+  inputSchema: FindProductUnitsInput,
+  outputSchema: FindProductUnitsResponse,
+  anyOfPermissions: ['equipment_product_unit:read'],
+  async handler(args: unknown, ctx: AiContext): Promise<FindProductUnitsResponse> {
+    const input = FindProductUnitsInput.parse(args ?? {});
+    const result = await productUnitsCore.listProductUnits({ db: ctx.db, input: toCoreProductUnitListInput(input) });
+    return toFindProductUnitsResponse(result, ctx.access);
+  },
+} as const;

@@ -1,0 +1,83 @@
+import { createUserAccessSummary, roleSlotsForRole } from '@pkg/domain';
+import type { JobListResult } from '@pkg/schema/equipment';
+import { describe, expect, test } from 'vitest';
+
+import {
+  FindJobsInput,
+  FindJobsResponse,
+  findJobsDefinition,
+  toCoreJobListInput,
+  toFindJobsResponse,
+} from './find-jobs.js';
+
+const JOB_ID = '00000000-0000-4000-8000-000000000401';
+const CUSTOMER_ID = '00000000-0000-4000-8000-000000000101';
+const QUOTE_ID = '00000000-0000-4000-8000-000000000301';
+
+describe('findJobs contract', () => {
+  test('describes the lightweight find-before-get workflow', () => {
+    expect(findJobsDefinition.name).toBe('findJobs');
+    expect(findJobsDefinition.description).toContain('lightweight');
+    expect(findJobsDefinition.description).toContain('getJob');
+  });
+
+  test('maps search onto an unpaged Job read', () => {
+    const input = FindJobsInput.parse({ search: 'JOB-1' });
+
+    expect(toCoreJobListInput(input)).toEqual({
+      columnFilters: {},
+      filters: {},
+      cursor: 0,
+      limit: 0,
+      search: 'JOB-1',
+      sortBy: 'code',
+      sortDirection: 'asc',
+    });
+  });
+
+  test('returns lightweight Custom Job identity and relationship fields', () => {
+    const result = {
+      items: [
+        {
+          code: 'JOB-00001',
+          createdAt: '2026-07-10T08:00:00.000Z',
+          customerCompanyName: 'Acme Mining',
+          customerId: CUSTOMER_ID,
+          description: 'Repair hydraulic leak',
+          id: JOB_ID,
+          productModelCode: null,
+          productName: null,
+          productUnit: null,
+          quoteCode: 'QUO-00001',
+          quoteId: QUOTE_ID,
+          quoteKind: 'custom',
+          workTitle: 'Hydraulic repair',
+        },
+      ],
+    } as JobListResult;
+
+    const response = toFindJobsResponse(
+      result,
+      createUserAccessSummary({ ...roleSlotsForRole('admin'), userId: 'test-user-id' }),
+    );
+
+    expect(FindJobsResponse.parse(response)).toEqual(response);
+    expect(response).toEqual([
+      {
+        ...result.items[0],
+        links: {
+          app: `/equipment/jobs/${JOB_ID}`,
+          customer: `/equipment/customers/${CUSTOMER_ID}/edit`,
+          quote: `/equipment/quotes/${QUOTE_ID}/edit`,
+        },
+      },
+    ]);
+    expect(response[0]?.links).not.toHaveProperty('product');
+    expect(
+      toFindJobsResponse(
+        result,
+        createUserAccessSummary({ ...roleSlotsForRole('job-viewer'), userId: 'test-user-id' }),
+      )[0]?.links,
+    ).toEqual({ app: `/equipment/jobs/${JOB_ID}` });
+  });
+});

@@ -1,4 +1,5 @@
-import { type EntityFile, PRODUCT_IMAGE_SLOT_SPECS, type UUID } from '@pkg/schema';
+import type { EntityFile, UUID } from '@pkg/schema';
+import { PRODUCT_IMAGE_SLOT_SPECS } from '@pkg/schema/equipment';
 import { IconLoader2, IconPhoto, IconUpload } from '@tabler/icons-react';
 import { useMutation } from '@tanstack/react-query';
 import type React from 'react';

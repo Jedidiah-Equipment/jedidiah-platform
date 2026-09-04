@@ -1,11 +1,5 @@
-import {
-  formatDate,
-  isJobCancelled,
-  type JobProgress,
-  type JobRouteStopState,
-  jobStatusAccentColor,
-  resolveJobStatusTone,
-} from '@pkg/domain';
+import { formatDate, jobStatusAccentColor, resolveJobStatusTone } from '@pkg/domain';
+import { isJobCancelled, type JobProgress, type JobRouteStopState } from '@pkg/domain/equipment';
 import type { ReactNode } from 'react';
 import { ScrollView, useWindowDimensions, View } from 'react-native';
 import { Avatar } from '@/components/Avatar';

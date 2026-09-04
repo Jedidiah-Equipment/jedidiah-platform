@@ -1,6 +1,8 @@
-import { createGlobalSearchCondition, type Db, parts, stockMovements, withPagination } from '@pkg/db';
-import type { PartSearchInput, PartSearchResult } from '@pkg/schema';
-import { getNextCursor, PartSearchResult as PartSearchResultSchema } from '@pkg/schema';
+import { createGlobalSearchCondition, type Db, withPagination } from '@pkg/db';
+import { parts, stockMovements } from '@pkg/db/equipment';
+import { getNextCursor } from '@pkg/schema';
+import type { PartSearchInput, PartSearchResult } from '@pkg/schema/equipment';
+import { PartSearchResult as PartSearchResultSchema } from '@pkg/schema/equipment';
 import { and, asc, eq, ne, sql } from 'drizzle-orm';
 
 /**

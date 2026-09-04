@@ -1,5 +1,5 @@
 import { formatBytes, formatDate } from '@pkg/domain';
-import type { DocumentSummary } from '@pkg/schema';
+import type { DocumentSummary } from '@pkg/schema/equipment';
 
 export type DocumentCardSortValue =
   | 'filenameAsc'

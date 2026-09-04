@@ -1,5 +1,5 @@
-import { departmentLabels, getDefaultQuoteDocumentLeadTime, resolveQuoteDocumentLeadTime } from '@pkg/domain';
-import type { QuoteDetail, QuoteDocumentGenerationWarning } from '@pkg/schema';
+import { departmentLabels, getDefaultQuoteDocumentLeadTime, resolveQuoteDocumentLeadTime } from '@pkg/domain/equipment';
+import type { QuoteDetail, QuoteDocumentGenerationWarning } from '@pkg/schema/equipment';
 import { IconFilePlus, IconX } from '@tabler/icons-react-native';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';

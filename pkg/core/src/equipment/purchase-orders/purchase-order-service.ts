@@ -5,9 +5,12 @@ import {
   createEscapedContainsSearchCondition,
   type DatabaseTransaction,
   type Db,
-  documents,
   getPaginationQueryOptions,
   getSortOrder,
+  user,
+} from '@pkg/db';
+import {
+  documents,
   jobs,
   parts,
   purchaseOrderJobLinks,
@@ -15,8 +18,7 @@ import {
   purchaseOrders,
   stockMovements,
   supplier,
-  user,
-} from '@pkg/db';
+} from '@pkg/db/equipment';
 import {
   compareNullableDateOnly,
   derivePartStockActions,
@@ -24,12 +26,10 @@ import {
   derivePurchaseOrderProgress,
   derivePurchaseOrderStatus,
   type PurchaseOrderActionFacts,
-} from '@pkg/domain';
+} from '@pkg/domain/equipment';
+import { type AuthId, DateIso, getNextCursor, type UUID } from '@pkg/schema';
 import {
-  type AuthId,
-  DateIso,
   formatPurchaseOrderCode,
-  getNextCursor,
   isWholeUnitQuantity,
   type PurchaseOrder,
   type PurchaseOrderCreateInput,
@@ -41,9 +41,8 @@ import {
   type PurchaseOrderReceiptBucket,
   type PurchaseOrderSaveDraftInput,
   PurchaseOrder as PurchaseOrderSchema,
-  type UUID,
   unitClassFor,
-} from '@pkg/schema';
+} from '@pkg/schema/equipment';
 import { and, count, desc, eq, inArray, isNull, or, type SQL, type SQLWrapper, sql } from 'drizzle-orm';
 import type { StorageAdapter } from '../../storage/storage-adapter.js';
 import {

@@ -1,6 +1,6 @@
+import { eq, user } from '@pkg/db';
 import {
   customers,
-  eq,
   jobStockCloseOuts,
   jobs,
   partBom,
@@ -8,8 +8,7 @@ import {
   quotes,
   stocktakeSessions,
   supplier,
-  user,
-} from '@pkg/db';
+} from '@pkg/db/equipment';
 import { describe, expect } from 'vitest';
 
 import { createTester } from '@/test/create-tester.js';

@@ -1,4 +1,4 @@
-import type { PurchaseOrderProgress, PurchaseOrderStatus } from '@pkg/schema';
+import type { PurchaseOrderProgress, PurchaseOrderStatus } from '@pkg/schema/equipment';
 import { describe, expect, it } from 'vitest';
 
 import { derivePurchaseOrderActions, type PurchaseOrderActionFacts } from './purchase-order-actions.js';

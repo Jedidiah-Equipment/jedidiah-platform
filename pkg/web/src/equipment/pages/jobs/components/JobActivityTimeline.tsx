@@ -1,4 +1,4 @@
-import type { JobActivityItem } from '@pkg/schema';
+import type { JobActivityItem } from '@pkg/schema/equipment';
 import type React from 'react';
 
 import { cn } from '@/lib/utils.js';

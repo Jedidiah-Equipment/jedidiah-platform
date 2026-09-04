@@ -1,12 +1,6 @@
-import {
-  documentContentTypeLabel,
-  formatBytes,
-  formatCurrency,
-  formatDate,
-  isBrochureReady,
-  isLanderReady,
-} from '@pkg/domain';
-import type { OptionalAssembly, Product, ProductDocument, StandardAssembly } from '@pkg/schema';
+import { documentContentTypeLabel, formatBytes, formatCurrency, formatDate } from '@pkg/domain';
+import { isBrochureReady, isLanderReady } from '@pkg/domain/equipment';
+import type { OptionalAssembly, Product, ProductDocument, StandardAssembly } from '@pkg/schema/equipment';
 import { IconCheck, IconDownload, IconEye, IconLink } from '@tabler/icons-react-native';
 import { useQuery } from '@tanstack/react-query';
 import * as Clipboard from 'expo-clipboard';

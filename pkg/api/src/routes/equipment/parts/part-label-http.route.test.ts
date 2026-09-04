@@ -1,7 +1,8 @@
 import fastifyMultipart from '@fastify/multipart';
 import type { Db } from '@pkg/db';
-import { parts, supplier, user } from '@pkg/db';
-import type { PartLabelPdfModel, PartLabelPdfRenderer } from '@pkg/schema';
+import { user } from '@pkg/db';
+import { parts, supplier } from '@pkg/db/equipment';
+import type { PartLabelPdfModel, PartLabelPdfRenderer } from '@pkg/schema/equipment';
 import Fastify, { type FastifyInstance } from 'fastify';
 import { afterEach, beforeEach, describe, expect, vi } from 'vitest';
 

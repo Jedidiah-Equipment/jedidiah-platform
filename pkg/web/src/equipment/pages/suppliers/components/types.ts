@@ -1,5 +1,5 @@
+import { NullableThumbnailDataUrl, type UUID } from '@pkg/schema';
 import {
-  NullableThumbnailDataUrl,
   type Supplier,
   SupplierCompanyName,
   SupplierCreateInput,
@@ -7,8 +7,7 @@ import {
   SupplierOptionalText,
   SupplierPhone,
   SupplierUpdateInput,
-  type UUID,
-} from '@pkg/schema';
+} from '@pkg/schema/equipment';
 import { z } from 'zod';
 
 import { emptyStringOr } from '@/components/form/utils/form-schema.js';

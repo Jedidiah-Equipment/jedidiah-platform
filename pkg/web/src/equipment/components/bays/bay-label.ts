@@ -1,5 +1,5 @@
 import { getFirstName } from '@pkg/domain';
-import type { Bay } from '@pkg/schema';
+import type { Bay } from '@pkg/schema/equipment';
 
 // Operator name when a bay has a current operator, else null.
 export function bayOperatorName(bay: Pick<Bay, 'currentOperator'>): string | null {

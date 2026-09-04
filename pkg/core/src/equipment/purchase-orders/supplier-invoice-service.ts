@@ -1,14 +1,8 @@
-import {
-  type DatabaseTransaction,
-  type Db,
-  invoiceExtractions,
-  invoiceFlagResolutions,
-  stockMovements,
-  user,
-} from '@pkg/db';
-import { deriveInvoicePriceCorrection, derivePartStockActions } from '@pkg/domain';
+import { type DatabaseTransaction, type Db, user } from '@pkg/db';
+import { invoiceExtractions, invoiceFlagResolutions, stockMovements } from '@pkg/db/equipment';
+import { deriveInvoicePriceCorrection, derivePartStockActions } from '@pkg/domain/equipment';
+import type { AuthId, UUID } from '@pkg/schema';
 import type {
-  AuthId,
   InvoiceFlagResolution,
   PurchaseOrderDocumentRow,
   SupplierInvoiceCorrectionInput,
@@ -16,12 +10,11 @@ import type {
   SupplierInvoiceExtraction,
   SupplierInvoiceMatchRow,
   SupplierInvoiceReviewResult,
-  UUID,
-} from '@pkg/schema';
+} from '@pkg/schema/equipment';
 import {
   InvoiceFlagResolution as InvoiceFlagResolutionSchema,
   SupplierInvoiceReviewResult as SupplierInvoiceReviewResultSchema,
-} from '@pkg/schema';
+} from '@pkg/schema/equipment';
 import { and, eq, inArray, sql } from 'drizzle-orm';
 import type { StorageAdapter } from '../../storage/storage-adapter.js';
 import { assertDocumentAcceptable } from '../documents/document-service.js';

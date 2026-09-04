@@ -1,5 +1,7 @@
-import { formatDate, formatNumber, getDocumentPolicy } from '@pkg/domain';
-import { type PurchaseOrderReturnRow, STOCK_RETURN_TO_SUPPLIER_REASON_LABELS, type UUID } from '@pkg/schema';
+import { formatDate, formatNumber } from '@pkg/domain';
+import { getDocumentPolicy } from '@pkg/domain/equipment';
+import type { UUID } from '@pkg/schema';
+import { type PurchaseOrderReturnRow, STOCK_RETURN_TO_SUPPLIER_REASON_LABELS } from '@pkg/schema/equipment';
 import { IconLoader2 } from '@tabler/icons-react';
 import { useMutation } from '@tanstack/react-query';
 import { useState } from 'react';

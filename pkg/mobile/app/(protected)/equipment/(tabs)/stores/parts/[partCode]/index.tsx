@@ -1,4 +1,4 @@
-import { derivePartStockActions, formatEstimatedStockOnHand } from '@pkg/domain';
+import { derivePartStockActions, formatEstimatedStockOnHand } from '@pkg/domain/equipment';
 import { IconArrowBackUp, IconArrowDownToArc, IconTruckReturn, IconWheel } from '@tabler/icons-react-native';
 import { useQuery } from '@tanstack/react-query';
 import { useLocalSearchParams, useRouter } from 'expo-router';

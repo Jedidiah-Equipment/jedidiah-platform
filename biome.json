@@ -40,20 +40,7 @@
   "linter": {
     "enabled": true,
     "rules": {
-      "preset": "recommended",
-      "style": {
-        "noRestrictedImports": {
-          "level": "error",
-          "options": {
-            "patterns": [
-              {
-                "group": ["../../*", "../../../*"],
-                "message": "Use the @/* alias instead of imports that traverse more than one parent directory."
-              }
-            ]
-          }
-        }
-      }
+      "preset": "recommended"
     }
   },
   "assist": {
@@ -74,14 +61,13 @@
   "overrides": [
     {
       "includes": [
-        "pkg/core/src/equipment/**",
-        "pkg/api/src/equipment/**",
-        "pkg/api/src/routes/equipment/**",
-        "pkg/domain/src/equipment/**",
-        "pkg/web/src/equipment/**",
-        "pkg/web/src/routes/_authed.equipment*",
-        "pkg/mobile/app/**/equipment/**",
-        "pkg/mobile/src/equipment/**"
+        "pkg/core/src/**/equipment/**",
+        "pkg/api/src/**/equipment/**",
+        "pkg/domain/src/**/equipment/**",
+        "pkg/schema/src/**/equipment/**",
+        "pkg/db/src/**/equipment/**",
+        "pkg/pdf/src/**/equipment/**",
+        "pkg/ai/src/**/equipment/**"
       ],
       "linter": {
         "rules": {
@@ -91,11 +77,7 @@
               "options": {
                 "patterns": [
                   {
-                    "group": ["../../*", "../../../*"],
-                    "message": "Use the @/* alias instead of imports that traverse more than one parent directory."
-                  },
-                  {
-                    "group": ["contracting/**", "**/contracting/**"],
+                    "group": ["contracting/**", "**/contracting/**", "@pkg/*/contracting"],
                     "message": "Business namespaces may import shared code, never each other."
                   }
                 ]
@@ -107,14 +89,13 @@
     },
     {
       "includes": [
-        "pkg/core/src/contracting/**",
-        "pkg/api/src/contracting/**",
-        "pkg/api/src/routes/contracting/**",
-        "pkg/domain/src/contracting/**",
-        "pkg/web/src/contracting/**",
-        "pkg/web/src/routes/_authed.contracting*",
-        "pkg/mobile/app/**/contracting/**",
-        "pkg/mobile/src/contracting/**"
+        "pkg/core/src/**/contracting/**",
+        "pkg/api/src/**/contracting/**",
+        "pkg/domain/src/**/contracting/**",
+        "pkg/schema/src/**/contracting/**",
+        "pkg/db/src/**/contracting/**",
+        "pkg/pdf/src/**/contracting/**",
+        "pkg/ai/src/**/contracting/**"
       ],
       "linter": {
         "rules": {
@@ -124,11 +105,118 @@
               "options": {
                 "patterns": [
                   {
-                    "group": ["../../*", "../../../*"],
+                    "group": ["equipment/**", "**/equipment/**", "@pkg/*/equipment"],
+                    "message": "Business namespaces may import shared code, never each other."
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": [
+        "pkg/core/src/**",
+        "pkg/api/src/**",
+        "pkg/domain/src/**",
+        "pkg/schema/src/**",
+        "pkg/db/src/**",
+        "pkg/pdf/src/**",
+        "pkg/ai/src/**",
+        "!pkg/core/src/**/equipment/**",
+        "!pkg/api/src/**/equipment/**",
+        "!pkg/domain/src/**/equipment/**",
+        "!pkg/schema/src/**/equipment/**",
+        "!pkg/db/src/**/equipment/**",
+        "!pkg/pdf/src/**/equipment/**",
+        "!pkg/ai/src/**/equipment/**",
+        "!pkg/core/src/**/contracting/**",
+        "!pkg/api/src/**/contracting/**",
+        "!pkg/domain/src/**/contracting/**",
+        "!pkg/schema/src/**/contracting/**",
+        "!pkg/db/src/**/contracting/**",
+        "!pkg/pdf/src/**/contracting/**",
+        "!pkg/ai/src/**/contracting/**",
+        "!pkg/api/src/app-auth.ts",
+        "!pkg/api/src/server.ts",
+        "!pkg/api/src/trpc/router.ts",
+        "!pkg/db/src/schema.ts"
+      ],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "patterns": [
+                  {
+                    "group": [
+                      "equipment/**",
+                      "**/equipment/**",
+                      "@pkg/*/equipment",
+                      "contracting/**",
+                      "**/contracting/**",
+                      "@pkg/*/contracting"
+                    ],
+                    "message": "Shared modules cannot import a business namespace; keep business composition in explicit app wiring."
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": [
+        "pkg/web/src/equipment/**",
+        "pkg/web/src/routes/_authed.equipment*",
+        "pkg/mobile/src/equipment/**",
+        "pkg/mobile/app/**/equipment/**"
+      ],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "patterns": [
+                  {
+                    "group": ["../../**", "../../../**"],
                     "message": "Use the @/* alias instead of imports that traverse more than one parent directory."
                   },
                   {
-                    "group": ["equipment/**", "**/equipment/**", "@pkg/core", "@pkg/domain"],
+                    "group": ["contracting/**", "**/contracting/**", "@pkg/*/contracting"],
+                    "message": "Business namespaces may import shared code, never each other."
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": [
+        "pkg/web/src/contracting/**",
+        "pkg/web/src/routes/_authed.contracting*",
+        "pkg/mobile/src/contracting/**",
+        "pkg/mobile/app/**/contracting/**"
+      ],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "patterns": [
+                  {
+                    "group": ["../../**", "../../../**"],
+                    "message": "Use the @/* alias instead of imports that traverse more than one parent directory."
+                  },
+                  {
+                    "group": ["equipment/**", "**/equipment/**", "@pkg/*/equipment"],
                     "message": "Business namespaces may import shared code, never each other."
                   }
                 ]
@@ -141,13 +229,23 @@
     {
       "includes": [
         "pkg/web/src/**",
-        "!pkg/web/src/equipment/**",
-        "!pkg/web/src/contracting/**",
-        "!pkg/web/src/routes/**",
-        "!pkg/web/src/app/route-tree.gen.ts",
         "pkg/mobile/src/**",
+        "pkg/mobile/app/**",
+        "!pkg/web/src/app/route-tree.gen.ts",
+        "!pkg/web/src/equipment/**",
+        "!pkg/web/src/routes/_authed.equipment*",
         "!pkg/mobile/src/equipment/**",
-        "!pkg/mobile/src/contracting/**"
+        "!pkg/mobile/app/**/equipment/**",
+        "!pkg/web/src/contracting/**",
+        "!pkg/web/src/routes/_authed.contracting*",
+        "!pkg/mobile/src/contracting/**",
+        "!pkg/mobile/app/**/contracting/**",
+        "!pkg/web/src/routes/__root.tsx",
+        "!pkg/web/src/routes/_authed.tsx",
+        "!pkg/web/src/routes/index.tsx",
+        "!pkg/mobile/app/_layout.tsx",
+        "!pkg/mobile/app/(protected)/_layout.tsx",
+        "!pkg/mobile/app/(protected)/index.tsx"
       ],
       "linter": {
         "rules": {
@@ -157,12 +255,66 @@
               "options": {
                 "patterns": [
                   {
-                    "group": ["../../*", "../../../*"],
+                    "group": ["../../**", "../../../**"],
                     "message": "Use the @/* alias instead of imports that traverse more than one parent directory."
                   },
                   {
-                    "group": ["equipment/**", "**/equipment/**", "contracting/**", "**/contracting/**"],
+                    "group": [
+                      "equipment/**",
+                      "**/equipment/**",
+                      "@pkg/*/equipment",
+                      "contracting/**",
+                      "**/contracting/**",
+                      "@pkg/*/contracting"
+                    ],
                     "message": "Shared frontend modules cannot import a business namespace; keep business composition in explicit route wiring."
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": [
+        "pkg/web/src/routes/__root.tsx",
+        "pkg/web/src/routes/_authed.tsx",
+        "pkg/web/src/routes/index.tsx",
+        "pkg/mobile/app/_layout.tsx",
+        "pkg/mobile/app/(protected)/_layout.tsx",
+        "pkg/mobile/app/(protected)/index.tsx"
+      ],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "patterns": [
+                  {
+                    "group": ["../../**", "../../../**"],
+                    "message": "Use the @/* alias instead of imports that traverse more than one parent directory."
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["pkg/lander/src/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "patterns": [
+                  {
+                    "group": ["../../**", "../../../**"],
+                    "message": "Use the @/* alias instead of imports that traverse more than one parent directory."
                   }
                 ]
               }

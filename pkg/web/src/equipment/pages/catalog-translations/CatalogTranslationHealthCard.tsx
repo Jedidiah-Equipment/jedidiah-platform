@@ -1,4 +1,4 @@
-import type { CatalogTranslationStatus } from '@pkg/schema';
+import type { CatalogTranslationStatus } from '@pkg/schema/equipment';
 import { IconLanguage, IconLoader2 } from '@tabler/icons-react';
 import type React from 'react';
 

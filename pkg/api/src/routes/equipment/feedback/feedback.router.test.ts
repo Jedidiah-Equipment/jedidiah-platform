@@ -1,7 +1,6 @@
+import { type Db, eq, user } from '@pkg/db';
 import {
   customers,
-  type Db,
-  eq,
   feedback,
   feedbackDepartment,
   feedbackUser,
@@ -9,9 +8,8 @@ import {
   products,
   productUnits,
   quotes,
-  user,
-} from '@pkg/db';
-import type { FeedbackStatus } from '@pkg/schema';
+} from '@pkg/db/equipment';
+import type { FeedbackStatus } from '@pkg/schema/equipment';
 import { describe, expect } from 'vitest';
 import { createProductRangeFixture } from '@/equipment/test/product-range-fixtures.js';
 import { createTester, type TesterContext } from '@/test/create-tester.js';

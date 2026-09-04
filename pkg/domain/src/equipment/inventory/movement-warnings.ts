@@ -1,4 +1,4 @@
-import type { StockMovementWarningCode } from '@pkg/schema';
+import type { StockMovementWarningCode } from '@pkg/schema/equipment';
 import { type BuildBomComponent, type BuildWarningLine, deriveBuildComponentWarnings } from './build.js';
 
 /** The stock facts a Job movement is judged against, all scoped to one Job, Part and length bucket. */

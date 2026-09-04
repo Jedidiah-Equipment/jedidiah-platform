@@ -1,12 +1,5 @@
-import {
-  Bay,
-  type BoardPlacement,
-  DateOnlyIso,
-  ProductBay,
-  ProjectedBayQueue,
-  ProjectedJobSlot,
-  UUID,
-} from '@pkg/schema';
+import { DateOnlyIso, UUID } from '@pkg/schema';
+import { Bay, type BoardPlacement, ProductBay, ProjectedBayQueue, ProjectedJobSlot } from '@pkg/schema/equipment';
 import { describe, expect, it } from 'vitest';
 
 import { selectBayCalendars } from '@/equipment/hooks/use-bay-calendars.js';

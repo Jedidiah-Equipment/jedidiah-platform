@@ -1,10 +1,10 @@
-import type { DocumentOwnerType, JobDocumentType } from '@pkg/schema';
+import type { DocumentOwnerType, JobDocumentType } from '@pkg/schema/equipment';
 import {
   JobDocumentMetadata,
   ProductDocumentMetadata,
   PurchaseOrderDocumentMetadata,
   QuoteDocumentMetadata,
-} from '@pkg/schema';
+} from '@pkg/schema/equipment';
 import type { ZodType } from 'zod';
 
 import {
@@ -12,15 +12,6 @@ import {
   DOCUMENT_ZIP_CONTENT_TYPE,
   documentContentTypeLabel,
   formatBytes,
-} from '../../files/file-policy.js';
-
-export {
-  DOCUMENT_JPEG_CONTENT_TYPE,
-  DOCUMENT_PDF_CONTENT_TYPE,
-  DOCUMENT_PNG_CONTENT_TYPE,
-  DOCUMENT_WEBP_CONTENT_TYPE,
-  DOCUMENT_ZIP_CONTENT_TYPE,
-  sniffDocumentContentType,
 } from '../../files/file-policy.js';
 
 export const JOB_DOCUMENT_TYPE_LABELS = {

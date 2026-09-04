@@ -1,5 +1,5 @@
 import { formatDate } from '@pkg/domain';
-import type { JobSalesExportRow } from '@pkg/schema';
+import type { JobSalesExportRow } from '@pkg/schema/equipment';
 import Papa from 'papaparse';
 
 import { downloadCsv, toCsvAmount } from '@/utils/csv-export.js';

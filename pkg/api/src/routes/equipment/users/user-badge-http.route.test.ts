@@ -1,7 +1,7 @@
 import fastifyMultipart from '@fastify/multipart';
 import type { Db } from '@pkg/db';
 import { user } from '@pkg/db';
-import type { UserBadgePdfModel, UserBadgePdfRenderer } from '@pkg/schema';
+import type { UserBadgePdfModel, UserBadgePdfRenderer } from '@pkg/schema/equipment';
 import Fastify, { type FastifyInstance } from 'fastify';
 import { afterEach, beforeEach, describe, expect, vi } from 'vitest';
 

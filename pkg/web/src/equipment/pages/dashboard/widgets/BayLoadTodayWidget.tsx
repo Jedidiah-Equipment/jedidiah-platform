@@ -1,11 +1,11 @@
+import { statusBadgeColorClassNames } from '@pkg/domain';
 import {
   computeBayLoadTodayByDepartment,
   type DepartmentBayLoadToday,
   departmentLabels,
   JOB_DEPARTMENT_PIPELINE,
-  statusBadgeColorClassNames,
-} from '@pkg/domain';
-import type { Department } from '@pkg/schema';
+} from '@pkg/domain/equipment';
+import type { Department } from '@pkg/schema/equipment';
 import type React from 'react';
 import { Label, PolarAngleAxis, PolarRadiusAxis, RadialBar, RadialBarChart } from 'recharts';
 

@@ -1,6 +1,6 @@
 import { useDebouncedValue } from '@mantine/hooks';
 import { hasPermission } from '@pkg/domain';
-import type { Bay, StockBuildCreateInput } from '@pkg/schema';
+import type { Bay, StockBuildCreateInput } from '@pkg/schema/equipment';
 import { IconLoader2 } from '@tabler/icons-react';
 import { useStore } from '@tanstack/react-form';
 import { useMutation, useQuery } from '@tanstack/react-query';

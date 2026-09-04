@@ -1,6 +1,6 @@
 import { createServerFn } from '@tanstack/react-start';
 
-import type { Locale } from '../../lib/locale.js';
+import type { Locale } from '@/lib/locale.js';
 import type { ProductDetail } from './product-detail-data.js';
 
 export type { ProductDetail };

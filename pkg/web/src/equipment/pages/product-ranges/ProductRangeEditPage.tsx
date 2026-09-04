@@ -1,4 +1,5 @@
-import type { ProductRange, UUID } from '@pkg/schema';
+import type { UUID } from '@pkg/schema';
+import type { ProductRange } from '@pkg/schema/equipment';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import type React from 'react';

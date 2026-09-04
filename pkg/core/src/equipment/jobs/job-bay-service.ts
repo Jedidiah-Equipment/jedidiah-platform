@@ -3,15 +3,12 @@ import {
   type Db,
   getForeignKeyViolationConstraint,
   getUniqueViolationConstraint,
-  jobBayOperatorAssignments,
-  jobBays,
-  jobSlots,
-  productBays,
   user,
 } from '@pkg/db';
+import { jobBayOperatorAssignments, jobBays, jobSlots, productBays } from '@pkg/db/equipment';
 import { getPlantDateNow } from '@pkg/domain';
+import type { AuthId } from '@pkg/schema';
 import {
-  type AuthId,
   Bay,
   BayOperator,
   BayOperatorListResult,
@@ -30,7 +27,7 @@ import {
   JobBaySetDisabledResult,
   type JobBayUnassignOperatorInput,
   JobBayUnassignOperatorResult,
-} from '@pkg/schema';
+} from '@pkg/schema/equipment';
 import { and, asc, desc, eq, isNotNull, isNull, type SQL } from 'drizzle-orm';
 
 import {

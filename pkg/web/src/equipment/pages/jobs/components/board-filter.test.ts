@@ -1,4 +1,5 @@
-import { DateOnlyIso, type Department, type UUID } from '@pkg/schema';
+import { DateOnlyIso, type UUID } from '@pkg/schema';
+import type { Department } from '@pkg/schema/equipment';
 import { describe, expect, it } from 'vitest';
 
 import {

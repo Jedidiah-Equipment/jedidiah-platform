@@ -1,6 +1,7 @@
 import type { LanguageModelV4CallOptions, LanguageModelV4GenerateResult } from '@ai-sdk/provider';
-import { type Db, eq, productRanges, productRangeVariants, products, user } from '@pkg/db';
-import type { Product } from '@pkg/schema';
+import { type Db, eq, user } from '@pkg/db';
+import { productRanges, productRangeVariants, products } from '@pkg/db/equipment';
+import type { Product } from '@pkg/schema/equipment';
 import { MockLanguageModelV4 } from 'ai/test';
 import { describe, expect } from 'vitest';
 import { createProductRangeFixture } from '@/equipment/test/product-range-fixtures.js';

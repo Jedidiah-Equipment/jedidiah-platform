@@ -1,4 +1,5 @@
-import { DocumentSummary, type UUID } from '@pkg/schema';
+import type { UUID } from '@pkg/schema';
+import { DocumentSummary } from '@pkg/schema/equipment';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {

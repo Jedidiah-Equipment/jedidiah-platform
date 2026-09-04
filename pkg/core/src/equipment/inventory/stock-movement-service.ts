@@ -1,6 +1,5 @@
+import { type DatabaseTransaction, type Db, user } from '@pkg/db';
 import {
-  type DatabaseTransaction,
-  type Db,
   jobCfoAssemblies,
   jobCfoParts,
   jobs,
@@ -9,8 +8,8 @@ import {
   stockMovements,
   stocktakeSessions,
   supplier,
-  user,
-} from '@pkg/db';
+} from '@pkg/db/equipment';
+import { groupBy } from '@pkg/domain';
 import {
   deriveCommitment,
   deriveMovementWarnings,
@@ -18,13 +17,12 @@ import {
   deriveMovingAverageTimeline,
   deriveOutstandingDrawUnitCost,
   derivePartStockActions,
-  groupBy,
   type JobMovementFacts,
   valueStockBucket,
   valueStockMovement,
-} from '@pkg/domain';
+} from '@pkg/domain/equipment';
+import type { AuthId, UUID } from '@pkg/schema';
 import type {
-  AuthId,
   JobStockMovementType,
   JobStockResult,
   PostAdjustmentInput,
@@ -35,8 +33,7 @@ import type {
   StockMovementPostResult,
   StockOnHandResult,
   StockOnHandRow,
-  UUID,
-} from '@pkg/schema';
+} from '@pkg/schema/equipment';
 import {
   isPeriodicStockAdjustmentReason,
   JOB_STOCK_MOVEMENT_TYPES,
@@ -45,7 +42,7 @@ import {
   StockMovementPostResult as StockMovementPostResultSchema,
   StockOnHandResult as StockOnHandResultSchema,
   unitClassFor,
-} from '@pkg/schema';
+} from '@pkg/schema/equipment';
 import { and, asc, eq, inArray, ne, sql } from 'drizzle-orm';
 import { lockJob, lockMutableJob } from '../jobs/job-mutation-guards.js';
 import { loadOpenOrderLines } from '../purchase-orders/purchase-order-service.js';

@@ -1,5 +1,5 @@
-import { resolveEffectiveBom } from '@pkg/domain';
-import type { Assembly } from '@pkg/schema';
+import { resolveEffectiveBom } from '@pkg/domain/equipment';
+import type { Assembly } from '@pkg/schema/equipment';
 import type React from 'react';
 
 import { Checkbox } from '@/components/ui/checkbox.js';

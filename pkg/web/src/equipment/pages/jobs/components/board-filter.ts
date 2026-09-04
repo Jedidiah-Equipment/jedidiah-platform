@@ -1,4 +1,5 @@
-import type { DateOnlyIso, Department, UUID } from '@pkg/schema';
+import type { DateOnlyIso, UUID } from '@pkg/schema';
+import type { Department } from '@pkg/schema/equipment';
 
 export type BoardFilter = {
   bayId: UUID | null;

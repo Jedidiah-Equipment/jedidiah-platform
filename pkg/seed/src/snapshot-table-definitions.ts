@@ -1,5 +1,5 @@
 import { CREDENTIAL_ACCOUNT_ISSUER } from '@pkg/db';
-import { LEGACY_QUOTE_CANCELLATION_REASON } from '@pkg/schema';
+import { LEGACY_QUOTE_CANCELLATION_REASON } from '@pkg/schema/equipment';
 import type { PgTable } from 'drizzle-orm/pg-core';
 
 export type SnapshotRow = Record<string, unknown>;

@@ -1,5 +1,6 @@
-import { formatDate, quoteKindLabels } from '@pkg/domain';
-import type { PriorityQuote } from '@pkg/schema';
+import { formatDate } from '@pkg/domain';
+import { quoteKindLabels } from '@pkg/domain/equipment';
+import type { PriorityQuote } from '@pkg/schema/equipment';
 import { IconAlertTriangle } from '@tabler/icons-react-native';
 import { View } from 'react-native';
 

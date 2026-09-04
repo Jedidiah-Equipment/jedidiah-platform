@@ -1,5 +1,5 @@
-import { isJobScheduleComplete } from '@pkg/domain';
-import type { JobSummary } from '@pkg/schema';
+import { isJobScheduleComplete } from '@pkg/domain/equipment';
+import type { JobSummary } from '@pkg/schema/equipment';
 
 type BookSlotJob = Pick<JobSummary, 'productBuildTimeDays' | 'scheduleState'>;
 export type BookSlotJobFilter = 'active' | 'all' | 'unscheduled';

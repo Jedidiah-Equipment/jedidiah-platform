@@ -1,5 +1,7 @@
-import { and, type Db, eq, notRemoved, productRanges, products } from '@pkg/db';
-import { ProductImageSlot, type ProductImageSlot as ProductImageSlotName, UUID } from '@pkg/schema';
+import { and, type Db, eq, notRemoved } from '@pkg/db';
+import { productRanges, products } from '@pkg/db/equipment';
+import { UUID } from '@pkg/schema';
+import { ProductImageSlot, type ProductImageSlot as ProductImageSlotName } from '@pkg/schema/equipment';
 
 const DEFAULT_PRODUCT_IMAGE_SLOT: ProductImageSlotName = 'primary';
 

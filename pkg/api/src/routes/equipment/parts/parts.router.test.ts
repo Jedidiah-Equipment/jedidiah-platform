@@ -1,5 +1,5 @@
 import { auditEvents, type Db, user } from '@pkg/db';
-import type { Part, PartCreateInput, Supplier } from '@pkg/schema';
+import type { Part, PartCreateInput, Supplier } from '@pkg/schema/equipment';
 import { describe, expect } from 'vitest';
 
 import { type AppRouterCaller, createTester } from '@/test/create-tester.js';

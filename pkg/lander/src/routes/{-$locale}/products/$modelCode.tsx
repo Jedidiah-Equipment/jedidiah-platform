@@ -1,4 +1,4 @@
-import { contactNumberE164 } from '@pkg/domain';
+import { contactNumberE164 } from '@pkg/domain/equipment';
 import {
   IconArrowRight,
   IconCheck,
@@ -11,14 +11,14 @@ import {
 import { createFileRoute, Link, notFound } from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
 
-import { ProductCard } from '../../../components/product-card.js';
-import { SandWatermarkSection } from '../../../components/sand-watermark-section.js';
-import { captureEvent, captureEventForNavigation } from '../../../lib/analytics.js';
-import { createMetaEventId, metaMatchKeys, trackMetaViewContent } from '../../../lib/meta-pixel.js';
-import { seoHead, truncateDescription } from '../../../lib/seo.js';
-import { messagesForLocale, useMessages } from '../../../messages/index.js';
-import { getProductDetail } from '../../../server/catalog/product-detail.js';
-import type { ProductDetail } from '../../../server/catalog/product-detail-data.js';
+import { ProductCard } from '@/components/product-card.js';
+import { SandWatermarkSection } from '@/components/sand-watermark-section.js';
+import { captureEvent, captureEventForNavigation } from '@/lib/analytics.js';
+import { createMetaEventId, metaMatchKeys, trackMetaViewContent } from '@/lib/meta-pixel.js';
+import { seoHead, truncateDescription } from '@/lib/seo.js';
+import { messagesForLocale, useMessages } from '@/messages/index.js';
+import { getProductDetail } from '@/server/catalog/product-detail.js';
+import type { ProductDetail } from '@/server/catalog/product-detail-data.js';
 
 export const Route = createFileRoute('/{-$locale}/products/$modelCode')({
   loader: async ({ context, params }) => {

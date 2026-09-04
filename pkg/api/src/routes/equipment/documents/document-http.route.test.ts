@@ -1,8 +1,8 @@
 import fastifyMultipart from '@fastify/multipart';
 import type { StorageAdapter, StoragePutInput, StoredObject } from '@pkg/core';
+import { type Db, sql, user } from '@pkg/db';
 import {
   customers,
-  type Db,
   documents,
   jobs,
   parts,
@@ -13,11 +13,9 @@ import {
   purchaseOrderLines,
   purchaseOrders,
   quotes,
-  sql,
   stockMovements,
   supplier,
-  user,
-} from '@pkg/db';
+} from '@pkg/db/equipment';
 import type { UUID } from '@pkg/schema';
 import Fastify, { type FastifyInstance } from 'fastify';
 import { afterEach, beforeEach, describe, expect, vi } from 'vitest';

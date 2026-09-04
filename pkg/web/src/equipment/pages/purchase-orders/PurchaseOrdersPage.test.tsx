@@ -1,4 +1,4 @@
-import type { PurchaseOrderView } from '@pkg/schema';
+import type { PurchaseOrderView } from '@pkg/schema/equipment';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
 

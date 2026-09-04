@@ -1,4 +1,4 @@
-import { stockMovements } from '@pkg/db';
+import { stockMovements } from '@pkg/db/equipment';
 import { eq } from 'drizzle-orm';
 import { describe, expect } from 'vitest';
 

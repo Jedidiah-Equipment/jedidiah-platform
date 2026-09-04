@@ -1,5 +1,5 @@
 import { sql, user } from '@pkg/db';
-import { CustomerCreateInput } from '@pkg/schema';
+import { CustomerCreateInput } from '@pkg/schema/equipment';
 import { describe, expect, it } from 'vitest';
 
 import { createTester } from '../test/create-tester.js';

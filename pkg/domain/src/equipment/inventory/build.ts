@@ -1,4 +1,4 @@
-import type { StockMovementWarningCode } from '@pkg/schema';
+import type { StockMovementWarningCode } from '@pkg/schema/equipment';
 
 export type BuildBomLine = {
   componentPartId: string;

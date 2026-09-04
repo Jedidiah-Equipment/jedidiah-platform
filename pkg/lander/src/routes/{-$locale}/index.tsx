@@ -1,14 +1,14 @@
 import { IconArrowRight } from '@tabler/icons-react';
 import { createFileRoute, Link } from '@tanstack/react-router';
 
-import { HERO_IMAGE } from '../../assets/images.js';
-import { FeatureBar } from '../../components/feature-bar.js';
-import { RangeCard } from '../../components/range-card.js';
-import { SandWatermarkSection } from '../../components/sand-watermark-section.js';
-import { captureEvent } from '../../lib/analytics.js';
-import { seoHead } from '../../lib/seo.js';
-import { messagesForLocale, useMessages } from '../../messages/index.js';
-import { getHomeRanges } from '../../server/catalog/ranges.js';
+import { HERO_IMAGE } from '@/assets/images.js';
+import { FeatureBar } from '@/components/feature-bar.js';
+import { RangeCard } from '@/components/range-card.js';
+import { SandWatermarkSection } from '@/components/sand-watermark-section.js';
+import { captureEvent } from '@/lib/analytics.js';
+import { seoHead } from '@/lib/seo.js';
+import { messagesForLocale, useMessages } from '@/messages/index.js';
+import { getHomeRanges } from '@/server/catalog/ranges.js';
 
 export const Route = createFileRoute('/{-$locale}/')({
   // Loader precedes head: TypeScript infers the route's loader data poorly when a context-sensitive head

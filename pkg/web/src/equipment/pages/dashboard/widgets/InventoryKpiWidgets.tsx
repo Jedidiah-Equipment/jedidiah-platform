@@ -1,6 +1,6 @@
 import { formatCurrency } from '@pkg/domain';
-import type { InventoryKpis } from '@pkg/schema';
-import { STOCK_ADJUSTMENT_REASON_LABELS } from '@pkg/schema';
+import type { InventoryKpis } from '@pkg/schema/equipment';
+import { STOCK_ADJUSTMENT_REASON_LABELS } from '@pkg/schema/equipment';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import type React from 'react';

@@ -1,4 +1,4 @@
-import { PartLabelBatchSelection } from '@pkg/schema';
+import { PartLabelBatchSelection } from '@pkg/schema/equipment';
 import { IconPrinter } from '@tabler/icons-react';
 import type React from 'react';
 import { useMemo, useState } from 'react';

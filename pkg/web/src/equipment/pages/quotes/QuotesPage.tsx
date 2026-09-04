@@ -1,5 +1,6 @@
 import { hasPermission } from '@pkg/domain';
-import { type QuoteListInput, QuoteSortBy, type UUID } from '@pkg/schema';
+import type { UUID } from '@pkg/schema';
+import { type QuoteListInput, QuoteSortBy } from '@pkg/schema/equipment';
 import { IconPlus } from '@tabler/icons-react';
 import { keepPreviousData, useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';

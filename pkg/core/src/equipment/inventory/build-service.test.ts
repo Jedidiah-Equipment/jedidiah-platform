@@ -1,4 +1,5 @@
-import { eq, stockMovements } from '@pkg/db';
+import { eq } from '@pkg/db';
+import { stockMovements } from '@pkg/db/equipment';
 import { describe, expect } from 'vitest';
 import { PartNotBuiltError } from '../parts/part-bom-errors.js';
 import { actorUserId, opening, test } from '../test/build-fixtures.js';

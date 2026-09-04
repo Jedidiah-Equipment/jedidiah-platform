@@ -6,7 +6,7 @@ import {
   JobNotFoundError,
   type PurchaseOrderCoreError,
   type SupplierInvoiceCoreError,
-} from '@pkg/core';
+} from '@pkg/core/equipment';
 
 import { defineCoreErrorFamily } from '../../../trpc/errors.js';
 

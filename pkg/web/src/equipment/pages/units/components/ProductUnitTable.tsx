@@ -1,10 +1,11 @@
-import { hasPermission, productUnitBuildStateLabels } from '@pkg/domain';
+import { hasPermission } from '@pkg/domain';
+import { productUnitBuildStateLabels } from '@pkg/domain/equipment';
 import {
   ProductUnitDisplayBuildState,
   type ProductUnitListInput,
   ProductUnitSortBy,
   type ProductUnitSummary,
-} from '@pkg/schema';
+} from '@pkg/schema/equipment';
 import { IconDownload, IconLoader2 } from '@tabler/icons-react';
 import { keepPreviousData, useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ColumnFiltersState } from '@tanstack/react-table';

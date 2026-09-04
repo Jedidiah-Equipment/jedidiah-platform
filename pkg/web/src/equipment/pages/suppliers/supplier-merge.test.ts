@@ -1,4 +1,5 @@
-import { DateIso, type Supplier } from '@pkg/schema';
+import { DateIso } from '@pkg/schema';
+import type { Supplier } from '@pkg/schema/equipment';
 import { describe, expect, it } from 'vitest';
 
 import { formatSupplierMergeConfirmation, getSupplierMergeOptions } from './supplier-merge.js';

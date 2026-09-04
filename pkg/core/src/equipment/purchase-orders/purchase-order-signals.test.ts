@@ -1,4 +1,5 @@
-import { parts, purchaseOrders, supplier, user } from '@pkg/db';
+import { user } from '@pkg/db';
+import { parts, purchaseOrders, supplier } from '@pkg/db/equipment';
 import { eq } from 'drizzle-orm';
 import { describe, expect } from 'vitest';
 

@@ -1,4 +1,5 @@
-import type { DateOnlyIso, StocktakeOverdueRow, StocktakeScope, StocktakeSessionStatus } from '@pkg/schema';
+import type { DateOnlyIso } from '@pkg/schema';
+import type { StocktakeOverdueRow, StocktakeScope, StocktakeSessionStatus } from '@pkg/schema/equipment';
 
 import { addDateOnlyDays, addDateOnlyMonths, diffDateOnlyDays } from '../../formatting/date-only.js';
 import { type BadgeColorClassNames, statusBadgeColorClassNames } from '../../theme/status-badge.js';

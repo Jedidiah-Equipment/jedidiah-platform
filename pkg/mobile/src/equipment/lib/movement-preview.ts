@@ -1,11 +1,11 @@
-import { deriveMovementWarnings } from '@pkg/domain';
+import { deriveMovementWarnings } from '@pkg/domain/equipment';
 import type {
   JobStockMovementType,
   JobStockResult,
   PartPurchaseOrderLine,
   StockMovementWarningCode,
   StockOnHandRow,
-} from '@pkg/schema';
+} from '@pkg/schema/equipment';
 
 /**
  * What the ledger would say about a movement the tablet is about to post, judged against the facts

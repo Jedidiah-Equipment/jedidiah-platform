@@ -1,4 +1,4 @@
-import type { PartSearchRow } from '@pkg/schema';
+import type { PartSearchRow } from '@pkg/schema/equipment';
 import { keepPreviousData, useInfiniteQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
 import { Pressable, View } from 'react-native';

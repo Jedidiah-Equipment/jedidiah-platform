@@ -1,11 +1,14 @@
 import {
   createEscapedContainsSearchCondition,
-  currentOwnerCustomerId,
-  customers,
   type DatabaseTransaction,
   type Db,
-  documents,
   getPaginationQueryOptions,
+  user,
+} from '@pkg/db';
+import {
+  currentOwnerCustomerId,
+  customers,
+  documents,
   jobBayOperatorAssignments,
   jobBays,
   jobCfoAssemblies,
@@ -20,14 +23,13 @@ import {
   purchaseOrderJobLinks,
   quotes,
   quoteWorkItems,
-  user,
-} from '@pkg/db';
+} from '@pkg/db/equipment';
+import { getPlantDateNow } from '@pkg/domain';
 import {
   countWorkingDaysBetween,
   departmentLabels,
   foldJobScheduleStates,
   getBoardJobIds,
-  getPlantDateNow,
   parseJobCodeSearch,
   resolveBoardWindowFrom,
   resolveJobCustomer,
@@ -35,13 +37,11 @@ import {
   sliceJobSchedule,
   summarizeSlotCalendarDays,
   windowActiveBoard,
-} from '@pkg/domain';
+} from '@pkg/domain/equipment';
+import { DateIso, type DateOnlyIso, getNextCursor, type SortDirection, UUID } from '@pkg/schema';
 import {
   type BoardListInput,
   type BoardListResult,
-  DateIso,
-  type DateOnlyIso,
-  getNextCursor,
   type JobCustomerOptionListInput,
   type JobCustomerOptionListResult,
   type JobDetail,
@@ -55,10 +55,8 @@ import {
   type ProjectedBayQueue,
   type ProjectedWorkJobSlot,
   QuoteCode,
-  type SortDirection,
-  UUID,
   WORK_ITEM_DEPARTMENTS,
-} from '@pkg/schema';
+} from '@pkg/schema/equipment';
 import { and, asc, desc, eq, gte, inArray, isNull, lte, or, type SQL, type SQLWrapper, sql } from 'drizzle-orm';
 import type { StorageAdapter } from '../../storage/storage-adapter.js';
 import { DocumentNotFoundError } from '../documents/document-errors.js';

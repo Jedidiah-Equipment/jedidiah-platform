@@ -1,5 +1,5 @@
-import type { DocumentSummary as DocumentSummaryModel } from '@pkg/schema';
-import { DocumentSummary } from '@pkg/schema';
+import type { DocumentSummary as DocumentSummaryModel } from '@pkg/schema/equipment';
+import { DocumentSummary } from '@pkg/schema/equipment';
 import { describe, expect, it } from 'vitest';
 
 import { filterDocumentCards, getVisibleDocumentCards, sortDocumentCards } from './document-card-list-state.js';

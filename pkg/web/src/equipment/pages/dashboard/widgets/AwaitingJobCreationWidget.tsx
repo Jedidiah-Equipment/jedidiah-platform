@@ -1,5 +1,5 @@
 import { formatDate } from '@pkg/domain';
-import type { QuoteSummary } from '@pkg/schema';
+import type { QuoteSummary } from '@pkg/schema/equipment';
 import { useQuery } from '@tanstack/react-query';
 import type React from 'react';
 

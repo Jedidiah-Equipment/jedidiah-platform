@@ -1,9 +1,9 @@
-import { listAllProducts } from '@pkg/core';
+import { listAllProducts } from '@pkg/core/equipment';
 import type { Db } from '@pkg/db';
-import { isLanderReady } from '@pkg/domain';
-import type { Product, ProductAssemblyTranslations, ProductTranslations } from '@pkg/schema';
-import { LOCALES, localePath } from '../../lib/locale.js';
-import { SITE_URL } from '../../lib/seo.js';
+import { isLanderReady } from '@pkg/domain/equipment';
+import type { Product, ProductAssemblyTranslations, ProductTranslations } from '@pkg/schema/equipment';
+import { LOCALES, localePath } from '@/lib/locale.js';
+import { SITE_URL } from '@/lib/seo.js';
 
 // The crawlable static pages, in nav order. Product detail URLs are appended from live data.
 export const SITEMAP_STATIC_PATHS = ['/', '/products', '/about', '/contact'] as const;

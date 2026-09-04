@@ -1,3 +1,4 @@
+import type { UUID } from '@pkg/schema';
 import {
   type ProductRange,
   type ProductRangeCreateInput,
@@ -6,8 +7,7 @@ import {
   ProductRangeName,
   type ProductRangeUpdateInput,
   ProductRangeUpdateInput as ProductRangeUpdateInputSchema,
-  type UUID,
-} from '@pkg/schema';
+} from '@pkg/schema/equipment';
 import { z } from 'zod';
 
 import { emptyStringOr } from '@/components/form/utils/form-schema.js';

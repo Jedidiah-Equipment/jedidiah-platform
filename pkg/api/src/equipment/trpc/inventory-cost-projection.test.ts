@@ -1,5 +1,5 @@
 import { createUserAccessSummary, roleSlotsForRole } from '@pkg/domain';
-import { InventoryCost } from '@pkg/schema';
+import { InventoryCost } from '@pkg/schema/equipment';
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 

@@ -1,5 +1,6 @@
-import { formatBytes, JOB_DOCUMENT_TYPE_LABELS } from '@pkg/domain';
-import type { JobVisibleDocument } from '@pkg/schema';
+import { formatBytes } from '@pkg/domain';
+import { JOB_DOCUMENT_TYPE_LABELS } from '@pkg/domain/equipment';
+import type { JobVisibleDocument } from '@pkg/schema/equipment';
 import { IconChevronRight, IconDownload } from '@tabler/icons-react-native';
 import { useRouter } from 'expo-router';
 import { ActivityIndicator, Pressable, View } from 'react-native';

@@ -1,6 +1,6 @@
+import { type Db, user } from '@pkg/db';
 import {
   customers,
-  type Db,
   jobs,
   parts,
   products,
@@ -8,9 +8,8 @@ import {
   productUnits,
   quotes,
   supplier,
-  user,
-} from '@pkg/db';
-import { formatQuoteCode } from '@pkg/schema';
+} from '@pkg/db/equipment';
+import { formatQuoteCode } from '@pkg/schema/equipment';
 import { eq } from 'drizzle-orm';
 import { describe, expect } from 'vitest';
 

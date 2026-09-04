@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { type AppEnv, NodeEnv } from '../domain/environment.js';
+import { type AppEnv, NodeEnv } from './environment.js';
 
 export const POSTHOG_CLIENT_API_HOST = '/info';
 export const POSTHOG_ASSET_HOST = 'https://us-assets.i.posthog.com';

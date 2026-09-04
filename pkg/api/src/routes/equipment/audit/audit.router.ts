@@ -1,4 +1,4 @@
-import { listAuditEvents } from '@pkg/core';
+import { listAuditEvents } from '@pkg/core/equipment';
 import { AuditListInput } from '@pkg/schema';
 
 import { authorizedProcedure, router } from '../../../trpc/init.js';

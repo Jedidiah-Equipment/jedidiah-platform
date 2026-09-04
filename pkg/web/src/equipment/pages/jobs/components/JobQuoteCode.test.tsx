@@ -1,4 +1,5 @@
-import { QuoteCode, UUID } from '@pkg/schema';
+import { UUID } from '@pkg/schema';
+import { QuoteCode } from '@pkg/schema/equipment';
 import { isValidElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { expect, test, vi } from 'vitest';

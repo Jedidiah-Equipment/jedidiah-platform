@@ -2,7 +2,7 @@ import { closestCenter, DndContext, type DragEndEvent, PointerSensor, useSensor,
 import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
 import { arrayMove, SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { hasPermission } from '@pkg/domain';
-import type { ProductRange } from '@pkg/schema';
+import type { ProductRange } from '@pkg/schema/equipment';
 import { IconGripVertical, IconLoader2, IconPencil, IconPlus } from '@tabler/icons-react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';

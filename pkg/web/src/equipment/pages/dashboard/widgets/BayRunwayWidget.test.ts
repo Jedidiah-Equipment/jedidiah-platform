@@ -1,5 +1,7 @@
-import { BAY_RUNWAY_CAP_WORKING_DAYS, statusBadgeColorClassNames } from '@pkg/domain';
-import { DateOnlyIso, ProjectedBayQueue, ProjectedJobSlot, type UUID } from '@pkg/schema';
+import { statusBadgeColorClassNames } from '@pkg/domain';
+import { BAY_RUNWAY_CAP_WORKING_DAYS } from '@pkg/domain/equipment';
+import { DateOnlyIso, type UUID } from '@pkg/schema';
+import { ProjectedBayQueue, ProjectedJobSlot } from '@pkg/schema/equipment';
 import { describe, expect, it } from 'vitest';
 
 import { SHOP_FLOOR_BAND_HEIGHT_PX } from '../dashboard-widget-layout.js';

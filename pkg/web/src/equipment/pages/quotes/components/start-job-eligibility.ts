@@ -1,5 +1,5 @@
-import { canStartJobFromQuote as getStartJobEligibility } from '@pkg/domain';
-import type { QuoteDetail } from '@pkg/schema';
+import { canStartJobFromQuote as getStartJobEligibility } from '@pkg/domain/equipment';
+import type { QuoteDetail } from '@pkg/schema/equipment';
 
 /**
  * The facts the start-Job policy reads. Kept per quote kind so a product quote cannot reach the

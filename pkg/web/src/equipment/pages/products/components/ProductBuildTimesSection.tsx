@@ -1,6 +1,8 @@
-import { departmentCrewLabels, departmentLabels, formatDate, formatNumber, WORK_ITEM_DEPARTMENTS } from '@pkg/domain';
-import type { ProductBuildMetrics, UUID, WorkItemDepartment } from '@pkg/schema';
-import { formatJobCode } from '@pkg/schema';
+import { formatDate, formatNumber } from '@pkg/domain';
+import { departmentCrewLabels, departmentLabels, WORK_ITEM_DEPARTMENTS } from '@pkg/domain/equipment';
+import type { UUID } from '@pkg/schema';
+import type { ProductBuildMetrics, WorkItemDepartment } from '@pkg/schema/equipment';
+import { formatJobCode } from '@pkg/schema/equipment';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import { useMemo, useState } from 'react';

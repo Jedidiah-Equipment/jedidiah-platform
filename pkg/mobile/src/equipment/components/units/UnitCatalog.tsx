@@ -1,5 +1,5 @@
 import { formatDate } from '@pkg/domain';
-import type { ProductUnitSummary } from '@pkg/schema';
+import type { ProductUnitSummary } from '@pkg/schema/equipment';
 import { IconArrowsSort, IconFilter } from '@tabler/icons-react-native';
 import { useRouter } from 'expo-router';
 import { View } from 'react-native';

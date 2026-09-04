@@ -5,7 +5,7 @@ import { type Auth as BetterAuth, type BetterAuthPlugin, betterAuth } from 'bett
 import { admin as adminPlugin } from 'better-auth/plugins';
 import { emailSender } from '../email/index.js';
 import { getApiConfig } from '../env.js';
-import { ac, authRoles, defaultAuthRole } from './access-control.js';
+import { ac, authRoles } from './access-control.js';
 import { assertUserCanCreateSession } from './sign-in-eligibility.js';
 import { userPhoneValidationPlugin } from './user-phone-validation.js';
 
@@ -43,6 +43,7 @@ function createAuthOptions(database: Db, businessPlugins: readonly BetterAuthPlu
     },
     user: {
       additionalFields: {
+        contractingRole: { type: 'string' as const, required: false as const, input: false as const },
         phoneNumber: { type: 'string' as const, required: false as const, input: true as const },
         // Admin create-user accepts server-owned data fields, while input:false keeps ordinary
         // profile endpoints from letting a signed-in account make itself a shared device.
@@ -66,7 +67,6 @@ function createAuthOptions(database: Db, businessPlugins: readonly BetterAuthPlu
       adminPlugin({
         ac,
         adminRoles: ['admin'],
-        defaultRole: defaultAuthRole,
         roles: authRoles,
       }),
       ...businessPlugins,

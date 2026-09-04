@@ -31,6 +31,7 @@ const authClient = createAuthClient({
     inferAdditionalFields({
       user: {
         assistantEnabled: { type: 'boolean' },
+        contractingRole: { type: 'string' },
       },
     }),
   ],

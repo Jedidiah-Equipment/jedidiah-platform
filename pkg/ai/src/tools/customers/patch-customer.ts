@@ -55,7 +55,7 @@ export const patchCustomerDefinition = {
   ].join('\n'),
   inputSchema: PatchCustomerInput,
   outputSchema: PatchCustomerResponse,
-  anyOfPermissions: ['customer:update'],
+  anyOfPermissions: ['equipment_customer:update'],
   async handler(args: unknown, ctx: AiContext): Promise<PatchCustomerResponse> {
     const input = toCoreCustomerPatchInput(PatchCustomerInput.parse(args));
     const customer = await customersCore.patchCustomer({

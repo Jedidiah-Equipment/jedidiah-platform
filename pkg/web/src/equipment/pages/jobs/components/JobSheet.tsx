@@ -70,8 +70,8 @@ type JobSheetProps = {
 export const JobSheet: React.FC<JobSheetProps> = ({ jobId, onClose }) => {
   const trpc = useTRPC();
   const jobQuery = useQuery(trpc.jobs.get.queryOptions({ id: jobId }));
-  const canReadInventory = useCan('inventory:read').can;
-  const canReadQuotes = useCan('quote:read').can;
+  const canReadInventory = useCan('equipment_inventory:read').can;
+  const canReadQuotes = useCan('equipment_quote:read').can;
   const [tab, setTab] = useState<JobSheetTab>('details');
 
   return (
@@ -178,7 +178,7 @@ const JobDetailsTab: React.FC<{ canOpenQuote: boolean; job: JobDetail; onOpenQuo
   onOpenQuote,
 }) => {
   const trpc = useTRPC();
-  const canEditJobs = useCan('job:update').can && !isJobCancelled(job);
+  const canEditJobs = useCan('equipment_job:update').can && !isJobCancelled(job);
   const { invalidateJobActivity, invalidateJobs, invalidateQuotes } = useQueryInvalidation();
   const updateJobMutation = useMutation(
     trpc.jobs.update.mutationOptions({
@@ -361,7 +361,7 @@ const JobDocumentsTab: React.FC<{
   readOnly: boolean;
 }> = ({ documents, jobId, readOnly }) => {
   const trpc = useTRPC();
-  const canEditJobs = useCan('job:update').can && !readOnly;
+  const canEditJobs = useCan('equipment_job:update').can && !readOnly;
   const { invalidateJobActivity, invalidateJobs } = useQueryInvalidation();
   const showMutationError = useApiMutationErrorToast();
   const fileInputRef = useRef<HTMLInputElement>(null);

@@ -80,7 +80,7 @@ export async function registerDocumentHttpRoutes(
     try {
       requirePermission(
         auth,
-        'product:update',
+        'equipment_product:update',
         'You do not have permission to upload Product documents.',
         'document.forbidden',
       );
@@ -121,7 +121,7 @@ export async function registerDocumentHttpRoutes(
     try {
       requirePermission(
         auth,
-        'product:read',
+        'equipment_product:read',
         'You do not have permission to download this document.',
         'document.forbidden',
       );
@@ -151,7 +151,7 @@ export async function registerDocumentHttpRoutes(
     try {
       requireAnyPermission(
         auth,
-        ['product:read', 'quote:create'],
+        ['equipment_product:read', 'equipment_quote:create'],
         'You do not have permission to preview this brochure.',
         'document.forbidden',
       );
@@ -181,7 +181,7 @@ export async function registerDocumentHttpRoutes(
     try {
       requirePermission(
         auth,
-        'job:update',
+        'equipment_job:update',
         'You do not have permission to upload Job documents.',
         'document.forbidden',
       );
@@ -218,7 +218,7 @@ export async function registerDocumentHttpRoutes(
     try {
       requirePermission(
         auth,
-        'job:read',
+        'equipment_job:read',
         'You do not have permission to download this document.',
         'document.forbidden',
       );
@@ -235,7 +235,7 @@ export async function registerDocumentHttpRoutes(
       if (result.document.ownerType === 'purchase_order') {
         requirePermission(
           auth,
-          'inventory_cost:read',
+          'equipment_inventory_cost:read',
           'You do not have permission to view Purchase Order prices.',
           'document.forbidden',
         );
@@ -257,7 +257,7 @@ export async function registerDocumentHttpRoutes(
     try {
       requirePermission(
         auth,
-        'quote:read',
+        'equipment_quote:read',
         'You do not have permission to download this document.',
         'document.forbidden',
       );
@@ -287,13 +287,13 @@ export async function registerDocumentHttpRoutes(
     try {
       requirePermission(
         auth,
-        'purchase_order:create',
+        'equipment_purchase_order:create',
         'You do not have permission to preview this Purchase Order.',
         'document.forbidden',
       );
       requirePermission(
         auth,
-        'inventory_cost:read',
+        'equipment_inventory_cost:read',
         'You do not have permission to preview Purchase Order prices.',
         'document.forbidden',
       );
@@ -313,7 +313,7 @@ export async function registerDocumentHttpRoutes(
 
   /**
    * Files a supplier credit against an order, naming the `return-to-supplier` movements it settles
-   * (spec §4). Gated on `purchase_order:amend` alone — the same procurement hands that make the call
+   * (spec §4). Gated on `equipment_purchase_order:amend` alone — the same procurement hands that make the call
    * the credit answers. No separate cost gate: reading the priced document back already needs one on
    * the download route, and adding a second here would narrow who may file past what the spec asks.
    */
@@ -324,7 +324,7 @@ export async function registerDocumentHttpRoutes(
     try {
       requirePermission(
         auth,
-        'purchase_order:amend',
+        'equipment_purchase_order:amend',
         'You do not have permission to file credit notes.',
         'document.forbidden',
       );
@@ -361,7 +361,7 @@ export async function registerDocumentHttpRoutes(
   /**
    * Files the Supplier's bill against an order and records what an AI read off it (spec §5).
    *
-   * Gated on `purchase_order:amend` alone, exactly like the credit note: filing the paperwork is
+   * Gated on `equipment_purchase_order:amend` alone, exactly like the credit note: filing the paperwork is
    * procurement's job. Reading the cross-check it feeds is a separate, narrower question the tRPC
    * panel answers under the cost gate — and the priced document itself is already gated on the
    * download route, so a second gate here would only narrow who may file.
@@ -373,7 +373,7 @@ export async function registerDocumentHttpRoutes(
     try {
       requirePermission(
         auth,
-        'purchase_order:amend',
+        'equipment_purchase_order:amend',
         'You do not have permission to file Supplier invoices.',
         'document.forbidden',
       );
@@ -420,13 +420,13 @@ export async function registerDocumentHttpRoutes(
     try {
       requirePermission(
         auth,
-        'purchase_order:read',
+        'equipment_purchase_order:read',
         'You do not have permission to download this Purchase Order.',
         'document.forbidden',
       );
       requirePermission(
         auth,
-        'inventory_cost:read',
+        'equipment_inventory_cost:read',
         'You do not have permission to view Purchase Order prices.',
         'document.forbidden',
       );

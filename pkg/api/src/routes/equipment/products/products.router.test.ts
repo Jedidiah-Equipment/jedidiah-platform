@@ -298,8 +298,9 @@ describe('products.costEstimate', () => {
     const created = await createProduct(admin, 'Cost Estimate Product', context.rangeId);
     const productReaderWithoutCost = context.createCaller(mockSession(), {
       access: {
-        permissions: ['product:read'],
-        role: 'admin',
+        contractingRole: null,
+        equipmentRole: 'admin',
+        permissions: ['equipment_product:read'],
         userId: 'test-user-id',
       },
     });

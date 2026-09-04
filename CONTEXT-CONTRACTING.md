@@ -165,8 +165,9 @@ Server-side checks are the security boundary; browser checks are UX only.
 - **contracting-invoicing**: reads Priced and Completed Job Cards and stamps the Invoice Number;
   nothing else.
 
-Drivers and Mechanics are non-login user records holding no role. Pricing and Preset Rates
-deliberately sit with contracting-admin and super-admin alone; foremen are money-blind by design.
+Drivers and Mechanics are non-login user records holding permissionless contracting roles. Pricing
+and Preset Rates deliberately sit with contracting-admin and super-admin alone; foremen are
+money-blind by design.
 
 ## Reporting
 

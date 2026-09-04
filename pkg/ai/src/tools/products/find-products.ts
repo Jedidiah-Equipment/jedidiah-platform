@@ -42,7 +42,7 @@ export function toFindProductsResponse(
 ): FindProductsResponse {
   return result.items.map((product) => ({
     id: product.id,
-    ...(hasPermission(access, 'product:read') ? { links: { app: createProductAppHref(product.id) } } : {}),
+    ...(hasPermission(access, 'equipment_product:read') ? { links: { app: createProductAppHref(product.id) } } : {}),
     modelCode: product.modelCode,
     name: product.name,
   }));
@@ -57,7 +57,7 @@ export const findProductsDefinition = {
   ].join('\n'),
   inputSchema: FindProductsInput,
   outputSchema: FindProductsResponse,
-  anyOfPermissions: ['product:read', 'quote:read', 'quote:create'],
+  anyOfPermissions: ['equipment_product:read', 'equipment_quote:read', 'equipment_quote:create'],
   async handler(args: unknown, ctx: AiContext): Promise<FindProductsResponse> {
     const input = FindProductsInput.parse(args ?? {});
     const result = await productsCore.listProducts({

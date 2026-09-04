@@ -55,7 +55,7 @@ export const findProductUnitsDefinition = {
   ].join('\n'),
   inputSchema: FindProductUnitsInput,
   outputSchema: FindProductUnitsResponse,
-  anyOfPermissions: ['product_unit:read'],
+  anyOfPermissions: ['equipment_product_unit:read'],
   async handler(args: unknown, ctx: AiContext): Promise<FindProductUnitsResponse> {
     const input = FindProductUnitsInput.parse(args ?? {});
     const result = await productUnitsCore.listProductUnits({ db: ctx.db, input: toCoreProductUnitListInput(input) });

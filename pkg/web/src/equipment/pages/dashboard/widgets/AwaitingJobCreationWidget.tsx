@@ -15,7 +15,7 @@ const AWAITING_JOB_CREATION_SKELETON_ROWS = ['first', 'second', 'third', 'fourth
 
 export const AwaitingJobCreationWidget: React.FC = () => {
   const trpc = useTRPC();
-  const jobAccess = useCan('job:read');
+  const jobAccess = useCan('equipment_job:read');
   const awaitingQuotesQuery = useQuery(trpc.quotes.awaitingJobCreation.queryOptions());
   const quotes = awaitingQuotesQuery.data ?? [];
 

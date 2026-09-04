@@ -1,4 +1,4 @@
-import { createUserAccessSummary } from '@pkg/domain';
+import { createUserAccessSummary, roleSlotsForRole } from '@pkg/domain';
 import { ProductUnitDetail } from '@pkg/schema';
 import { describe, expect, test } from 'vitest';
 
@@ -35,13 +35,16 @@ const unit = ProductUnitDetail.parse({
 describe('getProductUnit contract', () => {
   test('follows findProductUnits and reads one machine by UUID', () => {
     expect(getProductUnitDefinition.name).toBe('getProductUnit');
-    expect(getProductUnitDefinition.anyOfPermissions).toEqual(['product_unit:read']);
+    expect(getProductUnitDefinition.anyOfPermissions).toEqual(['equipment_product_unit:read']);
     expect(getProductUnitDefinition.description).toContain('findProductUnits');
     expect(() => GetProductUnitInput.parse({ id: 'not-a-uuid' })).toThrow();
   });
 
   test('keeps the Unit detail intact and adds the links the caller can open', () => {
-    const response = toGetProductUnitResponse(unit, createUserAccessSummary({ role: 'admin', userId: 'test-user-id' }));
+    const response = toGetProductUnitResponse(
+      unit,
+      createUserAccessSummary({ ...roleSlotsForRole('admin'), userId: 'test-user-id' }),
+    );
 
     expect(response).toEqual({
       ...unit,
@@ -54,7 +57,10 @@ describe('getProductUnit contract', () => {
       },
     });
     expect(
-      toGetProductUnitResponse(unit, createUserAccessSummary({ role: 'job-viewer', userId: 'test-user-id' })).links,
+      toGetProductUnitResponse(
+        unit,
+        createUserAccessSummary({ ...roleSlotsForRole('job-viewer'), userId: 'test-user-id' }),
+      ).links,
     ).toEqual({ app: `/equipment/units/${UNIT_ID}` });
   });
 });

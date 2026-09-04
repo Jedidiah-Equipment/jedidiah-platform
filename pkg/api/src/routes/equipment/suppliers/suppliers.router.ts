@@ -16,39 +16,39 @@ import { type CoreErrorMapping, mapKnownCoreError } from '../../../trpc/errors.j
 import { authorizedProcedure, router } from '../../../trpc/init.js';
 
 export const suppliersRouter = router({
-  list: authorizedProcedure('supplier:read')
+  list: authorizedProcedure('equipment_supplier:read')
     .input(SupplierListInput)
     .query(({ ctx, input }) => listSuppliers({ db: ctx.db, input })),
 
-  get: authorizedProcedure('supplier:read')
+  get: authorizedProcedure('equipment_supplier:read')
     .input(z.object({ id: UUID }))
     .query(({ ctx, input }) => mapSupplierErrors(() => getSupplier({ db: ctx.db, id: input.id }))),
 
-  create: authorizedProcedure('supplier:update')
+  create: authorizedProcedure('equipment_supplier:update')
     .input(SupplierCreateInput)
     .mutation(({ ctx, input }) =>
       mapSupplierErrors(() => createSupplier({ db: ctx.db, input, actorUserId: ctx.session.user.id })),
     ),
 
-  update: authorizedProcedure('supplier:update')
+  update: authorizedProcedure('equipment_supplier:update')
     .input(SupplierUpdateInput)
     .mutation(({ ctx, input }) =>
       mapSupplierErrors(() => updateSupplier({ db: ctx.db, input, actorUserId: ctx.session.user.id })),
     ),
 
-  mergePreview: authorizedProcedure('supplier:merge')
+  mergePreview: authorizedProcedure('equipment_supplier:merge')
     .input(z.object({ sourceId: UUID }))
     .query(({ ctx, input }) =>
       mapSupplierErrors(() => getSupplierMergePreview({ db: ctx.db, sourceId: input.sourceId })),
     ),
 
-  merge: authorizedProcedure('supplier:merge')
+  merge: authorizedProcedure('equipment_supplier:merge')
     .input(SupplierMergeInput)
     .mutation(({ ctx, input }) =>
       mapSupplierErrors(() => mergeSupplier({ db: ctx.db, input, actorUserId: ctx.session.user.id })),
     ),
 
-  remove: authorizedProcedure('supplier:remove')
+  remove: authorizedProcedure('equipment_supplier:remove')
     .input(z.object({ id: UUID }))
     .mutation(({ ctx, input }) =>
       mapSupplierErrors(() => removeSupplier({ db: ctx.db, id: input.id, actorUserId: ctx.session.user.id })),

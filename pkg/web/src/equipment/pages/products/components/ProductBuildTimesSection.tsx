@@ -23,7 +23,7 @@ type RankingRow = NonNullable<ProductBuildMetrics['ranking']>[number];
  */
 export const ProductBuildTimesSection: React.FC<{ productId: UUID }> = ({ productId }) => {
   const trpc = useTRPC();
-  const canReadMetrics = useCan('job_metrics:read').can;
+  const canReadMetrics = useCan('equipment_job_metrics:read').can;
   const [department, setDepartment] = useState<WorkItemDepartment>('fabrication');
   const metricsQuery = useQuery(trpc.products.buildMetrics.queryOptions({ department, productId }));
   const metrics = metricsQuery.data;

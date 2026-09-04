@@ -103,7 +103,7 @@ export type BayQueueState =
 export function useBaySchedule(bayId: string): BayQueueState {
   const trpc = useTRPC();
   const accessQuery = useAccess();
-  const canReadJobs = hasPermission(accessQuery.data, 'job:read');
+  const canReadJobs = hasPermission(accessQuery.data, 'equipment_job:read');
   const baysQuery = useQuery(trpc.jobs.listBays.queryOptions(undefined, { enabled: canReadJobs }));
   const bayCalendars = useBayCalendars({ enabled: canReadJobs });
 

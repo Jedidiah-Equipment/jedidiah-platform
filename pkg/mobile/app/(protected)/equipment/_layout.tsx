@@ -1,6 +1,13 @@
-import { Stack } from 'expo-router';
+import { Redirect, Stack } from 'expo-router';
+import { getSessionBusinessAccess, useAuthSession } from '@/lib/auth-session';
 
 export default function EquipmentLayout() {
+  const session = useAuthSession();
+
+  if (!getSessionBusinessAccess(session).equipment) {
+    return <Redirect href="/contracting" />;
+  }
+
   return (
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="(tabs)" />

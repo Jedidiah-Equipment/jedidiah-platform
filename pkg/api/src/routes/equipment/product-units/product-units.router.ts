@@ -32,11 +32,11 @@ import { type CoreErrorMapping, mapKnownCoreError } from '../../../trpc/errors.j
 import { authorizedProcedure, fullyAuthorizedProcedure, router } from '../../../trpc/init.js';
 
 export const productUnitsRouter = router({
-  list: authorizedProcedure('product_unit:read')
+  list: authorizedProcedure('equipment_product_unit:read')
     .input(ProductUnitListInput)
     .query(({ ctx, input }) => listProductUnits({ db: ctx.db, input })),
 
-  filterOptions: authorizedProcedure('product_unit:read').query(({ ctx }) =>
+  filterOptions: authorizedProcedure('equipment_product_unit:read').query(({ ctx }) =>
     listProductUnitFilterOptions({ db: ctx.db }),
   ),
 
@@ -48,21 +48,26 @@ export const productUnitsRouter = router({
    * `jobs.salesExport`: a caller who cannot read cost would be downloading a valuation with its point
    * cut out of it.
    */
-  stockExport: fullyAuthorizedProcedure(['inventory_cost:read', 'product:read', 'product_unit:read', 'quote:read'])
+  stockExport: fullyAuthorizedProcedure([
+    'equipment_inventory_cost:read',
+    'equipment_product:read',
+    'equipment_product_unit:read',
+    'equipment_quote:read',
+  ])
     .input(ProductUnitStockExportInput)
     .query(({ ctx, input }) => listOnHandProductUnitStock({ db: ctx.db, input })),
 
-  get: authorizedProcedure('product_unit:read')
+  get: authorizedProcedure('equipment_product_unit:read')
     .input(z.object({ id: UUID }))
     .query(({ ctx, input }) => mapProductUnitErrors(() => getProductUnit({ db: ctx.db, id: input.id }))),
 
-  update: authorizedProcedure('product_unit:update')
+  update: authorizedProcedure('equipment_product_unit:update')
     .input(ProductUnitUpdateInput)
     .mutation(({ ctx, input }) =>
       mapProductUnitErrors(() => updateProductUnit({ actorUserId: ctx.session.user.id, db: ctx.db, input })),
     ),
 
-  transfer: authorizedProcedure('product_unit:transfer')
+  transfer: authorizedProcedure('equipment_product_unit:transfer')
     .input(ProductUnitTransferInput)
     .mutation(({ ctx, input }) =>
       mapTransferErrors(() => transferProductUnitOwnership({ actorUserId: ctx.session.user.id, db: ctx.db, input })),
@@ -72,11 +77,11 @@ export const productUnitsRouter = router({
    * The receiving deal is the subject of all three, so they are gated on the reassignment permission
    * alone: an operator who may move a machine onto a Quote may read what is movable onto it.
    */
-  reassignCandidates: authorizedProcedure('product_unit:reassign')
+  reassignCandidates: authorizedProcedure('equipment_product_unit:reassign')
     .input(z.object({ quoteId: UUID }))
     .query(({ ctx, input }) => mapReassignErrors(() => listReassignCandidates({ db: ctx.db, quoteId: input.quoteId }))),
 
-  reassignPreview: authorizedProcedure('product_unit:reassign')
+  reassignPreview: authorizedProcedure('equipment_product_unit:reassign')
     .input(z.object({ productUnitId: UUID, quoteId: UUID }))
     .query(({ ctx, input }) =>
       mapReassignErrors(() =>
@@ -84,13 +89,13 @@ export const productUnitsRouter = router({
       ),
     ),
 
-  reassign: authorizedProcedure('product_unit:reassign')
+  reassign: authorizedProcedure('equipment_product_unit:reassign')
     .input(ProductUnitReassignInput)
     .mutation(({ ctx, input }) =>
       mapReassignErrors(() => reassignProductUnitToQuote({ actorUserId: ctx.session.user.id, db: ctx.db, input })),
     ),
 
-  remove: authorizedProcedure('product_unit:remove')
+  remove: authorizedProcedure('equipment_product_unit:remove')
     .input(z.object({ id: UUID }))
     .mutation(({ ctx, input }) =>
       mapProductUnitErrors(() => removeProductUnit({ actorUserId: ctx.session.user.id, db: ctx.db, id: input.id })),

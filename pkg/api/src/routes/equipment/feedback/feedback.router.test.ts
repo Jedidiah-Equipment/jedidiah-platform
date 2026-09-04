@@ -34,6 +34,21 @@ const test = createTester(async ({ db }) => {
 });
 
 describe('feedback.submit', () => {
+  test('rejects Contracting-only callers at the Equipment boundary', async ({ context }) => {
+    const session = mockSession(null);
+    session.user.contractingRole = 'foreman';
+    const caller = context.createCaller(session);
+
+    await expect(
+      caller.feedback.submit({
+        kind: 'general',
+        subject: { subjectType: 'quote', quoteId: context.quote.id },
+        text: 'Outside the Equipment boundary.',
+      }),
+    ).rejects.toMatchObject({ code: 'FORBIDDEN' });
+    await expect(caller.feedback.listTargetUsers()).rejects.toMatchObject({ code: 'FORBIDDEN' });
+  });
+
   test('persists general feedback on a Quote with the submitter taken from the session', async ({ context }) => {
     const caller = context.createCaller(mockSession('sales'));
 

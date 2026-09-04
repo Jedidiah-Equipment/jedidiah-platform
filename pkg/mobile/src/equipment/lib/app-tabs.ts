@@ -6,13 +6,13 @@ export type AppTab = 'activity' | 'jobs' | 'plan' | 'quotes' | 'products' | 'uni
 export function visibleTabs(access: UserAccessSummary | null | undefined): AppTab[] {
   const tabs: AppTab[] = [];
 
-  if (hasPermission(access, 'job:read')) tabs.push('activity', 'jobs', 'plan');
-  if (hasPermission(access, 'quote:read')) tabs.push('quotes');
-  if (hasPermission(access, 'product:read')) tabs.push('products');
-  if (hasPermission(access, 'product_unit:read')) tabs.push('units');
+  if (hasPermission(access, 'equipment_job:read')) tabs.push('activity', 'jobs', 'plan');
+  if (hasPermission(access, 'equipment_quote:read')) tabs.push('quotes');
+  if (hasPermission(access, 'equipment_product:read')) tabs.push('products');
+  if (hasPermission(access, 'equipment_product_unit:read')) tabs.push('units');
   // Keyed on the right to *move* stock rather than to read it: the tab is the physical-flow surface
-  // (spec §10), and a reader with no `inventory:move` would find every action on it disabled.
-  if (hasPermission(access, 'inventory:move')) tabs.push('stores');
+  // (spec §10), and a reader with no `equipment_inventory:move` would find every action on it disabled.
+  if (hasPermission(access, 'equipment_inventory:move')) tabs.push('stores');
 
   return tabs;
 }

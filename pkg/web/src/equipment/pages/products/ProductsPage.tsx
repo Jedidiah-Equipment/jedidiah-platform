@@ -19,8 +19,8 @@ export const ProductsPage: React.FC = () => {
   const queryClient = useQueryClient();
   const trpc = useTRPC();
   const showMutationError = useApiMutationErrorToast();
-  const canCreateProduct = useCan('product:create').can;
-  const canUpdateProduct = useCan('product:update').can;
+  const canCreateProduct = useCan('equipment_product:create').can;
+  const canUpdateProduct = useCan('equipment_product:update').can;
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const exportMutation = useMutation({
     mutationFn: () => queryClient.fetchQuery(trpc.products.assemblyExport.queryOptions()),

@@ -37,7 +37,6 @@ import {
   type QuoteSummary,
   UpcomingDeliveryQuotesResult,
   type UserListResult,
-  UserSummary,
   UUID,
 } from '@pkg/schema';
 import { and, asc, eq, inArray, isNotNull, isNull, ne, or, type SQL, sql } from 'drizzle-orm';
@@ -46,6 +45,7 @@ import { listBayQueueAvailability } from '../jobs/job-read-service.js';
 import { listAssemblies } from '../products/product-assembly-service.js';
 import { listProductBays } from '../products/product-service.js';
 import { quoteEverPlacedAUnit } from '../units/product-unit-service.js';
+import { mapUser } from '../users/user-service.js';
 import {
   QuoteInvalidReferenceError,
   QuoteNotFoundError,
@@ -514,8 +514,9 @@ export async function listQuoteSalespeople({ db }: { db: Db }): Promise<UserList
 
   return {
     users: rows.map((row) =>
-      UserSummary.parse({
+      mapUser({
         assistantEnabled: row.assistantEnabled,
+        contractingRole: row.contractingRole,
         departments: [],
         email: row.email,
         emailVerified: row.emailVerified,
@@ -524,7 +525,7 @@ export async function listQuoteSalespeople({ db }: { db: Db }): Promise<UserList
         name: row.name,
         phoneNumber: row.phoneNumber,
         role: row.role,
-        thumbnailDataUrl: row.image,
+        image: row.image,
       }),
     ),
   };

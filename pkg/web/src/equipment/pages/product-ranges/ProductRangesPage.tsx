@@ -39,8 +39,8 @@ export const ProductRangesPage: React.FC = () => {
   const navigate = useNavigate();
   const accessQuery = useAccess();
   const access = accessQuery.data;
-  const canCreateRanges = hasPermission(access, 'product_range:create');
-  const canUpdateRanges = hasPermission(access, 'product_range:update');
+  const canCreateRanges = hasPermission(access, 'equipment_product_range:create');
+  const canUpdateRanges = hasPermission(access, 'equipment_product_range:update');
 
   const showMutationError = useApiMutationErrorToast();
   const { invalidateProductRanges } = useQueryInvalidation();

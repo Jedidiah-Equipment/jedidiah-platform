@@ -7,15 +7,25 @@ import { UserRoleMenu } from './UserRoleMenu.js';
 type RoleFieldProps = {
   disabled: boolean;
   errors: Array<{ message?: string } | undefined>;
+  label?: string;
   name: string;
-  value: AppRole;
-  onRoleChange: (role: AppRole) => void;
+  roles: readonly AppRole[];
+  value: AppRole | null;
+  onRoleChange: (role: AppRole | null) => void;
 };
 
-export const RoleField: React.FC<RoleFieldProps> = ({ disabled, errors, name, onRoleChange, value }) => (
+export const RoleField: React.FC<RoleFieldProps> = ({
+  disabled,
+  errors,
+  label = 'Role',
+  name,
+  onRoleChange,
+  roles,
+  value,
+}) => (
   <Field data-invalid={errors.length > 0}>
-    <FieldLabel htmlFor={name}>Role</FieldLabel>
-    <UserRoleMenu disabled={disabled} id={name} onRoleChange={onRoleChange} value={value} />
+    <FieldLabel htmlFor={name}>{label}</FieldLabel>
+    <UserRoleMenu disabled={disabled} id={name} onRoleChange={onRoleChange} roles={roles} value={value} />
     <FieldError errors={errors} />
   </Field>
 );

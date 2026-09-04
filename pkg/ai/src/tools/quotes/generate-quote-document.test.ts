@@ -1,5 +1,5 @@
 import * as quotesCore from '@pkg/core';
-import { createUserAccessSummary } from '@pkg/domain';
+import { createUserAccessSummary, roleSlotsForRole } from '@pkg/domain';
 import { QuoteDocument } from '@pkg/schema';
 import { describe, expect, test, vi } from 'vitest';
 import { z } from 'zod';
@@ -30,7 +30,7 @@ const document = QuoteDocument.parse({
 
 function createContext(): AiContext {
   return {
-    access: createUserAccessSummary({ role: 'sales', userId: 'test-user-id' }),
+    access: createUserAccessSummary({ ...roleSlotsForRole('sales'), userId: 'test-user-id' }),
     brochureRenderer: vi.fn(),
     db: {} as AiContext['db'],
     log: {} as AiContext['log'],
@@ -72,7 +72,7 @@ describe('generateQuoteDocument contract', () => {
       pdfRenderer: ctx.quoteDocumentRenderer,
       storage: ctx.storage,
     });
-    expect(generateQuoteDocumentDefinition.anyOfPermissions).toEqual(['quote:update']);
+    expect(generateQuoteDocumentDefinition.anyOfPermissions).toEqual(['equipment_quote:update']);
     expect(() => z.toJSONSchema(generateQuoteDocumentDefinition.inputSchema)).not.toThrow();
   });
 });

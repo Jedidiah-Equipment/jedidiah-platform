@@ -64,7 +64,7 @@ const StartJobContent: React.FC<{ quote: QuoteDetail }> = ({ quote }) => {
   const { invalidateJobActivity, invalidateJobs, invalidateQuotes } = useQueryInvalidation();
   const showMutationError = useApiMutationErrorToast();
   const accessQuery = useAccess();
-  const canCreateJob = hasPermission(accessQuery.data, 'job:create');
+  const canCreateJob = hasPermission(accessQuery.data, 'equipment_job:create');
   const isRework = isReworkQuote(quote);
   const enabledBaysQuery = useQuery(trpc.jobs.listJobBays.queryOptions({ filters: { isDisabled: false } }));
   const baysQuery = useQuery(trpc.jobs.listBays.queryOptions());

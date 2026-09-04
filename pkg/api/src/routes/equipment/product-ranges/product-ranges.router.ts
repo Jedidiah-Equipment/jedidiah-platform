@@ -28,13 +28,13 @@ import { type CoreErrorMapping, mapKnownCoreError } from '../../../trpc/errors.j
 import { authorizedProcedure, router } from '../../../trpc/init.js';
 
 export const productRangesRouter = router({
-  list: authorizedProcedure('product_range:read').query(({ ctx }) => listProductRanges({ db: ctx.db })),
+  list: authorizedProcedure('equipment_product_range:read').query(({ ctx }) => listProductRanges({ db: ctx.db })),
 
-  get: authorizedProcedure('product_range:read')
+  get: authorizedProcedure('equipment_product_range:read')
     .input(z.object({ id: UUID }))
     .query(({ ctx, input }) => mapProductRangeErrors(() => getProductRange({ db: ctx.db, id: input.id }))),
 
-  create: authorizedProcedure('product_range:create')
+  create: authorizedProcedure('equipment_product_range:create')
     .input(ProductRangeCreateInput)
     .mutation(async ({ ctx, input }) => {
       const range = await mapProductRangeErrors(() => createProductRange({ db: ctx.db, input }));
@@ -42,7 +42,7 @@ export const productRangesRouter = router({
       return range;
     }),
 
-  update: authorizedProcedure('product_range:update')
+  update: authorizedProcedure('equipment_product_range:update')
     .input(ProductRangeUpdateInput)
     .mutation(async ({ ctx, input }) => {
       const range = await mapProductRangeErrors(() => updateProductRange({ db: ctx.db, input }));
@@ -50,15 +50,15 @@ export const productRangesRouter = router({
       return range;
     }),
 
-  remove: authorizedProcedure('product_range:update')
+  remove: authorizedProcedure('equipment_product_range:update')
     .input(z.object({ id: UUID }))
     .mutation(({ ctx, input }) => mapProductRangeErrors(() => removeProductRange({ db: ctx.db, id: input.id }))),
 
-  reorder: authorizedProcedure('product_range:update')
+  reorder: authorizedProcedure('equipment_product_range:update')
     .input(ProductRangeReorderInput)
     .mutation(({ ctx, input }) => mapProductRangeErrors(() => reorderProductRanges({ db: ctx.db, input }))),
 
-  createVariant: authorizedProcedure('product_range:update')
+  createVariant: authorizedProcedure('equipment_product_range:update')
     .input(ProductRangeVariantCreateInput)
     .mutation(async ({ ctx, input }) => {
       const variant = await mapProductRangeErrors(() => createProductRangeVariant({ db: ctx.db, input }));
@@ -66,7 +66,7 @@ export const productRangesRouter = router({
       return variant;
     }),
 
-  updateVariant: authorizedProcedure('product_range:update')
+  updateVariant: authorizedProcedure('equipment_product_range:update')
     .input(ProductRangeVariantUpdateInput)
     .mutation(async ({ ctx, input }) => {
       const variant = await mapProductRangeErrors(() => updateProductRangeVariant({ db: ctx.db, input }));
@@ -74,13 +74,13 @@ export const productRangesRouter = router({
       return variant;
     }),
 
-  removeVariant: authorizedProcedure('product_range:update')
+  removeVariant: authorizedProcedure('equipment_product_range:update')
     .input(z.object({ id: UUID, rangeId: UUID }))
     .mutation(({ ctx, input }) =>
       mapProductRangeErrors(() => removeProductRangeVariant({ db: ctx.db, id: input.id, rangeId: input.rangeId })),
     ),
 
-  reorderVariants: authorizedProcedure('product_range:update')
+  reorderVariants: authorizedProcedure('equipment_product_range:update')
     .input(ProductRangeVariantReorderInput)
     .mutation(({ ctx, input }) => mapProductRangeErrors(() => reorderProductRangeVariants({ db: ctx.db, input }))),
 });

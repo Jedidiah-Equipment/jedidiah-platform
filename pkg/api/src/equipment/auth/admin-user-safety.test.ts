@@ -1,6 +1,6 @@
 import { account, CREDENTIAL_ACCOUNT_ISSUER, type Db, jobBayOperatorAssignments, jobBays, sql, user } from '@pkg/db';
 import { DEFAULT_DEMO_USER_PASSWORD, toPlantDateOnly } from '@pkg/domain';
-import { AppRole, type AppRole as AppRoleType } from '@pkg/schema';
+import { type ContractingRole, EquipmentRole, type EquipmentRole as EquipmentRoleType } from '@pkg/schema';
 import { hashPassword } from 'better-auth/crypto';
 import { describe, expect } from 'vitest';
 
@@ -52,6 +52,29 @@ describe('admin user safety policy', () => {
     ).rejects.toThrow();
   });
 
+  test('forbids role changes from a Contracting-only account instead of throwing a parse error', async ({
+    context,
+  }) => {
+    await createUser(context.db, {
+      contractingRole: 'foreman',
+      email: 'foreman@example.com',
+      id: 'foreman-user-id',
+      name: 'Foreman User',
+      password: DEFAULT_DEMO_USER_PASSWORD,
+    });
+    const { headers } = await context.auth.api.signInEmail({
+      body: { email: 'foreman@example.com', password: DEFAULT_DEMO_USER_PASSWORD },
+      returnHeaders: true,
+    });
+
+    await expect(
+      context.auth.api.setRole({
+        body: { role: 'sales', userId: 'target-user-id' },
+        headers: convertSetCookieToCookie(headers),
+      }),
+    ).rejects.toMatchObject({ status: 'FORBIDDEN' });
+  });
+
   test('assigns the Stores role and allows the user to sign in', async ({ context }) => {
     const headers = await createSignedInAdmin(context);
     await createUser(context.db, {
@@ -82,15 +105,13 @@ describe('admin user safety policy', () => {
   });
 
   test('rejects demoting the last admin through setRole', async ({ context }) => {
-    const admin = mockSession('admin');
-    const headers = await createSignedInAdmin(context, admin);
+    const headers = await createSignedInAdmin(context, mockSession('super-admin'));
     await createUser(context.db, {
       email: 'other-admin@example.com',
       id: 'other-admin-user-id',
       name: 'Other Admin',
       role: 'admin',
     });
-    await setStoredRole(context.db, admin.user.id, 'sales');
 
     await expect(
       context.auth.api.setRole({
@@ -170,32 +191,67 @@ describe('admin user safety policy', () => {
     await expect(
       context.auth.api.createUser({
         body: {
+          data: { equipmentRole: 'super-admin' },
           email: 'created-super-admin@example.com',
           name: 'Created Super Admin',
           password: DEFAULT_DEMO_USER_PASSWORD,
-          role: 'super-admin',
         },
         headers,
       }),
     ).rejects.toThrow('Only a super admin can assign or remove the super admin role.');
   });
 
-  test('rejects creating a super-admin from an admin account through data role', async ({ context }) => {
-    const headers = await createSignedInAdmin(context);
+  test('rejects Better Auth role spellings on create-user and update-user', async ({ context }) => {
+    const headers = await createSignedInAdmin(context, mockSession('super-admin'));
 
     await expect(
       context.auth.api.createUser({
         body: {
-          data: {
-            role: 'super-admin',
-          },
-          email: 'created-super-admin-data-role@example.com',
-          name: 'Created Super Admin Data Role',
+          email: 'native-role@example.com',
+          name: 'Native Role',
+          password: DEFAULT_DEMO_USER_PASSWORD,
+          role: 'sales',
+        },
+        headers,
+      }),
+    ).rejects.toMatchObject({ status: 'BAD_REQUEST' });
+    await expect(
+      context.auth.api.createUser({
+        body: {
+          data: { role: 'sales' },
+          email: 'data-role@example.com',
+          name: 'Data Role',
           password: DEFAULT_DEMO_USER_PASSWORD,
         },
         headers,
       }),
-    ).rejects.toThrow('Only a super admin can assign or remove the super admin role.');
+    ).rejects.toMatchObject({ status: 'BAD_REQUEST' });
+    await expect(
+      context.auth.api.adminUpdateUser({
+        body: { data: { role: 'sales' }, userId: 'target-user-id' },
+        headers,
+      }),
+    ).rejects.toMatchObject({ status: 'BAD_REQUEST' });
+  });
+
+  test('creates a user with no equipment role as having none, not the Better Auth default', async ({ context }) => {
+    const headers = await createSignedInAdmin(context);
+
+    await context.auth.api.createUser({
+      body: {
+        email: 'no-role@example.com',
+        name: 'No Role',
+        password: DEFAULT_DEMO_USER_PASSWORD,
+      },
+      headers,
+    });
+
+    const [created] = await context.db
+      .select({ contractingRole: user.contractingRole, equipmentRole: user.role })
+      .from(user)
+      .where(sql`${user.email} = 'no-role@example.com'`);
+
+    expect(created).toEqual({ contractingRole: null, equipmentRole: null });
   });
 
   test('allows a super-admin to assign and remove super-admin', async ({ context }) => {
@@ -234,10 +290,10 @@ describe('admin user safety policy', () => {
 
     const created = await context.auth.api.createUser({
       body: {
+        data: { equipmentRole: 'super-admin' },
         email: 'created-by-super-admin@example.com',
         name: 'Created By Super Admin',
         password: DEFAULT_DEMO_USER_PASSWORD,
-        role: 'super-admin',
       },
       headers,
     });
@@ -250,11 +306,10 @@ describe('admin user safety policy', () => {
 
     await context.auth.api.createUser({
       body: {
-        data: { isDevice: true },
+        data: { equipmentRole: 'stores', isDevice: true },
         email: 'stores-device@example.com',
         name: 'Stores Device',
         password: DEFAULT_DEMO_USER_PASSWORD,
-        role: 'stores',
       },
       headers,
     });
@@ -267,9 +322,29 @@ describe('admin user safety policy', () => {
     expect(created?.isDevice).toBe(true);
   });
 
+  test('creates a contracting-only user without temporary Equipment access', async ({ context }) => {
+    const headers = await createSignedInAdmin(context);
+
+    await context.auth.api.createUser({
+      body: {
+        data: { contractingRole: 'foreman', equipmentRole: null },
+        email: 'contracting-only@example.com',
+        name: 'Contracting Only',
+        password: DEFAULT_DEMO_USER_PASSWORD,
+      },
+      headers,
+    });
+
+    const [created] = await context.db
+      .select({ contractingRole: user.contractingRole, equipmentRole: user.role })
+      .from(user)
+      .where(sql`${user.email} = 'contracting-only@example.com'`);
+
+    expect(created).toEqual({ contractingRole: 'foreman', equipmentRole: null });
+  });
+
   test('rejects role removal from the last admin through adminUpdateUser', async ({ context }) => {
-    const admin = mockSession('admin');
-    const headers = await createSignedInAdmin(context, admin);
+    const headers = await createSignedInAdmin(context, mockSession('super-admin'));
 
     await createUser(context.db, {
       email: 'only-other-admin@example.com',
@@ -277,19 +352,224 @@ describe('admin user safety policy', () => {
       name: 'Only Other Admin',
       role: 'admin',
     });
-    await setStoredRole(context.db, admin.user.id, 'sales');
-
     await expect(
       context.auth.api.adminUpdateUser({
         body: {
           data: {
-            role: 'sales',
+            equipmentRole: 'sales',
           },
           userId: 'only-other-admin-user-id',
         },
         headers,
       }),
     ).rejects.toThrow('You cannot remove the last admin.');
+  });
+
+  test('rejects removing the equipment role from the last admin', async ({ context }) => {
+    const headers = await createSignedInAdmin(context, mockSession('super-admin'));
+
+    await createUser(context.db, {
+      email: 'only-nullable-admin@example.com',
+      id: 'only-nullable-admin-user-id',
+      name: 'Only Nullable Admin',
+      role: 'admin',
+    });
+    await expect(
+      context.auth.api.adminUpdateUser({
+        body: {
+          data: {
+            equipmentRole: null,
+          },
+          userId: 'only-nullable-admin-user-id',
+        },
+        headers,
+      }),
+    ).rejects.toThrow('You cannot remove the last admin.');
+  });
+
+  test('clears Equipment access while preserving Contracting access', async ({ context }) => {
+    const headers = await createSignedInAdmin(context);
+    await createUser(context.db, {
+      contractingRole: 'foreman',
+      email: 'contracting-only-target@example.com',
+      id: 'contracting-only-target-id',
+      name: 'Contracting Only Target',
+      role: 'sales',
+    });
+
+    await context.auth.api.adminUpdateUser({
+      body: {
+        data: { equipmentRole: null },
+        userId: 'contracting-only-target-id',
+      },
+      headers,
+    });
+
+    const [updated] = await context.db
+      .select({ contractingRole: user.contractingRole, equipmentRole: user.role })
+      .from(user)
+      .where(sql`${user.id} = 'contracting-only-target-id'`);
+
+    expect(updated).toEqual({ contractingRole: 'foreman', equipmentRole: null });
+  });
+
+  test('rejects clearing your own Equipment role', async ({ context }) => {
+    const admin = mockSession('admin');
+    const headers = await createSignedInAdmin(context, admin);
+
+    await expect(
+      context.auth.api.adminUpdateUser({
+        body: { data: { equipmentRole: null }, userId: admin.user.id },
+        headers,
+      }),
+    ).rejects.toThrow('You cannot change your own role.');
+  });
+
+  test('does not treat the nullable admin transport field as an ordinary profile field', async ({ context }) => {
+    const admin = mockSession('admin');
+    const headers = await createSignedInAdmin(context, admin);
+
+    await expect(
+      context.auth.api.updateUser({
+        body: { equipmentRole: 'super-admin' } as never,
+        headers,
+      }),
+    ).rejects.toThrow();
+
+    const [stored] = await context.db
+      .select({ equipmentRole: user.role })
+      .from(user)
+      .where(sql`${user.id} = ${admin.user.id}`);
+
+    expect(stored?.equipmentRole).toBe('admin');
+  });
+
+  test('rejects invalid role transport values as a bad request', async ({ context }) => {
+    const headers = await createSignedInAdmin(context);
+
+    await expect(
+      context.auth.api.adminUpdateUser({
+        body: {
+          data: { equipmentRole: 'bogus-role' },
+          userId: 'target-user-id',
+        },
+        headers,
+      }),
+    ).rejects.toMatchObject({ status: 'BAD_REQUEST' });
+  });
+
+  test('persists an independently assigned contracting role', async ({ context }) => {
+    const headers = await createSignedInAdmin(context);
+    await createUser(context.db, {
+      email: 'contracting-user@example.com',
+      id: 'contracting-user-id',
+      name: 'Contracting User',
+      role: 'sales',
+    });
+
+    await context.auth.api.adminUpdateUser({
+      body: {
+        data: {
+          contractingRole: 'foreman',
+        },
+        userId: 'contracting-user-id',
+      },
+      headers,
+    });
+
+    const [updated] = await context.db
+      .select({ contractingRole: user.contractingRole, equipmentRole: user.role })
+      .from(user)
+      .where(sql`${user.id} = 'contracting-user-id'`);
+
+    expect(updated).toEqual({ contractingRole: 'foreman', equipmentRole: 'sales' });
+  });
+
+  test('rejects changing your own contracting role', async ({ context }) => {
+    const admin = mockSession('admin');
+    const headers = await createSignedInAdmin(context, admin);
+
+    await expect(
+      context.auth.api.adminUpdateUser({
+        body: {
+          data: {
+            contractingRole: 'contracting-admin',
+          },
+          userId: admin.user.id,
+        },
+        headers,
+      }),
+    ).rejects.toThrow('You cannot change your own role.');
+  });
+
+  test('clears a stored contracting role when super-admin is assigned through setRole', async ({ context }) => {
+    const headers = await createSignedInAdmin(context, mockSession('super-admin'));
+    await createUser(context.db, {
+      contractingRole: 'foreman',
+      email: 'promoted-foreman@example.com',
+      id: 'promoted-foreman-id',
+      name: 'Promoted Foreman',
+      role: 'sales',
+    });
+
+    await context.auth.api.setRole({ body: { role: 'super-admin', userId: 'promoted-foreman-id' }, headers });
+
+    const [stored] = await context.db
+      .select({ contractingRole: user.contractingRole, equipmentRole: user.role })
+      .from(user)
+      .where(sql`${user.id} = 'promoted-foreman-id'`);
+
+    expect(stored).toEqual({ contractingRole: null, equipmentRole: 'super-admin' });
+  });
+
+  test('rejects a contracting role beside super-admin', async ({ context }) => {
+    const headers = await createSignedInAdmin(context, mockSession('super-admin'));
+    await createUser(context.db, {
+      email: 'spanning-target@example.com',
+      id: 'spanning-target-id',
+      name: 'Spanning Target',
+      role: 'super-admin',
+    });
+
+    await expect(
+      context.auth.api.adminUpdateUser({
+        body: { data: { contractingRole: 'foreman' }, userId: 'spanning-target-id' },
+        headers,
+      }),
+    ).rejects.toMatchObject({ status: 'BAD_REQUEST' });
+    await expect(
+      context.auth.api.createUser({
+        body: {
+          data: { contractingRole: 'foreman', equipmentRole: 'super-admin' },
+          email: 'spanning-create@example.com',
+          name: 'Spanning Create',
+          password: DEFAULT_DEMO_USER_PASSWORD,
+        },
+        headers,
+      }),
+    ).rejects.toMatchObject({ status: 'BAD_REQUEST' });
+  });
+
+  test('rejects super-admin as a contracting role value', async ({ context }) => {
+    const headers = await createSignedInAdmin(context, mockSession('super-admin'));
+    await createUser(context.db, {
+      email: 'contracting-super-admin@example.com',
+      id: 'contracting-super-admin-user-id',
+      name: 'Contracting Super Admin',
+      role: 'sales',
+    });
+
+    await expect(
+      context.auth.api.adminUpdateUser({
+        body: {
+          data: {
+            contractingRole: 'super-admin',
+          },
+          userId: 'contracting-super-admin-user-id',
+        },
+        headers,
+      }),
+    ).rejects.toMatchObject({ status: 'BAD_REQUEST' });
   });
 
   test('rejects changing a bay operator role while they hold an open assignment', async ({ context }) => {
@@ -345,7 +625,7 @@ describe('admin user safety policy', () => {
       context.auth.api.adminUpdateUser({
         body: {
           data: {
-            role: 'sales',
+            equipmentRole: 'sales',
           },
           userId: 'update-assigned-operator-user-id',
         },
@@ -529,8 +809,7 @@ describe('user phone number validation', () => {
           email: 'invalid-phone@example.com',
           name: 'Invalid Phone',
           password: DEFAULT_DEMO_USER_PASSWORD,
-          role: 'sales',
-          data: { phoneNumber: '0821234567' },
+          data: { equipmentRole: 'sales', phoneNumber: '0821234567' },
         },
         headers,
       }),
@@ -545,8 +824,7 @@ describe('user phone number validation', () => {
         email: 'valid-phone@example.com',
         name: 'Valid Phone',
         password: DEFAULT_DEMO_USER_PASSWORD,
-        role: 'sales',
-        data: { phoneNumber: '+27821234567' },
+        data: { equipmentRole: 'sales', phoneNumber: '+27821234567' },
       },
       headers,
     });
@@ -566,7 +844,7 @@ async function createSignedInAdmin(context: AuthPolicyContext, session = mockSes
     id: session.user.id,
     name: session.user.name,
     password: DEFAULT_DEMO_USER_PASSWORD,
-    role: AppRole.parse(session.user.role),
+    role: EquipmentRole.parse(session.user.role),
   });
 
   const { headers } = await context.auth.api.signInEmail({
@@ -592,14 +870,6 @@ function convertSetCookieToCookie(headers: Headers): Headers {
 
   cookieHeaders.set('cookie', cookies.filter(Boolean).join('; '));
   return cookieHeaders;
-}
-
-async function setStoredRole(db: Db, userId: string, role: AppRoleType): Promise<void> {
-  await db.execute(sql`
-    UPDATE "user"
-    SET role = ${role}, updated_at = ${new Date().toISOString()}
-    WHERE id = ${userId}
-  `);
 }
 
 async function createBay(
@@ -645,12 +915,13 @@ async function createBayOperatorAssignment(
 async function createUser(
   db: Db,
   input: {
+    contractingRole?: ContractingRole;
     email: string;
     emailVerified?: boolean;
     id: string;
     name: string;
     password?: string;
-    role: AppRoleType | string;
+    role?: EquipmentRoleType | string;
   },
 ) {
   const now = new Date();
@@ -660,9 +931,10 @@ async function createUser(
     .values({
       email: input.email,
       emailVerified: input.emailVerified ?? true,
+      contractingRole: input.contractingRole,
       id: input.id,
       name: input.name,
-      role: input.role,
+      role: input.role === undefined ? null : EquipmentRole.parse(input.role),
       createdAt: now,
       updatedAt: now,
     })

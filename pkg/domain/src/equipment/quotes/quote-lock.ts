@@ -19,7 +19,7 @@ const EDITABLE_LOCKED_ALLOCATION_QUOTE_FIELDS: ReadonlySet<string> = new Set([
  * Which fields a Locked Quote still accepts. An Allocation Quote locks the moment it is accepted
  * rather than when it sources a Job, so its price freezes before the sale is settled and there is
  * no later window to negotiate in; the discount alone stays open, on that Quote alone, for anyone
- * who can update Quotes at all (`quote:update`).
+ * who can update Quotes at all (`equipment_quote:update`).
  */
 export function editableLockedQuoteFields({
   hasProductUnit,

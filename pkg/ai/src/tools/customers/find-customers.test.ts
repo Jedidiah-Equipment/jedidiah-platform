@@ -1,4 +1,4 @@
-import { createUserAccessSummary } from '@pkg/domain';
+import { createUserAccessSummary, roleSlotsForRole } from '@pkg/domain';
 import { CustomerListResult } from '@pkg/schema';
 import { describe, expect, test } from 'vitest';
 
@@ -17,7 +17,11 @@ describe('findCustomers contract', () => {
     expect(findCustomersDefinition.name).toBe('findCustomers');
     expect(findCustomersDefinition.description).toContain('lightweight');
     expect(findCustomersDefinition.description).toContain('getCustomer');
-    expect(findCustomersDefinition.anyOfPermissions).toEqual(['customer:read', 'quote:read', 'quote:create']);
+    expect(findCustomersDefinition.anyOfPermissions).toEqual([
+      'equipment_customer:read',
+      'equipment_quote:read',
+      'equipment_quote:create',
+    ]);
   });
 
   test('maps search onto an unpaged Customer read', () => {
@@ -56,7 +60,7 @@ describe('findCustomers contract', () => {
 
     const response = toFindCustomersResponse(
       result,
-      createUserAccessSummary({ role: 'admin', userId: 'test-user-id' }),
+      createUserAccessSummary({ ...roleSlotsForRole('admin'), userId: 'test-user-id' }),
     );
 
     expect(FindCustomersResponse.parse(response)).toEqual(response);
@@ -72,17 +76,20 @@ describe('findCustomers contract', () => {
       },
     ]);
     expect(JSON.stringify(response)).not.toMatch(/address|notes|thumbnail/);
-    expect(toFindCustomersResponse(result, createUserAccessSummary({ role: 'sales', userId: 'test-user-id' }))).toEqual(
-      [
-        {
-          companyName: 'Acme Mining',
-          contactPerson: 'A. Person',
-          email: 'buyer@example.com',
-          id: CUSTOMER_ID,
-          phone: '+27110000000',
-          vatNumber: 'VAT-1',
-        },
-      ],
-    );
+    expect(
+      toFindCustomersResponse(
+        result,
+        createUserAccessSummary({ ...roleSlotsForRole('sales'), userId: 'test-user-id' }),
+      ),
+    ).toEqual([
+      {
+        companyName: 'Acme Mining',
+        contactPerson: 'A. Person',
+        email: 'buyer@example.com',
+        id: CUSTOMER_ID,
+        phone: '+27110000000',
+        vatNumber: 'VAT-1',
+      },
+    ]);
   });
 });

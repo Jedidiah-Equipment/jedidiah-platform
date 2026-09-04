@@ -8,7 +8,7 @@ type InventoryCostProjection<TOutput, TCostField extends keyof TOutput> = Omit<T
 export type InventoryCostAccess = Pick<UserAccessSummary, 'permissions'> | null | undefined;
 
 export function canReadInventoryCosts(access: InventoryCostAccess): boolean {
-  return hasPermission(access, 'inventory_cost:read');
+  return hasPermission(access, 'equipment_inventory_cost:read');
 }
 
 /**

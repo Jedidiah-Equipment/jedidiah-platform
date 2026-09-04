@@ -31,17 +31,17 @@ export function createJobLinks(
   return JobLinks.parse({
     app: createJobAppHref(job.id),
     // A Job on a machine we hold has no Customer to link to.
-    ...(job.customerId && hasPermission(access, 'customer:read')
+    ...(job.customerId && hasPermission(access, 'equipment_customer:read')
       ? { customer: createCustomerAppHref(job.customerId) }
       : {}),
     // A Custom Job builds no machine, so it has neither a Product nor a Product Unit to link to.
-    ...(job.productUnit && hasPermission(access, 'product:read')
+    ...(job.productUnit && hasPermission(access, 'equipment_product:read')
       ? { product: createProductAppHref(job.productUnit.productId) }
       : {}),
-    ...(job.productUnit && hasPermission(access, 'product_unit:read')
+    ...(job.productUnit && hasPermission(access, 'equipment_product_unit:read')
       ? { productUnit: createProductUnitAppHref(job.productUnit.id) }
       : {}),
     // A Stock Build has no sale behind it, so there is no Quote to link to.
-    ...(job.quoteId && hasPermission(access, 'quote:read') ? { quote: createQuoteAppHref(job.quoteId) } : {}),
+    ...(job.quoteId && hasPermission(access, 'equipment_quote:read') ? { quote: createQuoteAppHref(job.quoteId) } : {}),
   });
 }

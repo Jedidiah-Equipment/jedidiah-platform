@@ -2,8 +2,8 @@ import type { HelpTopic } from '@pkg/domain';
 import { IconDots } from '@tabler/icons-react-native';
 import { useState } from 'react';
 import { Pressable } from 'react-native';
+import { ProfileMenu } from '@/components/ProfileMenu';
 import { Icon } from '@/components/ui/icon';
-import { ProfileMenu } from '@/equipment/components/ProfileMenu';
 import { useAuthSession } from '@/lib/auth-session';
 
 /**

@@ -6,7 +6,7 @@ import { useCan } from '@/lib/use-access';
 
 /** Owns the Job read gate for the Jobs catalog and existing Job detail screen. */
 export default function JobsLayout() {
-  const access = useCan('job:read');
+  const access = useCan('equipment_job:read');
 
   if (access.isPending) {
     return <TabAccessLoadingScreen parent={MAIN_TAB_PARENTS.jobs} title="Jobs" />;

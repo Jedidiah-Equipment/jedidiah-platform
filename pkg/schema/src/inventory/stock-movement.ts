@@ -286,7 +286,7 @@ export const JobStockRow = z.object({
 
 /**
  * The Job facts the stock surfaces need. They ride the stock read rather than a Job read because
- * `stores` closes Jobs out without holding `job:read`.
+ * `stores` closes Jobs out without holding `equipment_job:read`.
  */
 export type JobStockJob = z.infer<typeof JobStockJob>;
 export const JobStockJob = z.object({

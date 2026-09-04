@@ -25,8 +25,8 @@ import { usePersistedState } from '@/lib/use-persisted-state';
 
 /** Quote list. The Quotes layout owns the route-level permission gate. */
 export default function QuotesRoute() {
-  const readAccess = useCan('quote:read');
-  const createAccess = useCan('quote:create');
+  const readAccess = useCan('equipment_quote:read');
+  const createAccess = useCan('equipment_quote:create');
   const [search, setSearch] = useState('');
   const [newQuoteOpen, setNewQuoteOpen] = useState(false);
   const debouncedSearch = useDebouncedSearch(search);

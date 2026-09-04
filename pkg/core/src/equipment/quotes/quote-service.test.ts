@@ -148,7 +148,9 @@ describe('getQuote', () => {
       throw new Error('Quote insert did not return a row');
     }
 
-    await expect(getQuote({ db: context.db, id: quote.id })).resolves.toMatchObject({ product: { bays: [] } });
+    await expect(getQuote({ db: context.db, id: quote.id })).resolves.toMatchObject({
+      product: { bays: [] },
+    });
   });
 
   test('returns the single linked Job through the quote compatibility array', async ({ context }) => {
@@ -2480,7 +2482,7 @@ describe('listQuoteSalespeople', () => {
     ]);
 
     const result = await listQuoteSalespeople({ db: context.db });
-    const rolesById = new Map(result.users.map((person) => [person.id, person.role]));
+    const rolesById = new Map(result.users.map((person) => [person.id, person.equipmentRole]));
 
     expect(rolesById.get('super-admin-user-id')).toBe('super-admin');
     expect(rolesById.get('admin-user-id')).toBe('admin');

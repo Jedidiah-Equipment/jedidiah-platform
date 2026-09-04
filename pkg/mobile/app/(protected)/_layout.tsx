@@ -3,8 +3,8 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AssistantProvider } from '@/equipment/components/assistant/AssistantProvider';
-import { useSession } from '@/lib/auth';
-import { AuthSessionProvider } from '@/lib/auth-session';
+import { signOut, useSession } from '@/lib/auth';
+import { AuthSessionProvider, isSessionSignInEligible } from '@/lib/auth-session';
 import { useIsOffline } from '@/lib/connectivity';
 import { isHydratedSession } from '@/lib/session-state';
 
@@ -13,6 +13,10 @@ import { isHydratedSession } from '@/lib/session-state';
  * state while the session resolves, redirect to /login when there is none, and
  * otherwise expose the resolved session so screens below can assume it (via
  * `useAuthSession`) instead of each repeating a loading/redirect guard.
+ *
+ * Better Auth's own session endpoint is not filtered by sign-in eligibility, so a signed-in account
+ * whose roles no longer grant any permission still resolves a session here; it is signed out rather
+ * than left to bounce between the two business guards or collect 401s.
  *
  * Offline-aware so the app-wide OfflineScreen cover can't hide a wrong auth decision:
  * `useSession`'s fetch fails offline, so we hold rather than bounce a signed-in operator
@@ -51,32 +55,49 @@ export default function ProtectedLayout() {
   // Still resolving, offline with no resolved session, or reconnecting after coming back online:
   // hold (behind the OfflineScreen cover) rather than redirecting on a session we can't yet trust.
   if (isPending || reconnecting || (!hasSession && isOffline)) {
-    return (
-      <SafeAreaView className="flex-1" style={{ backgroundColor: '#0a0a0b' }}>
-        <View className="flex-1 items-center justify-center px-7 py-10">
-          <ActivityIndicator accessibilityLabel="Checking session" color="#fff000" size="large" />
-          <Text style={{ color: '#fafafa', fontSize: 16, lineHeight: 24, marginTop: 16, textAlign: 'center' }}>
-            Checking session
-          </Text>
-          <Text style={{ color: '#7a7a82', fontSize: 13, lineHeight: 20, marginTop: 6, textAlign: 'center' }}>
-            Verifying your saved login before opening the app.
-          </Text>
-        </View>
-      </SafeAreaView>
-    );
+    return <CheckingSessionScreen />;
   }
 
   if (!hasSession) {
     return <Redirect href="/login" />;
   }
 
+  if (!isSessionSignInEligible(session)) {
+    return <SignOutIneligibleSession />;
+  }
+
   return (
     <AuthSessionProvider session={session}>
       <AssistantProvider>
         <Stack screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="contracting" />
           <Stack.Screen name="equipment" />
         </Stack>
       </AssistantProvider>
     </AuthSessionProvider>
+  );
+}
+
+function SignOutIneligibleSession() {
+  useEffect(() => {
+    void signOut();
+  }, []);
+
+  return <CheckingSessionScreen />;
+}
+
+function CheckingSessionScreen() {
+  return (
+    <SafeAreaView className="flex-1" style={{ backgroundColor: '#0a0a0b' }}>
+      <View className="flex-1 items-center justify-center px-7 py-10">
+        <ActivityIndicator accessibilityLabel="Checking session" color="#fff000" size="large" />
+        <Text style={{ color: '#fafafa', fontSize: 16, lineHeight: 24, marginTop: 16, textAlign: 'center' }}>
+          Checking session
+        </Text>
+        <Text style={{ color: '#7a7a82', fontSize: 13, lineHeight: 20, marginTop: 6, textAlign: 'center' }}>
+          Verifying your saved login before opening the app.
+        </Text>
+      </View>
+    </SafeAreaView>
   );
 }

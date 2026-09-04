@@ -16,7 +16,7 @@ const SCHEDULED_JOBS_SKELETON_ROWS = ['first', 'second', 'third'] as const;
 
 export const ScheduledJobsWidget: React.FC = () => {
   const bays = useShopFloorBays();
-  const jobAccess = useCan('job:read');
+  const jobAccess = useCan('equipment_job:read');
 
   if (bays.status === 'error') {
     return <DashboardWidgetError error={bays.error} fallbackMessage="Unable to load scheduled jobs." />;

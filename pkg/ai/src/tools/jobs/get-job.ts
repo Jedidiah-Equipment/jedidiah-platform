@@ -73,7 +73,7 @@ export const getJobDefinition = {
   ].join('\n'),
   inputSchema: GetJobInput,
   outputSchema: GetJobResponse,
-  anyOfPermissions: ['job:read'],
+  anyOfPermissions: ['equipment_job:read'],
   async handler(args: unknown, ctx: AiContext): Promise<GetJobResponse> {
     const input = GetJobInput.parse(args);
     const job = await jobsCore.getJob({ db: ctx.db, id: input.id });

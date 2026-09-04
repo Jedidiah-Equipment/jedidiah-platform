@@ -1,11 +1,11 @@
-import type { AppRole, Logger } from '@pkg/schema';
+import type { EquipmentRole, Logger } from '@pkg/schema';
 import pino from 'pino';
 import { expect } from 'vitest';
 import { z } from 'zod';
 
 import type { Context } from '@/trpc/context.js';
 
-export function mockSession(role: AppRole = 'admin'): NonNullable<Context['session']> {
+export function mockSession(role: EquipmentRole | null = 'admin'): NonNullable<Context['session']> {
   return {
     session: {
       id: 'test-session-id',

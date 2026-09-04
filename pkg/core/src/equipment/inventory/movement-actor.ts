@@ -24,7 +24,7 @@ import {
  *   is asserted here rather than left to a disabled button — a button is UX, and the ledger keeps
  *   its row forever. Every write the `stores` role can reach goes through this: draws and returns,
  *   receipts and supplier returns, adjustments, builds, and close-out. Revaluation does not, and
- *   does not need to — it is gated on `inventory_cost:revalue`, which no device holds.
+ *   does not need to — it is gated on `equipment_inventory_cost:revalue`, which no device holds.
  * - A device named as the actor. A device is not somebody; attributing stock to one says a machine
  *   fetched it.
  * - An unknown or disabled person. Falling back to the device there would write a movement signed

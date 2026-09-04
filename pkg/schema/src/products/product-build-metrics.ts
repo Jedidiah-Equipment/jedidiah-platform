@@ -28,7 +28,7 @@ export const ProductBuildMetrics = z.object({
       completedAt: DateIso,
     }),
   ),
-  /** Null for callers without job_metrics:read — partial response, same pattern as jobs.get documents. */
+  /** Null for callers without equipment_job_metrics:read — partial response, same pattern as jobs.get documents. */
   ranking: z
     .array(
       z.object({

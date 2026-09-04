@@ -89,8 +89,9 @@ export const QuoteTable: React.FC<{ customerId?: UUID }> = ({ customerId }) => {
   const trpc = useTRPC();
   const navigate = useNavigate();
   const accessQuery = useAccess();
-  const canOpenJobs = hasPermission(accessQuery.data, 'job:read') || hasPermission(accessQuery.data, 'job:update');
-  const canUpdateQuote = hasPermission(accessQuery.data, 'quote:update');
+  const canOpenJobs =
+    hasPermission(accessQuery.data, 'equipment_job:read') || hasPermission(accessQuery.data, 'equipment_job:update');
+  const canUpdateQuote = hasPermission(accessQuery.data, 'equipment_quote:update');
   const customerOptions = useCustomerForQuoteOptions({ limit: 0 });
   const salespersonOptions = useSalesPersonOptions();
 

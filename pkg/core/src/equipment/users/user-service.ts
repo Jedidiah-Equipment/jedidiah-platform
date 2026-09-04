@@ -1,9 +1,10 @@
 import { type DatabaseTransaction, type Db, user, userDepartment } from '@pkg/db';
 import {
-  AppRole,
   type AuditChanges,
   AuthId,
+  ContractingRole,
   Department,
+  EquipmentRole,
   NullablePhoneNumber,
   NullableThumbnailDataUrl,
   UserAccount,
@@ -40,10 +41,18 @@ export const userAuditDescriptor = defineAuditDescriptor<UserAuditInput>({
 
 type UserRow = Pick<
   typeof user.$inferSelect,
-  'assistantEnabled' | 'email' | 'emailVerified' | 'id' | 'image' | 'isDevice' | 'name' | 'phoneNumber'
+  | 'assistantEnabled'
+  | 'contractingRole'
+  | 'email'
+  | 'emailVerified'
+  | 'id'
+  | 'image'
+  | 'isDevice'
+  | 'name'
+  | 'phoneNumber'
+  | 'role'
 > & {
   departments: readonly Department[];
-  role?: unknown;
 };
 
 export function mapUser(row: UserRow): UserSummary {
@@ -56,7 +65,8 @@ export function mapUser(row: UserRow): UserSummary {
     isDevice: row.isDevice,
     name: row.name,
     phoneNumber: NullablePhoneNumber.parse(row.phoneNumber),
-    role: AppRole.parse(row.role),
+    contractingRole: ContractingRole.nullable().parse(row.contractingRole),
+    equipmentRole: EquipmentRole.nullable().parse(row.role),
     thumbnailDataUrl: NullableThumbnailDataUrl.parse(row.image),
   };
 }
@@ -72,8 +82,8 @@ export async function getUserById({ db, userId }: { db: Db; userId: AuthId }): P
       isDevice: user.isDevice,
       name: user.name,
       phoneNumber: user.phoneNumber,
+      contractingRole: user.contractingRole,
       role: user.role,
-      thumbnailDataUrl: user.image,
     })
     .from(user)
     .where(eq(user.id, userId))
@@ -83,7 +93,7 @@ export async function getUserById({ db, userId }: { db: Db; userId: AuthId }): P
     throw new UserNotFoundError(userId);
   }
 
-  return UserAccount.parse(row);
+  return UserAccount.parse(mapUser({ ...row, departments: [] }));
 }
 
 export async function listUsers({ db }: { db: Db }): Promise<UserListResult> {
@@ -97,6 +107,7 @@ export async function listUsers({ db }: { db: Db }): Promise<UserListResult> {
       isDevice: true,
       name: true,
       phoneNumber: true,
+      contractingRole: true,
       role: true,
     },
     orderBy: [asc(user.email)],
@@ -265,9 +276,22 @@ export type UserRoleAssignmentPolicyResult =
   | { allowed: true }
   | { allowed: false; reason: 'last-admin' }
   | { allowed: false; bayNames: string[]; reason: 'open-bay-operator-assignments' }
-  | { allowed: false; reason: 'reserved-super-admin' };
+  | { allowed: false; reason: 'reserved-super-admin' }
+  | { allowed: false; reason: 'super-admin-spans-contracting' };
 
-// Single source of truth for the reserved super-admin rule (ADR 0017/0008): only a super-admin may
+// super-admin fills both slots by definition (ADR 0017), so a contracting role beside it is a
+// contradiction rather than a grant.
+export function isContractingRoleBesideSuperAdmin({
+  contractingRole,
+  equipmentRole,
+}: {
+  contractingRole?: ContractingRole | null | undefined;
+  equipmentRole?: EquipmentRole | null | undefined;
+}): boolean {
+  return equipmentRole === 'super-admin' && contractingRole != null;
+}
+
+// Shared reserved-role predicate (ADR 0017/0008): only a super-admin may
 // grant the super-admin role or change a user who currently holds it. `currentRole` is omitted when
 // creating a brand-new user, where there is no role to move away from.
 export function isReservedSuperAdminAssignment({
@@ -275,9 +299,9 @@ export function isReservedSuperAdminAssignment({
   currentRole,
   targetRole,
 }: {
-  actorRole: AppRole;
-  currentRole?: AppRole;
-  targetRole: AppRole;
+  actorRole: EquipmentRole;
+  currentRole?: EquipmentRole | null;
+  targetRole: EquipmentRole | null;
 }): boolean {
   return (targetRole === 'super-admin' || currentRole === 'super-admin') && actorRole !== 'super-admin';
 }
@@ -286,22 +310,25 @@ export function isReservedSuperAdminAssignment({
 // better-auth, outside any lock taken here. A concurrent operator assignment can land between this
 // check and that write — an accepted race: the window is tiny, the flow is admin-only, and the
 // one-operator-per-bay invariant itself is enforced by the database.
-export async function canAssignUserRole({
+export async function canAssignUserRoleSlots({
   actorRole,
+  contractingRole,
   db,
-  role,
+  equipmentRole,
   userId,
 }: {
-  actorRole: AppRole;
+  actorRole: EquipmentRole;
+  contractingRole?: ContractingRole | null;
   db: Db;
-  role: AppRole;
+  equipmentRole?: EquipmentRole | null;
   userId: AuthId;
 }): Promise<UserRoleAssignmentPolicyResult> {
   return db.transaction(async (tx) => {
     const [targetUser] = await tx
       .select({
+        contractingRole: user.contractingRole,
         id: user.id,
-        role: user.role,
+        equipmentRole: user.role,
       })
       .from(user)
       .where(eq(user.id, userId))
@@ -311,17 +338,28 @@ export async function canAssignUserRole({
       return { allowed: true };
     }
 
-    const currentRole = AppRole.parse(targetUser.role);
+    const currentEquipmentRole = EquipmentRole.nullable().parse(targetUser.equipmentRole);
+    const currentContractingRole = ContractingRole.nullable().parse(targetUser.contractingRole);
+    const nextEquipmentRole = equipmentRole === undefined ? currentEquipmentRole : equipmentRole;
+    const nextContractingRole = contractingRole === undefined ? currentContractingRole : contractingRole;
 
-    if (currentRole === role) {
+    if (currentEquipmentRole === nextEquipmentRole && currentContractingRole === nextContractingRole) {
       return { allowed: true };
     }
 
-    if (isReservedSuperAdminAssignment({ actorRole, currentRole, targetRole: role })) {
+    if (
+      isReservedSuperAdminAssignment({ actorRole, currentRole: currentEquipmentRole, targetRole: nextEquipmentRole })
+    ) {
       return { allowed: false, reason: 'reserved-super-admin' };
     }
 
-    if (currentRole === 'bay-operator') {
+    // Only an explicit contracting value is contradictory; a contracting role already stored when
+    // super-admin arrives is cleared by the write itself.
+    if (isContractingRoleBesideSuperAdmin({ contractingRole, equipmentRole: nextEquipmentRole })) {
+      return { allowed: false, reason: 'super-admin-spans-contracting' };
+    }
+
+    if (equipmentRole !== undefined && currentEquipmentRole === 'bay-operator') {
       const openBayOperatorAssignmentBayNames = await listOpenBayOperatorAssignmentBayNames({
         db: tx,
         userId,
@@ -336,7 +374,7 @@ export async function canAssignUserRole({
       }
     }
 
-    if (role === 'admin' || currentRole !== 'admin') {
+    if (equipmentRole === undefined || equipmentRole === 'admin' || currentEquipmentRole !== 'admin') {
       return { allowed: true };
     }
 

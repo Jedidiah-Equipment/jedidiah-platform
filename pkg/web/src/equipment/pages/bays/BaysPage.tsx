@@ -62,8 +62,8 @@ export const BaysPage: React.FC = () => {
   const access = accessQuery.data;
   const { invalidateAudit, invalidateJobs } = useQueryInvalidation();
 
-  const canManageBays = hasPermission(access, 'job_bay:update');
-  const canReadBayHistory = hasPermission(access, 'job_bay:read');
+  const canManageBays = hasPermission(access, 'equipment_job_bay:update');
+  const canReadBayHistory = hasPermission(access, 'equipment_job_bay:read');
 
   const baysQuery = useQuery(trpc.jobs.listJobBays.queryOptions({ filters: {} }));
   const operatorsQuery = useQuery({

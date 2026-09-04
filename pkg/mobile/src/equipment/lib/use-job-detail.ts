@@ -24,7 +24,7 @@ export type JobDetailState =
 export function useJobDetail(jobId: string): JobDetailState {
   const trpc = useTRPC();
   const accessQuery = useAccess();
-  const canReadJobs = hasPermission(accessQuery.data, 'job:read');
+  const canReadJobs = hasPermission(accessQuery.data, 'equipment_job:read');
   const baysQuery = useQuery(trpc.jobs.listBays.queryOptions(undefined, { enabled: canReadJobs }));
   const jobQuery = useQuery(trpc.jobs.get.queryOptions({ id: jobId as UUID }, { enabled: canReadJobs }));
 

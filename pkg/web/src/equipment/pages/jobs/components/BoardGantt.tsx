@@ -116,7 +116,7 @@ export const BoardGantt: React.FC<{
     [enabledBaysQuery.data?.items],
   );
   const schedulableBays = useMemo(
-    () => bays.filter((bay) => enabledBayIds.has(bay.id) && hasPermission(accessQuery.data, 'job:schedule')),
+    () => bays.filter((bay) => enabledBayIds.has(bay.id) && hasPermission(accessQuery.data, 'equipment_job:schedule')),
     [accessQuery.data, bays, enabledBayIds],
   );
   const schedulableBayIds = useMemo(() => new Set(schedulableBays.map((bay) => bay.id)), [schedulableBays]);

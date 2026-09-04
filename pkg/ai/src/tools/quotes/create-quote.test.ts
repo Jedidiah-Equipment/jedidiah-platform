@@ -1,5 +1,5 @@
 import * as quotesCore from '@pkg/core';
-import { createUserAccessSummary } from '@pkg/domain';
+import { createUserAccessSummary, roleSlotsForRole } from '@pkg/domain';
 import { QuoteDetail } from '@pkg/schema';
 import { describe, expect, test, vi } from 'vitest';
 import { z } from 'zod';
@@ -69,7 +69,7 @@ const quote = QuoteDetail.parse({
 
 function createContext(): AiContext {
   return {
-    access: createUserAccessSummary({ role: 'admin', userId: 'test-user-id' }),
+    access: createUserAccessSummary({ ...roleSlotsForRole('admin'), userId: 'test-user-id' }),
     db: {} as AiContext['db'],
     session: {
       user: {
@@ -136,7 +136,12 @@ describe('createQuote contract', () => {
 
   test('defaults and normalizes Quote input, creates it as the actor, and returns linked details', async () => {
     const input = CreateQuoteInput.parse({
-      customer: { type: 'inline', companyName: ' Acme Mining ', contactPerson: ' Jane Buyer ', email: null },
+      customer: {
+        type: 'inline',
+        companyName: ' Acme Mining ',
+        contactPerson: ' Jane Buyer ',
+        email: null,
+      },
       offering: { kind: 'product', productId: PRODUCT_ID },
     });
     const coreInput = toCoreQuoteCreateInput(input, 'test-user-id');
@@ -180,10 +185,11 @@ describe('createQuote contract', () => {
       product: `/equipment/products/${PRODUCT_ID}/edit`,
     });
     expect(
-      toCreateQuoteResponse(quote, createUserAccessSummary({ role: 'sales', userId: 'test-user-id' })).links,
+      toCreateQuoteResponse(quote, createUserAccessSummary({ ...roleSlotsForRole('sales'), userId: 'test-user-id' }))
+        .links,
     ).toEqual({ app: `/equipment/quotes/${QUOTE_ID}/edit` });
     expect(JSON.stringify(response)).not.toContain('thumbnailDataUrl');
-    expect(createQuoteDefinition.anyOfPermissions).toEqual(['quote:create']);
+    expect(createQuoteDefinition.anyOfPermissions).toEqual(['equipment_quote:create']);
     expect(createQuoteDefinition.description).toContain('inline Customer');
     expect(createQuoteDefinition.description).toContain('findProducts');
     expect(createQuoteDefinition.description).toContain('findCustomers');

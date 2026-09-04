@@ -57,11 +57,11 @@ type SupplierEditTabsProps = {
 };
 
 const SupplierEditTabs: React.FC<SupplierEditTabsProps> = ({ onSupplierSave, supplier }) => {
-  const canReadPart = useCan('part:read').can;
-  const canUpdatePart = useCan('part:update').can;
-  const canRemoveSupplier = useCan('supplier:remove').can;
-  const canMergeSupplier = useCan('supplier:merge').can;
-  const auditAccess = useCan('audit:read');
+  const canReadPart = useCan('equipment_part:read').can;
+  const canUpdatePart = useCan('equipment_part:update').can;
+  const canRemoveSupplier = useCan('equipment_supplier:remove').can;
+  const canMergeSupplier = useCan('equipment_supplier:merge').can;
+  const auditAccess = useCan('equipment_audit:read');
   const [editingPart, setEditingPart] = useState<Part | null>(null);
   const supplierAuditFilters = useMemo(
     () => ({

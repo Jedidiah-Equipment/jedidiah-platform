@@ -17,7 +17,7 @@ const UPCOMING_DELIVERIES_SKELETON_ROWS = ['first', 'second', 'third', 'fourth',
 
 export const UpcomingDeliveriesWidget: React.FC = () => {
   const trpc = useTRPC();
-  const jobAccess = useCan('job:read');
+  const jobAccess = useCan('equipment_job:read');
   const deliveriesQuery = useQuery(trpc.quotes.upcomingDeliveries.queryOptions());
   const baysQuery = useQuery({
     ...trpc.jobs.listBays.queryOptions(),

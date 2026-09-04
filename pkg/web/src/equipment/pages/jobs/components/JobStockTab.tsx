@@ -15,8 +15,8 @@ import { toJobStockPurchaseCandidates } from './job-stock-purchase-selection.js'
 
 export function JobStockTab({ isCancelled, job }: { isCancelled: boolean; job: { code: string; id: string } }) {
   const trpc = useTRPC();
-  const canMove = useCan('inventory:move').can;
-  const canCreatePurchaseOrders = useCan('purchase_order:create').can;
+  const canMove = useCan('equipment_inventory:move').can;
+  const canCreatePurchaseOrders = useCan('equipment_purchase_order:create').can;
   const jobStockQuery = useQuery(trpc.inventory.jobStock.queryOptions({ jobId: job.id }));
   const [movementType, setMovementType] = useState<JobStockMovementType | null>(null);
   const [isCreatingPurchaseOrders, setIsCreatingPurchaseOrders] = useState(false);

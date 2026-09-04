@@ -1,4 +1,4 @@
-import { createUserAccessSummary } from '@pkg/domain';
+import { createUserAccessSummary, roleSlotsForRole } from '@pkg/domain';
 import { describe, expect, it, vi } from 'vitest';
 
 import type { DashboardWidget } from './dashboard-widget-types.js';
@@ -34,21 +34,21 @@ const fixtureWidgets: DashboardWidget[] = [
   {
     Component: WidgetComponent,
     id: 'quotes',
-    requires: 'quote:read',
+    requires: 'equipment_quote:read',
     size: 'md',
     title: 'Quotes',
   },
   {
     Component: WidgetComponent,
     id: 'products',
-    requires: 'product:read',
+    requires: 'equipment_product:read',
     size: 'md',
     title: 'Products',
   },
   {
     Component: WidgetComponent,
     id: 'audit',
-    requires: 'audit:read',
+    requires: 'equipment_audit:read',
     size: 'sm',
     title: 'Audit',
   },
@@ -64,19 +64,19 @@ describe('filterDashboardWidgets', () => {
   });
 
   it('keeps role-visible widgets in registry order for sales', () => {
-    const access = createUserAccessSummary({ role: 'sales', userId: 'user-1' });
+    const access = createUserAccessSummary({ ...roleSlotsForRole('sales'), userId: 'user-1' });
 
     expect(widgetIds(filterDashboardWidgets(access, fixtureWidgets))).toEqual(['welcome', 'quotes']);
   });
 
   it('keeps role-visible widgets in registry order for procurement managers', () => {
-    const access = createUserAccessSummary({ role: 'procurement-manager', userId: 'user-1' });
+    const access = createUserAccessSummary({ ...roleSlotsForRole('procurement-manager'), userId: 'user-1' });
 
     expect(widgetIds(filterDashboardWidgets(access, fixtureWidgets))).toEqual(['welcome', 'quotes', 'products']);
   });
 
   it('keeps all registered widgets for admins without reordering them', () => {
-    const access = createUserAccessSummary({ role: 'admin', userId: 'user-1' });
+    const access = createUserAccessSummary({ ...roleSlotsForRole('admin'), userId: 'user-1' });
 
     expect(widgetIds(filterDashboardWidgets(access, fixtureWidgets))).toEqual([
       'welcome',
@@ -92,7 +92,7 @@ describe('dashboardWidgets', () => {
     const quotesByStatusWidget = dashboardWidgets.find((widget) => widget.id === 'quotes-by-status');
 
     expect(quotesByStatusWidget).toMatchObject({
-      requires: 'quote:read',
+      requires: 'equipment_quote:read',
       size: 'md',
       title: 'Quotes by status',
     });
@@ -105,14 +105,14 @@ describe('dashboardWidgets', () => {
     const awaitingJobCreationWidget = dashboardWidgets.find((widget) => widget.id === 'awaiting-job-creation');
 
     expect(openPipelineWidget).toMatchObject({
-      requires: 'quote:read',
+      requires: 'equipment_quote:read',
       size: 'xs',
       title: 'Open pipeline (retail, excl. VAT)',
     });
-    expect(quoteFlowWidget).toMatchObject({ requires: 'quote:read', size: 'md', title: 'Quote flow' });
-    expect(staleSentWidget).toMatchObject({ requires: 'quote:read', size: 'sm', title: 'Stale sent quotes' });
+    expect(quoteFlowWidget).toMatchObject({ requires: 'equipment_quote:read', size: 'md', title: 'Quote flow' });
+    expect(staleSentWidget).toMatchObject({ requires: 'equipment_quote:read', size: 'sm', title: 'Stale sent quotes' });
     expect(awaitingJobCreationWidget).toMatchObject({
-      requires: 'quote:read',
+      requires: 'equipment_quote:read',
       size: 'sm',
       title: 'Awaiting Job creation',
     });
@@ -147,25 +147,28 @@ describe('dashboardWidgets', () => {
         )
         .map(({ id, requires, size, title }) => ({ id, requires, size, title })),
     ).toEqual([
-      { id: 'inventory-value', requires: 'inventory_cost:read', size: 'xs', title: 'Inventory value' },
-      { id: 'inventory-turns', requires: 'inventory_cost:read', size: 'xs', title: 'Inventory turns' },
+      { id: 'inventory-value', requires: 'equipment_inventory_cost:read', size: 'xs', title: 'Inventory value' },
+      { id: 'inventory-turns', requires: 'equipment_inventory_cost:read', size: 'xs', title: 'Inventory turns' },
       {
         id: 'top-inventory-adjustments',
-        requires: 'inventory_cost:read',
+        requires: 'equipment_inventory_cost:read',
         size: 'xs',
         title: 'Top adjustments this month',
       },
-      { id: 'top-scrap-items', requires: 'inventory_cost:read', size: 'xs', title: 'Top scrap this month' },
+      { id: 'top-scrap-items', requires: 'equipment_inventory_cost:read', size: 'xs', title: 'Top scrap this month' },
     ]);
 
     const managementIds = widgetIds(
       filterDashboardWidgets(
-        createUserAccessSummary({ role: 'procurement-manager', userId: 'user-1' }),
+        createUserAccessSummary({ ...roleSlotsForRole('procurement-manager'), userId: 'user-1' }),
         dashboardWidgets,
       ),
     );
     const storesIds = widgetIds(
-      filterDashboardWidgets(createUserAccessSummary({ role: 'stores', userId: 'user-1' }), dashboardWidgets),
+      filterDashboardWidgets(
+        createUserAccessSummary({ ...roleSlotsForRole('stores'), userId: 'user-1' }),
+        dashboardWidgets,
+      ),
     );
 
     expect(managementIds).toEqual(expect.arrayContaining(['inventory-value', 'inventory-turns']));
@@ -177,9 +180,9 @@ describe('dashboardWidgets', () => {
   });
 
   it('shows Quotes by status to quote readers and hides it from job viewers', () => {
-    const salesAccess = createUserAccessSummary({ role: 'sales', userId: 'user-1' });
-    const procurementAccess = createUserAccessSummary({ role: 'procurement-manager', userId: 'user-1' });
-    const jobViewerAccess = createUserAccessSummary({ role: 'job-viewer', userId: 'user-1' });
+    const salesAccess = createUserAccessSummary({ ...roleSlotsForRole('sales'), userId: 'user-1' });
+    const procurementAccess = createUserAccessSummary({ ...roleSlotsForRole('procurement-manager'), userId: 'user-1' });
+    const jobViewerAccess = createUserAccessSummary({ ...roleSlotsForRole('job-viewer'), userId: 'user-1' });
 
     expect(widgetIds(filterDashboardWidgets(salesAccess, dashboardWidgets))).toContain('quotes-by-status');
     expect(widgetIds(filterDashboardWidgets(procurementAccess, dashboardWidgets))).toContain('quotes-by-status');
@@ -188,9 +191,9 @@ describe('dashboardWidgets', () => {
 
   it('shows the sales metrics widgets to quote readers and hides them from job viewers', () => {
     const salesMetricsWidgetIds = ['open-pipeline', 'quote-flow', 'stale-sent-quotes', 'awaiting-job-creation'];
-    const salesAccess = createUserAccessSummary({ role: 'sales', userId: 'user-1' });
-    const procurementAccess = createUserAccessSummary({ role: 'procurement-manager', userId: 'user-1' });
-    const jobViewerAccess = createUserAccessSummary({ role: 'job-viewer', userId: 'user-1' });
+    const salesAccess = createUserAccessSummary({ ...roleSlotsForRole('sales'), userId: 'user-1' });
+    const procurementAccess = createUserAccessSummary({ ...roleSlotsForRole('procurement-manager'), userId: 'user-1' });
+    const jobViewerAccess = createUserAccessSummary({ ...roleSlotsForRole('job-viewer'), userId: 'user-1' });
 
     const salesIds = widgetIds(filterDashboardWidgets(salesAccess, dashboardWidgets));
     const procurementIds = widgetIds(filterDashboardWidgets(procurementAccess, dashboardWidgets));
@@ -210,18 +213,18 @@ describe('dashboardWidgets', () => {
     const bayLoadWidget = dashboardWidgets.find((widget) => widget.id === 'bay-load-today');
     const scheduledJobsWidget = dashboardWidgets.find((widget) => widget.id === 'scheduled-jobs');
 
-    expect(shopFloorWidget).toMatchObject({ requires: 'job:read', size: 'md', title: 'Shop floor today' });
-    expect(bayRunwayWidget).toMatchObject({ requires: 'job:read', size: 'md', title: 'Bay runway' });
-    expect(activeJobsWidget).toMatchObject({ requires: 'job:read', size: 'xs', title: 'Active jobs' });
-    expect(bayLoadWidget).toMatchObject({ requires: 'job:read', size: 'xs', title: 'Bay load today' });
-    expect(scheduledJobsWidget).toMatchObject({ requires: 'job:read', size: 'xs', title: 'Scheduled jobs' });
+    expect(shopFloorWidget).toMatchObject({ requires: 'equipment_job:read', size: 'md', title: 'Shop floor today' });
+    expect(bayRunwayWidget).toMatchObject({ requires: 'equipment_job:read', size: 'md', title: 'Bay runway' });
+    expect(activeJobsWidget).toMatchObject({ requires: 'equipment_job:read', size: 'xs', title: 'Active jobs' });
+    expect(bayLoadWidget).toMatchObject({ requires: 'equipment_job:read', size: 'xs', title: 'Bay load today' });
+    expect(scheduledJobsWidget).toMatchObject({ requires: 'equipment_job:read', size: 'xs', title: 'Scheduled jobs' });
   });
 
   it('shows the shop-floor band to job viewers and procurement managers and hides it from sales', () => {
     const shopFloorWidgetIds = ['active-jobs', 'bay-load-today', 'shop-floor-today', 'bay-runway', 'scheduled-jobs'];
-    const jobViewerAccess = createUserAccessSummary({ role: 'job-viewer', userId: 'user-1' });
-    const procurementAccess = createUserAccessSummary({ role: 'procurement-manager', userId: 'user-1' });
-    const salesAccess = createUserAccessSummary({ role: 'sales', userId: 'user-1' });
+    const jobViewerAccess = createUserAccessSummary({ ...roleSlotsForRole('job-viewer'), userId: 'user-1' });
+    const procurementAccess = createUserAccessSummary({ ...roleSlotsForRole('procurement-manager'), userId: 'user-1' });
+    const salesAccess = createUserAccessSummary({ ...roleSlotsForRole('sales'), userId: 'user-1' });
 
     const jobViewerIds = widgetIds(filterDashboardWidgets(jobViewerAccess, dashboardWidgets));
     const procurementIds = widgetIds(filterDashboardWidgets(procurementAccess, dashboardWidgets));

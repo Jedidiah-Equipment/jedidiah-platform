@@ -46,7 +46,7 @@ export function toFindCustomersResponse(
     contactPerson: customer.contactPerson,
     email: customer.email,
     id: customer.id,
-    ...(hasPermission(access, 'customer:read') ? { links: { app: createCustomerAppHref(customer.id) } } : {}),
+    ...(hasPermission(access, 'equipment_customer:read') ? { links: { app: createCustomerAppHref(customer.id) } } : {}),
     phone: customer.phone,
     vatNumber: customer.vatNumber,
   }));
@@ -61,7 +61,7 @@ export const findCustomersDefinition = {
   ].join('\n'),
   inputSchema: FindCustomersInput,
   outputSchema: FindCustomersResponse,
-  anyOfPermissions: ['customer:read', 'quote:read', 'quote:create'],
+  anyOfPermissions: ['equipment_customer:read', 'equipment_quote:read', 'equipment_quote:create'],
   async handler(args: unknown, ctx: AiContext): Promise<FindCustomersResponse> {
     const input = FindCustomersInput.parse(args ?? {});
     const result = await customersCore.listCustomers({ db: ctx.db, input: toCoreCustomerListInput(input) });

@@ -1,4 +1,4 @@
-import { hasPermission } from '@pkg/domain';
+import { type Business, getPermissionBusiness, hasBusinessAccess, hasPermission } from '@pkg/domain';
 import type { AppPermission } from '@pkg/schema';
 import { redirect } from '@tanstack/react-router';
 
@@ -28,14 +28,31 @@ export async function requireRouteSession(context: RouterContext) {
   return session;
 }
 
-export async function requireRoutePermission(context: RouterContext, permission: AppPermission) {
+export async function getRouteAccess(context: RouterContext) {
   await requireRouteSession(context);
-  const access = await context.queryClient.ensureQueryData(context.trpc.auth.access.queryOptions(undefined));
+  return context.queryClient.ensureQueryData(context.trpc.auth.access.queryOptions(undefined));
+}
+
+const BUSINESS_HOME = {
+  contracting: '/contracting',
+  equipment: '/equipment/dashboard',
+} as const satisfies Record<Business, string>;
+
+export async function requireRouteBusinessAccess(context: RouterContext, business: Business) {
+  const access = await getRouteAccess(context);
+
+  if (!hasBusinessAccess(access, business)) {
+    throw redirect({ to: BUSINESS_HOME[business === 'equipment' ? 'contracting' : 'equipment'] });
+  }
+
+  return access;
+}
+
+export async function requireRoutePermission(context: RouterContext, permission: AppPermission) {
+  const access = await getRouteAccess(context);
 
   if (!hasPermission(access, permission)) {
-    throw redirect({
-      to: '/equipment/dashboard',
-    });
+    throw redirect({ to: BUSINESS_HOME[getPermissionBusiness(permission)] });
   }
 
   return access;

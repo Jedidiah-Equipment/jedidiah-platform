@@ -60,7 +60,7 @@ const jobSortOptions: SortOptions<JobListInput> = {
 export const JobListPage: React.FC<{ selectedJobId?: UUID | undefined }> = ({ selectedJobId }) => {
   const navigate = useNavigate();
   const accessQuery = useAccess();
-  const canCreateJob = hasPermission(accessQuery.data, 'job:create');
+  const canCreateJob = hasPermission(accessQuery.data, 'equipment_job:create');
 
   return (
     <JobListTable
@@ -108,8 +108,9 @@ export const JobListTable: React.FC<JobListTableProps> = ({ customerId, render }
   const queryClient = useQueryClient();
   const showMutationError = useApiMutationErrorToast();
   const accessQuery = useAccess();
-  const canOpenJobs = hasPermission(accessQuery.data, 'job:read') || hasPermission(accessQuery.data, 'job:update');
-  const canEditJobs = hasPermission(accessQuery.data, 'job:update');
+  const canOpenJobs =
+    hasPermission(accessQuery.data, 'equipment_job:read') || hasPermission(accessQuery.data, 'equipment_job:update');
+  const canEditJobs = hasPermission(accessQuery.data, 'equipment_job:update');
   // Off by default, so the Job List opens on live work rather than years of finished Jobs.
   const [includeCompleted, setIncludeCompleted] = useState(false);
 
@@ -149,11 +150,11 @@ export const JobListTable: React.FC<JobListTableProps> = ({ customerId, render }
   );
 
   // One row crosses the ledger, the Job and the Quote, so the button mirrors the API's all-of gate
-  // rather than `job:read` alone — see `jobs.salesExport`.
+  // rather than `equipment_job:read` alone — see `jobs.salesExport`.
   const canExportSales =
-    hasPermission(accessQuery.data, 'inventory_cost:read') &&
-    hasPermission(accessQuery.data, 'job:read') &&
-    hasPermission(accessQuery.data, 'quote:read');
+    hasPermission(accessQuery.data, 'equipment_inventory_cost:read') &&
+    hasPermission(accessQuery.data, 'equipment_job:read') &&
+    hasPermission(accessQuery.data, 'equipment_quote:read');
   const salesExportMutation = useMutation({
     mutationFn: () =>
       queryClient.fetchQuery(

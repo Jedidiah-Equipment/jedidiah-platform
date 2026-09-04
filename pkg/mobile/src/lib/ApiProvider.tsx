@@ -13,7 +13,7 @@ export function ApiProvider({ children }: { children: ReactNode }) {
 
   // The QueryClient outlives sign-out in this single long-lived process, so drop
   // all cached data whenever the signed-in user changes. Otherwise the next account
-  // (e.g. a sales user without `job:read`) could briefly render the previous user's
+  // (e.g. a sales user without `equipment_job:read`) could briefly render the previous user's
   // cached query under the same key before its refetch 403s.
   const { data: session } = useSession();
   const userId = sessionUserId(session);

@@ -49,7 +49,7 @@ export function GenerateQuoteDocumentDialog({
   const [hasUserEditedLeadTime, setHasUserEditedLeadTime] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const isCustomQuote = quote.kind === 'custom';
-  const canUpdateQuote = hasPermission(accessQuery.data, 'quote:update');
+  const canUpdateQuote = hasPermission(accessQuery.data, 'equipment_quote:update');
   const hasResolvedProductDocumentFacts = quote.product !== null;
   const canRun =
     canUpdateQuote && canGenerateQuoteDocument({ kind: quote.kind, product: quote.product, status: quote.status });

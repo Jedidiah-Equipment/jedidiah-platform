@@ -30,7 +30,7 @@ export function assertCanWriteInventoryCost(access: InventoryCostAccess, unitCos
  *
  * `authorizedProcedure` reads a list as alternatives, so a rule needing *both* rights spends one on
  * the procedure and asserts the other here — the invoice price correction needs `inventory_cost:
- * revalue` to write and `inventory_cost:read` to have been able to see what it is confirming.
+ * revalue` to write and `equipment_inventory_cost:read` to have been able to see what it is confirming.
  */
 export function assertCanReadInventoryCost(access: InventoryCostAccess): void {
   if (canReadInventoryCosts(access)) return;

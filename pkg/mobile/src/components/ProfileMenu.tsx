@@ -1,6 +1,7 @@
 import { type HelpTopic, helpUrl } from '@pkg/domain';
-import { IconHelpCircle, IconLogout } from '@tabler/icons-react-native';
+import { IconHelpCircle, IconLogout, IconSwitchHorizontal } from '@tabler/icons-react-native';
 import * as Linking from 'expo-linking';
+import { router, usePathname } from 'expo-router';
 import { Pressable, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -11,6 +12,7 @@ import { Text } from '@/components/ui/text';
 import { useAppToast } from '@/components/ui/toast';
 import { docsOrigin } from '@/lib/app-env';
 import { signOut } from '@/lib/auth';
+import { getSessionBusinessAccess, useAuthSession } from '@/lib/auth-session';
 import type { ColorModePreference } from '@/theme/ColorModeProvider';
 import { useColorMode } from '@/theme/use-color-mode';
 
@@ -41,6 +43,10 @@ export function ProfileMenu({
   const insets = useSafeAreaInsets();
   const showToast = useAppToast();
   const helpOrigin = docsOrigin;
+  const businessAccess = getSessionBusinessAccess(useAuthSession());
+  const pathname = usePathname();
+  const isContracting = pathname.startsWith('/contracting');
+  const showBusinessSwitcher = businessAccess.contracting && businessAccess.equipment;
 
   return (
     // Anchor below the header's overflow button, clear of the status bar.
@@ -56,6 +62,24 @@ export function ProfileMenu({
           </Text>
         </View>
       </View>
+
+      {showBusinessSwitcher ? (
+        <View className="border-b border-border p-1.5">
+          <Pressable
+            accessibilityRole="button"
+            className="flex-row items-center gap-3 rounded-xl px-3 py-3 active:bg-muted"
+            onPress={() => {
+              onClose();
+              router.replace(isContracting ? '/equipment' : '/contracting');
+            }}
+          >
+            <Icon className="text-muted-foreground" icon={IconSwitchHorizontal} size={18} />
+            <Text className="text-sm text-surface-foreground" weight="semibold">
+              Switch to {isContracting ? 'Equipment' : 'Contracting'}
+            </Text>
+          </Pressable>
+        </View>
+      ) : null}
 
       {helpTopic && helpOrigin ? (
         <View className="border-b border-border p-1.5">

@@ -1,5 +1,5 @@
 import * as productsCore from '@pkg/core';
-import { createUserAccessSummary } from '@pkg/domain';
+import { createUserAccessSummary, roleSlotsForRole } from '@pkg/domain';
 import { describe, expect, test, vi } from 'vitest';
 import { z } from 'zod';
 
@@ -11,7 +11,7 @@ const PRODUCT_ID = '00000000-0000-4000-8000-000000000201';
 
 function createContext(): AiContext {
   return {
-    access: createUserAccessSummary({ role: 'admin', userId: 'test-user-id' }),
+    access: createUserAccessSummary({ ...roleSlotsForRole('admin'), userId: 'test-user-id' }),
     brochureRenderer: vi.fn(),
     db: {} as AiContext['db'],
     log: {} as AiContext['log'],
@@ -49,7 +49,10 @@ describe('generateProductBrochureDocument contract', () => {
       productId: PRODUCT_ID,
       storage: ctx.storage,
     });
-    expect(generateProductBrochureDocumentDefinition.anyOfPermissions).toEqual(['product:read', 'quote:create']);
+    expect(generateProductBrochureDocumentDefinition.anyOfPermissions).toEqual([
+      'equipment_product:read',
+      'equipment_quote:create',
+    ]);
     expect(() => z.toJSONSchema(generateProductBrochureDocumentDefinition.inputSchema)).not.toThrow();
   });
 });

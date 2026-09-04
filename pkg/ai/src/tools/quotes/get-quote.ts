@@ -29,7 +29,7 @@ export const getQuoteDefinition = {
   ].join('\n'),
   inputSchema: GetQuoteInput,
   outputSchema: GetQuoteResponse,
-  anyOfPermissions: ['quote:read'],
+  anyOfPermissions: ['equipment_quote:read'],
   async handler(args: unknown, ctx: AiContext): Promise<GetQuoteResponse> {
     const input = GetQuoteInput.parse(args);
     const quote = await quotesCore.getQuote({ db: ctx.db, id: input.id });

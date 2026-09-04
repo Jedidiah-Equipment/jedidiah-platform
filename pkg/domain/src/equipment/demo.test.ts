@@ -14,6 +14,7 @@ describe('demoUsers', () => {
       'super-admin',
       'super-admin',
     ]);
+    expect(demoUsers.find((user) => user.id === 'seed-reinhard-user')?.contractingRole).toBe('contracting-admin');
   });
 
   /**

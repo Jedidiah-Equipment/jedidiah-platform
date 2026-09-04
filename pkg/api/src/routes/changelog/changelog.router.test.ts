@@ -1,5 +1,5 @@
 import { changelogView, type Db, eq, user } from '@pkg/db';
-import type { AppRole, Changelog } from '@pkg/schema';
+import type { Changelog, EquipmentRole } from '@pkg/schema';
 import { describe, expect } from 'vitest';
 
 import { createTester } from '@/test/create-tester.js';
@@ -26,7 +26,7 @@ function changelog(releasedAt: string, title = 'Feature'): Changelog {
 }
 
 /** A session for `test-user-id` whose account was created at `createdAt` (drives the account-cutoff rule). */
-function sessionWithAccountCreatedAt(createdAt: Date, role: AppRole = 'admin') {
+function sessionWithAccountCreatedAt(createdAt: Date, role: EquipmentRole = 'admin') {
   const session = mockSession(role);
   session.user.createdAt = createdAt;
   return session;

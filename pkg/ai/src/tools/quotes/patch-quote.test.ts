@@ -1,5 +1,5 @@
 import * as quotesCore from '@pkg/core';
-import { createUserAccessSummary } from '@pkg/domain';
+import { createUserAccessSummary, roleSlotsForRole } from '@pkg/domain';
 import { QuoteDetail } from '@pkg/schema';
 import { describe, expect, test, vi } from 'vitest';
 import { z } from 'zod';
@@ -60,7 +60,7 @@ const quote = QuoteDetail.parse({
 
 function createContext(): AiContext {
   return {
-    access: createUserAccessSummary({ role: 'admin', userId: 'test-user-id' }),
+    access: createUserAccessSummary({ ...roleSlotsForRole('admin'), userId: 'test-user-id' }),
     db: {} as AiContext['db'],
     session: {
       user: {
@@ -133,9 +133,10 @@ describe('patchQuote contract', () => {
       customer: `/equipment/customers/${CUSTOMER_ID}/edit`,
     });
     expect(
-      toPatchQuoteResponse(quote, createUserAccessSummary({ role: 'sales', userId: 'test-user-id' })).links,
+      toPatchQuoteResponse(quote, createUserAccessSummary({ ...roleSlotsForRole('sales'), userId: 'test-user-id' }))
+        .links,
     ).toEqual({ app: `/equipment/quotes/${QUOTE_ID}/edit` });
-    expect(patchQuoteDefinition.anyOfPermissions).toEqual(['quote:update']);
+    expect(patchQuoteDefinition.anyOfPermissions).toEqual(['equipment_quote:update']);
     expect(patchQuoteDefinition.description).toContain('findQuotes');
     expect(patchQuoteDefinition.description).toContain('accepted or rejected');
     expect(patchQuoteDefinition.description).toContain('replace the complete collection');

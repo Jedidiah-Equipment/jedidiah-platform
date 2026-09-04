@@ -14,7 +14,7 @@ import { useTRPC } from '@/lib/trpc';
  * What a scan resolved to: the Part, what is on the shelf, and the four things that can be done to
  * it from the floor.
  *
- * No price appears here and none is asked for. The device session holds no `inventory_cost:read`, so
+ * No price appears here and none is asked for. The device session holds no `equipment_inventory_cost:read`, so
  * `partByCode` already returns nulls where the values would be (spec §11) — the screen simply has no
  * cost fields to render, rather than a gate deciding whether to show them.
  */

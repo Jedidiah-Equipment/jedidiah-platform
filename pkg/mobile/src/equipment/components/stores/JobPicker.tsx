@@ -14,7 +14,7 @@ import { useDebouncedSearch } from '@/lib/use-debounced-search';
  * Which Job the stock is going to, or coming back from.
  *
  * Read through `inventory.jobOptions` rather than the Job list: the `stores` role holds no
- * `job:read` at all (spec §11's matrix), and this picker is the only Job surface the tablet has.
+ * `equipment_job:read` at all (spec §11's matrix), and this picker is the only Job surface the tablet has.
  */
 const JOB_PAGE_SIZE = 20;
 

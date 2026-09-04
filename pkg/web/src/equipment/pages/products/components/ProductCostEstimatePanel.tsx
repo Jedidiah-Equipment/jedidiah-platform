@@ -27,7 +27,7 @@ import {
 
 export function ProductCostEstimatePanel({ productId }: { productId: UUID }) {
   const trpc = useTRPC();
-  const costAccess = useCan('inventory_cost:read');
+  const costAccess = useCan('equipment_inventory_cost:read');
   const query = useQuery(trpc.products.costEstimate.queryOptions({ productId }, { enabled: costAccess.can }));
 
   if (!costAccess.can) return null;

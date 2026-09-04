@@ -1,5 +1,5 @@
 import type { StorageAdapter } from '@pkg/core';
-import { createUserAccessSummary } from '@pkg/domain';
+import { createUserAccessSummary, roleSlotsForRole } from '@pkg/domain';
 import { describe, expect, test } from 'vitest';
 
 import { mockSession } from '@/test/test-utils.js';
@@ -8,7 +8,7 @@ import { createAiContext } from './ai-context.js';
 describe('createAiContext', () => {
   test('injects document generation and email delivery dependencies', () => {
     const storage = {} as StorageAdapter;
-    const access = createUserAccessSummary({ role: 'sales', userId: 'test-user-id' });
+    const access = createUserAccessSummary({ ...roleSlotsForRole('sales'), userId: 'test-user-id' });
     const ctx = createAiContext({
       access,
       db: {} as Parameters<typeof createAiContext>[0]['db'],

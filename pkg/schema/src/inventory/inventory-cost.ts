@@ -3,7 +3,7 @@ import { PriceDelta } from '../common/price.js';
 
 /**
  * Every schema in this registry is a cost leaf: the server-side cost gate nulls it for callers
- * without `inventory_cost:read` (spec §11). A contract carrying one must reference the exported
+ * without `equipment_inventory_cost:read` (spec §11). A contract carrying one must reference the exported
  * leaf by value and declare the field through {@link declareInventoryCostFields}; the contract test
  * walks every exported schema and fails on a cost leaf no contract has declared.
  */

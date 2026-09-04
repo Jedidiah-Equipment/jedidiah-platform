@@ -30,15 +30,15 @@ import { assertNever, type CoreErrorMapping, mapKnownCoreError } from '../../../
 import { authorizedProcedure, router } from '../../../trpc/init.js';
 
 export const productsRouter = router({
-  list: authorizedProcedure('product:read')
+  list: authorizedProcedure('equipment_product:read')
     .input(ProductListInput)
     .query(({ ctx, input }) => listProducts({ db: ctx.db, input, log })),
 
-  get: authorizedProcedure('product:read')
+  get: authorizedProcedure('equipment_product:read')
     .input(z.object({ id: UUID }))
     .query(({ ctx, input }) => mapProductErrors(() => getProduct({ db: ctx.db, id: input.id }))),
 
-  costEstimate: authorizedProcedure('inventory_cost:read')
+  costEstimate: authorizedProcedure('equipment_inventory_cost:read')
     .input(z.object({ productId: UUID }).strict())
     .output(ProductCostEstimate)
     .query(({ ctx, input }) =>
@@ -46,33 +46,35 @@ export const productsRouter = router({
     ),
 
   /**
-   * The average is catalog information under `product:read`; the ranking is performance data about
-   * named people, so it rides the same payload but only for `job_metrics:read` holders. Partial
+   * The average is catalog information under `equipment_product:read`; the ranking is performance data about
+   * named people, so it rides the same payload but only for `equipment_job_metrics:read` holders. Partial
    * response rather than a second procedure: one screen, one query, the gate decides one field.
    */
-  buildMetrics: authorizedProcedure('product:read')
+  buildMetrics: authorizedProcedure('equipment_product:read')
     .input(ProductBuildMetricsInput)
     .query(({ ctx, input }) =>
       getProductBuildMetrics({
         db: ctx.db,
-        includeRanking: hasPermission(ctx.access, 'job_metrics:read'),
+        includeRanking: hasPermission(ctx.access, 'equipment_job_metrics:read'),
         input,
       }),
     ),
 
-  rangeOptions: authorizedProcedure('product:read').query(({ ctx }) => listProductRangeOptions({ db: ctx.db })),
+  rangeOptions: authorizedProcedure('equipment_product:read').query(({ ctx }) =>
+    listProductRangeOptions({ db: ctx.db }),
+  ),
 
-  variantOptions: authorizedProcedure('product:read')
+  variantOptions: authorizedProcedure('equipment_product:read')
     .input(z.object({ rangeId: UUID }))
     .query(({ ctx, input }) => listProductRangeVariantOptions({ db: ctx.db, rangeId: input.rangeId })),
 
-  assemblyNames: authorizedProcedure('product:read').query(({ ctx }) => listAssemblyNames({ db: ctx.db })),
+  assemblyNames: authorizedProcedure('equipment_product:read').query(({ ctx }) => listAssemblyNames({ db: ctx.db })),
 
-  assemblyExport: authorizedProcedure('product:read').query(
+  assemblyExport: authorizedProcedure('equipment_product:read').query(
     ({ ctx }): Promise<AssemblyExportRow[]> => exportProductAssemblies({ db: ctx.db }),
   ),
 
-  create: authorizedProcedure('product:create')
+  create: authorizedProcedure('equipment_product:create')
     .input(ProductCreateInput)
     .mutation(async ({ ctx, input }) => {
       const product = await mapProductErrors(() =>
@@ -82,7 +84,7 @@ export const productsRouter = router({
       return product;
     }),
 
-  update: authorizedProcedure('product:update')
+  update: authorizedProcedure('equipment_product:update')
     .input(ProductUpdateInput)
     .mutation(async ({ ctx, input }) => {
       const product = await mapProductErrors(() =>
@@ -92,7 +94,7 @@ export const productsRouter = router({
       return product;
     }),
 
-  remove: authorizedProcedure('product:update')
+  remove: authorizedProcedure('equipment_product:update')
     .input(z.object({ id: UUID }))
     .mutation(({ ctx, input }) =>
       mapProductErrors(() => removeProduct({ db: ctx.db, id: input.id, actorUserId: ctx.session.user.id })),

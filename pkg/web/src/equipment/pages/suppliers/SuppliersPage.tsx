@@ -13,8 +13,8 @@ import { SupplierCreateDialog } from './SupplierCreateDialog.js';
 
 export const SuppliersPage: React.FC = () => {
   const navigate = useNavigate();
-  const canUpdatePart = useCan('part:update').can;
-  const canUpdateSupplier = useCan('supplier:update').can;
+  const canUpdatePart = useCan('equipment_part:update').can;
+  const canUpdateSupplier = useCan('equipment_supplier:update').can;
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
 
   return (

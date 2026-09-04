@@ -76,7 +76,7 @@ export const getProductDefinition = {
   ].join('\n'),
   inputSchema: GetProductInput,
   outputSchema: GetProductResponse,
-  anyOfPermissions: ['product:read'],
+  anyOfPermissions: ['equipment_product:read'],
   async handler(args: unknown, ctx: AiContext): Promise<GetProductResponse> {
     const input = GetProductInput.parse(args);
     const product = await productsCore.getProduct({ db: ctx.db, id: input.id });

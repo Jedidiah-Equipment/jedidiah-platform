@@ -115,7 +115,7 @@ export function toJobCreateFormValues({
 }
 
 /**
- * Seed rows as the API takes them. `job:create` implies `job:schedule` (see appRoleAccess), so seed
+ * Seed rows as the API takes them. `equipment_job:create` implies `equipment_job:schedule` (see appRoleAccess), so seed
  * dates need no permission stripping; an empty date is the missing-schedule-data append fallback.
  */
 export function toJobBaySeedInputs(baySeeds: readonly JobBaySeedFormValues[]): JobBaySeedInput[] {

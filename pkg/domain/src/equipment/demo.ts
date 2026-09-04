@@ -1,6 +1,7 @@
-import { type AppRole, type Department, UserPassword } from '@pkg/schema';
+import { type ContractingRole, type Department, type EquipmentRole, UserPassword } from '@pkg/schema';
 
 export type DemoUser = {
+  contractingRole?: ContractingRole;
   departments: readonly Department[];
   email: string;
   id: string;
@@ -8,7 +9,7 @@ export type DemoUser = {
   isDevice?: boolean;
   name: string;
   password: UserPassword;
-  role: AppRole;
+  role: EquipmentRole;
 };
 
 export const DEFAULT_DEMO_USER_PASSWORD: UserPassword = UserPassword.parse('stoneybrook');
@@ -23,6 +24,7 @@ export const demoUsers: readonly DemoUser[] = [
     role: 'super-admin',
   },
   {
+    contractingRole: 'contracting-admin',
     departments: [],
     id: 'seed-reinhard-user',
     name: 'Reinhard Zellhuber',

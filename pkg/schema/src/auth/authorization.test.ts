@@ -1,6 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import { Department } from '../common/departments.js';
-import { AppPermission, AppRole, UserAccessSummary, UserAccount, UserPassword, UserSummary } from './authorization.js';
+import {
+  AppPermission,
+  AppRole,
+  ContractingRole,
+  EquipmentRole,
+  UserAccessSummary,
+  UserAccount,
+  UserPassword,
+  UserSummary,
+} from './authorization.js';
 
 describe('Department', () => {
   it('accepts supported job departments', () => {
@@ -27,6 +36,13 @@ describe('AppRole', () => {
     expect(AppRole.parse('sales')).toBe('sales');
     expect(AppRole.parse('stores')).toBe('stores');
     expect(AppRole.parse('bay-operator')).toBe('bay-operator');
+    expect(AppRole.parse('contracting-admin')).toBe('contracting-admin');
+    expect(AppRole.parse('contracting-manager')).toBe('contracting-manager');
+    expect(AppRole.parse('workshop-manager')).toBe('workshop-manager');
+    expect(AppRole.parse('foreman')).toBe('foreman');
+    expect(AppRole.parse('contracting-invoicing')).toBe('contracting-invoicing');
+    expect(AppRole.parse('driver')).toBe('driver');
+    expect(AppRole.parse('mechanic')).toBe('mechanic');
   });
 
   it('rejects retired app roles', () => {
@@ -34,33 +50,32 @@ describe('AppRole', () => {
   });
 });
 
+describe('business role slots', () => {
+  it('keeps equipment and contracting roles in separate enums', () => {
+    expect(EquipmentRole.parse('sales')).toBe('sales');
+    expect(ContractingRole.parse('foreman')).toBe('foreman');
+    expect(() => EquipmentRole.parse('foreman')).toThrow();
+    expect(() => ContractingRole.parse('sales')).toThrow();
+  });
+});
+
 describe('AppPermission', () => {
   it('accepts app permissions', () => {
-    expect(AppPermission.parse('job:read')).toBe('job:read');
-    expect(AppPermission.parse('job:create')).toBe('job:create');
-    expect(AppPermission.parse('job:update')).toBe('job:update');
-    expect(AppPermission.parse('job:schedule')).toBe('job:schedule');
-    expect(AppPermission.parse('job:update-calendar')).toBe('job:update-calendar');
-    expect(AppPermission.parse('email:send')).toBe('email:send');
-    expect(AppPermission.parse('part:read')).toBe('part:read');
-    expect(AppPermission.parse('part:update')).toBe('part:update');
-    expect(AppPermission.parse('product_range:read')).toBe('product_range:read');
-    expect(AppPermission.parse('product_range:create')).toBe('product_range:create');
-    expect(AppPermission.parse('product_range:update')).toBe('product_range:update');
-    expect(AppPermission.parse('quote:cancel')).toBe('quote:cancel');
-    expect(AppPermission.parse('supplier:read')).toBe('supplier:read');
-    expect(AppPermission.parse('supplier:update')).toBe('supplier:update');
-    expect(AppPermission.parse('supplier:merge')).toBe('supplier:merge');
-    expect(AppPermission.parse('feedback:read')).toBe('feedback:read');
-    expect(AppPermission.parse('feedback:update')).toBe('feedback:update');
-    expect(AppPermission.parse('purchase_order:receive')).toBe('purchase_order:receive');
-    expect(AppPermission.parse('inventory:close-out')).toBe('inventory:close-out');
-    expect(AppPermission.parse('inventory_cost:revalue')).toBe('inventory_cost:revalue');
+    expect(AppPermission.parse('equipment_job:read')).toBe('equipment_job:read');
+    expect(AppPermission.parse('equipment_email:send')).toBe('equipment_email:send');
+    expect(AppPermission.parse('equipment_part:update')).toBe('equipment_part:update');
+    expect(AppPermission.parse('equipment_quote:cancel')).toBe('equipment_quote:cancel');
+    expect(AppPermission.parse('equipment_inventory:close-out')).toBe('equipment_inventory:close-out');
+    expect(AppPermission.parse('contracting_job:read-own')).toBe('contracting_job:read-own');
+    expect(AppPermission.parse('contracting_assignment:update-own')).toBe('contracting_assignment:update-own');
+    expect(AppPermission.parse('contracting_breakdown:update')).toBe('contracting_breakdown:update');
+    expect(AppPermission.parse('contracting_invoice:update')).toBe('contracting_invoice:update');
   });
 
   it('rejects retired permissions', () => {
     expect(() => AppPermission.parse('user:assign-departments')).toThrow();
     expect(() => AppPermission.parse('quote:discount')).toThrow();
+    expect(() => AppPermission.parse('job:read')).toThrow();
   });
 });
 
@@ -69,12 +84,14 @@ describe('UserAccessSummary', () => {
     expect(
       UserAccessSummary.parse({
         permissions: [],
-        role: 'sales',
+        contractingRole: null,
+        equipmentRole: 'sales',
         userId: 'user_123',
       }),
     ).toEqual({
       permissions: [],
-      role: 'sales',
+      contractingRole: null,
+      equipmentRole: 'sales',
       userId: 'user_123',
     });
   });
@@ -89,7 +106,8 @@ describe('UserSummary', () => {
         isDevice: false,
         id: 'user_123',
         name: 'User Example',
-        role: 'sales',
+        contractingRole: null,
+        equipmentRole: 'sales',
       }),
     ).toThrow();
 
@@ -103,7 +121,8 @@ describe('UserSummary', () => {
         id: 'user_123',
         name: 'User Example',
         phoneNumber: null,
-        role: 'sales',
+        contractingRole: null,
+        equipmentRole: 'sales',
         thumbnailDataUrl: null,
       }).departments,
     ).toEqual(['supply']);
@@ -121,7 +140,8 @@ describe('UserAccount', () => {
         id: 'user_123',
         name: 'User Example',
         phoneNumber: null,
-        role: 'sales',
+        contractingRole: null,
+        equipmentRole: 'sales',
         thumbnailDataUrl: null,
       }),
     ).toEqual({
@@ -132,7 +152,8 @@ describe('UserAccount', () => {
       id: 'user_123',
       name: 'User Example',
       phoneNumber: null,
-      role: 'sales',
+      contractingRole: null,
+      equipmentRole: 'sales',
       thumbnailDataUrl: null,
     });
   });

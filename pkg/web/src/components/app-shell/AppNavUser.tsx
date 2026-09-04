@@ -1,4 +1,4 @@
-import { roleLabels } from '@pkg/domain';
+import { type Business, getBusinessRole, roleLabels } from '@pkg/domain';
 import { IconLogout, IconMoon, IconSelector, IconShield, IconSun } from '@tabler/icons-react';
 import type React from 'react';
 
@@ -16,7 +16,13 @@ import { SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar } from '@/c
 import { useAccess } from '@/hooks/use-access.js';
 import { useTheme } from '@/hooks/use-theme.js';
 
+const BUSINESS_NAMES = { contracting: 'Contracting', equipment: 'Equipment' } as const satisfies Record<
+  Business,
+  string
+>;
+
 type AppNavUserProps = {
+  business: Business;
   user: {
     name: string;
     email: string;
@@ -26,11 +32,10 @@ type AppNavUserProps = {
   onSignOut: () => void | Promise<void>;
 };
 
-export const AppNavUser: React.FC<AppNavUserProps> = ({ user, onSignOut }) => {
+export const AppNavUser: React.FC<AppNavUserProps> = ({ business, user, onSignOut }) => {
   const { isMobile } = useSidebar();
+  const activeRole = getBusinessRole(useAccess().data, business);
   const { setTheme, theme } = useTheme();
-  const accessQuery = useAccess();
-  const access = accessQuery.data;
   const isDark = theme === 'dark';
 
   return (
@@ -75,7 +80,7 @@ export const AppNavUser: React.FC<AppNavUserProps> = ({ user, onSignOut }) => {
                 <span className="flex min-w-0 flex-col">
                   <span>Role</span>
                   <span className="truncate text-muted-foreground text-xs">
-                    {access ? roleLabels[access.role] : 'Loading'}
+                    {activeRole ? roleLabels[activeRole] : `No ${BUSINESS_NAMES[business]} access`}
                   </span>
                 </span>
               </DropdownMenuItem>

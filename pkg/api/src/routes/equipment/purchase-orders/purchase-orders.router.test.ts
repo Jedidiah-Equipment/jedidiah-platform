@@ -46,7 +46,12 @@ const test = createTester(async ({ db }) => {
   ]);
   const [customer] = await db
     .insert(customers)
-    .values({ companyName: 'Router Customer', email: 'customer@example.com', phone: '0123456789', vatNumber: 'VAT-1' })
+    .values({
+      companyName: 'Router Customer',
+      email: 'customer@example.com',
+      phone: '0123456789',
+      vatNumber: 'VAT-1',
+    })
     .returning({ id: customers.id });
   if (!customer) throw new Error('Customer fixture was not created');
   const [quote] = await db
@@ -228,7 +233,7 @@ describe('purchaseOrders router', () => {
 });
 
 describe('buy-list seeding and late orders', () => {
-  test('seeds drafts under purchase_order:create and lists late orders under purchase_order:read', async ({
+  test('seeds drafts under equipment_purchase_order:create and lists late orders under equipment_purchase_order:read', async ({
     context,
   }) => {
     const admin = context.createCaller();
@@ -255,7 +260,7 @@ describe('buy-list seeding and late orders', () => {
 });
 
 describe('amendments, returns, and credit notes', () => {
-  test('amends a sent order under purchase_order:amend and refuses a dock user', async ({ context }) => {
+  test('amends a sent order under equipment_purchase_order:amend and refuses a dock user', async ({ context }) => {
     const admin = context.createCaller();
     const procurement = context.createCaller(mockSession('procurement-manager'));
     const stores = context.createCaller(mockSession('stores'));

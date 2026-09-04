@@ -1,7 +1,7 @@
 import { type Db, user } from '@pkg/db';
-import type { AppRole } from '@pkg/schema';
+import type { EquipmentRole } from '@pkg/schema';
 
-export async function createActorUser(db: Db, role: AppRole = 'admin') {
+export async function createActorUser(db: Db, role: EquipmentRole = 'admin') {
   const now = new Date();
 
   await db.insert(user).values({

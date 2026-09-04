@@ -1,11 +1,9 @@
 import { listUserDepartments } from '@pkg/core';
 import { auditEvents, type Db, user } from '@pkg/db';
-import { createUserAccessSummary } from '@pkg/domain';
-import type { AppRole } from '@pkg/schema';
+import { createUserAccessSummary, parseRoleSlots } from '@pkg/domain';
+import type { ContractingRole, EquipmentRole } from '@pkg/schema';
 import pino from 'pino';
 import { beforeEach, describe, expect } from 'vitest';
-
-import { parseBetterAuthRole } from '@/auth/session.js';
 import { clearMockEmailMessages, getMockEmailMessages } from '@/email/mock-email.js';
 import { createTester } from '@/test/create-tester.js';
 import { mockSession } from '@/test/test-utils.js';
@@ -36,14 +34,15 @@ describe('users.list', () => {
     expect(result.users).toEqual([
       {
         assistantEnabled: false,
+        contractingRole: null,
         departments: [],
         email: 'viewer@example.com',
         emailVerified: true,
+        equipmentRole: 'sales',
         id: 'viewer-user-id',
         isDevice: false,
         name: 'Viewer User',
         phoneNumber: null,
-        role: 'sales',
         thumbnailDataUrl: null,
       },
     ]);
@@ -219,7 +218,7 @@ describe('users.list', () => {
     });
 
     const access = createUserAccessSummary({
-      role: parseBetterAuthRole(session.user.role),
+      ...parseRoleSlots(session.user),
       userId: session.user.id,
     });
     const caller = createAppRouterCaller({
@@ -240,8 +239,9 @@ describe('users.list', () => {
     });
 
     await expect(caller.auth.access()).resolves.toEqual({
-      permissions: ['job:read', 'product_unit:read'],
-      role: 'job-viewer',
+      contractingRole: null,
+      equipmentRole: 'job-viewer',
+      permissions: ['equipment_job:read', 'equipment_product_unit:read'],
       userId: currentDepartmentUserId,
     });
 
@@ -397,13 +397,14 @@ async function createUser(
   db: Db,
   input: {
     assistantEnabled?: boolean;
+    contractingRole?: ContractingRole;
     email: string;
     emailVerified?: boolean;
     id: string;
     image?: string | null;
     name: string;
     phoneNumber?: string | null;
-    role: AppRole | string;
+    role: EquipmentRole | string;
   },
 ) {
   const now = new Date();
@@ -412,13 +413,14 @@ async function createUser(
     .insert(user)
     .values({
       assistantEnabled: input.assistantEnabled ?? false,
+      contractingRole: input.contractingRole ?? null,
       email: input.email,
       emailVerified: input.emailVerified ?? true,
       id: input.id,
       image: input.image ?? null,
       name: input.name,
       phoneNumber: input.phoneNumber ?? null,
-      role: input.role,
+      role: input.role as EquipmentRole,
       createdAt: now,
       updatedAt: now,
     })

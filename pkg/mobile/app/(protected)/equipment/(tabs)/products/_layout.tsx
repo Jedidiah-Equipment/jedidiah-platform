@@ -10,7 +10,7 @@ import { useCan } from '@/lib/use-access';
  * Product read access, and let every screen below assume it.
  */
 export default function ProductsLayout() {
-  const access = useCan('product:read');
+  const access = useCan('equipment_product:read');
 
   if (access.isPending) {
     return <TabAccessLoadingScreen parent={MAIN_TAB_PARENTS.products} title="Products" />;

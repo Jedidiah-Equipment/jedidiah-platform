@@ -280,7 +280,7 @@ describe('inventory procedure permissions', () => {
 });
 
 describe('close-out queue and close action', () => {
-  test('gates both on inventory:close-out and drives the queue from the close', async ({ context }) => {
+  test('gates both on equipment_inventory:close-out and drives the queue from the close', async ({ context }) => {
     const stores = context.createCaller(mockSession('stores'));
     await stores.inventory.postAdjustment({ delta: 4, partId: context.part.id, reason: 'opening-balance' });
     await stores.inventory.postCheckout({ jobId: context.job.id, partId: context.part.id, quantity: 2 });
@@ -362,8 +362,9 @@ describe('inventory cost projection', () => {
   test('cost-gates a revaluation response independently from revaluation authority', async ({ context }) => {
     const revaluerWithoutCostRead = context.createCaller(mockSession('procurement-manager'), {
       access: {
-        permissions: ['inventory_cost:revalue'],
-        role: 'procurement-manager',
+        contractingRole: null,
+        equipmentRole: 'procurement-manager',
+        permissions: ['equipment_inventory_cost:revalue'],
         userId: 'test-user-id',
       },
     });
@@ -435,7 +436,7 @@ describe('inventory cost projection', () => {
       .createCaller(mockSession('stores'))
       .inventory.postBuild({ ...sharedBuildInput, quantity: 1 });
 
-    // `stores` holds `inventory:build` and no cost right at all, so the produced average is exactly
+    // `stores` holds `equipment_inventory:build` and no cost right at all, so the produced average is exactly
     // what the gate exists to hold back.
     expect(admin).toMatchObject({ producedUnitCost: 50, warnings: [] });
     expect(stores).toMatchObject({ producedUnitCost: null, warnings: [] });

@@ -25,8 +25,8 @@ export function createProductImageRouteConfig(
   return {
     uploadPath: '/api/products/:productId/images/:slot',
     downloadPath: '/api/products/:productId/images/:slot/download',
-    uploadPermission: 'product:update',
-    readPermission: 'product:read',
+    uploadPermission: 'equipment_product:update',
+    readPermission: 'equipment_product:read',
     uploadForbiddenMessage: 'You do not have permission to update Product images.',
     readForbiddenMessage: 'You do not have permission to view this product image.',
     noFileMessage: 'Choose an image to upload.',

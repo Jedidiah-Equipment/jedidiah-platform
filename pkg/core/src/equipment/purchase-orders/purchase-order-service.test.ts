@@ -839,7 +839,12 @@ function partRow(overrides: Partial<typeof parts.$inferInsert>): typeof parts.$i
 async function seedJobs(db: Db): Promise<[string, string]> {
   const [customer] = await db
     .insert(customers)
-    .values({ companyName: 'PO Job Customer', email: 'jobs@example.com', phone: '0123456789', vatNumber: 'VAT-PO' })
+    .values({
+      companyName: 'PO Job Customer',
+      email: 'jobs@example.com',
+      phone: '0123456789',
+      vatNumber: 'VAT-PO',
+    })
     .returning({ id: customers.id });
   if (!customer) throw new Error('Customer insert did not return a row');
 

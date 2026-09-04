@@ -1,6 +1,6 @@
 import { account, CREDENTIAL_ACCOUNT_ISSUER, type Db, user } from '@pkg/db';
 import { DEFAULT_DEMO_USER_PASSWORD } from '@pkg/domain';
-import type { AppRole } from '@pkg/schema';
+import type { EquipmentRole } from '@pkg/schema';
 import { hashPassword } from 'better-auth/crypto';
 import { beforeEach, describe, expect } from 'vitest';
 
@@ -57,6 +57,25 @@ describe('email sign-in eligibility', () => {
         role: 'sales',
       },
     });
+  });
+
+  test('allows a Contracting-only user whose role grants permissions', async ({ context }) => {
+    await createUserWithCredential(context.db, {
+      contractingRole: 'foreman',
+      email: 'contracting-only@example.com',
+      emailVerified: true,
+      id: '00000000-0000-4000-8000-000000000043',
+      name: 'Contracting Only',
+      password: DEFAULT_DEMO_USER_PASSWORD,
+      role: null,
+    });
+
+    await expect(
+      context.auth.api.signInEmail({
+        body: { email: 'contracting-only@example.com', password: DEFAULT_DEMO_USER_PASSWORD },
+        asResponse: false,
+      }),
+    ).resolves.toMatchObject({ user: { contractingRole: 'foreman', role: null } });
   });
 });
 
@@ -168,11 +187,12 @@ describe('credential accounts written by better-auth 1.6', () => {
 async function createUserWithCredential(
   db: Db,
   input: {
+    contractingRole?: 'foreman';
     email: string;
     emailVerified?: boolean;
     id: string;
     name: string;
-    role?: AppRole;
+    role?: EquipmentRole | null;
   } & ({ password: string; passwordHash?: never } | { password?: never; passwordHash: string }),
 ) {
   const now = new Date();
@@ -184,7 +204,8 @@ async function createUserWithCredential(
       emailVerified: input.emailVerified ?? true,
       id: input.id,
       name: input.name,
-      role: input.role ?? 'sales',
+      contractingRole: input.contractingRole ?? null,
+      role: input.role === undefined ? 'sales' : input.role,
       createdAt: now,
       updatedAt: now,
     })

@@ -33,7 +33,7 @@ export type BoardBayRow = typeof jobBays.$inferSelect &
     })[];
   };
 
-// Any `job:read` user sees the full cross-department Board, so bay reads are not department-scoped.
+// Any `equipment_job:read` user sees the full cross-department Board, so bay reads are not department-scoped.
 export function findBoardBayRows(db: Db | DatabaseTransaction, where?: SQL) {
   return db.query.jobBays.findMany({
     where,

@@ -67,7 +67,7 @@ export const UserEditDialog: React.FC<UserEditDialogProps> = ({ user, onClose })
   const saveUserMutation = useMutation({
     mutationFn: async (value: UserEditFormValues) => {
       let didUpdate = false;
-      const profileData = buildProfileUpdateData({ baselineUser, canSetEmail, canUpdateProfile, value });
+      const profileData = buildProfileUpdateData({ baselineUser, canSetEmail, canSetRole, canUpdateProfile, value });
       const thumbnailChanged = value.thumbnailDataUrl !== baselineUser.thumbnailDataUrl;
 
       if (Object.keys(profileData).length > 0) {
@@ -90,12 +90,6 @@ export const UserEditDialog: React.FC<UserEditDialogProps> = ({ user, onClose })
 
       if (canSetRole && value.isDevice !== baselineUser.isDevice) {
         await setDeviceMutation.mutateAsync({ isDevice: value.isDevice, userId: baselineUser.id });
-        didUpdate = true;
-      }
-
-      if (canSetRole && value.role !== baselineUser.role) {
-        setRoleError(null);
-        await unwrapAuthResult(await authClient.admin.setRole({ role: value.role, userId: baselineUser.id }));
         didUpdate = true;
       }
 
@@ -180,7 +174,7 @@ export const UserEditDialog: React.FC<UserEditDialogProps> = ({ user, onClose })
             onSubmit={(value) => saveUserMutation.mutateAsync(value)}
             roleError={roleError}
           />
-          {canSetRole && baselineUser.role === 'stores' && !baselineUser.isDevice ? (
+          {canSetRole && baselineUser.equipmentRole === 'stores' && !baselineUser.isDevice ? (
             <UserBadgePrintButton userId={baselineUser.id} />
           ) : null}
           {canUpdateProfile && !baselineUser.emailVerified ? (
@@ -213,17 +207,22 @@ function isOpenBayOperatorAssignmentRoleError(error: unknown): error is AuthAdmi
 }
 
 type ProfileUpdateData = Partial<
-  Pick<UserEditFormValues, 'assistantEnabled' | 'email' | 'emailVerified' | 'name' | 'phoneNumber'>
+  Pick<
+    UserEditFormValues,
+    'assistantEnabled' | 'contractingRole' | 'email' | 'emailVerified' | 'equipmentRole' | 'name' | 'phoneNumber'
+  >
 >;
 
 function buildProfileUpdateData({
   baselineUser,
   canSetEmail,
+  canSetRole,
   canUpdateProfile,
   value,
 }: {
   baselineUser: UserSummary;
   canSetEmail: boolean;
+  canSetRole: boolean;
   canUpdateProfile: boolean;
   value: UserEditFormValues;
 }): ProfileUpdateData {
@@ -245,6 +244,12 @@ function buildProfileUpdateData({
   }
   if (canUpdateProfile && value.assistantEnabled !== baselineUser.assistantEnabled) {
     data.assistantEnabled = value.assistantEnabled;
+  }
+  if (canSetRole && value.equipmentRole !== baselineUser.equipmentRole) {
+    data.equipmentRole = value.equipmentRole;
+  }
+  if (canSetRole && value.contractingRole !== baselineUser.contractingRole) {
+    data.contractingRole = value.contractingRole;
   }
 
   return data;

@@ -1,18 +1,9 @@
-import { Link } from '@tanstack/react-router';
 import type React from 'react';
-import { AppBrand } from '@/components/common/AppBrand.js';
-import {
-  Sidebar,
-  SidebarContent,
-  SidebarFooter,
-  SidebarHeader,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-} from '@/components/ui/sidebar.js';
+import { AppNavUser } from '@/components/app-shell/AppNavUser.js';
+import { BusinessSidebarHeader } from '@/components/app-shell/BusinessSidebarHeader.js';
+import { Sidebar, SidebarContent, SidebarFooter } from '@/components/ui/sidebar.js';
 import { AppNavHelp } from '@/equipment/components/app-shell/AppNavHelp.js';
 import { AppNavMain } from '@/equipment/components/app-shell/AppNavMain.js';
-import { AppNavUser } from '@/equipment/components/app-shell/AppNavUser.js';
 import { SidebarAssistant } from '@/equipment/components/assistant-ui/SidebarAssistant.js';
 import { useAuth } from '@/hooks/use-auth.js';
 
@@ -23,22 +14,14 @@ export const AppSidebar: React.FC<AppSidebarProps> = (props) => {
 
   return (
     <Sidebar collapsible="icon" variant="inset" {...props}>
-      <SidebarHeader>
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton render={<Link to="/equipment/dashboard" />} size="lg">
-              <AppBrand size="sm" />
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
-      </SidebarHeader>
+      <BusinessSidebarHeader activeBusiness="equipment" />
       <SidebarContent>
         <AppNavMain />
       </SidebarContent>
       <SidebarFooter>
         <AppNavHelp />
         <SidebarAssistant enabled={session?.user.assistantEnabled === true} />
-        <AppNavUser onSignOut={onSignOut} user={user} />
+        <AppNavUser business="equipment" onSignOut={onSignOut} user={user} />
       </SidebarFooter>
     </Sidebar>
   );

@@ -33,14 +33,15 @@ export const UserCreateDialog: React.FC = () => {
           // Shared-device state belongs in Better Auth's user insert so a later request cannot
           // leave a successfully created account behind while the dialog reports failure.
           data: {
+            contractingRole: value.contractingRole,
             emailVerified: value.emailVerified,
+            equipmentRole: value.equipmentRole,
             isDevice: canSetRole ? value.isDevice : false,
             phoneNumber: value.phoneNumber,
           },
           email: value.email,
           name: value.name,
           password: value.password,
-          role: value.role,
         }),
       );
       const userId = AuthId.parse(result.user.id);

@@ -1,10 +1,10 @@
-import { canAssignUserRole, isReservedSuperAdminAssignment } from '@pkg/core';
+import { canAssignUserRoleSlots, isContractingRoleBesideSuperAdmin, isReservedSuperAdminAssignment } from '@pkg/core';
 import type { Db } from '@pkg/db';
-import { AppRole } from '@pkg/schema';
+import { createUserAccessSummary, hasPermission, parseRoleSlots, type RoleSlots } from '@pkg/domain';
+import { ContractingRole, EquipmentRole } from '@pkg/schema';
 import type { BetterAuthPlugin } from 'better-auth';
 import { APIError, createAuthMiddleware, getSessionFromCtx } from 'better-auth/api';
-
-import { parseBetterAuthRole } from '../../auth/sign-in-eligibility.js';
+import type { z } from 'zod';
 
 const SELF_ROLE_CHANGE_ERROR = {
   code: 'YOU_CANNOT_CHANGE_YOUR_OWN_ROLE',
@@ -23,18 +23,58 @@ const RESERVED_SUPER_ADMIN_ERROR = {
   message: 'Only a super admin can assign or remove the super admin role.',
 } as const;
 
+const ROLE_PERMISSION_ERROR = {
+  code: 'ROLE_PERMISSION_REQUIRED',
+  message: 'You do not have permission to change user roles.',
+} as const;
+
+const INVALID_ROLE_ERROR = {
+  code: 'INVALID_ROLE',
+  message: 'The requested role is invalid.',
+} as const;
+
+const SUPER_ADMIN_SPANS_CONTRACTING_ERROR = {
+  code: 'SUPER_ADMIN_SPANS_CONTRACTING',
+  message: 'A super admin spans both businesses and cannot hold a separate contracting role.',
+} as const;
+
+const ROLE_SPELLING_ERROR = {
+  code: 'INVALID_ROLE',
+  message: 'Send the equipment role as `data.equipmentRole`.',
+} as const;
+
+/**
+ * Role slots travel as `data.equipmentRole` and `data.contractingRole` on create-user and
+ * update-user (Better Auth's own `role` cannot carry null), and as `role` on set-role, which is
+ * Better Auth's native single-slot endpoint. The database hook below maps `equipmentRole` onto the
+ * `role` column Better Auth owns and clears the contracting slot whenever super-admin lands.
+ */
 export function adminUserSafetyPlugin(database: Db): BetterAuthPlugin {
   return {
     id: 'admin-user-safety',
+    init: () => ({
+      options: {
+        databaseHooks: {
+          user: {
+            create: {
+              before: (createdUser, context) => applyRoleSlots(createdUser, context?.path, context?.body),
+            },
+            update: {
+              before: (updatedUser, context) => applyRoleSlots(updatedUser, context?.path, context?.body),
+            },
+          },
+        },
+      },
+    }),
     hooks: {
       before: [
         {
           matcher: ({ path }) =>
             path === '/admin/create-user' || path === '/admin/set-role' || path === '/admin/update-user',
           handler: createAuthMiddleware(async (ctx) => {
-            const roleChange = getRoleChangeInput(ctx.path, ctx.body);
+            const change = getRoleChange(ctx.path, ctx.body);
 
-            if (!roleChange) {
+            if (!change) {
               return;
             }
 
@@ -44,43 +84,61 @@ export function adminUserSafetyPlugin(database: Db): BetterAuthPlugin {
               return;
             }
 
-            const currentRole = parseBetterAuthRole(session.user.role);
-            const nextRole = AppRole.parse(roleChange.role);
+            const actor = parseRoleSlots(session.user);
+            const actorAccess = createUserAccessSummary({ ...actor, userId: session.user.id });
+            if (!hasPermission(actorAccess, 'user:set-role') || actor.equipmentRole === null) {
+              throw APIError.from('FORBIDDEN', ROLE_PERMISSION_ERROR);
+            }
 
-            if (roleChange.userId && session.user.id === roleChange.userId && currentRole !== nextRole) {
+            if (change.userId === session.user.id && changesSlots(actor, change)) {
               throw APIError.from('FORBIDDEN', SELF_ROLE_CHANGE_ERROR);
             }
 
-            // Create-user has no existing user to look up, so the reserved-role rule is checked
-            // directly here; modifications route through canAssignUserRole below.
-            if (!roleChange.userId) {
-              if (isReservedSuperAdminAssignment({ actorRole: currentRole, targetRole: nextRole })) {
+            if (isContractingRoleBesideSuperAdmin(change)) {
+              throw APIError.from('BAD_REQUEST', SUPER_ADMIN_SPANS_CONTRACTING_ERROR);
+            }
+
+            if (!change.userId) {
+              // Create-user has no existing user to look up, so only the reserved-role rule applies.
+              if (
+                isReservedSuperAdminAssignment({
+                  actorRole: actor.equipmentRole,
+                  targetRole: change.equipmentRole ?? null,
+                })
+              ) {
                 throw APIError.from('FORBIDDEN', RESERVED_SUPER_ADMIN_ERROR);
               }
               return;
             }
 
-            const roleAssignmentPolicy = await canAssignUserRole({
-              actorRole: currentRole,
+            const { userId, ...slots } = change;
+            const policy = await canAssignUserRoleSlots({
+              ...slots,
+              actorRole: actor.equipmentRole,
               db: database,
-              role: nextRole,
-              userId: roleChange.userId,
+              userId,
             });
 
-            if (!roleAssignmentPolicy.allowed) {
-              if (roleAssignmentPolicy.reason === 'last-admin') {
-                throw APIError.from('FORBIDDEN', LAST_ADMIN_ERROR);
-              }
-
-              if (roleAssignmentPolicy.reason === 'reserved-super-admin') {
-                throw APIError.from('FORBIDDEN', RESERVED_SUPER_ADMIN_ERROR);
-              }
-
-              throw APIError.from('FORBIDDEN', {
-                code: OPEN_BAY_OPERATOR_ASSIGNMENTS_ERROR_CODE,
-                message: `Unassign from ${formatList(roleAssignmentPolicy.bayNames)} first`,
-              });
+            if (policy.allowed) {
+              return;
             }
+
+            if (policy.reason === 'last-admin') {
+              throw APIError.from('FORBIDDEN', LAST_ADMIN_ERROR);
+            }
+
+            if (policy.reason === 'reserved-super-admin') {
+              throw APIError.from('FORBIDDEN', RESERVED_SUPER_ADMIN_ERROR);
+            }
+
+            if (policy.reason === 'super-admin-spans-contracting') {
+              throw APIError.from('BAD_REQUEST', SUPER_ADMIN_SPANS_CONTRACTING_ERROR);
+            }
+
+            throw APIError.from('FORBIDDEN', {
+              code: OPEN_BAY_OPERATOR_ASSIGNMENTS_ERROR_CODE,
+              message: `Unassign from ${formatList(policy.bayNames)} first`,
+            });
           }),
         },
       ],
@@ -88,56 +146,75 @@ export function adminUserSafetyPlugin(database: Db): BetterAuthPlugin {
   };
 }
 
-type RoleChangeInput = {
-  role: string;
-  userId?: string;
-};
+// A slot left out is a slot left untouched.
+type RoleChange = Partial<RoleSlots> & { userId?: string };
 
-function getRoleChangeInput(path: string | undefined, body: unknown): RoleChangeInput | null {
+function changesSlots(current: RoleSlots, change: RoleChange): boolean {
+  return (
+    (change.equipmentRole !== undefined && change.equipmentRole !== current.equipmentRole) ||
+    (change.contractingRole !== undefined && change.contractingRole !== current.contractingRole)
+  );
+}
+
+function getRoleChange(path: string | undefined, body: unknown): RoleChange | null {
   if (!isRecord(body)) {
     return null;
   }
 
-  if (path === '/admin/set-role' && typeof body.role === 'string' && typeof body.userId === 'string') {
-    return {
-      role: body.role,
-      userId: body.userId,
-    };
+  if (path === '/admin/set-role') {
+    return typeof body.userId === 'string'
+      ? { equipmentRole: parseSlot(EquipmentRole, body.role), userId: body.userId }
+      : null;
   }
 
-  const createUserRole = path === '/admin/create-user' ? getCreateUserRole(body) : null;
-
-  if (createUserRole) {
-    return {
-      role: createUserRole,
-    };
+  if (path !== '/admin/create-user' && path !== '/admin/update-user') {
+    return null;
   }
 
-  if (
-    path === '/admin/update-user' &&
-    typeof body.userId === 'string' &&
-    isRecord(body.data) &&
-    typeof body.data.role === 'string'
-  ) {
-    return {
-      role: body.data.role,
-      userId: body.userId,
-    };
+  const data = isRecord(body.data) ? body.data : {};
+  if (Object.hasOwn(body, 'role') || Object.hasOwn(data, 'role')) {
+    throw APIError.from('BAD_REQUEST', ROLE_SPELLING_ERROR);
   }
 
-  return null;
+  const change: RoleChange = {
+    ...(Object.hasOwn(data, 'equipmentRole') ? { equipmentRole: parseSlot(EquipmentRole, data.equipmentRole) } : {}),
+    ...(Object.hasOwn(data, 'contractingRole')
+      ? { contractingRole: parseSlot(ContractingRole, data.contractingRole) }
+      : {}),
+    ...(typeof body.userId === 'string' ? { userId: body.userId } : {}),
+  };
+
+  return change.equipmentRole === undefined && change.contractingRole === undefined ? null : change;
 }
 
-function getCreateUserRole(body: Record<string, unknown>): string | null {
-  if (typeof body.role === 'string') {
-    return body.role;
+function parseSlot<T>(schema: z.ZodType<T>, value: unknown): T | null {
+  const result = schema.nullable().safeParse(value);
+  if (!result.success) throw APIError.from('BAD_REQUEST', INVALID_ROLE_ERROR);
+  return result.data;
+}
+
+// Better Auth inserts its own `role` default on create-user, so an omitted equipment role must be
+// written as null rather than left to that default. Set-role writes `role` itself; it is included
+// so super-admin clears the contracting slot on that path too.
+async function applyRoleSlots<T extends Record<string, unknown>>(userData: T, path: string | undefined, body: unknown) {
+  const data = isRecord(body) && isRecord(body.data) ? body.data : {};
+  const carriesEquipmentRole =
+    path === '/admin/create-user' || (path === '/admin/update-user' && Object.hasOwn(data, 'equipmentRole'));
+
+  if (!carriesEquipmentRole && !(path === '/admin/set-role' && Object.hasOwn(userData, 'role'))) {
+    return;
   }
 
-  if (isRecord(body.data) && typeof body.data.role === 'string') {
-    return body.data.role;
-  }
+  const { equipmentRole: _transportField, ...persistedUser } = userData;
+  const role = carriesEquipmentRole ? (data.equipmentRole ?? null) : userData.role;
 
-  return null;
+  return {
+    data: {
+      ...persistedUser,
+      role,
+      ...(role === 'super-admin' ? { contractingRole: null } : {}),
+    },
+  };
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

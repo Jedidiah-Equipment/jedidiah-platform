@@ -8,7 +8,7 @@ import { describeVarianceJob, JobVarianceReport } from './JobVarianceReport.js';
 /**
  * The Job's material variance beside its stock tab (spec §3, §12). The same report the inventory
  * screen serves — read here by whoever is already looking at the Job, there by the storeman closing
- * it out, who holds `inventory:read` without `job:read` and so never reaches this sheet.
+ * it out, who holds `equipment_inventory:read` without `equipment_job:read` and so never reaches this sheet.
  */
 export function JobVarianceTab({ jobId }: { jobId: UUID }) {
   const { query, showCosts } = useJobVariance(jobId);

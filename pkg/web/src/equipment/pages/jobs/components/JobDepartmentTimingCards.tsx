@@ -95,7 +95,7 @@ const JobDepartmentTimingCard: React.FC<{
   timing: JobDepartmentTiming;
 }> = ({ job, offDays, timing }) => {
   const [isOpen, setIsOpen] = useState(false);
-  const canUpdate = useCan('job:update').can;
+  const canUpdate = useCan('equipment_job:update').can;
   const department = timing.department;
   const departmentLabel = departmentLabels[department];
 

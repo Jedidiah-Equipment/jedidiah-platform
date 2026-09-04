@@ -40,6 +40,7 @@ export async function seedDemoUsers(database?: Db): Promise<void> {
         emailVerified: true,
         image: null,
         role: demoUser.role,
+        contractingRole: demoUser.contractingRole ?? null,
         isDevice: demoUser.isDevice ?? false,
         assistantEnabled: demoUser.role === 'admin' || demoUser.role === 'super-admin',
         banned: false,

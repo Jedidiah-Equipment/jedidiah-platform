@@ -51,8 +51,8 @@ stale and needs-review values keep serving until replaced or reviewed.
   while persistence preserves its manual fields.
 - The catalog-translations tRPC router exposes Product, Range, and Variant get/update contracts. Get
   returns Canonical Text, stored envelopes, and derived per-field states. Product responses include
-  Assemblies. Product access requires `product:update`; Range and Variant access requires
-  `product_range:update`.
+  Assemblies. Product access requires `equipment_product:update`; Range and Variant access requires
+  `equipment_product_range:update`.
 - Translation-only writes bypass normal catalog mutation procedures, so they never masquerade as an
   English edit. Only revert-to-AI uses the scheduler's immediate path.
 - Slugs, URL parameters, and uniqueness continue deriving from Canonical Text. The Lander remains

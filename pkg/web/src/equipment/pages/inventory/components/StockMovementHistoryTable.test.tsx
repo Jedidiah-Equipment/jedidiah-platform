@@ -173,7 +173,7 @@ describe('StockMovementHistoryTable', () => {
       <StockMovementHistoryTable canReadJobs={false} items={result.items} showCosts={true} unitOfMeasure="piece" />,
     );
 
-    // Stores reads this ledger and holds no `job:read`; the link would only reach a sheet that
+    // Stores reads this ledger and holds no `equipment_job:read`; the link would only reach a sheet that
     // refuses to load. The other references are unaffected.
     expect(html).toContain('JOB-00018');
     expect(html).not.toContain('/equipment/jobs/00000000-0000-4000-8000-000000000099');

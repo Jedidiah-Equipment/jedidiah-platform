@@ -137,7 +137,10 @@ describe('catalog translation persistence', () => {
       .returning({ id: productRangeVariants.id });
     if (!variant) throw new Error('Variant fixture missing');
 
-    const rangeSource = await loadCatalogTranslationSource({ db: context.db, key: `product_range:${range.id}` });
+    const rangeSource = await loadCatalogTranslationSource({
+      db: context.db,
+      key: `product_range:${range.id}`,
+    });
     const variantSource = await loadCatalogTranslationSource({
       db: context.db,
       key: `product_range_variant:${variant.id}`,

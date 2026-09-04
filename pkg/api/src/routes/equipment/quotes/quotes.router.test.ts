@@ -762,7 +762,7 @@ describe('quotes.update', () => {
     });
   });
 
-  test('lets a quote:update holder discount an accepted Allocation Quote', async ({ context }) => {
+  test('lets a equipment_quote:update holder discount an accepted Allocation Quote', async ({ context }) => {
     const salesCaller = context.createCaller(mockSession('sales'));
     const [unit] = await context.db
       .insert(productUnits)
@@ -786,7 +786,7 @@ describe('quotes.update', () => {
     });
     const accepted = await salesCaller.quotes.update({ ...toUpdateInput(created), status: 'accepted' });
 
-    // quote:update alone reopens the discount on an accepted Allocation Quote; the lock holds elsewhere.
+    // equipment_quote:update alone reopens the discount on an accepted Allocation Quote; the lock holds elsewhere.
     const discounted = await salesCaller.quotes.update({ ...toUpdateInput(accepted), discountPercent: 5 });
     expect(discounted.discountPercent).toBe(5);
 

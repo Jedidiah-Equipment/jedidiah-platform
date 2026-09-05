@@ -1,4 +1,4 @@
-import type { DateIso, DateOnlyIso } from '@pkg/schema';
+import { type DateIso, DateOnlyIso } from '@pkg/schema';
 import type {
   JobActivityItem,
   JobChangeActivityItem,
@@ -144,7 +144,7 @@ export function hasUnreadActivity({
 /** One calendar day of the feed, in the order the feed delivered it. */
 export type JobActivityDayGroup = {
   /** The reader's local calendar day, `yyyy-MM-dd` — the group's identity and React key. */
-  day: string;
+  day: DateOnlyIso;
   items: JobActivityItem[];
   label: string;
 };
@@ -161,7 +161,7 @@ export function groupJobActivityByDay(
   const groups: JobActivityDayGroup[] = [];
 
   for (const item of items) {
-    const day = formatDate(item.occurredAt, 'yyyy-MM-dd');
+    const day = DateOnlyIso.parse(formatDate(item.occurredAt, 'yyyy-MM-dd'));
     const openGroup = groups.at(-1);
 
     if (openGroup?.day === day) {
@@ -180,7 +180,7 @@ export function groupJobActivityByDay(
  * what places an entry in the reader's week, but the two most-read days should not have to be
  * counted back to. The year only appears once it is no longer the obvious one.
  */
-function formatJobActivityDayLabel(occurredAt: string, now: Date): string {
+function formatJobActivityDayLabel(occurredAt: DateIso, now: Date): string {
   const date = parseDate(occurredAt);
 
   if (!date) {

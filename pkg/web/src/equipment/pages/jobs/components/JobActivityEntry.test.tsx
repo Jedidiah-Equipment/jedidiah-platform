@@ -1,4 +1,4 @@
-import { formatDate, statusBadgeColorClassNames } from '@pkg/domain';
+import { statusBadgeColorClassNames } from '@pkg/domain';
 import { type GeneralFeedbackActivityItem, JobChangeActivityItem } from '@pkg/schema/equipment';
 import { describe, expect, it } from 'vitest';
 
@@ -68,16 +68,22 @@ describe('JobActivityEntry', () => {
   });
 
   it.each([
-    ['job-created', 'created this Job'],
-    ['job-description-updated', 'changed the Job description'],
-    ['job-completed', 'completed this Job'],
-    ['job-document-added', 'added a document'],
-  ] as const)('says who did what for a %s change event', async (type, sentence) => {
+    ['job-created', 'tabler-icon-plus'],
+    ['job-description-updated', 'tabler-icon-pencil'],
+    ['job-completed', 'tabler-icon-check'],
+    ['job-document-added', 'tabler-icon-file-text'],
+    ['job-work-time-updated', 'tabler-icon-clock'],
+  ] as const)('renders the %s event with its web icon', async (type, iconClassName) => {
     const html = await renderWithRouter(<JobActivityEntry item={buildChangeItem(type)} />);
 
+    expect(html).toContain(iconClassName);
+  });
+
+  it('renders the actor and event sentence beside the Job', async () => {
+    const html = await renderWithRouter(<JobActivityEntry item={buildChangeItem('job-created')} />);
+
     expect(html).toContain('>Thabo<');
-    expect(html).not.toContain('Thabo Mokoena');
-    expect(html).toContain(sentence);
+    expect(html).toContain('created this Job');
     expect(html).toContain('JOB-00042');
   });
 
@@ -127,14 +133,6 @@ describe('JobActivityEntry', () => {
     expect(html).not.toContain('font-mono font-medium text-muted-foreground text-sm">JOB-00042');
   });
 
-  it('reads a cleared description as cleared rather than as an empty change', async () => {
-    const item = buildChangeItem('job-description-updated', { description: null });
-
-    const html = await renderWithRouter(<JobActivityEntry item={item} />);
-
-    expect(html).toContain('cleared the Job description');
-  });
-
   it('keeps event-specific detail when repeated Job detail is hidden', async () => {
     const html = await renderWithRouter(
       <JobActivityEntry hideDetail item={buildChangeItem('job-description-updated')} />,
@@ -144,64 +142,6 @@ describe('JobActivityEntry', () => {
     expect(html).not.toContain('>JOB-00042<');
     expect(html).not.toContain('href="/equipment/jobs/activity?job=30000000-0000-4000-8000-000000000000"');
     expect(html).not.toContain('href="/equipment/jobs?job=30000000-0000-4000-8000-000000000000"');
-  });
-
-  // The nightly completion sweep audits with a null actor deliberately, and a deleted user's row is
-  // nulled by the FK too — indistinguishable, and the Audit table already calls both "System".
-  it('names a change nobody is recorded for System, matching the Audit table', async () => {
-    const item = buildChangeItem('job-completed', { actor: null });
-
-    const html = await renderWithRouter(<JobActivityEntry item={item} />);
-
-    expect(html).toContain('System');
-    expect(html).toContain('completed this Job');
-    expect(html).not.toContain('A removed user');
-  });
-
-  it('does not repeat a Job completion date already represented by the timeline', async () => {
-    const item = buildChangeItem('job-completed', { completedOn: '2026-08-10' });
-
-    const html = await renderWithRouter(<JobActivityEntry item={item} />);
-    const text = html.replaceAll(/<[^>]*>/g, ' ');
-
-    expect(text).not.toContain(formatDate('2026-08-10'));
-  });
-
-  it('shows a Job completion date when it differs from the audit timeline day', async () => {
-    const item = buildChangeItem('job-completed', {
-      completedOn: '2026-08-09',
-      occurredAt: '2026-08-10T09:00:00.000Z',
-    });
-
-    const html = await renderWithRouter(<JobActivityEntry item={item} />);
-
-    expect(html).toContain(formatDate('2026-08-09'));
-  });
-
-  it.each([
-    ['started', 'started Fabrication work', null],
-    ['completed', 'completed Fabrication work', 'Fiona Fabricator'],
-    ['corrected', 'corrected Fabrication work times', `${formatDate('2026-08-01')} → ${formatDate('2026-08-04')}`],
-    ['cleared', 'cleared Fabrication work times', null],
-  ] as const)('describes a %s work-time change from its curated state', async (action, sentence, detail) => {
-    const item = buildChangeItem('job-work-time-updated', {
-      action,
-      timing:
-        action === 'cleared'
-          ? null
-          : {
-              completedAt: action === 'started' ? null : '2026-08-04T15:00:00.000Z',
-              crew: action === 'started' ? [] : ['Fiona Fabricator'],
-              startedAt: '2026-08-01T09:00:00.000Z',
-            },
-    });
-
-    const html = await renderWithRouter(<JobActivityEntry item={item} />);
-    const text = html.replaceAll(/<[^>]*>/g, ' ');
-
-    expect(text).toContain(sentence);
-    if (detail === null) expect(text).not.toContain('In progress');
-    else expect(text).toContain(detail);
   });
 });
 

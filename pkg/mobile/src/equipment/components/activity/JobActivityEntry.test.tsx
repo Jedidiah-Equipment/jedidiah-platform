@@ -25,24 +25,17 @@ import { JobActivityEntry } from './JobActivityEntry';
 
 describe('JobActivityEntry', () => {
   test.each([
-    [
-      'job-completed',
-      statusBadgeColorClassNames.purple.chip,
-      statusBadgeColorClassNames.purple.textByScheme.light,
-      'IconCheck',
-    ],
-    [
-      'job-work-time-updated',
-      statusBadgeColorClassNames.blue.chip,
-      statusBadgeColorClassNames.blue.textByScheme.light,
-      'IconClock',
-    ],
-  ] as const)('colors a %s icon by its activity category', async (type, chipClassName, textClassName, icon) => {
+    ['job-created', 'purple', 'IconPlus'],
+    ['job-description-updated', 'purple', 'IconPencil'],
+    ['job-completed', 'purple', 'IconCheck'],
+    ['job-document-added', 'purple', 'IconFileText'],
+    ['job-work-time-updated', 'blue', 'IconClock'],
+  ] as const)('renders %s with its native icon and category palette', async (type, tone, icon) => {
     const renderer = await renderEntry(buildChangeItem(type));
     const renderedIcon = renderer.root.findByProps({ icon });
 
-    expect(renderedIcon.props.className).toBe(textClassName);
-    expect(renderedIcon.parent?.props.className).toContain(chipClassName);
+    expect(renderedIcon.props.className).toBe(statusBadgeColorClassNames[tone].textByScheme.light);
+    expect(renderedIcon.parent?.props.className).toContain(statusBadgeColorClassNames[tone].chip);
   });
 
   test('keeps the event icon and leads the Job row with the offering visual', async () => {
@@ -70,12 +63,6 @@ describe('JobActivityEntry', () => {
     const event = renderer.root.findByProps({ accessibilityLabel: `System completed this Job on ${item.job.code}` });
 
     expect(event.props.className).not.toContain('py-0.5');
-  });
-
-  test('does not repeat Work Time state beneath the Job row', async () => {
-    const renderer = await renderEntry(buildChangeItem('job-work-time-updated'));
-
-    expect(JSON.stringify(renderer.toJSON())).not.toContain('In progress');
   });
 
   test('shows a backdated Job completion date beneath the Job row', async () => {
@@ -130,7 +117,7 @@ function buildFeedbackItem(): GeneralFeedbackActivityItem {
 }
 
 function buildChangeItem(
-  type: 'job-completed' | 'job-work-time-updated',
+  type: JobChangeActivityItem['type'],
   overrides: Record<string, unknown> = {},
 ): JobChangeActivityItem {
   return JobChangeActivityItem.parse({
@@ -145,13 +132,17 @@ function buildChangeItem(
       thumbnailDataUrl: null,
     },
     occurredAt: '2026-08-10T09:00:00.000Z',
-    ...(type === 'job-completed'
-      ? { completedOn: '2026-08-10' }
-      : {
-          action: 'started',
-          department: 'fabrication',
-          timing: { completedAt: null, crew: [], startedAt: '2026-08-10T09:00:00.000Z' },
-        }),
+    ...{
+      'job-created': {},
+      'job-description-updated': { description: 'Fit the heavy-duty boom.' },
+      'job-completed': { completedOn: '2026-08-10' },
+      'job-document-added': { document: { contentType: 'application/pdf', filename: 'handover.pdf' } },
+      'job-work-time-updated': {
+        action: 'started',
+        department: 'fabrication',
+        timing: { completedAt: null, crew: [], startedAt: '2026-08-10T09:00:00.000Z' },
+      },
+    }[type],
     ...overrides,
     type,
   });

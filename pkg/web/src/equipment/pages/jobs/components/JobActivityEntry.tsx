@@ -1,11 +1,5 @@
 import { formatDate, getFirstName, statusBadgeColorClassNames } from '@pkg/domain';
-import {
-  JOB_ACTIVITY_EVENT_SENTENCES,
-  jobActivityEventTone,
-  jobCompletionActivityDetail,
-  jobWorkTimeActivityDetail,
-  jobWorkTimeActivitySentence,
-} from '@pkg/domain/equipment';
+import { presentJobActivityEvent } from '@pkg/domain/equipment';
 import type { GeneralFeedbackActivityItem, JobActivityItem, JobChangeActivityItem } from '@pkg/schema/equipment';
 import { IconCheck, IconClock, IconFileText, IconPencil, IconPlus, IconSubtask } from '@tabler/icons-react';
 import { Link } from '@tanstack/react-router';
@@ -157,12 +151,9 @@ const GeneralFeedbackEntry: React.FC<{ hideDetail: boolean; item: GeneralFeedbac
  * the quieter shape is what lets a reader skim past a run of them to the next thing someone said.
  */
 const JobChangeEntry: React.FC<{ hideDetail: boolean; item: JobChangeActivityItem }> = ({ hideDetail, item }) => {
-  const { detail, icon: Icon, sentence } = getJobChangePresentation(item);
-  // No actor means either the completion sweep, which audits with a null actor on purpose, or a
-  // user since deleted, whose id the FK nulled — the same collision the Audit table resolves by
-  // calling both System, so this reads the same way rather than guessing at a person.
-  const actorName = item.actor ? getFirstName(item.actor.name) : 'System';
-  const iconTone = statusBadgeColorClassNames[jobActivityEventTone[item.type]];
+  const { actorName, detail, sentence, tone } = presentJobActivityEvent(item);
+  const Icon = jobActivityEventIcons[item.type];
+  const iconTone = statusBadgeColorClassNames[tone];
 
   return (
     <ActivityRow
@@ -211,46 +202,13 @@ const JobChangeEntry: React.FC<{ hideDetail: boolean; item: JobChangeActivityIte
   );
 };
 
-type JobChangePresentation = {
-  /** The one fact the event carries beyond its sentence, or null when it carries none. */
-  detail: string | null;
-  icon: React.ElementType;
-  sentence: string;
-};
-
-function getJobChangePresentation(item: JobChangeActivityItem): JobChangePresentation {
-  switch (item.type) {
-    case 'job-created':
-      return { detail: null, icon: IconPlus, sentence: JOB_ACTIVITY_EVENT_SENTENCES.created };
-    case 'job-description-updated':
-      return {
-        detail: item.description,
-        icon: IconPencil,
-        sentence:
-          item.description === null
-            ? JOB_ACTIVITY_EVENT_SENTENCES.descriptionCleared
-            : JOB_ACTIVITY_EVENT_SENTENCES.descriptionChanged,
-      };
-    case 'job-completed':
-      return {
-        detail: jobCompletionActivityDetail(item),
-        icon: IconCheck,
-        sentence: JOB_ACTIVITY_EVENT_SENTENCES.completed,
-      };
-    case 'job-document-added':
-      return {
-        detail: item.document.filename,
-        icon: IconFileText,
-        sentence: JOB_ACTIVITY_EVENT_SENTENCES.documentAdded,
-      };
-    case 'job-work-time-updated':
-      return {
-        detail: jobWorkTimeActivityDetail(item),
-        icon: IconClock,
-        sentence: jobWorkTimeActivitySentence(item),
-      };
-  }
-}
+const jobActivityEventIcons = {
+  'job-completed': IconCheck,
+  'job-created': IconPlus,
+  'job-description-updated': IconPencil,
+  'job-document-added': IconFileText,
+  'job-work-time-updated': IconClock,
+} satisfies Record<JobChangeActivityItem['type'], React.ElementType>;
 
 /**
  * The four-column shell every entry shares: the node on the spine, the time it happened, who or what

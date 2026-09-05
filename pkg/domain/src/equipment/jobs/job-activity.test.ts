@@ -1,71 +1,95 @@
-import { DateIso, DateOnlyIso } from '@pkg/schema';
-import { describe, expect, test } from 'vitest';
+import { DateIso } from '@pkg/schema';
+import { JobChangeActivityItem } from '@pkg/schema/equipment';
+import { afterEach, describe, expect, test, vi } from 'vitest';
 
-import {
-  hasUnreadActivity,
-  jobActivityEventTone,
-  jobCompletionActivityDetail,
-  jobWorkTimeActivityDetail,
-} from './job-activity.js';
+import { hasUnreadActivity, presentJobActivityEvent } from './job-activity.js';
 
-test('keeps Job Event and Work Time tones consistent across clients', () => {
-  expect(jobActivityEventTone).toEqual({
-    'job-completed': 'purple',
-    'job-created': 'purple',
-    'job-description-updated': 'purple',
-    'job-document-added': 'purple',
-    'job-work-time-updated': 'blue',
-  });
-});
+afterEach(() => vi.unstubAllEnvs());
 
-describe('jobWorkTimeActivityDetail', () => {
-  const startedAt = DateIso.parse('2026-08-18T08:00:00.000Z');
-  const completedAt = DateIso.parse('2026-08-18T12:00:00.000Z');
-
-  test('keeps crew context without repeating routine Work Time dates or state', () => {
-    expect(
-      jobWorkTimeActivityDetail({ action: 'started', timing: { completedAt: null, crew: [], startedAt } }),
-    ).toBeNull();
-    expect(
-      jobWorkTimeActivityDetail({
-        action: 'completed',
-        timing: { completedAt, crew: ['Fiona Fabricator'], startedAt },
-      }),
-    ).toBe('Fiona Fabricator');
+describe('presentJobActivityEvent', () => {
+  test.each([
+    [{ type: 'job-created' }, 'created this Job', null],
+    [
+      { type: 'job-description-updated', description: 'Fit the heavy-duty boom.' },
+      'changed the Job description',
+      'Fit the heavy-duty boom.',
+    ],
+    [{ type: 'job-description-updated', description: null }, 'cleared the Job description', null],
+    [{ type: 'job-completed', completedOn: '2026-08-18' }, 'completed this Job', null],
+    [{ type: 'job-completed', completedOn: '2026-08-17' }, 'completed this Job', 'Aug 17, 2026'],
+    [
+      { type: 'job-document-added', document: { contentType: 'application/pdf', filename: 'handover.pdf' } },
+      'added a document',
+      'handover.pdf',
+    ],
+  ])('presents the Job Event %j', (payload, sentence, detail) => {
+    expect(presentJobActivityEvent(buildChangeItem(payload))).toEqual({
+      actorName: 'Thabo',
+      detail,
+      sentence,
+      tone: 'purple',
+    });
   });
 
-  test('keeps the resulting span when Work Times were corrected', () => {
-    expect(jobWorkTimeActivityDetail({ action: 'corrected', timing: { completedAt, crew: [], startedAt } })).toBe(
-      'Aug 18, 2026 → Aug 18, 2026',
-    );
-    expect(
-      jobWorkTimeActivityDetail({
-        action: 'corrected',
-        timing: { completedAt: null, crew: ['Fiona Fabricator'], startedAt },
-      }),
-    ).toBe('Aug 18, 2026 · Fiona Fabricator');
-    expect(jobWorkTimeActivityDetail({ action: 'cleared', timing: null })).toBeNull();
-  });
-});
-
-describe('jobCompletionActivityDetail', () => {
-  test('omits the usual completion date when the timeline already carries its day', () => {
-    expect(
-      jobCompletionActivityDetail({
-        completedOn: DateOnlyIso.parse('2026-08-18'),
-        occurredAt: DateIso.parse('2026-08-18T12:00:00.000Z'),
-      }),
-    ).toBeNull();
+  test('attributes events without an actor to System', () => {
+    expect(presentJobActivityEvent(buildChangeItem({ type: 'job-created', actor: null })).actorName).toBe('System');
   });
 
-  test('keeps a completion date that differs from the audit timeline day', () => {
-    expect(
-      jobCompletionActivityDetail({
-        completedOn: DateOnlyIso.parse('2026-08-17'),
-        occurredAt: DateIso.parse('2026-08-18T12:00:00.000Z'),
-      }),
-    ).toBe('Aug 17, 2026');
+  test.each([
+    ['started', 'started Fabrication work', null, []],
+    ['completed', 'completed Fabrication work', 'Fiona Fabricator', ['Fiona Fabricator']],
+    [
+      'corrected',
+      'corrected Fabrication work times',
+      'Aug 1, 2026 → Aug 4, 2026 · Fiona Fabricator',
+      ['Fiona Fabricator'],
+    ],
+    ['cleared', 'cleared Fabrication work times', null, []],
+  ])('presents %s Work Times from the snapshotted state', (action, sentence, detail, crew) => {
+    const item = buildChangeItem({
+      type: 'job-work-time-updated',
+      action,
+      department: 'fabrication',
+      timing:
+        action === 'cleared'
+          ? null
+          : {
+              completedAt: action === 'started' ? null : '2026-08-04T12:00:00.000Z',
+              crew,
+              startedAt: '2026-08-01T12:00:00.000Z',
+            },
+    });
+
+    expect(presentJobActivityEvent(item)).toEqual({ actorName: 'Thabo', detail, sentence, tone: 'blue' });
   });
+
+  test.each([
+    [null, [], 'Aug 18, 2026'],
+    [null, ['Fiona Fabricator', 'Sam Smith'], 'Aug 18, 2026 · Fiona Fabricator, Sam Smith'],
+    ['2026-08-19T12:00:00.000Z', [], 'Aug 18, 2026 → Aug 19, 2026'],
+  ])('keeps the resulting corrected span and crew: %j, %j', (completedAt, crew, detail) => {
+    const item = buildChangeItem({
+      type: 'job-work-time-updated',
+      action: 'corrected',
+      department: 'assembly',
+      timing: { completedAt, crew, startedAt: '2026-08-18T12:00:00.000Z' },
+    });
+
+    expect(presentJobActivityEvent(item)).toMatchObject({ sentence: 'corrected Assembly work times', detail });
+  });
+
+  test.each(['UTC', 'America/New_York', 'Africa/Johannesburg'])(
+    'compares completion dates to the plant day when the reader is in %s',
+    (timeZone) => {
+      vi.stubEnv('TZ', timeZone);
+      const payload = { type: 'job-completed', occurredAt: '2026-08-18T22:30:00.000Z' };
+
+      expect(presentJobActivityEvent(buildChangeItem({ ...payload, completedOn: '2026-08-19' })).detail).toBeNull();
+      expect(presentJobActivityEvent(buildChangeItem({ ...payload, completedOn: '2026-08-18' })).detail).toBe(
+        'Aug 18, 2026',
+      );
+    },
+  );
 });
 
 describe('hasUnreadActivity', () => {
@@ -94,3 +118,20 @@ describe('hasUnreadActivity', () => {
     expect(hasUnreadActivity({ lastActivitySeen, latestActivityAt: null })).toBe(false);
   });
 });
+
+function buildChangeItem(payload: Record<string, unknown>): JobChangeActivityItem {
+  return JobChangeActivityItem.parse({
+    actor: { email: 'thabo@example.com', id: 'user-1', name: 'Thabo Mokoena', thumbnailDataUrl: null },
+    id: '20000000-0000-4000-8000-000000000000',
+    job: {
+      code: 'JOB-00042',
+      customerCompanyName: 'Acme Mining',
+      displayName: 'Cane 8 ton',
+      id: '30000000-0000-4000-8000-000000000000',
+      offeringKind: 'product',
+      thumbnailDataUrl: null,
+    },
+    occurredAt: '2026-08-18T12:00:00.000Z',
+    ...payload,
+  });
+}

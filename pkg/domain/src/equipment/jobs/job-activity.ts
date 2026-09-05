@@ -1,11 +1,14 @@
-import type { DateIso, DateOnlyIso } from '@pkg/schema';
+import { DateIso, DateOnlyIso } from '@pkg/schema';
 import type {
+  JobActivityItem,
   JobChangeActivityItem,
   JobWorkTimeActivityAction,
   JobWorkTimeActivityState,
   WorkItemDepartment,
 } from '@pkg/schema/equipment';
-import { formatDate, toPlantDateOnly } from '../../formatting/date.js';
+import { isSameDay, isSameYear, subDays } from 'date-fns';
+import { formatDate, parseDate, toPlantDateOnly } from '../../formatting/date.js';
+import { getFirstName } from '../../formatting/text.js';
 import type { StatusBadgeColor } from '../../theme/status-badge.js';
 import { departmentLabels } from '../departments.js';
 
@@ -18,13 +21,62 @@ export const JOB_ACTIVITY_EVENT_SENTENCES = {
 } as const;
 
 /** One category tone across web and mobile; event-specific icons carry the finer distinction. */
-export const jobActivityEventTone = {
+const jobActivityEventTone = {
   'job-completed': 'purple',
   'job-created': 'purple',
   'job-description-updated': 'purple',
   'job-document-added': 'purple',
   'job-work-time-updated': 'blue',
 } as const satisfies Record<JobChangeActivityItem['type'], StatusBadgeColor>;
+
+export type JobActivityEventPresentation = {
+  actorName: string;
+  /** The fact beyond the event sentence, or null when there is no additional detail. */
+  detail: string | null;
+  sentence: string;
+  tone: StatusBadgeColor;
+};
+
+/** Shared event wording and context; each app supplies its own icons and layout. */
+export function presentJobActivityEvent(item: JobChangeActivityItem): JobActivityEventPresentation {
+  const attribution = {
+    // A system action and a deleted actor both leave a null actor, as in the Audit table.
+    actorName: item.actor ? getFirstName(item.actor.name) : 'System',
+    tone: jobActivityEventTone[item.type],
+  };
+
+  switch (item.type) {
+    case 'job-created':
+      return { ...attribution, detail: null, sentence: JOB_ACTIVITY_EVENT_SENTENCES.created };
+    case 'job-description-updated':
+      return {
+        ...attribution,
+        detail: item.description,
+        sentence:
+          item.description === null
+            ? JOB_ACTIVITY_EVENT_SENTENCES.descriptionCleared
+            : JOB_ACTIVITY_EVENT_SENTENCES.descriptionChanged,
+      };
+    case 'job-completed':
+      return {
+        ...attribution,
+        detail: jobCompletionActivityDetail(item),
+        sentence: JOB_ACTIVITY_EVENT_SENTENCES.completed,
+      };
+    case 'job-document-added':
+      return {
+        ...attribution,
+        detail: item.document.filename,
+        sentence: JOB_ACTIVITY_EVENT_SENTENCES.documentAdded,
+      };
+    case 'job-work-time-updated':
+      return {
+        ...attribution,
+        detail: jobWorkTimeActivityDetail(item),
+        sentence: jobWorkTimeActivitySentence(item),
+      };
+  }
+}
 
 export function jobWorkTimeActivitySentence({
   action,
@@ -47,8 +99,8 @@ export function jobWorkTimeActivitySentence({
   }
 }
 
-/** A backdated completion remains visible; the usual same-day date stays on the timeline only. */
-export function jobCompletionActivityDetail({
+/** Completion dates are plant business dates, even when the reader's timeline day differs. */
+function jobCompletionActivityDetail({
   completedOn,
   occurredAt,
 }: {
@@ -59,7 +111,7 @@ export function jobCompletionActivityDetail({
 }
 
 /** Non-redundant Work Time context beyond the activity timeline's own date and event sentence. */
-export function jobWorkTimeActivityDetail({
+function jobWorkTimeActivityDetail({
   action,
   timing,
 }: {
@@ -87,4 +139,64 @@ export function hasUnreadActivity({
   latestActivityAt: DateIso | null;
 }): boolean {
   return latestActivityAt !== null && Date.parse(latestActivityAt) > Date.parse(lastActivitySeen);
+}
+
+/** One calendar day of the feed, in the order the feed delivered it. */
+export type JobActivityDayGroup = {
+  /** The reader's local calendar day, `yyyy-MM-dd` — the group's identity and React key. */
+  day: DateOnlyIso;
+  items: JobActivityItem[];
+  label: string;
+};
+
+/**
+ * Split the feed into day headings. The API already sorts by `occurredAt`, so a day is a consecutive
+ * run rather than a bucket to collect: entries keep the order they arrived in, and a page boundary
+ * landing mid-day extends that day's group instead of opening a second heading for it.
+ */
+export function groupJobActivityByDay(
+  items: readonly JobActivityItem[],
+  now: DateIso = DateIso.parse(new Date()),
+): JobActivityDayGroup[] {
+  const groups: JobActivityDayGroup[] = [];
+
+  for (const item of items) {
+    const day = DateOnlyIso.parse(parseDate(item.occurredAt));
+    const openGroup = groups.at(-1);
+
+    if (openGroup?.day === day) {
+      openGroup.items.push(item);
+      continue;
+    }
+
+    groups.push({ day, items: [item], label: formatJobActivityDayLabel(item.occurredAt, now) });
+  }
+
+  return groups;
+}
+
+/**
+ * The heading over a day's entries. Today and Yesterday are named as well as dated: the weekday is
+ * what places an entry in the reader's week, but the two most-read days should not have to be
+ * counted back to. The year only appears once it is no longer the obvious one.
+ */
+function formatJobActivityDayLabel(occurredAt: DateIso, now: DateIso): string {
+  const date = parseDate(occurredAt);
+  const nowDate = parseDate(now);
+
+  if (!date || !nowDate) {
+    return '';
+  }
+
+  const dayLabel = formatDate(date, isSameYear(date, nowDate) ? 'EEE d MMM' : 'EEE d MMM yyyy');
+
+  if (isSameDay(date, nowDate)) {
+    return `Today · ${dayLabel}`;
+  }
+
+  if (isSameDay(date, subDays(nowDate, 1))) {
+    return `Yesterday · ${dayLabel}`;
+  }
+
+  return dayLabel;
 }

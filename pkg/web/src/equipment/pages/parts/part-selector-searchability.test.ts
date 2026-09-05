@@ -21,7 +21,7 @@ describe('Part selector searchability', () => {
   });
 
   it('keeps the Purchase Order line Part picker searchable', () => {
-    const source = readSource('../purchase-orders/PurchaseOrderDetailPage.tsx');
+    const source = readSource('../purchase-orders/components/PurchaseOrderDraft.tsx');
     const partField = source.match(
       /<form\.AppField name={`lines\[\$\{index\}\]\.partId`}>[\s\S]*?<\/form\.AppField>/,
     )?.[0];

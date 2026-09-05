@@ -230,3 +230,7 @@ export function toReceiptInput({
     unitCost: canReadCosts && !Number.isNaN(values.unitCost) ? values.unitCost : null,
   });
 }
+
+export function purchaseOrderLinesTotal(lines: ReadonlyArray<{ quantity: number; unitPrice: number | null }>): number {
+  return lines.reduce((sum, line) => sum + line.quantity * (line.unitPrice ?? 0), 0);
+}

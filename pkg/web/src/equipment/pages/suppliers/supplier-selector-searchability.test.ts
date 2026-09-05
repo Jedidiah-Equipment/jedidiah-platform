@@ -6,7 +6,7 @@ const supplierSelectors = [
   '../parts/components/PartForm.tsx',
   '../parts/PartListCreateDialog.tsx',
   '../purchase-orders/PurchaseOrderCreateDialog.tsx',
-  '../purchase-orders/PurchaseOrderDetailPage.tsx',
+  '../purchase-orders/components/PurchaseOrderDraft.tsx',
 ] as const;
 
 describe('Supplier selector searchability', () => {

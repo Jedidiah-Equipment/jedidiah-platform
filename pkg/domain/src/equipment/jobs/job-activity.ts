@@ -1,4 +1,4 @@
-import { type DateIso, DateOnlyIso } from '@pkg/schema';
+import { DateIso, DateOnlyIso } from '@pkg/schema';
 import type {
   JobActivityItem,
   JobChangeActivityItem,
@@ -156,12 +156,12 @@ export type JobActivityDayGroup = {
  */
 export function groupJobActivityByDay(
   items: readonly JobActivityItem[],
-  now: Date = new Date(),
+  now: DateIso = DateIso.parse(new Date()),
 ): JobActivityDayGroup[] {
   const groups: JobActivityDayGroup[] = [];
 
   for (const item of items) {
-    const day = DateOnlyIso.parse(formatDate(item.occurredAt, 'yyyy-MM-dd'));
+    const day = DateOnlyIso.parse(parseDate(item.occurredAt));
     const openGroup = groups.at(-1);
 
     if (openGroup?.day === day) {
@@ -180,20 +180,21 @@ export function groupJobActivityByDay(
  * what places an entry in the reader's week, but the two most-read days should not have to be
  * counted back to. The year only appears once it is no longer the obvious one.
  */
-function formatJobActivityDayLabel(occurredAt: DateIso, now: Date): string {
+function formatJobActivityDayLabel(occurredAt: DateIso, now: DateIso): string {
   const date = parseDate(occurredAt);
+  const nowDate = parseDate(now);
 
-  if (!date) {
+  if (!date || !nowDate) {
     return '';
   }
 
-  const dayLabel = formatDate(date, isSameYear(date, now) ? 'EEE d MMM' : 'EEE d MMM yyyy');
+  const dayLabel = formatDate(date, isSameYear(date, nowDate) ? 'EEE d MMM' : 'EEE d MMM yyyy');
 
-  if (isSameDay(date, now)) {
+  if (isSameDay(date, nowDate)) {
     return `Today · ${dayLabel}`;
   }
 
-  if (isSameDay(date, subDays(now, 1))) {
+  if (isSameDay(date, subDays(nowDate, 1))) {
     return `Yesterday · ${dayLabel}`;
   }
 

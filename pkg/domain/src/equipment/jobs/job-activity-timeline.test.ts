@@ -1,3 +1,4 @@
+import { DateIso } from '@pkg/schema';
 import { JobActivityItem } from '@pkg/schema/equipment';
 import { afterEach, expect, test, vi } from 'vitest';
 
@@ -9,7 +10,7 @@ test('keeps a day whole when the next page continues it', () => {
   const firstPage = [buildItem('2026-08-17T10:42:00')];
   const secondPage = [buildItem('2026-08-17T09:17:00'), buildItem('2026-08-16T16:48:00')];
 
-  const groups = groupJobActivityByDay([...firstPage, ...secondPage], new Date('2026-08-17T12:00:00'));
+  const groups = groupJobActivityByDay([...firstPage, ...secondPage], DateIso.parse(new Date('2026-08-17T12:00:00')));
 
   expect(groups).toEqual([
     { day: '2026-08-17', label: 'Today · Mon 17 Aug', items: [firstPage[0], secondPage[0]] },
@@ -22,7 +23,7 @@ test('keeps User Feedback and events in delivered order without copying or chang
   const event = Object.freeze(buildItem('2026-08-17T10:00:00'));
   const items = Object.freeze([feedback, event]);
 
-  const groups = groupJobActivityByDay(items, new Date('2026-08-17T12:00:00'));
+  const groups = groupJobActivityByDay(items, DateIso.parse(new Date('2026-08-17T12:00:00')));
 
   expect(groups).toHaveLength(1);
   expect(groups[0]?.items[0]).toBe(feedback);
@@ -40,7 +41,7 @@ test.each([
   ['2025-08-14T15:22:00', '2026-08-17T12:00:00', 'Thu 14 Aug 2025'],
   ['2025-12-31T23:59:00', '2026-01-01T00:01:00', 'Yesterday · Wed 31 Dec 2025'],
 ])('labels the day of %s relative to %s', (occurredAt, now, label) => {
-  expect(groupJobActivityByDay([buildItem(occurredAt)], new Date(now))[0]?.label).toBe(label);
+  expect(groupJobActivityByDay([buildItem(occurredAt)], DateIso.parse(new Date(now)))[0]?.label).toBe(label);
 });
 
 test.each([
@@ -60,7 +61,16 @@ test.each([
 ])('uses calendar days across daylight saving changes: %s', (occurredAt, now, label) => {
   vi.stubEnv('TZ', 'America/New_York');
 
-  expect(groupJobActivityByDay([buildItem(occurredAt)], new Date(now))[0]?.label).toBe(label);
+  expect(groupJobActivityByDay([buildItem(occurredAt)], DateIso.parse(new Date(now)))[0]?.label).toBe(label);
+});
+
+test('keeps date-only activity and clock inputs on their local calendar day', () => {
+  vi.stubEnv('TZ', 'America/New_York');
+  const item = { ...buildItem('2026-08-18T12:00:00.000Z'), occurredAt: DateIso.parse('2026-08-18') };
+
+  expect(groupJobActivityByDay([item], DateIso.parse('2026-08-18'))).toEqual([
+    { day: '2026-08-18', label: 'Today · Tue 18 Aug', items: [item] },
+  ]);
 });
 
 function buildItem(occurredAt: string, feedback = false): JobActivityItem {

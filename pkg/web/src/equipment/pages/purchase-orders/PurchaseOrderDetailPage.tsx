@@ -1,71 +1,33 @@
-import { createStableRowKeys, formatCurrency, formatDate, hasPermission } from '@pkg/domain';
-import { defaultPurchaseOrderUnitPrice } from '@pkg/domain/equipment';
+import { formatCurrency, formatDate, hasPermission } from '@pkg/domain';
 import type { UUID } from '@pkg/schema';
-import type {
-  Part,
-  PurchaseOrderAmendmentKind,
-  PurchaseOrderLineInput,
-  PurchaseOrderSaveDraftInput,
-  PurchaseOrderView,
-  StockOnHandRow,
-} from '@pkg/schema/equipment';
-import { isPurchaseOrderLineUnpriced, purchaseOrderHasUnpricedLines } from '@pkg/schema/equipment';
-import {
-  IconArrowBackUp,
-  IconBan,
-  IconCircleCheck,
-  IconEye,
-  IconFlagCheck,
-  IconPlus,
-  IconSend,
-  IconTrash,
-} from '@tabler/icons-react';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import type { PurchaseOrderAmendmentKind, PurchaseOrderView } from '@pkg/schema/equipment';
+import { purchaseOrderHasUnpricedLines } from '@pkg/schema/equipment';
+import { IconPlus } from '@tabler/icons-react';
+import { useQuery } from '@tanstack/react-query';
 import type React from 'react';
-import { useCallback, useId, useMemo, useState } from 'react';
-import { toast } from 'sonner';
+import { useMemo, useState } from 'react';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { DataTable } from '@/components/data-table/DataTable.js';
 import { type DataTableColumnDef, useDataTable } from '@/components/data-table/features.js';
-import { AutosaveStatus, useAutosaveForm } from '@/components/form/index.js';
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
 import { Badge } from '@/components/ui/badge.js';
 import { Button } from '@/components/ui/button.js';
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card.js';
-import { Field, FieldLabel } from '@/components/ui/field.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs.js';
 import { AuditTable, usePurchaseOrderAuditTableStore } from '@/equipment/components/audit/AuditTable.js';
-import { FilePreviewSheet } from '@/equipment/components/documents/FilePreviewSheet.js';
-import { useFilePreview } from '@/equipment/components/documents/use-file-preview.js';
-import { JobMultiPicker, useJobPicker } from '@/equipment/components/job-picker/index.js';
-import { usePartOptions, useSupplierOptions } from '@/equipment/hooks/options/index.js';
-import { useQueryInvalidation } from '@/equipment/hooks/use-query-invalidation.js';
-import { fetchDocumentPreviewBlob } from '@/equipment/utils/document.js';
 import { formatPurchaseUnitLabel } from '@/equipment/utils/part-quantity-format.js';
 import { useAccess, useCan } from '@/hooks/use-access.js';
-import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useTRPC } from '@/lib/trpc.js';
-import { allJobsInput } from '../jobs/components/all-jobs-input.js';
 import { PurchaseOrderAmendDialog } from './components/PurchaseOrderAmendDialog.js';
 import { PurchaseOrderAmendmentsCard } from './components/PurchaseOrderAmendmentsCard.js';
 import { PurchaseOrderDocumentsCard } from './components/PurchaseOrderDocumentsCard.js';
 import { PurchaseOrderInvoiceCrossCheckCard } from './components/PurchaseOrderInvoiceCrossCheckCard.js';
-import { PurchaseOrderPartLabelsDialog } from './components/PurchaseOrderPartLabelsDialog.js';
 import { PurchaseOrderReceivingCard } from './components/PurchaseOrderReceivingCard.js';
 import { PurchaseOrderReturnsCard } from './components/PurchaseOrderReturnsCard.js';
 import { PurchaseOrderStatusBadge } from './components/PurchaseOrderStatusBadge.js';
-import { fetchPurchaseOrderPreviewBlob } from './components/purchase-order-pdf.js';
-import {
-  type PurchaseOrderDraftFormValues,
-  PurchaseOrderDraftFormValues as PurchaseOrderDraftFormValuesSchema,
-  quantityDecimals,
-  quantityForPart,
-  toPurchaseOrderDraftFormValues,
-  toPurchaseOrderDraftInput,
-} from './components/types.js';
-
-const getLineKey = createStableRowKeys<PurchaseOrderLineInput>('purchase-order-line');
+import { purchaseOrderLinesTotal } from './components/types.js';
+import { PurchaseOrderEditing } from './PurchaseOrderEditing.js';
 
 export const PurchaseOrderDetailPage: React.FC<{ purchaseOrderId: UUID }> = ({ purchaseOrderId }) => {
   const trpc = useTRPC();
@@ -87,23 +49,9 @@ const PurchaseOrderDetail: React.FC<{ purchaseOrder: PurchaseOrderView; queryErr
   purchaseOrder,
   queryError,
 }) => {
-  const trpc = useTRPC();
   const accessQuery = useAccess();
   const canReadCosts = hasPermission(accessQuery.data, 'equipment_inventory_cost:read');
-  // What the order's own state allows, derived once on the server and read here — so a control is
-  // never offered for a write the post would refuse. The role half of each rule stays local.
   const { actions } = purchaseOrder;
-  // Line prices are part of the draft, so editing needs the cost gate open as well as create rights.
-  const canEdit =
-    actions.edit.allowed && canReadCosts && hasPermission(accessQuery.data, 'equipment_purchase_order:create');
-  // Approving and withdrawing an approval are the same right: only someone who could sign the order
-  // off may un-sign it, which is what keeps the revert an audited step rather than a way around the gate.
-  const canApprove = actions.approve.allowed && hasPermission(accessQuery.data, 'equipment_purchase_order:approve');
-  const canRevertToDraft =
-    actions.revertToDraft.allowed && hasPermission(accessQuery.data, 'equipment_purchase_order:approve');
-  const canSend = actions.send.allowed && hasPermission(accessQuery.data, 'equipment_purchase_order:send');
-  const canCancel = actions.cancel.allowed && hasPermission(accessQuery.data, 'equipment_purchase_order:close');
-  const canCloseShort = actions.closeShort.allowed && hasPermission(accessQuery.data, 'equipment_purchase_order:close');
   const canReceive = actions.receive.allowed && hasPermission(accessQuery.data, 'equipment_purchase_order:receive');
   const canAmend = actions.amend.allowed && hasPermission(accessQuery.data, 'equipment_purchase_order:amend');
   // The server accepts either the physical move right or the PO amendment right for this PO-bound flow.
@@ -111,11 +59,6 @@ const PurchaseOrderDetail: React.FC<{ purchaseOrder: PurchaseOrderView; queryErr
     actions.returnToSupplier.allowed &&
     (hasPermission(accessQuery.data, 'equipment_inventory:move') ||
       hasPermission(accessQuery.data, 'equipment_purchase_order:amend'));
-  // The same either-read gate the label route applies: a label carries no cost, so the price-blind
-  // stores role prints as readily as the catalog ones.
-  const canPrintPartLabels =
-    hasPermission(accessQuery.data, 'equipment_part:read') ||
-    hasPermission(accessQuery.data, 'equipment_inventory:read');
   // The same single gate the upload route applies — filing the paperwork is procurement's job, and
   // it is the amend right that says who does it.
   const canFileCreditNote =
@@ -125,119 +68,52 @@ const PurchaseOrderDetail: React.FC<{ purchaseOrder: PurchaseOrderView; queryErr
   // revalue on top of that.
   const canFileSupplierInvoice = canFileCreditNote;
   const canApplyInvoicePrices = canReadCosts && hasPermission(accessQuery.data, 'equipment_inventory_cost:revalue');
-  const { invalidatePurchaseOrders, invalidateJobs } = useQueryInvalidation();
-  const [isLifecycleActionPending, setIsLifecycleActionPending] = useState(false);
-
-  const saveMutation = useMutation(
-    trpc.purchaseOrders.saveDraft.mutationOptions({
-      onSuccess: () => Promise.all([invalidatePurchaseOrders(), invalidateJobs()]),
-    }),
-  );
-  const { autosave, form, formProps } = useAutosaveForm({
-    defaultValues: toPurchaseOrderDraftFormValues(purchaseOrder),
-    failureMessage: 'Unable to save this Purchase Order.',
-    save: (input: PurchaseOrderSaveDraftInput) => saveMutation.mutateAsync(input),
-    toInput: (values) => toPurchaseOrderDraftInput(purchaseOrder.id, values),
-    validator: PurchaseOrderDraftFormValuesSchema,
-  });
-
-  /** Every lifecycle action acts on the saved order, so the one draft form flushes first. */
-  const runAfterSave = useCallback(
-    async (action: () => Promise<void>, failureMessage: string) => {
-      setIsLifecycleActionPending(true);
-      try {
-        if (!(await autosave.flush())) {
-          toast.error(failureMessage);
-          return false;
-        }
-        await action();
-        return true;
-      } finally {
-        setIsLifecycleActionPending(false);
-      }
-    },
-    [autosave.flush],
-  );
-
   return (
-    <PageLayout
-      actions={
-        <div className="flex flex-wrap items-center justify-end gap-2">
-          <PurchaseOrderActions
-            canApprove={canApprove}
-            canCancel={canCancel}
-            canCloseShort={canCloseShort}
-            canEdit={canEdit}
-            canPrintPartLabels={canPrintPartLabels}
-            canReadCosts={canReadCosts}
-            canRevertToDraft={canRevertToDraft}
-            canSend={canSend}
-            isPending={isLifecycleActionPending}
-            purchaseOrder={purchaseOrder}
-            runAfterSave={runAfterSave}
-          />
-          <PurchaseOrderStatusBadge size="lg" status={purchaseOrder.derivedStatus} />
-        </div>
-      }
-      description={`${purchaseOrder.supplier.companyName} · ${statusDescription(purchaseOrder)}`}
-      size="lg"
-      title={purchaseOrder.code}
-    >
-      <ErrorMessage error={queryError} fallbackMessage="Unable to refresh this Purchase Order." />
-      <PurchaseOrderDetailTabs purchaseOrderId={purchaseOrder.id}>
-        {canEdit ? (
-          <form {...formProps} className="grid gap-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Order details</CardTitle>
-                <CardAction>
-                  <AutosaveStatus onRetry={() => void autosave.retry()} state={autosave.state} />
-                </CardAction>
-              </CardHeader>
-              <CardContent className="grid gap-4 sm:grid-cols-2">
-                <SupplierField commit={autosave.commit} form={form} />
-                <form.AppField name="expectedDeliveryDate">
-                  {(field) => (
-                    <field.DatePickerField
-                      label="Expected delivery date"
-                      onValueCommit={autosave.commit}
-                      placeholder="Optional"
-                    />
-                  )}
-                </form.AppField>
-              </CardContent>
-            </Card>
-            <PurchaseOrderLinesCard commit={autosave.commit} form={form} supplierId={purchaseOrder.supplierId} />
-            <PurchaseOrderJobsCard commit={autosave.commit} form={form} />
-          </form>
-        ) : (
-          <>
-            <ReadOnlyDetailsCard canAmend={canAmend} purchaseOrder={purchaseOrder} />
-            {canReceive ? (
-              <PurchaseOrderReceivingCard canReadCosts={canReadCosts} purchaseOrder={purchaseOrder} />
-            ) : null}
-            <ReadOnlyLinesCard canAmend={canAmend} canReadCosts={canReadCosts} purchaseOrder={purchaseOrder} />
-            <PurchaseOrderReturnsCard
-              canFileCreditNote={canFileCreditNote}
-              canReadCosts={canReadCosts}
-              canReturn={canReturn}
-              purchaseOrder={purchaseOrder}
-            />
-            {/* Entirely about prices, so it never renders for a price-blind reader (spec §11). */}
-            {canReadCosts ? (
-              <PurchaseOrderInvoiceCrossCheckCard
-                canApplyPrices={canApplyInvoicePrices}
-                canFileInvoice={canFileSupplierInvoice}
-                purchaseOrderId={purchaseOrder.id}
-              />
-            ) : null}
-            <PurchaseOrderAmendmentsCard purchaseOrderId={purchaseOrder.id} />
-            <PurchaseOrderDocumentsCard canReadCosts={canReadCosts} purchaseOrderId={purchaseOrder.id} />
-            <ReadOnlyJobsCard purchaseOrder={purchaseOrder} />
-          </>
-        )}
-      </PurchaseOrderDetailTabs>
-    </PageLayout>
+    <PurchaseOrderEditing key={purchaseOrder.id} purchaseOrder={purchaseOrder}>
+      {({ actions: editingActions, draft }) => (
+        <PageLayout
+          actions={
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              {editingActions}
+              <PurchaseOrderStatusBadge size="lg" status={purchaseOrder.derivedStatus} />
+            </div>
+          }
+          description={`${purchaseOrder.supplier.companyName} · ${statusDescription(purchaseOrder)}`}
+          size="lg"
+          title={purchaseOrder.code}
+        >
+          <ErrorMessage error={queryError} fallbackMessage="Unable to refresh this Purchase Order." />
+          <PurchaseOrderDetailTabs purchaseOrderId={purchaseOrder.id}>
+            {draft ?? (
+              <>
+                <ReadOnlyDetailsCard canAmend={canAmend} purchaseOrder={purchaseOrder} />
+                {canReceive ? (
+                  <PurchaseOrderReceivingCard canReadCosts={canReadCosts} purchaseOrder={purchaseOrder} />
+                ) : null}
+                <ReadOnlyLinesCard canAmend={canAmend} canReadCosts={canReadCosts} purchaseOrder={purchaseOrder} />
+                <PurchaseOrderReturnsCard
+                  canFileCreditNote={canFileCreditNote}
+                  canReadCosts={canReadCosts}
+                  canReturn={canReturn}
+                  purchaseOrder={purchaseOrder}
+                />
+                {/* Entirely about prices, so it never renders for a price-blind reader (spec §11). */}
+                {canReadCosts ? (
+                  <PurchaseOrderInvoiceCrossCheckCard
+                    canApplyPrices={canApplyInvoicePrices}
+                    canFileInvoice={canFileSupplierInvoice}
+                    purchaseOrderId={purchaseOrder.id}
+                  />
+                ) : null}
+                <PurchaseOrderAmendmentsCard purchaseOrderId={purchaseOrder.id} />
+                <PurchaseOrderDocumentsCard canReadCosts={canReadCosts} purchaseOrderId={purchaseOrder.id} />
+                <ReadOnlyJobsCard purchaseOrder={purchaseOrder} />
+              </>
+            )}
+          </PurchaseOrderDetailTabs>
+        </PageLayout>
+      )}
+    </PurchaseOrderEditing>
   );
 };
 
@@ -274,556 +150,6 @@ export const PurchaseOrderDetailTabs: React.FC<{ children: React.ReactNode; purc
         </TabsContent>
       ) : null}
     </Tabs>
-  );
-};
-
-type DraftForm = ReturnType<typeof useAutosaveForm<PurchaseOrderDraftFormValues, unknown>>['form'];
-
-/**
- * The as-sent PDF, previewed in the same sheet every other filed document uses. The document row is
- * only fetched when the sheet opens: until it lands the order's own code names the file, so the
- * button never sits disabled behind a request the buyer cannot see.
- */
-const PurchaseOrderSentPdfButton: React.FC<{
-  code: PurchaseOrderView['code'];
-  documentId: UUID;
-  purchaseOrderId: UUID;
-}> = ({ code, documentId, purchaseOrderId }) => {
-  const trpc = useTRPC();
-  const preview = useFilePreview();
-  const owner = useMemo(() => ({ id: purchaseOrderId, type: 'purchase_order' }) as const, [purchaseOrderId]);
-  const documentsQuery = useQuery({
-    ...trpc.purchaseOrders.documents.queryOptions({ purchaseOrderId }),
-    enabled: preview.isOpen,
-  });
-  // An amended order files further revisions, so only the row knows whether this is `rev 2`.
-  const filename = documentsQuery.data?.items.find((item) => item.id === documentId)?.filename ?? `${code}.pdf`;
-  const fetchBlob = useCallback(
-    ({ signal }: { signal: AbortSignal }) => fetchDocumentPreviewBlob({ document: { id: documentId }, owner, signal }),
-    [documentId, owner],
-  );
-
-  return (
-    <>
-      <Button onClick={() => preview.open()} variant="outline">
-        <IconEye data-icon="inline-start" /> View PDF
-      </Button>
-      <FilePreviewSheet
-        description="Filed PDF"
-        downloadFilename={filename}
-        fetchBlob={fetchBlob}
-        kind="pdf"
-        onOpenChange={preview.onOpenChange}
-        open={preview.isOpen}
-        queryKey={['purchase-order-document', purchaseOrderId, documentId]}
-        staleTime={Infinity}
-        subject="Purchase Order"
-        title={filename}
-      />
-    </>
-  );
-};
-
-const SupplierField: React.FC<{ commit: () => void; form: DraftForm }> = ({ commit, form }) => {
-  const suppliers = useSupplierOptions({ limit: 0 });
-
-  return (
-    <form.AppField name="supplierId">
-      {(field) => (
-        <field.ComboboxField
-          disabled={suppliers.isPending}
-          emptyMessage="No suppliers found."
-          label="Supplier"
-          onValueCommit={commit}
-          options={suppliers.selectOptions}
-          placeholder={suppliers.isPending ? 'Loading suppliers...' : 'Search suppliers'}
-        />
-      )}
-    </form.AppField>
-  );
-};
-
-export const PurchaseOrderActions: React.FC<{
-  canApprove: boolean;
-  canCancel: boolean;
-  canCloseShort: boolean;
-  canEdit: boolean;
-  canPrintPartLabels: boolean;
-  canReadCosts: boolean;
-  canRevertToDraft: boolean;
-  canSend: boolean;
-  isPending: boolean;
-  purchaseOrder: PurchaseOrderView;
-  runAfterSave: (action: () => Promise<void>, failureMessage: string) => Promise<boolean>;
-}> = ({
-  canApprove,
-  canCancel,
-  canCloseShort,
-  canEdit,
-  canPrintPartLabels,
-  canReadCosts,
-  canRevertToDraft,
-  canSend,
-  isPending,
-  purchaseOrder,
-  runAfterSave,
-}) => {
-  const trpc = useTRPC();
-  const { invalidatePurchaseOrders } = useQueryInvalidation();
-  const preview = useFilePreview();
-  // Every lifecycle refusal the server can raise is a state rule the buyer can act on — an unpriced
-  // line names its Part, a cancellation names its receipts. Without this the click just does nothing.
-  const showMutationError = useApiMutationErrorToast();
-  const approveMutation = useMutation(
-    trpc.purchaseOrders.approve.mutationOptions({
-      onError: (error) => showMutationError(error, 'Unable to approve this Purchase Order.'),
-      onSuccess: async () => {
-        await invalidatePurchaseOrders();
-        toast.success('Purchase Order approved');
-      },
-    }),
-  );
-  const revertToDraftMutation = useMutation(
-    trpc.purchaseOrders.revertToDraft.mutationOptions({
-      onError: (error) => showMutationError(error, 'Unable to revert this Purchase Order to draft.'),
-      onSuccess: async () => {
-        await invalidatePurchaseOrders();
-        toast.success('Purchase Order reverted to draft');
-      },
-    }),
-  );
-  const markSentMutation = useMutation(
-    trpc.purchaseOrders.markSent.mutationOptions({
-      onError: (error) => showMutationError(error, 'Unable to mark this Purchase Order sent.'),
-      onSuccess: async () => {
-        await invalidatePurchaseOrders();
-        toast.success('Purchase Order marked sent');
-      },
-    }),
-  );
-  const cancelMutation = useMutation(
-    trpc.purchaseOrders.cancel.mutationOptions({
-      onError: (error) => showMutationError(error, 'Unable to cancel this Purchase Order.'),
-      onSuccess: async () => {
-        await invalidatePurchaseOrders();
-        toast.success('Purchase Order cancelled');
-      },
-    }),
-  );
-  const closeShortMutation = useMutation(
-    trpc.purchaseOrders.closeShort.mutationOptions({
-      onError: (error) => showMutationError(error, 'Unable to close this Purchase Order short.'),
-      onSuccess: async () => {
-        await invalidatePurchaseOrders();
-        toast.success('Purchase Order closed short');
-      },
-    }),
-  );
-  const disabled =
-    isPending ||
-    approveMutation.isPending ||
-    revertToDraftMutation.isPending ||
-    markSentMutation.isPending ||
-    cancelMutation.isPending ||
-    closeShortMutation.isPending;
-
-  const fetchPreviewBlob = useCallback(
-    ({ signal }: { signal: AbortSignal }) =>
-      fetchPurchaseOrderPreviewBlob({ purchaseOrderId: purchaseOrder.id, signal }),
-    [purchaseOrder.id],
-  );
-
-  // The preview renders the *saved* order, so the draft flushes before the sheet asks for it.
-  const handlePreview = () => {
-    void runAfterSave(async () => {
-      preview.open();
-    }, 'Save all Purchase Order changes before previewing the PDF.').catch(() => undefined);
-  };
-
-  return (
-    <div className="flex flex-wrap gap-2">
-      {canEdit ? (
-        <>
-          <Button disabled={disabled} onClick={handlePreview} variant="outline">
-            <IconEye data-icon="inline-start" /> Preview PDF
-          </Button>
-          <FilePreviewSheet
-            description="Generated PDF"
-            downloadFilename={`${purchaseOrder.code}.pdf`}
-            fetchBlob={fetchPreviewBlob}
-            kind="pdf"
-            onOpenChange={preview.onOpenChange}
-            open={preview.isOpen}
-            queryKey={['purchase-order-preview', purchaseOrder.id, preview.request]}
-            subject="Purchase Order"
-            title={`${purchaseOrder.code}.pdf`}
-          />
-        </>
-      ) : null}
-      {canReadCosts && purchaseOrder.documentId ? (
-        <PurchaseOrderSentPdfButton
-          code={purchaseOrder.code}
-          documentId={purchaseOrder.documentId}
-          purchaseOrderId={purchaseOrder.id}
-        />
-      ) : null}
-      {canPrintPartLabels ? <PurchaseOrderPartLabelsDialog lines={purchaseOrder.lines} /> : null}
-      {canRevertToDraft ? (
-        <Button
-          disabled={disabled}
-          onClick={() => {
-            if (!window.confirm(`Revert ${purchaseOrder.code} to draft? Its approval will be withdrawn.`)) return;
-            void revertToDraftMutation.mutateAsync({ id: purchaseOrder.id }).catch(() => undefined);
-          }}
-          variant="outline"
-        >
-          <IconArrowBackUp data-icon="inline-start" /> Revert to draft
-        </Button>
-      ) : null}
-      {canApprove ? (
-        <Button
-          disabled={disabled}
-          onClick={() => {
-            void runAfterSave(async () => {
-              await approveMutation.mutateAsync({ id: purchaseOrder.id });
-            }, 'Save all Purchase Order changes before approving it.').catch(() => undefined);
-          }}
-        >
-          <IconCircleCheck data-icon="inline-start" /> Approve
-        </Button>
-      ) : null}
-      {canSend ? (
-        <Button
-          disabled={disabled}
-          onClick={() => {
-            void runAfterSave(async () => {
-              await markSentMutation.mutateAsync({ id: purchaseOrder.id });
-            }, 'Save all Purchase Order changes before marking it sent.').catch(() => undefined);
-          }}
-        >
-          <IconSend data-icon="inline-start" /> Mark sent
-        </Button>
-      ) : null}
-      {canCloseShort ? (
-        <Button
-          disabled={disabled}
-          onClick={() => {
-            if (!window.confirm(`Close ${purchaseOrder.code} short? Its outstanding quantities will be released.`)) {
-              return;
-            }
-            void closeShortMutation.mutateAsync({ id: purchaseOrder.id }).catch(() => undefined);
-          }}
-          variant="outline"
-        >
-          <IconFlagCheck data-icon="inline-start" /> Close short
-        </Button>
-      ) : null}
-      {canCancel ? (
-        <Button
-          disabled={disabled}
-          onClick={() => {
-            if (!window.confirm(`Cancel ${purchaseOrder.code}?`)) return;
-            void runAfterSave(async () => {
-              await cancelMutation.mutateAsync({ id: purchaseOrder.id });
-            }, 'Save all Purchase Order changes before cancelling it.').catch(() => undefined);
-          }}
-          variant="destructive"
-        >
-          <IconBan data-icon="inline-start" /> Cancel
-        </Button>
-      ) : null}
-    </div>
-  );
-};
-
-const PurchaseOrderLinesCard: React.FC<{ commit: () => void; form: DraftForm; supplierId: UUID }> = ({
-  commit,
-  form,
-  supplierId,
-}) => {
-  const trpc = useTRPC();
-  const parts = usePartOptions({ limit: 0, sortBy: 'name', sortDirection: 'asc' });
-  const stockOnHandQuery = useQuery(trpc.inventory.stockOnHand.queryOptions());
-  const averageCostByPart = new Map(
-    (stockOnHandQuery.data?.items ?? []).map((part) => [part.partId, part.averageUnitCost]),
-  );
-  // Do not let a quick click turn a costed Part into an unpriced line while its default is still loading.
-  // A failed query settles and leaves manual pricing available alongside the visible error.
-  const eligibleParts = stockOnHandQuery.isPending
-    ? []
-    : parts.items
-        .filter((part) => part.supplierId === supplierId)
-        .map((part) => ({ ...part, averageUnitCost: averageCostByPart.get(part.id) ?? null }));
-
-  return (
-    <>
-      <ErrorMessage error={parts.query.error} fallbackMessage="Unable to load Parts." />
-      <ErrorMessage error={stockOnHandQuery.error} fallbackMessage="Unable to load inventory price defaults." />
-      <PurchaseOrderLinesEditor
-        commit={commit}
-        form={form}
-        isLoading={parts.isPending || stockOnHandQuery.isPending}
-        parts={eligibleParts}
-        partsLoadFailed={Boolean(parts.query.error)}
-      />
-    </>
-  );
-};
-
-type PurchaseOrderPartOption = Part & Pick<StockOnHandRow, 'averageUnitCost'>;
-
-export const PurchaseOrderLinesEditor: React.FC<{
-  commit: () => void;
-  form: DraftForm;
-  isLoading: boolean;
-  parts: PurchaseOrderPartOption[];
-  partsLoadFailed: boolean;
-}> = ({ commit, form, isLoading, parts, partsLoadFailed }) => {
-  const disabledReasonId = useId();
-
-  return (
-    <form.AppField mode="array" name="lines">
-      {(linesField) => {
-        const lines = linesField.state.value;
-        const nextPart = parts.find((part) => !lines.some((line) => line.partId === part.id));
-        let disabledReason: string | null = null;
-        if (isLoading) disabledReason = 'Loading available Parts...';
-        else if (!nextPart && parts.length === 0 && partsLoadFailed)
-          disabledReason = 'Parts could not be loaded. Try again.';
-        else if (!nextPart && parts.length === 0) disabledReason = 'Add a Part for this Supplier before adding a line.';
-        else if (!nextPart) disabledReason = 'All Parts for this Supplier are already on the order.';
-
-        return (
-          <Card>
-            <CardHeader>
-              <CardTitle>Parts</CardTitle>
-              <CardDescription>Quantities are ordered in the Part's purchasing unit.</CardDescription>
-              <CardAction className="flex items-center gap-2">
-                {disabledReason ? (
-                  <span className="text-muted-foreground text-xs" id={disabledReasonId}>
-                    {disabledReason}
-                  </span>
-                ) : null}
-                <Button
-                  aria-describedby={disabledReason ? disabledReasonId : undefined}
-                  disabled={Boolean(disabledReason)}
-                  onClick={() => {
-                    if (!nextPart) return;
-                    linesField.pushValue({
-                      partId: nextPart.id,
-                      quantity: 1,
-                      unitPrice: defaultPurchaseOrderUnitPrice(nextPart),
-                    });
-                    commit();
-                  }}
-                  size="sm"
-                  type="button"
-                  variant="outline"
-                >
-                  <IconPlus data-icon="inline-start" /> Add line
-                </Button>
-              </CardAction>
-            </CardHeader>
-            <CardContent>
-              <PurchaseOrderLinesDataTable
-                commit={commit}
-                eligibleParts={parts}
-                form={form}
-                lines={lines}
-                removeLine={(index) => linesField.removeValue(index)}
-              />
-            </CardContent>
-            <div className="border-t px-4 pt-4 text-right font-medium">
-              Total {lines.some(isPurchaseOrderLineUnpriced) ? 'Not priced' : formatCurrency(lineTotal(lines), 'ZAR')}
-            </div>
-          </Card>
-        );
-      }}
-    </form.AppField>
-  );
-};
-
-type PurchaseOrderLineTableRow = {
-  index: number;
-  key: string;
-  line: PurchaseOrderLineInput;
-};
-
-const PurchaseOrderLinesDataTable: React.FC<{
-  commit: () => void;
-  eligibleParts: PurchaseOrderPartOption[];
-  form: DraftForm;
-  lines: PurchaseOrderLineInput[];
-  removeLine: (index: number) => void;
-}> = ({ commit, eligibleParts, form, lines, removeLine }) => {
-  const data = useMemo(() => lines.map((line, index) => ({ index, key: getLineKey(line), line })), [lines]);
-  const columns = useMemo<DataTableColumnDef<PurchaseOrderLineTableRow>[]>(
-    () => [
-      {
-        cell: ({ row }) => {
-          const { index, line } = row.original;
-          // A Part appears once per order, so every other row's pick drops out of this
-          // one's choices; its own stays so the selected value keeps a label.
-          const options = eligibleParts
-            .filter((option) => option.id === line.partId || !lines.some((other) => other.partId === option.id))
-            .map((option) => ({ label: `${option.code} · ${option.name}`, value: option.id }));
-
-          return (
-            <form.AppField name={`lines[${index}].partId`}>
-              {(field) => (
-                <field.ComboboxField
-                  emptyMessage="No Parts found."
-                  label={<span className="sr-only">Part</span>}
-                  onValueCommit={(partId) => {
-                    const quantityName = `lines[${index}].quantity` as const;
-                    const unitPriceName = `lines[${index}].unitPrice` as const;
-                    const nextPart = eligibleParts.find((candidate) => candidate.id === partId);
-                    form.setFieldValue(quantityName, quantityForPart(form.getFieldValue(quantityName), nextPart));
-                    form.setFieldValue(
-                      unitPriceName,
-                      defaultPurchaseOrderUnitPrice({
-                        averageUnitCost: nextPart?.averageUnitCost ?? null,
-                        standardPurchaseLengthMm: nextPart?.standardPurchaseLengthMm ?? null,
-                      }),
-                    );
-                    commit();
-                  }}
-                  options={options}
-                  placeholder="Search parts"
-                />
-              )}
-            </form.AppField>
-          );
-        },
-        header: 'Part',
-        id: 'part',
-      },
-      {
-        cell: ({ row }) => {
-          const part = eligibleParts.find((candidate) => candidate.id === row.original.line.partId);
-          return part ? formatPurchaseUnitLabel(part) : '—';
-        },
-        header: 'Unit',
-        id: 'unit',
-      },
-      {
-        cell: ({ row }) => {
-          const part = eligibleParts.find((candidate) => candidate.id === row.original.line.partId);
-          return (
-            <form.AppField name={`lines[${row.original.index}].quantity`}>
-              {(field) => (
-                <field.NumberField
-                  decimals={quantityDecimals(part)}
-                  label={<span className="sr-only">Quantity</span>}
-                />
-              )}
-            </form.AppField>
-          );
-        },
-        header: 'Quantity',
-        id: 'quantity',
-        meta: { headerClassName: 'w-32' },
-      },
-      {
-        cell: ({ row }) => (
-          <form.AppField name={`lines[${row.original.index}].unitPrice`}>
-            {(field) => (
-              <field.CurrencyField
-                displayZeroAsEmpty
-                label={<span className="sr-only">Unit price</span>}
-                placeholder="Not priced"
-              />
-            )}
-          </form.AppField>
-        ),
-        header: 'Unit price',
-        id: 'unitPrice',
-        meta: { headerClassName: 'w-40' },
-      },
-      {
-        cell: ({ row }) => {
-          const part = eligibleParts.find((candidate) => candidate.id === row.original.line.partId);
-          return (
-            <Button
-              aria-label={`Remove ${part?.name ?? 'line'}`}
-              onClick={() => {
-                removeLine(row.original.index);
-                commit();
-              }}
-              size="icon-sm"
-              type="button"
-              variant="ghost"
-            >
-              <IconTrash />
-            </Button>
-          );
-        },
-        enableSorting: false,
-        header: () => <span className="sr-only">Remove</span>,
-        id: 'remove',
-      },
-    ],
-    [commit, eligibleParts, form, lines, removeLine],
-  );
-  const table = useDataTable({
-    columns,
-    data,
-    enableColumnFilters: false,
-    enableSorting: false,
-    getRowId: (row) => row.key,
-  });
-
-  return (
-    <DataTable
-      emptyMessage="No Parts added."
-      hideGlobalFilter
-      paginationMode="complete"
-      table={table}
-      total={data.length}
-      totalLabel={(value) => `${value} ${value === 1 ? 'part' : 'parts'}`}
-    />
-  );
-};
-
-const PurchaseOrderJobsCard: React.FC<{ commit: () => void; form: DraftForm }> = ({ commit, form }) => {
-  const trpc = useTRPC();
-  const jobsQuery = useQuery(trpc.jobs.list.queryOptions(allJobsInput));
-  const jobs = useMemo(() => jobsQuery.data?.items ?? [], [jobsQuery.data]);
-  const jobPicker = useJobPicker({ isLoading: jobsQuery.isPending, options: jobs });
-
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Linked Jobs</CardTitle>
-        <CardDescription>Leave empty for restock, or link every Job this order supports.</CardDescription>
-      </CardHeader>
-      <CardContent onBlur={commit}>
-        <form.AppField name="jobIds">
-          {(field) => {
-            const linked = jobs.filter((job) => field.state.value.includes(job.id));
-            // `jobs.list` never returns a cancelled Job, so a link to one has nothing here to
-            // resolve against. Its id rides through every edit rather than being dropped by the
-            // first change the reader makes — the link is the Job's id, not what this list can show.
-            const unreachableJobIds = field.state.value.filter((id) => !linked.some((job) => job.id === id));
-
-            return (
-              <Field>
-                <FieldLabel className="sr-only" htmlFor={field.name}>
-                  Linked Jobs
-                </FieldLabel>
-                <JobMultiPicker
-                  controller={jobPicker}
-                  disabled={jobsQuery.isPending}
-                  id={field.name}
-                  onChange={(selected) => field.handleChange([...unreachableJobIds, ...selected.map((job) => job.id)])}
-                  value={linked}
-                />
-              </Field>
-            );
-          }}
-        </form.AppField>
-      </CardContent>
-    </Card>
   );
 };
 
@@ -908,7 +234,7 @@ const ReadOnlyLinesCard: React.FC<{
           Total{' '}
           {purchaseOrderHasUnpricedLines(purchaseOrder)
             ? 'Not priced'
-            : formatCurrency(lineTotal(purchaseOrder.lines), 'ZAR')}
+            : formatCurrency(purchaseOrderLinesTotal(purchaseOrder.lines), 'ZAR')}
         </div>
       ) : null}
       {amendment ? (
@@ -1063,10 +389,6 @@ const ReadOnlyValue: React.FC<{ label: string; value: string }> = ({ label, valu
     <div className="mt-1">{value}</div>
   </div>
 );
-
-function lineTotal(lines: ReadonlyArray<{ quantity: number; unitPrice: number | null }>): number {
-  return lines.reduce((sum, line) => sum + line.quantity * (line.unitPrice ?? 0), 0);
-}
 
 function statusDescription(purchaseOrder: PurchaseOrderView): string {
   if (purchaseOrder.status === 'cancelled') return 'Cancelled';

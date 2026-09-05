@@ -13,7 +13,7 @@ vi.mock('@/equipment/hooks/use-query-invalidation.js', () => ({
 }));
 vi.mock('@/lib/trpc.js', () => ({ useTRPC: () => ({}) }));
 
-import { PurchaseOrderLinesEditor } from './PurchaseOrderDetailPage.js';
+import { PurchaseOrderLinesEditor } from './components/PurchaseOrderDraft.js';
 
 type PurchaseOrderPartOption = Part & { averageUnitCost: number | null };
 

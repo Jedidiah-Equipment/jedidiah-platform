@@ -90,17 +90,21 @@ context's `JOB-xxxxx`.
 ## Hours
 
 **Hour Reading** is one captured value of a Machine's hour meter: the value, when and by whom it
-was captured, and its evidence — a photo whose AI-read value the Foreman confirmed, or a manual
-entry, which stamps the reading **Missing Photo Evidence**. A reading plays one of three roles:
+was captured, and its evidence. The Foreman always types the value; a photo is attached whenever
+the camera allows, and a reading without one is stamped **Missing Photo Evidence**. Capture never
+waits for signal — readings queue on the phone and sync when they can. After sync the server reads
+the photo itself and records its own value and confidence: a reading is **photo-backed** when it
+carries a photo and **AI-verified** when the server's read agrees with the typed value.
+Disagreements, low confidence, and disputes surface to management as **Reading Exceptions** —
+never to the Foreman, who is never re-interrupted in the field. A reading plays one of three roles:
 **arrival** (machine on site) and **departure** (machine leaving) on a Machine Assignment, or
 **spot** — an ad-hoc field capture with no billing effect, existing to keep a Machine's known
 hours current for service tracking. The
 pre-travel opening is never captured: it is the machine's previous departure reading, so travel
-and work time are derived and no hour can vanish between Jobs. A Machine's readings only ever
-increase: a capture at or below the latest reading is refused with a re-take prompt, unless the
-Foreman asserts the previous reading is wrong, which saves his value as disputed and flags the
-pair for management. A photo reading the server's later verification disagrees with carries an
-evidence warning into sign-off; the Foreman is never re-interrupted in the field. The Foreman may
+and work time are derived and no hour can vanish between Jobs. A Machine's readings never go
+backward: a capture strictly below the latest reading is refused (equal is accepted — an idle
+machine reads its departure value), unless the Foreman asserts the previous reading is wrong,
+which saves his value as disputed and flags the pair for management. The Foreman may
 re-capture a reading only while his Assignment is open; from Completion onward only management
 amends, with a mandatory reason, and Invoiced freezes everything. Derived values always recompute
 after an amendment.

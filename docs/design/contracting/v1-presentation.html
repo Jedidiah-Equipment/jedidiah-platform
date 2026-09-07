@@ -197,7 +197,7 @@ ol.phases b{font-weight:600}
   </figure>
 
   <h2>No hour can vanish <small>the sequential-hours mechanism</small></h2>
-  <p class="claim">A machine's meter tells one continuous story. The app captures arrival and departure with a photo; the opening of every stint is the previous departure — there is no third number to mistype.</p>
+  <p class="claim">A machine's meter tells one continuous story. The app captures arrival and departure as a typed value — with a photo whenever the camera allows, which the server verifies later; a reading without one is flagged Missing Photo Evidence. The opening of every stint is the previous departure — there is no third number to mistype.</p>
   <figure>
     <svg viewBox="0 0 980 170" role="img" aria-label="A machine's meter timeline: departure reading 4002.6 at Job A, a 2 hour gap billed as travel to Job B, arrival 4004.6, then 48.6 work hours to departure 4053.2. An oversized gap raises a flag until management splits it with a reason.">
       <defs><marker id="ar3" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L8 4L0 8z" fill="currentColor"/></marker></defs>
@@ -220,7 +220,7 @@ ol.phases b{font-weight:600}
       <text x="610" y="122" text-anchor="middle" class="svgedge" fill="var(--accent-strong)">Work 48.6 h</text>
       <text x="610" y="140" text-anchor="middle" class="svgsub" fill="var(--ink2)">derived — never typed</text>
     </svg>
-    <figcaption>Readings only ever increase (a lower value is refused with a retake prompt). Travel and work are subtractions, not entries; the meter's own arithmetic is the audit.</figcaption>
+    <figcaption>Readings never go backward (a lower value is refused; equal is fine). The foreman types every value; when a photo is attached the server reads it afterwards — agreement, not pre-fill, is the check. Travel and work are subtractions, not entries; the meter's own arithmetic is the audit.</figcaption>
   </figure>
 
   <h2>Who touches what <small>roles</small></h2>
@@ -245,12 +245,12 @@ ol.phases b{font-weight:600}
   <div class="scen"><h3>1 · Mr Rowley's dam, call to invoice<span class="who">the happy path</span></h3>
     <ul>
       <li>Mr Rowley (farmer, the customer) phones Jed (owner): a dam at Rooikraal. Henk (contracting manager) pre-creates job <span class="mono">CJOB-00042</span> — customer, farm <i>Rooikraal</i>, work type <i>Dam building</i> — and assigns <b>Sipho</b> (foreman). It sits in <b>Upcoming</b>; Sipho is the only <i>foreman</i> who sees it — management sees every job at every stage.</li>
-      <li>The lowbed drops <span class="mono">CAT320-1</span> (excavator) on site. Sipho assigns it from the Category-filtered picker and photographs the meter; the AI reads <span class="mono">4002.6</span>, one tap confirms — the job flips <b>Active</b> by itself. Trucked in means a zero Hour Gap: no travel line.</li>
+      <li>The lowbed drops <span class="mono">CAT320-1</span> (excavator) on site. Sipho assigns it from the Category-filtered picker, photographs the meter, and types <span class="mono">4002.6</span> — the job flips <b>Active</b> by itself. Hours later, with signal, the capture syncs; the server reads the photo, agrees, and the reading shows as photo-backed and AI-verified. Trucked in means a zero Hour Gap: no travel line.</li>
       <li><span class="mono">GRAD140K-1</span> (grader) drives itself over: arrival <span class="mono">7110.0</span>, 2.1 h past its last departure — under the 4 h threshold, so it quietly becomes a travel line billed to Mr Rowley, the farmer it drove <i>to</i> (the include-travel toggle defaults on).</li>
       <li><span class="mono">JD6140M-2</span> (tractor) arrives towing the tip trailer: Sipho assigns it (arrival <span class="mono">7102.5</span>, a 1.2 h drive) and attaches the tip trailer as its <b>Implement</b>.</li>
       <li>He keys <i>18 loads</i> hauled on that assignment — production for the record, never billed.</li>
       <li>The work wraps: Sipho captures each departure — <span class="mono">CAT320-1</span> at <span class="mono">4051.2</span>, <span class="mono">GRAD140K-1</span> at <span class="mono">7152.4</span>, <span class="mono">JD6140M-2</span> at <span class="mono">7141.3</span>. Work hours derive themselves: 48.6, 42.4, 38.8 — nobody typed a total. The job surfaces in <b>Henk's looks-finished queue</b>.</li>
-      <li>Sign-off: every reading photo-backed. Henk adds Charge Lines — lowbed move R 3,500.00, diesel 210 L R 4,830.00 — writes a site note, tweaks the end date, stamps <b>Completed</b>.</li>
+      <li>Sign-off: every reading photo-backed and AI-verified — Henk glances down the confidence column and moves on. He adds Charge Lines — lowbed move R 3,500.00, diesel 210 L R 4,830.00 — writes a site note, tweaks the end date, stamps <b>Completed</b>.</li>
       <li><b>Jed's pricing queue</b>: rates prefill from Category presets and the lines compute — <span class="mono">CAT320-1</span> 48.6 h × R 600 = <span class="mono">R 29,160.00</span>; <span class="mono">GRAD140K-1</span> (42.4 + 2.1 travel) 44.5 h × R 550 = <span class="mono">R 24,475.00</span>; <span class="mono">JD6140M-2</span> (38.8 + 1.2) 40.0 h × R 450 = <span class="mono">R 18,000.00</span> — the grader rate trimmed as a favour, because the edit <i>is</i> the discount. With Charge Lines: <b class="mono">R 79,965.00 ex VAT</b>. <b>Priced</b> — figures freeze.</li>
       <li><b>Karen</b> (office — invoicing) opens the Job Card — a works summary, explicitly not an invoice — keys it into PESTEL, stamps <span class="mono">INV-4471</span>: <b>Invoiced</b>, the wall.</li>
       <li>Months later Rowley disputes the hours; Jed prints the customer copy — <span class="mono">CAT320-1</span> arrived at <span class="mono">4002.6</span>, left at <span class="mono">4051.2</span>: there when it got there, there when it left.</li>

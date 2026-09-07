@@ -14,7 +14,7 @@ import {
   ServiceIntervalHours,
 } from '@pkg/schema/contracting';
 import { z } from 'zod';
-import { optionalNumber, requiredSelection } from '@/components/form/utils/form-schema.js';
+import { emptyStringOr, optionalNumber, requiredSelection } from '@/components/form/utils/form-schema.js';
 
 const optionalText = z.string().refine((value) => FleetOptionalText.safeParse(value).success);
 export const MachineCreateValues = z.object({
@@ -26,7 +26,7 @@ export const MachineCreateValues = z.object({
 export const MachineFormValues = MachineCreateValues.extend({
   year: optionalNumber(MachineYear),
   registration: optionalText,
-  currentDriverUserId: z.union([z.literal(''), AuthId]),
+  currentDriverUserId: emptyStringOr(AuthId),
   notes: optionalText,
   serviceIntervalHours: optionalNumber(ServiceIntervalHours),
   nextServiceDueHours: optionalNumber(FleetHours),

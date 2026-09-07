@@ -6,7 +6,7 @@ import { applicationSchemas, schema } from './schema.js';
 
 // Business-blind mechanism stays in `public` (ADR 0016); every other table belongs to a business schema.
 const publicTables = ['account', 'audit_events', 'changelog_view', 'session', 'user', 'verification'];
-const businessSchemas = ['equipment'];
+const businessSchemas = ['equipment', 'contracting'];
 
 const declaredTables = (Object.values(schema) as unknown[])
   .filter((value): value is PgTable => is(value, PgTable))

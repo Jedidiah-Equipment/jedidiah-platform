@@ -151,7 +151,7 @@ export async function retireMachine({
     id,
     notFound: () => new FleetError('fleet.not_found', 'Machine not found.'),
     assert: (_tx, row) => assertNotRetired(row),
-    set: () => ({ retiredAt: new Date(), retiredReason: reason, updatedAt: new Date() }),
+    set: () => ({ retiredAt: new Date(), retiredReason: reason, currentDriverUserId: null, updatedAt: new Date() }),
     project: (tx, row) => getMachine({ db: tx, id: row.id }),
   });
 }

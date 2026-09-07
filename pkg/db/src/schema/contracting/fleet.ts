@@ -39,6 +39,7 @@ export const contractingMachines = contractingSchema.table(
     categoryId: uuid('category_id')
       .notNull()
       .references(() => contractingCategories.id, { onDelete: 'restrict' }),
+    // Cross-row role eligibility is enforced in migration 0134 in both write directions.
     currentDriverUserId: text('current_driver_user_id').references(() => user.id, { onDelete: 'restrict' }),
     notes: text('notes'),
     serviceIntervalHours: numeric('service_interval_hours', { precision: 12, scale: 2, mode: 'number' }),

@@ -15,7 +15,7 @@ export function FleetStatusFilter({
       }}
     >
       <SelectTrigger aria-label="Fleet status">
-        <SelectValue />
+        <SelectValue>{{ active: 'Active fleet', retired: 'Retired', all: 'All fleet' }[value]}</SelectValue>
       </SelectTrigger>
       <SelectContent>
         <SelectItem value="active">Active fleet</SelectItem>

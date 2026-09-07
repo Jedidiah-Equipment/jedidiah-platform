@@ -153,7 +153,7 @@ input.mock:focus-visible,select.mock:focus-visible,button:focus-visible{outline:
     <div class="appbar"><span class="mono">CJOB-00041</span> <small>Scott Farm · Dam building</small></div>
     <div class="bodypad">
       <div class="card"><h4 class="mono">CAT320-1 <span class="chip ok">Running</span></h4>
-        <div class="sub">Excavator · Johannes M. · arrived <span class="mono">4002.6</span> ✓</div>
+        <div class="sub">Excavator · Johannes M. · arrived <span class="mono">4002.6</span> ✓ AI</div>
         <div style="margin-top:8px"><span class="btn ghost">Stop — capture departure</span></div></div>
       <div class="card"><h4 class="mono">JD6140M-2 <span class="chip ok">Running</span></h4>
         <div class="sub">Tractor · Willem K. · arrived <span class="mono">7110.0</span> ✓</div></div>
@@ -170,16 +170,16 @@ input.mock:focus-visible,select.mock:focus-visible,button:focus-visible{outline:
     <div class="bodypad">
       <div class="cam"><div class="bracket"></div>Frame the hour meter</div>
       <div class="card" style="text-align:center">
-        <div class="note">AI read — confirm</div>
+        <div class="note">Type the reading</div>
         <div class="readbig mono">4051.2</div>
         <div style="display:flex;gap:8px;justify-content:center;margin-top:8px">
-          <span class="btn">Use 4051.2</span><span class="btn ghost">Retake</span>
+          <span class="btn">Save</span><span class="btn ghost">Retake photo</span>
         </div>
       </div>
-      <div class="note" style="text-align:center">Type it manually instead — flagged as missing photo evidence</div>
+      <div class="note" style="text-align:center">📷 Photo attached — saved to the queue now, verified by AI when it syncs. No photo? Save anyway (flagged).</div>
     </div>
   </div></div>
-  <figcaption><b>Reading capture</b>Photo-first with one-tap confirm (per the hour-meter research); a value below the last reading is refused with a retake prompt.</figcaption></figure>
+  <figcaption><b>Reading capture</b>Photo plus typed value, saved instantly to the local queue — no waiting on signal, no pre-fill; the server verifies the photo at sync. A value below the last reading offers the dispute hatch.</figcaption></figure>
 
   <figure class="shot"><div class="phone"><div class="scr">
     <div class="appbar">Report a problem</div>
@@ -223,7 +223,7 @@ input.mock:focus-visible,select.mock:focus-visible,button:focus-visible{outline:
     <div class="chrome"><span class="dots"><i></i><i></i><i></i></span> /contracting/jobs/CJOB-00037 · sign-off <span class="modechip">Jedidiah Contracting</span></div>
     <div class="bodypad">
       <table><thead><tr><th>Machine</th><th>Arrival</th><th>Departure</th><th>Work h</th><th>Travel h</th><th></th></tr></thead><tbody>
-        <tr><td class="mono">CAT320-1</td><td class="mono">4002.6</td><td class="mono">4051.2</td><td class="mono">48.6</td><td class="mono">2.0 ☑</td><td><span class="chip ok">✓ photo</span></td></tr>
+        <tr><td class="mono">CAT320-1</td><td class="mono">4002.6</td><td class="mono">4051.2</td><td class="mono">48.6</td><td class="mono">2.0 ☑</td><td><span class="chip ok">✓ photo · AI 0.97</span></td></tr>
         <tr><td class="mono">GRAD140K-1</td><td class="mono">7110.0</td><td class="mono">7152.4</td><td class="mono">42.4</td><td class="mono">9.5 ☑</td><td><span class="chip warn">Gap flag</span></td></tr>
       </tbody></table>
       <div class="gapline"><b>9.5 h gap on GRAD140K-1</b> — over the 4 h threshold. Split: <span class="mono">2.5</span> h billable travel · <span class="mono">7.0</span> h unaccounted — reason: <i>"Returned to Stony Brook for yard work."</i> <span class="btn ghost">Resolve</span></div>

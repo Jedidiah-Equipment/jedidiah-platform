@@ -1,10 +1,10 @@
+import { groupJobActivityByDay } from '@pkg/domain/equipment';
 import type { JobActivityItem } from '@pkg/schema/equipment';
 import type React from 'react';
 
 import { cn } from '@/lib/utils.js';
 
 import { JobActivityEntry } from './JobActivityEntry.js';
-import { groupJobActivityByDay } from './job-activity-timeline.js';
 
 /**
  * The feed as a timeline: a heading per day, and under it a spine the day's entries hang off. The

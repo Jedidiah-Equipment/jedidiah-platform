@@ -1,3 +1,4 @@
+import { groupJobActivityByDay } from '@pkg/domain/equipment';
 import type { UUID } from '@pkg/schema';
 import type { JobActivityFilter, JobActivityItem } from '@pkg/schema/equipment';
 import { IconFilter } from '@tabler/icons-react-native';
@@ -16,7 +17,6 @@ import { Pulse } from '@/components/ui/pulse';
 import { RefreshControl } from '@/components/ui/refresh-control';
 import { Text } from '@/components/ui/text';
 import { JobActivityEntry } from '@/equipment/components/activity/JobActivityEntry';
-import { groupJobActivityByDay } from '@/equipment/lib/job-activity';
 import { useTRPC } from '@/lib/trpc';
 import { useDebouncedSearch } from '@/lib/use-debounced-search';
 import { useGlobalRefresh } from '@/lib/use-global-refresh';
@@ -68,7 +68,10 @@ export function JobActivityFeed({
   );
   const items = useMemo(() => activity.data?.pages.flatMap((page) => page.items) ?? [], [activity.data?.pages]);
   const latestActivityAt = items[0]?.occurredAt;
-  const sections = useMemo(() => groupJobActivityByDay(items), [items]);
+  const sections = useMemo(
+    () => groupJobActivityByDay(items).map(({ items: data, ...day }) => ({ ...day, data })),
+    [items],
+  );
   const total = activity.data?.pages.at(-1)?.total ?? null;
   const loadMoreRequestedRef = useRef(false);
   const lastSeenOptions = trpc.jobActivity.getLastActivitySeen.queryOptions();

@@ -37,6 +37,7 @@ export function CategoriesPage() {
         ? [
             {
               accessorKey: 'presetRate' as const,
+              enableGlobalFilter: false,
               header: 'Preset rate (R/hour)',
               cell: ({ row }: { row: { original: Category } }) =>
                 row.original.presetRate === undefined ? '—' : formatCurrency(row.original.presetRate),

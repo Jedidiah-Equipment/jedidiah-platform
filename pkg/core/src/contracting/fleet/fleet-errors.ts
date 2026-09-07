@@ -5,6 +5,7 @@ export type FleetErrorCode =
   | 'fleet.duplicate'
   | 'fleet.in_use'
   | 'fleet.retired'
+  | 'fleet.driver_assigned'
   | 'fleet.invalid_driver'
   | 'fleet.invalid_reference';
 export class FleetError extends Error {

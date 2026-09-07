@@ -1,6 +1,6 @@
 import { createEscapedContainsSearchCondition, type DatabaseTransaction, type Db, user } from '@pkg/db';
 import { contractingMachines } from '@pkg/db/contracting';
-import type { AuthId } from '@pkg/schema';
+import type { AuthId, ContractingRole } from '@pkg/schema';
 import {
   FleetCode,
   FleetRetireInput,
@@ -63,8 +63,12 @@ export async function getMachine({ db, id }: { db: Db | DatabaseTransaction; id:
 }
 async function assertDriver(tx: DatabaseTransaction, id: string | null | undefined) {
   if (!id) return;
-  const [driver] = await tx.select({ role: user.contractingRole }).from(user).where(eq(user.id, id)).for('share');
-  if (driver?.role !== 'driver')
+  const [driver] = await tx
+    .select({ role: user.contractingRole, isDevice: user.isDevice })
+    .from(user)
+    .where(eq(user.id, id))
+    .for('share');
+  if (driver?.role !== 'driver' || driver.isDevice)
     throw new FleetError('fleet.invalid_driver', 'Select a person with the Contracting driver role.');
 }
 export async function createMachine({
@@ -170,7 +174,30 @@ export async function machineOptions({ db }: { db: Db }) {
   const drivers = await db
     .select({ id: user.id, name: user.name })
     .from(user)
-    .where(eq(user.contractingRole, 'driver'))
+    .where(and(eq(user.contractingRole, 'driver'), eq(user.isDevice, false)))
     .orderBy(asc(user.name));
   return { makes: makes.map((row) => row.value), models: models.map((row) => row.value), drivers };
+}
+
+export async function assertDriverAccountChangeAllowed({
+  db,
+  userId,
+  contractingRole,
+  isDevice,
+}: {
+  db: Db;
+  userId: AuthId;
+  contractingRole?: ContractingRole | null | undefined;
+  isDevice?: boolean | undefined;
+}) {
+  if ((contractingRole === undefined || contractingRole === 'driver') && isDevice !== true) return;
+  const machine = await db.query.contractingMachines.findFirst({
+    where: eq(contractingMachines.currentDriverUserId, userId),
+    columns: { id: true },
+  });
+  if (machine)
+    throw new FleetError(
+      'fleet.driver_assigned',
+      'Unassign this driver from Contracting Machines before changing their role or making them a Device Account.',
+    );
 }

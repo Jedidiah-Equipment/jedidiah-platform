@@ -72,7 +72,9 @@ test('rejects deletion of referenced machines, retires with a reason and exclude
   await expect(removeMachine({ db, actorUserId, id: machine.id })).rejects.toMatchObject({ code: 'fleet.retired' });
 });
 
-test('accepts only Contracting drivers, preserves omitted fields, and deletes unused machines', async ({ context }) => {
+test('accepts only people with the Contracting driver role, preserves omitted fields, and deletes unused machines', async ({
+  context,
+}) => {
   const { db, category, actorUserId } = context;
   const { MachinePatchInput } = await import('@pkg/schema/contracting');
   const { getMachine, patchMachine, removeMachine, machineOptions } = await import('./machine-service.js');
@@ -95,6 +97,29 @@ test('accepts only Contracting drivers, preserves omitted fields, and deletes un
     createdAt: new Date(),
     updatedAt: new Date(),
   });
+  await db.insert(user).values({
+    id: 'device',
+    name: 'Tablet',
+    email: 'tablet@example.com',
+    emailVerified: false,
+    contractingRole: 'driver',
+    isDevice: true,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  });
+  await expect(
+    createMachine({ db, actorUserId, input: { ...input, currentDriverUserId: 'device' } }),
+  ).rejects.toMatchObject({ code: 'fleet.invalid_driver' });
+  const { contractingMachines } = await import('@pkg/db/contracting');
+  const { getForeignKeyViolationConstraint } = await import('@pkg/db');
+  const deviceAssignmentError = await db
+    .insert(contractingMachines)
+    .values({ ...input, currentDriverUserId: 'device' })
+    .then(
+      () => null,
+      (error) => error,
+    );
+  expect(getForeignKeyViolationConstraint(deviceAssignmentError)).toBe('machine_driver_role');
   const machine = await createMachine({ db, actorUserId, input: { ...input, currentDriverUserId: 'driver' } });
   const patched = await patchMachine({
     db,
@@ -164,7 +189,7 @@ test('implements normalize codes, reject duplicates and preserve referenced hist
   await expect(removeImplement({ db, actorUserId, id: implement.id })).rejects.toMatchObject({ code: 'fleet.retired' });
 });
 
-test('keeps assigned drivers eligible across user role changes until unassigned', async ({ context }) => {
+test('keeps assigned drivers eligible across role and device changes until unassigned', async ({ context }) => {
   const { db, category, actorUserId } = context;
   const { eq, getForeignKeyViolationConstraint } = await import('@pkg/db');
   const { patchMachine } = await import('./machine-service.js');
@@ -188,15 +213,17 @@ test('keeps assigned drivers eligible across user role changes until unassigned'
       currentDriverUserId: 'role-driver',
     }),
   });
-  const error = await db
-    .update(user)
-    .set({ contractingRole: 'foreman' })
-    .where(eq(user.id, 'role-driver'))
-    .then(
-      () => null,
-      (error) => error,
-    );
-  expect(getForeignKeyViolationConstraint(error)).toBe('machine_driver_role');
+  for (const change of [{ contractingRole: 'foreman' as const }, { isDevice: true }]) {
+    const error = await db
+      .update(user)
+      .set(change)
+      .where(eq(user.id, 'role-driver'))
+      .then(
+        () => null,
+        (error) => error,
+      );
+    expect(getForeignKeyViolationConstraint(error)).toBe('machine_driver_role');
+  }
   await patchMachine({ db, actorUserId, input: { id: machine.id, currentDriverUserId: null } });
   await db.update(user).set({ contractingRole: 'foreman' }).where(eq(user.id, 'role-driver'));
   await expect(

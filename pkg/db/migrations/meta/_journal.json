@@ -946,6 +946,13 @@
       "when": 1788767259466,
       "tag": "0134_contracting-driver-role",
       "breakpoints": true
+    },
+    {
+      "idx": 135,
+      "version": "7",
+      "when": 1788768926266,
+      "tag": "0135_contracting-driver-device",
+      "breakpoints": true
     }
   ]
 }

@@ -14,11 +14,15 @@ export const AppSidebar: React.FC<AppSidebarProps> = (props) => {
   const { onSignOut, user } = useAuth();
   const canReadFleet = useCan('contracting_machine:read').can;
   const path = useLocation({ select: (location) => location.pathname });
-  const helpTopic = path.includes('/categories')
-    ? 'contractingCategories'
-    : path.includes('/implements')
-      ? 'contractingImplements'
-      : 'contractingFleet';
+  const helpTopic = path.includes('/readings')
+    ? 'contractingReadings'
+    : path.includes('/categories')
+      ? 'contractingCategories'
+      : path.includes('/implements')
+        ? 'contractingImplements'
+        : path.startsWith('/contracting/fleet')
+          ? 'contractingFleet'
+          : 'contractingHome';
 
   return (
     <Sidebar collapsible="icon" variant="inset" {...props}>

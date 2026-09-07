@@ -1,7 +1,7 @@
 import { defineConfig } from 'vitepress';
 import { FAVICON_FILENAME } from './favicon';
 import { listContentPages } from './pages';
-import { buildSidebar, DOCS_SECTIONS } from './sidebar';
+import { buildSidebar, CONTRACTING_SECTIONS, EQUIPMENT_SECTIONS } from './sidebar';
 
 const BROWSER_TARGET = 'es2022';
 
@@ -25,11 +25,26 @@ export const docsConfig = defineConfig({
     build: { target: BROWSER_TARGET },
     optimizeDeps: { esbuildOptions: { target: BROWSER_TARGET } },
   },
+  // VitePress locales partition both navigation and local search by URL. Both businesses use
+  // English; empty labels suppress its language menu in favour of our explicit business switcher.
+  locales: {
+    root: {
+      label: '',
+      lang: 'en',
+      title: 'Jedidiah Equipment Help',
+      themeConfig: { sidebar: buildSidebar(EQUIPMENT_SECTIONS, listContentPages()) },
+    },
+    contracting: {
+      label: '',
+      lang: 'en',
+      title: 'Jedidiah Contracting Help',
+      themeConfig: { sidebar: buildSidebar(CONTRACTING_SECTIONS, listContentPages()) },
+    },
+  },
   themeConfig: {
     // The two-tone wordmark is rendered by the custom theme's nav slot instead.
     siteTitle: false,
     search: { provider: 'local' },
-    sidebar: buildSidebar(DOCS_SECTIONS, listContentPages()),
     outline: 'deep',
     docFooter: { prev: false, next: false },
   },

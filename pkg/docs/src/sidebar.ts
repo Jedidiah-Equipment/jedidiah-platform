@@ -9,19 +9,24 @@ export type DocsSection = {
 };
 
 /**
- * The section structure of the docs site. Inventory first, task pages before concept pages.
+ * Business-specific navigation, with task pages before concept pages.
  * A page may be declared here before it is written — `buildSidebar` hides what does not exist yet,
  * so the navigation never offers a stub.
  */
-export const DOCS_SECTIONS: DocsSection[] = [
+export const CONTRACTING_SECTIONS: DocsSection[] = [
   {
     text: 'Contracting tasks',
     items: [
+      { text: 'Overview', link: '/contracting/' },
+      { text: 'Resolve Reading Exceptions', link: '/contracting/resolve-reading-exceptions' },
       { text: 'Maintain Machines', link: '/contracting/maintain-machines' },
       { text: 'Maintain Categories', link: '/contracting/maintain-categories' },
       { text: 'Maintain Implements', link: '/contracting/maintain-implements' },
     ],
   },
+];
+
+export const EQUIPMENT_SECTIONS: DocsSection[] = [
   {
     text: 'Sales tasks',
     items: [
@@ -96,6 +101,8 @@ export const DOCS_SECTIONS: DocsSection[] = [
     ],
   },
 ];
+
+export const DOCS_SECTIONS = [...CONTRACTING_SECTIONS, ...EQUIPMENT_SECTIONS];
 
 /** The declared structure narrowed to the pages that exist, dropping the sections left empty. */
 export function buildSidebar(sections: DocsSection[], existingLinks: Iterable<string>): DocsSection[] {

@@ -23,8 +23,13 @@ export class RouteHttpError extends Error {
   readonly appCode: string | undefined;
   readonly statusCode: number;
 
-  constructor({ appCode, message, statusCode }: { appCode?: string; message: string; statusCode: number }) {
-    super(message);
+  constructor({
+    appCode,
+    message,
+    statusCode,
+    cause,
+  }: { appCode?: string; message: string; statusCode: number; cause?: unknown }) {
+    super(message, { cause });
     this.name = 'RouteHttpError';
     this.appCode = appCode;
     this.statusCode = statusCode;

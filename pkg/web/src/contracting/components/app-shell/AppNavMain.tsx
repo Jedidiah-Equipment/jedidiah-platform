@@ -28,6 +28,7 @@ const activeSubMarkerClass =
   'relative overflow-visible data-active:before:absolute data-active:before:-left-2.5 data-active:before:inset-y-0.5 data-active:before:w-0.5 data-active:before:rounded-full data-active:before:bg-sidebar-foreground';
 
 export function AppNavMain() {
+  const canReviewReadings = useCan('contracting_reading:update').can;
   const canReadFleet = useCan('contracting_machine:read').can;
   const { setOpenMobile } = useSidebar();
   const pathname = useLocation({ select: (location) => location.pathname });
@@ -55,50 +56,66 @@ export function AppNavMain() {
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarGroup>
-      {canReadFleet ? (
+      {canReadFleet || canReviewReadings ? (
         <SidebarGroup>
           <SidebarGroupLabel>Operations</SidebarGroupLabel>
           <SidebarMenu className="gap-1">
-            <Collapsible open={open} onOpenChange={setOpen} render={<SidebarMenuItem />}>
-              <Link to="/contracting/fleet" onClick={() => setOpen((value) => !value)}>
-                <SidebarMenuButton
-                  isActive={fleetActive}
-                  render={<span />}
-                  tooltip="Fleet"
-                  className={cn(biggerIconClass, !fleetActive && inactiveItemClass)}
-                >
-                  <IconTractor />
-                  <span>Fleet</span>
-                  <IconChevronRight
-                    aria-hidden="true"
-                    className={cn('ml-auto size-4! transition-transform', open && 'rotate-90')}
-                  />
-                </SidebarMenuButton>
-              </Link>
-              <CollapsibleContent>
-                <SidebarMenuSub>
-                  {fleetItems.map((item) => {
-                    const isActive =
-                      item.to === '/contracting/fleet'
-                        ? fleetActive && !pathname.includes('/categories') && !pathname.includes('/implements')
-                        : pathname.startsWith(item.to);
-                    return (
-                      <SidebarMenuSubItem key={item.to}>
-                        <Link to={item.to} onClick={() => setOpenMobile(false)}>
-                          <SidebarMenuSubButton
-                            isActive={isActive}
-                            render={<span />}
-                            className={cn(activeSubMarkerClass, !isActive && inactiveItemClass)}
-                          >
-                            <span>{item.title}</span>
-                          </SidebarMenuSubButton>
-                        </Link>
-                      </SidebarMenuSubItem>
-                    );
-                  })}
-                </SidebarMenuSub>
-              </CollapsibleContent>
-            </Collapsible>
+            {canReviewReadings ? (
+              <SidebarMenuItem>
+                <Link to="/contracting/readings/exceptions" onClick={() => setOpenMobile(false)}>
+                  <SidebarMenuButton
+                    render={<span />}
+                    isActive={pathname.startsWith('/contracting/readings')}
+                    tooltip="Reading exceptions"
+                  >
+                    <IconGauge />
+                    <span>Reading exceptions</span>
+                  </SidebarMenuButton>
+                </Link>
+              </SidebarMenuItem>
+            ) : null}
+            {canReadFleet ? (
+              <Collapsible open={open} onOpenChange={setOpen} render={<SidebarMenuItem />}>
+                <Link to="/contracting/fleet" onClick={() => setOpen((value) => !value)}>
+                  <SidebarMenuButton
+                    isActive={fleetActive}
+                    render={<span />}
+                    tooltip="Fleet"
+                    className={cn(biggerIconClass, !fleetActive && inactiveItemClass)}
+                  >
+                    <IconTractor />
+                    <span>Fleet</span>
+                    <IconChevronRight
+                      aria-hidden="true"
+                      className={cn('ml-auto size-4! transition-transform', open && 'rotate-90')}
+                    />
+                  </SidebarMenuButton>
+                </Link>
+                <CollapsibleContent>
+                  <SidebarMenuSub>
+                    {fleetItems.map((item) => {
+                      const isActive =
+                        item.to === '/contracting/fleet'
+                          ? fleetActive && !pathname.includes('/categories') && !pathname.includes('/implements')
+                          : pathname.startsWith(item.to);
+                      return (
+                        <SidebarMenuSubItem key={item.to}>
+                          <Link to={item.to} onClick={() => setOpenMobile(false)}>
+                            <SidebarMenuSubButton
+                              isActive={isActive}
+                              render={<span />}
+                              className={cn(activeSubMarkerClass, !isActive && inactiveItemClass)}
+                            >
+                              <span>{item.title}</span>
+                            </SidebarMenuSubButton>
+                          </Link>
+                        </SidebarMenuSubItem>
+                      );
+                    })}
+                  </SidebarMenuSub>
+                </CollapsibleContent>
+              </Collapsible>
+            ) : null}
           </SidebarMenu>
         </SidebarGroup>
       ) : null}

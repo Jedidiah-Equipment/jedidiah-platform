@@ -2,11 +2,11 @@
 // Drizzle. Everything else reaches tables through `@pkg/db` (shared) or `@pkg/db/equipment`.
 import { is } from 'drizzle-orm';
 import { getTableConfig, PgTable } from 'drizzle-orm/pg-core';
-
 import * as auditSchema from './schema/audit.js';
 import * as authSchema from './schema/auth.js';
 import * as changelogSchema from './schema/changelog.js';
 import * as contractingFleetSchema from './schema/contracting/fleet.js';
+import * as contractingReadingSchema from './schema/contracting/hour-reading.js';
 import * as customerSchema from './schema/equipment/customer.js';
 import * as documentSchema from './schema/equipment/document.js';
 import * as feedbackSchema from './schema/equipment/feedback.js';
@@ -25,6 +25,7 @@ import * as supplierSchema from './schema/equipment/supplier.js';
 import * as userDepartmentSchema from './schema/equipment/user-department.js';
 
 export const schema = {
+  ...contractingReadingSchema,
   ...auditSchema,
   ...authSchema,
   ...changelogSchema,

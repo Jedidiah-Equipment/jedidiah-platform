@@ -57,3 +57,31 @@
   color: var(--vp-c-text-2);
   font-weight: 400;
 }
+
+.jed-business-switcher {
+  appearance: auto;
+  border: 1px solid var(--vp-c-divider);
+  border-radius: 6px;
+  padding: 6px 8px;
+  margin-right: 12px;
+  font: inherit;
+  font-size: 14px;
+  color: var(--vp-c-text-1);
+  background: var(--vp-c-bg);
+  cursor: pointer;
+}
+
+.jed-business-switcher:focus-visible {
+  outline: 2px solid var(--vp-c-brand-1);
+  outline-offset: 2px;
+}
+
+@media (max-width: 639px) {
+  .jed-wordmark-suffix {
+    display: none;
+  }
+
+  .jed-business-switcher {
+    margin-right: 4px;
+  }
+}

@@ -3,10 +3,14 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { docsConfig } from './config';
 import { CONTENT_DIR, listContentPages } from './pages';
-import { buildSidebar, DOCS_SECTIONS } from './sidebar';
+import { buildSidebar, CONTRACTING_SECTIONS, EQUIPMENT_SECTIONS } from './sidebar';
 
-const sidebar = docsConfig.themeConfig?.sidebar;
-const sections = Array.isArray(sidebar) ? sidebar : [];
+const equipmentSidebar = docsConfig.locales?.root?.themeConfig?.sidebar;
+const contractingSidebar = docsConfig.locales?.contracting?.themeConfig?.sidebar;
+const sections = [
+  ...(Array.isArray(equipmentSidebar) ? equipmentSidebar : []),
+  ...(Array.isArray(contractingSidebar) ? contractingSidebar : []),
+];
 
 describe('docs site config', () => {
   it('builds the site from the content directory into the package dist directory', () => {
@@ -31,7 +35,21 @@ describe('docs site navigation', () => {
   const listed = sections.flatMap((section) => section.items?.map((item) => item.link) ?? []);
 
   it('is the declared structure narrowed by the pages on disk, not a hand-kept list', () => {
-    expect(sidebar).toEqual(buildSidebar(DOCS_SECTIONS, listContentPages()));
+    expect(equipmentSidebar).toEqual(buildSidebar(EQUIPMENT_SECTIONS, listContentPages()));
+    expect(contractingSidebar).toEqual(buildSidebar(CONTRACTING_SECTIONS, listContentPages()));
+  });
+
+  it('keeps each business sidebar within its own pages', () => {
+    const equipment = Array.isArray(equipmentSidebar) ? equipmentSidebar : [];
+    const contracting = Array.isArray(contractingSidebar) ? contractingSidebar : [];
+    expect(equipment.length).toBeGreaterThan(0);
+    expect(contracting.length).toBeGreaterThan(0);
+    for (const section of equipment) {
+      for (const item of section.items ?? []) expect(item.link).not.toMatch(/^\/contracting\//);
+    }
+    for (const section of contracting) {
+      for (const item of section.items ?? []) expect(item.link).toMatch(/^\/contracting\//);
+    }
   });
 
   it('lists every content page except the landing page', () => {

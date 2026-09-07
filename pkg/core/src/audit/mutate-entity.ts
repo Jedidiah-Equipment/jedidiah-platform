@@ -45,7 +45,7 @@ export async function mutateEntity<TTable extends PgTable & { id: PgColumn }, TR
    * pre-checks (a Part's supplier) live here; throw to abort with the transaction still open.
    */
   assert?: (tx: DatabaseTransaction, before: TTable['$inferSelect']) => Promise<void> | void;
-  db: Db;
+  db: Db | DatabaseTransaction;
   descriptor: AuditDescriptor<TTable['$inferSelect']>;
   id: string;
   /** Extra lock-select condition, AND-ed with the id match (a supplier's `isNull(deletedAt)`). */

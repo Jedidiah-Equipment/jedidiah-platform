@@ -21,10 +21,13 @@ codebase says so everywhere the same way:
   could not be linted from both sides. **Package entrypoints say the same thing**: `@pkg/<package>` is
   the shared root, `@pkg/<package>/equipment` and `@pkg/<package>/contracting` are the businesses, and
   there is no entrypoint that is shared-plus-one-business under a neutral name (`@pkg/domain/testing` is the one
-  extra, carrying test fixtures that production code never imports). `pkg/lander`, `pkg/seed`
-  and `pkg/docs` are whole-package Equipment surfaces and tooling rather than layers: they sit outside
+  extra, carrying test fixtures that production code never imports). `pkg/lander` and `pkg/seed`
+  are whole-package Equipment surfaces and tooling rather than layers: they sit outside
   the wall, consume `@pkg/*/equipment` freely, and gain a contracting counterpart only if one is ever
-  needed. **Shared is earned, never presumed**: phase 0 classifies code by what it provably serves
+  needed. Help (`pkg/docs`) serves both businesses on one site with a business switcher, separate
+  sidebars, and separate search indexes. Existing Equipment URLs stay at the root; Contracting pages
+  live under `/contracting/`, so app Help links select the business without a session.
+  **Shared is earned, never presumed**: phase 0 classifies code by what it provably serves
   *today*, and ambiguity defaults *into* `equipment/` — even code everyone knows will eventually be
   common (document services, audit-writing helpers) moves into the mode folder if only equipment uses
   it now. Code graduates to the shared space at the moment a shared consumer or contracting actually

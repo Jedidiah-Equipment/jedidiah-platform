@@ -1,6 +1,6 @@
-# JedidiahOps Help
+# Jedidiah Equipment Help
 
-How to do the work JedidiahOps records — the occasional flows worth reading rather than guessing at.
+How to do the work Jedidiah Equipment records — the occasional flows worth reading rather than guessing at.
 
 Inventory is documented first. Start with the task you are in the middle of:
 

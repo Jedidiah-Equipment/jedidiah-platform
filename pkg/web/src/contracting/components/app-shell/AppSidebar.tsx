@@ -20,7 +20,9 @@ export const AppSidebar: React.FC<AppSidebarProps> = (props) => {
       ? 'contractingCategories'
       : path.includes('/implements')
         ? 'contractingImplements'
-        : 'contractingFleet';
+        : path.startsWith('/contracting/fleet')
+          ? 'contractingFleet'
+          : 'contractingHome';
 
   return (
     <Sidebar collapsible="icon" variant="inset" {...props}>

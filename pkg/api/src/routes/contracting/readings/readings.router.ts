@@ -25,7 +25,13 @@ export function mapReadingErrors<T>(action: () => Promise<T>) {
     appCode: error.code,
     message: error.message,
     code:
-      error.code === 'reading.not_found' ? 'NOT_FOUND' : error.code === 'reading.no_photo' ? 'BAD_REQUEST' : 'CONFLICT',
+      error.code === 'reading.not_found'
+        ? 'NOT_FOUND'
+        : error.code === 'reading.no_photo'
+          ? 'BAD_REQUEST'
+          : error.code === 'reading.verification_failed'
+            ? 'SERVICE_UNAVAILABLE'
+            : 'CONFLICT',
   }));
 }
 export function createContractingReadingsRouter(

@@ -110,7 +110,7 @@ export async function captureReading({
         );
       if (input.role === 'baseline' && latest)
         throw new ReadingError('reading.baseline_exists', 'A Baseline Reading must be the first reading.');
-      const disputed = !!latest && input.disputePrevious;
+      const disputed = !!latest && input.value < latest.value && input.disputePrevious;
       if (disputed)
         await updateAudited(tx, actorUserId, latest, {
           disputed: true,
@@ -167,8 +167,12 @@ export async function listReadingExceptions({ db }: { db: Db }) {
 }
 // The machine lock serializes captures and amendments. Pair resolution changes multiple rows in
 // the same transaction, so each resulting row is diffed and audited after that resolution.
-async function updateAudited(tx: DatabaseTransaction, actorUserId: AuthId, before: Row, patch: Partial<Row>) {
-  const { sequence: _sequence, ...writable } = patch;
+async function updateAudited(
+  tx: DatabaseTransaction,
+  actorUserId: AuthId,
+  before: Row,
+  patch: Partial<Omit<Row, 'sequence'>>,
+) {
   return mutateEntity({
     db: tx,
     actorUserId,
@@ -176,7 +180,7 @@ async function updateAudited(tx: DatabaseTransaction, actorUserId: AuthId, befor
     table: contractingHourReadings,
     id: before.id,
     notFound: () => new ReadingError('reading.not_found', 'Hour Reading not found.'),
-    set: () => writable,
+    set: () => patch,
     project: (_tx, row) => withHint(row),
   });
 }
@@ -205,7 +209,10 @@ export async function amendReading({
     if (!before) throw new ReadingError('reading.not_found', 'Hour Reading not found.');
     const previous = rows[index - 1];
     const next = rows[index + 1];
-    if ((previous && input.value < previous.value) || (next && input.value > next.value))
+    if (
+      input.value !== before.value &&
+      ((previous && input.value < previous.value) || (next && input.value > next.value))
+    )
       throw new ReadingError('reading.invalid_amendment', 'Amended hours must be between the neighbouring readings.');
     rows[index] = {
       ...before,
@@ -218,10 +225,11 @@ export async function amendReading({
       amendmentReason: input.reason,
       evidenceReviewedAt: new Date(),
     };
+    const byId = new Map(rows.map((row) => [row.id, row]));
     const stillDisputed = new Set<string>();
     for (const row of rows) {
       if (!row.disputedPreviousId) continue;
-      const previous = rows.find((candidate) => candidate.id === row.disputedPreviousId);
+      const previous = byId.get(row.disputedPreviousId);
       if (!previous) continue;
       if (row.value >= previous.value && (row.id === input.id || previous.id === input.id))
         row.disputedPreviousId = null;
@@ -231,12 +239,22 @@ export async function amendReading({
       }
     }
     for (const original of originals) {
-      const updated = rows.find((row) => row.id === original.id);
+      const updated = byId.get(original.id);
       if (!updated) continue;
+      const disputed = stillDisputed.has(updated.id);
+      const disputeReason = disputed ? updated.disputeReason : null;
+      // Only the amended reading and changed dispute partners need row locks/savepoints.
+      if (
+        updated.id !== input.id &&
+        original.disputed === disputed &&
+        original.disputeReason === disputeReason &&
+        original.disputedPreviousId === updated.disputedPreviousId
+      )
+        continue;
       await updateAudited(tx, actorUserId, original, {
         disputedPreviousId: updated.disputedPreviousId,
-        disputed: stillDisputed.has(updated.id),
-        disputeReason: stillDisputed.has(updated.id) ? updated.disputeReason : null,
+        disputed,
+        disputeReason,
         ...(updated.id === input.id
           ? {
               value: updated.value,
@@ -275,6 +293,11 @@ export async function reverifyReading({
   if (!owner.photo) throw new ReadingError('reading.no_photo', 'This reading has Missing Photo Evidence.');
   const photo = await readStoredObject(storage, owner.photo.storageKey);
   const evidence = await verifyPhoto(owner.value, photo.bytes, photo.contentType, readPhoto);
+  if (evidence.aiVerification === 'pending')
+    throw new ReadingError(
+      'reading.verification_failed',
+      'AI verification failed. Previous evidence has been kept; try again.',
+    );
   return db.transaction(async (tx) => {
     await tx.select().from(contractingMachines).where(eq(contractingMachines.id, owner.machineId)).for('update');
     const before = await getReading({ db: tx, id });

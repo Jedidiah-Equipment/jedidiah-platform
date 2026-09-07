@@ -16,7 +16,13 @@ const amendmentValues = ReadingAmendInput.omit({ id: true });
 function evidenceLabel(row: Reading) {
   if (!row.photo) return 'Missing Photo Evidence';
   if (row.aiVerification === 'agrees') return 'Photo-backed · AI-verified';
-  return `Photo-backed · ${row.aiVerification}`;
+  const labels = {
+    pending: 'AI verification pending',
+    disagrees: 'AI disagrees',
+    'low-confidence': 'Low AI confidence',
+    'not-applicable': 'AI verification not applicable',
+  };
+  return `Photo-backed · ${labels[row.aiVerification]}`;
 }
 export function ReadingExceptionsPage() {
   const trpc = useTRPC();

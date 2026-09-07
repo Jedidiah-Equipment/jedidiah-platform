@@ -8,23 +8,26 @@ import { UUID } from '../common/uuid.js';
 export type AuditAction = z.infer<typeof AuditAction>;
 export const AuditAction = z.enum(['created', 'updated', 'deleted', 'merged']);
 
+// One registry assigns every audited entity to its business; the full enum and business views
+// derive from it, so a new type cannot silently disappear from a separately maintained subset.
+export const AUDIT_ENTITY_TYPES = {
+  contracting: ['contracting_category', 'contracting_machine', 'contracting_implement'],
+  equipment: [
+    'customer',
+    'document',
+    'job',
+    'job_bay',
+    'part',
+    'product',
+    'product_unit',
+    'purchase_order',
+    'quote',
+    'supplier',
+    'user',
+  ],
+} as const;
 export type AuditEntityType = z.infer<typeof AuditEntityType>;
-export const AuditEntityType = z.enum([
-  'contracting_category',
-  'contracting_machine',
-  'contracting_implement',
-  'customer',
-  'document',
-  'job',
-  'job_bay',
-  'part',
-  'product',
-  'product_unit',
-  'purchase_order',
-  'quote',
-  'supplier',
-  'user',
-]);
+export const AuditEntityType = z.enum([...AUDIT_ENTITY_TYPES.contracting, ...AUDIT_ENTITY_TYPES.equipment]);
 
 export type AuditFieldChange = z.infer<typeof AuditFieldChange>;
 export const AuditFieldChange = z.object({

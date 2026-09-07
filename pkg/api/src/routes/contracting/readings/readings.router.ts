@@ -7,6 +7,7 @@ import {
   type ReadMeterPhoto,
   reverifyReading,
 } from '@pkg/core/contracting';
+import { canCaptureBaseline } from '@pkg/domain/contracting';
 import {
   HourReading,
   ReadingAmendInput,
@@ -27,16 +28,6 @@ export function mapReadingErrors<T>(action: () => Promise<T>) {
       error.code === 'reading.not_found' ? 'NOT_FOUND' : error.code === 'reading.no_photo' ? 'BAD_REQUEST' : 'CONFLICT',
   }));
 }
-export function assertBaselineAdmin(user: {
-  role?: string | string[] | null | undefined;
-  contractingRole?: string | null | undefined;
-}) {
-  if (user.role !== 'super-admin' && user.contractingRole !== 'contracting-admin')
-    throw new TRPCError({
-      code: 'FORBIDDEN',
-      message: 'Only a Contracting administrator can capture a Baseline Reading.',
-    });
-}
 export function createContractingReadingsRouter(
   readPhoto: ReadMeterPhoto = async () => {
     throw new Error('Meter reader not configured');
@@ -46,7 +37,11 @@ export function createContractingReadingsRouter(
     captureBaseline: authorizedProcedure('contracting_reading:capture')
       .input(ReadingCaptureInput.omit({ role: true, disputePrevious: true }))
       .mutation(({ ctx, input }) => {
-        assertBaselineAdmin(ctx.session.user);
+        if (!canCaptureBaseline(ctx.access))
+          throw new TRPCError({
+            code: 'FORBIDDEN',
+            message: 'Only a Contracting administrator can capture a Baseline Reading.',
+          });
         return mapReadingErrors(() =>
           captureReading({
             db: ctx.db,

@@ -33,12 +33,14 @@ export const HourReading = z.object({
   photo: z
     .object({ byteSize: z.number(), contentType: z.string(), storageKey: z.string(), updatedAt: z.string() })
     .nullable(),
+  aiHint: z.string().nullable(),
   aiValue: ReadingValue.nullable(),
   aiConfidence: z.number().min(0).max(1).nullable(),
   aiVerification: z.enum(['pending', 'agrees', 'disagrees', 'low-confidence', 'not-applicable']),
   disputed: z.boolean(),
   disputeReason: z.string().nullable(),
   disputedPreviousId: UUID.nullable(),
+  evidenceReviewedAt: DateIso.nullable(),
   amendedBy: AuthId.nullable(),
   amendedAt: DateIso.nullable(),
   amendmentReason: z.string().nullable(),

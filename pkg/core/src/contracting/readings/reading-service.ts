@@ -2,15 +2,12 @@ import { randomUUID } from 'node:crypto';
 import type { DatabaseTransaction, Db, StoredFile } from '@pkg/db';
 import { contractingHourReadings, contractingMachines } from '@pkg/db/contracting';
 import { validateFile } from '@pkg/domain';
+import { meterDisagreementHint } from '@pkg/domain/contracting';
 import type { AuthId } from '@pkg/schema';
 import { ReadingAmendInput, ReadingCaptureInput } from '@pkg/schema/contracting';
-import { asc, desc, eq, getTableColumns, inArray, or } from 'drizzle-orm';
-import {
-  defineAuditDescriptor,
-  diffAuditUpdate,
-  recordAuditCreate,
-  recordAuditUpdate,
-} from '../../audit/audit-writer.js';
+import { and, asc, desc, eq, getTableColumns, inArray, isNull, or } from 'drizzle-orm';
+import { defineAuditDescriptor, recordAuditCreate } from '../../audit/audit-writer.js';
+import { mutateEntity } from '../../audit/mutate-entity.js';
 import { FilePolicyViolationError } from '../../files/file-errors.js';
 import { readStoredObject, type StorageAdapter } from '../../storage/storage-adapter.js';
 import { READING_PHOTO_POLICY, type ReadMeterPhoto, readingVerification, verifyPhoto } from './reading-evidence.js';
@@ -26,6 +23,9 @@ export class ReadingError extends Error {
 }
 export const isReadingError = (error: unknown): error is ReadingError => error instanceof ReadingError;
 type Row = typeof contractingHourReadings.$inferSelect;
+function withHint<T extends Row>(row: T) {
+  return { ...row, aiHint: meterDisagreementHint(row) };
+}
 const descriptor = defineAuditDescriptor<Row>({
   entityType: 'contracting_reading',
   noun: 'Hour Reading',
@@ -35,14 +35,16 @@ const descriptor = defineAuditDescriptor<Row>({
     ...row,
     capturedAt: row.capturedAt.toISOString(),
     amendedAt: row.amendedAt?.toISOString() ?? null,
+    evidenceReviewedAt: row.evidenceReviewedAt?.toISOString() ?? null,
   }),
 });
 export async function listReadingsByMachine({ db, machineId }: { db: Db; machineId: string }) {
-  return db
+  const rows = await db
     .select()
     .from(contractingHourReadings)
     .where(eq(contractingHourReadings.machineId, machineId))
     .orderBy(desc(contractingHourReadings.sequence));
+  return rows.map(withHint);
 }
 export async function captureReading({
   db,
@@ -132,7 +134,7 @@ export async function captureReading({
         .returning();
       if (!row) throw new Error('Reading insert returned no row');
       await recordAuditCreate({ db: tx, actorUserId, descriptor, input: row });
-      return row;
+      return withHint(row);
     });
   } catch (error) {
     if (photo && storage) {
@@ -147,33 +149,36 @@ export async function captureReading({
 }
 
 export async function listReadingExceptions({ db }: { db: Db }) {
-  return db
+  const rows = await db
     .select({ ...getTableColumns(contractingHourReadings), machineCode: contractingMachines.code })
     .from(contractingHourReadings)
     .innerJoin(contractingMachines, eq(contractingMachines.id, contractingHourReadings.machineId))
     .where(
       or(
         eq(contractingHourReadings.disputed, true),
-        inArray(contractingHourReadings.aiVerification, ['pending', 'disagrees', 'low-confidence']),
+        and(
+          isNull(contractingHourReadings.evidenceReviewedAt),
+          inArray(contractingHourReadings.aiVerification, ['pending', 'disagrees', 'low-confidence']),
+        ),
       ),
     )
     .orderBy(desc(contractingHourReadings.sequence));
+  return rows.map(withHint);
 }
 // The machine lock serializes captures and amendments. Pair resolution changes multiple rows in
 // the same transaction, so each resulting row is diffed and audited after that resolution.
 async function updateAudited(tx: DatabaseTransaction, actorUserId: AuthId, before: Row, patch: Partial<Row>) {
-  const after = { ...before, ...patch };
-  const changes = diffAuditUpdate(descriptor, before, after);
-  if (!changes) return before;
   const { sequence: _sequence, ...writable } = patch;
-  const [row] = await tx
-    .update(contractingHourReadings)
-    .set(writable)
-    .where(eq(contractingHourReadings.id, before.id))
-    .returning();
-  if (!row) throw new ReadingError('reading.not_found', 'Hour Reading not found.');
-  await recordAuditUpdate({ db: tx, actorUserId, descriptor, after: row, changes });
-  return row;
+  return mutateEntity({
+    db: tx,
+    actorUserId,
+    descriptor,
+    table: contractingHourReadings,
+    id: before.id,
+    notFound: () => new ReadingError('reading.not_found', 'Hour Reading not found.'),
+    set: () => writable,
+    project: (_tx, row) => withHint(row),
+  });
 }
 export async function amendReading({
   db,
@@ -211,6 +216,7 @@ export async function amendReading({
       amendedBy: actorUserId,
       amendedAt: new Date(),
       amendmentReason: input.reason,
+      evidenceReviewedAt: new Date(),
     };
     const stillDisputed = new Set<string>();
     for (const row of rows) {
@@ -228,9 +234,19 @@ export async function amendReading({
       const updated = rows.find((row) => row.id === original.id);
       if (!updated) continue;
       await updateAudited(tx, actorUserId, original, {
-        ...updated,
+        disputedPreviousId: updated.disputedPreviousId,
         disputed: stillDisputed.has(updated.id),
         disputeReason: stillDisputed.has(updated.id) ? updated.disputeReason : null,
+        ...(updated.id === input.id
+          ? {
+              value: updated.value,
+              aiVerification: updated.aiVerification,
+              amendedBy: updated.amendedBy,
+              amendedAt: updated.amendedAt,
+              amendmentReason: updated.amendmentReason,
+              evidenceReviewedAt: updated.evidenceReviewedAt,
+            }
+          : {}),
       });
     }
     return getReading({ db: tx, id: input.id });
@@ -240,7 +256,7 @@ export async function amendReading({
 export async function getReading({ db, id }: { db: Db | DatabaseTransaction; id: string }) {
   const row = await db.query.contractingHourReadings.findFirst({ where: eq(contractingHourReadings.id, id) });
   if (!row) throw new ReadingError('reading.not_found', 'Hour Reading not found.');
-  return row;
+  return withHint(row);
 }
 export async function reverifyReading({
   db,
@@ -264,6 +280,7 @@ export async function reverifyReading({
     const before = await getReading({ db: tx, id });
     return updateAudited(tx, actorUserId, before, {
       ...evidence,
+      evidenceReviewedAt: null,
       aiVerification: readingVerification(before.value, evidence.aiValue, evidence.aiConfidence),
     });
   });

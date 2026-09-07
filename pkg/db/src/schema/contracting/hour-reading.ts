@@ -39,6 +39,7 @@ export const contractingHourReadings = contractingSchema.table(
     disputed: boolean('disputed').default(false).notNull(),
     disputeReason: text('dispute_reason'),
     disputedPreviousId: uuid('disputed_previous_id').references((): AnyPgColumn => contractingHourReadings.id),
+    evidenceReviewedAt: timestamp('evidence_reviewed_at', { withTimezone: true }),
     amendedBy: text('amended_by').references(() => user.id),
     amendedAt: timestamp('amended_at', { withTimezone: true }),
     amendmentReason: text('amendment_reason'),

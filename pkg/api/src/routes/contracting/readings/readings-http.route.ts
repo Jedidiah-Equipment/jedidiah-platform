@@ -7,6 +7,7 @@ import {
   type ReadMeterPhoto,
 } from '@pkg/core/contracting';
 import type { Db } from '@pkg/db';
+import { canCaptureBaseline } from '@pkg/domain/contracting';
 import { ReadingCaptureInput, ReadingIdInput } from '@pkg/schema/contracting';
 import type { FastifyInstance, FastifyReply } from 'fastify';
 import {
@@ -44,11 +45,7 @@ export async function registerReadingHttpRoutes(
       if (fields.disputePrevious === 'true') fields.disputePrevious = true;
       if (fields.disputePrevious === 'false') fields.disputePrevious = false;
       const input = ReadingCaptureInput.parse(fields);
-      if (
-        input.role === 'baseline' &&
-        auth.session.user.role !== 'super-admin' &&
-        auth.session.user.contractingRole !== 'contracting-admin'
-      )
+      if (input.role === 'baseline' && !canCaptureBaseline(auth.access))
         throw new RouteHttpError({
           statusCode: 403,
           appCode: 'reading.forbidden',
@@ -103,9 +100,10 @@ function sendReadingError(reply: FastifyReply, error: unknown) {
         statusCode: error.code === 'reading.not_found' ? 404 : 409,
         appCode: error.code,
         message: error.message,
+        cause: error,
       })
     : error instanceof FilePolicyViolationError
-      ? new RouteHttpError({ statusCode: 400, appCode: error.code, message: error.message })
+      ? new RouteHttpError({ statusCode: 400, appCode: error.code, message: error.message, cause: error })
       : error;
   return sendUploadHttpError(reply, mapped, {
     fallbackMessage: 'Reading request failed.',

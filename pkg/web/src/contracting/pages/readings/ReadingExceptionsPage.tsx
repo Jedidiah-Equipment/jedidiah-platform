@@ -18,13 +18,6 @@ function evidenceLabel(row: Reading) {
   if (row.aiVerification === 'agrees') return 'Photo-backed · AI-verified';
   return `Photo-backed · ${row.aiVerification}`;
 }
-function tenthsHint(row: Reading) {
-  if (row.aiVerification !== 'disagrees' || !row.aiValue || !row.value) return null;
-  const ratio = row.aiValue / row.value;
-  return (ratio >= 9 && ratio <= 11) || (ratio >= 0.09 && ratio <= 0.11)
-    ? 'Possible tenths-drum misread (≈10× / 0.1×).'
-    : null;
-}
 export function ReadingExceptionsPage() {
   const trpc = useTRPC();
   const client = useQueryClient();
@@ -64,7 +57,7 @@ export function ReadingExceptionsPage() {
               View photo
             </a>
           ) : null}
-          <div className="text-muted-foreground">{tenthsHint(row)}</div>
+          <div className="text-muted-foreground">{row.aiHint}</div>
         </div>
       ),
     },
@@ -86,7 +79,7 @@ export function ReadingExceptionsPage() {
       id: 'actions',
       header: 'Actions',
       cell: ({ row }) => (
-        <div className="flex gap-2">
+        <div className="flex flex-col items-start gap-1">
           <Button
             size="sm"
             variant="outline"
@@ -139,7 +132,7 @@ export function ReadingExceptionsPage() {
           if (!open) setSelected(null);
         }}
         title="Amend Hour Reading"
-        description="Check the photo and both disputed readings. Correct the value and record why it changed."
+        description="Check the photo and both disputed readings. Confirm or correct the value and give a reason. This acknowledges the current evidence warning."
         submitLabel="Amend reading"
         defaultValues={{ value: selected?.value ?? 0, reason: '' }}
         validator={amendmentValues}

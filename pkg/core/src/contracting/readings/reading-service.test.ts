@@ -170,7 +170,7 @@ test('surfaces disagreements and low confidence and recalculates verification af
     },
   };
   const row = await captureReading({ ...args, readPhoto: async () => ({ value: 120, confidence: 0.9 }) });
-  expect(row.aiVerification).toBe('disagrees');
+  expect(row).toMatchObject({ aiVerification: 'disagrees', aiHint: 'Possible tenths-drum misread (≈10× / 0.1×).' });
   await amendReading({ db, actorUserId, input: { id: row.id, value: 120, reason: 'Corrected tenths' } });
   expect(await listReadingExceptions({ db })).toEqual([]);
   const low = await captureReading({
@@ -184,4 +184,40 @@ test('surfaces disagreements and low confidence and recalculates verification af
     aiConfidence: 0.79,
     aiVerification: 'low-confidence',
   });
+});
+
+test('management can acknowledge an incorrect AI warning without claiming AI agreement; reverify reopens it', async ({
+  context,
+}) => {
+  const { db, actorUserId, machineId } = context;
+  const { InMemoryStorageAdapter } = await import('../../storage/in-memory-storage-adapter.js');
+  const { amendReading, listReadingExceptions, reverifyReading } = await import('./reading-service.js');
+  const storage = new InMemoryStorageAdapter();
+  const readPhoto = async () => ({ value: 1234, confidence: 0.6 });
+  const reading = await captureReading({
+    db,
+    actorUserId,
+    storage,
+    readPhoto,
+    photoBytes: new Uint8Array([255, 216, 255]),
+    input: { machineId, role: 'spot', value: 123.4, capturedAt: '2026-09-07T08:00:00Z', disputePrevious: false },
+  });
+  expect((await listReadingExceptions({ db })).length).toBe(1);
+  const amended = await amendReading({
+    db,
+    actorUserId,
+    input: {
+      id: reading.id,
+      value: 123.4,
+      reason: 'Checked the photo: typed value is correct; AI missed the decimal.',
+    },
+  });
+  expect(amended).toMatchObject({
+    aiVerification: 'low-confidence',
+    aiValue: 1234,
+    evidenceReviewedAt: expect.any(Date),
+  });
+  expect(await listReadingExceptions({ db })).toEqual([]);
+  await reverifyReading({ db, actorUserId, storage, readPhoto, id: reading.id });
+  expect((await listReadingExceptions({ db })).length).toBe(1);
 });

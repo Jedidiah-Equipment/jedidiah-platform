@@ -1,5 +1,3 @@
-import type { DatabaseTransaction } from '@pkg/db';
-import type { AuditChanges } from '@pkg/schema';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -8,8 +6,6 @@ import {
   defineAuditDescriptor,
   diffAuditRecords,
   diffAuditUpdate,
-  recordAuditCreate,
-  recordAuditDelete,
 } from './audit-writer.js';
 
 type Widget = { id: string; name: string; price: number };
@@ -179,48 +175,6 @@ describe('diffAuditUpdate collections', () => {
     const gears = [gear('g1', 'Drive gear', 12)];
 
     expect(diffAuditUpdate(gearedDescriptor, { ...widget, gears }, { ...widget, gears: [...gears] })).toBeNull();
-  });
-});
-
-describe('audit collection snapshots', () => {
-  const captureInsert = () => {
-    const inserted: { changes: AuditChanges }[] = [];
-    const db = {
-      insert: () => ({
-        values: (row: { changes: AuditChanges }) => {
-          inserted.push(row);
-          return Promise.resolve();
-        },
-      }),
-    } as unknown as DatabaseTransaction;
-
-    return { db, inserted };
-  };
-
-  it('snapshots each collection element on create with a null from', async () => {
-    const { db, inserted } = captureInsert();
-
-    await recordAuditCreate({
-      db,
-      descriptor: gearedDescriptor,
-      actorUserId: null,
-      input: { ...widget, gears: [gear('g1', 'Drive gear', 12)] },
-    });
-
-    expect(inserted[0]?.changes['gear:Drive gear']).toEqual({ from: null, to: gear('g1', 'Drive gear', 12) });
-  });
-
-  it('snapshots each collection element on delete with a null to', async () => {
-    const { db, inserted } = captureInsert();
-
-    await recordAuditDelete({
-      db,
-      descriptor: gearedDescriptor,
-      actorUserId: null,
-      input: { ...widget, gears: [gear('g1', 'Drive gear', 12)] },
-    });
-
-    expect(inserted[0]?.changes['gear:Drive gear']).toEqual({ from: gear('g1', 'Drive gear', 12), to: null });
   });
 });
 

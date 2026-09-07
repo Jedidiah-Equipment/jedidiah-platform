@@ -1,13 +1,13 @@
 import fastifyCors from '@fastify/cors';
 import fastifyMultipart from '@fastify/multipart';
 import { createOpenAiChatModel } from '@pkg/ai';
+import { readMeterPhoto } from '@pkg/ai/contracting';
 import type { StorageAdapter } from '@pkg/core';
 import { sweepJobCompletions } from '@pkg/core/equipment';
 import { db } from '@pkg/db';
 import { PRODUCT_DOCUMENT_MAX_BYTES } from '@pkg/domain/equipment';
 import { type FastifyTRPCPluginOptions, fastifyTRPCPlugin } from '@trpc/server/adapters/fastify';
 import Fastify, { type FastifyBaseLogger } from 'fastify';
-
 import { type Auth, auth as appAuth } from './app-auth.js';
 import { registerAuthHandler } from './auth/handler.js';
 import { type ApiConfig, getApiConfig } from './env.js';
@@ -18,6 +18,7 @@ import { registerHealthRoutes } from './health.js';
 import { log } from './logger.js';
 import { createObservability, type Observability } from './observability.js';
 import { createFileChangelogLoader } from './routes/changelog/changelog-loader.js';
+import { registerReadingHttpRoutes } from './routes/contracting/readings/readings-http.route.js';
 import { registerAiChatRoute } from './routes/equipment/ai/ai-chat.route.js';
 import { registerDocumentHttpRoutes } from './routes/equipment/documents/document-http.route.js';
 import { registerEntityFileRoutes } from './routes/equipment/files/entity-file-http.route.js';
@@ -89,6 +90,10 @@ export async function buildServer(
       fileSize: PRODUCT_DOCUMENT_MAX_BYTES,
     },
   });
+  const meterModel = createOpenAiChatModel({ apiKey: config.OPENAI_API_KEY, model: config.OPENAI_MODEL });
+  const meterReader = (input: { bytes: Uint8Array; contentType: string }) =>
+    readMeterPhoto({ ...input, model: meterModel });
+  await registerReadingHttpRoutes(app, { db, storage, readPhoto: meterReader });
   await registerAiChatRoute(app, { storage });
   await registerDocumentHttpRoutes(app, storage);
   await registerPartLabelHttpRoutes(app);
@@ -101,7 +106,7 @@ export async function buildServer(
   await registerHealthRoutes(app, config);
 
   const trpcOptions = {
-    router: createAppRouter({ catalogTranslationScheduler }),
+    router: createAppRouter({ catalogTranslationScheduler, readMeterPhoto: meterReader }),
     createContext: createContextFactory({
       appEnv: config.APP_ENV,
       changelogLoader: createFileChangelogLoader(),

@@ -11,7 +11,7 @@ export const AuditAction = z.enum(['created', 'updated', 'deleted', 'merged']);
 // One registry assigns every audited entity to its business; the full enum and business views
 // derive from it, so a new type cannot silently disappear from a separately maintained subset.
 export const AUDIT_ENTITY_TYPES = {
-  contracting: ['contracting_category', 'contracting_machine', 'contracting_implement'],
+  contracting: ['contracting_category', 'contracting_machine', 'contracting_implement', 'contracting_reading'],
   equipment: [
     'customer',
     'document',

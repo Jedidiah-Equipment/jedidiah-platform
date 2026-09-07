@@ -28,6 +28,7 @@ const activeSubMarkerClass =
   'relative overflow-visible data-active:before:absolute data-active:before:-left-2.5 data-active:before:inset-y-0.5 data-active:before:w-0.5 data-active:before:rounded-full data-active:before:bg-sidebar-foreground';
 
 export function AppNavMain() {
+  const canReviewReadings = useCan('contracting_reading:update').can;
   const canReadFleet = useCan('contracting_machine:read').can;
   const { setOpenMobile } = useSidebar();
   const pathname = useLocation({ select: (location) => location.pathname });
@@ -55,6 +56,24 @@ export function AppNavMain() {
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarGroup>
+      {canReviewReadings ? (
+        <SidebarGroup>
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <Link to="/contracting/readings/exceptions" onClick={() => setOpenMobile(false)}>
+                <SidebarMenuButton
+                  render={<span />}
+                  isActive={pathname.startsWith('/contracting/readings')}
+                  tooltip="Reading exceptions"
+                >
+                  <IconGauge />
+                  <span>Reading exceptions</span>
+                </SidebarMenuButton>
+              </Link>
+            </SidebarMenuItem>
+          </SidebarMenu>
+        </SidebarGroup>
+      ) : null}
       {canReadFleet ? (
         <SidebarGroup>
           <SidebarGroupLabel>Operations</SidebarGroupLabel>

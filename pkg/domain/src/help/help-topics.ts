@@ -7,6 +7,7 @@
  * `pnpm verify`. Repoint an entry in the same PR that writes its page.
  */
 export const HELP_TOPICS = {
+  contractingReadings: '/contracting/resolve-reading-exceptions',
   contractingFleet: '/contracting/maintain-machines',
   contractingCategories: '/contracting/maintain-categories',
   contractingImplements: '/contracting/maintain-implements',

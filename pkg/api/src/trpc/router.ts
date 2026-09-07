@@ -1,8 +1,10 @@
+import type { ReadMeterPhoto } from '@pkg/core/contracting';
 import type { BuiltRouter } from '@trpc/server/unstable-core-do-not-import';
 import type { TranslationMarker } from '../equipment/catalog-translations/translation-scheduler.js';
 import { authRouter } from '../routes/auth/auth.router.js';
 import { changelogRouter } from '../routes/changelog/changelog.router.js';
 import { contractingFleetRouter } from '../routes/contracting/fleet/fleet.router.js';
+import { createContractingReadingsRouter } from '../routes/contracting/readings/readings.router.js';
 import { auditRouter } from '../routes/equipment/audit/audit.router.js';
 import { createCatalogTranslationsRouter } from '../routes/equipment/catalog-translations/catalog-translations.router.js';
 import { customersRouter } from '../routes/equipment/customers/customers.router.js';
@@ -24,11 +26,13 @@ import { createCallerFactory, router } from './init.js';
 /** Runtime services the Equipment routers close over; supplied by the server, stubbed by tests. */
 export type AppRouterDependencies = {
   catalogTranslationScheduler: TranslationMarker;
+  readMeterPhoto?: ReadMeterPhoto;
 };
 
 type AppRouterRootTypes = (typeof authRouter)['_def']['_config']['$types'];
 
 type AppRouterRecord = {
+  contractingReadings: ReturnType<typeof createContractingReadingsRouter>['_def']['record'];
   contractingFleet: (typeof contractingFleetRouter)['_def']['record'];
   audit: (typeof auditRouter)['_def']['record'];
   auth: (typeof authRouter)['_def']['record'];
@@ -53,8 +57,9 @@ type AppRouterRecord = {
 export type AppRouter = BuiltRouter<AppRouterRootTypes, AppRouterRecord>;
 
 // Naming the router shape keeps declaration emit from serializing the full nested tRPC type.
-export function createAppRouter({ catalogTranslationScheduler }: AppRouterDependencies): AppRouter {
+export function createAppRouter({ catalogTranslationScheduler, readMeterPhoto }: AppRouterDependencies): AppRouter {
   return router({
+    contractingReadings: createContractingReadingsRouter(readMeterPhoto),
     contractingFleet: contractingFleetRouter,
     audit: auditRouter,
     auth: authRouter,

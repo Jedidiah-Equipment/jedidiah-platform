@@ -17,6 +17,7 @@ export const DOCS_SECTIONS: DocsSection[] = [
   {
     text: 'Contracting tasks',
     items: [
+      { text: 'Resolve Reading Exceptions', link: '/contracting/resolve-reading-exceptions' },
       { text: 'Maintain Machines', link: '/contracting/maintain-machines' },
       { text: 'Maintain Categories', link: '/contracting/maintain-categories' },
       { text: 'Maintain Implements', link: '/contracting/maintain-implements' },

@@ -4,6 +4,7 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import type React from 'react';
 import { toast } from 'sonner';
+import { EntityActionsFooter } from '@/components/common/EntityActionsFooter.js';
 
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { RemoveEntityButton } from '@/components/common/RemoveEntityButton.js';
@@ -63,9 +64,9 @@ export const ProductRangeEditPage: React.FC<ProductRangeEditPageProps> = ({ onTa
               range={rangeQuery.data}
             />
             {canEdit ? (
-              <div className="mt-8 flex justify-end border-t pt-4">
+              <EntityActionsFooter>
                 <RemoveProductRangeButton range={rangeQuery.data} />
-              </div>
+              </EntityActionsFooter>
             ) : null}
           </TabsContent>
           <TabsContent className="pt-4" value="variants">

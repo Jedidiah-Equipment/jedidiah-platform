@@ -4,6 +4,7 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import type React from 'react';
 import { useMemo } from 'react';
+import { EntityActionsFooter } from '@/components/common/EntityActionsFooter.js';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { RemoveEntityButton } from '@/components/common/RemoveEntityButton.js';
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
@@ -77,9 +78,9 @@ const CustomerEditTabs: React.FC<CustomerEditTabsProps> = ({ customer, onCustome
       <TabsContent className="pt-4" value="details">
         <CustomerForm customer={customer} key={customer.id} onSave={onCustomerSave} />
         {canRemoveCustomer ? (
-          <div className="mt-8 flex justify-end border-t pt-4">
+          <EntityActionsFooter>
             <RemoveCustomerButton customer={customer} />
-          </div>
+          </EntityActionsFooter>
         ) : null}
       </TabsContent>
       {canReadQuotes ? (

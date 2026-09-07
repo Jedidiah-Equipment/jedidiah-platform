@@ -5,6 +5,7 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import type React from 'react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
+import { EntityActionsFooter } from '@/components/common/EntityActionsFooter.js';
 import { Button } from '@/components/ui/button.js';
 import {
   Dialog,
@@ -86,7 +87,7 @@ export const JobCancellationAction: React.FC<{ job: JobDetail }> = ({ job }) => 
   const isReady = plan !== undefined;
 
   return (
-    <div className="mt-4 flex justify-end border-t pt-4">
+    <EntityActionsFooter>
       <Dialog onOpenChange={setIsOpen} open={isOpen}>
         <DialogTrigger render={<Button type="button" variant="destructive" />}>
           <IconTrash data-icon="inline-start" />
@@ -150,6 +151,6 @@ export const JobCancellationAction: React.FC<{ job: JobDetail }> = ({ job }) => 
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </EntityActionsFooter>
   );
 };

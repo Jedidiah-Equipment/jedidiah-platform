@@ -7,6 +7,7 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import { Link, useNavigate } from '@tanstack/react-router';
 import type React from 'react';
 import { useState } from 'react';
+import { EntityActionsFooter } from '@/components/common/EntityActionsFooter.js';
 
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { RemoveEntityButton } from '@/components/common/RemoveEntityButton.js';
@@ -131,9 +132,9 @@ const UnitDetail: React.FC<{ unit: ProductUnitDetail }> = ({ unit }) => {
       </Card>
 
       {canRemoveUnit ? (
-        <div className="mt-4 flex justify-end border-t pt-4">
+        <EntityActionsFooter>
           <RemoveUnitButton unit={unit} />
-        </div>
+        </EntityActionsFooter>
       ) : null}
 
       {canTransferUnit ? (

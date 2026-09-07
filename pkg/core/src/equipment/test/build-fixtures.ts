@@ -1,9 +1,9 @@
 import type { Db } from '@pkg/db';
 import { user } from '@pkg/db';
 import { parts, supplier } from '@pkg/db/equipment';
+import { createTester } from '../../test/create-tester.js';
 import { postAdjustment } from '../inventory/stock-movement-service.js';
 import { savePartBom } from '../parts/part-bom-service.js';
-import { createTester } from './create-tester.js';
 import { partValues } from './part-fixtures.js';
 
 /**

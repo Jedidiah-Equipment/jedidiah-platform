@@ -1,6 +1,6 @@
 import { formatJobCode, JobCode } from '@pkg/schema/equipment';
 
-import { defineAuditDescriptor } from '../audit/audit-service.js';
+import { defineAuditDescriptor } from '../../audit/audit-writer.js';
 import type { JobRow } from './job-mappers.js';
 
 /**

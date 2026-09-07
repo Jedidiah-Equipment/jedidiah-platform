@@ -16,7 +16,7 @@ import {
 } from '@pkg/db/equipment';
 import type { PostAdjustmentInput, ProductCostEstimate } from '@pkg/schema/equipment';
 
-import { createTester } from './create-tester.js';
+import { createTester } from '../../test/create-tester.js';
 import { partValues } from './part-fixtures.js';
 
 /**

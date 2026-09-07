@@ -26,9 +26,9 @@ import {
 } from '@pkg/schema/equipment';
 import { and, asc, eq } from 'drizzle-orm';
 import { describe, expect } from 'vitest';
+import { createTester } from '../../test/create-tester.js';
 import { getQuoteCancellationPlan } from '../cancellation/cancellation-plan-service.js';
 import { getJob } from '../jobs/job-read-service.js';
-import { createTester } from '../test/create-tester.js';
 import { createProductRangeFixture } from '../test/product-range-fixtures.js';
 import { createProductUnit } from '../units/product-unit-service.js';
 import {

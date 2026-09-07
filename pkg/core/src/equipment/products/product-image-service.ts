@@ -6,6 +6,7 @@ import { PRODUCT_IMAGE_POLICY } from '@pkg/domain/equipment';
 import type { AuthId, UUID } from '@pkg/schema';
 import type { Product, ProductImageSlot } from '@pkg/schema/equipment';
 import { and, eq } from 'drizzle-orm';
+import { recordAuditEvent } from '../../audit/audit-writer.js';
 import { FileNotFoundError } from '../../files/file-errors.js';
 import { fileExtensionFor, replaceFile } from '../../files/stored-file-service.js';
 import { type ImageCacheOptions, readOptimizedImage } from '../../media/image-cache.js';
@@ -15,7 +16,6 @@ import {
   type StoredObject,
   storedObjectFromBytes,
 } from '../../storage/storage-adapter.js';
-import { recordAuditEvent } from '../audit/audit-service.js';
 import { ProductNotFoundError } from './product-errors.js';
 import { getProduct, productAuditDescriptor } from './product-service.js';
 

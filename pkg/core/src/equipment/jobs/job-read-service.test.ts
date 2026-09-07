@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { createTester } from '../test/create-tester.js';
+import { createTester } from '../../test/create-tester.js';
 import { listBays, mapJobSummary } from './job-read-service.js';
 
 const test = createTester(() => ({}));

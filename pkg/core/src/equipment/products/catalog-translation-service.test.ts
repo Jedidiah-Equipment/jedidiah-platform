@@ -3,7 +3,7 @@ import { productAssemblies, productRanges, productRangeVariants, products } from
 import { catalogSourceHashes } from '@pkg/domain/equipment';
 import { describe, expect } from 'vitest';
 
-import { createTester } from '../test/create-tester.js';
+import { createTester } from '../../test/create-tester.js';
 import {
   getCatalogTranslationStatus,
   listCatalogTranslationKeysNeedingTranslation,

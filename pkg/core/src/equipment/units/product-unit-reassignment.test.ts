@@ -12,9 +12,9 @@ import { getPlantDateNow } from '@pkg/domain';
 import type { UUID } from '@pkg/schema';
 import { and, asc, eq, sql } from 'drizzle-orm';
 import { describe, expect } from 'vitest';
+import { createTester } from '../../test/create-tester.js';
 import { QuoteLockedError } from '../quotes/quote-errors.js';
 import { cancelQuote, patchQuote } from '../quotes/quote-service.js';
-import { createTester } from '../test/create-tester.js';
 import { createProductRangeFixture } from '../test/product-range-fixtures.js';
 import { reassignProductUnitToQuote } from './product-unit-reassignment.js';
 import {

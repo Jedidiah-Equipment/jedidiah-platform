@@ -2,10 +2,9 @@ import { auditEvents, type Db, user } from '@pkg/db';
 import { customers } from '@pkg/db/equipment';
 import { eq } from 'drizzle-orm';
 import { describe, expect } from 'vitest';
-
-import { createTester } from '../test/create-tester.js';
-import { defineAuditDescriptor } from './audit-service.js';
-import { mutateEntity } from './mutate-entity.js';
+import { defineAuditDescriptor } from '../../audit/audit-writer.js';
+import { mutateEntity } from '../../audit/mutate-entity.js';
+import { createTester } from '../../test/create-tester.js';
 
 const actorUserId = 'actor-user-id';
 

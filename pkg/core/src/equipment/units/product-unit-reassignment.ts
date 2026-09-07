@@ -10,7 +10,7 @@ import {
 } from '@pkg/schema/equipment';
 import { aliasedTable, and, asc, eq, inArray, isNull, or } from 'drizzle-orm';
 
-import { recordAuditEvent } from '../audit/audit-service.js';
+import { recordAuditEvent } from '../../audit/audit-writer.js';
 import { jobAuditDescriptor } from '../jobs/job-audit.js';
 import { quoteAuditDescriptor } from '../quotes/quote-audit.js';
 import { QuoteNotFoundError } from '../quotes/quote-errors.js';

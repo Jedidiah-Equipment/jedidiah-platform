@@ -17,7 +17,7 @@ import {
 import { eq } from 'drizzle-orm';
 import { describe, expect } from 'vitest';
 
-import { createTester } from '../test/create-tester.js';
+import { createTester } from '../../test/create-tester.js';
 import { estimateSnapshot, seedProductUnit, seedSentPurchaseOrder } from '../test/inventory-fixtures.js';
 import { partValues } from '../test/part-fixtures.js';
 import { listBuyList } from './buy-list-service.js';

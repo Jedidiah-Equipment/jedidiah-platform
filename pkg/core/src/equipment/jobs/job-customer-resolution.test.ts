@@ -3,7 +3,7 @@ import { customers, jobs, products, productUnitOwnershipTransfers, productUnits,
 import { JobListInput } from '@pkg/schema/equipment';
 import { describe, expect } from 'vitest';
 
-import { createTester } from '../test/create-tester.js';
+import { createTester } from '../../test/create-tester.js';
 import { createProductRangeFixture } from '../test/product-range-fixtures.js';
 import { listJobCustomerOptions, listJobs } from './job-read-service.js';
 

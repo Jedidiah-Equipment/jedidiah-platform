@@ -22,6 +22,7 @@ import {
 import { eq } from 'drizzle-orm';
 import { describe, expect } from 'vitest';
 import { InMemoryStorageAdapter } from '../../storage/in-memory-storage-adapter.js';
+import { createTester } from '../../test/create-tester.js';
 import { createJobPurchaseOrder, deleteJobPurchaseOrder } from '../jobs/job-document-service.js';
 import { JobNotFoundError } from '../jobs/job-errors.js';
 import { readJobDocument } from '../jobs/job-read-service.js';
@@ -34,7 +35,6 @@ import {
 } from '../products/product-service.js';
 import { createQuoteDocument, getQuoteDocuments, readQuoteDocument } from '../quotes/quote-document.js';
 import { generateQuoteDocument } from '../quotes/quote-document-generation.js';
-import { createTester } from '../test/create-tester.js';
 import { createProductRangeFixture } from '../test/product-range-fixtures.js';
 import {
   DocumentDeleteNotAllowedError,

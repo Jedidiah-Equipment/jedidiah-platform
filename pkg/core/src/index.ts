@@ -1,3 +1,5 @@
+export * from './audit/audit-writer.js';
+export { mutateEntity } from './audit/mutate-entity.js';
 export * from './changelog/changelog-errors.js';
 export * from './changelog/changelog-service.js';
 export * from './changelog/changelog-visibility.js';

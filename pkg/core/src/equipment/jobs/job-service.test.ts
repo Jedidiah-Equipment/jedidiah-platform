@@ -47,10 +47,10 @@ import {
 import { and, asc, eq } from 'drizzle-orm';
 import { afterEach, beforeEach, describe, expect, vi } from 'vitest';
 import { InMemoryStorageAdapter } from '../../storage/in-memory-storage-adapter.js';
+import { createTester } from '../../test/create-tester.js';
 import { getJobCancellationPlan } from '../cancellation/cancellation-plan-service.js';
 import { deleteProductDocument } from '../products/product-service.js';
 import { updateQuote } from '../quotes/quote-service.js';
-import { createTester } from '../test/create-tester.js';
 import { createProductRangeFixture } from '../test/product-range-fixtures.js';
 import { getProductUnit } from '../units/product-unit-read-service.js';
 import { removeProductUnit, transferProductUnitOwnership } from '../units/product-unit-service.js';

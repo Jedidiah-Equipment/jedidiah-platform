@@ -4,7 +4,7 @@ import { type PartBulkImportRow, PartListInput } from '@pkg/schema/equipment';
 import { eq, isNull } from 'drizzle-orm';
 import { describe, expect } from 'vitest';
 
-import { createTester } from '../test/create-tester.js';
+import { createTester } from '../../test/create-tester.js';
 import { savePartBom } from './part-bom-service.js';
 import {
   bulkExportParts,

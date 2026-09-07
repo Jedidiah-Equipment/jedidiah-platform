@@ -35,8 +35,8 @@ import {
   recordAuditCreate,
   recordAuditDelete,
   recordAuditEvent,
-} from '../audit/audit-service.js';
-import { mutateEntity } from '../audit/mutate-entity.js';
+} from '../../audit/audit-writer.js';
+import { mutateEntity } from '../../audit/mutate-entity.js';
 import {
   JobBayAlreadyAssignedError,
   JobBayInUseError,

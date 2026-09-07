@@ -12,9 +12,8 @@ import {
 import { DateIso } from '@pkg/schema';
 import { eq } from 'drizzle-orm';
 import { afterEach, beforeEach, describe, expect, vi } from 'vitest';
-
+import { createTester } from '../../test/create-tester.js';
 import { getProductBuildMetrics } from '../products/product-build-metrics-service.js';
-import { createTester } from '../test/create-tester.js';
 import { createProductRangeFixture } from '../test/product-range-fixtures.js';
 import {
   completeDepartmentTiming,

@@ -53,14 +53,14 @@ import {
 } from '@pkg/schema/equipment';
 import { and, asc, eq, inArray, type SQL, sql } from 'drizzle-orm';
 import { format } from 'sql-formatter';
-import type { StorageAdapter } from '../../storage/storage-adapter.js';
 import {
   defineAuditDescriptor,
   diffAuditUpdate,
   recordAuditCreate,
   recordAuditDelete,
   recordAuditUpdate,
-} from '../audit/audit-service.js';
+} from '../../audit/audit-writer.js';
+import type { StorageAdapter } from '../../storage/storage-adapter.js';
 import {
   DocumentNotFoundError,
   DocumentPolicyViolationError,

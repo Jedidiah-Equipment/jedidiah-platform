@@ -16,9 +16,9 @@ import {
 import { DateOnlyIso, UUID } from '@pkg/schema';
 import { eq } from 'drizzle-orm';
 import { describe, expect } from 'vitest';
+import { createTester } from '../../test/create-tester.js';
 import { getJobMaterialVariance } from '../inventory/job-variance-read.js';
 import { postAdjustment, postJobMovement } from '../inventory/stock-movement-service.js';
-import { createTester } from '../test/create-tester.js';
 import { partValues } from '../test/part-fixtures.js';
 import { createProductRangeFixture } from '../test/product-range-fixtures.js';
 import { listCompletedJobSales } from './job-sales-export.js';

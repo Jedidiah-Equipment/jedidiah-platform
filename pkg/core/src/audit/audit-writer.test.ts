@@ -10,7 +10,7 @@ import {
   diffAuditUpdate,
   recordAuditCreate,
   recordAuditDelete,
-} from './audit-service.js';
+} from './audit-writer.js';
 
 type Widget = { id: string; name: string; price: number };
 

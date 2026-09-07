@@ -44,14 +44,14 @@ import {
   unitClassFor,
 } from '@pkg/schema/equipment';
 import { and, count, desc, eq, inArray, isNull, or, type SQL, type SQLWrapper, sql } from 'drizzle-orm';
-import type { StorageAdapter } from '../../storage/storage-adapter.js';
 import {
   defineAuditDescriptor,
   diffAuditUpdate,
   recordAuditCreate,
   recordAuditUpdate,
-} from '../audit/audit-service.js';
-import { mutateEntity } from '../audit/mutate-entity.js';
+} from '../../audit/audit-writer.js';
+import { mutateEntity } from '../../audit/mutate-entity.js';
+import type { StorageAdapter } from '../../storage/storage-adapter.js';
 import { DocumentNotFoundError } from '../documents/document-errors.js';
 import type { ReadDocumentResult } from '../documents/document-service.js';
 import {

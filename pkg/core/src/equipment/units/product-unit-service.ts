@@ -29,8 +29,8 @@ import {
   recordAuditCreate,
   recordAuditDelete,
   recordAuditEvent,
-} from '../audit/audit-service.js';
-import { mutateEntity } from '../audit/mutate-entity.js';
+} from '../../audit/audit-writer.js';
+import { mutateEntity } from '../../audit/mutate-entity.js';
 import { CustomerNotFoundError } from '../customers/customer-errors.js';
 import { jobAuditDescriptor } from '../jobs/job-audit.js';
 import { quoteAuditDescriptor } from '../quotes/quote-audit.js';

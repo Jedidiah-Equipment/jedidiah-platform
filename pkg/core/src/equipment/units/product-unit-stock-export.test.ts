@@ -12,9 +12,8 @@ import {
 import { formatQuoteCode } from '@pkg/schema/equipment';
 import { eq } from 'drizzle-orm';
 import { describe, expect } from 'vitest';
-
+import { createTester } from '../../test/create-tester.js';
 import { postAdjustment, postJobMovement } from '../inventory/stock-movement-service.js';
-import { createTester } from '../test/create-tester.js';
 import { partValues } from '../test/part-fixtures.js';
 import { createProductRangeFixture } from '../test/product-range-fixtures.js';
 import { listOnHandProductUnitStock } from './product-unit-stock-export.js';

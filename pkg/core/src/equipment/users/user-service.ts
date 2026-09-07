@@ -11,8 +11,8 @@ import {
 import { Department, type UserAccount, type UserListResult, type UserSummary } from '@pkg/schema/equipment';
 import { asc, eq } from 'drizzle-orm';
 
-import { defineAuditDescriptor, recordAuditEvent } from '../audit/audit-service.js';
-import { mutateEntity } from '../audit/mutate-entity.js';
+import { defineAuditDescriptor, recordAuditEvent } from '../../audit/audit-writer.js';
+import { mutateEntity } from '../../audit/mutate-entity.js';
 import { listOpenBayOperatorAssignmentBayNames } from '../jobs/job-bay-service.js';
 import { UserNotFoundError } from './user-errors.js';
 

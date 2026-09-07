@@ -6,13 +6,13 @@ import type { AuthId, UUID } from '@pkg/schema';
 import type { DocumentOwnerType, DocumentSummary } from '@pkg/schema/equipment';
 import { DocumentSummary as DocumentSummarySchema } from '@pkg/schema/equipment';
 import { eq } from 'drizzle-orm';
+import { defineAuditDescriptor, recordAuditCreate, recordAuditDelete } from '../../audit/audit-writer.js';
 import {
   readStoredObject,
   type StorageAdapter,
   StorageKeyAlreadyExistsError,
   type StoredObject,
 } from '../../storage/storage-adapter.js';
-import { defineAuditDescriptor, recordAuditCreate, recordAuditDelete } from '../audit/audit-service.js';
 import {
   DocumentNotFoundError,
   DocumentPolicyViolationError,

@@ -2,7 +2,7 @@ import { sql, user } from '@pkg/db';
 import { CustomerCreateInput } from '@pkg/schema/equipment';
 import { describe, expect, it } from 'vitest';
 
-import { createTester } from '../test/create-tester.js';
+import { createTester } from '../../test/create-tester.js';
 import { createCustomer, mapCustomer, patchCustomer } from './customer-service.js';
 
 const test = createTester(async ({ db }) => {

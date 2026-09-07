@@ -3,7 +3,7 @@ import type { AuthId } from '@pkg/schema';
 import { and, eq, type SQL } from 'drizzle-orm';
 import type { PgColumn, PgTable, PgUpdateSetSource } from 'drizzle-orm/pg-core';
 
-import { type AuditDescriptor, diffAuditUpdate, recordAuditUpdate } from './audit-service.js';
+import { type AuditDescriptor, diffAuditUpdate, recordAuditUpdate } from './audit-writer.js';
 
 /**
  * The audited-write shape, in one place: transaction -> row lock -> assert -> merge -> diff ->

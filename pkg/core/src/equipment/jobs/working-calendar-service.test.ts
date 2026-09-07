@@ -17,7 +17,7 @@ import {
 } from '@pkg/schema/equipment';
 import { afterEach, beforeEach, describe, expect, vi } from 'vitest';
 import { InMemoryStorageAdapter } from '../../storage/in-memory-storage-adapter.js';
-import { createTester } from '../test/create-tester.js';
+import { createTester } from '../../test/create-tester.js';
 import { createProductRangeFixture } from '../test/product-range-fixtures.js';
 import { listBays } from './job-read-service.js';
 import { bookJobSlot, createJob } from './job-service.js';

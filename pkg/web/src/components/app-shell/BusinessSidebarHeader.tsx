@@ -7,6 +7,7 @@ import { AppBrand } from '@/components/common/AppBrand.js';
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuTrigger,
@@ -35,17 +36,19 @@ export const BusinessSidebarHeader: React.FC<BusinessSidebarHeaderProps> = ({ ac
                 <IconSelector className="ml-auto" />
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start" className="min-w-56">
-                <DropdownMenuLabel>Business</DropdownMenuLabel>
-                <DropdownMenuItem onClick={() => navigate({ to: BUSINESS_HOME.equipment })}>
-                  <IconBuildingFactory />
-                  Jedidiah Equipment
-                  {activeBusiness === 'equipment' ? <IconCheck className="ml-auto" /> : null}
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => navigate({ to: BUSINESS_HOME.contracting })}>
-                  <IconBuildingWarehouse />
-                  Jedidiah Contracting
-                  {activeBusiness === 'contracting' ? <IconCheck className="ml-auto" /> : null}
-                </DropdownMenuItem>
+                <DropdownMenuGroup>
+                  <DropdownMenuLabel>Business</DropdownMenuLabel>
+                  <DropdownMenuItem onClick={() => navigate({ to: BUSINESS_HOME.equipment })}>
+                    <IconBuildingFactory />
+                    Jedidiah Equipment
+                    {activeBusiness === 'equipment' ? <IconCheck className="ml-auto" /> : null}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate({ to: BUSINESS_HOME.contracting })}>
+                    <IconBuildingWarehouse />
+                    Jedidiah Contracting
+                    {activeBusiness === 'contracting' ? <IconCheck className="ml-auto" /> : null}
+                  </DropdownMenuItem>
+                </DropdownMenuGroup>
               </DropdownMenuContent>
             </DropdownMenu>
           ) : (

@@ -14,7 +14,8 @@ import { formatJobCode, type JobActivityItem, type JobDocumentType } from '@pkg/
 import { desc, eq } from 'drizzle-orm';
 import { describe, expect } from 'vitest';
 
-import { recordAuditCreate, recordAuditDelete } from '../audit/audit-service.js';
+import { recordAuditCreate, recordAuditDelete } from '../../audit/audit-writer.js';
+import { createTester } from '../../test/create-tester.js';
 import { documentAuditDescriptor } from '../documents/document-service.js';
 import { jobAuditDescriptor } from '../jobs/job-audit.js';
 import {
@@ -23,7 +24,6 @@ import {
   updateDepartmentTiming,
 } from '../jobs/job-department-timing-service.js';
 import { updateJob } from '../jobs/job-service.js';
-import { createTester } from '../test/create-tester.js';
 import { createProductRangeFixture } from '../test/product-range-fixtures.js';
 import { listJobActivity } from './job-activity-service.js';
 

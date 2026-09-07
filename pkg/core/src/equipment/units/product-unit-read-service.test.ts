@@ -13,7 +13,7 @@ import { ProductUnitListInput } from '@pkg/schema/equipment';
 import { eq } from 'drizzle-orm';
 import { describe, expect } from 'vitest';
 
-import { createTester } from '../test/create-tester.js';
+import { createTester } from '../../test/create-tester.js';
 import { createProductRangeFixture } from '../test/product-range-fixtures.js';
 import { ProductUnitNotFoundError } from './product-unit-errors.js';
 import { getProductUnit, listProductUnits } from './product-unit-read-service.js';

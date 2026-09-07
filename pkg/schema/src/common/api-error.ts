@@ -6,6 +6,7 @@ export const APP_CODE_PREFIXES = [
   'document',
   'feedback',
   'file',
+  'fleet',
   'job',
   'inventory',
   'invoice',

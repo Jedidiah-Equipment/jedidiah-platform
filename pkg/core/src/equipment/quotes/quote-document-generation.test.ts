@@ -12,7 +12,7 @@ import { priceQuote } from '@pkg/domain/equipment';
 import type { BrochurePdfRenderer, QuoteDocumentModel, QuoteDocumentPdfRenderer } from '@pkg/schema/equipment';
 import { describe, expect } from 'vitest';
 import { InMemoryStorageAdapter } from '../../storage/in-memory-storage-adapter.js';
-import { createTester } from '../test/create-tester.js';
+import { createTester } from '../../test/create-tester.js';
 import { createProductRangeFixture } from '../test/product-range-fixtures.js';
 import { generateQuoteDocument } from './quote-document-generation.js';
 

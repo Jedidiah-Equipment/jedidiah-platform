@@ -12,9 +12,8 @@ import { DateOnlyIso } from '@pkg/schema';
 import { formatJobCode, JobListInput, ProductUnitTransferInput } from '@pkg/schema/equipment';
 import { asc, eq } from 'drizzle-orm';
 import { describe, expect } from 'vitest';
-
+import { createTester } from '../../test/create-tester.js';
 import { listJobs } from '../jobs/job-read-service.js';
-import { createTester } from '../test/create-tester.js';
 import { createProductRangeFixture } from '../test/product-range-fixtures.js';
 import {
   ProductUnitOwnerUnchangedError,

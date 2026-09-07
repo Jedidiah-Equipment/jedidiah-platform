@@ -5,7 +5,7 @@ import type { AuditChanges, AuthId, UUID } from '@pkg/schema';
 import type { PartBomResult, SavePartBomInput } from '@pkg/schema/equipment';
 import { isWholeUnitQuantity, PartBomResult as PartBomResultSchema, unitClassFor } from '@pkg/schema/equipment';
 import { asc, eq, inArray, sql } from 'drizzle-orm';
-import { recordAuditUpdate } from '../audit/audit-service.js';
+import { recordAuditUpdate } from '../../audit/audit-writer.js';
 import {
   PartBomComponentNotFoundError,
   PartBomCycleError,

@@ -2,9 +2,8 @@ import { user } from '@pkg/db';
 import { parts, purchaseOrders, supplier } from '@pkg/db/equipment';
 import { eq } from 'drizzle-orm';
 import { describe, expect } from 'vitest';
-
+import { createTester } from '../../test/create-tester.js';
 import { postReceipt } from '../inventory/receipt-service.js';
-import { createTester } from '../test/create-tester.js';
 import { seedSentPurchaseOrder } from '../test/inventory-fixtures.js';
 import { partValues } from '../test/part-fixtures.js';
 import { listLatePurchaseOrders } from './purchase-order-signals.js';

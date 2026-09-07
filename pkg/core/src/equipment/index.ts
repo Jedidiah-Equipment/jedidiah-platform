@@ -1,4 +1,4 @@
-export * from './audit/audit-service.js';
+export { listAuditEvents } from './audit/audit-service.js';
 export * from './cancellation/cancellation-plan-service.js';
 export * from './customers/customer-errors.js';
 export * from './customers/customer-service.js';

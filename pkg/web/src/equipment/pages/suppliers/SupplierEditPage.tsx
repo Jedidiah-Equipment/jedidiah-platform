@@ -4,6 +4,7 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import type React from 'react';
 import { useMemo, useState } from 'react';
+import { EntityActionsFooter } from '@/components/common/EntityActionsFooter.js';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { RemoveEntityButton } from '@/components/common/RemoveEntityButton.js';
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
@@ -82,12 +83,10 @@ const SupplierEditTabs: React.FC<SupplierEditTabsProps> = ({ onSupplierSave, sup
       <TabsContent className="pt-4" value="supplier">
         <SupplierForm key={supplier.id} onSave={onSupplierSave} supplier={supplier} />
         {canMergeSupplier || canRemoveSupplier ? (
-          <div className="mt-8 flex justify-end border-t pt-4">
-            <div className="flex gap-2">
-              {canMergeSupplier ? <MergeSupplierDialog supplier={supplier} /> : null}
-              {canRemoveSupplier ? <RemoveSupplierButton supplier={supplier} /> : null}
-            </div>
-          </div>
+          <EntityActionsFooter>
+            {canMergeSupplier ? <MergeSupplierDialog supplier={supplier} /> : null}
+            {canRemoveSupplier ? <RemoveSupplierButton supplier={supplier} /> : null}
+          </EntityActionsFooter>
         ) : null}
       </TabsContent>
       {canReadPart ? (

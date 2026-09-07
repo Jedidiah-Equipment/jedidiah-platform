@@ -6,7 +6,7 @@ import { describe, expect } from 'vitest';
 
 import { FileNotFoundError, FilePolicyViolationError } from '../../files/file-errors.js';
 import { InMemoryStorageAdapter } from '../../storage/in-memory-storage-adapter.js';
-import { createTester } from '../test/create-tester.js';
+import { createTester } from '../../test/create-tester.js';
 import { createProductRangeFixture } from '../test/product-range-fixtures.js';
 import { ProductNotFoundError } from './product-errors.js';
 import { readProductImage, replaceProductImage } from './product-image-service.js';

@@ -31,8 +31,8 @@ import {
   diffAuditUpdate,
   recordAuditCreate,
   recordAuditUpdate,
-} from '../audit/audit-service.js';
-import { mutateEntity } from '../audit/mutate-entity.js';
+} from '../../audit/audit-writer.js';
+import { mutateEntity } from '../../audit/mutate-entity.js';
 import { supplierAuditDescriptor } from '../suppliers/supplier-service.js';
 import {
   DuplicatePartCodeError,

@@ -38,9 +38,9 @@ import {
   ResizeJobSlotResult,
 } from '@pkg/schema/equipment';
 import { and, asc, desc, eq, gt, inArray, isNull, lt } from 'drizzle-orm';
+import { recordAuditCreate, recordAuditDelete, recordAuditEvent } from '../../audit/audit-writer.js';
+import { mutateEntity } from '../../audit/mutate-entity.js';
 import type { StorageAdapter } from '../../storage/storage-adapter.js';
-import { recordAuditCreate, recordAuditDelete, recordAuditEvent } from '../audit/audit-service.js';
-import { mutateEntity } from '../audit/mutate-entity.js';
 import { documentBaseSelect } from '../documents/document-service.js';
 import { listAssemblies } from '../products/product-assembly-service.js';
 import { snapshotJobBrochureDocument } from '../products/product-brochure-document.js';

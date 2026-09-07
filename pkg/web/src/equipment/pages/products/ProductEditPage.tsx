@@ -5,6 +5,7 @@ import { useNavigate } from '@tanstack/react-router';
 import type React from 'react';
 import { useMemo } from 'react';
 import { toast } from 'sonner';
+import { EntityActionsFooter } from '@/components/common/EntityActionsFooter.js';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { RemoveEntityButton } from '@/components/common/RemoveEntityButton.js';
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
@@ -121,9 +122,9 @@ const ProductEditTabs: React.FC<ProductEditTabsProps> = ({ onProductSave, onTabC
           costingFooter={<ProductCostEstimatePanel productId={product.id} />}
           detailsFooter={
             canRemoveProduct ? (
-              <div className="mt-4 flex justify-end border-t pt-4">
+              <EntityActionsFooter>
                 <RemoveProductButton product={product} />
-              </div>
+              </EntityActionsFooter>
             ) : null
           }
           key={product.id}

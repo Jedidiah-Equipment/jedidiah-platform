@@ -13,8 +13,8 @@ import {
 } from '@pkg/db/equipment';
 import { and, eq } from 'drizzle-orm';
 import { describe, expect } from 'vitest';
+import { createTester } from '../../test/create-tester.js';
 import { getProductCostEstimate } from '../products/product-cost-estimate-service.js';
-import { createTester } from '../test/create-tester.js';
 import { estimateSnapshot } from '../test/inventory-fixtures.js';
 import { partValues as testPartValues } from '../test/part-fixtures.js';
 import { listBuyList } from './buy-list-service.js';

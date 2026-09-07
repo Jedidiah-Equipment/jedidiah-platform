@@ -20,7 +20,7 @@ import { isProductUnitInStock, resolveProductUnitOwnerId } from '@pkg/domain/equ
 import { asc, eq, sql } from 'drizzle-orm';
 import { describe, expect } from 'vitest';
 
-import { createTester } from '../test/create-tester.js';
+import { createTester } from '../../test/create-tester.js';
 import { createProductRangeFixture } from '../test/product-range-fixtures.js';
 
 // The placeholder Customer to retire — the id Dean supplied on 2026-07-28, the same one #1010's

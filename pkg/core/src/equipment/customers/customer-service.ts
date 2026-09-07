@@ -19,8 +19,8 @@ import type {
 import { Customer } from '@pkg/schema/equipment';
 import { and, asc, eq, type SQL, sql } from 'drizzle-orm';
 
-import { defineAuditDescriptor, recordAuditCreate, recordAuditDelete } from '../audit/audit-service.js';
-import { mutateEntity } from '../audit/mutate-entity.js';
+import { defineAuditDescriptor, recordAuditCreate, recordAuditDelete } from '../../audit/audit-writer.js';
+import { mutateEntity } from '../../audit/mutate-entity.js';
 import { CustomerInUseError, CustomerNotFoundError } from './customer-errors.js';
 
 type CustomerRow = typeof customers.$inferSelect;

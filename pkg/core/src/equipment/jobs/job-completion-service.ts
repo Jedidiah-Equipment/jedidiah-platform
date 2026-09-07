@@ -4,7 +4,7 @@ import { getPlantDateNow } from '@pkg/domain';
 import { foldJobScheduleStates, isJobScheduleComplete } from '@pkg/domain/equipment';
 import { type DateOnlyIso, UUID } from '@pkg/schema';
 import { and, asc, eq, exists, isNull, sql } from 'drizzle-orm';
-import { diffAuditUpdate, recordAuditUpdate } from '../audit/audit-service.js';
+import { diffAuditUpdate, recordAuditUpdate } from '../../audit/audit-writer.js';
 import { findBoardBayRows, findBoardBayRowsForJobs, toProjectedBoard } from './board-read.js';
 import { jobAuditDescriptor } from './job-service.js';
 import { listWorkingCalendarOffDays } from './working-calendar-service.js';

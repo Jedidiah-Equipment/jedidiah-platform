@@ -1,17 +1,11 @@
-import type React from 'react';
+import { PageLayout } from '@/components/page-layout/PageLayout.js';
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card.js';
-
-export const ContractingHomePage: React.FC = () => (
-  <main className="p-4 md:p-6">
-    <Card>
-      <CardHeader>
-        <CardTitle>Jedidiah Contracting</CardTitle>
-        <CardDescription>Your Contracting access is active.</CardDescription>
-      </CardHeader>
-      <CardContent className="text-muted-foreground text-sm">
-        Contracting workflows will appear here as they are released.
-      </CardContent>
-    </Card>
-  </main>
-);
+export function ContractingHomePage() {
+  return (
+    <PageLayout title="Dashboard">
+      <div className="flex min-h-[calc(100svh-12rem)] items-center justify-center">
+        <p className="text-muted-foreground text-lg">Coming soon</p>
+      </div>
+    </PageLayout>
+  );
+}

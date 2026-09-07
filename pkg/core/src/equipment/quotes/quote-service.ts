@@ -21,7 +21,7 @@ import {
   type QuoteWorkItemInput,
 } from '@pkg/schema/equipment';
 import { and, eq, inArray, isNull } from 'drizzle-orm';
-import { diffAuditUpdate, recordAuditCreate, recordAuditUpdate } from '../audit/audit-service.js';
+import { diffAuditUpdate, recordAuditCreate, recordAuditUpdate } from '../../audit/audit-writer.js';
 import { customerAuditDescriptor } from '../customers/customer-service.js';
 import { cancelJobForQuote } from '../jobs/job-service.js';
 import { quoteEverPlacedAUnit, removeProductUnitWithin } from '../units/product-unit-service.js';

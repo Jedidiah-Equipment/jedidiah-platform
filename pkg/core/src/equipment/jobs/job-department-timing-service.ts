@@ -10,7 +10,7 @@ import type {
 } from '@pkg/schema/equipment';
 import { and, asc, eq } from 'drizzle-orm';
 
-import { recordAuditEvent } from '../audit/audit-service.js';
+import { recordAuditEvent } from '../../audit/audit-writer.js';
 import { jobAuditDescriptor } from './job-audit.js';
 import { getAssignableBayOperatorForUpdate } from './job-bay-service.js';
 import {

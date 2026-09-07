@@ -3,7 +3,7 @@ import { ProductRangeCreateInput, ProductRangeVariantCreateInput } from '@pkg/sc
 import { eq } from 'drizzle-orm';
 import { describe, expect } from 'vitest';
 
-import { createTester } from '../test/create-tester.js';
+import { createTester } from '../../test/create-tester.js';
 import { createProductRange, removeProductRange } from './product-range-service.js';
 import { createProductRangeVariant } from './product-range-variant-service.js';
 

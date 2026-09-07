@@ -5,12 +5,12 @@ import type { PurchaseOrderPdfModel } from '@pkg/schema/equipment';
 import { eq, sql } from 'drizzle-orm';
 import { describe, expect, vi } from 'vitest';
 import { InMemoryStorageAdapter } from '../../storage/in-memory-storage-adapter.js';
+import { createTester } from '../../test/create-tester.js';
 import { postReceipt } from '../inventory/receipt-service.js';
 import { postReturnToSupplier } from '../inventory/return-to-supplier-service.js';
 import { getJobDocuments } from '../jobs/job-read-service.js';
 import { updatePart } from '../parts/part-service.js';
 import { removeSupplier } from '../suppliers/supplier-service.js';
-import { createTester } from '../test/create-tester.js';
 import {
   approvePurchaseOrder,
   cancelPurchaseOrder,

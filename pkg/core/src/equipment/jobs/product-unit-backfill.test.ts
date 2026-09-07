@@ -12,7 +12,7 @@ import {
 import { asc, eq, sql } from 'drizzle-orm';
 import { describe, expect } from 'vitest';
 
-import { createTester } from '../test/create-tester.js';
+import { createTester } from '../../test/create-tester.js';
 import { createProductRangeFixture } from '../test/product-range-fixtures.js';
 
 const ACTOR_USER_ID = '00000000-0000-4000-8000-0000000000c1';

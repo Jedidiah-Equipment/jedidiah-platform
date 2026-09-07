@@ -4,7 +4,7 @@ import { type AssemblyInput, ProductCreateInput, ProductUpdateInput } from '@pkg
 import { and, asc, eq } from 'drizzle-orm';
 import { describe, expect } from 'vitest';
 
-import { createTester } from '../test/create-tester.js';
+import { createTester } from '../../test/create-tester.js';
 import { createProductRangeFixture } from '../test/product-range-fixtures.js';
 import { exportProductAssemblies, listAssemblyNames } from './product-assembly-service.js';
 import { AssemblyKindChangedError } from './product-errors.js';

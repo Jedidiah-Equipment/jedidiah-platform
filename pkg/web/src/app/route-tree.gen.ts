@@ -8,66 +8,75 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
-import { Route as rootRouteImport } from '../routes/__root'
-import { Route as IndexRouteImport } from '../routes/index'
-import { Route as AuthedRouteImport } from '../routes/_authed'
-import { Route as ForgotPasswordRouteImport } from '../routes/forgot-password'
-import { Route as LoginRouteImport } from '../routes/login'
-import { Route as PrivacyRouteImport } from '../routes/privacy'
-import { Route as ResetPasswordRouteImport } from '../routes/reset-password'
-import { Route as SupportRouteImport } from '../routes/support'
-import { Route as VerifyEmailRouteImport } from '../routes/verify-email'
-import { Route as AuthedContractingRouteImport } from '../routes/_authed.contracting'
-import { Route as AuthedEquipmentRouteImport } from '../routes/_authed.equipment'
-import { Route as AuthedContractingIndexRouteImport } from '../routes/_authed.contracting.index'
-import { Route as AuthedEquipmentAuditRouteImport } from '../routes/_authed.equipment.audit'
-import { Route as AuthedEquipmentBaysRouteImport } from '../routes/_authed.equipment.bays'
-import { Route as AuthedEquipmentCatalogTranslationsRouteImport } from '../routes/_authed.equipment.catalog-translations'
-import { Route as AuthedEquipmentCustomersRouteImport } from '../routes/_authed.equipment.customers'
-import { Route as AuthedEquipmentDashboardRouteImport } from '../routes/_authed.equipment.dashboard'
-import { Route as AuthedEquipmentFeedbackRouteImport } from '../routes/_authed.equipment.feedback'
-import { Route as AuthedEquipmentInventoryRouteImport } from '../routes/_authed.equipment.inventory'
-import { Route as AuthedEquipmentJobsRouteImport } from '../routes/_authed.equipment.jobs'
-import { Route as AuthedEquipmentPartsRouteImport } from '../routes/_authed.equipment.parts'
-import { Route as AuthedEquipmentProductRangesRouteImport } from '../routes/_authed.equipment.product-ranges'
-import { Route as AuthedEquipmentProductsRouteImport } from '../routes/_authed.equipment.products'
-import { Route as AuthedEquipmentPurchaseOrdersRouteImport } from '../routes/_authed.equipment.purchase-orders'
-import { Route as AuthedEquipmentQuotesRouteImport } from '../routes/_authed.equipment.quotes'
-import { Route as AuthedEquipmentSuppliersRouteImport } from '../routes/_authed.equipment.suppliers'
-import { Route as AuthedEquipmentUnitsRouteImport } from '../routes/_authed.equipment.units'
-import { Route as AuthedEquipmentUsersRouteImport } from '../routes/_authed.equipment.users'
-import { Route as AuthedEquipmentCustomersIndexRouteImport } from '../routes/_authed.equipment.customers.index'
-import { Route as AuthedEquipmentInventoryIndexRouteImport } from '../routes/_authed.equipment.inventory.index'
-import { Route as AuthedEquipmentInventoryPartIdRouteImport } from '../routes/_authed.equipment.inventory.$partId'
-import { Route as AuthedEquipmentInventoryBuyListRouteImport } from '../routes/_authed.equipment.inventory.buy-list'
-import { Route as AuthedEquipmentInventoryCloseOutRouteImport } from '../routes/_authed.equipment.inventory.close-out'
-import { Route as AuthedEquipmentInventoryPriceVarianceRouteImport } from '../routes/_authed.equipment.inventory.price-variance'
-import { Route as AuthedEquipmentInventoryStocktakeRouteImport } from '../routes/_authed.equipment.inventory.stocktake'
-import { Route as AuthedEquipmentJobsIndexRouteImport } from '../routes/_authed.equipment.jobs.index'
-import { Route as AuthedEquipmentJobsIdRouteImport } from '../routes/_authed.equipment.jobs.$id'
-import { Route as AuthedEquipmentJobsActivityRouteImport } from '../routes/_authed.equipment.jobs.activity'
-import { Route as AuthedEquipmentJobsCalendarRouteImport } from '../routes/_authed.equipment.jobs.calendar'
-import { Route as AuthedEquipmentJobsListRouteImport } from '../routes/_authed.equipment.jobs.list'
-import { Route as AuthedEquipmentJobsStockBuildRouteImport } from '../routes/_authed.equipment.jobs.stock-build'
-import { Route as AuthedEquipmentProductRangesIndexRouteImport } from '../routes/_authed.equipment.product-ranges.index'
-import { Route as AuthedEquipmentProductsIndexRouteImport } from '../routes/_authed.equipment.products.index'
-import { Route as AuthedEquipmentPurchaseOrdersIndexRouteImport } from '../routes/_authed.equipment.purchase-orders.index'
-import { Route as AuthedEquipmentPurchaseOrdersIdRouteImport } from '../routes/_authed.equipment.purchase-orders.$id'
-import { Route as AuthedEquipmentQuotesIndexRouteImport } from '../routes/_authed.equipment.quotes.index'
-import { Route as AuthedEquipmentSuppliersIndexRouteImport } from '../routes/_authed.equipment.suppliers.index'
-import { Route as AuthedEquipmentUnitsIndexRouteImport } from '../routes/_authed.equipment.units.index'
-import { Route as AuthedEquipmentUnitsIdRouteImport } from '../routes/_authed.equipment.units.$id'
-import { Route as AuthedEquipmentCustomersIdEditRouteImport } from '../routes/_authed.equipment.customers.$id.edit'
-import { Route as AuthedEquipmentInventoryCloseOutIndexRouteImport } from '../routes/_authed.equipment.inventory.close-out.index'
-import { Route as AuthedEquipmentInventoryCloseOutJobIdRouteImport } from '../routes/_authed.equipment.inventory.close-out.$jobId'
-import { Route as AuthedEquipmentInventoryJobVarianceJobIdRouteImport } from '../routes/_authed.equipment.inventory.job-variance.$jobId'
-import { Route as AuthedEquipmentInventoryStocktakeIndexRouteImport } from '../routes/_authed.equipment.inventory.stocktake.index'
-import { Route as AuthedEquipmentInventoryStocktakeSessionIdRouteImport } from '../routes/_authed.equipment.inventory.stocktake.$sessionId'
-import { Route as AuthedEquipmentProductRangesIdEditRouteImport } from '../routes/_authed.equipment.product-ranges.$id.edit'
-import { Route as AuthedEquipmentProductsIdEditRouteImport } from '../routes/_authed.equipment.products.$id.edit'
-import { Route as AuthedEquipmentQuotesIdEditRouteImport } from '../routes/_authed.equipment.quotes.$id_.edit'
-import { Route as AuthedEquipmentQuotesIdStartJobRouteImport } from '../routes/_authed.equipment.quotes.$id_.start-job'
-import { Route as AuthedEquipmentSuppliersIdEditRouteImport } from '../routes/_authed.equipment.suppliers.$id.edit'
+import { Route as rootRouteImport } from './../routes/__root'
+import { Route as IndexRouteImport } from './../routes/index'
+import { Route as AuthedRouteImport } from './../routes/_authed'
+import { Route as ForgotPasswordRouteImport } from './../routes/forgot-password'
+import { Route as LoginRouteImport } from './../routes/login'
+import { Route as PrivacyRouteImport } from './../routes/privacy'
+import { Route as ResetPasswordRouteImport } from './../routes/reset-password'
+import { Route as SupportRouteImport } from './../routes/support'
+import { Route as VerifyEmailRouteImport } from './../routes/verify-email'
+import { Route as AuthedContractingRouteImport } from './../routes/_authed.contracting'
+import { Route as AuthedEquipmentRouteImport } from './../routes/_authed.equipment'
+import { Route as AuthedContractingIndexRouteImport } from './../routes/_authed.contracting.index'
+import { Route as AuthedContractingFleetRouteImport } from './../routes/_authed.contracting.fleet'
+import { Route as AuthedEquipmentAuditRouteImport } from './../routes/_authed.equipment.audit'
+import { Route as AuthedEquipmentBaysRouteImport } from './../routes/_authed.equipment.bays'
+import { Route as AuthedEquipmentCatalogTranslationsRouteImport } from './../routes/_authed.equipment.catalog-translations'
+import { Route as AuthedEquipmentCustomersRouteImport } from './../routes/_authed.equipment.customers'
+import { Route as AuthedEquipmentDashboardRouteImport } from './../routes/_authed.equipment.dashboard'
+import { Route as AuthedEquipmentFeedbackRouteImport } from './../routes/_authed.equipment.feedback'
+import { Route as AuthedEquipmentInventoryRouteImport } from './../routes/_authed.equipment.inventory'
+import { Route as AuthedEquipmentJobsRouteImport } from './../routes/_authed.equipment.jobs'
+import { Route as AuthedEquipmentPartsRouteImport } from './../routes/_authed.equipment.parts'
+import { Route as AuthedEquipmentProductRangesRouteImport } from './../routes/_authed.equipment.product-ranges'
+import { Route as AuthedEquipmentProductsRouteImport } from './../routes/_authed.equipment.products'
+import { Route as AuthedEquipmentPurchaseOrdersRouteImport } from './../routes/_authed.equipment.purchase-orders'
+import { Route as AuthedEquipmentQuotesRouteImport } from './../routes/_authed.equipment.quotes'
+import { Route as AuthedEquipmentSuppliersRouteImport } from './../routes/_authed.equipment.suppliers'
+import { Route as AuthedEquipmentUnitsRouteImport } from './../routes/_authed.equipment.units'
+import { Route as AuthedEquipmentUsersRouteImport } from './../routes/_authed.equipment.users'
+import { Route as AuthedContractingFleetIndexRouteImport } from './../routes/_authed.contracting.fleet.index'
+import { Route as AuthedContractingFleetCategoriesRouteImport } from './../routes/_authed.contracting.fleet.categories'
+import { Route as AuthedContractingFleetImplementsRouteImport } from './../routes/_authed.contracting.fleet.implements'
+import { Route as AuthedEquipmentCustomersIndexRouteImport } from './../routes/_authed.equipment.customers.index'
+import { Route as AuthedEquipmentInventoryIndexRouteImport } from './../routes/_authed.equipment.inventory.index'
+import { Route as AuthedEquipmentInventoryPartIdRouteImport } from './../routes/_authed.equipment.inventory.$partId'
+import { Route as AuthedEquipmentInventoryBuyListRouteImport } from './../routes/_authed.equipment.inventory.buy-list'
+import { Route as AuthedEquipmentInventoryCloseOutRouteImport } from './../routes/_authed.equipment.inventory.close-out'
+import { Route as AuthedEquipmentInventoryPriceVarianceRouteImport } from './../routes/_authed.equipment.inventory.price-variance'
+import { Route as AuthedEquipmentInventoryStocktakeRouteImport } from './../routes/_authed.equipment.inventory.stocktake'
+import { Route as AuthedEquipmentJobsIndexRouteImport } from './../routes/_authed.equipment.jobs.index'
+import { Route as AuthedEquipmentJobsIdRouteImport } from './../routes/_authed.equipment.jobs.$id'
+import { Route as AuthedEquipmentJobsActivityRouteImport } from './../routes/_authed.equipment.jobs.activity'
+import { Route as AuthedEquipmentJobsCalendarRouteImport } from './../routes/_authed.equipment.jobs.calendar'
+import { Route as AuthedEquipmentJobsListRouteImport } from './../routes/_authed.equipment.jobs.list'
+import { Route as AuthedEquipmentJobsStockBuildRouteImport } from './../routes/_authed.equipment.jobs.stock-build'
+import { Route as AuthedEquipmentProductRangesIndexRouteImport } from './../routes/_authed.equipment.product-ranges.index'
+import { Route as AuthedEquipmentProductsIndexRouteImport } from './../routes/_authed.equipment.products.index'
+import { Route as AuthedEquipmentPurchaseOrdersIndexRouteImport } from './../routes/_authed.equipment.purchase-orders.index'
+import { Route as AuthedEquipmentPurchaseOrdersIdRouteImport } from './../routes/_authed.equipment.purchase-orders.$id'
+import { Route as AuthedEquipmentQuotesIndexRouteImport } from './../routes/_authed.equipment.quotes.index'
+import { Route as AuthedEquipmentSuppliersIndexRouteImport } from './../routes/_authed.equipment.suppliers.index'
+import { Route as AuthedEquipmentUnitsIndexRouteImport } from './../routes/_authed.equipment.units.index'
+import { Route as AuthedEquipmentUnitsIdRouteImport } from './../routes/_authed.equipment.units.$id'
+import { Route as AuthedContractingFleetIdEditRouteImport } from './../routes/_authed.contracting.fleet.$id.edit'
+import { Route as AuthedContractingFleetCategoriesIndexRouteImport } from './../routes/_authed.contracting.fleet.categories.index'
+import { Route as AuthedContractingFleetImplementsIndexRouteImport } from './../routes/_authed.contracting.fleet.implements.index'
+import { Route as AuthedEquipmentCustomersIdEditRouteImport } from './../routes/_authed.equipment.customers.$id.edit'
+import { Route as AuthedEquipmentInventoryCloseOutIndexRouteImport } from './../routes/_authed.equipment.inventory.close-out.index'
+import { Route as AuthedEquipmentInventoryCloseOutJobIdRouteImport } from './../routes/_authed.equipment.inventory.close-out.$jobId'
+import { Route as AuthedEquipmentInventoryJobVarianceJobIdRouteImport } from './../routes/_authed.equipment.inventory.job-variance.$jobId'
+import { Route as AuthedEquipmentInventoryStocktakeIndexRouteImport } from './../routes/_authed.equipment.inventory.stocktake.index'
+import { Route as AuthedEquipmentInventoryStocktakeSessionIdRouteImport } from './../routes/_authed.equipment.inventory.stocktake.$sessionId'
+import { Route as AuthedEquipmentProductRangesIdEditRouteImport } from './../routes/_authed.equipment.product-ranges.$id.edit'
+import { Route as AuthedEquipmentProductsIdEditRouteImport } from './../routes/_authed.equipment.products.$id.edit'
+import { Route as AuthedEquipmentQuotesIdEditRouteImport } from './../routes/_authed.equipment.quotes.$id_.edit'
+import { Route as AuthedEquipmentQuotesIdStartJobRouteImport } from './../routes/_authed.equipment.quotes.$id_.start-job'
+import { Route as AuthedEquipmentSuppliersIdEditRouteImport } from './../routes/_authed.equipment.suppliers.$id.edit'
+import { Route as AuthedContractingFleetCategoriesIdEditRouteImport } from './../routes/_authed.contracting.fleet.categories.$id.edit'
+import { Route as AuthedContractingFleetImplementsIdEditRouteImport } from './../routes/_authed.contracting.fleet.implements.$id.edit'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -121,6 +130,11 @@ const AuthedEquipmentRoute = AuthedEquipmentRouteImport.update({
 const AuthedContractingIndexRoute = AuthedContractingIndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => AuthedContractingRoute,
+} as any)
+const AuthedContractingFleetRoute = AuthedContractingFleetRouteImport.update({
+  id: '/fleet',
+  path: '/fleet',
   getParentRoute: () => AuthedContractingRoute,
 } as any)
 const AuthedEquipmentAuditRoute = AuthedEquipmentAuditRouteImport.update({
@@ -210,6 +224,24 @@ const AuthedEquipmentUsersRoute = AuthedEquipmentUsersRouteImport.update({
   path: '/users',
   getParentRoute: () => AuthedEquipmentRoute,
 } as any)
+const AuthedContractingFleetIndexRoute =
+  AuthedContractingFleetIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AuthedContractingFleetRoute,
+  } as any)
+const AuthedContractingFleetCategoriesRoute =
+  AuthedContractingFleetCategoriesRouteImport.update({
+    id: '/categories',
+    path: '/categories',
+    getParentRoute: () => AuthedContractingFleetRoute,
+  } as any)
+const AuthedContractingFleetImplementsRoute =
+  AuthedContractingFleetImplementsRouteImport.update({
+    id: '/implements',
+    path: '/implements',
+    getParentRoute: () => AuthedContractingFleetRoute,
+  } as any)
 const AuthedEquipmentCustomersIndexRoute =
   AuthedEquipmentCustomersIndexRouteImport.update({
     id: '/',
@@ -333,6 +365,24 @@ const AuthedEquipmentUnitsIdRoute = AuthedEquipmentUnitsIdRouteImport.update({
   path: '/$id',
   getParentRoute: () => AuthedEquipmentUnitsRoute,
 } as any)
+const AuthedContractingFleetIdEditRoute =
+  AuthedContractingFleetIdEditRouteImport.update({
+    id: '/$id/edit',
+    path: '/$id/edit',
+    getParentRoute: () => AuthedContractingFleetRoute,
+  } as any)
+const AuthedContractingFleetCategoriesIndexRoute =
+  AuthedContractingFleetCategoriesIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AuthedContractingFleetCategoriesRoute,
+  } as any)
+const AuthedContractingFleetImplementsIndexRoute =
+  AuthedContractingFleetImplementsIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AuthedContractingFleetImplementsRoute,
+  } as any)
 const AuthedEquipmentCustomersIdEditRoute =
   AuthedEquipmentCustomersIdEditRouteImport.update({
     id: '/$id/edit',
@@ -399,6 +449,18 @@ const AuthedEquipmentSuppliersIdEditRoute =
     path: '/$id/edit',
     getParentRoute: () => AuthedEquipmentSuppliersRoute,
   } as any)
+const AuthedContractingFleetCategoriesIdEditRoute =
+  AuthedContractingFleetCategoriesIdEditRouteImport.update({
+    id: '/$id/edit',
+    path: '/$id/edit',
+    getParentRoute: () => AuthedContractingFleetCategoriesRoute,
+  } as any)
+const AuthedContractingFleetImplementsIdEditRoute =
+  AuthedContractingFleetImplementsIdEditRouteImport.update({
+    id: '/$id/edit',
+    path: '/$id/edit',
+    getParentRoute: () => AuthedContractingFleetImplementsRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -410,6 +472,7 @@ export interface FileRoutesByFullPath {
   '/verify-email': typeof VerifyEmailRoute
   '/contracting': typeof AuthedContractingRouteWithChildren
   '/equipment': typeof AuthedEquipmentRouteWithChildren
+  '/contracting/fleet': typeof AuthedContractingFleetRouteWithChildren
   '/equipment/audit': typeof AuthedEquipmentAuditRoute
   '/equipment/bays': typeof AuthedEquipmentBaysRoute
   '/equipment/catalog-translations': typeof AuthedEquipmentCatalogTranslationsRoute
@@ -427,6 +490,8 @@ export interface FileRoutesByFullPath {
   '/equipment/units': typeof AuthedEquipmentUnitsRouteWithChildren
   '/equipment/users': typeof AuthedEquipmentUsersRoute
   '/contracting/': typeof AuthedContractingIndexRoute
+  '/contracting/fleet/categories': typeof AuthedContractingFleetCategoriesRouteWithChildren
+  '/contracting/fleet/implements': typeof AuthedContractingFleetImplementsRouteWithChildren
   '/equipment/inventory/$partId': typeof AuthedEquipmentInventoryPartIdRoute
   '/equipment/inventory/buy-list': typeof AuthedEquipmentInventoryBuyListRoute
   '/equipment/inventory/close-out': typeof AuthedEquipmentInventoryCloseOutRouteWithChildren
@@ -439,6 +504,7 @@ export interface FileRoutesByFullPath {
   '/equipment/jobs/stock-build': typeof AuthedEquipmentJobsStockBuildRoute
   '/equipment/purchase-orders/$id': typeof AuthedEquipmentPurchaseOrdersIdRoute
   '/equipment/units/$id': typeof AuthedEquipmentUnitsIdRoute
+  '/contracting/fleet/': typeof AuthedContractingFleetIndexRoute
   '/equipment/customers/': typeof AuthedEquipmentCustomersIndexRoute
   '/equipment/inventory/': typeof AuthedEquipmentInventoryIndexRoute
   '/equipment/jobs/': typeof AuthedEquipmentJobsIndexRoute
@@ -448,6 +514,7 @@ export interface FileRoutesByFullPath {
   '/equipment/quotes/': typeof AuthedEquipmentQuotesIndexRoute
   '/equipment/suppliers/': typeof AuthedEquipmentSuppliersIndexRoute
   '/equipment/units/': typeof AuthedEquipmentUnitsIndexRoute
+  '/contracting/fleet/$id/edit': typeof AuthedContractingFleetIdEditRoute
   '/equipment/customers/$id/edit': typeof AuthedEquipmentCustomersIdEditRoute
   '/equipment/inventory/close-out/$jobId': typeof AuthedEquipmentInventoryCloseOutJobIdRoute
   '/equipment/inventory/job-variance/$jobId': typeof AuthedEquipmentInventoryJobVarianceJobIdRoute
@@ -457,8 +524,12 @@ export interface FileRoutesByFullPath {
   '/equipment/quotes/$id/edit': typeof AuthedEquipmentQuotesIdEditRoute
   '/equipment/quotes/$id/start-job': typeof AuthedEquipmentQuotesIdStartJobRoute
   '/equipment/suppliers/$id/edit': typeof AuthedEquipmentSuppliersIdEditRoute
+  '/contracting/fleet/categories/': typeof AuthedContractingFleetCategoriesIndexRoute
+  '/contracting/fleet/implements/': typeof AuthedContractingFleetImplementsIndexRoute
   '/equipment/inventory/close-out/': typeof AuthedEquipmentInventoryCloseOutIndexRoute
   '/equipment/inventory/stocktake/': typeof AuthedEquipmentInventoryStocktakeIndexRoute
+  '/contracting/fleet/categories/$id/edit': typeof AuthedContractingFleetCategoriesIdEditRoute
+  '/contracting/fleet/implements/$id/edit': typeof AuthedContractingFleetImplementsIdEditRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -487,6 +558,7 @@ export interface FileRoutesByTo {
   '/equipment/jobs/stock-build': typeof AuthedEquipmentJobsStockBuildRoute
   '/equipment/purchase-orders/$id': typeof AuthedEquipmentPurchaseOrdersIdRoute
   '/equipment/units/$id': typeof AuthedEquipmentUnitsIdRoute
+  '/contracting/fleet': typeof AuthedContractingFleetIndexRoute
   '/equipment/customers': typeof AuthedEquipmentCustomersIndexRoute
   '/equipment/inventory': typeof AuthedEquipmentInventoryIndexRoute
   '/equipment/jobs': typeof AuthedEquipmentJobsIndexRoute
@@ -496,6 +568,7 @@ export interface FileRoutesByTo {
   '/equipment/quotes': typeof AuthedEquipmentQuotesIndexRoute
   '/equipment/suppliers': typeof AuthedEquipmentSuppliersIndexRoute
   '/equipment/units': typeof AuthedEquipmentUnitsIndexRoute
+  '/contracting/fleet/$id/edit': typeof AuthedContractingFleetIdEditRoute
   '/equipment/customers/$id/edit': typeof AuthedEquipmentCustomersIdEditRoute
   '/equipment/inventory/close-out/$jobId': typeof AuthedEquipmentInventoryCloseOutJobIdRoute
   '/equipment/inventory/job-variance/$jobId': typeof AuthedEquipmentInventoryJobVarianceJobIdRoute
@@ -505,8 +578,12 @@ export interface FileRoutesByTo {
   '/equipment/quotes/$id/edit': typeof AuthedEquipmentQuotesIdEditRoute
   '/equipment/quotes/$id/start-job': typeof AuthedEquipmentQuotesIdStartJobRoute
   '/equipment/suppliers/$id/edit': typeof AuthedEquipmentSuppliersIdEditRoute
+  '/contracting/fleet/categories': typeof AuthedContractingFleetCategoriesIndexRoute
+  '/contracting/fleet/implements': typeof AuthedContractingFleetImplementsIndexRoute
   '/equipment/inventory/close-out': typeof AuthedEquipmentInventoryCloseOutIndexRoute
   '/equipment/inventory/stocktake': typeof AuthedEquipmentInventoryStocktakeIndexRoute
+  '/contracting/fleet/categories/$id/edit': typeof AuthedContractingFleetCategoriesIdEditRoute
+  '/contracting/fleet/implements/$id/edit': typeof AuthedContractingFleetImplementsIdEditRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -520,6 +597,7 @@ export interface FileRoutesById {
   '/verify-email': typeof VerifyEmailRoute
   '/_authed/contracting': typeof AuthedContractingRouteWithChildren
   '/_authed/equipment': typeof AuthedEquipmentRouteWithChildren
+  '/_authed/contracting/fleet': typeof AuthedContractingFleetRouteWithChildren
   '/_authed/equipment/audit': typeof AuthedEquipmentAuditRoute
   '/_authed/equipment/bays': typeof AuthedEquipmentBaysRoute
   '/_authed/equipment/catalog-translations': typeof AuthedEquipmentCatalogTranslationsRoute
@@ -537,6 +615,8 @@ export interface FileRoutesById {
   '/_authed/equipment/units': typeof AuthedEquipmentUnitsRouteWithChildren
   '/_authed/equipment/users': typeof AuthedEquipmentUsersRoute
   '/_authed/contracting/': typeof AuthedContractingIndexRoute
+  '/_authed/contracting/fleet/categories': typeof AuthedContractingFleetCategoriesRouteWithChildren
+  '/_authed/contracting/fleet/implements': typeof AuthedContractingFleetImplementsRouteWithChildren
   '/_authed/equipment/inventory/$partId': typeof AuthedEquipmentInventoryPartIdRoute
   '/_authed/equipment/inventory/buy-list': typeof AuthedEquipmentInventoryBuyListRoute
   '/_authed/equipment/inventory/close-out': typeof AuthedEquipmentInventoryCloseOutRouteWithChildren
@@ -549,6 +629,7 @@ export interface FileRoutesById {
   '/_authed/equipment/jobs/stock-build': typeof AuthedEquipmentJobsStockBuildRoute
   '/_authed/equipment/purchase-orders/$id': typeof AuthedEquipmentPurchaseOrdersIdRoute
   '/_authed/equipment/units/$id': typeof AuthedEquipmentUnitsIdRoute
+  '/_authed/contracting/fleet/': typeof AuthedContractingFleetIndexRoute
   '/_authed/equipment/customers/': typeof AuthedEquipmentCustomersIndexRoute
   '/_authed/equipment/inventory/': typeof AuthedEquipmentInventoryIndexRoute
   '/_authed/equipment/jobs/': typeof AuthedEquipmentJobsIndexRoute
@@ -558,6 +639,7 @@ export interface FileRoutesById {
   '/_authed/equipment/quotes/': typeof AuthedEquipmentQuotesIndexRoute
   '/_authed/equipment/suppliers/': typeof AuthedEquipmentSuppliersIndexRoute
   '/_authed/equipment/units/': typeof AuthedEquipmentUnitsIndexRoute
+  '/_authed/contracting/fleet/$id/edit': typeof AuthedContractingFleetIdEditRoute
   '/_authed/equipment/customers/$id/edit': typeof AuthedEquipmentCustomersIdEditRoute
   '/_authed/equipment/inventory/close-out/$jobId': typeof AuthedEquipmentInventoryCloseOutJobIdRoute
   '/_authed/equipment/inventory/job-variance/$jobId': typeof AuthedEquipmentInventoryJobVarianceJobIdRoute
@@ -567,8 +649,12 @@ export interface FileRoutesById {
   '/_authed/equipment/quotes/$id_/edit': typeof AuthedEquipmentQuotesIdEditRoute
   '/_authed/equipment/quotes/$id_/start-job': typeof AuthedEquipmentQuotesIdStartJobRoute
   '/_authed/equipment/suppliers/$id/edit': typeof AuthedEquipmentSuppliersIdEditRoute
+  '/_authed/contracting/fleet/categories/': typeof AuthedContractingFleetCategoriesIndexRoute
+  '/_authed/contracting/fleet/implements/': typeof AuthedContractingFleetImplementsIndexRoute
   '/_authed/equipment/inventory/close-out/': typeof AuthedEquipmentInventoryCloseOutIndexRoute
   '/_authed/equipment/inventory/stocktake/': typeof AuthedEquipmentInventoryStocktakeIndexRoute
+  '/_authed/contracting/fleet/categories/$id/edit': typeof AuthedContractingFleetCategoriesIdEditRoute
+  '/_authed/contracting/fleet/implements/$id/edit': typeof AuthedContractingFleetImplementsIdEditRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -582,6 +668,7 @@ export interface FileRouteTypes {
     | '/verify-email'
     | '/contracting'
     | '/equipment'
+    | '/contracting/fleet'
     | '/equipment/audit'
     | '/equipment/bays'
     | '/equipment/catalog-translations'
@@ -599,6 +686,8 @@ export interface FileRouteTypes {
     | '/equipment/units'
     | '/equipment/users'
     | '/contracting/'
+    | '/contracting/fleet/categories'
+    | '/contracting/fleet/implements'
     | '/equipment/inventory/$partId'
     | '/equipment/inventory/buy-list'
     | '/equipment/inventory/close-out'
@@ -611,6 +700,7 @@ export interface FileRouteTypes {
     | '/equipment/jobs/stock-build'
     | '/equipment/purchase-orders/$id'
     | '/equipment/units/$id'
+    | '/contracting/fleet/'
     | '/equipment/customers/'
     | '/equipment/inventory/'
     | '/equipment/jobs/'
@@ -620,6 +710,7 @@ export interface FileRouteTypes {
     | '/equipment/quotes/'
     | '/equipment/suppliers/'
     | '/equipment/units/'
+    | '/contracting/fleet/$id/edit'
     | '/equipment/customers/$id/edit'
     | '/equipment/inventory/close-out/$jobId'
     | '/equipment/inventory/job-variance/$jobId'
@@ -629,8 +720,12 @@ export interface FileRouteTypes {
     | '/equipment/quotes/$id/edit'
     | '/equipment/quotes/$id/start-job'
     | '/equipment/suppliers/$id/edit'
+    | '/contracting/fleet/categories/'
+    | '/contracting/fleet/implements/'
     | '/equipment/inventory/close-out/'
     | '/equipment/inventory/stocktake/'
+    | '/contracting/fleet/categories/$id/edit'
+    | '/contracting/fleet/implements/$id/edit'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -659,6 +754,7 @@ export interface FileRouteTypes {
     | '/equipment/jobs/stock-build'
     | '/equipment/purchase-orders/$id'
     | '/equipment/units/$id'
+    | '/contracting/fleet'
     | '/equipment/customers'
     | '/equipment/inventory'
     | '/equipment/jobs'
@@ -668,6 +764,7 @@ export interface FileRouteTypes {
     | '/equipment/quotes'
     | '/equipment/suppliers'
     | '/equipment/units'
+    | '/contracting/fleet/$id/edit'
     | '/equipment/customers/$id/edit'
     | '/equipment/inventory/close-out/$jobId'
     | '/equipment/inventory/job-variance/$jobId'
@@ -677,8 +774,12 @@ export interface FileRouteTypes {
     | '/equipment/quotes/$id/edit'
     | '/equipment/quotes/$id/start-job'
     | '/equipment/suppliers/$id/edit'
+    | '/contracting/fleet/categories'
+    | '/contracting/fleet/implements'
     | '/equipment/inventory/close-out'
     | '/equipment/inventory/stocktake'
+    | '/contracting/fleet/categories/$id/edit'
+    | '/contracting/fleet/implements/$id/edit'
   id:
     | '__root__'
     | '/'
@@ -691,6 +792,7 @@ export interface FileRouteTypes {
     | '/verify-email'
     | '/_authed/contracting'
     | '/_authed/equipment'
+    | '/_authed/contracting/fleet'
     | '/_authed/equipment/audit'
     | '/_authed/equipment/bays'
     | '/_authed/equipment/catalog-translations'
@@ -708,6 +810,8 @@ export interface FileRouteTypes {
     | '/_authed/equipment/units'
     | '/_authed/equipment/users'
     | '/_authed/contracting/'
+    | '/_authed/contracting/fleet/categories'
+    | '/_authed/contracting/fleet/implements'
     | '/_authed/equipment/inventory/$partId'
     | '/_authed/equipment/inventory/buy-list'
     | '/_authed/equipment/inventory/close-out'
@@ -720,6 +824,7 @@ export interface FileRouteTypes {
     | '/_authed/equipment/jobs/stock-build'
     | '/_authed/equipment/purchase-orders/$id'
     | '/_authed/equipment/units/$id'
+    | '/_authed/contracting/fleet/'
     | '/_authed/equipment/customers/'
     | '/_authed/equipment/inventory/'
     | '/_authed/equipment/jobs/'
@@ -729,6 +834,7 @@ export interface FileRouteTypes {
     | '/_authed/equipment/quotes/'
     | '/_authed/equipment/suppliers/'
     | '/_authed/equipment/units/'
+    | '/_authed/contracting/fleet/$id/edit'
     | '/_authed/equipment/customers/$id/edit'
     | '/_authed/equipment/inventory/close-out/$jobId'
     | '/_authed/equipment/inventory/job-variance/$jobId'
@@ -738,8 +844,12 @@ export interface FileRouteTypes {
     | '/_authed/equipment/quotes/$id_/edit'
     | '/_authed/equipment/quotes/$id_/start-job'
     | '/_authed/equipment/suppliers/$id/edit'
+    | '/_authed/contracting/fleet/categories/'
+    | '/_authed/contracting/fleet/implements/'
     | '/_authed/equipment/inventory/close-out/'
     | '/_authed/equipment/inventory/stocktake/'
+    | '/_authed/contracting/fleet/categories/$id/edit'
+    | '/_authed/contracting/fleet/implements/$id/edit'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -830,6 +940,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/contracting/'
       preLoaderRoute: typeof AuthedContractingIndexRouteImport
+      parentRoute: typeof AuthedContractingRoute
+    }
+    '/_authed/contracting/fleet': {
+      id: '/_authed/contracting/fleet'
+      path: '/fleet'
+      fullPath: '/contracting/fleet'
+      preLoaderRoute: typeof AuthedContractingFleetRouteImport
       parentRoute: typeof AuthedContractingRoute
     }
     '/_authed/equipment/audit': {
@@ -943,6 +1060,27 @@ declare module '@tanstack/react-router' {
       fullPath: '/equipment/users'
       preLoaderRoute: typeof AuthedEquipmentUsersRouteImport
       parentRoute: typeof AuthedEquipmentRoute
+    }
+    '/_authed/contracting/fleet/': {
+      id: '/_authed/contracting/fleet/'
+      path: '/'
+      fullPath: '/contracting/fleet/'
+      preLoaderRoute: typeof AuthedContractingFleetIndexRouteImport
+      parentRoute: typeof AuthedContractingFleetRoute
+    }
+    '/_authed/contracting/fleet/categories': {
+      id: '/_authed/contracting/fleet/categories'
+      path: '/categories'
+      fullPath: '/contracting/fleet/categories'
+      preLoaderRoute: typeof AuthedContractingFleetCategoriesRouteImport
+      parentRoute: typeof AuthedContractingFleetRoute
+    }
+    '/_authed/contracting/fleet/implements': {
+      id: '/_authed/contracting/fleet/implements'
+      path: '/implements'
+      fullPath: '/contracting/fleet/implements'
+      preLoaderRoute: typeof AuthedContractingFleetImplementsRouteImport
+      parentRoute: typeof AuthedContractingFleetRoute
     }
     '/_authed/equipment/customers/': {
       id: '/_authed/equipment/customers/'
@@ -1091,6 +1229,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthedEquipmentUnitsIdRouteImport
       parentRoute: typeof AuthedEquipmentUnitsRoute
     }
+    '/_authed/contracting/fleet/$id/edit': {
+      id: '/_authed/contracting/fleet/$id/edit'
+      path: '/$id/edit'
+      fullPath: '/contracting/fleet/$id/edit'
+      preLoaderRoute: typeof AuthedContractingFleetIdEditRouteImport
+      parentRoute: typeof AuthedContractingFleetRoute
+    }
+    '/_authed/contracting/fleet/categories/': {
+      id: '/_authed/contracting/fleet/categories/'
+      path: '/'
+      fullPath: '/contracting/fleet/categories/'
+      preLoaderRoute: typeof AuthedContractingFleetCategoriesIndexRouteImport
+      parentRoute: typeof AuthedContractingFleetCategoriesRoute
+    }
+    '/_authed/contracting/fleet/implements/': {
+      id: '/_authed/contracting/fleet/implements/'
+      path: '/'
+      fullPath: '/contracting/fleet/implements/'
+      preLoaderRoute: typeof AuthedContractingFleetImplementsIndexRouteImport
+      parentRoute: typeof AuthedContractingFleetImplementsRoute
+    }
     '/_authed/equipment/customers/$id/edit': {
       id: '/_authed/equipment/customers/$id/edit'
       path: '/$id/edit'
@@ -1168,14 +1327,88 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthedEquipmentSuppliersIdEditRouteImport
       parentRoute: typeof AuthedEquipmentSuppliersRoute
     }
+    '/_authed/contracting/fleet/categories/$id/edit': {
+      id: '/_authed/contracting/fleet/categories/$id/edit'
+      path: '/$id/edit'
+      fullPath: '/contracting/fleet/categories/$id/edit'
+      preLoaderRoute: typeof AuthedContractingFleetCategoriesIdEditRouteImport
+      parentRoute: typeof AuthedContractingFleetCategoriesRoute
+    }
+    '/_authed/contracting/fleet/implements/$id/edit': {
+      id: '/_authed/contracting/fleet/implements/$id/edit'
+      path: '/$id/edit'
+      fullPath: '/contracting/fleet/implements/$id/edit'
+      preLoaderRoute: typeof AuthedContractingFleetImplementsIdEditRouteImport
+      parentRoute: typeof AuthedContractingFleetImplementsRoute
+    }
   }
 }
 
+interface AuthedContractingFleetCategoriesRouteChildren {
+  AuthedContractingFleetCategoriesIndexRoute: typeof AuthedContractingFleetCategoriesIndexRoute
+  AuthedContractingFleetCategoriesIdEditRoute: typeof AuthedContractingFleetCategoriesIdEditRoute
+}
+
+const AuthedContractingFleetCategoriesRouteChildren: AuthedContractingFleetCategoriesRouteChildren =
+  {
+    AuthedContractingFleetCategoriesIndexRoute:
+      AuthedContractingFleetCategoriesIndexRoute,
+    AuthedContractingFleetCategoriesIdEditRoute:
+      AuthedContractingFleetCategoriesIdEditRoute,
+  }
+
+const AuthedContractingFleetCategoriesRouteWithChildren =
+  AuthedContractingFleetCategoriesRoute._addFileChildren(
+    AuthedContractingFleetCategoriesRouteChildren,
+  )
+
+interface AuthedContractingFleetImplementsRouteChildren {
+  AuthedContractingFleetImplementsIndexRoute: typeof AuthedContractingFleetImplementsIndexRoute
+  AuthedContractingFleetImplementsIdEditRoute: typeof AuthedContractingFleetImplementsIdEditRoute
+}
+
+const AuthedContractingFleetImplementsRouteChildren: AuthedContractingFleetImplementsRouteChildren =
+  {
+    AuthedContractingFleetImplementsIndexRoute:
+      AuthedContractingFleetImplementsIndexRoute,
+    AuthedContractingFleetImplementsIdEditRoute:
+      AuthedContractingFleetImplementsIdEditRoute,
+  }
+
+const AuthedContractingFleetImplementsRouteWithChildren =
+  AuthedContractingFleetImplementsRoute._addFileChildren(
+    AuthedContractingFleetImplementsRouteChildren,
+  )
+
+interface AuthedContractingFleetRouteChildren {
+  AuthedContractingFleetCategoriesRoute: typeof AuthedContractingFleetCategoriesRouteWithChildren
+  AuthedContractingFleetImplementsRoute: typeof AuthedContractingFleetImplementsRouteWithChildren
+  AuthedContractingFleetIndexRoute: typeof AuthedContractingFleetIndexRoute
+  AuthedContractingFleetIdEditRoute: typeof AuthedContractingFleetIdEditRoute
+}
+
+const AuthedContractingFleetRouteChildren: AuthedContractingFleetRouteChildren =
+  {
+    AuthedContractingFleetCategoriesRoute:
+      AuthedContractingFleetCategoriesRouteWithChildren,
+    AuthedContractingFleetImplementsRoute:
+      AuthedContractingFleetImplementsRouteWithChildren,
+    AuthedContractingFleetIndexRoute: AuthedContractingFleetIndexRoute,
+    AuthedContractingFleetIdEditRoute: AuthedContractingFleetIdEditRoute,
+  }
+
+const AuthedContractingFleetRouteWithChildren =
+  AuthedContractingFleetRoute._addFileChildren(
+    AuthedContractingFleetRouteChildren,
+  )
+
 interface AuthedContractingRouteChildren {
+  AuthedContractingFleetRoute: typeof AuthedContractingFleetRouteWithChildren
   AuthedContractingIndexRoute: typeof AuthedContractingIndexRoute
 }
 
 const AuthedContractingRouteChildren: AuthedContractingRouteChildren = {
+  AuthedContractingFleetRoute: AuthedContractingFleetRouteWithChildren,
   AuthedContractingIndexRoute: AuthedContractingIndexRoute,
 }
 

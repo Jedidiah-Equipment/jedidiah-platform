@@ -932,6 +932,13 @@
       "when": 1788504177018,
       "tag": "0132_quick_veda",
       "breakpoints": true
+    },
+    {
+      "idx": 133,
+      "version": "7",
+      "when": 1788766190277,
+      "tag": "0133_stiff_skin",
+      "breakpoints": true
     }
   ]
 }

@@ -15,6 +15,14 @@ export type DocsSection = {
  */
 export const DOCS_SECTIONS: DocsSection[] = [
   {
+    text: 'Contracting tasks',
+    items: [
+      { text: 'Maintain Machines', link: '/contracting/maintain-machines' },
+      { text: 'Maintain Categories', link: '/contracting/maintain-categories' },
+      { text: 'Maintain Implements', link: '/contracting/maintain-implements' },
+    ],
+  },
+  {
     text: 'Sales tasks',
     items: [
       { text: 'Cancel a Quote', link: '/sales/cancel-a-quote' },

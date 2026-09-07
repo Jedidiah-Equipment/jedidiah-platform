@@ -1,6 +1,7 @@
 export * from './ai/chat.js';
 export * from './ai/chat-input-limits.js';
 export * from './ai/entity-links.js';
+export { EquipmentAuditEntityType } from './audit.js';
 export * from './cancellation/cancellation-plan.js';
 export * from './common/departments.js';
 export * from './customers/customer.js';

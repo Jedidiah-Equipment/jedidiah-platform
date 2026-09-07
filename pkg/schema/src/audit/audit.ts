@@ -10,6 +10,9 @@ export const AuditAction = z.enum(['created', 'updated', 'deleted', 'merged']);
 
 export type AuditEntityType = z.infer<typeof AuditEntityType>;
 export const AuditEntityType = z.enum([
+  'contracting_category',
+  'contracting_machine',
+  'contracting_implement',
   'customer',
   'document',
   'job',

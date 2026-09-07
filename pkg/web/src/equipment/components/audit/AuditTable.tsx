@@ -1,4 +1,5 @@
-import { AuditChanges, AuditEntityType, type AuditEvent, type AuditListInput, AuditSortBy } from '@pkg/schema';
+import { AuditChanges, type AuditEvent, type AuditListInput, AuditSortBy } from '@pkg/schema';
+import { EquipmentAuditEntityType } from '@pkg/schema/equipment';
 import { IconEye } from '@tabler/icons-react';
 import { keepPreviousData, useInfiniteQuery } from '@tanstack/react-query';
 import type React from 'react';
@@ -44,7 +45,7 @@ const auditEntityTypeLabels = {
   quote: 'Quote',
   supplier: 'Supplier',
   user: 'User',
-} as const satisfies Record<(typeof AuditEntityType.options)[number], string>;
+} as const satisfies Record<(typeof EquipmentAuditEntityType.options)[number], string>;
 
 const auditActionLabels = {
   created: 'Created',
@@ -63,7 +64,7 @@ const auditActionColorClassNames = {
 const auditChangesRawJsonClassName =
   'max-h-52 max-w-full overflow-auto rounded-md border bg-muted/30 p-2 font-mono text-xs whitespace-pre-wrap wrap-anywhere text-muted-foreground';
 
-const auditEntityTypeOptions = AuditEntityType.options.map((entityType) => ({
+const auditEntityTypeOptions = EquipmentAuditEntityType.options.map((entityType) => ({
   label: auditEntityTypeLabels[entityType],
   value: entityType,
 }));
@@ -179,7 +180,7 @@ export const AuditTable: React.FC<AuditTableProps> = ({
             {
               accessorKey: 'entityType',
               cell: ({ row }) => (
-                <span className="text-muted-foreground">{auditEntityTypeLabels[row.original.entityType]}</span>
+                <span className="text-muted-foreground">{equipmentAuditLabel(row.original.entityType)}</span>
               ),
               enableColumnFilter: true,
               enableSorting: false,
@@ -378,3 +379,8 @@ export const AuditChangesContent: React.FC<AuditChangesContentProps> = ({ change
     </ScrollArea>
   );
 };
+
+function equipmentAuditLabel(value: AuditEvent['entityType']) {
+  const parsed = EquipmentAuditEntityType.safeParse(value);
+  return parsed.success ? auditEntityTypeLabels[parsed.data] : value;
+}

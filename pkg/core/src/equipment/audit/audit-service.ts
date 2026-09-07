@@ -1,6 +1,7 @@
 import { auditEvents, type Db, getSortOrder, user, withPagination } from '@pkg/db';
 import type { AuditAction, AuditChanges, AuditEntityType, AuditListInput, AuditListResult } from '@pkg/schema';
 import { AuditEvent, getNextCursor } from '@pkg/schema';
+import { EquipmentAuditEntityType } from '@pkg/schema/equipment';
 import { and, asc, eq, gte, inArray, lte, type SQL } from 'drizzle-orm';
 
 type AuditEventRow = typeof auditEvents.$inferSelect & {
@@ -45,7 +46,7 @@ export async function listAuditEvents({ db, input }: { db: Db; input: AuditListI
 }
 
 function buildAuditListWhere(input: AuditListInput): SQL | undefined {
-  const conditions: SQL[] = [];
+  const conditions: SQL[] = [inArray(auditEvents.entityType, EquipmentAuditEntityType.options)];
 
   if (input.filters.actorUserIds.length > 0) {
     conditions.push(inArray(auditEvents.actorUserId, input.filters.actorUserIds));

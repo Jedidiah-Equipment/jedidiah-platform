@@ -40,7 +40,7 @@ export function CategoriesPage() {
               enableGlobalFilter: false,
               header: 'Preset rate (R/hour)',
               cell: ({ row }: { row: { original: Category } }) =>
-                row.original.presetRate === undefined ? '—' : formatCurrency(row.original.presetRate),
+                row.original.presetRate === undefined ? '—' : formatCurrency(row.original.presetRate, 'ZAR'),
             },
           ]
         : []),

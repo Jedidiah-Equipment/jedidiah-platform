@@ -2,6 +2,7 @@ import { type Category, FleetName, PresetRate } from '@pkg/schema/contracting';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import { z } from 'zod';
+import { EntityActionsFooter } from '@/components/common/EntityActionsFooter.js';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { RemoveEntityButton } from '@/components/common/RemoveEntityButton.js';
 import { AutosaveStatus, useAutosaveForm } from '@/components/form/index.js';
@@ -62,7 +63,9 @@ function CategoryForm({ category }: { category: Category }) {
               <form.AppField name="name">{(field) => <field.TextField label="Name" />}</form.AppField>
               {canReadRate ? (
                 <form.AppField name="presetRate">
-                  {(field) => <field.NumberField label="Preset rate (R/hour)" decimals={2} disabled={!canEditRate} />}
+                  {(field) => (
+                    <field.CurrencyField label="Preset rate (R/hour)" currencyCode="ZAR" disabled={!canEditRate} />
+                  )}
                 </form.AppField>
               ) : null}
             </fieldset>
@@ -70,7 +73,7 @@ function CategoryForm({ category }: { category: Category }) {
         </Card>
       </form>
       {canEdit ? (
-        <div className="mt-6 flex justify-end">
+        <EntityActionsFooter>
           <RemoveEntityButton
             title="Delete category"
             triggerLabel="Delete category"
@@ -78,7 +81,7 @@ function CategoryForm({ category }: { category: Category }) {
             isPending={remove.isPending}
             onConfirm={() => remove.mutate({ id: category.id })}
           />
-        </div>
+        </EntityActionsFooter>
       ) : null}
     </>
   );

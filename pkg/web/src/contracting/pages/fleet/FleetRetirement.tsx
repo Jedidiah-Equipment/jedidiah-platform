@@ -1,6 +1,8 @@
 import { FleetRetireInput } from '@pkg/schema/contracting';
+import { IconArchive } from '@tabler/icons-react';
 import { useState } from 'react';
 import { z } from 'zod';
+import { EntityActionsFooter } from '@/components/common/EntityActionsFooter.js';
 import { RemoveEntityButton } from '@/components/common/RemoveEntityButton.js';
 import { CreateEntityDialog } from '@/components/form/index.js';
 import { Button } from '@/components/ui/button.js';
@@ -20,8 +22,9 @@ export function FleetRetirement({
   const [removing, setRemoving] = useState(false);
   const showError = useApiMutationErrorToast();
   return (
-    <div className="mt-6 flex justify-end gap-3 border-t pt-4">
+    <EntityActionsFooter>
       <Button variant="outline" onClick={() => setOpen(true)}>
+        <IconArchive data-icon="inline-start" />
         Retire {noun}
       </Button>
       <RemoveEntityButton
@@ -59,6 +62,6 @@ export function FleetRetirement({
           <form.AppField name="reason">{(field) => <field.TextareaField label="Retirement reason" />}</form.AppField>
         )}
       </CreateEntityDialog>
-    </div>
+    </EntityActionsFooter>
   );
 }

@@ -1,6 +1,6 @@
 # Maintain Machines
 
-1. Switch to **Jedidiah Contracting** if you have access to both businesses, then open **Machines**.
+1. Switch to **Jedidiah Contracting** if you have access to both businesses, then open **Fleet → Machines**.
 2. Search by Code or filter the **Category** column. **Active fleet** shows the Machine Yard; choose **Retired** to find a retired Machine.
 3. Choose **New machine**. Enter its **Code**, choose or type its **Make** and **Model**, and select a **Category**. If no Category exists yet, add one in [Categories](./maintain-categories).
 4. Choose **Save**. Codes display uppercase; a Code already used by another Machine is rejected regardless of letter case.

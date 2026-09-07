@@ -55,7 +55,7 @@ function ImplementForm({ implement }: { implement: Implement }) {
         <AutosaveStatus state={autosave.state} onRetry={() => void autosave.retry()} />
         <Card>
           <CardContent>
-            <fieldset disabled={!canEdit} className="grid gap-4">
+            <fieldset disabled={!canEdit} className="grid gap-4 sm:grid-cols-2">
               <form.AppField name="code">{(field) => <field.TextField label="Code" />}</form.AppField>
               <form.AppField name="implementType">
                 {(field) => (
@@ -66,7 +66,9 @@ function ImplementForm({ implement }: { implement: Implement }) {
                   />
                 )}
               </form.AppField>
-              <form.AppField name="notes">{(field) => <field.TextareaField label="Notes" />}</form.AppField>
+              <div className="sm:col-span-2">
+                <form.AppField name="notes">{(field) => <field.TextareaField label="Notes" />}</form.AppField>
+              </div>
             </fieldset>
           </CardContent>
         </Card>

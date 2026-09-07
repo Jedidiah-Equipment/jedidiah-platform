@@ -1,26 +1,11 @@
-import { Link } from '@tanstack/react-router';
-import type React from 'react';
-import { Button } from '@/components/ui/button.js';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card.js';
-import { useCan } from '@/hooks/use-access.js';
+import { PageLayout } from '@/components/page-layout/PageLayout.js';
 
-export const ContractingHomePage: React.FC = () => {
-  const canReadFleet = useCan('contracting_machine:read').can;
+export function ContractingHomePage() {
   return (
-    <main className="p-4 md:p-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>Jedidiah Contracting</CardTitle>
-          <CardDescription>Your Contracting access is active.</CardDescription>
-        </CardHeader>
-        <CardContent className="text-muted-foreground text-sm">
-          {canReadFleet ? (
-            <Button render={<Link to="/contracting/fleet" />}>Open fleet</Button>
-          ) : (
-            'Your assigned Contracting workflows will appear here as they are released.'
-          )}
-        </CardContent>
-      </Card>
-    </main>
+    <PageLayout title="Dashboard">
+      <div className="flex min-h-[calc(100svh-12rem)] items-center justify-center">
+        <p className="text-muted-foreground text-lg">Coming soon</p>
+      </div>
+    </PageLayout>
   );
-};
+}

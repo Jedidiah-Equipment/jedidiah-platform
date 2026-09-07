@@ -1,6 +1,6 @@
 # Maintain Implements
 
-1. Open **Implements** in Jedidiah Contracting.
+1. Open **Fleet → Implements** in Jedidiah Contracting.
 2. Choose **New implement**, enter its **Code**, and choose or type an **Implement type**.
 3. Choose **Save**. Codes display uppercase; a Code already used by another Implement is rejected regardless of letter case.
 4. Open an Implement to change its Code, Implement type, or Notes. Changes save automatically; resolve any validation or save error before leaving.

@@ -45,3 +45,48 @@ test('reserves baselines for admins and exceptions for managers, behind the busi
     });
   }
 });
+
+test('foremen can find active Machines and read field history without fleet management or AI results', async ({
+  context,
+}) => {
+  const adminSession = mockSession(null);
+  adminSession.user.contractingRole = 'contracting-admin';
+  const admin = context.createCaller(adminSession);
+  const category = await admin.contractingFleet.categories.create({ name: 'Tractors', presetRate: 900 });
+  const machine = await admin.contractingFleet.machines.create({
+    code: 'FIELD-1',
+    make: 'Deere',
+    model: '6140',
+    categoryId: category.id,
+  });
+  await admin.contractingReadings.captureBaseline({
+    machineId: machine.id,
+    value: 100,
+    capturedAt: '2026-09-08T08:00:00Z',
+  });
+  const foremanSession = mockSession(null);
+  foremanSession.user.contractingRole = 'foreman';
+  const foreman = context.createCaller(foremanSession);
+  expect(await foreman.contractingReadings.fieldMachines()).toEqual([
+    {
+      id: machine.id,
+      code: 'FIELD-1',
+      make: 'Deere',
+      model: '6140',
+      categoryId: category.id,
+      categoryName: 'Tractors',
+      availability: 'in-yard',
+    },
+  ]);
+  const history = await foreman.contractingReadings.fieldHistory({ machineId: machine.id });
+  expect(history[0]).toMatchObject({ value: 100, photoBacked: false });
+  expect(history[0]).not.toHaveProperty('aiConfidence');
+  expect(history[0]).not.toHaveProperty('aiVerification');
+  await expect(foreman.contractingFleet.machines.list({})).rejects.toMatchObject({ code: 'FORBIDDEN' });
+  await expect(context.createCaller(mockSession('admin')).contractingReadings.fieldMachines()).rejects.toMatchObject({
+    code: 'FORBIDDEN',
+  });
+  await expect(
+    context.createCaller(mockSession('admin')).contractingReadings.fieldHistory({ machineId: machine.id }),
+  ).rejects.toMatchObject({ code: 'FORBIDDEN' });
+});

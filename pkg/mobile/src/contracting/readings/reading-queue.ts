@@ -6,6 +6,7 @@ export type QueuedReading = {
   capturedAt: string;
   photoLocalUri: string | null;
   disputePrevious: boolean;
+  expectedPreviousId?: string | null;
   attention?: { code: string; message: string };
 };
 export class ReadingSyncError extends Error {
@@ -64,9 +65,11 @@ export function createReadingQueue({ storage, key, removePhoto }: QueuePorts) {
       });
     },
     discard: remove,
-    resubmit(localId: string) {
+    resubmit(localId: string, expectedPreviousId: string | null) {
       return mutate((rows) =>
-        rows.map((row) => (row.localId === localId ? { ...row, disputePrevious: true, attention: undefined } : row)),
+        rows.map((row) =>
+          row.localId === localId ? { ...row, disputePrevious: true, expectedPreviousId, attention: undefined } : row,
+        ),
       );
     },
     sync(upload: (item: QueuedReading) => Promise<void>, canSync = () => true) {

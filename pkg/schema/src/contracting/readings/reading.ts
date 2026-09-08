@@ -7,6 +7,7 @@ export const ReadingReason = z.string().trim().min(1, 'A reason is required').ma
 export const ReadingCaptureInput = z
   .object({
     localId: UUID.optional(),
+    expectedPreviousId: UUID.nullable().optional(),
     machineId: UUID,
     role: z.enum(['baseline', 'spot']),
     value: ReadingValue,
@@ -49,3 +50,12 @@ export const HourReading = z.object({
 export type HourReading = z.infer<typeof HourReading>;
 export const ReadingException = HourReading.extend({ machineCode: z.string() });
 export type ReadingException = z.infer<typeof ReadingException>;
+
+export const FieldReading = HourReading.pick({
+  id: true,
+  machineId: true,
+  role: true,
+  value: true,
+  capturedAt: true,
+  disputed: true,
+}).extend({ photoBacked: z.boolean() });

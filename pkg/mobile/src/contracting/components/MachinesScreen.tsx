@@ -71,13 +71,15 @@ export default function MachinesScreen() {
         }}
         ListEmptyComponent={
           <Text className="text-muted-foreground">
-            {fleet.data
-              ? 'No Machines match your search.'
-              : offline
-                ? 'Connect once to save the fleet on this phone.'
-                : fleet.isError
-                  ? 'Unable to load Machines. Pull to retry.'
-                  : 'Loading Machines…'}
+            {!fleet.canRead
+              ? 'Your role cannot view field Machines.'
+              : fleet.data
+                ? 'No Machines match your search.'
+                : offline
+                  ? 'Connect once to save the fleet on this phone.'
+                  : fleet.isError
+                    ? 'Unable to load Machines. Pull to retry.'
+                    : 'Loading Machines…'}
           </Text>
         }
         renderItem={({ item }) => (

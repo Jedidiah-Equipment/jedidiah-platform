@@ -317,3 +317,25 @@ test('retries a delivered mobile capture without creating another reading or dis
   expect(retry.id).toBe(first.id);
   expect((await listReadingsByMachine({ db, machineId })).map((row) => row.value)).toEqual([110, 100]);
 });
+
+test('a dispute captured against an older reading waits for attention when another reading lands first', async ({
+  context,
+}) => {
+  const { db, actorUserId, machineId } = context;
+  const input = {
+    machineId,
+    role: 'spot' as const,
+    value: 200,
+    capturedAt: '2026-09-08T08:00:00Z',
+    disputePrevious: false,
+  };
+  const previous = await captureReading({ db, actorUserId, input });
+  const newer = await captureReading({ db, actorUserId, input: { ...input, value: 210 } });
+  const dispute = { ...input, value: 190, disputePrevious: true, expectedPreviousId: previous.id };
+  await expect(captureReading({ db, actorUserId, input: dispute })).rejects.toMatchObject({
+    code: 'reading.previous_changed',
+  });
+  expect((await listReadingsByMachine({ db, machineId })).map((row) => row.disputed)).toEqual([false, false]);
+  const accepted = await captureReading({ db, actorUserId, input: { ...dispute, expectedPreviousId: newer.id } });
+  expect(accepted).toMatchObject({ disputed: true, disputedPreviousId: newer.id });
+});

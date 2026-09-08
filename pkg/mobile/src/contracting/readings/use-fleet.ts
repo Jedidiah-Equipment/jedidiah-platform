@@ -1,8 +1,9 @@
+import { getRoleSlotsPermissions } from '@pkg/domain';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { apiBaseUrl } from '@/lib/api-base-url';
-import { useAuthSession } from '@/lib/auth-session';
+import { getSessionRoleSlots, useAuthSession } from '@/lib/auth-session';
 import { useTRPC } from '@/lib/trpc';
 
 /** Keep only the data these field screens need, scoped to API and operator. */
@@ -26,17 +27,26 @@ function useSavedData<T>(name: string, live: T | undefined) {
   }, [key, live]);
   return live ?? (saved?.key === key ? saved.data : undefined);
 }
+function useCanReadField() {
+  const slots = getSessionRoleSlots(useAuthSession());
+  const permissions = slots ? getRoleSlotsPermissions(slots) : [];
+  return permissions.includes('contracting_machine:read') || permissions.includes('contracting_reading:capture');
+}
 export function useFleet(enabled = true) {
+  const canRead = useCanReadField();
   const trpc = useTRPC();
   const query = useQuery(
-    trpc.contractingFleet.machines.list.queryOptions({ status: 'active', search: '' }, { enabled }),
+    trpc.contractingReadings.fieldMachines.queryOptions(undefined, { enabled: enabled && canRead }),
   );
   const data = useSavedData('machines', query.data);
-  return { ...query, data };
+  return { ...query, data: canRead ? data : undefined, canRead };
 }
 export function useMachineReadings(machineId: string, enabled = true) {
+  const canRead = useCanReadField();
   const trpc = useTRPC();
-  const query = useQuery(trpc.contractingReadings.listByMachine.queryOptions({ machineId }, { enabled }));
+  const query = useQuery(
+    trpc.contractingReadings.fieldHistory.queryOptions({ machineId }, { enabled: enabled && canRead }),
+  );
   const data = useSavedData(`readings:${machineId}`, query.data);
-  return { ...query, data };
+  return { ...query, data: canRead ? data : undefined, canRead };
 }

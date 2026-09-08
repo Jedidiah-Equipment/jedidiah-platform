@@ -2,6 +2,7 @@ import { createEscapedContainsSearchCondition, type DatabaseTransaction, type Db
 import { contractingMachines } from '@pkg/db/contracting';
 import type { AuthId, ContractingRole } from '@pkg/schema';
 import {
+  FieldMachine,
   FleetCode,
   FleetRetireInput,
   Machine,
@@ -200,4 +201,10 @@ export async function assertDriverAccountChangeAllowed({
       'fleet.driver_assigned',
       'Unassign this driver from Contracting Machines before changing their role or making them a Device Account.',
     );
+}
+
+export async function listFieldMachines({ db }: { db: Db }) {
+  return (await listMachines({ db, input: { status: 'active', search: '' } })).map((machine) =>
+    FieldMachine.parse(machine),
+  );
 }

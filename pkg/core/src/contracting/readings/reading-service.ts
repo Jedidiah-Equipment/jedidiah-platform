@@ -4,7 +4,7 @@ import { contractingHourReadings, contractingMachines } from '@pkg/db/contractin
 import { validateFile } from '@pkg/domain';
 import { meterDisagreementHint } from '@pkg/domain/contracting';
 import type { AuthId } from '@pkg/schema';
-import { ReadingAmendInput, ReadingCaptureInput } from '@pkg/schema/contracting';
+import { FieldReading, ReadingAmendInput, ReadingCaptureInput } from '@pkg/schema/contracting';
 import { and, asc, desc, eq, getTableColumns, inArray, isNull, or } from 'drizzle-orm';
 import { defineAuditDescriptor, recordAuditCreate } from '../../audit/audit-writer.js';
 import { mutateEntity } from '../../audit/mutate-entity.js';
@@ -123,6 +123,15 @@ export async function captureReading({
         .where(eq(contractingHourReadings.machineId, input.machineId))
         .orderBy(desc(contractingHourReadings.sequence))
         .limit(1);
+      if (
+        input.disputePrevious &&
+        input.expectedPreviousId !== undefined &&
+        input.expectedPreviousId !== (latest?.id ?? null)
+      )
+        throw new ReadingError(
+          'reading.previous_changed',
+          'Another reading landed first. Review the latest reading before resubmitting a dispute.',
+        );
       if (latest && input.value < latest.value && !input.disputePrevious)
         throw new ReadingError(
           'reading.below_latest',
@@ -332,4 +341,10 @@ export async function reverifyReading({
       aiVerification: readingVerification(before.value, evidence.aiValue, evidence.aiConfidence),
     });
   });
+}
+
+export async function listFieldReadings({ db, machineId }: { db: Db; machineId: string }) {
+  return (await listReadingsByMachine({ db, machineId })).map((row) =>
+    FieldReading.parse({ ...row, photoBacked: !!row.photo }),
+  );
 }

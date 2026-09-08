@@ -101,3 +101,14 @@ export const ImplementPatchInput = z
 export type ImplementPatchInput = z.infer<typeof ImplementPatchInput>;
 export const Implement = ImplementCreateInput.extend({ id: UUID, ...retirement });
 export type Implement = z.infer<typeof Implement>;
+
+/** The field picker exposes only the identity a reading capture needs. */
+export const FieldMachine = Machine.pick({
+  id: true,
+  code: true,
+  make: true,
+  model: true,
+  categoryId: true,
+  categoryName: true,
+  availability: true,
+}).strip();

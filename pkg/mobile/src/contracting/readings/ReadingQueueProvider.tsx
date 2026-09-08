@@ -6,6 +6,7 @@ import { apiBaseUrl } from '@/lib/api-base-url';
 import { sessionCookieHeader } from '@/lib/auth';
 import { useAuthSession } from '@/lib/auth-session';
 import { withSessionCookie } from '@/lib/authed-fetch';
+import { useTRPC } from '@/lib/trpc';
 import { removeReadingPhoto } from './reading-files';
 import { createReadingQueue, type QueuedReading, type ReadingQueue } from './reading-queue';
 import { uploadReading } from './reading-upload';
@@ -21,6 +22,7 @@ const Context = createContext<{
 export function ReadingQueueProvider({ children }: { children: ReactNode }) {
   const session = useAuthSession();
   const queryClient = useQueryClient();
+  const trpc = useTRPC();
   const key = `contracting:readings:v1:${apiBaseUrl}:${session.user.id}`;
   const queue = useMemo(() => {
     let queue = queues.get(key);
@@ -88,7 +90,7 @@ export function ReadingQueueProvider({ children }: { children: ReactNode }) {
         );
         if (active) {
           setError(null);
-          if (uploaded) void queryClient.invalidateQueries({ queryKey: [['contractingReadings']] });
+          if (uploaded) void queryClient.invalidateQueries({ queryKey: trpc.contractingReadings.pathKey() });
         }
       } catch (error) {
         if (active) setError(error instanceof Error ? error.message : 'Unable to read the saved queue.');
@@ -119,7 +121,7 @@ export function ReadingQueueProvider({ children }: { children: ReactNode }) {
       clearInterval(timer);
       changed();
     };
-  }, [queue, queryClient]);
+  }, [queue, queryClient, trpc]);
   return <Context.Provider value={{ queue, items, error, sync: () => syncRef.current() }}>{children}</Context.Provider>;
 }
 export function useReadingQueue() {

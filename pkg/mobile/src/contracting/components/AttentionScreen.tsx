@@ -6,7 +6,7 @@ import { SecondaryToolbar } from '@/components/TopToolbar';
 import { Text } from '@/components/ui/text';
 import { useReadingQueue } from '@/contracting/readings/ReadingQueueProvider';
 import { useCapturePermission } from '@/contracting/readings/use-capture-permission';
-import { useFleet } from '@/contracting/readings/use-fleet';
+import { useFleet, useMachineReadings } from '@/contracting/readings/use-fleet';
 import { ReadingButton } from './ReadingButton';
 
 export default function AttentionScreen() {
@@ -49,18 +49,18 @@ export default function AttentionScreen() {
           .map((item) => (
             <View key={item.localId} className="gap-3 rounded-xl border border-border bg-surface p-4">
               <Text className="text-lg text-foreground" weight="bold">
-                {fleet.data?.find((machine) => machine.id === item.machineId)?.code ?? item.machineId} ·{' '}
+                {fleet.data?.find((machine) => machine.id === item.machineId)?.code ?? 'Machine details unavailable'} ·{' '}
                 {item.value.toFixed(1)} h
               </Text>
               <Text className="text-sm text-muted-foreground">{new Date(item.capturedAt).toLocaleString()}</Text>
               <Text className="text-foreground">{item.attention?.message}</Text>
-              {item.attention?.code === 'reading.below_latest' && canCapture ? (
-                <ReadingButton
-                  primary
-                  title="The previous reading is wrong · resubmit as dispute"
-                  disabled={busy}
-                  onPress={() => {
-                    void act(() => queue.resubmit(item.localId));
+              {['reading.below_latest', 'reading.previous_changed'].includes(item.attention?.code ?? '') &&
+              canCapture ? (
+                <DisputeAction
+                  machineId={item.machineId}
+                  busy={busy}
+                  onResubmit={(expectedPreviousId) => {
+                    void act(() => queue.resubmit(item.localId, expectedPreviousId));
                   }}
                 />
               ) : null}
@@ -94,5 +94,35 @@ export default function AttentionScreen() {
         <ReadingButton title="Try sync now" onPress={sync} />
       </ScrollView>
     </SafeAreaView>
+  );
+}
+
+function DisputeAction({
+  machineId,
+  busy,
+  onResubmit,
+}: {
+  machineId: string;
+  busy: boolean;
+  onResubmit: (id: string) => void;
+}) {
+  const history = useMachineReadings(machineId);
+  const latest = history.data?.[0];
+  return (
+    <View className="gap-3">
+      <Text className="text-foreground">
+        {latest
+          ? `Review the last known reading: ${latest.value.toFixed(1)} h (${new Date(latest.capturedAt).toLocaleString()}).`
+          : 'Connect to load the latest reading before disputing it.'}
+      </Text>
+      <ReadingButton
+        primary
+        title="The previous reading is wrong · resubmit as dispute"
+        disabled={busy || !latest || history.isFetching}
+        onPress={() => {
+          if (latest) onResubmit(latest.id);
+        }}
+      />
+    </View>
   );
 }

@@ -10,6 +10,7 @@ const capture = (localId: string, capturedAt = '2026-09-08T08:00:00Z', machineId
   capturedAt,
   photoLocalUri: 'file:///readings/meter.jpg',
   disputePrevious: false,
+  expectedPreviousId: 'server-previous',
 });
 beforeEach(() => AsyncStorage.clear());
 
@@ -55,10 +56,11 @@ test('a race-lost capture blocks later captures on that machine until explicitly
     { localId: 'later' },
     { localId: 'earlier', disputePrevious: false, attention: { code: 'reading.below_latest' } },
   ]);
-  await queue.resubmit('earlier');
+  await queue.resubmit('earlier', 'latest-server-reading');
   await queue.sync(async (item) => {
     sent.push(item.localId);
-    if (item.localId === 'earlier') expect(item.disputePrevious).toBe(true);
+    if (item.localId === 'earlier')
+      expect(item).toMatchObject({ disputePrevious: true, expectedPreviousId: 'latest-server-reading' });
   });
   expect(sent).toEqual(['earlier', 'other', 'earlier', 'later']);
   expect(await queue.list()).toEqual([]);

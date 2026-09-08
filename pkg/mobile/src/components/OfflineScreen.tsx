@@ -6,12 +6,7 @@ import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { offlineMessage, offlineTitle, refreshConnectivity, useIsOffline } from '@/lib/connectivity';
 
-/**
- * The app's offline gate. Mounted once over the navigator in `app/_layout.tsx`: it renders
- * nothing while online, and a blocking, opaque cover while offline — so no screen has to
- * know about connectivity. React Query refetches on reconnect (`refetchOnReconnect`), and
- * the cover simply lifts to reveal the user's exact place with fresh data.
- */
+/** Covers online-only routes while disconnected; the root opts Contracting field routes out. */
 export function OfflineScreen({ allowOffline = false }: { allowOffline?: boolean }) {
   const isOffline = useIsOffline();
 

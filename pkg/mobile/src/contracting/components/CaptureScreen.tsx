@@ -27,6 +27,7 @@ export default function CaptureScreen() {
   const [photo, setPhoto] = useState<string | null>(null);
   const [value, setValue] = useState('');
   const [disputePrevious, setDisputePrevious] = useState(false);
+  const [disputedReadingId, setDisputedReadingId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const busyRef = useRef(false);
   const [error, setError] = useState<string | null>(null);
@@ -38,6 +39,11 @@ export default function CaptureScreen() {
     localLatest && (!synced || Date.parse(localLatest.capturedAt) >= Date.parse(synced.capturedAt))
       ? localLatest.value
       : synced?.value;
+  const latestId =
+    localLatest && (!synced || Date.parse(localLatest.capturedAt) >= Date.parse(synced.capturedAt))
+      ? localLatest.localId
+      : (synced?.id ?? null);
+  const disputeConfirmed = disputePrevious && disputedReadingId === latestId;
   const parsed = value.trim() ? ReadingValue.safeParse(Number(value.replace(',', '.'))) : null;
   const below = parsed?.success && latest !== undefined && parsed.data < latest;
   async function photograph() {
@@ -59,7 +65,7 @@ export default function CaptureScreen() {
     }
   }
   async function save() {
-    if (busyRef.current || !parsed?.success || (below && !disputePrevious) || !canCapture || !machine) return;
+    if (busyRef.current || !parsed?.success || (below && !disputeConfirmed) || !canCapture || !machine) return;
     busyRef.current = true;
     setBusy(true);
     setError(null);
@@ -78,7 +84,8 @@ export default function CaptureScreen() {
         value: parsed.data,
         capturedAt: new Date().toISOString(),
         photoLocalUri,
-        disputePrevious: !!below && disputePrevious,
+        disputePrevious: !!below && disputeConfirmed,
+        expectedPreviousId: latestId,
       });
       router.replace(`/contracting/machines/${id}`);
     } catch (error) {
@@ -191,8 +198,11 @@ export default function CaptureScreen() {
               reading.
             </Text>
             <ReadingButton
-              title={disputePrevious ? 'Previous reading disputed · undo' : 'The previous reading is wrong'}
-              onPress={() => setDisputePrevious(!disputePrevious)}
+              title={disputeConfirmed ? 'Previous reading disputed · undo' : 'The previous reading is wrong'}
+              onPress={() => {
+                setDisputedReadingId(latestId);
+                setDisputePrevious(!disputeConfirmed);
+              }}
               disabled={busy}
             />
           </View>
@@ -206,7 +216,7 @@ export default function CaptureScreen() {
         <ReadingButton
           primary
           title={busy ? 'Saving…' : 'Save reading to queue'}
-          disabled={busy || cameraOpen || !parsed?.success || (!!below && !disputePrevious) || !canCapture || !machine}
+          disabled={busy || cameraOpen || !parsed?.success || (!!below && !disputeConfirmed) || !canCapture || !machine}
           onPress={() => {
             void save();
           }}

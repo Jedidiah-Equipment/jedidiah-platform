@@ -68,11 +68,12 @@ export default function MachineScreen() {
         {readings.data?.map((row) => (
           <View key={row.id} className="gap-1 rounded-xl border border-border bg-surface p-4">
             <Text className="text-foreground" weight="semibold">
-              {row.value.toFixed(1)} h · {row.role}
+              {row.value.toFixed(1)} h ·{' '}
+              {{ baseline: 'Baseline', spot: 'Spot', arrival: 'Arrival', departure: 'Departure' }[row.role]}
             </Text>
             <Text className="text-sm text-muted-foreground">{new Date(row.capturedAt).toLocaleString()}</Text>
             <Text className="text-sm text-muted-foreground">
-              {row.photo ? 'Photo-backed' : 'Missing Photo Evidence'}
+              {row.photoBacked ? 'Photo-backed' : 'Missing Photo Evidence'}
               {row.disputed ? ' · Disputed' : ''}
             </Text>
           </View>

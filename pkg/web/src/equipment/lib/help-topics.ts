@@ -22,6 +22,7 @@ const TOPIC_ROUTES: ReadonlyArray<readonly [prefix: string, topic: HelpTopic]> =
   ['/equipment/quotes', 'quotes'],
   ['/equipment/suppliers', 'suppliers'],
   ['/equipment/units', 'units'],
+  ['/equipment/users', 'users'],
 ];
 
 const byLongestPrefix = [...TOPIC_ROUTES].sort(([a], [b]) => b.length - a.length);

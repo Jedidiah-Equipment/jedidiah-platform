@@ -77,7 +77,8 @@ selects so spelling stays consistent), a year, a registration number, a hand-ent
 **Machine Code** following the fleet's `JD6140M-1` convention, a **Category**, an optional
 current **Driver**, and notes. A Machine is what an Assignment assigns. It has no reference to the
 Equipment context: the two businesses share no machine identity. A Machine is **On Job** while it
-has an open Assignment and otherwise **In Yard** — derived, never stored, with no manual flag;
+has an **on-site** Assignment and otherwise **In Yard** — a planned Assignment never counts —
+derived, never stored, with no manual flag;
 the **Machine Yard** view lists In Yard machines by Category, and an open fault shows as an
 indicator, not a third state. A Machine with any history is never deleted: it is **Retired** with
 a mandatory reason, hidden from every picker and the yard view, history intact and un-retirable;
@@ -145,8 +146,9 @@ yard is an Unaccounted Interval — there are no internal Jobs.
 one — there is no separate "fault" type; an open Breakdown *is* an outstanding fault. Any user with Contracting access may report one (usually the
 Foreman): photos,
 a description in the reporter's own words (typed, or a transcribed voice note the reporter can
-edit), an optional link to the Job it happened on (defaulted from the machine's open Assignment,
-which is what locates it for the workshop), optional GPS, and an **urgency** — **Code Red**
+edit), an optional link to the Job it happened on (defaulted from the subject's on-site
+Assignment — for an Implement, the Assignment it is attached to — which is what locates it for the
+workshop and puts it in the same-Job dispatch cross-reference), optional GPS, and an **urgency** — **Code Red**
 (machine down) or **Code Green** (still working). Status runs **Open → In Progress → Solved**; the workshop manager owns every
 transition and closes with a mandatory close-out note. The subject's Breakdown history is
 permanent. The dispatch cross-reference — other fleet on the same Job with open Breakdowns —
@@ -195,7 +197,8 @@ money-blind by design.
 
 ## Reporting
 
-An **Active Day** is a calendar day on which a Machine had an open Assignment. **Utilisation %**
+An **Active Day** is a calendar day on which a Machine had an on-site Assignment (planned stints
+never count). **Utilisation %**
 is active days over days in the window, counting only days the Machine was in the fleet — days,
 never hours, and month attribution is exact. **Fleet Load** is the share of Machines with at
 least one Active Day in the window. **Utilisation Target %** is the single global reference line

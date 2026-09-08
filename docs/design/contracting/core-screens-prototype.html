@@ -222,14 +222,15 @@ input.mock:focus-visible,select.mock:focus-visible,button:focus-visible{outline:
   <figure class="shot"><div class="desk">
     <div class="chrome"><span class="dots"><i></i><i></i><i></i></span> /contracting/jobs/CJOB-00037 · sign-off <span class="modechip">Jedidiah Contracting</span></div>
     <div class="bodypad">
-      <table><thead><tr><th>Machine</th><th>Arrival</th><th>Departure</th><th>Work h</th><th>Travel h</th><th></th></tr></thead><tbody>
-        <tr><td class="mono">CAT320-1</td><td class="mono">4002.6</td><td class="mono">4051.2</td><td class="mono">48.6</td><td class="mono">2.0 ☑</td><td><span class="chip ok">✓ photo · AI 0.97</span></td></tr>
-        <tr><td class="mono">GRAD140K-1</td><td class="mono">7110.0</td><td class="mono">7152.4</td><td class="mono">42.4</td><td class="mono">9.5 ☑</td><td><span class="chip warn">Gap flag</span></td></tr>
+      <table><thead><tr><th>Stint</th><th>Implement</th><th>Arrival</th><th>Departure</th><th>Work h</th><th>Travel h</th><th>Measures</th><th></th></tr></thead><tbody>
+        <tr><td class="mono">CAT320-1</td><td>—</td><td class="mono">4002.6</td><td class="mono">4051.2</td><td class="mono">48.6</td><td class="mono">2.0 ☑</td><td><span class="btn ghost">+ Add measure</span></td><td><span class="chip ok">✓ photo · AI 0.97</span></td></tr>
+        <tr><td class="mono">GRAD140K-1</td><td>—</td><td class="mono">7110.0</td><td class="mono">7152.4</td><td class="mono">42.4</td><td class="mono">9.5 ☑</td><td><span class="btn ghost">+ Add measure</span></td><td><span class="chip warn">Gap flag</span></td></tr>
+        <tr><td class="mono">JD6140M-2</td><td class="mono">TIP-TRAIL-3</td><td class="mono">7102.5</td><td class="mono">7141.3</td><td class="mono">38.8</td><td class="mono">1.2 ☑</td><td><span class="chip dim">18 loads</span> <span class="btn ghost">+</span></td><td><span class="chip ok">✓ photo · AI 0.91</span></td></tr>
       </tbody></table>
       <div class="gapline"><b>9.5 h gap on GRAD140K-1</b> — over the 4 h threshold. Split: <span class="mono">2.5</span> h billable travel · <span class="mono">7.0</span> h unaccounted — reason: <i>"Returned to Stony Brook for yard work."</i> <span class="btn ghost">Resolve</span></div>
       <table><tbody>
-        <tr><td>Charge line — Low-bed move, Stony Brook → Welgevonden</td><td class="mono" style="text-align:right">R 3,500.00</td></tr>
-        <tr><td>Charge line — Diesel supplied, 210 L</td><td class="mono" style="text-align:right">R 4,830.00</td></tr>
+        <tr><td>Diesel supplied (litres)</td><td style="text-align:right"><input class="mock mono" style="width:80px" value="210"></td></tr>
+        <tr><td>Charge line — Low-bed move, Stony Brook → Welgevonden</td><td class="note" style="text-align:right">amount: Jed at pricing</td></tr>
       </tbody></table>
       <div style="display:flex;gap:10px;align-items:center">
         <span class="note">Start <b>12 Aug</b> · End <b>28 Aug</b> (suggested from machine hours — editable)</span>
@@ -237,7 +238,7 @@ input.mock:focus-visible,select.mock:focus-visible,button:focus-visible{outline:
       </div>
     </div>
   </div>
-  <figcaption><b>Sign-off</b>Hours with evidence markers, the gap split with its mandatory reason, charge lines, and the date stamp — Henk's whole job on one screen. No rates yet: pricing is Jed's step.</figcaption></figure>
+  <figcaption><b>Sign-off</b>One line per stint with its implement, hours with evidence markers, measures via Add measure, the gap split with its reason, diesel litres and charge-line descriptions, and the date stamp — Henk's whole job on one screen. No rates or amounts: pricing is Jed's step.</figcaption></figure>
 
   </div>
 </section>
@@ -285,24 +286,26 @@ input.mock:focus-visible,select.mock:focus-visible,button:focus-visible{outline:
 <!-- ═════════ JED ═════════ -->
 <section class="role" id="jed">
   <div class="rolehead"><h2>Jed — pricing, fleet, utilisation</h2>
-  <p>Pricing and Preset Rates sit with contracting-admin and super-admin alone. Fleet and the utilisation view answer "what do we own and is it working?"</p></div>
+  <p>Pricing and the Rate Card sit with contracting-admin and super-admin alone. Fleet and the utilisation view answer "what do we own and is it working?"</p></div>
   <div class="shots">
 
   <figure class="shot"><div class="desk">
     <div class="chrome"><span class="dots"><i></i><i></i><i></i></span> /contracting/jobs/CJOB-00037 · pricing <span class="modechip">Jedidiah Contracting</span></div>
     <div class="bodypad">
-      <table><thead><tr><th>Machine</th><th>Hours (work + travel)</th><th>Rate /h</th><th>Amount</th></tr></thead><tbody>
-        <tr><td class="mono">CAT320-1</td><td class="mono">50.6</td><td><input class="mock mono" style="width:88px" value="R 600"></td><td class="mono" style="text-align:right">R 30,360.00</td></tr>
-        <tr><td class="mono">GRAD140K-1</td><td class="mono">44.9</td><td><input class="mock mono" style="width:88px" value="R 550"></td><td class="mono" style="text-align:right">R 24,695.00</td></tr>
-        <tr><td>Low-bed move</td><td></td><td></td><td class="mono" style="text-align:right">R 3,500.00</td></tr>
-        <tr><td>Diesel supplied, 210 L</td><td></td><td></td><td class="mono" style="text-align:right">R 4,830.00</td></tr>
+      <table><thead><tr><th>Stint</th><th>Hours · measures</th><th>Rate</th><th>Amount</th></tr></thead><tbody>
+        <tr><td class="mono">CAT320-1</td><td class="mono">50.6 h</td><td><select class="mock"><option>Excavator · supervised — R 600/h</option></select></td><td class="mono" style="text-align:right">R 30,360.00</td></tr>
+        <tr><td class="mono">GRAD140K-1</td><td class="mono">44.9 h</td><td><select class="mock"><option>Grader — R 550/h</option></select></td><td class="mono" style="text-align:right">R 24,695.00</td></tr>
+        <tr><td class="mono">JD6140M-2 + TIP-TRAIL-3</td><td class="mono">40.0 h · 18 loads</td><td><select class="mock"><option>Tractor &amp; tanker — R 850/load</option></select></td><td class="mono" style="text-align:right">R 15,300.00</td></tr>
+        <tr><td>Diesel supplied <span class="chip dim">VAT-exempt</span></td><td class="mono">210 L</td><td><input class="mock mono" style="width:88px" value="R 23.00/L"></td><td class="mono" style="text-align:right">R 4,830.00</td></tr>
+        <tr><td>Low-bed move, Stony Brook → Welgevonden</td><td></td><td><input class="mock mono" style="width:88px" value="R 3,500"></td><td class="mono" style="text-align:right">R 3,500.00</td></tr>
+        <tr><td>Discount</td><td></td><td><input class="mock mono" style="width:88px" placeholder="R or %"></td><td class="mono" style="text-align:right">—</td></tr>
       </tbody></table>
-      <div style="display:flex;align-items:center"><span class="note">Rates prefill from Category presets — edit the number, that's the discount</span>
-      <b class="mono" style="margin-left:auto">Total R 63,385.00 <span class="note">ex VAT</span></b></div>
+      <div style="display:flex;align-items:center"><span class="note">A Rate per stint from Jed's Rate Card — time rates bill hours, measure rates bill Henk's quantities; every amount stays editable</span>
+      <b class="mono" style="margin-left:auto">Total R 78,685.00 <span class="note">ex VAT</span></b></div>
       <div><span class="btn">Mark as Priced</span> <span class="note">amounts freeze; Karen's queue picks it up</span></div>
     </div>
   </div>
-  <figcaption><b>Pricing</b>Prefilled from Preset Rates, editable per Assignment, frozen on Mark as Priced. No formal discount machinery — the rate is the knob.</figcaption></figure>
+  <figcaption><b>Pricing</b>A Rate per stint from the Rate Card (time or per-measure), diesel priced in its own VAT-exempt field, line amounts required, one optional job discount — frozen on Mark as Priced.</figcaption></figure>
 
   <figure class="shot"><div class="desk">
     <div class="chrome"><span class="dots"><i></i><i></i><i></i></span> /contracting/fleet <span class="modechip">Jedidiah Contracting</span></div>

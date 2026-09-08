@@ -166,6 +166,18 @@ describe('analytics delivery', { timeout: 15_000 }, () => {
     cancel();
   });
 
+  // A direct-entry loader failure reports before the root effect has armed a language. The report must not
+  // depend on that arming, or the crash it exists to surface stays invisible.
+  test('reports a router error on direct entry before any language is armed', async () => {
+    const { captureAnalyticsException } = await import('./analytics.js');
+    const error = new Error('loader failed');
+
+    captureAnalyticsException(error);
+
+    expect(posthog.init).toHaveBeenCalledTimes(1);
+    expect(posthog.captureException).toHaveBeenCalledWith(error, { source: 'router_error_boundary' });
+  });
+
   test('does not report a router error when the PostHog token is unset', async () => {
     resolvePosthogToken.mockReturnValue(null);
     const { captureAnalyticsException, initAnalyticsWhenIdle } = await import('./analytics.js');

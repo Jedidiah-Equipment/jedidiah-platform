@@ -1,4 +1,4 @@
-import { type Locale, POSTHOG_CLIENT_API_HOST, POSTHOG_UI_HOST } from '@pkg/schema';
+import { CANONICAL_LOCALE, type Locale, POSTHOG_CLIENT_API_HOST, POSTHOG_UI_HOST } from '@pkg/schema';
 import posthog from 'posthog-js';
 
 import { resolvePosthogToken } from './analytics-config.js';
@@ -189,9 +189,10 @@ export function captureEvent<Event extends AnalyticsEventName>(
 
 // Reports an error the router's error boundary caught. The boundary stops the error before it reaches the
 // window handlers that `capture_exceptions` installs, so a route loader failure would otherwise never reach
-// Error Tracking. Starts PostHog on demand for a crash that beats the idle callback.
+// Error Tracking. A direct-entry loader failure runs this before the root effect arms a language, so it
+// falls back to the Canonical Locale and starts PostHog on demand rather than dropping the crash.
 export function captureAnalyticsException(error: unknown): void {
-  if (ensureStarted(activeLanguage ?? pendingLanguage)) {
+  if (ensureStarted(activeLanguage ?? pendingLanguage ?? CANONICAL_LOCALE)) {
     posthog.captureException(error, { source: 'router_error_boundary' });
   }
 }

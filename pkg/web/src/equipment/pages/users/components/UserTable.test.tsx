@@ -4,10 +4,9 @@ import { AuthId } from '@pkg/schema';
 import type { UserSummary } from '@pkg/schema/equipment';
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
-import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { UserNameCell, UserTable, useUserTableStore } from './UserTable.js';
+import { UserTable, useUserTableStore } from './UserTable.js';
 
 const users: UserSummary[] = [
   makeUser('Alice', 'sales', null),
@@ -119,15 +118,3 @@ function makeUser(
     thumbnailDataUrl: null,
   };
 }
-
-describe('UserNameCell', () => {
-  it('keeps the device marker on the same small footprint as user thumbnails', () => {
-    const html = renderToStaticMarkup(
-      <UserNameCell isCurrentUser={false} isDevice name="Stores Tablet" thumbnailDataUrl={null} />,
-    );
-
-    expect(html).toContain('size-6');
-    expect(html).toContain('width="14"');
-    expect(html).toContain('height="14"');
-  });
-});

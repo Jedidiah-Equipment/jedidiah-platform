@@ -14,6 +14,15 @@ The active Locale is registered as a PostHog super property and is also set as a
 
 `$pageview` is PostHog's built-in event, fired on initial load and on SPA navigations (`history_change`). It has no custom properties beyond PostHog defaults and `language`.
 
+## Exceptions
+
+`$exception` is PostHog's built-in Error Tracking event. `capture_exceptions` in `posthog.init` reports
+uncaught errors and promise rejections. The router's error boundary swallows a route loader failure before
+the window handlers see it, so the boundary reports that error itself through `captureAnalyticsException`,
+which adds `source: router_error_boundary`. It carries `language` like every other event and no page or form
+content. An unknown Product URL throws `notFound()`, which the router handles as a Not Found page and does
+not report as an exception.
+
 ## Meta Ads
 
 When `VITE_META_PIXEL_ID` is configured at build time, every server-rendered page includes the Meta Pixel base code in `<head>`. It initializes that Pixel and sends one initial `PageView`; the document body includes Meta's hidden `noscript` PageView image for browsers with JavaScript disabled. Completed client-side navigations send one further `PageView`, while the initial router resolution and same-URL loader refreshes do not duplicate it. The integration is off when the variable is unset, which keeps local and unconfigured environments out of the live advertising dataset.

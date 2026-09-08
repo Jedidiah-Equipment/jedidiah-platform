@@ -123,6 +123,13 @@ export type Messages = {
     notFoundBody: string;
     viewAllProducts: string;
   };
+  error: {
+    eyebrow: string;
+    title: string;
+    body: string;
+    retry: string;
+    viewAllProducts: string;
+  };
   contact: {
     pageTitle: string;
     metaDescription: string;

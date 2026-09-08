@@ -165,6 +165,13 @@ export const af: Messages = {
     notFoundBody: 'Ons kon nie daardie model vind nie. Besigtig die volledige reeks om te vind wat jy nodig het.',
     viewAllProducts: 'Bekyk Alle Produkte',
   },
+  error: {
+    eyebrow: 'Iets het verkeerd geloop',
+    title: 'Hierdie bladsy het nie gelaai nie',
+    body: "'n Tydelike probleem het hierdie bladsy gekeer. Probeer weer, of besigtig die volledige reeks.",
+    retry: 'Probeer Weer',
+    viewAllProducts: 'Bekyk Alle Produkte',
+  },
   contact: {
     pageTitle: 'Kontak — Jedidiah Equipment',
     metaDescription:

@@ -223,6 +223,8 @@ describe('getRolePermissions', () => {
       'contracting_breakdown:read',
       'contracting_breakdown:report',
       'contracting_breakdown:update',
+      'contracting_directory:read',
+      'contracting_directory:update',
       'contracting_gap:resolve',
       'contracting_job:assign',
       'contracting_job:cancel',

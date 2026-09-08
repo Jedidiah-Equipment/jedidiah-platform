@@ -1,4 +1,4 @@
-import { IconChevronRight, IconGauge, IconTractor } from '@tabler/icons-react';
+import { IconAddressBook, IconChevronRight, IconGauge, IconTractor } from '@tabler/icons-react';
 import { Link, useLocation } from '@tanstack/react-router';
 import { useState } from 'react';
 import { Collapsible, CollapsibleContent } from '@/components/ui/collapsible.js';
@@ -29,6 +29,7 @@ const activeSubMarkerClass =
 
 export function AppNavMain() {
   const canReviewReadings = useCan('contracting_reading:update').can;
+  const canReadDirectory = useCan('contracting_directory:read').can;
   const canReadFleet = useCan('contracting_machine:read').can;
   const { setOpenMobile } = useSidebar();
   const pathname = useLocation({ select: (location) => location.pathname });
@@ -56,6 +57,28 @@ export function AppNavMain() {
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarGroup>
+      {canReadDirectory ? (
+        <SidebarGroup>
+          <SidebarGroupLabel>Directory</SidebarGroupLabel>
+          <SidebarMenu>
+            {(
+              [
+                { to: '/contracting/customers', title: 'Customers' },
+                { to: '/contracting/work-types', title: 'Work types' },
+              ] as const
+            ).map((item) => (
+              <SidebarMenuItem key={item.to}>
+                <Link to={item.to} onClick={() => setOpenMobile(false)}>
+                  <SidebarMenuButton render={<span />} isActive={pathname.startsWith(item.to)} tooltip={item.title}>
+                    <IconAddressBook />
+                    <span>{item.title}</span>
+                  </SidebarMenuButton>
+                </Link>
+              </SidebarMenuItem>
+            ))}
+          </SidebarMenu>
+        </SidebarGroup>
+      ) : null}
       {canReadFleet || canReviewReadings ? (
         <SidebarGroup>
           <SidebarGroupLabel>Operations</SidebarGroupLabel>

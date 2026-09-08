@@ -8,5 +8,5 @@ export const WorkTypePatchInput = WorkTypeCreateInput.partial()
   .extend({ id: UUID, active: z.boolean().optional() })
   .strict();
 export type WorkTypePatchInput = z.infer<typeof WorkTypePatchInput>;
-export const WorkType = WorkTypeCreateInput.extend({ id: UUID, active: z.boolean() });
+export const WorkType = WorkTypeCreateInput.extend({ id: UUID, active: z.boolean() }).strip();
 export type WorkType = z.infer<typeof WorkType>;

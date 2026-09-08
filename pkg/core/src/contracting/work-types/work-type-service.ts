@@ -42,7 +42,7 @@ export async function createWorkType({
   actorUserId: AuthId;
   input: WorkTypeCreateInput;
 }) {
-  return withDirectoryConstraints(() =>
+  return withDirectoryConstraints('A work type with that name already exists.', () =>
     db.transaction(async (tx) => {
       const [row] = await tx.insert(contractingWorkTypes).values(input).returning();
       if (!row) throw new Error('Work type insert returned no row');
@@ -60,7 +60,7 @@ export async function patchWorkType({
   actorUserId: AuthId;
   input: WorkTypePatchInput;
 }) {
-  return withDirectoryConstraints(() =>
+  return withDirectoryConstraints('A work type with that name already exists.', () =>
     mutateEntity({
       db,
       actorUserId,

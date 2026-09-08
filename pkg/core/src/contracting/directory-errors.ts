@@ -17,15 +17,11 @@ export class DirectoryError extends Error {
 export function isDirectoryError(error: unknown): error is DirectoryError {
   return error instanceof DirectoryError;
 }
-export async function withDirectoryConstraints<T>(action: () => Promise<T>): Promise<T> {
+export async function withDirectoryConstraints<T>(duplicateMessage: string, action: () => Promise<T>): Promise<T> {
   try {
     return await action();
   } catch (error) {
-    if (isUniqueViolation(error))
-      throw new DirectoryError(
-        'directory.duplicate',
-        'That name already exists in this directory. Farm names must be unique within a customer.',
-      );
+    if (isUniqueViolation(error)) throw new DirectoryError('directory.duplicate', duplicateMessage);
     if (getForeignKeyViolationConstraint(error))
       throw new DirectoryError('directory.invalid_reference', 'The selected record no longer exists.');
     throw error;

@@ -24,7 +24,7 @@ export async function listFarms({ db, customerId }: { db: Db; customerId: string
   ).map((row) => Farm.parse(row));
 }
 export async function createFarm({ db, actorUserId, input }: { db: Db; actorUserId: AuthId; input: FarmCreateInput }) {
-  return withDirectoryConstraints(() =>
+  return withDirectoryConstraints('A farm with that name already exists for this customer.', () =>
     db.transaction(async (tx) => {
       const [row] = await tx.insert(contractingFarms).values(input).returning();
       if (!row) throw new Error('Farm insert returned no row');
@@ -34,7 +34,7 @@ export async function createFarm({ db, actorUserId, input }: { db: Db; actorUser
   );
 }
 export async function patchFarm({ db, actorUserId, input }: { db: Db; actorUserId: AuthId; input: FarmPatchInput }) {
-  return withDirectoryConstraints(() =>
+  return withDirectoryConstraints('A farm with that name already exists for this customer.', () =>
     mutateEntity({
       db,
       actorUserId,

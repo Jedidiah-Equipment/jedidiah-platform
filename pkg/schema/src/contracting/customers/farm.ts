@@ -9,5 +9,5 @@ export const FarmCreateInput = FarmListInput.extend({ name: FarmName });
 export type FarmCreateInput = z.infer<typeof FarmCreateInput>;
 export const FarmPatchInput = FarmIdInput.extend({ name: FarmName });
 export type FarmPatchInput = z.infer<typeof FarmPatchInput>;
-export const Farm = FarmCreateInput.extend({ id: UUID });
+export const Farm = FarmCreateInput.extend({ id: UUID }).strip();
 export type Farm = z.infer<typeof Farm>;

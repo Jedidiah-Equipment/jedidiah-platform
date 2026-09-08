@@ -42,7 +42,7 @@ export async function createCustomer({
   actorUserId: AuthId;
   input: CustomerCreateInput;
 }) {
-  return withDirectoryConstraints(() =>
+  return withDirectoryConstraints('A customer with that name already exists.', () =>
     db.transaction(async (tx) => {
       const [row] = await tx.insert(contractingCustomers).values(input).returning();
       if (!row) throw new Error('Customer insert returned no row');
@@ -60,7 +60,7 @@ export async function patchCustomer({
   actorUserId: AuthId;
   input: CustomerPatchInput;
 }) {
-  return withDirectoryConstraints(() =>
+  return withDirectoryConstraints('A customer with that name already exists.', () =>
     mutateEntity({
       db,
       actorUserId,

@@ -81,6 +81,7 @@ test('normalizes inputs, returns public conflict errors and records business-att
   await expect(directory.customers.create({ name: 'rowley' })).rejects.toMatchObject({
     code: 'CONFLICT',
     appCode: 'directory.duplicate',
+    message: 'A customer with that name already exists.',
   });
   await expect(directory.customers.patch({ id: customer.id, email: 'invalid' })).rejects.toMatchObject({
     code: 'BAD_REQUEST',
@@ -89,8 +90,14 @@ test('normalizes inputs, returns public conflict errors and records business-att
     code: 'BAD_REQUEST',
   });
   const farm = await directory.farms.create({ customerId: customer.id, name: 'Rooikraal' });
+  await expect(directory.farms.create({ customerId: customer.id, name: 'ROOIKRAAL' })).rejects.toMatchObject({
+    message: 'A farm with that name already exists for this customer.',
+  });
   await directory.farms.remove({ id: farm.id, customerId: customer.id });
   const workType = await directory.workTypes.create({ name: 'Dam building' });
+  await expect(directory.workTypes.create({ name: 'DAM BUILDING' })).rejects.toMatchObject({
+    message: 'A work type with that name already exists.',
+  });
   await directory.workTypes.patch({ id: workType.id, active: false });
   await directory.workTypes.patch({ id: workType.id, active: false });
   expect(await directory.workTypes.options()).toEqual([]);

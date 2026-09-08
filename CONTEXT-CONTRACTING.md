@@ -25,35 +25,49 @@ Job whose machines have all stopped surfaces in the Contracting Manager's queue 
 finished. Every stage has a visible queue, so work cannot vanish between a foreman's phone and
 the invoice — that chain is the app's core promise.
 
-**Machine Assignment** is one Machine's stint on one Job: created when the Foreman puts the
-machine on the Job, closed when it leaves, carrying its arrival and departure Hour Readings. It
-may name an **Implement** and a **Production Quantity** — a number and unit from a managed list
-(loads, hectares, bales) captured for the record and never priced automatically. A
-Machine has **at most one open Machine Assignment**, which is what enforces that a machine is
-never on two Jobs at once. The Foreman edits only his own Job's Assignments and only while the
-Job is Active; after Completion only management amends. Avoid Slot (an Equipment scheduling
-term).
+**Machine Assignment** is one Machine's stint on one Job. Management may plan it when setting
+the Job up — machine and Implement chosen ahead of arrival, a **planned** Assignment — or the
+Foreman adds it on site; either way it becomes **on site** when its arrival Hour Reading is
+captured and **left** when its departure is. A Machine may have **several sequential Assignments
+on the same Job** — leaving and returning, often with a different Implement — but **at most one
+on-site Assignment at a time across all Jobs**, which is what enforces that a machine is never in
+two places at once; planned Assignments never count against that. An Assignment names at most one
+**Implement**, and an Implement on a Job is always attached to exactly one Assignment. Management
+records zero or more **Measures** on an Assignment — a Measure Type and a quantity (hectares
+disked, loads hauled) — the production figures Pricing may bill on. The Foreman edits only his own
+Job's Assignments and only while the Job is Active; after Completion only management amends. Avoid
+Slot (an Equipment scheduling term).
 
 **Job Card** is the rendered document of a Job — its Assignments, hours, travel, Charge Lines,
 rates, and totals — reviewed at sign-off, priced, and keyed into the invoicing system. It is a
 presentation of the Job, never a second record: "send me the job card" means the document. It
 renders on demand (never stored — priced amounts are frozen, so regeneration is deterministic)
 under the Jedidiah Contracting letterhead, in two variants: **internal**, carrying evidence
-markers, gap resolutions, and attribution; and the **customer copy**, the clean dispute trail of
-readings, hours, and amounts. Reading values print; meter photos stay in the app. Its ex-VAT
-total is a works summary — a Job Card is never an invoice.
+markers, gap resolutions, capture comments, and attribution; and the **customer copy**, the clean
+dispute trail of readings and amounts that shows **one total hours figure per line — never the
+work/travel split**. Reading values print; meter photos stay in the app. Diesel is shown
+VAT-exempt. Its ex-VAT total is a works summary — a Job Card is never an invoice.
 
-**Charge Line** is a non-hourly amount on a Job — transport (e.g. a low-bed move) or diesel the
-business supplied (diesel may record litres) — description plus amount, added by management at
-Completion or Pricing.
+**Charge Line** is a non-hourly amount on a Job — transport (e.g. a low-bed move), a supplied
+part, or a fixed quoted total — a description management writes at Completion, with an amount
+management may leave blank and Pricing must then set (zero allowed). **Diesel** is not a Charge
+Line but a dedicated field on every Job: litres supplied (default zero, set at Completion) and,
+when litres are non-zero, an amount set at Pricing; diesel carries no VAT and the Job Card marks it
+so. A **Discount** is one optional Job-level reduction — a fixed amount or a percentage — applied
+at Pricing and shown on the Job Card.
 
 **Work Type** is an admin-managed list of kinds of contracted work (dam building, disking,
 planting, …), exactly one per Job, set at pre-creation. It is the reporting dimension for future
 utilisation views.
 
-**Preset Rate** is the per-Category hourly rate maintained by management, prefilled onto each
-Machine Assignment at Pricing and editable per Assignment; travel hours bill at the same rate when
-included. Discounts are edited numbers, not a mechanism.
+**Rate Card** is the list of named **Rates** management maintains and Pricing chooses from —
+supervised and unsupervised plant hire, tractor-and-tanker, disking per hectare, … — each with a
+**basis**: time (billed per hour of the Assignment's work plus included travel) or one **Measure
+Type** (billed per unit of that Measure recorded on the Assignment). **Measure Type** is the
+management-maintained list of production units — hectares, loads, … — in display order; a Measure
+on an Assignment names one. Rates hang on nothing but their name: not on a Category, a Machine, or
+an Implement. At Pricing every Assignment is given a Rate (or a zero rate when a Charge Line carries
+a fixed quote) and its amount computes from the basis, editable afterwards.
 
 **Invoice Number** is the terminal stamp on a Job, recorded by the invoicing user from the
 external accounting system. Stamping it is what makes a Job Invoiced.
@@ -63,21 +77,25 @@ selects so spelling stays consistent), a year, a registration number, a hand-ent
 **Machine Code** following the fleet's `JD6140M-1` convention, a **Category**, an optional
 current **Driver**, and notes. A Machine is what an Assignment assigns. It has no reference to the
 Equipment context: the two businesses share no machine identity. A Machine is **On Job** while it
-has an open Assignment and otherwise **In Yard** — derived, never stored, with no manual flag;
+has an **on-site** Assignment and otherwise **In Yard** — a planned Assignment never counts —
+derived, never stored, with no manual flag;
 the **Machine Yard** view lists In Yard machines by Category, and an open fault shows as an
 indicator, not a third state. A Machine with any history is never deleted: it is **Retired** with
 a mandatory reason, hidden from every picker and the yard view, history intact and un-retirable;
 only a never-used entry may be deleted. Avoid Unit, Product Unit, Vehicle, or Asset.
 
-**Category** is the admin-managed grouping of Machines (excavator, TLB, hauler tractor, grader,
-…): the shortlist dimension in pickers, the grouping of the Machine Yard, the future utilisation
-dimension, and the home of the Preset Rate.
+**Category** is the management-maintained grouping of fleet equipment, of **kind** Machine or
+Implement (excavator, TLB, grader, gravel trailer, planter, …): the shortlist dimension in pickers,
+the grouping of the Machine Yard, the future utilisation dimension, and the owner of the **icon and
+colour** every piece of fleet shows in lists. A Category carries no rate.
 
-**Implement** is one un-metered attachment in the fleet — a disc, planter, or ripper: a code, an
-**Implement Type** (a creatable select like make and model — never the Machine **Category**,
-which groups metered Machines and carries the Preset Rate), and notes. It attaches to a Machine Assignment beside the Machine and has no hour
-meter, no readings, and no availability of its own. Whether a towed unit is a Machine or an
-Implement is decided by whether it has a meter.
+**Implement** is one un-metered attachment in the fleet — a disc, planter, ripper, gravel
+trailer: a unique **Implement Code** (suggested from its Category and a sequence,
+`GRAVEL-TRAILER-3`, editable), a **Category** of kind Implement, and notes. It attaches to a
+Machine Assignment beside the Machine — never to a Job on its own, never more than one per
+Assignment — and has no hour meter, no readings, and no availability of its own, but it can suffer
+a Breakdown. Whether a towed unit is a Machine or an Implement is decided by whether it has a
+meter.
 
 **Driver** is a non-login user record (the bay-operator pattern): drivers take instructions and
 never sign in. The Machine carries its current Driver; each Machine Assignment snapshots its
@@ -96,7 +114,9 @@ waits for signal — readings queue on the phone and sync when they can. After s
 the photo itself and records its own value and confidence: a reading is **photo-backed** when it
 carries a photo and **AI-verified** when the server's read agrees with the typed value.
 Disagreements, low confidence, and disputes surface to management as **Reading Exceptions** —
-never to the Foreman, who is never re-interrupted in the field. A reading plays one of three roles:
+never to the Foreman, who is never re-interrupted in the field. A reading may carry the Foreman's
+optional **capture comment**, shown wherever management reviews it; the capture screen shows the
+minimum value the meter can now read. A reading plays one of three roles:
 **arrival** (machine on site) and **departure** (machine leaving) on a Machine Assignment, or
 **spot** — an ad-hoc field capture with no billing effect, existing to keep a Machine's known
 hours current for service tracking. The
@@ -122,15 +142,16 @@ yard is an Unaccounted Interval — there are no internal Jobs.
 
 ## Workshop
 
-**Breakdown** is one reported problem on one Machine — there is no separate "fault" type; an open
-Breakdown *is* an outstanding fault. Any user with Contracting access may report one (usually the
+**Breakdown** is one reported problem on one piece of fleet — a Machine **or** an Implement, exactly
+one — there is no separate "fault" type; an open Breakdown *is* an outstanding fault. Any user with Contracting access may report one (usually the
 Foreman): photos,
 a description in the reporter's own words (typed, or a transcribed voice note the reporter can
-edit), an optional link to the Job it happened on (defaulted from the machine's open Assignment,
-which is what locates it for the workshop), optional GPS, and an **urgency** — **Code Red**
+edit), an optional link to the Job it happened on (defaulted from the subject's on-site
+Assignment — for an Implement, the Assignment it is attached to — which is what locates it for the
+workshop and puts it in the same-Job dispatch cross-reference), optional GPS, and an **urgency** — **Code Red**
 (machine down) or **Code Green** (still working). Status runs **Open → In Progress → Solved**; the workshop manager owns every
-transition and closes with a mandatory close-out note. A Machine's Breakdown history is
-permanent. The dispatch cross-reference — other machines on the same Job with open Breakdowns —
+transition and closes with a mandatory close-out note. The subject's Breakdown history is
+permanent. The dispatch cross-reference — other fleet on the same Job with open Breakdowns —
 is derived, never stored. New Breakdowns notify the workshop manager by push notification;
 Code Red also notifies management.
 
@@ -142,11 +163,12 @@ in. Exactly one primary Mechanic is assigned per Breakdown by the workshop manag
 himself; a second body on site is never recorded. Mechanic performance — report-to-Solved time —
 is derived, never stored.
 
-**Service Record** is the digitized page of the paper service book: one service performed on one
-Machine — date, the hour reading at service, the primary Mechanic, and free-text notes. A
-Service is a recurring, expected event and deliberately not a Breakdown. Recording one stamps the
-Machine's **Next Service Due** forward by its **Service Interval** (both in hours; the dash
-sticker, digitized). **Service Due Soon** is the derived flag raised when the Machine's latest
+**Service Record** is the light digital counterpart of the paper service book, which stays the
+detailed record for now: one service on one Machine — start and end date, the hour reading at
+service, the primary Mechanic, and free-text notes. A Service is a recurring, expected event and
+deliberately not a Breakdown. **Closing a Service Record requires setting the Machine's Next
+Service Due** — the number the mechanic prints on the dash sticker at that moment; the Machine's
+optional **Service Interval** only pre-fills it from the reading at service. **Service Due Soon** is the derived flag raised when the Machine's latest
 known Hour Reading comes within a threshold of Next Service Due — kept honest mid-job by spot
 readings from the field — and it notifies the workshop manager by push notification.
 
@@ -157,11 +179,11 @@ A user's contracting role fills one of the two role slots defined in
 Server-side checks are the security boundary; browser checks are UX only.
 
 - **contracting-admin**: every contracting permission the spanning super-admin has — Pricing,
-  Preset Rates, fleet, invoice stamping, all of it — without user administration and without any
+  the Rate Card, fleet, invoice stamping, all of it — without user administration and without any
   Equipment reach.
 - **contracting-manager**: all operations — Job create/edit/assign/complete/cancel, reading
   amendments and gap resolution, breakdowns and servicing, fleet management — but no Pricing and
-  no Preset Rates; sees priced amounts.
+  no Rate Card; sees priced amounts.
 - **workshop-manager**: reads everything contracting; writes Breakdowns (mechanic assignment,
   transitions, close-out) and Servicing (records, interval and due fields); reports Breakdowns.
 - **foreman**: sees only Jobs assigned to him; manages his own Assignments and captures readings;
@@ -170,12 +192,13 @@ Server-side checks are the security boundary; browser checks are UX only.
   nothing else.
 
 Drivers and Mechanics are non-login user records holding permissionless contracting roles. Pricing
-and Preset Rates deliberately sit with contracting-admin and super-admin alone; foremen are
+and the Rate Card deliberately sit with contracting-admin and super-admin alone; foremen are
 money-blind by design.
 
 ## Reporting
 
-An **Active Day** is a calendar day on which a Machine had an open Assignment. **Utilisation %**
+An **Active Day** is a calendar day on which a Machine had an on-site Assignment (planned stints
+never count). **Utilisation %**
 is active days over days in the window, counting only days the Machine was in the fleet — days,
 never hours, and month attribution is exact. **Fleet Load** is the share of Machines with at
 least one Active Day in the window. **Utilisation Target %** is the single global reference line

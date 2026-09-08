@@ -39,9 +39,9 @@ const test = createTester(async ({ db, auth }) => {
   (state.session as ReturnType<typeof mockSession>).user.contractingRole = 'foreman';
   return { db, app, machineId: machine.id, storage };
 });
-function upload(machineId: string, photo: Buffer | null, close = true) {
+function upload(machineId: string, photo: Buffer | null, close = true, extra: Record<string, string> = {}) {
   const boundary = 'reading-boundary';
-  const fields = { machineId, role: 'spot', value: '123.4', capturedAt: '2026-09-07T08:00:00Z' };
+  const fields = { machineId, role: 'spot', value: '123.4', capturedAt: '2026-09-07T08:00:00Z', ...extra };
   const chunks: Buffer[] = Object.entries(fields).map(([key, value]) =>
     Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="${key}"\r\n\r\n${value}\r\n`),
   );
@@ -99,5 +99,25 @@ test('rejects unauthenticated and Equipment-only uploads before parsing their bo
     expect((await context.app.inject(upload(context.machineId, null))).statusCode).toBe(403);
   } finally {
     await context.app.close();
+  }
+});
+
+test('accepts every mobile multipart field and retries a photo capture without duplicating it', async ({ context }) => {
+  const { app, db, machineId, storage } = context;
+  try {
+    const localId = '78108c3d-4b34-44f1-bf87-4fcb00a6a233';
+    const request = upload(machineId, Buffer.from([255, 216, 255]), true, {
+      localId,
+      expectedPreviousId: '',
+      disputePrevious: 'false',
+    });
+    const first = await app.inject(request);
+    expect(first.statusCode).toBe(201);
+    expect(first.json()).toMatchObject({ id: localId, photo: { contentType: 'image/jpeg' } });
+    expect((await app.inject(request)).json().id).toBe(localId);
+    expect(await listReadingsByMachine({ db, machineId })).toHaveLength(1);
+    expect(storage.objects.size).toBe(1);
+  } finally {
+    await app.close();
   }
 });

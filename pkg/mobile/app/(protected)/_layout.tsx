@@ -1,10 +1,11 @@
-import { isStoredUserSignInEligible } from '@pkg/domain';
+import { hasBusinessAccess, isStoredUserSignInEligible } from '@pkg/domain';
 import { Redirect, Stack } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { ReadingQueueProvider } from '@/contracting/readings/ReadingQueueProvider';
 import { signOut, useSession } from '@/lib/auth';
-import { AuthSessionProvider } from '@/lib/auth-session';
+import { AuthSessionProvider, getSessionRoleSlots } from '@/lib/auth-session';
 import { useIsOffline } from '@/lib/connectivity';
 import { isHydratedSession } from '@/lib/session-state';
 
@@ -66,12 +67,19 @@ export default function ProtectedLayout() {
     return <SignOutIneligibleSession />;
   }
 
+  const screens = (
+    <Stack screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="contracting" />
+      <Stack.Screen name="equipment" />
+    </Stack>
+  );
   return (
     <AuthSessionProvider session={session}>
-      <Stack screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="contracting" />
-        <Stack.Screen name="equipment" />
-      </Stack>
+      {hasBusinessAccess(getSessionRoleSlots(session), 'contracting') ? (
+        <ReadingQueueProvider key={session.user.id}>{screens}</ReadingQueueProvider>
+      ) : (
+        screens
+      )}
     </AuthSessionProvider>
   );
 }

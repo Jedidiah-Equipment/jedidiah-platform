@@ -1,7 +1,7 @@
 import '../global.css';
 
 import { useFonts } from 'expo-font';
-import { Stack } from 'expo-router';
+import { Stack, usePathname } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { ActivityIndicator, Text, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -47,8 +47,8 @@ function ThemedAppShell() {
         <ApiProvider>
           {/* Auth gating lives in app/(protected)/_layout.tsx; login is the public route. */}
           <Stack screenOptions={{ headerShown: false }} />
-          {/* Single offline gate: covers the whole app while offline, so no screen checks connectivity. */}
-          <OfflineScreen />
+          {/* Contracting field capture remains available while disconnected. */}
+          <OfflineGate />
           {/* Single update prompt: offers a downloaded new version wherever the user is. */}
           <UpdatePrompt />
           <ThemedStatusBar />
@@ -84,4 +84,9 @@ function StartupLoader() {
       </Text>
     </View>
   );
+}
+
+function OfflineGate() {
+  const pathname = usePathname();
+  return <OfflineScreen allowOffline={pathname === '/contracting' || pathname.startsWith('/contracting/')} />;
 }

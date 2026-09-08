@@ -22,6 +22,7 @@ export async function registerReadingHttpRoutes(
   app: FastifyInstance,
   dependencies: { db: Db; storage: StorageAdapter; readPhoto: ReadMeterPhoto },
 ) {
+  const fieldCount = ReadingCaptureInput.keyof().options.length;
   app.post('/api/contracting/readings', async (request, reply) => {
     const auth = await requireRouteAuth(request, reply);
     if (!auth) return;
@@ -30,7 +31,13 @@ export async function registerReadingHttpRoutes(
       const fields: Record<string, unknown> = {};
       let photoBytes: Buffer | undefined;
       for await (const part of request.parts({
-        limits: { files: 1, fields: 6, parts: 7, fileSize: READING_PHOTO_POLICY.maxBytes, fieldSize: 4096 },
+        limits: {
+          files: 1,
+          fields: fieldCount,
+          parts: fieldCount + 1,
+          fileSize: READING_PHOTO_POLICY.maxBytes,
+          fieldSize: 4096,
+        },
       })) {
         if (part.type === 'file') {
           if (part.fieldname !== 'photo') throw invalidMultipart();
@@ -42,6 +49,7 @@ export async function registerReadingHttpRoutes(
         }
       }
       if (typeof fields.value === 'string' && fields.value.trim() !== '') fields.value = Number(fields.value);
+      if (fields.expectedPreviousId === '') fields.expectedPreviousId = null;
       if (fields.disputePrevious === 'true') fields.disputePrevious = true;
       if (fields.disputePrevious === 'false') fields.disputePrevious = false;
       const input = ReadingCaptureInput.parse(fields);

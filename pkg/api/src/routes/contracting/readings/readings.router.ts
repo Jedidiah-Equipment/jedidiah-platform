@@ -2,6 +2,8 @@ import {
   amendReading,
   captureReading,
   isReadingError,
+  listFieldMachines,
+  listFieldReadings,
   listReadingExceptions,
   listReadingsByMachine,
   type ReadMeterPhoto,
@@ -9,6 +11,8 @@ import {
 } from '@pkg/core/contracting';
 import { canCaptureBaseline } from '@pkg/domain/contracting';
 import {
+  FieldMachine,
+  FieldReading,
   HourReading,
   ReadingAmendInput,
   ReadingCaptureInput,
@@ -40,6 +44,13 @@ export function createContractingReadingsRouter(
   },
 ) {
   return router({
+    fieldMachines: authorizedProcedure(['contracting_machine:read', 'contracting_reading:capture'])
+      .output(FieldMachine.array())
+      .query(({ ctx }) => listFieldMachines({ db: ctx.db })),
+    fieldHistory: authorizedProcedure(['contracting_machine:read', 'contracting_reading:capture'])
+      .input(ReadingMachineInput)
+      .output(FieldReading.array())
+      .query(({ ctx, input }) => listFieldReadings({ db: ctx.db, ...input })),
     captureBaseline: authorizedProcedure('contracting_reading:capture')
       .input(ReadingCaptureInput.omit({ role: true, disputePrevious: true }))
       .mutation(({ ctx, input }) => {

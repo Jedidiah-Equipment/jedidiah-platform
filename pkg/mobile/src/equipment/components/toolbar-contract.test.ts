@@ -19,7 +19,22 @@ const SIGNED_IN_PERMISSION_LOADING_SURFACES = {
 } as const;
 
 const SIGNED_IN_ROUTE_TOOLBARS = {
-  'contracting/index.tsx': toolbar('main', 'app/(protected)/contracting/index.tsx', 'MainToolbar'),
+  'contracting/index.tsx': toolbar('main', 'src/contracting/components/MachinesScreen.tsx', 'MainToolbar'),
+  'contracting/attention.tsx': toolbar(
+    'secondary',
+    'src/contracting/components/AttentionScreen.tsx',
+    'SecondaryToolbar',
+  ),
+  'contracting/machines/[id]/index.tsx': toolbar(
+    'secondary',
+    'src/contracting/components/MachineScreen.tsx',
+    'SecondaryToolbar',
+  ),
+  'contracting/machines/[id]/capture.tsx': toolbar(
+    'secondary',
+    'src/contracting/components/CaptureScreen.tsx',
+    'SecondaryToolbar',
+  ),
   'equipment/(tabs)/(plan)/bays/[bayId].tsx': toolbar('secondary', 'src/equipment/components/bays/BayQueueScreen.tsx'),
   'equipment/(tabs)/(plan)/plan/index.tsx': toolbar('main', 'app/(protected)/equipment/(tabs)/(plan)/plan/index.tsx'),
   'equipment/(tabs)/activity/index.tsx': toolbar('main', 'app/(protected)/equipment/(tabs)/activity/index.tsx'),
@@ -139,7 +154,7 @@ describe('signed-in toolbar contract', () => {
 });
 
 type ToolbarKind = 'main' | 'secondary';
-type ToolbarComponent = 'MainTabToolbar' | 'MainToolbar' | 'SecondaryPageToolbar';
+type ToolbarComponent = 'MainTabToolbar' | 'MainToolbar' | 'SecondaryPageToolbar' | 'SecondaryToolbar';
 type ToolbarContract = { component: ToolbarComponent; kind: ToolbarKind; owner: string };
 
 // Equipment pages go through their business wrapper; Contracting has no business-specific actions yet, so

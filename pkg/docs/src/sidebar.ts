@@ -18,6 +18,10 @@ export const CONTRACTING_SECTIONS: DocsSection[] = [
     text: 'Contracting tasks',
     items: [
       { text: 'Overview', link: '/contracting/' },
+      { text: 'Find a Machine', link: '/contracting/find-a-machine' },
+      { text: 'Read Machine hours', link: '/contracting/read-machine-hours' },
+      { text: 'Capture a reading', link: '/contracting/capture-a-reading' },
+      { text: 'Resolve queued readings', link: '/contracting/resolve-queued-readings' },
       { text: 'Resolve Reading Exceptions', link: '/contracting/resolve-reading-exceptions' },
       { text: 'Maintain Machines', link: '/contracting/maintain-machines' },
       { text: 'Maintain Categories', link: '/contracting/maintain-categories' },

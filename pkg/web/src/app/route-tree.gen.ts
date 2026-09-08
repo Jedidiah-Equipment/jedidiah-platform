@@ -20,7 +20,9 @@ import { Route as VerifyEmailRouteImport } from './../routes/verify-email'
 import { Route as AuthedContractingRouteImport } from './../routes/_authed.contracting'
 import { Route as AuthedEquipmentRouteImport } from './../routes/_authed.equipment'
 import { Route as AuthedContractingIndexRouteImport } from './../routes/_authed.contracting.index'
+import { Route as AuthedContractingCustomersRouteImport } from './../routes/_authed.contracting.customers'
 import { Route as AuthedContractingFleetRouteImport } from './../routes/_authed.contracting.fleet'
+import { Route as AuthedContractingWorkTypesRouteImport } from './../routes/_authed.contracting.work-types'
 import { Route as AuthedEquipmentAuditRouteImport } from './../routes/_authed.equipment.audit'
 import { Route as AuthedEquipmentBaysRouteImport } from './../routes/_authed.equipment.bays'
 import { Route as AuthedEquipmentCatalogTranslationsRouteImport } from './../routes/_authed.equipment.catalog-translations'
@@ -37,10 +39,12 @@ import { Route as AuthedEquipmentQuotesRouteImport } from './../routes/_authed.e
 import { Route as AuthedEquipmentSuppliersRouteImport } from './../routes/_authed.equipment.suppliers'
 import { Route as AuthedEquipmentUnitsRouteImport } from './../routes/_authed.equipment.units'
 import { Route as AuthedEquipmentUsersRouteImport } from './../routes/_authed.equipment.users'
+import { Route as AuthedContractingCustomersIndexRouteImport } from './../routes/_authed.contracting.customers.index'
 import { Route as AuthedContractingFleetIndexRouteImport } from './../routes/_authed.contracting.fleet.index'
 import { Route as AuthedContractingFleetCategoriesRouteImport } from './../routes/_authed.contracting.fleet.categories'
 import { Route as AuthedContractingFleetImplementsRouteImport } from './../routes/_authed.contracting.fleet.implements'
 import { Route as AuthedContractingReadingsExceptionsRouteImport } from './../routes/_authed.contracting.readings.exceptions'
+import { Route as AuthedContractingWorkTypesIndexRouteImport } from './../routes/_authed.contracting.work-types.index'
 import { Route as AuthedEquipmentCustomersIndexRouteImport } from './../routes/_authed.equipment.customers.index'
 import { Route as AuthedEquipmentInventoryIndexRouteImport } from './../routes/_authed.equipment.inventory.index'
 import { Route as AuthedEquipmentInventoryPartIdRouteImport } from './../routes/_authed.equipment.inventory.$partId'
@@ -62,9 +66,11 @@ import { Route as AuthedEquipmentQuotesIndexRouteImport } from './../routes/_aut
 import { Route as AuthedEquipmentSuppliersIndexRouteImport } from './../routes/_authed.equipment.suppliers.index'
 import { Route as AuthedEquipmentUnitsIndexRouteImport } from './../routes/_authed.equipment.units.index'
 import { Route as AuthedEquipmentUnitsIdRouteImport } from './../routes/_authed.equipment.units.$id'
+import { Route as AuthedContractingCustomersIdEditRouteImport } from './../routes/_authed.contracting.customers.$id.edit'
 import { Route as AuthedContractingFleetIdEditRouteImport } from './../routes/_authed.contracting.fleet.$id.edit'
 import { Route as AuthedContractingFleetCategoriesIndexRouteImport } from './../routes/_authed.contracting.fleet.categories.index'
 import { Route as AuthedContractingFleetImplementsIndexRouteImport } from './../routes/_authed.contracting.fleet.implements.index'
+import { Route as AuthedContractingWorkTypesIdEditRouteImport } from './../routes/_authed.contracting.work-types.$id.edit'
 import { Route as AuthedEquipmentCustomersIdEditRouteImport } from './../routes/_authed.equipment.customers.$id.edit'
 import { Route as AuthedEquipmentInventoryCloseOutIndexRouteImport } from './../routes/_authed.equipment.inventory.close-out.index'
 import { Route as AuthedEquipmentInventoryCloseOutJobIdRouteImport } from './../routes/_authed.equipment.inventory.close-out.$jobId'
@@ -133,11 +139,23 @@ const AuthedContractingIndexRoute = AuthedContractingIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AuthedContractingRoute,
 } as any)
+const AuthedContractingCustomersRoute =
+  AuthedContractingCustomersRouteImport.update({
+    id: '/customers',
+    path: '/customers',
+    getParentRoute: () => AuthedContractingRoute,
+  } as any)
 const AuthedContractingFleetRoute = AuthedContractingFleetRouteImport.update({
   id: '/fleet',
   path: '/fleet',
   getParentRoute: () => AuthedContractingRoute,
 } as any)
+const AuthedContractingWorkTypesRoute =
+  AuthedContractingWorkTypesRouteImport.update({
+    id: '/work-types',
+    path: '/work-types',
+    getParentRoute: () => AuthedContractingRoute,
+  } as any)
 const AuthedEquipmentAuditRoute = AuthedEquipmentAuditRouteImport.update({
   id: '/audit',
   path: '/audit',
@@ -225,6 +243,12 @@ const AuthedEquipmentUsersRoute = AuthedEquipmentUsersRouteImport.update({
   path: '/users',
   getParentRoute: () => AuthedEquipmentRoute,
 } as any)
+const AuthedContractingCustomersIndexRoute =
+  AuthedContractingCustomersIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AuthedContractingCustomersRoute,
+  } as any)
 const AuthedContractingFleetIndexRoute =
   AuthedContractingFleetIndexRouteImport.update({
     id: '/',
@@ -248,6 +272,12 @@ const AuthedContractingReadingsExceptionsRoute =
     id: '/readings/exceptions',
     path: '/readings/exceptions',
     getParentRoute: () => AuthedContractingRoute,
+  } as any)
+const AuthedContractingWorkTypesIndexRoute =
+  AuthedContractingWorkTypesIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AuthedContractingWorkTypesRoute,
   } as any)
 const AuthedEquipmentCustomersIndexRoute =
   AuthedEquipmentCustomersIndexRouteImport.update({
@@ -372,6 +402,12 @@ const AuthedEquipmentUnitsIdRoute = AuthedEquipmentUnitsIdRouteImport.update({
   path: '/$id',
   getParentRoute: () => AuthedEquipmentUnitsRoute,
 } as any)
+const AuthedContractingCustomersIdEditRoute =
+  AuthedContractingCustomersIdEditRouteImport.update({
+    id: '/$id/edit',
+    path: '/$id/edit',
+    getParentRoute: () => AuthedContractingCustomersRoute,
+  } as any)
 const AuthedContractingFleetIdEditRoute =
   AuthedContractingFleetIdEditRouteImport.update({
     id: '/$id/edit',
@@ -389,6 +425,12 @@ const AuthedContractingFleetImplementsIndexRoute =
     id: '/',
     path: '/',
     getParentRoute: () => AuthedContractingFleetImplementsRoute,
+  } as any)
+const AuthedContractingWorkTypesIdEditRoute =
+  AuthedContractingWorkTypesIdEditRouteImport.update({
+    id: '/$id/edit',
+    path: '/$id/edit',
+    getParentRoute: () => AuthedContractingWorkTypesRoute,
   } as any)
 const AuthedEquipmentCustomersIdEditRoute =
   AuthedEquipmentCustomersIdEditRouteImport.update({
@@ -479,7 +521,9 @@ export interface FileRoutesByFullPath {
   '/verify-email': typeof VerifyEmailRoute
   '/contracting': typeof AuthedContractingRouteWithChildren
   '/equipment': typeof AuthedEquipmentRouteWithChildren
+  '/contracting/customers': typeof AuthedContractingCustomersRouteWithChildren
   '/contracting/fleet': typeof AuthedContractingFleetRouteWithChildren
+  '/contracting/work-types': typeof AuthedContractingWorkTypesRouteWithChildren
   '/equipment/audit': typeof AuthedEquipmentAuditRoute
   '/equipment/bays': typeof AuthedEquipmentBaysRoute
   '/equipment/catalog-translations': typeof AuthedEquipmentCatalogTranslationsRoute
@@ -512,7 +556,9 @@ export interface FileRoutesByFullPath {
   '/equipment/jobs/stock-build': typeof AuthedEquipmentJobsStockBuildRoute
   '/equipment/purchase-orders/$id': typeof AuthedEquipmentPurchaseOrdersIdRoute
   '/equipment/units/$id': typeof AuthedEquipmentUnitsIdRoute
+  '/contracting/customers/': typeof AuthedContractingCustomersIndexRoute
   '/contracting/fleet/': typeof AuthedContractingFleetIndexRoute
+  '/contracting/work-types/': typeof AuthedContractingWorkTypesIndexRoute
   '/equipment/customers/': typeof AuthedEquipmentCustomersIndexRoute
   '/equipment/inventory/': typeof AuthedEquipmentInventoryIndexRoute
   '/equipment/jobs/': typeof AuthedEquipmentJobsIndexRoute
@@ -522,7 +568,9 @@ export interface FileRoutesByFullPath {
   '/equipment/quotes/': typeof AuthedEquipmentQuotesIndexRoute
   '/equipment/suppliers/': typeof AuthedEquipmentSuppliersIndexRoute
   '/equipment/units/': typeof AuthedEquipmentUnitsIndexRoute
+  '/contracting/customers/$id/edit': typeof AuthedContractingCustomersIdEditRoute
   '/contracting/fleet/$id/edit': typeof AuthedContractingFleetIdEditRoute
+  '/contracting/work-types/$id/edit': typeof AuthedContractingWorkTypesIdEditRoute
   '/equipment/customers/$id/edit': typeof AuthedEquipmentCustomersIdEditRoute
   '/equipment/inventory/close-out/$jobId': typeof AuthedEquipmentInventoryCloseOutJobIdRoute
   '/equipment/inventory/job-variance/$jobId': typeof AuthedEquipmentInventoryJobVarianceJobIdRoute
@@ -567,7 +615,9 @@ export interface FileRoutesByTo {
   '/equipment/jobs/stock-build': typeof AuthedEquipmentJobsStockBuildRoute
   '/equipment/purchase-orders/$id': typeof AuthedEquipmentPurchaseOrdersIdRoute
   '/equipment/units/$id': typeof AuthedEquipmentUnitsIdRoute
+  '/contracting/customers': typeof AuthedContractingCustomersIndexRoute
   '/contracting/fleet': typeof AuthedContractingFleetIndexRoute
+  '/contracting/work-types': typeof AuthedContractingWorkTypesIndexRoute
   '/equipment/customers': typeof AuthedEquipmentCustomersIndexRoute
   '/equipment/inventory': typeof AuthedEquipmentInventoryIndexRoute
   '/equipment/jobs': typeof AuthedEquipmentJobsIndexRoute
@@ -577,7 +627,9 @@ export interface FileRoutesByTo {
   '/equipment/quotes': typeof AuthedEquipmentQuotesIndexRoute
   '/equipment/suppliers': typeof AuthedEquipmentSuppliersIndexRoute
   '/equipment/units': typeof AuthedEquipmentUnitsIndexRoute
+  '/contracting/customers/$id/edit': typeof AuthedContractingCustomersIdEditRoute
   '/contracting/fleet/$id/edit': typeof AuthedContractingFleetIdEditRoute
+  '/contracting/work-types/$id/edit': typeof AuthedContractingWorkTypesIdEditRoute
   '/equipment/customers/$id/edit': typeof AuthedEquipmentCustomersIdEditRoute
   '/equipment/inventory/close-out/$jobId': typeof AuthedEquipmentInventoryCloseOutJobIdRoute
   '/equipment/inventory/job-variance/$jobId': typeof AuthedEquipmentInventoryJobVarianceJobIdRoute
@@ -606,7 +658,9 @@ export interface FileRoutesById {
   '/verify-email': typeof VerifyEmailRoute
   '/_authed/contracting': typeof AuthedContractingRouteWithChildren
   '/_authed/equipment': typeof AuthedEquipmentRouteWithChildren
+  '/_authed/contracting/customers': typeof AuthedContractingCustomersRouteWithChildren
   '/_authed/contracting/fleet': typeof AuthedContractingFleetRouteWithChildren
+  '/_authed/contracting/work-types': typeof AuthedContractingWorkTypesRouteWithChildren
   '/_authed/equipment/audit': typeof AuthedEquipmentAuditRoute
   '/_authed/equipment/bays': typeof AuthedEquipmentBaysRoute
   '/_authed/equipment/catalog-translations': typeof AuthedEquipmentCatalogTranslationsRoute
@@ -639,7 +693,9 @@ export interface FileRoutesById {
   '/_authed/equipment/jobs/stock-build': typeof AuthedEquipmentJobsStockBuildRoute
   '/_authed/equipment/purchase-orders/$id': typeof AuthedEquipmentPurchaseOrdersIdRoute
   '/_authed/equipment/units/$id': typeof AuthedEquipmentUnitsIdRoute
+  '/_authed/contracting/customers/': typeof AuthedContractingCustomersIndexRoute
   '/_authed/contracting/fleet/': typeof AuthedContractingFleetIndexRoute
+  '/_authed/contracting/work-types/': typeof AuthedContractingWorkTypesIndexRoute
   '/_authed/equipment/customers/': typeof AuthedEquipmentCustomersIndexRoute
   '/_authed/equipment/inventory/': typeof AuthedEquipmentInventoryIndexRoute
   '/_authed/equipment/jobs/': typeof AuthedEquipmentJobsIndexRoute
@@ -649,7 +705,9 @@ export interface FileRoutesById {
   '/_authed/equipment/quotes/': typeof AuthedEquipmentQuotesIndexRoute
   '/_authed/equipment/suppliers/': typeof AuthedEquipmentSuppliersIndexRoute
   '/_authed/equipment/units/': typeof AuthedEquipmentUnitsIndexRoute
+  '/_authed/contracting/customers/$id/edit': typeof AuthedContractingCustomersIdEditRoute
   '/_authed/contracting/fleet/$id/edit': typeof AuthedContractingFleetIdEditRoute
+  '/_authed/contracting/work-types/$id/edit': typeof AuthedContractingWorkTypesIdEditRoute
   '/_authed/equipment/customers/$id/edit': typeof AuthedEquipmentCustomersIdEditRoute
   '/_authed/equipment/inventory/close-out/$jobId': typeof AuthedEquipmentInventoryCloseOutJobIdRoute
   '/_authed/equipment/inventory/job-variance/$jobId': typeof AuthedEquipmentInventoryJobVarianceJobIdRoute
@@ -678,7 +736,9 @@ export interface FileRouteTypes {
     | '/verify-email'
     | '/contracting'
     | '/equipment'
+    | '/contracting/customers'
     | '/contracting/fleet'
+    | '/contracting/work-types'
     | '/equipment/audit'
     | '/equipment/bays'
     | '/equipment/catalog-translations'
@@ -711,7 +771,9 @@ export interface FileRouteTypes {
     | '/equipment/jobs/stock-build'
     | '/equipment/purchase-orders/$id'
     | '/equipment/units/$id'
+    | '/contracting/customers/'
     | '/contracting/fleet/'
+    | '/contracting/work-types/'
     | '/equipment/customers/'
     | '/equipment/inventory/'
     | '/equipment/jobs/'
@@ -721,7 +783,9 @@ export interface FileRouteTypes {
     | '/equipment/quotes/'
     | '/equipment/suppliers/'
     | '/equipment/units/'
+    | '/contracting/customers/$id/edit'
     | '/contracting/fleet/$id/edit'
+    | '/contracting/work-types/$id/edit'
     | '/equipment/customers/$id/edit'
     | '/equipment/inventory/close-out/$jobId'
     | '/equipment/inventory/job-variance/$jobId'
@@ -766,7 +830,9 @@ export interface FileRouteTypes {
     | '/equipment/jobs/stock-build'
     | '/equipment/purchase-orders/$id'
     | '/equipment/units/$id'
+    | '/contracting/customers'
     | '/contracting/fleet'
+    | '/contracting/work-types'
     | '/equipment/customers'
     | '/equipment/inventory'
     | '/equipment/jobs'
@@ -776,7 +842,9 @@ export interface FileRouteTypes {
     | '/equipment/quotes'
     | '/equipment/suppliers'
     | '/equipment/units'
+    | '/contracting/customers/$id/edit'
     | '/contracting/fleet/$id/edit'
+    | '/contracting/work-types/$id/edit'
     | '/equipment/customers/$id/edit'
     | '/equipment/inventory/close-out/$jobId'
     | '/equipment/inventory/job-variance/$jobId'
@@ -804,7 +872,9 @@ export interface FileRouteTypes {
     | '/verify-email'
     | '/_authed/contracting'
     | '/_authed/equipment'
+    | '/_authed/contracting/customers'
     | '/_authed/contracting/fleet'
+    | '/_authed/contracting/work-types'
     | '/_authed/equipment/audit'
     | '/_authed/equipment/bays'
     | '/_authed/equipment/catalog-translations'
@@ -837,7 +907,9 @@ export interface FileRouteTypes {
     | '/_authed/equipment/jobs/stock-build'
     | '/_authed/equipment/purchase-orders/$id'
     | '/_authed/equipment/units/$id'
+    | '/_authed/contracting/customers/'
     | '/_authed/contracting/fleet/'
+    | '/_authed/contracting/work-types/'
     | '/_authed/equipment/customers/'
     | '/_authed/equipment/inventory/'
     | '/_authed/equipment/jobs/'
@@ -847,7 +919,9 @@ export interface FileRouteTypes {
     | '/_authed/equipment/quotes/'
     | '/_authed/equipment/suppliers/'
     | '/_authed/equipment/units/'
+    | '/_authed/contracting/customers/$id/edit'
     | '/_authed/contracting/fleet/$id/edit'
+    | '/_authed/contracting/work-types/$id/edit'
     | '/_authed/equipment/customers/$id/edit'
     | '/_authed/equipment/inventory/close-out/$jobId'
     | '/_authed/equipment/inventory/job-variance/$jobId'
@@ -955,11 +1029,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthedContractingIndexRouteImport
       parentRoute: typeof AuthedContractingRoute
     }
+    '/_authed/contracting/customers': {
+      id: '/_authed/contracting/customers'
+      path: '/customers'
+      fullPath: '/contracting/customers'
+      preLoaderRoute: typeof AuthedContractingCustomersRouteImport
+      parentRoute: typeof AuthedContractingRoute
+    }
     '/_authed/contracting/fleet': {
       id: '/_authed/contracting/fleet'
       path: '/fleet'
       fullPath: '/contracting/fleet'
       preLoaderRoute: typeof AuthedContractingFleetRouteImport
+      parentRoute: typeof AuthedContractingRoute
+    }
+    '/_authed/contracting/work-types': {
+      id: '/_authed/contracting/work-types'
+      path: '/work-types'
+      fullPath: '/contracting/work-types'
+      preLoaderRoute: typeof AuthedContractingWorkTypesRouteImport
       parentRoute: typeof AuthedContractingRoute
     }
     '/_authed/equipment/audit': {
@@ -1074,6 +1162,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthedEquipmentUsersRouteImport
       parentRoute: typeof AuthedEquipmentRoute
     }
+    '/_authed/contracting/customers/': {
+      id: '/_authed/contracting/customers/'
+      path: '/'
+      fullPath: '/contracting/customers/'
+      preLoaderRoute: typeof AuthedContractingCustomersIndexRouteImport
+      parentRoute: typeof AuthedContractingCustomersRoute
+    }
     '/_authed/contracting/fleet/': {
       id: '/_authed/contracting/fleet/'
       path: '/'
@@ -1101,6 +1196,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/contracting/readings/exceptions'
       preLoaderRoute: typeof AuthedContractingReadingsExceptionsRouteImport
       parentRoute: typeof AuthedContractingRoute
+    }
+    '/_authed/contracting/work-types/': {
+      id: '/_authed/contracting/work-types/'
+      path: '/'
+      fullPath: '/contracting/work-types/'
+      preLoaderRoute: typeof AuthedContractingWorkTypesIndexRouteImport
+      parentRoute: typeof AuthedContractingWorkTypesRoute
     }
     '/_authed/equipment/customers/': {
       id: '/_authed/equipment/customers/'
@@ -1249,6 +1351,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthedEquipmentUnitsIdRouteImport
       parentRoute: typeof AuthedEquipmentUnitsRoute
     }
+    '/_authed/contracting/customers/$id/edit': {
+      id: '/_authed/contracting/customers/$id/edit'
+      path: '/$id/edit'
+      fullPath: '/contracting/customers/$id/edit'
+      preLoaderRoute: typeof AuthedContractingCustomersIdEditRouteImport
+      parentRoute: typeof AuthedContractingCustomersRoute
+    }
     '/_authed/contracting/fleet/$id/edit': {
       id: '/_authed/contracting/fleet/$id/edit'
       path: '/$id/edit'
@@ -1269,6 +1378,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/contracting/fleet/implements/'
       preLoaderRoute: typeof AuthedContractingFleetImplementsIndexRouteImport
       parentRoute: typeof AuthedContractingFleetImplementsRoute
+    }
+    '/_authed/contracting/work-types/$id/edit': {
+      id: '/_authed/contracting/work-types/$id/edit'
+      path: '/$id/edit'
+      fullPath: '/contracting/work-types/$id/edit'
+      preLoaderRoute: typeof AuthedContractingWorkTypesIdEditRouteImport
+      parentRoute: typeof AuthedContractingWorkTypesRoute
     }
     '/_authed/equipment/customers/$id/edit': {
       id: '/_authed/equipment/customers/$id/edit'
@@ -1364,6 +1480,23 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface AuthedContractingCustomersRouteChildren {
+  AuthedContractingCustomersIndexRoute: typeof AuthedContractingCustomersIndexRoute
+  AuthedContractingCustomersIdEditRoute: typeof AuthedContractingCustomersIdEditRoute
+}
+
+const AuthedContractingCustomersRouteChildren: AuthedContractingCustomersRouteChildren =
+  {
+    AuthedContractingCustomersIndexRoute: AuthedContractingCustomersIndexRoute,
+    AuthedContractingCustomersIdEditRoute:
+      AuthedContractingCustomersIdEditRoute,
+  }
+
+const AuthedContractingCustomersRouteWithChildren =
+  AuthedContractingCustomersRoute._addFileChildren(
+    AuthedContractingCustomersRouteChildren,
+  )
+
 interface AuthedContractingFleetCategoriesRouteChildren {
   AuthedContractingFleetCategoriesIndexRoute: typeof AuthedContractingFleetCategoriesIndexRoute
   AuthedContractingFleetCategoriesIdEditRoute: typeof AuthedContractingFleetCategoriesIdEditRoute
@@ -1422,14 +1555,35 @@ const AuthedContractingFleetRouteWithChildren =
     AuthedContractingFleetRouteChildren,
   )
 
+interface AuthedContractingWorkTypesRouteChildren {
+  AuthedContractingWorkTypesIndexRoute: typeof AuthedContractingWorkTypesIndexRoute
+  AuthedContractingWorkTypesIdEditRoute: typeof AuthedContractingWorkTypesIdEditRoute
+}
+
+const AuthedContractingWorkTypesRouteChildren: AuthedContractingWorkTypesRouteChildren =
+  {
+    AuthedContractingWorkTypesIndexRoute: AuthedContractingWorkTypesIndexRoute,
+    AuthedContractingWorkTypesIdEditRoute:
+      AuthedContractingWorkTypesIdEditRoute,
+  }
+
+const AuthedContractingWorkTypesRouteWithChildren =
+  AuthedContractingWorkTypesRoute._addFileChildren(
+    AuthedContractingWorkTypesRouteChildren,
+  )
+
 interface AuthedContractingRouteChildren {
+  AuthedContractingCustomersRoute: typeof AuthedContractingCustomersRouteWithChildren
   AuthedContractingFleetRoute: typeof AuthedContractingFleetRouteWithChildren
+  AuthedContractingWorkTypesRoute: typeof AuthedContractingWorkTypesRouteWithChildren
   AuthedContractingIndexRoute: typeof AuthedContractingIndexRoute
   AuthedContractingReadingsExceptionsRoute: typeof AuthedContractingReadingsExceptionsRoute
 }
 
 const AuthedContractingRouteChildren: AuthedContractingRouteChildren = {
+  AuthedContractingCustomersRoute: AuthedContractingCustomersRouteWithChildren,
   AuthedContractingFleetRoute: AuthedContractingFleetRouteWithChildren,
+  AuthedContractingWorkTypesRoute: AuthedContractingWorkTypesRouteWithChildren,
   AuthedContractingIndexRoute: AuthedContractingIndexRoute,
   AuthedContractingReadingsExceptionsRoute:
     AuthedContractingReadingsExceptionsRoute,

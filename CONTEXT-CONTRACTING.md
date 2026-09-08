@@ -56,6 +56,9 @@ when litres are non-zero, an amount set at Pricing; diesel carries no VAT and th
 so. A **Discount** is one optional Job-level reduction — a fixed amount or a percentage — applied
 at Pricing and shown on the Job Card.
 
+**Farm** is the place the work happens, scoped to one Customer. Its spelling is kept consistent by
+selecting the existing Farm instead of retyping it; different Customers may have Farms with the same name.
+
 **Work Type** is an admin-managed list of kinds of contracted work (dam building, disking,
 planting, …), exactly one per Job, set at pre-creation. It is the reporting dimension for future
 utilisation views.

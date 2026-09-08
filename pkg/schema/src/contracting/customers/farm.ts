@@ -1,0 +1,13 @@
+import { z } from 'zod';
+import { requiredTrimmedText } from '../../common/text.js';
+import { UUID } from '../../common/uuid.js';
+export const FarmName = requiredTrimmedText('Farm name is required');
+export const FarmListInput = z.object({ customerId: UUID }).strict();
+export const FarmIdInput = FarmListInput.extend({ id: UUID });
+export type FarmIdInput = z.infer<typeof FarmIdInput>;
+export const FarmCreateInput = FarmListInput.extend({ name: FarmName });
+export type FarmCreateInput = z.infer<typeof FarmCreateInput>;
+export const FarmPatchInput = FarmIdInput.extend({ name: FarmName });
+export type FarmPatchInput = z.infer<typeof FarmPatchInput>;
+export const Farm = FarmCreateInput.extend({ id: UUID }).strip();
+export type Farm = z.infer<typeof Farm>;

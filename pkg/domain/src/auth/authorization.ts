@@ -90,6 +90,8 @@ export const permissionLabels = {
   'equipment_supplier:update': 'Manage suppliers',
   'equipment_supplier:remove': 'Remove suppliers',
   'equipment_supplier:merge': 'Merge suppliers',
+  'contracting_directory:read': 'View Contracting directory',
+  'contracting_directory:update': 'Manage Contracting directory',
   'contracting_job:read': 'View all Contracting jobs',
   'contracting_job:read-own': 'View assigned Contracting jobs',
   'contracting_job:read-priced': 'View completed and priced Contracting Job Cards',
@@ -180,6 +182,9 @@ export const permissionDescriptions = {
   'equipment_supplier:update': 'Create and edit supplier records.',
   'equipment_supplier:remove': 'Soft-delete supplier records.',
   'equipment_supplier:merge': 'Merge a duplicate supplier into another, moving its parts and purchase orders.',
+  'contracting_directory:read': 'View Contracting customers, farms and work types.',
+  'contracting_directory:update':
+    'Create and edit Contracting customers, manage farms and activate or deactivate work types.',
   'contracting_job:read': 'View every Contracting Job and its amounts.',
   'contracting_job:read-own': 'View Contracting Jobs assigned to the signed-in Foreman, without money.',
   'contracting_job:read-priced': 'View completed and priced Contracting Job Cards for invoicing.',
@@ -232,6 +237,7 @@ export const authorizationStatement = {
   equipment_purchase_order: ['read', 'create', 'approve', 'send', 'amend', 'receive', 'close'],
   equipment_quote: ['read', 'create', 'update', 'cancel'],
   equipment_supplier: ['read', 'update', 'remove', 'merge'],
+  contracting_directory: ['read', 'update'],
   contracting_job: ['read', 'read-own', 'read-priced', 'create', 'update', 'assign', 'complete', 'cancel', 'price'],
   contracting_assignment: ['update-own'],
   contracting_invoice: ['update'],
@@ -271,6 +277,7 @@ const adminAccess = {
 } as const satisfies RoleAccess;
 
 const contractingAdminAccess = {
+  contracting_directory: ['read', 'update'],
   contracting_job: ['read', 'read-own', 'read-priced', 'create', 'update', 'assign', 'complete', 'cancel', 'price'],
   contracting_assignment: ['update-own'],
   contracting_invoice: ['update'],
@@ -336,6 +343,7 @@ export const appRoleAccess = {
   'bay-operator': {},
   'contracting-admin': contractingAdminAccess,
   'contracting-manager': {
+    contracting_directory: ['read', 'update'],
     contracting_job: ['read', 'create', 'update', 'assign', 'complete', 'cancel'],
     contracting_machine: ['read', 'update'],
     contracting_reading: ['capture', 'update'],

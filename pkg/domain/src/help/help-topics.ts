@@ -7,6 +7,8 @@
  * `pnpm verify`. Repoint an entry in the same PR that writes its page.
  */
 export const HELP_TOPICS = {
+  contractingCustomers: '/contracting/maintain-customers-and-farms',
+  contractingWorkTypes: '/contracting/maintain-work-types',
   contractingMobileMachines: '/contracting/find-a-machine',
   contractingMobileMachine: '/contracting/read-machine-hours',
   contractingMobileCapture: '/contracting/capture-a-reading',

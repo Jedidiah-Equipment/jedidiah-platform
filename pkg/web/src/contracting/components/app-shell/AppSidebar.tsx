@@ -12,17 +12,22 @@ type AppSidebarProps = React.ComponentProps<typeof Sidebar>;
 
 export const AppSidebar: React.FC<AppSidebarProps> = (props) => {
   const { onSignOut, user } = useAuth();
+  const canReadDirectory = useCan('contracting_directory:read').can;
   const canReadFleet = useCan('contracting_machine:read').can;
   const path = useLocation({ select: (location) => location.pathname });
-  const helpTopic = path.includes('/readings')
-    ? 'contractingReadings'
-    : path.includes('/categories')
-      ? 'contractingCategories'
-      : path.includes('/implements')
-        ? 'contractingImplements'
-        : path.startsWith('/contracting/fleet')
-          ? 'contractingFleet'
-          : 'contractingHome';
+  const helpTopic = path.startsWith('/contracting/customers')
+    ? 'contractingCustomers'
+    : path.startsWith('/contracting/work-types')
+      ? 'contractingWorkTypes'
+      : path.includes('/readings')
+        ? 'contractingReadings'
+        : path.includes('/categories')
+          ? 'contractingCategories'
+          : path.includes('/implements')
+            ? 'contractingImplements'
+            : path.startsWith('/contracting/fleet')
+              ? 'contractingFleet'
+              : 'contractingHome';
 
   return (
     <Sidebar collapsible="icon" variant="inset" {...props}>
@@ -31,7 +36,7 @@ export const AppSidebar: React.FC<AppSidebarProps> = (props) => {
         <AppNavMain />
       </SidebarContent>
       <SidebarFooter>
-        {canReadFleet ? <AppNavHelp topic={helpTopic} /> : null}
+        {canReadFleet || canReadDirectory ? <AppNavHelp topic={helpTopic} /> : null}
         <AppNavUser business="contracting" onSignOut={onSignOut} user={user} />
       </SidebarFooter>
     </Sidebar>

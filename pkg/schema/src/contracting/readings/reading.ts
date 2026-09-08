@@ -6,6 +6,7 @@ export const ReadingValue = z.number().nonnegative().max(999999999.9).multipleOf
 export const ReadingReason = z.string().trim().min(1, 'A reason is required').max(2000);
 export const ReadingCaptureInput = z
   .object({
+    localId: UUID.optional(),
     machineId: UUID,
     role: z.enum(['baseline', 'spot']),
     value: ReadingValue,

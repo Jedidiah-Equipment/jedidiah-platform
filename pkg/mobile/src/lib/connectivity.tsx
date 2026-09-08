@@ -24,8 +24,8 @@ export async function refreshConnectivity(): Promise<void> {
 
 /**
  * Mounts once at the app root: seeds `onlineManager` from the current network state and
- * keeps it in sync with Expo's network listener. The whole app gates on this through the
- * OfflineScreen overlay in `app/_layout.tsx`, so no screen does its own connectivity check.
+ * keeps it in sync with Expo's network listener. The OfflineScreen overlay gates online-only routes; Contracting uses the same
+ * signal to keep local capture available and resume its queue on reconnect.
  */
 export function ConnectivityProvider({ children }: { children: ReactNode }) {
   useEffect(() => {

@@ -298,3 +298,22 @@ test('acknowledges evidence on an unchanged disputed value while keeping the unr
   ).toMatchObject({ disputed: true, evidenceReviewedAt: expect.any(Date) });
   expect((await listReadingExceptions({ db })).length).toBe(2);
 });
+
+test('retries a delivered mobile capture without creating another reading or disputing a newer one', async ({
+  context,
+}) => {
+  const { db, actorUserId, machineId } = context;
+  const input = {
+    localId: '8766e188-5041-4d7c-98f2-cbd47dca3c00',
+    machineId,
+    role: 'spot' as const,
+    value: 100,
+    capturedAt: '2026-09-08T08:00:00Z',
+    disputePrevious: false,
+  };
+  const first = await captureReading({ db, actorUserId, input });
+  await captureReading({ db, actorUserId, input: { ...input, localId: undefined, value: 110 } });
+  const retry = await captureReading({ db, actorUserId, input });
+  expect(retry.id).toBe(first.id);
+  expect((await listReadingsByMachine({ db, machineId })).map((row) => row.value)).toEqual([110, 100]);
+});

@@ -1,3 +1,4 @@
+import type { HelpTopic } from '@pkg/domain';
 import { IconChevronLeft } from '@tabler/icons-react-native';
 import type React from 'react';
 import { Pressable, View } from 'react-native';
@@ -8,11 +9,13 @@ import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 
 export function MainToolbar({
-  actions = <ProfileMenuButton />,
+  helpTopic,
+  actions = <ProfileMenuButton helpTopic={helpTopic} />,
   subtitle,
   title,
 }: {
   actions?: React.ReactNode;
+  helpTopic?: HelpTopic;
   subtitle: string;
   title: string;
 }) {
@@ -28,7 +31,8 @@ export function MainToolbar({
 }
 
 export function SecondaryToolbar({
-  actions,
+  helpTopic,
+  actions = <ProfileMenuButton helpTopic={helpTopic} />,
   avatar,
   badge,
   onBack,
@@ -37,6 +41,7 @@ export function SecondaryToolbar({
   title,
 }: {
   actions?: React.ReactNode;
+  helpTopic?: HelpTopic;
   avatar?: React.ReactNode;
   badge?: React.ReactNode;
   onBack: () => void;

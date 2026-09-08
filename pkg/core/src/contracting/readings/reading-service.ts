@@ -62,6 +62,24 @@ export async function captureReading({
   readPhoto?: ReadMeterPhoto;
 }) {
   const input = ReadingCaptureInput.parse(raw);
+  async function replay(db: Db | DatabaseTransaction) {
+    if (!input.localId) return null;
+    const row = await db.query.contractingHourReadings.findFirst({
+      where: eq(contractingHourReadings.id, input.localId),
+    });
+    if (!row) return null;
+    if (
+      row.capturedByUserId !== actorUserId ||
+      row.machineId !== input.machineId ||
+      row.role !== input.role ||
+      row.capturedAt.getTime() !== Date.parse(input.capturedAt)
+    ) {
+      throw new ReadingError('reading.capture_id_conflict', 'This capture identifier has already been used.');
+    }
+    return withHint(row);
+  }
+  const delivered = await replay(db);
+  if (delivered) return delivered;
   let photo: StoredFile | null = null;
   let evidence: { aiValue: number | null; aiConfidence: number | null; aiVerification: Row['aiVerification'] } = {
     aiValue: null,
@@ -88,13 +106,15 @@ export async function captureReading({
   try {
     if (photo && photoBytes && readPhoto)
       evidence = await verifyPhoto(input.value, photoBytes, photo.contentType, readPhoto);
-    return await db.transaction(async (tx) => {
+    const result = await db.transaction(async (tx) => {
       const [machine] = await tx
         .select()
         .from(contractingMachines)
         .where(eq(contractingMachines.id, input.machineId))
         .for('update');
       if (!machine) throw new ReadingError('reading.not_found', 'Machine not found.');
+      const delivered = await replay(tx);
+      if (delivered) return delivered;
       if (machine.retiredAt)
         throw new ReadingError('reading.retired_machine', 'Cannot capture readings for a retired Machine.');
       const [latest] = await tx
@@ -119,6 +139,7 @@ export async function captureReading({
       const [row] = await tx
         .insert(contractingHourReadings)
         .values({
+          ...(input.localId ? { id: input.localId } : {}),
           machineId: input.machineId,
           role: input.role,
           value: input.value,
@@ -136,6 +157,10 @@ export async function captureReading({
       await recordAuditCreate({ db: tx, actorUserId, descriptor, input: row });
       return withHint(row);
     });
+    if (photo && storage && result.photo?.storageKey !== photo.storageKey) {
+      await storage.deleteObject(photo.storageKey);
+    }
+    return result;
   } catch (error) {
     if (photo && storage) {
       try {

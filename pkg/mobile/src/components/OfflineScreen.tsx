@@ -12,10 +12,10 @@ import { offlineMessage, offlineTitle, refreshConnectivity, useIsOffline } from 
  * know about connectivity. React Query refetches on reconnect (`refetchOnReconnect`), and
  * the cover simply lifts to reveal the user's exact place with fresh data.
  */
-export function OfflineScreen() {
+export function OfflineScreen({ allowOffline = false }: { allowOffline?: boolean }) {
   const isOffline = useIsOffline();
 
-  if (!isOffline) {
+  if (!isOffline || allowOffline) {
     return null;
   }
 

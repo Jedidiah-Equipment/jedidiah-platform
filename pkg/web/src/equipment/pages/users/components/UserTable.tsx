@@ -1,4 +1,4 @@
-import { roleLabels } from '@pkg/domain';
+import { hasBothBusinessAccess, hasBusinessAccess, roleLabels } from '@pkg/domain';
 import { departmentLabels } from '@pkg/domain/equipment';
 import type { AuthId } from '@pkg/schema';
 import { UserSortBy, type UserSummary } from '@pkg/schema/equipment';
@@ -24,6 +24,9 @@ type UserTableProps = {
 type UserTableSortInput = {
   sortBy: UserSortBy;
 };
+
+const userModes = ['Equipment', 'Contracting', 'Both', 'No access'] as const;
+type UserMode = (typeof userModes)[number];
 
 export const useUserTableStore = createPersistedDataTableStore({
   initialState: {
@@ -71,6 +74,22 @@ export const UserTable: React.FC<UserTableProps> = ({ currentUserId, errorMessag
         enableColumnFilter: true,
         enableSorting: true,
         header: 'Full Name',
+      },
+      {
+        id: 'mode',
+        accessorFn: userMode,
+        enableColumnFilter: true,
+        enableSorting: false,
+        filterFn: (row, columnId, value) =>
+          !Array.isArray(value) || value.length === 0 || value.includes(row.getValue(columnId)),
+        header: 'Mode',
+        meta: {
+          filterVariant: 'multi-select',
+          filterOptions: userModes.map((mode) => ({
+            label: mode,
+            value: mode,
+          })),
+        },
       },
       {
         accessorKey: 'equipmentRole',
@@ -169,6 +188,13 @@ export const UserNameCell: React.FC<UserNameCellProps> = ({ isCurrentUser, isDev
     {isCurrentUser ? <Badge variant="outline">You</Badge> : null}
   </div>
 );
+
+function userMode(user: UserSummary): UserMode {
+  if (hasBothBusinessAccess(user)) return 'Both';
+  if (hasBusinessAccess(user, 'equipment')) return 'Equipment';
+  if (hasBusinessAccess(user, 'contracting')) return 'Contracting';
+  return 'No access';
+}
 
 function userGlobalFilter(row: { original: UserSummary }, _columnId: string, filterValue: unknown) {
   const search = normalizeFilterValue(filterValue);

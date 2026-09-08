@@ -43,6 +43,7 @@ export const HELP_TOPICS = {
   supplierMerge: '/inventory/merge-duplicate-suppliers',
   unitReassignment: '/sales/reassign-a-unit',
   units: '/production/remove-a-unit',
+  users: '/admin/manage-users',
 } as const satisfies Record<string, string>;
 
 export type HelpTopic = keyof typeof HELP_TOPICS;

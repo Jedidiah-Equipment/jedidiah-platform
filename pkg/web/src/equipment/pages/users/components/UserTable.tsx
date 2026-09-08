@@ -25,6 +25,9 @@ type UserTableSortInput = {
   sortBy: UserSortBy;
 };
 
+const userModes = ['Equipment', 'Contracting', 'Both', 'No access'] as const;
+type UserMode = (typeof userModes)[number];
+
 export const useUserTableStore = createPersistedDataTableStore({
   initialState: {
     sorting: [
@@ -77,11 +80,12 @@ export const UserTable: React.FC<UserTableProps> = ({ currentUserId, errorMessag
         accessorFn: userMode,
         enableColumnFilter: true,
         enableSorting: false,
-        filterFn: (row, columnId, value) => row.getValue(columnId) === value,
+        filterFn: (row, columnId, value) =>
+          !Array.isArray(value) || value.length === 0 || value.includes(row.getValue(columnId)),
         header: 'Mode',
         meta: {
-          filterVariant: 'select',
-          filterOptions: ['Equipment', 'Contracting', 'Both', 'No access'].map((mode) => ({
+          filterVariant: 'multi-select',
+          filterOptions: userModes.map((mode) => ({
             label: mode,
             value: mode,
           })),
@@ -185,7 +189,7 @@ export const UserNameCell: React.FC<UserNameCellProps> = ({ isCurrentUser, isDev
   </div>
 );
 
-function userMode(user: UserSummary): string {
+function userMode(user: UserSummary): UserMode {
   if (hasBothBusinessAccess(user)) return 'Both';
   if (hasBusinessAccess(user, 'equipment')) return 'Equipment';
   if (hasBusinessAccess(user, 'contracting')) return 'Contracting';

@@ -52,16 +52,21 @@ describe('UserTable business mode', () => {
     ]);
   });
 
-  it('filters by the displayed mode and restores all users when cleared', async () => {
+  it('combines mode selections to include all contracting people and restores all users when cleared', async () => {
     await mountUsers();
     await click('[aria-label="Filter Mode"]');
+    await act(async () => {
+      const input = document.querySelector<HTMLInputElement>('input[role="combobox"]');
+      input?.focus();
+      input?.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
+    });
     for (const [mode, names] of [
       ['Contracting', ['Ben', 'Dan', 'Eve']],
-      ['Equipment', ['Alice', 'Finn']],
-      ['Both', ['Cara', 'Grace', 'Ivan']],
-      ['No access', ['Hope']],
+      ['Both', ['Ben', 'Cara', 'Dan', 'Eve', 'Grace', 'Ivan']],
+      ['Equipment', ['Alice', 'Ben', 'Cara', 'Dan', 'Eve', 'Finn', 'Grace', 'Ivan']],
+      ['No access', ['Alice', 'Ben', 'Cara', 'Dan', 'Eve', 'Finn', 'Grace', 'Hope', 'Ivan']],
+      ['No access', ['Alice', 'Ben', 'Cara', 'Dan', 'Eve', 'Finn', 'Grace', 'Ivan']],
     ] as const) {
-      await click('[role="combobox"][aria-label="Filter Mode"]');
       const option = [...document.querySelectorAll<HTMLElement>('[role="option"]')].find(
         (element) => element.textContent === mode,
       );

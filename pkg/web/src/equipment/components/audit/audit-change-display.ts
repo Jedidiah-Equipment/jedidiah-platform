@@ -30,7 +30,6 @@ const auditFieldLabels: Record<string, string> = {
   depositPercent: 'Deposit percent',
   department: 'Department',
   description: 'Description',
-  deliveryTerms: 'Delivery terms',
   disabledAt: 'Disabled at',
   discountPercent: 'Discount percent',
   email: 'Email',

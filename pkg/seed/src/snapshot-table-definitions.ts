@@ -99,6 +99,9 @@ export const snapshotTableDefinitions = [
       { department: 'assembly', costToCompanyRate: 80, billingRate: 320, consumablesPercentage: 20 },
       { department: 'workshop', costToCompanyRate: null, billingRate: 320, consumablesPercentage: null },
     ],
+    // Snapshots captured while the Drizzle property was `id` keep seeding. Delete once every snapshot
+    // source has been re-read.
+    seedRowTransform: ({ id, ...row }) => ({ ...row, department: row.department ?? id }),
   },
 
   {

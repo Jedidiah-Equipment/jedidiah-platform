@@ -103,4 +103,6 @@ it('initializes Labor rates for old snapshots and preserves captured rates', () 
   );
   const captured = [{ department: 'fabrication', costToCompanyRate: 250, billingRate: 600, consumablesPercentage: 70 }];
   expect(prepareRowsForSeed(config, captured)).toEqual(captured);
+  const legacy = [{ id: 'fabrication', costToCompanyRate: 250, billingRate: 600, consumablesPercentage: 70 }];
+  expect(prepareRowsForSeed(config, legacy)).toEqual(captured);
 });

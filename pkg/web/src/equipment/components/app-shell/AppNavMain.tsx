@@ -9,6 +9,7 @@ import {
   IconChevronRight,
   IconClipboardCheck,
   IconClipboardList,
+  IconCoins,
   IconFileText,
   IconFlagCheck,
   IconGauge,
@@ -222,7 +223,7 @@ const navSections = [
         title: 'Labor rates',
         permission: 'equipment_labor_rate:read',
         link: linkOptions({ to: '/equipment/labor-rates' }),
-        icon: IconUsers,
+        icon: IconCoins,
       },
       {
         title: 'Product Ranges',

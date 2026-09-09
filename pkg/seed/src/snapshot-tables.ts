@@ -49,8 +49,6 @@ export {
 } from './snapshot-table-definitions.js';
 
 const dbTablesByName = {
-  labor_department_rate: laborDepartmentRates,
-  labor_rate_settings: laborRateSettings,
   account,
   assembly_overrides: assemblyOverrides,
   assembly_parts: assemblyParts,
@@ -67,6 +65,8 @@ const dbTablesByName = {
   job_cfo_part: jobCfoParts,
   job_slot: jobSlots,
   job_stock_close_out: jobStockCloseOuts,
+  labor_department_rate: laborDepartmentRates,
+  labor_rate_settings: laborRateSettings,
   parts,
   product_assemblies: productAssemblies,
   product_bay: productBays,

@@ -107,10 +107,19 @@ describe('Quote Work Item form helpers', () => {
 
   it('lists the work Departments in pipeline order and seeds an unrated one at zero', () => {
     expect(WORK_ITEM_DEPARTMENTS).toEqual(['fabrication', 'supply', 'paint', 'assembly', 'workshop']);
-    expect(workItemDepartmentRate('assembly', [{ department: 'assembly', billingRate: 320 }])).toBe(320);
-    expect(workItemDepartmentRate('workshop', [{ department: 'workshop', billingRate: 320 }])).toBe(320);
-    expect(workItemDepartmentRate('supply', [{ department: 'supply', billingRate: null }])).toBe(0);
-    expect(workItemDepartmentRate('procurement', [])).toBe(0);
+    const billing = {
+      hoursPerWorkingDay: 9,
+      rates: [
+        { department: 'assembly' as const, billingRate: 320 },
+        { department: 'workshop' as const, billingRate: 320 },
+        { department: 'supply' as const, billingRate: null },
+      ],
+    };
+    expect(workItemDepartmentRate('assembly', billing)).toBe(320);
+    expect(workItemDepartmentRate('workshop', billing)).toBe(320);
+    expect(workItemDepartmentRate('supply', billing)).toBe(0);
+    expect(workItemDepartmentRate('procurement', billing)).toBe(0);
+    expect(workItemDepartmentRate('other', billing)).toBe(0);
     expect(quoteDepartmentLabels.assembly).toBe('Assembly');
     expect(quoteDepartmentLabels.workshop).toBe('Workshop');
     expect(quoteDepartmentLabels.supply).toBe('Supply');

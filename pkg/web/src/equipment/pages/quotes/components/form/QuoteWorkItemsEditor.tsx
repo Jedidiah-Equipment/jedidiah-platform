@@ -5,7 +5,7 @@ import {
   WORK_ITEM_DEPARTMENTS,
   workItemDepartmentRate,
 } from '@pkg/domain/equipment';
-import type { Department } from '@pkg/schema/equipment';
+import type { LaborBillingRates } from '@pkg/schema/equipment';
 import { IconPlus, IconTrash } from '@tabler/icons-react';
 import { useQuery } from '@tanstack/react-query';
 import type React from 'react';
@@ -37,14 +37,16 @@ const DEPARTMENT_OPTIONS = [
   { label: 'Other', value: OTHER_WORK_ITEM_DEPARTMENT },
 ];
 
-const DEFAULT_WORK_ITEM: QuoteWorkItemFormInput = {
-  department: DEFAULT_DEPARTMENT,
-  description: '',
-  hourlyRate: 0,
-  hours: 0,
-  name: '',
-  parts: [],
-};
+function defaultWorkItem(billing: LaborBillingRates): QuoteWorkItemFormInput {
+  return {
+    department: DEFAULT_DEPARTMENT,
+    description: '',
+    hourlyRate: workItemDepartmentRate(DEFAULT_DEPARTMENT, billing),
+    hours: 0,
+    name: '',
+    parts: [],
+  };
+}
 
 const DEFAULT_WORK_ITEM_PART: QuoteWorkItemFormInput['parts'][number] = { name: '', quantity: 1, unitPrice: 0 };
 const getWorkItemKey = createStableRowKeys<QuoteWorkItemFormInput>('quote-work-item');
@@ -62,7 +64,7 @@ export const QuoteWorkItemsEditor: React.FC<QuoteWorkItemsEditorProps> = ({
 }) => {
   const quoteForm = useQuoteForm();
   const trpc = useTRPC();
-  const billing = useQuery(trpc.laborRates.billing.queryOptions());
+  const rates = useQuery(trpc.laborRates.billing.queryOptions()).data;
   const workItems = workItemsField.state.value;
 
   return (
@@ -91,9 +93,10 @@ export const QuoteWorkItemsEditor: React.FC<QuoteWorkItemsEditorProps> = ({
                     <quoteForm.AppField name={`workItems[${workItemIndex}].department`}>
                       {(field) => (
                         <field.SelectField
-                          disabled={readOnly || !billing.data}
+                          disabled={readOnly || !rates}
                           label="Department"
                           onValueCommit={(value) => {
+                            if (!rates) return;
                             // A departmental row is labour: hours at the Department's rate. Other is a
                             // flat amount, held as one unit at that amount — the shape the shop's own
                             // quote uses. Whichever text field the switch hides is cleared, so nothing
@@ -105,7 +108,7 @@ export const QuoteWorkItemsEditor: React.FC<QuoteWorkItemsEditorProps> = ({
                             );
                             quoteForm.setFieldValue(
                               `workItems[${workItemIndex}].hourlyRate`,
-                              nextIsOther ? 0 : workItemDepartmentRate(value as Department, billing.data?.rates ?? []),
+                              workItemDepartmentRate(value, rates),
                             );
                             if (nextIsOther) quoteForm.setFieldValue(`workItems[${workItemIndex}].hours`, 1);
                           }}
@@ -273,12 +276,9 @@ export const QuoteAddWorkItemButton: React.FC<Pick<QuoteWorkItemsEditorProps, 'r
   return (
     <Button
       disabled={readOnly || !billing.data}
-      onClick={() =>
-        workItemsField.pushValue({
-          ...DEFAULT_WORK_ITEM,
-          hourlyRate: workItemDepartmentRate(DEFAULT_DEPARTMENT as Department, billing.data?.rates ?? []),
-        })
-      }
+      onClick={() => {
+        if (billing.data) workItemsField.pushValue(defaultWorkItem(billing.data));
+      }}
       size="sm"
       type="button"
       variant="outline"

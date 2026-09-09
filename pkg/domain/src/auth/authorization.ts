@@ -62,10 +62,10 @@ export const permissionLabels = {
   'equipment_inventory:count': 'Count inventory',
   'equipment_inventory:build': 'Build inventory',
   'equipment_inventory:close-out': 'Close out inventory',
-  'equipment_labor_rate:read': 'View Labor rates',
-  'equipment_labor_rate:update': 'Manage Labor rates',
   'equipment_inventory_cost:read': 'View inventory costs',
   'equipment_inventory_cost:revalue': 'Revalue inventory',
+  'equipment_labor_rate:read': 'View Labor rates',
+  'equipment_labor_rate:update': 'Manage Labor rates',
   'equipment_product:create': 'Create products',
   'equipment_product:read': 'View products',
   'equipment_product:update': 'Update products',
@@ -153,10 +153,10 @@ export const permissionDescriptions = {
   'equipment_inventory:count': 'Run stocktake sessions and post count results.',
   'equipment_inventory:build': 'Build finished Parts from component stock.',
   'equipment_inventory:close-out': 'Return Job leftovers and release remaining commitments.',
-  'equipment_labor_rate:read': 'View Labor rates',
-  'equipment_labor_rate:update': 'Manage Labor rates',
   'equipment_inventory_cost:read': 'View inventory costs and valuation data.',
   'equipment_inventory_cost:revalue': 'Revalue on-hand inventory.',
+  'equipment_labor_rate:read': 'Open the Labor Rate Card.',
+  'equipment_labor_rate:update': 'Change Labor Rate Card rates and overheads.',
   'equipment_product:create': 'Add new product catalog records.',
   'equipment_product:read': 'View product catalog records.',
   'equipment_product:update': 'Edit existing product catalog records.',
@@ -223,7 +223,6 @@ export const permissionDescriptions = {
 } as const satisfies Record<AppPermission, string>;
 
 export const authorizationStatement = {
-  equipment_labor_rate: ['read', 'update'],
   equipment_audit: ['read'],
   equipment_customer: ['read', 'create', 'update', 'remove'],
   equipment_email: ['send'],
@@ -233,6 +232,7 @@ export const authorizationStatement = {
   equipment_job_metrics: ['read'],
   equipment_inventory: ['read', 'move', 'adjust', 'count', 'build', 'close-out'],
   equipment_inventory_cost: ['read', 'revalue'],
+  equipment_labor_rate: ['read', 'update'],
   equipment_part: ['read', 'update'],
   equipment_product: ['read', 'create', 'update'],
   equipment_product_range: ['read', 'create', 'update'],
@@ -263,7 +263,6 @@ type RoleAccess = Partial<{
 }>;
 
 const adminAccess = {
-  equipment_labor_rate: ['read', 'update'],
   equipment_audit: ['read'],
   equipment_customer: ['read', 'create', 'update', 'remove'],
   equipment_email: ['send'],
@@ -272,6 +271,7 @@ const adminAccess = {
   equipment_job_metrics: ['read'],
   equipment_inventory: ['read', 'move', 'adjust', 'count', 'build', 'close-out'],
   equipment_inventory_cost: ['read', 'revalue'],
+  equipment_labor_rate: ['read', 'update'],
   equipment_part: ['read', 'update'],
   equipment_product: ['read', 'create', 'update'],
   equipment_product_range: ['read', 'create', 'update'],

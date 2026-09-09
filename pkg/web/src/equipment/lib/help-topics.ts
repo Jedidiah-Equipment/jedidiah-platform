@@ -16,13 +16,13 @@ const TOPIC_ROUTES: ReadonlyArray<readonly [prefix: string, topic: HelpTopic]> =
   ['/equipment/inventory/stocktake', 'inventoryStocktake'],
   ['/equipment/jobs', 'jobs'],
   ['/equipment/jobs/activity', 'jobActivity'],
+  ['/equipment/labor-rates', 'laborRates'],
   ['/equipment/parts', 'parts'],
   ['/equipment/products', 'products'],
   ['/equipment/purchase-orders', 'purchaseOrders'],
   ['/equipment/quotes', 'quotes'],
   ['/equipment/suppliers', 'suppliers'],
   ['/equipment/units', 'units'],
-  ['/equipment/labor-rates', 'laborRates'],
   ['/equipment/users', 'users'],
 ];
 

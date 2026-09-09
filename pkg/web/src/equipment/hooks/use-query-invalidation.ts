@@ -7,10 +7,6 @@ export function useQueryInvalidation() {
   const queryClient = useQueryClient();
   const trpc = useTRPC();
 
-  const invalidateLaborRates = useCallback(
-    () => queryClient.invalidateQueries({ queryKey: trpc.laborRates.pathKey() }),
-    [queryClient, trpc],
-  );
   const invalidateAudit = useCallback(
     () => queryClient.invalidateQueries({ queryKey: trpc.audit.pathKey() }),
     [queryClient, trpc],
@@ -37,6 +33,10 @@ export function useQueryInvalidation() {
   );
   const invalidateJobs = useCallback(
     () => queryClient.invalidateQueries({ queryKey: trpc.jobs.pathKey() }),
+    [queryClient, trpc],
+  );
+  const invalidateLaborRates = useCallback(
+    () => queryClient.invalidateQueries({ queryKey: trpc.laborRates.pathKey() }),
     [queryClient, trpc],
   );
   const invalidateInventory = useCallback(
@@ -81,7 +81,6 @@ export function useQueryInvalidation() {
   );
   return useMemo(
     () => ({
-      invalidateLaborRates,
       invalidateAudit,
       invalidateAuth,
       invalidateCatalogTranslations,
@@ -90,6 +89,7 @@ export function useQueryInvalidation() {
       invalidateFeedback,
       invalidateJobActivity,
       invalidateJobs,
+      invalidateLaborRates,
       invalidateInventory,
       invalidateParts,
       invalidateProductRanges,
@@ -101,7 +101,6 @@ export function useQueryInvalidation() {
       invalidateUsers,
     }),
     [
-      invalidateLaborRates,
       invalidateAudit,
       invalidateAuth,
       invalidateCatalogTranslations,
@@ -110,6 +109,7 @@ export function useQueryInvalidation() {
       invalidateFeedback,
       invalidateJobActivity,
       invalidateJobs,
+      invalidateLaborRates,
       invalidateInventory,
       invalidateParts,
       invalidateProductRanges,

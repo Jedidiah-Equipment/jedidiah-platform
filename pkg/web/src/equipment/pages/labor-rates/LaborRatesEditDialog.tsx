@@ -1,7 +1,6 @@
 import { departmentLabels } from '@pkg/domain/equipment';
-import type { LaborRateCard } from '@pkg/schema/equipment';
+import type { LaborRateCardView } from '@pkg/schema/equipment';
 import { useMutation } from '@tanstack/react-query';
-import { useBlocker } from '@tanstack/react-router';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { useAppForm } from '@/components/form/index.js';
 import { Button } from '@/components/ui/button.js';
@@ -17,7 +16,7 @@ import { useQueryInvalidation } from '@/equipment/hooks/use-query-invalidation.j
 import { useTRPC } from '@/lib/trpc.js';
 import { LaborRateFormValues, laborRateFormToInput, laborRateFormValues } from './types.js';
 
-export function LaborRatesEditDialog({ card, onClose }: { card: LaborRateCard; onClose: () => void }) {
+export function LaborRatesEditDialog({ card, onClose }: { card: LaborRateCardView; onClose: () => void }) {
   const trpc = useTRPC();
   const invalidate = useQueryInvalidation();
   const save = useMutation(
@@ -43,12 +42,8 @@ export function LaborRatesEditDialog({ card, onClose }: { card: LaborRateCard; o
       }
     },
   });
-  useBlocker({
-    shouldBlockFn: () => form.state.isDirty && !window.confirm('Leave without saving Labor rates?'),
-    enableBeforeUnload: () => form.state.isDirty,
-  });
   const close = () => {
-    if (!save.isPending && (!form.state.isDirty || window.confirm('Discard unsaved Labor rates?'))) onClose();
+    if (!save.isPending) onClose();
   };
   return (
     <Dialog

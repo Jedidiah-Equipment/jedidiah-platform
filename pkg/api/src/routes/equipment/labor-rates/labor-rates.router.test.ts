@@ -51,14 +51,15 @@ test('requires rate permissions and redacts cost fields independently', async ({
   access.permissions = access.permissions.filter((permission) => permission !== 'equipment_inventory_cost:read');
   const restricted = context.createCaller(mockSession(), { access });
   const visible = await restricted.laborRates.get();
-  expect(visible).not.toHaveProperty('managementOverheadPercentage');
+  expect(visible.managementOverheadPercentage).toBeNull();
+  expect(visible.rates.map((rate) => rate.billingRate)).toEqual([550, null, 375, 320, 320]);
   for (const rate of visible.rates) {
-    expect(rate).not.toHaveProperty('costToCompanyRate');
-    expect(rate).not.toHaveProperty('consumablesPercentage');
+    expect(rate.costToCompanyRate).toBeNull();
+    expect(rate.consumablesPercentage).toBeNull();
   }
 });
 
-test('saves the card atomically, audits changed fields, and skips unchanged saves', async ({ context }) => {
+test('saves the card as one audited entity and skips unchanged saves', async ({ context }) => {
   const caller = context.createCaller(mockSession('super-admin'));
   const card = LaborRateCardUpdateInput.parse(await caller.laborRates.get());
   const paint = card.rates.find((rate) => rate.department === 'paint');
@@ -71,19 +72,15 @@ test('saves the card atomically, audits changed fields, and skips unchanged save
   expect(await caller.laborRates.update(card)).toEqual(card);
   await caller.laborRates.update(card);
   const events = (await caller.audit.list({ filters: { entityTypes: ['labor_rate_card'] } })).items;
-  expect(events).toHaveLength(2);
-  expect(events.find((event) => event.entityId === 'paint')).toMatchObject({
-    actorUserId: 'test-user-id',
-    action: 'updated',
-    changes: {
-      billingRate: { from: 375, to: 410.25 },
-      costToCompanyRate: { from: 65, to: 75 },
-      consumablesPercentage: { from: 40, to: 125 },
-    },
-  });
-  expect(events.find((event) => event.entityId === 'labor-rate-card')?.changes).toEqual({
+  expect(events).toHaveLength(1);
+  expect(events[0]).toMatchObject({ actorUserId: 'test-user-id', action: 'updated', entityId: 'labor-rate-card' });
+  expect(events[0]?.changes).toEqual({
     hoursPerWorkingDay: { from: 9, to: 8 },
     managementOverheadPercentage: { from: 50, to: 150 },
+    'rates:Paint': {
+      from: { billingRate: 375, consumablesPercentage: 40, costToCompanyRate: 65 },
+      to: { billingRate: 410.25, consumablesPercentage: 125, costToCompanyRate: 75 },
+    },
   });
   expect(await caller.laborRates.billing()).toMatchObject({
     hoursPerWorkingDay: 8,

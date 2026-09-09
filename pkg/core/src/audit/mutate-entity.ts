@@ -26,6 +26,8 @@ import { type AuditDescriptor, diffAuditUpdate, recordAuditUpdate } from './audi
  *   a single known before/after value, so there is no per-entity diff for the pair to compute.
  * - The Job completion sweep — the order is inverted: it writes first (`WHERE completedOn IS NULL` is
  *   the additive latch), diffs after, with a null system actor.
+ * - Labor Rate Card update — one audited entity spread over a settings row and five Department rows,
+ *   locked and diffed as a whole; a per-row lock would audit one Save as six events.
  */
 export async function mutateEntity<TTable extends PgTable & { id: PgColumn }, TResult>({
   actorUserId,

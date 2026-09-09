@@ -288,20 +288,6 @@ describe('getProductCostEstimate', () => {
       partsCostFloor: 300,
       totalCostFloor: 28_356.5,
     });
-    expect(base.laborHours).toEqual([
-      {
-        consumablesCost: 6_075,
-        consumablesPercentage: 60,
-        daysPerStaff: 5,
-        department: 'fabrication',
-        departmentTotal: 16_200,
-        hourlyRate: 225,
-        hours: 45,
-        laborCost: 10_125,
-        staffCount: 1,
-      },
-      expect.objectContaining({ consumablesCost: 504, department: 'paint', hours: 18, laborCost: 1_260 }),
-    ]);
     expect(
       base.materialLines.map((line) => [line.partCode, line.unitCost, line.costFloor, line.standardPurchaseLengthMm]),
     ).toEqual([

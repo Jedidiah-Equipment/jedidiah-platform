@@ -2,8 +2,8 @@ import {
   LaborDepartmentRate,
   LaborHourlyRate,
   LaborOverheadPercentage,
-  type LaborRateCard,
   LaborRateCardUpdateInput,
+  type LaborRateCardView,
   WORK_ITEM_DEPARTMENTS,
 } from '@pkg/schema/equipment';
 import { z } from 'zod';
@@ -22,9 +22,11 @@ export const LaborRateFormValues = LaborRateCardUpdateInput.omit({ rates: true }
 });
 export type LaborRateFormValues = z.infer<typeof LaborRateFormValues>;
 
-export function laborRateFormValues(card: LaborRateCard): LaborRateFormValues {
+/** The form's blanks are NaN where the card's are null. */
+export function laborRateFormValues(card: LaborRateCardView): LaborRateFormValues {
   return {
-    ...card,
+    hoursPerWorkingDay: card.hoursPerWorkingDay,
+    managementOverheadPercentage: card.managementOverheadPercentage ?? NaN,
     rates: card.rates.map((rate) => ({
       ...rate,
       costToCompanyRate: rate.costToCompanyRate ?? NaN,
@@ -34,9 +36,10 @@ export function laborRateFormValues(card: LaborRateCard): LaborRateFormValues {
   };
 }
 
+/** Maps validated form values back to the API shape; the submit validator has already run. */
 export function laborRateFormToInput(values: LaborRateFormValues): LaborRateCardUpdateInput {
   const nullable = (value: number) => (Number.isNaN(value) ? null : value);
-  return LaborRateCardUpdateInput.parse({
+  return {
     ...values,
     rates: values.rates.map((rate) => ({
       ...rate,
@@ -44,5 +47,5 @@ export function laborRateFormToInput(values: LaborRateFormValues): LaborRateCard
       billingRate: nullable(rate.billingRate),
       consumablesPercentage: nullable(rate.consumablesPercentage),
     })),
-  });
+  };
 }

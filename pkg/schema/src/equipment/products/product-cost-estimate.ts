@@ -64,30 +64,6 @@ export const ProductCostEstimateMaterialLineCostFields = declareInventoryCostFie
   'unitCost',
 );
 
-const LEGACY_HOURS_PER_WORKING_DAY = 9;
-
-/**
- * Job snapshots stamped before the Labor Rate Card froze a labour line as hours at a rate. They read
- * the way the migration backfilled live rows: one staff member at nine hours a day, no consumables and
- * no management overhead, so their frozen totals stand unchanged.
- */
-function upgradeLegacyLaborLine(value: unknown): unknown {
-  if (typeof value !== 'object' || value === null || 'daysPerStaff' in value) return value;
-  const { cost, hours, ...rest } = value as { cost?: unknown; hours?: unknown };
-  if (typeof cost !== 'number' || typeof hours !== 'number') return value;
-
-  return {
-    ...rest,
-    consumablesCost: 0,
-    consumablesPercentage: 0,
-    daysPerStaff: Math.max(0.01, Math.round((hours / LEGACY_HOURS_PER_WORKING_DAY) * 100) / 100),
-    departmentTotal: cost,
-    hours,
-    laborCost: cost,
-    staffCount: 1,
-  };
-}
-
 export type ProductCostEstimateLaborLine = z.infer<typeof ProductCostEstimateLaborLine>;
 export const ProductCostEstimateLaborLine = z.object({
   consumablesCost: z.number().finite().nonnegative(),
@@ -101,22 +77,18 @@ export const ProductCostEstimateLaborLine = z.object({
   staffCount: z.number().int().positive(),
 });
 
-// The line object stays a named export so the inventory-cost contract walker still reaches it.
-const StoredProductCostEstimateLaborLine = z.preprocess(upgradeLegacyLaborLine, ProductCostEstimateLaborLine);
-
 export type ProductCostEstimate = z.infer<typeof ProductCostEstimate>;
 export const ProductCostEstimate = z.object({
   assemblies: z.array(ProductCostEstimateAssembly),
   basePrice: z.number().finite().nonnegative(),
   complete: z.boolean(),
-  // Overhead floors default to zero so Job snapshots stamped before the Labor Rate Card still read.
-  consumablesCostFloor: z.number().finite().nonnegative().default(0),
+  consumablesCostFloor: z.number().finite().nonnegative(),
   currencyCode: z.literal('ZAR'),
   estimatedMarginCeiling: z.number().finite(),
   laborCostFloor: z.number().finite().nonnegative(),
-  laborHours: z.array(StoredProductCostEstimateLaborLine),
-  managementOverheadCostFloor: z.number().finite().nonnegative().default(0),
-  managementOverheadPercentage: z.number().finite().nonnegative().default(0),
+  laborHours: z.array(ProductCostEstimateLaborLine),
+  managementOverheadCostFloor: z.number().finite().nonnegative(),
+  managementOverheadPercentage: z.number().finite().nonnegative(),
   materialCostFloor: z.number().finite().nonnegative(),
   materialLines: z.array(ProductCostEstimateMaterialLine),
   missing: z.object({

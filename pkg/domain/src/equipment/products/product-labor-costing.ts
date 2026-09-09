@@ -1,4 +1,4 @@
-import type { WorkItemDepartment } from '@pkg/schema/equipment';
+import type { LaborDepartmentRate, LaborRateCard, WorkItemDepartment } from '@pkg/schema/equipment';
 
 export type ProductLaborLineInput = {
   daysPerStaff: number;
@@ -7,14 +7,8 @@ export type ProductLaborLineInput = {
 };
 
 /** The Labor Rate Card fields product costing reads; billing rates stay out of it. */
-export type ProductLaborRateCard = {
-  hoursPerWorkingDay: number;
-  managementOverheadPercentage: number;
-  rates: readonly {
-    consumablesPercentage: number | null;
-    costToCompanyRate: number | null;
-    department: WorkItemDepartment;
-  }[];
+export type ProductLaborRateCard = Pick<LaborRateCard, 'hoursPerWorkingDay' | 'managementOverheadPercentage'> & {
+  rates: readonly Pick<LaborDepartmentRate, 'consumablesPercentage' | 'costToCompanyRate' | 'department'>[];
 };
 
 export type ProductLaborCostingLine = ProductLaborLineInput & {

@@ -35,10 +35,8 @@ function collectObjectSchemas(): Set<z.ZodType> {
 
     const def = schema._zod.def as {
       element?: z.ZodType;
-      in?: z.ZodType;
       innerType?: z.ZodType;
       options?: z.ZodType[];
-      out?: z.ZodType;
       shape?: Record<string, z.ZodType>;
       valueType?: z.ZodType;
     };
@@ -49,9 +47,7 @@ function collectObjectSchemas(): Set<z.ZodType> {
     }
 
     visit(def.element);
-    visit(def.in);
     visit(def.innerType);
-    visit(def.out);
     visit(def.valueType);
     for (const option of def.options ?? []) visit(option);
   };

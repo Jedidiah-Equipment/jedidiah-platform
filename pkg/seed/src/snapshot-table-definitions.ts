@@ -93,11 +93,11 @@ export const snapshotTableDefinitions = [
     timestampColumns: [],
     optionalReadTable: true,
     emptySnapshotRows: [
-      { id: 'fabrication', costToCompanyRate: 220, billingRate: 550, consumablesPercentage: 60 },
-      { id: 'supply', costToCompanyRate: 200, billingRate: null, consumablesPercentage: 60 },
-      { id: 'paint', costToCompanyRate: 65, billingRate: 375, consumablesPercentage: 40 },
-      { id: 'assembly', costToCompanyRate: 80, billingRate: 320, consumablesPercentage: 20 },
-      { id: 'workshop', costToCompanyRate: null, billingRate: 320, consumablesPercentage: null },
+      { department: 'fabrication', costToCompanyRate: 220, billingRate: 550, consumablesPercentage: 60 },
+      { department: 'supply', costToCompanyRate: 200, billingRate: null, consumablesPercentage: 60 },
+      { department: 'paint', costToCompanyRate: 65, billingRate: 375, consumablesPercentage: 40 },
+      { department: 'assembly', costToCompanyRate: 80, billingRate: 320, consumablesPercentage: 20 },
+      { department: 'workshop', costToCompanyRate: null, billingRate: 320, consumablesPercentage: null },
     ],
   },
 

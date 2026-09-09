@@ -8,7 +8,7 @@ Administrators maintain the Labor Rate Card used to cost Product Labor Hours and
    using that Department incomplete; a blank billing rate seeds new Work Items at zero.
 3. Enter each Department's **Consumables (%)**, the **Management overhead (%)**, and
    **Hours per working day**. Percentages can exceed 100; hours per working day must be between 1 and 24.
-   The current Product Cost Estimate uses hours × cost-to-company rate; the other settings do not yet affect its total.
+   Consumables and management overhead are costed in proportion to each Product's labor cost.
 4. Select **Save**. Product Cost Estimates immediately use the saved cost-to-company rates.
    Existing Quotes and Job Estimate Snapshots keep their saved prices and costs.
 5. To trace a change, open **Audit** and filter to **Labor Rate Card**.

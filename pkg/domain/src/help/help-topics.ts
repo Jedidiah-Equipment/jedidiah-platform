@@ -31,6 +31,7 @@ export const HELP_TOPICS = {
   jobActivity: '/production/catch-up-on-job-activity',
   jobDepartmentTimes: '/production/stamp-fabrication-times',
   jobs: '/production/find-a-job',
+  laborRates: '/admin/maintain-labor-rates',
   parts: '/inventory/export-and-import-parts',
   partLabels: '/inventory/print-part-labels',
   plan: '/production/open-a-bay-plan',
@@ -43,7 +44,6 @@ export const HELP_TOPICS = {
   supplierMerge: '/inventory/merge-duplicate-suppliers',
   unitReassignment: '/sales/reassign-a-unit',
   units: '/production/remove-a-unit',
-  laborRates: '/admin/maintain-labor-rates',
   users: '/admin/manage-users',
 } as const satisfies Record<string, string>;
 

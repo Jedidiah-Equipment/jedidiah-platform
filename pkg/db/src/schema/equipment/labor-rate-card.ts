@@ -6,7 +6,7 @@ import { equipmentSchema } from './pg-schema.js';
 export const laborDepartmentRates = equipmentSchema.table(
   'labor_department_rate',
   {
-    id: text('department').$type<WorkItemDepartment>().primaryKey(),
+    department: text('department').$type<WorkItemDepartment>().primaryKey(),
     costToCompanyRate: numeric('cost_to_company_rate', { mode: 'number', scale: 2 }),
     billingRate: numeric('billing_rate', { mode: 'number', scale: 2 }),
     consumablesPercentage: numeric('consumables_percentage', { mode: 'number' }),
@@ -14,7 +14,7 @@ export const laborDepartmentRates = equipmentSchema.table(
   (table) => [
     check(
       'labor_department_rate_department',
-      sql`${table.id} in (${sql.raw(WORK_ITEM_DEPARTMENTS.map((department) => `'${department}'`).join(', '))})`,
+      sql`${table.department} in (${sql.raw(WORK_ITEM_DEPARTMENTS.map((department) => `'${department}'`).join(', '))})`,
     ),
     check('labor_department_rate_cost_nonnegative', sql`${table.costToCompanyRate} >= 0`),
     check('labor_department_rate_billing_nonnegative', sql`${table.billingRate} >= 0`),

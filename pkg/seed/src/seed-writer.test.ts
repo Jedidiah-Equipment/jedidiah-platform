@@ -97,10 +97,10 @@ it('initializes Labor rates for old snapshots and preserves captured rates', () 
   if (!config) throw new Error('Missing Labor rates config');
   expect(prepareRowsForSeed(config, [])).toEqual(
     expect.arrayContaining([
-      { id: 'fabrication', costToCompanyRate: 220, billingRate: 550, consumablesPercentage: 60 },
-      { id: 'workshop', costToCompanyRate: null, billingRate: 320, consumablesPercentage: null },
+      { department: 'fabrication', costToCompanyRate: 220, billingRate: 550, consumablesPercentage: 60 },
+      { department: 'workshop', costToCompanyRate: null, billingRate: 320, consumablesPercentage: null },
     ]),
   );
-  const captured = [{ id: 'fabrication', costToCompanyRate: 250, billingRate: 600, consumablesPercentage: 70 }];
+  const captured = [{ department: 'fabrication', costToCompanyRate: 250, billingRate: 600, consumablesPercentage: 70 }];
   expect(prepareRowsForSeed(config, captured)).toEqual(captured);
 });

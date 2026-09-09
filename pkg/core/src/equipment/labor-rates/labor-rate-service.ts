@@ -4,26 +4,40 @@ import { departmentLabels } from '@pkg/domain/equipment';
 import type { AuthId } from '@pkg/schema';
 import type { LaborRateCard, LaborRateCardUpdateInput } from '@pkg/schema/equipment';
 import { WORK_ITEM_DEPARTMENTS } from '@pkg/schema/equipment';
-import { defineAuditDescriptor } from '../../audit/audit-writer.js';
-import { mutateEntity } from '../../audit/mutate-entity.js';
+import { eq, sql } from 'drizzle-orm';
+import { defineAuditDescriptor, diffAuditUpdate, recordAuditUpdate } from '../../audit/audit-writer.js';
 
-export async function getLaborRateCard({ db }: { db: Db | DatabaseTransaction }): Promise<LaborRateCard> {
-  // A single statement sees one committed revision of the card, including its settings.
-  const rows = await db.select().from(laborRateSettings).crossJoin(laborDepartmentRates);
+const LABOR_RATE_CARD_ID = 'labor-rate-card';
+
+export async function getLaborRateCard({
+  db,
+  lock = false,
+}: {
+  db: Db | DatabaseTransaction;
+  lock?: boolean;
+}): Promise<LaborRateCard> {
+  // One statement reads one committed revision of the card, settings and rates together; locked, it
+  // holds every row a Save rewrites, so Saves serialize on the whole card.
+  const query = db.select().from(laborRateSettings).crossJoin(laborDepartmentRates);
+  const rows = await (lock ? query.for('update') : query);
   const settings = rows[0]?.labor_rate_settings;
   if (!settings || rows.length !== WORK_ITEM_DEPARTMENTS.length) throw new Error('Labor Rate Card is not initialized.');
   return {
     hoursPerWorkingDay: settings.hoursPerWorkingDay,
     managementOverheadPercentage: settings.managementOverheadPercentage,
     rates: WORK_ITEM_DEPARTMENTS.map((department) => {
-      const rate = rows.find((row) => row.labor_department_rate.id === department)?.labor_department_rate;
+      const rate = rows.find((row) => row.labor_department_rate.department === department)?.labor_department_rate;
       if (!rate) throw new Error(`Labor rate missing for ${department}.`);
-      const { id: _id, ...fields } = rate;
-      return { department, ...fields };
+      return rate;
     }),
   };
 }
 
+/**
+ * The card is one audited entity across its two tables, so a Save is one event: the settings fields
+ * plus each Department whose rates changed. `mutateEntity` is for single rows; this is the documented
+ * raw diff-and-record pair for a multi-row aggregate.
+ */
 export async function updateLaborRateCard({
   db,
   actorUserId,
@@ -34,60 +48,53 @@ export async function updateLaborRateCard({
   input: LaborRateCardUpdateInput;
 }): Promise<LaborRateCard> {
   return db.transaction(async (tx) => {
-    // Lock the singleton first for every save, serializing the entire card across its child rows.
-    await mutateEntity({
-      db: tx,
-      actorUserId,
-      id: 'labor-rate-card',
-      table: laborRateSettings,
-      notFound: () => new Error('Labor Rate Card is not initialized.'),
-      descriptor: settingsAudit,
-      set: () => ({
+    const before = await getLaborRateCard({ db: tx, lock: true });
+    const changes = diffAuditUpdate(laborRateCardAudit, before, input);
+    if (!changes) return before;
+
+    await tx
+      .update(laborRateSettings)
+      .set({
         hoursPerWorkingDay: input.hoursPerWorkingDay,
         managementOverheadPercentage: input.managementOverheadPercentage,
-      }),
-      project: (_tx, row) => row,
-    });
-    for (const rate of input.rates) {
-      await mutateEntity({
-        db: tx,
-        actorUserId,
-        id: rate.department,
-        table: laborDepartmentRates,
-        notFound: () => new Error(`Labor rate missing for ${rate.department}.`),
-        descriptor: departmentAudit,
-        set: () => ({
-          billingRate: rate.billingRate,
-          costToCompanyRate: rate.costToCompanyRate,
-          consumablesPercentage: rate.consumablesPercentage,
-        }),
-        project: (_tx, row) => row,
+      })
+      .where(eq(laborRateSettings.id, LABOR_RATE_CARD_ID));
+    await tx
+      .insert(laborDepartmentRates)
+      .values(input.rates)
+      .onConflictDoUpdate({
+        target: laborDepartmentRates.department,
+        set: {
+          billingRate: sql`excluded.billing_rate`,
+          consumablesPercentage: sql`excluded.consumables_percentage`,
+          costToCompanyRate: sql`excluded.cost_to_company_rate`,
+        },
       });
-    }
-    return getLaborRateCard({ db: tx });
+    const after = await getLaborRateCard({ db: tx });
+    await recordAuditUpdate({ db: tx, descriptor: laborRateCardAudit, actorUserId, after, changes });
+    return after;
   });
 }
 
-const settingsAudit = defineAuditDescriptor<typeof laborRateSettings.$inferSelect>({
+const laborRateCardAudit = defineAuditDescriptor<LaborRateCard>({
   entityType: 'labor_rate_card',
   noun: 'Labor Rate Card',
-  primaryLabelField: 'id',
-  entityId: (row) => row.id,
-  label: () => 'Settings',
+  primaryLabelField: 'label',
+  entityId: () => LABOR_RATE_CARD_ID,
+  label: () => 'Labor Rate Card',
   toRecord: ({ hoursPerWorkingDay, managementOverheadPercentage }) => ({
     hoursPerWorkingDay,
     managementOverheadPercentage,
   }),
-});
-const departmentAudit = defineAuditDescriptor<typeof laborDepartmentRates.$inferSelect>({
-  entityType: 'labor_rate_card',
-  noun: 'Labor Rate Card',
-  primaryLabelField: 'id',
-  entityId: (row) => row.id,
-  label: (row) => departmentLabels[row.id],
-  toRecord: ({ billingRate, costToCompanyRate, consumablesPercentage }) => ({
-    billingRate,
-    costToCompanyRate,
-    consumablesPercentage,
+  toCollections: (card) => ({
+    rates: card.rates.map((rate) => ({
+      key: rate.department,
+      label: departmentLabels[rate.department],
+      value: {
+        billingRate: rate.billingRate,
+        consumablesPercentage: rate.consumablesPercentage,
+        costToCompanyRate: rate.costToCompanyRate,
+      },
+    })),
   }),
 });

@@ -1,6 +1,6 @@
 import { formatCurrency } from '@pkg/domain';
 import { departmentLabels } from '@pkg/domain/equipment';
-import { type LaborRateCard, LaborRateCardUpdateInput, type VisibleLaborRateCard } from '@pkg/schema/equipment';
+import type { LaborDepartmentRate, LaborRateCardView } from '@pkg/schema/equipment';
 import { useQuery } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
@@ -9,35 +9,34 @@ import { type DataTableColumnDef, useDataTable } from '@/components/data-table/f
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
 import { Button } from '@/components/ui/button.js';
 import { Card, CardContent } from '@/components/ui/card.js';
+import { Skeleton } from '@/components/ui/skeleton.js';
 import { useCan } from '@/hooks/use-access.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { LaborRatesEditDialog } from './LaborRatesEditDialog.js';
 
-type Rate = VisibleLaborRateCard['rates'][number];
-
 export function LaborRatesPage() {
-  const trpc = useTRPC();
-  const access = useCan('equipment_labor_rate:read');
-  const query = useQuery(trpc.laborRates.get.queryOptions(undefined, { enabled: access.can }));
   return (
     <PageLayout title="Labor rates" description="Hourly rates and overheads for work Departments." size="lg">
-      <ErrorMessage error={query.error ?? access.error} fallbackMessage="Unable to load Labor rates." />
-      {access.isPending || (access.can && query.isPending) ? (
-        <p>Loading Labor rates…</p>
-      ) : !access.can ? (
-        <p>You do not have permission to view Labor rates.</p>
-      ) : null}
-      {access.can && query.data ? <LaborRatesCard card={query.data} /> : null}
+      <LaborRatesContent />
     </PageLayout>
   );
 }
 
-function LaborRatesCard({ card }: { card: VisibleLaborRateCard }) {
+function LaborRatesContent() {
+  const trpc = useTRPC();
+  const query = useQuery(trpc.laborRates.get.queryOptions());
+
+  if (query.isPending) return <Skeleton className="h-48 w-full" />;
+  if (query.error) return <ErrorMessage error={query.error} fallbackMessage="Unable to load Labor rates." />;
+  return <LaborRatesCard card={query.data} />;
+}
+
+function LaborRatesCard({ card }: { card: LaborRateCardView }) {
   const canUpdate = useCan('equipment_labor_rate:update').can;
-  const canReadCosts = card.managementOverheadPercentage !== undefined;
+  const canReadCosts = useCan('equipment_inventory_cost:read').can;
   // Capture a fresh card on each open. Refetches update the table without replacing an open draft.
-  const [editingCard, setEditingCard] = useState<LaborRateCard | null>(null);
-  const columns = useMemo<DataTableColumnDef<Rate>[]>(
+  const [editingCard, setEditingCard] = useState<LaborRateCardView | null>(null);
+  const columns = useMemo<DataTableColumnDef<LaborDepartmentRate>[]>(
     () => [
       { accessorKey: 'department', header: 'Department', cell: ({ row }) => departmentLabels[row.original.department] },
       ...(canReadCosts ? [rateColumn('costToCompanyRate', 'Cost to company (R/hour)')] : []),
@@ -53,12 +52,11 @@ function LaborRatesCard({ card }: { card: VisibleLaborRateCard }) {
     enableColumnFilters: false,
     enableSorting: false,
   });
-  const editableCard = LaborRateCardUpdateInput.safeParse(card);
   return (
     <div className="grid gap-4">
-      {canUpdate && editableCard.success ? (
+      {canUpdate && canReadCosts ? (
         <div className="flex justify-end">
-          <Button onClick={() => setEditingCard(editableCard.data)}>Edit rates</Button>
+          <Button onClick={() => setEditingCard(card)}>Edit rates</Button>
         </div>
       ) : null}
       <Card>
@@ -96,7 +94,7 @@ function LaborRatesCard({ card }: { card: VisibleLaborRateCard }) {
 function rateColumn(
   field: 'costToCompanyRate' | 'billingRate' | 'consumablesPercentage',
   header: string,
-): DataTableColumnDef<Rate> {
+): DataTableColumnDef<LaborDepartmentRate> {
   return {
     accessorKey: field,
     header,

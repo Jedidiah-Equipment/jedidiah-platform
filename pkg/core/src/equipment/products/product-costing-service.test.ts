@@ -18,8 +18,11 @@ const test = createTester(async ({ db }) => {
   await db
     .update(laborDepartmentRates)
     .set({ costToCompanyRate: 225 })
-    .where(eq(laborDepartmentRates.id, 'fabrication'));
-  await db.update(laborDepartmentRates).set({ costToCompanyRate: 70 }).where(eq(laborDepartmentRates.id, 'paint'));
+    .where(eq(laborDepartmentRates.department, 'fabrication'));
+  await db
+    .update(laborDepartmentRates)
+    .set({ costToCompanyRate: 70 })
+    .where(eq(laborDepartmentRates.department, 'paint'));
   const now = new Date('2026-08-10T06:00:00.000Z');
   await db.insert(user).values({
     createdAt: now,

@@ -5,7 +5,7 @@ import {
   WORK_ITEM_DEPARTMENTS,
   workItemDepartmentRate,
 } from '@pkg/domain/equipment';
-import type { Department, QuoteDetail, QuoteUpdateInput } from '@pkg/schema/equipment';
+import type { LaborBillingRates, QuoteDetail, QuoteUpdateInput } from '@pkg/schema/equipment';
 import { IconPlus, IconTrash } from '@tabler/icons-react-native';
 import { useQuery } from '@tanstack/react-query';
 import type React from 'react';
@@ -39,12 +39,13 @@ const DEPARTMENT_OPTIONS = [
   { label: 'Other', value: OTHER_WORK_ITEM_DEPARTMENT },
 ];
 
-function createDefaultWorkItem(rates: Parameters<typeof workItemDepartmentRate>[1]): QuoteWorkItemFormValue {
+function createDefaultWorkItem(billing: LaborBillingRates): QuoteWorkItemFormValue {
+  const department = FIRST_DEPARTMENT ?? OTHER_WORK_ITEM_DEPARTMENT;
   return {
-    department: FIRST_DEPARTMENT ?? OTHER_WORK_ITEM_DEPARTMENT,
+    department,
     description: '',
     formKey: createQuoteFormKey('work-item'),
-    hourlyRate: FIRST_DEPARTMENT ? workItemDepartmentRate(FIRST_DEPARTMENT, rates) : 0,
+    hourlyRate: workItemDepartmentRate(department, billing),
     hours: 0,
     name: '',
     parts: [],
@@ -54,7 +55,7 @@ function createDefaultWorkItem(rates: Parameters<typeof workItemDepartmentRate>[
 export function QuoteWorkItemsEditor({ autosave, currencyCode, form, readOnly }: QuoteWorkItemsEditorProps) {
   const trpc = useTRPC();
   const billing = useQuery(trpc.laborRates.billing.queryOptions());
-  const ratesUnavailable = !billing.data;
+  const rates = billing.data;
   return (
     <form.Field name="workItems" mode="array">
       {(workItemsField) => (
@@ -62,13 +63,14 @@ export function QuoteWorkItemsEditor({ autosave, currencyCode, form, readOnly }:
           action={
             <Pressable
               accessibilityRole="button"
-              accessibilityState={{ disabled: readOnly || ratesUnavailable }}
+              accessibilityState={{ disabled: readOnly || !rates }}
               className={`flex-row items-center gap-2 rounded-lg border border-border bg-muted px-3 py-2 ${
                 readOnly ? 'opacity-50' : 'active:bg-surface'
               }`}
-              disabled={readOnly || ratesUnavailable}
+              disabled={readOnly || !rates}
               onPress={() => {
-                workItemsField.pushValue(createDefaultWorkItem(billing.data?.rates ?? []));
+                if (!rates) return;
+                workItemsField.pushValue(createDefaultWorkItem(rates));
                 autosave.markChanged();
               }}
             >
@@ -90,10 +92,11 @@ export function QuoteWorkItemsEditor({ autosave, currencyCode, form, readOnly }:
                   <form.AppField name={`workItems[${workItemIndex}].department`}>
                     {(field) => (
                       <field.SelectField
-                        disabled={readOnly || ratesUnavailable}
+                        disabled={readOnly || !rates}
                         label="Department"
                         onValueCommit={autosave.commit}
                         onValueSelect={(value) => {
+                          if (!rates) return undefined;
                           // A departmental row is labour: hours at the Department's rate. Other is a flat
                           // amount, stored as one unit at that amount — the shape the shop's own quote
                           // uses. Whichever text field the switch hides is cleared, so nothing the
@@ -102,7 +105,7 @@ export function QuoteWorkItemsEditor({ autosave, currencyCode, form, readOnly }:
                           form.setFieldValue(`workItems[${workItemIndex}].${isOther ? 'description' : 'name'}`, '');
                           form.setFieldValue(
                             `workItems[${workItemIndex}].hourlyRate`,
-                            isOther ? 0 : workItemDepartmentRate(value as Department, billing.data?.rates ?? []),
+                            workItemDepartmentRate(value, rates),
                           );
                           if (isOther) form.setFieldValue(`workItems[${workItemIndex}].hours`, 1);
 

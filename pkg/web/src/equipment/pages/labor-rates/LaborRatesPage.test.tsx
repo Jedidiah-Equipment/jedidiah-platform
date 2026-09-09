@@ -13,7 +13,7 @@ import { LaborRatesPage } from './LaborRatesPage.js';
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
-test('keeps the table read-only and opens current rates in a separate dialog without replacing unsaved edits', async () => {
+test('keeps the table read-only and opens current rates in a separate dialog without replacing an open draft', async () => {
   let savedCard: LaborRateCard = {
     hoursPerWorkingDay: 9,
     managementOverheadPercentage: 50,
@@ -124,14 +124,12 @@ test('keeps the table read-only and opens current rates in a separate dialog wit
       await new Promise((resolve) => setTimeout(resolve, 0));
     });
     expect(field('rates[0].billingRate').value).toBe('725.00');
-    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true);
     await act(async () => {
       Array.from(document.querySelectorAll<HTMLButtonElement>('[role=dialog] button'))
         .find((button) => button.textContent === 'Cancel')
         ?.click();
     });
-    expect(confirm).toHaveBeenCalledWith('Discard unsaved Labor rates?');
-    confirm.mockRestore();
+    expect(document.querySelector('[role=dialog]')).toBeNull();
     await openEditor();
     expect(field('rates[0].billingRate').value).toBe('800.00');
   } finally {

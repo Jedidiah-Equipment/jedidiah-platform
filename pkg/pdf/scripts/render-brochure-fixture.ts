@@ -8,7 +8,7 @@ import {
   PRODUCT_KEY_FEATURES_MAX_COUNT,
 } from '@pkg/schema/equipment';
 
-import { renderBrochurePdf } from '../src/brochure/brochure-pdf-renderer.js';
+import { renderBrochurePdf } from '../src/equipment/brochure/brochure-pdf-renderer.js';
 
 const REPO_ROOT = fileURLToPath(new URL('../../..', import.meta.url));
 const DEFAULT_OUTPUT_PATH = path.join(REPO_ROOT, 'tmp/pdfs/brochure-fixture.pdf');

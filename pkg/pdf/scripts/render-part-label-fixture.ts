@@ -2,7 +2,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { renderPartLabelsPdf } from '../src/part-label/part-label-pdf-renderer.js';
+import { renderPartLabelsPdf } from '../src/equipment/part-label/part-label-pdf-renderer.js';
 
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
 const outputPath = path.join(REPO_ROOT, 'tmp/pdfs/part-label-fixture.pdf');

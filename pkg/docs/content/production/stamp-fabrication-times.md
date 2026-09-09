@@ -1,13 +1,13 @@
 # Stamp Department work times
 
-Record when Fabrication, Paint, Assembly, Workshop, or Supply work starts and finishes on a Job. These stamps
+Record when Fabrication, Supply, Paint, Assembly, or Workshop work starts and finishes on a Job. These stamps
 move no Slot, change no Bay Queue, and do not complete the Job.
 
 ## Stamp the start
 
 1. Open the Job. On mobile, open it from the **Jobs** tab and choose **Work Times**.
-2. Find the Department's work-time section and choose **Start fabrication**, **Start paint**,
-   **Start assembly**, **Start workshop**, or **Start supply**.
+2. Find the Department's work-time section and choose **Start fabrication**, **Start supply**,
+   **Start paint**, **Start assembly**, or **Start workshop**.
 3. Confirm. The start time is now — there is nothing to type.
 
 If Fabrication was due to be on the floor and nobody has stamped a start, the section shows
@@ -15,8 +15,8 @@ If Fabrication was due to be on the floor and nobody has stamped a start, the se
 
 ## Stamp it done
 
-1. In the Department's section, choose **Fabrication done**, **Paint done**, **Assembly done**,
-   **Workshop done**, or **Supply done**.
+1. In the Department's section, choose **Fabrication done**, **Supply done**, **Paint done**,
+   **Assembly done**, or **Workshop done**.
 2. Check the **Crew members**. Whoever is currently assigned to that Department's Bays for this Job
    is filled in for you. Add or remove people so the list is who actually crewed it.
 3. Choose the same **done** button again. At least one crew member is required.

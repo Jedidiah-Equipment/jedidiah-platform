@@ -476,10 +476,10 @@ describe('getJob departmentTimings', () => {
 
     expect(detail.departmentTimings.map((timing) => timing.department)).toEqual([
       'fabrication',
+      'supply',
       'paint',
       'assembly',
       'workshop',
-      'supply',
     ]);
     expect(detail.departmentTimings.find((timing) => timing.department === 'fabrication')?.suggestedCrew).toEqual([
       { name: 'J. Smith', userId: 'operator-smith' },

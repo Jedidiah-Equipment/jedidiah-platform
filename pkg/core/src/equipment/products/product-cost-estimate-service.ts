@@ -118,12 +118,14 @@ export async function getProductCostEstimate({
     materialList: scope === 'build' && materialLines.length === 0,
     unattributedProductTerms: scope === 'rework',
     uncostedParts,
+    unratedDepartments: laborHours.filter((line) => line.hourlyRate === 0).map((line) => line.department),
   };
   const complete =
     !missing.laborHours &&
     !missing.materialList &&
     !missing.unattributedProductTerms &&
-    missing.uncostedParts.length === 0;
+    missing.uncostedParts.length === 0 &&
+    missing.unratedDepartments.length === 0;
 
   return ProductCostEstimateSchema.parse({
     assemblies,

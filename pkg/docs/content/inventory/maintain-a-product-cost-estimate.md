@@ -18,7 +18,9 @@ and labor per unit at current inventory costs and the shared labor rates.
 6. Read **Live cost estimate**. It separates raw materials, Assembly Parts, and labor, then compares
    the total with the Product's Base Price.
 7. If the total begins with **≥**, read the missing-input line and complete the named material list,
-   labor hours, or uncosted bought Parts. The displayed amount is a floor until nothing is missing.
+   labor hours, or uncosted bought Parts. A Department with no labor rate yet (Supply today) is also
+   named there: its hours count as zero cost until a rate exists. The displayed amount is a floor
+   until nothing is missing.
 
 Optional Assemblies show a partial bought-Parts cost beside their upgrade-delta price. Their raw
 material and labor remain Product-level, so the screen does not present that partial figure as a

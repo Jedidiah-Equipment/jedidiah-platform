@@ -19,8 +19,9 @@ describe('Product cost estimate display', () => {
           { partCode: 'A', partId: '00000000-0000-4000-8000-000000000001', partName: 'A' },
           { partCode: 'B', partId: '00000000-0000-4000-8000-000000000002', partName: 'B' },
         ],
+        unratedDepartments: ['supply'],
       }),
-    ).toEqual(['labor hours', '2 uncosted parts']);
+    ).toEqual(['labor hours', 'Supply labor rate', '2 uncosted parts']);
   });
 
   test('labels an incomplete margin as a ceiling', () => {
@@ -37,6 +38,7 @@ describe('Product cost estimate display', () => {
           materialList: false,
           unattributedProductTerms: false,
           uncostedParts: [],
+          unratedDepartments: [],
         },
       }),
     ).toEqual({ labor: true, material: false, parts: false });
@@ -50,6 +52,7 @@ describe('Product cost estimate display', () => {
           materialList: false,
           unattributedProductTerms: true,
           uncostedParts: [],
+          unratedDepartments: [],
         },
       }),
     ).toEqual({ labor: false, material: false, parts: true });

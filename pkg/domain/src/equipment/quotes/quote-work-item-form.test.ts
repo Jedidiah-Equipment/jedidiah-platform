@@ -105,8 +105,8 @@ describe('Quote Work Item form helpers', () => {
     expect(rows.map((row) => row.total)).toEqual([30800, 11520]);
   });
 
-  it('lists the five work Departments and seeds an unrated one at zero', () => {
-    expect(WORK_ITEM_DEPARTMENTS).toEqual(['fabrication', 'paint', 'assembly', 'workshop', 'supply']);
+  it('lists the work Departments in pipeline order and seeds an unrated one at zero', () => {
+    expect(WORK_ITEM_DEPARTMENTS).toEqual(['fabrication', 'supply', 'paint', 'assembly', 'workshop']);
     expect(workItemDepartmentRate('assembly')).toBe(320);
     expect(workItemDepartmentRate('workshop')).toBe(320);
     expect(workItemDepartmentRate('supply')).toBe(0);

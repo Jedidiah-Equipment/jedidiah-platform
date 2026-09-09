@@ -1,4 +1,4 @@
 ALTER TABLE "equipment"."job_department_timing" DROP CONSTRAINT "job_department_timing_department_check";--> statement-breakpoint
 ALTER TABLE "equipment"."product_labor_hours" DROP CONSTRAINT "product_labor_hours_department_check";--> statement-breakpoint
-ALTER TABLE "equipment"."job_department_timing" ADD CONSTRAINT "job_department_timing_department_check" CHECK ("equipment"."job_department_timing"."department" IN ('fabrication', 'paint', 'assembly', 'workshop', 'supply'));--> statement-breakpoint
-ALTER TABLE "equipment"."product_labor_hours" ADD CONSTRAINT "product_labor_hours_department_check" CHECK ("equipment"."product_labor_hours"."department" IN ('fabrication', 'paint', 'assembly', 'workshop', 'supply'));
+ALTER TABLE "equipment"."job_department_timing" ADD CONSTRAINT "job_department_timing_department_check" CHECK ("equipment"."job_department_timing"."department" IN ('fabrication', 'supply', 'paint', 'assembly', 'workshop'));--> statement-breakpoint
+ALTER TABLE "equipment"."product_labor_hours" ADD CONSTRAINT "product_labor_hours_department_check" CHECK ("equipment"."product_labor_hours"."department" IN ('fabrication', 'supply', 'paint', 'assembly', 'workshop'));

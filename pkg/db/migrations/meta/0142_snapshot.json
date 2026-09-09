@@ -1,5 +1,5 @@
 {
-  "id": "e8b785e0-fd66-4d18-b14a-301afa8f87db",
+  "id": "169ce2fb-5403-44e6-8058-64811f044010",
   "prevId": "7682349d-e9d8-4468-9640-864f630b4877",
   "version": "7",
   "dialect": "postgresql",
@@ -3177,7 +3177,7 @@
       "checkConstraints": {
         "job_department_timing_department_check": {
           "name": "job_department_timing_department_check",
-          "value": "\"equipment\".\"job_department_timing\".\"department\" IN ('fabrication', 'paint', 'assembly', 'workshop', 'supply')"
+          "value": "\"equipment\".\"job_department_timing\".\"department\" IN ('fabrication', 'supply', 'paint', 'assembly', 'workshop')"
         },
         "job_department_timing_stamp_order": {
           "name": "job_department_timing_stamp_order",
@@ -4990,7 +4990,7 @@
       "checkConstraints": {
         "product_labor_hours_department_check": {
           "name": "product_labor_hours_department_check",
-          "value": "\"equipment\".\"product_labor_hours\".\"department\" IN ('fabrication', 'paint', 'assembly', 'workshop', 'supply')"
+          "value": "\"equipment\".\"product_labor_hours\".\"department\" IN ('fabrication', 'supply', 'paint', 'assembly', 'workshop')"
         },
         "product_labor_hours_hours_positive": {
           "name": "product_labor_hours_hours_positive",

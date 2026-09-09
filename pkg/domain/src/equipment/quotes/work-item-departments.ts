@@ -3,16 +3,18 @@ import { WORK_ITEM_DEPARTMENTS } from '@pkg/schema/equipment';
 import { quoteDepartmentLabels } from '../departments.js';
 
 /**
- * Default ex-VAT hourly rate for the rated Work Item Departments. Membership lives in
- * `WORK_ITEM_DEPARTMENTS`; this map owns only the rates, and a work Department it leaves out is
- * unrated. These rates seed a Work Item, so editing one never reprices an existing Quote.
+ * Default ex-VAT hourly rate for every Work Item Department, `null` where the Department is unrated.
+ * Membership lives in `WORK_ITEM_DEPARTMENTS`; this exhaustive map owns only the rates, so a new work
+ * Department has to declare itself rated or unrated here. These rates seed a Work Item, so editing one
+ * never reprices an existing Quote.
  */
-export const WORK_ITEM_DEPARTMENT_RATES: Partial<Record<WorkItemDepartment, number>> = {
+export const WORK_ITEM_DEPARTMENT_RATES = {
   fabrication: 550,
+  supply: null,
   paint: 375,
   assembly: 320,
   workshop: 320,
-};
+} as const satisfies Record<WorkItemDepartment, number | null>;
 
 export { WORK_ITEM_DEPARTMENTS, type WorkItemDepartment } from '@pkg/schema/equipment';
 

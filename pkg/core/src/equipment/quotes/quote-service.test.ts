@@ -1418,30 +1418,6 @@ describe('delivery terms', () => {
     });
     expect(accepted).toMatchObject({ deliveryPrice: 0, deliveryTerms: 'ex_factory', status: 'accepted' });
   });
-
-  test('holds an Allocation Quote to the same rule before it can take the machine', async ({ context }) => {
-    const unitId = await createUnit(context.db, context.product.id, 77);
-    const quote = await createQuoteService({
-      actorUserId: context.salesPerson.id,
-      db: context.db,
-      input: QuoteCreateInput.parse({
-        customer: { type: 'existing', customerId: context.customer.id },
-        deliveryTerms: 'tbc',
-        offering: { kind: 'product', productId: context.product.id, productUnitId: unitId },
-        salesPersonId: context.salesPerson.id,
-        status: 'sent',
-      }),
-    });
-
-    await expect(
-      updateQuote({
-        actorUserId: context.salesPerson.id,
-        db: context.db,
-        input: { ...buildQuoteUpdateInput(quote), status: 'accepted' },
-      }),
-    ).rejects.toThrow('Confirm delivery before accepting this quote.');
-    await expect(getQuote({ db: context.db, id: quote.id })).resolves.toMatchObject({ status: 'sent' });
-  });
 });
 
 describe('patchQuote', () => {

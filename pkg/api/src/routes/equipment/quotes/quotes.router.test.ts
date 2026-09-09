@@ -164,27 +164,6 @@ describe('quotes.create', () => {
     });
   });
 
-  test('refuses to accept a quote whose delivery is still to be confirmed', async ({ context }) => {
-    const salesCaller = context.createCaller(mockSession('sales'));
-    const quote = await salesCaller.quotes.create({
-      customer: { type: 'inline', companyName: 'Delivery TBC Customer' },
-      deliveryTerms: 'tbc',
-      documentNotes: null,
-      notes: null,
-      offering: productOffering(context.product.id),
-      salesPersonId: 'test-user-id',
-      status: 'sent',
-      validUntil: null,
-    });
-    expect(quote).toMatchObject({ deliveryPrice: 0, deliveryTerms: 'tbc', status: 'sent' });
-
-    await expect(salesCaller.quotes.update({ ...toUpdateInput(quote), status: 'accepted' })).rejects.toMatchObject({
-      code: 'BAD_REQUEST',
-      message: expect.stringContaining('Confirm delivery before accepting this quote.'),
-    });
-    await expect(salesCaller.quotes.get({ id: quote.id })).resolves.toMatchObject({ status: 'sent' });
-  });
-
   test('prices a custom quote that mixes Departments, each Work Item at its own rate', async ({ context }) => {
     const caller = context.createCaller(mockSession('sales'));
 

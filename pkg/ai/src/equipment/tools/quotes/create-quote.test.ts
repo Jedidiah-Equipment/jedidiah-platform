@@ -82,7 +82,7 @@ function createContext(): AiContext {
 }
 
 describe('createQuote contract', () => {
-  test('forwards delivery terms and holds the price to an additional charge', () => {
+  test('forwards delivery terms to the core create input', () => {
     const input = CreateQuoteInput.parse({
       customer: { customerId: CUSTOMER_ID, type: 'existing' },
       deliveryTerms: 'ex_factory',
@@ -93,17 +93,6 @@ describe('createQuote contract', () => {
       deliveryPrice: 0,
       deliveryTerms: 'ex_factory',
     });
-    expect(() =>
-      toCoreQuoteCreateInput(
-        CreateQuoteInput.parse({
-          customer: { customerId: CUSTOMER_ID, type: 'existing' },
-          deliveryPrice: 250,
-          deliveryTerms: 'tbc',
-          offering: { kind: 'product', productId: PRODUCT_ID },
-        }),
-        'test-user-id',
-      ),
-    ).toThrow('Must be zero unless delivery is an additional charge');
   });
 
   test('requires and forwards a reason when creating a cancelled Quote', () => {

@@ -13,7 +13,7 @@ import { LaborRatesPage } from './LaborRatesPage.js';
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
-test('refreshes a previously saved form from the card without replacing unsaved edits', async () => {
+test('keeps the table read-only and opens current rates in a separate dialog without replacing unsaved edits', async () => {
   let savedCard: LaborRateCard = {
     hoursPerWorkingDay: 9,
     managementOverheadPercentage: 50,
@@ -56,7 +56,7 @@ test('refreshes a previously saved form from the card without replacing unsaved 
   document.body.append(container);
   const root = createRoot(container);
   const field = (name: string) => {
-    const input = container.querySelector<HTMLInputElement>(`input[name="${name}"]`);
+    const input = document.querySelector<HTMLInputElement>(`input[name="${name}"]`);
     if (!input) throw new Error(`Missing input ${name}`);
     return input;
   };
@@ -80,14 +80,28 @@ test('refreshes a previously saved form from the card without replacing unsaved 
         </QueryClientProvider>,
       );
     });
-    await edit('fabrication.billingRate', '600');
+    const openEditor = async () => {
+      await act(async () => {
+        Array.from(container.querySelectorAll('button'))
+          .find((button) => button.textContent === 'Edit rates')
+          ?.click();
+      });
+    };
+    expect(container.querySelector('input')).toBeNull();
+    await openEditor();
+    expect(document.querySelector('[role=dialog]')?.textContent).toContain('Edit Labor rates');
+    await edit('rates[0].billingRate', '600');
     await edit('hoursPerWorkingDay', '8');
     await edit('managementOverheadPercentage', '55');
     await act(async () => {
-      container.querySelector<HTMLButtonElement>('button[type="submit"]')?.click();
+      document.querySelector<HTMLButtonElement>('button[type="submit"]')?.click();
       await vi.waitFor(() => expect(queryClient.isMutating()).toBe(0));
     });
-    expect(container.textContent).toContain('Labor rates saved.');
+    await vi.waitFor(() => expect(document.querySelector('[role=dialog]')).toBeNull());
+    expect(savedCard.rates[0]?.billingRate).toBe(600);
+    expect(savedCard.hoursPerWorkingDay).toBe(8);
+    expect(savedCard.managementOverheadPercentage).toBe(55);
+    expect(container.querySelector('input')).toBeNull();
     savedCard = {
       ...savedCard,
       hoursPerWorkingDay: 10,
@@ -98,16 +112,28 @@ test('refreshes a previously saved form from the card without replacing unsaved 
       await queryClient.invalidateQueries({ queryKey: trpc.laborRates.pathKey() });
       await new Promise((resolve) => setTimeout(resolve, 0));
     });
-    expect(field('fabrication.billingRate').value).toBe('700');
+    expect(container.textContent).toContain('700');
+    await openEditor();
+    expect(field('rates[0].billingRate').value).toBe('700.00');
     expect(field('hoursPerWorkingDay').value).toBe('10');
     expect(field('managementOverheadPercentage').value).toBe('70');
-    await edit('fabrication.billingRate', '725');
+    await edit('rates[0].billingRate', '725');
     savedCard = { ...savedCard, rates: savedCard.rates.map((rate) => ({ ...rate, billingRate: 800 })) };
     await act(async () => {
       await queryClient.invalidateQueries({ queryKey: trpc.laborRates.pathKey() });
       await new Promise((resolve) => setTimeout(resolve, 0));
     });
-    expect(field('fabrication.billingRate').value).toBe('725');
+    expect(field('rates[0].billingRate').value).toBe('725.00');
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    await act(async () => {
+      Array.from(document.querySelectorAll<HTMLButtonElement>('[role=dialog] button'))
+        .find((button) => button.textContent === 'Cancel')
+        ?.click();
+    });
+    expect(confirm).toHaveBeenCalledWith('Discard unsaved Labor rates?');
+    confirm.mockRestore();
+    await openEditor();
+    expect(field('rates[0].billingRate').value).toBe('800.00');
   } finally {
     await act(async () => {
       root.unmount();

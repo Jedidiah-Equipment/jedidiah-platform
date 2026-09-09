@@ -3,7 +3,7 @@
 Administrators maintain the Labor Rate Card used to cost Product Labor Hours and seed new Quote Work Items.
 
 1. Open **Admin → Labor rates**.
-2. Enter the **Cost to company (R/hour)** and **Billing (R/hour)** for each work Department.
+2. Select **Edit rates** to open the editing dialog. Enter the **Cost to company (R/hour)** and **Billing (R/hour)** for each work Department.
    Leave an unknown rate blank. A blank or zero cost-to-company rate leaves any Product Cost Estimate
    using that Department incomplete; a blank billing rate seeds new Work Items at zero.
 3. Enter each Department's **Consumables (%)**, the **Management overhead (%)**, and

@@ -1,20 +1,17 @@
+import { formatCurrency } from '@pkg/domain';
 import { departmentLabels } from '@pkg/domain/equipment';
-import type { VisibleLaborRateCard } from '@pkg/schema/equipment';
-import { useMutation, useQuery } from '@tanstack/react-query';
-import { useBlocker } from '@tanstack/react-router';
-import { useEffect, useMemo, useState } from 'react';
+import { type LaborRateCard, LaborRateCardUpdateInput, type VisibleLaborRateCard } from '@pkg/schema/equipment';
+import { useQuery } from '@tanstack/react-query';
+import { useMemo, useState } from 'react';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { DataTable } from '@/components/data-table/DataTable.js';
 import { type DataTableColumnDef, useDataTable } from '@/components/data-table/features.js';
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
 import { Button } from '@/components/ui/button.js';
 import { Card, CardContent } from '@/components/ui/card.js';
-import { Input } from '@/components/ui/input.js';
-import { useQueryInvalidation } from '@/equipment/hooks/use-query-invalidation.js';
 import { useCan } from '@/hooks/use-access.js';
 import { useTRPC } from '@/lib/trpc.js';
-
-import { laborRateFieldLabel, parseLaborRateForm } from './types.js';
+import { LaborRatesEditDialog } from './LaborRatesEditDialog.js';
 
 type Rate = VisibleLaborRateCard['rates'][number];
 
@@ -30,40 +27,16 @@ export function LaborRatesPage() {
       ) : !access.can ? (
         <p>You do not have permission to view Labor rates.</p>
       ) : null}
-      {access.can && query.data ? <LaborRatesForm card={query.data} /> : null}
+      {access.can && query.data ? <LaborRatesCard card={query.data} /> : null}
     </PageLayout>
   );
 }
 
-function LaborRatesForm({ card }: { card: VisibleLaborRateCard }) {
-  const trpc = useTRPC();
+function LaborRatesCard({ card }: { card: VisibleLaborRateCard }) {
   const canUpdate = useCan('equipment_labor_rate:update').can;
   const canReadCosts = card.managementOverheadPercentage !== undefined;
-  const invalidate = useQueryInvalidation();
-  const [dirty, setDirty] = useState(false);
-  const [message, setMessage] = useState('');
-  const [formCard, setFormCard] = useState(card);
-  useEffect(() => {
-    // A clean form follows the latest card; a background read must not replace an unsaved draft.
-    if (!dirty) setFormCard(card);
-  }, [card, dirty]);
-  const save = useMutation(
-    trpc.laborRates.update.mutationOptions({
-      onSuccess: async () => {
-        await Promise.all([
-          invalidate.invalidateLaborRates(),
-          invalidate.invalidateProducts(),
-          invalidate.invalidateAudit(),
-        ]);
-        setDirty(false);
-        setMessage('Labor rates saved.');
-      },
-    }),
-  );
-  useBlocker({
-    shouldBlockFn: () => dirty && !window.confirm('Leave without saving Labor rates?'),
-    enableBeforeUnload: dirty,
-  });
+  // Capture a fresh card on each open. Refetches update the table without replacing an open draft.
+  const [editingCard, setEditingCard] = useState<LaborRateCard | null>(null);
   const columns = useMemo<DataTableColumnDef<Rate>[]>(
     () => [
       { accessorKey: 'department', header: 'Department', cell: ({ row }) => departmentLabels[row.original.department] },
@@ -75,85 +48,48 @@ function LaborRatesForm({ card }: { card: VisibleLaborRateCard }) {
   );
   const table = useDataTable({
     columns,
-    data: formCard.rates,
+    data: card.rates,
     getRowId: (row) => row.department,
     enableColumnFilters: false,
     enableSorting: false,
   });
+  const editableCard = LaborRateCardUpdateInput.safeParse(card);
   return (
-    <form
-      key={JSON.stringify(formCard)}
-      className="grid gap-4"
-      onChange={() => {
-        setDirty(true);
-        setMessage('');
-      }}
-      onSubmit={async (event) => {
-        event.preventDefault();
-        const parsed = parseLaborRateForm(new FormData(event.currentTarget));
-        if (!parsed.success) {
-          setMessage(
-            parsed.error.issues.map((issue) => `${laborRateFieldLabel(issue.path)}: ${issue.message}`).join(' '),
-          );
-          return;
-        }
-        setMessage('');
-        save.mutate(parsed.data);
-      }}
-    >
-      <fieldset disabled={!canUpdate || save.isPending || !canReadCosts} className="grid gap-4">
-        <Card>
-          <CardContent className="grid gap-4 sm:grid-cols-2">
-            {canReadCosts ? (
-              <label htmlFor="managementOverheadPercentage" className="grid gap-2 text-sm">
-                Management overhead (%)
-                <Input
-                  id="managementOverheadPercentage"
-                  name="managementOverheadPercentage"
-                  type="number"
-                  step="any"
-                  defaultValue={formCard.managementOverheadPercentage}
-                  required
-                />
-              </label>
-            ) : null}
-            <label htmlFor="hoursPerWorkingDay" className="grid gap-2 text-sm">
-              Hours per working day
-              <Input
-                id="hoursPerWorkingDay"
-                name="hoursPerWorkingDay"
-                type="number"
-                step="any"
-                defaultValue={formCard.hoursPerWorkingDay}
-                required
-              />
-            </label>
-          </CardContent>
-        </Card>
-        <DataTable
-          table={table}
-          total={card.rates.length}
-          paginationMode="complete"
-          hideGlobalFilter
-          emptyMessage="No Labor rates."
-        />
-        <p className="text-sm text-muted-foreground">
-          Blank or zero cost-to-company rates make product cost estimates incomplete. Billing rates seed new Work Items;
-          existing Quotes keep their rates.
-        </p>
-        <div>
-          <Button type="submit" disabled={!dirty}>
-            {save.isPending ? 'Saving…' : 'Save'}
-          </Button>
+    <div className="grid gap-4">
+      {canUpdate && editableCard.success ? (
+        <div className="flex justify-end">
+          <Button onClick={() => setEditingCard(editableCard.data)}>Edit rates</Button>
         </div>
-      </fieldset>
-      {message ? (
-        <p role="status" className="text-sm">
-          {message}
-        </p>
       ) : null}
-      <ErrorMessage error={save.error} fallbackMessage="Unable to save Labor rates." />
-    </form>
+      <Card>
+        <CardContent>
+          <dl className="grid gap-4 sm:grid-cols-2">
+            {canReadCosts ? (
+              <div>
+                <dt className="text-sm text-muted-foreground">Management overhead (%)</dt>
+                <dd>{card.managementOverheadPercentage}%</dd>
+              </div>
+            ) : null}
+            <div>
+              <dt className="text-sm text-muted-foreground">Hours per working day</dt>
+              <dd>{card.hoursPerWorkingDay}</dd>
+            </div>
+          </dl>
+        </CardContent>
+      </Card>
+      <DataTable
+        table={table}
+        total={card.rates.length}
+        paginationMode="complete"
+        hideGlobalFilter
+        emptyMessage="No Labor rates."
+      />
+      <p className="text-sm text-muted-foreground">
+        Blank or zero cost-to-company rates make product cost estimates incomplete. Billing rates seed new Work Items;
+        existing Quotes keep their rates.
+      </p>
+      {editingCard ? <LaborRatesEditDialog card={editingCard} onClose={() => setEditingCard(null)} /> : null}
+    </div>
   );
 }
 
@@ -164,16 +100,9 @@ function rateColumn(
   return {
     accessorKey: field,
     header,
-    cell: ({ row }) => (
-      <Input
-        aria-label={`${departmentLabels[row.original.department]} ${header}`}
-        name={`${row.original.department}.${field}`}
-        type="number"
-        step="any"
-        defaultValue={row.original[field] ?? ''}
-        placeholder="Not set"
-        className="min-w-28"
-      />
-    ),
+    cell: ({ row }) => {
+      const value = row.original[field];
+      return value == null ? 'Not set' : field === 'consumablesPercentage' ? `${value}%` : formatCurrency(value, 'ZAR');
+    },
   };
 }

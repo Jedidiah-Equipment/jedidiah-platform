@@ -271,7 +271,7 @@ async function getQuoteDocumentModel({
     staleSelectionNotes: pricing.staleSelections.map((selection) => `${selection.quotedName} unavailable`),
     subtotal: pricing.subtotal,
     total: pricing.total,
-    transport: quote.deliveryIncluded
+    delivery: quote.deliveryIncluded
       ? 'Included in sale price'
       : `Additional charge (${formatCurrency(additionalDeliveryPrice, quote.quotedCurrencyCode)})`,
     vatAmount: pricing.vatAmount,

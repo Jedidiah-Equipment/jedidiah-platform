@@ -28,5 +28,5 @@ pdftoppm -png -r 144 tmp/pdfs/brochure-fixture.pdf tmp/pdfs/brochure-fixture   #
 Then run the focused renderer tests:
 
 ```sh
-pnpm --filter @pkg/pdf test -- src/brochure/brochure-pdf-renderer.test.ts src/quote-document/quote-document-pdf-renderer.test.ts
+pnpm --filter @pkg/pdf test src/equipment/brochure/brochure-pdf-renderer.test.ts src/equipment/quote-document/quote-document-pdf-renderer.test.ts
 ```

@@ -48,6 +48,7 @@ export type QuoteDocumentSalesPerson = {
 export type QuoteDocumentModel = {
   currencyCode: string;
   customer: QuoteDocumentCustomer;
+  delivery: string;
   issueDate: Date;
   leadTime: string;
   pricingRows: QuoteDocumentPricingRow[];
@@ -58,7 +59,6 @@ export type QuoteDocumentModel = {
   staleSelectionNotes: string[];
   subtotal: number;
   total: number;
-  transport: string;
   vatAmount: number;
   workItems: QuoteDocumentWorkItem[];
 };

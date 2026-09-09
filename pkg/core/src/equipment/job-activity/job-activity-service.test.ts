@@ -548,16 +548,15 @@ describe('listJobActivity change events', () => {
     const workTimes = await listJobActivity({ db: context.db, input: listInput({ filter: 'work-times' }) });
     const searched = await listJobActivity({ db: context.db, input: listInput({ search: 'Supply' }) });
 
-    expect(workTimes.items.map((item) => item.type === 'job-work-time-updated' && item.department)).toEqual([
-      'supply',
-      'supply',
-    ]);
+    expect(workTimes.items).toHaveLength(2);
     expect(workTimes.items).toEqual(
       expect.arrayContaining([
+        expect.objectContaining({ action: 'started', department: 'supply', type: 'job-work-time-updated' }),
         expect.objectContaining({
           action: 'completed',
           department: 'supply',
           timing: expect.objectContaining({ crew: ['Sam Supplier'] }),
+          type: 'job-work-time-updated',
         }),
       ]),
     );

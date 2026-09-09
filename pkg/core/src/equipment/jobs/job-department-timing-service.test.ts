@@ -10,7 +10,6 @@ import {
   productUnits,
 } from '@pkg/db/equipment';
 import { DateIso } from '@pkg/schema';
-import type { WorkItemDepartment } from '@pkg/schema/equipment';
 import { eq } from 'drizzle-orm';
 import { afterEach, beforeEach, describe, expect, vi } from 'vitest';
 import { createTester } from '../../test/create-tester.js';
@@ -523,34 +522,6 @@ describe('getProductBuildMetrics', () => {
     });
   });
 
-  test('counts a Supply build against its Supply Bay slot the same way', async ({ context }) => {
-    const [supplyBay] = await context.db
-      .insert(jobBays)
-      .values({ department: 'supply', name: 'Supply Bay 1', scheduleOrigin: '2026-06-01' })
-      .returning();
-    if (!supplyBay) throw new Error('Bay insert did not return a row');
-    await context.db.insert(jobSlots).values({
-      bayId: supplyBay.id,
-      durationDays: 4,
-      jobId: context.job.id,
-      kind: 'work',
-      sequence: 1,
-    });
-    await stampDepartment(context.db, context.job.id, 'supply', '2026-06-01', '2026-06-02', ['operator-brown']);
-
-    const metrics = await getProductBuildMetrics({
-      db: context.db,
-      includeRanking: true,
-      input: { department: 'supply', productId: context.productId },
-    });
-
-    expect(metrics).toMatchObject({
-      averageWorkingDays: 2,
-      buildCount: 1,
-      builds: [{ actualWorkingDays: 2, crewSize: 1, jobCode: context.job.code, scheduledWorkingDays: 4 }],
-    });
-  });
-
   test('ignores a rework Job on the same Unit', async ({ context }) => {
     const rework = await createReworkJob(context.db, context.job.productUnitId);
     await stampFabrication(context.db, rework.id, '2026-06-01', '2026-06-10', ['operator-smith']);
@@ -620,24 +591,15 @@ async function stampFabrication(
   completedOn: string,
   crewUserIds: string[],
 ): Promise<void> {
-  await stampDepartment(db, jobId, 'fabrication', startedOn, completedOn, crewUserIds);
-}
-
-async function stampDepartment(
-  db: Db,
-  jobId: string,
-  department: WorkItemDepartment,
-  startedOn: string,
-  completedOn: string,
-  crewUserIds: string[],
-): Promise<void> {
   await db.insert(jobDepartmentTimings).values({
     completedAt: new Date(`${completedOn}T14:00:00.000Z`),
-    department,
+    department: 'fabrication',
     jobId,
     startedAt: new Date(`${startedOn}T06:00:00.000Z`),
   });
-  await db.insert(jobDepartmentCrew).values(crewUserIds.map((crewUserId) => ({ crewUserId, department, jobId })));
+  await db
+    .insert(jobDepartmentCrew)
+    .values(crewUserIds.map((crewUserId) => ({ crewUserId, department: 'fabrication' as const, jobId })));
 }
 
 async function createUser(

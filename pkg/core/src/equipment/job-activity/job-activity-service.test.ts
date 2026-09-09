@@ -532,6 +532,38 @@ describe('listJobActivity change events', () => {
     expect(jobEvents.items).toEqual([]);
   });
 
+  test('projects a Supply stamp as a Work Time carrying the Supply Department', async ({ context }) => {
+    await createUser(context.db, { id: 'supplier-id', name: 'Sam Supplier', role: 'bay-operator' });
+    await startDepartmentTiming({
+      actorUserId: 'test-user-id',
+      db: context.db,
+      input: { department: 'supply', id: context.job.id },
+    });
+    await completeDepartmentTiming({
+      actorUserId: 'test-user-id',
+      db: context.db,
+      input: { crewUserIds: ['supplier-id'], department: 'supply', id: context.job.id },
+    });
+
+    const workTimes = await listJobActivity({ db: context.db, input: listInput({ filter: 'work-times' }) });
+    const searched = await listJobActivity({ db: context.db, input: listInput({ search: 'Supply' }) });
+
+    expect(workTimes.items.map((item) => item.type === 'job-work-time-updated' && item.department)).toEqual([
+      'supply',
+      'supply',
+    ]);
+    expect(workTimes.items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          action: 'completed',
+          department: 'supply',
+          timing: expect.objectContaining({ crew: ['Sam Supplier'] }),
+        }),
+      ]),
+    );
+    expect(searched.total).toBe(2);
+  });
+
   test('searches the Work Time wording, department, and snapshotted crew names', async ({ context }) => {
     await createUser(context.db, { id: 'fabricator-id', name: 'Fiona Fabricator', role: 'bay-operator' });
     await startDepartmentTiming({

@@ -10,6 +10,7 @@ import {
   productUnits,
 } from '@pkg/db/equipment';
 import { DateIso } from '@pkg/schema';
+import type { WorkItemDepartment } from '@pkg/schema/equipment';
 import { eq } from 'drizzle-orm';
 import { afterEach, beforeEach, describe, expect, vi } from 'vitest';
 import { createTester } from '../../test/create-tester.js';
@@ -109,6 +110,31 @@ describe('completeDepartmentTiming', () => {
       { name: 'J. Smith', userId: 'operator-smith' },
       { name: 'T. Brown', userId: 'operator-brown' },
     ]);
+  });
+
+  test('stamps Supply with crew and audits it like every other work Department', async ({ context }) => {
+    await startDepartmentTiming({
+      actorUserId,
+      db: context.db,
+      input: { department: 'supply', id: context.job.id },
+    });
+    await completeDepartmentTiming({
+      actorUserId,
+      db: context.db,
+      input: { crewUserIds: ['operator-brown'], department: 'supply', id: context.job.id },
+    });
+
+    const detail = await getJob({ db: context.db, id: context.job.id });
+    const supply = detail.departmentTimings.find((timing) => timing.department === 'supply');
+    const audits = await context.db
+      .select({ changes: auditEvents.changes })
+      .from(auditEvents)
+      .where(eq(auditEvents.entityId, context.job.id));
+
+    expect(supply?.startedAt).not.toBeNull();
+    expect(supply?.completedAt).not.toBeNull();
+    expect(supply?.crew).toEqual([{ name: 'T. Brown', userId: 'operator-brown' }]);
+    expect(audits.filter((audit) => Object.hasOwn(audit.changes ?? {}, 'departmentTiming:supply'))).toHaveLength(2);
   });
 
   test('refuses a department that was never started', async ({ context }) => {
@@ -454,6 +480,7 @@ describe('getJob departmentTimings', () => {
       'paint',
       'assembly',
       'workshop',
+      'supply',
     ]);
     expect(detail.departmentTimings.find((timing) => timing.department === 'fabrication')?.suggestedCrew).toEqual([
       { name: 'J. Smith', userId: 'operator-smith' },
@@ -493,6 +520,34 @@ describe('getProductBuildMetrics', () => {
       averageWorkingDays: 3,
       buildCount: 1,
       builds: [{ actualWorkingDays: 3, crewSize: 1, jobCode: context.job.code, scheduledWorkingDays: 4 }],
+    });
+  });
+
+  test('counts a Supply build against its Supply Bay slot the same way', async ({ context }) => {
+    const [supplyBay] = await context.db
+      .insert(jobBays)
+      .values({ department: 'supply', name: 'Supply Bay 1', scheduleOrigin: '2026-06-01' })
+      .returning();
+    if (!supplyBay) throw new Error('Bay insert did not return a row');
+    await context.db.insert(jobSlots).values({
+      bayId: supplyBay.id,
+      durationDays: 4,
+      jobId: context.job.id,
+      kind: 'work',
+      sequence: 1,
+    });
+    await stampDepartment(context.db, context.job.id, 'supply', '2026-06-01', '2026-06-02', ['operator-brown']);
+
+    const metrics = await getProductBuildMetrics({
+      db: context.db,
+      includeRanking: true,
+      input: { department: 'supply', productId: context.productId },
+    });
+
+    expect(metrics).toMatchObject({
+      averageWorkingDays: 2,
+      buildCount: 1,
+      builds: [{ actualWorkingDays: 2, crewSize: 1, jobCode: context.job.code, scheduledWorkingDays: 4 }],
     });
   });
 
@@ -565,15 +620,24 @@ async function stampFabrication(
   completedOn: string,
   crewUserIds: string[],
 ): Promise<void> {
+  await stampDepartment(db, jobId, 'fabrication', startedOn, completedOn, crewUserIds);
+}
+
+async function stampDepartment(
+  db: Db,
+  jobId: string,
+  department: WorkItemDepartment,
+  startedOn: string,
+  completedOn: string,
+  crewUserIds: string[],
+): Promise<void> {
   await db.insert(jobDepartmentTimings).values({
     completedAt: new Date(`${completedOn}T14:00:00.000Z`),
-    department: 'fabrication',
+    department,
     jobId,
     startedAt: new Date(`${startedOn}T06:00:00.000Z`),
   });
-  await db
-    .insert(jobDepartmentCrew)
-    .values(crewUserIds.map((crewUserId) => ({ crewUserId, department: 'fabrication' as const, jobId })));
+  await db.insert(jobDepartmentCrew).values(crewUserIds.map((crewUserId) => ({ crewUserId, department, jobId })));
 }
 
 async function createUser(

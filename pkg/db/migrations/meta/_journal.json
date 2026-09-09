@@ -995,6 +995,13 @@
       "when": 1788939884678,
       "tag": "0141_quote_delivery_terms",
       "breakpoints": true
+    },
+    {
+      "idx": 142,
+      "version": "7",
+      "when": 1788943125311,
+      "tag": "0142_supply_work_department",
+      "breakpoints": true
     }
   ]
 }

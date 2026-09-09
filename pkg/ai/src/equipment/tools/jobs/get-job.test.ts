@@ -20,7 +20,7 @@ const job = JobDetail.parse({
   customerCompanyName: 'Acme Mining',
   customerId: CUSTOMER_ID,
   customerThumbnailDataUrl: 'data:image/webp;base64,YQ==',
-  departmentTimings: ['fabrication', 'paint', 'assembly', 'workshop'].map((department) => ({
+  departmentTimings: ['fabrication', 'paint', 'assembly', 'workshop', 'supply'].map((department) => ({
     completedAt: null,
     crew: [],
     department,

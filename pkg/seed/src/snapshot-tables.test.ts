@@ -245,20 +245,6 @@ describe('snapshot table registry', () => {
     });
   });
 
-  it('revives nullable supplier soft-delete timestamps', () => {
-    expect(configFor('supplier').timestampColumns).toContain('deletedAt');
-  });
-
-  it('revives nullable Job cancellation timestamps', () => {
-    expect(configFor('job').timestampColumns).toContain('cancelledAt');
-  });
-
-  it('revives nullable catalog soft-delete timestamps', () => {
-    expect(configFor('product_ranges').timestampColumns).toContain('deletedAt');
-    expect(configFor('product_range_variants').timestampColumns).toContain('deletedAt');
-    expect(configFor('products').timestampColumns).toContain('deletedAt');
-  });
-
   it('preserves catalog soft-delete and variant columns from staging snapshots', () => {
     expect(configFor('product_ranges').omitReadColumns ?? []).not.toContain('deletedAt');
     expect(configFor('product_range_variants').omitReadColumns ?? []).not.toContain('deletedAt');

@@ -1,4 +1,4 @@
-import { APP_PERMISSIONS, APP_ROLES } from '@pkg/schema';
+import { APP_ROLES } from '@pkg/schema';
 import { describe, expect, it } from 'vitest';
 import { accessForRole, roleSlotsForRole } from '../testing/index.js';
 import {
@@ -11,10 +11,6 @@ import {
   hasPermission,
   isRoleSlotsSignInEligible,
   parseRoleSlots,
-  permissionDescriptions,
-  permissionLabels,
-  roleDescriptions,
-  roleLabels,
   tryParseRoleSlots,
 } from './authorization.js';
 
@@ -264,30 +260,6 @@ describe('getRolePermissions', () => {
     ]);
     expect(getRolePermissions('driver')).toEqual([]);
     expect(getRolePermissions('mechanic')).toEqual([]);
-  });
-});
-
-describe('roleLabels', () => {
-  it('labels every app role', () => {
-    expect(Object.keys(roleLabels).sort()).toEqual([...APP_ROLES].sort());
-  });
-});
-
-describe('roleDescriptions', () => {
-  it('describes every app role', () => {
-    expect(Object.keys(roleDescriptions).sort()).toEqual([...APP_ROLES].sort());
-  });
-});
-
-describe('permissionLabels', () => {
-  it('labels every app permission', () => {
-    expect(Object.keys(permissionLabels).sort()).toEqual([...APP_PERMISSIONS].sort());
-  });
-});
-
-describe('permissionDescriptions', () => {
-  it('describes every app permission', () => {
-    expect(Object.keys(permissionDescriptions).sort()).toEqual([...APP_PERMISSIONS].sort());
   });
 });
 

@@ -64,7 +64,7 @@ export function QuoteDocumentBottomBlock({ document }: QuoteDocumentBottomBlockP
       <View style={pdfStyles.flex1}>
         <View style={styles.terms}>
           <TermsRow label="Payment Terms:" value={document.paymentTerms} />
-          <TermsRow label="Transport:" value={document.transport} />
+          <TermsRow label="Delivery:" value={document.delivery} />
           <TermsRow label="Lead Time:" value={document.leadTime} />
         </View>
       </View>

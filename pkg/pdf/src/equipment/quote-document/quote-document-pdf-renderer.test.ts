@@ -302,6 +302,7 @@ function testQuoteDocument(): QuoteDocumentModel {
       phone: '+27 (0) 82 555 0142',
       vatNumber: '4870293814',
     },
+    delivery: 'Included in sale price',
     issueDate: new Date('2026-06-02T00:00:00.000Z'),
     leadTime: '21 working days',
     pricingRows: [
@@ -338,7 +339,6 @@ function testQuoteDocument(): QuoteDocumentModel {
     staleSelectionNotes: [],
     subtotal: 615_000,
     total: 707_250,
-    transport: 'Included in sale price',
     vatAmount: 92_250,
     workItems: [],
   };

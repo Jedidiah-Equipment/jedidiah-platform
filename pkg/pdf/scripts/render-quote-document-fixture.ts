@@ -3,7 +3,7 @@ import { resolve } from 'node:path';
 
 import type { QuoteDocumentModel } from '@pkg/schema/equipment';
 
-import { renderQuoteDocumentPdf } from '../src/quote-document/quote-document-pdf-renderer.js';
+import { renderQuoteDocumentPdf } from '../src/equipment/quote-document/quote-document-pdf-renderer.js';
 
 const outputDirectory = resolve(process.cwd(), '../../tmp/pdfs');
 const outputPath = resolve(outputDirectory, 'quote-document-fixture.pdf');
@@ -17,6 +17,7 @@ const document: QuoteDocumentModel = {
     phone: '+27 (0) 82 555 0142',
     vatNumber: '4870293814',
   },
+  delivery: 'Included in sale price',
   issueDate: new Date('2026-08-06T00:00:00.000Z'),
   leadTime: '8 working weeks',
   notes: ['Quotation valid for 30 days from issue date.'],
@@ -67,7 +68,6 @@ const document: QuoteDocumentModel = {
   staleSelectionNotes: [],
   subtotal: 305_200,
   total: 350_980,
-  transport: 'Included in sale price',
   vatAmount: 45_780,
   workItems: [
     {

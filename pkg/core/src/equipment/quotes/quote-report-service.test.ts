@@ -9,7 +9,7 @@ import {
   quoteWorkItemParts,
   quoteWorkItems,
 } from '@pkg/db/equipment';
-import type { QuoteStatus } from '@pkg/schema/equipment';
+import type { QuoteDeliveryTerms, QuoteStatus } from '@pkg/schema/equipment';
 import { describe, expect } from 'vitest';
 
 import { createTester } from '../../test/create-tester.js';
@@ -176,7 +176,7 @@ describe('summarizeQuotePipeline', () => {
     // 30-day window covering plant today starts at 2026-05-06; sent on the boundary day is included.
     const [boundaryQuote] = await createQuoteRows(context.db, {
       customerId: context.customer.id,
-      deliveryIncluded: false,
+      deliveryTerms: 'additional_charge',
       deliveryPrice: 100,
       discountPercent: 10,
       productId: context.product.id,
@@ -218,7 +218,7 @@ describe('summarizeQuotePipeline', () => {
   test('includes custom sent quote value in the pipeline totals', async ({ context }) => {
     const [customQuote] = await createQuoteRows(context.db, {
       customerId: context.customer.id,
-      deliveryIncluded: false,
+      deliveryTerms: 'additional_charge',
       deliveryPrice: 50,
       discountPercent: 10,
       kind: 'custom',
@@ -347,7 +347,7 @@ describe('listStaleSentQuotes', () => {
     });
     const [oldestQuote] = await createQuoteRows(context.db, {
       customerId: context.customer.id,
-      deliveryIncluded: false,
+      deliveryTerms: 'additional_charge',
       deliveryPrice: 50,
       productId: context.product.id,
       quotedBasePrice: 3000,
@@ -478,7 +478,7 @@ async function createQuoteRows(
   {
     createdAt,
     customerId,
-    deliveryIncluded = true,
+    deliveryTerms = 'included' as QuoteDeliveryTerms,
     deliveryPrice = 0,
     discountPercent = 0,
     kind = 'product',
@@ -491,7 +491,7 @@ async function createQuoteRows(
   }: {
     createdAt?: Date;
     customerId: string;
-    deliveryIncluded?: boolean;
+    deliveryTerms?: QuoteDeliveryTerms;
     deliveryPrice?: number;
     discountPercent?: number;
     kind?: 'product' | 'custom';
@@ -511,7 +511,7 @@ async function createQuoteRows(
         customerId,
         ...(createdAt ? { createdAt, updatedAt: createdAt } : {}),
         ...(statusChangedAt ? { statusChangedAt } : {}),
-        deliveryIncluded,
+        deliveryTerms,
         deliveryPrice,
         discountPercent,
         kind,

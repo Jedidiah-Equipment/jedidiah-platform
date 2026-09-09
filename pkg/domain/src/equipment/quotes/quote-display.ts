@@ -1,4 +1,12 @@
-import type { QuoteKind, QuoteProductSource, QuoteStatus } from '@pkg/schema/equipment';
+import {
+  type QuoteDeliveryTerms,
+  QuoteDeliveryTerms as QuoteDeliveryTermsSchema,
+  type QuoteKind,
+  type QuoteProductSource,
+  type QuoteStatus,
+} from '@pkg/schema/equipment';
+
+import { formatCurrency } from '../../formatting/number.js';
 
 import {
   type BadgeColorClassNames,
@@ -22,6 +30,38 @@ export const quoteStatusColorClassNames: Record<QuoteStatus, BadgeColorClassName
   rejected: statusBadgeColorClassNames.red,
   sent: statusBadgeColorClassNames.blue,
 };
+
+/** The dropdown and summary wording for each Delivery Term; the PDF spells Ex factory out further. */
+export const quoteDeliveryTermsLabels: Record<QuoteDeliveryTerms, string> = {
+  additional_charge: 'Additional charge',
+  ex_factory: 'Ex factory',
+  included: 'Included in sale price',
+  tbc: 'To be confirmed',
+};
+
+export const quoteDeliveryTermsOptions = QuoteDeliveryTermsSchema.options.map((deliveryTerms) => ({
+  label: quoteDeliveryTermsLabels[deliveryTerms],
+  value: deliveryTerms,
+}));
+
+/**
+ * The Delivery line of a pricing summary: the charge when there is one, the term when it costs
+ * nothing but the customer should still see it, and nothing at all for Included.
+ */
+export function formatQuoteDeliverySummary(summary: {
+  currencyCode: string;
+  deliveryPrice: number;
+  deliveryTerms: QuoteDeliveryTerms;
+}): string | null {
+  switch (summary.deliveryTerms) {
+    case 'included':
+      return null;
+    case 'additional_charge':
+      return formatCurrency(summary.deliveryPrice, summary.currencyCode);
+    default:
+      return quoteDeliveryTermsLabels[summary.deliveryTerms];
+  }
+}
 
 export const quoteKindLabels: Record<QuoteKind, string> = {
   custom: 'Service Work',

@@ -91,14 +91,18 @@ describe('Quote table priority rows', () => {
     expect(headerPositions).toEqual([...headerPositions].sort((first, second) => first - second));
   });
 
-  it('renders whether delivery is included in the sale price or charged separately', () => {
+  it('renders each delivery term: included, charged, ex factory, or still to be confirmed', () => {
     const html = renderQuoteTableRows([
-      createQuoteTableRow(buildPriorityQuote({ deliveryIncluded: true, deliveryPrice: 0 })),
-      createQuoteTableRow(buildPriorityQuote({ deliveryIncluded: false, deliveryPrice: 1_500 })),
+      createQuoteTableRow(buildPriorityQuote({ deliveryPrice: 0, deliveryTerms: 'included' })),
+      createQuoteTableRow(buildPriorityQuote({ deliveryPrice: 1_500, deliveryTerms: 'additional_charge' })),
+      createQuoteTableRow(buildPriorityQuote({ deliveryPrice: 0, deliveryTerms: 'ex_factory' })),
+      createQuoteTableRow(buildPriorityQuote({ deliveryPrice: 0, deliveryTerms: 'tbc' })),
     ]);
 
     expect(html).toContain('Delivery included');
     expect(html).toContain(`${formatCurrency(1_500, 'ZAR')} delivery`);
+    expect(html).toContain('Ex factory');
+    expect(html).toContain('Delivery TBC');
   });
 });
 
@@ -147,7 +151,7 @@ function buildPriorityQuote(overrides: Partial<Record<keyof PriorityQuoteType, u
     customerCompanyName: 'Acme Mining',
     customerId: '10000000-0000-4000-8000-000000000000',
     customerThumbnailDataUrl: null,
-    deliveryIncluded: true,
+    deliveryTerms: 'included',
     deliveryPrice: 0,
     depositPercent: 50,
     discountPercent: 0,

@@ -38,6 +38,10 @@ import { QuoteKind, QuoteWorkTitle } from './quote-shared.js';
 export type QuoteStatus = z.infer<typeof QuoteStatus>;
 export const QuoteStatus = z.enum(['draft', 'sent', 'accepted', 'rejected', 'cancelled']);
 
+/** Delivery Terms (see CONTEXT.md): only `additional_charge` carries a delivery price. */
+export type QuoteDeliveryTerms = z.infer<typeof QuoteDeliveryTerms>;
+export const QuoteDeliveryTerms = z.enum(['included', 'additional_charge', 'ex_factory', 'tbc']);
+
 export type QuoteCancellationReason = z.infer<typeof QuoteCancellationReason>;
 export const QuoteCancellationReason = requiredTrimmedText('Cancellation reason is required');
 export const LEGACY_QUOTE_CANCELLATION_REASON =
@@ -91,7 +95,7 @@ const quoteBaseShape = {
   statusChangedAt: DateIso,
   discountPercent: QuoteDiscountPercent,
   depositPercent: QuoteDepositPercent,
-  deliveryIncluded: z.boolean(),
+  deliveryTerms: QuoteDeliveryTerms,
   deliveryPrice: Price,
   validUntil: DateIso.nullable(),
   preferredDeliveryDate: DateOnlyIso.nullable(),
@@ -428,27 +432,47 @@ export const QuoteOfferingInput = z.discriminatedUnion('kind', [
 ]);
 
 export function getQuoteDeliveryPricingError(input: {
-  deliveryIncluded: boolean;
   deliveryPrice: number;
+  deliveryTerms: QuoteDeliveryTerms;
 }): string | null {
-  if (input.deliveryIncluded) {
-    return input.deliveryPrice === 0 ? null : 'Must be zero when delivery is included';
+  if (input.deliveryTerms !== 'additional_charge') {
+    return input.deliveryPrice === 0 ? null : 'Must be zero unless delivery is an additional charge';
   }
 
-  return input.deliveryPrice > 0 ? null : 'Must be greater than zero when delivery is not included';
+  return input.deliveryPrice > 0 ? null : 'Must be greater than zero when delivery is an additional charge';
 }
 
-function validateQuoteDeliveryPricing(
-  input: { deliveryIncluded: boolean; deliveryPrice: number },
+/** TBC is a drafting and sending state: accepting on it would lock in a knowingly short total. */
+export function getQuoteDeliveryAcceptanceError(input: {
+  deliveryTerms: QuoteDeliveryTerms;
+  status: QuoteStatus;
+}): string | null {
+  return input.status === 'accepted' && input.deliveryTerms === 'tbc'
+    ? 'Confirm delivery before accepting this quote.'
+    : null;
+}
+
+function validateQuoteDelivery(
+  input: { deliveryPrice: number; deliveryTerms: QuoteDeliveryTerms; status: QuoteStatus },
   context: z.RefinementCtx,
 ) {
-  const message = getQuoteDeliveryPricingError(input);
+  const pricingMessage = getQuoteDeliveryPricingError(input);
 
-  if (message) {
+  if (pricingMessage) {
     context.addIssue({
       code: 'custom',
-      message,
+      message: pricingMessage,
       path: ['deliveryPrice'],
+    });
+  }
+
+  const acceptanceMessage = getQuoteDeliveryAcceptanceError(input);
+
+  if (acceptanceMessage) {
+    context.addIssue({
+      code: 'custom',
+      message: acceptanceMessage,
+      path: ['deliveryTerms'],
     });
   }
 }
@@ -487,7 +511,7 @@ export const QuoteCreateInput = z
     status: QuoteStatus,
     discountPercent: z.coerce.number().pipe(QuoteDiscountPercent).default(0),
     depositPercent: z.coerce.number().pipe(QuoteDepositPercent).default(0),
-    deliveryIncluded: z.boolean().default(true),
+    deliveryTerms: QuoteDeliveryTerms.default('included'),
     deliveryPrice: z.coerce.number().pipe(Price).default(0),
     validUntil: DateIso.nullable().default(null),
     preferredDeliveryDate: DateOnlyIso.nullable().default(null),
@@ -498,7 +522,7 @@ export const QuoteCreateInput = z
     selectedAssemblies: z.array(QuoteSelectedAssemblyInput).default([]),
   })
   .strict()
-  .superRefine(validateQuoteDeliveryPricing)
+  .superRefine(validateQuoteDelivery)
   .superRefine(validateQuoteCancellation);
 
 export type QuoteUpdateOfferingInput = z.infer<typeof QuoteUpdateOfferingInput>;
@@ -523,7 +547,7 @@ export const QuoteUpdateInput = z
     status: QuoteStatus,
     discountPercent: z.coerce.number().pipe(QuoteDiscountPercent).default(0),
     depositPercent: z.coerce.number().pipe(QuoteDepositPercent).default(0),
-    deliveryIncluded: z.boolean().default(true),
+    deliveryTerms: QuoteDeliveryTerms.default('included'),
     deliveryPrice: z.coerce.number().pipe(Price).default(0),
     validUntil: DateIso.nullable().default(null),
     preferredDeliveryDate: DateOnlyIso.nullable().default(null),
@@ -534,7 +558,7 @@ export const QuoteUpdateInput = z
     selectedAssemblies: z.array(QuoteSelectedAssemblyInput).optional(),
   })
   .strict()
-  .superRefine(validateQuoteDeliveryPricing)
+  .superRefine(validateQuoteDelivery)
   .superRefine(validateQuoteCancellation);
 
 // Partial field update. Every field except `id` is optional; `undefined` means "leave the

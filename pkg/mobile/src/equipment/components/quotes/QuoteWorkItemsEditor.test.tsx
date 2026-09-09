@@ -26,7 +26,7 @@ import { QuoteWorkItemsEditor } from './QuoteWorkItemsEditor';
 
 const defaultValues: QuoteEditFormValues = {
   cancellationReason: '',
-  deliveryIncluded: true,
+  deliveryTerms: 'included',
   deliveryPrice: 0,
   depositPercent: 0,
   discountPercent: 0,

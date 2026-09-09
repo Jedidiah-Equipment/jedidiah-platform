@@ -34,7 +34,7 @@ function buildQuoteDetail(overrides: Record<string, unknown> = {}): QuoteDetail 
     statusChangedAt: '2026-01-01T00:00:00.000Z',
     depositPercent: 30,
     discountPercent: 10,
-    deliveryIncluded: true,
+    deliveryTerms: 'included',
     deliveryPrice: 0,
     validUntil: '2026-01-01',
     preferredDeliveryDate: '2026-02-01',
@@ -119,7 +119,7 @@ function buildFormValues(overrides: Partial<QuoteFormValues> = {}): QuoteFormVal
   return {
     cancellationReason: '',
     depositPercent: 30,
-    deliveryIncluded: true,
+    deliveryTerms: 'included',
     deliveryPrice: 0,
     discountPercent: 10,
     invoiceNumber: '',
@@ -275,7 +275,7 @@ describe('toQuoteCreateInput', () => {
     expect(input.customer).toEqual({ type: 'existing', customerId: CUSTOMER_ID });
     expect(input.discountPercent).toBe(0);
     expect(input.depositPercent).toBe(0);
-    expect(input.deliveryIncluded).toBe(true);
+    expect(input.deliveryTerms).toBe('included');
     expect(input.deliveryPrice).toBe(0);
     expect(input.validUntil).toBeNull();
     expect(input.preferredDeliveryDate).toBeNull();
@@ -359,15 +359,15 @@ describe('toQuoteUpdateInput', () => {
       id: QUOTE_ID,
       kind: 'product',
       value: buildFormValues({
-        deliveryIncluded: true,
         deliveryPrice: 99,
+        deliveryTerms: 'ex_factory',
         plannedDeliveryDate: '',
         preferredDeliveryDate: '',
         validUntil: '',
       }),
     });
 
-    expect(input.deliveryIncluded).toBe(true);
+    expect(input.deliveryTerms).toBe('ex_factory');
     expect(input.deliveryPrice).toBe(0);
     expect(input.plannedDeliveryDate).toBeNull();
     expect(input.preferredDeliveryDate).toBeNull();
@@ -447,15 +447,30 @@ describe('toQuoteUpdateInput', () => {
     ).toBe(true);
   });
 
-  it('requires a positive price when delivery is not included', () => {
+  it('refuses to accept while delivery is still to be confirmed', () => {
     const result = getQuoteFormValuesValidator('product').safeParse(
-      buildFormValues({ deliveryIncluded: false, deliveryPrice: 0 }),
+      buildFormValues({ deliveryTerms: 'tbc', status: 'accepted' }),
+    );
+
+    expect(result.success).toBe(false);
+    expect(result.error?.issues).toContainEqual(
+      expect.objectContaining({ message: 'Confirm delivery before accepting this quote.', path: ['deliveryTerms'] }),
+    );
+    expect(
+      getQuoteFormValuesValidator('product').safeParse(buildFormValues({ deliveryTerms: 'tbc', status: 'sent' }))
+        .success,
+    ).toBe(true);
+  });
+
+  it('requires a positive price when delivery is an additional charge', () => {
+    const result = getQuoteFormValuesValidator('product').safeParse(
+      buildFormValues({ deliveryPrice: 0, deliveryTerms: 'additional_charge' }),
     );
 
     expect(result.success).toBe(false);
     expect(result.error?.issues).toContainEqual(
       expect.objectContaining({
-        message: 'Must be greater than zero when delivery is not included',
+        message: 'Must be greater than zero when delivery is an additional charge',
         path: ['deliveryPrice'],
       }),
     );

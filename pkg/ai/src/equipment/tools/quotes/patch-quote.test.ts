@@ -30,7 +30,7 @@ const quote = QuoteDetail.parse({
   customerThumbnailDataUrl: null,
   customerVatNumber: null,
   depositPercent: 0,
-  deliveryIncluded: true,
+  deliveryTerms: 'included',
   deliveryPrice: 0,
   discountPercent: 0,
   documentNotes: null,

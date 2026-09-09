@@ -820,7 +820,7 @@ describe('generateQuoteDocument', () => {
       .insert(quotes)
       .values({
         customerId: context.customerId,
-        deliveryIncluded: false,
+        deliveryTerms: 'additional_charge',
         deliveryPrice: 120,
         depositPercent: 25,
         discountPercent: 10,

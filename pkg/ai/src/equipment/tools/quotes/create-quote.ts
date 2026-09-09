@@ -16,6 +16,7 @@ import {
   CustomerEmail,
   CustomerOptionalText,
   QuoteCancellationReason,
+  QuoteDeliveryTerms,
   QuoteDepositPercent,
   type QuoteDetail,
   QuoteDiscountPercent,
@@ -64,12 +65,11 @@ export const CreateQuoteInput = z
     customer: CreateQuoteCustomerInput.describe(
       'Use an existing Customer UUID from findCustomers, or inline Customer details to create one with the Quote.',
     ),
-    deliveryIncluded: z
-      .boolean()
-      .default(true)
-      .describe('Whether delivery is already included in the sale price. Set false for an additional charge.'),
     deliveryPrice: Price.default(0).describe(
-      'The additional delivery charge. Must be zero when deliveryIncluded is true.',
+      'The additional delivery charge. Required above zero when deliveryTerms is additional_charge and must be zero otherwise.',
+    ),
+    deliveryTerms: QuoteDeliveryTerms.default('included').describe(
+      'Delivery Terms: included (in the sale price), additional_charge (priced separately via deliveryPrice), ex_factory (the customer collects), or tbc (delivery not yet costed; the Quote cannot be accepted until it is settled).',
     ),
     depositPercent: QuoteDepositPercent.default(0),
     discountPercent: QuoteDiscountPercent.default(0),

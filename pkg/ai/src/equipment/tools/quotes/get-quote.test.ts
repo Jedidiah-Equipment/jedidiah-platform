@@ -21,7 +21,7 @@ const quote = QuoteDetail.parse({
   customerThumbnailDataUrl: 'data:image/webp;base64,YQ==',
   customerVatNumber: 'VAT-1',
   depositPercent: 30,
-  deliveryIncluded: true,
+  deliveryTerms: 'included',
   deliveryPrice: 0,
   discountPercent: 10,
   documentNotes: 'Deposit on order',

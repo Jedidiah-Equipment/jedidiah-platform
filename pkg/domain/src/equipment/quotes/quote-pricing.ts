@@ -1,5 +1,5 @@
 import type { UUID } from '@pkg/schema';
-import type { Assembly } from '@pkg/schema/equipment';
+import type { Assembly, QuoteDeliveryTerms } from '@pkg/schema/equipment';
 
 import { resolveEffectiveBom } from './effective-bom.js';
 
@@ -73,14 +73,15 @@ function computeQuoteWorkItemsTotal(workItems: readonly WorkItemPricingInput[] |
   return workItems.reduce((total, item) => total + computeWorkItemTotal(item), 0);
 }
 
+/** Only an additional charge puts money on the Quote; every other term delivers (or does not) for nothing. */
 export function computeAdditionalDeliveryPrice({
-  deliveryIncluded = true,
   deliveryPrice = 0,
+  deliveryTerms = 'included',
 }: {
-  deliveryIncluded?: boolean;
   deliveryPrice?: number;
+  deliveryTerms?: QuoteDeliveryTerms;
 }): number {
-  return deliveryIncluded ? 0 : deliveryPrice;
+  return deliveryTerms === 'additional_charge' ? deliveryPrice : 0;
 }
 
 export function computeQuoteVatAmount(subtotal: number, vatPercent: number = VAT_PERCENT): number {
@@ -88,15 +89,15 @@ export function computeQuoteVatAmount(subtotal: number, vatPercent: number = VAT
 }
 
 function computeQuoteTotal({
-  deliveryIncluded = true,
   deliveryPrice = 0,
+  deliveryTerms = 'included',
   discountPercent,
   quotedBasePrice,
   selectedAssemblyPrices = [],
   workItems,
 }: {
-  deliveryIncluded?: boolean;
   deliveryPrice?: number;
+  deliveryTerms?: QuoteDeliveryTerms;
   discountPercent: number;
   quotedBasePrice: number;
   selectedAssemblyPrices?: readonly number[];
@@ -113,14 +114,14 @@ function computeQuoteTotal({
 
   return (
     Math.max(0, quotedBasePrice + selectedAssemblyTotal + workItemTotal - discountAmount) +
-    computeAdditionalDeliveryPrice({ deliveryIncluded, deliveryPrice })
+    computeAdditionalDeliveryPrice({ deliveryPrice, deliveryTerms })
   );
 }
 
 /** A Quote's stored pricing facts, excluding its selected assemblies. */
 export type QuotePricingFacts = {
-  deliveryIncluded?: boolean;
   deliveryPrice?: number;
+  deliveryTerms?: QuoteDeliveryTerms;
   discountPercent: number;
   quotedBasePrice: number;
   workItems?: readonly WorkItemPricingInput[] | undefined;

@@ -56,6 +56,15 @@ export class QuoteLockedError extends Error {
   }
 }
 
+export class QuoteDeliveryUnconfirmedError extends Error {
+  readonly code = 'quote.delivery_unconfirmed';
+
+  constructor(message: string) {
+    super(message);
+    this.name = 'QuoteDeliveryUnconfirmedError';
+  }
+}
+
 export class QuoteAlreadyCancelledError extends Error {
   readonly code = 'quote.already_cancelled';
 
@@ -125,6 +134,7 @@ export type QuoteCoreError =
   | QuoteCancelDeniedError
   | QuoteCancelNotAnUpdateError
   | QuoteCustomSelectedAssembliesError
+  | QuoteDeliveryUnconfirmedError
   | QuoteDocumentGenerationNotAllowedError
   | QuoteProductBayAvailabilityNotApplicableError
   | QuoteDiscountInvalidError
@@ -142,6 +152,7 @@ export function isQuoteCoreError(error: unknown): error is QuoteCoreError {
     error instanceof QuoteDocumentGenerationNotAllowedError ||
     error instanceof QuoteProductBayAvailabilityNotApplicableError ||
     error instanceof QuoteCustomSelectedAssembliesError ||
+    error instanceof QuoteDeliveryUnconfirmedError ||
     error instanceof QuoteDiscountInvalidError ||
     error instanceof QuoteInvalidReferenceError ||
     error instanceof QuoteOfferingInvariantError ||

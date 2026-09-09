@@ -11,7 +11,9 @@ import {
 import type { AuditChanges, AuthId, UUID } from '@pkg/schema';
 import {
   DEFAULT_PRODUCT_CURRENCY_CODE,
+  getQuoteDeliveryAcceptanceError,
   type QuoteCreateInput,
+  type QuoteDeliveryTerms,
   type QuoteDetail,
   type QuoteKind,
   type QuotePatchInput,
@@ -37,6 +39,7 @@ import {
   QuoteCancelDeniedError,
   QuoteCancelNotAnUpdateError,
   QuoteCustomSelectedAssembliesError,
+  QuoteDeliveryUnconfirmedError,
   QuoteDiscountInvalidError,
   QuoteInvalidReferenceError,
   QuoteLockedError,
@@ -217,6 +220,7 @@ export async function createQuote({
     const offering = await resolveQuoteOffering({ input, tx });
     const workItems = input.offering.kind === 'custom' ? input.offering.workItems : [];
     assertValidDiscount({ discountPercent: input.discountPercent });
+    assertDeliveryConfirmedForAcceptance({ deliveryTerms: input.deliveryTerms, status: input.status });
     await assertQuoteSalesPerson({ salesPersonId: input.salesPersonId, tx });
 
     const [row] = await tx
@@ -225,8 +229,8 @@ export async function createQuote({
         cancellationReason: input.cancellationReason,
         customerId,
         depositPercent: input.depositPercent,
-        deliveryIncluded: input.deliveryIncluded,
         deliveryPrice: input.deliveryPrice,
+        deliveryTerms: input.deliveryTerms,
         discountPercent: input.discountPercent,
         kind: offering.kind,
         invoiceNumber: input.invoiceNumber,
@@ -315,6 +319,7 @@ export async function updateQuote({
     }
 
     assertNotCancellingByUpdate({ before: before.status, next: input.status });
+    assertDeliveryConfirmedForAcceptance({ deliveryTerms: input.deliveryTerms, status: input.status });
 
     const collectionInput: QuoteCollectionPatchInput = {
       selectedAssemblies: input.selectedAssemblies,
@@ -328,8 +333,8 @@ export async function updateQuote({
       cancellationReason: input.cancellationReason,
       customerId: before.customerId,
       depositPercent: input.depositPercent,
-      deliveryIncluded: input.deliveryIncluded,
       deliveryPrice: input.deliveryPrice,
+      deliveryTerms: input.deliveryTerms,
       discountPercent: input.discountPercent,
       kind: before.kind,
       invoiceNumber: input.invoiceNumber,
@@ -459,6 +464,10 @@ export async function patchQuote({
     }
 
     assertNotCancellingByUpdate({ before: before.status, next: input.status });
+    assertDeliveryConfirmedForAcceptance({
+      deliveryTerms: before.deliveryTerms,
+      status: input.status ?? before.status,
+    });
 
     // `undefined` keeps the current value; an explicit `null` clears a nullable field.
     const patch = {
@@ -813,6 +822,20 @@ async function assertQuoteSalesPerson({
 
   if (!salesPerson) {
     throw new QuoteInvalidReferenceError('Quote salesperson must be a sales, admin, or super-admin user.');
+  }
+}
+
+function assertDeliveryConfirmedForAcceptance({
+  deliveryTerms,
+  status,
+}: {
+  deliveryTerms: QuoteDeliveryTerms;
+  status: QuoteStatus;
+}): void {
+  const message = getQuoteDeliveryAcceptanceError({ deliveryTerms, status });
+
+  if (message) {
+    throw new QuoteDeliveryUnconfirmedError(message);
   }
 }
 

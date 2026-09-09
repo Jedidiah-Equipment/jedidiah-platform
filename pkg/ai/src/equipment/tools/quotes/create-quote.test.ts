@@ -30,7 +30,7 @@ const quote = QuoteDetail.parse({
   customerThumbnailDataUrl: null,
   customerVatNumber: null,
   depositPercent: 0,
-  deliveryIncluded: true,
+  deliveryTerms: 'included',
   deliveryPrice: 0,
   discountPercent: 0,
   documentNotes: null,
@@ -82,6 +82,30 @@ function createContext(): AiContext {
 }
 
 describe('createQuote contract', () => {
+  test('forwards delivery terms and holds the price to an additional charge', () => {
+    const input = CreateQuoteInput.parse({
+      customer: { customerId: CUSTOMER_ID, type: 'existing' },
+      deliveryTerms: 'ex_factory',
+      offering: { kind: 'product', productId: PRODUCT_ID },
+    });
+
+    expect(toCoreQuoteCreateInput(input, 'test-user-id')).toMatchObject({
+      deliveryPrice: 0,
+      deliveryTerms: 'ex_factory',
+    });
+    expect(() =>
+      toCoreQuoteCreateInput(
+        CreateQuoteInput.parse({
+          customer: { customerId: CUSTOMER_ID, type: 'existing' },
+          deliveryPrice: 250,
+          deliveryTerms: 'tbc',
+          offering: { kind: 'product', productId: PRODUCT_ID },
+        }),
+        'test-user-id',
+      ),
+    ).toThrow('Must be zero unless delivery is an additional charge');
+  });
+
   test('requires and forwards a reason when creating a cancelled Quote', () => {
     expect(() =>
       CreateQuoteInput.parse({
@@ -160,7 +184,7 @@ describe('createQuote contract', () => {
         phone: null,
         type: 'inline',
       },
-      deliveryIncluded: true,
+      deliveryTerms: 'included',
       deliveryPrice: 0,
       depositPercent: 0,
       discountPercent: 0,

@@ -1,7 +1,6 @@
-import type { Department, QuoteKind, QuoteStatus } from '@pkg/schema/equipment';
+import type { Department, QuoteDeliveryTerms, QuoteKind, QuoteStatus } from '@pkg/schema/equipment';
 import { relations, sql } from 'drizzle-orm';
 import {
-  boolean,
   check,
   date,
   foreignKey,
@@ -43,7 +42,7 @@ export const quotes = equipmentSchema.table(
     statusChangedAt: timestamp('status_changed_at', { mode: 'date', withTimezone: true }).defaultNow().notNull(),
     discountPercent: numeric('discount_percent', { mode: 'number', precision: 5, scale: 2 }).notNull().default(0),
     depositPercent: numeric('deposit_percent', { mode: 'number', precision: 5, scale: 2 }).notNull().default(0),
-    deliveryIncluded: boolean('delivery_included').notNull().default(true),
+    deliveryTerms: text('delivery_terms').notNull().default('included').$type<QuoteDeliveryTerms>(),
     deliveryPrice: numeric('delivery_price', { mode: 'number', precision: 12, scale: 2 }).notNull().default(0),
     validUntil: date('valid_until', { mode: 'string' }),
     preferredDeliveryDate: date('preferred_delivery_date', { mode: 'string' }),
@@ -62,7 +61,15 @@ export const quotes = equipmentSchema.table(
     check('quote_deposit_percent_nonnegative', sql`${table.depositPercent} >= 0`),
     check('quote_deposit_percent_not_above_100', sql`${table.depositPercent} <= 100`),
     check('quote_delivery_price_nonnegative', sql`${table.deliveryPrice} >= 0`),
-    check('quote_delivery_inclusion_matches_price', sql`${table.deliveryIncluded} = (${table.deliveryPrice} = 0)`),
+    check(
+      'quote_delivery_terms_valid',
+      sql`${table.deliveryTerms} in ('included', 'additional_charge', 'ex_factory', 'tbc')`,
+    ),
+    // Only an additional charge carries a price, and it must carry one.
+    check(
+      'quote_delivery_charge_matches_price',
+      sql`(${table.deliveryTerms} = 'additional_charge') = (${table.deliveryPrice} > 0)`,
+    ),
     check(
       'quote_invoice_number_nonempty',
       sql`${table.invoiceNumber} IS NULL OR length(trim(${table.invoiceNumber})) > 0`,

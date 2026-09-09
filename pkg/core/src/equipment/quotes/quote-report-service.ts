@@ -118,8 +118,8 @@ export async function summarizeQuotePipeline({
   const [sentRows, decisionRows, unfinishedJobQuoteRows] = await Promise.all([
     db
       .select({
-        deliveryIncluded: quotes.deliveryIncluded,
         deliveryPrice: quotes.deliveryPrice,
+        deliveryTerms: quotes.deliveryTerms,
         discountPercent: quotes.discountPercent,
         id: quotes.id,
         kind: quotes.kind,
@@ -180,8 +180,8 @@ async function listUnfinishedJobQuoteRows({ db, today }: { db: Db; today: DateOn
   const [jobRows, offDays, bayRows] = await Promise.all([
     db
       .select({
-        deliveryIncluded: quotes.deliveryIncluded,
         deliveryPrice: quotes.deliveryPrice,
+        deliveryTerms: quotes.deliveryTerms,
         discountPercent: quotes.discountPercent,
         id: quotes.id,
         jobId: jobs.id,
@@ -226,8 +226,8 @@ export async function listStaleSentQuotes({
       code: quotes.code,
       customerCompanyName: customers.companyName,
       customerThumbnailDataUrl: customers.thumbnailDataUrl,
-      deliveryIncluded: quotes.deliveryIncluded,
       deliveryPrice: quotes.deliveryPrice,
+      deliveryTerms: quotes.deliveryTerms,
       discountPercent: quotes.discountPercent,
       id: quotes.id,
       kind: quotes.kind,

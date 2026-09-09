@@ -37,7 +37,7 @@ function buildQuoteDetail() {
     statusChangedAt: '2026-01-01T00:00:00.000Z',
     depositPercent: 30,
     discountPercent: 10,
-    deliveryIncluded: true,
+    deliveryTerms: 'included',
     deliveryPrice: 0,
     validUntil: '2026-01-31',
     preferredDeliveryDate: '2026-02-01',
@@ -167,8 +167,8 @@ describe('Quote edit presentation', () => {
     const quote = buildQuoteDetail();
     const values = {
       ...toQuoteEditFormValues(quote),
-      deliveryIncluded: false,
       deliveryPrice: 450,
+      deliveryTerms: 'additional_charge' as const,
       plannedDeliveryDate: '2026-03-01',
     };
 
@@ -182,8 +182,8 @@ describe('Quote edit presentation', () => {
       status: 'sent',
       discountPercent: 10,
       depositPercent: 30,
-      deliveryIncluded: false,
       deliveryPrice: 450,
+      deliveryTerms: 'additional_charge',
       validUntil: '2026-01-31',
       preferredDeliveryDate: '2026-02-01',
       plannedDeliveryDate: '2026-03-01',

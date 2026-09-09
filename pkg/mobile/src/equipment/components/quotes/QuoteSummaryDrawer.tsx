@@ -1,5 +1,6 @@
 import { createStableRowKeys, formatCurrency, formatPercent } from '@pkg/domain';
 import {
+  formatQuoteDeliverySummary,
   getQuoteOfferingName,
   type QuoteComputedSummary,
   quoteKindLabels,
@@ -160,6 +161,7 @@ function CustomWorkCard({ quote }: { quote: Extract<QuoteDetail, { kind: 'custom
 }
 
 function TotalCard({ quote, summary }: { quote: QuoteDetail; summary: QuoteComputedSummary }) {
+  const deliverySummary = formatQuoteDeliverySummary(summary);
   const workItemRows = quote.kind === 'custom' ? quoteWorkItemSummaryRows({ workItems: summary.workItems }) : [];
 
   return (
@@ -210,9 +212,7 @@ function TotalCard({ quote, summary }: { quote: QuoteDetail; summary: QuoteCompu
           label={`Less discount (${formatPercent(summary.discountPercent)})`}
           value={`− ${formatCurrency(summary.discountAmount, summary.currencyCode)}`}
         />
-        {!summary.deliveryIncluded ? (
-          <SummaryRow label="Delivery" value={formatCurrency(summary.deliveryPrice, summary.currencyCode)} />
-        ) : null}
+        {deliverySummary ? <SummaryRow label="Delivery" value={deliverySummary} /> : null}
         <View className="mt-1 gap-2 border-t border-border pt-3">
           <SummaryRow label="Subtotal" value={formatCurrency(summary.subtotal, summary.currencyCode)} />
           <SummaryRow

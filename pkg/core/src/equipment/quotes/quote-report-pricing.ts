@@ -1,10 +1,11 @@
 import { pricePersistedQuote } from '@pkg/domain/equipment';
 import type { UUID } from '@pkg/schema';
+import type { QuoteDeliveryTerms } from '@pkg/schema/equipment';
 
 /** The stored pricing facts a report needs off a Quote row, and nothing else. */
 export type ReportQuotePricingRow = {
-  deliveryIncluded: boolean;
   deliveryPrice: number;
+  deliveryTerms: QuoteDeliveryTerms;
   discountPercent: number;
   kind: 'custom' | 'product';
   quotedBasePrice: number;
@@ -33,8 +34,8 @@ export function priceReportQuote({
   workItems: readonly ReportQuotePricingWorkItem[];
 }) {
   const commonFacts = {
-    deliveryIncluded: row.deliveryIncluded,
     deliveryPrice: row.deliveryPrice,
+    deliveryTerms: row.deliveryTerms,
     discountPercent: row.discountPercent,
     quotedBasePrice: row.quotedBasePrice,
     selectedAssemblies,

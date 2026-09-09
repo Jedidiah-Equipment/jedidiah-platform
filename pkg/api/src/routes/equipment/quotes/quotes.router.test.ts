@@ -41,7 +41,7 @@ describe('quotes.create', () => {
         type: 'inline',
         companyName: 'Acme Mining',
       },
-      deliveryIncluded: false,
+      deliveryTerms: 'additional_charge',
       deliveryPrice: 350,
       depositPercent: 30,
       discountPercent: 10,
@@ -62,7 +62,7 @@ describe('quotes.create', () => {
       code: 'QUO-00001',
       customerCompanyName: 'Acme Mining',
       depositPercent: 30,
-      deliveryIncluded: false,
+      deliveryTerms: 'additional_charge',
       deliveryPrice: 350,
       documentNotes: '30% deposit, balance on delivery',
       kind: 'product',
@@ -77,7 +77,7 @@ describe('quotes.create', () => {
     expect(quoteRows).toHaveLength(1);
     expect(quoteRows[0]).toMatchObject({
       depositPercent: 30,
-      deliveryIncluded: false,
+      deliveryTerms: 'additional_charge',
       deliveryPrice: 350,
       plannedDeliveryDate: '2026-07-15',
       preferredDeliveryDate: '2026-07-10',
@@ -162,6 +162,27 @@ describe('quotes.create', () => {
       cancellationReason: null,
       status: 'draft',
     });
+  });
+
+  test('refuses to accept a quote whose delivery is still to be confirmed', async ({ context }) => {
+    const salesCaller = context.createCaller(mockSession('sales'));
+    const quote = await salesCaller.quotes.create({
+      customer: { type: 'inline', companyName: 'Delivery TBC Customer' },
+      deliveryTerms: 'tbc',
+      documentNotes: null,
+      notes: null,
+      offering: productOffering(context.product.id),
+      salesPersonId: 'test-user-id',
+      status: 'sent',
+      validUntil: null,
+    });
+    expect(quote).toMatchObject({ deliveryPrice: 0, deliveryTerms: 'tbc', status: 'sent' });
+
+    await expect(salesCaller.quotes.update({ ...toUpdateInput(quote), status: 'accepted' })).rejects.toMatchObject({
+      code: 'BAD_REQUEST',
+      message: expect.stringContaining('Confirm delivery before accepting this quote.'),
+    });
+    await expect(salesCaller.quotes.get({ id: quote.id })).resolves.toMatchObject({ status: 'sent' });
   });
 
   test('prices a custom quote that mixes Departments, each Work Item at its own rate', async ({ context }) => {
@@ -917,7 +938,7 @@ describe('quotes.update', () => {
     const updated = await caller.quotes.update({
       ...toUpdateInput(created),
       depositPercent: 50,
-      deliveryIncluded: false,
+      deliveryTerms: 'additional_charge',
       deliveryPrice: 777,
       discountPercent: 12.5,
       notes: 'Updated draft terms',
@@ -932,7 +953,7 @@ describe('quotes.update', () => {
     const updateEvent = events.findLast((event) => event.entityType === 'quote' && event.action === 'updated');
 
     expect(updated).toMatchObject({
-      deliveryIncluded: false,
+      deliveryTerms: 'additional_charge',
       deliveryPrice: 777,
       depositPercent: 50,
       discountPercent: 12.5,
@@ -948,9 +969,9 @@ describe('quotes.update', () => {
     });
     expect(updated).not.toHaveProperty('total');
     expect(updateEvent?.changes).toMatchObject({
-      deliveryIncluded: {
-        from: true,
-        to: false,
+      deliveryTerms: {
+        from: 'included',
+        to: 'additional_charge',
       },
       depositPercent: {
         from: 0,
@@ -2146,11 +2167,11 @@ describe('jobs.create with quote links', () => {
     });
     const frozenChanges = [
       {
-        field: 'deliveryIncluded',
+        field: 'deliveryTerms',
         input: (quote: QuoteDetail) => ({
           ...toUpdateInput(quote),
-          deliveryIncluded: !quote.deliveryIncluded,
           deliveryPrice: 0,
+          deliveryTerms: 'ex_factory' as const,
         }),
       },
       {
@@ -2201,8 +2222,8 @@ describe('jobs.create with quote links', () => {
       const created = await createReadyQuote(salesCaller, context.product.id);
       const accepted = await salesCaller.quotes.update({
         ...toUpdateInput(created),
-        deliveryIncluded: false,
         deliveryPrice: 100,
+        deliveryTerms: 'additional_charge',
         status: 'accepted',
       });
       await adminCaller.jobs.create({
@@ -2361,8 +2382,8 @@ async function createNamedQuote(
       type: 'inline',
       companyName: customerCompanyName,
     },
-    deliveryIncluded: deliveryPrice === 0,
     deliveryPrice,
+    deliveryTerms: deliveryPrice === 0 ? 'included' : 'additional_charge',
     depositPercent,
     discountPercent,
     notes: null,
@@ -2401,8 +2422,8 @@ function toUpdateInput(quote: QuoteDetail) {
           }
         : { kind: 'product' as const },
     depositPercent: quote.depositPercent,
-    deliveryIncluded: quote.deliveryIncluded,
     deliveryPrice: quote.deliveryPrice,
+    deliveryTerms: quote.deliveryTerms,
     discountPercent: quote.discountPercent,
     notes: quote.notes,
     documentNotes: quote.documentNotes,

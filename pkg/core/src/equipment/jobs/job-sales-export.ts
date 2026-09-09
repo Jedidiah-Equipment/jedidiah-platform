@@ -51,8 +51,8 @@ export async function listCompletedJobSales({
       quote: {
         columns: {
           code: true,
-          deliveryIncluded: true,
           deliveryPrice: true,
+          deliveryTerms: true,
           discountPercent: true,
           invoiceNumber: true,
           kind: true,

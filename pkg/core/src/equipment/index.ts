@@ -36,6 +36,7 @@ export * from './jobs/job-read-service.js';
 export * from './jobs/job-sales-export.js';
 export * from './jobs/job-service.js';
 export * from './jobs/working-calendar-service.js';
+export * from './labor-rates/labor-rate-service.js';
 export * from './parts/part-bom-errors.js';
 export * from './parts/part-bom-service.js';
 export * from './parts/part-errors.js';

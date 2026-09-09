@@ -13,6 +13,7 @@ import * as documentSchema from './schema/equipment/document.js';
 import * as feedbackSchema from './schema/equipment/feedback.js';
 import * as jobSchema from './schema/equipment/job.js';
 import * as jobStockCloseOutSchema from './schema/equipment/job-stock-close-out.js';
+import * as laborRateSchema from './schema/equipment/labor-rate-card.js';
 import * as partSchema from './schema/equipment/part.js';
 import * as productSchema from './schema/equipment/product.js';
 import * as productRangeSchema from './schema/equipment/product-range.js';
@@ -35,6 +36,7 @@ export const schema = {
   ...contractingFleetSchema,
   ...documentSchema,
   ...feedbackSchema,
+  ...laborRateSchema,
   ...jobSchema,
   ...jobStockCloseOutSchema,
   ...partSchema,

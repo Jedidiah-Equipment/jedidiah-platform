@@ -25,6 +25,8 @@ function configFor(tableName: string): SnapshotTableConfig {
 describe('snapshot table registry', () => {
   it('lists snapshot tables in dependency order', () => {
     expect(snapshotTableNames).toEqual([
+      'labor_rate_settings',
+      'labor_department_rate',
       'user',
       'user_department',
       'job_bay',
@@ -68,6 +70,8 @@ describe('snapshot table registry', () => {
 
   it('uses deterministic filenames', () => {
     expect(snapshotTables.map((table) => table.fileName)).toEqual([
+      'labor_rate_settings.json',
+      'labor_department_rate.json',
       'user.json',
       'user_department.json',
       'job_bay.json',

@@ -21,6 +21,7 @@ export const AUDIT_ENTITY_TYPES = {
     'contracting_reading',
   ],
   equipment: [
+    'labor_rate_card',
     'customer',
     'document',
     'job',

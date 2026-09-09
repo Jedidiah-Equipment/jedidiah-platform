@@ -22,6 +22,7 @@ const TOPIC_ROUTES: ReadonlyArray<readonly [prefix: string, topic: HelpTopic]> =
   ['/equipment/quotes', 'quotes'],
   ['/equipment/suppliers', 'suppliers'],
   ['/equipment/units', 'units'],
+  ['/equipment/labor-rates', 'laborRates'],
   ['/equipment/users', 'users'],
 ];
 

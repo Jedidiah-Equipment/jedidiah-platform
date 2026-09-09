@@ -59,6 +59,8 @@ export const APP_PERMISSIONS = [
   'equipment_inventory:count',
   'equipment_inventory:build',
   'equipment_inventory:close-out',
+  'equipment_labor_rate:read',
+  'equipment_labor_rate:update',
   'equipment_inventory_cost:read',
   'equipment_inventory_cost:revalue',
   'equipment_part:read',

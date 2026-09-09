@@ -255,7 +255,7 @@ function assertQuoteCanStartJob({
 
 /**
  * The Quote's selected Assemblies, as the Build Spec they seed. A copy at one moment, in the Quote's
- * own selection order — never a live read, exactly like the Work Item Rate Card seeding a rate.
+ * own selection order — never a live read, exactly like the Labor Rate Card seeding a rate.
  */
 async function loadQuoteBuildSpecSeed({
   quoteId,

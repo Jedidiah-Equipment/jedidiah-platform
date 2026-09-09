@@ -3,7 +3,7 @@ import { getTableName, getTableUniqueName } from 'drizzle-orm';
 import { PgDialect, type PgTable } from 'drizzle-orm/pg-core';
 import { describe, expect, it, vi } from 'vitest';
 
-import { clearApplicationTables, clearSnapshotTables } from './seed-writer.js';
+import { clearApplicationTables, clearSnapshotTables, prepareRowsForSeed } from './seed-writer.js';
 import { snapshotCleanupTables } from './snapshot-tables.js';
 
 type CatalogTable = { schemaname: string; tablename: string };
@@ -90,4 +90,17 @@ describe('clearApplicationTables', () => {
     );
     expect(tx.delete).not.toHaveBeenCalled();
   });
+});
+
+it('initializes Labor rates for old snapshots and preserves captured rates', () => {
+  const config = snapshotCleanupTables.find((table) => table.tableName === 'labor_department_rate');
+  if (!config) throw new Error('Missing Labor rates config');
+  expect(prepareRowsForSeed(config, [])).toEqual(
+    expect.arrayContaining([
+      { id: 'fabrication', costToCompanyRate: 220, billingRate: 550, consumablesPercentage: 60 },
+      { id: 'workshop', costToCompanyRate: null, billingRate: 320, consumablesPercentage: null },
+    ]),
+  );
+  const captured = [{ id: 'fabrication', costToCompanyRate: 250, billingRate: 600, consumablesPercentage: 70 }];
+  expect(prepareRowsForSeed(config, captured)).toEqual(captured);
 });

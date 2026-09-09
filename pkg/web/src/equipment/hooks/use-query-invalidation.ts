@@ -7,6 +7,10 @@ export function useQueryInvalidation() {
   const queryClient = useQueryClient();
   const trpc = useTRPC();
 
+  const invalidateLaborRates = useCallback(
+    () => queryClient.invalidateQueries({ queryKey: trpc.laborRates.pathKey() }),
+    [queryClient, trpc],
+  );
   const invalidateAudit = useCallback(
     () => queryClient.invalidateQueries({ queryKey: trpc.audit.pathKey() }),
     [queryClient, trpc],
@@ -77,6 +81,7 @@ export function useQueryInvalidation() {
   );
   return useMemo(
     () => ({
+      invalidateLaborRates,
       invalidateAudit,
       invalidateAuth,
       invalidateCatalogTranslations,
@@ -96,6 +101,7 @@ export function useQueryInvalidation() {
       invalidateUsers,
     }),
     [
+      invalidateLaborRates,
       invalidateAudit,
       invalidateAuth,
       invalidateCatalogTranslations,

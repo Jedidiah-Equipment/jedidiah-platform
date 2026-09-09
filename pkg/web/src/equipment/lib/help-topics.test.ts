@@ -10,6 +10,7 @@ describe('helpTopicForPath', () => {
   });
 
   it('resolves an area from its route', () => {
+    expect(helpTopicForPath('/equipment/labor-rates')).toBe('laborRates');
     expect(helpTopicForPath('/equipment/bays')).toBe('bays');
     expect(helpTopicForPath('/equipment/customers')).toBe('customers');
     expect(helpTopicForPath('/equipment/inventory')).toBe('inventory');

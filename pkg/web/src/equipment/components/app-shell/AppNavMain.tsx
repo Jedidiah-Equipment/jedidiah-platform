@@ -219,6 +219,12 @@ const navSections = [
         icon: IconUsers,
       },
       {
+        title: 'Labor rates',
+        permission: 'equipment_labor_rate:read',
+        link: linkOptions({ to: '/equipment/labor-rates' }),
+        icon: IconUsers,
+      },
+      {
         title: 'Product Ranges',
         permission: 'equipment_product_range:read',
         link: linkOptions({ to: '/equipment/product-ranges' }),

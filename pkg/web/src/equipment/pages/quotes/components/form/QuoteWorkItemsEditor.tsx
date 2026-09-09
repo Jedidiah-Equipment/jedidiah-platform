@@ -7,10 +7,12 @@ import {
 } from '@pkg/domain/equipment';
 import type { Department } from '@pkg/schema/equipment';
 import { IconPlus, IconTrash } from '@tabler/icons-react';
+import { useQuery } from '@tanstack/react-query';
 import type React from 'react';
 import { useTypedAppFormContext } from '@/components/form/index.js';
 import type { ArrayFieldApi } from '@/components/form/types.js';
 import { Button } from '@/components/ui/button.js';
+import { useTRPC } from '@/lib/trpc.js';
 import { cn } from '@/lib/utils.js';
 import {
   emptyQuoteFormValues,
@@ -38,15 +40,12 @@ const DEPARTMENT_OPTIONS = [
 const DEFAULT_WORK_ITEM: QuoteWorkItemFormInput = {
   department: DEFAULT_DEPARTMENT,
   description: '',
-  hourlyRate: defaultWorkItemRate(DEFAULT_DEPARTMENT),
+  hourlyRate: 0,
   hours: 0,
   name: '',
   parts: [],
 };
 
-function defaultWorkItemRate(department: QuoteWorkItemFormInput['department']): number {
-  return department === OTHER_WORK_ITEM_DEPARTMENT ? 0 : workItemDepartmentRate(department);
-}
 const DEFAULT_WORK_ITEM_PART: QuoteWorkItemFormInput['parts'][number] = { name: '', quantity: 1, unitPrice: 0 };
 const getWorkItemKey = createStableRowKeys<QuoteWorkItemFormInput>('quote-work-item');
 const getWorkItemPartKey = createStableRowKeys<QuoteWorkItemFormInput['parts'][number]>('quote-work-item-part');
@@ -62,6 +61,8 @@ export const QuoteWorkItemsEditor: React.FC<QuoteWorkItemsEditorProps> = ({
   workItemsField,
 }) => {
   const quoteForm = useQuoteForm();
+  const trpc = useTRPC();
+  const billing = useQuery(trpc.laborRates.billing.queryOptions());
   const workItems = workItemsField.state.value;
 
   return (
@@ -90,7 +91,7 @@ export const QuoteWorkItemsEditor: React.FC<QuoteWorkItemsEditorProps> = ({
                     <quoteForm.AppField name={`workItems[${workItemIndex}].department`}>
                       {(field) => (
                         <field.SelectField
-                          disabled={readOnly}
+                          disabled={readOnly || !billing.data}
                           label="Department"
                           onValueCommit={(value) => {
                             // A departmental row is labour: hours at the Department's rate. Other is a
@@ -104,7 +105,7 @@ export const QuoteWorkItemsEditor: React.FC<QuoteWorkItemsEditorProps> = ({
                             );
                             quoteForm.setFieldValue(
                               `workItems[${workItemIndex}].hourlyRate`,
-                              nextIsOther ? 0 : workItemDepartmentRate(value as Department),
+                              nextIsOther ? 0 : workItemDepartmentRate(value as Department, billing.data?.rates ?? []),
                             );
                             if (nextIsOther) quoteForm.setFieldValue(`workItems[${workItemIndex}].hours`, 1);
                           }}
@@ -266,15 +267,24 @@ export const QuoteWorkItemsEditor: React.FC<QuoteWorkItemsEditorProps> = ({
 export const QuoteAddWorkItemButton: React.FC<Pick<QuoteWorkItemsEditorProps, 'readOnly' | 'workItemsField'>> = ({
   readOnly,
   workItemsField,
-}) => (
-  <Button
-    disabled={readOnly}
-    onClick={() => workItemsField.pushValue({ ...DEFAULT_WORK_ITEM })}
-    size="sm"
-    type="button"
-    variant="outline"
-  >
-    <IconPlus data-icon="inline-start" />
-    Add work item
-  </Button>
-);
+}) => {
+  const trpc = useTRPC();
+  const billing = useQuery(trpc.laborRates.billing.queryOptions());
+  return (
+    <Button
+      disabled={readOnly || !billing.data}
+      onClick={() =>
+        workItemsField.pushValue({
+          ...DEFAULT_WORK_ITEM,
+          hourlyRate: workItemDepartmentRate(DEFAULT_DEPARTMENT as Department, billing.data?.rates ?? []),
+        })
+      }
+      size="sm"
+      type="button"
+      variant="outline"
+    >
+      <IconPlus data-icon="inline-start" />
+      {billing.isError ? 'Rates unavailable' : 'Add work item'}
+    </Button>
+  );
+};

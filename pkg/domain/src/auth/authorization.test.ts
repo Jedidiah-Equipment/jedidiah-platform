@@ -54,6 +54,8 @@ describe('getRolePermissions', () => {
       'equipment_job_bay:read',
       'equipment_job_bay:update',
       'equipment_job_metrics:read',
+      'equipment_labor_rate:read',
+      'equipment_labor_rate:update',
       'equipment_part:read',
       'equipment_part:update',
       'equipment_product:create',
@@ -431,4 +433,12 @@ describe('job cancellation authorization policy', () => {
       expect(getRolePermissions(role), role).not.toContain('equipment_job:cancel');
     }
   });
+});
+
+it('restricts Labor Rate Card access to Equipment administrators', () => {
+  for (const role of APP_ROLES) {
+    for (const permission of ['equipment_labor_rate:read', 'equipment_labor_rate:update'] as const) {
+      expect(getRolePermissions(role).includes(permission), role).toBe(role === 'admin' || role === 'super-admin');
+    }
+  }
 });

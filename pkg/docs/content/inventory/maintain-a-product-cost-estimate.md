@@ -1,7 +1,8 @@
 # Maintain a Product cost estimate
 
 A Product Cost Estimate combines the Product's raw materials per unit, effective Assembly Parts,
-and labor per unit at current inventory costs and the cost-to-company rates on the [Labor Rate Card](/admin/maintain-labor-rates).
+and labor per unit at current inventory costs and the cost-to-company rates, consumables percentages
+and management overhead on the [Labor Rate Card](/admin/maintain-labor-rates).
 
 ## Steps
 
@@ -12,14 +13,15 @@ and labor per unit at current inventory costs and the cost-to-company rates on t
 2. Open **Products**, open the Product, and select **Costing**.
 3. Under **Raw materials per unit**, select a raw material and press **Add**, then enter its
    **Quantity per unit**.
-4. Under **Labor per unit**, add each Department involved and enter its **Hours per unit**.
+4. Under **Labor per unit**, add each Department involved and enter its **Days per staff member** and
+   **Staff**. Hours derive from the hours per working day on the Labor Rate Card.
 5. Wait for the saved status. Adding or removing a line saves the whole Product Material List and
    labor-hours list together.
-6. Read **Live cost estimate**. It separates raw materials, Assembly Parts, and labor, then compares
-   the total with the Product's Base Price.
+6. Read **Live cost estimate**. It separates raw materials, Assembly Parts, and labor with its consumables
+   and management overhead, then compares the total with the Product's Base Price.
 7. If the total begins with **≥**, read the missing-input line and complete the named material list,
-   labor hours, or uncosted bought Parts. A Department with a blank or zero cost-to-company rate is also
-   named there: its hours count as zero cost until a positive rate is saved. The displayed amount is a floor
+   labor, or uncosted bought Parts. A Department with a blank or zero cost-to-company rate is also
+   named there: its labor counts as zero cost until a positive rate is saved. The displayed amount is a floor
    until nothing is missing.
 
 Optional Assemblies show a partial bought-Parts cost beside their upgrade-delta price. Their raw

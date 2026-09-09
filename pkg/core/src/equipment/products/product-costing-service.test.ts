@@ -125,13 +125,13 @@ describe('Product costing child collections', () => {
       actorUserId,
       db: context.db,
       input: productInput(context.rangeId, {
-        laborHours: [{ department: 'fabrication', hours: 40 }],
+        laborHours: [{ department: 'fabrication', daysPerStaff: 5, staffCount: 2 }],
         materialLines: [{ partId: context.plate.id, quantityPerUnit: 2.5 }],
       }),
     });
 
     expect(created).toMatchObject({
-      laborHours: [{ department: 'fabrication', hours: 40 }],
+      laborHours: [{ department: 'fabrication', daysPerStaff: 5, staffCount: 2 }],
       materialLines: [{ partId: context.plate.id, quantityPerUnit: 2.5 }],
     });
 
@@ -140,14 +140,14 @@ describe('Product costing child collections', () => {
       db: context.db,
       input: {
         ...updateInput(created),
-        laborHours: [{ department: 'paint', hours: 12.5 }],
+        laborHours: [{ department: 'paint', daysPerStaff: 1.5, staffCount: 1 }],
         materialLines: [{ partId: context.channel.id, quantityPerUnit: 3 }],
       },
     });
     await updateProduct({ actorUserId, db: context.db, input: updateInput(created) });
 
     await expect(getProduct({ db: context.db, id: created.id })).resolves.toMatchObject({
-      laborHours: [{ department: 'paint', hours: 12.5 }],
+      laborHours: [{ department: 'paint', daysPerStaff: 1.5, staffCount: 1 }],
       materialLines: [{ partId: context.channel.id, quantityPerUnit: 3 }],
     });
     await expect(
@@ -171,7 +171,9 @@ describe('Product costing child collections', () => {
 });
 
 describe('getProductCostEstimate', () => {
-  test('prices materials, the effective BOM, labor, margin, and Optional Assembly partials', async ({ context }) => {
+  test('prices materials, the effective BOM, labor with overheads, margin, and Optional Assembly partials', async ({
+    context,
+  }) => {
     await postAdjustment({
       actorUserId,
       db: context.db,
@@ -238,8 +240,8 @@ describe('getProductCostEstimate', () => {
           },
         ],
         laborHours: [
-          { department: 'fabrication', hours: 40 },
-          { department: 'paint', hours: 12 },
+          { department: 'fabrication', daysPerStaff: 5, staffCount: 1 },
+          { department: 'paint', daysPerStaff: 2, staffCount: 1 },
         ],
         materialLines: [
           { partId: context.plate.id, quantityPerUnit: 2.5 },
@@ -270,8 +272,11 @@ describe('getProductCostEstimate', () => {
 
     expect(base).toMatchObject({
       complete: true,
-      estimatedMarginCeiling: 85_460,
-      laborCostFloor: 9_840,
+      consumablesCostFloor: 6_579,
+      estimatedMarginCeiling: 71_643.5,
+      laborCostFloor: 11_385,
+      managementOverheadCostFloor: 5_692.5,
+      managementOverheadPercentage: 50,
       materialCostFloor: 4_400,
       missing: {
         laborHours: false,
@@ -281,7 +286,7 @@ describe('getProductCostEstimate', () => {
         unratedDepartments: [],
       },
       partsCostFloor: 300,
-      totalCostFloor: 14_540,
+      totalCostFloor: 28_356.5,
     });
     expect(
       base.materialLines.map((line) => [line.partCode, line.unitCost, line.costFloor, line.standardPurchaseLengthMm]),
@@ -382,8 +387,8 @@ describe('getProductCostEstimate', () => {
       db: context.db,
       input: productInput(context.rangeId, {
         laborHours: [
-          { department: 'fabrication', hours: 10 },
-          { department: 'workshop', hours: 8 },
+          { department: 'fabrication', daysPerStaff: 1, staffCount: 2 },
+          { department: 'workshop', daysPerStaff: 1, staffCount: 1 },
         ],
         materialLines: [{ partId: context.plate.id, quantityPerUnit: 1 }],
         modelCode: 'COST-3',
@@ -395,12 +400,16 @@ describe('getProductCostEstimate', () => {
 
     expect(estimate).toMatchObject({
       complete: false,
-      laborCostFloor: 2_250,
+      laborCostFloor: 4_050,
       missing: { laborHours: false, unratedDepartments: ['workshop'] },
     });
     expect(estimate.laborHours.find((line) => line.department === 'workshop')).toMatchObject({
-      cost: 0,
+      consumablesCost: 0,
+      consumablesPercentage: 0,
+      departmentTotal: 0,
       hourlyRate: 0,
+      hours: 9,
+      laborCost: 0,
     });
     const card = await getLaborRateCard({ db: context.db });
     for (const costToCompanyRate of [0, 100]) {
@@ -414,7 +423,7 @@ describe('getProductCostEstimate', () => {
       });
       const repriced = await getProductCostEstimate({ db: context.db, productId: product.id });
       expect(repriced.missing.unratedDepartments).toEqual(costToCompanyRate === 0 ? ['workshop'] : []);
-      expect(repriced.laborCostFloor).toBe(costToCompanyRate === 0 ? 2_250 : 3_050);
+      expect(repriced.laborCostFloor).toBe(costToCompanyRate === 0 ? 4_050 : 4_950);
     }
   });
 });

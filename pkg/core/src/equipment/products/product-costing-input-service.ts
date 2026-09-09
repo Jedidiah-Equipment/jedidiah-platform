@@ -30,7 +30,11 @@ export async function listProductCostingInputs({
       .where(eq(productMaterialLines.productId, productId))
       .orderBy(asc(productMaterialLines.partId)),
     db
-      .select({ department: productLaborHours.department, hours: productLaborHours.hours })
+      .select({
+        daysPerStaff: productLaborHours.daysPerStaff,
+        department: productLaborHours.department,
+        staffCount: productLaborHours.staffCount,
+      })
       .from(productLaborHours)
       .where(eq(productLaborHours.productId, productId)),
   ]);
@@ -71,9 +75,14 @@ export async function syncProductCostingInputs({
   }
 
   if (desired.laborHours.length > 0) {
-    await tx
-      .insert(productLaborHours)
-      .values(desired.laborHours.map((line) => ({ department: line.department, hours: line.hours, productId })));
+    await tx.insert(productLaborHours).values(
+      desired.laborHours.map((line) => ({
+        daysPerStaff: line.daysPerStaff,
+        department: line.department,
+        productId,
+        staffCount: line.staffCount,
+      })),
+    );
   }
 
   return listProductCostingInputs({ db: tx, productId });

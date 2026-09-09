@@ -1,4 +1,5 @@
 import { formatCurrency, formatDate } from '@pkg/domain';
+import { productLaborTotal } from '@pkg/domain/equipment';
 import type { UUID } from '@pkg/schema';
 import { useQuery } from '@tanstack/react-query';
 
@@ -33,14 +34,17 @@ export function JobCostComparisonSummary({ jobId }: { jobId: UUID }) {
         <CardTitle>Estimate vs actual</CardTitle>
         <CardDescription>
           Estimate frozen {formatDate(snapshot.createdAt)}; Assembly Parts compare with values stamped on this Job's
-          draws. Product-level material and labor are context only.
+          draws. Product-level material, labor and overheads are context only.
         </CardDescription>
       </CardHeader>
       <CardContent className="grid gap-3">
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
           <CostTerm label="Materials" value={formatEstimateFloor(estimate.materialCostFloor, termComplete.material)} />
           <CostTerm label="Assembly parts" value={formatEstimateFloor(estimate.partsCostFloor, termComplete.parts)} />
-          <CostTerm label="Labor" value={formatEstimateFloor(estimate.laborCostFloor, termComplete.labor)} />
+          <CostTerm
+            label="Labor and overheads"
+            value={formatEstimateFloor(productLaborTotal(estimate), termComplete.labor)}
+          />
           <CostTerm label="Estimate total" value={formatEstimateFloor(estimate.totalCostFloor, estimate.complete)} />
           <CostTerm
             label="Actual drawn parts"

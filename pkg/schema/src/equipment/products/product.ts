@@ -335,18 +335,27 @@ export const ProductMaterialLines = z.array(ProductMaterialLine).superRefine(ref
 export type ProductMaterialLinesInput = z.infer<typeof ProductMaterialLinesInput>;
 export const ProductMaterialLinesInput = ProductMaterialLines.default([]);
 
-export type ProductLaborHoursValue = z.infer<typeof ProductLaborHoursValue>;
-export const ProductLaborHoursFormValue = z
+export type ProductLaborDaysPerStaffValue = z.infer<typeof ProductLaborDaysPerStaffValue>;
+export const ProductLaborDaysPerStaffFormValue = z
   .number()
-  .positive('Labor hours must be greater than 0')
+  .positive('Days per staff member must be greater than 0')
   .max(9_999.99)
-  .multipleOf(0.01, 'Labor hours may have at most 2 decimal places');
-export const ProductLaborHoursValue = z.coerce.number().pipe(ProductLaborHoursFormValue);
+  .multipleOf(0.01, 'Days per staff member may have at most 2 decimal places');
+export const ProductLaborDaysPerStaffValue = z.coerce.number().pipe(ProductLaborDaysPerStaffFormValue);
+
+export type ProductLaborStaffCountValue = z.infer<typeof ProductLaborStaffCountValue>;
+export const ProductLaborStaffCountFormValue = z
+  .number()
+  .int('Staff must be a whole number')
+  .min(1, 'Staff must be at least 1')
+  .max(999);
+export const ProductLaborStaffCountValue = z.coerce.number().pipe(ProductLaborStaffCountFormValue);
 
 export type ProductLaborHour = z.infer<typeof ProductLaborHour>;
 export const ProductLaborHour = z.object({
   department: WorkItemDepartment,
-  hours: ProductLaborHoursValue,
+  daysPerStaff: ProductLaborDaysPerStaffValue,
+  staffCount: ProductLaborStaffCountValue,
 });
 
 export function refineProductLaborHours(rows: Array<{ department: string }>, ctx: z.RefinementCtx): void {

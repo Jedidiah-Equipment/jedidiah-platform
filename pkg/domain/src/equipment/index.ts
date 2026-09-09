@@ -43,6 +43,7 @@ export * from './products/brochure-completeness.js';
 export * from './products/catalog-translation.js';
 export * from './products/lander-completeness.js';
 export * from './products/product-image-policy.js';
+export * from './products/product-labor-costing.js';
 export * from './products/product-range-image-policy.js';
 export * from './products/product-range-logo-policy.js';
 export * from './quotes/effective-bom.js';

@@ -1009,6 +1009,13 @@
       "when": 1788946025213,
       "tag": "0143_wild_mauler",
       "breakpoints": true
+    },
+    {
+      "idx": 144,
+      "version": "7",
+      "when": 1788949451800,
+      "tag": "0144_product_labor_days_staff",
+      "breakpoints": true
     }
   ]
 }

@@ -14,7 +14,8 @@ import {
   ProductDescription,
   ProductDisplayOrder,
   ProductKeyFeatures,
-  ProductLaborHoursFormValue,
+  ProductLaborDaysPerStaffFormValue,
+  ProductLaborStaffCountFormValue,
   ProductLanderEnabled,
   ProductMaterialQuantityPerUnitValue,
   ProductModelCode,
@@ -76,7 +77,13 @@ const ProductMaterialLinesFormInput = z
   .superRefine(refineProductMaterialLines);
 
 const ProductLaborHoursFormInput = z
-  .array(z.object({ department: WorkItemDepartment, hours: ProductLaborHoursFormValue }))
+  .array(
+    z.object({
+      department: WorkItemDepartment,
+      daysPerStaff: ProductLaborDaysPerStaffFormValue,
+      staffCount: ProductLaborStaffCountFormValue,
+    }),
+  )
   .superRefine(refineProductLaborHours);
 
 const ProductFormFields = z.object({

@@ -1,0 +1,80 @@
+{
+  "releasedAt": "2026-09-09T14:18:44.607Z",
+  "sections": [
+    {
+      "surface": "app",
+      "entries": [
+        {
+          "title": "Manage your Contracting fleet",
+          "description": "Maintain machines, categories and implements, assign drivers, and record service intervals and category rates. Retire fleet items while keeping their history."
+        },
+        {
+          "title": "Resolve hour reading exceptions",
+          "description": "Review disputed machine hours and photo verification warnings in Contracting. Inspect photos, recheck verification, and correct or confirm readings with a recorded reason."
+        },
+        {
+          "title": "Organise Contracting customers and work types",
+          "description": "Maintain customer contact details and their farms in Contracting. Add work types and deactivate those no longer offered."
+        },
+        {
+          "title": "Filter users by business access",
+          "description": "See whether each user has Equipment access, Contracting access, both or neither. Combine Mode filters to narrow the user list."
+        },
+        {
+          "title": "Specify quote delivery terms",
+          "description": "Choose delivery included, an additional charge, customer collection or to be confirmed, with matching terms on quote PDFs. Quotes awaiting delivery confirmation cannot be accepted."
+        },
+        {
+          "title": "Track Supply work",
+          "description": "Select Supply when planning product labor, adding quote work items and recording job work times. Supply also appears in department timing and build metrics."
+        },
+        {
+          "title": "Maintain labor rates centrally",
+          "description": "Administrators can update department cost and billing rates, consumables percentages, management overhead and working-day hours, with changes recorded in Audit. Product estimates and new quote work items use the saved rates."
+        },
+        {
+          "title": "Estimate labor from days and staff",
+          "description": "Enter days per staff member and staff numbers for each product's labor. Cost estimates now include consumables and management overhead, and flag missing labor rates."
+        },
+        {
+          "title": "Switch between businesses reliably",
+          "description": "Users with access to both businesses can switch between Equipment and Contracting from the sidebar without an error."
+        }
+      ]
+    },
+    {
+      "surface": "lander",
+      "entries": [
+        {
+          "title": "Retry pages that fail to load",
+          "description": "A failed page load now shows a clear error page with a retry option instead of a blank screen."
+        }
+      ]
+    },
+    {
+      "surface": "mobile",
+      "entries": [
+        {
+          "title": "Find Contracting machines in the field",
+          "description": "Search machines by code, filter by category, and view their latest synced hours and reading history. Fleet details and histories opened while connected remain available offline."
+        },
+        {
+          "title": "Capture machine hours offline",
+          "description": "Type hour meter readings and optionally attach a photo, even without signal. Captures stay saved on your phone and sync when the app is open with a connection."
+        },
+        {
+          "title": "Resolve queued reading problems",
+          "description": "Use Needs attention to review captures that could not sync. Dispute an incorrect previous reading, retry syncing or discard a capture."
+        },
+        {
+          "title": "Specify quote delivery terms",
+          "description": "Choose delivery included, an additional charge, customer collection or to be confirmed directly in the quote editor. Quotes awaiting delivery confirmation cannot be accepted."
+        },
+        {
+          "title": "Use current rates for quote work",
+          "description": "New quote work items use the department billing rates maintained in the labor rate card. Supply is now available as a work department."
+        }
+      ]
+    }
+  ]
+}

@@ -153,7 +153,8 @@ export const productLaborHours = equipmentSchema.table(
   'product_labor_hours',
   {
     department: text('department').notNull().$type<WorkItemDepartment>(),
-    hours: numeric('hours', { mode: 'number', precision: 6, scale: 2 }).notNull(),
+    daysPerStaff: numeric('days_per_staff', { mode: 'number', precision: 6, scale: 2 }).notNull(),
+    staffCount: integer('staff_count').notNull(),
     productId: uuid('product_id')
       .notNull()
       .references(() => products.id, { onDelete: 'cascade' }),
@@ -161,7 +162,8 @@ export const productLaborHours = equipmentSchema.table(
   (table) => [
     primaryKey({ columns: [table.productId, table.department], name: 'product_labor_hours_pkey' }),
     check('product_labor_hours_department_check', sql`${table.department} IN (${sql.raw(workItemDepartmentSql)})`),
-    check('product_labor_hours_hours_positive', sql`${table.hours} > 0`),
+    check('product_labor_hours_days_per_staff_positive', sql`${table.daysPerStaff} > 0`),
+    check('product_labor_hours_staff_count_min', sql`${table.staffCount} >= 1`),
   ],
 );
 

@@ -1,5 +1,5 @@
-import { formatCurrency } from '@pkg/domain';
-import { departmentLabels } from '@pkg/domain/equipment';
+import { formatCurrency, formatNumber } from '@pkg/domain';
+import { departmentLabels, productLaborTotal } from '@pkg/domain/equipment';
 import type { UUID } from '@pkg/schema';
 import type {
   ProductCostEstimateAssembly,
@@ -45,8 +45,8 @@ export function ProductCostEstimatePanel({ productId }: { productId: UUID }) {
       <CardHeader>
         <CardTitle>Live cost estimate</CardTitle>
         <CardDescription>
-          Current moving-average material and part costs with the shared labor rate card. This estimate updates when
-          inputs or inventory costs change.
+          Current moving-average material and part costs with the Labor Rate Card’s cost-to-company rates, consumables
+          and management overhead. This estimate updates when inputs, rates or inventory costs change.
         </CardDescription>
       </CardHeader>
       <CardSeparator />
@@ -54,7 +54,7 @@ export function ProductCostEstimatePanel({ productId }: { productId: UUID }) {
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           <EstimateTerm floor={!termComplete.material} label="Materials per unit" value={estimate.materialCostFloor} />
           <EstimateTerm floor={!termComplete.parts} label="Assembly parts" value={estimate.partsCostFloor} />
-          <EstimateTerm floor={!termComplete.labor} label="Labor per unit" value={estimate.laborCostFloor} />
+          <EstimateTerm floor={!termComplete.labor} label="Labor and overheads" value={productLaborTotal(estimate)} />
           <EstimateTerm label="Estimated total" value={estimate.totalCostFloor} floor={!estimate.complete} />
           <EstimateTerm label="Base price" value={estimate.basePrice} />
           <EstimateTerm ceiling={!estimate.complete} label="Estimated margin" value={estimate.estimatedMarginCeiling} />
@@ -100,9 +100,21 @@ export function ProductCostEstimatePanel({ productId }: { productId: UUID }) {
           <EstimateDataTable
             columns={laborColumns}
             data={estimate.laborHours}
-            emptyMessage="No labor hours recorded."
+            emptyMessage="No labor per unit recorded."
             totalLabel="Departments"
           />
+          <dl className="grid gap-1 text-sm sm:ml-auto sm:w-96">
+            <div className="flex justify-between gap-4">
+              <dt className="text-muted-foreground">
+                Management overhead ({formatNumber(estimate.managementOverheadPercentage)}% of labor cost)
+              </dt>
+              <dd className="tabular-nums">{formatCurrency(estimate.managementOverheadCostFloor, 'ZAR')}</dd>
+            </div>
+            <div className="flex justify-between gap-4 font-medium">
+              <dt>Labor total</dt>
+              <dd className="tabular-nums">{formatEstimateFloor(productLaborTotal(estimate), termComplete.labor)}</dd>
+            </div>
+          </dl>
         </EstimateSection>
       </CardContent>
     </Card>
@@ -264,7 +276,32 @@ const partColumns: DataTableColumnDef<ProductCostEstimatePartLine>[] = [
 
 const laborColumns: DataTableColumnDef<ProductCostEstimateLaborLine>[] = [
   { accessorKey: 'department', cell: ({ row }) => departmentLabels[row.original.department], header: 'Department' },
-  { accessorKey: 'hours', header: 'Hours per unit' },
+  {
+    accessorKey: 'daysPerStaff',
+    cell: ({ row }) => formatNumber(row.original.daysPerStaff, { decimals: 2 }),
+    header: 'Days per staff member',
+  },
+  { accessorKey: 'staffCount', header: 'Staff' },
+  { accessorKey: 'hours', cell: ({ row }) => formatNumber(row.original.hours, { decimals: 2 }), header: 'Hours' },
   { accessorKey: 'hourlyRate', cell: ({ row }) => formatCurrency(row.original.hourlyRate, 'ZAR'), header: 'Rate' },
-  { accessorKey: 'cost', cell: ({ row }) => formatCurrency(row.original.cost, 'ZAR'), header: 'Cost' },
+  {
+    accessorKey: 'laborCost',
+    cell: ({ row }) => formatCurrency(row.original.laborCost, 'ZAR'),
+    header: 'Labor cost',
+  },
+  {
+    accessorKey: 'consumablesCost',
+    cell: ({ row }) => (
+      <>
+        <span className="block tabular-nums">{formatCurrency(row.original.consumablesCost, 'ZAR')}</span>
+        <span className="text-muted-foreground text-xs">{formatNumber(row.original.consumablesPercentage)}%</span>
+      </>
+    ),
+    header: 'Consumables',
+  },
+  {
+    accessorKey: 'departmentTotal',
+    cell: ({ row }) => formatCurrency(row.original.departmentTotal, 'ZAR'),
+    header: 'Department total',
+  },
 ];

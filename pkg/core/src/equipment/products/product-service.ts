@@ -105,7 +105,7 @@ type ProductRow = typeof products.$inferSelect & {
 };
 type ProductListRow = ProductRow & { assemblies: AssemblyListRow[] };
 type ProductDetailRow = ProductListRow & {
-  laborHours: Array<{ department: ProductLaborHour['department']; hours: number }>;
+  laborHours: ProductLaborHour[];
   materialLines: Array<{ partId: UUID; quantityPerUnit: number }>;
 };
 
@@ -643,7 +643,7 @@ async function loadProductDetailRow({
             optionalOverrides: true,
           },
         },
-        laborHours: { columns: { department: true, hours: true } },
+        laborHours: { columns: { daysPerStaff: true, department: true, staffCount: true } },
         materialLines: {
           columns: { partId: true, quantityPerUnit: true },
           orderBy: (lines, { asc }) => [asc(lines.partId)],

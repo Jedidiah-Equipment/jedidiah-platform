@@ -13,10 +13,13 @@ function estimateSnapshot(totalCostFloor: number): ProductCostEstimate {
     assemblies: [],
     basePrice: 2_000,
     complete: true,
+    consumablesCostFloor: 0,
     currencyCode: 'ZAR',
     estimatedMarginCeiling: 2_000 - totalCostFloor,
     laborCostFloor: 300,
     laborHours: [],
+    managementOverheadCostFloor: 0,
+    managementOverheadPercentage: 0,
     materialCostFloor: 400,
     materialLines: [],
     missing: {

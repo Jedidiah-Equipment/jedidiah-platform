@@ -1,6 +1,6 @@
 import { type DatabaseTransaction, type Db, notRemoved } from '@pkg/db';
 import { parts, products } from '@pkg/db/equipment';
-import { buildCfo, buildReworkCfo } from '@pkg/domain/equipment';
+import { buildCfo, buildReworkCfo, costProductLabor } from '@pkg/domain/equipment';
 import type { UUID } from '@pkg/schema';
 import type {
   Assembly,
@@ -100,24 +100,25 @@ export async function getProductCostEstimate({
   const optionalAssemblies = catalogAssemblies
     .filter((assembly) => assembly.kind === 'optional')
     .map((assembly) => costAssembly(assembly, factsById, true));
-  const laborHours = (scope === 'build' ? costingInputs.laborHours : []).map((line) => {
-    const hourlyRate = laborRateCard.rates.find((rate) => rate.department === line.department)?.costToCompanyRate ?? 0;
-    return { cost: line.hours * hourlyRate, department: line.department, hourlyRate, hours: line.hours };
-  });
+  const labor = costProductLabor(scope === 'build' ? costingInputs.laborHours : [], laborRateCard);
   const uncostedParts = collectUncostedParts([
     ...materialLines.map((line) => requiredPart(factsById, line.partId)),
     ...assemblies.flatMap((assembly) => assembly.parts.map((line) => requiredPart(factsById, line.partId))),
   ]);
   const materialCostFloor = sumBy(materialLines, (line) => line.costFloor);
   const partsCostFloor = sumBy(assemblies, (assembly) => assembly.costFloor);
-  const laborCostFloor = sumBy(laborHours, (line) => line.cost);
-  const totalCostFloor = materialCostFloor + partsCostFloor + laborCostFloor;
+  const totalCostFloor =
+    materialCostFloor +
+    partsCostFloor +
+    labor.laborCostFloor +
+    labor.consumablesCostFloor +
+    labor.managementOverheadCostFloor;
   const missing = {
-    laborHours: scope === 'build' && laborHours.length === 0,
+    laborHours: scope === 'build' && labor.lines.length === 0,
     materialList: scope === 'build' && materialLines.length === 0,
     unattributedProductTerms: scope === 'rework',
     uncostedParts,
-    unratedDepartments: laborHours.filter((line) => line.hourlyRate === 0).map((line) => line.department),
+    unratedDepartments: labor.unratedDepartments,
   };
   const complete =
     !missing.laborHours &&
@@ -130,10 +131,13 @@ export async function getProductCostEstimate({
     assemblies,
     basePrice: product.basePrice,
     complete,
+    consumablesCostFloor: labor.consumablesCostFloor,
     currencyCode: product.currencyCode,
     estimatedMarginCeiling: product.basePrice - totalCostFloor,
-    laborCostFloor,
-    laborHours,
+    laborCostFloor: labor.laborCostFloor,
+    laborHours: labor.lines,
+    managementOverheadCostFloor: labor.managementOverheadCostFloor,
+    managementOverheadPercentage: labor.managementOverheadPercentage,
     materialCostFloor,
     materialLines,
     missing,

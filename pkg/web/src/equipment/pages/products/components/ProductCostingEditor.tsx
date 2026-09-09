@@ -154,7 +154,10 @@ export const ProductCostingEditor: React.FC<ProductCostingEditorProps> = ({
       <Card>
         <CardHeader>
           <CardTitle>Labor per unit</CardTitle>
-          <CardDescription>Record the standard hours required in each Department for one Product unit.</CardDescription>
+          <CardDescription>
+            Record the days each staff member spends and how many staff work in each Department for one Product unit.
+            Hours derive from the Labor Rate Card’s hours per working day.
+          </CardDescription>
           <CardAction className="flex gap-2">
             <Select
               onValueChange={(value) =>
@@ -179,7 +182,7 @@ export const ProductCostingEditor: React.FC<ProductCostingEditorProps> = ({
               disabled={!departmentToAdd}
               onClick={() => {
                 if (!departmentToAdd) return;
-                laborHoursField.pushValue({ department: departmentToAdd, hours: 1 });
+                laborHoursField.pushValue({ daysPerStaff: 1, department: departmentToAdd, staffCount: 1 });
                 setDepartmentToAdd('');
                 onStructuralChange();
               }}
@@ -193,16 +196,27 @@ export const ProductCostingEditor: React.FC<ProductCostingEditorProps> = ({
         <CardSeparator />
         <CardContent className="grid gap-3">
           {laborHoursField.state.value.length === 0 ? (
-            <p className="text-muted-foreground text-sm">No labor hours per unit recorded.</p>
+            <p className="text-muted-foreground text-sm">No labor per unit recorded.</p>
           ) : null}
           {laborHoursField.state.value.map((line, index) => (
             <div
-              className="grid items-end gap-3 rounded-lg border p-3 sm:grid-cols-[minmax(0,1fr)_18rem_auto]"
+              className="grid items-end gap-3 rounded-lg border p-3 sm:grid-cols-[minmax(0,1fr)_12rem_8rem_auto]"
               key={line.department}
             >
               <p className="self-center font-medium text-sm">{departmentLabels[line.department]}</p>
-              <form.AppField name={`laborHours[${index}].hours`}>
-                {(field) => <field.NumberField inputMode="decimal" label="Hours per unit" min={0.01} step={0.01} />}
+              <form.AppField name={`laborHours[${index}].daysPerStaff`}>
+                {(field) => (
+                  <field.NumberField
+                    decimals={2}
+                    inputMode="decimal"
+                    label="Days per staff member"
+                    min={0.01}
+                    step={0.01}
+                  />
+                )}
+              </form.AppField>
+              <form.AppField name={`laborHours[${index}].staffCount`}>
+                {(field) => <field.NumberField decimals={0} inputMode="numeric" label="Staff" min={1} step={1} />}
               </form.AppField>
               <Button
                 aria-label={`Remove ${departmentLabels[line.department]} labor`}

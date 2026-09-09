@@ -93,10 +93,13 @@ export function estimateSnapshot(part: typeof parts.$inferSelect, quantityPerUni
     assemblies: [],
     basePrice: 0,
     complete: true,
+    consumablesCostFloor: 0,
     currencyCode: 'ZAR',
     estimatedMarginCeiling: 0,
     laborCostFloor: 0,
     laborHours: [],
+    managementOverheadCostFloor: 0,
+    managementOverheadPercentage: 0,
     materialCostFloor: 0,
     materialLines: [
       {

@@ -47,14 +47,14 @@ describe('ProductCreateInput', () => {
       ProductCreateInput.parse({
         basePrice: 120_000,
         buildTimeDays: 14,
-        laborHours: [{ department: 'fabrication', hours: 12.5 }],
+        laborHours: [{ department: 'fabrication', daysPerStaff: 1.5, staffCount: 2 }],
         materialLines: [{ partId: '00000000-0000-4000-8000-000000000401', quantityPerUnit: 2.5 }],
         modelCode: 'WL-100',
         name: 'Wheel Loader',
         rangeId: RANGE_ID,
       }),
     ).toMatchObject({
-      laborHours: [{ department: 'fabrication', hours: 12.5 }],
+      laborHours: [{ department: 'fabrication', daysPerStaff: 1.5, staffCount: 2 }],
       materialLines: [{ partId: '00000000-0000-4000-8000-000000000401', quantityPerUnit: 2.5 }],
     });
   });
@@ -244,11 +244,25 @@ describe('ProductCreateInput', () => {
 });
 
 describe('Product costing inputs', () => {
-  it('rejects non-positive material quantities and labor hours', () => {
+  it('rejects non-positive material quantities and labor days, and fractional or empty staff', () => {
     expect(() =>
       ProductMaterialLinesInput.parse([{ partId: '00000000-0000-4000-8000-000000000401', quantityPerUnit: 0 }]),
     ).toThrow();
-    expect(() => ProductLaborHoursInput.parse([{ department: 'fabrication', hours: -1 }])).toThrow();
+    expect(() =>
+      ProductLaborHoursInput.parse([{ department: 'fabrication', daysPerStaff: 0, staffCount: 1 }]),
+    ).toThrow();
+    expect(() =>
+      ProductLaborHoursInput.parse([{ department: 'fabrication', daysPerStaff: 1.005, staffCount: 1 }]),
+    ).toThrow();
+    expect(() =>
+      ProductLaborHoursInput.parse([{ department: 'fabrication', daysPerStaff: 1, staffCount: 0 }]),
+    ).toThrow();
+    expect(() =>
+      ProductLaborHoursInput.parse([{ department: 'fabrication', daysPerStaff: 1, staffCount: 1.5 }]),
+    ).toThrow();
+    expect(
+      ProductLaborHoursInput.parse([{ department: 'fabrication', daysPerStaff: '0.33', staffCount: '3' }]),
+    ).toEqual([{ department: 'fabrication', daysPerStaff: 0.33, staffCount: 3 }]);
   });
 
   it('rejects duplicate material Parts and labor Departments', () => {
@@ -260,8 +274,8 @@ describe('Product costing inputs', () => {
     ).toThrow('Material can only be added once per Product');
     expect(() =>
       ProductLaborHoursInput.parse([
-        { department: 'paint', hours: 1 },
-        { department: 'paint', hours: 2 },
+        { department: 'paint', daysPerStaff: 1, staffCount: 1 },
+        { department: 'paint', daysPerStaff: 2, staffCount: 1 },
       ]),
     ).toThrow('Department can only be added once per Product');
   });

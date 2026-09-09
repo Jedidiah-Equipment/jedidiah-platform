@@ -64,23 +64,59 @@ export const ProductCostEstimateMaterialLineCostFields = declareInventoryCostFie
   'unitCost',
 );
 
+const LEGACY_HOURS_PER_WORKING_DAY = 9;
+
+/**
+ * Job snapshots stamped before the Labor Rate Card froze a labour line as hours at a rate. They read
+ * the way the migration backfilled live rows: one staff member at nine hours a day, no consumables and
+ * no management overhead, so their frozen totals stand unchanged.
+ */
+function upgradeLegacyLaborLine(value: unknown): unknown {
+  if (typeof value !== 'object' || value === null || 'daysPerStaff' in value) return value;
+  const { cost, hours, ...rest } = value as { cost?: unknown; hours?: unknown };
+  if (typeof cost !== 'number' || typeof hours !== 'number') return value;
+
+  return {
+    ...rest,
+    consumablesCost: 0,
+    consumablesPercentage: 0,
+    daysPerStaff: Math.max(0.01, Math.round((hours / LEGACY_HOURS_PER_WORKING_DAY) * 100) / 100),
+    departmentTotal: cost,
+    hours,
+    laborCost: cost,
+    staffCount: 1,
+  };
+}
+
 export type ProductCostEstimateLaborLine = z.infer<typeof ProductCostEstimateLaborLine>;
-export const ProductCostEstimateLaborLine = z.object({
-  cost: z.number().finite().nonnegative(),
-  department: WorkItemDepartment,
-  hours: z.number().positive(),
-  hourlyRate: z.number().finite().nonnegative(),
-});
+export const ProductCostEstimateLaborLine = z.preprocess(
+  upgradeLegacyLaborLine,
+  z.object({
+    consumablesCost: z.number().finite().nonnegative(),
+    consumablesPercentage: z.number().finite().nonnegative(),
+    daysPerStaff: z.number().positive(),
+    department: WorkItemDepartment,
+    departmentTotal: z.number().finite().nonnegative(),
+    hourlyRate: z.number().finite().nonnegative(),
+    hours: z.number().positive(),
+    laborCost: z.number().finite().nonnegative(),
+    staffCount: z.number().int().positive(),
+  }),
+);
 
 export type ProductCostEstimate = z.infer<typeof ProductCostEstimate>;
 export const ProductCostEstimate = z.object({
   assemblies: z.array(ProductCostEstimateAssembly),
   basePrice: z.number().finite().nonnegative(),
   complete: z.boolean(),
+  // Overhead floors default to zero so Job snapshots stamped before the Labor Rate Card still read.
+  consumablesCostFloor: z.number().finite().nonnegative().default(0),
   currencyCode: z.literal('ZAR'),
   estimatedMarginCeiling: z.number().finite(),
   laborCostFloor: z.number().finite().nonnegative(),
   laborHours: z.array(ProductCostEstimateLaborLine),
+  managementOverheadCostFloor: z.number().finite().nonnegative().default(0),
+  managementOverheadPercentage: z.number().finite().nonnegative().default(0),
   materialCostFloor: z.number().finite().nonnegative(),
   materialLines: z.array(ProductCostEstimateMaterialLine),
   missing: z.object({

@@ -161,6 +161,13 @@ export const en: Messages = {
     notFoundBody: "We couldn't find that model. Browse the full range to find what you need.",
     viewAllProducts: 'View All Products',
   },
+  error: {
+    eyebrow: 'Something went wrong',
+    title: 'This page did not load',
+    body: 'A temporary problem stopped this page. Try again, or browse the full range.',
+    retry: 'Try Again',
+    viewAllProducts: 'View All Products',
+  },
   contact: {
     pageTitle: 'Contact — Jedidiah Equipment',
     metaDescription:

@@ -1,4 +1,4 @@
-import { type Locale, POSTHOG_CLIENT_API_HOST, POSTHOG_UI_HOST } from '@pkg/schema';
+import { CANONICAL_LOCALE, type Locale, POSTHOG_CLIENT_API_HOST, POSTHOG_UI_HOST } from '@pkg/schema';
 import posthog from 'posthog-js';
 
 import { resolvePosthogToken } from './analytics-config.js';
@@ -103,6 +103,11 @@ function ensureStarted(language: Locale | undefined): boolean {
     api_host: POSTHOG_CLIENT_API_HOST,
     ui_host: POSTHOG_UI_HOST,
     defaults: '2026-05-30',
+    // Report uncaught errors and rejections to Error Tracking. Without this a loader failure on a route
+    // leaves no trace but a session recording, so a transient crash on the Product detail page stays
+    // invisible in analytics. The router also reports the errors its boundary swallows through
+    // `captureAnalyticsException`, which the window handlers never see.
+    capture_exceptions: true,
     // PostHog invokes `loaded` before scheduling its initial pageview, so the first pageview receives the
     // language super property without replacing the SDK's built-in pageview handling.
     loaded: () => setLanguage(language),
@@ -179,6 +184,16 @@ export function captureEvent<Event extends AnalyticsEventName>(
 ): void {
   if (ensureStarted(activeLanguage ?? pendingLanguage)) {
     posthog.capture(event, properties);
+  }
+}
+
+// Reports an error the router's error boundary caught. The boundary stops the error before it reaches the
+// window handlers that `capture_exceptions` installs, so a route loader failure would otherwise never reach
+// Error Tracking. A direct-entry loader failure runs this before the root effect arms a language, so it
+// falls back to the Canonical Locale and starts PostHog on demand rather than dropping the crash.
+export function captureAnalyticsException(error: unknown): void {
+  if (ensureStarted(activeLanguage ?? pendingLanguage ?? CANONICAL_LOCALE)) {
+    posthog.captureException(error, { source: 'router_error_boundary' });
   }
 }
 

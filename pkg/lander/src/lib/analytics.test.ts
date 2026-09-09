@@ -6,6 +6,7 @@ import type { AnalyticsEventName, AnalyticsEventProperties, captureEvent as Capt
 
 const posthog = vi.hoisted(() => ({
   capture: vi.fn(),
+  captureException: vi.fn(),
   init: vi.fn(),
   opt_in_capturing: vi.fn(),
   opt_out_capturing: vi.fn(),
@@ -137,6 +138,55 @@ describe('analytics delivery', { timeout: 15_000 }, () => {
 
     expect(posthog.init).toHaveBeenCalledTimes(1);
     expect(posthog.capture).toHaveBeenCalledWith('brochure_downloaded', { modelCode: 'JM-2400' });
+
+    cancel();
+  });
+
+  test('enables exception capture when it starts the client', async () => {
+    const { initAnalytics } = await import('./analytics.js');
+
+    initAnalytics('en');
+
+    expect(posthog.init).toHaveBeenCalledWith('phc_test', expect.objectContaining({ capture_exceptions: true }));
+  });
+
+  // The router's error boundary swallows a loader failure before the window handlers see it, so the boundary
+  // reports the error itself. It starts the client on demand for a crash that beats the idle callback, using
+  // the language the root armed on mount.
+  test('reports a router error and starts the client on demand', async () => {
+    const { captureAnalyticsException, initAnalyticsWhenIdle } = await import('./analytics.js');
+    const cancel = initAnalyticsWhenIdle('en');
+    const error = new Error('loader failed');
+
+    captureAnalyticsException(error);
+
+    expect(posthog.init).toHaveBeenCalledTimes(1);
+    expect(posthog.captureException).toHaveBeenCalledWith(error, { source: 'router_error_boundary' });
+
+    cancel();
+  });
+
+  // A direct-entry loader failure reports before the root effect has armed a language. The report must not
+  // depend on that arming, or the crash it exists to surface stays invisible.
+  test('reports a router error on direct entry before any language is armed', async () => {
+    const { captureAnalyticsException } = await import('./analytics.js');
+    const error = new Error('loader failed');
+
+    captureAnalyticsException(error);
+
+    expect(posthog.init).toHaveBeenCalledTimes(1);
+    expect(posthog.captureException).toHaveBeenCalledWith(error, { source: 'router_error_boundary' });
+  });
+
+  test('does not report a router error when the PostHog token is unset', async () => {
+    resolvePosthogToken.mockReturnValue(null);
+    const { captureAnalyticsException, initAnalyticsWhenIdle } = await import('./analytics.js');
+    const cancel = initAnalyticsWhenIdle('en');
+
+    captureAnalyticsException(new Error('loader failed'));
+
+    expect(posthog.init).not.toHaveBeenCalled();
+    expect(posthog.captureException).not.toHaveBeenCalled();
 
     cancel();
   });

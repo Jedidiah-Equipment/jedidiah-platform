@@ -2,7 +2,7 @@ import { departmentLabels } from '@pkg/domain/equipment';
 import type { VisibleLaborRateCard } from '@pkg/schema/equipment';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useBlocker } from '@tanstack/react-router';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { DataTable } from '@/components/data-table/DataTable.js';
 import { type DataTableColumnDef, useDataTable } from '@/components/data-table/features.js';
@@ -42,16 +42,21 @@ function LaborRatesForm({ card }: { card: VisibleLaborRateCard }) {
   const invalidate = useQueryInvalidation();
   const [dirty, setDirty] = useState(false);
   const [message, setMessage] = useState('');
+  const [formCard, setFormCard] = useState(card);
+  useEffect(() => {
+    // A clean form follows the latest card; a background read must not replace an unsaved draft.
+    if (!dirty) setFormCard(card);
+  }, [card, dirty]);
   const save = useMutation(
     trpc.laborRates.update.mutationOptions({
       onSuccess: async () => {
-        setDirty(false);
-        setMessage('Labor rates saved.');
         await Promise.all([
           invalidate.invalidateLaborRates(),
           invalidate.invalidateProducts(),
           invalidate.invalidateAudit(),
         ]);
+        setDirty(false);
+        setMessage('Labor rates saved.');
       },
     }),
   );
@@ -70,13 +75,14 @@ function LaborRatesForm({ card }: { card: VisibleLaborRateCard }) {
   );
   const table = useDataTable({
     columns,
-    data: card.rates,
+    data: formCard.rates,
     getRowId: (row) => row.department,
     enableColumnFilters: false,
     enableSorting: false,
   });
   return (
     <form
+      key={JSON.stringify(formCard)}
       className="grid gap-4"
       onChange={() => {
         setDirty(true);
@@ -106,7 +112,7 @@ function LaborRatesForm({ card }: { card: VisibleLaborRateCard }) {
                   name="managementOverheadPercentage"
                   type="number"
                   step="any"
-                  defaultValue={card.managementOverheadPercentage}
+                  defaultValue={formCard.managementOverheadPercentage}
                   required
                 />
               </label>
@@ -118,7 +124,7 @@ function LaborRatesForm({ card }: { card: VisibleLaborRateCard }) {
                 name="hoursPerWorkingDay"
                 type="number"
                 step="any"
-                defaultValue={card.hoursPerWorkingDay}
+                defaultValue={formCard.hoursPerWorkingDay}
                 required
               />
             </label>

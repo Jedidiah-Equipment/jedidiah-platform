@@ -89,20 +89,20 @@ function upgradeLegacyLaborLine(value: unknown): unknown {
 }
 
 export type ProductCostEstimateLaborLine = z.infer<typeof ProductCostEstimateLaborLine>;
-export const ProductCostEstimateLaborLine = z.preprocess(
-  upgradeLegacyLaborLine,
-  z.object({
-    consumablesCost: z.number().finite().nonnegative(),
-    consumablesPercentage: z.number().finite().nonnegative(),
-    daysPerStaff: z.number().positive(),
-    department: WorkItemDepartment,
-    departmentTotal: z.number().finite().nonnegative(),
-    hourlyRate: z.number().finite().nonnegative(),
-    hours: z.number().positive(),
-    laborCost: z.number().finite().nonnegative(),
-    staffCount: z.number().int().positive(),
-  }),
-);
+export const ProductCostEstimateLaborLine = z.object({
+  consumablesCost: z.number().finite().nonnegative(),
+  consumablesPercentage: z.number().finite().nonnegative(),
+  daysPerStaff: z.number().positive(),
+  department: WorkItemDepartment,
+  departmentTotal: z.number().finite().nonnegative(),
+  hourlyRate: z.number().finite().nonnegative(),
+  hours: z.number().positive(),
+  laborCost: z.number().finite().nonnegative(),
+  staffCount: z.number().int().positive(),
+});
+
+// The line object stays a named export so the inventory-cost contract walker still reaches it.
+const StoredProductCostEstimateLaborLine = z.preprocess(upgradeLegacyLaborLine, ProductCostEstimateLaborLine);
 
 export type ProductCostEstimate = z.infer<typeof ProductCostEstimate>;
 export const ProductCostEstimate = z.object({
@@ -114,7 +114,7 @@ export const ProductCostEstimate = z.object({
   currencyCode: z.literal('ZAR'),
   estimatedMarginCeiling: z.number().finite(),
   laborCostFloor: z.number().finite().nonnegative(),
-  laborHours: z.array(ProductCostEstimateLaborLine),
+  laborHours: z.array(StoredProductCostEstimateLaborLine),
   managementOverheadCostFloor: z.number().finite().nonnegative().default(0),
   managementOverheadPercentage: z.number().finite().nonnegative().default(0),
   materialCostFloor: z.number().finite().nonnegative(),

@@ -5104,6 +5104,10 @@
         "product_labor_hours_staff_count_min": {
           "name": "product_labor_hours_staff_count_min",
           "value": "\"equipment\".\"product_labor_hours\".\"staff_count\" >= 1"
+        },
+        "product_labor_hours_staff_count_max": {
+          "name": "product_labor_hours_staff_count_max",
+          "value": "\"equipment\".\"product_labor_hours\".\"staff_count\" <= 999"
         }
       },
       "isRLSEnabled": false

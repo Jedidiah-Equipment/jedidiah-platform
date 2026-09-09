@@ -21,7 +21,7 @@ describe('Product cost estimate display', () => {
         ],
         unratedDepartments: ['supply'],
       }),
-    ).toEqual(['labor hours', 'Supply labor rate', '2 uncosted parts']);
+    ).toEqual(['labor', 'Supply labor rate', '2 uncosted parts']);
   });
 
   test('labels an incomplete margin as a ceiling', () => {

@@ -23,7 +23,7 @@ export function estimateTermCompleteness(estimate: {
 export function missingEstimateLabels(missing: ProductCostEstimate['missing']): string[] {
   return [
     ...(missing.materialList ? ['material list'] : []),
-    ...(missing.laborHours ? ['labor hours'] : []),
+    ...(missing.laborHours ? ['labor'] : []),
     ...missing.unratedDepartments.map((department) => `${departmentLabels[department]} labor rate`),
     ...(missing.unattributedProductTerms ? ['rework material and labor attribution'] : []),
     ...(missing.uncostedParts.length > 0

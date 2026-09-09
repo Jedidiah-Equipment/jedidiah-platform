@@ -164,6 +164,7 @@ export const productLaborHours = equipmentSchema.table(
     check('product_labor_hours_department_check', sql`${table.department} IN (${sql.raw(workItemDepartmentSql)})`),
     check('product_labor_hours_days_per_staff_positive', sql`${table.daysPerStaff} > 0`),
     check('product_labor_hours_staff_count_min', sql`${table.staffCount} >= 1`),
+    check('product_labor_hours_staff_count_max', sql`${table.staffCount} <= 999`),
   ],
 );
 

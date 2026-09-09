@@ -1,4 +1,4 @@
-import { formatCurrency, formatNumber } from '@pkg/domain';
+import { formatCurrency, formatNumber, formatPercent } from '@pkg/domain';
 import { departmentLabels, productLaborTotal } from '@pkg/domain/equipment';
 import type { UUID } from '@pkg/schema';
 import type {
@@ -103,22 +103,29 @@ export function ProductCostEstimatePanel({ productId }: { productId: UUID }) {
             emptyMessage="No labor per unit recorded."
             totalLabel="Departments"
           />
-          <dl className="grid gap-1 text-sm sm:ml-auto sm:w-96">
-            <div className="flex justify-between gap-4">
-              <dt className="text-muted-foreground">
-                Management overhead ({formatNumber(estimate.managementOverheadPercentage)}% of labor cost)
-              </dt>
-              <dd className="tabular-nums">{formatCurrency(estimate.managementOverheadCostFloor, 'ZAR')}</dd>
-            </div>
-            <div className="flex justify-between gap-4 font-medium">
-              <dt>Labor total</dt>
-              <dd className="tabular-nums">{formatEstimateFloor(productLaborTotal(estimate), termComplete.labor)}</dd>
-            </div>
-          </dl>
+          {estimate.laborHours.length === 0 ? null : (
+            <dl className="grid gap-1 text-sm sm:ml-auto sm:w-96">
+              <div className="flex justify-between gap-4">
+                <dt className="text-muted-foreground">
+                  Management overhead ({formatLaborPercent(estimate.managementOverheadPercentage)} of labor cost)
+                </dt>
+                <dd className="tabular-nums">{formatCurrency(estimate.managementOverheadCostFloor, 'ZAR')}</dd>
+              </div>
+              <div className="flex justify-between gap-4 font-medium">
+                <dt>Labor total</dt>
+                <dd className="tabular-nums">{formatEstimateFloor(productLaborTotal(estimate), termComplete.labor)}</dd>
+              </div>
+            </dl>
+          )}
         </EstimateSection>
       </CardContent>
     </Card>
   );
+}
+
+/** A card percentage is unscaled, so a fractional rate must show the figure the amount was computed from. */
+function formatLaborPercent(value: number): string {
+  return formatPercent(value, { decimals: Number.isInteger(value) ? 0 : 2 });
 }
 
 function EstimateTerm({
@@ -294,7 +301,7 @@ const laborColumns: DataTableColumnDef<ProductCostEstimateLaborLine>[] = [
     cell: ({ row }) => (
       <>
         <span className="block tabular-nums">{formatCurrency(row.original.consumablesCost, 'ZAR')}</span>
-        <span className="text-muted-foreground text-xs">{formatNumber(row.original.consumablesPercentage)}%</span>
+        <span className="text-muted-foreground text-xs">{formatLaborPercent(row.original.consumablesPercentage)}</span>
       </>
     ),
     header: 'Consumables',

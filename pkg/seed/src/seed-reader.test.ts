@@ -15,19 +15,28 @@ describe('readExistingSnapshotTable', () => {
 
     const select = vi.fn((projection: Record<string, unknown>) => ({
       from: () => {
-        if ('cancellationReason' in projection) {
+        if ('deliveryTerms' in projection) {
           return Promise.reject(Object.assign(new Error('column does not exist'), { code: '42703' }));
         }
 
-        return Promise.resolve([{ kind: 'custom', status: 'draft' }]);
+        return Promise.resolve([{ cancellationReason: null, deliveryPrice: 350, kind: 'custom', status: 'draft' }]);
       },
     }));
 
     const rows = await readExistingSnapshotTable({ select } as unknown as Db, quoteConfig);
 
     expect(select).toHaveBeenCalledTimes(2);
-    expect(select.mock.calls[1]?.[0]).not.toHaveProperty('cancellationReason');
-    expect(rows).toEqual([{ cancellationReason: null, kind: 'custom', status: 'draft' }]);
+    expect(select.mock.calls[1]?.[0]).not.toHaveProperty('deliveryTerms');
+    expect(select.mock.calls[1]?.[0]).toHaveProperty('cancellationReason');
+    expect(rows).toEqual([
+      {
+        cancellationReason: null,
+        deliveryPrice: 350,
+        deliveryTerms: 'additional_charge',
+        kind: 'custom',
+        status: 'draft',
+      },
+    ]);
   });
 
   it('reads current local columns while continuing to omit credential password hashes', async () => {

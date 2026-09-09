@@ -46,7 +46,7 @@ test('shows labour and Parts beneath each Work Item so the aside breakdown adds 
   const summary: QuoteComputedSummary = {
     basePrice: 0,
     currencyCode: 'ZAR',
-    deliveryIncluded: true,
+    deliveryTerms: 'included',
     deliveryPrice: 0,
     discountAmount: 0,
     discountPercent: 0,
@@ -118,7 +118,7 @@ test('opens a linked Job from the quote aside or locates it on the planner', asy
   const summary = {
     basePrice: 0,
     currencyCode: 'ZAR',
-    deliveryIncluded: true,
+    deliveryTerms: 'included',
     deliveryPrice: 0,
     discountAmount: 0,
     discountPercent: 0,

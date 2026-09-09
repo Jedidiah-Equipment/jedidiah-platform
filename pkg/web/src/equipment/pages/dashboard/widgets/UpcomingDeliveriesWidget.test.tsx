@@ -43,7 +43,7 @@ function buildUpcomingDelivery(kind: 'custom' | 'product'): UpcomingDeliveryQuot
     customerCompanyName: 'Jedidiah Contracting',
     customerId: '10000000-0000-4000-8000-000000000000',
     customerThumbnailDataUrl: null,
-    deliveryIncluded: true,
+    deliveryTerms: 'included',
     deliveryPrice: 0,
     depositPercent: 50,
     discountPercent: 0,

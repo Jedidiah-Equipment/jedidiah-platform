@@ -1,9 +1,16 @@
-import { quoteKindLabels, quoteStatusLabels, toQuoteWorkItemFormState } from '@pkg/domain/equipment';
+import {
+  computeAdditionalDeliveryPrice,
+  quoteKindLabels,
+  quoteStatusLabels,
+  toQuoteWorkItemFormState,
+} from '@pkg/domain/equipment';
 import { AuthId, DateIsoString, DateOnlyIsoString, Price, type UUID } from '@pkg/schema';
 import {
   Department,
+  getQuoteDeliveryAcceptanceError,
   getQuoteDeliveryPricingError,
   QuoteCancellationReason,
+  QuoteDeliveryTerms,
   QuoteDepositPercent,
   type QuoteDetail,
   QuoteDiscountPercent,
@@ -128,8 +135,8 @@ export type QuoteEditFormValues = z.infer<typeof QuoteEditFormValues>;
 export const QuoteEditFormValues = z
   .object({
     cancellationReason: z.string(),
-    deliveryIncluded: z.boolean(),
     deliveryPrice: Price,
+    deliveryTerms: QuoteDeliveryTerms,
     depositPercent: QuoteDepositPercent,
     discountPercent: QuoteDiscountPercent,
     documentNotes: z.string(),
@@ -151,6 +158,11 @@ export function getQuoteEditFormValuesValidator(kind: QuoteKind) {
     const deliveryPricingError = getQuoteDeliveryPricingError(values);
     if (deliveryPricingError) {
       context.addIssue({ code: 'custom', message: deliveryPricingError, path: ['deliveryPrice'] });
+    }
+
+    const deliveryAcceptanceError = getQuoteDeliveryAcceptanceError(values);
+    if (deliveryAcceptanceError) {
+      context.addIssue({ code: 'custom', message: deliveryAcceptanceError, path: ['deliveryTerms'] });
     }
 
     if (kind === 'custom' && !QuoteWorkTitle.safeParse(values.workTitle).success) {
@@ -215,8 +227,8 @@ export function toQuoteEditFormValues(quote: QuoteDetail): QuoteEditFormValues {
         }),
       };
     }),
-    deliveryIncluded: quote.deliveryIncluded,
     deliveryPrice: quote.deliveryPrice,
+    deliveryTerms: quote.deliveryTerms,
     depositPercent: quote.depositPercent,
     discountPercent: quote.discountPercent,
     documentNotes: quote.documentNotes ?? '',
@@ -287,8 +299,8 @@ export function toQuoteUpdateInput({
             workItems: values.workItems.map(toQuoteWorkItemInput),
             workTitle: values.workTitle,
           },
-    deliveryIncluded: values.deliveryIncluded,
-    deliveryPrice: values.deliveryIncluded ? 0 : values.deliveryPrice,
+    deliveryPrice: computeAdditionalDeliveryPrice(values),
+    deliveryTerms: values.deliveryTerms,
     depositPercent: values.depositPercent,
     discountPercent: values.discountPercent,
     documentNotes: values.documentNotes,

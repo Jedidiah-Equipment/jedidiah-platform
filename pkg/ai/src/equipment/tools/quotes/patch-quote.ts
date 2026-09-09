@@ -76,6 +76,7 @@ export const patchQuoteDefinition = {
     'Patch one Quote, changing only explicitly provided fields: status, salesperson, invoice number, delivery dates, valid-until, notes, or selected assemblies.',
     'Use findQuotes first when the Quote UUID is not already known.',
     'Do not change status to accepted or rejected unless the user explicitly requested that exact decision.',
+    'A Quote whose deliveryTerms are tbc cannot be accepted; relay the refusal ("Confirm delivery before accepting this quote.") rather than changing the delivery term, which only the Quote form can do.',
     'Changing status to cancelled requires cancellationReason in the same call.',
     'When selectedAssemblies are provided, they replace the complete collection; use getQuote first to preserve entries the user did not ask to remove.',
     'Offering and quote-level pricing fields remain excluded and must be edited in the Quote form.',

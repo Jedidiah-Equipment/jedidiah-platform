@@ -31,8 +31,8 @@ describe('mobile quote creation', () => {
     expect(input).toEqual({
       cancellationReason: null,
       customer: { customerId: '4ffcb2c6-4e69-4108-a6a5-710accee0b48', type: 'existing' },
-      deliveryIncluded: true,
       deliveryPrice: 0,
+      deliveryTerms: 'included',
       depositPercent: 0,
       discountPercent: 0,
       documentNotes: null,

@@ -4177,7 +4177,7 @@ async function createCustomQuote(
 function quoteUpdateInput(quote: typeof quotes.$inferSelect) {
   return {
     depositPercent: quote.depositPercent,
-    deliveryIncluded: quote.deliveryIncluded,
+    deliveryTerms: quote.deliveryTerms,
     deliveryPrice: quote.deliveryPrice,
     discountPercent: quote.discountPercent,
     id: quote.id,

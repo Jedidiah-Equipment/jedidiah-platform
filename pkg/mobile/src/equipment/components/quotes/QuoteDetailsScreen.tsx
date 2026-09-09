@@ -3,6 +3,7 @@ import {
   editableLockedQuoteFields,
   getQuoteOfferingName,
   isQuoteLocked,
+  quoteDeliveryTermsOptions,
 } from '@pkg/domain/equipment';
 import { UUID } from '@pkg/schema';
 import { type PriorityQuote, type QuoteDetail, QuoteStatus, type QuoteUpdateInput } from '@pkg/schema/equipment';
@@ -17,7 +18,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useAutosaveForm } from '@/components/form';
 import { Icon } from '@/components/ui/icon';
-import { Switch } from '@/components/ui/switch';
 import { Text } from '@/components/ui/text';
 import { useAppToast } from '@/components/ui/toast';
 import { QuoteAssembliesEditor } from '@/equipment/components/quotes/QuoteAssembliesEditor';
@@ -315,29 +315,24 @@ function QuoteEditor({
                       </form.AppField>
                     </View>
                   </View>
-                  <form.Field name="deliveryIncluded">
+                  <form.AppField name="deliveryTerms">
                     {(field) => (
-                      <View
-                        className={`flex-row items-center gap-3 rounded-xl py-1 ${setupReadOnly ? 'opacity-55' : ''}`}
-                      >
-                        <Switch
-                          accessibilityLabel="Delivery included in sale price"
-                          isDisabled={setupReadOnly}
-                          onValueChange={(included) => {
-                            field.handleChange(included);
-                            if (included) form.setFieldValue('deliveryPrice', 0);
-                            autosave.commit();
-                          }}
-                          value={field.state.value}
-                        />
-                        <Text className="text-sm text-foreground">Delivery included in sale price</Text>
-                      </View>
+                      <field.SelectField
+                        disabled={setupReadOnly}
+                        label="Delivery terms"
+                        onValueCommit={autosave.commit}
+                        onValueSelect={(value) => {
+                          if (value !== 'additional_charge') form.setFieldValue('deliveryPrice', 0);
+                          return undefined;
+                        }}
+                        options={quoteDeliveryTermsOptions}
+                      />
                     )}
-                  </form.Field>
+                  </form.AppField>
                   <form.AppField name="deliveryPrice">
                     {(field) => (
                       <field.CurrencyField
-                        disabled={setupReadOnly || values.deliveryIncluded}
+                        disabled={setupReadOnly || values.deliveryTerms !== 'additional_charge'}
                         label="Delivery price"
                         onValueCommit={autosave.commit}
                       />

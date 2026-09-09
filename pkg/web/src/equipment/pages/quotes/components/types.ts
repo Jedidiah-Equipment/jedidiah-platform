@@ -3,9 +3,11 @@ import { AuthId, DateIsoString, DateOnlyIsoString, Price, UUID } from '@pkg/sche
 import {
   CustomerCompanyName,
   Department,
+  getQuoteDeliveryAcceptanceError,
   getQuoteDeliveryPricingError,
   QuoteCancellationReason,
   QuoteCreateInput,
+  QuoteDeliveryTerms,
   QuoteDepositPercent,
   type QuoteDetail,
   QuoteDiscountPercent,
@@ -85,8 +87,8 @@ export const QuoteFormValues = z
   .object({
     cancellationReason: z.string(),
     depositPercent: QuoteDepositPercent,
-    deliveryIncluded: z.boolean(),
     deliveryPrice: Price,
+    deliveryTerms: QuoteDeliveryTerms,
     discountPercent: QuoteDiscountPercent,
     notes: emptyStringOr(QuoteNotes),
     documentNotes: emptyStringOr(QuoteDocumentNotes),
@@ -114,6 +116,16 @@ export function getQuoteFormValuesValidator(kind: QuoteKind) {
       });
     }
 
+    const deliveryAcceptanceError = getQuoteDeliveryAcceptanceError(value);
+
+    if (deliveryAcceptanceError) {
+      context.addIssue({
+        code: 'custom',
+        message: deliveryAcceptanceError,
+        path: ['deliveryTerms'],
+      });
+    }
+
     if (kind === 'custom' && !QuoteWorkTitle.safeParse(value.workTitle).success) {
       context.addIssue({
         code: 'custom',
@@ -137,8 +149,8 @@ export function getQuoteFormValuesValidator(kind: QuoteKind) {
 export const emptyQuoteFormValues: QuoteFormValues = {
   cancellationReason: '',
   depositPercent: 0,
-  deliveryIncluded: true,
   deliveryPrice: 0,
+  deliveryTerms: 'included',
   discountPercent: 0,
   notes: '',
   documentNotes: '',
@@ -180,8 +192,8 @@ export function toQuoteFormValues(initialQuote: QuoteDetail): QuoteFormValues {
       name: workItem.name ?? '',
     })),
     depositPercent: initialQuote.depositPercent,
-    deliveryIncluded: initialQuote.deliveryIncluded,
     deliveryPrice: initialQuote.deliveryPrice,
+    deliveryTerms: initialQuote.deliveryTerms,
     discountPercent: initialQuote.discountPercent,
     notes: initialQuote.notes ?? '',
     documentNotes: initialQuote.documentNotes ?? '',
@@ -236,8 +248,8 @@ export function toQuoteUpdateInput({
       kind === 'product'
         ? { kind: 'product' }
         : { kind: 'custom', workTitle: value.workTitle, workItems: value.workItems.map(toQuoteWorkItemInput) },
-    deliveryIncluded: value.deliveryIncluded,
     deliveryPrice: computeAdditionalDeliveryPrice(value),
+    deliveryTerms: value.deliveryTerms,
     depositPercent: value.depositPercent,
     discountPercent: value.discountPercent,
     notes: value.notes,

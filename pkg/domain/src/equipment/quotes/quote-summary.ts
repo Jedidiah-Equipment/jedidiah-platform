@@ -1,5 +1,6 @@
 import type {
   Assembly,
+  QuoteDeliveryTerms,
   QuoteDetail,
   QuoteSelectedAssembly,
   QuoteSelectedAssemblyInput,
@@ -12,8 +13,8 @@ export type QuoteSummaryWorkItem = QuoteWorkItemInput;
 
 /** The slice of edit-form state the live pricing summary depends on. */
 export type QuoteSummaryFormValues = {
-  deliveryIncluded: boolean;
   deliveryPrice: number;
+  deliveryTerms: QuoteDeliveryTerms;
   discountPercent: number;
   selectedAssemblies: QuoteSelectedAssemblyInput[];
   workItems: QuoteSummaryWorkItem[];
@@ -27,8 +28,8 @@ export type SelectedAssemblySnapshot = Pick<
 export type QuoteComputedSummary = {
   basePrice: number;
   currencyCode: string;
-  deliveryIncluded: boolean;
   deliveryPrice: number;
+  deliveryTerms: QuoteDeliveryTerms;
   discountAmount: number;
   discountPercent: number;
   selectedAssemblies: SelectedAssemblySnapshot[];
@@ -101,8 +102,8 @@ export function computeQuoteSummary({
         });
   const pricing = priceQuoteWithCatalog(
     {
-      deliveryIncluded: values.deliveryIncluded,
       deliveryPrice,
+      deliveryTerms: values.deliveryTerms,
       discountPercent: values.discountPercent,
       quotedBasePrice: basePrice,
       selectedAssemblies,
@@ -114,8 +115,8 @@ export function computeQuoteSummary({
   return {
     basePrice,
     currencyCode: quote.product?.currencyCode ?? quote.quotedCurrencyCode,
-    deliveryIncluded: values.deliveryIncluded,
     deliveryPrice,
+    deliveryTerms: values.deliveryTerms,
     discountAmount: pricing.discountAmount,
     discountPercent: values.discountPercent,
     selectedAssemblies: [...pricing.liveSelections],

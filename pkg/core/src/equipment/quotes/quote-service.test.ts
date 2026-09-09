@@ -1361,6 +1361,65 @@ describe('listQuotes', () => {
   });
 });
 
+describe('delivery terms', () => {
+  test('refuses to create a Quote as accepted while delivery is still to be confirmed', async ({ context }) => {
+    const draft = QuoteCreateInput.parse({
+      customer: { type: 'existing', customerId: context.customer.id },
+      deliveryTerms: 'tbc',
+      offering: { kind: 'product', productId: context.product.id },
+      salesPersonId: context.salesPerson.id,
+      status: 'draft',
+    });
+
+    await expect(
+      createQuoteService({
+        actorUserId: context.salesPerson.id,
+        db: context.db,
+        input: { ...draft, status: 'accepted' },
+      }),
+    ).rejects.toThrow('Confirm delivery before accepting this quote.');
+  });
+
+  test('lets a to-be-confirmed Quote go out as sent but not come back accepted', async ({ context }) => {
+    const quote = await createQuoteService({
+      actorUserId: context.salesPerson.id,
+      db: context.db,
+      input: QuoteCreateInput.parse({
+        customer: { type: 'existing', customerId: context.customer.id },
+        deliveryTerms: 'tbc',
+        offering: { kind: 'custom', workTitle: 'Pump overhaul', workItems: [] },
+        salesPersonId: context.salesPerson.id,
+        status: 'draft',
+      }),
+    });
+
+    const sent = await patchQuote({
+      actorUserId: context.salesPerson.id,
+      db: context.db,
+      input: { id: quote.id, status: 'sent' },
+    });
+    expect(sent).toMatchObject({ deliveryPrice: 0, deliveryTerms: 'tbc', status: 'sent' });
+
+    await expect(
+      patchQuote({ actorUserId: context.salesPerson.id, db: context.db, input: { id: quote.id, status: 'accepted' } }),
+    ).rejects.toThrow('Confirm delivery before accepting this quote.');
+    await expect(
+      updateQuote({
+        actorUserId: context.salesPerson.id,
+        db: context.db,
+        input: { ...buildQuoteUpdateInput(sent), status: 'accepted' },
+      }),
+    ).rejects.toThrow('Confirm delivery before accepting this quote.');
+
+    const accepted = await updateQuote({
+      actorUserId: context.salesPerson.id,
+      db: context.db,
+      input: buildQuoteUpdateInput(sent, { deliveryTerms: 'ex_factory', status: 'accepted' }),
+    });
+    expect(accepted).toMatchObject({ deliveryPrice: 0, deliveryTerms: 'ex_factory', status: 'accepted' });
+  });
+});
+
 describe('patchQuote', () => {
   test('full-replaces selected assemblies when the collection is supplied', async ({ context }) => {
     const [optionalAssembly] = await context.db
@@ -1439,8 +1498,8 @@ describe('patchQuote', () => {
       actorUserId: context.salesPerson.id,
       db: context.db,
       input: buildQuoteUpdateInput(quote, {
-        deliveryIncluded: false,
         deliveryPrice: 350,
+        deliveryTerms: 'additional_charge',
         discountPercent: 10,
         selectedAssemblies: [{ type: 'catalog', productAssemblyId: optionalAssembly.id }],
       }),
@@ -2413,8 +2472,8 @@ async function createBay(
 function buildQuoteUpdateInput(quote: QuoteDetail, overrides: Partial<QuoteUpdateInput> = {}): QuoteUpdateInput {
   return QuoteUpdateInput.parse({
     cancellationReason: quote.cancellationReason,
-    deliveryIncluded: quote.deliveryIncluded,
     deliveryPrice: quote.deliveryPrice,
+    deliveryTerms: quote.deliveryTerms,
     depositPercent: quote.depositPercent,
     discountPercent: quote.discountPercent,
     documentNotes: quote.documentNotes,

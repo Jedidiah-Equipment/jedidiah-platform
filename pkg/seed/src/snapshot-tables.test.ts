@@ -116,13 +116,17 @@ describe('snapshot table registry', () => {
   });
 
   it('backfills rollout quote fields when loading snapshots captured before they existed', () => {
-    expect(configFor('quote').seedRowDefaults?.({ kind: 'custom', status: 'draft' }, 0)).toEqual({
+    expect(configFor('quote').seedRowDefaults?.({ deliveryPrice: 0, kind: 'custom', status: 'draft' }, 0)).toEqual({
       cancellationReason: null,
+      deliveryTerms: 'included',
     });
-    expect(configFor('quote').seedRowDefaults?.({ kind: 'product', status: 'cancelled' }, 0)).toEqual({
+    expect(
+      configFor('quote').seedRowDefaults?.({ deliveryPrice: 350, kind: 'product', status: 'cancelled' }, 0),
+    ).toEqual({
       cancellationReason: 'Reason not recorded (cancelled before cancellation reasons were required).',
+      deliveryTerms: 'additional_charge',
     });
-    expect(configFor('quote').optionalReadColumns).toEqual(['cancellationReason']);
+    expect(configFor('quote').optionalReadColumns).toEqual(['deliveryTerms', 'cancellationReason']);
   });
 
   it('keeps captured rollout values ahead of seed fallbacks', () => {

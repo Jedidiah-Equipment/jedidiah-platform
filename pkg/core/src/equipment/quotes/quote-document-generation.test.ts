@@ -76,6 +76,45 @@ const unusedBrochureRenderer: BrochurePdfRenderer = async () => {
   throw new Error('Brochure renderer must not run for an incomplete Brochure Config');
 };
 
+describe('getQuoteDocumentModel delivery terms (through generateQuoteDocument)', () => {
+  test('spells out ex factory collection and to-be-confirmed delivery without a charge row', async ({ context }) => {
+    for (const [deliveryTerms, expected] of [
+      ['ex_factory', 'Ex factory (collection by customer)'],
+      ['tbc', 'To be confirmed'],
+    ] as const) {
+      const [quote] = await context.db
+        .insert(quotes)
+        .values({
+          customerId: context.customer.id,
+          deliveryTerms,
+          productId: context.product.id,
+          quotedBasePrice: 1000,
+          quotedCurrencyCode: 'ZAR',
+          salesPersonId: context.salesPerson.id,
+        })
+        .returning();
+
+      if (!quote) {
+        throw new Error('Quote insert did not return a row');
+      }
+
+      const captured: { model: QuoteDocumentModel | null } = { model: null };
+      await generateQuoteDocument({
+        actorUserId,
+        brochureRenderer: unusedBrochureRenderer,
+        db: context.db,
+        input: { leadTime: '14 working days', quoteId: quote.id },
+        pdfRenderer: captureModelRenderer(captured),
+        storage: new InMemoryStorageAdapter(),
+      });
+
+      expect(captured.model?.delivery).toBe(expected);
+      expect(captured.model?.pricingRows.some((row) => row.kind === 'charge')).toBe(false);
+      expect(captured.model?.total).toBe(1150);
+    }
+  });
+});
+
 describe('getQuoteDocumentModel pricing (through generateQuoteDocument)', () => {
   test('prices the document from the one Quote Pricing seam: catalog-ordered rows, stale notes, VAT', async ({
     context,
@@ -84,7 +123,7 @@ describe('getQuoteDocumentModel pricing (through generateQuoteDocument)', () => 
       .insert(quotes)
       .values({
         customerId: context.customer.id,
-        deliveryIncluded: false,
+        deliveryTerms: 'additional_charge',
         deliveryPrice: 350,
         discountPercent: 10,
         productId: context.product.id,

@@ -32,7 +32,7 @@ function buildQuoteDetail(overrides: Record<string, unknown> = {}): QuoteDetail 
     statusChangedAt: '2026-01-01T00:00:00.000Z',
     depositPercent: 30,
     discountPercent: 10,
-    deliveryIncluded: true,
+    deliveryTerms: 'included',
     deliveryPrice: 0,
     validUntil: '2026-01-01',
     preferredDeliveryDate: '2026-02-01',
@@ -84,7 +84,7 @@ function buildQuoteDetail(overrides: Record<string, unknown> = {}): QuoteDetail 
 
 function buildFormValues(overrides: Partial<QuoteSummaryFormValues> = {}): QuoteSummaryFormValues {
   return {
-    deliveryIncluded: true,
+    deliveryTerms: 'included',
     deliveryPrice: 0,
     discountPercent: 10,
     selectedAssemblies: [],
@@ -107,7 +107,7 @@ describe('computeQuoteSummary', () => {
     const summary = computeQuoteSummary({
       quote: buildProductQuote([optionalAssembly]),
       values: buildFormValues({
-        deliveryIncluded: true,
+        deliveryTerms: 'included',
         deliveryPrice: 50,
         discountPercent: 10,
         selectedAssemblies: [{ type: 'catalog', productAssemblyId: PRODUCT_ASSEMBLY_ID }],
@@ -195,7 +195,7 @@ describe('computeQuoteSummary', () => {
     const summary = computeQuoteSummary({
       quote,
       values: buildFormValues({
-        deliveryIncluded: false,
+        deliveryTerms: 'additional_charge',
         deliveryPrice: 500,
         discountPercent: 5,
         selectedAssemblies: [{ type: 'catalog', productAssemblyId: PRODUCT_ASSEMBLY_ID }],

@@ -19,6 +19,7 @@ import type { AuthId, UUID } from '@pkg/schema';
 import {
   type BrochurePdfRenderer,
   formatQuoteCode,
+  type QuoteDeliveryTerms,
   type QuoteDocumentGenerationInput,
   type QuoteDocumentGenerationResult,
   type QuoteDocumentGenerationWarning,
@@ -271,13 +272,32 @@ async function getQuoteDocumentModel({
     staleSelectionNotes: pricing.staleSelections.map((selection) => `${selection.quotedName} unavailable`),
     subtotal: pricing.subtotal,
     total: pricing.total,
-    delivery: quote.deliveryIncluded
-      ? 'Included in sale price'
-      : `Additional charge (${formatCurrency(additionalDeliveryPrice, quote.quotedCurrencyCode)})`,
+    delivery: formatQuoteDocumentDelivery(quote),
     vatAmount: pricing.vatAmount,
     currencyCode: quote.quotedCurrencyCode,
     workItems,
   };
+}
+
+/**
+ * The customer-facing Delivery row. Ex factory spells collection out because "ex factory" alone is
+ * exactly the wording the sales desk found customers misreading.
+ */
+function formatQuoteDocumentDelivery(quote: {
+  deliveryPrice: number;
+  deliveryTerms: QuoteDeliveryTerms;
+  quotedCurrencyCode: string;
+}): string {
+  switch (quote.deliveryTerms) {
+    case 'included':
+      return 'Included in sale price';
+    case 'additional_charge':
+      return `Additional charge (${formatCurrency(computeAdditionalDeliveryPrice(quote), quote.quotedCurrencyCode)})`;
+    case 'ex_factory':
+      return 'Ex factory (collection by customer)';
+    case 'tbc':
+      return 'To be confirmed';
+  }
 }
 
 function toQuoteDocumentWorkItems({ workItems }: { workItems: readonly QuoteWorkItemRow[] }): QuoteDocumentWorkItem[] {

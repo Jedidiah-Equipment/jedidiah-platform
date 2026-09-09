@@ -384,12 +384,23 @@ function TermsCell({ isPriority, quote }: { isPriority: boolean; quote: QuoteSum
     <div className="flex flex-col gap-0.5">
       <span className="tabular-nums">{formatPercent(quote.depositPercent)} deposit</span>
       <span className={cn('text-xs', isPriority ? 'text-warning-foreground/75' : 'text-muted-foreground')}>
-        {quote.deliveryIncluded
-          ? 'Delivery included'
-          : `${formatCurrency(quote.deliveryPrice, quote.quotedCurrencyCode)} delivery`}
+        {formatQuoteListDelivery(quote)}
       </span>
     </div>
   );
+}
+
+function formatQuoteListDelivery(quote: QuoteSummary): string {
+  switch (quote.deliveryTerms) {
+    case 'included':
+      return 'Delivery included';
+    case 'additional_charge':
+      return `${formatCurrency(quote.deliveryPrice, quote.quotedCurrencyCode)} delivery`;
+    case 'ex_factory':
+      return 'Ex factory';
+    case 'tbc':
+      return 'Delivery TBC';
+  }
 }
 
 function QuoteDatesCell({ row }: { row: QuoteTableRow }) {

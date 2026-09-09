@@ -1,4 +1,5 @@
 import { formatCurrency, formatDate, formatPercent } from '@pkg/domain';
+import { quoteDeliveryTermsLabels } from '@pkg/domain/equipment';
 
 export type AuditChange = { from?: unknown; to?: unknown };
 export type AuditChangeMap = Record<string, AuditChange>;
@@ -89,6 +90,11 @@ const dateFields = new Set([
   'validUntil',
 ]);
 const percentFields = new Set(['depositPercent', 'discountPercent']);
+
+/** Stored enum values that read better under their surface labels than as raw codes. */
+const enumValueLabels: Record<string, Record<string, string>> = {
+  deliveryTerms: quoteDeliveryTermsLabels,
+};
 const terminalCountFields = new Set(['movedParts', 'movedPurchaseOrders']);
 
 export function getAuditChangeDisplays(changes: AuditChangeMap | null): AuditChangeDisplay[] {
@@ -137,6 +143,10 @@ export function formatAuditChangeValue(field: string, value: unknown): string {
 
   if (percentFields.has(field) && typeof value === 'number') {
     return formatPercent(value);
+  }
+
+  if (typeof value === 'string' && enumValueLabels[field]?.[value]) {
+    return enumValueLabels[field][value];
   }
 
   if (dateFields.has(field) && (typeof value === 'string' || typeof value === 'number' || value instanceof Date)) {

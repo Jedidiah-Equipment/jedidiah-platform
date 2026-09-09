@@ -220,16 +220,36 @@ describe('QuoteCreateInput', () => {
     ).toThrow();
   });
 
-  it('rejects an additional delivery price when delivery is included', () => {
+  it('defaults delivery terms to included in the sale price', () => {
+    expect(QuoteCreateInput.parse(baseCreateInput)).toMatchObject({ deliveryPrice: 0, deliveryTerms: 'included' });
+  });
+
+  it('rejects a delivery price unless delivery is an additional charge', () => {
     expect(() => QuoteCreateInput.parse({ ...baseCreateInput, deliveryPrice: 350 })).toThrow(
-      'Must be zero when delivery is included',
+      'Must be zero unless delivery is an additional charge',
+    );
+    expect(() =>
+      QuoteCreateInput.parse({ ...baseCreateInput, deliveryPrice: 350, deliveryTerms: 'ex_factory' }),
+    ).toThrow('Must be zero unless delivery is an additional charge');
+    expect(() => QuoteCreateInput.parse({ ...baseCreateInput, deliveryPrice: 350, deliveryTerms: 'tbc' })).toThrow(
+      'Must be zero unless delivery is an additional charge',
     );
   });
 
-  it('requires a positive delivery price when delivery is not included', () => {
-    expect(() => QuoteCreateInput.parse({ ...baseCreateInput, deliveryIncluded: false, deliveryPrice: 0 })).toThrow(
-      'Must be greater than zero when delivery is not included',
+  it('requires a positive delivery price when delivery is an additional charge', () => {
+    expect(() =>
+      QuoteCreateInput.parse({ ...baseCreateInput, deliveryPrice: 0, deliveryTerms: 'additional_charge' }),
+    ).toThrow('Must be greater than zero when delivery is an additional charge');
+  });
+
+  it('refuses to accept a quote whose delivery is still to be confirmed', () => {
+    expect(() => QuoteCreateInput.parse({ ...baseCreateInput, deliveryTerms: 'tbc', status: 'accepted' })).toThrow(
+      'Confirm delivery before accepting this quote',
     );
+    expect(QuoteCreateInput.parse({ ...baseCreateInput, deliveryTerms: 'tbc', status: 'sent' })).toMatchObject({
+      deliveryTerms: 'tbc',
+      status: 'sent',
+    });
   });
 });
 
@@ -313,16 +333,28 @@ describe('QuoteUpdateInput', () => {
     ).toThrow();
   });
 
-  it('rejects an additional delivery price when delivery is included', () => {
+  it('rejects a delivery price unless delivery is an additional charge', () => {
     expect(() => QuoteUpdateInput.parse({ ...baseUpdateInput(), deliveryPrice: 350 })).toThrow(
-      'Must be zero when delivery is included',
+      'Must be zero unless delivery is an additional charge',
     );
+    expect(() =>
+      QuoteUpdateInput.parse({ ...baseUpdateInput(), deliveryPrice: 350, deliveryTerms: 'ex_factory' }),
+    ).toThrow('Must be zero unless delivery is an additional charge');
   });
 
-  it('requires a positive delivery price when delivery is not included', () => {
-    expect(() => QuoteUpdateInput.parse({ ...baseUpdateInput(), deliveryIncluded: false, deliveryPrice: 0 })).toThrow(
-      'Must be greater than zero when delivery is not included',
+  it('requires a positive delivery price when delivery is an additional charge', () => {
+    expect(() =>
+      QuoteUpdateInput.parse({ ...baseUpdateInput(), deliveryPrice: 0, deliveryTerms: 'additional_charge' }),
+    ).toThrow('Must be greater than zero when delivery is an additional charge');
+  });
+
+  it('refuses to accept a quote whose delivery is still to be confirmed', () => {
+    expect(() => QuoteUpdateInput.parse({ ...baseUpdateInput(), deliveryTerms: 'tbc', status: 'accepted' })).toThrow(
+      'Confirm delivery before accepting this quote',
     );
+    expect(QuoteUpdateInput.parse({ ...baseUpdateInput(), deliveryTerms: 'tbc', status: 'sent' })).toMatchObject({
+      deliveryTerms: 'tbc',
+    });
   });
 
   it('preserves omitted child collections instead of defaulting them to empty replacements', () => {
@@ -372,7 +404,7 @@ describe('QuoteDetail', () => {
       customerCompanyName: 'Acme Mining',
       customerId: '550e8400-e29b-41d4-a716-446655440001',
       customerThumbnailDataUrl: null,
-      deliveryIncluded: true,
+      deliveryTerms: 'included',
       deliveryPrice: 0,
       depositPercent: 0,
       discountPercent: 0,
@@ -433,7 +465,7 @@ describe('QuoteDetail', () => {
         customerPhone: null,
         customerThumbnailDataUrl: null,
         customerVatNumber: null,
-        deliveryIncluded: true,
+        deliveryTerms: 'included',
         deliveryPrice: 0,
         depositPercent: 0,
         discountPercent: 0,
@@ -502,7 +534,7 @@ function baseUpdateInput() {
     status: 'draft' as const,
     discountPercent: 0,
     depositPercent: 0,
-    deliveryIncluded: true,
+    deliveryTerms: 'included',
     deliveryPrice: 0,
     validUntil: null,
     preferredDeliveryDate: null,
@@ -549,7 +581,7 @@ describe('PriorityQuote', () => {
       customerCompanyName: 'Acme Mining',
       customerId: '550e8400-e29b-41d4-a716-446655440001',
       customerThumbnailDataUrl: null,
-      deliveryIncluded: true,
+      deliveryTerms: 'included',
       deliveryPrice: 0,
       depositPercent: 0,
       discountPercent: 0,
@@ -602,7 +634,7 @@ describe('UpcomingDeliveryQuotesResult', () => {
       customerCompanyName: 'Acme Mining',
       customerId: '550e8400-e29b-41d4-a716-446655440001',
       customerThumbnailDataUrl: null,
-      deliveryIncluded: true,
+      deliveryTerms: 'included',
       deliveryPrice: 0,
       depositPercent: 0,
       discountPercent: 0,

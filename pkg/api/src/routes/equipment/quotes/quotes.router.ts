@@ -219,6 +219,7 @@ function mapQuoteCoreError(error: QuoteCoreError): CoreErrorMapping<QuoteCoreErr
     case 'quote.already_cancelled':
     case 'quote.cancel_not_an_update':
     case 'quote.custom_selected_assemblies':
+    case 'quote.delivery_unconfirmed':
     case 'quote.locked':
     case 'quote.document_generation_not_allowed':
     case 'quote.product_bay_availability_not_applicable':

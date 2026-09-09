@@ -1,5 +1,6 @@
 import { createStableRowKeys, formatCurrency, formatNumber, formatPercent } from '@pkg/domain';
 import {
+  formatQuoteDeliverySummary,
   getQuoteOfferingName,
   type QuoteComputedSummary,
   quoteKindLabels,
@@ -350,6 +351,7 @@ function QuoteCustomWorkCard({ quote }: { quote: Extract<QuoteDetail, { kind: 'c
 }
 
 function QuoteTotalCard({ quote, summary }: { quote: QuoteDetail; summary: QuoteComputedSummary }) {
+  const deliverySummary = formatQuoteDeliverySummary(summary);
   const workItemRows = quote.kind === 'custom' ? quoteWorkItemSummaryRows({ workItems: summary.workItems }) : [];
   return (
     <Card size="sm">
@@ -412,9 +414,7 @@ function QuoteTotalCard({ quote, summary }: { quote: QuoteDetail; summary: Quote
           label="Less discount"
           value={`${formatCurrency(summary.discountAmount, summary.currencyCode)} (${formatPercent(summary.discountPercent)})`}
         />
-        {!summary.deliveryIncluded ? (
-          <QuoteSummaryRow label="Delivery" value={formatCurrency(summary.deliveryPrice, summary.currencyCode)} />
-        ) : null}
+        {deliverySummary ? <QuoteSummaryRow label="Delivery" value={deliverySummary} /> : null}
         <div className="grid gap-1 border-t pt-2">
           <QuoteSummaryRow label="Subtotal" value={formatCurrency(summary.subtotal, summary.currencyCode)} />
           <QuoteSummaryRow

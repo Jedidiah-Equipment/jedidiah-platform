@@ -19,7 +19,7 @@ const alwaysEditableFields = [
 const lockedFields = [
   'customerId',
   'depositPercent',
-  'deliveryIncluded',
+  'deliveryTerms',
   'deliveryPrice',
   'discountPercent',
   'productId',

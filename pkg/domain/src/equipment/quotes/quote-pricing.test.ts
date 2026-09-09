@@ -167,8 +167,8 @@ describe('priceQuote', () => {
   it('does not add delivery price when delivery is included in the sale price', () => {
     expect(
       priceQuote({
-        deliveryIncluded: true,
         deliveryPrice: 350,
+        deliveryTerms: 'included',
         discountPercent: 10,
         quotedBasePrice: 1250,
         selectedAssemblies: [],
@@ -176,10 +176,24 @@ describe('priceQuote', () => {
     ).toMatchObject({ subtotal: 1125, total: 1293.75 });
   });
 
-  it('adds delivery price when delivery is not included in the sale price', () => {
+  it('charges nothing for delivery when the customer collects ex factory or delivery is to be confirmed', () => {
+    for (const deliveryTerms of ['ex_factory', 'tbc'] as const) {
+      expect(
+        priceQuote({
+          deliveryPrice: 0,
+          deliveryTerms,
+          discountPercent: 10,
+          quotedBasePrice: 1250,
+          selectedAssemblies: [],
+        }),
+      ).toMatchObject({ subtotal: 1125, total: 1293.75 });
+    }
+  });
+
+  it('adds delivery price when delivery is an additional charge', () => {
     expect(
       priceQuote({
-        deliveryIncluded: false,
+        deliveryTerms: 'additional_charge',
         deliveryPrice: 350,
         discountPercent: 10,
         quotedBasePrice: 1250,
@@ -191,7 +205,7 @@ describe('priceQuote', () => {
   it('keeps the additional delivery charge undiscounted when the commercial subtotal is fully discounted', () => {
     expect(
       priceQuote({
-        deliveryIncluded: false,
+        deliveryTerms: 'additional_charge',
         deliveryPrice: 50,
         discountPercent: 100,
         quotedBasePrice: 100,
@@ -260,7 +274,7 @@ describe('priceQuoteWithCatalog', () => {
     // Assembly kind is immutable and deletion nulls the reference, so a persisted selection is
     // either resolvable in the catalog or null. Both seams must produce one Quote Pricing for it.
     const quote = {
-      deliveryIncluded: false,
+      deliveryTerms: 'additional_charge' as const,
       deliveryPrice: 120,
       discountPercent: 12.5,
       quotedBasePrice: 2000,

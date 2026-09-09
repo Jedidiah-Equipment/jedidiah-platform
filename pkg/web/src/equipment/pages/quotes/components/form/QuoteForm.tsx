@@ -3,6 +3,7 @@ import {
   computeQuoteSummary,
   editableLockedQuoteFields,
   isQuoteLocked,
+  quoteDeliveryTermsOptions,
   quoteKindLabels,
   quoteStatusLabels,
 } from '@pkg/domain/equipment';
@@ -27,10 +28,8 @@ import { useQuery } from '@tanstack/react-query';
 import type React from 'react';
 import { useMemo, useState } from 'react';
 import { AutosaveStatus, useAutosaveForm } from '@/components/form/index.js';
-import { getFieldErrors } from '@/components/form/utils/field-errors.js';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert.js';
-import { Checkbox } from '@/components/ui/checkbox.js';
-import { Field, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field.js';
+import { FieldGroup } from '@/components/ui/field.js';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs.js';
 import { AuditTable, useQuoteAuditTableStore } from '@/equipment/components/audit/AuditTable.js';
 import { GiveFeedbackButton } from '@/equipment/components/feedback/GiveFeedbackButton.js';
@@ -201,46 +200,25 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ onSave, priorityQuote, quo
                           />
                         )}
                       </form.AppField>
-                      <form.Field name="deliveryIncluded">
-                        {(field) => {
-                          const fieldErrors = getFieldErrors(field.state.meta.errors);
-                          const isInvalid = fieldErrors.length > 0;
-
-                          return (
-                            <Field className="justify-end" data-invalid={isInvalid}>
-                              <FieldLabel aria-hidden className="invisible">
-                                Delivery
-                              </FieldLabel>
-                              <div className="flex min-h-9 items-center gap-2">
-                                <Checkbox
-                                  aria-invalid={isInvalid}
-                                  checked={field.state.value}
-                                  disabled={isLocked}
-                                  id={field.name}
-                                  name={field.name}
-                                  onBlur={field.handleBlur}
-                                  onCheckedChange={(checked) => {
-                                    const isChecked = checked === true;
-
-                                    field.handleChange(isChecked);
-
-                                    if (isChecked) {
-                                      form.setFieldValue('deliveryPrice', 0);
-                                    }
-
-                                    autosave.commit();
-                                  }}
-                                />
-                                <FieldLabel htmlFor={field.name}>Delivery included in sale price</FieldLabel>
-                              </div>
-                              <FieldError errors={fieldErrors} />
-                            </Field>
-                          );
-                        }}
-                      </form.Field>
-                      <form.Subscribe selector={(state) => state.values.deliveryIncluded}>
-                        {(deliveryIncluded) =>
-                          !deliveryIncluded ? (
+                      <form.AppField name="deliveryTerms">
+                        {(field) => (
+                          <field.SelectField
+                            disabled={isLocked}
+                            label="Delivery terms"
+                            onValueCommit={autosave.commit}
+                            onValueSelect={(value) => {
+                              if (value !== 'additional_charge') {
+                                form.setFieldValue('deliveryPrice', 0);
+                              }
+                              return undefined;
+                            }}
+                            options={quoteDeliveryTermsOptions}
+                          />
+                        )}
+                      </form.AppField>
+                      <form.Subscribe selector={(state) => state.values.deliveryTerms}>
+                        {(deliveryTerms) =>
+                          deliveryTerms === 'additional_charge' ? (
                             <form.AppField name="deliveryPrice">
                               {(field) => (
                                 <field.CurrencyField

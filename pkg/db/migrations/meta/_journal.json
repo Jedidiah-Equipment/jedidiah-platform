@@ -1002,6 +1002,13 @@
       "when": 1788944130050,
       "tag": "0142_supply_work_department",
       "breakpoints": true
+    },
+    {
+      "idx": 143,
+      "version": "7",
+      "when": 1788946025213,
+      "tag": "0143_wild_mauler",
+      "breakpoints": true
     }
   ]
 }

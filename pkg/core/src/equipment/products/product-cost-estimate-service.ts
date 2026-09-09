@@ -1,6 +1,6 @@
 import { type DatabaseTransaction, type Db, notRemoved } from '@pkg/db';
 import { parts, products } from '@pkg/db/equipment';
-import { buildCfo, buildReworkCfo, workItemDepartmentRate } from '@pkg/domain/equipment';
+import { buildCfo, buildReworkCfo } from '@pkg/domain/equipment';
 import type { UUID } from '@pkg/schema';
 import type {
   Assembly,
@@ -12,9 +12,9 @@ import type {
 } from '@pkg/schema/equipment';
 import { ProductCostEstimate as ProductCostEstimateSchema } from '@pkg/schema/equipment';
 import { and, asc, eq, inArray } from 'drizzle-orm';
-
 import { loadMovingAverages, scaleUnitCost } from '../inventory/ledger.js';
 import { sumBy } from '../inventory/row-grouping.js';
+import { getLaborRateCard } from '../labor-rates/labor-rate-service.js';
 import { listAssemblies } from './product-assembly-service.js';
 import { listProductCostingInputs } from './product-costing-input-service.js';
 import { ProductNotFoundError } from './product-errors.js';
@@ -47,9 +47,10 @@ export async function getProductCostEstimate({
   // The Job snapshot path locks the Product first, before any child query starts. Product updates
   // update that same row before replacing children, so the lock freezes one whole Product revision.
   const product = await loadProductHeader(db, productId, includeRemovedProduct, lockProductRevision);
-  const [catalogAssemblies, costingInputs] = await Promise.all([
+  const [catalogAssemblies, costingInputs, laborRateCard] = await Promise.all([
     listAssemblies({ tx: db, productId }),
     listProductCostingInputs({ db, productId }),
+    getLaborRateCard({ db }),
   ]);
   const buildSpec = selectedAssemblyIds.map((productAssemblyId) => ({
     assemblyName: catalogAssemblies.find((assembly) => assembly.id === productAssemblyId)?.name ?? 'Unknown Assembly',
@@ -99,12 +100,10 @@ export async function getProductCostEstimate({
   const optionalAssemblies = catalogAssemblies
     .filter((assembly) => assembly.kind === 'optional')
     .map((assembly) => costAssembly(assembly, factsById, true));
-  const laborHours = (scope === 'build' ? costingInputs.laborHours : []).map((line) => ({
-    cost: line.hours * workItemDepartmentRate(line.department),
-    department: line.department,
-    hourlyRate: workItemDepartmentRate(line.department),
-    hours: line.hours,
-  }));
+  const laborHours = (scope === 'build' ? costingInputs.laborHours : []).map((line) => {
+    const hourlyRate = laborRateCard.rates.find((rate) => rate.department === line.department)?.costToCompanyRate ?? 0;
+    return { cost: line.hours * hourlyRate, department: line.department, hourlyRate, hours: line.hours };
+  });
   const uncostedParts = collectUncostedParts([
     ...materialLines.map((line) => requiredPart(factsById, line.partId)),
     ...assemblies.flatMap((assembly) => assembly.parts.map((line) => requiredPart(factsById, line.partId))),

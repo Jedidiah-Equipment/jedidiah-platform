@@ -43,6 +43,7 @@ export const HELP_TOPICS = {
   supplierMerge: '/inventory/merge-duplicate-suppliers',
   unitReassignment: '/sales/reassign-a-unit',
   units: '/production/remove-a-unit',
+  laborRates: '/admin/maintain-labor-rates',
   users: '/admin/manage-users',
 } as const satisfies Record<string, string>;
 

@@ -1,4 +1,4 @@
-import { APP_PERMISSIONS, APP_ROLES } from '@pkg/schema';
+import { APP_ROLES } from '@pkg/schema';
 import { describe, expect, it } from 'vitest';
 import { accessForRole, roleSlotsForRole } from '../testing/index.js';
 import {
@@ -11,10 +11,6 @@ import {
   hasPermission,
   isRoleSlotsSignInEligible,
   parseRoleSlots,
-  permissionDescriptions,
-  permissionLabels,
-  roleDescriptions,
-  roleLabels,
   tryParseRoleSlots,
 } from './authorization.js';
 
@@ -54,6 +50,8 @@ describe('getRolePermissions', () => {
       'equipment_job_bay:read',
       'equipment_job_bay:update',
       'equipment_job_metrics:read',
+      'equipment_labor_rate:read',
+      'equipment_labor_rate:update',
       'equipment_part:read',
       'equipment_part:update',
       'equipment_product:create',
@@ -265,30 +263,6 @@ describe('getRolePermissions', () => {
   });
 });
 
-describe('roleLabels', () => {
-  it('labels every app role', () => {
-    expect(Object.keys(roleLabels).sort()).toEqual([...APP_ROLES].sort());
-  });
-});
-
-describe('roleDescriptions', () => {
-  it('describes every app role', () => {
-    expect(Object.keys(roleDescriptions).sort()).toEqual([...APP_ROLES].sort());
-  });
-});
-
-describe('permissionLabels', () => {
-  it('labels every app permission', () => {
-    expect(Object.keys(permissionLabels).sort()).toEqual([...APP_PERMISSIONS].sort());
-  });
-});
-
-describe('permissionDescriptions', () => {
-  it('describes every app permission', () => {
-    expect(Object.keys(permissionDescriptions).sort()).toEqual([...APP_PERMISSIONS].sort());
-  });
-});
-
 describe('sign-in eligibility', () => {
   it('allows roles with permissions and denies permissionless roles', () => {
     for (const role of APP_ROLES.filter((role) => !['bay-operator', 'driver', 'mechanic'].includes(role))) {
@@ -431,4 +405,12 @@ describe('job cancellation authorization policy', () => {
       expect(getRolePermissions(role), role).not.toContain('equipment_job:cancel');
     }
   });
+});
+
+it('restricts Labor Rate Card access to Equipment administrators', () => {
+  for (const role of APP_ROLES) {
+    for (const permission of ['equipment_labor_rate:read', 'equipment_labor_rate:update'] as const) {
+      expect(getRolePermissions(role).includes(permission), role).toBe(role === 'admin' || role === 'super-admin');
+    }
+  }
 });

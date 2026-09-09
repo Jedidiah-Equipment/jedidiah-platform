@@ -14,6 +14,7 @@ import { feedbackRouter } from '../routes/equipment/feedback/feedback.router.js'
 import { inventoryRouter } from '../routes/equipment/inventory/inventory.router.js';
 import { jobActivityRouter } from '../routes/equipment/job-activity/job-activity.router.js';
 import { jobsRouter } from '../routes/equipment/jobs/jobs.router.js';
+import { laborRatesRouter } from '../routes/equipment/labor-rates/labor-rates.router.js';
 import { partsRouter } from '../routes/equipment/parts/parts.router.js';
 import { createProductRangesRouter } from '../routes/equipment/product-ranges/product-ranges.router.js';
 import { productUnitsRouter } from '../routes/equipment/product-units/product-units.router.js';
@@ -46,6 +47,7 @@ type AppRouterRecord = {
   inventory: (typeof inventoryRouter)['_def']['record'];
   jobActivity: (typeof jobActivityRouter)['_def']['record'];
   jobs: (typeof jobsRouter)['_def']['record'];
+  laborRates: (typeof laborRatesRouter)['_def']['record'];
   parts: (typeof partsRouter)['_def']['record'];
   productRanges: ReturnType<typeof createProductRangesRouter>['_def']['record'];
   productUnits: (typeof productUnitsRouter)['_def']['record'];
@@ -74,6 +76,7 @@ export function createAppRouter({ catalogTranslationScheduler, readMeterPhoto }:
     inventory: inventoryRouter,
     jobActivity: jobActivityRouter,
     jobs: jobsRouter,
+    laborRates: laborRatesRouter,
     parts: partsRouter,
     productRanges: createProductRangesRouter(catalogTranslationScheduler),
     productUnits: productUnitsRouter,

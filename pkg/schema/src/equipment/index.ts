@@ -18,6 +18,7 @@ export * from './inventory/stocktake.js';
 export * from './job-activity/job-activity.js';
 export * from './jobs/job.js';
 export * from './jobs/job-sales-export.js';
+export * from './labor-rates/labor-rate-card.js';
 export * from './parts/part.js';
 export * from './parts/part-bom.js';
 export * from './products/brochure-document.js';

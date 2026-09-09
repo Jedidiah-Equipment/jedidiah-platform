@@ -23,6 +23,8 @@ export type SnapshotTableDefinition = {
   // A newly introduced table may not exist in the selected source yet. Treat only that expected rollout
   // gap as empty; once deployed, normal snapshot reads and writes preserve its rows.
   optionalReadTable?: boolean;
+  // Required singleton/reference data when a pre-rollout snapshot has no rows.
+  emptySnapshotRows?: readonly SnapshotRow[];
   // Column (property name) to order the source read by, so positional seed defaults are deterministic.
   readOrderColumn?: string;
   // Values merged into each row after reading, keyed by index — used to populate columns omitted above.
@@ -78,6 +80,27 @@ const legacyPartStandardPurchaseLengthsMm: Readonly<Record<string, number>> = {
 };
 
 export const snapshotTableDefinitions = [
+  {
+    fileName: 'labor_rate_settings.json',
+    tableName: 'labor_rate_settings',
+    timestampColumns: [],
+    optionalReadTable: true,
+    emptySnapshotRows: [{ id: 'labor-rate-card', managementOverheadPercentage: 50, hoursPerWorkingDay: 9 }],
+  },
+  {
+    fileName: 'labor_department_rate.json',
+    tableName: 'labor_department_rate',
+    timestampColumns: [],
+    optionalReadTable: true,
+    emptySnapshotRows: [
+      { id: 'fabrication', costToCompanyRate: 220, billingRate: 550, consumablesPercentage: 60 },
+      { id: 'supply', costToCompanyRate: 200, billingRate: null, consumablesPercentage: 60 },
+      { id: 'paint', costToCompanyRate: 65, billingRate: 375, consumablesPercentage: 40 },
+      { id: 'assembly', costToCompanyRate: 80, billingRate: 320, consumablesPercentage: 20 },
+      { id: 'workshop', costToCompanyRate: null, billingRate: 320, consumablesPercentage: null },
+    ],
+  },
+
   {
     // These columns may be absent when the selected source lags this checkout; omit them so a
     // phase-zero seed read remains compatible across that deployment boundary.

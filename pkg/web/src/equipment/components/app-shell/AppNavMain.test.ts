@@ -6,6 +6,15 @@ import { getVisibleNavSections, isInventoryNavPath, navAccessState } from './App
 describe('AppNavMain', () => {
   it('groups inventory links in the required order', () => {
     const sections = getVisibleNavSections(() => true);
+    expect(sections.find((section) => section.label === 'Admin')?.items.map((item) => item.title)).toEqual([
+      'Bays',
+      'Users',
+      'Labor rates',
+      'Product Ranges',
+      'Translations',
+      'Feedback',
+      'Audit',
+    ]);
     const operations = sections.find((section) => section.label === 'Operations');
     const inventory = sections.find((section) => section.label === 'Inventory');
 

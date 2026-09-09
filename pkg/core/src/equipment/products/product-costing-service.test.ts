@@ -1,10 +1,11 @@
 import { auditEvents, user } from '@pkg/db';
-import { parts, supplier } from '@pkg/db/equipment';
+import { laborDepartmentRates, parts, supplier } from '@pkg/db/equipment';
 import type { ProductCreateInput, ProductUpdateInput } from '@pkg/schema/equipment';
 import { and, eq } from 'drizzle-orm';
 import { describe, expect } from 'vitest';
 import { createTester } from '../../test/create-tester.js';
 import { postAdjustment } from '../inventory/stock-movement-service.js';
+import { getLaborRateCard, updateLaborRateCard } from '../labor-rates/labor-rate-service.js';
 import { partValues } from '../test/part-fixtures.js';
 import { createProductRangeFixture } from '../test/product-range-fixtures.js';
 import { getProductCostEstimate } from './product-cost-estimate-service.js';
@@ -14,6 +15,11 @@ import { createProduct, getProduct, updateProduct } from './product-service.js';
 const actorUserId = 'product-costing-test-user';
 
 const test = createTester(async ({ db }) => {
+  await db
+    .update(laborDepartmentRates)
+    .set({ costToCompanyRate: 225 })
+    .where(eq(laborDepartmentRates.id, 'fabrication'));
+  await db.update(laborDepartmentRates).set({ costToCompanyRate: 70 }).where(eq(laborDepartmentRates.id, 'paint'));
   const now = new Date('2026-08-10T06:00:00.000Z');
   await db.insert(user).values({
     createdAt: now,
@@ -264,8 +270,8 @@ describe('getProductCostEstimate', () => {
 
     expect(base).toMatchObject({
       complete: true,
-      estimatedMarginCeiling: 68_800,
-      laborCostFloor: 26_500,
+      estimatedMarginCeiling: 85_460,
+      laborCostFloor: 9_840,
       materialCostFloor: 4_400,
       missing: {
         laborHours: false,
@@ -275,7 +281,7 @@ describe('getProductCostEstimate', () => {
         unratedDepartments: [],
       },
       partsCostFloor: 300,
-      totalCostFloor: 31_200,
+      totalCostFloor: 14_540,
     });
     expect(
       base.materialLines.map((line) => [line.partCode, line.unitCost, line.costFloor, line.standardPurchaseLengthMm]),
@@ -377,7 +383,7 @@ describe('getProductCostEstimate', () => {
       input: productInput(context.rangeId, {
         laborHours: [
           { department: 'fabrication', hours: 10 },
-          { department: 'supply', hours: 8 },
+          { department: 'workshop', hours: 8 },
         ],
         materialLines: [{ partId: context.plate.id, quantityPerUnit: 1 }],
         modelCode: 'COST-3',
@@ -389,9 +395,26 @@ describe('getProductCostEstimate', () => {
 
     expect(estimate).toMatchObject({
       complete: false,
-      laborCostFloor: 5_500,
-      missing: { laborHours: false, unratedDepartments: ['supply'] },
+      laborCostFloor: 2_250,
+      missing: { laborHours: false, unratedDepartments: ['workshop'] },
     });
-    expect(estimate.laborHours.find((line) => line.department === 'supply')).toMatchObject({ cost: 0, hourlyRate: 0 });
+    expect(estimate.laborHours.find((line) => line.department === 'workshop')).toMatchObject({
+      cost: 0,
+      hourlyRate: 0,
+    });
+    const card = await getLaborRateCard({ db: context.db });
+    for (const costToCompanyRate of [0, 100]) {
+      await updateLaborRateCard({
+        db: context.db,
+        actorUserId,
+        input: {
+          ...card,
+          rates: card.rates.map((rate) => (rate.department === 'workshop' ? { ...rate, costToCompanyRate } : rate)),
+        },
+      });
+      const repriced = await getProductCostEstimate({ db: context.db, productId: product.id });
+      expect(repriced.missing.unratedDepartments).toEqual(costToCompanyRate === 0 ? ['workshop'] : []);
+      expect(repriced.laborCostFloor).toBe(costToCompanyRate === 0 ? 2_250 : 3_050);
+    }
   });
 });

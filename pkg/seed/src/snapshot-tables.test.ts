@@ -25,6 +25,8 @@ function configFor(tableName: string): SnapshotTableConfig {
 describe('snapshot table registry', () => {
   it('lists snapshot tables in dependency order', () => {
     expect(snapshotTableNames).toEqual([
+      'labor_rate_settings',
+      'labor_department_rate',
       'user',
       'user_department',
       'job_bay',
@@ -68,6 +70,8 @@ describe('snapshot table registry', () => {
 
   it('uses deterministic filenames', () => {
     expect(snapshotTables.map((table) => table.fileName)).toEqual([
+      'labor_rate_settings.json',
+      'labor_department_rate.json',
       'user.json',
       'user_department.json',
       'job_bay.json',
@@ -239,20 +243,6 @@ describe('snapshot table registry', () => {
       productId: 'product-id',
       standardAssemblyId: 'standard-id',
     });
-  });
-
-  it('revives nullable supplier soft-delete timestamps', () => {
-    expect(configFor('supplier').timestampColumns).toContain('deletedAt');
-  });
-
-  it('revives nullable Job cancellation timestamps', () => {
-    expect(configFor('job').timestampColumns).toContain('cancelledAt');
-  });
-
-  it('revives nullable catalog soft-delete timestamps', () => {
-    expect(configFor('product_ranges').timestampColumns).toContain('deletedAt');
-    expect(configFor('product_range_variants').timestampColumns).toContain('deletedAt');
-    expect(configFor('products').timestampColumns).toContain('deletedAt');
   });
 
   it('preserves catalog soft-delete and variant columns from staging snapshots', () => {

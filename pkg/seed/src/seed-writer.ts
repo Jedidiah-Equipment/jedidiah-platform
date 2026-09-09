@@ -93,7 +93,8 @@ export async function writeLocalSeedSnapshot(database?: Db): Promise<void> {
 }
 
 export function prepareRowsForSeed(config: SnapshotTableConfig, rows: readonly SnapshotRow[]): SnapshotRow[] {
-  return rows.map((row, index) => prepareSnapshotRow(config, projectWritableRow(config, row), index));
+  const source = rows.length === 0 ? (config.emptySnapshotRows ?? rows) : rows;
+  return source.map((row, index) => prepareSnapshotRow(config, projectWritableRow(config, row), index));
 }
 
 export async function replaceDatabaseWithSeedSnapshot(

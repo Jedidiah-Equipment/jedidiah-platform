@@ -107,10 +107,10 @@ describe('Quote Work Item form helpers', () => {
 
   it('lists the work Departments in pipeline order and seeds an unrated one at zero', () => {
     expect(WORK_ITEM_DEPARTMENTS).toEqual(['fabrication', 'supply', 'paint', 'assembly', 'workshop']);
-    expect(workItemDepartmentRate('assembly')).toBe(320);
-    expect(workItemDepartmentRate('workshop')).toBe(320);
-    expect(workItemDepartmentRate('supply')).toBe(0);
-    expect(workItemDepartmentRate('procurement')).toBe(0);
+    expect(workItemDepartmentRate('assembly', [{ department: 'assembly', billingRate: 320 }])).toBe(320);
+    expect(workItemDepartmentRate('workshop', [{ department: 'workshop', billingRate: 320 }])).toBe(320);
+    expect(workItemDepartmentRate('supply', [{ department: 'supply', billingRate: null }])).toBe(0);
+    expect(workItemDepartmentRate('procurement', [])).toBe(0);
     expect(quoteDepartmentLabels.assembly).toBe('Assembly');
     expect(quoteDepartmentLabels.workshop).toBe('Workshop');
     expect(quoteDepartmentLabels.supply).toBe('Supply');

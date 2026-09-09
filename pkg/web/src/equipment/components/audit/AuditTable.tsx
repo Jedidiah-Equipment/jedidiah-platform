@@ -34,6 +34,7 @@ type AuditTableProps = {
 };
 
 const auditEntityTypeLabels = {
+  labor_rate_card: 'Labor Rate Card',
   customer: 'Customer',
   document: 'Document',
   job: 'Job',

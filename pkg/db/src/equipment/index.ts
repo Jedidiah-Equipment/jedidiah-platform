@@ -3,6 +3,7 @@ export * from '../schema/equipment/document.js';
 export * from '../schema/equipment/feedback.js';
 export * from '../schema/equipment/job.js';
 export * from '../schema/equipment/job-stock-close-out.js';
+export * from '../schema/equipment/labor-rate-card.js';
 export * from '../schema/equipment/part.js';
 export * from '../schema/equipment/pg-schema.js';
 export * from '../schema/equipment/product.js';

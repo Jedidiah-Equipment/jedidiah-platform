@@ -62,6 +62,8 @@ export const permissionLabels = {
   'equipment_inventory:count': 'Count inventory',
   'equipment_inventory:build': 'Build inventory',
   'equipment_inventory:close-out': 'Close out inventory',
+  'equipment_labor_rate:read': 'View Labor rates',
+  'equipment_labor_rate:update': 'Manage Labor rates',
   'equipment_inventory_cost:read': 'View inventory costs',
   'equipment_inventory_cost:revalue': 'Revalue inventory',
   'equipment_product:create': 'Create products',
@@ -151,6 +153,8 @@ export const permissionDescriptions = {
   'equipment_inventory:count': 'Run stocktake sessions and post count results.',
   'equipment_inventory:build': 'Build finished Parts from component stock.',
   'equipment_inventory:close-out': 'Return Job leftovers and release remaining commitments.',
+  'equipment_labor_rate:read': 'View Labor rates',
+  'equipment_labor_rate:update': 'Manage Labor rates',
   'equipment_inventory_cost:read': 'View inventory costs and valuation data.',
   'equipment_inventory_cost:revalue': 'Revalue on-hand inventory.',
   'equipment_product:create': 'Add new product catalog records.',
@@ -219,6 +223,7 @@ export const permissionDescriptions = {
 } as const satisfies Record<AppPermission, string>;
 
 export const authorizationStatement = {
+  equipment_labor_rate: ['read', 'update'],
   equipment_audit: ['read'],
   equipment_customer: ['read', 'create', 'update', 'remove'],
   equipment_email: ['send'],
@@ -258,6 +263,7 @@ type RoleAccess = Partial<{
 }>;
 
 const adminAccess = {
+  equipment_labor_rate: ['read', 'update'],
   equipment_audit: ['read'],
   equipment_customer: ['read', 'create', 'update', 'remove'],
   equipment_email: ['send'],

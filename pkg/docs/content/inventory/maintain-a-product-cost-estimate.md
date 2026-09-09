@@ -1,7 +1,7 @@
 # Maintain a Product cost estimate
 
 A Product Cost Estimate combines the Product's raw materials per unit, effective Assembly Parts,
-and labor per unit at current inventory costs and the shared labor rates.
+and labor per unit at current inventory costs and the cost-to-company rates on the [Labor Rate Card](/admin/maintain-labor-rates).
 
 ## Steps
 
@@ -18,8 +18,8 @@ and labor per unit at current inventory costs and the shared labor rates.
 6. Read **Live cost estimate**. It separates raw materials, Assembly Parts, and labor, then compares
    the total with the Product's Base Price.
 7. If the total begins with **≥**, read the missing-input line and complete the named material list,
-   labor hours, or uncosted bought Parts. A Department with no labor rate yet (Supply today) is also
-   named there: its hours count as zero cost until a rate exists. The displayed amount is a floor
+   labor hours, or uncosted bought Parts. A Department with a blank or zero cost-to-company rate is also
+   named there: its hours count as zero cost until a positive rate is saved. The displayed amount is a floor
    until nothing is missing.
 
 Optional Assemblies show a partial bought-Parts cost beside their upgrade-delta price. Their raw

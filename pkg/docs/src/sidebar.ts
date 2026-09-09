@@ -35,7 +35,10 @@ export const CONTRACTING_SECTIONS: DocsSection[] = [
 export const EQUIPMENT_SECTIONS: DocsSection[] = [
   {
     text: 'Administration tasks',
-    items: [{ text: 'Manage Users', link: '/admin/manage-users' }],
+    items: [
+      { text: 'Manage Users', link: '/admin/manage-users' },
+      { text: 'Maintain Labor rates', link: '/admin/maintain-labor-rates' },
+    ],
   },
   {
     text: 'Sales tasks',

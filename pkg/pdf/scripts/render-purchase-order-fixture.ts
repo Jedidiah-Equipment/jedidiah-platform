@@ -4,7 +4,7 @@ import { resolve } from 'node:path';
 import { DateIso, DateOnlyIso } from '@pkg/schema';
 import { JobCode, PurchaseOrderCode, type PurchaseOrderPdfModel } from '@pkg/schema/equipment';
 
-import { renderPurchaseOrderPdf } from '../src/purchase-order/purchase-order-pdf-renderer.js';
+import { renderPurchaseOrderPdf } from '../src/equipment/purchase-order/purchase-order-pdf-renderer.js';
 
 const outputDirectory = resolve(process.cwd(), '../../tmp/pdfs');
 const outputPath = resolve(outputDirectory, 'purchase-order-fixture.pdf');

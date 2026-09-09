@@ -26,6 +26,7 @@ export const departmentCrewLabels: Record<
   assembly: { collection: 'Assembly crew', plural: 'Crew members', singular: 'Crew member' },
   fabrication: { collection: 'Fabrication crew', plural: 'Crew members', singular: 'Crew member' },
   paint: { collection: 'Paint crew', plural: 'Crew members', singular: 'Crew member' },
+  supply: { collection: 'Supply crew', plural: 'Crew members', singular: 'Crew member' },
   workshop: { collection: 'Workshop crew', plural: 'Crew members', singular: 'Crew member' },
 };
 

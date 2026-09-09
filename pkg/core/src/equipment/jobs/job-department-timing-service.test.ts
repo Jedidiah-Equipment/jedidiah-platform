@@ -111,6 +111,31 @@ describe('completeDepartmentTiming', () => {
     ]);
   });
 
+  test('stamps Supply with crew and audits it like every other work Department', async ({ context }) => {
+    await startDepartmentTiming({
+      actorUserId,
+      db: context.db,
+      input: { department: 'supply', id: context.job.id },
+    });
+    await completeDepartmentTiming({
+      actorUserId,
+      db: context.db,
+      input: { crewUserIds: ['operator-brown'], department: 'supply', id: context.job.id },
+    });
+
+    const detail = await getJob({ db: context.db, id: context.job.id });
+    const supply = detail.departmentTimings.find((timing) => timing.department === 'supply');
+    const audits = await context.db
+      .select({ changes: auditEvents.changes })
+      .from(auditEvents)
+      .where(eq(auditEvents.entityId, context.job.id));
+
+    expect(supply?.startedAt).not.toBeNull();
+    expect(supply?.completedAt).not.toBeNull();
+    expect(supply?.crew).toEqual([{ name: 'T. Brown', userId: 'operator-brown' }]);
+    expect(audits.filter((audit) => Object.hasOwn(audit.changes ?? {}, 'departmentTiming:supply'))).toHaveLength(2);
+  });
+
   test('refuses a department that was never started', async ({ context }) => {
     await expect(
       completeDepartmentTiming({
@@ -451,6 +476,7 @@ describe('getJob departmentTimings', () => {
 
     expect(detail.departmentTimings.map((timing) => timing.department)).toEqual([
       'fabrication',
+      'supply',
       'paint',
       'assembly',
       'workshop',

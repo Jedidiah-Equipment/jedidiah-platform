@@ -88,6 +88,7 @@ export const ProductCostEstimate = z.object({
     materialList: z.boolean(),
     unattributedProductTerms: z.boolean(),
     uncostedParts: z.array(ProductCostEstimateMissingPart),
+    unratedDepartments: z.array(WorkItemDepartment),
   }),
   optionalAssemblies: z.array(ProductCostEstimateAssembly),
   partsCostFloor: z.number().finite().nonnegative(),

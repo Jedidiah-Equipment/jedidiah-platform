@@ -540,6 +540,21 @@ describe('JobDetail', () => {
     expect(JobDetail.shape.schedule.parse(departments.map((department) => ({ bays: [], department })))).toHaveLength(6);
   });
 
+  it('carries one Department Timing per work Department, no more and no fewer', () => {
+    const timing = (department: string) => ({
+      completedAt: null,
+      crew: [],
+      department,
+      startedAt: null,
+      suggestedCrew: [],
+    });
+    const workDepartments = ['fabrication', 'supply', 'paint', 'assembly', 'workshop'];
+
+    expect(JobDetail.shape.departmentTimings.parse(workDepartments.map(timing))).toHaveLength(5);
+    expect(() => JobDetail.shape.departmentTimings.parse(workDepartments.slice(0, 4).map(timing))).toThrow();
+    expect(() => JobDetail.shape.departmentTimings.parse([...workDepartments, 'procurement'].map(timing))).toThrow();
+  });
+
   it('carries the Department, description, and estimated hours shown with the Job assemblies', () => {
     const workRow = {
       id: '00000000-0000-4000-8000-000000000001',

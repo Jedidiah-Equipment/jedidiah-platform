@@ -1,6 +1,6 @@
 import { type DatabaseTransaction, type Db, notRemoved } from '@pkg/db';
 import { parts, products } from '@pkg/db/equipment';
-import { buildCfo, buildReworkCfo, WORK_ITEM_DEPARTMENT_RATES } from '@pkg/domain/equipment';
+import { buildCfo, buildReworkCfo, workItemDepartmentRate } from '@pkg/domain/equipment';
 import type { UUID } from '@pkg/schema';
 import type {
   Assembly,
@@ -100,9 +100,9 @@ export async function getProductCostEstimate({
     .filter((assembly) => assembly.kind === 'optional')
     .map((assembly) => costAssembly(assembly, factsById, true));
   const laborHours = (scope === 'build' ? costingInputs.laborHours : []).map((line) => ({
-    cost: line.hours * WORK_ITEM_DEPARTMENT_RATES[line.department],
+    cost: line.hours * workItemDepartmentRate(line.department),
     department: line.department,
-    hourlyRate: WORK_ITEM_DEPARTMENT_RATES[line.department],
+    hourlyRate: workItemDepartmentRate(line.department),
     hours: line.hours,
   }));
   const uncostedParts = collectUncostedParts([
@@ -118,12 +118,14 @@ export async function getProductCostEstimate({
     materialList: scope === 'build' && materialLines.length === 0,
     unattributedProductTerms: scope === 'rework',
     uncostedParts,
+    unratedDepartments: laborHours.filter((line) => line.hourlyRate === 0).map((line) => line.department),
   };
   const complete =
     !missing.laborHours &&
     !missing.materialList &&
     !missing.unattributedProductTerms &&
-    missing.uncostedParts.length === 0;
+    missing.uncostedParts.length === 0 &&
+    missing.unratedDepartments.length === 0;
 
   return ProductCostEstimateSchema.parse({
     assemblies,

@@ -105,12 +105,15 @@ describe('Quote Work Item form helpers', () => {
     expect(rows.map((row) => row.total)).toEqual([30800, 11520]);
   });
 
-  it('adds Workshop to the rate card without changing the existing departments', () => {
-    expect(WORK_ITEM_DEPARTMENTS).toEqual(['fabrication', 'paint', 'assembly', 'workshop']);
+  it('lists the work Departments in pipeline order and seeds an unrated one at zero', () => {
+    expect(WORK_ITEM_DEPARTMENTS).toEqual(['fabrication', 'supply', 'paint', 'assembly', 'workshop']);
     expect(workItemDepartmentRate('assembly')).toBe(320);
     expect(workItemDepartmentRate('workshop')).toBe(320);
+    expect(workItemDepartmentRate('supply')).toBe(0);
+    expect(workItemDepartmentRate('procurement')).toBe(0);
     expect(quoteDepartmentLabels.assembly).toBe('Assembly');
     expect(quoteDepartmentLabels.workshop).toBe('Workshop');
+    expect(quoteDepartmentLabels.supply).toBe('Supply');
     expect(new Set(WORK_ITEM_DEPARTMENTS.map((department) => quoteDepartmentLabels[department])).size).toBe(
       WORK_ITEM_DEPARTMENTS.length,
     );

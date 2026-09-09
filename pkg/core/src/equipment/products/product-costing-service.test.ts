@@ -267,7 +267,13 @@ describe('getProductCostEstimate', () => {
       estimatedMarginCeiling: 68_800,
       laborCostFloor: 26_500,
       materialCostFloor: 4_400,
-      missing: { laborHours: false, materialList: false, unattributedProductTerms: false, uncostedParts: [] },
+      missing: {
+        laborHours: false,
+        materialList: false,
+        unattributedProductTerms: false,
+        uncostedParts: [],
+        unratedDepartments: [],
+      },
       partsCostFloor: 300,
       totalCostFloor: 31_200,
     });
@@ -360,5 +366,32 @@ describe('getProductCostEstimate', () => {
       partsCostFloor: 0,
       totalCostFloor: 0,
     });
+  });
+
+  test('flags labor in an unrated Department as missing rather than pricing it at zero with confidence', async ({
+    context,
+  }) => {
+    const product = await createProduct({
+      actorUserId,
+      db: context.db,
+      input: productInput(context.rangeId, {
+        laborHours: [
+          { department: 'fabrication', hours: 10 },
+          { department: 'supply', hours: 8 },
+        ],
+        materialLines: [{ partId: context.plate.id, quantityPerUnit: 1 }],
+        modelCode: 'COST-3',
+        name: 'Unrated Product',
+      }),
+    });
+
+    const estimate = await getProductCostEstimate({ db: context.db, productId: product.id });
+
+    expect(estimate).toMatchObject({
+      complete: false,
+      laborCostFloor: 5_500,
+      missing: { laborHours: false, unratedDepartments: ['supply'] },
+    });
+    expect(estimate.laborHours.find((line) => line.department === 'supply')).toMatchObject({ cost: 0, hourlyRate: 0 });
   });
 });

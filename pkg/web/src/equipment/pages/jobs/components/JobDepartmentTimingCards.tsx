@@ -70,7 +70,7 @@ const CorrectionFormValues = z
   });
 type CorrectionFormValues = z.infer<typeof CorrectionFormValues>;
 
-/** The four Department Timing observation cards shown on the Job sheet. */
+/** One Department Timing observation card per work Department, shown on the Job sheet. */
 export const JobDepartmentTimingCards: React.FC<{ job: JobDetail }> = ({ job }) => {
   const offDays = useOrgOffDays(job.departmentTimings.some((timing) => timing.completedAt !== null));
 

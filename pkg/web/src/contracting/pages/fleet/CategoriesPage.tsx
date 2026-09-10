@@ -1,57 +1,76 @@
-import { formatCurrency } from '@pkg/domain';
-import { type Category, FleetName } from '@pkg/schema/contracting';
+import { DEFAULT_CATEGORY_COLOUR, defaultCategoryIcon } from '@pkg/domain/contracting';
+import { type Category, CategoryColour, CategoryIconKey, CategoryKind, FleetName } from '@pkg/schema/contracting';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { z } from 'zod';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import type { DataTableColumnDef } from '@/components/data-table/features.js';
 import { CreateEntityDialog } from '@/components/form/index.js';
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
 import { Button } from '@/components/ui/button.js';
+import { CategoryLabel } from '@/contracting/components/CategoryIcon.js';
 import { useCan } from '@/hooks/use-access.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useTRPC } from '@/lib/trpc.js';
+import {
+  CategoryColourField,
+  CategoryIconField,
+  CategoryKindFilter,
+  categoryKindLabels,
+  categoryKindOptions,
+  iconAfterKindChange,
+} from './CategoryFields.js';
 import { FleetTable } from './FleetTable.js';
 import { useFleetInvalidation } from './use-fleet-invalidation.js';
 
-const CategoryCreateValues = z.object({ name: FleetName });
+const CategoryCreateValues = z.object({
+  name: FleetName,
+  kind: CategoryKind,
+  icon: CategoryIconKey,
+  colour: CategoryColour,
+});
+const columns: DataTableColumnDef<Category>[] = [
+  {
+    accessorKey: 'name',
+    header: 'Category',
+    enableSorting: true,
+    cell: ({ row }) => (
+      <CategoryLabel
+        icon={row.original.icon}
+        colour={row.original.colour}
+        name={row.original.name}
+        className="font-medium"
+      />
+    ),
+  },
+  {
+    accessorKey: 'kind',
+    header: 'Kind',
+    enableGlobalFilter: false,
+    enableSorting: true,
+    cell: ({ row }) => categoryKindLabels[row.original.kind],
+  },
+];
 export function CategoriesPage() {
   const trpc = useTRPC();
   const navigate = useNavigate();
   const invalidate = useFleetInvalidation();
   const showError = useApiMutationErrorToast();
   const canEdit = useCan('contracting_machine:update').can;
-  const canReadRates = useCan('contracting_rate:read').can;
   const [open, setOpen] = useState(false);
-  const query = useQuery(trpc.contractingFleet.categories.list.queryOptions());
+  const [kind, setKind] = useState<CategoryKind | 'all'>('all');
+  const query = useQuery(trpc.contractingFleet.categories.list.queryOptions(kind === 'all' ? {} : { kind }));
   const create = useMutation(
     trpc.contractingFleet.categories.create.mutationOptions({
       onError: (error) => showError(error, 'Unable to create category.'),
     }),
   );
-  const columns = useMemo<DataTableColumnDef<Category>[]>(
-    () => [
-      { accessorKey: 'name', header: 'Category', enableSorting: true },
-      ...(canReadRates
-        ? [
-            {
-              accessorKey: 'presetRate' as const,
-              enableGlobalFilter: false,
-              header: 'Preset rate (R/hour)',
-              cell: ({ row }: { row: { original: Category } }) =>
-                row.original.presetRate === undefined ? '—' : formatCurrency(row.original.presetRate, 'ZAR'),
-            },
-          ]
-        : []),
-    ],
-    [canReadRates],
-  );
   return (
     <>
       <PageLayout
         title="Categories"
-        description="Machine groupings and preset hourly rates."
+        description="Machine and Implement groupings, each with the icon and colour its fleet shows."
         size="lg"
         actions={canEdit ? <Button onClick={() => setOpen(true)}>New category</Button> : undefined}
       >
@@ -61,6 +80,7 @@ export function CategoriesPage() {
           columns={columns}
           loading={query.isPending}
           searchPlaceholder="Search categories…"
+          controls={<CategoryKindFilter value={kind} onChange={setKind} />}
           onOpen={(row) => void navigate({ to: '/contracting/fleet/categories/$id/edit', params: { id: row.id } })}
         />
       </PageLayout>
@@ -69,7 +89,12 @@ export function CategoriesPage() {
         open={open}
         onOpenChange={setOpen}
         title="New category"
-        defaultValues={{ name: '' }}
+        defaultValues={{
+          name: '',
+          kind: (kind === 'implement' ? 'implement' : 'machine') as CategoryKind,
+          icon: defaultCategoryIcon(kind === 'implement' ? 'implement' : 'machine'),
+          colour: DEFAULT_CATEGORY_COLOUR,
+        }}
         validator={CategoryCreateValues}
         onCreate={(values) => create.mutateAsync(values)}
         onCreated={async (row) => {
@@ -78,7 +103,31 @@ export function CategoriesPage() {
           await navigate({ to: '/contracting/fleet/categories/$id/edit', params: { id: row.id } });
         }}
       >
-        {(form) => <form.AppField name="name">{(field) => <field.TextField label="Name" />}</form.AppField>}
+        {(form) => (
+          <>
+            <form.AppField name="name">{(field) => <field.TextField label="Name" />}</form.AppField>
+            <form.AppField name="kind">
+              {(field) => (
+                <field.SelectField
+                  label="Kind"
+                  options={categoryKindOptions}
+                  onValueCommit={(value) => {
+                    if (value === 'machine' || value === 'implement')
+                      form.setFieldValue('icon', iconAfterKindChange(value, form.getFieldValue('icon')));
+                  }}
+                />
+              )}
+            </form.AppField>
+            <form.Subscribe selector={(state) => [state.values.icon, state.values.colour] as const}>
+              {([icon, colour]) => (
+                <>
+                  <form.AppField name="icon">{() => <CategoryIconField colour={colour} />}</form.AppField>
+                  <form.AppField name="colour">{() => <CategoryColourField icon={icon} />}</form.AppField>
+                </>
+              )}
+            </form.Subscribe>
+          </>
+        )}
       </CreateEntityDialog>
     </>
   );

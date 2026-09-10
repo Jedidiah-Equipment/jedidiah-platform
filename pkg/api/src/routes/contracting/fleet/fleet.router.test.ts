@@ -39,34 +39,41 @@ test('requires Contracting fleet access even for Equipment administrators', asyn
   ).rejects.toMatchObject({ code: 'FORBIDDEN' });
 });
 
-test('gates rates separately on creates, patches, and every category response', async ({ context }) => {
+test('carries no rate, filters categories by kind and suggests implement codes for fleet managers only', async ({
+  context,
+}) => {
   const admin = context.createCaller(contractingSession('contracting-admin')).contractingFleet;
   const manager = context.createCaller(contractingSession('contracting-manager')).contractingFleet;
   const workshop = context.createCaller(contractingSession('workshop-manager')).contractingFleet;
-  const category = await admin.categories.create({ name: 'Tractors', presetRate: 750 });
-  expect(category.presetRate).toBe(750);
-  await expect(manager.categories.create({ name: 'Loaders', presetRate: 100 })).rejects.toMatchObject({
+  const category = await admin.categories.create({
+    name: 'Tractors',
+    kind: 'machine',
+    icon: 'tractor',
+    colour: 'green',
+  });
+  expect(category).toMatchObject({ icon: 'tractor', colour: 'green' });
+  expect(category).not.toHaveProperty('presetRate');
+  const trailers = await manager.categories.create({ name: 'Gravel trailer', kind: 'implement' });
+  expect(trailers).toMatchObject({ icon: 'generic-implement', colour: 'gray' });
+  expect((await workshop.categories.list({ kind: 'implement' })).map((row) => row.id)).toEqual([trailers.id]);
+  expect((await workshop.categories.list()).length).toBe(2);
+  expect(await manager.implements.suggestCode({ categoryId: trailers.id })).toEqual({ code: 'GRAVEL-TRAILER-1' });
+  await expect(manager.implements.suggestCode({ categoryId: category.id })).rejects.toMatchObject({
+    appCode: 'fleet.invalid_category',
+    code: 'BAD_REQUEST',
+  });
+  await expect(workshop.implements.suggestCode({ categoryId: trailers.id })).rejects.toMatchObject({
     code: 'FORBIDDEN',
   });
-  const own = await manager.categories.create({ name: 'Loaders' });
-  expect(own).not.toHaveProperty('presetRate');
-  await expect(manager.categories.patch({ id: category.id, presetRate: 0 })).rejects.toMatchObject({
-    code: 'FORBIDDEN',
-  });
-  expect(await manager.categories.patch({ id: category.id, name: 'Hauler tractors' })).not.toHaveProperty('presetRate');
-  expect(await workshop.categories.get({ id: category.id })).not.toHaveProperty('presetRate');
-  expect((await manager.categories.list()).every((row) => !('presetRate' in row))).toBe(true);
-  expect((await admin.categories.get({ id: category.id })).presetRate).toBe(750);
-  await context
-    .createCaller(mockSession('super-admin'))
-    .contractingFleet.categories.patch({ id: category.id, presetRate: 800 });
-  expect((await admin.categories.get({ id: category.id })).presetRate).toBe(800);
-  await expect(workshop.categories.patch({ id: category.id, name: 'No' })).rejects.toMatchObject({ code: 'FORBIDDEN' });
+  await expect(
+    // @ts-expect-error the rate left the category with #1434
+    admin.categories.patch({ id: category.id, presetRate: 1 }),
+  ).rejects.toMatchObject({ code: 'BAD_REQUEST' });
 });
 
 test('audits fleet writes atomically and keeps Contracting rates out of Equipment audit reads', async ({ context }) => {
   const fleet = context.createCaller(contractingSession('contracting-admin')).contractingFleet;
-  const category = await fleet.categories.create({ name: 'Tractors', presetRate: 850 });
+  const category = await fleet.categories.create({ name: 'Tractors', kind: 'machine' });
   const machine = await fleet.machines.create({
     code: 'jd6140m-1',
     make: 'Deere',

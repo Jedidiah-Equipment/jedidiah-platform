@@ -5,8 +5,10 @@ import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { AutosaveStatus, useAutosaveForm } from '@/components/form/index.js';
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
 import { Card, CardContent } from '@/components/ui/card.js';
+import { CategoryLabel } from '@/contracting/components/CategoryIcon.js';
 import { useCan } from '@/hooks/use-access.js';
 import { useTRPC } from '@/lib/trpc.js';
+import { categoryOptions } from './CategoryFields.js';
 import { FleetRetirement } from './FleetRetirement.js';
 import { MachineFormValues, machineFormValues, machinePatchInput } from './types.js';
 import { useFleetInvalidation } from './use-fleet-invalidation.js';
@@ -14,7 +16,22 @@ export function MachineEditPage({ id }: { id: string }) {
   const trpc = useTRPC();
   const query = useQuery(trpc.contractingFleet.machines.get.queryOptions({ id }));
   return (
-    <PageLayout title={query.data?.code ?? 'Machine'} description="Machine details" size="md">
+    <PageLayout
+      title={
+        query.data ? (
+          <CategoryLabel
+            icon={query.data.categoryIcon}
+            colour={query.data.categoryColour}
+            name={query.data.code}
+            size={24}
+          />
+        ) : (
+          'Machine'
+        )
+      }
+      description={query.data ? `${query.data.categoryName} · Machine details` : 'Machine details'}
+      size="md"
+    >
       <ErrorMessage error={query.error} fallbackMessage="Unable to load machine." />
       {query.data ? <MachineForm key={id} machine={query.data} /> : query.isPending ? <p>Loading machine…</p> : null}
     </PageLayout>
@@ -25,7 +42,7 @@ function MachineForm({ machine }: { machine: Machine }) {
   const invalidate = useFleetInvalidation();
   const navigate = useNavigate();
   const canEdit = useCan('contracting_machine:update').can && !machine.retiredAt;
-  const categories = useQuery(trpc.contractingFleet.categories.list.queryOptions());
+  const categories = useQuery(trpc.contractingFleet.categories.list.queryOptions({ kind: 'machine' }));
   const options = useQuery(trpc.contractingFleet.machines.options.queryOptions());
   const patch = useMutation(trpc.contractingFleet.machines.patch.mutationOptions({ onSuccess: invalidate }));
   const retire = useMutation(trpc.contractingFleet.machines.retire.mutationOptions({ onSuccess: invalidate }));
@@ -65,7 +82,7 @@ function MachineForm({ machine }: { machine: Machine }) {
                   <field.SelectField
                     label="Category"
                     disabled={!canEdit}
-                    options={(categories.data ?? []).map((row) => ({ label: row.name, value: row.id }))}
+                    options={categoryOptions(categories.data ?? [])}
                     onValueCommit={autosave.commit}
                   />
                 )}

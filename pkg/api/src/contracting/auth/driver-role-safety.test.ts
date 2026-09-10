@@ -51,7 +51,7 @@ const test = createTester(async ({ db, auth }) => {
 
 test('explains how to unblock driver role changes through both user-admin endpoints', async ({ context }) => {
   const fleet = context.createCaller(mockSession('super-admin')).contractingFleet;
-  const category = await fleet.categories.create({ name: 'Tractors' });
+  const category = await fleet.categories.create({ name: 'Tractors', kind: 'machine' });
   const machine = await fleet.machines.create({
     code: 'DRIVER-1',
     make: 'Deere',

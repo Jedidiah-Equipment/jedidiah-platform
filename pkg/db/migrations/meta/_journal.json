@@ -1030,6 +1030,13 @@
       "when": 1789029693194,
       "tag": "0146_hour_reading_comment",
       "breakpoints": true
+    },
+    {
+      "idx": 147,
+      "version": "7",
+      "when": 1789035440760,
+      "tag": "0147_fleet_category_kind_icon_colour",
+      "breakpoints": true
     }
   ]
 }

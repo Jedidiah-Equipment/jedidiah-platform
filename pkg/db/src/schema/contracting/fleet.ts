@@ -1,3 +1,4 @@
+import { categoryColours, categoryIconKeys, categoryKinds } from '@pkg/schema/contracting';
 import { relations, sql } from 'drizzle-orm';
 import { check, index, integer, numeric, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
 import { user } from '../auth.js';
@@ -12,18 +13,27 @@ const retirement = () => ({
   retiredReason: text('retired_reason'),
 });
 
+// Kind eligibility of a category reference spans two rows, so migration 0147 enforces it with
+// triggers in both write directions (like the driver role in 0134). The icon key is validated by
+// the API schema only: the glyph set grows in code and must not need a migration per glyph.
 export const contractingCategories = contractingSchema.table(
   'category',
   {
     id: uuid('id').defaultRandom().primaryKey(),
     name: text('name').notNull(),
-    presetRate: numeric('preset_rate', { precision: 12, scale: 2, mode: 'number' }).default(0).notNull(),
+    kind: text('kind', { enum: categoryKinds }).notNull(),
+    icon: text('icon', { enum: categoryIconKeys }).notNull(),
+    colour: text('colour', { enum: categoryColours }).notNull(),
     ...timestamps(),
   },
   (table) => [
-    uniqueIndex('category_name_ci_unique').on(sql`lower(${table.name})`),
+    uniqueIndex('category_kind_name_ci_unique').on(table.kind, sql`lower(${table.name})`),
     check('category_name_not_blank', sql`length(btrim(${table.name})) > 0`),
-    check('category_rate_nonnegative', sql`${table.presetRate} >= 0`),
+    check('category_kind', sql`${table.kind} IN ('machine', 'implement')`),
+    check(
+      'category_colour',
+      sql`${table.colour} IN ('blue', 'gray', 'green', 'orange', 'purple', 'red', 'teal', 'yellow')`,
+    ),
   ],
 );
 
@@ -66,7 +76,9 @@ export const contractingImplements = contractingSchema.table(
   {
     id: uuid('id').defaultRandom().primaryKey(),
     code: text('code').notNull(),
-    implementType: text('implement_type').notNull(),
+    categoryId: uuid('category_id')
+      .notNull()
+      .references(() => contractingCategories.id, { onDelete: 'restrict' }),
     notes: text('notes'),
     ...retirement(),
     ...timestamps(),
@@ -78,9 +90,16 @@ export const contractingImplements = contractingSchema.table(
       'implement_retirement_reason',
       sql`(${table.retiredAt} IS NULL AND ${table.retiredReason} IS NULL) OR (${table.retiredAt} IS NOT NULL AND length(btrim(${table.retiredReason})) > 0 AND ${table.retiredReason} IS NOT NULL)`,
     ),
+    index('implement_category_idx').on(table.categoryId),
   ],
 );
 
+export const contractingImplementRelations = relations(contractingImplements, ({ one }) => ({
+  category: one(contractingCategories, {
+    fields: [contractingImplements.categoryId],
+    references: [contractingCategories.id],
+  }),
+}));
 export const contractingMachineRelations = relations(contractingMachines, ({ one }) => ({
   category: one(contractingCategories, {
     fields: [contractingMachines.categoryId],

@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import type { DatabaseTransaction, Db, StoredFile } from '@pkg/db';
-import { contractingHourReadings, contractingMachines } from '@pkg/db/contracting';
+import { contractingCategories, contractingHourReadings, contractingMachines } from '@pkg/db/contracting';
 import { validateFile } from '@pkg/domain';
 import { meterDisagreementHint } from '@pkg/domain/contracting';
 import type { AuthId } from '@pkg/schema';
@@ -185,9 +185,15 @@ export async function captureReading({
 
 export async function listReadingExceptions({ db }: { db: Db }) {
   const rows = await db
-    .select({ ...getTableColumns(contractingHourReadings), machineCode: contractingMachines.code })
+    .select({
+      ...getTableColumns(contractingHourReadings),
+      machineCode: contractingMachines.code,
+      categoryIcon: contractingCategories.icon,
+      categoryColour: contractingCategories.colour,
+    })
     .from(contractingHourReadings)
     .innerJoin(contractingMachines, eq(contractingMachines.id, contractingHourReadings.machineId))
+    .innerJoin(contractingCategories, eq(contractingCategories.id, contractingMachines.categoryId))
     .where(
       or(
         eq(contractingHourReadings.disputed, true),

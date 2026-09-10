@@ -16,7 +16,7 @@ const test = createTester(async ({ db }) => {
     createdAt: new Date(),
     updatedAt: new Date(),
   });
-  const category = await createCategory({ db, actorUserId, input: { name: 'Tractors' } });
+  const category = await createCategory({ db, actorUserId, input: { name: 'Tractors', kind: 'machine' } });
   const machine = await createMachine({
     db,
     actorUserId,

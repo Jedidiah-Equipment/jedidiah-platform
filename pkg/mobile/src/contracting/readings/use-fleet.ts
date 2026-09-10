@@ -9,7 +9,8 @@ import { useTRPC } from '@/lib/trpc';
 /** Keep only the data these field screens need, scoped to API and operator. */
 function useSavedData<T>(name: string, live: T | undefined) {
   const session = useAuthSession();
-  const key = `contracting:fleet:v1:${apiBaseUrl}:${session.user.id}:${name}`;
+  // v2: field machines carry their category icon and colour (#1434).
+  const key = `contracting:fleet:v2:${apiBaseUrl}:${session.user.id}:${name}`;
   const [saved, setSaved] = useState<{ key: string; data: T } | null>(null);
   useEffect(() => {
     let active = true;

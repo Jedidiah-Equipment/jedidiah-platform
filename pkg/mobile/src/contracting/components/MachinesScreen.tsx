@@ -8,6 +8,7 @@ import { TextInput } from '@/components/ui/text-input';
 import { useReadingQueue } from '@/contracting/readings/ReadingQueueProvider';
 import { useFleet } from '@/contracting/readings/use-fleet';
 import { useIsOffline } from '@/lib/connectivity';
+import { CategoryIcon } from './CategoryIcon';
 import { ReadingButton } from './ReadingButton';
 
 export default function MachinesScreen() {
@@ -16,7 +17,19 @@ export default function MachinesScreen() {
   const offline = useIsOffline();
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState<string | null>(null);
-  const categories = [...new Map(fleet.data?.map((machine) => [machine.categoryId, machine.categoryName])).entries()];
+  const categories = [
+    ...new Map(
+      fleet.data?.map((machine) => [
+        machine.categoryId,
+        {
+          id: machine.categoryId,
+          name: machine.categoryName,
+          icon: machine.categoryIcon,
+          colour: machine.categoryColour,
+        },
+      ]),
+    ).values(),
+  ];
   const machines = fleet.data?.filter(
     (machine) =>
       machine.code.toLowerCase().includes(search.trim().toLowerCase()) &&
@@ -45,14 +58,15 @@ export default function MachinesScreen() {
         />
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
           <View className="flex-row gap-2">
-            {[{ id: null, name: 'All categories' }, ...categories.map(([id, name]) => ({ id, name }))].map((item) => (
+            {[{ id: null, name: 'All categories' }, ...categories].map((item) => (
               <Pressable
                 key={item.id ?? 'all'}
                 accessibilityRole="button"
                 accessibilityState={{ selected: category === item.id }}
                 onPress={() => setCategory(item.id)}
-                className={`rounded-full border border-border px-3 py-2 ${category === item.id ? 'bg-primary' : 'bg-surface'}`}
+                className={`flex-row items-center gap-2 rounded-full border border-border py-1.5 pr-3 pl-1.5 ${category === item.id ? 'bg-primary' : 'bg-surface'}`}
               >
+                {'icon' in item ? <CategoryIcon icon={item.icon} colour={item.colour} size={16} /> : null}
                 <Text className={category === item.id ? 'text-primary-foreground' : 'text-foreground'}>
                   {item.name}
                 </Text>
@@ -89,9 +103,12 @@ export default function MachinesScreen() {
             className="w-full gap-2 rounded-xl border border-border bg-surface p-4"
           >
             <View className="flex-row items-center justify-between gap-2">
-              <Text className="text-lg text-foreground" weight="bold">
-                {item.code}
-              </Text>
+              <View className="flex-row items-center gap-3">
+                <CategoryIcon icon={item.categoryIcon} colour={item.categoryColour} size={20} />
+                <Text className="text-lg text-foreground" weight="bold">
+                  {item.code}
+                </Text>
+              </View>
               <Text className="rounded-full bg-muted px-3 py-1 text-xs text-foreground">In Yard</Text>
             </View>
             <Text className="text-sm text-muted-foreground">

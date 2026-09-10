@@ -7,6 +7,7 @@ describe('implement code suggestion', () => {
     expect(implementCodePrefix('Tip trailer (6t)')).toBe('TIP-TRAILER-6T');
     expect(implementCodePrefix('  Ploeg / Ripper  ')).toBe('PLOEG-RIPPER');
     expect(implementCodePrefix('Sprühgerät')).toBe('SPRUHGERAT');
+    expect(implementCodePrefix('???')).toBe('IMPLEMENT');
   });
   it('takes one past the highest suffix, ignoring other prefixes and never filling gaps', () => {
     expect(nextImplementCode('GRAVEL-TRAILER', [])).toBe('GRAVEL-TRAILER-1');

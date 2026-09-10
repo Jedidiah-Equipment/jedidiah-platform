@@ -61,10 +61,12 @@ const glyphs = [
 export const categoryIcons: readonly CategoryIconGlyph[] = glyphs;
 export const CATEGORY_ICON_VIEW_BOX = '0 0 24 24';
 export const CATEGORY_ICON_STROKE_WIDTH = 2;
-export function categoryIcon(key: CategoryIconKey): CategoryIconGlyph {
-  const glyph = categoryIcons.find((icon) => icon.key === key);
-  if (!glyph) throw new Error(`Unknown category icon ${key}`);
-  return glyph;
+/**
+ * Never throws: the icon column has no DB check by design, so an installed mobile build older than
+ * the release that added a glyph can meet a key it does not know. It draws the generic instead.
+ */
+export function categoryIcon(key: string): CategoryIconGlyph {
+  return categoryIcons.find((icon) => icon.key === key) ?? genericMachine;
 }
 export function defaultCategoryIcon(kind: CategoryKind): CategoryIconKey {
   return kind === 'machine' ? 'generic-machine' : 'generic-implement';

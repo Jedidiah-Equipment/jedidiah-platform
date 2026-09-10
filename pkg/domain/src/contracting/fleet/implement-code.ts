@@ -1,11 +1,12 @@
 /** `Gravel trailer (6t)` → `GRAVEL-TRAILER-6T`: uppercase, one hyphen per run of anything else. */
 export function implementCodePrefix(categoryName: string): string {
-  return categoryName
+  const prefix = categoryName
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
     .toUpperCase()
     .replace(/[^A-Z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '');
+  return prefix || 'IMPLEMENT';
 }
 /**
  * The next `PREFIX-<n>`: one past the highest suffix already taken under that prefix, retired

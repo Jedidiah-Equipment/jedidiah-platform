@@ -19,12 +19,10 @@ export function CategoryIcon({
   icon,
   colour,
   size = 20,
-  label,
 }: {
   icon: CategoryIconKey;
   colour: CategoryColour;
   size?: 16 | 20 | 24;
-  label?: string;
 }) {
   const glyph = categoryIcon(icon);
   const tone = categoryColourClassNames[colour];
@@ -33,10 +31,8 @@ export function CategoryIcon({
     <View
       className={`items-center justify-center rounded-full border ${tone.chip}`}
       style={{ width: size + 10, height: size + 10 }}
-      accessibilityRole={label ? 'image' : undefined}
-      accessibilityLabel={label}
-      accessibilityElementsHidden={!label}
-      importantForAccessibility={label ? 'auto' : 'no-hide-descendants'}
+      accessibilityRole="image"
+      accessibilityLabel={glyph.label}
     >
       <StyledSvg
         className={tone.textByScheme[resolved]}

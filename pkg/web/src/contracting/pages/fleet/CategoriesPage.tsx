@@ -19,6 +19,7 @@ import {
   CategoryKindFilter,
   categoryKindLabels,
   categoryKindOptions,
+  iconAfterKindChange,
 } from './CategoryFields.js';
 import { FleetTable } from './FleetTable.js';
 import { useFleetInvalidation } from './use-fleet-invalidation.js';
@@ -111,11 +112,8 @@ export function CategoriesPage() {
                   label="Kind"
                   options={categoryKindOptions}
                   onValueCommit={(value) => {
-                    // A generic glyph follows the kind; a chosen one stays.
-                    const icon = form.getFieldValue('icon');
                     if (value === 'machine' || value === 'implement')
-                      if (icon === 'generic-machine' || icon === 'generic-implement')
-                        form.setFieldValue('icon', defaultCategoryIcon(value));
+                      form.setFieldValue('icon', iconAfterKindChange(value, form.getFieldValue('icon')));
                   }}
                 />
               )}

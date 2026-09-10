@@ -1,4 +1,4 @@
-import { categoryColours, categoryIcons } from '@pkg/domain/contracting';
+import { categoryColours, categoryIcons, defaultCategoryIcon } from '@pkg/domain/contracting';
 import type { Category, CategoryColour, CategoryIconKey, CategoryKind } from '@pkg/schema/contracting';
 import type React from 'react';
 import { useState } from 'react';
@@ -12,6 +12,10 @@ import { CategoryIcon, CategoryLabel } from '@/contracting/components/CategoryIc
 import { cn } from '@/lib/utils.js';
 
 export const categoryKindLabels: Record<CategoryKind, string> = { machine: 'Machine', implement: 'Implement' };
+/** A generic glyph follows the kind; a chosen one stays. */
+export function iconAfterKindChange(kind: CategoryKind, icon: CategoryIconKey): CategoryIconKey {
+  return icon === 'generic-machine' || icon === 'generic-implement' ? defaultCategoryIcon(kind) : icon;
+}
 export const categoryKindOptions = (Object.keys(categoryKindLabels) as CategoryKind[]).map((value) => ({
   value,
   label: categoryKindLabels[value],

@@ -12,7 +12,7 @@ import { CategoryLabel } from '@/contracting/components/CategoryIcon.js';
 import { useCan } from '@/hooks/use-access.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useTRPC } from '@/lib/trpc.js';
-import { CategoryColourField, CategoryIconField, categoryKindOptions } from './CategoryFields.js';
+import { CategoryColourField, CategoryIconField, categoryKindOptions, iconAfterKindChange } from './CategoryFields.js';
 import { useFleetInvalidation } from './use-fleet-invalidation.js';
 
 const CategoryFormValues = z.object({
@@ -81,7 +81,11 @@ function CategoryForm({ category }: { category: Category }) {
                       category.inUse ? 'Move its Machines or Implements elsewhere before changing the kind.' : undefined
                     }
                     options={categoryKindOptions}
-                    onValueCommit={autosave.commit}
+                    onValueCommit={(value) => {
+                      if (value === 'machine' || value === 'implement')
+                        form.setFieldValue('icon', iconAfterKindChange(value, form.getFieldValue('icon')));
+                      autosave.commit();
+                    }}
                   />
                 )}
               </form.AppField>

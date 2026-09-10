@@ -133,6 +133,10 @@ test('stores a trimmed capture comment and treats an empty comment field as none
     const blank = await app.inject(upload(machineId, null, true, { comment: '' }));
     expect(blank.statusCode).toBe(201);
     expect(blank.json().comment).toBeNull();
+    const wide = '燃'.repeat(2000);
+    const multibyte = await app.inject(upload(machineId, null, true, { comment: wide }));
+    expect(multibyte.statusCode).toBe(201);
+    expect(multibyte.json().comment).toBe(wide);
   } finally {
     await app.close();
   }

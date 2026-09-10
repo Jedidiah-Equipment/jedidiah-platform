@@ -12,9 +12,20 @@ const item = {
   photoLocalUri: 'file:///meter.jpg',
   comment: 'Glass cracked, digits hard to read',
 };
-test('uploads the original fields and photo together, without interpreting the AI result', async () => {
+const delivered = {
+  id: '8766e188-5041-4d7c-98f2-cbd47dca3c00',
+  machineId: '2c1e8a0e-2f7f-4a5b-9d3a-6f0b1c2d3e4f',
+  role: 'spot',
+  value: 12.3,
+  capturedAt: '2026-09-08T08:00:00.000Z',
+  disputed: false,
+  photo: { storageKey: 'k', contentType: 'image/jpeg', byteSize: 5, updatedAt: '2026-09-08T08:00:01.000Z' },
+  aiVerification: 'disagrees',
+  aiValue: 123,
+};
+test('uploads the original fields and photo together and returns the delivered reading without AI results', async () => {
   const photo = new Blob(['meter'], { type: 'image/jpeg' });
-  await uploadReading(
+  const result = await uploadReading(
     item,
     async (body) => {
       expect(body.get('localId')).toBe('capture-1');
@@ -23,13 +34,22 @@ test('uploads the original fields and photo together, without interpreting the A
       expect(body.get('expectedPreviousId')).toBe('previous-1');
       expect(body.get('comment')).toBe('Glass cracked, digits hard to read');
       expect(await (body.get('photo') as Blob).text()).toBe('meter');
-      return Response.json({ aiVerification: 'disagrees' }, { status: 201 });
+      return Response.json(delivered, { status: 201 });
     },
     photo,
   );
+  expect(result).toEqual({
+    id: '8766e188-5041-4d7c-98f2-cbd47dca3c00',
+    machineId: '2c1e8a0e-2f7f-4a5b-9d3a-6f0b1c2d3e4f',
+    role: 'spot',
+    value: 12.3,
+    capturedAt: '2026-09-08T08:00:00.000Z',
+    disputed: false,
+    photoBacked: true,
+  });
   await uploadReading({ ...item, comment: null }, async (body) => {
     expect(body.has('comment')).toBe(false);
-    return Response.json({}, { status: 201 });
+    return Response.json({ ...delivered, photo: null }, { status: 201 });
   });
 });
 test('separates a below-latest refusal from transient upload and authentication failures', async () => {

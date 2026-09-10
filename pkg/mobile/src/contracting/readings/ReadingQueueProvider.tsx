@@ -72,7 +72,7 @@ export function ReadingQueueProvider({ children }: { children: ReactNode }) {
             const controller = new AbortController();
             const timeout = setTimeout(() => controller.abort(), 60_000);
             try {
-              await uploadReading(
+              const delivered = await uploadReading(
                 item,
                 (body) =>
                   fetch(
@@ -82,14 +82,15 @@ export function ReadingQueueProvider({ children }: { children: ReactNode }) {
                 photo,
               );
               uploaded = true;
+              // Land the delivered reading in history before the queue drops the capture, so the
+              // latest known reading never falls back to the previous one while a refetch is pending.
+              queryClient.setQueryData(
+                trpc.contractingReadings.fieldHistory.queryKey({ machineId: item.machineId }),
+                (rows) => [delivered, ...(rows ?? []).filter((row) => row.id !== delivered.id)],
+              );
             } finally {
               clearTimeout(timeout);
             }
-            // Refresh the machine's history before the queue drops this capture, so the latest
-            // known reading never falls back to the previous one in between.
-            await queryClient.invalidateQueries({
-              queryKey: trpc.contractingReadings.fieldHistory.queryKey({ machineId: item.machineId }),
-            });
           },
           () => active && onlineManager.isOnline(),
         );

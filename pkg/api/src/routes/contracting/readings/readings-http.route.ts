@@ -8,7 +8,7 @@ import {
 } from '@pkg/core/contracting';
 import type { Db } from '@pkg/db';
 import { canCaptureBaseline } from '@pkg/domain/contracting';
-import { ReadingCaptureInput, ReadingIdInput } from '@pkg/schema/contracting';
+import { ReadingCaptureInput, ReadingComment, ReadingIdInput } from '@pkg/schema/contracting';
 import type { FastifyInstance, FastifyReply } from 'fastify';
 import {
   RouteHttpError,
@@ -23,6 +23,8 @@ export async function registerReadingHttpRoutes(
   dependencies: { db: Db; storage: StorageAdapter; readPhoto: ReadMeterPhoto },
 ) {
   const fieldCount = ReadingCaptureInput.keyof().options.length;
+  // Multipart caps bytes; the comment cap counts UTF-16 units, so allow the widest UTF-8 encoding.
+  const fieldSize = 4 * (ReadingComment.maxLength ?? 1024);
   app.post('/api/contracting/readings', async (request, reply) => {
     const auth = await requireRouteAuth(request, reply);
     if (!auth) return;
@@ -36,7 +38,7 @@ export async function registerReadingHttpRoutes(
           fields: fieldCount,
           parts: fieldCount + 1,
           fileSize: READING_PHOTO_POLICY.maxBytes,
-          fieldSize: 4096,
+          fieldSize,
         },
       })) {
         if (part.type === 'file') {

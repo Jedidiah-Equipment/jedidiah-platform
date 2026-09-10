@@ -7,7 +7,7 @@ export function latestKnownReading(
   machineId: string,
   queued: QueuedReading[],
   synced: SyncedReading[] | undefined,
-): { value: number; id: string | null } | undefined {
+): { value: number; id: string } | undefined {
   const local = queued
     .filter((row) => row.machineId === machineId)
     .sort((a, b) => Date.parse(b.capturedAt) - Date.parse(a.capturedAt))[0];

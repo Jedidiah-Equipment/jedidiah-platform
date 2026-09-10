@@ -1,0 +1,1 @@
+ALTER TABLE "contracting"."hour_reading" ADD COLUMN "comment" text;

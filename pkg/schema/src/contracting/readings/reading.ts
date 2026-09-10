@@ -4,6 +4,7 @@ import { DateIso } from '../../common/date.js';
 import { UUID } from '../../common/uuid.js';
 export const ReadingValue = z.number().nonnegative().max(999999999.9).multipleOf(0.1);
 export const ReadingReason = z.string().trim().min(1, 'A reason is required').max(2000);
+export const ReadingComment = z.string().trim().min(1).max(2000);
 export const ReadingCaptureInput = z
   .object({
     localId: UUID.optional(),
@@ -13,6 +14,7 @@ export const ReadingCaptureInput = z
     value: ReadingValue,
     capturedAt: z.iso.datetime({ offset: true }),
     disputePrevious: z.boolean().default(false),
+    comment: ReadingComment.nullable().optional(),
   })
   .strict();
 export type ReadingCaptureInput = z.infer<typeof ReadingCaptureInput>;
@@ -32,6 +34,7 @@ export const HourReading = z.object({
   capturedAt: DateIso,
   capturedByUserId: AuthId,
   method: z.enum(['photo', 'manual']),
+  comment: z.string().nullable(),
   photo: z
     .object({ byteSize: z.number(), contentType: z.string(), storageKey: z.string(), updatedAt: z.string() })
     .nullable(),

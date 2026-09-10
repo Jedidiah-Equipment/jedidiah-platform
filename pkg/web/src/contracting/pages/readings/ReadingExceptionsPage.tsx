@@ -47,6 +47,16 @@ export function ReadingExceptionsPage() {
     },
     { accessorKey: 'value', header: 'Hours', cell: ({ row }) => row.original.value.toFixed(1) },
     {
+      accessorKey: 'comment',
+      header: 'Capture comment',
+      cell: ({ row }) =>
+        row.original.comment ? (
+          <div className="max-w-xs whitespace-pre-wrap font-medium">{row.original.comment}</div>
+        ) : (
+          <span className="text-muted-foreground">No comment</span>
+        ),
+    },
+    {
       id: 'evidence',
       header: 'Evidence',
       cell: ({ row: { original: row } }) => (

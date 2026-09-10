@@ -121,3 +121,19 @@ test('accepts every mobile multipart field and retries a photo capture without d
     await app.close();
   }
 });
+
+test('stores a trimmed capture comment and treats an empty comment field as none', async ({ context }) => {
+  const { app, machineId } = context;
+  try {
+    const commented = await app.inject(
+      upload(machineId, null, true, { comment: '  Glass cracked, digits hard to read  ' }),
+    );
+    expect(commented.statusCode).toBe(201);
+    expect(commented.json().comment).toBe('Glass cracked, digits hard to read');
+    const blank = await app.inject(upload(machineId, null, true, { comment: '' }));
+    expect(blank.statusCode).toBe(201);
+    expect(blank.json().comment).toBeNull();
+  } finally {
+    await app.close();
+  }
+});

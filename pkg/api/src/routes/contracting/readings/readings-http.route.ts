@@ -50,6 +50,7 @@ export async function registerReadingHttpRoutes(
       }
       if (typeof fields.value === 'string' && fields.value.trim() !== '') fields.value = Number(fields.value);
       if (fields.expectedPreviousId === '') fields.expectedPreviousId = null;
+      if (fields.comment === '') fields.comment = null;
       if (fields.disputePrevious === 'true') fields.disputePrevious = true;
       if (fields.disputePrevious === 'false') fields.disputePrevious = false;
       const input = ReadingCaptureInput.parse(fields);

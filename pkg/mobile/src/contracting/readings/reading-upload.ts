@@ -7,6 +7,7 @@ export async function uploadReading(item: QueuedReading, send: (body: FormData) 
     body.append(field, String(item[field]));
   }
   if (item.expectedPreviousId !== undefined) body.append('expectedPreviousId', item.expectedPreviousId ?? '');
+  if (item.comment) body.append('comment', item.comment);
   if (item.photoLocalUri) {
     if (photo) body.append('photo', photo, 'meter.jpg');
     else body.append('photo', { uri: item.photoLocalUri, type: 'image/jpeg', name: 'meter.jpg' } as unknown as Blob);

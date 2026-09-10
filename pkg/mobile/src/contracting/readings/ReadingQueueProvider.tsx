@@ -85,6 +85,11 @@ export function ReadingQueueProvider({ children }: { children: ReactNode }) {
             } finally {
               clearTimeout(timeout);
             }
+            // Refresh the machine's history before the queue drops this capture, so the latest
+            // known reading never falls back to the previous one in between.
+            await queryClient.invalidateQueries({
+              queryKey: trpc.contractingReadings.fieldHistory.queryKey({ machineId: item.machineId }),
+            });
           },
           () => active && onlineManager.isOnline(),
         );

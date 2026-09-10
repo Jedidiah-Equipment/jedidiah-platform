@@ -11,6 +11,7 @@ const capture = (localId: string, capturedAt = '2026-09-08T08:00:00Z', machineId
   photoLocalUri: 'file:///readings/meter.jpg',
   disputePrevious: false,
   expectedPreviousId: 'server-previous',
+  comment: null,
 });
 beforeEach(() => AsyncStorage.clear());
 

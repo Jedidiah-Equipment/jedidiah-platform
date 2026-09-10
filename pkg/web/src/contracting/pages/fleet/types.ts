@@ -57,12 +57,15 @@ export function machinePatchInput(id: string, values: MachineFormValues) {
   });
 }
 export const createMachineInput = (values: z.infer<typeof MachineCreateValues>) => MachineCreateInput.parse(values);
-export const ImplementCreateValues = z.object({ code: FleetCode, implementType: FleetName });
+export const ImplementCreateValues = z.object({
+  categoryId: requiredSelection(UUID, 'Select a category'),
+  code: FleetCode,
+});
 export const ImplementFormValues = ImplementCreateValues.extend({ notes: optionalText });
 export type ImplementFormValues = z.infer<typeof ImplementFormValues>;
 export const implementFormValues = (row: Implement): ImplementFormValues => ({
   code: row.code,
-  implementType: row.implementType,
+  categoryId: row.categoryId,
   notes: row.notes ?? '',
 });
 export const implementPatchInput = (id: string, values: ImplementFormValues) =>

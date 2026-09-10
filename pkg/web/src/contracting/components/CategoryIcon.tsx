@@ -1,0 +1,59 @@
+import {
+  CATEGORY_ICON_STROKE_WIDTH,
+  CATEGORY_ICON_VIEW_BOX,
+  categoryColourClassNames,
+  categoryIcon,
+} from '@pkg/domain/contracting';
+import type { CategoryColour, CategoryIconKey } from '@pkg/schema/contracting';
+import { cn } from '@/lib/utils.js';
+
+/**
+ * A category's glyph on its tinted disc, the thumbnail every fleet surface shows. Decorative beside
+ * the category name; pass `label` when it stands alone (a filter chip) so it is announced.
+ */
+export function CategoryIcon({
+  icon,
+  colour,
+  size = 20,
+  label,
+  className,
+}: {
+  icon: CategoryIconKey;
+  colour: CategoryColour;
+  size?: 16 | 20 | 24;
+  label?: string;
+  className?: string;
+}) {
+  const glyph = categoryIcon(icon);
+  const tone = categoryColourClassNames[colour];
+  return (
+    <span
+      className={cn(
+        'inline-flex shrink-0 items-center justify-center rounded-full border',
+        tone.chip,
+        tone.text,
+        className,
+      )}
+      style={{ width: size + 10, height: size + 10 }}
+      aria-hidden={label ? undefined : true}
+    >
+      <svg
+        role="img"
+        aria-label={label ?? glyph.label}
+        width={size}
+        height={size}
+        viewBox={CATEGORY_ICON_VIEW_BOX}
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={CATEGORY_ICON_STROKE_WIDTH}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <title>{label ?? glyph.label}</title>
+        {glyph.paths.map((d) => (
+          <path key={d} d={d} />
+        ))}
+      </svg>
+    </span>
+  );
+}

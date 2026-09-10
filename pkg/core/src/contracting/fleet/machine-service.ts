@@ -13,6 +13,7 @@ import {
 import { and, asc, eq, isNotNull, isNull, sql } from 'drizzle-orm';
 import { defineAuditDescriptor, recordAuditCreate } from '../../audit/audit-writer.js';
 import { mutateEntity } from '../../audit/mutate-entity.js';
+import { assertCategoryKind } from './category-service.js';
 import { assertNotRetired, FleetError, withFleetConstraints } from './fleet-errors.js';
 import { removeFleetEntry } from './remove-fleet-entry.js';
 
@@ -28,12 +29,17 @@ const descriptor = defineAuditDescriptor<Row>({
   }),
 });
 const related = { category: true, currentDriver: { columns: { name: true } } } as const;
-type RelatedRow = Row & { category: { name: string }; currentDriver: { name: string } | null };
+type RelatedRow = Row & {
+  category: { name: string; icon: string; colour: string };
+  currentDriver: { name: string } | null;
+};
 function mapMachine(row: RelatedRow) {
   const { category: _category, currentDriver: _driver, ...fields } = row;
   return Machine.parse({
     ...fields,
     categoryName: row.category.name,
+    categoryIcon: row.category.icon,
+    categoryColour: row.category.colour,
     currentDriverName: row.currentDriver?.name ?? null,
     availability: 'in-yard',
     retiredAt: row.retiredAt?.toISOString() ?? null,
@@ -83,6 +89,7 @@ export async function createMachine({
 }) {
   return withFleetConstraints(() =>
     db.transaction(async (tx) => {
+      await assertCategoryKind(tx, input.categoryId, 'machine');
       await assertDriver(tx, input.currentDriverUserId);
       const [row] = await tx
         .insert(contractingMachines)
@@ -113,6 +120,7 @@ export async function patchMachine({
       notFound: () => new FleetError('fleet.not_found', 'Machine not found.'),
       assert: async (tx, before) => {
         assertNotRetired(before);
+        if (input.categoryId !== undefined) await assertCategoryKind(tx, input.categoryId, 'machine');
         await assertDriver(
           tx,
           input.currentDriverUserId === undefined ? before.currentDriverUserId : input.currentDriverUserId,

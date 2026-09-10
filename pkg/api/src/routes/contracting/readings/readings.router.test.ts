@@ -18,7 +18,7 @@ test('reserves baselines for admins and exceptions for managers, behind the busi
   const session = mockSession(null);
   session.user.contractingRole = 'contracting-admin';
   const admin = context.createCaller(session);
-  const category = await admin.contractingFleet.categories.create({ name: 'Tractors' });
+  const category = await admin.contractingFleet.categories.create({ name: 'Tractors', kind: 'machine' });
   const machine = await admin.contractingFleet.machines.create({
     code: 'T1',
     make: 'Deere',
@@ -52,7 +52,7 @@ test('foremen can find active Machines and read field history without fleet mana
   const adminSession = mockSession(null);
   adminSession.user.contractingRole = 'contracting-admin';
   const admin = context.createCaller(adminSession);
-  const category = await admin.contractingFleet.categories.create({ name: 'Tractors', presetRate: 900 });
+  const category = await admin.contractingFleet.categories.create({ name: 'Tractors', kind: 'machine' });
   const machine = await admin.contractingFleet.machines.create({
     code: 'FIELD-1',
     make: 'Deere',
@@ -75,6 +75,8 @@ test('foremen can find active Machines and read field history without fleet mana
       model: '6140',
       categoryId: category.id,
       categoryName: 'Tractors',
+      categoryIcon: 'generic-machine',
+      categoryColour: 'gray',
       availability: 'in-yard',
     },
   ]);

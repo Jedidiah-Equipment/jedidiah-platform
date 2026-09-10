@@ -7,6 +7,7 @@ import { useReadingQueue } from '@/contracting/readings/ReadingQueueProvider';
 import { useCapturePermission } from '@/contracting/readings/use-capture-permission';
 import { useFleet, useMachineReadings } from '@/contracting/readings/use-fleet';
 import { useIsOffline } from '@/lib/connectivity';
+import { CategoryIcon } from './CategoryIcon';
 import { ReadingButton } from './ReadingButton';
 
 export default function MachineScreen() {
@@ -32,9 +33,12 @@ export default function MachineScreen() {
       <ScrollView contentContainerStyle={{ padding: 16, gap: 16 }}>
         {offline ? <Text className="text-muted-foreground">Offline · latest saved history</Text> : null}
         <View className="gap-2 rounded-xl border border-border bg-surface p-4">
-          <Text className="text-lg text-foreground" weight="bold">
-            {machine ? `${machine.make} ${machine.model}` : 'Machine details unavailable'}
-          </Text>
+          <View className="flex-row items-center gap-3">
+            {machine ? <CategoryIcon icon={machine.categoryIcon} colour={machine.categoryColour} size={24} /> : null}
+            <Text className="text-lg text-foreground" weight="bold">
+              {machine ? `${machine.make} ${machine.model}` : 'Machine details unavailable'}
+            </Text>
+          </View>
           <Text className="text-muted-foreground">{machine?.categoryName} · In Yard</Text>
           <Text className="text-3xl text-foreground" weight="bold">
             {readings.data?.[0] ? `${readings.data[0].value.toFixed(1)} h` : 'No known reading'}

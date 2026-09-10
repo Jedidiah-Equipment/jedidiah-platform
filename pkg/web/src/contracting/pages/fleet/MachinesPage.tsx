@@ -8,9 +8,11 @@ import { CreateEntityDialog } from '@/components/form/index.js';
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
 import { Badge } from '@/components/ui/badge.js';
 import { Button } from '@/components/ui/button.js';
+import { CategoryIcon } from '@/contracting/components/CategoryIcon.js';
 import { useCan } from '@/hooks/use-access.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useTRPC } from '@/lib/trpc.js';
+import { categoryOptions } from './CategoryFields.js';
 import { FleetStatusFilter } from './FleetStatusFilter.js';
 import { FleetTable } from './FleetTable.js';
 import { createMachineInput, MachineCreateValues } from './types.js';
@@ -24,7 +26,7 @@ export function MachinesPage() {
   const [open, setOpen] = useState(false);
   const [status, setStatus] = useState<FleetListInput['status']>('active');
   const query = useQuery(trpc.contractingFleet.machines.list.queryOptions({ status }));
-  const categories = useQuery(trpc.contractingFleet.categories.list.queryOptions());
+  const categories = useQuery(trpc.contractingFleet.categories.list.queryOptions({ kind: 'machine' }));
   const options = useQuery(trpc.contractingFleet.machines.options.queryOptions());
   const create = useMutation(
     trpc.contractingFleet.machines.create.mutationOptions({
@@ -47,6 +49,12 @@ export function MachinesPage() {
         enableGlobalFilter: false,
         enableColumnFilter: true,
         filterFn: 'equalsString',
+        cell: ({ row }) => (
+          <span className="flex items-center gap-2">
+            <CategoryIcon icon={row.original.categoryIcon} colour={row.original.categoryColour} />
+            {row.original.categoryName}
+          </span>
+        ),
         meta: {
           filterVariant: 'select',
           filterOptions: (categories.data ?? []).map((row) => ({ label: row.name, value: row.name })),
@@ -93,7 +101,7 @@ export function MachinesPage() {
         defaultValues={{ code: '', make: '', model: '', categoryId: '' }}
         validator={MachineCreateValues}
         canSubmit={categories.isSuccess && options.isSuccess}
-        description={categories.data?.length === 0 ? 'Create a Category before adding a Machine.' : undefined}
+        description={categories.data?.length === 0 ? 'Create a Machine category before adding a Machine.' : undefined}
         onCreate={(values) => create.mutateAsync(createMachineInput(values))}
         onCreated={async (row) => {
           await invalidate();
@@ -111,12 +119,7 @@ export function MachinesPage() {
               {(field) => <field.CreatableComboboxField label="Model" options={options.data?.models ?? []} />}
             </form.AppField>
             <form.AppField name="categoryId">
-              {(field) => (
-                <field.SelectField
-                  label="Category"
-                  options={(categories.data ?? []).map((row) => ({ label: row.name, value: row.id }))}
-                />
-              )}
+              {(field) => <field.SelectField label="Category" options={categoryOptions(categories.data ?? [])} />}
             </form.AppField>
           </>
         )}

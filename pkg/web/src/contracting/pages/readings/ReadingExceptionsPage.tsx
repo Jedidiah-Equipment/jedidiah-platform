@@ -8,6 +8,7 @@ import { type DataTableColumnDef, useDataTable } from '@/components/data-table/f
 import { CreateEntityDialog } from '@/components/form/index.js';
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
 import { Button } from '@/components/ui/button.js';
+import { CategoryIcon } from '@/contracting/components/CategoryIcon.js';
 import { getClientConfig } from '@/lib/app-config.js';
 import { useTRPC } from '@/lib/trpc.js';
 
@@ -34,7 +35,16 @@ export function ReadingExceptionsPage() {
   const amend = useMutation(trpc.contractingReadings.amend.mutationOptions({ onSuccess: invalidate }));
   const reverify = useMutation(trpc.contractingReadings.reverify.mutationOptions({ onSuccess: invalidate }));
   const columns: DataTableColumnDef<Reading>[] = [
-    { accessorKey: 'machineCode', header: 'Machine' },
+    {
+      accessorKey: 'machineCode',
+      header: 'Machine',
+      cell: ({ row }) => (
+        <span className="flex items-center gap-2">
+          <CategoryIcon icon={row.original.categoryIcon} colour={row.original.categoryColour} size={16} />
+          {row.original.machineCode}
+        </span>
+      ),
+    },
     {
       id: 'capture',
       header: 'Capture',

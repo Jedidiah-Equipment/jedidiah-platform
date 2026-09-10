@@ -5,7 +5,6 @@ import {
   getCategory,
   getImplement,
   getMachine,
-  implementTypes,
   isFleetError,
   listCategories,
   listImplements,
@@ -19,22 +18,22 @@ import {
   removeMachine,
   retireImplement,
   retireMachine,
+  suggestImplementCode,
 } from '@pkg/core/contracting';
-import { hasPermission } from '@pkg/domain';
 import {
-  type Category,
   CategoryCreateInput,
+  CategoryListInput,
   CategoryPatchInput,
   FleetIdInput,
   FleetListInput,
   FleetRetireInput,
+  ImplementCodeSuggestInput,
   ImplementCreateInput,
   ImplementPatchInput,
   MachineCreateInput,
   MachineListInput,
   MachinePatchInput,
 } from '@pkg/schema/contracting';
-import { TRPCError } from '@trpc/server';
 import { mapKnownCoreError } from '../../../trpc/errors.js';
 import { authorizedProcedure, router } from '../../../trpc/init.js';
 
@@ -45,47 +44,31 @@ function mapFleetErrors<T>(action: () => Promise<T>) {
     code:
       error.code === 'fleet.not_found'
         ? 'NOT_FOUND'
-        : error.code === 'fleet.invalid_driver' || error.code === 'fleet.invalid_reference'
+        : error.code === 'fleet.invalid_driver' ||
+            error.code === 'fleet.invalid_reference' ||
+            error.code === 'fleet.invalid_category'
           ? 'BAD_REQUEST'
           : 'CONFLICT',
   }));
 }
-function visibleCategory(category: Category, access: Parameters<typeof hasPermission>[0]): Category {
-  if (hasPermission(access, 'contracting_rate:read')) return category;
-  const { presetRate: _rate, ...visible } = category;
-  return visible;
-}
-function assertRateUpdate(input: { presetRate?: number | undefined }, access: Parameters<typeof hasPermission>[0]) {
-  if (input.presetRate !== undefined && !hasPermission(access, 'contracting_rate:update')) {
-    throw new TRPCError({ code: 'FORBIDDEN', message: 'You do not have permission to edit preset rates.' });
-  }
-}
 export const contractingFleetRouter = router({
   categories: router({
-    list: authorizedProcedure('contracting_machine:read').query(async ({ ctx }) =>
-      (await listCategories({ db: ctx.db })).map((category) => visibleCategory(category, ctx.access)),
-    ),
+    list: authorizedProcedure('contracting_machine:read')
+      .input(CategoryListInput.optional())
+      .query(({ ctx, input }) => listCategories({ db: ctx.db, input: input ?? {} })),
     get: authorizedProcedure('contracting_machine:read')
       .input(FleetIdInput)
-      .query(({ ctx, input }) =>
-        mapFleetErrors(async () => visibleCategory(await getCategory({ db: ctx.db, id: input.id }), ctx.access)),
-      ),
+      .query(({ ctx, input }) => mapFleetErrors(() => getCategory({ db: ctx.db, id: input.id }))),
     create: authorizedProcedure('contracting_machine:update')
       .input(CategoryCreateInput)
-      .mutation(({ ctx, input }) => {
-        assertRateUpdate(input, ctx.access);
-        return mapFleetErrors(async () =>
-          visibleCategory(await createCategory({ db: ctx.db, actorUserId: ctx.session.user.id, input }), ctx.access),
-        );
-      }),
+      .mutation(({ ctx, input }) =>
+        mapFleetErrors(() => createCategory({ db: ctx.db, actorUserId: ctx.session.user.id, input })),
+      ),
     patch: authorizedProcedure('contracting_machine:update')
       .input(CategoryPatchInput)
-      .mutation(({ ctx, input }) => {
-        assertRateUpdate(input, ctx.access);
-        return mapFleetErrors(async () =>
-          visibleCategory(await patchCategory({ db: ctx.db, actorUserId: ctx.session.user.id, input }), ctx.access),
-        );
-      }),
+      .mutation(({ ctx, input }) =>
+        mapFleetErrors(() => patchCategory({ db: ctx.db, actorUserId: ctx.session.user.id, input })),
+      ),
     remove: authorizedProcedure('contracting_machine:update')
       .input(FleetIdInput)
       .mutation(({ ctx, input }) =>
@@ -125,7 +108,9 @@ export const contractingFleetRouter = router({
     list: authorizedProcedure('contracting_machine:read')
       .input(FleetListInput)
       .query(({ ctx, input }) => listImplements({ db: ctx.db, input })),
-    options: authorizedProcedure('contracting_machine:read').query(({ ctx }) => implementTypes({ db: ctx.db })),
+    suggestCode: authorizedProcedure('contracting_machine:update')
+      .input(ImplementCodeSuggestInput)
+      .query(({ ctx, input }) => mapFleetErrors(() => suggestImplementCode({ db: ctx.db, ...input }))),
     get: authorizedProcedure('contracting_machine:read')
       .input(FleetIdInput)
       .query(({ ctx, input }) => mapFleetErrors(() => getImplement({ db: ctx.db, id: input.id }))),

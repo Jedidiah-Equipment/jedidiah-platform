@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { implementPatchInput, MachineFormValues, machinePatchInput } from './types.js';
+import { ImplementCreateValues, implementPatchInput, MachineFormValues, machinePatchInput } from './types.js';
 
 const id = '00000000-0000-4000-8000-000000000001';
 describe('fleet form mappers', () => {
@@ -35,12 +35,13 @@ describe('fleet form mappers', () => {
     });
     expect(MachineFormValues.safeParse({ ...values, serviceIntervalHours: -10 }).success).toBe(false);
   });
-  it('clears implement notes and keeps the implement type independent of machine categories', () => {
-    expect(implementPatchInput(id, { code: 'disc-1', implementType: 'Offset disc', notes: '' })).toEqual({
+  it('clears implement notes, normalizes the code and requires a category', () => {
+    expect(implementPatchInput(id, { code: 'disc-1', categoryId: id, notes: '' })).toEqual({
       id,
       code: 'DISC-1',
-      implementType: 'Offset disc',
+      categoryId: id,
       notes: null,
     });
+    expect(ImplementCreateValues.safeParse({ code: 'DISC-1', categoryId: '' }).success).toBe(false);
   });
 });

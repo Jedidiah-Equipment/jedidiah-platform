@@ -61,7 +61,8 @@ export const ProductCostingEditor: React.FC<ProductCostingEditorProps> = ({
         <CardHeader>
           <CardTitle>Raw materials per unit</CardTitle>
           <CardDescription>
-            Add the periodic-stock material consumed to build one Product unit. Quantities are always per unit.
+            Enter the periodic-stock material consumed to build one Product unit, using the unit shown beside each
+            quantity. Fractions of a piece are allowed.
           </CardDescription>
           <CardAction className="flex gap-2">
             <div className="w-64 max-w-full">
@@ -111,6 +112,8 @@ export const ProductCostingEditor: React.FC<ProductCostingEditorProps> = ({
           ) : null}
           {materialLines.map((line, index) => {
             const part = partsById.get(line.partId);
+            const purchaseLengthMm = part?.unitOfMeasure === 'mm' ? part.standardPurchaseLengthMm : null;
+            const descriptionId = `product-material-quantity-${line.partId}-description`;
 
             return (
               <div
@@ -126,6 +129,15 @@ export const ProductCostingEditor: React.FC<ProductCostingEditorProps> = ({
                 <form.AppField name={`materialLines[${index}].quantityPerUnit`}>
                   {(field) => (
                     <field.NumberField
+                      aria-describedby={purchaseLengthMm ? descriptionId : undefined}
+                      description={
+                        purchaseLengthMm ? (
+                          <span id={descriptionId}>
+                            Enter pieces: 2 means two {purchaseLengthMm} mm pieces. For a partial piece, divide the
+                            length used in mm by {purchaseLengthMm}, rounded to 3 decimal places.
+                          </span>
+                        ) : undefined
+                      }
                       inputMode="decimal"
                       label={`Quantity per unit${part ? ` (${formatPurchaseUnitLabel(part)})` : ''}`}
                       min={0.001}

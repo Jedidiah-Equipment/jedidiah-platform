@@ -12,7 +12,12 @@ and management overhead on the [Labor Rate Card](/admin/maintain-labor-rates).
    Parts](./perpetual-and-periodic-stock.md) before changing the setting.
 2. Open **Products**, open the Product, and select **Costing**.
 3. Under **Raw materials per unit**, select a raw material and press **Add**, then enter its
-   **Quantity per unit**.
+   **Quantity per unit** for one Product unit, using the unit shown beside the field. For
+   **Pieces · 6000 mm each**, enter `2` for two whole 6000 mm pieces (12 m total), or `0.5` for
+   half a piece (3 m). For a partial length, divide the length used in mm by the Part's
+   **Standard Purchase Length** in mm and round to at most three decimal places: 2 m from a
+   6000 mm bar is `2000 ÷ 6000 = 0.333` rounded. For plate material, enter the fraction of a
+   whole plate's area used, with no waste allowance; see [Estimated Stock on Hand](./estimated-stock-on-hand.md).
 4. Under **Labor per unit**, add each Department involved and enter its **Days per staff member** and
    **Staff**. Hours derive from the hours per working day on the Labor Rate Card.
 5. Wait for the saved status. Adding or removing a line saves the whole Product Material List and

@@ -3,7 +3,7 @@ import { AuthId } from '../../auth/auth-id.js';
 import { DateIso } from '../../common/date.js';
 import { nullableTrimmedTextInput, nullableTrimmedTextInputOptional, requiredTrimmedText } from '../../common/text.js';
 import { UUID } from '../../common/uuid.js';
-import { categoryColours, categoryIconKeys, categoryKinds } from './category-icon-keys.js';
+import { categoryColours, categoryIconKeys, categoryKinds } from './category-enums.js';
 
 export const FleetCode = requiredTrimmedText('Code is required').transform((value) => value.toUpperCase());
 export const FleetName = requiredTrimmedText('Name is required');
@@ -29,13 +29,13 @@ export type MachineListInput = z.infer<typeof MachineListInput>;
 
 export const CategoryKind = z.enum(categoryKinds);
 export type CategoryKind = z.infer<typeof CategoryKind>;
-export const CategoryIcon = z.enum(categoryIconKeys);
-export type CategoryIconKey = z.infer<typeof CategoryIcon>;
+export const CategoryIconKey = z.enum(categoryIconKeys);
+export type CategoryIconKey = z.infer<typeof CategoryIconKey>;
 export const CategoryColour = z.enum(categoryColours);
 export type CategoryColour = z.infer<typeof CategoryColour>;
 /** Icon and colour fall back to the kind's default in core when omitted. */
 export const CategoryCreateInput = z
-  .object({ name: FleetName, kind: CategoryKind, icon: CategoryIcon.optional(), colour: CategoryColour.optional() })
+  .object({ name: FleetName, kind: CategoryKind, icon: CategoryIconKey.optional(), colour: CategoryColour.optional() })
   .strict();
 export type CategoryCreateInput = z.infer<typeof CategoryCreateInput>;
 export const CategoryPatchInput = CategoryCreateInput.partial().extend({ id: UUID }).strict();
@@ -44,7 +44,7 @@ export const Category = z.object({
   id: UUID,
   name: FleetName,
   kind: CategoryKind,
-  icon: CategoryIcon,
+  icon: CategoryIconKey,
   colour: CategoryColour,
   /** Referenced by a Machine or Implement, which locks the kind. */
   inUse: z.boolean(),
@@ -54,7 +54,7 @@ export const Category = z.object({
 export type Category = z.infer<typeof Category>;
 export const CategoryListInput = z.object({ kind: CategoryKind.optional() });
 export type CategoryListInput = z.infer<typeof CategoryListInput>;
-const categoryProjection = { categoryName: FleetName, categoryIcon: CategoryIcon, categoryColour: CategoryColour };
+const categoryProjection = { categoryName: FleetName, categoryIcon: CategoryIconKey, categoryColour: CategoryColour };
 
 export const MachineCreateInput = z
   .object({

@@ -58,7 +58,7 @@ const glyphs = [
 ] as const satisfies readonly CategoryIconGlyph[];
 
 /** Every fleet glyph in picker order, one per key the schema accepts. */
-export const categoryIcons: readonly (CategoryIconGlyph & { key: CategoryIconKey })[] = glyphs as never;
+export const categoryIcons: readonly CategoryIconGlyph[] = glyphs;
 export const CATEGORY_ICON_VIEW_BOX = '0 0 24 24';
 export const CATEGORY_ICON_STROKE_WIDTH = 2;
 export function categoryIcon(key: CategoryIconKey): CategoryIconGlyph {

@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { AuthId } from '../../auth/auth-id.js';
 import { DateIso } from '../../common/date.js';
 import { UUID } from '../../common/uuid.js';
-import { CategoryColour, CategoryIcon } from '../fleet/fleet.js';
+import { CategoryColour, CategoryIconKey } from '../fleet/fleet.js';
 export const ReadingValue = z.number().nonnegative().max(999999999.9).multipleOf(0.1);
 export const ReadingReason = z.string().trim().min(1, 'A reason is required').max(2000);
 export const ReadingComment = z.string().trim().min(1).max(2000);
@@ -54,7 +54,7 @@ export const HourReading = z.object({
 export type HourReading = z.infer<typeof HourReading>;
 export const ReadingException = HourReading.extend({
   machineCode: z.string(),
-  categoryIcon: CategoryIcon,
+  categoryIcon: CategoryIconKey,
   categoryColour: CategoryColour,
 });
 export type ReadingException = z.infer<typeof ReadingException>;

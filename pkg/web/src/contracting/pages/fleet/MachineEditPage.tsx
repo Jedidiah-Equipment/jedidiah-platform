@@ -5,7 +5,7 @@ import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { AutosaveStatus, useAutosaveForm } from '@/components/form/index.js';
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
 import { Card, CardContent } from '@/components/ui/card.js';
-import { CategoryIcon } from '@/contracting/components/CategoryIcon.js';
+import { CategoryLabel } from '@/contracting/components/CategoryIcon.js';
 import { useCan } from '@/hooks/use-access.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { categoryOptions } from './CategoryFields.js';
@@ -19,10 +19,12 @@ export function MachineEditPage({ id }: { id: string }) {
     <PageLayout
       title={
         query.data ? (
-          <span className="flex items-center gap-3">
-            <CategoryIcon icon={query.data.categoryIcon} colour={query.data.categoryColour} size={24} />
-            {query.data.code}
-          </span>
+          <CategoryLabel
+            icon={query.data.categoryIcon}
+            colour={query.data.categoryColour}
+            name={query.data.code}
+            size={24}
+          />
         ) : (
           'Machine'
         )

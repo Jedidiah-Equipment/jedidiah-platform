@@ -8,7 +8,7 @@ import { CreateEntityDialog } from '@/components/form/index.js';
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
 import { Badge } from '@/components/ui/badge.js';
 import { Button } from '@/components/ui/button.js';
-import { CategoryIcon } from '@/contracting/components/CategoryIcon.js';
+import { CategoryLabel } from '@/contracting/components/CategoryIcon.js';
 import { useCan } from '@/hooks/use-access.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useTRPC } from '@/lib/trpc.js';
@@ -26,10 +26,11 @@ const columns: DataTableColumnDef<Implement>[] = [
     enableGlobalFilter: false,
     enableSorting: true,
     cell: ({ row }) => (
-      <span className="flex items-center gap-2">
-        <CategoryIcon icon={row.original.categoryIcon} colour={row.original.categoryColour} />
-        {row.original.categoryName}
-      </span>
+      <CategoryLabel
+        icon={row.original.categoryIcon}
+        colour={row.original.categoryColour}
+        name={row.original.categoryName}
+      />
     ),
   },
   { accessorKey: 'notes', header: 'Notes', enableGlobalFilter: false },

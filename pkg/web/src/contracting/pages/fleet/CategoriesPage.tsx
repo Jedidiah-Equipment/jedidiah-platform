@@ -1,4 +1,5 @@
-import { type Category, CategoryKind, FleetName } from '@pkg/schema/contracting';
+import { DEFAULT_CATEGORY_COLOUR, defaultCategoryIcon } from '@pkg/domain/contracting';
+import { type Category, CategoryColour, CategoryIconKey, CategoryKind, FleetName } from '@pkg/schema/contracting';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import { useState } from 'react';
@@ -8,25 +9,38 @@ import type { DataTableColumnDef } from '@/components/data-table/features.js';
 import { CreateEntityDialog } from '@/components/form/index.js';
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
 import { Button } from '@/components/ui/button.js';
-import { CategoryIcon } from '@/contracting/components/CategoryIcon.js';
+import { CategoryLabel } from '@/contracting/components/CategoryIcon.js';
 import { useCan } from '@/hooks/use-access.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useTRPC } from '@/lib/trpc.js';
-import { CategoryKindFilter, categoryKindLabels, categoryKindOptions } from './CategoryFields.js';
+import {
+  CategoryColourField,
+  CategoryIconField,
+  CategoryKindFilter,
+  categoryKindLabels,
+  categoryKindOptions,
+} from './CategoryFields.js';
 import { FleetTable } from './FleetTable.js';
 import { useFleetInvalidation } from './use-fleet-invalidation.js';
 
-const CategoryCreateValues = z.object({ name: FleetName, kind: CategoryKind });
+const CategoryCreateValues = z.object({
+  name: FleetName,
+  kind: CategoryKind,
+  icon: CategoryIconKey,
+  colour: CategoryColour,
+});
 const columns: DataTableColumnDef<Category>[] = [
   {
     accessorKey: 'name',
     header: 'Category',
     enableSorting: true,
     cell: ({ row }) => (
-      <span className="flex items-center gap-2 font-medium">
-        <CategoryIcon icon={row.original.icon} colour={row.original.colour} />
-        {row.original.name}
-      </span>
+      <CategoryLabel
+        icon={row.original.icon}
+        colour={row.original.colour}
+        name={row.original.name}
+        className="font-medium"
+      />
     ),
   },
   {
@@ -74,8 +88,12 @@ export function CategoriesPage() {
         open={open}
         onOpenChange={setOpen}
         title="New category"
-        description="The icon and colour start at the kind's default; set them on the category once it exists."
-        defaultValues={{ name: '', kind: (kind === 'implement' ? 'implement' : 'machine') as CategoryKind }}
+        defaultValues={{
+          name: '',
+          kind: (kind === 'implement' ? 'implement' : 'machine') as CategoryKind,
+          icon: defaultCategoryIcon(kind === 'implement' ? 'implement' : 'machine'),
+          colour: DEFAULT_CATEGORY_COLOUR,
+        }}
         validator={CategoryCreateValues}
         onCreate={(values) => create.mutateAsync(values)}
         onCreated={async (row) => {
@@ -88,8 +106,28 @@ export function CategoriesPage() {
           <>
             <form.AppField name="name">{(field) => <field.TextField label="Name" />}</form.AppField>
             <form.AppField name="kind">
-              {(field) => <field.SelectField label="Kind" options={categoryKindOptions} />}
+              {(field) => (
+                <field.SelectField
+                  label="Kind"
+                  options={categoryKindOptions}
+                  onValueCommit={(value) => {
+                    // A generic glyph follows the kind; a chosen one stays.
+                    const icon = form.getFieldValue('icon');
+                    if (value === 'machine' || value === 'implement')
+                      if (icon === 'generic-machine' || icon === 'generic-implement')
+                        form.setFieldValue('icon', defaultCategoryIcon(value));
+                  }}
+                />
+              )}
             </form.AppField>
+            <form.Subscribe selector={(state) => [state.values.icon, state.values.colour] as const}>
+              {([icon, colour]) => (
+                <>
+                  <form.AppField name="icon">{() => <CategoryIconField colour={colour} />}</form.AppField>
+                  <form.AppField name="colour">{() => <CategoryColourField icon={icon} />}</form.AppField>
+                </>
+              )}
+            </form.Subscribe>
           </>
         )}
       </CreateEntityDialog>

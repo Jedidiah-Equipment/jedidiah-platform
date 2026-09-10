@@ -8,7 +8,7 @@ import { type DataTableColumnDef, useDataTable } from '@/components/data-table/f
 import { CreateEntityDialog } from '@/components/form/index.js';
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
 import { Button } from '@/components/ui/button.js';
-import { CategoryIcon } from '@/contracting/components/CategoryIcon.js';
+import { CategoryLabel } from '@/contracting/components/CategoryIcon.js';
 import { getClientConfig } from '@/lib/app-config.js';
 import { useTRPC } from '@/lib/trpc.js';
 
@@ -39,10 +39,12 @@ export function ReadingExceptionsPage() {
       accessorKey: 'machineCode',
       header: 'Machine',
       cell: ({ row }) => (
-        <span className="flex items-center gap-2">
-          <CategoryIcon icon={row.original.categoryIcon} colour={row.original.categoryColour} size={16} />
-          {row.original.machineCode}
-        </span>
+        <CategoryLabel
+          icon={row.original.categoryIcon}
+          colour={row.original.categoryColour}
+          name={row.original.machineCode}
+          size={16}
+        />
       ),
     },
     {

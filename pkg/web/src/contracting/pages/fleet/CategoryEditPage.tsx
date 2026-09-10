@@ -1,10 +1,4 @@
-import {
-  type Category,
-  CategoryColour,
-  CategoryIcon as CategoryIconKey,
-  CategoryKind,
-  FleetName,
-} from '@pkg/schema/contracting';
+import { type Category, CategoryColour, CategoryIconKey, CategoryKind, FleetName } from '@pkg/schema/contracting';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import { z } from 'zod';
@@ -14,7 +8,7 @@ import { RemoveEntityButton } from '@/components/common/RemoveEntityButton.js';
 import { AutosaveStatus, useAutosaveForm } from '@/components/form/index.js';
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
 import { Card, CardContent } from '@/components/ui/card.js';
-import { CategoryIcon } from '@/contracting/components/CategoryIcon.js';
+import { CategoryLabel } from '@/contracting/components/CategoryIcon.js';
 import { useCan } from '@/hooks/use-access.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useTRPC } from '@/lib/trpc.js';
@@ -34,10 +28,7 @@ export function CategoryEditPage({ id }: { id: string }) {
     <PageLayout
       title={
         query.data ? (
-          <span className="flex items-center gap-3">
-            <CategoryIcon icon={query.data.icon} colour={query.data.colour} size={24} />
-            {query.data.name}
-          </span>
+          <CategoryLabel icon={query.data.icon} colour={query.data.colour} name={query.data.name} size={24} />
         ) : (
           'Category'
         )

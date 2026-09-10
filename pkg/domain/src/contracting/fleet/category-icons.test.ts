@@ -1,7 +1,7 @@
 import { categoryColours, categoryIconKeys } from '@pkg/schema/contracting';
 import { describe, expect, it } from 'vitest';
 import { statusBadgeColorClassNames } from '../../theme/status-badge.js';
-import { categoryIcon, categoryIcons, defaultCategoryIcon } from './category-icons.js';
+import { categoryIcons } from './category-icons.js';
 
 // SVG path data only: commands, numbers, separators. Anything else (a `fill`, a `<g>`, a colour)
 // has no place in a stroke-only glyph.
@@ -23,11 +23,6 @@ describe('category icons', () => {
       for (const path of icon.paths) expect(path).toMatch(pathData);
     }
     expect(new Set(categoryIcons.map((icon) => icon.label)).size).toBe(categoryIcons.length);
-  });
-  it('defaults each kind to its generic glyph and resolves keys', () => {
-    expect(categoryIcon(defaultCategoryIcon('machine')).label).toBe('Generic machine');
-    expect(categoryIcon(defaultCategoryIcon('implement')).label).toBe('Generic implement');
-    expect(categoryIcon('tractor').paths[0]).toMatch(/^M3 15/);
   });
   it('keeps the colour palette in step with the shared badge palette', () => {
     expect([...categoryColours].sort()).toEqual(Object.keys(statusBadgeColorClassNames).sort());

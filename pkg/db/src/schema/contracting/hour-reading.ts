@@ -30,6 +30,7 @@ export const contractingHourReadings = contractingSchema.table(
       .notNull()
       .references(() => user.id),
     method: text('method', { enum: ['photo', 'manual'] }).notNull(),
+    comment: text('comment'),
     photo: jsonb('photo').$type<{ byteSize: number; contentType: string; storageKey: string; updatedAt: string }>(),
     aiValue: numeric('ai_value', { precision: 10, scale: 1, mode: 'number' }),
     aiConfidence: numeric('ai_confidence', { precision: 5, scale: 4, mode: 'number' }),

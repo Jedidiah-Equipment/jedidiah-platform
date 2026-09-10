@@ -1,4 +1,4 @@
-import { ReadingValue } from '@pkg/schema/contracting';
+import { ReadingComment, ReadingValue } from '@pkg/schema/contracting';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useRef, useState } from 'react';
@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { SecondaryToolbar } from '@/components/TopToolbar';
 import { Text } from '@/components/ui/text';
 import { TextInput } from '@/components/ui/text-input';
+import { latestKnownReading } from '@/contracting/readings/latest-reading';
 import { useReadingQueue } from '@/contracting/readings/ReadingQueueProvider';
 import { keepReadingPhoto, removeReadingPhoto } from '@/contracting/readings/reading-files';
 import { useCapturePermission } from '@/contracting/readings/use-capture-permission';
@@ -17,7 +18,7 @@ export default function CaptureScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const fleet = useFleet(false);
   const machine = fleet.data?.find((row) => row.id === id);
-  const readings = useMachineReadings(id, false);
+  const readings = useMachineReadings(id);
   const { queue, items } = useReadingQueue();
   const canCapture = useCapturePermission();
   const [permission, requestPermission] = useCameraPermissions();
@@ -26,23 +27,15 @@ export default function CaptureScreen() {
   const [cameraReady, setCameraReady] = useState(false);
   const [photo, setPhoto] = useState<string | null>(null);
   const [value, setValue] = useState('');
+  const [comment, setComment] = useState('');
   const [disputePrevious, setDisputePrevious] = useState(false);
   const [disputedReadingId, setDisputedReadingId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const busyRef = useRef(false);
   const [error, setError] = useState<string | null>(null);
-  const localLatest = items
-    .filter((row) => row.machineId === id)
-    .sort((a, b) => Date.parse(b.capturedAt) - Date.parse(a.capturedAt))[0];
-  const synced = readings.data?.[0];
-  const latest =
-    localLatest && (!synced || Date.parse(localLatest.capturedAt) >= Date.parse(synced.capturedAt))
-      ? localLatest.value
-      : synced?.value;
-  const latestId =
-    localLatest && (!synced || Date.parse(localLatest.capturedAt) >= Date.parse(synced.capturedAt))
-      ? localLatest.localId
-      : (synced?.id ?? null);
+  const known = latestKnownReading(id, items, readings.data);
+  const latest = known?.value;
+  const latestId = known?.id ?? null;
   const disputeConfirmed = disputePrevious && disputedReadingId === latestId;
   const parsed = value.trim() ? ReadingValue.safeParse(Number(value.replace(',', '.'))) : null;
   const below = parsed?.success && latest !== undefined && parsed.data < latest;
@@ -84,6 +77,7 @@ export default function CaptureScreen() {
         value: parsed.data,
         capturedAt: new Date().toISOString(),
         photoLocalUri,
+        comment: comment.trim() || null,
         disputePrevious: !!below && disputeConfirmed,
         expectedPreviousId: latestId,
       });
@@ -112,9 +106,6 @@ export default function CaptureScreen() {
           Photograph the hour meter when you can, then type its value. Your capture is saved on this phone before
           syncing.
         </Text>
-        {latest !== undefined ? (
-          <Text className="text-foreground">Last known reading: {latest.toFixed(1)} h</Text>
-        ) : null}
         {cameraOpen && permission?.granted ? (
           <View className="gap-3">
             <View className="h-72 overflow-hidden rounded-xl bg-image-backdrop">
@@ -174,9 +165,14 @@ export default function CaptureScreen() {
             {photo ? <ReadingButton title="Remove photo" disabled={busy} onPress={() => setPhoto(null)} /> : null}
           </View>
         )}
-        <Text className="text-foreground" weight="semibold">
-          Hour meter value
-        </Text>
+        <View className="flex-row items-baseline justify-between">
+          <Text className="text-foreground" weight="semibold">
+            Hour meter value
+          </Text>
+          {latest !== undefined ? (
+            <Text className="text-sm text-muted-foreground">Minimum allowed: {latest.toFixed(1)} h</Text>
+          ) : null}
+        </View>
         <TextInput
           accessibilityLabel="Hour meter value"
           keyboardType="decimal-pad"
@@ -191,11 +187,22 @@ export default function CaptureScreen() {
         {value && !parsed?.success ? (
           <Text className="text-danger">Enter a non-negative value with at most one decimal place.</Text>
         ) : null}
+        <Text className="text-foreground" weight="semibold">
+          Comment (optional)
+        </Text>
+        <TextInput
+          accessibilityLabel="Capture comment"
+          placeholder="Anything management should know about this reading"
+          value={comment}
+          editable={!busy}
+          multiline
+          maxLength={ReadingComment.maxLength ?? undefined}
+          onChangeText={setComment}
+        />
         {below ? (
           <View className="gap-3 rounded-xl border border-danger p-4">
             <Text className="text-foreground">
-              This is below the last known reading. Correct your value, retake the photo, or dispute the previous
-              reading.
+              This is below the minimum allowed. Correct your value, retake the photo, or dispute the previous reading.
             </Text>
             <ReadingButton
               title={disputeConfirmed ? 'Previous reading disputed · undo' : 'The previous reading is wrong'}

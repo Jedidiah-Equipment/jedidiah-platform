@@ -6,6 +6,7 @@ export type QueuedReading = {
   capturedAt: string;
   photoLocalUri: string | null;
   disputePrevious: boolean;
+  comment: string | null;
   expectedPreviousId?: string | null;
   attention?: { code: string; message: string };
 };

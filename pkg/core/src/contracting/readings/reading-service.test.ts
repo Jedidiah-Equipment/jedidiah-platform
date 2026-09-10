@@ -339,3 +339,26 @@ test('a dispute captured against an older reading waits for attention when anoth
   const accepted = await captureReading({ db, actorUserId, input: { ...dispute, expectedPreviousId: newer.id } });
   expect(accepted).toMatchObject({ disputed: true, disputedPreviousId: newer.id });
 });
+
+test('carries the capture comment through to the Reading Exceptions list', async ({ context }) => {
+  const { db, actorUserId, machineId } = context;
+  const { listReadingExceptions } = await import('./reading-service.js');
+  const input = {
+    machineId,
+    role: 'spot' as const,
+    value: 100,
+    capturedAt: '2026-09-08T08:00:00Z',
+    disputePrevious: false,
+  };
+  await captureReading({ db, actorUserId, input });
+  const disputed = await captureReading({
+    db,
+    actorUserId,
+    input: { ...input, value: 90, disputePrevious: true, comment: '  Meter glass cracked, digits hard to read  ' },
+  });
+  expect(disputed.comment).toBe('Meter glass cracked, digits hard to read');
+  expect((await listReadingExceptions({ db })).map((row) => [row.id === disputed.id, row.comment])).toEqual([
+    [true, 'Meter glass cracked, digits hard to read'],
+    [false, null],
+  ]);
+});

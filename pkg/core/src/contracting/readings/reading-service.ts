@@ -155,6 +155,7 @@ export async function captureReading({
           capturedAt: new Date(input.capturedAt),
           capturedByUserId: actorUserId,
           method: photo ? 'photo' : 'manual',
+          comment: input.comment ?? null,
           photo,
           ...evidence,
           disputed,

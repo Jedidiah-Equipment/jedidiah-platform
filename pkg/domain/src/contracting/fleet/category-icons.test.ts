@@ -28,32 +28,12 @@ describe('category icons', () => {
     expect(categoryIcon('hovercraft').key).toBe('generic-machine');
     expect(categoryIcon('tractor').key).toBe('tractor');
   });
-  // Placeholders reuse a generic outline until the follow-up draws them. Drawing one means
-  // removing its key here as well, so the set can only shrink.
   it('has real path data for every glyph that is not a declared placeholder', () => {
-    const placeholders = new Set([
-      'bakkie',
-      'excavator',
-      'front-end-loader',
-      'generator',
-      'grader',
-      'lowbed',
-      'pump',
-      'roller',
-      'tipper',
-      'water-tanker',
-      'disc',
-      'gravel-trailer',
-      'planter',
-      'plough',
-      'ripper',
-      'slasher',
-      'tip-trailer',
-    ]);
+    const placeholders = new Set<string>();
     const generics = categoryIcons.filter((icon) => icon.key.startsWith('generic-')).map((icon) => icon.paths);
     for (const icon of categoryIcons) {
       if (icon.key.startsWith('generic-')) continue;
-      const sharesGeneric = generics.some((paths) => paths === icon.paths);
+      const sharesGeneric = generics.some((paths) => paths.join(' ') === icon.paths.join(' '));
       expect({ key: icon.key, placeholder: sharesGeneric }).toEqual({
         key: icon.key,
         placeholder: placeholders.has(icon.key),

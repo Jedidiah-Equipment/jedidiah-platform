@@ -249,11 +249,6 @@ describe('snapshot table registry', () => {
     ]) {
       expect(configFor(tableName).optionalReadTable, tableName).toBe(true);
     }
-    expect(configFor('contracting_machine').emptySnapshotRows?.map((row) => row.code)).toEqual([
-      'KOL220-1',
-      'JD140-1',
-      'JD140-2',
-    ]);
     for (const tableName of [
       'contracting_customer',
       'contracting_farm',

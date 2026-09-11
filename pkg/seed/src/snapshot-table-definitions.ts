@@ -25,6 +25,10 @@ export type SnapshotTableDefinition = {
   optionalReadTable?: boolean;
   // Required singleton/reference data when a pre-rollout snapshot has no rows.
   emptySnapshotRows?: readonly SnapshotRow[];
+  // Tables whose fallback rows reference one another fall back together: the group's rows are used
+  // only when every table in the group read empty, so a half-captured source never mixes real
+  // parents with demo children.
+  emptySnapshotGroup?: string;
   // Column (property name) to order the source read by, so positional seed defaults are deterministic.
   readOrderColumn?: string;
   // Values merged into each row after reading, keyed by index — used to populate columns omitted above.
@@ -131,7 +135,7 @@ const demoFleet = {
       code: 'JD140-1',
       make: 'John Deere',
       model: '6140M',
-      year: 2021,
+      year: null,
       registration: 'CG 39 NM',
       categoryId: demoFleetIds.tractor,
       currentDriverUserId: null,
@@ -145,7 +149,7 @@ const demoFleet = {
       code: 'JD140-2',
       make: 'John Deere',
       model: '6140M',
-      year: null,
+      year: 2021,
       registration: 'CZ 46 TD',
       categoryId: demoFleetIds.tractor,
       currentDriverUserId: null,
@@ -455,6 +459,7 @@ export const snapshotTableDefinitions = [
     timestampColumns: standardTimestampColumns,
     optionalReadTable: true,
     emptySnapshotRows: demoFleet.categories,
+    emptySnapshotGroup: 'demo-fleet',
   },
   {
     fileName: 'contracting_machine.json',
@@ -462,6 +467,7 @@ export const snapshotTableDefinitions = [
     timestampColumns: ['createdAt', 'retiredAt', 'updatedAt'],
     optionalReadTable: true,
     emptySnapshotRows: demoFleet.machines,
+    emptySnapshotGroup: 'demo-fleet',
   },
   {
     fileName: 'contracting_implement.json',
@@ -469,6 +475,7 @@ export const snapshotTableDefinitions = [
     timestampColumns: ['createdAt', 'retiredAt', 'updatedAt'],
     optionalReadTable: true,
     emptySnapshotRows: demoFleet.implements,
+    emptySnapshotGroup: 'demo-fleet',
   },
   {
     fileName: 'contracting_customer.json',

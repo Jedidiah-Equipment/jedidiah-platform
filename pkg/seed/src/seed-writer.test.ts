@@ -3,7 +3,12 @@ import { getTableName, getTableUniqueName } from 'drizzle-orm';
 import { PgDialect, type PgTable } from 'drizzle-orm/pg-core';
 import { describe, expect, it, vi } from 'vitest';
 
-import { clearApplicationTables, clearSnapshotTables, prepareRowsForSeed } from './seed-writer.js';
+import {
+  clearApplicationTables,
+  clearSnapshotTables,
+  prepareRowsForSeed,
+  prepareSnapshotsForSeed,
+} from './seed-writer.js';
 import { snapshotCleanupTables, snapshotTables } from './snapshot-tables.js';
 
 type CatalogTable = { schemaname: string; tablename: string };
@@ -118,5 +123,22 @@ describe('prepareRowsForSeed', () => {
     expect(rows.map((row) => row.code)).toEqual(['KOL220-1', 'JD140-1', 'JD140-2']);
     expect(rows[0]?.createdAt).toBeInstanceOf(Date);
     expect(prepareRowsForSeed(machines, [{ code: 'REAL-1' }])).toEqual([{ code: 'REAL-1' }]);
+  });
+
+  it('drops the whole demo fleet once any of its tables holds a captured row', () => {
+    const fleet = snapshotTables.filter((config) => config.emptySnapshotGroup === 'demo-fleet');
+    const [categories] = fleet;
+    if (!categories || fleet.length !== 3) throw new Error('Expected the three demo-fleet snapshot tables');
+
+    const rows = (read: ReturnType<typeof prepareSnapshotsForSeed>) => read.map(({ rows }) => rows.length);
+
+    expect(rows(prepareSnapshotsForSeed(fleet.map((config) => ({ config, rows: [] }))))).toEqual([4, 3, 2]);
+    expect(
+      rows(
+        prepareSnapshotsForSeed(
+          fleet.map((config) => ({ config, rows: config === categories ? [{ name: 'Real' }] : [] })),
+        ),
+      ),
+    ).toEqual([1, 0, 0]);
   });
 });

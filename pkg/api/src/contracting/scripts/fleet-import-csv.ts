@@ -81,8 +81,10 @@ function normalisePhone(value: string | null): string | null {
   return digits;
 }
 
+export type CsvRecord = { line: number; fields: Record<string, string> };
+
 /** RFC 4180: comma-separated, double-quoted fields with `""` escapes, CRLF or LF, header row first. */
-export function parseCsv(text: string): Record<string, string>[] {
+export function parseCsv(text: string): CsvRecord[] {
   const rows: string[][] = [];
   let row: string[] = [];
   let field = '';
@@ -115,22 +117,11 @@ export function parseCsv(text: string): Record<string, string>[] {
   const [header, ...body] = rows;
   if (!header) return [];
   const columns = header.map((column) => column.trim());
-  return body
-    .filter((cells) => cells.some((cell) => cell.trim() !== ''))
-    .map((cells) => Object.fromEntries(columns.map((column, index) => [column, cells[index] ?? ''])));
-}
-
-function parseRows<T>(file: FleetImportFileName, text: string, schema: z.ZodType<T>, issues: string[]): T[] {
-  const parsed: T[] = [];
-  parseCsv(text).forEach((record, index) => {
-    const line = index + 2;
-    const result = schema.safeParse(record);
-    if (result.success) parsed.push(result.data);
-    else
-      for (const issue of result.error.issues)
-        issues.push(`${file}.csv line ${line}: ${issue.path.join('.') || 'row'} — ${issue.message}`);
-  });
-  return parsed;
+  return body.flatMap((cells, index) =>
+    cells.some((cell) => cell.trim() !== '')
+      ? [{ line: index + 2, fields: Object.fromEntries(columns.map((column, i) => [column, cells[i] ?? ''])) }]
+      : [],
+  );
 }
 
 export const fleetImportFileNames: readonly FleetImportFileName[] = ['categories', 'machines', 'implements', 'people'];
@@ -140,6 +131,20 @@ export async function readFleetImportFiles(directory: string): Promise<FleetImpo
     fleetImportFileNames.map(async (name) => [name, await readFile(path.join(directory, `${name}.csv`), 'utf8')]),
   );
   return Object.fromEntries(entries) as FleetImportFiles;
+}
+
+type Parsed<T> = { line: number; row: T };
+
+function parseRows<T>(file: FleetImportFileName, text: string, schema: z.ZodType<T>, issues: string[]): Parsed<T>[] {
+  const parsed: Parsed<T>[] = [];
+  for (const { line, fields } of parseCsv(text)) {
+    const result = schema.safeParse(fields);
+    if (result.success) parsed.push({ line, row: result.data });
+    else
+      for (const issue of result.error.issues)
+        issues.push(`${file}.csv line ${line}: ${issue.path.join('.') || 'row'} — ${issue.message}`);
+  }
+  return parsed;
 }
 
 const key = (value: string) => value.trim().toLowerCase();
@@ -157,13 +162,19 @@ export function placeholderEmail(name: string): string {
   return `${slug || 'person'}@fleet.jedidiah.invalid`;
 }
 
-function checkUnique(file: FleetImportFileName, label: string, values: readonly string[], issues: string[]) {
+function checkUnique<T>(
+  file: FleetImportFileName,
+  label: string,
+  rows: readonly Parsed<T>[],
+  value: (row: T) => string,
+  issues: string[],
+) {
   const seen = new Map<string, number>();
-  values.forEach((value, index) => {
-    const first = seen.get(key(value));
-    if (first !== undefined) issues.push(`${file}.csv line ${index + 2}: ${label} "${value}" repeats line ${first}`);
-    else seen.set(key(value), index + 2);
-  });
+  for (const { line, row } of rows) {
+    const first = seen.get(key(value(row)));
+    if (first !== undefined) issues.push(`${file}.csv line ${line}: ${label} "${value(row)}" repeats line ${first}`);
+    else seen.set(key(value(row)), line);
+  }
 }
 
 /** Fails on every sheet problem at once, before the script touches the database. */
@@ -171,58 +182,40 @@ export function parseFleetImport(files: FleetImportFiles): FleetImportData {
   const issues: string[] = [];
   const categories = parseRows('categories', files.categories, FleetImportCategory, issues);
   const machines = parseRows('machines', files.machines, FleetImportMachine, issues);
-  const implementsRows = parseRows('implements', files.implements, FleetImportImplement, issues);
+  const implementRows = parseRows('implements', files.implements, FleetImportImplement, issues);
   const people = parseRows('people', files.people, FleetImportPerson, issues);
   if (issues.length > 0) throw new FleetImportCsvError(issues);
 
-  checkUnique(
-    'categories',
-    'category',
-    categories.map((category) => `${category.kind}:${category.name}`),
-    issues,
-  );
-  checkUnique(
-    'machines',
-    'code',
-    machines.map((machine) => machine.code),
-    issues,
-  );
+  checkUnique('categories', 'category', categories, (row) => categoryKey(row.kind, row.name), issues);
+  checkUnique('machines', 'code', machines, (row) => row.code, issues);
   checkUnique(
     'implements',
     'code',
-    implementsRows.flatMap((implement) => (implement.code ? [implement.code] : [])),
+    implementRows.filter(({ row }) => row.code !== null),
+    (row) => row.code ?? '',
     issues,
   );
-  checkUnique(
-    'people',
-    'name',
-    people.map((person) => person.name),
-    issues,
-  );
-
+  checkUnique('people', 'name', people, (row) => row.name, issues);
   // Two names can differ only in an accent or a hyphen and still share a generated address.
-  checkUnique(
-    'people',
-    'placeholder email',
-    people.map((person) => placeholderEmail(person.name)),
-    issues,
-  );
+  checkUnique('people', 'placeholder email', people, (row) => placeholderEmail(row.name), issues);
 
-  const categoryKeys = new Set(categories.map((category) => categoryKey(category.kind, category.name)));
-  const drivers = new Set(people.filter((person) => person.role === 'driver').map((person) => key(person.name)));
-  machines.forEach((machine, index) => {
-    const line = index + 2;
-    if (!categoryKeys.has(categoryKey('machine', machine.category)))
-      issues.push(`machines.csv line ${line}: category "${machine.category}" is not a machine category`);
-    if (machine.current_driver && !drivers.has(key(machine.current_driver)))
-      issues.push(
-        `machines.csv line ${line}: current_driver "${machine.current_driver}" is not a driver in people.csv`,
-      );
-  });
-  implementsRows.forEach((implement, index) => {
-    if (!categoryKeys.has(categoryKey('implement', implement.category)))
-      issues.push(`implements.csv line ${index + 2}: category "${implement.category}" is not an implement category`);
-  });
+  const categoryKeys = new Set(categories.map(({ row }) => categoryKey(row.kind, row.name)));
+  const drivers = new Set(people.filter(({ row }) => row.role === 'driver').map(({ row }) => key(row.name)));
+  for (const { line, row } of machines) {
+    if (!categoryKeys.has(categoryKey('machine', row.category)))
+      issues.push(`machines.csv line ${line}: category "${row.category}" is not a machine category`);
+    if (row.current_driver && !drivers.has(key(row.current_driver)))
+      issues.push(`machines.csv line ${line}: current_driver "${row.current_driver}" is not a driver in people.csv`);
+  }
+  for (const { line, row } of implementRows) {
+    if (!categoryKeys.has(categoryKey('implement', row.category)))
+      issues.push(`implements.csv line ${line}: category "${row.category}" is not an implement category`);
+  }
   if (issues.length > 0) throw new FleetImportCsvError(issues);
-  return { categories, machines, implements: implementsRows, people };
+  return {
+    categories: categories.map(({ row }) => row),
+    machines: machines.map(({ row }) => row),
+    implements: implementRows.map(({ row }) => row),
+    people: people.map(({ row }) => row),
+  };
 }

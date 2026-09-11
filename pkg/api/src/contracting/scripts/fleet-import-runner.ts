@@ -193,6 +193,7 @@ async function importImplements({ db, actorUserId, data, summary }: ImportScope,
       const code = row.code ?? (await suggestImplementCode({ db, categoryId })).code;
       const created = await createImplement({ db, actorUserId, input: { code, categoryId, notes: row.notes } });
       known.push(created);
+      matched.add(created.id);
       summary.implements.created += 1;
     } else if (current.retiredAt) {
       summary.warnings.push(`implements: ${current.code} is retired and was left alone`);

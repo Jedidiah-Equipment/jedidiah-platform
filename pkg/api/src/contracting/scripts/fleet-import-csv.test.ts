@@ -7,8 +7,8 @@ const sampleFiles = () => readFleetImportFiles(fileURLToPath(new URL('./fleet-im
 describe('parseCsv', () => {
   it('handles quoted fields, escaped quotes, CRLF and a BOM', () => {
     expect(parseCsv('﻿a,b\r\n1,"x, ""y"""\r\n\r\n2,\n')).toEqual([
-      { a: '1', b: 'x, "y"' },
-      { a: '2', b: '' },
+      { line: 2, fields: { a: '1', b: 'x, "y"' } },
+      { line: 4, fields: { a: '2', b: '' } },
     ]);
   });
 });

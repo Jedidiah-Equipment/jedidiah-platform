@@ -73,6 +73,16 @@ test('loads the sample sheet through the app services and changes nothing on a r
   expect((await listImplements({ db, input: { status: 'all', search: '' } })).length).toBe(3);
 });
 
+test('creates every code-less row even when two share a category and notes', async ({ context }) => {
+  const { auth, db, data } = context;
+  const twins = { category: 'Gravel Trailer', code: null, notes: 'Home Built 11M3 Hauler' };
+  const summary = await runFleetImport({ db, auth, actorUserId, data: { ...data, implements: [twins, twins] } });
+  expect(summary.implements).toEqual({ created: 2, updated: 0, unchanged: 0, skipped: 0 });
+  expect(
+    (await listImplements({ db, input: { status: 'all', search: '' } })).map((implement) => implement.code).sort(),
+  ).toEqual(['GRAVEL-TRAILER-1', 'GRAVEL-TRAILER-2']);
+});
+
 test('patches what the sheet changed and warns about a person whose role no longer matches', async ({ context }) => {
   const { auth, db, data } = context;
   await runFleetImport({ db, auth, actorUserId, data });

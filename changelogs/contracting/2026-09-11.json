@@ -1,0 +1,44 @@
+{
+  "business": "contracting",
+  "releasedAt": "2026-09-11T15:07:08.193Z",
+  "sections": [
+    {
+      "surface": "app",
+      "entries": [
+        {
+          "title": "Review capture comments alongside reading exceptions",
+          "description": "See the foreman's notes alongside captured hours and photo evidence to help resolve reading exceptions."
+        },
+        {
+          "title": "Organise fleet categories by kind, icon and colour",
+          "description": "Create separate machine and implement categories, filter them by kind, and choose recognisable icons and colours. Categories no longer have a preset hourly rate field."
+        },
+        {
+          "title": "Add implements with suggested codes",
+          "description": "Select an implement category to receive a suggested code based on its name and the next available number. Keep the suggestion or enter your own code before saving."
+        },
+        {
+          "title": "See updates relevant to your business",
+          "description": "The Changelog now shows updates for the business you are using, with read status tracked separately for each business. Acknowledged updates stay dismissed when you switch away and back."
+        }
+      ]
+    },
+    {
+      "surface": "mobile",
+      "entries": [
+        {
+          "title": "Add context to hour readings",
+          "description": "Include an optional comment when capturing a reading to tell management about meter damage or anything else they should know."
+        },
+        {
+          "title": "Check the minimum reading before saving",
+          "description": "The capture screen now shows the minimum allowed hours, including readings queued on your phone. Synced captures appear immediately in history, keeping the latest known value up to date."
+        },
+        {
+          "title": "Recognise machines by category icons and colours",
+          "description": "Distinct category icons and colours now appear in the machine list, category filters and machine details."
+        }
+      ]
+    }
+  ]
+}

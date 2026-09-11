@@ -1,0 +1,19 @@
+{
+  "business": "equipment",
+  "releasedAt": "2026-09-11T15:07:08.193Z",
+  "sections": [
+    {
+      "surface": "app",
+      "entries": [
+        {
+          "title": "Enter raw material quantities with clearer guidance",
+          "description": "Product cost estimates now explain which units to enter, including how to calculate a fraction of a standard-length piece."
+        },
+        {
+          "title": "See updates relevant to your business",
+          "description": "The Changelog now shows updates for the business you are using, with read status tracked separately for each business. Acknowledged updates stay dismissed when you switch away and back."
+        }
+      ]
+    }
+  ]
+}

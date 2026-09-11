@@ -111,7 +111,8 @@ context's `JOB-xxxxx`.
 ## Hours
 
 **Hour Reading** is one captured value of a Machine's hour meter: the value, when and by whom it
-was captured, and its evidence. The Foreman always types the value; a photo is attached whenever
+was captured, and its evidence. Whoever captures it types the value — the Foreman in the field,
+an administrator for a Baseline Reading; a photo is attached whenever
 the camera allows, and a reading without one is stamped **Missing Photo Evidence**. Capture never
 waits for signal — readings queue on the phone and sync when they can. After sync the server reads
 the photo itself and records its own value and confidence: a reading is **photo-backed** when it
@@ -119,10 +120,10 @@ carries a photo and **AI-verified** when the server's read agrees with the typed
 Disagreements, low confidence, and disputes surface to management as **Reading Exceptions** —
 never to the Foreman, who is never re-interrupted in the field. A reading may carry the Foreman's
 optional **capture comment**, shown wherever management reviews it; the capture screen shows the
-minimum value the meter can now read. A reading plays one of three roles:
+minimum value the meter can now read. A field reading plays one of three roles:
 **arrival** (machine on site) and **departure** (machine leaving) on a Machine Assignment, or
 **spot** — an ad-hoc field capture with no billing effect, existing to keep a Machine's known
-hours current for service tracking. The
+hours current for service tracking; the fourth role, **Baseline Reading**, is defined below. The
 pre-travel opening is never captured: it is the machine's previous departure reading, so travel
 and work time are derived and no hour can vanish between Jobs. A Machine's readings never go
 backward: a capture strictly below the latest reading is refused (equal is accepted — an idle

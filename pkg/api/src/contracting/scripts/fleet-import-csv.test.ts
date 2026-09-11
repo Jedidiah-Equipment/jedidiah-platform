@@ -1,16 +1,8 @@
-import { readFile } from 'node:fs/promises';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { FleetImportCsvError, type FleetImportFiles, parseCsv, parseFleetImport } from './fleet-import-csv.js';
+import { FleetImportCsvError, parseCsv, parseFleetImport, readFleetImportFiles } from './fleet-import-csv.js';
 
-async function sampleFiles(): Promise<FleetImportFiles> {
-  const read = (name: string) => readFile(new URL(`./fleet-import-sample/${name}.csv`, import.meta.url), 'utf8');
-  return {
-    categories: await read('categories'),
-    machines: await read('machines'),
-    implements: await read('implements'),
-    people: await read('people'),
-  };
-}
+const sampleFiles = () => readFleetImportFiles(fileURLToPath(new URL('./fleet-import-sample/', import.meta.url)));
 
 describe('parseCsv', () => {
   it('handles quoted fields, escaped quotes, CRLF and a BOM', () => {

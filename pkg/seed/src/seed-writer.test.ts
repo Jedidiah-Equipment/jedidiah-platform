@@ -4,7 +4,7 @@ import { PgDialect, type PgTable } from 'drizzle-orm/pg-core';
 import { describe, expect, it, vi } from 'vitest';
 
 import { clearApplicationTables, clearSnapshotTables, prepareRowsForSeed } from './seed-writer.js';
-import { snapshotCleanupTables } from './snapshot-tables.js';
+import { snapshotCleanupTables, snapshotTables } from './snapshot-tables.js';
 
 type CatalogTable = { schemaname: string; tablename: string };
 
@@ -42,10 +42,11 @@ function createClearingTransaction(catalogTables: readonly CatalogTable[]) {
 }
 
 describe('clearSnapshotTables', () => {
-  it('truncates tables in public and equipment that the snapshot does not own before deleting snapshot rows', async () => {
+  it('truncates tables in every application schema that the snapshot does not own before deleting snapshot rows', async () => {
     const { calls, statements, tx } = createClearingTransaction([
       ...snapshotCleanupTables.map((config) => catalogTable(config.table)),
       { schemaname: 'public', tablename: 'audit_events' },
+      { schemaname: 'contracting', tablename: 'machine_assignment' },
       { schemaname: 'equipment', tablename: 'purchase_order' },
       { schemaname: 'equipment', tablename: 'purchase_order_job_link' },
       { schemaname: 'equipment', tablename: 'stock_movement' },
@@ -56,7 +57,7 @@ describe('clearSnapshotTables', () => {
     const truncate = statements.find((statement) => statement.startsWith('TRUNCATE TABLE'));
 
     expect(truncate).toBe(
-      'TRUNCATE TABLE "equipment"."purchase_order", "equipment"."purchase_order_job_link", "equipment"."stock_movement", "public"."audit_events" CASCADE',
+      'TRUNCATE TABLE "contracting"."machine_assignment", "equipment"."purchase_order", "equipment"."purchase_order_job_link", "equipment"."stock_movement", "public"."audit_events" CASCADE',
     );
     // The sweep has to land before the ordered snapshot cleanup, or the restricting child rows it
     // removes still block their snapshot parents.
@@ -105,4 +106,17 @@ it('initializes Labor rates for old snapshots and preserves captured rates', () 
   expect(prepareRowsForSeed(config, captured)).toEqual(captured);
   const legacy = [{ id: 'fabrication', costToCompanyRate: 250, billingRate: 600, consumablesPercentage: 70 }];
   expect(prepareRowsForSeed(config, legacy)).toEqual(captured);
+});
+
+describe('prepareRowsForSeed', () => {
+  it('falls back to the demo fleet, timestamps revived, when a contracting snapshot has no rows', () => {
+    const machines = snapshotTables.find((config) => config.tableName === 'contracting_machine');
+    if (!machines) throw new Error('Missing contracting_machine snapshot table config');
+
+    const rows = prepareRowsForSeed(machines, []);
+
+    expect(rows.map((row) => row.code)).toEqual(['KOL220-1', 'JD140-1', 'JD140-2']);
+    expect(rows[0]?.createdAt).toBeInstanceOf(Date);
+    expect(prepareRowsForSeed(machines, [{ code: 'REAL-1' }])).toEqual([{ code: 'REAL-1' }]);
+  });
 });

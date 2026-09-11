@@ -1,11 +1,11 @@
-import { readFile } from 'node:fs/promises';
+import { fileURLToPath } from 'node:url';
 import { listImplements, listMachines } from '@pkg/core/contracting';
 import { eq, user } from '@pkg/db';
 import { contractingHourReadings } from '@pkg/db/contracting';
 import type { AuthId } from '@pkg/schema';
 import { expect } from 'vitest';
 import { createTester } from '@/test/create-tester.js';
-import { parseFleetImport } from './fleet-import-csv.js';
+import { parseFleetImport, readFleetImportFiles } from './fleet-import-csv.js';
 import { placeholderEmail, runFleetImport } from './fleet-import-runner.js';
 
 const actorUserId = 'fleet-import-actor' as AuthId;
@@ -20,13 +20,9 @@ const test = createTester(async ({ auth, db }) => {
     createdAt: new Date(),
     updatedAt: new Date(),
   });
-  const read = (name: string) => readFile(new URL(`./fleet-import-sample/${name}.csv`, import.meta.url), 'utf8');
-  const data = parseFleetImport({
-    categories: await read('categories'),
-    machines: await read('machines'),
-    implements: await read('implements'),
-    people: await read('people'),
-  });
+  const data = parseFleetImport(
+    await readFleetImportFiles(fileURLToPath(new URL('./fleet-import-sample/', import.meta.url))),
+  );
   return { auth, db, data };
 });
 

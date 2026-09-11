@@ -1,3 +1,5 @@
+import { databaseTargetsMatch, isLoopbackHostname } from '@pkg/db';
+
 export const fleetImportTargets = ['local', 'staging', 'production'] as const;
 export type FleetImportTarget = (typeof fleetImportTargets)[number];
 
@@ -14,11 +16,9 @@ const urlVariable: Record<FleetImportTarget, string> = {
   production: 'PRODUCTION_DATABASE_URL',
 };
 
-/**
- * The seed package's remote-target guard, restated for a script that may legitimately write to
- * production: the target is named twice, and the other environments must be configured so a
- * mislabelled URL can be proven distinct before the first row lands.
- */
+// The target is named twice, and the other environments must be configured so a mislabelled URL
+// can be proven distinct before the first row lands (the seed package's guard, for a script that
+// may legitimately write to production).
 export function resolveFleetImportConfig(env: NodeJS.ProcessEnv = process.env): FleetImportConfig {
   const target = env.FLEET_IMPORT_TARGET;
   if (!isTarget(target))
@@ -36,6 +36,8 @@ export function resolveFleetImportConfig(env: NodeJS.ProcessEnv = process.env): 
         throw new Error(`Refusing a local fleet import because DATABASE_URL matches ${urlVariable[other]}.`);
     }
   } else {
+    if (env.APP_ENV !== target)
+      throw new Error(`Importing the fleet into ${target} requires APP_ENV=${target}, like the seed writers.`);
     const other = target === 'staging' ? 'production' : 'staging';
     const otherUrl = requireEnv(urlVariable[other], target, env);
     if (databaseTargetsMatch(databaseUrl, otherUrl))
@@ -58,20 +60,4 @@ function requireEnv(name: string, target: FleetImportTarget, env: NodeJS.Process
   const value = env[name];
   if (!value) throw new Error(`${name} is required to import the fleet into ${target}.`);
   return value;
-}
-
-export function databaseTargetsMatch(leftUrl: string, rightUrl: string): boolean {
-  return normalizeDatabaseTarget(leftUrl) === normalizeDatabaseTarget(rightUrl);
-}
-
-function normalizeDatabaseTarget(databaseUrl: string): string {
-  const url = new URL(databaseUrl);
-  const protocol = url.protocol === 'postgresql:' ? 'postgres:' : url.protocol;
-  const port = url.port || (protocol === 'postgres:' ? '5432' : '');
-  return `${protocol}//${url.hostname.toLowerCase()}:${port}${url.pathname}`;
-}
-
-function isLoopbackHostname(hostname: string): boolean {
-  const host = hostname.replace(/^\[|\]$/g, '').toLowerCase();
-  return host === 'localhost' || host === '::1' || host.startsWith('127.');
 }

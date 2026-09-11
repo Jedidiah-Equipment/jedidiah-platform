@@ -87,7 +87,6 @@ const demoFleetIds = {
   tractor: '5f1c2d3e-0001-4a00-8000-000000000002',
   gravelTrailer: '5f1c2d3e-0001-4a00-8000-000000000003',
   disc: '5f1c2d3e-0001-4a00-8000-000000000004',
-  customer: '5f1c2d3e-0004-4a00-8000-000000000001',
 } as const;
 const demoFleetEntry = { createdAt: demoFleetStamp, updatedAt: demoFleetStamp } as const;
 const demoFleetUnit = { retiredAt: null, retiredReason: null, ...demoFleetEntry } as const;
@@ -171,26 +170,6 @@ const demoFleet = {
       notes: 'John Deere 670',
       ...demoFleetUnit,
     },
-  ],
-  customers: [
-    {
-      id: demoFleetIds.customer,
-      name: 'Demo Farming',
-      contactName: 'Demo Farmer',
-      phone: '+27820000000',
-      email: null,
-      notes: null,
-      ...demoFleetEntry,
-    },
-  ],
-  farms: [
-    { id: '5f1c2d3e-0005-4a00-8000-000000000001', customerId: demoFleetIds.customer, name: 'Home Farm' },
-    { id: '5f1c2d3e-0005-4a00-8000-000000000002', customerId: demoFleetIds.customer, name: 'River Block' },
-  ],
-  workTypes: [
-    { id: '5f1c2d3e-0006-4a00-8000-000000000001', name: 'Silage', active: true },
-    { id: '5f1c2d3e-0006-4a00-8000-000000000002', name: 'Earthworks', active: true },
-    { id: '5f1c2d3e-0006-4a00-8000-000000000003', name: 'Planting', active: true },
   ],
 } as const satisfies Record<string, readonly SnapshotRow[]>;
 
@@ -464,11 +443,12 @@ export const snapshotTableDefinitions = [
     timestampColumns: [],
     optionalReadTable: true,
   },
-  // The contracting schema follows every public table it references (users as drivers, capturers
-  // and menders). The snapshot directory is never committed, so until production carries the real
-  // fleet (#1394's ingestion) a fresh checkout seeds the demo fleet below; once `seed:read:production`
-  // captures real rows, those files win and the demo rows are never used again. Readings stay empty
-  // on purpose: a Machine's hours start with its first on-site capture.
+  // The contracting schema follows every public table it references (Users as Drivers, Mechanics
+  // and reading capturers). The snapshot directory is never committed, so until production carries
+  // the real fleet (#1394's ingestion) a fresh checkout seeds the demo fleet below; once
+  // `seed:read:production` captures real rows, those files win. Only the fleet tables get demo rows:
+  // the directory tables and readings start empty, and would otherwise resurface demo rows beside
+  // real data whenever production holds none.
   {
     fileName: 'contracting_category.json',
     tableName: 'contracting_category',
@@ -495,21 +475,18 @@ export const snapshotTableDefinitions = [
     tableName: 'contracting_customer',
     timestampColumns: standardTimestampColumns,
     optionalReadTable: true,
-    emptySnapshotRows: demoFleet.customers,
   },
   {
     fileName: 'contracting_farm.json',
     tableName: 'contracting_farm',
     timestampColumns: [],
     optionalReadTable: true,
-    emptySnapshotRows: demoFleet.farms,
   },
   {
     fileName: 'contracting_work_type.json',
     tableName: 'contracting_work_type',
     timestampColumns: [],
     optionalReadTable: true,
-    emptySnapshotRows: demoFleet.workTypes,
   },
   {
     // `sequence` is a generated identity, so the writer must not send it back.

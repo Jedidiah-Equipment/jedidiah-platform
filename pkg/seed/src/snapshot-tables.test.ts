@@ -254,7 +254,14 @@ describe('snapshot table registry', () => {
       'JD140-1',
       'JD140-2',
     ]);
-    expect(configFor('contracting_hour_reading').emptySnapshotRows).toBeUndefined();
+    for (const tableName of [
+      'contracting_customer',
+      'contracting_farm',
+      'contracting_work_type',
+      'contracting_hour_reading',
+    ]) {
+      expect(configFor(tableName).emptySnapshotRows, tableName).toBeUndefined();
+    }
     expect(
       projectWritableRow(configFor('contracting_hour_reading'), {
         id: 'r1',

@@ -1,3 +1,5 @@
+import { readFile } from 'node:fs/promises';
+import path from 'node:path';
 import { PhoneNumber } from '@pkg/schema';
 import {
   CategoryColour,
@@ -131,7 +133,18 @@ function parseRows<T>(file: FleetImportFileName, text: string, schema: z.ZodType
   return parsed;
 }
 
+export const fleetImportFileNames: readonly FleetImportFileName[] = ['categories', 'machines', 'implements', 'people'];
+
+export async function readFleetImportFiles(directory: string): Promise<FleetImportFiles> {
+  const entries = await Promise.all(
+    fleetImportFileNames.map(async (name) => [name, await readFile(path.join(directory, `${name}.csv`), 'utf8')]),
+  );
+  return Object.fromEntries(entries) as FleetImportFiles;
+}
+
 const key = (value: string) => value.trim().toLowerCase();
+/** Category names are unique per kind, case-insensitively, so both take part in the lookup key. */
+export const categoryKey = (kind: string, name: string) => `${kind}:${key(name)}`;
 
 function checkUnique(file: FleetImportFileName, label: string, values: readonly string[], issues: string[]) {
   const seen = new Map<string, number>();
@@ -142,10 +155,7 @@ function checkUnique(file: FleetImportFileName, label: string, values: readonly 
   });
 }
 
-/**
- * Parses the four sheets and checks the references between them, so the script fails before it
- * touches the database rather than part-way through.
- */
+/** Fails on every sheet problem at once, before the script touches the database. */
 export function parseFleetImport(files: FleetImportFiles): FleetImportData {
   const issues: string[] = [];
   const categories = parseRows('categories', files.categories, FleetImportCategory, issues);

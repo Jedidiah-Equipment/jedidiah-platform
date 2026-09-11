@@ -1,4 +1,7 @@
+import { databaseTargetsMatch, isLoopbackHostname } from '@pkg/db';
 import { readSeedStorageConfig, type SeedStorageConfig } from './storage.js';
+
+export { databaseTargetsMatch } from '@pkg/db';
 
 const stagingSeedConfirmation = 'replace-staging';
 
@@ -119,25 +122,8 @@ function assertDifferentDatabaseTarget(leftName: string, leftUrl: string, rightN
   }
 }
 
-export function databaseTargetsMatch(leftUrl: string, rightUrl: string): boolean {
-  return normalizeDatabaseTarget(leftUrl) === normalizeDatabaseTarget(rightUrl);
-}
-
-function normalizeDatabaseTarget(databaseUrl: string): string {
-  const url = new URL(databaseUrl);
-  const protocol = url.protocol === 'postgresql:' ? 'postgres:' : url.protocol;
-  const port = url.port || (protocol === 'postgres:' ? '5432' : '');
-
-  // Credentials and connection options do not change which database receives destructive statements.
-  return `${protocol}//${url.hostname.toLowerCase()}:${port}${url.pathname}`;
-}
-
 function normalizedHostname(rawUrl: string): string {
   return new URL(rawUrl).hostname.replace(/^\[|\]$/g, '').toLowerCase();
-}
-
-function isLoopbackHostname(hostname: string): boolean {
-  return hostname === 'localhost' || hostname === '::1' || hostname.startsWith('127.');
 }
 
 function assertDifferentStorageTarget(

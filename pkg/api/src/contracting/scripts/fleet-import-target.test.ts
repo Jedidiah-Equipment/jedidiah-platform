@@ -15,8 +15,16 @@ describe('resolveFleetImportConfig', () => {
     expect(() => resolveFleetImportConfig({ ...base, FLEET_IMPORT_TARGET: 'staging' })).toThrow(
       'CONFIRM_FLEET_IMPORT=staging',
     );
-    expect(
+    expect(() =>
       resolveFleetImportConfig({ ...base, FLEET_IMPORT_TARGET: 'staging', CONFIRM_FLEET_IMPORT: 'staging' }),
+    ).toThrow('APP_ENV=staging');
+    expect(
+      resolveFleetImportConfig({
+        ...base,
+        APP_ENV: 'staging',
+        FLEET_IMPORT_TARGET: 'staging',
+        CONFIRM_FLEET_IMPORT: 'staging',
+      }),
     ).toEqual({
       target: 'staging',
       databaseUrl: base.STAGING_DATABASE_URL,
@@ -26,7 +34,12 @@ describe('resolveFleetImportConfig', () => {
   });
 
   it('refuses a remote target that cannot be proven distinct from the other remote', () => {
-    const env = { ...base, FLEET_IMPORT_TARGET: 'production', CONFIRM_FLEET_IMPORT: 'production' };
+    const env = {
+      ...base,
+      APP_ENV: 'production',
+      FLEET_IMPORT_TARGET: 'production',
+      CONFIRM_FLEET_IMPORT: 'production',
+    };
     expect(() => resolveFleetImportConfig({ ...env, STAGING_DATABASE_URL: undefined })).toThrow(
       'STAGING_DATABASE_URL is required',
     );

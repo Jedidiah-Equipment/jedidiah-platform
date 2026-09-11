@@ -15,12 +15,12 @@ import { type Db, eq, user } from '@pkg/db';
 import { implementCodePrefix } from '@pkg/domain/contracting';
 import type { AuthId } from '@pkg/schema';
 import type { Category, Implement, Machine } from '@pkg/schema/contracting';
-import type { Auth } from '@/app-auth.js';
-import type {
-  FleetImportData,
-  FleetImportImplement,
-  FleetImportMachine,
-  FleetImportPerson,
+import type { Auth } from '@/auth/auth.js';
+import {
+  categoryKey,
+  type FleetImportData,
+  type FleetImportImplement,
+  type FleetImportMachine,
 } from './fleet-import-csv.js';
 
 export type FleetImportCounts = { created: number; updated: number; unchanged: number; skipped: number };
@@ -46,13 +46,10 @@ export function placeholderEmail(name: string): string {
 }
 
 const key = (value: string) => value.trim().toLowerCase();
-const counts = (): FleetImportCounts => ({ created: 0, updated: 0, unchanged: 0, skipped: 0 });
+const zeroCounts = (): FleetImportCounts => ({ created: 0, updated: 0, unchanged: 0, skipped: 0 });
+type ImportScope = { db: Db; actorUserId: AuthId; data: FleetImportData; summary: FleetImportSummary };
 
-/**
- * Loads one normalized fleet sheet. Every write goes through the same core services and Better
- * Auth endpoint the app uses, so the audit log and the role triggers see an ordinary actor; a rerun
- * finds each row by its natural key and touches only what differs.
- */
+/** Every write goes through the app's own services, so a rerun finds each row by its natural key. */
 export async function runFleetImport({
   db,
   auth,
@@ -65,42 +62,34 @@ export async function runFleetImport({
   data: FleetImportData;
 }): Promise<FleetImportSummary> {
   const summary: FleetImportSummary = {
-    categories: counts(),
-    people: counts(),
-    machines: counts(),
-    implements: counts(),
+    categories: zeroCounts(),
+    people: zeroCounts(),
+    machines: zeroCounts(),
+    implements: zeroCounts(),
     warnings: [],
   };
-  const categoryIds = await importCategories({ db, actorUserId, data, summary });
+  const scope: ImportScope = { db, actorUserId, data, summary };
+  const categoryIds = await importCategories(scope);
   const driverIds = await importPeople({ db, auth, data, summary });
-  await importMachines({ db, actorUserId, data, summary, categoryIds, driverIds });
-  await importImplements({ db, actorUserId, data, summary, categoryIds });
+  await importMachines(scope, categoryIds, driverIds);
+  await importImplements(scope, categoryIds);
   return summary;
 }
 
-async function importCategories({
-  db,
-  actorUserId,
-  data,
-  summary,
-}: {
-  db: Db;
-  actorUserId: AuthId;
-  data: FleetImportData;
-  summary: FleetImportSummary;
-}) {
+async function importCategories({ db, actorUserId, data, summary }: ImportScope) {
   const existing = new Map<string, Category>();
-  for (const category of await listCategories({ db })) existing.set(`${category.kind}:${key(category.name)}`, category);
+  for (const category of await listCategories({ db }))
+    existing.set(categoryKey(category.kind, category.name), category);
   const ids = new Map<string, string>();
   for (const row of data.categories) {
-    const current = existing.get(`${row.kind}:${key(row.name)}`);
+    const current = existing.get(categoryKey(row.kind, row.name));
     if (!current) {
       const created = await createCategory({ db, actorUserId, input: row });
-      ids.set(`${row.kind}:${key(row.name)}`, created.id);
+      ids.set(categoryKey(row.kind, row.name), created.id);
       summary.categories.created += 1;
       continue;
     }
-    ids.set(`${row.kind}:${key(row.name)}`, current.id);
+    ids.set(categoryKey(row.kind, row.name), current.id);
     if (current.icon === row.icon && current.colour === row.colour) summary.categories.unchanged += 1;
     else {
       await patchCategory({ db, actorUserId, input: { id: current.id, icon: row.icon, colour: row.colour } });
@@ -172,26 +161,16 @@ function machineInput(row: FleetImportMachine, categoryId: string, currentDriver
   };
 }
 
-async function importMachines({
-  db,
-  actorUserId,
-  data,
-  summary,
-  categoryIds,
-  driverIds,
-}: {
-  db: Db;
-  actorUserId: AuthId;
-  data: FleetImportData;
-  summary: FleetImportSummary;
-  categoryIds: Map<string, string>;
-  driverIds: Map<string, AuthId>;
-}) {
+async function importMachines(
+  { db, actorUserId, data, summary }: ImportScope,
+  categoryIds: Map<string, string>,
+  driverIds: Map<string, AuthId>,
+) {
   const existing = new Map<string, Machine>();
   for (const machine of await listMachines({ db, input: { status: 'all', search: '' } }))
     existing.set(key(machine.code), machine);
   for (const row of data.machines) {
-    const categoryId = categoryIds.get(`machine:${key(row.category)}`);
+    const categoryId = categoryIds.get(categoryKey('machine', row.category));
     if (!categoryId) throw new Error(`machines: category ${row.category} was not imported`);
     const driverId = row.current_driver ? driverIds.get(key(row.current_driver)) : null;
     if (row.current_driver && !driverId) {
@@ -212,30 +191,20 @@ async function importMachines({
   }
 }
 
-async function importImplements({
-  db,
-  actorUserId,
-  data,
-  summary,
-  categoryIds,
-}: {
-  db: Db;
-  actorUserId: AuthId;
-  data: FleetImportData;
-  summary: FleetImportSummary;
-  categoryIds: Map<string, string>;
-}) {
+async function importImplements({ db, actorUserId, data, summary }: ImportScope, categoryIds: Map<string, string>) {
   const existing = new Map<string, Implement>();
-  const all = await listImplements({ db, input: { status: 'all', search: '' } });
-  for (const implement of all) existing.set(key(implement.code), implement);
+  const known = await listImplements({ db, input: { status: 'all', search: '' } });
+  for (const implement of known) existing.set(key(implement.code), implement);
+  const matched = new Set<string>();
   for (const row of data.implements) {
-    const categoryId = categoryIds.get(`implement:${key(row.category)}`);
+    const categoryId = categoryIds.get(categoryKey('implement', row.category));
     if (!categoryId) throw new Error(`implements: category ${row.category} was not imported`);
-    const current = row.code ? existing.get(key(row.code)) : findGenerated(all, row, categoryId);
+    const current = row.code ? existing.get(key(row.code)) : findGenerated(known, row, categoryId, matched);
+    if (current) matched.add(current.id);
     if (!current) {
       const code = row.code ?? (await suggestImplementCode({ db, categoryId })).code;
       const created = await createImplement({ db, actorUserId, input: { code, categoryId, notes: row.notes } });
-      all.push(created);
+      known.push(created);
       summary.implements.created += 1;
     } else if (current.retiredAt) {
       summary.warnings.push(`implements: ${current.code} is retired and was left alone`);
@@ -251,10 +220,16 @@ async function importImplements({
  * A row without a code cannot be found by code on a rerun, so it is matched by its category and
  * notes among the implements whose codes this script generated for that category.
  */
-function findGenerated(all: readonly Implement[], row: FleetImportImplement, categoryId: string) {
+function findGenerated(
+  known: readonly Implement[],
+  row: FleetImportImplement,
+  categoryId: string,
+  matched: ReadonlySet<string>,
+) {
   const prefix = `${implementCodePrefix(row.category)}-`;
-  return all.find(
+  return known.find(
     (implement) =>
+      !matched.has(implement.id) &&
       implement.categoryId === categoryId &&
       implement.code.startsWith(prefix) &&
       (implement.notes ?? null) === row.notes,
@@ -264,5 +239,3 @@ function findGenerated(all: readonly Implement[], row: FleetImportImplement, cat
 function differs(current: Machine, input: ReturnType<typeof machineInput>) {
   return (Object.keys(input) as (keyof typeof input)[]).some((field) => current[field] !== input[field]);
 }
-
-export type { FleetImportPerson };

@@ -77,7 +77,7 @@ external accounting system. Stamping it is what makes a Job Invoiced.
 
 **Machine** is one piece of the contracting fleet: a make and model (entered via creatable
 selects so spelling stays consistent), a year, a registration number, a hand-entered unique
-**Machine Code** following the fleet's `JD6140M-1` convention, a **Category**, an optional
+**Machine Code** following the fleet's `JD140-1` convention, a **Category**, an optional
 current **Driver**, and notes. A Machine is what an Assignment assigns. It has no reference to the
 Equipment context: the two businesses share no machine identity. A Machine is **On Job** while it
 has an **on-site** Assignment and otherwise **In Yard** — a planned Assignment never counts —
@@ -111,7 +111,8 @@ context's `JOB-xxxxx`.
 ## Hours
 
 **Hour Reading** is one captured value of a Machine's hour meter: the value, when and by whom it
-was captured, and its evidence. The Foreman always types the value; a photo is attached whenever
+was captured, and its evidence. Whoever captures it types the value — the Foreman in the field,
+an administrator for a Baseline Reading; a photo is attached whenever
 the camera allows, and a reading without one is stamped **Missing Photo Evidence**. Capture never
 waits for signal — readings queue on the phone and sync when they can. After sync the server reads
 the photo itself and records its own value and confidence: a reading is **photo-backed** when it
@@ -119,10 +120,10 @@ carries a photo and **AI-verified** when the server's read agrees with the typed
 Disagreements, low confidence, and disputes surface to management as **Reading Exceptions** —
 never to the Foreman, who is never re-interrupted in the field. A reading may carry the Foreman's
 optional **capture comment**, shown wherever management reviews it; the capture screen shows the
-minimum value the meter can now read. A reading plays one of three roles:
+minimum value the meter can now read. A field reading plays one of three roles:
 **arrival** (machine on site) and **departure** (machine leaving) on a Machine Assignment, or
 **spot** — an ad-hoc field capture with no billing effect, existing to keep a Machine's known
-hours current for service tracking. The
+hours current for service tracking; the fourth role, **Baseline Reading**, is defined below. The
 pre-travel opening is never captured: it is the machine's previous departure reading, so travel
 and work time are derived and no hour can vanish between Jobs. A Machine's readings never go
 backward: a capture strictly below the latest reading is refused (equal is accepted — an idle
@@ -132,11 +133,16 @@ re-capture a reading only while his Assignment is open; from Completion onward o
 amends, with a mandatory reason, and Invoiced freezes everything. Derived values always recompute
 after an amendment.
 
-**Baseline Reading** is a Machine's anchoring first Hour Reading, recorded when the Machine
-enters the fleet.
+**Baseline Reading** is an optional, administrator-captured Hour Reading that anchors a Machine
+before its first Job — at a service, say — and must be the Machine's first reading. Most Machines
+never get one: hours are captured on site, with a photo, the first time the app sees the Machine,
+and that first reading of whatever role opens its ledger. Hours are never collected from paper,
+stickers or memory ahead of use, because a value taken off site has no known currency. Until a
+Machine has a reading nothing derives for it — no Hour Gap, no Travel Hours, no Service Due Soon.
 
 **Hour Gap** is the derived interval between one Assignment's departure reading and the machine's
-next arrival reading; spot readings never bound a gap. By default the whole gap is **Travel Hours**, billed to the destination Job
+next arrival reading; spot readings never bound a gap, and a Machine's first arrival has no
+preceding departure, so it opens the ledger with no gap and no Travel Hours. By default the whole gap is **Travel Hours**, billed to the destination Job
 at the Assignment's rate under an include toggle that defaults on; a machine moved by truck simply
 has a zero gap. A gap above the single global threshold raises a **Gap Flag**, surfaced at
 sign-off and blocking nothing; management resolves it by splitting the gap into billable Travel

@@ -41,6 +41,22 @@ describe('parseFleetImport', () => {
     }
   });
 
+  it('lets a category name repeat across kinds and resolves each reference by kind', async () => {
+    const files = await sampleFiles();
+    files.categories = `${files.categories}Trailer,machine,tipper,green\nTrailer,implement,tip-trailer,blue\n`;
+    files.machines = `${files.machines}TR-1,Bell,1,,,Trailer,,,,\n`;
+    files.implements = `${files.implements}Trailer,TR-2,\n`;
+    const data = parseFleetImport(files);
+    expect(data.machines.at(-1)?.category).toBe('Trailer');
+    expect(data.implements.at(-1)?.category).toBe('Trailer');
+  });
+
+  it('rejects two people whose names collapse to the same placeholder email', async () => {
+    const files = await sampleFiles();
+    files.people = `${files.people}José,driver,\nJose,driver,\n`;
+    expect(() => parseFleetImport(files)).toThrow(/placeholder email "jose@fleet.jedidiah.invalid" repeats line 5/);
+  });
+
   it('rejects duplicate codes and names case-insensitively', async () => {
     const files = await sampleFiles();
     files.machines = `${files.machines}jd140-2,Bell,1,,,Tractor,,,,\n`;

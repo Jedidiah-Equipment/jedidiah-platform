@@ -146,6 +146,17 @@ const key = (value: string) => value.trim().toLowerCase();
 /** Category names are unique per kind, case-insensitively, so both take part in the lookup key. */
 export const categoryKey = (kind: string, name: string) => `${kind}:${key(name)}`;
 
+/** Drivers and mechanics never sign in, so the address only has to be unique and obviously fake. */
+export function placeholderEmail(name: string): string {
+  const slug = name
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+  return `${slug || 'person'}@fleet.jedidiah.invalid`;
+}
+
 function checkUnique(file: FleetImportFileName, label: string, values: readonly string[], issues: string[]) {
   const seen = new Map<string, number>();
   values.forEach((value, index) => {
@@ -189,11 +200,19 @@ export function parseFleetImport(files: FleetImportFiles): FleetImportData {
     issues,
   );
 
-  const categoryKinds = new Map(categories.map((category) => [key(category.name), category.kind]));
+  // Two names can differ only in an accent or a hyphen and still share a generated address.
+  checkUnique(
+    'people',
+    'placeholder email',
+    people.map((person) => placeholderEmail(person.name)),
+    issues,
+  );
+
+  const categoryKeys = new Set(categories.map((category) => categoryKey(category.kind, category.name)));
   const drivers = new Set(people.filter((person) => person.role === 'driver').map((person) => key(person.name)));
   machines.forEach((machine, index) => {
     const line = index + 2;
-    if (categoryKinds.get(key(machine.category)) !== 'machine')
+    if (!categoryKeys.has(categoryKey('machine', machine.category)))
       issues.push(`machines.csv line ${line}: category "${machine.category}" is not a machine category`);
     if (machine.current_driver && !drivers.has(key(machine.current_driver)))
       issues.push(
@@ -201,7 +220,7 @@ export function parseFleetImport(files: FleetImportFiles): FleetImportData {
       );
   });
   implementsRows.forEach((implement, index) => {
-    if (categoryKinds.get(key(implement.category)) !== 'implement')
+    if (!categoryKeys.has(categoryKey('implement', implement.category)))
       issues.push(`implements.csv line ${index + 2}: category "${implement.category}" is not an implement category`);
   });
   if (issues.length > 0) throw new FleetImportCsvError(issues);

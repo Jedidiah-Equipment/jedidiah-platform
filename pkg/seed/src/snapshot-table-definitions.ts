@@ -489,11 +489,14 @@ export const snapshotTableDefinitions = [
     optionalReadTable: true,
   },
   {
-    // `sequence` is a generated identity, so the writer must not send it back.
+    // `sequence` is a generated identity the reading service orders by, so the read keeps that
+    // order and the writer, which cannot send it back, reissues it in the same order.
     fileName: 'contracting_hour_reading.json',
     tableName: 'contracting_hour_reading',
     timestampColumns: ['amendedAt', 'capturedAt', 'evidenceReviewedAt'],
     optionalReadTable: true,
+    readOrderColumn: 'sequence',
+    storageFiles: (row) => [row.photo].map(toStorageFile).filter(isStorageFile),
     writableColumns: [
       'id',
       'machineId',

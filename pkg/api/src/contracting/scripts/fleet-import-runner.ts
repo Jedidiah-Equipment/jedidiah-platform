@@ -21,6 +21,7 @@ import {
   type FleetImportData,
   type FleetImportImplement,
   type FleetImportMachine,
+  placeholderEmail,
 } from './fleet-import-csv.js';
 
 export type FleetImportCounts = { created: number; updated: number; unchanged: number; skipped: number };
@@ -31,19 +32,6 @@ export type FleetImportSummary = {
   implements: FleetImportCounts;
   warnings: string[];
 };
-
-const PLACEHOLDER_EMAIL_DOMAIN = 'fleet.jedidiah.invalid';
-
-/** Drivers and mechanics never sign in, so the address only has to be unique and obviously fake. */
-export function placeholderEmail(name: string): string {
-  const slug = name
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '');
-  return `${slug || 'person'}@${PLACEHOLDER_EMAIL_DOMAIN}`;
-}
 
 const key = (value: string) => value.trim().toLowerCase();
 const zeroCounts = (): FleetImportCounts => ({ created: 0, updated: 0, unchanged: 0, skipped: 0 });

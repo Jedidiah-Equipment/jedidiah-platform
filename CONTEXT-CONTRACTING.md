@@ -77,7 +77,7 @@ external accounting system. Stamping it is what makes a Job Invoiced.
 
 **Machine** is one piece of the contracting fleet: a make and model (entered via creatable
 selects so spelling stays consistent), a year, a registration number, a hand-entered unique
-**Machine Code** following the fleet's `JD6140M-1` convention, a **Category**, an optional
+**Machine Code** following the fleet's `JD140-1` convention, a **Category**, an optional
 current **Driver**, and notes. A Machine is what an Assignment assigns. It has no reference to the
 Equipment context: the two businesses share no machine identity. A Machine is **On Job** while it
 has an **on-site** Assignment and otherwise **In Yard** — a planned Assignment never counts —
@@ -132,11 +132,16 @@ re-capture a reading only while his Assignment is open; from Completion onward o
 amends, with a mandatory reason, and Invoiced freezes everything. Derived values always recompute
 after an amendment.
 
-**Baseline Reading** is a Machine's anchoring first Hour Reading, recorded when the Machine
-enters the fleet.
+**Baseline Reading** is an optional, administrator-captured Hour Reading that anchors a Machine
+before its first Job — at a service, say — and must be the Machine's first reading. Most Machines
+never get one: hours are captured on site, with a photo, the first time the app sees the Machine,
+and that first reading of whatever role opens its ledger. Hours are never collected from paper,
+stickers or memory ahead of use, because a value taken off site has no known currency. Until a
+Machine has a reading nothing derives for it — no Hour Gap, no Travel Hours, no Service Due Soon.
 
 **Hour Gap** is the derived interval between one Assignment's departure reading and the machine's
-next arrival reading; spot readings never bound a gap. By default the whole gap is **Travel Hours**, billed to the destination Job
+next arrival reading; spot readings never bound a gap, and a Machine's first arrival has no
+preceding departure, so it opens the ledger with no gap and no Travel Hours. By default the whole gap is **Travel Hours**, billed to the destination Job
 at the Assignment's rate under an include toggle that defaults on; a machine moved by truck simply
 has a zero gap. A gap above the single global threshold raises a **Gap Flag**, surfaced at
 sign-off and blocking nothing; management resolves it by splitting the gap into billable Travel

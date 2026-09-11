@@ -25,6 +25,10 @@ export type SnapshotTableDefinition = {
   optionalReadTable?: boolean;
   // Required singleton/reference data when a pre-rollout snapshot has no rows.
   emptySnapshotRows?: readonly SnapshotRow[];
+  // Tables whose fallback rows reference one another fall back together: the group's rows are used
+  // only when every table in the group read empty, so a half-captured source never mixes real
+  // parents with demo children.
+  emptySnapshotGroup?: string;
   // Column (property name) to order the source read by, so positional seed defaults are deterministic.
   readOrderColumn?: string;
   // Values merged into each row after reading, keyed by index — used to populate columns omitted above.
@@ -78,6 +82,100 @@ const legacyPartStandardPurchaseLengthsMm: Readonly<Record<string, number>> = {
   'LTE-0028': 1000,
   'SEMP-0001': 6000,
 };
+
+// A small hand-made contracting fleet for checkouts whose snapshot predates the real one. Machines
+// carry no driver: the snapshot's users come from production and none of them is a Driver.
+const demoFleetStamp = new Date('2026-09-11T08:00:00.000Z');
+const demoFleetIds = {
+  excavator: '5f1c2d3e-0001-4a00-8000-000000000001',
+  tractor: '5f1c2d3e-0001-4a00-8000-000000000002',
+  gravelTrailer: '5f1c2d3e-0001-4a00-8000-000000000003',
+  disc: '5f1c2d3e-0001-4a00-8000-000000000004',
+} as const;
+const demoFleetEntry = { createdAt: demoFleetStamp, updatedAt: demoFleetStamp } as const;
+const demoFleetUnit = { retiredAt: null, retiredReason: null, ...demoFleetEntry } as const;
+const demoFleet = {
+  categories: [
+    {
+      id: demoFleetIds.excavator,
+      name: 'Excavator',
+      kind: 'machine',
+      icon: 'excavator',
+      colour: 'yellow',
+      ...demoFleetEntry,
+    },
+    { id: demoFleetIds.tractor, name: 'Tractor', kind: 'machine', icon: 'tractor', colour: 'green', ...demoFleetEntry },
+    {
+      id: demoFleetIds.gravelTrailer,
+      name: 'Gravel Trailer',
+      kind: 'implement',
+      icon: 'gravel-trailer',
+      colour: 'blue',
+      ...demoFleetEntry,
+    },
+    { id: demoFleetIds.disc, name: 'Disc', kind: 'implement', icon: 'disc', colour: 'orange', ...demoFleetEntry },
+  ],
+  machines: [
+    {
+      id: '5f1c2d3e-0002-4a00-8000-000000000001',
+      code: 'KOL220-1',
+      make: 'Kobelco',
+      model: '220',
+      year: 2019,
+      registration: null,
+      categoryId: demoFleetIds.excavator,
+      currentDriverUserId: null,
+      notes: null,
+      serviceIntervalHours: 500,
+      nextServiceDueHours: 4500,
+      ...demoFleetUnit,
+    },
+    {
+      id: '5f1c2d3e-0002-4a00-8000-000000000002',
+      code: 'JD140-1',
+      make: 'John Deere',
+      model: '6140M',
+      year: null,
+      registration: 'CG 39 NM',
+      categoryId: demoFleetIds.tractor,
+      currentDriverUserId: null,
+      notes: null,
+      serviceIntervalHours: 250,
+      nextServiceDueHours: null,
+      ...demoFleetUnit,
+    },
+    {
+      id: '5f1c2d3e-0002-4a00-8000-000000000003',
+      code: 'JD140-2',
+      make: 'John Deere',
+      model: '6140M',
+      year: 2021,
+      registration: 'CZ 46 TD',
+      categoryId: demoFleetIds.tractor,
+      currentDriverUserId: null,
+      notes: null,
+      serviceIntervalHours: null,
+      nextServiceDueHours: null,
+      ...demoFleetUnit,
+    },
+  ],
+  implements: [
+    {
+      id: '5f1c2d3e-0003-4a00-8000-000000000001',
+      code: 'BGTA-1',
+      categoryId: demoFleetIds.gravelTrailer,
+      notes: 'Bell 9M3 Agri',
+      ...demoFleetUnit,
+    },
+    {
+      id: '5f1c2d3e-0003-4a00-8000-000000000002',
+      code: 'JD670-1',
+      categoryId: demoFleetIds.disc,
+      notes: 'John Deere 670',
+      ...demoFleetUnit,
+    },
+  ],
+} as const satisfies Record<string, readonly SnapshotRow[]>;
 
 export const snapshotTableDefinitions = [
   {
@@ -348,6 +446,85 @@ export const snapshotTableDefinitions = [
     tableName: 'feedback_user',
     timestampColumns: [],
     optionalReadTable: true,
+  },
+  // The contracting schema follows every public table it references (Users as Drivers, Mechanics
+  // and reading capturers). The snapshot directory is never committed, so until production carries
+  // the real fleet (#1394's ingestion) a fresh checkout seeds the demo fleet below; once
+  // `seed:read:production` captures real rows, those files win. Only the fleet tables get demo rows:
+  // the directory tables and readings start empty, and would otherwise resurface demo rows beside
+  // real data whenever production holds none.
+  {
+    fileName: 'contracting_category.json',
+    tableName: 'contracting_category',
+    timestampColumns: standardTimestampColumns,
+    optionalReadTable: true,
+    emptySnapshotRows: demoFleet.categories,
+    emptySnapshotGroup: 'demo-fleet',
+  },
+  {
+    fileName: 'contracting_machine.json',
+    tableName: 'contracting_machine',
+    timestampColumns: ['createdAt', 'retiredAt', 'updatedAt'],
+    optionalReadTable: true,
+    emptySnapshotRows: demoFleet.machines,
+    emptySnapshotGroup: 'demo-fleet',
+  },
+  {
+    fileName: 'contracting_implement.json',
+    tableName: 'contracting_implement',
+    timestampColumns: ['createdAt', 'retiredAt', 'updatedAt'],
+    optionalReadTable: true,
+    emptySnapshotRows: demoFleet.implements,
+    emptySnapshotGroup: 'demo-fleet',
+  },
+  {
+    fileName: 'contracting_customer.json',
+    tableName: 'contracting_customer',
+    timestampColumns: standardTimestampColumns,
+    optionalReadTable: true,
+  },
+  {
+    fileName: 'contracting_farm.json',
+    tableName: 'contracting_farm',
+    timestampColumns: [],
+    optionalReadTable: true,
+  },
+  {
+    fileName: 'contracting_work_type.json',
+    tableName: 'contracting_work_type',
+    timestampColumns: [],
+    optionalReadTable: true,
+  },
+  {
+    // `sequence` is a generated identity the reading service orders by, so the read keeps that
+    // order and the writer, which cannot send it back, reissues it in the same order.
+    fileName: 'contracting_hour_reading.json',
+    tableName: 'contracting_hour_reading',
+    timestampColumns: ['amendedAt', 'capturedAt', 'evidenceReviewedAt'],
+    optionalReadTable: true,
+    readOrderColumn: 'sequence',
+    storageFiles: (row) => [row.photo].map(toStorageFile).filter(isStorageFile),
+    writableColumns: [
+      'id',
+      'machineId',
+      'role',
+      'value',
+      'capturedAt',
+      'capturedByUserId',
+      'method',
+      'comment',
+      'photo',
+      'aiValue',
+      'aiConfidence',
+      'aiVerification',
+      'disputed',
+      'disputeReason',
+      'disputedPreviousId',
+      'evidenceReviewedAt',
+      'amendedBy',
+      'amendedAt',
+      'amendmentReason',
+    ],
   },
 ] as const satisfies readonly SnapshotTableDefinition[];
 

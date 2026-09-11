@@ -4,7 +4,7 @@ import './load-read-env.js';
 import { createDatabaseClient } from '@pkg/db';
 import { readSnapshotTableRows } from './seed-reader.js';
 import { resolveStagingSeedConfig } from './seed-target-guards.js';
-import { prepareRowsForSeed, replaceDatabaseWithSeedSnapshot, type SnapshotWithRows } from './seed-writer.js';
+import { prepareSnapshotsForSeed, replaceDatabaseWithSeedSnapshot, type SnapshotWithRows } from './seed-writer.js';
 import { collectStorageFiles, snapshotTables } from './snapshot-tables.js';
 import { createStorage, downloadObject, type SeedStorage, uploadObject } from './storage.js';
 
@@ -35,15 +35,18 @@ export async function writeLocalSeedToStaging(): Promise<void> {
 async function readLocalSnapshots(
   database: ReturnType<typeof createDatabaseClient>['db'],
 ): Promise<SnapshotWithRows[]> {
-  const snapshots: SnapshotWithRows[] = [];
+  const read = [];
 
   for (const tableConfig of snapshotTables) {
-    const rows = prepareRowsForSeed(
-      tableConfig,
-      await readSnapshotTableRows(database, tableConfig, { currentSchema: true }),
-    );
-    snapshots.push({ config: tableConfig, rows });
-    console.info(`[seed:write:staging] Read ${rows.length} local ${tableConfig.tableName} row(s)`);
+    read.push({
+      config: tableConfig,
+      rows: await readSnapshotTableRows(database, tableConfig, { currentSchema: true }),
+    });
+  }
+
+  const snapshots = prepareSnapshotsForSeed(read);
+  for (const { config, rows } of snapshots) {
+    console.info(`[seed:write:staging] Read ${rows.length} local ${config.tableName} row(s)`);
   }
 
   return snapshots;

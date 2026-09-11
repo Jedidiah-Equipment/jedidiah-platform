@@ -1,0 +1,48 @@
+{
+  "business": "contracting",
+  "releasedAt": "2026-09-09T14:18:44.607Z",
+  "sections": [
+    {
+      "surface": "app",
+      "entries": [
+        {
+          "title": "Manage your fleet",
+          "description": "Maintain machines, categories and implements, assign drivers, and record service intervals and category rates. Retire fleet items while keeping their history."
+        },
+        {
+          "title": "Resolve hour reading exceptions",
+          "description": "Review disputed machine hours and photo verification warnings. Inspect photos, recheck verification, and correct or confirm readings with a recorded reason."
+        },
+        {
+          "title": "Organise customers and work types",
+          "description": "Maintain customer contact details and their farms. Add work types and deactivate those no longer offered."
+        },
+        {
+          "title": "Filter users by business access",
+          "description": "See whether each user has Equipment access, Contracting access, both or neither. Combine Mode filters to narrow the user list."
+        },
+        {
+          "title": "Switch between businesses reliably",
+          "description": "Users with access to both businesses can switch between Equipment and Contracting from the sidebar without an error."
+        }
+      ]
+    },
+    {
+      "surface": "mobile",
+      "entries": [
+        {
+          "title": "Find machines in the field",
+          "description": "Search machines by code, filter by category, and view their latest synced hours and reading history. Fleet details and histories opened while connected remain available offline."
+        },
+        {
+          "title": "Capture machine hours offline",
+          "description": "Type hour meter readings and optionally attach a photo, even without signal. Captures stay saved on your phone and sync when the app is open with a connection."
+        },
+        {
+          "title": "Resolve queued reading problems",
+          "description": "Use Needs attention to review captures that could not sync. Dispute an incorrect previous reading, retry syncing or discard a capture."
+        }
+      ]
+    }
+  ]
+}

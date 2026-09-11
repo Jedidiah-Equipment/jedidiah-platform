@@ -1037,6 +1037,13 @@
       "when": 1789035440760,
       "tag": "0147_fleet_category_kind_icon_colour",
       "breakpoints": true
+    },
+    {
+      "idx": 148,
+      "version": "7",
+      "when": 1789130657931,
+      "tag": "0148_changelog_view_per_business",
+      "breakpoints": true
     }
   ]
 }

@@ -1,4 +1,5 @@
-import { type Business, hasBothBusinessAccess } from '@pkg/domain';
+import { hasBothBusinessAccess } from '@pkg/domain';
+import type { Business } from '@pkg/schema';
 import { IconBuildingFactory, IconBuildingWarehouse, IconCheck, IconSelector } from '@tabler/icons-react';
 import { Link, useNavigate } from '@tanstack/react-router';
 import type React from 'react';

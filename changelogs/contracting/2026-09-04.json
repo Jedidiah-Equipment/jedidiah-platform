@@ -1,0 +1,24 @@
+{
+  "business": "contracting",
+  "releasedAt": "2026-09-04T07:56:32.414Z",
+  "sections": [
+    {
+      "surface": "app",
+      "entries": [
+        {
+          "title": "Manage access by business",
+          "description": "Assign separate Equipment and Contracting roles to each user while keeping access within the correct business area."
+        }
+      ]
+    },
+    {
+      "surface": "mobile",
+      "entries": [
+        {
+          "title": "Handle access changes cleanly",
+          "description": "Accounts that are no longer eligible to use the mobile app are now signed out instead of encountering repeated access errors."
+        }
+      ]
+    }
+  ]
+}

@@ -1,4 +1,11 @@
-import { type AppPermission, type AppRole, ContractingRole, EquipmentRole, type UserAccessSummary } from '@pkg/schema';
+import {
+  type AppPermission,
+  type AppRole,
+  type Business,
+  ContractingRole,
+  EquipmentRole,
+  type UserAccessSummary,
+} from '@pkg/schema';
 
 export const roleLabels = {
   admin: 'Administrator',
@@ -395,8 +402,6 @@ export function getRolePermissions(role: AppRole): AppPermission[] {
 
   return [...permissions].sort();
 }
-
-export type Business = 'contracting' | 'equipment';
 
 export type RoleSlots = {
   contractingRole: ContractingRole | null;

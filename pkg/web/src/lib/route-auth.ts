@@ -1,5 +1,5 @@
-import { type Business, defaultBusiness, getPermissionBusiness, hasBusinessAccess, hasPermission } from '@pkg/domain';
-import type { AppPermission, UserAccessSummary } from '@pkg/schema';
+import { defaultBusiness, getPermissionBusiness, hasBusinessAccess, hasPermission } from '@pkg/domain';
+import type { AppPermission, Business, UserAccessSummary } from '@pkg/schema';
 import { redirect } from '@tanstack/react-router';
 
 import type { RouterContext } from '@/app/router-context.js';

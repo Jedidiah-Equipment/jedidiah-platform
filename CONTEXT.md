@@ -192,11 +192,11 @@ Server/API checks are the security boundary. Browser access checks are UX only.
 
 ## Changelog
 
-**Changelog** is the per-release, user-facing summary of what changed, generated at release time from the released commits, reviewed by the releaser before publishing, and grouped by **Surface** (App, Lander, Mobile). Changes with no user-visible effect are omitted rather than grouped separately. Avoid Release Notes or What's New for the domain object. A Changelog exists only for production releases.
+**Changelog** is the per-release, per-Business, user-facing summary of what changed, generated at release time from the released commits, reviewed by the releaser before publishing, and grouped by **Surface** (App, Lander, Mobile; Lander is Equipment-only). Equipment and Contracting keep entirely independent Changelogs — a user sees the one for the Business they are standing in — and a change both businesses can see is duplicated into both rather than held in a shared log. Changes with no user-visible effect are omitted rather than grouped separately. Avoid Release Notes or What's New for the domain object. A Changelog exists only for production releases.
 
 **Changelog Entry** is one titled, described change within a Surface group of a Changelog.
 
-**Changelog View** is a per-user high-water mark: the release time of the newest Changelog the user has acknowledged. A Changelog is **Unseen** for a user when it is newer than their Changelog View, released within the last 30 days, released after the user's account was created, and the environment is production. In the dialog, finishing or skipping advances the Changelog View past everything shown; closing does not.
+**Changelog View** is a per-user, per-Business high-water mark: the release time of the newest Changelog of that Business the user has acknowledged. A Changelog is **Unseen** for a user when it belongs to the Business being viewed, is newer than their Changelog View for that Business, released within the last 30 days, released after the user's account was created, and the environment is production. In the dialog, finishing or skipping advances that Business's Changelog View past everything shown; closing does not.
 
 ## Cross-Cutting
 

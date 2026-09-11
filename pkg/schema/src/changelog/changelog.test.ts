@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { Changelog } from './changelog.js';
 
 const validChangelog = {
+  business: 'equipment',
   releasedAt: '2026-07-13T09:00:00.000Z',
   sections: [
     {
@@ -24,6 +25,34 @@ describe('Changelog', () => {
 
   it('can be represented as JSON Schema', () => {
     expect(() => z.toJSONSchema(Changelog)).not.toThrow();
+  });
+
+  it('rejects a missing business', () => {
+    const { business: _business, ...withoutBusiness } = validChangelog;
+    expect(Changelog.safeParse(withoutBusiness).success).toBe(false);
+  });
+
+  it('rejects an unknown business', () => {
+    expect(Changelog.safeParse({ ...validChangelog, business: 'plant' }).success).toBe(false);
+  });
+
+  it('accepts a contracting changelog on the app and mobile surfaces', () => {
+    const contracting = {
+      ...validChangelog,
+      business: 'contracting',
+      sections: [
+        { surface: 'app', entries: [{ title: 'a', description: 'b' }] },
+        { surface: 'mobile', entries: [{ title: 'c', description: 'd' }] },
+      ],
+    };
+    expect(Changelog.safeParse(contracting).success).toBe(true);
+  });
+
+  it('rejects the lander surface in a contracting changelog', () => {
+    const contracting = { ...validChangelog, business: 'contracting' };
+    const result = Changelog.safeParse(contracting);
+    expect(result.success).toBe(false);
+    if (!result.success) expect(result.error.issues[0]?.path).toEqual(['sections']);
   });
 
   it('rejects a missing releasedAt', () => {

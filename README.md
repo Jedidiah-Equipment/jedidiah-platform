@@ -152,8 +152,8 @@ pnpm release:production
 refuses to push when `production` holds commits that are not on `main`. GitHub protections should disable
 deletion and force pushes on `production` and restrict direct pushes to the release actor.
 
-Each release generates a changelog file in [`changelogs/`](changelogs) — see
-[`docs/adr/0012-release-time-changelog.md`](docs/adr/0012-release-time-changelog.md). The changelog is
+Each release generates a changelog file per business in [`changelogs/`](changelogs) — see
+[`docs/adr/0018-per-business-release-time-changelog.md`](docs/adr/0018-per-business-release-time-changelog.md). The changelog is
 written by a local coding-agent CLI; pass `--agent claude` (or set `CHANGELOG_AGENT=claude`) to use Claude
 instead of the default `codex`:
 

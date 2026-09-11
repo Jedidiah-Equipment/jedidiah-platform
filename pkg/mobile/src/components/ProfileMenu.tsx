@@ -1,4 +1,5 @@
-import { type Business, type HelpTopic, hasBothBusinessAccess, helpUrl } from '@pkg/domain';
+import { type HelpTopic, hasBothBusinessAccess, helpUrl } from '@pkg/domain';
+import type { Business } from '@pkg/schema';
 import { IconHelpCircle, IconLogout, IconSwitchHorizontal } from '@tabler/icons-react-native';
 import * as Linking from 'expo-linking';
 import { router, usePathname } from 'expo-router';

@@ -1,13 +1,14 @@
 import { readFileSync } from 'node:fs';
+import { basename, dirname } from 'node:path';
 import { parseArgs } from 'node:util';
 
 import { AGENT_NAMES, isAgentName, runAgentCli } from './agent.js';
 import { deriveChangelogBasename } from './filename.js';
 import { existingBasenames, listChangelogFiles, listJsonPaths, removeFiles, writeChangelogFile } from './files.js';
-import { generateChangelog } from './generate.js';
+import { generateChangelogs } from './generate.js';
 import { readReleaseCommitLog } from './git.js';
 import { selectStaleChangelogs } from './prune.js';
-import { validateChangelogJson } from './validate.js';
+import { businessFromDirectoryName, validateChangelogJson } from './validate.js';
 
 const PROMPT_PATH = new URL('../prompts/generate-changelog.md', import.meta.url);
 
@@ -18,9 +19,10 @@ function fail(message: string): never {
 
 /**
  * `generate --from <ref> --to <ref> --dir <changelogs> [--repo <root>] [--agent <name>] [--dry-run]`
- * Generates and validates a changelog for the `from..to` release. Prints it. Writes it under
- * `--dir` unless `--dry-run`. Exits non-zero (blocking the release) on generation or validation
- * failure. Exits 0 without writing when the release has no user-visible changes.
+ * Generates and validates the `from..to` release's changelogs, one per business with user-visible
+ * changes. Prints them. Writes each under `--dir/<business>/` unless `--dry-run`. Exits non-zero
+ * (blocking the release) on generation or validation failure. Exits 0 without writing when the
+ * release has no user-visible changes for either business.
  */
 async function generate(argv: string[]): Promise<void> {
   const { values } = parseArgs({
@@ -50,7 +52,7 @@ async function generate(argv: string[]): Promise<void> {
 
   const prompt = readFileSync(PROMPT_PATH, 'utf8');
   process.stdout.write(`Generating with ${agent}.\n`);
-  const outcome = await generateChangelog(commitLog, {
+  const outcome = await generateChangelogs(commitLog, {
     runAgent: (input) => runAgentCli(input, repo, agent),
     prompt,
     now: new Date(),
@@ -66,20 +68,22 @@ async function generate(argv: string[]): Promise<void> {
     return;
   }
 
-  const json = `${JSON.stringify(outcome.changelog, null, 2)}\n`;
-  if (values['dry-run']) {
-    process.stdout.write(`Would write changelog:\n${json}`);
-    return;
+  for (const changelog of outcome.changelogs) {
+    const json = `${JSON.stringify(changelog, null, 2)}\n`;
+    if (values['dry-run']) {
+      process.stdout.write(`Would write ${changelog.business} changelog:\n${json}`);
+      continue;
+    }
+    const basename = deriveChangelogBasename(changelog.releasedAt, existingBasenames(dir, changelog.business));
+    const path = writeChangelogFile(dir, basename, changelog);
+    process.stdout.write(`Wrote ${path}\n\n${json}`);
   }
-
-  const basename = deriveChangelogBasename(outcome.changelog.releasedAt, existingBasenames(dir));
-  const path = writeChangelogFile(dir, basename, outcome.changelog);
-  process.stdout.write(`Wrote ${path}\n\n${json}`);
 }
 
 /**
  * `validate <file>` or `validate --dir <changelogs>` — re-validates changelog files after manual
- * review edits. The `--dir` form gates every file in the directory before the release commit.
+ * review edits. The `--dir` form gates every file beneath the root before the release commit. Both
+ * forms check a file's business against the directory it sits in.
  */
 function validate(argv: string[]): void {
   const { values, positionals } = parseArgs({
@@ -88,20 +92,23 @@ function validate(argv: string[]): void {
     options: { dir: { type: 'string' } },
   });
 
+  const single = positionals[0];
   const files = values.dir
     ? listJsonPaths(values.dir)
-    : [positionals[0] ?? fail('validate: a changelog file path or --dir is required')];
+    : single
+      ? [{ path: single, business: businessFromDirectoryName(basename(dirname(single))) }]
+      : fail('validate: a changelog file path or --dir is required');
 
   for (const file of files) {
-    const result = validateChangelogJson(readFileSync(file, 'utf8'));
+    const result = validateChangelogJson(readFileSync(file.path, 'utf8'), file);
     if (!result.ok) {
-      fail(`${file} is not a valid changelog:\n${result.errors.map((e) => `  - ${e}`).join('\n')}`);
+      fail(`${file.path} is not a valid changelog:\n${result.errors.map((e) => `  - ${e}`).join('\n')}`);
     }
   }
   process.stdout.write(`Validated ${files.length} changelog file(s).\n`);
 }
 
-/** `prune --dir <changelogs>` — removes changelog files past the display window. */
+/** `prune --dir <changelogs>` — removes changelog files past the display window from every business directory. */
 function prune(argv: string[]): void {
   const { values } = parseArgs({ args: argv, options: { dir: { type: 'string' } } });
   const dir = values.dir ?? fail('prune: --dir <changelogs-dir> is required');

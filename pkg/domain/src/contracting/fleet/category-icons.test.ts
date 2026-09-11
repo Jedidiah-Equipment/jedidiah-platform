@@ -28,7 +28,7 @@ describe('category icons', () => {
     expect(categoryIcon('hovercraft').key).toBe('generic-machine');
     expect(categoryIcon('tractor').key).toBe('tractor');
   });
-  it('has real path data for every glyph that is not a declared placeholder', () => {
+  it('does not reuse a generic outline for a named fleet glyph', () => {
     const placeholders = new Set<string>();
     const generics = categoryIcons.filter((icon) => icon.key.startsWith('generic-')).map((icon) => icon.paths);
     for (const icon of categoryIcons) {

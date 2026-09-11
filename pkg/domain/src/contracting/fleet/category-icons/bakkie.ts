@@ -10,6 +10,5 @@ export const bakkie: CategoryIconGlyph = {
     'M7 17h10',
     'M3 17H2v-6h9V7h5l3 5h2a1 1 0 0 1 1 1v4h-1',
     'M11 11v2h8',
-    'M2 8v3',
   ],
 };

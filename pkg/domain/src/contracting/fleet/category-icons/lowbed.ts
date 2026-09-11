@@ -9,7 +9,6 @@ export const lowbed: CategoryIconGlyph = {
     'M17 18a2 2 0 1 0 4 0a2 2 0 1 0 -4 0',
     'M9 18h8',
     'M2 12h5l3 3h8l4 -6',
-    'M2 9h6l3 3h6l3 -4',
     'M4 12v6h1',
   ],
 };

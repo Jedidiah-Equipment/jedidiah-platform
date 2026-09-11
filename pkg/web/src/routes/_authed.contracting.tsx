@@ -10,7 +10,7 @@ export const Route = createFileRoute('/_authed/contracting')({
 
 function ContractingRoute() {
   return (
-    <AuthenticatedRouteShell sidebar={<AppSidebar />}>
+    <AuthenticatedRouteShell business="contracting" sidebar={<AppSidebar />}>
       <Outlet />
     </AuthenticatedRouteShell>
   );

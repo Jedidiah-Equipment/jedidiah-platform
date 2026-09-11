@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+import { Business } from '../common/business.js';
 import { DateIso } from '../common/date.js';
 import { requiredTrimmedText } from '../common/text.js';
 
@@ -13,6 +14,12 @@ export const CHANGELOG_WINDOW_DAYS = 30;
 
 export type ChangelogSurface = z.infer<typeof ChangelogSurface>;
 export const ChangelogSurface = z.enum(['app', 'lander', 'mobile']);
+
+/** The Surfaces each Business ships on: the lander is the Equipment marketing site. */
+export const CHANGELOG_SURFACES_BY_BUSINESS: Record<Business, readonly ChangelogSurface[]> = {
+  contracting: ['app', 'mobile'],
+  equipment: ['app', 'lander', 'mobile'],
+};
 
 export type ChangelogEntry = z.infer<typeof ChangelogEntry>;
 export const ChangelogEntry = z.object({
@@ -29,6 +36,7 @@ export const ChangelogSection = z.object({
 export type Changelog = z.infer<typeof Changelog>;
 export const Changelog = z
   .object({
+    business: Business,
     releasedAt: DateIso,
     sections: z.array(ChangelogSection).min(1),
   })
@@ -36,6 +44,16 @@ export const Changelog = z
     (changelog) => new Set(changelog.sections.map((section) => section.surface)).size === changelog.sections.length,
     {
       message: 'Each Surface may appear at most once',
+      path: ['sections'],
+    },
+  )
+  .refine(
+    (changelog) =>
+      changelog.sections.every((section) =>
+        CHANGELOG_SURFACES_BY_BUSINESS[changelog.business].includes(section.surface),
+      ),
+    {
+      message: 'A Surface must belong to the Business',
       path: ['sections'],
     },
   );

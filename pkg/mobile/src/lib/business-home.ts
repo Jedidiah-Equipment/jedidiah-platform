@@ -1,4 +1,4 @@
-import type { Business } from '@pkg/domain';
+import type { Business } from '@pkg/schema';
 import type { Href } from 'expo-router';
 
 /** Each business's landing route: the redirect target, the guard fallback, and the switcher destination. */

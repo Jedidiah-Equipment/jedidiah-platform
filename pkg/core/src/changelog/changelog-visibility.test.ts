@@ -1,4 +1,4 @@
-import type { AppEnv, Changelog } from '@pkg/schema';
+import type { AppEnv, Business, Changelog } from '@pkg/schema';
 import { describe, expect, it } from 'vitest';
 
 import { selectUnseenChangelogs } from './changelog-visibility.js';
@@ -6,8 +6,9 @@ import { selectUnseenChangelogs } from './changelog-visibility.js';
 const NOW = new Date('2026-06-15T12:00:00.000Z');
 const ACCOUNT_CREATED = new Date('2026-01-01T00:00:00.000Z');
 
-function changelog(releasedAt: string): Changelog {
+function changelog(releasedAt: string, business: Business = 'equipment'): Changelog {
   return {
+    business,
     releasedAt,
     sections: [{ surface: 'app', entries: [{ title: 'Something', description: 'A visible change.' }] }],
   } as Changelog;
@@ -15,12 +16,14 @@ function changelog(releasedAt: string): Changelog {
 
 function select(overrides: {
   appEnv?: AppEnv;
+  business?: Business;
   changelogs?: Changelog[];
   accountCreatedAt?: Date;
   lastSeenReleaseAt?: Date | null;
 }) {
   return selectUnseenChangelogs({
     appEnv: overrides.appEnv ?? 'production',
+    business: overrides.business ?? 'equipment',
     changelogs: overrides.changelogs ?? [],
     now: NOW,
     accountCreatedAt: overrides.accountCreatedAt ?? ACCOUNT_CREATED,
@@ -33,6 +36,18 @@ function releasedDates(changelogs: Changelog[]): string[] {
 }
 
 describe('selectUnseenChangelogs', () => {
+  it('returns only the changelogs of the business being viewed', () => {
+    const equipment = changelog('2026-06-10T00:00:00.000Z', 'equipment');
+    const contracting = changelog('2026-06-11T00:00:00.000Z', 'contracting');
+
+    expect(releasedDates(select({ business: 'contracting', changelogs: [equipment, contracting] }))).toEqual([
+      contracting.releasedAt,
+    ]);
+    expect(releasedDates(select({ business: 'equipment', changelogs: [equipment, contracting] }))).toEqual([
+      equipment.releasedAt,
+    ]);
+  });
+
   it('returns nothing outside production', () => {
     const changelogs = [changelog('2026-06-10T00:00:00.000Z')];
     for (const appEnv of ['development', 'staging'] as const) {

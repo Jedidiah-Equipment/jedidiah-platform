@@ -1,4 +1,5 @@
-import { useMutation, useQuery } from '@tanstack/react-query';
+import type { Business } from '@pkg/schema';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type React from 'react';
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button.js';
@@ -16,16 +17,29 @@ import {
   reduceChangelogControl,
 } from './changelog-dialog-state.js';
 
-export const ChangelogDialog: React.FC = () => {
+type ChangelogDialogProps = {
+  /** The business whose Changelog this dialog announces: the one the user is standing in. */
+  business: Business;
+};
+
+export const ChangelogDialog: React.FC<ChangelogDialogProps> = ({ business }) => {
   const trpc = useTRPC();
+  const queryClient = useQueryClient();
   const showMutationError = useApiMutationErrorToast();
 
   // Load once per app load and never re-check: the dialog must not reappear on navigation or focus.
+  // Switching business remounts the shell, so the other business's Changelog loads fresh there.
   const unseenQuery = useQuery(
-    trpc.changelog.unseen.queryOptions(undefined, { refetchOnWindowFocus: false, staleTime: Number.POSITIVE_INFINITY }),
+    trpc.changelog.unseen.queryOptions(
+      { business },
+      { refetchOnWindowFocus: false, staleTime: Number.POSITIVE_INFINITY },
+    ),
   );
   const markSeenMutation = useMutation(
     trpc.changelog.markSeen.mutationOptions({
+      // Acknowledging advances the mark past everything shown, so the cached list is now empty. Without
+      // this, remounting after a Mode switch would re-open the dialog from the never-refetched cache.
+      onSuccess: () => queryClient.setQueryData(trpc.changelog.unseen.queryKey({ business }), []),
       onError: (error) => showMutationError(error, 'Unable to record that you have seen these updates.'),
     }),
   );
@@ -56,7 +70,7 @@ export const ChangelogDialog: React.FC = () => {
     );
     setState(nextState);
     if (markSeenReleasedAt !== null) {
-      markSeenMutation.mutate({ releasedAt: markSeenReleasedAt });
+      markSeenMutation.mutate({ business, releasedAt: markSeenReleasedAt });
     }
   }
 

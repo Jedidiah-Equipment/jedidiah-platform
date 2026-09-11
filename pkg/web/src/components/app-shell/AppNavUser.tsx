@@ -1,4 +1,5 @@
-import { type Business, getBusinessRole, roleLabels } from '@pkg/domain';
+import { getBusinessRole, roleLabels } from '@pkg/domain';
+import type { Business } from '@pkg/schema';
 import { IconLogout, IconMoon, IconSelector, IconShield, IconSun } from '@tabler/icons-react';
 import type React from 'react';
 

@@ -1,5 +1,5 @@
-import { type Business, hasBusinessAccess, hasPermission } from '@pkg/domain';
-import type { AppPermission } from '@pkg/schema';
+import { hasBusinessAccess, hasPermission } from '@pkg/domain';
+import type { AppPermission, Business } from '@pkg/schema';
 import { initTRPC } from '@trpc/server';
 
 import type { Context } from './context.js';
@@ -40,15 +40,20 @@ export const protectedProcedure = t.procedure.use(({ ctx, next }) => {
   });
 });
 
+/** Throws the standard forbidden error unless the caller holds `business`. */
+export function requireBusinessAccess(access: Context['access'], business: Business): void {
+  if (!hasBusinessAccess(access, business)) {
+    throw createAuthTRPCError({
+      appCode: 'auth.forbidden',
+      code: 'FORBIDDEN',
+      message: 'You do not have permission to perform this action.',
+    });
+  }
+}
+
 export function businessProcedure(business: Business) {
   return protectedProcedure.use(({ ctx, next }) => {
-    if (!hasBusinessAccess(ctx.access, business)) {
-      throw createAuthTRPCError({
-        appCode: 'auth.forbidden',
-        code: 'FORBIDDEN',
-        message: 'You do not have permission to perform this action.',
-      });
-    }
+    requireBusinessAccess(ctx.access, business);
 
     return next({ ctx: { access: ctx.access } });
   });

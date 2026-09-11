@@ -61,6 +61,13 @@ describe('snapshot table registry', () => {
       'feedback',
       'feedback_department',
       'feedback_user',
+      'contracting_category',
+      'contracting_machine',
+      'contracting_implement',
+      'contracting_customer',
+      'contracting_farm',
+      'contracting_work_type',
+      'contracting_hour_reading',
     ]);
   });
 
@@ -106,6 +113,13 @@ describe('snapshot table registry', () => {
       'feedback.json',
       'feedback_department.json',
       'feedback_user.json',
+      'contracting_category.json',
+      'contracting_machine.json',
+      'contracting_implement.json',
+      'contracting_customer.json',
+      'contracting_farm.json',
+      'contracting_work_type.json',
+      'contracting_hour_reading.json',
     ]);
   });
 
@@ -221,6 +235,35 @@ describe('snapshot table registry', () => {
     expect(configFor('feedback_department').optionalReadTable).toBe(true);
     expect(configFor('feedback_user').optionalReadTable).toBe(true);
     expect(configFor('feedback').timestampColumns).toEqual(['createdAt', 'updatedAt']);
+  });
+
+  it('keeps the contracting tables optional and never writes the reading identity back', () => {
+    for (const tableName of [
+      'contracting_category',
+      'contracting_machine',
+      'contracting_implement',
+      'contracting_customer',
+      'contracting_farm',
+      'contracting_work_type',
+      'contracting_hour_reading',
+    ]) {
+      expect(configFor(tableName).optionalReadTable, tableName).toBe(true);
+    }
+    expect(configFor('contracting_machine').emptySnapshotRows?.map((row) => row.code)).toEqual([
+      'KOL220-1',
+      'JD140-1',
+      'JD140-2',
+    ]);
+    expect(configFor('contracting_hour_reading').emptySnapshotRows).toBeUndefined();
+    expect(
+      projectWritableRow(configFor('contracting_hour_reading'), {
+        id: 'r1',
+        sequence: 7,
+        machineId: 'm1',
+        role: 'spot',
+      }),
+    ).toMatchObject({ id: 'r1', machineId: 'm1', role: 'spot' });
+    expect(projectWritableRow(configFor('contracting_hour_reading'), { sequence: 7 })).not.toHaveProperty('sequence');
   });
 
   it('projects generated assembly override columns out before import', () => {

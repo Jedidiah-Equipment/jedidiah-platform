@@ -1,0 +1,4 @@
+code,make,model,year,registration,category,current_driver,service_interval_hours,next_service_due_hours,notes
+kol220-1,Kobelco,220,2019,,Excavator,Sample Driver One,500,4500,
+JD140-1,John Deere,6140M,,CG 39 NM,Tractor,Sample Driver Two,250,,"Operator column said ""YARD"""
+JD140-2,John Deere,6140M,2021,CZ 46 TD,Tractor,,,,

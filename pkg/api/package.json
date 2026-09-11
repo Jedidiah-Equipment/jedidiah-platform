@@ -14,6 +14,7 @@
     "build": "tsc -b && tsc-alias -p tsconfig.json",
     "start": "node dist/main.js",
     "translate:backfill": "tsx src/equipment/scripts/translate-backfill.ts",
+    "fleet:import": "tsx src/contracting/scripts/fleet-import.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run"
   },

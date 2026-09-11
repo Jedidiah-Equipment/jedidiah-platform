@@ -1,0 +1,5 @@
+name,kind,icon,colour
+Excavator,machine,excavator,yellow
+Tractor,machine,tractor,green
+Gravel Trailer,implement,gravel-trailer,blue
+Disc,implement,disc,orange

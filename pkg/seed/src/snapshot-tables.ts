@@ -1,5 +1,14 @@
 import { account, user } from '@pkg/db';
 import {
+  contractingCategories,
+  contractingCustomers,
+  contractingFarms,
+  contractingHourReadings,
+  contractingImplements,
+  contractingMachines,
+  contractingWorkTypes,
+} from '@pkg/db/contracting';
+import {
   assemblyOverrides,
   assemblyParts,
   customers,
@@ -52,6 +61,13 @@ const dbTablesByName = {
   account,
   assembly_overrides: assemblyOverrides,
   assembly_parts: assemblyParts,
+  contracting_category: contractingCategories,
+  contracting_customer: contractingCustomers,
+  contracting_farm: contractingFarms,
+  contracting_hour_reading: contractingHourReadings,
+  contracting_implement: contractingImplements,
+  contracting_machine: contractingMachines,
+  contracting_work_type: contractingWorkTypes,
   customers,
   feedback,
   feedback_department: feedbackDepartment,

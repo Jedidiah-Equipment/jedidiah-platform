@@ -1,5 +1,5 @@
 import type { Business } from '@pkg/schema';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type React from 'react';
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button.js';
@@ -24,6 +24,7 @@ type ChangelogDialogProps = {
 
 export const ChangelogDialog: React.FC<ChangelogDialogProps> = ({ business }) => {
   const trpc = useTRPC();
+  const queryClient = useQueryClient();
   const showMutationError = useApiMutationErrorToast();
 
   // Load once per app load and never re-check: the dialog must not reappear on navigation or focus.
@@ -36,6 +37,9 @@ export const ChangelogDialog: React.FC<ChangelogDialogProps> = ({ business }) =>
   );
   const markSeenMutation = useMutation(
     trpc.changelog.markSeen.mutationOptions({
+      // Acknowledging advances the mark past everything shown, so the cached list is now empty. Without
+      // this, remounting after a Mode switch would re-open the dialog from the never-refetched cache.
+      onSuccess: () => queryClient.setQueryData(trpc.changelog.unseen.queryKey({ business }), []),
       onError: (error) => showMutationError(error, 'Unable to record that you have seen these updates.'),
     }),
   );

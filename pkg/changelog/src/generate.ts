@@ -97,11 +97,11 @@ export async function generateChangelogs(commitLog: string, deps: GenerateDeps):
   }
 
   const shared = output.data.shared?.sections ?? [];
-  const sharedOnly = shared.map((section) => section.surface).filter((surface) => !SHARED_SURFACES.has(surface));
-  if (sharedOnly.length > 0) {
+  const surfacesNotShared = shared.map((section) => section.surface).filter((surface) => !SHARED_SURFACES.has(surface));
+  if (surfacesNotShared.length > 0) {
     return {
       status: 'invalid',
-      errors: [`shared.sections: the ${sharedOnly.join(', ')} surface does not belong to every business`],
+      errors: [`shared.sections: the ${surfacesNotShared.join(', ')} surface does not belong to every business`],
       raw,
     };
   }

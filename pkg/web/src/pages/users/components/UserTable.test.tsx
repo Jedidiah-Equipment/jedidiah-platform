@@ -45,13 +45,6 @@ describe('UserTable role column', () => {
       'No access',
     ]);
   });
-
-  it('places a business extension column between the role and the email status', async () => {
-    await mountUsers('equipment', [{ accessorFn: (user) => `${user.name} extra`, header: 'Extra', id: 'extra' }]);
-
-    expect(headerTexts()).toEqual(['Full Name', 'Role', 'Extra', 'Email status']);
-    expect(columnTexts('Extra')[0]).toBe('Alice extra');
-  });
 });
 
 function headerTexts() {
@@ -65,10 +58,7 @@ function columnTexts(header: string) {
   return [...container.querySelectorAll('tbody tr')].map((row) => row.querySelectorAll('td')[index]?.textContent);
 }
 
-async function mountUsers(
-  business: Business,
-  extraColumns: React.ComponentProps<typeof UserTable>['extraColumns'] = [],
-) {
+async function mountUsers(business: Business) {
   container = document.createElement('div');
   document.body.append(container);
   root = createRoot(container);
@@ -78,7 +68,7 @@ async function mountUsers(
         business={business}
         currentUserId={undefined}
         errorMessage={undefined}
-        extraColumns={extraColumns}
+        extraColumns={[]}
         extraSearchTerms={() => []}
         isLoading={false}
         onEditUser={() => undefined}

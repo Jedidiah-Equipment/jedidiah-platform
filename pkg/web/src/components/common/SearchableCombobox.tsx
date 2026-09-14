@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import {
   Combobox,
   ComboboxContent,
@@ -9,8 +9,6 @@ import {
 } from '@/components/ui/combobox.js';
 
 export type SearchableComboboxOption = {
-  /** Optional machine-entered token that commits this option only on an exact match. */
-  exactInputValue?: string;
   label: string;
   value: string;
 };
@@ -24,6 +22,7 @@ type SearchableComboboxProps = {
   onValueChange: (value: string) => void;
   options: readonly SearchableComboboxOption[];
   placeholder?: string | undefined;
+  resolveInputOnEnter?: ((inputValue: string) => string | undefined) | undefined;
   value: string;
 };
 
@@ -36,10 +35,12 @@ export function SearchableCombobox({
   onValueChange,
   options,
   placeholder = 'Search...',
+  resolveInputOnEnter,
   value,
 }: SearchableComboboxProps) {
   const selectedOption = options.find((option) => option.value === value) ?? null;
-  const keyboardSelectionPending = useRef(false);
+  const hasKeyboardHighlight = useRef(false);
+  const [open, setOpen] = useState(false);
 
   return (
     <Combobox
@@ -48,7 +49,15 @@ export function SearchableCombobox({
       items={options}
       itemToStringLabel={(option) => option.label}
       itemToStringValue={(option) => option.value}
+      onItemHighlighted={(_option, details) => {
+        hasKeyboardHighlight.current = details.reason === 'keyboard';
+      }}
+      onOpenChange={(nextOpen) => {
+        setOpen(nextOpen);
+        if (!nextOpen) hasKeyboardHighlight.current = false;
+      }}
       onValueChange={(nextOption) => onValueChange(nextOption?.value ?? '')}
+      open={open}
       value={selectedOption}
     >
       <ComboboxInput
@@ -58,32 +67,21 @@ export function SearchableCombobox({
         id={inputId}
         onBlur={onBlur}
         onKeyDownCapture={(event) => {
-          if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
-            keyboardSelectionPending.current = true;
+          if (
+            event.key !== 'Enter' ||
+            !resolveInputOnEnter ||
+            hasKeyboardHighlight.current ||
+            event.currentTarget.value === selectedOption?.label
+          )
             return;
-          }
-
-          if (event.key !== 'Enter') {
-            keyboardSelectionPending.current = false;
-            return;
-          }
-
-          if (keyboardSelectionPending.current) {
-            keyboardSelectionPending.current = false;
-            return;
-          }
-
-          const exactInputOptions = options.filter((option) => option.exactInputValue !== undefined);
-          if (exactInputOptions.length === 0) return;
-
-          if (event.currentTarget.value === selectedOption?.label) return;
 
           event.preventDefault();
           event.stopPropagation();
-          const match = exactInputOptions.find((option) => option.exactInputValue === event.currentTarget.value.trim());
-          if (!match) return;
+          const nextValue = resolveInputOnEnter(event.currentTarget.value);
+          if (!nextValue) return;
 
-          onValueChange(match.value);
+          setOpen(false);
+          onValueChange(nextValue);
         }}
         placeholder={placeholder}
         showClear

@@ -3,6 +3,7 @@ import {
   deriveBuildConsumption,
   deriveMovementWarnings,
   derivePartStockActions,
+  parseScanToken,
 } from '@pkg/domain/equipment';
 import { Price, UUID } from '@pkg/schema';
 import {
@@ -322,10 +323,10 @@ export function partSelectOptions(parts: readonly StockPartOption[]) {
   return parts.map(partSelectOption);
 }
 
-/** Stock movements accept a keyboard-wedge scan without turning partial text into a Part selection. */
-export function scannablePartSelectOptions(parts: readonly StockPartOption[]) {
-  return parts.map((part) => ({
-    exactInputValue: part.partCode,
-    ...partSelectOption(part),
-  }));
+/** Resolves the domain's Part-code Scan Token without turning partial text into a Part selection. */
+export function partIdFromScanToken(parts: readonly StockPartOption[], raw: string): string | undefined {
+  const token = parseScanToken(raw);
+  if (token.kind !== 'part-code') return undefined;
+
+  return parts.find((part) => part.partCode === token.partCode)?.partId;
 }

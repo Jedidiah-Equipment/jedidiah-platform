@@ -1,6 +1,6 @@
 import { EmailAddress } from '@pkg/schema';
 import { IconEye, IconEyeOff } from '@tabler/icons-react-native';
-import { Redirect } from 'expo-router';
+import { Redirect, useRouter } from 'expo-router';
 import { useState } from 'react';
 import {
   ActivityIndicator,
@@ -19,6 +19,7 @@ import { signIn, useSession } from '@/lib/auth';
 import { isHydratedSession } from '@/lib/session-state';
 
 export default function LoginScreen() {
+  const router = useRouter();
   const { data: session } = useSession();
   const [email, setEmail] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -128,6 +129,14 @@ export default function LoginScreen() {
                     <Icon className="text-muted-foreground" icon={showPassword ? IconEyeOff : IconEye} size={20} />
                   </Pressable>
                 </View>
+                <Pressable
+                  accessibilityRole="link"
+                  className="self-end"
+                  disabled={isSubmitting}
+                  onPress={() => router.push('/forgot-password')}
+                >
+                  <Text className="text-sm leading-5 text-muted-foreground">Forgot password?</Text>
+                </Pressable>
               </View>
 
               {error ? (

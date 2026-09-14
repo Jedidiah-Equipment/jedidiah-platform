@@ -78,6 +78,10 @@ export async function signOut() {
   await authClient.signOut();
 }
 
+export async function requestPasswordReset(email: string): Promise<void> {
+  await authClient.requestPasswordReset({ email });
+}
+
 function getSignInErrorMessage(error: SignInError): string {
   if (error.code === 'ACCOUNT_SIGN_IN_DISABLED') {
     return error.message || signInDisabledMessage;

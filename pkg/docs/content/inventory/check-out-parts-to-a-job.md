@@ -1,7 +1,7 @@
-# Check out Parts to a Job
+# Check out Parts
 
-A Checkout draws a Part from stock against a Job. It is what you post when material leaves the rack
-for the floor.
+A Checkout draws a Part from stock either to a Job or Without a Job to a named Recipient. It is what
+you post when material leaves the rack for the floor or a quick repair elsewhere in the factory.
 
 ## From the Job
 
@@ -22,7 +22,7 @@ Use this when you are working from the rack rather than from a Job.
 
 1. Open **Inventory**.
 2. Click **Check out**.
-3. Click **Select Job** and choose the Job.
+3. Keep **To a Job**, then click **Select Job** and choose the Job.
    The picker opens on **Not complete**, the open work stock is normally drawn for. Search narrows
    the list you are on — by Job code, Product, work title, or Customer — so a completed Job is found
    from **Last updated** or **Last created**, not from **Not complete**. A completed Job stays
@@ -32,6 +32,21 @@ Use this when you are working from the rack rather than from a Job.
 5. Click **Check out stock**.
 
 A **Stock checked out** toast confirms it.
+
+## Without a Job
+
+Use this for a quick repair or factory work that has no Job. The Parts count as used when they leave
+stores; this does not create a personal stock balance for the Recipient.
+
+1. Open **Inventory** and click **Check out**, or scan the Part on the stores tablet and tap
+   **Check out**.
+2. Choose **Without a Job**.
+3. Choose **Received by**. It starts with the current Operator, but you can select any active
+   Equipment user.
+4. Enter a short **Purpose**, such as “Repair factory drill”.
+5. Choose the **Part** if it is not already fixed, enter the **Quantity**, and set **Length (mm)**
+   for a linear Part.
+6. Check the separately displayed **Operator**, then click or tap **Check out stock**.
 
 ## If it warns you
 

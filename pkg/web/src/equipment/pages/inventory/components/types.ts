@@ -13,7 +13,9 @@ import {
   type PartStockActions,
   PostAdjustmentInput,
   PostBuildInput,
+  PostCheckoutInput,
   PostJobMovementInput,
+  PostReturnToStoreInput,
   PostRevaluationInput,
   StockAdjustmentReason,
   StockMovementDelta,
@@ -100,6 +102,21 @@ export const StockJobMovementFormValues = z.object({
   lengthMm: StockMovementLengthValue,
   partId: requiredSelection(UUID, 'Select a Part'),
   quantity: StockMovementQuantity,
+});
+
+export type StockMovementTargetMode = z.infer<typeof StockMovementTargetMode>;
+export const StockMovementTargetMode = z.enum(['job', 'person']);
+
+export type StockMovementFormValues = z.infer<typeof StockMovementFormValues>;
+export const StockMovementFormValues = z.object({
+  jobId: z.string(),
+  lengthMm: StockMovementLengthValue,
+  mode: StockMovementTargetMode,
+  note: z.string(),
+  partId: z.string(),
+  quantity: StockMovementQuantity,
+  recipientUserId: z.string(),
+  sourceCheckoutId: z.string(),
 });
 
 /** Closing out asserts a fact about the whole Job, so the note is all the screen has left to ask. */
@@ -249,6 +266,46 @@ export function stockJobMovementValidator(parts: readonly StockPartOption[]) {
   });
 }
 
+export function stockMovementValidator(
+  parts: readonly StockPartOption[],
+  movementType: 'checkout' | 'return-to-store',
+) {
+  return StockMovementFormValues.superRefine((values, context) => {
+    if (values.mode === 'job') {
+      if (!UUID.safeParse(values.jobId).success) {
+        context.addIssue({ code: 'custom', message: 'Select a Job', path: ['jobId'] });
+      }
+      if (!UUID.safeParse(values.partId).success) {
+        context.addIssue({ code: 'custom', message: 'Select a Part', path: ['partId'] });
+      } else {
+        refineLengthForPart(values, parts, context);
+        refineQuantityForPart(values, parts, 'quantity', context);
+      }
+      return;
+    }
+
+    if (movementType === 'return-to-store') {
+      if (!UUID.safeParse(values.sourceCheckoutId).success) {
+        context.addIssue({ code: 'custom', message: 'Select the original Checkout', path: ['sourceCheckoutId'] });
+      }
+      return;
+    }
+
+    if (!UUID.safeParse(values.partId).success) {
+      context.addIssue({ code: 'custom', message: 'Select a Part', path: ['partId'] });
+    } else {
+      refineLengthForPart(values, parts, context);
+      refineQuantityForPart(values, parts, 'quantity', context);
+    }
+    if (values.recipientUserId.trim() === '') {
+      context.addIssue({ code: 'custom', message: 'Select who received the Parts', path: ['recipientUserId'] });
+    }
+    if (values.note.trim() === '') {
+      context.addIssue({ code: 'custom', message: 'Enter a purpose', path: ['note'] });
+    }
+  });
+}
+
 export function toAdjustmentInput(values: StockAdjustmentFormValues, canReadCost: boolean, part: StockPartOption) {
   return PostAdjustmentInput.parse({
     delta: values.delta,
@@ -281,6 +338,33 @@ export function toRevaluationInput(values: StockRevaluationFormValues) {
 }
 
 export function toJobMovementInput(values: StockJobMovementFormValues, part: StockPartOption) {
+  return PostJobMovementInput.parse({
+    jobId: values.jobId,
+    lengthMm: part.unitOfMeasure === 'mm' ? values.lengthMm : null,
+    partId: values.partId,
+    quantity: values.quantity,
+  });
+}
+
+export function toStockMovementInput(
+  values: StockMovementFormValues,
+  movementType: 'checkout' | 'return-to-store',
+  part: StockPartOption | undefined,
+) {
+  if (values.mode === 'person' && movementType === 'return-to-store') {
+    return PostReturnToStoreInput.parse({ quantity: values.quantity, sourceCheckoutId: values.sourceCheckoutId });
+  }
+  if (!part) throw new Error('Select a Part');
+  if (values.mode === 'person') {
+    return PostCheckoutInput.parse({
+      lengthMm: part.unitOfMeasure === 'mm' ? values.lengthMm : null,
+      note: values.note,
+      partId: values.partId,
+      quantity: values.quantity,
+      recipientUserId: values.recipientUserId,
+    });
+  }
+
   return PostJobMovementInput.parse({
     jobId: values.jobId,
     lengthMm: part.unitOfMeasure === 'mm' ? values.lengthMm : null,

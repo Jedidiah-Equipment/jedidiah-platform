@@ -26,7 +26,9 @@ import type {
   JobStockMovementType,
   JobStockResult,
   PostAdjustmentInput,
+  PostCheckoutInput,
   PostJobMovementInput,
+  PostReturnToStoreInput,
   PostRevaluationInput,
   StockMovement,
   StockMovementHistoryResult,
@@ -46,6 +48,11 @@ import {
 import { and, asc, eq, inArray, ne, sql } from 'drizzle-orm';
 import { lockJob, lockMutableJob } from '../jobs/job-mutation-guards.js';
 import { loadOpenOrderLines } from '../purchase-orders/purchase-order-service.js';
+import {
+  CheckoutRecipientIneligibleError,
+  CheckoutRecipientNotFoundError,
+  InvalidSourceCheckoutError,
+} from './checkout-errors.js';
 import { JobClosedOutError } from './close-out-errors.js';
 import { getJobCloseOutAt } from './close-out-service.js';
 
@@ -198,6 +205,150 @@ export async function postJobMovement({
       warnings: deriveMovementWarnings({ facts: { ...context, kind: movementType }, quantity: input.quantity }),
     });
   });
+}
+
+/** Posts either the existing Job Checkout or the strict person-attributed alternative. */
+export async function postCheckout({
+  actorUserId,
+  db,
+  input,
+}: {
+  actorUserId: AuthId;
+  db: Db;
+  input: PostCheckoutInput;
+}): Promise<StockMovementPostResult> {
+  if ('jobId' in input) {
+    return postJobMovement({ actorUserId, db, input, movementType: 'checkout' });
+  }
+
+  return db.transaction(async (tx) => {
+    const part = await loadStockPart({ db: tx, lockForMovement: true, partId: input.partId });
+    const [movementActorUserId] = await Promise.all([
+      resolveMovementActor({ assertedActorUserId: input.actorUserId, db: tx, sessionUserId: actorUserId }),
+      assertEligibleRecipient(tx, input.recipientUserId),
+    ]);
+    const unitClass = unitClassFor(part.unitOfMeasure);
+
+    assertDeltaMatchesUnitClass(input.quantity, unitClass);
+    assertLengthMatchesUnitClass(input.lengthMm, unitClass);
+    assertPartStockAction(derivePartStockActions(part).checkout, { action: 'checkout', partId: input.partId });
+
+    const [bucketQuantityOnHand, unitCost] = await Promise.all([
+      sumDelta(
+        tx,
+        and(
+          eq(stockMovements.partId, input.partId),
+          ne(stockMovements.movementType, 'revaluation'),
+          bucketMatches(input.lengthMm),
+        ),
+      ),
+      deriveCheckoutUnitCost(tx, input),
+    ]);
+    const movement = await insertMovement(tx, {
+      actorUserId: movementActorUserId,
+      delta: -input.quantity,
+      lengthMm: input.lengthMm,
+      movementType: 'checkout',
+      note: input.note,
+      partId: input.partId,
+      recipientUserId: input.recipientUserId,
+      unitCost,
+    });
+
+    return StockMovementPostResultSchema.parse({
+      movement,
+      warnings: deriveMovementWarnings({
+        facts: { bucketQuantityOnHand, kind: 'checkout-without-job' },
+        quantity: input.quantity,
+      }),
+    });
+  });
+}
+
+/** Posts either the existing Job return or a return linked to one no-Job Checkout. */
+export async function postReturnToStore({
+  actorUserId,
+  db,
+  input,
+}: {
+  actorUserId: AuthId;
+  db: Db;
+  input: PostReturnToStoreInput;
+}): Promise<StockMovementPostResult> {
+  if ('jobId' in input) {
+    return postJobMovement({ actorUserId, db, input, movementType: 'return-to-store' });
+  }
+
+  return db.transaction(async (tx) => {
+    const [source] = await tx
+      .select()
+      .from(stockMovements)
+      .where(eq(stockMovements.id, input.sourceCheckoutId))
+      .limit(1);
+    if (
+      source?.movementType !== 'checkout' ||
+      source.jobId !== null ||
+      source.recipientUserId === null ||
+      source.sourceCheckoutId !== null
+    ) {
+      throw new InvalidSourceCheckoutError(input.sourceCheckoutId);
+    }
+
+    const part = await loadStockPart({ db: tx, lockForMovement: true, partId: source.partId });
+    const movementActorUserId = await resolveMovementActor({
+      assertedActorUserId: input.actorUserId,
+      db: tx,
+      sessionUserId: actorUserId,
+    });
+    const unitClass = unitClassFor(part.unitOfMeasure);
+    assertDeltaMatchesUnitClass(input.quantity, unitClass);
+    assertLengthMatchesUnitClass(source.lengthMm, unitClass);
+    assertPartStockAction(derivePartStockActions(part).returnToStore, {
+      action: 'returnToStore',
+      partId: source.partId,
+    });
+
+    const returns = await tx
+      .select({ delta: stockMovements.delta, unitCost: stockMovements.unitCost })
+      .from(stockMovements)
+      .where(eq(stockMovements.sourceCheckoutId, source.id))
+      .orderBy(asc(stockMovements.createdAt), asc(stockMovements.id));
+    const outstandingQuantity = Math.max(0, -source.delta - sumBy(returns, (movement) => movement.delta));
+    const unitCost = deriveOutstandingDrawUnitCost(
+      [{ delta: source.delta, unitCost: source.unitCost }, ...returns],
+      input.quantity,
+    );
+    const movement = await insertMovement(tx, {
+      actorUserId: movementActorUserId,
+      delta: input.quantity,
+      lengthMm: source.lengthMm,
+      movementType: 'return-to-store',
+      partId: source.partId,
+      recipientUserId: source.recipientUserId,
+      sourceCheckoutId: source.id,
+      unitCost,
+    });
+
+    return StockMovementPostResultSchema.parse({
+      movement,
+      warnings: deriveMovementWarnings({
+        facts: { kind: 'return-without-job', outstandingQuantity },
+        quantity: input.quantity,
+      }),
+    });
+  });
+}
+
+async function assertEligibleRecipient(db: DatabaseTransaction, recipientUserId: AuthId): Promise<void> {
+  const [recipient] = await db
+    .select({ banned: user.banned, equipmentRole: user.role, isDevice: user.isDevice })
+    .from(user)
+    .where(eq(user.id, recipientUserId))
+    .limit(1);
+  if (!recipient) throw new CheckoutRecipientNotFoundError(recipientUserId);
+  if (recipient.banned === true || recipient.isDevice || recipient.equipmentRole === null) {
+    throw new CheckoutRecipientIneligibleError(recipientUserId);
+  }
 }
 
 export async function listJobStock({ db, jobId }: { db: Db; jobId: UUID }): Promise<JobStockResult> {
@@ -492,10 +643,21 @@ export async function getStockMovementHistory({
       partId: stockMovements.partId,
       purchaseOrderId: stockMovements.purchaseOrderId,
       purchaseOrderCode: purchaseOrders.code,
+      recipientName: sql<string | null>`(
+        select movement_recipient.name from public.user movement_recipient
+        where movement_recipient.id = ${stockMovements.recipientUserId}
+      )`,
+      recipientUserId: stockMovements.recipientUserId,
       reason: stockMovements.reason,
       runningBalance: sql<number>`(sum(${stockMovements.delta}) over (order by ${stockMovements.createdAt}, ${stockMovements.id}))::double precision`,
       stocktakeSessionId: stockMovements.stocktakeSessionId,
       stocktakeSessionScope: stocktakeSessions.scope,
+      sourceCheckoutCreatedAt: sql<string | null>`(
+        select to_char(source_checkout.created_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"')
+        from equipment.stock_movement source_checkout
+        where source_checkout.id = ${stockMovements.sourceCheckoutId}
+      )`,
+      sourceCheckoutId: stockMovements.sourceCheckoutId,
       unitCost: stockMovements.unitCost,
     })
     .from(stockMovements)
@@ -564,7 +726,10 @@ async function loadStockMovementContext(
  * built from *stocked* components is different: its build already moved that value onto it, and
  * dropping the value here would make it vanish at the next hop instead of reaching the Job.
  */
-async function deriveCheckoutUnitCost(db: DatabaseTransaction, input: PostJobMovementInput): Promise<number | null> {
+async function deriveCheckoutUnitCost(
+  db: DatabaseTransaction,
+  input: Pick<PostJobMovementInput, 'lengthMm' | 'partId'>,
+): Promise<number | null> {
   return derivePartUnitCost(db, input.partId, input.lengthMm);
 }
 

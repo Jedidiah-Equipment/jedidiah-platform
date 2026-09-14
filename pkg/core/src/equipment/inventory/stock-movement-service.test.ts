@@ -1,3 +1,4 @@
+import { user } from '@pkg/db';
 import { jobEstimateSnapshots, jobs, parts, stockMovements } from '@pkg/db/equipment';
 import { eq } from 'drizzle-orm';
 import { describe, expect } from 'vitest';
@@ -7,6 +8,7 @@ import {
   adjustmentInput,
   estimateSnapshot,
   seedProductUnit,
+  seedQuickSwitchPerson,
   seedSentPurchaseOrder,
   test,
 } from '../test/inventory-fixtures.js';
@@ -17,7 +19,9 @@ import {
   listJobStock,
   listStockOnHand,
   postAdjustment,
+  postCheckout,
   postJobMovement,
+  postReturnToStore,
   postRevaluation,
 } from './stock-movement-service.js';
 
@@ -317,6 +321,209 @@ describe('Job stock movements', () => {
     expect(await listJobStock({ db: context.db, jobId: context.jobs.cfo.id })).toMatchObject({
       items: [{ cfoQuantity: 5, committedQuantity: 3, drawnQuantity: 2 }],
     });
+  });
+});
+
+describe('Checkout without a Job', () => {
+  test('attributes a purpose Checkout to its recipient and prices linked partial returns from that source', async ({
+    context,
+  }) => {
+    const now = new Date('2026-08-01T08:00:00.000Z');
+    await context.db.insert(user).values({
+      createdAt: now,
+      email: 'connor@example.com',
+      emailVerified: true,
+      id: 'connor',
+      name: 'Connor Mechanic',
+      role: 'bay-operator',
+      updatedAt: now,
+    });
+    await postAdjustment({
+      actorUserId,
+      db: context.db,
+      input: adjustmentInput(context.parts.piece.id, { delta: 10, unitCost: 10 }),
+    });
+
+    const checkout = await postCheckout({
+      actorUserId,
+      db: context.db,
+      input: {
+        lengthMm: null,
+        note: 'repair factory drill',
+        partId: context.parts.piece.id,
+        quantity: 5,
+        recipientUserId: 'connor',
+      },
+    });
+    await postRevaluation({
+      actorUserId,
+      db: context.db,
+      input: { note: 'Later receipt changed average', partId: context.parts.piece.id, unitCost: 20 },
+    });
+    const returnOperatorUserId = await seedQuickSwitchPerson(context.db, { id: 'return-operator' });
+    await context.db.update(user).set({ banned: true }).where(eq(user.id, 'connor'));
+
+    const returned = await postReturnToStore({
+      actorUserId,
+      db: context.db,
+      input: { actorUserId: returnOperatorUserId, quantity: 2, sourceCheckoutId: checkout.movement.id },
+    });
+    const stock = await listStockOnHand({ db: context.db });
+    const history = await getStockMovementHistory({ db: context.db, partId: context.parts.piece.id });
+
+    expect(checkout).toMatchObject({
+      movement: {
+        actorUserId,
+        delta: -5,
+        jobId: null,
+        note: 'repair factory drill',
+        recipientUserId: 'connor',
+        sourceCheckoutId: null,
+        unitCost: 10,
+      },
+      warnings: [],
+    });
+    expect(returned).toMatchObject({
+      movement: {
+        actorUserId: returnOperatorUserId,
+        delta: 2,
+        recipientUserId: 'connor',
+        sourceCheckoutId: checkout.movement.id,
+        unitCost: 10,
+      },
+      warnings: [],
+    });
+    expect(stock.items.find((item) => item.partId === context.parts.piece.id)?.quantity).toBe(7);
+    expect(history.items.find((item) => item.id === checkout.movement.id)).toMatchObject({
+      actorName: 'Inventory Tester',
+      note: 'repair factory drill',
+      recipientName: 'Connor Mechanic',
+      sourceCheckoutId: null,
+    });
+    expect(history.items.find((item) => item.id === returned.movement.id)).toMatchObject({
+      actorName: 'Quick Switch Person',
+      recipientName: 'Connor Mechanic',
+      sourceCheckoutCreatedAt: checkout.movement.createdAt,
+      sourceCheckoutId: checkout.movement.id,
+    });
+  });
+
+  test('rejects ineligible recipients and invalid linked-return sources', async ({ context }) => {
+    const now = new Date('2026-08-01T08:00:00.000Z');
+    await context.db.insert(user).values([
+      {
+        banned: true,
+        createdAt: now,
+        email: 'disabled-recipient@example.com',
+        emailVerified: true,
+        id: 'disabled-recipient',
+        name: 'Disabled Recipient',
+        role: 'stores',
+        updatedAt: now,
+      },
+      {
+        createdAt: now,
+        email: 'device-recipient@example.com',
+        emailVerified: true,
+        id: 'device-recipient',
+        isDevice: true,
+        name: 'Device Recipient',
+        role: 'stores',
+        updatedAt: now,
+      },
+    ]);
+    for (const recipientUserId of ['disabled-recipient', 'device-recipient']) {
+      await expect(
+        postCheckout({
+          actorUserId,
+          db: context.db,
+          input: {
+            lengthMm: null,
+            note: 'quick repair',
+            partId: context.parts.piece.id,
+            quantity: 1,
+            recipientUserId,
+          },
+        }),
+      ).rejects.toMatchObject({ code: 'inventory.recipient_ineligible' });
+    }
+
+    await expect(
+      postCheckout({
+        actorUserId,
+        db: context.db,
+        input: {
+          lengthMm: null,
+          note: 'quick repair',
+          partId: context.parts.piece.id,
+          quantity: 1,
+          recipientUserId: 'missing-person',
+        },
+      }),
+    ).rejects.toMatchObject({ code: 'inventory.recipient_not_found' });
+
+    const jobCheckout = await postJobMovement({
+      actorUserId,
+      db: context.db,
+      input: { jobId: context.jobs.custom.id, lengthMm: null, partId: context.parts.piece.id, quantity: 1 },
+      movementType: 'checkout',
+    });
+    await expect(
+      postReturnToStore({
+        actorUserId,
+        db: context.db,
+        input: { quantity: 1, sourceCheckoutId: jobCheckout.movement.id },
+      }),
+    ).rejects.toMatchObject({ code: 'inventory.invalid_source_checkout' });
+  });
+
+  test('serializes concurrent linked returns and warns only the one that exceeds the latest outstanding quantity', async ({
+    context,
+  }) => {
+    const now = new Date('2026-08-01T08:00:00.000Z');
+    await context.db.insert(user).values({
+      createdAt: now,
+      email: 'recipient-concurrent@example.com',
+      emailVerified: true,
+      id: 'recipient-concurrent',
+      name: 'Concurrent Recipient',
+      role: 'bay-operator',
+      updatedAt: now,
+    });
+    await postAdjustment({
+      actorUserId,
+      db: context.db,
+      input: adjustmentInput(context.parts.piece.id, { delta: 3, unitCost: 10 }),
+    });
+    const checkout = await postCheckout({
+      actorUserId,
+      db: context.db,
+      input: {
+        lengthMm: null,
+        note: 'concurrent repair',
+        partId: context.parts.piece.id,
+        quantity: 3,
+        recipientUserId: 'recipient-concurrent',
+      },
+    });
+
+    const returns = await Promise.all([
+      postReturnToStore({
+        actorUserId,
+        db: context.db,
+        input: { quantity: 2, sourceCheckoutId: checkout.movement.id },
+      }),
+      postReturnToStore({
+        actorUserId,
+        db: context.db,
+        input: { quantity: 2, sourceCheckoutId: checkout.movement.id },
+      }),
+    ]);
+
+    expect(returns.map((result) => result.warnings).sort((left) => left.length)).toEqual([[], ['exceeds-drawn']]);
+    expect(returns.map((result) => result.movement.unitCost).sort((left, right) => (left ?? 0) - (right ?? 0))).toEqual(
+      [5, 10],
+    );
   });
 });
 

@@ -25,6 +25,8 @@ export type JobMovementFacts = {
  */
 export type StockMovementFacts =
   | (JobMovementFacts & { kind: 'checkout' | 'return-to-store' })
+  | { bucketQuantityOnHand: number; kind: 'checkout-without-job' }
+  | { kind: 'return-without-job'; outstandingQuantity: number }
   | { kind: 'receipt'; orderedQuantity: number; receivedQuantity: number }
   | {
       kind: 'return-to-supplier';
@@ -58,11 +60,14 @@ export function deriveMovementWarnings({
       // Flattened and de-duplicated: a confirm prompt asks about the build, while the post keeps the
       // per-component attribution its result carries.
       return [...new Set(deriveBuildComponentWarnings({ ...facts, quantity }).flatMap((warning) => warning.codes))];
-    case 'checkout': {
+    case 'checkout':
+    case 'checkout-without-job': {
       const warnings: StockMovementWarningCode[] = [];
       // Only a Job that planned this Part can be drawn past its plan. Off-CFO draws are valid, and
       // saying "exceeds the CFO" where there is no CFO trains Stores to dismiss the warning that counts.
-      if (facts.cfoQuantity > 0 && facts.drawnQuantity + quantity > facts.cfoQuantity) warnings.push('exceeds-cfo');
+      if (facts.kind === 'checkout' && facts.cfoQuantity > 0 && facts.drawnQuantity + quantity > facts.cfoQuantity) {
+        warnings.push('exceeds-cfo');
+      }
       if (facts.bucketQuantityOnHand - quantity < 0) warnings.push('negative-stock-on-hand');
 
       return warnings;
@@ -74,6 +79,8 @@ export function deriveMovementWarnings({
     case 'return-to-store':
       // A return puts stock back, so it can never call the rack short.
       return quantity > facts.drawnBucketQuantity ? ['exceeds-drawn'] : [];
+    case 'return-without-job':
+      return quantity > facts.outstandingQuantity ? ['exceeds-drawn'] : [];
     case 'return-to-supplier':
       // Sending back more than the line took in is almost always a scan error, so it earns a loud
       // confirm — and then posts anyway. The stock physically left; refusing the row would hide it.

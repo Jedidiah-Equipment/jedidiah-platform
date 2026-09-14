@@ -5,7 +5,7 @@ How to do the work Jedidiah Equipment records — the occasional flows worth rea
 Inventory is documented first. Start with the task you are in the middle of:
 
 - [Receive a delivery](./inventory/post-a-receipt.md) — checking arriving stock in against a Purchase Order line
-- [Check out Parts to a Job](./inventory/check-out-parts-to-a-job.md) — material leaving the rack
+- [Check out Parts](./inventory/check-out-parts-to-a-job.md) — material leaving the rack for a Job or Recipient
 - [Return to Store](./inventory/return-to-store.md) — putting it back
 - [Build stock](./inventory/build-stock.md) — turning components into a Built Part
 - [Post a stock adjustment](./inventory/post-a-stock-adjustment.md) — counts, damage, scrap, opening balances

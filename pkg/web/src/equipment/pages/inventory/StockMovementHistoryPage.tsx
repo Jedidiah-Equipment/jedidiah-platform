@@ -1,18 +1,24 @@
 import { hasPermission } from '@pkg/domain';
 import type { UUID } from '@pkg/schema';
 import { useQuery } from '@tanstack/react-query';
+import { useCallback, useState } from 'react';
 
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
 import { useAccess } from '@/hooks/use-access.js';
 import { useTRPC } from '@/lib/trpc.js';
-
+import { StockMovementDialog } from './components/StockMovementDialog.js';
 import { StockMovementHistoryTable } from './components/StockMovementHistoryTable.js';
+import { partOptionsAllowing } from './components/types.js';
 
 export function StockMovementHistoryPage({ partId }: { partId: UUID }) {
   const trpc = useTRPC();
   const accessQuery = useAccess();
   const historyQuery = useQuery(trpc.inventory.history.queryOptions({ partId }));
+  const canMove = hasPermission(accessQuery.data, 'equipment_inventory:move');
+  const stockQuery = useQuery(trpc.inventory.stockOnHand.queryOptions(undefined, { enabled: canMove }));
+  const [returnSourceCheckoutId, setReturnSourceCheckoutId] = useState<string | null>(null);
+  const openReturn = useCallback((checkout: { id: string }) => setReturnSourceCheckoutId(checkout.id), []);
   const showCosts = hasPermission(accessQuery.data, 'equipment_inventory_cost:read');
   // Stores reads this ledger and holds no `equipment_job:read`, so a Job link would only ever land them on a
   // sheet that refuses to load. The code still shows — it is what the row was drawn against.
@@ -33,8 +39,22 @@ export function StockMovementHistoryPage({ partId }: { partId: UUID }) {
         <StockMovementHistoryTable
           canReadJobs={canReadJobs}
           items={historyQuery.data.items}
+          {...(canMove ? { onReturnCheckout: openReturn } : {})}
           showCosts={showCosts}
           unitOfMeasure={historyQuery.data.part.unitOfMeasure}
+        />
+      ) : null}
+      {returnSourceCheckoutId !== null ? (
+        <StockMovementDialog
+          defaultPartId={partId}
+          defaultSourceCheckoutId={returnSourceCheckoutId}
+          items={stockQuery.data?.items ?? []}
+          onOpenChange={(nextOpen) => {
+            if (!nextOpen) setReturnSourceCheckoutId(null);
+          }}
+          open
+          parts={partOptionsAllowing(stockQuery.data?.items ?? [], 'returnToStore')}
+          type="return-to-store"
         />
       ) : null}
     </PageLayout>

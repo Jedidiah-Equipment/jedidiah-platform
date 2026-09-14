@@ -13,9 +13,14 @@ import { Link } from '@tanstack/react-router';
 import { useMemo } from 'react';
 import { DataTable } from '@/components/data-table/DataTable.js';
 import { type DataTableColumnDef, useDataTable } from '@/components/data-table/features.js';
+import { Button } from '@/components/ui/button.js';
 import { formatUnitCost, getPartQuantityUnitDisplay } from '@/equipment/utils/part-quantity-format.js';
 
-type MovementReference = { id: UUID; kind: 'job' | 'purchase-order' | 'stocktake'; label: string };
+type MovementReference = {
+  id: UUID;
+  kind: 'job' | 'purchase-order' | 'source-checkout' | 'stocktake';
+  label: string;
+};
 
 /**
  * What a movement points back at. A ledger row is never posted in a vacuum — stock arrives on an
@@ -24,6 +29,13 @@ type MovementReference = { id: UUID; kind: 'job' | 'purchase-order' | 'stocktake
  * hand-posted adjustment, a revaluation) genuinely has none; its note carries the reason instead.
  */
 function movementReference(item: StockMovementHistoryRow): MovementReference | null {
+  if (item.sourceCheckoutId && item.sourceCheckoutCreatedAt) {
+    return {
+      id: item.sourceCheckoutId,
+      kind: 'source-checkout',
+      label: `Checkout ${formatDate(item.sourceCheckoutCreatedAt, 'medium')} · ${item.sourceCheckoutId.slice(0, 8)}`,
+    };
+  }
   if (item.purchaseOrderId && item.purchaseOrderCode) {
     return { id: item.purchaseOrderId, kind: 'purchase-order', label: item.purchaseOrderCode };
   }
@@ -51,6 +63,7 @@ function MovementReferenceCell({ canReadJobs, item }: { canReadJobs: boolean; it
 
   // A reference nobody may open is still worth naming; it just stops pretending to be a way there.
   if (reference.kind === 'job' && !canReadJobs) return reference.label;
+  if (reference.kind === 'source-checkout') return reference.label;
 
   if (reference.kind === 'purchase-order') {
     return (
@@ -82,17 +95,25 @@ function MovementReferenceCell({ canReadJobs, item }: { canReadJobs: boolean; it
 export function StockMovementHistoryTable({
   canReadJobs,
   items,
+  onReturnCheckout,
   showCosts,
   unitOfMeasure,
 }: {
   canReadJobs: boolean;
   items: readonly StockMovementHistoryRow[];
+  onReturnCheckout?: (checkout: StockMovementHistoryRow) => void;
   showCosts: boolean;
   unitOfMeasure: PartUnitOfMeasure;
 }) {
   const columns = useMemo(
-    () => createStockMovementHistoryColumns({ canReadJobs, showCosts, unitOfMeasure }),
-    [canReadJobs, showCosts, unitOfMeasure],
+    () =>
+      createStockMovementHistoryColumns({
+        canReadJobs,
+        showCosts,
+        unitOfMeasure,
+        ...(onReturnCheckout ? { onReturnCheckout } : {}),
+      }),
+    [canReadJobs, onReturnCheckout, showCosts, unitOfMeasure],
   );
   const data = useMemo(() => [...items], [items]);
   const table = useDataTable({
@@ -117,10 +138,12 @@ export function StockMovementHistoryTable({
 
 function createStockMovementHistoryColumns({
   canReadJobs,
+  onReturnCheckout,
   showCosts,
   unitOfMeasure,
 }: {
   canReadJobs: boolean;
+  onReturnCheckout?: (checkout: StockMovementHistoryRow) => void;
   showCosts: boolean;
   unitOfMeasure: PartUnitOfMeasure;
 }): DataTableColumnDef<StockMovementHistoryRow>[] {
@@ -150,13 +173,33 @@ function createStockMovementHistoryColumns({
     },
     {
       accessorFn: (item) => item.note ?? '—',
-      header: 'Note',
+      header: 'Purpose / note',
       id: 'note',
     },
     {
-      accessorKey: 'actorName',
-      header: 'Actor',
+      accessorFn: (item) => item.recipientName ?? '—',
+      header: 'Recipient',
+      id: 'recipient',
     },
+    {
+      accessorKey: 'actorName',
+      header: 'Operator',
+    },
+    ...(onReturnCheckout
+      ? [
+          {
+            cell: ({ row }) =>
+              row.original.movementType === 'checkout' && row.original.jobId === null ? (
+                <Button onClick={() => onReturnCheckout(row.original)} size="sm" variant="outline">
+                  Return to Store
+                </Button>
+              ) : null,
+            enableGlobalFilter: false,
+            header: '',
+            id: 'actions',
+          } satisfies DataTableColumnDef<StockMovementHistoryRow>,
+        ]
+      : []),
     {
       accessorFn: (item) => movementReference(item)?.label ?? '—',
       cell: ({ row }) => <MovementReferenceCell canReadJobs={canReadJobs} item={row.original} />,

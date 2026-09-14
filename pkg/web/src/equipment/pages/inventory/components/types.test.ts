@@ -11,11 +11,13 @@ import {
   type StockPartOption,
   stockAdjustmentValidator,
   stockJobMovementValidator,
+  stockMovementValidator,
   toAdjustmentInput,
   toBuildInput,
   toCloseOutJobInput,
   toJobMovementInput,
   toRevaluationInput,
+  toStockMovementInput,
   toStockPartOption,
 } from './types.js';
 
@@ -184,6 +186,45 @@ describe('Job movement form', () => {
     expect(validator.safeParse({ ...values, quantity: 0 }).success).toBe(false);
     expect(validator.safeParse({ ...values, lengthMm: Number.NaN }).success).toBe(false);
     expect(validator.safeParse({ ...values, lengthMm: Number.NaN, partId: piece.partId }).success).toBe(true);
+  });
+});
+
+describe('alternative movement targets', () => {
+  const values = {
+    jobId: '',
+    lengthMm: Number.NaN,
+    mode: 'person' as const,
+    note: '  Repair factory drill  ',
+    partId: piece.partId,
+    quantity: 5,
+    recipientUserId: 'connor',
+    sourceCheckoutId: '',
+  };
+
+  it('maps a no-Job Checkout and linked Return to their strict API alternatives', () => {
+    expect(toStockMovementInput(values, 'checkout', piece)).toEqual({
+      lengthMm: null,
+      note: 'Repair factory drill',
+      partId: piece.partId,
+      quantity: 5,
+      recipientUserId: 'connor',
+    });
+    expect(
+      toStockMovementInput(
+        { ...values, partId: '', sourceCheckoutId: '00000000-0000-4000-8000-000000000009' },
+        'return-to-store',
+        undefined,
+      ),
+    ).toEqual({ quantity: 5, sourceCheckoutId: '00000000-0000-4000-8000-000000000009' });
+  });
+
+  it('requires recipient and purpose for Checkout and a source for Return', () => {
+    expect(stockMovementValidator([piece], 'checkout').safeParse(values).success).toBe(true);
+    expect(stockMovementValidator([piece], 'checkout').safeParse({ ...values, note: ' ' }).success).toBe(false);
+    expect(stockMovementValidator([piece], 'checkout').safeParse({ ...values, recipientUserId: '' }).success).toBe(
+      false,
+    );
+    expect(stockMovementValidator([piece], 'return-to-store').safeParse(values).success).toBe(false);
   });
 });
 

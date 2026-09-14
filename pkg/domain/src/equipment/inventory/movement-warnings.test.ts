@@ -61,6 +61,15 @@ describe('deriveMovementWarnings — a Job draw', () => {
       }),
     ).toEqual([]);
   });
+
+  test('judges no-Job Checkout and linked-return facts without Job CFO state', () => {
+    expect(
+      deriveMovementWarnings({ facts: { bucketQuantityOnHand: 1, kind: 'checkout-without-job' }, quantity: 2 }),
+    ).toEqual(['negative-stock-on-hand']);
+    expect(
+      deriveMovementWarnings({ facts: { kind: 'return-without-job', outstandingQuantity: 1 }, quantity: 2 }),
+    ).toEqual(['exceeds-drawn']);
+  });
 });
 
 describe('deriveMovementWarnings — a Receipt', () => {

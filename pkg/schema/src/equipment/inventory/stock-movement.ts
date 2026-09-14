@@ -3,7 +3,7 @@ import { AuthId } from '../../auth/auth-id.js';
 import { DateIso, DateOnlyIso } from '../../common/date.js';
 import { CursorQueryInput, createCursorQueryResult } from '../../common/pagination.js';
 import { Price } from '../../common/price.js';
-import { nullableTrimmedText, nullableTrimmedTextInput, SearchText } from '../../common/text.js';
+import { nullableTrimmedText, nullableTrimmedTextInput, requiredTrimmedText, SearchText } from '../../common/text.js';
 import { NullableThumbnailDataUrl } from '../../common/thumbnail.js';
 import { UUID } from '../../common/uuid.js';
 import { JobCode, PurchaseOrderCode } from '../common/public-code.js';
@@ -107,6 +107,32 @@ export const PostJobMovementInput = MovementTargetInput.extend({
   quantity: StockMovementQuantity,
 }).strict();
 
+/** A Checkout attributed to a person rather than a Job. The purpose is the reference that explains it. */
+export type PostCheckoutWithoutJobInput = z.infer<typeof PostCheckoutWithoutJobInput>;
+export const PostCheckoutWithoutJobInput = MovementTargetInput.extend({
+  actorUserId: AssertedActorUserId,
+  note: requiredTrimmedText('Enter a purpose'),
+  quantity: StockMovementQuantity,
+  recipientUserId: AuthId,
+}).strict();
+
+/** Existing Job payloads remain one strict arm; mixed Job/person targets match neither arm. */
+export type PostCheckoutInput = z.infer<typeof PostCheckoutInput>;
+export const PostCheckoutInput = z.union([PostJobMovementInput, PostCheckoutWithoutJobInput]);
+
+/** A linked return derives every stock target fact from its original no-Job Checkout. */
+export type PostCheckoutReturnInput = z.infer<typeof PostCheckoutReturnInput>;
+export const PostCheckoutReturnInput = z
+  .object({
+    actorUserId: AssertedActorUserId,
+    quantity: StockMovementQuantity,
+    sourceCheckoutId: UUID,
+  })
+  .strict();
+
+export type PostReturnToStoreInput = z.infer<typeof PostReturnToStoreInput>;
+export const PostReturnToStoreInput = z.union([PostJobMovementInput, PostCheckoutReturnInput]);
+
 export type PostAdjustmentInput = z.infer<typeof PostAdjustmentInput>;
 export const PostAdjustmentInput = MovementTargetInput.extend({
   actorUserId: AssertedActorUserId,
@@ -191,7 +217,9 @@ export const StockMovement = z.object({
   note: nullableTrimmedText(),
   partId: UUID,
   purchaseOrderId: UUID.nullable(),
+  recipientUserId: AuthId.nullable().default(null),
   reason: StockMovementReason.nullable(),
+  sourceCheckoutId: UUID.nullable().default(null),
   unitCost: InventoryCost,
 });
 
@@ -420,6 +448,50 @@ export const QuickSwitchActor = z.object({
 export type QuickSwitchActorListResult = z.infer<typeof QuickSwitchActorListResult>;
 export const QuickSwitchActorListResult = z.object({ items: z.array(QuickSwitchActor) });
 
+/** Minimal person row exposed to the recipient picker under the inventory movement permission. */
+export type InventoryRecipientOption = z.infer<typeof InventoryRecipientOption>;
+export const InventoryRecipientOption = z.object({
+  id: AuthId,
+  name: z.string().trim().min(1),
+  thumbnailDataUrl: NullableThumbnailDataUrl,
+});
+
+export type InventoryRecipientOptionListInput = z.infer<typeof InventoryRecipientOptionListInput>;
+export const InventoryRecipientOptionListInput = CursorQueryInput.extend({ search: SearchText });
+
+export type InventoryRecipientOptionListResult = z.infer<typeof InventoryRecipientOptionListResult>;
+export const InventoryRecipientOptionListResult = createCursorQueryResult(InventoryRecipientOption);
+
+/** One no-Job Checkout a Return to Store can link back to. */
+export type SourceCheckoutOption = z.infer<typeof SourceCheckoutOption>;
+export const SourceCheckoutOption = z.object({
+  createdAt: DateIso,
+  id: UUID,
+  lengthMm: StockMovementLengthMm.nullable(),
+  note: requiredTrimmedText(),
+  partCode: PartCode,
+  partId: UUID,
+  partName: z.string().trim().min(1),
+  quantity: StockMovementQuantity,
+  recipientName: z.string().trim().min(1),
+  recipientUserId: AuthId,
+  returnedQuantity: z.number().finite().nonnegative(),
+  unitCost: InventoryCost,
+  unitOfMeasure: PartUnitOfMeasure,
+});
+
+export const SourceCheckoutOptionCostFields = declareInventoryCostFields(SourceCheckoutOption, 'unitCost');
+
+export type SourceCheckoutListInput = z.infer<typeof SourceCheckoutListInput>;
+export const SourceCheckoutListInput = CursorQueryInput.extend({
+  partId: UUID.optional(),
+  recipientUserId: AuthId.optional(),
+  search: SearchText,
+});
+
+export type SourceCheckoutListResult = z.infer<typeof SourceCheckoutListResult>;
+export const SourceCheckoutListResult = createCursorQueryResult(SourceCheckoutOption);
+
 export type StockMovementHistoryInput = z.infer<typeof StockMovementHistoryInput>;
 export const StockMovementHistoryInput = z.object({ partId: UUID });
 
@@ -434,7 +506,9 @@ export const StockMovementHistoryRow = StockMovement.extend({
   jobCode: JobCode.nullable(),
   movementValue: InventoryValue,
   purchaseOrderCode: PurchaseOrderCode.nullable(),
+  recipientName: z.string().nullable().default(null),
   runningBalance: z.number().finite(),
+  sourceCheckoutCreatedAt: DateIso.nullable().default(null),
   stocktakeSessionId: UUID.nullable(),
   stocktakeSessionScope: StocktakeScope.nullable(),
 });

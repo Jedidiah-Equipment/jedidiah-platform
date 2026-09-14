@@ -1,8 +1,10 @@
 import {
   type AssertedActorError,
   type BuildError,
+  type CheckoutCoreError,
   isAssertedActorError,
   isBuildError,
+  isCheckoutCoreError,
   isJobCloseOutError,
   isStockMovementCoreError,
   isStocktakeError,
@@ -56,6 +58,20 @@ export const assertedActorErrorFamily = defineCoreErrorFamily<AssertedActorError
     'inventory.actor_is_device': 'A shared device cannot be the person who moved the stock.',
     'inventory.actor_not_found': 'That badge is not recognised. Pick a name from the list instead.',
     'inventory.actor_required': 'Choose who is at the tablet before moving any stock.',
+  },
+});
+
+export const checkoutErrorFamily = defineCoreErrorFamily<CheckoutCoreError>({
+  codes: {
+    'inventory.invalid_source_checkout': 'BAD_REQUEST',
+    'inventory.recipient_ineligible': 'BAD_REQUEST',
+    'inventory.recipient_not_found': 'NOT_FOUND',
+  },
+  is: isCheckoutCoreError,
+  messages: {
+    'inventory.invalid_source_checkout': 'Select a Checkout without a Job.',
+    'inventory.recipient_ineligible': 'Select an active Equipment user who is not a device.',
+    'inventory.recipient_not_found': 'Recipient not found.',
   },
 });
 

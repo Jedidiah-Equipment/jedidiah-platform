@@ -3,6 +3,7 @@ import type { StockOnHandRow } from '@pkg/schema/equipment';
 import { describe, expect, it } from 'vitest';
 
 import {
+  canAddCheckoutBasketLine,
   checkoutBasketValidator,
   deriveStockBuildRows,
   deriveStockBuildWarnings,
@@ -255,6 +256,19 @@ describe('Checkout Basket form', () => {
     ]);
   });
 
+  it('still merges a keyed line at the 200-line cap but refuses a new key', () => {
+    const lines = Array.from({ length: 200 }, (_, index) => ({
+      lengthMm: null,
+      partId: `00000000-0000-4000-8000-${String(index).padStart(12, '0')}`,
+      quantity: 1,
+    }));
+    const existing = lines[0];
+    if (!existing) throw new Error('Expected a line at the configured cap');
+
+    expect(canAddCheckoutBasketLine(lines, { ...existing, quantity: 2 })).toBe(true);
+    expect(canAddCheckoutBasketLine(lines, { ...first, partId: '00000000-0000-4000-8000-999999999999' })).toBe(false);
+  });
+
   it('maps only the selected target into the strict Basket input', () => {
     expect(
       toCheckoutBasketInput({
@@ -277,7 +291,7 @@ describe('Checkout Basket form', () => {
   });
 
   it('requires a target and at least one line', () => {
-    const validator = checkoutBasketValidator();
+    const validator = checkoutBasketValidator([piece]);
     const values = {
       jobId: piece.partId,
       lines: [first],
@@ -289,6 +303,7 @@ describe('Checkout Basket form', () => {
     expect(validator.safeParse(values).success).toBe(true);
     expect(validator.safeParse({ ...values, jobId: '' }).success).toBe(false);
     expect(validator.safeParse({ ...values, lines: [] }).success).toBe(false);
+    expect(validator.safeParse({ ...values, lines: [{ ...first, quantity: 1.5 }] }).success).toBe(false);
     expect(
       validator.safeParse({ ...values, jobId: '', note: ' ', recipientUserId: '', target: 'person' }).success,
     ).toBe(false);

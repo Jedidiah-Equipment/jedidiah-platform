@@ -1,4 +1,4 @@
-import type { StockMovementWarningCode } from '@pkg/schema/equipment';
+import type { CheckoutBasketLineInput, StockMovementWarningCode } from '@pkg/schema/equipment';
 import { type BuildBomComponent, type BuildWarningLine, deriveBuildComponentWarnings } from './build.js';
 
 /** What a draw is judged against: the rack it leaves, and the plan it is drawn to — if it has one. */
@@ -27,8 +27,6 @@ export type ReturnToStoreFacts = {
 /** The stock facts a Job read serves, since a Job movement can run either direction. */
 export type JobMovementFacts = CheckoutFacts & ReturnToStoreFacts;
 
-export type CheckoutBasketLine = { lengthMm: number | null; partId: string; quantity: number };
-
 /**
  * A Basket judged the way its post will judge it: line by line, with earlier draws of the same Part
  * carried into the Job-level facts while each length bucket keeps its own served rack quantity.
@@ -38,8 +36,8 @@ export function deriveCheckoutBasketWarnings({
   lines,
 }: {
   /** Served facts for one line, before any line of this Basket has posted. */
-  factsFor: (line: CheckoutBasketLine) => CheckoutFacts;
-  lines: readonly CheckoutBasketLine[];
+  factsFor: (line: CheckoutBasketLineInput) => CheckoutFacts;
+  lines: readonly CheckoutBasketLineInput[];
 }): StockMovementWarningCode[][] {
   const drawnSoFar = new Map<string, number>();
 

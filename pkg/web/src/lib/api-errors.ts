@@ -26,12 +26,9 @@ export function getApiErrorAppCode(error: unknown): AppCode | undefined {
   return typeof error.data?.appCode === 'string' ? (error.data.appCode as AppCode) : undefined;
 }
 
-export function getApiErrorPartId(error: unknown): string | undefined {
+export function getApiErrorMetadata(error: unknown): unknown {
   if (!isApiErrorShape(error)) return undefined;
-  const metadata = error.data?.metadata;
-  if (typeof metadata !== 'object' || metadata === null || !('partId' in metadata)) return undefined;
-
-  return typeof metadata.partId === 'string' ? metadata.partId : undefined;
+  return error.data?.metadata;
 }
 
 export function shouldReportApiMutationError(error: unknown): boolean {

@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   getApiErrorAppCode,
   getApiErrorMessage,
+  getApiErrorMetadata,
   getApiMutationErrorMessage,
   getApiQueryErrorMessage,
   shouldReportApiMutationError,
@@ -18,6 +19,11 @@ describe('api error presentation', () => {
 
     expect(getApiErrorMessage(error)).toBe('A product with this name already exists.');
     expect(getApiErrorAppCode(error)).toBe('product.duplicate_name');
+  });
+
+  it('returns public API metadata without assigning business meaning to it', () => {
+    expect(getApiErrorMetadata({ data: { metadata: { partId: 'part-id' } } })).toEqual({ partId: 'part-id' });
+    expect(getApiErrorMetadata(new Error('broken'))).toBeUndefined();
   });
 
   it('uses contextual fallbacks for unknown mutation and query errors', () => {

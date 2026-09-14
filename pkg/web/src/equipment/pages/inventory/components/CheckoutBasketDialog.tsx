@@ -5,7 +5,7 @@ import type {
   StockMovementWarningCode,
   StockOnHandRow,
 } from '@pkg/schema/equipment';
-import { CHECKOUT_BASKET_MAX_LINES, StockMovementLengthMm, StockMovementQuantity } from '@pkg/schema/equipment';
+import { StockMovementLengthMm, StockMovementQuantity } from '@pkg/schema/equipment';
 import { IconAlertTriangle, IconPlus, IconTrash } from '@tabler/icons-react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useMemo, useRef, useState } from 'react';
@@ -24,7 +24,7 @@ import { useInventoryJobPicker } from '@/equipment/hooks/options/index.js';
 import { useMovementWarnings } from '@/equipment/hooks/use-movement-warnings.js';
 import { useQueryInvalidation } from '@/equipment/hooks/use-query-invalidation.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
-import { getApiErrorPartId } from '@/lib/api-errors.js';
+import { getApiErrorMetadata } from '@/lib/api-errors.js';
 import { authClient } from '@/lib/auth-client.js';
 import { useTRPC } from '@/lib/trpc.js';
 
@@ -32,6 +32,7 @@ import { StockMovementWarningPrompt } from './StockMovementWarningPrompt.js';
 import {
   type CheckoutBasketFormValues,
   type CheckoutBasketLineValues,
+  canAddCheckoutBasketLine,
   checkoutBasketValidator,
   mergeCheckoutBasketLine,
   partIdFromScanToken,
@@ -71,7 +72,7 @@ export function CheckoutBasketDialog({
   const postedSuccessfully = useRef(false);
   const jobId = fixedJob?.id ?? selectedJob?.id ?? '';
   const offersPersonTarget = fixedJob === undefined;
-  const validator = useMemo(() => checkoutBasketValidator(), []);
+  const validator = useMemo(() => checkoutBasketValidator(parts), [parts]);
 
   const jobPicker = useInventoryJobPicker({ enabled: fixedJob === undefined, movementType: 'checkout' });
   const jobStockQuery = useQuery(trpc.inventory.jobStock.queryOptions({ jobId }, { enabled: open && jobId !== '' }));
@@ -81,7 +82,7 @@ export function CheckoutBasketDialog({
   const basketMutation = useMutation(
     trpc.inventory.postCheckoutBasket.mutationOptions({
       onError: (error) => {
-        setRefusedPartId(getApiErrorPartId(error) ?? null);
+        setRefusedPartId(refusedPartIdFrom(error));
         showMutationError(error, 'Unable to check stock out.');
       },
     }),
@@ -122,7 +123,6 @@ export function CheckoutBasketDialog({
 
   return (
     <CreateEntityDialog<CheckoutBasketFormValues, { lines: unknown[]; warnings: StockMovementWarningCode[] }>
-      canSubmit={(values) => values.lines.length > 0}
       defaultValues={{
         jobId: fixedJob?.id ?? '',
         lines: [],
@@ -130,6 +130,7 @@ export function CheckoutBasketDialog({
         recipientUserId: '',
         target: 'job',
       }}
+      contentClassName="sm:max-w-[min(64rem,calc(100%-2rem))]"
       description="Build the lines leaving stores, then record them together."
       onCreate={(values) => {
         movementWarningsOutcome.acknowledge(warningsFor(values).flat());
@@ -244,7 +245,8 @@ export function CheckoutBasketDialog({
                 )}
 
                 <CheckoutBasketAddStrip
-                  disabled={isLoadingParts || values.lines.length >= CHECKOUT_BASKET_MAX_LINES}
+                  disabled={isLoadingParts}
+                  lines={values.lines}
                   onAdd={(line) => {
                     form.setFieldValue('lines', mergeCheckoutBasketLine(values.lines, line));
                     setRefusedPartId(null);
@@ -282,10 +284,12 @@ export function CheckoutBasketDialog({
 
 function CheckoutBasketAddStrip({
   disabled,
+  lines,
   onAdd,
   parts,
 }: {
   disabled: boolean;
+  lines: readonly CheckoutBasketLineValues[];
   onAdd: (line: CheckoutBasketLineValues) => void;
   parts: readonly StockPartOption[];
 }) {
@@ -319,7 +323,10 @@ function CheckoutBasketAddStrip({
       return setError('Linear stock needs a piece length');
     }
 
-    onAdd({ lengthMm, partId: selectedPart.partId, quantity });
+    const line = { lengthMm, partId: selectedPart.partId, quantity };
+    if (!canAddCheckoutBasketLine(lines, line)) return setError('A Basket can hold at most 200 lines');
+
+    onAdd(line);
     setPartId('');
     setQuantityText('1');
     setLengthText('');
@@ -515,4 +522,10 @@ function CheckoutBasketLinesTable({
 
 function recipientOptions(items: readonly InventoryRecipientOption[]) {
   return items.map((item) => ({ label: item.name, value: item.id }));
+}
+
+function refusedPartIdFrom(error: unknown): string | null {
+  const metadata = getApiErrorMetadata(error);
+  if (typeof metadata !== 'object' || metadata === null || !('partId' in metadata)) return null;
+  return typeof metadata.partId === 'string' ? metadata.partId : null;
 }

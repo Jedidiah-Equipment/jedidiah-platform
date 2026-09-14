@@ -10,6 +10,14 @@ import { FabricatedPartCostError, StockMovementPartNotFoundError } from './stock
 
 export type LedgerDb = Db | DatabaseTransaction;
 
+const stockPartSelection = {
+  id: parts.id,
+  isInternallyFabricated: parts.isInternallyFabricated,
+  standardPurchaseLengthMm: parts.standardPurchaseLengthMm,
+  stockTrackingMode: parts.stockTrackingMode,
+  unitOfMeasure: parts.unitOfMeasure,
+};
+
 /**
  * The ledger itself: the row every stock writer appends, the Part facts it is judged against, and
  * the replays that produce those facts. Adjustments, Job movements, receipts and builds all sit on
@@ -39,17 +47,7 @@ export async function loadStockPart({
   lockForMovement?: boolean;
   partId: UUID;
 }) {
-  const query = db
-    .select({
-      id: parts.id,
-      isInternallyFabricated: parts.isInternallyFabricated,
-      standardPurchaseLengthMm: parts.standardPurchaseLengthMm,
-      stockTrackingMode: parts.stockTrackingMode,
-      unitOfMeasure: parts.unitOfMeasure,
-    })
-    .from(parts)
-    .where(eq(parts.id, partId))
-    .limit(1);
+  const query = db.select(stockPartSelection).from(parts).where(eq(parts.id, partId)).limit(1);
   // Every writer takes the same Part lock so cost replay and the appended stamp form one ledger order.
   const [part] = lockForMovement ? await query.for('update') : await query;
   if (!part) throw new StockMovementPartNotFoundError(partId);
@@ -62,13 +60,7 @@ export async function lockStockParts(db: DatabaseTransaction, partIds: readonly 
   if (partIds.length === 0) return new Map<string, Awaited<ReturnType<typeof loadStockPart>>>();
 
   const rows = await db
-    .select({
-      id: parts.id,
-      isInternallyFabricated: parts.isInternallyFabricated,
-      standardPurchaseLengthMm: parts.standardPurchaseLengthMm,
-      stockTrackingMode: parts.stockTrackingMode,
-      unitOfMeasure: parts.unitOfMeasure,
-    })
+    .select(stockPartSelection)
     .from(parts)
     .where(inArray(parts.id, [...partIds]))
     .orderBy(asc(parts.id))

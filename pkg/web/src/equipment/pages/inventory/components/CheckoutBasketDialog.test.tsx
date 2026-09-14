@@ -180,6 +180,13 @@ describe('CheckoutBasketDialog', () => {
   it('scans repeat Parts into one summed line and submits the fixed Job Basket', async () => {
     await mount();
     expect(document.body.textContent).not.toContain('Without a Job');
+    expect(document.querySelector('[data-slot="dialog-content"]')?.className).toContain(
+      'sm:max-w-[min(64rem,calc(100%-2rem))]',
+    );
+    const emptySubmit = [...document.querySelectorAll('button')].find((button) =>
+      button.textContent?.includes('Check out 0 lines'),
+    );
+    expect(emptySubmit?.disabled).toBe(true);
 
     await scan('HYD-0052');
     const quantity = document.querySelector<HTMLInputElement>('#checkout-basket-quantity');
@@ -207,6 +214,34 @@ describe('CheckoutBasketDialog', () => {
         expect.anything(),
       ),
     );
+  });
+
+  it('blocks a fractional piece quantity and marks the Part when checkout is refused', async () => {
+    postBasket.mockRejectedValueOnce({
+      data: { appCode: 'inventory.periodic_movement', metadata: { partId: piece.partId } },
+      message: 'Periodic stock does not record checkout movements',
+    });
+    await mount();
+    await scan('HYD-0052');
+    const quantity = document.querySelector<HTMLInputElement>('#checkout-basket-quantity');
+    if (!quantity) throw new Error('Quantity input missing');
+    await press(quantity, 'Enter');
+
+    const lineQuantity = document.querySelector<HTMLInputElement>('[aria-label="Quantity for HYD-0052"]');
+    if (!lineQuantity) throw new Error('Line quantity input missing');
+    await type(lineQuantity, '1.5');
+    const submit = [...document.querySelectorAll('button')].find((button) =>
+      button.textContent?.includes('Check out 1 line'),
+    );
+    expect(lineQuantity.getAttribute('aria-invalid')).toBe('true');
+    expect(submit?.disabled).toBe(true);
+
+    await type(lineQuantity, '2');
+    expect(submit?.disabled).toBe(false);
+    await act(async () => submit?.click());
+
+    await vi.waitFor(() => expect(document.querySelector('[aria-label="Checkout refused this Part"]')).not.toBeNull());
+    expect(document.querySelector('tr.bg-destructive\\/10')).not.toBeNull();
   });
 
   it('defaults a linear length, previews a short rack, and keeps lines when close is cancelled', async () => {

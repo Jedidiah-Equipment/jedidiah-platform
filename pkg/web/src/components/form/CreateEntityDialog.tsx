@@ -21,8 +21,9 @@ type CreateEntityDialogProps<TValues extends Record<string, unknown>, TResult> =
    * would be silent; this refuses the click instead. Anything the values themselves determine
    * belongs in `validator`, not here.
    */
-  canSubmit?: boolean | ((values: TValues) => boolean);
+  canSubmit?: boolean;
   children: (form: CreateEntityFormApi<TValues>) => React.ReactNode;
+  contentClassName?: string;
   defaultValues: TValues;
   description?: React.ReactNode;
   onCreated: (result: TResult) => Promise<void> | void;
@@ -39,8 +40,8 @@ type CreateEntityDialogProps<TValues extends Record<string, unknown>, TResult> =
 type CreateEntityFormApi<TValues extends Record<string, unknown>> = ReturnType<
   typeof useAppForm<
     TValues,
-    undefined,
-    undefined,
+    z.ZodType<TValues, TValues>,
+    z.ZodType<TValues, TValues>,
     undefined,
     undefined,
     undefined,
@@ -56,6 +57,7 @@ type CreateEntityFormApi<TValues extends Record<string, unknown>> = ReturnType<
 export function CreateEntityDialog<TValues extends Record<string, unknown>, TResult>({
   canSubmit = true,
   children,
+  contentClassName,
   defaultValues,
   description,
   onCreated,
@@ -70,18 +72,27 @@ export function CreateEntityDialog<TValues extends Record<string, unknown>, TRes
   const form: CreateEntityFormApi<TValues> = useAppForm({
     defaultValues,
     validators: {
+      onChange: validator,
+      onMount: validator,
       onSubmit: validator,
     },
     onSubmit: async ({ value }) => {
       if (onBeforeCreate && !onBeforeCreate(value as TValues)) return;
-      const result = await onCreate(value as TValues);
+      let result: TResult;
+      try {
+        result = await onCreate(value as TValues);
+      } catch {
+        // Mutations present their own mapped error in `onError`; keep the fire-and-forget form
+        // submission from turning that handled refusal into an unhandled promise rejection.
+        return;
+      }
       await onCreated(result);
     },
   });
 
   return (
     <Dialog onOpenChange={onOpenChange} open={open}>
-      <DialogContent>
+      <DialogContent className={contentClassName}>
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
           {description ? <DialogDescription>{description}</DialogDescription> : null}
@@ -97,7 +108,7 @@ export function CreateEntityDialog<TValues extends Record<string, unknown>, TRes
           {children(form)}
           <form.Subscribe
             selector={(state) => ({
-              canSubmit: typeof canSubmit === 'function' ? canSubmit(state.values as TValues) : canSubmit,
+              canSubmit: canSubmit && state.canSubmit,
               isSubmitting: state.isSubmitting,
               label: typeof submitLabel === 'function' ? submitLabel(state.values as TValues) : submitLabel,
             })}

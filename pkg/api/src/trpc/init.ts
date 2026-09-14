@@ -3,12 +3,12 @@ import type { AppPermission, Business } from '@pkg/schema';
 import { initTRPC } from '@trpc/server';
 
 import type { Context } from './context.js';
-import { createAuthTRPCError, getTRPCAppCode, getTRPCPartMetadata, getTRPCPublicMessage } from './errors.js';
+import { createAuthTRPCError, getTRPCAppCode, getTRPCPublicMessage, getTRPCPublicMetadata } from './errors.js';
 
 const t = initTRPC.context<Context>().create({
   errorFormatter({ error, shape }) {
     const appCode = getTRPCAppCode(error);
-    const metadata = getTRPCPartMetadata(error);
+    const metadata = getTRPCPublicMetadata(error);
 
     return {
       ...shape,
@@ -16,7 +16,7 @@ const t = initTRPC.context<Context>().create({
       data: {
         ...shape.data,
         ...(appCode ? { appCode } : {}),
-        ...(metadata ? { metadata } : {}),
+        ...(metadata === undefined ? {} : { metadata }),
       },
     };
   },

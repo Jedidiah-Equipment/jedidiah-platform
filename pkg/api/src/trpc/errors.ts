@@ -10,16 +10,19 @@ type PublicTRPCErrorOptions = {
   cause?: unknown;
   code: TrpcErrorCode;
   message: string;
+  metadata?: unknown;
 };
 
 type AppCodedTRPCError = TRPCError & {
   appCode?: AppCode;
+  publicMetadata?: unknown;
 };
 
 export type CoreErrorMapping<TAppCode extends AppCode = AppCode> = {
   appCode: TAppCode;
   code: TrpcErrorCode;
   message: string;
+  metadata?: unknown;
 };
 
 export function createPublicTRPCError(options: PublicTRPCErrorOptions): TRPCError {
@@ -30,6 +33,7 @@ export function createPublicTRPCError(options: PublicTRPCErrorOptions): TRPCErro
   }) as AppCodedTRPCError;
 
   error.appCode = options.appCode;
+  error.publicMetadata = options.metadata;
 
   return error;
 }
@@ -72,12 +76,15 @@ export function defineCoreErrorFamily<TCoreError extends Error & { code: AppCode
   codes,
   is,
   messages,
+  metadata,
 }: {
   /** Every code in the family, exhaustively — the `Record` is what makes a missed one a type error. */
   codes: Readonly<Record<TCoreError['code'], TrpcErrorCode>>;
   is: (error: unknown) => error is TCoreError;
   /** Public message per code. Omitted codes surface the core error's own message. */
   messages?: Readonly<Partial<Record<TCoreError['code'], string>>>;
+  /** Explicitly selected, public-safe context for a caller that can act on the failed item. */
+  metadata?: (error: TCoreError) => unknown;
 }): CoreErrorFamily {
   // The one erasure in this mechanism, and it is at its edge: the tables above are checked
   // exhaustively against the family's codes by the parameter types, but `AppCode` is a template
@@ -95,7 +102,12 @@ export function defineCoreErrorFamily<TCoreError extends Error & { code: AppCode
       // mapped failure, so `serializeError` still logs what actually went wrong.
       if (!code) throw new Error(`Unmapped core error code: ${error.code}`, { cause: error });
 
-      return { appCode: error.code, code, message: messageByAppCode[error.code] ?? error.message };
+      return {
+        appCode: error.code,
+        code,
+        message: messageByAppCode[error.code] ?? error.message,
+        ...(metadata ? { metadata: metadata(error) } : {}),
+      };
     },
   };
 }
@@ -125,14 +137,8 @@ export function getTRPCAppCode(error: TRPCError): AppCode | undefined {
   return (error as AppCodedTRPCError).appCode;
 }
 
-/** The one safe core-error detail a stock surface uses to pin a refusal to its Basket line. */
-export function getTRPCPartMetadata(error: TRPCError): { partId: string } | undefined {
-  const cause = error.cause;
-  if (typeof cause !== 'object' || cause === null || !('metadata' in cause)) return undefined;
-  const metadata = cause.metadata;
-  if (typeof metadata !== 'object' || metadata === null || !('partId' in metadata)) return undefined;
-
-  return typeof metadata.partId === 'string' ? { partId: metadata.partId } : undefined;
+export function getTRPCPublicMetadata(error: TRPCError): unknown {
+  return (error as AppCodedTRPCError).publicMetadata;
 }
 
 export function getTRPCPublicMessage(error: TRPCError, message: string): string {

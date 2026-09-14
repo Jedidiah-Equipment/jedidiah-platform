@@ -7,6 +7,9 @@ import {
 } from '@pkg/domain/equipment';
 import { Price, UUID } from '@pkg/schema';
 import {
+  CHECKOUT_BASKET_MAX_LINES,
+  type CheckoutBasketLineInput,
+  CheckoutBasketLineInput as CheckoutBasketLineSchema,
   CloseOutJobInput,
   InventoryUnitCost,
   isWholeUnitQuantity,
@@ -122,27 +125,25 @@ export const StockMovementFormValues = z.object({
   target: StockMovementTarget,
 });
 
-export type CheckoutBasketLineValues = { lengthMm: number | null; partId: string; quantity: number };
+export type CheckoutBasketLineValues = CheckoutBasketLineInput;
 
 export type CheckoutBasketFormValues = z.infer<typeof CheckoutBasketFormValues>;
 export const CheckoutBasketFormValues = z.object({
   jobId: z.string(),
   lines: z
-    .array(
-      z.object({
-        lengthMm: StockMovementLengthMm.nullable(),
-        partId: UUID,
-        quantity: StockMovementQuantity,
-      }),
-    )
+    .array(CheckoutBasketLineSchema.extend({ lengthMm: StockMovementLengthMm.nullable() }))
     .min(1, 'Add at least one line'),
   note: z.string(),
   recipientUserId: z.string(),
   target: StockMovementTarget,
 });
 
-export function checkoutBasketValidator() {
+export function checkoutBasketValidator(parts: readonly StockPartOption[]) {
   return CheckoutBasketFormValues.superRefine((values, context) => {
+    values.lines.forEach((line, index) => {
+      const message = partQuantityValidationMessage(line, parts);
+      if (message) context.addIssue({ code: 'custom', message, path: ['lines', index, 'quantity'] });
+    });
     if (values.target === 'job') {
       if (!UUID.safeParse(values.jobId).success) {
         context.addIssue({ code: 'custom', message: 'Select a Job', path: ['jobId'] });
@@ -156,6 +157,14 @@ export function checkoutBasketValidator() {
       context.addIssue({ code: 'custom', message: 'Enter a purpose', path: ['note'] });
     }
   });
+}
+
+export function canAddCheckoutBasketLine(
+  lines: readonly CheckoutBasketLineValues[],
+  line: CheckoutBasketLineValues,
+): boolean {
+  if (lines.length < CHECKOUT_BASKET_MAX_LINES) return true;
+  return lines.some((candidate) => candidate.partId === line.partId && candidate.lengthMm === line.lengthMm);
 }
 
 /** Merges a keyed line into the Basket: the same Part and length adds to the existing line. */

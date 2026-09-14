@@ -1,5 +1,6 @@
 import { hasPermission } from '@pkg/domain';
 import type { UUID } from '@pkg/schema';
+import type { SourceCheckoutOption, StockMovementHistoryRow } from '@pkg/schema/equipment';
 import { useQuery } from '@tanstack/react-query';
 import { useCallback, useState } from 'react';
 
@@ -17,8 +18,8 @@ export function StockMovementHistoryPage({ partId }: { partId: UUID }) {
   const historyQuery = useQuery(trpc.inventory.history.queryOptions({ partId }));
   const canMove = hasPermission(accessQuery.data, 'equipment_inventory:move');
   const stockQuery = useQuery(trpc.inventory.stockOnHand.queryOptions(undefined, { enabled: canMove }));
-  const [returnSourceCheckoutId, setReturnSourceCheckoutId] = useState<string | null>(null);
-  const openReturn = useCallback((checkout: { id: string }) => setReturnSourceCheckoutId(checkout.id), []);
+  const [returnSourceCheckout, setReturnSourceCheckout] = useState<StockMovementHistoryRow | null>(null);
+  const openReturn = useCallback((checkout: StockMovementHistoryRow) => setReturnSourceCheckout(checkout), []);
   const showCosts = hasPermission(accessQuery.data, 'equipment_inventory_cost:read');
   // Stores reads this ledger and holds no `equipment_job:read`, so a Job link would only ever land them on a
   // sheet that refuses to load. The code still shows — it is what the row was drawn against.
@@ -44,13 +45,14 @@ export function StockMovementHistoryPage({ partId }: { partId: UUID }) {
           unitOfMeasure={historyQuery.data.part.unitOfMeasure}
         />
       ) : null}
-      {returnSourceCheckoutId !== null ? (
+      {returnSourceCheckout !== null && historyQuery.data ? (
         <StockMovementDialog
           defaultPartId={partId}
-          defaultSourceCheckoutId={returnSourceCheckoutId}
+          defaultSourceCheckout={sourceCheckoutOption(returnSourceCheckout, historyQuery.data)}
+          defaultSourceCheckoutId={returnSourceCheckout.id}
           items={stockQuery.data?.items ?? []}
           onOpenChange={(nextOpen) => {
-            if (!nextOpen) setReturnSourceCheckoutId(null);
+            if (!nextOpen) setReturnSourceCheckout(null);
           }}
           open
           parts={partOptionsAllowing(stockQuery.data?.items ?? [], 'returnToStore')}
@@ -59,6 +61,32 @@ export function StockMovementHistoryPage({ partId }: { partId: UUID }) {
       ) : null}
     </PageLayout>
   );
+}
+
+function sourceCheckoutOption(
+  checkout: StockMovementHistoryRow,
+  history: {
+    items: StockMovementHistoryRow[];
+    part: { code: string; id: UUID; name: string; unitOfMeasure: SourceCheckoutOption['unitOfMeasure'] };
+  },
+): SourceCheckoutOption {
+  return {
+    createdAt: checkout.createdAt,
+    id: checkout.id,
+    lengthMm: checkout.lengthMm,
+    note: checkout.note ?? '',
+    partCode: history.part.code,
+    partId: history.part.id,
+    partName: history.part.name,
+    quantity: -checkout.delta,
+    recipientName: checkout.recipientName ?? '',
+    recipientUserId: checkout.recipientUserId ?? '',
+    returnedQuantity: history.items
+      .filter((movement) => movement.sourceCheckoutId === checkout.id)
+      .reduce((total, movement) => total + movement.delta, 0),
+    unitCost: checkout.unitCost,
+    unitOfMeasure: history.part.unitOfMeasure,
+  };
 }
 
 function HistorySkeleton() {

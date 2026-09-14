@@ -19,6 +19,7 @@ import { useStoresPostOutcome } from '@/equipment/lib/use-stores-post';
 import { useTRPC } from '@/lib/trpc';
 
 import { JobPicker, type JobPickerHandle } from './JobPicker';
+import { canPostStoresMovement, switchStoresMovementTarget, toStoresMovementInput } from './job-movement-model';
 import { LengthBucketField } from './LengthBucketField';
 import { MovementWarningModal } from './MovementWarningModal';
 import { PostButton } from './PostButton';
@@ -115,7 +116,7 @@ function JobMovementForm({
       : isCheckout
         ? recipient !== null && purpose.trim() !== ''
         : sourceCheckout !== null;
-  const canPost = parsedQuantity !== null && hasLength && hasTarget;
+  const canPost = canPostStoresMovement({ actorUserId, hasLength, hasTarget, quantity: parsedQuantity });
 
   // The facts this movement is judged against, served by the same read the Job's stock tab uses.
   const jobStockQuery = useQuery(
@@ -168,16 +169,18 @@ function JobMovementForm({
                 className={`flex-1 items-center rounded-xl border px-3 py-3 ${mode === targetMode ? 'border-primary bg-primary/10' : 'border-border bg-surface'}`}
                 key={targetMode}
                 onPress={() => {
+                  const targetState = switchStoresMovementTarget({
+                    actor,
+                    isCheckout,
+                    state: { job, jobSearch, purpose, recipient, sourceCheckout },
+                    targetMode,
+                  });
                   setMode(targetMode);
-                  if (targetMode === 'job') {
-                    setRecipient(null);
-                    setPurpose('');
-                    setSourceCheckout(null);
-                  } else {
-                    setJob(null);
-                    setJobSearch('');
-                    if (isCheckout) setRecipient(actor);
-                  }
+                  setJob(targetState.job);
+                  setJobSearch(targetState.jobSearch);
+                  setPurpose(targetState.purpose);
+                  setRecipient(targetState.recipient);
+                  setSourceCheckout(targetState.sourceCheckout);
                 }}
               >
                 <Text className="text-sm text-surface-foreground" weight="semibold">
@@ -258,7 +261,7 @@ function JobMovementForm({
       <NoActorNotice actorUserId={actorUserId} />
 
       <PostButton
-        disabled={!canPost || actorUserId === null}
+        disabled={!canPost}
         isPending={checkoutMutation.isPending || returnMutation.isPending}
         label={isCheckout ? 'Check out stock' : 'Return stock'}
         onPress={() => {
@@ -266,31 +269,19 @@ function JobMovementForm({
 
           confirmFlow.submit({
             post: () => {
-              if (mode === 'person') {
-                if (isCheckout && recipient !== null) {
-                  checkoutMutation.mutate({
-                    actorUserId,
-                    lengthMm: parsedLength,
-                    note: purpose,
-                    partId: row.partId,
-                    quantity: parsedQuantity,
-                    recipientUserId: recipient.id,
-                  });
-                } else if (!isCheckout && sourceCheckout !== null) {
-                  returnMutation.mutate({ actorUserId, quantity: parsedQuantity, sourceCheckoutId: sourceCheckout.id });
-                }
-                return;
-              }
-              if (jobIdToPost === null) return;
-              const jobInput = {
+              const inputFacts = {
                 actorUserId,
                 jobId: jobIdToPost,
                 lengthMm: parsedLength,
+                mode,
                 partId: row.partId,
+                purpose,
                 quantity: parsedQuantity,
+                recipientUserId: recipient?.id ?? null,
+                sourceCheckoutId: sourceCheckout?.id ?? null,
               };
-              if (isCheckout) checkoutMutation.mutate(jobInput);
-              else returnMutation.mutate(jobInput);
+              if (isCheckout) checkoutMutation.mutate(toStoresMovementInput({ ...inputFacts, isCheckout: true }));
+              else returnMutation.mutate(toStoresMovementInput({ ...inputFacts, isCheckout: false }));
             },
             warnings: previewWarnings,
           });

@@ -119,6 +119,41 @@ export const StockMovementFormValues = z.object({
   sourceCheckoutId: z.string(),
 });
 
+/** Clears the target arm that is no longer visible and restores the signed-in recipient default. */
+export function switchStockMovementTarget({
+  defaultPartId,
+  movementType,
+  recipientUserId,
+  targetMode,
+  values,
+}: {
+  defaultPartId: string;
+  movementType: 'checkout' | 'return-to-store';
+  recipientUserId: string;
+  targetMode: StockMovementTargetMode;
+  values: StockMovementFormValues;
+}): StockMovementFormValues {
+  if (targetMode === 'person') {
+    return {
+      ...values,
+      jobId: '',
+      lengthMm: movementType === 'return-to-store' ? Number.NaN : values.lengthMm,
+      mode: targetMode,
+      partId: movementType === 'return-to-store' ? '' : values.partId,
+      recipientUserId: movementType === 'checkout' ? recipientUserId : values.recipientUserId,
+    };
+  }
+
+  return {
+    ...values,
+    mode: targetMode,
+    note: '',
+    partId: movementType === 'return-to-store' ? defaultPartId : values.partId,
+    recipientUserId: '',
+    sourceCheckoutId: '',
+  };
+}
+
 /** Closing out asserts a fact about the whole Job, so the note is all the screen has left to ask. */
 export type JobCloseOutFormValues = z.infer<typeof JobCloseOutFormValues>;
 export const JobCloseOutFormValues = z.object({ note: z.string() });

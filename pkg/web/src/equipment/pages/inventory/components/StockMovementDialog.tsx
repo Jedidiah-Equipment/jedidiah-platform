@@ -1,3 +1,4 @@
+import { useDebouncedValue } from '@mantine/hooks';
 import { formatDate, formatNumber } from '@pkg/domain';
 import { deriveMovementWarnings, type JobMovementFacts } from '@pkg/domain/equipment';
 import type {
@@ -10,12 +11,14 @@ import type {
   StockOnHandRow,
 } from '@pkg/schema/equipment';
 import { PostCheckoutInput, PostReturnToStoreInput } from '@pkg/schema/equipment';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useInfiniteQuery, useMutation, useQuery } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
-
+import { EntityCombobox, mergeSelectedOption } from '@/components/common/EntityCombobox.js';
+import { cursorInfiniteQueryOptions, useCombinedCursorQueryPages } from '@/components/data-table/cursor-query.js';
 import { CreateEntityDialog } from '@/components/form/index.js';
-import { Field, FieldLabel } from '@/components/ui/field.js';
+import { getFieldErrors } from '@/components/form/utils/field-errors.js';
+import { Field, FieldError, FieldLabel } from '@/components/ui/field.js';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs.js';
 import { JobPicker, JobPickerTrigger } from '@/equipment/components/job-picker/index.js';
 import { useInventoryJobPicker } from '@/equipment/hooks/options/index.js';
@@ -33,6 +36,7 @@ import {
   type StockMovementFormValues,
   type StockPartOption,
   stockMovementValidator,
+  switchStockMovementTarget,
   toStockMovementInput,
 } from './types.js';
 
@@ -40,6 +44,7 @@ type FixedJob = { code: string; id: string };
 
 export function StockMovementDialog({
   defaultPartId = '',
+  defaultSourceCheckout = null,
   defaultSourceCheckoutId = '',
   fixedJob,
   isLoadingParts = false,
@@ -51,6 +56,7 @@ export function StockMovementDialog({
 }: {
   /** Pre-selects the Part, so a leftover row can open straight onto the Part it is returning. */
   defaultPartId?: string;
+  defaultSourceCheckout?: SourceCheckoutOption | null;
   defaultSourceCheckoutId?: string;
   fixedJob?: FixedJob;
   /** Set where the Part list is fetched only once the dialog opens, so the select can say so. */
@@ -67,6 +73,12 @@ export function StockMovementDialog({
   const showMutationError = useApiMutationErrorToast();
   const [isJobPickerOpen, setJobPickerOpen] = useState(false);
   const [selectedJob, setSelectedJob] = useState<JobPickerOption | null>(null);
+  const [selectedSourceCheckout, setSelectedSourceCheckout] = useState<SourceCheckoutOption | null>(
+    defaultSourceCheckout,
+  );
+  const [sourceLookupEnabled, setSourceLookupEnabled] = useState(defaultSourceCheckoutId !== '');
+  const [sourceSearch, setSourceSearch] = useState('');
+  const [debouncedSourceSearch] = useDebouncedValue(sourceSearch, 250);
   const movementWarningsOutcome = useMovementWarnings();
   const validator = useMemo(() => stockMovementValidator(parts, type), [parts, type]);
   const verb = type === 'checkout' ? 'Check out' : 'Return';
@@ -75,13 +87,22 @@ export function StockMovementDialog({
   const jobPicker = useInventoryJobPicker({ enabled: fixedJob === undefined, movementType: type });
   const jobStockQuery = useQuery(trpc.inventory.jobStock.queryOptions({ jobId }, { enabled: jobId !== '' }));
   const recipientQuery = useQuery(trpc.inventory.recipientOptions.queryOptions({ limit: 0, search: '' }));
-  const sourceCheckoutQuery = useQuery(
-    trpc.inventory.sourceCheckouts.queryOptions({
-      limit: 0,
-      partId: defaultPartId === '' ? undefined : defaultPartId,
-      search: '',
-    }),
+  const sourceCheckoutQuery = useInfiniteQuery(
+    trpc.inventory.sourceCheckouts.infiniteQueryOptions(
+      {
+        limit: 20,
+        partId: defaultPartId === '' ? undefined : defaultPartId,
+        search: debouncedSourceSearch,
+      },
+      {
+        ...cursorInfiniteQueryOptions,
+        enabled: open && type === 'return-to-store' && sourceLookupEnabled,
+        placeholderData: keepPreviousData,
+      },
+    ),
   );
+  const sourceCheckoutPage = useCombinedCursorQueryPages(sourceCheckoutQuery.data?.pages);
+  const sourceCheckoutItems = mergeSelectedOption(sourceCheckoutPage.items, selectedSourceCheckout);
   const checkoutMutation = useMutation(
     trpc.inventory.postCheckout.mutationOptions({
       onError: (error) => showMutationError(error, 'Unable to check stock out.'),
@@ -119,7 +140,7 @@ export function StockMovementDialog({
     if (!Number.isFinite(values.quantity)) return [];
     if (values.mode === 'person') {
       if (type === 'return-to-store') {
-        const source = sourceCheckoutQuery.data?.items.find((item) => item.id === values.sourceCheckoutId);
+        const source = sourceCheckoutItems.find((item) => item.id === values.sourceCheckoutId);
         if (!source) return [];
         return deriveMovementWarnings({
           facts: {
@@ -196,21 +217,26 @@ export function StockMovementDialog({
                     <Tabs
                       onValueChange={(value) => {
                         const mode = value as 'job' | 'person';
-                        form.setFieldValue('mode', mode);
+                        const nextValues = switchStockMovementTarget({
+                          defaultPartId,
+                          movementType: type,
+                          recipientUserId: session?.user.id ?? '',
+                          targetMode: mode,
+                          values,
+                        });
+                        form.setFieldValue('mode', nextValues.mode);
+                        form.setFieldValue('jobId', nextValues.jobId);
+                        form.setFieldValue('lengthMm', nextValues.lengthMm);
+                        form.setFieldValue('note', nextValues.note);
+                        form.setFieldValue('partId', nextValues.partId);
+                        form.setFieldValue('recipientUserId', nextValues.recipientUserId);
+                        form.setFieldValue('sourceCheckoutId', nextValues.sourceCheckoutId);
+                        setSourceLookupEnabled(mode === 'person');
                         if (mode === 'person') {
                           setSelectedJob(null);
-                          form.setFieldValue('jobId', '');
-                          if (type === 'return-to-store') {
-                            form.setFieldValue('partId', '');
-                            form.setFieldValue('lengthMm', Number.NaN);
-                          } else {
-                            form.setFieldValue('recipientUserId', session?.user.id ?? '');
-                          }
                         } else {
-                          form.setFieldValue('recipientUserId', '');
-                          form.setFieldValue('note', '');
-                          form.setFieldValue('sourceCheckoutId', '');
-                          if (type === 'return-to-store') form.setFieldValue('partId', defaultPartId);
+                          setSelectedSourceCheckout(null);
+                          setSourceSearch('');
                         }
                       }}
                       value={values.mode}
@@ -283,14 +309,42 @@ export function StockMovementDialog({
                   </>
                 ) : (
                   <form.AppField name="sourceCheckoutId">
-                    {(field) => (
-                      <field.ComboboxField
-                        emptyMessage="No Checkouts without a Job found."
-                        label="Original Checkout"
-                        options={sourceCheckoutOptions(sourceCheckoutQuery.data?.items ?? [])}
-                        placeholder="Search by Part, recipient, or purpose"
-                      />
-                    )}
+                    {(field) => {
+                      const errors = getFieldErrors(field.state.meta.errors);
+                      return (
+                        <Field data-invalid={errors.length > 0}>
+                          <FieldLabel htmlFor={field.name}>Original Checkout</FieldLabel>
+                          <EntityCombobox
+                            disabled={sourceCheckoutQuery.isPending}
+                            emptyMessage="No Checkouts without a Job found."
+                            inputId={field.name}
+                            inputValue={sourceSearch}
+                            isFetching={sourceCheckoutQuery.isFetching}
+                            itemToLabel={sourceCheckoutLabel}
+                            loadMore={{
+                              hasNextPage: sourceCheckoutQuery.hasNextPage,
+                              isFetchingNextPage: sourceCheckoutQuery.isFetchingNextPage,
+                              loadedCount: sourceCheckoutPage.items.length,
+                              onLoadMore: () => void sourceCheckoutQuery.fetchNextPage(),
+                              total: sourceCheckoutPage.total,
+                              totalLabel: (total) => `${total} ${total === 1 ? 'Checkout' : 'Checkouts'}`,
+                            }}
+                            onInputValueChange={setSourceSearch}
+                            onSelected={(source) => {
+                              setSelectedSourceCheckout(source);
+                              field.handleChange(source?.id ?? '');
+                              setSourceSearch('');
+                            }}
+                            options={sourceCheckoutItems}
+                            placeholder="Select original Checkout"
+                            renderItem={(source) => sourceCheckoutLabel(source)}
+                            searchPlaceholder="Search by Part, recipient, or purpose"
+                            value={selectedSourceCheckout}
+                          />
+                          <FieldError errors={errors} />
+                        </Field>
+                      );
+                    }}
                   </form.AppField>
                 )}
 
@@ -353,9 +407,6 @@ function recipientOptions(items: readonly InventoryRecipientOption[]) {
   return items.map((item) => ({ label: item.name, value: item.id }));
 }
 
-function sourceCheckoutOptions(items: readonly SourceCheckoutOption[]) {
-  return items.map((item) => ({
-    label: `${formatDate(item.createdAt, 'medium')} · ${item.partCode} · ${item.recipientName} · ${item.note} · ${formatNumber(item.returnedQuantity)}/${formatNumber(item.quantity)} returned`,
-    value: item.id,
-  }));
+function sourceCheckoutLabel(item: SourceCheckoutOption) {
+  return `${formatDate(item.createdAt, 'medium')} · ${item.partCode} · ${item.recipientName} · ${item.note} · ${formatNumber(item.returnedQuantity)}/${formatNumber(item.quantity)} returned`;
 }

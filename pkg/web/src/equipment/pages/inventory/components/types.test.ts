@@ -12,6 +12,7 @@ import {
   stockAdjustmentValidator,
   stockJobMovementValidator,
   stockMovementValidator,
+  switchStockMovementTarget,
   toAdjustmentInput,
   toBuildInput,
   toCloseOutJobInput,
@@ -225,6 +226,29 @@ describe('alternative movement targets', () => {
       false,
     );
     expect(stockMovementValidator([piece], 'return-to-store').safeParse(values).success).toBe(false);
+  });
+
+  it('clears the hidden target arm and defaults a no-Job Checkout recipient to the operator', () => {
+    const jobValues = { ...values, jobId: piece.partId, mode: 'job' as const, recipientUserId: '' };
+    expect(
+      switchStockMovementTarget({
+        defaultPartId: piece.partId,
+        movementType: 'checkout',
+        recipientUserId: 'current-operator',
+        targetMode: 'person',
+        values: jobValues,
+      }),
+    ).toMatchObject({ jobId: '', mode: 'person', partId: piece.partId, recipientUserId: 'current-operator' });
+
+    expect(
+      switchStockMovementTarget({
+        defaultPartId: piece.partId,
+        movementType: 'return-to-store',
+        recipientUserId: 'current-operator',
+        targetMode: 'job',
+        values: { ...values, sourceCheckoutId: 'source' },
+      }),
+    ).toMatchObject({ mode: 'job', note: '', partId: piece.partId, recipientUserId: '', sourceCheckoutId: '' });
   });
 });
 

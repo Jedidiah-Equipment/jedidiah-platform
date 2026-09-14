@@ -525,6 +525,111 @@ describe('Checkout without a Job', () => {
       [5, 10],
     );
   });
+
+  test('keeps an uncosted source uncosted when its linked stock returns', async ({ context }) => {
+    const recipientUserId = await seedQuickSwitchPerson(context.db, { id: 'uncosted-recipient' });
+    const checkout = await postCheckout({
+      actorUserId,
+      db: context.db,
+      input: {
+        lengthMm: null,
+        note: 'investigate test equipment',
+        partId: context.parts.measured.id,
+        quantity: 1,
+        recipientUserId,
+      },
+    });
+
+    const returned = await postReturnToStore({
+      actorUserId,
+      db: context.db,
+      input: { quantity: 1, sourceCheckoutId: checkout.movement.id },
+    });
+
+    expect(checkout.movement.unitCost).toBeNull();
+    expect(returned.movement.unitCost).toBeNull();
+  });
+
+  test('inherits a linked linear source length and its scaled piece cost', async ({ context }) => {
+    const recipientUserId = await seedQuickSwitchPerson(context.db, { id: 'linear-recipient' });
+    await postAdjustment({
+      actorUserId,
+      db: context.db,
+      input: adjustmentInput(context.parts.linear.id, { delta: 2, lengthMm: 6_000, unitCost: 600 }),
+    });
+    const checkout = await postCheckout({
+      actorUserId,
+      db: context.db,
+      input: {
+        lengthMm: 3_000,
+        note: 'make a machine guard',
+        partId: context.parts.linear.id,
+        quantity: 1,
+        recipientUserId,
+      },
+    });
+
+    const returned = await postReturnToStore({
+      actorUserId,
+      db: context.db,
+      input: { quantity: 1, sourceCheckoutId: checkout.movement.id },
+    });
+
+    expect(checkout.movement).toMatchObject({ lengthMm: 3_000, unitCost: 300 });
+    expect(returned.movement).toMatchObject({ lengthMm: 3_000, unitCost: 300 });
+  });
+
+  test('keeps two Checkouts for one recipient as separate linked cost pools', async ({ context }) => {
+    const recipientUserId = await seedQuickSwitchPerson(context.db, { id: 'two-pool-recipient' });
+    await postAdjustment({
+      actorUserId,
+      db: context.db,
+      input: adjustmentInput(context.parts.piece.id, { delta: 10, unitCost: 10 }),
+    });
+    const first = await postCheckout({
+      actorUserId,
+      db: context.db,
+      input: {
+        lengthMm: null,
+        note: 'first repair',
+        partId: context.parts.piece.id,
+        quantity: 2,
+        recipientUserId,
+      },
+    });
+    await postRevaluation({
+      actorUserId,
+      db: context.db,
+      input: { note: 'new shelf value', partId: context.parts.piece.id, unitCost: 20 },
+    });
+    const second = await postCheckout({
+      actorUserId,
+      db: context.db,
+      input: {
+        lengthMm: null,
+        note: 'second repair',
+        partId: context.parts.piece.id,
+        quantity: 2,
+        recipientUserId,
+      },
+    });
+
+    const [firstReturn, secondReturn] = await Promise.all([
+      postReturnToStore({
+        actorUserId,
+        db: context.db,
+        input: { quantity: 1, sourceCheckoutId: first.movement.id },
+      }),
+      postReturnToStore({
+        actorUserId,
+        db: context.db,
+        input: { quantity: 1, sourceCheckoutId: second.movement.id },
+      }),
+    ]);
+
+    expect(firstReturn.movement).toMatchObject({ sourceCheckoutId: first.movement.id, unitCost: 10 });
+    expect(secondReturn.movement).toMatchObject({ sourceCheckoutId: second.movement.id, unitCost: 20 });
+  });
 });
 
 describe('postAdjustment', () => {

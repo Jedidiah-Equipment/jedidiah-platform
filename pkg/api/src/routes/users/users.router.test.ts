@@ -1,13 +1,9 @@
-import { listUserDepartments } from '@pkg/core/equipment';
 import { auditEvents, type Db, user } from '@pkg/db';
-import { createUserAccessSummaryForUser } from '@pkg/domain';
 import type { ContractingRole, EquipmentRole } from '@pkg/schema';
-import pino from 'pino';
 import { beforeEach, describe, expect } from 'vitest';
 import { clearMockEmailMessages, getMockEmailMessages } from '@/email/mock-email.js';
 import { createTester } from '@/test/create-tester.js';
 import { mockSession } from '@/test/test-utils.js';
-import { createAppRouterCaller } from '@/trpc/router.js';
 
 const test = createTester(({ auth, db }) => ({ auth, db }));
 
@@ -15,7 +11,7 @@ const THUMBNAIL_DATA_URL = 'data:image/webp;base64,aaaa';
 
 describe('users.list', () => {
   test('rejects unauthenticated user lists', async ({ context }) => {
-    await expect(context.createAnonCaller().users.list()).rejects.toMatchObject({
+    await expect(context.createAnonCaller().users.list({ business: 'equipment' })).rejects.toMatchObject({
       code: 'UNAUTHORIZED',
     });
   });
@@ -29,13 +25,12 @@ describe('users.list', () => {
       role: 'sales',
     });
 
-    const result = await context.createCaller().users.list();
+    const result = await context.createCaller().users.list({ business: 'equipment' });
 
     expect(result.users).toEqual([
       {
         assistantEnabled: false,
         contractingRole: null,
-        departments: [],
         email: 'viewer@example.com',
         emailVerified: true,
         equipmentRole: 'sales',
@@ -57,7 +52,7 @@ describe('users.list', () => {
       role: 'sales',
     });
 
-    await expect(context.createCaller().users.list()).resolves.toMatchObject({
+    await expect(context.createCaller().users.list({ business: 'equipment' })).resolves.toMatchObject({
       users: [{ id: 'phone-user-id', phoneNumber: '+27821234567' }],
     });
   });
@@ -71,7 +66,7 @@ describe('users.list', () => {
       role: 'sales',
     });
 
-    await expect(context.createCaller().users.list()).resolves.toMatchObject({
+    await expect(context.createCaller().users.list({ business: 'equipment' })).resolves.toMatchObject({
       users: [
         {
           id: 'thumbnail-user-id',
@@ -90,177 +85,48 @@ describe('users.list', () => {
       role: 'user',
     });
 
-    await expect(context.createCaller().users.list()).rejects.toThrow();
+    await expect(context.createCaller().users.list({ business: 'equipment' })).rejects.toThrow();
+  });
+
+  test('lists each business its own people, super-admins and the unassigned in both, and everyone when unscoped', async ({
+    context,
+  }) => {
+    const people: Array<[id: string, role: EquipmentRole | null, contractingRole: ContractingRole | null]> = [
+      ['both-slots', 'sales', 'foreman'],
+      ['contracting-only', null, 'driver'],
+      ['equipment-only', 'bay-operator', null],
+      ['spanning', 'super-admin', null],
+      ['unassigned', null, null],
+    ];
+    for (const [id, role, contractingRole] of people) {
+      await createUser(context.db, { contractingRole, email: `${id}@example.com`, id, name: id, role });
+    }
+
+    const equipment = await context.createCaller().users.list({ business: 'equipment' });
+    const contracting = await context.createCaller().users.list({ business: 'contracting' });
+    const everyone = await context.createCaller().users.list({});
+
+    expect(equipment.users.map((listed) => listed.id)).toEqual([
+      'both-slots',
+      'equipment-only',
+      'spanning',
+      'unassigned',
+    ]);
+    expect(contracting.users.map((listed) => listed.id)).toEqual([
+      'both-slots',
+      'contracting-only',
+      'spanning',
+      'unassigned',
+    ]);
+    expect(everyone.users.map((listed) => listed.id)).toEqual(people.map(([id]) => id));
   });
 
   test('rejects procurement managers', async ({ context }) => {
     const caller = context.createCaller(mockSession('procurement-manager'));
 
-    await expect(caller.users.list()).rejects.toMatchObject({
+    await expect(caller.users.list({ business: 'equipment' })).rejects.toMatchObject({
       code: 'FORBIDDEN',
     });
-  });
-
-  test('rejects non-admin department membership mutations', async ({ context }) => {
-    await createUser(context.db, {
-      email: 'department-target@example.com',
-      id: 'department-target-user-id',
-      name: 'Department Target',
-      role: 'sales',
-    });
-    const caller = context.createCaller(mockSession('procurement-manager'));
-
-    await expect(
-      caller.users.setDepartments({
-        departments: ['paint'],
-        userId: 'department-target-user-id',
-      }),
-    ).rejects.toMatchObject({
-      code: 'FORBIDDEN',
-    });
-  });
-
-  test('replaces department memberships and writes audit events per change', async ({ context }) => {
-    const multiDepartmentUserId = '00000000-0000-4000-8000-000000000001';
-
-    await createUser(context.db, {
-      email: 'admin@example.com',
-      id: 'test-user-id',
-      name: 'Test User',
-      role: 'admin',
-    });
-    await createUser(context.db, {
-      email: 'multi-department@example.com',
-      id: multiDepartmentUserId,
-      name: 'Multi Department User',
-      role: 'sales',
-    });
-
-    await context.createCaller().users.setDepartments({
-      departments: ['paint', 'fabrication'],
-      userId: multiDepartmentUserId,
-    });
-
-    const assignedUsers = await context.createCaller().users.list();
-
-    expect(assignedUsers.users.find((userSummary) => userSummary.id === multiDepartmentUserId)).toMatchObject({
-      departments: ['fabrication', 'paint'],
-      id: multiDepartmentUserId,
-    });
-
-    await context.createCaller().users.setDepartments({
-      departments: ['fabrication'],
-      userId: multiDepartmentUserId,
-    });
-
-    const replacedUsers = await context.createCaller().users.list();
-
-    expect(replacedUsers.users.find((userSummary) => userSummary.id === multiDepartmentUserId)).toMatchObject({
-      departments: ['fabrication'],
-      id: multiDepartmentUserId,
-    });
-
-    const membershipAuditEvents = await context.db.select().from(auditEvents);
-
-    expect(membershipAuditEvents).toHaveLength(3);
-    expect(membershipAuditEvents).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          actorUserId: 'test-user-id',
-          changes: expect.objectContaining({
-            member: {
-              from: false,
-              to: true,
-            },
-          }),
-          entityId: multiDepartmentUserId,
-          entityType: 'user',
-          summary: 'Updated user "multi-department@example.com"',
-        }),
-        expect.objectContaining({
-          actorUserId: 'test-user-id',
-          changes: expect.objectContaining({
-            member: {
-              from: true,
-              to: false,
-            },
-          }),
-          entityId: multiDepartmentUserId,
-          entityType: 'user',
-          summary: 'Updated user "multi-department@example.com"',
-        }),
-      ]),
-    );
-  });
-
-  test('keeps department memberships out of the current user access summary', async ({ context }) => {
-    const currentDepartmentUserId = '00000000-0000-4000-8000-000000000002';
-
-    await createUser(context.db, {
-      email: 'admin@example.com',
-      id: 'test-user-id',
-      name: 'Test User',
-      role: 'admin',
-    });
-    await createUser(context.db, {
-      email: 'current-department@example.com',
-      id: currentDepartmentUserId,
-      name: 'Current Department User',
-      role: 'job-viewer',
-    });
-
-    const session = mockSession('job-viewer');
-    session.user.id = currentDepartmentUserId;
-
-    await context.createCaller().users.setDepartments({
-      departments: ['supply'],
-      userId: currentDepartmentUserId,
-    });
-
-    const caller = createAppRouterCaller({
-      catalogTranslationScheduler: { mark: () => undefined, markNow: () => undefined },
-    })({
-      access: createUserAccessSummaryForUser(session.user),
-      appEnv: 'production',
-      auth: context.auth,
-      changelogLoader: () => [],
-      db: context.db,
-      log: pino({ level: 'silent' }),
-      session,
-      storage: {
-        deleteObject: async () => undefined,
-        get: async () => {
-          throw new Error('Storage object not found');
-        },
-        put: async () => undefined,
-      },
-    });
-
-    await expect(caller.auth.access()).resolves.toEqual({
-      contractingRole: null,
-      equipmentRole: 'job-viewer',
-      permissions: ['equipment_job:read', 'equipment_product_unit:read'],
-      userId: currentDepartmentUserId,
-    });
-
-    await expect(
-      listUserDepartments({
-        db: context.db,
-        userId: currentDepartmentUserId,
-      }),
-    ).resolves.toEqual(['supply']);
-
-    await context.createCaller().users.setDepartments({
-      departments: [],
-      userId: currentDepartmentUserId,
-    });
-
-    await expect(
-      listUserDepartments({
-        db: context.db,
-        userId: currentDepartmentUserId,
-      }),
-    ).resolves.toEqual([]);
   });
 });
 
@@ -324,7 +190,7 @@ describe('users.setDevice', () => {
       userId: 'device-target-user-id',
     });
 
-    const listedUsers = await context.createCaller().users.list();
+    const listedUsers = await context.createCaller().users.list({ business: 'equipment' });
 
     expect(listedUsers.users.find((userSummary) => userSummary.id === 'device-target-user-id')).toMatchObject({
       isDevice: true,
@@ -395,14 +261,14 @@ async function createUser(
   db: Db,
   input: {
     assistantEnabled?: boolean;
-    contractingRole?: ContractingRole;
+    contractingRole?: ContractingRole | null;
     email: string;
     emailVerified?: boolean;
     id: string;
     image?: string | null;
     name: string;
     phoneNumber?: string | null;
-    role: EquipmentRole | string;
+    role: EquipmentRole | string | null;
   },
 ) {
   const now = new Date();
@@ -418,7 +284,7 @@ async function createUser(
       image: input.image ?? null,
       name: input.name,
       phoneNumber: input.phoneNumber ?? null,
-      role: input.role as EquipmentRole,
+      role: input.role as EquipmentRole | null,
       createdAt: now,
       updatedAt: now,
     })

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-
+import { UserNotFoundError } from '../users/user-errors.js';
 import { CustomerInUseError, CustomerNotFoundError, isCustomerCoreError } from './customers/customer-errors.js';
 import {
   isJobCoreError,
@@ -43,7 +43,7 @@ import {
   SupplierNotFoundError,
 } from './suppliers/supplier-errors.js';
 import { isProductUnitCoreError, ProductUnitProductNotFoundError } from './units/product-unit-errors.js';
-import { isUserCoreError, UserNotFoundError } from './users/user-errors.js';
+import { isUserCoreError } from './users/user-errors.js';
 
 describe('core error codes and guards', () => {
   it('identifies product core errors', () => {

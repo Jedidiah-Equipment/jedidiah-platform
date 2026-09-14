@@ -1,18 +1,16 @@
-import { UserSummary, type UserSummary as UserSummaryType } from '@pkg/schema/equipment';
+import { type Business, UserAccount, type UserAccount as UserAccountType } from '@pkg/schema';
 import type React from 'react';
 import type { z } from 'zod';
 
 import { useAppForm } from '@/components/form/index.js';
 import { FieldGroup } from '@/components/ui/field.js';
 import { Separator } from '@/components/ui/separator.js';
-import { RoleSlotFields } from './RoleSlotFields.js';
-import { UserDepartmentsForm } from './UserDepartmentsForm.js';
+import { BusinessRoleField } from './BusinessRoleField.js';
 import { UserPasswordForm, type UserPasswordFormValues } from './UserPasswordForm.js';
 
 export type UserEditFormValues = z.infer<typeof UserEditFormValues>;
-export const UserEditFormValues = UserSummary.pick({
+export const UserEditFormValues = UserAccount.pick({
   assistantEnabled: true,
-  departments: true,
   email: true,
   emailVerified: true,
   isDevice: true,
@@ -24,13 +22,15 @@ export const UserEditFormValues = UserSummary.pick({
 });
 
 type UserEditFormProps = {
-  canAssignDepartments: boolean;
+  business: Business;
   canSetEmail: boolean;
   canSetPassword: boolean;
   canSetRole: boolean;
   canUpdateProfile: boolean;
+  /** The business's own fields, rendered after the role. */
+  extraFields: React.ReactNode;
   formId: string;
-  initialUser: UserSummaryType;
+  initialUser: UserAccountType;
   isPending: boolean;
   isPasswordPending: boolean;
   onPasswordSubmit: (value: UserPasswordFormValues) => Promise<unknown>;
@@ -40,11 +40,12 @@ type UserEditFormProps = {
 };
 
 export const UserEditForm: React.FC<UserEditFormProps> = ({
-  canAssignDepartments,
+  business,
   canSetEmail,
   canSetPassword,
   canSetRole,
   canUpdateProfile,
+  extraFields,
   formId,
   initialUser,
   isPending,
@@ -54,11 +55,10 @@ export const UserEditForm: React.FC<UserEditFormProps> = ({
   onSubmit,
   roleError,
 }) => {
-  const canSaveUser = canUpdateProfile || canSetEmail || canSetRole || canAssignDepartments;
+  const canSaveUser = canUpdateProfile || canSetEmail || canSetRole;
   const form = useAppForm({
     defaultValues: {
       assistantEnabled: initialUser.assistantEnabled,
-      departments: initialUser.departments,
       email: initialUser.email,
       emailVerified: initialUser.emailVerified,
       name: initialUser.name,
@@ -121,7 +121,8 @@ export const UserEditForm: React.FC<UserEditFormProps> = ({
                 </form.AppField>
               </>
             ) : null}
-            {canSetRole ? (
+            {/* A shared device is the Equipment stores tablet; Contracting has no device accounts. */}
+            {canSetRole && business === 'equipment' ? (
               <form.AppField name="isDevice">
                 {(field) => (
                   <field.CheckboxField
@@ -133,25 +134,16 @@ export const UserEditForm: React.FC<UserEditFormProps> = ({
               </form.AppField>
             ) : null}
             {canSetRole ? (
-              <RoleSlotFields
+              <BusinessRoleField
+                business={business}
                 disabled={isPending}
-                equipmentRoleError={roleError}
                 fields={{ contractingRole: 'contractingRole', equipmentRole: 'equipmentRole' }}
                 form={form}
-                onEquipmentRoleChange={onRoleChange}
+                onRoleChange={onRoleChange}
+                roleError={roleError}
               />
             ) : null}
-            {canAssignDepartments ? (
-              <form.AppField name="departments">
-                {(field) => (
-                  <UserDepartmentsForm
-                    initialDepartments={field.state.value}
-                    isPending={isPending}
-                    onDepartmentsChange={(departments) => field.handleChange([...departments])}
-                  />
-                )}
-              </form.AppField>
-            ) : null}
+            {extraFields}
           </FieldGroup>
         </form>
       ) : null}

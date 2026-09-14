@@ -185,7 +185,10 @@ readings from the field — and it notifies the workshop manager by push notific
 
 A user's contracting role fills one of the two role slots defined in
 [CONTEXT-MAP.md](CONTEXT-MAP.md); holding one is what grants Jedidiah Contracting access at all.
-Server-side checks are the security boundary; browser checks are UX only.
+The Users page in Contracting mode lists the people holding a contracting role (and the spanning
+super-admin) and assigns only contracting roles; it needs `user:list`, which no contracting role
+holds, so in practice a super-admin runs it. Server-side checks are the security boundary; browser
+checks are UX only.
 
 - **contracting-admin**: every contracting permission the spanning super-admin has — Pricing,
   the Rate Card, fleet, invoice stamping, all of it — without user administration and without any

@@ -1,13 +1,4 @@
-export class UserNotFoundError extends Error {
-  readonly code = 'user.not_found';
-  readonly metadata: { id: string };
-
-  constructor(id: string) {
-    super(`User not found: ${id}`);
-    this.name = 'UserNotFoundError';
-    this.metadata = { id };
-  }
-}
+import { UserNotFoundError } from '../../users/user-errors.js';
 
 /** A badge card names a person, and `resolveMovementActor` refuses a device as the actor. */
 export class UserIsDeviceError extends Error {

@@ -4,7 +4,8 @@ import type { UserBadgePdfModel, UserBadgePdfRenderer } from '@pkg/schema/equipm
 import { UserBadgePdfModel as UserBadgePdfModelSchema } from '@pkg/schema/equipment';
 import { eq } from 'drizzle-orm';
 
-import { UserIsDeviceError, UserNotFoundError } from './user-errors.js';
+import { UserNotFoundError } from '../../users/user-errors.js';
+import { UserIsDeviceError } from './user-errors.js';
 
 export type UserBadgePdfResult = {
   bytes: Uint8Array;

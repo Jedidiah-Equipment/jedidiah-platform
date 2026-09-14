@@ -22,7 +22,8 @@ import { createProductsRouter } from '../routes/equipment/products/products.rout
 import { purchaseOrdersRouter } from '../routes/equipment/purchase-orders/purchase-orders.router.js';
 import { quotesRouter } from '../routes/equipment/quotes/quotes.router.js';
 import { suppliersRouter } from '../routes/equipment/suppliers/suppliers.router.js';
-import { usersRouter } from '../routes/equipment/users/users.router.js';
+import { userDepartmentsRouter } from '../routes/equipment/users/user-departments.router.js';
+import { usersRouter } from '../routes/users/users.router.js';
 import { createCallerFactory, router } from './init.js';
 
 /** Runtime services the Equipment routers close over; supplied by the server, stubbed by tests. */
@@ -55,6 +56,7 @@ type AppRouterRecord = {
   purchaseOrders: (typeof purchaseOrdersRouter)['_def']['record'];
   quotes: (typeof quotesRouter)['_def']['record'];
   suppliers: (typeof suppliersRouter)['_def']['record'];
+  userDepartments: (typeof userDepartmentsRouter)['_def']['record'];
   users: (typeof usersRouter)['_def']['record'];
 };
 
@@ -84,6 +86,7 @@ export function createAppRouter({ catalogTranslationScheduler, readMeterPhoto }:
     purchaseOrders: purchaseOrdersRouter,
     quotes: quotesRouter,
     suppliers: suppliersRouter,
+    userDepartments: userDepartmentsRouter,
     users: usersRouter,
   }) as AppRouter;
 }

@@ -3,17 +3,10 @@ import { Business, DateIso } from '@pkg/schema';
 import { z } from 'zod';
 
 import { type CoreErrorMapping, mapKnownCoreError } from '../../trpc/errors.js';
-import { protectedProcedure, requireBusinessAccess, router } from '../../trpc/init.js';
+import { protectedProcedure, router } from '../../trpc/init.js';
 
-/**
- * Both reads take the business the caller is standing in as input, since one shared router serves
- * both modes; a business the caller cannot access is forbidden, like any business-scoped procedure.
- */
-const changelogProcedure = protectedProcedure.input(z.object({ business: Business })).use(({ ctx, input, next }) => {
-  requireBusinessAccess(ctx.access, input.business);
-
-  return next();
-});
+// Both reads take the business the caller is standing in as input, since one shared router serves both modes.
+const changelogProcedure = protectedProcedure.input(z.object({ business: Business }));
 
 export const changelogRouter = router({
   unseen: changelogProcedure.query(({ ctx, input }) =>

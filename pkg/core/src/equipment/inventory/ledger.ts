@@ -143,6 +143,11 @@ export function bucketMatches(lengthMm: number | null): SQL {
   return lengthMm === null ? isNull(stockMovements.lengthMm) : eq(stockMovements.lengthMm, lengthMm);
 }
 
+/** The ledger rows that are Checkouts Without a Job; the shape constraint pins the rest of such a row. */
+export function checkoutWithoutJobMatches(): SQL {
+  return and(eq(stockMovements.movementType, 'checkout'), isNull(stockMovements.jobId)) as SQL;
+}
+
 /** The net delta of whatever slice of the ledger the condition selects. */
 export async function sumDelta(db: LedgerDb, where: SQL | undefined): Promise<number> {
   return scalar(

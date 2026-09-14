@@ -1,3 +1,4 @@
+import { DateIso } from '@pkg/schema';
 import type { StockOnHandRow } from '@pkg/schema/equipment';
 import { describe, expect, it } from 'vitest';
 
@@ -7,16 +8,18 @@ import {
   partIdFromScanToken,
   partOptionsAllowing,
   partQuantityValidationMessage,
+  returnFromCheckoutValidator,
   revaluationCostDecimals,
   type StockPartOption,
   stockAdjustmentValidator,
   stockMovementValidator,
-  switchStockMovementTarget,
   toAdjustmentInput,
   toBuildInput,
+  toCheckoutWithoutJobInput,
   toCloseOutJobInput,
+  toJobMovementInput,
+  toReturnFromCheckoutInput,
   toRevaluationInput,
-  toStockMovementInput,
   toStockPartOption,
 } from './types.js';
 
@@ -124,15 +127,14 @@ describe('stock adjustment form', () => {
     // The field rule staying quiet does not let an unkeyed quantity through either submit.
     expect(stockAdjustmentValidator([piece]).safeParse({ ...adjustment, delta: Number.NaN }).success).toBe(false);
     expect(
-      stockMovementValidator([piece], 'checkout').safeParse({
+      stockMovementValidator([piece]).safeParse({
         jobId: '00000000-0000-4000-8000-000000000009',
         lengthMm: Number.NaN,
-        mode: 'job',
         note: '',
         partId: piece.partId,
         quantity: Number.NaN,
         recipientUserId: '',
-        sourceCheckoutId: '',
+        target: 'job',
       }).success,
     ).toBe(false);
   });
@@ -168,16 +170,15 @@ describe('Job movement form', () => {
   const values = {
     jobId: piece.partId,
     lengthMm: 6_000,
-    mode: 'job' as const,
     note: '',
     partId: linear.partId,
     quantity: 2,
     recipientUserId: '',
-    sourceCheckoutId: '',
+    target: 'job' as const,
   };
 
   it('maps a linear movement with its selected piece length', () => {
-    expect(toStockMovementInput(values, 'checkout', linear)).toMatchObject({
+    expect(toJobMovementInput(values, linear)).toMatchObject({
       jobId: piece.partId,
       lengthMm: 6_000,
       partId: linear.partId,
@@ -186,7 +187,7 @@ describe('Job movement form', () => {
   });
 
   it('holds a quantity to three decimals, the ledger rule, not just to a positive number', () => {
-    const validator = stockMovementValidator([piece, linear, measured], 'checkout');
+    const validator = stockMovementValidator([piece, linear, measured]);
     const pieceValues = { ...values, lengthMm: Number.NaN, partId: piece.partId, quantity: 1.125 };
 
     expect(validator.safeParse(pieceValues).success).toBe(false);
@@ -195,7 +196,7 @@ describe('Job movement form', () => {
   });
 
   it('needs a Job, a Part, a positive quantity, and a length for linear stock', () => {
-    const validator = stockMovementValidator([piece, linear], 'checkout');
+    const validator = stockMovementValidator([piece, linear]);
 
     expect(validator.safeParse(values).success).toBe(true);
     expect(validator.safeParse({ ...values, jobId: '' }).success).toBe(false);
@@ -205,72 +206,65 @@ describe('Job movement form', () => {
   });
 });
 
-describe('alternative movement targets', () => {
+describe('Checkout Without a Job form', () => {
   const values = {
     jobId: '',
     lengthMm: Number.NaN,
-    mode: 'person' as const,
     note: '  Repair factory drill  ',
     partId: piece.partId,
     quantity: 5,
     recipientUserId: 'connor',
-    sourceCheckoutId: '',
+    target: 'person' as const,
   };
 
-  it('maps a no-Job Checkout and linked Return to their strict API alternatives', () => {
-    expect(toStockMovementInput(values, 'checkout', piece)).toEqual({
+  it('maps to the strict person-attributed payload', () => {
+    expect(toCheckoutWithoutJobInput(values, piece)).toEqual({
       lengthMm: null,
       note: 'Repair factory drill',
       partId: piece.partId,
       quantity: 5,
       recipientUserId: 'connor',
     });
-    expect(
-      toStockMovementInput(
-        { ...values, partId: '', sourceCheckoutId: '00000000-0000-4000-8000-000000000009' },
-        'return-to-store',
-        undefined,
-      ),
-    ).toEqual({ quantity: 5, sourceCheckoutId: '00000000-0000-4000-8000-000000000009' });
   });
 
-  it('requires recipient and purpose for Checkout and a source for Return', () => {
-    expect(stockMovementValidator([piece], 'checkout').safeParse(values).success).toBe(true);
-    expect(stockMovementValidator([piece], 'checkout').safeParse({ ...values, note: ' ' }).success).toBe(false);
-    expect(stockMovementValidator([piece], 'checkout').safeParse({ ...values, recipientUserId: '' }).success).toBe(
-      false,
-    );
-    expect(stockMovementValidator([piece], 'return-to-store').safeParse(values).success).toBe(false);
-    expect(
-      stockMovementValidator([piece], 'return-to-store').safeParse({
-        ...values,
-        quantity: 1.5,
-        sourceCheckoutId: '00000000-0000-4000-8000-000000000009',
-      }).success,
-    ).toBe(false);
+  it('needs a recipient and a purpose instead of a Job', () => {
+    const validator = stockMovementValidator([piece]);
+
+    expect(validator.safeParse(values).success).toBe(true);
+    expect(validator.safeParse({ ...values, note: ' ' }).success).toBe(false);
+    expect(validator.safeParse({ ...values, recipientUserId: '' }).success).toBe(false);
+    expect(validator.safeParse({ ...values, target: 'job' }).success).toBe(false);
+  });
+});
+
+describe('Return from a Checkout Without a Job form', () => {
+  const sourceCheckoutId = '00000000-0000-4000-8000-000000000009';
+  const source = {
+    createdAt: DateIso.parse('2026-08-01T08:00:00.000Z'),
+    id: sourceCheckoutId,
+    lengthMm: null,
+    note: 'Repair drill',
+    partCode: piece.partCode,
+    partId: piece.partId,
+    partName: piece.partName,
+    quantity: 3,
+    recipientName: 'Connor',
+    recipientUserId: 'connor',
+    returnedQuantity: 0,
+    unitCost: null,
+    unitOfMeasure: piece.unitOfMeasure,
+  };
+
+  it('maps to the source-linked payload', () => {
+    expect(toReturnFromCheckoutInput({ quantity: 2, sourceCheckoutId })).toEqual({ quantity: 2, sourceCheckoutId });
   });
 
-  it('clears the hidden target arm and defaults a no-Job Checkout recipient to the operator', () => {
-    const jobValues = { ...values, jobId: piece.partId, mode: 'job' as const, recipientUserId: '' };
-    expect(
-      switchStockMovementTarget({
-        defaultPartId: piece.partId,
-        movementType: 'checkout',
-        recipientUserId: 'current-operator',
-        targetMode: 'person',
-        values: jobValues,
-      }),
-    ).toMatchObject({ jobId: '', mode: 'person', partId: piece.partId, recipientUserId: 'current-operator' });
+  it('needs a source, and holds the quantity to the source Part unit class', () => {
+    const validator = returnFromCheckoutValidator([source]);
 
-    expect(
-      switchStockMovementTarget({
-        defaultPartId: piece.partId,
-        movementType: 'return-to-store',
-        recipientUserId: 'current-operator',
-        targetMode: 'job',
-        values: { ...values, sourceCheckoutId: 'source' },
-      }),
-    ).toMatchObject({ mode: 'job', note: '', partId: piece.partId, recipientUserId: '', sourceCheckoutId: '' });
+    expect(validator.safeParse({ quantity: 2, sourceCheckoutId }).success).toBe(true);
+    expect(validator.safeParse({ quantity: 2, sourceCheckoutId: '' }).success).toBe(false);
+    expect(validator.safeParse({ quantity: 1.5, sourceCheckoutId }).success).toBe(false);
   });
 });
 

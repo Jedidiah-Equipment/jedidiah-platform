@@ -217,9 +217,9 @@ export const StockMovement = z.object({
   note: nullableTrimmedText(),
   partId: UUID,
   purchaseOrderId: UUID.nullable(),
-  recipientUserId: AuthId.nullable().default(null),
+  recipientUserId: AuthId.nullable(),
   reason: StockMovementReason.nullable(),
-  sourceCheckoutId: UUID.nullable().default(null),
+  sourceCheckoutId: UUID.nullable(),
   unitCost: InventoryCost,
 });
 
@@ -448,13 +448,12 @@ export const QuickSwitchActor = z.object({
 export type QuickSwitchActorListResult = z.infer<typeof QuickSwitchActorListResult>;
 export const QuickSwitchActorListResult = z.object({ items: z.array(QuickSwitchActor) });
 
-/** Minimal person row exposed to the recipient picker under the inventory movement permission. */
-export type InventoryRecipientOption = z.infer<typeof InventoryRecipientOption>;
-export const InventoryRecipientOption = z.object({
-  id: AuthId,
-  name: z.string().trim().min(1),
-  thumbnailDataUrl: NullableThumbnailDataUrl,
-});
+/**
+ * A person offered as a Checkout's Recipient: the same tile the quick-switch names an Operator by,
+ * read under the movement permission so the tablet and the browser can both offer it.
+ */
+export type InventoryRecipientOption = QuickSwitchActor;
+export const InventoryRecipientOption = QuickSwitchActor;
 
 export type InventoryRecipientOptionListInput = z.infer<typeof InventoryRecipientOptionListInput>;
 export const InventoryRecipientOptionListInput = CursorQueryInput.extend({ search: SearchText });
@@ -506,9 +505,9 @@ export const StockMovementHistoryRow = StockMovement.extend({
   jobCode: JobCode.nullable(),
   movementValue: InventoryValue,
   purchaseOrderCode: PurchaseOrderCode.nullable(),
-  recipientName: z.string().nullable().default(null),
+  recipientName: z.string().nullable(),
   runningBalance: z.number().finite(),
-  sourceCheckoutCreatedAt: DateIso.nullable().default(null),
+  sourceCheckoutCreatedAt: DateIso.nullable(),
   stocktakeSessionId: UUID.nullable(),
   stocktakeSessionScope: StocktakeScope.nullable(),
 });

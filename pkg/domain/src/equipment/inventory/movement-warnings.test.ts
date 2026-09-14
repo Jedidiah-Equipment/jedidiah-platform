@@ -54,21 +54,21 @@ describe('deriveMovementWarnings — a Job draw', () => {
   });
 
   test('never calls the rack short on a return, which puts stock back', () => {
-    expect(
-      deriveMovementWarnings({
-        facts: { ...jobFacts, bucketQuantityOnHand: 0, drawnBucketQuantity: 5, kind: 'return-to-store' },
-        quantity: 5,
-      }),
-    ).toEqual([]);
+    expect(deriveMovementWarnings({ facts: { drawnBucketQuantity: 5, kind: 'return-to-store' }, quantity: 5 })).toEqual(
+      [],
+    );
   });
 
-  test('judges no-Job Checkout and linked-return facts without Job CFO state', () => {
+  test('judges a Checkout Without a Job as a draw with nothing planned, and its return against the source', () => {
     expect(
-      deriveMovementWarnings({ facts: { bucketQuantityOnHand: 1, kind: 'checkout-without-job' }, quantity: 2 }),
+      deriveMovementWarnings({
+        facts: { bucketQuantityOnHand: 1, cfoQuantity: 0, drawnQuantity: 0, kind: 'checkout' },
+        quantity: 2,
+      }),
     ).toEqual(['negative-stock-on-hand']);
-    expect(
-      deriveMovementWarnings({ facts: { kind: 'return-without-job', outstandingQuantity: 1 }, quantity: 2 }),
-    ).toEqual(['exceeds-drawn']);
+    expect(deriveMovementWarnings({ facts: { drawnBucketQuantity: 1, kind: 'return-to-store' }, quantity: 2 })).toEqual(
+      ['exceeds-drawn'],
+    );
   });
 });
 

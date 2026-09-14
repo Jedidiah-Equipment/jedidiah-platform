@@ -1,30 +1,31 @@
 import { hasPermission } from '@pkg/domain';
 import { derivePartStockActions } from '@pkg/domain/equipment';
 import type { UUID } from '@pkg/schema';
-import type { SourceCheckoutOption, StockMovementHistoryRow } from '@pkg/schema/equipment';
 import { useQuery } from '@tanstack/react-query';
-import { useCallback, useState } from 'react';
+import { useState } from 'react';
 
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
 import { useAccess } from '@/hooks/use-access.js';
 import { useTRPC } from '@/lib/trpc.js';
-import { StockMovementDialog } from './components/StockMovementDialog.js';
+import { ReturnFromCheckoutDialog } from './components/ReturnFromCheckoutDialog.js';
 import { StockMovementHistoryTable } from './components/StockMovementHistoryTable.js';
 
 export function StockMovementHistoryPage({ partId }: { partId: UUID }) {
   const trpc = useTRPC();
   const accessQuery = useAccess();
   const historyQuery = useQuery(trpc.inventory.history.queryOptions({ partId }));
-  const canMove = hasPermission(accessQuery.data, 'equipment_inventory:move');
-  const [returnSourceCheckout, setReturnSourceCheckout] = useState<StockMovementHistoryRow | null>(null);
-  const openReturn = useCallback((checkout: StockMovementHistoryRow) => setReturnSourceCheckout(checkout), []);
+  const [returnSourceCheckoutId, setReturnSourceCheckoutId] = useState<UUID | null>(null);
   const showCosts = hasPermission(accessQuery.data, 'equipment_inventory_cost:read');
   // Stores reads this ledger and holds no `equipment_job:read`, so a Job link would only ever land them on a
   // sheet that refuses to load. The code still shows — it is what the row was drawn against.
   const canReadJobs = hasPermission(accessQuery.data, 'equipment_job:read');
   const part = historyQuery.data?.part;
-  const canReturnCheckout = part ? derivePartStockActions(part).returnToStore.allowed : false;
+  // The same gate the post applies: a Part that refuses returns is not offered one from its history.
+  const canReturn =
+    hasPermission(accessQuery.data, 'equipment_inventory:move') &&
+    part !== undefined &&
+    derivePartStockActions(part).returnToStore.allowed;
 
   return (
     <PageLayout
@@ -40,63 +41,23 @@ export function StockMovementHistoryPage({ partId }: { partId: UUID }) {
         <StockMovementHistoryTable
           canReadJobs={canReadJobs}
           items={historyQuery.data.items}
-          {...(canMove && canReturnCheckout ? { onReturnCheckout: openReturn } : {})}
+          onReturnCheckout={canReturn ? setReturnSourceCheckoutId : undefined}
           showCosts={showCosts}
           unitOfMeasure={historyQuery.data.part.unitOfMeasure}
         />
       ) : null}
-      {returnSourceCheckout !== null && historyQuery.data ? (
-        <StockMovementDialog
-          defaultPartId={partId}
-          defaultSourceCheckout={sourceCheckoutOption(returnSourceCheckout, historyQuery.data)}
-          defaultSourceCheckoutId={returnSourceCheckout.id}
-          fixedTargetMode="person"
-          items={[]}
+      {returnSourceCheckoutId === null ? null : (
+        <ReturnFromCheckoutDialog
+          defaultSourceCheckoutId={returnSourceCheckoutId}
           onOpenChange={(nextOpen) => {
-            if (!nextOpen) setReturnSourceCheckout(null);
+            if (!nextOpen) setReturnSourceCheckoutId(null);
           }}
           open
-          parts={[
-            {
-              isInternallyFabricated: historyQuery.data.part.isInternallyFabricated,
-              partCode: historyQuery.data.part.code,
-              partId: historyQuery.data.part.id,
-              partName: historyQuery.data.part.name,
-              standardPurchaseLengthMm: null,
-              unitOfMeasure: historyQuery.data.part.unitOfMeasure,
-            },
-          ]}
-          type="return-to-store"
+          partId={partId}
         />
-      ) : null}
+      )}
     </PageLayout>
   );
-}
-
-function sourceCheckoutOption(
-  checkout: StockMovementHistoryRow,
-  history: {
-    items: StockMovementHistoryRow[];
-    part: { code: string; id: UUID; name: string; unitOfMeasure: SourceCheckoutOption['unitOfMeasure'] };
-  },
-): SourceCheckoutOption {
-  return {
-    createdAt: checkout.createdAt,
-    id: checkout.id,
-    lengthMm: checkout.lengthMm,
-    note: checkout.note ?? '',
-    partCode: history.part.code,
-    partId: history.part.id,
-    partName: history.part.name,
-    quantity: -checkout.delta,
-    recipientName: checkout.recipientName ?? '',
-    recipientUserId: checkout.recipientUserId ?? '',
-    returnedQuantity: history.items
-      .filter((movement) => movement.sourceCheckoutId === checkout.id)
-      .reduce((total, movement) => total + movement.delta, 0),
-    unitCost: checkout.unitCost,
-    unitOfMeasure: history.part.unitOfMeasure,
-  };
 }
 
 function HistorySkeleton() {

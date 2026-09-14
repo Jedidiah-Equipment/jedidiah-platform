@@ -1,10 +1,11 @@
 import { derivePartStockActions } from '@pkg/domain/equipment';
 import type { StockOnHandRow } from '@pkg/schema/equipment';
-import { IconAdjustments, IconArrowDown, IconArrowUp, IconCash, IconTool } from '@tabler/icons-react';
+import { IconAdjustments, IconArrowDown, IconArrowUp, IconCash, IconTool, IconUserMinus } from '@tabler/icons-react';
 import { useMemo, useState } from 'react';
 
 import { Button } from '@/components/ui/button.js';
 
+import { ReturnFromCheckoutDialog } from './ReturnFromCheckoutDialog.js';
 import { StockAdjustmentDialog } from './StockAdjustmentDialog.js';
 import { StockBuildDialog } from './StockBuildDialog.js';
 import { StockMovementDialog } from './StockMovementDialog.js';
@@ -30,6 +31,7 @@ export function StockMovementActions({
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [revaluationOpen, setRevaluationOpen] = useState(false);
   const [returnOpen, setReturnOpen] = useState(false);
+  const [returnFromCheckoutOpen, setReturnFromCheckoutOpen] = useState(false);
   const [buildOpen, setBuildOpen] = useState(false);
   const buildableParts = useMemo(() => items.filter((item) => derivePartStockActions(item).build.allowed), [items]);
   const adjustableParts = useMemo(() => partOptionsAllowing(items, 'adjust'), [items]);
@@ -49,6 +51,12 @@ export function StockMovementActions({
         <Button disabled={returnParts.length === 0} onClick={() => setReturnOpen(true)} variant="outline">
           <IconArrowUp data-icon="inline-start" />
           Return to store
+        </Button>
+      ) : null}
+      {canMove ? (
+        <Button disabled={returnParts.length === 0} onClick={() => setReturnFromCheckoutOpen(true)} variant="outline">
+          <IconUserMinus data-icon="inline-start" />
+          Return without a Job
         </Button>
       ) : null}
       {canBuild ? (
@@ -101,6 +109,7 @@ export function StockMovementActions({
           type="return-to-store"
         />
       ) : null}
+      {returnFromCheckoutOpen ? <ReturnFromCheckoutDialog onOpenChange={setReturnFromCheckoutOpen} open /> : null}
     </>
   );
 }

@@ -65,13 +65,11 @@ export const checkoutErrorFamily = defineCoreErrorFamily<CheckoutCoreError>({
   codes: {
     'inventory.invalid_source_checkout': 'BAD_REQUEST',
     'inventory.recipient_ineligible': 'BAD_REQUEST',
-    'inventory.recipient_not_found': 'NOT_FOUND',
   },
   is: isCheckoutCoreError,
   messages: {
     'inventory.invalid_source_checkout': 'Select a Checkout without a Job.',
     'inventory.recipient_ineligible': 'Select an active Equipment user who is not a device.',
-    'inventory.recipient_not_found': 'Recipient not found.',
   },
 });
 

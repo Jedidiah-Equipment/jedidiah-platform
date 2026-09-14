@@ -1,4 +1,5 @@
 import { formatCurrency, formatDate, formatNumber } from '@pkg/domain';
+import { isCheckoutWithoutJob } from '@pkg/domain/equipment';
 import type { UUID } from '@pkg/schema';
 import {
   type PartUnitOfMeasure,
@@ -101,18 +102,13 @@ export function StockMovementHistoryTable({
 }: {
   canReadJobs: boolean;
   items: readonly StockMovementHistoryRow[];
-  onReturnCheckout?: (checkout: StockMovementHistoryRow) => void;
+  /** Offered on each Checkout Without a Job; absent where the reader may not post, or the Part refuses returns. */
+  onReturnCheckout?: ((sourceCheckoutId: UUID) => void) | undefined;
   showCosts: boolean;
   unitOfMeasure: PartUnitOfMeasure;
 }) {
   const columns = useMemo(
-    () =>
-      createStockMovementHistoryColumns({
-        canReadJobs,
-        showCosts,
-        unitOfMeasure,
-        ...(onReturnCheckout ? { onReturnCheckout } : {}),
-      }),
+    () => createStockMovementHistoryColumns({ canReadJobs, onReturnCheckout, showCosts, unitOfMeasure }),
     [canReadJobs, onReturnCheckout, showCosts, unitOfMeasure],
   );
   const data = useMemo(() => [...items], [items]);
@@ -143,7 +139,7 @@ function createStockMovementHistoryColumns({
   unitOfMeasure,
 }: {
   canReadJobs: boolean;
-  onReturnCheckout?: (checkout: StockMovementHistoryRow) => void;
+  onReturnCheckout: ((sourceCheckoutId: UUID) => void) | undefined;
   showCosts: boolean;
   unitOfMeasure: PartUnitOfMeasure;
 }): DataTableColumnDef<StockMovementHistoryRow>[] {
@@ -189,8 +185,8 @@ function createStockMovementHistoryColumns({
       ? [
           {
             cell: ({ row }) =>
-              row.original.movementType === 'checkout' && row.original.jobId === null ? (
-                <Button onClick={() => onReturnCheckout(row.original)} size="sm" variant="outline">
+              isCheckoutWithoutJob(row.original) ? (
+                <Button onClick={() => onReturnCheckout(row.original.id)} size="sm" variant="outline">
                   Return to Store
                 </Button>
               ) : null,

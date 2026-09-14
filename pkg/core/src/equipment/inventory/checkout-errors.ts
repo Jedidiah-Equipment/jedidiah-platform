@@ -1,22 +1,11 @@
 import type { AuthId, UUID } from '@pkg/schema';
 
-export class CheckoutRecipientNotFoundError extends Error {
-  readonly code = 'inventory.recipient_not_found';
-  readonly metadata: { recipientUserId: AuthId };
-
-  constructor(recipientUserId: AuthId) {
-    super(`Recipient not found: ${recipientUserId}`);
-    this.name = 'CheckoutRecipientNotFoundError';
-    this.metadata = { recipientUserId };
-  }
-}
-
 export class CheckoutRecipientIneligibleError extends Error {
   readonly code = 'inventory.recipient_ineligible';
   readonly metadata: { recipientUserId: AuthId };
 
   constructor(recipientUserId: AuthId) {
-    super(`Recipient is disabled, a device, or not an Equipment user: ${recipientUserId}`);
+    super(`Recipient is unknown, disabled, a device, or not an Equipment user: ${recipientUserId}`);
     this.name = 'CheckoutRecipientIneligibleError';
     this.metadata = { recipientUserId };
   }
@@ -33,15 +22,8 @@ export class InvalidSourceCheckoutError extends Error {
   }
 }
 
-export type CheckoutCoreError =
-  | CheckoutRecipientIneligibleError
-  | CheckoutRecipientNotFoundError
-  | InvalidSourceCheckoutError;
+export type CheckoutCoreError = CheckoutRecipientIneligibleError | InvalidSourceCheckoutError;
 
 export function isCheckoutCoreError(error: unknown): error is CheckoutCoreError {
-  return (
-    error instanceof CheckoutRecipientIneligibleError ||
-    error instanceof CheckoutRecipientNotFoundError ||
-    error instanceof InvalidSourceCheckoutError
-  );
+  return error instanceof CheckoutRecipientIneligibleError || error instanceof InvalidSourceCheckoutError;
 }

@@ -74,6 +74,10 @@ export const stockMovements = equipmentSchema.table(
     // check below): the note exists so an adjustment explains itself, and naming the walk it was
     // made on says strictly more than a line of free text would. An ad-hoc count still needs one.
     stocktakeSessionId: uuid('stocktake_session_id').references(() => stocktakeSessions.id, { onDelete: 'restrict' }),
+    // A Return to Store linked to a Checkout Without a Job. The shape check below says which rows may
+    // carry it; a trigger (migration 0149, like the driver role in contracting 0134) says what it may
+    // point at — a Checkout Without a Job — and that the return inherits its Part, length and
+    // Recipient, which one row's CHECK cannot read off another row.
     sourceCheckoutId: uuid('source_checkout_id'),
     unitCost: numeric('unit_cost', { mode: 'number', precision: 18, scale: 6 }),
   },

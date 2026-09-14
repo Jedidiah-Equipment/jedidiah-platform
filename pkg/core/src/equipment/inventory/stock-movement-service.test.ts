@@ -460,7 +460,7 @@ describe('Checkout without a Job', () => {
           recipientUserId: 'missing-person',
         },
       }),
-    ).rejects.toMatchObject({ code: 'inventory.recipient_not_found' });
+    ).rejects.toMatchObject({ code: 'inventory.recipient_ineligible' });
 
     const jobCheckout = await postJobMovement({
       actorUserId,
@@ -520,7 +520,11 @@ describe('Checkout without a Job', () => {
       }),
     ]);
 
-    expect(returns.map((result) => result.warnings).sort((left) => left.length)).toEqual([[], ['exceeds-drawn']]);
+    // Either return may take the lock first; what is fixed is that exactly one exceeds the source.
+    expect(returns.map((result) => result.warnings).sort((left, right) => left.length - right.length)).toEqual([
+      [],
+      ['exceeds-drawn'],
+    ]);
     expect(returns.map((result) => result.movement.unitCost).sort((left, right) => (left ?? 0) - (right ?? 0))).toEqual(
       [5, 10],
     );

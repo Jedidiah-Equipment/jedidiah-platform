@@ -1,24 +1,18 @@
-import { useDebouncedValue } from '@mantine/hooks';
-import { formatDate, formatNumber } from '@pkg/domain';
 import { deriveMovementWarnings, type JobMovementFacts } from '@pkg/domain/equipment';
 import type {
   InventoryRecipientOption,
   JobPickerOption,
   JobStockMovementType,
   JobStockRow,
-  SourceCheckoutOption,
   StockMovementWarningCode,
   StockOnHandRow,
 } from '@pkg/schema/equipment';
-import { PostCheckoutInput, PostReturnToStoreInput } from '@pkg/schema/equipment';
-import { keepPreviousData, useInfiniteQuery, useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
-import { EntityCombobox, mergeSelectedOption } from '@/components/common/EntityCombobox.js';
-import { cursorInfiniteQueryOptions, useCombinedCursorQueryPages } from '@/components/data-table/cursor-query.js';
+
 import { CreateEntityDialog } from '@/components/form/index.js';
-import { getFieldErrors } from '@/components/form/utils/field-errors.js';
-import { Field, FieldError, FieldLabel } from '@/components/ui/field.js';
+import { Field, FieldLabel } from '@/components/ui/field.js';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs.js';
 import { JobPicker, JobPickerTrigger } from '@/equipment/components/job-picker/index.js';
 import { useInventoryJobPicker } from '@/equipment/hooks/options/index.js';
@@ -34,20 +28,23 @@ import {
   partQuantityValidationMessage,
   partSelectOptions,
   type StockMovementFormValues,
+  type StockMovementTarget,
   type StockPartOption,
   stockMovementValidator,
-  switchStockMovementTarget,
-  toStockMovementInput,
+  toCheckoutWithoutJobInput,
+  toJobMovementInput,
 } from './types.js';
 
 type FixedJob = { code: string; id: string };
 
+/**
+ * A draw or return of one Part. A return always names a Job; a Checkout may instead go Without a
+ * Job to a person for a purpose, and the target tabs switch between the two. A source-linked
+ * return is a different form altogether — see `ReturnFromCheckoutDialog`.
+ */
 export function StockMovementDialog({
   defaultPartId = '',
-  defaultSourceCheckout = null,
-  defaultSourceCheckoutId = '',
   fixedJob,
-  fixedTargetMode,
   isLoadingParts = false,
   items,
   onOpenChange,
@@ -57,10 +54,7 @@ export function StockMovementDialog({
 }: {
   /** Pre-selects the Part, so a leftover row can open straight onto the Part it is returning. */
   defaultPartId?: string;
-  defaultSourceCheckout?: SourceCheckoutOption | null;
-  defaultSourceCheckoutId?: string;
   fixedJob?: FixedJob;
-  fixedTargetMode?: 'job' | 'person';
   /** Set where the Part list is fetched only once the dialog opens, so the select can say so. */
   isLoadingParts?: boolean;
   items: readonly StockOnHandRow[];
@@ -75,43 +69,18 @@ export function StockMovementDialog({
   const showMutationError = useApiMutationErrorToast();
   const [isJobPickerOpen, setJobPickerOpen] = useState(false);
   const [selectedJob, setSelectedJob] = useState<JobPickerOption | null>(null);
-  const [selectedSourceCheckout, setSelectedSourceCheckout] = useState<SourceCheckoutOption | null>(
-    defaultSourceCheckout,
-  );
-  const [sourceLookupEnabled, setSourceLookupEnabled] = useState(
-    fixedTargetMode === 'person' || defaultSourceCheckoutId !== '',
-  );
-  const [recipientLookupEnabled, setRecipientLookupEnabled] = useState(
-    type === 'checkout' && fixedTargetMode === 'person',
-  );
-  const [sourceSearch, setSourceSearch] = useState('');
-  const [debouncedSourceSearch] = useDebouncedValue(sourceSearch, 250);
   const movementWarningsOutcome = useMovementWarnings();
-  const validator = useMemo(() => stockMovementValidator(parts, type), [parts, type]);
+  const validator = useMemo(() => stockMovementValidator(parts), [parts]);
   const verb = type === 'checkout' ? 'Check out' : 'Return';
   const jobId = fixedJob?.id ?? selectedJob?.id ?? '';
+  // Only a Checkout can go to a person, and only where the page has not already fixed the Job.
+  const offersPersonTarget = type === 'checkout' && fixedJob === undefined;
 
   const jobPicker = useInventoryJobPicker({ enabled: fixedJob === undefined, movementType: type });
   const jobStockQuery = useQuery(trpc.inventory.jobStock.queryOptions({ jobId }, { enabled: jobId !== '' }));
   const recipientQuery = useQuery(
-    trpc.inventory.recipientOptions.queryOptions({ limit: 0, search: '' }, { enabled: open && recipientLookupEnabled }),
+    trpc.inventory.recipientOptions.queryOptions({ limit: 0, search: '' }, { enabled: open && offersPersonTarget }),
   );
-  const sourceCheckoutQuery = useInfiniteQuery(
-    trpc.inventory.sourceCheckouts.infiniteQueryOptions(
-      {
-        limit: 20,
-        partId: defaultPartId === '' ? undefined : defaultPartId,
-        search: debouncedSourceSearch,
-      },
-      {
-        ...cursorInfiniteQueryOptions,
-        enabled: open && type === 'return-to-store' && sourceLookupEnabled,
-        placeholderData: keepPreviousData,
-      },
-    ),
-  );
-  const sourceCheckoutPage = useCombinedCursorQueryPages(sourceCheckoutQuery.data?.pages);
-  const sourceCheckoutItems = mergeSelectedOption(sourceCheckoutPage.items, selectedSourceCheckout);
   const checkoutMutation = useMutation(
     trpc.inventory.postCheckout.mutationOptions({
       onError: (error) => showMutationError(error, 'Unable to check stock out.'),
@@ -123,15 +92,21 @@ export function StockMovementDialog({
     }),
   );
 
+  function bucketQuantityOnHand(values: StockMovementFormValues): number {
+    const lengthMm = Number.isNaN(values.lengthMm) ? null : values.lengthMm;
+
+    return (
+      items.find((row) => row.partId === values.partId)?.buckets.find((candidate) => candidate.lengthMm === lengthMm)
+        ?.quantity ?? 0
+    );
+  }
+
   function movementFacts(values: StockMovementFormValues): JobMovementFacts {
     const lengthMm = Number.isNaN(values.lengthMm) ? null : values.lengthMm;
     const jobStock: JobStockRow | undefined = jobStockQuery.data?.items.find((row) => row.partId === values.partId);
-    const bucket = items
-      .find((row) => row.partId === values.partId)
-      ?.buckets.find((candidate) => candidate.lengthMm === lengthMm);
 
     return {
-      bucketQuantityOnHand: bucket?.quantity ?? 0,
+      bucketQuantityOnHand: bucketQuantityOnHand(values),
       cfoQuantity: jobStock?.cfoQuantity ?? 0,
       drawnBucketQuantity:
         lengthMm === null
@@ -146,29 +121,20 @@ export function StockMovementDialog({
    * loaded so the reader sees it before committing rather than only afterwards.
    */
   function movementWarnings(values: StockMovementFormValues): StockMovementWarningCode[] {
-    if (!Number.isFinite(values.quantity)) return [];
-    if (values.mode === 'person') {
-      if (type === 'return-to-store') {
-        const source = sourceCheckoutItems.find((item) => item.id === values.sourceCheckoutId);
-        if (!source) return [];
-        return deriveMovementWarnings({
-          facts: {
-            kind: 'return-without-job',
-            outstandingQuantity: Math.max(0, source.quantity - source.returnedQuantity),
-          },
-          quantity: values.quantity,
-        });
-      }
-      const lengthMm = Number.isNaN(values.lengthMm) ? null : values.lengthMm;
-      const bucketQuantityOnHand =
-        items.find((row) => row.partId === values.partId)?.buckets.find((candidate) => candidate.lengthMm === lengthMm)
-          ?.quantity ?? 0;
+    if (!Number.isFinite(values.quantity) || values.partId === '') return [];
+    if (values.target === 'person') {
+      // No Job, so nothing planned the draw: a CFO of zero is what "no CFO" means to the judgement.
       return deriveMovementWarnings({
-        facts: { bucketQuantityOnHand, kind: 'checkout-without-job' },
+        facts: {
+          bucketQuantityOnHand: bucketQuantityOnHand(values),
+          cfoQuantity: 0,
+          drawnQuantity: 0,
+          kind: 'checkout',
+        },
         quantity: values.quantity,
       });
     }
-    if (values.jobId === '' || values.partId === '') return [];
+    if (values.jobId === '') return [];
     // Until the Job's stock arrives, every figure reads zero, which would warn on any draw at all.
     // Staying quiet is the honest state: the post still returns the ledger's own verdict.
     if (jobStockQuery.isPending) return [];
@@ -181,12 +147,11 @@ export function StockMovementDialog({
       defaultValues={{
         jobId: fixedJob?.id ?? '',
         lengthMm: Number.NaN,
-        mode: fixedTargetMode ?? (defaultSourceCheckoutId === '' ? 'job' : 'person'),
         note: '',
         partId: defaultPartId,
         quantity: Number.NaN,
-        recipientUserId: session?.user.id ?? '',
-        sourceCheckoutId: defaultSourceCheckoutId,
+        recipientUserId: '',
+        target: 'job',
       }}
       description={
         type === 'checkout'
@@ -195,12 +160,14 @@ export function StockMovementDialog({
       }
       onCreate={(values) => {
         const part = parts.find((candidate) => candidate.partId === values.partId);
+        if (!part) throw new Error('Select a Part');
 
         movementWarningsOutcome.acknowledge(movementWarnings(values));
-        const input = toStockMovementInput(values, type, part);
-        return type === 'checkout'
-          ? checkoutMutation.mutateAsync(PostCheckoutInput.parse(input))
-          : returnMutation.mutateAsync(PostReturnToStoreInput.parse(input));
+        if (type === 'return-to-store') return returnMutation.mutateAsync(toJobMovementInput(values, part));
+
+        return checkoutMutation.mutateAsync(
+          values.target === 'job' ? toJobMovementInput(values, part) : toCheckoutWithoutJobInput(values, part),
+        );
       }}
       onCreated={async (result) => {
         await invalidateInventory();
@@ -218,40 +185,23 @@ export function StockMovementDialog({
         <form.Subscribe selector={(state) => state.values}>
           {(values) => {
             const part = parts.find((candidate) => candidate.partId === values.partId);
-            const showsPart = values.mode === 'job' || type === 'checkout';
 
             return (
               <>
-                {fixedJob === undefined && fixedTargetMode === undefined ? (
+                {offersPersonTarget ? (
                   <Field>
                     <FieldLabel>Movement target</FieldLabel>
                     <Tabs
                       onValueChange={(value) => {
-                        const mode = value as 'job' | 'person';
-                        const nextValues = switchStockMovementTarget({
-                          defaultPartId,
-                          movementType: type,
-                          recipientUserId: session?.user.id ?? '',
-                          targetMode: mode,
-                          values,
-                        });
-                        form.setFieldValue('mode', nextValues.mode);
-                        form.setFieldValue('jobId', nextValues.jobId);
-                        form.setFieldValue('lengthMm', nextValues.lengthMm);
-                        form.setFieldValue('note', nextValues.note);
-                        form.setFieldValue('partId', nextValues.partId);
-                        form.setFieldValue('recipientUserId', nextValues.recipientUserId);
-                        form.setFieldValue('sourceCheckoutId', nextValues.sourceCheckoutId);
-                        setRecipientLookupEnabled(type === 'checkout' && mode === 'person');
-                        setSourceLookupEnabled(mode === 'person');
-                        if (mode === 'person') {
-                          setSelectedJob(null);
-                        } else {
-                          setSelectedSourceCheckout(null);
-                          setSourceSearch('');
-                        }
+                        const target = value as StockMovementTarget;
+                        // The target that stops showing takes its selection with it; nothing hidden reaches the post.
+                        form.setFieldValue('target', target);
+                        form.setFieldValue('jobId', '');
+                        form.setFieldValue('note', '');
+                        form.setFieldValue('recipientUserId', target === 'person' ? (session?.user.id ?? '') : '');
+                        setSelectedJob(null);
                       }}
-                      value={values.mode}
+                      value={values.target}
                     >
                       <TabsList className="w-full">
                         <TabsTrigger className="flex-1" value="job">
@@ -265,48 +215,14 @@ export function StockMovementDialog({
                   </Field>
                 ) : null}
 
-                {values.mode === 'person' ? (
-                  <Field>
-                    <FieldLabel>Operator</FieldLabel>
-                    <div className="rounded-md border px-3 py-2 text-sm">{session?.user.name ?? 'Signed-in user'}</div>
-                  </Field>
-                ) : null}
-
-                {values.mode === 'job' ? (
-                  fixedJob ? (
-                    <Field>
-                      <FieldLabel>Job</FieldLabel>
-                      <div className="rounded-md border px-3 py-2 font-mono text-sm">{fixedJob.code}</div>
-                    </Field>
-                  ) : (
-                    <form.AppField name="jobId">
-                      {(field) => (
-                        <Field data-invalid={field.state.meta.errors.length > 0}>
-                          <FieldLabel htmlFor="inventory-job-movement-job">Job</FieldLabel>
-                          <JobPicker
-                            controller={jobPicker}
-                            nothingPickableMessage="No Jobs are available for this movement."
-                            onOpenChange={setJobPickerOpen}
-                            onSelect={(job) => {
-                              setSelectedJob(job);
-                              field.handleChange(job.id);
-                            }}
-                            open={isJobPickerOpen}
-                            value={selectedJob}
-                          >
-                            <JobPickerTrigger
-                              className="w-full"
-                              id="inventory-job-movement-job"
-                              placeholder="Select Job"
-                              value={selectedJob}
-                            />
-                          </JobPicker>
-                        </Field>
-                      )}
-                    </form.AppField>
-                  )
-                ) : type === 'checkout' ? (
+                {values.target === 'person' ? (
                   <>
+                    <Field>
+                      <FieldLabel>Operator</FieldLabel>
+                      <div className="rounded-md border px-3 py-2 text-sm">
+                        {session?.user.name ?? 'Signed-in user'}
+                      </div>
+                    </Field>
                     <form.AppField name="recipientUserId">
                       {(field) => (
                         <field.ComboboxField
@@ -321,79 +237,65 @@ export function StockMovementDialog({
                       {(field) => <field.TextareaField label="Purpose" placeholder="Repair factory drill" rows={2} />}
                     </form.AppField>
                   </>
+                ) : fixedJob ? (
+                  <Field>
+                    <FieldLabel>Job</FieldLabel>
+                    <div className="rounded-md border px-3 py-2 font-mono text-sm">{fixedJob.code}</div>
+                  </Field>
                 ) : (
-                  <form.AppField name="sourceCheckoutId">
-                    {(field) => {
-                      const errors = getFieldErrors(field.state.meta.errors);
-                      return (
-                        <Field data-invalid={errors.length > 0}>
-                          <FieldLabel htmlFor={field.name}>Original Checkout</FieldLabel>
-                          <EntityCombobox
-                            disabled={sourceCheckoutQuery.isPending}
-                            emptyMessage="No Checkouts without a Job found."
-                            inputId={field.name}
-                            inputValue={sourceSearch}
-                            isFetching={sourceCheckoutQuery.isFetching}
-                            itemToLabel={sourceCheckoutLabel}
-                            loadMore={{
-                              hasNextPage: sourceCheckoutQuery.hasNextPage,
-                              isFetchingNextPage: sourceCheckoutQuery.isFetchingNextPage,
-                              loadedCount: sourceCheckoutPage.items.length,
-                              onLoadMore: () => void sourceCheckoutQuery.fetchNextPage(),
-                              total: sourceCheckoutPage.total,
-                              totalLabel: (total) => `${total} ${total === 1 ? 'Checkout' : 'Checkouts'}`,
-                            }}
-                            onInputValueChange={setSourceSearch}
-                            onSelected={(source) => {
-                              setSelectedSourceCheckout(source);
-                              field.handleChange(source?.id ?? '');
-                              form.setFieldValue('partId', source?.partId ?? '');
-                              form.setFieldValue('lengthMm', source?.lengthMm ?? Number.NaN);
-                              setSourceSearch('');
-                              queueMicrotask(() => void form.validateField('quantity', 'blur'));
-                            }}
-                            options={sourceCheckoutItems}
-                            placeholder="Select original Checkout"
-                            renderItem={(source) => sourceCheckoutLabel(source)}
-                            searchPlaceholder="Search by Part, recipient, or purpose"
-                            value={selectedSourceCheckout}
+                  <form.AppField name="jobId">
+                    {(field) => (
+                      <Field data-invalid={field.state.meta.errors.length > 0}>
+                        <FieldLabel htmlFor="inventory-job-movement-job">Job</FieldLabel>
+                        <JobPicker
+                          controller={jobPicker}
+                          nothingPickableMessage="No Jobs are available for this movement."
+                          onOpenChange={setJobPickerOpen}
+                          onSelect={(job) => {
+                            setSelectedJob(job);
+                            field.handleChange(job.id);
+                          }}
+                          open={isJobPickerOpen}
+                          value={selectedJob}
+                        >
+                          <JobPickerTrigger
+                            className="w-full"
+                            id="inventory-job-movement-job"
+                            placeholder="Select Job"
+                            value={selectedJob}
                           />
-                          <FieldError errors={errors} />
-                        </Field>
-                      );
-                    }}
+                        </JobPicker>
+                      </Field>
+                    )}
                   </form.AppField>
                 )}
 
-                {showsPart ? (
-                  <form.AppField name="partId">
-                    {(field) => (
-                      <field.ComboboxField
-                        disabled={isLoadingParts}
-                        emptyMessage="No Parts found."
-                        label="Part"
-                        onValueCommit={() => queueMicrotask(() => void form.validateField('quantity', 'blur'))}
-                        options={partSelectOptions(parts)}
-                        placeholder={isLoadingParts ? 'Loading parts...' : 'Search parts'}
-                        resolveInputOnEnter={(inputValue) => partIdFromScanToken(parts, inputValue)}
-                      />
-                    )}
-                  </form.AppField>
-                ) : null}
-
+                <form.AppField name="partId">
+                  {(field) => (
+                    <field.ComboboxField
+                      disabled={isLoadingParts}
+                      emptyMessage="No Parts found."
+                      label="Part"
+                      onValueCommit={() => {
+                        // The selection commits first; defer until the form exposes the new Part to the dependent validator.
+                        queueMicrotask(() => void form.validateField('quantity', 'blur'));
+                      }}
+                      options={partSelectOptions(parts)}
+                      placeholder={isLoadingParts ? 'Loading parts...' : 'Search parts'}
+                      resolveInputOnEnter={(inputValue) => partIdFromScanToken(parts, inputValue)}
+                    />
+                  )}
+                </form.AppField>
                 <form.AppField
                   name="quantity"
                   validators={{
                     onBlur: ({ value }) =>
-                      showsPart
-                        ? partQuantityValidationMessage({ partId: form.state.values.partId, quantity: value }, parts)
-                        : undefined,
+                      partQuantityValidationMessage({ partId: form.state.values.partId, quantity: value }, parts),
                   }}
                 >
                   {(field) => <field.NumberField label="Quantity" min={0.001} step="0.001" />}
                 </form.AppField>
-
-                {showsPart && part?.unitOfMeasure === 'mm' ? (
+                {part?.unitOfMeasure === 'mm' ? (
                   <form.AppField name="lengthMm">
                     {(field) => (
                       <field.NumberField
@@ -422,8 +324,4 @@ export function StockMovementDialog({
 
 function recipientOptions(items: readonly InventoryRecipientOption[]) {
   return items.map((item) => ({ label: item.name, value: item.id }));
-}
-
-function sourceCheckoutLabel(item: SourceCheckoutOption) {
-  return `${formatDate(item.createdAt, 'medium')} · ${item.partCode} · ${item.recipientName} · ${item.note} · ${formatNumber(item.returnedQuantity)}/${formatNumber(item.quantity)} returned`;
 }

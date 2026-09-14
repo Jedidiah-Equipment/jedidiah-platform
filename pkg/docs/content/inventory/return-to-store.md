@@ -27,15 +27,14 @@ A **Stock returned to store** toast confirms it.
 
 ## From a Checkout Without a Job
 
-1. Open **Inventory** and click **Return to store**, or scan the Part on the stores tablet and tap
-   **Return to store**. You can also click **Return to Store** beside the original Checkout in a
-   Part's history.
-2. Choose **Without a Job**.
-3. Find the **Original Checkout** by Part, Recipient, or Purpose. Newest Checkouts appear first and
+1. Open **Inventory** and click **Return without a Job**, or click **Return to Store** beside the
+   original Checkout in a Part's history. On the stores tablet, scan the Part, tap
+   **Return to store**, then choose **Without a Job**.
+2. Find the **Original Checkout** by Part, Recipient, or Purpose. Newest Checkouts appear first and
    show the date, quantity taken, and quantity already returned. Fully returned Checkouts remain
    available when the physical quantity disagrees with the ledger.
-4. Enter the **Quantity** coming back. The original Checkout fixes the Part, length, and Recipient.
-5. Check the separately displayed **Operator**, then click or tap **Return stock**.
+3. Enter the **Quantity** coming back. The original Checkout fixes the Part, length, and Recipient.
+4. On the tablet, check the separately displayed **Operator**. Then click or tap **Return stock**.
 
 ## If it warns you
 

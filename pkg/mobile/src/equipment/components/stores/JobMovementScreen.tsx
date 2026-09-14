@@ -1,17 +1,9 @@
-import { deriveMovementWarnings } from '@pkg/domain/equipment';
-import type {
-  InventoryRecipientOption,
-  JobPickerOption,
-  JobStockMovementType,
-  SourceCheckoutOption,
-  StockOnHandRow,
-} from '@pkg/schema/equipment';
+import type { JobStockMovementType, StockOnHandRow } from '@pkg/schema/equipment';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { type RefObject, useEffect, useRef, useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { Text } from '@/components/ui/text';
 import { TextInput } from '@/components/ui/text-input';
-import { previewJobMovementWarnings } from '@/equipment/lib/movement-preview';
 import { useStoresActor } from '@/equipment/lib/stores-actor';
 import { resolveStoresMovementParent } from '@/equipment/lib/toolbar-navigation';
 import { useMovementConfirm } from '@/equipment/lib/use-movement-confirm';
@@ -20,8 +12,13 @@ import { useTRPC } from '@/lib/trpc';
 
 import { JobPicker, type JobPickerHandle } from './JobPicker';
 import {
-  canPostStoresMovement,
-  switchStoresMovementTarget,
+  hasStoresMovementTarget,
+  initialStoresMovementTarget,
+  previewStoresMovementWarnings,
+  type StoresMovementMode,
+  type StoresMovementTarget,
+  storesMovementMode,
+  storesMovementNeedsLength,
   syncDefaultRecipient,
   toStoresMovementInput,
 } from './job-movement-model';
@@ -33,10 +30,12 @@ import { RecipientPicker } from './RecipientPicker';
 import { SourceCheckoutPicker } from './SourceCheckoutPicker';
 import { NoActorNotice, StoresPartScreen } from './StoresPartScreen';
 
+const MODE_LABELS: Record<StoresMovementMode, string> = { job: 'To a Job', person: 'Without a Job' };
+
 /**
- * Checkout and return-to-store, which are the same screen twice: pick the Job, key the quantity,
- * and for linear stock say which length off the rack. The direction only changes the wording and
- * the procedure called.
+ * Checkout and return-to-store, which are the same screen twice: pick the target, key the quantity,
+ * and for linear stock say which length off the rack. The direction only changes the wording, the
+ * procedure called, and what Without a Job means — a person to draw to, or a Checkout to return.
  */
 export function JobMovementScreen({
   jobId,
@@ -79,29 +78,25 @@ function JobMovementForm({
   const trpc = useTRPC();
   const { actor } = useStoresActor();
   const actorUserId = actor?.id ?? null;
-  const [mode, setMode] = useState<'job' | 'person'>('job');
-  const [job, setJob] = useState<JobPickerOption | null>(null);
-  const [jobSearch, setJobSearch] = useState('');
-  const [recipient, setRecipient] = useState<InventoryRecipientOption | null>(actor);
+  const [target, setTarget] = useState<StoresMovementTarget>(() =>
+    initialStoresMovementTarget({ actor, mode: 'job', movementType }),
+  );
+  // One search box shows at a time, so one search string serves whichever picker the target is on.
+  const [search, setSearch] = useState('');
   const previousActorUserId = useRef(actor?.id ?? null);
-  const [recipientSearch, setRecipientSearch] = useState('');
-  const [purpose, setPurpose] = useState('');
-  const [sourceCheckout, setSourceCheckout] = useState<SourceCheckoutOption | null>(null);
-  const [sourceSearch, setSourceSearch] = useState('');
   const [quantity, setQuantity] = useState('');
   // Null means "nobody has touched the length yet", which is what lets the standard purchase length
   // stand as the default without an effect that would then fight a deliberate clear.
   const [keyedLengthMm, setKeyedLengthMm] = useState<string | null>(null);
 
   const isCheckout = movementType === 'checkout';
+  const mode = storesMovementMode(target);
 
   useEffect(() => {
     const previousId = previousActorUserId.current;
     previousActorUserId.current = actor?.id ?? null;
-    if (!isCheckout || mode !== 'person') return;
-
-    setRecipient((current) => syncDefaultRecipient({ actor, previousActorUserId: previousId, recipient: current }));
-  }, [actor, isCheckout, mode]);
+    setTarget((current) => syncDefaultRecipient({ actor, previousActorUserId: previousId, target: current }));
+  }, [actor]);
 
   const returnTo = resolveStoresMovementParent({ jobId: fixedJobId, partCode: row.partCode }).returnTo;
   const outcome = useStoresPostOutcome({
@@ -116,58 +111,31 @@ function JobMovementForm({
   );
 
   const confirmFlow = useMovementConfirm({ acknowledge: outcome.acknowledge });
-  const isLinear = row.unitOfMeasure === 'mm';
+  const isLinear = row.unitOfMeasure === 'mm' && storesMovementNeedsLength(target);
   // A full stick is what usually leaves the rack, so the Part's standard purchase length opens the
   // length question. Unlike a receipt, a Job movement has no server-side fallback for it.
   const lengthMm = keyedLengthMm ?? (row.standardPurchaseLengthMm === null ? '' : String(row.standardPurchaseLengthMm));
   const parsedQuantity = parseQuantity(quantity);
   const parsedLength = isLinear ? parseQuantity(lengthMm) : null;
-  const jobIdToPost = fixedJobId ?? job?.id ?? null;
-  const needsLength = mode === 'job' || isCheckout;
-  const hasLength = !needsLength || hasRequiredLength({ isLinear, lengthMm: parsedLength });
-  const hasTarget =
-    mode === 'job'
-      ? jobIdToPost !== null
-      : isCheckout
-        ? recipient !== null && purpose.trim() !== ''
-        : sourceCheckout !== null;
-  const canPost = canPostStoresMovement({ actorUserId, hasLength, hasTarget, quantity: parsedQuantity });
+  const jobIdToPost = target.kind === 'job' ? (fixedJobId ?? target.job?.id ?? null) : null;
+  const canPost =
+    actorUserId !== null &&
+    parsedQuantity !== null &&
+    hasRequiredLength({ isLinear, lengthMm: parsedLength }) &&
+    hasStoresMovementTarget(target, fixedJobId);
 
   // The facts this movement is judged against, served by the same read the Job's stock tab uses.
   const jobStockQuery = useQuery(
-    trpc.inventory.jobStock.queryOptions(
-      { jobId: jobIdToPost ?? '' },
-      { enabled: mode === 'job' && jobIdToPost !== null },
-    ),
+    trpc.inventory.jobStock.queryOptions({ jobId: jobIdToPost ?? '' }, { enabled: jobIdToPost !== null }),
   );
-  const previewWarnings =
-    parsedQuantity === null
-      ? []
-      : mode === 'job'
-        ? previewJobMovementWarnings({
-            jobStock: jobStockQuery.data,
-            lengthMm: parsedLength,
-            movementType,
-            quantity: parsedQuantity,
-            row,
-          })
-        : isCheckout
-          ? deriveMovementWarnings({
-              facts: {
-                bucketQuantityOnHand: row.buckets.find((bucket) => bucket.lengthMm === parsedLength)?.quantity ?? 0,
-                kind: 'checkout-without-job',
-              },
-              quantity: parsedQuantity,
-            })
-          : sourceCheckout === null
-            ? []
-            : deriveMovementWarnings({
-                facts: {
-                  kind: 'return-without-job',
-                  outstandingQuantity: Math.max(0, sourceCheckout.quantity - sourceCheckout.returnedQuantity),
-                },
-                quantity: parsedQuantity,
-              });
+  const previewWarnings = previewStoresMovementWarnings({
+    jobStock: jobStockQuery.data,
+    lengthMm: parsedLength,
+    movementType,
+    quantity: parsedQuantity,
+    row,
+    target,
+  });
 
   return (
     <>
@@ -177,30 +145,19 @@ function JobMovementForm({
             MOVEMENT TARGET
           </Text>
           <View className="flex-row gap-2">
-            {(['job', 'person'] as const).map((targetMode) => (
+            {(['job', 'person'] as const).map((candidate) => (
               <Pressable
                 accessibilityRole="button"
-                accessibilityState={{ selected: mode === targetMode }}
-                className={`flex-1 items-center rounded-xl border px-3 py-3 ${mode === targetMode ? 'border-primary bg-primary/10' : 'border-border bg-surface'}`}
-                key={targetMode}
+                accessibilityState={{ selected: mode === candidate }}
+                className={`flex-1 items-center rounded-xl border px-3 py-3 ${mode === candidate ? 'border-primary bg-primary/10' : 'border-border bg-surface'}`}
+                key={candidate}
                 onPress={() => {
-                  const targetState = switchStoresMovementTarget({
-                    actor,
-                    currentMode: mode,
-                    isCheckout,
-                    state: { job, jobSearch, purpose, recipient, sourceCheckout },
-                    targetMode,
-                  });
-                  setMode(targetMode);
-                  setJob(targetState.job);
-                  setJobSearch(targetState.jobSearch);
-                  setPurpose(targetState.purpose);
-                  setRecipient(targetState.recipient);
-                  setSourceCheckout(targetState.sourceCheckout);
+                  setTarget(initialStoresMovementTarget({ actor, mode: candidate, movementType }));
+                  setSearch('');
                 }}
               >
                 <Text className="text-sm text-surface-foreground" weight="semibold">
-                  {targetMode === 'job' ? 'To a Job' : 'Without a Job'}
+                  {MODE_LABELS[candidate]}
                 </Text>
               </Pressable>
             ))}
@@ -219,22 +176,24 @@ function JobMovementForm({
         </View>
       ) : null}
 
-      {mode === 'job' && fixedJobId === undefined ? (
-        <JobPicker
-          movementType={movementType}
-          onSearchChange={setJobSearch}
-          onSelect={setJob}
-          ref={jobPickerRef}
-          search={jobSearch}
-          selected={job}
-        />
-      ) : mode === 'person' && isCheckout ? (
+      {target.kind === 'job' ? (
+        fixedJobId === undefined ? (
+          <JobPicker
+            movementType={movementType}
+            onSearchChange={setSearch}
+            onSelect={(job) => setTarget({ job, kind: 'job' })}
+            ref={jobPickerRef}
+            search={search}
+            selected={target.job}
+          />
+        ) : null
+      ) : target.kind === 'recipient' ? (
         <>
           <RecipientPicker
-            onSearchChange={setRecipientSearch}
-            onSelect={setRecipient}
-            search={recipientSearch}
-            selected={recipient}
+            onSearchChange={setSearch}
+            onSelect={(recipient) => setTarget({ ...target, recipient })}
+            search={search}
+            selected={target.recipient}
           />
           <View className="gap-1.5">
             <Text className="text-[11px] text-muted-foreground" mono>
@@ -242,22 +201,22 @@ function JobMovementForm({
             </Text>
             <TextInput
               accessibilityLabel="Purpose"
-              onChangeText={setPurpose}
+              onChangeText={(purpose) => setTarget({ ...target, purpose })}
               placeholder="Repair factory drill"
               textSize="toolbar"
-              value={purpose}
+              value={target.purpose}
             />
           </View>
         </>
-      ) : mode === 'person' ? (
+      ) : (
         <SourceCheckoutPicker
-          onSearchChange={setSourceSearch}
-          onSelect={setSourceCheckout}
+          onSearchChange={setSearch}
+          onSelect={(sourceCheckout) => setTarget({ kind: 'source', sourceCheckout })}
           partId={row.partId}
-          search={sourceSearch}
-          selected={sourceCheckout}
+          search={search}
+          selected={target.sourceCheckout}
         />
-      ) : null}
+      )}
 
       <QuantityField
         label="Quantity"
@@ -267,7 +226,7 @@ function JobMovementForm({
         value={quantity}
       />
 
-      {needsLength && isLinear ? (
+      {isLinear ? (
         <LengthBucketField
           buckets={row.buckets}
           onChange={setKeyedLengthMm}
@@ -287,19 +246,17 @@ function JobMovementForm({
 
           confirmFlow.submit({
             post: () => {
-              const inputFacts = {
+              const facts = {
                 actorUserId,
-                jobId: jobIdToPost,
+                fixedJobId,
                 lengthMm: parsedLength,
-                mode,
                 partId: row.partId,
-                purpose,
                 quantity: parsedQuantity,
-                recipientUserId: recipient?.id ?? null,
-                sourceCheckoutId: sourceCheckout?.id ?? null,
+                target,
               };
-              if (isCheckout) checkoutMutation.mutate(toStoresMovementInput({ ...inputFacts, isCheckout: true }));
-              else returnMutation.mutate(toStoresMovementInput({ ...inputFacts, isCheckout: false }));
+              if (movementType === 'checkout')
+                checkoutMutation.mutate(toStoresMovementInput({ ...facts, movementType }));
+              else returnMutation.mutate(toStoresMovementInput({ ...facts, movementType }));
             },
             warnings: previewWarnings,
           });

@@ -1,8 +1,11 @@
+import { DateIso } from '@pkg/schema';
+import type { SourceCheckoutOption, StockOnHandRow } from '@pkg/schema/equipment';
 import { describe, expect, it } from 'vitest';
 
 import {
-  canPostStoresMovement,
-  switchStoresMovementTarget,
+  hasStoresMovementTarget,
+  initialStoresMovementTarget,
+  previewStoresMovementWarnings,
   syncDefaultRecipient,
   toStoresMovementInput,
 } from './job-movement-model';
@@ -11,53 +14,105 @@ const PART_ID = '00000000-0000-4000-8000-000000000001';
 const JOB_ID = '00000000-0000-4000-8000-000000000002';
 const SOURCE_ID = '00000000-0000-4000-8000-000000000003';
 const actor = { id: 'operator', name: 'Operator', thumbnailDataUrl: null };
+const job = { code: 'JOB-1', id: JOB_ID } as never;
+const sourceCheckout: SourceCheckoutOption = {
+  createdAt: DateIso.parse('2026-08-01T08:00:00.000Z'),
+  id: SOURCE_ID,
+  lengthMm: null,
+  note: 'Repair drill',
+  partCode: 'P-100',
+  partId: PART_ID,
+  partName: 'Bearing',
+  quantity: 3,
+  recipientName: 'Connor',
+  recipientUserId: 'connor',
+  returnedQuantity: 1,
+  unitCost: null,
+  unitOfMeasure: 'piece',
+};
+const row: StockOnHandRow = {
+  asOfLastCount: null,
+  averageUnitCost: 10,
+  buckets: [{ lengthMm: null, quantity: 1, totalValue: 10 }],
+  committed: 0,
+  estimatedOnHand: null,
+  free: 1,
+  isInternallyFabricated: false,
+  onOrder: 0,
+  partCode: 'P-100',
+  partId: PART_ID,
+  partName: 'Bearing',
+  quantity: 1,
+  standardPurchaseLengthMm: null,
+  stockTrackingMode: 'perpetual',
+  totalValue: 10,
+  unitOfMeasure: 'piece',
+};
 
 describe('stores movement targets', () => {
-  it('clears hidden state and defaults the Checkout recipient to the current operator', () => {
-    const state = {
-      job: { code: 'JOB-1', id: JOB_ID } as never,
-      jobSearch: 'JOB',
-      purpose: '',
-      recipient: null,
-      sourceCheckout: null,
-    };
-
-    expect(
-      switchStoresMovementTarget({ actor, currentMode: 'job', isCheckout: true, state, targetMode: 'person' }),
-    ).toMatchObject({
+  it('starts each mode empty, with the operator as the default recipient of a Checkout', () => {
+    expect(initialStoresMovementTarget({ actor, mode: 'job', movementType: 'checkout' })).toEqual({
       job: null,
-      jobSearch: '',
+      kind: 'job',
+    });
+    expect(initialStoresMovementTarget({ actor, mode: 'person', movementType: 'checkout' })).toEqual({
+      kind: 'recipient',
+      purpose: '',
       recipient: actor,
+    });
+    expect(initialStoresMovementTarget({ actor, mode: 'person', movementType: 'return-to-store' })).toEqual({
+      kind: 'source',
       sourceCheckout: null,
     });
-    expect(
-      switchStoresMovementTarget({
-        actor,
-        currentMode: 'person',
-        isCheckout: true,
-        state: { ...state, purpose: 'repair', recipient: actor },
-        targetMode: 'job',
-      }),
-    ).toMatchObject({ purpose: '', recipient: null, sourceCheckout: null });
-
-    expect(
-      switchStoresMovementTarget({ actor, currentMode: 'person', isCheckout: false, state, targetMode: 'person' }),
-    ).toBe(state);
   });
 
-  it('posts a different recipient and an exact linked source as separate strict payloads', () => {
+  it('follows a changed operator only while the recipient is still the operator default', () => {
+    const nextActor = { ...actor, id: 'next-operator', name: 'Next Operator' };
+    const chosen = { ...actor, id: 'chosen-recipient', name: 'Chosen Recipient' };
+    const defaulted = { kind: 'recipient', purpose: '', recipient: actor } as const;
+
+    expect(syncDefaultRecipient({ actor: null, previousActorUserId: actor.id, target: defaulted })).toEqual({
+      ...defaulted,
+      recipient: null,
+    });
+    expect(
+      syncDefaultRecipient({ actor: nextActor, previousActorUserId: null, target: { ...defaulted, recipient: null } }),
+    ).toEqual({ ...defaulted, recipient: nextActor });
+    expect(
+      syncDefaultRecipient({
+        actor: nextActor,
+        previousActorUserId: actor.id,
+        target: { ...defaulted, recipient: chosen },
+      }),
+    ).toEqual({ ...defaulted, recipient: chosen });
+    expect(
+      syncDefaultRecipient({ actor: nextActor, previousActorUserId: actor.id, target: { job, kind: 'job' } }),
+    ).toEqual({ job, kind: 'job' });
+  });
+
+  it('is ready to post once the showing target is chosen', () => {
+    expect(hasStoresMovementTarget({ job: null, kind: 'job' }, undefined)).toBe(false);
+    expect(hasStoresMovementTarget({ job: null, kind: 'job' }, JOB_ID)).toBe(true);
+    expect(hasStoresMovementTarget({ kind: 'recipient', purpose: ' ', recipient: actor }, undefined)).toBe(false);
+    expect(hasStoresMovementTarget({ kind: 'recipient', purpose: 'Repair', recipient: actor }, undefined)).toBe(true);
+    expect(hasStoresMovementTarget({ kind: 'source', sourceCheckout }, undefined)).toBe(true);
+  });
+
+  it('posts each target as its own strict payload', () => {
+    const facts = { actorUserId: actor.id, fixedJobId: undefined, lengthMm: null, partId: PART_ID, quantity: 2 };
+
+    expect(toStoresMovementInput({ ...facts, movementType: 'checkout', target: { job, kind: 'job' } })).toEqual({
+      actorUserId: actor.id,
+      jobId: JOB_ID,
+      lengthMm: null,
+      partId: PART_ID,
+      quantity: 2,
+    });
     expect(
       toStoresMovementInput({
-        actorUserId: actor.id,
-        isCheckout: true,
-        jobId: null,
-        lengthMm: null,
-        mode: 'person',
-        partId: PART_ID,
-        purpose: 'Repair drill',
-        quantity: 2,
-        recipientUserId: 'recipient',
-        sourceCheckoutId: null,
+        ...facts,
+        movementType: 'checkout',
+        target: { kind: 'recipient', purpose: 'Repair drill', recipient: { ...actor, id: 'recipient' } },
       }),
     ).toEqual({
       actorUserId: actor.id,
@@ -68,35 +123,34 @@ describe('stores movement targets', () => {
       recipientUserId: 'recipient',
     });
     expect(
-      toStoresMovementInput({
-        actorUserId: actor.id,
-        isCheckout: false,
-        jobId: null,
-        lengthMm: null,
-        mode: 'person',
-        partId: PART_ID,
-        purpose: '',
-        quantity: 0.5,
-        recipientUserId: null,
-        sourceCheckoutId: SOURCE_ID,
+      toStoresMovementInput({ ...facts, movementType: 'return-to-store', target: { kind: 'source', sourceCheckout } }),
+    ).toEqual({ actorUserId: actor.id, quantity: 2, sourceCheckoutId: SOURCE_ID });
+  });
+
+  it('judges a Checkout Without a Job against the rack and a linked return against its source', () => {
+    const base = { jobStock: undefined, lengthMm: null, quantity: 2, row };
+
+    expect(
+      previewStoresMovementWarnings({
+        ...base,
+        movementType: 'checkout',
+        target: { kind: 'recipient', purpose: 'Repair', recipient: actor },
       }),
-    ).toEqual({ actorUserId: actor.id, quantity: 0.5, sourceCheckoutId: SOURCE_ID });
-  });
-
-  it('follows a changed operator only while the recipient is still the operator default', () => {
-    const nextActor = { ...actor, id: 'next-operator', name: 'Next Operator' };
-    const chosenRecipient = { ...actor, id: 'chosen-recipient', name: 'Chosen Recipient' };
-
-    expect(syncDefaultRecipient({ actor: null, previousActorUserId: actor.id, recipient: actor })).toBeNull();
-    expect(syncDefaultRecipient({ actor: nextActor, previousActorUserId: null, recipient: null })).toBe(nextActor);
-    expect(syncDefaultRecipient({ actor: nextActor, previousActorUserId: actor.id, recipient: chosenRecipient })).toBe(
-      chosenRecipient,
-    );
-  });
-
-  it('keeps posting gated until the tablet has an operator as well as valid movement facts', () => {
-    const ready = { hasLength: true, hasTarget: true, quantity: 1 };
-    expect(canPostStoresMovement({ ...ready, actorUserId: null })).toBe(false);
-    expect(canPostStoresMovement({ ...ready, actorUserId: actor.id })).toBe(true);
+    ).toEqual(['negative-stock-on-hand']);
+    expect(
+      previewStoresMovementWarnings({
+        ...base,
+        movementType: 'return-to-store',
+        target: { kind: 'source', sourceCheckout },
+      }),
+    ).toEqual([]);
+    expect(
+      previewStoresMovementWarnings({
+        ...base,
+        movementType: 'return-to-store',
+        quantity: 3,
+        target: { kind: 'source', sourceCheckout },
+      }),
+    ).toEqual(['exceeds-drawn']);
   });
 });

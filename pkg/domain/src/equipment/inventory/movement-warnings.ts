@@ -1,21 +1,31 @@
 import type { StockMovementWarningCode } from '@pkg/schema/equipment';
 import { type BuildBomComponent, type BuildWarningLine, deriveBuildComponentWarnings } from './build.js';
 
-/** The stock facts a Job movement is judged against, all scoped to one Job, Part and length bucket. */
-export type JobMovementFacts = {
+/** What a draw is judged against: the rack it leaves, and the plan it is drawn to — if it has one. */
+export type CheckoutFacts = {
   /** Stock on hand for this Part and length bucket, before the movement. */
   bucketQuantityOnHand: number;
   /**
-   * CFO demand for this Job and Part, summed across its assemblies. Zero means the Job never
-   * planned this Part at all — a custom Job has no CFO, and a Unit-bound one can still be drawn
-   * off it — because a CFO line's quantity is constrained positive.
+   * CFO demand for this Job and Part, summed across its assemblies. Zero means nothing planned this
+   * Part at all — a custom Job has no CFO, a Unit-bound one can still be drawn off it, and a Checkout
+   * Without a Job has no Job to plan anything — because a CFO line's quantity is constrained positive.
    */
   cfoQuantity: number;
-  /** Net drawn for this Job, Part and length bucket — the quantity a return can reverse. */
-  drawnBucketQuantity: number;
   /** Net drawn for this Job and Part across every length bucket. */
   drawnQuantity: number;
 };
+
+/** What a return is judged against: what its source still has out in the bucket it puts back. */
+export type ReturnToStoreFacts = {
+  /**
+   * Net drawn for this Job, Part and length bucket — or still outstanding on the one Checkout a
+   * source-linked return reverses. Either way, the quantity a return can reverse.
+   */
+  drawnBucketQuantity: number;
+};
+
+/** The stock facts a Job read serves, since a Job movement can run either direction. */
+export type JobMovementFacts = CheckoutFacts & ReturnToStoreFacts;
 
 /**
  * Everything a movement is judged against, one arm per kind. These are *served* facts: the server
@@ -24,9 +34,8 @@ export type JobMovementFacts = {
  * is what let three surfaces disagree about what a Purchase Order line could still send back.
  */
 export type StockMovementFacts =
-  | (JobMovementFacts & { kind: 'checkout' | 'return-to-store' })
-  | { bucketQuantityOnHand: number; kind: 'checkout-without-job' }
-  | { kind: 'return-without-job'; outstandingQuantity: number }
+  | (CheckoutFacts & { kind: 'checkout' })
+  | (ReturnToStoreFacts & { kind: 'return-to-store' })
   | { kind: 'receipt'; orderedQuantity: number; receivedQuantity: number }
   | {
       kind: 'return-to-supplier';
@@ -60,14 +69,11 @@ export function deriveMovementWarnings({
       // Flattened and de-duplicated: a confirm prompt asks about the build, while the post keeps the
       // per-component attribution its result carries.
       return [...new Set(deriveBuildComponentWarnings({ ...facts, quantity }).flatMap((warning) => warning.codes))];
-    case 'checkout':
-    case 'checkout-without-job': {
+    case 'checkout': {
       const warnings: StockMovementWarningCode[] = [];
       // Only a Job that planned this Part can be drawn past its plan. Off-CFO draws are valid, and
       // saying "exceeds the CFO" where there is no CFO trains Stores to dismiss the warning that counts.
-      if (facts.kind === 'checkout' && facts.cfoQuantity > 0 && facts.drawnQuantity + quantity > facts.cfoQuantity) {
-        warnings.push('exceeds-cfo');
-      }
+      if (facts.cfoQuantity > 0 && facts.drawnQuantity + quantity > facts.cfoQuantity) warnings.push('exceeds-cfo');
       if (facts.bucketQuantityOnHand - quantity < 0) warnings.push('negative-stock-on-hand');
 
       return warnings;
@@ -79,8 +85,6 @@ export function deriveMovementWarnings({
     case 'return-to-store':
       // A return puts stock back, so it can never call the rack short.
       return quantity > facts.drawnBucketQuantity ? ['exceeds-drawn'] : [];
-    case 'return-without-job':
-      return quantity > facts.outstandingQuantity ? ['exceeds-drawn'] : [];
     case 'return-to-supplier':
       // Sending back more than the line took in is almost always a scan error, so it earns a loud
       // confirm — and then posts anyway. The stock physically left; refusing the row would hide it.

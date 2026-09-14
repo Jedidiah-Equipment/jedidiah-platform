@@ -52,11 +52,14 @@ export function SourceCheckoutPicker({
           <TextInput
             accessibilityLabel="Search Checkouts"
             onChangeText={onSearchChange}
-            placeholder="Search recipient or purpose"
+            placeholder="Search Part, recipient, or purpose"
             textSize="toolbar"
             value={search}
           />
           {results.isPending ? <ActivityIndicator accessibilityLabel="Loading Checkouts" size="small" /> : null}
+          {!results.isPending && items.length === 0 ? (
+            <Text className="text-sm text-muted-foreground">No Checkouts without a Job found.</Text>
+          ) : null}
           {items.map((checkout) => (
             <CheckoutTile checkout={checkout} key={checkout.id} onPress={() => onSelect(checkout)} />
           ))}

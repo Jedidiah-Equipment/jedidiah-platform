@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
-import { canPostStoresMovement, switchStoresMovementTarget, toStoresMovementInput } from './job-movement-model';
+import {
+  canPostStoresMovement,
+  switchStoresMovementTarget,
+  syncDefaultRecipient,
+  toStoresMovementInput,
+} from './job-movement-model';
 
 const PART_ID = '00000000-0000-4000-8000-000000000001';
 const JOB_ID = '00000000-0000-4000-8000-000000000002';
@@ -76,6 +81,17 @@ describe('stores movement targets', () => {
         sourceCheckoutId: SOURCE_ID,
       }),
     ).toEqual({ actorUserId: actor.id, quantity: 0.5, sourceCheckoutId: SOURCE_ID });
+  });
+
+  it('follows a changed operator only while the recipient is still the operator default', () => {
+    const nextActor = { ...actor, id: 'next-operator', name: 'Next Operator' };
+    const chosenRecipient = { ...actor, id: 'chosen-recipient', name: 'Chosen Recipient' };
+
+    expect(syncDefaultRecipient({ actor: null, previousActorUserId: actor.id, recipient: actor })).toBeNull();
+    expect(syncDefaultRecipient({ actor: nextActor, previousActorUserId: null, recipient: null })).toBe(nextActor);
+    expect(syncDefaultRecipient({ actor: nextActor, previousActorUserId: actor.id, recipient: chosenRecipient })).toBe(
+      chosenRecipient,
+    );
   });
 
   it('keeps posting gated until the tablet has an operator as well as valid movement facts', () => {

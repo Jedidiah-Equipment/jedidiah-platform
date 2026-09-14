@@ -7,7 +7,7 @@ import type {
   StockOnHandRow,
 } from '@pkg/schema/equipment';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { type RefObject, useRef, useState } from 'react';
+import { type RefObject, useEffect, useRef, useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { Text } from '@/components/ui/text';
 import { TextInput } from '@/components/ui/text-input';
@@ -19,7 +19,12 @@ import { useStoresPostOutcome } from '@/equipment/lib/use-stores-post';
 import { useTRPC } from '@/lib/trpc';
 
 import { JobPicker, type JobPickerHandle } from './JobPicker';
-import { canPostStoresMovement, switchStoresMovementTarget, toStoresMovementInput } from './job-movement-model';
+import {
+  canPostStoresMovement,
+  switchStoresMovementTarget,
+  syncDefaultRecipient,
+  toStoresMovementInput,
+} from './job-movement-model';
 import { LengthBucketField } from './LengthBucketField';
 import { MovementWarningModal } from './MovementWarningModal';
 import { PostButton } from './PostButton';
@@ -78,6 +83,7 @@ function JobMovementForm({
   const [job, setJob] = useState<JobPickerOption | null>(null);
   const [jobSearch, setJobSearch] = useState('');
   const [recipient, setRecipient] = useState<InventoryRecipientOption | null>(actor);
+  const previousActorUserId = useRef(actor?.id ?? null);
   const [recipientSearch, setRecipientSearch] = useState('');
   const [purpose, setPurpose] = useState('');
   const [sourceCheckout, setSourceCheckout] = useState<SourceCheckoutOption | null>(null);
@@ -88,6 +94,15 @@ function JobMovementForm({
   const [keyedLengthMm, setKeyedLengthMm] = useState<string | null>(null);
 
   const isCheckout = movementType === 'checkout';
+
+  useEffect(() => {
+    const previousId = previousActorUserId.current;
+    previousActorUserId.current = actor?.id ?? null;
+    if (!isCheckout || mode !== 'person') return;
+
+    setRecipient((current) => syncDefaultRecipient({ actor, previousActorUserId: previousId, recipient: current }));
+  }, [actor, isCheckout, mode]);
+
   const returnTo = resolveStoresMovementParent({ jobId: fixedJobId, partCode: row.partCode }).returnTo;
   const outcome = useStoresPostOutcome({
     returnTo,
@@ -193,14 +208,16 @@ function JobMovementForm({
         </View>
       ) : null}
 
-      <View className="gap-1.5 rounded-xl border border-border bg-surface px-3 py-3">
-        <Text className="text-[11px] text-muted-foreground" mono>
-          OPERATOR
-        </Text>
-        <Text className="text-base text-surface-foreground" weight="semibold">
-          {actor?.name ?? 'Nobody selected'}
-        </Text>
-      </View>
+      {mode === 'person' ? (
+        <View className="gap-1.5 rounded-xl border border-border bg-surface px-3 py-3">
+          <Text className="text-[11px] text-muted-foreground" mono>
+            OPERATOR
+          </Text>
+          <Text className="text-base text-surface-foreground" weight="semibold">
+            {actor?.name ?? 'Nobody selected'}
+          </Text>
+        </View>
+      ) : null}
 
       {mode === 'job' && fixedJobId === undefined ? (
         <JobPicker

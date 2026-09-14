@@ -16,6 +16,19 @@ export type StoresMovementTargetState = {
   sourceCheckout: SourceCheckoutOption | null;
 };
 
+/** Follows Quick Switch only while the recipient still represents the previous operator default. */
+export function syncDefaultRecipient({
+  actor,
+  previousActorUserId,
+  recipient,
+}: {
+  actor: QuickSwitchActor | null;
+  previousActorUserId: string | null;
+  recipient: InventoryRecipientOption | null;
+}): InventoryRecipientOption | null {
+  return recipient === null || recipient.id === previousActorUserId ? actor : recipient;
+}
+
 /** Switching target never leaves a hidden Job/person selection waiting to leak into a later post. */
 export function switchStoresMovementTarget({
   actor,

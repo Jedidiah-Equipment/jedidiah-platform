@@ -81,6 +81,9 @@ export function StockMovementDialog({
   const [sourceLookupEnabled, setSourceLookupEnabled] = useState(
     fixedTargetMode === 'person' || defaultSourceCheckoutId !== '',
   );
+  const [recipientLookupEnabled, setRecipientLookupEnabled] = useState(
+    type === 'checkout' && fixedTargetMode === 'person',
+  );
   const [sourceSearch, setSourceSearch] = useState('');
   const [debouncedSourceSearch] = useDebouncedValue(sourceSearch, 250);
   const movementWarningsOutcome = useMovementWarnings();
@@ -90,7 +93,9 @@ export function StockMovementDialog({
 
   const jobPicker = useInventoryJobPicker({ enabled: fixedJob === undefined, movementType: type });
   const jobStockQuery = useQuery(trpc.inventory.jobStock.queryOptions({ jobId }, { enabled: jobId !== '' }));
-  const recipientQuery = useQuery(trpc.inventory.recipientOptions.queryOptions({ limit: 0, search: '' }));
+  const recipientQuery = useQuery(
+    trpc.inventory.recipientOptions.queryOptions({ limit: 0, search: '' }, { enabled: open && recipientLookupEnabled }),
+  );
   const sourceCheckoutQuery = useInfiniteQuery(
     trpc.inventory.sourceCheckouts.infiniteQueryOptions(
       {
@@ -237,6 +242,7 @@ export function StockMovementDialog({
                         form.setFieldValue('partId', nextValues.partId);
                         form.setFieldValue('recipientUserId', nextValues.recipientUserId);
                         form.setFieldValue('sourceCheckoutId', nextValues.sourceCheckoutId);
+                        setRecipientLookupEnabled(type === 'checkout' && mode === 'person');
                         setSourceLookupEnabled(mode === 'person');
                         if (mode === 'person') {
                           setSelectedJob(null);
@@ -259,10 +265,12 @@ export function StockMovementDialog({
                   </Field>
                 ) : null}
 
-                <Field>
-                  <FieldLabel>Operator</FieldLabel>
-                  <div className="rounded-md border px-3 py-2 text-sm">{session?.user.name ?? 'Signed-in user'}</div>
-                </Field>
+                {values.mode === 'person' ? (
+                  <Field>
+                    <FieldLabel>Operator</FieldLabel>
+                    <div className="rounded-md border px-3 py-2 text-sm">{session?.user.name ?? 'Signed-in user'}</div>
+                  </Field>
+                ) : null}
 
                 {values.mode === 'job' ? (
                   fixedJob ? (

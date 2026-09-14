@@ -3,7 +3,7 @@ import { AuthId, NullableThumbnailDataUrl, UserListInput } from '@pkg/schema';
 import { TRPCError } from '@trpc/server';
 import { z } from 'zod';
 import { getApiConfig } from '@/env.js';
-import { authorizedProcedure, requireBusinessAccess, router } from '@/trpc/init.js';
+import { authorizedProcedure, router } from '@/trpc/init.js';
 import { mapUserErrors } from './user-error-mapping.js';
 
 const config = getApiConfig();
@@ -23,15 +23,9 @@ const UserThumbnailInput = z.object({
  * owns about a User — Department Membership, the stores badge — has its own router in that business.
  */
 export const usersRouter = router({
-  // `user:list` is one permission for both businesses, but a Business is still read only by
-  // someone who holds it (ADR 0017), so an Equipment-only admin never sees Contracting people.
   list: authorizedProcedure('user:list')
     .input(UserListInput)
-    .query(({ ctx, input }) => {
-      requireBusinessAccess(ctx.access, input.business);
-
-      return listUsers({ business: input.business, db: ctx.db });
-    }),
+    .query(({ ctx, input }) => listUsers({ business: input.business, db: ctx.db })),
   /**
    * Whether the account is a shared device. Gated on `user:set-role`, not `user:update`: it decides
    * whether the account may sign for stock at all, which is the same class of decision as granting

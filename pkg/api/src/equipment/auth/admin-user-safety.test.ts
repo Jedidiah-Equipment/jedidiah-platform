@@ -324,7 +324,7 @@ describe('admin user safety policy', () => {
   });
 
   test('creates a contracting-only user without temporary Equipment access', async ({ context }) => {
-    const headers = await createSignedInAdmin(context, mockSession('super-admin'));
+    const headers = await createSignedInAdmin(context);
 
     await context.auth.api.createUser({
       body: {
@@ -460,7 +460,7 @@ describe('admin user safety policy', () => {
   });
 
   test('persists an independently assigned contracting role', async ({ context }) => {
-    const headers = await createSignedInAdmin(context, mockSession('super-admin'));
+    const headers = await createSignedInAdmin(context);
     await createUser(context.db, {
       email: 'contracting-user@example.com',
       id: 'contracting-user-id',
@@ -484,34 +484,6 @@ describe('admin user safety policy', () => {
       .where(sql`${user.id} = 'contracting-user-id'`);
 
     expect(updated).toEqual({ contractingRole: 'foreman', equipmentRole: 'sales' });
-  });
-
-  test('forbids an Equipment-only admin from assigning a contracting role', async ({ context }) => {
-    const headers = await createSignedInAdmin(context);
-    await createUser(context.db, {
-      email: 'equipment-target@example.com',
-      id: 'equipment-target-id',
-      name: 'Equipment Target',
-      role: 'sales',
-    });
-
-    await expect(
-      context.auth.api.adminUpdateUser({
-        body: { data: { contractingRole: 'foreman' }, userId: 'equipment-target-id' },
-        headers,
-      }),
-    ).rejects.toThrow('You can only assign roles in a business you belong to.');
-    await expect(
-      context.auth.api.createUser({
-        body: {
-          data: { contractingRole: 'foreman', equipmentRole: null },
-          email: 'cross-business@example.com',
-          name: 'Cross Business',
-          password: DEFAULT_DEMO_USER_PASSWORD,
-        },
-        headers,
-      }),
-    ).rejects.toThrow('You can only assign roles in a business you belong to.');
   });
 
   test('rejects changing your own contracting role', async ({ context }) => {

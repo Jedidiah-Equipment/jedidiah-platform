@@ -1,12 +1,6 @@
 import { canAssignUserRoleSlots } from '@pkg/core/equipment';
 import type { Db } from '@pkg/db';
-import {
-  createUserAccessSummaryForUser,
-  hasBusinessAccess,
-  hasPermission,
-  parseRoleSlots,
-  type RoleSlots,
-} from '@pkg/domain';
+import { createUserAccessSummaryForUser, hasPermission, parseRoleSlots, type RoleSlots } from '@pkg/domain';
 import { ContractingRole, EquipmentRole } from '@pkg/schema';
 import type { BetterAuthPlugin } from 'better-auth';
 import { APIError, createAuthMiddleware, getSessionFromCtx } from 'better-auth/api';
@@ -42,11 +36,6 @@ const INVALID_ROLE_ERROR = {
 const SUPER_ADMIN_SPANS_CONTRACTING_ERROR = {
   code: 'SUPER_ADMIN_SPANS_CONTRACTING',
   message: 'A super admin spans both businesses and cannot hold a separate contracting role.',
-} as const;
-
-const CROSS_BUSINESS_ROLE_ERROR = {
-  code: 'ROLE_OUTSIDE_YOUR_BUSINESS',
-  message: 'You can only assign roles in a business you belong to.',
 } as const;
 
 const ROLE_SPELLING_ERROR = {
@@ -103,12 +92,6 @@ export function adminUserSafetyPlugin(database: Db): BetterAuthPlugin {
 
             if (change.userId === session.user.id && changesSlots(actor, change)) {
               throw APIError.from('FORBIDDEN', SELF_ROLE_CHANGE_ERROR);
-            }
-
-            // User admin is per business (ADR 0017): each mode offers only its own slot, and the
-            // server holds that line for callers that bypass the app.
-            if (change.contractingRole !== undefined && !hasBusinessAccess(actorAccess, 'contracting')) {
-              throw APIError.from('FORBIDDEN', CROSS_BUSINESS_ROLE_ERROR);
             }
 
             const policy = await canAssignUserRoleSlots({

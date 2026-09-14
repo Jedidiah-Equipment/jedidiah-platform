@@ -16,7 +16,7 @@
   - `paginationMode="cursor"` — the API owns filtering, sorting, and pagination. Follow
     `src/equipment/pages/products/components/ProductTable.tsx`.
   - `paginationMode="complete"` — the browser owns them and every row renders. Follow
-    `src/equipment/pages/users/components/UserTable.tsx`.
+    `src/pages/users/components/UserTable.tsx`.
   - `paginationMode="incremental"` — the browser owns them but only a window of rows paints, with a
     Load more button (`pageSize`, default 25). Follow `src/equipment/pages/inventory/buy-list/components/BuyListTable.tsx`.
     Reach for it over `complete` when one server snapshot must stay whole — sorting, searching and

@@ -18,7 +18,7 @@ import {
 } from '@pkg/db/equipment';
 import { addDateOnlyDays, parseDateOnlyParts, toPlantDateOnly } from '@pkg/domain';
 import { parseJobCodeSearch, QUOTE_SALESPERSON_ROLES, selectReworkBuildSpec } from '@pkg/domain/equipment';
-import { DateOnlyIso, getNextCursor, UUID } from '@pkg/schema';
+import { DateOnlyIso, getNextCursor, type UserListResult, UUID } from '@pkg/schema';
 import {
   CompetingAllocationQuote,
   type PriorityQuote,
@@ -31,15 +31,13 @@ import {
   type QuoteSortBy,
   type QuoteSummary,
   UpcomingDeliveryQuotesResult,
-  type UserListResult,
 } from '@pkg/schema/equipment';
 import { and, asc, eq, inArray, isNotNull, isNull, ne, or, type SQL, sql } from 'drizzle-orm';
-
+import { mapUserAccount } from '../../users/user-service.js';
 import { listBayQueueAvailability } from '../jobs/job-read-service.js';
 import { listAssemblies } from '../products/product-assembly-service.js';
 import { listProductBays } from '../products/product-service.js';
 import { quoteEverPlacedAUnit } from '../units/product-unit-service.js';
-import { mapUser } from '../users/user-service.js';
 import {
   QuoteInvalidReferenceError,
   QuoteNotFoundError,
@@ -508,10 +506,9 @@ export async function listQuoteSalespeople({ db }: { db: Db }): Promise<UserList
 
   return {
     users: rows.map((row) =>
-      mapUser({
+      mapUserAccount({
         assistantEnabled: row.assistantEnabled,
         contractingRole: row.contractingRole,
-        departments: [],
         email: row.email,
         emailVerified: row.emailVerified,
         id: row.id,

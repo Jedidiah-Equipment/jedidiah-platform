@@ -1,4 +1,4 @@
-import { IconAddressBook, IconChevronRight, IconGauge, IconTractor } from '@tabler/icons-react';
+import { IconAddressBook, IconChevronRight, IconGauge, IconTractor, IconUsers } from '@tabler/icons-react';
 import { Link, useLocation } from '@tanstack/react-router';
 import { useState } from 'react';
 import { Collapsible, CollapsibleContent } from '@/components/ui/collapsible.js';
@@ -31,6 +31,7 @@ export function AppNavMain() {
   const canReviewReadings = useCan('contracting_reading:update').can;
   const canReadDirectory = useCan('contracting_directory:read').can;
   const canReadFleet = useCan('contracting_machine:read').can;
+  const canListUsers = useCan('user:list').can;
   const { setOpenMobile } = useSidebar();
   const pathname = useLocation({ select: (location) => location.pathname });
   const [open, setOpen] = useState(true);
@@ -139,6 +140,25 @@ export function AppNavMain() {
                 </CollapsibleContent>
               </Collapsible>
             ) : null}
+          </SidebarMenu>
+        </SidebarGroup>
+      ) : null}
+      {canListUsers ? (
+        <SidebarGroup>
+          <SidebarGroupLabel>Administration</SidebarGroupLabel>
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <Link to="/contracting/users" onClick={() => setOpenMobile(false)}>
+                <SidebarMenuButton
+                  render={<span />}
+                  isActive={pathname.startsWith('/contracting/users')}
+                  tooltip="Users"
+                >
+                  <IconUsers />
+                  <span>Users</span>
+                </SidebarMenuButton>
+              </Link>
+            </SidebarMenuItem>
           </SidebarMenu>
         </SidebarGroup>
       ) : null}

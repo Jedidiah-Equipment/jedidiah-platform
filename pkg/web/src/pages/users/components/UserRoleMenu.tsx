@@ -17,7 +17,7 @@ type UserRoleMenuProps<R extends AppRole> = {
   id: string;
   onRoleChange: (role: R | null) => void;
   roles: readonly R[];
-  value: R | null;
+  value: AppRole | null;
 };
 
 const NO_ROLE_VALUE = '__none__';

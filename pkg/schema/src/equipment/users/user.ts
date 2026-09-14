@@ -1,45 +1,19 @@
 import { z } from 'zod';
 
 import { AuthId } from '../../auth/auth-id.js';
-import { ContractingRole, EquipmentRole } from '../../auth/authorization.js';
-import { NullablePhoneNumber } from '../../common/phone-number.js';
-import { NullableThumbnailDataUrl } from '../../common/thumbnail.js';
+import { UserAccount } from '../../users/user.js';
 import { Department } from '../common/departments.js';
 
-export type UserSummary = z.infer<typeof UserSummary>;
-export const UserSummary = z.object({
-  assistantEnabled: z.boolean(),
+/** Department Membership is descriptive only (ADR 0017): which plant departments a User belongs to. */
+export type UserDepartmentMembership = z.infer<typeof UserDepartmentMembership>;
+export const UserDepartmentMembership = z.object({
   departments: z.array(Department),
-  emailVerified: z.boolean(),
-  id: AuthId,
-  /**
-   * A shared device rather than a person — today the stores tablet. Distinct from role, which still
-   * says what the account may *do*: this says that nobody in particular is behind it, which is why
-   * a device must name a person before it may move stock and may never be named as one itself.
-   */
-  isDevice: z.boolean(),
-  name: z.string().trim().min(1),
-  email: z.email(),
-  phoneNumber: NullablePhoneNumber,
-  equipmentRole: EquipmentRole.nullable(),
-  contractingRole: ContractingRole.nullable(),
-  thumbnailDataUrl: NullableThumbnailDataUrl,
+  userId: AuthId,
 });
 
-export type UserSortBy = z.infer<typeof UserSortBy>;
-export const UserSortBy = z.enum(['email', 'emailVerified', 'name', 'equipmentRole', 'contractingRole']);
-
-export type UserAccount = z.infer<typeof UserAccount>;
-export const UserAccount = UserSummary.omit({
-  departments: true,
-});
-
-export type UserListInput = z.infer<typeof UserListInput>;
-export const UserListInput = z.object({});
-
-export type UserListResult = z.infer<typeof UserListResult>;
-export const UserListResult = z.object({
-  users: z.array(UserSummary),
+export type UserDepartmentListResult = z.infer<typeof UserDepartmentListResult>;
+export const UserDepartmentListResult = z.object({
+  memberships: z.array(UserDepartmentMembership),
 });
 
 /**
@@ -50,6 +24,6 @@ export const UserListResult = z.object({
  * close and v1 deliberately does not (spec §13).
  */
 export type UserBadgePdfModel = z.infer<typeof UserBadgePdfModel>;
-export const UserBadgePdfModel = UserSummary.pick({ id: true, name: true });
+export const UserBadgePdfModel = UserAccount.pick({ id: true, name: true });
 
 export type UserBadgePdfRenderer = (input: { document: UserBadgePdfModel[]; filename: string }) => Promise<Uint8Array>;

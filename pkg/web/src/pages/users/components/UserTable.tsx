@@ -1,10 +1,8 @@
-import { hasBothBusinessAccess, hasBusinessAccess, roleLabels } from '@pkg/domain';
-import { departmentLabels } from '@pkg/domain/equipment';
-import type { AuthId } from '@pkg/schema';
-import { UserSortBy, type UserSummary } from '@pkg/schema/equipment';
+import { getBusinessRole, roleLabels } from '@pkg/domain';
+import { type AppRole, type AuthId, type Business, type UserAccount, UserSortBy } from '@pkg/schema';
 import { IconDeviceTablet } from '@tabler/icons-react';
 import type React from 'react';
-import { useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { DataTable } from '@/components/data-table/DataTable.js';
 import { type DataTableColumnDef, useDataTable } from '@/components/data-table/features.js';
@@ -14,19 +12,20 @@ import { EntityThumbnail } from '@/components/thumbnail/EntityThumbnail.js';
 import { Badge } from '@/components/ui/badge.js';
 
 type UserTableProps = {
+  business: Business;
   currentUserId: AuthId | undefined;
   errorMessage: string | undefined;
+  /** The business's own columns, placed between the role and the email status. */
+  extraColumns: DataTableColumnDef<UserAccount>[];
+  extraSearchTerms: (user: UserAccount) => string[];
   isLoading: boolean;
-  users: UserSummary[];
-  onEditUser: ((user: UserSummary) => void) | undefined;
+  users: UserAccount[];
+  onEditUser: ((user: UserAccount) => void) | undefined;
 };
 
 type UserTableSortInput = {
   sortBy: UserSortBy;
 };
-
-const userModes = ['Equipment', 'Contracting', 'Both', 'No access'] as const;
-type UserMode = (typeof userModes)[number];
 
 export const useUserTableStore = createPersistedDataTableStore({
   initialState: {
@@ -38,7 +37,7 @@ export const useUserTableStore = createPersistedDataTableStore({
     ],
   },
   persistName: 'users-table',
-  persistVersion: 3,
+  persistVersion: 4,
 });
 
 const userSortOptions: SortOptions<UserTableSortInput> = {
@@ -48,7 +47,20 @@ const userSortOptions: SortOptions<UserTableSortInput> = {
   },
 };
 
-export const UserTable: React.FC<UserTableProps> = ({ currentUserId, errorMessage, isLoading, onEditUser, users }) => {
+/**
+ * One business's user admin: the role column reads the slot for the business the table stands in,
+ * so a super-admin reads as such in both while everyone else reads the one role they hold here.
+ */
+export const UserTable: React.FC<UserTableProps> = ({
+  business,
+  currentUserId,
+  errorMessage,
+  extraColumns,
+  extraSearchTerms,
+  isLoading,
+  onEditUser,
+  users,
+}) => {
   const { columnFilters, globalFilter, setColumnFilters, setGlobalFilter, setSorting, sorting } = useUserTableStore(
     useShallow((state) => ({
       columnFilters: state.columnFilters,
@@ -59,8 +71,8 @@ export const UserTable: React.FC<UserTableProps> = ({ currentUserId, errorMessag
       sorting: state.sorting,
     })),
   );
-  const columns = useMemo<DataTableColumnDef<UserSummary>[]>(() => {
-    const tableColumns: DataTableColumnDef<UserSummary>[] = [
+  const columns = useMemo<DataTableColumnDef<UserAccount>[]>(
+    () => [
       {
         accessorKey: 'name',
         cell: ({ row }) => (
@@ -76,45 +88,20 @@ export const UserTable: React.FC<UserTableProps> = ({ currentUserId, errorMessag
         header: 'Full Name',
       },
       {
-        id: 'mode',
-        accessorFn: userMode,
+        id: 'role',
+        accessorFn: (user) => getBusinessRole(user, business),
+        cell: ({ row }) => <span>{formatRole(getBusinessRole(row.original, business))}</span>,
         enableColumnFilter: true,
-        enableSorting: false,
-        filterFn: (row, columnId, value) =>
-          !Array.isArray(value) || value.length === 0 || value.includes(row.getValue(columnId)),
-        header: 'Mode',
-        meta: {
-          filterVariant: 'multi-select',
-          filterOptions: userModes.map((mode) => ({
-            label: mode,
-            value: mode,
-          })),
+        enableSorting: true,
+        filterFn: (row, _columnId, filterValue) => {
+          const search = normalizeFilterValue(filterValue);
+          const role = getBusinessRole(row.original, business);
+
+          return !search || [role ?? '', formatRole(role)].some((value) => value.toLowerCase().includes(search));
         },
+        header: 'Role',
       },
-      {
-        accessorKey: 'equipmentRole',
-        cell: ({ row }) => <span>{formatRole(row.original.equipmentRole)}</span>,
-        enableColumnFilter: true,
-        enableSorting: true,
-        filterFn: roleColumnFilter('equipmentRole'),
-        header: 'Equipment role',
-      },
-      {
-        accessorKey: 'contractingRole',
-        cell: ({ row }) => <span>{formatRole(row.original.contractingRole)}</span>,
-        enableColumnFilter: true,
-        enableSorting: true,
-        filterFn: roleColumnFilter('contractingRole'),
-        header: 'Contracting role',
-      },
-      {
-        accessorKey: 'departments',
-        cell: ({ row }) => <DepartmentList departments={row.original.departments} />,
-        enableColumnFilter: true,
-        enableSorting: false,
-        filterFn: userDepartmentsFilter,
-        header: 'Departments',
-      },
+      ...extraColumns,
       {
         accessorKey: 'emailVerified',
         cell: ({ row }) => <span>{row.original.emailVerified ? 'Verified' : 'Unverified'}</span>,
@@ -123,10 +110,30 @@ export const UserTable: React.FC<UserTableProps> = ({ currentUserId, errorMessag
         filterFn: userEmailVerifiedFilter,
         header: 'Email status',
       },
-    ];
+    ],
+    [business, currentUserId, extraColumns],
+  );
 
-    return tableColumns;
-  }, [currentUserId]);
+  const globalFilterFn = useCallback(
+    (row: { original: UserAccount }, _columnId: string, filterValue: unknown) => {
+      const search = normalizeFilterValue(filterValue);
+
+      if (!search) {
+        return true;
+      }
+
+      const role = getBusinessRole(row.original, business);
+
+      return [
+        row.original.name,
+        role ?? '',
+        formatRole(role),
+        ...extraSearchTerms(row.original),
+        row.original.emailVerified ? 'verified' : 'unverified',
+      ].some((value) => value.toLowerCase().includes(search));
+    },
+    [business, extraSearchTerms],
+  );
 
   const constrainedSorting = useMemo(() => constrainSorting(sorting, userSortOptions), [sorting]);
 
@@ -134,7 +141,7 @@ export const UserTable: React.FC<UserTableProps> = ({ currentUserId, errorMessag
     columns,
     data: users,
     enableSortingRemoval: false,
-    globalFilterFn: userGlobalFilter,
+    globalFilterFn,
     onColumnFiltersChange: setColumnFilters,
     onGlobalFilterChange: setGlobalFilter,
     onSortingChange: setSorting,
@@ -189,50 +196,11 @@ export const UserNameCell: React.FC<UserNameCellProps> = ({ isCurrentUser, isDev
   </div>
 );
 
-function userMode(user: UserSummary): UserMode {
-  if (hasBothBusinessAccess(user)) return 'Both';
-  if (hasBusinessAccess(user, 'equipment')) return 'Equipment';
-  if (hasBusinessAccess(user, 'contracting')) return 'Contracting';
-  return 'No access';
-}
-
-function userGlobalFilter(row: { original: UserSummary }, _columnId: string, filterValue: unknown) {
-  const search = normalizeFilterValue(filterValue);
-
-  if (!search) {
-    return true;
-  }
-
-  return [
-    row.original.name,
-    row.original.equipmentRole ?? '',
-    formatRole(row.original.equipmentRole),
-    row.original.contractingRole ?? '',
-    formatRole(row.original.contractingRole),
-    ...row.original.departments.map((department) => departmentLabels[department]),
-    row.original.emailVerified ? 'verified' : 'unverified',
-  ].some((value) => value.toLowerCase().includes(search));
-}
-
-function roleColumnFilter(slot: 'contractingRole' | 'equipmentRole') {
-  return (row: { original: UserSummary }, _columnId: string, filterValue: unknown) => {
-    const search = normalizeFilterValue(filterValue);
-
-    if (!search) {
-      return true;
-    }
-
-    const role = row.original[slot];
-
-    return [role ?? '', formatRole(role)].some((value) => value.toLowerCase().includes(search));
-  };
-}
-
-function formatRole(role: UserSummary['equipmentRole'] | UserSummary['contractingRole']): string {
+function formatRole(role: AppRole | null): string {
   return role ? roleLabels[role] : 'No access';
 }
 
-function userEmailVerifiedFilter(row: { original: UserSummary }, _columnId: string, filterValue: unknown) {
+function userEmailVerifiedFilter(row: { original: UserAccount }, _columnId: string, filterValue: unknown) {
   const search = normalizeFilterValue(filterValue);
 
   if (!search) {
@@ -242,27 +210,7 @@ function userEmailVerifiedFilter(row: { original: UserSummary }, _columnId: stri
   return (row.original.emailVerified ? 'verified' : 'unverified').includes(search);
 }
 
-function userDepartmentsFilter(row: { original: UserSummary }, _columnId: string, filterValue: unknown) {
-  const search = normalizeFilterValue(filterValue);
-
-  if (!search) {
-    return true;
-  }
-
-  return row.original.departments.some((department) =>
-    [department, departmentLabels[department]].some((value) => value.toLowerCase().includes(search)),
-  );
-}
-
-const DepartmentList: React.FC<{ departments: UserSummary['departments'] }> = ({ departments }) => {
-  if (departments.length === 0) {
-    return <span className="text-muted-foreground">None</span>;
-  }
-
-  return <span>{departments.map((department) => departmentLabels[department]).join(', ')}</span>;
-};
-
-function normalizeFilterValue(value: unknown): string {
+export function normalizeFilterValue(value: unknown): string {
   return String(value ?? '')
     .trim()
     .toLowerCase();

@@ -1,0 +1,45 @@
+import { z } from 'zod';
+
+import { AuthId } from '../auth/auth-id.js';
+import { ContractingRole, EquipmentRole } from '../auth/authorization.js';
+import { Business } from '../common/business.js';
+import { NullablePhoneNumber } from '../common/phone-number.js';
+import { NullableThumbnailDataUrl } from '../common/thumbnail.js';
+
+/** A User as user admin sees it: the sign-in account and both role slots, with nothing a business owns. */
+export type UserAccount = z.infer<typeof UserAccount>;
+export const UserAccount = z.object({
+  assistantEnabled: z.boolean(),
+  emailVerified: z.boolean(),
+  id: AuthId,
+  /**
+   * A shared device rather than a person — today the stores tablet. Distinct from role, which still
+   * says what the account may *do*: this says that nobody in particular is behind it, which is why
+   * a device must name a person before it may move stock and may never be named as one itself.
+   */
+  isDevice: z.boolean(),
+  name: z.string().trim().min(1),
+  email: z.email(),
+  phoneNumber: NullablePhoneNumber,
+  equipmentRole: EquipmentRole.nullable(),
+  contractingRole: ContractingRole.nullable(),
+  thumbnailDataUrl: NullableThumbnailDataUrl,
+});
+
+export type UserSortBy = z.infer<typeof UserSortBy>;
+export const UserSortBy = z.enum(['email', 'emailVerified', 'name', 'role']);
+
+/**
+ * User admin is per Business: a list names the Business it stands in and gets the users who hold a
+ * role there — super-admin in both, since it spans the split (ADR 0017) — plus users holding no role
+ * at all, so nobody an administrator has removed from every business drops out of reach.
+ */
+export type UserListInput = z.infer<typeof UserListInput>;
+export const UserListInput = z.object({
+  business: Business,
+});
+
+export type UserListResult = z.infer<typeof UserListResult>;
+export const UserListResult = z.object({
+  users: z.array(UserAccount),
+});

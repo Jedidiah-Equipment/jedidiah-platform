@@ -6,7 +6,7 @@ import { toSelectOptions } from './helpers.js';
 
 export function useUserOptions() {
   const trpc = useTRPC();
-  const query = useQuery(trpc.users.list.queryOptions());
+  const query = useQuery(trpc.users.list.queryOptions({ business: 'equipment' }));
   const items = query.data?.users ?? [];
   const selectOptions = useMemo(() => toSelectOptions(items, (user) => user.name), [items]);
 

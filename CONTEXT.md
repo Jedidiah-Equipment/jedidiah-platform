@@ -137,7 +137,11 @@ its business, so a user holding bay-operator beside foreman lands on the Equipme
 do there and sees the mode switcher — by design, since the slot says which business the person belongs to.
 The **Default Business** a signed-in user lands on is Equipment when held, otherwise Contracting. The single
 `super-admin` role spans both slots by definition; it is stored once, in the Equipment slot, and its Contracting
-access is derived from that, never persisted. Department Membership is descriptive only and must not be
+access is derived from that, never persisted. **User admin is per Business**: the Users page in each mode lists
+the users holding that Business's role — a super-admin in both, and a user holding no role at all in both, so
+nobody removed from every business drops out of reach — and offers only that Business's roles when creating or
+editing, so a user gains a second slot by script rather than through the app. Department Membership is
+Equipment's own addition to that page. Department Membership is descriptive only and must not be
 used to scope permissions. Contracting roles live in `CONTEXT-CONTRACTING.md`; the Equipment roles are:
 
 - **super-admin**: everything admin can do, plus the exclusive ability to review Corrective Feedback and Internal Notes through the Feedback inbox. The only role that can see Corrective Feedback — admins cannot. Only a super-admin may grant or remove the super-admin role; admins manage every other role but cannot mint a super-admin (which would otherwise be an escalation path to Corrective Feedback).

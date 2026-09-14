@@ -28,6 +28,7 @@ export const CONTRACTING_SECTIONS: DocsSection[] = [
       { text: 'Maintain Machines', link: '/contracting/maintain-machines' },
       { text: 'Maintain Categories', link: '/contracting/maintain-categories' },
       { text: 'Maintain Implements', link: '/contracting/maintain-implements' },
+      { text: 'Manage Users', link: '/contracting/manage-users' },
     ],
   },
 ];

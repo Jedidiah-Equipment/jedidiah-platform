@@ -1,5 +1,5 @@
 import { hasPermission } from '@pkg/domain';
-import type { Department, UserSummary } from '@pkg/schema/equipment';
+import type { Business, UserAccount } from '@pkg/schema';
 import { IconLoader2, IconMailCheck } from '@tabler/icons-react';
 import { useMutation } from '@tanstack/react-query';
 import type React from 'react';
@@ -16,24 +16,26 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog.js';
 import { ScrollArea } from '@/components/ui/scroll-area.js';
-import { useQueryInvalidation } from '@/equipment/hooks/use-query-invalidation.js';
 import { useAccess } from '@/hooks/use-access.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
+import { useUserAdminInvalidation } from '@/hooks/use-user-admin-invalidation.js';
 import { authClient } from '@/lib/auth-client.js';
 import { useTRPC } from '@/lib/trpc.js';
-import { UserBadgePrintButton } from './components/UserBadgePrintButton.js';
 import { UserEditForm, type UserEditFormValues } from './components/UserEditForm.js';
 import type { UserPasswordFormValues } from './components/UserPasswordForm.js';
 import { AuthAdminError, unwrapAuthResult } from './user-admin-client.js';
+import type { UserAdminExtension } from './user-admin-extension.js';
 
 type UserEditDialogProps = {
-  user: UserSummary;
+  business: Business;
+  extension: UserAdminExtension;
+  user: UserAccount;
   onClose: () => void;
 };
 
-export const UserEditDialog: React.FC<UserEditDialogProps> = ({ user, onClose }) => {
+export const UserEditDialog: React.FC<UserEditDialogProps> = ({ business, extension, user, onClose }) => {
   const trpc = useTRPC();
-  const { invalidateAuth, invalidateUsers } = useQueryInvalidation();
+  const { invalidateAuth, invalidateUsers } = useUserAdminInvalidation();
   const accessQuery = useAccess();
   const showMutationError = useApiMutationErrorToast();
   const access = accessQuery.data;
@@ -43,11 +45,9 @@ export const UserEditDialog: React.FC<UserEditDialogProps> = ({ user, onClose })
 
   const canUpdateProfile = hasPermission(access, 'user:update');
   const canSetEmail = hasPermission(access, 'user:set-email');
-  const canAssignDepartments = canUpdateProfile;
   const canSetRole = hasPermission(access, 'user:set-role');
   const canSetPassword = hasPermission(access, 'user:set-password');
   const canSaveUser = canUpdateProfile || canSetEmail || canSetRole;
-  const setDepartmentsMutation = useMutation(trpc.users.setDepartments.mutationOptions());
   const setDeviceMutation = useMutation(trpc.users.setDevice.mutationOptions());
   const updateThumbnailMutation = useMutation(trpc.users.updateThumbnail.mutationOptions());
 
@@ -93,11 +93,7 @@ export const UserEditDialog: React.FC<UserEditDialogProps> = ({ user, onClose })
         didUpdate = true;
       }
 
-      if (canAssignDepartments && haveDepartmentsChanged(value.departments, baselineUser.departments)) {
-        await setDepartmentsMutation.mutateAsync({
-          departments: value.departments,
-          userId: baselineUser.id,
-        });
+      if (await formExtension.save(baselineUser.id)) {
         didUpdate = true;
       }
 
@@ -128,6 +124,7 @@ export const UserEditDialog: React.FC<UserEditDialogProps> = ({ user, onClose })
       showMutationError(error, 'Unable to update user.');
     },
   });
+  const formExtension = extension.useFormExtension({ isPending: saveUserMutation.isPending, user: baselineUser });
 
   const sendVerificationMutation = useMutation({
     ...trpc.users.sendVerificationEmail.mutationOptions(),
@@ -160,11 +157,12 @@ export const UserEditDialog: React.FC<UserEditDialogProps> = ({ user, onClose })
         </DialogHeader>
         <ScrollArea className="-mx-4 max-h-[50vh] px-4">
           <UserEditForm
-            canAssignDepartments={canAssignDepartments}
+            business={business}
             canSetEmail={canSetEmail}
             canSetPassword={canSetPassword}
             canSetRole={canSetRole}
             canUpdateProfile={canUpdateProfile}
+            extraFields={formExtension.fields}
             formId={formId}
             initialUser={baselineUser}
             isPasswordPending={setPasswordMutation.isPending}
@@ -174,9 +172,7 @@ export const UserEditDialog: React.FC<UserEditDialogProps> = ({ user, onClose })
             onSubmit={(value) => saveUserMutation.mutateAsync(value)}
             roleError={roleError}
           />
-          {canSetRole && baselineUser.equipmentRole === 'stores' && !baselineUser.isDevice ? (
-            <UserBadgePrintButton userId={baselineUser.id} />
-          ) : null}
+          {formExtension.actions}
           {canUpdateProfile && !baselineUser.emailVerified ? (
             <Button
               className="mt-4 w-full"
@@ -220,7 +216,7 @@ function buildProfileUpdateData({
   canUpdateProfile,
   value,
 }: {
-  baselineUser: UserSummary;
+  baselineUser: UserAccount;
   canSetEmail: boolean;
   canSetRole: boolean;
   canUpdateProfile: boolean;
@@ -245,6 +241,7 @@ function buildProfileUpdateData({
   if (canUpdateProfile && value.assistantEnabled !== baselineUser.assistantEnabled) {
     data.assistantEnabled = value.assistantEnabled;
   }
+  // Only the slot of the business this dialog stands in is shown, so at most one of these moves.
   if (canSetRole && value.equipmentRole !== baselineUser.equipmentRole) {
     data.equipmentRole = value.equipmentRole;
   }
@@ -253,13 +250,4 @@ function buildProfileUpdateData({
   }
 
   return data;
-}
-
-function haveDepartmentsChanged(left: readonly Department[], right: readonly Department[]) {
-  if (left.length !== right.length) {
-    return true;
-  }
-
-  const rightDepartments = new Set(right);
-  return left.some((department) => !rightDepartments.has(department));
 }

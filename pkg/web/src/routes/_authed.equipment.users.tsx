@@ -1,10 +1,15 @@
 import { createFileRoute } from '@tanstack/react-router';
 
-import { UsersPage } from '@/equipment/pages/users/UsersPage.js';
+import { equipmentUserAdminExtension } from '@/equipment/pages/users/user-admin-extension.js';
+import { UsersPage } from '@/pages/users/UsersPage.js';
 
 export const Route = createFileRoute('/_authed/equipment/users')({
   staticData: {
     pageLabel: 'Users',
   },
-  component: UsersPage,
+  component: EquipmentUsersRoute,
 });
+
+function EquipmentUsersRoute() {
+  return <UsersPage business="equipment" extension={equipmentUserAdminExtension} />;
+}

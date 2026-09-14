@@ -1,16 +1,14 @@
-import { UserPassword } from '@pkg/schema';
-import { UserSummary } from '@pkg/schema/equipment';
+import { type Business, UserAccount, UserPassword } from '@pkg/schema';
 import type React from 'react';
 import type { z } from 'zod';
 
 import { useAppForm } from '@/components/form/index.js';
 import { FieldGroup } from '@/components/ui/field.js';
-import { RoleSlotFields } from './RoleSlotFields.js';
-import { UserDepartmentsForm } from './UserDepartmentsForm.js';
+import { BusinessRoleField } from './BusinessRoleField.js';
 import { SubmitFooter } from './UserFormFooter.js';
 
 export type UserCreateFormValues = z.infer<typeof UserCreateFormValues>;
-export const UserCreateFormValues = UserSummary.omit({
+export const UserCreateFormValues = UserAccount.omit({
   assistantEnabled: true,
   id: true,
   thumbnailDataUrl: true,
@@ -18,29 +16,36 @@ export const UserCreateFormValues = UserSummary.omit({
   password: UserPassword,
 });
 
+/** A new user starts in the business creating them, in the role most of its people hold. */
+const defaultRoleSlots = {
+  contracting: { contractingRole: 'foreman', equipmentRole: null },
+  equipment: { contractingRole: null, equipmentRole: 'sales' },
+} as const satisfies Record<Business, Pick<UserCreateFormValues, 'contractingRole' | 'equipmentRole'>>;
+
 type UserCreateFormProps = {
-  canAssignDepartments: boolean;
+  business: Business;
   canSetRole: boolean;
+  /** The business's own fields, rendered after the role. */
+  extraFields: React.ReactNode;
   isPending: boolean;
   onSubmit: (value: UserCreateFormValues) => Promise<unknown>;
 };
 
 export const UserCreateForm: React.FC<UserCreateFormProps> = ({
-  canAssignDepartments,
+  business,
   canSetRole,
+  extraFields,
   isPending,
   onSubmit,
 }) => {
   const defaultValues: UserCreateFormValues = {
-    departments: [],
     email: '',
     emailVerified: true,
     isDevice: false,
     name: '',
     password: '',
     phoneNumber: null,
-    contractingRole: null,
-    equipmentRole: 'sales',
+    ...defaultRoleSlots[business],
   };
   const form = useAppForm({
     defaultValues,
@@ -79,22 +84,13 @@ export const UserCreateForm: React.FC<UserCreateFormProps> = ({
             )}
           </form.AppField>
         ) : null}
-        <RoleSlotFields
+        <BusinessRoleField
+          business={business}
           disabled={isPending}
           fields={{ contractingRole: 'contractingRole', equipmentRole: 'equipmentRole' }}
           form={form}
         />
-        {canAssignDepartments ? (
-          <form.AppField name="departments">
-            {(field) => (
-              <UserDepartmentsForm
-                initialDepartments={field.state.value}
-                isPending={isPending}
-                onDepartmentsChange={(departments) => field.handleChange([...departments])}
-              />
-            )}
-          </form.AppField>
-        ) : null}
+        {extraFields}
         <form.AppField name="emailVerified">{(field) => <field.CheckboxField label="Email verified" />}</form.AppField>
         <form.AppField name="password">
           {(field) => <field.PasswordField autoComplete="new-password" label="Password" />}

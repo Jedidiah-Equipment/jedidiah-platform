@@ -39,8 +39,8 @@ import { and, asc, desc, eq, inArray, or, type SQL, sql } from 'drizzle-orm';
 import { unionAll } from 'drizzle-orm/pg-core';
 
 import { mutateEntity } from '../../audit/mutate-entity.js';
-import { UserNotFoundError } from '../users/user-errors.js';
-import { userAuditDescriptor } from '../users/user-service.js';
+import { UserNotFoundError } from '../../users/user-errors.js';
+import { userAuditDescriptor } from '../../users/user-service.js';
 
 /**
  * The said half of the feed. Quote general feedback is still private to the `/feedback` inbox and

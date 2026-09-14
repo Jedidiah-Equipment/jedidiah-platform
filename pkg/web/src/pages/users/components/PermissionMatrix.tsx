@@ -1,11 +1,5 @@
-import {
-  getRolePermissions,
-  permissionDescriptions,
-  permissionLabels,
-  roleDescriptions,
-  roleLabels,
-} from '@pkg/domain';
-import { APP_PERMISSIONS, APP_ROLES, type AppPermission, type AppRole } from '@pkg/schema';
+import { permissionDescriptions, permissionLabels, roleDescriptions, roleLabels } from '@pkg/domain';
+import type { AppPermission, Business } from '@pkg/schema';
 import { IconCheck, IconMinus } from '@tabler/icons-react';
 import type React from 'react';
 import { useMemo } from 'react';
@@ -14,13 +8,9 @@ import { DataTable } from '@/components/data-table/DataTable.js';
 import { type DataTableColumnDef, useDataTable } from '@/components/data-table/features.js';
 import { createPersistedDataTableStore } from '@/components/data-table/store.js';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip.js';
+import { buildPermissionMatrix, type PermissionMatrixModel } from './permission-matrix-model.js';
 
 type PermissionRow = { permission: AppPermission };
-
-const permissionsByRole = new Map<AppRole, ReadonlySet<AppPermission>>(
-  APP_ROLES.map((role) => [role, new Set(getRolePermissions(role))]),
-);
-const permissionRows: PermissionRow[] = APP_PERMISSIONS.map((permission) => ({ permission }));
 
 export const usePermissionMatrixStore = createPersistedDataTableStore({
   persistName: 'permission-matrix',
@@ -28,15 +18,20 @@ export const usePermissionMatrixStore = createPersistedDataTableStore({
 });
 
 /**
- * Read-only view of the role/permission grid, derived from `appRoleAccess` at render rather than
- * stored, so it cannot drift from what the server actually enforces.
+ * Read-only view of one business's role/permission grid, derived from `appRoleAccess` at render
+ * rather than stored, so it cannot drift from what the server actually enforces.
  */
-export const PermissionMatrix: React.FC = () => {
+export const PermissionMatrix: React.FC<{ business: Business }> = ({ business }) => {
   const { globalFilter, setGlobalFilter } = usePermissionMatrixStore(
     useShallow((state) => ({
       globalFilter: state.globalFilter,
       setGlobalFilter: state.setGlobalFilter,
     })),
+  );
+  const matrix = useMemo(() => buildPermissionMatrix(business), [business]);
+  const permissionRows = useMemo<PermissionRow[]>(
+    () => matrix.permissions.map((permission) => ({ permission })),
+    [matrix],
   );
 
   const columns = useMemo<DataTableColumnDef<PermissionRow>[]>(
@@ -49,9 +44,9 @@ export const PermissionMatrix: React.FC = () => {
         header: 'Permission',
         meta: { headerClassName: 'min-w-80' },
       },
-      ...APP_ROLES.map<DataTableColumnDef<PermissionRow>>((role) => ({
+      ...matrix.roles.map<DataTableColumnDef<PermissionRow>>((role) => ({
         cell: ({ row }) => {
-          const granted = permissionsByRole.get(role)?.has(row.original.permission) ?? false;
+          const granted = matrix.permissionsByRole.get(role)?.has(row.original.permission) ?? false;
           const label = `${roleLabels[role]}: ${permissionLabels[row.original.permission]} ${granted ? 'granted' : 'not granted'}`;
 
           return granted ? (
@@ -67,7 +62,7 @@ export const PermissionMatrix: React.FC = () => {
         meta: { cellClassName: 'text-center', headerClassName: 'min-w-32 whitespace-normal' },
       })),
     ],
-    [],
+    [matrix],
   );
 
   const table = useDataTable({
@@ -75,7 +70,7 @@ export const PermissionMatrix: React.FC = () => {
     data: permissionRows,
     // Rows are a permission against a grid of role icons; only the shared search reads them.
     enableSorting: false,
-    globalFilterFn: permissionGlobalFilter,
+    globalFilterFn: (row, columnId, filterValue) => permissionGlobalFilter(matrix, row, columnId, filterValue),
     onGlobalFilterChange: setGlobalFilter,
     state: { globalFilter },
   });
@@ -112,7 +107,12 @@ const PermissionCell: React.FC<{ permission: AppPermission }> = ({ permission })
   </div>
 );
 
-function permissionGlobalFilter(row: { original: PermissionRow }, _columnId: string, filterValue: unknown) {
+function permissionGlobalFilter(
+  matrix: PermissionMatrixModel,
+  row: { original: PermissionRow },
+  _columnId: string,
+  filterValue: unknown,
+) {
   const search = String(filterValue ?? '')
     .trim()
     .toLowerCase();
@@ -125,8 +125,8 @@ function permissionGlobalFilter(row: { original: PermissionRow }, _columnId: str
     row.original.permission,
     permissionLabels[row.original.permission],
     permissionDescriptions[row.original.permission],
-    ...APP_ROLES.filter((role) => permissionsByRole.get(role)?.has(row.original.permission)).map(
-      (role) => roleLabels[role],
-    ),
+    ...matrix.roles
+      .filter((role) => matrix.permissionsByRole.get(role)?.has(row.original.permission))
+      .map((role) => roleLabels[role]),
   ].some((value) => value.toLowerCase().includes(search));
 }

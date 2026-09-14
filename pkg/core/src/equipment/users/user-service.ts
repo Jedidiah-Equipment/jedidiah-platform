@@ -1,134 +1,31 @@
 import { type DatabaseTransaction, type Db, user } from '@pkg/db';
 import { userDepartment } from '@pkg/db/equipment';
-import {
-  type AuditChanges,
-  AuthId,
-  ContractingRole,
-  EquipmentRole,
-  NullablePhoneNumber,
-  NullableThumbnailDataUrl,
-} from '@pkg/schema';
-import { Department, type UserAccount, type UserListResult, type UserSummary } from '@pkg/schema/equipment';
+import { type AuditChanges, AuthId, ContractingRole, EquipmentRole } from '@pkg/schema';
+import { Department, type UserDepartmentListResult } from '@pkg/schema/equipment';
 import { asc, eq } from 'drizzle-orm';
 
-import { defineAuditDescriptor, recordAuditEvent } from '../../audit/audit-writer.js';
-import { mutateEntity } from '../../audit/mutate-entity.js';
+import { recordAuditEvent } from '../../audit/audit-writer.js';
+import { UserNotFoundError } from '../../users/user-errors.js';
+import { userAuditDescriptor } from '../../users/user-service.js';
 import { listOpenBayOperatorAssignmentBayNames } from '../jobs/job-bay-service.js';
-import { UserNotFoundError } from './user-errors.js';
 
-type UserAuditInput = Pick<
-  typeof user.$inferSelect,
-  'id' | 'email' | 'image' | 'isDevice' | 'lastActivitySeen' | 'phoneNumber'
->;
-
-// `email` is the summary label, not an audited field on these paths, so it lives in `label` rather
-// than `toRecord`. Department membership audits its own changes via recordAuditEvent below.
-export const userAuditDescriptor = defineAuditDescriptor<UserAuditInput>({
-  entityType: 'user',
-  noun: 'user',
-  primaryLabelField: 'email',
-  entityId: (row) => row.id,
-  label: (row) => row.email,
-  toRecord: (row) => ({
-    isDevice: row.isDevice,
-    lastActivitySeen: row.lastActivitySeen,
-    phoneNumber: row.phoneNumber,
-    thumbnailDataUrl: row.image,
-  }),
-});
-
-type UserAccountRow = Pick<
-  typeof user.$inferSelect,
-  | 'assistantEnabled'
-  | 'contractingRole'
-  | 'email'
-  | 'emailVerified'
-  | 'id'
-  | 'image'
-  | 'isDevice'
-  | 'name'
-  | 'phoneNumber'
-  | 'role'
->;
-
-type UserRow = UserAccountRow & {
-  departments: readonly Department[];
-};
-
-function mapUserAccount(row: UserAccountRow): UserAccount {
-  return {
-    assistantEnabled: row.assistantEnabled,
-    email: row.email,
-    emailVerified: row.emailVerified,
-    id: AuthId.parse(row.id),
-    isDevice: row.isDevice,
-    name: row.name,
-    phoneNumber: NullablePhoneNumber.parse(row.phoneNumber),
-    contractingRole: ContractingRole.nullable().parse(row.contractingRole),
-    equipmentRole: EquipmentRole.nullable().parse(row.role),
-    thumbnailDataUrl: NullableThumbnailDataUrl.parse(row.image),
-  };
-}
-
-export function mapUser(row: UserRow): UserSummary {
-  return {
-    ...mapUserAccount(row),
-    departments: row.departments.map((department) => Department.parse(department)),
-  };
-}
-
-export async function getUserById({ db, userId }: { db: Db; userId: AuthId }): Promise<UserAccount> {
-  const [row] = await db
-    .select({
-      assistantEnabled: user.assistantEnabled,
-      email: user.email,
-      emailVerified: user.emailVerified,
-      id: user.id,
-      image: user.image,
-      isDevice: user.isDevice,
-      name: user.name,
-      phoneNumber: user.phoneNumber,
-      contractingRole: user.contractingRole,
-      role: user.role,
-    })
-    .from(user)
-    .where(eq(user.id, userId))
-    .limit(1);
-
-  if (!row) {
-    throw new UserNotFoundError(userId);
-  }
-
-  return mapUserAccount(row);
-}
-
-export async function listUsers({ db }: { db: Db }): Promise<UserListResult> {
+/** Every User's Department Membership, for the equipment user table to read beside the shared account rows. */
+export async function listUserDepartmentMemberships({ db }: { db: Db }): Promise<UserDepartmentListResult> {
   const rows = await db
-    .select({
-      assistantEnabled: user.assistantEnabled,
-      department: userDepartment.department,
-      email: user.email,
-      emailVerified: user.emailVerified,
-      id: user.id,
-      image: user.image,
-      isDevice: user.isDevice,
-      name: user.name,
-      phoneNumber: user.phoneNumber,
-      contractingRole: user.contractingRole,
-      role: user.role,
-    })
-    .from(user)
-    .leftJoin(userDepartment, eq(userDepartment.userId, user.id))
-    .orderBy(asc(user.email), asc(userDepartment.department));
-  const users = new Map<string, UserSummary>();
+    .select({ department: userDepartment.department, userId: userDepartment.userId })
+    .from(userDepartment)
+    .orderBy(asc(userDepartment.userId), asc(userDepartment.department));
+  const memberships = new Map<string, Department[]>();
 
-  for (const { department, ...row } of rows) {
-    const summary = users.get(row.id) ?? mapUser({ ...row, departments: [] });
-    if (department !== null) summary.departments.push(department);
-    users.set(row.id, summary);
+  for (const row of rows) {
+    const departments = memberships.get(row.userId) ?? [];
+    departments.push(Department.parse(row.department));
+    memberships.set(row.userId, departments);
   }
 
-  return { users: [...users.values()] };
+  return {
+    memberships: [...memberships].map(([userId, departments]) => ({ departments, userId: AuthId.parse(userId) })),
+  };
 }
 
 export async function setUserDepartments({
@@ -177,59 +74,6 @@ export async function setUserDepartments({
     }
 
     return after;
-  });
-}
-
-/**
- * Marks an account as a shared device, or back to a person.
- *
- * Gated at the API on `user:set-role` rather than `user:update`, because this decides whether the
- * account may sign for stock at all — the same class of decision as granting it the stores role,
- * and a stronger one than editing a phone number.
- */
-export async function setUserIsDevice({
-  actorUserId,
-  db,
-  isDevice,
-  userId,
-}: {
-  actorUserId: AuthId;
-  db: Db;
-  isDevice: boolean;
-  userId: AuthId;
-}): Promise<UserAccount> {
-  return mutateEntity({
-    actorUserId,
-    db,
-    descriptor: userAuditDescriptor,
-    id: userId,
-    notFound: () => new UserNotFoundError(userId),
-    project: (_tx, row) => mapUserAccount(row),
-    set: () => ({ isDevice, updatedAt: new Date() }),
-    table: user,
-  });
-}
-
-export async function updateUserThumbnail({
-  actorUserId,
-  db,
-  thumbnailDataUrl,
-  userId,
-}: {
-  actorUserId: AuthId;
-  db: Db;
-  thumbnailDataUrl: NullableThumbnailDataUrl;
-  userId: AuthId;
-}): Promise<UserAccount> {
-  return mutateEntity({
-    actorUserId,
-    db,
-    descriptor: userAuditDescriptor,
-    id: userId,
-    notFound: () => new UserNotFoundError(userId),
-    project: (_tx, row) => mapUserAccount(row),
-    set: () => ({ image: thumbnailDataUrl, updatedAt: new Date() }),
-    table: user,
   });
 }
 

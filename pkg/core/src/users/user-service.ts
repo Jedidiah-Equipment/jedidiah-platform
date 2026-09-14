@@ -1,15 +1,25 @@
-import { type Db, user } from '@pkg/db';
+import {
+  createEscapedContainsSearchCondition,
+  createGlobalSearchCondition,
+  type Db,
+  getSortOrder,
+  user,
+  withPagination,
+} from '@pkg/db';
+import { roleLabels } from '@pkg/domain';
 import {
   AuthId,
   type Business,
   ContractingRole,
   EquipmentRole,
+  getNextCursor,
   NullablePhoneNumber,
   NullableThumbnailDataUrl,
   type UserAccount,
+  type UserListInput,
   type UserListResult,
 } from '@pkg/schema';
-import { and, asc, eq, isNotNull, isNull, or, type SQL } from 'drizzle-orm';
+import { and, asc, eq, isNotNull, isNull, or, type SQL, sql } from 'drizzle-orm';
 
 import { defineAuditDescriptor } from '../audit/audit-writer.js';
 import { mutateEntity } from '../audit/mutate-entity.js';
@@ -106,20 +116,58 @@ function businessMembership(business: Business | undefined): SQL | undefined {
   }
 }
 
+/** Business-owned search/filter predicates are applied before counting and paging account rows. */
 export async function listUsers({
-  business,
   db,
+  input,
+  extraSearch,
+  extraFilter,
 }: {
-  business?: Business | undefined;
   db: Db;
+  input: UserListInput;
+  extraSearch?: SQL | undefined;
+  extraFilter?: SQL | undefined;
 }): Promise<UserListResult> {
-  const rows = await db
+  const role =
+    input.business === 'contracting'
+      ? sql`case when ${user.role} = 'super-admin' then ${user.role} else ${user.contractingRole} end`
+      : sql`${user.role}`;
+  const roleLabel = sql`case ${role} ${sql.join(
+    Object.entries(roleLabels).map(([value, label]) => sql`when ${value} then ${label}`),
+    sql` `,
+  )} else 'No access' end`;
+  const emailStatus = sql`case when ${user.emailVerified} then 'Verified' else 'Unverified' end`;
+  const filters = input.columnFilters;
+  const where = and(
+    businessMembership(input.business),
+    input.search
+      ? or(
+          createGlobalSearchCondition(input.search, [
+            sql`${user.name}`,
+            sql`${user.email}`,
+            role,
+            roleLabel,
+            emailStatus,
+          ]),
+          extraSearch,
+        )
+      : undefined,
+    filters.name ? createEscapedContainsSearchCondition(sql`${user.name}`, filters.name) : undefined,
+    filters.role ? createGlobalSearchCondition(filters.role, [role, roleLabel]) : undefined,
+    filters.emailVerified ? createEscapedContainsSearchCondition(emailStatus, filters.emailVerified) : undefined,
+    extraFilter,
+  );
+  const sortColumns = { name: user.name, email: user.email, emailVerified: user.emailVerified, role };
+  const query = db
     .select(userAccountColumns)
     .from(user)
-    .where(businessMembership(business))
-    .orderBy(asc(user.email));
+    .where(where)
+    .orderBy(getSortOrder(sortColumns[input.sortBy], input.sortDirection), asc(user.id))
+    .$dynamic();
+  const [rows, total] = await Promise.all([withPagination(query, input), db.$count(user, where)]);
+  const items = rows.map(mapUserAccount);
 
-  return { users: rows.map(mapUserAccount) };
+  return { items, total, nextCursor: getNextCursor({ count: items.length, cursor: input.cursor, total }) };
 }
 
 /**

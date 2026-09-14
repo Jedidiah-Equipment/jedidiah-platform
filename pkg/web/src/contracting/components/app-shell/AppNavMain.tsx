@@ -1,4 +1,12 @@
-import { IconAddressBook, IconChevronRight, IconGauge, IconTractor, IconUsers } from '@tabler/icons-react';
+import {
+  IconBuilding,
+  IconCategory,
+  IconChevronRight,
+  IconGauge,
+  IconTools,
+  IconTractor,
+  IconUsers,
+} from '@tabler/icons-react';
 import { Link, useLocation } from '@tanstack/react-router';
 import { useState } from 'react';
 import { Collapsible, CollapsibleContent } from '@/components/ui/collapsible.js';
@@ -18,7 +26,6 @@ import { cn } from '@/lib/utils.js';
 
 const fleetItems = [
   { to: '/contracting/fleet', title: 'Machines' },
-  { to: '/contracting/fleet/categories', title: 'Categories' },
   { to: '/contracting/fleet/implements', title: 'Implements' },
 ] as const;
 
@@ -35,7 +42,8 @@ export function AppNavMain() {
   const { setOpenMobile } = useSidebar();
   const pathname = useLocation({ select: (location) => location.pathname });
   const [open, setOpen] = useState(true);
-  const fleetActive = pathname.startsWith('/contracting/fleet');
+  const categoriesActive = pathname.startsWith('/contracting/fleet/categories');
+  const fleetActive = pathname.startsWith('/contracting/fleet') && !categoriesActive;
 
   return (
     <>
@@ -58,46 +66,10 @@ export function AppNavMain() {
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarGroup>
-      {canReadDirectory ? (
-        <SidebarGroup>
-          <SidebarGroupLabel>Directory</SidebarGroupLabel>
-          <SidebarMenu>
-            {(
-              [
-                { to: '/contracting/customers', title: 'Customers' },
-                { to: '/contracting/work-types', title: 'Work types' },
-              ] as const
-            ).map((item) => (
-              <SidebarMenuItem key={item.to}>
-                <Link to={item.to} onClick={() => setOpenMobile(false)}>
-                  <SidebarMenuButton render={<span />} isActive={pathname.startsWith(item.to)} tooltip={item.title}>
-                    <IconAddressBook />
-                    <span>{item.title}</span>
-                  </SidebarMenuButton>
-                </Link>
-              </SidebarMenuItem>
-            ))}
-          </SidebarMenu>
-        </SidebarGroup>
-      ) : null}
-      {canReadFleet || canReviewReadings ? (
+      {canReadFleet || canReviewReadings || canReadDirectory ? (
         <SidebarGroup>
           <SidebarGroupLabel>Operations</SidebarGroupLabel>
           <SidebarMenu className="gap-1">
-            {canReviewReadings ? (
-              <SidebarMenuItem>
-                <Link to="/contracting/readings/exceptions" onClick={() => setOpenMobile(false)}>
-                  <SidebarMenuButton
-                    render={<span />}
-                    isActive={pathname.startsWith('/contracting/readings')}
-                    tooltip="Reading exceptions"
-                  >
-                    <IconGauge />
-                    <span>Reading exceptions</span>
-                  </SidebarMenuButton>
-                </Link>
-              </SidebarMenuItem>
-            ) : null}
             {canReadFleet ? (
               <Collapsible open={open} onOpenChange={setOpen} render={<SidebarMenuItem />}>
                 <Link to="/contracting/fleet" onClick={() => setOpen((value) => !value)}>
@@ -120,7 +92,7 @@ export function AppNavMain() {
                     {fleetItems.map((item) => {
                       const isActive =
                         item.to === '/contracting/fleet'
-                          ? fleetActive && !pathname.includes('/categories') && !pathname.includes('/implements')
+                          ? fleetActive && !pathname.includes('/implements')
                           : pathname.startsWith(item.to);
                       return (
                         <SidebarMenuSubItem key={item.to}>
@@ -140,25 +112,79 @@ export function AppNavMain() {
                 </CollapsibleContent>
               </Collapsible>
             ) : null}
+            {canReviewReadings ? (
+              <SidebarMenuItem>
+                <Link to="/contracting/readings/exceptions" onClick={() => setOpenMobile(false)}>
+                  <SidebarMenuButton
+                    render={<span />}
+                    isActive={pathname.startsWith('/contracting/readings')}
+                    tooltip="Reading exceptions"
+                  >
+                    <IconGauge />
+                    <span>Reading exceptions</span>
+                  </SidebarMenuButton>
+                </Link>
+              </SidebarMenuItem>
+            ) : null}
+            {canReadDirectory ? (
+              <SidebarMenuItem>
+                <Link to="/contracting/customers" onClick={() => setOpenMobile(false)}>
+                  <SidebarMenuButton
+                    render={<span />}
+                    isActive={pathname.startsWith('/contracting/customers')}
+                    tooltip="Customers"
+                  >
+                    <IconBuilding />
+                    <span>Customers</span>
+                  </SidebarMenuButton>
+                </Link>
+              </SidebarMenuItem>
+            ) : null}
           </SidebarMenu>
         </SidebarGroup>
       ) : null}
-      {canListUsers ? (
+      {canReadFleet || canReadDirectory || canListUsers ? (
         <SidebarGroup>
-          <SidebarGroupLabel>Administration</SidebarGroupLabel>
+          <SidebarGroupLabel>Admin</SidebarGroupLabel>
           <SidebarMenu>
-            <SidebarMenuItem>
-              <Link to="/contracting/users" onClick={() => setOpenMobile(false)}>
-                <SidebarMenuButton
-                  render={<span />}
-                  isActive={pathname.startsWith('/contracting/users')}
-                  tooltip="Users"
-                >
-                  <IconUsers />
-                  <span>Users</span>
-                </SidebarMenuButton>
-              </Link>
-            </SidebarMenuItem>
+            {canListUsers ? (
+              <SidebarMenuItem>
+                <Link to="/contracting/users" onClick={() => setOpenMobile(false)}>
+                  <SidebarMenuButton
+                    render={<span />}
+                    isActive={pathname.startsWith('/contracting/users')}
+                    tooltip="Users"
+                  >
+                    <IconUsers />
+                    <span>Users</span>
+                  </SidebarMenuButton>
+                </Link>
+              </SidebarMenuItem>
+            ) : null}
+            {canReadFleet ? (
+              <SidebarMenuItem>
+                <Link to="/contracting/fleet/categories" onClick={() => setOpenMobile(false)}>
+                  <SidebarMenuButton render={<span />} isActive={categoriesActive} tooltip="Categories">
+                    <IconCategory />
+                    <span>Categories</span>
+                  </SidebarMenuButton>
+                </Link>
+              </SidebarMenuItem>
+            ) : null}
+            {canReadDirectory ? (
+              <SidebarMenuItem>
+                <Link to="/contracting/work-types" onClick={() => setOpenMobile(false)}>
+                  <SidebarMenuButton
+                    render={<span />}
+                    isActive={pathname.startsWith('/contracting/work-types')}
+                    tooltip="Work types"
+                  >
+                    <IconTools />
+                    <span>Work types</span>
+                  </SidebarMenuButton>
+                </Link>
+              </SidebarMenuItem>
+            ) : null}
           </SidebarMenu>
         </SidebarGroup>
       ) : null}

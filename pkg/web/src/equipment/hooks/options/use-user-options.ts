@@ -8,8 +8,8 @@ export function useUserOptions() {
   const trpc = useTRPC();
   // A picker names people rather than administers them, so it lists everyone — the audit trail's
   // actors include people who have since moved to the other business.
-  const query = useQuery(trpc.users.list.queryOptions({}));
-  const items = query.data?.users ?? [];
+  const query = useQuery(trpc.users.list.queryOptions({ limit: 0 }));
+  const items = query.data?.items ?? [];
   const selectOptions = useMemo(() => toSelectOptions(items, (user) => user.name), [items]);
 
   return {

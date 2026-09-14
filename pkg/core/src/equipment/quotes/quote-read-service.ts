@@ -18,7 +18,7 @@ import {
 } from '@pkg/db/equipment';
 import { addDateOnlyDays, parseDateOnlyParts, toPlantDateOnly } from '@pkg/domain';
 import { parseJobCodeSearch, QUOTE_SALESPERSON_ROLES, selectReworkBuildSpec } from '@pkg/domain/equipment';
-import { DateOnlyIso, getNextCursor, type UserListResult, UUID } from '@pkg/schema';
+import { DateOnlyIso, getNextCursor, type UserAccount, UUID } from '@pkg/schema';
 import {
   CompetingAllocationQuote,
   type PriorityQuote,
@@ -498,7 +498,7 @@ export async function getQuoteProductBayAvailability({
   });
 }
 
-export async function listQuoteSalespeople({ db }: { db: Db }): Promise<UserListResult> {
+export async function listQuoteSalespeople({ db }: { db: Db }): Promise<{ users: UserAccount[] }> {
   const rows = await db.query.user.findMany({
     where: inArray(user.role, [...QUOTE_SALESPERSON_ROLES]),
     orderBy: [asc(user.name), asc(user.id)],

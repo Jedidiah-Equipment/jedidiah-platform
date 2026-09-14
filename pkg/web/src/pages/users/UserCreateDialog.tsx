@@ -60,6 +60,7 @@ const UserCreateDialogForm: React.FC<UserCreateDialogProps & { onCreated: () => 
   onCreated,
 }) => {
   const { invalidateAuth, invalidateUsers } = useUserAdminInvalidation();
+  const invalidateAdditionalUserQueries = extension.useInvalidateAdditionalUserQueries();
   const accessQuery = useAccess();
   const showMutationError = useApiMutationErrorToast();
   const canSetRole = hasPermission(accessQuery.data, 'user:set-role');
@@ -90,7 +91,7 @@ const UserCreateDialogForm: React.FC<UserCreateDialogProps & { onCreated: () => 
       return result;
     },
     onSuccess: async () => {
-      await Promise.all([invalidateUsers(), invalidateAuth()]);
+      await Promise.all([invalidateUsers(), invalidateAdditionalUserQueries(), invalidateAuth()]);
       onCreated();
       toast.success('User created');
     },

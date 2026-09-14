@@ -20,6 +20,6 @@ scripted change, not something the app offers.
 
 ## Removing access
 
-1. Open the person from the list and set **Contracting role** to **No access**.
+1. Find the person with **Search users...** or use **Load more** to show the next users. Open their row and set **Contracting role** to **No access**.
 2. Click **Save user**. A person who then holds no role in either business stays listed in both modes, so they
    can be given a role again later.

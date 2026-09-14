@@ -1,21 +1,16 @@
 import { hasPermission } from '@pkg/domain';
 import type { Business, UserAccount } from '@pkg/schema';
-import { useQuery } from '@tanstack/react-query';
 import type React from 'react';
 import { useState } from 'react';
 
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs.js';
 import { useAccess } from '@/hooks/use-access.js';
-import { getApiQueryErrorMessage } from '@/lib/api-errors.js';
-import { useTRPC } from '@/lib/trpc.js';
 import { PermissionMatrix } from './components/PermissionMatrix.js';
 import { UserTable } from './components/UserTable.js';
 import { UserCreateDialog } from './UserCreateDialog.js';
 import { UserEditDialog } from './UserEditDialog.js';
 import type { UserAdminExtension } from './user-admin-extension.js';
-
-const emptyUsers: UserAccount[] = [];
 
 const pageDescriptions = {
   contracting: 'Sign-in accounts, Drivers and Mechanics, and their Contracting roles',
@@ -32,7 +27,6 @@ type UsersPageProps = {
  * that role slot; the same page serves both, told which business it stands in by its route.
  */
 export const UsersPage: React.FC<UsersPageProps> = ({ business, extension }) => {
-  const trpc = useTRPC();
   const accessQuery = useAccess();
   const access = accessQuery.data;
   const canManageUsers =
@@ -41,7 +35,6 @@ export const UsersPage: React.FC<UsersPageProps> = ({ business, extension }) => 
     hasPermission(access, 'user:set-role') ||
     hasPermission(access, 'user:set-password');
 
-  const usersQuery = useQuery(trpc.users.list.queryOptions({ business }));
   const tableExtension = extension.useTableExtension();
   const [editingUser, setEditingUser] = useState<UserAccount | null>(null);
 
@@ -62,12 +55,9 @@ export const UsersPage: React.FC<UsersPageProps> = ({ business, extension }) => 
             <UserTable
               business={business}
               currentUserId={access?.userId}
-              errorMessage={getApiQueryErrorMessage(usersQuery.error, 'Unable to load users.')}
               extraColumns={tableExtension.columns}
-              extraSearchTerms={tableExtension.searchTerms}
-              isLoading={usersQuery.isPending}
+              useListQuery={extension.useListQuery}
               onEditUser={canManageUsers ? setEditingUser : undefined}
-              users={usersQuery.data?.users ?? emptyUsers}
             />
           </TabsContent>
           <TabsContent className="pt-4" value="permissions">

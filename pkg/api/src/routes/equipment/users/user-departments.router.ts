@@ -1,6 +1,6 @@
-import { listUserDepartmentMemberships, setUserDepartments } from '@pkg/core/equipment';
+import { listEquipmentUsers, listUserDepartmentMemberships, setUserDepartments } from '@pkg/core/equipment';
 import { AuthId } from '@pkg/schema';
-import { Department } from '@pkg/schema/equipment';
+import { Department, EquipmentUserListInput } from '@pkg/schema/equipment';
 import { z } from 'zod';
 import { mapUserErrors } from '@/routes/users/user-error-mapping.js';
 import { authorizedProcedure, router } from '@/trpc/init.js';
@@ -12,6 +12,9 @@ const UserDepartmentInput = z.object({
 
 /** Department Membership: the equipment side of user admin, read beside the shared account list. */
 export const userDepartmentsRouter = router({
+  listUsers: authorizedProcedure('user:list')
+    .input(EquipmentUserListInput)
+    .query(({ ctx, input }) => listEquipmentUsers({ db: ctx.db, input })),
   list: authorizedProcedure('user:list').query(({ ctx }) => listUserDepartmentMemberships({ db: ctx.db })),
   set: authorizedProcedure('user:update')
     .input(UserDepartmentInput)

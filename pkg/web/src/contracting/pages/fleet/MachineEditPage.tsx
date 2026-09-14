@@ -8,7 +8,7 @@ import { Card, CardContent } from '@/components/ui/card.js';
 import { CategoryLabel } from '@/contracting/components/CategoryIcon.js';
 import { useCan } from '@/hooks/use-access.js';
 import { useTRPC } from '@/lib/trpc.js';
-import { categoryOptions } from './CategoryFields.js';
+import { CategoryPickerField } from './CategoryFields.js';
 import { FleetRetirement } from './FleetRetirement.js';
 import { MachineFormValues, machineFormValues, machinePatchInput } from './types.js';
 import { useFleetInvalidation } from './use-fleet-invalidation.js';
@@ -78,11 +78,10 @@ function MachineForm({ machine }: { machine: Machine }) {
             <fieldset disabled={!canEdit} className="grid gap-4 sm:grid-cols-2">
               <form.AppField name="code">{(field) => <field.TextField label="Code" />}</form.AppField>
               <form.AppField name="categoryId">
-                {(field) => (
-                  <field.SelectField
-                    label="Category"
+                {() => (
+                  <CategoryPickerField
                     disabled={!canEdit}
-                    options={categoryOptions(categories.data ?? [])}
+                    categories={categories.data ?? []}
                     onValueCommit={autosave.commit}
                   />
                 )}
@@ -105,11 +104,12 @@ function MachineForm({ machine }: { machine: Machine }) {
               <form.AppField name="registration">{(field) => <field.TextField label="Registration" />}</form.AppField>
               <form.AppField name="currentDriverUserId">
                 {(field) => (
-                  <field.SelectField
+                  <field.ComboboxField
                     label="Current driver"
                     disabled={!canEdit}
-                    emptyLabel="No driver"
-                    options={driverOptions}
+                    placeholder="Search drivers..."
+                    emptyMessage="No drivers found."
+                    options={[{ label: 'No driver', value: '' }, ...driverOptions]}
                     onValueCommit={autosave.commit}
                   />
                 )}

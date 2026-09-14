@@ -1,5 +1,6 @@
 import { listUserDepartments } from '@pkg/core/equipment';
 import { auditEvents, type Db, user } from '@pkg/db';
+import { userDepartment } from '@pkg/db/equipment';
 import { createUserAccessSummaryForUser } from '@pkg/domain';
 import type { EquipmentRole } from '@pkg/schema';
 import pino from 'pino';
@@ -11,6 +12,56 @@ import { createAppRouterCaller } from '@/trpc/router.js';
 const test = createTester(({ auth, db }) => ({ auth, db }));
 
 describe('userDepartments', () => {
+  test('searches departments before paging without duplicates or cross-business users', async ({ context }) => {
+    for (const id of ['a', 'b', 'c']) {
+      await createUser(context.db, {
+        id,
+        email: `${id}@example.com`,
+        name: id === 'a' ? 'Paint person' : id,
+        role: 'sales',
+      });
+    }
+    await context.db.insert(user).values({
+      id: 'contracting-only',
+      email: 'contracting-only@example.com',
+      name: 'Paint contractor',
+      role: null,
+      contractingRole: 'driver',
+      emailVerified: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+    await context.db.insert(userDepartment).values([
+      { userId: 'contracting-only', department: 'paint' },
+      { userId: 'b', department: 'paint' },
+      { userId: 'b', department: 'assembly' },
+      { userId: 'c', department: 'paint' },
+    ]);
+    const caller = context.createCaller();
+    const first = await caller.userDepartments.listUsers({ search: 'paint', limit: 1 });
+    expect(first.items.map((person) => person.id)).toEqual(['a']);
+    expect(first.total).toBe(3);
+    expect(first.nextCursor).toBe(1);
+    const next = await caller.userDepartments.listUsers({ search: 'paint', limit: 1, cursor: first.nextCursor });
+    expect(next.items.map((person) => person.id)).toEqual(['b']);
+    const filtered = await caller.userDepartments.listUsers({ department: 'paint', limit: 1, sortDirection: 'desc' });
+    expect(filtered.items.map((person) => person.id)).toEqual(['c']);
+    expect(filtered.total).toBe(2);
+    const combined = await caller.userDepartments.listUsers({ search: 'assembly', department: 'paint', limit: 0 });
+    expect(combined.items.map((person) => person.id)).toEqual(['b']);
+    expect(combined.total).toBe(1);
+    expect(combined.nextCursor).toBeNull();
+    expect(
+      (await caller.users.list({ business: 'contracting', search: 'paint' })).items.map((person) => person.id),
+    ).toEqual(['contracting-only']);
+    await expect(context.createAnonCaller().userDepartments.listUsers({})).rejects.toMatchObject({
+      code: 'UNAUTHORIZED',
+    });
+    await expect(context.createCaller(mockSession('sales')).userDepartments.listUsers({})).rejects.toMatchObject({
+      code: 'FORBIDDEN',
+    });
+  });
+
   test('rejects non-admin department membership mutations', async ({ context }) => {
     await createUser(context.db, {
       email: 'department-target@example.com',

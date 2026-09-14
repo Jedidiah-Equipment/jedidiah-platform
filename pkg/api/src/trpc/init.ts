@@ -51,6 +51,13 @@ export function requireBusinessAccess(access: Context['access'], business: Busin
   }
 }
 
+/**
+ * Gates on role presence in a business rather than on a permission. This is the exception, not the
+ * rule: procedures are gated by permission (`authorizedProcedure`), and a shared read that takes a
+ * business as input (user admin, the changelog) does not refuse a business the caller lacks. Reach
+ * for this only where the model itself says presence is the gate — Feedback submission (ADR 0010)
+ * is the one such place today.
+ */
 export function businessProcedure(business: Business) {
   return protectedProcedure.use(({ ctx, next }) => {
     requireBusinessAccess(ctx.access, business);

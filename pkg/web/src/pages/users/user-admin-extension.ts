@@ -26,7 +26,12 @@ export type UserAdminExtension = {
   };
 };
 
+const noColumns: DataTableColumnDef<UserAccount>[] = [];
+const noSearchTerms = () => [];
+const noFormExtension = { actions: null, fields: null, save: async () => false };
+
+// Stable values, so a table memoised on them does not rebuild its columns every render.
 export const noUserAdminExtension: UserAdminExtension = {
-  useTableExtension: () => ({ columns: [], searchTerms: () => [] }),
-  useFormExtension: () => ({ actions: null, fields: null, save: async () => false }),
+  useTableExtension: () => ({ columns: noColumns, searchTerms: noSearchTerms }),
+  useFormExtension: () => noFormExtension,
 };

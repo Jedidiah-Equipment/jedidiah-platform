@@ -22,11 +22,47 @@ type UserCreateDialogProps = {
 };
 
 export const UserCreateDialog: React.FC<UserCreateDialogProps> = ({ business, extension }) => {
+  const accessQuery = useAccess();
+  const [isOpen, setIsOpen] = useState(false);
+
+  if (!hasPermission(accessQuery.data, 'user:create')) {
+    return null;
+  }
+
+  return (
+    <>
+      <Button onClick={() => setIsOpen(true)}>
+        <IconPlus data-icon="inline-start" />
+        New user
+      </Button>
+      <Dialog onOpenChange={setIsOpen} open={isOpen}>
+        <DialogContent className="sm:max-w-[560px]">
+          <DialogHeader>
+            <DialogTitle>New user</DialogTitle>
+            <DialogDescription>Create a user with email/password access.</DialogDescription>
+          </DialogHeader>
+          {isOpen ? (
+            <UserCreateDialogForm business={business} extension={extension} onCreated={() => setIsOpen(false)} />
+          ) : null}
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+};
+
+/**
+ * Mounted only while the dialog is open, so the form and the extension's draft — Department
+ * Membership, say — start fresh for every new user instead of carrying the last one's choices.
+ */
+const UserCreateDialogForm: React.FC<UserCreateDialogProps & { onCreated: () => void }> = ({
+  business,
+  extension,
+  onCreated,
+}) => {
   const { invalidateAuth, invalidateUsers } = useUserAdminInvalidation();
   const accessQuery = useAccess();
   const showMutationError = useApiMutationErrorToast();
   const canSetRole = hasPermission(accessQuery.data, 'user:set-role');
-  const [isOpen, setIsOpen] = useState(false);
 
   const createUserMutation = useMutation({
     mutationFn: async (value: UserCreateFormValues) => {
@@ -53,7 +89,7 @@ export const UserCreateDialog: React.FC<UserCreateDialogProps> = ({ business, ex
     },
     onSuccess: async () => {
       await Promise.all([invalidateUsers(), invalidateAuth()]);
-      setIsOpen(false);
+      onCreated();
       toast.success('User created');
     },
     onError: (error) => {
@@ -64,33 +100,13 @@ export const UserCreateDialog: React.FC<UserCreateDialogProps> = ({ business, ex
   // mutation only reads it inside its function, so the late binding is safe.
   const formExtension = extension.useFormExtension({ isPending: createUserMutation.isPending, user: null });
 
-  if (!hasPermission(accessQuery.data, 'user:create')) {
-    return null;
-  }
-
   return (
-    <>
-      <Button onClick={() => setIsOpen(true)}>
-        <IconPlus data-icon="inline-start" />
-        New user
-      </Button>
-      <Dialog onOpenChange={setIsOpen} open={isOpen}>
-        <DialogContent className="sm:max-w-[560px]">
-          <DialogHeader>
-            <DialogTitle>New user</DialogTitle>
-            <DialogDescription>Create a user with email/password access.</DialogDescription>
-          </DialogHeader>
-          {isOpen ? (
-            <UserCreateForm
-              business={business}
-              canSetRole={canSetRole}
-              extraFields={formExtension.fields}
-              isPending={createUserMutation.isPending}
-              onSubmit={(value) => createUserMutation.mutateAsync(value)}
-            />
-          ) : null}
-        </DialogContent>
-      </Dialog>
-    </>
+    <UserCreateForm
+      business={business}
+      canSetRole={canSetRole}
+      extraFields={formExtension.fields}
+      isPending={createUserMutation.isPending}
+      onSubmit={(value) => createUserMutation.mutateAsync(value)}
+    />
   );
 };

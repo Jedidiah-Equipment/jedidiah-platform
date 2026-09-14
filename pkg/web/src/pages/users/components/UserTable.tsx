@@ -27,18 +27,26 @@ type UserTableSortInput = {
   sortBy: UserSortBy;
 };
 
-export const useUserTableStore = createPersistedDataTableStore({
-  initialState: {
-    sorting: [
-      {
-        id: 'name',
-        desc: false,
-      },
-    ],
-  },
-  persistName: 'users-table',
-  persistVersion: 4,
-});
+function createUserTableStore(business: Business) {
+  return createPersistedDataTableStore({
+    initialState: {
+      sorting: [
+        {
+          id: 'name',
+          desc: false,
+        },
+      ],
+    },
+    persistName: `users-table-${business}`,
+    persistVersion: 4,
+  });
+}
+
+/** One store per business: a Role filter typed in Equipment must not empty the Contracting table. */
+export const userTableStores = {
+  contracting: createUserTableStore('contracting'),
+  equipment: createUserTableStore('equipment'),
+} as const satisfies Record<Business, unknown>;
 
 const userSortOptions: SortOptions<UserTableSortInput> = {
   allowedSortIds: UserSortBy.options,
@@ -61,6 +69,7 @@ export const UserTable: React.FC<UserTableProps> = ({
   onEditUser,
   users,
 }) => {
+  const useUserTableStore = userTableStores[business];
   const { columnFilters, globalFilter, setColumnFilters, setGlobalFilter, setSorting, sorting } = useUserTableStore(
     useShallow((state) => ({
       columnFilters: state.columnFilters,

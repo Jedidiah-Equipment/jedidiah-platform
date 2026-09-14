@@ -5,7 +5,7 @@ import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { UserTable, useUserTableStore } from './UserTable.js';
+import { UserTable, userTableStores } from './UserTable.js';
 
 const users: UserAccount[] = [
   makeUser('Alice', 'sales', null),
@@ -23,7 +23,7 @@ afterEach(() => {
   act(() => root?.unmount());
   root = undefined;
   container?.remove();
-  useUserTableStore.getState().reset();
+  for (const store of Object.values(userTableStores)) store.getState().reset();
 });
 
 describe('UserTable role column', () => {

@@ -100,8 +100,9 @@ describe('users.list', () => {
       await createUser(context.db, { contractingRole, email: `${id}@example.com`, id, name: id, role });
     }
 
-    const equipment = await context.createCaller().users.list({ business: 'equipment' });
-    const contracting = await context.createCaller().users.list({ business: 'contracting' });
+    const superAdmin = context.createCaller(mockSession('super-admin'));
+    const equipment = await superAdmin.users.list({ business: 'equipment' });
+    const contracting = await superAdmin.users.list({ business: 'contracting' });
 
     expect(equipment.users.map((listed) => listed.id)).toEqual([
       'both-slots',
@@ -115,6 +116,14 @@ describe('users.list', () => {
       'spanning',
       'unassigned',
     ]);
+  });
+
+  test('refuses a business the caller does not hold, even with user:list', async ({ context }) => {
+    await expect(
+      context.createCaller(mockSession('admin')).users.list({ business: 'contracting' }),
+    ).rejects.toMatchObject({
+      code: 'FORBIDDEN',
+    });
   });
 
   test('rejects procurement managers', async ({ context }) => {

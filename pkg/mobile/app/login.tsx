@@ -1,6 +1,6 @@
 import { EmailAddress } from '@pkg/schema';
 import { IconEye, IconEyeOff } from '@tabler/icons-react-native';
-import { type Href, Redirect, useRouter } from 'expo-router';
+import { Redirect, useRouter } from 'expo-router';
 import { useState } from 'react';
 import {
   ActivityIndicator,
@@ -133,7 +133,7 @@ export default function LoginScreen() {
                   accessibilityRole="link"
                   className="self-end"
                   disabled={isSubmitting}
-                  onPress={() => router.push('/forgot-password' as Href)}
+                  onPress={() => router.push('/forgot-password')}
                 >
                   <Text className="text-sm leading-5 text-muted-foreground">Forgot password?</Text>
                 </Pressable>

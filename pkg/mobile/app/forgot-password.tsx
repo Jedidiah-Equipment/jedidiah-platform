@@ -6,5 +6,5 @@ import { requestPasswordReset } from '@/lib/auth';
 export default function ForgotPasswordRoute() {
   const router = useRouter();
 
-  return <ForgotPasswordScreen onBack={() => router.replace('/login')} requestReset={requestPasswordReset} />;
+  return <ForgotPasswordScreen onBack={() => router.dismissTo('/login')} requestReset={requestPasswordReset} />;
 }

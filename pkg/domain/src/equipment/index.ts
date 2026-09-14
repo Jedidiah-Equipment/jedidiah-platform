@@ -7,6 +7,7 @@ export * from './feedback/feedback-visibility.js';
 export * from './inventory/bom.js';
 export * from './inventory/build.js';
 export * from './inventory/buy-list.js';
+export * from './inventory/checkout.js';
 export * from './inventory/close-out.js';
 export * from './inventory/commitment.js';
 export * from './inventory/draw-cost.js';

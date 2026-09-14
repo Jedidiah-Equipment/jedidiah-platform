@@ -4,7 +4,9 @@ import {
   isPeriodicStockAdjustmentReason,
   JobStockMovementType,
   PostAdjustmentInput,
+  PostCheckoutInput,
   PostJobMovementInput,
+  PostReturnToStoreInput,
   PostReturnToSupplierInput,
   PostRevaluationInput,
   StockMovementReason,
@@ -12,6 +14,8 @@ import {
 } from './stock-movement.js';
 
 const partId = '00000000-0000-4000-8000-000000000001';
+const recipientUserId = 'recipient-user';
+const sourceCheckoutId = '00000000-0000-4000-8000-000000000002';
 
 describe('stock movement inputs', () => {
   it('accepts the complete shipped movement vocabulary', () => {
@@ -130,6 +134,26 @@ describe('stock movement inputs', () => {
     expect(() => PostJobMovementInput.parse({ jobId: partId, partId, quantity: 0 })).toThrow();
     expect(() => PostJobMovementInput.parse({ jobId: partId, partId, quantity: -1 })).toThrow();
     expect(() => PostJobMovementInput.parse({ jobId: partId, partId, quantity: 1, unitCost: 12 })).toThrow();
+  });
+
+  it('defines strict alternative Checkout and Return to Store targets', () => {
+    expect(PostCheckoutInput.parse({ note: ' repair factory drill ', partId, quantity: 5, recipientUserId })).toEqual({
+      lengthMm: null,
+      note: 'repair factory drill',
+      partId,
+      quantity: 5,
+      recipientUserId,
+    });
+    expect(PostReturnToStoreInput.parse({ quantity: 2, sourceCheckoutId })).toEqual({
+      quantity: 2,
+      sourceCheckoutId,
+    });
+
+    expect(() => PostCheckoutInput.parse({ partId, quantity: 5, recipientUserId })).toThrow();
+    expect(() =>
+      PostCheckoutInput.parse({ jobId: sourceCheckoutId, note: 'Mixed', partId, quantity: 5, recipientUserId }),
+    ).toThrow();
+    expect(() => PostReturnToStoreInput.parse({ partId, quantity: 2, sourceCheckoutId })).toThrow();
   });
 
   it('limits periodic Parts to their opening balance and stock counts', () => {

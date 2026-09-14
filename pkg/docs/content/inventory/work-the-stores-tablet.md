@@ -42,7 +42,9 @@ rack for a linear Part. It shows no prices — the Stores role does not see them
 Every movement starts by finding the Part, then tapping one of the four actions on its screen. The
 tablet asks the same questions the web app does, so the steps live with each workflow:
 
-- [Check out Parts to a Job](./check-out-parts-to-a-job.md)
+- [Check out Parts](./check-out-parts-to-a-job.md) — choose **To a Job** or **Without a Job**. The
+  latter records a separate Recipient and required Purpose while the Quick-switch name remains the
+  Operator.
 - [Return to Store](./return-to-store.md)
 - [Receive a delivery](./post-a-receipt.md) — tap the Purchase Order the delivery belongs to; the
   quantity still due is filled in for you, so correct it when the delivery is short. An order whose

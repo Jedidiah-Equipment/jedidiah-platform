@@ -11,10 +11,14 @@ import {
   InventoryUnitCost,
   isWholeUnitQuantity,
   type PartStockActions,
+  type PartUnitOfMeasure,
   PostAdjustmentInput,
   PostBuildInput,
+  PostCheckoutReturnInput,
+  PostCheckoutWithoutJobInput,
   PostJobMovementInput,
   PostRevaluationInput,
+  type SourceCheckoutOption,
   StockAdjustmentReason,
   StockMovementDelta,
   StockMovementLengthMm,
@@ -68,13 +72,17 @@ export function partQuantityValidationMessage(
   parts: readonly StockPartOption[],
 ): string | undefined {
   const part = parts.find((candidate) => candidate.partId === values.partId);
+  if (!part) return undefined;
+
+  return wholeUnitQuantityMessage(values.quantity, part.unitOfMeasure);
+}
+
+export function wholeUnitQuantityMessage(quantity: number, unitOfMeasure: PartUnitOfMeasure): string | undefined {
   // An empty field holds NaN, which is not a whole number — but "unkeyed" is the schema's own
   // complaint to make, not a unit-class violation to report against a quantity nobody typed.
-  if (!part || !Number.isFinite(values.quantity)) return undefined;
+  if (!Number.isFinite(quantity)) return undefined;
 
-  return isWholeUnitQuantity(values.quantity, unitClassFor(part.unitOfMeasure))
-    ? undefined
-    : 'This Part is counted in whole units';
+  return isWholeUnitQuantity(quantity, unitClassFor(unitOfMeasure)) ? undefined : 'This Part is counted in whole units';
 }
 
 export type StockAdjustmentFormValues = z.infer<typeof StockAdjustmentFormValues>;
@@ -94,12 +102,30 @@ export const StockRevaluationFormValues = z.object({
   unitCost: InventoryUnitCost,
 });
 
-export type StockJobMovementFormValues = z.infer<typeof StockJobMovementFormValues>;
-export const StockJobMovementFormValues = z.object({
-  jobId: requiredSelection(UUID, 'Select a Job'),
+export type StockMovementTarget = z.infer<typeof StockMovementTarget>;
+export const StockMovementTarget = z.enum(['job', 'person']);
+
+/**
+ * A draw or return: the Part, quantity and length, plus its target — the Job it is posted against,
+ * or for a Checkout Without a Job the person receiving it and why. Each target's own fields are
+ * required only while that target is the one showing.
+ */
+export type StockMovementFormValues = z.infer<typeof StockMovementFormValues>;
+export const StockMovementFormValues = z.object({
+  jobId: z.string(),
   lengthMm: StockMovementLengthValue,
+  note: z.string(),
   partId: requiredSelection(UUID, 'Select a Part'),
   quantity: StockMovementQuantity,
+  recipientUserId: z.string(),
+  target: StockMovementTarget,
+});
+
+/** A source-linked return names the Checkout it reverses; that Checkout fixes the Part, length and Recipient. */
+export type ReturnFromCheckoutFormValues = z.infer<typeof ReturnFromCheckoutFormValues>;
+export const ReturnFromCheckoutFormValues = z.object({
+  quantity: StockMovementQuantity,
+  sourceCheckoutId: requiredSelection(UUID, 'Select the original Checkout'),
 });
 
 /** Closing out asserts a fact about the whole Job, so the note is all the screen has left to ask. */
@@ -242,10 +268,31 @@ export function stockAdjustmentValidator(parts: readonly StockPartOption[]) {
   });
 }
 
-export function stockJobMovementValidator(parts: readonly StockPartOption[]) {
-  return StockJobMovementFormValues.superRefine((values, context) => {
+export function stockMovementValidator(parts: readonly StockPartOption[]) {
+  return StockMovementFormValues.superRefine((values, context) => {
     refineLengthForPart(values, parts, context);
     refineQuantityForPart(values, parts, 'quantity', context);
+
+    if (values.target === 'job') {
+      if (!UUID.safeParse(values.jobId).success) {
+        context.addIssue({ code: 'custom', message: 'Select a Job', path: ['jobId'] });
+      }
+      return;
+    }
+    if (values.recipientUserId.trim() === '') {
+      context.addIssue({ code: 'custom', message: 'Select who received the Parts', path: ['recipientUserId'] });
+    }
+    if (values.note.trim() === '') {
+      context.addIssue({ code: 'custom', message: 'Enter a purpose', path: ['note'] });
+    }
+  });
+}
+
+export function returnFromCheckoutValidator(sources: readonly SourceCheckoutOption[]) {
+  return ReturnFromCheckoutFormValues.superRefine((values, context) => {
+    const source = sources.find((candidate) => candidate.id === values.sourceCheckoutId);
+    const message = source && wholeUnitQuantityMessage(values.quantity, source.unitOfMeasure);
+    if (message) context.addIssue({ code: 'custom', message, path: ['quantity'] });
   });
 }
 
@@ -280,13 +327,27 @@ export function toRevaluationInput(values: StockRevaluationFormValues) {
   return PostRevaluationInput.parse(values);
 }
 
-export function toJobMovementInput(values: StockJobMovementFormValues, part: StockPartOption) {
+export function toJobMovementInput(values: StockMovementFormValues, part: StockPartOption) {
   return PostJobMovementInput.parse({
     jobId: values.jobId,
     lengthMm: part.unitOfMeasure === 'mm' ? values.lengthMm : null,
     partId: values.partId,
     quantity: values.quantity,
   });
+}
+
+export function toCheckoutWithoutJobInput(values: StockMovementFormValues, part: StockPartOption) {
+  return PostCheckoutWithoutJobInput.parse({
+    lengthMm: part.unitOfMeasure === 'mm' ? values.lengthMm : null,
+    note: values.note,
+    partId: values.partId,
+    quantity: values.quantity,
+    recipientUserId: values.recipientUserId,
+  });
+}
+
+export function toReturnFromCheckoutInput(values: ReturnFromCheckoutFormValues) {
+  return PostCheckoutReturnInput.parse(values);
 }
 
 export function toCloseOutJobInput(jobId: UUID, values: JobCloseOutFormValues) {

@@ -79,7 +79,7 @@ export const EQUIPMENT_SECTIONS: DocsSection[] = [
       { text: 'Update a Supplier', link: '/inventory/update-a-supplier' },
       { text: 'Merge duplicate Suppliers', link: '/inventory/merge-duplicate-suppliers' },
       { text: 'Remove a Supplier', link: '/inventory/remove-a-supplier' },
-      { text: 'Check out Parts to a Job', link: '/inventory/check-out-parts-to-a-job' },
+      { text: 'Check out Parts', link: '/inventory/check-out-parts-to-a-job' },
       { text: 'Return to Store', link: '/inventory/return-to-store' },
       { text: 'Amend a sent Purchase Order', link: '/inventory/amend-a-sent-purchase-order' },
       { text: 'Return stock to a Supplier', link: '/inventory/return-stock-to-a-supplier' },

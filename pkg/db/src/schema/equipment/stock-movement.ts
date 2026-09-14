@@ -63,6 +63,7 @@ export const stockMovements = equipmentSchema.table(
     // A receipt — and the return that sends it back — attaches to exactly one PO line through the
     // line's own composite key.
     purchaseOrderId: uuid('purchase_order_id'),
+    recipientUserId: text('recipient_user_id').references(() => user.id, { onDelete: 'restrict' }),
     // One widened column carrying two closed sets; each movement type's shape branch below pins the
     // subset it may use, so an adjustment can never claim `defective` nor a return `scrap`.
     reason: text('reason').$type<StockMovementReason>(),
@@ -73,6 +74,11 @@ export const stockMovements = equipmentSchema.table(
     // check below): the note exists so an adjustment explains itself, and naming the walk it was
     // made on says strictly more than a line of free text would. An ad-hoc count still needs one.
     stocktakeSessionId: uuid('stocktake_session_id').references(() => stocktakeSessions.id, { onDelete: 'restrict' }),
+    // A Return to Store linked to a Checkout Without a Job. The shape check below says which rows may
+    // carry it; a trigger (migration 0149, like the driver role in contracting 0134) says what it may
+    // point at — a Checkout Without a Job — and that the return inherits its Part, length and
+    // Recipient, which one row's CHECK cannot read off another row.
+    sourceCheckoutId: uuid('source_checkout_id'),
     unitCost: numeric('unit_cost', { mode: 'number', precision: 18, scale: 6 }),
   },
   (table) => [
@@ -92,6 +98,8 @@ export const stockMovements = equipmentSchema.table(
       sql`(
         ${table.movementType} = 'adjustment'
         AND ${table.jobId} IS NULL
+        AND ${table.recipientUserId} IS NULL
+        AND ${table.sourceCheckoutId} IS NULL
         AND ${table.purchaseOrderId} IS NULL
         AND ${table.buildId} IS NULL
         AND ${table.reason} IN ('opening-balance', 'stock-count', 'damage', 'scrap', 'correction')
@@ -105,6 +113,8 @@ export const stockMovements = equipmentSchema.table(
       ) OR (
         ${table.movementType} = 'revaluation'
         AND ${table.jobId} IS NULL
+        AND ${table.recipientUserId} IS NULL
+        AND ${table.sourceCheckoutId} IS NULL
         AND ${table.purchaseOrderId} IS NULL
         AND ${table.buildId} IS NULL
         AND ${table.stocktakeSessionId} IS NULL
@@ -113,7 +123,11 @@ export const stockMovements = equipmentSchema.table(
         AND ${table.reason} IS NULL
       ) OR (
         ${table.movementType} = 'checkout'
-        AND ${table.jobId} IS NOT NULL
+        AND (
+          (${table.jobId} IS NOT NULL AND ${table.recipientUserId} IS NULL AND ${table.sourceCheckoutId} IS NULL)
+          OR
+          (${table.jobId} IS NULL AND ${table.recipientUserId} IS NOT NULL AND ${table.sourceCheckoutId} IS NULL AND ${table.note} IS NOT NULL)
+        )
         AND ${table.purchaseOrderId} IS NULL
         AND ${table.buildId} IS NULL
         AND ${table.stocktakeSessionId} IS NULL
@@ -121,7 +135,11 @@ export const stockMovements = equipmentSchema.table(
         AND ${table.reason} IS NULL
       ) OR (
         ${table.movementType} = 'return-to-store'
-        AND ${table.jobId} IS NOT NULL
+        AND (
+          (${table.jobId} IS NOT NULL AND ${table.recipientUserId} IS NULL AND ${table.sourceCheckoutId} IS NULL)
+          OR
+          (${table.jobId} IS NULL AND ${table.recipientUserId} IS NOT NULL AND ${table.sourceCheckoutId} IS NOT NULL)
+        )
         AND ${table.purchaseOrderId} IS NULL
         AND ${table.buildId} IS NULL
         AND ${table.stocktakeSessionId} IS NULL
@@ -130,6 +148,8 @@ export const stockMovements = equipmentSchema.table(
       ) OR (
         ${table.movementType} = 'receipt'
         AND ${table.jobId} IS NULL
+        AND ${table.recipientUserId} IS NULL
+        AND ${table.sourceCheckoutId} IS NULL
         AND ${table.purchaseOrderId} IS NOT NULL
         AND ${table.buildId} IS NULL
         AND ${table.stocktakeSessionId} IS NULL
@@ -139,6 +159,8 @@ export const stockMovements = equipmentSchema.table(
       ) OR (
         ${table.movementType} = 'return-to-supplier'
         AND ${table.jobId} IS NULL
+        AND ${table.recipientUserId} IS NULL
+        AND ${table.sourceCheckoutId} IS NULL
         AND ${table.purchaseOrderId} IS NOT NULL
         AND ${table.buildId} IS NULL
         AND ${table.stocktakeSessionId} IS NULL
@@ -147,6 +169,8 @@ export const stockMovements = equipmentSchema.table(
       ) OR (
         ${table.movementType} = 'build-consume'
         AND ${table.jobId} IS NULL
+        AND ${table.recipientUserId} IS NULL
+        AND ${table.sourceCheckoutId} IS NULL
         AND ${table.purchaseOrderId} IS NULL
         AND ${table.buildId} IS NOT NULL
         AND ${table.stocktakeSessionId} IS NULL
@@ -155,6 +179,8 @@ export const stockMovements = equipmentSchema.table(
       ) OR (
         ${table.movementType} = 'build-produce'
         AND ${table.jobId} IS NULL
+        AND ${table.recipientUserId} IS NULL
+        AND ${table.sourceCheckoutId} IS NULL
         AND ${table.purchaseOrderId} IS NULL
         AND ${table.buildId} IS NOT NULL
         AND ${table.stocktakeSessionId} IS NULL
@@ -167,22 +193,39 @@ export const stockMovements = equipmentSchema.table(
       foreignColumns: [purchaseOrderLines.purchaseOrderId, purchaseOrderLines.partId],
       name: 'stock_movement_purchase_order_line_fk',
     }).onDelete('restrict'),
+    foreignKey({
+      columns: [table.sourceCheckoutId],
+      foreignColumns: [table.id],
+      name: 'stock_movement_source_checkout_fk',
+    }).onDelete('restrict'),
     index('stock_movement_job_part_created_idx').on(table.jobId, table.partId, table.createdAt, table.id),
     index('stock_movement_purchase_order_part_idx').on(table.purchaseOrderId, table.partId),
     index('stock_movement_part_created_idx').on(table.partId, table.createdAt, table.id),
     index('stock_movement_build_idx').on(table.buildId),
     index('stock_movement_stocktake_session_idx').on(table.stocktakeSessionId, table.partId),
+    index('stock_movement_source_checkout_idx').on(table.sourceCheckoutId),
   ],
 );
 
 export const stockMovementRelations = relations(stockMovements, ({ one }) => ({
   actor: one(user, {
     fields: [stockMovements.actorUserId],
+    relationName: 'stockMovementActor',
     references: [user.id],
   }),
   job: one(jobs, {
     fields: [stockMovements.jobId],
     references: [jobs.id],
+  }),
+  recipient: one(user, {
+    fields: [stockMovements.recipientUserId],
+    relationName: 'stockMovementRecipient',
+    references: [user.id],
+  }),
+  sourceCheckout: one(stockMovements, {
+    fields: [stockMovements.sourceCheckoutId],
+    relationName: 'stockMovementSourceCheckout',
+    references: [stockMovements.id],
   }),
   part: one(parts, {
     fields: [stockMovements.partId],

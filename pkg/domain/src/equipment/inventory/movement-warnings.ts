@@ -1,21 +1,31 @@
 import type { StockMovementWarningCode } from '@pkg/schema/equipment';
 import { type BuildBomComponent, type BuildWarningLine, deriveBuildComponentWarnings } from './build.js';
 
-/** The stock facts a Job movement is judged against, all scoped to one Job, Part and length bucket. */
-export type JobMovementFacts = {
+/** What a draw is judged against: the rack it leaves, and the plan it is drawn to — if it has one. */
+export type CheckoutFacts = {
   /** Stock on hand for this Part and length bucket, before the movement. */
   bucketQuantityOnHand: number;
   /**
-   * CFO demand for this Job and Part, summed across its assemblies. Zero means the Job never
-   * planned this Part at all — a custom Job has no CFO, and a Unit-bound one can still be drawn
-   * off it — because a CFO line's quantity is constrained positive.
+   * CFO demand for this Job and Part, summed across its assemblies. Zero means nothing planned this
+   * Part at all — a custom Job has no CFO, a Unit-bound one can still be drawn off it, and a Checkout
+   * Without a Job has no Job to plan anything — because a CFO line's quantity is constrained positive.
    */
   cfoQuantity: number;
-  /** Net drawn for this Job, Part and length bucket — the quantity a return can reverse. */
-  drawnBucketQuantity: number;
   /** Net drawn for this Job and Part across every length bucket. */
   drawnQuantity: number;
 };
+
+/** What a return is judged against: what its source still has out in the bucket it puts back. */
+export type ReturnToStoreFacts = {
+  /**
+   * Net drawn for this Job, Part and length bucket — or still outstanding on the one Checkout a
+   * source-linked return reverses. Either way, the quantity a return can reverse.
+   */
+  drawnBucketQuantity: number;
+};
+
+/** The stock facts a Job read serves, since a Job movement can run either direction. */
+export type JobMovementFacts = CheckoutFacts & ReturnToStoreFacts;
 
 /**
  * Everything a movement is judged against, one arm per kind. These are *served* facts: the server
@@ -24,7 +34,8 @@ export type JobMovementFacts = {
  * is what let three surfaces disagree about what a Purchase Order line could still send back.
  */
 export type StockMovementFacts =
-  | (JobMovementFacts & { kind: 'checkout' | 'return-to-store' })
+  | (CheckoutFacts & { kind: 'checkout' })
+  | (ReturnToStoreFacts & { kind: 'return-to-store' })
   | { kind: 'receipt'; orderedQuantity: number; receivedQuantity: number }
   | {
       kind: 'return-to-supplier';

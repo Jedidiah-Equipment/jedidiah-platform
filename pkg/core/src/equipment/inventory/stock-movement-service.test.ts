@@ -1,3 +1,4 @@
+import { user } from '@pkg/db';
 import { jobEstimateSnapshots, jobs, parts, stockMovements } from '@pkg/db/equipment';
 import { eq } from 'drizzle-orm';
 import { describe, expect } from 'vitest';
@@ -7,6 +8,7 @@ import {
   adjustmentInput,
   estimateSnapshot,
   seedProductUnit,
+  seedQuickSwitchPerson,
   seedSentPurchaseOrder,
   test,
 } from '../test/inventory-fixtures.js';
@@ -17,7 +19,9 @@ import {
   listJobStock,
   listStockOnHand,
   postAdjustment,
+  postCheckout,
   postJobMovement,
+  postReturnToStore,
   postRevaluation,
 } from './stock-movement-service.js';
 
@@ -320,6 +324,318 @@ describe('Job stock movements', () => {
   });
 });
 
+describe('Checkout without a Job', () => {
+  test('attributes a purpose Checkout to its recipient and prices linked partial returns from that source', async ({
+    context,
+  }) => {
+    const now = new Date('2026-08-01T08:00:00.000Z');
+    await context.db.insert(user).values({
+      createdAt: now,
+      email: 'connor@example.com',
+      emailVerified: true,
+      id: 'connor',
+      name: 'Connor Mechanic',
+      role: 'bay-operator',
+      updatedAt: now,
+    });
+    await postAdjustment({
+      actorUserId,
+      db: context.db,
+      input: adjustmentInput(context.parts.piece.id, { delta: 10, unitCost: 10 }),
+    });
+
+    const checkout = await postCheckout({
+      actorUserId,
+      db: context.db,
+      input: {
+        lengthMm: null,
+        note: 'repair factory drill',
+        partId: context.parts.piece.id,
+        quantity: 5,
+        recipientUserId: 'connor',
+      },
+    });
+    await postRevaluation({
+      actorUserId,
+      db: context.db,
+      input: { note: 'Later receipt changed average', partId: context.parts.piece.id, unitCost: 20 },
+    });
+    const returnOperatorUserId = await seedQuickSwitchPerson(context.db, { id: 'return-operator' });
+    await context.db.update(user).set({ banned: true }).where(eq(user.id, 'connor'));
+
+    const returned = await postReturnToStore({
+      actorUserId,
+      db: context.db,
+      input: { actorUserId: returnOperatorUserId, quantity: 2, sourceCheckoutId: checkout.movement.id },
+    });
+    const stock = await listStockOnHand({ db: context.db });
+    const history = await getStockMovementHistory({ db: context.db, partId: context.parts.piece.id });
+
+    expect(checkout).toMatchObject({
+      movement: {
+        actorUserId,
+        delta: -5,
+        jobId: null,
+        note: 'repair factory drill',
+        recipientUserId: 'connor',
+        sourceCheckoutId: null,
+        unitCost: 10,
+      },
+      warnings: [],
+    });
+    expect(returned).toMatchObject({
+      movement: {
+        actorUserId: returnOperatorUserId,
+        delta: 2,
+        recipientUserId: 'connor',
+        sourceCheckoutId: checkout.movement.id,
+        unitCost: 10,
+      },
+      warnings: [],
+    });
+    expect(stock.items.find((item) => item.partId === context.parts.piece.id)?.quantity).toBe(7);
+    expect(history.items.find((item) => item.id === checkout.movement.id)).toMatchObject({
+      actorName: 'Inventory Tester',
+      note: 'repair factory drill',
+      recipientName: 'Connor Mechanic',
+      sourceCheckoutId: null,
+    });
+    expect(history.items.find((item) => item.id === returned.movement.id)).toMatchObject({
+      actorName: 'Quick Switch Person',
+      recipientName: 'Connor Mechanic',
+      sourceCheckoutCreatedAt: checkout.movement.createdAt,
+      sourceCheckoutId: checkout.movement.id,
+    });
+  });
+
+  test('rejects ineligible recipients and invalid linked-return sources', async ({ context }) => {
+    const now = new Date('2026-08-01T08:00:00.000Z');
+    await context.db.insert(user).values([
+      {
+        banned: true,
+        createdAt: now,
+        email: 'disabled-recipient@example.com',
+        emailVerified: true,
+        id: 'disabled-recipient',
+        name: 'Disabled Recipient',
+        role: 'stores',
+        updatedAt: now,
+      },
+      {
+        createdAt: now,
+        email: 'device-recipient@example.com',
+        emailVerified: true,
+        id: 'device-recipient',
+        isDevice: true,
+        name: 'Device Recipient',
+        role: 'stores',
+        updatedAt: now,
+      },
+    ]);
+    for (const recipientUserId of ['disabled-recipient', 'device-recipient']) {
+      await expect(
+        postCheckout({
+          actorUserId,
+          db: context.db,
+          input: {
+            lengthMm: null,
+            note: 'quick repair',
+            partId: context.parts.piece.id,
+            quantity: 1,
+            recipientUserId,
+          },
+        }),
+      ).rejects.toMatchObject({ code: 'inventory.recipient_ineligible' });
+    }
+
+    await expect(
+      postCheckout({
+        actorUserId,
+        db: context.db,
+        input: {
+          lengthMm: null,
+          note: 'quick repair',
+          partId: context.parts.piece.id,
+          quantity: 1,
+          recipientUserId: 'missing-person',
+        },
+      }),
+    ).rejects.toMatchObject({ code: 'inventory.recipient_ineligible' });
+
+    const jobCheckout = await postJobMovement({
+      actorUserId,
+      db: context.db,
+      input: { jobId: context.jobs.custom.id, lengthMm: null, partId: context.parts.piece.id, quantity: 1 },
+      movementType: 'checkout',
+    });
+    await expect(
+      postReturnToStore({
+        actorUserId,
+        db: context.db,
+        input: { quantity: 1, sourceCheckoutId: jobCheckout.movement.id },
+      }),
+    ).rejects.toMatchObject({ code: 'inventory.invalid_source_checkout' });
+  });
+
+  test('serializes concurrent linked returns and warns only the one that exceeds the latest outstanding quantity', async ({
+    context,
+  }) => {
+    const now = new Date('2026-08-01T08:00:00.000Z');
+    await context.db.insert(user).values({
+      createdAt: now,
+      email: 'recipient-concurrent@example.com',
+      emailVerified: true,
+      id: 'recipient-concurrent',
+      name: 'Concurrent Recipient',
+      role: 'bay-operator',
+      updatedAt: now,
+    });
+    await postAdjustment({
+      actorUserId,
+      db: context.db,
+      input: adjustmentInput(context.parts.piece.id, { delta: 3, unitCost: 10 }),
+    });
+    const checkout = await postCheckout({
+      actorUserId,
+      db: context.db,
+      input: {
+        lengthMm: null,
+        note: 'concurrent repair',
+        partId: context.parts.piece.id,
+        quantity: 3,
+        recipientUserId: 'recipient-concurrent',
+      },
+    });
+
+    const returns = await Promise.all([
+      postReturnToStore({
+        actorUserId,
+        db: context.db,
+        input: { quantity: 2, sourceCheckoutId: checkout.movement.id },
+      }),
+      postReturnToStore({
+        actorUserId,
+        db: context.db,
+        input: { quantity: 2, sourceCheckoutId: checkout.movement.id },
+      }),
+    ]);
+
+    // Either return may take the lock first; what is fixed is that exactly one exceeds the source.
+    expect(returns.map((result) => result.warnings).sort((left, right) => left.length - right.length)).toEqual([
+      [],
+      ['exceeds-drawn'],
+    ]);
+    expect(returns.map((result) => result.movement.unitCost).sort((left, right) => (left ?? 0) - (right ?? 0))).toEqual(
+      [5, 10],
+    );
+  });
+
+  test('keeps an uncosted source uncosted when its linked stock returns', async ({ context }) => {
+    const recipientUserId = await seedQuickSwitchPerson(context.db, { id: 'uncosted-recipient' });
+    const checkout = await postCheckout({
+      actorUserId,
+      db: context.db,
+      input: {
+        lengthMm: null,
+        note: 'investigate test equipment',
+        partId: context.parts.measured.id,
+        quantity: 1,
+        recipientUserId,
+      },
+    });
+
+    const returned = await postReturnToStore({
+      actorUserId,
+      db: context.db,
+      input: { quantity: 1, sourceCheckoutId: checkout.movement.id },
+    });
+
+    expect(checkout.movement.unitCost).toBeNull();
+    expect(returned.movement.unitCost).toBeNull();
+  });
+
+  test('inherits a linked linear source length and its scaled piece cost', async ({ context }) => {
+    const recipientUserId = await seedQuickSwitchPerson(context.db, { id: 'linear-recipient' });
+    await postAdjustment({
+      actorUserId,
+      db: context.db,
+      input: adjustmentInput(context.parts.linear.id, { delta: 2, lengthMm: 6_000, unitCost: 600 }),
+    });
+    const checkout = await postCheckout({
+      actorUserId,
+      db: context.db,
+      input: {
+        lengthMm: 3_000,
+        note: 'make a machine guard',
+        partId: context.parts.linear.id,
+        quantity: 1,
+        recipientUserId,
+      },
+    });
+
+    const returned = await postReturnToStore({
+      actorUserId,
+      db: context.db,
+      input: { quantity: 1, sourceCheckoutId: checkout.movement.id },
+    });
+
+    expect(checkout.movement).toMatchObject({ lengthMm: 3_000, unitCost: 300 });
+    expect(returned.movement).toMatchObject({ lengthMm: 3_000, unitCost: 300 });
+  });
+
+  test('keeps two Checkouts for one recipient as separate linked cost pools', async ({ context }) => {
+    const recipientUserId = await seedQuickSwitchPerson(context.db, { id: 'two-pool-recipient' });
+    await postAdjustment({
+      actorUserId,
+      db: context.db,
+      input: adjustmentInput(context.parts.piece.id, { delta: 10, unitCost: 10 }),
+    });
+    const first = await postCheckout({
+      actorUserId,
+      db: context.db,
+      input: {
+        lengthMm: null,
+        note: 'first repair',
+        partId: context.parts.piece.id,
+        quantity: 2,
+        recipientUserId,
+      },
+    });
+    await postRevaluation({
+      actorUserId,
+      db: context.db,
+      input: { note: 'new shelf value', partId: context.parts.piece.id, unitCost: 20 },
+    });
+    const second = await postCheckout({
+      actorUserId,
+      db: context.db,
+      input: {
+        lengthMm: null,
+        note: 'second repair',
+        partId: context.parts.piece.id,
+        quantity: 2,
+        recipientUserId,
+      },
+    });
+
+    const [firstReturn, secondReturn] = await Promise.all([
+      postReturnToStore({
+        actorUserId,
+        db: context.db,
+        input: { quantity: 1, sourceCheckoutId: first.movement.id },
+      }),
+      postReturnToStore({
+        actorUserId,
+        db: context.db,
+        input: { quantity: 1, sourceCheckoutId: second.movement.id },
+      }),
+    ]);
+
+    expect(firstReturn.movement).toMatchObject({ sourceCheckoutId: first.movement.id, unitCost: 10 });
+    expect(secondReturn.movement).toMatchObject({ sourceCheckoutId: second.movement.id, unitCost: 20 });
+  });
+});
+
 describe('postAdjustment', () => {
   test('appends an adjustment with the authenticated actor', async ({ context }) => {
     const movement = await postAdjustment({
@@ -532,6 +848,56 @@ describe('stock movement database constraints', () => {
           ...invalidShape,
         }),
       ).rejects.toMatchObject({ cause: { constraint_name: 'stock_movement_shape' } });
+    }
+  });
+
+  test('rejects linked returns whose source or inherited identity is invalid', async ({ context }) => {
+    const recipientUserId = await seedQuickSwitchPerson(context.db, { id: 'constraint-recipient' });
+    const otherRecipientUserId = await seedQuickSwitchPerson(context.db, { id: 'other-constraint-recipient' });
+    const adjustment = await postAdjustment({
+      actorUserId,
+      db: context.db,
+      input: adjustmentInput(context.parts.piece.id, { delta: 2, unitCost: 10 }),
+    });
+    const checkout = await postCheckout({
+      actorUserId,
+      db: context.db,
+      input: {
+        lengthMm: null,
+        note: 'repair a press guard',
+        partId: context.parts.piece.id,
+        quantity: 1,
+        recipientUserId,
+      },
+    });
+    const invalidReturns = [
+      {
+        partId: context.parts.piece.id,
+        recipientUserId,
+        sourceCheckoutId: adjustment.id,
+      },
+      {
+        partId: context.parts.measured.id,
+        recipientUserId,
+        sourceCheckoutId: checkout.movement.id,
+      },
+      {
+        partId: context.parts.piece.id,
+        recipientUserId: otherRecipientUserId,
+        sourceCheckoutId: checkout.movement.id,
+      },
+    ];
+
+    for (const invalidReturn of invalidReturns) {
+      await expect(
+        context.db.insert(stockMovements).values({
+          actorUserId,
+          delta: 1,
+          lengthMm: null,
+          movementType: 'return-to-store',
+          ...invalidReturn,
+        }),
+      ).rejects.toMatchObject({ cause: { constraint_name: 'stock_movement_source_checkout_identity' } });
     }
   });
 });
@@ -807,7 +1173,9 @@ describe('getStockMovementHistory', () => {
     expect(result.part).toEqual({
       code: 'PIECE',
       id: context.parts.piece.id,
+      isInternallyFabricated: false,
       name: 'PIECE',
+      stockTrackingMode: 'perpetual',
       unitOfMeasure: 'piece',
     });
     expect(result.items).toMatchObject([

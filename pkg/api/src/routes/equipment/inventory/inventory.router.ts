@@ -11,8 +11,10 @@ import {
   listBuyList,
   listCloseOutQueue,
   listInventoryJobOptions,
+  listInventoryRecipients,
   listJobStock,
   listQuickSwitchActors,
+  listSourceCheckouts,
   listStockOnHand,
   listStocktakeOverdue,
   listStocktakeSessions,
@@ -20,7 +22,8 @@ import {
   openStocktakeSession,
   postAdjustment,
   postBuild,
-  postJobMovement,
+  postCheckout,
+  postReturnToStore,
   postRevaluation,
   postStockCount,
   searchPartStock,
@@ -35,6 +38,8 @@ import {
   InventoryJobOptionListInput,
   InventoryJobOptionListResult,
   InventoryKpis,
+  InventoryRecipientOptionListInput,
+  InventoryRecipientOptionListResult,
   JobCloseOut,
   JobCostComparison,
   JobMaterialVarianceResult,
@@ -48,10 +53,14 @@ import {
   PartStockByCodeInput,
   PostAdjustmentInput,
   PostBuildInput,
-  PostJobMovementInput,
+  PostCheckoutInput,
+  PostReturnToStoreInput,
   PostRevaluationInput,
   PostStockCountInput,
   QuickSwitchActorListResult,
+  SourceCheckoutListInput,
+  SourceCheckoutListResult,
+  SourceCheckoutOptionCostFields,
   StockCountResult,
   StockMovement,
   StockMovementHistoryInput,
@@ -84,6 +93,7 @@ import { partBomErrorFamily, partCoreErrorFamily } from '../parts/part-error-fam
 import {
   assertedActorErrorFamily,
   buildErrorFamily,
+  checkoutErrorFamily,
   jobCloseOutErrorFamily,
   stockMovementErrorFamily,
   stockMovementJobErrorFamily,
@@ -149,6 +159,25 @@ export const inventoryRouter = router({
   quickSwitchActors: authorizedProcedure('equipment_inventory:move')
     .output(QuickSwitchActorListResult)
     .query(({ ctx }) => listQuickSwitchActors({ db: ctx.db })),
+
+  recipientOptions: authorizedProcedure('equipment_inventory:move')
+    .input(InventoryRecipientOptionListInput)
+    .output(InventoryRecipientOptionListResult)
+    .query(({ ctx, input }) => listInventoryRecipients({ db: ctx.db, input })),
+
+  sourceCheckouts: authorizedProcedure('equipment_inventory:move')
+    .input(SourceCheckoutListInput)
+    .output(SourceCheckoutListResult)
+    .query(async ({ ctx, input }) => {
+      const result = await listSourceCheckouts({ db: ctx.db, input });
+
+      return {
+        ...result,
+        items: result.items.map((item) =>
+          projectInventoryCostFields({ access: ctx.access, costFields: SourceCheckoutOptionCostFields, output: item }),
+        ),
+      };
+    }),
 
   history: authorizedProcedure('equipment_inventory:read')
     .input(StockMovementHistoryInput)
@@ -327,22 +356,22 @@ export const inventoryRouter = router({
     }),
 
   postCheckout: authorizedProcedure('equipment_inventory:move')
-    .input(PostJobMovementInput)
+    .input(PostCheckoutInput)
     .output(StockMovementPostResult)
     .mutation(async ({ ctx, input }) => {
-      const result = await mapJobStockErrors(() =>
-        postJobMovement({ actorUserId: ctx.session.user.id, db: ctx.db, input, movementType: 'checkout' }),
+      const result = await mapCheckoutErrors(() =>
+        postCheckout({ actorUserId: ctx.session.user.id, db: ctx.db, input }),
       );
 
       return { ...result, movement: projectMovement(result.movement, ctx.access) };
     }),
 
   postReturnToStore: authorizedProcedure('equipment_inventory:move')
-    .input(PostJobMovementInput)
+    .input(PostReturnToStoreInput)
     .output(StockMovementPostResult)
     .mutation(async ({ ctx, input }) => {
-      const result = await mapJobStockErrors(() =>
-        postJobMovement({ actorUserId: ctx.session.user.id, db: ctx.db, input, movementType: 'return-to-store' }),
+      const result = await mapCheckoutErrors(() =>
+        postReturnToStore({ actorUserId: ctx.session.user.id, db: ctx.db, input }),
       );
 
       return { ...result, movement: projectMovement(result.movement, ctx.access) };
@@ -398,6 +427,18 @@ async function mapJobStockErrors<T>(action: () => Promise<T>): Promise<T> {
     stockMovementErrorFamily,
     stockMovementJobErrorFamily,
     jobCloseOutErrorFamily,
+    assertedActorErrorFamily,
+  );
+}
+
+/** Both strict Checkout/Return alternatives, each surfacing only the domain families it can reach. */
+async function mapCheckoutErrors<T>(action: () => Promise<T>): Promise<T> {
+  return mapCoreErrors(
+    action,
+    stockMovementErrorFamily,
+    stockMovementJobErrorFamily,
+    jobCloseOutErrorFamily,
+    checkoutErrorFamily,
     assertedActorErrorFamily,
   );
 }

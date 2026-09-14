@@ -1,4 +1,4 @@
-import { deriveMovementWarnings } from '@pkg/domain/equipment';
+import { deriveMovementWarnings, type JobMovementFacts } from '@pkg/domain/equipment';
 import type {
   JobStockMovementType,
   JobStockResult,
@@ -16,6 +16,11 @@ import type {
  * Silence while the facts are still loading is deliberate: every figure would read zero, which warns
  * on any movement at all. The post returns the real verdict either way.
  */
+/** Stock on hand in the bucket a movement names; a Part with no such bucket holds nothing there. */
+export function bucketQuantityOnHand(row: StockOnHandRow, lengthMm: number | null): number {
+  return row.buckets.find((bucket) => bucket.lengthMm === lengthMm)?.quantity ?? 0;
+}
+
 export function previewJobMovementWarnings({
   jobStock,
   lengthMm,
@@ -32,21 +37,18 @@ export function previewJobMovementWarnings({
   if (quantity === null || jobStock === undefined) return [];
 
   const partStock = jobStock.items.find((item) => item.partId === row.partId);
+  const facts: JobMovementFacts = {
+    bucketQuantityOnHand: bucketQuantityOnHand(row, lengthMm),
+    cfoQuantity: partStock?.cfoQuantity ?? 0,
+    // A movement with no length names the Part's whole draw; the Job's buckets carry only lengths.
+    drawnBucketQuantity:
+      lengthMm === null
+        ? (partStock?.drawnQuantity ?? 0)
+        : (partStock?.lengthBuckets.find((bucket) => bucket.lengthMm === lengthMm)?.drawnQuantity ?? 0),
+    drawnQuantity: partStock?.drawnQuantity ?? 0,
+  };
 
-  return deriveMovementWarnings({
-    facts: {
-      bucketQuantityOnHand: row.buckets.find((bucket) => bucket.lengthMm === lengthMm)?.quantity ?? 0,
-      cfoQuantity: partStock?.cfoQuantity ?? 0,
-      // A movement with no length names the Part's whole draw; the Job's buckets carry only lengths.
-      drawnBucketQuantity:
-        lengthMm === null
-          ? (partStock?.drawnQuantity ?? 0)
-          : (partStock?.lengthBuckets.find((bucket) => bucket.lengthMm === lengthMm)?.drawnQuantity ?? 0),
-      drawnQuantity: partStock?.drawnQuantity ?? 0,
-      kind: movementType,
-    },
-    quantity,
-  });
+  return deriveMovementWarnings({ facts: { ...facts, kind: movementType }, quantity });
 }
 
 /** Both facts a receipt is judged against ride the line the dock picked. */

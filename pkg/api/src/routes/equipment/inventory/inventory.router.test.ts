@@ -465,6 +465,52 @@ describe('inventory cost projection', () => {
     expect(admin).toMatchObject({ movement: { unitCost: 25 }, warnings: [] });
     expect(stores).toMatchObject({ movement: { unitCost: null }, warnings: [] });
   });
+
+  test('serves recipient and source pickers while keeping no-Job costs behind the existing gate', async ({
+    context,
+  }) => {
+    const now = new Date('2026-08-01T08:00:00.000Z');
+    await context.db.insert(user).values({
+      createdAt: now,
+      email: 'connor-api@example.com',
+      emailVerified: true,
+      id: 'connor-api',
+      name: 'Connor API',
+      role: 'bay-operator',
+      updatedAt: now,
+    });
+    const admin = context.createCaller();
+    const stores = context.createCaller(mockSession('stores'));
+    await admin.inventory.postAdjustment({
+      delta: 5,
+      partId: context.part.id,
+      reason: 'opening-balance',
+      unitCost: 25,
+    });
+    const checkout = await admin.inventory.postCheckout({
+      note: 'repair factory drill',
+      partId: context.part.id,
+      quantity: 5,
+      recipientUserId: 'connor-api',
+    });
+
+    await expect(stores.inventory.recipientOptions({ search: 'Connor' })).resolves.toMatchObject({
+      items: [{ id: 'connor-api', name: 'Connor API' }],
+      total: 1,
+    });
+    await expect(stores.inventory.sourceCheckouts({ partId: context.part.id, search: '' })).resolves.toMatchObject({
+      items: [{ id: checkout.movement.id, returnedQuantity: 0, unitCost: null }],
+      total: 1,
+    });
+    await expect(
+      stores.inventory.postReturnToStore({ quantity: 2, sourceCheckoutId: checkout.movement.id }),
+    ).resolves.toMatchObject({ movement: { recipientUserId: 'connor-api', unitCost: null }, warnings: [] });
+    await expect(
+      context.createCaller(mockSession('sales')).inventory.recipientOptions({ search: '' }),
+    ).rejects.toMatchObject({
+      code: 'FORBIDDEN',
+    });
+  });
 });
 
 describe('buy list', () => {

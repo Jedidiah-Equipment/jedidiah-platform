@@ -30,6 +30,6 @@ A **Stock adjustment posted** toast confirms it.
 - A periodic Part accepts only **Opening balance** and **Stock count**. Every other reason is
   rejected outright — see [Perpetual and periodic Parts](./perpetual-and-periodic-stock.md).
 - Adjustments are how a count gets onto the ledger. They are not how material gets to a Job: use
-  [Check out Parts to a Job](./check-out-parts-to-a-job.md) for that, so the Job carries the cost.
+  [Check out Parts](./check-out-parts-to-a-job.md) for that, so the Job or no-Job purpose carries the attribution.
 - Nothing is ever edited or deleted. A wrong adjustment is corrected by another one, with
   **Correction** as its reason and a note saying which movement it answers.

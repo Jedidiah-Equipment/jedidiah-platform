@@ -69,11 +69,13 @@ const UserCreateDialogForm: React.FC<UserCreateDialogProps & { onCreated: () => 
       const result = unwrapAuthResult<{ user: { id: string } }>(
         await authClient.admin.createUser({
           // Shared-device state belongs in Better Auth's user insert so a later request cannot
-          // leave a successfully created account behind while the dialog reports failure.
+          // leave a successfully created account behind while the dialog reports failure. Only the
+          // slot of the business we stand in travels; the other is never the app's to write.
           data: {
-            contractingRole: value.contractingRole,
+            ...(business === 'equipment'
+              ? { equipmentRole: value.equipmentRole }
+              : { contractingRole: value.contractingRole }),
             emailVerified: value.emailVerified,
-            equipmentRole: value.equipmentRole,
             isDevice: canSetRole ? value.isDevice : false,
             phoneNumber: value.phoneNumber,
           },

@@ -19,17 +19,18 @@ const noDepartments: readonly Department[] = [];
 function useDepartmentMemberships() {
   const trpc = useTRPC();
   const query = useQuery(trpc.userDepartments.list.queryOptions());
-
-  return useMemo(
+  const memberships = useMemo(
     () => new Map(query.data?.memberships.map((membership) => [membership.userId, membership.departments])),
     [query.data],
   );
+
+  return { isError: query.isError, isLoaded: query.isSuccess, memberships };
 }
 
 /** Equipment's side of user admin: Department Membership on the table and forms, and the stores badge. */
 export const equipmentUserAdminExtension: UserAdminExtension = {
   useTableExtension: () => {
-    const memberships = useDepartmentMemberships();
+    const { memberships } = useDepartmentMemberships();
     const columns = useMemo<DataTableColumnDef<UserAccount>[]>(
       () => [
         {
@@ -67,7 +68,7 @@ export const equipmentUserAdminExtension: UserAdminExtension = {
     const access = useAccess().data;
     const canAssignDepartments = hasPermission(access, 'user:update');
     const canSetRole = hasPermission(access, 'user:set-role');
-    const memberships = useDepartmentMemberships();
+    const { isError, isLoaded, memberships } = useDepartmentMemberships();
     const initialDepartments = (user && memberships.get(user.id)) ?? noDepartments;
     const [draft, setDraft] = useState<readonly Department[] | null>(null);
     const setDepartmentsMutation = useMutation(trpc.userDepartments.set.mutationOptions());
@@ -77,9 +78,12 @@ export const equipmentUserAdminExtension: UserAdminExtension = {
     useEffect(() => setDraft(null), [user?.id]);
 
     const departments = draft ?? initialDepartments;
+    // The save replaces the whole membership set, so a draft started against an unloaded baseline
+    // would silently drop what the user already had: the field stays closed until the baseline is in.
+    const canEditDepartments = canAssignDepartments && isLoaded;
     const save = useCallback(
       async (userId: AuthId) => {
-        if (!canAssignDepartments || draft === null || !haveDepartmentsChanged(draft, initialDepartments)) {
+        if (!canEditDepartments || draft === null || !haveDepartmentsChanged(draft, initialDepartments)) {
           return false;
         }
 
@@ -88,7 +92,7 @@ export const equipmentUserAdminExtension: UserAdminExtension = {
 
         return true;
       },
-      [canAssignDepartments, draft, initialDepartments, invalidateUserDepartments, setDepartmentsMutation],
+      [canEditDepartments, draft, initialDepartments, invalidateUserDepartments, setDepartmentsMutation],
     );
 
     return {
@@ -97,7 +101,14 @@ export const equipmentUserAdminExtension: UserAdminExtension = {
           <UserBadgePrintButton userId={user.id} />
         ) : null,
       fields: canAssignDepartments ? (
-        <UserDepartmentsForm initialDepartments={departments} isPending={isPending} onDepartmentsChange={setDraft} />
+        <>
+          <UserDepartmentsForm
+            initialDepartments={departments}
+            isPending={isPending || !isLoaded}
+            onDepartmentsChange={setDraft}
+          />
+          {isError ? <p className="text-destructive text-sm">Unable to load departments.</p> : null}
+        </>
       ) : null,
       save,
     };

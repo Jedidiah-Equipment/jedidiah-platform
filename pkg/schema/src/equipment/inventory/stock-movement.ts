@@ -525,7 +525,9 @@ export const StockMovementHistoryResult = z.object({
   part: z.object({
     code: z.string(),
     id: UUID,
+    isInternallyFabricated: z.boolean(),
     name: z.string(),
+    stockTrackingMode: PartStockTrackingMode,
     unitOfMeasure: PartUnitOfMeasure,
   }),
 });

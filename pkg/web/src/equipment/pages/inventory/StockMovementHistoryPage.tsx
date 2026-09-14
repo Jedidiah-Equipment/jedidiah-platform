@@ -1,4 +1,5 @@
 import { hasPermission } from '@pkg/domain';
+import { derivePartStockActions } from '@pkg/domain/equipment';
 import type { UUID } from '@pkg/schema';
 import type { SourceCheckoutOption, StockMovementHistoryRow } from '@pkg/schema/equipment';
 import { useQuery } from '@tanstack/react-query';
@@ -10,14 +11,12 @@ import { useAccess } from '@/hooks/use-access.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { StockMovementDialog } from './components/StockMovementDialog.js';
 import { StockMovementHistoryTable } from './components/StockMovementHistoryTable.js';
-import { partOptionsAllowing } from './components/types.js';
 
 export function StockMovementHistoryPage({ partId }: { partId: UUID }) {
   const trpc = useTRPC();
   const accessQuery = useAccess();
   const historyQuery = useQuery(trpc.inventory.history.queryOptions({ partId }));
   const canMove = hasPermission(accessQuery.data, 'equipment_inventory:move');
-  const stockQuery = useQuery(trpc.inventory.stockOnHand.queryOptions(undefined, { enabled: canMove }));
   const [returnSourceCheckout, setReturnSourceCheckout] = useState<StockMovementHistoryRow | null>(null);
   const openReturn = useCallback((checkout: StockMovementHistoryRow) => setReturnSourceCheckout(checkout), []);
   const showCosts = hasPermission(accessQuery.data, 'equipment_inventory_cost:read');
@@ -25,6 +24,7 @@ export function StockMovementHistoryPage({ partId }: { partId: UUID }) {
   // sheet that refuses to load. The code still shows — it is what the row was drawn against.
   const canReadJobs = hasPermission(accessQuery.data, 'equipment_job:read');
   const part = historyQuery.data?.part;
+  const canReturnCheckout = part ? derivePartStockActions(part).returnToStore.allowed : false;
 
   return (
     <PageLayout
@@ -40,7 +40,7 @@ export function StockMovementHistoryPage({ partId }: { partId: UUID }) {
         <StockMovementHistoryTable
           canReadJobs={canReadJobs}
           items={historyQuery.data.items}
-          {...(canMove ? { onReturnCheckout: openReturn } : {})}
+          {...(canMove && canReturnCheckout ? { onReturnCheckout: openReturn } : {})}
           showCosts={showCosts}
           unitOfMeasure={historyQuery.data.part.unitOfMeasure}
         />
@@ -50,12 +50,22 @@ export function StockMovementHistoryPage({ partId }: { partId: UUID }) {
           defaultPartId={partId}
           defaultSourceCheckout={sourceCheckoutOption(returnSourceCheckout, historyQuery.data)}
           defaultSourceCheckoutId={returnSourceCheckout.id}
-          items={stockQuery.data?.items ?? []}
+          fixedTargetMode="person"
+          items={[]}
           onOpenChange={(nextOpen) => {
             if (!nextOpen) setReturnSourceCheckout(null);
           }}
           open
-          parts={partOptionsAllowing(stockQuery.data?.items ?? [], 'returnToStore')}
+          parts={[
+            {
+              isInternallyFabricated: historyQuery.data.part.isInternallyFabricated,
+              partCode: historyQuery.data.part.code,
+              partId: historyQuery.data.part.id,
+              partName: historyQuery.data.part.name,
+              standardPurchaseLengthMm: null,
+              unitOfMeasure: historyQuery.data.part.unitOfMeasure,
+            },
+          ]}
           type="return-to-store"
         />
       ) : null}

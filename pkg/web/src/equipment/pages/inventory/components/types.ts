@@ -96,14 +96,6 @@ export const StockRevaluationFormValues = z.object({
   unitCost: InventoryUnitCost,
 });
 
-export type StockJobMovementFormValues = z.infer<typeof StockJobMovementFormValues>;
-export const StockJobMovementFormValues = z.object({
-  jobId: requiredSelection(UUID, 'Select a Job'),
-  lengthMm: StockMovementLengthValue,
-  partId: requiredSelection(UUID, 'Select a Part'),
-  quantity: StockMovementQuantity,
-});
-
 export type StockMovementTargetMode = z.infer<typeof StockMovementTargetMode>;
 export const StockMovementTargetMode = z.enum(['job', 'person']);
 
@@ -294,13 +286,6 @@ export function stockAdjustmentValidator(parts: readonly StockPartOption[]) {
   });
 }
 
-export function stockJobMovementValidator(parts: readonly StockPartOption[]) {
-  return StockJobMovementFormValues.superRefine((values, context) => {
-    refineLengthForPart(values, parts, context);
-    refineQuantityForPart(values, parts, 'quantity', context);
-  });
-}
-
 export function stockMovementValidator(
   parts: readonly StockPartOption[],
   movementType: 'checkout' | 'return-to-store',
@@ -323,6 +308,7 @@ export function stockMovementValidator(
       if (!UUID.safeParse(values.sourceCheckoutId).success) {
         context.addIssue({ code: 'custom', message: 'Select the original Checkout', path: ['sourceCheckoutId'] });
       }
+      refineQuantityForPart(values, parts, 'quantity', context);
       return;
     }
 
@@ -370,15 +356,6 @@ export function revaluationCostDecimals(part: StockPartOption | undefined): numb
 
 export function toRevaluationInput(values: StockRevaluationFormValues) {
   return PostRevaluationInput.parse(values);
-}
-
-export function toJobMovementInput(values: StockJobMovementFormValues, part: StockPartOption) {
-  return PostJobMovementInput.parse({
-    jobId: values.jobId,
-    lengthMm: part.unitOfMeasure === 'mm' ? values.lengthMm : null,
-    partId: values.partId,
-    quantity: values.quantity,
-  });
 }
 
 export function toStockMovementInput(

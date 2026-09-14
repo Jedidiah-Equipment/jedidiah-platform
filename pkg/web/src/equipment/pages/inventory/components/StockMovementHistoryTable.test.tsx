@@ -126,7 +126,9 @@ const result = StockMovementHistoryResult.parse({
   part: {
     code: 'P-100',
     id: '00000000-0000-4000-8000-000000000001',
+    isInternallyFabricated: false,
     name: 'Bearing',
+    stockTrackingMode: 'perpetual',
     unitOfMeasure: 'piece',
   },
 });

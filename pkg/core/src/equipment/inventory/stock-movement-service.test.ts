@@ -846,6 +846,56 @@ describe('stock movement database constraints', () => {
       ).rejects.toMatchObject({ cause: { constraint_name: 'stock_movement_shape' } });
     }
   });
+
+  test('rejects linked returns whose source or inherited identity is invalid', async ({ context }) => {
+    const recipientUserId = await seedQuickSwitchPerson(context.db, { id: 'constraint-recipient' });
+    const otherRecipientUserId = await seedQuickSwitchPerson(context.db, { id: 'other-constraint-recipient' });
+    const adjustment = await postAdjustment({
+      actorUserId,
+      db: context.db,
+      input: adjustmentInput(context.parts.piece.id, { delta: 2, unitCost: 10 }),
+    });
+    const checkout = await postCheckout({
+      actorUserId,
+      db: context.db,
+      input: {
+        lengthMm: null,
+        note: 'repair a press guard',
+        partId: context.parts.piece.id,
+        quantity: 1,
+        recipientUserId,
+      },
+    });
+    const invalidReturns = [
+      {
+        partId: context.parts.piece.id,
+        recipientUserId,
+        sourceCheckoutId: adjustment.id,
+      },
+      {
+        partId: context.parts.measured.id,
+        recipientUserId,
+        sourceCheckoutId: checkout.movement.id,
+      },
+      {
+        partId: context.parts.piece.id,
+        recipientUserId: otherRecipientUserId,
+        sourceCheckoutId: checkout.movement.id,
+      },
+    ];
+
+    for (const invalidReturn of invalidReturns) {
+      await expect(
+        context.db.insert(stockMovements).values({
+          actorUserId,
+          delta: 1,
+          lengthMm: null,
+          movementType: 'return-to-store',
+          ...invalidReturn,
+        }),
+      ).rejects.toMatchObject({ cause: { constraint_name: 'stock_movement_source_checkout_identity' } });
+    }
+  });
 });
 
 describe('listStockOnHand', () => {
@@ -1119,7 +1169,9 @@ describe('getStockMovementHistory', () => {
     expect(result.part).toEqual({
       code: 'PIECE',
       id: context.parts.piece.id,
+      isInternallyFabricated: false,
       name: 'PIECE',
+      stockTrackingMode: 'perpetual',
       unitOfMeasure: 'piece',
     });
     expect(result.items).toMatchObject([

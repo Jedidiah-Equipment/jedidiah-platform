@@ -95,4 +95,53 @@ ALTER TABLE "equipment"."stock_movement" ADD CONSTRAINT "stock_movement_shape" C
         AND "equipment"."stock_movement"."stocktake_session_id" IS NULL
         AND "equipment"."stock_movement"."delta" > 0
         AND "equipment"."stock_movement"."reason" IS NULL
-      ));
+      ));--> statement-breakpoint
+CREATE FUNCTION "equipment"."enforce_stock_movement_source_checkout"() RETURNS trigger
+LANGUAGE plpgsql AS $$
+DECLARE
+  source_row "equipment"."stock_movement"%ROWTYPE;
+BEGIN
+  IF NEW."source_checkout_id" IS NOT NULL THEN
+    SELECT * INTO source_row
+    FROM "equipment"."stock_movement"
+    WHERE "id" = NEW."source_checkout_id";
+
+    IF NOT FOUND
+      OR source_row."movement_type" <> 'checkout'
+      OR source_row."job_id" IS NOT NULL
+      OR source_row."recipient_user_id" IS NULL
+      OR source_row."source_checkout_id" IS NOT NULL
+      OR NEW."part_id" IS DISTINCT FROM source_row."part_id"
+      OR NEW."recipient_user_id" IS DISTINCT FROM source_row."recipient_user_id"
+      OR NEW."length_mm" IS DISTINCT FROM source_row."length_mm"
+    THEN
+      RAISE EXCEPTION 'Linked Return to Store must inherit its source Checkout identity'
+        USING ERRCODE = '23514', CONSTRAINT = 'stock_movement_source_checkout_identity';
+    END IF;
+  END IF;
+
+  IF TG_OP = 'UPDATE'
+    AND (
+      NEW."movement_type" IS DISTINCT FROM OLD."movement_type"
+      OR NEW."job_id" IS DISTINCT FROM OLD."job_id"
+      OR NEW."part_id" IS DISTINCT FROM OLD."part_id"
+      OR NEW."recipient_user_id" IS DISTINCT FROM OLD."recipient_user_id"
+      OR NEW."length_mm" IS DISTINCT FROM OLD."length_mm"
+      OR NEW."source_checkout_id" IS DISTINCT FROM OLD."source_checkout_id"
+    )
+    AND EXISTS (
+      SELECT 1
+      FROM "equipment"."stock_movement" child
+      WHERE child."source_checkout_id" = OLD."id"
+    )
+  THEN
+    RAISE EXCEPTION 'A Checkout linked to a Return to Store cannot change identity'
+      USING ERRCODE = '23514', CONSTRAINT = 'stock_movement_source_checkout_identity';
+  END IF;
+
+  RETURN NEW;
+END;
+$$;--> statement-breakpoint
+CREATE TRIGGER "stock_movement_source_checkout_identity"
+BEFORE INSERT OR UPDATE ON "equipment"."stock_movement"
+FOR EACH ROW EXECUTE FUNCTION "equipment"."enforce_stock_movement_source_checkout"();

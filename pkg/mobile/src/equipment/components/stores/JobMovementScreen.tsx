@@ -171,6 +171,7 @@ function JobMovementForm({
                 onPress={() => {
                   const targetState = switchStoresMovementTarget({
                     actor,
+                    currentMode: mode,
                     isCheckout,
                     state: { job, jobSearch, purpose, recipient, sourceCheckout },
                     targetMode,

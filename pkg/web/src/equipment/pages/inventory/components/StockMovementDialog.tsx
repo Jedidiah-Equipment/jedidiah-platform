@@ -47,6 +47,7 @@ export function StockMovementDialog({
   defaultSourceCheckout = null,
   defaultSourceCheckoutId = '',
   fixedJob,
+  fixedTargetMode,
   isLoadingParts = false,
   items,
   onOpenChange,
@@ -59,6 +60,7 @@ export function StockMovementDialog({
   defaultSourceCheckout?: SourceCheckoutOption | null;
   defaultSourceCheckoutId?: string;
   fixedJob?: FixedJob;
+  fixedTargetMode?: 'job' | 'person';
   /** Set where the Part list is fetched only once the dialog opens, so the select can say so. */
   isLoadingParts?: boolean;
   items: readonly StockOnHandRow[];
@@ -76,7 +78,9 @@ export function StockMovementDialog({
   const [selectedSourceCheckout, setSelectedSourceCheckout] = useState<SourceCheckoutOption | null>(
     defaultSourceCheckout,
   );
-  const [sourceLookupEnabled, setSourceLookupEnabled] = useState(defaultSourceCheckoutId !== '');
+  const [sourceLookupEnabled, setSourceLookupEnabled] = useState(
+    fixedTargetMode === 'person' || defaultSourceCheckoutId !== '',
+  );
   const [sourceSearch, setSourceSearch] = useState('');
   const [debouncedSourceSearch] = useDebouncedValue(sourceSearch, 250);
   const movementWarningsOutcome = useMovementWarnings();
@@ -172,7 +176,7 @@ export function StockMovementDialog({
       defaultValues={{
         jobId: fixedJob?.id ?? '',
         lengthMm: Number.NaN,
-        mode: defaultSourceCheckoutId === '' ? 'job' : 'person',
+        mode: fixedTargetMode ?? (defaultSourceCheckoutId === '' ? 'job' : 'person'),
         note: '',
         partId: defaultPartId,
         quantity: Number.NaN,
@@ -180,7 +184,9 @@ export function StockMovementDialog({
         sourceCheckoutId: defaultSourceCheckoutId,
       }}
       description={
-        type === 'checkout' ? 'Draw a Part from stock against any Job.' : 'Return a previously drawn Part to store.'
+        type === 'checkout'
+          ? 'Draw a Part from stock for a Job or a person.'
+          : 'Return a previously drawn Part to store.'
       }
       onCreate={(values) => {
         const part = parts.find((candidate) => candidate.partId === values.partId);
@@ -211,7 +217,7 @@ export function StockMovementDialog({
 
             return (
               <>
-                {fixedJob === undefined ? (
+                {fixedJob === undefined && fixedTargetMode === undefined ? (
                   <Field>
                     <FieldLabel>Movement target</FieldLabel>
                     <Tabs
@@ -333,7 +339,10 @@ export function StockMovementDialog({
                             onSelected={(source) => {
                               setSelectedSourceCheckout(source);
                               field.handleChange(source?.id ?? '');
+                              form.setFieldValue('partId', source?.partId ?? '');
+                              form.setFieldValue('lengthMm', source?.lengthMm ?? Number.NaN);
                               setSourceSearch('');
+                              queueMicrotask(() => void form.validateField('quantity', 'blur'));
                             }}
                             options={sourceCheckoutItems}
                             placeholder="Select original Checkout"

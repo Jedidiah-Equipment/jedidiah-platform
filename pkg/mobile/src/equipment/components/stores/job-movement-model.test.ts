@@ -17,7 +17,9 @@ describe('stores movement targets', () => {
       sourceCheckout: null,
     };
 
-    expect(switchStoresMovementTarget({ actor, isCheckout: true, state, targetMode: 'person' })).toMatchObject({
+    expect(
+      switchStoresMovementTarget({ actor, currentMode: 'job', isCheckout: true, state, targetMode: 'person' }),
+    ).toMatchObject({
       job: null,
       jobSearch: '',
       recipient: actor,
@@ -26,11 +28,16 @@ describe('stores movement targets', () => {
     expect(
       switchStoresMovementTarget({
         actor,
+        currentMode: 'person',
         isCheckout: true,
         state: { ...state, purpose: 'repair', recipient: actor },
         targetMode: 'job',
       }),
     ).toMatchObject({ purpose: '', recipient: null, sourceCheckout: null });
+
+    expect(
+      switchStoresMovementTarget({ actor, currentMode: 'person', isCheckout: false, state, targetMode: 'person' }),
+    ).toBe(state);
   });
 
   it('posts a different recipient and an exact linked source as separate strict payloads', () => {

@@ -775,6 +775,7 @@ async function loadStockPartDetails({ db, partId }: { db: Db; partId: UUID }) {
       id: parts.id,
       isInternallyFabricated: parts.isInternallyFabricated,
       name: parts.name,
+      stockTrackingMode: parts.stockTrackingMode,
       unitOfMeasure: parts.unitOfMeasure,
     })
     .from(parts)

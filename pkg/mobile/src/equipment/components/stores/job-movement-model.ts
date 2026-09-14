@@ -19,15 +19,19 @@ export type StoresMovementTargetState = {
 /** Switching target never leaves a hidden Job/person selection waiting to leak into a later post. */
 export function switchStoresMovementTarget({
   actor,
+  currentMode,
   isCheckout,
   state,
   targetMode,
 }: {
   actor: QuickSwitchActor | null;
+  currentMode: 'job' | 'person';
   isCheckout: boolean;
   state: StoresMovementTargetState;
   targetMode: 'job' | 'person';
 }): StoresMovementTargetState {
+  if (targetMode === currentMode) return state;
+
   if (targetMode === 'job') {
     return { ...state, purpose: '', recipient: null, sourceCheckout: null };
   }

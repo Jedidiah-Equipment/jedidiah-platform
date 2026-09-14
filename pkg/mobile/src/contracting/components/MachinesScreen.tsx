@@ -1,14 +1,23 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { FlatList, Pressable, ScrollView, View } from 'react-native';
+import { FlatList, Pressable, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MainToolbar } from '@/components/TopToolbar';
 import { Text } from '@/components/ui/text';
-import { TextInput } from '@/components/ui/text-input';
+import {
+  getMachineCategories,
+  getVisibleMachines,
+  isMachineCategoryFilter,
+  isMachineSort,
+  type MachineSort,
+  normalizeMachineCategory,
+} from '@/contracting/lib/machine-catalog';
 import { useReadingQueue } from '@/contracting/readings/ReadingQueueProvider';
 import { useFleet } from '@/contracting/readings/use-fleet';
 import { useIsOffline } from '@/lib/connectivity';
+import { usePersistedState } from '@/lib/use-persisted-state';
 import { CategoryIcon } from './CategoryIcon';
+import { MachineCatalogControls } from './MachineCatalogControls';
 import { ReadingButton } from './ReadingButton';
 
 export default function MachinesScreen() {
@@ -16,25 +25,18 @@ export default function MachinesScreen() {
   const { items, error } = useReadingQueue();
   const offline = useIsOffline();
   const [search, setSearch] = useState('');
-  const [category, setCategory] = useState<string | null>(null);
-  const categories = [
-    ...new Map(
-      fleet.data?.map((machine) => [
-        machine.categoryId,
-        {
-          id: machine.categoryId,
-          name: machine.categoryName,
-          icon: machine.categoryIcon,
-          colour: machine.categoryColour,
-        },
-      ]),
-    ).values(),
-  ];
-  const machines = fleet.data?.filter(
-    (machine) =>
-      machine.code.toLowerCase().includes(search.trim().toLowerCase()) &&
-      (!category || machine.categoryId === category),
+  const [savedCategory, setCategory] = usePersistedState(
+    'jedidiah-contracting-machine-category',
+    'all',
+    isMachineCategoryFilter,
   );
+  const [sort, setSort] = usePersistedState<MachineSort>('jedidiah-contracting-machine-sort', 'code', isMachineSort);
+  const categories = getMachineCategories(fleet.data ?? []);
+  const category = normalizeMachineCategory(
+    savedCategory,
+    categories.map((item) => item.value),
+  );
+  const machines = getVisibleMachines(fleet.data ?? [], { search, category, sort });
   const attention = items.filter((item) => item.attention).length;
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top', 'left', 'right']}>
@@ -45,40 +47,27 @@ export default function MachinesScreen() {
             Offline · showing saved Machines. Captures stay on this phone until synced.
           </Text>
         ) : null}
-        <ReadingButton
-          title={`Needs attention (${attention}) · ${items.length - attention} queued`}
-          onPress={() => router.push('/contracting/attention')}
-        />
+        {attention > 0 ? (
+          <ReadingButton
+            title={`Needs attention (${attention}) · ${items.length - attention} queued`}
+            onPress={() => router.push('/contracting/attention')}
+          />
+        ) : null}
         {error ? <Text className="text-danger">{error}</Text> : null}
-        <TextInput
-          accessibilityLabel="Search Machine code"
-          placeholder="Search Machine code"
-          value={search}
-          onChangeText={setSearch}
+        <MachineCatalogControls
+          categories={categories}
+          category={category}
+          search={search}
+          sort={sort}
+          onCategoryChange={setCategory}
+          onSearchChange={setSearch}
+          onSortChange={setSort}
         />
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          <View className="flex-row gap-2">
-            {[{ id: null, name: 'All categories' }, ...categories].map((item) => (
-              <Pressable
-                key={item.id ?? 'all'}
-                accessibilityRole="button"
-                accessibilityState={{ selected: category === item.id }}
-                onPress={() => setCategory(item.id)}
-                className={`flex-row items-center gap-2 rounded-full border border-border py-1.5 pr-3 pl-1.5 ${category === item.id ? 'bg-primary' : 'bg-surface'}`}
-              >
-                {'icon' in item ? <CategoryIcon icon={item.icon} colour={item.colour} size={16} /> : null}
-                <Text className={category === item.id ? 'text-primary-foreground' : 'text-foreground'}>
-                  {item.name}
-                </Text>
-              </Pressable>
-            ))}
-          </View>
-        </ScrollView>
       </View>
       <FlatList
-        data={machines ?? []}
+        data={machines}
         keyExtractor={(item) => item.id}
-        contentContainerStyle={{ padding: 16, gap: 10 }}
+        contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 4, paddingBottom: 16, gap: 10 }}
         refreshing={!offline && fleet.isRefetching}
         onRefresh={() => {
           void fleet.refetch();
@@ -88,7 +77,7 @@ export default function MachinesScreen() {
             {!fleet.canRead
               ? 'Your role cannot view field Machines.'
               : fleet.data
-                ? 'No Machines match your search.'
+                ? 'No Machines match your search or Category filter.'
                 : offline
                   ? 'Connect once to save the fleet on this phone.'
                   : fleet.isError

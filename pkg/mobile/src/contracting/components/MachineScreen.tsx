@@ -1,8 +1,11 @@
+import { IconAlertTriangle, IconCheck, IconClock } from '@tabler/icons-react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { SecondaryToolbar } from '@/components/TopToolbar';
+import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
+import { latestKnownReading } from '@/contracting/readings/latest-reading';
 import { useReadingQueue } from '@/contracting/readings/ReadingQueueProvider';
 import { useCapturePermission } from '@/contracting/readings/use-capture-permission';
 import { useFleet, useMachineReadings } from '@/contracting/readings/use-fleet';
@@ -19,6 +22,13 @@ export default function MachineScreen() {
   const pending = items
     .filter((row) => row.machineId === id)
     .sort((a, b) => Date.parse(b.capturedAt) - Date.parse(a.capturedAt));
+  const latest = latestKnownReading(id, items, readings.data);
+  const latestLocal = pending.find((row) => row.localId === latest?.id);
+  const readingStatus = latestLocal?.attention
+    ? { label: 'Needs attention', icon: IconAlertTriangle, className: 'text-danger' }
+    : latestLocal
+      ? { label: 'Queued', icon: IconClock, className: 'text-muted-foreground' }
+      : { label: 'Synced', icon: IconCheck, className: 'text-status-next' };
   const offline = useIsOffline();
   const canCapture = useCapturePermission();
   return (
@@ -41,10 +51,15 @@ export default function MachineScreen() {
           </View>
           <Text className="text-muted-foreground">{machine?.categoryName} · In Yard</Text>
           <Text className="text-3xl text-foreground" weight="bold">
-            {readings.data?.[0] ? `${readings.data[0].value.toFixed(1)} h` : 'No known reading'}
+            {latest ? `${latest.value.toFixed(1)} h` : 'No known reading'}
           </Text>
-          <Text className="text-sm text-muted-foreground">Latest synced hours</Text>
-          {pending[0] ? (
+          {latest ? (
+            <View className="flex-row items-center gap-1">
+              <Icon icon={readingStatus.icon} className={readingStatus.className} size={14} />
+              <Text className={`text-sm ${readingStatus.className}`}>{readingStatus.label}</Text>
+            </View>
+          ) : null}
+          {pending[0] && !latestLocal ? (
             <Text className="text-foreground">
               Latest local capture: {pending[0].value.toFixed(1)} h ·{' '}
               {pending[0].attention ? 'Needs attention' : 'Queued'}

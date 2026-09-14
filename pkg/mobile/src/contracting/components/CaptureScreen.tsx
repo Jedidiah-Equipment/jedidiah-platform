@@ -222,7 +222,7 @@ export default function CaptureScreen() {
         {!canCapture ? <Text className="text-danger">Your role cannot capture readings.</Text> : null}
         <ReadingButton
           primary
-          title={busy ? 'Saving…' : 'Save reading to queue'}
+          title={busy ? 'Saving…' : 'Save reading'}
           disabled={busy || cameraOpen || !parsed?.success || (!!below && !disputeConfirmed) || !canCapture || !machine}
           onPress={() => {
             void save();

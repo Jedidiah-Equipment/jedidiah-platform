@@ -20,7 +20,7 @@ type CreateEntityDialogProps<TValues extends Record<string, unknown>, TResult> =
    * that has not loaded or has failed. This refuses the click before the dependency has to report
    * an avoidable failure. Anything the values themselves determine belongs in `validator`, not here.
    */
-  canSubmit?: boolean;
+  canSubmit?: boolean | ((values: TValues) => boolean);
   children: (form: CreateEntityFormApi<TValues>) => React.ReactNode;
   contentClassName?: string;
   defaultValues: TValues;
@@ -109,12 +109,18 @@ export function CreateEntityDialog<TValues extends Record<string, unknown>, TRes
         >
           {children(form)}
           <form.Subscribe
-            selector={(state) => ({
-              canSubmit:
-                canSubmit && (!disableSubmitWhenInvalid || validator.safeParse(state.values as TValues).success),
-              isSubmitting: state.isSubmitting,
-              label: typeof submitLabel === 'function' ? submitLabel(state.values as TValues) : submitLabel,
-            })}
+            selector={(state) => {
+              const values = state.values as TValues;
+              const dependencyAllowsSubmit = typeof canSubmit === 'function' ? canSubmit(values) : canSubmit;
+
+              return {
+                canSubmit:
+                  dependencyAllowsSubmit &&
+                  (!disableSubmitWhenInvalid || validator.safeParse(values as TValues).success),
+                isSubmitting: state.isSubmitting,
+                label: typeof submitLabel === 'function' ? submitLabel(values) : submitLabel,
+              };
+            }}
           >
             {({ canSubmit: formCanSubmit, isSubmitting, label }) => (
               <DialogFooter>

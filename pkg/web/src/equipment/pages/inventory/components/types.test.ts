@@ -24,6 +24,7 @@ import {
   toReturnFromCheckoutInput,
   toRevaluationInput,
   toStockPartOption,
+  unacknowledgedCheckoutBasketWarnings,
 } from './types.js';
 
 const piece: StockPartOption = {
@@ -269,6 +270,18 @@ describe('Checkout Basket form', () => {
     expect(
       validator.safeParse({ ...values, jobId: '', note: ' ', recipientUserId: '', target: 'person' }).success,
     ).toBe(false);
+  });
+
+  it('reconciles warning codes by Basket line rather than flattening away a newly affected Part', () => {
+    expect(
+      unacknowledgedCheckoutBasketWarnings({
+        acknowledged: [{ ...first, warnings: ['negative-stock-on-hand'] }],
+        posted: [
+          { ...first, warnings: ['negative-stock-on-hand'] },
+          { lengthMm: null, partId: measured.partId, warnings: ['negative-stock-on-hand'] },
+        ],
+      }),
+    ).toEqual([{ code: 'negative-stock-on-hand', lengthMm: null, partId: measured.partId }]);
   });
 });
 

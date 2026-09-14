@@ -4,6 +4,7 @@ import {
   deriveMovementWarnings,
   derivePartStockActions,
   parseScanToken,
+  unacknowledgedWarnings,
 } from '@pkg/domain/equipment';
 import { Price, UUID } from '@pkg/schema';
 import {
@@ -181,6 +182,30 @@ export function toCheckoutBasketInput(values: CheckoutBasketFormValues): PostChe
     values.target === 'job'
       ? { jobId: values.jobId, lines }
       : { lines, note: values.note, recipientUserId: values.recipientUserId },
+  );
+}
+
+type CheckoutBasketWarningLine = Pick<CheckoutBasketLineValues, 'lengthMm' | 'partId'> & {
+  warnings: readonly StockMovementWarningCode[];
+};
+
+/** Keeps post-side Basket warnings attributed to the Part and length the operator did not confirm. */
+export function unacknowledgedCheckoutBasketWarnings({
+  acknowledged,
+  posted,
+}: {
+  acknowledged: readonly CheckoutBasketWarningLine[];
+  posted: readonly CheckoutBasketWarningLine[];
+}): { code: StockMovementWarningCode; lengthMm: number | null; partId: string }[] {
+  const acknowledgedByLine = new Map(
+    acknowledged.map((line) => [`${line.partId}:${line.lengthMm ?? ''}`, line.warnings] as const),
+  );
+
+  return posted.flatMap((line) =>
+    unacknowledgedWarnings({
+      acknowledged: acknowledgedByLine.get(`${line.partId}:${line.lengthMm ?? ''}`) ?? [],
+      posted: line.warnings,
+    }).map((code) => ({ code, lengthMm: line.lengthMm, partId: line.partId })),
   );
 }
 

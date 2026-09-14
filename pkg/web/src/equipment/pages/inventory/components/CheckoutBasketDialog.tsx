@@ -1,5 +1,6 @@
 import { deriveCheckoutBasketWarnings, warningMessageFor } from '@pkg/domain/equipment';
 import type {
+  CheckoutBasketPostResult,
   InventoryRecipientOption,
   JobPickerOption,
   StockMovementWarningCode,
@@ -21,7 +22,6 @@ import { Input } from '@/components/ui/input.js';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs.js';
 import { JobPicker, JobPickerTrigger } from '@/equipment/components/job-picker/index.js';
 import { useInventoryJobPicker } from '@/equipment/hooks/options/index.js';
-import { useMovementWarnings } from '@/equipment/hooks/use-movement-warnings.js';
 import { useQueryInvalidation } from '@/equipment/hooks/use-query-invalidation.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { getApiErrorMetadata } from '@/lib/api-errors.js';
@@ -40,6 +40,7 @@ import {
   type StockMovementTarget,
   type StockPartOption,
   toCheckoutBasketInput,
+  unacknowledgedCheckoutBasketWarnings,
   wholeUnitQuantityMessage,
 } from './types.js';
 
@@ -64,12 +65,14 @@ export function CheckoutBasketDialog({
   const { data: session } = authClient.useSession();
   const { invalidateInventory } = useQueryInvalidation();
   const showMutationError = useApiMutationErrorToast();
-  const movementWarningsOutcome = useMovementWarnings();
   const [isJobPickerOpen, setJobPickerOpen] = useState(false);
   const [selectedJob, setSelectedJob] = useState<JobPickerOption | null>(null);
   const [refusedPartId, setRefusedPartId] = useState<string | null>(null);
   const lineCount = useRef(0);
   const postedSuccessfully = useRef(false);
+  const acknowledgedWarningLines = useRef<
+    readonly (CheckoutBasketLineValues & { warnings: readonly StockMovementWarningCode[] })[]
+  >([]);
   const jobId = fixedJob?.id ?? selectedJob?.id ?? '';
   const offersPersonTarget = fixedJob === undefined;
   const validator = useMemo(() => checkoutBasketValidator(parts), [parts]);
@@ -122,7 +125,8 @@ export function CheckoutBasketDialog({
   }
 
   return (
-    <CreateEntityDialog<CheckoutBasketFormValues, { lines: unknown[]; warnings: StockMovementWarningCode[] }>
+    <CreateEntityDialog<CheckoutBasketFormValues, CheckoutBasketPostResult>
+      canSubmit={(values) => values.target !== 'job' || (values.jobId !== '' && jobStockQuery.isSuccess)}
       defaultValues={{
         jobId: fixedJob?.id ?? '',
         lines: [],
@@ -134,7 +138,11 @@ export function CheckoutBasketDialog({
       description="Build the lines leaving stores, then record them together."
       disableSubmitWhenInvalid
       onCreate={(values) => {
-        movementWarningsOutcome.acknowledge(warningsFor(values).flat());
+        const warningLines = warningsFor(values);
+        acknowledgedWarningLines.current = values.lines.map((line, index) => ({
+          ...line,
+          warnings: warningLines[index] ?? [],
+        }));
         setRefusedPartId(null);
         return basketMutation.mutateAsync(toCheckoutBasketInput(values));
       }}
@@ -143,7 +151,17 @@ export function CheckoutBasketDialog({
         postedSuccessfully.current = true;
         onOpenChange(false);
         toast.success(`${result.lines.length} ${result.lines.length === 1 ? 'Part' : 'Parts'} checked out`);
-        movementWarningsOutcome.reconcile(result.warnings);
+        for (const warning of unacknowledgedCheckoutBasketWarnings({
+          acknowledged: acknowledgedWarningLines.current,
+          posted: result.lines.map((line) => ({
+            lengthMm: line.movement.lengthMm,
+            partId: line.movement.partId,
+            warnings: line.warnings,
+          })),
+        })) {
+          const partCode = parts.find((part) => part.partId === warning.partId)?.partCode ?? 'Part';
+          toast.warning(`${partCode}: ${warningMessageFor(warning.code)}`);
+        }
       }}
       onOpenChange={handleOpenChange}
       open={open}

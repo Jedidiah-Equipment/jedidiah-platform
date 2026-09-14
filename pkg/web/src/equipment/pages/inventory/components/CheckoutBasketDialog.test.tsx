@@ -18,16 +18,15 @@ vi.hoisted(() => {
 });
 
 const postBasket = vi.fn(async () => ({ lines: [{ movement: {}, warnings: [] }], warnings: [] }));
+const loadJobStock = vi.fn(async () => ({ items: [], job: {} }));
 const invalidateInventory = vi.fn(async () => undefined);
-const acknowledge = vi.fn();
-const reconcile = vi.fn();
 
 vi.mock('@/lib/trpc.js', () => ({
   useTRPC: () => ({
     inventory: {
       jobStock: {
         queryOptions: (input: unknown, options: Record<string, unknown>) => ({
-          queryFn: async () => ({ items: [], job: {} }),
+          queryFn: loadJobStock,
           queryKey: ['jobStock', input],
           ...options,
         }),
@@ -61,9 +60,6 @@ vi.mock('@/equipment/components/job-picker/index.js', () => ({
 }));
 vi.mock('@/equipment/hooks/use-query-invalidation.js', () => ({
   useQueryInvalidation: () => ({ invalidateInventory }),
-}));
-vi.mock('@/equipment/hooks/use-movement-warnings.js', () => ({
-  useMovementWarnings: () => ({ acknowledge, reconcile }),
 }));
 vi.mock('@/hooks/use-api-mutation-error-toast.js', () => ({ useApiMutationErrorToast: () => vi.fn() }));
 
@@ -119,9 +115,9 @@ const items: StockOnHandRow[] = parts.map((part) => ({
 const roots: Root[] = [];
 afterEach(async () => {
   postBasket.mockClear();
+  loadJobStock.mockReset();
+  loadJobStock.mockResolvedValue({ items: [], job: {} });
   invalidateInventory.mockClear();
-  acknowledge.mockClear();
-  reconcile.mockClear();
   vi.restoreAllMocks();
   await act(async () => {
     for (const root of roots.splice(0)) root.unmount();
@@ -284,6 +280,31 @@ describe('CheckoutBasketDialog', () => {
         expect.anything(),
       ),
     );
+  });
+
+  it('keeps Job checkout disabled until the warning facts have loaded', async () => {
+    let resolveJobStock: ((value: { items: never[]; job: Record<string, never> }) => void) | undefined;
+    loadJobStock.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveJobStock = resolve;
+        }),
+    );
+    await mount();
+    await scan('HYD-0052');
+    const addQuantity = document.querySelector<HTMLInputElement>('#checkout-basket-quantity');
+    if (!addQuantity) throw new Error('Quantity input missing');
+    await press(addQuantity, 'Enter');
+
+    const submit = [...document.querySelectorAll('button')].find((button) =>
+      button.textContent?.includes('Check out 1 line'),
+    );
+    expect(submit?.disabled).toBe(true);
+
+    await act(async () => {
+      resolveJobStock?.({ items: [], job: {} });
+      await vi.waitFor(() => expect(submit?.disabled).toBe(false));
+    });
   });
 
   it('defaults a linear length, previews a short rack, and keeps lines when close is cancelled', async () => {

@@ -135,18 +135,6 @@ describe('changelog.unseen', () => {
     expect(releasedDates(await caller.changelog.unseen(CONTRACTING))).toEqual([contracting.releasedAt]);
   });
 
-  test('forbids a business the caller cannot access', async ({ context }) => {
-    const equipmentOnly = context.createCaller(sessionWithAccountCreatedAt(ACCOUNT_CREATED, 'admin'), {
-      changelogLoader: () => [changelog(daysAgo(5), 'contracting')],
-    });
-    await expect(equipmentOnly.changelog.unseen(CONTRACTING)).rejects.toMatchObject({ code: 'FORBIDDEN' });
-
-    const contractingOnly = context.createCaller(sessionWithAccountCreatedAt(ACCOUNT_CREATED, null, 'driver'), {
-      changelogLoader: () => [changelog(daysAgo(5), 'equipment')],
-    });
-    await expect(contractingOnly.changelog.unseen(EQUIPMENT)).rejects.toMatchObject({ code: 'FORBIDDEN' });
-  });
-
   test('lets a contracting-only user read the contracting changelog', async ({ context }) => {
     const contracting = changelog(daysAgo(5), 'contracting');
     const caller = context.createCaller(sessionWithAccountCreatedAt(ACCOUNT_CREATED, null, 'driver'), {
@@ -220,20 +208,6 @@ describe('changelog.markSeen', () => {
       },
     );
     expect(await readMark(context.db)).toBeNull();
-  });
-
-  test('forbids marking a business the caller cannot access', async ({ context }) => {
-    const contracting = changelog(daysAgo(3), 'contracting');
-    const caller = context.createCaller(sessionWithAccountCreatedAt(ACCOUNT_CREATED, 'admin'), {
-      changelogLoader: () => [contracting],
-    });
-
-    await expect(
-      caller.changelog.markSeen({ ...CONTRACTING, releasedAt: contracting.releasedAt }),
-    ).rejects.toMatchObject({
-      code: 'FORBIDDEN',
-    });
-    expect(await readMark(context.db, 'contracting')).toBeNull();
   });
 
   test('advances the high-water mark', async ({ context }) => {

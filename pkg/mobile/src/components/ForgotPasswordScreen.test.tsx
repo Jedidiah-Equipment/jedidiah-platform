@@ -51,6 +51,17 @@ describe('ForgotPasswordScreen', () => {
     expect(renderer.root.findAllByType('TextInput' as never)).toHaveLength(0);
   });
 
+  test('uses the same confirmation when the reset request fails', async () => {
+    const requestReset = vi.fn().mockRejectedValue(new Error('network unavailable'));
+    const renderer = renderScreen(requestReset);
+
+    enterEmail(renderer, 'person@example.com');
+    await submit(renderer);
+
+    expect(JSON.stringify(renderer.toJSON())).toContain('Check your email');
+    expect(renderer.root.findAllByType('TextInput' as never)).toHaveLength(0);
+  });
+
   test('rejects an invalid email before crossing the reset boundary', async () => {
     const requestReset = vi.fn().mockResolvedValue(undefined);
     const renderer = renderScreen(requestReset);

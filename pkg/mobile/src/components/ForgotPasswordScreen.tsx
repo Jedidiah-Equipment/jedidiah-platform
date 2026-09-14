@@ -40,9 +40,10 @@ export function ForgotPasswordScreen({ onBack, requestReset }: ForgotPasswordScr
 
     try {
       await requestReset(emailResult.data);
+    } catch {
+      // Use the same response when the request fails so this public screen does
+      // not disclose whether the server recognized the submitted address.
     } finally {
-      // Use one response for existing accounts, unknown addresses, and request
-      // failures so this public screen cannot disclose account membership.
       setSubmitted(true);
       setIsSubmitting(false);
     }
@@ -52,7 +53,7 @@ export function ForgotPasswordScreen({ onBack, requestReset }: ForgotPasswordScr
     <SafeAreaView className="flex-1 bg-background">
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} className="flex-1">
         <ScrollView
-          contentContainerClassName="grow items-center justify-center px-7 py-10"
+          contentContainerClassName="grow justify-center px-7 py-10"
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >

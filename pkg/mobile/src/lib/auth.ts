@@ -79,12 +79,7 @@ export async function signOut() {
 }
 
 export async function requestPasswordReset(email: string): Promise<void> {
-  try {
-    await authClient.requestPasswordReset({ email });
-  } catch {
-    // Password reset responses never reveal whether an account exists. Match the
-    // web flow by showing the same confirmation for request and network failures.
-  }
+  await authClient.requestPasswordReset({ email });
 }
 
 function getSignInErrorMessage(error: SignInError): string {

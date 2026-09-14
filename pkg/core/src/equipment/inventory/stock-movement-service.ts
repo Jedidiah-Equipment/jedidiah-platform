@@ -25,9 +25,12 @@ import {
 } from '@pkg/domain/equipment';
 import type { AuthId, UUID } from '@pkg/schema';
 import type {
+  CheckoutBasketLineResult,
+  CheckoutBasketPostResult,
   JobStockMovementType,
   JobStockResult,
   PostAdjustmentInput,
+  PostCheckoutBasketInput,
   PostCheckoutInput,
   PostJobMovementInput,
   PostReturnToStoreInput,
@@ -39,6 +42,7 @@ import type {
   StockOnHandRow,
 } from '@pkg/schema/equipment';
 import {
+  CheckoutBasketPostResult as CheckoutBasketPostResultSchema,
   isPeriodicStockAdjustmentReason,
   JOB_STOCK_MOVEMENT_TYPES,
   JobStockResult as JobStockResultSchema,
@@ -64,6 +68,7 @@ import {
   insertMovement,
   loadMovingAverages,
   loadStockPart,
+  lockStockParts,
   scalar,
   scaleUnitCost,
   sumDelta,
@@ -211,6 +216,44 @@ export async function postCheckout({
   );
 }
 
+/** Posts every Checkout Basket line in one transaction, preserving ordinary ledger rows. */
+export async function postCheckoutBasket({
+  actorUserId,
+  db,
+  input,
+}: {
+  actorUserId: AuthId;
+  db: Db;
+  input: PostCheckoutBasketInput;
+}): Promise<CheckoutBasketPostResult> {
+  const target: DrawTarget =
+    'jobId' in input
+      ? { jobId: input.jobId, kind: 'job', movementType: 'checkout' }
+      : { kind: 'recipient', note: input.note, recipientUserId: input.recipientUserId };
+
+  return db.transaction(async (tx) => {
+    const partIds = [...new Set(input.lines.map((line) => line.partId))].sort();
+    const partsById = await lockStockParts(tx, partIds);
+    const session = await openDrawSession(tx, {
+      actorUserId,
+      assertedActorUserId: input.actorUserId,
+      target,
+    });
+    const lines: CheckoutBasketLineResult[] = [];
+
+    for (const line of input.lines) {
+      const part = partsById.get(line.partId);
+      if (!part) throw new StockMovementPartNotFoundError(line.partId);
+      lines.push(await drawLine(tx, session, { lengthMm: line.lengthMm, part, quantity: line.quantity }));
+    }
+
+    return CheckoutBasketPostResultSchema.parse({
+      lines,
+      warnings: [...new Set(lines.flatMap((line) => line.warnings))],
+    });
+  });
+}
+
 export async function postReturnToStore({
   actorUserId,
   db,
@@ -254,10 +297,40 @@ async function postDraw(
     target: DrawTarget;
   },
 ): Promise<StockMovementPostResult> {
-  const movementType = drawMovementType(target);
   const part = await loadStockPart({ db: tx, lockForMovement: true, partId });
+  const session = await openDrawSession(tx, { actorUserId, assertedActorUserId, target });
+
+  return drawLine(tx, session, { lengthMm, part, quantity });
+}
+
+/** What one transaction settles once, whatever it goes on to post. */
+type DrawSession = { movementActorUserId: AuthId; target: DrawTarget };
+
+async function openDrawSession(
+  tx: DatabaseTransaction,
+  {
+    actorUserId,
+    assertedActorUserId,
+    target,
+  }: { actorUserId: AuthId; assertedActorUserId: AuthId | null | undefined; target: DrawTarget },
+): Promise<DrawSession> {
   const movementActorUserId = await resolveMovementActor({ assertedActorUserId, db: tx, sessionUserId: actorUserId });
   await lockDrawTarget(tx, target);
+
+  return { movementActorUserId, target };
+}
+
+/** One line against an already-locked Part and an open session. */
+async function drawLine(
+  tx: DatabaseTransaction,
+  session: DrawSession,
+  {
+    lengthMm,
+    part,
+    quantity,
+  }: { lengthMm: number | null; part: Awaited<ReturnType<typeof loadStockPart>>; quantity: number },
+): Promise<StockMovementPostResult> {
+  const movementType = drawMovementType(session.target);
   const unitClass = unitClassFor(part.unitOfMeasure);
 
   assertDeltaMatchesUnitClass(quantity, unitClass);
@@ -265,17 +338,17 @@ async function postDraw(
   // One lookup names both the verdict read and the words a refusal is phrased in.
   const action = movementType === 'checkout' ? 'checkout' : 'returnToStore';
 
-  assertPartStockAction(derivePartStockActions(part)[action], { action, partId });
+  assertPartStockAction(derivePartStockActions(part)[action], { action, partId: part.id });
 
-  const { facts, unitCost } = await loadDrawFacts(tx, { lengthMm, partId, quantity, target });
+  const { facts, unitCost } = await loadDrawFacts(tx, { lengthMm, partId: part.id, quantity, target: session.target });
   const movement = await insertMovement(tx, {
-    actorUserId: movementActorUserId,
+    actorUserId: session.movementActorUserId,
     delta: movementType === 'checkout' ? -quantity : quantity,
     lengthMm,
     movementType,
-    partId,
+    partId: part.id,
     unitCost,
-    ...drawColumns(target),
+    ...drawColumns(session.target),
   });
 
   return StockMovementPostResultSchema.parse({ movement, warnings: deriveMovementWarnings({ facts, quantity }) });

@@ -120,6 +120,51 @@ export const PostCheckoutWithoutJobInput = MovementTargetInput.extend({
 export type PostCheckoutInput = z.infer<typeof PostCheckoutInput>;
 export const PostCheckoutInput = z.union([PostJobMovementInput, PostCheckoutWithoutJobInput]);
 
+/** One Part leaving in a Basket. No target here — the Basket carries it once for every line. */
+export type CheckoutBasketLineInput = z.infer<typeof CheckoutBasketLineInput>;
+export const CheckoutBasketLineInput = MovementTargetInput.extend({
+  quantity: StockMovementQuantity,
+}).strict();
+
+export const CHECKOUT_BASKET_MAX_LINES = 200;
+
+/**
+ * Unique per Part and length bucket. The surface merges repeat scans, so a duplicate reaching the
+ * write boundary is a caller bug rather than a second draw whose warnings may depend on array order.
+ */
+const CheckoutBasketLines = z
+  .array(CheckoutBasketLineInput)
+  .min(1, 'Add at least one line')
+  .max(CHECKOUT_BASKET_MAX_LINES)
+  .superRefine((lines, context) => {
+    const seen = new Set<string>();
+    lines.forEach((line, index) => {
+      const key = `${line.partId}:${line.lengthMm ?? ''}`;
+      if (seen.has(key)) {
+        context.addIssue({ code: 'custom', message: 'Each Part and length appears once', path: [index] });
+      }
+      seen.add(key);
+    });
+  });
+
+export type PostJobCheckoutBasketInput = z.infer<typeof PostJobCheckoutBasketInput>;
+export const PostJobCheckoutBasketInput = z
+  .object({ actorUserId: AssertedActorUserId, jobId: UUID, lines: CheckoutBasketLines })
+  .strict();
+
+export type PostCheckoutBasketWithoutJobInput = z.infer<typeof PostCheckoutBasketWithoutJobInput>;
+export const PostCheckoutBasketWithoutJobInput = z
+  .object({
+    actorUserId: AssertedActorUserId,
+    lines: CheckoutBasketLines,
+    note: requiredTrimmedText('Enter a purpose'),
+    recipientUserId: AuthId,
+  })
+  .strict();
+
+export type PostCheckoutBasketInput = z.infer<typeof PostCheckoutBasketInput>;
+export const PostCheckoutBasketInput = z.union([PostJobCheckoutBasketInput, PostCheckoutBasketWithoutJobInput]);
+
 /** A linked return derives every stock target fact from its original no-Job Checkout. */
 export type PostCheckoutReturnInput = z.infer<typeof PostCheckoutReturnInput>;
 export const PostCheckoutReturnInput = z
@@ -238,6 +283,20 @@ export const StockMovementWarningCode = z.enum([
 export type StockMovementPostResult = z.infer<typeof StockMovementPostResult>;
 export const StockMovementPostResult = z.object({
   movement: StockMovement,
+  warnings: z.array(StockMovementWarningCode),
+});
+
+/** One posted line, keyed the way the surface keyed it so a warning can be pinned to its row. */
+export type CheckoutBasketLineResult = z.infer<typeof CheckoutBasketLineResult>;
+export const CheckoutBasketLineResult = z.object({
+  movement: StockMovement,
+  warnings: z.array(StockMovementWarningCode),
+});
+
+/** Per-line attribution plus the flattened set for the surface's one warning reconciliation. */
+export type CheckoutBasketPostResult = z.infer<typeof CheckoutBasketPostResult>;
+export const CheckoutBasketPostResult = z.object({
+  lines: z.array(CheckoutBasketLineResult).min(1),
   warnings: z.array(StockMovementWarningCode),
 });
 

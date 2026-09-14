@@ -5,6 +5,7 @@ import { useMemo, useState } from 'react';
 
 import { Button } from '@/components/ui/button.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
+import { CheckoutBasketDialog } from '@/equipment/pages/inventory/components/CheckoutBasketDialog.js';
 import { CreatePurchaseOrdersDialog } from '@/equipment/pages/inventory/components/CreatePurchaseOrdersDialog.js';
 import { StockMovementDialog } from '@/equipment/pages/inventory/components/StockMovementDialog.js';
 import { partOptionsAllowing } from '@/equipment/pages/inventory/components/types.js';
@@ -72,7 +73,19 @@ export function JobStockTab({ isCancelled, job }: { isCancelled: boolean; job: {
       ) : (
         <JobStockTable items={jobStockQuery.data.items} />
       )}
-      {movementType ? (
+      {movementType === 'checkout' ? (
+        <CheckoutBasketDialog
+          fixedJob={job}
+          isLoadingParts={stockOnHandQuery.isPending}
+          items={stockOnHandItems}
+          onOpenChange={(open) => {
+            if (!open) setMovementType(null);
+          }}
+          open={true}
+          parts={parts}
+        />
+      ) : null}
+      {movementType === 'return-to-store' ? (
         <StockMovementDialog
           fixedJob={job}
           isLoadingParts={stockOnHandQuery.isPending}
@@ -82,7 +95,6 @@ export function JobStockTab({ isCancelled, job }: { isCancelled: boolean; job: {
           }}
           open={true}
           parts={parts}
-          type={movementType}
         />
       ) : null}
       <CreatePurchaseOrdersDialog

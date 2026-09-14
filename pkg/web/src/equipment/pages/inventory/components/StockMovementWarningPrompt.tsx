@@ -4,7 +4,13 @@ import { IconAlertTriangle } from '@tabler/icons-react';
 
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert.js';
 
-export function StockMovementWarningPrompt({ warnings }: { warnings: readonly StockMovementWarningCode[] }) {
+export function StockMovementWarningPrompt({
+  lines,
+  warnings,
+}: {
+  lines?: readonly { label: string; warnings: readonly StockMovementWarningCode[] }[];
+  warnings: readonly StockMovementWarningCode[];
+}) {
   if (warnings.length === 0) return null;
 
   return (
@@ -13,9 +19,15 @@ export function StockMovementWarningPrompt({ warnings }: { warnings: readonly St
       <AlertTitle>Check this movement</AlertTitle>
       <AlertDescription className="text-warning-foreground/85">
         <ul className="list-disc pl-4">
-          {warnings.map((warning) => (
-            <li key={warning}>{warningMessageFor(warning)}</li>
-          ))}
+          {lines
+            ? lines.flatMap((line) =>
+                line.warnings.map((warning) => (
+                  <li key={`${line.label}:${warning}`}>
+                    {line.label}: {warningMessageFor(warning)}
+                  </li>
+                )),
+              )
+            : warnings.map((warning) => <li key={warning}>{warningMessageFor(warning)}</li>)}
         </ul>
         <p className="mt-1">You can still post this movement.</p>
       </AlertDescription>

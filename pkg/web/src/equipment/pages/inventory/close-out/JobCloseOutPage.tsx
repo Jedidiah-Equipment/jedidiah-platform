@@ -108,7 +108,6 @@ export function JobCloseOutPage({ jobId }: { jobId: UUID }) {
           }}
           open
           parts={parts}
-          type="return-to-store"
         />
       )}
       {isClosing ? (

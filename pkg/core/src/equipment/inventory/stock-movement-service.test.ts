@@ -1,5 +1,13 @@
 import { user } from '@pkg/db';
-import { jobEstimateSnapshots, jobs, parts, stockMovements } from '@pkg/db/equipment';
+import {
+  jobCfoAssemblies,
+  jobCfoParts,
+  jobEstimateSnapshots,
+  jobStockCloseOuts,
+  jobs,
+  parts,
+  stockMovements,
+} from '@pkg/db/equipment';
 import { eq } from 'drizzle-orm';
 import { describe, expect } from 'vitest';
 
@@ -20,10 +28,194 @@ import {
   listStockOnHand,
   postAdjustment,
   postCheckout,
+  postCheckoutBasket,
   postJobMovement,
   postReturnToStore,
   postRevaluation,
 } from './stock-movement-service.js';
+
+describe('Checkout Basket', () => {
+  test('posts a Job Basket as ordinary Checkout rows with shared target and actor', async ({ context }) => {
+    await postAdjustment({
+      actorUserId,
+      db: context.db,
+      input: adjustmentInput(context.parts.piece.id, { delta: 10, unitCost: 10 }),
+    });
+    await postAdjustment({
+      actorUserId,
+      db: context.db,
+      input: adjustmentInput(context.parts.measured.id, { delta: 10, unitCost: 20 }),
+    });
+    await postAdjustment({
+      actorUserId,
+      db: context.db,
+      input: adjustmentInput(context.parts.linear.id, { delta: 5, lengthMm: 6_000, unitCost: 600 }),
+    });
+    const assertedActorUserId = await seedQuickSwitchPerson(context.db, { id: 'basket-operator' });
+
+    const result = await postCheckoutBasket({
+      actorUserId,
+      db: context.db,
+      input: {
+        actorUserId: assertedActorUserId,
+        jobId: context.jobs.custom.id,
+        lines: [
+          { lengthMm: null, partId: context.parts.piece.id, quantity: 2 },
+          { lengthMm: null, partId: context.parts.measured.id, quantity: 1.5 },
+          { lengthMm: 6_000, partId: context.parts.linear.id, quantity: 1 },
+        ],
+      },
+    });
+    const stock = await listStockOnHand({ db: context.db });
+
+    expect(result.lines).toHaveLength(3);
+    expect(result.lines.map(({ movement }) => movement)).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          actorUserId: assertedActorUserId,
+          delta: -2,
+          jobId: context.jobs.custom.id,
+          partId: context.parts.piece.id,
+          unitCost: 10,
+        }),
+        expect.objectContaining({
+          actorUserId: assertedActorUserId,
+          delta: -1.5,
+          jobId: context.jobs.custom.id,
+          partId: context.parts.measured.id,
+          unitCost: 20,
+        }),
+        expect.objectContaining({
+          actorUserId: assertedActorUserId,
+          delta: -1,
+          jobId: context.jobs.custom.id,
+          partId: context.parts.linear.id,
+          unitCost: 600,
+        }),
+      ]),
+    );
+    expect(stock.items.find((row) => row.partId === context.parts.piece.id)?.quantity).toBe(8);
+    expect(stock.items.find((row) => row.partId === context.parts.measured.id)?.quantity).toBe(8.5);
+    expect(stock.items.find((row) => row.partId === context.parts.linear.id)?.quantity).toBe(4);
+  });
+
+  test('writes a Without-a-Job Basket target onto every ordinary Checkout row', async ({ context }) => {
+    const recipientUserId = await seedQuickSwitchPerson(context.db, { id: 'basket-recipient' });
+
+    const result = await postCheckoutBasket({
+      actorUserId,
+      db: context.db,
+      input: {
+        lines: [
+          { lengthMm: null, partId: context.parts.piece.id, quantity: 2 },
+          { lengthMm: null, partId: context.parts.measured.id, quantity: 1.5 },
+        ],
+        note: 'repair the factory press',
+        recipientUserId,
+      },
+    });
+
+    expect(result.lines.map(({ movement }) => movement)).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          jobId: null,
+          note: 'repair the factory press',
+          recipientUserId,
+          sourceCheckoutId: null,
+        }),
+        expect.objectContaining({
+          jobId: null,
+          note: 'repair the factory press',
+          recipientUserId,
+          sourceCheckoutId: null,
+        }),
+      ]),
+    );
+  });
+
+  test('rolls every line back when a later Part refuses Checkout', async ({ context }) => {
+    const before = await context.db.select().from(stockMovements);
+
+    await expect(
+      postCheckoutBasket({
+        actorUserId,
+        db: context.db,
+        input: {
+          jobId: context.jobs.custom.id,
+          lines: [
+            { lengthMm: null, partId: context.parts.piece.id, quantity: 1 },
+            { lengthMm: null, partId: context.parts.measured.id, quantity: 1 },
+            { lengthMm: 6_000, partId: context.parts.periodic.id, quantity: 1 },
+          ],
+        },
+      }),
+    ).rejects.toMatchObject({ code: 'inventory.periodic_movement' });
+
+    expect(await context.db.select().from(stockMovements)).toHaveLength(before.length);
+  });
+
+  test('rejects a closed-out Job or ineligible Recipient without posting any line', async ({ context }) => {
+    await context.db.insert(jobStockCloseOuts).values({ actorUserId, jobId: context.jobs.custom.id, note: null });
+    const before = await context.db.select().from(stockMovements);
+
+    await expect(
+      postCheckoutBasket({
+        actorUserId,
+        db: context.db,
+        input: {
+          jobId: context.jobs.custom.id,
+          lines: [{ lengthMm: null, partId: context.parts.piece.id, quantity: 1 }],
+        },
+      }),
+    ).rejects.toMatchObject({ code: 'inventory.job_closed_out' });
+    await expect(
+      postCheckoutBasket({
+        actorUserId,
+        db: context.db,
+        input: {
+          lines: [{ lengthMm: null, partId: context.parts.piece.id, quantity: 1 }],
+          note: 'repair',
+          recipientUserId: 'missing-recipient',
+        },
+      }),
+    ).rejects.toMatchObject({ code: 'inventory.recipient_ineligible' });
+    expect(await context.db.select().from(stockMovements)).toHaveLength(before.length);
+  });
+
+  test('judges same-Part length lines sequentially and flattens duplicate warnings', async ({ context }) => {
+    const [assembly] = await context.db
+      .select({ id: jobCfoAssemblies.id })
+      .from(jobCfoAssemblies)
+      .where(eq(jobCfoAssemblies.jobId, context.jobs.cfo.id))
+      .limit(1);
+    if (!assembly) throw new Error('CFO assembly fixture missing');
+    await context.db.insert(jobCfoParts).values({
+      cfoAssemblyId: assembly.id,
+      partId: context.parts.linear.id,
+      quantity: 5,
+    });
+    await postAdjustment({
+      actorUserId,
+      db: context.db,
+      input: adjustmentInput(context.parts.linear.id, { delta: 10, lengthMm: 6_000, unitCost: 600 }),
+    });
+
+    const result = await postCheckoutBasket({
+      actorUserId,
+      db: context.db,
+      input: {
+        jobId: context.jobs.cfo.id,
+        lines: [
+          { lengthMm: 6_000, partId: context.parts.linear.id, quantity: 3 },
+          { lengthMm: 3_000, partId: context.parts.linear.id, quantity: 3 },
+        ],
+      },
+    });
+
+    expect(result.lines.map((line) => line.warnings)).toEqual([[], ['exceeds-cfo', 'negative-stock-on-hand']]);
+    expect(result.warnings).toEqual(['exceeds-cfo', 'negative-stock-on-hand']);
+  });
+});
 
 describe('Job stock movements', () => {
   test('rejects checkout but allows cost-preserving returns after a Job is cancelled', async ({ context }) => {

@@ -21,7 +21,7 @@ type CreateEntityDialogProps<TValues extends Record<string, unknown>, TResult> =
    * would be silent; this refuses the click instead. Anything the values themselves determine
    * belongs in `validator`, not here.
    */
-  canSubmit?: boolean;
+  canSubmit?: boolean | ((values: TValues) => boolean);
   children: (form: CreateEntityFormApi<TValues>) => React.ReactNode;
   defaultValues: TValues;
   description?: React.ReactNode;
@@ -97,16 +97,17 @@ export function CreateEntityDialog<TValues extends Record<string, unknown>, TRes
           {children(form)}
           <form.Subscribe
             selector={(state) => ({
+              canSubmit: typeof canSubmit === 'function' ? canSubmit(state.values as TValues) : canSubmit,
               isSubmitting: state.isSubmitting,
               label: typeof submitLabel === 'function' ? submitLabel(state.values as TValues) : submitLabel,
             })}
           >
-            {({ isSubmitting, label }) => (
+            {({ canSubmit: formCanSubmit, isSubmitting, label }) => (
               <DialogFooter>
                 <DialogClose render={<Button disabled={isSubmitting} type="button" variant="outline" />}>
                   Cancel
                 </DialogClose>
-                <Button disabled={isSubmitting || !canSubmit} type="submit">
+                <Button disabled={isSubmitting || !formCanSubmit} type="submit">
                   {isSubmitting ? <IconLoader2 data-icon="inline-start" className="animate-spin" /> : null}
                   {label}
                 </Button>

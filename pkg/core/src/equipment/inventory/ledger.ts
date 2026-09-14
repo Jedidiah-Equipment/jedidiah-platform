@@ -57,6 +57,26 @@ export async function loadStockPart({
   return part;
 }
 
+/** Locks a set of Parts in one deterministic statement so concurrent multi-Part writers agree. */
+export async function lockStockParts(db: DatabaseTransaction, partIds: readonly UUID[]) {
+  if (partIds.length === 0) return new Map<string, Awaited<ReturnType<typeof loadStockPart>>>();
+
+  const rows = await db
+    .select({
+      id: parts.id,
+      isInternallyFabricated: parts.isInternallyFabricated,
+      standardPurchaseLengthMm: parts.standardPurchaseLengthMm,
+      stockTrackingMode: parts.stockTrackingMode,
+      unitOfMeasure: parts.unitOfMeasure,
+    })
+    .from(parts)
+    .where(inArray(parts.id, [...partIds]))
+    .orderBy(asc(parts.id))
+    .for('update');
+
+  return new Map(rows.map((part) => [part.id, part]));
+}
+
 /** The ledger stores three decimals, so a computed quantity is rounded to what the column can hold. */
 export function toLedgerQuantity(value: number): number {
   return Math.round(value * 1000) / 1000;

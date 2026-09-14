@@ -3,8 +3,10 @@ import type { StockOnHandRow } from '@pkg/schema/equipment';
 import { describe, expect, it } from 'vitest';
 
 import {
+  checkoutBasketValidator,
   deriveStockBuildRows,
   deriveStockBuildWarnings,
+  mergeCheckoutBasketLine,
   partIdFromScanToken,
   partOptionsAllowing,
   partQuantityValidationMessage,
@@ -15,6 +17,7 @@ import {
   stockMovementValidator,
   toAdjustmentInput,
   toBuildInput,
+  toCheckoutBasketInput,
   toCheckoutWithoutJobInput,
   toCloseOutJobInput,
   toJobMovementInput,
@@ -234,6 +237,61 @@ describe('Checkout Without a Job form', () => {
     expect(validator.safeParse({ ...values, note: ' ' }).success).toBe(false);
     expect(validator.safeParse({ ...values, recipientUserId: '' }).success).toBe(false);
     expect(validator.safeParse({ ...values, target: 'job' }).success).toBe(false);
+  });
+});
+
+describe('Checkout Basket form', () => {
+  const first = { lengthMm: null, partId: piece.partId, quantity: 1 };
+
+  it('merges the same Part and length while keeping different buckets as separate lines', () => {
+    expect(mergeCheckoutBasketLine([first], { ...first, quantity: 4 })).toEqual([{ ...first, quantity: 5 }]);
+    expect(mergeCheckoutBasketLine([first], { ...first, lengthMm: 6_000 })).toEqual([
+      first,
+      { ...first, lengthMm: 6_000 },
+    ]);
+    expect(mergeCheckoutBasketLine([first], { ...first, partId: measured.partId })).toEqual([
+      first,
+      { ...first, partId: measured.partId },
+    ]);
+  });
+
+  it('maps only the selected target into the strict Basket input', () => {
+    expect(
+      toCheckoutBasketInput({
+        jobId: piece.partId,
+        lines: [first],
+        note: 'unused',
+        recipientUserId: 'unused',
+        target: 'job',
+      }),
+    ).toEqual({ jobId: piece.partId, lines: [first] });
+    expect(
+      toCheckoutBasketInput({
+        jobId: '',
+        lines: [first],
+        note: ' repair press ',
+        recipientUserId: 'connor',
+        target: 'person',
+      }),
+    ).toEqual({ lines: [first], note: 'repair press', recipientUserId: 'connor' });
+  });
+
+  it('requires a target and at least one line', () => {
+    const validator = checkoutBasketValidator();
+    const values = {
+      jobId: piece.partId,
+      lines: [first],
+      note: '',
+      recipientUserId: '',
+      target: 'job' as const,
+    };
+
+    expect(validator.safeParse(values).success).toBe(true);
+    expect(validator.safeParse({ ...values, jobId: '' }).success).toBe(false);
+    expect(validator.safeParse({ ...values, lines: [] }).success).toBe(false);
+    expect(
+      validator.safeParse({ ...values, jobId: '', note: ' ', recipientUserId: '', target: 'person' }).success,
+    ).toBe(false);
   });
 });
 

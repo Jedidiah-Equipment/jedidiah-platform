@@ -14,6 +14,7 @@ import {
   type PartUnitOfMeasure,
   PostAdjustmentInput,
   PostBuildInput,
+  PostCheckoutBasketInput,
   PostCheckoutReturnInput,
   PostCheckoutWithoutJobInput,
   PostJobMovementInput,
@@ -120,6 +121,67 @@ export const StockMovementFormValues = z.object({
   recipientUserId: z.string(),
   target: StockMovementTarget,
 });
+
+export type CheckoutBasketLineValues = { lengthMm: number | null; partId: string; quantity: number };
+
+export type CheckoutBasketFormValues = z.infer<typeof CheckoutBasketFormValues>;
+export const CheckoutBasketFormValues = z.object({
+  jobId: z.string(),
+  lines: z
+    .array(
+      z.object({
+        lengthMm: StockMovementLengthMm.nullable(),
+        partId: UUID,
+        quantity: StockMovementQuantity,
+      }),
+    )
+    .min(1, 'Add at least one line'),
+  note: z.string(),
+  recipientUserId: z.string(),
+  target: StockMovementTarget,
+});
+
+export function checkoutBasketValidator() {
+  return CheckoutBasketFormValues.superRefine((values, context) => {
+    if (values.target === 'job') {
+      if (!UUID.safeParse(values.jobId).success) {
+        context.addIssue({ code: 'custom', message: 'Select a Job', path: ['jobId'] });
+      }
+      return;
+    }
+    if (values.recipientUserId.trim() === '') {
+      context.addIssue({ code: 'custom', message: 'Select who received the Parts', path: ['recipientUserId'] });
+    }
+    if (values.note.trim() === '') {
+      context.addIssue({ code: 'custom', message: 'Enter a purpose', path: ['note'] });
+    }
+  });
+}
+
+/** Merges a keyed line into the Basket: the same Part and length adds to the existing line. */
+export function mergeCheckoutBasketLine(
+  lines: readonly CheckoutBasketLineValues[],
+  line: CheckoutBasketLineValues,
+): CheckoutBasketLineValues[] {
+  const index = lines.findIndex(
+    (candidate) => candidate.partId === line.partId && candidate.lengthMm === line.lengthMm,
+  );
+  if (index === -1) return [...lines, line];
+
+  return lines.map((candidate, candidateIndex) =>
+    candidateIndex === index ? { ...candidate, quantity: candidate.quantity + line.quantity } : candidate,
+  );
+}
+
+export function toCheckoutBasketInput(values: CheckoutBasketFormValues): PostCheckoutBasketInput {
+  const lines = values.lines.map(({ lengthMm, partId, quantity }) => ({ lengthMm, partId, quantity }));
+
+  return PostCheckoutBasketInput.parse(
+    values.target === 'job'
+      ? { jobId: values.jobId, lines }
+      : { lines, note: values.note, recipientUserId: values.recipientUserId },
+  );
+}
 
 /** A source-linked return names the Checkout it reverses; that Checkout fixes the Part, length and Recipient. */
 export type ReturnFromCheckoutFormValues = z.infer<typeof ReturnFromCheckoutFormValues>;

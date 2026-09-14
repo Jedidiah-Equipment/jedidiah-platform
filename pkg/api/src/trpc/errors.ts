@@ -125,6 +125,16 @@ export function getTRPCAppCode(error: TRPCError): AppCode | undefined {
   return (error as AppCodedTRPCError).appCode;
 }
 
+/** The one safe core-error detail a stock surface uses to pin a refusal to its Basket line. */
+export function getTRPCPartMetadata(error: TRPCError): { partId: string } | undefined {
+  const cause = error.cause;
+  if (typeof cause !== 'object' || cause === null || !('metadata' in cause)) return undefined;
+  const metadata = cause.metadata;
+  if (typeof metadata !== 'object' || metadata === null || !('partId' in metadata)) return undefined;
+
+  return typeof metadata.partId === 'string' ? { partId: metadata.partId } : undefined;
+}
+
 export function getTRPCPublicMessage(error: TRPCError, message: string): string {
   if (error.code === 'INTERNAL_SERVER_ERROR' && !getTRPCAppCode(error)) {
     return UNEXPECTED_ERROR_MESSAGE;

@@ -314,6 +314,18 @@ export function partOptionsAllowing(
   return items.filter((item) => derivePartStockActions(item)[action].allowed).map(toStockPartOption);
 }
 
+function partSelectOption(part: StockPartOption) {
+  return { label: `${part.partCode} · ${part.partName}`, value: part.partId };
+}
+
 export function partSelectOptions(parts: readonly StockPartOption[]) {
-  return parts.map((part) => ({ label: `${part.partCode} · ${part.partName}`, value: part.partId }));
+  return parts.map(partSelectOption);
+}
+
+/** Stock movements accept a keyboard-wedge scan without turning partial text into a Part selection. */
+export function scannablePartSelectOptions(parts: readonly StockPartOption[]) {
+  return parts.map((part) => ({
+    exactInputValue: part.partCode,
+    ...partSelectOption(part),
+  }));
 }

@@ -8,6 +8,8 @@ import {
 } from '@/components/ui/combobox.js';
 
 export type SearchableComboboxOption = {
+  /** Optional machine-entered token that commits this option only on an exact match. */
+  exactInputValue?: string;
   label: string;
   value: string;
 };
@@ -53,6 +55,18 @@ export function SearchableCombobox({
         disabled={disabled}
         id={inputId}
         onBlur={onBlur}
+        onKeyDown={(event) => {
+          if (event.key !== 'Enter' || event.currentTarget.getAttribute('aria-activedescendant')) return;
+
+          const exactInputOptions = options.filter((option) => option.exactInputValue !== undefined);
+          if (exactInputOptions.length === 0) return;
+
+          event.preventDefault();
+          const match = exactInputOptions.find((option) => option.exactInputValue === event.currentTarget.value.trim());
+          if (!match) return;
+
+          onValueChange(match.value);
+        }}
         placeholder={placeholder}
         showClear
       />

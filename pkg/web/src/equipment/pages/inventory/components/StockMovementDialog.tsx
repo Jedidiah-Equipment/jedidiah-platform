@@ -22,9 +22,9 @@ import { useTRPC } from '@/lib/trpc.js';
 import { StockMovementWarningPrompt } from './StockMovementWarningPrompt.js';
 import {
   partQuantityValidationMessage,
-  partSelectOptions,
   type StockJobMovementFormValues,
   type StockPartOption,
+  scannablePartSelectOptions,
   stockJobMovementValidator,
   toJobMovementInput,
 } from './types.js';
@@ -171,7 +171,7 @@ export function StockMovementDialog({
                   // The selection commits first; defer until the form exposes the new Part to the dependent validator.
                   queueMicrotask(() => void form.validateField('quantity', 'blur'));
                 }}
-                options={partSelectOptions(parts)}
+                options={scannablePartSelectOptions(parts)}
                 placeholder={isLoadingParts ? 'Loading parts...' : 'Search parts'}
               />
             )}

@@ -1,3 +1,4 @@
+import { useRef } from 'react';
 import {
   Combobox,
   ComboboxContent,
@@ -38,6 +39,7 @@ export function SearchableCombobox({
   value,
 }: SearchableComboboxProps) {
   const selectedOption = options.find((option) => option.value === value) ?? null;
+  const keyboardSelectionPending = useRef(false);
 
   return (
     <Combobox
@@ -55,13 +57,29 @@ export function SearchableCombobox({
         disabled={disabled}
         id={inputId}
         onBlur={onBlur}
-        onKeyDown={(event) => {
-          if (event.key !== 'Enter' || event.currentTarget.getAttribute('aria-activedescendant')) return;
+        onKeyDownCapture={(event) => {
+          if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+            keyboardSelectionPending.current = true;
+            return;
+          }
+
+          if (event.key !== 'Enter') {
+            keyboardSelectionPending.current = false;
+            return;
+          }
+
+          if (keyboardSelectionPending.current) {
+            keyboardSelectionPending.current = false;
+            return;
+          }
 
           const exactInputOptions = options.filter((option) => option.exactInputValue !== undefined);
           if (exactInputOptions.length === 0) return;
 
+          if (event.currentTarget.value === selectedOption?.label) return;
+
           event.preventDefault();
+          event.stopPropagation();
           const match = exactInputOptions.find((option) => option.exactInputValue === event.currentTarget.value.trim());
           if (!match) return;
 

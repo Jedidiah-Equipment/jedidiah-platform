@@ -1,17 +1,10 @@
-import {
-  getUserById,
-  isUserNotFoundError,
-  listUsers,
-  setUserIsDevice,
-  type UserNotFoundError,
-  updateUserThumbnail,
-} from '@pkg/core';
+import { getUserById, listUsers, setUserIsDevice, updateUserThumbnail } from '@pkg/core';
 import { AuthId, NullableThumbnailDataUrl, UserListInput } from '@pkg/schema';
 import { TRPCError } from '@trpc/server';
 import { z } from 'zod';
 import { getApiConfig } from '@/env.js';
-import { type CoreErrorMapping, mapKnownCoreError } from '@/trpc/errors.js';
 import { authorizedProcedure, router } from '@/trpc/init.js';
+import { mapUserErrors } from './user-error-mapping.js';
 
 const config = getApiConfig();
 
@@ -79,15 +72,3 @@ export const usersRouter = router({
       });
     }),
 });
-
-export async function mapUserErrors<T>(action: () => Promise<T>): Promise<T> {
-  return mapKnownCoreError(action, isUserNotFoundError, mapUserNotFoundError);
-}
-
-function mapUserNotFoundError(_error: UserNotFoundError): CoreErrorMapping<'user.not_found'> {
-  return {
-    appCode: 'user.not_found',
-    code: 'NOT_FOUND',
-    message: 'User not found.',
-  };
-}

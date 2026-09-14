@@ -1,6 +1,7 @@
 # Manage Users
 
-Only an Administrator or Super Administrator manages Users. **Users** in Contracting mode lists the people who
+Only a Super Administrator manages Users in Contracting mode, since no Contracting role carries user
+administration. **Users** in Contracting mode lists the people who
 hold a Contracting role — and a Super Administrator, who spans both businesses. A person who belongs to Jedidiah
 Equipment is managed under **Users** in Equipment mode instead; giving one person a role in both businesses is a
 scripted change, not something the app offers.

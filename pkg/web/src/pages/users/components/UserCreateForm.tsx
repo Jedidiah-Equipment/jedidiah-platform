@@ -73,7 +73,8 @@ export const UserCreateForm: React.FC<UserCreateFormProps> = ({
           {(field) => <field.TextField autoComplete="email" label="Email" type="email" />}
         </form.AppField>
         <form.AppField name="phoneNumber">{(field) => <field.PhoneNumberField label="Phone number" />}</form.AppField>
-        {canSetRole ? (
+        {/* A shared device is the Equipment stores tablet; Contracting has no device accounts. */}
+        {canSetRole && business === 'equipment' ? (
           <form.AppField name="isDevice">
             {(field) => (
               <field.CheckboxField

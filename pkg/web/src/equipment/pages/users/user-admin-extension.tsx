@@ -64,8 +64,9 @@ export const equipmentUserAdminExtension: UserAdminExtension = {
   useFormExtension: ({ isPending, user }) => {
     const trpc = useTRPC();
     const { invalidateUserDepartments } = useQueryInvalidation();
-    const canAssignDepartments = hasPermission(useAccess().data, 'user:update');
-    const canSetRole = hasPermission(useAccess().data, 'user:set-role');
+    const access = useAccess().data;
+    const canAssignDepartments = hasPermission(access, 'user:update');
+    const canSetRole = hasPermission(access, 'user:set-role');
     const memberships = useDepartmentMemberships();
     const initialDepartments = (user && memberships.get(user.id)) ?? noDepartments;
     const [draft, setDraft] = useState<readonly Department[] | null>(null);
@@ -78,7 +79,7 @@ export const equipmentUserAdminExtension: UserAdminExtension = {
     const departments = draft ?? initialDepartments;
     const save = useCallback(
       async (userId: AuthId) => {
-        if (!canAssignDepartments || draft === null || haveDepartmentsChanged(draft, initialDepartments) === false) {
+        if (!canAssignDepartments || draft === null || !haveDepartmentsChanged(draft, initialDepartments)) {
           return false;
         }
 

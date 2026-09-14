@@ -9,7 +9,7 @@ import {
   type UserAccount,
   type UserListResult,
 } from '@pkg/schema';
-import { asc, eq, isNotNull, isNull, or, type SQL } from 'drizzle-orm';
+import { and, asc, eq, isNotNull, isNull, or, type SQL } from 'drizzle-orm';
 
 import { defineAuditDescriptor } from '../audit/audit-writer.js';
 import { mutateEntity } from '../audit/mutate-entity.js';
@@ -94,11 +94,13 @@ export async function getUserById({ db, userId }: { db: Db; userId: AuthId }): P
  * who belongs to neither business and would otherwise be reachable from nowhere.
  */
 function businessMembership(business: Business): SQL | undefined {
+  const holdsNoRole = and(isNull(user.role), isNull(user.contractingRole));
+
   switch (business) {
     case 'equipment':
-      return or(isNotNull(user.role), isNull(user.contractingRole));
+      return or(isNotNull(user.role), holdsNoRole);
     case 'contracting':
-      return or(isNotNull(user.contractingRole), isNull(user.role), eq(user.role, 'super-admin'));
+      return or(isNotNull(user.contractingRole), eq(user.role, 'super-admin'), holdsNoRole);
   }
 }
 

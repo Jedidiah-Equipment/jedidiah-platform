@@ -124,6 +124,8 @@ export const UserEditDialog: React.FC<UserEditDialogProps> = ({ business, extens
       showMutationError(error, 'Unable to update user.');
     },
   });
+  // Declared after the mutation because its fields disable on the mutation's pending flag; the
+  // mutation only reads it inside its function, so the late binding is safe.
   const formExtension = extension.useFormExtension({ isPending: saveUserMutation.isPending, user: baselineUser });
 
   const sendVerificationMutation = useMutation({

@@ -121,7 +121,8 @@ export const UserEditForm: React.FC<UserEditFormProps> = ({
                 </form.AppField>
               </>
             ) : null}
-            {canSetRole ? (
+            {/* A shared device is the Equipment stores tablet; Contracting has no device accounts. */}
+            {canSetRole && business === 'equipment' ? (
               <form.AppField name="isDevice">
                 {(field) => (
                   <field.CheckboxField

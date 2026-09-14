@@ -2,7 +2,7 @@ import { listUserDepartmentMemberships, setUserDepartments } from '@pkg/core/equ
 import { AuthId } from '@pkg/schema';
 import { Department } from '@pkg/schema/equipment';
 import { z } from 'zod';
-import { mapUserErrors } from '@/routes/users/users.router.js';
+import { mapUserErrors } from '@/routes/users/user-error-mapping.js';
 import { authorizedProcedure, router } from '@/trpc/init.js';
 
 const UserDepartmentInput = z.object({

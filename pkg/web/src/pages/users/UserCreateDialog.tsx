@@ -60,6 +60,8 @@ export const UserCreateDialog: React.FC<UserCreateDialogProps> = ({ business, ex
       showMutationError(error, 'Unable to create user.');
     },
   });
+  // Declared after the mutation because its fields disable on the mutation's pending flag; the
+  // mutation only reads it inside its function, so the late binding is safe.
   const formExtension = extension.useFormExtension({ isPending: createUserMutation.isPending, user: null });
 
   if (!hasPermission(accessQuery.data, 'user:create')) {

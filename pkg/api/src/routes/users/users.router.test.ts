@@ -27,7 +27,7 @@ describe('users.list', () => {
 
     const result = await context.createCaller().users.list({ business: 'equipment' });
 
-    expect(result.users).toEqual([
+    expect(result.items).toEqual([
       {
         assistantEnabled: false,
         contractingRole: null,
@@ -53,7 +53,7 @@ describe('users.list', () => {
     });
 
     await expect(context.createCaller().users.list({ business: 'equipment' })).resolves.toMatchObject({
-      users: [{ id: 'phone-user-id', phoneNumber: '+27821234567' }],
+      items: [{ id: 'phone-user-id', phoneNumber: '+27821234567' }],
     });
   });
 
@@ -67,7 +67,7 @@ describe('users.list', () => {
     });
 
     await expect(context.createCaller().users.list({ business: 'equipment' })).resolves.toMatchObject({
-      users: [
+      items: [
         {
           id: 'thumbnail-user-id',
           thumbnailDataUrl: THUMBNAIL_DATA_URL,
@@ -106,19 +106,133 @@ describe('users.list', () => {
     const contracting = await context.createCaller().users.list({ business: 'contracting' });
     const everyone = await context.createCaller().users.list({});
 
-    expect(equipment.users.map((listed) => listed.id)).toEqual([
+    expect(equipment.items.map((listed) => listed.id)).toEqual([
       'both-slots',
       'equipment-only',
       'spanning',
       'unassigned',
     ]);
-    expect(contracting.users.map((listed) => listed.id)).toEqual([
+    expect(contracting.items.map((listed) => listed.id)).toEqual([
       'both-slots',
       'contracting-only',
       'spanning',
       'unassigned',
     ]);
-    expect(everyone.users.map((listed) => listed.id)).toEqual(people.map(([id]) => id));
+    expect(everyone.items.map((listed) => listed.id)).toEqual(people.map(([id]) => id));
+  });
+
+  test('pages both businesses with stable ties, accurate totals, and a terminal stale cursor', async ({ context }) => {
+    for (const [id, role, contractingRole] of [
+      ['a', 'sales', null],
+      ['b', null, 'driver'],
+      ['c', 'sales', 'driver'],
+      ['d', 'super-admin', null],
+      ['e', null, null],
+    ] as const) {
+      await createUser(context.db, { id, email: `${id}@example.com`, name: 'Same name', role, contractingRole });
+    }
+    for (const business of ['equipment', 'contracting'] as const) {
+      const expected = business === 'equipment' ? ['a', 'c', 'd', 'e'] : ['b', 'c', 'd', 'e'];
+      for (const sortDirection of ['asc', 'desc'] as const) {
+        const first = await context.createCaller().users.list({ business, limit: 2, sortDirection });
+        const second = await context
+          .createCaller()
+          .users.list({ business, limit: 2, cursor: first.nextCursor, sortDirection });
+        expect(first.total).toBe(4);
+        expect(first.nextCursor).toBe(2);
+        expect(second.total).toBe(4);
+        expect(second.nextCursor).toBeNull();
+        expect([...first.items, ...second.items].map((person) => person.id)).toEqual(expected);
+      }
+      await expect(context.createCaller().users.list({ business, cursor: 999, limit: 2 })).resolves.toEqual({
+        items: [],
+        nextCursor: null,
+        total: 4,
+      });
+    }
+  });
+
+  test('filters and sorts the whole business list before paging, including displayed role labels', async ({
+    context,
+  }) => {
+    await createUser(context.db, {
+      id: 'a',
+      email: 'a@example.com',
+      name: 'Alpha',
+      role: 'sales',
+      contractingRole: 'driver',
+      emailVerified: true,
+    });
+    await createUser(context.db, {
+      id: 'b',
+      email: 'b@example.com',
+      name: 'Zulu_100%',
+      role: 'super-admin',
+      emailVerified: false,
+    });
+    await createUser(context.db, {
+      id: 'c',
+      email: 'c@example.com',
+      name: 'Zulu_100% two',
+      role: null,
+      emailVerified: false,
+    });
+    for (const business of ['equipment', 'contracting'] as const) {
+      const caller = context.createCaller();
+      const descending = await caller.users.list({ business, sortBy: 'name', sortDirection: 'desc', limit: 1 });
+      expect(descending.items.map((person) => person.id)).toEqual(['c']);
+      expect(descending.total).toBe(3);
+      for (const sortBy of ['email', 'emailVerified', 'role'] as const) {
+        const sorted = await caller.users.list({ business, sortBy, sortDirection: 'asc', limit: 0 });
+        expect(sorted.items.map((person) => person.id)).toEqual(
+          sortBy === 'emailVerified' ? ['b', 'c', 'a'] : ['a', 'b', 'c'],
+        );
+      }
+      const match = await caller.users.list({ business, search: 'Super Administrator', limit: 1 });
+      expect(match.items.map((person) => person.id)).toEqual(['b']);
+      expect(match.total).toBe(1);
+      const filtered = await caller.users.list({
+        business,
+        columnFilters: { name: '_100%', role: 'No access', emailVerified: 'unverified' },
+        limit: 1,
+      });
+      expect(filtered.items.map((person) => person.id)).toEqual(['c']);
+      expect(filtered.nextCursor).toBeNull();
+      expect(filtered.total).toBe(1);
+      const roleMatch = await caller.users.list({
+        business,
+        columnFilters: { role: business === 'equipment' ? 'Sales' : 'Driver' },
+        limit: 1,
+      });
+      expect(roleMatch.items.map((person) => person.id)).toEqual(['a']);
+      const otherRole = await caller.users.list({ business, search: business === 'equipment' ? 'Driver' : 'Sales' });
+      expect(otherRole.total).toBe(0);
+    }
+  });
+
+  test('limit zero returns the full picker list beyond the page cap and ignores the cursor', async ({ context }) => {
+    const now = new Date();
+    await context.db.insert(user).values(
+      Array.from({ length: 105 }, (_, index) => ({
+        id: `picker-${index}`,
+        name: `Person ${index}`,
+        email: `picker-${index}@example.com`,
+        emailVerified: true,
+        role: index % 2 === 0 ? ('sales' as const) : null,
+        contractingRole: index % 2 === 1 ? ('driver' as const) : null,
+        createdAt: now,
+        updatedAt: now,
+      })),
+    );
+    const caller = context.createCaller();
+    expect((await caller.users.list({})).items).toHaveLength(10);
+    const full = await caller.users.list({ limit: 0, cursor: 100 });
+    expect(full.items).toHaveLength(105);
+    expect(full.total).toBe(105);
+    expect(full.nextCursor).toBeNull();
+    const scoped = await caller.users.list({ business: 'contracting', limit: 0 });
+    expect(scoped.items).toHaveLength(52);
+    expect(scoped.total).toBe(52);
   });
 
   test('rejects procurement managers', async ({ context }) => {
@@ -192,7 +306,7 @@ describe('users.setDevice', () => {
 
     const listedUsers = await context.createCaller().users.list({ business: 'equipment' });
 
-    expect(listedUsers.users.find((userSummary) => userSummary.id === 'device-target-user-id')).toMatchObject({
+    expect(listedUsers.items.find((userSummary) => userSummary.id === 'device-target-user-id')).toMatchObject({
       isDevice: true,
     });
   });

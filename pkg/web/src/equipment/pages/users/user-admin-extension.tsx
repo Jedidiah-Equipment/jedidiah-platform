@@ -2,14 +2,14 @@ import { hasPermission } from '@pkg/domain';
 import { departmentLabels } from '@pkg/domain/equipment';
 import type { AuthId, UserAccount } from '@pkg/schema';
 import type { Department } from '@pkg/schema/equipment';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useInfiniteQuery, useMutation, useQuery } from '@tanstack/react-query';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
+import { cursorInfiniteQueryOptions } from '@/components/data-table/cursor-query.js';
 import type { DataTableColumnDef } from '@/components/data-table/features.js';
 import { useQueryInvalidation } from '@/equipment/hooks/use-query-invalidation.js';
 import { useAccess } from '@/hooks/use-access.js';
 import { useTRPC } from '@/lib/trpc.js';
-import { normalizeFilterValue } from '@/pages/users/components/UserTable.js';
 import type { UserAdminExtension } from '@/pages/users/user-admin-extension.js';
 import { UserBadgePrintButton } from './components/UserBadgePrintButton.js';
 import { UserDepartmentsForm } from './components/UserDepartmentsForm.js';
@@ -29,6 +29,23 @@ function useDepartmentMemberships() {
 
 /** Equipment's side of user admin: Department Membership on the table and forms, and the stores badge. */
 export const equipmentUserAdminExtension: UserAdminExtension = {
+  useListQuery: (input, columnFilters) => {
+    const trpc = useTRPC();
+    const department = columnFilters.find((filter) => filter.id === 'departments')?.value;
+    return useInfiniteQuery(
+      trpc.userDepartments.listUsers.infiniteQueryOptions(
+        {
+          ...input,
+          department: typeof department === 'string' ? department : undefined,
+        },
+        {
+          ...cursorInfiniteQueryOptions,
+          placeholderData: keepPreviousData,
+        },
+      ),
+    );
+  },
+  useInvalidateAdditionalUserQueries: () => useQueryInvalidation().invalidateUserDepartments,
   useTableExtension: () => {
     const { isError, isLoaded, memberships } = useDepartmentMemberships();
     const columns = useMemo<DataTableColumnDef<UserAccount>[]>(
@@ -44,28 +61,12 @@ export const equipmentUserAdminExtension: UserAdminExtension = {
           ),
           enableColumnFilter: true,
           enableSorting: false,
-          filterFn: (row, _columnId, filterValue) => {
-            const search = normalizeFilterValue(filterValue);
-
-            return (
-              !search ||
-              (memberships.get(row.original.id) ?? noDepartments).some((department) =>
-                [department, departmentLabels[department]].some((value) => value.toLowerCase().includes(search)),
-              )
-            );
-          },
           header: 'Departments',
         },
       ],
       [isError, isLoaded, memberships],
     );
-    const searchTerms = useCallback(
-      (user: UserAccount) =>
-        (memberships.get(user.id) ?? noDepartments).map((department) => departmentLabels[department]),
-      [memberships],
-    );
-
-    return { columns, searchTerms };
+    return { columns };
   },
   useFormExtension: ({ isPending, user }) => {
     const trpc = useTRPC();

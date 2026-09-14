@@ -36,6 +36,7 @@ type UserEditDialogProps = {
 export const UserEditDialog: React.FC<UserEditDialogProps> = ({ business, extension, user, onClose }) => {
   const trpc = useTRPC();
   const { invalidateAuth, invalidateUsers } = useUserAdminInvalidation();
+  const invalidateAdditionalUserQueries = extension.useInvalidateAdditionalUserQueries();
   const accessQuery = useAccess();
   const showMutationError = useApiMutationErrorToast();
   const access = accessQuery.data;
@@ -59,6 +60,7 @@ export const UserEditDialog: React.FC<UserEditDialogProps> = ({ business, extens
   const refreshUser = async () => {
     await Promise.all([
       invalidateUsers(),
+      invalidateAdditionalUserQueries(),
       invalidateAuth(),
       user?.id === access?.userId ? authClient.getSession() : Promise.resolve(),
     ]);

@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 import { AuthId } from '../../auth/auth-id.js';
-import { UserAccount } from '../../users/user.js';
+import { UserAccount, UserListInput } from '../../users/user.js';
 import { Department } from '../common/departments.js';
 
 /** Department Membership is descriptive only (ADR 0017): which plant departments a User belongs to. */
@@ -27,3 +27,9 @@ export type UserBadgePdfModel = z.infer<typeof UserBadgePdfModel>;
 export const UserBadgePdfModel = UserAccount.pick({ id: true, name: true });
 
 export type UserBadgePdfRenderer = (input: { document: UserBadgePdfModel[]; filename: string }) => Promise<Uint8Array>;
+
+/** Equipment adds Department Membership search without putting a business field in the shared account contract. */
+export type EquipmentUserListInput = z.infer<typeof EquipmentUserListInput>;
+export const EquipmentUserListInput = UserListInput.omit({ business: true }).extend({
+  department: z.string().trim().optional(),
+});

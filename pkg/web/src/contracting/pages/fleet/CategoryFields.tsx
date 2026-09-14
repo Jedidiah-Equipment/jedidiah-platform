@@ -1,5 +1,6 @@
 import { categoryColours, categoryIcons, defaultCategoryIcon } from '@pkg/domain/contracting';
 import type { Category, CategoryColour, CategoryIconKey, CategoryKind } from '@pkg/schema/contracting';
+import { IconCategory } from '@tabler/icons-react';
 import type React from 'react';
 import { useState } from 'react';
 import { useFieldContext } from '@/components/form/index.js';
@@ -53,7 +54,7 @@ export function CategoryKindFilter({
     </Select>
   );
 }
-/** A popover of labelled tiles bound to the field; the trigger previews the current choice. */
+/** A popover of labelled tiles bound to the field, opened by the current icon. */
 function TilePickerField<T extends string>({
   label,
   disabled,
@@ -76,10 +77,14 @@ function TilePickerField<T extends string>({
         <PopoverTrigger
           id={field.name}
           disabled={disabled}
-          className={cn(buttonVariants({ variant: 'outline' }), 'w-full justify-start gap-2 font-normal')}
+          aria-label={`${label}: ${selected?.label ?? 'Choose'}`}
+          title={selected?.label}
+          className={cn(
+            buttonVariants({ variant: 'ghost', size: 'icon' }),
+            'size-8! self-start rounded-full border-0 p-0 [&>span]:size-full!',
+          )}
         >
-          {selected?.tile}
-          {selected?.label}
+          {selected?.tile ?? <IconCategory />}
         </PopoverTrigger>
         <PopoverContent align="start" className="w-80">
           <div role="listbox" aria-label={label} className="grid grid-cols-4 gap-1">
@@ -108,6 +113,28 @@ function TilePickerField<T extends string>({
       </Popover>
       <FieldError errors={errors} />
     </Field>
+  );
+}
+export function CategoryPickerField({
+  categories,
+  disabled = false,
+  onValueCommit,
+}: {
+  categories: readonly Category[];
+  disabled?: boolean;
+  onValueCommit?: (value: Category['id']) => void;
+}) {
+  return (
+    <TilePickerField
+      label="Category"
+      disabled={disabled || categories.length === 0}
+      onValueCommit={onValueCommit}
+      options={categories.map((category) => ({
+        value: category.id,
+        label: category.name,
+        tile: <CategoryIcon icon={category.icon} colour={category.colour} size={20} />,
+      }))}
+    />
   );
 }
 /** Every glyph, labelled, in the domain's picker order; previewed in the category's colour. */

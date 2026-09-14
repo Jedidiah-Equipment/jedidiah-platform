@@ -12,7 +12,7 @@ import { CategoryLabel } from '@/contracting/components/CategoryIcon.js';
 import { useCan } from '@/hooks/use-access.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useTRPC } from '@/lib/trpc.js';
-import { categoryOptions } from './CategoryFields.js';
+import { CategoryPickerField } from './CategoryFields.js';
 import { FleetStatusFilter } from './FleetStatusFilter.js';
 import { FleetTable } from './FleetTable.js';
 import { createMachineInput, MachineCreateValues } from './types.js';
@@ -120,7 +120,7 @@ export function MachinesPage() {
               {(field) => <field.CreatableComboboxField label="Model" options={options.data?.models ?? []} />}
             </form.AppField>
             <form.AppField name="categoryId">
-              {(field) => <field.SelectField label="Category" options={categoryOptions(categories.data ?? [])} />}
+              {() => <CategoryPickerField categories={categories.data ?? []} />}
             </form.AppField>
           </>
         )}

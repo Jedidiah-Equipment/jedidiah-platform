@@ -25,7 +25,7 @@ const UserThumbnailInput = z.object({
 export const usersRouter = router({
   list: authorizedProcedure('user:list')
     .input(UserListInput)
-    .query(({ ctx, input }) => listUsers({ business: input.business, db: ctx.db })),
+    .query(({ ctx, input }) => listUsers({ input, db: ctx.db })),
   /**
    * Whether the account is a shared device. Gated on `user:set-role`, not `user:update`: it decides
    * whether the account may sign for stock at all, which is the same class of decision as granting

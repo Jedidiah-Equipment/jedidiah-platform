@@ -1,6 +1,7 @@
 import { IconCheck, IconChevronDown, IconSearch, type Icon as TablerIcon } from '@tabler/icons-react-native';
 import { forwardRef, type ReactNode, useRef, useState } from 'react';
-import { Pressable, View } from 'react-native';
+import { Pressable, ScrollView, useWindowDimensions, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AnchoredMenu } from '@/components/ui/anchored-menu';
 import { Icon } from '@/components/ui/icon';
@@ -100,13 +101,20 @@ export function ListDropdownControl<Value extends string>({
   value: Value;
 }) {
   const buttonRef = useRef<View>(null);
-  const [menuAnchor, setMenuAnchor] = useState<{ left: number; top: number } | null>(null);
+  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
+  const [menuAnchor, setMenuAnchor] = useState<{ right: number; top: number; bottom: number } | null>(null);
   const active = value !== defaultValue;
   const selectedLabel = options.find((option) => option.value === value)?.label ?? value;
+  const width = Math.min(menuWidth, windowWidth - insets.left - insets.right - 16);
+  const spaceBelow = Math.max(0, windowHeight - insets.bottom - (menuAnchor?.bottom ?? 0) - 8);
+  const spaceAbove = Math.max(0, (menuAnchor?.top ?? 0) - insets.top - 8);
+  const openBelow = spaceBelow >= spaceAbove;
+  const maxHeight = openBelow ? spaceBelow : spaceAbove;
 
   const openMenu = () => {
-    buttonRef.current?.measureInWindow((x, y, width, height) => {
-      setMenuAnchor({ left: Math.max(8, x + width - menuWidth), top: y + height + 8 });
+    buttonRef.current?.measureInWindow((x, y, buttonWidth, height) => {
+      setMenuAnchor({ right: x + buttonWidth, top: y - 8, bottom: y + height + 8 });
     });
   };
 
@@ -127,9 +135,13 @@ export function ListDropdownControl<Value extends string>({
         <AnchoredMenu
           dismissLabel={dismissLabel}
           onClose={() => setMenuAnchor(null)}
-          style={{ left: menuAnchor.left, top: menuAnchor.top, width: menuWidth }}
+          style={{
+            left: Math.max(insets.left + 8, Math.min(menuAnchor.right - width, windowWidth - insets.right - width - 8)),
+            ...(openBelow ? { top: menuAnchor.bottom } : { bottom: windowHeight - menuAnchor.top }),
+            width,
+          }}
         >
-          <View className="p-1.5">
+          <ScrollView style={{ maxHeight }} contentContainerStyle={{ padding: 6 }} keyboardShouldPersistTaps="handled">
             {options.map((option) => (
               <ListDropdownOption
                 key={option.value}
@@ -141,7 +153,7 @@ export function ListDropdownControl<Value extends string>({
                 selected={option.value === value}
               />
             ))}
-          </View>
+          </ScrollView>
         </AnchoredMenu>
       ) : null}
     </View>

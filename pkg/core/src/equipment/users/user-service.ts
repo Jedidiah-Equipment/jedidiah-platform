@@ -1,12 +1,13 @@
-import { type DatabaseTransaction, type Db, user } from '@pkg/db';
+import { createGlobalSearchCondition, type DatabaseTransaction, type Db, user } from '@pkg/db';
 import { userDepartment } from '@pkg/db/equipment';
+import { departmentLabels } from '@pkg/domain/equipment';
 import { type AuditChanges, AuthId, ContractingRole, EquipmentRole } from '@pkg/schema';
-import { Department, type UserDepartmentListResult } from '@pkg/schema/equipment';
-import { asc, eq } from 'drizzle-orm';
+import { Department, type EquipmentUserListInput, type UserDepartmentListResult } from '@pkg/schema/equipment';
+import { and, asc, eq, exists, sql } from 'drizzle-orm';
 
 import { recordAuditEvent } from '../../audit/audit-writer.js';
 import { UserNotFoundError } from '../../users/user-errors.js';
-import { userAuditDescriptor } from '../../users/user-service.js';
+import { listUsers, userAuditDescriptor } from '../../users/user-service.js';
 import { listOpenBayOperatorAssignmentBayNames } from '../jobs/job-bay-service.js';
 
 /** Every User's Department Membership, for the equipment user table to read beside the shared account rows. */
@@ -277,4 +278,31 @@ function getChangedDepartments(before: readonly Department[], after: readonly De
   return [...new Set([...before, ...after])].filter(
     (department) => beforeSet.has(department) !== afterSet.has(department),
   );
+}
+
+/** Department matches join the shared account search before pagination; EXISTS avoids duplicate people. */
+export async function listEquipmentUsers({ db, input }: { db: Db; input: EquipmentUserListInput }) {
+  const departmentLabel = sql`case ${userDepartment.department} ${sql.join(
+    Object.entries(departmentLabels).map(([value, label]) => sql`when ${value} then ${label}`),
+    sql` `,
+  )} end`;
+  const departmentMatch = (search: string) =>
+    exists(
+      db
+        .select({ userId: userDepartment.userId })
+        .from(userDepartment)
+        .where(
+          and(
+            eq(userDepartment.userId, user.id),
+            createGlobalSearchCondition(search, [sql`${userDepartment.department}`, departmentLabel]),
+          ),
+        ),
+    );
+
+  return listUsers({
+    db,
+    input: { ...input, business: 'equipment' },
+    extraSearch: input.search ? departmentMatch(input.search) : undefined,
+    extraFilter: input.department ? departmentMatch(input.department) : undefined,
+  });
 }

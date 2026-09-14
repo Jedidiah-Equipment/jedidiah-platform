@@ -8,7 +8,7 @@ import type {
 import { StockMovementLengthMm, StockMovementQuantity } from '@pkg/schema/equipment';
 import { IconAlertTriangle, IconPlus, IconTrash } from '@tabler/icons-react';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
 import { SearchableCombobox } from '@/components/common/SearchableCombobox.js';
@@ -132,6 +132,7 @@ export function CheckoutBasketDialog({
       }}
       contentClassName="sm:max-w-[min(64rem,calc(100%-2rem))]"
       description="Build the lines leaving stores, then record them together."
+      disableSubmitWhenInvalid
       onCreate={(values) => {
         movementWarningsOutcome.acknowledge(warningsFor(values).flat());
         setRefusedPartId(null);
@@ -245,7 +246,7 @@ export function CheckoutBasketDialog({
                 )}
 
                 <CheckoutBasketAddStrip
-                  disabled={isLoadingParts}
+                  isLoading={isLoadingParts}
                   lines={values.lines}
                   onAdd={(line) => {
                     form.setFieldValue('lines', mergeCheckoutBasketLine(values.lines, line));
@@ -283,12 +284,12 @@ export function CheckoutBasketDialog({
 }
 
 function CheckoutBasketAddStrip({
-  disabled,
+  isLoading,
   lines,
   onAdd,
   parts,
 }: {
-  disabled: boolean;
+  isLoading: boolean;
   lines: readonly CheckoutBasketLineValues[];
   onAdd: (line: CheckoutBasketLineValues) => void;
   parts: readonly StockPartOption[];
@@ -339,12 +340,12 @@ function CheckoutBasketAddStrip({
       <Field>
         <FieldLabel htmlFor="checkout-basket-part">Part</FieldLabel>
         <SearchableCombobox
-          disabled={disabled}
+          disabled={isLoading}
           emptyMessage="No Parts found."
           inputId="checkout-basket-part"
           onValueChange={selectPart}
           options={partSelectOptions(parts)}
-          placeholder={disabled ? 'No more lines can be added' : 'Scan or search parts'}
+          placeholder={isLoading ? 'Loading parts...' : 'Scan or search parts'}
           resolveInputOnEnter={(inputValue) => partIdFromScanToken(parts, inputValue)}
           value={partId}
         />
@@ -383,7 +384,7 @@ function CheckoutBasketAddStrip({
       ) : (
         <div />
       )}
-      <Button disabled={disabled || partId === ''} onClick={addLine} type="button" variant="outline">
+      <Button disabled={isLoading || partId === ''} onClick={addLine} type="button" variant="outline">
         <IconPlus data-icon="inline-start" />
         Add
       </Button>
@@ -435,18 +436,13 @@ function CheckoutBasketLinesTable({
             !StockMovementQuantity.safeParse(row.original.quantity).success ||
             (part ? wholeUnitQuantityMessage(row.original.quantity, part.unitOfMeasure) !== undefined : true);
           return (
-            <Input
-              aria-invalid={invalid}
-              aria-label={`Quantity for ${part?.partCode ?? 'Part'}`}
-              className="w-24"
-              inputMode="decimal"
-              onChange={(event) => {
-                const quantity = event.target.value.trim() === '' ? Number.NaN : Number(event.target.value);
-                onLinesChange(
-                  lines.map((line, index) => (index === row.original.index ? { ...line, quantity } : line)),
-                );
-              }}
-              value={Number.isFinite(row.original.quantity) ? row.original.quantity : ''}
+            <CheckoutBasketQuantityInput
+              invalid={invalid}
+              label={`Quantity for ${part?.partCode ?? 'Part'}`}
+              onChange={(quantity) =>
+                onLinesChange(lines.map((line, index) => (index === row.original.index ? { ...line, quantity } : line)))
+              }
+              quantity={row.original.quantity}
             />
           );
         },
@@ -516,6 +512,47 @@ function CheckoutBasketLinesTable({
       table={table}
       total={data.length}
       totalLabel={(value) => `${value} ${value === 1 ? 'line' : 'lines'}`}
+    />
+  );
+}
+
+function CheckoutBasketQuantityInput({
+  invalid,
+  label,
+  onChange,
+  quantity,
+}: {
+  invalid: boolean;
+  label: string;
+  onChange: (quantity: number) => void;
+  quantity: number;
+}) {
+  const [text, setText] = useState(Number.isFinite(quantity) ? String(quantity) : '');
+  const isFocused = useRef(false);
+
+  useEffect(() => {
+    if (!isFocused.current) setText(Number.isFinite(quantity) ? String(quantity) : '');
+  }, [quantity]);
+
+  return (
+    <Input
+      aria-invalid={invalid}
+      aria-label={label}
+      className="w-24"
+      inputMode="decimal"
+      onBlur={() => {
+        isFocused.current = false;
+        setText(Number.isFinite(quantity) ? String(quantity) : '');
+      }}
+      onChange={(event) => {
+        const nextText = event.target.value;
+        setText(nextText);
+        onChange(nextText.trim() === '' ? Number.NaN : Number(nextText));
+      }}
+      onFocus={() => {
+        isFocused.current = true;
+      }}
+      value={text}
     />
   );
 }

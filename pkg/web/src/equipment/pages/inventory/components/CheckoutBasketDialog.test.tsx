@@ -88,7 +88,15 @@ const linear: StockPartOption = {
   standardPurchaseLengthMm: 6_000,
   unitOfMeasure: 'mm',
 };
-const parts = [piece, linear];
+const measured: StockPartOption = {
+  isInternallyFabricated: false,
+  partCode: 'POWDER-1',
+  partId: '00000000-0000-4000-8000-000000000003',
+  partName: 'Powder',
+  standardPurchaseLengthMm: null,
+  unitOfMeasure: 'kg',
+};
+const parts = [piece, linear, measured];
 const items: StockOnHandRow[] = parts.map((part) => ({
   asOfLastCount: null,
   averageUnitCost: null,
@@ -217,6 +225,7 @@ describe('CheckoutBasketDialog', () => {
   });
 
   it('blocks a fractional piece quantity and marks the Part when checkout is refused', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
     postBasket.mockRejectedValueOnce({
       data: { appCode: 'inventory.periodic_movement', metadata: { partId: piece.partId } },
       message: 'Periodic stock does not record checkout movements',
@@ -242,6 +251,39 @@ describe('CheckoutBasketDialog', () => {
 
     await vi.waitFor(() => expect(document.querySelector('[aria-label="Checkout refused this Part"]')).not.toBeNull());
     expect(document.querySelector('tr.bg-destructive\\/10')).not.toBeNull();
+  });
+
+  it('preserves a decimal while a measured line quantity is typed character by character', async () => {
+    await mount();
+    await scan('POWDER-1');
+    const addQuantity = document.querySelector<HTMLInputElement>('#checkout-basket-quantity');
+    if (!addQuantity) throw new Error('Quantity input missing');
+    await press(addQuantity, 'Enter');
+
+    const lineQuantity = document.querySelector<HTMLInputElement>('[aria-label="Quantity for POWDER-1"]');
+    if (!lineQuantity) throw new Error('Line quantity input missing');
+    await act(async () => lineQuantity.focus());
+    await type(lineQuantity, '1');
+    await type(lineQuantity, '1.');
+    expect(lineQuantity.value).toBe('1.');
+    await type(lineQuantity, '1.5');
+    expect(lineQuantity.value).toBe('1.5');
+
+    const submit = [...document.querySelectorAll('button')].find((button) =>
+      button.textContent?.includes('Check out 1 line'),
+    );
+    expect(submit?.disabled).toBe(false);
+    await act(async () => submit?.click());
+
+    await vi.waitFor(() =>
+      expect(postBasket).toHaveBeenCalledWith(
+        {
+          jobId: '00000000-0000-4000-8000-000000000009',
+          lines: [{ lengthMm: null, partId: measured.partId, quantity: 1.5 }],
+        },
+        expect.anything(),
+      ),
+    );
   });
 
   it('defaults a linear length, previews a short rack, and keeps lines when close is cancelled', async () => {

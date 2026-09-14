@@ -12,14 +12,13 @@ import {
   partOptionsAllowing,
   partQuantityValidationMessage,
   returnFromCheckoutValidator,
+  returnStockValidator,
   revaluationCostDecimals,
   type StockPartOption,
   stockAdjustmentValidator,
-  stockMovementValidator,
   toAdjustmentInput,
   toBuildInput,
   toCheckoutBasketInput,
-  toCheckoutWithoutJobInput,
   toCloseOutJobInput,
   toJobMovementInput,
   toReturnFromCheckoutInput,
@@ -131,14 +130,11 @@ describe('stock adjustment form', () => {
     // The field rule staying quiet does not let an unkeyed quantity through either submit.
     expect(stockAdjustmentValidator([piece]).safeParse({ ...adjustment, delta: Number.NaN }).success).toBe(false);
     expect(
-      stockMovementValidator([piece]).safeParse({
+      returnStockValidator([piece]).safeParse({
         jobId: '00000000-0000-4000-8000-000000000009',
         lengthMm: Number.NaN,
-        note: '',
         partId: piece.partId,
         quantity: Number.NaN,
-        recipientUserId: '',
-        target: 'job',
       }).success,
     ).toBe(false);
   });
@@ -174,11 +170,8 @@ describe('Job movement form', () => {
   const values = {
     jobId: piece.partId,
     lengthMm: 6_000,
-    note: '',
     partId: linear.partId,
     quantity: 2,
-    recipientUserId: '',
-    target: 'job' as const,
   };
 
   it('maps a linear movement with its selected piece length', () => {
@@ -191,7 +184,7 @@ describe('Job movement form', () => {
   });
 
   it('holds a quantity to three decimals, the ledger rule, not just to a positive number', () => {
-    const validator = stockMovementValidator([piece, linear, measured]);
+    const validator = returnStockValidator([piece, linear, measured]);
     const pieceValues = { ...values, lengthMm: Number.NaN, partId: piece.partId, quantity: 1.125 };
 
     expect(validator.safeParse(pieceValues).success).toBe(false);
@@ -200,44 +193,13 @@ describe('Job movement form', () => {
   });
 
   it('needs a Job, a Part, a positive quantity, and a length for linear stock', () => {
-    const validator = stockMovementValidator([piece, linear]);
+    const validator = returnStockValidator([piece, linear]);
 
     expect(validator.safeParse(values).success).toBe(true);
     expect(validator.safeParse({ ...values, jobId: '' }).success).toBe(false);
     expect(validator.safeParse({ ...values, quantity: 0 }).success).toBe(false);
     expect(validator.safeParse({ ...values, lengthMm: Number.NaN }).success).toBe(false);
     expect(validator.safeParse({ ...values, lengthMm: Number.NaN, partId: piece.partId }).success).toBe(true);
-  });
-});
-
-describe('Checkout Without a Job form', () => {
-  const values = {
-    jobId: '',
-    lengthMm: Number.NaN,
-    note: '  Repair factory drill  ',
-    partId: piece.partId,
-    quantity: 5,
-    recipientUserId: 'connor',
-    target: 'person' as const,
-  };
-
-  it('maps to the strict person-attributed payload', () => {
-    expect(toCheckoutWithoutJobInput(values, piece)).toEqual({
-      lengthMm: null,
-      note: 'Repair factory drill',
-      partId: piece.partId,
-      quantity: 5,
-      recipientUserId: 'connor',
-    });
-  });
-
-  it('needs a recipient and a purpose instead of a Job', () => {
-    const validator = stockMovementValidator([piece]);
-
-    expect(validator.safeParse(values).success).toBe(true);
-    expect(validator.safeParse({ ...values, note: ' ' }).success).toBe(false);
-    expect(validator.safeParse({ ...values, recipientUserId: '' }).success).toBe(false);
-    expect(validator.safeParse({ ...values, target: 'job' }).success).toBe(false);
   });
 });
 

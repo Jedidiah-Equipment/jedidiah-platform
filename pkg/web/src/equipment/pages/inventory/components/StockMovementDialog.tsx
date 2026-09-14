@@ -18,9 +18,9 @@ import {
   partIdFromScanToken,
   partQuantityValidationMessage,
   partSelectOptions,
-  type StockMovementFormValues,
+  type ReturnStockFormValues,
+  returnStockValidator,
   type StockPartOption,
-  stockMovementValidator,
   toJobMovementInput,
 } from './types.js';
 
@@ -55,7 +55,7 @@ export function StockMovementDialog({
   const [isJobPickerOpen, setJobPickerOpen] = useState(false);
   const [selectedJob, setSelectedJob] = useState<JobPickerOption | null>(null);
   const movementWarningsOutcome = useMovementWarnings();
-  const validator = useMemo(() => stockMovementValidator(parts), [parts]);
+  const validator = useMemo(() => returnStockValidator(parts), [parts]);
   const jobId = fixedJob?.id ?? selectedJob?.id ?? '';
 
   const jobPicker = useInventoryJobPicker({ enabled: fixedJob === undefined, movementType: 'return-to-store' });
@@ -66,7 +66,7 @@ export function StockMovementDialog({
     }),
   );
 
-  function bucketQuantityOnHand(values: StockMovementFormValues): number {
+  function bucketQuantityOnHand(values: ReturnStockFormValues): number {
     const lengthMm = Number.isNaN(values.lengthMm) ? null : values.lengthMm;
 
     return (
@@ -75,7 +75,7 @@ export function StockMovementDialog({
     );
   }
 
-  function movementFacts(values: StockMovementFormValues): JobMovementFacts {
+  function movementFacts(values: ReturnStockFormValues): JobMovementFacts {
     const lengthMm = Number.isNaN(values.lengthMm) ? null : values.lengthMm;
     const jobStock: JobStockRow | undefined = jobStockQuery.data?.items.find((row) => row.partId === values.partId);
 
@@ -94,7 +94,7 @@ export function StockMovementDialog({
    * The same judgement the ledger applies on post (`@pkg/domain`), run against what this dialog has
    * loaded so the reader sees it before committing rather than only afterwards.
    */
-  function movementWarnings(values: StockMovementFormValues): StockMovementWarningCode[] {
+  function movementWarnings(values: ReturnStockFormValues): StockMovementWarningCode[] {
     if (!Number.isFinite(values.quantity) || values.partId === '') return [];
     if (values.jobId === '') return [];
     // Until the Job's stock arrives, every figure reads zero, which would warn on any draw at all.
@@ -108,15 +108,12 @@ export function StockMovementDialog({
   }
 
   return (
-    <CreateEntityDialog<StockMovementFormValues, { warnings: StockMovementWarningCode[] }>
+    <CreateEntityDialog<ReturnStockFormValues, { warnings: StockMovementWarningCode[] }>
       defaultValues={{
         jobId: fixedJob?.id ?? '',
         lengthMm: Number.NaN,
-        note: '',
         partId: defaultPartId,
         quantity: Number.NaN,
-        recipientUserId: '',
-        target: 'job',
       }}
       description="Return a previously drawn Part to store."
       onCreate={(values) => {

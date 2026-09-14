@@ -17,15 +17,16 @@ import { useAppForm } from './hooks/use-app-form.js';
 type CreateEntityDialogProps<TValues extends Record<string, unknown>, TResult> = {
   /**
    * Blocks submit for state the form schema cannot see — typically a dependency the dialog needs
-   * that has not loaded or has failed. `onSubmit` is fire-and-forget, so a throw inside `onCreate`
-   * would be silent; this refuses the click instead. Anything the values themselves determine
-   * belongs in `validator`, not here.
+   * that has not loaded or has failed. This refuses the click before the dependency has to report
+   * an avoidable failure. Anything the values themselves determine belongs in `validator`, not here.
    */
   canSubmit?: boolean;
   children: (form: CreateEntityFormApi<TValues>) => React.ReactNode;
   contentClassName?: string;
   defaultValues: TValues;
   description?: React.ReactNode;
+  /** Keeps submit disabled until the current values pass `validator`; opt in for forms that need it. */
+  disableSubmitWhenInvalid?: boolean;
   onCreated: (result: TResult) => Promise<void> | void;
   onCreate: (values: TValues) => Promise<TResult>;
   onBeforeCreate?: (values: TValues) => boolean;
@@ -40,8 +41,8 @@ type CreateEntityDialogProps<TValues extends Record<string, unknown>, TResult> =
 type CreateEntityFormApi<TValues extends Record<string, unknown>> = ReturnType<
   typeof useAppForm<
     TValues,
-    z.ZodType<TValues, TValues>,
-    z.ZodType<TValues, TValues>,
+    undefined,
+    undefined,
     undefined,
     undefined,
     undefined,
@@ -60,6 +61,7 @@ export function CreateEntityDialog<TValues extends Record<string, unknown>, TRes
   contentClassName,
   defaultValues,
   description,
+  disableSubmitWhenInvalid = false,
   onCreated,
   onCreate,
   onBeforeCreate,
@@ -72,8 +74,6 @@ export function CreateEntityDialog<TValues extends Record<string, unknown>, TRes
   const form: CreateEntityFormApi<TValues> = useAppForm({
     defaultValues,
     validators: {
-      onChange: validator,
-      onMount: validator,
       onSubmit: validator,
     },
     onSubmit: async ({ value }) => {
@@ -81,9 +81,11 @@ export function CreateEntityDialog<TValues extends Record<string, unknown>, TRes
       let result: TResult;
       try {
         result = await onCreate(value as TValues);
-      } catch {
+      } catch (error) {
         // Mutations present their own mapped error in `onError`; keep the fire-and-forget form
-        // submission from turning that handled refusal into an unhandled promise rejection.
+        // submission from turning that handled refusal into an unhandled promise rejection, while
+        // retaining a trace for unexpected failures that have no mutation error handler.
+        console.error('Create entity submission failed', error);
         return;
       }
       await onCreated(result);
@@ -108,7 +110,8 @@ export function CreateEntityDialog<TValues extends Record<string, unknown>, TRes
           {children(form)}
           <form.Subscribe
             selector={(state) => ({
-              canSubmit: canSubmit && state.canSubmit,
+              canSubmit:
+                canSubmit && (!disableSubmitWhenInvalid || validator.safeParse(state.values as TValues).success),
               isSubmitting: state.isSubmitting,
               label: typeof submitLabel === 'function' ? submitLabel(state.values as TValues) : submitLabel,
             })}

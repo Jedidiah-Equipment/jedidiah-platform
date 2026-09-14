@@ -19,7 +19,6 @@ import {
   PostBuildInput,
   PostCheckoutBasketInput,
   PostCheckoutReturnInput,
-  PostCheckoutWithoutJobInput,
   PostJobMovementInput,
   PostRevaluationInput,
   type SourceCheckoutOption,
@@ -109,20 +108,13 @@ export const StockRevaluationFormValues = z.object({
 export type StockMovementTarget = z.infer<typeof StockMovementTarget>;
 export const StockMovementTarget = z.enum(['job', 'person']);
 
-/**
- * A draw or return: the Part, quantity and length, plus its target — the Job it is posted against,
- * or for a Checkout Without a Job the person receiving it and why. Each target's own fields are
- * required only while that target is the one showing.
- */
-export type StockMovementFormValues = z.infer<typeof StockMovementFormValues>;
-export const StockMovementFormValues = z.object({
+/** Returns one Part to one Job. Checkout is owned by the separate multi-line Basket form. */
+export type ReturnStockFormValues = z.infer<typeof ReturnStockFormValues>;
+export const ReturnStockFormValues = z.object({
   jobId: z.string(),
   lengthMm: StockMovementLengthValue,
-  note: z.string(),
   partId: requiredSelection(UUID, 'Select a Part'),
   quantity: StockMovementQuantity,
-  recipientUserId: z.string(),
-  target: StockMovementTarget,
 });
 
 export type CheckoutBasketLineValues = CheckoutBasketLineInput;
@@ -339,22 +331,13 @@ export function stockAdjustmentValidator(parts: readonly StockPartOption[]) {
   });
 }
 
-export function stockMovementValidator(parts: readonly StockPartOption[]) {
-  return StockMovementFormValues.superRefine((values, context) => {
+export function returnStockValidator(parts: readonly StockPartOption[]) {
+  return ReturnStockFormValues.superRefine((values, context) => {
     refineLengthForPart(values, parts, context);
     refineQuantityForPart(values, parts, 'quantity', context);
 
-    if (values.target === 'job') {
-      if (!UUID.safeParse(values.jobId).success) {
-        context.addIssue({ code: 'custom', message: 'Select a Job', path: ['jobId'] });
-      }
-      return;
-    }
-    if (values.recipientUserId.trim() === '') {
-      context.addIssue({ code: 'custom', message: 'Select who received the Parts', path: ['recipientUserId'] });
-    }
-    if (values.note.trim() === '') {
-      context.addIssue({ code: 'custom', message: 'Enter a purpose', path: ['note'] });
+    if (!UUID.safeParse(values.jobId).success) {
+      context.addIssue({ code: 'custom', message: 'Select a Job', path: ['jobId'] });
     }
   });
 }
@@ -398,22 +381,12 @@ export function toRevaluationInput(values: StockRevaluationFormValues) {
   return PostRevaluationInput.parse(values);
 }
 
-export function toJobMovementInput(values: StockMovementFormValues, part: StockPartOption) {
+export function toJobMovementInput(values: ReturnStockFormValues, part: StockPartOption) {
   return PostJobMovementInput.parse({
     jobId: values.jobId,
     lengthMm: part.unitOfMeasure === 'mm' ? values.lengthMm : null,
     partId: values.partId,
     quantity: values.quantity,
-  });
-}
-
-export function toCheckoutWithoutJobInput(values: StockMovementFormValues, part: StockPartOption) {
-  return PostCheckoutWithoutJobInput.parse({
-    lengthMm: part.unitOfMeasure === 'mm' ? values.lengthMm : null,
-    note: values.note,
-    partId: values.partId,
-    quantity: values.quantity,
-    recipientUserId: values.recipientUserId,
   });
 }
 

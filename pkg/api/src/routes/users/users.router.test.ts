@@ -88,7 +88,9 @@ describe('users.list', () => {
     await expect(context.createCaller().users.list({ business: 'equipment' })).rejects.toThrow();
   });
 
-  test('lists each business its own people, super-admins and the unassigned in both', async ({ context }) => {
+  test('lists each business its own people, super-admins and the unassigned in both, and everyone when unscoped', async ({
+    context,
+  }) => {
     const people: Array<[id: string, role: EquipmentRole | null, contractingRole: ContractingRole | null]> = [
       ['both-slots', 'sales', 'foreman'],
       ['contracting-only', null, 'driver'],
@@ -102,6 +104,7 @@ describe('users.list', () => {
 
     const equipment = await context.createCaller().users.list({ business: 'equipment' });
     const contracting = await context.createCaller().users.list({ business: 'contracting' });
+    const everyone = await context.createCaller().users.list({});
 
     expect(equipment.users.map((listed) => listed.id)).toEqual([
       'both-slots',
@@ -115,6 +118,7 @@ describe('users.list', () => {
       'spanning',
       'unassigned',
     ]);
+    expect(everyone.users.map((listed) => listed.id)).toEqual(people.map(([id]) => id));
   });
 
   test('rejects procurement managers', async ({ context }) => {

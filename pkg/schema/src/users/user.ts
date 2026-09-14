@@ -30,13 +30,14 @@ export type UserSortBy = z.infer<typeof UserSortBy>;
 export const UserSortBy = z.enum(['email', 'emailVerified', 'name', 'role']);
 
 /**
- * User admin is per Business: a list names the Business it stands in and gets the users who hold a
+ * User admin is per Business: a list that names the Business it stands in gets the users who hold a
  * role there — super-admin in both, since it spans the split (ADR 0017) — plus users holding no role
- * at all, so nobody an administrator has removed from every business drops out of reach.
+ * at all, so nobody an administrator has removed from every business drops out of reach. A list
+ * naming no Business is everyone, for pickers that name people rather than administer them.
  */
 export type UserListInput = z.infer<typeof UserListInput>;
 export const UserListInput = z.object({
-  business: Business,
+  business: Business.optional(),
 });
 
 export type UserListResult = z.infer<typeof UserListResult>;

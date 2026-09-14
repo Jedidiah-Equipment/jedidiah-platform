@@ -30,13 +30,18 @@ function useDepartmentMemberships() {
 /** Equipment's side of user admin: Department Membership on the table and forms, and the stores badge. */
 export const equipmentUserAdminExtension: UserAdminExtension = {
   useTableExtension: () => {
-    const { memberships } = useDepartmentMemberships();
+    const { isError, isLoaded, memberships } = useDepartmentMemberships();
     const columns = useMemo<DataTableColumnDef<UserAccount>[]>(
       () => [
         {
           id: 'departments',
           accessorFn: (user) => memberships.get(user.id) ?? noDepartments,
-          cell: ({ row }) => <DepartmentList departments={memberships.get(row.original.id) ?? noDepartments} />,
+          cell: ({ row }) => (
+            <DepartmentList
+              departments={memberships.get(row.original.id) ?? noDepartments}
+              state={isError ? 'error' : isLoaded ? 'loaded' : 'loading'}
+            />
+          ),
           enableColumnFilter: true,
           enableSorting: false,
           filterFn: (row, _columnId, filterValue) => {
@@ -52,7 +57,7 @@ export const equipmentUserAdminExtension: UserAdminExtension = {
           header: 'Departments',
         },
       ],
-      [memberships],
+      [isError, isLoaded, memberships],
     );
     const searchTerms = useCallback(
       (user: UserAccount) =>
@@ -115,7 +120,17 @@ export const equipmentUserAdminExtension: UserAdminExtension = {
   },
 };
 
-const DepartmentList: React.FC<{ departments: readonly Department[] }> = ({ departments }) => {
+const DepartmentList: React.FC<{ departments: readonly Department[]; state: 'error' | 'loaded' | 'loading' }> = ({
+  departments,
+  state,
+}) => {
+  // Missing data must not read as an empty membership: the column says so until the list is in.
+  if (state === 'loading') {
+    return <span className="text-muted-foreground">Loading…</span>;
+  }
+  if (state === 'error') {
+    return <span className="text-destructive">Unavailable</span>;
+  }
   if (departments.length === 0) {
     return <span className="text-muted-foreground">None</span>;
   }

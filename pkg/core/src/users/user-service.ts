@@ -93,10 +93,12 @@ export async function getUserById({ db, userId }: { db: Db; userId: AuthId }): P
  * stored once in the equipment slot and spans both (ADR 0017) — and anyone holding no role at all,
  * who belongs to neither business and would otherwise be reachable from nowhere.
  */
-function businessMembership(business: Business): SQL | undefined {
+function businessMembership(business: Business | undefined): SQL | undefined {
   const holdsNoRole = and(isNull(user.role), isNull(user.contractingRole));
 
   switch (business) {
+    case undefined:
+      return undefined;
     case 'equipment':
       return or(isNotNull(user.role), holdsNoRole);
     case 'contracting':
@@ -104,7 +106,13 @@ function businessMembership(business: Business): SQL | undefined {
   }
 }
 
-export async function listUsers({ business, db }: { business: Business; db: Db }): Promise<UserListResult> {
+export async function listUsers({
+  business,
+  db,
+}: {
+  business?: Business | undefined;
+  db: Db;
+}): Promise<UserListResult> {
   const rows = await db
     .select(userAccountColumns)
     .from(user)

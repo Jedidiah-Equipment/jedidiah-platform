@@ -78,6 +78,15 @@ export async function signOut() {
   await authClient.signOut();
 }
 
+export async function requestPasswordReset(email: string): Promise<void> {
+  try {
+    await authClient.requestPasswordReset({ email });
+  } catch {
+    // Password reset responses never reveal whether an account exists. Match the
+    // web flow by showing the same confirmation for request and network failures.
+  }
+}
+
 function getSignInErrorMessage(error: SignInError): string {
   if (error.code === 'ACCOUNT_SIGN_IN_DISABLED') {
     return error.message || signInDisabledMessage;

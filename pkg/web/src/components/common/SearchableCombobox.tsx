@@ -1,3 +1,4 @@
+import { useRef, useState } from 'react';
 import {
   Combobox,
   ComboboxContent,
@@ -21,6 +22,7 @@ type SearchableComboboxProps = {
   onValueChange: (value: string) => void;
   options: readonly SearchableComboboxOption[];
   placeholder?: string | undefined;
+  resolveInputOnEnter?: ((inputValue: string) => string | undefined) | undefined;
   value: string;
 };
 
@@ -33,9 +35,12 @@ export function SearchableCombobox({
   onValueChange,
   options,
   placeholder = 'Search...',
+  resolveInputOnEnter,
   value,
 }: SearchableComboboxProps) {
   const selectedOption = options.find((option) => option.value === value) ?? null;
+  const hasKeyboardHighlight = useRef(false);
+  const [open, setOpen] = useState(false);
 
   return (
     <Combobox
@@ -44,7 +49,15 @@ export function SearchableCombobox({
       items={options}
       itemToStringLabel={(option) => option.label}
       itemToStringValue={(option) => option.value}
+      onItemHighlighted={(_option, details) => {
+        hasKeyboardHighlight.current = details.reason === 'keyboard';
+      }}
+      onOpenChange={(nextOpen) => {
+        setOpen(nextOpen);
+        if (!nextOpen) hasKeyboardHighlight.current = false;
+      }}
       onValueChange={(nextOption) => onValueChange(nextOption?.value ?? '')}
+      open={open}
       value={selectedOption}
     >
       <ComboboxInput
@@ -53,6 +66,23 @@ export function SearchableCombobox({
         disabled={disabled}
         id={inputId}
         onBlur={onBlur}
+        onKeyDownCapture={(event) => {
+          if (
+            event.key !== 'Enter' ||
+            !resolveInputOnEnter ||
+            hasKeyboardHighlight.current ||
+            event.currentTarget.value === selectedOption?.label
+          )
+            return;
+
+          event.preventDefault();
+          event.stopPropagation();
+          const nextValue = resolveInputOnEnter(event.currentTarget.value);
+          if (!nextValue) return;
+
+          setOpen(false);
+          onValueChange(nextValue);
+        }}
         placeholder={placeholder}
         showClear
       />

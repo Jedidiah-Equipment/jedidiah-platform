@@ -21,6 +21,7 @@ import { useTRPC } from '@/lib/trpc.js';
 
 import { StockMovementWarningPrompt } from './StockMovementWarningPrompt.js';
 import {
+  partIdFromScanToken,
   partQuantityValidationMessage,
   partSelectOptions,
   type StockJobMovementFormValues,
@@ -173,6 +174,7 @@ export function StockMovementDialog({
                 }}
                 options={partSelectOptions(parts)}
                 placeholder={isLoadingParts ? 'Loading parts...' : 'Search parts'}
+                resolveInputOnEnter={(inputValue) => partIdFromScanToken(parts, inputValue)}
               />
             )}
           </form.AppField>

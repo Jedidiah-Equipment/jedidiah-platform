@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import {
   deriveStockBuildRows,
   deriveStockBuildWarnings,
+  partIdFromScanToken,
   partOptionsAllowing,
   partQuantityValidationMessage,
   revaluationCostDecimals,
@@ -187,6 +188,12 @@ describe('Job movement form', () => {
 });
 
 describe('Part option lists', () => {
+  it('resolves only an exact Part-code Scan Token', () => {
+    expect(partIdFromScanToken([piece], '  P-100\r\n')).toBe(piece.partId);
+    expect(partIdFromScanToken([piece], 'P-10')).toBeUndefined();
+    expect(partIdFromScanToken([piece], 'badge:user-42')).toBeUndefined();
+  });
+
   it('reads one selectable Part from a row that holds several length buckets', () => {
     const row = stockRow({
       buckets: [

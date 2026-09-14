@@ -13,6 +13,7 @@ export type ComboboxFieldProps = {
   onValueSelect?: (value: string) => boolean | undefined;
   options: readonly SearchableComboboxOption[];
   placeholder?: string;
+  resolveInputOnEnter?: (inputValue: string) => string | undefined;
 };
 
 export function ComboboxField({
@@ -23,6 +24,7 @@ export function ComboboxField({
   onValueSelect,
   options,
   placeholder,
+  resolveInputOnEnter,
 }: ComboboxFieldProps) {
   const field = useFieldContext<string>();
   const fieldErrors = getFieldErrors(field.state.meta.errors);
@@ -45,6 +47,7 @@ export function ComboboxField({
         }}
         options={options}
         placeholder={placeholder}
+        resolveInputOnEnter={resolveInputOnEnter}
         value={field.state.value}
       />
       <FieldError errors={fieldErrors} />

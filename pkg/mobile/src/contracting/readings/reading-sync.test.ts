@@ -77,3 +77,19 @@ test('stops before the next upload once the provider is no longer active', async
   expect(await queue.list()).toHaveLength(2);
   expect(invalidate).not.toHaveBeenCalled();
 });
+
+test('reports a retryable upload failure while keeping the capture queued', async () => {
+  const { queryClient, trpc, queue } = setup();
+  await queue.enqueue(capture(100, '2026-09-08T08:00:00Z'));
+
+  await expect(
+    syncReadingQueue({
+      queue,
+      queryClient,
+      trpc,
+      isActive: () => true,
+      send: async () => new Response(null, { status: 401 }),
+    }),
+  ).rejects.toThrow('Waiting to sync. Check your connection and sign-in.');
+  await expect(queue.list()).resolves.toHaveLength(1);
+});

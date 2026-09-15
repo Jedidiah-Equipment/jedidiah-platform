@@ -18,7 +18,7 @@ export default function MachineScreen() {
   const fleet = useFleet();
   const machine = fleet.data?.find((row) => row.id === id);
   const readings = useMachineReadings(id);
-  const { items } = useReadingQueue();
+  const { items, error } = useReadingQueue();
   const pending = items
     .filter((row) => row.machineId === id)
     .sort((a, b) => Date.parse(b.capturedAt) - Date.parse(a.capturedAt));
@@ -63,6 +63,11 @@ export default function MachineScreen() {
         </View>
         {canCapture && machine ? (
           <Button primary title="Capture reading" onPress={() => router.push(`/contracting/machines/${id}/capture`)} />
+        ) : null}
+        {error ? (
+          <Text className="text-danger" accessibilityRole="alert">
+            {error}
+          </Text>
         ) : null}
         <Text className="text-lg text-foreground" weight="bold">
           Reading history

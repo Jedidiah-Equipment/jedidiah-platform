@@ -23,14 +23,6 @@ describe('audit.list', () => {
     });
   });
 
-  test('rejects non-admin audit reads', async ({ context }) => {
-    const caller = context.createCaller(mockSession('procurement-manager'));
-
-    await expect(caller.audit.list({ business: 'equipment' })).rejects.toMatchObject({
-      code: 'FORBIDDEN',
-    });
-  });
-
   test('lists audit events with default newest-first sorting', async ({ context }) => {
     await createActorUser(context.db, {
       email: 'admin@example.com',

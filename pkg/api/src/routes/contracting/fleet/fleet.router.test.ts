@@ -88,8 +88,10 @@ test('audits fleet writes atomically and keeps Contracting rates out of Equipmen
     'contracting_machine',
   ]);
   const equipment = context.createCaller(mockSession('admin'));
-  expect((await equipment.audit.list({})).items).toEqual([]);
-  expect((await equipment.audit.list({ filters: { entityTypes: ['contracting_category'] } })).items).toEqual([]);
+  expect((await equipment.audit.list({ business: 'equipment' })).items).toEqual([]);
+  expect(
+    (await equipment.audit.list({ business: 'equipment', filters: { entityTypes: ['contracting_category'] } })).items,
+  ).toEqual([]);
   await expect(
     fleet.machines.create({ code: 'JD6140M-1', make: 'Deere', model: '6140M', categoryId: category.id }),
   ).rejects.toMatchObject({ appCode: 'fleet.duplicate', code: 'CONFLICT' });

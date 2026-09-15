@@ -206,6 +206,10 @@ checks are UX only.
 - **contracting-invoicing**: reads Priced and Completed Job Cards and stamps the Invoice Number;
   nothing else.
 
+The Contracting **Audit Log** shows the Audit Events of Contracting records — Categories, Machines,
+Implements, Hour Readings, Customers, Farms, Work Types — and of the Users the Contracting Users page
+lists, under `contracting_audit:read`, which contracting-admin and super-admin hold.
+
 Drivers and Mechanics are non-login user records holding permissionless contracting roles. Pricing
 and the Rate Card deliberately sit with contracting-admin and super-admin alone; foremen are
 money-blind by design.

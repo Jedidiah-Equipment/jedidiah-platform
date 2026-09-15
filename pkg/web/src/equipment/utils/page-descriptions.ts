@@ -1,5 +1,3 @@
-export const auditPageDescription = 'Field-level log of boundary-visible entity changes';
-
 export const baysPageDescription = 'Department workspaces used to schedule Jobs';
 
 export const baySchedulePageDescription = 'Bay-by-bay projected queues for booking, resizing, and removing Job Slots';

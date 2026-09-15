@@ -19,6 +19,7 @@ export const HELP_TOPICS = {
   contractingCategories: '/contracting/maintain-categories',
   contractingImplements: '/contracting/maintain-implements',
   contractingUsers: '/contracting/manage-users',
+  contractingAudit: '/contracting/trace-a-change-in-the-audit-log',
   bays: '/production/delete-a-bay',
   customers: '/sales/remove-a-customer',
   home: '/',

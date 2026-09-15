@@ -71,7 +71,8 @@ test('saves the card as one audited entity and skips unchanged saves', async ({ 
   card.managementOverheadPercentage = 150;
   expect(await caller.laborRates.update(card)).toEqual(card);
   await caller.laborRates.update(card);
-  const events = (await caller.audit.list({ filters: { entityTypes: ['labor_rate_card'] } })).items;
+  const events = (await caller.audit.list({ business: 'equipment', filters: { entityTypes: ['labor_rate_card'] } }))
+    .items;
   expect(events).toHaveLength(1);
   expect(events[0]).toMatchObject({ actorUserId: 'test-user-id', action: 'updated', entityId: 'labor-rate-card' });
   expect(events[0]?.changes).toEqual({

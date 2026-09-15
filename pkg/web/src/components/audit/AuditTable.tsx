@@ -1,7 +1,14 @@
-import { AuditChanges, type AuditListInput, AuditSortBy } from '@pkg/schema';
-import { EquipmentAuditEntityType, type EquipmentAuditEvent } from '@pkg/schema/equipment';
+import {
+  AuditChanges,
+  type AuditEntityType,
+  type AuditEvent,
+  type AuditListInput,
+  AuditSortBy,
+  type Business,
+  getBusinessAuditEntityTypes,
+} from '@pkg/schema';
 import { IconEye } from '@tabler/icons-react';
-import { keepPreviousData, useInfiniteQuery } from '@tanstack/react-query';
+import { keepPreviousData, useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import type React from 'react';
 import { useCallback, useMemo } from 'react';
 import type { StoreApi, UseBoundStore } from 'zustand';
@@ -17,23 +24,33 @@ import { Button } from '@/components/ui/button.js';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog.js';
 import { ScrollArea } from '@/components/ui/scroll-area.js';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip.js';
-import { useUserOptions } from '@/equipment/hooks/options/index.js';
 import { getApiQueryErrorMessage } from '@/lib/api-errors.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { cn } from '@/lib/utils.js';
-import { formatAuditChangesJson, getAuditChangeDisplays } from './audit-change-display.js';
+import { type AuditValueLabels, formatAuditChangesJson, getAuditChangeDisplays } from './audit-change-display.js';
 import { type AuditTableFixedFilters, getAuditListInputExtras } from './audit-table-input.js';
 
 type AuditTableStoreHook = UseBoundStore<StoreApi<DataTableStore>>;
 
 type AuditTableProps = {
+  business: Business;
   emptyMessage?: string;
   fixedFilters?: AuditTableFixedFilters;
   showEntityTypeFilter?: boolean;
   store: AuditTableStoreHook;
+  valueLabels?: AuditValueLabels | undefined;
 };
 
+const noValueLabels: AuditValueLabels = {};
+
 const auditEntityTypeLabels = {
+  contracting_category: 'Category',
+  contracting_customer: 'Customer',
+  contracting_farm: 'Farm',
+  contracting_implement: 'Implement',
+  contracting_machine: 'Machine',
+  contracting_reading: 'Hour Reading',
+  contracting_work_type: 'Work Type',
   customer: 'Customer',
   document: 'Document',
   job: 'Job',
@@ -46,29 +63,30 @@ const auditEntityTypeLabels = {
   quote: 'Quote',
   supplier: 'Supplier',
   user: 'User',
-} as const satisfies Record<(typeof EquipmentAuditEntityType.options)[number], string>;
+} as const satisfies Record<AuditEntityType, string>;
 
 const auditActionLabels = {
   created: 'Created',
   deleted: 'Deleted',
   merged: 'Merged',
   updated: 'Updated',
-} as const satisfies Record<EquipmentAuditEvent['action'], string>;
+} as const satisfies Record<AuditEvent['action'], string>;
 
 const auditActionColorClassNames = {
   created: 'border-blue-500/50 bg-blue-500/15 text-blue-800 dark:text-blue-200',
   deleted: 'border-red-500/50 bg-red-500/15 text-red-800 dark:text-red-200',
   merged: 'border-violet-500/50 bg-violet-500/15 text-violet-800 dark:text-violet-200',
   updated: 'border-orange-500/50 bg-orange-500/15 text-orange-800 dark:text-orange-200',
-} as const satisfies Record<EquipmentAuditEvent['action'], string>;
+} as const satisfies Record<AuditEvent['action'], string>;
 
 const auditChangesRawJsonClassName =
   'max-h-52 max-w-full overflow-auto rounded-md border bg-muted/30 p-2 font-mono text-xs whitespace-pre-wrap wrap-anywhere text-muted-foreground';
 
-const auditEntityTypeOptions = EquipmentAuditEntityType.options.map((entityType) => ({
-  label: auditEntityTypeLabels[entityType],
-  value: entityType,
-}));
+const auditEntityTypeOptions = (business: Business) =>
+  getBusinessAuditEntityTypes(business).map((entityType) => ({
+    label: auditEntityTypeLabels[entityType],
+    value: entityType,
+  }));
 
 const auditTableInitialState = {
   sorting: [
@@ -79,35 +97,9 @@ const auditTableInitialState = {
   ],
 };
 
-export const useAuditTableStore = createPersistedDataTableStore({
-  initialState: auditTableInitialState,
-  persistName: 'audit-table',
-});
-
-export const useQuoteAuditTableStore = createPersistedDataTableStore({
-  initialState: auditTableInitialState,
-  persistName: 'quote-audit-table',
-});
-
-export const usePurchaseOrderAuditTableStore = createPersistedDataTableStore({
-  initialState: auditTableInitialState,
-  persistName: 'purchase-order-audit-table',
-});
-
-export const useProductAuditTableStore = createPersistedDataTableStore({
-  initialState: auditTableInitialState,
-  persistName: 'product-audit-table',
-});
-
-export const useCustomerAuditTableStore = createPersistedDataTableStore({
-  initialState: auditTableInitialState,
-  persistName: 'customer-audit-table',
-});
-
-export const useSupplierAuditTableStore = createPersistedDataTableStore({
-  initialState: auditTableInitialState,
-  persistName: 'supplier-audit-table',
-});
+export function createAuditTableStore(persistName: string) {
+  return createPersistedDataTableStore({ initialState: auditTableInitialState, persistName });
+}
 
 const auditSortOptions: SortOptions<AuditListInput> = {
   allowedSortIds: AuditSortBy.options,
@@ -117,18 +109,21 @@ const auditSortOptions: SortOptions<AuditListInput> = {
   },
 };
 
+/** One business's audit log, whole or narrowed to one record by `fixedFilters`. */
 export const AuditTable: React.FC<AuditTableProps> = ({
+  business,
   emptyMessage = 'No audit events found.',
   fixedFilters,
   showEntityTypeFilter = true,
   store,
+  valueLabels = noValueLabels,
 }) => {
   const trpc = useTRPC();
 
   const getListInputExtras = useCallback(
-    (columnFilters: Parameters<typeof getAuditListInputExtras>[0]) =>
-      getAuditListInputExtras(columnFilters, fixedFilters),
-    [fixedFilters],
+    (columnFilters: Parameters<typeof getAuditListInputExtras>[1]) =>
+      getAuditListInputExtras(business, columnFilters, fixedFilters),
+    [business, fixedFilters],
   );
 
   const tableController = useServerSideTableController({
@@ -137,7 +132,11 @@ export const AuditTable: React.FC<AuditTableProps> = ({
     getListInputExtras,
   });
 
-  const userOptions = useUserOptions();
+  const actorsQuery = useQuery(trpc.audit.actors.queryOptions({ business }));
+  const actorOptions = useMemo(
+    () => (actorsQuery.data ?? []).map((actor) => ({ label: actor.name, value: actor.id })),
+    [actorsQuery.data],
+  );
 
   const auditQuery = useInfiniteQuery(
     trpc.audit.list.infiniteQueryOptions(tableController.listInput, {
@@ -146,12 +145,12 @@ export const AuditTable: React.FC<AuditTableProps> = ({
     }),
   );
   const { items, total } = useCombinedCursorQueryPages(auditQuery.data?.pages);
-  const auditEvents = useMemo<EquipmentAuditEvent[]>(
+  const auditEvents = useMemo<AuditEvent[]>(
     () => items.map((item) => ({ ...item, changes: AuditChanges.nullable().parse(item.changes) })),
     [items],
   );
 
-  const columns = useMemo<DataTableColumnDef<EquipmentAuditEvent>[]>(
+  const columns = useMemo<DataTableColumnDef<AuditEvent>[]>(
     () => [
       {
         accessorKey: 'occurredAt',
@@ -171,7 +170,7 @@ export const AuditTable: React.FC<AuditTableProps> = ({
         enableSorting: false,
         header: 'Actor',
         meta: {
-          filterOptions: userOptions.selectOptions,
+          filterOptions: actorOptions,
           filterVariant: 'multi-select',
           headerClassName: 'w-64 min-w-64',
         },
@@ -187,11 +186,11 @@ export const AuditTable: React.FC<AuditTableProps> = ({
               enableSorting: false,
               header: 'Entity',
               meta: {
-                filterOptions: auditEntityTypeOptions,
+                filterOptions: auditEntityTypeOptions(business),
                 filterVariant: 'multi-select',
                 headerClassName: 'w-44 min-w-44',
               },
-            } satisfies DataTableColumnDef<EquipmentAuditEvent>,
+            } satisfies DataTableColumnDef<AuditEvent>,
           ]
         : []),
       {
@@ -215,7 +214,7 @@ export const AuditTable: React.FC<AuditTableProps> = ({
         },
       },
       {
-        cell: ({ row }) => <AuditDetailsCell changes={row.original.changes} />,
+        cell: ({ row }) => <AuditDetailsCell changes={row.original.changes} valueLabels={valueLabels} />,
         enableColumnFilter: false,
         enableSorting: false,
         header: '',
@@ -226,10 +225,10 @@ export const AuditTable: React.FC<AuditTableProps> = ({
         },
       },
     ],
-    [showEntityTypeFilter, userOptions.selectOptions],
+    [actorOptions, business, showEntityTypeFilter, valueLabels],
   );
 
-  const table = useDataTable<EquipmentAuditEvent>({
+  const table = useDataTable<AuditEvent>({
     columns,
     data: auditEvents,
     enableSortingRemoval: false,
@@ -265,7 +264,7 @@ export const AuditTable: React.FC<AuditTableProps> = ({
 };
 
 type ActorCellProps = {
-  event: EquipmentAuditEvent;
+  event: AuditEvent;
 };
 
 const ActorCell: React.FC<ActorCellProps> = ({ event }) => {
@@ -283,7 +282,7 @@ const ActorCell: React.FC<ActorCellProps> = ({ event }) => {
 };
 
 type AuditActionBadgeProps = {
-  action: EquipmentAuditEvent['action'];
+  action: AuditEvent['action'];
 };
 
 const AuditActionBadge: React.FC<AuditActionBadgeProps> = ({ action }) => (
@@ -293,10 +292,11 @@ const AuditActionBadge: React.FC<AuditActionBadgeProps> = ({ action }) => (
 );
 
 type ChangesCellProps = {
-  changes: EquipmentAuditEvent['changes'];
+  changes: AuditEvent['changes'];
+  valueLabels: AuditValueLabels;
 };
 
-const AuditDetailsCell: React.FC<ChangesCellProps> = ({ changes }) => {
+const AuditDetailsCell: React.FC<ChangesCellProps> = ({ changes, valueLabels }) => {
   if (!changes) {
     return (
       <Button aria-label="No audit changes recorded" disabled size="icon-xs" variant="ghost">
@@ -305,14 +305,15 @@ const AuditDetailsCell: React.FC<ChangesCellProps> = ({ changes }) => {
     );
   }
 
-  return <AuditChangesDetails changes={changes} />;
+  return <AuditChangesDetails changes={changes} valueLabels={valueLabels} />;
 };
 
 type AuditChangesDetailsProps = {
-  changes: NonNullable<EquipmentAuditEvent['changes']>;
+  changes: NonNullable<AuditEvent['changes']>;
+  valueLabels: AuditValueLabels;
 };
 
-const AuditChangesDetails: React.FC<AuditChangesDetailsProps> = ({ changes }) => (
+const AuditChangesDetails: React.FC<AuditChangesDetailsProps> = ({ changes, valueLabels }) => (
   <Dialog>
     <Tooltip>
       <TooltipTrigger
@@ -327,17 +328,18 @@ const AuditChangesDetails: React.FC<AuditChangesDetailsProps> = ({ changes }) =>
         <DialogTitle>Change details</DialogTitle>
       </DialogHeader>
 
-      <AuditChangesContent changes={changes} />
+      <AuditChangesContent changes={changes} valueLabels={valueLabels} />
     </DialogContent>
   </Dialog>
 );
 
 type AuditChangesContentProps = {
-  changes: NonNullable<EquipmentAuditEvent['changes']>;
+  changes: NonNullable<AuditEvent['changes']>;
+  valueLabels: AuditValueLabels;
 };
 
-export const AuditChangesContent: React.FC<AuditChangesContentProps> = ({ changes }) => {
-  const displays = getAuditChangeDisplays(changes);
+const AuditChangesContent: React.FC<AuditChangesContentProps> = ({ changes, valueLabels }) => {
+  const displays = getAuditChangeDisplays(changes, valueLabels);
 
   return (
     <ScrollArea className="max-h-[calc(100vh-8rem)] min-h-0 min-w-0">

@@ -1,12 +1,12 @@
 import type { ReadMeterPhoto } from '@pkg/core/contracting';
 import type { BuiltRouter } from '@trpc/server/unstable-core-do-not-import';
 import type { TranslationMarker } from '../equipment/catalog-translations/translation-scheduler.js';
+import { auditRouter } from '../routes/audit/audit.router.js';
 import { authRouter } from '../routes/auth/auth.router.js';
 import { changelogRouter } from '../routes/changelog/changelog.router.js';
 import { contractingDirectoryRouter } from '../routes/contracting/directory/directory.router.js';
 import { contractingFleetRouter } from '../routes/contracting/fleet/fleet.router.js';
 import { createContractingReadingsRouter } from '../routes/contracting/readings/readings.router.js';
-import { auditRouter } from '../routes/equipment/audit/audit.router.js';
 import { createCatalogTranslationsRouter } from '../routes/equipment/catalog-translations/catalog-translations.router.js';
 import { customersRouter } from '../routes/equipment/customers/customers.router.js';
 import { documentsRouter } from '../routes/equipment/documents/documents.router.js';

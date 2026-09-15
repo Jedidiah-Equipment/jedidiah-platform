@@ -22,3 +22,7 @@ Customer) for different concepts; never treat a same-named term as shared.
   reference to an Equipment Product Unit (a machine Jedidiah Equipment built is still just a
   Machine on the contracting side), and Customers are not shared — each business keeps its own
   directory, and the same real-world farmer may appear in both.
+- **Audit Event** is one mechanism serving both businesses, read as one **Audit Log per business**:
+  each business's log shows the events for its own entity types and opens only to that business's
+  audit read permission. A User event belongs to every business whose Users page lists that User
+  (so a super-admin's appear in both), which is why the log needs no stored business of its own.

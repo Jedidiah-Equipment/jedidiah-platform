@@ -12,4 +12,3 @@ export { useProductRangeForQuoteOptions } from './use-product-range-for-quote-op
 export { type ProductRangeVariantOption, useProductRangeVariantOptions } from './use-product-range-variant-options.js';
 export { useSalesPersonOptions } from './use-sales-person-options.js';
 export { useSupplierOptions } from './use-supplier-options.js';
-export { useUserOptions } from './use-user-options.js';

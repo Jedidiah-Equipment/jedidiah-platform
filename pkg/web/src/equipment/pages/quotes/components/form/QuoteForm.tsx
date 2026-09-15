@@ -31,7 +31,7 @@ import { AutosaveStatus, useAutosaveForm } from '@/components/form/index.js';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert.js';
 import { FieldGroup } from '@/components/ui/field.js';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs.js';
-import { AuditTable, useQuoteAuditTableStore } from '@/equipment/components/audit/AuditTable.js';
+import { EquipmentAuditTable, useQuoteAuditTableStore } from '@/equipment/components/audit/EquipmentAuditTable.js';
 import { GiveFeedbackButton } from '@/equipment/components/feedback/GiveFeedbackButton.js';
 import { useSalesPersonOptions } from '@/equipment/hooks/options/index.js';
 import { JobSheet } from '@/equipment/pages/jobs/components/JobSheet.js';
@@ -337,7 +337,7 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ onSave, priorityQuote, quo
               </TabsContent>
               {auditAccess.can ? (
                 <TabsContent className="pt-4" value="audit">
-                  <AuditTable
+                  <EquipmentAuditTable
                     emptyMessage="No audit events found for this quote."
                     fixedFilters={quoteAuditFilters}
                     showEntityTypeFilter={false}

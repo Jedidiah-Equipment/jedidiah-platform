@@ -10,7 +10,7 @@ import { RemoveEntityButton } from '@/components/common/RemoveEntityButton.js';
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs.js';
-import { AuditTable, useSupplierAuditTableStore } from '@/equipment/components/audit/AuditTable.js';
+import { EquipmentAuditTable, useSupplierAuditTableStore } from '@/equipment/components/audit/EquipmentAuditTable.js';
 import { useQueryInvalidation } from '@/equipment/hooks/use-query-invalidation.js';
 import { useCan } from '@/hooks/use-access.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
@@ -111,7 +111,7 @@ const SupplierEditTabs: React.FC<SupplierEditTabsProps> = ({ onSupplierSave, sup
       ) : null}
       {auditAccess.can ? (
         <TabsContent className="pt-4" value="audit">
-          <AuditTable
+          <EquipmentAuditTable
             emptyMessage="No audit events found for this supplier."
             fixedFilters={supplierAuditFilters}
             showEntityTypeFilter={false}

@@ -56,7 +56,7 @@ describe('jobActivity.list', () => {
 
     const viewer = context.createCaller(mockSession('job-viewer'));
 
-    await expect(viewer.audit.list({})).rejects.toMatchObject({ code: 'FORBIDDEN' });
+    await expect(viewer.audit.list({ business: 'equipment' })).rejects.toMatchObject({ code: 'FORBIDDEN' });
 
     const result = await viewer.jobActivity.list({});
 

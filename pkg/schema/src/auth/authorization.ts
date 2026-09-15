@@ -117,6 +117,7 @@ export const APP_PERMISSIONS = [
   'contracting_rate:read',
   'contracting_rate:update',
   'contracting_report:read',
+  'contracting_audit:read',
   'user:list',
   'user:create',
   'user:update',

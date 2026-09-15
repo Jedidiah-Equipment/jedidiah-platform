@@ -66,7 +66,8 @@ describe('FilePreviewSheet', () => {
 
     await render({ fetchBlob, kind: 'pdf' });
 
-    expect(document.body.textContent).toContain('Unable to preview this Purchase Order');
+    // React Query hands the rejection to observers on a timer, which the microtask flushes in render miss.
+    await vi.waitFor(() => expect(document.body.textContent).toContain('Unable to preview this Purchase Order'));
   });
 });
 

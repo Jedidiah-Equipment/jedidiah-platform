@@ -2,7 +2,9 @@
 
 - Expo managed app using Expo Router and `expo-dev-client`.
 - For every change set that modifies `pkg/mobile`, run
-  `pnpm --filter @pkg/mobile version:bump minor` exactly once.
+  `pnpm --filter @pkg/mobile version:bump minor` exactly once. `fingerprint.config.js` keeps the version
+  out of the runtime version so the bump never blocks OTA updates; publish those with `ota:<profile>`,
+  not a bare `eas update`.
 - `APP_VARIANT` is required. Variant identity lives in `src/lib/app-variant.ts`; keep
   `app.config.ts` thin and keep its explicit `.ts` resolver import.
 - Routes live under `app/`; all other source lives under `src/` and imports through `@/*`.

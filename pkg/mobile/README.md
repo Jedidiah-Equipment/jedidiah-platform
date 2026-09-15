@@ -37,9 +37,19 @@ cold start anyway, so a dismissed update usually lands without being asked for t
 the native fingerprint is not an OTA update and reaches users through the store instead, which nothing
 prompts for.
 
-JS-only OTA fix:
+The runtime version is the native fingerprint with the store version left out (`fingerprint.config.js`),
+so the `version:bump` every mobile change set makes never blocks an OTA update on its own. Check a
+change against the latest store build before publishing; any reported difference means a store build:
 
 ```sh
-cd pkg/mobile
-APP_VARIANT=staging EXPO_PUBLIC_APP_ENV=staging EXPO_PUBLIC_API_BASE_URL=https://staging-api.jedidiahequipment.co.za eas update --branch staging --message "..."
+APP_VARIANT=production eas fingerprint:compare
+```
+
+Publish with the profile's script. It applies that profile's eas.json `env` (which `eas update` otherwise
+ignores, shipping local `EXPO_PUBLIC_*` defaults) and uses the last commit subject unless `--message` is
+given:
+
+```sh
+pnpm --filter @pkg/mobile ota:staging
+pnpm --filter @pkg/mobile ota:production --message "..."
 ```

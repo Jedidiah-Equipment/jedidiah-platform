@@ -23,7 +23,7 @@ export default ({ config }: ConfigContext): AppConfig => {
     scheme: variant.scheme,
     // `version` is the human-facing string; EAS owns the Android `versionCode` remotely
     // (`cli.appVersionSource: remote` + per-profile `autoIncrement` in eas.json).
-    version: '1.25.0',
+    version: '1.26.0',
     orientation: 'portrait',
     userInterfaceStyle: 'automatic',
     newArchEnabled: true,
@@ -36,11 +36,14 @@ export default ({ config }: ConfigContext): AppConfig => {
     plugins: [
       'expo-router',
       'expo-font',
-      // The stores tablet's camera fallback for a damaged Part label (spec §10). The Bluetooth
-      // wedge is the everyday path, so this permission is asked for only when that path fails.
+      // The stores tablet's camera fallback for a damaged Part label (spec §10), and Contracting's hour
+      // meter photographs. Both ask for the permission only when the operator opens the camera.
       [
         'expo-camera',
-        { cameraPermission: 'Allow $(PRODUCT_NAME) to scan Part labels and stores badges with the camera.' },
+        {
+          cameraPermission:
+            'Allow $(PRODUCT_NAME) to scan Part labels and stores badges, and photograph hour meters, with the camera.',
+        },
       ],
       '@config-plugins/react-native-pdf',
       '@config-plugins/react-native-blob-util',

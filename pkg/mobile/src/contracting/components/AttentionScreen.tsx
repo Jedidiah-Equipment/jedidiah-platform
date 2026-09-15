@@ -3,31 +3,25 @@ import { useState } from 'react';
 import { ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { SecondaryToolbar } from '@/components/TopToolbar';
+import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { useReadingQueue } from '@/contracting/readings/ReadingQueueProvider';
-import { useCapturePermission } from '@/contracting/readings/use-capture-permission';
 import { useFleet, useMachineReadings } from '@/contracting/readings/use-fleet';
-import { ReadingButton } from './ReadingButton';
+import { useSessionPermission } from '@/lib/auth-session';
+import { useBusyAction } from '@/lib/use-busy-action';
 
 export default function AttentionScreen() {
   const { queue, items, sync, error } = useReadingQueue();
   const fleet = useFleet();
-  const canCapture = useCapturePermission();
+  const canCapture = useSessionPermission('contracting_reading:capture');
   const [confirmDiscard, setConfirmDiscard] = useState<string | null>(null);
-  const [actionError, setActionError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
-  async function act(action: () => Promise<void>) {
-    setBusy(true);
-    setActionError(null);
-    try {
+  const { busy, error: actionError, run } = useBusyAction();
+  function act(action: () => Promise<void>) {
+    return run(async () => {
       await action();
       setConfirmDiscard(null);
       sync();
-    } catch (error) {
-      setActionError(error instanceof Error ? error.message : 'Unable to update the saved capture.');
-    } finally {
-      setBusy(false);
-    }
+    }, 'Unable to update the saved capture.');
   }
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top', 'left', 'right']}>
@@ -67,21 +61,17 @@ export default function AttentionScreen() {
               {confirmDiscard === item.localId ? (
                 <View className="gap-2">
                   <Text className="text-danger">Discard this capture and its local photo permanently?</Text>
-                  <ReadingButton
+                  <Button
                     title="Confirm discard"
                     disabled={busy}
                     onPress={() => {
                       void act(() => queue.discard(item.localId));
                     }}
                   />
-                  <ReadingButton title="Keep capture" disabled={busy} onPress={() => setConfirmDiscard(null)} />
+                  <Button title="Keep capture" disabled={busy} onPress={() => setConfirmDiscard(null)} />
                 </View>
               ) : (
-                <ReadingButton
-                  title="Discard capture"
-                  disabled={busy}
-                  onPress={() => setConfirmDiscard(item.localId)}
-                />
+                <Button title="Discard capture" disabled={busy} onPress={() => setConfirmDiscard(item.localId)} />
               )}
             </View>
           ))}
@@ -91,7 +81,7 @@ export default function AttentionScreen() {
         <Text className="text-muted-foreground">
           {items.filter((item) => !item.attention).length} captures queued. Keep the app open with a connection to sync.
         </Text>
-        <ReadingButton title="Try sync now" onPress={sync} />
+        <Button title="Try sync now" onPress={sync} />
       </ScrollView>
     </SafeAreaView>
   );
@@ -115,7 +105,7 @@ function DisputeAction({
           ? `Review the last known reading: ${latest.value.toFixed(1)} h (${new Date(latest.capturedAt).toLocaleString()}).`
           : 'Connect to load the latest reading before disputing it.'}
       </Text>
-      <ReadingButton
+      <Button
         primary
         title="The previous reading is wrong · resubmit as dispute"
         disabled={busy || !latest || history.isFetching}

@@ -1,7 +1,5 @@
 import {
   amendReading,
-  captureReading,
-  isReadingError,
   listFieldMachines,
   listFieldReadings,
   listReadingExceptions,
@@ -9,40 +7,21 @@ import {
   type ReadMeterPhoto,
   reverifyReading,
 } from '@pkg/core/contracting';
-import { canCaptureBaseline } from '@pkg/domain/contracting';
 import {
   FieldMachine,
   FieldReading,
   HourReading,
   ReadingAmendInput,
-  ReadingCaptureInput,
   ReadingException,
   ReadingIdInput,
   ReadingMachineInput,
 } from '@pkg/schema/contracting';
-import { TRPCError } from '@trpc/server';
-import { mapKnownCoreError } from '../../../trpc/errors.js';
+import { mapCoreErrors } from '../../../trpc/errors.js';
 import { authorizedProcedure, router } from '../../../trpc/init.js';
+import { readingErrorFamily } from '../contracting-error-families.js';
 
-export function mapReadingErrors<T>(action: () => Promise<T>) {
-  return mapKnownCoreError(action, isReadingError, (error) => ({
-    appCode: error.code,
-    message: error.message,
-    code:
-      error.code === 'reading.not_found'
-        ? 'NOT_FOUND'
-        : error.code === 'reading.no_photo'
-          ? 'BAD_REQUEST'
-          : error.code === 'reading.verification_failed'
-            ? 'SERVICE_UNAVAILABLE'
-            : 'CONFLICT',
-  }));
-}
-export function createContractingReadingsRouter(
-  readPhoto: ReadMeterPhoto = async () => {
-    throw new Error('Meter reader not configured');
-  },
-) {
+// Capture, baseline included, goes through the multipart upload route, which is the only transport that carries a photo.
+export function createContractingReadingsRouter(readPhoto: ReadMeterPhoto) {
   return router({
     fieldMachines: authorizedProcedure(['contracting_machine:read', 'contracting_reading:capture'])
       .output(FieldMachine.array())
@@ -51,22 +30,6 @@ export function createContractingReadingsRouter(
       .input(ReadingMachineInput)
       .output(FieldReading.array())
       .query(({ ctx, input }) => listFieldReadings({ db: ctx.db, ...input })),
-    captureBaseline: authorizedProcedure('contracting_reading:capture')
-      .input(ReadingCaptureInput.omit({ role: true, disputePrevious: true }))
-      .mutation(({ ctx, input }) => {
-        if (!canCaptureBaseline(ctx.access))
-          throw new TRPCError({
-            code: 'FORBIDDEN',
-            message: 'Only a Contracting administrator can capture a Baseline Reading.',
-          });
-        return mapReadingErrors(() =>
-          captureReading({
-            db: ctx.db,
-            actorUserId: ctx.session.user.id,
-            input: { ...input, role: 'baseline', disputePrevious: false },
-          }),
-        );
-      }),
     listByMachine: authorizedProcedure('contracting_machine:read')
       .input(ReadingMachineInput)
       .output(HourReading.array())
@@ -77,19 +40,21 @@ export function createContractingReadingsRouter(
     amend: authorizedProcedure('contracting_reading:update')
       .input(ReadingAmendInput)
       .mutation(({ ctx, input }) =>
-        mapReadingErrors(() => amendReading({ db: ctx.db, actorUserId: ctx.session.user.id, input })),
+        mapCoreErrors(() => amendReading({ db: ctx.db, actorUserId: ctx.session.user.id, input }), readingErrorFamily),
       ),
     reverify: authorizedProcedure('contracting_reading:update')
       .input(ReadingIdInput)
       .mutation(({ ctx, input }) =>
-        mapReadingErrors(() =>
-          reverifyReading({
-            db: ctx.db,
-            actorUserId: ctx.session.user.id,
-            id: input.id,
-            storage: ctx.storage,
-            readPhoto,
-          }),
+        mapCoreErrors(
+          () =>
+            reverifyReading({
+              db: ctx.db,
+              actorUserId: ctx.session.user.id,
+              id: input.id,
+              storage: ctx.storage,
+              readPhoto,
+            }),
+          readingErrorFamily,
         ),
       ),
   });

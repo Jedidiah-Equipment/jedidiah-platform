@@ -5,7 +5,7 @@ import { createUserAccessSummaryForUser } from '@pkg/domain';
 import type { EquipmentRole } from '@pkg/schema';
 import pino from 'pino';
 import { describe, expect } from 'vitest';
-import { createTester } from '@/test/create-tester.js';
+import { createTester, NOOP_ROUTER_DEPENDENCIES } from '@/test/create-tester.js';
 import { mockSession } from '@/test/test-utils.js';
 import { createAppRouterCaller } from '@/trpc/router.js';
 
@@ -172,9 +172,7 @@ describe('userDepartments', () => {
       userId: currentDepartmentUserId,
     });
 
-    const caller = createAppRouterCaller({
-      catalogTranslationScheduler: { mark: () => undefined, markNow: () => undefined },
-    })({
+    const caller = createAppRouterCaller(NOOP_ROUTER_DEPENDENCIES)({
       access: createUserAccessSummaryForUser(session.user),
       appEnv: 'production',
       auth: context.auth,

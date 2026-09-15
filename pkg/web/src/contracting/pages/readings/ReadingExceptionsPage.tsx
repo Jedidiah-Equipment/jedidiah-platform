@@ -1,7 +1,7 @@
 import { formatDate } from '@pkg/domain';
 import { ReadingAmendInput, type ReadingException } from '@pkg/schema/contracting';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMemo, useState } from 'react';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { DataTable } from '@/components/data-table/DataTable.js';
 import { type DataTableColumnDef, useDataTable } from '@/components/data-table/features.js';
@@ -9,12 +9,12 @@ import { CreateEntityDialog } from '@/components/form/index.js';
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
 import { Button } from '@/components/ui/button.js';
 import { CategoryLabel } from '@/contracting/components/CategoryIcon.js';
-import { getClientConfig } from '@/lib/app-config.js';
+import { useQueryInvalidation } from '@/contracting/hooks/use-query-invalidation.js';
+import { readingPhotoUrl } from '@/contracting/lib/contracting-http-paths.js';
 import { useTRPC } from '@/lib/trpc.js';
 
-type Reading = ReadingException;
 const amendmentValues = ReadingAmendInput.omit({ id: true });
-function evidenceLabel(row: Reading) {
+function evidenceLabel(row: ReadingException) {
   if (!row.photo) return 'Missing Photo Evidence';
   if (row.aiVerification === 'agrees') return 'Photo-backed · AI-verified';
   const labels = {
@@ -27,109 +27,106 @@ function evidenceLabel(row: Reading) {
 }
 export function ReadingExceptionsPage() {
   const trpc = useTRPC();
-  const client = useQueryClient();
-  const [selected, setSelected] = useState<Reading | null>(null);
+  const { invalidateReadings } = useQueryInvalidation();
+  const [selected, setSelected] = useState<ReadingException | null>(null);
   const [globalFilter, setGlobalFilter] = useState('');
   const query = useQuery(trpc.contractingReadings.listExceptions.queryOptions());
-  const invalidate = () => client.invalidateQueries({ queryKey: trpc.contractingReadings.pathKey() });
-  const amend = useMutation(trpc.contractingReadings.amend.mutationOptions({ onSuccess: invalidate }));
-  const reverify = useMutation(trpc.contractingReadings.reverify.mutationOptions({ onSuccess: invalidate }));
-  const columns: DataTableColumnDef<Reading>[] = [
-    {
-      accessorKey: 'machineCode',
-      header: 'Machine',
-      cell: ({ row }) => (
-        <CategoryLabel
-          icon={row.original.categoryIcon}
-          colour={row.original.categoryColour}
-          name={row.original.machineCode}
-          size={16}
-        />
-      ),
-    },
-    {
-      id: 'capture',
-      header: 'Capture',
-      cell: ({ row }) => (
-        <div>
-          {formatDate(row.original.capturedAt, 'dd MMM yyyy HH:mm')}
-          <div className="text-muted-foreground">{row.original.role}</div>
-        </div>
-      ),
-    },
-    { accessorKey: 'value', header: 'Hours', cell: ({ row }) => row.original.value.toFixed(1) },
-    {
-      accessorKey: 'comment',
-      header: 'Capture comment',
-      cell: ({ row }) =>
-        row.original.comment ? (
-          <div className="max-w-xs whitespace-pre-wrap font-medium">{row.original.comment}</div>
-        ) : (
-          <span className="text-muted-foreground">No comment</span>
+  const amend = useMutation(trpc.contractingReadings.amend.mutationOptions({ onSuccess: invalidateReadings }));
+  const reverify = useMutation(trpc.contractingReadings.reverify.mutationOptions({ onSuccess: invalidateReadings }));
+  const columns = useMemo<DataTableColumnDef<ReadingException>[]>(
+    () => [
+      {
+        accessorKey: 'machineCode',
+        header: 'Machine',
+        cell: ({ row }) => (
+          <CategoryLabel
+            icon={row.original.categoryIcon}
+            colour={row.original.categoryColour}
+            name={row.original.machineCode}
+            size={16}
+          />
         ),
-    },
-    {
-      id: 'evidence',
-      header: 'Evidence',
-      cell: ({ row: { original: row } }) => (
-        <div className="space-y-1">
-          <div>{evidenceLabel(row)}</div>
-          {row.disputed ? <div>Disputed: {row.disputeReason}</div> : null}
-          {row.photo ? (
-            <a
-              className="underline"
-              href={`${getClientConfig().apiBaseUrl}/api/contracting/readings/${row.id}/photo`}
-              target="_blank"
-              rel="noreferrer"
-            >
-              View photo
-            </a>
-          ) : null}
-          <div className="text-muted-foreground">{row.aiHint}</div>
-        </div>
-      ),
-    },
-    {
-      id: 'ai',
-      header: 'AI reading / confidence',
-      cell: ({ row }) => (
-        <div>
-          {row.original.aiValue?.toFixed(1) ?? 'Unread'} h
+      },
+      {
+        id: 'capture',
+        header: 'Capture',
+        cell: ({ row }) => (
           <div>
-            {row.original.aiConfidence === null
-              ? 'Confidence unavailable'
-              : `${Math.round(row.original.aiConfidence * 100)}% confidence`}
+            {formatDate(row.original.capturedAt, 'dd MMM yyyy HH:mm')}
+            <div className="text-muted-foreground">{row.original.role}</div>
           </div>
-        </div>
-      ),
-    },
-    {
-      id: 'actions',
-      header: 'Actions',
-      cell: ({ row }) => (
-        <div className="flex flex-col items-start gap-1">
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => {
-              amend.reset();
-              setSelected(row.original);
-            }}
-          >
-            Amend
-          </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            disabled={!row.original.photo || reverify.isPending}
-            onClick={() => reverify.mutate({ id: row.original.id })}
-          >
-            Re-verify
-          </Button>
-        </div>
-      ),
-    },
-  ];
+        ),
+      },
+      { accessorKey: 'value', header: 'Hours', cell: ({ row }) => row.original.value.toFixed(1) },
+      {
+        accessorKey: 'comment',
+        header: 'Capture comment',
+        cell: ({ row }) =>
+          row.original.comment ? (
+            <div className="max-w-xs whitespace-pre-wrap font-medium">{row.original.comment}</div>
+          ) : (
+            <span className="text-muted-foreground">No comment</span>
+          ),
+      },
+      {
+        id: 'evidence',
+        header: 'Evidence',
+        cell: ({ row: { original: row } }) => (
+          <div className="space-y-1">
+            <div>{evidenceLabel(row)}</div>
+            {row.disputed ? <div>Disputed: {row.disputeReason}</div> : null}
+            {row.photo ? (
+              <a className="underline" href={readingPhotoUrl(row.id)} target="_blank" rel="noreferrer">
+                View photo
+              </a>
+            ) : null}
+            <div className="text-muted-foreground">{row.aiHint}</div>
+          </div>
+        ),
+      },
+      {
+        id: 'ai',
+        header: 'AI reading / confidence',
+        cell: ({ row }) => (
+          <div>
+            {row.original.aiValue?.toFixed(1) ?? 'Unread'} h
+            <div>
+              {row.original.aiConfidence === null
+                ? 'Confidence unavailable'
+                : `${Math.round(row.original.aiConfidence * 100)}% confidence`}
+            </div>
+          </div>
+        ),
+      },
+      {
+        id: 'actions',
+        header: 'Actions',
+        cell: ({ row }) => (
+          <div className="flex flex-col items-start gap-1">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                amend.reset();
+                setSelected(row.original);
+              }}
+            >
+              Amend
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={!row.original.photo || reverify.isPending}
+              onClick={() => reverify.mutate({ id: row.original.id })}
+            >
+              Re-verify
+            </Button>
+          </div>
+        ),
+      },
+    ],
+    [amend.reset, reverify.isPending, reverify.mutate],
+  );
   const table = useDataTable({
     data: query.data ?? [],
     columns,

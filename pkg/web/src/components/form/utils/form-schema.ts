@@ -30,3 +30,8 @@ export function requiredSelection<T extends z.ZodTypeAny>(schema: T, message: st
 export function optionalNumber<T extends z.ZodTypeAny>(schema: T) {
   return z.union([z.nan(), schema]);
 }
+
+/** Maps the `NaN` an empty `NumberField` holds back to the `null` the API expects. */
+export function nanToNull(value: number): number | null {
+  return Number.isNaN(value) ? null : value;
+}

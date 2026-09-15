@@ -13,16 +13,11 @@ import {
 } from '@pkg/core/contracting';
 import { type Db, eq, user } from '@pkg/db';
 import { implementCodePrefix } from '@pkg/domain/contracting';
-import type { AuthId } from '@pkg/schema';
+import { AuthId } from '@pkg/schema';
 import type { Category, Implement, Machine } from '@pkg/schema/contracting';
 import type { Auth } from '@/auth/auth.js';
-import {
-  categoryKey,
-  type FleetImportData,
-  type FleetImportImplement,
-  type FleetImportMachine,
-  placeholderEmail,
-} from './fleet-import-csv.js';
+import type { FleetImportData, FleetImportImplement, FleetImportMachine } from './fleet-import-csv.js';
+import { categoryKey, naturalKey as key, placeholderEmail } from './fleet-import-keys.js';
 
 export type FleetImportCounts = { created: number; updated: number; unchanged: number; skipped: number };
 export type FleetImportSummary = {
@@ -33,7 +28,6 @@ export type FleetImportSummary = {
   warnings: string[];
 };
 
-const key = (value: string) => value.trim().toLowerCase();
 const zeroCounts = (): FleetImportCounts => ({ created: 0, updated: 0, unchanged: 0, skipped: 0 });
 type ImportScope = { db: Db; actorUserId: AuthId; data: FleetImportData; summary: FleetImportSummary };
 
@@ -114,7 +108,7 @@ async function importPeople({
           data: { contractingRole: person.role, phoneNumber: person.phone },
         },
       });
-      if (person.role === 'driver') driverIds.set(key(person.name), created.id as AuthId);
+      if (person.role === 'driver') driverIds.set(key(person.name), AuthId.parse(created.id));
       summary.people.created += 1;
       continue;
     }
@@ -125,7 +119,7 @@ async function importPeople({
       summary.people.skipped += 1;
       continue;
     }
-    if (person.role === 'driver') driverIds.set(key(person.name), current.id as AuthId);
+    if (person.role === 'driver') driverIds.set(key(person.name), AuthId.parse(current.id));
     if (person.phone !== null && current.phoneNumber !== person.phone) {
       await auth.api.adminUpdateUser({ body: { userId: current.id, data: { phoneNumber: person.phone } } });
       summary.people.updated += 1;

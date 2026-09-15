@@ -26,10 +26,10 @@ import { userDepartmentsRouter } from '../routes/equipment/users/user-department
 import { usersRouter } from '../routes/users/users.router.js';
 import { createCallerFactory, router } from './init.js';
 
-/** Runtime services the Equipment routers close over; supplied by the server, stubbed by tests. */
+/** Runtime services the business routers close over; supplied by the server, stubbed by tests. */
 export type AppRouterDependencies = {
   catalogTranslationScheduler: TranslationMarker;
-  readMeterPhoto?: ReadMeterPhoto;
+  readMeterPhoto: ReadMeterPhoto;
 };
 
 type AppRouterRootTypes = (typeof authRouter)['_def']['_config']['$types'];

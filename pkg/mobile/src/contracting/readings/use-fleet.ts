@@ -1,53 +1,62 @@
-import { getRoleSlotsPermissions } from '@pkg/domain';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useQuery } from '@tanstack/react-query';
-import { useEffect, useState } from 'react';
+import { FieldMachine, FieldReading } from '@pkg/schema/contracting';
+import { type UseQueryResult, useQuery } from '@tanstack/react-query';
+import { useEffect } from 'react';
+import type { z } from 'zod';
+import { contractingStorageKey } from '@/contracting/lib/contracting-storage';
 import { apiBaseUrl } from '@/lib/api-base-url';
-import { getSessionRoleSlots, useAuthSession } from '@/lib/auth-session';
+import { useAuthSession, useSessionPermission } from '@/lib/auth-session';
 import { useTRPC } from '@/lib/trpc';
+import { usePersistedState } from '@/lib/use-persisted-state';
 
-/** Keep only the data these field screens need, scoped to API and operator. */
-function useSavedData<T>(name: string, live: T | undefined) {
+const FIELD_READ_PERMISSIONS = ['contracting_machine:read', 'contracting_reading:capture'] as const;
+const FieldMachines = FieldMachine.array();
+const FieldReadings = FieldReading.array();
+const isFieldMachines = (value: unknown): value is z.infer<typeof FieldMachines> =>
+  FieldMachines.safeParse(value).success;
+const isFieldReadings = (value: unknown): value is FieldReading[] => FieldReadings.safeParse(value).success;
+
+type SavedQuery<T> = {
+  canRead: boolean;
+  data: T | undefined;
+  isError: boolean;
+  isFetching: boolean;
+  isRefetching: boolean;
+  refetch: () => Promise<unknown>;
+};
+
+/** Mirror live data into storage scoped to API and operator, so field screens work offline. */
+function useSavedQueryData<T>(name: string, isValid: (value: unknown) => value is T, live: T | undefined) {
   const session = useAuthSession();
   // v2: field machines carry their category icon and colour (#1434).
-  const key = `contracting:fleet:v2:${apiBaseUrl}:${session.user.id}:${name}`;
-  const [saved, setSaved] = useState<{ key: string; data: T } | null>(null);
+  const key = contractingStorageKey('fleet', 'v2', apiBaseUrl, session.user.id, name);
+  const [saved, save] = usePersistedState<T | undefined>(key, undefined, isValid);
   useEffect(() => {
-    let active = true;
-    void AsyncStorage.getItem(key)
-      .then((raw) => {
-        if (active && raw) setSaved({ key, data: JSON.parse(raw) as T });
-      })
-      .catch(() => {});
-    return () => {
-      active = false;
-    };
-  }, [key]);
-  useEffect(() => {
-    if (live !== undefined) void AsyncStorage.setItem(key, JSON.stringify(live)).catch(() => {});
-  }, [key, live]);
-  return live ?? (saved?.key === key ? saved.data : undefined);
+    if (live !== undefined) save(live);
+  }, [live, save]);
+  return live ?? saved;
 }
-function useCanReadField() {
-  const slots = getSessionRoleSlots(useAuthSession());
-  const permissions = slots ? getRoleSlotsPermissions(slots) : [];
-  return permissions.includes('contracting_machine:read') || permissions.includes('contracting_reading:capture');
+
+function savedQuery<T>(canRead: boolean, query: UseQueryResult<T, unknown>, data: T | undefined): SavedQuery<T> {
+  return {
+    canRead,
+    data: canRead ? data : undefined,
+    isError: query.isError,
+    isFetching: query.isFetching,
+    isRefetching: query.isRefetching,
+    refetch: query.refetch,
+  };
 }
-export function useFleet(enabled = true) {
-  const canRead = useCanReadField();
+
+export function useFleet() {
+  const canRead = useSessionPermission(...FIELD_READ_PERMISSIONS);
   const trpc = useTRPC();
-  const query = useQuery(
-    trpc.contractingReadings.fieldMachines.queryOptions(undefined, { enabled: enabled && canRead }),
-  );
-  const data = useSavedData('machines', query.data);
-  return { ...query, data: canRead ? data : undefined, canRead };
+  const query = useQuery(trpc.contractingReadings.fieldMachines.queryOptions(undefined, { enabled: canRead }));
+  return savedQuery(canRead, query, useSavedQueryData('machines', isFieldMachines, query.data));
 }
-export function useMachineReadings(machineId: string, enabled = true) {
-  const canRead = useCanReadField();
+
+export function useMachineReadings(machineId: string) {
+  const canRead = useSessionPermission(...FIELD_READ_PERMISSIONS);
   const trpc = useTRPC();
-  const query = useQuery(
-    trpc.contractingReadings.fieldHistory.queryOptions({ machineId }, { enabled: enabled && canRead }),
-  );
-  const data = useSavedData(`readings:${machineId}`, query.data);
-  return { ...query, data: canRead ? data : undefined, canRead };
+  const query = useQuery(trpc.contractingReadings.fieldHistory.queryOptions({ machineId }, { enabled: canRead }));
+  return savedQuery(canRead, query, useSavedQueryData(`readings:${machineId}`, isFieldReadings, query.data));
 }

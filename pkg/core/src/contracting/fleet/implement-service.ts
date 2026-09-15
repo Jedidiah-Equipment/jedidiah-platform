@@ -5,18 +5,25 @@ import type { AuthId } from '@pkg/schema';
 import {
   FleetCode,
   type FleetListInput,
-  FleetRetireInput,
+  type FleetRetireInput,
   Implement,
   ImplementCodeSuggestion,
   type ImplementCreateInput,
   type ImplementPatchInput,
 } from '@pkg/schema/contracting';
-import { and, asc, eq, ilike, isNotNull, isNull, sql } from 'drizzle-orm';
+import { and, asc, eq, ilike, sql } from 'drizzle-orm';
 import { defineAuditDescriptor, recordAuditCreate } from '../../audit/audit-writer.js';
 import { mutateEntity } from '../../audit/mutate-entity.js';
 import { assertCategoryKind } from './category-service.js';
-import { assertNotRetired, FleetError, invalidCategory, withFleetConstraints } from './fleet-errors.js';
-import { removeFleetEntry } from './remove-fleet-entry.js';
+import {
+  type CategoryRelation,
+  projectCategory,
+  projectTimestamps,
+  removeFleetEntry,
+  retireFleetEntry,
+  retirementFilter,
+} from './fleet-entry.js';
+import { assertNotRetired, invalidCategory, notFound, withFleetConstraints } from './fleet-errors.js';
 
 type Row = typeof contractingImplements.$inferSelect;
 const descriptor = defineAuditDescriptor<Row>({
@@ -30,27 +37,14 @@ const descriptor = defineAuditDescriptor<Row>({
   }),
 });
 const related = { category: true } as const;
-type RelatedRow = Row & { category: { name: string; icon: string; colour: string } };
-function mapImplement(row: RelatedRow) {
+function mapImplement(row: Row & { category: CategoryRelation }) {
   const { category, ...fields } = row;
-  return Implement.parse({
-    ...fields,
-    categoryName: category.name,
-    categoryIcon: category.icon,
-    categoryColour: category.colour,
-    retiredAt: row.retiredAt?.toISOString() ?? null,
-    createdAt: row.createdAt.toISOString(),
-    updatedAt: row.updatedAt.toISOString(),
-  });
+  return Implement.parse({ ...fields, ...projectCategory(category), ...projectTimestamps(row) });
 }
 export async function listImplements({ db, input }: { db: Db; input: FleetListInput }) {
   const rows = await db.query.contractingImplements.findMany({
     where: and(
-      input.status === 'active'
-        ? isNull(contractingImplements.retiredAt)
-        : input.status === 'retired'
-          ? isNotNull(contractingImplements.retiredAt)
-          : undefined,
+      retirementFilter(contractingImplements, input.status),
       input.search ? createEscapedContainsSearchCondition(sql`${contractingImplements.code}`, input.search) : undefined,
     ),
     with: related,
@@ -63,7 +57,7 @@ export async function getImplement({ db, id }: { db: Db | DatabaseTransaction; i
     where: eq(contractingImplements.id, id),
     with: related,
   });
-  if (!row) throw new FleetError('fleet.not_found', 'Implement not found.');
+  if (!row) throw notFound('Implement');
   return mapImplement(row);
 }
 export async function createImplement({
@@ -104,7 +98,7 @@ export async function patchImplement({
       descriptor,
       table: contractingImplements,
       id: input.id,
-      notFound: () => new FleetError('fleet.not_found', 'Implement not found.'),
+      notFound: () => notFound('Implement'),
       assert: async (tx, row) => {
         assertNotRetired(row);
         if (input.categoryId !== undefined) await assertCategoryKind(tx, input.categoryId, 'implement');
@@ -119,25 +113,12 @@ export async function patchImplement({
     }),
   );
 }
-export async function retireImplement({
-  db,
-  actorUserId,
-  input,
-}: {
-  db: Db;
-  actorUserId: AuthId;
-  input: FleetRetireInput;
-}) {
-  const { id, reason } = FleetRetireInput.parse(input);
-  return mutateEntity({
-    db,
-    actorUserId,
-    descriptor,
+export async function retireImplement(args: { db: Db; actorUserId: AuthId; input: FleetRetireInput }) {
+  return retireFleetEntry({
+    ...args,
     table: contractingImplements,
-    id,
-    notFound: () => new FleetError('fleet.not_found', 'Implement not found.'),
-    assert: (_tx, row) => assertNotRetired(row),
-    set: () => ({ retiredAt: new Date(), retiredReason: reason, updatedAt: new Date() }),
+    descriptor,
+    noun: 'Implement',
     project: (tx, row) => getImplement({ db: tx, id: row.id }),
   });
 }
@@ -150,7 +131,7 @@ export async function suggestImplementCode({ db, categoryId }: { db: Db; categor
     .select({ name: contractingCategories.name, kind: contractingCategories.kind })
     .from(contractingCategories)
     .where(eq(contractingCategories.id, categoryId));
-  if (!category) throw new FleetError('fleet.not_found', 'Category not found.');
+  if (!category) throw notFound('Category');
   if (category.kind !== 'implement') throw invalidCategory('implement');
   const prefix = implementCodePrefix(category.name);
   const taken = await db

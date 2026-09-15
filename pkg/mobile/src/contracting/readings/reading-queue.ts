@@ -1,15 +1,22 @@
-export type QueuedReading = {
-  localId: string;
-  machineId: string;
-  role: 'spot';
-  value: number;
-  capturedAt: string;
-  photoLocalUri: string | null;
-  disputePrevious: boolean;
-  comment: string | null;
-  expectedPreviousId?: string | null;
-  attention?: { code: string; message: string };
-};
+import { UUID } from '@pkg/schema';
+import { ReadingCaptureInput } from '@pkg/schema/contracting';
+import { z } from 'zod';
+
+export const QueuedReading = ReadingCaptureInput.extend({
+  localId: UUID,
+  role: z.literal('spot'),
+  photoLocalUri: z.string().nullable(),
+  attention: z.object({ code: z.string(), message: z.string() }).optional(),
+}).strip();
+export type QueuedReading = z.infer<typeof QueuedReading>;
+
+// A v4 UUID without a native dependency; it is an idempotency identifier, not a secret.
+export function newLocalId(): string {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (character) => {
+    const random = Math.floor(Math.random() * 16);
+    return (character === 'x' ? random : (random & 3) | 8).toString(16);
+  });
+}
 export class ReadingSyncError extends Error {
   constructor(
     readonly code: string,
@@ -31,7 +38,12 @@ export function createReadingQueue({ storage, key, removePhoto }: QueuePorts) {
   const listeners = new Set<() => void>();
   async function read(): Promise<QueuedReading[]> {
     const raw = await storage.getItem(key);
-    return raw ? JSON.parse(raw) : [];
+    const rows = raw ? parseJson(raw) : [];
+    if (!Array.isArray(rows)) return [];
+    return rows.flatMap((row) => {
+      const parsed = QueuedReading.safeParse(row);
+      return parsed.success ? [parsed.data] : [];
+    });
   }
   function mutate(change: (rows: QueuedReading[]) => QueuedReading[]) {
     const result = writes.then(async () => {
@@ -107,3 +119,11 @@ export function createReadingQueue({ storage, key, removePhoto }: QueuePorts) {
   };
 }
 export type ReadingQueue = ReturnType<typeof createReadingQueue>;
+
+function parseJson(raw: string): unknown {
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return [];
+  }
+}

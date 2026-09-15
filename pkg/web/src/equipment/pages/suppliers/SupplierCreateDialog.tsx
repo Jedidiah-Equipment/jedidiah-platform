@@ -37,7 +37,6 @@ export const SupplierCreateDialog: React.FC<SupplierCreateDialogProps> = ({ onOp
   return (
     <CreateEntityDialog
       defaultValues={SUPPLIER_CREATE_DEFAULT_VALUES}
-      key={open ? 'open' : 'closed'}
       onCreate={(values) => createSupplierMutation.mutateAsync(toSupplierMinimalCreateInput(values))}
       onCreated={async (supplier: Supplier) => {
         await invalidateSuppliers();

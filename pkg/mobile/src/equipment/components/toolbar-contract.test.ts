@@ -19,22 +19,10 @@ const SIGNED_IN_PERMISSION_LOADING_SURFACES = {
 } as const;
 
 const SIGNED_IN_ROUTE_TOOLBARS = {
-  'contracting/index.tsx': toolbar('main', 'src/contracting/components/MachinesScreen.tsx', 'MainToolbar'),
-  'contracting/attention.tsx': toolbar(
-    'secondary',
-    'src/contracting/components/AttentionScreen.tsx',
-    'SecondaryToolbar',
-  ),
-  'contracting/machines/[id]/index.tsx': toolbar(
-    'secondary',
-    'src/contracting/components/MachineScreen.tsx',
-    'SecondaryToolbar',
-  ),
-  'contracting/machines/[id]/capture.tsx': toolbar(
-    'secondary',
-    'src/contracting/components/CaptureScreen.tsx',
-    'SecondaryToolbar',
-  ),
+  'contracting/index.tsx': toolbar('main', 'src/contracting/components/MachinesScreen.tsx'),
+  'contracting/attention.tsx': toolbar('secondary', 'src/contracting/components/AttentionScreen.tsx'),
+  'contracting/machines/[id]/index.tsx': toolbar('secondary', 'src/contracting/components/MachineScreen.tsx'),
+  'contracting/machines/[id]/capture.tsx': toolbar('secondary', 'src/contracting/components/CaptureScreen.tsx'),
   'equipment/(tabs)/(plan)/bays/[bayId].tsx': toolbar('secondary', 'src/equipment/components/bays/BayQueueScreen.tsx'),
   'equipment/(tabs)/(plan)/plan/index.tsx': toolbar('main', 'app/(protected)/equipment/(tabs)/(plan)/plan/index.tsx'),
   'equipment/(tabs)/activity/index.tsx': toolbar('main', 'app/(protected)/equipment/(tabs)/activity/index.tsx'),
@@ -154,23 +142,29 @@ describe('signed-in toolbar contract', () => {
 });
 
 type ToolbarKind = 'main' | 'secondary';
-type ToolbarComponent = 'MainTabToolbar' | 'MainToolbar' | 'SecondaryPageToolbar' | 'SecondaryToolbar';
-type ToolbarContract = { component: ToolbarComponent; kind: ToolbarKind; owner: string };
+type ToolbarContract = { kind: ToolbarKind; owner: string };
 
 // Equipment pages go through their business wrapper; Contracting has no business-specific actions yet, so
 // its pages render the shared frame directly.
-function toolbar(
-  kind: ToolbarKind,
-  owner: string,
-  component: ToolbarComponent = kind === 'main' ? 'MainTabToolbar' : 'SecondaryPageToolbar',
-): ToolbarContract {
-  return { component, kind, owner };
+const TOOLBAR_COMPONENTS = {
+  contracting: { main: 'MainToolbar', secondary: 'SecondaryToolbar' },
+  equipment: { main: 'MainTabToolbar', secondary: 'SecondaryPageToolbar' },
+} as const;
+
+function toolbar(kind: ToolbarKind, owner: string): ToolbarContract {
+  return { kind, owner };
+}
+
+function toolbarComponent(route: string, kind: ToolbarKind): string {
+  const business = route.split('/')[0];
+  if (business !== 'contracting' && business !== 'equipment') throw new Error(`No business toolbar for ${route}`);
+  return TOOLBAR_COMPONENTS[business][kind];
 }
 
 function expectToolbarKinds(contracts: Record<string, ToolbarContract>): void {
   for (const [route, contract] of Object.entries(contracts)) {
     const source = readFileSync(join(MOBILE_DIR, contract.owner), 'utf8');
-    const expected = `<${contract.component}`;
+    const expected = `<${toolbarComponent(route, contract.kind)}`;
     const unexpected = contract.kind === 'main' ? '<SecondaryPageToolbar' : '<MainTabToolbar';
 
     expect({ owner: contract.owner, route, usesExpectedToolbar: source.includes(expected) }).toEqual({

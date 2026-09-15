@@ -3,7 +3,6 @@ import { describe, expect, it } from 'vitest';
 import {
   assertLocalSeedStorageTarget,
   assertLocalSeedTarget,
-  databaseTargetsMatch,
   resolveStagingResetDatabaseUrl,
   resolveStagingSeedConfig,
 } from './seed-target-guards.js';
@@ -106,17 +105,6 @@ describe('staging seed target guard', () => {
         PRODUCTION_DOCUMENT_STORAGE_ENDPOINT: 'https://staging-objects.example.test/',
       }),
     ).toThrow('staging and production object stores match');
-  });
-});
-
-describe('database target comparison', () => {
-  it('ignores credentials, postgres protocol aliases, default ports, and connection options', () => {
-    expect(
-      databaseTargetsMatch(
-        'postgres://first:secret@database.example.test/app',
-        'postgresql://second:different@database.example.test:5432/app?sslmode=require',
-      ),
-    ).toBe(true);
   });
 });
 

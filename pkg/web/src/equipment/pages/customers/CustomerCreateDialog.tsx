@@ -37,7 +37,6 @@ export const CustomerCreateDialog: React.FC<CustomerCreateDialogProps> = ({ onOp
   return (
     <CreateEntityDialog
       defaultValues={CUSTOMER_CREATE_DEFAULT_VALUES}
-      key={open ? 'open' : 'closed'}
       onCreate={(values) => createCustomerMutation.mutateAsync(toCustomerMinimalCreateInput(values))}
       onCreated={async (customer: Customer) => {
         await invalidateCustomers();

@@ -1,9 +1,10 @@
-import { databaseTargetsMatch, isLoopbackHostname } from '@pkg/db';
+import {
+  assertLocalDatabaseTarget,
+  isLoopbackHostname,
+  requireDatabaseUrl,
+  resolveConfirmedRemoteDatabaseUrl,
+} from '@pkg/db';
 import { readSeedStorageConfig, type SeedStorageConfig } from './storage.js';
-
-export { databaseTargetsMatch } from '@pkg/db';
-
-const stagingSeedConfirmation = 'replace-staging';
 
 export type StagingSeedConfig = {
   localDatabaseUrl: string;
@@ -12,26 +13,13 @@ export type StagingSeedConfig = {
   stagingStorage: SeedStorageConfig;
 };
 
+// The ordinary writer is used by db:up and parallel:up, so it stays loopback-only.
 export function assertLocalSeedTarget(databaseUrl: string, env: NodeJS.ProcessEnv = process.env): void {
-  const hostname = normalizedHostname(databaseUrl);
-
-  // The ordinary writer is used by db:up and parallel:up. Keeping it loopback-only makes a missing or
-  // misspelled remote env variable insufficient to turn that everyday command into a production write.
-  if (!isLoopbackHostname(hostname)) {
-    throw new Error('Refusing to write the local seed snapshot because DATABASE_URL is not a loopback database.');
-  }
-
-  for (const remoteName of ['STAGING_DATABASE_URL', 'PRODUCTION_DATABASE_URL'] as const) {
-    const remoteUrl = env[remoteName];
-
-    if (remoteUrl && databaseTargetsMatch(databaseUrl, remoteUrl)) {
-      throw new Error(`Refusing to write the local seed snapshot because DATABASE_URL matches ${remoteName}.`);
-    }
-  }
+  assertLocalDatabaseTarget(databaseUrl, 'writing the local seed snapshot', env);
 }
 
 export function assertLocalSeedStorageTarget(config: SeedStorageConfig, env: NodeJS.ProcessEnv = process.env): void {
-  if (!isLoopbackHostname(normalizedHostname(config.endpoint))) {
+  if (!isLoopbackHostname(new URL(config.endpoint).hostname)) {
     throw new Error(
       'Refusing to write local seed objects because DOCUMENT_STORAGE_ENDPOINT is not a loopback service.',
     );
@@ -48,21 +36,15 @@ export function assertLocalSeedStorageTarget(config: SeedStorageConfig, env: Nod
 }
 
 export function resolveStagingSeedConfig(env: NodeJS.ProcessEnv = process.env): StagingSeedConfig {
-  if (env.APP_ENV !== 'staging') {
-    throw new Error('Writing local seed data to staging requires APP_ENV=staging.');
-  }
-
-  if (env.CONFIRM_STAGING_SEED !== stagingSeedConfirmation) {
-    throw new Error(`Writing local seed data to staging requires CONFIRM_STAGING_SEED=${stagingSeedConfirmation}.`);
-  }
-
-  const localDatabaseUrl = requireEnv('DATABASE_URL', env);
-  const stagingDatabaseUrl = requireEnv('STAGING_DATABASE_URL', env);
-  const productionDatabaseUrl = requireEnv('PRODUCTION_DATABASE_URL', env);
-
+  const action = 'writing local seed data to staging';
+  const stagingDatabaseUrl = resolveConfirmedRemoteDatabaseUrl({
+    target: 'staging',
+    confirmation: { variable: 'CONFIRM_STAGING_SEED', value: 'replace-staging' },
+    action,
+    env,
+  });
+  const localDatabaseUrl = requireDatabaseUrl('local', action, env);
   assertLocalSeedTarget(localDatabaseUrl, env);
-  assertDifferentDatabaseTarget('local', localDatabaseUrl, 'staging', stagingDatabaseUrl);
-  assertDifferentDatabaseTarget('staging', stagingDatabaseUrl, 'production', productionDatabaseUrl);
 
   // Production storage configuration is mandatory even though this command never creates a production
   // client: without it, a mislabeled STAGING_* bucket cannot be proven safe before the first upload.
@@ -70,7 +52,9 @@ export function resolveStagingSeedConfig(env: NodeJS.ProcessEnv = process.env): 
   const stagingStorage = readSeedStorageConfig('STAGING_', env);
   const productionStorage = readSeedStorageConfig('PRODUCTION_', env);
 
-  assertDifferentStorageTarget('staging', stagingStorage, 'production', productionStorage);
+  if (storageTargetsMatch(stagingStorage, productionStorage)) {
+    throw new Error('Refusing staging seed write because the staging and production object stores match.');
+  }
 
   return {
     localDatabaseUrl,
@@ -81,60 +65,12 @@ export function resolveStagingSeedConfig(env: NodeJS.ProcessEnv = process.env): 
 }
 
 export function resolveStagingResetDatabaseUrl(env: NodeJS.ProcessEnv = process.env): string {
-  if (env.APP_ENV !== 'staging') {
-    throw new Error('Remote database reset requires APP_ENV=staging.');
-  }
-
-  if (env.CONFIRM_DB_RESET !== 'staging') {
-    throw new Error('Remote database reset requires CONFIRM_DB_RESET=staging.');
-  }
-
-  const stagingDatabaseUrl = requireEnvForAction('STAGING_DATABASE_URL', 'reset the staging database', env);
-  const productionDatabaseUrl = requireEnvForAction('PRODUCTION_DATABASE_URL', 'reset the staging database', env);
-
-  assertDifferentDatabaseTarget('staging', stagingDatabaseUrl, 'production', productionDatabaseUrl);
-  return stagingDatabaseUrl;
-}
-
-function requireEnv(name: string, env: NodeJS.ProcessEnv): string {
-  const value = env[name];
-
-  if (!value) {
-    throw new Error(`${name} is required to write local seed data to staging.`);
-  }
-
-  return value;
-}
-
-function requireEnvForAction(name: string, action: string, env: NodeJS.ProcessEnv): string {
-  const value = env[name];
-
-  if (!value) {
-    throw new Error(`${name} is required to ${action}.`);
-  }
-
-  return value;
-}
-
-function assertDifferentDatabaseTarget(leftName: string, leftUrl: string, rightName: string, rightUrl: string): void {
-  if (databaseTargetsMatch(leftUrl, rightUrl)) {
-    throw new Error(`Refusing staging seed write because the ${leftName} and ${rightName} databases match.`);
-  }
-}
-
-function normalizedHostname(rawUrl: string): string {
-  return new URL(rawUrl).hostname.replace(/^\[|\]$/g, '').toLowerCase();
-}
-
-function assertDifferentStorageTarget(
-  leftName: string,
-  left: SeedStorageConfig,
-  rightName: string,
-  right: SeedStorageConfig,
-): void {
-  if (storageTargetsMatch(left, right)) {
-    throw new Error(`Refusing staging seed write because the ${leftName} and ${rightName} object stores match.`);
-  }
+  return resolveConfirmedRemoteDatabaseUrl({
+    target: 'staging',
+    confirmation: { variable: 'CONFIRM_DB_RESET', value: 'staging' },
+    action: 'resetting the staging database',
+    env,
+  });
 }
 
 export function storageTargetsMatch(left: SeedStorageConfig, right: SeedStorageConfig): boolean {

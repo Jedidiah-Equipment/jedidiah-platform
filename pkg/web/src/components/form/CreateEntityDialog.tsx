@@ -1,5 +1,6 @@
 import { IconLoader2 } from '@tabler/icons-react';
 import type React from 'react';
+import { useLayoutEffect, useRef } from 'react';
 import type { z } from 'zod';
 
 import { Button } from '@/components/ui/button.js';
@@ -23,6 +24,7 @@ type CreateEntityDialogProps<TValues extends Record<string, unknown>, TResult> =
   canSubmit?: boolean | ((values: TValues) => boolean);
   children: (form: CreateEntityFormApi<TValues>) => React.ReactNode;
   contentClassName?: string;
+  /** Read each time the dialog opens: opening always starts a fresh form from these values. */
   defaultValues: TValues;
   description?: React.ReactNode;
   /** Keeps submit disabled until the current values pass `validator`; opt in for forms that need it. */
@@ -91,6 +93,12 @@ export function CreateEntityDialog<TValues extends Record<string, unknown>, TRes
       await onCreated(result);
     },
   });
+  const defaultValuesRef = useRef(defaultValues);
+  defaultValuesRef.current = defaultValues;
+
+  useLayoutEffect(() => {
+    if (open) form.reset(defaultValuesRef.current);
+  }, [form, open]);
 
   return (
     <Dialog onOpenChange={onOpenChange} open={open}>

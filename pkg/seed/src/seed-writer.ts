@@ -64,8 +64,11 @@ export async function writeLocalSeedSnapshot(database?: Db): Promise<void> {
     assertLocalSeedStorageTarget(readSeedStorageConfig(''));
   }
 
-  const snapshots = prepareSnapshotsForSeed(
-    await Promise.all(snapshotTables.map(async (config) => ({ config, rows: await readSnapshotFile(config) }))),
+  const snapshots = await Promise.all(
+    snapshotTables.map(async (config) => ({
+      config,
+      rows: prepareRowsForSeed(config, await readSnapshotFile(config)),
+    })),
   );
   const localClient = database ? null : createDatabaseClient(localDatabaseUrl);
   const writableDb = database ?? localClient?.db;
@@ -88,31 +91,10 @@ export async function writeLocalSeedSnapshot(database?: Db): Promise<void> {
   }
 }
 
-type ReadSnapshot = { config: SnapshotTableConfig; rows: readonly SnapshotRow[] };
-
 // Add rollout defaults beneath captured values, then normalize legacy values for the current schema.
-export function prepareRowsForSeed(
-  config: SnapshotTableConfig,
-  rows: readonly SnapshotRow[],
-  { useFallback = true }: { useFallback?: boolean } = {},
-): SnapshotRow[] {
-  const source = rows.length === 0 && useFallback ? (config.emptySnapshotRows ?? rows) : rows;
+export function prepareRowsForSeed(config: SnapshotTableConfig, rows: readonly SnapshotRow[]): SnapshotRow[] {
+  const source = rows.length === 0 ? (config.emptySnapshotRows ?? rows) : rows;
   return source.map((row, index) => prepareSnapshotRow(config, projectWritableRow(config, row), index));
-}
-
-// A fallback group is all-or-nothing: one captured row anywhere in the group disables every fallback in it.
-export function prepareSnapshotsForSeed(read: readonly ReadSnapshot[]): SnapshotWithRows[] {
-  const groupsWithRows = new Set(
-    read.flatMap(({ config, rows }) =>
-      config.emptySnapshotGroup && rows.length > 0 ? [config.emptySnapshotGroup] : [],
-    ),
-  );
-  return read.map(({ config, rows }) => ({
-    config,
-    rows: prepareRowsForSeed(config, rows, {
-      useFallback: !config.emptySnapshotGroup || !groupsWithRows.has(config.emptySnapshotGroup),
-    }),
-  }));
 }
 
 export async function replaceDatabaseWithSeedSnapshot(

@@ -60,7 +60,6 @@ export const QuoteCreateDialog: React.FC<QuoteCreateDialogProps> = ({ onOpenChan
   return (
     <CreateEntityDialog
       defaultValues={defaultValues}
-      key={open ? 'open' : 'closed'}
       onCreate={(values) => createQuoteMutation.mutateAsync(toQuoteCreateInput(values))}
       onCreated={async (quote: Quote) => {
         await invalidateQuotes();

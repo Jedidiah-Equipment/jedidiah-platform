@@ -11,6 +11,7 @@ import {
   ServiceIntervalHours,
 } from '@pkg/schema/contracting';
 import { z } from 'zod';
+import { categoryKey, naturalKey as key, placeholderEmail } from './fleet-import-keys.js';
 
 export type FleetImportFileName = 'categories' | 'implements' | 'machines' | 'people';
 export type FleetImportFiles = Record<FleetImportFileName, string>;
@@ -145,21 +146,6 @@ function parseRows<T>(file: FleetImportFileName, text: string, schema: z.ZodType
         issues.push(`${file}.csv line ${line}: ${issue.path.join('.') || 'row'} — ${issue.message}`);
   }
   return parsed;
-}
-
-const key = (value: string) => value.trim().toLowerCase();
-/** Category names are unique per kind, case-insensitively, so both take part in the lookup key. */
-export const categoryKey = (kind: string, name: string) => `${kind}:${key(name)}`;
-
-/** Drivers and mechanics never sign in, so the address only has to be unique and obviously fake. */
-export function placeholderEmail(name: string): string {
-  const slug = name
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '');
-  return `${slug || 'person'}@fleet.jedidiah.invalid`;
 }
 
 function checkUnique<T>(

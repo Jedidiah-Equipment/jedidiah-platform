@@ -1,5 +1,5 @@
 import { categoryColours, categoryIcons, defaultCategoryIcon } from '@pkg/domain/contracting';
-import type { Category, CategoryColour, CategoryIconKey, CategoryKind } from '@pkg/schema/contracting';
+import { type Category, type CategoryColour, type CategoryIconKey, CategoryKind } from '@pkg/schema/contracting';
 import { IconCategory } from '@tabler/icons-react';
 import type React from 'react';
 import { useState } from 'react';
@@ -8,52 +8,25 @@ import { getFieldErrors } from '@/components/form/utils/field-errors.js';
 import { buttonVariants } from '@/components/ui/button.js';
 import { Field, FieldError, FieldLabel } from '@/components/ui/field.js';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover.js';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select.js';
-import { CategoryIcon, CategoryLabel } from '@/contracting/components/CategoryIcon.js';
+import { CategoryIcon } from '@/contracting/components/CategoryIcon.js';
 import { cn } from '@/lib/utils.js';
 
 export const categoryKindLabels: Record<CategoryKind, string> = { machine: 'Machine', implement: 'Implement' };
+export const categoryKindOptions = CategoryKind.options.map((value) => ({ value, label: categoryKindLabels[value] }));
+
+export type CategoryKindFilterValue = CategoryKind | 'all';
+export const categoryKindFilterOptions: readonly CategoryKindFilterValue[] = ['all', ...CategoryKind.options];
+export const categoryKindFilterLabels: Record<CategoryKindFilterValue, string> = {
+  all: 'All kinds',
+  machine: 'Machine categories',
+  implement: 'Implement categories',
+};
+
 /** A generic glyph follows the kind; a chosen one stays. */
 export function iconAfterKindChange(kind: CategoryKind, icon: CategoryIconKey): CategoryIconKey {
   return icon === 'generic-machine' || icon === 'generic-implement' ? defaultCategoryIcon(kind) : icon;
 }
-export const categoryKindOptions = (Object.keys(categoryKindLabels) as CategoryKind[]).map((value) => ({
-  value,
-  label: categoryKindLabels[value],
-}));
 
-/** A category select option: its glyph beside its name. */
-export function categoryOptions(categories: readonly Category[]) {
-  return categories.map((category) => ({
-    value: category.id,
-    label: <CategoryLabel icon={category.icon} colour={category.colour} name={category.name} size={16} />,
-  }));
-}
-export function CategoryKindFilter({
-  value,
-  onChange,
-}: {
-  value: CategoryKind | 'all';
-  onChange: (value: CategoryKind | 'all') => void;
-}) {
-  return (
-    <Select
-      value={value}
-      onValueChange={(value) => {
-        if (value === 'machine' || value === 'implement' || value === 'all') onChange(value);
-      }}
-    >
-      <SelectTrigger aria-label="Category kind">
-        <SelectValue>{value === 'all' ? 'All kinds' : `${categoryKindLabels[value]} categories`}</SelectValue>
-      </SelectTrigger>
-      <SelectContent>
-        <SelectItem value="all">All kinds</SelectItem>
-        <SelectItem value="machine">Machine categories</SelectItem>
-        <SelectItem value="implement">Implement categories</SelectItem>
-      </SelectContent>
-    </Select>
-  );
-}
 /** A popover of labelled tiles bound to the field, opened by the current icon. */
 function TilePickerField<T extends string>({
   label,

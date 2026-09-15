@@ -47,7 +47,6 @@ export const UnitTransferDialog: React.FC<UnitTransferDialogProps> = ({ onOpenCh
     <CreateEntityDialog
       defaultValues={createUnitTransferFormValues()}
       description="Records that this machine changed hands. No quote, price, or salesperson is involved, and nothing reaches sales figures."
-      key={open ? 'open' : 'closed'}
       onCreate={(values) => transferMutation.mutateAsync(toProductUnitTransferInput(unit.id, values))}
       onCreated={async () => {
         // Every Job bound to the machine displays its Owner, so they go stale the moment it moves.

@@ -1,5 +1,5 @@
-import { AuditChanges, type AuditEvent, type AuditListInput, AuditSortBy } from '@pkg/schema';
-import { EquipmentAuditEntityType } from '@pkg/schema/equipment';
+import { AuditChanges, type AuditListInput, AuditSortBy } from '@pkg/schema';
+import { EquipmentAuditEntityType, type EquipmentAuditEvent } from '@pkg/schema/equipment';
 import { IconEye } from '@tabler/icons-react';
 import { keepPreviousData, useInfiniteQuery } from '@tanstack/react-query';
 import type React from 'react';
@@ -53,14 +53,14 @@ const auditActionLabels = {
   deleted: 'Deleted',
   merged: 'Merged',
   updated: 'Updated',
-} as const satisfies Record<AuditEvent['action'], string>;
+} as const satisfies Record<EquipmentAuditEvent['action'], string>;
 
 const auditActionColorClassNames = {
   created: 'border-blue-500/50 bg-blue-500/15 text-blue-800 dark:text-blue-200',
   deleted: 'border-red-500/50 bg-red-500/15 text-red-800 dark:text-red-200',
   merged: 'border-violet-500/50 bg-violet-500/15 text-violet-800 dark:text-violet-200',
   updated: 'border-orange-500/50 bg-orange-500/15 text-orange-800 dark:text-orange-200',
-} as const satisfies Record<AuditEvent['action'], string>;
+} as const satisfies Record<EquipmentAuditEvent['action'], string>;
 
 const auditChangesRawJsonClassName =
   'max-h-52 max-w-full overflow-auto rounded-md border bg-muted/30 p-2 font-mono text-xs whitespace-pre-wrap wrap-anywhere text-muted-foreground';
@@ -146,12 +146,12 @@ export const AuditTable: React.FC<AuditTableProps> = ({
     }),
   );
   const { items, total } = useCombinedCursorQueryPages(auditQuery.data?.pages);
-  const auditEvents = useMemo<AuditEvent[]>(
+  const auditEvents = useMemo<EquipmentAuditEvent[]>(
     () => items.map((item) => ({ ...item, changes: AuditChanges.nullable().parse(item.changes) })),
     [items],
   );
 
-  const columns = useMemo<DataTableColumnDef<AuditEvent>[]>(
+  const columns = useMemo<DataTableColumnDef<EquipmentAuditEvent>[]>(
     () => [
       {
         accessorKey: 'occurredAt',
@@ -181,7 +181,7 @@ export const AuditTable: React.FC<AuditTableProps> = ({
             {
               accessorKey: 'entityType',
               cell: ({ row }) => (
-                <span className="text-muted-foreground">{equipmentAuditLabel(row.original.entityType)}</span>
+                <span className="text-muted-foreground">{auditEntityTypeLabels[row.original.entityType]}</span>
               ),
               enableColumnFilter: true,
               enableSorting: false,
@@ -191,7 +191,7 @@ export const AuditTable: React.FC<AuditTableProps> = ({
                 filterVariant: 'multi-select',
                 headerClassName: 'w-44 min-w-44',
               },
-            } satisfies DataTableColumnDef<AuditEvent>,
+            } satisfies DataTableColumnDef<EquipmentAuditEvent>,
           ]
         : []),
       {
@@ -229,7 +229,7 @@ export const AuditTable: React.FC<AuditTableProps> = ({
     [showEntityTypeFilter, userOptions.selectOptions],
   );
 
-  const table = useDataTable<AuditEvent>({
+  const table = useDataTable<EquipmentAuditEvent>({
     columns,
     data: auditEvents,
     enableSortingRemoval: false,
@@ -265,7 +265,7 @@ export const AuditTable: React.FC<AuditTableProps> = ({
 };
 
 type ActorCellProps = {
-  event: AuditEvent;
+  event: EquipmentAuditEvent;
 };
 
 const ActorCell: React.FC<ActorCellProps> = ({ event }) => {
@@ -283,7 +283,7 @@ const ActorCell: React.FC<ActorCellProps> = ({ event }) => {
 };
 
 type AuditActionBadgeProps = {
-  action: AuditEvent['action'];
+  action: EquipmentAuditEvent['action'];
 };
 
 const AuditActionBadge: React.FC<AuditActionBadgeProps> = ({ action }) => (
@@ -293,7 +293,7 @@ const AuditActionBadge: React.FC<AuditActionBadgeProps> = ({ action }) => (
 );
 
 type ChangesCellProps = {
-  changes: AuditEvent['changes'];
+  changes: EquipmentAuditEvent['changes'];
 };
 
 const AuditDetailsCell: React.FC<ChangesCellProps> = ({ changes }) => {
@@ -309,7 +309,7 @@ const AuditDetailsCell: React.FC<ChangesCellProps> = ({ changes }) => {
 };
 
 type AuditChangesDetailsProps = {
-  changes: NonNullable<AuditEvent['changes']>;
+  changes: NonNullable<EquipmentAuditEvent['changes']>;
 };
 
 const AuditChangesDetails: React.FC<AuditChangesDetailsProps> = ({ changes }) => (
@@ -333,7 +333,7 @@ const AuditChangesDetails: React.FC<AuditChangesDetailsProps> = ({ changes }) =>
 );
 
 type AuditChangesContentProps = {
-  changes: NonNullable<AuditEvent['changes']>;
+  changes: NonNullable<EquipmentAuditEvent['changes']>;
 };
 
 export const AuditChangesContent: React.FC<AuditChangesContentProps> = ({ changes }) => {
@@ -380,8 +380,3 @@ export const AuditChangesContent: React.FC<AuditChangesContentProps> = ({ change
     </ScrollArea>
   );
 };
-
-function equipmentAuditLabel(value: AuditEvent['entityType']) {
-  const parsed = EquipmentAuditEntityType.safeParse(value);
-  return parsed.success ? auditEntityTypeLabels[parsed.data] : value;
-}

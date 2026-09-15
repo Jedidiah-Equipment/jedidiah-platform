@@ -47,8 +47,15 @@ test('uploads the original fields and photo together and returns the delivered r
     disputed: false,
     photoBacked: true,
   });
-  await uploadReading({ ...item, comment: null }, async (body) => {
+  await uploadReading({ ...item, comment: null, expectedPreviousId: null }, async (body) => {
     expect(body.has('comment')).toBe(false);
+    expect(body.get('expectedPreviousId')).toBe('');
+    expect(body.has('photo')).toBe(false);
+    return Response.json({ ...delivered, photo: null }, { status: 201 });
+  });
+  await uploadReading({ ...item, comment: '', expectedPreviousId: undefined }, async (body) => {
+    expect(body.has('comment')).toBe(false);
+    expect(body.has('expectedPreviousId')).toBe(false);
     return Response.json({ ...delivered, photo: null }, { status: 201 });
   });
 });

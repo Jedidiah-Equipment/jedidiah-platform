@@ -4,7 +4,14 @@ import { expect } from 'vitest';
 import { createTester } from '../../test/create-tester.js';
 import { createCategory } from '../fleet/category-service.js';
 import { createMachine } from '../fleet/machine-service.js';
-import { captureReading, listReadingsByMachine } from './reading-service.js';
+import type { ReadMeterPhoto } from './reading-evidence.js';
+import { captureReading, listReadingsByMachine, type ReadingEvidence } from './reading-service.js';
+
+const photoEvidence = (storage: ReadingEvidence['storage'], readPhoto: ReadMeterPhoto): ReadingEvidence => ({
+  storage,
+  readPhoto,
+  photoBytes: new Uint8Array([255, 216, 255]),
+});
 
 const test = createTester(async ({ db }) => {
   const actorUserId = 'reading-actor';
@@ -78,11 +85,9 @@ test('keeps photo evidence on AI failure and verifies it later without changing 
   const row = await captureReading({
     db,
     actorUserId,
-    storage,
-    photoBytes: new Uint8Array([255, 216, 255]),
-    readPhoto: async () => {
+    evidence: photoEvidence(storage, async () => {
       throw new Error('Model unavailable');
-    },
+    }),
     input: { machineId, role: 'spot', value: 123.4, capturedAt: '2026-09-07T08:00:00Z', disputePrevious: false },
   });
   expect(row).toMatchObject({
@@ -124,9 +129,7 @@ test('serializes competing captures and preserves the ledger when an upload or i
       db,
       actorUserId,
       input: { ...input, value: 90 },
-      storage,
-      photoBytes: new Uint8Array([255, 216, 255]),
-      readPhoto: async () => ({ value: 90, confidence: 0.9 }),
+      evidence: photoEvidence(storage, async () => ({ value: 90, confidence: 0.9 })),
     }),
   ).rejects.toMatchObject({ code: 'reading.below_latest' });
   expect(storage.objects.size).toBe(0);
@@ -143,9 +146,7 @@ test('serializes competing captures and preserves the ledger when an upload or i
       db,
       actorUserId,
       input: { ...input, value: 120 },
-      storage: brokenStorage,
-      photoBytes: new Uint8Array([255, 216, 255]),
-      readPhoto: async () => ({ value: 120, confidence: 0.9 }),
+      evidence: photoEvidence(brokenStorage, async () => ({ value: 120, confidence: 0.9 })),
     }),
   ).rejects.toThrow('Storage unavailable');
   expect(await listReadingsByMachine({ db, machineId })).toEqual(history);
@@ -159,8 +160,6 @@ test('surfaces disagreements and low confidence and recalculates verification af
   const args = {
     db,
     actorUserId,
-    storage,
-    photoBytes: new Uint8Array([255, 216, 255]),
     input: {
       machineId,
       role: 'spot' as const,
@@ -169,14 +168,17 @@ test('surfaces disagreements and low confidence and recalculates verification af
       disputePrevious: false,
     },
   };
-  const row = await captureReading({ ...args, readPhoto: async () => ({ value: 120, confidence: 0.9 }) });
+  const row = await captureReading({
+    ...args,
+    evidence: photoEvidence(storage, async () => ({ value: 120, confidence: 0.9 })),
+  });
   expect(row).toMatchObject({ aiVerification: 'disagrees', aiHint: 'Possible tenths-drum misread (≈10× / 0.1×).' });
   await amendReading({ db, actorUserId, input: { id: row.id, value: 120, reason: 'Corrected tenths' } });
   expect(await listReadingExceptions({ db })).toEqual([]);
   const low = await captureReading({
     ...args,
     input: { ...args.input, value: 121 },
-    readPhoto: async () => ({ value: 121, confidence: 0.79 }),
+    evidence: photoEvidence(storage, async () => ({ value: 121, confidence: 0.79 })),
   });
   expect((await listReadingExceptions({ db }))[0]).toMatchObject({
     id: low.id,
@@ -197,9 +199,7 @@ test('management can acknowledge an incorrect AI warning without claiming AI agr
   const reading = await captureReading({
     db,
     actorUserId,
-    storage,
-    readPhoto,
-    photoBytes: new Uint8Array([255, 216, 255]),
+    evidence: photoEvidence(storage, readPhoto),
     input: { machineId, role: 'spot', value: 123.4, capturedAt: '2026-09-07T08:00:00Z', disputePrevious: false },
   });
   expect((await listReadingExceptions({ db })).length).toBe(1);
@@ -251,9 +251,7 @@ test('failed re-verification preserves the previous AI evidence and its manageme
   const row = await captureReading({
     db,
     actorUserId,
-    storage,
-    photoBytes: new Uint8Array([255, 216, 255]),
-    readPhoto: async () => ({ value: 1000, confidence: 0.6 }),
+    evidence: photoEvidence(storage, async () => ({ value: 1000, confidence: 0.6 })),
     input: { machineId, role: 'spot', value: 100, capturedAt: '2026-09-07T08:00:00Z', disputePrevious: false },
   });
   const reviewed = await amendReading({

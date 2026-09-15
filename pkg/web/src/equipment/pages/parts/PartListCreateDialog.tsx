@@ -40,7 +40,6 @@ export function PartListCreateDialog({
       canSubmit={!suppliers.isPending}
       defaultValues={toPartFormValues({})}
       description="Create the Part, then continue with its full inventory details."
-      key={open ? 'open' : 'closed'}
       onCreate={(values) => mutation.mutateAsync(toPartInput(values))}
       onCreated={async (part) => {
         await invalidateParts();

@@ -1,6 +1,7 @@
 import { Pressable } from 'react-native';
 import { Text } from '@/components/ui/text';
-export function ReadingButton({
+
+export function Button({
   title,
   onPress,
   disabled = false,

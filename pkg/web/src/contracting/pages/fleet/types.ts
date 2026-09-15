@@ -1,7 +1,11 @@
 import { AuthId, UUID } from '@pkg/schema';
 import {
+  CategoryColour,
+  CategoryIconKey,
+  CategoryKind,
   FleetCode,
   FleetHours,
+  FleetListInput,
   FleetName,
   FleetOptionalText,
   type Implement,
@@ -14,9 +18,22 @@ import {
   ServiceIntervalHours,
 } from '@pkg/schema/contracting';
 import { z } from 'zod';
-import { emptyStringOr, optionalNumber, requiredSelection } from '@/components/form/utils/form-schema.js';
+import { emptyStringOr, nanToNull, optionalNumber, requiredSelection } from '@/components/form/utils/form-schema.js';
 
-const optionalText = z.string().refine((value) => FleetOptionalText.safeParse(value).success);
+export const fleetStatusOptions = FleetListInput.shape.status.unwrap().options;
+export const fleetStatusLabels: Record<FleetListInput['status'], string> = {
+  active: 'Active fleet',
+  retired: 'Retired',
+  all: 'All fleet',
+};
+
+export const CategoryFormValues = z.object({
+  name: FleetName,
+  kind: CategoryKind,
+  icon: CategoryIconKey,
+  colour: CategoryColour,
+});
+
 export const MachineCreateValues = z.object({
   code: FleetCode,
   make: FleetName,
@@ -25,13 +42,13 @@ export const MachineCreateValues = z.object({
 });
 export const MachineFormValues = MachineCreateValues.extend({
   year: optionalNumber(MachineYear),
-  registration: optionalText,
+  registration: emptyStringOr(FleetOptionalText),
   currentDriverUserId: emptyStringOr(AuthId),
-  notes: optionalText,
+  notes: emptyStringOr(FleetOptionalText),
   serviceIntervalHours: optionalNumber(ServiceIntervalHours),
   nextServiceDueHours: optionalNumber(FleetHours),
 });
-export type MachineFormValues = z.infer<typeof MachineFormValues>;
+export type MachineFormValues = z.input<typeof MachineFormValues>;
 export function machineFormValues(machine: Machine): MachineFormValues {
   return {
     code: machine.code,
@@ -50,10 +67,10 @@ export function machinePatchInput(id: string, values: MachineFormValues) {
   return MachinePatchInput.parse({
     ...values,
     id,
-    year: Number.isNaN(values.year) ? null : values.year,
+    year: nanToNull(values.year),
     currentDriverUserId: values.currentDriverUserId || null,
-    serviceIntervalHours: Number.isNaN(values.serviceIntervalHours) ? null : values.serviceIntervalHours,
-    nextServiceDueHours: Number.isNaN(values.nextServiceDueHours) ? null : values.nextServiceDueHours,
+    serviceIntervalHours: nanToNull(values.serviceIntervalHours),
+    nextServiceDueHours: nanToNull(values.nextServiceDueHours),
   });
 }
 export const createMachineInput = (values: z.infer<typeof MachineCreateValues>) => MachineCreateInput.parse(values);
@@ -61,8 +78,8 @@ export const ImplementCreateValues = z.object({
   categoryId: requiredSelection(UUID, 'Select a category'),
   code: FleetCode,
 });
-export const ImplementFormValues = ImplementCreateValues.extend({ notes: optionalText });
-export type ImplementFormValues = z.infer<typeof ImplementFormValues>;
+export const ImplementFormValues = ImplementCreateValues.extend({ notes: emptyStringOr(FleetOptionalText) });
+export type ImplementFormValues = z.input<typeof ImplementFormValues>;
 export const implementFormValues = (row: Implement): ImplementFormValues => ({
   code: row.code,
   categoryId: row.categoryId,

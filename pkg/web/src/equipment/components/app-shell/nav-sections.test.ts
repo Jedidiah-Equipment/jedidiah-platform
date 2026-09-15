@@ -1,11 +1,12 @@
 import type { AppPermission } from '@pkg/schema';
 import { describe, expect, it } from 'vitest';
 
-import { getVisibleNavSections, isInventoryNavPath, navAccessState } from './AppNavMain.js';
+import { getVisibleNavSections } from '@/components/app-shell/NavSections.js';
+import { equipmentNavSections, isInventoryNavPath } from './nav-sections.js';
 
-describe('AppNavMain', () => {
+describe('equipmentNavSections', () => {
   it('groups inventory links in the required order', () => {
-    const sections = getVisibleNavSections(() => true);
+    const sections = getVisibleNavSections(equipmentNavSections, () => true);
     expect(sections.find((section) => section.label === 'Admin')?.items.map((item) => item.title)).toEqual([
       'Bays',
       'Users',
@@ -46,17 +47,13 @@ describe('AppNavMain', () => {
 
   it('shows the Inventory section when any permitted item is visible', () => {
     const permissions = new Set<AppPermission>(['equipment_supplier:read']);
-    const sections = getVisibleNavSections((permission) => permission === undefined || permissions.has(permission));
+    const sections = getVisibleNavSections(
+      equipmentNavSections,
+      (permission) => permission === undefined || permissions.has(permission),
+    );
     const inventory = sections.find((section) => section.label === 'Inventory');
 
     expect(inventory?.items.map((item) => item.title)).toEqual(['Suppliers']);
-  });
-
-  it('keeps a failed access check distinct from an account with no permissions', () => {
-    expect(navAccessState({ isLoadingError: false, isPending: true })).toBe('checking');
-    expect(navAccessState({ isLoadingError: true, isPending: false })).toBe('unavailable');
-    // Resolved, whatever it resolved to: a permission-less account is a real answer, not a failure.
-    expect(navAccessState({ isLoadingError: false, isPending: false })).toBe('ready');
   });
 
   it('highlights Inventory history without highlighting the routes that own a nav item', () => {

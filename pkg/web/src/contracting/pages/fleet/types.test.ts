@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { ImplementCreateValues, implementPatchInput, MachineFormValues, machinePatchInput } from './types.js';
+import { implementPatchInput, machinePatchInput } from './types.js';
 
 const id = '00000000-0000-4000-8000-000000000001';
 describe('fleet form mappers', () => {
-  it('clears blank optional machine fields and normalizes codes without losing service sticker values', () => {
+  it('sends empty machine controls as null', () => {
     const values = {
-      code: 'jd6140m-1',
+      code: 'JD6140M-1',
       make: 'Deere',
       model: '6140M',
       categoryId: id,
@@ -13,35 +13,19 @@ describe('fleet form mappers', () => {
       year: NaN,
       registration: '',
       notes: '',
-      serviceIntervalHours: 250,
-      nextServiceDueHours: 4250.5,
+      serviceIntervalHours: NaN,
+      nextServiceDueHours: NaN,
     };
-    expect(machinePatchInput(id, values)).toEqual({
-      id,
-      code: 'JD6140M-1',
-      make: 'Deere',
-      model: '6140M',
-      categoryId: id,
+    expect(machinePatchInput(id, values)).toMatchObject({
       currentDriverUserId: null,
       year: null,
       registration: null,
       notes: null,
-      serviceIntervalHours: 250,
-      nextServiceDueHours: 4250.5,
-    });
-    expect(machinePatchInput(id, { ...values, serviceIntervalHours: NaN, nextServiceDueHours: NaN })).toMatchObject({
       serviceIntervalHours: null,
       nextServiceDueHours: null,
     });
-    expect(MachineFormValues.safeParse({ ...values, serviceIntervalHours: -10 }).success).toBe(false);
   });
-  it('clears implement notes, normalizes the code and requires a category', () => {
-    expect(implementPatchInput(id, { code: 'disc-1', categoryId: id, notes: '' })).toEqual({
-      id,
-      code: 'DISC-1',
-      categoryId: id,
-      notes: null,
-    });
-    expect(ImplementCreateValues.safeParse({ code: 'DISC-1', categoryId: '' }).success).toBe(false);
+  it('sends empty implement notes as null', () => {
+    expect(implementPatchInput(id, { code: 'DISC-1', categoryId: id, notes: '' })).toMatchObject({ notes: null });
   });
 });

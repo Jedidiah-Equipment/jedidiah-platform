@@ -36,7 +36,6 @@ export const PurchaseOrderCreateDialog: React.FC<PurchaseOrderCreateDialogProps>
   return (
     <CreateEntityDialog
       defaultValues={defaultValues}
-      key={open ? 'open' : 'closed'}
       onCreate={(values) => createMutation.mutateAsync(toPurchaseOrderCreateInput(values))}
       onCreated={async (purchaseOrder: PurchaseOrderView) => {
         await invalidatePurchaseOrders();

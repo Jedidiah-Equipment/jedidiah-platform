@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { deriveMovementWarnings, unacknowledgedWarnings } from './movement-warnings.js';
+import { deriveCheckoutBasketWarnings, deriveMovementWarnings, unacknowledgedWarnings } from './movement-warnings.js';
 
 const jobFacts = {
   bucketQuantityOnHand: 10,
@@ -69,6 +69,29 @@ describe('deriveMovementWarnings — a Job draw', () => {
     expect(deriveMovementWarnings({ facts: { drawnBucketQuantity: 1, kind: 'return-to-store' }, quantity: 2 })).toEqual(
       ['exceeds-drawn'],
     );
+  });
+});
+
+describe('deriveCheckoutBasketWarnings', () => {
+  test('folds Job-level draws across length buckets while judging rack stock per bucket', () => {
+    const factsByLength = new Map([
+      [6_000, { ...jobFacts, bucketQuantityOnHand: 1, cfoQuantity: 5, drawnQuantity: 0 }],
+      [3_000, { ...jobFacts, bucketQuantityOnHand: 10, cfoQuantity: 5, drawnQuantity: 0 }],
+    ]);
+
+    expect(
+      deriveCheckoutBasketWarnings({
+        factsFor: (line) => factsByLength.get(line.lengthMm ?? 0) ?? jobFacts,
+        lines: [
+          { lengthMm: 6_000, partId: 'channel', quantity: 3 },
+          { lengthMm: 3_000, partId: 'channel', quantity: 3 },
+        ],
+      }),
+    ).toEqual([['negative-stock-on-hand'], ['exceeds-cfo']]);
+  });
+
+  test('returns no line judgements for an empty Basket', () => {
+    expect(deriveCheckoutBasketWarnings({ factsFor: () => jobFacts, lines: [] })).toEqual([]);
   });
 });
 

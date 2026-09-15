@@ -45,7 +45,9 @@ export function assertPartStockAction(
     case 'periodic': {
       const movement = PERIODIC_JOB_MOVEMENT[action];
 
-      throw movement === undefined ? new BuildPeriodicPartError(partId) : new PeriodicStockMovementError(movement);
+      throw movement === undefined
+        ? new BuildPeriodicPartError(partId)
+        : new PeriodicStockMovementError(movement, partId);
     }
   }
 }

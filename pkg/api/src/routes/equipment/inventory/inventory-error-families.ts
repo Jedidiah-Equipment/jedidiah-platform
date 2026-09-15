@@ -11,7 +11,9 @@ import {
   JobCancelledError,
   type JobCloseOutError,
   JobNotFoundError,
+  PeriodicStockMovementError,
   type StockMovementCoreError,
+  StockMovementPartNotFoundError,
   type StocktakeError,
 } from '@pkg/core/equipment';
 
@@ -37,6 +39,11 @@ export const stockMovementErrorFamily = defineCoreErrorFamily<StockMovementCoreE
   messages: {
     'inventory.part_code_not_found': 'No Part carries that code. Search for it by name instead.',
     'inventory.part_not_found': 'Part not found.',
+  },
+  metadata: (error) => {
+    if (error instanceof StockMovementPartNotFoundError) return { partId: error.metadata.partId };
+    if (error instanceof PeriodicStockMovementError && error.metadata.partId) return { partId: error.metadata.partId };
+    return undefined;
   },
 });
 

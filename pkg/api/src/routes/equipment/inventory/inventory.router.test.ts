@@ -466,6 +466,31 @@ describe('inventory cost projection', () => {
     expect(stores).toMatchObject({ movement: { unitCost: null }, warnings: [] });
   });
 
+  test('cost-gates every Checkout Basket line and rejects mixed targets at the input boundary', async ({ context }) => {
+    await context.createCaller().inventory.postAdjustment({
+      delta: 3,
+      partId: context.part.id,
+      reason: 'opening-balance',
+      unitCost: 25,
+    });
+    const stores = context.createCaller(mockSession('stores'));
+
+    await expect(
+      stores.inventory.postCheckoutBasket({
+        jobId: context.job.id,
+        lines: [{ lengthMm: null, partId: context.part.id, quantity: 2 }],
+      }),
+    ).resolves.toMatchObject({ lines: [{ movement: { unitCost: null } }], warnings: [] });
+    await expect(
+      stores.inventory.postCheckoutBasket({
+        jobId: context.job.id,
+        lines: [{ lengthMm: null, partId: context.part.id, quantity: 1 }],
+        note: 'mixed',
+        recipientUserId: 'test-user-id',
+      } as never),
+    ).rejects.toMatchObject({ code: 'BAD_REQUEST' });
+  });
+
   test('serves recipient and source pickers while keeping no-Job costs behind the existing gate', async ({
     context,
   }) => {

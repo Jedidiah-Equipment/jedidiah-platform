@@ -3,24 +3,28 @@ import type { StockOnHandRow } from '@pkg/schema/equipment';
 import { describe, expect, it } from 'vitest';
 
 import {
+  canAddCheckoutBasketLine,
+  checkoutBasketValidator,
   deriveStockBuildRows,
   deriveStockBuildWarnings,
+  mergeCheckoutBasketLine,
   partIdFromScanToken,
   partOptionsAllowing,
   partQuantityValidationMessage,
   returnFromCheckoutValidator,
+  returnStockValidator,
   revaluationCostDecimals,
   type StockPartOption,
   stockAdjustmentValidator,
-  stockMovementValidator,
   toAdjustmentInput,
   toBuildInput,
-  toCheckoutWithoutJobInput,
+  toCheckoutBasketInput,
   toCloseOutJobInput,
   toJobMovementInput,
   toReturnFromCheckoutInput,
   toRevaluationInput,
   toStockPartOption,
+  unacknowledgedCheckoutBasketWarnings,
 } from './types.js';
 
 const piece: StockPartOption = {
@@ -127,14 +131,11 @@ describe('stock adjustment form', () => {
     // The field rule staying quiet does not let an unkeyed quantity through either submit.
     expect(stockAdjustmentValidator([piece]).safeParse({ ...adjustment, delta: Number.NaN }).success).toBe(false);
     expect(
-      stockMovementValidator([piece]).safeParse({
+      returnStockValidator([piece]).safeParse({
         jobId: '00000000-0000-4000-8000-000000000009',
         lengthMm: Number.NaN,
-        note: '',
         partId: piece.partId,
         quantity: Number.NaN,
-        recipientUserId: '',
-        target: 'job',
       }).success,
     ).toBe(false);
   });
@@ -170,11 +171,8 @@ describe('Job movement form', () => {
   const values = {
     jobId: piece.partId,
     lengthMm: 6_000,
-    note: '',
     partId: linear.partId,
     quantity: 2,
-    recipientUserId: '',
-    target: 'job' as const,
   };
 
   it('maps a linear movement with its selected piece length', () => {
@@ -187,7 +185,7 @@ describe('Job movement form', () => {
   });
 
   it('holds a quantity to three decimals, the ledger rule, not just to a positive number', () => {
-    const validator = stockMovementValidator([piece, linear, measured]);
+    const validator = returnStockValidator([piece, linear, measured]);
     const pieceValues = { ...values, lengthMm: Number.NaN, partId: piece.partId, quantity: 1.125 };
 
     expect(validator.safeParse(pieceValues).success).toBe(false);
@@ -196,7 +194,7 @@ describe('Job movement form', () => {
   });
 
   it('needs a Job, a Part, a positive quantity, and a length for linear stock', () => {
-    const validator = stockMovementValidator([piece, linear]);
+    const validator = returnStockValidator([piece, linear]);
 
     expect(validator.safeParse(values).success).toBe(true);
     expect(validator.safeParse({ ...values, jobId: '' }).success).toBe(false);
@@ -206,34 +204,84 @@ describe('Job movement form', () => {
   });
 });
 
-describe('Checkout Without a Job form', () => {
-  const values = {
-    jobId: '',
-    lengthMm: Number.NaN,
-    note: '  Repair factory drill  ',
-    partId: piece.partId,
-    quantity: 5,
-    recipientUserId: 'connor',
-    target: 'person' as const,
-  };
+describe('Checkout Basket form', () => {
+  const first = { lengthMm: null, partId: piece.partId, quantity: 1 };
 
-  it('maps to the strict person-attributed payload', () => {
-    expect(toCheckoutWithoutJobInput(values, piece)).toEqual({
-      lengthMm: null,
-      note: 'Repair factory drill',
-      partId: piece.partId,
-      quantity: 5,
-      recipientUserId: 'connor',
-    });
+  it('merges the same Part and length while keeping different buckets as separate lines', () => {
+    expect(mergeCheckoutBasketLine([first], { ...first, quantity: 4 })).toEqual([{ ...first, quantity: 5 }]);
+    expect(mergeCheckoutBasketLine([first], { ...first, lengthMm: 6_000 })).toEqual([
+      first,
+      { ...first, lengthMm: 6_000 },
+    ]);
+    expect(mergeCheckoutBasketLine([first], { ...first, partId: measured.partId })).toEqual([
+      first,
+      { ...first, partId: measured.partId },
+    ]);
   });
 
-  it('needs a recipient and a purpose instead of a Job', () => {
-    const validator = stockMovementValidator([piece]);
+  it('still merges a keyed line at the 200-line cap but refuses a new key', () => {
+    const lines = Array.from({ length: 200 }, (_, index) => ({
+      lengthMm: null,
+      partId: `00000000-0000-4000-8000-${String(index).padStart(12, '0')}`,
+      quantity: 1,
+    }));
+    const existing = lines[0];
+    if (!existing) throw new Error('Expected a line at the configured cap');
+
+    expect(canAddCheckoutBasketLine(lines, { ...existing, quantity: 2 })).toBe(true);
+    expect(canAddCheckoutBasketLine(lines, { ...first, partId: '00000000-0000-4000-8000-999999999999' })).toBe(false);
+  });
+
+  it('maps only the selected target into the strict Basket input', () => {
+    expect(
+      toCheckoutBasketInput({
+        jobId: piece.partId,
+        lines: [first],
+        note: 'unused',
+        recipientUserId: 'unused',
+        target: 'job',
+      }),
+    ).toEqual({ jobId: piece.partId, lines: [first] });
+    expect(
+      toCheckoutBasketInput({
+        jobId: '',
+        lines: [first],
+        note: ' repair press ',
+        recipientUserId: 'connor',
+        target: 'person',
+      }),
+    ).toEqual({ lines: [first], note: 'repair press', recipientUserId: 'connor' });
+  });
+
+  it('requires a target and at least one line', () => {
+    const validator = checkoutBasketValidator([piece]);
+    const values = {
+      jobId: piece.partId,
+      lines: [first],
+      note: '',
+      recipientUserId: '',
+      target: 'job' as const,
+    };
 
     expect(validator.safeParse(values).success).toBe(true);
-    expect(validator.safeParse({ ...values, note: ' ' }).success).toBe(false);
-    expect(validator.safeParse({ ...values, recipientUserId: '' }).success).toBe(false);
-    expect(validator.safeParse({ ...values, target: 'job' }).success).toBe(false);
+    expect(validator.safeParse({ ...values, jobId: '' }).success).toBe(false);
+    expect(validator.safeParse({ ...values, lines: [] }).success).toBe(false);
+    expect(validator.safeParse({ ...values, lines: [{ ...first, quantity: 1.5 }] }).success).toBe(false);
+    expect(
+      validator.safeParse({ ...values, jobId: '', note: ' ', recipientUserId: '', target: 'person' }).success,
+    ).toBe(false);
+  });
+
+  it('reconciles warning codes by Basket line rather than flattening away a newly affected Part', () => {
+    expect(
+      unacknowledgedCheckoutBasketWarnings({
+        acknowledged: [{ ...first, warnings: ['negative-stock-on-hand'] }],
+        posted: [
+          { ...first, warnings: ['negative-stock-on-hand'] },
+          { lengthMm: null, partId: measured.partId, warnings: ['negative-stock-on-hand'] },
+        ],
+      }),
+    ).toEqual([{ code: 'negative-stock-on-hand', lengthMm: null, partId: measured.partId }]);
   });
 });
 

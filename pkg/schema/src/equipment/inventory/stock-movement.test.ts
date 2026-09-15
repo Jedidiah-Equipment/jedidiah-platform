@@ -4,6 +4,7 @@ import {
   isPeriodicStockAdjustmentReason,
   JobStockMovementType,
   PostAdjustmentInput,
+  PostCheckoutBasketInput,
   PostCheckoutInput,
   PostJobMovementInput,
   PostReturnToStoreInput,
@@ -154,6 +155,51 @@ describe('stock movement inputs', () => {
       PostCheckoutInput.parse({ jobId: sourceCheckoutId, note: 'Mixed', partId, quantity: 5, recipientUserId }),
     ).toThrow();
     expect(() => PostReturnToStoreInput.parse({ partId, quantity: 2, sourceCheckoutId })).toThrow();
+  });
+
+  it('defines strict Job and Without-a-Job Checkout Basket targets', () => {
+    const secondPartId = '00000000-0000-4000-8000-000000000003';
+    const jobBasket = {
+      jobId: sourceCheckoutId,
+      lines: [{ lengthMm: null, partId, quantity: 2 }],
+    };
+    const recipientBasket = {
+      lines: [{ lengthMm: 6_000, partId, quantity: 1 }],
+      note: ' repair factory drill ',
+      recipientUserId,
+    };
+
+    expect(PostCheckoutBasketInput.parse(jobBasket)).toEqual(jobBasket);
+    expect(PostCheckoutBasketInput.parse(recipientBasket)).toEqual({
+      ...recipientBasket,
+      note: 'repair factory drill',
+    });
+    expect(() => PostCheckoutBasketInput.parse({ ...recipientBasket, jobId: sourceCheckoutId })).toThrow();
+    expect(() => PostCheckoutBasketInput.parse({ jobId: sourceCheckoutId, lines: [] })).toThrow(
+      'Add at least one line',
+    );
+
+    const duplicate = PostCheckoutBasketInput.safeParse({
+      jobId: sourceCheckoutId,
+      lines: [
+        { lengthMm: null, partId, quantity: 1 },
+        { lengthMm: null, partId, quantity: 2 },
+      ],
+    });
+    expect(duplicate.success).toBe(false);
+    if (!duplicate.success) expect(duplicate.error.issues[0]?.path).toEqual(['lines', 1]);
+
+    expect(
+      PostCheckoutBasketInput.safeParse({
+        jobId: sourceCheckoutId,
+        lines: [
+          { lengthMm: null, partId, quantity: 1 },
+          { lengthMm: 6_000, partId, quantity: 1 },
+          { lengthMm: null, partId: secondPartId, quantity: 1 },
+        ],
+      }).success,
+    ).toBe(true);
+    expect(() => PostCheckoutBasketInput.parse({ ...recipientBasket, note: '  ' })).toThrow('Enter a purpose');
   });
 
   it('limits periodic Parts to their opening balance and stock counts', () => {

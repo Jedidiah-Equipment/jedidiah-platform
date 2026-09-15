@@ -5,6 +5,7 @@ import { useMemo, useState } from 'react';
 
 import { Button } from '@/components/ui/button.js';
 
+import { CheckoutBasketDialog } from './CheckoutBasketDialog.js';
 import { ReturnFromCheckoutDialog } from './ReturnFromCheckoutDialog.js';
 import { StockAdjustmentDialog } from './StockAdjustmentDialog.js';
 import { StockBuildDialog } from './StockBuildDialog.js';
@@ -92,22 +93,10 @@ export function StockMovementActions({
         <StockRevaluationDialog onOpenChange={setRevaluationOpen} open={true} parts={revaluableParts} />
       ) : null}
       {checkoutOpen ? (
-        <StockMovementDialog
-          items={items}
-          onOpenChange={setCheckoutOpen}
-          open={true}
-          parts={checkoutParts}
-          type="checkout"
-        />
+        <CheckoutBasketDialog items={items} onOpenChange={setCheckoutOpen} open={true} parts={checkoutParts} />
       ) : null}
       {returnOpen ? (
-        <StockMovementDialog
-          items={items}
-          onOpenChange={setReturnOpen}
-          open={true}
-          parts={returnParts}
-          type="return-to-store"
-        />
+        <StockMovementDialog items={items} onOpenChange={setReturnOpen} open={true} parts={returnParts} />
       ) : null}
       {returnFromCheckoutOpen ? <ReturnFromCheckoutDialog onOpenChange={setReturnFromCheckoutOpen} open /> : null}
     </>

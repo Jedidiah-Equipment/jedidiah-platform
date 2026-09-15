@@ -10,11 +10,12 @@ you.
 
 1. Open the Job and go to its **Stock** tab.
 2. Click **Check out**.
-3. Choose the **Part**.
-4. Enter the **Quantity**.
-5. For a linear Part, enter **Length (mm)**. The field shows the standard purchase length if the
-   Part has one.
-6. Click **Check out stock**.
+3. Scan or search for a **Part**, confirm the **Quantity**, and for a linear Part confirm **Length
+   (mm)**. The standard purchase length is filled in when the Part has one.
+4. Click **Add**, then repeat for every Part leaving stores.
+5. Review the lines. You can edit a Quantity or remove a line; scanning the same Part and length
+   again adds its Quantity to the existing line.
+6. Click **Check out N lines**.
 
 ## From Stock on hand
 
@@ -28,25 +29,31 @@ Use this when you are working from the rack rather than from a Job.
    from **Last updated** or **Last created**, not from **Not complete**. A completed Job stays
    pickable there until its stock has been closed out. The footer says how many of the matching Jobs
    it has loaded; use **Load more** to reach the rest.
-4. Choose the **Part**, enter the **Quantity**, and set **Length (mm)** for a linear Part.
-5. Click **Check out stock**.
+4. Scan or search for a **Part**, confirm the **Quantity**, and set **Length (mm)** for a linear
+   Part. Click **Add** and repeat for the other Parts leaving stores.
+5. Review the lines, then click **Check out N lines**. You can edit a Quantity or remove a line;
+   scanning the same Part and length again adds its Quantity to the existing line.
 
-A **Stock checked out** toast confirms it.
+A success toast confirms how many Parts were checked out. Closing the window with unrecorded lines
+asks before discarding them; reloading the page discards them.
 
 ## Without a Job
 
 Use this for a quick repair or factory work that has no Job. The Parts count as used when they leave
 stores; this does not create a personal stock balance for the Recipient.
 
-1. Open **Inventory** and click **Check out**, or scan the Part on the stores tablet and tap
-   **Check out**.
+1. On the web, open **Inventory** and click **Check out**.
 2. Choose **Without a Job**.
 3. Choose **Received by**. It starts with the current Operator, but you can select any active
    Equipment user.
 4. Enter a short **Purpose**, such as “Repair factory drill”.
-5. Choose the **Part** if it is not already fixed, enter the **Quantity**, and set **Length (mm)**
-   for a linear Part.
-6. Check the separately displayed **Operator**, then click or tap **Check out stock**.
+5. Check the separately displayed **Operator**.
+6. Scan or search for a **Part**, confirm the **Quantity**, and set **Length (mm)** for a linear
+   Part. Click **Add** and repeat for every Part leaving stores.
+7. Review the lines, then click **Check out N lines**.
+
+On the stores tablet, scan the Part and tap **Check out**. The tablet continues to post one Part at
+a time.
 
 ## If it warns you
 
@@ -58,6 +65,9 @@ Two warnings are common here, and the button becomes **Check out anyway**:
   finding it. Post it; the negative is what makes the disagreement visible.
 
 See [Warnings are judgments, not blocks](./warnings-are-judgments.md).
+
+When several lines warn, one prompt names every flagged line before anything is recorded. Continuing
+posts every line; cancelling posts none.
 
 ## Notes
 

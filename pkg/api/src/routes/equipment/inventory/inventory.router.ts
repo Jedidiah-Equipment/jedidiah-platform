@@ -23,6 +23,7 @@ import {
   postAdjustment,
   postBuild,
   postCheckout,
+  postCheckoutBasket,
   postReturnToStore,
   postRevaluation,
   postStockCount,
@@ -32,6 +33,7 @@ import {
   BuildPostResult,
   BuildPostResultCostFields,
   BuyListResult,
+  CheckoutBasketPostResult,
   CloseOutJobInput,
   CloseOutQueueResult,
   CloseStocktakeSessionInput,
@@ -53,6 +55,7 @@ import {
   PartStockByCodeInput,
   PostAdjustmentInput,
   PostBuildInput,
+  PostCheckoutBasketInput,
   PostCheckoutInput,
   PostReturnToStoreInput,
   PostRevaluationInput,
@@ -364,6 +367,20 @@ export const inventoryRouter = router({
       );
 
       return { ...result, movement: projectMovement(result.movement, ctx.access) };
+    }),
+
+  postCheckoutBasket: authorizedProcedure('equipment_inventory:move')
+    .input(PostCheckoutBasketInput)
+    .output(CheckoutBasketPostResult)
+    .mutation(async ({ ctx, input }) => {
+      const result = await mapCheckoutErrors(() =>
+        postCheckoutBasket({ actorUserId: ctx.session.user.id, db: ctx.db, input }),
+      );
+
+      return {
+        ...result,
+        lines: result.lines.map((line) => ({ ...line, movement: projectMovement(line.movement, ctx.access) })),
+      };
     }),
 
   postReturnToStore: authorizedProcedure('equipment_inventory:move')

@@ -52,12 +52,12 @@ export class StockMovementLengthError extends Error {
 /** A periodic Part records only its opening balance, receipts, and stock counts — never consumption. */
 export class PeriodicStockMovementError extends Error {
   readonly code = 'inventory.periodic_movement';
-  readonly metadata: { movement: JobStockMovementType | StockAdjustmentReason };
+  readonly metadata: { movement: JobStockMovementType | StockAdjustmentReason; partId?: UUID };
 
-  constructor(movement: JobStockMovementType | StockAdjustmentReason) {
+  constructor(movement: JobStockMovementType | StockAdjustmentReason, partId?: UUID) {
     super(`Periodic stock does not record ${movement} movements`);
     this.name = 'PeriodicStockMovementError';
-    this.metadata = { movement };
+    this.metadata = { movement, ...(partId ? { partId } : {}) };
   }
 }
 

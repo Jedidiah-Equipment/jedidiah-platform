@@ -3,8 +3,10 @@ import { describe, expect, it, vi } from 'vitest';
 
 import {
   createAuthTRPCError,
+  defineCoreErrorFamily,
   getTRPCAppCode,
   getTRPCPublicMessage,
+  getTRPCPublicMetadata,
   mapKnownCoreError,
   serializeError,
   shouldLogTRPCError,
@@ -41,6 +43,19 @@ describe('tRPC error helpers', () => {
       code: 'NOT_FOUND',
       message: 'Product not found.',
     });
+  });
+
+  it('publishes only metadata explicitly selected by an error family', () => {
+    const family = defineCoreErrorFamily<ProductNotFoundError>({
+      codes: { 'product.not_found': 'NOT_FOUND' },
+      is: (error): error is ProductNotFoundError => error instanceof ProductNotFoundError,
+      metadata: (error) => ({ productId: error.productId }),
+    });
+    const mapping = family.match(new ProductNotFoundError('product-id'));
+    if (!mapping) throw new Error('Expected the family to match');
+
+    const error = createAuthTRPCError(mapping);
+    expect(getTRPCPublicMetadata(error)).toEqual({ productId: 'product-id' });
   });
 
   it('leaves unknown errors untouched', async () => {

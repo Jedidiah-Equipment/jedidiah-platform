@@ -5,7 +5,6 @@ import {
   getCategory,
   getImplement,
   getMachine,
-  isFleetError,
   listCategories,
   listImplements,
   listMachines,
@@ -34,23 +33,10 @@ import {
   MachineListInput,
   MachinePatchInput,
 } from '@pkg/schema/contracting';
-import { mapKnownCoreError } from '../../../trpc/errors.js';
+import { mapCoreErrors } from '../../../trpc/errors.js';
 import { authorizedProcedure, router } from '../../../trpc/init.js';
+import { fleetErrorFamily } from '../contracting-error-families.js';
 
-function mapFleetErrors<T>(action: () => Promise<T>) {
-  return mapKnownCoreError(action, isFleetError, (error) => ({
-    appCode: error.code,
-    message: error.message,
-    code:
-      error.code === 'fleet.not_found'
-        ? 'NOT_FOUND'
-        : error.code === 'fleet.invalid_driver' ||
-            error.code === 'fleet.invalid_reference' ||
-            error.code === 'fleet.invalid_category'
-          ? 'BAD_REQUEST'
-          : 'CONFLICT',
-  }));
-}
 export const contractingFleetRouter = router({
   categories: router({
     list: authorizedProcedure('contracting_machine:read')
@@ -58,21 +44,24 @@ export const contractingFleetRouter = router({
       .query(({ ctx, input }) => listCategories({ db: ctx.db, input: input ?? {} })),
     get: authorizedProcedure('contracting_machine:read')
       .input(FleetIdInput)
-      .query(({ ctx, input }) => mapFleetErrors(() => getCategory({ db: ctx.db, id: input.id }))),
+      .query(({ ctx, input }) => mapCoreErrors(() => getCategory({ db: ctx.db, id: input.id }), fleetErrorFamily)),
     create: authorizedProcedure('contracting_machine:update')
       .input(CategoryCreateInput)
       .mutation(({ ctx, input }) =>
-        mapFleetErrors(() => createCategory({ db: ctx.db, actorUserId: ctx.session.user.id, input })),
+        mapCoreErrors(() => createCategory({ db: ctx.db, actorUserId: ctx.session.user.id, input }), fleetErrorFamily),
       ),
     patch: authorizedProcedure('contracting_machine:update')
       .input(CategoryPatchInput)
       .mutation(({ ctx, input }) =>
-        mapFleetErrors(() => patchCategory({ db: ctx.db, actorUserId: ctx.session.user.id, input })),
+        mapCoreErrors(() => patchCategory({ db: ctx.db, actorUserId: ctx.session.user.id, input }), fleetErrorFamily),
       ),
     remove: authorizedProcedure('contracting_machine:update')
       .input(FleetIdInput)
       .mutation(({ ctx, input }) =>
-        mapFleetErrors(() => removeCategory({ db: ctx.db, actorUserId: ctx.session.user.id, id: input.id })),
+        mapCoreErrors(
+          () => removeCategory({ db: ctx.db, actorUserId: ctx.session.user.id, id: input.id }),
+          fleetErrorFamily,
+        ),
       ),
   }),
   machines: router({
@@ -82,26 +71,29 @@ export const contractingFleetRouter = router({
     options: authorizedProcedure('contracting_machine:read').query(({ ctx }) => machineOptions({ db: ctx.db })),
     get: authorizedProcedure('contracting_machine:read')
       .input(FleetIdInput)
-      .query(({ ctx, input }) => mapFleetErrors(() => getMachine({ db: ctx.db, id: input.id }))),
+      .query(({ ctx, input }) => mapCoreErrors(() => getMachine({ db: ctx.db, id: input.id }), fleetErrorFamily)),
     create: authorizedProcedure('contracting_machine:update')
       .input(MachineCreateInput)
       .mutation(({ ctx, input }) =>
-        mapFleetErrors(() => createMachine({ db: ctx.db, actorUserId: ctx.session.user.id, input })),
+        mapCoreErrors(() => createMachine({ db: ctx.db, actorUserId: ctx.session.user.id, input }), fleetErrorFamily),
       ),
     patch: authorizedProcedure('contracting_machine:update')
       .input(MachinePatchInput)
       .mutation(({ ctx, input }) =>
-        mapFleetErrors(() => patchMachine({ db: ctx.db, actorUserId: ctx.session.user.id, input })),
+        mapCoreErrors(() => patchMachine({ db: ctx.db, actorUserId: ctx.session.user.id, input }), fleetErrorFamily),
       ),
     retire: authorizedProcedure('contracting_machine:update')
       .input(FleetRetireInput)
       .mutation(({ ctx, input }) =>
-        mapFleetErrors(() => retireMachine({ db: ctx.db, actorUserId: ctx.session.user.id, input })),
+        mapCoreErrors(() => retireMachine({ db: ctx.db, actorUserId: ctx.session.user.id, input }), fleetErrorFamily),
       ),
     remove: authorizedProcedure('contracting_machine:update')
       .input(FleetIdInput)
       .mutation(({ ctx, input }) =>
-        mapFleetErrors(() => removeMachine({ db: ctx.db, actorUserId: ctx.session.user.id, id: input.id })),
+        mapCoreErrors(
+          () => removeMachine({ db: ctx.db, actorUserId: ctx.session.user.id, id: input.id }),
+          fleetErrorFamily,
+        ),
       ),
   }),
   implements: router({
@@ -110,29 +102,32 @@ export const contractingFleetRouter = router({
       .query(({ ctx, input }) => listImplements({ db: ctx.db, input })),
     suggestCode: authorizedProcedure('contracting_machine:update')
       .input(ImplementCodeSuggestInput)
-      .query(({ ctx, input }) => mapFleetErrors(() => suggestImplementCode({ db: ctx.db, ...input }))),
+      .query(({ ctx, input }) => mapCoreErrors(() => suggestImplementCode({ db: ctx.db, ...input }), fleetErrorFamily)),
     get: authorizedProcedure('contracting_machine:read')
       .input(FleetIdInput)
-      .query(({ ctx, input }) => mapFleetErrors(() => getImplement({ db: ctx.db, id: input.id }))),
+      .query(({ ctx, input }) => mapCoreErrors(() => getImplement({ db: ctx.db, id: input.id }), fleetErrorFamily)),
     create: authorizedProcedure('contracting_machine:update')
       .input(ImplementCreateInput)
       .mutation(({ ctx, input }) =>
-        mapFleetErrors(() => createImplement({ db: ctx.db, actorUserId: ctx.session.user.id, input })),
+        mapCoreErrors(() => createImplement({ db: ctx.db, actorUserId: ctx.session.user.id, input }), fleetErrorFamily),
       ),
     patch: authorizedProcedure('contracting_machine:update')
       .input(ImplementPatchInput)
       .mutation(({ ctx, input }) =>
-        mapFleetErrors(() => patchImplement({ db: ctx.db, actorUserId: ctx.session.user.id, input })),
+        mapCoreErrors(() => patchImplement({ db: ctx.db, actorUserId: ctx.session.user.id, input }), fleetErrorFamily),
       ),
     retire: authorizedProcedure('contracting_machine:update')
       .input(FleetRetireInput)
       .mutation(({ ctx, input }) =>
-        mapFleetErrors(() => retireImplement({ db: ctx.db, actorUserId: ctx.session.user.id, input })),
+        mapCoreErrors(() => retireImplement({ db: ctx.db, actorUserId: ctx.session.user.id, input }), fleetErrorFamily),
       ),
     remove: authorizedProcedure('contracting_machine:update')
       .input(FleetIdInput)
       .mutation(({ ctx, input }) =>
-        mapFleetErrors(() => removeImplement({ db: ctx.db, actorUserId: ctx.session.user.id, id: input.id })),
+        mapCoreErrors(
+          () => removeImplement({ db: ctx.db, actorUserId: ctx.session.user.id, id: input.id }),
+          fleetErrorFamily,
+        ),
       ),
   }),
 });

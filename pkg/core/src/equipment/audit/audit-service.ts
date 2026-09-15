@@ -1,7 +1,7 @@
 import { auditEvents, type Db, getSortOrder, user, withPagination } from '@pkg/db';
-import type { AuditAction, AuditChanges, AuditEntityType, AuditListInput, AuditListResult } from '@pkg/schema';
-import { AuditEvent, getNextCursor } from '@pkg/schema';
-import { EquipmentAuditEntityType } from '@pkg/schema/equipment';
+import type { AuditAction, AuditChanges, AuditListInput } from '@pkg/schema';
+import { getNextCursor } from '@pkg/schema';
+import { EquipmentAuditEntityType, EquipmentAuditEvent, type EquipmentAuditListResult } from '@pkg/schema/equipment';
 import { and, asc, eq, gte, inArray, lte, type SQL } from 'drizzle-orm';
 
 type AuditEventRow = typeof auditEvents.$inferSelect & {
@@ -9,7 +9,13 @@ type AuditEventRow = typeof auditEvents.$inferSelect & {
   actorEmail: string | null;
 };
 
-export async function listAuditEvents({ db, input }: { db: Db; input: AuditListInput }): Promise<AuditListResult> {
+export async function listAuditEvents({
+  db,
+  input,
+}: {
+  db: Db;
+  input: AuditListInput;
+}): Promise<EquipmentAuditListResult> {
   const where = buildAuditListWhere(input);
   const sortColumn = auditEvents.occurredAt;
   const orderBy = getSortOrder(sortColumn, input.sortDirection);
@@ -71,15 +77,15 @@ function buildAuditListWhere(input: AuditListInput): SQL | undefined {
   return conditions.length > 0 ? and(...conditions) : undefined;
 }
 
-function mapAuditEvent(row: AuditEventRow): AuditEvent {
-  return AuditEvent.parse({
+function mapAuditEvent(row: AuditEventRow): EquipmentAuditEvent {
+  return EquipmentAuditEvent.parse({
     action: row.action as AuditAction,
     actorEmail: row.actorEmail,
     actorName: row.actorName,
     actorUserId: row.actorUserId,
     changes: row.changes as AuditChanges | null,
     entityId: row.entityId,
-    entityType: row.entityType as AuditEntityType,
+    entityType: row.entityType,
     id: row.id,
     occurredAt: row.occurredAt.toISOString(),
     summary: row.summary,

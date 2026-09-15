@@ -115,7 +115,6 @@ export const GiveFeedbackButton: React.FC<GiveFeedbackButtonProps> = ({
       <CreateEntityDialog
         defaultValues={FEEDBACK_DEFAULT_VALUES}
         description={`Share feedback about ${subjectLabel}. Once submitted it goes to the review queue.`}
-        key={open ? 'open' : 'closed'}
         onCreate={(values) => submitFeedbackMutation.mutateAsync(toSubmitInput(values, subject))}
         onCreated={async () => {
           setOpen(false);

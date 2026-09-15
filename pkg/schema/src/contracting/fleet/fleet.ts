@@ -98,7 +98,6 @@ export const Machine = MachineCreateInput.extend({
   ...retirement,
   ...categoryProjection,
   currentDriverName: z.string().nullable(),
-  availability: z.literal('in-yard'),
 });
 export type Machine = z.infer<typeof Machine>;
 
@@ -130,5 +129,4 @@ export const FieldMachine = Machine.pick({
   categoryName: true,
   categoryIcon: true,
   categoryColour: true,
-  availability: true,
 }).strip();

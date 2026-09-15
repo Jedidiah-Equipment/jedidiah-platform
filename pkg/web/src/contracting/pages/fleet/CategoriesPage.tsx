@@ -1,35 +1,32 @@
 import { DEFAULT_CATEGORY_COLOUR, defaultCategoryIcon } from '@pkg/domain/contracting';
-import { type Category, CategoryColour, CategoryIconKey, CategoryKind, FleetName } from '@pkg/schema/contracting';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import type { Category, CategoryKind } from '@pkg/schema/contracting';
+import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import { useState } from 'react';
-import { z } from 'zod';
+import { EnumSelect } from '@/components/common/EnumSelect.js';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
+import { ClientDataTable } from '@/components/data-table/ClientDataTable.js';
 import type { DataTableColumnDef } from '@/components/data-table/features.js';
+import { useCreateEntityFlow } from '@/components/form/hooks/use-create-entity-flow.js';
 import { CreateEntityDialog } from '@/components/form/index.js';
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
 import { Button } from '@/components/ui/button.js';
 import { CategoryLabel } from '@/contracting/components/CategoryIcon.js';
+import { useQueryInvalidation } from '@/contracting/hooks/use-query-invalidation.js';
 import { useCan } from '@/hooks/use-access.js';
-import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useTRPC } from '@/lib/trpc.js';
 import {
   CategoryColourField,
   CategoryIconField,
-  CategoryKindFilter,
+  type CategoryKindFilterValue,
+  categoryKindFilterLabels,
+  categoryKindFilterOptions,
   categoryKindLabels,
   categoryKindOptions,
   iconAfterKindChange,
 } from './CategoryFields.js';
-import { FleetTable } from './FleetTable.js';
-import { useFleetInvalidation } from './use-fleet-invalidation.js';
+import { CategoryFormValues } from './types.js';
 
-const CategoryCreateValues = z.object({
-  name: FleetName,
-  kind: CategoryKind,
-  icon: CategoryIconKey,
-  colour: CategoryColour,
-});
 const columns: DataTableColumnDef<Category>[] = [
   {
     accessorKey: 'name',
@@ -55,53 +52,55 @@ const columns: DataTableColumnDef<Category>[] = [
 export function CategoriesPage() {
   const trpc = useTRPC();
   const navigate = useNavigate();
-  const invalidate = useFleetInvalidation();
-  const showError = useApiMutationErrorToast();
+  const { invalidateFleet } = useQueryInvalidation();
   const canEdit = useCan('contracting_machine:update').can;
-  const [open, setOpen] = useState(false);
-  const [kind, setKind] = useState<CategoryKind | 'all'>('all');
+  const [kind, setKind] = useState<CategoryKindFilterValue>('all');
   const query = useQuery(trpc.contractingFleet.categories.list.queryOptions(kind === 'all' ? {} : { kind }));
-  const create = useMutation(
-    trpc.contractingFleet.categories.create.mutationOptions({
-      onError: (error) => showError(error, 'Unable to create category.'),
-    }),
-  );
+  const flow = useCreateEntityFlow({
+    mutation: trpc.contractingFleet.categories.create.mutationOptions(),
+    errorMessage: 'Unable to create category.',
+    invalidate: invalidateFleet,
+    navigateTo: (row) => ({ to: '/contracting/fleet/categories/$id/edit', params: { id: row.id } }),
+  });
+  const createKind: CategoryKind = kind === 'implement' ? 'implement' : 'machine';
   return (
     <>
       <PageLayout
         title="Categories"
         description="Machine and Implement groupings, each with the icon and colour its fleet shows."
         size="lg"
-        actions={canEdit ? <Button onClick={() => setOpen(true)}>New category</Button> : undefined}
+        actions={canEdit ? <Button onClick={flow.open}>New category</Button> : undefined}
       >
         <ErrorMessage error={query.error} fallbackMessage="Unable to load categories." />
-        <FleetTable
+        <ClientDataTable
           rows={query.data ?? []}
           columns={columns}
           loading={query.isPending}
+          emptyMessage="No fleet entries found."
           searchPlaceholder="Search categories…"
-          controls={<CategoryKindFilter value={kind} onChange={setKind} />}
+          controls={
+            <EnumSelect
+              aria-label="Category kind"
+              value={kind}
+              onChange={setKind}
+              options={categoryKindFilterOptions}
+              labels={categoryKindFilterLabels}
+            />
+          }
           onOpen={(row) => void navigate({ to: '/contracting/fleet/categories/$id/edit', params: { id: row.id } })}
         />
       </PageLayout>
       <CreateEntityDialog
-        key={open ? 'open' : 'closed'}
-        open={open}
-        onOpenChange={setOpen}
+        {...flow.dialogProps}
         title="New category"
         defaultValues={{
           name: '',
-          kind: (kind === 'implement' ? 'implement' : 'machine') as CategoryKind,
-          icon: defaultCategoryIcon(kind === 'implement' ? 'implement' : 'machine'),
+          kind: createKind,
+          icon: defaultCategoryIcon(createKind),
           colour: DEFAULT_CATEGORY_COLOUR,
         }}
-        validator={CategoryCreateValues}
-        onCreate={(values) => create.mutateAsync(values)}
-        onCreated={async (row) => {
-          await invalidate();
-          setOpen(false);
-          await navigate({ to: '/contracting/fleet/categories/$id/edit', params: { id: row.id } });
-        }}
+        validator={CategoryFormValues}
+        onCreate={flow.create}
       >
         {(form) => (
           <>

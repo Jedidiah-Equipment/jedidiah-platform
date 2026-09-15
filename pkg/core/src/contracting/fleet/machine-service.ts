@@ -4,18 +4,25 @@ import type { AuthId, ContractingRole } from '@pkg/schema';
 import {
   FieldMachine,
   FleetCode,
-  FleetRetireInput,
+  type FleetRetireInput,
   Machine,
   type MachineCreateInput,
   type MachineListInput,
   type MachinePatchInput,
 } from '@pkg/schema/contracting';
-import { and, asc, eq, isNotNull, isNull, sql } from 'drizzle-orm';
+import { and, asc, eq, sql } from 'drizzle-orm';
 import { defineAuditDescriptor, recordAuditCreate } from '../../audit/audit-writer.js';
 import { mutateEntity } from '../../audit/mutate-entity.js';
 import { assertCategoryKind } from './category-service.js';
-import { assertNotRetired, FleetError, withFleetConstraints } from './fleet-errors.js';
-import { removeFleetEntry } from './remove-fleet-entry.js';
+import {
+  type CategoryRelation,
+  projectCategory,
+  projectTimestamps,
+  removeFleetEntry,
+  retireFleetEntry,
+  retirementFilter,
+} from './fleet-entry.js';
+import { assertNotRetired, FleetError, notFound, withFleetConstraints } from './fleet-errors.js';
 
 type Row = typeof contractingMachines.$inferSelect;
 const descriptor = defineAuditDescriptor<Row>({
@@ -29,32 +36,19 @@ const descriptor = defineAuditDescriptor<Row>({
   }),
 });
 const related = { category: true, currentDriver: { columns: { name: true } } } as const;
-type RelatedRow = Row & {
-  category: { name: string; icon: string; colour: string };
-  currentDriver: { name: string } | null;
-};
-function mapMachine(row: RelatedRow) {
-  const { category: _category, currentDriver: _driver, ...fields } = row;
+function mapMachine(row: Row & { category: CategoryRelation; currentDriver: { name: string } | null }) {
+  const { category, currentDriver, ...fields } = row;
   return Machine.parse({
     ...fields,
-    categoryName: row.category.name,
-    categoryIcon: row.category.icon,
-    categoryColour: row.category.colour,
-    currentDriverName: row.currentDriver?.name ?? null,
-    availability: 'in-yard',
-    retiredAt: row.retiredAt?.toISOString() ?? null,
-    createdAt: row.createdAt.toISOString(),
-    updatedAt: row.updatedAt.toISOString(),
+    ...projectCategory(category),
+    ...projectTimestamps(row),
+    currentDriverName: currentDriver?.name ?? null,
   });
 }
 export async function listMachines({ db, input }: { db: Db; input: MachineListInput }) {
   const rows = await db.query.contractingMachines.findMany({
     where: and(
-      input.status === 'active'
-        ? isNull(contractingMachines.retiredAt)
-        : input.status === 'retired'
-          ? isNotNull(contractingMachines.retiredAt)
-          : undefined,
+      retirementFilter(contractingMachines, input.status),
       input.categoryId ? eq(contractingMachines.categoryId, input.categoryId) : undefined,
       input.search ? createEscapedContainsSearchCondition(sql`${contractingMachines.code}`, input.search) : undefined,
     ),
@@ -65,7 +59,7 @@ export async function listMachines({ db, input }: { db: Db; input: MachineListIn
 }
 export async function getMachine({ db, id }: { db: Db | DatabaseTransaction; id: string }) {
   const row = await db.query.contractingMachines.findFirst({ where: eq(contractingMachines.id, id), with: related });
-  if (!row) throw new FleetError('fleet.not_found', 'Machine not found.');
+  if (!row) throw notFound('Machine');
   return mapMachine(row);
 }
 async function assertDriver(tx: DatabaseTransaction, id: string | null | undefined) {
@@ -117,7 +111,7 @@ export async function patchMachine({
       descriptor,
       table: contractingMachines,
       id: input.id,
-      notFound: () => new FleetError('fleet.not_found', 'Machine not found.'),
+      notFound: () => notFound('Machine'),
       assert: async (tx, before) => {
         assertNotRetired(before);
         if (input.categoryId !== undefined) await assertCategoryKind(tx, input.categoryId, 'machine');
@@ -146,25 +140,13 @@ export async function patchMachine({
     }),
   );
 }
-export async function retireMachine({
-  db,
-  actorUserId,
-  input,
-}: {
-  db: Db;
-  actorUserId: AuthId;
-  input: FleetRetireInput;
-}) {
-  const { id, reason } = FleetRetireInput.parse(input);
-  return mutateEntity({
-    db,
-    actorUserId,
-    descriptor,
+export async function retireMachine(args: { db: Db; actorUserId: AuthId; input: FleetRetireInput }) {
+  return retireFleetEntry({
+    ...args,
     table: contractingMachines,
-    id,
-    notFound: () => new FleetError('fleet.not_found', 'Machine not found.'),
-    assert: (_tx, row) => assertNotRetired(row),
-    set: () => ({ retiredAt: new Date(), retiredReason: reason, currentDriverUserId: null, updatedAt: new Date() }),
+    descriptor,
+    noun: 'Machine',
+    alsoSet: { currentDriverUserId: null },
     project: (tx, row) => getMachine({ db: tx, id: row.id }),
   });
 }
@@ -172,19 +154,21 @@ export async function removeMachine(args: { db: Db; actorUserId: AuthId; id: str
   return removeFleetEntry({ ...args, table: contractingMachines, descriptor, assert: assertNotRetired });
 }
 export async function machineOptions({ db }: { db: Db }) {
-  const makes = await db
-    .selectDistinct({ value: contractingMachines.make })
-    .from(contractingMachines)
-    .orderBy(asc(contractingMachines.make));
-  const models = await db
-    .selectDistinct({ value: contractingMachines.model })
-    .from(contractingMachines)
-    .orderBy(asc(contractingMachines.model));
-  const drivers = await db
-    .select({ id: user.id, name: user.name })
-    .from(user)
-    .where(and(eq(user.contractingRole, 'driver'), eq(user.isDevice, false)))
-    .orderBy(asc(user.name));
+  const [makes, models, drivers] = await Promise.all([
+    db
+      .selectDistinct({ value: contractingMachines.make })
+      .from(contractingMachines)
+      .orderBy(asc(contractingMachines.make)),
+    db
+      .selectDistinct({ value: contractingMachines.model })
+      .from(contractingMachines)
+      .orderBy(asc(contractingMachines.model)),
+    db
+      .select({ id: user.id, name: user.name })
+      .from(user)
+      .where(and(eq(user.contractingRole, 'driver'), eq(user.isDevice, false)))
+      .orderBy(asc(user.name)),
+  ]);
   return { makes: makes.map((row) => row.value), models: models.map((row) => row.value), drivers };
 }
 

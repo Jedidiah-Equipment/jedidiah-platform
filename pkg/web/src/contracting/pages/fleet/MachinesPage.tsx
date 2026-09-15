@@ -1,38 +1,38 @@
 import type { FleetListInput, Machine } from '@pkg/schema/contracting';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import { useMemo, useState } from 'react';
+import { EnumSelect } from '@/components/common/EnumSelect.js';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
+import { ClientDataTable } from '@/components/data-table/ClientDataTable.js';
 import type { DataTableColumnDef } from '@/components/data-table/features.js';
+import { useCreateEntityFlow } from '@/components/form/hooks/use-create-entity-flow.js';
 import { CreateEntityDialog } from '@/components/form/index.js';
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
 import { Badge } from '@/components/ui/badge.js';
 import { Button } from '@/components/ui/button.js';
 import { CategoryLabel } from '@/contracting/components/CategoryIcon.js';
+import { useQueryInvalidation } from '@/contracting/hooks/use-query-invalidation.js';
 import { useCan } from '@/hooks/use-access.js';
-import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { CategoryPickerField } from './CategoryFields.js';
-import { FleetStatusFilter } from './FleetStatusFilter.js';
-import { FleetTable } from './FleetTable.js';
-import { createMachineInput, MachineCreateValues } from './types.js';
-import { useFleetInvalidation } from './use-fleet-invalidation.js';
+import { createMachineInput, fleetStatusLabels, fleetStatusOptions, MachineCreateValues } from './types.js';
+
 export function MachinesPage() {
   const trpc = useTRPC();
   const navigate = useNavigate();
-  const invalidate = useFleetInvalidation();
-  const showError = useApiMutationErrorToast();
+  const { invalidateFleet } = useQueryInvalidation();
   const canEdit = useCan('contracting_machine:update').can;
-  const [open, setOpen] = useState(false);
   const [status, setStatus] = useState<FleetListInput['status']>('active');
   const query = useQuery(trpc.contractingFleet.machines.list.queryOptions({ status }));
   const categories = useQuery(trpc.contractingFleet.categories.list.queryOptions({ kind: 'machine' }));
   const options = useQuery(trpc.contractingFleet.machines.options.queryOptions());
-  const create = useMutation(
-    trpc.contractingFleet.machines.create.mutationOptions({
-      onError: (error) => showError(error, 'Unable to create machine.'),
-    }),
-  );
+  const flow = useCreateEntityFlow({
+    mutation: trpc.contractingFleet.machines.create.mutationOptions(),
+    errorMessage: 'Unable to create machine.',
+    invalidate: invalidateFleet,
+    navigateTo: (row) => ({ to: '/contracting/fleet/$id/edit', params: { id: row.id } }),
+  });
   const columns = useMemo<DataTableColumnDef<Machine>[]>(
     () => [
       {
@@ -67,7 +67,7 @@ export function MachinesPage() {
         header: 'Status',
         cell: ({ row }) => (
           <Badge variant={row.original.retiredAt ? 'outline' : 'secondary'}>
-            {row.original.retiredAt ? 'Retired' : 'In Yard'}
+            {row.original.retiredAt ? 'Retired' : 'Active'}
           </Badge>
         ),
       },
@@ -80,35 +80,38 @@ export function MachinesPage() {
         title="Machines"
         description="Manage the Contracting fleet and Machine Yard."
         size="lg"
-        actions={canEdit ? <Button onClick={() => setOpen(true)}>New machine</Button> : undefined}
+        actions={canEdit ? <Button onClick={flow.open}>New machine</Button> : undefined}
       >
         <ErrorMessage
           error={query.error ?? categories.error ?? options.error}
           fallbackMessage="Unable to load fleet."
         />
-        <FleetTable
+        <ClientDataTable
           rows={query.data ?? []}
           columns={columns}
           loading={query.isPending}
-          controls={<FleetStatusFilter value={status} onChange={setStatus} />}
+          emptyMessage="No fleet entries found."
+          searchPlaceholder="Search codes..."
+          controls={
+            <EnumSelect
+              aria-label="Fleet status"
+              value={status}
+              onChange={setStatus}
+              options={fleetStatusOptions}
+              labels={fleetStatusLabels}
+            />
+          }
           onOpen={(row) => void navigate({ to: '/contracting/fleet/$id/edit', params: { id: row.id } })}
         />
       </PageLayout>
       <CreateEntityDialog
-        key={open ? 'open' : 'closed'}
-        open={open}
-        onOpenChange={setOpen}
+        {...flow.dialogProps}
         title="New machine"
         defaultValues={{ code: '', make: '', model: '', categoryId: '' }}
         validator={MachineCreateValues}
         canSubmit={categories.isSuccess && options.isSuccess}
         description={categories.data?.length === 0 ? 'Create a Machine category before adding a Machine.' : undefined}
-        onCreate={(values) => create.mutateAsync(createMachineInput(values))}
-        onCreated={async (row) => {
-          await invalidate();
-          setOpen(false);
-          await navigate({ to: '/contracting/fleet/$id/edit', params: { id: row.id } });
-        }}
+        onCreate={(values) => flow.create(createMachineInput(values))}
       >
         {(form) => (
           <>

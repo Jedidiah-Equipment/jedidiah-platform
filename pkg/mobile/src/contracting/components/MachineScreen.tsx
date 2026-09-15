@@ -1,17 +1,17 @@
-import { IconAlertTriangle, IconCheck, IconClock } from '@tabler/icons-react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { SecondaryToolbar } from '@/components/TopToolbar';
+import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { latestKnownReading } from '@/contracting/readings/latest-reading';
 import { useReadingQueue } from '@/contracting/readings/ReadingQueueProvider';
-import { useCapturePermission } from '@/contracting/readings/use-capture-permission';
 import { useFleet, useMachineReadings } from '@/contracting/readings/use-fleet';
+import { useSessionPermission } from '@/lib/auth-session';
 import { useIsOffline } from '@/lib/connectivity';
 import { CategoryIcon } from './CategoryIcon';
-import { ReadingButton } from './ReadingButton';
+import { queuedReadingStatus } from './reading-status';
 
 export default function MachineScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -24,13 +24,9 @@ export default function MachineScreen() {
     .sort((a, b) => Date.parse(b.capturedAt) - Date.parse(a.capturedAt));
   const latest = latestKnownReading(id, items, readings.data);
   const latestLocal = pending.find((row) => row.localId === latest?.id);
-  const readingStatus = latestLocal?.attention
-    ? { label: 'Needs attention', icon: IconAlertTriangle, className: 'text-danger' }
-    : latestLocal
-      ? { label: 'Queued', icon: IconClock, className: 'text-muted-foreground' }
-      : { label: 'Synced', icon: IconCheck, className: 'text-status-next' };
+  const readingStatus = queuedReadingStatus(latestLocal);
   const offline = useIsOffline();
-  const canCapture = useCapturePermission();
+  const canCapture = useSessionPermission('contracting_reading:capture');
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top', 'left', 'right']}>
       <SecondaryToolbar
@@ -49,7 +45,7 @@ export default function MachineScreen() {
               {machine ? `${machine.make} ${machine.model}` : 'Machine details unavailable'}
             </Text>
           </View>
-          <Text className="text-muted-foreground">{machine?.categoryName} · In Yard</Text>
+          {machine ? <Text className="text-muted-foreground">{machine.categoryName}</Text> : null}
           <Text className="text-3xl text-foreground" weight="bold">
             {latest ? `${latest.value.toFixed(1)} h` : 'No known reading'}
           </Text>
@@ -61,17 +57,12 @@ export default function MachineScreen() {
           ) : null}
           {pending[0] && !latestLocal ? (
             <Text className="text-foreground">
-              Latest local capture: {pending[0].value.toFixed(1)} h ·{' '}
-              {pending[0].attention ? 'Needs attention' : 'Queued'}
+              Latest local capture: {pending[0].value.toFixed(1)} h · {queuedReadingStatus(pending[0]).label}
             </Text>
           ) : null}
         </View>
         {canCapture && machine ? (
-          <ReadingButton
-            primary
-            title="Capture reading"
-            onPress={() => router.push(`/contracting/machines/${id}/capture`)}
-          />
+          <Button primary title="Capture reading" onPress={() => router.push(`/contracting/machines/${id}/capture`)} />
         ) : null}
         <Text className="text-lg text-foreground" weight="bold">
           Reading history
@@ -79,7 +70,7 @@ export default function MachineScreen() {
         {pending.map((row) => (
           <View key={row.localId} className="gap-1 rounded-xl border border-border p-4">
             <Text className="text-foreground" weight="semibold">
-              {row.value.toFixed(1)} h · {row.attention ? 'Needs attention' : 'Queued'}
+              {row.value.toFixed(1)} h · {queuedReadingStatus(row).label}
             </Text>
             <Text className="text-sm text-muted-foreground">{new Date(row.capturedAt).toLocaleString()}</Text>
           </View>

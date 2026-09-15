@@ -3,7 +3,9 @@ import { useState } from 'react';
 import { FlatList, Pressable, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MainToolbar } from '@/components/TopToolbar';
+import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
+import { contractingStorageKey } from '@/contracting/lib/contracting-storage';
 import {
   getMachineCategories,
   getVisibleMachines,
@@ -18,19 +20,18 @@ import { useIsOffline } from '@/lib/connectivity';
 import { usePersistedState } from '@/lib/use-persisted-state';
 import { CategoryIcon } from './CategoryIcon';
 import { MachineCatalogControls } from './MachineCatalogControls';
-import { ReadingButton } from './ReadingButton';
+import { readingStatuses } from './reading-status';
+
+const CATEGORY_FILTER_KEY = contractingStorageKey('machines', 'category');
+const SORT_KEY = contractingStorageKey('machines', 'sort');
 
 export default function MachinesScreen() {
   const fleet = useFleet();
   const { items, error } = useReadingQueue();
   const offline = useIsOffline();
   const [search, setSearch] = useState('');
-  const [savedCategory, setCategory] = usePersistedState(
-    'jedidiah-contracting-machine-category',
-    'all',
-    isMachineCategoryFilter,
-  );
-  const [sort, setSort] = usePersistedState<MachineSort>('jedidiah-contracting-machine-sort', 'code', isMachineSort);
+  const [savedCategory, setCategory] = usePersistedState(CATEGORY_FILTER_KEY, 'all', isMachineCategoryFilter);
+  const [sort, setSort] = usePersistedState<MachineSort>(SORT_KEY, 'code', isMachineSort);
   const categories = getMachineCategories(fleet.data ?? []);
   const category = normalizeMachineCategory(
     savedCategory,
@@ -48,8 +49,8 @@ export default function MachinesScreen() {
           </Text>
         ) : null}
         {attention > 0 ? (
-          <ReadingButton
-            title={`Needs attention (${attention}) · ${items.length - attention} queued`}
+          <Button
+            title={`${readingStatuses.attention.label} (${attention}) · ${items.length - attention} ${readingStatuses.queued.label.toLowerCase()}`}
             onPress={() => router.push('/contracting/attention')}
           />
         ) : null}
@@ -91,14 +92,11 @@ export default function MachinesScreen() {
             onPress={() => router.push(`/contracting/machines/${item.id}`)}
             className="w-full gap-2 rounded-xl border border-border bg-surface p-4"
           >
-            <View className="flex-row items-center justify-between gap-2">
-              <View className="flex-row items-center gap-3">
-                <CategoryIcon icon={item.categoryIcon} colour={item.categoryColour} size={20} />
-                <Text className="text-lg text-foreground" weight="bold">
-                  {item.code}
-                </Text>
-              </View>
-              <Text className="rounded-full bg-muted px-3 py-1 text-xs text-foreground">In Yard</Text>
+            <View className="flex-row items-center gap-3">
+              <CategoryIcon icon={item.categoryIcon} colour={item.categoryColour} size={20} />
+              <Text className="text-lg text-foreground" weight="bold">
+                {item.code}
+              </Text>
             </View>
             <Text className="text-sm text-muted-foreground">
               {item.make} {item.model} · {item.categoryName}

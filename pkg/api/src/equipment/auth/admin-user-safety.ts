@@ -1,10 +1,9 @@
 import { canAssignUserRoleSlots } from '@pkg/core/equipment';
 import type { Db } from '@pkg/db';
-import { createUserAccessSummaryForUser, hasPermission, parseRoleSlots, type RoleSlots } from '@pkg/domain';
-import { ContractingRole, EquipmentRole } from '@pkg/schema';
+import { createUserAccessSummaryForUser, hasPermission, parseRoleSlots } from '@pkg/domain';
 import type { BetterAuthPlugin } from 'better-auth';
 import { APIError, createAuthMiddleware, getSessionFromCtx } from 'better-auth/api';
-import type { z } from 'zod';
+import { changesSlots, getRoleChange } from '../../auth/role-slots.js';
 
 const SELF_ROLE_CHANGE_ERROR = {
   code: 'YOU_CANNOT_CHANGE_YOUR_OWN_ROLE',
@@ -28,44 +27,15 @@ const ROLE_PERMISSION_ERROR = {
   message: 'You do not have permission to change user roles.',
 } as const;
 
-const INVALID_ROLE_ERROR = {
-  code: 'INVALID_ROLE',
-  message: 'The requested role is invalid.',
-} as const;
-
 const SUPER_ADMIN_SPANS_CONTRACTING_ERROR = {
   code: 'SUPER_ADMIN_SPANS_CONTRACTING',
   message: 'A super admin spans both businesses and cannot hold a separate contracting role.',
 } as const;
 
-const ROLE_SPELLING_ERROR = {
-  code: 'INVALID_ROLE',
-  message: 'Send the equipment role as `data.equipmentRole`.',
-} as const;
-
-/**
- * Role slots travel as `data.equipmentRole` and `data.contractingRole` on create-user and
- * update-user (Better Auth's own `role` cannot carry null), and as `role` on set-role, which is
- * Better Auth's native single-slot endpoint. The database hook below maps `equipmentRole` onto the
- * `role` column Better Auth owns and clears the contracting slot whenever super-admin lands.
- */
+/** Who may change which role slot; the slots themselves are mapped onto columns by the shared auth. */
 export function adminUserSafetyPlugin(database: Db): BetterAuthPlugin {
   return {
     id: 'admin-user-safety',
-    init: () => ({
-      options: {
-        databaseHooks: {
-          user: {
-            create: {
-              before: (createdUser, context) => applyRoleSlots(createdUser, context?.path, context?.body),
-            },
-            update: {
-              before: (updatedUser, context) => applyRoleSlots(updatedUser, context?.path, context?.body),
-            },
-          },
-        },
-      },
-    }),
     hooks: {
       before: [
         {
@@ -125,81 +95,6 @@ export function adminUserSafetyPlugin(database: Db): BetterAuthPlugin {
       ],
     },
   };
-}
-
-// A slot left out is a slot left untouched.
-type RoleChange = Partial<RoleSlots> & { userId?: string };
-
-function changesSlots(current: RoleSlots, change: RoleChange): boolean {
-  return (
-    (change.equipmentRole !== undefined && change.equipmentRole !== current.equipmentRole) ||
-    (change.contractingRole !== undefined && change.contractingRole !== current.contractingRole)
-  );
-}
-
-function getRoleChange(path: string | undefined, body: unknown): RoleChange | null {
-  if (!isRecord(body)) {
-    return null;
-  }
-
-  if (path === '/admin/set-role') {
-    return typeof body.userId === 'string'
-      ? { equipmentRole: parseSlot(EquipmentRole, body.role), userId: body.userId }
-      : null;
-  }
-
-  if (path !== '/admin/create-user' && path !== '/admin/update-user') {
-    return null;
-  }
-
-  const data = isRecord(body.data) ? body.data : {};
-  if (Object.hasOwn(body, 'role') || Object.hasOwn(data, 'role')) {
-    throw APIError.from('BAD_REQUEST', ROLE_SPELLING_ERROR);
-  }
-
-  const change: RoleChange = {
-    ...(Object.hasOwn(data, 'equipmentRole') ? { equipmentRole: parseSlot(EquipmentRole, data.equipmentRole) } : {}),
-    ...(Object.hasOwn(data, 'contractingRole')
-      ? { contractingRole: parseSlot(ContractingRole, data.contractingRole) }
-      : {}),
-    ...(typeof body.userId === 'string' ? { userId: body.userId } : {}),
-  };
-
-  return change.equipmentRole === undefined && change.contractingRole === undefined ? null : change;
-}
-
-function parseSlot<T>(schema: z.ZodType<T>, value: unknown): T | null {
-  const result = schema.nullable().safeParse(value);
-  if (!result.success) throw APIError.from('BAD_REQUEST', INVALID_ROLE_ERROR);
-  return result.data;
-}
-
-// Better Auth inserts its own `role` default on create-user, so an omitted equipment role must be
-// written as null rather than left to that default. Set-role writes `role` itself; it is included
-// so super-admin clears the contracting slot on that path too.
-async function applyRoleSlots<T extends Record<string, unknown>>(userData: T, path: string | undefined, body: unknown) {
-  const data = isRecord(body) && isRecord(body.data) ? body.data : {};
-  const carriesEquipmentRole =
-    path === '/admin/create-user' || (path === '/admin/update-user' && Object.hasOwn(data, 'equipmentRole'));
-
-  if (!carriesEquipmentRole && !(path === '/admin/set-role' && Object.hasOwn(userData, 'role'))) {
-    return;
-  }
-
-  const { equipmentRole: _transportField, ...persistedUser } = userData;
-  const role = carriesEquipmentRole ? (data.equipmentRole ?? null) : userData.role;
-
-  return {
-    data: {
-      ...persistedUser,
-      role,
-      ...(role === 'super-admin' ? { contractingRole: null } : {}),
-    },
-  };
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null;
 }
 
 function formatList(values: readonly string[]): string {

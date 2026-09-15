@@ -1,7 +1,8 @@
 import { createDatabaseClient, eq, user } from '@pkg/db';
-import type { AuthId } from '@pkg/schema';
-import { createAuth } from '@/app-auth.js';
+import { AuthId } from '@pkg/schema';
+import { createSharedAuth } from '@/auth/auth.js';
 import { log } from '@/logger.js';
+import { driverRoleSafetyPlugin } from '../auth/driver-role-safety.js';
 import { parseFleetImport, readFleetImportFiles } from './fleet-import-csv.js';
 import { runFleetImport } from './fleet-import-runner.js';
 import { resolveFleetImportConfig } from './fleet-import-target.js';
@@ -19,8 +20,8 @@ try {
   );
   const summary = await runFleetImport({
     db: client.db,
-    auth: createAuth(client.db),
-    actorUserId: actor.id as AuthId,
+    auth: createSharedAuth(client.db, [driverRoleSafetyPlugin(client.db)]),
+    actorUserId: AuthId.parse(actor.id),
     data,
   });
   for (const warning of summary.warnings) log.root.warn(warning);

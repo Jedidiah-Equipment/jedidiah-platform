@@ -1,5 +1,11 @@
-import { FieldReading } from '@pkg/schema/contracting';
+import { FieldReading, readingCaptureMultipartFields } from '@pkg/schema/contracting';
+import { z } from 'zod';
 import { type QueuedReading, ReadingSyncError } from './reading-queue';
+
+const DeliveredReading = z.looseObject({ photo: z.unknown() });
+const RefusalBody = z
+  .object({ message: z.string().optional(), data: z.object({ appCode: z.string().optional() }).nullish() })
+  .catch({});
 
 /**
  * HTTP status alone is insufficient: only the ledger's below-latest code offers a dispute.
@@ -7,25 +13,20 @@ import { type QueuedReading, ReadingSyncError } from './reading-queue';
  */
 export async function uploadReading(item: QueuedReading, send: (body: FormData) => Promise<Response>, photo?: Blob) {
   const body = new FormData();
-  for (const field of ['localId', 'machineId', 'role', 'value', 'capturedAt', 'disputePrevious'] as const) {
-    body.append(field, String(item[field]));
+  for (const [name, value] of readingCaptureMultipartFields({ ...item, comment: item.comment || undefined })) {
+    body.append(name, value);
   }
-  if (item.expectedPreviousId !== undefined) body.append('expectedPreviousId', item.expectedPreviousId ?? '');
-  if (item.comment) body.append('comment', item.comment);
-  if (item.photoLocalUri) {
-    if (photo) body.append('photo', photo, 'meter.jpg');
-    else body.append('photo', { uri: item.photoLocalUri, type: 'image/jpeg', name: 'meter.jpg' } as unknown as Blob);
-  }
+  if (photo) body.append('photo', photo, 'meter.jpg');
   const response = await send(body);
   if (response.ok) {
-    const row = await response.json();
+    const row = DeliveredReading.parse(await response.json());
     return FieldReading.parse({ ...row, photoBacked: !!row.photo });
   }
   if (response.status >= 400 && response.status < 500 && ![401, 408, 429].includes(response.status)) {
-    const error = await response.json().catch(() => ({}));
+    const refusal = RefusalBody.parse(await response.json().catch(() => null));
     throw new ReadingSyncError(
-      error.data?.appCode ?? 'reading.refused',
-      error.message ?? 'The server refused this reading.',
+      refusal.data?.appCode ?? 'reading.refused',
+      refusal.message ?? 'The server refused this reading.',
     );
   }
   throw new Error('Waiting to sync. Check your connection and sign-in.');

@@ -30,7 +30,8 @@ export function usePersistedState<T>(
   fallback: T,
   isValid: (value: unknown) => value is T,
 ): readonly [T, (next: T) => void] {
-  const [value, setValue] = useState<T>(fallback);
+  // Tagged with its key so a key change never shows the previous key's value.
+  const [state, setState] = useState<{ key: string; value: T }>({ key, value: fallback });
 
   useEffect(() => {
     let active = true;
@@ -40,7 +41,7 @@ export function usePersistedState<T>(
         if (!active || stored === null) return;
 
         const parsed = parseStored(stored);
-        if (isValid(parsed)) setValue(parsed);
+        if (isValid(parsed)) setState({ key, value: parsed });
       })
       // A failed read just keeps the fallback — never let it block boot.
       .catch(() => {});
@@ -52,11 +53,11 @@ export function usePersistedState<T>(
 
   const persist = useCallback(
     (next: T) => {
-      setValue(next);
-      void AsyncStorage.setItem(key, JSON.stringify(next));
+      setState({ key, value: next });
+      void AsyncStorage.setItem(key, JSON.stringify(next)).catch(() => {});
     },
     [key],
   );
 
-  return [value, persist];
+  return [state.key === key ? state.value : fallback, persist];
 }

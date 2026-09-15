@@ -2,10 +2,13 @@ import { Readable } from 'node:stream';
 
 import { createUserAccessSummaryForUser, hasPermission } from '@pkg/domain';
 import type { AppPermission } from '@pkg/schema';
+import { TRPCError } from '@trpc/server';
+import { getHTTPStatusCodeFromError } from '@trpc/server/http';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 
 import { type AppSession, getSessionFromHeaders } from '../auth/session.js';
+import type { CoreErrorFamily } from '../trpc/errors.js';
 
 // Shared transport helpers for the file-upload/download HTTP routes (documents, images). These own the
 // concerns every such route repeats — session auth, permission gating, body streaming, and turning a
@@ -34,6 +37,22 @@ export class RouteHttpError extends Error {
     this.appCode = appCode;
     this.statusCode = statusCode;
   }
+}
+
+// Maps a core error through the same families the tRPC routers use, so both transports agree on a
+// status for every code. Anything no family owns is returned unchanged for the caller to handle.
+export function mapCoreErrorToRoute(error: unknown, ...families: CoreErrorFamily[]): unknown {
+  for (const family of families) {
+    const mapping = family.match(error);
+    if (mapping)
+      return new RouteHttpError({
+        appCode: mapping.appCode,
+        cause: error,
+        message: mapping.message,
+        statusCode: getHTTPStatusCodeFromError(new TRPCError({ code: mapping.code })),
+      });
+  }
+  return error;
 }
 
 // Resolves the session and access summary, or sends a 401 and returns null when there is no session.

@@ -1,16 +1,17 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { onlineManager, useQueryClient } from '@tanstack/react-query';
-import { createContext, type ReactNode, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { AppState, Platform } from 'react-native';
+import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { AppState } from 'react-native';
+import { contractingStorageKey } from '@/contracting/lib/contracting-storage';
 import { apiBaseUrl } from '@/lib/api-base-url';
-import { sessionCookieHeader } from '@/lib/auth';
 import { useAuthSession } from '@/lib/auth-session';
-import { withSessionCookie } from '@/lib/authed-fetch';
 import { useTRPC } from '@/lib/trpc';
 import { removeReadingPhoto } from './reading-files';
 import { createReadingQueue, type QueuedReading, type ReadingQueue } from './reading-queue';
-import { uploadReading } from './reading-upload';
+import { syncReadingQueue } from './reading-sync';
 
+// Outlives the provider, which remounts when the signed-in operator changes, so a sync still in flight
+// and its serialized storage writes are never started twice for the same operator.
 const queues = new Map<string, ReadingQueue>();
 const Context = createContext<{
   queue: ReadingQueue;
@@ -23,7 +24,7 @@ export function ReadingQueueProvider({ children }: { children: ReactNode }) {
   const session = useAuthSession();
   const queryClient = useQueryClient();
   const trpc = useTRPC();
-  const key = `contracting:readings:v1:${apiBaseUrl}:${session.user.id}`;
+  const key = contractingStorageKey('readings', 'v1', apiBaseUrl, session.user.id);
   const queue = useMemo(() => {
     let queue = queues.get(key);
     if (!queue) {
@@ -34,7 +35,7 @@ export function ReadingQueueProvider({ children }: { children: ReactNode }) {
   }, [key]);
   const [items, setItems] = useState<QueuedReading[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const syncRef = useRef(() => {});
+  const liveQueue = useRef<ReadingQueue | null>(null);
   useEffect(() => {
     let active = true;
     const refresh = () => {
@@ -54,81 +55,48 @@ export function ReadingQueueProvider({ children }: { children: ReactNode }) {
       unsubscribe();
     };
   }, [queue]);
-  useEffect(() => {
-    let active = true;
-    let running = false;
-    async function sync() {
-      if (!active || running || !onlineManager.isOnline() || AppState.currentState === 'background') return;
-      running = true;
-      try {
-        const cookie = await sessionCookieHeader();
-        if (!active) return;
-        let uploaded = false;
-        await queue.sync(
-          async (item) => {
-            const photo =
-              Platform.OS === 'web' && item.photoLocalUri ? await (await fetch(item.photoLocalUri)).blob() : undefined;
-            if (!active) throw new Error('Session changed');
-            const controller = new AbortController();
-            const timeout = setTimeout(() => controller.abort(), 60_000);
-            try {
-              const delivered = await uploadReading(
-                item,
-                (body) =>
-                  fetch(
-                    `${apiBaseUrl}/api/contracting/readings`,
-                    withSessionCookie({ method: 'POST', body, signal: controller.signal }, cookie),
-                  ),
-                photo,
-              );
-              uploaded = true;
-              // Land the delivered reading in history before the queue drops the capture, so the
-              // latest known reading never falls back to the previous one while a refetch is pending.
-              queryClient.setQueryData(
-                trpc.contractingReadings.fieldHistory.queryKey({ machineId: item.machineId }),
-                (rows) => [delivered, ...(rows ?? []).filter((row) => row.id !== delivered.id)],
-              );
-            } finally {
-              clearTimeout(timeout);
-            }
-          },
-          () => active && onlineManager.isOnline(),
-        );
-        if (active) {
-          setError(null);
-          if (uploaded) void queryClient.invalidateQueries({ queryKey: trpc.contractingReadings.pathKey() });
-        }
-      } catch (error) {
-        if (active) setError(error instanceof Error ? error.message : 'Unable to read the saved queue.');
-      } finally {
-        running = false;
-      }
+  const sync = useCallback(async () => {
+    const isActive = () => liveQueue.current === queue;
+    if (!isActive() || !onlineManager.isOnline() || AppState.currentState === 'background') return;
+    try {
+      await syncReadingQueue({ queue, queryClient, trpc, isActive });
+      if (isActive()) setError(null);
+    } catch (error) {
+      if (isActive()) setError(error instanceof Error ? error.message : 'Unable to read the saved queue.');
     }
-    syncRef.current = () => {
+  }, [queue, queryClient, trpc]);
+  useEffect(() => {
+    liveQueue.current = queue;
+    const trigger = () => {
       void sync();
     };
-    void sync();
-    const online = onlineManager.subscribe(() => {
-      void sync();
-    });
+    trigger();
+    const online = onlineManager.subscribe(trigger);
     const app = AppState.addEventListener('change', (state) => {
-      if (state === 'active') void sync();
+      if (state === 'active') trigger();
     });
-    const timer = setInterval(() => {
-      void sync();
-    }, 15_000);
-    const changed = queue.subscribe(() => {
-      void sync();
-    });
+    const timer = setInterval(trigger, 15_000);
+    const changed = queue.subscribe(trigger);
     return () => {
-      active = false;
+      liveQueue.current = null;
       online();
       app.remove();
       clearInterval(timer);
       changed();
     };
-  }, [queue, queryClient, trpc]);
-  return <Context.Provider value={{ queue, items, error, sync: () => syncRef.current() }}>{children}</Context.Provider>;
+  }, [queue, sync]);
+  const value = useMemo(
+    () => ({
+      queue,
+      items,
+      error,
+      sync: () => {
+        void sync();
+      },
+    }),
+    [queue, items, error, sync],
+  );
+  return <Context.Provider value={value}>{children}</Context.Provider>;
 }
 export function useReadingQueue() {
   const context = useContext(Context);

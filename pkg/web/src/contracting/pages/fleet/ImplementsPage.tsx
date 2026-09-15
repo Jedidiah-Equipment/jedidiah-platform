@@ -1,22 +1,22 @@
 import type { FleetListInput, Implement } from '@pkg/schema/contracting';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import { useEffect, useRef, useState } from 'react';
+import { EnumSelect } from '@/components/common/EnumSelect.js';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
+import { ClientDataTable } from '@/components/data-table/ClientDataTable.js';
 import type { DataTableColumnDef } from '@/components/data-table/features.js';
+import { useCreateEntityFlow } from '@/components/form/hooks/use-create-entity-flow.js';
 import { CreateEntityDialog } from '@/components/form/index.js';
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
 import { Badge } from '@/components/ui/badge.js';
 import { Button } from '@/components/ui/button.js';
 import { CategoryLabel } from '@/contracting/components/CategoryIcon.js';
+import { useQueryInvalidation } from '@/contracting/hooks/use-query-invalidation.js';
 import { useCan } from '@/hooks/use-access.js';
-import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useTRPC } from '@/lib/trpc.js';
-import { categoryOptions } from './CategoryFields.js';
-import { FleetStatusFilter } from './FleetStatusFilter.js';
-import { FleetTable } from './FleetTable.js';
-import { createImplementInput, ImplementCreateValues } from './types.js';
-import { useFleetInvalidation } from './use-fleet-invalidation.js';
+import { CategoryPickerField } from './CategoryFields.js';
+import { createImplementInput, fleetStatusLabels, fleetStatusOptions, ImplementCreateValues } from './types.js';
 
 const columns: DataTableColumnDef<Implement>[] = [
   { accessorKey: 'code', header: 'Code', enableSorting: true },
@@ -55,20 +55,19 @@ function ImplementCodeSuggestion({ categoryId, onSuggest }: { categoryId: string
 export function ImplementsPage() {
   const trpc = useTRPC();
   const navigate = useNavigate();
-  const invalidate = useFleetInvalidation();
-  const showError = useApiMutationErrorToast();
+  const { invalidateFleet } = useQueryInvalidation();
   const canEdit = useCan('contracting_machine:update').can;
-  const [open, setOpen] = useState(false);
   const [status, setStatus] = useState<FleetListInput['status']>('active');
   // The suggestion fills the code only until the user types in it.
   const codeEdited = useRef(false);
   const query = useQuery(trpc.contractingFleet.implements.list.queryOptions({ status }));
   const categories = useQuery(trpc.contractingFleet.categories.list.queryOptions({ kind: 'implement' }));
-  const create = useMutation(
-    trpc.contractingFleet.implements.create.mutationOptions({
-      onError: (error) => showError(error, 'Unable to create implement.'),
-    }),
-  );
+  const flow = useCreateEntityFlow({
+    mutation: trpc.contractingFleet.implements.create.mutationOptions(),
+    errorMessage: 'Unable to create implement.',
+    invalidate: invalidateFleet,
+    navigateTo: (row) => ({ to: '/contracting/fleet/implements/$id/edit', params: { id: row.id } }),
+  });
   return (
     <>
       <PageLayout
@@ -80,7 +79,7 @@ export function ImplementsPage() {
             <Button
               onClick={() => {
                 codeEdited.current = false;
-                setOpen(true);
+                flow.open();
               }}
             >
               New implement
@@ -89,18 +88,26 @@ export function ImplementsPage() {
         }
       >
         <ErrorMessage error={query.error ?? categories.error} fallbackMessage="Unable to load implements." />
-        <FleetTable
+        <ClientDataTable
           rows={query.data ?? []}
           columns={columns}
           loading={query.isPending}
-          controls={<FleetStatusFilter value={status} onChange={setStatus} />}
+          emptyMessage="No fleet entries found."
+          searchPlaceholder="Search codes..."
+          controls={
+            <EnumSelect
+              aria-label="Fleet status"
+              value={status}
+              onChange={setStatus}
+              options={fleetStatusOptions}
+              labels={fleetStatusLabels}
+            />
+          }
           onOpen={(row) => void navigate({ to: '/contracting/fleet/implements/$id/edit', params: { id: row.id } })}
         />
       </PageLayout>
       <CreateEntityDialog
-        key={open ? 'open' : 'closed'}
-        open={open}
-        onOpenChange={setOpen}
+        {...flow.dialogProps}
         title="New implement"
         defaultValues={{ categoryId: '', code: '' }}
         validator={ImplementCreateValues}
@@ -108,17 +115,12 @@ export function ImplementsPage() {
         description={
           categories.data?.length === 0 ? 'Create an Implement category before adding an Implement.' : undefined
         }
-        onCreate={(values) => create.mutateAsync(createImplementInput(values))}
-        onCreated={async (row) => {
-          await invalidate();
-          setOpen(false);
-          await navigate({ to: '/contracting/fleet/implements/$id/edit', params: { id: row.id } });
-        }}
+        onCreate={(values) => flow.create(createImplementInput(values))}
       >
         {(form) => (
           <>
             <form.AppField name="categoryId">
-              {(field) => <field.SelectField label="Category" options={categoryOptions(categories.data ?? [])} />}
+              {() => <CategoryPickerField categories={categories.data ?? []} />}
             </form.AppField>
             <form.Subscribe selector={(state) => state.values.categoryId}>
               {(categoryId) => (

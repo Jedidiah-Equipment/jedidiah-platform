@@ -1,8 +1,8 @@
-import { UUID } from '@pkg/schema';
 import { createFileRoute } from '@tanstack/react-router';
 import { ImplementEditPage } from '@/contracting/pages/fleet/ImplementEditPage.js';
+import { uuidParams } from '@/lib/route-params.js';
 export const Route = createFileRoute('/_authed/contracting/fleet/implements/$id/edit')({
-  params: { parse: (params) => ({ id: UUID.parse(params.id) }) },
+  params: uuidParams,
   component: EditRoute,
   staticData: { pageLabel: 'Details' },
 });

@@ -9,6 +9,7 @@ import { OfflineScreen } from '@/components/OfflineScreen';
 import { UpdatePrompt } from '@/components/UpdatePrompt';
 import { GluestackUIProvider } from '@/components/ui/gluestack-ui-provider';
 import { ApiProvider } from '@/lib/ApiProvider';
+import { isOfflineCapableRoute } from '@/lib/business-home';
 import { ConnectivityProvider } from '@/lib/connectivity';
 import { ColorModeProvider } from '@/theme/ColorModeProvider';
 import { useColorMode } from '@/theme/use-color-mode';
@@ -47,7 +48,7 @@ function ThemedAppShell() {
         <ApiProvider>
           {/* Auth gating lives in app/(protected)/_layout.tsx; login is the public route. */}
           <Stack screenOptions={{ headerShown: false }} />
-          {/* Contracting field capture remains available while disconnected. */}
+          {/* Offline-capable business routes (Contracting field capture) stay available while disconnected. */}
           <OfflineGate />
           {/* Single update prompt: offers a downloaded new version wherever the user is. */}
           <UpdatePrompt />
@@ -88,5 +89,5 @@ function StartupLoader() {
 
 function OfflineGate() {
   const pathname = usePathname();
-  return <OfflineScreen allowOffline={pathname === '/contracting' || pathname.startsWith('/contracting/')} />;
+  return <OfflineScreen allowOffline={isOfflineCapableRoute(pathname)} />;
 }

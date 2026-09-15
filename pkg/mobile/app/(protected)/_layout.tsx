@@ -73,6 +73,8 @@ export default function ProtectedLayout() {
       <Stack.Screen name="equipment" />
     </Stack>
   );
+  // Queued readings keep syncing while an operator with both businesses works on Equipment screens,
+  // so the queue sits above both business stacks rather than inside the Contracting layout.
   return (
     <AuthSessionProvider session={session}>
       {hasBusinessAccess(getSessionRoleSlots(session), 'contracting') ? (

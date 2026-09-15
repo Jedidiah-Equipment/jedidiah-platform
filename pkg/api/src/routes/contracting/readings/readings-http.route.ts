@@ -1,28 +1,29 @@
 import { FilePolicyViolationError, type StorageAdapter } from '@pkg/core';
-import {
-  captureReading,
-  getReading,
-  isReadingError,
-  READING_PHOTO_POLICY,
-  type ReadMeterPhoto,
-} from '@pkg/core/contracting';
+import { captureReading, getReading, READING_PHOTO_POLICY, type ReadMeterPhoto } from '@pkg/core/contracting';
 import type { Db } from '@pkg/db';
 import { canCaptureBaseline } from '@pkg/domain/contracting';
-import { ReadingCaptureInput, ReadingComment, ReadingIdInput } from '@pkg/schema/contracting';
+import {
+  ReadingCaptureMultipart,
+  ReadingComment,
+  ReadingIdInput,
+  readingCaptureFieldNames,
+} from '@pkg/schema/contracting';
 import type { FastifyInstance, FastifyReply } from 'fastify';
 import {
+  mapCoreErrorToRoute,
   RouteHttpError,
   requirePermission,
   requireRouteAuth,
   sendUploadHttpError,
   streamObjectBody,
 } from '../../http-route-helpers.js';
+import { readingErrorFamily } from '../contracting-error-families.js';
 
 export async function registerReadingHttpRoutes(
   app: FastifyInstance,
-  dependencies: { db: Db; storage: StorageAdapter; readPhoto: ReadMeterPhoto },
+  { db, storage, readPhoto }: { db: Db; storage: StorageAdapter; readPhoto: ReadMeterPhoto },
 ) {
-  const fieldCount = ReadingCaptureInput.keyof().options.length;
+  const fieldCount = readingCaptureFieldNames.length;
   // Multipart caps bytes; the comment cap counts UTF-16 units, so allow the widest UTF-8 encoding.
   const fieldSize = 4 * (ReadingComment.maxLength ?? 1024);
   app.post('/api/contracting/readings', async (request, reply) => {
@@ -30,7 +31,7 @@ export async function registerReadingHttpRoutes(
     if (!auth) return;
     try {
       requirePermission(auth, 'contracting_reading:capture', 'You cannot capture Hour Readings.', 'reading.forbidden');
-      const fields: Record<string, unknown> = {};
+      const fields: Record<string, string> = {};
       let photoBytes: Buffer | undefined;
       for await (const part of request.parts({
         limits: {
@@ -46,16 +47,12 @@ export async function registerReadingHttpRoutes(
           photoBytes = await part.toBuffer();
           if (part.file.truncated) throw invalidMultipart();
         } else {
-          if (part.fieldname in fields || part.valueTruncated) throw invalidMultipart();
+          if (part.fieldname in fields || part.valueTruncated || typeof part.value !== 'string')
+            throw invalidMultipart();
           fields[part.fieldname] = part.value;
         }
       }
-      if (typeof fields.value === 'string' && fields.value.trim() !== '') fields.value = Number(fields.value);
-      if (fields.expectedPreviousId === '') fields.expectedPreviousId = null;
-      if (fields.comment === '') fields.comment = null;
-      if (fields.disputePrevious === 'true') fields.disputePrevious = true;
-      if (fields.disputePrevious === 'false') fields.disputePrevious = false;
-      const input = ReadingCaptureInput.parse(fields);
+      const input = ReadingCaptureMultipart.parse(fields);
       if (input.role === 'baseline' && !canCaptureBaseline(auth.access))
         throw new RouteHttpError({
           statusCode: 403,
@@ -63,10 +60,10 @@ export async function registerReadingHttpRoutes(
           message: 'Only a Contracting administrator can capture a Baseline Reading.',
         });
       const row = await captureReading({
-        ...dependencies,
+        db,
         actorUserId: auth.session.user.id,
         input,
-        ...(photoBytes === undefined ? {} : { photoBytes }),
+        ...(photoBytes === undefined ? {} : { evidence: { storage, readPhoto, photoBytes } }),
       });
       return reply.status(201).send(row);
     } catch (error) {
@@ -84,10 +81,10 @@ export async function registerReadingHttpRoutes(
         'reading.forbidden',
       );
       const { id } = ReadingIdInput.parse(request.params);
-      const row = await getReading({ db: dependencies.db, id });
+      const row = await getReading({ db, id });
       if (!row.photo)
         throw new RouteHttpError({ statusCode: 404, message: 'This reading has Missing Photo Evidence.' });
-      const object = await dependencies.storage.get(row.photo.storageKey);
+      const object = await storage.get(row.photo.storageKey);
       return reply
         .header('Content-Type', object.contentType)
         .header('Content-Length', object.byteSize)
@@ -106,16 +103,10 @@ function invalidMultipart() {
   });
 }
 function sendReadingError(reply: FastifyReply, error: unknown) {
-  const mapped = isReadingError(error)
-    ? new RouteHttpError({
-        statusCode: error.code === 'reading.not_found' ? 404 : 409,
-        appCode: error.code,
-        message: error.message,
-        cause: error,
-      })
-    : error instanceof FilePolicyViolationError
+  const mapped =
+    error instanceof FilePolicyViolationError
       ? new RouteHttpError({ statusCode: 400, appCode: error.code, message: error.message, cause: error })
-      : error;
+      : mapCoreErrorToRoute(error, readingErrorFamily);
   return sendUploadHttpError(reply, mapped, {
     fallbackMessage: 'Reading request failed.',
     invalidRequestMessage: 'Invalid Hour Reading.',

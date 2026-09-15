@@ -12,8 +12,8 @@ import {
 import { asc, eq, getTableColumns, sql } from 'drizzle-orm';
 import { defineAuditDescriptor, recordAuditCreate } from '../../audit/audit-writer.js';
 import { mutateEntity } from '../../audit/mutate-entity.js';
-import { FleetError, invalidCategory, kindInUse, withFleetConstraints } from './fleet-errors.js';
-import { removeFleetEntry } from './remove-fleet-entry.js';
+import { removeFleetEntry } from './fleet-entry.js';
+import { FleetError, invalidCategory, kindInUse, notFound, withFleetConstraints } from './fleet-errors.js';
 
 type Row = typeof contractingCategories.$inferSelect;
 const descriptor = defineAuditDescriptor<Row>({
@@ -39,7 +39,7 @@ export async function listCategories({ db, input = {} }: { db: Db; input?: Categ
 }
 export async function getCategory({ db, id }: { db: Db | DatabaseTransaction; id: string }) {
   const [row] = await selectCategories(db).where(eq(contractingCategories.id, id));
-  if (!row) throw new FleetError('fleet.not_found', 'Category not found.');
+  if (!row) throw notFound('Category');
   return mapCategory(row);
 }
 /**
@@ -96,7 +96,7 @@ export async function patchCategory({
       descriptor,
       table: contractingCategories,
       id: input.id,
-      notFound: () => new FleetError('fleet.not_found', 'Category not found.'),
+      notFound: () => notFound('Category'),
       assert: async (tx, before) => {
         if (
           input.kind !== undefined &&

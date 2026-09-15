@@ -1,3 +1,4 @@
+import { readingMethods, readingRoles, readingVerifications } from '@pkg/schema/contracting';
 import { sql } from 'drizzle-orm';
 import {
   type AnyPgColumn,
@@ -23,20 +24,18 @@ export const contractingHourReadings = contractingSchema.table(
     machineId: uuid('machine_id')
       .notNull()
       .references(() => contractingMachines.id, { onDelete: 'restrict' }),
-    role: text('role', { enum: ['baseline', 'arrival', 'departure', 'spot'] }).notNull(),
+    role: text('role', { enum: readingRoles }).notNull(),
     value: numeric('value', { precision: 10, scale: 1, mode: 'number' }).notNull(),
     capturedAt: timestamp('captured_at', { withTimezone: true }).notNull(),
     capturedByUserId: text('captured_by_user_id')
       .notNull()
       .references(() => user.id),
-    method: text('method', { enum: ['photo', 'manual'] }).notNull(),
+    method: text('method', { enum: readingMethods }).notNull(),
     comment: text('comment'),
     photo: jsonb('photo').$type<{ byteSize: number; contentType: string; storageKey: string; updatedAt: string }>(),
     aiValue: numeric('ai_value', { precision: 10, scale: 1, mode: 'number' }),
     aiConfidence: numeric('ai_confidence', { precision: 5, scale: 4, mode: 'number' }),
-    aiVerification: text('ai_verification', {
-      enum: ['pending', 'agrees', 'disagrees', 'low-confidence', 'not-applicable'],
-    }).notNull(),
+    aiVerification: text('ai_verification', { enum: readingVerifications }).notNull(),
     disputed: boolean('disputed').default(false).notNull(),
     disputeReason: text('dispute_reason'),
     disputedPreviousId: uuid('disputed_previous_id').references((): AnyPgColumn => contractingHourReadings.id),

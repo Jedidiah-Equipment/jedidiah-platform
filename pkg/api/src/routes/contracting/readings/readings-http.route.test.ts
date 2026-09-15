@@ -102,6 +102,24 @@ test('rejects unauthenticated and Equipment-only uploads before parsing their bo
   }
 });
 
+test('reserves a Baseline Reading upload for Contracting administrators', async ({ context }) => {
+  const { app, machineId } = context;
+  try {
+    const refused = await app.inject(upload(machineId, null, true, { role: 'baseline' }));
+    expect(refused.statusCode).toBe(403);
+    expect(refused.json()).toMatchObject({ data: { appCode: 'reading.forbidden' } });
+    (state.session as ReturnType<typeof mockSession>).user.contractingRole = 'contracting-admin';
+    const accepted = await app.inject(upload(machineId, null, true, { role: 'baseline' }));
+    expect(accepted.statusCode).toBe(201);
+    expect(accepted.json()).toMatchObject({ role: 'baseline', photo: null });
+    const second = await app.inject(upload(machineId, null, true, { role: 'baseline' }));
+    expect(second.statusCode).toBe(409);
+    expect(second.json()).toMatchObject({ data: { appCode: 'reading.baseline_exists' } });
+  } finally {
+    await app.close();
+  }
+});
+
 test('accepts every mobile multipart field and retries a photo capture without duplicating it', async ({ context }) => {
   const { app, db, machineId, storage } = context;
   try {

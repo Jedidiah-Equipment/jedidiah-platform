@@ -4,3 +4,6 @@ export async function keepReadingPhoto(uri: string, _localId: string): Promise<s
   return uri;
 }
 export async function removeReadingPhoto(_uri: string) {}
+export async function readReadingPhotoPart(uri: string): Promise<Blob> {
+  return (await fetch(uri)).blob();
+}

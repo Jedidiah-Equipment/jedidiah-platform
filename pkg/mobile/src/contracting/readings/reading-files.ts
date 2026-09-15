@@ -11,3 +11,7 @@ export async function keepReadingPhoto(uri: string, localId: string): Promise<st
 export async function removeReadingPhoto(uri: string) {
   await FileSystem.deleteAsync(uri, { idempotent: true });
 }
+/** React Native's FormData uploads a `{ uri, type, name }` file part, which the DOM `Blob` type does not model. */
+export async function readReadingPhotoPart(uri: string): Promise<Blob> {
+  return { uri, type: 'image/jpeg', name: 'meter.jpg' } as unknown as Blob;
+}

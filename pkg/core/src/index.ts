@@ -3,6 +3,7 @@ export { mutateEntity } from './audit/mutate-entity.js';
 export * from './changelog/changelog-errors.js';
 export * from './changelog/changelog-service.js';
 export * from './changelog/changelog-visibility.js';
+export * from './errors/constraint-violations.js';
 export * from './files/file-errors.js';
 export * from './files/stored-file-service.js';
 export * from './media/image-cache.js';

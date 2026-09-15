@@ -293,7 +293,6 @@ const CompleteDepartmentButton: React.FC<{ job: JobDetail; timing: JobDepartment
             ? `Record ${lowerDepartmentLabel} on ${job.code} as done now, and name the ${crewLabel.toLowerCase()}.`
             : `Record ${lowerDepartmentLabel} on ${job.code} as done now, and name the ${crewLabel.toLowerCase()}. ${job.code} is already completed, so this cannot be corrected afterwards — check the names before saving.`
         }
-        key={isOpen ? 'open' : 'closed'}
         onCreate={(values: DoneFormValues) =>
           completeMutation.mutateAsync({
             crewUserIds: values.crewUserIds,
@@ -358,7 +357,6 @@ const CorrectDepartmentButton: React.FC<{ job: JobDetail; timing: JobDepartmentT
           startedOn: timing.startedAt ? toPlantDateOnly(new Date(timing.startedAt)) : '',
         }}
         description={`Correct what was stamped. Clearing the start date removes the ${lowerDepartmentLabel} stamps and their crew altogether.`}
-        key={isOpen ? 'open' : 'closed'}
         onCreate={(values: CorrectionFormValues) =>
           updateMutation.mutateAsync({
             completedAt: values.completedOn ? DateIso.parse(values.completedOn) : null,

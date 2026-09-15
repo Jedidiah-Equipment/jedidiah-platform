@@ -1,16 +1,21 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { beforeEach, expect, test } from 'vitest';
-import { createReadingQueue } from './reading-queue';
+import { createReadingQueue, newLocalId } from './reading-queue';
 
+const ids = new Map<string, string>();
+const id = (name: string) => {
+  if (!ids.has(name)) ids.set(name, newLocalId());
+  return ids.get(name) as string;
+};
 const capture = (localId: string, capturedAt = '2026-09-08T08:00:00Z', machineId = 'machine-1') => ({
-  localId,
-  machineId,
+  localId: id(localId),
+  machineId: id(machineId),
   role: 'spot' as const,
   value: 123.4,
   capturedAt,
   photoLocalUri: 'file:///readings/meter.jpg',
   disputePrevious: false,
-  expectedPreviousId: 'server-previous',
+  expectedPreviousId: id('server-previous'),
   comment: null,
 });
 beforeEach(() => AsyncStorage.clear());
@@ -27,7 +32,7 @@ test('a capture survives restart with its photo and only leaves storage after up
   await createReadingQueue(ports).enqueue(capture('one'));
   const restarted = createReadingQueue(ports);
   await expect(restarted.list()).resolves.toMatchObject([
-    { localId: 'one', photoLocalUri: 'file:///readings/meter.jpg' },
+    { localId: id('one'), photoLocalUri: 'file:///readings/meter.jpg' },
   ]);
   await restarted.sync(async () => {
     throw new Error('offline');
@@ -50,20 +55,21 @@ test('a race-lost capture blocks later captures on that machine until explicitly
   const sent: string[] = [];
   await queue.sync(async (item) => {
     sent.push(item.localId);
-    if (item.localId === 'earlier') throw new ReadingSyncError('reading.below_latest', 'Another reading landed first');
+    if (item.localId === id('earlier'))
+      throw new ReadingSyncError('reading.below_latest', 'Another reading landed first');
   });
-  expect(sent).toEqual(['earlier', 'other']);
+  expect(sent).toEqual([id('earlier'), id('other')]);
   expect(await queue.list()).toMatchObject([
-    { localId: 'later' },
-    { localId: 'earlier', disputePrevious: false, attention: { code: 'reading.below_latest' } },
+    { localId: id('later') },
+    { localId: id('earlier'), disputePrevious: false, attention: { code: 'reading.below_latest' } },
   ]);
-  await queue.resubmit('earlier', 'latest-server-reading');
+  await queue.resubmit(id('earlier'), id('latest-server-reading'));
   await queue.sync(async (item) => {
     sent.push(item.localId);
-    if (item.localId === 'earlier')
-      expect(item).toMatchObject({ disputePrevious: true, expectedPreviousId: 'latest-server-reading' });
+    if (item.localId === id('earlier'))
+      expect(item).toMatchObject({ disputePrevious: true, expectedPreviousId: id('latest-server-reading') });
   });
-  expect(sent).toEqual(['earlier', 'other', 'earlier', 'later']);
+  expect(sent).toEqual([id('earlier'), id('other'), id('earlier'), id('later')]);
   expect(await queue.list()).toEqual([]);
 });
 
@@ -85,9 +91,17 @@ test('concurrent saves and sync preserve a newly captured reading and isolate op
   release();
   await Promise.all([first, second]);
   expect(new Set(sent).size).toBe(sent.length);
-  expect((await queue.list()).map((row) => row.localId)).toEqual(['three']);
+  expect((await queue.list()).map((row) => row.localId)).toEqual([id('three')]);
   const other = createReadingQueue({ storage: AsyncStorage, key: 'operator-2', removePhoto: async () => {} });
   expect(await other.list()).toEqual([]);
-  await queue.discard('three');
+  await queue.discard(id('three'));
+  expect(await queue.list()).toEqual([]);
+});
+
+test('a stored row that no longer parses is dropped instead of breaking the queue', async () => {
+  await AsyncStorage.setItem('operator-1', JSON.stringify([capture('valid'), { localId: 'not-a-capture' }]));
+  const queue = createReadingQueue({ storage: AsyncStorage, key: 'operator-1', removePhoto: async () => {} });
+  expect((await queue.list()).map((row) => row.localId)).toEqual([id('valid')]);
+  await AsyncStorage.setItem('operator-1', '{not json');
   expect(await queue.list()).toEqual([]);
 });

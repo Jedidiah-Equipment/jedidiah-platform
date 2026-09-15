@@ -1,3 +1,4 @@
+import { DateIso } from '@pkg/schema';
 import { expect, test } from 'vitest';
 import { latestKnownReading } from './latest-reading';
 
@@ -11,7 +12,11 @@ const queued = (localId: string, value: number, capturedAt: string, machineId = 
   disputePrevious: false,
   comment: null,
 });
-const synced = (id: string, value: number, capturedAt: string) => ({ id, value, capturedAt });
+const synced = (id: string, value: number, capturedAt: string) => ({
+  id,
+  value,
+  capturedAt: DateIso.parse(capturedAt),
+});
 
 test('the minimum allowed value follows the newest capture on the phone or the server, and the server after sync', () => {
   const history = [synced('server-2', 120, '2026-09-08T09:00:00Z'), synced('server-1', 100, '2026-09-08T08:00:00Z')];

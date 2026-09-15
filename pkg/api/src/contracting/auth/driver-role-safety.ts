@@ -1,23 +1,15 @@
 import { assertDriverAccountChangeAllowed, isFleetError } from '@pkg/core/contracting';
 import type { Db } from '@pkg/db';
-import { AuthId, ContractingRole, EquipmentRole } from '@pkg/schema';
+import { AuthId } from '@pkg/schema';
 import type { BetterAuthPlugin } from 'better-auth';
 import { APIError } from 'better-auth/api';
 import { z } from 'zod';
+import { getRoleChange, spansBothBusinesses } from '../../auth/role-slots.js';
 
-const RoleUpdate = z.object({
-  contractingRole: ContractingRole.nullable().optional(),
-  isDevice: z.boolean().optional(),
-});
-const AdminTarget = z.object({
-  userId: AuthId,
-  role: EquipmentRole.optional(),
-  data: z.object({ equipmentRole: EquipmentRole.nullable().optional() }).optional(),
-});
+const AdminTarget = z.object({ userId: AuthId });
+const DeviceUpdate = z.object({ isDevice: z.boolean().optional() });
 
-// Better Auth gives each hook the original update, so promotions must also be read from the
-// transport fields: super-admin normalization clears the Contracting slot in another hook.
-// The database trigger remains the final concurrency guard.
+// The database trigger remains the final concurrency guard; this is the friendly half.
 export function driverRoleSafetyPlugin(db: Db): BetterAuthPlugin {
   return {
     id: 'contracting-driver-role-safety',
@@ -27,18 +19,16 @@ export function driverRoleSafetyPlugin(db: Db): BetterAuthPlugin {
           user: {
             update: {
               before: async (updatedUser, context) => {
-                const update = RoleUpdate.safeParse(updatedUser);
                 const target = AdminTarget.safeParse(context?.body);
-                if (!update.success || !target.success) return;
-                const promotesSuperAdmin =
-                  target.data.role === 'super-admin' || target.data.data?.equipmentRole === 'super-admin';
-                const contractingRole = promotesSuperAdmin ? null : update.data.contractingRole;
+                const device = DeviceUpdate.safeParse(updatedUser);
+                if (!target.success || !device.success) return;
+                const change = getRoleChange(context?.path, context?.body);
                 try {
                   await assertDriverAccountChangeAllowed({
                     db,
                     userId: target.data.userId,
-                    contractingRole,
-                    isDevice: update.data.isDevice,
+                    contractingRole: spansBothBusinesses(change?.equipmentRole) ? null : change?.contractingRole,
+                    isDevice: device.data.isDevice,
                   });
                 } catch (error) {
                   if (isFleetError(error))

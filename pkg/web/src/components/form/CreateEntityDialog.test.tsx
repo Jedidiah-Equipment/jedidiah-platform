@@ -67,6 +67,40 @@ describe('CreateEntityDialog', () => {
     expect(submit.disabled).toBe(true);
   });
 
+  it('starts a fresh form from the current defaults each time it opens', async () => {
+    const container = document.createElement('div');
+    document.body.append(container);
+    const root = createRoot(container);
+    roots.push(root);
+    let readName: (() => string) | undefined;
+    let setName: ((name: string) => void) | undefined;
+    const render = (open: boolean, name: string) =>
+      root.render(
+        <CreateEntityDialog
+          defaultValues={{ name }}
+          onCreate={async () => undefined}
+          onCreated={() => undefined}
+          onOpenChange={() => undefined}
+          open={open}
+          title="Create thing"
+          validator={z.object({ name: z.string() })}
+        >
+          {(form) => {
+            readName = () => form.state.values.name;
+            setName = (next) => form.setFieldValue('name', next);
+            return null;
+          }}
+        </CreateEntityDialog>,
+      );
+
+    await act(async () => render(true, 'first'));
+    await act(async () => setName?.('typed'));
+    await act(async () => render(false, 'first'));
+    await act(async () => render(true, 'second'));
+
+    expect(readName?.()).toBe('second');
+  });
+
   it('retains a diagnostic trace when creation rejects', async () => {
     const error = new Error('unexpected');
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);

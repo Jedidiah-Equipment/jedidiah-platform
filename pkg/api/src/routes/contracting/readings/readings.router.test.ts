@@ -1,3 +1,4 @@
+import { captureReading } from '@pkg/core/contracting';
 import { user } from '@pkg/db';
 import { expect } from 'vitest';
 import { createTester } from '@/test/create-tester.js';
@@ -12,29 +13,12 @@ const test = createTester(async ({ db }) => {
     createdAt: new Date(),
     updatedAt: new Date(),
   });
-  return {};
+  return { db };
 });
-test('reserves baselines for admins and exceptions for managers, behind the business wall', async ({ context }) => {
-  const session = mockSession(null);
-  session.user.contractingRole = 'contracting-admin';
-  const admin = context.createCaller(session);
-  const category = await admin.contractingFleet.categories.create({ name: 'Tractors', kind: 'machine' });
-  const machine = await admin.contractingFleet.machines.create({
-    code: 'T1',
-    make: 'Deere',
-    model: '6140',
-    categoryId: category.id,
-  });
-  const input = { machineId: machine.id, value: 100, capturedAt: '2026-09-07T08:00:00Z' };
+test('reserves the exceptions list for managers, behind the business wall', async ({ context }) => {
   const managerSession = mockSession(null);
   managerSession.user.contractingRole = 'contracting-manager';
   const manager = context.createCaller(managerSession);
-  await expect(manager.contractingReadings.captureBaseline(input)).rejects.toMatchObject({ code: 'FORBIDDEN' });
-  expect(await admin.contractingReadings.captureBaseline(input)).toMatchObject({
-    role: 'baseline',
-    value: 100,
-    photo: null,
-  });
   expect(await manager.contractingReadings.listExceptions()).toEqual([]);
   for (const session of [
     mockSession('admin'),
@@ -59,10 +43,16 @@ test('foremen can find active Machines and read field history without fleet mana
     model: '6140',
     categoryId: category.id,
   });
-  await admin.contractingReadings.captureBaseline({
-    machineId: machine.id,
-    value: 100,
-    capturedAt: '2026-09-08T08:00:00Z',
+  await captureReading({
+    db: context.db,
+    actorUserId: adminSession.user.id,
+    input: {
+      machineId: machine.id,
+      role: 'spot',
+      value: 100,
+      capturedAt: '2026-09-08T08:00:00Z',
+      disputePrevious: false,
+    },
   });
   const foremanSession = mockSession(null);
   foremanSession.user.contractingRole = 'foreman';
@@ -77,7 +67,6 @@ test('foremen can find active Machines and read field history without fleet mana
       categoryName: 'Tractors',
       categoryIcon: 'generic-machine',
       categoryColour: 'gray',
-      availability: 'in-yard',
     },
   ]);
   const history = await foreman.contractingReadings.fieldHistory({ machineId: machine.id });

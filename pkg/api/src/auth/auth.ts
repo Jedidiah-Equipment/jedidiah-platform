@@ -6,6 +6,7 @@ import { admin as adminPlugin } from 'better-auth/plugins';
 import { emailSender } from '../email/index.js';
 import { getApiConfig } from '../env.js';
 import { ac, authRoles } from './access-control.js';
+import { roleSlotsPlugin } from './role-slots.js';
 import { assertUserCanCreateSession } from './sign-in-eligibility.js';
 import { userPhoneValidationPlugin } from './user-phone-validation.js';
 
@@ -68,6 +69,7 @@ function createAuthOptions(database: Db, businessPlugins: readonly BetterAuthPlu
         adminRoles: ['admin'],
         roles: authRoles,
       }),
+      roleSlotsPlugin(),
       ...businessPlugins,
       userPhoneValidationPlugin(),
       expo(),

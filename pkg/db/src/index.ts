@@ -1,7 +1,17 @@
 export { and, eq, isNull, sql } from 'drizzle-orm';
 export { closeDatabaseConnection, db, queryClient } from './client.js';
 export { createDatabaseClient, type DatabaseClient, type Db } from './database-client.js';
-export { databaseTargetsMatch, isLoopbackHostname } from './database-target.js';
+export {
+  assertLocalDatabaseTarget,
+  type DatabaseTarget,
+  databaseTargets,
+  databaseTargetsMatch,
+  databaseUrlVariable,
+  isLoopbackHostname,
+  type RemoteDatabaseTarget,
+  requireDatabaseUrl,
+  resolveConfirmedRemoteDatabaseUrl,
+} from './database-target.js';
 export { getDatabaseConfig, getDatabaseUrl } from './env.js';
 export {
   createEscapedContainsSearchCondition,

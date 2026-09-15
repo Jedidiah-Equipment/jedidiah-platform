@@ -1,4 +1,5 @@
-import { type RoleSlots, tryParseRoleSlots } from '@pkg/domain';
+import { getRoleSlotsPermissions, type RoleSlots, tryParseRoleSlots } from '@pkg/domain';
+import type { AppPermission } from '@pkg/schema';
 import { createContext, type ReactNode, useContext } from 'react';
 
 import type { AuthSession } from './auth';
@@ -25,4 +26,15 @@ export function useAuthSession(): AuthSession {
 // The session's role slots for the domain business predicates; null when the roles do not parse.
 export function getSessionRoleSlots(session: AuthSession): RoleSlots | null {
   return tryParseRoleSlots(session.user);
+}
+
+/**
+ * Whether the session's roles grant any of `permissions`. Unlike `useCan`, which asks the server, this reads the
+ * persisted session so field screens still answer while offline.
+ */
+export function useSessionPermission(...permissions: AppPermission[]): boolean {
+  const slots = getSessionRoleSlots(useAuthSession());
+  if (!slots) return false;
+  const granted = getRoleSlotsPermissions(slots);
+  return permissions.some((permission) => granted.includes(permission));
 }

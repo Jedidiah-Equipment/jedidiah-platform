@@ -43,7 +43,6 @@ export const ProductCreateDialog: React.FC<ProductCreateDialogProps> = ({ onOpen
   return (
     <CreateEntityDialog
       defaultValues={PRODUCT_CREATE_DEFAULT_VALUES}
-      key={open ? 'open' : 'closed'}
       onCreate={(values) => createProductMutation.mutateAsync(toProductMinimalCreateInput(values))}
       onCreated={async (product: Product) => {
         await invalidateProducts();

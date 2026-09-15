@@ -1,6 +1,7 @@
+import type { FieldReading } from '@pkg/schema/contracting';
 import type { QueuedReading } from './reading-queue';
 
-type SyncedReading = { id: string; value: number; capturedAt: string };
+type SyncedReading = Pick<FieldReading, 'id' | 'value' | 'capturedAt'>;
 
 /** The machine's latest known reading: the newest of the local queue and synced history. */
 export function latestKnownReading(

@@ -11,7 +11,7 @@ const { saveBlobAsFile } = vi.hoisted(() => ({ saveBlobAsFile: vi.fn() }));
 vi.mock('@/hooks/use-api-mutation-error-toast.js', () => ({ useApiMutationErrorToast: () => showMutationError }));
 vi.mock('@/utils/download.js', () => ({ saveBlobAsFile }));
 
-import { FilePreviewSheet } from '@/components/file-preview/FilePreviewSheet.js';
+import { FilePreviewSheet } from './FilePreviewSheet.js';
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 

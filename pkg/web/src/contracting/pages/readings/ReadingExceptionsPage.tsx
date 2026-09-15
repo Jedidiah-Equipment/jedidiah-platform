@@ -18,6 +18,7 @@ import { CategoryLabel } from '@/contracting/components/CategoryIcon.js';
 import { useQueryInvalidation } from '@/contracting/hooks/use-query-invalidation.js';
 import { readingPhotoUrl } from '@/contracting/lib/contracting-http-paths.js';
 import { useTRPC } from '@/lib/trpc.js';
+import { cn } from '@/lib/utils.js';
 
 const amendmentValues = ReadingAmendInput.omit({ id: true });
 const aiVerificationPresentation: Record<
@@ -127,7 +128,10 @@ export function ReadingExceptionsPage() {
             {row.original.exceptionTypes.map((type) => (
               <Badge
                 key={type}
-                className={`${readingExceptionTypeColorClassNames[type].chip} ${readingExceptionTypeColorClassNames[type].text}`}
+                className={cn(
+                  readingExceptionTypeColorClassNames[type].chip,
+                  readingExceptionTypeColorClassNames[type].text,
+                )}
                 variant="outline"
               >
                 {readingExceptionTypeLabels[type]}
@@ -234,11 +238,7 @@ export function ReadingExceptionsPage() {
   });
   return (
     <>
-      <PageLayout
-        title="Reading exceptions"
-        description="Review disputed readings and photo verification warnings."
-        size="full"
-      >
+      <PageLayout title="Reading exceptions" description="Review disputed readings and photo verification warnings.">
         <ErrorMessage error={query.error ?? reverify.error} fallbackMessage="Unable to load or verify readings." />
         <DataTable
           table={table}

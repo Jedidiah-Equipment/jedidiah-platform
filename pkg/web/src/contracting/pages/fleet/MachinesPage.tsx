@@ -67,7 +67,7 @@ export function MachinesPage() {
         header: 'Status',
         cell: ({ row }) => (
           <Badge variant={row.original.retiredAt ? 'outline' : 'secondary'}>
-            {row.original.retiredAt ? 'Retired' : 'Active'}
+            {row.original.retiredAt ? 'Retired' : 'In Yard'}
           </Badge>
         ),
       },

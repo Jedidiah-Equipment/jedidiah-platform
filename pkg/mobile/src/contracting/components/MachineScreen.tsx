@@ -45,7 +45,7 @@ export default function MachineScreen() {
               {machine ? `${machine.make} ${machine.model}` : 'Machine details unavailable'}
             </Text>
           </View>
-          {machine ? <Text className="text-muted-foreground">{machine.categoryName}</Text> : null}
+          <Text className="text-muted-foreground">{machine?.categoryName} · In Yard</Text>
           <Text className="text-3xl text-foreground" weight="bold">
             {latest ? `${latest.value.toFixed(1)} h` : 'No known reading'}
           </Text>

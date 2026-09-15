@@ -8,7 +8,7 @@ export const categoryKey = (kind: string, name: string) => `${kind}:${naturalKey
 export function placeholderEmail(name: string): string {
   const slug = name
     .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
+    .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '');

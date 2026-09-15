@@ -8,7 +8,7 @@ import { mutateEntity } from '../../audit/mutate-entity.js';
 import { assertNotRetired, FleetError, notFound } from './fleet-errors.js';
 
 /** What Machines and Implements share: a code, a category, and a retirement that ends their history. */
-type FleetEntryTable = PgTable & { id: PgColumn; retiredAt: PgColumn };
+type FleetEntryTable = PgTable & { id: PgColumn; retiredAt: PgColumn; retiredReason: PgColumn; updatedAt: PgColumn };
 type FleetEntryRow = { id: string; retiredAt: Date | null };
 
 export function retirementFilter(table: FleetEntryTable, status: 'active' | 'retired' | 'all'): SQL | undefined {
@@ -50,7 +50,8 @@ export async function retireFleetEntry<TTable extends FleetEntryTable, TResult>(
   project: (tx: DatabaseTransaction, row: TTable['$inferSelect']) => Promise<TResult> | TResult;
 }) {
   const { id, reason } = FleetRetireInput.parse(input);
-  // The generic table hides its column names from the type system, so the retirement columns are cast once here.
+  // FleetEntryTable guarantees these three columns exist; TypeScript cannot map a generic table's
+  // columns onto its insert type, so the proven shape is asserted once here.
   const retirement = { retiredAt: new Date(), retiredReason: reason, updatedAt: new Date() } as Partial<
     TTable['$inferInsert']
   >;

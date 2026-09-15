@@ -92,11 +92,14 @@ export default function MachinesScreen() {
             onPress={() => router.push(`/contracting/machines/${item.id}`)}
             className="w-full gap-2 rounded-xl border border-border bg-surface p-4"
           >
-            <View className="flex-row items-center gap-3">
-              <CategoryIcon icon={item.categoryIcon} colour={item.categoryColour} size={20} />
-              <Text className="text-lg text-foreground" weight="bold">
-                {item.code}
-              </Text>
+            <View className="flex-row items-center justify-between gap-2">
+              <View className="flex-row items-center gap-3">
+                <CategoryIcon icon={item.categoryIcon} colour={item.categoryColour} size={20} />
+                <Text className="text-lg text-foreground" weight="bold">
+                  {item.code}
+                </Text>
+              </View>
+              <Text className="rounded-full bg-muted px-3 py-1 text-xs text-foreground">In Yard</Text>
             </View>
             <Text className="text-sm text-muted-foreground">
               {item.make} {item.model} · {item.categoryName}

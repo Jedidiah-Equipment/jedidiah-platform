@@ -1,38 +1,118 @@
-import { formatDate } from '@pkg/domain';
+import { formatDate, toSentenceCase } from '@pkg/domain';
+import {
+  type ReadingExceptionType,
+  readingExceptionTypeColorClassNames,
+  readingExceptionTypeLabels,
+} from '@pkg/domain/contracting';
 import { ReadingAmendInput, type ReadingException } from '@pkg/schema/contracting';
+import { IconEye, IconInfoCircle } from '@tabler/icons-react';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
+import { toast } from 'sonner';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { DataTable } from '@/components/data-table/DataTable.js';
 import { type DataTableColumnDef, useDataTable } from '@/components/data-table/features.js';
+import { FilePreviewSheet } from '@/components/file-preview/FilePreviewSheet.js';
 import { CreateEntityDialog } from '@/components/form/index.js';
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
+import { Badge } from '@/components/ui/badge.js';
 import { Button } from '@/components/ui/button.js';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip.js';
 import { CategoryLabel } from '@/contracting/components/CategoryIcon.js';
 import { useQueryInvalidation } from '@/contracting/hooks/use-query-invalidation.js';
 import { readingPhotoUrl } from '@/contracting/lib/contracting-http-paths.js';
 import { useTRPC } from '@/lib/trpc.js';
 
 const amendmentValues = ReadingAmendInput.omit({ id: true });
+const aiExceptionVerifications = new Set<ReadingException['aiVerification']>([
+  'pending',
+  'disagrees',
+  'low-confidence',
+]);
+
+function exceptionTypes(row: ReadingException) {
+  const types: ReadingExceptionType[] = [];
+  if (row.disputed) types.push('disputed');
+  if (row.evidenceReviewedAt === null && aiExceptionVerifications.has(row.aiVerification)) types.push('ai-flagged');
+  return types;
+}
+
 function evidenceLabel(row: ReadingException) {
   if (!row.photo) return 'Missing Photo Evidence';
-  if (row.aiVerification === 'agrees') return 'Photo-backed · AI-verified';
+  if (row.aiVerification === 'low-confidence' && row.aiValue === null) return 'Photo-backed';
   const labels = {
-    pending: 'AI verification pending',
-    disagrees: 'AI disagrees',
-    'low-confidence': 'Low AI confidence',
-    'not-applicable': 'AI verification not applicable',
+    agrees: 'Entered value verified',
+    pending: 'Verification pending',
+    disagrees: 'Extracted value differs',
+    'low-confidence': 'Low extraction confidence',
+    'not-applicable': 'Photo verification not applicable',
   };
   return `Photo-backed · ${labels[row.aiVerification]}`;
 }
+
+function aiResult(row: ReadingException) {
+  if (row.aiVerification === 'not-applicable') return 'No photo verification';
+  if (row.aiVerification === 'pending') return 'Verification pending';
+  if (row.aiValue === null) return 'No readable meter detected';
+  return `${row.aiValue.toFixed(1)} h`;
+}
+
+function confidenceLabel(row: ReadingException) {
+  if (row.aiConfidence === null) return 'Confidence unavailable';
+  if (row.aiValue === null) return null;
+  return `${Math.round(row.aiConfidence * 100)}% confidence in extracted value`;
+}
+
+function NoReadableMeterResult({ confidence }: { confidence: number }) {
+  const label = `${Math.round(confidence * 100)}% confident no readable meter was detected`;
+  return (
+    <Tooltip>
+      <TooltipTrigger
+        render={
+          <button
+            type="button"
+            className="inline-flex cursor-help items-center gap-1 rounded-sm text-left text-foreground"
+            aria-label={label}
+          />
+        }
+      >
+        <span>No readable meter detected</span>
+        <IconInfoCircle aria-hidden className="size-[18px] shrink-0" />
+      </TooltipTrigger>
+      <TooltipContent>{label}</TooltipContent>
+    </Tooltip>
+  );
+}
+
+async function fetchReadingPhoto(readingId: string, signal: AbortSignal) {
+  const response = await fetch(readingPhotoUrl(readingId), { credentials: 'include', signal });
+  if (!response.ok) throw new Error('Unable to preview meter photo.');
+  return response.blob();
+}
+
 export function ReadingExceptionsPage() {
   const trpc = useTRPC();
   const { invalidateReadings } = useQueryInvalidation();
   const [selected, setSelected] = useState<ReadingException | null>(null);
+  const [previewReading, setPreviewReading] = useState<ReadingException | null>(null);
   const [globalFilter, setGlobalFilter] = useState('');
   const query = useQuery(trpc.contractingReadings.listExceptions.queryOptions());
-  const amend = useMutation(trpc.contractingReadings.amend.mutationOptions({ onSuccess: invalidateReadings }));
+  const amend = useMutation(
+    trpc.contractingReadings.amend.mutationOptions({
+      onSuccess: async () => {
+        await invalidateReadings();
+        toast.success('Reading resolved');
+      },
+    }),
+  );
   const reverify = useMutation(trpc.contractingReadings.reverify.mutationOptions({ onSuccess: invalidateReadings }));
+  const fetchPreviewBlob = useCallback(
+    ({ signal }: { signal: AbortSignal }) => {
+      if (!previewReading) throw new Error('No meter photo selected.');
+      return fetchReadingPhoto(previewReading.id, signal);
+    },
+    [previewReading],
+  );
   const columns = useMemo<DataTableColumnDef<ReadingException>[]>(
     () => [
       {
@@ -50,10 +130,23 @@ export function ReadingExceptionsPage() {
       {
         id: 'capture',
         header: 'Capture',
+        cell: ({ row }) => formatDate(row.original.capturedAt, 'dd MMM yyyy HH:mm'),
+      },
+      { accessorKey: 'role', header: 'Reading type', cell: ({ row }) => toSentenceCase(row.original.role) },
+      {
+        id: 'exceptionType',
+        header: 'Exception type',
         cell: ({ row }) => (
-          <div>
-            {formatDate(row.original.capturedAt, 'dd MMM yyyy HH:mm')}
-            <div className="text-muted-foreground">{row.original.role}</div>
+          <div className="flex flex-wrap gap-1">
+            {exceptionTypes(row.original).map((type) => (
+              <Badge
+                key={type}
+                className={`${readingExceptionTypeColorClassNames[type].chip} ${readingExceptionTypeColorClassNames[type].text}`}
+                variant="outline"
+              >
+                {readingExceptionTypeLabels[type]}
+              </Badge>
+            ))}
           </div>
         ),
       },
@@ -73,28 +166,42 @@ export function ReadingExceptionsPage() {
         header: 'Evidence',
         cell: ({ row: { original: row } }) => (
           <div className="space-y-1">
-            <div>{evidenceLabel(row)}</div>
-            {row.disputed ? <div>Disputed: {row.disputeReason}</div> : null}
             {row.photo ? (
-              <a className="underline" href={readingPhotoUrl(row.id)} target="_blank" rel="noreferrer">
-                View photo
-              </a>
-            ) : null}
+              <Tooltip>
+                <TooltipTrigger
+                  render={
+                    <button
+                      type="button"
+                      className="inline-flex cursor-pointer items-center gap-1 rounded-sm text-left text-foreground hover:underline"
+                      aria-label={`Preview meter photo for ${row.machineCode}`}
+                      onClick={() => setPreviewReading(row)}
+                    />
+                  }
+                >
+                  <span>{evidenceLabel(row)}</span>
+                  <IconEye aria-hidden className="size-[18px] shrink-0" />
+                </TooltipTrigger>
+                <TooltipContent>Preview photo</TooltipContent>
+              </Tooltip>
+            ) : (
+              <div>{evidenceLabel(row)}</div>
+            )}
+            {row.disputed ? <div>Disputed: {row.disputeReason}</div> : null}
             <div className="text-muted-foreground">{row.aiHint}</div>
           </div>
         ),
       },
       {
         id: 'ai',
-        header: 'AI reading / confidence',
+        header: 'AI meter result',
         cell: ({ row }) => (
           <div>
-            {row.original.aiValue?.toFixed(1) ?? 'Unread'} h
-            <div>
-              {row.original.aiConfidence === null
-                ? 'Confidence unavailable'
-                : `${Math.round(row.original.aiConfidence * 100)}% confidence`}
-            </div>
+            {row.original.aiValue === null && row.original.aiConfidence !== null ? (
+              <NoReadableMeterResult confidence={row.original.aiConfidence} />
+            ) : (
+              <div>{aiResult(row.original)}</div>
+            )}
+            {confidenceLabel(row.original) ? <div>{confidenceLabel(row.original)}</div> : null}
           </div>
         ),
       },
@@ -102,7 +209,7 @@ export function ReadingExceptionsPage() {
         id: 'actions',
         header: 'Actions',
         cell: ({ row }) => (
-          <div className="flex flex-col items-start gap-1">
+          <div className="flex flex-wrap items-center gap-1">
             <Button
               size="sm"
               variant="outline"
@@ -111,7 +218,7 @@ export function ReadingExceptionsPage() {
                 setSelected(row.original);
               }}
             >
-              Amend
+              Resolve
             </Button>
             <Button
               size="sm"
@@ -138,7 +245,7 @@ export function ReadingExceptionsPage() {
       <PageLayout
         title="Reading exceptions"
         description="Review disputed readings and photo verification warnings."
-        size="lg"
+        size="full"
       >
         <ErrorMessage error={query.error ?? reverify.error} fallbackMessage="Unable to load or verify readings." />
         <DataTable
@@ -172,6 +279,20 @@ export function ReadingExceptionsPage() {
           </>
         )}
       </CreateEntityDialog>
+      <FilePreviewSheet
+        description={previewReading ? `Captured ${formatDate(previewReading.capturedAt, 'dd MMM yyyy HH:mm')}` : ''}
+        downloadFilename={`${previewReading?.machineCode ?? 'meter'}-reading.${previewReading?.photo?.contentType === 'image/png' ? 'png' : 'jpg'}`}
+        fetchBlob={fetchPreviewBlob}
+        kind="image"
+        onOpenChange={(open) => {
+          if (!open) setPreviewReading(null);
+        }}
+        open={previewReading !== null}
+        queryKey={['contracting-reading-photo', previewReading?.id ?? 'closed']}
+        staleTime={Infinity}
+        subject="meter photo"
+        title={previewReading ? `${previewReading.machineCode} meter photo` : 'Meter photo'}
+      />
     </>
   );
 }

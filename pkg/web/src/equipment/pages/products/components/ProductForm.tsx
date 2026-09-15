@@ -261,6 +261,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({ costingFooter, details
           <TabsContent className="pt-4" value="costing">
             <div className="flex flex-col gap-4">
               <AutosaveStatus onRetry={() => void autosave.retry()} state={autosave.state} />
+              {costingFooter}
               <form.Field name="materialLines" mode="array">
                 {(materialLinesField) => (
                   <form.Field name="laborHours" mode="array">
@@ -274,7 +275,6 @@ export const ProductForm: React.FC<ProductFormProps> = ({ costingFooter, details
                   </form.Field>
                 )}
               </form.Field>
-              {costingFooter}
             </div>
           </TabsContent>
         </form>

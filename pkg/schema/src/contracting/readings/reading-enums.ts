@@ -5,3 +5,5 @@ export const readingCaptureRoles = ['baseline', 'spot'] as const;
 export const readingMethods = ['photo', 'manual'] as const;
 export const readingVerifications = ['pending', 'agrees', 'disagrees', 'low-confidence', 'not-applicable'] as const;
 export type ReadingVerification = (typeof readingVerifications)[number];
+export const readingExceptionTypes = ['disputed', 'ai-flagged'] as const;
+export type ReadingExceptionType = (typeof readingExceptionTypes)[number];

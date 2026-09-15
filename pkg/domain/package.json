@@ -6,19 +6,23 @@
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
+      "import": "./dist/index.js",
+      "require": "./dist/index.js"
     },
     "./equipment": {
       "types": "./dist/equipment/index.d.ts",
-      "import": "./dist/equipment/index.js"
+      "import": "./dist/equipment/index.js",
+      "require": "./dist/equipment/index.js"
     },
     "./contracting": {
       "types": "./dist/contracting/index.d.ts",
-      "import": "./dist/contracting/index.js"
+      "import": "./dist/contracting/index.js",
+      "require": "./dist/contracting/index.js"
     },
     "./testing": {
       "types": "./dist/testing/index.d.ts",
-      "import": "./dist/testing/index.js"
+      "import": "./dist/testing/index.js",
+      "require": "./dist/testing/index.js"
     },
     "./assets/*": "./assets/*",
     "./fonts/*": "./fonts/*"

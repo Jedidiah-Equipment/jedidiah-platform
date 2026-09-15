@@ -8,9 +8,10 @@ import { Button } from '@/components/ui/button.js';
 import { ScrollArea } from '@/components/ui/scroll-area.js';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
-import type { DocumentPreviewKind } from '@/equipment/utils/document.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { saveBlobAsFile } from '@/utils/download.js';
+
+export type FilePreviewKind = 'image' | 'pdf';
 
 type FilePreviewSheetProps = {
   /** Shown under the title until the bytes land and can describe themselves. */
@@ -18,7 +19,7 @@ type FilePreviewSheetProps = {
   downloadFilename: string;
   fetchBlob: (options: { signal: AbortSignal }) => Promise<Blob>;
   /** `null` for a file the browser cannot render inline — the sheet then offers the download alone. */
-  kind: DocumentPreviewKind | null;
+  kind: FilePreviewKind | null;
   onOpenChange: (open: boolean) => void;
   open: boolean;
   /** Distinguishes one previewed file from the next, and re-renders a generated one when it changes. */
@@ -30,9 +31,9 @@ type FilePreviewSheetProps = {
 };
 
 /**
- * One sheet for every file the app shows without leaving the page: stored documents and PDFs the API
- * renders per request alike. It holds the bytes itself rather than pointing an iframe at the route a
- * second time, which is what lets the same fetch serve both the preview and the Download button.
+ * One sheet for every file the app shows without leaving the page: stored documents and generated
+ * files alike. It holds the bytes itself rather than pointing an iframe at the route a second time,
+ * which lets the same fetch serve both the preview and the Download button.
  */
 export function FilePreviewSheet({
   description,
@@ -131,7 +132,7 @@ function FilePreviewContent({
   title,
 }: {
   isLoading: boolean;
-  kind: DocumentPreviewKind | null;
+  kind: FilePreviewKind | null;
   previewUrl: string | null;
   queryError: unknown;
   subject: string;

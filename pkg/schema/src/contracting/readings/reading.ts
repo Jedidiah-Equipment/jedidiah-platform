@@ -3,7 +3,13 @@ import { AuthId } from '../../auth/auth-id.js';
 import { DateIso } from '../../common/date.js';
 import { UUID } from '../../common/uuid.js';
 import { CategoryColour, CategoryIconKey } from '../fleet/fleet.js';
-import { readingCaptureRoles, readingMethods, readingRoles, readingVerifications } from './reading-enums.js';
+import {
+  readingCaptureRoles,
+  readingExceptionTypes,
+  readingMethods,
+  readingRoles,
+  readingVerifications,
+} from './reading-enums.js';
 
 export const ReadingValue = z.number().nonnegative().max(999999999.9).multipleOf(0.1);
 export const ReadingReason = z.string().trim().min(1, 'A reason is required').max(2000);
@@ -84,6 +90,7 @@ export const HourReading = z.object({
 });
 export type HourReading = z.infer<typeof HourReading>;
 export const ReadingException = HourReading.extend({
+  exceptionTypes: z.array(z.enum(readingExceptionTypes)).min(1),
   machineCode: z.string(),
   categoryIcon: CategoryIconKey,
   categoryColour: CategoryColour,

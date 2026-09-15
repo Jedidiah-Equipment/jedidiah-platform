@@ -8,6 +8,13 @@ import { QuoteDocumentPdf } from './QuoteDocumentPdf.js';
 import { QuoteDocumentPricingTable } from './QuoteDocumentPricingTable.js';
 
 describe('renderQuoteDocumentPdf', () => {
+  test('labels the delivery terms row Delivery', async () => {
+    const renderedText = (await renderPageText(testQuoteDocument())).flat();
+
+    expect(renderedText).toContain('Delivery:');
+    expect(renderedText).not.toContain('Transport:');
+  });
+
   test('renders each Work Item with its Parts nested underneath', () => {
     const document: QuoteDocumentModel = {
       ...testQuoteDocument(),

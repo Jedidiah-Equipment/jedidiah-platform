@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { AuthId } from '../auth/auth-id.js';
+import { Business } from '../common/business.js';
 import { DateIso } from '../common/date.js';
 import { createCursorQueryResult, createSortedCursorQueryInput } from '../common/pagination.js';
 import { UUID } from '../common/uuid.js';
@@ -10,6 +11,8 @@ export const AuditAction = z.enum(['created', 'updated', 'deleted', 'merged']);
 
 // One registry assigns every audited entity to its business; the full enum and business views
 // derive from it, so a new type cannot silently disappear from a separately maintained subset.
+// A shared type belongs to no business by type alone: each of its events is attributed to one business
+// through the record it names (a User through its role slots).
 export const AUDIT_ENTITY_TYPES = {
   contracting: [
     'contracting_work_type',
@@ -32,11 +35,19 @@ export const AUDIT_ENTITY_TYPES = {
     'purchase_order',
     'quote',
     'supplier',
-    'user',
   ],
+  shared: ['user'],
 } as const;
 export type AuditEntityType = z.infer<typeof AuditEntityType>;
-export const AuditEntityType = z.enum([...AUDIT_ENTITY_TYPES.contracting, ...AUDIT_ENTITY_TYPES.equipment]);
+export const AuditEntityType = z.enum([
+  ...AUDIT_ENTITY_TYPES.contracting,
+  ...AUDIT_ENTITY_TYPES.equipment,
+  ...AUDIT_ENTITY_TYPES.shared,
+]);
+
+export function getBusinessAuditEntityTypes(business: Business): AuditEntityType[] {
+  return [...AUDIT_ENTITY_TYPES[business], ...AUDIT_ENTITY_TYPES.shared];
+}
 
 export type AuditFieldChange = z.infer<typeof AuditFieldChange>;
 export const AuditFieldChange = z.object({
@@ -83,6 +94,7 @@ export type AuditListInput = z.infer<typeof AuditListInput>;
 export const AuditListInput = createSortedCursorQueryInput({
   defaultSortDirection: 'desc',
   shape: {
+    business: Business,
     filters: AuditFilters,
   },
   sortBy: AuditSortBy.default('occurredAt'),
@@ -90,3 +102,12 @@ export const AuditListInput = createSortedCursorQueryInput({
 
 export type AuditListResult = z.infer<typeof AuditListResult>;
 export const AuditListResult = createCursorQueryResult(AuditEvent);
+
+export type AuditActorsInput = z.infer<typeof AuditActorsInput>;
+export const AuditActorsInput = z.object({ business: Business });
+
+export type AuditActor = z.infer<typeof AuditActor>;
+export const AuditActor = z.object({
+  id: AuthId,
+  name: z.string(),
+});

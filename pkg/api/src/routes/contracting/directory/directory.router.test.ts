@@ -109,5 +109,5 @@ test('normalizes inputs, returns public conflict errors and records business-att
     ['contracting_work_type', 'created'],
     ['contracting_work_type', 'updated'],
   ]);
-  expect((await context.createCaller(mockSession('admin')).audit.list({})).items).toEqual([]);
+  expect((await context.createCaller(mockSession('admin')).audit.list({ business: 'equipment' })).items).toEqual([]);
 });

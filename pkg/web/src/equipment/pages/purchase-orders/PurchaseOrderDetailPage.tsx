@@ -15,7 +15,10 @@ import { Button } from '@/components/ui/button.js';
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs.js';
-import { AuditTable, usePurchaseOrderAuditTableStore } from '@/equipment/components/audit/AuditTable.js';
+import {
+  EquipmentAuditTable,
+  usePurchaseOrderAuditTableStore,
+} from '@/equipment/components/audit/EquipmentAuditTable.js';
 import { formatPurchaseUnitLabel } from '@/equipment/utils/part-quantity-format.js';
 import { useAccess, useCan } from '@/hooks/use-access.js';
 import { useTRPC } from '@/lib/trpc.js';
@@ -141,7 +144,7 @@ export const PurchaseOrderDetailTabs: React.FC<{ children: React.ReactNode; purc
       </TabsContent>
       {auditAccess.can ? (
         <TabsContent className="pt-4" value="audit">
-          <AuditTable
+          <EquipmentAuditTable
             emptyMessage="No audit events found for this purchase order."
             fixedFilters={purchaseOrderAuditFilters}
             showEntityTypeFilter={false}

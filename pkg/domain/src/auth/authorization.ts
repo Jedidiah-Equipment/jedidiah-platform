@@ -99,6 +99,7 @@ export const permissionLabels = {
   'equipment_supplier:update': 'Manage suppliers',
   'equipment_supplier:remove': 'Remove suppliers',
   'equipment_supplier:merge': 'Merge suppliers',
+  'contracting_audit:read': 'View Contracting audit history',
   'contracting_directory:read': 'View Contracting directory',
   'contracting_directory:update': 'Manage Contracting directory',
   'contracting_job:read': 'View all Contracting jobs',
@@ -193,6 +194,7 @@ export const permissionDescriptions = {
   'equipment_supplier:update': 'Create and edit supplier records.',
   'equipment_supplier:remove': 'Soft-delete supplier records.',
   'equipment_supplier:merge': 'Merge a duplicate supplier into another, moving its parts and purchase orders.',
+  'contracting_audit:read': 'View audit events across Contracting records.',
   'contracting_directory:read': 'View Contracting customers, farms and work types.',
   'contracting_directory:update':
     'Create and edit Contracting customers, manage farms and activate or deactivate work types.',
@@ -249,6 +251,7 @@ export const authorizationStatement = {
   equipment_purchase_order: ['read', 'create', 'approve', 'send', 'amend', 'receive', 'close'],
   equipment_quote: ['read', 'create', 'update', 'cancel'],
   equipment_supplier: ['read', 'update', 'remove', 'merge'],
+  contracting_audit: ['read'],
   contracting_directory: ['read', 'update'],
   contracting_job: ['read', 'read-own', 'read-priced', 'create', 'update', 'assign', 'complete', 'cancel', 'price'],
   contracting_assignment: ['update-own'],
@@ -290,6 +293,7 @@ const adminAccess = {
 } as const satisfies RoleAccess;
 
 const contractingAdminAccess = {
+  contracting_audit: ['read'],
   contracting_directory: ['read', 'update'],
   contracting_job: ['read', 'read-own', 'read-priced', 'create', 'update', 'assign', 'complete', 'cancel', 'price'],
   contracting_assignment: ['update-own'],
@@ -385,6 +389,11 @@ export const appRoleAccess = {
   driver: {},
   mechanic: {},
 } as const satisfies Record<AppRole, RoleAccess>;
+
+export const auditReadPermissions = {
+  contracting: 'contracting_audit:read',
+  equipment: 'equipment_audit:read',
+} as const satisfies Record<Business, AppPermission>;
 
 export function hasPermission(
   access: Pick<UserAccessSummary, 'permissions'> | null | undefined,

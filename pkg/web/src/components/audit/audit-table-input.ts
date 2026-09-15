@@ -1,4 +1,4 @@
-import { AuditEntityType, type AuditListInput, DateIso } from '@pkg/schema';
+import { type AuditListInput, type Business, DateIso, getBusinessAuditEntityTypes } from '@pkg/schema';
 import type { ColumnFiltersState } from '@tanstack/react-table';
 
 type DateRangeFilterValue = {
@@ -8,20 +8,25 @@ type DateRangeFilterValue = {
 
 export type AuditTableFixedFilters = Partial<Pick<AuditListInput['filters'], 'entityIds' | 'entityTypes'>>;
 
-export function getAuditListInputExtras(columnFilters: ColumnFiltersState, fixedFilters: AuditTableFixedFilters = {}) {
+export function getAuditListInputExtras(
+  business: Business,
+  columnFilters: ColumnFiltersState,
+  fixedFilters: AuditTableFixedFilters = {},
+) {
   const occurredAtRange = getDateRangeFilterValue(columnFilters, 'occurredAt');
   const occurredAtStart = occurredAtRange.start ? DateIso.parse(toLocalDayStartIso(occurredAtRange.start)) : undefined;
   const occurredAtEnd = occurredAtRange.end ? DateIso.parse(toLocalDayEndIso(occurredAtRange.end)) : undefined;
 
   return {
+    business,
     filters: {
       actorUserIds: getMultiSelectFilterValue(columnFilters, 'actorUserId'),
       entityIds: fixedFilters.entityIds ?? [],
-      entityTypes: fixedFilters.entityTypes ?? getEntityTypeFilterValue(columnFilters),
+      entityTypes: fixedFilters.entityTypes ?? getEntityTypeFilterValue(business, columnFilters),
       ...(occurredAtStart ? { occurredAtStart } : {}),
       ...(occurredAtEnd ? { occurredAtEnd } : {}),
     },
-  } satisfies Pick<AuditListInput, 'filters'>;
+  } satisfies Pick<AuditListInput, 'business' | 'filters'>;
 }
 
 function getMultiSelectFilterValue(columnFilters: ColumnFiltersState, id: 'actorUserId' | 'entityType'): string[] {
@@ -32,8 +37,11 @@ function getMultiSelectFilterValue(columnFilters: ColumnFiltersState, id: 'actor
     : [];
 }
 
-function getEntityTypeFilterValue(columnFilters: ColumnFiltersState): AuditListInput['filters']['entityTypes'] {
-  const allowedEntityTypes = new Set<string>(AuditEntityType.options);
+function getEntityTypeFilterValue(
+  business: Business,
+  columnFilters: ColumnFiltersState,
+): AuditListInput['filters']['entityTypes'] {
+  const allowedEntityTypes = new Set<string>(getBusinessAuditEntityTypes(business));
 
   return getMultiSelectFilterValue(columnFilters, 'entityType').filter((entityType) =>
     allowedEntityTypes.has(entityType),

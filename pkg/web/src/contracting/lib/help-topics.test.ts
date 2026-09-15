@@ -6,6 +6,7 @@ describe('helpTopicForPath', () => {
   it('resolves each Contracting area, detail routes included', () => {
     expect(helpTopicForPath('/contracting')).toBe('contractingHome');
     expect(helpTopicForPath('/contracting/users')).toBe('contractingUsers');
+    expect(helpTopicForPath('/contracting/audit')).toBe('contractingAudit');
     expect(helpTopicForPath('/contracting/customers/42/edit')).toBe('contractingCustomers');
     expect(helpTopicForPath('/contracting/work-types/42/edit')).toBe('contractingWorkTypes');
     expect(helpTopicForPath('/contracting/readings/exceptions')).toBe('contractingReadings');

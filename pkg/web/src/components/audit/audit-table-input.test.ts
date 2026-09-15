@@ -12,7 +12,8 @@ describe('getAuditListInputExtras', () => {
       { id: 'entityType', value: ['product', 'not-an-entity'] },
     ] satisfies ColumnFiltersState;
 
-    expect(getAuditListInputExtras(filters)).toEqual({
+    expect(getAuditListInputExtras('equipment', filters)).toEqual({
+      business: 'equipment',
       filters: {
         actorUserIds: ['admin-user-id'],
         entityIds: [],
@@ -21,13 +22,25 @@ describe('getAuditListInputExtras', () => {
     });
   });
 
+  it("drops entity filters outside the business's log", () => {
+    const filters = [
+      { id: 'entityType', value: ['product', 'contracting_machine', 'user'] },
+    ] satisfies ColumnFiltersState;
+
+    expect(getAuditListInputExtras('contracting', filters).filters.entityTypes).toEqual([
+      'contracting_machine',
+      'user',
+    ]);
+  });
+
   it('uses fixed quote filters instead of visible entity filters', () => {
     const filters = [
       { id: 'actorUserId', value: ['admin-user-id'] },
       { id: 'entityType', value: ['product'] },
     ] satisfies ColumnFiltersState;
 
-    expect(getAuditListInputExtras(filters, { entityIds: [QUOTE_ID], entityTypes: ['quote'] })).toEqual({
+    expect(getAuditListInputExtras('equipment', filters, { entityIds: [QUOTE_ID], entityTypes: ['quote'] })).toEqual({
+      business: 'equipment',
       filters: {
         actorUserIds: ['admin-user-id'],
         entityIds: [QUOTE_ID],

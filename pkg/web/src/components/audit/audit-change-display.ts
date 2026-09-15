@@ -1,8 +1,9 @@
 import { formatCurrency, formatDate, formatPercent } from '@pkg/domain';
-import { quoteDeliveryTermsLabels } from '@pkg/domain/equipment';
 
 export type AuditChange = { from?: unknown; to?: unknown };
 export type AuditChangeMap = Record<string, AuditChange>;
+/** Stored enum values that read better under their surface labels than as raw codes, by field. */
+export type AuditValueLabels = Readonly<Record<string, Readonly<Record<string, string>>>>;
 
 export type AuditChangeDisplay = {
   field: string;
@@ -91,23 +92,25 @@ const dateFields = new Set([
 ]);
 const percentFields = new Set(['depositPercent', 'discountPercent']);
 
-/** Stored enum values that read better under their surface labels than as raw codes. */
-const enumValueLabels: Record<string, Record<string, string>> = {
-  deliveryTerms: quoteDeliveryTermsLabels,
-};
 const terminalCountFields = new Set(['movedParts', 'movedPurchaseOrders']);
 
-export function getAuditChangeDisplays(changes: AuditChangeMap | null): AuditChangeDisplay[] {
+export function getAuditChangeDisplays(
+  changes: AuditChangeMap | null,
+  valueLabels?: AuditValueLabels,
+): AuditChangeDisplay[] {
   if (!changes) {
     return [];
   }
 
   return Object.entries(changes).map(([key, change]) => ({
     field: getAuditFieldLabel(key),
-    from: terminalCountFields.has(key) && change.from === null ? '—' : formatAuditChangeValue(key, change.from),
+    from:
+      terminalCountFields.has(key) && change.from === null
+        ? '—'
+        : formatAuditChangeValue(key, change.from, valueLabels),
     key,
-    preview: formatAuditChangePreview(key, change),
-    to: formatAuditChangeValue(key, change.to),
+    preview: formatAuditChangePreview(key, change, valueLabels),
+    to: formatAuditChangeValue(key, change.to, valueLabels),
   }));
 }
 
@@ -128,7 +131,7 @@ export function getAuditFieldLabel(field: string): string {
   );
 }
 
-export function formatAuditChangeValue(field: string, value: unknown): string {
+export function formatAuditChangeValue(field: string, value: unknown, valueLabels?: AuditValueLabels): string {
   if (value === null || value === undefined) {
     return 'None';
   }
@@ -145,8 +148,10 @@ export function formatAuditChangeValue(field: string, value: unknown): string {
     return formatPercent(value);
   }
 
-  if (typeof value === 'string' && enumValueLabels[field]?.[value]) {
-    return enumValueLabels[field][value];
+  const valueLabel = typeof value === 'string' ? valueLabels?.[field]?.[value] : undefined;
+
+  if (valueLabel) {
+    return valueLabel;
   }
 
   if (dateFields.has(field) && (typeof value === 'string' || typeof value === 'number' || value instanceof Date)) {
@@ -172,10 +177,14 @@ export function formatAuditChangesJson(changes: AuditChangeMap): string {
   return JSON.stringify(changes, null, 2);
 }
 
-function formatAuditChangePreview(field: string, change: AuditChange): string {
+function formatAuditChangePreview(
+  field: string,
+  change: AuditChange,
+  valueLabels: AuditValueLabels | undefined,
+): string {
   const label = getAuditFieldLabel(field);
-  const from = formatAuditChangeValue(field, change.from);
-  const to = formatAuditChangeValue(field, change.to);
+  const from = formatAuditChangeValue(field, change.from, valueLabels);
+  const to = formatAuditChangeValue(field, change.to, valueLabels);
 
   if (terminalCountFields.has(field) && typeof change.to === 'number') {
     return `${label}: ${to}`;

@@ -1,4 +1,12 @@
-import { IconBuilding, IconCategory, IconGauge, IconTools, IconTractor, IconUsers } from '@tabler/icons-react';
+import {
+  IconBuilding,
+  IconCategory,
+  IconClipboardList,
+  IconGauge,
+  IconTools,
+  IconTractor,
+  IconUsers,
+} from '@tabler/icons-react';
 import { linkOptions } from '@tanstack/react-router';
 
 import type { NavSection } from '@/components/app-shell/NavSections.js';
@@ -76,6 +84,12 @@ export const contractingNavSections = [
         permission: 'contracting_directory:read',
         link: linkOptions({ to: '/contracting/work-types' }),
         icon: IconTools,
+      },
+      {
+        title: 'Audit',
+        permission: 'contracting_audit:read',
+        link: linkOptions({ to: '/contracting/audit' }),
+        icon: IconClipboardList,
       },
     ],
   },

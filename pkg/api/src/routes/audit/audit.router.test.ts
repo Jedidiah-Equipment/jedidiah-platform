@@ -236,9 +236,9 @@ describe('audit.actors', () => {
 
     await expect(
       context.createCaller(contractingSession('contracting-admin')).audit.actors({ business: 'contracting' }),
-    ).resolves.toEqual([{ email: 'a@example.com', id: 'contracting-actor-id', name: 'Anna' }]);
+    ).resolves.toEqual([{ id: 'contracting-actor-id', name: 'Anna' }]);
     await expect(context.createCaller(mockSession('admin')).audit.actors({ business: 'equipment' })).resolves.toEqual([
-      { email: 'b@example.com', id: 'equipment-actor-id', name: 'Beth' },
+      { id: 'equipment-actor-id', name: 'Beth' },
     ]);
     await expect(
       context.createCaller(mockSession('admin')).audit.actors({ business: 'contracting' }),

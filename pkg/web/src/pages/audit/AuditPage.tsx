@@ -6,7 +6,7 @@ import { PageLayout } from '@/components/page-layout/PageLayout.js';
 
 const pageDescriptions = {
   contracting: 'Field-level log of changes to Contracting records',
-  equipment: 'Field-level log of boundary-visible entity changes',
+  equipment: 'Field-level log of changes to Equipment records',
 } as const satisfies Record<Business, string>;
 
 const auditTableStores = {
@@ -16,7 +16,7 @@ const auditTableStores = {
 
 type AuditPageProps = {
   business: Business;
-  valueLabels?: AuditValueLabels | undefined;
+  valueLabels: AuditValueLabels;
 };
 
 /** One business's Audit Log; the same page serves both, told which business it stands in by its route. */

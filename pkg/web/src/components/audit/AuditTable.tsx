@@ -38,7 +38,7 @@ type AuditTableProps = {
   fixedFilters?: AuditTableFixedFilters;
   showEntityTypeFilter?: boolean;
   store: AuditTableStoreHook;
-  valueLabels?: AuditValueLabels | undefined;
+  valueLabels: AuditValueLabels;
 };
 
 const auditEntityTypeLabels = {
@@ -290,7 +290,7 @@ const AuditActionBadge: React.FC<AuditActionBadgeProps> = ({ action }) => (
 
 type ChangesCellProps = {
   changes: AuditEvent['changes'];
-  valueLabels: AuditValueLabels | undefined;
+  valueLabels: AuditValueLabels;
 };
 
 const AuditDetailsCell: React.FC<ChangesCellProps> = ({ changes, valueLabels }) => {
@@ -307,7 +307,7 @@ const AuditDetailsCell: React.FC<ChangesCellProps> = ({ changes, valueLabels }) 
 
 type AuditChangesDetailsProps = {
   changes: NonNullable<AuditEvent['changes']>;
-  valueLabels: AuditValueLabels | undefined;
+  valueLabels: AuditValueLabels;
 };
 
 const AuditChangesDetails: React.FC<AuditChangesDetailsProps> = ({ changes, valueLabels }) => (
@@ -332,7 +332,7 @@ const AuditChangesDetails: React.FC<AuditChangesDetailsProps> = ({ changes, valu
 
 type AuditChangesContentProps = {
   changes: NonNullable<AuditEvent['changes']>;
-  valueLabels: AuditValueLabels | undefined;
+  valueLabels: AuditValueLabels;
 };
 
 const AuditChangesContent: React.FC<AuditChangesContentProps> = ({ changes, valueLabels }) => {

@@ -108,7 +108,6 @@ export const AuditActorsInput = z.object({ business: Business });
 
 export type AuditActor = z.infer<typeof AuditActor>;
 export const AuditActor = z.object({
-  email: z.email(),
   id: AuthId,
   name: z.string(),
 });

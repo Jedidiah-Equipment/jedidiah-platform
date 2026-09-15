@@ -10,7 +10,7 @@ import {
   type Business,
   getNextCursor,
 } from '@pkg/schema';
-import { and, asc, eq, gte, inArray, isNotNull, isNull, lte, notInArray, or, type SQL } from 'drizzle-orm';
+import { and, asc, eq, exists, gte, inArray, isNotNull, isNull, lte, notInArray, or, type SQL, sql } from 'drizzle-orm';
 
 export async function listAuditEvents({ db, input }: { db: Db; input: AuditListInput }): Promise<AuditListResult> {
   const where = buildAuditListWhere(db, input);
@@ -54,11 +54,16 @@ export async function listAuditEvents({ db, input }: { db: Db; input: AuditListI
 }
 
 export async function listAuditActors({ db, input }: { db: Db; input: AuditActorsInput }): Promise<AuditActor[]> {
-  const rows = await db
-    .selectDistinct({ email: user.email, id: user.id, name: user.name })
+  // Probing each User through `audit_actor_idx` scales with the user count; a distinct join over the
+  // log scans every event the business owns.
+  const actedInBusiness = db
+    .select({ acted: sql`1` })
     .from(auditEvents)
-    .innerJoin(user, eq(auditEvents.actorUserId, user.id))
-    .where(businessAuditEvents(db, input.business))
+    .where(and(eq(auditEvents.actorUserId, user.id), businessAuditEvents(db, input.business)));
+  const rows = await db
+    .select({ id: user.id, name: user.name })
+    .from(user)
+    .where(exists(actedInBusiness))
     .orderBy(asc(user.name), asc(user.id));
 
   return rows.map((row) => AuditActor.parse(row));

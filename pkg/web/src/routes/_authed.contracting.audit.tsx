@@ -3,6 +3,8 @@ import { createFileRoute } from '@tanstack/react-router';
 import { requireRoutePermission } from '@/lib/route-auth.js';
 import { AuditPage } from '@/pages/audit/AuditPage.js';
 
+const contractingAuditValueLabels = {};
+
 export const Route = createFileRoute('/_authed/contracting/audit')({
   beforeLoad: ({ context }) => requireRoutePermission(context, 'contracting_audit:read'),
   staticData: {
@@ -12,5 +14,5 @@ export const Route = createFileRoute('/_authed/contracting/audit')({
 });
 
 function ContractingAuditRoute() {
-  return <AuditPage business="contracting" />;
+  return <AuditPage business="contracting" valueLabels={contractingAuditValueLabels} />;
 }

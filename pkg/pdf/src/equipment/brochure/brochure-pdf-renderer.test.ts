@@ -3,7 +3,7 @@ import { PDFDocument } from 'pdf-lib';
 import { describe, expect, test } from 'vitest';
 
 import { getPdfPageSizes } from '../../bytes/pdf-bytes.js';
-import { getCoverLayout } from './BrochureDocumentPdf.js';
+import { getCoverLayout, keepWordUnbroken } from './BrochureDocumentPdf.js';
 import { renderBrochurePdf } from './brochure-pdf-renderer.js';
 
 // A tiny 4x4 PNG so the renderer exercises its real image path without bundling a large fixture.
@@ -140,6 +140,12 @@ describe('getCoverLayout', () => {
 
   test('caps very long key feature labels', () => {
     expect(getCoverLayout(['Extended operating feature '.repeat(20)]).featureListWidth).toBe(430);
+  });
+});
+
+describe('keepWordUnbroken', () => {
+  test('offers the whole word as the only line-break segment', () => {
+    expect(keepWordUnbroken('configuration')).toEqual(['configuration']);
   });
 });
 

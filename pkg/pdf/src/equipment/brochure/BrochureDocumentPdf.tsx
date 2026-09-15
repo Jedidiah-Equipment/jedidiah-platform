@@ -469,6 +469,7 @@ export function BrochureDocumentPdf({ document }: BrochureDocumentPdfProps) {
               <View style={styles.descriptionTextWrap}>
                 {document.bodyCopy.map((paragraph) => (
                   <Text
+                    hyphenationCallback={keepWordUnbroken}
                     key={paragraph}
                     style={[
                       styles.bodyCopy,
@@ -609,6 +610,10 @@ const TITLE_MAX_FONT_SIZE = 52;
 const TITLE_MIN_FONT_SIZE = 28;
 const TITLE_CHAR_WIDTH_FACTOR = 0.42;
 const TITLE_WIDTH_BUFFER = 16;
+
+export function keepWordUnbroken(word: string): string[] {
+  return [word];
+}
 
 const clampNumber = (value: number, min: number, max: number): number => Math.min(max, Math.max(min, value));
 

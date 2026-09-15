@@ -29,6 +29,16 @@ const aiExceptionVerifications = new Set<ReadingException['aiVerification']>([
   'disagrees',
   'low-confidence',
 ]);
+const aiVerificationPresentation: Record<
+  ReadingException['aiVerification'],
+  { evidenceLabel: string; resultLabel?: string }
+> = {
+  agrees: { evidenceLabel: 'Entered value verified' },
+  pending: { evidenceLabel: 'Verification pending', resultLabel: 'Verification pending' },
+  disagrees: { evidenceLabel: 'Extracted value differs' },
+  'low-confidence': { evidenceLabel: 'Low extraction confidence' },
+  'not-applicable': { evidenceLabel: 'Photo verification not applicable', resultLabel: 'No photo verification' },
+};
 
 function exceptionTypes(row: ReadingException) {
   const types: ReadingExceptionType[] = [];
@@ -37,34 +47,29 @@ function exceptionTypes(row: ReadingException) {
   return types;
 }
 
-function evidenceLabel(row: ReadingException) {
-  if (!row.photo) return 'Missing Photo Evidence';
-  if (row.aiVerification === 'low-confidence' && row.aiValue === null) return 'Photo-backed';
-  const labels = {
-    agrees: 'Entered value verified',
-    pending: 'Verification pending',
-    disagrees: 'Extracted value differs',
-    'low-confidence': 'Low extraction confidence',
-    'not-applicable': 'Photo verification not applicable',
+function aiPresentation(row: ReadingException) {
+  const verification = aiVerificationPresentation[row.aiVerification];
+  const noReadableMeter = verification.resultLabel === undefined && row.aiValue === null;
+  const confidencePercent = row.aiConfidence === null ? null : Math.round(row.aiConfidence * 100);
+  const evidenceDetail = noReadableMeter && row.aiVerification === 'low-confidence' ? null : verification.evidenceLabel;
+  return {
+    confidenceLabel:
+      confidencePercent === null
+        ? 'Confidence unavailable'
+        : row.aiValue === null
+          ? null
+          : `${confidencePercent}% confidence in extracted value`,
+    evidenceLabel: row.photo ? ['Photo-backed', evidenceDetail].filter(Boolean).join(' · ') : 'Missing Photo Evidence',
+    resultLabel:
+      verification.resultLabel ?? (row.aiValue === null ? 'No readable meter detected' : `${row.aiValue.toFixed(1)} h`),
+    resultTooltip:
+      noReadableMeter && confidencePercent !== null
+        ? `${confidencePercent}% confident no readable meter was detected`
+        : null,
   };
-  return `Photo-backed · ${labels[row.aiVerification]}`;
 }
 
-function aiResult(row: ReadingException) {
-  if (row.aiVerification === 'not-applicable') return 'No photo verification';
-  if (row.aiVerification === 'pending') return 'Verification pending';
-  if (row.aiValue === null) return 'No readable meter detected';
-  return `${row.aiValue.toFixed(1)} h`;
-}
-
-function confidenceLabel(row: ReadingException) {
-  if (row.aiConfidence === null) return 'Confidence unavailable';
-  if (row.aiValue === null) return null;
-  return `${Math.round(row.aiConfidence * 100)}% confidence in extracted value`;
-}
-
-function NoReadableMeterResult({ confidence }: { confidence: number }) {
-  const label = `${Math.round(confidence * 100)}% confident no readable meter was detected`;
+function NoReadableMeterResult({ tooltipLabel }: { tooltipLabel: string }) {
   return (
     <Tooltip>
       <TooltipTrigger
@@ -72,14 +77,14 @@ function NoReadableMeterResult({ confidence }: { confidence: number }) {
           <button
             type="button"
             className="inline-flex cursor-help items-center gap-1 rounded-sm text-left text-foreground"
-            aria-label={label}
+            aria-label={tooltipLabel}
           />
         }
       >
         <span>No readable meter detected</span>
         <IconInfoCircle aria-hidden className="size-[18px] shrink-0" />
       </TooltipTrigger>
-      <TooltipContent>{label}</TooltipContent>
+      <TooltipContent>{tooltipLabel}</TooltipContent>
     </Tooltip>
   );
 }
@@ -101,7 +106,7 @@ export function ReadingExceptionsPage() {
     trpc.contractingReadings.amend.mutationOptions({
       onSuccess: async () => {
         await invalidateReadings();
-        toast.success('Reading resolved');
+        toast.success('Reading amended');
       },
     }),
   );
@@ -164,46 +169,52 @@ export function ReadingExceptionsPage() {
       {
         id: 'evidence',
         header: 'Evidence',
-        cell: ({ row: { original: row } }) => (
-          <div className="space-y-1">
-            {row.photo ? (
-              <Tooltip>
-                <TooltipTrigger
-                  render={
-                    <button
-                      type="button"
-                      className="inline-flex cursor-pointer items-center gap-1 rounded-sm text-left text-foreground hover:underline"
-                      aria-label={`Preview meter photo for ${row.machineCode}`}
-                      onClick={() => setPreviewReading(row)}
-                    />
-                  }
-                >
-                  <span>{evidenceLabel(row)}</span>
-                  <IconEye aria-hidden className="size-[18px] shrink-0" />
-                </TooltipTrigger>
-                <TooltipContent>Preview photo</TooltipContent>
-              </Tooltip>
-            ) : (
-              <div>{evidenceLabel(row)}</div>
-            )}
-            {row.disputed ? <div>Disputed: {row.disputeReason}</div> : null}
-            <div className="text-muted-foreground">{row.aiHint}</div>
-          </div>
-        ),
+        cell: ({ row: { original: row } }) => {
+          const presentation = aiPresentation(row);
+          return (
+            <div className="space-y-1">
+              {row.photo ? (
+                <Tooltip>
+                  <TooltipTrigger
+                    render={
+                      <button
+                        type="button"
+                        className="inline-flex cursor-pointer items-center gap-1 rounded-sm text-left text-foreground hover:underline"
+                        aria-label={`Preview meter photo for ${row.machineCode}`}
+                        onClick={() => setPreviewReading(row)}
+                      />
+                    }
+                  >
+                    <span>{presentation.evidenceLabel}</span>
+                    <IconEye aria-hidden className="size-[18px] shrink-0" />
+                  </TooltipTrigger>
+                  <TooltipContent>Preview photo</TooltipContent>
+                </Tooltip>
+              ) : (
+                <div>{presentation.evidenceLabel}</div>
+              )}
+              {row.disputed ? <div>Disputed: {row.disputeReason}</div> : null}
+              <div className="text-muted-foreground">{row.aiHint}</div>
+            </div>
+          );
+        },
       },
       {
         id: 'ai',
         header: 'AI meter result',
-        cell: ({ row }) => (
-          <div>
-            {row.original.aiValue === null && row.original.aiConfidence !== null ? (
-              <NoReadableMeterResult confidence={row.original.aiConfidence} />
-            ) : (
-              <div>{aiResult(row.original)}</div>
-            )}
-            {confidenceLabel(row.original) ? <div>{confidenceLabel(row.original)}</div> : null}
-          </div>
-        ),
+        cell: ({ row }) => {
+          const presentation = aiPresentation(row.original);
+          return (
+            <div>
+              {presentation.resultTooltip ? (
+                <NoReadableMeterResult tooltipLabel={presentation.resultTooltip} />
+              ) : (
+                <div>{presentation.resultLabel}</div>
+              )}
+              {presentation.confidenceLabel ? <div>{presentation.confidenceLabel}</div> : null}
+            </div>
+          );
+        },
       },
       {
         id: 'actions',

@@ -1,7 +1,7 @@
 import { formatBytes } from '@pkg/domain';
 import { useCallback } from 'react';
 
-import { FilePreviewSheet } from '@/equipment/components/documents/FilePreviewSheet.js';
+import { FilePreviewSheet } from '@/components/file-preview/FilePreviewSheet.js';
 import {
   type DocumentPreviewOwner,
   fetchDocumentPreviewBlob,

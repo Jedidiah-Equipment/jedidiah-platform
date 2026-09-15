@@ -3,8 +3,8 @@ import type { Product } from '@pkg/schema/equipment';
 import { IconEye } from '@tabler/icons-react';
 import type React from 'react';
 import { useCallback } from 'react';
+import { FilePreviewSheet } from '@/components/file-preview/FilePreviewSheet.js';
 import { Button } from '@/components/ui/button.js';
-import { FilePreviewSheet } from '@/equipment/components/documents/FilePreviewSheet.js';
 import { useFilePreview } from '@/equipment/components/documents/use-file-preview.js';
 import { fetchProductBrochurePreviewBlob } from '@/equipment/utils/brochure.js';
 

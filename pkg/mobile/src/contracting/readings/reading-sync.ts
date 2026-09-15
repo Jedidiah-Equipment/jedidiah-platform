@@ -6,7 +6,7 @@ import { apiBaseUrl } from '@/lib/api-base-url';
 import { sessionCookieHeader } from '@/lib/auth';
 import { withSessionCookie } from '@/lib/authed-fetch';
 import { readReadingPhotoPart } from './reading-files';
-import { type ReadingQueue, ReadingSyncError } from './reading-queue';
+import type { ReadingQueue } from './reading-queue';
 import { uploadReading } from './reading-upload';
 
 const UPLOAD_TIMEOUT_MS = 60_000;
@@ -31,43 +31,34 @@ export async function syncReadingQueue({
   const cookie = await sessionCookieHeader();
   if (!isActive()) return;
   let uploaded = false;
-  let retryFailure: Error | null = null;
-  await queue.sync(
+  const { retryFailure } = await queue.sync(
     async (item) => {
-      try {
-        const photo = item.photoLocalUri ? await readReadingPhotoPart(item.photoLocalUri) : undefined;
-        if (!isActive()) throw new Error('Session changed');
-        const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), UPLOAD_TIMEOUT_MS);
-        const delivered = await uploadReading(
-          item,
-          (body) => {
-            return send(
-              `${apiBaseUrl}${readingCapturePath()}`,
-              withSessionCookie({ method: 'POST', body, signal: controller.signal }, cookie),
-            );
-          },
-          photo,
-        ).finally(() => {
-          clearTimeout(timeout);
-        });
-        uploaded = true;
-        // Land the delivered reading in history before the queue drops the capture, so the
-        // latest known reading never falls back to the previous one while a refetch is pending.
-        queryClient.setQueryData(
-          trpc.contractingReadings.fieldHistory.queryKey({ machineId: item.machineId }),
-          (rows) => [delivered, ...(rows ?? []).filter((row) => row.id !== delivered.id)],
-        );
-      } catch (error) {
-        if (!(error instanceof ReadingSyncError) && !retryFailure && isActive()) {
-          retryFailure =
-            error instanceof Error ? error : new Error('Waiting to sync. Check your connection and sign-in.');
-        }
-        throw error;
-      }
+      const photo = item.photoLocalUri ? await readReadingPhotoPart(item.photoLocalUri) : undefined;
+      if (!isActive()) throw new Error('Session changed');
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), UPLOAD_TIMEOUT_MS);
+      const delivered = await uploadReading(
+        item,
+        (body) => {
+          return send(
+            `${apiBaseUrl}${readingCapturePath()}`,
+            withSessionCookie({ method: 'POST', body, signal: controller.signal }, cookie),
+          );
+        },
+        photo,
+      ).finally(() => {
+        clearTimeout(timeout);
+      });
+      uploaded = true;
+      // Land the delivered reading in history before the queue drops the capture, so the
+      // latest known reading never falls back to the previous one while a refetch is pending.
+      queryClient.setQueryData(
+        trpc.contractingReadings.fieldHistory.queryKey({ machineId: item.machineId }),
+        (rows) => [delivered, ...(rows ?? []).filter((row) => row.id !== delivered.id)],
+      );
     },
     () => isActive() && onlineManager.isOnline(),
   );
   if (uploaded && isActive()) void queryClient.invalidateQueries({ queryKey: trpc.contractingReadings.pathKey() });
-  if (retryFailure) throw retryFailure;
+  if (retryFailure && isActive()) throw new Error('Waiting to sync. Check your connection and sign-in.');
 }

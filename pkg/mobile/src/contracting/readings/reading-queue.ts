@@ -34,7 +34,7 @@ type QueuePorts = {
 /** All storage mutations are serialized; network I/O never holds the storage lock. */
 export function createReadingQueue({ storage, key, removePhoto }: QueuePorts) {
   let writes: Promise<unknown> = Promise.resolve();
-  let syncing: Promise<void> | null = null;
+  let syncing: Promise<{ retryFailure: Error | null }> | null = null;
   const listeners = new Set<() => void>();
   async function read(): Promise<QueuedReading[]> {
     const raw = await storage.getItem(key);
@@ -89,6 +89,7 @@ export function createReadingQueue({ storage, key, removePhoto }: QueuePorts) {
       if (syncing) return syncing;
       syncing = (async () => {
         const blocked = new Set<string>();
+        let retryFailure: Error | null = null;
         const rows = (await list()).sort((a, b) => Date.parse(a.capturedAt) - Date.parse(b.capturedAt));
         for (const item of rows) {
           if (!canSync()) break;
@@ -106,11 +107,14 @@ export function createReadingQueue({ storage, key, removePhoto }: QueuePorts) {
                     : row,
                 ),
               );
+            } else if (!retryFailure) {
+              retryFailure = error instanceof Error ? error : new Error('Reading sync failed');
             }
             continue;
           }
           await remove(item.localId);
         }
+        return { retryFailure };
       })().finally(() => {
         syncing = null;
       });

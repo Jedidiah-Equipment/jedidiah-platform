@@ -214,17 +214,17 @@ export default function CaptureScreen() {
               />
             </View>
           ) : null}
+        </ScrollView>
+        <View
+          className="gap-2 border-t border-border bg-background px-4 pt-3"
+          style={{ paddingBottom: Math.max(safeAreaBottom, 16) }}
+        >
           {error ? (
             <Text className="text-danger" accessibilityRole="alert">
               {error}
             </Text>
           ) : null}
           {!canCapture ? <Text className="text-danger">Your role cannot capture readings.</Text> : null}
-        </ScrollView>
-        <View
-          className="border-t border-border bg-background px-4 pt-3"
-          style={{ paddingBottom: Math.max(safeAreaBottom, 16) }}
-        >
           <Button
             primary
             title={busy ? 'Saving…' : 'Save reading'}

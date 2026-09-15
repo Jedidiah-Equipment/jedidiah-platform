@@ -78,7 +78,7 @@ test('stops before the next upload once the provider is no longer active', async
   expect(invalidate).not.toHaveBeenCalled();
 });
 
-test('reports a retryable upload failure while keeping the capture queued', async () => {
+test('reports a retryable transport failure with operator-friendly text while keeping the capture queued', async () => {
   const { queryClient, trpc, queue } = setup();
   await queue.enqueue(capture(100, '2026-09-08T08:00:00Z'));
 
@@ -88,8 +88,36 @@ test('reports a retryable upload failure while keeping the capture queued', asyn
       queryClient,
       trpc,
       isActive: () => true,
-      send: async () => new Response(null, { status: 401 }),
+      send: async () => {
+        throw new Error('fetch failed: The operation was aborted.');
+      },
     }),
   ).rejects.toThrow('Waiting to sync. Check your connection and sign-in.');
+  await expect(queue.list()).resolves.toHaveLength(1);
+});
+
+test('reports the same retryable failure to sync calls that join an upload in progress', async () => {
+  const { queryClient, trpc, queue } = setup();
+  await queue.enqueue(capture(100, '2026-09-08T08:00:00Z'));
+  let respond = (_response: Response) => {};
+  const response = new Promise<Response>((resolve) => {
+    respond = resolve;
+  });
+  const send = vi.fn(async () => response);
+  const options = { queue, queryClient, trpc, isActive: () => true, send };
+
+  const first = syncReadingQueue(options);
+  await vi.waitFor(() => expect(send).toHaveBeenCalledOnce());
+  const second = syncReadingQueue(options);
+  respond(new Response(null, { status: 401 }));
+
+  const results = await Promise.allSettled([first, second]);
+  expect(results).toHaveLength(2);
+  for (const result of results) {
+    expect(result).toMatchObject({
+      status: 'rejected',
+      reason: { message: 'Waiting to sync. Check your connection and sign-in.' },
+    });
+  }
   await expect(queue.list()).resolves.toHaveLength(1);
 });

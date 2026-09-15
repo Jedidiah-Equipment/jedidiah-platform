@@ -10,9 +10,7 @@ import {
   type Business,
   getNextCursor,
 } from '@pkg/schema';
-import { and, asc, eq, gte, inArray, lte, or, type SQL } from 'drizzle-orm';
-
-import { userBusinessMembership } from '../users/user-service.js';
+import { and, asc, eq, gte, inArray, isNotNull, isNull, lte, notInArray, or, type SQL } from 'drizzle-orm';
 
 export async function listAuditEvents({ db, input }: { db: Db; input: AuditListInput }): Promise<AuditListResult> {
   const where = buildAuditListWhere(db, input);
@@ -55,7 +53,6 @@ export async function listAuditEvents({ db, input }: { db: Db; input: AuditListI
   };
 }
 
-/** Everyone who has acted in a business's audit log, by name — the log's Actor filter options. */
 export async function listAuditActors({ db, input }: { db: Db; input: AuditActorsInput }): Promise<AuditActor[]> {
   const rows = await db
     .selectDistinct({ email: user.email, id: user.id, name: user.name })
@@ -69,14 +66,24 @@ export async function listAuditActors({ db, input }: { db: Db; input: AuditActor
 
 /**
  * The rows a business's audit log owns (ADR 0016's attributability invariant): its own entity types,
- * and User events for the users its Users page lists, so a super-admin's appear in both.
+ * plus the User events attributed to it. Nearly every audited User fact is an Equipment one (Department
+ * Membership, the shared device flag, Job Activity), so a User event is Contracting's only when the User
+ * holds a Contracting role and no Equipment role; every other one — a super-admin's, a role-less or
+ * removed User's — stays with Equipment, and no event shows in both logs.
  */
 function businessAuditEvents(db: Db, business: Business): SQL {
-  const businessMembers = db.select({ id: user.id }).from(user).where(userBusinessMembership(business));
+  const contractingOnlyUsers = db
+    .select({ id: user.id })
+    .from(user)
+    .where(and(isNotNull(user.contractingRole), isNull(user.role)));
+  const attributedUsers =
+    business === 'contracting'
+      ? inArray(auditEvents.entityId, contractingOnlyUsers)
+      : notInArray(auditEvents.entityId, contractingOnlyUsers);
 
   return or(
     inArray(auditEvents.entityType, AUDIT_ENTITY_TYPES[business]),
-    and(inArray(auditEvents.entityType, AUDIT_ENTITY_TYPES.shared), inArray(auditEvents.entityId, businessMembers)),
+    and(inArray(auditEvents.entityType, AUDIT_ENTITY_TYPES.shared), attributedUsers),
   ) as SQL;
 }
 

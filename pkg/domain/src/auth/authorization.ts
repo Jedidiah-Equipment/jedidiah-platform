@@ -390,7 +390,6 @@ export const appRoleAccess = {
   mechanic: {},
 } as const satisfies Record<AppRole, RoleAccess>;
 
-/** Each business's audit log opens to its own read permission; the log itself is one shared mechanism. */
 export const auditReadPermissions = {
   contracting: 'contracting_audit:read',
   equipment: 'equipment_audit:read',

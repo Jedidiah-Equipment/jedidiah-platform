@@ -53,6 +53,17 @@ export function requireBusinessAccess(access: Context['access'], business: Busin
   }
 }
 
+/** Throws the standard forbidden error unless the caller holds `permission`. */
+export function requirePermission(access: Context['access'], permission: AppPermission): void {
+  if (!hasPermission(access, permission)) {
+    throw createAuthTRPCError({
+      appCode: 'auth.forbidden',
+      code: 'FORBIDDEN',
+      message: 'You do not have permission to perform this action.',
+    });
+  }
+}
+
 /**
  * Gates on role presence in a business rather than on a permission. This is the exception, not the
  * rule: procedures are gated by permission (`authorizedProcedure`), and a shared read that takes a

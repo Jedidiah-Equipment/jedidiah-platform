@@ -24,5 +24,8 @@ Customer) for different concepts; never treat a same-named term as shared.
   directory, and the same real-world farmer may appear in both.
 - **Audit Event** is one mechanism serving both businesses, read as one **Audit Log per business**:
   each business's log shows the events for its own entity types and opens only to that business's
-  audit read permission. A User event belongs to every business whose Users page lists that User
-  (so a super-admin's appear in both), which is why the log needs no stored business of its own.
+  audit read permission. A User event belongs to exactly one log: Contracting's when the User holds a
+  Contracting role and no Equipment role, Equipment's otherwise (a super-admin's, a role-less or
+  removed User's), because nearly every audited User fact is an Equipment one. The business is
+  derived on read, so the log stores none of its own — and a User who moves wholly to the other
+  business takes their event history with them.

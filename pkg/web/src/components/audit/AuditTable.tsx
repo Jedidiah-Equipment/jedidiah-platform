@@ -41,8 +41,6 @@ type AuditTableProps = {
   valueLabels?: AuditValueLabels | undefined;
 };
 
-const noValueLabels: AuditValueLabels = {};
-
 const auditEntityTypeLabels = {
   contracting_category: 'Category',
   contracting_customer: 'Customer',
@@ -109,14 +107,13 @@ const auditSortOptions: SortOptions<AuditListInput> = {
   },
 };
 
-/** One business's audit log, whole or narrowed to one record by `fixedFilters`. */
 export const AuditTable: React.FC<AuditTableProps> = ({
   business,
   emptyMessage = 'No audit events found.',
   fixedFilters,
   showEntityTypeFilter = true,
   store,
-  valueLabels = noValueLabels,
+  valueLabels,
 }) => {
   const trpc = useTRPC();
 
@@ -293,7 +290,7 @@ const AuditActionBadge: React.FC<AuditActionBadgeProps> = ({ action }) => (
 
 type ChangesCellProps = {
   changes: AuditEvent['changes'];
-  valueLabels: AuditValueLabels;
+  valueLabels: AuditValueLabels | undefined;
 };
 
 const AuditDetailsCell: React.FC<ChangesCellProps> = ({ changes, valueLabels }) => {
@@ -310,7 +307,7 @@ const AuditDetailsCell: React.FC<ChangesCellProps> = ({ changes, valueLabels }) 
 
 type AuditChangesDetailsProps = {
   changes: NonNullable<AuditEvent['changes']>;
-  valueLabels: AuditValueLabels;
+  valueLabels: AuditValueLabels | undefined;
 };
 
 const AuditChangesDetails: React.FC<AuditChangesDetailsProps> = ({ changes, valueLabels }) => (
@@ -335,7 +332,7 @@ const AuditChangesDetails: React.FC<AuditChangesDetailsProps> = ({ changes, valu
 
 type AuditChangesContentProps = {
   changes: NonNullable<AuditEvent['changes']>;
-  valueLabels: AuditValueLabels;
+  valueLabels: AuditValueLabels | undefined;
 };
 
 const AuditChangesContent: React.FC<AuditChangesContentProps> = ({ changes, valueLabels }) => {

@@ -11,8 +11,8 @@ export const AuditAction = z.enum(['created', 'updated', 'deleted', 'merged']);
 
 // One registry assigns every audited entity to its business; the full enum and business views
 // derive from it, so a new type cannot silently disappear from a separately maintained subset.
-// A shared type belongs to no business by type alone: its events are attributed through the record
-// (a User through its role slots) and shown in each business that record belongs to.
+// A shared type belongs to no business by type alone: each of its events is attributed to one business
+// through the record it names (a User through its role slots).
 export const AUDIT_ENTITY_TYPES = {
   contracting: [
     'contracting_work_type',
@@ -45,7 +45,6 @@ export const AuditEntityType = z.enum([
   ...AUDIT_ENTITY_TYPES.shared,
 ]);
 
-/** The entity types a business's audit log can show: its own and the shared ones. */
 export function getBusinessAuditEntityTypes(business: Business): AuditEntityType[] {
   return [...AUDIT_ENTITY_TYPES[business], ...AUDIT_ENTITY_TYPES.shared];
 }
@@ -107,7 +106,6 @@ export const AuditListResult = createCursorQueryResult(AuditEvent);
 export type AuditActorsInput = z.infer<typeof AuditActorsInput>;
 export const AuditActorsInput = z.object({ business: Business });
 
-/** Someone who has acted in a business's audit log, for its Actor filter. */
 export type AuditActor = z.infer<typeof AuditActor>;
 export const AuditActor = z.object({
   email: z.email(),

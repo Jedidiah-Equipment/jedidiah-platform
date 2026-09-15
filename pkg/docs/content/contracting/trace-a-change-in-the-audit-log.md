@@ -14,5 +14,5 @@ The Audit Log records who created, changed, or deleted a Contracting record, and
    disabled when that event recorded no field-level changes.
 
 The Audit Log is available to a Contracting Administrator and a Super Administrator. It shows only
-Contracting records and the people listed under **Users** in Contracting mode; Equipment changes stay in
-the Audit Log in Equipment mode.
+Contracting records and the Users who work only in Jedidiah Contracting; changes to everyone else, a Super
+Administrator included, stay in the Audit Log in Equipment mode.

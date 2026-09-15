@@ -103,7 +103,7 @@ export async function getUserById({ db, userId }: { db: Db; userId: AuthId }): P
  * stored once in the equipment slot and spans both (ADR 0017) — and anyone holding no role at all,
  * who belongs to neither business and would otherwise be reachable from nowhere.
  */
-export function userBusinessMembership(business: Business | undefined): SQL | undefined {
+function businessMembership(business: Business | undefined): SQL | undefined {
   const holdsNoRole = and(isNull(user.role), isNull(user.contractingRole));
 
   switch (business) {
@@ -139,7 +139,7 @@ export async function listUsers({
   const emailStatus = sql`case when ${user.emailVerified} then 'Verified' else 'Unverified' end`;
   const filters = input.columnFilters;
   const where = and(
-    userBusinessMembership(input.business),
+    businessMembership(input.business),
     input.search
       ? or(
           createGlobalSearchCondition(input.search, [

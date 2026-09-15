@@ -96,7 +96,7 @@ const terminalCountFields = new Set(['movedParts', 'movedPurchaseOrders']);
 
 export function getAuditChangeDisplays(
   changes: AuditChangeMap | null,
-  valueLabels: AuditValueLabels = {},
+  valueLabels?: AuditValueLabels,
 ): AuditChangeDisplay[] {
   if (!changes) {
     return [];
@@ -131,7 +131,7 @@ export function getAuditFieldLabel(field: string): string {
   );
 }
 
-export function formatAuditChangeValue(field: string, value: unknown, valueLabels: AuditValueLabels = {}): string {
+export function formatAuditChangeValue(field: string, value: unknown, valueLabels?: AuditValueLabels): string {
   if (value === null || value === undefined) {
     return 'None';
   }
@@ -148,7 +148,7 @@ export function formatAuditChangeValue(field: string, value: unknown, valueLabel
     return formatPercent(value);
   }
 
-  const valueLabel = typeof value === 'string' ? valueLabels[field]?.[value] : undefined;
+  const valueLabel = typeof value === 'string' ? valueLabels?.[field]?.[value] : undefined;
 
   if (valueLabel) {
     return valueLabel;
@@ -177,7 +177,11 @@ export function formatAuditChangesJson(changes: AuditChangeMap): string {
   return JSON.stringify(changes, null, 2);
 }
 
-function formatAuditChangePreview(field: string, change: AuditChange, valueLabels: AuditValueLabels): string {
+function formatAuditChangePreview(
+  field: string,
+  change: AuditChange,
+  valueLabels: AuditValueLabels | undefined,
+): string {
   const label = getAuditFieldLabel(field);
   const from = formatAuditChangeValue(field, change.from, valueLabels);
   const to = formatAuditChangeValue(field, change.to, valueLabels);

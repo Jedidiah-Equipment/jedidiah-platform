@@ -15,7 +15,6 @@ export const useSupplierAuditTableStore = createAuditTableStore('supplier-audit-
 
 type EquipmentAuditTableProps = Omit<React.ComponentProps<typeof AuditTable>, 'business' | 'valueLabels'>;
 
-/** An Equipment record's own audit history, embedded on its page. */
 export const EquipmentAuditTable: React.FC<EquipmentAuditTableProps> = (props) => (
   <AuditTable business="equipment" valueLabels={equipmentAuditValueLabels} {...props} />
 );

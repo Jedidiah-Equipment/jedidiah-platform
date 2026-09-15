@@ -199,13 +199,14 @@ describe('audit.list', () => {
       summary: 'Contracting user',
     });
     await createAuditEvent(context.db, { entityId: 'super-user-id', entityType: 'user', summary: 'Super user' });
+    await createAuditEvent(context.db, { entityId: 'removed-user-id', entityType: 'user', summary: 'Removed user' });
 
     const caller = context.createCaller(mockSession('super-admin'));
     const summaries = async (business: 'contracting' | 'equipment') =>
       (await caller.audit.list({ business })).items.map((event) => event.summary).sort();
 
-    expect(await summaries('equipment')).toEqual(['Equipment user', 'Product event', 'Super user']);
-    expect(await summaries('contracting')).toEqual(['Contracting user', 'Machine event', 'Super user']);
+    expect(await summaries('equipment')).toEqual(['Equipment user', 'Product event', 'Removed user', 'Super user']);
+    expect(await summaries('contracting')).toEqual(['Contracting user', 'Machine event']);
     await expect(
       caller.audit.list({ business: 'contracting', filters: { entityTypes: ['product'] } }),
     ).resolves.toMatchObject({ items: [], total: 0 });

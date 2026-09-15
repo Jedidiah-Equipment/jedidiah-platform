@@ -1,3 +1,4 @@
+import type { ReadingExceptionType } from '@pkg/schema/contracting';
 import { getBusinessRole } from '../auth/authorization.js';
 import { type BadgeColorClassNames, statusBadgeColorClassNames } from '../theme/status-badge.js';
 
@@ -5,7 +6,6 @@ export const readingExceptionTypeLabels = {
   'ai-flagged': 'AI flagged',
   disputed: 'Disputed',
 } as const;
-export type ReadingExceptionType = keyof typeof readingExceptionTypeLabels;
 
 /** Reading exception colors shared by every contracting surface. */
 export const readingExceptionTypeColorClassNames: Record<ReadingExceptionType, BadgeColorClassNames> = {

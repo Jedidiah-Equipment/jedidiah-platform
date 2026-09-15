@@ -1,9 +1,5 @@
 import { formatDate, toSentenceCase } from '@pkg/domain';
-import {
-  type ReadingExceptionType,
-  readingExceptionTypeColorClassNames,
-  readingExceptionTypeLabels,
-} from '@pkg/domain/contracting';
+import { readingExceptionTypeColorClassNames, readingExceptionTypeLabels } from '@pkg/domain/contracting';
 import { ReadingAmendInput, type ReadingException } from '@pkg/schema/contracting';
 import { IconEye, IconInfoCircle } from '@tabler/icons-react';
 import { useMutation, useQuery } from '@tanstack/react-query';
@@ -24,28 +20,16 @@ import { readingPhotoUrl } from '@/contracting/lib/contracting-http-paths.js';
 import { useTRPC } from '@/lib/trpc.js';
 
 const amendmentValues = ReadingAmendInput.omit({ id: true });
-const aiExceptionVerifications = new Set<ReadingException['aiVerification']>([
-  'pending',
-  'disagrees',
-  'low-confidence',
-]);
 const aiVerificationPresentation: Record<
   ReadingException['aiVerification'],
   { evidenceLabel: string; resultLabel?: string }
 > = {
-  agrees: { evidenceLabel: 'Entered value verified' },
+  agrees: { evidenceLabel: 'AI-verified' },
   pending: { evidenceLabel: 'Verification pending', resultLabel: 'Verification pending' },
   disagrees: { evidenceLabel: 'Extracted value differs' },
   'low-confidence': { evidenceLabel: 'Low extraction confidence' },
   'not-applicable': { evidenceLabel: 'Photo verification not applicable', resultLabel: 'No photo verification' },
 };
-
-function exceptionTypes(row: ReadingException) {
-  const types: ReadingExceptionType[] = [];
-  if (row.disputed) types.push('disputed');
-  if (row.evidenceReviewedAt === null && aiExceptionVerifications.has(row.aiVerification)) types.push('ai-flagged');
-  return types;
-}
 
 function aiPresentation(row: ReadingException) {
   const verification = aiVerificationPresentation[row.aiVerification];
@@ -62,14 +46,12 @@ function aiPresentation(row: ReadingException) {
     evidenceLabel: row.photo ? ['Photo-backed', evidenceDetail].filter(Boolean).join(' · ') : 'Missing Photo Evidence',
     resultLabel:
       verification.resultLabel ?? (row.aiValue === null ? 'No readable meter detected' : `${row.aiValue.toFixed(1)} h`),
-    resultTooltip:
-      noReadableMeter && confidencePercent !== null
-        ? `${confidencePercent}% confident no readable meter was detected`
-        : null,
+    resultConfidencePercent: noReadableMeter ? confidencePercent : null,
   };
 }
 
-function NoReadableMeterResult({ tooltipLabel }: { tooltipLabel: string }) {
+function NoReadableMeterResult({ confidencePercent }: { confidencePercent: number }) {
+  const tooltipLabel = `${confidencePercent}% confident no readable meter was detected`;
   return (
     <Tooltip>
       <TooltipTrigger
@@ -77,7 +59,6 @@ function NoReadableMeterResult({ tooltipLabel }: { tooltipLabel: string }) {
           <button
             type="button"
             className="inline-flex cursor-help items-center gap-1 rounded-sm text-left text-foreground"
-            aria-label={tooltipLabel}
           />
         }
       >
@@ -143,7 +124,7 @@ export function ReadingExceptionsPage() {
         header: 'Exception type',
         cell: ({ row }) => (
           <div className="flex flex-wrap gap-1">
-            {exceptionTypes(row.original).map((type) => (
+            {row.original.exceptionTypes.map((type) => (
               <Badge
                 key={type}
                 className={`${readingExceptionTypeColorClassNames[type].chip} ${readingExceptionTypeColorClassNames[type].text}`}
@@ -180,13 +161,13 @@ export function ReadingExceptionsPage() {
                       <button
                         type="button"
                         className="inline-flex cursor-pointer items-center gap-1 rounded-sm text-left text-foreground hover:underline"
-                        aria-label={`Preview meter photo for ${row.machineCode}`}
                         onClick={() => setPreviewReading(row)}
                       />
                     }
                   >
                     <span>{presentation.evidenceLabel}</span>
                     <IconEye aria-hidden className="size-[18px] shrink-0" />
+                    <span className="sr-only">. Preview meter photo for {row.machineCode}</span>
                   </TooltipTrigger>
                   <TooltipContent>Preview photo</TooltipContent>
                 </Tooltip>
@@ -206,8 +187,8 @@ export function ReadingExceptionsPage() {
           const presentation = aiPresentation(row.original);
           return (
             <div>
-              {presentation.resultTooltip ? (
-                <NoReadableMeterResult tooltipLabel={presentation.resultTooltip} />
+              {presentation.resultConfidencePercent !== null ? (
+                <NoReadableMeterResult confidencePercent={presentation.resultConfidencePercent} />
               ) : (
                 <div>{presentation.resultLabel}</div>
               )}

@@ -117,8 +117,11 @@ the camera allows, and a reading without one is stamped **Missing Photo Evidence
 waits for signal — readings queue on the phone and sync when they can. After sync the server reads
 the photo itself and records its own value and confidence: a reading is **photo-backed** when it
 carries a photo and **AI-verified** when the server's read agrees with the typed value.
-Disagreements, low confidence, and disputes surface to management as **Reading Exceptions** —
-never to the Foreman, who is never re-interrupted in the field. A reading may carry the Foreman's
+Disagreements, low confidence, and disputes surface to management as **Reading Exceptions** — a
+reading is **Disputed** when it belongs to an unresolved out-of-sequence pair and **AI flagged**
+when its verification is pending, disagrees, or has low confidence and has not been reviewed. A
+reading can carry both exception types. Exceptions never return to the Foreman, who is never
+re-interrupted in the field. A reading may carry the Foreman's
 optional **capture comment**, shown wherever management reviews it; the capture screen shows the
 minimum value the meter can now read. A field reading plays one of three roles:
 **arrival** (machine on site) and **departure** (machine leaving) on a Machine Assignment, or

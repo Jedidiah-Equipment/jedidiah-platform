@@ -4,7 +4,12 @@ import { contractingCategories, contractingHourReadings, contractingMachines } f
 import { validateFile } from '@pkg/domain';
 import { meterDisagreementHint, resolveReadingAmendment } from '@pkg/domain/contracting';
 import type { AuthId } from '@pkg/schema';
-import { FieldReading, ReadingAmendInput, ReadingCaptureInput } from '@pkg/schema/contracting';
+import {
+  FieldReading,
+  ReadingAmendInput,
+  ReadingCaptureInput,
+  type ReadingExceptionType,
+} from '@pkg/schema/contracting';
 import { and, asc, desc, eq, getTableColumns, inArray, isNull, or } from 'drizzle-orm';
 import { defineAuditDescriptor, recordAuditCreate } from '../../audit/audit-writer.js';
 import { mutateEntity } from '../../audit/mutate-entity.js';
@@ -34,6 +39,20 @@ export class ReadingError extends Error {
 export const isReadingError = (error: unknown): error is ReadingError => error instanceof ReadingError;
 const notFound = () => new ReadingError('reading.not_found', 'Hour Reading not found.');
 type Row = typeof contractingHourReadings.$inferSelect;
+const aiExceptionVerifications = [
+  'pending',
+  'disagrees',
+  'low-confidence',
+] as const satisfies readonly Row['aiVerification'][];
+const aiExceptionVerificationSet = new Set<Row['aiVerification']>(aiExceptionVerifications);
+
+function getReadingExceptionTypes(row: Row): ReadingExceptionType[] {
+  const types: ReadingExceptionType[] = [];
+  if (row.disputed) types.push('disputed');
+  if (row.evidenceReviewedAt === null && aiExceptionVerificationSet.has(row.aiVerification)) types.push('ai-flagged');
+  return types;
+}
+
 function withHint<T extends Row>(row: T) {
   return { ...row, aiHint: meterDisagreementHint(row) };
 }
@@ -220,12 +239,12 @@ export async function listReadingExceptions({ db }: { db: Db }) {
         eq(contractingHourReadings.disputed, true),
         and(
           isNull(contractingHourReadings.evidenceReviewedAt),
-          inArray(contractingHourReadings.aiVerification, ['pending', 'disagrees', 'low-confidence']),
+          inArray(contractingHourReadings.aiVerification, aiExceptionVerifications),
         ),
       ),
     )
     .orderBy(desc(contractingHourReadings.sequence));
-  return rows.map(withHint);
+  return rows.map((row) => ({ ...withHint(row), exceptionTypes: getReadingExceptionTypes(row) }));
 }
 // The machine lock serializes captures and amendments. Pair resolution changes multiple rows in
 // the same transaction, so each resulting row is diffed and audited after that resolution.

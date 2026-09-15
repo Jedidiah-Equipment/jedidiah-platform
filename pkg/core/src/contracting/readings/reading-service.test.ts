@@ -277,7 +277,9 @@ test('acknowledges evidence on an unchanged disputed value while keeping the unr
   context,
 }) => {
   const { db, actorUserId, machineId } = context;
+  const { InMemoryStorageAdapter } = await import('../../storage/in-memory-storage-adapter.js');
   const { amendReading, listReadingExceptions } = await import('./reading-service.js');
+  const storage = new InMemoryStorageAdapter();
   const input = {
     machineId,
     role: 'spot' as const,
@@ -286,7 +288,16 @@ test('acknowledges evidence on an unchanged disputed value while keeping the unr
     disputePrevious: false,
   };
   await captureReading({ db, actorUserId, input });
-  const disputed = await captureReading({ db, actorUserId, input: { ...input, value: 90, disputePrevious: true } });
+  const disputed = await captureReading({
+    db,
+    actorUserId,
+    evidence: photoEvidence(storage, async () => ({ value: null, confidence: 0.99 })),
+    input: { ...input, value: 90, disputePrevious: true },
+  });
+  expect((await listReadingExceptions({ db })).map((row) => row.exceptionTypes)).toEqual([
+    ['disputed', 'ai-flagged'],
+    ['disputed'],
+  ]);
   expect(
     await amendReading({
       db,
@@ -294,7 +305,7 @@ test('acknowledges evidence on an unchanged disputed value while keeping the unr
       input: { id: disputed.id, value: 90, reason: 'This value is correct; investigate the preceding reading' },
     }),
   ).toMatchObject({ disputed: true, evidenceReviewedAt: expect.any(Date) });
-  expect((await listReadingExceptions({ db })).length).toBe(2);
+  expect((await listReadingExceptions({ db })).map((row) => row.exceptionTypes)).toEqual([['disputed'], ['disputed']]);
 });
 
 test('retries a delivered mobile capture without creating another reading or disputing a newer one', async ({

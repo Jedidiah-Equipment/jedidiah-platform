@@ -1,3 +1,4 @@
+import { File } from 'expo-file-system';
 import * as FileSystem from 'expo-file-system/legacy';
 
 export async function keepReadingPhoto(uri: string, localId: string): Promise<string> {
@@ -11,7 +12,7 @@ export async function keepReadingPhoto(uri: string, localId: string): Promise<st
 export async function removeReadingPhoto(uri: string) {
   await FileSystem.deleteAsync(uri, { idempotent: true });
 }
-/** React Native's FormData uploads a `{ uri, type, name }` file part, which the DOM `Blob` type does not model. */
+/** Expo's native fetch accepts byte-backed File objects, not React Native's legacy `{ uri }` form part. */
 export async function readReadingPhotoPart(uri: string): Promise<Blob> {
-  return { uri, type: 'image/jpeg', name: 'meter.jpg' } as unknown as Blob;
+  return new File(uri);
 }

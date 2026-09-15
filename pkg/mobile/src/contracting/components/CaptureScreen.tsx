@@ -2,8 +2,8 @@ import { ReadingComment } from '@pkg/schema/contracting';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useRef, useState } from 'react';
-import { Image, ScrollView, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { Image, KeyboardAvoidingView, Platform, ScrollView, View } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { SecondaryToolbar } from '@/components/TopToolbar';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
@@ -21,6 +21,7 @@ const CAMERA_FAILURE = 'The camera could not take a photo. Try again or continue
 
 export default function CaptureScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const { bottom: safeAreaBottom } = useSafeAreaInsets();
   const fleet = useFleet();
   const machine = fleet.data?.find((row) => row.id === id);
   const readings = useMachineReadings(id);
@@ -104,124 +105,136 @@ export default function CaptureScreen() {
         }}
         helpTopic="contractingMobileCapture"
       />
-      <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: 16, gap: 16 }}>
-        <Text className="text-muted-foreground">
-          Photograph the hour meter when you can, then type its value. Your capture is saved on this phone before
-          syncing.
-        </Text>
-        {cameraOpen && permission?.granted ? (
-          <View className="gap-3">
-            <View className="h-72 overflow-hidden rounded-xl bg-image-backdrop">
-              <CameraView
-                ref={camera}
-                facing="back"
-                onCameraReady={() => setCameraReady(true)}
-                onMountError={() => {
-                  setCameraOpen(false);
-                  setError('Camera unavailable. Continue without a photo if needed.');
-                }}
-                style={{ flex: 1 }}
-              />
-              <View pointerEvents="none" className="absolute inset-0 items-center justify-center">
-                <View className="h-24 w-4/5 rounded-xl border-2 border-white" />
-                <Text className="mt-3 text-white">Keep every digit sharp and inside the guide</Text>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} className="flex-1">
+        <ScrollView
+          keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
+          keyboardShouldPersistTaps="handled"
+          contentContainerStyle={{ padding: 16, gap: 16 }}
+        >
+          <Text className="text-muted-foreground">
+            Photograph the hour meter when you can, then type its value. Your capture is saved on this phone before
+            syncing.
+          </Text>
+          {cameraOpen && permission?.granted ? (
+            <View className="gap-3">
+              <View className="h-72 overflow-hidden rounded-xl bg-image-backdrop">
+                <CameraView
+                  ref={camera}
+                  facing="back"
+                  onCameraReady={() => setCameraReady(true)}
+                  onMountError={() => {
+                    setCameraOpen(false);
+                    setError('Camera unavailable. Continue without a photo if needed.');
+                  }}
+                  style={{ flex: 1 }}
+                />
+                <View pointerEvents="none" className="absolute inset-0 items-center justify-center">
+                  <View className="h-24 w-4/5 rounded-xl border-2 border-white" />
+                  <Text className="mt-3 text-white">Keep every digit sharp and inside the guide</Text>
+                </View>
               </View>
-            </View>
-            <Button
-              title="Take photo"
-              disabled={busy || !cameraReady}
-              onPress={() => {
-                void photograph();
-              }}
-            />
-            <Button title="Continue without a photo" disabled={busy} onPress={() => setCameraOpen(false)} />
-          </View>
-        ) : (
-          <View className="gap-3">
-            {photo ? (
-              <Image
-                accessibilityLabel="Meter photo"
-                source={{ uri: photo }}
-                className="h-56 w-full rounded-xl"
-                resizeMode="contain"
+              <Button
+                title="Take photo"
+                disabled={busy || !cameraReady}
+                onPress={() => {
+                  void photograph();
+                }}
               />
-            ) : (
-              <Text className="text-muted-foreground">Missing Photo Evidence · no photo attached</Text>
-            )}
-            <Button
-              title={photo ? 'Retake photo' : 'Photograph meter'}
-              disabled={busy}
-              onPress={() => {
-                void openCamera();
-              }}
-            />
-            {photo ? <Button title="Remove photo" disabled={busy} onPress={() => setPhoto(null)} /> : null}
-          </View>
-        )}
-        <View className="flex-row items-baseline justify-between">
-          <Text className="text-foreground" weight="semibold">
-            Hour meter value
-          </Text>
-          {latest !== undefined ? (
-            <Text className="text-sm text-muted-foreground">Minimum allowed: {latest.toFixed(1)} h</Text>
-          ) : null}
-        </View>
-        <TextInput
-          accessibilityLabel="Hour meter value"
-          keyboardType="decimal-pad"
-          placeholder="e.g. 1234.5"
-          value={value}
-          editable={!busy}
-          onChangeText={(text) => {
-            setValue(text);
-            setDisputePrevious(false);
-          }}
-        />
-        {value && !parsed?.success ? (
-          <Text className="text-danger">Enter a non-negative value with at most one decimal place.</Text>
-        ) : null}
-        <Text className="text-foreground" weight="semibold">
-          Comment (optional)
-        </Text>
-        <TextInput
-          accessibilityLabel="Capture comment"
-          placeholder="Anything management should know about this reading"
-          value={comment}
-          editable={!busy}
-          multiline
-          maxLength={ReadingComment.maxLength ?? undefined}
-          onChangeText={setComment}
-        />
-        {below ? (
-          <View className="gap-3 rounded-xl border border-danger p-4">
-            <Text className="text-foreground">
-              This is below the minimum allowed. Correct your value, retake the photo, or dispute the previous reading.
+              <Button title="Continue without a photo" disabled={busy} onPress={() => setCameraOpen(false)} />
+            </View>
+          ) : (
+            <View className="gap-3">
+              {photo ? (
+                <Image
+                  accessibilityLabel="Meter photo"
+                  source={{ uri: photo }}
+                  className="h-56 w-full rounded-xl"
+                  resizeMode="contain"
+                />
+              ) : (
+                <Text className="text-muted-foreground">Missing Photo Evidence · no photo attached</Text>
+              )}
+              <Button
+                title={photo ? 'Retake photo' : 'Photograph meter'}
+                disabled={busy}
+                onPress={() => {
+                  void openCamera();
+                }}
+              />
+              {photo ? <Button title="Remove photo" disabled={busy} onPress={() => setPhoto(null)} /> : null}
+            </View>
+          )}
+          <View className="flex-row items-baseline justify-between">
+            <Text className="text-foreground" weight="semibold">
+              Hour meter value
             </Text>
-            <Button
-              title={disputeConfirmed ? 'Previous reading disputed · undo' : 'The previous reading is wrong'}
-              onPress={() => {
-                setDisputedReadingId(latestId);
-                setDisputePrevious(!disputeConfirmed);
-              }}
-              disabled={busy}
-            />
+            {latest !== undefined ? (
+              <Text className="text-sm text-muted-foreground">Minimum allowed: {latest.toFixed(1)} h</Text>
+            ) : null}
           </View>
-        ) : null}
-        {error ? (
-          <Text className="text-danger" accessibilityRole="alert">
-            {error}
+          <TextInput
+            accessibilityLabel="Hour meter value"
+            keyboardType="decimal-pad"
+            placeholder="e.g. 1234.5"
+            value={value}
+            editable={!busy}
+            onChangeText={(text) => {
+              setValue(text);
+              setDisputePrevious(false);
+            }}
+          />
+          {value && !parsed?.success ? (
+            <Text className="text-danger">Enter a non-negative value with at most one decimal place.</Text>
+          ) : null}
+          <Text className="text-foreground" weight="semibold">
+            Comment (optional)
           </Text>
-        ) : null}
-        {!canCapture ? <Text className="text-danger">Your role cannot capture readings.</Text> : null}
-        <Button
-          primary
-          title={busy ? 'Saving…' : 'Save reading'}
-          disabled={busy || !canSave}
-          onPress={() => {
-            void save();
-          }}
-        />
-      </ScrollView>
+          <TextInput
+            accessibilityLabel="Capture comment"
+            placeholder="Anything management should know about this reading"
+            value={comment}
+            editable={!busy}
+            multiline
+            maxLength={ReadingComment.maxLength ?? undefined}
+            onChangeText={setComment}
+          />
+          {below ? (
+            <View className="gap-3 rounded-xl border border-danger p-4">
+              <Text className="text-foreground">
+                This is below the minimum allowed. Correct your value, retake the photo, or dispute the previous
+                reading.
+              </Text>
+              <Button
+                title={disputeConfirmed ? 'Previous reading disputed · undo' : 'The previous reading is wrong'}
+                onPress={() => {
+                  setDisputedReadingId(latestId);
+                  setDisputePrevious(!disputeConfirmed);
+                }}
+                disabled={busy}
+              />
+            </View>
+          ) : null}
+        </ScrollView>
+        <View
+          className="gap-2 border-t border-border bg-background px-4 pt-3"
+          style={{ paddingBottom: Math.max(safeAreaBottom, 16) }}
+        >
+          {error ? (
+            <Text className="text-danger" accessibilityRole="alert">
+              {error}
+            </Text>
+          ) : null}
+          {!canCapture ? <Text className="text-danger">Your role cannot capture readings.</Text> : null}
+          <Button
+            primary
+            title={busy ? 'Saving…' : 'Save reading'}
+            disabled={busy || !canSave}
+            onPress={() => {
+              void save();
+            }}
+          />
+        </View>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }

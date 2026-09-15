@@ -1,0 +1,52 @@
+{
+  "business": "equipment",
+  "releasedAt": "2026-09-15T08:47:17.079Z",
+  "sections": [
+    {
+      "surface": "app",
+      "entries": [
+        {
+          "title": "Scan parts into stock movements",
+          "description": "Exact part codes now select the matching part automatically while preserving manual selections."
+        },
+        {
+          "title": "Check out parts without a job",
+          "description": "Issue parts directly to a person and return them later from the original checkout."
+        },
+        {
+          "title": "Check out multiple parts together",
+          "description": "Build and review a basket of parts before completing a checkout."
+        },
+        {
+          "title": "See live product costs first",
+          "description": "Product costing now shows the latest calculated estimate before older saved figures."
+        },
+        {
+          "title": "Generate cleaner brochures",
+          "description": "Brochure body text no longer splits words incorrectly across lines."
+        },
+        {
+          "title": "Manage users for your current business",
+          "description": "The Users page now shows the relevant people and roles for the business you are working in."
+        },
+        {
+          "title": "Browse large user lists",
+          "description": "User lists are now paginated, making them faster and easier to navigate."
+        }
+      ]
+    },
+    {
+      "surface": "mobile",
+      "entries": [
+        {
+          "title": "Check out parts without a job",
+          "description": "Issue parts directly to a person and process returns from the original checkout."
+        },
+        {
+          "title": "Reset your password",
+          "description": "The password reset option is available again, with clearer request feedback and reliable navigation from reset links."
+        }
+      ]
+    }
+  ]
+}

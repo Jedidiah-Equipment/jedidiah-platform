@@ -1,0 +1,36 @@
+{
+  "business": "contracting",
+  "releasedAt": "2026-09-15T08:47:17.079Z",
+  "sections": [
+    {
+      "surface": "app",
+      "entries": [
+        {
+          "title": "Navigate and edit records more consistently",
+          "description": "Fleet and directory pages now use clearer, consistent controls and forms, including the In Yard status."
+        },
+        {
+          "title": "Manage users for your current business",
+          "description": "The Users page now shows the relevant people and roles for the business you are working in."
+        },
+        {
+          "title": "Browse large user lists",
+          "description": "User lists are now paginated, making them faster and easier to navigate."
+        }
+      ]
+    },
+    {
+      "surface": "mobile",
+      "entries": [
+        {
+          "title": "Work with machines more easily",
+          "description": "Machine lists, filters, reading statuses, and capture controls are now clearer and more consistent. Filter menus also stay within the screen."
+        },
+        {
+          "title": "Reset your password",
+          "description": "The password reset option is available again, with clearer request feedback and reliable navigation from reset links."
+        }
+      ]
+    }
+  ]
+}

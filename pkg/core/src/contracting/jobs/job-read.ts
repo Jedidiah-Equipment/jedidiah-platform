@@ -1,22 +1,17 @@
 import { type DatabaseTransaction, type Db, user } from '@pkg/db';
 import {
-  type contractingCategories,
   contractingChargeLines,
-  type contractingCustomers,
-  type contractingFarms,
+  contractingCustomers,
+  contractingFarms,
   type contractingHourReadings,
-  type contractingImplements,
   contractingJobs,
   contractingMachineAssignments,
-  type contractingMachines,
-  type contractingMeasures,
-  type contractingMeasureTypes,
-  type contractingWorkTypes,
+  contractingWorkTypes,
 } from '@pkg/db/contracting';
 import { deriveStintHours, formatJobNumber, looksFinished } from '@pkg/domain/contracting';
 import { Assignment, FieldReading, JobDetail, type JobQueue, JobSummary } from '@pkg/schema/contracting';
 import { and, asc, eq, inArray, sql } from 'drizzle-orm';
-import { jobNotFound } from './job-errors.js';
+import { assertOwner, JobError, jobNotFound } from './job-errors.js';
 
 function mapFieldReading(row: typeof contractingHourReadings.$inferSelect | null) {
   if (!row) return null;
@@ -30,12 +25,12 @@ function mapFieldReading(row: typeof contractingHourReadings.$inferSelect | null
 async function loadJob(db: Db | DatabaseTransaction, condition: ReturnType<typeof eq>) {
   const query = db.query.contractingJobs;
   const findFirst = query.findFirst as unknown as (config: unknown) => Promise<LoadedJob | undefined>;
-  return findFirst.call(query, {
+  const row = await findFirst.call(query, {
     where: condition,
     with: {
       assignments: {
         extras: {
-          previousDepartureValue: sql<number | null>`(
+          previousDepartureValue: sql<string | null>`(
             select previous.value
             from contracting.hour_reading previous
             where previous.machine_id = ${contractingMachineAssignments.machineId}
@@ -65,28 +60,60 @@ async function loadJob(db: Db | DatabaseTransaction, condition: ReturnType<typeo
       workType: true,
     },
   });
+  assertLoadedJob(row);
+  return row;
 }
 
-type LoadedAssignment = typeof contractingMachineAssignments.$inferSelect & {
-  arrivalReading: typeof contractingHourReadings.$inferSelect | null;
-  departureReading: typeof contractingHourReadings.$inferSelect | null;
-  driver: typeof user.$inferSelect | null;
-  implement: typeof contractingImplements.$inferSelect | null;
-  machine: typeof contractingMachines.$inferSelect & { category: typeof contractingCategories.$inferSelect };
-  measures: Array<
-    typeof contractingMeasures.$inferSelect & { measureType: typeof contractingMeasureTypes.$inferSelect }
+type LoadedJob = typeof contractingJobs.$inferSelect & {
+  assignments: Array<
+    typeof contractingMachineAssignments.$inferSelect & {
+      arrivalReading: typeof contractingHourReadings.$inferSelect | null;
+      departureReading: typeof contractingHourReadings.$inferSelect | null;
+      driver: typeof user.$inferSelect | null;
+      implement: { code: string } | null;
+      machine: { code: string; category: { name: string; icon: string; colour: string } };
+      measures: Array<
+        { measureTypeId: string; measureType: { name: string; displayOrder: number } } & Record<string, unknown>
+      >;
+      previousDepartureValue: number | string | null;
+    }
   >;
-  previousDepartureValue: number | null;
+  chargeLines: (typeof contractingChargeLines.$inferSelect)[];
+  customer: { name: string };
+  farm: { name: string };
+  foreman: { name: string } | null;
+  workType: { name: string };
 };
 
-type LoadedJob = typeof contractingJobs.$inferSelect & {
-  assignments: LoadedAssignment[];
-  chargeLines: (typeof contractingChargeLines.$inferSelect)[];
-  customer: typeof contractingCustomers.$inferSelect;
-  farm: typeof contractingFarms.$inferSelect;
-  foreman: typeof user.$inferSelect | null;
-  workType: typeof contractingWorkTypes.$inferSelect;
-};
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+function assertLoadedJob(row: unknown): asserts row is LoadedJob | undefined {
+  if (row === undefined) return;
+  if (
+    !isRecord(row) ||
+    !Array.isArray(row.assignments) ||
+    !Array.isArray(row.chargeLines) ||
+    !isRecord(row.customer) ||
+    !isRecord(row.farm) ||
+    !isRecord(row.workType)
+  )
+    throw new Error('Contracting Job query returned an invalid relation shape.');
+  for (const assignment of row.assignments) {
+    if (
+      !isRecord(assignment) ||
+      !isRecord(assignment.machine) ||
+      !isRecord(assignment.machine.category) ||
+      !Array.isArray(assignment.measures) ||
+      !Object.hasOwn(assignment, 'previousDepartureValue') ||
+      (assignment.previousDepartureValue !== null &&
+        typeof assignment.previousDepartureValue !== 'string' &&
+        typeof assignment.previousDepartureValue !== 'number')
+    )
+      throw new Error('Contracting Machine Assignment query returned an invalid relation shape.');
+  }
+}
 
 function mapAssignment(row: LoadedJob['assignments'][number]) {
   const arrival = mapFieldReading(row.arrivalReading);
@@ -179,7 +206,101 @@ export async function getJob({ db, id, code }: { db: Db | DatabaseTransaction; i
   });
 }
 
-export async function listJobs({ db, queue, foremanUserId }: { db: Db; queue: JobQueue; foremanUserId?: string }) {
+export async function getReadableJob({
+  db,
+  actorUserId,
+  mode,
+  id,
+  code,
+}: {
+  db: Db;
+  actorUserId: string;
+  mode: 'all' | 'own' | 'priced';
+  id?: string;
+  code?: string;
+}) {
+  const job = await getJob({ db, ...(id === undefined ? {} : { id }), ...(code === undefined ? {} : { code }) });
+  if (mode === 'own') {
+    assertOwner(job, actorUserId);
+    if (!['upcoming', 'active', 'completed'].includes(job.status))
+      throw new JobError('contracting_job.not_owner', 'Foremen can only view their open and completed Jobs.');
+    return redactMoney(job);
+  }
+  if (mode === 'priced' && !['completed', 'priced', 'invoiced'].includes(job.status))
+    throw new JobError('contracting_job.not_owner', 'Invoicing can only view Completed, Priced, or Invoiced Jobs.');
+  return job;
+}
+
+const plannedStints = sql<number>`(
+  select count(*)::integer
+  from contracting.machine_assignment summary_assignment
+  where summary_assignment.job_id = ${contractingJobs.id}
+    and summary_assignment.arrival_reading_id is null
+)`;
+const onSiteStints = sql<number>`(
+  select count(*)::integer
+  from contracting.machine_assignment summary_assignment
+  where summary_assignment.job_id = ${contractingJobs.id}
+    and summary_assignment.arrival_reading_id is not null
+    and summary_assignment.departure_reading_id is null
+)`;
+const leftStints = sql<number>`(
+  select count(*)::integer
+  from contracting.machine_assignment summary_assignment
+  where summary_assignment.job_id = ${contractingJobs.id}
+    and summary_assignment.departure_reading_id is not null
+)`;
+const openGapFlags = sql<number>`(
+  select count(*)::integer
+  from contracting.machine_assignment summary_assignment
+  join contracting.hour_reading summary_arrival
+    on summary_arrival.id = summary_assignment.arrival_reading_id
+  where summary_assignment.job_id = ${contractingJobs.id}
+    and summary_assignment.gap_resolved_at is null
+    and summary_arrival.value - (
+      select previous.value
+      from contracting.hour_reading previous
+      where previous.machine_id = summary_assignment.machine_id
+        and previous.role = 'departure'
+        and previous.sequence < summary_arrival.sequence
+      order by previous.sequence desc
+      limit 1
+    ) > 4
+)`;
+const readingsNeedingALook = sql<number>`(
+  select count(*)::integer
+  from contracting.machine_assignment summary_assignment
+  join contracting.hour_reading summary_reading
+    on summary_reading.id = summary_assignment.arrival_reading_id
+    or summary_reading.id = summary_assignment.departure_reading_id
+  where summary_assignment.job_id = ${contractingJobs.id}
+    and (
+      summary_reading.disputed
+      or (
+        summary_reading.evidence_reviewed_at is null
+        and summary_reading.ai_verification in ('pending', 'disagrees', 'low-confidence')
+      )
+    )
+)`;
+const looksFinishedInSql = sql<boolean>`(
+  ${contractingJobs.status} = 'active'
+  and ${leftStints} > 0
+  and ${onSiteStints} = 0
+)`;
+
+export async function listJobs({
+  db,
+  queue,
+  limit,
+  offset,
+  foremanUserId,
+}: {
+  db: Db;
+  queue: JobQueue;
+  limit: number;
+  offset: number;
+  foremanUserId?: string;
+}) {
   const candidateStatuses =
     queue === 'looks-finished'
       ? (['active'] as const)
@@ -188,19 +309,60 @@ export async function listJobs({ db, queue, foremanUserId }: { db: Db; queue: Jo
         : queue === 'awaiting-invoice'
           ? (['priced'] as const)
           : ([queue] as const);
-  const rows = await db
-    .select({ id: contractingJobs.id })
+  return db
+    .select({
+      id: contractingJobs.id,
+      code: contractingJobs.code,
+      jobNumber: sql<string>`'CJOB-' || lpad(${contractingJobs.code}::text, 5, '0')`,
+      customerId: contractingJobs.customerId,
+      customerName: contractingCustomers.name,
+      farmId: contractingJobs.farmId,
+      farmName: contractingFarms.name,
+      workTypeId: contractingJobs.workTypeId,
+      workTypeName: contractingWorkTypes.name,
+      description: contractingJobs.description,
+      foremanUserId: contractingJobs.foremanUserId,
+      foremanName: user.name,
+      status: contractingJobs.status,
+      plannedStints,
+      onSiteStints,
+      leftStints,
+      looksFinished: looksFinishedInSql,
+      openGapFlags,
+      needsALook: sql<number>`${openGapFlags} + ${readingsNeedingALook}`,
+      startDate: contractingJobs.startDate,
+      endDate: contractingJobs.endDate,
+      createdAt: contractingJobs.createdAt,
+      updatedAt: contractingJobs.updatedAt,
+    })
     .from(contractingJobs)
+    .innerJoin(contractingCustomers, eq(contractingCustomers.id, contractingJobs.customerId))
+    .innerJoin(
+      contractingFarms,
+      and(eq(contractingFarms.id, contractingJobs.farmId), eq(contractingFarms.customerId, contractingJobs.customerId)),
+    )
+    .innerJoin(contractingWorkTypes, eq(contractingWorkTypes.id, contractingJobs.workTypeId))
+    .leftJoin(user, eq(user.id, contractingJobs.foremanUserId))
     .where(
       and(
         inArray(contractingJobs.status, candidateStatuses),
+        queue === 'looks-finished' ? looksFinishedInSql : undefined,
         foremanUserId ? eq(contractingJobs.foremanUserId, foremanUserId) : undefined,
         foremanUserId ? inArray(contractingJobs.status, ['upcoming', 'active', 'completed']) : undefined,
       ),
     )
-    .orderBy(asc(contractingJobs.code));
-  const details = await Promise.all(rows.map(({ id }) => getJob({ db, id })));
-  return details.filter((job) => queue !== 'looks-finished' || job.looksFinished).map((job) => JobSummary.parse(job));
+    .orderBy(asc(contractingJobs.code))
+    .limit(limit)
+    .offset(offset)
+    .then((rows) =>
+      rows.map((row) =>
+        JobSummary.parse({
+          ...row,
+          createdAt: row.createdAt.toISOString(),
+          updatedAt: row.updatedAt.toISOString(),
+        }),
+      ),
+    );
 }
 
 export function redactMoney(job: ReturnType<typeof JobDetail.parse>) {

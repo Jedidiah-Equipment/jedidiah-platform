@@ -11,7 +11,7 @@ export const Litres = z.number().nonnegative().max(9999999999.99).multipleOf(0.0
 export const Quantity = z.number().positive().max(9999999999.99).multipleOf(0.01);
 export const Money = z.number().nonnegative().max(9999999999.99).multipleOf(0.01);
 export const JobDescription = nullableTrimmedTextInput();
-export const JobNumber = z.string().regex(/^CJOB-\d{5}$/, 'Enter a Job Number like CJOB-00037');
+export const JobNumber = z.string().regex(/^CJOB-\d{5,}$/, 'Enter a Job Number like CJOB-00037');
 
 export const JobCreateInput = z
   .object({
@@ -61,7 +61,13 @@ export const JobCompleteInput = z
   });
 export type JobCompleteInput = z.infer<typeof JobCompleteInput>;
 
-export const JobListInput = z.object({ queue: z.enum(jobQueues) }).strict();
+export const JobListInput = z
+  .object({
+    queue: z.enum(jobQueues),
+    limit: z.number().int().positive().max(200).default(50),
+    offset: z.number().int().nonnegative().default(0),
+  })
+  .strict();
 export type JobListInput = z.infer<typeof JobListInput>;
 export const JobLookupInput = z.union([z.object({ id: UUID }).strict(), z.object({ code: JobNumber }).strict()]);
 export type JobLookupInput = z.infer<typeof JobLookupInput>;

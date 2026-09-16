@@ -4,14 +4,13 @@ import {
   completeJob,
   createChargeLine,
   createJob,
-  getJob,
+  getReadableJob,
   listForemen,
   listJobs,
   patchAssignment,
   patchChargeLine,
   patchJob,
   planAssignment,
-  redactMoney,
   removeAssignment,
   removeChargeLine,
   removeMeasure,
@@ -64,10 +63,11 @@ export const contractingJobsRouter = router({
       .query(({ ctx, input }) =>
         mapCoreErrors(async () => {
           const mode = readMode(ctx.access);
-          if (mode === 'priced' && !['awaiting-invoice', 'invoiced'].includes(input.queue)) refuseRead();
+          if (mode === 'priced' && !['awaiting-pricing', 'awaiting-invoice', 'invoiced'].includes(input.queue))
+            refuseRead();
           return listJobs({
             db: ctx.db,
-            queue: input.queue,
+            ...input,
             ...(mode === 'own' ? { foremanUserId: ctx.session.user.id } : {}),
           });
         }, jobErrorFamily),
@@ -76,15 +76,8 @@ export const contractingJobsRouter = router({
       .input(JobLookupInput)
       .query(({ ctx, input }) =>
         mapCoreErrors(async () => {
-          const job = await getJob({ db: ctx.db, ...input });
           const mode = readMode(ctx.access);
-          if (mode === 'own') {
-            if (job.foremanUserId !== ctx.session.user.id || !['upcoming', 'active', 'completed'].includes(job.status))
-              refuseRead();
-            return redactMoney(job);
-          }
-          if (mode === 'priced' && !['priced', 'invoiced'].includes(job.status)) refuseRead();
-          return job;
+          return getReadableJob({ db: ctx.db, actorUserId: ctx.session.user.id, mode, ...input });
         }, jobErrorFamily),
       ),
     create: authorizedProcedure('contracting_job:create')

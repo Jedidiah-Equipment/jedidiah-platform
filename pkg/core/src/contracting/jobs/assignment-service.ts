@@ -104,7 +104,8 @@ export async function patchAssignment({
             assertOwner(job, actorUserId);
             if (job.status !== 'active') throw wrongStatus('Foremen can change stints only while the Job is Active.');
           }
-          if (job.status === 'invoiced') throw wrongStatus('An Invoiced Job cannot be changed.');
+          if (['cancelled', 'invoiced'].includes(job.status))
+            throw wrongStatus('A Cancelled or Invoiced Job cannot be changed.');
           if (
             (input.implementId !== undefined || input.driverUserId !== undefined) &&
             before.departureReadingId !== null
@@ -135,21 +136,24 @@ export async function removeAssignmentWithin({
   actorUserId: AuthId;
   id: string;
 }) {
-  const [result] = await tx
-    .select({ assignment: contractingMachineAssignments, machineCode: contractingMachines.code })
+  const [row] = await tx
+    .select()
     .from(contractingMachineAssignments)
-    .innerJoin(contractingMachines, eq(contractingMachines.id, contractingMachineAssignments.machineId))
     .where(eq(contractingMachineAssignments.id, id))
     .for('update');
-  if (!result) throw jobNotFound('Machine Assignment');
-  const row = result.assignment;
+  if (!row) throw jobNotFound('Machine Assignment');
   if (row.arrivalReadingId)
     throw new JobError('contracting_job.stint_not_planned', 'Only a planned Machine Assignment can be removed.');
+  const [machine] = await tx
+    .select({ code: contractingMachines.code })
+    .from(contractingMachines)
+    .where(eq(contractingMachines.id, row.machineId));
+  if (!machine) throw new JobError('contracting_job.invalid_reference', 'Machine not found.');
   await tx.delete(contractingMachineAssignments).where(eq(contractingMachineAssignments.id, id));
   await recordAuditDelete({
     db: tx,
     actorUserId,
-    descriptor: assignmentDescriptor(result.machineCode),
+    descriptor: assignmentDescriptor(machine.code),
     input: row,
   });
   return row;
@@ -163,7 +167,9 @@ export async function removeAssignment({ db, actorUserId, id }: { db: Db; actorU
         .from(contractingMachineAssignments)
         .where(eq(contractingMachineAssignments.id, id));
       if (!reference) throw jobNotFound('Machine Assignment');
-      await lockJob(tx, reference.jobId);
+      const job = await lockJob(tx, reference.jobId);
+      if (!['upcoming', 'active'].includes(job.status))
+        throw wrongStatus('Machine Assignments can only be removed from an Upcoming or Active Job.');
       return removeAssignmentWithin({ tx, actorUserId, id });
     }),
   );
@@ -178,7 +184,9 @@ export async function resolveGap({ db, actorUserId, input }: { db: Db; actorUser
         .innerJoin(contractingMachines, eq(contractingMachines.id, contractingMachineAssignments.machineId))
         .where(eq(contractingMachineAssignments.id, input.id));
       if (!reference) throw jobNotFound('Machine Assignment');
-      await lockJob(tx, reference.jobId);
+      const job = await lockJob(tx, reference.jobId);
+      if (!['active', 'completed'].includes(job.status))
+        throw wrongStatus('Hour Gaps can only be resolved on an Active or Completed Job.');
       return mutateEntity({
         db: tx,
         actorUserId,

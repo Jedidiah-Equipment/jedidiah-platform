@@ -1,5 +1,10 @@
 import type { DatabaseTransaction, Db } from '@pkg/db';
-import { contractingJobs, contractingMachineAssignments, contractingMeasures } from '@pkg/db/contracting';
+import {
+  contractingJobs,
+  contractingMachineAssignments,
+  contractingMeasures,
+  contractingMeasureTypes,
+} from '@pkg/db/contracting';
 import type { AuthId } from '@pkg/schema';
 import type { MeasureRemoveInput, MeasureSetInput } from '@pkg/schema/contracting';
 import { and, eq } from 'drizzle-orm';
@@ -14,13 +19,24 @@ import { jobNotFound, withJobConstraints, wrongStatus } from './job-errors.js';
 import { getJob } from './job-read.js';
 
 type Row = typeof contractingMeasures.$inferSelect;
-export const measureDescriptor = defineAuditDescriptor<Row>({
-  entityType: 'contracting_measure',
-  noun: 'Measure',
-  primaryLabelField: 'measureTypeId',
-  entityId: (row) => row.id,
-  toRecord: ({ id: _id, createdAt: _createdAt, updatedAt: _updatedAt, ...row }) => row,
-});
+export const measureDescriptor = (measureTypeName: string) =>
+  defineAuditDescriptor<Row>({
+    entityType: 'contracting_measure',
+    noun: 'Measure',
+    primaryLabelField: 'measureTypeName',
+    label: () => measureTypeName,
+    entityId: (row) => row.id,
+    toRecord: ({ id: _id, createdAt: _createdAt, updatedAt: _updatedAt, ...row }) => row,
+  });
+
+async function getMeasureTypeName(db: DatabaseTransaction, id: string) {
+  const [measureType] = await db
+    .select({ name: contractingMeasureTypes.name })
+    .from(contractingMeasureTypes)
+    .where(eq(contractingMeasureTypes.id, id));
+  if (!measureType) throw jobNotFound('Measure Type');
+  return measureType.name;
+}
 
 async function lockMeasureJob(db: DatabaseTransaction, assignmentId: string) {
   const [reference] = await db
@@ -46,6 +62,7 @@ export async function setMeasure({ db, actorUserId, input }: { db: Db; actorUser
   return withJobConstraints(() =>
     db.transaction(async (tx) => {
       const { job } = await lockMeasureJob(tx, input.assignmentId);
+      const descriptor = measureDescriptor(await getMeasureTypeName(tx, input.measureTypeId));
       const [before] = await tx
         .select()
         .from(contractingMeasures)
@@ -67,11 +84,10 @@ export async function setMeasure({ db, actorUserId, input }: { db: Db; actorUser
         .returning();
       if (!row) throw new Error('Measure upsert returned no row');
       if (!before) {
-        await recordAuditCreate({ db: tx, actorUserId, descriptor: measureDescriptor, input: row });
+        await recordAuditCreate({ db: tx, actorUserId, descriptor, input: row });
       } else {
-        const changes = diffAuditUpdate(measureDescriptor, before, row);
-        if (changes)
-          await recordAuditUpdate({ db: tx, actorUserId, descriptor: measureDescriptor, after: row, changes });
+        const changes = diffAuditUpdate(descriptor, before, row);
+        if (changes) await recordAuditUpdate({ db: tx, actorUserId, descriptor, after: row, changes });
       }
       return (await getJob({ db: tx, id: job.id })).assignments
         .find((assignment) => assignment.id === input.assignmentId)
@@ -103,8 +119,9 @@ export async function removeMeasure({
         )
         .for('update');
       if (!row) throw jobNotFound('Measure');
+      const descriptor = measureDescriptor(await getMeasureTypeName(tx, row.measureTypeId));
       await tx.delete(contractingMeasures).where(eq(contractingMeasures.id, row.id));
-      await recordAuditDelete({ db: tx, actorUserId, descriptor: measureDescriptor, input: row });
+      await recordAuditDelete({ db: tx, actorUserId, descriptor, input: row });
     }),
   );
 }

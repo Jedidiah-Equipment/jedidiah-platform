@@ -173,10 +173,16 @@ test('enforces the Job queue role matrix and strips money from Foreman reads', a
 
   const invoicing = context.createCaller(contractingSession('contracting-invoicing')).contractingJobs;
   await expect(invoicing.jobs.list({ queue: 'upcoming' })).rejects.toMatchObject({ code: 'FORBIDDEN' });
+  expect((await invoicing.jobs.list({ queue: 'awaiting-pricing' })).map((job) => job.id)).toEqual([
+    context.completedJob.id,
+  ]);
   expect((await invoicing.jobs.list({ queue: 'awaiting-invoice' })).map((job) => job.id)).toEqual([
     context.pricedJob.id,
   ]);
-  await expect(invoicing.jobs.get({ id: context.completedJob.id })).rejects.toMatchObject({ code: 'FORBIDDEN' });
+  await expect(invoicing.jobs.get({ id: context.completedJob.id })).resolves.toMatchObject({
+    id: context.completedJob.id,
+    status: 'completed',
+  });
 
   for (const role of ['driver', 'mechanic'] as const)
     await expect(

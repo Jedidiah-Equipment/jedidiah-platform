@@ -23,6 +23,11 @@ export type StintHours = {
 
 export const round1 = (value: number) => Math.round(value * 10) / 10;
 
+function nonnegativeDifference(later: number, earlier: number) {
+  const difference = round1(later - earlier);
+  return difference < 0 ? null : difference;
+}
+
 export function assignmentState({
   arrivalReadingId,
   departureReadingId,
@@ -36,9 +41,14 @@ export function assignmentState({
 
 export function deriveStintHours(stint: StintReadings, threshold = GAP_FLAG_THRESHOLD_HOURS): StintHours {
   const state: AssignmentState = !stint.arrival ? 'planned' : stint.departure ? 'left' : 'on-site';
-  const workHours = stint.arrival && stint.departure ? round1(stint.departure.value - stint.arrival.value) : null;
+  // A disputed reading may deliberately move the ledger backwards. Keep the Job readable while the
+  // evidence is reviewed, but do not present a negative duration as meaningful operational hours.
+  const workHours =
+    stint.arrival && stint.departure ? nonnegativeDifference(stint.departure.value, stint.arrival.value) : null;
   const gapHours =
-    stint.arrival && stint.previousDeparture ? round1(stint.arrival.value - stint.previousDeparture.value) : null;
+    stint.arrival && stint.previousDeparture
+      ? nonnegativeDifference(stint.arrival.value, stint.previousDeparture.value)
+      : null;
   const travelHours = stint.gap ? stint.gap.travelHours : stint.travelIncluded && gapHours !== null ? gapHours : 0;
   const unaccountedHours = stint.gap?.unaccountedHours ?? 0;
   return {

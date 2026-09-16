@@ -12,8 +12,8 @@ import { createMeasureType, removeMeasureType } from '../rate-card/measure-type-
 import { createRate, listRates, removeRate } from '../rate-card/rate-service.js';
 import { captureReading } from '../readings/reading-service.js';
 import { createWorkType } from '../work-types/work-type-service.js';
-import { planAssignment, resolveGap } from './assignment-service.js';
-import { getJob } from './job-read.js';
+import { patchAssignment, planAssignment, removeAssignment, resolveGap } from './assignment-service.js';
+import { getJob, listJobs } from './job-read.js';
 import { cancelJob, completeJob, createJob } from './job-service.js';
 import { setMeasure } from './measure-service.js';
 
@@ -237,6 +237,53 @@ describe('Machine Assignment lifecycle', () => {
       },
     });
     expect((await getJob({ db: context.db, id: secondJob.id })).status).toBe('active');
+    expect(
+      (await listJobs({ db: context.db, queue: 'looks-finished', limit: 50, offset: 0 })).map((job) => job.id),
+    ).toEqual([firstJob.id]);
+    expect(await listJobs({ db: context.db, queue: 'active', limit: 1, offset: 1 })).toHaveLength(1);
+
+    await captureReading({
+      db: context.db,
+      actorUserId: foremanId,
+      input: {
+        machineId: context.machine.id,
+        assignmentId: second.id,
+        role: 'departure',
+        value: 111,
+        capturedAt: '2026-09-02T17:00:00+02:00',
+        disputePrevious: true,
+        comment: 'Meter reading needs review',
+      },
+    });
+    expect((await getJob({ db: context.db, id: secondJob.id })).assignments[0]).toMatchObject({
+      workHours: null,
+      billableHours: null,
+    });
+  });
+
+  test('freezes assignment changes after cancellation', async ({ context }) => {
+    const job = await createJob({ db: context.db, actorUserId: managerId, input: jobInput(context) });
+    const planned = await planAssignment({
+      db: context.db,
+      actorUserId: managerId,
+      input: { jobId: job.id, machineId: context.machine.id, implementId: null },
+    });
+    if (!planned) throw new Error('Expected assignment');
+    await cancelJob({
+      db: context.db,
+      actorUserId: managerId,
+      input: { id: job.id, reason: 'Customer cancelled' },
+    });
+    await expect(
+      patchAssignment({
+        db: context.db,
+        actorUserId: managerId,
+        input: { id: planned.id, travelIncluded: false },
+      }),
+    ).rejects.toMatchObject({ code: 'contracting_job.wrong_status' });
+    await expect(removeAssignment({ db: context.db, actorUserId: managerId, id: planned.id })).rejects.toMatchObject({
+      code: 'contracting_job.wrong_status',
+    });
   });
 });
 
@@ -302,6 +349,11 @@ describe('Completion and billable facts', () => {
       input: { assignmentId: arrived.id, measureTypeId: measureType.id, quantity: 20 },
     });
     expect(await context.db.select().from(contractingMeasures)).toHaveLength(1);
+    expect(
+      (await context.db.select().from(auditEvents)).some(
+        (event) => event.entityType === 'contracting_measure' && event.summary.includes('Loads'),
+      ),
+    ).toBe(true);
     await expect(
       context.db.insert(contractingMeasures).values({
         assignmentId: arrived.id,

@@ -73,6 +73,24 @@ describe('contracting stint hours', () => {
     });
   });
 
+  test('keeps disputed backwards readings readable without inventing negative hours', () => {
+    expect(
+      deriveStintHours({
+        arrival: { value: 5_000, capturedAt: '2026-09-01T08:00:00+02:00' },
+        departure: { value: 4_900, capturedAt: '2026-09-01T17:00:00+02:00' },
+        previousDeparture: { value: 5_100 },
+        travelIncluded: true,
+        gap: null,
+      }),
+    ).toMatchObject({
+      workHours: null,
+      gapHours: null,
+      travelHours: 0,
+      billableHours: null,
+      gapFlag: false,
+    });
+  });
+
   test.each([
     [4, false],
     [4.1, true],

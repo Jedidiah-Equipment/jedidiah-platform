@@ -99,6 +99,11 @@ const test = createTester(async ({ db }) => {
     actorUserId: managerId,
     input: { ...base, foremanUserId: otherForemanId },
   });
+  const completedJob = await createJob({
+    db,
+    actorUserId: managerId,
+    input: { ...base, foremanUserId: otherForemanId },
+  });
   const stint = await planAssignment({
     db,
     actorUserId: managerId,
@@ -127,7 +132,17 @@ const test = createTester(async ({ db }) => {
       pricedTotal: 100,
     })
     .where(eq(contractingJobs.id, pricedJob.id));
-  return { db, otherJob, ownJob, pricedJob };
+  await db
+    .update(contractingJobs)
+    .set({
+      status: 'completed',
+      startDate: '2026-09-01',
+      endDate: '2026-09-02',
+      completedAt: now,
+      completedByUserId: managerId,
+    })
+    .where(eq(contractingJobs.id, completedJob.id));
+  return { completedJob, db, otherJob, ownJob, pricedJob, stint };
 });
 
 test('enforces the Job queue role matrix and strips money from Foreman reads', async ({ context }) => {
@@ -139,6 +154,7 @@ test('enforces the Job queue role matrix and strips money from Foreman reads', a
     assignments: [{ rateUnitAmount: null, computedAmount: null, finalAmount: null }],
   });
   await expect(foreman.jobs.get({ id: context.otherJob.id })).rejects.toMatchObject({ code: 'FORBIDDEN' });
+  await expect(foreman.stints.remove({ id: context.stint.id })).rejects.toMatchObject({ code: 'FORBIDDEN' });
 
   const workshop = context.createCaller(contractingSession('workshop-manager')).contractingJobs;
   expect((await workshop.jobs.list({ queue: 'upcoming' })).map((job) => job.id)).toEqual([
@@ -160,6 +176,7 @@ test('enforces the Job queue role matrix and strips money from Foreman reads', a
   expect((await invoicing.jobs.list({ queue: 'awaiting-invoice' })).map((job) => job.id)).toEqual([
     context.pricedJob.id,
   ]);
+  await expect(invoicing.jobs.get({ id: context.completedJob.id })).rejects.toMatchObject({ code: 'FORBIDDEN' });
 
   for (const role of ['driver', 'mechanic'] as const)
     await expect(

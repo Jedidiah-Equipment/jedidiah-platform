@@ -25,12 +25,12 @@ import {
   AssignmentPatchInput,
   AssignmentPlanInput,
   ChargeLineCreateInput,
+  ChargeLineIdInput,
   ChargeLinePatchInput,
   GapResolveInput,
   JobCancelInput,
   JobCompleteInput,
   JobCreateInput,
-  JobIdInput,
   JobListInput,
   JobLookupInput,
   JobPatchInput,
@@ -83,7 +83,7 @@ export const contractingJobsRouter = router({
               refuseRead();
             return redactMoney(job);
           }
-          if (mode === 'priced' && !['completed', 'priced', 'invoiced'].includes(job.status)) refuseRead();
+          if (mode === 'priced' && !['priced', 'invoiced'].includes(job.status)) refuseRead();
           return job;
         }, jobErrorFamily),
       ),
@@ -140,17 +140,11 @@ export const contractingJobsRouter = router({
           jobErrorFamily,
         ),
       ),
-    remove: authorizedProcedure(['contracting_job:assign', 'contracting_assignment:update-own'])
+    remove: authorizedProcedure('contracting_job:assign')
       .input(AssignmentIdInput)
       .mutation(({ ctx, input }) =>
         mapCoreErrors(
-          () =>
-            removeAssignment({
-              db: ctx.db,
-              actorUserId: ctx.session.user.id,
-              id: input.id,
-              ownerOnly: !hasPermission(ctx.access, 'contracting_job:assign'),
-            }),
+          () => removeAssignment({ db: ctx.db, actorUserId: ctx.session.user.id, id: input.id }),
           jobErrorFamily,
         ),
       ),
@@ -193,7 +187,7 @@ export const contractingJobsRouter = router({
         ),
       ),
     remove: authorizedProcedure('contracting_job:update')
-      .input(JobIdInput)
+      .input(ChargeLineIdInput)
       .mutation(({ ctx, input }) =>
         mapCoreErrors(
           () => removeChargeLine({ db: ctx.db, actorUserId: ctx.session.user.id, id: input.id }),

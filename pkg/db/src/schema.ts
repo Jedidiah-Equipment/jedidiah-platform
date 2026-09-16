@@ -28,9 +28,23 @@ import * as stocktakeSchema from './schema/equipment/stocktake.js';
 import * as supplierSchema from './schema/equipment/supplier.js';
 import * as userDepartmentSchema from './schema/equipment/user-department.js';
 
+const {
+  contractingChargeLinesRelations,
+  contractingJobsRelations,
+  contractingMachineAssignmentsRelations,
+  contractingMeasuresRelations,
+  ...contractingJobsTables
+} = contractingJobsSchema;
+
 export const schema = {
   ...contractingDirectorySchema,
-  ...contractingJobsSchema,
+  ...contractingJobsTables,
+  // Drizzle 0.45's relation types key on the unqualified table name, so exposing these descriptors'
+  // types would merge `contracting.job` with `equipment.job`. Runtime lookup is schema-qualified.
+  contractingChargeLinesRelations: contractingChargeLinesRelations as unknown,
+  contractingJobsRelations: contractingJobsRelations as unknown,
+  contractingMachineAssignmentsRelations: contractingMachineAssignmentsRelations as unknown,
+  contractingMeasuresRelations: contractingMeasuresRelations as unknown,
   ...contractingReadingSchema,
   ...contractingRateCardSchema,
   ...auditSchema,

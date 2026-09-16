@@ -14,7 +14,7 @@ import { captureReading } from '../readings/reading-service.js';
 import { createWorkType } from '../work-types/work-type-service.js';
 import { planAssignment, resolveGap } from './assignment-service.js';
 import { getJob } from './job-read.js';
-import { completeJob, createJob } from './job-service.js';
+import { cancelJob, completeJob, createJob } from './job-service.js';
 import { setMeasure } from './measure-service.js';
 
 const managerId = 'job-manager';
@@ -155,6 +155,11 @@ describe('Machine Assignment lifecycle', () => {
       input: { jobId: secondJob.id, machineId: context.machine.id, implementId: null },
     });
     if (!first || !second) throw new Error('Expected assignments');
+    expect(
+      (await context.db.select().from(auditEvents)).some(
+        (event) => event.entityType === 'contracting_assignment' && event.summary.includes('CAT320-1'),
+      ),
+    ).toBe(true);
 
     await expect(
       captureReading({
@@ -185,6 +190,13 @@ describe('Machine Assignment lifecycle', () => {
       },
     });
     expect((await getJob({ db: context.db, id: firstJob.id })).status).toBe('active');
+    await expect(
+      cancelJob({
+        db: context.db,
+        actorUserId: managerId,
+        input: { id: firstJob.id, reason: 'Customer cancelled' },
+      }),
+    ).rejects.toMatchObject({ code: 'contracting_job.has_on_site_stints' });
     await expect(
       captureReading({
         db: context.db,

@@ -1,5 +1,5 @@
 import { discountKinds, jobStatuses } from '@pkg/schema/contracting';
-import { sql } from 'drizzle-orm';
+import { relations, sql } from 'drizzle-orm';
 import {
   boolean,
   check,
@@ -207,3 +207,69 @@ export const contractingChargeLines = contractingSchema.table(
     check('charge_line_amount_nonnegative', sql`${table.amount} IS NULL OR ${table.amount} >= 0`),
   ],
 );
+
+export const contractingJobsRelations = relations(contractingJobs, ({ many, one }) => ({
+  assignments: many(contractingMachineAssignments),
+  chargeLines: many(contractingChargeLines),
+  customer: one(contractingCustomers, {
+    fields: [contractingJobs.customerId],
+    references: [contractingCustomers.id],
+  }),
+  farm: one(contractingFarms, {
+    fields: [contractingJobs.farmId, contractingJobs.customerId],
+    references: [contractingFarms.id, contractingFarms.customerId],
+  }),
+  foreman: one(user, { fields: [contractingJobs.foremanUserId], references: [user.id] }),
+  workType: one(contractingWorkTypes, {
+    fields: [contractingJobs.workTypeId],
+    references: [contractingWorkTypes.id],
+  }),
+}));
+
+export const contractingMachineAssignmentsRelations = relations(contractingMachineAssignments, ({ many, one }) => ({
+  arrivalReading: one(contractingHourReadings, {
+    fields: [contractingMachineAssignments.arrivalReadingId],
+    references: [contractingHourReadings.id],
+    relationName: 'assignmentArrivalReading',
+  }),
+  departureReading: one(contractingHourReadings, {
+    fields: [contractingMachineAssignments.departureReadingId],
+    references: [contractingHourReadings.id],
+    relationName: 'assignmentDepartureReading',
+  }),
+  driver: one(user, {
+    fields: [contractingMachineAssignments.driverUserId],
+    references: [user.id],
+  }),
+  implement: one(contractingImplements, {
+    fields: [contractingMachineAssignments.implementId],
+    references: [contractingImplements.id],
+  }),
+  job: one(contractingJobs, {
+    fields: [contractingMachineAssignments.jobId],
+    references: [contractingJobs.id],
+  }),
+  machine: one(contractingMachines, {
+    fields: [contractingMachineAssignments.machineId],
+    references: [contractingMachines.id],
+  }),
+  measures: many(contractingMeasures),
+}));
+
+export const contractingMeasuresRelations = relations(contractingMeasures, ({ one }) => ({
+  assignment: one(contractingMachineAssignments, {
+    fields: [contractingMeasures.assignmentId],
+    references: [contractingMachineAssignments.id],
+  }),
+  measureType: one(contractingMeasureTypes, {
+    fields: [contractingMeasures.measureTypeId],
+    references: [contractingMeasureTypes.id],
+  }),
+}));
+
+export const contractingChargeLinesRelations = relations(contractingChargeLines, ({ one }) => ({
+  job: one(contractingJobs, {
+    fields: [contractingChargeLines.jobId],
+    references: [contractingJobs.id],
+  }),
+}));

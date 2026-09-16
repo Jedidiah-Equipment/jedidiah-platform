@@ -1,7 +1,7 @@
 import type { Db } from '@pkg/db';
 import { contractingChargeLines, contractingJobs } from '@pkg/db/contracting';
 import type { AuthId } from '@pkg/schema';
-import type { ChargeLineCreateInput, ChargeLinePatchInput } from '@pkg/schema/contracting';
+import type { ChargeLineCreateInput, ChargeLinePatchInput, JobStatus } from '@pkg/schema/contracting';
 import { eq, sql } from 'drizzle-orm';
 import { defineAuditDescriptor, recordAuditCreate, recordAuditDelete } from '../../audit/audit-writer.js';
 import { mutateEntity } from '../../audit/mutate-entity.js';
@@ -17,7 +17,7 @@ export const chargeLineDescriptor = defineAuditDescriptor<Row>({
   toRecord: ({ id: _id, createdAt: _createdAt, updatedAt: _updatedAt, ...row }) => row,
 });
 
-function assertMutable(status: string) {
+function assertMutable(status: JobStatus) {
   if (status === 'invoiced' || status === 'cancelled') throw wrongStatus('This Job can no longer be changed.');
 }
 

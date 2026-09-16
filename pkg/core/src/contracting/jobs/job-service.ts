@@ -1,4 +1,4 @@
-import type { DatabaseTransaction, Db } from '@pkg/db';
+import type { Db } from '@pkg/db';
 import { contractingJobs, contractingMachineAssignments } from '@pkg/db/contracting';
 import { canComplete, formatJobNumber } from '@pkg/domain/contracting';
 import type { AuthId } from '@pkg/schema';
@@ -6,8 +6,9 @@ import type { JobCancelInput, JobCompleteInput, JobCreateInput, JobPatchInput } 
 import { eq } from 'drizzle-orm';
 import { defineAuditDescriptor, recordAuditCreate, recordAuditDelete } from '../../audit/audit-writer.js';
 import { mutateEntity } from '../../audit/mutate-entity.js';
-import { assignmentDescriptor, removeAssignmentWithin } from './assignment-service.js';
+import { removeAssignmentWithin } from './assignment-service.js';
 import { JobError, jobNotFound, withJobConstraints, wrongStatus } from './job-errors.js';
+import { lockJob } from './job-lock.js';
 import { getJob } from './job-read.js';
 
 type Row = typeof contractingJobs.$inferSelect;
@@ -25,12 +26,6 @@ export const jobDescriptor = defineAuditDescriptor<Row>({
     cancelledAt: row.cancelledAt?.toISOString() ?? null,
   }),
 });
-
-export async function lockJob(tx: DatabaseTransaction, id: string) {
-  const [job] = await tx.select().from(contractingJobs).where(eq(contractingJobs.id, id)).for('update');
-  if (!job) throw jobNotFound();
-  return job;
-}
 
 export async function createJob({ db, actorUserId, input }: { db: Db; actorUserId: AuthId; input: JobCreateInput }) {
   return withJobConstraints(() =>
@@ -97,6 +92,19 @@ export async function cancelJob({ db, actorUserId, input }: { db: Db; actorUserI
       const before = await lockJob(tx, input.id);
       if (!['upcoming', 'active', 'completed'].includes(before.status))
         throw wrongStatus('Only an Upcoming, Active, or Completed Job can be cancelled.');
+      const assignments = await tx
+        .select()
+        .from(contractingMachineAssignments)
+        .where(eq(contractingMachineAssignments.jobId, before.id))
+        .for('update');
+      const onSite = assignments.filter(
+        (assignment) => assignment.arrivalReadingId !== null && assignment.departureReadingId === null,
+      ).length;
+      if (onSite)
+        throw new JobError(
+          'contracting_job.has_on_site_stints',
+          `${onSite} machine(s) are still on site. Capture their departure readings before cancelling.`,
+        );
       const now = new Date();
       const [cancelled] = await tx
         .update(contractingJobs)
@@ -163,8 +171,7 @@ export async function completeJob({
             'contracting_job.stint_not_planned',
             'The planned stints changed. Reload and complete again.',
           );
-        for (const id of planned)
-          await removeAssignmentWithin({ tx, actorUserId, id, descriptor: assignmentDescriptor });
+        for (const id of planned) await removeAssignmentWithin({ tx, actorUserId, id });
       },
       set: () => ({
         status: 'completed' as const,

@@ -274,12 +274,13 @@ export async function captureReading({
           .where(eq(contractingMachineAssignments.id, stint.id))
           .returning();
         if (!updatedStint) throw new ReadingError('reading.not_found', 'Machine Assignment not found.');
-        const stintChanges = diffAuditUpdate(assignmentDescriptor, stint, updatedStint);
+        const stintDescriptor = assignmentDescriptor(machine.code);
+        const stintChanges = diffAuditUpdate(stintDescriptor, stint, updatedStint);
         if (stintChanges)
           await recordAuditUpdate({
             db: tx,
             actorUserId,
-            descriptor: assignmentDescriptor,
+            descriptor: stintDescriptor,
             after: updatedStint,
             changes: stintChanges,
           });

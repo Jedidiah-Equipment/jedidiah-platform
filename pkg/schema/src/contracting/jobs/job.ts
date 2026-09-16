@@ -113,6 +113,7 @@ export const ChargeLinePatchInput = z
   })
   .strict();
 export type ChargeLinePatchInput = z.infer<typeof ChargeLinePatchInput>;
+export const ChargeLineIdInput = z.object({ id: UUID }).strict();
 
 export const Measure = z.object({
   id: UUID,

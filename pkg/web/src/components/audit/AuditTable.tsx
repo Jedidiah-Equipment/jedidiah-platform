@@ -47,6 +47,8 @@ const auditEntityTypeLabels = {
   contracting_farm: 'Farm',
   contracting_implement: 'Implement',
   contracting_machine: 'Machine',
+  contracting_measure_type: 'Measure Type',
+  contracting_rate: 'Rate',
   contracting_reading: 'Hour Reading',
   contracting_work_type: 'Work Type',
   customer: 'Customer',

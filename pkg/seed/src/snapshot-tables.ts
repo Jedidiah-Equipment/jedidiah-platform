@@ -6,6 +6,8 @@ import {
   contractingHourReadings,
   contractingImplements,
   contractingMachines,
+  contractingMeasureTypes,
+  contractingRates,
   contractingWorkTypes,
 } from '@pkg/db/contracting';
 import {
@@ -67,6 +69,8 @@ const dbTablesByName = {
   contracting_hour_reading: contractingHourReadings,
   contracting_implement: contractingImplements,
   contracting_machine: contractingMachines,
+  contracting_measure_type: contractingMeasureTypes,
+  contracting_rate: contractingRates,
   contracting_work_type: contractingWorkTypes,
   customers,
   feedback,

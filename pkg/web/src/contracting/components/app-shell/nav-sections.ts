@@ -2,7 +2,9 @@ import {
   IconBuilding,
   IconCategory,
   IconClipboardList,
+  IconCoins,
   IconGauge,
+  IconRuler2,
   IconTools,
   IconTractor,
   IconUsers,
@@ -84,6 +86,18 @@ export const contractingNavSections = [
         permission: 'contracting_directory:read',
         link: linkOptions({ to: '/contracting/work-types' }),
         icon: IconTools,
+      },
+      {
+        title: 'Rate Card',
+        permission: 'contracting_rate:read',
+        link: linkOptions({ to: '/contracting/rates' }),
+        icon: IconCoins,
+      },
+      {
+        title: 'Measure Types',
+        permission: 'contracting_rate:read',
+        link: linkOptions({ to: '/contracting/measure-types' }),
+        icon: IconRuler2,
       },
       {
         title: 'Audit',

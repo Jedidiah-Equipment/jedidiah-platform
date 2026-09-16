@@ -67,6 +67,8 @@ describe('snapshot table registry', () => {
       'contracting_customer',
       'contracting_farm',
       'contracting_work_type',
+      'contracting_measure_type',
+      'contracting_rate',
       'contracting_hour_reading',
     ]);
   });
@@ -119,6 +121,8 @@ describe('snapshot table registry', () => {
       'contracting_customer.json',
       'contracting_farm.json',
       'contracting_work_type.json',
+      'contracting_measure_type.json',
+      'contracting_rate.json',
       'contracting_hour_reading.json',
     ]);
   });

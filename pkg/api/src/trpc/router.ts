@@ -6,6 +6,7 @@ import { authRouter } from '../routes/auth/auth.router.js';
 import { changelogRouter } from '../routes/changelog/changelog.router.js';
 import { contractingDirectoryRouter } from '../routes/contracting/directory/directory.router.js';
 import { contractingFleetRouter } from '../routes/contracting/fleet/fleet.router.js';
+import { contractingRateCardRouter } from '../routes/contracting/rate-card/rate-card.router.js';
 import { createContractingReadingsRouter } from '../routes/contracting/readings/readings.router.js';
 import { createCatalogTranslationsRouter } from '../routes/equipment/catalog-translations/catalog-translations.router.js';
 import { customersRouter } from '../routes/equipment/customers/customers.router.js';
@@ -38,6 +39,7 @@ type AppRouterRecord = {
   contractingDirectory: (typeof contractingDirectoryRouter)['_def']['record'];
   contractingReadings: ReturnType<typeof createContractingReadingsRouter>['_def']['record'];
   contractingFleet: (typeof contractingFleetRouter)['_def']['record'];
+  contractingRateCard: (typeof contractingRateCardRouter)['_def']['record'];
   audit: (typeof auditRouter)['_def']['record'];
   auth: (typeof authRouter)['_def']['record'];
   catalogTranslations: ReturnType<typeof createCatalogTranslationsRouter>['_def']['record'];
@@ -67,6 +69,7 @@ export function createAppRouter({ catalogTranslationScheduler, readMeterPhoto }:
   return router({
     contractingReadings: createContractingReadingsRouter(readMeterPhoto),
     contractingFleet: contractingFleetRouter,
+    contractingRateCard: contractingRateCardRouter,
     contractingDirectory: contractingDirectoryRouter,
     audit: auditRouter,
     auth: authRouter,

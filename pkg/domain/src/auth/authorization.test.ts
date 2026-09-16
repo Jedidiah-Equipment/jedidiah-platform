@@ -221,6 +221,8 @@ describe('getRolePermissions', () => {
   });
 
   it('declares the contracting role matrix without crossing its money or fleet boundaries', () => {
+    expect(getRolePermissions('contracting-manager')).not.toContain('contracting_rate:read');
+    expect(getRolePermissions('contracting-manager')).not.toContain('contracting_rate:update');
     expect(getRolePermissions('contracting-manager')).toEqual([
       'contracting_breakdown:read',
       'contracting_breakdown:report',

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ReadingCaptureMultipart, readingCaptureMultipartFields } from './reading.js';
+import { ReadingCaptureInput, ReadingCaptureMultipart, readingCaptureMultipartFields } from './reading.js';
 
 const capture = {
   localId: '78108c3d-4b34-44f1-bf87-4fcb00a6a233',
@@ -33,5 +33,16 @@ describe('reading capture multipart', () => {
     expect(() =>
       ReadingCaptureMultipart.parse({ ...Object.fromEntries(readingCaptureMultipartFields(capture)), extra: 'x' }),
     ).toThrow();
+  });
+
+  it('binds arrival and departure to a Machine Assignment and forbids that link on other roles', () => {
+    const assignmentId = '5f1c2d3e-0001-4a00-8000-000000000002';
+    expect(ReadingCaptureInput.safeParse({ ...capture, role: 'arrival' }).success).toBe(false);
+    expect(ReadingCaptureInput.safeParse({ ...capture, role: 'arrival', assignmentId }).success).toBe(true);
+    expect(ReadingCaptureInput.safeParse({ ...capture, assignmentId }).success).toBe(false);
+    const fields = Object.fromEntries(
+      readingCaptureMultipartFields({ ...capture, role: 'departure', assignmentId, comment: 'Photo unavailable' }),
+    );
+    expect(ReadingCaptureMultipart.parse(fields)).toMatchObject({ role: 'departure', assignmentId });
   });
 });

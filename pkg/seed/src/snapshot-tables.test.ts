@@ -70,6 +70,10 @@ describe('snapshot table registry', () => {
       'contracting_measure_type',
       'contracting_rate',
       'contracting_hour_reading',
+      'contracting_job',
+      'contracting_machine_assignment',
+      'contracting_measure',
+      'contracting_charge_line',
     ]);
   });
 
@@ -124,6 +128,10 @@ describe('snapshot table registry', () => {
       'contracting_measure_type.json',
       'contracting_rate.json',
       'contracting_hour_reading.json',
+      'contracting_job.json',
+      'contracting_machine_assignment.json',
+      'contracting_measure.json',
+      'contracting_charge_line.json',
     ]);
   });
 
@@ -250,6 +258,10 @@ describe('snapshot table registry', () => {
       'contracting_farm',
       'contracting_work_type',
       'contracting_hour_reading',
+      'contracting_job',
+      'contracting_machine_assignment',
+      'contracting_measure',
+      'contracting_charge_line',
     ]) {
       expect(configFor(tableName).optionalReadTable, tableName).toBe(true);
     }
@@ -271,6 +283,7 @@ describe('snapshot table registry', () => {
     ).toMatchObject({ id: 'r1', machineId: 'm1', role: 'spot' });
     expect(projectWritableRow(configFor('contracting_hour_reading'), { sequence: 7 })).not.toHaveProperty('sequence');
     expect(configFor('contracting_hour_reading').readOrderColumn).toBe('sequence');
+    expect(configFor('contracting_job').resetSequence?.columnName).toBe('code');
     expect(
       collectStorageFiles(configFor('contracting_hour_reading'), [
         { photo: { storageKey: 'readings/r1.jpg', contentType: 'image/jpeg', byteSize: 1 } },

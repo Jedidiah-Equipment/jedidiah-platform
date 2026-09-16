@@ -2,7 +2,7 @@ import { UUID } from '@pkg/schema';
 import { ReadingCaptureInput } from '@pkg/schema/contracting';
 import { z } from 'zod';
 
-export const QueuedReading = ReadingCaptureInput.extend({
+export const QueuedReading = ReadingCaptureInput.safeExtend({
   localId: UUID,
   role: z.literal('spot'),
   photoLocalUri: z.string().nullable(),

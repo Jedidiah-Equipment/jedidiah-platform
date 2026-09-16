@@ -21,7 +21,10 @@ const descriptor = defineAuditDescriptor<Row>({
   entityId: (row) => row.id,
   toRecord: (row) => ({ name: row.name }),
 });
-const inUse = sql<boolean>`exists (select 1 from contracting.rate r where r.measure_type_id = contracting.measure_type.id)`;
+const inUse = sql<boolean>`
+  exists (select 1 from contracting.rate rate where rate.measure_type_id = contracting.measure_type.id)
+  or exists (select 1 from contracting.measure measure where measure.measure_type_id = contracting.measure_type.id)
+`;
 const selectMeasureTypes = (db: Db | DatabaseTransaction) =>
   db.select({ ...getTableColumns(contractingMeasureTypes), inUse }).from(contractingMeasureTypes);
 const mapMeasureType = (row: Row & { inUse: boolean }) =>

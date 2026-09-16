@@ -3,8 +3,10 @@ import {
   type FleetError,
   isDirectoryError,
   isFleetError,
+  isJobError,
   isRateCardError,
   isReadingError,
+  type JobError,
   type RateCardError,
   type ReadingError,
 } from '@pkg/core/contracting';
@@ -44,13 +46,39 @@ export const readingErrorFamily = defineCoreErrorFamily<ReadingError>({
     'reading.below_latest': 'CONFLICT',
     'reading.capture_id_conflict': 'CONFLICT',
     'reading.invalid_amendment': 'CONFLICT',
+    'reading.forbidden': 'FORBIDDEN',
+    'reading.implement_on_site': 'CONFLICT',
+    'reading.invalid_role': 'CONFLICT',
+    'reading.machine_on_site': 'CONFLICT',
     'reading.no_photo': 'BAD_REQUEST',
     'reading.not_found': 'NOT_FOUND',
     'reading.previous_changed': 'CONFLICT',
     'reading.retired_machine': 'CONFLICT',
     'reading.verification_failed': 'SERVICE_UNAVAILABLE',
+    'reading.wrong_status': 'CONFLICT',
   },
   is: isReadingError,
+});
+
+export const jobErrorFamily = defineCoreErrorFamily<JobError>({
+  codes: {
+    'contracting_job.duplicate': 'CONFLICT',
+    'contracting_job.has_on_site_stints': 'CONFLICT',
+    'contracting_job.implement_on_site': 'CONFLICT',
+    'contracting_job.invalid_driver': 'BAD_REQUEST',
+    'contracting_job.invalid_foreman': 'BAD_REQUEST',
+    'contracting_job.invalid_reference': 'BAD_REQUEST',
+    'contracting_job.invalid_role': 'BAD_REQUEST',
+    'contracting_job.machine_on_site': 'CONFLICT',
+    'contracting_job.measure_type_inactive': 'BAD_REQUEST',
+    'contracting_job.not_found': 'NOT_FOUND',
+    'contracting_job.not_owner': 'FORBIDDEN',
+    'contracting_job.open_gap_flags': 'CONFLICT',
+    'contracting_job.stint_not_on_site': 'CONFLICT',
+    'contracting_job.stint_not_planned': 'CONFLICT',
+    'contracting_job.wrong_status': 'CONFLICT',
+  },
+  is: isJobError,
 });
 
 export const rateCardErrorFamily = defineCoreErrorFamily<RateCardError>({

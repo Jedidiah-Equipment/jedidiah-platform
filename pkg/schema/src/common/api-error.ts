@@ -2,6 +2,7 @@ export const APP_CODE_PREFIXES = [
   'auth',
   'changelog',
   'credit_note',
+  'contracting_job',
   'customer',
   'document',
   'feedback',

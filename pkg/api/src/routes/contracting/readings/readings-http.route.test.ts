@@ -1,6 +1,16 @@
 import multipart from '@fastify/multipart';
 import { InMemoryStorageAdapter } from '@pkg/core';
-import { createCategory, createMachine, listReadingsByMachine } from '@pkg/core/contracting';
+import {
+  createCategory,
+  createCustomer,
+  createFarm,
+  createJob,
+  createMachine,
+  createWorkType,
+  getJob,
+  listReadingsByMachine,
+  planAssignment,
+} from '@pkg/core/contracting';
 import { user } from '@pkg/db';
 import { MachineCreateInput } from '@pkg/schema/contracting';
 import Fastify from 'fastify';
@@ -21,6 +31,7 @@ const test = createTester(async ({ db, auth }) => {
     name: 'Test',
     email: 'reading-http@example.com',
     emailVerified: true,
+    contractingRole: 'foreman',
     createdAt: new Date(),
     updatedAt: new Date(),
   });
@@ -30,6 +41,26 @@ const test = createTester(async ({ db, auth }) => {
     actorUserId,
     input: MachineCreateInput.parse({ code: 'T1', make: 'Deere', model: '6140', categoryId: category.id }),
   });
+  const customer = await createCustomer({ db, actorUserId, input: { name: 'Rowley' } });
+  const farm = await createFarm({ db, actorUserId, input: { customerId: customer.id, name: 'Rooikraal' } });
+  const workType = await createWorkType({ db, actorUserId, input: { name: 'Dam building' } });
+  const job = await createJob({
+    db,
+    actorUserId,
+    input: {
+      customerId: customer.id,
+      farmId: farm.id,
+      workTypeId: workType.id,
+      description: null,
+      foremanUserId: actorUserId,
+    },
+  });
+  const assignment = await planAssignment({
+    db,
+    actorUserId,
+    input: { jobId: job.id, machineId: machine.id, implementId: null },
+  });
+  if (!assignment) throw new Error('Expected Machine Assignment');
   const storage = new InMemoryStorageAdapter();
   const app = Fastify();
   app.decorate('auth', auth);
@@ -37,7 +68,7 @@ const test = createTester(async ({ db, auth }) => {
   await registerReadingHttpRoutes(app, { db, storage, readPhoto: async () => ({ value: 123.4, confidence: 0.91 }) });
   state.session = mockSession(null);
   (state.session as ReturnType<typeof mockSession>).user.contractingRole = 'foreman';
-  return { db, app, machineId: machine.id, storage };
+  return { assignmentId: assignment.id, db, app, jobId: job.id, machineId: machine.id, storage };
 });
 function upload(machineId: string, photo: Buffer | null, close = true, extra: Record<string, string> = {}) {
   const boundary = 'reading-boundary';
@@ -157,5 +188,21 @@ test('stores a trimmed capture comment and treats an empty comment field as none
     expect(multibyte.json().comment).toBe(wide);
   } finally {
     await app.close();
+  }
+});
+
+test('round-trips assignmentId through multipart and activates its Job on arrival', async ({ context }) => {
+  try {
+    const response = await context.app.inject(
+      upload(context.machineId, null, true, {
+        role: 'arrival',
+        assignmentId: context.assignmentId,
+      }),
+    );
+    expect(response.statusCode).toBe(201);
+    expect(response.json()).toMatchObject({ role: 'arrival', machineId: context.machineId });
+    expect(await getJob({ db: context.db, id: context.jobId })).toMatchObject({ status: 'active' });
+  } finally {
+    await context.app.close();
   }
 });

@@ -8,6 +8,7 @@ import * as changelogSchema from './schema/changelog.js';
 import * as contractingDirectorySchema from './schema/contracting/directory.js';
 import * as contractingFleetSchema from './schema/contracting/fleet.js';
 import * as contractingReadingSchema from './schema/contracting/hour-reading.js';
+import * as contractingJobsSchema from './schema/contracting/jobs.js';
 import * as contractingRateCardSchema from './schema/contracting/rate-card.js';
 import * as customerSchema from './schema/equipment/customer.js';
 import * as documentSchema from './schema/equipment/document.js';
@@ -27,8 +28,23 @@ import * as stocktakeSchema from './schema/equipment/stocktake.js';
 import * as supplierSchema from './schema/equipment/supplier.js';
 import * as userDepartmentSchema from './schema/equipment/user-department.js';
 
+const {
+  contractingChargeLinesRelations,
+  contractingJobsRelations,
+  contractingMachineAssignmentsRelations,
+  contractingMeasuresRelations,
+  ...contractingJobsTables
+} = contractingJobsSchema;
+
 export const schema = {
   ...contractingDirectorySchema,
+  ...contractingJobsTables,
+  // Drizzle 0.45's relation types key on the unqualified table name, so exposing these descriptors'
+  // types would merge `contracting.job` with `equipment.job`. Runtime lookup is schema-qualified.
+  contractingChargeLinesRelations: contractingChargeLinesRelations as unknown,
+  contractingJobsRelations: contractingJobsRelations as unknown,
+  contractingMachineAssignmentsRelations: contractingMachineAssignmentsRelations as unknown,
+  contractingMeasuresRelations: contractingMeasuresRelations as unknown,
   ...contractingReadingSchema,
   ...contractingRateCardSchema,
   ...auditSchema,

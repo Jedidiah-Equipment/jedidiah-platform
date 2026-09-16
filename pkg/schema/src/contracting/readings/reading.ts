@@ -3,13 +3,7 @@ import { AuthId } from '../../auth/auth-id.js';
 import { DateIso } from '../../common/date.js';
 import { UUID } from '../../common/uuid.js';
 import { CategoryColour, CategoryIconKey } from '../fleet/fleet.js';
-import {
-  readingCaptureRoles,
-  readingExceptionTypes,
-  readingMethods,
-  readingRoles,
-  readingVerifications,
-} from './reading-enums.js';
+import { readingExceptionTypes, readingMethods, readingRoles, readingVerifications } from './reading-enums.js';
 
 export const ReadingValue = z.number().nonnegative().max(999999999.9).multipleOf(0.1);
 export const ReadingReason = z.string().trim().min(1, 'A reason is required').max(2000);
@@ -19,13 +13,25 @@ export const ReadingCaptureInput = z
     localId: UUID.optional(),
     expectedPreviousId: UUID.nullable().optional(),
     machineId: UUID,
-    role: z.enum(readingCaptureRoles),
+    role: z.enum(readingRoles),
+    assignmentId: UUID.nullable().optional(),
     value: ReadingValue,
     capturedAt: z.iso.datetime({ offset: true }),
     disputePrevious: z.boolean().default(false),
     comment: ReadingComment.nullable().optional(),
   })
-  .strict();
+  .strict()
+  .superRefine((value, ctx) => {
+    const stintRole = value.role === 'arrival' || value.role === 'departure';
+    if (stintRole && !value.assignmentId)
+      ctx.addIssue({ code: 'custom', path: ['assignmentId'], message: 'Choose the Machine Assignment.' });
+    if (!stintRole && value.assignmentId)
+      ctx.addIssue({
+        code: 'custom',
+        path: ['assignmentId'],
+        message: 'Only arrival and departure readings use a Machine Assignment.',
+      });
+  });
 export type ReadingCaptureInput = z.infer<typeof ReadingCaptureInput>;
 type ReadingCaptureFields = z.input<typeof ReadingCaptureInput>;
 export const readingCaptureFieldNames = ReadingCaptureInput.keyof().options;
@@ -50,8 +56,10 @@ export const ReadingCaptureMultipart = z.preprocess((fields) => {
   if (record.disputePrevious === 'true') record.disputePrevious = true;
   if (record.disputePrevious === 'false') record.disputePrevious = false;
   record.expectedPreviousId = blankAsNull(record.expectedPreviousId);
+  record.assignmentId = blankAsNull(record.assignmentId);
   record.comment = blankAsNull(record.comment);
   if (record.expectedPreviousId === undefined) delete record.expectedPreviousId;
+  if (record.assignmentId === undefined) delete record.assignmentId;
   if (record.comment === undefined) delete record.comment;
   return record;
 }, ReadingCaptureInput);

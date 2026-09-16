@@ -1,6 +1,13 @@
 import { randomUUID } from 'node:crypto';
 import type { DatabaseTransaction, Db, StoredFile } from '@pkg/db';
-import { contractingCategories, contractingHourReadings, contractingMachines } from '@pkg/db/contracting';
+import { getUniqueViolationConstraint, isUniqueViolation, user } from '@pkg/db';
+import {
+  contractingCategories,
+  contractingHourReadings,
+  contractingJobs,
+  contractingMachineAssignments,
+  contractingMachines,
+} from '@pkg/db/contracting';
 import { validateFile } from '@pkg/domain';
 import { meterDisagreementHint, resolveReadingAmendment } from '@pkg/domain/contracting';
 import type { AuthId } from '@pkg/schema';
@@ -11,10 +18,17 @@ import {
   type ReadingExceptionType,
 } from '@pkg/schema/contracting';
 import { and, asc, desc, eq, getTableColumns, inArray, isNull, or } from 'drizzle-orm';
-import { defineAuditDescriptor, recordAuditCreate } from '../../audit/audit-writer.js';
+import {
+  defineAuditDescriptor,
+  diffAuditUpdate,
+  recordAuditCreate,
+  recordAuditUpdate,
+} from '../../audit/audit-writer.js';
 import { mutateEntity } from '../../audit/mutate-entity.js';
 import { FilePolicyViolationError } from '../../files/file-errors.js';
 import { readStoredObject, type StorageAdapter } from '../../storage/storage-adapter.js';
+import { assignmentDescriptor } from '../jobs/assignment-service.js';
+import { jobDescriptor } from '../jobs/job-service.js';
 import { READING_PHOTO_POLICY, type ReadMeterPhoto, readingVerification, verifyPhoto } from './reading-evidence.js';
 
 export type ReadingErrorCode =
@@ -25,6 +39,11 @@ export type ReadingErrorCode =
   | 'reading.below_latest'
   | 'reading.baseline_exists'
   | 'reading.invalid_amendment'
+  | 'reading.forbidden'
+  | 'reading.wrong_status'
+  | 'reading.invalid_role'
+  | 'reading.machine_on_site'
+  | 'reading.implement_on_site'
   | 'reading.no_photo'
   | 'reading.verification_failed';
 export class ReadingError extends Error {
@@ -172,6 +191,45 @@ export async function captureReading({
       if (delivered) return delivered;
       if (machine.retiredAt)
         throw new ReadingError('reading.retired_machine', 'Cannot capture readings for a retired Machine.');
+      let stint: typeof contractingMachineAssignments.$inferSelect | undefined;
+      let stintJob: typeof contractingJobs.$inferSelect | undefined;
+      if (input.assignmentId) {
+        const [unlockedStint] = await tx
+          .select({ jobId: contractingMachineAssignments.jobId })
+          .from(contractingMachineAssignments)
+          .where(eq(contractingMachineAssignments.id, input.assignmentId));
+        if (!unlockedStint) throw new ReadingError('reading.not_found', 'Machine Assignment not found.');
+        [stintJob] = await tx
+          .select()
+          .from(contractingJobs)
+          .where(eq(contractingJobs.id, unlockedStint.jobId))
+          .for('update');
+        [stint] = await tx
+          .select()
+          .from(contractingMachineAssignments)
+          .where(eq(contractingMachineAssignments.id, input.assignmentId))
+          .for('update');
+        if (!stint || !stintJob || stint.machineId !== input.machineId)
+          throw new ReadingError('reading.not_found', 'Machine Assignment not found.');
+        const [actor] = await tx
+          .select({ contractingRole: user.contractingRole, equipmentRole: user.role })
+          .from(user)
+          .where(eq(user.id, actorUserId));
+        const management =
+          actor?.equipmentRole === 'super-admin' ||
+          actor?.contractingRole === 'contracting-admin' ||
+          actor?.contractingRole === 'contracting-manager';
+        if (input.role === 'departure' && management && !evidence && !input.comment)
+          throw new ReadingError('reading.invalid_role', 'A reason is required for a photo-less departure reading.');
+        if (!management && stintJob.foremanUserId !== actorUserId)
+          throw new ReadingError('reading.forbidden', 'This is not your Job.');
+        if (!['upcoming', 'active'].includes(stintJob.status))
+          throw new ReadingError('reading.wrong_status', 'This Job is no longer open.');
+        if (input.role === 'arrival' && stint.arrivalReadingId)
+          throw new ReadingError('reading.invalid_role', 'This Machine Assignment already arrived.');
+        if (input.role === 'departure' && (!stint.arrivalReadingId || stint.departureReadingId))
+          throw new ReadingError('reading.invalid_role', 'This Machine Assignment is not on site.');
+      }
       const [latest] = await tx
         .select()
         .from(contractingHourReadings)
@@ -204,6 +262,46 @@ export async function captureReading({
         .returning();
       if (!row) throw new Error('Reading insert returned no row');
       await recordAuditCreate({ db: tx, actorUserId, descriptor, input: row });
+      if (stint && stintJob) {
+        const now = new Date();
+        const patch =
+          input.role === 'arrival'
+            ? { arrivalReadingId: row.id, updatedAt: now }
+            : { departureReadingId: row.id, updatedAt: now };
+        const [updatedStint] = await tx
+          .update(contractingMachineAssignments)
+          .set(patch)
+          .where(eq(contractingMachineAssignments.id, stint.id))
+          .returning();
+        if (!updatedStint) throw new ReadingError('reading.not_found', 'Machine Assignment not found.');
+        const stintDescriptor = assignmentDescriptor(machine.code);
+        const stintChanges = diffAuditUpdate(stintDescriptor, stint, updatedStint);
+        if (stintChanges)
+          await recordAuditUpdate({
+            db: tx,
+            actorUserId,
+            descriptor: stintDescriptor,
+            after: updatedStint,
+            changes: stintChanges,
+          });
+        if (input.role === 'arrival' && stintJob.status === 'upcoming') {
+          const [activeJob] = await tx
+            .update(contractingJobs)
+            .set({ status: 'active', updatedAt: now })
+            .where(eq(contractingJobs.id, stintJob.id))
+            .returning();
+          if (!activeJob) throw new ReadingError('reading.not_found', 'Job not found.');
+          const jobChanges = diffAuditUpdate(jobDescriptor, stintJob, activeJob);
+          if (jobChanges)
+            await recordAuditUpdate({
+              db: tx,
+              actorUserId,
+              descriptor: jobDescriptor,
+              after: activeJob,
+              changes: jobChanges,
+            });
+        }
+      }
       return withHint(row);
     });
     // A replay that won the lock inside the transaction leaves this upload orphaned.
@@ -212,14 +310,27 @@ export async function captureReading({
     }
     return result;
   } catch (error) {
+    const uniqueConstraint = isUniqueViolation(error) ? getUniqueViolationConstraint(error) : null;
+    const translatedError =
+      uniqueConstraint === 'machine_assignment_machine_on_site_unique'
+        ? new ReadingError(
+            'reading.machine_on_site',
+            'This Machine is still on site on another Job — capture its departure there first.',
+          )
+        : uniqueConstraint === 'machine_assignment_implement_on_site_unique'
+          ? new ReadingError(
+              'reading.implement_on_site',
+              'This Implement is still on site on another Job — capture its departure there first.',
+            )
+          : error;
     if (photo && evidence) {
       try {
         await evidence.storage.deleteObject(photo.storageKey);
       } catch (cleanupError) {
-        throw new AggregateError([error, cleanupError], 'Reading failed and uploaded photo cleanup failed');
+        throw new AggregateError([translatedError, cleanupError], 'Reading failed and uploaded photo cleanup failed');
       }
     }
-    throw error;
+    throw translatedError;
   }
 }
 
@@ -274,6 +385,7 @@ export async function amendReading({
   actorUserId: AuthId;
   input: ReadingAmendInput;
 }) {
+  // #1401: a Priced Job must return to Completed here once pricing writes exist.
   const input = ReadingAmendInput.parse(raw);
   return db.transaction(async (tx) => {
     const owner = await tx.query.contractingHourReadings.findFirst({ where: eq(contractingHourReadings.id, input.id) });

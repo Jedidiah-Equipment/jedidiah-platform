@@ -30,6 +30,7 @@ export const contractingFarms = contractingSchema.table(
     name: text('name').notNull(),
   },
   (table) => [
+    uniqueIndex('farm_id_customer_unique').on(table.id, table.customerId),
     uniqueIndex('farm_customer_name_ci_unique').on(table.customerId, sql`lower(${table.name})`),
     check('farm_name_not_blank', sql`length(btrim(${table.name})) > 0`),
   ],

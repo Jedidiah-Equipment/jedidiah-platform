@@ -28,8 +28,10 @@ const descriptor = defineAuditDescriptor<Row>({
     active: row.active,
   }),
 });
-// Wave 2 adds the priced-stint reference. Until then no table references a rate.
-const inUse = sql<boolean>`false`;
+const inUse = sql<boolean>`exists (
+  select 1 from contracting.machine_assignment assignment
+  where assignment.rate_id = contracting.rate.id
+)`;
 const selectRates = (db: Db | DatabaseTransaction) =>
   db
     .select({ ...getTableColumns(contractingRates), measureTypeName: contractingMeasureTypes.name, inUse })

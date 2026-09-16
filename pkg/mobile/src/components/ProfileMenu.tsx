@@ -1,6 +1,7 @@
 import { type HelpTopic, hasBothBusinessAccess, helpUrl } from '@pkg/domain';
 import type { Business } from '@pkg/schema';
 import { IconHelpCircle, IconLogout, IconSwitchHorizontal } from '@tabler/icons-react-native';
+import Constants from 'expo-constants';
 import * as Linking from 'expo-linking';
 import { router, usePathname } from 'expo-router';
 import { Pressable, View } from 'react-native';
@@ -15,6 +16,7 @@ import { docsOrigin } from '@/lib/app-env';
 import { signOut } from '@/lib/auth';
 import { getSessionRoleSlots, useAuthSession } from '@/lib/auth-session';
 import { BUSINESS_HOME } from '@/lib/business-home';
+import { formatAppVersion } from '@/lib/runtime-app-identity';
 import type { ColorModePreference } from '@/theme/ColorModeProvider';
 import { useColorMode } from '@/theme/use-color-mode';
 
@@ -53,6 +55,7 @@ export function ProfileMenu({
   const helpOrigin = docsOrigin;
   const showBusinessSwitcher = hasBothBusinessAccess(getSessionRoleSlots(useAuthSession()));
   const otherBusiness = currentBusiness(usePathname()) === 'contracting' ? 'equipment' : 'contracting';
+  const appVersion = formatAppVersion(Constants.expoConfig?.version);
 
   return (
     // Anchor below the header's overflow button, clear of the status bar.
@@ -115,20 +118,27 @@ export function ProfileMenu({
         <ThemeToggle />
       </View>
 
-      <View className="border-t border-border p-1.5">
-        <Pressable
-          accessibilityRole="button"
-          className="flex-row items-center gap-3 rounded-xl px-3 py-3 active:bg-muted"
-          onPress={() => {
-            onClose();
-            void signOut();
-          }}
-        >
-          <Icon className="text-danger" icon={IconLogout} size={18} />
-          <Text className="text-sm text-danger" weight="semibold">
-            Log out
-          </Text>
-        </Pressable>
+      <View className="border-t border-border">
+        <View className="p-1.5">
+          <Pressable
+            accessibilityRole="button"
+            className="flex-row items-center gap-3 rounded-xl px-3 py-3 active:bg-muted"
+            onPress={() => {
+              onClose();
+              void signOut();
+            }}
+          >
+            <Icon className="text-danger" icon={IconLogout} size={18} />
+            <Text className="text-sm text-danger" weight="semibold">
+              Log out
+            </Text>
+          </Pressable>
+        </View>
+        {appVersion ? (
+          <View className="border-t border-border">
+            <Text className="py-2 text-center text-[10px] text-muted-foreground">{appVersion}</Text>
+          </View>
+        ) : null}
       </View>
     </AnchoredMenu>
   );

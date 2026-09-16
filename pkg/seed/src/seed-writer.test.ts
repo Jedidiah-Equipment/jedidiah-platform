@@ -57,7 +57,7 @@ describe('clearSnapshotTables', () => {
     const truncate = statements.find((statement) => statement.startsWith('TRUNCATE TABLE'));
 
     expect(truncate).toBe(
-      'TRUNCATE TABLE "contracting"."machine_assignment", "equipment"."purchase_order", "equipment"."purchase_order_job_link", "equipment"."stock_movement", "public"."audit_events" CASCADE',
+      'TRUNCATE TABLE "equipment"."purchase_order", "equipment"."purchase_order_job_link", "equipment"."stock_movement", "public"."audit_events" CASCADE',
     );
     // The sweep has to land before the ordered snapshot cleanup, or the restricting child rows it
     // removes still block their snapshot parents.

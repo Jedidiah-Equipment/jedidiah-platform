@@ -1,4 +1,5 @@
 import { CREDENTIAL_ACCOUNT_ISSUER } from '@pkg/db';
+import { contractingJobCodeSequence } from '@pkg/db/contracting';
 import { jobCodeSequence, quoteCodeSequence } from '@pkg/db/equipment';
 import { LEGACY_QUOTE_CANCELLATION_REASON } from '@pkg/schema/equipment';
 import type { PgSequence, PgTable } from 'drizzle-orm/pg-core';
@@ -429,6 +430,31 @@ export const snapshotTableDefinitions = [
       'amendedAt',
       'amendmentReason',
     ],
+  },
+  {
+    fileName: 'contracting_job.json',
+    tableName: 'contracting_job',
+    timestampColumns: ['cancelledAt', 'completedAt', 'createdAt', 'invoicedAt', 'pricedAt', 'updatedAt'],
+    optionalReadTable: true,
+    resetSequence: { sequence: contractingJobCodeSequence, columnName: 'code' },
+  },
+  {
+    fileName: 'contracting_machine_assignment.json',
+    tableName: 'contracting_machine_assignment',
+    timestampColumns: ['createdAt', 'gapResolvedAt', 'updatedAt'],
+    optionalReadTable: true,
+  },
+  {
+    fileName: 'contracting_measure.json',
+    tableName: 'contracting_measure',
+    timestampColumns: standardTimestampColumns,
+    optionalReadTable: true,
+  },
+  {
+    fileName: 'contracting_charge_line.json',
+    tableName: 'contracting_charge_line',
+    timestampColumns: standardTimestampColumns,
+    optionalReadTable: true,
   },
 ] as const satisfies readonly SnapshotTableDefinition[];
 

@@ -118,21 +118,27 @@ export function ProfileMenu({
         <ThemeToggle />
       </View>
 
-      <View className="border-t border-border p-1.5">
-        <Pressable
-          accessibilityRole="button"
-          className="flex-row items-center gap-3 rounded-xl px-3 py-3 active:bg-muted"
-          onPress={() => {
-            onClose();
-            void signOut();
-          }}
-        >
-          <Icon className="text-danger" icon={IconLogout} size={18} />
-          <Text className="text-sm text-danger" weight="semibold">
-            Log out
-          </Text>
-        </Pressable>
-        {appVersion ? <Text className="pb-2 text-center text-[10px] text-muted-foreground">{appVersion}</Text> : null}
+      <View className="border-t border-border">
+        <View className="p-1.5">
+          <Pressable
+            accessibilityRole="button"
+            className="flex-row items-center gap-3 rounded-xl px-3 py-3 active:bg-muted"
+            onPress={() => {
+              onClose();
+              void signOut();
+            }}
+          >
+            <Icon className="text-danger" icon={IconLogout} size={18} />
+            <Text className="text-sm text-danger" weight="semibold">
+              Log out
+            </Text>
+          </Pressable>
+        </View>
+        {appVersion ? (
+          <View className="border-t border-border">
+            <Text className="py-2 text-center text-[10px] text-muted-foreground">{appVersion}</Text>
+          </View>
+        ) : null}
       </View>
     </AnchoredMenu>
   );

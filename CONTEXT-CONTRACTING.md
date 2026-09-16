@@ -21,7 +21,8 @@ Contracting Manager's sign-off, reachable only once every Assignment has left an
 is resolved: work confirmed done, Charge Lines and notes added, final start and end dates stamped
 — suggested from the earliest arrival and latest departure capture times, tweakable), **Priced**
 (rates applied and frozen as a snapshot; a reading amendment reopens the Job to Completed for
-re-pricing), and **Invoiced** (the invoice number stamped; the wall — after it, nothing moves). There is no "submitted" status: foremen never close Jobs; a
+re-pricing — the chosen Rates and their snapshotted unit amounts stay, line amounts recompute from
+the amended hours, and manual amount edits are discarded), and **Invoiced** (the invoice number stamped; the wall — after it, nothing moves). There is no "submitted" status: foremen never close Jobs; a
 Job whose machines have all stopped surfaces in the Contracting Manager's queue as looking
 finished. Every stage has a visible queue, so work cannot vanish between a foreman's phone and
 the invoice — that chain is the app's core promise.
@@ -37,7 +38,8 @@ two places at once; planned Assignments never count against that. An Assignment 
 records zero or more **Measures** on an Assignment — a Measure Type and a quantity (hectares
 disked, loads hauled), at most one per Measure Type — the production figures Pricing may bill on.
 A planned Assignment whose Machine never arrives is removed — by the Foreman while the Job is
-Active or by management at sign-off — and leaves nothing behind. The Foreman edits only his own
+Active, by management at sign-off, or by Completion itself, which removes any still waiting — and
+leaves nothing behind. The Foreman edits only his own
 Job's Assignments and only while the Job is Active; after Completion only management amends. Avoid
 Slot (an Equipment scheduling term).
 
@@ -55,8 +57,8 @@ VAT-exempt. Its ex-VAT total is a works summary — a Job Card is never an invoi
 part, or a fixed quoted total — a description management writes at Completion, with an amount
 management may leave blank and Pricing must then set (zero allowed). **Diesel** is not a Charge
 Line but a dedicated field on every Job: litres supplied (default zero, set at Completion) and,
-when litres are non-zero, a price per litre and its amount set at Pricing; diesel carries no VAT
-and the Job Card marks it so. A **Discount** is one optional Job-level reduction — a fixed amount
+when litres are non-zero, a price per litre set at Pricing, from which the amount computes
+(editable afterwards, like any line amount); diesel carries no VAT and the Job Card marks it so. A **Discount** is one optional Job-level reduction — a fixed amount
 or a percentage of the Assignment amounts and Charge Lines, never of Diesel — applied at Pricing
 and shown on the Job Card as its own line.
 
@@ -154,7 +156,8 @@ next arrival reading; spot readings never bound a gap, and a Machine's first arr
 preceding departure, so it opens the ledger with no gap and no Travel Hours. By default the whole gap is **Travel Hours**, billed to the destination Job
 at the Assignment's rate under an include toggle that defaults on; a machine moved by truck simply
 has a zero gap. A gap above the single global threshold raises a **Gap Flag**, surfaced at
-sign-off and blocking nothing; management resolves it by splitting the gap into billable Travel
+sign-off and blocking nothing in the field — the Job cannot be Completed while one is open;
+management resolves it by splitting the gap into billable Travel
 Hours and an **Unaccounted Interval** with a mandatory reason, which clears the flag. Time in the
 yard is an Unaccounted Interval — there are no internal Jobs.
 

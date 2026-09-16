@@ -17,10 +17,12 @@ Equipment context's Job. A Job's
 statuses: **Upcoming** (pre-created; freely editable and deletable; the future-work list; visible
 to management only until a Foreman is assigned), **Active** (entered automatically when its first
 machine starts; cancellable by management with a mandatory reason), **Completed** (the
-Contracting Manager's sign-off: work confirmed done, Charge Lines and notes added, final start
-and end dates stamped — suggested from first machine start and last machine stop, tweakable),
-**Priced** (rates applied and frozen as a snapshot), and **Invoiced** (the invoice number stamped;
-the wall — after it, nothing moves). There is no "submitted" status: foremen never close Jobs; a
+Contracting Manager's sign-off, reachable only once every Assignment has left and every Gap Flag
+is resolved: work confirmed done, Charge Lines and notes added, final start and end dates stamped
+— suggested from the earliest arrival and latest departure capture times, tweakable), **Priced**
+(rates applied and frozen as a snapshot; a reading amendment reopens the Job to Completed for
+re-pricing — the chosen Rates and their snapshotted unit amounts stay, line amounts recompute from
+the amended hours, and manual amount edits are discarded), and **Invoiced** (the invoice number stamped; the wall — after it, nothing moves). There is no "submitted" status: foremen never close Jobs; a
 Job whose machines have all stopped surfaces in the Contracting Manager's queue as looking
 finished. Every stage has a visible queue, so work cannot vanish between a foreman's phone and
 the invoice — that chain is the app's core promise.
@@ -34,7 +36,10 @@ on-site Assignment at a time across all Jobs**, which is what enforces that a ma
 two places at once; planned Assignments never count against that. An Assignment names at most one
 **Implement**, and an Implement on a Job is always attached to exactly one Assignment. Management
 records zero or more **Measures** on an Assignment — a Measure Type and a quantity (hectares
-disked, loads hauled) — the production figures Pricing may bill on. The Foreman edits only his own
+disked, loads hauled), at most one per Measure Type — the production figures Pricing may bill on.
+A planned Assignment whose Machine never arrives is removed — by the Foreman while the Job is
+Active, by management at sign-off, or by Completion itself, which removes any still waiting — and
+leaves nothing behind. The Foreman edits only his own
 Job's Assignments and only while the Job is Active; after Completion only management amends. Avoid
 Slot (an Equipment scheduling term).
 
@@ -52,9 +57,10 @@ VAT-exempt. Its ex-VAT total is a works summary — a Job Card is never an invoi
 part, or a fixed quoted total — a description management writes at Completion, with an amount
 management may leave blank and Pricing must then set (zero allowed). **Diesel** is not a Charge
 Line but a dedicated field on every Job: litres supplied (default zero, set at Completion) and,
-when litres are non-zero, an amount set at Pricing; diesel carries no VAT and the Job Card marks it
-so. A **Discount** is one optional Job-level reduction — a fixed amount or a percentage — applied
-at Pricing and shown on the Job Card.
+when litres are non-zero, a price per litre set at Pricing, from which the amount computes
+(editable afterwards, like any line amount); diesel carries no VAT and the Job Card marks it so. A **Discount** is one optional Job-level reduction — a fixed amount
+or a percentage of the Assignment amounts and Charge Lines, never of Diesel — applied at Pricing
+and shown on the Job Card as its own line.
 
 **Farm** is the place the work happens, scoped to one Customer. Its spelling is kept consistent by
 selecting the existing Farm instead of retyping it; different Customers may have Farms with the same name.
@@ -69,8 +75,10 @@ supervised and unsupervised plant hire, tractor-and-tanker, disking per hectare,
 Type** (billed per unit of that Measure recorded on the Assignment). **Measure Type** is the
 management-maintained list of production units — hectares, loads, … — in display order; a Measure
 on an Assignment names one. Rates hang on nothing but their name: not on a Category, a Machine, or
-an Implement. At Pricing every Assignment is given a Rate (or a zero rate when a Charge Line carries
-a fixed quote) and its amount computes from the basis, editable afterwards.
+an Implement. At Pricing every Assignment is given a Rate — or **No charge**, a built-in choice rather than a
+Rate, used when a Charge Line carries a fixed quote — and its amount computes from the basis,
+editable afterwards; choosing a different Rate discards the edit. Rate Card changes never reach a
+Job: a Priced Job holds its snapshot and a Completed one is not yet priced.
 
 **Invoice Number** is the terminal stamp on a Job, recorded by the invoicing user from the
 external accounting system. Stamping it is what makes a Job Invoiced.
@@ -133,8 +141,8 @@ backward: a capture strictly below the latest reading is refused (equal is accep
 machine reads its departure value), unless the Foreman asserts the previous reading is wrong,
 which saves his value as disputed and flags the pair for management. The Foreman may
 re-capture a reading only while his Assignment is open; from Completion onward only management
-amends, with a mandatory reason, and Invoiced freezes everything. Derived values always recompute
-after an amendment.
+amends, with a mandatory reason; an amendment on a Priced Job returns it to Completed for
+re-pricing, and Invoiced freezes everything. Derived values always recompute after an amendment.
 
 **Baseline Reading** is an optional, administrator-captured Hour Reading that anchors a Machine
 before its first Job — at a service, say — and must be the Machine's first reading. Most Machines
@@ -148,7 +156,8 @@ next arrival reading; spot readings never bound a gap, and a Machine's first arr
 preceding departure, so it opens the ledger with no gap and no Travel Hours. By default the whole gap is **Travel Hours**, billed to the destination Job
 at the Assignment's rate under an include toggle that defaults on; a machine moved by truck simply
 has a zero gap. A gap above the single global threshold raises a **Gap Flag**, surfaced at
-sign-off and blocking nothing; management resolves it by splitting the gap into billable Travel
+sign-off and blocking nothing in the field — the Job cannot be Completed while one is open;
+management resolves it by splitting the gap into billable Travel
 Hours and an **Unaccounted Interval** with a mandatory reason, which clears the flag. Time in the
 yard is an Unaccounted Interval — there are no internal Jobs.
 

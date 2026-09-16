@@ -7,7 +7,8 @@ const EAS_CONFIG_PATH = new URL('../eas.json', import.meta.url);
 /**
  * The `eas update` invocation for a build profile. `eas update` bundles on this machine and ignores
  * eas.json's build `env`, yet every `EXPO_PUBLIC_*` value is inlined at bundle time — so the profile's
- * env is applied here, over the caller's, or the update ships local defaults to store builds.
+ * env is applied here, over the caller's, or the update ships local defaults to store builds. Metro's
+ * transform cache can retain those inlined values across profiles, so every update also clears it.
  */
 export function resolveUpdateCommand({ args, commitSubject, easConfig, profile }) {
   const build = easConfig.build?.[profile];
@@ -17,9 +18,17 @@ export function resolveUpdateCommand({ args, commitSubject, easConfig, profile }
   }
 
   const hasMessage = args.some((arg) => arg === '--message' || arg === '-m' || arg.startsWith('--message='));
+  const hasClearCache = args.includes('--clear-cache');
 
   return {
-    args: ['update', '--channel', build.channel, ...(hasMessage ? [] : ['--message', commitSubject]), ...args],
+    args: [
+      'update',
+      '--channel',
+      build.channel,
+      ...(hasClearCache ? [] : ['--clear-cache']),
+      ...(hasMessage ? [] : ['--message', commitSubject]),
+      ...args,
+    ],
     env: build.env ?? {},
   };
 }

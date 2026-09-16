@@ -18,3 +18,7 @@ export function resolveRuntimeScheme(expoConfig: ExpoConfigLike | null | undefin
 export function isStagingRuntimeApp(expoConfig: ExpoConfigLike | null | undefined): boolean {
   return resolveRuntimeScheme(expoConfig) === STAGING_SCHEME;
 }
+
+export function formatAppVersion(version: string | null | undefined): string | null {
+  return version ? `v${version}` : null;
+}

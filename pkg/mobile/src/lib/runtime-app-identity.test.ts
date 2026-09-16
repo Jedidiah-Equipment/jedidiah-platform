@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { isStagingRuntimeApp, resolveRuntimeScheme } from './runtime-app-identity';
+import { formatAppVersion, isStagingRuntimeApp, resolveRuntimeScheme } from './runtime-app-identity';
 
 describe('resolveRuntimeScheme', () => {
   it('uses the staging scheme from the Expo config', () => {
@@ -22,5 +22,11 @@ describe('resolveRuntimeScheme', () => {
     expect(isStagingRuntimeApp({ scheme: 'jedidiahopsstaging' })).toBe(true);
     expect(isStagingRuntimeApp({ scheme: 'jedidiahops' })).toBe(false);
     expect(isStagingRuntimeApp(null)).toBe(false);
+  });
+});
+
+describe('formatAppVersion', () => {
+  it('formats the configured app version for the profile menu', () => {
+    expect(formatAppVersion('1.29.0')).toBe('v1.29.0');
   });
 });

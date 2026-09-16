@@ -2,7 +2,6 @@ import type { Rate } from '@pkg/schema/contracting';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import { EntityActionsFooter } from '@/components/common/EntityActionsFooter.js';
-import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { QueryContent } from '@/components/common/QueryContent.js';
 import { RemoveEntityButton } from '@/components/common/RemoveEntityButton.js';
 import { AutosaveFormCard } from '@/components/form/AutosaveFormCard.js';
@@ -11,6 +10,7 @@ import { EditFormFullWidth } from '@/components/page-layout/EditFormLayout.js';
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
 import { useQueryInvalidation } from '@/contracting/hooks/use-query-invalidation.js';
 import { useCan } from '@/hooks/use-access.js';
+import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { RateEditValues, rateBasisOptions, toRatePatchInput } from './types.js';
 
@@ -29,16 +29,14 @@ export function RateEditPage({ id }: { id: string }) {
 function RateForm({ rate }: { rate: Rate }) {
   const trpc = useTRPC();
   const navigate = useNavigate();
+  const showError = useApiMutationErrorToast();
   const canEdit = useCan('contracting_rate:update').can;
   const { invalidateRateCard } = useQueryInvalidation();
   const measureTypes = useQuery(trpc.contractingRateCard.measureTypes.list.queryOptions());
   const patch = useMutation(trpc.contractingRateCard.rates.patch.mutationOptions({ onSuccess: invalidateRateCard }));
   const remove = useMutation(
     trpc.contractingRateCard.rates.remove.mutationOptions({
-      onSuccess: async () => {
-        await invalidateRateCard();
-        await navigate({ to: '/contracting/rates' });
-      },
+      onError: (error) => showError(error, 'Unable to delete Rate.'),
     }),
   );
   const { autosave, form, formProps } = useAutosaveForm({
@@ -97,22 +95,30 @@ function RateForm({ rate }: { rate: Rate }) {
         </form.AppField>
         <EditFormFullWidth>
           <p className="text-muted-foreground text-sm">
-            Inactive rates leave the Pricing picker; stints already priced with one keep it.
+            Inactive rates leave the Pricing picker; Assignments already priced with one keep it.
           </p>
         </EditFormFullWidth>
       </AutosaveFormCard>
       {canEdit ? (
         <EntityActionsFooter>
-          <div className="space-y-3">
-            <ErrorMessage error={remove.error} fallbackMessage="Unable to delete Rate." />
-            <RemoveEntityButton
-              description="Only a Rate no priced job uses can be deleted. Deactivate a used Rate instead."
-              isPending={remove.isPending}
-              onConfirm={() => remove.mutate({ id: rate.id })}
-              title="Delete rate"
-              triggerLabel="Delete rate"
-            />
-          </div>
+          <RemoveEntityButton
+            description="Only a Rate no priced job uses can be deleted. Deactivate a used Rate instead."
+            isPending={remove.isPending}
+            onConfirm={() =>
+              remove.mutate(
+                { id: rate.id },
+                {
+                  onSuccess: async () => {
+                    autosave.resetToSavedValues(form.state.values);
+                    await invalidateRateCard();
+                    await navigate({ to: '/contracting/rates' });
+                  },
+                },
+              )
+            }
+            title="Delete rate"
+            triggerLabel="Delete rate"
+          />
         </EntityActionsFooter>
       ) : null}
     </>

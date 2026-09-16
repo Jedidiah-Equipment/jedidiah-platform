@@ -23,7 +23,7 @@ import { cn } from '@/lib/utils.js';
 import { RateCreateValues, type RateFormValues, rateBasisOptions, toRateInput } from './types.js';
 
 const description =
-  "The named Rates Pricing picks per stint — time rates bill hours, measure rates bill a Measure Type's quantity. Drag to set the order the picker shows.";
+  "The named Rates Pricing picks per Assignment — time rates bill hours, measure rates bill a Measure Type's quantity. Drag to set the order the picker shows.";
 
 export function RatesPage() {
   const trpc = useTRPC();
@@ -185,10 +185,20 @@ function SortableRateRow({
   const basis = rate.basis === 'time' ? 'Per hour' : `Per ${rate.measureTypeName ?? 'measure'}`;
   return (
     <Card
+      aria-label={`Open ${rate.name}`}
       className={cn('min-w-0 cursor-pointer', isDragging && 'z-10 opacity-80 shadow-lg')}
       onClick={onOpen}
+      onKeyDown={(event) => {
+        if (event.target !== event.currentTarget) return;
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          onOpen();
+        }
+      }}
       ref={setNodeRef}
+      role="button"
       style={{ transform: transform ? `translate3d(0, ${transform.y}px, 0)` : undefined, transition }}
+      tabIndex={0}
     >
       <CardHeader className="grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3">
         {canEdit ? (

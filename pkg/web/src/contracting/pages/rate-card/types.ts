@@ -1,3 +1,4 @@
+import { UUID } from '@pkg/schema';
 import {
   MeasureTypeName,
   RateAmount,
@@ -7,11 +8,12 @@ import {
   type RatePatchInput,
 } from '@pkg/schema/contracting';
 import { z } from 'zod';
+import { emptyStringOr } from '@/components/form/utils/form-schema.js';
 
 export const RateFormValues = z.object({
   name: RateName,
   basis: RateBasis,
-  measureTypeId: z.string(),
+  measureTypeId: emptyStringOr(UUID),
   amount: RateAmount,
 });
 export type RateFormValues = z.infer<typeof RateFormValues>;
@@ -29,7 +31,7 @@ export type RateEditValues = z.infer<typeof RateEditValues>;
 export const toRateInput = (values: RateFormValues) => ({
   name: values.name,
   basis: values.basis,
-  measureTypeId: values.basis === 'measure' ? values.measureTypeId : null,
+  measureTypeId: values.basis === 'measure' ? values.measureTypeId || null : null,
   amount: values.amount,
 });
 

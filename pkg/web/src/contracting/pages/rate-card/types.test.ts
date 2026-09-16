@@ -21,6 +21,15 @@ describe('Rate form mapping', () => {
     });
   });
 
+  it('maps an unselected Measure Type to null', () => {
+    expect(toRateInput({ name: 'Per hectare', basis: 'measure', measureTypeId: '', amount: 250 })).toEqual({
+      name: 'Per hectare',
+      basis: 'measure',
+      measureTypeId: null,
+      amount: 250,
+    });
+  });
+
   it('puts a missing Measure Type error on that field', () => {
     const result = RateCreateValues.safeParse({
       name: 'Per hectare',
@@ -30,6 +39,11 @@ describe('Rate form mapping', () => {
     });
     expect(result.success).toBe(false);
     if (!result.success)
-      expect(result.error.issues).toContainEqual(expect.objectContaining({ path: ['measureTypeId'] }));
+      expect(result.error.issues).toContainEqual(
+        expect.objectContaining({
+          path: ['measureTypeId'],
+          message: 'Choose the Measure Type this rate bills per unit of',
+        }),
+      );
   });
 });

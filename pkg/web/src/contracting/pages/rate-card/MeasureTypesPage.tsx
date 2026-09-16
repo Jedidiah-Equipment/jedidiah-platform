@@ -21,7 +21,7 @@ import { cn } from '@/lib/utils.js';
 import { MeasureTypeFormValues } from './types.js';
 
 const description =
-  'Production units recorded on stints at sign-off — hectares, loads, … Drag to set the picker order.';
+  'Production units recorded on Assignments at sign-off — hectares, loads, … Drag to set the picker order.';
 
 export function MeasureTypesPage() {
   const trpc = useTRPC();
@@ -139,10 +139,20 @@ function SortableMeasureTypeRow({
   });
   return (
     <Card
+      aria-label={`Open ${measureType.name}`}
       className={cn('min-w-0 cursor-pointer', isDragging && 'z-10 opacity-80 shadow-lg')}
       onClick={onOpen}
+      onKeyDown={(event) => {
+        if (event.target !== event.currentTarget) return;
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          onOpen();
+        }
+      }}
       ref={setNodeRef}
+      role="button"
       style={{ transform: transform ? `translate3d(0, ${transform.y}px, 0)` : undefined, transition }}
+      tabIndex={0}
     >
       <CardHeader className="grid-cols-[auto_minmax(0,1fr)] items-center gap-3">
         {canEdit ? (

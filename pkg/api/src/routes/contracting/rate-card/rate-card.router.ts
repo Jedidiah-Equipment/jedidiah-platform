@@ -36,7 +36,9 @@ export const contractingRateCardRouter = router({
       .query(({ ctx, input }) =>
         mapCoreErrors(() => listRates({ db: ctx.db, input: input ?? { status: 'all' } }), rateCardErrorFamily),
       ),
-    options: authorizedProcedure('contracting_rate:read').query(({ ctx }) => rateOptions({ db: ctx.db })),
+    options: authorizedProcedure('contracting_rate:read').query(({ ctx }) =>
+      mapCoreErrors(() => rateOptions({ db: ctx.db }), rateCardErrorFamily),
+    ),
     get: authorizedProcedure('contracting_rate:read')
       .input(idInput)
       .query(({ ctx, input }) => mapCoreErrors(() => getRate({ db: ctx.db, id: input.id }), rateCardErrorFamily)),

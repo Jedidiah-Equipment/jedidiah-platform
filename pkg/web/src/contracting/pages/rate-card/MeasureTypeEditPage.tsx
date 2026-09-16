@@ -2,7 +2,6 @@ import type { MeasureType } from '@pkg/schema/contracting';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import { EntityActionsFooter } from '@/components/common/EntityActionsFooter.js';
-import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { QueryContent } from '@/components/common/QueryContent.js';
 import { RemoveEntityButton } from '@/components/common/RemoveEntityButton.js';
 import { AutosaveFormCard } from '@/components/form/AutosaveFormCard.js';
@@ -10,6 +9,7 @@ import { useAutosaveForm } from '@/components/form/index.js';
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
 import { useQueryInvalidation } from '@/contracting/hooks/use-query-invalidation.js';
 import { useCan } from '@/hooks/use-access.js';
+import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { MeasureTypeFormValues } from './types.js';
 
@@ -28,6 +28,7 @@ export function MeasureTypeEditPage({ id }: { id: string }) {
 function MeasureTypeForm({ measureType }: { measureType: MeasureType }) {
   const trpc = useTRPC();
   const navigate = useNavigate();
+  const showError = useApiMutationErrorToast();
   const canEdit = useCan('contracting_rate:update').can;
   const { invalidateRateCard } = useQueryInvalidation();
   const patch = useMutation(
@@ -35,10 +36,7 @@ function MeasureTypeForm({ measureType }: { measureType: MeasureType }) {
   );
   const remove = useMutation(
     trpc.contractingRateCard.measureTypes.remove.mutationOptions({
-      onSuccess: async () => {
-        await invalidateRateCard();
-        await navigate({ to: '/contracting/measure-types' });
-      },
+      onError: (error) => showError(error, 'Unable to delete Measure Type.'),
     }),
   );
   const { autosave, form, formProps } = useAutosaveForm({
@@ -55,16 +53,24 @@ function MeasureTypeForm({ measureType }: { measureType: MeasureType }) {
       </AutosaveFormCard>
       {canEdit ? (
         <EntityActionsFooter>
-          <div className="space-y-3">
-            <ErrorMessage error={remove.error} fallbackMessage="Unable to delete Measure Type." />
-            <RemoveEntityButton
-              description="A Measure Type can be deleted only while no Rate uses it."
-              isPending={remove.isPending}
-              onConfirm={() => remove.mutate({ id: measureType.id })}
-              title="Delete measure type"
-              triggerLabel="Delete measure type"
-            />
-          </div>
+          <RemoveEntityButton
+            description="A Measure Type can be deleted only while no Rate uses it."
+            isPending={remove.isPending}
+            onConfirm={() =>
+              remove.mutate(
+                { id: measureType.id },
+                {
+                  onSuccess: async () => {
+                    autosave.resetToSavedValues(form.state.values);
+                    await invalidateRateCard();
+                    await navigate({ to: '/contracting/measure-types' });
+                  },
+                },
+              )
+            }
+            title="Delete measure type"
+            triggerLabel="Delete measure type"
+          />
         </EntityActionsFooter>
       ) : null}
     </>

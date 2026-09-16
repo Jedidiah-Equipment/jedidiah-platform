@@ -388,6 +388,18 @@ export const snapshotTableDefinitions = [
     optionalReadTable: true,
   },
   {
+    fileName: 'contracting_measure_type.json',
+    tableName: 'contracting_measure_type',
+    timestampColumns: standardTimestampColumns,
+    optionalReadTable: true,
+  },
+  {
+    fileName: 'contracting_rate.json',
+    tableName: 'contracting_rate',
+    timestampColumns: standardTimestampColumns,
+    optionalReadTable: true,
+  },
+  {
     // `sequence` is a generated identity the reading service orders by, so the read keeps that
     // order and the writer, which cannot send it back, reissues it in the same order.
     fileName: 'contracting_hour_reading.json',

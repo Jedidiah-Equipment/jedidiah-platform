@@ -3,7 +3,9 @@ import {
   type FleetError,
   isDirectoryError,
   isFleetError,
+  isRateCardError,
   isReadingError,
+  type RateCardError,
   type ReadingError,
 } from '@pkg/core/contracting';
 
@@ -49,4 +51,15 @@ export const readingErrorFamily = defineCoreErrorFamily<ReadingError>({
     'reading.verification_failed': 'SERVICE_UNAVAILABLE',
   },
   is: isReadingError,
+});
+
+export const rateCardErrorFamily = defineCoreErrorFamily<RateCardError>({
+  codes: {
+    'rate_card.duplicate': 'CONFLICT',
+    'rate_card.in_use': 'CONFLICT',
+    'rate_card.invalid_reference': 'BAD_REQUEST',
+    'rate_card.not_found': 'NOT_FOUND',
+    'rate_card.reorder_mismatch': 'CONFLICT',
+  },
+  is: isRateCardError,
 });

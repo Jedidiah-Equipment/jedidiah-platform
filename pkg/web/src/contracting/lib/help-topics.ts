@@ -8,6 +8,8 @@ export const helpTopicForPath = createHelpTopicResolver(
     ['/contracting/fleet/categories', 'contractingCategories'],
     ['/contracting/fleet/implements', 'contractingImplements'],
     ['/contracting/readings', 'contractingReadings'],
+    ['/contracting/rates', 'contractingRates'],
+    ['/contracting/measure-types', 'contractingMeasureTypes'],
     ['/contracting/users', 'contractingUsers'],
     ['/contracting/work-types', 'contractingWorkTypes'],
   ],

@@ -1051,6 +1051,13 @@
       "when": 1789381664261,
       "tag": "0149_mature_amphibian",
       "breakpoints": true
+    },
+    {
+      "idx": 150,
+      "version": "7",
+      "when": 1789539850004,
+      "tag": "0150_contracting_rate_card",
+      "breakpoints": true
     }
   ]
 }

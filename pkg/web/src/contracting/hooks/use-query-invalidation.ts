@@ -19,9 +19,13 @@ export function useQueryInvalidation() {
     () => queryClient.invalidateQueries({ queryKey: trpc.contractingReadings.pathKey() }),
     [queryClient, trpc],
   );
+  const invalidateRateCard = useCallback(
+    () => queryClient.invalidateQueries({ queryKey: trpc.contractingRateCard.pathKey() }),
+    [queryClient, trpc],
+  );
 
   return useMemo(
-    () => ({ invalidateDirectory, invalidateFleet, invalidateReadings }),
-    [invalidateDirectory, invalidateFleet, invalidateReadings],
+    () => ({ invalidateDirectory, invalidateFleet, invalidateRateCard, invalidateReadings }),
+    [invalidateDirectory, invalidateFleet, invalidateRateCard, invalidateReadings],
   );
 }

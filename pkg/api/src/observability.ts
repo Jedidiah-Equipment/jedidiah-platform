@@ -11,10 +11,17 @@ type CaptureExceptionParams = {
   properties?: Record<string, unknown>;
 };
 
-export type PostHogObservabilityClient = Pick<PostHog, 'captureException' | 'flush'>;
+type CaptureEventParams = {
+  distinctId: string;
+  event: string;
+  properties?: Record<string, unknown>;
+};
+
+export type PostHogObservabilityClient = Pick<PostHog, 'capture' | 'captureException' | 'flush'>;
 
 export type Observability = {
   enabled: boolean;
+  captureEvent: (params: CaptureEventParams) => void;
   captureException: (error: unknown, params?: CaptureExceptionParams) => void;
   flush: () => Promise<void>;
 };
@@ -27,6 +34,22 @@ export function createObservability(
 
   return {
     enabled,
+    captureEvent({ distinctId, event, properties }) {
+      if (!enabled || !client) return;
+      client.capture({
+        distinctId,
+        event,
+        properties: {
+          app: 'api',
+          appEnv: config.APP_ENV,
+          release: getReleaseMetadata({
+            railwayDeploymentId: config.RAILWAY_DEPLOYMENT_ID ?? null,
+            railwayGitCommitSha: config.RAILWAY_GIT_COMMIT_SHA ?? null,
+          }),
+          ...properties,
+        },
+      });
+    },
     captureException(error, params) {
       if (!enabled || !client) return;
       client.captureException(error, params?.distinctId, {

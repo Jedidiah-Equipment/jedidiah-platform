@@ -1,9 +1,11 @@
 import type { StorageAdapter, StoragePutInput, StoredObject } from '@pkg/core';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { getSessionFromHeaders } from './auth/session.js';
 import type { ApiConfig } from './env.js';
 import type { Observability } from './observability.js';
 import { buildServer } from './server.js';
+import { mockSession } from './test/test-utils.js';
 
 vi.mock('./auth/session.js', async (importOriginal) => {
   const actual = await importOriginal<typeof import('./auth/session.js')>();
@@ -42,11 +44,17 @@ const config: ApiConfig = {
 
 const observability: Observability = {
   enabled: false,
+  captureEvent: vi.fn(),
   captureException: vi.fn(),
   flush: vi.fn(async () => undefined),
 };
 
 describe('API server', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(getSessionFromHeaders).mockResolvedValue(null);
+  });
+
   it.each(['development', 'staging', 'production'] as const)('registers the assistant in %s', async (APP_ENV) => {
     const app = await buildServer({ ...config, APP_ENV }, observability, new MemoryStorage());
 
@@ -113,6 +121,44 @@ describe('API server', () => {
 
       expect(response.statusCode, response.body).toBe(200);
       expect(response.headers['access-control-allow-origin']).toBe('http://localhost:7003');
+    } finally {
+      await app.close();
+    }
+  });
+
+  it('accepts bounded authenticated mobile telemetry for PostHog', async () => {
+    vi.mocked(getSessionFromHeaders).mockResolvedValueOnce(mockSession());
+    const app = await buildServer(config, observability, new MemoryStorage());
+
+    try {
+      const response = await app.inject({
+        method: 'POST',
+        url: '/api/mobile/telemetry',
+        payload: {
+          event: 'reading sync failed',
+          properties: {
+            appVersion: '1.33.0',
+            code: 'reading.photo_unavailable',
+            hasPhoto: true,
+            platform: 'ios',
+            queueAgeSeconds: 120,
+            role: 'spot',
+            stage: 'prepare_photo',
+            updateId: null,
+          },
+        },
+      });
+
+      expect(response.statusCode, response.body).toBe(204);
+      expect(observability.captureEvent).toHaveBeenCalledWith({
+        distinctId: mockSession().user.id,
+        event: 'reading sync failed',
+        properties: expect.objectContaining({
+          app: 'mobile',
+          code: 'reading.photo_unavailable',
+          stage: 'prepare_photo',
+        }),
+      });
     } finally {
       await app.close();
     }

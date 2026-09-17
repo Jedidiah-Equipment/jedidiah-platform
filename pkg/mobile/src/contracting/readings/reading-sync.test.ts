@@ -5,9 +5,16 @@ import { createTRPCClient } from '@trpc/client';
 import { createTRPCOptionsProxy } from '@trpc/tanstack-react-query';
 import { beforeEach, expect, test, vi } from 'vitest';
 
+const readingFiles = vi.hoisted(() => ({
+  readReadingPhotoPart: vi.fn(async () => new Blob(['meter'], { type: 'image/jpeg' })),
+}));
+
 vi.mock('@/lib/api-base-url', () => ({ apiBaseUrl: 'https://api.jedidiah.test' }));
 vi.mock('@/lib/auth', () => ({ sessionCookieHeader: async () => 'better-auth.session_token=secret' }));
-vi.mock('./reading-files', () => ({ readReadingPhotoPart: async () => new Blob(['meter'], { type: 'image/jpeg' }) }));
+vi.mock('./reading-files', () => ({
+  ...readingFiles,
+  ReadingPhotoUnavailableError: class ReadingPhotoUnavailableError extends Error {},
+}));
 
 import { createReadingQueue, newLocalId } from './reading-queue';
 import { syncReadingQueue } from './reading-sync';
@@ -29,7 +36,11 @@ const setup = () => {
   const queue = createReadingQueue({ storage: AsyncStorage, key: 'operator-1', removePhoto: async () => {} });
   return { queryClient, trpc, queue };
 };
-beforeEach(() => AsyncStorage.clear());
+beforeEach(() => {
+  readingFiles.readReadingPhotoPart.mockReset();
+  readingFiles.readReadingPhotoPart.mockResolvedValue(new Blob(['meter'], { type: 'image/jpeg' }));
+  return AsyncStorage.clear();
+});
 
 test('delivers each capture with the session cookie and lands it in history before the queue drops it', async () => {
   const { queryClient, trpc, queue } = setup();
@@ -79,6 +90,24 @@ test('stops before the next upload once the provider is no longer active', async
   expect(invalidate).not.toHaveBeenCalled();
 });
 
+test('does not report a failure after the active operator changes during photo preparation', async () => {
+  const { queryClient, trpc, queue } = setup();
+  await queue.enqueue(capture(100, '2026-09-08T08:00:00Z'));
+  let active = true;
+  readingFiles.readReadingPhotoPart.mockImplementationOnce(async () => {
+    active = false;
+    return new Blob(['meter'], { type: 'image/jpeg' });
+  });
+  const onFailure = vi.fn();
+  const send = vi.fn();
+
+  await syncReadingQueue({ queue, queryClient, trpc, isActive: () => active, onFailure, send });
+
+  expect(send).not.toHaveBeenCalled();
+  expect(onFailure).not.toHaveBeenCalled();
+  await expect(queue.list()).resolves.toHaveLength(1);
+});
+
 test('reports a retryable transport failure with operator-friendly text while keeping the capture queued', async () => {
   const { queryClient, trpc, queue } = setup();
   await queue.enqueue(capture(100, '2026-09-08T08:00:00Z'));
@@ -95,6 +124,26 @@ test('reports a retryable transport failure with operator-friendly text while ke
     }),
   ).rejects.toThrow('Waiting to sync. Check your connection and sign-in.');
   await expect(queue.list()).resolves.toHaveLength(1);
+});
+
+test('moves an unreadable retained photo to Needs attention before attempting HTTP', async () => {
+  const { queryClient, trpc, queue } = setup();
+  await queue.enqueue(capture(100, '2026-09-08T08:00:00Z'));
+  const { ReadingPhotoUnavailableError } = await import('./reading-files');
+  readingFiles.readReadingPhotoPart.mockRejectedValueOnce(new ReadingPhotoUnavailableError());
+  const send = vi.fn();
+  const onFailure = vi.fn();
+
+  await syncReadingQueue({ queue, queryClient, trpc, isActive: () => true, onFailure, send });
+
+  expect(send).not.toHaveBeenCalled();
+  await expect(queue.list()).resolves.toMatchObject([{ attention: { code: 'reading.photo_unavailable' } }]);
+  expect(onFailure).toHaveBeenCalledWith(
+    expect.objectContaining({
+      stage: 'prepare_photo',
+      error: expect.objectContaining({ code: 'reading.photo_unavailable' }),
+    }),
+  );
 });
 
 test('reports the same retryable failure to sync calls that join an upload in progress', async () => {

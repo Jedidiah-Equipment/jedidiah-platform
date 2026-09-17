@@ -36,8 +36,8 @@ export default function AttentionScreen() {
       />
       <ScrollView contentContainerStyle={{ padding: 16, gap: 16 }}>
         <Text className="text-muted-foreground">
-          Captures refused by the server stay here. Later captures for the same Machine wait until you resolve the
-          earlier one.
+          Captures that cannot sync stay here with the reason. Later captures for the same Machine wait until you
+          resolve the earlier one.
         </Text>
         {error || actionError ? <Text className="text-danger">{actionError ?? error}</Text> : null}
         {items

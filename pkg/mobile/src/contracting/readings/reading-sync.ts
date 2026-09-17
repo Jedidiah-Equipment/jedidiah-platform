@@ -5,8 +5,8 @@ import { readingCapturePath } from '@/contracting/lib/contracting-http-paths';
 import { apiBaseUrl } from '@/lib/api-base-url';
 import { sessionCookieHeader } from '@/lib/auth';
 import { withSessionCookie } from '@/lib/authed-fetch';
-import { readReadingPhotoPart } from './reading-files';
-import type { ReadingQueue } from './reading-queue';
+import { ReadingPhotoUnavailableError, readReadingPhotoPart } from './reading-files';
+import { type QueuedReading, type ReadingQueue, ReadingSyncError } from './reading-queue';
 import { uploadReading } from './reading-upload';
 
 const UPLOAD_TIMEOUT_MS = 60_000;
@@ -20,12 +20,14 @@ export async function syncReadingQueue({
   queryClient,
   trpc,
   isActive,
+  onFailure,
   send = fetch,
 }: {
   queue: ReadingQueue;
   queryClient: QueryClient;
   trpc: TRPCOptionsProxy<AppRouter>;
   isActive: () => boolean;
+  onFailure?: (failure: ReadingSyncFailure) => void;
   send?: (url: string, init: RequestInit) => Promise<Response>;
 }): Promise<void> {
   const cookie = await sessionCookieHeader();
@@ -33,29 +35,40 @@ export async function syncReadingQueue({
   let uploaded = false;
   const { retryFailure } = await queue.sync(
     async (item) => {
-      const photo = item.photoLocalUri ? await readReadingPhotoPart(item.photoLocalUri) : undefined;
-      if (!isActive()) throw new Error('Session changed');
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), UPLOAD_TIMEOUT_MS);
-      const delivered = await uploadReading(
-        item,
-        (body) => {
-          return send(
-            `${apiBaseUrl}${readingCapturePath()}`,
-            withSessionCookie({ method: 'POST', body, signal: controller.signal }, cookie),
-          );
-        },
-        photo,
-      ).finally(() => {
-        clearTimeout(timeout);
-      });
-      uploaded = true;
-      // Land the delivered reading in history before the queue drops the capture, so the
-      // latest known reading never falls back to the previous one while a refetch is pending.
-      queryClient.setQueryData(
-        trpc.contractingReadings.fieldHistory.queryKey({ machineId: item.machineId }),
-        (rows) => [delivered, ...(rows ?? []).filter((row) => row.id !== delivered.id)],
-      );
+      let stage: ReadingSyncFailure['stage'] = 'prepare_photo';
+      try {
+        const photo = item.photoLocalUri ? await readReadingPhotoPart(item.photoLocalUri) : undefined;
+        if (!isActive()) throw new Error('Session changed');
+        stage = 'upload';
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), UPLOAD_TIMEOUT_MS);
+        const delivered = await uploadReading(
+          item,
+          (body) => {
+            return send(
+              `${apiBaseUrl}${readingCapturePath()}`,
+              withSessionCookie({ method: 'POST', body, signal: controller.signal }, cookie),
+            );
+          },
+          photo,
+        ).finally(() => {
+          clearTimeout(timeout);
+        });
+        uploaded = true;
+        // Land the delivered reading in history before the queue drops the capture, so the
+        // latest known reading never falls back to the previous one while a refetch is pending.
+        queryClient.setQueryData(
+          trpc.contractingReadings.fieldHistory.queryKey({ machineId: item.machineId }),
+          (rows) => [delivered, ...(rows ?? []).filter((row) => row.id !== delivered.id)],
+        );
+      } catch (error) {
+        const failure =
+          error instanceof ReadingPhotoUnavailableError
+            ? new ReadingSyncError('reading.photo_unavailable', error.message)
+            : error;
+        if (isActive()) onFailure?.({ error: failure, item, stage });
+        throw failure;
+      }
     },
     () => isActive() && onlineManager.isOnline(),
   );
@@ -66,3 +79,9 @@ export async function syncReadingQueue({
     ]);
   if (retryFailure && isActive()) throw new Error('Waiting to sync. Check your connection and sign-in.');
 }
+
+export type ReadingSyncFailure = {
+  error: unknown;
+  item: QueuedReading;
+  stage: 'prepare_photo' | 'upload';
+};

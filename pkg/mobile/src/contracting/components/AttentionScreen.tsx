@@ -1,4 +1,4 @@
-import { router } from 'expo-router';
+import { type Href, router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -9,8 +9,10 @@ import { useReadingQueue } from '@/contracting/readings/ReadingQueueProvider';
 import { useFleet, useMachineReadings } from '@/contracting/readings/use-fleet';
 import { useSessionPermission } from '@/lib/auth-session';
 import { useBusyAction } from '@/lib/use-busy-action';
+import { attentionParent } from './attention-parent';
 
 export default function AttentionScreen() {
+  const parent = attentionParent(useLocalSearchParams<{ from?: string; jobId?: string }>());
   const { queue, items, sync, error } = useReadingQueue();
   const fleet = useFleet();
   const canCapture = useSessionPermission('contracting_reading:capture');
@@ -28,8 +30,8 @@ export default function AttentionScreen() {
       <SecondaryToolbar
         title="Needs attention"
         subtitle="CONTRACTING"
-        parentLabel="Machines"
-        onBack={() => router.replace('/contracting')}
+        parentLabel={parent.label}
+        onBack={() => router.replace(parent.href as Href)}
         helpTopic="contractingMobileAttention"
       />
       <ScrollView contentContainerStyle={{ padding: 16, gap: 16 }}>
@@ -48,6 +50,11 @@ export default function AttentionScreen() {
               </Text>
               <Text className="text-sm text-muted-foreground">{new Date(item.capturedAt).toLocaleString()}</Text>
               <Text className="text-foreground">{item.attention?.message}</Text>
+              {item.assignmentId || item.startAssignment ? (
+                <Text className="text-sm text-muted-foreground">
+                  Fix the Job on another phone or with management, then discard this capture and start again.
+                </Text>
+              ) : null}
               {['reading.below_latest', 'reading.previous_changed'].includes(item.attention?.code ?? '') &&
               canCapture ? (
                 <DisputeAction
@@ -60,7 +67,9 @@ export default function AttentionScreen() {
               ) : null}
               {confirmDiscard === item.localId ? (
                 <View className="gap-2">
-                  <Text className="text-danger">Discard this capture and its local photo permanently?</Text>
+                  <Text className="text-danger">
+                    Discard this capture, any dependent queued departure, and their local photos permanently?
+                  </Text>
                   <Button
                     title="Confirm discard"
                     disabled={busy}

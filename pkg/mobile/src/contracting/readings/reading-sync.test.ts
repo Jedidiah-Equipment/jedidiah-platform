@@ -60,6 +60,7 @@ test('delivers each capture with the session cookie and lands it in history befo
   expect(await queue.list()).toEqual([]);
   expect(queryClient.getQueryData(historyKey)).toMatchObject([{ value: 100, photoBacked: false }]);
   expect(invalidate).toHaveBeenCalledWith({ queryKey: trpc.contractingReadings.pathKey() });
+  expect(invalidate).toHaveBeenCalledWith({ queryKey: trpc.contractingJobs.field.pathKey() });
 });
 
 test('stops before the next upload once the provider is no longer active', async () => {

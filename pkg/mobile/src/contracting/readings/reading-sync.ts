@@ -59,6 +59,10 @@ export async function syncReadingQueue({
     },
     () => isActive() && onlineManager.isOnline(),
   );
-  if (uploaded && isActive()) void queryClient.invalidateQueries({ queryKey: trpc.contractingReadings.pathKey() });
+  if (uploaded && isActive())
+    void Promise.all([
+      queryClient.invalidateQueries({ queryKey: trpc.contractingReadings.pathKey() }),
+      queryClient.invalidateQueries({ queryKey: trpc.contractingJobs.field.pathKey() }),
+    ]);
   if (retryFailure && isActive()) throw new Error('Waiting to sync. Check your connection and sign-in.');
 }

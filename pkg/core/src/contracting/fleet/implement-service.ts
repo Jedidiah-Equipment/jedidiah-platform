@@ -1,8 +1,14 @@
 import { createEscapedContainsSearchCondition, type DatabaseTransaction, type Db } from '@pkg/db';
-import { contractingCategories, contractingImplements } from '@pkg/db/contracting';
-import { implementCodePrefix, nextImplementCode } from '@pkg/domain/contracting';
+import {
+  contractingCategories,
+  contractingImplements,
+  contractingJobs,
+  contractingMachineAssignments,
+} from '@pkg/db/contracting';
+import { formatJobNumber, implementCodePrefix, nextImplementCode } from '@pkg/domain/contracting';
 import type { AuthId } from '@pkg/schema';
 import {
+  FieldImplement,
   FleetCode,
   type FleetListInput,
   type FleetRetireInput,
@@ -11,7 +17,7 @@ import {
   type ImplementCreateInput,
   type ImplementPatchInput,
 } from '@pkg/schema/contracting';
-import { and, asc, eq, ilike, sql } from 'drizzle-orm';
+import { and, asc, eq, ilike, inArray, isNotNull, isNull, sql } from 'drizzle-orm';
 import { defineAuditDescriptor, recordAuditCreate } from '../../audit/audit-writer.js';
 import { mutateEntity } from '../../audit/mutate-entity.js';
 import { assertCategoryKind } from './category-service.js';
@@ -51,6 +57,31 @@ export async function listImplements({ db, input }: { db: Db; input: FleetListIn
     orderBy: [asc(contractingImplements.code)],
   });
   return rows.map(mapImplement);
+}
+export async function listFieldImplements({ db }: { db: Db }) {
+  const implements_ = await listImplements({ db, input: { status: 'active', search: '' } });
+  const onSite = implements_.length
+    ? await db
+        .select({ implementId: contractingMachineAssignments.implementId, jobCode: contractingJobs.code })
+        .from(contractingMachineAssignments)
+        .innerJoin(contractingJobs, eq(contractingJobs.id, contractingMachineAssignments.jobId))
+        .where(
+          and(
+            inArray(
+              contractingMachineAssignments.implementId,
+              implements_.map((implement) => implement.id),
+            ),
+            isNotNull(contractingMachineAssignments.arrivalReadingId),
+            isNull(contractingMachineAssignments.departureReadingId),
+          ),
+        )
+    : [];
+  const jobByImplement = new Map(
+    onSite.flatMap((row) => (row.implementId ? [[row.implementId, formatJobNumber(row.jobCode)] as const] : [])),
+  );
+  return implements_.map((row) =>
+    FieldImplement.parse({ ...row, onSiteJobNumber: jobByImplement.get(row.id) ?? null }),
+  );
 }
 export async function getImplement({ db, id }: { db: Db | DatabaseTransaction; id: string }) {
   const row = await db.query.contractingImplements.findFirst({

@@ -1,4 +1,4 @@
-import { router, useLocalSearchParams } from 'expo-router';
+import { type Href, router, useLocalSearchParams } from 'expo-router';
 import { ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { SecondaryToolbar } from '@/components/TopToolbar';
@@ -7,6 +7,7 @@ import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { latestKnownReading } from '@/contracting/readings/latest-reading';
 import { useReadingQueue } from '@/contracting/readings/ReadingQueueProvider';
+import { newLocalId } from '@/contracting/readings/reading-queue';
 import { useFleet, useMachineReadings } from '@/contracting/readings/use-fleet';
 import { useSessionPermission } from '@/lib/auth-session';
 import { useIsOffline } from '@/lib/connectivity';
@@ -33,7 +34,7 @@ export default function MachineScreen() {
         title={machine?.code ?? 'Machine'}
         subtitle="CONTRACTING"
         parentLabel="Machines"
-        onBack={() => router.replace('/contracting')}
+        onBack={() => router.replace('/contracting/machines' as Href)}
         helpTopic="contractingMobileMachine"
       />
       <ScrollView contentContainerStyle={{ padding: 16, gap: 16 }}>
@@ -45,7 +46,9 @@ export default function MachineScreen() {
               {machine ? `${machine.make} ${machine.model}` : 'Machine details unavailable'}
             </Text>
           </View>
-          <Text className="text-muted-foreground">{machine?.categoryName} · In Yard</Text>
+          <Text className="text-muted-foreground">
+            {machine?.categoryName} · {machine?.onSiteJobNumber ? `On Job · ${machine.onSiteJobNumber}` : 'In Yard'}
+          </Text>
           <Text className="text-3xl text-foreground" weight="bold">
             {latest ? `${latest.value.toFixed(1)} h` : 'No known reading'}
           </Text>
@@ -62,7 +65,16 @@ export default function MachineScreen() {
           ) : null}
         </View>
         {canCapture && machine ? (
-          <Button primary title="Capture reading" onPress={() => router.push(`/contracting/machines/${id}/capture`)} />
+          <Button
+            primary
+            title="Capture reading"
+            onPress={() =>
+              router.push({
+                pathname: '/contracting/machines/[id]/capture',
+                params: { id, captureSessionId: newLocalId() },
+              })
+            }
+          />
         ) : null}
         {error ? (
           <Text className="text-danger" accessibilityRole="alert">

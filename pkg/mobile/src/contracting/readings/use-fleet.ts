@@ -27,8 +27,8 @@ type SavedQuery<T> = {
 /** Mirror live data into storage scoped to API and operator, so field screens work offline. */
 function useSavedQueryData<T>(name: string, isValid: (value: unknown) => value is T, live: T | undefined) {
   const session = useAuthSession();
-  // v2: field machines carry their category icon and colour (#1434).
-  const key = contractingStorageKey('fleet', 'v2', apiBaseUrl, session.user.id, name);
+  // v3: field machines carry driver and on-site Job availability (#1399).
+  const key = contractingStorageKey('fleet', 'v3', apiBaseUrl, session.user.id, name);
   const [saved, save] = usePersistedState<T | undefined>(key, undefined, isValid);
   useEffect(() => {
     if (live !== undefined) save(live);

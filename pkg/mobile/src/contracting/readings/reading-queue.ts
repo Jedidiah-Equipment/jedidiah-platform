@@ -4,7 +4,7 @@ import { z } from 'zod';
 
 export const QueuedReading = ReadingCaptureInput.safeExtend({
   localId: UUID,
-  role: z.literal('spot'),
+  role: z.enum(['spot', 'arrival', 'departure']),
   photoLocalUri: z.string().nullable(),
   attention: z.object({ code: z.string(), message: z.string() }).optional(),
 }).strip();
@@ -63,6 +63,24 @@ export function createReadingQueue({ storage, key, removePhoto }: QueuePorts) {
     // A cleanup failure must never resurrect a successfully delivered reading.
     if (item?.photoLocalUri) await removePhoto(item.photoLocalUri).catch(() => {});
   }
+  async function discard(localId: string) {
+    let removed: QueuedReading[] = [];
+    await mutate((rows) => {
+      const item = rows.find((row) => row.localId === localId);
+      const assignmentId =
+        item?.role === 'arrival' ? (item.assignmentId ?? item.startAssignment?.localId ?? null) : null;
+      removed = rows.filter(
+        (row) =>
+          row.localId === localId ||
+          (assignmentId !== null && row.role === 'departure' && row.assignmentId === assignmentId),
+      );
+      const removedIds = new Set(removed.map((row) => row.localId));
+      return rows.filter((row) => !removedIds.has(row.localId));
+    });
+    await Promise.all(
+      removed.flatMap((item) => (item.photoLocalUri ? [removePhoto(item.photoLocalUri).catch(() => {})] : [])),
+    );
+  }
   return {
     list,
     subscribe(listener: () => void) {
@@ -77,7 +95,7 @@ export function createReadingQueue({ storage, key, removePhoto }: QueuePorts) {
         return [...rows, item];
       });
     },
-    discard: remove,
+    discard,
     resubmit(localId: string, expectedPreviousId: string | null) {
       return mutate((rows) =>
         rows.map((row) =>

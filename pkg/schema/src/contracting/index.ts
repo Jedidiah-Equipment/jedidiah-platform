@@ -2,6 +2,7 @@ export * from './customers/customer.js';
 export * from './customers/farm.js';
 export * from './fleet/category-enums.js';
 export * from './fleet/fleet.js';
+export * from './jobs/field.js';
 export * from './jobs/job.js';
 export * from './jobs/job-enums.js';
 export * from './rate-card/rate-card.js';

@@ -11,6 +11,7 @@ import { fieldStateClassNames } from '../utils/field-style';
 import { FieldShell } from './FieldShell';
 
 type SelectFieldOption = {
+  disabled?: boolean;
   label: string;
   value: string;
 };
@@ -78,10 +79,11 @@ export function SelectField({
               return (
                 <Pressable
                   accessibilityRole="button"
-                  accessibilityState={{ selected: active }}
+                  accessibilityState={{ disabled: option.disabled, selected: active }}
                   className={`flex-row items-center justify-between gap-3 px-3 py-3 active:bg-muted ${
                     index > 0 ? 'border-t border-border' : ''
-                  }`}
+                  } ${option.disabled ? 'opacity-50' : ''}`}
+                  disabled={option.disabled}
                   key={option.value}
                   onPress={() => choose(option.value)}
                 >

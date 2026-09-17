@@ -1,5 +1,6 @@
 import { createEscapedContainsSearchCondition, type DatabaseTransaction, type Db, user } from '@pkg/db';
-import { contractingMachines } from '@pkg/db/contracting';
+import { contractingJobs, contractingMachineAssignments, contractingMachines } from '@pkg/db/contracting';
+import { formatJobNumber } from '@pkg/domain/contracting';
 import type { AuthId, ContractingRole } from '@pkg/schema';
 import {
   FieldMachine,
@@ -10,7 +11,7 @@ import {
   type MachineListInput,
   type MachinePatchInput,
 } from '@pkg/schema/contracting';
-import { and, asc, eq, sql } from 'drizzle-orm';
+import { and, asc, eq, inArray, isNotNull, isNull, sql } from 'drizzle-orm';
 import { defineAuditDescriptor, recordAuditCreate } from '../../audit/audit-writer.js';
 import { mutateEntity } from '../../audit/mutate-entity.js';
 import { assertCategoryKind } from './category-service.js';
@@ -196,7 +197,25 @@ export async function assertDriverAccountChangeAllowed({
 }
 
 export async function listFieldMachines({ db }: { db: Db }) {
-  return (await listMachines({ db, input: { status: 'active', search: '' } })).map((machine) =>
-    FieldMachine.parse(machine),
+  const machines = await listMachines({ db, input: { status: 'active', search: '' } });
+  const onSite = machines.length
+    ? await db
+        .select({ machineId: contractingMachineAssignments.machineId, jobCode: contractingJobs.code })
+        .from(contractingMachineAssignments)
+        .innerJoin(contractingJobs, eq(contractingJobs.id, contractingMachineAssignments.jobId))
+        .where(
+          and(
+            inArray(
+              contractingMachineAssignments.machineId,
+              machines.map((machine) => machine.id),
+            ),
+            isNotNull(contractingMachineAssignments.arrivalReadingId),
+            isNull(contractingMachineAssignments.departureReadingId),
+          ),
+        )
+    : [];
+  const jobByMachine = new Map(onSite.map((row) => [row.machineId, formatJobNumber(row.jobCode)]));
+  return machines.map((machine) =>
+    FieldMachine.parse({ ...machine, onSiteJobNumber: jobByMachine.get(machine.id) ?? null }),
   );
 }

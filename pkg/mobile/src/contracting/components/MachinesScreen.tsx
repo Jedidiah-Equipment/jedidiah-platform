@@ -1,4 +1,4 @@
-import { router } from 'expo-router';
+import { type Href, router } from 'expo-router';
 import { useState } from 'react';
 import { FlatList, Pressable, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -51,7 +51,9 @@ export default function MachinesScreen() {
         {attention > 0 ? (
           <Button
             title={`${readingStatuses.attention.label} (${attention}) · ${items.length - attention} ${readingStatuses.queued.label.toLowerCase()}`}
-            onPress={() => router.push('/contracting/attention')}
+            onPress={() =>
+              router.push({ pathname: '/contracting/attention', params: { from: 'machines' } } as unknown as Href)
+            }
           />
         ) : null}
         {error ? <Text className="text-danger">{error}</Text> : null}
@@ -99,7 +101,9 @@ export default function MachinesScreen() {
                   {item.code}
                 </Text>
               </View>
-              <Text className="rounded-full bg-muted px-3 py-1 text-xs text-foreground">In Yard</Text>
+              <Text className="rounded-full bg-muted px-3 py-1 text-xs text-foreground">
+                {item.onSiteJobNumber ? `On Job · ${item.onSiteJobNumber}` : 'In Yard'}
+              </Text>
             </View>
             <Text className="text-sm text-muted-foreground">
               {item.make} {item.model} · {item.categoryName}

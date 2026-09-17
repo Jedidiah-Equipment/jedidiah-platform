@@ -1,5 +1,10 @@
-import { getRoleSlotsPermissions, type RoleSlots, tryParseRoleSlots } from '@pkg/domain';
-import type { AppPermission } from '@pkg/schema';
+import {
+  createUserAccessSummaryForUser,
+  getRoleSlotsPermissions,
+  type RoleSlots,
+  tryParseRoleSlots,
+} from '@pkg/domain';
+import type { AppPermission, UserAccessSummary } from '@pkg/schema';
 import { createContext, type ReactNode, useContext } from 'react';
 
 import type { AuthSession } from './auth';
@@ -21,6 +26,11 @@ export function useAuthSession(): AuthSession {
   }
 
   return session;
+}
+
+/** The persisted session roles projected into the same access shape as the online access endpoint. */
+export function useSessionAccessSummary(): UserAccessSummary {
+  return createUserAccessSummaryForUser(useAuthSession().user);
 }
 
 // The session's role slots for the domain business predicates; null when the roles do not parse.

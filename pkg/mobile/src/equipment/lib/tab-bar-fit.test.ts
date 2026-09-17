@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
-import type { AppTab } from './app-tabs';
-import { fitAppTabs } from './tab-bar-fit';
+import { fitAppTabs } from '@/components/tab-bar/tab-bar-fit';
 
-const ALL_TABS: AppTab[] = ['activity', 'jobs', 'plan', 'quotes', 'products', 'units', 'stores'];
+const names = ['activity', 'jobs', 'plan', 'quotes', 'products', 'units', 'stores'] as const;
+const ALL_TABS = names.map((key) => ({ key, label: key.toUpperCase() }));
 
 describe('fitAppTabs', () => {
   it('keeps every tab on a tablet-width bar', () => {
@@ -17,8 +17,8 @@ describe('fitAppTabs', () => {
   /** The first four destinations remain direct on a phone; the trailing destinations move. */
   it('collapses the trailing tabs that would truncate on a phone-width bar', () => {
     expect(fitAppTabs(ALL_TABS, 390)).toEqual({
-      visible: ['activity', 'jobs', 'plan', 'quotes'],
-      overflow: ['products', 'units', 'stores'],
+      visible: ALL_TABS.slice(0, 4),
+      overflow: ALL_TABS.slice(4),
     });
   });
 
@@ -31,14 +31,15 @@ describe('fitAppTabs', () => {
 
   it('keeps one tab beside the menu when nothing else fits', () => {
     expect(fitAppTabs(ALL_TABS, 80)).toEqual({
-      visible: ['activity'],
-      overflow: ['jobs', 'plan', 'quotes', 'products', 'units', 'stores'],
+      visible: ALL_TABS.slice(0, 1),
+      overflow: ALL_TABS.slice(1),
     });
   });
 
   it('leaves a short tab set alone at the same width', () => {
-    expect(fitAppTabs(['activity', 'jobs', 'plan', 'units'], 390)).toEqual({
-      visible: ['activity', 'jobs', 'plan', 'units'],
+    const shortTabs = ALL_TABS.slice(0, 4);
+    expect(fitAppTabs(shortTabs, 390)).toEqual({
+      visible: shortTabs,
       overflow: [],
     });
   });

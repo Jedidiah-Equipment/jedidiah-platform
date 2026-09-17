@@ -67,6 +67,9 @@ test('foremen can find active Machines and read field history without fleet mana
       categoryName: 'Tractors',
       categoryIcon: 'generic-machine',
       categoryColour: 'gray',
+      currentDriverUserId: null,
+      currentDriverName: null,
+      onSiteJobNumber: null,
     },
   ]);
   const history = await foreman.contractingReadings.fieldHistory({ machineId: machine.id });

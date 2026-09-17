@@ -17,7 +17,7 @@ vi.mock('./reading-files', () => ({
 }));
 
 import { createReadingQueue, newLocalId } from './reading-queue';
-import { syncReadingQueue } from './reading-sync';
+import { type ReadingSyncPassError, syncReadingQueue } from './reading-sync';
 
 const machineId = newLocalId();
 const capture = (value: number, capturedAt: string, machine = machineId) => ({
@@ -124,6 +124,29 @@ test('reports a retryable transport failure with operator-friendly text while ke
     }),
   ).rejects.toThrow('Waiting to sync. Check your connection and sign-in.');
   await expect(queue.list()).resolves.toHaveLength(1);
+});
+
+test('marks a retryable failure when the item callback already reported it', async () => {
+  const { queryClient, trpc, queue } = setup();
+  await queue.enqueue(capture(100, '2026-09-08T08:00:00Z'));
+  const onFailure = vi.fn();
+
+  await expect(
+    syncReadingQueue({
+      queue,
+      queryClient,
+      trpc,
+      isActive: () => true,
+      onFailure,
+      send: async () => {
+        throw new Error('offline');
+      },
+    }),
+  ).rejects.toMatchObject({
+    itemFailureReported: true,
+    name: 'ReadingSyncPassError',
+  } satisfies Partial<ReadingSyncPassError>);
+  expect(onFailure).toHaveBeenCalledOnce();
 });
 
 test('moves an unreadable retained photo to Needs attention before attempting HTTP', async () => {

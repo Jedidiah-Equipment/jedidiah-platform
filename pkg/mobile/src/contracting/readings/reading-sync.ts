@@ -36,6 +36,7 @@ export async function syncReadingQueue({
   const cookie = await sessionCookieHeader();
   if (!isActive()) return;
   let uploaded = false;
+  let itemFailureReported = false;
   const { retryFailure } = await queue.sync(
     async (item) => {
       let stage: ReadingSyncFailure['stage'] = 'prepare_photo';
@@ -65,7 +66,10 @@ export async function syncReadingQueue({
           error instanceof ReadingPhotoUnavailableError
             ? new ReadingSyncError('reading.photo_unavailable', error.message)
             : error;
-        if (isActive()) onFailure?.({ error: failure, item, stage });
+        if (isActive() && onFailure) {
+          onFailure({ error: failure, item, stage });
+          itemFailureReported = true;
+        }
         throw failure;
       }
     },
@@ -76,7 +80,14 @@ export async function syncReadingQueue({
       queryClient.invalidateQueries({ queryKey: trpc.contractingReadings.pathKey() }),
       queryClient.invalidateQueries({ queryKey: trpc.contractingJobs.field.pathKey() }),
     ]);
-  if (retryFailure && isActive()) throw new Error('Waiting to sync. Check your connection and sign-in.');
+  if (retryFailure && isActive()) throw new ReadingSyncPassError(itemFailureReported);
+}
+
+export class ReadingSyncPassError extends Error {
+  constructor(readonly itemFailureReported: boolean) {
+    super('Waiting to sync. Check your connection and sign-in.');
+    this.name = 'ReadingSyncPassError';
+  }
 }
 
 async function observedReadingUpload(

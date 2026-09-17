@@ -86,6 +86,7 @@ export function useAppUpdate(): {
       setInstallState('installing');
 
       void (async () => {
+        let failureStage: 'download' | 'install' = isOfferedUpdateDownloaded ? 'install' : 'download';
         try {
           // Only skip the fetch when the update being offered is the one already on the device —
           // a pending download can be older than what the last check turned up.
@@ -105,13 +106,14 @@ export function useAppUpdate(): {
           }
 
           if (abandoned()) return;
+          failureStage = 'install';
           captureEvent('app update installed', { updateKey });
           addBreadcrumb('ota', 'prompt installed', { updateKey });
           await Updates.reloadAsync();
         } catch (error) {
-          captureException(error, { source: 'ota_install', updateKey });
-          captureEvent('app update failed', { stage: 'install', updateKey });
-          addBreadcrumb('ota', 'prompt failed', { stage: 'install', updateKey });
+          captureException(error, { source: failureStage === 'download' ? 'ota_download' : 'ota_install', updateKey });
+          captureEvent('app update failed', { stage: failureStage, updateKey });
+          addBreadcrumb('ota', 'prompt failed', { stage: failureStage, updateKey });
           if (!abandoned()) setInstallState('failed');
         }
       })();

@@ -10,7 +10,7 @@ import { addBreadcrumb, captureException, captureSanitizedException } from '@/li
 import { useTRPC } from '@/lib/trpc';
 import { removeReadingPhoto } from './reading-files';
 import { createReadingQueue, type QueuedReading, type ReadingQueue } from './reading-queue';
-import { syncReadingQueue } from './reading-sync';
+import { ReadingSyncPassError, syncReadingQueue } from './reading-sync';
 import { readingSyncTelemetryPayload, reportReadingSyncFailure } from './reading-telemetry';
 
 // Outlives the provider, which remounts when the signed-in operator changes, so a sync still in flight
@@ -88,7 +88,9 @@ export function ReadingQueueProvider({ children }: { children: ReactNode }) {
       addBreadcrumb('contracting', 'sync pass finished');
       if (isActive()) setError(null);
     } catch (error) {
-      captureException(error, { source: 'reading_queue', stage: 'sync_pass' });
+      if (!(error instanceof ReadingSyncPassError && error.itemFailureReported)) {
+        captureException(error, { source: 'reading_queue', stage: 'sync_pass' });
+      }
       addBreadcrumb('contracting', 'sync pass finished', { outcome: 'failed' });
       if (isActive()) setError(error instanceof Error ? error.message : 'Unable to read the saved queue.');
     }

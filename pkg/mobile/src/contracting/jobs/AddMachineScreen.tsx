@@ -80,7 +80,9 @@ export default function AddMachineScreen() {
     const machineJobs = new Map<string, string>();
     const implementJobs = new Map<string, string>();
     for (const job of jobs.data ?? []) {
-      for (const stint of job.stints.map((row) => deriveStint(row, items))) {
+      for (const stint of job.stints.map((row) =>
+        deriveStint(row, items, { implements: implementQuery.data ?? [], drivers: drivers.data ?? [] }),
+      )) {
         if (!BUSY_VIEWS.has(stint.view)) continue;
         if (readdReady && stint.id === params.afterAssignmentId) continue;
         machineJobs.set(stint.machineId, job.jobNumber);
@@ -108,6 +110,7 @@ export default function AddMachineScreen() {
     }
     return { machineJobs, implementJobs };
   }, [
+    drivers.data,
     fleet.data,
     implementQuery.data,
     items,
@@ -130,6 +133,7 @@ export default function AddMachineScreen() {
         jobId: params.jobId,
         startAssignmentJobId: params.jobId,
         startLocalId,
+        captureSessionId: startLocalId,
         implementId: values.implementId,
         driverUserId: values.driverUserId,
       },

@@ -1,4 +1,4 @@
-import { type Href, router } from 'expo-router';
+import { type Href, router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -9,8 +9,10 @@ import { useReadingQueue } from '@/contracting/readings/ReadingQueueProvider';
 import { useFleet, useMachineReadings } from '@/contracting/readings/use-fleet';
 import { useSessionPermission } from '@/lib/auth-session';
 import { useBusyAction } from '@/lib/use-busy-action';
+import { attentionParent } from './attention-parent';
 
 export default function AttentionScreen() {
+  const parent = attentionParent(useLocalSearchParams<{ from?: string; jobId?: string }>());
   const { queue, items, sync, error } = useReadingQueue();
   const fleet = useFleet();
   const canCapture = useSessionPermission('contracting_reading:capture');
@@ -28,8 +30,8 @@ export default function AttentionScreen() {
       <SecondaryToolbar
         title="Needs attention"
         subtitle="CONTRACTING"
-        parentLabel="Machines"
-        onBack={() => router.replace('/contracting/machines' as Href)}
+        parentLabel={parent.label}
+        onBack={() => router.replace(parent.href as Href)}
         helpTopic="contractingMobileAttention"
       />
       <ScrollView contentContainerStyle={{ padding: 16, gap: 16 }}>

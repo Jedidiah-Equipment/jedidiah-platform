@@ -23,21 +23,29 @@ import { useBusyAction } from '@/lib/use-busy-action';
 
 const CAMERA_FAILURE = 'The camera could not take a photo. Try again or continue without a photo.';
 
+type CaptureParams = {
+  id: string;
+  role?: string;
+  assignmentId?: string;
+  jobId?: string;
+  startAssignmentJobId?: string;
+  implementId?: string;
+  driverUserId?: string;
+  startLocalId?: string;
+  overrideImplementId?: string;
+  overrideDriverUserId?: string;
+  implementCode?: string;
+  driverName?: string;
+  captureSessionId?: string;
+};
+
 export default function CaptureScreen() {
-  const params = useLocalSearchParams<{
-    id: string;
-    role?: string;
-    assignmentId?: string;
-    jobId?: string;
-    startAssignmentJobId?: string;
-    implementId?: string;
-    driverUserId?: string;
-    startLocalId?: string;
-    overrideImplementId?: string;
-    overrideDriverUserId?: string;
-    implementCode?: string;
-    driverName?: string;
-  }>();
+  const params = useLocalSearchParams<CaptureParams>();
+  const fallbackSessionId = [params.id, params.role, params.assignmentId, params.startLocalId].join(':');
+  return <CaptureForm key={params.captureSessionId ?? fallbackSessionId} params={params} />;
+}
+
+function CaptureForm({ params }: { params: CaptureParams }) {
   const { id } = params;
   const role = params.role === 'arrival' || params.role === 'departure' ? params.role : 'spot';
   const { bottom: safeAreaBottom } = useSafeAreaInsets();

@@ -1,5 +1,5 @@
 import { DateIso } from '@pkg/schema';
-import type { FieldImplement, FieldJob, FieldMachine, FieldStint } from '@pkg/schema/contracting';
+import type { FieldDriver, FieldImplement, FieldJob, FieldMachine, FieldStint } from '@pkg/schema/contracting';
 import { describe, expect, test } from 'vitest';
 import type { QueuedReading } from '@/contracting/readings/reading-queue';
 import { deriveStint, jobSummary, queuedUnplannedStints } from './derive-stint';
@@ -11,6 +11,7 @@ const ids = {
   implement: '5f1c2d3e-0001-4a00-8000-000000000004',
   arrival: '5f1c2d3e-0001-4a00-8000-000000000005',
   departure: '5f1c2d3e-0001-4a00-8000-000000000006',
+  alternateImplement: '5f1c2d3e-0001-4a00-8000-000000000009',
 };
 const stint: FieldStint = {
   id: ids.stint,
@@ -82,12 +83,25 @@ describe('deriveStint', () => {
         onSiteJobNumber: null,
       },
     ];
+    const drivers: FieldDriver[] = [{ id: 'selected-driver', name: 'Selected Driver' }];
     const start = queued('arrival', {
       assignmentId: undefined,
-      startAssignment: { localId: ids.stint, jobId: ids.job, implementId: ids.implement },
+      startAssignment: {
+        localId: ids.stint,
+        jobId: ids.job,
+        implementId: ids.implement,
+        driverUserId: 'selected-driver',
+      },
     });
-    expect(queuedUnplannedStints(ids.job, [start], fleet, implementRows)).toMatchObject([
-      { id: ids.stint, machineCode: 'JD-1', implementCode: 'TIP-1', view: 'starting' },
+    expect(queuedUnplannedStints(ids.job, [start], fleet, implementRows, drivers)).toMatchObject([
+      {
+        id: ids.stint,
+        machineCode: 'JD-1',
+        implementCode: 'TIP-1',
+        driverUserId: 'selected-driver',
+        driverName: 'Selected Driver',
+        view: 'starting',
+      },
     ]);
 
     const job: FieldJob = {
@@ -104,5 +118,34 @@ describe('deriveStint', () => {
     };
     expect(jobSummary(job, [start])).toEqual({ machines: 1, running: 1, hasArrived: true });
     expect(jobSummary(job, [start, queued('departure')])).toEqual({ machines: 1, running: 0, hasArrived: true });
+  });
+
+  test('projects queued planned-assignment overrides while the arrival is offline', () => {
+    const arrival = queued('arrival', {
+      stintOverrides: { implementId: ids.alternateImplement, driverUserId: 'selected-driver' },
+    });
+
+    expect(
+      deriveStint(stint, [arrival], {
+        implements: [
+          {
+            id: ids.alternateImplement,
+            code: 'DISC-2',
+            categoryId: '5f1c2d3e-0001-4a00-8000-000000000010',
+            categoryName: 'Discs',
+            categoryIcon: 'disc',
+            categoryColour: 'yellow',
+            onSiteJobNumber: null,
+          },
+        ],
+        drivers: [{ id: 'selected-driver', name: 'Selected Driver' }],
+      }),
+    ).toMatchObject({
+      implementId: ids.alternateImplement,
+      implementCode: 'DISC-2',
+      driverUserId: 'selected-driver',
+      driverName: 'Selected Driver',
+      view: 'starting',
+    });
   });
 });

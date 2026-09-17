@@ -24,7 +24,12 @@ export default function JobsScreen() {
           </Text>
         ) : null}
         {attention > 0 ? (
-          <Button title={`Needs attention (${attention})`} onPress={() => router.push('/contracting/attention')} />
+          <Button
+            title={`Needs attention (${attention})`}
+            onPress={() =>
+              router.push({ pathname: '/contracting/attention', params: { from: 'jobs' } } as unknown as Href)
+            }
+          />
         ) : null}
         {error ? <Text className="text-danger">{error}</Text> : null}
       </View>

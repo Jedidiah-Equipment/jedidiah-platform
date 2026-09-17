@@ -7,6 +7,7 @@ import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { latestKnownReading } from '@/contracting/readings/latest-reading';
 import { useReadingQueue } from '@/contracting/readings/ReadingQueueProvider';
+import { newLocalId } from '@/contracting/readings/reading-queue';
 import { useFleet, useMachineReadings } from '@/contracting/readings/use-fleet';
 import { useSessionPermission } from '@/lib/auth-session';
 import { useIsOffline } from '@/lib/connectivity';
@@ -64,7 +65,16 @@ export default function MachineScreen() {
           ) : null}
         </View>
         {canCapture && machine ? (
-          <Button primary title="Capture reading" onPress={() => router.push(`/contracting/machines/${id}/capture`)} />
+          <Button
+            primary
+            title="Capture reading"
+            onPress={() =>
+              router.push({
+                pathname: '/contracting/machines/[id]/capture',
+                params: { id, captureSessionId: newLocalId() },
+              })
+            }
+          />
         ) : null}
         {error ? (
           <Text className="text-danger" accessibilityRole="alert">

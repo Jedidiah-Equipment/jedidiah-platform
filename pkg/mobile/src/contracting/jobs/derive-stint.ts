@@ -1,4 +1,10 @@
-import { type FieldImplement, type FieldJob, type FieldMachine, FieldStint } from '@pkg/schema/contracting';
+import {
+  type FieldDriver,
+  type FieldImplement,
+  type FieldJob,
+  type FieldMachine,
+  FieldStint,
+} from '@pkg/schema/contracting';
 import type { QueuedReading } from '@/contracting/readings/reading-queue';
 
 export type StintView = FieldStint & {
@@ -10,21 +16,51 @@ function capturesFor(stintId: string, queued: readonly QueuedReading[]) {
   return queued.filter((capture) => capture.assignmentId === stintId || capture.startAssignment?.localId === stintId);
 }
 
-export function deriveStint(stint: FieldStint, queued: readonly QueuedReading[]): StintView {
+type StintLookups = {
+  implements?: readonly FieldImplement[];
+  drivers?: readonly FieldDriver[];
+};
+
+function withQueuedOverrides(stint: FieldStint, arrival: QueuedReading | undefined, lookups: StintLookups) {
+  const overrides = arrival?.stintOverrides;
+  if (!overrides) return stint;
+  const implementId = overrides.implementId === undefined ? stint.implementId : overrides.implementId;
+  const driverUserId = overrides.driverUserId === undefined ? stint.driverUserId : overrides.driverUserId;
+  return {
+    ...stint,
+    implementId,
+    implementCode:
+      implementId === stint.implementId
+        ? stint.implementCode
+        : (lookups.implements?.find((row) => row.id === implementId)?.code ?? null),
+    driverUserId,
+    driverName:
+      driverUserId === stint.driverUserId
+        ? stint.driverName
+        : (lookups.drivers?.find((row) => row.id === driverUserId)?.name ?? null),
+  };
+}
+
+export function deriveStint(
+  stint: FieldStint,
+  queued: readonly QueuedReading[],
+  lookups: StintLookups = {},
+): StintView {
   const mine = capturesFor(stint.id, queued);
-  const attention = mine.find((capture) => capture.attention);
-  if (attention) return { ...stint, view: 'attention', queued: attention };
   const arrival = mine.find((capture) => capture.role === 'arrival');
+  const projected = withQueuedOverrides(stint, arrival, lookups);
+  const attention = mine.find((capture) => capture.attention);
+  if (attention) return { ...projected, view: 'attention', queued: attention };
   const departure = mine.find((capture) => capture.role === 'departure');
-  if (stint.state === 'left') return { ...stint, view: 'left', queued: undefined };
+  if (stint.state === 'left') return { ...projected, view: 'left', queued: undefined };
   if (stint.state === 'on-site')
     return departure
-      ? { ...stint, view: 'stopping', queued: departure }
-      : { ...stint, view: 'running', queued: undefined };
-  if (!arrival) return { ...stint, view: 'planned', queued: undefined };
+      ? { ...projected, view: 'stopping', queued: departure }
+      : { ...projected, view: 'running', queued: undefined };
+  if (!arrival) return { ...projected, view: 'planned', queued: undefined };
   return departure
-    ? { ...stint, view: 'stopping', queued: departure }
-    : { ...stint, view: 'starting', queued: arrival };
+    ? { ...projected, view: 'stopping', queued: departure }
+    : { ...projected, view: 'starting', queued: arrival };
 }
 
 export function queuedUnplannedStints(
@@ -32,6 +68,7 @@ export function queuedUnplannedStints(
   queued: readonly QueuedReading[],
   fleet: readonly FieldMachine[],
   implementRows: readonly FieldImplement[],
+  driverRows: readonly FieldDriver[],
 ): StintView[] {
   return queued.flatMap((capture) => {
     const start = capture.startAssignment;
@@ -57,13 +94,14 @@ export function queuedUnplannedStints(
           driverName:
             start.driverUserId === undefined || start.driverUserId === machine.currentDriverUserId
               ? machine.currentDriverName
-              : null,
+              : (driverRows.find((candidate) => candidate.id === start.driverUserId)?.name ?? null),
           state: 'planned',
           arrival: null,
           departure: null,
           createdAt: capture.capturedAt,
         }),
         queued,
+        { implements: implementRows, drivers: driverRows },
       ),
     ];
   });

@@ -7,11 +7,12 @@ import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { CategoryIcon } from '@/contracting/components/CategoryIcon';
 import { useReadingQueue } from '@/contracting/readings/ReadingQueueProvider';
+import { newLocalId } from '@/contracting/readings/reading-queue';
 import { useFleet } from '@/contracting/readings/use-fleet';
 import { useSessionPermission } from '@/lib/auth-session';
 import { useIsOffline } from '@/lib/connectivity';
 import { deriveStint, queuedUnplannedStints, type StintView } from './derive-stint';
-import { useImplements, useJob } from './use-jobs';
+import { useDrivers, useImplements, useJob } from './use-jobs';
 
 const ORDER: Record<StintView['view'], number> = {
   running: 0,
@@ -35,6 +36,7 @@ export default function JobScreen() {
   const jobQuery = useJob(jobId);
   const fleet = useFleet();
   const implementQuery = useImplements();
+  const driversQuery = useDrivers();
   const { items, error } = useReadingQueue();
   const canCapture = useSessionPermission('contracting_reading:capture');
   const canAdd = useSessionPermission('contracting_assignment:update-own', 'contracting_job:assign');
@@ -43,10 +45,16 @@ export default function JobScreen() {
   const serverIds = new Set(job?.stints.map((stint) => stint.id) ?? []);
   const stints = job
     ? [
-        ...job.stints.map((stint) => deriveStint(stint, items)),
-        ...queuedUnplannedStints(job.id, items, fleet.data ?? [], implementQuery.data ?? []).filter(
-          (stint) => !serverIds.has(stint.id),
+        ...job.stints.map((stint) =>
+          deriveStint(stint, items, { implements: implementQuery.data ?? [], drivers: driversQuery.data ?? [] }),
         ),
+        ...queuedUnplannedStints(
+          job.id,
+          items,
+          fleet.data ?? [],
+          implementQuery.data ?? [],
+          driversQuery.data ?? [],
+        ).filter((stint) => !serverIds.has(stint.id)),
       ].sort((left, right) => ORDER[left.view] - ORDER[right.view] || left.createdAt.localeCompare(right.createdAt))
     : [];
 
@@ -62,6 +70,7 @@ export default function JobScreen() {
         overrideDriverUserId: stint.driverUserId ?? '',
         implementCode: stint.implementCode ?? '',
         driverName: stint.driverName ?? '',
+        captureSessionId: newLocalId(),
       },
     });
 
@@ -116,6 +125,12 @@ export default function JobScreen() {
                 },
               } as unknown as Href)
             }
+            onAttention={() =>
+              router.push({
+                pathname: '/contracting/attention',
+                params: { from: 'job', jobId },
+              } as unknown as Href)
+            }
           />
         ))}
 
@@ -146,6 +161,7 @@ function StintCard({
   onStart,
   onStop,
   onReadd,
+  onAttention,
 }: {
   stint: StintView;
   canCapture: boolean;
@@ -153,6 +169,7 @@ function StintCard({
   onStart: () => void;
   onStop: () => void;
   onReadd: () => void;
+  onAttention: () => void;
 }) {
   return (
     <View className="gap-2 rounded-xl border border-border bg-surface p-4">
@@ -191,9 +208,7 @@ function StintCard({
       {(stint.view === 'left' || stint.view === 'stopping') && canAdd ? (
         <Button title="Re-add machine" onPress={onReadd} />
       ) : null}
-      {stint.view === 'attention' ? (
-        <Button title="Open Needs attention" onPress={() => router.push('/contracting/attention')} />
-      ) : null}
+      {stint.view === 'attention' ? <Button title="Open Needs attention" onPress={onAttention} /> : null}
     </View>
   );
 }

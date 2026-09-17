@@ -18,18 +18,63 @@ export function resolveUpdateCommand({ args, commitSubject, easConfig, profile }
   }
 
   const hasMessage = args.some((arg) => arg === '--message' || arg === '-m' || arg.startsWith('--message='));
-  const hasClearCache = args.includes('--clear-cache');
+  const hasEnvironment = args.some((arg) => arg === '--environment' || arg.startsWith('--environment='));
+  if (args.some((arg) => arg === '--skip-bundler' || arg === '--input-dir' || arg.startsWith('--input-dir='))) {
+    throw new Error('The OTA wrapper owns --skip-bundler and --input-dir so it can upload source maps before publish.');
+  }
+  const publishArgs = args.filter((arg) => arg !== '--clear-cache');
 
   return {
     args: [
       'update',
       '--channel',
       build.channel,
-      ...(hasClearCache ? [] : ['--clear-cache']),
+      '--skip-bundler',
+      '--input-dir',
+      'dist',
+      ...(hasEnvironment ? [] : ['--environment', resolveBuildEnvironment(build)]),
       ...(hasMessage ? [] : ['--message', commitSubject]),
-      ...args,
+      ...publishArgs,
     ],
     env: build.env ?? {},
+  };
+}
+
+function resolveBuildEnvironment(build) {
+  if (build.environment) return build.environment;
+  if (build.distribution === 'store') return 'production';
+  if (build.developmentClient) return 'development';
+  return 'preview';
+}
+
+export function resolveExportCommand() {
+  return {
+    executable: 'pnpm',
+    args: [
+      'exec',
+      'expo',
+      'export',
+      '--output-dir',
+      'dist',
+      '--source-maps',
+      '--dump-assetmap',
+      '--platform',
+      'ios',
+      '--platform',
+      'android',
+      '--clear',
+    ],
+  };
+}
+
+export function resolveSourceMapUploadCommand(env) {
+  const missing = ['POSTHOG_CLI_API_KEY', 'POSTHOG_CLI_PROJECT_ID'].filter((name) => !env[name]);
+  if (missing.length > 0) {
+    throw new Error(`PostHog source-map upload requires ${missing.join(' and ')} in the release shell.`);
+  }
+  return {
+    executable: 'pnpm',
+    args: ['exec', 'posthog-cli', 'hermes', 'upload', '--directory', 'dist', '--release-mode', 'symbol-set'],
   };
 }
 
@@ -38,14 +83,39 @@ function main() {
   const easConfig = JSON.parse(readFileSync(EAS_CONFIG_PATH, 'utf8'));
   const commitSubject = execFileSync('git', ['log', '-1', '--format=%s'], { encoding: 'utf8' }).trim();
   const command = resolveUpdateCommand({ args, commitSubject, easConfig, profile });
+  const bundle = resolveExportCommand();
+  // Bundle and upload before publishing because this script cannot roll an OTA back.
+  const sourceMaps = resolveSourceMapUploadCommand(process.env);
 
-  const result = spawnSync('eas', command.args, {
+  const bundleResult = spawnSync(bundle.executable, bundle.args, {
     cwd: new URL('..', import.meta.url),
     env: { ...process.env, ...command.env },
     stdio: 'inherit',
   });
-  if (result.error) throw result.error;
-  process.exitCode = result.status ?? 1;
+  if (bundleResult.error) throw bundleResult.error;
+  if (bundleResult.status !== 0) {
+    process.exitCode = bundleResult.status ?? 1;
+    return;
+  }
+
+  const upload = spawnSync(sourceMaps.executable, sourceMaps.args, {
+    cwd: new URL('..', import.meta.url),
+    env: process.env,
+    stdio: 'inherit',
+  });
+  if (upload.error) throw upload.error;
+  if (upload.status !== 0) {
+    process.exitCode = upload.status ?? 1;
+    return;
+  }
+
+  const publish = spawnSync('eas', command.args, {
+    cwd: new URL('..', import.meta.url),
+    env: { ...process.env, ...command.env },
+    stdio: 'inherit',
+  });
+  if (publish.error) throw publish.error;
+  process.exitCode = publish.status ?? 1;
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {

@@ -1,13 +1,19 @@
 import { hasBusinessAccess, isStoredUserSignInEligible } from '@pkg/domain';
-import { Redirect, Stack } from 'expo-router';
+import { type ErrorBoundaryProps, Redirect, Stack } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { AppErrorBoundary } from '@/components/AppErrorBoundary';
 import { ReadingQueueProvider } from '@/contracting/readings/ReadingQueueProvider';
 import { signOut, useSession } from '@/lib/auth';
 import { AuthSessionProvider, getSessionRoleSlots } from '@/lib/auth-session';
 import { useIsOffline } from '@/lib/connectivity';
+import { addBreadcrumb, identifyObservabilityUser } from '@/lib/observability';
 import { isHydratedSession } from '@/lib/session-state';
+
+export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
+  return <AppErrorBoundary error={error} retry={retry} />;
+}
 
 /**
  * Owns auth for the whole protected route tree in one place: show a loading
@@ -77,6 +83,7 @@ export default function ProtectedLayout() {
   // so the queue sits above both business stacks rather than inside the Contracting layout.
   return (
     <AuthSessionProvider session={session}>
+      <SessionObservability userId={session.user.id} />
       {hasBusinessAccess(getSessionRoleSlots(session), 'contracting') ? (
         <ReadingQueueProvider key={session.user.id}>{screens}</ReadingQueueProvider>
       ) : (
@@ -88,10 +95,19 @@ export default function ProtectedLayout() {
 
 function SignOutIneligibleSession() {
   useEffect(() => {
-    void signOut();
+    void signOut('ineligible session');
   }, []);
 
   return <CheckingSessionScreen />;
+}
+
+function SessionObservability({ userId }: { userId: string }) {
+  useEffect(() => {
+    addBreadcrumb('auth', 'session resolved');
+    identifyObservabilityUser(userId);
+  }, [userId]);
+
+  return null;
 }
 
 function CheckingSessionScreen() {

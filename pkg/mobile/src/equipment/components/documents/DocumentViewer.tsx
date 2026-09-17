@@ -8,6 +8,7 @@ import { DocumentPage } from '@/equipment/components/documents/DocumentPage';
 import { SecondaryPageToolbar } from '@/equipment/components/TopToolbar';
 import { type DocumentAction, saveDocument, shareDocument } from '@/equipment/lib/document-actions';
 import { canPreviewDocument } from '@/equipment/lib/document-content';
+import { captureException } from '@/lib/observability';
 
 /**
  * In-app document reader (#521): the DOCUMENT VIEWER screen from the mockup —
@@ -46,6 +47,7 @@ export function DocumentViewer({
     try {
       await act(action);
     } catch (error) {
+      captureException(error, { action: kind, source: 'document_action' });
       setActionError(error instanceof Error ? error.message : 'Something went wrong.');
     } finally {
       setBusy(null);

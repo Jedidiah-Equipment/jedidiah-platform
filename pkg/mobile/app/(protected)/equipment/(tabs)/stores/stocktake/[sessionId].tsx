@@ -14,6 +14,7 @@ import { StoresScreen } from '@/equipment/components/stores/StoresScreen';
 import { useMovementActorUserId, useStoresActor } from '@/equipment/lib/stores-actor';
 import { resolveScan } from '@/equipment/lib/stores-scan-resolution';
 import { usePartByCode } from '@/equipment/lib/use-stores-post';
+import { addBreadcrumb, captureSanitizedException } from '@/lib/observability';
 import { invalidateQueryCache } from '@/lib/query-client';
 import { useTRPC } from '@/lib/trpc';
 
@@ -80,7 +81,12 @@ export default function StoresStocktakeSessionRoute() {
     const resolution = await resolveScan({
       fetchActors: () => queryClient.fetchQuery(trpc.inventory.quickSwitchActors.queryOptions()),
       fetchPartByCode: (code) => queryClient.fetchQuery(trpc.inventory.partByCode.queryOptions({ code })),
+      onLookupFailure: (error, resultKind) =>
+        captureSanitizedException(error, 'Stores scan lookup failed', { resultKind, source: 'stores_scan' }),
       raw,
+    });
+    addBreadcrumb('equipment', resolution.kind === 'error' ? 'scan failed' : 'scan resolved', {
+      resultKind: resolution.kind,
     });
 
     if (resolution.kind === 'actor') selectActor(resolution.actor);

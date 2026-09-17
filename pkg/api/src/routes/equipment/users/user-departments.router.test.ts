@@ -179,6 +179,7 @@ describe('userDepartments', () => {
       changelogLoader: () => [],
       db: context.db,
       log: pino({ level: 'silent' }),
+      mobileObservability: {},
       session,
       storage: {
         deleteObject: async () => undefined,

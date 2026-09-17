@@ -1,16 +1,23 @@
 import '../global.css';
 
 import { useFonts } from 'expo-font';
-import { Stack, usePathname } from 'expo-router';
+import { type ErrorBoundaryProps, Stack, usePathname, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import { useEffect } from 'react';
 import { ActivityIndicator, Text, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { AppErrorBoundary } from '@/components/AppErrorBoundary';
 import { OfflineScreen } from '@/components/OfflineScreen';
 import { UpdatePrompt } from '@/components/UpdatePrompt';
 import { GluestackUIProvider } from '@/components/ui/gluestack-ui-provider';
+import { CONTRACTING_SCREEN_CATALOG } from '@/contracting/screen-catalog';
+import { EQUIPMENT_MUTATION_EVENTS } from '@/equipment/observability';
+import { EQUIPMENT_SCREEN_CATALOG } from '@/equipment/screen-catalog';
 import { ApiProvider } from '@/lib/ApiProvider';
 import { isOfflineCapableRoute } from '@/lib/business-home';
 import { ConnectivityProvider } from '@/lib/connectivity';
+import { initializeObservability, prepareScreenContext, trackScreen } from '@/lib/observability';
+import { createScreenResolver, SHARED_SCREEN_CATALOG } from '@/lib/screen-catalog';
 import { ColorModeProvider } from '@/theme/ColorModeProvider';
 import { useColorMode } from '@/theme/use-color-mode';
 
@@ -22,6 +29,17 @@ const geistFonts = {
   'Geist-SemiBold': require('../assets/fonts/Geist-SemiBold.ttf'),
   'Geist-Bold': require('../assets/fonts/Geist-Bold.ttf'),
 };
+
+initializeObservability();
+const screenForSegments = createScreenResolver([
+  SHARED_SCREEN_CATALOG,
+  CONTRACTING_SCREEN_CATALOG,
+  EQUIPMENT_SCREEN_CATALOG,
+]);
+
+export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
+  return <AppErrorBoundary error={error} retry={retry} />;
+}
 
 export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts(geistFonts);
@@ -45,7 +63,8 @@ function ThemedAppShell() {
   return (
     <GluestackUIProvider mode={preference}>
       <ConnectivityProvider>
-        <ApiProvider>
+        <ApiProvider mutationEvents={EQUIPMENT_MUTATION_EVENTS}>
+          <RouteObservability />
           {/* Auth gating lives in app/(protected)/_layout.tsx; login is the public route. */}
           <Stack screenOptions={{ headerShown: false }} />
           {/* Offline-capable business routes (Contracting field capture) stay available while disconnected. */}
@@ -89,5 +108,22 @@ function StartupLoader() {
 
 function OfflineGate() {
   const pathname = usePathname();
-  return <OfflineScreen allowOffline={isOfflineCapableRoute(pathname)} />;
+  const allowOffline = isOfflineCapableRoute(pathname);
+  return <OfflineScreen allowOffline={allowOffline} />;
+}
+
+function RouteObservability() {
+  const segments = useSegments();
+  const key = segments.join('/');
+  const screen = screenForSegments(key ? key.split('/') : []);
+
+  // This component renders before the route stack, so effects in a newly mounted screen see the
+  // new business immediately rather than inheriting the previous route until this effect runs.
+  if (screen) prepareScreenContext(screen);
+
+  useEffect(() => {
+    if (screen) trackScreen(screen);
+  }, [screen]);
+
+  return null;
 }

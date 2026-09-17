@@ -24,9 +24,11 @@ export type ScanResolution =
  */
 export async function resolveBadgeScan({
   fetchActors,
+  onLookupFailure,
   raw,
 }: {
   fetchActors: () => Promise<{ items: QuickSwitchActor[] }>;
+  onLookupFailure?: (error: unknown, resultKind: 'actor') => void;
   raw: string;
 }): Promise<ScanResolution> {
   const token = parseScanToken(raw);
@@ -39,7 +41,8 @@ export async function resolveBadgeScan({
     // Awaited rather than read off whatever a cache happens to hold: a card swiped while the list is
     // still loading would otherwise read as "not recognised", which sends somebody to the office.
     actors = await fetchActors();
-  } catch {
+  } catch (error) {
+    onLookupFailure?.(error, 'actor');
     return { kind: 'error', message: 'Couldn’t check that badge. Try again, or pick a name from the list.' };
   }
 
@@ -56,15 +59,17 @@ export async function resolveBadgeScan({
 export async function resolveScan({
   fetchActors,
   fetchPartByCode,
+  onLookupFailure,
   raw,
 }: {
   fetchActors: () => Promise<{ items: QuickSwitchActor[] }>;
   fetchPartByCode: (code: string) => Promise<{ partCode: string }>;
+  onLookupFailure?: (error: unknown, resultKind: 'actor' | 'part') => void;
   raw: string;
 }): Promise<ScanResolution> {
   const token = parseScanToken(raw);
 
-  if (token.kind !== 'part-code') return resolveBadgeScan({ fetchActors, raw });
+  if (token.kind !== 'part-code') return resolveBadgeScan({ fetchActors, onLookupFailure, raw });
 
   try {
     // Resolved before navigating: a code that names nothing has to fail here, at the shelf, rather
@@ -72,7 +77,8 @@ export async function resolveScan({
     const part = await fetchPartByCode(token.partCode);
 
     return { kind: 'part', partCode: part.partCode };
-  } catch {
+  } catch (error) {
+    onLookupFailure?.(error, 'part');
     return {
       kind: 'error',
       message: `No Part carries the code ${token.partCode}. Search for it by name below.`,

@@ -4,6 +4,7 @@ import { Pressable, View } from 'react-native';
 
 import { Text } from '@/components/ui/text';
 import { ThemedModal } from '@/components/ui/themed-modal';
+import { addBreadcrumb, captureException } from '@/lib/observability';
 
 /**
  * The camera fallback for when the wedge cannot read a label (spec §10) — a scuffed bin tag, a
@@ -29,7 +30,9 @@ export function ScanCameraModal({
   // Armed per opening, not per mount: the sheet stays mounted between scans, so a latch that is
   // only cleared on cancel would make the second camera scan of a shift silently do nothing.
   useEffect(() => {
-    if (open) hasScanned.current = false;
+    if (open) {
+      hasScanned.current = false;
+    }
   }, [open]);
 
   return (
@@ -50,7 +53,17 @@ export function ScanCameraModal({
               <Pressable
                 accessibilityRole="button"
                 className="items-center rounded-xl bg-primary px-4 py-3"
-                onPress={() => void requestPermission()}
+                onPress={() => {
+                  addBreadcrumb('equipment', 'camera permission requested');
+                  void requestPermission()
+                    .then((result) =>
+                      addBreadcrumb(
+                        'equipment',
+                        result.granted ? 'camera permission granted' : 'camera permission denied',
+                      ),
+                    )
+                    .catch((error) => captureException(error, { source: 'camera_permission' }));
+                }}
               >
                 <Text className="text-sm text-primary-foreground" weight="semibold">
                   Allow camera

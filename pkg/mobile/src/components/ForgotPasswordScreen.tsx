@@ -10,7 +10,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-
+import { addBreadcrumb } from '@/lib/observability';
 import { BrandHeader } from './BrandHeader';
 import { Text } from './ui/text';
 
@@ -43,6 +43,7 @@ export function ForgotPasswordScreen({ onBack, requestReset }: ForgotPasswordScr
     } catch {
       // Use the same response when the request fails so this public screen does
       // not disclose whether the server recognized the submitted address.
+      addBreadcrumb('auth', 'password reset request failed');
     } finally {
       setSubmitted(true);
       setIsSubmitting(false);

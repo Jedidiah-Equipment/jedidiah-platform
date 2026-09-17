@@ -81,7 +81,13 @@ export async function buildServer(
     origin: config.AUTH_TRUSTED_ORIGINS,
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+    allowedHeaders: [
+      'Content-Type',
+      'Authorization',
+      'X-Requested-With',
+      'X-POSTHOG-DISTINCT-ID',
+      'X-POSTHOG-SESSION-ID',
+    ],
     maxAge: 86400,
   });
 
@@ -114,11 +120,13 @@ export async function buildServer(
       changelogLoader: createFileChangelogLoader(),
       storage,
     }),
-    onError({ error, path, type }) {
+    onError({ ctx, error, path, type }) {
       if (!shouldLogTRPCError(error)) return;
 
       log.root.error({ error: serializeError(error), path, type }, 'Unexpected tRPC error');
-      observability.captureException(error, { properties: { path, type, source: 'trpc' } });
+      observability.captureException(error, {
+        properties: { ...ctx?.mobileObservability, path, type, source: 'trpc' },
+      });
     },
   } satisfies FastifyTRPCPluginOptions<AppRouter>['trpcOptions'];
 

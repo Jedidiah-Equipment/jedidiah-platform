@@ -16,6 +16,7 @@ import { docsOrigin } from '@/lib/app-env';
 import { signOut } from '@/lib/auth';
 import { getSessionRoleSlots, useAuthSession } from '@/lib/auth-session';
 import { BUSINESS_HOME } from '@/lib/business-home';
+import { captureException } from '@/lib/observability';
 import { formatAppVersion } from '@/lib/runtime-app-identity';
 import type { ColorModePreference } from '@/theme/ColorModeProvider';
 import { useColorMode } from '@/theme/use-color-mode';
@@ -98,7 +99,8 @@ export function ProfileMenu({
             className="flex-row items-center gap-3 rounded-xl px-3 py-3 active:bg-muted"
             onPress={() => {
               onClose();
-              Linking.openURL(helpUrl(helpOrigin, helpTopic)).catch(() => {
+              Linking.openURL(helpUrl(helpOrigin, helpTopic)).catch((error) => {
+                captureException(error, { source: 'help_link' });
                 showToast('error', 'Could not open Help in the browser');
               });
             }}

@@ -6,6 +6,7 @@ import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
 
 import { apiBaseUrl } from './api-base-url';
+import { addBreadcrumb, captureEvent, identifyObservabilityUser, resetObservability } from './observability';
 import { resolveRuntimeScheme } from './runtime-app-identity';
 
 const authBaseUrl = `${apiBaseUrl}/api/auth`;
@@ -59,27 +60,78 @@ export async function sessionCookieHeader(): Promise<string | null> {
 export type AuthSession = NonNullable<ReturnType<typeof useSession>['data']>;
 
 export async function signIn(input: { email: string; password: string }): Promise<SignInResult> {
+  const startedAt = Date.now();
   try {
     const result = await authClient.signIn.email(input);
 
     if (result.error) {
+      recordAuthRequest('/api/auth/sign-in/email', result.error.status ?? 400, startedAt);
+      captureEvent('sign in failed', { reason: signInErrorCategory(result.error) });
       return { ok: false, message: getSignInErrorMessage(result.error) };
     }
 
     // Refresh the session store so the root auth guard redirects away from /login.
-    await authClient.getSession();
+    const resolved = await authClient.getSession();
+    recordAuthRequest('/api/auth/sign-in/email', 200, startedAt);
+    if (resolved.data?.user.id) identifyObservabilityUser(resolved.data.user.id);
+    captureEvent('signed in');
     return { ok: true };
   } catch {
+    recordAuthRequest('/api/auth/sign-in/email', 0, startedAt);
+    captureEvent('sign in failed', { reason: 'network' });
     return { ok: false, message: networkFailureMessage };
   }
 }
 
-export async function signOut() {
-  await authClient.signOut();
+export async function signOut(reason: 'ineligible session' | 'signed out' = 'signed out') {
+  const startedAt = Date.now();
+  let failureRecorded = false;
+  try {
+    const result = await authClient.signOut();
+    if (result.error) {
+      recordAuthRequest('/api/auth/sign-out', result.error.status ?? 400, startedAt);
+      failureRecorded = true;
+      throw result.error;
+    }
+    recordAuthRequest('/api/auth/sign-out', 200, startedAt);
+    captureEvent('signed out', { reason });
+    resetObservability(reason);
+  } catch (error) {
+    if (!failureRecorded) recordAuthRequest('/api/auth/sign-out', 0, startedAt);
+    throw error;
+  }
 }
 
 export async function requestPasswordReset(email: string): Promise<void> {
-  await authClient.requestPasswordReset({ email });
+  const startedAt = Date.now();
+  try {
+    await authClient.requestPasswordReset({ email });
+    recordAuthRequest('/api/auth/request-password-reset', 200, startedAt);
+    captureEvent('password reset requested');
+  } catch (error) {
+    recordAuthRequest('/api/auth/request-password-reset', 0, startedAt);
+    throw error;
+  }
+}
+
+function recordAuthRequest(route: string, status: number, startedAt: number): void {
+  const outcome = status === 0 ? 'auth request failed' : 'auth request';
+  addAuthBreadcrumb(outcome, route, status, startedAt);
+}
+
+function addAuthBreadcrumb(message: string, route: string, status: number, startedAt: number): void {
+  addBreadcrumb('network', message, {
+    durationMs: Date.now() - startedAt,
+    method: 'POST',
+    route,
+    status,
+  });
+}
+
+function signInErrorCategory(error: SignInError): string {
+  if (error.code === 'ACCOUNT_SIGN_IN_DISABLED') return 'disabled';
+  if (error.code === 'INVALID_EMAIL_OR_PASSWORD' || error.status === 401) return 'credentials';
+  return error.status && error.status >= 500 ? 'server' : 'other';
 }
 
 function getSignInErrorMessage(error: SignInError): string {

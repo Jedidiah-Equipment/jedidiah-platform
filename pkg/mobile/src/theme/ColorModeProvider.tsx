@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { colorScheme as nativeWindColorScheme } from 'nativewind';
 import { type ReactNode, useCallback, useEffect, useLayoutEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Platform, Text, View } from 'react-native';
+import { addBreadcrumb } from '@/lib/observability';
 
 import { loadingSpinnerColor } from './brand-colors';
 import {
@@ -42,6 +43,7 @@ export function ColorModeProvider({ children }: { children: ReactNode }) {
         applyPreference(parseColorModePreference(stored));
       })
       .catch(() => {
+        addBreadcrumb('storage', 'color mode read failed');
         if (active) applyPreference(DEFAULT_COLOR_MODE);
       })
       .finally(() => {

@@ -29,16 +29,17 @@ type QueuePorts = {
   storage: { getItem(key: string): Promise<string | null>; setItem(key: string, value: string): Promise<void> };
   key: string;
   removePhoto(uri: string): Promise<void>;
+  onError?: (error: unknown, operation: 'cleanup_photo' | 'read') => void;
 };
 
 /** All storage mutations are serialized; network I/O never holds the storage lock. */
-export function createReadingQueue({ storage, key, removePhoto }: QueuePorts) {
+export function createReadingQueue({ storage, key, removePhoto, onError }: QueuePorts) {
   let writes: Promise<unknown> = Promise.resolve();
   let syncing: Promise<{ retryFailure: Error | null }> | null = null;
   const listeners = new Set<() => void>();
   async function read(): Promise<QueuedReading[]> {
     const raw = await storage.getItem(key);
-    const rows = raw ? parseJson(raw) : [];
+    const rows = raw ? parseJson(raw, onError) : [];
     if (!Array.isArray(rows)) return [];
     return rows.flatMap((row) => {
       const parsed = QueuedReading.safeParse(row);
@@ -50,7 +51,8 @@ export function createReadingQueue({ storage, key, removePhoto }: QueuePorts) {
       await storage.setItem(key, JSON.stringify(change(await read())));
       for (const listener of listeners) listener();
     });
-    writes = result.catch(() => {});
+    // The caller receives `result`; this rejection handler only keeps the serialization chain usable.
+    writes = result.then(undefined, () => undefined);
     return result;
   }
   async function list() {
@@ -61,7 +63,7 @@ export function createReadingQueue({ storage, key, removePhoto }: QueuePorts) {
     const item = (await list()).find((row) => row.localId === localId);
     await mutate((rows) => rows.filter((row) => row.localId !== localId));
     // A cleanup failure must never resurrect a successfully delivered reading.
-    if (item?.photoLocalUri) await removePhoto(item.photoLocalUri).catch(() => {});
+    if (item?.photoLocalUri) await removePhoto(item.photoLocalUri).catch((error) => onError?.(error, 'cleanup_photo'));
   }
   async function discard(localId: string) {
     let removed: QueuedReading[] = [];
@@ -78,7 +80,9 @@ export function createReadingQueue({ storage, key, removePhoto }: QueuePorts) {
       return rows.filter((row) => !removedIds.has(row.localId));
     });
     await Promise.all(
-      removed.flatMap((item) => (item.photoLocalUri ? [removePhoto(item.photoLocalUri).catch(() => {})] : [])),
+      removed.flatMap((item) =>
+        item.photoLocalUri ? [removePhoto(item.photoLocalUri).catch((error) => onError?.(error, 'cleanup_photo'))] : [],
+      ),
     );
   }
   return {
@@ -142,10 +146,11 @@ export function createReadingQueue({ storage, key, removePhoto }: QueuePorts) {
 }
 export type ReadingQueue = ReturnType<typeof createReadingQueue>;
 
-function parseJson(raw: string): unknown {
+function parseJson(raw: string, onError?: QueuePorts['onError']): unknown {
   try {
     return JSON.parse(raw);
-  } catch {
+  } catch (error) {
+    onError?.(error, 'read');
     return [];
   }
 }

@@ -3,6 +3,7 @@ import { View } from 'react-native';
 
 import { Text } from '@/components/ui/text';
 import { authedFetch } from '@/lib/authed-fetch';
+import { captureException } from '@/lib/observability';
 
 import type { DocumentPageProps } from './DocumentPage';
 
@@ -34,7 +35,8 @@ export function DocumentPage({ path, filename }: DocumentPageProps) {
         createdUrl = URL.createObjectURL(blob);
         setBlobUrl(createdUrl);
       })
-      .catch(() => {
+      .catch((error) => {
+        captureException(error, { source: 'document_preview' });
         if (!cancelled) setFailed(true);
       });
 

@@ -25,6 +25,7 @@ import {
   quoteDocumentCountLabel,
   quoteDocumentMetaLine,
 } from '@/equipment/lib/quote-documents';
+import { captureException } from '@/lib/observability';
 import { useTRPC } from '@/lib/trpc';
 
 const DOCUMENT_SORT_OPTIONS: readonly ListControlOption<QuoteDocumentSort>[] = [
@@ -74,6 +75,7 @@ export function QuoteDocumentsTab({
         filename: document.filename,
       });
     } catch (error) {
+      captureException(error, { action: 'download', source: 'document_action' });
       showToast('error', error instanceof Error && error.message ? error.message : 'Unable to download document.');
     } finally {
       setDownloadingId(null);

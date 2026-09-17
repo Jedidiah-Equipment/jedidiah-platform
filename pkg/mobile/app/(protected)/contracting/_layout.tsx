@@ -1,8 +1,13 @@
 import { hasBusinessAccess } from '@pkg/domain';
-import { Redirect, Stack } from 'expo-router';
+import { type ErrorBoundaryProps, Redirect, Stack } from 'expo-router';
 
+import { AppErrorBoundary } from '@/components/AppErrorBoundary';
 import { getSessionRoleSlots, useAuthSession } from '@/lib/auth-session';
 import { BUSINESS_HOME } from '@/lib/business-home';
+
+export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
+  return <AppErrorBoundary error={error} retry={retry} />;
+}
 
 export default function ContractingLayout() {
   const session = useAuthSession();

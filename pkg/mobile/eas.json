@@ -13,7 +13,9 @@
         "EXPO_PUBLIC_APP_ENV": "staging",
         "EXPO_PUBLIC_API_BASE_URL": "https://staging-api.jedidiahequipment.co.za",
         "EXPO_PUBLIC_LANDER_ORIGIN": "https://jedidiahequipment.co.za",
-        "EXPO_PUBLIC_DOCS_ORIGIN": "https://docs.jedidiahequipment.co.za"
+        "EXPO_PUBLIC_DOCS_ORIGIN": "https://docs.jedidiahequipment.co.za",
+        "EXPO_PUBLIC_POSTHOG_PROJECT_TOKEN": "phc_yAvYYtn6YYd8FHYVXRxYSg7RY2NUdWsHZRFcBekFXdus",
+        "EXPO_PUBLIC_POSTHOG_HOST": "https://us.i.posthog.com"
       },
       "android": {
         "buildType": "app-bundle"
@@ -28,7 +30,9 @@
         "EXPO_PUBLIC_APP_ENV": "production",
         "EXPO_PUBLIC_API_BASE_URL": "https://api.jedidiahequipment.co.za",
         "EXPO_PUBLIC_LANDER_ORIGIN": "https://jedidiahequipment.co.za",
-        "EXPO_PUBLIC_DOCS_ORIGIN": "https://docs.jedidiahequipment.co.za"
+        "EXPO_PUBLIC_DOCS_ORIGIN": "https://docs.jedidiahequipment.co.za",
+        "EXPO_PUBLIC_POSTHOG_PROJECT_TOKEN": "phc_pu7qURcwpxQu3ASkFxFwgwSYUAKczvxKgfw3U5oVmbMW",
+        "EXPO_PUBLIC_POSTHOG_HOST": "https://us.i.posthog.com"
       },
       "android": {
         "buildType": "app-bundle"

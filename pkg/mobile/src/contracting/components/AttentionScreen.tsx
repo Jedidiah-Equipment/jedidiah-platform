@@ -8,6 +8,7 @@ import { Text } from '@/components/ui/text';
 import { useReadingQueue } from '@/contracting/readings/ReadingQueueProvider';
 import { useFleet, useMachineReadings } from '@/contracting/readings/use-fleet';
 import { useSessionPermission } from '@/lib/auth-session';
+import { addBreadcrumb, captureEvent } from '@/lib/observability';
 import { useBusyAction } from '@/lib/use-busy-action';
 import { attentionParent } from './attention-parent';
 
@@ -18,9 +19,11 @@ export default function AttentionScreen() {
   const canCapture = useSessionPermission('contracting_reading:capture');
   const [confirmDiscard, setConfirmDiscard] = useState<string | null>(null);
   const { busy, error: actionError, run } = useBusyAction();
-  function act(action: () => Promise<void>) {
+  function act(action: () => Promise<void>, resolution: 'discard' | 'resubmit') {
     return run(async () => {
       await action();
+      addBreadcrumb('contracting', resolution);
+      captureEvent('reading attention resolved', { resolution });
       setConfirmDiscard(null);
       sync();
     }, 'Unable to update the saved capture.');
@@ -61,7 +64,7 @@ export default function AttentionScreen() {
                   machineId={item.machineId}
                   busy={busy}
                   onResubmit={(expectedPreviousId) => {
-                    void act(() => queue.resubmit(item.localId, expectedPreviousId));
+                    void act(() => queue.resubmit(item.localId, expectedPreviousId), 'resubmit');
                   }}
                 />
               ) : null}
@@ -74,7 +77,7 @@ export default function AttentionScreen() {
                     title="Confirm discard"
                     disabled={busy}
                     onPress={() => {
-                      void act(() => queue.discard(item.localId));
+                      void act(() => queue.discard(item.localId), 'discard');
                     }}
                   />
                   <Button title="Keep capture" disabled={busy} onPress={() => setConfirmDiscard(null)} />

@@ -17,6 +17,7 @@ import { productBrochurePreviewPath, productDocumentDownloadPath } from '@/equip
 import { PRODUCT_BROCHURE_DOCUMENT_ID, productBrochureFilename } from '@/equipment/lib/product-brochure';
 import { landerProductUrls } from '@/equipment/lib/product-presentation';
 import { landerOrigin } from '@/lib/app-env';
+import { captureException } from '@/lib/observability';
 import { useTRPC } from '@/lib/trpc';
 
 export function ProductDetail({ product }: { product: Product }) {
@@ -75,7 +76,8 @@ function ProductDetailsCard({ product }: { product: Product }) {
       setCopied(locale);
       if (copiedTimer.current) clearTimeout(copiedTimer.current);
       copiedTimer.current = setTimeout(() => setCopied(null), 2_000);
-    } catch {
+    } catch (error) {
+      captureException(error, { source: 'clipboard' });
       Alert.alert('Couldn’t copy link', 'Please try again.');
     }
   };

@@ -1,5 +1,6 @@
 import { FieldReading, readingCaptureMultipartFields } from '@pkg/schema/contracting';
 import { z } from 'zod';
+import { addBreadcrumb } from '@/lib/observability';
 import { type QueuedReading, ReadingSyncError } from './reading-queue';
 
 const DeliveredReading = z.looseObject({ photo: z.unknown() });
@@ -23,7 +24,12 @@ export async function uploadReading(item: QueuedReading, send: (body: FormData) 
     return FieldReading.parse({ ...row, photoBacked: !!row.photo });
   }
   if (response.status >= 400 && response.status < 500 && ![401, 408, 429].includes(response.status)) {
-    const refusal = RefusalBody.parse(await response.json().catch(() => null));
+    const refusal = RefusalBody.parse(
+      await response.json().catch(() => {
+        addBreadcrumb('contracting', 'reading refusal response unreadable', { status: response.status });
+        return null;
+      }),
+    );
     throw new ReadingSyncError(
       refusal.data?.appCode ?? 'reading.refused',
       refusal.message ?? 'The server refused this reading.',

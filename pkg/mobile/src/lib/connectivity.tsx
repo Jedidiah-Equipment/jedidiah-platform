@@ -1,6 +1,7 @@
 import { onlineManager } from '@tanstack/react-query';
 import * as Network from 'expo-network';
 import { type ReactNode, useEffect, useSyncExternalStore } from 'react';
+import { addBreadcrumb } from './observability';
 
 export const offlineTitle = 'No network connection';
 export const offlineMessage = 'Check your connection and try again.';
@@ -11,13 +12,16 @@ export const offlineMessage = 'Check your connection and try again.';
  * stay online so the app is never wedged behind the offline gate.
  */
 function applyNetworkState(state: Network.NetworkState): void {
-  onlineManager.setOnline(!isNetworkStateOffline(state));
+  const online = !isNetworkStateOffline(state);
+  onlineManager.setOnline(online);
+  addBreadcrumb('connectivity', 'network state changed', { online });
 }
 
 export async function refreshConnectivity(): Promise<void> {
   try {
     applyNetworkState(await Network.getNetworkStateAsync());
   } catch {
+    addBreadcrumb('connectivity', 'network state unavailable', { assumedOnline: true });
     onlineManager.setOnline(true);
   }
 }

@@ -4,6 +4,8 @@ import { Platform } from 'react-native';
 
 import { apiBaseUrl } from '@/lib/api-base-url';
 import { sessionCookieHeader } from '@/lib/auth';
+import { apiRoutePattern } from '@/lib/authed-fetch';
+import { addBreadcrumb, captureEvent, captureSanitizedException } from '@/lib/observability';
 import { getDocumentPlatformType } from './document-content';
 
 /**
@@ -30,13 +32,33 @@ const safeCacheSegment = (value: string) => value.replace(/[^a-zA-Z0-9._-]+/g, '
 
 // Fetch the document to the app cache with the session cookie, returning its file:// URI.
 export async function downloadDocumentToCache({ path, filename, cacheKey }: DocumentAction): Promise<string> {
+  const startedAt = Date.now();
   const cookie = await sessionCookieHeader();
   const cacheName = cacheKey
     ? `${safeCacheSegment(cacheKey)}-${safeCacheSegment(filename)}`
     : safeCacheSegment(filename);
   const target = `${FileSystem.cacheDirectory}${cacheName}`;
-  const result = await FileSystem.downloadAsync(`${apiBaseUrl}${path}`, target, {
-    headers: cookie ? { Cookie: cookie } : undefined,
+  let result: FileSystem.FileSystemDownloadResult;
+  try {
+    result = await FileSystem.downloadAsync(`${apiBaseUrl}${path}`, target, {
+      headers: cookie ? { Cookie: cookie } : undefined,
+    });
+  } catch (error) {
+    addBreadcrumb('network', 'document fetch failed', {
+      durationMs: Date.now() - startedAt,
+      method: 'GET',
+      route: apiRoutePattern(new URL(path, apiBaseUrl).pathname),
+      status: 0,
+    });
+    captureSanitizedException(error, 'Document download failed', { source: 'document_fetch' });
+    throw error;
+  }
+
+  addBreadcrumb('network', 'document fetch', {
+    durationMs: Date.now() - startedAt,
+    method: 'GET',
+    route: apiRoutePattern(new URL(path, apiBaseUrl).pathname),
+    status: result.status,
   });
 
   if (result.status !== 200) {
@@ -60,6 +82,7 @@ export async function shareDocument(action: DocumentAction): Promise<void> {
     ...(platformType.uti ? { UTI: platformType.uti } : {}),
     dialogTitle: action.filename,
   });
+  captureEvent('document shared');
 }
 
 /**
@@ -80,6 +103,7 @@ export async function saveDocument(action: DocumentAction): Promise<void> {
       ...(platformType.uti ? { UTI: platformType.uti } : {}),
       dialogTitle: action.filename,
     });
+    captureEvent('document downloaded');
     return;
   }
 
@@ -95,4 +119,5 @@ export async function saveDocument(action: DocumentAction): Promise<void> {
     platformType.mimeType,
   );
   await FileSystem.writeAsStringAsync(destination, base64, { encoding: 'base64' });
+  captureEvent('document downloaded');
 }

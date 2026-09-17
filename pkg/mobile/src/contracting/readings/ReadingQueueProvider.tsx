@@ -9,6 +9,7 @@ import { useTRPC } from '@/lib/trpc';
 import { removeReadingPhoto } from './reading-files';
 import { createReadingQueue, type QueuedReading, type ReadingQueue } from './reading-queue';
 import { syncReadingQueue } from './reading-sync';
+import { reportReadingSyncFailure } from './reading-telemetry';
 
 // Outlives the provider, which remounts when the signed-in operator changes, so a sync still in flight
 // and its serialized storage writes are never started twice for the same operator.
@@ -59,7 +60,15 @@ export function ReadingQueueProvider({ children }: { children: ReactNode }) {
     const isActive = () => liveQueue.current === queue;
     if (!isActive() || !onlineManager.isOnline() || AppState.currentState === 'background') return;
     try {
-      await syncReadingQueue({ queue, queryClient, trpc, isActive });
+      await syncReadingQueue({
+        queue,
+        queryClient,
+        trpc,
+        isActive,
+        onFailure: (failure) => {
+          void reportReadingSyncFailure(failure);
+        },
+      });
       if (isActive()) setError(null);
     } catch (error) {
       if (isActive()) setError(error instanceof Error ? error.message : 'Unable to read the saved queue.');

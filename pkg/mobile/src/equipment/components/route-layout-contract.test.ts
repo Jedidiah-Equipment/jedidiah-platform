@@ -19,6 +19,7 @@ describe('route layout contract', () => {
 
   test('shows and clears the Activity unread indicator through the shared last-seen endpoints', () => {
     const tabBar = readFileSync(join(MOBILE_DIR, 'src/equipment/components/AppTabBar.tsx'), 'utf8');
+    const sharedTabBar = readFileSync(join(MOBILE_DIR, 'src/components/tab-bar/TabBar.tsx'), 'utf8');
     const activityFeed = readFileSync(
       join(MOBILE_DIR, 'src/equipment/components/activity/JobActivityFeed.tsx'),
       'utf8',
@@ -26,8 +27,9 @@ describe('route layout contract', () => {
     const activityRoute = readFileSync(join(MOBILE_DIR, 'app/(protected)/equipment/(tabs)/activity/index.tsx'), 'utf8');
 
     expect(tabBar).toContain('trpc.jobActivity.getLastActivitySeen.queryOptions()');
-    expect(tabBar).toContain('<UnreadActivityDot />');
-    expect(tabBar).toContain('bg-orange-500');
+    expect(tabBar).toContain("badge: tab === 'activity' && activityUnread");
+    expect(sharedTabBar).toContain('<TabBadge />');
+    expect(sharedTabBar).toContain('bg-orange-500');
     expect(activityFeed).toContain('trpc.jobActivity.setLastActivitySeen.mutationOptions');
     expect(activityFeed).toContain('useFocusEffect');
     expect(activityRoute).toContain('trackGlobalView');

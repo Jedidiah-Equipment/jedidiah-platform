@@ -1,13 +1,16 @@
 import { ReadingComment } from '@pkg/schema/contracting';
+import { useStore } from '@tanstack/react-form';
 import { CameraView, useCameraPermissions } from 'expo-camera';
-import { router, useLocalSearchParams } from 'expo-router';
+import { type Href, router, useLocalSearchParams } from 'expo-router';
 import { useRef, useState } from 'react';
 import { Image, KeyboardAvoidingView, Platform, ScrollView, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useAppForm } from '@/components/form';
 import { SecondaryToolbar } from '@/components/TopToolbar';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { TextInput } from '@/components/ui/text-input';
+import { useDrivers, useImplements } from '@/contracting/jobs/use-jobs';
 import { deriveCapture } from '@/contracting/readings/derive-capture';
 import { latestKnownReading } from '@/contracting/readings/latest-reading';
 import { useReadingQueue } from '@/contracting/readings/ReadingQueueProvider';
@@ -20,12 +23,29 @@ import { useBusyAction } from '@/lib/use-busy-action';
 const CAMERA_FAILURE = 'The camera could not take a photo. Try again or continue without a photo.';
 
 export default function CaptureScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const params = useLocalSearchParams<{
+    id: string;
+    role?: string;
+    assignmentId?: string;
+    jobId?: string;
+    startAssignmentJobId?: string;
+    implementId?: string;
+    driverUserId?: string;
+    startLocalId?: string;
+    overrideImplementId?: string;
+    overrideDriverUserId?: string;
+    implementCode?: string;
+    driverName?: string;
+  }>();
+  const { id } = params;
+  const role = params.role === 'arrival' || params.role === 'departure' ? params.role : 'spot';
   const { bottom: safeAreaBottom } = useSafeAreaInsets();
   const fleet = useFleet();
   const machine = fleet.data?.find((row) => row.id === id);
   const readings = useMachineReadings(id);
   const { queue, items } = useReadingQueue();
+  const implementsQuery = useImplements();
+  const driversQuery = useDrivers();
   const canCapture = useSessionPermission('contracting_reading:capture');
   const [permission, requestPermission] = useCameraPermissions();
   const camera = useRef<CameraView>(null);
@@ -36,6 +56,14 @@ export default function CaptureScreen() {
   const [comment, setComment] = useState('');
   const [disputePrevious, setDisputePrevious] = useState(false);
   const [disputedReadingId, setDisputedReadingId] = useState<string | null>(null);
+  const [changeStint, setChangeStint] = useState(false);
+  const overrideForm = useAppForm({
+    defaultValues: {
+      implementId: params.overrideImplementId ?? '',
+      driverUserId: params.overrideDriverUserId ?? '',
+    },
+  });
+  const overrides = useStore(overrideForm.store, (state) => state.values);
   const { busy, error, setError, run } = useBusyAction();
   const known = latestKnownReading(id, items, readings.data);
   const latest = known?.value;
@@ -79,7 +107,26 @@ export default function CaptureScreen() {
         await queue.enqueue({
           localId,
           machineId: id,
-          role: 'spot',
+          role,
+          ...(params.assignmentId ? { assignmentId: params.assignmentId } : {}),
+          ...(params.startLocalId && params.startAssignmentJobId
+            ? {
+                startAssignment: {
+                  localId: params.startLocalId,
+                  jobId: params.startAssignmentJobId,
+                  implementId: params.implementId || null,
+                  ...(params.driverUserId ? { driverUserId: params.driverUserId } : {}),
+                },
+              }
+            : {}),
+          ...(role === 'arrival' && params.assignmentId && changeStint
+            ? {
+                stintOverrides: {
+                  implementId: overrides.implementId || null,
+                  driverUserId: overrides.driverUserId || null,
+                },
+              }
+            : {}),
           value: reading,
           capturedAt: new Date().toISOString(),
           photoLocalUri,
@@ -91,17 +138,20 @@ export default function CaptureScreen() {
         if (photoLocalUri) await removeReadingPhoto(photoLocalUri).catch(() => {});
         throw error;
       }
-      router.replace(`/contracting/machines/${id}`);
+      router.replace((params.jobId ? `/contracting/jobs/${params.jobId}` : `/contracting/machines/${id}`) as Href);
     }, 'Capture could not be saved. Please try again.');
   }
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top', 'left', 'right']}>
       <SecondaryToolbar
-        title="Capture reading"
+        title={role === 'arrival' ? 'Capture arrival' : role === 'departure' ? 'Capture departure' : 'Capture reading'}
         subtitle={machine?.code ?? 'CONTRACTING'}
-        parentLabel="Machine"
+        parentLabel={params.jobId ? 'Job' : 'Machine'}
         onBack={() => {
-          if (!busy) router.replace(`/contracting/machines/${id}`);
+          if (!busy)
+            router.replace(
+              (params.jobId ? `/contracting/jobs/${params.jobId}` : `/contracting/machines/${id}`) as Href,
+            );
         }}
         helpTopic="contractingMobileCapture"
       />
@@ -115,6 +165,42 @@ export default function CaptureScreen() {
             Photograph the hour meter when you can, then type its value. Your capture is saved on this phone before
             syncing.
           </Text>
+          {role === 'arrival' && params.assignmentId ? (
+            <View className="gap-3 rounded-xl border border-border bg-surface p-4">
+              <View className="flex-row items-center justify-between gap-3">
+                <Text className="min-w-0 flex-1 text-sm text-foreground">
+                  Starting with {params.implementCode || 'no implement'} · driver {params.driverName || 'not set'}
+                </Text>
+                <Button title={changeStint ? 'Keep planned' : 'Change'} onPress={() => setChangeStint(!changeStint)} />
+              </View>
+              {changeStint ? (
+                <View className="gap-3">
+                  <overrideForm.AppField name="implementId">
+                    {(field) => (
+                      <field.SelectField
+                        label="Implement"
+                        options={[
+                          { label: 'No implement', value: '' },
+                          ...(implementsQuery.data ?? []).map((row) => ({ label: row.code, value: row.id })),
+                        ]}
+                      />
+                    )}
+                  </overrideForm.AppField>
+                  <overrideForm.AppField name="driverUserId">
+                    {(field) => (
+                      <field.SelectField
+                        label="Driver"
+                        options={[
+                          { label: 'No driver', value: '' },
+                          ...(driversQuery.data ?? []).map((row) => ({ label: row.name, value: row.id })),
+                        ]}
+                      />
+                    )}
+                  </overrideForm.AppField>
+                </View>
+              ) : null}
+            </View>
+          ) : null}
           {cameraOpen && permission?.granted ? (
             <View className="gap-3">
               <View className="h-72 overflow-hidden rounded-xl bg-image-backdrop">

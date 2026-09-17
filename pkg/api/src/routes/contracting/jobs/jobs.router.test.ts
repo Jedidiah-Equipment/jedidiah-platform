@@ -1,4 +1,5 @@
 import {
+  captureReading,
   createCategory,
   createCustomer,
   createFarm,
@@ -142,7 +143,48 @@ const test = createTester(async ({ db }) => {
       completedByUserId: managerId,
     })
     .where(eq(contractingJobs.id, completedJob.id));
-  return { completedJob, db, otherJob, ownJob, pricedJob, stint };
+  return { completedJob, db, machine, otherJob, ownJob, pricedJob, stint };
+});
+
+test('projects only open field Jobs, enforces ownership, and never returns money', async ({ context }) => {
+  const foreman = context.createCaller(contractingSession('foreman')).contractingJobs.field;
+  const jobs = await foreman.jobs();
+  expect(jobs.map((job) => job.id)).toEqual([context.ownJob.id]);
+  expect(Object.keys(jobs[0] ?? {})).toEqual([
+    'id',
+    'code',
+    'jobNumber',
+    'status',
+    'customerName',
+    'farmName',
+    'workTypeName',
+    'description',
+    'foremanUserId',
+    'stints',
+  ]);
+  expect(jobs[0]?.stints).toMatchObject([{ id: context.stint.id, state: 'planned' }]);
+  await expect(foreman.job({ id: context.otherJob.id })).rejects.toMatchObject({ code: 'FORBIDDEN' });
+
+  const manager = context.createCaller(contractingSession('contracting-manager')).contractingJobs.field;
+  expect((await manager.jobs()).map((job) => job.id)).toEqual([context.ownJob.id, context.otherJob.id]);
+
+  const workshopCaller = context.createCaller(contractingSession('workshop-manager'));
+  await expect(workshopCaller.contractingJobs.field.jobs()).rejects.toMatchObject({ code: 'FORBIDDEN' });
+  await captureReading({
+    db: context.db,
+    actorUserId: foremanId,
+    input: {
+      machineId: context.machine.id,
+      assignmentId: context.stint.id,
+      role: 'arrival',
+      value: 100,
+      capturedAt: '2026-09-17T08:00:00+02:00',
+      disputePrevious: false,
+    },
+  });
+  await expect(workshopCaller.contractingReadings.fieldMachines()).resolves.toMatchObject([
+    { id: context.machine.id, onSiteJobNumber: context.ownJob.jobNumber },
+  ]);
 });
 
 test('enforces the Job queue role matrix and strips money from Foreman reads', async ({ context }) => {

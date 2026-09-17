@@ -19,10 +19,13 @@ const SIGNED_IN_PERMISSION_LOADING_SURFACES = {
 } as const;
 
 const SIGNED_IN_ROUTE_TOOLBARS = {
-  'contracting/index.tsx': toolbar('main', 'src/contracting/components/MachinesScreen.tsx'),
   'contracting/attention.tsx': toolbar('secondary', 'src/contracting/components/AttentionScreen.tsx'),
-  'contracting/machines/[id]/index.tsx': toolbar('secondary', 'src/contracting/components/MachineScreen.tsx'),
-  'contracting/machines/[id]/capture.tsx': toolbar('secondary', 'src/contracting/components/CaptureScreen.tsx'),
+  'contracting/(tabs)/jobs/index.tsx': toolbar('main', 'src/contracting/jobs/JobsScreen.tsx'),
+  'contracting/(tabs)/jobs/[jobId].tsx': toolbar('secondary', 'src/contracting/jobs/JobScreen.tsx'),
+  'contracting/(tabs)/jobs/[jobId]/add-machine.tsx': toolbar('secondary', 'src/contracting/jobs/AddMachineScreen.tsx'),
+  'contracting/(tabs)/machines/index.tsx': toolbar('main', 'src/contracting/components/MachinesScreen.tsx'),
+  'contracting/(tabs)/machines/[id]/index.tsx': toolbar('secondary', 'src/contracting/components/MachineScreen.tsx'),
+  'contracting/(tabs)/machines/[id]/capture.tsx': toolbar('secondary', 'src/contracting/components/CaptureScreen.tsx'),
   'equipment/(tabs)/(plan)/bays/[bayId].tsx': toolbar('secondary', 'src/equipment/components/bays/BayQueueScreen.tsx'),
   'equipment/(tabs)/(plan)/plan/index.tsx': toolbar('main', 'app/(protected)/equipment/(tabs)/(plan)/plan/index.tsx'),
   'equipment/(tabs)/activity/index.tsx': toolbar('main', 'app/(protected)/equipment/(tabs)/activity/index.tsx'),
@@ -82,7 +85,7 @@ const SIGNED_IN_ROUTE_TOOLBARS = {
   'equipment/documents/[documentId].tsx': toolbar('secondary', 'app/(protected)/equipment/documents/[documentId].tsx'),
 } as const;
 
-const REDIRECT_ONLY_ROUTES = new Set(['index.tsx']);
+const REDIRECT_ONLY_ROUTES = new Set(['index.tsx', 'contracting/index.tsx']);
 
 describe('signed-in toolbar contract', () => {
   test('classifies every protected page as main or secondary', () => {

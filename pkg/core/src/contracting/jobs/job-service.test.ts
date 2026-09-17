@@ -139,6 +139,106 @@ describe('Job setup', () => {
 });
 
 describe('Machine Assignment lifecycle', () => {
+  test('starts an unplanned stint atomically, replays it, and applies planned-stint overrides', async ({ context }) => {
+    const firstJob = await createJob({ db: context.db, actorUserId: managerId, input: jobInput(context) });
+    const secondJob = await createJob({ db: context.db, actorUserId: managerId, input: jobInput(context) });
+    const otherJob = await createJob({
+      db: context.db,
+      actorUserId: managerId,
+      input: { ...jobInput(context), foremanUserId: otherForemanId },
+    });
+    const assignmentId = '5f1c2d3e-0001-4a00-8000-000000000010';
+    const readingId = '5f1c2d3e-0001-4a00-8000-000000000011';
+    const input = {
+      localId: readingId,
+      machineId: context.machine.id,
+      role: 'arrival' as const,
+      startAssignment: { localId: assignmentId, jobId: firstJob.id, implementId: null },
+      value: 100,
+      capturedAt: '2026-09-01T08:00:00+02:00',
+      disputePrevious: false,
+    };
+
+    const first = await captureReading({ db: context.db, actorUserId: foremanId, input });
+    expect((await getJob({ db: context.db, id: firstJob.id })).assignments).toMatchObject([
+      { id: assignmentId, driverUserId: driverId, state: 'on-site', arrival: { id: first.id } },
+    ]);
+    expect((await captureReading({ db: context.db, actorUserId: foremanId, input })).id).toBe(first.id);
+    expect(await context.db.select().from(contractingMachineAssignments)).toHaveLength(1);
+
+    await expect(
+      captureReading({
+        db: context.db,
+        actorUserId: foremanId,
+        input: {
+          ...input,
+          localId: '5f1c2d3e-0001-4a00-8000-000000000012',
+          startAssignment: {
+            localId: '5f1c2d3e-0001-4a00-8000-000000000013',
+            jobId: secondJob.id,
+            implementId: null,
+          },
+          value: 101,
+        },
+      }),
+    ).rejects.toMatchObject({ code: 'reading.machine_on_site' });
+
+    await captureReading({
+      db: context.db,
+      actorUserId: foremanId,
+      input: {
+        machineId: context.machine.id,
+        assignmentId,
+        role: 'departure',
+        value: 110,
+        capturedAt: '2026-09-01T17:00:00+02:00',
+        disputePrevious: false,
+        comment: 'Photo unavailable',
+      },
+    });
+    const planned = await planAssignment({
+      db: context.db,
+      actorUserId: managerId,
+      input: { jobId: secondJob.id, machineId: context.machine.id, implementId: null },
+    });
+    if (!planned) throw new Error('Expected planned assignment');
+    await captureReading({
+      db: context.db,
+      actorUserId: foremanId,
+      input: {
+        machineId: context.machine.id,
+        assignmentId: planned.id,
+        stintOverrides: { driverUserId: null },
+        role: 'arrival',
+        value: 111,
+        capturedAt: '2026-09-02T08:00:00+02:00',
+        disputePrevious: false,
+      },
+    });
+    expect((await getJob({ db: context.db, id: secondJob.id })).assignments[0]).toMatchObject({
+      id: planned.id,
+      driverUserId: null,
+      state: 'on-site',
+    });
+
+    await expect(
+      captureReading({
+        db: context.db,
+        actorUserId: foremanId,
+        input: {
+          ...input,
+          localId: '5f1c2d3e-0001-4a00-8000-000000000014',
+          startAssignment: {
+            localId: '5f1c2d3e-0001-4a00-8000-000000000015',
+            jobId: otherJob.id,
+            implementId: null,
+          },
+          value: 112,
+        },
+      }),
+    ).rejects.toMatchObject({ code: 'reading.forbidden' });
+  });
+
   test('activates on first arrival, refuses overlapping on-site stints, and allows a repeat stint after departure', async ({
     context,
   }) => {

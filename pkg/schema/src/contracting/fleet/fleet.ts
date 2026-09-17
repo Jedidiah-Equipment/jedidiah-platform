@@ -129,4 +129,9 @@ export const FieldMachine = Machine.pick({
   categoryName: true,
   categoryIcon: true,
   categoryColour: true,
-}).strip();
+  currentDriverUserId: true,
+  currentDriverName: true,
+})
+  .extend({ onSiteJobNumber: z.string().nullable() })
+  .strip();
+export type FieldMachine = z.infer<typeof FieldMachine>;

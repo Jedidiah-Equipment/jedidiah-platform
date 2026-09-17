@@ -73,6 +73,28 @@ test('a race-lost capture blocks later captures on that machine until explicitly
   expect(await queue.list()).toEqual([]);
 });
 
+test('a refused arrival blocks its queued departure on the same Machine', async () => {
+  const { ReadingSyncError } = await import('./reading-queue');
+  const queue = createReadingQueue({ storage: AsyncStorage, key: 'operator-1', removePhoto: async () => {} });
+  const assignmentId = id('assignment');
+  await queue.enqueue({ ...capture('arrival'), role: 'arrival', assignmentId });
+  await queue.enqueue({ ...capture('departure', '2026-09-08T09:00:00Z'), role: 'departure', assignmentId });
+  const sent: string[] = [];
+
+  await queue.sync(async (item) => {
+    sent.push(item.role);
+    throw new ReadingSyncError('reading.machine_on_site', 'Machine is still on another Job');
+  });
+
+  expect(sent).toEqual(['arrival']);
+  const remaining = await queue.list();
+  expect(remaining).toMatchObject([
+    { role: 'arrival', attention: { code: 'reading.machine_on_site' } },
+    { role: 'departure' },
+  ]);
+  expect(remaining[1]).not.toHaveProperty('attention');
+});
+
 test('concurrent saves and sync preserve a newly captured reading and isolate operators', async () => {
   const queue = createReadingQueue({ storage: AsyncStorage, key: 'operator-1', removePhoto: async () => {} });
   await Promise.all([queue.enqueue(capture('one')), queue.enqueue(capture('two'))]);

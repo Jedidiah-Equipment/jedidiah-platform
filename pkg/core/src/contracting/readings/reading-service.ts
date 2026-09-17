@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import type { DatabaseTransaction, Db, StoredFile } from '@pkg/db';
-import { getUniqueViolationConstraint, isUniqueViolation, user } from '@pkg/db';
+import { getForeignKeyViolationConstraint, getUniqueViolationConstraint, isUniqueViolation, user } from '@pkg/db';
 import {
   contractingCategories,
   contractingHourReadings,
@@ -193,6 +193,18 @@ export async function captureReading({
         throw new ReadingError('reading.retired_machine', 'Cannot capture readings for a retired Machine.');
       let stint: typeof contractingMachineAssignments.$inferSelect | undefined;
       let stintJob: typeof contractingJobs.$inferSelect | undefined;
+      let createdStint = false;
+      const [actor] =
+        input.assignmentId || input.startAssignment
+          ? await tx
+              .select({ contractingRole: user.contractingRole, equipmentRole: user.role })
+              .from(user)
+              .where(eq(user.id, actorUserId))
+          : [];
+      const management =
+        actor?.equipmentRole === 'super-admin' ||
+        actor?.contractingRole === 'contracting-admin' ||
+        actor?.contractingRole === 'contracting-manager';
       if (input.assignmentId) {
         const [unlockedStint] = await tx
           .select({ jobId: contractingMachineAssignments.jobId })
@@ -211,14 +223,6 @@ export async function captureReading({
           .for('update');
         if (!stint || !stintJob || stint.machineId !== input.machineId)
           throw new ReadingError('reading.not_found', 'Machine Assignment not found.');
-        const [actor] = await tx
-          .select({ contractingRole: user.contractingRole, equipmentRole: user.role })
-          .from(user)
-          .where(eq(user.id, actorUserId));
-        const management =
-          actor?.equipmentRole === 'super-admin' ||
-          actor?.contractingRole === 'contracting-admin' ||
-          actor?.contractingRole === 'contracting-manager';
         if (input.role === 'departure' && management && !evidence && !input.comment)
           throw new ReadingError('reading.invalid_role', 'A reason is required for a photo-less departure reading.');
         if (!management && stintJob.foremanUserId !== actorUserId)
@@ -229,6 +233,48 @@ export async function captureReading({
           throw new ReadingError('reading.invalid_role', 'This Machine Assignment already arrived.');
         if (input.role === 'departure' && (!stint.arrivalReadingId || stint.departureReadingId))
           throw new ReadingError('reading.invalid_role', 'This Machine Assignment is not on site.');
+      } else if (input.startAssignment) {
+        [stintJob] = await tx
+          .select()
+          .from(contractingJobs)
+          .where(eq(contractingJobs.id, input.startAssignment.jobId))
+          .for('update');
+        if (!stintJob) throw new ReadingError('reading.not_found', 'Job not found.');
+        if (!management && stintJob.foremanUserId !== actorUserId)
+          throw new ReadingError('reading.forbidden', 'This is not your Job.');
+        if (!['upcoming', 'active'].includes(stintJob.status))
+          throw new ReadingError('reading.wrong_status', 'This Job is no longer open.');
+        const [inserted] = await tx
+          .insert(contractingMachineAssignments)
+          .values({
+            id: input.startAssignment.localId,
+            jobId: input.startAssignment.jobId,
+            machineId: input.machineId,
+            implementId: input.startAssignment.implementId,
+            driverUserId: input.startAssignment.driverUserId ?? machine.currentDriverUserId,
+            createdByUserId: actorUserId,
+          })
+          .onConflictDoNothing({ target: contractingMachineAssignments.id })
+          .returning();
+        createdStint = !!inserted;
+        [stint] = inserted
+          ? [inserted]
+          : await tx
+              .select()
+              .from(contractingMachineAssignments)
+              .where(eq(contractingMachineAssignments.id, input.startAssignment.localId))
+              .for('update');
+        if (!stint || stint.jobId !== stintJob.id || stint.machineId !== input.machineId)
+          throw new ReadingError('reading.capture_id_conflict', 'This Machine Assignment identifier is already used.');
+        if (stint.arrivalReadingId)
+          throw new ReadingError('reading.invalid_role', 'This Machine Assignment already arrived.');
+        if (createdStint)
+          await recordAuditCreate({
+            db: tx,
+            actorUserId,
+            descriptor: assignmentDescriptor(machine.code),
+            input: stint,
+          });
       }
       const [latest] = await tx
         .select()
@@ -266,7 +312,16 @@ export async function captureReading({
         const now = new Date();
         const patch =
           input.role === 'arrival'
-            ? { arrivalReadingId: row.id, updatedAt: now }
+            ? {
+                arrivalReadingId: row.id,
+                ...(input.stintOverrides?.implementId !== undefined
+                  ? { implementId: input.stintOverrides.implementId }
+                  : {}),
+                ...(input.stintOverrides?.driverUserId !== undefined
+                  ? { driverUserId: input.stintOverrides.driverUserId }
+                  : {}),
+                updatedAt: now,
+              }
             : { departureReadingId: row.id, updatedAt: now };
         const [updatedStint] = await tx
           .update(contractingMachineAssignments)
@@ -311,6 +366,7 @@ export async function captureReading({
     return result;
   } catch (error) {
     const uniqueConstraint = isUniqueViolation(error) ? getUniqueViolationConstraint(error) : null;
+    const foreignKeyConstraint = getForeignKeyViolationConstraint(error);
     const translatedError =
       uniqueConstraint === 'machine_assignment_machine_on_site_unique'
         ? new ReadingError(
@@ -322,7 +378,11 @@ export async function captureReading({
               'reading.implement_on_site',
               'This Implement is still on site on another Job — capture its departure there first.',
             )
-          : error;
+          : foreignKeyConstraint === 'machine_assignment_driver_role'
+            ? new ReadingError('reading.invalid_role', 'Select a person with the Contracting driver role.')
+            : foreignKeyConstraint
+              ? new ReadingError('reading.invalid_role', 'The selected Job, Implement, or Driver is no longer valid.')
+              : error;
     if (photo && evidence) {
       try {
         await evidence.storage.deleteObject(photo.storageKey);

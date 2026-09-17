@@ -4,7 +4,11 @@ import {
   completeJob,
   createChargeLine,
   createJob,
+  getFieldJob,
   getReadableJob,
+  listFieldDrivers,
+  listFieldImplements,
+  listFieldJobs,
   listForemen,
   listJobs,
   patchAssignment,
@@ -26,10 +30,14 @@ import {
   ChargeLineCreateInput,
   ChargeLineIdInput,
   ChargeLinePatchInput,
+  FieldDriver,
+  FieldImplement,
+  FieldJob,
   GapResolveInput,
   JobCancelInput,
   JobCompleteInput,
   JobCreateInput,
+  JobIdInput,
   JobListInput,
   JobLookupInput,
   JobPatchInput,
@@ -57,6 +65,23 @@ function refuseRead() {
 }
 
 export const contractingJobsRouter = router({
+  field: router({
+    jobs: authorizedProcedure(['contracting_job:read', 'contracting_job:read-own'])
+      .output(FieldJob.array())
+      .query(({ ctx }) => mapCoreErrors(() => listFieldJobs({ db: ctx.db, actor: ctx.access }), jobErrorFamily)),
+    job: authorizedProcedure(['contracting_job:read', 'contracting_job:read-own'])
+      .input(JobIdInput)
+      .output(FieldJob)
+      .query(({ ctx, input }) =>
+        mapCoreErrors(() => getFieldJob({ db: ctx.db, actor: ctx.access, id: input.id }), jobErrorFamily),
+      ),
+    implements: authorizedProcedure(['contracting_machine:read', 'contracting_assignment:update-own'])
+      .output(FieldImplement.array())
+      .query(({ ctx }) => listFieldImplements({ db: ctx.db })),
+    drivers: authorizedProcedure(['contracting_job:assign', 'contracting_assignment:update-own'])
+      .output(FieldDriver.array())
+      .query(({ ctx }) => listFieldDrivers({ db: ctx.db })),
+  }),
   jobs: router({
     list: authorizedProcedure(readPermissions)
       .input(JobListInput)

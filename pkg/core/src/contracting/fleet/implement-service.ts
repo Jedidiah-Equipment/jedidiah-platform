@@ -3,6 +3,7 @@ import { contractingCategories, contractingImplements } from '@pkg/db/contractin
 import { implementCodePrefix, nextImplementCode } from '@pkg/domain/contracting';
 import type { AuthId } from '@pkg/schema';
 import {
+  FieldImplement,
   FleetCode,
   type FleetListInput,
   type FleetRetireInput,
@@ -51,6 +52,11 @@ export async function listImplements({ db, input }: { db: Db; input: FleetListIn
     orderBy: [asc(contractingImplements.code)],
   });
   return rows.map(mapImplement);
+}
+export async function listFieldImplements({ db }: { db: Db }) {
+  return (await listImplements({ db, input: { status: 'active', search: '' } })).map((row) =>
+    FieldImplement.parse(row),
+  );
 }
 export async function getImplement({ db, id }: { db: Db | DatabaseTransaction; id: string }) {
   const row = await db.query.contractingImplements.findFirst({

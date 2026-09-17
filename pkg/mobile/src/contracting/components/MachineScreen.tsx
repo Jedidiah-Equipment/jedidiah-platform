@@ -1,4 +1,4 @@
-import { router, useLocalSearchParams } from 'expo-router';
+import { type Href, router, useLocalSearchParams } from 'expo-router';
 import { ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { SecondaryToolbar } from '@/components/TopToolbar';
@@ -33,7 +33,7 @@ export default function MachineScreen() {
         title={machine?.code ?? 'Machine'}
         subtitle="CONTRACTING"
         parentLabel="Machines"
-        onBack={() => router.replace('/contracting')}
+        onBack={() => router.replace('/contracting/machines' as Href)}
         helpTopic="contractingMobileMachine"
       />
       <ScrollView contentContainerStyle={{ padding: 16, gap: 16 }}>
@@ -45,7 +45,9 @@ export default function MachineScreen() {
               {machine ? `${machine.make} ${machine.model}` : 'Machine details unavailable'}
             </Text>
           </View>
-          <Text className="text-muted-foreground">{machine?.categoryName} · In Yard</Text>
+          <Text className="text-muted-foreground">
+            {machine?.categoryName} · {machine?.onSiteJobNumber ? `On Job · ${machine.onSiteJobNumber}` : 'In Yard'}
+          </Text>
           <Text className="text-3xl text-foreground" weight="bold">
             {latest ? `${latest.value.toFixed(1)} h` : 'No known reading'}
           </Text>

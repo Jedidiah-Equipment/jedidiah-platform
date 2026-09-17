@@ -77,3 +77,25 @@ test('separates a below-latest refusal from transient upload and authentication 
     await expect(uploadReading(item, async () => new Response(null, { status }))).rejects.not.toHaveProperty('code');
   }
 });
+
+test('serializes an offline stint start as multipart JSON', async () => {
+  const startAssignment = {
+    localId: '5f1c2d3e-0001-4a00-8000-000000000001',
+    jobId: '5f1c2d3e-0001-4a00-8000-000000000002',
+    implementId: null,
+    driverUserId: 'driver-1',
+  };
+  await uploadReading(
+    {
+      ...item,
+      machineId: '5f1c2d3e-0001-4a00-8000-000000000003',
+      localId: '5f1c2d3e-0001-4a00-8000-000000000004',
+      role: 'arrival',
+      startAssignment,
+    },
+    async (body) => {
+      expect(JSON.parse(String(body.get('startAssignment')))).toEqual(startAssignment);
+      return Response.json({ ...delivered, role: 'arrival', photo: null }, { status: 201 });
+    },
+  );
+});

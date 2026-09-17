@@ -99,7 +99,9 @@ export default function MachinesScreen() {
                   {item.code}
                 </Text>
               </View>
-              <Text className="rounded-full bg-muted px-3 py-1 text-xs text-foreground">In Yard</Text>
+              <Text className="rounded-full bg-muted px-3 py-1 text-xs text-foreground">
+                {item.onSiteJobNumber ? `On Job · ${item.onSiteJobNumber}` : 'In Yard'}
+              </Text>
             </View>
             <Text className="text-sm text-muted-foreground">
               {item.make} {item.model} · {item.categoryName}

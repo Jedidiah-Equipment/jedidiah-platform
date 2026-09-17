@@ -7,4 +7,6 @@
 
 Captures without a refusal sync automatically while the app is open and connected; they do not show a Needs attention button. Check the Machine's **Reading history** to see queued captures.
 
+A refused start or stop also appears on the Job's Machine card.
+
 A connection or sign-in failure leaves captures queued for retry. If your role no longer permits capture, the refused item stays in Needs attention. For a refusal that does not offer a dispute, ask management to check the Machine before deciding whether to discard and capture again.

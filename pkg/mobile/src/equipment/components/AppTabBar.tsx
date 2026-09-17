@@ -66,6 +66,7 @@ export function AppTabBar() {
         icon: TAB_ICONS[tab],
         href: appTabHref(tab),
         badge: tab === 'activity' && activityUnread,
+        badgeLabel: 'unread activity',
       }))}
     />
   );

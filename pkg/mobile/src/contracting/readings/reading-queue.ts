@@ -4,7 +4,7 @@ import { z } from 'zod';
 
 export const QueuedReading = ReadingCaptureInput.safeExtend({
   localId: UUID,
-  role: z.literal('spot'),
+  role: z.enum(['spot', 'arrival', 'departure']),
   photoLocalUri: z.string().nullable(),
   attention: z.object({ code: z.string(), message: z.string() }).optional(),
 }).strip();

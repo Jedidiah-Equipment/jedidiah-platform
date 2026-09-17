@@ -1,5 +1,5 @@
 import { IconDots, type Icon as TablerIcon } from '@tabler/icons-react-native';
-import { router, type Href } from 'expo-router';
+import { type Href, router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Keyboard, Platform, Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -18,6 +18,7 @@ export type TabBarTab = {
   icon: TablerIcon;
   href: Href;
   badge?: boolean;
+  badgeLabel?: string;
 };
 
 const TAB_BAR_HEIGHT = 66;
@@ -68,6 +69,7 @@ export function TabBar({ tabs, activeKey }: { tabs: readonly TabBarTab[]; active
           key={tab.key}
           label={tab.label}
           badge={tab.badge}
+          badgeLabel={tab.badgeLabel}
           onPress={() => openTab(tab)}
           selected={tab.key === activeKey}
         />
@@ -95,7 +97,7 @@ export function TabBar({ tabs, activeKey }: { tabs: readonly TabBarTab[]; active
               const TabIcon = tab.icon;
               return (
                 <Pressable
-                  accessibilityLabel={tab.badge ? `${tab.label}, needs attention` : tab.label}
+                  accessibilityLabel={tab.badge ? `${tab.label}, ${tab.badgeLabel ?? 'needs attention'}` : tab.label}
                   accessibilityRole="button"
                   accessibilityState={{ selected: tab.key === activeKey }}
                   className="flex-row items-center gap-3 rounded-xl px-3 py-3 active:bg-muted"
@@ -126,6 +128,7 @@ function TabBarSlot({
   onPress,
   selected,
   badge = false,
+  badgeLabel = 'needs attention',
 }: {
   color: string;
   icon: TablerIcon;
@@ -133,11 +136,12 @@ function TabBarSlot({
   onPress: () => void;
   selected: boolean;
   badge?: boolean;
+  badgeLabel?: string;
 }) {
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={badge ? `${label}, needs attention` : label}
+      accessibilityLabel={badge ? `${label}, ${badgeLabel}` : label}
       accessibilityState={{ selected }}
       onPress={onPress}
       style={{ alignItems: 'center', flex: 1, gap: 4, justifyContent: 'center', paddingHorizontal: 4 }}

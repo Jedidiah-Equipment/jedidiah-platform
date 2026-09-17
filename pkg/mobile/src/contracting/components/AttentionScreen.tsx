@@ -1,4 +1,4 @@
-import { router } from 'expo-router';
+import { type Href, router } from 'expo-router';
 import { useState } from 'react';
 import { ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -29,7 +29,7 @@ export default function AttentionScreen() {
         title="Needs attention"
         subtitle="CONTRACTING"
         parentLabel="Machines"
-        onBack={() => router.replace('/contracting')}
+        onBack={() => router.replace('/contracting/machines' as Href)}
         helpTopic="contractingMobileAttention"
       />
       <ScrollView contentContainerStyle={{ padding: 16, gap: 16 }}>
@@ -48,6 +48,11 @@ export default function AttentionScreen() {
               </Text>
               <Text className="text-sm text-muted-foreground">{new Date(item.capturedAt).toLocaleString()}</Text>
               <Text className="text-foreground">{item.attention?.message}</Text>
+              {item.assignmentId || item.startAssignment ? (
+                <Text className="text-sm text-muted-foreground">
+                  Fix the Job on another phone or with management, then discard this capture and start again.
+                </Text>
+              ) : null}
               {['reading.below_latest', 'reading.previous_changed'].includes(item.attention?.code ?? '') &&
               canCapture ? (
                 <DisputeAction

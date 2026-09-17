@@ -167,6 +167,10 @@ test('projects only open field Jobs, enforces ownership, and never returns money
 
   const manager = context.createCaller(contractingSession('contracting-manager')).contractingJobs.field;
   expect((await manager.jobs()).map((job) => job.id)).toEqual([context.ownJob.id, context.otherJob.id]);
+  const admin = context.createCaller(contractingSession('contracting-admin')).contractingJobs.field;
+  expect((await admin.jobs()).map((job) => job.id)).toEqual([context.ownJob.id, context.otherJob.id]);
+  const superAdmin = context.createCaller(mockSession('super-admin')).contractingJobs.field;
+  expect((await superAdmin.jobs()).map((job) => job.id)).toEqual([context.ownJob.id, context.otherJob.id]);
 
   const workshopCaller = context.createCaller(contractingSession('workshop-manager'));
   await expect(workshopCaller.contractingJobs.field.jobs()).rejects.toMatchObject({ code: 'FORBIDDEN' });

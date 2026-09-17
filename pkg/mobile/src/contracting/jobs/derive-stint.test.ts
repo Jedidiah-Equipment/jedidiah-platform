@@ -101,6 +101,7 @@ describe('deriveStint', () => {
       foremanUserId: 'foreman',
       stints: [],
     };
-    expect(jobSummary(job, [start])).toEqual({ machines: 1, running: 1 });
+    expect(jobSummary(job, [start])).toEqual({ machines: 1, running: 1, hasArrived: true });
+    expect(jobSummary(job, [start, queued('departure')])).toEqual({ machines: 1, running: 0, hasArrived: true });
   });
 });

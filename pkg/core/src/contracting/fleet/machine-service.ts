@@ -1,5 +1,6 @@
 import { createEscapedContainsSearchCondition, type DatabaseTransaction, type Db, user } from '@pkg/db';
 import { contractingJobs, contractingMachineAssignments, contractingMachines } from '@pkg/db/contracting';
+import { formatJobNumber } from '@pkg/domain/contracting';
 import type { AuthId, ContractingRole } from '@pkg/schema';
 import {
   FieldMachine,
@@ -213,7 +214,7 @@ export async function listFieldMachines({ db }: { db: Db }) {
           ),
         )
     : [];
-  const jobByMachine = new Map(onSite.map((row) => [row.machineId, `CJOB-${String(row.jobCode).padStart(5, '0')}`]));
+  const jobByMachine = new Map(onSite.map((row) => [row.machineId, formatJobNumber(row.jobCode)]));
   return machines.map((machine) =>
     FieldMachine.parse({ ...machine, onSiteJobNumber: jobByMachine.get(machine.id) ?? null }),
   );

@@ -1,20 +1,14 @@
 import { type Db, user } from '@pkg/db';
 import { type contractingHourReadings, contractingJobs, contractingMachineAssignments } from '@pkg/db/contracting';
-import { hasPermission } from '@pkg/domain';
-import { assignmentState, formatJobNumber } from '@pkg/domain/contracting';
+import { assignmentState, fieldJobAccessMode, formatJobNumber } from '@pkg/domain/contracting';
 import type { UserAccessSummary } from '@pkg/schema';
 import { FieldDriver, FieldJob, FieldReading, FieldStint } from '@pkg/schema/contracting';
 import { and, asc, eq, inArray } from 'drizzle-orm';
 import { JobError, jobNotFound } from './job-errors.js';
 
 function fieldReadMode(actor: UserAccessSummary): 'all' | 'own' {
-  if (hasPermission(actor, 'contracting_job:read-own')) return 'own';
-  if (
-    actor.equipmentRole === 'super-admin' ||
-    actor.contractingRole === 'contracting-admin' ||
-    actor.contractingRole === 'contracting-manager'
-  )
-    return 'all';
+  const mode = fieldJobAccessMode(actor);
+  if (mode) return mode;
   throw new JobError('contracting_job.not_owner', 'You do not have access to field Jobs.');
 }
 

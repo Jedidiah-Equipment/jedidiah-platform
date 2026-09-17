@@ -24,7 +24,12 @@ import { useDrivers, useImplements, useJobs } from './use-jobs';
 const BUSY_VIEWS = new Set(['starting', 'running', 'stopping']);
 
 export default function AddMachineScreen() {
-  const params = useLocalSearchParams<{ jobId: string; machineId?: string; implementId?: string }>();
+  const params = useLocalSearchParams<{
+    jobId: string;
+    machineId?: string;
+    implementId?: string;
+    afterAssignmentId?: string;
+  }>();
   const fleet = useFleet();
   const jobs = useJobs();
   const implementQuery = useImplements();
@@ -46,29 +51,59 @@ export default function AddMachineScreen() {
     categories.map((option) => option.value),
   );
   const machines = getVisibleMachines(fleet.data ?? [], { search, category: normalizedCategory, sort });
+  const readdSourceKnown =
+    params.afterAssignmentId !== undefined &&
+    params.machineId !== undefined &&
+    ((jobs.data ?? []).some(
+      (job) =>
+        job.id === params.jobId &&
+        job.stints.some((stint) => stint.id === params.afterAssignmentId && stint.machineId === params.machineId),
+    ) ||
+      items.some((capture) => {
+        const start = capture.startAssignment;
+        if (!start) return false;
+        return (
+          capture.machineId === params.machineId &&
+          start.localId === params.afterAssignmentId &&
+          start.jobId === params.jobId
+        );
+      }));
+  const readdReady =
+    readdSourceKnown &&
+    items.some(
+      (capture) =>
+        capture.role === 'departure' &&
+        capture.assignmentId === params.afterAssignmentId &&
+        capture.machineId === params.machineId,
+    );
   const { machineJobs, implementJobs } = useMemo(() => {
     const machineJobs = new Map<string, string>();
     const implementJobs = new Map<string, string>();
     for (const job of jobs.data ?? []) {
       for (const stint of job.stints.map((row) => deriveStint(row, items))) {
         if (!BUSY_VIEWS.has(stint.view)) continue;
+        if (readdReady && stint.id === params.afterAssignmentId) continue;
         machineJobs.set(stint.machineId, job.jobNumber);
         if (stint.implementId) implementJobs.set(stint.implementId, job.jobNumber);
       }
       for (const capture of items) {
         if (capture.startAssignment?.jobId !== job.id) continue;
+        if (readdReady && capture.startAssignment.localId === params.afterAssignmentId) continue;
         machineJobs.set(capture.machineId, job.jobNumber);
         if (capture.startAssignment.implementId) implementJobs.set(capture.startAssignment.implementId, job.jobNumber);
       }
     }
     for (const machine of fleet.data ?? []) {
-      if (machine.onSiteJobNumber && !machineJobs.has(machine.id)) machineJobs.set(machine.id, machine.onSiteJobNumber);
+      if (machine.onSiteJobNumber && !machineJobs.has(machine.id) && !(readdReady && machine.id === params.machineId))
+        machineJobs.set(machine.id, machine.onSiteJobNumber);
     }
     return { machineJobs, implementJobs };
-  }, [fleet.data, items, jobs.data]);
+  }, [fleet.data, items, jobs.data, params.afterAssignmentId, params.machineId, readdReady]);
+
+  const selectedImplementBusy = values.implementId !== '' && implementJobs.has(values.implementId);
 
   const continueToCapture = () => {
-    if (!selected || machineJobs.has(selected.id)) return;
+    if (!selected || machineJobs.has(selected.id) || selectedImplementBusy) return;
     router.push({
       pathname: '/contracting/machines/[id]/capture',
       params: {
@@ -181,7 +216,7 @@ export default function AddMachineScreen() {
         <Button
           primary
           title="Continue — capture arrival"
-          disabled={!selected || machineJobs.has(selected.id)}
+          disabled={!selected || machineJobs.has(selected.id) || selectedImplementBusy}
           onPress={continueToCapture}
         />
       </ScrollView>

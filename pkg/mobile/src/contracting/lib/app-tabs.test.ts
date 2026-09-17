@@ -13,7 +13,7 @@ describe('Contracting app tabs', () => {
       visibleContractingTabs(
         createUserAccessSummary({ userId: 'workshop', equipmentRole: null, contractingRole: 'workshop-manager' }),
       ),
-    ).toEqual(['jobs', 'machines']);
+    ).toEqual(['machines']);
     expect(
       visibleContractingTabs(
         createUserAccessSummary({ userId: 'driver', equipmentRole: null, contractingRole: 'driver' }),

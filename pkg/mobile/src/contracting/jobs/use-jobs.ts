@@ -1,10 +1,11 @@
+import { fieldJobAccessMode } from '@pkg/domain/contracting';
 import { FieldDriver, FieldImplement, FieldJob } from '@pkg/schema/contracting';
 import { type UseQueryResult, useQuery } from '@tanstack/react-query';
-import { useEffect } from 'react';
+import { useCallback, useEffect } from 'react';
 import type { z } from 'zod';
 import { contractingStorageKey } from '@/contracting/lib/contracting-storage';
 import { apiBaseUrl } from '@/lib/api-base-url';
-import { useAuthSession, useSessionPermission } from '@/lib/auth-session';
+import { useAuthSession, useSessionAccessSummary, useSessionPermission } from '@/lib/auth-session';
 import { useTRPC } from '@/lib/trpc';
 import { usePersistedState } from '@/lib/use-persisted-state';
 
@@ -23,6 +24,7 @@ type SavedQuery<T> = {
   isError: boolean;
   isFetching: boolean;
   isRefetching: boolean;
+  isSuccess: boolean;
   refetch: () => Promise<unknown>;
 };
 
@@ -30,15 +32,21 @@ function useSavedQueryData<T>(
   namespace: readonly string[],
   isValid: (value: unknown) => value is T,
   live: T | undefined,
+  clear = false,
 ) {
   const session = useAuthSession();
   const [scope, version, ...suffix] = namespace;
   const key = contractingStorageKey(scope ?? 'field', version ?? 'v1', apiBaseUrl, session.user.id, ...suffix);
-  const [saved, save] = usePersistedState<T | undefined>(key, undefined, isValid);
+  const isValidOrCleared = useCallback(
+    (value: unknown): value is T | null => value === null || isValid(value),
+    [isValid],
+  );
+  const [saved, save] = usePersistedState<T | null>(key, null, isValidOrCleared);
   useEffect(() => {
     if (live !== undefined) save(live);
-  }, [live, save]);
-  return live ?? saved;
+    else if (clear) save(null);
+  }, [clear, live, save]);
+  return live ?? saved ?? undefined;
 }
 
 function savedQuery<T>(canRead: boolean, query: UseQueryResult<T, unknown>, data: T | undefined): SavedQuery<T> {
@@ -48,12 +56,13 @@ function savedQuery<T>(canRead: boolean, query: UseQueryResult<T, unknown>, data
     isError: query.isError,
     isFetching: query.isFetching,
     isRefetching: query.isRefetching,
+    isSuccess: query.isSuccess,
     refetch: query.refetch,
   };
 }
 
 export function useJobs() {
-  const canRead = useSessionPermission('contracting_job:read', 'contracting_job:read-own');
+  const canRead = fieldJobAccessMode(useSessionAccessSummary()) !== null;
   const trpc = useTRPC();
   const query = useQuery(trpc.contractingJobs.field.jobs.queryOptions(undefined, { enabled: canRead }));
   return savedQuery(canRead, query, useSavedQueryData(['jobs', 'v1'], isFieldJobs, query.data));
@@ -65,8 +74,10 @@ export function useJob(jobId: string) {
   const query = useQuery(
     trpc.contractingJobs.field.job.queryOptions({ id: jobId }, { enabled: jobs.canRead && !!jobId }),
   );
-  const live = query.data ?? jobs.data?.find((job) => job.id === jobId);
-  return savedQuery(jobs.canRead, query, useSavedQueryData(['jobs', 'v1', jobId], isFieldJob, live));
+  const listed = jobs.data?.find((job) => job.id === jobId);
+  const disappeared = jobs.isSuccess && listed === undefined;
+  const live = disappeared ? undefined : (query.data ?? listed);
+  return savedQuery(jobs.canRead, query, useSavedQueryData(['jobs', 'v1', jobId], isFieldJob, live, disappeared));
 }
 
 export function useImplements() {

@@ -108,7 +108,12 @@ export default function JobScreen() {
             onReadd={() =>
               router.push({
                 pathname: '/contracting/jobs/[jobId]/add-machine',
-                params: { jobId, machineId: stint.machineId, implementId: stint.implementId ?? '' },
+                params: {
+                  jobId,
+                  machineId: stint.machineId,
+                  implementId: stint.implementId ?? '',
+                  afterAssignmentId: stint.id,
+                },
               } as unknown as Href)
             }
           />
@@ -183,7 +188,9 @@ function StintCard({
       {(stint.view === 'running' || stint.view === 'starting') && canCapture ? (
         <Button primary title="Stop — capture departure" onPress={onStop} />
       ) : null}
-      {stint.view === 'left' && canAdd ? <Button title="Re-add machine" onPress={onReadd} /> : null}
+      {(stint.view === 'left' || stint.view === 'stopping') && canAdd ? (
+        <Button title="Re-add machine" onPress={onReadd} />
+      ) : null}
       {stint.view === 'attention' ? (
         <Button title="Open Needs attention" onPress={() => router.push('/contracting/attention')} />
       ) : null}

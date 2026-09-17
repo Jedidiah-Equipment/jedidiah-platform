@@ -1,13 +1,13 @@
 import { Tabs } from 'expo-router';
 import { ContractingTabBar } from '@/contracting/components/ContractingTabBar';
 import { contractingTabLabel, visibleContractingTabs } from '@/contracting/lib/app-tabs';
-import { useAccess } from '@/lib/use-access';
+import { useSessionAccessSummary } from '@/lib/auth-session';
 import { navigationColors } from '@/theme/gluestack-config';
 import { useColorMode } from '@/theme/use-color-mode';
 
 export default function ContractingTabsLayout() {
-  const access = useAccess();
-  const tabs = visibleContractingTabs(access.data);
+  const access = useSessionAccessSummary();
+  const tabs = visibleContractingTabs(access);
   const { resolved } = useColorMode();
   const colors = navigationColors[resolved];
   return (

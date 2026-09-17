@@ -9,14 +9,14 @@ import {
   visibleContractingTabs,
 } from '@/contracting/lib/app-tabs';
 import { useReadingQueue } from '@/contracting/readings/ReadingQueueProvider';
-import { useAccess } from '@/lib/use-access';
+import { useSessionAccessSummary } from '@/lib/auth-session';
 
 const ICONS = { jobs: IconBriefcase2, machines: IconTractor } as const;
 
 export function ContractingTabBar() {
-  const access = useAccess();
+  const access = useSessionAccessSummary();
   const { items } = useReadingQueue();
-  const tabs = visibleContractingTabs(access.data);
+  const tabs = visibleContractingTabs(access);
   const active = activeContractingTab(useSegments());
   return (
     <TabBar

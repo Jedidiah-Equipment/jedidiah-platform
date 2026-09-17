@@ -59,7 +59,7 @@ export default function JobsScreen() {
                 <Text className="min-w-0 flex-1 text-lg text-foreground" weight="bold" numberOfLines={1}>
                   {item.jobNumber} · {item.farmName}
                 </Text>
-                {item.status === 'upcoming' ? (
+                {!summary.hasArrived ? (
                   <Text className="rounded-full bg-muted px-3 py-1 text-xs text-foreground">Upcoming</Text>
                 ) : null}
               </View>

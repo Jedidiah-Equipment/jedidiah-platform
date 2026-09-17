@@ -70,14 +70,14 @@ export function queuedUnplannedStints(
 }
 
 export function jobSummary(job: FieldJob, queued: readonly QueuedReading[]) {
+  const stintIds = new Set(job.stints.map((stint) => stint.id));
   const server = job.stints.map((stint) => deriveStint(stint, queued));
-  const localIds = new Set(job.stints.map((stint) => stint.id));
   const local = queued
     .filter(
       (capture) =>
         capture.role === 'arrival' &&
         capture.startAssignment?.jobId === job.id &&
-        !localIds.has(capture.startAssignment.localId),
+        !stintIds.has(capture.startAssignment.localId),
     )
     .map((arrival) => {
       const departure = queued.find(
@@ -86,8 +86,18 @@ export function jobSummary(job: FieldJob, queued: readonly QueuedReading[]) {
       return departure ? 'stopping' : arrival.attention ? 'attention' : 'starting';
     });
   const views = [...server.map((stint) => stint.view), ...local];
+  const hasArrived =
+    job.status === 'active' ||
+    queued.some(
+      (capture) =>
+        capture.role === 'arrival' &&
+        !capture.attention &&
+        (capture.startAssignment?.jobId === job.id ||
+          (typeof capture.assignmentId === 'string' && stintIds.has(capture.assignmentId))),
+    );
   return {
     machines: job.stints.length + local.length,
     running: views.filter((view) => view === 'running' || view === 'starting').length,
+    hasArrived,
   };
 }

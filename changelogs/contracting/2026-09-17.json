@@ -1,0 +1,40 @@
+{
+  "business": "contracting",
+  "releasedAt": "2026-09-17T13:11:58.122Z",
+  "sections": [
+    {
+      "surface": "app",
+      "entries": [
+        {
+          "title": "Review reading exceptions more clearly",
+          "description": "See why each reading was flagged, preview its meter photo, and compare the extracted value and confidence before resolving it."
+        },
+        {
+          "title": "Manage the rate card",
+          "description": "Create, edit, activate, deactivate, and reorder time- or measure-based rates and their measure types."
+        },
+        {
+          "title": "Review only relevant audit activity",
+          "description": "The Audit Log is now separated by business, so administrators see the appropriate activity in each workspace."
+        }
+      ]
+    },
+    {
+      "surface": "mobile",
+      "entries": [
+        {
+          "title": "Run jobs from the field",
+          "description": "View assigned jobs, start and stop machines with arrival and departure readings, and add unplanned machines. Work is saved on the phone and syncs when a connection is available."
+        },
+        {
+          "title": "Keep reading captures safe",
+          "description": "Reading submissions now remain queued after temporary failures, while captures that cannot sync move to Needs attention with a clear reason."
+        },
+        {
+          "title": "Check your app version",
+          "description": "Open the profile menu to see the installed app version."
+        }
+      ]
+    }
+  ]
+}

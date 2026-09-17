@@ -1,0 +1,24 @@
+{
+  "business": "equipment",
+  "releasedAt": "2026-09-17T13:11:58.122Z",
+  "sections": [
+    {
+      "surface": "app",
+      "entries": [
+        {
+          "title": "Review only relevant audit activity",
+          "description": "The Audit Log is now separated by business, so administrators see the appropriate activity in each workspace."
+        }
+      ]
+    },
+    {
+      "surface": "mobile",
+      "entries": [
+        {
+          "title": "Check your app version",
+          "description": "Open the profile menu to see the installed app version."
+        }
+      ]
+    }
+  ]
+}

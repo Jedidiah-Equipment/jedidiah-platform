@@ -1,4 +1,5 @@
 import { authedFetch } from '@/lib/authed-fetch';
+import { captureEvent } from '@/lib/observability';
 
 import type { DocumentAction } from './document-actions';
 
@@ -28,9 +29,11 @@ function triggerDownload(objectUrl: string, filename: string): void {
 /** Web "share" has no native sheet here, so it downloads the file like Save does. */
 export async function shareDocument(action: DocumentAction): Promise<void> {
   triggerDownload(await fetchBlobUrl(action), action.filename);
+  captureEvent('document shared');
 }
 
 /** Save the document via a standard browser download. */
 export async function saveDocument(action: DocumentAction): Promise<void> {
   triggerDownload(await fetchBlobUrl(action), action.filename);
+  captureEvent('document downloaded');
 }

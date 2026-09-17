@@ -5,6 +5,7 @@ import { readingCapturePath } from '@/contracting/lib/contracting-http-paths';
 import { apiBaseUrl } from '@/lib/api-base-url';
 import { sessionCookieHeader } from '@/lib/auth';
 import { withSessionCookie } from '@/lib/authed-fetch';
+import { addBreadcrumb } from '@/lib/observability';
 import { ReadingPhotoUnavailableError, readReadingPhotoPart } from './reading-files';
 import { type QueuedReading, type ReadingQueue, ReadingSyncError } from './reading-queue';
 import { uploadReading } from './reading-upload';
@@ -21,6 +22,7 @@ export async function syncReadingQueue({
   trpc,
   isActive,
   onFailure,
+  onUploaded,
   send = fetch,
 }: {
   queue: ReadingQueue;
@@ -28,6 +30,7 @@ export async function syncReadingQueue({
   trpc: TRPCOptionsProxy<AppRouter>;
   isActive: () => boolean;
   onFailure?: (failure: ReadingSyncFailure) => void;
+  onUploaded?: (item: QueuedReading) => void;
   send?: (url: string, init: RequestInit) => Promise<Response>;
 }): Promise<void> {
   const cookie = await sessionCookieHeader();
@@ -44,12 +47,7 @@ export async function syncReadingQueue({
         const timeout = setTimeout(() => controller.abort(), UPLOAD_TIMEOUT_MS);
         const delivered = await uploadReading(
           item,
-          (body) => {
-            return send(
-              `${apiBaseUrl}${readingCapturePath()}`,
-              withSessionCookie({ method: 'POST', body, signal: controller.signal }, cookie),
-            );
-          },
+          (body) => observedReadingUpload(body, cookie, controller.signal, send),
           photo,
         ).finally(() => {
           clearTimeout(timeout);
@@ -61,6 +59,7 @@ export async function syncReadingQueue({
           trpc.contractingReadings.fieldHistory.queryKey({ machineId: item.machineId }),
           (rows) => [delivered, ...(rows ?? []).filter((row) => row.id !== delivered.id)],
         );
+        onUploaded?.(item);
       } catch (error) {
         const failure =
           error instanceof ReadingPhotoUnavailableError
@@ -78,6 +77,34 @@ export async function syncReadingQueue({
       queryClient.invalidateQueries({ queryKey: trpc.contractingJobs.field.pathKey() }),
     ]);
   if (retryFailure && isActive()) throw new Error('Waiting to sync. Check your connection and sign-in.');
+}
+
+async function observedReadingUpload(
+  body: FormData,
+  cookie: string | null,
+  signal: AbortSignal,
+  send: (url: string, init: RequestInit) => Promise<Response>,
+): Promise<Response> {
+  const startedAt = Date.now();
+  const route = readingCapturePath();
+  try {
+    const response = await send(`${apiBaseUrl}${route}`, withSessionCookie({ method: 'POST', body, signal }, cookie));
+    addBreadcrumb('network', 'reading upload', {
+      durationMs: Date.now() - startedAt,
+      method: 'POST',
+      route,
+      status: response.status,
+    });
+    return response;
+  } catch (error) {
+    addBreadcrumb('network', 'reading upload failed', {
+      durationMs: Date.now() - startedAt,
+      method: 'POST',
+      route,
+      status: 0,
+    });
+    throw error;
+  }
 }
 
 export type ReadingSyncFailure = {

@@ -3,13 +3,15 @@ import { onlineManager, useQueryClient } from '@tanstack/react-query';
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { AppState } from 'react-native';
 import { contractingStorageKey } from '@/contracting/lib/contracting-storage';
+import { recordReadingSynced, recordReadingSyncFailure } from '@/contracting/observability';
 import { apiBaseUrl } from '@/lib/api-base-url';
 import { useAuthSession } from '@/lib/auth-session';
+import { addBreadcrumb, captureException } from '@/lib/observability';
 import { useTRPC } from '@/lib/trpc';
 import { removeReadingPhoto } from './reading-files';
 import { createReadingQueue, type QueuedReading, type ReadingQueue } from './reading-queue';
 import { syncReadingQueue } from './reading-sync';
-import { reportReadingSyncFailure } from './reading-telemetry';
+import { readingSyncTelemetryPayload, reportReadingSyncFailure } from './reading-telemetry';
 
 // Outlives the provider, which remounts when the signed-in operator changes, so a sync still in flight
 // and its serialized storage writes are never started twice for the same operator.
@@ -29,7 +31,12 @@ export function ReadingQueueProvider({ children }: { children: ReactNode }) {
   const queue = useMemo(() => {
     let queue = queues.get(key);
     if (!queue) {
-      queue = createReadingQueue({ storage: AsyncStorage, key, removePhoto: removeReadingPhoto });
+      queue = createReadingQueue({
+        storage: AsyncStorage,
+        key,
+        removePhoto: removeReadingPhoto,
+        onError: (error, operation) => captureException(error, { source: 'reading_queue', stage: operation }),
+      });
       queues.set(key, queue);
     }
     return queue;
@@ -46,6 +53,7 @@ export function ReadingQueueProvider({ children }: { children: ReactNode }) {
           if (active) setItems(rows);
         })
         .catch((error: Error) => {
+          captureException(error, { source: 'reading_queue', stage: 'list' });
           if (active) setError(error.message);
         });
     };
@@ -59,6 +67,7 @@ export function ReadingQueueProvider({ children }: { children: ReactNode }) {
   const sync = useCallback(async () => {
     const isActive = () => liveQueue.current === queue;
     if (!isActive() || !onlineManager.isOnline() || AppState.currentState === 'background') return;
+    addBreadcrumb('contracting', 'sync pass started');
     try {
       await syncReadingQueue({
         queue,
@@ -66,11 +75,16 @@ export function ReadingQueueProvider({ children }: { children: ReactNode }) {
         trpc,
         isActive,
         onFailure: (failure) => {
+          recordReadingSyncFailure(failure, readingSyncTelemetryPayload(failure)?.properties ?? null);
           void reportReadingSyncFailure(failure);
         },
+        onUploaded: recordReadingSynced,
       });
+      addBreadcrumb('contracting', 'sync pass finished');
       if (isActive()) setError(null);
     } catch (error) {
+      captureException(error, { source: 'reading_queue', stage: 'sync_pass' });
+      addBreadcrumb('contracting', 'sync pass finished', { outcome: 'failed' });
       if (isActive()) setError(error instanceof Error ? error.message : 'Unable to read the saved queue.');
     }
   }, [queue, queryClient, trpc]);

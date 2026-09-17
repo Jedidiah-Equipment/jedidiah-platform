@@ -23,7 +23,7 @@ export default ({ config }: ConfigContext): AppConfig => {
     scheme: variant.scheme,
     // `version` is the human-facing string; EAS owns the Android `versionCode` remotely
     // (`cli.appVersionSource: remote` + per-profile `autoIncrement` in eas.json).
-    version: '1.33.0',
+    version: '1.34.0',
     orientation: 'portrait',
     userInterfaceStyle: 'automatic',
     newArchEnabled: true,
@@ -36,6 +36,8 @@ export default ({ config }: ConfigContext): AppConfig => {
     plugins: [
       'expo-router',
       'expo-font',
+      'expo-localization',
+      ['posthog-react-native/expo', { skipOnConflict: true }],
       // The stores tablet's camera fallback for a damaged Part label (spec §10), and Contracting's hour
       // meter photographs. Both ask for the permission only when the operator opens the camera.
       [

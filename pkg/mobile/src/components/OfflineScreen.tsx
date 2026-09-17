@@ -1,16 +1,24 @@
 import { IconWifiOff } from '@tabler/icons-react-native';
+import { useEffect } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { offlineMessage, offlineTitle, refreshConnectivity, useIsOffline } from '@/lib/connectivity';
+import { addBreadcrumb, captureEvent } from '@/lib/observability';
 
 /** Covers online-only routes while disconnected; the root opts Contracting field routes out. */
 export function OfflineScreen({ allowOffline = false }: { allowOffline?: boolean }) {
   const isOffline = useIsOffline();
+  const shown = isOffline && !allowOffline;
 
-  if (!isOffline || allowOffline) {
+  useEffect(() => {
+    addBreadcrumb('connectivity', shown ? 'offline gate shown' : 'offline gate hidden');
+    if (shown) captureEvent('offline gate shown');
+  }, [shown]);
+
+  if (!shown) {
     return null;
   }
 

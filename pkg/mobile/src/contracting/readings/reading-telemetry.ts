@@ -5,6 +5,7 @@ import { Platform } from 'react-native';
 import { apiBaseUrl } from '@/lib/api-base-url';
 import { sessionCookieHeader } from '@/lib/auth';
 import { withSessionCookie } from '@/lib/authed-fetch';
+import { addBreadcrumb } from '@/lib/observability';
 import { ReadingSyncError } from './reading-queue';
 import type { ReadingSyncFailure } from './reading-sync';
 
@@ -48,6 +49,7 @@ export async function reportReadingSyncFailure(failure: ReadingSyncFailure): Pro
     );
   } catch {
     // Observability must never interfere with the offline queue or replace its operator-facing error.
+    addBreadcrumb('contracting', 'telemetry bridge failed');
   }
 }
 

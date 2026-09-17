@@ -2,6 +2,7 @@ import { getJobDisplayName, getQuoteOfferingName, isBrochureReady } from '@pkg/d
 import type { DocumentSummary } from '@pkg/schema/equipment';
 import { useQuery } from '@tanstack/react-query';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useEffect } from 'react';
 import { View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { Text } from '@/components/ui/text';
@@ -15,6 +16,7 @@ import {
 } from '@/equipment/lib/equipment-http-paths';
 import { PRODUCT_BROCHURE_DOCUMENT_ID, productBrochureFilename } from '@/equipment/lib/product-brochure';
 import { type DocumentParent, resolveDocumentParent } from '@/equipment/lib/toolbar-navigation';
+import { addBreadcrumb, captureEvent } from '@/lib/observability';
 import { useTRPC } from '@/lib/trpc';
 
 /**
@@ -31,6 +33,11 @@ export default function DocumentViewerRoute() {
     quoteId?: string;
   }>();
   const owner = resolveDocumentParent({ jobId, productId, quoteId });
+
+  useEffect(() => {
+    addBreadcrumb('equipment', 'document opened');
+    captureEvent('document opened', { documentId });
+  }, [documentId]);
 
   const handleBack = () => (owner ? router.dismissTo(owner.returnTo) : router.dismissTo('/'));
 

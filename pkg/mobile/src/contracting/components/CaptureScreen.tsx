@@ -1,6 +1,7 @@
 import { fieldJobAccessMode } from '@pkg/domain/contracting';
 import { ReadingComment } from '@pkg/schema/contracting';
 import { useStore } from '@tanstack/react-form';
+import { onlineManager } from '@tanstack/react-query';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { type Href, router, useLocalSearchParams } from 'expo-router';
 import { useRef, useState } from 'react';
@@ -12,6 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { TextInput } from '@/components/ui/text-input';
 import { useDrivers, useImplements } from '@/contracting/jobs/use-jobs';
+import { recordReadingCaptured } from '@/contracting/observability';
 import { deriveCapture } from '@/contracting/readings/derive-capture';
 import { latestKnownReading } from '@/contracting/readings/latest-reading';
 import { useReadingQueue } from '@/contracting/readings/ReadingQueueProvider';
@@ -19,6 +21,7 @@ import { keepReadingPhoto, removeReadingPhoto } from '@/contracting/readings/rea
 import { newLocalId } from '@/contracting/readings/reading-queue';
 import { useFleet, useMachineReadings } from '@/contracting/readings/use-fleet';
 import { useSessionAccessSummary, useSessionPermission } from '@/lib/auth-session';
+import { addBreadcrumb, captureException } from '@/lib/observability';
 import { useBusyAction } from '@/lib/use-busy-action';
 
 const CAMERA_FAILURE = 'The camera could not take a photo. Try again or continue without a photo.';
@@ -92,19 +95,28 @@ function CaptureForm({ params }: { params: CaptureParams }) {
     commentRequired,
   });
   async function openCamera() {
+    addBreadcrumb('contracting', 'camera permission requested');
     try {
       const result = permission?.granted ? permission : await requestPermission();
       if (result.granted) {
+        addBreadcrumb('contracting', 'camera permission granted');
         setCameraReady(false);
         setCameraOpen(true);
-      } else setError('Camera permission is unavailable. You can type the reading without a photo.');
-    } catch {
+      } else {
+        addBreadcrumb('contracting', 'camera permission denied');
+        setError('Camera permission is unavailable. You can type the reading without a photo.');
+      }
+    } catch (error) {
+      captureException(error, { source: 'camera_permission' });
       setError('Camera unavailable. You can type the reading without a photo.');
     }
   }
   function photograph() {
     return run(async () => {
-      const result = await camera.current?.takePictureAsync({ quality: 0.7 }).catch(() => undefined);
+      const result = await camera.current?.takePictureAsync({ quality: 0.7 }).catch((error) => {
+        captureException(error, { source: 'camera_capture' });
+        return undefined;
+      });
       setCameraOpen(false);
       if (!result) throw new Error(CAMERA_FAILURE);
       setPhoto(result.uri);
@@ -117,7 +129,7 @@ function CaptureForm({ params }: { params: CaptureParams }) {
       const localId = newLocalId();
       const photoLocalUri = photo ? await keepReadingPhoto(photo, localId) : null;
       try {
-        await queue.enqueue({
+        const queued = {
           localId,
           machineId: id,
           role,
@@ -146,9 +158,14 @@ function CaptureForm({ params }: { params: CaptureParams }) {
           comment: comment.trim() || null,
           disputePrevious: disputeConfirmed,
           expectedPreviousId: latestId,
-        });
+        } as const;
+        await queue.enqueue(queued);
+        recordReadingCaptured(queued, !onlineManager.isOnline());
       } catch (error) {
-        if (photoLocalUri) await removeReadingPhoto(photoLocalUri).catch(() => {});
+        if (photoLocalUri)
+          await removeReadingPhoto(photoLocalUri).catch((cleanupError) =>
+            captureException(cleanupError, { source: 'reading_photo_cleanup' }),
+          );
         throw error;
       }
       router.replace((params.jobId ? `/contracting/jobs/${params.jobId}` : `/contracting/machines/${id}`) as Href);

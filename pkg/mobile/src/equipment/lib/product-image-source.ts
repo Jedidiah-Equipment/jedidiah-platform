@@ -2,6 +2,7 @@ import { Directory, File, Paths } from 'expo-file-system';
 import { useEffect, useState } from 'react';
 
 import { authedFetch } from '@/lib/authed-fetch';
+import { captureException } from '@/lib/observability';
 import { productImageDownloadPath } from './equipment-http-paths';
 import { type ProductImageKey, productImageCachePath } from './product-image-cache';
 
@@ -20,7 +21,8 @@ export function useProductImageSource(key: ProductImageKey): ProductImageSource 
       .then((uri) => {
         if (active) setSource({ kind: 'ready', uri });
       })
-      .catch(() => {
+      .catch((error) => {
+        captureException(error, { source: 'product_image' });
         if (active) setSource({ kind: 'failed' });
       });
 

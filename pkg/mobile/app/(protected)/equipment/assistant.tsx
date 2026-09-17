@@ -10,6 +10,7 @@ import { Conversation, PromptInput } from '@/equipment/components/assistant/chat
 import { SecondaryPageToolbar } from '@/equipment/components/TopToolbar';
 import { useAssistantKeyboardBottomPadding } from '@/equipment/lib/assistant-keyboard';
 import { resolveAssistantParent } from '@/equipment/lib/toolbar-navigation';
+import { captureEvent } from '@/lib/observability';
 
 export default function AssistantRoute() {
   const router = useRouter();
@@ -72,7 +73,12 @@ export default function AssistantRoute() {
           onStop={() => void stop()}
           onSubmit={(text) => {
             clearError();
-            void sendMessage({ text });
+            const messageCount = messages.length + 1;
+            void sendMessage({ text })
+              .then(() => captureEvent('assistant message sent', { messageCount, outcome: 'completed' }))
+              .catch(() => {
+                captureEvent('assistant message sent', { messageCount, outcome: 'failed' });
+              });
           }}
         />
       </View>

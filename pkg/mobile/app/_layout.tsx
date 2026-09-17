@@ -1,16 +1,21 @@
 import '../global.css';
 
 import { useFonts } from 'expo-font';
-import { Stack, usePathname } from 'expo-router';
+import { type ErrorBoundaryProps, Stack, usePathname, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import { useEffect } from 'react';
 import { ActivityIndicator, Text, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { AppErrorBoundary } from '@/components/AppErrorBoundary';
 import { OfflineScreen } from '@/components/OfflineScreen';
 import { UpdatePrompt } from '@/components/UpdatePrompt';
 import { GluestackUIProvider } from '@/components/ui/gluestack-ui-provider';
+import { EQUIPMENT_MUTATION_EVENTS } from '@/equipment/observability';
 import { ApiProvider } from '@/lib/ApiProvider';
 import { isOfflineCapableRoute } from '@/lib/business-home';
 import { ConnectivityProvider } from '@/lib/connectivity';
+import { initializeObservability, trackScreen } from '@/lib/observability';
+import { screenForSegments } from '@/lib/screen-catalog';
 import { ColorModeProvider } from '@/theme/ColorModeProvider';
 import { useColorMode } from '@/theme/use-color-mode';
 
@@ -22,6 +27,12 @@ const geistFonts = {
   'Geist-SemiBold': require('../assets/fonts/Geist-SemiBold.ttf'),
   'Geist-Bold': require('../assets/fonts/Geist-Bold.ttf'),
 };
+
+initializeObservability();
+
+export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
+  return <AppErrorBoundary error={error} retry={retry} />;
+}
 
 export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts(geistFonts);
@@ -45,9 +56,10 @@ function ThemedAppShell() {
   return (
     <GluestackUIProvider mode={preference}>
       <ConnectivityProvider>
-        <ApiProvider>
+        <ApiProvider mutationEvents={EQUIPMENT_MUTATION_EVENTS}>
           {/* Auth gating lives in app/(protected)/_layout.tsx; login is the public route. */}
           <Stack screenOptions={{ headerShown: false }} />
+          <RouteObservability />
           {/* Offline-capable business routes (Contracting field capture) stay available while disconnected. */}
           <OfflineGate />
           {/* Single update prompt: offers a downloaded new version wherever the user is. */}
@@ -89,5 +101,18 @@ function StartupLoader() {
 
 function OfflineGate() {
   const pathname = usePathname();
-  return <OfflineScreen allowOffline={isOfflineCapableRoute(pathname)} />;
+  const allowOffline = isOfflineCapableRoute(pathname);
+  return <OfflineScreen allowOffline={allowOffline} />;
+}
+
+function RouteObservability() {
+  const segments = useSegments();
+  const key = segments.join('/');
+
+  useEffect(() => {
+    const screen = screenForSegments(key ? key.split('/') : []);
+    if (screen) trackScreen(screen);
+  }, [key]);
+
+  return null;
 }

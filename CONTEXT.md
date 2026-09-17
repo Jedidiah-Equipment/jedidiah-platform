@@ -206,6 +206,21 @@ Server/API checks are the security boundary. Browser access checks are UX only.
 
 ## Cross-Cutting
 
+**Breadcrumb Trail** is mobile's bounded, in-memory sequence of the operator and app context immediately
+before a failure: route-pattern navigation, app lifecycle, connectivity and offline-gate state, auth identity
+transitions, body-free network outcomes, OTA progress, and business-specific queue or operator actions. Every
+mobile exception carries the trail; it never carries typed text, scanned values, request data, identity data,
+or file/photo paths.
+
+**Event Catalog** is the reviewed set of named mobile analytics events and their allowed properties. Names use
+lowercase `<object> <past-tense verb>` with spaces. Every page route and every mobile tRPC mutation must have a
+catalog entry, enforced by tests, so a new surface or action cannot silently become unobservable. The catalog
+allows internal record IDs and operational categories, never customer/person fields or captured form values.
+
+The observability **Business Property** is `equipment`, `contracting`, or `null`, derived from the catalogued
+route segment and registered on every mobile event and exception. It is a filter, not an identity or access
+decision; shared observability stays business-blind behind ADR 0016's wall.
+
 **Audit Event** records boundary-visible created, updated, and deleted changes for Customers, Jobs, Job Bays, Product Units, Products, Purchase Orders, Quotes, Suppliers, and Users. The Equipment Audit Log shows those events under `equipment_audit:read`; a User's events appear there unless the User holds only a Contracting role (see CONTEXT-MAP.md). A Supplier Merge adds a `merged` event to both Suppliers, plus an `updated` event when empty survivor contact fields are filled. Slot create/resize/remove are not audited; Slot reorders are. Feedback is not audited.
 
 **Job Activity** is the cross-Job feed of what has been said and done about Jobs, newest first, read by anyone with `equipment_job:read`. An **activity item** is one entry in it, in one of three filter categories. **User Feedback** is Job General Feedback, read from `feedback`. **Job Events** are curated projections of Audit Events: `job-created`, `job-description-updated`, `job-completed`, and `job-document-added`. **Work Times** are curated projections of Department Timing Audit Events: a start, completion, correction, or clearing, carrying the Department and resulting stamps and crew. Every audit-backed item carries its actor, its Job, and a named payload only — the raw audit change set never reaches the feed, which is what lets every category share the `equipment_job:read` gate while raw audit reads stay `equipment_audit:read` (ADR 0015). Job cancellation, Ownership Transfers, and catalog Optional Assembly changes are not Job Activity today. The feed reads existing records and stores no duplicate activity records of its own.

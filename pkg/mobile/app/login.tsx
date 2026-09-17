@@ -16,6 +16,7 @@ import { BrandHeader } from '@/components/BrandHeader';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { signIn, useSession } from '@/lib/auth';
+import { captureEvent } from '@/lib/observability';
 import { isHydratedSession } from '@/lib/session-state';
 
 export default function LoginScreen() {
@@ -31,6 +32,7 @@ export default function LoginScreen() {
     if (isSubmitting) return;
 
     if (!email.trim() || !password) {
+      captureEvent('sign in failed', { reason: 'missing input' });
       setError('Enter your email and password.');
       return;
     }
@@ -38,6 +40,7 @@ export default function LoginScreen() {
     const emailResult = EmailAddress.safeParse(email);
 
     if (!emailResult.success) {
+      captureEvent('sign in failed', { reason: 'invalid email' });
       setError('Enter a valid email address.');
       return;
     }

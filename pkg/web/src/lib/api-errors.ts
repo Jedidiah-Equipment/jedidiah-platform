@@ -1,4 +1,6 @@
-import type { ApiErrorShape, AppCode } from '@pkg/schema';
+import { type ApiErrorShape, type AppCode, shouldReportApiMutationError } from '@pkg/schema';
+
+export { shouldReportApiMutationError };
 
 export const UNEXPECTED_ERROR_MESSAGE = 'Something went wrong. Please try again.';
 
@@ -29,14 +31,6 @@ export function getApiErrorAppCode(error: unknown): AppCode | undefined {
 export function getApiErrorMetadata(error: unknown): unknown {
   if (!isApiErrorShape(error)) return undefined;
   return error.data?.metadata;
-}
-
-export function shouldReportApiMutationError(error: unknown): boolean {
-  if (!isApiErrorShape(error)) return true;
-  if (getApiErrorAppCode(error)) return false;
-  if (error.data?.code === 'BAD_REQUEST') return false;
-
-  return true;
 }
 
 function isApiErrorShape(error: unknown): error is ApiErrorShape {

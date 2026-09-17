@@ -33,6 +33,14 @@ export function resolveUpdateCommand({ args, commitSubject, easConfig, profile }
   };
 }
 
+export function resolveSourceMapUploadCommand(env) {
+  if (!env.POSTHOG_CLI_API_KEY || !env.POSTHOG_CLI_PROJECT_ID) return null;
+  return {
+    executable: 'pnpm',
+    args: ['exec', 'posthog-cli', 'hermes', 'upload', '--directory', 'dist'],
+  };
+}
+
 function main() {
   const [profile, ...args] = process.argv.slice(2);
   const easConfig = JSON.parse(readFileSync(EAS_CONFIG_PATH, 'utf8'));
@@ -45,7 +53,23 @@ function main() {
     stdio: 'inherit',
   });
   if (result.error) throw result.error;
-  process.exitCode = result.status ?? 1;
+  if (result.status !== 0) {
+    process.exitCode = result.status ?? 1;
+    return;
+  }
+
+  const sourceMaps = resolveSourceMapUploadCommand(process.env);
+  if (!sourceMaps) {
+    console.warn('PostHog source-map credentials are unset; skipping OTA source-map upload.');
+    return;
+  }
+  const upload = spawnSync(sourceMaps.executable, sourceMaps.args, {
+    cwd: new URL('..', import.meta.url),
+    env: process.env,
+    stdio: 'inherit',
+  });
+  if (upload.error) throw upload.error;
+  process.exitCode = upload.status ?? 1;
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {

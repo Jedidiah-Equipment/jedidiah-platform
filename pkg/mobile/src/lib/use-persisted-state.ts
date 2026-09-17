@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useCallback, useEffect, useState } from 'react';
+import { addBreadcrumb } from './observability';
 
 /** Type guard over a fixed set of string literals, for persisted-preference validation. */
 export function createLiteralGuard<const T extends readonly string[]>(values: T) {
@@ -10,6 +11,7 @@ function parseStored(stored: string): unknown {
   try {
     return JSON.parse(stored);
   } catch {
+    addBreadcrumb('storage', 'persisted value parse failed');
     return undefined;
   }
 }
@@ -44,7 +46,7 @@ export function usePersistedState<T>(
         if (isValid(parsed)) setState({ key, value: parsed });
       })
       // A failed read just keeps the fallback — never let it block boot.
-      .catch(() => {});
+      .catch(() => addBreadcrumb('storage', 'persisted value read failed'));
 
     return () => {
       active = false;
@@ -54,7 +56,9 @@ export function usePersistedState<T>(
   const persist = useCallback(
     (next: T) => {
       setState({ key, value: next });
-      void AsyncStorage.setItem(key, JSON.stringify(next)).catch(() => {});
+      void AsyncStorage.setItem(key, JSON.stringify(next)).catch(() =>
+        addBreadcrumb('storage', 'persisted value write failed'),
+      );
     },
     [key],
   );

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { resolveUpdateCommand } from './eas-update.mjs';
+import { resolveSourceMapUploadCommand, resolveUpdateCommand } from './eas-update.mjs';
 
 const easConfig = {
   build: {
@@ -48,5 +48,18 @@ describe('resolveUpdateCommand', () => {
     expect(() => resolveUpdateCommand({ args: [], commitSubject: '', easConfig, profile: 'preview' })).toThrow(
       'received preview',
     );
+  });
+});
+
+describe('resolveSourceMapUploadCommand', () => {
+  it('uploads Hermes source maps when both PostHog credentials are present', () => {
+    expect(resolveSourceMapUploadCommand({ POSTHOG_CLI_API_KEY: 'phx_test', POSTHOG_CLI_PROJECT_ID: '123' })).toEqual({
+      args: ['exec', 'posthog-cli', 'hermes', 'upload', '--directory', 'dist'],
+      executable: 'pnpm',
+    });
+  });
+
+  it('keeps local OTA commands analytics-free when upload credentials are absent', () => {
+    expect(resolveSourceMapUploadCommand({})).toBeNull();
   });
 });

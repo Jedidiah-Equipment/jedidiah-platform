@@ -3,6 +3,7 @@ import type { QuickSwitchActor } from '@pkg/schema/equipment';
 import type React from 'react';
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { AppState, View } from 'react-native';
+import { addBreadcrumb, captureEvent } from '@/lib/observability';
 
 /**
  * Who is standing at the shared stores tablet (spec §11). Deliberately not a session — the tablet
@@ -32,9 +33,14 @@ export const StoresActorProvider: React.FC<{ children: React.ReactNode }> = ({ c
   const selectActor = useCallback((next: QuickSwitchActor) => {
     lastInteractionAt.current = Date.now();
     setActor(next);
+    addBreadcrumb('equipment', 'stores actor selected', { present: true });
+    captureEvent('stores actor selected', { present: true });
   }, []);
 
-  const clearActor = useCallback(() => setActor(null), []);
+  const clearActor = useCallback(() => {
+    setActor(null);
+    addBreadcrumb('equipment', 'stores actor cleared', { present: false });
+  }, []);
 
   const keepAlive = useCallback(() => {
     lastInteractionAt.current = Date.now();
@@ -55,6 +61,8 @@ export const StoresActorProvider: React.FC<{ children: React.ReactNode }> = ({ c
     const expireIfIdle = () => {
       if (isStoresActorExpired({ lastInteractionAt: lastInteractionAt.current, now: Date.now() })) {
         setActor(null);
+        addBreadcrumb('equipment', 'stores actor expired', { present: false });
+        captureEvent('stores actor expired', { present: false });
       }
     };
     const interval = setInterval(expireIfIdle, IDLE_TICK_MS);

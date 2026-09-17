@@ -8,6 +8,7 @@ import { ActivityIndicator } from '@/components/ui/activity-indicator';
 import { Text } from '@/components/ui/text';
 import { ThemedModal } from '@/components/ui/themed-modal';
 import { resolveBadgeScan } from '@/equipment/lib/stores-scan-resolution';
+import { addBreadcrumb, captureException } from '@/lib/observability';
 import { useTRPC } from '@/lib/trpc';
 
 import { ScanField } from './ScanField';
@@ -42,7 +43,11 @@ export function QuickSwitchModal({
   async function selectByBadge(raw: string) {
     const resolution = await resolveBadgeScan({
       fetchActors: () => queryClient.fetchQuery(trpc.inventory.quickSwitchActors.queryOptions()),
+      onLookupFailure: (error, resultKind) => captureException(error, { resultKind, source: 'stores_scan' }),
       raw,
+    });
+    addBreadcrumb('equipment', resolution.kind === 'error' ? 'scan failed' : 'scan resolved', {
+      resultKind: resolution.kind,
     });
 
     switch (resolution.kind) {

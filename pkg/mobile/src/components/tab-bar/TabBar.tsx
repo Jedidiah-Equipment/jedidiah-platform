@@ -36,6 +36,9 @@ export function TabBar({ tabs, activeKey }: { tabs: readonly TabBarTab[]; active
   const [menuOpen, setMenuOpen] = useState(false);
   const { visible, overflow } = fitAppTabs(tabs, width);
   const hasOverflow = overflow.length > 0;
+  const overflowBadgeLabel = [
+    ...new Set(overflow.filter((tab) => tab.badge).map((tab) => tab.badgeLabel ?? 'needs attention')),
+  ].join(', ');
 
   useEffect(() => {
     if (!hasOverflow) setMenuOpen(false);
@@ -83,6 +86,7 @@ export function TabBar({ tabs, activeKey }: { tabs: readonly TabBarTab[]; active
           onPress={() => setMenuOpen(true)}
           selected={menuOpen}
           badge={overflow.some((tab) => tab.badge)}
+          badgeLabel={overflowBadgeLabel}
         />
       ) : null}
 

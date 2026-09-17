@@ -1,3 +1,4 @@
+import { fieldJobAccessMode } from '@pkg/domain/contracting';
 import { ReadingComment } from '@pkg/schema/contracting';
 import { useStore } from '@tanstack/react-form';
 import { CameraView, useCameraPermissions } from 'expo-camera';
@@ -17,7 +18,7 @@ import { useReadingQueue } from '@/contracting/readings/ReadingQueueProvider';
 import { keepReadingPhoto, removeReadingPhoto } from '@/contracting/readings/reading-files';
 import { newLocalId } from '@/contracting/readings/reading-queue';
 import { useFleet, useMachineReadings } from '@/contracting/readings/use-fleet';
-import { useSessionPermission } from '@/lib/auth-session';
+import { useSessionAccessSummary, useSessionPermission } from '@/lib/auth-session';
 import { useBusyAction } from '@/lib/use-busy-action';
 
 const CAMERA_FAILURE = 'The camera could not take a photo. Try again or continue without a photo.';
@@ -47,6 +48,7 @@ export default function CaptureScreen() {
   const implementsQuery = useImplements();
   const driversQuery = useDrivers();
   const canCapture = useSessionPermission('contracting_reading:capture');
+  const management = fieldJobAccessMode(useSessionAccessSummary()) === 'all';
   const [permission, requestPermission] = useCameraPermissions();
   const camera = useRef<CameraView>(null);
   const [cameraOpen, setCameraOpen] = useState(false);
@@ -68,7 +70,8 @@ export default function CaptureScreen() {
   const known = latestKnownReading(id, items, readings.data);
   const latest = known?.value;
   const latestId = known?.id ?? null;
-  const { parsed, below, disputeConfirmed, canSave } = deriveCapture({
+  const commentRequired = role === 'departure' && management && photo === null;
+  const { parsed, below, disputeConfirmed, missingComment, canSave } = deriveCapture({
     value,
     latest,
     latestId,
@@ -77,6 +80,8 @@ export default function CaptureScreen() {
     canCapture,
     machineKnown: !!machine,
     cameraOpen,
+    comment,
+    commentRequired,
   });
   async function openCamera() {
     try {
@@ -181,7 +186,11 @@ export default function CaptureScreen() {
                         label="Implement"
                         options={[
                           { label: 'No implement', value: '' },
-                          ...(implementsQuery.data ?? []).map((row) => ({ label: row.code, value: row.id })),
+                          ...(implementsQuery.data ?? []).map((row) => ({
+                            label: row.onSiteJobNumber ? `${row.code} · On Job · ${row.onSiteJobNumber}` : row.code,
+                            value: row.id,
+                            disabled: row.onSiteJobNumber !== null,
+                          })),
                         ]}
                       />
                     )}
@@ -273,7 +282,7 @@ export default function CaptureScreen() {
             <Text className="text-danger">Enter a non-negative value with at most one decimal place.</Text>
           ) : null}
           <Text className="text-foreground" weight="semibold">
-            Comment (optional)
+            {commentRequired ? 'Comment (required without photo)' : 'Comment (optional)'}
           </Text>
           <TextInput
             accessibilityLabel="Capture comment"
@@ -284,6 +293,7 @@ export default function CaptureScreen() {
             maxLength={ReadingComment.maxLength ?? undefined}
             onChangeText={setComment}
           />
+          {missingComment ? <Text className="text-danger">Explain why this departure has no meter photo.</Text> : null}
           {below ? (
             <View className="gap-3 rounded-xl border border-danger p-4">
               <Text className="text-foreground">

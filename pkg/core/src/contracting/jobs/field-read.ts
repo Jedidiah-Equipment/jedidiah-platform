@@ -1,9 +1,20 @@
 import { type Db, user } from '@pkg/db';
-import { type contractingHourReadings, contractingJobs, contractingMachineAssignments } from '@pkg/db/contracting';
+import {
+  contractingCategories,
+  contractingCustomers,
+  contractingFarms,
+  contractingHourReadings,
+  contractingImplements,
+  contractingJobs,
+  contractingMachineAssignments,
+  contractingMachines,
+  contractingWorkTypes,
+} from '@pkg/db/contracting';
 import { assignmentState, fieldJobAccessMode, formatJobNumber } from '@pkg/domain/contracting';
 import type { UserAccessSummary } from '@pkg/schema';
 import { FieldDriver, FieldJob, FieldReading, FieldStint } from '@pkg/schema/contracting';
-import { and, asc, eq, inArray } from 'drizzle-orm';
+import { and, asc, eq, getTableColumns, inArray } from 'drizzle-orm';
+import { alias } from 'drizzle-orm/pg-core';
 import { JobError, jobNotFound } from './job-errors.js';
 
 function fieldReadMode(actor: UserAccessSummary): 'all' | 'own' {
@@ -11,37 +22,6 @@ function fieldReadMode(actor: UserAccessSummary): 'all' | 'own' {
   if (mode) return mode;
   throw new JobError('contracting_job.not_owner', 'You do not have access to field Jobs.');
 }
-
-const fieldRelations = {
-  assignments: {
-    orderBy: [asc(contractingMachineAssignments.createdAt)],
-    with: {
-      arrivalReading: true,
-      departureReading: true,
-      driver: { columns: { name: true } },
-      implement: { columns: { code: true } },
-      machine: { columns: { code: true }, with: { category: true } },
-    },
-  },
-  customer: { columns: { name: true } },
-  farm: { columns: { name: true } },
-  workType: { columns: { name: true } },
-} as const;
-
-type LoadedFieldJob = typeof contractingJobs.$inferSelect & {
-  assignments: Array<
-    typeof contractingMachineAssignments.$inferSelect & {
-      arrivalReading: typeof contractingHourReadings.$inferSelect | null;
-      departureReading: typeof contractingHourReadings.$inferSelect | null;
-      driver: { name: string } | null;
-      implement: { code: string } | null;
-      machine: { code: string; category: { name: string; icon: string; colour: string } };
-    }
-  >;
-  customer: { name: string };
-  farm: { name: string };
-  workType: { name: string };
-};
 
 function mapReading(reading: typeof contractingHourReadings.$inferSelect | null) {
   return reading
@@ -53,61 +33,106 @@ function mapReading(reading: typeof contractingHourReadings.$inferSelect | null)
     : null;
 }
 
+const arrivalReadings = alias(contractingHourReadings, 'field_arrival_reading');
+const departureReadings = alias(contractingHourReadings, 'field_departure_reading');
+
+async function loadFieldJobs(db: Db, where: ReturnType<typeof and>) {
+  const jobs = await db
+    .select({
+      job: getTableColumns(contractingJobs),
+      customerName: contractingCustomers.name,
+      farmName: contractingFarms.name,
+      workTypeName: contractingWorkTypes.name,
+    })
+    .from(contractingJobs)
+    .innerJoin(contractingCustomers, eq(contractingCustomers.id, contractingJobs.customerId))
+    .innerJoin(contractingFarms, eq(contractingFarms.id, contractingJobs.farmId))
+    .innerJoin(contractingWorkTypes, eq(contractingWorkTypes.id, contractingJobs.workTypeId))
+    .where(where)
+    .orderBy(asc(contractingJobs.code));
+  const stints = jobs.length
+    ? await db
+        .select({
+          stint: getTableColumns(contractingMachineAssignments),
+          machineCode: contractingMachines.code,
+          categoryName: contractingCategories.name,
+          categoryIcon: contractingCategories.icon,
+          categoryColour: contractingCategories.colour,
+          implementCode: contractingImplements.code,
+          driverName: user.name,
+          arrivalReading: getTableColumns(arrivalReadings),
+          departureReading: getTableColumns(departureReadings),
+        })
+        .from(contractingMachineAssignments)
+        .innerJoin(contractingMachines, eq(contractingMachines.id, contractingMachineAssignments.machineId))
+        .innerJoin(contractingCategories, eq(contractingCategories.id, contractingMachines.categoryId))
+        .leftJoin(contractingImplements, eq(contractingImplements.id, contractingMachineAssignments.implementId))
+        .leftJoin(user, eq(user.id, contractingMachineAssignments.driverUserId))
+        .leftJoin(arrivalReadings, eq(arrivalReadings.id, contractingMachineAssignments.arrivalReadingId))
+        .leftJoin(departureReadings, eq(departureReadings.id, contractingMachineAssignments.departureReadingId))
+        .where(
+          inArray(
+            contractingMachineAssignments.jobId,
+            jobs.map((row) => row.job.id),
+          ),
+        )
+        .orderBy(asc(contractingMachineAssignments.createdAt))
+    : [];
+  const stintsByJob = new Map<string, typeof stints>();
+  for (const row of stints) {
+    const jobStints = stintsByJob.get(row.stint.jobId) ?? [];
+    jobStints.push(row);
+    stintsByJob.set(row.stint.jobId, jobStints);
+  }
+  return jobs.map((row) => ({ ...row, stints: stintsByJob.get(row.job.id) ?? [] }));
+}
+
+type LoadedFieldJob = Awaited<ReturnType<typeof loadFieldJobs>>[number];
+
 function mapFieldJob(row: LoadedFieldJob) {
   return FieldJob.parse({
-    ...row,
-    jobNumber: formatJobNumber(row.code),
-    customerName: row.customer.name,
-    farmName: row.farm.name,
-    workTypeName: row.workType.name,
-    stints: row.assignments.map((stint) =>
+    ...row.job,
+    jobNumber: formatJobNumber(row.job.code),
+    customerName: row.customerName,
+    farmName: row.farmName,
+    workTypeName: row.workTypeName,
+    stints: row.stints.map((row) =>
       FieldStint.parse({
-        ...stint,
-        machineCode: stint.machine.code,
-        categoryName: stint.machine.category.name,
-        categoryIcon: stint.machine.category.icon,
-        categoryColour: stint.machine.category.colour,
-        implementCode: stint.implement?.code ?? null,
-        driverName: stint.driver?.name ?? null,
-        state: assignmentState(stint),
-        arrival: mapReading(stint.arrivalReading),
-        departure: mapReading(stint.departureReading),
-        createdAt: stint.createdAt.toISOString(),
+        ...row.stint,
+        machineCode: row.machineCode,
+        categoryName: row.categoryName,
+        categoryIcon: row.categoryIcon,
+        categoryColour: row.categoryColour,
+        implementCode: row.implementCode,
+        driverName: row.driverName,
+        state: assignmentState(row.stint),
+        arrival: mapReading(row.arrivalReading),
+        departure: mapReading(row.departureReading),
+        createdAt: row.stint.createdAt.toISOString(),
       }),
     ),
   });
 }
 
-function loadFieldJob(db: Db, id: string) {
-  const query = db.query.contractingJobs as unknown as {
-    findFirst(config: unknown): Promise<LoadedFieldJob | undefined>;
-  };
-  return query.findFirst({ where: eq(contractingJobs.id, id), with: fieldRelations });
-}
-
 export async function listFieldJobs({ db, actor }: { db: Db; actor: UserAccessSummary }) {
   const mode = fieldReadMode(actor);
-  const query = db.query.contractingJobs as unknown as {
-    findMany(config: unknown): Promise<LoadedFieldJob[]>;
-  };
-  const rows = await query.findMany({
-    where: and(
+  const rows = await loadFieldJobs(
+    db,
+    and(
       inArray(contractingJobs.status, ['upcoming', 'active']),
       mode === 'own' ? eq(contractingJobs.foremanUserId, actor.userId) : undefined,
     ),
-    with: fieldRelations,
-    orderBy: [asc(contractingJobs.code)],
-  });
+  );
   return rows.map(mapFieldJob);
 }
 
 export async function getFieldJob({ db, actor, id }: { db: Db; actor: UserAccessSummary; id: string }) {
   const mode = fieldReadMode(actor);
-  const row = await loadFieldJob(db, id);
+  const [row] = await loadFieldJobs(db, eq(contractingJobs.id, id));
   if (!row) throw jobNotFound();
-  if (mode === 'own' && row.foremanUserId !== actor.userId)
+  if (mode === 'own' && row.job.foremanUserId !== actor.userId)
     throw new JobError('contracting_job.not_owner', 'This Job is assigned to another Foreman.');
-  if (!['upcoming', 'active'].includes(row.status))
+  if (!['upcoming', 'active'].includes(row.job.status))
     throw new JobError('contracting_job.wrong_status', 'This Job is no longer open.');
   return mapFieldJob(row);
 }
@@ -116,7 +141,7 @@ export async function listFieldDrivers({ db }: { db: Db }) {
   return db
     .select({ id: user.id, name: user.name })
     .from(user)
-    .where(eq(user.contractingRole, 'driver'))
+    .where(and(eq(user.contractingRole, 'driver'), eq(user.isDevice, false)))
     .orderBy(asc(user.name))
     .then((rows) => rows.map((row) => FieldDriver.parse(row)));
 }

@@ -4,6 +4,7 @@ import { getForeignKeyViolationConstraint, getUniqueViolationConstraint, isUniqu
 import {
   contractingCategories,
   contractingHourReadings,
+  contractingImplements,
   contractingJobs,
   contractingMachineAssignments,
   contractingMachines,
@@ -100,6 +101,31 @@ export async function listReadingsByMachine({ db, machineId }: { db: Db; machine
 export type ReadingEvidence = { storage: StorageAdapter; readPhoto: ReadMeterPhoto; photoBytes: Uint8Array };
 type AiVerdict = { aiValue: number | null; aiConfidence: number | null; aiVerification: Row['aiVerification'] };
 const manualVerdict: AiVerdict = { aiValue: null, aiConfidence: null, aiVerification: 'not-applicable' };
+
+async function assertArrivalResources(
+  tx: DatabaseTransaction,
+  implementId: string | null,
+  driverUserId: string | null,
+) {
+  if (implementId) {
+    const [implement] = await tx
+      .select({ retiredAt: contractingImplements.retiredAt })
+      .from(contractingImplements)
+      .where(eq(contractingImplements.id, implementId))
+      .for('update');
+    if (!implement || implement.retiredAt)
+      throw new ReadingError('reading.invalid_role', 'The selected Implement is no longer available.');
+  }
+  if (driverUserId) {
+    const [driver] = await tx
+      .select({ contractingRole: user.contractingRole, isDevice: user.isDevice })
+      .from(user)
+      .where(eq(user.id, driverUserId))
+      .for('update');
+    if (driver?.contractingRole !== 'driver' || driver.isDevice)
+      throw new ReadingError('reading.invalid_role', 'Select a person with the Contracting driver role.');
+  }
+}
 
 async function storeMeterPhoto({ storage, photoBytes }: ReadingEvidence): Promise<StoredFile> {
   const validation = validateFile(photoBytes, READING_PHOTO_POLICY);
@@ -275,6 +301,13 @@ export async function captureReading({
             descriptor: assignmentDescriptor(machine.code),
             input: stint,
           });
+      }
+      if (input.role === 'arrival' && stint) {
+        const implementId =
+          input.stintOverrides?.implementId !== undefined ? input.stintOverrides.implementId : stint.implementId;
+        const driverUserId =
+          input.stintOverrides?.driverUserId !== undefined ? input.stintOverrides.driverUserId : stint.driverUserId;
+        await assertArrivalResources(tx, implementId, driverUserId);
       }
       const [latest] = await tx
         .select()

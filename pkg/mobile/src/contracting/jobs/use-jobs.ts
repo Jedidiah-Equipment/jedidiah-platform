@@ -84,7 +84,7 @@ export function useImplements() {
   const canRead = useSessionPermission('contracting_machine:read', 'contracting_assignment:update-own');
   const trpc = useTRPC();
   const query = useQuery(trpc.contractingJobs.field.implements.queryOptions(undefined, { enabled: canRead }));
-  return savedQuery(canRead, query, useSavedQueryData(['fleet', 'v2', 'implements'], isFieldImplements, query.data));
+  return savedQuery(canRead, query, useSavedQueryData(['fleet', 'v3', 'implements'], isFieldImplements, query.data));
 }
 
 export function useDrivers() {

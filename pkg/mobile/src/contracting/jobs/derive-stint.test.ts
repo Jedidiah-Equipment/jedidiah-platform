@@ -79,6 +79,7 @@ describe('deriveStint', () => {
         categoryName: 'Tip trailers',
         categoryIcon: 'tip-trailer',
         categoryColour: 'yellow',
+        onSiteJobNumber: null,
       },
     ];
     const start = queued('arrival', {

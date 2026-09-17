@@ -88,6 +88,7 @@ export default function AddMachineScreen() {
       }
       for (const capture of items) {
         if (capture.startAssignment?.jobId !== job.id) continue;
+        if (capture.attention) continue;
         if (readdReady && capture.startAssignment.localId === params.afterAssignmentId) continue;
         machineJobs.set(capture.machineId, job.jobNumber);
         if (capture.startAssignment.implementId) implementJobs.set(capture.startAssignment.implementId, job.jobNumber);
@@ -97,8 +98,25 @@ export default function AddMachineScreen() {
       if (machine.onSiteJobNumber && !machineJobs.has(machine.id) && !(readdReady && machine.id === params.machineId))
         machineJobs.set(machine.id, machine.onSiteJobNumber);
     }
+    for (const implement of implementQuery.data ?? []) {
+      if (
+        implement.onSiteJobNumber &&
+        !implementJobs.has(implement.id) &&
+        !(readdReady && implement.id === params.implementId)
+      )
+        implementJobs.set(implement.id, implement.onSiteJobNumber);
+    }
     return { machineJobs, implementJobs };
-  }, [fleet.data, items, jobs.data, params.afterAssignmentId, params.machineId, readdReady]);
+  }, [
+    fleet.data,
+    implementQuery.data,
+    items,
+    jobs.data,
+    params.afterAssignmentId,
+    params.implementId,
+    params.machineId,
+    readdReady,
+  ]);
 
   const selectedImplementBusy = values.implementId !== '' && implementJobs.has(values.implementId);
 

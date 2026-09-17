@@ -46,7 +46,9 @@ export const FieldImplement = Implement.pick({
   categoryName: true,
   categoryIcon: true,
   categoryColour: true,
-}).strip();
+})
+  .extend({ onSiteJobNumber: z.string().nullable() })
+  .strip();
 export type FieldImplement = z.infer<typeof FieldImplement>;
 
 export const FieldDriver = z.object({ id: AuthId, name: z.string() });

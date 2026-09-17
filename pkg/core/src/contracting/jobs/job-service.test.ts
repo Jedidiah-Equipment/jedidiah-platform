@@ -7,6 +7,7 @@ import { createTester } from '../../test/create-tester.js';
 import { createCustomer } from '../customers/customer-service.js';
 import { createFarm } from '../customers/farm-service.js';
 import { createCategory } from '../fleet/category-service.js';
+import { createImplement, retireImplement } from '../fleet/implement-service.js';
 import { createMachine } from '../fleet/machine-service.js';
 import { createMeasureType, removeMeasureType } from '../rate-card/measure-type-service.js';
 import { createRate, listRates, removeRate } from '../rate-card/rate-service.js';
@@ -21,6 +22,7 @@ const managerId = 'job-manager';
 const foremanId = 'job-foreman';
 const otherForemanId = 'other-foreman';
 const driverId = 'job-driver';
+const deviceDriverId = 'job-driver-device';
 
 const test = createTester(async ({ db }) => {
   const now = new Date();
@@ -61,6 +63,16 @@ const test = createTester(async ({ db }) => {
       createdAt: now,
       updatedAt: now,
     },
+    {
+      id: deviceDriverId,
+      name: 'Driver tablet',
+      email: 'driver-device-jobs@example.com',
+      emailVerified: true,
+      contractingRole: 'driver',
+      isDevice: true,
+      createdAt: now,
+      updatedAt: now,
+    },
   ]);
   const customer = await createCustomer({ db, actorUserId: managerId, input: { name: 'Rowley' } });
   const farm = await createFarm({
@@ -96,7 +108,17 @@ const test = createTester(async ({ db }) => {
       nextServiceDueHours: null,
     },
   });
-  return { customer, farm, machine, otherCustomer, otherFarm, workType };
+  const implementCategory = await createCategory({
+    db,
+    actorUserId: managerId,
+    input: { name: 'Tip trailers', kind: 'implement' },
+  });
+  const implement = await createImplement({
+    db,
+    actorUserId: managerId,
+    input: { code: 'TIP-1', categoryId: implementCategory.id, notes: null },
+  });
+  return { customer, farm, implement, machine, otherCustomer, otherFarm, workType };
 });
 
 const jobInput = (context: { customer: { id: string }; farm: { id: string }; workType: { id: string } }) => ({
@@ -139,6 +161,61 @@ describe('Job setup', () => {
 });
 
 describe('Machine Assignment lifecycle', () => {
+  test('rejects retired Implements and device Drivers when an arrival starts a stint', async ({ context }) => {
+    const job = await createJob({ db: context.db, actorUserId: managerId, input: jobInput(context) });
+    const planned = await planAssignment({
+      db: context.db,
+      actorUserId: managerId,
+      input: { jobId: job.id, machineId: context.machine.id, implementId: null },
+    });
+    if (!planned) throw new Error('Expected planned assignment');
+    await retireImplement({
+      db: context.db,
+      actorUserId: managerId,
+      input: { id: context.implement.id, reason: 'Sold' },
+    });
+    await expect(
+      captureReading({
+        db: context.db,
+        actorUserId: foremanId,
+        input: {
+          machineId: context.machine.id,
+          assignmentId: planned.id,
+          stintOverrides: { implementId: context.implement.id },
+          role: 'arrival',
+          value: 100,
+          capturedAt: '2026-09-01T08:00:00+02:00',
+          disputePrevious: false,
+        },
+      }),
+    ).rejects.toMatchObject({
+      code: 'reading.invalid_role',
+      message: 'The selected Implement is no longer available.',
+    });
+    await expect(
+      captureReading({
+        db: context.db,
+        actorUserId: foremanId,
+        input: {
+          machineId: context.machine.id,
+          role: 'arrival',
+          startAssignment: {
+            localId: '5f1c2d3e-0001-4a00-8000-000000000090',
+            jobId: job.id,
+            implementId: null,
+            driverUserId: deviceDriverId,
+          },
+          value: 100,
+          capturedAt: '2026-09-01T08:00:00+02:00',
+          disputePrevious: false,
+        },
+      }),
+    ).rejects.toMatchObject({
+      code: 'reading.invalid_role',
+      message: 'Select a person with the Contracting driver role.',
+    });
+  });
+
   test('starts an unplanned stint atomically, replays it, and applies planned-stint overrides', async ({ context }) => {
     const firstJob = await createJob({ db: context.db, actorUserId: managerId, input: jobInput(context) });
     const secondJob = await createJob({ db: context.db, actorUserId: managerId, input: jobInput(context) });

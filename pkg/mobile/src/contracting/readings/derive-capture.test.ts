@@ -24,6 +24,11 @@ test('a blank or malformed value, a missing machine, no capture permission, or a
   expect(deriveCapture({ ...base, machineKnown: false }).canSave).toBe(false);
   expect(deriveCapture({ ...base, canCapture: false }).canSave).toBe(false);
   expect(deriveCapture({ ...base, cameraOpen: true }).canSave).toBe(false);
+  expect(deriveCapture({ ...base, commentRequired: true })).toMatchObject({ missingComment: true, canSave: false });
+  expect(deriveCapture({ ...base, commentRequired: true, comment: 'No signal for photo' })).toMatchObject({
+    missingComment: false,
+    canSave: true,
+  });
 });
 
 test('a value below the latest reading saves only while the dispute targets that same latest reading', () => {

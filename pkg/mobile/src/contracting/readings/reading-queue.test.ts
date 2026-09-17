@@ -93,6 +93,9 @@ test('a refused arrival blocks its queued departure on the same Machine', async 
     { role: 'departure' },
   ]);
   expect(remaining[1]).not.toHaveProperty('attention');
+
+  await queue.discard(remaining[0]?.localId ?? 'missing');
+  expect(await queue.list()).toEqual([]);
 });
 
 test('concurrent saves and sync preserve a newly captured reading and isolate operators', async () => {

@@ -3,6 +3,7 @@ import {
   createCategory,
   createCustomer,
   createFarm,
+  createImplement,
   createJob,
   createMachine,
   createWorkType,
@@ -18,6 +19,7 @@ import { mockSession } from '@/test/test-utils.js';
 const foremanId = 'test-user-id';
 const managerId = 'router-manager';
 const otherForemanId = 'router-other-foreman';
+const driverId = 'router-driver';
 
 function contractingSession(role: ContractingRole) {
   const session = mockSession(null);
@@ -55,6 +57,25 @@ const test = createTester(async ({ db }) => {
       createdAt: now,
       updatedAt: now,
     },
+    {
+      id: driverId,
+      name: 'Willem',
+      email: 'router-driver@example.com',
+      emailVerified: true,
+      contractingRole: 'driver',
+      createdAt: now,
+      updatedAt: now,
+    },
+    {
+      id: 'router-driver-device',
+      name: 'Driver tablet',
+      email: 'router-driver-device@example.com',
+      emailVerified: true,
+      contractingRole: 'driver',
+      isDevice: true,
+      createdAt: now,
+      updatedAt: now,
+    },
   ]);
   const customer = await createCustomer({ db, actorUserId: managerId, input: { name: 'Rowley' } });
   const farm = await createFarm({
@@ -73,6 +94,32 @@ const test = createTester(async ({ db }) => {
     actorUserId: managerId,
     input: {
       code: 'CAT320-1',
+      make: 'CAT',
+      model: '320',
+      categoryId: category.id,
+      year: null,
+      registration: null,
+      currentDriverUserId: null,
+      notes: null,
+      serviceIntervalHours: null,
+      nextServiceDueHours: null,
+    },
+  });
+  const implementCategory = await createCategory({
+    db,
+    actorUserId: managerId,
+    input: { name: 'Tip trailers', kind: 'implement' },
+  });
+  const implement = await createImplement({
+    db,
+    actorUserId: managerId,
+    input: { code: 'TIP-1', categoryId: implementCategory.id, notes: null },
+  });
+  const otherMachine = await createMachine({
+    db,
+    actorUserId: managerId,
+    input: {
+      code: 'CAT320-2',
       make: 'CAT',
       model: '320',
       categoryId: category.id,
@@ -111,6 +158,24 @@ const test = createTester(async ({ db }) => {
     input: { jobId: ownJob.id, machineId: machine.id, implementId: null },
   });
   if (!stint) throw new Error('Expected Machine Assignment');
+  const otherStint = await planAssignment({
+    db,
+    actorUserId: managerId,
+    input: { jobId: otherJob.id, machineId: otherMachine.id, implementId: implement.id },
+  });
+  if (!otherStint) throw new Error('Expected other Machine Assignment');
+  await captureReading({
+    db,
+    actorUserId: otherForemanId,
+    input: {
+      machineId: otherMachine.id,
+      assignmentId: otherStint.id,
+      role: 'arrival',
+      value: 100,
+      capturedAt: '2026-09-16T08:00:00+02:00',
+      disputePrevious: false,
+    },
+  });
   await db
     .update(contractingJobs)
     .set({ dieselUnitPrice: 23, dieselAmount: 460 })
@@ -143,7 +208,7 @@ const test = createTester(async ({ db }) => {
       completedByUserId: managerId,
     })
     .where(eq(contractingJobs.id, completedJob.id));
-  return { completedJob, db, machine, otherJob, ownJob, pricedJob, stint };
+  return { completedJob, db, implement, machine, otherJob, ownJob, pricedJob, stint };
 });
 
 test('projects only open field Jobs, enforces ownership, and never returns money', async ({ context }) => {
@@ -164,6 +229,10 @@ test('projects only open field Jobs, enforces ownership, and never returns money
   ]);
   expect(jobs[0]?.stints).toMatchObject([{ id: context.stint.id, state: 'planned' }]);
   await expect(foreman.job({ id: context.otherJob.id })).rejects.toMatchObject({ code: 'FORBIDDEN' });
+  await expect(foreman.implements()).resolves.toMatchObject([
+    { id: context.implement.id, onSiteJobNumber: context.otherJob.jobNumber },
+  ]);
+  await expect(foreman.drivers()).resolves.toEqual([{ id: driverId, name: 'Willem' }]);
 
   const manager = context.createCaller(contractingSession('contracting-manager')).contractingJobs.field;
   expect((await manager.jobs()).map((job) => job.id)).toEqual([context.ownJob.id, context.otherJob.id]);
@@ -186,9 +255,11 @@ test('projects only open field Jobs, enforces ownership, and never returns money
       disputePrevious: false,
     },
   });
-  await expect(workshopCaller.contractingReadings.fieldMachines()).resolves.toMatchObject([
-    { id: context.machine.id, onSiteJobNumber: context.ownJob.jobNumber },
-  ]);
+  await expect(workshopCaller.contractingReadings.fieldMachines()).resolves.toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({ id: context.machine.id, onSiteJobNumber: context.ownJob.jobNumber }),
+    ]),
+  );
 });
 
 test('enforces the Job queue role matrix and strips money from Foreman reads', async ({ context }) => {
@@ -203,10 +274,7 @@ test('enforces the Job queue role matrix and strips money from Foreman reads', a
   await expect(foreman.stints.remove({ id: context.stint.id })).rejects.toMatchObject({ code: 'FORBIDDEN' });
 
   const workshop = context.createCaller(contractingSession('workshop-manager')).contractingJobs;
-  expect((await workshop.jobs.list({ queue: 'upcoming' })).map((job) => job.id)).toEqual([
-    context.ownJob.id,
-    context.otherJob.id,
-  ]);
+  expect((await workshop.jobs.list({ queue: 'upcoming' })).map((job) => job.id)).toEqual([context.ownJob.id]);
   await expect(
     workshop.jobs.create({
       customerId: context.ownJob.customerId,

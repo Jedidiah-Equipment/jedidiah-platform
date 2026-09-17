@@ -65,7 +65,9 @@ export default function AttentionScreen() {
               ) : null}
               {confirmDiscard === item.localId ? (
                 <View className="gap-2">
-                  <Text className="text-danger">Discard this capture and its local photo permanently?</Text>
+                  <Text className="text-danger">
+                    Discard this capture, any dependent queued departure, and their local photos permanently?
+                  </Text>
                   <Button
                     title="Confirm discard"
                     disabled={busy}

@@ -1,5 +1,7 @@
 # Work a Job
 
+Open **Jobs** while connected before going into the field so your Jobs, Implements, and Drivers are saved on this phone.
+
 1. Open **Jobs**. Your assigned Jobs are listed.
 2. Open the Job. Each Machine shows **Planned**, **Running**, or **Left site**.
 3. To start a planned Machine, choose **Start — capture arrival** and [capture the reading](./capture-a-reading). Change the Implement or Driver first if they differ from the plan.

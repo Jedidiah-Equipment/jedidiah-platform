@@ -90,6 +90,24 @@ test('stops before the next upload once the provider is no longer active', async
   expect(invalidate).not.toHaveBeenCalled();
 });
 
+test('does not report a failure after the active operator changes during photo preparation', async () => {
+  const { queryClient, trpc, queue } = setup();
+  await queue.enqueue(capture(100, '2026-09-08T08:00:00Z'));
+  let active = true;
+  readingFiles.readReadingPhotoPart.mockImplementationOnce(async () => {
+    active = false;
+    return new Blob(['meter'], { type: 'image/jpeg' });
+  });
+  const onFailure = vi.fn();
+  const send = vi.fn();
+
+  await syncReadingQueue({ queue, queryClient, trpc, isActive: () => active, onFailure, send });
+
+  expect(send).not.toHaveBeenCalled();
+  expect(onFailure).not.toHaveBeenCalled();
+  await expect(queue.list()).resolves.toHaveLength(1);
+});
+
 test('reports a retryable transport failure with operator-friendly text while keeping the capture queued', async () => {
   const { queryClient, trpc, queue } = setup();
   await queue.enqueue(capture(100, '2026-09-08T08:00:00Z'));

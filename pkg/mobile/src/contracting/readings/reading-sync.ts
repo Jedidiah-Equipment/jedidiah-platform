@@ -66,7 +66,7 @@ export async function syncReadingQueue({
           error instanceof ReadingPhotoUnavailableError
             ? new ReadingSyncError('reading.photo_unavailable', error.message)
             : error;
-        onFailure?.({ error: failure, item, stage });
+        if (isActive()) onFailure?.({ error: failure, item, stage });
         throw failure;
       }
     },

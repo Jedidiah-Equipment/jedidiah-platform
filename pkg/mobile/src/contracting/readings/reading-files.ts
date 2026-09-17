@@ -1,14 +1,10 @@
 import { File } from 'expo-file-system';
 import * as FileSystem from 'expo-file-system/legacy';
+import { ReadingPhotoUnavailableError } from './reading-photo-error';
+
+export { ReadingPhotoUnavailableError } from './reading-photo-error';
 
 const READING_DIRECTORY = 'readings/';
-
-export class ReadingPhotoUnavailableError extends Error {
-  constructor() {
-    super('The saved meter photo is no longer available on this device.');
-    this.name = 'ReadingPhotoUnavailableError';
-  }
-}
 
 export async function keepReadingPhoto(uri: string, localId: string): Promise<string> {
   if (!FileSystem.documentDirectory) throw new Error('Photo storage is unavailable on this device.');

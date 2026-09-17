@@ -21,7 +21,7 @@ import { keepReadingPhoto, removeReadingPhoto } from '@/contracting/readings/rea
 import { newLocalId } from '@/contracting/readings/reading-queue';
 import { useFleet, useMachineReadings } from '@/contracting/readings/use-fleet';
 import { useSessionAccessSummary, useSessionPermission } from '@/lib/auth-session';
-import { addBreadcrumb, captureException } from '@/lib/observability';
+import { addBreadcrumb, captureException, captureSanitizedException } from '@/lib/observability';
 import { useBusyAction } from '@/lib/use-busy-action';
 
 const CAMERA_FAILURE = 'The camera could not take a photo. Try again or continue without a photo.';
@@ -114,7 +114,7 @@ function CaptureForm({ params }: { params: CaptureParams }) {
   function photograph() {
     return run(async () => {
       const result = await camera.current?.takePictureAsync({ quality: 0.7 }).catch((error) => {
-        captureException(error, { source: 'camera_capture' });
+        captureSanitizedException(error, 'Camera capture failed', { source: 'camera_capture' });
         return undefined;
       });
       setCameraOpen(false);
@@ -127,7 +127,15 @@ function CaptureForm({ params }: { params: CaptureParams }) {
     const reading = parsed.data;
     return run(async () => {
       const localId = newLocalId();
-      const photoLocalUri = photo ? await keepReadingPhoto(photo, localId) : null;
+      let photoLocalUri: string | null = null;
+      if (photo) {
+        try {
+          photoLocalUri = await keepReadingPhoto(photo, localId);
+        } catch (error) {
+          captureSanitizedException(error, 'Reading photo storage failed', { source: 'reading_photo_storage' });
+          throw error;
+        }
+      }
       try {
         const queued = {
           localId,
@@ -164,7 +172,9 @@ function CaptureForm({ params }: { params: CaptureParams }) {
       } catch (error) {
         if (photoLocalUri)
           await removeReadingPhoto(photoLocalUri).catch((cleanupError) =>
-            captureException(cleanupError, { source: 'reading_photo_cleanup' }),
+            captureSanitizedException(cleanupError, 'Reading photo cleanup failed', {
+              source: 'reading_photo_cleanup',
+            }),
           );
         throw error;
       }

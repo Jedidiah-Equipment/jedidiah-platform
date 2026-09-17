@@ -6,7 +6,7 @@ import { contractingStorageKey } from '@/contracting/lib/contracting-storage';
 import { recordReadingSynced, recordReadingSyncFailure } from '@/contracting/observability';
 import { apiBaseUrl } from '@/lib/api-base-url';
 import { useAuthSession } from '@/lib/auth-session';
-import { addBreadcrumb, captureException } from '@/lib/observability';
+import { addBreadcrumb, captureException, captureSanitizedException } from '@/lib/observability';
 import { useTRPC } from '@/lib/trpc';
 import { removeReadingPhoto } from './reading-files';
 import { createReadingQueue, type QueuedReading, type ReadingQueue } from './reading-queue';
@@ -35,7 +35,11 @@ export function ReadingQueueProvider({ children }: { children: ReactNode }) {
         storage: AsyncStorage,
         key,
         removePhoto: removeReadingPhoto,
-        onError: (error, operation) => captureException(error, { source: 'reading_queue', stage: operation }),
+        onError: (error, operation) =>
+          captureSanitizedException(error, 'Reading queue storage failed', {
+            source: 'reading_queue',
+            stage: operation,
+          }),
       });
       queues.set(key, queue);
     }
@@ -53,7 +57,7 @@ export function ReadingQueueProvider({ children }: { children: ReactNode }) {
           if (active) setItems(rows);
         })
         .catch((error: Error) => {
-          captureException(error, { source: 'reading_queue', stage: 'list' });
+          captureSanitizedException(error, 'Reading queue read failed', { source: 'reading_queue', stage: 'list' });
           if (active) setError(error.message);
         });
     };
@@ -75,8 +79,9 @@ export function ReadingQueueProvider({ children }: { children: ReactNode }) {
         trpc,
         isActive,
         onFailure: (failure) => {
-          recordReadingSyncFailure(failure, readingSyncTelemetryPayload(failure)?.properties ?? null);
-          void reportReadingSyncFailure(failure);
+          const payload = readingSyncTelemetryPayload(failure);
+          recordReadingSyncFailure(failure, payload?.properties ?? null);
+          void reportReadingSyncFailure(payload);
         },
         onUploaded: recordReadingSynced,
       });

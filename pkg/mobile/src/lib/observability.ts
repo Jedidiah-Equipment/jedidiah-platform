@@ -93,7 +93,7 @@ export function initializeObservability(): void {
     },
     before_send: (event: OutgoingEvent) => {
       if (!event) return event;
-      event.properties = { ...event.properties, ...sharedProperties() };
+      event.properties = { ...redactSensitiveEventProperties(event.properties), ...sharedProperties() };
       if (event.event === '$exception') event.properties.breadcrumbs = breadcrumbSnapshot();
       return event;
     },
@@ -144,8 +144,37 @@ export function captureException(error: unknown, properties: ObservabilityProper
   });
 }
 
+/** Captures native/storage failures without allowing their message to leak a local path or payload. */
+export function captureSanitizedException(
+  error: unknown,
+  safeMessage: string,
+  properties: ObservabilityProperties = {},
+): void {
+  if (isWeakKey(error)) {
+    if (capturedErrors.has(error)) return;
+    capturedErrors.add(error);
+  }
+  const sanitized = new Error(safeMessage);
+  sanitized.name = safeErrorName(error);
+  captureException(sanitized, properties);
+}
+
+/** Removes SDK-added navigation values; route patterns come only from the reviewed screen catalog. */
+export function redactSensitiveEventProperties(properties: Record<string, unknown>): Record<string, unknown> {
+  const redacted = { ...properties };
+  delete redacted.url;
+  delete redacted.$current_url;
+  delete redacted.$pathname;
+  return redacted;
+}
+
 function isWeakKey(value: unknown): value is object {
   return (typeof value === 'object' && value !== null) || typeof value === 'function';
+}
+
+function safeErrorName(error: unknown): string {
+  if (!(error instanceof Error) || !/^[A-Za-z][A-Za-z0-9_.-]{0,79}$/.test(error.name)) return 'Error';
+  return error.name;
 }
 
 export function trackScreen(screen: MobileScreen): void {

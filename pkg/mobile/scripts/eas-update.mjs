@@ -34,10 +34,13 @@ export function resolveUpdateCommand({ args, commitSubject, easConfig, profile }
 }
 
 export function resolveSourceMapUploadCommand(env) {
-  if (!env.POSTHOG_CLI_API_KEY || !env.POSTHOG_CLI_PROJECT_ID) return null;
+  const missing = ['POSTHOG_CLI_API_KEY', 'POSTHOG_CLI_PROJECT_ID'].filter((name) => !env[name]);
+  if (missing.length > 0) {
+    throw new Error(`PostHog source-map upload requires ${missing.join(' and ')} in the release shell.`);
+  }
   return {
     executable: 'pnpm',
-    args: ['exec', 'posthog-cli', 'hermes', 'upload', '--directory', 'dist'],
+    args: ['exec', 'posthog-cli', 'hermes', 'upload', '--directory', 'dist', '--release-mode', 'symbol-set'],
   };
 }
 
@@ -46,6 +49,8 @@ function main() {
   const easConfig = JSON.parse(readFileSync(EAS_CONFIG_PATH, 'utf8'));
   const commitSubject = execFileSync('git', ['log', '-1', '--format=%s'], { encoding: 'utf8' }).trim();
   const command = resolveUpdateCommand({ args, commitSubject, easConfig, profile });
+  // Fail before publishing when symbolication cannot complete; this script cannot roll an OTA back.
+  const sourceMaps = resolveSourceMapUploadCommand(process.env);
 
   const result = spawnSync('eas', command.args, {
     cwd: new URL('..', import.meta.url),
@@ -58,11 +63,6 @@ function main() {
     return;
   }
 
-  const sourceMaps = resolveSourceMapUploadCommand(process.env);
-  if (!sourceMaps) {
-    console.warn('PostHog source-map credentials are unset; skipping OTA source-map upload.');
-    return;
-  }
   const upload = spawnSync(sourceMaps.executable, sourceMaps.args, {
     cwd: new URL('..', import.meta.url),
     env: process.env,

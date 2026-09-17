@@ -1,4 +1,4 @@
-import { addBreadcrumb, captureEvent, captureException } from '@/lib/observability';
+import { addBreadcrumb, captureEvent, captureSanitizedException } from '@/lib/observability';
 import type { ObservabilityProperties } from '@/lib/observability-contract';
 import { type QueuedReading, ReadingSyncError } from './readings/reading-queue';
 import type { ReadingSyncFailure } from './readings/reading-sync';
@@ -36,5 +36,5 @@ export function recordReadingSyncFailure(
     addBreadcrumb('contracting', 'item marked attention', properties);
   }
   captureEvent('reading sync failed', properties);
-  captureException(failure.error, { ...properties, source: 'reading_queue' });
+  captureSanitizedException(failure.error, 'Reading sync failed', { ...properties, source: 'reading_queue' });
 }

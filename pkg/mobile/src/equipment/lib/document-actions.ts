@@ -5,7 +5,7 @@ import { Platform } from 'react-native';
 import { apiBaseUrl } from '@/lib/api-base-url';
 import { sessionCookieHeader } from '@/lib/auth';
 import { apiRoutePattern } from '@/lib/authed-fetch';
-import { addBreadcrumb, captureEvent } from '@/lib/observability';
+import { addBreadcrumb, captureEvent, captureSanitizedException } from '@/lib/observability';
 import { getDocumentPlatformType } from './document-content';
 
 /**
@@ -50,6 +50,7 @@ export async function downloadDocumentToCache({ path, filename, cacheKey }: Docu
       route: apiRoutePattern(new URL(path, apiBaseUrl).pathname),
       status: 0,
     });
+    captureSanitizedException(error, 'Document download failed', { source: 'document_fetch' });
     throw error;
   }
 

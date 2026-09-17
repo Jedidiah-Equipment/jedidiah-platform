@@ -31,7 +31,8 @@ disabled when `EXPO_PUBLIC_POSTHOG_PROJECT_TOKEN` is unset, so local development
 send analytics. Touch autocapture, session replay, and native crash capture are deliberately off. Enabling
 any of them requires a separate masking, retention, native-symbol upload, and staging-symbolication review.
 
-Event names are lowercase `<object> <past-tense verb>` with spaces. Every capture includes these super
+Business-action event names are lowercase `<object> <past-tense verb>` with spaces. The explicit auth and
+platform names in the catalog below are stable exceptions. Every capture includes these super
 properties: `app: 'mobile'`, `appEnv`, `appVersion`, `runtimeVersion`, `updateId`, `platform`, `appVariant`,
 and `business` (`equipment`, `contracting`, or `null`). Manual `$screen` events use a catalogued route
 pattern such as `/equipment/jobs/[jobId]`, never the concrete identifier. A test walks `app/` and fails when
@@ -73,7 +74,7 @@ query strings, or any form value.
 
 ### Staging verification
 
-1. Set the EAS secrets `POSTHOG_CLI_API_KEY`, `POSTHOG_CLI_PROJECT_ID`, and (for US Cloud)
+1. Set the EAS build secrets `POSTHOG_CLI_API_KEY`, `POSTHOG_CLI_PROJECT_ID`, and (for US Cloud)
    `POSTHOG_CLI_HOST=https://us.posthog.com`, then build and submit both staging platforms. The Expo config
    plugin uploads JavaScript source maps during the native build; the optional native plugin is not shipped.
 2. Sign in on staging and move through public, Equipment, and Contracting routes. In PostHog, verify `$screen`
@@ -113,7 +114,9 @@ APP_VARIANT=production eas fingerprint:compare
 
 Publish with the profile's script. It applies that profile's eas.json `env` (which `eas update` otherwise
 ignores, shipping local `EXPO_PUBLIC_*` defaults) and uses the last commit subject unless `--message` is
-given. The command uploads OTA Hermes source maps when the `POSTHOG_CLI_*` credentials above are present:
+given. Export `POSTHOG_CLI_API_KEY`, `POSTHOG_CLI_PROJECT_ID`, and `POSTHOG_CLI_HOST` in the release shell as
+well as in EAS. The command refuses to publish without them, then uploads OTA Hermes maps in
+release-independent symbol-set mode:
 
 ```sh
 pnpm --filter @pkg/mobile ota:staging

@@ -8,7 +8,7 @@ vi.mock('@/lib/auth', () => ({ sessionCookieHeader: vi.fn(async () => null) }));
 vi.mock('@/lib/authed-fetch', () => ({ withSessionCookie: (init: RequestInit) => init }));
 
 import { ReadingSyncError } from './reading-queue';
-import { readingSyncTelemetryPayload } from './reading-telemetry';
+import { readingSyncTelemetryPayload, reportReadingSyncFailure } from './reading-telemetry';
 
 test('reports bounded sync diagnostics without machine, photo-path, or comment data', () => {
   const payload = readingSyncTelemetryPayload(
@@ -45,4 +45,26 @@ test('reports bounded sync diagnostics without machine, photo-path, or comment d
   expect(JSON.stringify(payload)).not.toContain('private operator note');
   expect(JSON.stringify(payload)).not.toContain('5dfce55f');
   expect(JSON.stringify(payload)).not.toContain('private/container');
+});
+
+test('sends the exact payload already shared with the SDK path', async () => {
+  const payload = {
+    event: 'reading sync failed' as const,
+    properties: {
+      appVersion: '1.34.0',
+      code: 'reading.photo_unavailable',
+      hasPhoto: true,
+      platform: 'ios' as const,
+      queueAgeSeconds: 12,
+      role: 'spot' as const,
+      stage: 'prepare_photo' as const,
+      updateId: 'update-1',
+    },
+  };
+  const send = vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(new Response(null, { status: 202 }));
+
+  await reportReadingSyncFailure(payload);
+
+  expect(send).toHaveBeenCalledOnce();
+  expect(JSON.parse(String(send.mock.calls[0]?.[1]?.body))).toEqual(payload);
 });

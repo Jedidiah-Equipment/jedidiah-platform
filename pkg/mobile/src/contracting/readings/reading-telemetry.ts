@@ -30,8 +30,9 @@ export function readingSyncTelemetryPayload(failure: ReadingSyncFailure, now = D
   };
 }
 
-export async function reportReadingSyncFailure(failure: ReadingSyncFailure): Promise<void> {
-  const payload = readingSyncTelemetryPayload(failure);
+export type ReadingSyncTelemetryPayload = NonNullable<ReturnType<typeof readingSyncTelemetryPayload>>;
+
+export async function reportReadingSyncFailure(payload: ReadingSyncTelemetryPayload | null): Promise<void> {
   if (!payload) return;
 
   try {

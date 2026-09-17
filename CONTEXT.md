@@ -212,8 +212,9 @@ transitions, body-free network outcomes, OTA progress, and business-specific que
 mobile exception carries the trail; it never carries typed text, scanned values, request data, identity data,
 or file/photo paths.
 
-**Event Catalog** is the reviewed set of named mobile analytics events and their allowed properties. Names use
-lowercase `<object> <past-tense verb>` with spaces. Every page route and every mobile tRPC mutation must have a
+**Event Catalog** is the reviewed set of named mobile analytics events and their allowed properties. Business
+action names use lowercase `<object> <past-tense verb>` with spaces; its explicit auth and platform names are
+stable exceptions. Every page route and every mobile tRPC mutation must have a
 catalog entry, enforced by tests, so a new surface or action cannot silently become unobservable. The catalog
 allows internal record IDs and operational categories, never customer/person fields or captured form values.
 

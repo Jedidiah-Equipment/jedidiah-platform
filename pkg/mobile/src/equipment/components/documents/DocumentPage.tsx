@@ -4,7 +4,7 @@ import Pdf from 'react-native-pdf';
 
 import { Text } from '@/components/ui/text';
 import { downloadDocumentToCache } from '@/equipment/lib/document-actions';
-import { captureException } from '@/lib/observability';
+import { captureException, captureSanitizedException } from '@/lib/observability';
 
 export type DocumentPageProps = {
   /** Authed download route for the document bytes. */
@@ -82,7 +82,7 @@ export function DocumentPage({ path, filename }: DocumentPageProps) {
         maxScale={MAX_SCALE}
         minScale={MIN_SCALE}
         onError={(error) => {
-          captureException(error, { source: 'document_render' });
+          captureSanitizedException(error, 'Document rendering failed', { source: 'document_render' });
           setLoading(false);
           setFailed(true);
         }}

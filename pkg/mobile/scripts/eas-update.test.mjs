@@ -54,12 +54,14 @@ describe('resolveUpdateCommand', () => {
 describe('resolveSourceMapUploadCommand', () => {
   it('uploads Hermes source maps when both PostHog credentials are present', () => {
     expect(resolveSourceMapUploadCommand({ POSTHOG_CLI_API_KEY: 'phx_test', POSTHOG_CLI_PROJECT_ID: '123' })).toEqual({
-      args: ['exec', 'posthog-cli', 'hermes', 'upload', '--directory', 'dist'],
+      args: ['exec', 'posthog-cli', 'hermes', 'upload', '--directory', 'dist', '--release-mode', 'symbol-set'],
       executable: 'pnpm',
     });
   });
 
-  it('keeps local OTA commands analytics-free when upload credentials are absent', () => {
-    expect(resolveSourceMapUploadCommand({})).toBeNull();
+  it('refuses to publish an OTA when source-map credentials are absent', () => {
+    expect(() => resolveSourceMapUploadCommand({})).toThrow(
+      'PostHog source-map upload requires POSTHOG_CLI_API_KEY and POSTHOG_CLI_PROJECT_ID',
+    );
   });
 });

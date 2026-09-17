@@ -1,7 +1,7 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { addBreadcrumb, captureException } from '@/lib/observability';
+import { addBreadcrumb, captureSanitizedException } from '@/lib/observability';
 import { useTRPC } from '@/lib/trpc';
 import { useStoresActor } from './stores-actor';
 import { resolveScan } from './stores-scan-resolution';
@@ -30,7 +30,8 @@ export function useStoresScan() {
       const resolution = await resolveScan({
         fetchActors: () => queryClient.fetchQuery(trpc.inventory.quickSwitchActors.queryOptions()),
         fetchPartByCode: (code) => queryClient.fetchQuery(trpc.inventory.partByCode.queryOptions({ code })),
-        onLookupFailure: (error, resultKind) => captureException(error, { resultKind, source: 'stores_scan' }),
+        onLookupFailure: (error, resultKind) =>
+          captureSanitizedException(error, 'Stores scan lookup failed', { resultKind, source: 'stores_scan' }),
         raw,
       });
 

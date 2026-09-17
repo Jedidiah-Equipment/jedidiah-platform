@@ -10,12 +10,14 @@ import { AppErrorBoundary } from '@/components/AppErrorBoundary';
 import { OfflineScreen } from '@/components/OfflineScreen';
 import { UpdatePrompt } from '@/components/UpdatePrompt';
 import { GluestackUIProvider } from '@/components/ui/gluestack-ui-provider';
+import { CONTRACTING_SCREEN_CATALOG } from '@/contracting/screen-catalog';
 import { EQUIPMENT_MUTATION_EVENTS } from '@/equipment/observability';
+import { EQUIPMENT_SCREEN_CATALOG } from '@/equipment/screen-catalog';
 import { ApiProvider } from '@/lib/ApiProvider';
 import { isOfflineCapableRoute } from '@/lib/business-home';
 import { ConnectivityProvider } from '@/lib/connectivity';
 import { initializeObservability, trackScreen } from '@/lib/observability';
-import { screenForSegments } from '@/lib/screen-catalog';
+import { createScreenResolver, SHARED_SCREEN_CATALOG } from '@/lib/screen-catalog';
 import { ColorModeProvider } from '@/theme/ColorModeProvider';
 import { useColorMode } from '@/theme/use-color-mode';
 
@@ -29,6 +31,11 @@ const geistFonts = {
 };
 
 initializeObservability();
+const screenForSegments = createScreenResolver([
+  SHARED_SCREEN_CATALOG,
+  CONTRACTING_SCREEN_CATALOG,
+  EQUIPMENT_SCREEN_CATALOG,
+]);
 
 export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
   return <AppErrorBoundary error={error} retry={retry} />;

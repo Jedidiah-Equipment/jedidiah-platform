@@ -23,8 +23,14 @@ export type Context = {
   changelogLoader: ChangelogLoader;
   db: typeof db;
   log: CreateFastifyContextOptions['req']['log'];
+  mobileObservability: MobileObservabilityCorrelation;
   session: AppSession | null;
   storage: StorageAdapter;
+};
+
+export type MobileObservabilityCorrelation = {
+  mobileDistinctId?: string;
+  mobileSessionId?: string;
 };
 
 export function createContextFactory(dependencies: ContextDependencies) {
@@ -40,8 +46,27 @@ export function createContextFactory(dependencies: ContextDependencies) {
       changelogLoader: dependencies.changelogLoader,
       db,
       log: req.log,
+      mobileObservability: readMobileObservabilityCorrelation(req.headers),
       session,
       storage: dependencies.storage,
     };
   };
+}
+
+export function readMobileObservabilityCorrelation(
+  headers: CreateFastifyContextOptions['req']['headers'],
+): MobileObservabilityCorrelation {
+  const mobileDistinctId = boundedHeader(headers['x-posthog-distinct-id']);
+  const mobileSessionId = boundedHeader(headers['x-posthog-session-id']);
+
+  return {
+    ...(mobileDistinctId ? { mobileDistinctId } : {}),
+    ...(mobileSessionId ? { mobileSessionId } : {}),
+  };
+}
+
+function boundedHeader(value: string | string[] | undefined): string | undefined {
+  const first = Array.isArray(value) ? value[0] : value;
+  const trimmed = first?.trim();
+  return trimmed && trimmed.length <= 240 ? trimmed : undefined;
 }

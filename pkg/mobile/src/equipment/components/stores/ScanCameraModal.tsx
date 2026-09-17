@@ -32,11 +32,8 @@ export function ScanCameraModal({
   useEffect(() => {
     if (open) {
       hasScanned.current = false;
-      addBreadcrumb('equipment', 'camera permission requested');
-      if (permission?.granted) addBreadcrumb('equipment', 'camera permission granted');
-      if (permission?.canAskAgain === false) addBreadcrumb('equipment', 'camera permission denied');
     }
-  }, [open, permission?.canAskAgain, permission?.granted]);
+  }, [open]);
 
   return (
     <ThemedModal backdropLabel="Close the camera" onClose={onClose} open={open}>
@@ -57,6 +54,7 @@ export function ScanCameraModal({
                 accessibilityRole="button"
                 className="items-center rounded-xl bg-primary px-4 py-3"
                 onPress={() => {
+                  addBreadcrumb('equipment', 'camera permission requested');
                   void requestPermission()
                     .then((result) =>
                       addBreadcrumb(

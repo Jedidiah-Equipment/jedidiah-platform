@@ -66,7 +66,7 @@ export function initializeObservability(): void {
     token: string,
     options: Record<string, unknown>,
   ) => ObservabilityClient;
-  const configuredApiBaseUrl = process.env.EXPO_PUBLIC_API_BASE_URL?.trim();
+  const tracingHosts = resolveTracingHosts(process.env.EXPO_PUBLIC_API_BASE_URL);
 
   runtimeProperties = {
     ...runtimeProperties,
@@ -80,7 +80,7 @@ export function initializeObservability(): void {
     host: ingestHost,
     disabled: !projectToken,
     autocapture: false,
-    ...(configuredApiBaseUrl ? { addTracingHeaders: [new URL(configuredApiBaseUrl).hostname] } : {}),
+    ...(tracingHosts.length > 0 ? { addTracingHeaders: tracingHosts } : {}),
     captureAppLifecycleEvents: true,
     enableSessionReplay: false,
     errorTracking: {
@@ -178,7 +178,7 @@ function safeErrorName(error: unknown): string {
 }
 
 export function trackScreen(screen: MobileScreen): void {
-  currentBusiness = screen.business;
+  prepareScreenContext(screen);
   void registerSharedProperties();
   addBreadcrumb('navigation', 'route changed', { business: screen.business, route: screen.name });
   void client.screen(screen.name, { business: screen.business });
@@ -189,6 +189,7 @@ export function identifyObservabilityUser(userId: string): void {
   if (currentUserId === userId) return;
   if (currentUserId !== null) {
     client.reset();
+    breadcrumbs.length = 0;
     addBreadcrumb('auth', 'account switch');
   }
   currentUserId = userId;
@@ -198,10 +199,28 @@ export function identifyObservabilityUser(userId: string): void {
 }
 
 export function resetObservability(reason: 'account switch' | 'ineligible session' | 'signed out'): void {
-  addBreadcrumb('auth', reason);
   client.reset();
   currentUserId = null;
+  breadcrumbs.length = 0;
+  addBreadcrumb('auth', reason);
   void registerSharedProperties();
+}
+
+/** Sets route-derived properties during render, before route children can emit effects. */
+export function prepareScreenContext(screen: MobileScreen): void {
+  currentBusiness = screen.business;
+}
+
+export function resolveTracingHosts(apiBaseUrl: string | undefined): string[] {
+  const configured = apiBaseUrl?.trim();
+  if (!configured) return [];
+
+  try {
+    return [new URL(configured).hostname];
+  } catch {
+    // Observability configuration must never turn an unreachable API override into an app startup crash.
+    return [];
+  }
 }
 
 export function observabilityBreadcrumbsForTesting(): readonly Breadcrumb[] {

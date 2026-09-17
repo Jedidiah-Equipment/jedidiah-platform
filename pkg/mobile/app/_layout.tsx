@@ -16,7 +16,7 @@ import { EQUIPMENT_SCREEN_CATALOG } from '@/equipment/screen-catalog';
 import { ApiProvider } from '@/lib/ApiProvider';
 import { isOfflineCapableRoute } from '@/lib/business-home';
 import { ConnectivityProvider } from '@/lib/connectivity';
-import { initializeObservability, trackScreen } from '@/lib/observability';
+import { initializeObservability, prepareScreenContext, trackScreen } from '@/lib/observability';
 import { createScreenResolver, SHARED_SCREEN_CATALOG } from '@/lib/screen-catalog';
 import { ColorModeProvider } from '@/theme/ColorModeProvider';
 import { useColorMode } from '@/theme/use-color-mode';
@@ -64,9 +64,9 @@ function ThemedAppShell() {
     <GluestackUIProvider mode={preference}>
       <ConnectivityProvider>
         <ApiProvider mutationEvents={EQUIPMENT_MUTATION_EVENTS}>
+          <RouteObservability />
           {/* Auth gating lives in app/(protected)/_layout.tsx; login is the public route. */}
           <Stack screenOptions={{ headerShown: false }} />
-          <RouteObservability />
           {/* Offline-capable business routes (Contracting field capture) stay available while disconnected. */}
           <OfflineGate />
           {/* Single update prompt: offers a downloaded new version wherever the user is. */}
@@ -115,11 +115,15 @@ function OfflineGate() {
 function RouteObservability() {
   const segments = useSegments();
   const key = segments.join('/');
+  const screen = screenForSegments(key ? key.split('/') : []);
+
+  // This component renders before the route stack, so effects in a newly mounted screen see the
+  // new business immediately rather than inheriting the previous route until this effect runs.
+  if (screen) prepareScreenContext(screen);
 
   useEffect(() => {
-    const screen = screenForSegments(key ? key.split('/') : []);
     if (screen) trackScreen(screen);
-  }, [key]);
+  }, [screen]);
 
   return null;
 }

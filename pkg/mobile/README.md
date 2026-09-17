@@ -115,8 +115,8 @@ APP_VARIANT=production eas fingerprint:compare
 Publish with the profile's script. It applies that profile's eas.json `env` (which `eas update` otherwise
 ignores, shipping local `EXPO_PUBLIC_*` defaults) and uses the last commit subject unless `--message` is
 given. Export `POSTHOG_CLI_API_KEY`, `POSTHOG_CLI_PROJECT_ID`, and `POSTHOG_CLI_HOST` in the release shell as
-well as in EAS. The command refuses to publish without them, then uploads OTA Hermes maps in
-release-independent symbol-set mode:
+well as in EAS. The command refuses to publish without them, exports both native bundles, uploads their
+Hermes maps in symbol-set mode, and only then publishes that already-built `dist` directory:
 
 ```sh
 pnpm --filter @pkg/mobile ota:staging

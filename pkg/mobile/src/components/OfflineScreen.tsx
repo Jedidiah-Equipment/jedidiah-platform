@@ -1,5 +1,5 @@
 import { IconWifiOff } from '@tabler/icons-react-native';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -12,10 +12,16 @@ import { addBreadcrumb, captureEvent } from '@/lib/observability';
 export function OfflineScreen({ allowOffline = false }: { allowOffline?: boolean }) {
   const isOffline = useIsOffline();
   const shown = isOffline && !allowOffline;
+  const wasShown = useRef(false);
 
   useEffect(() => {
-    addBreadcrumb('connectivity', shown ? 'offline gate shown' : 'offline gate hidden');
-    if (shown) captureEvent('offline gate shown');
+    if (shown) {
+      addBreadcrumb('connectivity', 'offline gate shown');
+      captureEvent('offline gate shown');
+    } else if (wasShown.current) {
+      addBreadcrumb('connectivity', 'offline gate hidden');
+    }
+    wasShown.current = shown;
   }, [shown]);
 
   if (!shown) {

@@ -77,6 +77,7 @@ export function createTester<T extends object = Record<string, never>>(
                 changelogLoader: () => [],
                 db: databaseClient.db,
                 log: testLog,
+                mobileObservability: {},
                 session: null,
                 storage: new MemoryStorage(),
               }),
@@ -92,6 +93,7 @@ export function createTester<T extends object = Record<string, never>>(
                 changelogLoader: overrides.changelogLoader ?? (() => []),
                 db: databaseClient.db,
                 log: testLog,
+                mobileObservability: {},
                 session,
                 storage: new MemoryStorage(),
               });

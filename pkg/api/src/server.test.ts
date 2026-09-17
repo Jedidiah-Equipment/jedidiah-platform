@@ -126,6 +126,29 @@ describe('API server', () => {
     }
   });
 
+  it('allows PostHog trace correlation headers through browser preflight', async () => {
+    const app = await buildServer(config, observability, new MemoryStorage());
+
+    try {
+      const response = await app.inject({
+        method: 'OPTIONS',
+        url: '/trpc/auth.session',
+        headers: {
+          origin: 'http://localhost:7003',
+          'access-control-request-method': 'POST',
+          'access-control-request-headers': 'content-type,x-posthog-distinct-id,x-posthog-session-id',
+        },
+      });
+
+      expect(response.statusCode, response.body).toBe(204);
+      expect(response.headers['access-control-allow-headers']).toBe(
+        'Content-Type, Authorization, X-Requested-With, X-POSTHOG-DISTINCT-ID, X-POSTHOG-SESSION-ID',
+      );
+    } finally {
+      await app.close();
+    }
+  });
+
   it('accepts bounded authenticated mobile telemetry for PostHog', async () => {
     vi.mocked(getSessionFromHeaders).mockResolvedValueOnce(mockSession());
     const app = await buildServer(config, observability, new MemoryStorage());

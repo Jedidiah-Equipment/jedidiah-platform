@@ -84,14 +84,20 @@ export async function signIn(input: { email: string; password: string }): Promis
 }
 
 export async function signOut(reason: 'ineligible session' | 'signed out' = 'signed out') {
-  captureEvent('signed out', { reason });
-  resetObservability(reason);
   const startedAt = Date.now();
+  let failureRecorded = false;
   try {
-    await authClient.signOut();
+    const result = await authClient.signOut();
+    if (result.error) {
+      recordAuthRequest('/api/auth/sign-out', result.error.status ?? 400, startedAt);
+      failureRecorded = true;
+      throw result.error;
+    }
     recordAuthRequest('/api/auth/sign-out', 200, startedAt);
+    captureEvent('signed out', { reason });
+    resetObservability(reason);
   } catch (error) {
-    recordAuthRequest('/api/auth/sign-out', 0, startedAt);
+    if (!failureRecorded) recordAuthRequest('/api/auth/sign-out', 0, startedAt);
     throw error;
   }
 }

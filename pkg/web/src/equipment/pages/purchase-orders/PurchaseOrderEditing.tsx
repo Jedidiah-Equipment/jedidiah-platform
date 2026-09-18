@@ -48,8 +48,8 @@ export function PurchaseOrderEditing({ purchaseOrder, children }: PurchaseOrderE
   const canApprove = actions.approve.allowed && hasPermission(accessQuery.data, 'equipment_purchase_order:approve');
   const canRevertToDraft =
     actions.revertToDraft.allowed && hasPermission(accessQuery.data, 'equipment_purchase_order:approve');
-  // The generated PDF is what goes to the Supplier, so it stays on offer until sending files the
-  // as-sent copy — the approved order is exactly the one someone needs to print. Same gates as the route.
+  // The generated PDF is what goes to the Supplier, so it stays on offer until sending saves the
+  // as-sent copy: the approved order is exactly the one someone needs to print.
   const canPreview =
     (purchaseOrder.status === 'draft' || purchaseOrder.status === 'approved') &&
     canReadCosts &&

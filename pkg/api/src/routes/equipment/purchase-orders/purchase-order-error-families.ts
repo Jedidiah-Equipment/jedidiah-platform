@@ -15,6 +15,7 @@ export const purchaseOrderErrorFamily = defineCoreErrorFamily<PurchaseOrderCoreE
   codes: {
     'purchase_order.already_cancelled': 'BAD_REQUEST',
     'purchase_order.already_closed_short': 'BAD_REQUEST',
+    'purchase_order.already_sent': 'BAD_REQUEST',
     'purchase_order.amendment_below_received': 'BAD_REQUEST',
     'purchase_order.closed_short': 'BAD_REQUEST',
     'purchase_order.empty': 'BAD_REQUEST',

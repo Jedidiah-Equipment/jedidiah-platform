@@ -671,6 +671,7 @@ export async function renderPurchaseOrderPreview({
   pdfRenderer: PurchaseOrderPdfRenderer;
 }): Promise<{ bytes: Uint8Array; filename: string }> {
   const purchaseOrder = await getPurchaseOrder({ db, id });
+  assertPurchaseOrderAction(purchaseOrder.actions.preview, id);
   if (purchaseOrder.lines.length === 0) throw new PurchaseOrderEmptyError(id);
   const filename = `${purchaseOrder.code}.pdf`;
   const lastModified = await loadPurchaseOrderLastModified({ db, id });

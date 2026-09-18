@@ -58,6 +58,9 @@ export function derivePurchaseOrderActions(facts: PurchaseOrderActionFacts): Pur
     // A Supplier bills and credits what it sent, so the paperwork follows the order out of the door
     // and keeps arriving after its remainder is released.
     fileDocuments: isSent ? ALLOWED : blocked('not-sent'),
+    // What goes to the Supplier is rendered live until sending saves it; from then on the saved copy
+    // is the order, and a fresh render would show amendments the Supplier was sent as revisions.
+    preview: status === 'cancelled' ? blocked('cancelled') : isSent ? blocked('sent') : ALLOWED,
     receive: whileSentAndOpen(),
     // Deliberately outlives close-short: releasing a remainder says nothing more is coming, not that
     // what already arrived can never go back.

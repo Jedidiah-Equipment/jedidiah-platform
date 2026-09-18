@@ -95,6 +95,39 @@ it('adds an empty, unpriced line rather than picking a Part for the buyer', asyn
   expect(readLines()).toEqual([{ partId: '', quantity: 1, unitPrice: 0 }]);
 });
 
+it('stops adding empty lines once each remaining Part has one waiting for it', async () => {
+  const Harness = () => {
+    const form = useAppForm({
+      defaultValues: { expectedDeliveryDate: '', jobIds: [], lines: [], supplierId },
+    });
+
+    return (
+      <PurchaseOrderLinesEditor
+        commit={vi.fn()}
+        form={form as never}
+        isLoading={false}
+        parts={[part]}
+        partsLoadFailed={false}
+      />
+    );
+  };
+
+  const container = document.createElement('div');
+  document.body.append(container);
+  containers.push(container);
+  const root = createRoot(container);
+  roots.push(root);
+
+  await act(async () => root.render(<Harness />));
+  const addLine = [...container.querySelectorAll('button')].find((button) => button.textContent?.includes('Add line'));
+  if (!addLine) throw new Error('Add line button did not render');
+
+  await act(async () => addLine.click());
+
+  expect(addLine.disabled).toBe(true);
+  expect(container.textContent).toContain('Pick a Part for the empty line first.');
+});
+
 it('explains why a line cannot be added when the Supplier has no available Parts', async () => {
   const Harness = () => {
     const form = useAppForm({

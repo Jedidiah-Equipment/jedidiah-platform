@@ -93,6 +93,18 @@ describe('derivePurchaseOrderActions', () => {
     });
   });
 
+  describe('the Supplier copy preview', () => {
+    it('is offered until sending saves the as-sent PDF', () => {
+      expect(derivePurchaseOrderActions(facts({ status: 'draft' })).preview).toEqual({ allowed: true });
+      expect(derivePurchaseOrderActions(facts({ status: 'approved' })).preview).toEqual({ allowed: true });
+      expect(derivePurchaseOrderActions(facts({ status: 'sent' })).preview).toEqual({ allowed: false, reason: 'sent' });
+      expect(derivePurchaseOrderActions(facts({ status: 'cancelled' })).preview).toEqual({
+        allowed: false,
+        reason: 'cancelled',
+      });
+    });
+  });
+
   describe('a sent order', () => {
     it('is received against, amended, returned from, and takes the Supplier paperwork', () => {
       const actions = derivePurchaseOrderActions(partiallyReceived);

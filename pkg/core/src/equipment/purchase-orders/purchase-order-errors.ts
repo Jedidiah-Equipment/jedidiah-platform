@@ -117,6 +117,14 @@ export class PurchaseOrderNotSentError extends Error {
   }
 }
 
+export class PurchaseOrderAlreadySentError extends Error {
+  readonly code = 'purchase_order.already_sent' as const;
+
+  constructor(readonly id: UUID) {
+    super('A sent Purchase Order is read from the PDF saved when it was sent.');
+  }
+}
+
 export class PurchaseOrderLineNotFoundError extends Error {
   readonly code = 'purchase_order.line_not_found' as const;
 
@@ -237,12 +245,15 @@ export function assertPurchaseOrderAction(verdict: PurchaseOrderActionVerdict, i
       throw new PurchaseOrderNotSentError(id);
     case 'nothing-received':
       throw new PurchaseOrderNoReceiptsError(id);
+    case 'sent':
+      throw new PurchaseOrderAlreadySentError(id);
   }
 }
 
 export type PurchaseOrderCoreError =
   | PurchaseOrderAlreadyCancelledError
   | PurchaseOrderAlreadyClosedShortError
+  | PurchaseOrderAlreadySentError
   | PurchaseOrderAmendmentBelowReceivedError
   | PurchaseOrderClosedShortError
   | PurchaseOrderEmptyError
@@ -267,6 +278,7 @@ export function isPurchaseOrderCoreError(error: unknown): error is PurchaseOrder
   return (
     error instanceof PurchaseOrderAlreadyCancelledError ||
     error instanceof PurchaseOrderAlreadyClosedShortError ||
+    error instanceof PurchaseOrderAlreadySentError ||
     error instanceof PurchaseOrderAmendmentBelowReceivedError ||
     error instanceof PurchaseOrderClosedShortError ||
     error instanceof PurchaseOrderEmptyError ||

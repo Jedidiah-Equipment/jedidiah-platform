@@ -122,6 +122,7 @@ export const PurchaseOrderActionBlockedReason = z.enum([
   'not-draft',
   'not-sent',
   'nothing-received',
+  'sent',
 ]);
 
 export type PurchaseOrderActionVerdict = z.infer<typeof PurchaseOrderActionVerdict>;
@@ -146,6 +147,8 @@ export const PurchaseOrderActions = z.object({
   edit: PurchaseOrderActionVerdict,
   /** Filing the Supplier's own paperwork against the order: invoices and credit notes alike. */
   fileDocuments: PurchaseOrderActionVerdict,
+  /** The generated Supplier copy, offered until sending saves the as-sent PDF in its place. */
+  preview: PurchaseOrderActionVerdict,
   receive: PurchaseOrderActionVerdict,
   returnToSupplier: PurchaseOrderActionVerdict,
   /** The audited un-approve: approval locks the order, and this is the one way back to editing. */

@@ -9,7 +9,10 @@ it, and only then can it be marked sent. Approving locks the order the same way 
 2. Check the Supplier, the expected delivery date, the lines, and the price on each line. **Preview
    PDF** shows the buyer's view of what is about to go out.
 3. Click **Approve**. The order can no longer be edited.
-4. Click **Mark sent** once the order has gone to the Supplier.
+4. Make sure no line shows **Not priced** — **Mark sent** refuses such an order. Then click
+   **Preview PDF**, download the order from the panel that opens, and send it to the Supplier.
+5. Click **Mark sent** once the order has gone to the Supplier. From then on **View PDF** opens the
+   saved copy instead.
 
 Approving needs **Approve purchase orders**, which only administrators hold. Procurement can draft,
 send, amend, receive, and close an order, but never approve one.

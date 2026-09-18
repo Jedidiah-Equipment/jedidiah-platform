@@ -251,6 +251,36 @@ describe('Purchase Order send and cancel', () => {
     });
   });
 
+  test('previews an approved order for sending, and refuses once the as-sent PDF is saved', async ({ context }) => {
+    const purchaseOrder = await createPurchaseOrder({
+      actorUserId: ACTOR_ID,
+      db: context.db,
+      input: { expectedDeliveryDate: null, supplierId: SUPPLIER_A_ID },
+    });
+    await savePurchaseOrderDraft({
+      actorUserId: ACTOR_ID,
+      db: context.db,
+      input: draftInput(purchaseOrder.id, [{ partId: PIECE_PART_ID, quantity: 2, unitPrice: 50 }]),
+    });
+    await approvePurchaseOrder({ actorUserId: ACTOR_ID, db: context.db, id: purchaseOrder.id });
+    const render = vi.fn(async (_input: { document: PurchaseOrderPdfModel; filename: string }) => pdfBytes());
+
+    await expect(
+      renderPurchaseOrderPreview({ db: context.db, id: purchaseOrder.id, pdfRenderer: render }),
+    ).resolves.toEqual({ bytes: pdfBytes(), filename: 'PO-00001.pdf' });
+
+    await markPurchaseOrderSent({
+      actorUserId: ACTOR_ID,
+      db: context.db,
+      id: purchaseOrder.id,
+      pdfRenderer: async () => pdfBytes(),
+      storage: context.storage,
+    });
+    await expect(
+      renderPurchaseOrderPreview({ db: context.db, id: purchaseOrder.id, pdfRenderer: render }),
+    ).rejects.toMatchObject({ code: 'purchase_order.already_sent' });
+  });
+
   test('names the last editor of this order, not the newest edit anywhere', async ({ context }) => {
     const ourEditorId = 'po-our-editor';
     const otherEditorId = 'po-other-editor';

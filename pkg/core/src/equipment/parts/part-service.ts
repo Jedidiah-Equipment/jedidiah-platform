@@ -391,7 +391,10 @@ export async function bulkImportParts({
       let updatedCount = 0;
       // Supplier retirement takes child locks before Supplier locks. Keep the import in that order
       // too, or a merge and an import of the same Part can each wait on the other's row.
-      const partsByCode = await loadImportPartsByCode({ db: tx, rows: input.rows });
+      const { duplicateLookupCodes, lookupCodeByInputCode, partsByLookupCode } = await loadImportPartsByCode({
+        db: tx,
+        rows: input.rows,
+      });
       const scopedSupplier = input.supplierId
         ? await getImportSupplierById({ db: tx, supplierId: input.supplierId })
         : undefined;
@@ -405,7 +408,16 @@ export async function bulkImportParts({
         : await loadImportSuppliersByLookupName({ db: tx, rows: input.rows });
 
       for (const row of input.rows) {
-        const partByCode = partsByCode.get(row.code);
+        const lookupCode = lookupCodeByInputCode.get(row.code);
+        if (!lookupCode) {
+          throw new Error(`Part import did not normalize code "${row.code}"`);
+        }
+        if (duplicateLookupCodes.has(lookupCode)) {
+          errors.push(`Line ${row.lineNumber}: Part Code "${row.code}" appears more than once in this file.`);
+          continue;
+        }
+
+        const partByCode = partsByLookupCode.get(lookupCode);
         // Whether this row names a Supplier is settled once, here. Everything below reads the one
         // resolved value, so a built Part — made in-house and bought from nobody — takes the same
         // path as a bought one rather than branching at every step.
@@ -453,7 +465,7 @@ export async function bulkImportParts({
           }
 
           await recordAuditCreate({ db: tx, descriptor: partAuditDescriptor, actorUserId, input: created });
-          partsByCode.set(created.code, created);
+          partsByLookupCode.set(lookupCode, created);
           importedCount += 1;
           continue;
         }
@@ -504,7 +516,7 @@ export async function bulkImportParts({
         }
 
         await recordAuditUpdate({ db: tx, descriptor: partAuditDescriptor, actorUserId, after: updated, changes });
-        partsByCode.set(updated.code, updated);
+        partsByLookupCode.set(lookupCode, updated);
         updatedCount += 1;
       }
 
@@ -793,29 +805,64 @@ function supplierLookupName(companyName: string): string {
 /** The database's side of {@link supplierLookupName}: the same whitespace class, Postgres's own fold. */
 const supplierLookupNameSql = sql<string>`btrim(regexp_replace(lower(${supplier.companyName}), '[ \\t\\n\\r\\f\\v]+', ' ', 'g'))`;
 
+/** Part Code keeps its stored spelling, but PostgreSQL's case fold defines catalog identity. */
+const partCodeLookupKeySql = sql<string>`lower(${parts.code})`;
+
 async function loadImportPartsByCode({
   db,
   rows,
 }: {
   db: DatabaseTransaction;
   rows: PartBulkImportInput['rows'];
-}): Promise<Map<string, PartRow>> {
-  const byCode = new Map<string, PartRow>();
-  const codes = [...new Set(rows.map((row) => row.code))];
+}): Promise<{
+  duplicateLookupCodes: Set<string>;
+  lookupCodeByInputCode: Map<string, string>;
+  partsByLookupCode: Map<string, PartRow>;
+}> {
+  const partsByLookupCode = new Map<string, PartRow>();
+  const lookupCodeByInputCode = new Map<string, string>();
+  const inputCodes = [...new Set(rows.map((row) => row.code))];
 
-  if (codes.length === 0) {
-    return byCode;
+  if (inputCodes.length === 0) {
+    return { duplicateLookupCodes: new Set(), lookupCodeByInputCode, partsByLookupCode };
   }
+
+  // The unique index uses PostgreSQL lower(), whose Unicode behavior is not identical to
+  // JavaScript toLowerCase(). Ask the database to derive every input key so preload, duplicate
+  // detection, and the constraint all agree on what a Part Code means.
+  const normalizedCodes = await db.execute<{ code: string; lookupCode: string }>(sql`
+    select input.code, lower(input.code) as "lookupCode"
+    from jsonb_array_elements_text(${JSON.stringify(inputCodes)}::jsonb) as input(code)
+  `);
+  for (const normalized of normalizedCodes) {
+    lookupCodeByInputCode.set(normalized.code, normalized.lookupCode);
+  }
+
+  const lookupCodeCounts = new Map<string, number>();
+  for (const row of rows) {
+    const lookupCode = lookupCodeByInputCode.get(row.code);
+    if (!lookupCode) throw new Error(`Part import did not normalize code "${row.code}"`);
+    lookupCodeCounts.set(lookupCode, (lookupCodeCounts.get(lookupCode) ?? 0) + 1);
+  }
+
+  const duplicateLookupCodes = new Set(
+    [...lookupCodeCounts].filter(([, count]) => count > 1).map(([lookupCode]) => lookupCode),
+  );
+  const lookupCodes = [...lookupCodeCounts.keys()];
 
   // FOR UPDATE locks the matching rows up front, the same exclusive locking the per-row read used
   // to take — just in one statement with a consistent lock order.
-  const partRows = await db.select().from(parts).where(inArray(parts.code, codes)).for('update');
+  const partRows = await db
+    .select({ lookupCode: partCodeLookupKeySql, part: parts })
+    .from(parts)
+    .where(inArray(partCodeLookupKeySql, lookupCodes))
+    .for('update');
 
-  for (const partRow of partRows) {
-    byCode.set(partRow.code, partRow);
+  for (const { lookupCode, part } of partRows) {
+    partsByLookupCode.set(lookupCode, part);
   }
 
-  return byCode;
+  return { duplicateLookupCodes, lookupCodeByInputCode, partsByLookupCode };
 }
 
 async function getImportSupplierById({

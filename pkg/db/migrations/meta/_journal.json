@@ -1065,6 +1065,13 @@
       "when": 1789544110390,
       "tag": "0151_contracting_jobs",
       "breakpoints": true
+    },
+    {
+      "idx": 152,
+      "version": "7",
+      "when": 1789725782975,
+      "tag": "0152_lean_mantis",
+      "breakpoints": true
     }
   ]
 }

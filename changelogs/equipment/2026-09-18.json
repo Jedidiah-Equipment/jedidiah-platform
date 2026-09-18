@@ -1,0 +1,23 @@
+{
+  "business": "equipment",
+  "releasedAt": "2026-09-18T12:54:55.007Z",
+  "sections": [
+    {
+      "surface": "app",
+      "entries": [
+        {
+          "title": "Choose parts for new purchase order lines",
+          "description": "New draft lines now start empty instead of automatically selecting a part."
+        },
+        {
+          "title": "Match part codes regardless of letter case",
+          "description": "Part codes are now recognised consistently even when uppercase and lowercase letters differ."
+        },
+        {
+          "title": "Preview approved purchase orders before sending",
+          "description": "The preview PDF remains available after approval until the purchase order is sent."
+        }
+      ]
+    }
+  ]
+}

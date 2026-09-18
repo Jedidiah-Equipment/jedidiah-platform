@@ -332,6 +332,50 @@ describe('bulkImportParts', () => {
     ]);
   });
 
+  test('rejects every row when one file repeats a Part Code with different casing', async ({ context }) => {
+    const result = await bulkImportParts({
+      actorUserId,
+      db: context.db,
+      input: {
+        rows: [
+          importRow(),
+          importRow({ code: 'p-100', lineNumber: 3, name: 'Conflicting bearing' }),
+          importRow({ code: 'P-200', lineNumber: 4, name: 'Valid bolt', supplierCode: 'SUP-200' }),
+        ],
+      },
+    });
+    const importedParts = await context.db.select().from(parts).orderBy(parts.code);
+
+    expect(result).toEqual({
+      errors: [
+        'Line 2: Part Code "P-100" appears more than once in this file.',
+        'Line 3: Part Code "p-100" appears more than once in this file.',
+      ],
+      importedCount: 1,
+      updatedCount: 0,
+    });
+    expect(importedParts).toEqual([expect.objectContaining({ code: 'P-200', name: 'Valid bolt' })]);
+  });
+
+  test('uses the database case fold when matching Unicode Part Codes', async ({ context }) => {
+    await bulkImportParts({
+      actorUserId,
+      db: context.db,
+      input: { rows: [importRow({ code: 'İ-100' })] },
+    });
+    const [original] = await context.db.select().from(parts);
+
+    const result = await bulkImportParts({
+      actorUserId,
+      db: context.db,
+      input: { rows: [importRow({ code: 'i-100', name: 'Updated bearing' })] },
+    });
+    const importedParts = await context.db.select().from(parts);
+
+    expect(result).toEqual({ errors: [], importedCount: 0, updatedCount: 1 });
+    expect(importedParts).toEqual([expect.objectContaining({ id: original?.id, code: 'i-100' })]);
+  });
+
   test('matches an existing supplier whose stored name differs by whitespace, keeping its spelling', async ({
     context,
   }) => {

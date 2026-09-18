@@ -9,8 +9,8 @@ first edit.
 
 1. Open **Parts**.
 2. Click **Bulk parts export**. The file downloads as `parts-<date>.csv`.
-3. Edit it. Change cells, or add rows for Parts that do not exist yet. Leave the header row and the
-   **Code** column alone.
+3. Edit it. Change cells, or add rows for Parts that do not exist yet. Leave the header row alone.
+   Only change a **Code** to adjust its casing; any other Code edit creates a new Part.
 4. Click **Bulk parts import**, choose the file, and leave **CSV has header** ticked.
 5. Check the preview and the row issues it lists, then click **Import parts**.
 

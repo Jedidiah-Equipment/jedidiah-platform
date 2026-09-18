@@ -1,5 +1,5 @@
 {
-  "id": "bc4ad2f7-06c5-480e-a641-007021057705",
+  "id": "760693d9-63d7-4718-8389-db2c5f2dc586",
   "prevId": "7e5262c5-6ef1-459b-997e-4dcf4159df8c",
   "version": "7",
   "dialect": "postgresql",
@@ -5342,6 +5342,21 @@
           "columns": [
             {
               "expression": "category",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "parts_code_idx": {
+          "name": "parts_code_idx",
+          "columns": [
+            {
+              "expression": "code",
               "isExpression": false,
               "asc": true,
               "nulls": "last"

@@ -10,6 +10,8 @@ The **Part Code** is the match key, and it is the only one. Casing does not make
 
 - A row whose Code is already in the catalog, even under different casing, **updates** that Part.
 - A row whose Code is new **creates** one.
+- If the same Code appears more than once in one file, including under different casing, every row
+  carrying that Code is refused. Fix the duplicate rows and import the file again.
 - A row that changes nothing counts as neither, so re-importing an untouched export mostly reports
   zero of both. Expect a handful of updates the first time round: the import title-cases some cells,
   so a Part typed into the app in lower case is corrected on its first trip through a CSV.

@@ -128,13 +128,12 @@ export const PurchaseOrderLinesEditor: React.FC<{
     <form.AppField mode="array" name="lines">
       {(linesField) => {
         const lines = linesField.state.value;
-        const nextPart = parts.find((part) => !lines.some((line) => line.partId === part.id));
+        const hasUnlistedPart = parts.some((part) => !lines.some((line) => line.partId === part.id));
         let disabledReason: string | null = null;
         if (isLoading) disabledReason = 'Loading available Parts...';
-        else if (!nextPart && parts.length === 0 && partsLoadFailed)
-          disabledReason = 'Parts could not be loaded. Try again.';
-        else if (!nextPart && parts.length === 0) disabledReason = 'Add a Part for this Supplier before adding a line.';
-        else if (!nextPart) disabledReason = 'All Parts for this Supplier are already on the order.';
+        else if (parts.length === 0 && partsLoadFailed) disabledReason = 'Parts could not be loaded. Try again.';
+        else if (parts.length === 0) disabledReason = 'Add a Part for this Supplier before adding a line.';
+        else if (!hasUnlistedPart) disabledReason = 'All Parts for this Supplier are already on the order.';
 
         return (
           <Card>
@@ -150,15 +149,9 @@ export const PurchaseOrderLinesEditor: React.FC<{
                 <Button
                   aria-describedby={disabledReason ? disabledReasonId : undefined}
                   disabled={Boolean(disabledReason)}
-                  onClick={() => {
-                    if (!nextPart) return;
-                    linesField.pushValue({
-                      partId: nextPart.id,
-                      quantity: 1,
-                      unitPrice: defaultPurchaseOrderUnitPrice(nextPart),
-                    });
-                    commit();
-                  }}
+                  // The line starts empty so it stands out from the ones already on the order; picking
+                  // its Part seeds the price and saves.
+                  onClick={() => linesField.pushValue({ partId: '', quantity: 1, unitPrice: 0 })}
                   size="sm"
                   type="button"
                   variant="outline"

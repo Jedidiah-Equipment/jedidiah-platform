@@ -61,7 +61,7 @@ afterEach(() => {
   containers.length = 0;
 });
 
-it('seeds a manually added line from the Part current moving average', async () => {
+it('adds an empty, unpriced line rather than picking a Part for the buyer', async () => {
   let readLines = (): Array<{ partId: string; quantity: number; unitPrice: number }> => [];
   const Harness = () => {
     const form = useAppForm({
@@ -92,7 +92,7 @@ it('seeds a manually added line from the Part current moving average', async () 
 
   await act(async () => addLine.click());
 
-  expect(readLines()).toEqual([{ partId, quantity: 1, unitPrice: 0.3 }]);
+  expect(readLines()).toEqual([{ partId: '', quantity: 1, unitPrice: 0 }]);
 });
 
 it('explains why a line cannot be added when the Supplier has no available Parts', async () => {

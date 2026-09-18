@@ -131,6 +131,23 @@ describe('Purchase Order draft form values', () => {
     expect(PurchaseOrderDraftFormValues.safeParse(duplicated).success).toBe(false);
   });
 
+  it('holds an added line with no Part yet as invalid, naming the pick rather than a UUID', () => {
+    const result = PurchaseOrderDraftFormValues.safeParse({
+      expectedDeliveryDate: '',
+      jobIds: [],
+      lines: [
+        { partId: '', quantity: 1, unitPrice: 0 },
+        { partId: '', quantity: 1, unitPrice: 0 },
+      ],
+      supplierId: purchaseOrder.supplierId,
+    });
+
+    expect(result.error?.issues.map((issue) => [issue.path.join('.'), issue.message])).toEqual([
+      ['lines.0.partId', 'Select a part'],
+      ['lines.1.partId', 'Select a part'],
+    ]);
+  });
+
   it('creates a draft from the supplier and expected date alone', () => {
     const values = PurchaseOrderCreateFormValues.parse({
       expectedDeliveryDate: '2026-08-20',

@@ -23,7 +23,7 @@ import {
 import { z } from 'zod';
 
 import { roundNumberFieldValue } from '@/components/form/fields/NumberField.js';
-import { optionalNumber } from '@/components/form/utils/form-schema.js';
+import { optionalNumber, requiredSelection } from '@/components/form/utils/form-schema.js';
 
 export type PurchaseOrderCreateFormValues = z.infer<typeof PurchaseOrderCreateFormValues>;
 export const PurchaseOrderCreateFormValues = z.object({
@@ -35,10 +35,11 @@ export const PurchaseOrderCreateFormValues = z.object({
 export type PurchaseOrderDraftFormValues = z.infer<typeof PurchaseOrderDraftFormValues>;
 export const PurchaseOrderDraftFormValues = PurchaseOrderCreateFormValues.extend({
   jobIds: z.array(UUID),
-  lines: z.array(PurchaseOrderLineInput),
+  // An added line starts with no Part, so it holds the draft unsaved with "Select a part" until one is picked.
+  lines: z.array(PurchaseOrderLineInput.extend({ partId: requiredSelection(UUID, 'Select a part') })),
   // Mirrors PurchaseOrderSaveDraftInput so a duplicate Part fails validation here rather than
   // autosaving into a server rejection the reader cannot trace back to a row.
-}).refine((values) => hasUniquePartIds(values.lines), {
+}).refine((values) => hasUniquePartIds(values.lines.filter((line) => line.partId !== '')), {
   message: PURCHASE_ORDER_DUPLICATE_PART_MESSAGE,
   path: ['lines'],
 });

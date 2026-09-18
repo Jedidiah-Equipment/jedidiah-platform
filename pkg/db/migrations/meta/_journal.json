@@ -1065,6 +1065,13 @@
       "when": 1789544110390,
       "tag": "0151_contracting_jobs",
       "breakpoints": true
+    },
+    {
+      "idx": 152,
+      "version": "7",
+      "when": 1789724329214,
+      "tag": "0152_yielding_psynapse",
+      "breakpoints": true
     }
   ]
 }

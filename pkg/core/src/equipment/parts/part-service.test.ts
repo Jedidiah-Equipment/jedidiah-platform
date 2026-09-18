@@ -315,6 +315,23 @@ describe('bulkImportParts', () => {
     expect(events).toHaveLength(2);
   });
 
+  test('updates an existing Part when the imported Code differs only by case', async ({ context }) => {
+    await bulkImportParts({ actorUserId, db: context.db, input: { rows: [importRow()] } });
+    const [original] = await context.db.select().from(parts);
+
+    const result = await bulkImportParts({
+      actorUserId,
+      db: context.db,
+      input: { rows: [importRow({ code: 'p-100', name: 'Updated bearing' })] },
+    });
+    const importedParts = await listParts({ db: context.db, input: PartListInput.parse({ limit: 0 }) });
+
+    expect(result).toEqual({ errors: [], importedCount: 0, updatedCount: 1 });
+    expect(importedParts.items).toEqual([
+      expect.objectContaining({ id: original?.id, code: 'p-100', name: 'Updated bearing' }),
+    ]);
+  });
+
   test('matches an existing supplier whose stored name differs by whitespace, keeping its spelling', async ({
     context,
   }) => {

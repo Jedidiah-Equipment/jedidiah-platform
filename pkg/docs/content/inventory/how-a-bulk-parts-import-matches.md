@@ -6,18 +6,22 @@ export-edit-import cycle safe.
 
 ## Code decides the Part; every other cell decides what it becomes
 
-The **Part Code** is the match key, and it is the only one.
+The **Part Code** is the match key, and it is the only one. Casing does not make a different Code.
 
-- A row whose Code is already in the catalog **updates** that Part.
+- A row whose Code is already in the catalog, even under different casing, **updates** that Part.
 - A row whose Code is new **creates** one.
 - A row that changes nothing counts as neither, so re-importing an untouched export mostly reports
   zero of both. Expect a handful of updates the first time round: the import title-cases some cells,
   so a Part typed into the app in lower case is corrected on its first trip through a CSV.
 
-Which means editing the **Name** cell renames the Part, exactly as you would expect — and editing the
-**Code** cell does not re-code it. The row now describes a Part that does not exist, so the import
-creates a second Part under the new Code and leaves the original standing. Change a Part's Code on
-the Part itself, not in the CSV.
+Which means editing the **Name** cell renames the Part, exactly as you would expect. Changing only
+the casing of the **Code** cell — `12mm Round bar` to `12MM ROUND BAR`, for example — also updates
+that Part and keeps the new spelling. No second Part is created. Existing printed labels still carry
+the old exact Code, so reprint them after such a change.
+
+Any other **Code** edit does not re-code the Part. The row now describes a Part that does not exist,
+so the import creates a second Part under the new Code and leaves the original standing. Change a
+Part's Code on the Part itself, not in the CSV.
 
 ## Code does not override identity
 

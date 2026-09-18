@@ -127,7 +127,9 @@ describe('parts.create', () => {
     });
   });
 
-  test('returns conflicts for duplicate codes and allows repeated supplier codes per supplier', async ({ context }) => {
+  test('returns conflicts for case-only duplicate codes and allows repeated supplier codes per supplier', async ({
+    context,
+  }) => {
     const caller = context.createCaller();
     const supplier = await createSupplier(caller);
     const otherSupplier = await createSupplier(caller, 'Other Supplies');
@@ -135,6 +137,7 @@ describe('parts.create', () => {
 
     await expect(
       createPart(caller, otherSupplier.id, {
+        code: 'p-100',
         supplierCode: 'OTHER-100',
       }),
     ).rejects.toMatchObject({

@@ -391,7 +391,7 @@ export async function bulkImportParts({
       let updatedCount = 0;
       // Supplier retirement takes child locks before Supplier locks. Keep the import in that order
       // too, or a merge and an import of the same Part can each wait on the other's row.
-      const partsByCode = await loadImportPartsByCode({ db: tx, rows: input.rows });
+      const partsByLookupCode = await loadImportPartsByCode({ db: tx, rows: input.rows });
       const scopedSupplier = input.supplierId
         ? await getImportSupplierById({ db: tx, supplierId: input.supplierId })
         : undefined;
@@ -405,7 +405,7 @@ export async function bulkImportParts({
         : await loadImportSuppliersByLookupName({ db: tx, rows: input.rows });
 
       for (const row of input.rows) {
-        const partByCode = partsByCode.get(row.code);
+        const partByCode = partsByLookupCode.get(partCodeLookupKey(row.code));
         // Whether this row names a Supplier is settled once, here. Everything below reads the one
         // resolved value, so a built Part — made in-house and bought from nobody — takes the same
         // path as a bought one rather than branching at every step.
@@ -453,7 +453,7 @@ export async function bulkImportParts({
           }
 
           await recordAuditCreate({ db: tx, descriptor: partAuditDescriptor, actorUserId, input: created });
-          partsByCode.set(created.code, created);
+          partsByLookupCode.set(partCodeLookupKey(created.code), created);
           importedCount += 1;
           continue;
         }
@@ -504,7 +504,7 @@ export async function bulkImportParts({
         }
 
         await recordAuditUpdate({ db: tx, descriptor: partAuditDescriptor, actorUserId, after: updated, changes });
-        partsByCode.set(updated.code, updated);
+        partsByLookupCode.set(partCodeLookupKey(updated.code), updated);
         updatedCount += 1;
       }
 
@@ -793,6 +793,13 @@ function supplierLookupName(companyName: string): string {
 /** The database's side of {@link supplierLookupName}: the same whitespace class, Postgres's own fold. */
 const supplierLookupNameSql = sql<string>`btrim(regexp_replace(lower(${supplier.companyName}), '[ \\t\\n\\r\\f\\v]+', ' ', 'g'))`;
 
+/** Part Code keeps its stored spelling, but casing does not create a second catalog identity. */
+function partCodeLookupKey(code: string): string {
+  return code.toLowerCase();
+}
+
+const partCodeLookupKeySql = sql<string>`lower(${parts.code})`;
+
 async function loadImportPartsByCode({
   db,
   rows,
@@ -801,18 +808,18 @@ async function loadImportPartsByCode({
   rows: PartBulkImportInput['rows'];
 }): Promise<Map<string, PartRow>> {
   const byCode = new Map<string, PartRow>();
-  const codes = [...new Set(rows.map((row) => row.code))];
+  const lookupCodes = [...new Set(rows.map((row) => partCodeLookupKey(row.code)))];
 
-  if (codes.length === 0) {
+  if (lookupCodes.length === 0) {
     return byCode;
   }
 
   // FOR UPDATE locks the matching rows up front, the same exclusive locking the per-row read used
   // to take — just in one statement with a consistent lock order.
-  const partRows = await db.select().from(parts).where(inArray(parts.code, codes)).for('update');
+  const partRows = await db.select().from(parts).where(inArray(partCodeLookupKeySql, lookupCodes)).for('update');
 
   for (const partRow of partRows) {
-    byCode.set(partRow.code, partRow);
+    byCode.set(partCodeLookupKey(partRow.code), partRow);
   }
 
   return byCode;

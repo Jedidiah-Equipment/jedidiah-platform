@@ -59,7 +59,7 @@ export const parts = equipmentSchema.table(
     index('parts_category_idx').on(table.category),
     index('parts_storage_location_idx').on(table.storageLocation),
     index('parts_supplier_id_idx').on(table.supplierId),
-    uniqueIndex('parts_code_unique').on(table.code),
+    uniqueIndex('parts_code_unique').on(sql`lower(${table.code})`),
   ],
 );
 

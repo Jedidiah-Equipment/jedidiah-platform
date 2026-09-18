@@ -172,6 +172,21 @@ it.each(['Approve', 'Preview PDF'])('%s blocks on a failed save and works after 
   );
 });
 
+it('previews the PDF of an approved order so it can be sent', async () => {
+  const preview = stubPreview();
+  const container = await mount({}, orderInStatus('approved'));
+
+  await click(container, 'Preview PDF');
+  // Each poll leaves its own act scope: the blob, its object URL, and the iframe are separate renders.
+  await vi.waitFor(async () => {
+    await act(async () => undefined);
+    expect(document.querySelector('iframe[title="PO-00024.pdf"]')).not.toBeNull();
+  });
+  expect(String(preview.mock.calls[0]?.[0])).toBe(
+    'http://purchase-order.test/api/purchase-orders/00000000-0000-4000-8000-000000000024/preview',
+  );
+});
+
 const lifecycleActions = [
   { label: 'Approve', path: 'approve', status: 'draft' },
   { label: 'Revert to draft', path: 'revertToDraft', status: 'approved' },

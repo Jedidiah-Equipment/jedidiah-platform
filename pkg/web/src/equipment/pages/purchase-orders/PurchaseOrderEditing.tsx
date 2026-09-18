@@ -48,6 +48,12 @@ export function PurchaseOrderEditing({ purchaseOrder, children }: PurchaseOrderE
   const canApprove = actions.approve.allowed && hasPermission(accessQuery.data, 'equipment_purchase_order:approve');
   const canRevertToDraft =
     actions.revertToDraft.allowed && hasPermission(accessQuery.data, 'equipment_purchase_order:approve');
+  // The generated PDF is what goes to the Supplier, so it stays on offer until sending files the
+  // as-sent copy — the approved order is exactly the one someone needs to print. Same gates as the route.
+  const canPreview =
+    (purchaseOrder.status === 'draft' || purchaseOrder.status === 'approved') &&
+    canReadCosts &&
+    hasPermission(accessQuery.data, 'equipment_purchase_order:create');
   const canSend = actions.send.allowed && hasPermission(accessQuery.data, 'equipment_purchase_order:send');
   const canCancel = actions.cancel.allowed && hasPermission(accessQuery.data, 'equipment_purchase_order:close');
   const canCloseShort = actions.closeShort.allowed && hasPermission(accessQuery.data, 'equipment_purchase_order:close');
@@ -165,7 +171,7 @@ export function PurchaseOrderEditing({ purchaseOrder, children }: PurchaseOrderE
   return children({
     actions: (
       <div className="flex flex-wrap gap-2">
-        {canEdit ? (
+        {canPreview ? (
           <>
             <Button disabled={disabled} onClick={handlePreview} variant="outline">
               <IconEye data-icon="inline-start" /> Preview PDF

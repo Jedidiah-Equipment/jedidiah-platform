@@ -46,9 +46,9 @@ export const equipmentUserAdminExtension: UserAdminExtension = {
     );
   },
   useInvalidateAdditionalUserQueries: () => {
-    const { invalidateQuoteSalespeople, invalidateUserDepartments } = useQueryInvalidation();
+    const { invalidateQuotes, invalidateUserDepartments } = useQueryInvalidation();
     return async () => {
-      await Promise.all([invalidateUserDepartments(), invalidateQuoteSalespeople()]);
+      await Promise.all([invalidateUserDepartments(), invalidateQuotes()]);
     };
   },
   useTableExtension: () => {

@@ -72,6 +72,8 @@ export const PurchaseOrderReceiptBucket = z.object({
 /** A stored line always has an agreed price; only the API's cost gate can take it away (see the View). */
 export type PurchaseOrderLine = z.infer<typeof PurchaseOrderLine>;
 export const PurchaseOrderLine = PurchaseOrderLineInput.extend({
+  /** The line's own identity. Ledger rows still reach a Part Line by `(purchaseOrderId, partId)`. */
+  id: UUID,
   partCode: z.string().trim().min(1),
   partName: z.string().trim().min(1),
   /**

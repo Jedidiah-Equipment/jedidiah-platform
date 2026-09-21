@@ -74,6 +74,7 @@ function model(overrides: Partial<PurchaseOrderPdfModel> = {}): PurchaseOrderPdf
     },
     lines: [
       {
+        id: '00000000-0000-4000-8000-000000000003',
         partCode: 'P-100',
         partId: '00000000-0000-4000-8000-000000000001',
         partName: 'Hydraulic pipe',

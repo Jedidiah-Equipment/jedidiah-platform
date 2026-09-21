@@ -349,7 +349,7 @@ const PurchaseOrderReadOnlyLinesTable: React.FC<{
     data: items,
     enableColumnFilters: false,
     enableSorting: false,
-    getRowId: (line) => line.partId,
+    getRowId: (line) => line.id,
   });
 
   return (

@@ -25,7 +25,7 @@ import { Input } from '@/components/ui/input.js';
 import { fetchPartLabelsBlob } from '@/equipment/pages/parts/part-label.js';
 import { outstandingReceivedForLine } from './types.js';
 
-type ReceivedPartLabelLine = Pick<PurchaseOrderLineView, 'partCode' | 'partId' | 'partName'> & {
+type ReceivedPartLabelLine = Pick<PurchaseOrderLineView, 'id' | 'partCode' | 'partId' | 'partName'> & {
   heldQuantity: number;
 };
 
@@ -39,6 +39,7 @@ export function PurchaseOrderPartLabelsDialog({ lines }: { lines: PurchaseOrderL
       lines
         .map((line) => ({
           heldQuantity: outstandingReceivedForLine(line),
+          id: line.id,
           partCode: line.partCode,
           partId: line.partId,
           partName: line.partName,
@@ -105,7 +106,7 @@ export function PurchaseOrderPartLabelsDialog({ lines }: { lines: PurchaseOrderL
     data: rows,
     enableColumnFilters: false,
     enableSorting: false,
-    getRowId: (line) => line.partId,
+    getRowId: (line) => line.id,
   });
   const selection = isOpen ? toLabelSelection(rows) : null;
   const fetchBlob = useCallback(

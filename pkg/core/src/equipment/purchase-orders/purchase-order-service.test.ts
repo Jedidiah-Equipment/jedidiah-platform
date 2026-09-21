@@ -1,5 +1,15 @@
 import { auditEvents, type Db, user } from '@pkg/db';
-import { customers, documents, jobs, parts, purchaseOrders, quotes, supplier } from '@pkg/db/equipment';
+import {
+  customers,
+  documents,
+  jobs,
+  parts,
+  purchaseOrderLines,
+  purchaseOrders,
+  quotes,
+  stockMovements,
+  supplier,
+} from '@pkg/db/equipment';
 import { DateOnlyIso } from '@pkg/schema';
 import type { PurchaseOrderPdfModel } from '@pkg/schema/equipment';
 import { eq, sql } from 'drizzle-orm';
@@ -192,6 +202,39 @@ describe('Purchase Order draft lifecycle', () => {
 });
 
 describe('Purchase Order line parts', () => {
+  test('keeps Part Lines unique per order and rejects receipts for a Part with no line', async ({ context }) => {
+    const purchaseOrder = await createPurchaseOrder({
+      actorUserId: ACTOR_ID,
+      db: context.db,
+      input: { expectedDeliveryDate: null, supplierId: SUPPLIER_A_ID },
+    });
+    await savePurchaseOrderDraft({
+      actorUserId: ACTOR_ID,
+      db: context.db,
+      input: draftInput(purchaseOrder.id, [{ partId: PIECE_PART_ID, quantity: 1, unitPrice: 10 }]),
+    });
+
+    await expect(
+      context.db.insert(purchaseOrderLines).values({
+        partId: PIECE_PART_ID,
+        purchaseOrderId: purchaseOrder.id,
+        quantity: 2,
+        unitPrice: 20,
+      }),
+    ).rejects.toMatchObject({ cause: { constraint_name: 'purchase_order_line_order_part_unique' } });
+
+    await expect(
+      context.db.insert(stockMovements).values({
+        actorUserId: ACTOR_ID,
+        delta: 1,
+        movementType: 'receipt',
+        partId: LINEAR_PART_ID,
+        purchaseOrderId: purchaseOrder.id,
+        unitCost: 10,
+      }),
+    ).rejects.toMatchObject({ cause: { constraint_name: 'stock_movement_purchase_order_line_fk' } });
+  });
+
   test('refuses a built Part by name rather than as a supplier mismatch', async ({ context }) => {
     const purchaseOrder = await createPurchaseOrder({
       actorUserId: ACTOR_ID,
@@ -642,20 +685,31 @@ describe('Purchase Order receiving progress', () => {
     expect(purchaseOrder).toMatchObject({
       closedShortAt: null,
       derivedStatus: 'approved',
-      lines: [{ receivedQuantity: 0 }, { receivedQuantity: 0 }],
+      lines: [
+        { id: expect.any(String), receivedQuantity: 0 },
+        { id: expect.any(String), receivedQuantity: 0 },
+      ],
     });
+    const [pieceLine, linearLine] = purchaseOrder.lines;
+    expect(pieceLine?.id).not.toBe(linearLine?.id);
 
     await receive(context, purchaseOrder.id, PIECE_PART_ID, 3);
     await expect(getPurchaseOrder({ db: context.db, id: purchaseOrder.id })).resolves.toMatchObject({
       derivedStatus: 'partially-received',
-      lines: [{ partId: PIECE_PART_ID, receivedQuantity: 3 }, { receivedQuantity: 0 }],
+      lines: [
+        { id: pieceLine?.id, partId: PIECE_PART_ID, receivedQuantity: 3 },
+        { id: linearLine?.id, receivedQuantity: 0 },
+      ],
     });
 
     await receive(context, purchaseOrder.id, PIECE_PART_ID, 1);
     await receive(context, purchaseOrder.id, LINEAR_PART_ID, 2);
     await expect(getPurchaseOrder({ db: context.db, id: purchaseOrder.id })).resolves.toMatchObject({
       derivedStatus: 'received',
-      lines: [{ receivedQuantity: 4 }, { receivedQuantity: 2 }],
+      lines: [
+        { id: pieceLine?.id, receivedQuantity: 4 },
+        { id: linearLine?.id, receivedQuantity: 2 },
+      ],
     });
 
     // The list read projects the same derived state, so a receiver never sees two different answers.

@@ -113,6 +113,7 @@ export const purchaseOrderAggregateAuditDescriptor = defineAuditDescriptor<Purch
       value: { code: job.code, id: job.id },
     })),
     line: purchaseOrder.lines.map((line) => ({
+      // Draft saves replace every line, so ids churn; Part identity keeps unchanged lines stable in the audit diff.
       key: line.partId,
       label: line.partCode,
       value: { partId: line.partId, quantity: line.quantity, unitPrice: line.unitPrice },
@@ -303,7 +304,7 @@ export async function loadPurchaseOrderProgress({
 }): Promise<PurchaseOrderProgress> {
   const [lines, receivedQuantities] = await Promise.all([
     db
-      .select({ partId: purchaseOrderLines.partId, quantity: purchaseOrderLines.quantity })
+      .select({ id: purchaseOrderLines.id, partId: purchaseOrderLines.partId, quantity: purchaseOrderLines.quantity })
       .from(purchaseOrderLines)
       .where(eq(purchaseOrderLines.purchaseOrderId, id)),
     loadReceivedQuantities({ db, purchaseOrderIds: [id] }),
@@ -311,8 +312,8 @@ export async function loadPurchaseOrderProgress({
 
   return derivePurchaseOrderProgress({
     lines,
-    receivedByPartId: new Map(
-      lines.map((line) => [line.partId, receivedQuantities.get(receivedQuantityKey(id, line.partId)) ?? 0]),
+    receivedByLineId: new Map(
+      lines.map((line) => [line.id, receivedQuantities.get(receivedQuantityKey(id, line.partId)) ?? 0]),
     ),
   });
 }
@@ -910,8 +911,8 @@ function mapPurchaseOrder(
   linesWithMovements: ReadonlySet<string>,
   receiptBuckets: ReadonlyMap<string, PurchaseOrderReceiptBucket[]>,
 ): PurchaseOrder {
-  const receivedByPartId = new Map(
-    row.lines.map((line) => [line.partId, receivedQuantities.get(receivedQuantityKey(row.id, line.partId)) ?? 0]),
+  const receivedByLineId = new Map(
+    row.lines.map((line) => [line.id, receivedQuantities.get(receivedQuantityKey(row.id, line.partId)) ?? 0]),
   );
   return PurchaseOrderSchema.parse({
     // Reduced from the facts this read already loaded — no extra query — so the payload a surface
@@ -920,7 +921,7 @@ function mapPurchaseOrder(
       closedShortAt: row.closedShortAt,
       hasAnyMovement: row.lines.some((line) => linesWithMovements.has(receivedQuantityKey(row.id, line.partId))),
       isEmpty: row.lines.length === 0,
-      progress: derivePurchaseOrderProgress({ lines: row.lines, receivedByPartId }),
+      progress: derivePurchaseOrderProgress({ lines: row.lines, receivedByLineId }),
       status: row.status,
     }),
     approvedAt: row.approvedAt,
@@ -930,7 +931,7 @@ function mapPurchaseOrder(
     derivedStatus: derivePurchaseOrderStatus({
       closedShortAt: row.closedShortAt,
       lines: row.lines,
-      receivedByPartId,
+      receivedByLineId,
       status: row.status,
     }),
     documentId,
@@ -942,12 +943,13 @@ function mapPurchaseOrder(
     lines: row.lines
       .map((line) => ({
         hasStockMovements: linesWithMovements.has(receivedQuantityKey(row.id, line.partId)),
+        id: line.id,
         partCode: line.part.code,
         partId: line.partId,
         partName: line.part.name,
         quantity: line.quantity,
         receiptBuckets: receiptBuckets.get(receiptBucketKey(row.id, line.partId)) ?? [],
-        receivedQuantity: receivedByPartId.get(line.partId) ?? 0,
+        receivedQuantity: receivedByLineId.get(line.id) ?? 0,
         standardPurchaseLengthMm: line.part.standardPurchaseLengthMm,
         supplierCode: line.part.supplierCode,
         unitOfMeasure: line.part.unitOfMeasure,

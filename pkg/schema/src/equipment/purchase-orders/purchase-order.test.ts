@@ -14,6 +14,7 @@ const ID_A = '00000000-0000-4000-8000-000000000001';
 const ID_B = '00000000-0000-4000-8000-000000000002';
 
 const line = {
+  id: ID_B,
   partCode: 'PIPE-01',
   partId: ID_A,
   partName: 'Hydraulic pipe',
@@ -57,7 +58,11 @@ describe('Purchase Order contracts', () => {
   });
 
   test('keeps the stored line price, and nulls it only on the gated view', () => {
-    expect(PurchaseOrderLine.parse({ ...line, unitPrice: 125.5 })).toMatchObject({ quantity: 2, unitPrice: 125.5 });
+    expect(PurchaseOrderLine.parse({ ...line, unitPrice: 125.5 })).toMatchObject({
+      id: ID_B,
+      quantity: 2,
+      unitPrice: 125.5,
+    });
     expect(() => PurchaseOrderLine.parse({ ...line, unitPrice: null })).toThrow();
     expect(PurchaseOrderLineView.parse({ ...line, unitPrice: null })).toMatchObject({ unitPrice: null });
   });

@@ -21,12 +21,15 @@ import {
 
 const PART_ID = '4de0e2a1-2b2f-4b2e-9a5f-6a0d0a1b2c3d';
 const JOB_ID = '9c9e8b7a-6d5c-4b3a-8291-0f1e2d3c4b5a';
+const LINE_ID = 'a9af52b0-9476-4f86-8b1d-f121b2b6e702';
 
 const LINEAR_PART_ID = '2f7c9a10-3f4b-4f0c-9d4a-8b1c2d3e4f50';
+const LINEAR_LINE_ID = 'c62d8c24-b88d-454b-b035-2e872d0ab50e';
 
 const lines = [
   {
     hasStockMovements: false,
+    id: LINE_ID,
     partCode: 'P-100',
     partId: PART_ID,
     partName: 'Bearing',
@@ -39,6 +42,7 @@ const lines = [
   },
   {
     hasStockMovements: false,
+    id: LINEAR_LINE_ID,
     partCode: 'C-200',
     partId: LINEAR_PART_ID,
     partName: 'Channel',

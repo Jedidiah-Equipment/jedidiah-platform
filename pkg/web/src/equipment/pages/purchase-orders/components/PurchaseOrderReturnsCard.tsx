@@ -121,7 +121,7 @@ export function PurchaseOrderReturnsCard({
             {canReturn
               ? returnableLines.map((line) => (
                   <Button
-                    key={line.partId}
+                    key={line.id}
                     onClick={() => setReturningPartId(line.partId)}
                     size="sm"
                     type="button"
@@ -152,7 +152,7 @@ export function PurchaseOrderReturnsCard({
       {returningLine ? (
         <PurchaseOrderReturnDialog
           // Remount per line so the prefilled quantity follows the line the dialog opens on.
-          key={returningLine.partId}
+          key={returningLine.id}
           line={returningLine}
           onOpenChange={(open) => setReturningPartId(open ? returningPartId : null)}
           purchaseOrder={purchaseOrder}

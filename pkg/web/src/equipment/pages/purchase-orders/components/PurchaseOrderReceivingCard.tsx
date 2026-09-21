@@ -68,7 +68,7 @@ export function PurchaseOrderReceivingCard({
     data: purchaseOrder.lines,
     enableColumnFilters: false,
     enableSorting: false,
-    getRowId: (line) => line.partId,
+    getRowId: (line) => line.id,
   });
 
   return (
@@ -93,7 +93,7 @@ export function PurchaseOrderReceivingCard({
         <PurchaseOrderReceiveDialog
           canReadCosts={canReadCosts}
           // Remount per line so the dialog's prefilled outstanding quantity follows the line it opens on.
-          key={receivingLine.partId}
+          key={receivingLine.id}
           line={receivingLine}
           onOpenChange={(open) => setReceivingPartId(open ? receivingPartId : null)}
           open

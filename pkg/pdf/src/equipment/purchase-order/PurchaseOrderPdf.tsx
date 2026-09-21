@@ -122,7 +122,7 @@ export function PurchaseOrderPdf({ document }: { document: PurchaseOrderPdfModel
           <Text style={styles.quantity}>Quantity</Text>
         </View>
         {document.lines.map((line) => (
-          <View key={line.partId} style={styles.tableRow} wrap={false}>
+          <View key={line.id} style={styles.tableRow} wrap={false}>
             <View style={styles.description}>
               <Text style={styles.strong}>{`${line.partCode} - ${line.partName}`}</Text>
               {line.supplierCode ? <Text style={styles.line}>Supplier code: {line.supplierCode}</Text> : null}

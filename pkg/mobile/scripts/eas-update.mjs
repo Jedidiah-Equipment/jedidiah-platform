@@ -70,29 +70,46 @@ function readEasJson(args, env, runEas) {
   }
 }
 
-export function assertCompatibleBuilds({ profile, build, env, releasedBuildIds, runEas = execFileSync }) {
+export function assertCompatibleBuilds({ profile, build, env, runEas = execFileSync }) {
   const incompatible = [];
   for (const platform of ['android', 'ios']) {
-    const releasedBuildId = releasedBuildIds?.[platform];
-    if (!releasedBuildId) {
-      const name = `${releasePrefix(profile)}_${platform.toUpperCase()}_RELEASED_BUILD_ID`;
-      throw new Error(
-        `No confirmed released build for ${profile} ${platform}. Set ${name} in pkg/mobile/.env.dev after the native build is published and installed; OTA not published.`,
-      );
+    const builds = readEasJson(
+      [
+        'build:list',
+        '--platform',
+        platform,
+        '--build-profile',
+        profile,
+        '--channel',
+        build.channel,
+        '--distribution',
+        build.distribution ?? 'store',
+        '--status',
+        'finished',
+        '--limit',
+        '1',
+        '--json',
+      ],
+      env,
+      runEas,
+    );
+    const latestBuild = Array.isArray(builds) ? builds[0] : undefined;
+    if (!latestBuild) {
+      throw new Error(`No finished ${profile} ${platform} store build found in EAS; OTA not published.`);
     }
-    const releasedBuild = readEasJson(['build:view', releasedBuildId, '--json'], env, runEas);
     if (
-      releasedBuild?.id !== releasedBuildId ||
-      releasedBuild.status !== 'FINISHED' ||
-      releasedBuild.platform !== platform.toUpperCase() ||
-      releasedBuild.buildProfile !== profile ||
-      releasedBuild.channel !== build.channel ||
-      (build.distribution && releasedBuild.distribution?.toLowerCase() !== build.distribution) ||
-      typeof releasedBuild.runtimeVersion !== 'string' ||
-      !releasedBuild.runtimeVersion
+      typeof latestBuild.id !== 'string' ||
+      !latestBuild.id ||
+      latestBuild.status !== 'FINISHED' ||
+      latestBuild.platform !== platform.toUpperCase() ||
+      latestBuild.buildProfile !== profile ||
+      latestBuild.channel !== build.channel ||
+      latestBuild.distribution?.toLowerCase() !== (build.distribution ?? 'store') ||
+      typeof latestBuild.runtimeVersion !== 'string' ||
+      !latestBuild.runtimeVersion
     ) {
       throw new Error(
-        `Confirmed ${profile} ${platform} build ${releasedBuildId} is not a finished ${build.distribution ?? 'store'} build on the ${build.channel} channel; OTA not published.`,
+        `Latest ${profile} ${platform} EAS build has unexpected metadata; OTA compatibility could not be verified.`,
       );
     }
 
@@ -106,14 +123,14 @@ export function assertCompatibleBuilds({ profile, build, env, releasedBuildIds, 
         `Could not read the current ${profile} ${platform} fingerprint; OTA compatibility could not be verified.`,
       );
     }
-    if (fingerprint.hash !== releasedBuild.runtimeVersion) {
-      incompatible.push(`${platform} fingerprint differs from confirmed released build ${releasedBuildId}`);
+    if (fingerprint.hash !== latestBuild.runtimeVersion) {
+      incompatible.push(`${platform} fingerprint differs from latest finished build ${latestBuild.id}`);
     }
   }
 
   if (incompatible.length > 0) {
     throw new Error(
-      `Full build and publish required before ${profile} OTA: ${incompatible.join('; ')}. Build and submit the affected platform(s), confirm installation, record their released build IDs in pkg/mobile/.env.dev, then retry.`,
+      `Full build and publish required before ${profile} OTA: ${incompatible.join('; ')}. Build and submit the affected platform(s), then retry.`,
     );
   }
 }
@@ -189,17 +206,6 @@ export function resolveReleaseEnvironment(profile, env = process.env, readFile =
   return { ...env, ...selected };
 }
 
-export function resolveReleasedBuildIds(profile, env = process.env, readFile = readFileSync) {
-  const prefix = releasePrefix(profile);
-  const fileEnv = readLocalReleaseEnv(readFile);
-  return Object.fromEntries(
-    ['android', 'ios'].map((platform) => {
-      const name = `${prefix}_${platform.toUpperCase()}_RELEASED_BUILD_ID`;
-      return [platform, fileEnv[name] || env[name]];
-    }),
-  );
-}
-
 function main() {
   const [profile, ...args] = process.argv.slice(2);
   const easConfig = JSON.parse(readFileSync(EAS_CONFIG_PATH, 'utf8'));
@@ -207,8 +213,7 @@ function main() {
   const command = resolveUpdateCommand({ args, commitSubject, easConfig, profile });
   const releaseEnv = resolveReleaseEnvironment(profile);
   const updateEnv = { ...releaseEnv, ...command.env };
-  const releasedBuildIds = resolveReleasedBuildIds(profile);
-  assertCompatibleBuilds({ profile, build: easConfig.build[profile], env: updateEnv, releasedBuildIds });
+  assertCompatibleBuilds({ profile, build: easConfig.build[profile], env: updateEnv });
   const bundle = resolveExportCommand();
   // Bundle and upload before publishing because this script cannot roll an OTA back.
   const sourceMaps = resolveSourceMapUploadCommand(releaseEnv);

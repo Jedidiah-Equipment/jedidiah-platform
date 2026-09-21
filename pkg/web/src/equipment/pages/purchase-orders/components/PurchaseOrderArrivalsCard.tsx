@@ -1,5 +1,5 @@
 import { formatDate, formatNumber } from '@pkg/domain';
-import type { PurchaseOrderArrival, PurchaseOrderView } from '@pkg/schema/equipment';
+import type { PurchaseOrderArrival, PurchaseOrderCustomLineView, PurchaseOrderView } from '@pkg/schema/equipment';
 import { IconArrowBackUp } from '@tabler/icons-react';
 import { useQuery } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
@@ -7,7 +7,7 @@ import { useMemo, useState } from 'react';
 import { DataTable } from '@/components/data-table/DataTable.js';
 import { type DataTableColumnDef, useDataTable } from '@/components/data-table/features.js';
 import { Button } from '@/components/ui/button.js';
-import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card.js';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { PurchaseOrderArrivalDialog } from './PurchaseOrderArrivalDialog.js';
 
@@ -31,9 +31,64 @@ export function PurchaseOrderArrivalsCard({
   });
   const arrivals = useMemo(() => query.data?.items ?? [], [query.data]);
   const [reversingLineId, setReversingLineId] = useState<string | null>(null);
-  // Only a line something has arrived against, and kept, has anything to reverse.
-  const reversibleLines = customLines.filter((line) => line.receivedQuantity > 0);
-  const reversingLine = reversibleLines.find((line) => line.id === reversingLineId) ?? null;
+  const reversingLine = customLines.find((line) => line.id === reversingLineId) ?? null;
+  // Descriptions may repeat on one order, so the reversal sits on the line's own row, beside the
+  // quantities that tell two "Packing tape" lines apart.
+  const lineColumns = useMemo<DataTableColumnDef<PurchaseOrderCustomLineView>[]>(
+    () => [
+      {
+        accessorKey: 'description',
+        cell: ({ row }) => (
+          <>
+            {row.original.description}
+            {row.original.supplierCode ? (
+              <span className="text-muted-foreground"> · {row.original.supplierCode}</span>
+            ) : null}
+          </>
+        ),
+        header: 'Line',
+      },
+      {
+        accessorKey: 'receivedQuantity',
+        cell: ({ row }) =>
+          `${formatNumber(row.original.receivedQuantity)} / ${formatNumber(row.original.quantity)} ${row.original.unit}`,
+        header: 'Arrived',
+        meta: { cellClassName: 'text-right tabular-nums', headerClassName: 'text-right' },
+      },
+      ...(canReverse
+        ? [
+            {
+              cell: ({ row }) =>
+                // Only a line that has kept something has anything to reverse.
+                row.original.receivedQuantity > 0 ? (
+                  <div className="flex justify-end">
+                    <Button
+                      onClick={() => setReversingLineId(row.original.id)}
+                      size="sm"
+                      type="button"
+                      variant="outline"
+                    >
+                      <IconArrowBackUp data-icon="inline-start" /> Reverse arrival
+                    </Button>
+                  </div>
+                ) : null,
+              enableSorting: false,
+              header: () => <span className="sr-only">Actions</span>,
+              id: 'actions',
+            } satisfies DataTableColumnDef<PurchaseOrderCustomLineView>,
+          ]
+        : []),
+    ],
+    [canReverse],
+  );
+  const lineTable = useDataTable({
+    columns: lineColumns,
+    // A line nothing ever arrived against has no place on a card about Arrivals.
+    data: customLines.filter((line) => line.hasStockMovements),
+    enableColumnFilters: false,
+    enableSorting: false,
+    getRowId: (line) => line.id,
+  });
   const columns = useMemo<DataTableColumnDef<PurchaseOrderArrival>[]>(
     () => [
       { accessorKey: 'createdAt', cell: ({ row }) => formatDate(row.original.createdAt, 'medium'), header: 'When' },
@@ -67,25 +122,16 @@ export function PurchaseOrderArrivalsCard({
           What has turned up against this order's Custom Lines. They are not stock, so an arrival is corrected by
           reversing it, never by a return.
         </CardDescription>
-        {canReverse ? (
-          <CardAction>
-            <div className="flex flex-wrap gap-2">
-              {reversibleLines.map((line) => (
-                <Button
-                  key={line.id}
-                  onClick={() => setReversingLineId(line.id)}
-                  size="sm"
-                  type="button"
-                  variant="outline"
-                >
-                  <IconArrowBackUp data-icon="inline-start" /> Reverse {line.description}
-                </Button>
-              ))}
-            </div>
-          </CardAction>
-        ) : null}
       </CardHeader>
-      <CardContent>
+      <CardContent className="grid gap-6">
+        <DataTable
+          emptyMessage="No arrivals yet."
+          hideGlobalFilter
+          paginationMode="complete"
+          table={lineTable}
+          total={lineTable.getRowModel().rows.length}
+          totalLabel={(value) => `${value} ${value === 1 ? 'line' : 'lines'}`}
+        />
         <DataTable
           emptyMessage="No arrivals yet."
           hideGlobalFilter

@@ -114,9 +114,13 @@ APP_VARIANT=production eas fingerprint:compare
 
 Publish with the profile's script. It applies that profile's eas.json `env` (which `eas update` otherwise
 ignores, shipping local `EXPO_PUBLIC_*` defaults) and uses the last commit subject unless `--message` is
-given. Export `POSTHOG_CLI_API_KEY`, `POSTHOG_CLI_PROJECT_ID`, and `POSTHOG_CLI_HOST` in the release shell as
-well as in EAS. The command refuses to publish without them, exports both native bundles, uploads their
-Hermes maps in symbol-set mode, and only then publishes that already-built `dist` directory:
+given. Set `STAGING_POSTHOG_CLI_API_KEY`, `STAGING_POSTHOG_CLI_PROJECT_ID`, and
+`STAGING_POSTHOG_CLI_HOST` in the gitignored `pkg/mobile/.env.dev` for staging, with the matching
+`PRODUCTION_` names for production. Keep the unprefixed PostHog credentials in EAS for native builds.
+The script maps the selected profile's complete set to the names PostHog CLI expects. Leave all three
+values empty to use the release shell; a partial set stops the release. It refuses to publish without the
+required key and project ID, exports both native bundles, uploads their Hermes maps in symbol-set mode,
+and only then publishes that already-built `dist` directory:
 
 ```sh
 pnpm --filter @pkg/mobile ota:staging

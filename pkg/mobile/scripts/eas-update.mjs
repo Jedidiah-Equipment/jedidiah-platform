@@ -1,6 +1,7 @@
 import { execFileSync, spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
+import { parseEnv } from 'node:util';
 
 const EAS_CONFIG_PATH = new URL('../eas.json', import.meta.url);
 
@@ -70,12 +71,37 @@ export function resolveExportCommand() {
 export function resolveSourceMapUploadCommand(env) {
   const missing = ['POSTHOG_CLI_API_KEY', 'POSTHOG_CLI_PROJECT_ID'].filter((name) => !env[name]);
   if (missing.length > 0) {
-    throw new Error(`PostHog source-map upload requires ${missing.join(' and ')} in the release shell.`);
+    throw new Error(`PostHog source-map upload requires ${missing.join(' and ')} in the release environment.`);
   }
   return {
     executable: 'pnpm',
     args: ['exec', 'posthog-cli', 'hermes', 'upload', '--directory', 'dist', '--release-mode', 'symbol-set'],
   };
+}
+
+export function resolveReleaseEnvironment(profile, env = process.env, readFile = readFileSync) {
+  const prefixes = { staging: 'STAGING', production: 'PRODUCTION' };
+  const prefix = prefixes[profile];
+  if (!prefix) throw new Error(`No local release env is configured for ${profile ?? 'nothing'}.`);
+  let fileEnv;
+  try {
+    fileEnv = parseEnv(readFile(new URL('../.env.dev', import.meta.url), 'utf8'));
+  } catch (error) {
+    if (error?.code === 'ENOENT') return env;
+    throw error;
+  }
+
+  const names = ['POSTHOG_CLI_API_KEY', 'POSTHOG_CLI_PROJECT_ID', 'POSTHOG_CLI_HOST'];
+  const selected = Object.fromEntries(names.map((name) => [name, fileEnv[`${prefix}_${name}`]]));
+  if (names.every((name) => !selected[name])) return env;
+
+  const missing = names.filter((name) => !selected[name]);
+  if (missing.length > 0) {
+    throw new Error(
+      `Incomplete ${profile} PostHog credentials in .env.dev: set ${missing.join(', ')} or leave all three empty to use the release shell.`,
+    );
+  }
+  return { ...env, ...selected };
 }
 
 function main() {
@@ -84,12 +110,13 @@ function main() {
   const commitSubject = execFileSync('git', ['log', '-1', '--format=%s'], { encoding: 'utf8' }).trim();
   const command = resolveUpdateCommand({ args, commitSubject, easConfig, profile });
   const bundle = resolveExportCommand();
+  const releaseEnv = resolveReleaseEnvironment(profile);
   // Bundle and upload before publishing because this script cannot roll an OTA back.
-  const sourceMaps = resolveSourceMapUploadCommand(process.env);
+  const sourceMaps = resolveSourceMapUploadCommand(releaseEnv);
 
   const bundleResult = spawnSync(bundle.executable, bundle.args, {
     cwd: new URL('..', import.meta.url),
-    env: { ...process.env, ...command.env },
+    env: { ...releaseEnv, ...command.env },
     stdio: 'inherit',
   });
   if (bundleResult.error) throw bundleResult.error;
@@ -100,7 +127,7 @@ function main() {
 
   const upload = spawnSync(sourceMaps.executable, sourceMaps.args, {
     cwd: new URL('..', import.meta.url),
-    env: process.env,
+    env: releaseEnv,
     stdio: 'inherit',
   });
   if (upload.error) throw upload.error;
@@ -111,7 +138,7 @@ function main() {
 
   const publish = spawnSync('eas', command.args, {
     cwd: new URL('..', import.meta.url),
-    env: { ...process.env, ...command.env },
+    env: { ...releaseEnv, ...command.env },
     stdio: 'inherit',
   });
   if (publish.error) throw publish.error;

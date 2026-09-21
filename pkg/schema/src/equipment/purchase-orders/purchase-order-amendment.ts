@@ -4,7 +4,13 @@ import { AuthId } from '../../auth/auth-id.js';
 import { DateIso, DateOnlyIso } from '../../common/date.js';
 import { requiredTrimmedText } from '../../common/text.js';
 import { UUID } from '../../common/uuid.js';
-import { PurchaseOrderQuantity, PurchaseOrderUnitPrice } from './purchase-order.js';
+import {
+  PurchaseOrderCustomLineDescription,
+  PurchaseOrderCustomLineSupplierCode,
+  PurchaseOrderCustomLineUnit,
+  PurchaseOrderQuantity,
+  PurchaseOrderUnitPrice,
+} from './purchase-order.js';
 
 /**
  * The four ways a sent order actually changes (spec §4): a line changes, or the Supplier changes
@@ -16,12 +22,14 @@ export const PurchaseOrderAmendmentKind = z.enum([
   'add-line',
   'substitute-part',
   'expected-date-change',
+  'remove-line',
 ]);
 
 export const PURCHASE_ORDER_AMENDMENT_KIND_LABELS = {
   'add-line': 'Line added',
   'expected-date-change': 'Expected date changed',
   'quantity-change': 'Quantity changed',
+  'remove-line': 'Line removed',
   'substitute-part': 'Part substituted',
 } as const satisfies Record<PurchaseOrderAmendmentKind, string>;
 
@@ -49,6 +57,24 @@ export const PurchaseOrderAmendAddLineInput = AmendmentBaseInput.extend({
   quantity: PurchaseOrderQuantity,
   unitPrice: PurchaseOrderUnitPrice,
 }).strict();
+
+export type PurchaseOrderAmendCustomLineQuantityInput = z.infer<typeof PurchaseOrderAmendCustomLineQuantityInput>;
+export const PurchaseOrderAmendCustomLineQuantityInput = AmendmentBaseInput.extend({
+  lineId: UUID,
+  quantity: PurchaseOrderQuantity,
+}).strict();
+
+export type PurchaseOrderAmendAddCustomLineInput = z.infer<typeof PurchaseOrderAmendAddCustomLineInput>;
+export const PurchaseOrderAmendAddCustomLineInput = AmendmentBaseInput.extend({
+  description: PurchaseOrderCustomLineDescription,
+  quantity: PurchaseOrderQuantity,
+  supplierCode: PurchaseOrderCustomLineSupplierCode.nullable().default(null),
+  unit: PurchaseOrderCustomLineUnit,
+  unitPrice: PurchaseOrderUnitPrice,
+}).strict();
+
+export type PurchaseOrderAmendRemoveCustomLineInput = z.infer<typeof PurchaseOrderAmendRemoveCustomLineInput>;
+export const PurchaseOrderAmendRemoveCustomLineInput = AmendmentBaseInput.extend({ lineId: UUID }).strict();
 
 /**
  * `partId` is the line being replaced and `newPartId` what takes its place; the substitute carries
@@ -81,8 +107,10 @@ export const PurchaseOrderAmendment = z.object({
   actorName: z.string().trim().min(1).nullable(),
   actorUserId: AuthId,
   createdAt: DateIso,
+  customDescription: z.string().nullable(),
   id: UUID,
   kind: PurchaseOrderAmendmentKind,
+  lineId: UUID.nullable(),
   newExpectedDate: DateOnlyIso.nullable(),
   newPartCode: z.string().nullable(),
   newPartId: UUID.nullable(),

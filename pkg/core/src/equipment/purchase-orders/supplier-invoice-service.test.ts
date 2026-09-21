@@ -15,10 +15,14 @@ import {
   renderStubPdf,
   SPARE_PART_ID,
   SUPPLIER_ID,
+  sendCustomOrder,
   sendOrder,
   test,
 } from './purchase-order-amendment-fixtures.js';
-import { amendPurchaseOrderQuantity } from './purchase-order-amendment-service.js';
+import {
+  amendPurchaseOrderCustomLineQuantity,
+  amendPurchaseOrderQuantity,
+} from './purchase-order-amendment-service.js';
 import { createPurchaseOrder } from './purchase-order-service.js';
 import {
   applyInvoicePrice,
@@ -85,6 +89,75 @@ async function reviewOf(context: AmendmentTestContext, purchaseOrderId: string) 
 }
 
 describe('supplier invoice cross-check', () => {
+  test('lists two Custom Line price variances on the same invoice under distinct line ids', async ({ context }) => {
+    const order = await sendCustomOrder(context, [
+      { description: 'Office chair', quantity: 2, unitPrice: 900, supplierCode: 'CHAIR-42' },
+      { description: 'Desk lamp', quantity: 3, unitPrice: 80, supplierCode: 'LAMP-12' },
+    ]);
+    const document = await upload(
+      context,
+      order.id,
+      reads(
+        extraction({
+          lines: [
+            line({ description: 'Office chair', partCode: 'CHAIR-42', quantity: 2, unitPrice: 950 }),
+            line({ description: 'Desk lamp', partCode: 'LAMP-12', quantity: 3, unitPrice: 85 }),
+          ],
+        }),
+      ),
+    );
+    const variance = await listInvoicePriceVariance({ db: context.db });
+    expect(variance.items).toHaveLength(2);
+    expect(variance.items.map((row) => `${row.documentId}:${row.lineId}`).sort()).toEqual(
+      order.lines.map((line) => `${document.id}:${line.id}`).sort(),
+    );
+  });
+  test('matches a Custom Line, keeps its dismissal through a quantity amendment, and lists its variance', async ({
+    context,
+  }) => {
+    const order = await sendCustomOrder(context, [
+      { description: 'Office chair ergonomic black', quantity: 2, unitPrice: 900, supplierCode: 'CHAIR-42' },
+    ]);
+    const custom = order.lines[0];
+    if (!custom) throw new Error('Missing Custom Line');
+    const document = await upload(
+      context,
+      order.id,
+      reads(
+        extraction({
+          lines: [line({ description: 'Office chair', partCode: 'CHAIR-42', quantity: 3, unitPrice: 950 })],
+        }),
+      ),
+    );
+    const review = await reviewOf(context, order.id);
+    expect(review.rows).toMatchObject([
+      {
+        lineId: custom.id,
+        partId: null,
+        matchMethod: 'supplier-code',
+        correction: null,
+        flags: [{ key: `price-mismatch:${custom.id}` }, { key: `quantity-mismatch:${custom.id}` }],
+      },
+    ]);
+    expect((await listInvoicePriceVariance({ db: context.db })).items).toMatchObject([
+      { description: custom.description, partId: null, invoiceUnitPrice: 950 },
+    ]);
+    await dismissInvoiceFlag({
+      actorUserId: ACTOR_ID,
+      db: context.db,
+      input: { purchaseOrderId: order.id, documentId: document.id, flagKey: `price-mismatch:${custom.id}` },
+    });
+    await amendPurchaseOrderCustomLineQuantity({
+      actorUserId: ACTOR_ID,
+      db: context.db,
+      input: { id: order.id, lineId: custom.id, note: 'Supplier agreed three', quantity: 3 },
+      pdfRenderer: renderStubPdf,
+      storage: context.storage,
+    });
+    expect((await reviewOf(context, order.id)).resolutions[`price-mismatch:${custom.id}`]).toMatchObject({
+      kind: 'dismissed',
+    });
+  });
   test('files the invoice into the order collection and cross-checks an agreeing line clean', async ({ context }) => {
     const purchaseOrder = await sendOrder(context, [{ partId: PIECE_PART_ID, quantity: 10, unitPrice: 25 }]);
     await receive(context, purchaseOrder.id, PIECE_PART_ID, 10);

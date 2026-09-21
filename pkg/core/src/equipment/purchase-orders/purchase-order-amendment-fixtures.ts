@@ -86,6 +86,49 @@ export async function sendOrder(
   });
 }
 
+export async function sendCustomOrder(
+  context: AmendmentTestContext,
+  customLines: Array<{
+    description: string;
+    quantity: number;
+    unitPrice: number;
+    unit?: string;
+    supplierCode?: string | null;
+  }>,
+  supplierId: string = SUPPLIER_ID,
+): Promise<PurchaseOrder> {
+  const order = await createPurchaseOrder({
+    actorUserId: ACTOR_ID,
+    db: context.db,
+    input: { expectedDeliveryDate: null, supplierId },
+  });
+  await savePurchaseOrderDraft({
+    actorUserId: ACTOR_ID,
+    db: context.db,
+    input: {
+      expectedDeliveryDate: null,
+      id: order.id,
+      jobIds: [],
+      supplierId,
+      lines: customLines.map((line, index) => ({
+        ...line,
+        id: `00000000-0000-4000-8000-${String(960 + index).padStart(12, '0')}`,
+        kind: 'custom' as const,
+        supplierCode: line.supplierCode ?? null,
+        unit: line.unit ?? 'each',
+      })),
+    },
+  });
+  await approvePurchaseOrder({ actorUserId: ACTOR_ID, db: context.db, id: order.id });
+  return markPurchaseOrderSent({
+    actorUserId: ACTOR_ID,
+    db: context.db,
+    id: order.id,
+    pdfRenderer: renderStubPdf,
+    storage: context.storage,
+  });
+}
+
 export async function receive(
   context: AmendmentTestContext,
   purchaseOrderId: string,

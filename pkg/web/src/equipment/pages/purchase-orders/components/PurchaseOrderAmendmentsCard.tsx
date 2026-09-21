@@ -80,7 +80,9 @@ function describeAmendment(amendment: PurchaseOrderAmendment): string {
     return `${before} → ${after}`;
   }
 
-  const part = `${amendment.partCode ?? '—'} · ${amendment.partName ?? '—'}`;
+  const part = amendment.partCode
+    ? `${amendment.partCode} · ${amendment.partName ?? '—'}`
+    : (amendment.customDescription ?? '—');
 
   if (amendment.kind === 'add-line') {
     return `${part} — ${formatNumber(amendment.newQuantity ?? 0)} added`;
@@ -89,6 +91,8 @@ function describeAmendment(amendment: PurchaseOrderAmendment): string {
   if (amendment.kind === 'substitute-part') {
     return `${part} → ${amendment.newPartCode ?? '—'} · ${amendment.newPartName ?? ''} (${formatNumber(amendment.newQuantity ?? 0)})`;
   }
+
+  if (amendment.kind === 'remove-line') return `${part} — ${formatNumber(amendment.oldQuantity ?? 0)} removed`;
 
   return `${part} — ${formatNumber(amendment.oldQuantity ?? 0)} → ${formatNumber(amendment.newQuantity ?? 0)}`;
 }

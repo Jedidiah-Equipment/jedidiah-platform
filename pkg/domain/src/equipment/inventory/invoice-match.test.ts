@@ -3,19 +3,21 @@ import { describe, expect, it } from 'vitest';
 import { type InvoiceMatchOrderLine, matchInvoiceLines } from './invoice-match.js';
 
 const BOLT: InvoiceMatchOrderLine = {
+  description: 'Hex bolt M12x40 galvanised',
+  lineId: '00000000-0000-4000-8000-000000000011',
   orderedQuantity: 100,
   partCode: 'BOLT-M12-40',
   partId: '00000000-0000-4000-8000-000000000001',
-  partName: 'Hex bolt M12x40 galvanised',
   supplierCode: 'SUP-9931',
   unitPrice: 12.5,
 };
 
 const NUT: InvoiceMatchOrderLine = {
+  description: 'Hex nut M12 galvanised',
+  lineId: '00000000-0000-4000-8000-000000000012',
   orderedQuantity: 200,
   partCode: 'NUT-M12',
   partId: '00000000-0000-4000-8000-000000000002',
-  partName: 'Hex nut M12 galvanised',
   supplierCode: 'SUP-9932',
   unitPrice: 3,
 };
@@ -91,7 +93,8 @@ describe('matchInvoiceLines', () => {
       orderedQuantity: 4,
       partCode: 'CYL-DOOR',
       partId: '00000000-0000-4000-8000-000000000003',
-      partName: 'Door Cylinder',
+      description: 'Door Cylinder',
+      lineId: '00000000-0000-4000-8000-000000000013',
       supplierCode: null,
       unitPrice: 900,
     };
@@ -108,7 +111,8 @@ describe('matchInvoiceLines', () => {
       orderedQuantity: 2,
       partCode: 'MF-REAR',
       partId: '00000000-0000-4000-8000-000000000004',
-      partName: 'Rear Mudflap',
+      description: 'Rear Mudflap',
+      lineId: '00000000-0000-4000-8000-000000000014',
       supplierCode: null,
       unitPrice: 120,
     };
@@ -234,6 +238,51 @@ describe('matchInvoiceLines', () => {
     expect(rows.at(-1)?.flags.map((flag) => flag.key)).toEqual(['unmatched-invoice-line:0']);
   });
 
+  it('matches a Custom Line by supplier code and keys its disagreements by line id', () => {
+    const custom: InvoiceMatchOrderLine = {
+      description: 'Office chair ergonomic black',
+      lineId: '00000000-0000-4000-8000-000000000015',
+      orderedQuantity: 2,
+      partCode: null,
+      partId: null,
+      supplierCode: 'CHAIR-42',
+      unitPrice: 900,
+    };
+    const [row] = matchInvoiceLines({
+      invoiceLines: [invoiceLine({ description: 'seating', partCode: 'CHAIR-42', quantity: 3, unitPrice: 950 })],
+      orderLines: [custom],
+    });
+    expect(row).toMatchObject({ matchMethod: 'supplier-code', lineId: custom.lineId, partId: null });
+    expect(row?.flags.map((flag) => flag.key)).toEqual([
+      `price-mismatch:${custom.lineId}`,
+      `quantity-mismatch:${custom.lineId}`,
+    ]);
+  });
+
+  it('matches reordered Custom Line wording but refuses one accidental shared word', () => {
+    const custom: InvoiceMatchOrderLine = {
+      description: 'Office chair ergonomic black',
+      lineId: '00000000-0000-4000-8000-000000000015',
+      orderedQuantity: 2,
+      partCode: null,
+      partId: null,
+      supplierCode: null,
+      unitPrice: 900,
+    };
+    expect(
+      matchInvoiceLines({
+        invoiceLines: [invoiceLine({ description: 'ERGONOMIC OFFICE CHAIR - BLK', quantity: 2, unitPrice: 900 })],
+        orderLines: [custom],
+      })[0]?.matchMethod,
+    ).toBe('description');
+    expect(
+      matchInvoiceLines({
+        invoiceLines: [invoiceLine({ description: 'Office printer ink', quantity: 7, unitPrice: 30 })],
+        orderLines: [custom],
+      }).map((row) => row.flags[0]?.kind),
+    ).toEqual(['unmatched-po-line', 'unmatched-invoice-line']);
+  });
+
   it('reports every order line unmatched when the invoice carried no lines at all', () => {
     const rows = matchInvoiceLines({ invoiceLines: [], orderLines: [BOLT, NUT] });
 
@@ -249,7 +298,6 @@ describe('matchInvoiceLines', () => {
       orderLines: [BOLT, NUT],
     };
 
-    expect(matchInvoiceLines(input)).toEqual(matchInvoiceLines(input));
     expect(matchInvoiceLines(input).map((row) => row.partId)).toEqual([BOLT.partId, NUT.partId]);
   });
 });

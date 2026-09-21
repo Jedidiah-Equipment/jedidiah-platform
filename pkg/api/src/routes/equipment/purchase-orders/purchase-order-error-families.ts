@@ -18,6 +18,8 @@ export const purchaseOrderErrorFamily = defineCoreErrorFamily<PurchaseOrderCoreE
     'purchase_order.already_closed_short': 'BAD_REQUEST',
     'purchase_order.already_sent': 'BAD_REQUEST',
     'purchase_order.amendment_below_received': 'BAD_REQUEST',
+    'purchase_order.amendment_line_has_arrivals': 'CONFLICT',
+    'purchase_order.amendment_last_line': 'BAD_REQUEST',
     'purchase_order.closed_short': 'BAD_REQUEST',
     'purchase_order.empty': 'BAD_REQUEST',
     'purchase_order.fully_received': 'BAD_REQUEST',

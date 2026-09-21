@@ -104,10 +104,11 @@ export async function loadInvoiceDocuments(
 }
 
 export type MatchOrderLine = {
+  description: string;
+  lineId: string;
   orderedQuantity: number;
-  partCode: string;
-  partId: string;
-  partName: string;
+  partCode: string | null;
+  partId: string | null;
   supplierCode: string | null;
   unitPrice: number | null;
 };
@@ -118,26 +119,29 @@ export async function loadOrderLinesByOrder(
 ): Promise<Map<string, MatchOrderLine[]>> {
   const rows = await db
     .select({
+      description: sql<string>`coalesce(${parts.name}, ${purchaseOrderLines.customDescription})`,
+      lineId: purchaseOrderLines.id,
       orderedQuantity: purchaseOrderLines.quantity,
       partCode: parts.code,
       partId: purchaseOrderLines.partId,
-      partName: parts.name,
       purchaseOrderId: purchaseOrderLines.purchaseOrderId,
-      supplierCode: parts.supplierCode,
+      supplierCode: sql<string | null>`coalesce(${parts.supplierCode}, ${purchaseOrderLines.customSupplierCode})`,
       unitPrice: purchaseOrderLines.unitPrice,
     })
     .from(purchaseOrderLines)
-    // Custom Lines join in #1512.
-    .innerJoin(parts, eq(parts.id, purchaseOrderLines.partId))
+    .leftJoin(parts, eq(parts.id, purchaseOrderLines.partId))
     .where(inArray(purchaseOrderLines.purchaseOrderId, [...purchaseOrderIds]))
-    .orderBy(asc(purchaseOrderLines.purchaseOrderId), asc(parts.code));
+    .orderBy(
+      asc(purchaseOrderLines.purchaseOrderId),
+      sql`${parts.code} asc nulls last`,
+      asc(purchaseOrderLines.position),
+    );
   const byOrder = new Map<string, MatchOrderLine[]>();
 
   for (const { purchaseOrderId, ...line } of rows) {
-    if (line.partId === null) continue;
     const lines = byOrder.get(purchaseOrderId);
-    if (lines) lines.push({ ...line, partId: line.partId });
-    else byOrder.set(purchaseOrderId, [{ ...line, partId: line.partId }]);
+    if (lines) lines.push(line);
+    else byOrder.set(purchaseOrderId, [line]);
   }
 
   return byOrder;

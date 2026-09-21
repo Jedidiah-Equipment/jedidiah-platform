@@ -9,8 +9,10 @@ import {
   type PurchaseOrderAmendmentKind,
   PurchaseOrderAmendmentNote,
   type PurchaseOrderCreateInput,
+  PurchaseOrderCustomLineDescription,
   PurchaseOrderCustomLineInput,
   PurchaseOrderCustomLineSupplierCode,
+  PurchaseOrderCustomLineUnit,
   type PurchaseOrderLineView,
   PurchaseOrderPartLineInput,
   PurchaseOrderQuantity,
@@ -166,12 +168,21 @@ export function isLinearLine(line: Pick<PurchaseOrderLineView, 'unitOfMeasure'>)
  * What the buyer keys when the phone call ends. The note is mandatory on every kind, so the form
  * carries the schema's own rule rather than a second one — the call *is* the record (spec §4).
  */
+export type PurchaseOrderAmendDialogKind =
+  | Exclude<PurchaseOrderAmendmentKind, 'remove-line'>
+  | 'custom-quantity'
+  | 'add-custom-line'
+  | 'remove-custom-line';
+
 export type PurchaseOrderAmendmentFormValues = z.infer<typeof PurchaseOrderAmendmentFormValues>;
 export const PurchaseOrderAmendmentFormValues = z.object({
+  description: z.union([z.literal(''), PurchaseOrderCustomLineDescription]),
   expectedDeliveryDate: z.union([z.literal(''), DateOnlyIsoString]),
   newPartId: z.union([z.literal(''), UUID]),
   note: PurchaseOrderAmendmentNote,
   quantity: PurchaseOrderQuantity,
+  supplierCode: emptyStringOr(PurchaseOrderCustomLineSupplierCode),
+  unit: z.union([z.literal(''), PurchaseOrderCustomLineUnit]),
   unitPrice: PurchaseOrderUnitPrice,
 });
 
@@ -179,9 +190,22 @@ export const PurchaseOrderAmendmentFormValues = z.object({
  * The one form serves all four kinds, so each amendment only insists on the field it changes.
  */
 export function purchaseOrderAmendmentValidator(
-  kind: PurchaseOrderAmendmentKind,
+  kind: PurchaseOrderAmendDialogKind,
 ): z.ZodType<PurchaseOrderAmendmentFormValues, PurchaseOrderAmendmentFormValues> {
-  if (kind === 'quantity-change') return PurchaseOrderAmendmentFormValues;
+  if (kind === 'quantity-change' || kind === 'custom-quantity' || kind === 'remove-custom-line')
+    return PurchaseOrderAmendmentFormValues;
+
+  if (kind === 'add-custom-line')
+    return PurchaseOrderAmendmentFormValues.refine(
+      (values) => PurchaseOrderCustomLineDescription.safeParse(values.description).success,
+      {
+        message: 'Describe what is being ordered',
+        path: ['description'],
+      },
+    ).refine((values) => PurchaseOrderCustomLineUnit.safeParse(values.unit).success, {
+      message: 'Enter a unit, such as each or box',
+      path: ['unit'],
+    });
 
   if (kind === 'expected-date-change') {
     return PurchaseOrderAmendmentFormValues.refine((values) => values.expectedDeliveryDate !== '', {

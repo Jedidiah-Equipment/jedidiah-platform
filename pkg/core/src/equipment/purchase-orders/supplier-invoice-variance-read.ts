@@ -42,7 +42,7 @@ export async function listInvoicePriceVariance({ db }: { db: Db }): Promise<Invo
       orderLines,
       resolutions: documentResolutions,
     }).flatMap(({ answer, priceFlag, row }) => {
-      if (!priceFlag || row.partId === null || row.invoiceUnitPrice === null || row.unitPrice === null) return [];
+      if (!priceFlag || row.lineId === null || row.invoiceUnitPrice === null || row.unitPrice === null) return [];
 
       // Strictly what the invoice printed. Falling back to the order's quantity would state a rand
       // exposure the Supplier never billed, and the list is ranked on exactly that number.
@@ -51,12 +51,14 @@ export async function listInvoicePriceVariance({ db }: { db: Db }): Promise<Invo
       return [
         {
           documentId: invoice.documentId,
+          description: orderLines.find((line) => line.lineId === row.lineId)?.description ?? row.description,
           filename: invoice.filename,
           invoiceNumber: invoice.extraction?.invoiceNumber ?? null,
           invoiceUnitPrice: row.invoiceUnitPrice,
-          partCode: row.partCode ?? '',
+          lineId: row.lineId,
+          partCode: row.partCode,
           partId: row.partId,
-          partName: row.partName ?? '',
+          partName: row.partName,
           purchaseOrderCode: order.code,
           purchaseOrderId: order.id,
           quantity,
@@ -76,7 +78,7 @@ export async function listInvoicePriceVariance({ db }: { db: Db }): Promise<Invo
       (a, b) =>
         Math.abs(b.varianceValue ?? 0) - Math.abs(a.varianceValue ?? 0) ||
         a.documentId.localeCompare(b.documentId) ||
-        a.partCode.localeCompare(b.partCode),
+        (a.partCode ?? a.description).localeCompare(b.partCode ?? b.description),
     ),
   });
 }

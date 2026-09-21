@@ -22,8 +22,12 @@ export const purchaseOrderAmendments = equipmentSchema.table(
       .notNull()
       .references(() => user.id, { onDelete: 'restrict' }),
     createdAt: timestamp('created_at', { mode: 'date', withTimezone: true }).defaultNow().notNull(),
+    /** The log owns its copy of a Custom Line's description even after the line is removed. */
+    customDescription: text('custom_description'),
     id: uuid('id').defaultRandom().primaryKey(),
     kind: text('kind').notNull().$type<PurchaseOrderAmendmentKind>(),
+    /** Deliberately no FK: a removed line must remain named in the insert-only log. */
+    lineId: uuid('line_id'),
     /** What took the line's place; only a substitution has one. */
     newPartId: uuid('new_part_id').references(() => parts.id, { onDelete: 'restrict' }),
     newExpectedDate: date('new_expected_date', { mode: 'string' }),
@@ -37,23 +41,29 @@ export const purchaseOrderAmendments = equipmentSchema.table(
       .notNull()
       .references(() => purchaseOrders.id, { onDelete: 'cascade' }),
   },
-  (table) => [
-    check(
-      'purchase_order_amendment_kind_check',
-      sql`${table.kind} IN ('quantity-change', 'add-line', 'substitute-part', 'expected-date-change')`,
-    ),
-    check('purchase_order_amendment_note_nonempty', sql`length(trim(${table.note})) > 0`),
-    check('purchase_order_amendment_new_quantity_positive', sql`${table.newQuantity} > 0`),
-    check(
-      'purchase_order_amendment_old_quantity_positive',
-      sql`${table.oldQuantity} IS NULL OR ${table.oldQuantity} > 0`,
-    ),
-    // One branch per kind, the same way the ledger pins each movement type's shape.
-    check(
-      'purchase_order_amendment_shape',
-      sql`(
+  (table) => {
+    const namesCustomLine = sql`(${table.partId} IS NULL AND ${table.lineId} IS NOT NULL AND length(trim(coalesce(${table.customDescription}, ''))) > 0)`;
+    const namesOneLine = sql`(
+      (${table.partId} IS NOT NULL AND ${table.lineId} IS NULL AND ${table.customDescription} IS NULL)
+      OR ${namesCustomLine}
+    )`;
+    return [
+      check(
+        'purchase_order_amendment_kind_check',
+        sql`${table.kind} IN ('quantity-change', 'add-line', 'substitute-part', 'expected-date-change', 'remove-line')`,
+      ),
+      check('purchase_order_amendment_note_nonempty', sql`length(trim(${table.note})) > 0`),
+      check('purchase_order_amendment_new_quantity_positive', sql`${table.newQuantity} > 0`),
+      check(
+        'purchase_order_amendment_old_quantity_positive',
+        sql`${table.oldQuantity} IS NULL OR ${table.oldQuantity} > 0`,
+      ),
+      // One branch per kind, the same way the ledger pins each movement type's shape.
+      check(
+        'purchase_order_amendment_shape',
+        sql`(
         ${table.kind} = 'quantity-change'
-        AND ${table.partId} IS NOT NULL
+        AND ${namesOneLine}
         AND ${table.newPartId} IS NULL
         AND ${table.newQuantity} IS NOT NULL
         AND ${table.oldQuantity} IS NOT NULL
@@ -61,7 +71,7 @@ export const purchaseOrderAmendments = equipmentSchema.table(
         AND ${table.newExpectedDate} IS NULL
       ) OR (
         ${table.kind} = 'add-line'
-        AND ${table.partId} IS NOT NULL
+        AND ${namesOneLine}
         AND ${table.newPartId} IS NULL
         AND ${table.newQuantity} IS NOT NULL
         AND ${table.oldQuantity} IS NULL
@@ -70,6 +80,7 @@ export const purchaseOrderAmendments = equipmentSchema.table(
       ) OR (
         ${table.kind} = 'substitute-part'
         AND ${table.partId} IS NOT NULL
+        AND ${table.lineId} IS NULL AND ${table.customDescription} IS NULL
         AND ${table.newPartId} IS NOT NULL
         AND ${table.newPartId} <> ${table.partId}
         AND ${table.newQuantity} IS NOT NULL
@@ -79,14 +90,24 @@ export const purchaseOrderAmendments = equipmentSchema.table(
       ) OR (
         ${table.kind} = 'expected-date-change'
         AND ${table.partId} IS NULL
+        AND ${table.lineId} IS NULL AND ${table.customDescription} IS NULL
         AND ${table.newPartId} IS NULL
         AND ${table.newQuantity} IS NULL
         AND ${table.oldQuantity} IS NULL
         AND ${table.newExpectedDate} IS NOT NULL
+      ) OR (
+        ${table.kind} = 'remove-line'
+        AND ${namesCustomLine}
+        AND ${table.newPartId} IS NULL
+        AND ${table.newQuantity} IS NULL
+        AND ${table.oldQuantity} IS NOT NULL
+        AND ${table.oldExpectedDate} IS NULL
+        AND ${table.newExpectedDate} IS NULL
       )`,
-    ),
-    index('purchase_order_amendment_purchase_order_idx').on(table.purchaseOrderId, table.createdAt, table.id),
-  ],
+      ),
+      index('purchase_order_amendment_purchase_order_idx').on(table.purchaseOrderId, table.createdAt, table.id),
+    ];
+  },
 );
 
 export const purchaseOrderAmendmentRelations = relations(purchaseOrderAmendments, ({ one }) => ({

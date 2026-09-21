@@ -141,6 +141,7 @@ export const SupplierInvoiceMatchRow = z.object({
   /** Absent on an order line nothing on the invoice matched. */
   invoiceQuantity: z.number().finite().nullable(),
   invoiceUnitPrice: InventoryCost,
+  lineId: UUID.nullable(),
   matchMethod: InvoiceMatchMethod,
   /** Absent on an invoice line nothing on the order matched. */
   orderedQuantity: z.number().finite().nullable(),
@@ -206,13 +207,15 @@ export const SupplierInvoiceDismissFlagInput = z
  */
 export type InvoicePriceVarianceRow = z.infer<typeof InvoicePriceVarianceRow>;
 export const InvoicePriceVarianceRow = z.object({
+  description: z.string(),
   documentId: UUID,
   filename: z.string(),
   invoiceNumber: z.string().nullable(),
   invoiceUnitPrice: InventoryCost,
-  partCode: z.string(),
-  partId: UUID,
-  partName: z.string(),
+  lineId: UUID,
+  partCode: z.string().nullable(),
+  partId: UUID.nullable(),
+  partName: z.string().nullable(),
   purchaseOrderCode: PurchaseOrderCode,
   purchaseOrderId: UUID,
   /** What the invoice printed, or null when it printed a price against no quantity at all. */

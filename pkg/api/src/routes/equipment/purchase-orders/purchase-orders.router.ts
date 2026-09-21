@@ -1,7 +1,10 @@
 import {
+  amendPurchaseOrderAddCustomLine,
   amendPurchaseOrderAddLine,
+  amendPurchaseOrderCustomLineQuantity,
   amendPurchaseOrderExpectedDate,
   amendPurchaseOrderQuantity,
+  amendPurchaseOrderRemoveCustomLine,
   amendPurchaseOrderSubstitutePart,
   applyInvoicePrice,
   approvePurchaseOrder,
@@ -41,10 +44,13 @@ import {
   PostReturnToSupplierInput,
   type PurchaseOrder,
   PurchaseOrderActionInput,
+  PurchaseOrderAmendAddCustomLineInput,
   PurchaseOrderAmendAddLineInput,
+  PurchaseOrderAmendCustomLineQuantityInput,
   PurchaseOrderAmendExpectedDateInput,
   PurchaseOrderAmendmentListResult,
   PurchaseOrderAmendQuantityInput,
+  PurchaseOrderAmendRemoveCustomLineInput,
   PurchaseOrderAmendSubstitutePartInput,
   PurchaseOrderArrivalListResult,
   PurchaseOrderCollectionInput,
@@ -117,6 +123,60 @@ export const purchaseOrdersRouter = router({
 
       return toPurchaseOrderView(purchaseOrder, ctx.access);
     }),
+
+  amendCustomLineQuantity: authorizedProcedure('equipment_purchase_order:amend')
+    .input(PurchaseOrderAmendCustomLineQuantityInput)
+    .output(PurchaseOrderView)
+    .mutation(async ({ ctx, input }) =>
+      toPurchaseOrderView(
+        await mapPurchaseOrderErrors(() =>
+          amendPurchaseOrderCustomLineQuantity({
+            actorUserId: ctx.session.user.id,
+            db: ctx.db,
+            input,
+            pdfRenderer: renderPurchaseOrderPdf,
+            storage: ctx.storage,
+          }),
+        ),
+        ctx.access,
+      ),
+    ),
+
+  amendAddCustomLine: authorizedProcedure('equipment_purchase_order:amend')
+    .input(PurchaseOrderAmendAddCustomLineInput)
+    .output(PurchaseOrderView)
+    .mutation(async ({ ctx, input }) =>
+      toPurchaseOrderView(
+        await mapPurchaseOrderErrors(() =>
+          amendPurchaseOrderAddCustomLine({
+            actorUserId: ctx.session.user.id,
+            db: ctx.db,
+            input,
+            pdfRenderer: renderPurchaseOrderPdf,
+            storage: ctx.storage,
+          }),
+        ),
+        ctx.access,
+      ),
+    ),
+
+  amendRemoveCustomLine: authorizedProcedure('equipment_purchase_order:amend')
+    .input(PurchaseOrderAmendRemoveCustomLineInput)
+    .output(PurchaseOrderView)
+    .mutation(async ({ ctx, input }) =>
+      toPurchaseOrderView(
+        await mapPurchaseOrderErrors(() =>
+          amendPurchaseOrderRemoveCustomLine({
+            actorUserId: ctx.session.user.id,
+            db: ctx.db,
+            input,
+            pdfRenderer: renderPurchaseOrderPdf,
+            storage: ctx.storage,
+          }),
+        ),
+        ctx.access,
+      ),
+    ),
 
   amendAddLine: authorizedProcedure('equipment_purchase_order:amend')
     .input(PurchaseOrderAmendAddLineInput)

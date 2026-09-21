@@ -127,6 +127,11 @@ function SupplierInvoicePanel({
             {row.original.partCode ? <span className="font-medium">{row.original.partCode}</span> : null}
             {row.original.partCode ? ' · ' : null}
             {row.original.description}
+            {row.original.lineId && row.original.partId === null ? (
+              <Badge className="ml-2 text-muted-foreground" variant="outline">
+                Custom
+              </Badge>
+            ) : null}
           </>
         ),
         header: 'Line',
@@ -182,7 +187,7 @@ function SupplierInvoicePanel({
     data: invoice.rows,
     enableColumnFilters: false,
     enableSorting: false,
-    getRowId: (row, index) => row.partId ?? `invoice-line-${index}`,
+    getRowId: (row, index) => row.lineId ?? `invoice-line-${index}`,
   });
 
   return (
@@ -245,6 +250,11 @@ function RowActions({
 
   return (
     <div className="flex flex-wrap items-center justify-end gap-2">
+      {priceFlag && row.lineId && !partId ? (
+        <span className="text-xs text-muted-foreground">
+          Custom lines are not stock, so there is nothing to revalue.
+        </span>
+      ) : null}
       {priceFlag && canApplyPrices && partId ? (
         correction?.canApply ? (
           <Button disabled={isPending} onClick={() => onApply(partId)} size="sm" type="button">

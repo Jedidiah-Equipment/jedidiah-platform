@@ -29,7 +29,6 @@ import {
 } from './routes/equipment/product-ranges/product-range-image-routes.js';
 import { createProductImageRouteConfig } from './routes/equipment/products/product-image-routes.js';
 import { registerUserBadgeHttpRoutes } from './routes/equipment/users/user-badge-http.route.js';
-import { registerMobileTelemetryRoute } from './routes/mobile/mobile-telemetry.route.js';
 import { createDocumentStorageAdapter } from './storage/s3-storage-adapter.js';
 import { createContextFactory } from './trpc/context.js';
 import { serializeError, shouldLogTRPCError } from './trpc/errors.js';
@@ -105,7 +104,6 @@ export async function buildServer(
   await registerDocumentHttpRoutes(app, storage);
   await registerPartLabelHttpRoutes(app);
   await registerUserBadgeHttpRoutes(app);
-  await registerMobileTelemetryRoute(app, observability);
   await registerEntityFileRoutes(app, [
     createProductImageRouteConfig(storage, { cacheDir: config.API_IMAGE_CACHE_DIR }),
     createProductRangeImageRouteConfig(storage),

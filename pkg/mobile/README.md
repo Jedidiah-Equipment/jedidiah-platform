@@ -84,9 +84,9 @@ query strings, or any form value.
    lifecycle breadcrumbs and resolves to repository source. Confirm Reload recovers the boundary.
 4. Sign out and sign in as a second internal user. Confirm the first event after the switch uses only the
    second internal user ID and carries no profile properties.
-5. Force one queued reading failure with and without a photo. Compare the SDK event with the existing
-   `/api/mobile/telemetry` bridge: `stage`, `code`, `queueAgeSeconds`, `hasPhoto`, `role`, version, update, and
-   platform values must agree.
+5. Force one queued reading failure with and without a photo. Confirm the `reading sync failed` event carries
+   `stage`, `code`, `queueAgeSeconds`, `hasPhoto`, and `role` alongside the shared properties, and no machine,
+   photo-path, or comment data.
 6. Publish with `ota:staging`. The script uploads `dist` Hermes maps after EAS Update; force another exception
    and confirm its OTA stack resolves to repository source.
 

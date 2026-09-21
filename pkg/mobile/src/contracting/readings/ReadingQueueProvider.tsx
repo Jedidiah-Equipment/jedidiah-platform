@@ -11,7 +11,6 @@ import { useTRPC } from '@/lib/trpc';
 import { removeReadingPhoto } from './reading-files';
 import { createReadingQueue, type QueuedReading, type ReadingQueue } from './reading-queue';
 import { ReadingSyncPassError, syncReadingQueue } from './reading-sync';
-import { readingSyncTelemetryPayload, reportReadingSyncFailure } from './reading-telemetry';
 
 // Outlives the provider, which remounts when the signed-in operator changes, so a sync still in flight
 // and its serialized storage writes are never started twice for the same operator.
@@ -78,11 +77,7 @@ export function ReadingQueueProvider({ children }: { children: ReactNode }) {
         queryClient,
         trpc,
         isActive,
-        onFailure: (failure) => {
-          const payload = readingSyncTelemetryPayload(failure);
-          recordReadingSyncFailure(failure, payload?.properties ?? null);
-          void reportReadingSyncFailure(payload);
-        },
+        onFailure: recordReadingSyncFailure,
         onUploaded: recordReadingSynced,
       });
       addBreadcrumb('contracting', 'sync pass finished');

@@ -26,15 +26,20 @@ export function recordReadingSynced(item: QueuedReading): void {
   captureEvent('reading synced', properties);
 }
 
-export function recordReadingSyncFailure(
-  failure: ReadingSyncFailure,
-  properties: ObservabilityProperties | null,
-): void {
-  if (!properties) return;
+export function recordReadingSyncFailure(failure: ReadingSyncFailure, now = Date.now()): void {
+  const properties = {
+    ...readingProperties(failure.item, now),
+    code: failure.error instanceof ReadingSyncError ? failure.error.code : errorName(failure.error),
+    stage: failure.stage,
+  };
   addBreadcrumb('contracting', 'item failed', properties);
   if (failure.error instanceof ReadingSyncError) {
     addBreadcrumb('contracting', 'item marked attention', properties);
   }
   captureEvent('reading sync failed', properties);
   captureSanitizedException(failure.error, 'Reading sync failed', { ...properties, source: 'reading_queue' });
+}
+
+function errorName(error: unknown): string | null {
+  return error instanceof Error ? error.name.slice(0, 80) : null;
 }

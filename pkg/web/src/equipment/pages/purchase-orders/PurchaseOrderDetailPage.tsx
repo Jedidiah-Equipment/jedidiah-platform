@@ -2,7 +2,7 @@ import { formatCurrency, formatDate, hasPermission } from '@pkg/domain';
 import { formatPurchaseOrderLineLabel } from '@pkg/domain/equipment';
 import type { UUID } from '@pkg/schema';
 import type { PurchaseOrderView } from '@pkg/schema/equipment';
-import { findPurchaseOrderPartLine, purchaseOrderHasUnpricedLines } from '@pkg/schema/equipment';
+import { purchaseOrderHasUnpricedLines } from '@pkg/schema/equipment';
 import { IconPlus } from '@tabler/icons-react';
 import { useQuery } from '@tanstack/react-query';
 import type React from 'react';
@@ -26,12 +26,12 @@ import {
   EquipmentAuditTable,
   usePurchaseOrderAuditTableStore,
 } from '@/equipment/components/audit/EquipmentAuditTable.js';
-import { usePartOptions } from '@/equipment/hooks/options/index.js';
 import { formatPurchaseUnitLabel } from '@/equipment/utils/part-quantity-format.js';
 import { useAccess, useCan } from '@/hooks/use-access.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { PurchaseOrderAmendDialog } from './components/PurchaseOrderAmendDialog.js';
 import { PurchaseOrderAmendmentsCard } from './components/PurchaseOrderAmendmentsCard.js';
+import { PurchaseOrderArrivalsCard } from './components/PurchaseOrderArrivalsCard.js';
 import { PurchaseOrderDocumentsCard } from './components/PurchaseOrderDocumentsCard.js';
 import { PurchaseOrderInvoiceCrossCheckCard } from './components/PurchaseOrderInvoiceCrossCheckCard.js';
 import { PurchaseOrderReceivingCard } from './components/PurchaseOrderReceivingCard.js';
@@ -100,16 +100,11 @@ const PurchaseOrderDetail: React.FC<{ purchaseOrder: PurchaseOrderView; queryErr
             {draft ?? (
               <>
                 <ReadOnlyDetailsCard canAmend={canAmend} purchaseOrder={purchaseOrder} />
-                {canReceive ||
-                (purchaseOrder.status === 'sent' && purchaseOrder.lines.some((line) => line.kind === 'custom')) ? (
-                  <PurchaseOrderReceivingCard
-                    canReadCosts={canReadCosts}
-                    canReceive={canReceive}
-                    canReverse={canReverseArrival}
-                    purchaseOrder={purchaseOrder}
-                  />
+                {canReceive ? (
+                  <PurchaseOrderReceivingCard canReadCosts={canReadCosts} purchaseOrder={purchaseOrder} />
                 ) : null}
                 <ReadOnlyLinesCard canAmend={canAmend} canReadCosts={canReadCosts} purchaseOrder={purchaseOrder} />
+                <PurchaseOrderArrivalsCard canReverse={canReverseArrival} purchaseOrder={purchaseOrder} />
                 <PurchaseOrderReturnsCard
                   canFileCreditNote={canFileCreditNote}
                   canReadCosts={canReadCosts}
@@ -215,18 +210,11 @@ const ReadOnlyDetailsCard: React.FC<{ canAmend: boolean; purchaseOrder: Purchase
  * A sent order's lines. They are read-only in the editing sense, but not frozen: an amendment is
  * how a sent order changes, and every one of them is logged and re-rendered as a PDF revision.
  */
-export const ReadOnlyLinesCard: React.FC<{
+const ReadOnlyLinesCard: React.FC<{
   canAmend: boolean;
   canReadCosts: boolean;
   purchaseOrder: PurchaseOrderView;
 }> = ({ canAmend, canReadCosts, purchaseOrder }) => {
-  const parts = usePartOptions({ enabled: canAmend, limit: 0 });
-  const canAddPart =
-    !parts.isPending &&
-    parts.items.some(
-      (part) =>
-        part.supplierId === purchaseOrder.supplierId && !findPurchaseOrderPartLine(purchaseOrder.lines, part.id),
-    );
   const [amendment, setAmendment] = useState<{ kind: PurchaseOrderAmendDialogKind; lineId: string | null } | null>(
     null,
   );
@@ -246,10 +234,8 @@ export const ReadOnlyLinesCard: React.FC<{
                 <IconPlus data-icon="inline-start" /> Add line
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem
-                  disabled={!canAddPart}
-                  onClick={() => setAmendment({ kind: 'add-line', lineId: null })}
-                >
+                {/* The dialog owns which Parts are eligible, and says so when none are. */}
+                <DropdownMenuItem onClick={() => setAmendment({ kind: 'add-line', lineId: null })}>
                   Add Part
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => setAmendment({ kind: 'add-custom-line', lineId: null })}>

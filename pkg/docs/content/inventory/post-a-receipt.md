@@ -36,7 +36,7 @@ A Custom Line's Arrival changes the order's received progress without changing s
 1. Open the sent Purchase Order and click **Receive** on the Custom Line.
 2. Enter the quantity that arrived. It starts at the outstanding quantity.
 3. Click **Receive** to record the Arrival.
-4. If an Arrival needs correcting, click **Reverse arrival**, enter the quantity to reverse, explain why in the required note, and submit. The line reopens by that amount.
+4. If an Arrival needs correcting, find the **Arrivals** card, which lists every Arrival on the order, and click **Reverse** with the line's name. Enter the quantity to reverse, explain why in the required note, and click **Reverse arrival**. The line reopens by that amount.
 
 ## Notes
 

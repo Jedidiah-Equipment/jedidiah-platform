@@ -14,7 +14,7 @@ import type {
  */
 export type PurchaseOrderActionFacts = {
   closedShortAt: Date | string | null;
-  /** Any ledger row at all against the order, receipts and returns alike — its history exists. */
+  /** Any ledger row or Arrival against the order — its history exists. */
   hasAnyMovement: boolean;
   /** An order with no lines describes nothing, so it cannot go out. */
   isEmpty: boolean;

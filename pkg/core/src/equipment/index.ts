@@ -56,6 +56,7 @@ export * from './products/product-cost-estimate-service.js';
 export * from './products/product-errors.js';
 export * from './products/product-image-service.js';
 export * from './products/product-service.js';
+export * from './purchase-orders/arrival-service.js';
 export * from './purchase-orders/credit-note-errors.js';
 export * from './purchase-orders/credit-note-service.js';
 export * from './purchase-orders/part-order-lines-read.js';

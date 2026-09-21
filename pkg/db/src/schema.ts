@@ -22,6 +22,7 @@ import * as productRangeSchema from './schema/equipment/product-range.js';
 import * as productUnitSchema from './schema/equipment/product-unit.js';
 import * as purchaseOrderSchema from './schema/equipment/purchase-order.js';
 import * as purchaseOrderAmendmentSchema from './schema/equipment/purchase-order-amendment.js';
+import * as purchaseOrderLineArrivalSchema from './schema/equipment/purchase-order-line-arrival.js';
 import * as quoteSchema from './schema/equipment/quote.js';
 import * as stockMovementSchema from './schema/equipment/stock-movement.js';
 import * as stocktakeSchema from './schema/equipment/stocktake.js';
@@ -62,6 +63,7 @@ export const schema = {
   ...productSchema,
   ...productUnitSchema,
   ...purchaseOrderAmendmentSchema,
+  ...purchaseOrderLineArrivalSchema,
   ...purchaseOrderSchema,
   ...quoteSchema,
   ...stockMovementSchema,

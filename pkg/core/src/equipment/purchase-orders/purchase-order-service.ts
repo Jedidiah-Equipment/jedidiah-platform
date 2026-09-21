@@ -15,6 +15,7 @@ import {
   jobs,
   parts,
   purchaseOrderJobLinks,
+  purchaseOrderLineArrivals,
   purchaseOrderLines,
   purchaseOrders,
   stockMovements,
@@ -174,18 +175,23 @@ export async function getPurchaseOrder({ db, id }: { db: PurchaseOrderDb; id: UU
   const aggregate = await loadPurchaseOrderAggregate({ db, id });
   if (!aggregate) throw new PurchaseOrderNotFoundError(id);
 
-  const [documentIds, receivedQuantities, linesWithMovements, receiptBuckets] = await Promise.all([
-    loadLatestDocumentIds({ db, purchaseOrderIds: [id] }),
-    loadReceivedQuantities({ db, purchaseOrderIds: [id] }),
-    loadLinesWithStockMovements({ db, purchaseOrderIds: [id] }),
-    loadReceiptBuckets({ db, purchaseOrderIds: [id] }),
-  ]);
+  const [documentIds, receivedQuantities, arrivedQuantities, linesWithMovements, linesWithArrivals, receiptBuckets] =
+    await Promise.all([
+      loadLatestDocumentIds({ db, purchaseOrderIds: [id] }),
+      loadReceivedQuantities({ db, purchaseOrderIds: [id] }),
+      loadArrivedQuantities({ db, purchaseOrderIds: [id] }),
+      loadLinesWithStockMovements({ db, purchaseOrderIds: [id] }),
+      loadLinesWithArrivals({ db, purchaseOrderIds: [id] }),
+      loadReceiptBuckets({ db, purchaseOrderIds: [id] }),
+    ]);
 
   return mapPurchaseOrder(
     aggregate,
     documentIds.get(id) ?? null,
     receivedQuantities,
+    arrivedQuantities,
     linesWithMovements,
+    linesWithArrivals,
     receiptBuckets,
   );
 }
@@ -302,6 +308,41 @@ export function receivedQuantityKey(purchaseOrderId: string, partId: string): st
   return `${purchaseOrderId}:${partId}`;
 }
 
+/** Net arrivals by Custom Line id. Reversals never take this below zero. */
+export async function loadArrivedQuantities({
+  db,
+  purchaseOrderIds,
+}: {
+  db: PurchaseOrderDb;
+  purchaseOrderIds: readonly UUID[];
+}): Promise<Map<string, number>> {
+  if (purchaseOrderIds.length === 0) return new Map();
+  const rows = await db
+    .select({
+      arrivedQuantity: sql<number>`coalesce(sum(${purchaseOrderLineArrivals.quantity}), 0)::double precision`,
+      lineId: purchaseOrderLineArrivals.lineId,
+    })
+    .from(purchaseOrderLineArrivals)
+    .where(inArray(purchaseOrderLineArrivals.purchaseOrderId, [...purchaseOrderIds]))
+    .groupBy(purchaseOrderLineArrivals.lineId);
+  return new Map(rows.map((row) => [row.lineId, Math.max(0, row.arrivedQuantity)]));
+}
+
+async function loadLinesWithArrivals({
+  db,
+  purchaseOrderIds,
+}: {
+  db: PurchaseOrderDb;
+  purchaseOrderIds: readonly UUID[];
+}): Promise<Set<string>> {
+  if (purchaseOrderIds.length === 0) return new Set();
+  const rows = await db
+    .selectDistinct({ lineId: purchaseOrderLineArrivals.lineId })
+    .from(purchaseOrderLineArrivals)
+    .where(inArray(purchaseOrderLineArrivals.purchaseOrderId, [...purchaseOrderIds]));
+  return new Set(rows.map((row) => row.lineId));
+}
+
 /**
  * One order's receiving progress, read inside a caller's transaction. The close-short gate and the
  * projected `derivedStatus` share this so an order cannot be closed short of a remainder it hasn't
@@ -314,12 +355,13 @@ export async function loadPurchaseOrderProgress({
   db: PurchaseOrderDb;
   id: UUID;
 }): Promise<PurchaseOrderProgress> {
-  const [lines, receivedQuantities] = await Promise.all([
+  const [lines, receivedQuantities, arrivedQuantities] = await Promise.all([
     db
       .select({ id: purchaseOrderLines.id, partId: purchaseOrderLines.partId, quantity: purchaseOrderLines.quantity })
       .from(purchaseOrderLines)
       .where(eq(purchaseOrderLines.purchaseOrderId, id)),
     loadReceivedQuantities({ db, purchaseOrderIds: [id] }),
+    loadArrivedQuantities({ db, purchaseOrderIds: [id] }),
   ]);
 
   return derivePurchaseOrderProgress({
@@ -327,7 +369,9 @@ export async function loadPurchaseOrderProgress({
     receivedByLineId: new Map(
       lines.map((line) => [
         line.id,
-        line.partId ? (receivedQuantities.get(receivedQuantityKey(id, line.partId)) ?? 0) : 0,
+        line.partId === null
+          ? (arrivedQuantities.get(line.id) ?? 0)
+          : (receivedQuantities.get(receivedQuantityKey(id, line.partId)) ?? 0),
       ]),
     ),
   });
@@ -341,7 +385,7 @@ export async function loadPurchaseOrderProgress({
  * untouched to close-short, while its rows were real enough to block cancelling.
  */
 export type PurchaseOrderLedgerFacts = {
-  /** Any row at all against the order, receipts and returns alike — the order's history exists. */
+  /** Any ledger row or Arrival against the order — the order's history exists. */
   hasAnyMovement: boolean;
   /** The netted projection: what the lines have kept, and so what remainder is still owed. */
   progress: PurchaseOrderProgress;
@@ -354,12 +398,17 @@ export async function loadPurchaseOrderLedgerFacts({
   db: PurchaseOrderDb;
   id: UUID;
 }): Promise<PurchaseOrderLedgerFacts> {
-  const [movement, progress] = await Promise.all([
+  const [movement, arrival, progress] = await Promise.all([
     db.select({ id: stockMovements.id }).from(stockMovements).where(eq(stockMovements.purchaseOrderId, id)).limit(1),
+    db
+      .select({ id: purchaseOrderLineArrivals.id })
+      .from(purchaseOrderLineArrivals)
+      .where(eq(purchaseOrderLineArrivals.purchaseOrderId, id))
+      .limit(1),
     loadPurchaseOrderProgress({ db, id }),
   ]);
 
-  return { hasAnyMovement: movement.length > 0, progress };
+  return { hasAnyMovement: movement.length > 0 || arrival.length > 0, progress };
 }
 
 /**
@@ -588,16 +637,34 @@ export async function listPurchaseOrders({
     where,
     with: purchaseOrderWith,
   });
-  const [[totalRow], documentIds, receivedQuantities, linesWithMovements, receiptBuckets] = await Promise.all([
+  const [
+    [totalRow],
+    documentIds,
+    receivedQuantities,
+    arrivedQuantities,
+    linesWithMovements,
+    linesWithArrivals,
+    receiptBuckets,
+  ] = await Promise.all([
     db.select({ value: count() }).from(purchaseOrders).where(where),
     loadLatestDocumentIds({ db, purchaseOrderIds: rows.map((row) => row.id) }),
     loadReceivedQuantities({ db, purchaseOrderIds: rows.map((row) => row.id) }),
+    loadArrivedQuantities({ db, purchaseOrderIds: rows.map((row) => row.id) }),
     loadLinesWithStockMovements({ db, purchaseOrderIds: rows.map((row) => row.id) }),
+    loadLinesWithArrivals({ db, purchaseOrderIds: rows.map((row) => row.id) }),
     loadReceiptBuckets({ db, purchaseOrderIds: rows.map((row) => row.id) }),
   ]);
   const total = totalRow?.value ?? 0;
   const items = rows.map((row) =>
-    mapPurchaseOrder(row, documentIds.get(row.id) ?? null, receivedQuantities, linesWithMovements, receiptBuckets),
+    mapPurchaseOrder(
+      row,
+      documentIds.get(row.id) ?? null,
+      receivedQuantities,
+      arrivedQuantities,
+      linesWithMovements,
+      linesWithArrivals,
+      receiptBuckets,
+    ),
   );
 
   return { items, nextCursor: getNextCursor({ count: items.length, cursor: input.cursor, total }), total };
@@ -944,13 +1011,17 @@ function mapPurchaseOrder(
   row: PurchaseOrderAggregate,
   documentId: UUID | null,
   receivedQuantities: ReadonlyMap<string, number>,
+  arrivedQuantities: ReadonlyMap<string, number>,
   linesWithMovements: ReadonlySet<string>,
+  linesWithArrivals: ReadonlySet<string>,
   receiptBuckets: ReadonlyMap<string, PurchaseOrderReceiptBucket[]>,
 ): PurchaseOrder {
   const receivedByLineId = new Map(
     row.lines.map((line) => [
       line.id,
-      line.partId ? (receivedQuantities.get(receivedQuantityKey(row.id, line.partId)) ?? 0) : 0,
+      line.partId === null
+        ? (arrivedQuantities.get(line.id) ?? 0)
+        : (receivedQuantities.get(receivedQuantityKey(row.id, line.partId)) ?? 0),
     ]),
   );
   return PurchaseOrderSchema.parse({
@@ -958,8 +1029,10 @@ function mapPurchaseOrder(
     // renders its controls from carries the same verdict the write gate will apply.
     actions: derivePurchaseOrderActions({
       closedShortAt: row.closedShortAt,
-      hasAnyMovement: row.lines.some(
-        (line) => line.partId !== null && linesWithMovements.has(receivedQuantityKey(row.id, line.partId)),
+      hasAnyMovement: row.lines.some((line) =>
+        line.partId === null
+          ? linesWithArrivals.has(line.id)
+          : linesWithMovements.has(receivedQuantityKey(row.id, line.partId)),
       ),
       isEmpty: row.lines.length === 0,
       progress: derivePurchaseOrderProgress({ lines: row.lines, receivedByLineId }),
@@ -984,7 +1057,10 @@ function mapPurchaseOrder(
     lines: row.lines
       .map((line) => ({
         description: line.part?.name ?? line.customDescription,
-        hasStockMovements: line.partId !== null && linesWithMovements.has(receivedQuantityKey(row.id, line.partId)),
+        hasStockMovements:
+          line.partId === null
+            ? linesWithArrivals.has(line.id)
+            : linesWithMovements.has(receivedQuantityKey(row.id, line.partId)),
         id: line.id,
         kind: line.partId === null ? ('custom' as const) : ('part' as const),
         partCode: line.part?.code ?? null,

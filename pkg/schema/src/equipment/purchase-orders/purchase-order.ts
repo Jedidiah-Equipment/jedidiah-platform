@@ -15,7 +15,7 @@ export { formatPurchaseOrderCode, PurchaseOrderCode } from '../common/public-cod
 export type PurchaseOrderStatus = z.infer<typeof PurchaseOrderStatus>;
 export const PurchaseOrderStatus = z.enum(['draft', 'approved', 'sent', 'cancelled']);
 
-/** How far a sent order's receipts have got. Computed from the ledger, never stored or toggled. */
+/** How far a sent order's Receipts and Arrivals have got. Computed, never stored or toggled. */
 export type PurchaseOrderProgress = z.infer<typeof PurchaseOrderProgress>;
 export const PurchaseOrderProgress = z.enum(['sent', 'partially-received', 'received']);
 
@@ -107,9 +107,9 @@ export const PurchaseOrderLine = z.object({
   partName: z.string().trim().min(1).nullable(),
   quantity: PurchaseOrderQuantity,
   /**
-   * Whether anything at all has moved against this line, receipts and returns alike. Distinct from
-   * `receivedQuantity`, which is what the line has *kept*: a fully returned line is owed its stock
-   * again but still carries the ledger rows a Part substitution would orphan.
+   * Whether a Part Line has ledger rows or a Custom Line has Arrivals. Distinct from
+   * `receivedQuantity`, which is what the line has kept: a fully reversed line is owed again
+   * but its history still prevents the line from being removed.
    */
   hasStockMovements: z.boolean().default(false),
   /** Per length bucket, what a return can still send back. Empty where nothing has arrived. */

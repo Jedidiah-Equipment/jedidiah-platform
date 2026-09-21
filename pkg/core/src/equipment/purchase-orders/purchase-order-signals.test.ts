@@ -6,7 +6,8 @@ import { createTester } from '../../test/create-tester.js';
 import { postReceipt } from '../inventory/receipt-service.js';
 import { seedSentPurchaseOrder } from '../test/inventory-fixtures.js';
 import { partValues } from '../test/part-fixtures.js';
-import { listLatePurchaseOrders } from './purchase-order-signals.js';
+import { postArrival } from './arrival-service.js';
+import { listLatePurchaseOrders, loadOpenCustomLineCounts } from './purchase-order-signals.js';
 
 const ACTOR_ID = 'po-signals-test-user';
 const SUPPLIER_ID = '00000000-0000-4000-8000-000000000501';
@@ -90,22 +91,25 @@ describe('listLatePurchaseOrders', () => {
     const mixedId = await seedSentPurchaseOrder(context.db, SUPPLIER_ID, [{ partId: PART_ID, quantity: 4 }], {
       expectedDeliveryDate: '2026-07-30',
     });
-    await context.db.insert(purchaseOrderLines).values([
-      {
-        customDescription: 'Packing tape',
-        customUnit: 'box',
-        purchaseOrderId: customOnlyId,
-        quantity: 2,
-        unitPrice: 80,
-      },
-      {
-        customDescription: 'Workshop service',
-        customUnit: 'each',
-        purchaseOrderId: mixedId,
-        quantity: 1,
-        unitPrice: 500,
-      },
-    ]);
+    const insertedLines = await context.db
+      .insert(purchaseOrderLines)
+      .values([
+        {
+          customDescription: 'Packing tape',
+          customUnit: 'box',
+          purchaseOrderId: customOnlyId,
+          quantity: 2,
+          unitPrice: 80,
+        },
+        {
+          customDescription: 'Workshop service',
+          customUnit: 'each',
+          purchaseOrderId: mixedId,
+          quantity: 1,
+          unitPrice: 500,
+        },
+      ])
+      .returning({ id: purchaseOrderLines.id });
     await postReceipt({
       actorUserId: ACTOR_ID,
       db: context.db,
@@ -118,6 +122,22 @@ describe('listLatePurchaseOrders', () => {
         { id: mixedId, openLineCount: 1 },
       ],
     });
+    const customOnlyLineId = insertedLines[0]?.id;
+    if (!customOnlyLineId) throw new Error('Custom line missing');
+    await expect(loadOpenCustomLineCounts({ db: context.db, purchaseOrderIds: [customOnlyId] })).resolves.toEqual(
+      new Map([[customOnlyId, 1]]),
+    );
+    await postArrival({
+      actorUserId: ACTOR_ID,
+      db: context.db,
+      input: { lineId: customOnlyLineId, note: null, purchaseOrderId: customOnlyId, quantity: 2 },
+    });
+    await expect(listLatePurchaseOrders({ clock, db: context.db })).resolves.toMatchObject({
+      items: [{ id: mixedId, openLineCount: 1 }],
+    });
+    await expect(loadOpenCustomLineCounts({ db: context.db, purchaseOrderIds: [customOnlyId] })).resolves.toEqual(
+      new Map(),
+    );
   });
 
   test('drops an order once every line has arrived', async ({ context }) => {

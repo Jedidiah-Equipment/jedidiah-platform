@@ -29,6 +29,15 @@ in the yellow panel while you type, and the button becomes **Receive it anyway**
 usually right; suppliers round up to a full box. See
 [Warnings are judgments, not blocks](./warnings-are-judgments.md).
 
+## Receiving a Custom Line
+
+A Custom Line's Arrival changes the order's received progress without changing stock. Receive it on web:
+
+1. Open the sent Purchase Order and click **Receive** on the Custom Line.
+2. Enter the quantity that arrived. It starts at the outstanding quantity.
+3. Click **Receive** to record the Arrival.
+4. If an Arrival needs correcting, click **Reverse arrival**, enter the quantity to reverse, explain why in the required note, and submit. The line reopens by that amount.
+
 ## Notes
 
 - On the stores tablet, receiving starts from the stock rather than the order: scan the Part label,

@@ -11,6 +11,7 @@ export * from '../schema/equipment/product-range.js';
 export * from '../schema/equipment/product-unit.js';
 export * from '../schema/equipment/purchase-order.js';
 export * from '../schema/equipment/purchase-order-amendment.js';
+export * from '../schema/equipment/purchase-order-line-arrival.js';
 export * from '../schema/equipment/quote.js';
 export * from '../schema/equipment/stock-movement.js';
 export * from '../schema/equipment/stocktake.js';

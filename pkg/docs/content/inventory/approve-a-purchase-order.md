@@ -34,8 +34,8 @@ when — see [Inspect a Purchase Order's Audit history](./inspect-a-purchase-ord
 
 - **Approve** is refused on an order with no lines. Add the lines first.
 - A line still showing **Not priced** can be approved, but **Mark sent** refuses it and names the
-  line. Revert to draft,
-  set the price, and approve again.
+  line. A Part receipt at zero price would record the wrong cost. Revert to draft, set the price,
+  and approve again.
 - An approved order that is not going ahead is cancelled like any other order with nothing received
   against it. The sign-off it discards stays in the Audit history.
 - Amendments to an order after it is sent do not need a fresh approval. They are recorded and

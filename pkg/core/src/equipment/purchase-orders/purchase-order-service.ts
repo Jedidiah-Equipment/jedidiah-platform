@@ -7,6 +7,7 @@ import {
   type Db,
   getPaginationQueryOptions,
   getSortOrder,
+  getUniqueViolationConstraint,
   user,
 } from '@pkg/db';
 import {
@@ -676,7 +677,9 @@ export async function savePurchaseOrderDraftWithin({
         })),
       ]);
     } catch (error) {
-      if (isPurchaseOrderLinePrimaryKeyViolation(error)) throw new PurchaseOrderLineIdConflictError();
+      if (getUniqueViolationConstraint(error)?.includes('purchase_order_line_pkey')) {
+        throw new PurchaseOrderLineIdConflictError();
+      }
       throw error;
     }
   }
@@ -693,16 +696,6 @@ export async function savePurchaseOrderDraftWithin({
   }
 
   return after;
-}
-
-function isPurchaseOrderLinePrimaryKeyViolation(error: unknown): boolean {
-  if (!error || typeof error !== 'object') return false;
-  const value = error as { cause?: unknown; code?: unknown; constraint?: unknown; constraint_name?: unknown };
-  return (
-    (value.code === '23505' &&
-      (value.constraint === 'purchase_order_line_pkey' || value.constraint_name === 'purchase_order_line_pkey')) ||
-    isPurchaseOrderLinePrimaryKeyViolation(value.cause)
-  );
 }
 
 export async function renderPurchaseOrderPreview({

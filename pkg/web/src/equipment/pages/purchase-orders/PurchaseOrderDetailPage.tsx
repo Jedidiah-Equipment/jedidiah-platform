@@ -200,13 +200,15 @@ const ReadOnlyDetailsCard: React.FC<{ canAmend: boolean; purchaseOrder: Purchase
  * A sent order's lines. They are read-only in the editing sense, but not frozen: an amendment is
  * how a sent order changes, and every one of them is logged and re-rendered as a PDF revision.
  */
-const ReadOnlyLinesCard: React.FC<{
+export const ReadOnlyLinesCard: React.FC<{
   canAmend: boolean;
   canReadCosts: boolean;
   purchaseOrder: PurchaseOrderView;
 }> = ({ canAmend, canReadCosts, purchaseOrder }) => {
   const [amendment, setAmendment] = useState<{ kind: PurchaseOrderAmendmentKind; partId: string | null } | null>(null);
-  const amendingLine = purchaseOrder.lines.find((line) => line.partId === amendment?.partId) ?? null;
+  const amendingLine = amendment?.partId
+    ? (purchaseOrder.lines.find((line) => line.kind === 'part' && line.partId === amendment.partId) ?? null)
+    : null;
 
   return (
     <Card>

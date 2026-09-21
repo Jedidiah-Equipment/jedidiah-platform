@@ -91,12 +91,17 @@ export function resolveReleaseEnvironment(profile, env = process.env, readFile =
     throw error;
   }
 
-  const releaseEnv = { ...env };
-  for (const name of ['POSTHOG_CLI_API_KEY', 'POSTHOG_CLI_PROJECT_ID', 'POSTHOG_CLI_HOST']) {
-    const value = fileEnv[`${prefix}_${name}`];
-    if (value) releaseEnv[name] = value;
+  const names = ['POSTHOG_CLI_API_KEY', 'POSTHOG_CLI_PROJECT_ID', 'POSTHOG_CLI_HOST'];
+  const selected = Object.fromEntries(names.map((name) => [name, fileEnv[`${prefix}_${name}`]]));
+  if (names.every((name) => !selected[name])) return env;
+
+  const missing = names.filter((name) => !selected[name]);
+  if (missing.length > 0) {
+    throw new Error(
+      `Incomplete ${profile} PostHog credentials in .env.dev: set ${missing.join(', ')} or leave all three empty to use the release shell.`,
+    );
   }
-  return releaseEnv;
+  return { ...env, ...selected };
 }
 
 function main() {

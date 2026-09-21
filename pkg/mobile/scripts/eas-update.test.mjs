@@ -171,4 +171,14 @@ describe('resolveReleaseEnvironment', () => {
     expect(env.POSTHOG_CLI_API_KEY).toBe('shell-key');
     expect(env.POSTHOG_CLI_PROJECT_ID).toBe('123');
   });
+
+  it('rejects a partial profile instead of mixing file and shell credentials', () => {
+    expect(() =>
+      resolveReleaseEnvironment(
+        'staging',
+        { POSTHOG_CLI_PROJECT_ID: 'shell-project', POSTHOG_CLI_HOST: 'https://eu.posthog.com' },
+        () => 'STAGING_POSTHOG_CLI_API_KEY=staging-key\n',
+      ),
+    ).toThrow('Incomplete staging PostHog credentials in .env.dev');
+  });
 });

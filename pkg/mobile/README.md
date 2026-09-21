@@ -117,10 +117,10 @@ ignores, shipping local `EXPO_PUBLIC_*` defaults) and uses the last commit subje
 given. Set `STAGING_POSTHOG_CLI_API_KEY`, `STAGING_POSTHOG_CLI_PROJECT_ID`, and
 `STAGING_POSTHOG_CLI_HOST` in the gitignored `pkg/mobile/.env.dev` for staging, with the matching
 `PRODUCTION_` names for production. Keep the unprefixed PostHog credentials in EAS for native builds.
-The script maps the selected profile's nonempty values to the names PostHog CLI expects; empty values
-leave release-shell values available. It refuses to publish without the required key and project ID,
-exports both native bundles, uploads their Hermes maps in symbol-set mode, and only then publishes that
-already-built `dist` directory:
+The script maps the selected profile's complete set to the names PostHog CLI expects. Leave all three
+values empty to use the release shell; a partial set stops the release. It refuses to publish without the
+required key and project ID, exports both native bundles, uploads their Hermes maps in symbol-set mode,
+and only then publishes that already-built `dist` directory:
 
 ```sh
 pnpm --filter @pkg/mobile ota:staging

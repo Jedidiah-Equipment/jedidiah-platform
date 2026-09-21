@@ -112,10 +112,11 @@ export const snapshotTableDefinitions = [
     tableName: 'user',
     timestampColumns: ['lastActivitySeen', ...authTimestampColumns],
     omitReadColumns: ['assistantEnabled'],
-    optionalReadColumns: ['contractingRole'],
+    optionalReadColumns: ['quoteSalesperson', 'contractingRole'],
     seedRowDefaults: (row) => ({
       assistantEnabled: row.role === 'admin' || row.role === 'super-admin',
       contractingRole: null,
+      quoteSalesperson: row.role === 'admin' || row.role === 'super-admin' || row.role === 'sales',
     }),
   },
   {

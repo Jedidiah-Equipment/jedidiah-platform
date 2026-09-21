@@ -43,6 +43,10 @@ export async function seedDemoUsers(database?: Db): Promise<void> {
         contractingRole: demoUser.contractingRole ?? null,
         isDevice: demoUser.isDevice ?? false,
         assistantEnabled: demoUser.equipmentRole === 'admin' || demoUser.equipmentRole === 'super-admin',
+        quoteSalesperson:
+          demoUser.equipmentRole === 'admin' ||
+          demoUser.equipmentRole === 'super-admin' ||
+          demoUser.equipmentRole === 'sales',
         banned: false,
         banReason: null,
         banExpires: null,

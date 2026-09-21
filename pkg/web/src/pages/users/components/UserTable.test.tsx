@@ -128,6 +128,7 @@ function makeUser(
     name,
     email: `${name.toLowerCase()}@example.com`,
     phoneNumber: null,
+    quoteSalesperson: false,
     equipmentRole,
     contractingRole,
     thumbnailDataUrl: null,

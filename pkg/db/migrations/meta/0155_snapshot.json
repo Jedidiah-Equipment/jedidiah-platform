@@ -1,6 +1,6 @@
 {
-  "id": "521ae8b1-1989-4829-b9c8-670fa01a2d49",
-  "prevId": "e532c689-c9aa-4a57-8ef6-92f7560e1044",
+  "id": "056890d2-74b8-4794-9de3-cd6eab101e70",
+  "prevId": "521ae8b1-1989-4829-b9c8-670fa01a2d49",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -7003,6 +7003,24 @@
       "name": "purchase_order_line",
       "schema": "equipment",
       "columns": {
+        "custom_description": {
+          "name": "custom_description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "custom_supplier_code": {
+          "name": "custom_supplier_code",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "custom_unit": {
+          "name": "custom_unit",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
         "id": {
           "name": "id",
           "type": "uuid",
@@ -7014,7 +7032,14 @@
           "name": "part_id",
           "type": "uuid",
           "primaryKey": false,
-          "notNull": true
+          "notNull": false
+        },
+        "position": {
+          "name": "position",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
         },
         "purchase_order_id": {
           "name": "purchase_order_id",
@@ -7086,6 +7111,10 @@
         "purchase_order_line_unit_price_nonnegative": {
           "name": "purchase_order_line_unit_price_nonnegative",
           "value": "\"equipment\".\"purchase_order_line\".\"unit_price\" >= 0"
+        },
+        "purchase_order_line_kind_shape": {
+          "name": "purchase_order_line_kind_shape",
+          "value": "(\"equipment\".\"purchase_order_line\".\"part_id\" IS NOT NULL AND \"equipment\".\"purchase_order_line\".\"custom_description\" IS NULL AND \"equipment\".\"purchase_order_line\".\"custom_unit\" IS NULL AND \"equipment\".\"purchase_order_line\".\"custom_supplier_code\" IS NULL) OR (\"equipment\".\"purchase_order_line\".\"part_id\" IS NULL AND \"equipment\".\"purchase_order_line\".\"custom_description\" IS NOT NULL AND length(trim(\"equipment\".\"purchase_order_line\".\"custom_description\")) > 0 AND \"equipment\".\"purchase_order_line\".\"custom_unit\" IS NOT NULL AND length(trim(\"equipment\".\"purchase_order_line\".\"custom_unit\")) > 0 AND (\"equipment\".\"purchase_order_line\".\"custom_supplier_code\" IS NULL OR length(trim(\"equipment\".\"purchase_order_line\".\"custom_supplier_code\")) > 0))"
         }
       },
       "isRLSEnabled": false

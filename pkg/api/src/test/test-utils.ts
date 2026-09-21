@@ -25,6 +25,7 @@ export function mockSession(role: EquipmentRole | null = 'admin'): NonNullable<C
       image: null,
       role,
       assistantEnabled: true,
+      quoteSalesperson: true,
       createdAt: new Date(),
       updatedAt: new Date(),
     },

@@ -1,12 +1,15 @@
-import type { AppRole, EquipmentRole } from '@pkg/schema';
+import type { AuthId } from '@pkg/schema';
 
 /**
- * Who a Quote may name as its Salesperson — the roles that own the sale, which is narrower than the
- * roles that may raise the paperwork. Procurement holds `equipment_quote:create` but is not a salesperson, so
- * a Quote it creates is still attributed to one of these.
+ * Who a new Quote names as its Salesperson before anyone chooses: the acting User when the roster
+ * holds them, otherwise nobody. Prefilling an id the picker never offers fails on submit.
  */
-export const QUOTE_SALESPERSON_ROLES = ['super-admin', 'admin', 'sales'] as const satisfies readonly AppRole[];
-
-export function isQuoteSalespersonRole(role: EquipmentRole | null | undefined): boolean {
-  return QUOTE_SALESPERSON_ROLES.some((salespersonRole) => salespersonRole === role);
+export function defaultQuoteSalespersonId({
+  actingUserId,
+  salespeople,
+}: {
+  actingUserId: AuthId | null | undefined;
+  salespeople: readonly { id: AuthId }[];
+}): AuthId | '' {
+  return actingUserId && salespeople.some((person) => person.id === actingUserId) ? actingUserId : '';
 }

@@ -522,6 +522,7 @@ describe('quotes.create', () => {
       emailVerified: true,
       id: 'super-admin-user-id',
       name: 'Super Admin User',
+      quoteSalesperson: true,
       role: 'super-admin',
       updatedAt: now,
     });
@@ -2460,6 +2461,7 @@ async function createSalesUser(
     emailVerified: true,
     id,
     name,
+    quoteSalesperson: true,
     role: 'sales',
     updatedAt: now,
   });

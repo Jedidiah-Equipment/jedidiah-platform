@@ -1,6 +1,8 @@
 import type { InvoiceMatchFlag, InvoiceMatchMethod } from '@pkg/schema/equipment';
 import { invoiceFlagKey } from '@pkg/schema/equipment';
 
+import { purchaseOrderLineSubjectKey } from './purchase-order-line.js';
+
 /**
  * Ties what a Supplier billed to what the order agreed (spec §5).
  *
@@ -96,7 +98,7 @@ export function matchInvoiceLines({
     if (!pairing || !invoiceLine) {
       return {
         description: line.description,
-        flags: [flag('unmatched-po-line', line.partId ?? line.lineId)],
+        flags: [flag('unmatched-po-line', subjectOf(line))],
         invoiceQuantity: null,
         invoiceUnitPrice: null,
         lineId: line.lineId,
@@ -111,11 +113,10 @@ export function matchInvoiceLines({
 
     const flags: InvoiceMatchFlag[] = [];
     if (differs(invoiceLine.unitPrice, line.unitPrice, PRICE_TOLERANCE)) {
-      // Part flags retain their historical part-id keys, so stored resolutions still apply.
-      flags.push(flag('price-mismatch', line.partId ?? line.lineId));
+      flags.push(flag('price-mismatch', subjectOf(line)));
     }
     if (differs(invoiceLine.quantity, line.orderedQuantity, QUANTITY_TOLERANCE)) {
-      flags.push(flag('quantity-mismatch', line.partId ?? line.lineId));
+      flags.push(flag('quantity-mismatch', subjectOf(line)));
     }
 
     return {
@@ -244,6 +245,11 @@ function differs(invoiced: number | null, agreed: number | null, tolerance: numb
   if (invoiced === null || agreed === null) return false;
 
   return Math.abs(invoiced - agreed) > tolerance;
+}
+
+/** Part flags keep their historical Part-id keys, so resolutions stored before line ids still apply. */
+function subjectOf(line: InvoiceMatchOrderLine): string {
+  return purchaseOrderLineSubjectKey({ id: line.lineId, partId: line.partId });
 }
 
 function flag(kind: InvoiceMatchFlag['kind'], subject: string): InvoiceMatchFlag {

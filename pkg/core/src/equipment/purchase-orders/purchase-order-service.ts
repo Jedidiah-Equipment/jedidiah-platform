@@ -22,12 +22,14 @@ import {
 } from '@pkg/db/equipment';
 import {
   compareNullableDateOnly,
+  comparePurchaseOrderLines,
   derivePartStockActions,
   derivePurchaseOrderActions,
   derivePurchaseOrderProgress,
   derivePurchaseOrderStatus,
   formatPurchaseOrderLineLabel,
   type PurchaseOrderActionFacts,
+  purchaseOrderLineSubjectKey,
 } from '@pkg/domain/equipment';
 import { type AuthId, DateIso, getNextCursor, type UUID } from '@pkg/schema';
 import {
@@ -116,8 +118,7 @@ export const purchaseOrderAggregateAuditDescriptor = defineAuditDescriptor<Purch
       value: { code: job.code, id: job.id },
     })),
     line: purchaseOrder.lines.map((line) => ({
-      // Part ids survive whole-draft rewrites; Custom Line ids are echoed by the client.
-      key: line.kind === 'part' ? line.partId : line.id,
+      key: purchaseOrderLineSubjectKey(line),
       label: formatPurchaseOrderLineLabel(line),
       value:
         line.kind === 'part'
@@ -853,7 +854,7 @@ function mapPurchaseOrder({
       .map((link) => ({ code: link.job.code, id: link.job.id }))
       .sort((left, right) => left.code - right.code),
     lines: [...row.lines]
-      .sort(comparePurchaseOrderLineRows)
+      .sort((left, right) => comparePurchaseOrderLines(lineOrderKey(left), lineOrderKey(right)))
       .map((line) => mapPurchaseOrderLine({ intake, line, receiptBuckets })),
     sentAt: row.sentAt,
     status: row.status,
@@ -872,12 +873,8 @@ function mapPurchaseOrder({
 
 type PurchaseOrderLineRow = PurchaseOrderAggregate['lines'][number];
 
-/** Part Lines by Part code, then Custom Lines in the order they were keyed. */
-function comparePurchaseOrderLineRows(left: PurchaseOrderLineRow, right: PurchaseOrderLineRow): number {
-  if (left.part && right.part) return left.part.code.localeCompare(right.part.code);
-  if (!left.part && !right.part) return left.position - right.position;
-
-  return left.part ? -1 : 1;
+function lineOrderKey(line: PurchaseOrderLineRow) {
+  return { partCode: line.part?.code ?? null, position: line.position };
 }
 
 /** The one place a stored row becomes a kind; the schema holds each kind to its own shape. */

@@ -268,7 +268,7 @@ describe('sending a Purchase Order raised from a selection', () => {
         expectedDeliveryDate: null,
         id: draft.id,
         jobIds: [],
-        lines: [{ partId: ALPHA_PART_ID, quantity: 2, unitPrice: 125 }],
+        lines: [{ kind: 'part', partId: ALPHA_PART_ID, quantity: 2, unitPrice: 125 }],
         supplierId: SUPPLIER_A_ID,
       },
     });

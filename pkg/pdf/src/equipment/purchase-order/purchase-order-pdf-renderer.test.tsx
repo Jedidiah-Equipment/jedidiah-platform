@@ -24,6 +24,60 @@ describe('Purchase Order PDF', () => {
     expect(text.join(' ')).not.toMatch(/Unit price|Subtotal|Total|R 900\.00|R 1 800\.00|South African rand/);
   });
 
+  test('prints mixed Part and Custom Lines without prices', () => {
+    const part = model().lines[0];
+    if (!part) throw new Error('Missing fixture Part Line');
+    const text = collectText(
+      PurchaseOrderPdf({
+        document: model({
+          lines: [
+            part,
+            { ...part, id: '00000000-0000-4000-8000-000000000004', partCode: 'P-200', description: 'Hinge pin' },
+            {
+              description: 'Packing tape',
+              id: '00000000-0000-4000-8000-000000000005',
+              kind: 'custom',
+              partCode: null,
+              partId: null,
+              partName: null,
+              quantity: 2.5,
+              standardPurchaseLengthMm: null,
+              supplierCode: 'TAPE-5',
+              unit: 'box',
+              unitOfMeasure: null,
+              unitPrice: 80,
+            },
+            {
+              description: 'Workshop service',
+              id: '00000000-0000-4000-8000-000000000006',
+              kind: 'custom',
+              partCode: null,
+              partId: null,
+              partName: null,
+              quantity: 1,
+              standardPurchaseLengthMm: null,
+              unit: 'each',
+              unitOfMeasure: null,
+              unitPrice: 500,
+            },
+          ],
+        }),
+      }),
+    );
+    expect(text).toEqual(
+      expect.arrayContaining([
+        'P-200 - Hinge pin',
+        'Packing tape',
+        'Supplier code: ',
+        'TAPE-5',
+        '2.5 box',
+        'Workshop service',
+        '1 each',
+      ]),
+    );
+    expect(text.join(' ')).not.toMatch(/Unit price|Subtotal|Total|R 80\.00|R 500\.00/);
+  });
+
   test('prints Jedidiah business details beside the order number', () => {
     const text = collectText(PurchaseOrderPdf({ document: model() }));
 
@@ -74,13 +128,16 @@ function model(overrides: Partial<PurchaseOrderPdfModel> = {}): PurchaseOrderPdf
     },
     lines: [
       {
+        description: 'Hydraulic pipe',
         id: '00000000-0000-4000-8000-000000000003',
+        kind: 'part',
         partCode: 'P-100',
         partId: '00000000-0000-4000-8000-000000000001',
         partName: 'Hydraulic pipe',
         quantity: 2,
         standardPurchaseLengthMm: 6_000,
         supplierCode: 'AC-100',
+        unit: null,
         unitOfMeasure: 'mm',
         unitPrice: 900,
       },

@@ -9,8 +9,10 @@ import {
   type PurchaseOrderAmendmentKind,
   PurchaseOrderAmendmentNote,
   type PurchaseOrderCreateInput,
-  PurchaseOrderLineInput,
+  PurchaseOrderCustomLineInput,
+  PurchaseOrderCustomLineSupplierCode,
   type PurchaseOrderLineView,
+  PurchaseOrderPartLineInput,
   PurchaseOrderQuantity,
   type PurchaseOrderSaveDraftInput,
   PurchaseOrderUnitPrice,
@@ -23,9 +25,27 @@ import {
 import { z } from 'zod';
 
 import { roundNumberFieldValue } from '@/components/form/fields/NumberField.js';
-import { optionalNumber, requiredSelection } from '@/components/form/utils/form-schema.js';
+import { emptyStringOr, optionalNumber, requiredSelection } from '@/components/form/utils/form-schema.js';
 
 export type PurchaseOrderCreateFormValues = z.infer<typeof PurchaseOrderCreateFormValues>;
+export type PartPurchaseOrderLineView = PurchaseOrderLineView & {
+  kind: 'part';
+  partCode: string;
+  partId: string;
+  partName: string;
+  unitOfMeasure: Part['unitOfMeasure'];
+};
+
+export function isPartPurchaseOrderLine(line: PurchaseOrderLineView): line is PartPurchaseOrderLineView {
+  return (
+    line.kind === 'part' &&
+    line.partId !== null &&
+    line.partCode !== null &&
+    line.partName !== null &&
+    line.unitOfMeasure !== null
+  );
+}
+
 export const PurchaseOrderCreateFormValues = z.object({
   expectedDeliveryDate: z.union([z.literal(''), DateOnlyIsoString]),
   supplierId: UUID,
@@ -36,10 +56,15 @@ export type PurchaseOrderDraftFormValues = z.infer<typeof PurchaseOrderDraftForm
 export const PurchaseOrderDraftFormValues = PurchaseOrderCreateFormValues.extend({
   jobIds: z.array(UUID),
   // An added line starts with no Part, so it holds the draft unsaved with "Select a part" until one is picked.
-  lines: z.array(PurchaseOrderLineInput.extend({ partId: requiredSelection(UUID, 'Select a part') })),
+  lines: z.array(
+    z.discriminatedUnion('kind', [
+      PurchaseOrderPartLineInput.extend({ partId: requiredSelection(UUID, 'Select a part') }),
+      PurchaseOrderCustomLineInput.extend({ supplierCode: emptyStringOr(PurchaseOrderCustomLineSupplierCode) }),
+    ]),
+  ),
   // Mirrors PurchaseOrderSaveDraftInput so a duplicate Part fails validation here rather than
   // autosaving into a server rejection the reader cannot trace back to a row.
-}).refine((values) => hasUniquePartIds(values.lines.filter((line) => line.partId !== '')), {
+}).refine((values) => hasUniquePartIds(values.lines), {
   message: PURCHASE_ORDER_DUPLICATE_PART_MESSAGE,
   path: ['lines'],
 });
@@ -79,11 +104,24 @@ export function toPurchaseOrderDraftFormValues(purchaseOrder: PurchaseOrderView)
     expectedDeliveryDate: purchaseOrder.expectedDeliveryDate ?? '',
     jobIds: purchaseOrder.jobs.map((job) => job.id),
     // A price-blind reader never reaches the editable form, so a stored line always has its price.
-    lines: purchaseOrder.lines.map((line) => ({
-      partId: line.partId,
-      quantity: line.quantity,
-      unitPrice: line.unitPrice ?? 0,
-    })),
+    lines: purchaseOrder.lines.map((line) =>
+      line.kind === 'custom'
+        ? {
+            description: line.description,
+            id: line.id,
+            kind: 'custom' as const,
+            quantity: line.quantity,
+            supplierCode: line.supplierCode ?? '',
+            unit: line.unit ?? '',
+            unitPrice: line.unitPrice ?? 0,
+          }
+        : {
+            kind: 'part' as const,
+            partId: line.partId ?? '',
+            quantity: line.quantity,
+            unitPrice: line.unitPrice ?? 0,
+          },
+    ),
     supplierId: purchaseOrder.supplierId,
   };
 }
@@ -96,7 +134,9 @@ export function toPurchaseOrderDraftInput(
     expectedDeliveryDate: toExpectedDeliveryDate(values.expectedDeliveryDate),
     id,
     jobIds: values.jobIds,
-    lines: values.lines,
+    lines: values.lines.map((line) =>
+      line.kind === 'custom' ? { ...line, supplierCode: line.supplierCode || null } : line,
+    ),
     supplierId: values.supplierId,
   };
 }

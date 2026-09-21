@@ -8,6 +8,7 @@ it, and only then can it be marked sent. Approving locks the order the same way 
 1. Open **Purchase Orders** and select the Draft you are signing off.
 2. Check the Supplier, the expected delivery date, the lines, and the price on each line. **Preview
    PDF** shows the buyer's view of what is about to go out.
+   For a once-off item that is not stock, [add a Custom Line](./add-a-custom-line-to-a-purchase-order.md).
 3. Click **Approve**. The order can no longer be edited.
 4. Make sure no line shows **Not priced** — **Mark sent** refuses such an order. Then click
    **Preview PDF**, download the order from the panel that opens, and send it to the Supplier.
@@ -33,8 +34,8 @@ when — see [Inspect a Purchase Order's Audit history](./inspect-a-purchase-ord
 
 - **Approve** is refused on an order with no lines. Add the lines first.
 - A line still showing **Not priced** can be approved, but **Mark sent** refuses it and names the
-  Part — a receipt against a zero price would record that zero as the Part's cost. Revert to draft,
-  set the price, and approve again.
+  line. A Part receipt at zero price would record the wrong cost. Revert to draft, set the price,
+  and approve again.
 - An approved order that is not going ahead is cancelled like any other order with nothing received
   against it. The sign-off it discards stays in the Audit history.
 - Amendments to an order after it is sent do not need a fresh approval. They are recorded and

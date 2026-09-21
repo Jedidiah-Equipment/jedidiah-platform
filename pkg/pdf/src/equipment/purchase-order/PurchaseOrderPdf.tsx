@@ -1,5 +1,5 @@
 import { formatDate } from '@pkg/domain';
-import { JEDIDIAH_BUSINESS_DETAILS } from '@pkg/domain/equipment';
+import { formatPurchaseOrderLineLabel, JEDIDIAH_BUSINESS_DETAILS } from '@pkg/domain/equipment';
 import { PART_UNIT_OF_MEASURE_LABELS, type PurchaseOrderPdfModel } from '@pkg/schema/equipment';
 import { Document, Image, Page, StyleSheet, Text, View } from '@react-pdf/renderer';
 
@@ -118,13 +118,13 @@ export function PurchaseOrderPdf({ document }: { document: PurchaseOrderPdfModel
         </View>
 
         <View style={styles.tableHeader} fixed>
-          <Text style={styles.description}>Part</Text>
+          <Text style={styles.description}>Item</Text>
           <Text style={styles.quantity}>Quantity</Text>
         </View>
         {document.lines.map((line) => (
           <View key={line.id} style={styles.tableRow} wrap={false}>
             <View style={styles.description}>
-              <Text style={styles.strong}>{`${line.partCode} - ${line.partName}`}</Text>
+              <Text style={styles.strong}>{formatPurchaseOrderLineLabel(line)}</Text>
               {line.supplierCode ? <Text style={styles.line}>Supplier code: {line.supplierCode}</Text> : null}
             </View>
             <Text style={styles.quantity}>{formatLineQuantity(line)}</Text>
@@ -144,6 +144,7 @@ export function PurchaseOrderPdf({ document }: { document: PurchaseOrderPdfModel
 }
 
 function formatLineQuantity(line: PurchaseOrderPdfModel['lines'][number]): string {
+  if (line.unitOfMeasure === null) return `${line.quantity} ${line.unit ?? ''}`.trim();
   if (line.unitOfMeasure === 'mm' && line.standardPurchaseLengthMm !== null) {
     return `${line.quantity} x ${line.standardPurchaseLengthMm} mm`;
   }

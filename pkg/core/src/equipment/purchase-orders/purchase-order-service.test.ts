@@ -28,6 +28,7 @@ import {
   createPurchaseOrder,
   getPurchaseOrder,
   listPurchaseOrders,
+  loadOpenOrderLines,
   markPurchaseOrderSent,
   renderPurchaseOrderPreview,
   revertPurchaseOrderToDraft,
@@ -41,9 +42,22 @@ const PIECE_PART_ID = '00000000-0000-4000-8000-000000000201';
 const LINEAR_PART_ID = '00000000-0000-4000-8000-000000000202';
 const OTHER_PART_ID = '00000000-0000-4000-8000-000000000203';
 const BUILT_PART_ID = '00000000-0000-4000-8000-000000000204';
+const CUSTOM_SUPPLIER_ID = '00000000-0000-4000-8000-000000000105';
+const CUSTOM_LINE_A_ID = '00000000-0000-4000-8000-000000000301';
+const CUSTOM_LINE_B_ID = '00000000-0000-4000-8000-000000000302';
+
+function customLine(id: string, description: string, unitPrice = 80) {
+  return { description, id, kind: 'custom' as const, quantity: 2.5, supplierCode: null, unit: 'box', unitPrice };
+}
 
 function draftInput(id: string, lines: Array<{ partId: string; quantity: number; unitPrice: number }>) {
-  return { expectedDeliveryDate: null, id, jobIds: [], lines, supplierId: SUPPLIER_A_ID };
+  return {
+    expectedDeliveryDate: null,
+    id,
+    jobIds: [],
+    lines: lines.map((line) => ({ ...line, kind: 'part' as const })),
+    supplierId: SUPPLIER_A_ID,
+  };
 }
 
 const test = createTester(async ({ db }) => {
@@ -54,6 +68,124 @@ const test = createTester(async ({ db }) => {
 });
 
 describe('Purchase Order draft lifecycle', () => {
+  test('saves, approves, previews and sends a Custom Line for a Supplier with no Parts', async ({ context }) => {
+    await context.db.insert(supplier).values({ companyName: 'Custom Supplies', id: CUSTOM_SUPPLIER_ID });
+    const order = await createPurchaseOrder({
+      actorUserId: ACTOR_ID,
+      db: context.db,
+      input: { expectedDeliveryDate: null, supplierId: CUSTOM_SUPPLIER_ID },
+    });
+    const input = {
+      expectedDeliveryDate: null,
+      id: order.id,
+      jobIds: [],
+      lines: [customLine(CUSTOM_LINE_A_ID, 'Packing tape')],
+      supplierId: CUSTOM_SUPPLIER_ID,
+    };
+    const saved = await savePurchaseOrderDraft({ actorUserId: ACTOR_ID, db: context.db, input });
+    expect(saved.lines).toMatchObject([
+      {
+        id: CUSTOM_LINE_A_ID,
+        kind: 'custom',
+        partId: null,
+        description: 'Packing tape',
+        unit: 'box',
+        receivedQuantity: 0,
+      },
+    ]);
+    await approvePurchaseOrder({ actorUserId: ACTOR_ID, db: context.db, id: order.id });
+    const render = vi.fn(async (_input: { document: PurchaseOrderPdfModel; filename: string }) => pdfBytes());
+    await renderPurchaseOrderPreview({ db: context.db, id: order.id, pdfRenderer: render });
+    expect(render.mock.calls[0]?.[0].document.lines).toMatchObject([
+      { description: 'Packing tape', kind: 'custom', unit: 'box' },
+    ]);
+    const sent = await markPurchaseOrderSent({
+      actorUserId: ACTOR_ID,
+      db: context.db,
+      id: order.id,
+      pdfRenderer: render,
+      storage: context.storage,
+    });
+    expect(sent.derivedStatus).toBe('approved');
+    await expect(loadOpenOrderLines({ db: context.db })).resolves.toEqual([]);
+  });
+
+  test('keeps mixed lines ordered and audits only a changed Custom Line', async ({ context }) => {
+    const order = await createPurchaseOrder({
+      actorUserId: ACTOR_ID,
+      db: context.db,
+      input: { expectedDeliveryDate: null, supplierId: SUPPLIER_A_ID },
+    });
+    const lines = [
+      customLine(CUSTOM_LINE_A_ID, 'Packing tape'),
+      { kind: 'part' as const, partId: LINEAR_PART_ID, quantity: 1, unitPrice: 900 },
+      customLine(CUSTOM_LINE_B_ID, 'Workshop service'),
+      { kind: 'part' as const, partId: PIECE_PART_ID, quantity: 1, unitPrice: 10 },
+    ];
+    const input = { expectedDeliveryDate: null, id: order.id, jobIds: [], lines, supplierId: SUPPLIER_A_ID };
+    const saved = await savePurchaseOrderDraft({ actorUserId: ACTOR_ID, db: context.db, input });
+    expect(saved.lines.map((line) => line.partCode ?? line.description)).toEqual([
+      'P-100',
+      'P-200',
+      'Packing tape',
+      'Workshop service',
+    ]);
+    const eventsBefore = await context.db.select().from(auditEvents);
+    await savePurchaseOrderDraft({ actorUserId: ACTOR_ID, db: context.db, input });
+    expect(await context.db.select().from(auditEvents)).toHaveLength(eventsBefore.length);
+    await savePurchaseOrderDraft({
+      actorUserId: ACTOR_ID,
+      db: context.db,
+      input: {
+        ...input,
+        lines: [{ ...lines[0], description: 'Blue packing tape' } as ReturnType<typeof customLine>, ...lines.slice(1)],
+      },
+    });
+    const eventsAfter = await context.db.select().from(auditEvents).orderBy(auditEvents.occurredAt);
+    expect(eventsAfter).toHaveLength(eventsBefore.length + 1);
+    expect(Object.keys(eventsAfter.at(-1)?.changes ?? {})).toEqual(['line:Blue packing tape']);
+  });
+
+  test('names an unpriced Custom Line and reports a reused id as a conflict', async ({ context }) => {
+    await context.db.insert(supplier).values({ companyName: 'Custom Supplies', id: CUSTOM_SUPPLIER_ID });
+    const first = await createPurchaseOrder({
+      actorUserId: ACTOR_ID,
+      db: context.db,
+      input: { expectedDeliveryDate: null, supplierId: CUSTOM_SUPPLIER_ID },
+    });
+    const second = await createPurchaseOrder({
+      actorUserId: ACTOR_ID,
+      db: context.db,
+      input: { expectedDeliveryDate: null, supplierId: CUSTOM_SUPPLIER_ID },
+    });
+    const lines = [customLine(CUSTOM_LINE_A_ID, 'Packing tape', 0)];
+    await savePurchaseOrderDraft({
+      actorUserId: ACTOR_ID,
+      db: context.db,
+      input: { expectedDeliveryDate: null, id: first.id, jobIds: [], lines, supplierId: CUSTOM_SUPPLIER_ID },
+    });
+    await approvePurchaseOrder({ actorUserId: ACTOR_ID, db: context.db, id: first.id });
+    await expect(
+      markPurchaseOrderSent({
+        actorUserId: ACTOR_ID,
+        db: context.db,
+        id: first.id,
+        pdfRenderer: async () => pdfBytes(),
+        storage: context.storage,
+      }),
+    ).rejects.toMatchObject({
+      code: 'purchase_order.line_not_priced',
+      message: expect.stringContaining('Packing tape'),
+    });
+    await expect(
+      savePurchaseOrderDraft({
+        actorUserId: ACTOR_ID,
+        db: context.db,
+        input: { expectedDeliveryDate: null, id: second.id, jobIds: [], lines, supplierId: CUSTOM_SUPPLIER_ID },
+      }),
+    ).rejects.toMatchObject({ code: 'purchase_order.line_id_conflict' });
+  });
+
   test('creates a draft, replaces its lines and Job links, and audits header changes', async ({ context }) => {
     const purchaseOrder = await createPurchaseOrder({
       actorUserId: ACTOR_ID,
@@ -80,8 +212,8 @@ describe('Purchase Order draft lifecycle', () => {
         id: purchaseOrder.id,
         jobIds: context.jobIds,
         lines: [
-          { partId: PIECE_PART_ID, quantity: 4, unitPrice: 125.5 },
-          { partId: LINEAR_PART_ID, quantity: 2, unitPrice: 900 },
+          { kind: 'part', partId: PIECE_PART_ID, quantity: 4, unitPrice: 125.5 },
+          { kind: 'part', partId: LINEAR_PART_ID, quantity: 2, unitPrice: 900 },
         ],
         supplierId: SUPPLIER_A_ID,
       },
@@ -105,7 +237,7 @@ describe('Purchase Order draft lifecycle', () => {
         changes: expect.objectContaining({
           expectedDeliveryDate: { from: null, to: '2026-08-20' },
           [`job:${updated.jobs[0]?.code}`]: expect.objectContaining({ from: null }),
-          'line:P-100': expect.objectContaining({ from: null }),
+          'line:P-100 - Test Part': expect.objectContaining({ from: null }),
         }),
         entityId: purchaseOrder.id,
         entityType: 'purchase_order',
@@ -202,6 +334,37 @@ describe('Purchase Order draft lifecycle', () => {
 });
 
 describe('Purchase Order line parts', () => {
+  test('enforces line kind shape in the database while allowing two Custom Lines on one order', async ({ context }) => {
+    const order = await createPurchaseOrder({
+      actorUserId: ACTOR_ID,
+      db: context.db,
+      input: { expectedDeliveryDate: null, supplierId: SUPPLIER_A_ID },
+    });
+    await context.db.insert(purchaseOrderLines).values([
+      { customDescription: 'Tape', customUnit: 'box', purchaseOrderId: order.id, quantity: 2, unitPrice: 80 },
+      { customDescription: 'Packing foam', customUnit: 'roll', purchaseOrderId: order.id, quantity: 3, unitPrice: 30 },
+    ]);
+    const lines = await context.db
+      .select()
+      .from(purchaseOrderLines)
+      .where(eq(purchaseOrderLines.purchaseOrderId, order.id));
+    expect(lines).toHaveLength(2);
+    await expect(
+      context.db.insert(purchaseOrderLines).values({
+        partId: PIECE_PART_ID,
+        customDescription: 'Blended',
+        purchaseOrderId: order.id,
+        quantity: 1,
+        unitPrice: 10,
+      }),
+    ).rejects.toMatchObject({ cause: { constraint_name: 'purchase_order_line_kind_shape' } });
+    await expect(
+      context.db
+        .insert(purchaseOrderLines)
+        .values({ customDescription: '   ', customUnit: 'box', purchaseOrderId: order.id, quantity: 1, unitPrice: 10 }),
+    ).rejects.toMatchObject({ cause: { constraint_name: 'purchase_order_line_kind_shape' } });
+  });
+
   test('keeps Part Lines unique per order and rejects receipts for a Part with no line', async ({ context }) => {
     const purchaseOrder = await createPurchaseOrder({
       actorUserId: ACTOR_ID,

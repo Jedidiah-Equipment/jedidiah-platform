@@ -19,7 +19,7 @@ import {
 import { createPurchaseOrderWithin, savePurchaseOrderDraftWithin } from './purchase-order-service.js';
 
 type SupplierGroup = {
-  lines: { partId: UUID; quantity: number; unitPrice: number }[];
+  lines: { kind: 'part'; partId: UUID; quantity: number; unitPrice: number }[];
   supplierName: string;
 };
 
@@ -128,6 +128,7 @@ async function groupSelectionBySupplier({
 
     const group = bySupplier.get(part.supplierId) ?? { lines: [], supplierName: part.supplierName };
     group.lines.push({
+      kind: 'part',
       partId: line.partId,
       quantity: line.quantity,
       unitPrice: defaultPurchaseOrderUnitPrice({

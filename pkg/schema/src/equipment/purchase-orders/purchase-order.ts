@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 import { DateIso, DateOnlyIso } from '../../common/date.js';
 import { createCursorQueryResult, createSearchedSortedCursorQueryInput } from '../../common/pagination.js';
+import { requiredTrimmedText } from '../../common/text.js';
 import { UUID } from '../../common/uuid.js';
 import { PurchaseOrderCode } from '../common/public-code.js';
 import { declareInventoryCostFields, InventoryCost } from '../inventory/inventory-cost.js';
@@ -47,14 +48,39 @@ export const PurchaseOrderUnitPrice = z
   .min(0, 'Unit price must be zero or greater')
   .multipleOf(0.01, 'Unit price supports at most two decimal places');
 
-export type PurchaseOrderLineInput = z.infer<typeof PurchaseOrderLineInput>;
-export const PurchaseOrderLineInput = z
+export type PurchaseOrderLineKind = z.infer<typeof PurchaseOrderLineKind>;
+export const PurchaseOrderLineKind = z.enum(['part', 'custom']);
+
+export const PurchaseOrderCustomLineDescription = requiredTrimmedText('Describe what is being ordered').max(500);
+export const PurchaseOrderCustomLineUnit = requiredTrimmedText('Enter a unit, such as each or box').max(30);
+export const PurchaseOrderCustomLineSupplierCode = z.string().trim().min(1).max(100);
+
+export const PurchaseOrderPartLineInput = z
   .object({
+    kind: z.literal('part'),
     partId: UUID,
     quantity: PurchaseOrderQuantity,
     unitPrice: PurchaseOrderUnitPrice,
   })
   .strict();
+
+export const PurchaseOrderCustomLineInput = z
+  .object({
+    description: PurchaseOrderCustomLineDescription,
+    id: UUID,
+    kind: z.literal('custom'),
+    quantity: PurchaseOrderQuantity,
+    supplierCode: PurchaseOrderCustomLineSupplierCode.nullable().default(null),
+    unit: PurchaseOrderCustomLineUnit,
+    unitPrice: PurchaseOrderUnitPrice,
+  })
+  .strict();
+
+export type PurchaseOrderLineInput = z.infer<typeof PurchaseOrderLineInput>;
+export const PurchaseOrderLineInput = z.discriminatedUnion('kind', [
+  PurchaseOrderPartLineInput,
+  PurchaseOrderCustomLineInput,
+]);
 
 /**
  * What one length bucket of a line has taken in and kept — received less everything returned off it,
@@ -71,11 +97,15 @@ export const PurchaseOrderReceiptBucket = z.object({
 
 /** A stored line always has an agreed price; only the API's cost gate can take it away (see the View). */
 export type PurchaseOrderLine = z.infer<typeof PurchaseOrderLine>;
-export const PurchaseOrderLine = PurchaseOrderLineInput.extend({
+export const PurchaseOrderLine = z.object({
+  description: z.string().trim().min(1),
   /** The line's own identity. Ledger rows still reach a Part Line by `(purchaseOrderId, partId)`. */
   id: UUID,
-  partCode: z.string().trim().min(1),
-  partName: z.string().trim().min(1),
+  kind: PurchaseOrderLineKind,
+  partCode: z.string().trim().min(1).nullable(),
+  partId: UUID.nullable(),
+  partName: z.string().trim().min(1).nullable(),
+  quantity: PurchaseOrderQuantity,
   /**
    * Whether anything at all has moved against this line, receipts and returns alike. Distinct from
    * `receivedQuantity`, which is what the line has *kept*: a fully returned line is owed its stock
@@ -88,7 +118,9 @@ export const PurchaseOrderLine = PurchaseOrderLineInput.extend({
   receivedQuantity: z.number().finite(),
   standardPurchaseLengthMm: PartStandardPurchaseLengthMm.nullable(),
   supplierCode: z.string().trim().min(1).optional(),
-  unitOfMeasure: PartUnitOfMeasure,
+  unit: PurchaseOrderCustomLineUnit.nullable(),
+  unitOfMeasure: PartUnitOfMeasure.nullable(),
+  unitPrice: PurchaseOrderUnitPrice,
 });
 
 export type PurchaseOrderLinkedJob = z.infer<typeof PurchaseOrderLinkedJob>;
@@ -230,8 +262,8 @@ export function purchaseOrderHasUnpricedLines(purchaseOrder: {
 }
 
 /** Shared with the draft form so a duplicate reads as a field error, not a rejected save. */
-export function hasUniquePartIds(lines: readonly { partId: string }[]): boolean {
-  return uniqueValues(lines.map((line) => line.partId));
+export function hasUniquePartIds(lines: readonly { kind: PurchaseOrderLineKind; partId?: string }[]): boolean {
+  return uniqueValues(lines.flatMap((line) => (line.kind === 'part' && line.partId ? [line.partId] : [])));
 }
 
 /**
@@ -247,6 +279,10 @@ export const PurchaseOrderSaveDraftInput = PurchaseOrderCreateInput.extend({
   .strict()
   .refine((input) => hasUniquePartIds(input.lines), {
     message: PURCHASE_ORDER_DUPLICATE_PART_MESSAGE,
+    path: ['lines'],
+  })
+  .refine((input) => uniqueValues(input.lines.flatMap((line) => (line.kind === 'custom' ? [line.id] : []))), {
+    message: 'A Custom Line id can appear only once on a Purchase Order',
     path: ['lines'],
   })
   .refine((input) => uniqueValues(input.jobIds), {

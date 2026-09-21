@@ -85,7 +85,7 @@ describe('purchaseOrders router', () => {
       expectedDeliveryDate: null,
       id: created.id,
       jobIds: [],
-      lines: [{ partId: PART_ID, quantity: 2, unitPrice: 150 }],
+      lines: [{ kind: 'part', partId: PART_ID, quantity: 2, unitPrice: 150 }],
       supplierId: SUPPLIER_ID,
     });
 
@@ -116,7 +116,7 @@ describe('purchaseOrders router', () => {
       expectedDeliveryDate: null,
       id: sendable.id,
       jobIds: [context.jobId],
-      lines: [{ partId: PART_ID, quantity: 2, unitPrice: 150 }],
+      lines: [{ kind: 'part', partId: PART_ID, quantity: 2, unitPrice: 150 }],
       supplierId: SUPPLIER_ID,
     });
 
@@ -283,7 +283,7 @@ describe('amendments, returns, and credit notes', () => {
         partId: PART_ID,
         quantity: 6,
       }),
-    ).resolves.toMatchObject({ lines: [{ partId: PART_ID, quantity: 6 }] });
+    ).resolves.toMatchObject({ lines: [{ kind: 'part', partId: PART_ID, quantity: 6 }] });
     await expect(
       admin.purchaseOrders.amendAddLine({
         id: purchaseOrder.id,
@@ -513,7 +513,7 @@ async function sendOrder(admin: AppRouterCaller, quantity: number) {
     expectedDeliveryDate: null,
     id: purchaseOrder.id,
     jobIds: [],
-    lines: [{ partId: PART_ID, quantity, unitPrice: 150 }],
+    lines: [{ kind: 'part', partId: PART_ID, quantity, unitPrice: 150 }],
     supplierId: SUPPLIER_ID,
   });
   await admin.purchaseOrders.approve({ id: purchaseOrder.id });

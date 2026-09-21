@@ -4,6 +4,7 @@ import {
   PurchaseOrderCode,
   PurchaseOrderCreateInput,
   PurchaseOrderLine,
+  PurchaseOrderLineInput,
   PurchaseOrderLineView,
   PurchaseOrderSaveDraftInput,
   PurchaseOrderStatus,
@@ -14,13 +15,16 @@ const ID_A = '00000000-0000-4000-8000-000000000001';
 const ID_B = '00000000-0000-4000-8000-000000000002';
 
 const line = {
+  description: 'Hydraulic pipe',
   id: ID_B,
+  kind: 'part',
   partCode: 'PIPE-01',
   partId: ID_A,
   partName: 'Hydraulic pipe',
   quantity: 2,
   receivedQuantity: 0,
   standardPurchaseLengthMm: 6_000,
+  unit: null,
   unitOfMeasure: 'mm',
 } as const;
 
@@ -28,7 +32,7 @@ const draft = {
   expectedDeliveryDate: null,
   id: ID_B,
   jobIds: [] as string[],
-  lines: [{ partId: ID_A, quantity: 1.25, unitPrice: 125.5 }],
+  lines: [{ kind: 'part', partId: ID_A, quantity: 1.25, unitPrice: 125.5 }],
   supplierId: ID_A,
 };
 
@@ -76,11 +80,30 @@ describe('Purchase Order contracts', () => {
       PurchaseOrderSaveDraftInput.safeParse({
         ...draft,
         lines: [
-          { partId: ID_A, quantity: 1, unitPrice: 10 },
-          { partId: ID_A, quantity: 2, unitPrice: 20 },
+          { kind: 'part', partId: ID_A, quantity: 1, unitPrice: 10 },
+          { kind: 'part', partId: ID_A, quantity: 2, unitPrice: 20 },
         ],
       }).success,
     ).toBe(false);
     expect(PurchaseOrderSaveDraftInput.safeParse({ ...draft, jobIds: [ID_A, ID_A] }).success).toBe(false);
+  });
+
+  test('accepts Custom Lines with fractional quantities and rejects duplicate Custom Line ids', () => {
+    const custom = {
+      description: 'Packing tape',
+      id: ID_B,
+      kind: 'custom',
+      quantity: 2.5,
+      supplierCode: null,
+      unit: 'box',
+      unitPrice: 80,
+    };
+    expect(PurchaseOrderLineInput.safeParse(draft.lines[0]).success).toBe(true);
+    expect(PurchaseOrderLineInput.safeParse(custom).success).toBe(true);
+    expect(
+      PurchaseOrderSaveDraftInput.safeParse({ ...draft, lines: [custom, { ...custom, description: 'Other tape' }] })
+        .success,
+    ).toBe(false);
+    expect(PurchaseOrderSaveDraftInput.safeParse({ ...draft, lines: [draft.lines[0], custom] }).success).toBe(true);
   });
 });

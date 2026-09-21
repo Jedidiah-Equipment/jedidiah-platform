@@ -220,7 +220,7 @@ describe('mergeSupplier', () => {
           expectedDeliveryDate: null,
           id: PURCHASE_ORDER_ID,
           jobIds: [],
-          lines: [{ partId: PART_ID, quantity: 2, unitPrice: 10 }],
+          lines: [{ kind: 'part', partId: PART_ID, quantity: 2, unitPrice: 10 }],
           supplierId: TARGET_ID,
         },
       }),
@@ -236,7 +236,7 @@ describe('mergeSupplier', () => {
         expectedDeliveryDate: null,
         id: PURCHASE_ORDER_ID,
         jobIds: [],
-        lines: [{ partId: PART_ID, quantity: 2, unitPrice: 10 }],
+        lines: [{ kind: 'part', partId: PART_ID, quantity: 2, unitPrice: 10 }],
         supplierId: SOURCE_ID,
       },
     });

@@ -65,7 +65,13 @@ export async function sendOrder(
   await savePurchaseOrderDraft({
     actorUserId: ACTOR_ID,
     db: context.db,
-    input: { expectedDeliveryDate: null, id: purchaseOrder.id, jobIds: [], lines, supplierId: SUPPLIER_ID },
+    input: {
+      expectedDeliveryDate: null,
+      id: purchaseOrder.id,
+      jobIds: [],
+      lines: lines.map((line) => ({ ...line, kind: 'part' as const })),
+      supplierId: SUPPLIER_ID,
+    },
   });
 
   // Sending now asserts an admin signed the draft off first; every order's afterlife starts here.

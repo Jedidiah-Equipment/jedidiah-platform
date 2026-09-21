@@ -7,6 +7,7 @@ import {
   type Db,
   getPaginationQueryOptions,
   getSortOrder,
+  getUniqueViolationConstraint,
   user,
 } from '@pkg/db';
 import {
@@ -25,6 +26,7 @@ import {
   derivePurchaseOrderActions,
   derivePurchaseOrderProgress,
   derivePurchaseOrderStatus,
+  formatPurchaseOrderLineLabel,
   type PurchaseOrderActionFacts,
 } from '@pkg/domain/equipment';
 import { type AuthId, DateIso, getNextCursor, type UUID } from '@pkg/schema';
@@ -43,7 +45,7 @@ import {
   PurchaseOrder as PurchaseOrderSchema,
   unitClassFor,
 } from '@pkg/schema/equipment';
-import { and, count, desc, eq, inArray, isNull, or, type SQL, type SQLWrapper, sql } from 'drizzle-orm';
+import { and, count, desc, eq, inArray, isNotNull, isNull, or, type SQL, type SQLWrapper, sql } from 'drizzle-orm';
 import {
   defineAuditDescriptor,
   diffAuditUpdate,
@@ -66,6 +68,7 @@ import {
   assertPurchaseOrderAction,
   PurchaseOrderEmptyError,
   PurchaseOrderInvalidQuantityError,
+  PurchaseOrderLineIdConflictError,
   PurchaseOrderLineNotPricedError,
   PurchaseOrderNotFoundError,
   PurchaseOrderPartNotFoundError,
@@ -113,10 +116,19 @@ export const purchaseOrderAggregateAuditDescriptor = defineAuditDescriptor<Purch
       value: { code: job.code, id: job.id },
     })),
     line: purchaseOrder.lines.map((line) => ({
-      // Draft saves replace every line, so ids churn; Part identity keeps unchanged lines stable in the audit diff.
-      key: line.partId,
-      label: line.partCode,
-      value: { partId: line.partId, quantity: line.quantity, unitPrice: line.unitPrice },
+      // Part ids survive whole-draft rewrites; Custom Line ids are echoed by the client.
+      key: line.partId ?? line.id,
+      label: formatPurchaseOrderLineLabel(line),
+      value:
+        line.kind === 'part'
+          ? { partId: line.partId, quantity: line.quantity, unitPrice: line.unitPrice }
+          : {
+              description: line.description,
+              quantity: line.quantity,
+              supplierCode: line.supplierCode ?? null,
+              unit: line.unit,
+              unitPrice: line.unitPrice,
+            },
     })),
   }),
 });
@@ -313,7 +325,10 @@ export async function loadPurchaseOrderProgress({
   return derivePurchaseOrderProgress({
     lines,
     receivedByLineId: new Map(
-      lines.map((line) => [line.id, receivedQuantities.get(receivedQuantityKey(id, line.partId)) ?? 0]),
+      lines.map((line) => [
+        line.id,
+        line.partId ? (receivedQuantities.get(receivedQuantityKey(id, line.partId)) ?? 0) : 0,
+      ]),
     ),
   });
 }
@@ -421,6 +436,7 @@ export async function loadOpenOrderLines({
       and(
         eq(purchaseOrders.status, 'sent'),
         isNull(purchaseOrders.closedShortAt),
+        isNotNull(purchaseOrderLines.partId),
         partScope ? inArray(purchaseOrderLines.partId, partScope) : undefined,
       ),
     );
@@ -432,10 +448,11 @@ export async function loadOpenOrderLines({
 
   return lines
     .flatMap((line) => {
+      if (line.partId === null) return [];
       const received = receivedQuantities.get(receivedQuantityKey(line.purchaseOrderId, line.partId)) ?? 0;
       const outstandingQuantity = Math.max(0, line.quantity - received);
 
-      return outstandingQuantity > 0 ? [{ ...line, outstandingQuantity }] : [];
+      return outstandingQuantity > 0 ? [{ ...line, partId: line.partId, outstandingQuantity }] : [];
     })
     .sort(compareOpenOrderLines);
 }
@@ -624,7 +641,9 @@ export async function savePurchaseOrderDraftWithin({
   const jobIds = [...new Set(input.jobIds)];
 
   await assertSupplierExists({ db, supplierId: input.supplierId });
-  await assertLinePartsMatchSupplier({ db, lines: input.lines, supplierId: input.supplierId });
+  const partLines = input.lines.filter((line) => line.kind === 'part');
+  const customLines = input.lines.filter((line) => line.kind === 'custom');
+  await assertLinePartsMatchSupplier({ db, lines: partLines, supplierId: input.supplierId });
   await assertJobsExist({ db, jobIds });
 
   await db
@@ -638,14 +657,31 @@ export async function savePurchaseOrderDraftWithin({
   // Both child collections are rewritten wholesale; an empty list simply leaves the scope cleared.
   await db.delete(purchaseOrderLines).where(eq(purchaseOrderLines.purchaseOrderId, input.id));
   if (input.lines.length > 0) {
-    await db.insert(purchaseOrderLines).values(
-      input.lines.map((line) => ({
-        partId: line.partId,
-        purchaseOrderId: input.id,
-        quantity: line.quantity,
-        unitPrice: line.unitPrice,
-      })),
-    );
+    try {
+      await db.insert(purchaseOrderLines).values([
+        ...partLines.map((line) => ({
+          partId: line.partId,
+          purchaseOrderId: input.id,
+          quantity: line.quantity,
+          unitPrice: line.unitPrice,
+        })),
+        ...customLines.map((line, position) => ({
+          customDescription: line.description,
+          customSupplierCode: line.supplierCode,
+          customUnit: line.unit,
+          id: line.id,
+          position,
+          purchaseOrderId: input.id,
+          quantity: line.quantity,
+          unitPrice: line.unitPrice,
+        })),
+      ]);
+    } catch (error) {
+      if (getUniqueViolationConstraint(error)?.includes('purchase_order_line_pkey')) {
+        throw new PurchaseOrderLineIdConflictError();
+      }
+      throw error;
+    }
   }
 
   await db.delete(purchaseOrderJobLinks).where(eq(purchaseOrderJobLinks.purchaseOrderId, input.id));
@@ -912,14 +948,19 @@ function mapPurchaseOrder(
   receiptBuckets: ReadonlyMap<string, PurchaseOrderReceiptBucket[]>,
 ): PurchaseOrder {
   const receivedByLineId = new Map(
-    row.lines.map((line) => [line.id, receivedQuantities.get(receivedQuantityKey(row.id, line.partId)) ?? 0]),
+    row.lines.map((line) => [
+      line.id,
+      line.partId ? (receivedQuantities.get(receivedQuantityKey(row.id, line.partId)) ?? 0) : 0,
+    ]),
   );
   return PurchaseOrderSchema.parse({
     // Reduced from the facts this read already loaded — no extra query — so the payload a surface
     // renders its controls from carries the same verdict the write gate will apply.
     actions: derivePurchaseOrderActions({
       closedShortAt: row.closedShortAt,
-      hasAnyMovement: row.lines.some((line) => linesWithMovements.has(receivedQuantityKey(row.id, line.partId))),
+      hasAnyMovement: row.lines.some(
+        (line) => line.partId !== null && linesWithMovements.has(receivedQuantityKey(row.id, line.partId)),
+      ),
       isEmpty: row.lines.length === 0,
       progress: derivePurchaseOrderProgress({ lines: row.lines, receivedByLineId }),
       status: row.status,
@@ -942,20 +983,32 @@ function mapPurchaseOrder(
       .sort((left, right) => left.code - right.code),
     lines: row.lines
       .map((line) => ({
-        hasStockMovements: linesWithMovements.has(receivedQuantityKey(row.id, line.partId)),
+        description: line.part?.name ?? line.customDescription,
+        hasStockMovements: line.partId !== null && linesWithMovements.has(receivedQuantityKey(row.id, line.partId)),
         id: line.id,
-        partCode: line.part.code,
+        kind: line.partId === null ? ('custom' as const) : ('part' as const),
+        partCode: line.part?.code ?? null,
         partId: line.partId,
-        partName: line.part.name,
+        partName: line.part?.name ?? null,
+        position: line.position,
         quantity: line.quantity,
-        receiptBuckets: receiptBuckets.get(receiptBucketKey(row.id, line.partId)) ?? [],
+        receiptBuckets: line.partId === null ? [] : (receiptBuckets.get(receiptBucketKey(row.id, line.partId)) ?? []),
         receivedQuantity: receivedByLineId.get(line.id) ?? 0,
-        standardPurchaseLengthMm: line.part.standardPurchaseLengthMm,
-        supplierCode: line.part.supplierCode,
-        unitOfMeasure: line.part.unitOfMeasure,
+        standardPurchaseLengthMm: line.part?.standardPurchaseLengthMm ?? null,
+        supplierCode: line.part?.supplierCode ?? line.customSupplierCode ?? undefined,
+        unit: line.customUnit,
+        unitOfMeasure: line.part?.unitOfMeasure ?? null,
         unitPrice: line.unitPrice,
       }))
-      .sort((left, right) => left.partCode.localeCompare(right.partCode)),
+      .sort((left, right) =>
+        left.kind === right.kind
+          ? left.kind === 'part'
+            ? (left.partCode ?? '').localeCompare(right.partCode ?? '')
+            : left.position - right.position
+          : left.kind === 'part'
+            ? -1
+            : 1,
+      ),
     sentAt: row.sentAt,
     status: row.status,
     supplier: {
@@ -999,7 +1052,7 @@ export async function lockPurchaseOrder(tx: DatabaseTransaction, id: UUID): Prom
  */
 function assertLinesArePriced(purchaseOrder: PurchaseOrder): void {
   const unpriced = purchaseOrder.lines.find((line) => line.unitPrice === 0);
-  if (unpriced) throw new PurchaseOrderLineNotPricedError(unpriced.partCode);
+  if (unpriced) throw new PurchaseOrderLineNotPricedError(formatPurchaseOrderLineLabel(unpriced));
 }
 
 async function assertSupplierExists({ db, supplierId }: { db: PurchaseOrderDb; supplierId: UUID }): Promise<void> {

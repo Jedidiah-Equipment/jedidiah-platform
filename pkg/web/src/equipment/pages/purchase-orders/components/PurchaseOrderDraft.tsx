@@ -11,6 +11,7 @@ import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { DataTable } from '@/components/data-table/DataTable.js';
 import { type DataTableColumnDef, useDataTable } from '@/components/data-table/features.js';
 import { AutosaveStatus, type useAutosaveForm } from '@/components/form/index.js';
+import { HelpLink } from '@/components/help/index.js';
 import { Button } from '@/components/ui/button.js';
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card.js';
 import { Field, FieldLabel } from '@/components/ui/field.js';
@@ -128,12 +129,15 @@ export const PurchaseOrderLinesEditor: React.FC<{
     <form.AppField mode="array" name="lines">
       {(linesField) => {
         const lines = linesField.state.value;
-        const unlistedPartCount = parts.filter((part) => !lines.some((line) => line.partId === part.id)).length;
-        const emptyLineCount = lines.filter((line) => line.partId === '').length;
+        const unlistedPartCount = parts.filter(
+          (part) => !lines.some((line) => line.kind === 'part' && line.partId === part.id),
+        ).length;
+        const emptyLineCount = lines.filter((line) => line.kind === 'part' && line.partId === '').length;
         let disabledReason: string | null = null;
         if (isLoading) disabledReason = 'Loading available Parts...';
         else if (parts.length === 0 && partsLoadFailed) disabledReason = 'Parts could not be loaded. Try again.';
-        else if (parts.length === 0) disabledReason = 'Add a Part for this Supplier before adding a line.';
+        else if (parts.length === 0)
+          disabledReason = 'This Supplier has no Parts. Add a custom line, or add a Part for this Supplier first.';
         else if (unlistedPartCount === 0) disabledReason = 'All Parts for this Supplier are already on the order.';
         // Each empty line will take one of the remaining Parts, so another would have nothing left to pick.
         else if (emptyLineCount >= unlistedPartCount) disabledReason = 'Pick a Part for the empty line first.';
@@ -141,8 +145,13 @@ export const PurchaseOrderLinesEditor: React.FC<{
         return (
           <Card>
             <CardHeader>
-              <CardTitle>Parts</CardTitle>
-              <CardDescription>Quantities are ordered in the Part's purchasing unit.</CardDescription>
+              <CardTitle className="flex items-center gap-2">
+                Lines <HelpLink label="How to add a Custom Line to a Purchase Order" topic="purchaseOrderCustomLines" />
+              </CardTitle>
+              <CardDescription>
+                Part quantities are ordered in the Part's purchasing unit. A custom line is for a once-off item that is
+                not stock.
+              </CardDescription>
               <CardAction className="flex items-center gap-2">
                 {disabledReason ? (
                   <span className="text-muted-foreground text-xs" id={disabledReasonId}>
@@ -154,12 +163,30 @@ export const PurchaseOrderLinesEditor: React.FC<{
                   disabled={Boolean(disabledReason)}
                   // The line starts empty so it stands out from the ones already on the order; picking
                   // its Part seeds the price and saves.
-                  onClick={() => linesField.pushValue({ partId: '', quantity: 1, unitPrice: 0 })}
+                  onClick={() => linesField.pushValue({ kind: 'part', partId: '', quantity: 1, unitPrice: 0 })}
                   size="sm"
                   type="button"
                   variant="outline"
                 >
-                  <IconPlus data-icon="inline-start" /> Add line
+                  <IconPlus data-icon="inline-start" /> Add Part
+                </Button>
+                <Button
+                  onClick={() =>
+                    linesField.pushValue({
+                      description: '',
+                      id: crypto.randomUUID(),
+                      kind: 'custom',
+                      quantity: 1,
+                      supplierCode: '',
+                      unit: 'each',
+                      unitPrice: 0,
+                    })
+                  }
+                  size="sm"
+                  type="button"
+                  variant="outline"
+                >
+                  <IconPlus data-icon="inline-start" /> Add custom line
                 </Button>
               </CardAction>
             </CardHeader>
@@ -198,16 +225,45 @@ const PurchaseOrderLinesDataTable: React.FC<{
   lines: PurchaseOrderLineInput[];
   removeLine: (index: number) => void;
 }> = ({ commit, eligibleParts, form, lines, removeLine }) => {
-  const data = useMemo(() => lines.map((line, index) => ({ index, key: getLineKey(line), line })), [lines]);
+  const data = useMemo(
+    () => lines.map((line, index) => ({ index, key: line.kind === 'custom' ? line.id : getLineKey(line), line })),
+    [lines],
+  );
   const columns = useMemo<DataTableColumnDef<PurchaseOrderLineTableRow>[]>(
     () => [
       {
         cell: ({ row }) => {
           const { index, line } = row.original;
+          if (line.kind === 'custom') {
+            return (
+              <div className="grid gap-1" onBlurCapture={commit}>
+                <form.AppField name={`lines[${index}].description`}>
+                  {(field) => (
+                    <field.TextField
+                      label={<span className="sr-only">Description</span>}
+                      placeholder="Describe the item"
+                    />
+                  )}
+                </form.AppField>
+                <form.AppField name={`lines[${index}].supplierCode`}>
+                  {(field) => (
+                    <field.TextField
+                      label={<span className="sr-only">Supplier code</span>}
+                      placeholder="Supplier code (optional)"
+                    />
+                  )}
+                </form.AppField>
+              </div>
+            );
+          }
           // A Part appears once per order, so every other row's pick drops out of this
           // one's choices; its own stays so the selected value keeps a label.
           const options = eligibleParts
-            .filter((option) => option.id === line.partId || !lines.some((other) => other.partId === option.id))
+            .filter(
+              (option) =>
+                option.id === line.partId ||
+                !lines.some((other) => other.kind === 'part' && other.partId === option.id),
+            )
             .map((option) => ({ label: `${option.code} · ${option.name}`, value: option.id }));
 
           return (
@@ -237,12 +293,23 @@ const PurchaseOrderLinesDataTable: React.FC<{
             </form.AppField>
           );
         },
-        header: 'Part',
+        header: 'Item',
         id: 'part',
       },
       {
         cell: ({ row }) => {
-          const part = eligibleParts.find((candidate) => candidate.id === row.original.line.partId);
+          if (row.original.line.kind === 'custom') {
+            return (
+              <div onBlurCapture={commit}>
+                <form.AppField name={`lines[${row.original.index}].unit`}>
+                  {(field) => <field.TextField label={<span className="sr-only">Unit</span>} />}
+                </form.AppField>
+              </div>
+            );
+          }
+          const part = eligibleParts.find(
+            (candidate) => candidate.id === (row.original.line.kind === 'part' ? row.original.line.partId : null),
+          );
           return part ? formatPurchaseUnitLabel(part) : '—';
         },
         header: 'Unit',
@@ -250,12 +317,14 @@ const PurchaseOrderLinesDataTable: React.FC<{
       },
       {
         cell: ({ row }) => {
-          const part = eligibleParts.find((candidate) => candidate.id === row.original.line.partId);
+          const line = row.original.line;
+          const part =
+            line.kind === 'part' ? eligibleParts.find((candidate) => candidate.id === line.partId) : undefined;
           return (
             <form.AppField name={`lines[${row.original.index}].quantity`}>
               {(field) => (
                 <field.NumberField
-                  decimals={quantityDecimals(part)}
+                  decimals={row.original.line.kind === 'custom' ? 3 : quantityDecimals(part)}
                   label={<span className="sr-only">Quantity</span>}
                 />
               )}
@@ -284,10 +353,12 @@ const PurchaseOrderLinesDataTable: React.FC<{
       },
       {
         cell: ({ row }) => {
-          const part = eligibleParts.find((candidate) => candidate.id === row.original.line.partId);
+          const line = row.original.line;
+          const part =
+            line.kind === 'part' ? eligibleParts.find((candidate) => candidate.id === line.partId) : undefined;
           return (
             <Button
-              aria-label={`Remove ${part?.name ?? 'line'}`}
+              aria-label={`Remove ${row.original.line.kind === 'custom' ? row.original.line.description || 'custom line' : (part?.name ?? 'line')}`}
               onClick={() => {
                 removeLine(row.original.index);
                 commit();
@@ -317,12 +388,12 @@ const PurchaseOrderLinesDataTable: React.FC<{
 
   return (
     <DataTable
-      emptyMessage="No Parts added."
+      emptyMessage="No lines added."
       hideGlobalFilter
       paginationMode="complete"
       table={table}
       total={data.length}
-      totalLabel={(value) => `${value} ${value === 1 ? 'part' : 'parts'}`}
+      totalLabel={(value) => `${value} ${value === 1 ? 'line' : 'lines'}`}
     />
   );
 };

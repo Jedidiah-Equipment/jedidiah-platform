@@ -1,4 +1,5 @@
 import { formatCurrency, formatDate, hasPermission } from '@pkg/domain';
+import { formatPurchaseOrderLineLabel } from '@pkg/domain/equipment';
 import type { UUID } from '@pkg/schema';
 import type { PurchaseOrderAmendmentKind, PurchaseOrderView } from '@pkg/schema/equipment';
 import { purchaseOrderHasUnpricedLines } from '@pkg/schema/equipment';
@@ -29,7 +30,7 @@ import { PurchaseOrderInvoiceCrossCheckCard } from './components/PurchaseOrderIn
 import { PurchaseOrderReceivingCard } from './components/PurchaseOrderReceivingCard.js';
 import { PurchaseOrderReturnsCard } from './components/PurchaseOrderReturnsCard.js';
 import { PurchaseOrderStatusBadge } from './components/PurchaseOrderStatusBadge.js';
-import { purchaseOrderLinesTotal } from './components/types.js';
+import { isPartPurchaseOrderLine, purchaseOrderLinesTotal } from './components/types.js';
 import { PurchaseOrderEditing } from './PurchaseOrderEditing.js';
 
 export const PurchaseOrderDetailPage: React.FC<{ purchaseOrderId: UUID }> = ({ purchaseOrderId }) => {
@@ -199,19 +200,21 @@ const ReadOnlyDetailsCard: React.FC<{ canAmend: boolean; purchaseOrder: Purchase
  * A sent order's lines. They are read-only in the editing sense, but not frozen: an amendment is
  * how a sent order changes, and every one of them is logged and re-rendered as a PDF revision.
  */
-const ReadOnlyLinesCard: React.FC<{
+export const ReadOnlyLinesCard: React.FC<{
   canAmend: boolean;
   canReadCosts: boolean;
   purchaseOrder: PurchaseOrderView;
 }> = ({ canAmend, canReadCosts, purchaseOrder }) => {
   const [amendment, setAmendment] = useState<{ kind: PurchaseOrderAmendmentKind; partId: string | null } | null>(null);
-  const amendingLine = purchaseOrder.lines.find((line) => line.partId === amendment?.partId) ?? null;
+  const amendingLine = amendment?.partId
+    ? (purchaseOrder.lines.find((line) => line.kind === 'part' && line.partId === amendment.partId) ?? null)
+    : null;
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Parts</CardTitle>
-        <CardDescription>Quantities are ordered in the Part's purchasing unit.</CardDescription>
+        <CardTitle>Lines</CardTitle>
+        <CardDescription>Part quantities are ordered in the Part's purchasing unit.</CardDescription>
         {canAmend ? (
           <CardAction>
             <Button
@@ -262,17 +265,22 @@ const PurchaseOrderReadOnlyLinesTable: React.FC<{
   const columns = useMemo<DataTableColumnDef<PurchaseOrderView['lines'][number]>[]>(
     () => [
       {
-        accessorFn: (line) => `${line.partCode} ${line.partName}`,
+        accessorFn: formatPurchaseOrderLineLabel,
         cell: ({ row }) => (
-          <>
-            <span className="font-medium">{row.original.partCode}</span> · {row.original.partName}
-          </>
+          <div className="flex items-center gap-2">
+            <span className="font-medium">{formatPurchaseOrderLineLabel(row.original)}</span>
+            {row.original.kind === 'custom' ? (
+              <Badge className="text-muted-foreground" variant="outline">
+                Custom
+              </Badge>
+            ) : null}
+          </div>
         ),
-        header: 'Part',
+        header: 'Item',
         id: 'part',
       },
       {
-        accessorFn: formatPurchaseUnitLabel,
+        accessorFn: (line) => (isPartPurchaseOrderLine(line) ? formatPurchaseUnitLabel(line) : (line.unit ?? '—')),
         header: 'Unit',
         id: 'unit',
       },
@@ -306,35 +314,39 @@ const PurchaseOrderReadOnlyLinesTable: React.FC<{
       ...(onAmend
         ? [
             {
-              cell: ({ row }) => (
-                <div className="flex justify-end gap-2">
-                  <Button
-                    onClick={() => onAmend('quantity-change', row.original.partId)}
-                    size="sm"
-                    type="button"
-                    variant="ghost"
-                  >
-                    Change quantity
-                  </Button>
-                  {/* Every movement keys off (order, Part), so only a line nothing has moved
+              cell: ({ row }) => {
+                const line = row.original;
+                if (!isPartPurchaseOrderLine(line)) return null;
+                return (
+                  <div className="flex justify-end gap-2">
+                    <Button
+                      onClick={() => onAmend('quantity-change', line.partId)}
+                      size="sm"
+                      type="button"
+                      variant="ghost"
+                    >
+                      Change quantity
+                    </Button>
+                    {/* Every movement keys off (order, Part), so only a line nothing has moved
                       against can change its Part — the same test the server's guard applies. A
                       fully returned line reads zero received but still carries its ledger rows. */}
-                  <Button
-                    disabled={row.original.hasStockMovements}
-                    onClick={() => onAmend('substitute-part', row.original.partId)}
-                    size="sm"
-                    title={
-                      row.original.hasStockMovements
-                        ? 'Stock has already arrived against this line, so its Part cannot change'
-                        : undefined
-                    }
-                    type="button"
-                    variant="ghost"
-                  >
-                    Substitute
-                  </Button>
-                </div>
-              ),
+                    <Button
+                      disabled={line.hasStockMovements}
+                      onClick={() => onAmend('substitute-part', line.partId)}
+                      size="sm"
+                      title={
+                        line.hasStockMovements
+                          ? 'Stock has already arrived against this line, so its Part cannot change'
+                          : undefined
+                      }
+                      type="button"
+                      variant="ghost"
+                    >
+                      Substitute
+                    </Button>
+                  </div>
+                );
+              },
               enableSorting: false,
               header: () => <span className="sr-only">Amend</span>,
               id: 'amend',
@@ -354,12 +366,12 @@ const PurchaseOrderReadOnlyLinesTable: React.FC<{
 
   return (
     <DataTable
-      emptyMessage="No Parts added."
+      emptyMessage="No lines added."
       hideGlobalFilter
       paginationMode="complete"
       table={table}
       total={items.length}
-      totalLabel={(value) => `${value} ${value === 1 ? 'part' : 'parts'}`}
+      totalLabel={(value) => `${value} ${value === 1 ? 'line' : 'lines'}`}
     />
   );
 };

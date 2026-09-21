@@ -127,15 +127,17 @@ export async function loadOrderLinesByOrder(
       unitPrice: purchaseOrderLines.unitPrice,
     })
     .from(purchaseOrderLines)
+    // Custom Lines join in #1512.
     .innerJoin(parts, eq(parts.id, purchaseOrderLines.partId))
     .where(inArray(purchaseOrderLines.purchaseOrderId, [...purchaseOrderIds]))
     .orderBy(asc(purchaseOrderLines.purchaseOrderId), asc(parts.code));
   const byOrder = new Map<string, MatchOrderLine[]>();
 
   for (const { purchaseOrderId, ...line } of rows) {
+    if (line.partId === null) continue;
     const lines = byOrder.get(purchaseOrderId);
-    if (lines) lines.push(line);
-    else byOrder.set(purchaseOrderId, [line]);
+    if (lines) lines.push({ ...line, partId: line.partId });
+    else byOrder.set(purchaseOrderId, [{ ...line, partId: line.partId }]);
   }
 
   return byOrder;

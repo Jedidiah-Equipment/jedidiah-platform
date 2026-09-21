@@ -45,6 +45,7 @@ export const HELP_TOPICS = {
   products: '/inventory/maintain-a-product-cost-estimate',
   productBuildTimes: '/production/read-product-build-times',
   purchaseOrders: '/inventory/approve-a-purchase-order',
+  purchaseOrderCustomLines: '/inventory/add-a-custom-line-to-a-purchase-order',
   quotes: '/sales/cancel-a-quote',
   storesTablet: '/inventory/work-the-stores-tablet',
   suppliers: '/inventory/maintain-suppliers',

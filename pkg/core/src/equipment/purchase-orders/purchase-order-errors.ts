@@ -75,8 +75,16 @@ export class PurchaseOrderPartNotPurchasableError extends Error {
 export class PurchaseOrderLineNotPricedError extends Error {
   readonly code = 'purchase_order.line_not_priced' as const;
 
-  constructor(readonly partCode: string) {
-    super(`Set a unit price for ${partCode} before sending this Purchase Order.`);
+  constructor(readonly lineLabel: string) {
+    super(`Set a unit price for ${lineLabel} before sending this Purchase Order.`);
+  }
+}
+
+export class PurchaseOrderLineIdConflictError extends Error {
+  readonly code = 'purchase_order.line_id_conflict' as const;
+
+  constructor() {
+    super('This Custom Line id belongs to another Purchase Order.');
   }
 }
 
@@ -263,6 +271,7 @@ export type PurchaseOrderCoreError =
   | PurchaseOrderLineExistsError
   | PurchaseOrderLineNotFoundError
   | PurchaseOrderLineNotPricedError
+  | PurchaseOrderLineIdConflictError
   | PurchaseOrderNoReceiptsError
   | PurchaseOrderNotApprovedError
   | PurchaseOrderNotDraftError
@@ -288,6 +297,7 @@ export function isPurchaseOrderCoreError(error: unknown): error is PurchaseOrder
     error instanceof PurchaseOrderLineExistsError ||
     error instanceof PurchaseOrderLineNotFoundError ||
     error instanceof PurchaseOrderLineNotPricedError ||
+    error instanceof PurchaseOrderLineIdConflictError ||
     error instanceof PurchaseOrderNoReceiptsError ||
     error instanceof PurchaseOrderNotApprovedError ||
     error instanceof PurchaseOrderNotDraftError ||

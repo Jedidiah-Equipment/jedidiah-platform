@@ -172,12 +172,15 @@ function line(
   heldQuantity = receivedQuantity,
 ): PurchaseOrderLineView {
   return {
+    description: partName,
     id: partId,
+    kind: 'part',
     partCode,
     partId,
     partName,
     receiptBuckets: heldQuantity === 0 ? [] : [{ lengthMm: null, outstandingReceivedQuantity: heldQuantity }],
     receivedQuantity,
+    unitOfMeasure: 'piece',
   } as PurchaseOrderLineView;
 }
 

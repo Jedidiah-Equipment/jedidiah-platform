@@ -336,15 +336,17 @@ async function applyAmendment(
 
 function findLine(purchaseOrder: PurchaseOrder, partId: UUID) {
   const line = purchaseOrder.lines.find((candidate) => candidate.partId === partId);
-  if (!line) throw new PurchaseOrderLineNotFoundError(purchaseOrder.id, partId);
+  if (line?.kind !== 'part' || line.partCode === null) {
+    throw new PurchaseOrderLineNotFoundError(purchaseOrder.id, partId);
+  }
 
-  return line;
+  return { ...line, partCode: line.partCode };
 }
 
 /** A Part appears once per order, so an add or a substitution has to bring one that is not on it. */
 function assertPartIsNotOnOrder(purchaseOrder: PurchaseOrder, partId: UUID): void {
   const existing = purchaseOrder.lines.find((line) => line.partId === partId);
-  if (existing) throw new PurchaseOrderLineExistsError(existing.partCode);
+  if (existing) throw new PurchaseOrderLineExistsError(existing.partCode ?? partId);
 }
 
 /**

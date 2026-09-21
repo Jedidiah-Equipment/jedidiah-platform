@@ -174,7 +174,7 @@ function toPartOptions(parts: readonly Part[]) {
  * The two Part fields are only ever read on the kinds that render them, so an empty one here means
  * the dialog was assembled wrong rather than that the buyer left something out.
  */
-function requirePartId(source: { newPartId: string } | { partId: string } | null): string {
+function requirePartId(source: { newPartId: string } | { partId: string | null } | null): string {
   const partId = source && ('partId' in source ? source.partId : source.newPartId);
   if (!partId) throw new Error('This amendment needs a Part');
 

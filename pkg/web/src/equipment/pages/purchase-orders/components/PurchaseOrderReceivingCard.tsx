@@ -1,13 +1,17 @@
-import type { PurchaseOrderView } from '@pkg/schema/equipment';
-import { IconTruckDelivery } from '@tabler/icons-react';
+import { formatDate, formatNumber } from '@pkg/domain';
+import type { PurchaseOrderArrival, PurchaseOrderLineView, PurchaseOrderView } from '@pkg/schema/equipment';
+import { IconArrowBackUp, IconTruckDelivery } from '@tabler/icons-react';
+import { useQuery } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
 import { DataTable } from '@/components/data-table/DataTable.js';
 import { type DataTableColumnDef, useDataTable } from '@/components/data-table/features.js';
 import { Button } from '@/components/ui/button.js';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card.js';
 import { PartLabelPrintButton } from '@/equipment/pages/parts/PartLabelPrintButton.js';
+import { useTRPC } from '@/lib/trpc.js';
+import { PurchaseOrderArrivalDialog } from './PurchaseOrderArrivalDialog.js';
 import { PurchaseOrderReceiveDialog } from './PurchaseOrderReceiveDialog.js';
-import { isPartPurchaseOrderLine, outstandingQuantity, type PartPurchaseOrderLineView } from './types.js';
+import { isPartPurchaseOrderLine, outstandingQuantity } from './types.js';
 
 /**
  * The dock's view of a sent order: what each line still owes, and the one action that posts it.
@@ -15,25 +19,40 @@ import { isPartPurchaseOrderLine, outstandingQuantity, type PartPurchaseOrderLin
  */
 export function PurchaseOrderReceivingCard({
   canReadCosts,
+  canReceive,
+  canReverse,
   purchaseOrder,
 }: {
   canReadCosts: boolean;
+  canReceive: boolean;
+  canReverse: boolean;
   purchaseOrder: PurchaseOrderView;
 }) {
-  const [receivingPartId, setReceivingPartId] = useState<string | null>(null);
-  const partLines = purchaseOrder.lines.filter(isPartPurchaseOrderLine);
-  const receivingLine = partLines.find((line) => line.partId === receivingPartId) ?? null;
-  const columns = useMemo<DataTableColumnDef<PartPurchaseOrderLineView>[]>(
+  const [active, setActive] = useState<{ lineId: string; reverse: boolean } | null>(null);
+  const receivingLine = purchaseOrder.lines.find((line) => line.id === active?.lineId) ?? null;
+  const hasCustomLines = purchaseOrder.lines.some((line) => line.kind === 'custom');
+  const trpc = useTRPC();
+  const arrivalsQuery = useQuery({
+    ...trpc.purchaseOrders.arrivals.queryOptions({ id: purchaseOrder.id }),
+    enabled: hasCustomLines,
+  });
+  const arrivals = arrivalsQuery.data?.items ?? [];
+  const columns = useMemo<DataTableColumnDef<PurchaseOrderLineView>[]>(
     () => [
       {
-        accessorFn: (line) => `${line.partCode} ${line.partName}`,
+        accessorFn: (line) => line.description,
         cell: ({ row }) => (
           <>
-            <span className="font-medium">{row.original.partCode}</span> · {row.original.partName}
+            {row.original.partCode ? (
+              <>
+                <span className="font-medium">{row.original.partCode}</span> ·{' '}
+              </>
+            ) : null}
+            {row.original.description}
           </>
         ),
-        header: 'Part',
-        id: 'part',
+        header: 'Line',
+        id: 'line',
       },
       {
         accessorKey: 'receivedQuantity',
@@ -51,10 +70,24 @@ export function PurchaseOrderReceivingCard({
         cell: ({ row }) => (
           <div className="flex justify-end gap-2">
             {/* Labels go on stock that has actually landed, so the button appears with the first receipt. */}
-            {row.original.receivedQuantity > 0 ? <PartLabelPrintButton partId={row.original.partId} size="sm" /> : null}
-            <Button onClick={() => setReceivingPartId(row.original.partId)} size="sm" type="button">
-              <IconTruckDelivery data-icon="inline-start" /> Receive
-            </Button>
+            {isPartPurchaseOrderLine(row.original) && row.original.receivedQuantity > 0 ? (
+              <PartLabelPrintButton partId={row.original.partId} size="sm" />
+            ) : null}
+            {canReceive ? (
+              <Button onClick={() => setActive({ lineId: row.original.id, reverse: false })} size="sm" type="button">
+                <IconTruckDelivery data-icon="inline-start" /> Receive
+              </Button>
+            ) : null}
+            {row.original.kind === 'custom' && row.original.receivedQuantity > 0 && canReverse ? (
+              <Button
+                onClick={() => setActive({ lineId: row.original.id, reverse: true })}
+                size="sm"
+                type="button"
+                variant="outline"
+              >
+                <IconArrowBackUp data-icon="inline-start" /> Reverse arrival
+              </Button>
+            ) : null}
           </div>
         ),
         enableSorting: false,
@@ -62,11 +95,11 @@ export function PurchaseOrderReceivingCard({
         id: 'actions',
       },
     ],
-    [],
+    [canReceive, canReverse],
   );
   const table = useDataTable({
     columns,
-    data: partLines,
+    data: purchaseOrder.lines,
     enableColumnFilters: false,
     enableSorting: false,
     getRowId: (line) => line.id,
@@ -82,25 +115,75 @@ export function PurchaseOrderReceivingCard({
       </CardHeader>
       <CardContent>
         <DataTable
-          emptyMessage="No Parts to receive."
+          emptyMessage="No lines to receive."
           hideGlobalFilter
           paginationMode="complete"
           table={table}
-          total={partLines.length}
-          totalLabel={(value) => `${value} ${value === 1 ? 'part' : 'parts'}`}
+          total={purchaseOrder.lines.length}
+          totalLabel={(value) => `${value} ${value === 1 ? 'line' : 'lines'}`}
         />
+        {hasCustomLines ? <ArrivalHistory items={arrivals} /> : null}
       </CardContent>
-      {receivingLine ? (
+      {receivingLine?.kind === 'custom' ? (
+        <PurchaseOrderArrivalDialog
+          key={`${receivingLine.id}:${active?.reverse}`}
+          line={receivingLine}
+          onOpenChange={(open) => {
+            if (!open) setActive(null);
+          }}
+          purchaseOrder={purchaseOrder}
+          reverse={active?.reverse ?? false}
+        />
+      ) : receivingLine && isPartPurchaseOrderLine(receivingLine) ? (
         <PurchaseOrderReceiveDialog
           canReadCosts={canReadCosts}
           // Remount per line so the dialog's prefilled outstanding quantity follows the line it opens on.
           key={receivingLine.id}
           line={receivingLine}
-          onOpenChange={(open) => setReceivingPartId(open ? receivingPartId : null)}
+          onOpenChange={(open) => {
+            if (!open) setActive(null);
+          }}
           open
           purchaseOrder={purchaseOrder}
         />
       ) : null}
     </Card>
+  );
+}
+
+function ArrivalHistory({ items }: { items: PurchaseOrderArrival[] }) {
+  const columns = useMemo<DataTableColumnDef<PurchaseOrderArrival>[]>(
+    () => [
+      { accessorKey: 'createdAt', cell: ({ row }) => formatDate(row.original.createdAt, 'medium'), header: 'When' },
+      { accessorKey: 'lineDescription', header: 'Line' },
+      {
+        accessorKey: 'quantity',
+        cell: ({ row }) => `${row.original.quantity > 0 ? '+' : ''}${formatNumber(row.original.quantity)}`,
+        header: 'Quantity',
+      },
+      { accessorFn: (row) => row.actorName ?? 'System', header: 'By', id: 'actor' },
+      { accessorFn: (row) => row.note ?? '—', header: 'Note', id: 'note' },
+    ],
+    [],
+  );
+  const table = useDataTable({
+    columns,
+    data: items,
+    enableColumnFilters: false,
+    enableSorting: false,
+    getRowId: (row) => row.id,
+  });
+  return (
+    <div className="mt-6">
+      <h3 className="mb-3 font-medium">Arrivals</h3>
+      <DataTable
+        emptyMessage="No arrivals yet."
+        hideGlobalFilter
+        paginationMode="complete"
+        table={table}
+        total={items.length}
+        totalLabel={(value) => `${value} ${value === 1 ? 'arrival' : 'arrivals'}`}
+      />
+    </div>
   );
 }

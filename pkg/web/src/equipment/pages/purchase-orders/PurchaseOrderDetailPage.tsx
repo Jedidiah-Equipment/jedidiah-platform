@@ -57,6 +57,8 @@ const PurchaseOrderDetail: React.FC<{ purchaseOrder: PurchaseOrderView; queryErr
   const canReadCosts = hasPermission(accessQuery.data, 'equipment_inventory_cost:read');
   const { actions } = purchaseOrder;
   const canReceive = actions.receive.allowed && hasPermission(accessQuery.data, 'equipment_purchase_order:receive');
+  const canReverseArrival =
+    actions.returnToSupplier.allowed && hasPermission(accessQuery.data, 'equipment_purchase_order:receive');
   const canAmend = actions.amend.allowed && hasPermission(accessQuery.data, 'equipment_purchase_order:amend');
   // The server accepts either the physical move right or the PO amendment right for this PO-bound flow.
   const canReturn =
@@ -91,8 +93,15 @@ const PurchaseOrderDetail: React.FC<{ purchaseOrder: PurchaseOrderView; queryErr
             {draft ?? (
               <>
                 <ReadOnlyDetailsCard canAmend={canAmend} purchaseOrder={purchaseOrder} />
-                {canReceive ? (
-                  <PurchaseOrderReceivingCard canReadCosts={canReadCosts} purchaseOrder={purchaseOrder} />
+                {canReceive ||
+                canReverseArrival ||
+                (purchaseOrder.status === 'sent' && purchaseOrder.lines.some((line) => line.kind === 'custom')) ? (
+                  <PurchaseOrderReceivingCard
+                    canReadCosts={canReadCosts}
+                    canReceive={canReceive}
+                    canReverse={canReverseArrival}
+                    purchaseOrder={purchaseOrder}
+                  />
                 ) : null}
                 <ReadOnlyLinesCard canAmend={canAmend} canReadCosts={canReadCosts} purchaseOrder={purchaseOrder} />
                 <PurchaseOrderReturnsCard

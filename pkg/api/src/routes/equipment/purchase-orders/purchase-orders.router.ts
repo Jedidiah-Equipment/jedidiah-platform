@@ -15,12 +15,14 @@ import {
   listLatePurchaseOrders,
   listPartPurchaseOrderLines,
   listPurchaseOrderAmendments,
+  listPurchaseOrderArrivals,
   listPurchaseOrderDocuments,
   listPurchaseOrderReturns,
   listPurchaseOrders,
   listReturnsAwaitingCredit,
   loadSupplierInvoiceReviews,
   markPurchaseOrderSent,
+  postArrival,
   postReceipt,
   postReturnToSupplier,
   revertPurchaseOrderToDraft,
@@ -33,6 +35,8 @@ import {
   LatePurchaseOrderResult,
   PartPurchaseOrderLineInput,
   PartPurchaseOrderLineResult,
+  PostArrivalInput,
+  PostArrivalResult,
   PostReceiptInput,
   PostReturnToSupplierInput,
   type PurchaseOrder,
@@ -42,6 +46,7 @@ import {
   PurchaseOrderAmendmentListResult,
   PurchaseOrderAmendQuantityInput,
   PurchaseOrderAmendSubstitutePartInput,
+  PurchaseOrderArrivalListResult,
   PurchaseOrderCollectionInput,
   PurchaseOrderCreateInput,
   PurchaseOrderDocumentListResult,
@@ -80,6 +85,18 @@ import {
 } from './purchase-order-error-families.js';
 
 export const purchaseOrdersRouter = router({
+  arrivals: authorizedProcedure('equipment_purchase_order:read')
+    .input(PurchaseOrderActionInput)
+    .output(PurchaseOrderArrivalListResult)
+    .query(({ ctx, input }) => listPurchaseOrderArrivals({ db: ctx.db, purchaseOrderId: input.id })),
+
+  postArrival: authorizedProcedure('equipment_purchase_order:receive')
+    .input(PostArrivalInput)
+    .output(PostArrivalResult)
+    .mutation(({ ctx, input }) =>
+      mapPurchaseOrderErrors(() => postArrival({ actorUserId: ctx.session.user.id, db: ctx.db, input })),
+    ),
+
   /**
    * Sent-order changes are gated on `equipment_purchase_order:amend`: the right to change what a Supplier is
    * already holding, which is deliberately narrower than the right to raise a draft.

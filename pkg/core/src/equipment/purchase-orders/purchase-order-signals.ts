@@ -8,13 +8,38 @@ import {
 } from '@pkg/schema/equipment';
 import { and, asc, eq, inArray, isNotNull, isNull, lt } from 'drizzle-orm';
 
-import { loadReceivedQuantities, receivedQuantityKey } from './purchase-order-service.js';
+import { loadArrivedQuantities, loadReceivedQuantities, receivedQuantityKey } from './purchase-order-service.js';
+
+/** Custom Lines still owed per sent order. They are late, never Part cover. */
+export async function loadOpenCustomLineCounts({ db }: { db: Db }): Promise<Map<string, number>> {
+  const lines = await db
+    .select({
+      id: purchaseOrderLines.id,
+      purchaseOrderId: purchaseOrderLines.purchaseOrderId,
+      quantity: purchaseOrderLines.quantity,
+    })
+    .from(purchaseOrderLines)
+    .innerJoin(purchaseOrders, eq(purchaseOrders.id, purchaseOrderLines.purchaseOrderId))
+    .where(
+      and(eq(purchaseOrders.status, 'sent'), isNull(purchaseOrders.closedShortAt), isNull(purchaseOrderLines.partId)),
+    );
+  const arrived = await loadArrivedQuantities({
+    db,
+    purchaseOrderIds: [...new Set(lines.map((line) => line.purchaseOrderId))],
+  });
+  const counts = new Map<string, number>();
+  for (const line of lines) {
+    if (line.quantity <= (arrived.get(line.id) ?? 0)) continue;
+    counts.set(line.purchaseOrderId, (counts.get(line.purchaseOrderId) ?? 0) + 1);
+  }
+  return counts;
+}
 
 /**
  * Sent orders past the date they were promised for, with something still owed (spec §12).
  *
- * "Still owed" includes Custom Lines, which cannot count as Part cover on the buy list. Until
- * Arrivals are recorded for them, a sent Custom Line remains owed. A closed-short order is absent:
+ * "Still owed" includes Custom Lines, which cannot count as Part cover on the buy list. A sent
+ * Custom Line remains owed until its net Arrivals reach its quantity. A closed-short order is absent:
  * closing short is the assertion that the remainder is not coming, which is the answer this list
  * exists to prompt for. An order with no expected date was never promised for a day and so can
  * never be late — chasing it is the buy list's job, not this one's.
@@ -49,7 +74,7 @@ export async function listLatePurchaseOrders({
   if (candidates.length === 0) return { items: [] };
 
   const candidateIds = candidates.map((candidate) => candidate.id);
-  const [lines, receivedQuantities] = await Promise.all([
+  const [lines, receivedQuantities, openCustomLineCounts] = await Promise.all([
     db
       .select({
         partId: purchaseOrderLines.partId,
@@ -57,14 +82,15 @@ export async function listLatePurchaseOrders({
         quantity: purchaseOrderLines.quantity,
       })
       .from(purchaseOrderLines)
-      .where(inArray(purchaseOrderLines.purchaseOrderId, candidateIds)),
+      .where(and(inArray(purchaseOrderLines.purchaseOrderId, candidateIds), isNotNull(purchaseOrderLines.partId))),
     loadReceivedQuantities({ db, purchaseOrderIds: candidateIds }),
+    loadOpenCustomLineCounts({ db }),
   ]);
-  const openLineCounts = new Map<string, number>();
+  const openLineCounts = new Map(openCustomLineCounts);
 
   for (const line of lines) {
-    const received =
-      line.partId === null ? 0 : (receivedQuantities.get(receivedQuantityKey(line.purchaseOrderId, line.partId)) ?? 0);
+    if (line.partId === null) continue;
+    const received = receivedQuantities.get(receivedQuantityKey(line.purchaseOrderId, line.partId)) ?? 0;
     if (line.quantity <= received) continue;
     openLineCounts.set(line.purchaseOrderId, (openLineCounts.get(line.purchaseOrderId) ?? 0) + 1);
   }

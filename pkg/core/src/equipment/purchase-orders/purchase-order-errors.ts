@@ -140,7 +140,26 @@ export class PurchaseOrderLineNotFoundError extends Error {
     readonly purchaseOrderId: UUID,
     readonly partId: UUID,
   ) {
-    super('This Part is not on the Purchase Order.');
+    super('This line is not on the Purchase Order.');
+  }
+}
+
+export class PurchaseOrderLineNotCustomError extends Error {
+  readonly code = 'purchase_order.line_not_custom' as const;
+
+  constructor(readonly lineId: UUID) {
+    super('Receive a Part Line through a Receipt.');
+  }
+}
+
+export class PurchaseOrderArrivalBelowZeroError extends Error {
+  readonly code = 'purchase_order.arrival_below_zero' as const;
+
+  constructor(
+    readonly lineDescription: string,
+    readonly arrivedQuantity: number,
+  ) {
+    super(`${lineDescription} has only ${arrivedQuantity} arrived; its arrival cannot be reversed past zero.`);
   }
 }
 
@@ -259,6 +278,7 @@ export function assertPurchaseOrderAction(verdict: PurchaseOrderActionVerdict, i
 }
 
 export type PurchaseOrderCoreError =
+  | PurchaseOrderArrivalBelowZeroError
   | PurchaseOrderAlreadyCancelledError
   | PurchaseOrderAlreadyClosedShortError
   | PurchaseOrderAlreadySentError
@@ -270,6 +290,7 @@ export type PurchaseOrderCoreError =
   | PurchaseOrderInvalidQuantityError
   | PurchaseOrderLineExistsError
   | PurchaseOrderLineNotFoundError
+  | PurchaseOrderLineNotCustomError
   | PurchaseOrderLineNotPricedError
   | PurchaseOrderLineIdConflictError
   | PurchaseOrderNoReceiptsError
@@ -285,6 +306,7 @@ export type PurchaseOrderCoreError =
 
 export function isPurchaseOrderCoreError(error: unknown): error is PurchaseOrderCoreError {
   return (
+    error instanceof PurchaseOrderArrivalBelowZeroError ||
     error instanceof PurchaseOrderAlreadyCancelledError ||
     error instanceof PurchaseOrderAlreadyClosedShortError ||
     error instanceof PurchaseOrderAlreadySentError ||
@@ -296,6 +318,7 @@ export function isPurchaseOrderCoreError(error: unknown): error is PurchaseOrder
     error instanceof PurchaseOrderInvalidQuantityError ||
     error instanceof PurchaseOrderLineExistsError ||
     error instanceof PurchaseOrderLineNotFoundError ||
+    error instanceof PurchaseOrderLineNotCustomError ||
     error instanceof PurchaseOrderLineNotPricedError ||
     error instanceof PurchaseOrderLineIdConflictError ||
     error instanceof PurchaseOrderNoReceiptsError ||

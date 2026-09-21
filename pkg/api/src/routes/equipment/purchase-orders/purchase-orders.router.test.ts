@@ -1,6 +1,15 @@
 import type { Db } from '@pkg/db';
 import { user } from '@pkg/db';
-import { customers, documents, invoiceExtractions, jobs, parts, quotes, supplier } from '@pkg/db/equipment';
+import {
+  customers,
+  documents,
+  invoiceExtractions,
+  jobs,
+  parts,
+  purchaseOrderLines,
+  quotes,
+  supplier,
+} from '@pkg/db/equipment';
 import { describe, expect } from 'vitest';
 
 import { type AppRouterCaller, createTester } from '../../../test/create-tester.js';
@@ -76,6 +85,32 @@ const test = createTester(async ({ db }) => {
 });
 
 describe('purchaseOrders router', () => {
+  test('posts a Custom Line Arrival with receive permission and no inventory move permission', async ({ context }) => {
+    const admin = context.createCaller();
+    const receiver = context.createCaller(mockSession('procurement-manager'));
+    const denied = context.createCaller(mockSession('sales'));
+    const order = await sendOrder(admin, 1);
+    const [line] = await context.db
+      .insert(purchaseOrderLines)
+      .values({
+        customDescription: 'Packing tape',
+        customUnit: 'box',
+        purchaseOrderId: order.id,
+        quantity: 2,
+        unitPrice: 80,
+      })
+      .returning({ id: purchaseOrderLines.id });
+    if (!line) throw new Error('Custom line fixture insert failed');
+    const input = { lineId: line.id, note: null, purchaseOrderId: order.id, quantity: 1 };
+    await expect(denied.purchaseOrders.postArrival(input)).rejects.toMatchObject({ code: 'FORBIDDEN' });
+    await expect(receiver.purchaseOrders.postArrival(input)).resolves.toMatchObject({
+      arrival: { lineDescription: 'Packing tape', quantity: 1 },
+      warnings: [],
+    });
+    await expect(receiver.purchaseOrders.arrivals({ id: order.id })).resolves.toMatchObject({
+      items: [{ lineDescription: 'Packing tape', quantity: 1 }],
+    });
+  });
   test('enforces lifecycle permissions and applies the cost gate to line prices', async ({ context }) => {
     const admin = context.createCaller();
     const stores = context.createCaller(mockSession('stores'));

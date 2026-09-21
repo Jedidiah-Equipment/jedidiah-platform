@@ -13,6 +13,7 @@ import { defineCoreErrorFamily } from '../../../trpc/errors.js';
 /** Every Purchase Order failure already carries a public message; only the shape differs. */
 export const purchaseOrderErrorFamily = defineCoreErrorFamily<PurchaseOrderCoreError>({
   codes: {
+    'purchase_order.arrival_below_zero': 'BAD_REQUEST',
     'purchase_order.already_cancelled': 'BAD_REQUEST',
     'purchase_order.already_closed_short': 'BAD_REQUEST',
     'purchase_order.already_sent': 'BAD_REQUEST',
@@ -25,6 +26,7 @@ export const purchaseOrderErrorFamily = defineCoreErrorFamily<PurchaseOrderCoreE
     'purchase_order.line_exists': 'CONFLICT',
     'purchase_order.line_id_conflict': 'CONFLICT',
     'purchase_order.line_not_found': 'NOT_FOUND',
+    'purchase_order.line_not_custom': 'BAD_REQUEST',
     'purchase_order.line_not_priced': 'BAD_REQUEST',
     'purchase_order.no_receipts': 'BAD_REQUEST',
     'purchase_order.not_approved': 'BAD_REQUEST',

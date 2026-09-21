@@ -12,6 +12,7 @@ vi.mock('@/equipment/hooks/use-query-invalidation.js', () => ({
   useQueryInvalidation: () => ({ invalidateJobs: vi.fn(), invalidatePurchaseOrders: vi.fn() }),
 }));
 vi.mock('@/lib/trpc.js', () => ({ useTRPC: () => ({}) }));
+vi.mock('@/components/help/index.js', () => ({ HelpLink: () => null }));
 
 import { PurchaseOrderLinesEditor } from './components/PurchaseOrderDraft.js';
 
@@ -87,12 +88,12 @@ it('adds an empty, unpriced line rather than picking a Part for the buyer', asyn
   roots.push(root);
 
   await act(async () => root.render(<Harness />));
-  const addLine = [...container.querySelectorAll('button')].find((button) => button.textContent?.includes('Add line'));
-  if (!addLine) throw new Error('Add line button did not render');
+  const addLine = [...container.querySelectorAll('button')].find((button) => button.textContent?.includes('Add Part'));
+  if (!addLine) throw new Error('Add Part button did not render');
 
   await act(async () => addLine.click());
 
-  expect(readLines()).toEqual([{ partId: '', quantity: 1, unitPrice: 0 }]);
+  expect(readLines()).toEqual([{ kind: 'part', partId: '', quantity: 1, unitPrice: 0 }]);
 });
 
 it('stops adding empty lines once each remaining Part has one waiting for it', async () => {
@@ -119,8 +120,8 @@ it('stops adding empty lines once each remaining Part has one waiting for it', a
   roots.push(root);
 
   await act(async () => root.render(<Harness />));
-  const addLine = [...container.querySelectorAll('button')].find((button) => button.textContent?.includes('Add line'));
-  if (!addLine) throw new Error('Add line button did not render');
+  const addLine = [...container.querySelectorAll('button')].find((button) => button.textContent?.includes('Add Part'));
+  if (!addLine) throw new Error('Add Part button did not render');
 
   await act(async () => addLine.click());
 
@@ -129,10 +130,12 @@ it('stops adding empty lines once each remaining Part has one waiting for it', a
 });
 
 it('explains why a line cannot be added when the Supplier has no available Parts', async () => {
+  let readLines = (): unknown[] => [];
   const Harness = () => {
     const form = useAppForm({
       defaultValues: { expectedDeliveryDate: '', jobIds: [], lines: [], supplierId },
     });
+    readLines = () => form.state.values.lines;
 
     return (
       <PurchaseOrderLinesEditor
@@ -153,9 +156,17 @@ it('explains why a line cannot be added when the Supplier has no available Parts
 
   await act(async () => root.render(<Harness />));
 
-  const addLine = [...container.querySelectorAll('button')].find((button) => button.textContent?.includes('Add line'));
+  const addLine = [...container.querySelectorAll('button')].find((button) => button.textContent?.includes('Add Part'));
   expect(addLine?.disabled).toBe(true);
-  expect(container.textContent).toContain('Add a Part for this Supplier before adding a line.');
+  expect(container.textContent).toContain(
+    'This Supplier has no Parts. Add a custom line, or add a Part for this Supplier first.',
+  );
+  const addCustom = [...container.querySelectorAll('button')].find((button) =>
+    button.textContent?.includes('Add custom line'),
+  );
+  expect(addCustom?.disabled).toBe(false);
+  await act(async () => addCustom?.click());
+  expect(readLines()).toMatchObject([{ description: '', kind: 'custom', quantity: 1, unit: 'each', unitPrice: 0 }]);
 });
 
 it('reports a Part loading failure instead of claiming the Supplier has no Parts', async () => {
@@ -178,7 +189,9 @@ it('reports a Part loading failure instead of claiming the Supplier has no Parts
   await act(async () => root.render(<Harness />));
 
   expect(container.textContent).toContain('Parts could not be loaded. Try again.');
-  expect(container.textContent).not.toContain('Add a Part for this Supplier before adding a line.');
+  expect(container.textContent).not.toContain(
+    'This Supplier has no Parts. Add a custom line, or add a Part for this Supplier first.',
+  );
 });
 
 it('re-seeds the default when a draft line changes to another Part', async () => {
@@ -188,7 +201,7 @@ it('re-seeds the default when a draft line changes to another Part', async () =>
       defaultValues: {
         expectedDeliveryDate: '',
         jobIds: [],
-        lines: [{ partId, quantity: 1, unitPrice: 0.3 }],
+        lines: [{ kind: 'part', partId, quantity: 1, unitPrice: 0.3 }],
         supplierId,
       },
     });
@@ -225,5 +238,5 @@ it('re-seeds the default when a draft line changes to another Part', async () =>
   if (!replacement) throw new Error('Replacement Part option did not render');
   await act(async () => replacement.click());
 
-  expect(readLines()).toEqual([{ partId: replacementPart.id, quantity: 1, unitPrice: 1.2 }]);
+  expect(readLines()).toEqual([{ kind: 'part', partId: replacementPart.id, quantity: 1, unitPrice: 1.2 }]);
 });

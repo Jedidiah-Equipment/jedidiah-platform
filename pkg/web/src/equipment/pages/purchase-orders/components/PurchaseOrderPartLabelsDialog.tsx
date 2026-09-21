@@ -23,9 +23,9 @@ import {
 } from '@/components/ui/dialog.js';
 import { Input } from '@/components/ui/input.js';
 import { fetchPartLabelsBlob } from '@/equipment/pages/parts/part-label.js';
-import { outstandingReceivedForLine } from './types.js';
+import { isPartPurchaseOrderLine, outstandingReceivedForLine, type PartPurchaseOrderLineView } from './types.js';
 
-type ReceivedPartLabelLine = Pick<PurchaseOrderLineView, 'id' | 'partCode' | 'partId' | 'partName'> & {
+type ReceivedPartLabelLine = Pick<PartPurchaseOrderLineView, 'id' | 'partCode' | 'partId' | 'partName'> & {
   heldQuantity: number;
 };
 
@@ -37,6 +37,7 @@ export function PurchaseOrderPartLabelsDialog({ lines }: { lines: PurchaseOrderL
   const receivedLines = useMemo(
     () =>
       lines
+        .filter(isPartPurchaseOrderLine)
         .map((line) => ({
           heldQuantity: outstandingReceivedForLine(line),
           id: line.id,

@@ -69,13 +69,16 @@ const purchaseOrder = PurchaseOrderView.parse({
   jobs: [],
   lines: [
     {
+      description: part.name,
       id: lineId,
+      kind: 'part',
       partId,
       partCode: part.code,
       partName: part.name,
       quantity: 5,
       receivedQuantity: 0,
       standardPurchaseLengthMm: null,
+      unit: null,
       unitOfMeasure: 'piece',
       unitPrice: 10,
     },
@@ -110,7 +113,7 @@ it.each(['Approve', 'Preview PDF'])(
     await editQuantity(container, '6');
     expect(saveDraft).toHaveBeenCalledWith(
       expect.objectContaining({
-        lines: [{ partId, quantity: 6, unitPrice: 10 }],
+        lines: [{ kind: 'part', partId, quantity: 6, unitPrice: 10 }],
       }),
     );
     await click(container, label);
@@ -170,7 +173,7 @@ it.each(['Approve', 'Preview PDF'])('%s blocks on a failed save and works after 
     await vi.waitFor(() => expect(requestedAction).toHaveBeenCalledTimes(1));
   });
   expect(saveDraft).toHaveBeenLastCalledWith(
-    expect.objectContaining({ lines: [{ partId, quantity: 6, unitPrice: 10 }] }),
+    expect.objectContaining({ lines: [{ kind: 'part', partId, quantity: 6, unitPrice: 10 }] }),
   );
 });
 

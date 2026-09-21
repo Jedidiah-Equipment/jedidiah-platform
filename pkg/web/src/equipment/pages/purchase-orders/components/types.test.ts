@@ -28,8 +28,10 @@ const LINEAR_LINE_ID = 'c62d8c24-b88d-454b-b035-2e872d0ab50e';
 
 const lines = [
   {
+    description: 'Bearing',
     hasStockMovements: false,
     id: LINE_ID,
+    kind: 'part',
     partCode: 'P-100',
     partId: PART_ID,
     partName: 'Bearing',
@@ -37,12 +39,15 @@ const lines = [
     receiptBuckets: [{ lengthMm: null, outstandingReceivedQuantity: 1 }],
     receivedQuantity: 1,
     standardPurchaseLengthMm: null,
+    unit: null,
     unitOfMeasure: 'piece',
     unitPrice: 125.5,
   },
   {
+    description: 'Channel',
     hasStockMovements: false,
     id: LINEAR_LINE_ID,
+    kind: 'part',
     partCode: 'C-200',
     partId: LINEAR_PART_ID,
     partName: 'Channel',
@@ -53,6 +58,7 @@ const lines = [
     ],
     receivedQuantity: 5,
     standardPurchaseLengthMm: 6_000,
+    unit: null,
     unitOfMeasure: 'mm',
     unitPrice: 900,
   },
@@ -92,13 +98,44 @@ const purchaseOrder = PurchaseOrderView.parse({
 });
 
 describe('Purchase Order draft form values', () => {
+  it('round-trips a Custom Line with a stable id and blank optional supplier code', () => {
+    const custom = PurchaseOrderView.parse({
+      ...purchaseOrder,
+      lines: [
+        {
+          description: 'Packing tape',
+          hasStockMovements: false,
+          id: LINE_ID,
+          kind: 'custom',
+          partCode: null,
+          partId: null,
+          partName: null,
+          quantity: 2.5,
+          receiptBuckets: [],
+          receivedQuantity: 0,
+          standardPurchaseLengthMm: null,
+          unit: 'box',
+          unitOfMeasure: null,
+          unitPrice: 80,
+        },
+      ],
+    });
+    const values = PurchaseOrderDraftFormValues.parse(toPurchaseOrderDraftFormValues(custom));
+    expect(values.lines).toMatchObject([
+      { description: 'Packing tape', id: LINE_ID, kind: 'custom', supplierCode: '', unit: 'box' },
+    ]);
+    expect(toPurchaseOrderDraftInput(custom.id, values).lines).toMatchObject([
+      { description: 'Packing tape', id: LINE_ID, kind: 'custom', supplierCode: null, unit: 'box' },
+    ]);
+  });
+
   it('maps the whole editable order — header, lines, and Job links — into one set of values', () => {
     expect(toPurchaseOrderDraftFormValues(purchaseOrder)).toEqual({
       expectedDeliveryDate: '2026-08-20',
       jobIds: [JOB_ID],
       lines: [
-        { partId: PART_ID, quantity: 4, unitPrice: 125.5 },
-        { partId: LINEAR_PART_ID, quantity: 3, unitPrice: 900 },
+        { kind: 'part', partId: PART_ID, quantity: 4, unitPrice: 125.5 },
+        { kind: 'part', partId: LINEAR_PART_ID, quantity: 3, unitPrice: 900 },
       ],
       supplierId: purchaseOrder.supplierId,
     });
@@ -126,8 +163,8 @@ describe('Purchase Order draft form values', () => {
       expectedDeliveryDate: '',
       jobIds: [],
       lines: [
-        { partId: PART_ID, quantity: 1, unitPrice: 10 },
-        { partId: PART_ID, quantity: 2, unitPrice: 20 },
+        { kind: 'part', partId: PART_ID, quantity: 1, unitPrice: 10 },
+        { kind: 'part', partId: PART_ID, quantity: 2, unitPrice: 20 },
       ],
       supplierId: purchaseOrder.supplierId,
     };
@@ -140,8 +177,8 @@ describe('Purchase Order draft form values', () => {
       expectedDeliveryDate: '',
       jobIds: [],
       lines: [
-        { partId: '', quantity: 1, unitPrice: 0 },
-        { partId: '', quantity: 1, unitPrice: 0 },
+        { kind: 'part', partId: '', quantity: 1, unitPrice: 0 },
+        { kind: 'part', partId: '', quantity: 1, unitPrice: 0 },
       ],
       supplierId: purchaseOrder.supplierId,
     });

@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button.js';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card.js';
 import { PartLabelPrintButton } from '@/equipment/pages/parts/PartLabelPrintButton.js';
 import { PurchaseOrderReceiveDialog } from './PurchaseOrderReceiveDialog.js';
-import { outstandingQuantity } from './types.js';
+import { isPartPurchaseOrderLine, outstandingQuantity, type PartPurchaseOrderLineView } from './types.js';
 
 /**
  * The dock's view of a sent order: what each line still owes, and the one action that posts it.
@@ -21,8 +21,9 @@ export function PurchaseOrderReceivingCard({
   purchaseOrder: PurchaseOrderView;
 }) {
   const [receivingPartId, setReceivingPartId] = useState<string | null>(null);
-  const receivingLine = purchaseOrder.lines.find((line) => line.partId === receivingPartId) ?? null;
-  const columns = useMemo<DataTableColumnDef<PurchaseOrderView['lines'][number]>[]>(
+  const partLines = purchaseOrder.lines.filter(isPartPurchaseOrderLine);
+  const receivingLine = partLines.find((line) => line.partId === receivingPartId) ?? null;
+  const columns = useMemo<DataTableColumnDef<PartPurchaseOrderLineView>[]>(
     () => [
       {
         accessorFn: (line) => `${line.partCode} ${line.partName}`,
@@ -65,7 +66,7 @@ export function PurchaseOrderReceivingCard({
   );
   const table = useDataTable({
     columns,
-    data: purchaseOrder.lines,
+    data: partLines,
     enableColumnFilters: false,
     enableSorting: false,
     getRowId: (line) => line.id,
@@ -85,7 +86,7 @@ export function PurchaseOrderReceivingCard({
           hideGlobalFilter
           paginationMode="complete"
           table={table}
-          total={purchaseOrder.lines.length}
+          total={partLines.length}
           totalLabel={(value) => `${value} ${value === 1 ? 'part' : 'parts'}`}
         />
       </CardContent>

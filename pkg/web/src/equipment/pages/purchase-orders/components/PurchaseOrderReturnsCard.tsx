@@ -41,7 +41,9 @@ export function PurchaseOrderReturnsCard({
   const [isFilingCreditNote, setIsFilingCreditNote] = useState(false);
   const returningLine = purchaseOrder.lines.find((line) => line.partId === returningPartId) ?? null;
   // Only a line something actually arrived against can send anything back.
-  const returnableLines = purchaseOrder.lines.filter((line) => line.receivedQuantity > 0);
+  const returnableLines = purchaseOrder.lines.filter(
+    (line) => line.kind === 'part' && line.partId !== null && line.receivedQuantity > 0,
+  );
   const unsettledReturns = returns.filter((row) => row.settledByDocumentId === null);
   const columns = useMemo<DataTableColumnDef<PurchaseOrderReturnRow>[]>(
     () => [

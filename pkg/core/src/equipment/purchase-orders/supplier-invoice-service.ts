@@ -146,14 +146,19 @@ export async function loadSupplierInvoiceReviews({
   const invoices = await loadInvoiceDocuments(db, { ...(documentId ? { documentId } : {}), purchaseOrderId });
   if (invoices.length === 0) return { items: [] };
 
-  const orderLines = purchaseOrder.lines.map((line) => ({
-    orderedQuantity: line.quantity,
-    partCode: line.partCode,
-    partId: line.partId,
-    partName: line.partName,
-    supplierCode: line.supplierCode ?? null,
-    unitPrice: line.unitPrice,
-  }));
+  const orderLines = purchaseOrder.lines.flatMap((line) => {
+    if (line.kind !== 'part' || line.partId === null || line.partCode === null || line.partName === null) return [];
+    return [
+      {
+        orderedQuantity: line.quantity,
+        partCode: line.partCode,
+        partId: line.partId,
+        partName: line.partName,
+        supplierCode: line.supplierCode ?? null,
+        unitPrice: line.unitPrice,
+      },
+    ];
+  });
   const [bases, resolutions] = await Promise.all([
     loadPriceCorrectionBases({ db, orderLines, purchaseOrderId }),
     loadResolutions(

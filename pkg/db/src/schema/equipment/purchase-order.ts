@@ -64,10 +64,12 @@ export const purchaseOrders = equipmentSchema.table(
 export const purchaseOrderLines = equipmentSchema.table(
   'purchase_order_line',
   {
+    customDescription: text('custom_description'),
+    customSupplierCode: text('custom_supplier_code'),
+    customUnit: text('custom_unit'),
     id: uuid('id').defaultRandom().primaryKey(),
-    partId: uuid('part_id')
-      .notNull()
-      .references(() => parts.id, { onDelete: 'restrict' }),
+    partId: uuid('part_id').references(() => parts.id, { onDelete: 'restrict' }),
+    position: integer('position').notNull().default(0),
     purchaseOrderId: uuid('purchase_order_id')
       .notNull()
       .references(() => purchaseOrders.id, { onDelete: 'cascade' }),
@@ -78,6 +80,10 @@ export const purchaseOrderLines = equipmentSchema.table(
     unique('purchase_order_line_order_part_unique').on(table.purchaseOrderId, table.partId),
     check('purchase_order_line_quantity_positive', sql`${table.quantity} > 0`),
     check('purchase_order_line_unit_price_nonnegative', sql`${table.unitPrice} >= 0`),
+    check(
+      'purchase_order_line_kind_shape',
+      sql`(${table.partId} IS NOT NULL AND ${table.customDescription} IS NULL AND ${table.customUnit} IS NULL AND ${table.customSupplierCode} IS NULL) OR (${table.partId} IS NULL AND ${table.customDescription} IS NOT NULL AND length(trim(${table.customDescription})) > 0 AND ${table.customUnit} IS NOT NULL AND length(trim(${table.customUnit})) > 0 AND (${table.customSupplierCode} IS NULL OR length(trim(${table.customSupplierCode})) > 0))`,
+    ),
   ],
 );
 

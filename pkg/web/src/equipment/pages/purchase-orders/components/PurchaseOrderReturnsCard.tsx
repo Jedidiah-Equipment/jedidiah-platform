@@ -39,11 +39,12 @@ export function PurchaseOrderReturnsCard({
   const returns = useMemo(() => query.data?.items ?? [], [query.data]);
   const [returningPartId, setReturningPartId] = useState<string | null>(null);
   const [isFilingCreditNote, setIsFilingCreditNote] = useState(false);
-  const returningLine = purchaseOrder.lines.find((line) => line.partId === returningPartId) ?? null;
   // Only a line something actually arrived against can send anything back.
   const returnableLines = purchaseOrder.lines.filter(
     (line) => line.kind === 'part' && line.partId !== null && line.receivedQuantity > 0,
   );
+  const returningLine =
+    returningPartId === null ? null : (returnableLines.find((line) => line.partId === returningPartId) ?? null);
   const unsettledReturns = returns.filter((row) => row.settledByDocumentId === null);
   const columns = useMemo<DataTableColumnDef<PurchaseOrderReturnRow>[]>(
     () => [

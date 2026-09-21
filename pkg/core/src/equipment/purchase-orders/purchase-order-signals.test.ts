@@ -1,5 +1,5 @@
 import { user } from '@pkg/db';
-import { parts, purchaseOrders, supplier } from '@pkg/db/equipment';
+import { parts, purchaseOrderLines, purchaseOrders, supplier } from '@pkg/db/equipment';
 import { eq } from 'drizzle-orm';
 import { describe, expect } from 'vitest';
 import { createTester } from '../../test/create-tester.js';
@@ -71,6 +71,52 @@ describe('listLatePurchaseOrders', () => {
 
     await expect(listLatePurchaseOrders({ clock, db: context.db })).resolves.toMatchObject({
       items: [expect.objectContaining({ openLineCount: 1 })],
+    });
+  });
+
+  test('keeps Custom Lines in the late signal after every Part Line arrives', async ({ context }) => {
+    const customOnly = await context.db
+      .insert(purchaseOrders)
+      .values({
+        approvedAt: new Date('2026-08-01T08:00:00.000Z'),
+        expectedDeliveryDate: '2026-07-30',
+        sentAt: new Date('2026-08-02T08:00:00.000Z'),
+        status: 'sent',
+        supplierId: SUPPLIER_ID,
+      })
+      .returning({ id: purchaseOrders.id });
+    const customOnlyId = customOnly[0]?.id;
+    if (!customOnlyId) throw new Error('Custom-only order insert failed');
+    const mixedId = await seedSentPurchaseOrder(context.db, SUPPLIER_ID, [{ partId: PART_ID, quantity: 4 }], {
+      expectedDeliveryDate: '2026-07-30',
+    });
+    await context.db.insert(purchaseOrderLines).values([
+      {
+        customDescription: 'Packing tape',
+        customUnit: 'box',
+        purchaseOrderId: customOnlyId,
+        quantity: 2,
+        unitPrice: 80,
+      },
+      {
+        customDescription: 'Workshop service',
+        customUnit: 'each',
+        purchaseOrderId: mixedId,
+        quantity: 1,
+        unitPrice: 500,
+      },
+    ]);
+    await postReceipt({
+      actorUserId: ACTOR_ID,
+      db: context.db,
+      input: { lengthMm: null, partId: PART_ID, purchaseOrderId: mixedId, quantity: 4, unitCost: null },
+    });
+
+    await expect(listLatePurchaseOrders({ clock, db: context.db })).resolves.toMatchObject({
+      items: [
+        { id: customOnlyId, openLineCount: 1 },
+        { id: mixedId, openLineCount: 1 },
+      ],
     });
   });
 

@@ -26,9 +26,9 @@ export function recordReadingSynced(item: QueuedReading): void {
   captureEvent('reading synced', properties);
 }
 
-export function recordReadingSyncFailure(failure: ReadingSyncFailure, now = Date.now()): void {
+export function recordReadingSyncFailure(failure: ReadingSyncFailure): void {
   const properties = {
-    ...readingProperties(failure.item, now),
+    ...readingProperties(failure.item),
     code: failure.error instanceof ReadingSyncError ? failure.error.code : errorName(failure.error),
     stage: failure.stage,
   };

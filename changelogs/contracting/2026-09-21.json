@@ -1,0 +1,19 @@
+{
+  "business": "contracting",
+  "releasedAt": "2026-09-21T12:49:12.006Z",
+  "sections": [
+    {
+      "surface": "app",
+      "entries": [
+        {
+          "title": "Find jobs by their current stage",
+          "description": "Use dedicated queues for upcoming, active, apparently finished, awaiting-pricing, and awaiting-invoice jobs."
+        },
+        {
+          "title": "Review and sign off completed jobs",
+          "description": "Review reading evidence, resolve hour gaps, record missing departure readings and measures, add charges, and complete a job for pricing."
+        }
+      ]
+    }
+  ]
+}

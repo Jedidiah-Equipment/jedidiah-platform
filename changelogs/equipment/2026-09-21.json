@@ -1,0 +1,28 @@
+{
+  "business": "equipment",
+  "releasedAt": "2026-09-21T12:49:12.006Z",
+  "sections": [
+    {
+      "surface": "app",
+      "entries": [
+        {
+          "title": "Add once-off items to purchase orders",
+          "description": "Add non-stock custom lines for items that are not in the parts catalogue. Receive and reverse arrivals, amend sent lines, and cross-check them against supplier invoices."
+        },
+        {
+          "title": "Control who appears as a quote salesperson",
+          "description": "Mark users as quote salespeople so only the appropriate people appear in the Salesperson picker. Existing salesperson assignments remain intact."
+        }
+      ]
+    },
+    {
+      "surface": "mobile",
+      "entries": [
+        {
+          "title": "Choose from the current salesperson roster",
+          "description": "Quote salesperson pickers now show users who are marked as quote salespeople while preserving existing assignments."
+        }
+      ]
+    }
+  ]
+}

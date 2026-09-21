@@ -1,9 +1,9 @@
-import { isQuoteSalespersonRole, quoteKindLabels, quoteStatusLabels } from '@pkg/domain/equipment';
+import { defaultQuoteSalespersonId, quoteKindLabels, quoteStatusLabels } from '@pkg/domain/equipment';
 import type { Quote } from '@pkg/schema/equipment';
 import { useMutation } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import type React from 'react';
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { toast } from 'sonner';
 import { CreateEntityDialog } from '@/components/form/index.js';
 import { getFieldErrors } from '@/components/form/utils/field-errors.js';
@@ -41,13 +41,14 @@ export const QuoteCreateDialog: React.FC<QuoteCreateDialogProps> = ({ onOpenChan
   const showMutationError = useApiMutationErrorToast();
 
   const defaultValues = useMemo((): QuoteCreateFormValues => {
-    const access = accessQuery.data;
-
     return {
       ...QUOTE_CREATE_DEFAULT_VALUES,
-      salesPersonId: isQuoteSalespersonRole(access?.equipmentRole) ? (access?.userId ?? '') : '',
+      salesPersonId: defaultQuoteSalespersonId({
+        actingUserId: accessQuery.data?.userId,
+        salespeople: salespeopleOptions.items,
+      }),
     };
-  }, [accessQuery.data]);
+  }, [accessQuery.data, salespeopleOptions.items]);
 
   const createQuoteMutation = useMutation(
     trpc.quotes.create.mutationOptions({
@@ -75,6 +76,16 @@ export const QuoteCreateDialog: React.FC<QuoteCreateDialogProps> = ({ onOpenChan
     >
       {(form) => (
         <div className="grid gap-4">
+          <form.Field name="salesPersonId">
+            {(field) => (
+              <QuoteSalespersonPrefill
+                currentId={field.state.value}
+                defaultId={defaultValues.salesPersonId}
+                isTouched={field.state.meta.isTouched}
+                onPrefill={field.handleChange}
+              />
+            )}
+          </form.Field>
           <form.Field name="customerId">
             {(field) => {
               const fieldErrors = getFieldErrors(field.state.meta.errors);
@@ -261,3 +272,21 @@ export const QuoteCreateDialog: React.FC<QuoteCreateDialogProps> = ({ onOpenChan
     </CreateEntityDialog>
   );
 };
+
+function QuoteSalespersonPrefill({
+  currentId,
+  defaultId,
+  isTouched,
+  onPrefill,
+}: {
+  currentId: string;
+  defaultId: string;
+  isTouched: boolean;
+  onPrefill: (id: string) => void;
+}) {
+  useEffect(() => {
+    if (!isTouched && !currentId && defaultId) onPrefill(defaultId);
+  }, [currentId, defaultId, isTouched, onPrefill]);
+
+  return null;
+}

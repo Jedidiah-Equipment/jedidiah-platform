@@ -29,6 +29,7 @@ export const authClient = createAuthClient({
     inferAdditionalFields({
       user: {
         assistantEnabled: { type: 'boolean' },
+        quoteSalesperson: { type: 'boolean' },
         contractingRole: { type: 'string' },
         isDevice: { type: 'boolean' },
         phoneNumber: { type: 'string' },

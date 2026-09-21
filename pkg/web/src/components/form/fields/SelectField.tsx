@@ -21,6 +21,8 @@ export type SelectFieldProps = {
   onValueSelect?: (value: string) => boolean | undefined;
   options: readonly SelectFieldOption[];
   placeholder?: string;
+  /** Label for a stored value omitted from the current option list. It is display-only. */
+  unlistedSelectedLabel?: React.ReactNode;
 };
 
 export function SelectField({
@@ -32,13 +34,17 @@ export function SelectField({
   onValueSelect,
   options,
   placeholder,
+  unlistedSelectedLabel,
 }: SelectFieldProps) {
   const field = useFieldContext<string>();
   const fieldErrors = getFieldErrors(field.state.meta.errors);
   const isInvalid = fieldErrors.length > 0;
   const selectedOption = options.find((option) => option.value === field.state.value);
   const selectValue = emptyLabel && field.state.value === '' ? EMPTY_SELECT_VALUE : field.state.value;
-  const selectedLabel = emptyLabel && field.state.value === '' ? emptyLabel : selectedOption?.label;
+  const selectedLabel =
+    emptyLabel && field.state.value === ''
+      ? emptyLabel
+      : (selectedOption?.label ?? (field.state.value ? unlistedSelectedLabel : undefined));
 
   return (
     <Field data-disabled={disabled} data-invalid={isInvalid}>

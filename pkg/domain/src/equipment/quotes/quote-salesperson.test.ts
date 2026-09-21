@@ -1,18 +1,21 @@
+import { AuthId } from '@pkg/schema';
 import { describe, expect, it } from 'vitest';
 
-import { isQuoteSalespersonRole } from './quote-salesperson.js';
+import { defaultQuoteSalespersonId } from './quote-salesperson.js';
 
-describe('isQuoteSalespersonRole', () => {
-  it('accepts the roles that own a sale', () => {
-    expect(isQuoteSalespersonRole('sales')).toBe(true);
-    expect(isQuoteSalespersonRole('admin')).toBe(true);
-    expect(isQuoteSalespersonRole('super-admin')).toBe(true);
+describe('defaultQuoteSalespersonId', () => {
+  const salespeople = [{ id: AuthId.parse('seller-1') }, { id: AuthId.parse('seller-2') }] as const;
+
+  it('prefills the acting user when they are on the roster', () => {
+    expect(defaultQuoteSalespersonId({ actingUserId: AuthId.parse('seller-2'), salespeople })).toBe('seller-2');
   });
 
-  // Procurement may raise a Quote, but the sale on it belongs to a salesperson.
-  it('refuses a quote creator who is not a salesperson', () => {
-    expect(isQuoteSalespersonRole('procurement-manager')).toBe(false);
-    expect(isQuoteSalespersonRole(null)).toBe(false);
-    expect(isQuoteSalespersonRole(undefined)).toBe(false);
+  it('leaves the field empty when the acting user is absent', () => {
+    expect(defaultQuoteSalespersonId({ actingUserId: AuthId.parse('other-user'), salespeople })).toBe('');
+  });
+
+  it('leaves the field empty without an acting user or a roster', () => {
+    expect(defaultQuoteSalespersonId({ actingUserId: null, salespeople })).toBe('');
+    expect(defaultQuoteSalespersonId({ actingUserId: AuthId.parse('seller-1'), salespeople: [] })).toBe('');
   });
 });

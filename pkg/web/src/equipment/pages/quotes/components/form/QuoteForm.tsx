@@ -150,6 +150,7 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ onSave, priorityQuote, quo
                             onValueCommit={autosave.commit}
                             options={salespeopleOptions.selectOptions}
                             placeholder="Select salesperson"
+                            unlistedSelectedLabel={quote.salesPersonName}
                           />
                         )}
                       </form.AppField>

@@ -8,9 +8,18 @@ role in both businesses is a scripted change, not something the app offers.
 ## Adding an Equipment person
 
 1. Click **New user** and enter the person's **Full Name** and **Email**.
-2. Select their **Equipment role**, replacing the default **Sales**. Only Equipment roles are offered.
-3. Select their **Departments** if they belong to any.
-4. Enter a **Password** and click **Create user**.
+2. Tick **Quote salesperson** if they sell, so Quotes can name them.
+3. Select their **Equipment role**, replacing the default **Sales**. Only Equipment roles are offered.
+4. Select their **Departments** if they belong to any.
+5. Enter a **Password** and click **Create user**.
+
+## Letting someone be named on Quotes
+
+1. Open the person in **Users** and tick **Quote salesperson**.
+2. Click **Save user**. They now appear in the Salesperson picker on Quotes.
+
+To remove them from the picker, open the person, untick **Quote salesperson**, and click **Save user**.
+Their existing Quotes remain unchanged and can still be opened and saved.
 
 ## Removing access
 

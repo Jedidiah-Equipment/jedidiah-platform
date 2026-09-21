@@ -1,13 +1,7 @@
 import { type DatabaseTransaction, type Db, notRemoved, user } from '@pkg/db';
 import { customers, jobs, products, quotes } from '@pkg/db/equipment';
 import { getPlantDateNow } from '@pkg/domain';
-import {
-  assertQuoteEditable,
-  isQuoteLocked,
-  QUOTE_SALESPERSON_ROLES,
-  quoteKindLabels,
-  validateDiscount,
-} from '@pkg/domain/equipment';
+import { assertQuoteEditable, isQuoteLocked, quoteKindLabels, validateDiscount } from '@pkg/domain/equipment';
 import type { AuditChanges, AuthId, UUID } from '@pkg/schema';
 import {
   DEFAULT_PRODUCT_CURRENCY_CODE,
@@ -22,7 +16,7 @@ import {
   type QuoteUpdateInput,
   type QuoteWorkItemInput,
 } from '@pkg/schema/equipment';
-import { and, eq, inArray, isNull } from 'drizzle-orm';
+import { and, eq, isNull } from 'drizzle-orm';
 import { diffAuditUpdate, recordAuditCreate, recordAuditUpdate } from '../../audit/audit-writer.js';
 import { customerAuditDescriptor } from '../customers/customer-service.js';
 import { cancelJobForQuote } from '../jobs/job-service.js';
@@ -327,7 +321,9 @@ export async function updateQuote({
     };
     assertValidDiscount({ discountPercent: input.discountPercent });
 
-    await assertQuoteSalesPerson({ salesPersonId: input.salesPersonId, tx });
+    if (input.salesPersonId !== before.salesPersonId) {
+      await assertQuoteSalesPerson({ salesPersonId: input.salesPersonId, tx });
+    }
 
     const patch = {
       cancellationReason: input.cancellationReason,
@@ -818,10 +814,10 @@ async function assertQuoteSalesPerson({
       id: user.id,
     })
     .from(user)
-    .where(and(eq(user.id, salesPersonId), inArray(user.role, [...QUOTE_SALESPERSON_ROLES])));
+    .where(and(eq(user.id, salesPersonId), eq(user.quoteSalesperson, true)));
 
   if (!salesPerson) {
-    throw new QuoteInvalidReferenceError('Quote salesperson must be a sales, admin, or super-admin user.');
+    throw new QuoteInvalidReferenceError('Quote salesperson must be a User marked as a Quote salesperson.');
   }
 }
 

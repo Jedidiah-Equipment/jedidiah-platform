@@ -3800,6 +3800,7 @@ async function createActorUser(db: Db) {
     emailVerified: true,
     id: actorUserId,
     name: 'Test User',
+    quoteSalesperson: true,
     role: 'sales',
     updatedAt: now,
   });
@@ -3824,6 +3825,7 @@ async function createTestUser(
       emailVerified: true,
       id: input.id,
       name: input.name,
+      quoteSalesperson: input.role === 'sales',
       role: input.role,
       updatedAt: now,
     })

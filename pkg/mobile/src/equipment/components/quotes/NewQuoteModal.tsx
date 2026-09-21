@@ -1,7 +1,7 @@
-import { isQuoteSalespersonRole, quoteKindLabels, quoteStatusLabels } from '@pkg/domain/equipment';
+import { defaultQuoteSalespersonId, quoteKindLabels, quoteStatusLabels } from '@pkg/domain/equipment';
 import { IconX } from '@tabler/icons-react-native';
 import { useStore } from '@tanstack/react-form';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
@@ -37,6 +37,7 @@ export function NewQuoteModal({ onClose }: { onClose: () => void }) {
   const showToast = useAppToast();
   const [productSelection, setProductSelection] = useState<ProductSelection | null>(null);
   const access = useAccess();
+  const salespeople = useQuery(trpc.quotes.salespeople.queryOptions());
   const createQuote = useMutation(trpc.quotes.create.mutationOptions());
 
   const form = useAppForm({
@@ -64,11 +65,13 @@ export function NewQuoteModal({ onClose }: { onClose: () => void }) {
   const isSubmitting = useStore(form.store, (state) => state.isSubmitting);
 
   useEffect(() => {
-    // Only a salesperson is prefilled as one: procurement may raise a Quote, but its Salesperson has
-    // to come off the roster, and prefilling an id the picker never offers fails on submit.
-    const defaultSalesPersonId = isQuoteSalespersonRole(access.data?.equipmentRole) ? (access.data?.userId ?? '') : '';
+    // Prefill the acting user only when the Salesperson picker offers them.
+    const defaultSalesPersonId = defaultQuoteSalespersonId({
+      actingUserId: access.data?.userId,
+      salespeople: salespeople.data?.users ?? [],
+    });
     if (!salesPersonId && defaultSalesPersonId) form.setFieldValue('salesPersonId', defaultSalesPersonId);
-  }, [access.data, form, salesPersonId]);
+  }, [access.data, form, salesPersonId, salespeople.data]);
 
   const close = () => {
     if (!isSubmitting) onClose();

@@ -323,6 +323,27 @@ describe('admin user safety policy', () => {
     expect(created?.isDevice).toBe(true);
   });
 
+  test('persists Quote salesperson state in the admin user insert', async ({ context }) => {
+    const headers = await createSignedInAdmin(context);
+
+    await context.auth.api.createUser({
+      body: {
+        data: { equipmentRole: 'procurement-manager', quoteSalesperson: true },
+        email: 'procurement-salesperson@example.com',
+        name: 'Procurement Salesperson',
+        password: DEFAULT_DEMO_USER_PASSWORD,
+      },
+      headers,
+    });
+
+    const [created] = await context.db
+      .select({ quoteSalesperson: user.quoteSalesperson, role: user.role })
+      .from(user)
+      .where(sql`${user.email} = 'procurement-salesperson@example.com'`);
+
+    expect(created).toEqual({ quoteSalesperson: true, role: 'procurement-manager' });
+  });
+
   test('creates a contracting-only user without temporary Equipment access', async ({ context }) => {
     const headers = await createSignedInAdmin(context);
 
@@ -443,6 +464,54 @@ describe('admin user safety policy', () => {
       .where(sql`${user.id} = ${admin.user.id}`);
 
     expect(stored?.equipmentRole).toBe('admin');
+  });
+
+  test('prevents a signed-in non-admin from adding themselves to the Quote salesperson roster', async ({ context }) => {
+    await createUser(context.db, {
+      email: 'ordinary-sales@example.com',
+      id: 'ordinary-sales-id',
+      name: 'Ordinary Sales',
+      password: DEFAULT_DEMO_USER_PASSWORD,
+      role: 'sales',
+    });
+    const { headers } = await context.auth.api.signInEmail({
+      body: { email: 'ordinary-sales@example.com', password: DEFAULT_DEMO_USER_PASSWORD },
+      returnHeaders: true,
+    });
+
+    await expect(
+      context.auth.api.updateUser({
+        body: { quoteSalesperson: true } as never,
+        headers: convertSetCookieToCookie(headers),
+      }),
+    ).rejects.toThrow();
+
+    const [stored] = await context.db
+      .select({ quoteSalesperson: user.quoteSalesperson })
+      .from(user)
+      .where(sql`${user.id} = 'ordinary-sales-id'`);
+    expect(stored?.quoteSalesperson).toBe(false);
+  });
+
+  test('allows an admin to update a target User’s Quote salesperson flag', async ({ context }) => {
+    const headers = await createSignedInAdmin(context);
+    await createUser(context.db, {
+      email: 'target-salesperson@example.com',
+      id: 'target-salesperson-id',
+      name: 'Target Salesperson',
+      role: 'procurement-manager',
+    });
+
+    await context.auth.api.adminUpdateUser({
+      body: { data: { quoteSalesperson: true }, userId: 'target-salesperson-id' },
+      headers,
+    });
+
+    const [stored] = await context.db
+      .select({ quoteSalesperson: user.quoteSalesperson, role: user.role })
+      .from(user)
+      .where(sql`${user.id} = 'target-salesperson-id'`);
+    expect(stored).toEqual({ quoteSalesperson: true, role: 'procurement-manager' });
   });
 
   test('rejects invalid role transport values as a bad request', async ({ context }) => {

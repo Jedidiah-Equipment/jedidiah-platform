@@ -8,6 +8,8 @@ import { StockMovementWarningCode } from '../inventory/stock-movement.js';
 export const PurchaseOrderArrivalQuantity = z
   .number()
   .finite()
+  .min(-99_999_999_999.999, 'Quantity exceeds the supported range')
+  .max(99_999_999_999.999, 'Quantity exceeds the supported range')
   .multipleOf(0.001, 'Quantity supports at most three decimal places')
   .refine((quantity) => quantity !== 0, 'Quantity cannot be zero');
 

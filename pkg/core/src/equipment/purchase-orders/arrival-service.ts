@@ -47,7 +47,7 @@ export async function postArrival({
     if (line.partId !== null) throw new PurchaseOrderLineNotCustomError(line.id);
     if (!line.customDescription) throw new Error('Custom Line has no description');
 
-    const arrivedQuantity = await loadLineArrivedQuantity({ db: tx, lineId: line.id });
+    const arrivedQuantity = await loadLineArrivedQuantity({ db: tx, lineId: line.id, purchaseOrderId: row.id });
     if (arrivedQuantity + input.quantity < -0.000001) {
       throw new PurchaseOrderArrivalBelowZeroError(line.customDescription, arrivedQuantity);
     }
@@ -87,11 +87,21 @@ export async function postArrival({
   });
 }
 
-async function loadLineArrivedQuantity({ db, lineId }: { db: PurchaseOrderDb; lineId: UUID }): Promise<number> {
+async function loadLineArrivedQuantity({
+  db,
+  lineId,
+  purchaseOrderId,
+}: {
+  db: PurchaseOrderDb;
+  lineId: UUID;
+  purchaseOrderId: UUID;
+}): Promise<number> {
   const [row] = await db
     .select({ quantity: sql<number>`coalesce(sum(${purchaseOrderLineArrivals.quantity}), 0)::double precision` })
     .from(purchaseOrderLineArrivals)
-    .where(eq(purchaseOrderLineArrivals.lineId, lineId));
+    .where(
+      and(eq(purchaseOrderLineArrivals.purchaseOrderId, purchaseOrderId), eq(purchaseOrderLineArrivals.lineId, lineId)),
+    );
   return row?.quantity ?? 0;
 }
 

@@ -94,7 +94,6 @@ const PurchaseOrderDetail: React.FC<{ purchaseOrder: PurchaseOrderView; queryErr
               <>
                 <ReadOnlyDetailsCard canAmend={canAmend} purchaseOrder={purchaseOrder} />
                 {canReceive ||
-                canReverseArrival ||
                 (purchaseOrder.status === 'sent' && purchaseOrder.lines.some((line) => line.kind === 'custom')) ? (
                   <PurchaseOrderReceivingCard
                     canReadCosts={canReadCosts}

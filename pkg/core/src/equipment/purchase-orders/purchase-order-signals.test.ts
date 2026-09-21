@@ -7,7 +7,7 @@ import { postReceipt } from '../inventory/receipt-service.js';
 import { seedSentPurchaseOrder } from '../test/inventory-fixtures.js';
 import { partValues } from '../test/part-fixtures.js';
 import { postArrival } from './arrival-service.js';
-import { listLatePurchaseOrders } from './purchase-order-signals.js';
+import { listLatePurchaseOrders, loadOpenCustomLineCounts } from './purchase-order-signals.js';
 
 const ACTOR_ID = 'po-signals-test-user';
 const SUPPLIER_ID = '00000000-0000-4000-8000-000000000501';
@@ -124,6 +124,9 @@ describe('listLatePurchaseOrders', () => {
     });
     const customOnlyLineId = insertedLines[0]?.id;
     if (!customOnlyLineId) throw new Error('Custom line missing');
+    await expect(loadOpenCustomLineCounts({ db: context.db, purchaseOrderIds: [customOnlyId] })).resolves.toEqual(
+      new Map([[customOnlyId, 1]]),
+    );
     await postArrival({
       actorUserId: ACTOR_ID,
       db: context.db,
@@ -132,6 +135,9 @@ describe('listLatePurchaseOrders', () => {
     await expect(listLatePurchaseOrders({ clock, db: context.db })).resolves.toMatchObject({
       items: [{ id: mixedId, openLineCount: 1 }],
     });
+    await expect(loadOpenCustomLineCounts({ db: context.db, purchaseOrderIds: [customOnlyId] })).resolves.toEqual(
+      new Map(),
+    );
   });
 
   test('drops an order once every line has arrived', async ({ context }) => {

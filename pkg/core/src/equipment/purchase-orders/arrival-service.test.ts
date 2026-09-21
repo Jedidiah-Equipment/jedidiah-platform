@@ -150,6 +150,10 @@ describe('Custom Line Arrivals', () => {
     expect(PostArrivalInput.safeParse({ lineId: first.lineId, purchaseOrderId: first.id, quantity: -1 }).success).toBe(
       false,
     );
+    expect(
+      PostArrivalInput.safeParse({ lineId: first.lineId, purchaseOrderId: first.id, quantity: 100_000_000_000 })
+        .success,
+    ).toBe(false);
     await expect(
       postArrival({
         actorUserId,

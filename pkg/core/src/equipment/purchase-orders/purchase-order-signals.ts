@@ -1,7 +1,7 @@
 import type { Db } from '@pkg/db';
 import { purchaseOrderLines, purchaseOrders, supplier } from '@pkg/db/equipment';
 import { diffDateOnlyDays, toPlantDateOnly } from '@pkg/domain';
-import { DateOnlyIso } from '@pkg/schema';
+import { DateOnlyIso, type UUID } from '@pkg/schema';
 import {
   type LatePurchaseOrderResult,
   LatePurchaseOrderResult as LatePurchaseOrderResultSchema,
@@ -11,7 +11,14 @@ import { and, asc, eq, inArray, isNotNull, isNull, lt } from 'drizzle-orm';
 import { loadArrivedQuantities, loadReceivedQuantities, receivedQuantityKey } from './purchase-order-service.js';
 
 /** Custom Lines still owed per sent order. They are late, never Part cover. */
-export async function loadOpenCustomLineCounts({ db }: { db: Db }): Promise<Map<string, number>> {
+export async function loadOpenCustomLineCounts({
+  db,
+  purchaseOrderIds,
+}: {
+  db: Db;
+  purchaseOrderIds: readonly UUID[];
+}): Promise<Map<string, number>> {
+  if (purchaseOrderIds.length === 0) return new Map();
   const lines = await db
     .select({
       id: purchaseOrderLines.id,
@@ -21,7 +28,12 @@ export async function loadOpenCustomLineCounts({ db }: { db: Db }): Promise<Map<
     .from(purchaseOrderLines)
     .innerJoin(purchaseOrders, eq(purchaseOrders.id, purchaseOrderLines.purchaseOrderId))
     .where(
-      and(eq(purchaseOrders.status, 'sent'), isNull(purchaseOrders.closedShortAt), isNull(purchaseOrderLines.partId)),
+      and(
+        inArray(purchaseOrders.id, [...purchaseOrderIds]),
+        eq(purchaseOrders.status, 'sent'),
+        isNull(purchaseOrders.closedShortAt),
+        isNull(purchaseOrderLines.partId),
+      ),
     );
   const arrived = await loadArrivedQuantities({
     db,
@@ -84,7 +96,7 @@ export async function listLatePurchaseOrders({
       .from(purchaseOrderLines)
       .where(and(inArray(purchaseOrderLines.purchaseOrderId, candidateIds), isNotNull(purchaseOrderLines.partId))),
     loadReceivedQuantities({ db, purchaseOrderIds: candidateIds }),
-    loadOpenCustomLineCounts({ db }),
+    loadOpenCustomLineCounts({ db, purchaseOrderIds: candidateIds }),
   ]);
   const openLineCounts = new Map(openCustomLineCounts);
 

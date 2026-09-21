@@ -19,6 +19,7 @@ const document: PurchaseOrderPdfModel = {
   },
   lines: [
     {
+      id: '00000000-0000-4000-8000-000000000004',
       partCode: 'PIPE-100',
       partId: '00000000-0000-4000-8000-000000000001',
       partName: 'Hydraulic pipe',
@@ -29,6 +30,7 @@ const document: PurchaseOrderPdfModel = {
       unitPrice: 900,
     },
     {
+      id: '00000000-0000-4000-8000-000000000005',
       partCode: 'BRG-220',
       partId: '00000000-0000-4000-8000-000000000002',
       partName: 'Sealed bearing set',

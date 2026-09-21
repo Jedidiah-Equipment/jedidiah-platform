@@ -29,6 +29,7 @@ vi.hoisted(() => {
 
 const supplierId = '762b0045-d030-4897-918d-dc50eea5469c';
 const partId = '4de0e2a1-2b2f-4b2e-9a5f-6a0d0a1b2c3d';
+const lineId = 'a9af52b0-9476-4f86-8b1d-f121b2b6e702';
 const part: Part = {
   averageUtilizationPercent: null,
   category: 'Fasteners',
@@ -68,6 +69,7 @@ const purchaseOrder = PurchaseOrderView.parse({
   jobs: [],
   lines: [
     {
+      id: lineId,
       partId,
       partCode: part.code,
       partName: part.name,

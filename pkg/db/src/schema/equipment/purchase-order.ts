@@ -9,6 +9,7 @@ import {
   primaryKey,
   text,
   timestamp,
+  unique,
   uniqueIndex,
   uuid,
 } from 'drizzle-orm/pg-core';
@@ -63,6 +64,7 @@ export const purchaseOrders = equipmentSchema.table(
 export const purchaseOrderLines = equipmentSchema.table(
   'purchase_order_line',
   {
+    id: uuid('id').defaultRandom().primaryKey(),
     partId: uuid('part_id')
       .notNull()
       .references(() => parts.id, { onDelete: 'restrict' }),
@@ -73,7 +75,7 @@ export const purchaseOrderLines = equipmentSchema.table(
     unitPrice: numeric('unit_price', { mode: 'number', precision: 12, scale: 2 }).notNull(),
   },
   (table) => [
-    primaryKey({ columns: [table.purchaseOrderId, table.partId], name: 'purchase_order_line_pkey' }),
+    unique('purchase_order_line_order_part_unique').on(table.purchaseOrderId, table.partId),
     check('purchase_order_line_quantity_positive', sql`${table.quantity} > 0`),
     check('purchase_order_line_unit_price_nonnegative', sql`${table.unitPrice} >= 0`),
   ],

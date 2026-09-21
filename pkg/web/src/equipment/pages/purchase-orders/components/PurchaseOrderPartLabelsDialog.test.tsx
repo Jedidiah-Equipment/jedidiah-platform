@@ -172,6 +172,7 @@ function line(
   heldQuantity = receivedQuantity,
 ): PurchaseOrderLineView {
   return {
+    id: partId,
     partCode,
     partId,
     partName,

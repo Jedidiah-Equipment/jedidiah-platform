@@ -2,14 +2,14 @@ import type { PurchaseOrderDerivedStatus, PurchaseOrderProgress, PurchaseOrderSt
 
 /** One ordered line, reduced to the two facts progress is read from. */
 export type PurchaseOrderProgressLine = {
-  partId: string;
+  id: string;
   quantity: number;
 };
 
 type PurchaseOrderProgressInput = {
   lines: readonly PurchaseOrderProgressLine[];
-  /** Cumulative receipt quantity per Part — a line's own composite key on the order. */
-  receivedByPartId: ReadonlyMap<string, number>;
+  /** What each line has taken in and kept, by line id — receipts today, Arrivals too once they exist. */
+  receivedByLineId: ReadonlyMap<string, number>;
 };
 
 /**
@@ -19,9 +19,9 @@ type PurchaseOrderProgressInput = {
  */
 export function derivePurchaseOrderProgress({
   lines,
-  receivedByPartId,
+  receivedByLineId,
 }: PurchaseOrderProgressInput): PurchaseOrderProgress {
-  const receivedOf = (line: PurchaseOrderProgressLine) => receivedByPartId.get(line.partId) ?? 0;
+  const receivedOf = (line: PurchaseOrderProgressLine) => receivedByLineId.get(line.id) ?? 0;
 
   if (lines.every((line) => receivedOf(line) <= 0)) return 'sent';
 
@@ -36,7 +36,7 @@ export function derivePurchaseOrderProgress({
 export function derivePurchaseOrderStatus({
   closedShortAt,
   lines,
-  receivedByPartId,
+  receivedByLineId,
   status,
 }: PurchaseOrderProgressInput & {
   /** Only its presence matters here — the timestamp itself is the order's own record. */
@@ -47,7 +47,7 @@ export function derivePurchaseOrderStatus({
   if (closedShortAt !== null) return 'closed-short';
   // A sent order with nothing received yet still wears the `approved` badge: the list's Sent tick
   // carries whether it has gone out, so the badge only ever names the highest level reached.
-  const progress = derivePurchaseOrderProgress({ lines, receivedByPartId });
+  const progress = derivePurchaseOrderProgress({ lines, receivedByLineId });
 
   return progress === 'sent' ? 'approved' : progress;
 }

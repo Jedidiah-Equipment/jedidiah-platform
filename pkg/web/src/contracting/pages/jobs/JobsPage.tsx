@@ -90,8 +90,18 @@ export function JobsPage({ queue }: { queue: JobQueue }) {
       {
         id: 'machines',
         header: 'Machines',
-        cell: ({ row }) =>
-          `${row.original.plannedStints} planned · ${row.original.onSiteStints} on site · ${row.original.leftStints} left`,
+        cell: ({ row }) => {
+          const { plannedStints, onSiteStints, leftStints } = row.original;
+          return (
+            [
+              plannedStints ? `${plannedStints} planned` : null,
+              onSiteStints ? `${onSiteStints} on site` : null,
+              leftStints ? `${leftStints} left` : null,
+            ]
+              .filter(Boolean)
+              .join(' · ') || '0 machines'
+          );
+        },
       },
       {
         id: 'attention',
@@ -184,7 +194,7 @@ export function JobsPage({ queue }: { queue: JobQueue }) {
             <Button
               variant="outline"
               disabled={jobs.isPending}
-              onClick={() => setPageCountByQueue((counts) => ({ ...counts, [queue]: pageCount + 1 }))}
+              onClick={() => setPageCountByQueue((current) => ({ ...current, [queue]: pageCount + 1 }))}
             >
               Load more Jobs
             </Button>

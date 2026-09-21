@@ -97,16 +97,18 @@ export function assertCompatibleBuilds({ profile, build, env, runEas = execFileS
     if (!latestBuild) {
       throw new Error(`No finished ${profile} ${platform} store build found in EAS; OTA not published.`);
     }
+    const channel = latestBuild.updateChannel?.name ?? latestBuild.channel;
+    const runtimeVersion = latestBuild.runtime?.version ?? latestBuild.runtimeVersion;
     if (
       typeof latestBuild.id !== 'string' ||
       !latestBuild.id ||
       latestBuild.status !== 'FINISHED' ||
       latestBuild.platform !== platform.toUpperCase() ||
       latestBuild.buildProfile !== profile ||
-      latestBuild.channel !== build.channel ||
+      channel !== build.channel ||
       latestBuild.distribution?.toLowerCase() !== (build.distribution ?? 'store') ||
-      typeof latestBuild.runtimeVersion !== 'string' ||
-      !latestBuild.runtimeVersion
+      typeof runtimeVersion !== 'string' ||
+      !runtimeVersion
     ) {
       throw new Error(
         `Latest ${profile} ${platform} EAS build has unexpected metadata; OTA compatibility could not be verified.`,
@@ -123,7 +125,7 @@ export function assertCompatibleBuilds({ profile, build, env, runEas = execFileS
         `Could not read the current ${profile} ${platform} fingerprint; OTA compatibility could not be verified.`,
       );
     }
-    if (fingerprint.hash !== latestBuild.runtimeVersion) {
+    if (fingerprint.hash !== runtimeVersion) {
       incompatible.push(`${platform} fingerprint differs from latest finished build ${latestBuild.id}`);
     }
   }

@@ -119,9 +119,9 @@ describe('assertCompatibleBuilds', () => {
           status: 'FINISHED',
           platform: platform.toUpperCase(),
           buildProfile: 'staging',
-          channel: 'staging',
+          updateChannel: { name: 'staging' },
           distribution: 'STORE',
-          runtimeVersion: `${platform}-hash`,
+          runtime: { version: `${platform}-hash` },
         },
       ]);
     }
@@ -158,6 +158,22 @@ describe('assertCompatibleBuilds', () => {
     expect(calls[2]).toContain('ios');
   });
 
+  it('also accepts the older flat EAS build fields', () => {
+    const runEas = (executable, args) => {
+      const result = JSON.parse(matchingEas(executable, args));
+      if (args[0] !== 'build:list') return JSON.stringify(result);
+      return JSON.stringify(
+        result.map(({ updateChannel, runtime, ...buildResult }) => ({
+          ...buildResult,
+          channel: updateChannel.name,
+          runtimeVersion: runtime.version,
+        })),
+      );
+    };
+
+    expect(() => assertCompatibleBuilds({ profile: 'staging', build, env: {}, runEas })).not.toThrow();
+  });
+
   it('blocks an OTA when a platform fingerprint changed', () => {
     const runEas = (_executable, args) =>
       args[0] === 'fingerprint:generate' && args.includes('android')
@@ -172,7 +188,7 @@ describe('assertCompatibleBuilds', () => {
   it('rejects a build from the wrong channel even if EAS returns it', () => {
     const runEas = (_executable, args) => {
       const result = JSON.parse(matchingEas(_executable, args));
-      if (args[0] === 'build:list') result[0].channel = 'production';
+      if (args[0] === 'build:list') result[0].updateChannel.name = 'production';
       return JSON.stringify(result);
     };
 

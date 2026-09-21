@@ -30,7 +30,6 @@ function mockConfig(overrides: Partial<ApiConfig> = {}): ApiConfig {
 
 function mockClient(): PostHogObservabilityClient {
   return {
-    capture: vi.fn(),
     captureException: vi.fn(),
     flush: vi.fn(async () => undefined),
   } as unknown as PostHogObservabilityClient;
@@ -62,26 +61,6 @@ describe('API observability', () => {
     );
   });
 
-  it('captures typed events with shared release properties', () => {
-    const client = mockClient();
-    const observability = createObservability(
-      mockConfig({ APP_ENV: 'staging', POSTHOG_PROJECT_TOKEN: 'phc_test' }),
-      client,
-    );
-
-    observability.captureEvent({
-      distinctId: 'user_1',
-      event: 'reading sync failed',
-      properties: { app: 'mobile', stage: 'prepare_photo' },
-    });
-
-    expect(client.capture).toHaveBeenCalledWith({
-      distinctId: 'user_1',
-      event: 'reading sync failed',
-      properties: expect.objectContaining({ app: 'mobile', appEnv: 'staging', stage: 'prepare_photo' }),
-    });
-  });
-
   it('drops events when disabled', () => {
     const client = mockClient();
     const observability = createObservability(
@@ -90,9 +69,7 @@ describe('API observability', () => {
     );
 
     observability.captureException(new Error('nope'));
-    observability.captureEvent({ distinctId: 'user_1', event: 'dropped' });
 
     expect(client.captureException).not.toHaveBeenCalled();
-    expect(client.capture).not.toHaveBeenCalled();
   });
 });

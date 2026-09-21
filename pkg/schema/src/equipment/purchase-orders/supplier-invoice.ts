@@ -212,6 +212,7 @@ export const InvoicePriceVarianceRow = z.object({
   filename: z.string(),
   invoiceNumber: z.string().nullable(),
   invoiceUnitPrice: InventoryCost,
+  lineId: UUID,
   partCode: z.string().nullable(),
   partId: UUID.nullable(),
   partName: z.string().nullable(),

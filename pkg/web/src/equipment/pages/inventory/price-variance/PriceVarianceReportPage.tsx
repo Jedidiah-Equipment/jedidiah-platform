@@ -89,7 +89,7 @@ export function PriceVarianceReportPage() {
     data: items,
     enableColumnFilters: false,
     enableSortingRemoval: false,
-    getRowId: (row) => `${row.documentId}:${row.partId}`,
+    getRowId: (row) => `${row.documentId}:${row.lineId}`,
   });
 
   return (

@@ -30,14 +30,18 @@ import { usePartOptions } from '@/equipment/hooks/options/index.js';
 import { formatPurchaseUnitLabel } from '@/equipment/utils/part-quantity-format.js';
 import { useAccess, useCan } from '@/hooks/use-access.js';
 import { useTRPC } from '@/lib/trpc.js';
-import { PurchaseOrderAmendDialog, type PurchaseOrderAmendDialogKind } from './components/PurchaseOrderAmendDialog.js';
+import { PurchaseOrderAmendDialog } from './components/PurchaseOrderAmendDialog.js';
 import { PurchaseOrderAmendmentsCard } from './components/PurchaseOrderAmendmentsCard.js';
 import { PurchaseOrderDocumentsCard } from './components/PurchaseOrderDocumentsCard.js';
 import { PurchaseOrderInvoiceCrossCheckCard } from './components/PurchaseOrderInvoiceCrossCheckCard.js';
 import { PurchaseOrderReceivingCard } from './components/PurchaseOrderReceivingCard.js';
 import { PurchaseOrderReturnsCard } from './components/PurchaseOrderReturnsCard.js';
 import { PurchaseOrderStatusBadge } from './components/PurchaseOrderStatusBadge.js';
-import { isPartPurchaseOrderLine, purchaseOrderLinesTotal } from './components/types.js';
+import {
+  isPartPurchaseOrderLine,
+  type PurchaseOrderAmendDialogKind,
+  purchaseOrderLinesTotal,
+} from './components/types.js';
 import { PurchaseOrderEditing } from './PurchaseOrderEditing.js';
 
 export const PurchaseOrderDetailPage: React.FC<{ purchaseOrderId: UUID }> = ({ purchaseOrderId }) => {

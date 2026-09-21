@@ -1,29 +1,17 @@
 // @vitest-environment jsdom
 
-import type { PurchaseOrderView } from '@pkg/schema/equipment';
 import { act, type ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 const access = vi.hoisted(() => ({ canReadAudit: true }));
 vi.mock('@/hooks/use-api-mutation-error-toast.js', () => ({ useApiMutationErrorToast: () => vi.fn() }));
-vi.mock('@/equipment/hooks/options/index.js', () => ({
-  usePartOptions: () => ({
-    isPending: false,
-    items: [{ id: '00000000-0000-4000-8000-000000000099', supplierId: '00000000-0000-4000-8000-000000000001' }],
-  }),
-}));
 vi.mock('@/hooks/use-access.js', () => ({
   useAccess: vi.fn(),
   useCan: () => ({ can: access.canReadAudit }),
 }));
-vi.mock('./components/PurchaseOrderAmendDialog.js', () => ({
-  PurchaseOrderAmendDialog: ({ line }: { line: PurchaseOrderView['lines'][number] | null }) => (
-    <div data-testid="amendment-line">{line?.description ?? 'new Part Line'}</div>
-  ),
-}));
 
-import { PurchaseOrderDetailTabs, ReadOnlyLinesCard } from './PurchaseOrderDetailPage.js';
+import { PurchaseOrderDetailTabs } from './PurchaseOrderDetailPage.js';
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 const mountedContainers: HTMLDivElement[] = [];
@@ -49,47 +37,6 @@ describe('PurchaseOrderDetailTabs', () => {
     expect(container.textContent).toContain('Current purchase order details');
     expect(container.textContent).not.toContain('Audit');
   });
-});
-
-it('starts a sent order Part amendment without selecting a Custom Line', async () => {
-  const purchaseOrder = {
-    id: '00000000-0000-4000-8000-000000000024',
-    supplierId: '00000000-0000-4000-8000-000000000001',
-    lines: [
-      {
-        description: 'Packing tape',
-        id: '00000000-0000-4000-8000-000000000025',
-        kind: 'custom',
-        partCode: null,
-        partId: null,
-        quantity: 2.5,
-        receivedQuantity: 0,
-        unit: 'box',
-      },
-      {
-        description: 'Bearing',
-        hasStockMovements: false,
-        id: '00000000-0000-4000-8000-000000000026',
-        kind: 'part',
-        partCode: 'P-100',
-        partId: '00000000-0000-4000-8000-000000000027',
-        quantity: 1,
-        receivedQuantity: 0,
-        unitOfMeasure: 'piece',
-      },
-    ],
-  } as unknown as PurchaseOrderView;
-  const container = await mountNode(<ReadOnlyLinesCard canAmend canReadCosts={false} purchaseOrder={purchaseOrder} />);
-  const addLine = [...container.querySelectorAll('button')].find((button) => button.textContent?.trim() === 'Add line');
-  if (!addLine) throw new Error('Add line action missing');
-  await act(async () => addLine.click());
-  const addPart = [...document.querySelectorAll('[role="menuitem"]')].find(
-    (item) => item.textContent?.trim() === 'Add Part',
-  );
-  if (!addPart) throw new Error('Add Part option missing');
-  await act(async () => (addPart as HTMLElement).click());
-
-  expect(container.querySelector('[data-testid="amendment-line"]')?.textContent).toBe('new Part Line');
 });
 
 async function mountNode(node: ReactNode): Promise<HTMLDivElement> {

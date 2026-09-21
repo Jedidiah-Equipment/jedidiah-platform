@@ -89,6 +89,29 @@ async function reviewOf(context: AmendmentTestContext, purchaseOrderId: string) 
 }
 
 describe('supplier invoice cross-check', () => {
+  test('lists two Custom Line price variances on the same invoice under distinct line ids', async ({ context }) => {
+    const order = await sendCustomOrder(context, [
+      { description: 'Office chair', quantity: 2, unitPrice: 900, supplierCode: 'CHAIR-42' },
+      { description: 'Desk lamp', quantity: 3, unitPrice: 80, supplierCode: 'LAMP-12' },
+    ]);
+    const document = await upload(
+      context,
+      order.id,
+      reads(
+        extraction({
+          lines: [
+            line({ description: 'Office chair', partCode: 'CHAIR-42', quantity: 2, unitPrice: 950 }),
+            line({ description: 'Desk lamp', partCode: 'LAMP-12', quantity: 3, unitPrice: 85 }),
+          ],
+        }),
+      ),
+    );
+    const variance = await listInvoicePriceVariance({ db: context.db });
+    expect(variance.items).toHaveLength(2);
+    expect(variance.items.map((row) => `${row.documentId}:${row.lineId}`).sort()).toEqual(
+      order.lines.map((line) => `${document.id}:${line.id}`).sort(),
+    );
+  });
   test('matches a Custom Line, keeps its dismissal through a quantity amendment, and lists its variance', async ({
     context,
   }) => {

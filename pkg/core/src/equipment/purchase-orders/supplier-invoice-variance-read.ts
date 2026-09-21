@@ -55,6 +55,7 @@ export async function listInvoicePriceVariance({ db }: { db: Db }): Promise<Invo
           filename: invoice.filename,
           invoiceNumber: invoice.extraction?.invoiceNumber ?? null,
           invoiceUnitPrice: row.invoiceUnitPrice,
+          lineId: row.lineId,
           partCode: row.partCode,
           partId: row.partId,
           partName: row.partName,

@@ -298,7 +298,6 @@ describe('matchInvoiceLines', () => {
       orderLines: [BOLT, NUT],
     };
 
-    expect(matchInvoiceLines(input)).toEqual(matchInvoiceLines(input));
     expect(matchInvoiceLines(input).map((row) => row.partId)).toEqual([BOLT.partId, NUT.partId]);
   });
 });

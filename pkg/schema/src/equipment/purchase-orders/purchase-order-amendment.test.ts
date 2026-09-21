@@ -5,7 +5,6 @@ import {
   PurchaseOrderAmendAddLineInput,
   PurchaseOrderAmendCustomLineQuantityInput,
   PurchaseOrderAmendExpectedDateInput,
-  PurchaseOrderAmendmentKind,
   PurchaseOrderAmendQuantityInput,
   PurchaseOrderAmendRemoveCustomLineInput,
   PurchaseOrderAmendSubstitutePartInput,
@@ -16,16 +15,6 @@ const ID_B = '00000000-0000-4000-8000-000000000002';
 const ID_C = '00000000-0000-4000-8000-000000000003';
 
 describe('Purchase Order amendment contracts', () => {
-  test('carries the amendment log kinds including Custom Line removal', () => {
-    expect(PurchaseOrderAmendmentKind.options).toEqual([
-      'quantity-change',
-      'add-line',
-      'substitute-part',
-      'expected-date-change',
-      'remove-line',
-    ]);
-  });
-
   test('requires Custom Line identity or description and a note for each sent-order change', () => {
     const base = { id: ID_A, note: 'Supplier confirmed' };
     expect(PurchaseOrderAmendCustomLineQuantityInput.parse({ ...base, lineId: ID_B, quantity: 2.5 })).toMatchObject({

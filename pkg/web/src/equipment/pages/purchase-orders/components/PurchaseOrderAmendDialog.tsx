@@ -1,4 +1,4 @@
-import type { Part, PurchaseOrderAmendmentKind, PurchaseOrderLineView, PurchaseOrderView } from '@pkg/schema/equipment';
+import type { Part, PurchaseOrderLineView, PurchaseOrderView } from '@pkg/schema/equipment';
 import { useMutation } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
@@ -7,13 +7,11 @@ import { usePartOptions } from '@/equipment/hooks/options/index.js';
 import { useQueryInvalidation } from '@/equipment/hooks/use-query-invalidation.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useTRPC } from '@/lib/trpc.js';
-import { type PurchaseOrderAmendmentFormValues, purchaseOrderAmendmentValidator } from './types.js';
-
-export type PurchaseOrderAmendDialogKind =
-  | Exclude<PurchaseOrderAmendmentKind, 'remove-line'>
-  | 'custom-quantity'
-  | 'add-custom-line'
-  | 'remove-custom-line';
+import {
+  type PurchaseOrderAmendDialogKind,
+  type PurchaseOrderAmendmentFormValues,
+  purchaseOrderAmendmentValidator,
+} from './types.js';
 
 const DIALOG_COPY = {
   'add-custom-line': {

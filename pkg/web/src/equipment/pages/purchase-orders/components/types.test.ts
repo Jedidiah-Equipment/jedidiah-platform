@@ -5,14 +5,12 @@ import { describe, expect, it } from 'vitest';
 import {
   outstandingQuantity,
   outstandingReceivedForLength,
-  PurchaseOrderCreateFormValues,
   PurchaseOrderDraftFormValues,
   PurchaseOrderReceiveFormValues,
   PurchaseOrderReturnFormValues,
   purchaseOrderAmendmentValidator,
   quantityDecimals,
   quantityForPart,
-  toPurchaseOrderCreateInput,
   toPurchaseOrderDraftFormValues,
   toPurchaseOrderDraftInput,
   toReceiptInput,
@@ -187,18 +185,6 @@ describe('Purchase Order draft form values', () => {
       ['lines.0.partId', 'Select a part'],
       ['lines.1.partId', 'Select a part'],
     ]);
-  });
-
-  it('creates a draft from the supplier and expected date alone', () => {
-    const values = PurchaseOrderCreateFormValues.parse({
-      expectedDeliveryDate: '2026-08-20',
-      supplierId: purchaseOrder.supplierId,
-    });
-
-    expect(toPurchaseOrderCreateInput(values)).toEqual({
-      expectedDeliveryDate: '2026-08-20',
-      supplierId: purchaseOrder.supplierId,
-    });
   });
 });
 

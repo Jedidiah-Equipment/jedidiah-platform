@@ -168,6 +168,12 @@ export function isLinearLine(line: Pick<PurchaseOrderLineView, 'unitOfMeasure'>)
  * What the buyer keys when the phone call ends. The note is mandatory on every kind, so the form
  * carries the schema's own rule rather than a second one — the call *is* the record (spec §4).
  */
+export type PurchaseOrderAmendDialogKind =
+  | Exclude<PurchaseOrderAmendmentKind, 'remove-line'>
+  | 'custom-quantity'
+  | 'add-custom-line'
+  | 'remove-custom-line';
+
 export type PurchaseOrderAmendmentFormValues = z.infer<typeof PurchaseOrderAmendmentFormValues>;
 export const PurchaseOrderAmendmentFormValues = z.object({
   description: z.union([z.literal(''), PurchaseOrderCustomLineDescription]),
@@ -184,11 +190,7 @@ export const PurchaseOrderAmendmentFormValues = z.object({
  * The one form serves all four kinds, so each amendment only insists on the field it changes.
  */
 export function purchaseOrderAmendmentValidator(
-  kind:
-    | Exclude<PurchaseOrderAmendmentKind, 'remove-line'>
-    | 'custom-quantity'
-    | 'add-custom-line'
-    | 'remove-custom-line',
+  kind: PurchaseOrderAmendDialogKind,
 ): z.ZodType<PurchaseOrderAmendmentFormValues, PurchaseOrderAmendmentFormValues> {
   if (kind === 'quantity-change' || kind === 'custom-quantity' || kind === 'remove-custom-line')
     return PurchaseOrderAmendmentFormValues;

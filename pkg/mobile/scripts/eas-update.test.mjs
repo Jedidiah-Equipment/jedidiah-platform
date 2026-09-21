@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  assertCompatibleBuilds,
   resolveExportCommand,
   resolveReleaseEnvironment,
   resolveSourceMapUploadCommand,
@@ -92,6 +93,71 @@ describe('resolveUpdateCommand', () => {
     expect(() =>
       resolveUpdateCommand({ args: ['--input-dir', 'other'], commitSubject: '', easConfig, profile: 'staging' }),
     ).toThrow('owns --skip-bundler and --input-dir');
+  });
+
+  it('rejects an EAS environment that differs from the build profile', () => {
+    expect(() =>
+      resolveUpdateCommand({
+        args: ['--environment', 'production'],
+        commitSubject: '',
+        easConfig: { build: { staging: { ...easConfig.build.staging, environment: 'preview' } } },
+        profile: 'staging',
+      }),
+    ).toThrow('must match the staging build environment (preview)');
+  });
+});
+
+describe('assertCompatibleBuilds', () => {
+  const build = { channel: 'staging', distribution: 'store' };
+
+  it('allows an OTA when both current fingerprints match the latest profile builds', () => {
+    const calls = [];
+    const runEas = (_executable, args) => {
+      calls.push(args);
+      const platform = args[args.indexOf('--platform') + 1];
+      return args[0] === 'build:list'
+        ? JSON.stringify([{ id: `${platform}-build`, runtimeVersion: `${platform}-hash` }])
+        : JSON.stringify({ hash: `${platform}-hash` });
+    };
+
+    expect(() => assertCompatibleBuilds({ profile: 'staging', build, env: {}, runEas })).not.toThrow();
+    expect(calls).toHaveLength(4);
+    expect(calls[0]).toContain('--build-profile');
+    expect(calls[0]).toContain('--channel');
+    expect(calls[0]).toContain('--distribution');
+    expect(calls[1]).toContain('fingerprint:generate');
+  });
+
+  it('blocks an OTA when a platform fingerprint changed', () => {
+    const runEas = (_executable, args) => {
+      const platform = args[args.indexOf('--platform') + 1];
+      return args[0] === 'build:list'
+        ? JSON.stringify([{ id: `${platform}-build`, runtimeVersion: `${platform}-hash` }])
+        : JSON.stringify({ hash: platform === 'android' ? 'android-new' : 'ios-hash' });
+    };
+
+    expect(() => assertCompatibleBuilds({ profile: 'staging', build, env: {}, runEas })).toThrow(
+      'Full build and publish required before staging OTA: android fingerprint differs',
+    );
+  });
+
+  it('fails closed when no finished store build exists', () => {
+    expect(() => assertCompatibleBuilds({ profile: 'staging', build, env: {}, runEas: () => '[]' })).toThrow(
+      'Full build and publish required',
+    );
+  });
+
+  it('fails closed when EAS cannot list builds', () => {
+    expect(() =>
+      assertCompatibleBuilds({
+        profile: 'staging',
+        build,
+        env: {},
+        runEas: () => {
+          throw new Error('EAS unavailable');
+        },
+      }),
+    ).toThrow('OTA compatibility; update not published');
   });
 });
 

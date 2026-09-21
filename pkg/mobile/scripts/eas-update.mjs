@@ -4,6 +4,7 @@ import { pathToFileURL } from 'node:url';
 import { parseEnv } from 'node:util';
 
 const EAS_CONFIG_PATH = new URL('../eas.json', import.meta.url);
+const MOBILE_DIR = new URL('..', import.meta.url);
 
 /**
  * The `eas update` invocation for a build profile. `eas update` bundles on this machine and ignores
@@ -19,7 +20,15 @@ export function resolveUpdateCommand({ args, commitSubject, easConfig, profile }
   }
 
   const hasMessage = args.some((arg) => arg === '--message' || arg === '-m' || arg.startsWith('--message='));
-  const hasEnvironment = args.some((arg) => arg === '--environment' || arg.startsWith('--environment='));
+  const environments = args.flatMap((arg, index) => {
+    if (arg === '--environment') return [args[index + 1]];
+    if (arg.startsWith('--environment=')) return [arg.slice('--environment='.length)];
+    return [];
+  });
+  const buildEnvironment = resolveBuildEnvironment(build);
+  if (environments.some((environment) => environment !== buildEnvironment)) {
+    throw new Error(`OTA --environment must match the ${profile} build environment (${buildEnvironment}).`);
+  }
   if (args.some((arg) => arg === '--skip-bundler' || arg === '--input-dir' || arg.startsWith('--input-dir='))) {
     throw new Error('The OTA wrapper owns --skip-bundler and --input-dir so it can upload source maps before publish.');
   }
@@ -33,12 +42,93 @@ export function resolveUpdateCommand({ args, commitSubject, easConfig, profile }
       '--skip-bundler',
       '--input-dir',
       'dist',
-      ...(hasEnvironment ? [] : ['--environment', resolveBuildEnvironment(build)]),
+      ...(environments.length > 0 ? [] : ['--environment', buildEnvironment]),
       ...(hasMessage ? [] : ['--message', commitSubject]),
       ...publishArgs,
     ],
     env: build.env ?? {},
   };
+}
+
+function readEasJson(args, env, runEas) {
+  let output;
+  try {
+    output = runEas('eas', args, {
+      cwd: MOBILE_DIR,
+      env,
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'inherit'],
+      maxBuffer: 4 * 1024 * 1024,
+    });
+  } catch {
+    throw new Error(`Could not complete EAS ${args[0]} to verify OTA compatibility; update not published.`);
+  }
+  try {
+    return JSON.parse(output);
+  } catch {
+    throw new Error(`EAS ${args[0]} returned invalid JSON; OTA compatibility could not be verified.`);
+  }
+}
+
+export function assertCompatibleBuilds({ profile, build, env, runEas = execFileSync }) {
+  const incompatible = [];
+  for (const platform of ['android', 'ios']) {
+    const builds = readEasJson(
+      [
+        'build:list',
+        '--build-profile',
+        profile,
+        '--channel',
+        build.channel,
+        ...(build.distribution ? ['--distribution', build.distribution] : []),
+        '--platform',
+        platform,
+        '--status',
+        'finished',
+        '--limit',
+        '1',
+        '--json',
+        '--non-interactive',
+      ],
+      env,
+      runEas,
+    );
+    if (!Array.isArray(builds)) {
+      throw new Error('EAS build:list returned an unexpected response; OTA compatibility could not be verified.');
+    }
+    const latestBuild = builds[0];
+    if (!latestBuild) {
+      incompatible.push(`no finished ${platform} build exists for the ${profile} channel`);
+      continue;
+    }
+    if (typeof latestBuild.runtimeVersion !== 'string' || !latestBuild.runtimeVersion) {
+      throw new Error(
+        `Latest ${profile} ${platform} build has no runtime version; OTA compatibility could not be verified.`,
+      );
+    }
+
+    const fingerprint = readEasJson(
+      ['fingerprint:generate', '--build-profile', profile, '--platform', platform, '--json', '--non-interactive'],
+      env,
+      runEas,
+    );
+    if (typeof fingerprint?.hash !== 'string' || !fingerprint.hash) {
+      throw new Error(
+        `Could not read the current ${profile} ${platform} fingerprint; OTA compatibility could not be verified.`,
+      );
+    }
+    if (fingerprint.hash !== latestBuild.runtimeVersion) {
+      incompatible.push(
+        `${platform} fingerprint differs from latest finished build ${latestBuild.id ?? '(unknown ID)'}`,
+      );
+    }
+  }
+
+  if (incompatible.length > 0) {
+    throw new Error(
+      `Full build and publish required before ${profile} OTA: ${incompatible.join('; ')}. Build and submit the affected platform(s), then retry once the new builds are available on phones.`,
+    );
+  }
 }
 
 function resolveBuildEnvironment(build) {
@@ -109,14 +199,16 @@ function main() {
   const easConfig = JSON.parse(readFileSync(EAS_CONFIG_PATH, 'utf8'));
   const commitSubject = execFileSync('git', ['log', '-1', '--format=%s'], { encoding: 'utf8' }).trim();
   const command = resolveUpdateCommand({ args, commitSubject, easConfig, profile });
-  const bundle = resolveExportCommand();
   const releaseEnv = resolveReleaseEnvironment(profile);
+  const updateEnv = { ...releaseEnv, ...command.env };
+  assertCompatibleBuilds({ profile, build: easConfig.build[profile], env: updateEnv });
+  const bundle = resolveExportCommand();
   // Bundle and upload before publishing because this script cannot roll an OTA back.
   const sourceMaps = resolveSourceMapUploadCommand(releaseEnv);
 
   const bundleResult = spawnSync(bundle.executable, bundle.args, {
-    cwd: new URL('..', import.meta.url),
-    env: { ...releaseEnv, ...command.env },
+    cwd: MOBILE_DIR,
+    env: updateEnv,
     stdio: 'inherit',
   });
   if (bundleResult.error) throw bundleResult.error;
@@ -126,7 +218,7 @@ function main() {
   }
 
   const upload = spawnSync(sourceMaps.executable, sourceMaps.args, {
-    cwd: new URL('..', import.meta.url),
+    cwd: MOBILE_DIR,
     env: releaseEnv,
     stdio: 'inherit',
   });
@@ -137,8 +229,8 @@ function main() {
   }
 
   const publish = spawnSync('eas', command.args, {
-    cwd: new URL('..', import.meta.url),
-    env: { ...releaseEnv, ...command.env },
+    cwd: MOBILE_DIR,
+    env: updateEnv,
     stdio: 'inherit',
   });
   if (publish.error) throw publish.error;

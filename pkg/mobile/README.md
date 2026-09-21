@@ -105,8 +105,11 @@ the native fingerprint is not an OTA update and reaches users through the store 
 prompts for.
 
 The runtime version is the native fingerprint with the store version left out (`fingerprint.config.js`),
-so the `version:bump` every mobile change set makes never blocks an OTA update on its own. Check a
-change against the latest store build before publishing; any reported difference means a store build:
+so the `version:bump` every mobile change set makes never blocks an OTA update on its own. The `ota:*`
+script checks both platforms against the latest finished store build for its profile and channel before
+exporting or publishing. It stops with a full-build message when a fingerprint differs or a build is
+missing, and also stops if EAS cannot verify compatibility. A matching EAS build still needs to be
+distributed and installed on phones. For details on a difference, compare fingerprints manually:
 
 ```sh
 APP_VARIANT=production eas fingerprint:compare

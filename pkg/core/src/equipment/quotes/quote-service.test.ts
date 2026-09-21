@@ -2604,18 +2604,31 @@ describe('Quote salesperson eligibility', () => {
       updatedAt: now,
     });
 
+    const patched = await patchQuote({
+      actorUserId: context.salesPerson.id,
+      db: context.db,
+      input: { id: quote.id, notes: 'Still editable' },
+    });
+    expect(patched).toMatchObject({ notes: 'Still editable', salesPersonId: context.salesPerson.id });
     await expect(
-      patchQuote({
+      updateQuote({
         actorUserId: context.salesPerson.id,
         db: context.db,
-        input: { id: quote.id, notes: 'Still editable' },
+        input: buildQuoteUpdateInput(patched, { notes: 'Full edit still works' }),
       }),
-    ).resolves.toMatchObject({ notes: 'Still editable', salesPersonId: context.salesPerson.id });
+    ).resolves.toMatchObject({ notes: 'Full edit still works', salesPersonId: context.salesPerson.id });
     await expect(
       patchQuote({
         actorUserId: context.salesPerson.id,
         db: context.db,
         input: { id: quote.id, salesPersonId: 'another-unticked-id' },
+      }),
+    ).rejects.toBeInstanceOf(QuoteInvalidReferenceError);
+    await expect(
+      updateQuote({
+        actorUserId: context.salesPerson.id,
+        db: context.db,
+        input: buildQuoteUpdateInput(patched, { salesPersonId: 'another-unticked-id' }),
       }),
     ).rejects.toBeInstanceOf(QuoteInvalidReferenceError);
   });

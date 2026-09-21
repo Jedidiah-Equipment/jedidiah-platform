@@ -321,7 +321,9 @@ export async function updateQuote({
     };
     assertValidDiscount({ discountPercent: input.discountPercent });
 
-    await assertQuoteSalesPerson({ salesPersonId: input.salesPersonId, tx });
+    if (input.salesPersonId !== before.salesPersonId) {
+      await assertQuoteSalesPerson({ salesPersonId: input.salesPersonId, tx });
+    }
 
     const patch = {
       cancellationReason: input.cancellationReason,

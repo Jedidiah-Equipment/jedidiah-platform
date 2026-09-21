@@ -230,7 +230,11 @@ function QuoteEditor({
                     <View className="flex-1">
                       <form.AppField name="salesPersonId">
                         {(_field) => (
-                          <SalespersonSelectField disabled={setupReadOnly} onValueCommit={autosave.commit} />
+                          <SalespersonSelectField
+                            disabled={setupReadOnly}
+                            onValueCommit={autosave.commit}
+                            unlistedSelectedLabel={quote.salesPersonName}
+                          />
                         )}
                       </form.AppField>
                     </View>

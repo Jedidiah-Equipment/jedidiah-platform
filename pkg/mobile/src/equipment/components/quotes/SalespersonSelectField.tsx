@@ -7,9 +7,11 @@ import { useTRPC } from '@/lib/trpc';
 export function SalespersonSelectField({
   disabled = false,
   onValueCommit,
+  unlistedSelectedLabel,
 }: {
   disabled?: boolean;
   onValueCommit?: () => void;
+  unlistedSelectedLabel?: string | null;
 }) {
   const trpc = useTRPC();
   const salespeople = useQuery(trpc.quotes.salespeople.queryOptions(undefined));
@@ -22,6 +24,7 @@ export function SalespersonSelectField({
       onValueCommit={onValueCommit}
       options={(salespeople.data?.users ?? []).map((user) => ({ label: user.name, value: user.id }))}
       placeholder={salespeople.isPending ? 'Loading salespeople…' : 'Select salesperson'}
+      unlistedSelectedLabel={unlistedSelectedLabel}
     />
   );
 }

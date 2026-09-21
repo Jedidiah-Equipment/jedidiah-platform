@@ -39,6 +39,28 @@ describe('readExistingSnapshotTable', () => {
     ]);
   });
 
+  it('preserves an independent Quote salesperson flag when available and falls back before deployment', async () => {
+    const userConfig = snapshotTables.find((config) => config.tableName === 'user');
+    if (!userConfig) throw new Error('Missing user snapshot config');
+
+    const deployed = {
+      select: () => ({ from: async () => [{ role: 'sales', quoteSalesperson: false }] }),
+    } as unknown as Db;
+    expect((await readExistingSnapshotTable(deployed, userConfig))[0]?.quoteSalesperson).toBe(false);
+
+    const preDeployment = {
+      select: (projection: Record<string, unknown>) => ({
+        from: async () => {
+          if ('quoteSalesperson' in projection) {
+            throw Object.assign(new Error('column does not exist'), { code: '42703' });
+          }
+          return [{ role: 'sales' }];
+        },
+      }),
+    } as unknown as Db;
+    expect((await readExistingSnapshotTable(preDeployment, userConfig))[0]?.quoteSalesperson).toBe(true);
+  });
+
   it('reads current local columns while continuing to omit credential password hashes', async () => {
     const userConfig = snapshotTables.find((config) => config.tableName === 'user');
     const accountConfig = snapshotTables.find((config) => config.tableName === 'account');

@@ -8,11 +8,11 @@ import {
   purchaseOrders,
   supplier,
 } from '@pkg/db/equipment';
-import { matchInvoiceLines } from '@pkg/domain/equipment';
+import { comparePurchaseOrderLines, matchInvoiceLines } from '@pkg/domain/equipment';
 import type { UUID } from '@pkg/schema';
 import type { InvoiceFlagResolution, SupplierInvoiceExtraction } from '@pkg/schema/equipment';
 import { SupplierInvoiceExtraction as SupplierInvoiceExtractionSchema } from '@pkg/schema/equipment';
-import { and, asc, eq, inArray, sql } from 'drizzle-orm';
+import { and, eq, inArray, sql } from 'drizzle-orm';
 
 import { newestPurchaseOrderDocumentFirst, type PurchaseOrderDb } from './purchase-order-service.js';
 
@@ -124,21 +124,18 @@ export async function loadOrderLinesByOrder(
       orderedQuantity: purchaseOrderLines.quantity,
       partCode: parts.code,
       partId: purchaseOrderLines.partId,
+      position: purchaseOrderLines.position,
       purchaseOrderId: purchaseOrderLines.purchaseOrderId,
       supplierCode: sql<string | null>`coalesce(${parts.supplierCode}, ${purchaseOrderLines.customSupplierCode})`,
       unitPrice: purchaseOrderLines.unitPrice,
     })
     .from(purchaseOrderLines)
     .leftJoin(parts, eq(parts.id, purchaseOrderLines.partId))
-    .where(inArray(purchaseOrderLines.purchaseOrderId, [...purchaseOrderIds]))
-    .orderBy(
-      asc(purchaseOrderLines.purchaseOrderId),
-      sql`${parts.code} asc nulls last`,
-      asc(purchaseOrderLines.position),
-    );
+    .where(inArray(purchaseOrderLines.purchaseOrderId, [...purchaseOrderIds]));
   const byOrder = new Map<string, MatchOrderLine[]>();
 
-  for (const { purchaseOrderId, ...line } of rows) {
+  // Sorted before grouping, so each order's lines are in the order its own read serves them.
+  for (const { position: _position, purchaseOrderId, ...line } of rows.sort(comparePurchaseOrderLines)) {
     const lines = byOrder.get(purchaseOrderId);
     if (lines) lines.push(line);
     else byOrder.set(purchaseOrderId, [line]);

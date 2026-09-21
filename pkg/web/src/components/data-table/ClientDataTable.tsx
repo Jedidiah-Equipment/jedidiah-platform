@@ -13,6 +13,7 @@ export function ClientDataTable<T extends RowData>({
   controls,
   emptyMessage,
   searchPlaceholder,
+  getRowId,
 }: {
   rows: T[];
   columns: DataTableColumnDef<T>[];
@@ -21,6 +22,7 @@ export function ClientDataTable<T extends RowData>({
   controls?: ReactNode;
   emptyMessage: string;
   searchPlaceholder: string;
+  getRowId?: (row: T) => string;
 }) {
   const [globalFilter, setGlobalFilter] = useState('');
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
@@ -28,6 +30,7 @@ export function ClientDataTable<T extends RowData>({
   const table = useDataTable({
     columns,
     data: rows,
+    ...(getRowId ? { getRowId } : {}),
     onGlobalFilterChange: setGlobalFilter,
     onColumnFiltersChange: setColumnFilters,
     onSortingChange: setSorting,

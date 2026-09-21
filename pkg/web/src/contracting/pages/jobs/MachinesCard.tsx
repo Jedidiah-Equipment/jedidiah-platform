@@ -227,7 +227,7 @@ export function MachinesCard({ job, capabilities }: { job: JobDetail; capabiliti
                 <Switch
                   aria-label={`Include travel for ${stint.machineCode}`}
                   checked={stint.travelIncluded}
-                  disabled={job.status === 'invoiced' || job.status === 'cancelled'}
+                  disabled={!capabilities.patchTravel}
                   onCheckedChange={(travelIncluded) => patch.mutate({ id: stint.id, travelIncluded })}
                 />{' '}
                 <span>Included</span>
@@ -271,7 +271,7 @@ export function MachinesCard({ job, capabilities }: { job: JobDetail; capabiliti
               {stint.measures.map((item) => (
                 <Badge key={item.id} variant="outline">
                   {item.quantity} {item.measureTypeName}
-                  {capabilities.signOff ? (
+                  {capabilities.editMeasures ? (
                     <button
                       type="button"
                       aria-label={`Remove ${item.measureTypeName}`}
@@ -285,7 +285,7 @@ export function MachinesCard({ job, capabilities }: { job: JobDetail; capabiliti
                   ) : null}
                 </Badge>
               ))}
-              {capabilities.signOff ? <AddMeasurePopover stint={stint} /> : null}
+              {capabilities.editMeasures ? <AddMeasurePopover stint={stint} /> : null}
             </div>
           );
         },
@@ -327,7 +327,6 @@ export function MachinesCard({ job, capabilities }: { job: JobDetail; capabiliti
     ],
     [
       capabilities,
-      job.status,
       implementOptions.data,
       drivers.data,
       patch.mutate,

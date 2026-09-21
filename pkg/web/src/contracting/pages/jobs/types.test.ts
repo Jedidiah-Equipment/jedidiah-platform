@@ -90,13 +90,29 @@ describe('Job sign-off helpers', () => {
       editSetup: true,
       complete: true,
       editSignOffDetails: false,
+      editMeasures: true,
+      editChargeLines: true,
+      patchTravel: true,
       resolveGaps: true,
+    });
+    expect(jobCapabilities({ status: 'priced' } as JobDetail, can)).toMatchObject({
+      signOff: true,
+      editMeasures: false,
+      editChargeLines: false,
     });
     expect(jobCapabilities({ status: 'invoiced' } as JobDetail, can)).toMatchObject({
       editSetup: false,
       complete: false,
       amendReadings: false,
       cancel: false,
+      editMeasures: false,
+      patchTravel: false,
+    });
+    const workshopCan = (permission: string) => permission === 'contracting_job:read';
+    expect(jobCapabilities({ status: 'active' } as JobDetail, workshopCan)).toMatchObject({
+      signOff: false,
+      editMeasures: false,
+      patchTravel: false,
     });
     expect(queueTabLabel('looks-finished', { 'looks-finished': 2 } as never)).toBe('Looks finished (2)');
   });

@@ -60,15 +60,17 @@ export function SignOffCard({ job, capabilities }: { job: JobDetail; capabilitie
                 <span>
                   {stint.machineCode} · {stint.implementCode ?? 'No Implement'}
                 </span>
-                <RemoveEntityButton
-                  title="Remove planned Machine"
-                  description="Remove this Machine Assignment?"
-                  triggerIconOnly
-                  triggerLabel={`Remove ${stint.machineCode}`}
-                  triggerSize="icon-sm"
-                  isPending={remove.isPending}
-                  onConfirm={() => remove.mutate({ id: stint.id })}
-                />
+                {capabilities.planStints ? (
+                  <RemoveEntityButton
+                    title="Remove planned Machine"
+                    description="Remove this Machine Assignment?"
+                    triggerIconOnly
+                    triggerLabel={`Remove ${stint.machineCode}`}
+                    triggerSize="icon-sm"
+                    isPending={remove.isPending}
+                    onConfirm={() => remove.mutate({ id: stint.id })}
+                  />
+                ) : null}
               </div>
             ))}
           </section>
@@ -166,8 +168,12 @@ function DraftSignOffDetails({
                 </Button>
                 {!gate.ok ? (
                   <p className="text-destructive">
-                    {gate.onSite ? `${gate.onSite} machines are still on site. ` : ''}
-                    {gate.openGapFlags ? `${gate.openGapFlags} Gap Flag is open.` : ''}
+                    {gate.onSite
+                      ? `${gate.onSite} ${gate.onSite === 1 ? 'machine is' : 'machines are'} still on site. `
+                      : ''}
+                    {gate.openGapFlags
+                      ? `${gate.openGapFlags} Gap ${gate.openGapFlags === 1 ? 'Flag is' : 'Flags are'} open.`
+                      : ''}
                   </p>
                 ) : null}
               </div>

@@ -13,6 +13,7 @@ import {
   listFieldJobs,
   listForemen,
   listJobs,
+  listMeasureTypes,
   patchAssignment,
   patchChargeLine,
   patchJob,
@@ -46,6 +47,7 @@ import {
   JobQueueCounts,
   MeasureRemoveInput,
   MeasureSetInput,
+  MeasureType,
 } from '@pkg/schema/contracting';
 import { z } from 'zod';
 import { createAuthTRPCError, mapCoreErrors } from '../../../trpc/errors.js';
@@ -252,5 +254,8 @@ export const contractingJobsRouter = router({
   }),
   options: router({
     foremen: authorizedProcedure('contracting_job:assign').query(({ ctx }) => listForemen({ db: ctx.db })),
+    measureTypes: authorizedProcedure('contracting_job:update')
+      .output(MeasureType.pick({ id: true, name: true }).array())
+      .query(async ({ ctx }) => (await listMeasureTypes({ db: ctx.db })).map(({ id, name }) => ({ id, name }))),
   }),
 });

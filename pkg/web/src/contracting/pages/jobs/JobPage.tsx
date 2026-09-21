@@ -53,7 +53,7 @@ export function JobPage({ code }: { code: string }) {
               </div>
               <SetupCard key={`setup-${job.id}`} job={job} capabilities={capabilities} />
               <MachinesCard job={job} capabilities={capabilities} />
-              {job.status !== 'upcoming' ? <SignOffCard job={job} capabilities={capabilities} /> : null}
+              {capabilities.signOff ? <SignOffCard job={job} capabilities={capabilities} /> : null}
               {job.status !== 'upcoming' ? (
                 <Card>
                   <CardHeader>
@@ -62,9 +62,7 @@ export function JobPage({ code }: { code: string }) {
                   <CardContent className="text-muted-foreground">Pricing is prepared after sign-off.</CardContent>
                 </Card>
               ) : null}
-              {job.status !== 'upcoming' ? (
-                <ChargeLinesCard job={job} editable={capabilities.signOff && job.status !== 'invoiced'} />
-              ) : null}
+              {job.status !== 'upcoming' ? <ChargeLinesCard job={job} editable={capabilities.editChargeLines} /> : null}
               <CancelJob job={job} enabled={capabilities.cancel} />
             </div>
           ) : null

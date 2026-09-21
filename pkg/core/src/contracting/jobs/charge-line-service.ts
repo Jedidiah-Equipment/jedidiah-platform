@@ -18,7 +18,8 @@ export const chargeLineDescriptor = defineAuditDescriptor<Row>({
 });
 
 function assertMutable(status: JobStatus) {
-  if (status === 'invoiced' || status === 'cancelled') throw wrongStatus('This Job can no longer be changed.');
+  if (status === 'priced' || status === 'invoiced' || status === 'cancelled')
+    throw wrongStatus('Charge Lines cannot be changed after the Job is priced.');
 }
 
 export async function createChargeLine({

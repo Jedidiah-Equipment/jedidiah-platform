@@ -101,6 +101,7 @@ export function ChargeLinesCard({ job, editable }: { job: JobDetail; editable: b
           />
           <ClientDataTable
             rows={job.chargeLines}
+            getRowId={(line) => line.id}
             columns={columns}
             loading={false}
             emptyMessage="No Charge Lines."

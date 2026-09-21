@@ -326,7 +326,12 @@ export async function countJobQueues({ db, foremanUserId }: { db: Db; foremanUse
       count: sql<number>`count(*)::integer`,
     })
     .from(contractingJobs)
-    .where(foremanUserId ? eq(contractingJobs.foremanUserId, foremanUserId) : undefined)
+    .where(
+      and(
+        foremanUserId ? eq(contractingJobs.foremanUserId, foremanUserId) : undefined,
+        foremanUserId ? inArray(contractingJobs.status, ['upcoming', 'active', 'completed']) : undefined,
+      ),
+    )
     .groupBy(contractingJobs.status, looksFinishedInSql);
   const count = (status: JobStatus, finished?: boolean) =>
     rows

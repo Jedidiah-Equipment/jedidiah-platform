@@ -123,6 +123,12 @@ export function jobCapabilities(job: JobDetail, can: (permission: AppPermission)
     assign: open && can('contracting_job:assign'),
     planStints: open && can('contracting_job:assign'),
     signOff: job.status !== 'upcoming' && job.status !== 'cancelled' && can('contracting_job:update'),
+    editMeasures: (job.status === 'active' || job.status === 'completed') && can('contracting_job:update'),
+    editChargeLines: (job.status === 'active' || job.status === 'completed') && can('contracting_job:update'),
+    patchTravel:
+      job.status !== 'invoiced' &&
+      job.status !== 'cancelled' &&
+      (can('contracting_job:assign') || (job.status === 'active' && can('contracting_assignment:update-own'))),
     editSignOffDetails: (job.status === 'completed' || job.status === 'priced') && can('contracting_job:update'),
     resolveGaps: (job.status === 'active' || job.status === 'completed') && can('contracting_gap:resolve'),
     amendReadings: job.status !== 'invoiced' && job.status !== 'cancelled' && can('contracting_reading:update'),

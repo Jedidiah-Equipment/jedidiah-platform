@@ -17,7 +17,7 @@ export function AddMeasurePopover({ stint }: { stint: Assignment }) {
   const trpc = useTRPC();
   const { invalidateJobs } = useQueryInvalidation();
   const [open, setOpen] = useState(false);
-  const types = useQuery(trpc.contractingRateCard.measureTypes.list.queryOptions(undefined, { enabled: open }));
+  const types = useQuery(trpc.contractingJobs.options.measureTypes.queryOptions(undefined, { enabled: open }));
   const set = useMutation(
     trpc.contractingJobs.measures.set.mutationOptions({
       onSuccess: async () => {

@@ -10,6 +10,7 @@ export async function createActorUser(db: Db, role: EquipmentRole = 'admin') {
     emailVerified: true,
     id: 'test-user-id',
     name: 'Test User',
+    quoteSalesperson: true,
     role,
     updatedAt: now,
   });

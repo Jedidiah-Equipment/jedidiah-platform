@@ -29,6 +29,7 @@ const test = createTester(async ({ db }) => {
       emailVerified: true,
       id: actorUserId,
       name: 'Sales User',
+      quoteSalesperson: true,
       role: 'sales',
       updatedAt: now,
     })

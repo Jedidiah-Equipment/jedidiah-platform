@@ -17,7 +17,7 @@ import {
   quoteWorkItems,
 } from '@pkg/db/equipment';
 import { addDateOnlyDays, parseDateOnlyParts, toPlantDateOnly } from '@pkg/domain';
-import { parseJobCodeSearch, QUOTE_SALESPERSON_ROLES, selectReworkBuildSpec } from '@pkg/domain/equipment';
+import { parseJobCodeSearch, selectReworkBuildSpec } from '@pkg/domain/equipment';
 import { DateOnlyIso, getNextCursor, type UserAccount, UUID } from '@pkg/schema';
 import {
   CompetingAllocationQuote,
@@ -500,26 +500,11 @@ export async function getQuoteProductBayAvailability({
 
 export async function listQuoteSalespeople({ db }: { db: Db }): Promise<{ users: UserAccount[] }> {
   const rows = await db.query.user.findMany({
-    where: inArray(user.role, [...QUOTE_SALESPERSON_ROLES]),
+    where: eq(user.quoteSalesperson, true),
     orderBy: [asc(user.name), asc(user.id)],
   });
 
-  return {
-    users: rows.map((row) =>
-      mapUserAccount({
-        assistantEnabled: row.assistantEnabled,
-        contractingRole: row.contractingRole,
-        email: row.email,
-        emailVerified: row.emailVerified,
-        id: row.id,
-        isDevice: row.isDevice,
-        name: row.name,
-        phoneNumber: row.phoneNumber,
-        role: row.role,
-        image: row.image,
-      }),
-    ),
-  };
+  return { users: rows.map(mapUserAccount) };
 }
 
 export async function loadQuoteAssociations({

@@ -79,6 +79,7 @@ const UserCreateDialogForm: React.FC<UserCreateDialogProps & { onCreated: () => 
             emailVerified: value.emailVerified,
             isDevice: canSetRole ? value.isDevice : false,
             phoneNumber: value.phoneNumber,
+            quoteSalesperson: business === 'equipment' ? value.quoteSalesperson : false,
           },
           email: value.email,
           name: value.name,

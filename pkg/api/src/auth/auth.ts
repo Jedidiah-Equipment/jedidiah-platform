@@ -61,6 +61,13 @@ function createAuthOptions(database: Db, businessPlugins: readonly BetterAuthPlu
           defaultValue: false as const,
           input: false as const,
         },
+        // Only the admin update path, gated by user:update, may add someone to the roster.
+        quoteSalesperson: {
+          type: 'boolean' as const,
+          required: false as const,
+          defaultValue: false as const,
+          input: false as const,
+        },
       },
     },
     plugins: [

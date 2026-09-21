@@ -31,6 +31,7 @@ import { getQuoteCancellationPlan } from '../cancellation/cancellation-plan-serv
 import { getJob } from '../jobs/job-read-service.js';
 import { createProductRangeFixture } from '../test/product-range-fixtures.js';
 import { createProductUnit } from '../units/product-unit-service.js';
+import { QuoteInvalidReferenceError } from './quote-errors.js';
 import {
   getQuote,
   getQuoteProductBayAvailability,
@@ -52,6 +53,7 @@ const test = createTester(async ({ db }) => {
       emailVerified: true,
       id: 'sales-user-id',
       name: 'Sales User',
+      quoteSalesperson: true,
       role: 'sales',
       updatedAt: now,
     })
@@ -2506,34 +2508,26 @@ function buildQuoteUpdateInput(quote: QuoteDetail, overrides: Partial<QuoteUpdat
 }
 
 describe('listQuoteSalespeople', () => {
-  test('includes super-admin, admin, and sales users and excludes other roles', async ({ context }) => {
+  test('includes a ticked procurement manager and omits an unticked sales user', async ({ context }) => {
     const now = new Date();
     await context.db.insert(user).values([
       {
         createdAt: now,
-        email: 'super-admin@example.com',
+        email: 'procurement@example.com',
         emailVerified: true,
-        id: 'super-admin-user-id',
-        name: 'Super Admin User',
-        role: 'super-admin',
+        id: 'procurement-user-id',
+        name: 'Procurement User',
+        quoteSalesperson: true,
+        role: 'procurement-manager',
         updatedAt: now,
       },
       {
         createdAt: now,
-        email: 'admin@example.com',
+        email: 'unticked-sales@example.com',
         emailVerified: true,
-        id: 'admin-user-id',
-        name: 'Admin User',
-        role: 'admin',
-        updatedAt: now,
-      },
-      {
-        createdAt: now,
-        email: 'bay-operator@example.com',
-        emailVerified: true,
-        id: 'bay-operator-user-id',
-        name: 'Bay Operator User',
-        role: 'bay-operator',
+        id: 'unticked-sales-user-id',
+        name: 'Unticked Sales User',
+        role: 'sales',
         updatedAt: now,
       },
     ]);
@@ -2541,9 +2535,88 @@ describe('listQuoteSalespeople', () => {
     const result = await listQuoteSalespeople({ db: context.db });
     const rolesById = new Map(result.users.map((person) => [person.id, person.equipmentRole]));
 
-    expect(rolesById.get('super-admin-user-id')).toBe('super-admin');
-    expect(rolesById.get('admin-user-id')).toBe('admin');
+    expect(rolesById.get('procurement-user-id')).toBe('procurement-manager');
     expect(rolesById.get(context.salesPerson.id)).toBe('sales');
-    expect(rolesById.has('bay-operator-user-id')).toBe(false);
+    expect(rolesById.has('unticked-sales-user-id')).toBe(false);
+  });
+});
+
+describe('Quote salesperson eligibility', () => {
+  test('permits a ticked procurement manager and rejects an unticked admin on create', async ({ context }) => {
+    const now = new Date();
+    await context.db.insert(user).values([
+      {
+        createdAt: now,
+        email: 'quote-procurement@example.com',
+        emailVerified: true,
+        id: 'quote-procurement-id',
+        name: 'Quote Procurement',
+        quoteSalesperson: true,
+        role: 'procurement-manager',
+        updatedAt: now,
+      },
+      {
+        createdAt: now,
+        email: 'unticked-admin@example.com',
+        emailVerified: true,
+        id: 'unticked-admin-id',
+        name: 'Unticked Admin',
+        role: 'admin',
+        updatedAt: now,
+      },
+    ]);
+    const createFor = (salesPersonId: string) =>
+      createQuoteService({
+        actorUserId: context.salesPerson.id,
+        db: context.db,
+        input: QuoteCreateInput.parse({
+          customer: { type: 'existing', customerId: context.customer.id },
+          offering: { kind: 'product', productId: context.product.id },
+          salesPersonId,
+          status: 'draft',
+        }),
+      });
+
+    await expect(createFor('quote-procurement-id')).resolves.toMatchObject({ salesPersonId: 'quote-procurement-id' });
+    await expect(createFor('unticked-admin-id')).rejects.toBeInstanceOf(QuoteInvalidReferenceError);
+  });
+
+  test('allows other edits after unticking, but rejects assigning another unticked user', async ({ context }) => {
+    const quote = await createQuoteService({
+      actorUserId: context.salesPerson.id,
+      db: context.db,
+      input: QuoteCreateInput.parse({
+        customer: { type: 'existing', customerId: context.customer.id },
+        offering: { kind: 'product', productId: context.product.id },
+        salesPersonId: context.salesPerson.id,
+        status: 'draft',
+      }),
+    });
+    await context.db.update(user).set({ quoteSalesperson: false }).where(eq(user.id, context.salesPerson.id));
+    const now = new Date();
+    await context.db.insert(user).values({
+      createdAt: now,
+      email: 'another-unticked@example.com',
+      emailVerified: true,
+      id: 'another-unticked-id',
+      name: 'Another Unticked User',
+      role: 'admin',
+      updatedAt: now,
+    });
+
+    await expect(
+      patchQuote({
+        actorUserId: context.salesPerson.id,
+        db: context.db,
+        input: { id: quote.id, notes: 'Still editable' },
+      }),
+    ).resolves.toMatchObject({ notes: 'Still editable', salesPersonId: context.salesPerson.id });
+    await expect(
+      patchQuote({
+        actorUserId: context.salesPerson.id,
+        db: context.db,
+        input: { id: quote.id, salesPersonId: 'another-unticked-id' },
+      }),
+    ).rejects.toBeInstanceOf(QuoteInvalidReferenceError);
   });
 });

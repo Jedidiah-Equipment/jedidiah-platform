@@ -45,7 +45,12 @@ export const equipmentUserAdminExtension: UserAdminExtension = {
       ),
     );
   },
-  useInvalidateAdditionalUserQueries: () => useQueryInvalidation().invalidateUserDepartments,
+  useInvalidateAdditionalUserQueries: () => {
+    const { invalidateQuoteSalespeople, invalidateUserDepartments } = useQueryInvalidation();
+    return async () => {
+      await Promise.all([invalidateUserDepartments(), invalidateQuoteSalespeople()]);
+    };
+  },
   useTableExtension: () => {
     const { isError, isLoaded, memberships } = useDepartmentMemberships();
     const columns = useMemo<DataTableColumnDef<UserAccount>[]>(

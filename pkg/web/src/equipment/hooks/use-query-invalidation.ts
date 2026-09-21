@@ -67,6 +67,10 @@ export function useQueryInvalidation() {
     () => queryClient.invalidateQueries({ queryKey: trpc.quotes.pathKey() }),
     [queryClient, trpc],
   );
+  const invalidateQuoteSalespeople = useCallback(
+    () => queryClient.invalidateQueries({ queryKey: trpc.quotes.salespeople.pathKey() }),
+    [queryClient, trpc],
+  );
   const invalidatePurchaseOrders = useCallback(
     () => queryClient.invalidateQueries({ queryKey: trpc.purchaseOrders.pathKey() }),
     [queryClient, trpc],
@@ -101,6 +105,7 @@ export function useQueryInvalidation() {
       invalidateProductUnits,
       invalidatePurchaseOrders,
       invalidateQuotes,
+      invalidateQuoteSalespeople,
       invalidateSuppliers,
       invalidateUserDepartments,
       invalidateUsers,
@@ -122,6 +127,7 @@ export function useQueryInvalidation() {
       invalidateProductUnits,
       invalidatePurchaseOrders,
       invalidateQuotes,
+      invalidateQuoteSalespeople,
       invalidateSuppliers,
       invalidateUserDepartments,
       invalidateUsers,

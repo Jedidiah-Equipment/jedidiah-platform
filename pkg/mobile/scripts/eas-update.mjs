@@ -70,40 +70,29 @@ function readEasJson(args, env, runEas) {
   }
 }
 
-export function assertCompatibleBuilds({ profile, build, env, runEas = execFileSync }) {
+export function assertCompatibleBuilds({ profile, build, env, releasedBuildIds, runEas = execFileSync }) {
   const incompatible = [];
   for (const platform of ['android', 'ios']) {
-    const builds = readEasJson(
-      [
-        'build:list',
-        '--build-profile',
-        profile,
-        '--channel',
-        build.channel,
-        ...(build.distribution ? ['--distribution', build.distribution] : []),
-        '--platform',
-        platform,
-        '--status',
-        'finished',
-        '--limit',
-        '1',
-        '--json',
-        '--non-interactive',
-      ],
-      env,
-      runEas,
-    );
-    if (!Array.isArray(builds)) {
-      throw new Error('EAS build:list returned an unexpected response; OTA compatibility could not be verified.');
-    }
-    const latestBuild = builds[0];
-    if (!latestBuild) {
-      incompatible.push(`no finished ${platform} build exists for the ${profile} channel`);
-      continue;
-    }
-    if (typeof latestBuild.runtimeVersion !== 'string' || !latestBuild.runtimeVersion) {
+    const releasedBuildId = releasedBuildIds?.[platform];
+    if (!releasedBuildId) {
+      const name = `${releasePrefix(profile)}_${platform.toUpperCase()}_RELEASED_BUILD_ID`;
       throw new Error(
-        `Latest ${profile} ${platform} build has no runtime version; OTA compatibility could not be verified.`,
+        `No confirmed released build for ${profile} ${platform}. Set ${name} in pkg/mobile/.env.dev after the native build is published and installed; OTA not published.`,
+      );
+    }
+    const releasedBuild = readEasJson(['build:view', releasedBuildId, '--json'], env, runEas);
+    if (
+      releasedBuild?.id !== releasedBuildId ||
+      releasedBuild.status !== 'FINISHED' ||
+      releasedBuild.platform !== platform.toUpperCase() ||
+      releasedBuild.buildProfile !== profile ||
+      releasedBuild.channel !== build.channel ||
+      (build.distribution && releasedBuild.distribution?.toLowerCase() !== build.distribution) ||
+      typeof releasedBuild.runtimeVersion !== 'string' ||
+      !releasedBuild.runtimeVersion
+    ) {
+      throw new Error(
+        `Confirmed ${profile} ${platform} build ${releasedBuildId} is not a finished ${build.distribution ?? 'store'} build on the ${build.channel} channel; OTA not published.`,
       );
     }
 
@@ -117,17 +106,31 @@ export function assertCompatibleBuilds({ profile, build, env, runEas = execFileS
         `Could not read the current ${profile} ${platform} fingerprint; OTA compatibility could not be verified.`,
       );
     }
-    if (fingerprint.hash !== latestBuild.runtimeVersion) {
-      incompatible.push(
-        `${platform} fingerprint differs from latest finished build ${latestBuild.id ?? '(unknown ID)'}`,
-      );
+    if (fingerprint.hash !== releasedBuild.runtimeVersion) {
+      incompatible.push(`${platform} fingerprint differs from confirmed released build ${releasedBuildId}`);
     }
   }
 
   if (incompatible.length > 0) {
     throw new Error(
-      `Full build and publish required before ${profile} OTA: ${incompatible.join('; ')}. Build and submit the affected platform(s), then retry once the new builds are available on phones.`,
+      `Full build and publish required before ${profile} OTA: ${incompatible.join('; ')}. Build and submit the affected platform(s), confirm installation, record their released build IDs in pkg/mobile/.env.dev, then retry.`,
     );
+  }
+}
+
+function releasePrefix(profile) {
+  const prefixes = { staging: 'STAGING', production: 'PRODUCTION' };
+  const prefix = prefixes[profile];
+  if (!prefix) throw new Error(`No local release env is configured for ${profile ?? 'nothing'}.`);
+  return prefix;
+}
+
+function readLocalReleaseEnv(readFile) {
+  try {
+    return parseEnv(readFile(new URL('../.env.dev', import.meta.url), 'utf8'));
+  } catch (error) {
+    if (error?.code === 'ENOENT') return {};
+    throw error;
   }
 }
 
@@ -170,16 +173,8 @@ export function resolveSourceMapUploadCommand(env) {
 }
 
 export function resolveReleaseEnvironment(profile, env = process.env, readFile = readFileSync) {
-  const prefixes = { staging: 'STAGING', production: 'PRODUCTION' };
-  const prefix = prefixes[profile];
-  if (!prefix) throw new Error(`No local release env is configured for ${profile ?? 'nothing'}.`);
-  let fileEnv;
-  try {
-    fileEnv = parseEnv(readFile(new URL('../.env.dev', import.meta.url), 'utf8'));
-  } catch (error) {
-    if (error?.code === 'ENOENT') return env;
-    throw error;
-  }
+  const prefix = releasePrefix(profile);
+  const fileEnv = readLocalReleaseEnv(readFile);
 
   const names = ['POSTHOG_CLI_API_KEY', 'POSTHOG_CLI_PROJECT_ID', 'POSTHOG_CLI_HOST'];
   const selected = Object.fromEntries(names.map((name) => [name, fileEnv[`${prefix}_${name}`]]));
@@ -194,6 +189,17 @@ export function resolveReleaseEnvironment(profile, env = process.env, readFile =
   return { ...env, ...selected };
 }
 
+export function resolveReleasedBuildIds(profile, env = process.env, readFile = readFileSync) {
+  const prefix = releasePrefix(profile);
+  const fileEnv = readLocalReleaseEnv(readFile);
+  return Object.fromEntries(
+    ['android', 'ios'].map((platform) => {
+      const name = `${prefix}_${platform.toUpperCase()}_RELEASED_BUILD_ID`;
+      return [platform, fileEnv[name] || env[name]];
+    }),
+  );
+}
+
 function main() {
   const [profile, ...args] = process.argv.slice(2);
   const easConfig = JSON.parse(readFileSync(EAS_CONFIG_PATH, 'utf8'));
@@ -201,7 +207,8 @@ function main() {
   const command = resolveUpdateCommand({ args, commitSubject, easConfig, profile });
   const releaseEnv = resolveReleaseEnvironment(profile);
   const updateEnv = { ...releaseEnv, ...command.env };
-  assertCompatibleBuilds({ profile, build: easConfig.build[profile], env: updateEnv });
+  const releasedBuildIds = resolveReleasedBuildIds(profile);
+  assertCompatibleBuilds({ profile, build: easConfig.build[profile], env: updateEnv, releasedBuildIds });
   const bundle = resolveExportCommand();
   // Bundle and upload before publishing because this script cannot roll an OTA back.
   const sourceMaps = resolveSourceMapUploadCommand(releaseEnv);

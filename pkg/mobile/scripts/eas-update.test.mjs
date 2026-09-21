@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   assertCompatibleBuilds,
   resolveExportCommand,
+  resolveReleasedBuildIds,
   resolveReleaseEnvironment,
   resolveSourceMapUploadCommand,
   resolveUpdateCommand,
@@ -109,50 +110,77 @@ describe('resolveUpdateCommand', () => {
 
 describe('assertCompatibleBuilds', () => {
   const build = { channel: 'staging', distribution: 'store' };
+  const releasedBuildIds = { android: 'android-build', ios: 'ios-build' };
 
-  it('allows an OTA when both current fingerprints match the latest profile builds', () => {
+  function matchingEas(_executable, args) {
+    if (args[0] === 'build:view') {
+      const platform = args[1] === 'android-build' ? 'android' : 'ios';
+      return JSON.stringify({
+        id: args[1],
+        status: 'FINISHED',
+        platform: platform.toUpperCase(),
+        buildProfile: 'staging',
+        channel: 'staging',
+        distribution: 'STORE',
+        runtimeVersion: `${platform}-hash`,
+      });
+    }
+    const platform = args[args.indexOf('--platform') + 1];
+    return JSON.stringify({ hash: `${platform}-hash` });
+  }
+
+  it('refuses a matching EAS build until it is confirmed distributed', () => {
+    expect(() =>
+      assertCompatibleBuilds({ profile: 'staging', build, env: {}, releasedBuildIds: {}, runEas: matchingEas }),
+    ).toThrow('confirmed released build');
+  });
+
+  it('allows an OTA when both fingerprints match confirmed released builds', () => {
     const calls = [];
     const runEas = (_executable, args) => {
       calls.push(args);
-      const platform = args[args.indexOf('--platform') + 1];
-      return args[0] === 'build:list'
-        ? JSON.stringify([{ id: `${platform}-build`, runtimeVersion: `${platform}-hash` }])
-        : JSON.stringify({ hash: `${platform}-hash` });
+      return matchingEas(_executable, args);
     };
 
-    expect(() => assertCompatibleBuilds({ profile: 'staging', build, env: {}, runEas })).not.toThrow();
+    expect(() =>
+      assertCompatibleBuilds({ profile: 'staging', build, env: {}, releasedBuildIds, runEas }),
+    ).not.toThrow();
     expect(calls).toHaveLength(4);
-    expect(calls[0]).toContain('--build-profile');
-    expect(calls[0]).toContain('--channel');
-    expect(calls[0]).toContain('--distribution');
+    expect(calls[0]).toEqual(['build:view', 'android-build', '--json']);
     expect(calls[1]).toContain('fingerprint:generate');
+    expect(calls[2]).toEqual(['build:view', 'ios-build', '--json']);
   });
 
   it('blocks an OTA when a platform fingerprint changed', () => {
-    const runEas = (_executable, args) => {
-      const platform = args[args.indexOf('--platform') + 1];
-      return args[0] === 'build:list'
-        ? JSON.stringify([{ id: `${platform}-build`, runtimeVersion: `${platform}-hash` }])
-        : JSON.stringify({ hash: platform === 'android' ? 'android-new' : 'ios-hash' });
-    };
+    const runEas = (_executable, args) =>
+      args[0] === 'fingerprint:generate' && args.includes('android')
+        ? JSON.stringify({ hash: 'android-new' })
+        : matchingEas(_executable, args);
 
-    expect(() => assertCompatibleBuilds({ profile: 'staging', build, env: {}, runEas })).toThrow(
+    expect(() => assertCompatibleBuilds({ profile: 'staging', build, env: {}, releasedBuildIds, runEas })).toThrow(
       'Full build and publish required before staging OTA: android fingerprint differs',
     );
   });
 
-  it('fails closed when no finished store build exists', () => {
-    expect(() => assertCompatibleBuilds({ profile: 'staging', build, env: {}, runEas: () => '[]' })).toThrow(
-      'Full build and publish required',
+  it('rejects a confirmed build from the wrong channel', () => {
+    const runEas = (_executable, args) => {
+      const result = JSON.parse(matchingEas(_executable, args));
+      if (args[0] === 'build:view') result.channel = 'production';
+      return JSON.stringify(result);
+    };
+
+    expect(() => assertCompatibleBuilds({ profile: 'staging', build, env: {}, releasedBuildIds, runEas })).toThrow(
+      'is not a finished store build on the staging channel',
     );
   });
 
-  it('fails closed when EAS cannot list builds', () => {
+  it('fails closed when EAS cannot look up a confirmed build', () => {
     expect(() =>
       assertCompatibleBuilds({
         profile: 'staging',
         build,
         env: {},
+        releasedBuildIds,
         runEas: () => {
           throw new Error('EAS unavailable');
         },
@@ -246,5 +274,22 @@ describe('resolveReleaseEnvironment', () => {
         () => 'STAGING_POSTHOG_CLI_API_KEY=staging-key\n',
       ),
     ).toThrow('Incomplete staging PostHog credentials in .env.dev');
+  });
+});
+
+describe('resolveReleasedBuildIds', () => {
+  it.each([
+    ['staging', 'staging-android', 'staging-ios'],
+    ['production', 'production-android', 'production-ios'],
+  ])('selects only confirmed %s build IDs from .env.dev', (profile, android, ios) => {
+    const readFile = () =>
+      [
+        'STAGING_ANDROID_RELEASED_BUILD_ID=staging-android',
+        'STAGING_IOS_RELEASED_BUILD_ID=staging-ios',
+        'PRODUCTION_ANDROID_RELEASED_BUILD_ID=production-android',
+        'PRODUCTION_IOS_RELEASED_BUILD_ID=production-ios',
+      ].join('\n');
+
+    expect(resolveReleasedBuildIds(profile, {}, readFile)).toEqual({ android, ios });
   });
 });

@@ -41,5 +41,5 @@ export function recordReadingSyncFailure(failure: ReadingSyncFailure, now = Date
 }
 
 function errorName(error: unknown): string | null {
-  return error instanceof Error ? error.name.slice(0, 80) : null;
+  return error instanceof Error ? error.name : null;
 }

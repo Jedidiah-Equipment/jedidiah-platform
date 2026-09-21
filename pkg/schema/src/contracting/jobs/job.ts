@@ -3,7 +3,8 @@ import { AuthId } from '../../auth/auth-id.js';
 import { DateIso, DateOnlyIso } from '../../common/date.js';
 import { nullableTrimmedTextInput, nullableTrimmedTextInputOptional, requiredTrimmedText } from '../../common/text.js';
 import { UUID } from '../../common/uuid.js';
-import { FieldReading } from '../readings/reading.js';
+import { CategoryColour, CategoryIconKey } from '../fleet/fleet.js';
+import { HourReading } from '../readings/reading.js';
 import { assignmentStates, discountKinds, jobQueues, jobStatuses } from './job-enums.js';
 
 export const Hours = z.number().nonnegative().max(999999999.9).multipleOf(0.1);
@@ -72,6 +73,8 @@ export type JobListInput = z.infer<typeof JobListInput>;
 export const JobLookupInput = z.union([z.object({ id: UUID }).strict(), z.object({ code: JobNumber }).strict()]);
 export type JobLookupInput = z.infer<typeof JobLookupInput>;
 export const JobIdInput = z.object({ id: UUID }).strict();
+export const JobQueueCounts = z.record(z.enum(jobQueues), z.number().int().nonnegative());
+export type JobQueueCounts = z.infer<typeof JobQueueCounts>;
 
 export const AssignmentPlanInput = z
   .object({
@@ -137,21 +140,54 @@ export const ChargeLine = z.object({
 });
 export type ChargeLine = z.infer<typeof ChargeLine>;
 
+export const jobReadingAttentionKinds = [
+  'disputed',
+  'ai-pending',
+  'ai-disagrees',
+  'ai-low-confidence',
+  'missing-photo',
+] as const;
+/** The sign-off projection carries evidence without exposing photo storage metadata. */
+export const JobReading = HourReading.pick({
+  id: true,
+  role: true,
+  value: true,
+  capturedAt: true,
+  capturedByUserId: true,
+  method: true,
+  comment: true,
+  aiValue: true,
+  aiConfidence: true,
+  aiVerification: true,
+  aiHint: true,
+  disputed: true,
+  disputeReason: true,
+  evidenceReviewedAt: true,
+  amendedAt: true,
+  amendmentReason: true,
+}).extend({
+  photoBacked: z.boolean(),
+  capturedByName: z.string().nullable(),
+  needsALook: z.array(z.enum(jobReadingAttentionKinds)),
+});
+export type JobReading = z.infer<typeof JobReading>;
+
 export const Assignment = z.object({
   id: UUID,
   jobId: UUID,
   machineId: UUID,
   machineCode: z.string(),
   categoryName: z.string(),
-  categoryIcon: z.string(),
-  categoryColour: z.string(),
+  categoryIcon: CategoryIconKey,
+  categoryColour: CategoryColour,
   implementId: UUID.nullable(),
   implementCode: z.string().nullable(),
   driverUserId: AuthId.nullable(),
   driverName: z.string().nullable(),
   state: z.enum(assignmentStates),
-  arrival: FieldReading.nullable(),
-  departure: FieldReading.nullable(),
+  createdAt: DateIso,
+  arrival: JobReading.nullable(),
+  departure: JobReading.nullable(),
   travelIncluded: z.boolean(),
   workHours: Hours.nullable(),
   gapHours: Hours.nullable(),
@@ -160,6 +196,7 @@ export const Assignment = z.object({
   billableHours: Hours.nullable(),
   gapFlag: z.boolean(),
   gapResolved: z.boolean(),
+  gapReason: z.string().nullable(),
   measures: z.array(Measure),
   rateId: UUID.nullable(),
   rateName: z.string().nullable(),

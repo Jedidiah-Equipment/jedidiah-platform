@@ -1,5 +1,5 @@
 import { readingMethods, readingRoles, readingVerifications } from '@pkg/schema/contracting';
-import { sql } from 'drizzle-orm';
+import { relations, sql } from 'drizzle-orm';
 import {
   type AnyPgColumn,
   bigint,
@@ -63,3 +63,7 @@ export const contractingHourReadings = contractingSchema.table(
     ),
   ],
 );
+
+export const contractingHourReadingsRelations = relations(contractingHourReadings, ({ one }) => ({
+  capturedBy: one(user, { fields: [contractingHourReadings.capturedByUserId], references: [user.id] }),
+}));

@@ -19,13 +19,17 @@ export function useQueryInvalidation() {
     () => queryClient.invalidateQueries({ queryKey: trpc.contractingReadings.pathKey() }),
     [queryClient, trpc],
   );
+  const invalidateJobs = useCallback(
+    () => queryClient.invalidateQueries({ queryKey: trpc.contractingJobs.pathKey() }),
+    [queryClient, trpc],
+  );
   const invalidateRateCard = useCallback(
     () => queryClient.invalidateQueries({ queryKey: trpc.contractingRateCard.pathKey() }),
     [queryClient, trpc],
   );
 
   return useMemo(
-    () => ({ invalidateDirectory, invalidateFleet, invalidateRateCard, invalidateReadings }),
-    [invalidateDirectory, invalidateFleet, invalidateRateCard, invalidateReadings],
+    () => ({ invalidateDirectory, invalidateFleet, invalidateJobs, invalidateRateCard, invalidateReadings }),
+    [invalidateDirectory, invalidateFleet, invalidateJobs, invalidateRateCard, invalidateReadings],
   );
 }

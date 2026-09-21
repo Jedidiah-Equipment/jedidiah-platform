@@ -2,6 +2,7 @@ import {
   addAssignment,
   cancelJob,
   completeJob,
+  countJobQueues,
   createChargeLine,
   createJob,
   getFieldJob,
@@ -41,6 +42,7 @@ import {
   JobListInput,
   JobLookupInput,
   JobPatchInput,
+  JobQueueCounts,
   MeasureRemoveInput,
   MeasureSetInput,
 } from '@pkg/schema/contracting';
@@ -83,6 +85,25 @@ export const contractingJobsRouter = router({
       .query(({ ctx }) => listFieldDrivers({ db: ctx.db })),
   }),
   jobs: router({
+    queueCounts: authorizedProcedure(readPermissions)
+      .output(JobQueueCounts)
+      .query(async ({ ctx }) => {
+        const mode = readMode(ctx.access);
+        const counts = await countJobQueues({
+          db: ctx.db,
+          ...(mode === 'own' ? { foremanUserId: ctx.session.user.id } : {}),
+        });
+        if (mode !== 'priced') return counts;
+        return JobQueueCounts.parse({
+          upcoming: 0,
+          active: 0,
+          'looks-finished': 0,
+          'awaiting-pricing': counts['awaiting-pricing'],
+          'awaiting-invoice': counts['awaiting-invoice'],
+          invoiced: counts.invoiced,
+          cancelled: 0,
+        });
+      }),
     list: authorizedProcedure(readPermissions)
       .input(JobListInput)
       .query(({ ctx, input }) =>

@@ -208,7 +208,7 @@ const test = createTester(async ({ db }) => {
       completedByUserId: managerId,
     })
     .where(eq(contractingJobs.id, completedJob.id));
-  return { completedJob, db, implement, machine, otherJob, ownJob, pricedJob, stint };
+  return { completedJob, db, implement, machine, otherJob, otherMachine, otherStint, ownJob, pricedJob, stint };
 });
 
 test('projects only open field Jobs, enforces ownership, and never returns money', async ({ context }) => {
@@ -304,5 +304,43 @@ test('enforces the Job queue role matrix and strips money from Foreman reads', a
     ).rejects.toMatchObject({ code: 'FORBIDDEN' });
   await expect(context.createAnonCaller().contractingJobs.jobs.list({ queue: 'upcoming' })).rejects.toMatchObject({
     code: 'UNAUTHORIZED',
+  });
+});
+
+test('counts queue tabs by read mode and exposes capture evidence on Job details', async ({ context }) => {
+  const manager = context.createCaller(contractingSession('contracting-manager')).contractingJobs.jobs;
+  const foreman = context.createCaller(contractingSession('foreman')).contractingJobs.jobs;
+  const invoicing = context.createCaller(contractingSession('contracting-invoicing')).contractingJobs.jobs;
+  expect(await manager.queueCounts()).toMatchObject({
+    upcoming: 1,
+    active: 1,
+    'looks-finished': 0,
+    'awaiting-pricing': 1,
+    'awaiting-invoice': 1,
+  });
+  expect(await foreman.queueCounts()).toMatchObject({ upcoming: 1, active: 0, 'awaiting-pricing': 0 });
+  expect(await invoicing.queueCounts()).toMatchObject({ upcoming: 0, active: 0, 'awaiting-pricing': 1 });
+  expect(await manager.get({ id: context.otherJob.id })).toMatchObject({
+    assignments: [
+      { arrival: { comment: null, aiConfidence: null, capturedByName: 'Other', needsALook: ['missing-photo'] } },
+    ],
+  });
+  const departure = {
+    machineId: context.otherMachine.id,
+    assignmentId: context.otherStint.id,
+    role: 'departure' as const,
+    value: 102,
+    capturedAt: '2026-09-17T17:00:00+02:00',
+    disputePrevious: false,
+  };
+  await expect(
+    captureReading({ db: context.db, actorUserId: foremanId, input: { ...departure, comment: 'Shift ended' } }),
+  ).rejects.toMatchObject({ code: 'reading.forbidden' });
+  await expect(captureReading({ db: context.db, actorUserId: managerId, input: departure })).rejects.toMatchObject({
+    code: 'reading.invalid_role',
+  });
+  await captureReading({ db: context.db, actorUserId: managerId, input: { ...departure, comment: 'Shift ended' } });
+  expect(await manager.get({ id: context.otherJob.id })).toMatchObject({
+    assignments: [{ departure: { capturedByName: 'Henk', comment: 'Shift ended', photoBacked: false } }],
   });
 });

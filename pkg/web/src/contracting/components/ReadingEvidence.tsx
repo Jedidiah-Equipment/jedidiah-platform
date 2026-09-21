@@ -41,7 +41,7 @@ export function readingEvidence(reading: EvidenceReading) {
     resultConfidencePercent: noReadableMeter ? confidencePercent : null,
     tone: (!reading.photoBacked
       ? 'muted'
-      : reading.disputed || reading.aiVerification === 'disagrees' || reading.aiVerification === 'low-confidence'
+      : reading.disputed || ['pending', 'disagrees', 'low-confidence'].includes(reading.aiVerification)
         ? 'warn'
         : 'ok') as 'muted' | 'warn' | 'ok',
   };
@@ -66,22 +66,28 @@ export function NoReadableMeterResult({ confidencePercent }: { confidencePercent
   );
 }
 
-export function ReadingEvidenceBadge({ reading, onPreview }: { reading: JobReading; onPreview?: () => void }) {
+export function ReadingEvidenceBadge({
+  reading,
+  onPreview,
+}: {
+  reading: JobReading;
+  onPreview?: (() => void) | undefined;
+}) {
   const presentation = readingEvidence(reading);
   const label = !reading.photoBacked
     ? 'No photo'
-    : reading.disputed || reading.aiVerification === 'disagrees'
-      ? 'AI differs'
-      : reading.aiVerification === 'pending'
-        ? 'Pending'
-        : reading.aiConfidence !== null
-          ? `✓ ${Math.round(reading.aiConfidence * 100)}%`
-          : presentation.evidenceLabel;
+    : reading.disputed
+      ? 'Disputed'
+      : reading.aiVerification === 'disagrees'
+        ? 'AI differs'
+        : reading.aiVerification === 'pending'
+          ? 'Pending'
+          : reading.aiConfidence !== null
+            ? `✓ ${Math.round(reading.aiConfidence * 100)}%`
+            : presentation.evidenceLabel;
   return (
     <Tooltip>
-      <TooltipTrigger
-        render={<button type="button" onClick={onPreview} disabled={!onPreview} className="cursor-help" />}
-      >
+      <TooltipTrigger render={<button type="button" onClick={onPreview} className="cursor-help" />}>
         <Badge variant="outline">{label}</Badge>
       </TooltipTrigger>
       <TooltipContent>

@@ -120,15 +120,33 @@ describe('purchaseOrders router', () => {
       expectedDeliveryDate: null,
       id: created.id,
       jobIds: [],
-      lines: [{ kind: 'part', partId: PART_ID, quantity: 2, unitPrice: 150 }],
+      lines: [
+        { kind: 'part', partId: PART_ID, quantity: 2, unitPrice: 150 },
+        {
+          description: 'Packing tape',
+          id: '00000000-0000-4000-8000-0000000009c1',
+          kind: 'custom',
+          quantity: 1,
+          supplierCode: null,
+          unit: 'box',
+          unitPrice: 80,
+        },
+      ],
       supplierId: SUPPLIER_ID,
     });
 
+    // Each kind is its own view contract, so the gate is held to both.
     await expect(admin.purchaseOrders.get({ id: created.id })).resolves.toMatchObject({
-      lines: [{ unitPrice: 150 }],
+      lines: [
+        { kind: 'part', unitPrice: 150 },
+        { kind: 'custom', unitPrice: 80 },
+      ],
     });
     await expect(stores.purchaseOrders.get({ id: created.id })).resolves.toMatchObject({
-      lines: [{ unitPrice: null }],
+      lines: [
+        { kind: 'part', unitPrice: null },
+        { kind: 'custom', unitPrice: null },
+      ],
     });
     await expect(stores.purchaseOrders.create({ supplierId: SUPPLIER_ID })).rejects.toMatchObject({
       code: 'FORBIDDEN',
@@ -137,7 +155,14 @@ describe('purchaseOrders router', () => {
 
     // The gate covers the list read too, not just the single order.
     await expect(stores.purchaseOrders.list({ cursor: 0, limit: 20 })).resolves.toMatchObject({
-      items: [expect.objectContaining({ lines: [expect.objectContaining({ unitPrice: null })] })],
+      items: [
+        expect.objectContaining({
+          lines: [
+            expect.objectContaining({ kind: 'part', unitPrice: null }),
+            expect.objectContaining({ kind: 'custom', unitPrice: null }),
+          ],
+        }),
+      ],
     });
   });
 

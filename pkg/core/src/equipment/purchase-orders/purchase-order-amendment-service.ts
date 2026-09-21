@@ -32,7 +32,6 @@ import {
   assertLinePartsMatchSupplier,
   getPurchaseOrder,
   lineHasStockMovements,
-  loadLineReceivedQuantity,
   loadNextPurchaseOrderRevision,
   lockPurchaseOrder,
   purchaseOrderAggregateAuditDescriptor,
@@ -117,13 +116,8 @@ export async function amendPurchaseOrderQuantity({
       supplierId: purchaseOrder.supplierId,
     });
     // Receipts are facts. An order asking for less than it has already taken in describes nothing.
-    const receivedQuantity = await loadLineReceivedQuantity({
-      db: tx,
-      partId: input.partId,
-      purchaseOrderId: input.id,
-    });
-    if (input.quantity < receivedQuantity) {
-      throw new PurchaseOrderAmendmentBelowReceivedError(line.partCode, receivedQuantity);
+    if (input.quantity < line.receivedQuantity) {
+      throw new PurchaseOrderAmendmentBelowReceivedError(line.partCode, line.receivedQuantity);
     }
 
     await tx

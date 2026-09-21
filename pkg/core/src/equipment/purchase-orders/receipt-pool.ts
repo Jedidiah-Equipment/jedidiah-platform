@@ -38,7 +38,7 @@ export async function loadReceiptBuckets({
 }): Promise<Map<string, PurchaseOrderReceiptBucket[]>> {
   if (purchaseOrderIds.length === 0) return new Map();
 
-  // Summed and grouped in SQL, one row per bucket: the same shape `loadReceivedQuantities` reads
+  // Summed and grouped in SQL, one row per bucket: the same shape `loadLineIntake` reads
   // beside it, and a cost that grows with a line's lengths rather than with its delivery history.
   const rows = await db
     .select({

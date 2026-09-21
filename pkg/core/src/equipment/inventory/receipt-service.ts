@@ -11,7 +11,8 @@ import {
   PurchaseOrderLineNotFoundError,
   PurchaseOrderNotFoundError,
 } from '../purchase-orders/purchase-order-errors.js';
-import { loadLineReceivedQuantity, loadPurchaseOrderActionFacts } from '../purchase-orders/purchase-order-service.js';
+import { loadLineIntake } from '../purchase-orders/purchase-order-line-intake.js';
+import { loadPurchaseOrderActionFacts } from '../purchase-orders/purchase-order-service.js';
 import { insertMovement, loadStockPart } from './ledger.js';
 import { resolveMovementActor } from './movement-actor.js';
 import { assertDeltaMatchesUnitClass, assertLengthMatchesUnitClass } from './unit-class-rules.js';
@@ -57,11 +58,7 @@ export async function postReceipt({
     // The same netted figure the order's own projection reads, so the dock's warning and the line's
     // outstanding quantity cannot disagree: stock returned as defective is owed again, and the
     // replacement delivery must not read as an over-receipt.
-    const receivedQuantity = await loadLineReceivedQuantity({
-      db: tx,
-      partId: input.partId,
-      purchaseOrderId: purchaseOrder.id,
-    });
+    const receivedQuantity = (await loadLineIntake({ db: tx, purchaseOrderIds: [purchaseOrder.id] })).get(line.id) ?? 0;
     const movement = await insertMovement(tx, {
       actorUserId: movementActorUserId,
       delta: input.quantity,
@@ -100,7 +97,11 @@ async function lockReceivablePurchaseOrder(tx: DatabaseTransaction, id: UUID) {
 
 async function loadPurchaseOrderLine(tx: DatabaseTransaction, purchaseOrderId: UUID, partId: UUID) {
   const [line] = await tx
-    .select({ quantity: purchaseOrderLines.quantity, unitPrice: purchaseOrderLines.unitPrice })
+    .select({
+      id: purchaseOrderLines.id,
+      quantity: purchaseOrderLines.quantity,
+      unitPrice: purchaseOrderLines.unitPrice,
+    })
     .from(purchaseOrderLines)
     .where(and(eq(purchaseOrderLines.purchaseOrderId, purchaseOrderId), eq(purchaseOrderLines.partId, partId)));
   if (!line) throw new PurchaseOrderLineNotFoundError(purchaseOrderId, partId);

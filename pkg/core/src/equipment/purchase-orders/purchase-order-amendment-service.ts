@@ -1,22 +1,28 @@
+import { randomUUID } from 'node:crypto';
 import { type DatabaseTransaction, type Db, user } from '@pkg/db';
 import { parts, purchaseOrderAmendments, purchaseOrderLines, purchaseOrders } from '@pkg/db/equipment';
 import type { AuthId, UUID } from '@pkg/schema';
 import type {
   PurchaseOrder,
+  PurchaseOrderAmendAddCustomLineInput,
   PurchaseOrderAmendAddLineInput,
+  PurchaseOrderAmendCustomLineQuantityInput,
   PurchaseOrderAmendExpectedDateInput,
   PurchaseOrderAmendmentListResult,
   PurchaseOrderAmendQuantityInput,
+  PurchaseOrderAmendRemoveCustomLineInput,
   PurchaseOrderAmendSubstitutePartInput,
   PurchaseOrderPdfRenderer,
 } from '@pkg/schema/equipment';
 import { PurchaseOrderAmendmentListResult as PurchaseOrderAmendmentListResultSchema } from '@pkg/schema/equipment';
-import { aliasedTable, and, asc, eq } from 'drizzle-orm';
+import { aliasedTable, and, asc, eq, isNull, sql } from 'drizzle-orm';
 import { diffAuditUpdate, recordAuditUpdate } from '../../audit/audit-writer.js';
 import type { StorageAdapter } from '../../storage/storage-adapter.js';
 import {
   assertPurchaseOrderAction,
   PurchaseOrderAmendmentBelowReceivedError,
+  PurchaseOrderAmendmentLastLineError,
+  PurchaseOrderAmendmentLineHasArrivalsError,
   PurchaseOrderLineExistsError,
   PurchaseOrderLineNotFoundError,
   PurchaseOrderLineNotPricedError,
@@ -47,7 +53,17 @@ import {
 type AmendmentRow = typeof purchaseOrderAmendments.$inferInsert;
 type AmendmentChange = Pick<AmendmentRow, 'kind' | 'note'> &
   Partial<
-    Pick<AmendmentRow, 'newExpectedDate' | 'newPartId' | 'newQuantity' | 'oldExpectedDate' | 'oldQuantity' | 'partId'>
+    Pick<
+      AmendmentRow,
+      | 'customDescription'
+      | 'lineId'
+      | 'newExpectedDate'
+      | 'newPartId'
+      | 'newQuantity'
+      | 'oldExpectedDate'
+      | 'oldQuantity'
+      | 'partId'
+    >
   >;
 
 /** Records the Supplier's revised promise date on the sent order and its immutable history. */
@@ -165,6 +181,105 @@ export async function amendPurchaseOrderAddLine({
   });
 }
 
+export async function amendPurchaseOrderCustomLineQuantity({
+  actorUserId,
+  db,
+  input,
+  pdfRenderer,
+  storage,
+}: {
+  actorUserId: AuthId;
+  db: Db;
+  input: PurchaseOrderAmendCustomLineQuantityInput;
+  pdfRenderer: PurchaseOrderPdfRenderer;
+  storage: StorageAdapter;
+}): Promise<PurchaseOrder> {
+  return applyAmendment({ actorUserId, db, id: input.id, pdfRenderer, storage }, async (tx, order) => {
+    const line = findCustomLine(order, input.lineId);
+    if (input.quantity < line.receivedQuantity) {
+      throw new PurchaseOrderAmendmentBelowReceivedError(line.description, line.receivedQuantity);
+    }
+    await tx.update(purchaseOrderLines).set({ quantity: input.quantity }).where(eq(purchaseOrderLines.id, line.id));
+    return {
+      customDescription: line.description,
+      kind: 'quantity-change',
+      lineId: line.id,
+      newQuantity: input.quantity,
+      note: input.note,
+      oldQuantity: line.quantity,
+    };
+  });
+}
+
+export async function amendPurchaseOrderAddCustomLine({
+  actorUserId,
+  db,
+  input,
+  pdfRenderer,
+  storage,
+}: {
+  actorUserId: AuthId;
+  db: Db;
+  input: PurchaseOrderAmendAddCustomLineInput;
+  pdfRenderer: PurchaseOrderPdfRenderer;
+  storage: StorageAdapter;
+}): Promise<PurchaseOrder> {
+  return applyAmendment({ actorUserId, db, id: input.id, pdfRenderer, storage }, async (tx, order) => {
+    if (input.unitPrice === 0) throw new PurchaseOrderLineNotPricedError(input.description);
+    const id = randomUUID();
+    const [last] = await tx
+      .select({ position: sql<number>`coalesce(max(${purchaseOrderLines.position}), -1)` })
+      .from(purchaseOrderLines)
+      .where(and(eq(purchaseOrderLines.purchaseOrderId, order.id), isNull(purchaseOrderLines.partId)));
+    await tx.insert(purchaseOrderLines).values({
+      customDescription: input.description,
+      customSupplierCode: input.supplierCode,
+      customUnit: input.unit,
+      id,
+      position: (last?.position ?? -1) + 1,
+      purchaseOrderId: order.id,
+      quantity: input.quantity,
+      unitPrice: input.unitPrice,
+    });
+    return {
+      customDescription: input.description,
+      kind: 'add-line',
+      lineId: id,
+      newQuantity: input.quantity,
+      note: input.note,
+      oldQuantity: null,
+    };
+  });
+}
+
+export async function amendPurchaseOrderRemoveCustomLine({
+  actorUserId,
+  db,
+  input,
+  pdfRenderer,
+  storage,
+}: {
+  actorUserId: AuthId;
+  db: Db;
+  input: PurchaseOrderAmendRemoveCustomLineInput;
+  pdfRenderer: PurchaseOrderPdfRenderer;
+  storage: StorageAdapter;
+}): Promise<PurchaseOrder> {
+  return applyAmendment({ actorUserId, db, id: input.id, pdfRenderer, storage }, async (tx, order) => {
+    const line = findCustomLine(order, input.lineId);
+    if (line.hasStockMovements) throw new PurchaseOrderAmendmentLineHasArrivalsError(line.description);
+    if (order.lines.length === 1) throw new PurchaseOrderAmendmentLastLineError();
+    await tx.delete(purchaseOrderLines).where(eq(purchaseOrderLines.id, line.id));
+    return {
+      customDescription: line.description,
+      kind: 'remove-line',
+      lineId: line.id,
+      note: input.note,
+      oldQuantity: line.quantity,
+    };
+  });
+}
+
 /**
  * Swaps one Part on a line for another the Supplier is sending instead.
  *
@@ -233,8 +348,10 @@ export async function listPurchaseOrderAmendments({
       actorName: user.name,
       actorUserId: purchaseOrderAmendments.actorUserId,
       createdAt: purchaseOrderAmendments.createdAt,
+      customDescription: purchaseOrderAmendments.customDescription,
       id: purchaseOrderAmendments.id,
       kind: purchaseOrderAmendments.kind,
+      lineId: purchaseOrderAmendments.lineId,
       newExpectedDate: purchaseOrderAmendments.newExpectedDate,
       newPartCode: newParts.code,
       newPartId: purchaseOrderAmendments.newPartId,
@@ -341,6 +458,12 @@ function findLine(purchaseOrder: PurchaseOrder, partId: UUID) {
   }
 
   return { ...line, partCode: line.partCode };
+}
+
+function findCustomLine(purchaseOrder: PurchaseOrder, lineId: UUID) {
+  const line = purchaseOrder.lines.find((candidate) => candidate.kind === 'custom' && candidate.id === lineId);
+  if (!line) throw new PurchaseOrderLineNotFoundError(purchaseOrder.id, lineId);
+  return line;
 }
 
 /** A Part appears once per order, so an add or a substitution has to bring one that is not on it. */

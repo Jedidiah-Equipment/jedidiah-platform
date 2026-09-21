@@ -32,6 +32,10 @@ For a **Price differs** flag you have two answers:
 - **Dismiss** sets the flag aside for good. Use it when the order's price is the right one and the
   invoice is what needs correcting — then take it up with the Supplier.
 
+A Custom Line matches by its Supplier code when one was entered, then by description. Its price
+flag offers **Dismiss** only: Custom Lines are not stock, so there is nothing to revalue. A Part
+Line matches by Part code first, then Supplier code, then description.
+
 Every other flag takes **Dismiss** alone. There is nothing to apply: what the order says is a matter
 for an [amendment](./amend-a-sent-purchase-order.md), not for the invoice.
 

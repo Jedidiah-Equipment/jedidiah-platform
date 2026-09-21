@@ -1,4 +1,5 @@
 import { auditEvents, user } from '@pkg/db';
+import { purchaseOrderAmendments, supplier } from '@pkg/db/equipment';
 import { DateOnlyIso } from '@pkg/schema';
 import type { PurchaseOrderPdfModel } from '@pkg/schema/equipment';
 import { and, eq } from 'drizzle-orm';
@@ -14,13 +15,17 @@ import {
   renderStubPdf,
   SPARE_PART_ID,
   SUPPLIER_ID,
+  sendCustomOrder,
   sendOrder,
   test,
 } from './purchase-order-amendment-fixtures.js';
 import {
+  amendPurchaseOrderAddCustomLine,
   amendPurchaseOrderAddLine,
+  amendPurchaseOrderCustomLineQuantity,
   amendPurchaseOrderExpectedDate,
   amendPurchaseOrderQuantity,
+  amendPurchaseOrderRemoveCustomLine,
   amendPurchaseOrderSubstitutePart,
   listPurchaseOrderAmendments,
 } from './purchase-order-amendment-service.js';
@@ -28,6 +33,228 @@ import { closePurchaseOrderShort, createPurchaseOrder, getPurchaseOrder } from '
 import { listLatePurchaseOrders } from './purchase-order-signals.js';
 
 describe('Purchase Order amendments', () => {
+  test('database refuses amendment rows that name both line types or remove a Part Line', async ({ context }) => {
+    const order = await sendOrder(context, [{ partId: PIECE_PART_ID, quantity: 2, unitPrice: 20 }]);
+    const base = { actorUserId: ACTOR_ID, purchaseOrderId: order.id, note: 'Invalid shape', oldQuantity: 2 };
+    await expect(
+      context.db.insert(purchaseOrderAmendments).values({
+        ...base,
+        kind: 'quantity-change',
+        partId: PIECE_PART_ID,
+        lineId: order.lines[0]?.id,
+        customDescription: 'Wrong',
+        newQuantity: 3,
+      }),
+    ).rejects.toThrow();
+    await expect(
+      context.db.insert(purchaseOrderAmendments).values({ ...base, kind: 'remove-line', partId: PIECE_PART_ID }),
+    ).rejects.toThrow();
+  });
+  test('amends a Custom Line above its arrived quantity and files its new PDF revision', async ({ context }) => {
+    const order = await sendCustomOrder(context, [{ description: 'Office chair', quantity: 5, unitPrice: 800 }]);
+    const lineId = order.lines[0]?.id;
+    if (!lineId) throw new Error('Missing custom line');
+    const render = vi.fn(async (_input: { document: PurchaseOrderPdfModel; filename: string }) => renderStubPdf());
+    const amended = await amendPurchaseOrderCustomLineQuantity({
+      actorUserId: ACTOR_ID,
+      db: context.db,
+      input: { id: order.id, lineId, note: 'Supplier confirmed three extra', quantity: 8 },
+      pdfRenderer: render,
+      storage: context.storage,
+    });
+    expect(amended.lines[0]?.quantity).toBe(8);
+    expect((await listPurchaseOrderAmendments({ db: context.db, purchaseOrderId: order.id })).items[0]).toMatchObject({
+      customDescription: 'Office chair',
+      kind: 'quantity-change',
+      lineId,
+      newQuantity: 8,
+      oldQuantity: 5,
+      note: 'Supplier confirmed three extra',
+    });
+    expect(
+      (await listPurchaseOrderDocuments({ db: context.db, purchaseOrderId: order.id })).items.map(
+        (row) => row.revision,
+      ),
+    ).toEqual([2, 1]);
+    expect(render.mock.calls[0]?.[0].document.lines[0]).toMatchObject({ quantity: 8 });
+    const lowered = await amendPurchaseOrderCustomLineQuantity({
+      actorUserId: ACTOR_ID,
+      db: context.db,
+      input: { id: order.id, lineId, note: 'Supplier reduced the shipment', quantity: 4 },
+      pdfRenderer: renderStubPdf,
+      storage: context.storage,
+    });
+    expect(lowered.lines[0]?.quantity).toBe(4);
+  });
+
+  test('cannot amend a Custom Line below arrived quantity or remove one with reversed Arrival history', async ({
+    context,
+  }) => {
+    const order = await sendCustomOrder(context, [
+      { description: 'Office chair', quantity: 5, unitPrice: 800 },
+      { description: 'Desk lamp', quantity: 1, unitPrice: 80 },
+    ]);
+    const lineId = order.lines[0]?.id;
+    if (!lineId) throw new Error('Missing custom line');
+    const { postArrival } = await import('./arrival-service.js');
+    await postArrival({
+      actorUserId: ACTOR_ID,
+      db: context.db,
+      input: { purchaseOrderId: order.id, lineId, quantity: 2, note: null },
+    });
+    await expect(
+      amendPurchaseOrderCustomLineQuantity({
+        actorUserId: ACTOR_ID,
+        db: context.db,
+        input: { id: order.id, lineId, note: 'Too low', quantity: 1 },
+        pdfRenderer: renderStubPdf,
+        storage: context.storage,
+      }),
+    ).rejects.toThrow(/Office chair.*already taken 2/);
+    await postArrival({
+      actorUserId: ACTOR_ID,
+      db: context.db,
+      input: { purchaseOrderId: order.id, lineId, quantity: -2, note: 'Wrong arrival' },
+    });
+    await expect(
+      amendPurchaseOrderRemoveCustomLine({
+        actorUserId: ACTOR_ID,
+        db: context.db,
+        input: { id: order.id, lineId, note: 'Wrong item' },
+        pdfRenderer: renderStubPdf,
+        storage: context.storage,
+      }),
+    ).rejects.toMatchObject({ code: 'purchase_order.amendment_line_has_arrivals' });
+  });
+
+  test('adds and removes Custom Lines while preserving descriptions in the log', async ({ context }) => {
+    const newSupplierId = '00000000-0000-4000-8000-000000000999';
+    await context.db.insert(supplier).values({ id: newSupplierId, companyName: 'One-off supplier' });
+    const order = await sendCustomOrder(
+      context,
+      [{ description: 'Office chair', quantity: 5, unitPrice: 800 }],
+      newSupplierId,
+    );
+    await expect(
+      amendPurchaseOrderAddCustomLine({
+        actorUserId: ACTOR_ID,
+        db: context.db,
+        input: {
+          id: order.id,
+          description: 'Unpriced lamp',
+          quantity: 1,
+          supplierCode: null,
+          unit: 'each',
+          unitPrice: 0,
+          note: 'Phone call',
+        },
+        pdfRenderer: renderStubPdf,
+        storage: context.storage,
+      }),
+    ).rejects.toMatchObject({ code: 'purchase_order.line_not_priced' });
+    const added = await amendPurchaseOrderAddCustomLine({
+      actorUserId: ACTOR_ID,
+      db: context.db,
+      input: {
+        id: order.id,
+        description: 'Desk lamp',
+        quantity: 2,
+        supplierCode: null,
+        unit: 'each',
+        unitPrice: 80,
+        note: 'Phone call',
+      },
+      pdfRenderer: renderStubPdf,
+      storage: context.storage,
+    });
+    expect(added.lines.map((line) => line.description)).toEqual(['Office chair', 'Desk lamp']);
+    const lampId = added.lines[1]?.id;
+    if (!lampId) throw new Error('Missing added line');
+    const removed = await amendPurchaseOrderRemoveCustomLine({
+      actorUserId: ACTOR_ID,
+      db: context.db,
+      input: { id: order.id, lineId: lampId, note: 'Ordered in error' },
+      pdfRenderer: renderStubPdf,
+      storage: context.storage,
+    });
+    expect(removed.lines.map((line) => line.description)).toEqual(['Office chair']);
+    expect((await listPurchaseOrderAmendments({ db: context.db, purchaseOrderId: order.id })).items).toMatchObject([
+      { kind: 'add-line', lineId: lampId, customDescription: 'Desk lamp' },
+      { kind: 'remove-line', lineId: lampId, customDescription: 'Desk lamp', note: 'Ordered in error' },
+    ]);
+    expect(
+      (await listPurchaseOrderDocuments({ db: context.db, purchaseOrderId: order.id })).items.map(
+        (row) => row.revision,
+      ),
+    ).toEqual([3, 2, 1]);
+    await expect(
+      amendPurchaseOrderRemoveCustomLine({
+        actorUserId: ACTOR_ID,
+        db: context.db,
+        input: { id: order.id, lineId: order.lines[0]?.id ?? '', note: 'Last line' },
+        pdfRenderer: renderStubPdf,
+        storage: context.storage,
+      }),
+    ).rejects.toMatchObject({ code: 'purchase_order.amendment_last_line' });
+  });
+
+  test('refuses every Custom amendment on Draft and closed-short orders', async ({ context }) => {
+    const draft = await createPurchaseOrder({
+      actorUserId: ACTOR_ID,
+      db: context.db,
+      input: { expectedDeliveryDate: null, supplierId: SUPPLIER_ID },
+    });
+    const order = await sendCustomOrder(context, [{ description: 'Office chair', quantity: 4, unitPrice: 800 }]);
+    const lineId = order.lines[0]?.id ?? '';
+    const { postArrival } = await import('./arrival-service.js');
+    await postArrival({
+      actorUserId: ACTOR_ID,
+      db: context.db,
+      input: { purchaseOrderId: order.id, lineId, quantity: 1, note: null },
+    });
+    await closePurchaseOrderShort({ actorUserId: ACTOR_ID, db: context.db, id: order.id });
+    for (const [id, code] of [
+      [draft.id, 'purchase_order.not_sent'],
+      [order.id, 'purchase_order.closed_short'],
+    ] as const) {
+      for (const amendment of [
+        () =>
+          amendPurchaseOrderCustomLineQuantity({
+            actorUserId: ACTOR_ID,
+            db: context.db,
+            input: { id, lineId, note: 'Not permitted', quantity: 3 },
+            pdfRenderer: renderStubPdf,
+            storage: context.storage,
+          }),
+        () =>
+          amendPurchaseOrderAddCustomLine({
+            actorUserId: ACTOR_ID,
+            db: context.db,
+            input: {
+              id,
+              description: 'Desk lamp',
+              quantity: 1,
+              supplierCode: null,
+              unit: 'each',
+              unitPrice: 80,
+              note: 'Not permitted',
+            },
+            pdfRenderer: renderStubPdf,
+            storage: context.storage,
+          }),
+        () =>
+          amendPurchaseOrderRemoveCustomLine({
+            actorUserId: ACTOR_ID,
+            db: context.db,
+            input: { id, lineId, note: 'Not permitted' },
+            pdfRenderer: renderStubPdf,
+            storage: context.storage,
+          }),
+      ]) {
+        await expect(amendment()).rejects.toMatchObject({ code });
+      }
+    }
+  });
   test('changes the expected delivery date, logs the call, revises the PDF, and makes an overdue order late', async ({
     context,
   }) => {

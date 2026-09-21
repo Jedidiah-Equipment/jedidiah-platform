@@ -146,19 +146,15 @@ export async function loadSupplierInvoiceReviews({
   const invoices = await loadInvoiceDocuments(db, { ...(documentId ? { documentId } : {}), purchaseOrderId });
   if (invoices.length === 0) return { items: [] };
 
-  const orderLines = purchaseOrder.lines.flatMap((line) => {
-    if (line.kind !== 'part' || line.partId === null || line.partCode === null || line.partName === null) return [];
-    return [
-      {
-        orderedQuantity: line.quantity,
-        partCode: line.partCode,
-        partId: line.partId,
-        partName: line.partName,
-        supplierCode: line.supplierCode ?? null,
-        unitPrice: line.unitPrice,
-      },
-    ];
-  });
+  const orderLines = purchaseOrder.lines.map((line) => ({
+    description: line.description,
+    lineId: line.id,
+    orderedQuantity: line.quantity,
+    partCode: line.partCode,
+    partId: line.partId,
+    supplierCode: line.supplierCode ?? null,
+    unitPrice: line.unitPrice,
+  }));
   const [bases, resolutions] = await Promise.all([
     loadPriceCorrectionBases({ db, orderLines, purchaseOrderId }),
     loadResolutions(
@@ -310,7 +306,7 @@ async function loadPriceCorrectionBases({
   orderLines: readonly MatchOrderLine[];
   purchaseOrderId: UUID;
 }): Promise<Map<string, PriceCorrectionBasis>> {
-  const partIds = orderLines.map((line) => line.partId);
+  const partIds = orderLines.flatMap((line) => (line.partId === null ? [] : [line.partId]));
   if (partIds.length === 0) return new Map();
 
   const [averages, receipts, onHand] = await Promise.all([
@@ -347,20 +343,23 @@ async function loadPriceCorrectionBases({
   const onHandByPart = new Map(onHand.map((row) => [row.partId, row.basisQuantity]));
 
   return new Map(
-    orderLines.map((line) => {
+    orderLines.flatMap((line) => {
+      if (line.partId === null) return [];
       const receipt = receiptsByPart.get(line.partId);
       const receivedQuantity = receipt?.quantity ?? 0;
 
       return [
-        line.partId,
-        {
-          averageUnitCost: averages.get(line.partId) ?? null,
-          // Quantity-weighted: two receipts on one line at two prices are one blended cost, which is
-          // exactly what the average already carries.
-          receiptedUnitCost: receivedQuantity > 0 && receipt ? receipt.value / receivedQuantity : null,
-          receivedQuantity,
-          stockOnHandBasis: onHandByPart.get(line.partId) ?? 0,
-        },
+        [
+          line.partId,
+          {
+            averageUnitCost: averages.get(line.partId) ?? null,
+            // Quantity-weighted: two receipts on one line at two prices are one blended cost, which is
+            // exactly what the average already carries.
+            receiptedUnitCost: receivedQuantity > 0 && receipt ? receipt.value / receivedQuantity : null,
+            receivedQuantity,
+            stockOnHandBasis: onHandByPart.get(line.partId) ?? 0,
+          },
+        ] as const,
       ];
     }),
   );

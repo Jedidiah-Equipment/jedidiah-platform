@@ -7,6 +7,12 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 const access = vi.hoisted(() => ({ canReadAudit: true }));
 vi.mock('@/hooks/use-api-mutation-error-toast.js', () => ({ useApiMutationErrorToast: () => vi.fn() }));
+vi.mock('@/equipment/hooks/options/index.js', () => ({
+  usePartOptions: () => ({
+    isPending: false,
+    items: [{ id: '00000000-0000-4000-8000-000000000099', supplierId: '00000000-0000-4000-8000-000000000001' }],
+  }),
+}));
 vi.mock('@/hooks/use-access.js', () => ({
   useAccess: vi.fn(),
   useCan: () => ({ can: access.canReadAudit }),
@@ -48,6 +54,7 @@ describe('PurchaseOrderDetailTabs', () => {
 it('starts a sent order Part amendment without selecting a Custom Line', async () => {
   const purchaseOrder = {
     id: '00000000-0000-4000-8000-000000000024',
+    supplierId: '00000000-0000-4000-8000-000000000001',
     lines: [
       {
         description: 'Packing tape',
@@ -76,6 +83,11 @@ it('starts a sent order Part amendment without selecting a Custom Line', async (
   const addLine = [...container.querySelectorAll('button')].find((button) => button.textContent?.trim() === 'Add line');
   if (!addLine) throw new Error('Add line action missing');
   await act(async () => addLine.click());
+  const addPart = [...document.querySelectorAll('[role="menuitem"]')].find(
+    (item) => item.textContent?.trim() === 'Add Part',
+  );
+  if (!addPart) throw new Error('Add Part option missing');
+  await act(async () => (addPart as HTMLElement).click());
 
   expect(container.querySelector('[data-testid="amendment-line"]')?.textContent).toBe('new Part Line');
 });

@@ -9,7 +9,18 @@ import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.j
 import { useTRPC } from '@/lib/trpc.js';
 import { type PurchaseOrderAmendmentFormValues, purchaseOrderAmendmentValidator } from './types.js';
 
+export type PurchaseOrderAmendDialogKind =
+  | Exclude<PurchaseOrderAmendmentKind, 'remove-line'>
+  | 'custom-quantity'
+  | 'add-custom-line'
+  | 'remove-custom-line';
+
 const DIALOG_COPY = {
+  'add-custom-line': {
+    description: 'Add a Custom Line to the sent order as a new revision.',
+    submitLabel: 'Add custom line',
+    title: 'Add custom line',
+  },
   'add-line': {
     description: 'Add the line the order should have carried. It goes to the Supplier as a new revision.',
     submitLabel: 'Add line',
@@ -25,12 +36,23 @@ const DIALOG_COPY = {
     submitLabel: 'Change quantity',
     title: 'Change a quantity',
   },
+  'custom-quantity': {
+    description: 'Change the Custom Line quantity, never below what has already arrived.',
+    submitLabel: 'Change quantity',
+    title: 'Amend custom quantity',
+  },
+  'remove-custom-line': {
+    description:
+      'Remove this Custom Line permanently. Its description remains in amendment history and a new PDF revision is filed.',
+    submitLabel: 'Confirm remove line',
+    title: 'Remove custom line',
+  },
   'substitute-part': {
     description: 'Swap in what the Supplier is sending instead. Only a line nothing has arrived against can change.',
     submitLabel: 'Substitute Part',
     title: 'Substitute a Part',
   },
-} as const satisfies Record<PurchaseOrderAmendmentKind, { description: string; submitLabel: string; title: string }>;
+} as const satisfies Record<PurchaseOrderAmendDialogKind, { description: string; submitLabel: string; title: string }>;
 
 /**
  * The one dialog behind all four amendments (spec §4). They differ only in which fields the buyer
@@ -43,7 +65,7 @@ export function PurchaseOrderAmendDialog({
   onOpenChange,
   purchaseOrder,
 }: {
-  kind: PurchaseOrderAmendmentKind;
+  kind: PurchaseOrderAmendDialogKind;
   /** The line being amended; absent when a new one is being added. */
   line: PurchaseOrderLineView | null;
   onOpenChange: (open: boolean) => void;
@@ -70,6 +92,9 @@ export function PurchaseOrderAmendDialog({
   const addLineMutation = useMutation(trpc.purchaseOrders.amendAddLine.mutationOptions({ onError }));
   const expectedDateMutation = useMutation(trpc.purchaseOrders.amendExpectedDate.mutationOptions({ onError }));
   const substituteMutation = useMutation(trpc.purchaseOrders.amendSubstitutePart.mutationOptions({ onError }));
+  const customQuantityMutation = useMutation(trpc.purchaseOrders.amendCustomLineQuantity.mutationOptions({ onError }));
+  const addCustomMutation = useMutation(trpc.purchaseOrders.amendAddCustomLine.mutationOptions({ onError }));
+  const removeCustomMutation = useMutation(trpc.purchaseOrders.amendRemoveCustomLine.mutationOptions({ onError }));
 
   function amend(values: PurchaseOrderAmendmentFormValues) {
     const base = { id: purchaseOrder.id, note: values.note, quantity: values.quantity };
@@ -86,6 +111,21 @@ export function PurchaseOrderAmendDialog({
     if (kind === 'quantity-change') {
       return quantityMutation.mutateAsync({ ...base, partId: requirePartId(line) });
     }
+    if (kind === 'custom-quantity') {
+      return customQuantityMutation.mutateAsync({ ...base, lineId: requireLineId(line) });
+    }
+    if (kind === 'remove-custom-line') {
+      return removeCustomMutation.mutateAsync({ id: purchaseOrder.id, lineId: requireLineId(line), note: values.note });
+    }
+    if (kind === 'add-custom-line') {
+      return addCustomMutation.mutateAsync({
+        ...base,
+        description: values.description,
+        supplierCode: values.supplierCode || null,
+        unit: values.unit,
+        unitPrice: values.unitPrice,
+      });
+    }
 
     if (kind === 'add-line') {
       return addLineMutation.mutateAsync({ ...base, partId: requirePartId(values), unitPrice: values.unitPrice });
@@ -101,16 +141,23 @@ export function PurchaseOrderAmendDialog({
 
   return (
     <CreateEntityDialog<PurchaseOrderAmendmentFormValues, unknown>
-      canSubmit={kind === 'quantity-change' || kind === 'expected-date-change' || !parts.isPending}
+      canSubmit={(kind !== 'add-line' && kind !== 'substitute-part') || !parts.isPending}
       defaultValues={{
+        description: '',
         expectedDeliveryDate: purchaseOrder.expectedDeliveryDate ?? '',
         newPartId: '',
         note: '',
         quantity: line?.quantity ?? 1,
+        supplierCode: '',
+        unit: '',
         // A price-blind reader never reaches this dialog, so a stored line always has its price.
         unitPrice: line?.unitPrice ?? 0,
       }}
-      description={line ? `${copy.description} Line: ${line.partCode} · ${line.partName}.` : copy.description}
+      description={
+        line
+          ? `${copy.description} Line: ${line.partCode ? `${line.partCode} · ${line.partName}` : line.description}.`
+          : copy.description
+      }
       onCreate={amend}
       onCreated={async () => {
         await Promise.all([invalidatePurchaseOrders(), invalidateInventory()]);
@@ -130,7 +177,7 @@ export function PurchaseOrderAmendDialog({
               {(field) => <field.DatePickerField label="Expected delivery date" />}
             </form.AppField>
           ) : null}
-          {kind === 'quantity-change' || kind === 'expected-date-change' ? null : (
+          {kind === 'add-line' || kind === 'substitute-part' ? (
             <form.AppField name="newPartId">
               {(field) => (
                 <field.ComboboxField
@@ -142,15 +189,36 @@ export function PurchaseOrderAmendDialog({
                 />
               )}
             </form.AppField>
-          )}
-          {kind === 'expected-date-change' ? null : (
+          ) : null}
+          {kind === 'add-custom-line' ? (
+            <>
+              <form.AppField name="description">
+                {(field) => <field.TextareaField label="Description" rows={2} />}
+              </form.AppField>
+              <form.AppField name="unit">{(field) => <field.TextField label="Unit" />}</form.AppField>
+              <form.AppField name="supplierCode">
+                {(field) => <field.TextField label="Supplier code (optional)" />}
+              </form.AppField>
+            </>
+          ) : null}
+          {kind === 'expected-date-change' || kind === 'remove-custom-line' ? null : (
             <form.AppField name="quantity">
-              {(field) => <field.NumberField label="Quantity" min={0.001} step="0.001" />}
+              {(field) => (
+                <field.NumberField
+                  label={
+                    kind === 'custom-quantity' && line
+                      ? `Quantity (already arrived: ${line.receivedQuantity})`
+                      : 'Quantity'
+                  }
+                  min={0.001}
+                  step="0.001"
+                />
+              )}
             </form.AppField>
           )}
-          {kind === 'quantity-change' || kind === 'expected-date-change' ? null : (
+          {kind === 'add-line' || kind === 'substitute-part' || kind === 'add-custom-line' ? (
             <form.AppField name="unitPrice">{(field) => <field.CurrencyField label="Unit price" />}</form.AppField>
-          )}
+          ) : null}
           <form.AppField name="note">
             {(field) => (
               <field.TextareaField
@@ -164,6 +232,11 @@ export function PurchaseOrderAmendDialog({
       )}
     </CreateEntityDialog>
   );
+}
+
+function requireLineId(line: PurchaseOrderLineView | null): string {
+  if (line?.kind !== 'custom') throw new Error('This amendment needs a Custom Line');
+  return line.id;
 }
 
 function toPartOptions(parts: readonly Part[]) {

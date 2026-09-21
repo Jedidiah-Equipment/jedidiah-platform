@@ -1,4 +1,5 @@
 import { formatCurrency, formatNumber } from '@pkg/domain';
+import { formatPurchaseOrderLineLabel } from '@pkg/domain/equipment';
 import type { InvoicePriceVarianceRow } from '@pkg/schema/equipment';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
@@ -18,13 +19,13 @@ const columns: DataTableColumnDef<InvoicePriceVarianceRow>[] = [
   },
   { accessorKey: 'supplierName', header: 'Supplier' },
   {
-    accessorFn: (row) => `${row.partCode} ${row.partName}`,
+    accessorFn: formatPurchaseOrderLineLabel,
     cell: ({ row }) => (
       <>
-        <span className="font-medium">{row.original.partCode}</span> · {row.original.partName}
+        <span className="font-medium">{formatPurchaseOrderLineLabel(row.original)}</span>
       </>
     ),
-    header: 'Part',
+    header: 'Line',
     id: 'part',
   },
   {

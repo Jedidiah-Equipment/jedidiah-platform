@@ -196,6 +196,20 @@ export class PurchaseOrderAmendmentBelowReceivedError extends Error {
   }
 }
 
+export class PurchaseOrderAmendmentLineHasArrivalsError extends Error {
+  readonly code = 'purchase_order.amendment_line_has_arrivals' as const;
+  constructor(readonly description: string) {
+    super(`${description} has Arrival history, so it cannot be removed.`);
+  }
+}
+
+export class PurchaseOrderAmendmentLastLineError extends Error {
+  readonly code = 'purchase_order.amendment_last_line' as const;
+  constructor() {
+    super('The last line cannot be removed. Cancel the order instead.');
+  }
+}
+
 /**
  * Receipts attach to their line by `(purchaseOrderId, partId)`, so swapping the Part out from under
  * them would orphan the arrival — the foreign key refuses it, and this says why before it gets
@@ -283,6 +297,8 @@ export type PurchaseOrderCoreError =
   | PurchaseOrderAlreadyClosedShortError
   | PurchaseOrderAlreadySentError
   | PurchaseOrderAmendmentBelowReceivedError
+  | PurchaseOrderAmendmentLineHasArrivalsError
+  | PurchaseOrderAmendmentLastLineError
   | PurchaseOrderClosedShortError
   | PurchaseOrderEmptyError
   | PurchaseOrderFullyReceivedError
@@ -311,6 +327,8 @@ export function isPurchaseOrderCoreError(error: unknown): error is PurchaseOrder
     error instanceof PurchaseOrderAlreadyClosedShortError ||
     error instanceof PurchaseOrderAlreadySentError ||
     error instanceof PurchaseOrderAmendmentBelowReceivedError ||
+    error instanceof PurchaseOrderAmendmentLineHasArrivalsError ||
+    error instanceof PurchaseOrderAmendmentLastLineError ||
     error instanceof PurchaseOrderClosedShortError ||
     error instanceof PurchaseOrderEmptyError ||
     error instanceof PurchaseOrderFullyReceivedError ||

@@ -40,10 +40,12 @@ const PROXIMITY_BONUS = 0.1;
 const MIN_SHARED_TOKENS = 2;
 
 export type InvoiceMatchOrderLine = {
+  /** The Part's name or a Custom Line's description. */
+  description: string;
+  lineId: string;
   orderedQuantity: number;
-  partCode: string;
-  partId: string;
-  partName: string;
+  partCode: string | null;
+  partId: string | null;
   supplierCode: string | null;
   /** Null when the Part has no agreed price to disagree with, or the cost gate took it away. */
   unitPrice: number | null;
@@ -61,6 +63,8 @@ export type InvoiceMatchRow = {
   flags: InvoiceMatchFlag[];
   invoiceQuantity: number | null;
   invoiceUnitPrice: number | null;
+  /** Null only for an invoice row no order line claimed. */
+  lineId: string | null;
   matchMethod: InvoiceMatchMethod;
   orderedQuantity: number | null;
   partCode: string | null;
@@ -91,37 +95,40 @@ export function matchInvoiceLines({
 
     if (!pairing || !invoiceLine) {
       return {
-        description: line.partName,
-        flags: [flag('unmatched-po-line', line.partId)],
+        description: line.description,
+        flags: [flag('unmatched-po-line', line.partId ?? line.lineId)],
         invoiceQuantity: null,
         invoiceUnitPrice: null,
+        lineId: line.lineId,
         matchMethod: 'none',
         orderedQuantity: line.orderedQuantity,
         partCode: line.partCode,
         partId: line.partId,
-        partName: line.partName,
+        partName: line.partId === null ? null : line.description,
         unitPrice: line.unitPrice,
       };
     }
 
     const flags: InvoiceMatchFlag[] = [];
     if (differs(invoiceLine.unitPrice, line.unitPrice, PRICE_TOLERANCE)) {
-      flags.push(flag('price-mismatch', line.partId));
+      // Part flags retain their historical part-id keys, so stored resolutions still apply.
+      flags.push(flag('price-mismatch', line.partId ?? line.lineId));
     }
     if (differs(invoiceLine.quantity, line.orderedQuantity, QUANTITY_TOLERANCE)) {
-      flags.push(flag('quantity-mismatch', line.partId));
+      flags.push(flag('quantity-mismatch', line.partId ?? line.lineId));
     }
 
     return {
-      description: invoiceLine.description.trim() || line.partName,
+      description: invoiceLine.description.trim() || line.description,
       flags,
       invoiceQuantity: invoiceLine.quantity,
       invoiceUnitPrice: invoiceLine.unitPrice,
+      lineId: line.lineId,
       matchMethod: pairing.method,
       orderedQuantity: line.orderedQuantity,
       partCode: line.partCode,
       partId: line.partId,
-      partName: line.partName,
+      partName: line.partId === null ? null : line.description,
       unitPrice: line.unitPrice,
     };
   });
@@ -137,6 +144,7 @@ export function matchInvoiceLines({
             flags: [flag('unmatched-invoice-line', String(invoiceIndex))],
             invoiceQuantity: invoiceLine.quantity,
             invoiceUnitPrice: invoiceLine.unitPrice,
+            lineId: null,
             matchMethod: 'none',
             orderedQuantity: null,
             partCode: invoiceLine.partCode,
@@ -217,9 +225,9 @@ function scoreDescription(invoiceLine: InvoiceMatchInvoiceLine, orderLine: Invoi
   const description = normalizeText(invoiceLine.description);
   if (!description) return 0;
 
-  const partText = normalizeText(`${orderLine.partCode} ${orderLine.partName}`);
+  const partText = normalizeText(`${orderLine.partCode ?? ''} ${orderLine.description}`);
   const similarity = Math.max(
-    tokenCoverage(normalizeText(orderLine.partName), description),
+    tokenCoverage(normalizeText(orderLine.description), description),
     tokenCoverage(partText, description),
     bigramDice(partText, description),
   );

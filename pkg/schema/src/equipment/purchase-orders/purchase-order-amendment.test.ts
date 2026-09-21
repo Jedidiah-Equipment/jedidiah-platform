@@ -1,10 +1,13 @@
 import { describe, expect, test } from 'vitest';
 
 import {
+  PurchaseOrderAmendAddCustomLineInput,
   PurchaseOrderAmendAddLineInput,
+  PurchaseOrderAmendCustomLineQuantityInput,
   PurchaseOrderAmendExpectedDateInput,
   PurchaseOrderAmendmentKind,
   PurchaseOrderAmendQuantityInput,
+  PurchaseOrderAmendRemoveCustomLineInput,
   PurchaseOrderAmendSubstitutePartInput,
 } from './purchase-order-amendment.js';
 
@@ -13,13 +16,48 @@ const ID_B = '00000000-0000-4000-8000-000000000002';
 const ID_C = '00000000-0000-4000-8000-000000000003';
 
 describe('Purchase Order amendment contracts', () => {
-  test('carries the four ways a sent order changes', () => {
+  test('carries the amendment log kinds including Custom Line removal', () => {
     expect(PurchaseOrderAmendmentKind.options).toEqual([
       'quantity-change',
       'add-line',
       'substitute-part',
       'expected-date-change',
+      'remove-line',
     ]);
+  });
+
+  test('requires Custom Line identity or description and a note for each sent-order change', () => {
+    const base = { id: ID_A, note: 'Supplier confirmed' };
+    expect(PurchaseOrderAmendCustomLineQuantityInput.parse({ ...base, lineId: ID_B, quantity: 2.5 })).toMatchObject({
+      lineId: ID_B,
+      quantity: 2.5,
+    });
+    expect(() => PurchaseOrderAmendCustomLineQuantityInput.parse({ ...base, lineId: ID_B, quantity: 0 })).toThrow();
+    expect(
+      PurchaseOrderAmendAddCustomLineInput.parse({
+        ...base,
+        description: 'Office chair',
+        quantity: 2,
+        supplierCode: null,
+        unit: 'each',
+        unitPrice: 800,
+      }),
+    ).toMatchObject({ description: 'Office chair' });
+    expect(() =>
+      PurchaseOrderAmendAddCustomLineInput.parse({
+        ...base,
+        description: '  ',
+        quantity: 2,
+        supplierCode: null,
+        unit: 'each',
+        unitPrice: 800,
+      }),
+    ).toThrow();
+    expect(PurchaseOrderAmendRemoveCustomLineInput.parse({ ...base, lineId: ID_B })).toMatchObject({
+      lineId: ID_B,
+      note: 'Supplier confirmed',
+    });
+    expect(() => PurchaseOrderAmendRemoveCustomLineInput.parse({ ...base, lineId: ID_B, partId: ID_C })).toThrow();
   });
 
   test('requires a delivery date and note when a sent order gains or changes its promise date', () => {

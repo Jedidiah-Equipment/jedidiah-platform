@@ -1,7 +1,7 @@
 import { formatCurrency, formatDate, hasPermission } from '@pkg/domain';
 import { formatPurchaseOrderLineLabel } from '@pkg/domain/equipment';
 import type { UUID } from '@pkg/schema';
-import type { PurchaseOrderAmendmentKind, PurchaseOrderView } from '@pkg/schema/equipment';
+import type { PurchaseOrderView } from '@pkg/schema/equipment';
 import { purchaseOrderHasUnpricedLines } from '@pkg/schema/equipment';
 import { IconPlus } from '@tabler/icons-react';
 import { useQuery } from '@tanstack/react-query';
@@ -14,16 +14,23 @@ import { PageLayout } from '@/components/page-layout/PageLayout.js';
 import { Badge } from '@/components/ui/badge.js';
 import { Button } from '@/components/ui/button.js';
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card.js';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs.js';
 import {
   EquipmentAuditTable,
   usePurchaseOrderAuditTableStore,
 } from '@/equipment/components/audit/EquipmentAuditTable.js';
+import { usePartOptions } from '@/equipment/hooks/options/index.js';
 import { formatPurchaseUnitLabel } from '@/equipment/utils/part-quantity-format.js';
 import { useAccess, useCan } from '@/hooks/use-access.js';
 import { useTRPC } from '@/lib/trpc.js';
-import { PurchaseOrderAmendDialog } from './components/PurchaseOrderAmendDialog.js';
+import { PurchaseOrderAmendDialog, type PurchaseOrderAmendDialogKind } from './components/PurchaseOrderAmendDialog.js';
 import { PurchaseOrderAmendmentsCard } from './components/PurchaseOrderAmendmentsCard.js';
 import { PurchaseOrderDocumentsCard } from './components/PurchaseOrderDocumentsCard.js';
 import { PurchaseOrderInvoiceCrossCheckCard } from './components/PurchaseOrderInvoiceCrossCheckCard.js';
@@ -213,9 +220,18 @@ export const ReadOnlyLinesCard: React.FC<{
   canReadCosts: boolean;
   purchaseOrder: PurchaseOrderView;
 }> = ({ canAmend, canReadCosts, purchaseOrder }) => {
-  const [amendment, setAmendment] = useState<{ kind: PurchaseOrderAmendmentKind; partId: string | null } | null>(null);
-  const amendingLine = amendment?.partId
-    ? (purchaseOrder.lines.find((line) => line.kind === 'part' && line.partId === amendment.partId) ?? null)
+  const parts = usePartOptions({ enabled: canAmend, limit: 0 });
+  const canAddPart =
+    !parts.isPending &&
+    parts.items.some(
+      (part) =>
+        part.supplierId === purchaseOrder.supplierId && !purchaseOrder.lines.some((line) => line.partId === part.id),
+    );
+  const [amendment, setAmendment] = useState<{ kind: PurchaseOrderAmendDialogKind; lineId: string | null } | null>(
+    null,
+  );
+  const amendingLine = amendment?.lineId
+    ? (purchaseOrder.lines.find((line) => line.id === amendment.lineId) ?? null)
     : null;
 
   return (
@@ -225,14 +241,22 @@ export const ReadOnlyLinesCard: React.FC<{
         <CardDescription>Part quantities are ordered in the Part's purchasing unit.</CardDescription>
         {canAmend ? (
           <CardAction>
-            <Button
-              onClick={() => setAmendment({ kind: 'add-line', partId: null })}
-              size="sm"
-              type="button"
-              variant="outline"
-            >
-              <IconPlus data-icon="inline-start" /> Add line
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger render={<Button size="sm" type="button" variant="outline" />}>
+                <IconPlus data-icon="inline-start" /> Add line
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  disabled={!canAddPart}
+                  onClick={() => setAmendment({ kind: 'add-line', lineId: null })}
+                >
+                  Add Part
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setAmendment({ kind: 'add-custom-line', lineId: null })}>
+                  Add custom line
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </CardAction>
         ) : null}
       </CardHeader>
@@ -240,7 +264,7 @@ export const ReadOnlyLinesCard: React.FC<{
         <PurchaseOrderReadOnlyLinesTable
           canReadCosts={canReadCosts}
           items={purchaseOrder.lines}
-          onAmend={canAmend ? (kind, partId) => setAmendment({ kind, partId }) : null}
+          onAmend={canAmend ? (kind, lineId) => setAmendment({ kind, lineId }) : null}
         />
       </CardContent>
       {canReadCosts ? (
@@ -253,7 +277,7 @@ export const ReadOnlyLinesCard: React.FC<{
       ) : null}
       {amendment ? (
         <PurchaseOrderAmendDialog
-          key={`${amendment.kind}:${amendment.partId ?? 'new'}`}
+          key={`${amendment.kind}:${amendment.lineId ?? 'new'}`}
           kind={amendment.kind}
           line={amendingLine}
           onOpenChange={(open) => setAmendment(open ? amendment : null)}
@@ -268,7 +292,9 @@ const PurchaseOrderReadOnlyLinesTable: React.FC<{
   canReadCosts: boolean;
   items: PurchaseOrderView['lines'];
   /** Absent when the reader may not amend, which is what drops the actions column entirely. */
-  onAmend: ((kind: PurchaseOrderAmendmentKind, partId: string) => void) | null;
+  onAmend:
+    | ((kind: 'quantity-change' | 'substitute-part' | 'custom-quantity' | 'remove-custom-line', lineId: string) => void)
+    | null;
 }> = ({ canReadCosts, items, onAmend }) => {
   const columns = useMemo<DataTableColumnDef<PurchaseOrderView['lines'][number]>[]>(
     () => [
@@ -324,15 +350,34 @@ const PurchaseOrderReadOnlyLinesTable: React.FC<{
             {
               cell: ({ row }) => {
                 const line = row.original;
+                if (line.kind === 'custom') {
+                  return (
+                    <div className="flex justify-end gap-2">
+                      <Button
+                        onClick={() => onAmend('custom-quantity', line.id)}
+                        size="sm"
+                        type="button"
+                        variant="ghost"
+                      >
+                        Amend quantity
+                      </Button>
+                      {!line.hasStockMovements && items.length > 1 ? (
+                        <Button
+                          onClick={() => onAmend('remove-custom-line', line.id)}
+                          size="sm"
+                          type="button"
+                          variant="destructive"
+                        >
+                          Remove line
+                        </Button>
+                      ) : null}
+                    </div>
+                  );
+                }
                 if (!isPartPurchaseOrderLine(line)) return null;
                 return (
                   <div className="flex justify-end gap-2">
-                    <Button
-                      onClick={() => onAmend('quantity-change', line.partId)}
-                      size="sm"
-                      type="button"
-                      variant="ghost"
-                    >
+                    <Button onClick={() => onAmend('quantity-change', line.id)} size="sm" type="button" variant="ghost">
                       Change quantity
                     </Button>
                     {/* Every movement keys off (order, Part), so only a line nothing has moved
@@ -340,7 +385,7 @@ const PurchaseOrderReadOnlyLinesTable: React.FC<{
                       fully returned line reads zero received but still carries its ledger rows. */}
                     <Button
                       disabled={line.hasStockMovements}
-                      onClick={() => onAmend('substitute-part', line.partId)}
+                      onClick={() => onAmend('substitute-part', line.id)}
                       size="sm"
                       title={
                         line.hasStockMovements
@@ -362,7 +407,7 @@ const PurchaseOrderReadOnlyLinesTable: React.FC<{
           ]
         : []),
     ],
-    [canReadCosts, onAmend],
+    [canReadCosts, onAmend, items.length],
   );
   const table = useDataTable({
     columns,

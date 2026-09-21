@@ -31,7 +31,12 @@ usually right; suppliers round up to a full box. See
 
 ## Receiving a Custom Line
 
-On web, open the sent Purchase Order and click **Receive** on the Custom Line. Enter only the quantity that arrived; it starts at the outstanding quantity. A Custom Line's Arrival changes the order's received progress without changing stock. To correct one, click **Reverse arrival**, enter the quantity to reverse, and explain why in the required note. The line reopens by that amount.
+A Custom Line's Arrival changes the order's received progress without changing stock. Receive it on web:
+
+1. Open the sent Purchase Order and click **Receive** on the Custom Line.
+2. Enter the quantity that arrived. It starts at the outstanding quantity.
+3. Click **Receive** to record the Arrival.
+4. If an Arrival needs correcting, click **Reverse arrival**, enter the quantity to reverse, explain why in the required note, and submit. The line reopens by that amount.
 
 ## Notes
 

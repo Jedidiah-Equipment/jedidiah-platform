@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
-import { resolveExportCommand, resolveSourceMapUploadCommand, resolveUpdateCommand } from './eas-update.mjs';
+import {
+  resolveExportCommand,
+  resolveReleaseEnvironment,
+  resolveSourceMapUploadCommand,
+  resolveUpdateCommand,
+} from './eas-update.mjs';
 
 const easConfig = {
   build: {
@@ -124,5 +129,46 @@ describe('resolveSourceMapUploadCommand', () => {
     expect(() => resolveSourceMapUploadCommand({})).toThrow(
       'PostHog source-map upload requires POSTHOG_CLI_API_KEY and POSTHOG_CLI_PROJECT_ID',
     );
+  });
+});
+
+describe('resolveReleaseEnvironment', () => {
+  it.each([
+    ['staging', 'staging-key', '123'],
+    ['production', 'production-key', '456'],
+  ])('loads %s PostHog credentials from the shared .env.dev file', (profile, apiKey, projectId) => {
+    const readFile = (path) => {
+      expect(path.pathname.endsWith('/pkg/mobile/.env.dev')).toBe(true);
+      return [
+        'STAGING_POSTHOG_CLI_API_KEY=staging-key',
+        'STAGING_POSTHOG_CLI_PROJECT_ID=123',
+        'STAGING_POSTHOG_CLI_HOST=https://us.posthog.com',
+        'PRODUCTION_POSTHOG_CLI_API_KEY=production-key',
+        'PRODUCTION_POSTHOG_CLI_PROJECT_ID=456',
+        'PRODUCTION_POSTHOG_CLI_HOST=https://eu.posthog.com',
+      ].join('\n');
+    };
+
+    const env = resolveReleaseEnvironment(profile, { POSTHOG_CLI_API_KEY: 'shell-key' }, readFile);
+
+    expect(env).toMatchObject({
+      POSTHOG_CLI_API_KEY: apiKey,
+      POSTHOG_CLI_PROJECT_ID: projectId,
+      POSTHOG_CLI_HOST: profile === 'staging' ? 'https://us.posthog.com' : 'https://eu.posthog.com',
+    });
+    expect(env).not.toHaveProperty('STAGING_POSTHOG_CLI_API_KEY');
+    expect(env).not.toHaveProperty('PRODUCTION_POSTHOG_CLI_API_KEY');
+    expect(() => resolveSourceMapUploadCommand(env)).not.toThrow();
+  });
+
+  it('keeps shell values when file entries are empty', () => {
+    const env = resolveReleaseEnvironment(
+      'staging',
+      { POSTHOG_CLI_API_KEY: 'shell-key', POSTHOG_CLI_PROJECT_ID: '123' },
+      () => 'STAGING_POSTHOG_CLI_API_KEY=\nSTAGING_POSTHOG_CLI_PROJECT_ID=\n',
+    );
+
+    expect(env.POSTHOG_CLI_API_KEY).toBe('shell-key');
+    expect(env.POSTHOG_CLI_PROJECT_ID).toBe('123');
   });
 });

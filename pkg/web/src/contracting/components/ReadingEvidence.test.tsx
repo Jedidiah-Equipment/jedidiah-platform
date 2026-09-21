@@ -12,29 +12,32 @@ const base = {
 };
 
 describe('reading evidence', () => {
-  it('shows a verified photo and confidence', () => {
-    expect(readingEvidence(base)).toMatchObject({
-      evidenceLabel: 'Photo-backed · AI-verified',
+  it.each([
+    ['agrees', 'Photo-backed · AI-verified', '412.3 h', 'ok'],
+    ['pending', 'Photo-backed · Verification pending', 'Verification pending', 'warn'],
+    ['disagrees', 'Photo-backed · Extracted value differs', '412.3 h', 'warn'],
+    ['low-confidence', 'Photo-backed · Low extraction confidence', '412.3 h', 'warn'],
+    ['not-applicable', 'Photo-backed · Photo verification not applicable', 'No photo verification', 'ok'],
+  ] as const)('labels a photo-backed %s reading', (aiVerification, evidenceLabel, resultLabel, tone) => {
+    expect(readingEvidence({ ...base, aiVerification })).toMatchObject({
+      evidenceLabel,
+      resultLabel,
       confidenceLabel: '97% confidence in extracted value',
-      resultLabel: '412.3 h',
-      tone: 'ok',
+      tone,
     });
   });
 
-  it('identifies a manual capture and an unreadable meter', () => {
-    expect(
-      readingEvidence({
-        ...base,
-        photoBacked: false,
-        aiValue: null,
-        aiConfidence: null,
-        aiVerification: 'not-applicable',
-      }),
-    ).toMatchObject({
-      evidenceLabel: 'Missing Photo Evidence',
-      resultLabel: 'No photo verification',
-      tone: 'muted',
-    });
+  it.each(['agrees', 'pending', 'disagrees', 'low-confidence', 'not-applicable'] as const)(
+    'identifies a photo-less %s reading',
+    (aiVerification) => {
+      expect(readingEvidence({ ...base, photoBacked: false, aiVerification })).toMatchObject({
+        evidenceLabel: 'Missing Photo Evidence',
+        tone: 'muted',
+      });
+    },
+  );
+
+  it('preserves the unreadable-meter confidence result', () => {
     expect(
       readingEvidence({ ...base, aiValue: null, aiConfidence: 0.88, aiVerification: 'low-confidence' }),
     ).toMatchObject({

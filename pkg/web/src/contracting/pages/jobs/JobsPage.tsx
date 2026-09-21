@@ -29,6 +29,7 @@ export function JobsPage({ queue }: { queue: JobQueue }) {
   const canCreate = useCan('contracting_job:create').can;
   const canAssign = useCan('contracting_job:assign').can;
   const counts = useQuery(trpc.contractingJobs.jobs.queueCounts.queryOptions());
+  const activeAttention = useQuery(trpc.contractingJobs.jobs.activeAttention.queryOptions());
   const [pageCountByQueue, setPageCountByQueue] = useState<Partial<Record<JobQueue, number>>>({});
   const pageCount = pageCountByQueue[queue] ?? 1;
   const jobPages = useQueries({
@@ -41,12 +42,6 @@ export function JobsPage({ queue }: { queue: JobQueue }) {
     isPending: jobPages.some((page) => page.isPending),
     error: jobPages.find((page) => page.error)?.error,
   };
-  const activeAttention = useQuery(
-    trpc.contractingJobs.jobs.list.queryOptions(
-      { queue: 'active', limit: 200, offset: 0 },
-      { enabled: queue !== 'active' },
-    ),
-  );
   const foremen = useQuery(trpc.contractingJobs.options.foremen.queryOptions(undefined, { enabled: canAssign }));
   const assign = useMutation(
     trpc.contractingJobs.jobs.patch.mutationOptions({
@@ -125,8 +120,14 @@ export function JobsPage({ queue }: { queue: JobQueue }) {
             {
               id: 'review',
               header: '',
-              cell: () => (
-                <Button size="sm" variant="outline">
+              cell: ({ row }) => (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() =>
+                    void navigate({ to: '/contracting/jobs/$code', params: { code: row.original.jobNumber } })
+                  }
+                >
                   Review & sign off
                 </Button>
               ),
@@ -134,7 +135,7 @@ export function JobsPage({ queue }: { queue: JobQueue }) {
           ]
         : []),
     ],
-    [queue, canAssign, foremen.data, assign.mutate],
+    [queue, canAssign, foremen.data, assign.mutate, navigate],
   );
   return (
     <>
@@ -153,8 +154,7 @@ export function JobsPage({ queue }: { queue: JobQueue }) {
               const attention =
                 item === 'looks-finished'
                   ? (counts.data?.['looks-finished'] ?? 0) > 0
-                  : item === 'active' &&
-                    (queue === 'active' ? jobs.data : (activeAttention.data ?? [])).some((job) => job.needsALook > 0);
+                  : item === 'active' && activeAttention.data === true;
               return item === 'looks-finished' || item === 'active' ? (
                 <AttentionTabTrigger
                   key={item}

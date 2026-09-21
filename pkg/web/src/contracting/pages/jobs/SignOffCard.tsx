@@ -128,12 +128,6 @@ function DraftSignOffDetails({
     }),
   );
   const gate = canComplete(job.assignments);
-  const input = JobCompleteInput.safeParse({
-    id: job.id,
-    ...form.state.values,
-    notes: form.state.values.notes.trim() || null,
-    removePlannedAssignmentIds: plannedIds,
-  });
   return (
     <>
       <div className="space-y-3">
@@ -152,42 +146,59 @@ function DraftSignOffDetails({
           </form.AppField>
           <form.AppField name="notes">{(field) => <field.TextareaField label="Site notes" />}</form.AppField>
         </div>
-        <div className="flex items-center gap-3">
-          <Button disabled={!capabilities.complete || !gate.ok || !input.success} onClick={() => setConfirm(true)}>
-            Complete
-          </Button>
-          {!gate.ok ? (
-            <p className="text-destructive">
-              {gate.onSite ? `${gate.onSite} machines are still on site. ` : ''}
-              {gate.openGapFlags ? `${gate.openGapFlags} Gap Flag is open.` : ''}
-            </p>
-          ) : null}
-        </div>
-        <ErrorMessage error={complete.error} fallbackMessage="Unable to complete Job." />
       </div>
-      <Dialog open={confirm} onOpenChange={setConfirm}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Complete Job?</DialogTitle>
-            <DialogDescription>
-              Start {form.state.values.startDate} · End {form.state.values.endDate} · Diesel{' '}
-              {form.state.values.dieselLitres} litres. {plannedIds.length} planned machines will be removed.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <DialogClose render={<Button variant="outline" />}>Cancel</DialogClose>
-            <Button
-              disabled={!input.success || complete.isPending}
-              onClick={() => {
-                if (input.success)
-                  complete.mutate(toCompleteInput(job.id, SignOffValues.parse(form.state.values), plannedIds));
-              }}
-            >
-              Complete
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <form.Subscribe selector={(state) => state.values}>
+        {(values) => {
+          const input = JobCompleteInput.safeParse({
+            id: job.id,
+            ...values,
+            notes: values.notes.trim() || null,
+            removePlannedAssignmentIds: plannedIds,
+          });
+          return (
+            <>
+              <div className="flex items-center gap-3">
+                <Button
+                  disabled={!capabilities.complete || !gate.ok || !input.success}
+                  onClick={() => setConfirm(true)}
+                >
+                  Complete
+                </Button>
+                {!gate.ok ? (
+                  <p className="text-destructive">
+                    {gate.onSite ? `${gate.onSite} machines are still on site. ` : ''}
+                    {gate.openGapFlags ? `${gate.openGapFlags} Gap Flag is open.` : ''}
+                  </p>
+                ) : null}
+              </div>
+              <ErrorMessage error={complete.error} fallbackMessage="Unable to complete Job." />
+              <Dialog open={confirm} onOpenChange={setConfirm}>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Complete Job?</DialogTitle>
+                    <DialogDescription>
+                      Start {values.startDate} · End {values.endDate} · Diesel {values.dieselLitres} litres.{' '}
+                      {plannedIds.length} planned machines will be removed.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <DialogFooter>
+                    <DialogClose render={<Button variant="outline" />}>Cancel</DialogClose>
+                    <Button
+                      disabled={!input.success || complete.isPending}
+                      onClick={() => {
+                        if (input.success)
+                          complete.mutate(toCompleteInput(job.id, SignOffValues.parse(values), plannedIds));
+                      }}
+                    >
+                      Complete
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            </>
+          );
+        }}
+      </form.Subscribe>
     </>
   );
 }

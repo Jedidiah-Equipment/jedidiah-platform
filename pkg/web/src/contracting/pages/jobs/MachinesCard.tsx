@@ -1,3 +1,4 @@
+import { readingExceptionTypeColorClassNames, readingExceptionTypeLabels } from '@pkg/domain/contracting';
 import type { Assignment, JobDetail, JobReading } from '@pkg/schema/contracting';
 import { IconMessage } from '@tabler/icons-react';
 import { useMutation, useQuery } from '@tanstack/react-query';
@@ -17,17 +18,33 @@ import { ReadingEvidenceBadge } from '@/contracting/components/ReadingEvidence.j
 import { useQueryInvalidation } from '@/contracting/hooks/use-query-invalidation.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useTRPC } from '@/lib/trpc.js';
-import {
-  AddMeasureDialog,
-  DepartureCaptureDialog,
-  GapResolveDialog,
-  PlanMachineDialog,
-  ReadingSheet,
-} from './MachineDialogs.js';
+import { cn } from '@/lib/utils.js';
+import { AddMeasurePopover } from './AddMeasurePopover.js';
+import { DepartureCaptureDialog } from './DepartureCaptureDialog.js';
+import { GapResolveDialog } from './GapResolveDialog.js';
+import { PlanMachineDialog } from './PlanMachineDialog.js';
+import { ReadingSheet } from './ReadingSheet.js';
 import { groupStints, type jobCapabilities, type StintRow } from './types.js';
 
 type Capabilities = ReturnType<typeof jobCapabilities>;
 type SelectedReading = { reading: JobReading; stint: Assignment };
+type AttentionKind = JobReading['needsALook'][number];
+
+function AttentionBadge({ kind }: { kind: AttentionKind }) {
+  const type = kind === 'disputed' ? 'disputed' : kind === 'missing-photo' ? null : 'ai-flagged';
+  return (
+    <Badge
+      variant="outline"
+      className={
+        type
+          ? cn(readingExceptionTypeColorClassNames[type].chip, readingExceptionTypeColorClassNames[type].text)
+          : undefined
+      }
+    >
+      {type ? readingExceptionTypeLabels[type] : 'No photo'}
+    </Badge>
+  );
+}
 
 function ReadingCell({
   reading,
@@ -64,7 +81,6 @@ export function MachinesCard({ job, capabilities }: { job: JobDetail; capabiliti
   const [planning, setPlanning] = useState(false);
   const [reading, setReading] = useState<SelectedReading | null>(null);
   const [gap, setGap] = useState<Assignment | null>(null);
-  const [measure, setMeasure] = useState<Assignment | null>(null);
   const [departure, setDeparture] = useState<Assignment | null>(null);
   const implementOptions = useQuery(
     trpc.contractingJobs.field.implements.queryOptions(undefined, { enabled: capabilities.planStints }),
@@ -269,11 +285,7 @@ export function MachinesCard({ job, capabilities }: { job: JobDetail; capabiliti
                   ) : null}
                 </Badge>
               ))}
-              {capabilities.signOff ? (
-                <Button size="sm" variant="outline" onClick={() => setMeasure(stint)}>
-                  Add measure
-                </Button>
-              ) : null}
+              {capabilities.signOff ? <AddMeasurePopover stint={stint} /> : null}
             </div>
           );
         },
@@ -289,9 +301,7 @@ export function MachinesCard({ job, capabilities }: { job: JobDetail; capabiliti
                 ...(row.original.stint.arrival?.needsALook ?? []).map((kind) => ({ kind, role: 'arrival' })),
                 ...(row.original.stint.departure?.needsALook ?? []).map((kind) => ({ kind, role: 'departure' })),
               ].map(({ kind, role }) => (
-                <Badge key={`${role}-${kind}`} variant="outline">
-                  {kind === 'missing-photo' ? 'No photo' : kind.replace('ai-', 'AI ')}
-                </Badge>
+                <AttentionBadge key={`${role}-${kind}`} kind={kind} />
               ))}
             </div>
           ) : null,
@@ -360,8 +370,11 @@ export function MachinesCard({ job, capabilities }: { job: JobDetail; capabiliti
               <h3 className="font-medium">Needs a look</h3>
               {attention.map(({ stint, reading }) => (
                 <div key={reading.id} className="flex items-center justify-between gap-2 py-1">
-                  <span>
-                    {stint.machineCode} · {reading.role} · {reading.needsALook.join(', ')}
+                  <span className="flex flex-wrap items-center gap-2">
+                    {stint.machineCode} · {reading.role === 'arrival' ? 'Arrival' : 'Departure'}
+                    {reading.needsALook.map((kind) => (
+                      <AttentionBadge key={kind} kind={kind} />
+                    ))}
                   </span>
                   <Button size="sm" variant="outline" onClick={() => setReading({ stint, reading })}>
                     Open
@@ -386,7 +399,6 @@ export function MachinesCard({ job, capabilities }: { job: JobDetail; capabiliti
       </Card>
       <PlanMachineDialog jobId={job.id} open={planning} onOpenChange={setPlanning} />
       <GapResolveDialog stint={gap} onClose={() => setGap(null)} />
-      <AddMeasureDialog stint={measure} onClose={() => setMeasure(null)} />
       <DepartureCaptureDialog stint={departure} onClose={() => setDeparture(null)} />
       <ReadingSheet selected={reading} onClose={() => setReading(null)} amendReadings={capabilities.amendReadings} />
     </>

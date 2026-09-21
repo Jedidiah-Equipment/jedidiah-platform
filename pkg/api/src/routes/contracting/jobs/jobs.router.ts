@@ -7,6 +7,7 @@ import {
   createJob,
   getFieldJob,
   getReadableJob,
+  hasActiveJobAttention,
   listFieldDrivers,
   listFieldImplements,
   listFieldJobs,
@@ -46,6 +47,7 @@ import {
   MeasureRemoveInput,
   MeasureSetInput,
 } from '@pkg/schema/contracting';
+import { z } from 'zod';
 import { createAuthTRPCError, mapCoreErrors } from '../../../trpc/errors.js';
 import { authorizedProcedure, requirePermission, router } from '../../../trpc/init.js';
 import { jobErrorFamily } from '../contracting-error-families.js';
@@ -85,6 +87,20 @@ export const contractingJobsRouter = router({
       .query(({ ctx }) => listFieldDrivers({ db: ctx.db })),
   }),
   jobs: router({
+    activeAttention: authorizedProcedure(readPermissions)
+      .output(z.boolean())
+      .query(({ ctx }) => {
+        const mode = readMode(ctx.access);
+        if (mode === 'priced') return false;
+        return mapCoreErrors(
+          () =>
+            hasActiveJobAttention({
+              db: ctx.db,
+              ...(mode === 'own' ? { foremanUserId: ctx.session.user.id } : {}),
+            }),
+          jobErrorFamily,
+        );
+      }),
     queueCounts: authorizedProcedure(readPermissions)
       .output(JobQueueCounts)
       .query(async ({ ctx }) => {

@@ -343,6 +343,21 @@ export async function countJobQueues({ db, foremanUserId }: { db: Db; foremanUse
   });
 }
 
+export async function hasActiveJobAttention({ db, foremanUserId }: { db: Db; foremanUserId?: string }) {
+  const rows = await db
+    .select({ id: contractingJobs.id })
+    .from(contractingJobs)
+    .where(
+      and(
+        eq(contractingJobs.status, 'active'),
+        foremanUserId ? eq(contractingJobs.foremanUserId, foremanUserId) : undefined,
+        sql`${openGapFlags} + ${readingsNeedingALook} > 0`,
+      ),
+    )
+    .limit(1);
+  return rows.length > 0;
+}
+
 export async function listJobs({
   db,
   queue,

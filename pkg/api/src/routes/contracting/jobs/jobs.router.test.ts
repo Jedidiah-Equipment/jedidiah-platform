@@ -10,7 +10,7 @@ import {
   planAssignment,
 } from '@pkg/core/contracting';
 import { eq, user } from '@pkg/db';
-import { contractingJobs, contractingMachineAssignments } from '@pkg/db/contracting';
+import { contractingHourReadings, contractingJobs, contractingMachineAssignments } from '@pkg/db/contracting';
 import type { ContractingRole } from '@pkg/schema';
 import { expect } from 'vitest';
 import { createTester } from '@/test/create-tester.js';
@@ -320,10 +320,24 @@ test('counts queue tabs by read mode and exposes capture evidence on Job details
   });
   expect(await foreman.queueCounts()).toMatchObject({ upcoming: 1, active: 0, 'awaiting-pricing': 0 });
   expect(await invoicing.queueCounts()).toMatchObject({ upcoming: 0, active: 0, 'awaiting-pricing': 1 });
+  expect(await manager.activeAttention()).toBe(false);
+  expect(await foreman.activeAttention()).toBe(false);
+  expect(await invoicing.activeAttention()).toBe(false);
   expect(await manager.get({ id: context.otherJob.id })).toMatchObject({
     assignments: [
       { arrival: { comment: null, aiConfidence: null, capturedByName: 'Other', needsALook: ['missing-photo'] } },
     ],
+  });
+  const arrivalId = (await manager.get({ id: context.otherJob.id })).assignments[0]?.arrival?.id;
+  if (!arrivalId) throw new Error('Expected arrival reading');
+  await context.db
+    .update(contractingHourReadings)
+    .set({ aiValue: 101, aiConfidence: 0.87, aiVerification: 'pending' })
+    .where(eq(contractingHourReadings.id, arrivalId));
+  expect(await manager.activeAttention()).toBe(true);
+  expect(await foreman.activeAttention()).toBe(false);
+  expect(await manager.get({ id: context.otherJob.id })).toMatchObject({
+    assignments: [{ arrival: { aiConfidence: 0.87, needsALook: ['ai-pending', 'missing-photo'] } }],
   });
   const departure = {
     machineId: context.otherMachine.id,

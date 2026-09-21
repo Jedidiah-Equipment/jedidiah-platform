@@ -2,7 +2,7 @@ import { formatCurrency, formatDate, hasPermission } from '@pkg/domain';
 import { formatPurchaseOrderLineLabel } from '@pkg/domain/equipment';
 import type { UUID } from '@pkg/schema';
 import type { PurchaseOrderView } from '@pkg/schema/equipment';
-import { purchaseOrderHasUnpricedLines } from '@pkg/schema/equipment';
+import { findPurchaseOrderPartLine, purchaseOrderHasUnpricedLines } from '@pkg/schema/equipment';
 import { IconPlus } from '@tabler/icons-react';
 import { useQuery } from '@tanstack/react-query';
 import type React from 'react';
@@ -37,11 +37,7 @@ import { PurchaseOrderInvoiceCrossCheckCard } from './components/PurchaseOrderIn
 import { PurchaseOrderReceivingCard } from './components/PurchaseOrderReceivingCard.js';
 import { PurchaseOrderReturnsCard } from './components/PurchaseOrderReturnsCard.js';
 import { PurchaseOrderStatusBadge } from './components/PurchaseOrderStatusBadge.js';
-import {
-  isPartPurchaseOrderLine,
-  type PurchaseOrderAmendDialogKind,
-  purchaseOrderLinesTotal,
-} from './components/types.js';
+import { type PurchaseOrderAmendDialogKind, purchaseOrderLinesTotal } from './components/types.js';
 import { PurchaseOrderEditing } from './PurchaseOrderEditing.js';
 
 export const PurchaseOrderDetailPage: React.FC<{ purchaseOrderId: UUID }> = ({ purchaseOrderId }) => {
@@ -229,7 +225,7 @@ export const ReadOnlyLinesCard: React.FC<{
     !parts.isPending &&
     parts.items.some(
       (part) =>
-        part.supplierId === purchaseOrder.supplierId && !purchaseOrder.lines.some((line) => line.partId === part.id),
+        part.supplierId === purchaseOrder.supplierId && !findPurchaseOrderPartLine(purchaseOrder.lines, part.id),
     );
   const [amendment, setAmendment] = useState<{ kind: PurchaseOrderAmendDialogKind; lineId: string | null } | null>(
     null,
@@ -296,9 +292,7 @@ const PurchaseOrderReadOnlyLinesTable: React.FC<{
   canReadCosts: boolean;
   items: PurchaseOrderView['lines'];
   /** Absent when the reader may not amend, which is what drops the actions column entirely. */
-  onAmend:
-    | ((kind: 'quantity-change' | 'substitute-part' | 'custom-quantity' | 'remove-custom-line', lineId: string) => void)
-    | null;
+  onAmend: ((kind: 'quantity-change' | 'remove-line' | 'substitute-part', lineId: string) => void) | null;
 }> = ({ canReadCosts, items, onAmend }) => {
   const columns = useMemo<DataTableColumnDef<PurchaseOrderView['lines'][number]>[]>(
     () => [
@@ -318,7 +312,7 @@ const PurchaseOrderReadOnlyLinesTable: React.FC<{
         id: 'part',
       },
       {
-        accessorFn: (line) => (isPartPurchaseOrderLine(line) ? formatPurchaseUnitLabel(line) : (line.unit ?? '—')),
+        accessorFn: (line) => (line.kind === 'part' ? formatPurchaseUnitLabel(line) : line.unit),
         header: 'Unit',
         id: 'unit',
       },
@@ -354,53 +348,40 @@ const PurchaseOrderReadOnlyLinesTable: React.FC<{
             {
               cell: ({ row }) => {
                 const line = row.original;
-                if (line.kind === 'custom') {
-                  return (
-                    <div className="flex justify-end gap-2">
-                      <Button
-                        onClick={() => onAmend('custom-quantity', line.id)}
-                        size="sm"
-                        type="button"
-                        variant="ghost"
-                      >
-                        Amend quantity
-                      </Button>
-                      {!line.hasStockMovements && items.length > 1 ? (
-                        <Button
-                          onClick={() => onAmend('remove-custom-line', line.id)}
-                          size="sm"
-                          type="button"
-                          variant="destructive"
-                        >
-                          Remove line
-                        </Button>
-                      ) : null}
-                    </div>
-                  );
-                }
-                if (!isPartPurchaseOrderLine(line)) return null;
                 return (
                   <div className="flex justify-end gap-2">
                     <Button onClick={() => onAmend('quantity-change', line.id)} size="sm" type="button" variant="ghost">
                       Change quantity
                     </Button>
                     {/* Every movement keys off (order, Part), so only a line nothing has moved
-                      against can change its Part — the same test the server's guard applies. A
-                      fully returned line reads zero received but still carries its ledger rows. */}
-                    <Button
-                      disabled={line.hasStockMovements}
-                      onClick={() => onAmend('substitute-part', line.id)}
-                      size="sm"
-                      title={
-                        line.hasStockMovements
-                          ? 'Stock has already arrived against this line, so its Part cannot change'
-                          : undefined
-                      }
-                      type="button"
-                      variant="ghost"
-                    >
-                      Substitute
-                    </Button>
+                        against can change its Part — the same test the server's guard applies. A
+                        fully returned line reads zero received but still carries its ledger rows. */}
+                    {line.kind === 'part' ? (
+                      <Button
+                        disabled={line.hasStockMovements}
+                        onClick={() => onAmend('substitute-part', line.id)}
+                        size="sm"
+                        title={
+                          line.hasStockMovements
+                            ? 'Stock has already arrived against this line, so its Part cannot change'
+                            : undefined
+                        }
+                        type="button"
+                        variant="ghost"
+                      >
+                        Substitute
+                      </Button>
+                    ) : null}
+                    {line.kind === 'custom' && !line.hasStockMovements && items.length > 1 ? (
+                      <Button
+                        onClick={() => onAmend('remove-line', line.id)}
+                        size="sm"
+                        type="button"
+                        variant="destructive"
+                      >
+                        Remove line
+                      </Button>
+                    ) : null}
                   </div>
                 );
               },

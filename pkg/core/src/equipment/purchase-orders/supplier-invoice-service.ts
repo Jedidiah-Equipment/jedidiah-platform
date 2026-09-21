@@ -150,9 +150,8 @@ export async function loadSupplierInvoiceReviews({
     description: line.description,
     lineId: line.id,
     orderedQuantity: line.quantity,
-    partCode: line.partCode,
-    partId: line.partId,
-    supplierCode: line.supplierCode ?? null,
+    ...(line.kind === 'part' ? { partCode: line.partCode, partId: line.partId } : { partCode: null, partId: null }),
+    supplierCode: line.supplierCode,
     unitPrice: line.unitPrice,
   }));
   const [bases, resolutions] = await Promise.all([

@@ -78,7 +78,7 @@ const purchaseOrder = PurchaseOrderView.parse({
       quantity: 5,
       receivedQuantity: 0,
       standardPurchaseLengthMm: null,
-      unit: null,
+      supplierCode: null,
       unitOfMeasure: 'piece',
       unitPrice: 10,
     },

@@ -1,6 +1,6 @@
 import { type Db, user } from '@pkg/db';
 import { parts, supplier } from '@pkg/db/equipment';
-import type { PurchaseOrder } from '@pkg/schema/equipment';
+import { findPurchaseOrderPartLine, type PurchaseOrder } from '@pkg/schema/equipment';
 import { InMemoryStorageAdapter } from '../../storage/in-memory-storage-adapter.js';
 import { createTester } from '../../test/create-tester.js';
 import { postReceipt } from '../inventory/receipt-service.js';
@@ -141,6 +141,14 @@ export async function receive(
     db: context.db,
     input: { lengthMm: null, partId, purchaseOrderId, quantity, unitCost },
   });
+}
+
+/** A quantity amendment addresses a line by id; a test usually knows the Part it ordered. */
+export function partLineId(purchaseOrder: PurchaseOrder, partId: string): string {
+  const line = findPurchaseOrderPartLine(purchaseOrder.lines, partId);
+  if (!line) throw new Error(`No Part Line for ${partId}`);
+
+  return line.id;
 }
 
 export function pdfBytes(): Uint8Array {

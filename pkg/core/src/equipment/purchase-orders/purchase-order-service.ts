@@ -117,7 +117,7 @@ export const purchaseOrderAggregateAuditDescriptor = defineAuditDescriptor<Purch
     })),
     line: purchaseOrder.lines.map((line) => ({
       // Part ids survive whole-draft rewrites; Custom Line ids are echoed by the client.
-      key: line.partId ?? line.id,
+      key: line.kind === 'part' ? line.partId : line.id,
       label: formatPurchaseOrderLineLabel(line),
       value:
         line.kind === 'part'
@@ -125,7 +125,7 @@ export const purchaseOrderAggregateAuditDescriptor = defineAuditDescriptor<Purch
           : {
               description: line.description,
               quantity: line.quantity,
-              supplierCode: line.supplierCode ?? null,
+              supplierCode: line.supplierCode,
               unit: line.unit,
               unitPrice: line.unitPrice,
             },
@@ -852,34 +852,9 @@ function mapPurchaseOrder({
     jobs: row.jobLinks
       .map((link) => ({ code: link.job.code, id: link.job.id }))
       .sort((left, right) => left.code - right.code),
-    lines: row.lines
-      .map((line) => ({
-        description: line.part?.name ?? line.customDescription,
-        hasStockMovements: intake.has(line.id),
-        id: line.id,
-        kind: line.partId === null ? ('custom' as const) : ('part' as const),
-        partCode: line.part?.code ?? null,
-        partId: line.partId,
-        partName: line.part?.name ?? null,
-        position: line.position,
-        quantity: line.quantity,
-        receiptBuckets: line.partId === null ? [] : (receiptBuckets.get(receiptBucketKey(row.id, line.partId)) ?? []),
-        receivedQuantity: intake.get(line.id) ?? 0,
-        standardPurchaseLengthMm: line.part?.standardPurchaseLengthMm ?? null,
-        supplierCode: line.part?.supplierCode ?? line.customSupplierCode ?? undefined,
-        unit: line.customUnit,
-        unitOfMeasure: line.part?.unitOfMeasure ?? null,
-        unitPrice: line.unitPrice,
-      }))
-      .sort((left, right) =>
-        left.kind === right.kind
-          ? left.kind === 'part'
-            ? (left.partCode ?? '').localeCompare(right.partCode ?? '')
-            : left.position - right.position
-          : left.kind === 'part'
-            ? -1
-            : 1,
-      ),
+    lines: [...row.lines]
+      .sort(comparePurchaseOrderLineRows)
+      .map((line) => mapPurchaseOrderLine({ intake, line, receiptBuckets })),
     sentAt: row.sentAt,
     status: row.status,
     supplier: {
@@ -893,6 +868,56 @@ function mapPurchaseOrder({
     supplierId: row.supplierId,
     updatedAt: row.updatedAt,
   });
+}
+
+type PurchaseOrderLineRow = PurchaseOrderAggregate['lines'][number];
+
+/** Part Lines by Part code, then Custom Lines in the order they were keyed. */
+function comparePurchaseOrderLineRows(left: PurchaseOrderLineRow, right: PurchaseOrderLineRow): number {
+  if (left.part && right.part) return left.part.code.localeCompare(right.part.code);
+  if (!left.part && !right.part) return left.position - right.position;
+
+  return left.part ? -1 : 1;
+}
+
+/** The one place a stored row becomes a kind; the schema holds each kind to its own shape. */
+function mapPurchaseOrderLine({
+  intake,
+  line,
+  receiptBuckets,
+}: {
+  intake: PurchaseOrderLineIntake;
+  line: PurchaseOrderLineRow;
+  receiptBuckets: ReadonlyMap<string, PurchaseOrderReceiptBucket[]>;
+}) {
+  const shared = {
+    hasStockMovements: intake.has(line.id),
+    id: line.id,
+    quantity: line.quantity,
+    receivedQuantity: intake.get(line.id) ?? 0,
+    unitPrice: line.unitPrice,
+  };
+  if (!line.part) {
+    return {
+      ...shared,
+      description: line.customDescription,
+      kind: 'custom' as const,
+      supplierCode: line.customSupplierCode,
+      unit: line.customUnit,
+    };
+  }
+
+  return {
+    ...shared,
+    description: line.part.name,
+    kind: 'part' as const,
+    partCode: line.part.code,
+    partId: line.part.id,
+    receiptBuckets: receiptBuckets.get(receiptBucketKey(line.purchaseOrderId, line.part.id)) ?? [],
+    standardPurchaseLengthMm: line.part.standardPurchaseLengthMm,
+    supplierCode: line.part.supplierCode,
+    unitOfMeasure: line.part.unitOfMeasure,
+  };
 }
 
 export async function lockPurchaseOrder(tx: DatabaseTransaction, id: UUID): Promise<PurchaseOrderRow> {

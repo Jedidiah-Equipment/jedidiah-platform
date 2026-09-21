@@ -87,7 +87,6 @@ describe('Purchase Order draft lifecycle', () => {
       {
         id: CUSTOM_LINE_A_ID,
         kind: 'custom',
-        partId: null,
         description: 'Packing tape',
         unit: 'box',
         receivedQuantity: 0,
@@ -124,7 +123,7 @@ describe('Purchase Order draft lifecycle', () => {
     ];
     const input = { expectedDeliveryDate: null, id: order.id, jobIds: [], lines, supplierId: SUPPLIER_A_ID };
     const saved = await savePurchaseOrderDraft({ actorUserId: ACTOR_ID, db: context.db, input });
-    expect(saved.lines.map((line) => line.partCode ?? line.description)).toEqual([
+    expect(saved.lines.map((line) => (line.kind === 'part' ? line.partCode : line.description))).toEqual([
       'P-100',
       'P-200',
       'Packing tape',

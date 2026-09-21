@@ -47,7 +47,8 @@ const AmendmentBaseInput = z.object({
 
 export type PurchaseOrderAmendQuantityInput = z.infer<typeof PurchaseOrderAmendQuantityInput>;
 export const PurchaseOrderAmendQuantityInput = AmendmentBaseInput.extend({
-  partId: UUID,
+  /** Either kind: a quantity changes the same way on a Part Line and a Custom Line. */
+  lineId: UUID,
   quantity: PurchaseOrderQuantity,
 }).strict();
 
@@ -56,12 +57,6 @@ export const PurchaseOrderAmendAddLineInput = AmendmentBaseInput.extend({
   partId: UUID,
   quantity: PurchaseOrderQuantity,
   unitPrice: PurchaseOrderUnitPrice,
-}).strict();
-
-export type PurchaseOrderAmendCustomLineQuantityInput = z.infer<typeof PurchaseOrderAmendCustomLineQuantityInput>;
-export const PurchaseOrderAmendCustomLineQuantityInput = AmendmentBaseInput.extend({
-  lineId: UUID,
-  quantity: PurchaseOrderQuantity,
 }).strict();
 
 export type PurchaseOrderAmendAddCustomLineInput = z.infer<typeof PurchaseOrderAmendAddCustomLineInput>;

@@ -1,4 +1,5 @@
 import { deriveMovementWarnings } from '@pkg/domain/equipment';
+import { findPurchaseOrderPartLine } from '@pkg/schema/equipment';
 import { describe, expect } from 'vitest';
 
 import { postReceipt } from '../inventory/receipt-service.js';
@@ -273,7 +274,7 @@ describe('what a preview is served against what the post judges', () => {
     });
 
     const served = await getPurchaseOrder({ db: context.db, id: purchaseOrder.id });
-    const line = served.lines.find((candidate) => candidate.partId === LINEAR_PART_ID);
+    const line = findPurchaseOrderPartLine(served.lines, LINEAR_PART_ID);
     const bucketFor = (lengthMm: number) =>
       line?.receiptBuckets.find((bucket) => bucket.lengthMm === lengthMm)?.outstandingReceivedQuantity ?? 0;
 
@@ -320,9 +321,8 @@ describe('what a preview is served against what the post judges', () => {
 
     const served = await getPurchaseOrder({ db: context.db, id: purchaseOrder.id });
     const outstandingReceivedQuantity =
-      served.lines
-        .find((candidate) => candidate.partId === PIECE_PART_ID)
-        ?.receiptBuckets.find((bucket) => bucket.lengthMm === null)?.outstandingReceivedQuantity ?? 0;
+      findPurchaseOrderPartLine(served.lines, PIECE_PART_ID)?.receiptBuckets.find((bucket) => bucket.lengthMm === null)
+        ?.outstandingReceivedQuantity ?? 0;
 
     // Every reason nets out of the pool, `order-error` included — what is left is what can go back.
     expect(outstandingReceivedQuantity).toBe(6);

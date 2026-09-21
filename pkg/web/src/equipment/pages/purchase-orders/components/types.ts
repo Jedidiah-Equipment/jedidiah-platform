@@ -15,6 +15,7 @@ import {
   PurchaseOrderCustomLineUnit,
   type PurchaseOrderLineView,
   PurchaseOrderPartLineInput,
+  type PurchaseOrderPartLineView,
   PurchaseOrderQuantity,
   type PurchaseOrderSaveDraftInput,
   PurchaseOrderUnitPrice,
@@ -30,24 +31,6 @@ import { roundNumberFieldValue } from '@/components/form/fields/NumberField.js';
 import { emptyStringOr, optionalNumber, requiredSelection } from '@/components/form/utils/form-schema.js';
 
 export type PurchaseOrderCreateFormValues = z.infer<typeof PurchaseOrderCreateFormValues>;
-export type PartPurchaseOrderLineView = PurchaseOrderLineView & {
-  kind: 'part';
-  partCode: string;
-  partId: string;
-  partName: string;
-  unitOfMeasure: Part['unitOfMeasure'];
-};
-
-export function isPartPurchaseOrderLine(line: PurchaseOrderLineView): line is PartPurchaseOrderLineView {
-  return (
-    line.kind === 'part' &&
-    line.partId !== null &&
-    line.partCode !== null &&
-    line.partName !== null &&
-    line.unitOfMeasure !== null
-  );
-}
-
 export const PurchaseOrderCreateFormValues = z.object({
   expectedDeliveryDate: z.union([z.literal(''), DateOnlyIsoString]),
   supplierId: UUID,
@@ -114,12 +97,12 @@ export function toPurchaseOrderDraftFormValues(purchaseOrder: PurchaseOrderView)
             kind: 'custom' as const,
             quantity: line.quantity,
             supplierCode: line.supplierCode ?? '',
-            unit: line.unit ?? '',
+            unit: line.unit,
             unitPrice: line.unitPrice ?? 0,
           }
         : {
             kind: 'part' as const,
-            partId: line.partId ?? '',
+            partId: line.partId,
             quantity: line.quantity,
             unitPrice: line.unitPrice ?? 0,
           },
@@ -160,20 +143,17 @@ export function outstandingQuantity(line: Pick<PurchaseOrderLineView, 'quantity'
   return Math.max(0, line.quantity - line.receivedQuantity);
 }
 
-export function isLinearLine(line: Pick<PurchaseOrderLineView, 'unitOfMeasure'>): boolean {
+export function isLinearLine(line: Pick<PurchaseOrderPartLineView, 'unitOfMeasure'>): boolean {
   return line.unitOfMeasure === 'mm';
 }
+
+/** The server's amendment kinds, with the one the log folds into `add-line` told apart for the form. */
+export type PurchaseOrderAmendDialogKind = PurchaseOrderAmendmentKind | 'add-custom-line';
 
 /**
  * What the buyer keys when the phone call ends. The note is mandatory on every kind, so the form
  * carries the schema's own rule rather than a second one — the call *is* the record (spec §4).
  */
-export type PurchaseOrderAmendDialogKind =
-  | Exclude<PurchaseOrderAmendmentKind, 'remove-line'>
-  | 'custom-quantity'
-  | 'add-custom-line'
-  | 'remove-custom-line';
-
 export type PurchaseOrderAmendmentFormValues = z.infer<typeof PurchaseOrderAmendmentFormValues>;
 export const PurchaseOrderAmendmentFormValues = z.object({
   description: z.union([z.literal(''), PurchaseOrderCustomLineDescription]),
@@ -186,37 +166,40 @@ export const PurchaseOrderAmendmentFormValues = z.object({
   unitPrice: PurchaseOrderUnitPrice,
 });
 
+type PurchaseOrderAmendmentField = Exclude<keyof PurchaseOrderAmendmentFormValues, 'note'>;
+
 /**
- * The one form serves all four kinds, so each amendment only insists on the field it changes.
+ * The one form serves every kind, and a kind is nothing more than the fields it asks the buyer for.
+ * The dialog renders from this and the validator insists on it, so the two cannot disagree.
  */
+export const PURCHASE_ORDER_AMENDMENT_FIELDS: Record<
+  PurchaseOrderAmendDialogKind,
+  readonly PurchaseOrderAmendmentField[]
+> = {
+  'add-custom-line': ['description', 'unit', 'supplierCode', 'quantity', 'unitPrice'],
+  'add-line': ['newPartId', 'quantity', 'unitPrice'],
+  'expected-date-change': ['expectedDeliveryDate'],
+  'quantity-change': ['quantity'],
+  'remove-line': [],
+  'substitute-part': ['newPartId', 'quantity', 'unitPrice'],
+};
+
+/** A field the form holds as `''` until it is keyed must be filled once a kind asks for it. */
+const REQUIRED_WHEN_ASKED: Partial<Record<PurchaseOrderAmendmentField, z.ZodType>> = {
+  description: PurchaseOrderCustomLineDescription,
+  expectedDeliveryDate: requiredSelection(DateOnlyIsoString, 'Choose an expected delivery date'),
+  newPartId: requiredSelection(UUID, 'Choose a Part'),
+  unit: PurchaseOrderCustomLineUnit,
+};
+
 export function purchaseOrderAmendmentValidator(
   kind: PurchaseOrderAmendDialogKind,
 ): z.ZodType<PurchaseOrderAmendmentFormValues, PurchaseOrderAmendmentFormValues> {
-  if (kind === 'quantity-change' || kind === 'custom-quantity' || kind === 'remove-custom-line')
-    return PurchaseOrderAmendmentFormValues;
-
-  if (kind === 'add-custom-line')
-    return PurchaseOrderAmendmentFormValues.refine(
-      (values) => PurchaseOrderCustomLineDescription.safeParse(values.description).success,
-      {
-        message: 'Describe what is being ordered',
-        path: ['description'],
-      },
-    ).refine((values) => PurchaseOrderCustomLineUnit.safeParse(values.unit).success, {
-      message: 'Enter a unit, such as each or box',
-      path: ['unit'],
-    });
-
-  if (kind === 'expected-date-change') {
-    return PurchaseOrderAmendmentFormValues.refine((values) => values.expectedDeliveryDate !== '', {
-      message: 'Choose an expected delivery date',
-      path: ['expectedDeliveryDate'],
-    });
-  }
-
-  return PurchaseOrderAmendmentFormValues.refine((values) => values.newPartId !== '', {
-    message: 'Choose a Part',
-    path: ['newPartId'],
+  return PurchaseOrderAmendmentFormValues.superRefine((values, context) => {
+    for (const field of PURCHASE_ORDER_AMENDMENT_FIELDS[kind]) {
+      const issue = REQUIRED_WHEN_ASKED[field]?.safeParse(values[field]).error?.issues[0];
+      if (issue) context.addIssue({ code: 'custom', message: issue.message, path: [field] });
+    }
   });
 }
 
@@ -234,7 +217,7 @@ export function toReturnToSupplierInput({
   purchaseOrderId,
   values,
 }: {
-  line: Pick<PurchaseOrderLineView, 'partId' | 'unitOfMeasure'>;
+  line: Pick<PurchaseOrderPartLineView, 'partId' | 'unitOfMeasure'>;
   purchaseOrderId: PurchaseOrderView['id'];
   values: PurchaseOrderReturnFormValues;
 }) {
@@ -259,7 +242,7 @@ export function outstandingReceivedForLength({
   line,
 }: {
   lengthMm: number | null;
-  line: Pick<PurchaseOrderLineView, 'receiptBuckets' | 'standardPurchaseLengthMm' | 'unitOfMeasure'>;
+  line: Pick<PurchaseOrderPartLineView, 'receiptBuckets' | 'standardPurchaseLengthMm' | 'unitOfMeasure'>;
 }): number {
   // A return keys nothing for a Part bought in one standard length; a short piece keys its own.
   const bucketLength = line.unitOfMeasure === 'mm' ? (lengthMm ?? line.standardPurchaseLengthMm) : null;
@@ -268,7 +251,7 @@ export function outstandingReceivedForLength({
 }
 
 /** The line's whole outstanding total across every bucket — what is still on hand from this order. */
-export function outstandingReceivedForLine(line: Pick<PurchaseOrderLineView, 'receiptBuckets'>): number {
+export function outstandingReceivedForLine(line: Pick<PurchaseOrderPartLineView, 'receiptBuckets'>): number {
   return line.receiptBuckets.reduce((total, bucket) => total + bucket.outstandingReceivedQuantity, 0);
 }
 
@@ -283,7 +266,7 @@ export function toReceiptInput({
   values,
 }: {
   canReadCosts: boolean;
-  line: Pick<PurchaseOrderLineView, 'partId' | 'unitOfMeasure'>;
+  line: Pick<PurchaseOrderPartLineView, 'partId' | 'unitOfMeasure'>;
   purchaseOrderId: PurchaseOrderView['id'];
   values: PurchaseOrderReceiveFormValues;
 }) {

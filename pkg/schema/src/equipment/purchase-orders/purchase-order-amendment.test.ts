@@ -3,7 +3,6 @@ import { describe, expect, test } from 'vitest';
 import {
   PurchaseOrderAmendAddCustomLineInput,
   PurchaseOrderAmendAddLineInput,
-  PurchaseOrderAmendCustomLineQuantityInput,
   PurchaseOrderAmendExpectedDateInput,
   PurchaseOrderAmendQuantityInput,
   PurchaseOrderAmendRemoveCustomLineInput,
@@ -17,11 +16,11 @@ const ID_C = '00000000-0000-4000-8000-000000000003';
 describe('Purchase Order amendment contracts', () => {
   test('requires Custom Line identity or description and a note for each sent-order change', () => {
     const base = { id: ID_A, note: 'Supplier confirmed' };
-    expect(PurchaseOrderAmendCustomLineQuantityInput.parse({ ...base, lineId: ID_B, quantity: 2.5 })).toMatchObject({
+    expect(PurchaseOrderAmendQuantityInput.parse({ ...base, lineId: ID_B, quantity: 2.5 })).toMatchObject({
       lineId: ID_B,
       quantity: 2.5,
     });
-    expect(() => PurchaseOrderAmendCustomLineQuantityInput.parse({ ...base, lineId: ID_B, quantity: 0 })).toThrow();
+    expect(() => PurchaseOrderAmendQuantityInput.parse({ ...base, lineId: ID_B, quantity: 0 })).toThrow();
     expect(
       PurchaseOrderAmendAddCustomLineInput.parse({
         ...base,
@@ -64,12 +63,12 @@ describe('Purchase Order amendment contracts', () => {
   });
 
   test('requires a note on every kind — the call is the recorded event', () => {
-    const quantityChange = { id: ID_A, partId: ID_B, quantity: 3 };
+    const quantityChange = { id: ID_A, lineId: ID_B, quantity: 3 };
 
     expect(PurchaseOrderAmendQuantityInput.parse({ ...quantityChange, note: ' Supplier short ' })).toEqual({
       id: ID_A,
+      lineId: ID_B,
       note: 'Supplier short',
-      partId: ID_B,
       quantity: 3,
     });
     expect(() => PurchaseOrderAmendQuantityInput.parse(quantityChange)).toThrow();

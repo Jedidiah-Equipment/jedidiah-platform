@@ -1,9 +1,10 @@
 import { hasPermission } from '@pkg/domain';
 import type { UserAccessSummary } from '@pkg/schema';
 
-type InventoryCostProjection<TOutput, TCostField extends keyof TOutput> = Omit<TOutput, TCostField> & {
-  [Field in TCostField]: TOutput[Field] | null;
-};
+// Distributive, so a contract that is a union keeps its members instead of collapsing to their shared keys.
+type InventoryCostProjection<TOutput, TCostField extends keyof TOutput> = TOutput extends unknown
+  ? Omit<TOutput, TCostField> & { [Field in TCostField]: TOutput[Field] | null }
+  : never;
 
 export type InventoryCostAccess = Pick<UserAccessSummary, 'permissions'> | null | undefined;
 
@@ -19,23 +20,25 @@ export function canReadInventoryCosts(access: InventoryCostAccess): boolean {
 export function projectInventoryCostFields<
   TCostField extends PropertyKey,
   TOutput extends Record<TCostField, unknown>,
->({
+>(input: {
+  access: InventoryCostAccess;
+  costFields: readonly TCostField[];
+  output: TOutput;
+}): InventoryCostProjection<TOutput, TCostField>;
+export function projectInventoryCostFields({
   access,
   costFields,
   output,
 }: {
   access: InventoryCostAccess;
-  costFields: readonly TCostField[];
-  output: TOutput;
-}): InventoryCostProjection<TOutput, TCostField> {
+  costFields: readonly PropertyKey[];
+  output: Record<PropertyKey, unknown>;
+}): Record<PropertyKey, unknown> {
   if (canReadInventoryCosts(access)) {
     return output;
   }
 
-  return Object.assign(
-    { ...output },
-    Object.fromEntries(costFields.map((field) => [field, null])),
-  ) as InventoryCostProjection<TOutput, TCostField>;
+  return Object.assign({ ...output }, Object.fromEntries(costFields.map((field) => [field, null])));
 }
 
 /** The element type of the array field a report keeps its rows in. */
@@ -66,7 +69,14 @@ export function projectInventoryCostReport<
   TReportCostField extends keyof TReport,
   TRowsField extends keyof TReport,
   TRowCostField extends keyof InventoryCostReportRow<TReport, TRowsField>,
->({
+>(input: {
+  access: InventoryCostAccess;
+  costFields: readonly TReportCostField[];
+  report: TReport & Record<TRowsField, readonly unknown[]>;
+  rowCostFields: readonly TRowCostField[];
+  rowsField: TRowsField;
+}): InventoryCostReportProjection<TReport, TReportCostField, TRowsField, TRowCostField>;
+export function projectInventoryCostReport({
   access,
   costFields,
   report,
@@ -74,18 +84,14 @@ export function projectInventoryCostReport<
   rowsField,
 }: {
   access: InventoryCostAccess;
-  costFields: readonly TReportCostField[];
-  report: TReport & Record<TRowsField, readonly unknown[]>;
-  rowCostFields: readonly TRowCostField[];
-  rowsField: TRowsField;
-}): InventoryCostReportProjection<TReport, TReportCostField, TRowsField, TRowCostField> {
-  const rows = (report[rowsField] as ReadonlyArray<Record<TRowCostField, unknown>>).map((row) =>
+  costFields: readonly PropertyKey[];
+  report: Record<PropertyKey, unknown>;
+  rowCostFields: readonly PropertyKey[];
+  rowsField: PropertyKey;
+}): Record<PropertyKey, unknown> {
+  const rows = (report[rowsField] as ReadonlyArray<Record<PropertyKey, unknown>>).map((row) =>
     projectInventoryCostFields({ access, costFields: rowCostFields, output: row }),
   );
 
-  return projectInventoryCostFields({
-    access,
-    costFields,
-    output: Object.assign({ ...report }, { [rowsField]: rows }),
-  }) as InventoryCostReportProjection<TReport, TReportCostField, TRowsField, TRowCostField>;
+  return projectInventoryCostFields({ access, costFields, output: { ...report, [rowsField]: rows } });
 }

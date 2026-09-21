@@ -10,6 +10,7 @@ import {
   type AmendmentTestContext,
   LINEAR_PART_ID,
   PIECE_PART_ID,
+  partLineId,
   pdfBytes,
   receive,
   renderStubPdf,
@@ -19,10 +20,7 @@ import {
   sendOrder,
   test,
 } from './purchase-order-amendment-fixtures.js';
-import {
-  amendPurchaseOrderCustomLineQuantity,
-  amendPurchaseOrderQuantity,
-} from './purchase-order-amendment-service.js';
+import { amendPurchaseOrderQuantity } from './purchase-order-amendment-service.js';
 import { createPurchaseOrder } from './purchase-order-service.js';
 import {
   applyInvoicePrice,
@@ -147,7 +145,7 @@ describe('supplier invoice cross-check', () => {
       db: context.db,
       input: { purchaseOrderId: order.id, documentId: document.id, flagKey: `price-mismatch:${custom.id}` },
     });
-    await amendPurchaseOrderCustomLineQuantity({
+    await amendPurchaseOrderQuantity({
       actorUserId: ACTOR_ID,
       db: context.db,
       input: { id: order.id, lineId: custom.id, note: 'Supplier agreed three', quantity: 3 },
@@ -378,7 +376,12 @@ describe('supplier invoice cross-check', () => {
     await amendPurchaseOrderQuantity({
       actorUserId: ACTOR_ID,
       db: context.db,
-      input: { id: purchaseOrder.id, note: 'Supplier sent 12', partId: PIECE_PART_ID, quantity: 12 },
+      input: {
+        id: purchaseOrder.id,
+        lineId: partLineId(purchaseOrder, PIECE_PART_ID),
+        note: 'Supplier sent 12',
+        quantity: 12,
+      },
       pdfRenderer: renderStubPdf,
       storage: context.storage,
     });

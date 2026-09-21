@@ -1,5 +1,5 @@
 import { deriveMovementWarnings } from '@pkg/domain/equipment';
-import type { PurchaseOrderLineView, PurchaseOrderView, StockMovementWarningCode } from '@pkg/schema/equipment';
+import type { PurchaseOrderPartLineView, PurchaseOrderView, StockMovementWarningCode } from '@pkg/schema/equipment';
 import { useMutation } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
@@ -29,7 +29,7 @@ export function PurchaseOrderReceiveDialog({
   purchaseOrder,
 }: {
   canReadCosts: boolean;
-  line: PurchaseOrderLineView;
+  line: PurchaseOrderPartLineView;
   onOpenChange: (open: boolean) => void;
   open: boolean;
   purchaseOrder: PurchaseOrderView;
@@ -63,7 +63,7 @@ export function PurchaseOrderReceiveDialog({
         quantity: outstanding > 0 ? outstanding : Number.NaN,
         unitCost: Number.NaN,
       }}
-      description={`${line.partCode} · ${line.partName} — ${line.receivedQuantity} of ${line.quantity} received so far.`}
+      description={`${line.partCode} · ${line.description} — ${line.receivedQuantity} of ${line.quantity} received so far.`}
       onCreate={(values) => {
         movementWarnings.acknowledge(receiptWarnings(values));
 

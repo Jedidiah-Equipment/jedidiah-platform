@@ -1,7 +1,6 @@
 import {
   amendPurchaseOrderAddCustomLine,
   amendPurchaseOrderAddLine,
-  amendPurchaseOrderCustomLineQuantity,
   amendPurchaseOrderExpectedDate,
   amendPurchaseOrderQuantity,
   amendPurchaseOrderRemoveCustomLine,
@@ -46,7 +45,6 @@ import {
   PurchaseOrderActionInput,
   PurchaseOrderAmendAddCustomLineInput,
   PurchaseOrderAmendAddLineInput,
-  PurchaseOrderAmendCustomLineQuantityInput,
   PurchaseOrderAmendExpectedDateInput,
   PurchaseOrderAmendmentListResult,
   PurchaseOrderAmendQuantityInput,
@@ -123,24 +121,6 @@ export const purchaseOrdersRouter = router({
 
       return toPurchaseOrderView(purchaseOrder, ctx.access);
     }),
-
-  amendCustomLineQuantity: authorizedProcedure('equipment_purchase_order:amend')
-    .input(PurchaseOrderAmendCustomLineQuantityInput)
-    .output(PurchaseOrderView)
-    .mutation(async ({ ctx, input }) =>
-      toPurchaseOrderView(
-        await mapPurchaseOrderErrors(() =>
-          amendPurchaseOrderCustomLineQuantity({
-            actorUserId: ctx.session.user.id,
-            db: ctx.db,
-            input,
-            pdfRenderer: renderPurchaseOrderPdf,
-            storage: ctx.storage,
-          }),
-        ),
-        ctx.access,
-      ),
-    ),
 
   amendAddCustomLine: authorizedProcedure('equipment_purchase_order:amend')
     .input(PurchaseOrderAmendAddCustomLineInput)

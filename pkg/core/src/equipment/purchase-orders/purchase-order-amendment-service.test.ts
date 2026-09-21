@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { auditEvents, user } from '@pkg/db';
 import { purchaseOrderAmendments, supplier } from '@pkg/db/equipment';
 import { DateOnlyIso } from '@pkg/schema';
@@ -11,6 +12,7 @@ import {
   LINEAR_PART_ID,
   OTHER_SUPPLIER_PART_ID,
   PIECE_PART_ID,
+  partLineId,
   receive,
   renderStubPdf,
   SPARE_PART_ID,
@@ -22,7 +24,6 @@ import {
 import {
   amendPurchaseOrderAddCustomLine,
   amendPurchaseOrderAddLine,
-  amendPurchaseOrderCustomLineQuantity,
   amendPurchaseOrderExpectedDate,
   amendPurchaseOrderQuantity,
   amendPurchaseOrderRemoveCustomLine,
@@ -55,7 +56,7 @@ describe('Purchase Order amendments', () => {
     const lineId = order.lines[0]?.id;
     if (!lineId) throw new Error('Missing custom line');
     const render = vi.fn(async (_input: { document: PurchaseOrderPdfModel; filename: string }) => renderStubPdf());
-    const amended = await amendPurchaseOrderCustomLineQuantity({
+    const amended = await amendPurchaseOrderQuantity({
       actorUserId: ACTOR_ID,
       db: context.db,
       input: { id: order.id, lineId, note: 'Supplier confirmed three extra', quantity: 8 },
@@ -77,7 +78,7 @@ describe('Purchase Order amendments', () => {
       ),
     ).toEqual([2, 1]);
     expect(render.mock.calls[0]?.[0].document.lines[0]).toMatchObject({ quantity: 8 });
-    const lowered = await amendPurchaseOrderCustomLineQuantity({
+    const lowered = await amendPurchaseOrderQuantity({
       actorUserId: ACTOR_ID,
       db: context.db,
       input: { id: order.id, lineId, note: 'Supplier reduced the shipment', quantity: 4 },
@@ -103,7 +104,7 @@ describe('Purchase Order amendments', () => {
       input: { purchaseOrderId: order.id, lineId, quantity: 2, note: null },
     });
     await expect(
-      amendPurchaseOrderCustomLineQuantity({
+      amendPurchaseOrderQuantity({
         actorUserId: ACTOR_ID,
         db: context.db,
         input: { id: order.id, lineId, note: 'Too low', quantity: 1 },
@@ -219,7 +220,7 @@ describe('Purchase Order amendments', () => {
     ] as const) {
       for (const amendment of [
         () =>
-          amendPurchaseOrderCustomLineQuantity({
+          amendPurchaseOrderQuantity({
             actorUserId: ACTOR_ID,
             db: context.db,
             input: { id, lineId, note: 'Not permitted', quantity: 3 },
@@ -330,7 +331,12 @@ describe('Purchase Order amendments', () => {
     const amended = await amendPurchaseOrderQuantity({
       actorUserId: amenderId,
       db: context.db,
-      input: { id: purchaseOrder.id, note: 'Supplier can only send 6', partId: PIECE_PART_ID, quantity: 6 },
+      input: {
+        id: purchaseOrder.id,
+        lineId: partLineId(purchaseOrder, PIECE_PART_ID),
+        note: 'Supplier can only send 6',
+        quantity: 6,
+      },
       pdfRenderer: render,
       storage: context.storage,
     });
@@ -374,7 +380,12 @@ describe('Purchase Order amendments', () => {
     const amended = await amendPurchaseOrderQuantity({
       actorUserId: ACTOR_ID,
       db: context.db,
-      input: { id: purchaseOrder.id, note: 'Closing the balance out at what came', partId: PIECE_PART_ID, quantity: 6 },
+      input: {
+        id: purchaseOrder.id,
+        lineId: partLineId(purchaseOrder, PIECE_PART_ID),
+        note: 'Closing the balance out at what came',
+        quantity: 6,
+      },
       pdfRenderer: renderStubPdf,
       storage: context.storage,
     });
@@ -384,7 +395,7 @@ describe('Purchase Order amendments', () => {
       amendPurchaseOrderQuantity({
         actorUserId: ACTOR_ID,
         db: context.db,
-        input: { id: purchaseOrder.id, note: 'Too far', partId: PIECE_PART_ID, quantity: 5 },
+        input: { id: purchaseOrder.id, lineId: partLineId(purchaseOrder, PIECE_PART_ID), note: 'Too far', quantity: 5 },
         pdfRenderer: renderStubPdf,
         storage: context.storage,
       }),
@@ -467,7 +478,7 @@ describe('Purchase Order amendments', () => {
       storage: context.storage,
     });
 
-    expect(amended.lines.map((line) => line.partId)).toEqual([SPARE_PART_ID, LINEAR_PART_ID]);
+    expect(amended.lines).toMatchObject([{ partId: SPARE_PART_ID }, { partId: LINEAR_PART_ID }]);
     await expect(
       listPurchaseOrderAmendments({ db: context.db, purchaseOrderId: purchaseOrder.id }),
     ).resolves.toMatchObject({
@@ -505,7 +516,7 @@ describe('Purchase Order amendments', () => {
       amendPurchaseOrderQuantity({
         actorUserId: ACTOR_ID,
         db: context.db,
-        input: { id: draft.id, note: 'Drafts are edited, not amended', partId: PIECE_PART_ID, quantity: 1 },
+        input: { id: draft.id, lineId: randomUUID(), note: 'Drafts are edited, not amended', quantity: 1 },
         pdfRenderer: renderStubPdf,
         storage: context.storage,
       }),
@@ -522,7 +533,12 @@ describe('Purchase Order amendments', () => {
       amendPurchaseOrderQuantity({
         actorUserId: ACTOR_ID,
         db: context.db,
-        input: { id: closedShort.id, note: 'Remainder was released', partId: PIECE_PART_ID, quantity: 2 },
+        input: {
+          id: closedShort.id,
+          lineId: partLineId(closedShort, PIECE_PART_ID),
+          note: 'Remainder was released',
+          quantity: 2,
+        },
         pdfRenderer: renderStubPdf,
         storage: context.storage,
       }),
@@ -536,7 +552,12 @@ describe('Purchase Order amendments', () => {
       await amendPurchaseOrderQuantity({
         actorUserId: ACTOR_ID,
         db: context.db,
-        input: { id: purchaseOrder.id, note: `Now ${quantity}`, partId: PIECE_PART_ID, quantity },
+        input: {
+          id: purchaseOrder.id,
+          lineId: partLineId(purchaseOrder, PIECE_PART_ID),
+          note: `Now ${quantity}`,
+          quantity,
+        },
         pdfRenderer: renderStubPdf,
         storage: context.storage,
       });

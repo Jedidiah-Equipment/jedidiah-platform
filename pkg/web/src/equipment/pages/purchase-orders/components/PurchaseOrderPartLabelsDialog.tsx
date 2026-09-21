@@ -3,6 +3,7 @@ import {
   PartLabelBatchSelection,
   PartLabelCount,
   type PurchaseOrderLineView,
+  type PurchaseOrderPartLineView,
 } from '@pkg/schema/equipment';
 import { IconPrinter } from '@tabler/icons-react';
 import { useCallback, useMemo, useState } from 'react';
@@ -23,9 +24,9 @@ import {
 } from '@/components/ui/dialog.js';
 import { Input } from '@/components/ui/input.js';
 import { fetchPartLabelsBlob } from '@/equipment/pages/parts/part-label.js';
-import { isPartPurchaseOrderLine, outstandingReceivedForLine, type PartPurchaseOrderLineView } from './types.js';
+import { outstandingReceivedForLine } from './types.js';
 
-type ReceivedPartLabelLine = Pick<PartPurchaseOrderLineView, 'id' | 'partCode' | 'partId' | 'partName'> & {
+type ReceivedPartLabelLine = Pick<PurchaseOrderPartLineView, 'description' | 'id' | 'partCode' | 'partId'> & {
   heldQuantity: number;
 };
 
@@ -37,13 +38,13 @@ export function PurchaseOrderPartLabelsDialog({ lines }: { lines: PurchaseOrderL
   const receivedLines = useMemo(
     () =>
       lines
-        .filter(isPartPurchaseOrderLine)
+        .filter((line) => line.kind === 'part')
         .map((line) => ({
+          description: line.description,
           heldQuantity: outstandingReceivedForLine(line),
           id: line.id,
           partCode: line.partCode,
           partId: line.partId,
-          partName: line.partName,
         }))
         .filter((line) => line.heldQuantity > 0),
     [lines],
@@ -64,10 +65,10 @@ export function PurchaseOrderPartLabelsDialog({ lines }: { lines: PurchaseOrderL
   const columns = useMemo<DataTableColumnDef<PartLabelRow>[]>(
     () => [
       {
-        accessorFn: (line) => `${line.partCode} ${line.partName}`,
+        accessorFn: (line) => `${line.partCode} ${line.description}`,
         cell: ({ row }) => (
           <>
-            <span className="font-medium">{row.original.partCode}</span> · {row.original.partName}
+            <span className="font-medium">{row.original.partCode}</span> · {row.original.description}
           </>
         ),
         header: 'Part',

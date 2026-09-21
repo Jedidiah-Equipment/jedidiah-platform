@@ -19,8 +19,8 @@ makes an order with outstanding lines appear under **Late Purchase Orders**.
 ## Change a quantity
 
 1. Open **Purchase Orders** and select the order, which the **Sent** column shows has gone out.
-2. On the **Lines** card, click **Change quantity** on a Part Line, or **Amend quantity** on a Custom Line.
-3. Enter the new **Quantity**. It can go up or down.
+2. On the **Lines** card, click **Change quantity** on the line. It works the same on a Part Line and a Custom Line.
+3. Enter the new **Quantity**. It can go up or down, but never below what has already arrived, which the field shows.
 4. In **Note**, record who agreed the change and why.
 5. Click **Change quantity**.
 

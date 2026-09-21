@@ -1,6 +1,6 @@
 import { deriveMovementWarnings } from '@pkg/domain/equipment';
 import {
-  type PurchaseOrderLineView,
+  type PurchaseOrderPartLineView,
   type PurchaseOrderView,
   STOCK_RETURN_TO_SUPPLIER_REASON_LABELS,
   type StockMovementWarningCode,
@@ -33,7 +33,7 @@ export function PurchaseOrderReturnDialog({
   onOpenChange,
   purchaseOrder,
 }: {
-  line: PurchaseOrderLineView;
+  line: PurchaseOrderPartLineView;
   onOpenChange: (open: boolean) => void;
   purchaseOrder: PurchaseOrderView;
 }) {
@@ -76,7 +76,7 @@ export function PurchaseOrderReturnDialog({
         quantity: standardLengthOutstanding > 0 ? standardLengthOutstanding : Number.NaN,
         reason: 'defective',
       }}
-      description={`${line.partCode} · ${line.partName} — ${lineOutstanding} received and not yet returned.`}
+      description={`${line.partCode} · ${line.description} — ${lineOutstanding} received and not yet returned.`}
       onCreate={(values) => {
         movementWarnings.acknowledge(returnWarnings(values));
 

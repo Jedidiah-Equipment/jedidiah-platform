@@ -26,7 +26,7 @@ describe('Purchase Order PDF', () => {
 
   test('prints mixed Part and Custom Lines without prices', () => {
     const part = model().lines[0];
-    if (!part) throw new Error('Missing fixture Part Line');
+    if (part?.kind !== 'part') throw new Error('Missing fixture Part Line');
     const text = collectText(
       PurchaseOrderPdf({
         document: model({
@@ -37,27 +37,18 @@ describe('Purchase Order PDF', () => {
               description: 'Packing tape',
               id: '00000000-0000-4000-8000-000000000005',
               kind: 'custom',
-              partCode: null,
-              partId: null,
-              partName: null,
               quantity: 2.5,
-              standardPurchaseLengthMm: null,
               supplierCode: 'TAPE-5',
               unit: 'box',
-              unitOfMeasure: null,
               unitPrice: 80,
             },
             {
               description: 'Workshop service',
               id: '00000000-0000-4000-8000-000000000006',
               kind: 'custom',
-              partCode: null,
-              partId: null,
-              partName: null,
               quantity: 1,
-              standardPurchaseLengthMm: null,
+              supplierCode: null,
               unit: 'each',
-              unitOfMeasure: null,
               unitPrice: 500,
             },
           ],
@@ -133,11 +124,9 @@ function model(overrides: Partial<PurchaseOrderPdfModel> = {}): PurchaseOrderPdf
         kind: 'part',
         partCode: 'P-100',
         partId: '00000000-0000-4000-8000-000000000001',
-        partName: 'Hydraulic pipe',
         quantity: 2,
         standardPurchaseLengthMm: 6_000,
         supplierCode: 'AC-100',
-        unit: null,
         unitOfMeasure: 'mm',
         unitPrice: 900,
       },

@@ -37,14 +37,13 @@ export function PurchaseOrderReturnsCard({
   const trpc = useTRPC();
   const query = useQuery(trpc.purchaseOrders.returns.queryOptions({ purchaseOrderId: purchaseOrder.id }));
   const returns = useMemo(() => query.data?.items ?? [], [query.data]);
-  const [returningPartId, setReturningPartId] = useState<string | null>(null);
+  const [returningLineId, setReturningLineId] = useState<string | null>(null);
   const [isFilingCreditNote, setIsFilingCreditNote] = useState(false);
-  // Only a line something actually arrived against can send anything back.
-  const returnableLines = purchaseOrder.lines.filter(
-    (line) => line.kind === 'part' && line.partId !== null && line.receivedQuantity > 0,
-  );
-  const returningLine =
-    returningPartId === null ? null : (returnableLines.find((line) => line.partId === returningPartId) ?? null);
+  // Only a Part Line something actually arrived against can send anything back.
+  const returnableLines = purchaseOrder.lines
+    .filter((line) => line.kind === 'part')
+    .filter((line) => line.receivedQuantity > 0);
+  const returningLine = returnableLines.find((line) => line.id === returningLineId) ?? null;
   const unsettledReturns = returns.filter((row) => row.settledByDocumentId === null);
   const columns = useMemo<DataTableColumnDef<PurchaseOrderReturnRow>[]>(
     () => [
@@ -125,7 +124,7 @@ export function PurchaseOrderReturnsCard({
               ? returnableLines.map((line) => (
                   <Button
                     key={line.id}
-                    onClick={() => setReturningPartId(line.partId)}
+                    onClick={() => setReturningLineId(line.id)}
                     size="sm"
                     type="button"
                     variant="outline"
@@ -157,7 +156,7 @@ export function PurchaseOrderReturnsCard({
           // Remount per line so the prefilled quantity follows the line the dialog opens on.
           key={returningLine.id}
           line={returningLine}
-          onOpenChange={(open) => setReturningPartId(open ? returningPartId : null)}
+          onOpenChange={(open) => setReturningLineId(open ? returningLineId : null)}
           purchaseOrder={purchaseOrder}
         />
       ) : null}

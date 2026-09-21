@@ -189,10 +189,10 @@ export class PurchaseOrderAmendmentBelowReceivedError extends Error {
   readonly code = 'purchase_order.amendment_below_received' as const;
 
   constructor(
-    readonly partCode: string,
+    readonly lineLabel: string,
     readonly receivedQuantity: number,
   ) {
-    super(`${partCode} has already taken ${receivedQuantity} in; a Purchase Order cannot ask for less than that.`);
+    super(`${lineLabel} has already taken ${receivedQuantity} in; a Purchase Order cannot ask for less than that.`);
   }
 }
 

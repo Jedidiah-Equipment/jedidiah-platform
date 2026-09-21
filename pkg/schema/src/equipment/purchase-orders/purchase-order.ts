@@ -95,33 +95,52 @@ export const PurchaseOrderReceiptBucket = z.object({
   outstandingReceivedQuantity: z.number().finite(),
 });
 
-/** A stored line always has an agreed price; only the API's cost gate can take it away (see the View). */
-export type PurchaseOrderLine = z.infer<typeof PurchaseOrderLine>;
-export const PurchaseOrderLine = z.object({
+const PurchaseOrderLineBase = z.object({
+  /** The Part's name or the Custom Line's own text — what a kind-blind surface calls the line. */
   description: z.string().trim().min(1),
-  /** The line's own identity. Ledger rows still reach a Part Line by `(purchaseOrderId, partId)`. */
-  id: UUID,
-  kind: PurchaseOrderLineKind,
-  partCode: z.string().trim().min(1).nullable(),
-  partId: UUID.nullable(),
-  partName: z.string().trim().min(1).nullable(),
-  quantity: PurchaseOrderQuantity,
   /**
    * Whether a Part Line has ledger rows or a Custom Line has Arrivals. Distinct from
    * `receivedQuantity`, which is what the line has kept: a fully reversed line is owed again
    * but its history still prevents the line from being removed.
    */
   hasStockMovements: z.boolean().default(false),
-  /** Per length bucket, what a return can still send back. Empty where nothing has arrived. */
-  receiptBuckets: z.array(PurchaseOrderReceiptBucket).default([]),
+  /** The line's own identity. Ledger rows still reach a Part Line by `(purchaseOrderId, partId)`. */
+  id: UUID,
+  quantity: PurchaseOrderQuantity,
   /** What the line has received and kept — the number the derived states are read from. */
   receivedQuantity: z.number().finite(),
-  standardPurchaseLengthMm: PartStandardPurchaseLengthMm.nullable(),
-  supplierCode: z.string().trim().min(1).optional(),
-  unit: PurchaseOrderCustomLineUnit.nullable(),
-  unitOfMeasure: PartUnitOfMeasure.nullable(),
+  supplierCode: z.string().trim().min(1).nullable(),
   unitPrice: PurchaseOrderUnitPrice,
 });
+
+export type PurchaseOrderPartLine = z.infer<typeof PurchaseOrderPartLine>;
+export const PurchaseOrderPartLine = PurchaseOrderLineBase.extend({
+  kind: z.literal('part'),
+  partCode: z.string().trim().min(1),
+  partId: UUID,
+  /** Per length bucket, what a return can still send back. Empty where nothing has arrived. */
+  receiptBuckets: z.array(PurchaseOrderReceiptBucket).default([]),
+  standardPurchaseLengthMm: PartStandardPurchaseLengthMm.nullable(),
+  unitOfMeasure: PartUnitOfMeasure,
+});
+
+export type PurchaseOrderCustomLine = z.infer<typeof PurchaseOrderCustomLine>;
+export const PurchaseOrderCustomLine = PurchaseOrderLineBase.extend({
+  kind: z.literal('custom'),
+  unit: PurchaseOrderCustomLineUnit,
+});
+
+/** A stored line always has an agreed price; only the API's cost gate can take it away (see the View). */
+export type PurchaseOrderLine = z.infer<typeof PurchaseOrderLine>;
+export const PurchaseOrderLine = z.discriminatedUnion('kind', [PurchaseOrderPartLine, PurchaseOrderCustomLine]);
+
+/** A Part appears once per order, so its Part is enough to find a Part Line. Served and stored alike. */
+export function findPurchaseOrderPartLine<TLine extends { kind: 'custom' } | { kind: 'part'; partId: string }>(
+  lines: readonly TLine[],
+  partId: string,
+): Extract<TLine, { kind: 'part' }> | undefined {
+  return lines.find((line): line is Extract<TLine, { kind: 'part' }> => line.kind === 'part' && line.partId === partId);
+}
 
 export type PurchaseOrderLinkedJob = z.infer<typeof PurchaseOrderLinkedJob>;
 export const PurchaseOrderLinkedJob = z.object({
@@ -216,10 +235,21 @@ export const PurchaseOrder = z.object({
  * role reads the same order with `unitPrice` nulled by the cost gate (spec §5, §11). Only this shape
  * is nullable — the core read and the as-sent PDF always carry the real price.
  */
-export type PurchaseOrderLineView = z.infer<typeof PurchaseOrderLineView>;
-export const PurchaseOrderLineView = PurchaseOrderLine.extend({ unitPrice: InventoryCost });
+export type PurchaseOrderPartLineView = z.infer<typeof PurchaseOrderPartLineView>;
+export const PurchaseOrderPartLineView = PurchaseOrderPartLine.extend({ unitPrice: InventoryCost });
 
-export const PurchaseOrderLineViewCostFields = declareInventoryCostFields(PurchaseOrderLineView, 'unitPrice');
+export type PurchaseOrderCustomLineView = z.infer<typeof PurchaseOrderCustomLineView>;
+export const PurchaseOrderCustomLineView = PurchaseOrderCustomLine.extend({ unitPrice: InventoryCost });
+
+export type PurchaseOrderLineView = z.infer<typeof PurchaseOrderLineView>;
+export const PurchaseOrderLineView = z.discriminatedUnion('kind', [
+  PurchaseOrderPartLineView,
+  PurchaseOrderCustomLineView,
+]);
+
+// Both kinds gate the same field, so the API projects a line without asking which it is.
+export const PurchaseOrderLineViewCostFields = declareInventoryCostFields(PurchaseOrderPartLineView, 'unitPrice');
+declareInventoryCostFields(PurchaseOrderCustomLineView, 'unitPrice');
 
 export type PurchaseOrderView = z.infer<typeof PurchaseOrderView>;
 export const PurchaseOrderView = PurchaseOrder.extend({ lines: z.array(PurchaseOrderLineView) });
@@ -327,7 +357,12 @@ export const PurchaseOrderPdfModel = PurchaseOrder.pick({
   }),
   // What the order asked for. Neither what has arrived against it nor whether anything has moved
   // belongs on the page the Supplier is sent.
-  lines: z.array(PurchaseOrderLine.omit({ hasStockMovements: true, receiptBuckets: true, receivedQuantity: true })),
+  lines: z.array(
+    z.discriminatedUnion('kind', [
+      PurchaseOrderPartLine.omit({ hasStockMovements: true, receiptBuckets: true, receivedQuantity: true }),
+      PurchaseOrderCustomLine.omit({ hasStockMovements: true, receivedQuantity: true }),
+    ]),
+  ),
   /**
    * Which rendering of the order this is. Amendments file further revisions rather than replacing
    * the original, so the printed number is how the Supplier knows the page in their hand is the

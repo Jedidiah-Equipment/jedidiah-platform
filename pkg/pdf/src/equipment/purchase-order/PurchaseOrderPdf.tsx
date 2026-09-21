@@ -144,7 +144,7 @@ export function PurchaseOrderPdf({ document }: { document: PurchaseOrderPdfModel
 }
 
 function formatLineQuantity(line: PurchaseOrderPdfModel['lines'][number]): string {
-  if (line.unitOfMeasure === null) return `${line.quantity} ${line.unit ?? ''}`.trim();
+  if (line.kind === 'custom') return `${line.quantity} ${line.unit}`;
   if (line.unitOfMeasure === 'mm' && line.standardPurchaseLengthMm !== null) {
     return `${line.quantity} x ${line.standardPurchaseLengthMm} mm`;
   }

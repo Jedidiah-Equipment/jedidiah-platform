@@ -1,20 +1,26 @@
 import { randomUUID } from 'node:crypto';
 import { type DatabaseTransaction, type Db, user } from '@pkg/db';
 import { parts, purchaseOrderAmendments, purchaseOrderLines, purchaseOrders } from '@pkg/db/equipment';
+import { formatPurchaseOrderLineLabel } from '@pkg/domain/equipment';
 import type { AuthId, UUID } from '@pkg/schema';
 import type {
   PurchaseOrder,
   PurchaseOrderAmendAddCustomLineInput,
   PurchaseOrderAmendAddLineInput,
-  PurchaseOrderAmendCustomLineQuantityInput,
   PurchaseOrderAmendExpectedDateInput,
   PurchaseOrderAmendmentListResult,
   PurchaseOrderAmendQuantityInput,
   PurchaseOrderAmendRemoveCustomLineInput,
   PurchaseOrderAmendSubstitutePartInput,
+  PurchaseOrderCustomLine,
+  PurchaseOrderLine,
+  PurchaseOrderPartLine,
   PurchaseOrderPdfRenderer,
 } from '@pkg/schema/equipment';
-import { PurchaseOrderAmendmentListResult as PurchaseOrderAmendmentListResultSchema } from '@pkg/schema/equipment';
+import {
+  findPurchaseOrderPartLine,
+  PurchaseOrderAmendmentListResult as PurchaseOrderAmendmentListResultSchema,
+} from '@pkg/schema/equipment';
 import { aliasedTable, and, asc, eq, isNull, sql } from 'drizzle-orm';
 import { diffAuditUpdate, recordAuditUpdate } from '../../audit/audit-writer.js';
 import type { StorageAdapter } from '../../storage/storage-adapter.js';
@@ -109,28 +115,28 @@ export async function amendPurchaseOrderQuantity({
   storage: StorageAdapter;
 }): Promise<PurchaseOrder> {
   return applyAmendment({ actorUserId, db, id: input.id, pdfRenderer, storage }, async (tx, purchaseOrder) => {
-    const line = findLine(purchaseOrder, input.partId);
-    await assertLinePartsMatchSupplier({
-      db: tx,
-      lines: [{ partId: input.partId, quantity: input.quantity }],
-      supplierId: purchaseOrder.supplierId,
-    });
-    // Receipts are facts. An order asking for less than it has already taken in describes nothing.
+    const line = findLine(purchaseOrder, input.lineId);
+    if (line.kind === 'part') {
+      await assertLinePartsMatchSupplier({
+        db: tx,
+        lines: [{ partId: line.partId, quantity: input.quantity }],
+        supplierId: purchaseOrder.supplierId,
+      });
+    }
+    // Receipts and Arrivals are facts. An order asking for less than it has already taken in
+    // describes nothing.
     if (input.quantity < line.receivedQuantity) {
-      throw new PurchaseOrderAmendmentBelowReceivedError(line.partCode, line.receivedQuantity);
+      throw new PurchaseOrderAmendmentBelowReceivedError(formatPurchaseOrderLineLabel(line), line.receivedQuantity);
     }
 
-    await tx
-      .update(purchaseOrderLines)
-      .set({ quantity: input.quantity })
-      .where(and(eq(purchaseOrderLines.purchaseOrderId, input.id), eq(purchaseOrderLines.partId, input.partId)));
+    await tx.update(purchaseOrderLines).set({ quantity: input.quantity }).where(eq(purchaseOrderLines.id, line.id));
 
     return {
+      ...amendmentLineSubject(line),
       kind: 'quantity-change',
       newQuantity: input.quantity,
       note: input.note,
       oldQuantity: line.quantity,
-      partId: input.partId,
     };
   });
 }
@@ -171,36 +177,6 @@ export async function amendPurchaseOrderAddLine({
       note: input.note,
       oldQuantity: null,
       partId: input.partId,
-    };
-  });
-}
-
-export async function amendPurchaseOrderCustomLineQuantity({
-  actorUserId,
-  db,
-  input,
-  pdfRenderer,
-  storage,
-}: {
-  actorUserId: AuthId;
-  db: Db;
-  input: PurchaseOrderAmendCustomLineQuantityInput;
-  pdfRenderer: PurchaseOrderPdfRenderer;
-  storage: StorageAdapter;
-}): Promise<PurchaseOrder> {
-  return applyAmendment({ actorUserId, db, id: input.id, pdfRenderer, storage }, async (tx, order) => {
-    const line = findCustomLine(order, input.lineId);
-    if (input.quantity < line.receivedQuantity) {
-      throw new PurchaseOrderAmendmentBelowReceivedError(line.description, line.receivedQuantity);
-    }
-    await tx.update(purchaseOrderLines).set({ quantity: input.quantity }).where(eq(purchaseOrderLines.id, line.id));
-    return {
-      customDescription: line.description,
-      kind: 'quantity-change',
-      lineId: line.id,
-      newQuantity: input.quantity,
-      note: input.note,
-      oldQuantity: line.quantity,
     };
   });
 }
@@ -264,13 +240,7 @@ export async function amendPurchaseOrderRemoveCustomLine({
     if (line.hasStockMovements) throw new PurchaseOrderAmendmentLineHasArrivalsError(line.description);
     if (order.lines.length === 1) throw new PurchaseOrderAmendmentLastLineError();
     await tx.delete(purchaseOrderLines).where(eq(purchaseOrderLines.id, line.id));
-    return {
-      customDescription: line.description,
-      kind: 'remove-line',
-      lineId: line.id,
-      note: input.note,
-      oldQuantity: line.quantity,
-    };
+    return { ...amendmentLineSubject(line), kind: 'remove-line', note: input.note, oldQuantity: line.quantity };
   });
 }
 
@@ -296,7 +266,7 @@ export async function amendPurchaseOrderSubstitutePart({
   storage: StorageAdapter;
 }): Promise<PurchaseOrder> {
   return applyAmendment({ actorUserId, db, id: input.id, pdfRenderer, storage }, async (tx, purchaseOrder) => {
-    const line = findLine(purchaseOrder, input.partId);
+    const line = findPartLine(purchaseOrder, input.partId);
     await assertSubstitutionHasNoReceipts(tx, purchaseOrder, input.partId, line.partCode);
     assertPartIsNotOnOrder(purchaseOrder, input.newPartId);
     await assertLinePartsMatchSupplier({
@@ -445,25 +415,39 @@ async function applyAmendment(
   }
 }
 
-function findLine(purchaseOrder: PurchaseOrder, partId: UUID) {
-  const line = purchaseOrder.lines.find((candidate) => candidate.partId === partId);
-  if (line?.kind !== 'part' || line.partCode === null) {
-    throw new PurchaseOrderLineNotFoundError(purchaseOrder.id, partId);
-  }
+function findLine(purchaseOrder: PurchaseOrder, lineId: UUID): PurchaseOrderLine {
+  const line = purchaseOrder.lines.find((candidate) => candidate.id === lineId);
+  if (!line) throw new PurchaseOrderLineNotFoundError(purchaseOrder.id, lineId);
 
-  return { ...line, partCode: line.partCode };
+  return line;
 }
 
-function findCustomLine(purchaseOrder: PurchaseOrder, lineId: UUID) {
-  const line = purchaseOrder.lines.find((candidate) => candidate.kind === 'custom' && candidate.id === lineId);
-  if (!line) throw new PurchaseOrderLineNotFoundError(purchaseOrder.id, lineId);
+function findPartLine(purchaseOrder: PurchaseOrder, partId: UUID): PurchaseOrderPartLine {
+  const line = findPurchaseOrderPartLine(purchaseOrder.lines, partId);
+  if (!line) throw new PurchaseOrderLineNotFoundError(purchaseOrder.id, partId);
+
   return line;
+}
+
+function findCustomLine(purchaseOrder: PurchaseOrder, lineId: UUID): PurchaseOrderCustomLine {
+  const line = findLine(purchaseOrder, lineId);
+  if (line.kind !== 'custom') throw new PurchaseOrderLineNotFoundError(purchaseOrder.id, lineId);
+
+  return line;
+}
+
+/**
+ * How the insert-only log names a line: a Part Line by its Part, a Custom Line by its id and the
+ * log's own copy of the description, which outlives the line's removal.
+ */
+function amendmentLineSubject(line: PurchaseOrderLine) {
+  return line.kind === 'part' ? { partId: line.partId } : { customDescription: line.description, lineId: line.id };
 }
 
 /** A Part appears once per order, so an add or a substitution has to bring one that is not on it. */
 function assertPartIsNotOnOrder(purchaseOrder: PurchaseOrder, partId: UUID): void {
-  const existing = purchaseOrder.lines.find((line) => line.partId === partId);
-  if (existing) throw new PurchaseOrderLineExistsError(existing.partCode ?? partId);
+  const existing = findPurchaseOrderPartLine(purchaseOrder.lines, partId);
+  if (existing) throw new PurchaseOrderLineExistsError(existing.partCode);
 }
 
 /**

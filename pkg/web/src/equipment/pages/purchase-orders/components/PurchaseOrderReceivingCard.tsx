@@ -11,7 +11,7 @@ import { PartLabelPrintButton } from '@/equipment/pages/parts/PartLabelPrintButt
 import { useTRPC } from '@/lib/trpc.js';
 import { PurchaseOrderArrivalDialog } from './PurchaseOrderArrivalDialog.js';
 import { PurchaseOrderReceiveDialog } from './PurchaseOrderReceiveDialog.js';
-import { isPartPurchaseOrderLine, outstandingQuantity } from './types.js';
+import { outstandingQuantity } from './types.js';
 
 /**
  * The dock's view of a sent order: what each line still owes, and the one action that posts it.
@@ -43,7 +43,7 @@ export function PurchaseOrderReceivingCard({
         accessorFn: (line) => line.description,
         cell: ({ row }) => (
           <>
-            {row.original.partCode ? (
+            {row.original.kind === 'part' ? (
               <>
                 <span className="font-medium">{row.original.partCode}</span> ·{' '}
               </>
@@ -70,7 +70,7 @@ export function PurchaseOrderReceivingCard({
         cell: ({ row }) => (
           <div className="flex justify-end gap-2">
             {/* Labels go on stock that has actually landed, so the button appears with the first receipt. */}
-            {isPartPurchaseOrderLine(row.original) && row.original.receivedQuantity > 0 ? (
+            {row.original.kind === 'part' && row.original.receivedQuantity > 0 ? (
               <PartLabelPrintButton partId={row.original.partId} size="sm" />
             ) : null}
             {canReceive ? (
@@ -134,7 +134,7 @@ export function PurchaseOrderReceivingCard({
           purchaseOrder={purchaseOrder}
           reverse={active?.reverse ?? false}
         />
-      ) : receivingLine && isPartPurchaseOrderLine(receivingLine) ? (
+      ) : receivingLine ? (
         <PurchaseOrderReceiveDialog
           canReadCosts={canReadCosts}
           // Remount per line so the dialog's prefilled outstanding quantity follows the line it opens on.

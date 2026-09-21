@@ -241,13 +241,15 @@ describe('mergeSupplier', () => {
       },
     });
     await approvePurchaseOrder({ actorUserId: ACTOR_ID, db: context.db, id: PURCHASE_ORDER_ID });
-    await markPurchaseOrderSent({
+    const sent = await markPurchaseOrderSent({
       actorUserId: ACTOR_ID,
       db: context.db,
       id: PURCHASE_ORDER_ID,
       pdfRenderer: async () => PDF_BYTES,
       storage,
     });
+    const lineId = sent.lines[0]?.id;
+    if (!lineId) throw new Error('Sent order has no line');
     await mergeSupplier({
       actorUserId: ACTOR_ID,
       db: context.db,
@@ -258,7 +260,7 @@ describe('mergeSupplier', () => {
       amendPurchaseOrderQuantity({
         actorUserId: ACTOR_ID,
         db: context.db,
-        input: { id: PURCHASE_ORDER_ID, note: 'Supplier confirmed one extra', partId: PART_ID, quantity: 3 },
+        input: { id: PURCHASE_ORDER_ID, lineId, note: 'Supplier confirmed one extra', quantity: 3 },
         pdfRenderer: async () => PDF_BYTES,
         storage,
       }),

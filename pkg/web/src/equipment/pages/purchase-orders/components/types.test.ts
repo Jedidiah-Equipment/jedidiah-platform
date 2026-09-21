@@ -32,12 +32,11 @@ const lines = [
     kind: 'part',
     partCode: 'P-100',
     partId: PART_ID,
-    partName: 'Bearing',
     quantity: 4,
     receiptBuckets: [{ lengthMm: null, outstandingReceivedQuantity: 1 }],
     receivedQuantity: 1,
     standardPurchaseLengthMm: null,
-    unit: null,
+    supplierCode: null,
     unitOfMeasure: 'piece',
     unitPrice: 125.5,
   },
@@ -48,7 +47,6 @@ const lines = [
     kind: 'part',
     partCode: 'C-200',
     partId: LINEAR_PART_ID,
-    partName: 'Channel',
     quantity: 3,
     receiptBuckets: [
       { lengthMm: 3_000, outstandingReceivedQuantity: 2 },
@@ -56,7 +54,7 @@ const lines = [
     ],
     receivedQuantity: 5,
     standardPurchaseLengthMm: 6_000,
-    unit: null,
+    supplierCode: null,
     unitOfMeasure: 'mm',
     unitPrice: 900,
   },
@@ -105,15 +103,11 @@ describe('Purchase Order draft form values', () => {
           hasStockMovements: false,
           id: LINE_ID,
           kind: 'custom',
-          partCode: null,
-          partId: null,
-          partName: null,
           quantity: 2.5,
           receiptBuckets: [],
           receivedQuantity: 0,
-          standardPurchaseLengthMm: null,
+          supplierCode: null,
           unit: 'box',
-          unitOfMeasure: null,
           unitPrice: 80,
         },
       ],
@@ -190,7 +184,9 @@ describe('Purchase Order draft form values', () => {
 
 describe('Purchase Order receiving values', () => {
   const [pieceLine, linearLine] = purchaseOrder.lines;
-  if (!pieceLine || !linearLine) throw new Error('Purchase Order fixture is missing its lines');
+  if (pieceLine?.kind !== 'part' || linearLine?.kind !== 'part') {
+    throw new Error('Purchase Order fixture is missing its Part Lines');
+  }
 
   it('prefills the dock with what a line is still waiting on', () => {
     expect(outstandingQuantity(pieceLine)).toBe(3);
@@ -313,7 +309,9 @@ describe('Purchase Order amendment values', () => {
 
 describe('Purchase Order return values', () => {
   const [pieceLine, linearLine] = purchaseOrder.lines;
-  if (!pieceLine || !linearLine) throw new Error('Purchase Order fixture is missing its lines');
+  if (pieceLine?.kind !== 'part' || linearLine?.kind !== 'part') {
+    throw new Error('Purchase Order fixture is missing its Part Lines');
+  }
 
   it('reads what a line can still send back from the bucket the return would post against', () => {
     // The figure is served per bucket by the order read; picking the bucket is all this does.

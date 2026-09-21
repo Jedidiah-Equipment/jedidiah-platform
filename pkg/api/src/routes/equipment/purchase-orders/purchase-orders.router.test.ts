@@ -301,12 +301,14 @@ describe('amendments, returns, and credit notes', () => {
     const procurement = context.createCaller(mockSession('procurement-manager'));
     const stores = context.createCaller(mockSession('stores'));
     const purchaseOrder = await sendOrder(admin, 4);
+    const lineId = purchaseOrder.lines[0]?.id;
+    if (!lineId) throw new Error('Sent order has no line');
 
     await expect(
       stores.purchaseOrders.amendQuantity({
         id: purchaseOrder.id,
+        lineId,
         note: 'Stores does not change orders',
-        partId: PART_ID,
         quantity: 6,
       }),
     ).rejects.toMatchObject({ code: 'FORBIDDEN' });
@@ -314,8 +316,8 @@ describe('amendments, returns, and credit notes', () => {
     await expect(
       admin.purchaseOrders.amendQuantity({
         id: purchaseOrder.id,
+        lineId,
         note: 'Supplier can send 6',
-        partId: PART_ID,
         quantity: 6,
       }),
     ).resolves.toMatchObject({ lines: [{ kind: 'part', partId: PART_ID, quantity: 6 }] });

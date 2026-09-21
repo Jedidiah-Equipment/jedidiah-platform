@@ -1,9 +1,9 @@
-import type { PurchaseOrderDerivedStatus, PurchaseOrderLine } from '@pkg/schema/equipment';
+import type { PurchaseOrderDerivedStatus } from '@pkg/schema/equipment';
 
 import { type BadgeColorClassNames, statusBadgeColorClassNames } from '../../theme/status-badge.js';
 
 /** A Part Line uses its catalogue code; a Custom Line uses its own description. */
-export function formatPurchaseOrderLineLabel(line: Pick<PurchaseOrderLine, 'description' | 'partCode'>): string {
+export function formatPurchaseOrderLineLabel(line: { description: string; partCode?: string | null }): string {
   return line.partCode ? `${line.partCode} - ${line.description}` : line.description;
 }
 

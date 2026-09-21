@@ -173,15 +173,19 @@ function line(
 ): PurchaseOrderLineView {
   return {
     description: partName,
+    hasStockMovements: receivedQuantity > 0,
     id: partId,
     kind: 'part',
     partCode,
     partId,
-    partName,
+    quantity: receivedQuantity,
     receiptBuckets: heldQuantity === 0 ? [] : [{ lengthMm: null, outstandingReceivedQuantity: heldQuantity }],
     receivedQuantity,
+    standardPurchaseLengthMm: null,
+    supplierCode: null,
     unitOfMeasure: 'piece',
-  } as PurchaseOrderLineView;
+    unitPrice: null,
+  };
 }
 
 function stubClientConfig(): void {

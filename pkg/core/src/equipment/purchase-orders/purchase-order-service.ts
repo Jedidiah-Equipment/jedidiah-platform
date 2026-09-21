@@ -15,7 +15,6 @@ import {
   jobs,
   parts,
   purchaseOrderJobLinks,
-  purchaseOrderLineArrivals,
   purchaseOrderLines,
   purchaseOrders,
   stockMovements,
@@ -40,7 +39,6 @@ import {
   type PurchaseOrderListResult,
   type PurchaseOrderPdfModel,
   type PurchaseOrderPdfRenderer,
-  type PurchaseOrderProgress,
   type PurchaseOrderReceiptBucket,
   type PurchaseOrderSaveDraftInput,
   PurchaseOrder as PurchaseOrderSchema,
@@ -77,6 +75,7 @@ import {
   PurchaseOrderPartSupplierMismatchError,
   PurchaseOrderSupplierNotFoundError,
 } from './purchase-order-errors.js';
+import { loadLineIntake, type PurchaseOrderLineIntake } from './purchase-order-line-intake.js';
 import { loadReceiptBuckets, receiptBucketKey } from './receipt-pool.js';
 
 type PurchaseOrderRow = typeof purchaseOrders.$inferSelect;
@@ -175,108 +174,13 @@ export async function getPurchaseOrder({ db, id }: { db: PurchaseOrderDb; id: UU
   const aggregate = await loadPurchaseOrderAggregate({ db, id });
   if (!aggregate) throw new PurchaseOrderNotFoundError(id);
 
-  const [documentIds, receivedQuantities, arrivedQuantities, linesWithMovements, linesWithArrivals, receiptBuckets] =
-    await Promise.all([
-      loadLatestDocumentIds({ db, purchaseOrderIds: [id] }),
-      loadReceivedQuantities({ db, purchaseOrderIds: [id] }),
-      loadArrivedQuantities({ db, purchaseOrderIds: [id] }),
-      loadLinesWithStockMovements({ db, purchaseOrderIds: [id] }),
-      loadLinesWithArrivals({ db, purchaseOrderIds: [id] }),
-      loadReceiptBuckets({ db, purchaseOrderIds: [id] }),
-    ]);
+  const [documentIds, intake, receiptBuckets] = await Promise.all([
+    loadLatestDocumentIds({ db, purchaseOrderIds: [id] }),
+    loadLineIntake({ db, purchaseOrderIds: [id] }),
+    loadReceiptBuckets({ db, purchaseOrderIds: [id] }),
+  ]);
 
-  return mapPurchaseOrder(
-    aggregate,
-    documentIds.get(id) ?? null,
-    receivedQuantities,
-    arrivedQuantities,
-    linesWithMovements,
-    linesWithArrivals,
-    receiptBuckets,
-  );
-}
-
-/**
- * The return reasons that leave the Supplier still owing the goods (spec §4). Sending back the
- * wrong item or a defective one re-opens the line's expectation, because a replacement is coming;
- * `order-error` is us admitting we asked for the wrong thing, and nothing is owed in its place.
- */
-const REPLACEMENT_OWED_RETURN_REASONS = ['wrong-item', 'defective'] as const;
-
-/**
- * What each order line has actually taken in and kept, keyed by the line's own composite identity.
- * The derived `partially received` / `received` states are read from this and never stored (§4), as
- * are the line's outstanding quantity and the plant's On Order figure.
- *
- * Receipts *less* the returns that owe a replacement: a line that took ten and sent all ten back as
- * defective is waiting on ten again, and every surface that asks what is still coming has to say so
- * — including the over-receipt warning, which would otherwise fire on the replacement delivery.
- */
-export async function loadReceivedQuantities({
-  db,
-  purchaseOrderIds,
-}: {
-  db: PurchaseOrderDb;
-  purchaseOrderIds: readonly UUID[];
-}): Promise<Map<string, number>> {
-  if (purchaseOrderIds.length === 0) return new Map();
-
-  const rows = await db
-    .select({
-      partId: stockMovements.partId,
-      purchaseOrderId: stockMovements.purchaseOrderId,
-      receivedQuantity: sql<number>`coalesce(sum(${stockMovements.delta}), 0)::double precision`,
-    })
-    .from(stockMovements)
-    .where(
-      and(
-        inArray(stockMovements.purchaseOrderId, [...purchaseOrderIds]),
-        // Return deltas are negative, so summing them alongside receipts nets the line down.
-        or(
-          eq(stockMovements.movementType, 'receipt'),
-          and(
-            eq(stockMovements.movementType, 'return-to-supplier'),
-            inArray(stockMovements.reason, [...REPLACEMENT_OWED_RETURN_REASONS]),
-          ),
-        ),
-      ),
-    )
-    .groupBy(stockMovements.purchaseOrderId, stockMovements.partId);
-
-  return new Map(
-    rows.flatMap((row) =>
-      row.purchaseOrderId
-        ? // Floored: an over-return posts by design (`exceeds-received` warns, never blocks), and a
-          // line that sent back more than it took in has taken in nothing — not a negative amount,
-          // which would inflate its outstanding quantity and the plant's On Order past what was ordered.
-          [[receivedQuantityKey(row.purchaseOrderId, row.partId), Math.max(0, row.receivedQuantity)] as const]
-        : [],
-    ),
-  );
-}
-
-/**
- * Every line of these orders that carries any stock movement at all, keyed like the received map.
- * Read alongside the received quantities because the two answer different questions: what a line has
- * kept, and whether it has any ledger rows a substitution would orphan.
- */
-async function loadLinesWithStockMovements({
-  db,
-  purchaseOrderIds,
-}: {
-  db: PurchaseOrderDb;
-  purchaseOrderIds: readonly UUID[];
-}): Promise<Set<string>> {
-  if (purchaseOrderIds.length === 0) return new Set();
-
-  const rows = await db
-    .selectDistinct({ partId: stockMovements.partId, purchaseOrderId: stockMovements.purchaseOrderId })
-    .from(stockMovements)
-    .where(inArray(stockMovements.purchaseOrderId, [...purchaseOrderIds]));
-
-  return new Set(
-    rows.flatMap((row) => (row.purchaseOrderId ? [receivedQuantityKey(row.purchaseOrderId, row.partId)] : [])),
-  );
+  return mapPurchaseOrder({ documentId: documentIds.get(id) ?? null, intake, receiptBuckets, row: aggregate });
 }
 
 /**
@@ -304,117 +208,15 @@ export async function lineHasStockMovements({
   return row !== undefined;
 }
 
-export function receivedQuantityKey(purchaseOrderId: string, partId: string): string {
-  return `${purchaseOrderId}:${partId}`;
-}
-
-/** Net arrivals by Custom Line id. Reversals never take this below zero. */
-export async function loadArrivedQuantities({
-  db,
-  purchaseOrderIds,
-}: {
-  db: PurchaseOrderDb;
-  purchaseOrderIds: readonly UUID[];
-}): Promise<Map<string, number>> {
-  if (purchaseOrderIds.length === 0) return new Map();
-  const rows = await db
-    .select({
-      arrivedQuantity: sql<number>`coalesce(sum(${purchaseOrderLineArrivals.quantity}), 0)::double precision`,
-      lineId: purchaseOrderLineArrivals.lineId,
-    })
-    .from(purchaseOrderLineArrivals)
-    .where(inArray(purchaseOrderLineArrivals.purchaseOrderId, [...purchaseOrderIds]))
-    .groupBy(purchaseOrderLineArrivals.lineId);
-  return new Map(rows.map((row) => [row.lineId, Math.max(0, row.arrivedQuantity)]));
-}
-
-async function loadLinesWithArrivals({
-  db,
-  purchaseOrderIds,
-}: {
-  db: PurchaseOrderDb;
-  purchaseOrderIds: readonly UUID[];
-}): Promise<Set<string>> {
-  if (purchaseOrderIds.length === 0) return new Set();
-  const rows = await db
-    .selectDistinct({ lineId: purchaseOrderLineArrivals.lineId })
-    .from(purchaseOrderLineArrivals)
-    .where(inArray(purchaseOrderLineArrivals.purchaseOrderId, [...purchaseOrderIds]));
-  return new Set(rows.map((row) => row.lineId));
-}
-
-/**
- * One order's receiving progress, read inside a caller's transaction. The close-short gate and the
- * projected `derivedStatus` share this so an order cannot be closed short of a remainder it hasn't
- * got.
- */
-export async function loadPurchaseOrderProgress({
-  db,
-  id,
-}: {
-  db: PurchaseOrderDb;
-  id: UUID;
-}): Promise<PurchaseOrderProgress> {
-  const [lines, receivedQuantities, arrivedQuantities] = await Promise.all([
-    db
-      .select({ id: purchaseOrderLines.id, partId: purchaseOrderLines.partId, quantity: purchaseOrderLines.quantity })
-      .from(purchaseOrderLines)
-      .where(eq(purchaseOrderLines.purchaseOrderId, id)),
-    loadReceivedQuantities({ db, purchaseOrderIds: [id] }),
-    loadArrivedQuantities({ db, purchaseOrderIds: [id] }),
-  ]);
-
-  return derivePurchaseOrderProgress({
-    lines,
-    receivedByLineId: new Map(
-      lines.map((line) => [
-        line.id,
-        line.partId === null
-          ? (arrivedQuantities.get(line.id) ?? 0)
-          : (receivedQuantities.get(receivedQuantityKey(id, line.partId)) ?? 0),
-      ]),
-    ),
-  });
-}
-
-/**
- * What the ledger says about one order, read once for the two gates that terminate it. Both judge
- * history by `hasAnyMovement` and only the remainder by `progress`, so an order can never refuse
- * cancelling *and* closing short for want of history — which is what stranded one whose receipts
- * had all gone back as replacement-owed returns: netted to nothing, it read `sent` and looked
- * untouched to close-short, while its rows were real enough to block cancelling.
- */
-export type PurchaseOrderLedgerFacts = {
-  /** Any ledger row or Arrival against the order — the order's history exists. */
-  hasAnyMovement: boolean;
-  /** The netted projection: what the lines have kept, and so what remainder is still owed. */
-  progress: PurchaseOrderProgress;
-};
-
-export async function loadPurchaseOrderLedgerFacts({
-  db,
-  id,
-}: {
-  db: PurchaseOrderDb;
-  id: UUID;
-}): Promise<PurchaseOrderLedgerFacts> {
-  const [movement, arrival, progress] = await Promise.all([
-    db.select({ id: stockMovements.id }).from(stockMovements).where(eq(stockMovements.purchaseOrderId, id)).limit(1),
-    db
-      .select({ id: purchaseOrderLineArrivals.id })
-      .from(purchaseOrderLineArrivals)
-      .where(eq(purchaseOrderLineArrivals.purchaseOrderId, id))
-      .limit(1),
-    loadPurchaseOrderProgress({ db, id }),
-  ]);
-
-  return { hasAnyMovement: movement.length > 0 || arrival.length > 0, progress };
-}
-
 /**
  * The whole world an action verdict is judged against, read under whatever lock the caller already
- * holds. It is the ledger facts the termination rules read, plus the two stored facts and whether
- * the order has any lines at all — so every gate, not just cancel and close-short, asks one question.
+ * holds, so every gate asks one question of one read.
+ *
+ * History and remainder are separate facts of the same intake: `hasAnyMovement` is whether any line
+ * has moved at all, `progress` only what the lines have kept. An order can therefore never refuse
+ * cancelling *and* closing short for want of history — which is what stranded one whose receipts had
+ * all gone back as replacement-owed returns: netted to nothing, it read `sent` and looked untouched
+ * to close-short, while its rows were real enough to block cancelling.
  */
 export async function loadPurchaseOrderActionFacts({
   db,
@@ -423,16 +225,19 @@ export async function loadPurchaseOrderActionFacts({
   db: PurchaseOrderDb;
   row: Pick<PurchaseOrderRow, 'closedShortAt' | 'id' | 'status'>;
 }): Promise<PurchaseOrderActionFacts> {
-  const [ledger, [lines]] = await Promise.all([
-    loadPurchaseOrderLedgerFacts({ db, id: row.id }),
-    db.select({ value: count() }).from(purchaseOrderLines).where(eq(purchaseOrderLines.purchaseOrderId, row.id)),
+  const [lines, intake] = await Promise.all([
+    db
+      .select({ id: purchaseOrderLines.id, quantity: purchaseOrderLines.quantity })
+      .from(purchaseOrderLines)
+      .where(eq(purchaseOrderLines.purchaseOrderId, row.id)),
+    loadLineIntake({ db, purchaseOrderIds: [row.id] }),
   ]);
 
   return {
     closedShortAt: row.closedShortAt,
-    hasAnyMovement: ledger.hasAnyMovement,
-    isEmpty: (lines?.value ?? 0) === 0,
-    progress: ledger.progress,
+    hasAnyMovement: intake.size > 0,
+    isEmpty: lines.length === 0,
+    progress: derivePurchaseOrderProgress({ lines, receivedByLineId: intake }),
     status: row.status,
   };
 }
@@ -447,13 +252,42 @@ export type OpenOrderLine = {
 };
 
 /**
- * Every line still owed by a Supplier, per Part (spec §3's "on order").
+ * Every line a Supplier still owes, either kind — the one "still owed" read, so an order cannot be
+ * late on one surface while counting as delivered on another.
  *
  * The open set is `sent`, un-cancelled (`cancelled` replaces the stored `sent`, so the status test
  * covers it), and not closed short — closing short is exactly the assertion that a remainder is
- * never arriving, so it must stop counting as cover the moment it is made. Over-receipt floors at
- * zero per line: a line that took 12 against 10 owes nothing, and never negative cover to some
- * other line of the same Part.
+ * never arriving, so it must stop counting the moment it is made. Over-receipt floors at zero per
+ * line: a line that took 12 against 10 owes nothing, and never negative cover to some other line.
+ */
+async function loadOwedLines({ db, scope }: { db: PurchaseOrderDb; scope: SQL | undefined }) {
+  const lines = await db
+    .select({
+      expectedDeliveryDate: purchaseOrders.expectedDeliveryDate,
+      id: purchaseOrderLines.id,
+      partId: purchaseOrderLines.partId,
+      purchaseOrderCode: purchaseOrders.code,
+      purchaseOrderId: purchaseOrders.id,
+      quantity: purchaseOrderLines.quantity,
+    })
+    .from(purchaseOrderLines)
+    .innerJoin(purchaseOrders, eq(purchaseOrders.id, purchaseOrderLines.purchaseOrderId))
+    .where(and(eq(purchaseOrders.status, 'sent'), isNull(purchaseOrders.closedShortAt), scope));
+  const intake = await loadLineIntake({
+    db,
+    purchaseOrderIds: [...new Set(lines.map((line) => line.purchaseOrderId))],
+  });
+
+  return lines.flatMap(({ id, quantity, ...line }) => {
+    const outstandingQuantity = Math.max(0, quantity - (intake.get(id) ?? 0));
+
+    return outstandingQuantity > 0 ? [{ ...line, outstandingQuantity }] : [];
+  });
+}
+
+/**
+ * Every Part Line still owed by a Supplier, per Part (spec §3's "on order"). A Custom Line is never
+ * Part cover, so it is never here.
  *
  * Ordered earliest-promised first, nulls last, so a caller's first line for a Part is the one worth
  * naming — "PO-0042, expected Thursday" beside the shortfall it covers. `partIds` narrows the scan
@@ -471,39 +305,31 @@ export async function loadOpenOrderLines({
   const partScope = partIds === undefined ? undefined : [...partIds];
   if (partScope?.length === 0) return [];
 
-  const lines = await db
-    .select({
-      expectedDeliveryDate: purchaseOrders.expectedDeliveryDate,
-      partId: purchaseOrderLines.partId,
-      purchaseOrderCode: purchaseOrders.code,
-      purchaseOrderId: purchaseOrders.id,
-      quantity: purchaseOrderLines.quantity,
-    })
-    .from(purchaseOrderLines)
-    .innerJoin(purchaseOrders, eq(purchaseOrders.id, purchaseOrderLines.purchaseOrderId))
-    .where(
-      and(
-        eq(purchaseOrders.status, 'sent'),
-        isNull(purchaseOrders.closedShortAt),
-        isNotNull(purchaseOrderLines.partId),
-        partScope ? inArray(purchaseOrderLines.partId, partScope) : undefined,
-      ),
-    );
-
-  const receivedQuantities = await loadReceivedQuantities({
+  const lines = await loadOwedLines({
     db,
-    purchaseOrderIds: [...new Set(lines.map((line) => line.purchaseOrderId))],
+    scope: partScope ? inArray(purchaseOrderLines.partId, partScope) : isNotNull(purchaseOrderLines.partId),
   });
 
   return lines
-    .flatMap((line) => {
-      if (line.partId === null) return [];
-      const received = receivedQuantities.get(receivedQuantityKey(line.purchaseOrderId, line.partId)) ?? 0;
-      const outstandingQuantity = Math.max(0, line.quantity - received);
-
-      return outstandingQuantity > 0 ? [{ ...line, partId: line.partId, outstandingQuantity }] : [];
-    })
+    .flatMap(({ partId, ...line }) => (partId === null ? [] : [{ ...line, partId }]))
     .sort(compareOpenOrderLines);
+}
+
+/** How many lines of each order are still owed, Custom Lines included — what makes an order late. */
+export async function loadOpenLineCounts({
+  db,
+  purchaseOrderIds,
+}: {
+  db: PurchaseOrderDb;
+  purchaseOrderIds: readonly UUID[];
+}): Promise<Map<string, number>> {
+  if (purchaseOrderIds.length === 0) return new Map();
+
+  const lines = await loadOwedLines({ db, scope: inArray(purchaseOrders.id, [...purchaseOrderIds]) });
+  const counts = new Map<string, number>();
+  for (const line of lines) counts.set(line.purchaseOrderId, (counts.get(line.purchaseOrderId) ?? 0) + 1);
+
+  return counts;
 }
 
 function compareOpenOrderLines(left: OpenOrderLine, right: OpenOrderLine): number {
@@ -637,34 +463,16 @@ export async function listPurchaseOrders({
     where,
     with: purchaseOrderWith,
   });
-  const [
-    [totalRow],
-    documentIds,
-    receivedQuantities,
-    arrivedQuantities,
-    linesWithMovements,
-    linesWithArrivals,
-    receiptBuckets,
-  ] = await Promise.all([
+  const purchaseOrderIds = rows.map((row) => row.id);
+  const [[totalRow], documentIds, intake, receiptBuckets] = await Promise.all([
     db.select({ value: count() }).from(purchaseOrders).where(where),
-    loadLatestDocumentIds({ db, purchaseOrderIds: rows.map((row) => row.id) }),
-    loadReceivedQuantities({ db, purchaseOrderIds: rows.map((row) => row.id) }),
-    loadArrivedQuantities({ db, purchaseOrderIds: rows.map((row) => row.id) }),
-    loadLinesWithStockMovements({ db, purchaseOrderIds: rows.map((row) => row.id) }),
-    loadLinesWithArrivals({ db, purchaseOrderIds: rows.map((row) => row.id) }),
-    loadReceiptBuckets({ db, purchaseOrderIds: rows.map((row) => row.id) }),
+    loadLatestDocumentIds({ db, purchaseOrderIds }),
+    loadLineIntake({ db, purchaseOrderIds }),
+    loadReceiptBuckets({ db, purchaseOrderIds }),
   ]);
   const total = totalRow?.value ?? 0;
   const items = rows.map((row) =>
-    mapPurchaseOrder(
-      row,
-      documentIds.get(row.id) ?? null,
-      receivedQuantities,
-      arrivedQuantities,
-      linesWithMovements,
-      linesWithArrivals,
-      receiptBuckets,
-    ),
+    mapPurchaseOrder({ documentId: documentIds.get(row.id) ?? null, intake, receiptBuckets, row }),
   );
 
   return { items, nextCursor: getNextCursor({ count: items.length, cursor: input.cursor, total }), total };
@@ -1007,35 +815,25 @@ async function loadPurchaseOrderAggregate({ db, id }: { db: PurchaseOrderDb; id:
 
 type PurchaseOrderAggregate = NonNullable<Awaited<ReturnType<typeof loadPurchaseOrderAggregate>>>;
 
-function mapPurchaseOrder(
-  row: PurchaseOrderAggregate,
-  documentId: UUID | null,
-  receivedQuantities: ReadonlyMap<string, number>,
-  arrivedQuantities: ReadonlyMap<string, number>,
-  linesWithMovements: ReadonlySet<string>,
-  linesWithArrivals: ReadonlySet<string>,
-  receiptBuckets: ReadonlyMap<string, PurchaseOrderReceiptBucket[]>,
-): PurchaseOrder {
-  const receivedByLineId = new Map(
-    row.lines.map((line) => [
-      line.id,
-      line.partId === null
-        ? (arrivedQuantities.get(line.id) ?? 0)
-        : (receivedQuantities.get(receivedQuantityKey(row.id, line.partId)) ?? 0),
-    ]),
-  );
+function mapPurchaseOrder({
+  documentId,
+  intake,
+  receiptBuckets,
+  row,
+}: {
+  documentId: UUID | null;
+  intake: PurchaseOrderLineIntake;
+  receiptBuckets: ReadonlyMap<string, PurchaseOrderReceiptBucket[]>;
+  row: PurchaseOrderAggregate;
+}): PurchaseOrder {
   return PurchaseOrderSchema.parse({
     // Reduced from the facts this read already loaded — no extra query — so the payload a surface
     // renders its controls from carries the same verdict the write gate will apply.
     actions: derivePurchaseOrderActions({
       closedShortAt: row.closedShortAt,
-      hasAnyMovement: row.lines.some((line) =>
-        line.partId === null
-          ? linesWithArrivals.has(line.id)
-          : linesWithMovements.has(receivedQuantityKey(row.id, line.partId)),
-      ),
+      hasAnyMovement: row.lines.some((line) => intake.has(line.id)),
       isEmpty: row.lines.length === 0,
-      progress: derivePurchaseOrderProgress({ lines: row.lines, receivedByLineId }),
+      progress: derivePurchaseOrderProgress({ lines: row.lines, receivedByLineId: intake }),
       status: row.status,
     }),
     approvedAt: row.approvedAt,
@@ -1045,7 +843,7 @@ function mapPurchaseOrder(
     derivedStatus: derivePurchaseOrderStatus({
       closedShortAt: row.closedShortAt,
       lines: row.lines,
-      receivedByLineId,
+      receivedByLineId: intake,
       status: row.status,
     }),
     documentId,
@@ -1057,10 +855,7 @@ function mapPurchaseOrder(
     lines: row.lines
       .map((line) => ({
         description: line.part?.name ?? line.customDescription,
-        hasStockMovements:
-          line.partId === null
-            ? linesWithArrivals.has(line.id)
-            : linesWithMovements.has(receivedQuantityKey(row.id, line.partId)),
+        hasStockMovements: intake.has(line.id),
         id: line.id,
         kind: line.partId === null ? ('custom' as const) : ('part' as const),
         partCode: line.part?.code ?? null,
@@ -1069,7 +864,7 @@ function mapPurchaseOrder(
         position: line.position,
         quantity: line.quantity,
         receiptBuckets: line.partId === null ? [] : (receiptBuckets.get(receiptBucketKey(row.id, line.partId)) ?? []),
-        receivedQuantity: receivedByLineId.get(line.id) ?? 0,
+        receivedQuantity: intake.get(line.id) ?? 0,
         standardPurchaseLengthMm: line.part?.standardPurchaseLengthMm ?? null,
         supplierCode: line.part?.supplierCode ?? line.customSupplierCode ?? undefined,
         unit: line.customUnit,
@@ -1098,21 +893,6 @@ function mapPurchaseOrder(
     supplierId: row.supplierId,
     updatedAt: row.updatedAt,
   });
-}
-
-/** What one line has taken in and kept — the floor a quantity amendment may never go below. */
-export async function loadLineReceivedQuantity({
-  db,
-  partId,
-  purchaseOrderId,
-}: {
-  db: PurchaseOrderDb;
-  partId: UUID;
-  purchaseOrderId: UUID;
-}): Promise<number> {
-  const received = await loadReceivedQuantities({ db, purchaseOrderIds: [purchaseOrderId] });
-
-  return received.get(receivedQuantityKey(purchaseOrderId, partId)) ?? 0;
 }
 
 export async function lockPurchaseOrder(tx: DatabaseTransaction, id: UUID): Promise<PurchaseOrderRow> {

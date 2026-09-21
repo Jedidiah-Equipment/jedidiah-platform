@@ -8,7 +8,7 @@ export type PurchaseOrderProgressLine = {
 
 type PurchaseOrderProgressInput = {
   lines: readonly PurchaseOrderProgressLine[];
-  /** What each line has taken in and kept, by line id — receipts today, Arrivals too once they exist. */
+  /** What each line has taken in and kept, by line id — a Part Line's receipts or a Custom Line's Arrivals. */
   receivedByLineId: ReadonlyMap<string, number>;
 };
 

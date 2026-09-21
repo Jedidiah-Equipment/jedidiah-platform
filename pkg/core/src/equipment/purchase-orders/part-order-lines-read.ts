@@ -5,7 +5,8 @@ import type { PartPurchaseOrderLineResult } from '@pkg/schema/equipment';
 import { PartPurchaseOrderLineResult as PartPurchaseOrderLineResultSchema } from '@pkg/schema/equipment';
 import { and, eq } from 'drizzle-orm';
 
-import { loadReceivedQuantities, type PurchaseOrderDb, receivedQuantityKey } from './purchase-order-service.js';
+import { loadLineIntake } from './purchase-order-line-intake.js';
+import type { PurchaseOrderDb } from './purchase-order-service.js';
 import { loadReceiptBuckets, receiptBucketKey } from './receipt-pool.js';
 
 /**
@@ -33,6 +34,7 @@ export async function listPartPurchaseOrderLines({
     .select({
       closedShortAt: purchaseOrders.closedShortAt,
       expectedDeliveryDate: purchaseOrders.expectedDeliveryDate,
+      lineId: purchaseOrderLines.id,
       orderedQuantity: purchaseOrderLines.quantity,
       purchaseOrderCode: purchaseOrders.code,
       purchaseOrderId: purchaseOrders.id,
@@ -45,14 +47,14 @@ export async function listPartPurchaseOrderLines({
 
   const purchaseOrderIds = [...new Set(lines.map((line) => line.purchaseOrderId))];
   const [received, receiptBuckets] = await Promise.all([
-    loadReceivedQuantities({ db, purchaseOrderIds }),
+    loadLineIntake({ db, purchaseOrderIds }),
     loadReceiptBuckets({ db, purchaseOrderIds }),
   ]);
 
   return PartPurchaseOrderLineResultSchema.parse({
     items: lines
-      .map((line) => {
-        const receivedQuantity = received.get(receivedQuantityKey(line.purchaseOrderId, partId)) ?? 0;
+      .map(({ lineId, ...line }) => {
+        const receivedQuantity = received.get(lineId) ?? 0;
 
         return {
           ...line,

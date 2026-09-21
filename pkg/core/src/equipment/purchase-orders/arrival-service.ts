@@ -10,7 +10,7 @@ import {
   type PurchaseOrderArrivalListResult,
   PurchaseOrderArrivalListResult as PurchaseOrderArrivalListResultSchema,
 } from '@pkg/schema/equipment';
-import { and, desc, eq, sql } from 'drizzle-orm';
+import { and, desc, eq } from 'drizzle-orm';
 
 import {
   assertPurchaseOrderAction,
@@ -18,7 +18,8 @@ import {
   PurchaseOrderLineNotCustomError,
   PurchaseOrderLineNotFoundError,
 } from './purchase-order-errors.js';
-import { loadPurchaseOrderActionFacts, lockPurchaseOrder, type PurchaseOrderDb } from './purchase-order-service.js';
+import { loadLineIntake } from './purchase-order-line-intake.js';
+import { loadPurchaseOrderActionFacts, lockPurchaseOrder } from './purchase-order-service.js';
 
 export async function postArrival({
   actorUserId,
@@ -47,7 +48,7 @@ export async function postArrival({
     if (line.partId !== null) throw new PurchaseOrderLineNotCustomError(line.id);
     if (!line.customDescription) throw new Error('Custom Line has no description');
 
-    const arrivedQuantity = await loadLineArrivedQuantity({ db: tx, lineId: line.id, purchaseOrderId: row.id });
+    const arrivedQuantity = (await loadLineIntake({ db: tx, purchaseOrderIds: [row.id] })).get(line.id) ?? 0;
     if (arrivedQuantity + input.quantity < -0.000001) {
       throw new PurchaseOrderArrivalBelowZeroError(line.customDescription, arrivedQuantity);
     }
@@ -85,24 +86,6 @@ export async function postArrival({
           : [],
     });
   });
-}
-
-async function loadLineArrivedQuantity({
-  db,
-  lineId,
-  purchaseOrderId,
-}: {
-  db: PurchaseOrderDb;
-  lineId: UUID;
-  purchaseOrderId: UUID;
-}): Promise<number> {
-  const [row] = await db
-    .select({ quantity: sql<number>`coalesce(sum(${purchaseOrderLineArrivals.quantity}), 0)::double precision` })
-    .from(purchaseOrderLineArrivals)
-    .where(
-      and(eq(purchaseOrderLineArrivals.purchaseOrderId, purchaseOrderId), eq(purchaseOrderLineArrivals.lineId, lineId)),
-    );
-  return row?.quantity ?? 0;
 }
 
 export async function listPurchaseOrderArrivals({

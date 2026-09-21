@@ -19,6 +19,8 @@ export const CONTRACTING_SECTIONS: DocsSection[] = [
     items: [
       { text: 'Overview', link: '/contracting/' },
       { text: 'Work a Job', link: '/contracting/work-a-job' },
+      { text: 'Set up a Job', link: '/contracting/set-up-a-job' },
+      { text: 'Sign off a Job', link: '/contracting/sign-off-a-job' },
       { text: 'Find a Machine', link: '/contracting/find-a-machine' },
       { text: 'Read Machine hours', link: '/contracting/read-machine-hours' },
       { text: 'Capture a reading', link: '/contracting/capture-a-reading' },

@@ -1,7 +1,7 @@
 import { formatDate, toSentenceCase } from '@pkg/domain';
 import { readingExceptionTypeColorClassNames, readingExceptionTypeLabels } from '@pkg/domain/contracting';
 import { ReadingAmendInput, type ReadingException } from '@pkg/schema/contracting';
-import { IconEye, IconInfoCircle } from '@tabler/icons-react';
+import { IconEye } from '@tabler/icons-react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useCallback, useMemo, useState } from 'react';
 import { toast } from 'sonner';
@@ -15,62 +15,13 @@ import { Badge } from '@/components/ui/badge.js';
 import { Button } from '@/components/ui/button.js';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip.js';
 import { CategoryLabel } from '@/contracting/components/CategoryIcon.js';
+import { NoReadableMeterResult, readingEvidence } from '@/contracting/components/ReadingEvidence.js';
 import { useQueryInvalidation } from '@/contracting/hooks/use-query-invalidation.js';
 import { readingPhotoUrl } from '@/contracting/lib/contracting-http-paths.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { cn } from '@/lib/utils.js';
 
 const amendmentValues = ReadingAmendInput.omit({ id: true });
-const aiVerificationPresentation: Record<
-  ReadingException['aiVerification'],
-  { evidenceLabel: string; resultLabel?: string }
-> = {
-  agrees: { evidenceLabel: 'AI-verified' },
-  pending: { evidenceLabel: 'Verification pending', resultLabel: 'Verification pending' },
-  disagrees: { evidenceLabel: 'Extracted value differs' },
-  'low-confidence': { evidenceLabel: 'Low extraction confidence' },
-  'not-applicable': { evidenceLabel: 'Photo verification not applicable', resultLabel: 'No photo verification' },
-};
-
-function aiPresentation(row: ReadingException) {
-  const verification = aiVerificationPresentation[row.aiVerification];
-  const noReadableMeter = verification.resultLabel === undefined && row.aiValue === null;
-  const confidencePercent = row.aiConfidence === null ? null : Math.round(row.aiConfidence * 100);
-  const evidenceDetail = noReadableMeter && row.aiVerification === 'low-confidence' ? null : verification.evidenceLabel;
-  return {
-    confidenceLabel:
-      confidencePercent === null
-        ? 'Confidence unavailable'
-        : row.aiValue === null
-          ? null
-          : `${confidencePercent}% confidence in extracted value`,
-    evidenceLabel: row.photo ? ['Photo-backed', evidenceDetail].filter(Boolean).join(' · ') : 'Missing Photo Evidence',
-    resultLabel:
-      verification.resultLabel ?? (row.aiValue === null ? 'No readable meter detected' : `${row.aiValue.toFixed(1)} h`),
-    resultConfidencePercent: noReadableMeter ? confidencePercent : null,
-  };
-}
-
-function NoReadableMeterResult({ confidencePercent }: { confidencePercent: number }) {
-  const tooltipLabel = `${confidencePercent}% confident no readable meter was detected`;
-  return (
-    <Tooltip>
-      <TooltipTrigger
-        render={
-          <button
-            type="button"
-            className="inline-flex cursor-help items-center gap-1 rounded-sm text-left text-foreground"
-          />
-        }
-      >
-        <span>No readable meter detected</span>
-        <IconInfoCircle aria-hidden className="size-[18px] shrink-0" />
-      </TooltipTrigger>
-      <TooltipContent>{tooltipLabel}</TooltipContent>
-    </Tooltip>
-  );
-}
-
 async function fetchReadingPhoto(readingId: string, signal: AbortSignal) {
   const response = await fetch(readingPhotoUrl(readingId), { credentials: 'include', signal });
   if (!response.ok) throw new Error('Unable to preview meter photo.');
@@ -155,7 +106,7 @@ export function ReadingExceptionsPage() {
         id: 'evidence',
         header: 'Evidence',
         cell: ({ row: { original: row } }) => {
-          const presentation = aiPresentation(row);
+          const presentation = readingEvidence({ ...row, photoBacked: row.photo !== null });
           return (
             <div className="space-y-1">
               {row.photo ? (
@@ -188,7 +139,7 @@ export function ReadingExceptionsPage() {
         id: 'ai',
         header: 'AI meter result',
         cell: ({ row }) => {
-          const presentation = aiPresentation(row.original);
+          const presentation = readingEvidence({ ...row.original, photoBacked: row.original.photo !== null });
           return (
             <div>
               {presentation.resultConfidencePercent !== null ? (

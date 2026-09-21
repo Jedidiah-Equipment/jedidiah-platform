@@ -2,15 +2,18 @@ import {
   addAssignment,
   cancelJob,
   completeJob,
+  countJobQueues,
   createChargeLine,
   createJob,
   getFieldJob,
   getReadableJob,
+  hasActiveJobAttention,
   listFieldDrivers,
   listFieldImplements,
   listFieldJobs,
   listForemen,
   listJobs,
+  listMeasureTypes,
   patchAssignment,
   patchChargeLine,
   patchJob,
@@ -41,9 +44,12 @@ import {
   JobListInput,
   JobLookupInput,
   JobPatchInput,
+  JobQueueCounts,
   MeasureRemoveInput,
   MeasureSetInput,
+  MeasureType,
 } from '@pkg/schema/contracting';
+import { z } from 'zod';
 import { createAuthTRPCError, mapCoreErrors } from '../../../trpc/errors.js';
 import { authorizedProcedure, requirePermission, router } from '../../../trpc/init.js';
 import { jobErrorFamily } from '../contracting-error-families.js';
@@ -83,6 +89,39 @@ export const contractingJobsRouter = router({
       .query(({ ctx }) => listFieldDrivers({ db: ctx.db })),
   }),
   jobs: router({
+    activeAttention: authorizedProcedure(readPermissions)
+      .output(z.boolean())
+      .query(({ ctx }) => {
+        const mode = readMode(ctx.access);
+        if (mode === 'priced') return false;
+        return mapCoreErrors(
+          () =>
+            hasActiveJobAttention({
+              db: ctx.db,
+              ...(mode === 'own' ? { foremanUserId: ctx.session.user.id } : {}),
+            }),
+          jobErrorFamily,
+        );
+      }),
+    queueCounts: authorizedProcedure(readPermissions)
+      .output(JobQueueCounts)
+      .query(async ({ ctx }) => {
+        const mode = readMode(ctx.access);
+        const counts = await countJobQueues({
+          db: ctx.db,
+          ...(mode === 'own' ? { foremanUserId: ctx.session.user.id } : {}),
+        });
+        if (mode !== 'priced') return counts;
+        return JobQueueCounts.parse({
+          upcoming: 0,
+          active: 0,
+          'looks-finished': 0,
+          'awaiting-pricing': counts['awaiting-pricing'],
+          'awaiting-invoice': counts['awaiting-invoice'],
+          invoiced: counts.invoiced,
+          cancelled: 0,
+        });
+      }),
     list: authorizedProcedure(readPermissions)
       .input(JobListInput)
       .query(({ ctx, input }) =>
@@ -215,5 +254,8 @@ export const contractingJobsRouter = router({
   }),
   options: router({
     foremen: authorizedProcedure('contracting_job:assign').query(({ ctx }) => listForemen({ db: ctx.db })),
+    measureTypes: authorizedProcedure('contracting_job:update')
+      .output(MeasureType.pick({ id: true, name: true }).array())
+      .query(async ({ ctx }) => (await listMeasureTypes({ db: ctx.db })).map(({ id, name }) => ({ id, name }))),
   }),
 });

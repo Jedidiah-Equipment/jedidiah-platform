@@ -1,6 +1,7 @@
 import {
   IconBuilding,
   IconCategory,
+  IconClipboardCheck,
   IconClipboardList,
   IconCoins,
   IconGauge,
@@ -37,6 +38,12 @@ export const contractingNavSections = [
   {
     label: 'Operations',
     items: [
+      {
+        title: 'Jobs',
+        permission: 'contracting_job:read',
+        link: linkOptions({ to: '/contracting/jobs' }),
+        icon: IconClipboardCheck,
+      },
       {
         title: 'Fleet',
         permission: 'contracting_machine:read',

@@ -8,17 +8,46 @@ import {
   contractingMachineAssignments,
   contractingWorkTypes,
 } from '@pkg/db/contracting';
-import { deriveStintHours, formatJobNumber, looksFinished } from '@pkg/domain/contracting';
-import { Assignment, FieldReading, JobDetail, type JobQueue, JobSummary } from '@pkg/schema/contracting';
+import { deriveStintHours, formatJobNumber, looksFinished, meterDisagreementHint } from '@pkg/domain/contracting';
+import {
+  Assignment,
+  JobDetail,
+  type JobQueue,
+  JobQueueCounts,
+  JobReading,
+  type JobStatus,
+  JobSummary,
+} from '@pkg/schema/contracting';
 import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 import { assertOwner, JobError, jobNotFound } from './job-errors.js';
 
-function mapFieldReading(row: typeof contractingHourReadings.$inferSelect | null) {
+type LoadedReading = (typeof contractingHourReadings.$inferSelect & { capturedBy: { name: string } | null }) | null;
+
+function readingAttention(row: LoadedReading) {
+  if (!row) return [];
+  const kinds: Array<'disputed' | 'ai-pending' | 'ai-disagrees' | 'ai-low-confidence' | 'missing-photo'> = [];
+  if (row.disputed) kinds.push('disputed');
+  if (row.evidenceReviewedAt === null) {
+    if (row.aiVerification === 'pending') kinds.push('ai-pending');
+    if (row.aiVerification === 'disagrees') kinds.push('ai-disagrees');
+    if (row.aiVerification === 'low-confidence') kinds.push('ai-low-confidence');
+  }
+  // Missing photo belongs in sign-off's strip, but does not count toward the queue's needsALook total.
+  if (row.photo === null) kinds.push('missing-photo');
+  return kinds;
+}
+
+function mapJobReading(row: LoadedReading) {
   if (!row) return null;
-  return FieldReading.parse({
+  return JobReading.parse({
     ...row,
     capturedAt: row.capturedAt.toISOString(),
+    evidenceReviewedAt: row.evidenceReviewedAt?.toISOString() ?? null,
+    amendedAt: row.amendedAt?.toISOString() ?? null,
+    aiHint: meterDisagreementHint(row),
     photoBacked: row.photo !== null,
+    capturedByName: row.capturedBy?.name ?? null,
+    needsALook: readingAttention(row),
   });
 }
 
@@ -45,8 +74,8 @@ async function loadJob(db: Db | DatabaseTransaction, condition: ReturnType<typeo
         },
         orderBy: [asc(contractingMachineAssignments.createdAt)],
         with: {
-          arrivalReading: true,
-          departureReading: true,
+          arrivalReading: { with: { capturedBy: true } },
+          departureReading: { with: { capturedBy: true } },
           driver: true,
           implement: true,
           machine: { with: { category: true } },
@@ -67,8 +96,8 @@ async function loadJob(db: Db | DatabaseTransaction, condition: ReturnType<typeo
 type LoadedJob = typeof contractingJobs.$inferSelect & {
   assignments: Array<
     typeof contractingMachineAssignments.$inferSelect & {
-      arrivalReading: typeof contractingHourReadings.$inferSelect | null;
-      departureReading: typeof contractingHourReadings.$inferSelect | null;
+      arrivalReading: LoadedReading;
+      departureReading: LoadedReading;
       driver: typeof user.$inferSelect | null;
       implement: { code: string } | null;
       machine: { code: string; category: { name: string; icon: string; colour: string } };
@@ -116,8 +145,8 @@ function assertLoadedJob(row: unknown): asserts row is LoadedJob | undefined {
 }
 
 function mapAssignment(row: LoadedJob['assignments'][number]) {
-  const arrival = mapFieldReading(row.arrivalReading);
-  const departure = mapFieldReading(row.departureReading);
+  const arrival = mapJobReading(row.arrivalReading);
+  const departure = mapJobReading(row.departureReading);
   const gapResolved = row.gapResolvedAt !== null;
   const derived = deriveStintHours({
     arrival,
@@ -139,6 +168,7 @@ function mapAssignment(row: LoadedJob['assignments'][number]) {
     categoryColour: row.machine.category.colour,
     implementCode: row.implement?.code ?? null,
     driverName: row.driver?.name ?? null,
+    createdAt: row.createdAt.toISOString(),
     arrival,
     departure,
     ...derived,
@@ -287,6 +317,51 @@ const looksFinishedInSql = sql<boolean>`(
   and ${leftStints} > 0
   and ${onSiteStints} = 0
 )`;
+
+export async function countJobQueues({ db, foremanUserId }: { db: Db; foremanUserId?: string }) {
+  const rows = await db
+    .select({
+      status: contractingJobs.status,
+      looksFinished: looksFinishedInSql,
+      count: sql<number>`count(*)::integer`,
+    })
+    .from(contractingJobs)
+    .where(
+      and(
+        foremanUserId ? eq(contractingJobs.foremanUserId, foremanUserId) : undefined,
+        foremanUserId ? inArray(contractingJobs.status, ['upcoming', 'active', 'completed']) : undefined,
+      ),
+    )
+    .groupBy(contractingJobs.status, looksFinishedInSql);
+  const count = (status: JobStatus, finished?: boolean) =>
+    rows
+      .filter((row) => row.status === status && (finished === undefined || row.looksFinished === finished))
+      .reduce((total, row) => total + row.count, 0);
+  return JobQueueCounts.parse({
+    upcoming: count('upcoming'),
+    active: count('active'),
+    'looks-finished': count('active', true),
+    'awaiting-pricing': count('completed'),
+    'awaiting-invoice': count('priced'),
+    invoiced: count('invoiced'),
+    cancelled: count('cancelled'),
+  });
+}
+
+export async function hasActiveJobAttention({ db, foremanUserId }: { db: Db; foremanUserId?: string }) {
+  const rows = await db
+    .select({ id: contractingJobs.id })
+    .from(contractingJobs)
+    .where(
+      and(
+        eq(contractingJobs.status, 'active'),
+        foremanUserId ? eq(contractingJobs.foremanUserId, foremanUserId) : undefined,
+        sql`${openGapFlags} + ${readingsNeedingALook} > 0`,
+      ),
+    )
+    .limit(1);
+  return rows.length > 0;
+}
 
 export async function listJobs({
   db,

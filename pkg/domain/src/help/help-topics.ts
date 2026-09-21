@@ -19,6 +19,8 @@ export const HELP_TOPICS = {
   contractingMobileCapture: '/contracting/capture-a-reading',
   contractingMobileAttention: '/contracting/resolve-queued-readings',
   contractingHome: '/contracting/',
+  contractingJobs: '/contracting/set-up-a-job',
+  contractingJobSignOff: '/contracting/sign-off-a-job',
   contractingReadings: '/contracting/resolve-reading-exceptions',
   contractingFleet: '/contracting/maintain-machines',
   contractingCategories: '/contracting/maintain-categories',

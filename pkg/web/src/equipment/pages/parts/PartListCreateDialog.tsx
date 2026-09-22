@@ -3,11 +3,11 @@ import { useMutation } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
 import { CreateEntityDialog } from '@/components/form/index.js';
-import { usePartCategoryOptions, useSupplierOptions } from '@/equipment/hooks/options/index.js';
+import { useSupplierOptions } from '@/equipment/hooks/options/index.js';
 import { useQueryInvalidation } from '@/equipment/hooks/use-query-invalidation.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useTRPC } from '@/lib/trpc.js';
-import { NewPartCategoryButton } from './components/NewPartCategoryButton.js';
+import { PartCategoryField } from './components/PartCategoryField.js';
 import {
   type PartFormValues,
   PartFormValues as PartFormValuesSchema,
@@ -27,7 +27,6 @@ export function PartListCreateDialog({
 }) {
   const trpc = useTRPC();
   const suppliers = useSupplierOptions({ enabled: open, limit: 0 });
-  const categories = usePartCategoryOptions({ enabled: open });
   const { invalidateParts } = useQueryInvalidation();
   const showMutationError = useApiMutationErrorToast();
   const mutation = useMutation(
@@ -58,22 +57,7 @@ export function PartListCreateDialog({
         <>
           <form.AppField name="name">{(field) => <field.TextField autoComplete="off" label="Name" />}</form.AppField>
           <form.AppField name="code">{(field) => <field.TextField autoComplete="off" label="Code" />}</form.AppField>
-          <form.AppField name="categoryId">
-            {(field) => (
-              <div className="flex items-end gap-2">
-                <div className="min-w-0 flex-1">
-                  <field.ComboboxField
-                    disabled={categories.isPending}
-                    emptyMessage="No Part Categories found."
-                    label="Part Category"
-                    options={categories.selectOptions}
-                    placeholder={categories.isPending ? 'Loading Part Categories...' : 'Search Part Categories'}
-                  />
-                </div>
-                <NewPartCategoryButton onCreated={(category) => field.handleChange(category.id)} />
-              </div>
-            )}
-          </form.AppField>
+          <form.AppField name="categoryId">{() => <PartCategoryField />}</form.AppField>
           <form.AppField name="finish">
             {(field) => <field.TextField autoComplete="off" label="Finish" />}
           </form.AppField>

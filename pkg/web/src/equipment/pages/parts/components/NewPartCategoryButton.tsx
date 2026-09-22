@@ -15,7 +15,7 @@ export function NewPartCategoryButton({ onCreated }: { onCreated: (category: Par
   return (
     <>
       <Button onClick={() => setOpen(true)} size="sm" type="button" variant="outline">
-        New category
+        New Part Category
       </Button>
       <PartCategoryCreateDialog onCreated={onCreated} onOpenChange={setOpen} open={open} />
     </>

@@ -16,7 +16,7 @@ export function legacyPartCategoryName(row: SnapshotRow): string | undefined {
   if (typeof row.category !== 'string') return undefined;
   if (row.code === 'SEMP-0001' && row.category === '6000') return 'Pipe';
 
-  return row.category.trim();
+  return row.category.trim() || undefined;
 }
 
 /** A UUID v5 of the lowercased name, so every spelling of one Part Category lands on the same id. */

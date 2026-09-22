@@ -11,12 +11,8 @@ import type React from 'react';
 import { useAppForm } from '@/components/form/index.js';
 import { EditFormActions, EditFormFullWidth, EditFormGrid } from '@/components/page-layout/EditFormLayout.js';
 import { Button } from '@/components/ui/button.js';
-import {
-  usePartCategoryOptions,
-  usePartStorageLocationOptions,
-  useSupplierOptions,
-} from '@/equipment/hooks/options/index.js';
-import { NewPartCategoryButton } from './NewPartCategoryButton.js';
+import { usePartStorageLocationOptions, useSupplierOptions } from '@/equipment/hooks/options/index.js';
+import { PartCategoryField } from './PartCategoryField.js';
 import { PartFormValues, partStockTrackingModeOptions, partUnitOfMeasureOptions, toPartFormValues } from './types.js';
 
 type PartFormProps = {
@@ -38,7 +34,6 @@ export const PartForm: React.FC<PartFormProps> = ({
 }) => {
   const supplierOptions = useSupplierOptions({ enabled: !fixedSupplier, limit: 0 });
   const isSupplierSelectPending = !fixedSupplier && supplierOptions.isPending;
-  const categoryOptions = usePartCategoryOptions();
   const storageLocationOptions = usePartStorageLocationOptions();
 
   const form = useAppForm({
@@ -173,22 +168,7 @@ export const PartForm: React.FC<PartFormProps> = ({
         <form.AppField name="isInternallyFabricated">
           {(field) => <field.CheckboxField label="Internally fabricated" />}
         </form.AppField>
-        <form.AppField name="categoryId">
-          {(field) => (
-            <div className="flex items-end gap-2">
-              <div className="min-w-0 flex-1">
-                <field.ComboboxField
-                  disabled={categoryOptions.isPending}
-                  emptyMessage="No Part Categories found."
-                  label="Part Category"
-                  options={categoryOptions.selectOptions}
-                  placeholder={categoryOptions.isPending ? 'Loading Part Categories...' : 'Search Part Categories'}
-                />
-              </div>
-              <NewPartCategoryButton onCreated={(category) => field.handleChange(category.id)} />
-            </div>
-          )}
-        </form.AppField>
+        <form.AppField name="categoryId">{() => <PartCategoryField />}</form.AppField>
         <EditFormFullWidth>
           <form.AppField name="description">
             {(field) => <field.TextareaField label="Description" rows={4} />}

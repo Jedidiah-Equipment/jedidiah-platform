@@ -4,7 +4,6 @@ import { describe, expect, it, vi } from 'vitest';
 vi.mock('@tanstack/react-query', () => ({ useMutation: () => ({ mutateAsync: vi.fn() }) }));
 vi.mock('@/hooks/use-api-mutation-error-toast.js', () => ({ useApiMutationErrorToast: () => vi.fn() }));
 vi.mock('@/equipment/hooks/options/index.js', () => ({
-  usePartCategoryOptions: () => ({ isPending: false, items: [], selectOptions: [] }),
   useSupplierOptions: () => ({ isPending: false, selectOptions: [] }),
 }));
 vi.mock('@/equipment/hooks/use-query-invalidation.js', () => ({
@@ -13,11 +12,7 @@ vi.mock('@/equipment/hooks/use-query-invalidation.js', () => ({
 vi.mock('@/lib/trpc.js', () => ({
   useTRPC: () => ({ parts: { create: { mutationOptions: (options: unknown) => options } } }),
 }));
-let canManagePartCategories = false;
-vi.mock('@/hooks/use-access.js', () => ({ useCan: () => ({ can: canManagePartCategories }) }));
-vi.mock('@/equipment/pages/part-categories/PartCategoryCreateDialog.js', () => ({
-  PartCategoryCreateDialog: () => null,
-}));
+vi.mock('./components/PartCategoryField.js', () => ({ PartCategoryField: () => <span>Part Category</span> }));
 const setFieldValue = vi.fn();
 /** The unit select's commit handler, captured on render so a unit change can be replayed. */
 let commitUnitOfMeasure: ((unitOfMeasure: string) => void) | undefined;
@@ -77,17 +72,6 @@ describe('PartListCreateDialog', () => {
     ]) {
       expect(html).toContain(`data-field="${name}"`);
     }
-  });
-
-  it('offers a new Part Category only to the people who manage them', () => {
-    const render = () =>
-      renderToStaticMarkup(<PartListCreateDialog onCreated={vi.fn()} onOpenChange={vi.fn()} open={true} />);
-
-    canManagePartCategories = false;
-    expect(render()).not.toContain('New category');
-    canManagePartCategories = true;
-    expect(render()).toContain('New category');
-    canManagePartCategories = false;
   });
 
   it('drops a length stranded by a move off millimetres, which would fail submit on a hidden field', () => {

@@ -6,6 +6,7 @@ import {
   jobStockCloseOuts,
   jobs,
   parts,
+  quotes,
   stockMovements,
 } from '@pkg/db/equipment';
 import { eq } from 'drizzle-orm';
@@ -15,12 +16,15 @@ import {
   actorUserId,
   adjustmentInput,
   estimateSnapshot,
+  seedPartsSaleQuote,
   seedProductUnit,
   seedQuickSwitchPerson,
   seedSentPurchaseOrder,
   test,
 } from '../test/inventory-fixtures.js';
 import { partValues } from '../test/part-fixtures.js';
+import { sumJobDrawnCosts } from './job-cost-read.js';
+import { getJobMaterialVariance } from './job-variance-read.js';
 import { postReceipt } from './receipt-service.js';
 import {
   getStockMovementHistory,
@@ -831,6 +835,182 @@ describe('Checkout without a Job', () => {
   });
 });
 
+describe('Checkout to a Parts Sale', () => {
+  test('posts a Parts Sale Basket with the Quote on every line and no Job or Recipient', async ({ context }) => {
+    const partsSale = await seedPartsSaleQuote(context.db);
+    await postAdjustment({
+      actorUserId,
+      db: context.db,
+      input: adjustmentInput(context.parts.piece.id, { delta: 10, unitCost: 10 }),
+    });
+
+    const result = await postCheckoutBasket({
+      actorUserId,
+      db: context.db,
+      input: {
+        lines: [
+          { lengthMm: null, partId: context.parts.piece.id, quantity: 2 },
+          { lengthMm: null, partId: context.parts.measured.id, quantity: 1.5 },
+        ],
+        quoteId: partsSale.id,
+      },
+    });
+
+    expect(result.lines.map(({ movement }) => movement)).toEqual([
+      expect.objectContaining({ delta: -2, jobId: null, quoteId: partsSale.id, recipientUserId: null, unitCost: 10 }),
+      expect.objectContaining({ delta: -1.5, jobId: null, quoteId: partsSale.id, recipientUserId: null }),
+    ]);
+  });
+
+  test('refuses a Quote that is unknown, not a Parts Sale, or no longer live, posting nothing', async ({ context }) => {
+    const rejected = await seedPartsSaleQuote(context.db, { status: 'rejected' });
+    const cancelled = await seedPartsSaleQuote(context.db, { status: 'cancelled' });
+    const unit = await seedProductUnit(context.db);
+    const [productQuote] = await context.db
+      .insert(quotes)
+      .values({
+        customerId: rejected.customerId,
+        kind: 'product',
+        productId: unit.productId,
+        quotedBasePrice: 0,
+        quotedCurrencyCode: 'ZAR',
+        salesPersonId: actorUserId,
+        status: 'accepted',
+      })
+      .returning();
+    if (!productQuote || !context.jobs.custom.quoteId) throw new Error('Quote fixtures missing');
+    const before = await context.db.select().from(stockMovements);
+    const refusals = [
+      ['00000000-0000-4000-8000-000000000999', 'inventory.quote_not_found'],
+      [context.jobs.custom.quoteId, 'inventory.quote_not_parts_sale'],
+      [productQuote.id, 'inventory.quote_not_parts_sale'],
+      [rejected.id, 'inventory.quote_not_open'],
+      [cancelled.id, 'inventory.quote_not_open'],
+    ] as const;
+
+    for (const [quoteId, code] of refusals) {
+      await expect(
+        postCheckout({
+          actorUserId,
+          db: context.db,
+          input: { lengthMm: null, partId: context.parts.piece.id, quantity: 1, quoteId },
+        }),
+      ).rejects.toMatchObject({ code });
+    }
+    expect(await context.db.select().from(stockMovements)).toHaveLength(before.length);
+  });
+
+  test('refuses checkout but returns at the cost the parts left with once the sale is cancelled', async ({
+    context,
+  }) => {
+    const partsSale = await seedPartsSaleQuote(context.db);
+    const movement = { lengthMm: null, partId: context.parts.piece.id, quoteId: partsSale.id };
+    await postAdjustment({
+      actorUserId,
+      db: context.db,
+      input: adjustmentInput(context.parts.piece.id, { delta: 2, unitCost: 10 }),
+    });
+    await postCheckout({ actorUserId, db: context.db, input: { ...movement, quantity: 1 } });
+    await postRevaluation({
+      actorUserId,
+      db: context.db,
+      input: { note: 'New average', partId: context.parts.piece.id, unitCost: 20 },
+    });
+    await context.db
+      .update(quotes)
+      .set({ cancellationReason: 'Customer withdrew', status: 'cancelled' })
+      .where(eq(quotes.id, partsSale.id));
+
+    await expect(
+      postCheckout({ actorUserId, db: context.db, input: { ...movement, quantity: 1 } }),
+    ).rejects.toMatchObject({ code: 'inventory.quote_not_open' });
+    await expect(
+      postReturnToStore({ actorUserId, db: context.db, input: { ...movement, quantity: 1 } }),
+    ).resolves.toMatchObject({ movement: { quoteId: partsSale.id, unitCost: 10 }, warnings: [] });
+  });
+
+  test("pools returns per Quote, so one sale's return cannot consume another's draw", async ({ context }) => {
+    const first = await seedPartsSaleQuote(context.db, { customerName: 'First' });
+    const second = await seedPartsSaleQuote(context.db, { customerName: 'Second' });
+    await postAdjustment({
+      actorUserId,
+      db: context.db,
+      input: adjustmentInput(context.parts.piece.id, { delta: 10, unitCost: 10 }),
+    });
+    await postCheckout({
+      actorUserId,
+      db: context.db,
+      input: { lengthMm: null, partId: context.parts.piece.id, quantity: 2, quoteId: first.id },
+    });
+
+    await expect(
+      postReturnToStore({
+        actorUserId,
+        db: context.db,
+        input: { lengthMm: null, partId: context.parts.piece.id, quantity: 1, quoteId: second.id },
+      }),
+    ).resolves.toMatchObject({ movement: { unitCost: null }, warnings: ['exceeds-drawn'] });
+  });
+
+  test('warns about nothing to do with a CFO, but still about a bucket going negative', async ({ context }) => {
+    const partsSale = await seedPartsSaleQuote(context.db);
+    await postAdjustment({
+      actorUserId,
+      db: context.db,
+      input: adjustmentInput(context.parts.piece.id, { delta: 2, unitCost: 10 }),
+    });
+    const draw = (quantity: number) =>
+      postCheckout({
+        actorUserId,
+        db: context.db,
+        input: { lengthMm: null, partId: context.parts.piece.id, quantity, quoteId: partsSale.id },
+      });
+
+    await expect(draw(2)).resolves.toMatchObject({ warnings: [] });
+    await expect(draw(1)).resolves.toMatchObject({ warnings: ['negative-stock-on-hand'] });
+  });
+
+  test('leaves Job stock, commitment, cost and variance alone while on-hand and Free Stock fall', async ({
+    context,
+  }) => {
+    const partsSale = await seedPartsSaleQuote(context.db);
+    await postAdjustment({
+      actorUserId,
+      db: context.db,
+      input: adjustmentInput(context.parts.piece.id, { delta: 10, unitCost: 10 }),
+    });
+    await postJobMovement({
+      actorUserId,
+      db: context.db,
+      input: { jobId: context.jobs.cfo.id, lengthMm: null, partId: context.parts.piece.id, quantity: 1 },
+      movementType: 'checkout',
+    });
+    const jobIds = [context.jobs.cfo.id, context.jobs.custom.id];
+    const read = async () => ({
+      cost: await sumJobDrawnCosts({ db: context.db, jobIds }),
+      jobStock: await Promise.all(jobIds.map((jobId) => listJobStock({ db: context.db, jobId }))),
+      stock: (await listStockOnHand({ db: context.db })).items.find((row) => row.partId === context.parts.piece.id),
+      variance: await Promise.all(jobIds.map((jobId) => getJobMaterialVariance({ db: context.db, jobId }))),
+    });
+    const before = await read();
+
+    await postCheckout({
+      actorUserId,
+      db: context.db,
+      input: { lengthMm: null, partId: context.parts.piece.id, quantity: 3, quoteId: partsSale.id },
+    });
+    const after = await read();
+
+    expect(after.cost).toEqual(before.cost);
+    expect(after.variance).toEqual(before.variance);
+    expect(after.jobStock.map((job) => job.items.map(({ freeQuantity: _free, ...row }) => row))).toEqual(
+      before.jobStock.map((job) => job.items.map(({ freeQuantity: _free, ...row }) => row)),
+    );
+    expect(after.stock).toMatchObject({ committed: 4, free: 2, quantity: 6 });
+    expect(before.stock).toMatchObject({ committed: 4, free: 5, quantity: 9 });
+  });
+});
+
 describe('postAdjustment', () => {
   test('appends an adjustment with the authenticated actor', async ({ context }) => {
     const movement = await postAdjustment({
@@ -1094,6 +1274,57 @@ describe('stock movement database constraints', () => {
         }),
       ).rejects.toMatchObject({ cause: { constraint_name: 'stock_movement_source_checkout_identity' } });
     }
+  });
+});
+
+describe('Parts Sale database constraints', () => {
+  test('refuses a hand-written row whose Quote is not a Parts Sale, or that names a Job and a Quote', async ({
+    context,
+  }) => {
+    const partsSale = await seedPartsSaleQuote(context.db);
+    const draw = {
+      actorUserId,
+      delta: -1,
+      lengthMm: null,
+      movementType: 'checkout' as const,
+      partId: context.parts.piece.id,
+    };
+
+    await expect(
+      context.db.insert(stockMovements).values({ ...draw, quoteId: context.jobs.custom.quoteId }),
+    ).rejects.toMatchObject({ cause: { constraint_name: 'stock_movement_quote_is_parts_sale' } });
+    await expect(
+      context.db.insert(stockMovements).values({ ...draw, jobId: context.jobs.custom.id, quoteId: partsSale.id }),
+    ).rejects.toMatchObject({ cause: { constraint_name: 'stock_movement_shape' } });
+  });
+
+  test('refuses a linked return that names a Parts Sale Checkout as its source', async ({ context }) => {
+    const partsSale = await seedPartsSaleQuote(context.db);
+    const recipientUserId = await seedQuickSwitchPerson(context.db);
+    const checkout = await postCheckout({
+      actorUserId,
+      db: context.db,
+      input: { lengthMm: null, partId: context.parts.piece.id, quantity: 1, quoteId: partsSale.id },
+    });
+
+    await expect(
+      postReturnToStore({
+        actorUserId,
+        db: context.db,
+        input: { quantity: 1, sourceCheckoutId: checkout.movement.id },
+      }),
+    ).rejects.toMatchObject({ code: 'inventory.invalid_source_checkout' });
+    await expect(
+      context.db.insert(stockMovements).values({
+        actorUserId,
+        delta: 1,
+        lengthMm: null,
+        movementType: 'return-to-store',
+        partId: context.parts.piece.id,
+        recipientUserId,
+        sourceCheckoutId: checkout.movement.id,
+      }),
+    ).rejects.toMatchObject({ cause: { constraint_name: 'stock_movement_source_checkout_identity' } });
   });
 });
 

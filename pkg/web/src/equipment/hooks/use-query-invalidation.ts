@@ -78,8 +78,13 @@ export function useQueryInvalidation() {
     () => queryClient.invalidateQueries({ queryKey: trpc.productUnits.pathKey() }),
     [queryClient, trpc],
   );
+  // A Parts Sale's code, Customer, title and status also ride the inventory reads stores pick it from.
   const invalidateQuotes = useCallback(
-    () => queryClient.invalidateQueries({ queryKey: trpc.quotes.pathKey() }),
+    () =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: trpc.quotes.pathKey() }),
+        queryClient.invalidateQueries({ queryKey: trpc.inventory.pathKey() }),
+      ]),
     [queryClient, trpc],
   );
   const invalidatePurchaseOrders = useCallback(

@@ -28,6 +28,8 @@ const result = StockMovementHistoryResult.parse({
       purchaseOrderId: null,
       purchaseOrderCode: null,
       jobCode: null,
+      quoteCode: null,
+      quoteId: null,
       stocktakeSessionId: null,
       stocktakeSessionScope: null,
       recipientName: null,
@@ -54,6 +56,8 @@ const result = StockMovementHistoryResult.parse({
       purchaseOrderId: null,
       purchaseOrderCode: null,
       jobCode: null,
+      quoteCode: null,
+      quoteId: null,
       stocktakeSessionId: null,
       stocktakeSessionScope: null,
       recipientName: null,
@@ -80,6 +84,8 @@ const result = StockMovementHistoryResult.parse({
       purchaseOrderId: null,
       purchaseOrderCode: null,
       jobCode: 'JOB-00018',
+      quoteCode: null,
+      quoteId: null,
       stocktakeSessionId: null,
       stocktakeSessionScope: null,
       recipientName: null,
@@ -106,6 +112,8 @@ const result = StockMovementHistoryResult.parse({
       purchaseOrderId: '00000000-0000-4000-8000-000000000098',
       purchaseOrderCode: 'PO-00042',
       jobCode: null,
+      quoteCode: null,
+      quoteId: null,
       stocktakeSessionId: null,
       stocktakeSessionScope: null,
       recipientName: null,
@@ -125,6 +133,8 @@ const result = StockMovementHistoryResult.parse({
       id: '00000000-0000-4000-8000-000000000014',
       jobId: null,
       jobCode: null,
+      quoteCode: null,
+      quoteId: null,
       lengthMm: null,
       movementType: 'adjustment',
       movementValue: -25,
@@ -156,7 +166,13 @@ const result = StockMovementHistoryResult.parse({
 describe('StockMovementHistoryTable', () => {
   it('shows movement details, actor, running balance, and cost-bearing values', () => {
     const html = renderToStaticMarkup(
-      <StockMovementHistoryTable canReadJobs={true} items={result.items} showCosts={true} unitOfMeasure="piece" />,
+      <StockMovementHistoryTable
+        canReadJobs={true}
+        canReadQuotes={true}
+        items={result.items}
+        showCosts={true}
+        unitOfMeasure="piece"
+      />,
     );
 
     expect(html).toContain('Opening balance');
@@ -182,7 +198,13 @@ describe('StockMovementHistoryTable', () => {
 
   it('removes cost columns for a caller without cost-read access', () => {
     const html = renderToStaticMarkup(
-      <StockMovementHistoryTable canReadJobs={true} items={result.items} showCosts={false} unitOfMeasure="piece" />,
+      <StockMovementHistoryTable
+        canReadJobs={true}
+        canReadQuotes={true}
+        items={result.items}
+        showCosts={false}
+        unitOfMeasure="piece"
+      />,
     );
 
     expect(html).not.toContain('Unit cost');
@@ -192,7 +214,13 @@ describe('StockMovementHistoryTable', () => {
 
   it('names the Job without linking it for a caller who cannot open Jobs', () => {
     const html = renderToStaticMarkup(
-      <StockMovementHistoryTable canReadJobs={false} items={result.items} showCosts={true} unitOfMeasure="piece" />,
+      <StockMovementHistoryTable
+        canReadJobs={false}
+        canReadQuotes={true}
+        items={result.items}
+        showCosts={true}
+        unitOfMeasure="piece"
+      />,
     );
 
     // Stores reads this ledger and holds no `equipment_job:read`; the link would only reach a sheet that
@@ -201,5 +229,36 @@ describe('StockMovementHistoryTable', () => {
     expect(html).not.toContain('/equipment/jobs/00000000-0000-4000-8000-000000000099');
     expect(html).toContain('/equipment/purchase-orders/00000000-0000-4000-8000-000000000098');
     expect(html).toContain('/equipment/inventory/stocktake/00000000-0000-4000-8000-000000000097');
+  });
+
+  it('names a Parts Sale draw by its Quote, links it only for a Quote reader, and offers it no linked return', () => {
+    const checkout = result.items.find((item) => item.movementType === 'checkout');
+    if (!checkout) throw new Error('Checkout fixture missing');
+    const partsSaleDraw = {
+      ...checkout,
+      jobCode: null,
+      jobId: null,
+      note: null,
+      quoteCode: 'QUO-00042',
+      quoteId: '00000000-0000-4000-8000-000000000042',
+      recipientName: null,
+      recipientUserId: null,
+    } as (typeof result.items)[number];
+    const render = (canReadQuotes: boolean) =>
+      renderToStaticMarkup(
+        <StockMovementHistoryTable
+          canReadJobs={true}
+          canReadQuotes={canReadQuotes}
+          items={[partsSaleDraw]}
+          onReturnCheckout={() => undefined}
+          showCosts={false}
+          unitOfMeasure="piece"
+        />,
+      );
+
+    expect(render(true)).toContain('/equipment/quotes/00000000-0000-4000-8000-000000000042/edit');
+    expect(render(false)).toContain('QUO-00042');
+    expect(render(false)).not.toContain('/equipment/quotes/');
+    expect(render(true)).not.toContain('Return to Store');
   });
 });

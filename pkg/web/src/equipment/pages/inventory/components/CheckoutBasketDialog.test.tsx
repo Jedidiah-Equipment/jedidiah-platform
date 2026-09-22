@@ -58,6 +58,9 @@ vi.mock('@/equipment/components/job-picker/index.js', () => ({
     </button>
   ),
 }));
+vi.mock('./use-inventory-quote-picker.js', () => ({
+  useInventoryQuotePicker: () => ({ isPending: false, items: [], search: '', setSearch: vi.fn(), total: 0 }),
+}));
 vi.mock('@/equipment/hooks/use-query-invalidation.js', () => ({
   useQueryInvalidation: () => ({ invalidateInventory }),
 }));
@@ -127,10 +130,12 @@ afterEach(async () => {
 
 async function mount({
   fixed = true,
+  fixedQuote,
   onOpenChange = vi.fn<(open: boolean) => void>(),
   stockItems = items,
 }: {
   fixed?: boolean;
+  fixedQuote?: { code: string; id: string };
   onOpenChange?: (open: boolean) => void;
   stockItems?: readonly StockOnHandRow[];
 } = {}) {
@@ -144,7 +149,10 @@ async function mount({
     root.render(
       <QueryClientProvider client={queryClient}>
         <CheckoutBasketDialog
-          {...(fixed ? { fixedJob: { code: 'JOB-00001', id: '00000000-0000-4000-8000-000000000009' } } : {})}
+          {...(fixed && !fixedQuote
+            ? { fixedJob: { code: 'JOB-00001', id: '00000000-0000-4000-8000-000000000009' } }
+            : {})}
+          {...(fixedQuote ? { fixedQuote } : {})}
           items={stockItems}
           onOpenChange={onOpenChange}
           open
@@ -330,6 +338,32 @@ describe('CheckoutBasketDialog', () => {
     expect(confirm).toHaveBeenCalledWith('Discard 1 unrecorded line?');
     expect(onOpenChange).not.toHaveBeenCalled();
     expect(document.body.textContent).toContain('CH-6000 · Channel');
+  });
+
+  it('posts a fixed Parts Sale Basket without ever waiting on Job stock', async () => {
+    await mount({ fixedQuote: { code: 'QUO-00042', id: '00000000-0000-4000-8000-000000000042' } });
+    expect(document.body.textContent).toContain('QUO-00042');
+    expect(document.body.textContent).not.toContain('Without a Job');
+    await scan('HYD-0052');
+    const quantity = document.querySelector<HTMLInputElement>('#checkout-basket-quantity');
+    if (!quantity) throw new Error('Quantity input missing');
+    await press(quantity, 'Enter');
+    const submit = [...document.querySelectorAll('button')].find((button) =>
+      button.textContent?.includes('Check out 1 line'),
+    );
+    expect(submit?.disabled).toBe(false);
+    await act(async () => submit?.click());
+
+    await vi.waitFor(() =>
+      expect(postBasket).toHaveBeenCalledWith(
+        {
+          lines: [{ lengthMm: null, partId: piece.partId, quantity: 1 }],
+          quoteId: '00000000-0000-4000-8000-000000000042',
+        },
+        expect.anything(),
+      ),
+    );
+    expect(loadJobStock).not.toHaveBeenCalled();
   });
 
   it('posts a person and Purpose on every Without-a-Job line', async () => {

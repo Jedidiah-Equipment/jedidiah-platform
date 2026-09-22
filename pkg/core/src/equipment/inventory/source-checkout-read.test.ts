@@ -1,11 +1,24 @@
 import { user } from '@pkg/db';
 import { describe, expect } from 'vitest';
 
-import { actorUserId, adjustmentInput, test } from '../test/inventory-fixtures.js';
+import { actorUserId, adjustmentInput, seedPartsSaleQuote, test } from '../test/inventory-fixtures.js';
 import { listSourceCheckouts } from './source-checkout-read.js';
 import { postAdjustment, postCheckout, postReturnToStore } from './stock-movement-service.js';
 
 describe('listSourceCheckouts', () => {
+  test('never offers a Parts Sale Checkout as a source', async ({ context }) => {
+    const partsSale = await seedPartsSaleQuote(context.db);
+    await postCheckout({
+      actorUserId,
+      db: context.db,
+      input: { lengthMm: null, partId: context.parts.piece.id, quantity: 1, quoteId: partsSale.id },
+    });
+
+    await expect(
+      listSourceCheckouts({ db: context.db, input: { cursor: 0, limit: 10, search: '' } }),
+    ).resolves.toMatchObject({ items: [], total: 0 });
+  });
+
   test('filters no-Job Checkouts and keeps fully returned sources discoverable newest first', async ({ context }) => {
     const now = new Date('2026-08-01T08:00:00.000Z');
     await context.db.insert(user).values({

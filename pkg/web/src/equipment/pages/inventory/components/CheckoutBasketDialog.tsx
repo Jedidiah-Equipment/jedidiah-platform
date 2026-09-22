@@ -1,6 +1,7 @@
 import { deriveCheckoutBasketWarnings, warningMessageFor } from '@pkg/domain/equipment';
 import type {
   CheckoutBasketPostResult,
+  InventoryQuoteOption,
   InventoryRecipientOption,
   JobPickerOption,
   StockMovementWarningCode,
@@ -28,6 +29,7 @@ import { getApiErrorMetadata } from '@/lib/api-errors.js';
 import { authClient } from '@/lib/auth-client.js';
 import { useTRPC } from '@/lib/trpc.js';
 
+import { InventoryQuotePicker } from './InventoryQuotePicker.js';
 import { StockMovementWarningPrompt } from './StockMovementWarningPrompt.js';
 import {
   type CheckoutBasketFormValues,
@@ -43,18 +45,21 @@ import {
   unacknowledgedCheckoutBasketWarnings,
   wholeUnitQuantityMessage,
 } from './types.js';
+import { useInventoryQuotePicker } from './use-inventory-quote-picker.js';
 
-type FixedJob = { code: string; id: string };
+type FixedTarget = { code: string; id: string };
 
 export function CheckoutBasketDialog({
   fixedJob,
+  fixedQuote,
   isLoadingParts = false,
   items,
   onOpenChange,
   open,
   parts,
 }: {
-  fixedJob?: FixedJob;
+  fixedJob?: FixedTarget;
+  fixedQuote?: FixedTarget;
   isLoadingParts?: boolean;
   items: readonly StockOnHandRow[];
   onOpenChange: (open: boolean) => void;
@@ -67,6 +72,7 @@ export function CheckoutBasketDialog({
   const showMutationError = useApiMutationErrorToast();
   const [isJobPickerOpen, setJobPickerOpen] = useState(false);
   const [selectedJob, setSelectedJob] = useState<JobPickerOption | null>(null);
+  const [selectedQuote, setSelectedQuote] = useState<InventoryQuoteOption | null>(null);
   const [refusedPartId, setRefusedPartId] = useState<string | null>(null);
   const lineCount = useRef(0);
   const postedSuccessfully = useRef(false);
@@ -74,13 +80,14 @@ export function CheckoutBasketDialog({
     readonly (CheckoutBasketLineValues & { warnings: readonly StockMovementWarningCode[] })[]
   >([]);
   const jobId = fixedJob?.id ?? selectedJob?.id ?? '';
-  const offersPersonTarget = fixedJob === undefined;
+  const isFixed = fixedJob !== undefined || fixedQuote !== undefined;
   const validator = useMemo(() => checkoutBasketValidator(parts), [parts]);
 
-  const jobPicker = useInventoryJobPicker({ enabled: fixedJob === undefined, movementType: 'checkout' });
+  const jobPicker = useInventoryJobPicker({ enabled: !isFixed, movementType: 'checkout' });
+  const quotePicker = useInventoryQuotePicker({ enabled: open && !isFixed, movementType: 'checkout' });
   const jobStockQuery = useQuery(trpc.inventory.jobStock.queryOptions({ jobId }, { enabled: open && jobId !== '' }));
   const recipientQuery = useQuery(
-    trpc.inventory.recipientOptions.queryOptions({ limit: 0, search: '' }, { enabled: open && offersPersonTarget }),
+    trpc.inventory.recipientOptions.queryOptions({ limit: 0, search: '' }, { enabled: open && !isFixed }),
   );
   const basketMutation = useMutation(
     trpc.inventory.postCheckoutBasket.mutationOptions({
@@ -126,13 +133,15 @@ export function CheckoutBasketDialog({
 
   return (
     <CreateEntityDialog<CheckoutBasketFormValues, CheckoutBasketPostResult>
+      // Only a Job has a CFO whose facts must load first; a Parts Sale judges like a person target.
       canSubmit={(values) => values.target !== 'job' || (values.jobId !== '' && jobStockQuery.isSuccess)}
       defaultValues={{
         jobId: fixedJob?.id ?? '',
         lines: [],
         note: '',
+        quoteId: fixedQuote?.id ?? '',
         recipientUserId: '',
-        target: 'job',
+        target: fixedQuote ? 'quote' : 'job',
       }}
       contentClassName="sm:max-w-[min(64rem,calc(100%-2rem))]"
       description="Build the lines leaving stores, then record them together."
@@ -182,7 +191,7 @@ export function CheckoutBasketDialog({
 
             return (
               <>
-                {offersPersonTarget ? (
+                {!isFixed ? (
                   <Field>
                     <FieldLabel>Movement target</FieldLabel>
                     <Tabs
@@ -190,15 +199,20 @@ export function CheckoutBasketDialog({
                         const target = value as StockMovementTarget;
                         form.setFieldValue('target', target);
                         form.setFieldValue('jobId', '');
+                        form.setFieldValue('quoteId', '');
                         form.setFieldValue('note', '');
                         form.setFieldValue('recipientUserId', target === 'person' ? (session?.user.id ?? '') : '');
                         setSelectedJob(null);
+                        setSelectedQuote(null);
                       }}
                       value={values.target}
                     >
                       <TabsList className="w-full">
                         <TabsTrigger className="flex-1" value="job">
                           To a Job
+                        </TabsTrigger>
+                        <TabsTrigger className="flex-1" value="quote">
+                          To a Parts Sale
                         </TabsTrigger>
                         <TabsTrigger className="flex-1" value="person">
                           Without a Job
@@ -230,6 +244,30 @@ export function CheckoutBasketDialog({
                       {(field) => <field.TextareaField label="Purpose" placeholder="Repair factory drill" rows={2} />}
                     </form.AppField>
                   </>
+                ) : values.target === 'quote' ? (
+                  fixedQuote ? (
+                    <Field>
+                      <FieldLabel>Parts Sale</FieldLabel>
+                      <div className="rounded-md border px-3 py-2 font-mono text-sm">{fixedQuote.code}</div>
+                    </Field>
+                  ) : (
+                    <form.AppField name="quoteId">
+                      {(field) => (
+                        <Field data-invalid={field.state.meta.errors.length > 0}>
+                          <FieldLabel htmlFor="checkout-basket-quote">Parts Sale</FieldLabel>
+                          <InventoryQuotePicker
+                            controller={quotePicker}
+                            inputId="checkout-basket-quote"
+                            onSelected={(quote) => {
+                              setSelectedQuote(quote);
+                              field.handleChange(quote?.id ?? '');
+                            }}
+                            value={selectedQuote}
+                          />
+                        </Field>
+                      )}
+                    </form.AppField>
+                  )
                 ) : fixedJob ? (
                   <Field>
                     <FieldLabel>Job</FieldLabel>

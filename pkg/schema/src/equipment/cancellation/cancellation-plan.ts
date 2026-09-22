@@ -1,7 +1,9 @@
 import { z } from 'zod';
 import { UUID } from '../../common/uuid.js';
 import { JobCode } from '../common/public-code.js';
+import { StockMovementLengthMm } from '../inventory/stock-movement.js';
 import { JobDescription } from '../jobs/job.js';
+import { PartUnitOfMeasure } from '../parts/part.js';
 
 /**
  * The machine a cancellation is about to decide the fate of, as the dialog needs to describe it. The
@@ -22,6 +24,18 @@ export const CancellationLinkedUnit = z.object({
 /** What cancelling this Quote reaches: the live Job it would take with it, and that Job's machine. */
 export type QuoteCancellationPlan = z.infer<typeof QuoteCancellationPlan>;
 export const QuoteCancellationPlan = z.object({
+  /** Stock still out against a Parts Sale. Named so the person cancelling knows it is there; never a block. */
+  drawnStock: z
+    .array(
+      z.object({
+        lengthMm: StockMovementLengthMm.nullable(),
+        outstandingQuantity: z.number().finite(),
+        partCode: z.string(),
+        partName: z.string(),
+        unitOfMeasure: PartUnitOfMeasure,
+      }),
+    )
+    .default([]),
   job: z
     .object({
       code: JobCode,

@@ -71,11 +71,18 @@ export const assertedActorErrorFamily = defineCoreErrorFamily<AssertedActorError
 export const checkoutErrorFamily = defineCoreErrorFamily<CheckoutCoreError>({
   codes: {
     'inventory.invalid_source_checkout': 'BAD_REQUEST',
+    'inventory.quote_not_found': 'NOT_FOUND',
+    'inventory.quote_not_open': 'BAD_REQUEST',
+    'inventory.quote_not_parts_sale': 'BAD_REQUEST',
     'inventory.recipient_ineligible': 'BAD_REQUEST',
   },
   is: isCheckoutCoreError,
   messages: {
     'inventory.invalid_source_checkout': 'Select a Checkout without a Job.',
+    'inventory.quote_not_found': 'Select a Parts Sale.',
+    'inventory.quote_not_open': 'This Parts Sale was rejected or cancelled and can no longer draw stock.',
+    'inventory.quote_not_parts_sale':
+      "Stock can only be checked out to a Parts Sale. Check this Quote's parts out to its Job.",
     'inventory.recipient_ineligible': 'Select an active Equipment user who is not a device.',
   },
 });

@@ -18,6 +18,8 @@ export * from './inventory/movement-actor.js';
 export * from './inventory/movement-actor-errors.js';
 export * from './inventory/part-search-read.js';
 export * from './inventory/quick-switch-read.js';
+export * from './inventory/quote-options-read.js';
+export * from './inventory/quote-stock-read.js';
 export * from './inventory/receipt-service.js';
 export * from './inventory/recipient-read.js';
 export * from './inventory/return-to-supplier-service.js';

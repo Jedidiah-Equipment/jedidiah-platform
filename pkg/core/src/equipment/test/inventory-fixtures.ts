@@ -14,7 +14,7 @@ import {
   quotes,
   supplier,
 } from '@pkg/db/equipment';
-import type { PostAdjustmentInput, ProductCostEstimate } from '@pkg/schema/equipment';
+import type { PostAdjustmentInput, ProductCostEstimate, QuoteStatus } from '@pkg/schema/equipment';
 
 import { createTester } from '../../test/create-tester.js';
 import { partValues, seedPartCategory } from './part-fixtures.js';
@@ -276,4 +276,35 @@ export async function seedJobs(db: Db, cfoPartId: string) {
   ]);
 
   return { cfo, custom };
+}
+
+/** A Parts Sale with no Job: a Custom Quote flagged at creation, accepted unless told otherwise. */
+export async function seedPartsSaleQuote(
+  db: Db,
+  {
+    customerName = 'Parts Customer',
+    status = 'accepted',
+    workTitle = 'Spare bolts',
+  }: { customerName?: string; status?: QuoteStatus; workTitle?: string } = {},
+) {
+  const [customer] = await db.insert(customers).values({ companyName: customerName }).returning();
+  if (!customer) throw new Error('Customer insert did not return a row');
+
+  const [quote] = await db
+    .insert(quotes)
+    .values({
+      cancellationReason: status === 'cancelled' ? 'Customer withdrew' : null,
+      customerId: customer.id,
+      isPartsSale: true,
+      kind: 'custom',
+      quotedBasePrice: 0,
+      quotedCurrencyCode: 'ZAR',
+      salesPersonId: actorUserId,
+      status,
+      workTitle,
+    })
+    .returning();
+  if (!quote) throw new Error('Parts Sale insert did not return a row');
+
+  return quote;
 }

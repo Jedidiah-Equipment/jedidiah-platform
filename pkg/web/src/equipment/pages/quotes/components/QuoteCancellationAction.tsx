@@ -1,10 +1,11 @@
 import { shouldOfferQuoteCancellation } from '@pkg/domain/equipment';
 import { QuoteCancellationReason, type QuoteDetail } from '@pkg/schema/equipment';
-import { IconLoader2, IconTrash } from '@tabler/icons-react';
+import { IconAlertTriangle, IconLoader2, IconTrash } from '@tabler/icons-react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import type React from 'react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert.js';
 import { Button } from '@/components/ui/button.js';
 import {
   Dialog,
@@ -20,6 +21,7 @@ import { Field, FieldLabel } from '@/components/ui/field.js';
 import { Textarea } from '@/components/ui/textarea.js';
 import { CancellationChoice, describeSlotRelease, describeUnit } from '@/equipment/components/common/cancellation.js';
 import { useQueryInvalidation } from '@/equipment/hooks/use-query-invalidation.js';
+import { formatLengthBucket, formatPartQuantity } from '@/equipment/utils/part-quantity-format.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useTRPC } from '@/lib/trpc.js';
 
@@ -130,6 +132,29 @@ export function QuoteCancellationDialog({
         </DialogHeader>
 
         {planQuery.isPending ? <p className="text-muted-foreground text-sm">Checking what this affects…</p> : null}
+
+        {plan && plan.drawnStock.length > 0 ? (
+          <Alert className="border-warning/45 bg-warning/10 text-warning-foreground">
+            <IconAlertTriangle className="text-warning" />
+            <AlertTitle>Stock is still out</AlertTitle>
+            <AlertDescription>
+              <p>
+                This stock is still out against the sale. Cancelling does not return it; stores can still post a Return
+                to Store against this Quote afterwards.
+              </p>
+              <ul className="mt-2 list-disc pl-4">
+                {plan.drawnStock.map((stock) => (
+                  <li key={`${stock.partCode}:${stock.lengthMm ?? ''}`}>
+                    {stock.partCode} · {stock.partName}:{' '}
+                    {stock.lengthMm === null
+                      ? formatPartQuantity(stock.outstandingQuantity, stock.unitOfMeasure)
+                      : formatLengthBucket(stock.lengthMm, stock.outstandingQuantity)}
+                  </li>
+                ))}
+              </ul>
+            </AlertDescription>
+          </Alert>
+        ) : null}
 
         {plan?.job ? (
           <CancellationChoice

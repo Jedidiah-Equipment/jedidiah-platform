@@ -1,6 +1,6 @@
 import { type DatabaseTransaction, type Db, getUniqueViolationConstraint } from '@pkg/db';
 import { partCategories, parts, supplier } from '@pkg/db/equipment';
-import type { AuthId, UUID } from '@pkg/schema';
+import { type AuthId, nameLookupKey, type UUID } from '@pkg/schema';
 import type {
   PartBulkExportInput,
   PartBulkExportRow,
@@ -24,19 +24,6 @@ import { assertSupplierMutable, assertUnitOfMeasureMutable, partAuditDescriptor 
 
 type PartRow = typeof parts.$inferSelect;
 type SupplierRow = Pick<typeof supplier.$inferSelect, 'companyName' | 'id'>;
-
-/**
- * How an import decides that a CSV cell and a stored Supplier name mean the same thing: the fold Part
- * Categories are matched by, since casing and whitespace are noise for both. It never touches what is
- * stored: a matched Supplier keeps its own spelling, and a created one is stored as the row wrote it.
- * Anything looser than this ("Night Wolves" against "Nightwolves") is a merge somebody has to decide on.
- *
- * Whitespace is pinned to the class Postgres agrees on; casing is not, and cannot be. Postgres `lower`
- * and JavaScript `toLowerCase` part company on a few letters, so a Supplier named with one of them can
- * still be missed and duplicated. Pinning the fold to ASCII would trade that rare miss for a common
- * one, since every accented name matches correctly today.
- */
-const supplierLookupName = partCategoryLookupKey;
 
 /**
  * The Parts catalog in the shape the bulk import reads back, so a user can take the file out, edit
@@ -268,6 +255,11 @@ type RowSupplier =
   | { kind: 'new'; companyName: string }
   | { kind: 'none' };
 
+/**
+ * Which Supplier a row names, matched by `nameLookupKey` since casing and whitespace are noise here
+ * too. The match never touches what is stored: a matched Supplier keeps its own spelling, and a
+ * created one is stored as the row wrote it.
+ */
 function resolveRowSupplier({
   row,
   scopedSupplier,
@@ -282,13 +274,13 @@ function resolveRowSupplier({
   if (row.supplierName === null) return { kind: 'none' };
 
   if (scopedSupplier) {
-    return supplierLookupName(row.supplierName) === supplierLookupName(scopedSupplier.companyName)
+    return nameLookupKey(row.supplierName) === nameLookupKey(scopedSupplier.companyName)
       ? { kind: 'existing', supplier: scopedSupplier }
       : { error: `Line ${row.lineNumber}: Supplier ${row.supplierName} does not match ${scopedSupplier.companyName}.` };
   }
 
   const existing = pickRowSupplier({
-    candidates: suppliersByLookupName.get(supplierLookupName(row.supplierName)) ?? [],
+    candidates: suppliersByLookupName.get(nameLookupKey(row.supplierName)) ?? [],
     storedPart,
   });
 
@@ -343,7 +335,7 @@ async function ensureImportSupplierId({
   const created = await createImportSupplier({ actorUserId, companyName: rowSupplier.companyName, db });
   // Folded back so a later row naming the same Supplier resolves it without creating a second one.
   // Nothing was stored under this lookup name or the row would have resolved to it instead.
-  suppliersByLookupName.set(supplierLookupName(created.companyName), [created]);
+  suppliersByLookupName.set(nameLookupKey(created.companyName), [created]);
 
   return created.id;
 }
@@ -383,9 +375,7 @@ async function loadImportSuppliersByLookupName({
   rows: PartBulkImportInput['rows'];
 }): Promise<Map<string, SupplierRow[]>> {
   const byLookupName = new Map<string, SupplierRow[]>();
-  const lookupNames = [
-    ...new Set(rows.flatMap((row) => (row.supplierName ? [supplierLookupName(row.supplierName)] : []))),
-  ];
+  const lookupNames = [...new Set(rows.flatMap((row) => (row.supplierName ? [nameLookupKey(row.supplierName)] : [])))];
 
   if (lookupNames.length === 0) {
     return byLookupName;
@@ -421,7 +411,7 @@ async function loadImportSuppliersByLookupName({
   return byLookupName;
 }
 
-/** The database's side of {@link supplierLookupName}: the same whitespace class, Postgres's own fold. */
+/** The database's side of `nameLookupKey`: the same whitespace class, Postgres's own fold. */
 const supplierLookupNameSql = sql<string>`btrim(regexp_replace(lower(${supplier.companyName}), '[ \\t\\n\\r\\f\\v]+', ' ', 'g'))`;
 
 /** Part Code keeps its stored spelling, but PostgreSQL's case fold defines catalog identity. */

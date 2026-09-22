@@ -14,6 +14,7 @@ import {
   cancelledBadgeColorClassNames,
   statusBadgeColorClassNames,
 } from '../../theme/status-badge.js';
+import type { QuoteOfferingFacts } from './quote-offering.js';
 
 export const quoteStatusLabels: Record<QuoteStatus, string> = {
   accepted: 'Accepted',
@@ -78,9 +79,6 @@ export const quoteKindColorClassNames: Record<QuoteKind, BadgeColorClassNames> =
   custom: statusBadgeColorClassNames.teal,
   product: statusBadgeColorClassNames.yellow,
 };
-
-/** The offering facts that name a Quote's type; only a Custom offering can be a Parts Sale. */
-export type QuoteOfferingFacts = { kind: 'product' } | { isPartsSale: boolean; kind: 'custom' };
 
 export function quoteOfferingType(quote: QuoteOfferingFacts): QuoteOfferingType {
   if (quote.kind === 'product') return 'product';

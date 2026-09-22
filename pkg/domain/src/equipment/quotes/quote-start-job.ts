@@ -1,7 +1,7 @@
 import type { UUID } from '@pkg/schema';
 import type { QuoteKind, QuoteStatus } from '@pkg/schema/equipment';
 
-import type { QuoteOfferingFacts } from './quote-display.js';
+import type { QuoteOfferingFacts } from './quote-offering.js';
 
 export type QuoteStartJobEligibility =
   | {

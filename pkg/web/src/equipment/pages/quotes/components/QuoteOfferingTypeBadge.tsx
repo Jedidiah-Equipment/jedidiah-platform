@@ -2,7 +2,7 @@ import {
   type QuoteOfferingFacts,
   quoteOfferingType,
   quoteOfferingTypeColorClassNames,
-  quoteOfferingTypeLabels,
+  quoteOfferingTypeLabel,
 } from '@pkg/domain/equipment';
 import type React from 'react';
 
@@ -14,12 +14,11 @@ type QuoteOfferingTypeBadgeProps = Omit<React.ComponentProps<typeof Badge>, 'chi
 };
 
 export const QuoteOfferingTypeBadge: React.FC<QuoteOfferingTypeBadgeProps> = ({ className, quote, ...props }) => {
-  const offeringType = quoteOfferingType(quote);
-  const colors = quoteOfferingTypeColorClassNames[offeringType];
+  const colors = quoteOfferingTypeColorClassNames[quoteOfferingType(quote)];
 
   return (
     <Badge className={cn(colors.chip, colors.text, className)} variant="outline" {...props}>
-      {quoteOfferingTypeLabels[offeringType]}
+      {quoteOfferingTypeLabel(quote)}
     </Badge>
   );
 };

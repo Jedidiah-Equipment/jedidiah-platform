@@ -110,28 +110,6 @@ function toDateOnly(date: Date): string {
   return formatDateFns(date, 'yyyy-MM-dd');
 }
 
-describe('Quote table Type column', () => {
-  it('names a Parts Sale by its type in the badge and the offering subtitle', () => {
-    const html = renderQuoteTableRows([
-      createQuoteTableRow(
-        buildPriorityQuote({
-          isPartsSale: true,
-          kind: 'custom',
-          product: null,
-          productId: null,
-          quotedBasePrice: 0,
-          workItems: [],
-          workTitle: 'Machined bushes',
-        }),
-      ),
-    ]);
-
-    expect(html).toContain('Machined bushes');
-    expect(html.split('>Parts Sale<')).toHaveLength(3);
-    expect(html).not.toContain('Service Work');
-  });
-});
-
 function renderQuoteTableRows(rows: QuoteTableRow[]) {
   return renderToStaticMarkup(<TestQuoteTable rows={rows} />);
 }

@@ -14,6 +14,7 @@ import { Pressable, View } from 'react-native';
 import type { useAutosaveForm } from '@/components/form';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
+import { useAppToast } from '@/components/ui/toast';
 import {
   createQuoteFormKey,
   OTHER_WORK_ITEM_DEPARTMENT,
@@ -59,7 +60,9 @@ export function QuoteWorkItemsEditor({ autosave, currencyCode, form, readOnly }:
   const trpc = useTRPC();
   const billing = useQuery(trpc.laborRates.billing.queryOptions());
   const rates = billing.data;
-  const [inventoryPartTarget, setInventoryPartTarget] = useState<number | null>(null);
+  const showToast = useAppToast();
+  // A formKey, not an index: an autosave reconcile can reset the array while the picker is open.
+  const [inventoryPartTarget, setInventoryPartTarget] = useState<string | null>(null);
   return (
     <form.Field name="workItems" mode="array">
       {(workItemsField) => (
@@ -208,7 +211,7 @@ export function QuoteWorkItemsEditor({ autosave, currencyCode, form, readOnly }:
                             <AddPartButton
                               disabled={readOnly}
                               label="Add inventory part"
-                              onPress={() => setInventoryPartTarget(workItemIndex)}
+                              onPress={() => setInventoryPartTarget(workItem.formKey)}
                             />
                           </View>
                         </View>
@@ -300,9 +303,15 @@ export function QuoteWorkItemsEditor({ autosave, currencyCode, form, readOnly }:
           <InventoryPartPicker
             currencyCode={currencyCode}
             onAdd={(row) => {
-              if (inventoryPartTarget === null) return;
+              const workItemIndex = form.state.values.workItems.findIndex(
+                (workItem) => workItem.formKey === inventoryPartTarget,
+              );
+              if (workItemIndex === -1) {
+                showToast('error', 'The work item changed. Please add the part again.');
+                return;
+              }
               // Complete the moment it lands, unlike an empty custom row, so nothing else would flush it.
-              form.pushFieldValue(`workItems[${inventoryPartTarget}].parts`, {
+              form.pushFieldValue(`workItems[${workItemIndex}].parts`, {
                 formKey: createQuoteFormKey('work-item-part'),
                 ...row,
               });

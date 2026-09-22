@@ -20,6 +20,7 @@ import type { UUID } from '@pkg/schema';
 import Fastify, { type FastifyInstance } from 'fastify';
 import { afterEach, beforeEach, describe, expect, vi } from 'vitest';
 import type { Auth } from '@/auth/auth.js';
+import { seedPartCategory } from '@/equipment/test/part-category-fixtures.js';
 import { createProductRangeFixture } from '@/equipment/test/product-range-fixtures.js';
 import { createTester } from '@/test/create-tester.js';
 import { mockSession } from '@/test/test-utils.js';
@@ -497,7 +498,7 @@ describe('document HTTP routes', () => {
     const [part] = await context.db
       .insert(parts)
       .values({
-        category: 'Pipe',
+        categoryId: await seedPartCategory(context.db, 'Pipe'),
         code: 'CN-PART',
         description: 'Credit note Part',
         finish: 'Plain',

@@ -37,6 +37,7 @@ import { Route as AuthedEquipmentFeedbackRouteImport } from './../routes/_authed
 import { Route as AuthedEquipmentInventoryRouteImport } from './../routes/_authed.equipment.inventory'
 import { Route as AuthedEquipmentJobsRouteImport } from './../routes/_authed.equipment.jobs'
 import { Route as AuthedEquipmentLaborRatesRouteImport } from './../routes/_authed.equipment.labor-rates'
+import { Route as AuthedEquipmentPartCategoriesRouteImport } from './../routes/_authed.equipment.part-categories'
 import { Route as AuthedEquipmentPartsRouteImport } from './../routes/_authed.equipment.parts'
 import { Route as AuthedEquipmentProductRangesRouteImport } from './../routes/_authed.equipment.product-ranges'
 import { Route as AuthedEquipmentProductsRouteImport } from './../routes/_authed.equipment.products'
@@ -68,6 +69,7 @@ import { Route as AuthedEquipmentJobsActivityRouteImport } from './../routes/_au
 import { Route as AuthedEquipmentJobsCalendarRouteImport } from './../routes/_authed.equipment.jobs.calendar'
 import { Route as AuthedEquipmentJobsListRouteImport } from './../routes/_authed.equipment.jobs.list'
 import { Route as AuthedEquipmentJobsStockBuildRouteImport } from './../routes/_authed.equipment.jobs.stock-build'
+import { Route as AuthedEquipmentPartCategoriesIndexRouteImport } from './../routes/_authed.equipment.part-categories.index'
 import { Route as AuthedEquipmentProductRangesIndexRouteImport } from './../routes/_authed.equipment.product-ranges.index'
 import { Route as AuthedEquipmentProductsIndexRouteImport } from './../routes/_authed.equipment.products.index'
 import { Route as AuthedEquipmentPurchaseOrdersIndexRouteImport } from './../routes/_authed.equipment.purchase-orders.index'
@@ -89,6 +91,7 @@ import { Route as AuthedEquipmentInventoryCloseOutJobIdRouteImport } from './../
 import { Route as AuthedEquipmentInventoryJobVarianceJobIdRouteImport } from './../routes/_authed.equipment.inventory.job-variance.$jobId'
 import { Route as AuthedEquipmentInventoryStocktakeIndexRouteImport } from './../routes/_authed.equipment.inventory.stocktake.index'
 import { Route as AuthedEquipmentInventoryStocktakeSessionIdRouteImport } from './../routes/_authed.equipment.inventory.stocktake.$sessionId'
+import { Route as AuthedEquipmentPartCategoriesIdEditRouteImport } from './../routes/_authed.equipment.part-categories.$id.edit'
 import { Route as AuthedEquipmentProductRangesIdEditRouteImport } from './../routes/_authed.equipment.product-ranges.$id.edit'
 import { Route as AuthedEquipmentProductsIdEditRouteImport } from './../routes/_authed.equipment.products.$id.edit'
 import { Route as AuthedEquipmentQuotesIdEditRouteImport } from './../routes/_authed.equipment.quotes.$id_.edit'
@@ -242,6 +245,12 @@ const AuthedEquipmentLaborRatesRoute =
   AuthedEquipmentLaborRatesRouteImport.update({
     id: '/labor-rates',
     path: '/labor-rates',
+    getParentRoute: () => AuthedEquipmentRoute,
+  } as any)
+const AuthedEquipmentPartCategoriesRoute =
+  AuthedEquipmentPartCategoriesRouteImport.update({
+    id: '/part-categories',
+    path: '/part-categories',
     getParentRoute: () => AuthedEquipmentRoute,
   } as any)
 const AuthedEquipmentPartsRoute = AuthedEquipmentPartsRouteImport.update({
@@ -423,6 +432,12 @@ const AuthedEquipmentJobsStockBuildRoute =
     path: '/stock-build',
     getParentRoute: () => AuthedEquipmentJobsRoute,
   } as any)
+const AuthedEquipmentPartCategoriesIndexRoute =
+  AuthedEquipmentPartCategoriesIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AuthedEquipmentPartCategoriesRoute,
+  } as any)
 const AuthedEquipmentProductRangesIndexRoute =
   AuthedEquipmentProductRangesIndexRouteImport.update({
     id: '/',
@@ -548,6 +563,12 @@ const AuthedEquipmentInventoryStocktakeSessionIdRoute =
     path: '/$sessionId',
     getParentRoute: () => AuthedEquipmentInventoryStocktakeRoute,
   } as any)
+const AuthedEquipmentPartCategoriesIdEditRoute =
+  AuthedEquipmentPartCategoriesIdEditRouteImport.update({
+    id: '/$id/edit',
+    path: '/$id/edit',
+    getParentRoute: () => AuthedEquipmentPartCategoriesRoute,
+  } as any)
 const AuthedEquipmentProductRangesIdEditRoute =
   AuthedEquipmentProductRangesIdEditRouteImport.update({
     id: '/$id/edit',
@@ -618,6 +639,7 @@ export interface FileRoutesByFullPath {
   '/equipment/inventory': typeof AuthedEquipmentInventoryRouteWithChildren
   '/equipment/jobs': typeof AuthedEquipmentJobsRouteWithChildren
   '/equipment/labor-rates': typeof AuthedEquipmentLaborRatesRoute
+  '/equipment/part-categories': typeof AuthedEquipmentPartCategoriesRouteWithChildren
   '/equipment/parts': typeof AuthedEquipmentPartsRoute
   '/equipment/product-ranges': typeof AuthedEquipmentProductRangesRouteWithChildren
   '/equipment/products': typeof AuthedEquipmentProductsRouteWithChildren
@@ -652,6 +674,7 @@ export interface FileRoutesByFullPath {
   '/equipment/customers/': typeof AuthedEquipmentCustomersIndexRoute
   '/equipment/inventory/': typeof AuthedEquipmentInventoryIndexRoute
   '/equipment/jobs/': typeof AuthedEquipmentJobsIndexRoute
+  '/equipment/part-categories/': typeof AuthedEquipmentPartCategoriesIndexRoute
   '/equipment/product-ranges/': typeof AuthedEquipmentProductRangesIndexRoute
   '/equipment/products/': typeof AuthedEquipmentProductsIndexRoute
   '/equipment/purchase-orders/': typeof AuthedEquipmentPurchaseOrdersIndexRoute
@@ -667,6 +690,7 @@ export interface FileRoutesByFullPath {
   '/equipment/inventory/close-out/$jobId': typeof AuthedEquipmentInventoryCloseOutJobIdRoute
   '/equipment/inventory/job-variance/$jobId': typeof AuthedEquipmentInventoryJobVarianceJobIdRoute
   '/equipment/inventory/stocktake/$sessionId': typeof AuthedEquipmentInventoryStocktakeSessionIdRoute
+  '/equipment/part-categories/$id/edit': typeof AuthedEquipmentPartCategoriesIdEditRoute
   '/equipment/product-ranges/$id/edit': typeof AuthedEquipmentProductRangesIdEditRoute
   '/equipment/products/$id/edit': typeof AuthedEquipmentProductsIdEditRoute
   '/equipment/quotes/$id/edit': typeof AuthedEquipmentQuotesIdEditRoute
@@ -720,6 +744,7 @@ export interface FileRoutesByTo {
   '/equipment/customers': typeof AuthedEquipmentCustomersIndexRoute
   '/equipment/inventory': typeof AuthedEquipmentInventoryIndexRoute
   '/equipment/jobs': typeof AuthedEquipmentJobsIndexRoute
+  '/equipment/part-categories': typeof AuthedEquipmentPartCategoriesIndexRoute
   '/equipment/product-ranges': typeof AuthedEquipmentProductRangesIndexRoute
   '/equipment/products': typeof AuthedEquipmentProductsIndexRoute
   '/equipment/purchase-orders': typeof AuthedEquipmentPurchaseOrdersIndexRoute
@@ -735,6 +760,7 @@ export interface FileRoutesByTo {
   '/equipment/inventory/close-out/$jobId': typeof AuthedEquipmentInventoryCloseOutJobIdRoute
   '/equipment/inventory/job-variance/$jobId': typeof AuthedEquipmentInventoryJobVarianceJobIdRoute
   '/equipment/inventory/stocktake/$sessionId': typeof AuthedEquipmentInventoryStocktakeSessionIdRoute
+  '/equipment/part-categories/$id/edit': typeof AuthedEquipmentPartCategoriesIdEditRoute
   '/equipment/product-ranges/$id/edit': typeof AuthedEquipmentProductRangesIdEditRoute
   '/equipment/products/$id/edit': typeof AuthedEquipmentProductsIdEditRoute
   '/equipment/quotes/$id/edit': typeof AuthedEquipmentQuotesIdEditRoute
@@ -776,6 +802,7 @@ export interface FileRoutesById {
   '/_authed/equipment/inventory': typeof AuthedEquipmentInventoryRouteWithChildren
   '/_authed/equipment/jobs': typeof AuthedEquipmentJobsRouteWithChildren
   '/_authed/equipment/labor-rates': typeof AuthedEquipmentLaborRatesRoute
+  '/_authed/equipment/part-categories': typeof AuthedEquipmentPartCategoriesRouteWithChildren
   '/_authed/equipment/parts': typeof AuthedEquipmentPartsRoute
   '/_authed/equipment/product-ranges': typeof AuthedEquipmentProductRangesRouteWithChildren
   '/_authed/equipment/products': typeof AuthedEquipmentProductsRouteWithChildren
@@ -810,6 +837,7 @@ export interface FileRoutesById {
   '/_authed/equipment/customers/': typeof AuthedEquipmentCustomersIndexRoute
   '/_authed/equipment/inventory/': typeof AuthedEquipmentInventoryIndexRoute
   '/_authed/equipment/jobs/': typeof AuthedEquipmentJobsIndexRoute
+  '/_authed/equipment/part-categories/': typeof AuthedEquipmentPartCategoriesIndexRoute
   '/_authed/equipment/product-ranges/': typeof AuthedEquipmentProductRangesIndexRoute
   '/_authed/equipment/products/': typeof AuthedEquipmentProductsIndexRoute
   '/_authed/equipment/purchase-orders/': typeof AuthedEquipmentPurchaseOrdersIndexRoute
@@ -825,6 +853,7 @@ export interface FileRoutesById {
   '/_authed/equipment/inventory/close-out/$jobId': typeof AuthedEquipmentInventoryCloseOutJobIdRoute
   '/_authed/equipment/inventory/job-variance/$jobId': typeof AuthedEquipmentInventoryJobVarianceJobIdRoute
   '/_authed/equipment/inventory/stocktake/$sessionId': typeof AuthedEquipmentInventoryStocktakeSessionIdRoute
+  '/_authed/equipment/part-categories/$id/edit': typeof AuthedEquipmentPartCategoriesIdEditRoute
   '/_authed/equipment/product-ranges/$id/edit': typeof AuthedEquipmentProductRangesIdEditRoute
   '/_authed/equipment/products/$id/edit': typeof AuthedEquipmentProductsIdEditRoute
   '/_authed/equipment/quotes/$id_/edit': typeof AuthedEquipmentQuotesIdEditRoute
@@ -866,6 +895,7 @@ export interface FileRouteTypes {
     | '/equipment/inventory'
     | '/equipment/jobs'
     | '/equipment/labor-rates'
+    | '/equipment/part-categories'
     | '/equipment/parts'
     | '/equipment/product-ranges'
     | '/equipment/products'
@@ -900,6 +930,7 @@ export interface FileRouteTypes {
     | '/equipment/customers/'
     | '/equipment/inventory/'
     | '/equipment/jobs/'
+    | '/equipment/part-categories/'
     | '/equipment/product-ranges/'
     | '/equipment/products/'
     | '/equipment/purchase-orders/'
@@ -915,6 +946,7 @@ export interface FileRouteTypes {
     | '/equipment/inventory/close-out/$jobId'
     | '/equipment/inventory/job-variance/$jobId'
     | '/equipment/inventory/stocktake/$sessionId'
+    | '/equipment/part-categories/$id/edit'
     | '/equipment/product-ranges/$id/edit'
     | '/equipment/products/$id/edit'
     | '/equipment/quotes/$id/edit'
@@ -968,6 +1000,7 @@ export interface FileRouteTypes {
     | '/equipment/customers'
     | '/equipment/inventory'
     | '/equipment/jobs'
+    | '/equipment/part-categories'
     | '/equipment/product-ranges'
     | '/equipment/products'
     | '/equipment/purchase-orders'
@@ -983,6 +1016,7 @@ export interface FileRouteTypes {
     | '/equipment/inventory/close-out/$jobId'
     | '/equipment/inventory/job-variance/$jobId'
     | '/equipment/inventory/stocktake/$sessionId'
+    | '/equipment/part-categories/$id/edit'
     | '/equipment/product-ranges/$id/edit'
     | '/equipment/products/$id/edit'
     | '/equipment/quotes/$id/edit'
@@ -1023,6 +1057,7 @@ export interface FileRouteTypes {
     | '/_authed/equipment/inventory'
     | '/_authed/equipment/jobs'
     | '/_authed/equipment/labor-rates'
+    | '/_authed/equipment/part-categories'
     | '/_authed/equipment/parts'
     | '/_authed/equipment/product-ranges'
     | '/_authed/equipment/products'
@@ -1057,6 +1092,7 @@ export interface FileRouteTypes {
     | '/_authed/equipment/customers/'
     | '/_authed/equipment/inventory/'
     | '/_authed/equipment/jobs/'
+    | '/_authed/equipment/part-categories/'
     | '/_authed/equipment/product-ranges/'
     | '/_authed/equipment/products/'
     | '/_authed/equipment/purchase-orders/'
@@ -1072,6 +1108,7 @@ export interface FileRouteTypes {
     | '/_authed/equipment/inventory/close-out/$jobId'
     | '/_authed/equipment/inventory/job-variance/$jobId'
     | '/_authed/equipment/inventory/stocktake/$sessionId'
+    | '/_authed/equipment/part-categories/$id/edit'
     | '/_authed/equipment/product-ranges/$id/edit'
     | '/_authed/equipment/products/$id/edit'
     | '/_authed/equipment/quotes/$id_/edit'
@@ -1294,6 +1331,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthedEquipmentLaborRatesRouteImport
       parentRoute: typeof AuthedEquipmentRoute
     }
+    '/_authed/equipment/part-categories': {
+      id: '/_authed/equipment/part-categories'
+      path: '/part-categories'
+      fullPath: '/equipment/part-categories'
+      preLoaderRoute: typeof AuthedEquipmentPartCategoriesRouteImport
+      parentRoute: typeof AuthedEquipmentRoute
+    }
     '/_authed/equipment/parts': {
       id: '/_authed/equipment/parts'
       path: '/parts'
@@ -1511,6 +1555,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthedEquipmentJobsStockBuildRouteImport
       parentRoute: typeof AuthedEquipmentJobsRoute
     }
+    '/_authed/equipment/part-categories/': {
+      id: '/_authed/equipment/part-categories/'
+      path: '/'
+      fullPath: '/equipment/part-categories/'
+      preLoaderRoute: typeof AuthedEquipmentPartCategoriesIndexRouteImport
+      parentRoute: typeof AuthedEquipmentPartCategoriesRoute
+    }
     '/_authed/equipment/product-ranges/': {
       id: '/_authed/equipment/product-ranges/'
       path: '/'
@@ -1657,6 +1708,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/equipment/inventory/stocktake/$sessionId'
       preLoaderRoute: typeof AuthedEquipmentInventoryStocktakeSessionIdRouteImport
       parentRoute: typeof AuthedEquipmentInventoryStocktakeRoute
+    }
+    '/_authed/equipment/part-categories/$id/edit': {
+      id: '/_authed/equipment/part-categories/$id/edit'
+      path: '/$id/edit'
+      fullPath: '/equipment/part-categories/$id/edit'
+      preLoaderRoute: typeof AuthedEquipmentPartCategoriesIdEditRouteImport
+      parentRoute: typeof AuthedEquipmentPartCategoriesRoute
     }
     '/_authed/equipment/product-ranges/$id/edit': {
       id: '/_authed/equipment/product-ranges/$id/edit'
@@ -1985,6 +2043,24 @@ const AuthedEquipmentJobsRouteChildren: AuthedEquipmentJobsRouteChildren = {
 const AuthedEquipmentJobsRouteWithChildren =
   AuthedEquipmentJobsRoute._addFileChildren(AuthedEquipmentJobsRouteChildren)
 
+interface AuthedEquipmentPartCategoriesRouteChildren {
+  AuthedEquipmentPartCategoriesIndexRoute: typeof AuthedEquipmentPartCategoriesIndexRoute
+  AuthedEquipmentPartCategoriesIdEditRoute: typeof AuthedEquipmentPartCategoriesIdEditRoute
+}
+
+const AuthedEquipmentPartCategoriesRouteChildren: AuthedEquipmentPartCategoriesRouteChildren =
+  {
+    AuthedEquipmentPartCategoriesIndexRoute:
+      AuthedEquipmentPartCategoriesIndexRoute,
+    AuthedEquipmentPartCategoriesIdEditRoute:
+      AuthedEquipmentPartCategoriesIdEditRoute,
+  }
+
+const AuthedEquipmentPartCategoriesRouteWithChildren =
+  AuthedEquipmentPartCategoriesRoute._addFileChildren(
+    AuthedEquipmentPartCategoriesRouteChildren,
+  )
+
 interface AuthedEquipmentProductRangesRouteChildren {
   AuthedEquipmentProductRangesIndexRoute: typeof AuthedEquipmentProductRangesIndexRoute
   AuthedEquipmentProductRangesIdEditRoute: typeof AuthedEquipmentProductRangesIdEditRoute
@@ -2092,6 +2168,7 @@ interface AuthedEquipmentRouteChildren {
   AuthedEquipmentInventoryRoute: typeof AuthedEquipmentInventoryRouteWithChildren
   AuthedEquipmentJobsRoute: typeof AuthedEquipmentJobsRouteWithChildren
   AuthedEquipmentLaborRatesRoute: typeof AuthedEquipmentLaborRatesRoute
+  AuthedEquipmentPartCategoriesRoute: typeof AuthedEquipmentPartCategoriesRouteWithChildren
   AuthedEquipmentPartsRoute: typeof AuthedEquipmentPartsRoute
   AuthedEquipmentProductRangesRoute: typeof AuthedEquipmentProductRangesRouteWithChildren
   AuthedEquipmentProductsRoute: typeof AuthedEquipmentProductsRouteWithChildren
@@ -2113,6 +2190,8 @@ const AuthedEquipmentRouteChildren: AuthedEquipmentRouteChildren = {
   AuthedEquipmentInventoryRoute: AuthedEquipmentInventoryRouteWithChildren,
   AuthedEquipmentJobsRoute: AuthedEquipmentJobsRouteWithChildren,
   AuthedEquipmentLaborRatesRoute: AuthedEquipmentLaborRatesRoute,
+  AuthedEquipmentPartCategoriesRoute:
+    AuthedEquipmentPartCategoriesRouteWithChildren,
   AuthedEquipmentPartsRoute: AuthedEquipmentPartsRoute,
   AuthedEquipmentProductRangesRoute:
     AuthedEquipmentProductRangesRouteWithChildren,

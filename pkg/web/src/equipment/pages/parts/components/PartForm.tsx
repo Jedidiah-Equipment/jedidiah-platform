@@ -16,6 +16,7 @@ import {
   usePartStorageLocationOptions,
   useSupplierOptions,
 } from '@/equipment/hooks/options/index.js';
+import { NewPartCategoryButton } from './NewPartCategoryButton.js';
 import { PartFormValues, partStockTrackingModeOptions, partUnitOfMeasureOptions, toPartFormValues } from './types.js';
 
 type PartFormProps = {
@@ -172,15 +173,20 @@ export const PartForm: React.FC<PartFormProps> = ({
         <form.AppField name="isInternallyFabricated">
           {(field) => <field.CheckboxField label="Internally fabricated" />}
         </form.AppField>
-        <form.AppField name="category">
+        <form.AppField name="categoryId">
           {(field) => (
-            <field.CreatableComboboxField
-              disabled={categoryOptions.isPending}
-              emptyMessage="No categories found."
-              label="Category"
-              options={categoryOptions.items}
-              placeholder={categoryOptions.isPending ? 'Loading categories...' : 'Select or create category'}
-            />
+            <div className="flex items-end gap-2">
+              <div className="min-w-0 flex-1">
+                <field.ComboboxField
+                  disabled={categoryOptions.isPending}
+                  emptyMessage="No Part Categories found."
+                  label="Part Category"
+                  options={categoryOptions.selectOptions}
+                  placeholder={categoryOptions.isPending ? 'Loading Part Categories...' : 'Search Part Categories'}
+                />
+              </div>
+              <NewPartCategoryButton onCreated={(category) => field.handleChange(category.id)} />
+            </div>
           )}
         </form.AppField>
         <EditFormFullWidth>

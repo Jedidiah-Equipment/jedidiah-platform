@@ -14,7 +14,7 @@ import { eq } from 'drizzle-orm';
 import { describe, expect } from 'vitest';
 import { createTester } from '../../test/create-tester.js';
 import { postAdjustment, postJobMovement } from '../inventory/stock-movement-service.js';
-import { partValues } from '../test/part-fixtures.js';
+import { partValues, seedPartCategory } from '../test/part-fixtures.js';
 import { createProductRangeFixture } from '../test/product-range-fixtures.js';
 import { listOnHandProductUnitStock } from './product-unit-stock-export.js';
 
@@ -274,11 +274,12 @@ async function seedStockShape(db: Db) {
     .returning({ id: supplier.id });
   if (!createdSupplier) throw new Error('Supplier insert did not return a row');
 
+  const categoryId = await seedPartCategory(db);
   const [costedPart, unpricedPart] = await db
     .insert(parts)
     .values([
-      partValues({ code: 'COSTED', supplierId: createdSupplier.id, unitOfMeasure: 'piece' }),
-      partValues({ code: 'UNPRICED', supplierId: createdSupplier.id, unitOfMeasure: 'piece' }),
+      partValues({ categoryId, code: 'COSTED', supplierId: createdSupplier.id, unitOfMeasure: 'piece' }),
+      partValues({ categoryId, code: 'UNPRICED', supplierId: createdSupplier.id, unitOfMeasure: 'piece' }),
     ])
     .returning();
   if (!costedPart || !unpricedPart) throw new Error('Part inserts did not return every row');

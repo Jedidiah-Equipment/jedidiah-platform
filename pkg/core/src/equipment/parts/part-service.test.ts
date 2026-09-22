@@ -1,5 +1,5 @@
 import { auditEvents, type Db, user } from '@pkg/db';
-import { partBom, parts, stockMovements, supplier } from '@pkg/db/equipment';
+import { partBom, partCategories, parts, stockMovements, supplier } from '@pkg/db/equipment';
 import { type PartBulkImportRow, PartListInput } from '@pkg/schema/equipment';
 import { eq, isNull } from 'drizzle-orm';
 import { describe, expect } from 'vitest';
@@ -15,8 +15,11 @@ import {
   updatePart,
 } from './part-service.js';
 
+const BEARINGS_ID = '00000000-0000-4000-8000-0000000000b1';
+
 const test = createTester(async ({ db }) => {
   await createActorUser(db);
+  await db.insert(partCategories).values({ id: BEARINGS_ID, name: 'Bearings' });
 
   return { db };
 });
@@ -136,6 +139,78 @@ describe('listParts', () => {
 
     expect(filtered.items.map((part) => part.code)).toEqual(['P-200']);
     expect(locations).toEqual({ locations: ['Rack A', 'Rack B'] });
+  });
+});
+
+describe('Parts by Part Category', () => {
+  test('filters by Part Category id, and sorts and searches by its name', async ({ context }) => {
+    await context.db
+      .insert(supplier)
+      .values({ companyName: 'Acme Supplies', id: '00000000-0000-4000-8000-000000000001' });
+    const [axle] = await context.db.insert(partCategories).values({ name: 'Axle' }).returning();
+    if (!axle) throw new Error('Part Category insert did not return a row');
+    await createPart({ actorUserId, db: context.db, input: partInput({ code: 'P-100' }) });
+    await createPart({ actorUserId, db: context.db, input: partInput({ categoryId: axle.id, code: 'P-200' }) });
+
+    const filtered = await listParts({ db: context.db, input: PartListInput.parse({ categoryId: axle.id, limit: 0 }) });
+    const sorted = await listParts({
+      db: context.db,
+      input: PartListInput.parse({ limit: 0, sortBy: 'category', sortDirection: 'asc' }),
+    });
+    const searched = await listParts({ db: context.db, input: PartListInput.parse({ limit: 0, search: 'axle' }) });
+    const columnFiltered = await listParts({
+      db: context.db,
+      input: PartListInput.parse({ columnFilters: { category: 'xl' }, limit: 0 }),
+    });
+
+    expect(filtered.items).toEqual([expect.objectContaining({ category: 'Axle', categoryId: axle.id, code: 'P-200' })]);
+    expect(sorted.items.map((part) => part.category)).toEqual(['Axle', 'Bearings']);
+    expect(searched.items.map((part) => part.code)).toEqual(['P-200']);
+    expect(columnFiltered.items.map((part) => part.code)).toEqual(['P-200']);
+  });
+
+  test('refuses to create or move a Part into a Part Category that does not exist', async ({ context }) => {
+    await context.db
+      .insert(supplier)
+      .values({ companyName: 'Acme Supplies', id: '00000000-0000-4000-8000-000000000001' });
+    const missingId = '00000000-0000-4000-8000-000000000999';
+    const created = await createPart({ actorUserId, db: context.db, input: partInput() });
+
+    await expect(
+      createPart({ actorUserId, db: context.db, input: partInput({ categoryId: missingId, code: 'P-200' }) }),
+    ).rejects.toMatchObject({ code: 'part.category_not_found' });
+    await expect(
+      updatePart({ actorUserId, db: context.db, input: { ...created, categoryId: missingId } }),
+    ).rejects.toMatchObject({ code: 'part.category_not_found' });
+  });
+
+  test('imports a row whose Part Category differs only by casing and spacing, and fails an unknown one', async ({
+    context,
+  }) => {
+    await context.db.insert(partCategories).values({ name: 'Bolt & Nuts' });
+
+    const result = await bulkImportParts({
+      actorUserId,
+      db: context.db,
+      input: {
+        rows: [
+          importRow({ category: '  bolt &  nuts ', code: 'P-100' }),
+          importRow({ category: 'Widgets', code: 'P-200', lineNumber: 3, supplierCode: 'SUP-200' }),
+          importRow({ code: 'P-300', lineNumber: 4, supplierCode: 'SUP-300' }),
+        ],
+      },
+    });
+
+    expect(result).toEqual({
+      errors: ['Line 3: Part Category "Widgets" does not exist. Add it under Admin → Part categories first.'],
+      importedCount: 2,
+      updatedCount: 0,
+    });
+    const exported = await bulkExportParts({ db: context.db, input: {} });
+    expect(exported.map((row) => [row.code, row.category])).toEqual([
+      ['P-100', 'Bolt & Nuts'],
+      ['P-300', 'Bearings'],
+    ]);
   });
 });
 
@@ -935,7 +1010,7 @@ async function createActorUser(db: Db) {
 function partInput(overrides: Partial<Parameters<typeof createPart>[0]['input']> = {}) {
   return {
     averageUtilizationPercent: null,
-    category: 'Bearings',
+    categoryId: BEARINGS_ID,
     code: 'P-100',
     description: 'Main bearing',
     drawingCode: null,

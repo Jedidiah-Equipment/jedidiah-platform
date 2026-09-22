@@ -8,7 +8,7 @@ export type PartLabelUrlSelection = Exclude<PartLabelBatchSelection, { selection
 
 export const partLabelBatchModeLabels = {
   all: 'All Parts',
-  category: 'By category',
+  category: 'By Part Category',
   ids: 'Choose Parts',
   storageLocation: 'By storage location',
 } satisfies Record<PartLabelUrlSelection['selection'], string>;
@@ -24,7 +24,7 @@ export function partLabelBatchUrl(selection: PartLabelUrlSelection): string {
     case 'all':
       break;
     case 'category':
-      params.set('category', selection.category);
+      params.set('categoryId', selection.categoryId);
       break;
     case 'storageLocation':
       params.set('storageLocation', selection.storageLocation);

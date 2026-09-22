@@ -5,7 +5,7 @@ import { describe, expect } from 'vitest';
 import { createTester } from '../../test/create-tester.js';
 import { postReceipt } from '../inventory/receipt-service.js';
 import { seedSentPurchaseOrder } from '../test/inventory-fixtures.js';
-import { partValues } from '../test/part-fixtures.js';
+import { partValues, seedPartCategory } from '../test/part-fixtures.js';
 import { postArrival } from './arrival-service.js';
 import { listLatePurchaseOrders } from './purchase-order-signals.js';
 
@@ -26,9 +26,13 @@ const test = createTester(async ({ db }) => {
     updatedAt: new Date(),
   });
   await db.insert(supplier).values({ companyName: 'Slow Supplies', id: SUPPLIER_ID });
+  const categoryId = await seedPartCategory(db);
   await db.insert(parts).values([
-    { ...partValues({ code: 'L-100', supplierId: SUPPLIER_ID, unitOfMeasure: 'piece' }), id: PART_ID },
-    { ...partValues({ code: 'L-200', supplierId: SUPPLIER_ID, unitOfMeasure: 'piece' }), id: OTHER_PART_ID },
+    { ...partValues({ categoryId, code: 'L-100', supplierId: SUPPLIER_ID, unitOfMeasure: 'piece' }), id: PART_ID },
+    {
+      ...partValues({ categoryId, code: 'L-200', supplierId: SUPPLIER_ID, unitOfMeasure: 'piece' }),
+      id: OTHER_PART_ID,
+    },
   ]);
 
   return {};

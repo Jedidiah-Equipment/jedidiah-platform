@@ -7,7 +7,15 @@ import {
   getUniqueViolationConstraint,
   withPagination,
 } from '@pkg/db';
-import { partBom, parts, purchaseOrderLines, purchaseOrders, stockMovements, supplier } from '@pkg/db/equipment';
+import {
+  partBom,
+  partCategories,
+  parts,
+  purchaseOrderLines,
+  purchaseOrders,
+  stockMovements,
+  supplier,
+} from '@pkg/db/equipment';
 import type { AuthId, UUID } from '@pkg/schema';
 import { getNextCursor } from '@pkg/schema';
 import type {
@@ -39,6 +47,7 @@ import {
   NO_SUPPLIER_LABEL,
   PartBomLockedError,
   PartBulkImportConflictError,
+  PartCategoryNotFoundError,
   PartNotFoundError,
   PartSupplierLockedByPurchaseOrderError,
   PartSupplierNotFoundError,
@@ -59,7 +68,7 @@ export const partAuditDescriptor = defineAuditDescriptor<PartRow>({
   entityId: (row) => row.id,
   toRecord: (row) => ({
     averageUtilizationPercent: row.averageUtilizationPercent,
-    category: row.category,
+    categoryId: row.categoryId,
     code: row.code,
     description: row.description,
     drawingCode: row.drawingCode,
@@ -77,6 +86,7 @@ export const partAuditDescriptor = defineAuditDescriptor<PartRow>({
 });
 
 type PartWithSupplierRow = PartRow & {
+  categoryName: string;
   /** Null on a Built Part, which is made in-house and bought from nobody. */
   supplier: SupplierRow | null;
   unitOfMeasureLocked: boolean;
@@ -85,7 +95,8 @@ type PartWithSupplierRow = PartRow & {
 export function mapPart(row: PartWithSupplierRow): Part {
   return PartSchema.parse({
     averageUtilizationPercent: row.averageUtilizationPercent,
-    category: row.category,
+    category: row.categoryName,
+    categoryId: row.categoryId,
     code: row.code,
     description: row.description,
     drawingCode: row.drawingCode,
@@ -112,6 +123,7 @@ export async function listParts({ db, input }: { db: Db; input: PartListInput })
   const rowsQuery = withPagination(
     db
       .select({
+        categoryName: partCategories.name,
         part: parts,
         supplier: {
           id: supplier.id,
@@ -120,6 +132,7 @@ export async function listParts({ db, input }: { db: Db; input: PartListInput })
         unitOfMeasureLocked: unitOfMeasureLockedSql,
       })
       .from(parts)
+      .innerJoin(partCategories, eq(parts.categoryId, partCategories.id))
       .leftJoin(supplier, eq(parts.supplierId, supplier.id))
       .where(where)
       .orderBy(orderBy, asc(parts.id))
@@ -129,12 +142,18 @@ export async function listParts({ db, input }: { db: Db; input: PartListInput })
   const totalQuery = db
     .select({ value: count() })
     .from(parts)
+    .innerJoin(partCategories, eq(parts.categoryId, partCategories.id))
     .leftJoin(supplier, eq(parts.supplierId, supplier.id))
     .where(where);
   const [rows, totalRows] = await Promise.all([rowsQuery, totalQuery]);
   const total = totalRows[0]?.value ?? 0;
   const items = rows.map((row) =>
-    mapPart({ ...row.part, supplier: row.supplier, unitOfMeasureLocked: row.unitOfMeasureLocked }),
+    mapPart({
+      ...row.part,
+      categoryName: row.categoryName,
+      supplier: row.supplier,
+      unitOfMeasureLocked: row.unitOfMeasureLocked,
+    }),
   );
 
   return {
@@ -145,11 +164,12 @@ export async function listParts({ db, input }: { db: Db; input: PartListInput })
 }
 
 export async function listPartCategories({ db }: { db: Db }): Promise<PartCategoryListResult> {
-  const rows = await db.selectDistinct({ category: parts.category }).from(parts).orderBy(asc(parts.category));
+  const categories = await db
+    .select({ id: partCategories.id, name: partCategories.name })
+    .from(partCategories)
+    .orderBy(asc(sql`lower(${partCategories.name})`), asc(partCategories.id));
 
-  return {
-    categories: rows.map((row) => row.category),
-  };
+  return { categories };
 }
 
 export async function listPartStorageLocations({ db }: { db: Db }): Promise<PartStorageLocationListResult> {
@@ -170,7 +190,7 @@ function buildPartListWhere(input: PartListInput): SQL | undefined {
   if (input.search) {
     const globalSearchWhere = or(
       createGlobalSearchCondition(input.search, [
-        sql`${parts.category}`,
+        sql`${partCategories.name}`,
         sql`${parts.code}`,
         sql`${parts.description}`,
         sql`${parts.drawingCode}`,
@@ -188,8 +208,8 @@ function buildPartListWhere(input: PartListInput): SQL | undefined {
     }
   }
 
-  if (input.category) {
-    conditions.push(eq(parts.category, input.category));
+  if (input.categoryId) {
+    conditions.push(eq(parts.categoryId, input.categoryId));
   }
 
   if (input.supplierId) {
@@ -197,7 +217,7 @@ function buildPartListWhere(input: PartListInput): SQL | undefined {
   }
 
   if (input.columnFilters.category) {
-    conditions.push(createEscapedContainsSearchCondition(sql`${parts.category}`, input.columnFilters.category));
+    conditions.push(createEscapedContainsSearchCondition(sql`${partCategories.name}`, input.columnFilters.category));
   }
 
   if (input.columnFilters.code) {
@@ -240,6 +260,7 @@ function buildPartListWhere(input: PartListInput): SQL | undefined {
 export async function getPart({ db, id }: { db: Db | DatabaseTransaction; id: UUID }): Promise<Part> {
   const [row] = await db
     .select({
+      categoryName: partCategories.name,
       part: parts,
       supplier: {
         companyName: supplier.companyName,
@@ -248,6 +269,7 @@ export async function getPart({ db, id }: { db: Db | DatabaseTransaction; id: UU
       unitOfMeasureLocked: unitOfMeasureLockedSql,
     })
     .from(parts)
+    .innerJoin(partCategories, eq(parts.categoryId, partCategories.id))
     .leftJoin(supplier, eq(parts.supplierId, supplier.id))
     .where(eq(parts.id, id))
     .limit(1);
@@ -256,7 +278,12 @@ export async function getPart({ db, id }: { db: Db | DatabaseTransaction; id: UU
     throw new PartNotFoundError(id);
   }
 
-  return mapPart({ ...row.part, supplier: row.supplier, unitOfMeasureLocked: row.unitOfMeasureLocked });
+  return mapPart({
+    ...row.part,
+    categoryName: row.categoryName,
+    supplier: row.supplier,
+    unitOfMeasureLocked: row.unitOfMeasureLocked,
+  });
 }
 
 export async function createPart({
@@ -270,6 +297,7 @@ export async function createPart({
 }): Promise<Part> {
   try {
     return await db.transaction(async (tx) => {
+      await assertPartCategoryExists({ categoryId: input.categoryId, db: tx });
       await assertSupplierExists({ db: tx, supplierId: input.supplierId });
 
       const [row] = await tx.insert(parts).values(input).returning();
@@ -300,6 +328,7 @@ export async function updatePart({
     return await mutateEntity({
       actorUserId,
       assert: async (tx, before) => {
+        await assertPartCategoryExists({ categoryId: input.categoryId, db: tx });
         await assertSupplierExists({ db: tx, supplierId: input.supplierId });
         await assertSupplierMutable({ before, db: tx, nextSupplierId: input.supplierId });
         await assertBomCleared({ before, db: tx, nextIsInternallyFabricated: input.isInternallyFabricated });
@@ -313,7 +342,7 @@ export async function updatePart({
       // `parts` carries no timestamp columns, so there is no `updatedAt` to touch.
       set: () => ({
         averageUtilizationPercent: input.averageUtilizationPercent,
-        category: input.category,
+        categoryId: input.categoryId,
         code: input.code,
         description: input.description,
         drawingCode: input.drawingCode,
@@ -352,7 +381,7 @@ export async function bulkExportParts({
   return (
     db
       .select({
-        category: parts.category,
+        category: partCategories.name,
         code: parts.code,
         description: parts.description,
         drawingCode: parts.drawingCode,
@@ -365,6 +394,7 @@ export async function bulkExportParts({
         unitOfMeasure: parts.unitOfMeasure,
       })
       .from(parts)
+      .innerJoin(partCategories, eq(parts.categoryId, partCategories.id))
       .leftJoin(supplier, eq(parts.supplierId, supplier.id))
       // The same removed-Supplier filter the Parts list applies. Without it the export would write a
       // row the import cannot read back: the import resolves Suppliers among the live ones only, so a
@@ -406,6 +436,7 @@ export async function bulkImportParts({
       const suppliersByLookupName = scopedSupplier
         ? new Map<string, SupplierRow[]>()
         : await loadImportSuppliersByLookupName({ db: tx, rows: input.rows });
+      const categoriesByLookupName = await loadImportPartCategoriesByLookupName({ db: tx });
 
       for (const row of input.rows) {
         const lookupCode = lookupCodeByInputCode.get(row.code);
@@ -414,6 +445,14 @@ export async function bulkImportParts({
         }
         if (duplicateLookupCodes.has(lookupCode)) {
           errors.push(`Line ${row.lineNumber}: Part Code "${row.code}" appears more than once in this file.`);
+          continue;
+        }
+
+        const category = categoriesByLookupName.get(toLookupName(row.category));
+        if (!category) {
+          errors.push(
+            `Line ${row.lineNumber}: Part Category "${row.category}" does not exist. Add it under Admin → Part categories first.`,
+          );
           continue;
         }
 
@@ -443,7 +482,7 @@ export async function bulkImportParts({
 
         // Bulk CSV owns catalog identity; stock policy/location/minimum default on create and survive updates.
         const partInput = {
-          category: row.category,
+          categoryId: category.id,
           code: row.code,
           description: row.description,
           drawingCode: row.drawingCode,
@@ -639,13 +678,13 @@ function resolveRowSupplier({
   if (row.supplierName === null) return { kind: 'none' };
 
   if (scopedSupplier) {
-    return supplierLookupName(row.supplierName) === supplierLookupName(scopedSupplier.companyName)
+    return toLookupName(row.supplierName) === toLookupName(scopedSupplier.companyName)
       ? { kind: 'existing', supplier: scopedSupplier }
       : { error: `Line ${row.lineNumber}: Supplier ${row.supplierName} does not match ${scopedSupplier.companyName}.` };
   }
 
   const existing = pickRowSupplier({
-    candidates: suppliersByLookupName.get(supplierLookupName(row.supplierName)) ?? [],
+    candidates: suppliersByLookupName.get(toLookupName(row.supplierName)) ?? [],
     storedPart,
   });
 
@@ -700,7 +739,7 @@ async function ensureImportSupplierId({
   const created = await createImportSupplier({ actorUserId, companyName: rowSupplier.companyName, db });
   // Folded back so a later row naming the same Supplier resolves it without creating a second one.
   // Nothing was stored under this lookup name or the row would have resolved to it instead.
-  suppliersByLookupName.set(supplierLookupName(created.companyName), [created]);
+  suppliersByLookupName.set(toLookupName(created.companyName), [created]);
 
   return created.id;
 }
@@ -740,9 +779,7 @@ async function loadImportSuppliersByLookupName({
   rows: PartBulkImportInput['rows'];
 }): Promise<Map<string, SupplierRow[]>> {
   const byLookupName = new Map<string, SupplierRow[]>();
-  const lookupNames = [
-    ...new Set(rows.flatMap((row) => (row.supplierName ? [supplierLookupName(row.supplierName)] : []))),
-  ];
+  const lookupNames = [...new Set(rows.flatMap((row) => (row.supplierName ? [toLookupName(row.supplierName)] : [])))];
 
   if (lookupNames.length === 0) {
     return byLookupName;
@@ -779,9 +816,9 @@ async function loadImportSuppliersByLookupName({
 }
 
 /**
- * How an import decides that a CSV cell and a stored Supplier name the same Supplier: casing and
- * whitespace are noise, everything else is identity. It never touches what is stored — a matched
- * Supplier keeps its own spelling, and a created one is stored as the row wrote it. Anything looser
+ * How an import decides that a CSV cell and a stored name (a Supplier's, a Part Category's) mean the
+ * same thing: casing and whitespace are noise, everything else is identity. It never touches what is
+ * stored — a matched Supplier keeps its own spelling, and a created one is stored as the row wrote it. Anything looser
  * than this ("Night Wolves" against "Nightwolves") is a merge somebody has to decide on.
  *
  * The class is spelled out rather than written `\s` because this rule is applied twice, once here and
@@ -795,14 +832,14 @@ async function loadImportSuppliersByLookupName({
  * was before this rule loosened. Pinning the fold to ASCII would trade that rare miss for a common
  * one, since every accented name matches correctly today.
  */
-function supplierLookupName(companyName: string): string {
-  return companyName
+function toLookupName(name: string): string {
+  return name
     .toLowerCase()
     .replaceAll(/[ \t\n\r\f\v]+/g, ' ')
     .replaceAll(/^ | $/g, '');
 }
 
-/** The database's side of {@link supplierLookupName}: the same whitespace class, Postgres's own fold. */
+/** The database's side of {@link toLookupName} for Suppliers: the same whitespace class, Postgres's own fold. */
 const supplierLookupNameSql = sql<string>`btrim(regexp_replace(lower(${supplier.companyName}), '[ \\t\\n\\r\\f\\v]+', ' ', 'g'))`;
 
 /** Part Code keeps its stored spelling, but PostgreSQL's case fold defines catalog identity. */
@@ -863,6 +900,30 @@ async function loadImportPartsByCode({
   }
 
   return { duplicateLookupCodes, lookupCodeByInputCode, partsByLookupCode };
+}
+
+/**
+ * Every Part Category, keyed the way a CSV cell is looked up. The list is short and an import never
+ * creates one, so reading it whole beats a filtered read. Two stored names can share a lookup key —
+ * the unique index folds casing, not inner spacing — and the oldest wins, as for Suppliers.
+ */
+async function loadImportPartCategoriesByLookupName({
+  db,
+}: {
+  db: DatabaseTransaction;
+}): Promise<Map<string, { id: UUID }>> {
+  const rows = await db
+    .select({ id: partCategories.id, name: partCategories.name })
+    .from(partCategories)
+    .orderBy(asc(partCategories.createdAt), asc(partCategories.id));
+  const byLookupName = new Map<string, { id: UUID }>();
+
+  for (const row of rows) {
+    const lookupName = toLookupName(row.name);
+    if (!byLookupName.has(lookupName)) byLookupName.set(lookupName, { id: row.id });
+  }
+
+  return byLookupName;
 }
 
 async function getImportSupplierById({
@@ -932,8 +993,24 @@ async function assertSupplierExists({
   }
 }
 
+async function assertPartCategoryExists({
+  categoryId,
+  db,
+}: {
+  categoryId: UUID;
+  db: Db | DatabaseTransaction;
+}): Promise<void> {
+  const [row] = await db
+    .select({ id: partCategories.id })
+    .from(partCategories)
+    .where(eq(partCategories.id, categoryId))
+    .limit(1);
+
+  if (!row) throw new PartCategoryNotFoundError(categoryId);
+}
+
 function getPartSortColumn(sortBy: PartListInput['sortBy']) {
-  if (sortBy === 'category') return parts.category;
+  if (sortBy === 'category') return partCategories.name;
   if (sortBy === 'code') return parts.code;
   if (sortBy === 'id') return parts.id;
   if (sortBy === 'supplierCode') return parts.supplierCode;

@@ -17,7 +17,7 @@ import {
 import type { PostAdjustmentInput, ProductCostEstimate } from '@pkg/schema/equipment';
 
 import { createTester } from '../../test/create-tester.js';
-import { partValues } from './part-fixtures.js';
+import { partValues, seedPartCategory } from './part-fixtures.js';
 
 /**
  * The one seeded ledger every inventory suite runs against: a Part of each unit class, a Job with
@@ -49,7 +49,12 @@ export const test = createTester(async ({ db }) => {
 
   const seededParts = await seedParts(db, createdSupplier.id);
   const seededJobs = await seedJobs(db, seededParts.piece.id);
-  return { jobs: seededJobs, parts: seededParts, supplierId: createdSupplier.id };
+  return {
+    categoryId: seededParts.piece.categoryId,
+    jobs: seededJobs,
+    parts: seededParts,
+    supplierId: createdSupplier.id,
+  };
 });
 
 /**
@@ -194,20 +199,22 @@ export async function seedSentPurchaseOrder(
 }
 
 export async function seedParts(db: Db, supplierId: string) {
+  const categoryId = await seedPartCategory(db);
   const [piece, linear, measured, periodic, fabricated] = await db
     .insert(parts)
     .values([
-      partValues({ code: 'PIECE', supplierId, unitOfMeasure: 'piece' }),
-      partValues({ code: 'LINEAR', standardPurchaseLengthMm: 6_000, supplierId, unitOfMeasure: 'mm' }),
-      partValues({ code: 'MEASURED', supplierId, unitOfMeasure: 'kg' }),
+      partValues({ categoryId, code: 'PIECE', supplierId, unitOfMeasure: 'piece' }),
+      partValues({ categoryId, code: 'LINEAR', standardPurchaseLengthMm: 6_000, supplierId, unitOfMeasure: 'mm' }),
+      partValues({ categoryId, code: 'MEASURED', supplierId, unitOfMeasure: 'kg' }),
       partValues({
+        categoryId,
         code: 'PERIODIC',
         standardPurchaseLengthMm: 6_000,
         stockTrackingMode: 'periodic',
         supplierId,
         unitOfMeasure: 'mm',
       }),
-      partValues({ code: 'FABRICATED', isInternallyFabricated: true, supplierId, unitOfMeasure: 'piece' }),
+      partValues({ categoryId, code: 'FABRICATED', isInternallyFabricated: true, supplierId, unitOfMeasure: 'piece' }),
     ])
     .returning();
 

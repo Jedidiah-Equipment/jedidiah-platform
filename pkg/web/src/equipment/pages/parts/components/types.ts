@@ -4,7 +4,6 @@ import {
   PART_UNIT_OF_MEASURE_LABELS,
   type Part,
   PartAverageUtilizationPercent,
-  PartCategory,
   PartCode,
   PartCreateInput,
   PartDescription,
@@ -24,11 +23,11 @@ import {
 } from '@pkg/schema/equipment';
 import { z } from 'zod';
 
-import { emptyStringOr } from '@/components/form/utils/form-schema.js';
+import { emptyStringOr, requiredSelection } from '@/components/form/utils/form-schema.js';
 
 const PartFormFields = z.object({
   averageUtilizationPercent: z.union([PartAverageUtilizationPercent, z.nan()]),
-  category: PartCategory,
+  categoryId: requiredSelection(UUIDSchema, 'Select a Part Category'),
   code: PartCode,
   description: PartDescription,
   drawingCode: emptyStringOr(PartDrawingCode),
@@ -97,7 +96,7 @@ export function toPartFormValues({
 }): PartFormValues {
   return {
     averageUtilizationPercent: initialPart?.averageUtilizationPercent ?? NaN,
-    category: initialPart?.category ?? '',
+    categoryId: initialPart?.categoryId ?? '',
     code: initialPart?.code ?? '',
     description: initialPart?.description ?? '',
     drawingCode: initialPart?.drawingCode ?? '',

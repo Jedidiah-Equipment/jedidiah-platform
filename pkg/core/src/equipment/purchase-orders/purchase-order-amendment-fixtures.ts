@@ -1,5 +1,5 @@
 import { type Db, user } from '@pkg/db';
-import { parts, supplier } from '@pkg/db/equipment';
+import { partCategories, parts, supplier } from '@pkg/db/equipment';
 import { findPurchaseOrderPartLine, type PurchaseOrder } from '@pkg/schema/equipment';
 import { InMemoryStorageAdapter } from '../../storage/in-memory-storage-adapter.js';
 import { createTester } from '../../test/create-tester.js';
@@ -24,6 +24,7 @@ export const PIECE_PART_ID = '00000000-0000-4000-8000-000000000911';
 export const SPARE_PART_ID = '00000000-0000-4000-8000-000000000912';
 export const LINEAR_PART_ID = '00000000-0000-4000-8000-000000000913';
 export const OTHER_SUPPLIER_PART_ID = '00000000-0000-4000-8000-000000000914';
+const PART_CATEGORY_ID = '00000000-0000-4000-8000-000000000921';
 
 export type AmendmentTestContext = { db: Db; storage: InMemoryStorageAdapter };
 
@@ -41,6 +42,7 @@ export const test = createTester<AmendmentTestContext>(async ({ db }) => {
     { companyName: 'Acme Supplies', id: SUPPLIER_ID },
     { companyName: 'Other Supplies', id: OTHER_SUPPLIER_ID },
   ]);
+  await db.insert(partCategories).values({ id: PART_CATEGORY_ID, name: 'Pipe' });
   await db
     .insert(parts)
     .values([
@@ -160,7 +162,7 @@ export const renderStubPdf = async () => pdfBytes();
 
 function partRow(overrides: Partial<typeof parts.$inferInsert>): typeof parts.$inferInsert {
   return {
-    category: 'Pipe',
+    categoryId: PART_CATEGORY_ID,
     code: 'P-100',
     description: 'Test Part',
     finish: 'Plain',

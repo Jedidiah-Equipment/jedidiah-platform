@@ -3,6 +3,7 @@ import {
   customers,
   documents,
   jobs,
+  partCategories,
   parts,
   purchaseOrderLines,
   purchaseOrders,
@@ -42,6 +43,7 @@ const PIECE_PART_ID = '00000000-0000-4000-8000-000000000201';
 const LINEAR_PART_ID = '00000000-0000-4000-8000-000000000202';
 const OTHER_PART_ID = '00000000-0000-4000-8000-000000000203';
 const BUILT_PART_ID = '00000000-0000-4000-8000-000000000204';
+const PART_CATEGORY_ID = '00000000-0000-4000-8000-000000000401';
 const CUSTOM_SUPPLIER_ID = '00000000-0000-4000-8000-000000000105';
 const CUSTOM_LINE_A_ID = '00000000-0000-4000-8000-000000000301';
 const CUSTOM_LINE_B_ID = '00000000-0000-4000-8000-000000000302';
@@ -285,7 +287,7 @@ describe('Purchase Order draft lifecycle', () => {
         db: context.db,
         input: {
           averageUtilizationPercent: null,
-          category: 'Pipe',
+          categoryId: PART_CATEGORY_ID,
           code: 'P-100',
           description: 'Test Part',
           drawingCode: null,
@@ -311,7 +313,7 @@ describe('Purchase Order draft lifecycle', () => {
         db: context.db,
         input: {
           averageUtilizationPercent: null,
-          category: 'Pipe',
+          categoryId: PART_CATEGORY_ID,
           code: 'P-100',
           description: 'Test Part',
           drawingCode: null,
@@ -1029,6 +1031,7 @@ async function seedCatalog(db: Db): Promise<void> {
     { companyName: 'Acme Supplies', id: SUPPLIER_A_ID },
     { companyName: 'Other Supplies', id: SUPPLIER_B_ID },
   ]);
+  await db.insert(partCategories).values({ id: PART_CATEGORY_ID, name: 'Pipe' });
   await db.insert(parts).values([
     partRow({ code: 'P-100', id: PIECE_PART_ID, supplierId: SUPPLIER_A_ID }),
     partRow({
@@ -1058,7 +1061,7 @@ async function seedTestUser(db: Db, input: { id: string; name: string }): Promis
 
 function partRow(overrides: Partial<typeof parts.$inferInsert>): typeof parts.$inferInsert {
   return {
-    category: 'Pipe',
+    categoryId: PART_CATEGORY_ID,
     code: 'P-100',
     description: 'Test Part',
     finish: 'Plain',

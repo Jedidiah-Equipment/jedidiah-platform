@@ -22,6 +22,7 @@ describe('part form types', () => {
         initialPart: {
           averageUtilizationPercent: null,
           category: 'Hydraulics',
+          categoryId: '00000000-0000-4000-8000-000000000003',
           code: 'HSE-001',
           description: 'Hydraulic hose',
           drawingCode: null,
@@ -44,6 +45,7 @@ describe('part form types', () => {
         },
       }),
     ).toMatchObject({
+      categoryId: '00000000-0000-4000-8000-000000000003',
       isInternallyFabricated: true,
       minimumStock: 3,
       standardPurchaseLengthMm: 6000,
@@ -92,7 +94,7 @@ describe('part form types', () => {
 function validPartFormValues() {
   return {
     ...toPartFormValues({ fixedSupplierId: '00000000-0000-4000-8000-000000000001' }),
-    category: 'Bearings',
+    categoryId: '00000000-0000-4000-8000-000000000003',
     code: 'P-100',
     description: 'Main bearing',
     finish: 'Zinc',

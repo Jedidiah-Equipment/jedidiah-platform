@@ -239,7 +239,7 @@ export function createPartLabelActionColumn(): DataTableColumnDef<Part> {
 
 function getPartListInputExtras(columnFilters: ColumnFiltersState, supplierId?: UUID) {
   return {
-    category: getColumnFilterValue(columnFilters, 'category'),
+    categoryId: getColumnFilterValue(columnFilters, 'category'),
     columnFilters: {
       code: getColumnFilterValue(columnFilters, 'code'),
       isInternallyFabricated: getInternallyFabricatedFilterValue(columnFilters),
@@ -250,7 +250,7 @@ function getPartListInputExtras(columnFilters: ColumnFiltersState, supplierId?: 
       unitOfMeasure: getUnitOfMeasureFilterValue(columnFilters),
     },
     supplierId,
-  } satisfies Pick<PartListInput, 'category' | 'columnFilters' | 'supplierId'>;
+  } satisfies Pick<PartListInput, 'categoryId' | 'columnFilters' | 'supplierId'>;
 }
 
 function getColumnFilterValue(

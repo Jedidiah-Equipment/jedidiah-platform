@@ -24,6 +24,7 @@ const part: PurchaseOrderPartOption = {
   averageUtilizationPercent: null,
   averageUnitCost: 0.3,
   category: 'Fasteners',
+  categoryId: '5de0e2a1-2b2f-4b2e-9a5f-6a0d0a1b2c3d',
   code: 'BN1-0324',
   description: 'M12 Flatwasher',
   drawingCode: null,

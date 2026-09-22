@@ -43,6 +43,15 @@ export function useQueryInvalidation() {
     () => queryClient.invalidateQueries({ queryKey: trpc.inventory.pathKey() }),
     [queryClient, trpc],
   );
+  // Renaming a Part Category changes the name every Part reads, so the Parts cache goes too.
+  const invalidatePartCategories = useCallback(
+    () =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: trpc.partCategories.pathKey() }),
+        queryClient.invalidateQueries({ queryKey: trpc.parts.pathKey() }),
+      ]),
+    [queryClient, trpc],
+  );
   const invalidateParts = useCallback(
     () => queryClient.invalidateQueries({ queryKey: trpc.parts.pathKey() }),
     [queryClient, trpc],
@@ -95,6 +104,7 @@ export function useQueryInvalidation() {
       invalidateJobs,
       invalidateLaborRates,
       invalidateInventory,
+      invalidatePartCategories,
       invalidateParts,
       invalidateProductRanges,
       invalidateProducts,
@@ -116,6 +126,7 @@ export function useQueryInvalidation() {
       invalidateJobs,
       invalidateLaborRates,
       invalidateInventory,
+      invalidatePartCategories,
       invalidateParts,
       invalidateProductRanges,
       invalidateProducts,

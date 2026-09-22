@@ -7,6 +7,7 @@ import { usePartCategoryOptions, useSupplierOptions } from '@/equipment/hooks/op
 import { useQueryInvalidation } from '@/equipment/hooks/use-query-invalidation.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useTRPC } from '@/lib/trpc.js';
+import { NewPartCategoryButton } from './components/NewPartCategoryButton.js';
 import {
   type PartFormValues,
   PartFormValues as PartFormValuesSchema,
@@ -57,15 +58,20 @@ export function PartListCreateDialog({
         <>
           <form.AppField name="name">{(field) => <field.TextField autoComplete="off" label="Name" />}</form.AppField>
           <form.AppField name="code">{(field) => <field.TextField autoComplete="off" label="Code" />}</form.AppField>
-          <form.AppField name="category">
+          <form.AppField name="categoryId">
             {(field) => (
-              <field.CreatableComboboxField
-                disabled={categories.isPending}
-                emptyMessage="No categories found."
-                label="Category"
-                options={categories.items}
-                placeholder={categories.isPending ? 'Loading categories...' : 'Select or create category'}
-              />
+              <div className="flex items-end gap-2">
+                <div className="min-w-0 flex-1">
+                  <field.ComboboxField
+                    disabled={categories.isPending}
+                    emptyMessage="No Part Categories found."
+                    label="Part Category"
+                    options={categories.selectOptions}
+                    placeholder={categories.isPending ? 'Loading Part Categories...' : 'Search Part Categories'}
+                  />
+                </div>
+                <NewPartCategoryButton onCreated={(category) => field.handleChange(category.id)} />
+              </div>
             )}
           </form.AppField>
           <form.AppField name="finish">

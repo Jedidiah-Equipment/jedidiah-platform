@@ -6,7 +6,7 @@ import { describe, expect } from 'vitest';
 import { createTester } from '../../test/create-tester.js';
 import { postAdjustment } from '../inventory/stock-movement-service.js';
 import { getLaborRateCard, updateLaborRateCard } from '../labor-rates/labor-rate-service.js';
-import { partValues } from '../test/part-fixtures.js';
+import { partValues, seedPartCategory } from '../test/part-fixtures.js';
 import { createProductRangeFixture } from '../test/product-range-fixtures.js';
 import { getProductCostEstimate } from './product-cost-estimate-service.js';
 import { ProductMaterialPartInvalidError } from './product-errors.js';
@@ -36,30 +36,34 @@ const test = createTester(async ({ db }) => {
   const rangeId = await createProductRangeFixture(db);
   const [createdSupplier] = await db.insert(supplier).values({ companyName: 'Material Supplier' }).returning();
   if (!createdSupplier) throw new Error('Supplier insert did not return a row');
+  const categoryId = await seedPartCategory(db);
   const [plate, channel, bought, fabricated, uncosted] = await db
     .insert(parts)
     .values([
       partValues({
+        categoryId,
         code: 'PLATE',
         stockTrackingMode: 'periodic',
         supplierId: createdSupplier.id,
         unitOfMeasure: 'piece',
       }),
       partValues({
+        categoryId,
         code: 'CHANNEL',
         standardPurchaseLengthMm: 13_000,
         stockTrackingMode: 'periodic',
         supplierId: createdSupplier.id,
         unitOfMeasure: 'mm',
       }),
-      partValues({ code: 'BOUGHT', supplierId: createdSupplier.id, unitOfMeasure: 'piece' }),
+      partValues({ categoryId, code: 'BOUGHT', supplierId: createdSupplier.id, unitOfMeasure: 'piece' }),
       partValues({
+        categoryId,
         code: 'FABRICATED',
         isInternallyFabricated: true,
         supplierId: createdSupplier.id,
         unitOfMeasure: 'piece',
       }),
-      partValues({ code: 'UNCOSTED', supplierId: createdSupplier.id, unitOfMeasure: 'piece' }),
+      partValues({ categoryId, code: 'UNCOSTED', supplierId: createdSupplier.id, unitOfMeasure: 'piece' }),
     ])
     .returning();
   if (!plate || !channel || !bought || !fabricated || !uncosted) throw new Error('Part inserts did not return rows');

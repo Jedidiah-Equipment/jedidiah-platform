@@ -31,6 +31,28 @@ export class PartSupplierNotFoundError extends Error {
   }
 }
 
+export class PartCategoryNotFoundError extends Error {
+  readonly code = 'part.category_not_found';
+  readonly metadata: { categoryId: string };
+
+  constructor(categoryId: string) {
+    super(`Part Category not found: ${categoryId}`);
+    this.name = 'PartCategoryNotFoundError';
+    this.metadata = { categoryId };
+  }
+}
+
+export class DuplicatePartCategoryNameError extends Error {
+  readonly code = 'part.category_name_taken';
+  readonly metadata: { name: string };
+
+  constructor(name: string) {
+    super(`Part Category name already exists: ${name}`);
+    this.name = 'DuplicatePartCategoryNameError';
+    this.metadata = { name };
+  }
+}
+
 /** How a Part with no Supplier reads to a human. A built Part is made in-house and bought from nobody. */
 export const NO_SUPPLIER_LABEL = 'no supplier (built in-house)';
 
@@ -104,7 +126,9 @@ export class PartLabelSelectionEmptyError extends Error {
 
 export type PartCoreError =
   | PartBulkImportConflictError
+  | DuplicatePartCategoryNameError
   | DuplicatePartCodeError
+  | PartCategoryNotFoundError
   | PartLabelSelectionEmptyError
   | PartNotFoundError
   | PartSupplierLockedByPurchaseOrderError
@@ -115,7 +139,9 @@ export type PartCoreError =
 export function isPartCoreError(error: unknown): error is PartCoreError {
   return (
     error instanceof PartBulkImportConflictError ||
+    error instanceof DuplicatePartCategoryNameError ||
     error instanceof DuplicatePartCodeError ||
+    error instanceof PartCategoryNotFoundError ||
     error instanceof PartLabelSelectionEmptyError ||
     error instanceof PartNotFoundError ||
     error instanceof PartBomLockedError ||

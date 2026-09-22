@@ -1,6 +1,14 @@
 import { listAllProducts } from '@pkg/core/equipment';
 import { auditEvents, type Db, sql, user } from '@pkg/db';
-import { jobBays, parts, productRanges, productRangeVariants, products, supplier } from '@pkg/db/equipment';
+import {
+  jobBays,
+  partCategories,
+  parts,
+  productRanges,
+  productRangeVariants,
+  products,
+  supplier,
+} from '@pkg/db/equipment';
 import { EMPTY_PRODUCT_IMAGES, type Product } from '@pkg/schema/equipment';
 import { describe, expect } from 'vitest';
 import { createProductRangeFixture } from '@/equipment/test/product-range-fixtures.js';
@@ -1413,13 +1421,23 @@ async function createRange(db: Db, input: { id: string; name: string }) {
 async function createParts(db: Db): Promise<{ bucket: string; hose: string; rockBucket: string }> {
   const supplierId = '00000000-0000-4000-8000-000000000301';
 
+  const bucketCategoryId = '00000000-0000-4000-8000-000000000311';
+  const hydraulicsCategoryId = '00000000-0000-4000-8000-000000000312';
+
   await db.insert(supplier).values({ companyName: 'Assembly Supplier', id: supplierId }).onConflictDoNothing();
+  await db
+    .insert(partCategories)
+    .values([
+      { id: bucketCategoryId, name: 'Bucket' },
+      { id: hydraulicsCategoryId, name: 'Hydraulics' },
+    ])
+    .onConflictDoNothing();
   await db
     .insert(parts)
     .values([
       {
         id: '00000000-0000-4000-8000-000000000302',
-        category: 'Bucket',
+        categoryId: bucketCategoryId,
         code: 'BKT-STD',
         description: 'Standard bucket',
         finish: 'Painted',
@@ -1430,7 +1448,7 @@ async function createParts(db: Db): Promise<{ bucket: string; hose: string; rock
       },
       {
         id: '00000000-0000-4000-8000-000000000303',
-        category: 'Hydraulics',
+        categoryId: hydraulicsCategoryId,
         code: 'HSE-001',
         description: 'Hydraulic hose',
         finish: 'Rubber',
@@ -1442,7 +1460,7 @@ async function createParts(db: Db): Promise<{ bucket: string; hose: string; rock
       },
       {
         id: '00000000-0000-4000-8000-000000000304',
-        category: 'Bucket',
+        categoryId: bucketCategoryId,
         code: 'BKT-ROCK',
         description: 'Rock bucket',
         finish: 'Painted',

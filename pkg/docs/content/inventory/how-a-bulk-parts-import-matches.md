@@ -47,6 +47,14 @@ exporting and re-importing it changes nothing. A row for a *new* Part goes to th
 which of the two duplicates a CSV meant is not something the file can say, so tidying them up is the
 merge, not the import.
 
+## Part Categories are matched, never created
+
+The **Catagory** cell names a Part Category the same way the Supplier cell names a Supplier: capitals
+and spacing are ignored, so `  bolt & nuts ` finds a stored `Bolt & Nuts`, and the stored name is kept.
+Unlike a Supplier, a Part Category the import cannot find is never created. That row is reported and
+skipped while the rest of the file imports. Add the Part Category under **Admin → Part categories**,
+then import the file again.
+
 ## What the CSV does not carry
 
 The file holds catalog facts only. A Part's Storage Location, its minimum stock, and its perpetual or
@@ -69,9 +77,10 @@ built and bought on the Part itself, never through an import.
 
 ## Text the import tidies
 
-Catagory, Finish, and Name are written back **title-cased**: `bearing housing` becomes
-`Bearing Housing`, with technical tokens like `M30`, `SS`, and `UNC` left as they are. This is why a
-Part created in the app under a lower-case name changes case the first time it goes through a CSV.
+Finish and Name are written back **title-cased**: `bearing housing` becomes `Bearing Housing`, with
+technical tokens like `M30`, `SS`, and `UNC` left as they are. This is why a Part created in the app
+under a lower-case name changes case the first time it goes through a CSV. The Catagory cell is tidied
+the same way only to find the Part Category; the Part Category keeps its stored name.
 
 The Supplier cell is tidied the same way for the purpose of finding the Supplier, but a Supplier
 already on file keeps its stored spelling — only a Supplier the import has to create takes the name

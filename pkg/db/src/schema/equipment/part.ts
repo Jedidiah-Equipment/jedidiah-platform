@@ -1,6 +1,7 @@
 import type { PartStockTrackingMode, PartUnitOfMeasure } from '@pkg/schema/equipment';
 import { relations, sql } from 'drizzle-orm';
 import { boolean, check, index, integer, numeric, primaryKey, text, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
+import { partCategories } from './part-category.js';
 import { equipmentSchema } from './pg-schema.js';
 import { supplier } from './supplier.js';
 
@@ -8,7 +9,9 @@ export const parts = equipmentSchema.table(
   'parts',
   {
     averageUtilizationPercent: integer('average_utilization_percent'),
-    category: text('category').notNull(),
+    categoryId: uuid('category_id')
+      .notNull()
+      .references(() => partCategories.id, { onDelete: 'restrict' }),
     code: text('code').notNull(),
     description: text('description').notNull(),
     drawingCode: text('drawing_code'),
@@ -56,7 +59,7 @@ export const parts = equipmentSchema.table(
       'parts_storage_location_nonempty',
       sql`${table.storageLocation} IS NULL OR length(trim(${table.storageLocation})) > 0`,
     ),
-    index('parts_category_idx').on(table.category),
+    index('parts_category_id_idx').on(table.categoryId),
     index('parts_code_idx').on(table.code),
     index('parts_storage_location_idx').on(table.storageLocation),
     index('parts_supplier_id_idx').on(table.supplierId),
@@ -65,10 +68,18 @@ export const parts = equipmentSchema.table(
 );
 
 export const partsRelations = relations(parts, ({ one }) => ({
+  category: one(partCategories, {
+    fields: [parts.categoryId],
+    references: [partCategories.id],
+  }),
   supplier: one(supplier, {
     fields: [parts.supplierId],
     references: [supplier.id],
   }),
+}));
+
+export const partCategoriesRelations = relations(partCategories, ({ many }) => ({
+  parts: many(parts),
 }));
 
 /**

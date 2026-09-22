@@ -7,6 +7,7 @@ import Fastify, { type FastifyInstance } from 'fastify';
 import { afterEach, beforeEach, describe, expect, vi } from 'vitest';
 
 import type { Auth } from '@/auth/auth.js';
+import { seedPartCategory } from '@/equipment/test/part-category-fixtures.js';
 import { createTester } from '@/test/create-tester.js';
 import { mockSession } from '@/test/test-utils.js';
 
@@ -50,17 +51,21 @@ const test = createTester(async ({ auth, db }) => {
   });
   const [partSupplier] = await db.insert(supplier).values({ companyName: 'Label Supplier' }).returning();
   if (!partSupplier) throw new Error('Supplier fixture was not created');
+  const bearingsId = await seedPartCategory(db, 'Bearings');
+  const tubeId = await seedPartCategory(db, 'Tube');
+  const fastenersId = await seedPartCategory(db, 'Fasteners');
+  const emptyCategoryId = await seedPartCategory(db, 'Empty');
   const created = await db
     .insert(parts)
     .values([
-      partRow(partSupplier.id, 'P-200', 'Second bearing', 'Bearings', 'Bin B-02'),
-      partRow(partSupplier.id, 'P-100', 'Main bearing', 'Bearings', 'Bin A-04'),
-      partRow(partSupplier.id, 'T-100', 'Hydraulic tube', 'Tube', 'Bin A-04'),
-      partRow(partSupplier.id, 'N-100', 'Loose nut', 'Fasteners', null),
+      partRow(partSupplier.id, 'P-200', 'Second bearing', bearingsId, 'Bin B-02'),
+      partRow(partSupplier.id, 'P-100', 'Main bearing', bearingsId, 'Bin A-04'),
+      partRow(partSupplier.id, 'T-100', 'Hydraulic tube', tubeId, 'Bin A-04'),
+      partRow(partSupplier.id, 'N-100', 'Loose nut', fastenersId, null),
     ])
     .returning({ code: parts.code, id: parts.id });
 
-  return { db, ids: new Map(created.map((part) => [part.code, part.id])) };
+  return { bearingsId, db, emptyCategoryId, ids: new Map(created.map((part) => [part.code, part.id])) };
 });
 
 const openApps: FastifyInstance[] = [];
@@ -94,7 +99,7 @@ describe('Part label HTTP routes', () => {
 
     for (const url of [
       '/api/parts/labels?selection=all',
-      '/api/parts/labels?selection=category&category=Bearings',
+      `/api/parts/labels?selection=category&categoryId=${context.bearingsId}`,
       '/api/parts/labels?selection=storageLocation&storageLocation=Bin%20A-04',
       `/api/parts/labels?selection=ids&ids=${context.ids.get('T-100')},${context.ids.get('N-100')}`,
     ]) {
@@ -175,7 +180,7 @@ describe('Part label HTTP routes', () => {
     const app = await createApp(capturingRenderer([]));
 
     const missing = await app.inject('/api/parts/00000000-0000-4000-8000-000000000999/label');
-    const emptyBatch = await app.inject('/api/parts/labels?selection=category&category=Does%20not%20exist');
+    const emptyBatch = await app.inject(`/api/parts/labels?selection=category&categoryId=${context.emptyCategoryId}`);
 
     expect(missing.statusCode, missing.body).toBe(404);
     expect(emptyBatch.statusCode, emptyBatch.body).toBe(404);
@@ -200,9 +205,9 @@ function capturingRenderer(rendered: PartLabelPdfModel[][]): PartLabelPdfRendere
   };
 }
 
-function partRow(supplierId: string, code: string, name: string, category: string, storageLocation: string | null) {
+function partRow(supplierId: string, code: string, name: string, categoryId: string, storageLocation: string | null) {
   return {
-    category,
+    categoryId,
     code,
     description: `${name} description`,
     drawingCode: null,

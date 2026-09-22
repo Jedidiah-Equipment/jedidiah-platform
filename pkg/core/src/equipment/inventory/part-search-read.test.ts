@@ -20,7 +20,12 @@ describe('searchPartStock', () => {
   /** The code is what is printed on the bin; the name is what the person was told to fetch. */
   test('finds a Part by its name, not only its code', async ({ context }) => {
     await context.db.insert(parts).values({
-      ...partValues({ code: 'ATR-9001', supplierId: context.supplierId, unitOfMeasure: 'piece' }),
+      ...partValues({
+        categoryId: context.categoryId,
+        code: 'ATR-9001',
+        supplierId: context.supplierId,
+        unitOfMeasure: 'piece',
+      }),
       name: 'Chevron Metal 190X1700',
     });
 

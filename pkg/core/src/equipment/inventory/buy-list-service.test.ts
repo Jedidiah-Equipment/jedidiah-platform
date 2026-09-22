@@ -19,7 +19,7 @@ import { describe, expect } from 'vitest';
 
 import { createTester } from '../../test/create-tester.js';
 import { estimateSnapshot, seedProductUnit, seedSentPurchaseOrder } from '../test/inventory-fixtures.js';
-import { partValues } from '../test/part-fixtures.js';
+import { partValues, seedPartCategory } from '../test/part-fixtures.js';
 import { listBuyList } from './buy-list-service.js';
 import { closeOutJob } from './close-out-service.js';
 import { postAdjustment, postJobMovement, postRevaluation } from './stock-movement-service.js';
@@ -50,16 +50,23 @@ const test = createTester(async ({ db }) => {
   const [alpha, beta] = suppliers;
   if (!alpha || !beta) throw new Error('Supplier inserts did not return rows');
 
+  const categoryId = await seedPartCategory(db);
   const partRows = await db
     .insert(parts)
     .values([
-      partValues({ code: 'URGENT', supplierId: alpha.id, unitOfMeasure: 'piece' }),
-      partValues({ code: 'LATER', supplierId: beta.id, unitOfMeasure: 'piece' }),
-      { ...partValues({ code: 'MIN', supplierId: alpha.id, unitOfMeasure: 'piece' }), minimumStock: 10 },
-      partValues({ code: 'EMPTY', supplierId: alpha.id, unitOfMeasure: 'piece' }),
-      partValues({ code: 'FINE', supplierId: alpha.id, unitOfMeasure: 'piece' }),
-      partValues({ code: 'NEVER', supplierId: alpha.id, unitOfMeasure: 'piece' }),
-      partValues({ code: 'BUILT', isInternallyFabricated: true, supplierId: alpha.id, unitOfMeasure: 'piece' }),
+      partValues({ categoryId, code: 'URGENT', supplierId: alpha.id, unitOfMeasure: 'piece' }),
+      partValues({ categoryId, code: 'LATER', supplierId: beta.id, unitOfMeasure: 'piece' }),
+      { ...partValues({ categoryId, code: 'MIN', supplierId: alpha.id, unitOfMeasure: 'piece' }), minimumStock: 10 },
+      partValues({ categoryId, code: 'EMPTY', supplierId: alpha.id, unitOfMeasure: 'piece' }),
+      partValues({ categoryId, code: 'FINE', supplierId: alpha.id, unitOfMeasure: 'piece' }),
+      partValues({ categoryId, code: 'NEVER', supplierId: alpha.id, unitOfMeasure: 'piece' }),
+      partValues({
+        categoryId,
+        code: 'BUILT',
+        isInternallyFabricated: true,
+        supplierId: alpha.id,
+        unitOfMeasure: 'piece',
+      }),
     ])
     .returning();
   const [urgent, later, minimum, empty, fine, never, built] = partRows;
@@ -96,6 +103,7 @@ const test = createTester(async ({ db }) => {
     bays: { late: lateBay, soon: soonBay },
     jobs: { late: lateJob, soon: soonJob, unscheduled: unscheduledJob },
     parts: { built, empty, fine, later, minimum, never, urgent },
+    categoryId,
     suppliers: { alpha, beta },
   };
 });
@@ -106,6 +114,7 @@ describe('listBuyList', () => {
       .insert(parts)
       .values({
         ...partValues({
+          categoryId: context.categoryId,
           code: 'PLATE',
           stockTrackingMode: 'periodic',
           supplierId: context.suppliers.alpha.id,

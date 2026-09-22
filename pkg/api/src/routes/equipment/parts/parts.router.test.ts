@@ -1,12 +1,21 @@
 import { auditEvents, type Db, user } from '@pkg/db';
+import { partCategories } from '@pkg/db/equipment';
 import type { Part, PartCreateInput, Supplier } from '@pkg/schema/equipment';
 import { describe, expect } from 'vitest';
 
 import { type AppRouterCaller, createTester } from '@/test/create-tester.js';
 import { mockSession } from '@/test/test-utils.js';
 
+const BEARINGS_ID = '00000000-0000-4000-8000-0000000000b1';
+const FASTENERS_ID = '00000000-0000-4000-8000-0000000000f1';
+const CATEGORY_IDS = { Bearings: BEARINGS_ID, Fasteners: FASTENERS_ID } as const;
+
 const test = createTester(async ({ db }) => {
   await createActorUser(db);
+  await db.insert(partCategories).values([
+    { id: BEARINGS_ID, name: 'Bearings' },
+    { id: FASTENERS_ID, name: 'Fasteners' },
+  ]);
 
   return { db };
 });
@@ -18,10 +27,10 @@ async function createSupplier(caller: AppRouterCaller, name = 'Acme Supplies'): 
 async function createPart(
   caller: AppRouterCaller,
   supplierId: string | null,
-  overrides: Partial<PartCreateInput> = {},
+  { category = 'Bearings', ...overrides }: Partial<PartCreateInput> & { category?: keyof typeof CATEGORY_IDS } = {},
 ): Promise<Part> {
   return caller.parts.create({
-    category: 'Bearings',
+    categoryId: CATEGORY_IDS[category],
     code: 'P-100',
     description: 'Main bearing',
     drawingCode: null,
@@ -43,7 +52,7 @@ describe('parts.create', () => {
   test('rejects unauthenticated part creates', async ({ context }) => {
     await expect(
       context.createAnonCaller().parts.create({
-        category: 'Bearings',
+        categoryId: BEARINGS_ID,
         code: 'P-100',
         description: 'Main bearing',
         drawingCode: null,
@@ -64,7 +73,7 @@ describe('parts.create', () => {
 
     await expect(
       context.createCaller(mockSession('sales')).parts.create({
-        category: 'Bearings',
+        categoryId: BEARINGS_ID,
         code: 'P-100',
         description: 'Main bearing',
         drawingCode: null,
@@ -428,7 +437,7 @@ describe('parts.list, parts.categories, and parts.locations', () => {
     });
 
     const list = await caller.parts.list({
-      category: 'Bearings',
+      categoryId: BEARINGS_ID,
       columnFilters: {
         name: 'bearing',
         supplierName: 'acme',
@@ -458,7 +467,10 @@ describe('parts.list, parts.categories, and parts.locations', () => {
     expect(lengthParts.items.map((part) => part.code)).toEqual(['P-200']);
     expect(internallyFabricatedParts.items.map((part) => part.code)).toEqual(['P-400']);
     expect(rackParts.items.map((part) => part.code)).toEqual(['P-300']);
-    expect(categories.categories).toEqual(['Bearings', 'Fasteners']);
+    expect(categories.categories).toEqual([
+      { id: BEARINGS_ID, name: 'Bearings' },
+      { id: FASTENERS_ID, name: 'Fasteners' },
+    ]);
     expect(locations.locations).toEqual(['Rack A', 'Rack B']);
   });
 
@@ -596,7 +608,7 @@ describe('parts.update', () => {
 
     await expect(
       context.createCaller().parts.update({
-        category: 'Bearings',
+        categoryId: BEARINGS_ID,
         code: 'P-100',
         description: 'Main bearing',
         drawingCode: null,

@@ -18,7 +18,7 @@ describe('PartCreateInput', () => {
   it('normalizes part fields', () => {
     expect(
       PartCreateInput.parse({
-        category: '  Bearings  ',
+        categoryId: '00000000-0000-4000-8000-000000000009',
         code: '  P-100  ',
         description: '  Main bearing  ',
         drawingCode: '  ',
@@ -33,7 +33,7 @@ describe('PartCreateInput', () => {
       }),
     ).toEqual({
       averageUtilizationPercent: null,
-      category: 'Bearings',
+      categoryId: '00000000-0000-4000-8000-000000000009',
       code: 'P-100',
       description: 'Main bearing',
       drawingCode: null,
@@ -53,7 +53,7 @@ describe('PartCreateInput', () => {
   it('defaults internal fabrication to false when omitted', () => {
     expect(
       PartCreateInput.parse({
-        category: 'Bearings',
+        categoryId: '00000000-0000-4000-8000-000000000009',
         code: 'P-100',
         description: 'Main bearing',
         drawingCode: null,
@@ -75,7 +75,7 @@ describe('PartCreateInput', () => {
 
   it('requires a standard purchase length only for millimetre parts', () => {
     const baseInput = {
-      category: 'Pipe',
+      categoryId: '00000000-0000-4000-8000-000000000009',
       code: 'SEMP-0001',
       description: 'Seamless pipe',
       drawingCode: null,
@@ -115,7 +115,7 @@ describe('PartCreateInput', () => {
   it('accepts Average Utilization % only for discrete periodic Parts', () => {
     const baseInput = {
       averageUtilizationPercent: 85,
-      category: 'Plate',
+      categoryId: '00000000-0000-4000-8000-000000000009',
       code: 'PLATE-001',
       description: 'Steel plate',
       drawingCode: null,
@@ -148,7 +148,7 @@ describe('PartCreateInput', () => {
 
   it('refuses a built part measured in millimetres, because no build can produce length buckets', () => {
     const baseInput = {
-      category: 'Bracket',
+      categoryId: '00000000-0000-4000-8000-000000000009',
       code: 'FAB1-0009',
       description: 'Fabricated bracket',
       drawingCode: null,
@@ -181,7 +181,7 @@ describe('PartCreateInput', () => {
   it('requires required part fields', () => {
     expect(() =>
       PartCreateInput.parse({
-        category: ' ',
+        categoryId: 'not-a-uuid',
         code: ' ',
         description: ' ',
         finish: ' ',

@@ -87,7 +87,7 @@ function getSelectionCondition(selection: PartLabelBatchSelection): SQL | undefi
     case 'all':
       return undefined;
     case 'category':
-      return eq(parts.category, selection.category);
+      return eq(parts.categoryId, selection.categoryId);
     case 'storageLocation':
       return eq(parts.storageLocation, selection.storageLocation);
     case 'ids':

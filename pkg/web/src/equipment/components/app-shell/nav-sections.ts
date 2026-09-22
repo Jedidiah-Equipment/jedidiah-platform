@@ -17,6 +17,7 @@ import {
   IconReceipt2,
   IconShoppingCart,
   IconShoppingCartPlus,
+  IconTags,
   IconTool,
   IconUsers,
 } from '@tabler/icons-react';
@@ -180,6 +181,12 @@ export const equipmentNavSections = [
         permission: 'equipment_labor_rate:read',
         link: linkOptions({ to: '/equipment/labor-rates' }),
         icon: IconCoins,
+      },
+      {
+        title: 'Part categories',
+        permission: 'equipment_part_category:update',
+        link: linkOptions({ to: '/equipment/part-categories' }),
+        icon: IconTags,
       },
       {
         title: 'Product Ranges',

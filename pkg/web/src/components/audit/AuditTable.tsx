@@ -61,6 +61,7 @@ const auditEntityTypeLabels = {
   job_bay: 'Bay',
   labor_rate_card: 'Labor Rate Card',
   part: 'Part',
+  part_category: 'Part Category',
   product: 'Product',
   product_unit: 'Unit',
   purchase_order: 'Purchase Order',

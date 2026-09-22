@@ -1,5 +1,5 @@
 import { auditEvents, createDatabaseClient, user } from '@pkg/db';
-import { parts, purchaseOrders, supplier } from '@pkg/db/equipment';
+import { partCategories, parts, purchaseOrders, supplier } from '@pkg/db/equipment';
 import { eq, sql } from 'drizzle-orm';
 import { describe, expect } from 'vitest';
 import { InMemoryStorageAdapter } from '../../storage/in-memory-storage-adapter.js';
@@ -25,6 +25,7 @@ const ACTOR_ID = 'supplier-merge-test-user';
 const SOURCE_ID = '00000000-0000-4000-8000-000000000101';
 const TARGET_ID = '00000000-0000-4000-8000-000000000102';
 const PART_ID = '00000000-0000-4000-8000-000000000201';
+const PART_CATEGORY_ID = '00000000-0000-4000-8000-000000000401';
 const PURCHASE_ORDER_ID = '00000000-0000-4000-8000-000000000301';
 const APPROVED_ORDER_ID = '00000000-0000-4000-8000-000000000302';
 const SENT_ORDER_ID = '00000000-0000-4000-8000-000000000303';
@@ -55,8 +56,9 @@ const test = createTester(async ({ db }) => {
     },
     { address: '  ', companyName: 'Nightwolves', id: TARGET_ID, notes: 'Target note' },
   ]);
+  await db.insert(partCategories).values({ id: PART_CATEGORY_ID, name: 'General' });
   await db.insert(parts).values({
-    ...partValues({ code: 'NW-100', supplierId: SOURCE_ID, unitOfMeasure: 'piece' }),
+    ...partValues({ categoryId: PART_CATEGORY_ID, code: 'NW-100', supplierId: SOURCE_ID, unitOfMeasure: 'piece' }),
     id: PART_ID,
   });
   await db.insert(purchaseOrders).values([
@@ -293,7 +295,7 @@ describe('mergeSupplier', () => {
       db: concurrentClient.db,
       input: {
         averageUtilizationPercent: null,
-        category: 'Test',
+        categoryId: PART_CATEGORY_ID,
         code: 'NW-RACE',
         description: 'Concurrent supplier retirement regression',
         drawingCode: null,

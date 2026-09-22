@@ -4,6 +4,7 @@ import { createCursorQueryResult, createSearchedSortedCursorQueryInput } from '.
 import { nullableTrimmedText, nullableTrimmedTextInput, requiredTrimmedText } from '../../common/text.js';
 import { UUID } from '../../common/uuid.js';
 import { Supplier, SupplierCompanyName } from '../suppliers/supplier.js';
+import { PartCategoryName, PartCategoryOption } from './part-category.js';
 
 export type PartName = z.infer<typeof PartName>;
 export const PartName = requiredTrimmedText('Part name is required');
@@ -25,9 +26,6 @@ export const PartDescription = requiredTrimmedText('Description is required');
 
 export type PartFinish = z.infer<typeof PartFinish>;
 export const PartFinish = requiredTrimmedText('Finish is required');
-
-export type PartCategory = z.infer<typeof PartCategory>;
-export const PartCategory = requiredTrimmedText('Category is required');
 
 export type PartStockTrackingMode = z.infer<typeof PartStockTrackingMode>;
 export const PartStockTrackingMode = z.enum(['perpetual', 'periodic']);
@@ -93,7 +91,9 @@ export function isWholeUnitQuantity(quantity: number, unitClass: PartUnitClass):
 export type Part = z.infer<typeof Part>;
 export const Part = z.object({
   averageUtilizationPercent: PartAverageUtilizationPercent.nullable(),
-  category: PartCategory,
+  /** The Part Category's name, carried beside its id so every reader shows it without a lookup. */
+  category: PartCategoryName,
+  categoryId: UUID,
   code: PartCode,
   description: PartDescription,
   drawingCode: PartDrawingCode,
@@ -133,7 +133,7 @@ export const PartColumnFilters = z
 
 const PartInputFields = z.object({
   averageUtilizationPercent: PartAverageUtilizationPercent.nullable().default(null),
-  category: PartCategory,
+  categoryId: UUID,
   code: PartCode,
   description: PartDescription,
   drawingCode: PartDrawingCodeInput,
@@ -251,7 +251,8 @@ export const PartUpdateInput = PartInputFields.extend({ id: UUID }).superRefine(
  */
 export type PartBulkExportRow = z.infer<typeof PartBulkExportRow>;
 export const PartBulkExportRow = z.object({
-  category: PartCategory,
+  /** A Part Category name; the import resolves it ignoring casing and whitespace. */
+  category: PartCategoryName,
   code: PartCode,
   description: PartDescription,
   drawingCode: PartDrawingCodeInput,
@@ -311,7 +312,7 @@ export const PartBulkImportResult = z.object({
 export type PartListInput = z.infer<typeof PartListInput>;
 export const PartListInput = createSearchedSortedCursorQueryInput({
   shape: {
-    category: z.string().trim().optional(),
+    categoryId: UUID.optional(),
     columnFilters: PartColumnFilters,
     supplierId: UUID.optional(),
   },
@@ -323,7 +324,7 @@ export const PartListResult = createCursorQueryResult(Part);
 
 export type PartCategoryListResult = z.infer<typeof PartCategoryListResult>;
 export const PartCategoryListResult = z.object({
-  categories: z.array(PartCategory),
+  categories: z.array(PartCategoryOption),
 });
 
 export type PartStorageLocationListResult = z.infer<typeof PartStorageLocationListResult>;
@@ -356,7 +357,7 @@ const PartLabelCopiesSelection = z
 
 const partLabelUrlSelectionVariants = [
   z.object({ selection: z.literal(PartLabelSelectionMode.enum.all) }).strict(),
-  z.object({ category: PartCategory, selection: z.literal(PartLabelSelectionMode.enum.category) }).strict(),
+  z.object({ categoryId: UUID, selection: z.literal(PartLabelSelectionMode.enum.category) }).strict(),
   z
     .object({
       selection: z.literal(PartLabelSelectionMode.enum.storageLocation),
@@ -383,13 +384,13 @@ export const PartLabelBatchSelection = z.discriminatedUnion('selection', [
 export type PartLabelBatchQuery = z.infer<typeof PartLabelBatchQuery>;
 export const PartLabelBatchQuery = z
   .object({
-    category: PartCategory.optional(),
+    categoryId: UUID.optional(),
     ids: z.string().optional(),
     selection: PartLabelSelectionMode.exclude(['copies']),
     storageLocation: PartStorageLocation.unwrap().optional(),
   })
   .transform((query) => ({
-    ...(query.selection === 'category' ? { category: query.category } : {}),
+    ...(query.selection === 'category' ? { categoryId: query.categoryId } : {}),
     ...(query.selection === 'storageLocation' ? { storageLocation: query.storageLocation } : {}),
     ...(query.selection === 'ids' ? { ids: query.ids?.split(',').filter(Boolean) } : {}),
     selection: query.selection,

@@ -17,6 +17,7 @@ export * from './inventory/invoice-price-correction.js';
 export * from './inventory/movement-warnings.js';
 export * from './inventory/moving-average.js';
 export * from './inventory/part-category-markup.js';
+export * from './inventory/part-quantity.js';
 export * from './inventory/part-stock-actions.js';
 export * from './inventory/purchase-order-actions.js';
 export * from './inventory/purchase-order-display.js';

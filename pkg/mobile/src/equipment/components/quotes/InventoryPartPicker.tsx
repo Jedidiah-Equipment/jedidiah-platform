@@ -1,13 +1,13 @@
 import { formatCurrency, formatNumber } from '@pkg/domain';
 import {
   effectivePlateFraction,
+  formatPartQuantity,
   type QuoteInventoryPartAmount,
   quoteInventoryPartBasis,
   quoteInventoryPartName,
   quoteInventoryPartUnitPrice,
 } from '@pkg/domain/equipment';
 import {
-  type PartUnitOfMeasure,
   QuoteInventoryPartLengthMm,
   type QuoteInventoryPartOption,
   QuoteInventoryPartPlatePercent,
@@ -123,12 +123,16 @@ function PartSearchField({
         <TextInput
           accessibilityLabel="Part"
           className="h-12"
+          selectTextOnFocus
           onChangeText={(value) => {
             if (part) onSelected(null);
             setSearch(value);
             setExpanded(true);
           }}
-          onFocus={() => setExpanded(true)}
+          // A picked Part keeps its label and amounts until the salesperson types over it.
+          onFocus={() => {
+            if (!part) setExpanded(true);
+          }}
           placeholder={results.isFetching ? 'Searching Parts…' : 'Search by code, name, or Part Category'}
           value={expanded || !part ? search : partLabel(part)}
         />
@@ -160,7 +164,7 @@ function PartSearchField({
                 className={`shrink-0 text-xs ${row.freeQuantity > 0 ? 'text-surface-foreground' : 'text-muted-foreground'}`}
                 mono
               >
-                {row.freeQuantity > 0 ? `${formatFreeQuantity(row)} free` : 'None free'}
+                {row.freeQuantity > 0 ? `${formatPartQuantity(row.freeQuantity, row.unitOfMeasure)} free` : 'None free'}
               </Text>
             </>
           )}
@@ -322,22 +326,6 @@ function priceNoteMessage(part: QuoteInventoryPartOption, currencyCode: string):
     part.priceNote === 'no-cost' ? 'This Part has no cost yet' : `${part.partCategoryName} has no markup set`;
 
   return `${reason}, so no price can be worked out. The row will be added at ${formatCurrency(0, currencyCode)}.`;
-}
-
-const UNIT_SUFFIXES = {
-  box: 'box',
-  kg: 'kg',
-  litre: 'L',
-  mm: 'mm',
-  pair: 'pair',
-  piece: 'pc',
-  set: 'set',
-} as const satisfies Record<PartUnitOfMeasure, string>;
-
-/** A linear Part's stock is a count of pieces, never a length. */
-function formatFreeQuantity({ freeQuantity, unitOfMeasure }: QuoteInventoryPartOption): string {
-  const quantity = formatNumber(freeQuantity, { decimals: Number.isInteger(freeQuantity) ? 0 : 2 });
-  return unitOfMeasure === 'mm' ? `${quantity} pieces` : `${quantity} ${UNIT_SUFFIXES[unitOfMeasure]}`;
 }
 
 const partLabel = (part: QuoteInventoryPartOption) => `${part.code} · ${part.name}`;

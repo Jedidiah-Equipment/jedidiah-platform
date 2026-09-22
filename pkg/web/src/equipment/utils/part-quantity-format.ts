@@ -1,5 +1,8 @@
 import { formatCurrency, formatNumber } from '@pkg/domain';
+import { formatPartQuantityValue, PART_UNIT_SUFFIXES } from '@pkg/domain/equipment';
 import { PART_UNIT_OF_MEASURE_LABELS, type PartUnitOfMeasure } from '@pkg/schema/equipment';
+
+export { formatPartQuantity } from '@pkg/domain/equipment';
 
 export type PartQuantityUnitDisplay = {
   label: string;
@@ -15,34 +18,10 @@ export type PartPurchaseUnit = {
 /** What the ledger's `numeric(18, 6)` unit cost can hold, which is what a per-millimetre average needs. */
 const LEDGER_COST_DECIMALS = 6;
 
-const UNIT_SUFFIXES = {
-  box: 'box',
-  kg: 'kg',
-  litre: 'L',
-  mm: 'mm',
-  pair: 'pair',
-  piece: 'pc',
-  set: 'set',
-} as const satisfies Record<PartUnitOfMeasure, string>;
-
-const MAX_QUANTITY_DECIMALS = 3;
-
 export function getPartQuantityUnitDisplay(unitOfMeasure: PartUnitOfMeasure | undefined): PartQuantityUnitDisplay {
   const unit = unitOfMeasure ?? 'piece';
 
-  return { label: PART_UNIT_OF_MEASURE_LABELS[unit], suffix: UNIT_SUFFIXES[unit] };
-}
-
-/**
- * A linear Part's quantity is a count of pieces, never a length (spec §2) — `mm` marks the class the
- * bucket length is measured in. Callers holding a linear quantity use this rather than the suffix.
- */
-export function formatPartQuantity(quantity: number, unitOfMeasure: PartUnitOfMeasure): string {
-  if (unitOfMeasure === 'mm') {
-    return `${formatQuantityValue(quantity)} pieces`;
-  }
-
-  return `${quantity} ${UNIT_SUFFIXES[unitOfMeasure]}`;
+  return { label: PART_UNIT_OF_MEASURE_LABELS[unit], suffix: PART_UNIT_SUFFIXES[unit] };
 }
 
 /**
@@ -108,15 +87,5 @@ export function formatLengthMetres(lengthMm: number): string {
 
 /** One length bucket of linear stock, read as "6 m x 3". */
 export function formatLengthBucket(lengthMm: number, quantity: number): string {
-  return `${formatLengthMetres(lengthMm)} × ${formatQuantityValue(quantity)}`;
-}
-
-function formatQuantityValue(quantity: number): string {
-  const roundedQuantity = Math.round(quantity * 10 ** MAX_QUANTITY_DECIMALS) / 10 ** MAX_QUANTITY_DECIMALS;
-  const normalizedQuantity = Object.is(roundedQuantity, -0) ? 0 : roundedQuantity;
-  const [coefficient = '', exponentText = '0'] = normalizedQuantity.toString().toLowerCase().split('e');
-  const fractionLength = coefficient.split('.')[1]?.length ?? 0;
-  const decimals = Math.min(MAX_QUANTITY_DECIMALS, Math.max(0, fractionLength - Number(exponentText)));
-
-  return formatNumber(normalizedQuantity, { decimals });
+  return `${formatLengthMetres(lengthMm)} × ${formatPartQuantityValue(quantity)}`;
 }

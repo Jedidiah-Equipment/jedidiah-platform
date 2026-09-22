@@ -1,13 +1,15 @@
 export type SelectOption = {
+  disabled?: boolean;
   label: string;
   value: string;
 };
 
-export function toSelectOptions<TItem extends { id: string }>(
+export function toSelectOptions<TItem extends { disabled?: boolean; id: string }>(
   items: readonly TItem[],
   getLabel: (item: TItem) => string,
 ): SelectOption[] {
   return items.map((item) => ({
+    ...(item.disabled ? { disabled: true } : {}),
     label: getLabel(item),
     value: item.id,
   }));

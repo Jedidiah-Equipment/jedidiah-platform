@@ -22,8 +22,6 @@ export const UserAccount = z.object({
   name: z.string().trim().min(1),
   email: z.email(),
   phoneNumber: NullablePhoneNumber,
-  /** Whether a Quote may name this User as its salesperson. Equipment's; grants no permission. */
-  quoteSalesperson: z.boolean(),
   equipmentRole: EquipmentRole.nullable(),
   contractingRole: ContractingRole.nullable(),
   thumbnailDataUrl: NullableThumbnailDataUrl,

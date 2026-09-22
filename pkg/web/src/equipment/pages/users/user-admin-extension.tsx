@@ -9,10 +9,13 @@ import { cursorInfiniteQueryOptions } from '@/components/data-table/cursor-query
 import type { DataTableColumnDef } from '@/components/data-table/features.js';
 import { useQueryInvalidation } from '@/equipment/hooks/use-query-invalidation.js';
 import { useAccess } from '@/hooks/use-access.js';
+import { authClient } from '@/lib/auth-client.js';
 import { useTRPC } from '@/lib/trpc.js';
+import { unwrapAuthResult } from '@/pages/users/user-admin-client.js';
 import type { UserAdminExtension } from '@/pages/users/user-admin-extension.js';
 import { UserBadgePrintButton } from './components/UserBadgePrintButton.js';
 import { UserDepartmentsForm } from './components/UserDepartmentsForm.js';
+import { UserQuoteSalespersonField } from './components/UserQuoteSalespersonField.js';
 
 const noDepartments: readonly Department[] = [];
 
@@ -27,7 +30,10 @@ function useDepartmentMemberships() {
   return { isError: query.isError, isLoaded: query.isSuccess, memberships };
 }
 
-/** Equipment's side of user admin: Department Membership on the table and forms, and the stores badge. */
+/**
+ * Equipment's side of user admin: Department Membership on the table and forms, the Quote
+ * salesperson roster on the forms, and the stores badge.
+ */
 export const equipmentUserAdminExtension: UserAdminExtension = {
   useListQuery: (input, columnFilters) => {
     const trpc = useTRPC();
@@ -75,35 +81,61 @@ export const equipmentUserAdminExtension: UserAdminExtension = {
   },
   useFormExtension: ({ isPending, user }) => {
     const trpc = useTRPC();
-    const { invalidateUserDepartments } = useQueryInvalidation();
+    const { invalidateQuotes, invalidateUserDepartments } = useQueryInvalidation();
     const access = useAccess().data;
-    const canAssignDepartments = hasPermission(access, 'user:update');
+    const canUpdateUser = hasPermission(access, 'user:update');
     const canSetRole = hasPermission(access, 'user:set-role');
     const { isError, isLoaded, memberships } = useDepartmentMemberships();
     const initialDepartments = (user && memberships.get(user.id)) ?? noDepartments;
     const [draft, setDraft] = useState<readonly Department[] | null>(null);
     const setDepartmentsMutation = useMutation(trpc.userDepartments.set.mutationOptions());
+    const salespeopleQuery = useQuery(trpc.quotes.salespeople.queryOptions());
+    const initialQuoteSalesperson =
+      user !== null && (salespeopleQuery.data?.users.some((person) => person.id === user.id) ?? false);
+    const [quoteSalespersonDraft, setQuoteSalespersonDraft] = useState<boolean | null>(null);
 
-    // A fresh user means a fresh draft; the stored memberships stay the baseline until touched.
-    // biome-ignore lint/correctness/useExhaustiveDependencies: reset on the user, not on every membership refetch
-    useEffect(() => setDraft(null), [user?.id]);
+    // A fresh user means a fresh draft; the stored memberships and roster stay the baseline until touched.
+    // biome-ignore lint/correctness/useExhaustiveDependencies: reset on the user, not on every refetch
+    useEffect(() => {
+      setDraft(null);
+      setQuoteSalespersonDraft(null);
+    }, [user?.id]);
 
     const departments = draft ?? initialDepartments;
+    const quoteSalesperson = quoteSalespersonDraft ?? initialQuoteSalesperson;
     // The save replaces the whole membership set, so a draft started against an unloaded baseline
     // would silently drop what the user already had: the field stays closed until the baseline is in.
-    const canEditDepartments = canAssignDepartments && isLoaded;
+    const canEditDepartments = canUpdateUser && isLoaded;
+    const canEditQuoteSalesperson = canUpdateUser && salespeopleQuery.isSuccess;
     const save = useCallback(
       async (userId: AuthId) => {
-        if (!canEditDepartments || draft === null || !haveDepartmentsChanged(draft, initialDepartments)) {
-          return false;
+        let didUpdate = false;
+
+        if (canEditDepartments && draft !== null && haveDepartmentsChanged(draft, initialDepartments)) {
+          await setDepartmentsMutation.mutateAsync({ departments: [...draft], userId });
+          await invalidateUserDepartments();
+          didUpdate = true;
         }
 
-        await setDepartmentsMutation.mutateAsync({ departments: [...draft], userId });
-        await invalidateUserDepartments();
+        if (canEditQuoteSalesperson && quoteSalesperson !== initialQuoteSalesperson) {
+          unwrapAuthResult(await authClient.admin.updateUser({ data: { quoteSalesperson }, userId }));
+          await invalidateQuotes();
+          didUpdate = true;
+        }
 
-        return true;
+        return didUpdate;
       },
-      [canEditDepartments, draft, initialDepartments, invalidateUserDepartments, setDepartmentsMutation],
+      [
+        canEditDepartments,
+        canEditQuoteSalesperson,
+        draft,
+        initialDepartments,
+        initialQuoteSalesperson,
+        invalidateQuotes,
+        invalidateUserDepartments,
+        quoteSalesperson,
+        setDepartmentsMutation,
+      ],
     );
 
     return {
@@ -111,8 +143,14 @@ export const equipmentUserAdminExtension: UserAdminExtension = {
         user && canSetRole && user.equipmentRole === 'stores' && !user.isDevice ? (
           <UserBadgePrintButton userId={user.id} />
         ) : null,
-      fields: canAssignDepartments ? (
+      fields: canUpdateUser ? (
         <>
+          <UserQuoteSalespersonField
+            checked={quoteSalesperson}
+            isPending={isPending || !salespeopleQuery.isSuccess}
+            onCheckedChange={setQuoteSalespersonDraft}
+          />
+          {salespeopleQuery.isError ? <p className="text-destructive text-sm">Unable to load salespeople.</p> : null}
           <UserDepartmentsForm
             initialDepartments={departments}
             isPending={isPending || !isLoaded}

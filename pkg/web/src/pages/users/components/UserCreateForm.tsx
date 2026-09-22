@@ -45,7 +45,6 @@ export const UserCreateForm: React.FC<UserCreateFormProps> = ({
     name: '',
     password: '',
     phoneNumber: null,
-    quoteSalesperson: false,
     ...defaultRoleSlots[business],
   };
   const form = useAppForm({
@@ -74,17 +73,6 @@ export const UserCreateForm: React.FC<UserCreateFormProps> = ({
           {(field) => <field.TextField autoComplete="email" label="Email" type="email" />}
         </form.AppField>
         <form.AppField name="phoneNumber">{(field) => <field.PhoneNumberField label="Phone number" />}</form.AppField>
-        {business === 'equipment' ? (
-          <form.AppField name="quoteSalesperson">
-            {(field) => (
-              <field.CheckboxField
-                description="Lists this person in the Salesperson picker on Quotes. It changes nothing about what they can see or do."
-                disabled={isPending}
-                label="Quote salesperson"
-              />
-            )}
-          </form.AppField>
-        ) : null}
         {/* A shared device is the Equipment stores tablet; Contracting has no device accounts. */}
         {canSetRole && business === 'equipment' ? (
           <form.AppField name="isDevice">

@@ -231,9 +231,9 @@ function QuoteEditor({
                       <form.AppField name="salesPersonId">
                         {(_field) => (
                           <SalespersonSelectField
+                            assigned={{ id: quote.salesPersonId, name: quote.salesPersonName }}
                             disabled={setupReadOnly}
                             onValueCommit={autosave.commit}
-                            unlistedSelectedLabel={quote.salesPersonName}
                           />
                         )}
                       </form.AppField>

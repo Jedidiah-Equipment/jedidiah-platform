@@ -69,7 +69,9 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ onSave, priorityQuote, quo
   const canEdit = (field: string) => !isLocked || lockEditableFields.has(field);
   const quoteCurrencyCode = quote.product?.currencyCode ?? quote.quotedCurrencyCode;
   const catalogAssemblies = quote.product?.assemblies ?? [];
-  const salespeopleOptions = useSalesPersonOptions();
+  const salespeopleOptions = useSalesPersonOptions({
+    assigned: { id: quote.salesPersonId, name: quote.salesPersonName },
+  });
   const auditAccess = useCan('equipment_audit:read');
   const jobReadAccess = useCan('equipment_job:read');
   const inventoryReadAccess = useCan('equipment_inventory:read');
@@ -153,7 +155,6 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ onSave, priorityQuote, quo
                             onValueCommit={autosave.commit}
                             options={salespeopleOptions.selectOptions}
                             placeholder="Select salesperson"
-                            unlistedSelectedLabel={quote.salesPersonName}
                           />
                         )}
                       </form.AppField>

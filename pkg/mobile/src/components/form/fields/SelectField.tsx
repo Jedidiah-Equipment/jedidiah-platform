@@ -10,7 +10,7 @@ import { getFieldErrors } from '../utils/field-errors';
 import { fieldStateClassNames } from '../utils/field-style';
 import { FieldShell } from './FieldShell';
 
-type SelectFieldOption = {
+export type SelectFieldOption = {
   disabled?: boolean;
   label: string;
   value: string;
@@ -24,8 +24,6 @@ export type SelectFieldProps = {
   onValueCommit?: () => void;
   options: readonly SelectFieldOption[];
   placeholder?: string;
-  /** Label for a stored value omitted from the current option list. It is display-only. */
-  unlistedSelectedLabel?: string | null;
 };
 
 /** Inline expanding select for a compact list of string options. */
@@ -37,13 +35,11 @@ export function SelectField({
   onValueCommit,
   options,
   placeholder = 'Select an option',
-  unlistedSelectedLabel,
 }: SelectFieldProps) {
   const field = useFieldContext<string>();
   const errors = getFieldErrors(field.state.meta.errors);
   const [open, setOpen] = useState(false);
   const selected = options.find((option) => option.value === field.state.value);
-  const displayLabel = selected?.label ?? (field.state.value ? unlistedSelectedLabel : undefined);
 
   const choose = (value: string) => {
     setOpen(false);
@@ -64,11 +60,8 @@ export function SelectField({
         disabled={disabled}
         onPress={() => setOpen((value) => !value)}
       >
-        <Text
-          className={`text-sm ${displayLabel ? 'text-surface-foreground' : 'text-muted-foreground'}`}
-          numberOfLines={1}
-        >
-          {displayLabel ?? placeholder}
+        <Text className={`text-sm ${selected ? 'text-surface-foreground' : 'text-muted-foreground'}`} numberOfLines={1}>
+          {selected?.label ?? placeholder}
         </Text>
         <Icon className="text-muted-foreground" icon={IconChevronDown} size={16} />
       </Pressable>

@@ -1,18 +1,11 @@
 import type { UserAccount } from '@pkg/schema';
 
-import type { UserEditFormValues } from './components/UserEditForm.js';
+import type { UserEditFormValues } from './UserEditForm.js';
 
 type ProfileUpdateData = Partial<
   Pick<
     UserEditFormValues,
-    | 'assistantEnabled'
-    | 'contractingRole'
-    | 'email'
-    | 'emailVerified'
-    | 'equipmentRole'
-    | 'name'
-    | 'phoneNumber'
-    | 'quoteSalesperson'
+    'assistantEnabled' | 'contractingRole' | 'email' | 'emailVerified' | 'equipmentRole' | 'name' | 'phoneNumber'
   >
 >;
 
@@ -47,9 +40,6 @@ export function buildProfileUpdateData({
   }
   if (canUpdateProfile && value.assistantEnabled !== baselineUser.assistantEnabled) {
     data.assistantEnabled = value.assistantEnabled;
-  }
-  if (canUpdateProfile && value.quoteSalesperson !== baselineUser.quoteSalesperson) {
-    data.quoteSalesperson = value.quoteSalesperson;
   }
   // Only the slot of the business this dialog stands in is shown, so at most one of these moves.
   if (canSetRole && value.equipmentRole !== baselineUser.equipmentRole) {

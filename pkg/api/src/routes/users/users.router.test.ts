@@ -38,7 +38,6 @@ describe('users.list', () => {
         isDevice: false,
         name: 'Viewer User',
         phoneNumber: null,
-        quoteSalesperson: false,
         thumbnailDataUrl: null,
       },
     ]);

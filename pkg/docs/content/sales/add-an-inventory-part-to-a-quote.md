@@ -26,3 +26,8 @@ If the dialog says the row will be added at R 0.00, price the row by hand, and:
 
 Adding a Part reserves nothing and moves no stock. Cut steel and plate are
 [periodic stock](/inventory/perpetual-and-periodic-stock), so they are never checked out against the sale either.
+
+## On the phone
+
+The steps are the same in the app's Quote editor, with one difference: there is no **Add and pick another**.
+Select **Add to work item**, then **Add inventory part** again for the next Part.

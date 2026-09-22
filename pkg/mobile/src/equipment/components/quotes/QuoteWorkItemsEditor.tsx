@@ -9,10 +9,12 @@ import type { LaborBillingRates, QuoteDetail, QuoteUpdateInput } from '@pkg/sche
 import { IconPlus, IconTrash } from '@tabler/icons-react-native';
 import { useQuery } from '@tanstack/react-query';
 import type React from 'react';
+import { useState } from 'react';
 import { Pressable, View } from 'react-native';
 import type { useAutosaveForm } from '@/components/form';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
+import { useAppToast } from '@/components/ui/toast';
 import {
   createQuoteFormKey,
   OTHER_WORK_ITEM_DEPARTMENT,
@@ -20,6 +22,8 @@ import {
   toQuoteWorkItemInput,
 } from '@/equipment/lib/quote-presentation';
 import { useTRPC } from '@/lib/trpc';
+
+import { InventoryPartPicker } from './InventoryPartPicker';
 
 type QuoteEditAutosaveForm = ReturnType<typeof useAutosaveForm<QuoteEditFormValues, QuoteUpdateInput, QuoteDetail>>;
 
@@ -56,6 +60,9 @@ export function QuoteWorkItemsEditor({ autosave, currencyCode, form, readOnly }:
   const trpc = useTRPC();
   const billing = useQuery(trpc.laborRates.billing.queryOptions());
   const rates = billing.data;
+  const showToast = useAppToast();
+  // A formKey, not an index: an autosave reconcile can reset the array while the picker is open.
+  const [inventoryPartTarget, setInventoryPartTarget] = useState<string | null>(null);
   return (
     <form.Field name="workItems" mode="array">
       {(workItemsField) => (
@@ -183,32 +190,30 @@ export function QuoteWorkItemsEditor({ autosave, currencyCode, form, readOnly }:
                   <form.Field name={`workItems[${workItemIndex}].parts`} mode="array">
                     {(partsField) => (
                       <View className="gap-3 border-l-2 border-border pl-3">
-                        <View className="flex-row items-center justify-between gap-3">
+                        <View className="gap-2">
                           <Text className="text-sm text-foreground" weight="semibold">
                             Parts
                           </Text>
-                          <Pressable
-                            accessibilityRole="button"
-                            accessibilityState={{ disabled: readOnly }}
-                            className={`flex-row items-center gap-2 rounded-lg border border-border bg-surface px-3 py-2 ${
-                              readOnly ? 'opacity-50' : 'active:bg-muted'
-                            }`}
-                            disabled={readOnly}
-                            onPress={() => {
-                              partsField.pushValue({
-                                formKey: createQuoteFormKey('work-item-part'),
-                                name: '',
-                                quantity: 1,
-                                unitPrice: 0,
-                              });
-                              autosave.markChanged();
-                            }}
-                          >
-                            <Icon className="text-primary" icon={IconPlus} size={14} />
-                            <Text className="text-xs text-foreground" weight="semibold">
-                              Add part
-                            </Text>
-                          </Pressable>
+                          <View className="flex-row flex-wrap gap-2">
+                            <AddPartButton
+                              disabled={readOnly}
+                              label="Add custom part"
+                              onPress={() => {
+                                partsField.pushValue({
+                                  formKey: createQuoteFormKey('work-item-part'),
+                                  name: '',
+                                  quantity: 1,
+                                  unitPrice: 0,
+                                });
+                                autosave.markChanged();
+                              }}
+                            />
+                            <AddPartButton
+                              disabled={readOnly}
+                              label="Add inventory part"
+                              onPress={() => setInventoryPartTarget(workItem.formKey)}
+                            />
+                          </View>
                         </View>
                         {partsField.state.value.length === 0 ? (
                           <Text className="text-xs text-muted-foreground">No parts.</Text>
@@ -295,9 +300,48 @@ export function QuoteWorkItemsEditor({ autosave, currencyCode, form, readOnly }:
               ))}
             </View>
           )}
+          <InventoryPartPicker
+            currencyCode={currencyCode}
+            onAdd={(row) => {
+              const workItemIndex = form.state.values.workItems.findIndex(
+                (workItem) => workItem.formKey === inventoryPartTarget,
+              );
+              if (workItemIndex === -1) {
+                showToast('error', 'The work item changed. Please add the part again.');
+                return;
+              }
+              // Complete the moment it lands, unlike an empty custom row, so nothing else would flush it.
+              form.pushFieldValue(`workItems[${workItemIndex}].parts`, {
+                formKey: createQuoteFormKey('work-item-part'),
+                ...row,
+              });
+              autosave.commit();
+            }}
+            onClose={() => setInventoryPartTarget(null)}
+            open={inventoryPartTarget !== null}
+          />
         </WorkItemsSection>
       )}
     </form.Field>
+  );
+}
+
+function AddPartButton({ disabled, label, onPress }: { disabled: boolean; label: string; onPress: () => void }) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityState={{ disabled }}
+      className={`flex-row items-center gap-2 rounded-lg border border-border bg-surface px-3 py-2 ${
+        disabled ? 'opacity-50' : 'active:bg-muted'
+      }`}
+      disabled={disabled}
+      onPress={onPress}
+    >
+      <Icon className="text-primary" icon={IconPlus} size={14} />
+      <Text className="text-xs text-foreground" weight="semibold">
+        {label}
+      </Text>
+    </Pressable>
   );
 }
 

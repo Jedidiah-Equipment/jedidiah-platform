@@ -573,7 +573,7 @@ export async function listJobStock({ db, jobId }: { db: Db; jobId: UUID }): Prom
  * commitment eats the same shelf, and every open order feeds it — so they are read across the plant
  * and narrowed to the Parts asked for, never scoped to the calling Job.
  */
-async function loadPlantStockPosition({
+export async function loadPlantStockPosition({
   db,
   partIds,
 }: {

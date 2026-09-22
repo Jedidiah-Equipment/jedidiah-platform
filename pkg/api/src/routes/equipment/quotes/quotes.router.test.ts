@@ -1,10 +1,12 @@
-import { listPriorityQuotes } from '@pkg/core/equipment';
+import { listPriorityQuotes, postAdjustment } from '@pkg/core/equipment';
 import { auditEvents, type Db, sql, user } from '@pkg/db';
 import {
   customers,
   jobBays,
   jobSlots,
   jobs,
+  partCategories,
+  parts,
   productAssemblies,
   productBays,
   products,
@@ -13,10 +15,12 @@ import {
   quotes,
   quoteWorkItemParts,
   quoteWorkItems,
+  supplier,
 } from '@pkg/db/equipment';
 import { pricePersistedQuote, priceQuote } from '@pkg/domain/equipment';
 import type { QuoteDetail } from '@pkg/schema/equipment';
 import { describe, expect, vi } from 'vitest';
+import { seedPartCategory } from '@/equipment/test/part-category-fixtures.js';
 import { createProductRangeFixture } from '@/equipment/test/product-range-fixtures.js';
 import { type AppRouterCaller, createTester } from '@/test/create-tester.js';
 import { mockSession } from '@/test/test-utils.js';
@@ -2090,6 +2094,65 @@ describe('quotes.generateDocument', () => {
       code: 'BAD_REQUEST',
       message: 'Quote Documents can only be generated for draft, sent, or accepted Quotes.',
     });
+  });
+});
+
+describe('quotes.inventoryParts', () => {
+  test('lets anyone who edits Quotes price a Part, and nobody else', async ({ context }) => {
+    for (const role of ['sales', 'procurement-manager'] as const) {
+      await expect(
+        context.createCaller(mockSession(role)).quotes.inventoryParts({ cursor: 0, limit: 20, search: '' }),
+      ).resolves.toMatchObject({ total: 0 });
+    }
+    for (const role of ['stores', 'job-viewer'] as const) {
+      await expect(
+        context.createCaller(mockSession(role)).quotes.inventoryParts({ cursor: 0, limit: 20, search: '' }),
+      ).rejects.toMatchObject({ code: 'FORBIDDEN' });
+    }
+  });
+
+  test('gives sales a sell price and never the cost or markup behind it', async ({ context }) => {
+    const categoryId = await seedPartCategory(context.db, 'Fasteners');
+    await context.db.update(partCategories).set({ markupPercent: 50 }).where(sql`true`);
+    const [createdSupplier] = await context.db.insert(supplier).values({ companyName: 'Bolt Supplies' }).returning();
+    if (!createdSupplier) throw new Error('Supplier insert did not return a row');
+    const [part] = await context.db
+      .insert(parts)
+      .values({
+        categoryId,
+        code: 'M10-BOLT',
+        description: 'M10 bolt',
+        finish: 'Zinc',
+        name: 'M10 bolt',
+        supplierCode: 'M10',
+        supplierId: createdSupplier.id,
+        unitOfMeasure: 'piece',
+      })
+      .returning();
+    if (!part) throw new Error('Part insert did not return a row');
+    await postAdjustment({
+      actorUserId: 'test-user-id',
+      db: context.db,
+      input: { delta: 10, lengthMm: null, note: null, partId: part.id, reason: 'opening-balance', unitCost: 10 },
+    });
+
+    const result = await context
+      .createCaller(mockSession('sales'))
+      .quotes.inventoryParts({ cursor: 0, limit: 20, search: 'm10' });
+
+    expect(result.items).toMatchObject([{ code: 'M10-BOLT', priceNote: null, sellPricePerBasisUnit: 15 }]);
+    expect(Object.keys(result.items[0] ?? {}).sort()).toEqual([
+      'averageUtilizationPercent',
+      'code',
+      'freeQuantity',
+      'id',
+      'name',
+      'partCategoryName',
+      'priceNote',
+      'sellPricePerBasisUnit',
+      'standardPurchaseLengthMm',
+      'unitOfMeasure',
+    ]);
   });
 });
 

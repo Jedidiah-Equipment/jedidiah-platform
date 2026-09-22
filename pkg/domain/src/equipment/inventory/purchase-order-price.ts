@@ -1,3 +1,11 @@
+/** Rounds rands to cents, tolerating float noise such as `10.075 * 100 = 1007.4999…`. */
+export function roundToCents(amount: number): number {
+  const cents = amount * 100;
+  const roundingTolerance = Number.EPSILON * Math.abs(cents);
+
+  return Math.round(cents + roundingTolerance) / 100;
+}
+
 /** Converts the current moving average into an editable PO default; zero preserves the unpriced sentinel. */
 export function defaultPurchaseOrderUnitPrice({
   averageUnitCost,
@@ -8,10 +16,5 @@ export function defaultPurchaseOrderUnitPrice({
 }): number {
   if (averageUnitCost === null) return 0;
 
-  const purchaseUnitCost = averageUnitCost * (standardPurchaseLengthMm ?? 1);
-
-  const purchaseUnitCostInCents = purchaseUnitCost * 100;
-  const roundingTolerance = Number.EPSILON * Math.abs(purchaseUnitCostInCents);
-
-  return Math.round(purchaseUnitCostInCents + roundingTolerance) / 100;
+  return roundToCents(averageUnitCost * (standardPurchaseLengthMm ?? 1));
 }

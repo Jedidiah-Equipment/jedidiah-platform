@@ -52,6 +52,7 @@ export const EQUIPMENT_SECTIONS: DocsSection[] = [
   {
     text: 'Sales tasks',
     items: [
+      { text: 'Add an inventory part to a Quote', link: '/sales/add-an-inventory-part-to-a-quote' },
       { text: 'Cancel a Quote', link: '/sales/cancel-a-quote' },
       { text: 'Reassign a Unit', link: '/sales/reassign-a-unit' },
       { text: 'Remove a Customer', link: '/sales/remove-a-customer' },

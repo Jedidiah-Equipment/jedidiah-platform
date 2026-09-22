@@ -13,6 +13,7 @@ import {
   listPriorityQuotes,
   listProductRangeOptions,
   listProducts,
+  listQuoteInventoryParts,
   listQuoteSalespeople,
   listQuotes,
   listStaleSentQuotes,
@@ -34,6 +35,8 @@ import {
   QuoteCancelInput,
   QuoteCreateInput,
   QuoteDocumentGenerationInput,
+  QuoteInventoryPartListInput,
+  QuoteInventoryPartListResult,
   QuoteListInput,
   QuotePriorityListInput,
   QuoteProductBayAvailabilityInput,
@@ -72,6 +75,15 @@ export const quotesRouter = router({
   cancellationPlan: authorizedProcedure('equipment_quote:read')
     .input(z.object({ id: UUID }))
     .query(({ ctx, input }) => mapQuoteErrors(() => getQuoteCancellationPlan({ db: ctx.db, id: input.id }))),
+
+  /**
+   * Catalog Parts for a Work Item's "Add inventory part" dialog. Gated on quote editing because
+   * `sales` holds no part or cost read; the parsed output is what keeps cost and markup server-side.
+   */
+  inventoryParts: authorizedProcedure('equipment_quote:update')
+    .input(QuoteInventoryPartListInput)
+    .output(QuoteInventoryPartListResult)
+    .query(({ ctx, input }) => listQuoteInventoryParts({ db: ctx.db, input })),
 
   salespeople: authorizedProcedure('equipment_quote:read').query(({ ctx }) => listQuoteSalespeople({ db: ctx.db })),
 

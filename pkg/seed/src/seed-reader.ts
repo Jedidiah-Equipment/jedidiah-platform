@@ -87,11 +87,7 @@ export async function readExistingSnapshotTable(
   const orderColumn = config.readOrderColumn ? columns[config.readOrderColumn] : undefined;
   const readRows = async (additionalOmissions: readonly string[] = []): Promise<SnapshotRow[]> => {
     const omit = new Set([...(omitReadColumns ?? []), ...additionalOmissions]);
-    const legacyColumns = additionalOmissions.flatMap((name) => Object.entries(config.legacyReadColumns?.[name] ?? {}));
-    const projection = Object.fromEntries([
-      ...Object.entries(columns).filter(([name]) => !omit.has(name)),
-      ...legacyColumns,
-    ]);
+    const projection = Object.fromEntries(Object.entries(columns).filter(([name]) => !omit.has(name)));
     const query = db.select(projection).from(config.table);
 
     return (await (orderColumn ? query.orderBy(asc(orderColumn)) : query)) as SnapshotRow[];

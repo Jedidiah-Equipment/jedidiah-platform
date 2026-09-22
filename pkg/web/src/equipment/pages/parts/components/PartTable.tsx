@@ -1,4 +1,4 @@
-import { type UUID, UUID as UUIDSchema } from '@pkg/schema';
+import type { UUID } from '@pkg/schema';
 import {
   PART_UNIT_OF_MEASURE_LABELS,
   type Part,
@@ -42,6 +42,8 @@ function createPartTableStore(persistName: string) {
       ],
     },
     persistName,
+    // v3: the Category filter holds a Part Category id, not a name.
+    persistVersion: 3,
   });
 }
 
@@ -239,7 +241,7 @@ export function createPartLabelActionColumn(): DataTableColumnDef<Part> {
 
 function getPartListInputExtras(columnFilters: ColumnFiltersState, supplierId?: UUID) {
   return {
-    categoryId: getCategoryFilterValue(columnFilters),
+    categoryId: getColumnFilterValue(columnFilters, 'category'),
     columnFilters: {
       code: getColumnFilterValue(columnFilters, 'code'),
       isInternallyFabricated: getInternallyFabricatedFilterValue(columnFilters),
@@ -251,12 +253,6 @@ function getPartListInputExtras(columnFilters: ColumnFiltersState, supplierId?: 
     },
     supplierId,
   } satisfies Pick<PartListInput, 'categoryId' | 'columnFilters' | 'supplierId'>;
-}
-
-/** A table state saved before Part Categories were ids can still hold a name; drop it rather than fail the list. */
-function getCategoryFilterValue(columnFilters: ColumnFiltersState): UUID | undefined {
-  const parsed = UUIDSchema.safeParse(getColumnFilterValue(columnFilters, 'category'));
-  return parsed.success ? parsed.data : undefined;
 }
 
 function getColumnFilterValue(

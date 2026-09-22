@@ -8,7 +8,7 @@ import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.j
 import { useTRPC } from '@/lib/trpc.js';
 import { PartCategoryFormValues } from './types.js';
 
-/** The one way a Part Category is added: from its admin page, or from beside a Part's picker. */
+/** Adds a Part Category from its admin page; a Part's picker creates one inline instead. */
 export function PartCategoryCreateDialog({
   onCreated,
   onOpenChange,

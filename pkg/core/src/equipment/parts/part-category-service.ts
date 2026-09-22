@@ -1,4 +1,4 @@
-import { type Db, getUniqueViolationConstraint } from '@pkg/db';
+import { type DatabaseTransaction, type Db, getUniqueViolationConstraint } from '@pkg/db';
 import { partCategories, parts } from '@pkg/db/equipment';
 import type { AuthId, UUID } from '@pkg/schema';
 import type { PartCategory, PartCategoryCreateInput, PartCategoryUpdateInput } from '@pkg/schema/equipment';
@@ -25,7 +25,7 @@ export async function listManagedPartCategories({ db }: { db: Db }): Promise<Par
   return rows.map(mapPartCategory);
 }
 
-export async function getPartCategory({ db, id }: { db: Db; id: UUID }): Promise<PartCategory> {
+export async function getPartCategory({ db, id }: { db: Db | DatabaseTransaction; id: UUID }): Promise<PartCategory> {
   const [row] = await selectPartCategories(db, eq(partCategories.id, id));
   if (!row) throw new PartCategoryNotFoundError(id);
 
@@ -67,24 +67,22 @@ export async function updatePartCategory({
   input: PartCategoryUpdateInput;
 }): Promise<PartCategory> {
   try {
-    await mutateEntity({
+    return await mutateEntity({
       actorUserId,
       db,
       descriptor: partCategoryAuditDescriptor,
       id: input.id,
       notFound: () => new PartCategoryNotFoundError(input.id),
-      project: () => undefined,
+      project: (tx, row) => getPartCategory({ db: tx, id: row.id }),
       set: () => ({ name: input.name, updatedAt: new Date() }),
       table: partCategories,
     });
   } catch (error) {
     throw mapPartCategoryUniqueViolation(error, input.name);
   }
-
-  return getPartCategory({ db, id: input.id });
 }
 
-function selectPartCategories(db: Db, where?: SQL) {
+function selectPartCategories(db: Db | DatabaseTransaction, where?: SQL) {
   return db
     .select({
       createdAt: partCategories.createdAt,

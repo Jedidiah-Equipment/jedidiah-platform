@@ -39,13 +39,8 @@ export function useQueryInvalidation() {
     () => queryClient.invalidateQueries({ queryKey: trpc.laborRates.pathKey() }),
     [queryClient, trpc],
   );
-  // A movement also changes what a Parts Sale has drawn, which is served from its own root.
   const invalidateInventory = useCallback(
-    () =>
-      Promise.all([
-        queryClient.invalidateQueries({ queryKey: trpc.inventory.pathKey() }),
-        queryClient.invalidateQueries({ queryKey: trpc.inventoryQuotes.pathKey() }),
-      ]),
+    () => queryClient.invalidateQueries({ queryKey: trpc.inventory.pathKey() }),
     [queryClient, trpc],
   );
   // Parts read their Category's name, so a Category write moves both roots. A rename (or a merge
@@ -85,13 +80,13 @@ export function useQueryInvalidation() {
     () => queryClient.invalidateQueries({ queryKey: trpc.productUnits.pathKey() }),
     [queryClient, trpc],
   );
-  // A Parts Sale's code, Customer, title and status also ride the Quote reads stores make, which sit
-  // on their own root precisely so a Quote write does not replay the inventory ledger.
+  // The inventory root reads Quote facts (the Job picker's work title and kind, the Parts Sale picker
+  // and stock panel), so a Quote write affects the whole root.
   const invalidateQuotes = useCallback(
     () =>
       Promise.all([
         queryClient.invalidateQueries({ queryKey: trpc.quotes.pathKey() }),
-        queryClient.invalidateQueries({ queryKey: trpc.inventoryQuotes.pathKey() }),
+        queryClient.invalidateQueries({ queryKey: trpc.inventory.pathKey() }),
       ]),
     [queryClient, trpc],
   );

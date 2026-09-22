@@ -11,9 +11,11 @@ import {
   listBuyList,
   listCloseOutQueue,
   listInventoryJobOptions,
+  listInventoryQuoteOptions,
   listInventoryRecipients,
   listJobStock,
   listQuickSwitchActors,
+  listQuoteStock,
   listSourceCheckouts,
   listStockOnHand,
   listStocktakeOverdue,
@@ -40,6 +42,8 @@ import {
   InventoryJobOptionListInput,
   InventoryJobOptionListResult,
   InventoryKpis,
+  InventoryQuoteOptionListInput,
+  InventoryQuoteOptionListResult,
   InventoryRecipientOptionListInput,
   InventoryRecipientOptionListResult,
   JobCloseOut,
@@ -61,6 +65,9 @@ import {
   PostRevaluationInput,
   PostStockCountInput,
   QuickSwitchActorListResult,
+  QuoteStockInput,
+  QuoteStockResult,
+  QuoteStockRowCostFields,
   SourceCheckoutListInput,
   SourceCheckoutListResult,
   SourceCheckoutOptionCostFields,
@@ -96,8 +103,8 @@ import { partBomErrorFamily, partCoreErrorFamily } from '../parts/part-error-fam
 import {
   assertedActorErrorFamily,
   buildErrorFamily,
+  checkoutErrorFamily,
   jobCloseOutErrorFamily,
-  mapCheckoutErrors,
   stockMovementErrorFamily,
   stockMovementJobErrorFamily,
   stocktakeErrorFamily,
@@ -162,6 +169,29 @@ export const inventoryRouter = router({
   quickSwitchActors: authorizedProcedure('equipment_inventory:move')
     .output(QuickSwitchActorListResult)
     .query(({ ctx }) => listQuickSwitchActors({ db: ctx.db })),
+
+  /**
+   * The Parts Sales a stores surface may draw to or return from. Carries no price, so `stores` reads
+   * it without any Quote permission.
+   */
+  quoteOptions: authorizedProcedure('equipment_inventory:move')
+    .input(InventoryQuoteOptionListInput)
+    .output(InventoryQuoteOptionListResult)
+    .query(({ ctx, input }) => listInventoryQuoteOptions({ db: ctx.db, input })),
+
+  quoteStock: authorizedProcedure('equipment_inventory:read')
+    .input(QuoteStockInput)
+    .output(QuoteStockResult)
+    .query(async ({ ctx, input }) => {
+      const result = await mapCheckoutErrors(() => listQuoteStock({ db: ctx.db, quoteId: input.quoteId }));
+
+      return {
+        ...result,
+        items: result.items.map((item) =>
+          projectInventoryCostFields({ access: ctx.access, costFields: QuoteStockRowCostFields, output: item }),
+        ),
+      };
+    }),
 
   recipientOptions: authorizedProcedure('equipment_inventory:move')
     .input(InventoryRecipientOptionListInput)
@@ -444,6 +474,18 @@ async function mapJobStockErrors<T>(action: () => Promise<T>): Promise<T> {
     stockMovementErrorFamily,
     stockMovementJobErrorFamily,
     jobCloseOutErrorFamily,
+    assertedActorErrorFamily,
+  );
+}
+
+/** Both strict Checkout/Return alternatives, each surfacing only the domain families it can reach. */
+async function mapCheckoutErrors<T>(action: () => Promise<T>): Promise<T> {
+  return mapCoreErrors(
+    action,
+    stockMovementErrorFamily,
+    stockMovementJobErrorFamily,
+    jobCloseOutErrorFamily,
+    checkoutErrorFamily,
     assertedActorErrorFamily,
   );
 }

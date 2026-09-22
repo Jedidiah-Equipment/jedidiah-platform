@@ -21,7 +21,7 @@ export function QuoteStockSection({ quote }: { quote: Pick<QuoteDetail, 'code' |
   const trpc = useTRPC();
   const canMove = useCan('equipment_inventory:move').can;
   const showValue = useCan('equipment_inventory_cost:read').can;
-  const quoteStockQuery = useQuery(trpc.inventoryQuotes.quoteStock.queryOptions({ quoteId: quote.id }));
+  const quoteStockQuery = useQuery(trpc.inventory.quoteStock.queryOptions({ quoteId: quote.id }));
   const movementDialogs = useStockMovementDialogs({
     canMove,
     fixedTarget: { code: quote.code, id: quote.id, kind: 'quote' },

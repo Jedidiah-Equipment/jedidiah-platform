@@ -28,7 +28,7 @@ export function useTargetStock({ kind, targetId }: { kind: ReturnStockTarget | u
     ),
   );
   const quoteStock = useQuery(
-    trpc.inventoryQuotes.quoteStock.queryOptions(
+    trpc.inventory.quoteStock.queryOptions(
       { quoteId: targetId },
       { enabled: kind === 'quote' && targetId !== '', select: drawnRows },
     ),

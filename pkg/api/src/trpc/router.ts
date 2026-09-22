@@ -14,7 +14,6 @@ import { customersRouter } from '../routes/equipment/customers/customers.router.
 import { documentsRouter } from '../routes/equipment/documents/documents.router.js';
 import { feedbackRouter } from '../routes/equipment/feedback/feedback.router.js';
 import { inventoryRouter } from '../routes/equipment/inventory/inventory.router.js';
-import { inventoryQuotesRouter } from '../routes/equipment/inventory/inventory-quotes.router.js';
 import { jobActivityRouter } from '../routes/equipment/job-activity/job-activity.router.js';
 import { jobsRouter } from '../routes/equipment/jobs/jobs.router.js';
 import { laborRatesRouter } from '../routes/equipment/labor-rates/labor-rates.router.js';
@@ -52,7 +51,6 @@ type AppRouterRecord = {
   documents: (typeof documentsRouter)['_def']['record'];
   feedback: (typeof feedbackRouter)['_def']['record'];
   inventory: (typeof inventoryRouter)['_def']['record'];
-  inventoryQuotes: (typeof inventoryQuotesRouter)['_def']['record'];
   jobActivity: (typeof jobActivityRouter)['_def']['record'];
   jobs: (typeof jobsRouter)['_def']['record'];
   laborRates: (typeof laborRatesRouter)['_def']['record'];
@@ -86,7 +84,6 @@ export function createAppRouter({ catalogTranslationScheduler, readMeterPhoto }:
     documents: documentsRouter,
     feedback: feedbackRouter,
     inventory: inventoryRouter,
-    inventoryQuotes: inventoryQuotesRouter,
     jobActivity: jobActivityRouter,
     jobs: jobsRouter,
     laborRates: laborRatesRouter,

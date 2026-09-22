@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { partCategoryPickerItems } from './PartCategoryField.js';
+import { partCategoryPickerItems } from './part-category-picker-items.js';
 
 const options = [
   { label: 'Axle', value: '00000000-0000-4000-8000-000000000001' },
@@ -31,6 +31,9 @@ describe('partCategoryPickerItems', () => {
     expect(partCategoryPickerItems({ canCreate: true, inputValue: 'axle', options, selectedLabel: undefined })).toEqual(
       options,
     );
+    expect(
+      partCategoryPickerItems({ canCreate: true, inputValue: 'bolt  &  nuts', options, selectedLabel: undefined }),
+    ).toEqual(options);
     expect(partCategoryPickerItems({ canCreate: true, inputValue: '', options, selectedLabel: undefined })).toEqual(
       options,
     );

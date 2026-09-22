@@ -4,8 +4,8 @@ import type { SnapshotRow } from './snapshot-table-definitions.js';
 
 /**
  * A snapshot captured before Part Categories existed carries each Part's category as a name and has
- * no `part_category.json`. Seeding it derives one Part Category per name ignoring casing and edge
- * whitespace, the most-used spelling winning — the same collapse migration 0158 performs — and gives
+ * no `part_category.json`. Seeding it derives one Part Category per name ignoring casing and
+ * whitespace runs, the most-used spelling winning — the same collapse migration 0158 performs — and gives
  * each a deterministic id so the Parts and the categories agree without seeing each other. Delete once
  * every snapshot source has been re-read after that migration.
  */
@@ -16,7 +16,7 @@ export function legacyPartCategoryName(row: SnapshotRow): string | undefined {
   if (typeof row.category !== 'string') return undefined;
   if (row.code === 'SEMP-0001' && row.category === '6000') return 'Pipe';
 
-  return row.category.trim() || undefined;
+  return row.category.trim().replaceAll(/[ \t\n\r\f\v]+/g, ' ') || undefined;
 }
 
 /** A UUID v5 of the lowercased name, so every spelling of one Part Category lands on the same id. */

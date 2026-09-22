@@ -53,8 +53,13 @@ export function useQueryInvalidation() {
       ]),
     [queryClient, trpc],
   );
+  // A Part write moves Part Category counts too.
   const invalidateParts = useCallback(
-    () => queryClient.invalidateQueries({ queryKey: trpc.parts.pathKey() }),
+    () =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: trpc.parts.pathKey() }),
+        queryClient.invalidateQueries({ queryKey: trpc.partCategories.pathKey() }),
+      ]),
     [queryClient, trpc],
   );
   const invalidateProducts = useCallback(

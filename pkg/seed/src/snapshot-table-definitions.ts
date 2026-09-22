@@ -2,6 +2,7 @@ import { CREDENTIAL_ACCOUNT_ISSUER } from '@pkg/db';
 import { contractingJobCodeSequence } from '@pkg/db/contracting';
 import { jobCodeSequence, quoteCodeSequence } from '@pkg/db/equipment';
 import { LEGACY_QUOTE_CANCELLATION_REASON } from '@pkg/schema/equipment';
+import { type SQL, sql } from 'drizzle-orm';
 import type { PgSequence, PgTable } from 'drizzle-orm/pg-core';
 import { deriveLegacyPartCategories, legacyPartCategoryId, legacyPartCategoryName } from './legacy-part-categories.js';
 
@@ -25,6 +26,10 @@ export type SnapshotTableDefinition = {
   // Rollout columns should be captured once deployed, but retried without when the source still has
   // the preceding schema. `seedRowDefaults` supplies their temporary fallback values.
   optionalReadColumns?: readonly string[];
+  // Columns the source had before a rollout column replaced them, read raw (the current schema no longer
+  // names them) whenever that optional column had to be omitted, so the legacy value still reaches
+  // `seedRowTransform`. Keyed by the optional column they stand in for.
+  legacyReadColumns?: Readonly<Record<string, Readonly<Record<string, SQL>>>>;
   // A newly introduced table may not exist in the selected source yet. Treat only that expected rollout
   // gap as empty; once deployed, normal snapshot reads and writes preserve its rows.
   optionalReadTable?: boolean;
@@ -196,6 +201,7 @@ export const snapshotTableDefinitions = [
       'stockTrackingMode',
       'storageLocation',
     ],
+    legacyReadColumns: { categoryId: { category: sql<string>`"category"` } },
     seedRowDefaults: () => ({ minimumStock: null, stockTrackingMode: 'perpetual', storageLocation: null }),
     // Owns every legacy normalization: its `== null` test covers both a column the source never read
     // and one it read as empty, so the defaults above stay plain. Delete once the source is migrated.
@@ -203,11 +209,12 @@ export const snapshotTableDefinitions = [
       const legacyPurchaseLength =
         typeof row.code === 'string' ? legacyPartStandardPurchaseLengthsMm[row.code] : undefined;
 
-      const { category: _legacyCategory, ...current } = row;
+      // A legacy row keeps its `category` name beside the derived id: the Part Category rows are derived
+      // from it when the snapshot is written, and the insert ignores a key the table does not have.
       const legacyCategory = legacyPartCategoryName(row);
 
       return {
-        ...current,
+        ...row,
         categoryId: row.categoryId ?? (legacyCategory === undefined ? undefined : legacyPartCategoryId(legacyCategory)),
         standardPurchaseLengthMm:
           row.standardPurchaseLengthMm == null ? (legacyPurchaseLength ?? null) : row.standardPurchaseLengthMm,

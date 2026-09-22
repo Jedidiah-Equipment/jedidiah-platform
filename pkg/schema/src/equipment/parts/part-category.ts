@@ -4,8 +4,14 @@ import { DateIso } from '../../common/date.js';
 import { requiredTrimmedText } from '../../common/text.js';
 import { UUID } from '../../common/uuid.js';
 
+/**
+ * Inner runs of whitespace collapse to one space, so the name the unique index sees (casing folded)
+ * and the name a CSV cell is matched by (casing and whitespace folded) can never name two categories.
+ */
 export type PartCategoryName = z.infer<typeof PartCategoryName>;
-export const PartCategoryName = requiredTrimmedText('Part Category name is required');
+export const PartCategoryName = requiredTrimmedText('Part Category name is required').overwrite((name) =>
+  name.replaceAll(/[ \t\n\r\f\v]+/g, ' '),
+);
 
 /** What a picker needs: the id a Part stores and the name a person reads. */
 export type PartCategoryOption = z.infer<typeof PartCategoryOption>;

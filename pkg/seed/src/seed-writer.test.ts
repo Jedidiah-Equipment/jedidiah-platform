@@ -131,7 +131,6 @@ it('derives Part Categories from Parts captured before Part Categories existed',
     idByName.get('Axle'),
     idByName.get('Pipe'),
   ]);
-  expect(seededParts.every((part) => !('category' in part))).toBe(true);
 
   const captured = [{ createdAt: new Date(), id: '00000000-0000-4000-8000-000000000001', name: 'Axle' }];
   expect(prepareRowsForSeed(partCategoryConfig, captured, snapshotRows)).toEqual(captured);

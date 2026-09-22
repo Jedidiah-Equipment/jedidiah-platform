@@ -20,33 +20,9 @@ import { useQueryInvalidation } from '@/equipment/hooks/use-query-invalidation.j
 import { useCan } from '@/hooks/use-access.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useTRPC } from '@/lib/trpc.js';
+import { CREATE_PART_CATEGORY_VALUE, partCategoryPickerItems } from './part-category-picker-items.js';
 
 const LABEL = 'Part Category';
-const CREATE_VALUE = '__create_part_category__';
-
-/**
- * The picker's items. A typed name that no Part Category already has, ignoring casing, becomes a
- * trailing "create" item — but only for people who may create one; everyone else picks from the list.
- */
-export function partCategoryPickerItems({
-  canCreate,
-  inputValue,
-  options,
-  selectedLabel,
-}: {
-  canCreate: boolean;
-  inputValue: string;
-  options: readonly SearchableComboboxOption[];
-  selectedLabel: string | undefined;
-}): SearchableComboboxOption[] {
-  const name = inputValue.trim();
-  const isNovel =
-    name !== '' &&
-    name !== selectedLabel &&
-    !options.some((option) => option.label.toLowerCase() === name.toLowerCase());
-
-  return canCreate && isNovel ? [...options, { label: name, value: CREATE_VALUE }] : [...options];
-}
 
 /** A Part's Part Category picker; render inside `<form.AppField name="categoryId">`. */
 export function PartCategoryField() {
@@ -119,7 +95,7 @@ function CreatablePartCategoryCombobox({
         itemToStringValue={(option) => option.value}
         onInputValueChange={setInputValue}
         onValueChange={(option) => {
-          if (option?.value === CREATE_VALUE) {
+          if (option?.value === CREATE_PART_CATEGORY_VALUE) {
             void createAndSelect(option.label);
             return;
           }
@@ -142,7 +118,7 @@ function CreatablePartCategoryCombobox({
           <ComboboxList>
             {(option: SearchableComboboxOption) => (
               <ComboboxItem key={option.value} value={option}>
-                {option.value === CREATE_VALUE ? (
+                {option.value === CREATE_PART_CATEGORY_VALUE ? (
                   <>
                     <IconPlus data-icon="inline-start" />
                     Create "{option.label}"

@@ -8,17 +8,19 @@ CREATE TABLE "equipment"."part_category" (
 --> statement-breakpoint
 CREATE UNIQUE INDEX "part_category_name_ci_unique" ON "equipment"."part_category" USING btree (lower("name"));--> statement-breakpoint
 ALTER TABLE "equipment"."parts" ADD COLUMN "category_id" uuid;--> statement-breakpoint
--- One Part Category per case-insensitive name. Where spellings differ only by case, the most-used wins.
+-- One Part Category per name ignoring casing and whitespace runs. Where spellings differ only that way,
+-- the most-used wins. Inner whitespace collapses to one space, as the application stores names.
 INSERT INTO "equipment"."part_category" ("name")
-SELECT DISTINCT ON (lower(trim(ranked."category"))) trim(ranked."category")
+SELECT DISTINCT ON (lower(ranked."name")) ranked."name"
 FROM (
-  SELECT "category", count(*) OVER (PARTITION BY "category") AS uses FROM "equipment"."parts"
+  SELECT "name", count(*) OVER (PARTITION BY "name") AS uses
+  FROM (SELECT regexp_replace(trim("category"), '[ \t\n\r\f\v]+', ' ', 'g') AS "name" FROM "equipment"."parts") normalized
 ) ranked
-ORDER BY lower(trim(ranked."category")), ranked.uses DESC, trim(ranked."category");--> statement-breakpoint
+ORDER BY lower(ranked."name"), ranked.uses DESC, ranked."name";--> statement-breakpoint
 UPDATE "equipment"."parts" p
 SET "category_id" = c."id"
 FROM "equipment"."part_category" c
-WHERE lower(trim(p."category")) = lower(c."name");--> statement-breakpoint
+WHERE lower(regexp_replace(trim(p."category"), '[ \t\n\r\f\v]+', ' ', 'g')) = lower(c."name");--> statement-breakpoint
 ALTER TABLE "equipment"."parts" ALTER COLUMN "category_id" SET NOT NULL;--> statement-breakpoint
 ALTER TABLE "equipment"."parts" ADD CONSTRAINT "parts_category_id_part_category_id_fk" FOREIGN KEY ("category_id") REFERENCES "equipment"."part_category"("id") ON DELETE restrict ON UPDATE no action;--> statement-breakpoint
 DROP INDEX "equipment"."parts_category_idx";--> statement-breakpoint

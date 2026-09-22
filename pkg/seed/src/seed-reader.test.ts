@@ -4,7 +4,7 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import type { Db } from '@pkg/db';
 import { describe, expect, it, vi } from 'vitest';
-
+import { legacyPartCategoryId } from './legacy-part-categories.js';
 import { downloadSnapshotObjectIfMissing, readExistingSnapshotTable } from './seed-reader.js';
 import { snapshotTables } from './snapshot-tables.js';
 
@@ -126,5 +126,24 @@ describe('downloadSnapshotObjectIfMissing', () => {
     } finally {
       await rm(directory, { recursive: true });
     }
+  });
+});
+
+describe('reading Parts from a source that predates Part Categories', () => {
+  it('reads the legacy category name and derives the Part Category id from it', async () => {
+    const partsConfig = snapshotTables.find((config) => config.tableName === 'parts');
+    if (!partsConfig) throw new Error('Missing parts snapshot config');
+
+    const select = vi.fn((projection: Record<string, unknown>) => ({
+      from: () =>
+        'categoryId' in projection
+          ? Promise.reject(Object.assign(new Error('column does not exist'), { code: '42703' }))
+          : Promise.resolve([{ category: ' axle ', code: 'AX-1', unitOfMeasure: 'piece' }]),
+    }));
+
+    const [part] = await readExistingSnapshotTable({ select } as unknown as Db, partsConfig);
+
+    expect(select.mock.calls[1]?.[0]).toHaveProperty('category');
+    expect(part).toMatchObject({ category: ' axle ', categoryId: legacyPartCategoryId('Axle') });
   });
 });

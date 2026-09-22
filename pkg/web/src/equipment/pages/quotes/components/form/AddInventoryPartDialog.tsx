@@ -73,7 +73,7 @@ export function AddInventoryPartDialog({ currencyCode, onAdd, onOpenChange, open
           <FieldLabel htmlFor="quote-inventory-part-search">Part</FieldLabel>
           <EntityCombobox
             disabled={false}
-            emptyMessage="No Parts found"
+            emptyMessage={options.isFetching ? 'Searching Parts...' : 'No Parts found'}
             inputId="quote-inventory-part-search"
             inputValue={options.search}
             isFetching={options.isFetching}

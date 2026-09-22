@@ -24,4 +24,5 @@ If the dialog says the row will be added at R 0.00, price the row by hand, and:
 - **The Part Category has no markup set**: set its Markup % under
   [Maintain Part categories](/admin/maintain-part-categories).
 
-Adding a Part reserves nothing and moves no stock; see [Stock on hand and Free Stock](/inventory/stock-on-hand-and-free-stock).
+Adding a Part reserves nothing and moves no stock. Cut steel and plate are
+[periodic stock](/inventory/perpetual-and-periodic-stock), so they are never checked out against the sale either.

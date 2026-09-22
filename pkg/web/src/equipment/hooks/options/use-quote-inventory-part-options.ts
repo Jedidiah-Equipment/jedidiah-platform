@@ -1,5 +1,5 @@
 import { useDebouncedValue } from '@mantine/hooks';
-import { keepPreviousData, useInfiniteQuery } from '@tanstack/react-query';
+import { useInfiniteQuery } from '@tanstack/react-query';
 import { useCallback, useState } from 'react';
 
 import { cursorInfiniteQueryOptions, useCombinedCursorQueryPages } from '@/components/data-table/cursor-query.js';
@@ -16,7 +16,8 @@ export function useQuoteInventoryPartOptions({ enabled }: { enabled: boolean }) 
   const query = useInfiniteQuery(
     trpc.quotes.inventoryParts.infiniteQueryOptions(
       { limit: QUOTE_INVENTORY_PART_PAGE_SIZE, search: debouncedSearch },
-      { ...cursorInfiniteQueryOptions, enabled, placeholderData: keepPreviousData },
+      // No previous-data placeholder: a stale page stays pickable and would add a Part nobody searched for.
+      { ...cursorInfiniteQueryOptions, enabled },
     ),
   );
   const { items, total } = useCombinedCursorQueryPages(query.data?.pages);

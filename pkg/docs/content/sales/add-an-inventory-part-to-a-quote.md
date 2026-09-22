@@ -18,6 +18,11 @@ moving-average cost plus its Part Category's Markup %.
 6. Edit the new row like any other. It keeps no link to the Part, so a later cost or Markup % change never
    reprices it.
 
+## On the phone
+
+The steps are the same in the app's Quote editor, with one difference: there is no **Add and pick another**.
+Select **Add to work item**, then **Add inventory part** again for the next Part.
+
 If the dialog says the row will be added at R 0.00, price the row by hand, and:
 
 - **This Part has no cost yet**: post a Receipt or opening balance for the Part.

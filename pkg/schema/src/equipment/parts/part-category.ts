@@ -18,7 +18,7 @@ export type PartCategoryMarkupPercent = z.infer<typeof PartCategoryMarkupPercent
 export const PartCategoryMarkupPercent = z
   .number()
   .min(0, 'Markup cannot be negative')
-  .max(9999.99)
+  .max(9999.99, 'Markup cannot exceed 9999.99%')
   .multipleOf(0.01, 'Use at most 2 decimal places');
 
 /** What a picker needs: the id a Part stores and the name a person reads. */

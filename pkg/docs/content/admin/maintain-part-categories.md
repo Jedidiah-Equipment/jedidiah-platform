@@ -12,7 +12,7 @@ Parts pick their Part Category from this list, and the Parts CSV matches its Cat
 4. To set a markup, open the Part Category and enter its **Markup (%)**. It is added to a Part's average
    cost to give its sell price: 25% on an average cost of R 80.00 gives R 100.00. It may be 0% or above
    100%. Clear the field to return it to **Not set**; a Part Category with no markup offers no price,
-   never a price at cost. Changing a markup never changes a Quote already written.
+   never a price at cost.
 5. To add a Part Category while creating or editing a Part, type its name into the **Part Category**
    picker and choose **Create "…"**. The new one is added and selected for that Part.
 6. To trace a change, including a markup change, open **Audit** and filter to **Part Category**.

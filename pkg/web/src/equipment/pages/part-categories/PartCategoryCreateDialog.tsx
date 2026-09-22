@@ -1,4 +1,4 @@
-import type { PartCategory } from '@pkg/schema/equipment';
+import { type PartCategory, PartCategoryCreateInput } from '@pkg/schema/equipment';
 import { useMutation } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
@@ -6,7 +6,6 @@ import { CreateEntityDialog } from '@/components/form/index.js';
 import { useQueryInvalidation } from '@/equipment/hooks/use-query-invalidation.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useTRPC } from '@/lib/trpc.js';
-import { PartCategoryFormValues } from './types.js';
 
 /** Adds a Part Category from its admin page; a Part's picker creates one inline instead. */
 export function PartCategoryCreateDialog({
@@ -28,7 +27,7 @@ export function PartCategoryCreateDialog({
   );
 
   return (
-    <CreateEntityDialog<PartCategoryFormValues, PartCategory>
+    <CreateEntityDialog<PartCategoryCreateInput, PartCategory>
       defaultValues={{ name: '' }}
       onCreate={(values) => mutation.mutateAsync(values)}
       onCreated={async (category) => {
@@ -41,7 +40,7 @@ export function PartCategoryCreateDialog({
       open={open}
       submitLabel="Create"
       title="New Part Category"
-      validator={PartCategoryFormValues}
+      validator={PartCategoryCreateInput}
     >
       {(form) => (
         <form.AppField name="name">{(field) => <field.TextField autoComplete="off" label="Name" />}</form.AppField>

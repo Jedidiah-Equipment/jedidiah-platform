@@ -13,6 +13,14 @@ export const PartCategoryName = requiredTrimmedText('Part Category name is requi
   name.replaceAll(/[ \t\n\r\f\v]+/g, ' '),
 );
 
+/** Markup on cost: a sell price is the cost times `1 + markup / 100`, so it may exceed 100. */
+export type PartCategoryMarkupPercent = z.infer<typeof PartCategoryMarkupPercent>;
+export const PartCategoryMarkupPercent = z
+  .number()
+  .min(0, 'Markup cannot be negative')
+  .max(9999.99)
+  .multipleOf(0.01, 'Use at most 2 decimal places');
+
 /** What a picker needs: the id a Part stores and the name a person reads. */
 export type PartCategoryOption = z.infer<typeof PartCategoryOption>;
 export const PartCategoryOption = z.object({ id: UUID, name: PartCategoryName });
@@ -21,6 +29,7 @@ export const PartCategoryOption = z.object({ id: UUID, name: PartCategoryName })
 export type PartCategory = z.infer<typeof PartCategory>;
 export const PartCategory = PartCategoryOption.extend({
   createdAt: DateIso,
+  markupPercent: PartCategoryMarkupPercent.nullable(),
   partCount: z.number().int().nonnegative(),
   updatedAt: DateIso,
 });
@@ -29,4 +38,6 @@ export type PartCategoryCreateInput = z.infer<typeof PartCategoryCreateInput>;
 export const PartCategoryCreateInput = z.object({ name: PartCategoryName }).strict();
 
 export type PartCategoryUpdateInput = z.infer<typeof PartCategoryUpdateInput>;
-export const PartCategoryUpdateInput = z.object({ id: UUID, name: PartCategoryName }).strict();
+export const PartCategoryUpdateInput = z
+  .object({ id: UUID, markupPercent: PartCategoryMarkupPercent.nullable(), name: PartCategoryName })
+  .strict();

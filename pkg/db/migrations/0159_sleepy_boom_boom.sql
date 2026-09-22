@@ -1,0 +1,2 @@
+ALTER TABLE "equipment"."part_category" ADD COLUMN "markup_percent" numeric(6, 2);--> statement-breakpoint
+ALTER TABLE "equipment"."part_category" ADD CONSTRAINT "part_category_markup_percent_nonnegative" CHECK ("equipment"."part_category"."markup_percent" IS NULL OR "equipment"."part_category"."markup_percent" >= 0);

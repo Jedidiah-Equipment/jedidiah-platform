@@ -16,7 +16,7 @@ export const partCategoryAuditDescriptor = defineAuditDescriptor<PartCategoryRow
   noun: 'part category',
   primaryLabelField: 'name',
   entityId: (row) => row.id,
-  toRecord: (row) => ({ name: row.name }),
+  toRecord: (row) => ({ markupPercent: row.markupPercent, name: row.name }),
 });
 
 export async function listManagedPartCategories({ db }: { db: Db }): Promise<PartCategory[]> {
@@ -74,7 +74,7 @@ export async function updatePartCategory({
       id: input.id,
       notFound: () => new PartCategoryNotFoundError(input.id),
       project: (tx, row) => getPartCategory({ db: tx, id: row.id }),
-      set: () => ({ name: input.name, updatedAt: new Date() }),
+      set: () => ({ markupPercent: input.markupPercent, name: input.name, updatedAt: new Date() }),
       table: partCategories,
     });
   } catch (error) {
@@ -87,6 +87,7 @@ function selectPartCategories(db: Db | DatabaseTransaction, where?: SQL) {
     .select({
       createdAt: partCategories.createdAt,
       id: partCategories.id,
+      markupPercent: partCategories.markupPercent,
       name: partCategories.name,
       partCount: count(parts.id),
       updatedAt: partCategories.updatedAt,
@@ -102,6 +103,7 @@ function mapPartCategory(row: PartCategoryRow & { partCount: number }): PartCate
   return PartCategorySchema.parse({
     createdAt: row.createdAt.toISOString(),
     id: row.id,
+    markupPercent: row.markupPercent,
     name: row.name,
     partCount: row.partCount,
     updatedAt: row.updatedAt.toISOString(),

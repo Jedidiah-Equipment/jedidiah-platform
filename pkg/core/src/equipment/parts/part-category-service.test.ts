@@ -1,5 +1,6 @@
 import { auditEvents, type Db, user } from '@pkg/db';
-import { parts, supplier } from '@pkg/db/equipment';
+import { partCategories, parts, supplier } from '@pkg/db/equipment';
+import { PartCategoryUpdateInput } from '@pkg/schema/equipment';
 import { eq } from 'drizzle-orm';
 import { describe, expect } from 'vitest';
 
@@ -24,7 +25,7 @@ describe('Part Category admin', () => {
   test('creates a Part Category and records who added it', async ({ context }) => {
     const created = await createPartCategory({ actorUserId, db: context.db, input: { name: 'Bolt & Nuts' } });
 
-    expect(created).toMatchObject({ name: 'Bolt & Nuts', partCount: 0 });
+    expect(created).toMatchObject({ markupPercent: null, name: 'Bolt & Nuts', partCount: 0 });
     await expect(context.db.select().from(auditEvents).where(eq(auditEvents.entityId, created.id))).resolves.toEqual([
       expect.objectContaining({ action: 'created', actorUserId, entityType: 'part_category' }),
     ]);
@@ -36,13 +37,47 @@ describe('Part Category admin', () => {
     const renamed = await updatePartCategory({
       actorUserId,
       db: context.db,
-      input: { id: created.id, name: 'Lights' },
+      input: { id: created.id, markupPercent: null, name: 'Lights' },
     });
 
     expect(renamed).toMatchObject({ id: created.id, name: 'Lights' });
     await expect(getPartCategory({ db: context.db, id: created.id })).resolves.toMatchObject({ name: 'Lights' });
     const events = await context.db.select().from(auditEvents).where(eq(auditEvents.entityId, created.id));
     expect(events.at(-1)).toMatchObject({ action: 'updated', changes: { name: { from: 'Light', to: 'Lights' } } });
+  });
+
+  test('sets and clears a markup, auditing both changes', async ({ context }) => {
+    const created = await createPartCategory({ actorUserId, db: context.db, input: { name: 'Bolt & Nuts' } });
+
+    await expect(
+      updatePartCategory({
+        actorUserId,
+        db: context.db,
+        input: { id: created.id, markupPercent: 25, name: 'Bolt & Nuts' },
+      }),
+    ).resolves.toMatchObject({ markupPercent: 25 });
+    await expect(
+      updatePartCategory({
+        actorUserId,
+        db: context.db,
+        input: { id: created.id, markupPercent: null, name: 'Bolt & Nuts' },
+      }),
+    ).resolves.toMatchObject({ markupPercent: null });
+
+    const events = await context.db.select().from(auditEvents).where(eq(auditEvents.entityId, created.id));
+    expect(events.slice(1).map((event) => event.changes)).toEqual([
+      { markupPercent: { from: null, to: 25 } },
+      { markupPercent: { from: 25, to: null } },
+    ]);
+  });
+
+  test('refuses a negative markup in the contract and in the database', async ({ context }) => {
+    const created = await createPartCategory({ actorUserId, db: context.db, input: { name: 'Pipe' } });
+
+    expect(PartCategoryUpdateInput.safeParse({ id: created.id, markupPercent: -1, name: 'Pipe' }).success).toBe(false);
+    await expect(
+      context.db.update(partCategories).set({ markupPercent: -1 }).where(eq(partCategories.id, created.id)),
+    ).rejects.toMatchObject({ cause: { constraint_name: 'part_category_markup_percent_nonnegative' } });
   });
 
   test('refuses a name another Part Category already has, ignoring casing', async ({ context }) => {
@@ -53,7 +88,7 @@ describe('Part Category admin', () => {
       code: 'part.category_name_taken',
     });
     await expect(
-      updatePartCategory({ actorUserId, db: context.db, input: { id: other.id, name: 'AXLE' } }),
+      updatePartCategory({ actorUserId, db: context.db, input: { id: other.id, markupPercent: null, name: 'AXLE' } }),
     ).rejects.toMatchObject({ code: 'part.category_name_taken' });
   });
 

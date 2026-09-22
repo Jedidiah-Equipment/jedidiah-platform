@@ -15,11 +15,17 @@ const test = createTester(async ({ db }) => {
   return { db };
 });
 
+const unknownId = '00000000-0000-4000-8000-000000000999';
+
 test('keeps Part Category admin to the roles that manage them', async ({ context }) => {
   for (const role of ['sales', 'stores'] as const) {
     const caller = context.createCaller(mockSession(role));
     await expect(caller.partCategories.list()).rejects.toMatchObject({ code: 'FORBIDDEN' });
     await expect(caller.partCategories.create({ name: 'Axle' })).rejects.toMatchObject({ code: 'FORBIDDEN' });
+    await expect(caller.partCategories.get({ id: unknownId })).rejects.toMatchObject({ code: 'FORBIDDEN' });
+    await expect(
+      caller.partCategories.update({ id: unknownId, markupPercent: 25, name: 'Axle' }),
+    ).rejects.toMatchObject({ code: 'FORBIDDEN' });
   }
 
   const procurement = context.createCaller(mockSession('procurement-manager'));

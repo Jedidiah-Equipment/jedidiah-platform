@@ -59,6 +59,6 @@ export function PartCategoriesPage() {
   );
 }
 
-export function PartCategoryMarkup({ markupPercent }: { markupPercent: number | null }) {
+function PartCategoryMarkup({ markupPercent }: { markupPercent: number | null }) {
   return markupPercent === null ? <span className="text-muted-foreground">Not set</span> : `${markupPercent}%`;
 }

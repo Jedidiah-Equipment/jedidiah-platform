@@ -11,8 +11,10 @@ import { PartCategoryCreateInput, PartCategoryMergeInput, PartCategoryUpdateInpu
 import { z } from 'zod';
 
 import { mapCoreErrors } from '../../../trpc/errors.js';
-import { authorizedProcedure, router } from '../../../trpc/init.js';
+import { authorizedProcedure, fullyAuthorizedProcedure, router } from '../../../trpc/init.js';
 import { partCoreErrorFamily } from '../parts/part-error-families.js';
+
+const MERGE_PERMISSIONS = ['equipment_part_category:update', 'equipment_part_category:merge'] as const;
 
 /**
  * The admin surface sits wholly behind the manage permission, reads included: pickers read names
@@ -39,11 +41,12 @@ export const partCategoriesRouter = router({
       mapPartCategoryErrors(() => updatePartCategory({ actorUserId: ctx.session.user.id, db: ctx.db, input })),
     ),
 
-  mergePreview: authorizedProcedure('equipment_part_category:merge')
+  // Merging shows and returns markup, which only the manage permission reads.
+  mergePreview: fullyAuthorizedProcedure(MERGE_PERMISSIONS)
     .input(PartCategoryMergeInput)
     .query(({ ctx, input }) => mapPartCategoryErrors(() => getPartCategoryMergePreview({ db: ctx.db, input }))),
 
-  merge: authorizedProcedure('equipment_part_category:merge')
+  merge: fullyAuthorizedProcedure(MERGE_PERMISSIONS)
     .input(PartCategoryMergeInput)
     .mutation(({ ctx, input }) =>
       mapPartCategoryErrors(() => mergePartCategories({ actorUserId: ctx.session.user.id, db: ctx.db, input })),

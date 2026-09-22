@@ -128,7 +128,9 @@ export async function mergePartCategories({
   db: Db;
   input: PartCategoryMergeInput;
 }): Promise<PartCategory> {
-  const { sourceIds, targetId } = input;
+  const { targetId } = input;
+  // A repeated source would write a second `merged` pair claiming zero Parts moved.
+  const sourceIds = [...new Set(input.sourceIds)];
   if (sourceIds.includes(targetId)) throw new PartCategoryMergeSelfError(targetId);
 
   return db.transaction(async (tx) => {

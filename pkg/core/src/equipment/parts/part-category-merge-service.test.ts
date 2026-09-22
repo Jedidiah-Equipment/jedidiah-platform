@@ -103,6 +103,16 @@ describe('mergePartCategories', () => {
     );
   });
 
+  test('audits a source named twice only once', async ({ context }) => {
+    await mergePartCategories({
+      actorUserId: ACTOR_ID,
+      db: context.db,
+      input: { sourceIds: [BOLT_NUT_ID, BOLT_NUT_ID], targetId: TARGET_ID },
+    });
+
+    await expect(context.db.$count(auditEvents, eq(auditEvents.action, 'merged'))).resolves.toBe(2);
+  });
+
   test('refuses a merge into itself and moves nothing', async ({ context }) => {
     await expect(
       mergePartCategories({

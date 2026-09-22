@@ -1,4 +1,8 @@
-import { computeAdditionalDeliveryPrice, quoteKindLabels, toQuoteWorkItemFormState } from '@pkg/domain/equipment';
+import {
+  computeAdditionalDeliveryPrice,
+  quoteOfferingTypeLabels,
+  toQuoteWorkItemFormState,
+} from '@pkg/domain/equipment';
 import { AuthId, DateIsoString, DateOnlyIsoString, Price, UUID } from '@pkg/schema';
 import {
   CustomerCompanyName,
@@ -13,8 +17,9 @@ import {
   QuoteDiscountPercent,
   QuoteDocumentNotes,
   QuoteInvoiceNumber,
-  QuoteKind,
+  type QuoteKind,
   QuoteNotes,
+  QuoteOfferingType,
   QuoteSelectedAssemblyInput,
   QuoteStatus,
   QuoteUpdateInput,
@@ -70,7 +75,7 @@ const QuoteCreateFormValuesShape = z.object({
   customerId: z.string(),
   customerMode: CustomerMode,
   inlineCompanyName: z.string(),
-  kind: QuoteKind,
+  offeringType: QuoteOfferingType,
   productId: z.string(),
   productUnitId: emptyStringOr(UUID),
   rangeId: emptyStringOr(UUID),
@@ -138,7 +143,7 @@ export function getQuoteFormValuesValidator(kind: QuoteKind) {
     if (kind === 'product' && value.workItems.length > 0) {
       context.addIssue({
         code: 'custom',
-        message: `Work items are only allowed on ${quoteKindLabels.custom} Quotes`,
+        message: `Work items are only allowed on ${quoteOfferingTypeLabels.custom} and ${quoteOfferingTypeLabels['parts-sale']} Quotes`,
         path: ['workItems'],
       });
     }
@@ -170,7 +175,7 @@ export const QUOTE_CREATE_DEFAULT_VALUES: QuoteCreateFormValues = {
   customerId: '',
   customerMode: 'existing',
   inlineCompanyName: '',
-  kind: 'product',
+  offeringType: 'product',
   productId: '',
   productUnitId: '',
   rangeId: '',
@@ -225,9 +230,9 @@ export function toQuoteCreateInput(value: QuoteCreateFormValues): QuoteCreateInp
         ? { type: 'existing', customerId: value.customerId }
         : { type: 'inline', companyName: value.inlineCompanyName },
     offering:
-      value.kind === 'product'
+      value.offeringType === 'product'
         ? { kind: 'product', productId: value.productId, productUnitId: value.productUnitId || null }
-        : { kind: 'custom', workTitle: value.workTitle },
+        : { kind: 'custom', isPartsSale: value.offeringType === 'parts-sale', workTitle: value.workTitle },
     salesPersonId: value.salesPersonId,
     status: value.status,
   });
@@ -311,10 +316,10 @@ function refineQuoteCustomerSelection(
 }
 
 function refineQuoteOfferingSelection(
-  value: Pick<QuoteCreateFormSelectionValues, 'kind' | 'productId' | 'workTitle'>,
+  value: Pick<QuoteCreateFormSelectionValues, 'offeringType' | 'productId' | 'workTitle'>,
   context: z.RefinementCtx,
 ) {
-  if (value.kind === 'product' && !UUID.safeParse(value.productId).success) {
+  if (value.offeringType === 'product' && !UUID.safeParse(value.productId).success) {
     context.addIssue({
       code: 'custom',
       message: 'Select a product',
@@ -322,7 +327,7 @@ function refineQuoteOfferingSelection(
     });
   }
 
-  if (value.kind === 'custom' && !QuoteWorkTitle.safeParse(value.workTitle).success) {
+  if (value.offeringType !== 'product' && !QuoteWorkTitle.safeParse(value.workTitle).success) {
     context.addIssue({
       code: 'custom',
       message: 'Work title is required',

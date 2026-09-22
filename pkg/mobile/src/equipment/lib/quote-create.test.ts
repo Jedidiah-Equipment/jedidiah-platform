@@ -56,7 +56,7 @@ describe('mobile quote creation', () => {
     const input = toQuoteCreateInput({
       ...QUOTE_CREATE_DEFAULT_VALUES,
       customer: { companyName: '  Boerdery Bpk  ', type: 'inline' },
-      kind: 'custom',
+      offeringType: 'custom',
       salesPersonId: 'sales-user',
       workTitle: '  On-site repair  ',
     });
@@ -70,10 +70,23 @@ describe('mobile quote creation', () => {
       type: 'inline',
     });
     expect(input.offering).toEqual({
+      isPartsSale: false,
       kind: 'custom',
       workItems: [],
       workTitle: 'On-site repair',
     });
+  });
+
+  it('builds a Parts Sale as a flagged Custom Quote', () => {
+    const input = toQuoteCreateInput({
+      ...QUOTE_CREATE_DEFAULT_VALUES,
+      customer: existingCustomer,
+      offeringType: 'parts-sale',
+      salesPersonId: 'sales-user',
+      workTitle: 'Parts sale',
+    });
+
+    expect(input.offering).toEqual({ isPartsSale: true, kind: 'custom', workItems: [], workTitle: 'Parts sale' });
   });
 
   it('keeps pricing off the create payload entirely — it comes from Work Items later', () => {
@@ -99,7 +112,7 @@ describe('mobile quote creation', () => {
     const customResult = QuoteCreateFormValues.safeParse({
       ...QUOTE_CREATE_DEFAULT_VALUES,
       customer: { companyName: '   ', type: 'inline' },
-      kind: 'custom',
+      offeringType: 'custom',
     });
     expect(customResult.error?.issues.map(({ message, path }) => ({ message, path }))).toEqual([
       { message: 'Select or create a customer', path: ['customer'] },
@@ -112,7 +125,7 @@ describe('mobile quote creation', () => {
     const result = QuoteCreateFormValues.safeParse({
       ...QUOTE_CREATE_DEFAULT_VALUES,
       customer: existingCustomer,
-      kind: 'custom',
+      offeringType: 'custom',
       salesPersonId: 'sales-user',
       workTitle: 'Repair',
     });
@@ -141,10 +154,23 @@ describe('mobile quote creation', () => {
         },
         'custom',
       ),
-    ).toMatchObject({ kind: 'custom', productId: '', rangeId: '' });
+    ).toMatchObject({ offeringType: 'custom', productId: '', rangeId: '' });
 
     expect(
-      clearQuoteKindFields({ ...QUOTE_CREATE_DEFAULT_VALUES, kind: 'custom', workTitle: 'Repair' }, 'product'),
-    ).toMatchObject({ kind: 'product', workTitle: '' });
+      clearQuoteKindFields({ ...QUOTE_CREATE_DEFAULT_VALUES, offeringType: 'custom', workTitle: 'Repair' }, 'product'),
+    ).toMatchObject({ offeringType: 'product', workTitle: '' });
+  });
+
+  it('pre-fills an empty Work Title when the quote becomes a Parts Sale, keeping one already typed', () => {
+    expect(clearQuoteKindFields(QUOTE_CREATE_DEFAULT_VALUES, 'parts-sale')).toMatchObject({
+      offeringType: 'parts-sale',
+      workTitle: 'Parts sale',
+    });
+    expect(
+      clearQuoteKindFields(
+        { ...QUOTE_CREATE_DEFAULT_VALUES, offeringType: 'custom', workTitle: 'Bushes' },
+        'parts-sale',
+      ),
+    ).toMatchObject({ workTitle: 'Bushes' });
   });
 });

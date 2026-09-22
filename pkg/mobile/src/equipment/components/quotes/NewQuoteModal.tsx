@@ -1,4 +1,5 @@
-import { defaultQuoteSalespersonId, quoteKindLabels, quoteStatusLabels } from '@pkg/domain/equipment';
+import { defaultQuoteSalespersonId, quoteOfferingTypeLabels, quoteStatusLabels } from '@pkg/domain/equipment';
+import { QuoteOfferingType } from '@pkg/schema/equipment';
 import { IconX } from '@tabler/icons-react-native';
 import { useStore } from '@tanstack/react-form';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -25,10 +26,7 @@ import {
 import { useTRPC } from '@/lib/trpc';
 import { useAccess } from '@/lib/use-access';
 
-const KIND_OPTIONS = [
-  { label: quoteKindLabels.product, value: 'product' },
-  { label: quoteKindLabels.custom, value: 'custom' },
-] as const;
+const KIND_OPTIONS = QuoteOfferingType.options.map((value) => ({ label: quoteOfferingTypeLabels[value], value }));
 
 export function NewQuoteModal({ onClose }: { onClose: () => void }) {
   const trpc = useTRPC();
@@ -60,7 +58,7 @@ export function NewQuoteModal({ onClose }: { onClose: () => void }) {
     },
   });
 
-  const kind = useStore(form.store, (state) => state.values.kind);
+  const offeringType = useStore(form.store, (state) => state.values.offeringType);
   const salesPersonId = useStore(form.store, (state) => state.values.salesPersonId);
   const isSubmitting = useStore(form.store, (state) => state.isSubmitting);
 
@@ -78,13 +76,14 @@ export function NewQuoteModal({ onClose }: { onClose: () => void }) {
   };
 
   const changeKind = (nextKind: string) => {
-    if (nextKind !== 'product' && nextKind !== 'custom') return;
+    const parsed = QuoteOfferingType.safeParse(nextKind);
+    if (!parsed.success) return;
 
-    const cleared = clearQuoteKindFields(form.store.state.values, nextKind);
+    const cleared = clearQuoteKindFields(form.store.state.values, parsed.data);
     form.setFieldValue('productId', cleared.productId);
     form.setFieldValue('rangeId', cleared.rangeId);
     form.setFieldValue('workTitle', cleared.workTitle);
-    if (nextKind === 'custom') setProductSelection(null);
+    if (parsed.data !== 'product') setProductSelection(null);
   };
 
   return (
@@ -124,11 +123,11 @@ export function NewQuoteModal({ onClose }: { onClose: () => void }) {
             )}
           </form.Field>
 
-          <form.AppField name="kind">
-            {(field) => <field.SegmentedField label="Kind" onValueCommit={changeKind} options={KIND_OPTIONS} />}
+          <form.AppField name="offeringType">
+            {(field) => <field.SegmentedField label="Type" onValueCommit={changeKind} options={KIND_OPTIONS} />}
           </form.AppField>
 
-          {kind === 'product' ? (
+          {offeringType === 'product' ? (
             <form.Subscribe
               selector={(state) => ({ productId: state.values.productId, rangeId: state.values.rangeId })}
             >

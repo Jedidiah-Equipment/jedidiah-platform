@@ -4,12 +4,22 @@ import {
   getQuoteOfferingName,
   getQuoteOfferingSubtitle,
   quoteKindLabels,
+  quoteOfferingType,
+  quoteOfferingTypeLabels,
   quoteProductSourceOf,
 } from './quote-display.js';
 
 describe('quote kind presentation', () => {
   it('presents the custom kind as Service Work', () => {
     expect(quoteKindLabels.custom).toBe('Service Work');
+  });
+});
+
+describe('quoteOfferingType', () => {
+  it('names a Product Quote, a Service Work Quote, and a Parts Sale', () => {
+    expect(quoteOfferingTypeLabels[quoteOfferingType({ isPartsSale: false, kind: 'product' })]).toBe('Product');
+    expect(quoteOfferingTypeLabels[quoteOfferingType({ isPartsSale: false, kind: 'custom' })]).toBe('Service Work');
+    expect(quoteOfferingTypeLabels[quoteOfferingType({ isPartsSale: true, kind: 'custom' })]).toBe('Parts Sale');
   });
 });
 
@@ -51,6 +61,7 @@ describe('quote display helpers', () => {
   it('returns product and custom subtitles from one policy', () => {
     expect(
       getQuoteOfferingSubtitle({
+        isPartsSale: false,
         kind: 'product',
         product: { buildTimeDays: 12, modelCode: 'EX-100', name: 'Excavator' },
         workTitle: null,
@@ -58,11 +69,15 @@ describe('quote display helpers', () => {
     ).toEqual({ mono: false, text: 'EX-100 / 12d build' });
     expect(
       getQuoteOfferingSubtitle({
+        isPartsSale: false,
         kind: 'custom',
         product: null,
         workTitle: 'Hydraulic repair',
       }),
     ).toEqual({ mono: false, text: 'Service Work' });
+    expect(
+      getQuoteOfferingSubtitle({ isPartsSale: true, kind: 'custom', product: null, workTitle: 'Parts sale' }),
+    ).toEqual({ mono: false, text: 'Parts Sale' });
   });
 });
 

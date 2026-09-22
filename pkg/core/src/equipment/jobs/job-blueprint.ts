@@ -243,6 +243,7 @@ function assertQuoteCanStartJob({
   const eligibility = canStartJobFromQuote({
     hasLiveJob,
     hasProductUnit,
+    isPartsSale: quote.isPartsSale,
     kind,
     reworkRequired,
     status: quote.status,

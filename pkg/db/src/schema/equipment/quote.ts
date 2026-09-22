@@ -1,6 +1,7 @@
 import type { Department, QuoteDeliveryTerms, QuoteKind, QuoteStatus } from '@pkg/schema/equipment';
 import { relations, sql } from 'drizzle-orm';
 import {
+  boolean,
   check,
   date,
   foreignKey,
@@ -31,6 +32,8 @@ export const quotes = equipmentSchema.table(
       .notNull()
       .references(() => customers.id, { onDelete: 'restrict' }),
     kind: text('kind').notNull().default('product').$type<QuoteKind>(),
+    // A Custom Quote that never sources a Job. Fixed at creation, like `kind`.
+    isPartsSale: boolean('is_parts_sale').notNull().default(false),
     workTitle: text('work_title'),
     productId: uuid('product_id').references(() => products.id, { onDelete: 'restrict' }),
     productUnitId: uuid('product_unit_id'),
@@ -93,6 +96,7 @@ export const quotes = equipmentSchema.table(
         ${table.kind} = 'custom' and ${table.productId} is null and ${table.productUnitId} is null and ${table.workTitle} is not null and length(trim(${table.workTitle})) > 0 and ${table.quotedBasePrice} = 0
       )`,
     ),
+    check('quote_parts_sale_is_custom', sql`${table.isPartsSale} = false or ${table.kind} = 'custom'`),
     foreignKey({
       columns: [table.productUnitId, table.productId],
       foreignColumns: [productUnits.id, productUnits.productId],

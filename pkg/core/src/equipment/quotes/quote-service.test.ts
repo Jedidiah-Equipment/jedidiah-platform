@@ -824,7 +824,7 @@ describe('custom quotes', () => {
           status: 'draft',
         }),
       }),
-    ).rejects.toThrow('Service Work Quotes cannot have Selected Assemblies.');
+    ).rejects.toThrow('Custom Quotes cannot have Selected Assemblies.');
 
     const customQuote = await createQuoteService({
       actorUserId: context.salesPerson.id,
@@ -845,7 +845,7 @@ describe('custom quotes', () => {
           selectedAssemblies: [{ type: 'catalog', productAssemblyId: '00000000-0000-4000-8000-000000000901' }],
         }),
       }),
-    ).rejects.toThrow('Service Work Quotes cannot have Selected Assemblies.');
+    ).rejects.toThrow('Custom Quotes cannot have Selected Assemblies.');
   });
 
   test('keeps custom commercial fields editable before acceptance even when a job exists', async ({ context }) => {
@@ -1095,6 +1095,113 @@ describe('custom quotes', () => {
     expect(updateEvent?.changes).toMatchObject({
       workTitle: { from: 'Audit repair', to: 'Audit repair revised' },
     });
+  });
+});
+
+describe('parts sales', () => {
+  const createPartsSale = (
+    context: { customer: { id: string }; db: Db; salesPerson: { id: string } },
+    overrides: { plannedDeliveryDate?: string; status?: QuoteStatus } = {},
+  ) =>
+    createQuoteService({
+      actorUserId: context.salesPerson.id,
+      db: context.db,
+      input: QuoteCreateInput.parse({
+        customer: { type: 'existing', customerId: context.customer.id },
+        offering: { isPartsSale: true, kind: 'custom', workTitle: 'Parts sale' },
+        salesPersonId: context.salesPerson.id,
+        status: 'draft',
+        ...overrides,
+      }),
+    });
+
+  test('persists the flag on create and keeps it through an update that tries to clear it', async ({ context }) => {
+    const partsSale = await createPartsSale(context);
+
+    expect(partsSale).toMatchObject({ isPartsSale: true, kind: 'custom' });
+
+    const updated = await updateQuote({
+      actorUserId: context.salesPerson.id,
+      db: context.db,
+      input: {
+        ...buildQuoteUpdateInput(partsSale, { offering: { kind: 'custom', workTitle: 'Machined bushes' } }),
+        isPartsSale: false,
+      } as QuoteUpdateInput,
+    });
+
+    expect(updated).toMatchObject({ isPartsSale: true, workTitle: 'Machined bushes' });
+  });
+
+  test('keeps an accepted Parts Sale out of both Job work queues', async ({ context }) => {
+    const serviceWork = await createQuoteService({
+      actorUserId: context.salesPerson.id,
+      db: context.db,
+      input: QuoteCreateInput.parse({
+        customer: { type: 'existing', customerId: context.customer.id },
+        offering: { kind: 'custom', workTitle: 'Pump rebuild' },
+        plannedDeliveryDate: '2026-01-08',
+        salesPersonId: context.salesPerson.id,
+        status: 'accepted',
+      }),
+    });
+    await createPartsSale(context, { plannedDeliveryDate: '2026-01-08', status: 'accepted' });
+
+    await expect(listAwaitingJobCreationQuotes({ db: context.db })).resolves.toMatchObject([{ id: serviceWork.id }]);
+    await expect(
+      listPriorityQuotes({ clock: () => new Date('2026-01-01T10:00:00.000+02:00'), db: context.db }),
+    ).resolves.toMatchObject([{ id: serviceWork.id }]);
+  });
+
+  test('filters the Quote list by each of the three types', async ({ context }) => {
+    const product = await createQuote(context.db, {
+      customerId: context.customer.id,
+      productId: context.product.id,
+      salesPersonId: context.salesPerson.id,
+      status: 'draft',
+    });
+    const serviceWork = await createQuoteService({
+      actorUserId: context.salesPerson.id,
+      db: context.db,
+      input: QuoteCreateInput.parse({
+        customer: { type: 'existing', customerId: context.customer.id },
+        offering: { kind: 'custom', workTitle: 'Pump rebuild' },
+        salesPersonId: context.salesPerson.id,
+        status: 'draft',
+      }),
+    });
+    const partsSale = await createPartsSale(context);
+    const listIds = async (offeringType: 'custom' | 'parts-sale' | 'product') => {
+      const result = await listQuotes({
+        db: context.db,
+        input: {
+          cursor: 0,
+          filters: { offeringType, statuses: [] },
+          limit: 10,
+          search: '',
+          sortBy: 'createdAt',
+          sortDirection: 'asc',
+        },
+      });
+
+      return result.items.map((item) => item.id);
+    };
+
+    await expect(listIds('product')).resolves.toEqual([product.id]);
+    await expect(listIds('custom')).resolves.toEqual([serviceWork.id]);
+    await expect(listIds('parts-sale')).resolves.toEqual([partsSale.id]);
+  });
+
+  test('refuses a Product Quote row flagged as a Parts Sale', async ({ context }) => {
+    const product = await createQuote(context.db, {
+      customerId: context.customer.id,
+      productId: context.product.id,
+      salesPersonId: context.salesPerson.id,
+      status: 'draft',
+    });
+
+    await expect(
+      context.db.update(quotes).set({ isPartsSale: true }).where(eq(quotes.id, product.id)),
+    ).rejects.toMatchObject({ cause: { constraint_name: 'quote_parts_sale_is_custom' } });
   });
 });
 

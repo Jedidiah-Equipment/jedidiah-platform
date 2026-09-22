@@ -1,5 +1,5 @@
 import type { UUID } from '@pkg/schema';
-import { QuoteInvoicedFilter, QuoteKind, type QuoteListInput, QuoteStatus } from '@pkg/schema/equipment';
+import { QuoteInvoicedFilter, type QuoteListInput, QuoteOfferingType, QuoteStatus } from '@pkg/schema/equipment';
 import type { ColumnFiltersState } from '@tanstack/react-table';
 import type { z } from 'zod';
 
@@ -8,7 +8,7 @@ export function getQuoteListInputExtras(columnFilters: ColumnFiltersState, custo
     filters: {
       customerId: customerId ?? getQuoteIdFilterValue(columnFilters, 'customerCompanyName'),
       invoiced: getEnumFilterValue(columnFilters, 'invoiceNumber', QuoteInvoicedFilter),
-      kind: getEnumFilterValue(columnFilters, 'kind', QuoteKind),
+      offeringType: getEnumFilterValue(columnFilters, 'kind', QuoteOfferingType),
       productId: getQuoteIdFilterValue(columnFilters, 'productName'),
       salesPersonId: getQuoteIdFilterValue(columnFilters, 'salesPersonName'),
       statuses: getStatusFilterValues(columnFilters),

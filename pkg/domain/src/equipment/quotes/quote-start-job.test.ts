@@ -1,15 +1,32 @@
 import { describe, expect, it } from 'vitest';
 
-import { canStartJobFromQuote, isReworkQuote } from './quote-start-job.js';
+import { canStartJobFromQuote, isReworkQuote, PARTS_SALE_NO_JOB_REASON } from './quote-start-job.js';
 
 const productUnitId = '10000000-0000-4000-8000-000000000000';
 
 describe('canStartJobFromQuote', () => {
+  it.each(['draft', 'sent', 'accepted'] as const)(
+    'refuses a %s Parts Sale because it never sources a Job',
+    (status) => {
+      expect(
+        canStartJobFromQuote({
+          hasLiveJob: false,
+          hasProductUnit: false,
+          isPartsSale: true,
+          kind: 'custom',
+          reworkRequired: false,
+          status,
+        }),
+      ).toEqual({ allowed: false, reason: PARTS_SALE_NO_JOB_REASON });
+    },
+  );
+
   it('rejects quotes that already have a job', () => {
     expect(
       canStartJobFromQuote({
         hasLiveJob: true,
         hasProductUnit: false,
+        isPartsSale: false,
         kind: 'custom',
         reworkRequired: false,
         status: 'draft',
@@ -22,7 +39,14 @@ describe('canStartJobFromQuote', () => {
 
   it.each(['draft', 'sent', 'accepted'] as const)('allows custom %s quotes to start a job', (status) => {
     expect(
-      canStartJobFromQuote({ hasLiveJob: false, hasProductUnit: false, kind: 'custom', reworkRequired: false, status }),
+      canStartJobFromQuote({
+        hasLiveJob: false,
+        hasProductUnit: false,
+        isPartsSale: false,
+        kind: 'custom',
+        reworkRequired: false,
+        status,
+      }),
     ).toEqual({
       allowed: true,
     });
@@ -30,7 +54,14 @@ describe('canStartJobFromQuote', () => {
 
   it.each(['rejected', 'cancelled'] as const)('rejects custom %s quotes', (status) => {
     expect(
-      canStartJobFromQuote({ hasLiveJob: false, hasProductUnit: false, kind: 'custom', reworkRequired: false, status }),
+      canStartJobFromQuote({
+        hasLiveJob: false,
+        hasProductUnit: false,
+        isPartsSale: false,
+        kind: 'custom',
+        reworkRequired: false,
+        status,
+      }),
     ).toEqual({
       allowed: false,
       reason: 'Rejected or cancelled quotes cannot start a Job.',
@@ -42,6 +73,7 @@ describe('canStartJobFromQuote', () => {
       canStartJobFromQuote({
         hasLiveJob: false,
         hasProductUnit: false,
+        isPartsSale: false,
         kind: 'product',
         reworkRequired: false,
         status: 'accepted',
@@ -56,6 +88,7 @@ describe('canStartJobFromQuote', () => {
       canStartJobFromQuote({
         hasLiveJob: false,
         hasProductUnit: false,
+        isPartsSale: false,
         kind: 'product',
         reworkRequired: false,
         status,
@@ -71,6 +104,7 @@ describe('canStartJobFromQuote', () => {
       canStartJobFromQuote({
         hasLiveJob: false,
         hasProductUnit: true,
+        isPartsSale: false,
         kind: 'product',
         reworkRequired: true,
         status: 'accepted',
@@ -85,6 +119,7 @@ describe('canStartJobFromQuote', () => {
       canStartJobFromQuote({
         hasLiveJob: false,
         hasProductUnit: true,
+        isPartsSale: false,
         kind: 'product',
         reworkRequired: false,
         status: 'accepted',
@@ -100,6 +135,7 @@ describe('canStartJobFromQuote', () => {
       canStartJobFromQuote({
         hasLiveJob: false,
         hasProductUnit: true,
+        isPartsSale: false,
         kind: 'product',
         reworkRequired: false,
         status: 'sent',

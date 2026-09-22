@@ -45,6 +45,7 @@ export const HELP_TOPICS = {
   partCategoryMerge: '/admin/merge-duplicate-part-categories',
   parts: '/inventory/export-and-import-parts',
   partLabels: '/inventory/print-part-labels',
+  partsSale: '/sales/raise-a-parts-sale',
   plan: '/production/open-a-bay-plan',
   products: '/inventory/maintain-a-product-cost-estimate',
   productBuildTimes: '/production/read-product-build-times',

@@ -6,8 +6,11 @@ import type { QuoteDetail } from '@pkg/schema/equipment';
  * policy without `reworkRequired`, which only the product-kind `QuoteDetail` carries.
  */
 export type StartableQuote =
-  | Pick<Extract<QuoteDetail, { kind: 'product' }>, 'job' | 'kind' | 'productUnitId' | 'reworkRequired' | 'status'>
-  | Pick<Extract<QuoteDetail, { kind: 'custom' }>, 'job' | 'kind' | 'productUnitId' | 'status'>;
+  | Pick<
+      Extract<QuoteDetail, { kind: 'product' }>,
+      'isPartsSale' | 'job' | 'kind' | 'productUnitId' | 'reworkRequired' | 'status'
+    >
+  | Pick<Extract<QuoteDetail, { kind: 'custom' }>, 'isPartsSale' | 'job' | 'kind' | 'productUnitId' | 'status'>;
 
 export function canStartJobFromQuote(quote: StartableQuote): boolean {
   return resolveStartJobEligibility(quote).allowed;
@@ -33,6 +36,7 @@ function resolveStartJobEligibility(quote: StartableQuote) {
   return getStartJobEligibility({
     hasLiveJob: quote.job !== null,
     hasProductUnit: quote.productUnitId !== null,
+    isPartsSale: quote.isPartsSale,
     kind: quote.kind,
     reworkRequired: quote.kind === 'product' ? quote.reworkRequired : false,
     status: quote.status,

@@ -4,7 +4,8 @@ import {
   editableLockedQuoteFields,
   isQuoteLocked,
   quoteDeliveryTermsOptions,
-  quoteKindLabels,
+  quoteOfferingType,
+  quoteOfferingTypeLabels,
   quoteStatusLabels,
 } from '@pkg/domain/equipment';
 import {
@@ -382,14 +383,15 @@ const QuotePriorityAlert: React.FC<{
   priorityQuote: PriorityQuote;
 }> = ({ priorityQuote }) => {
   if (priorityQuote.kind === 'custom') {
+    const typeLabel = quoteOfferingTypeLabels[quoteOfferingType(priorityQuote)];
+
     return (
       <Alert className="border-warning/45 bg-warning/10 text-warning-foreground">
         <IconAlertTriangle className="text-warning" />
-        <AlertTitle>Accepted {quoteKindLabels.custom} quote</AlertTitle>
+        <AlertTitle>Accepted {typeLabel} quote</AlertTitle>
         <AlertDescription className="text-warning-foreground/85">
-          This {quoteKindLabels.custom} quote is accepted and not linked to a Job.{' '}
-          {describeDeliveryDates(priorityQuote)} Keep the delivery commitment visible for{' '}
-          {formatQuoteDate(priorityQuote.earliestDeliveryDate)}.
+          This {typeLabel} quote is accepted and not linked to a Job. {describeDeliveryDates(priorityQuote)} Keep the
+          delivery commitment visible for {formatQuoteDate(priorityQuote.earliestDeliveryDate)}.
         </AlertDescription>
       </Alert>
     );

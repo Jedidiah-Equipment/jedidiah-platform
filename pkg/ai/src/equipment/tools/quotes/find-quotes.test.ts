@@ -100,6 +100,7 @@ describe('findQuotes contract', () => {
           customerCompanyName: 'Acme Mining',
           customerId: CUSTOMER_ID,
           id: CUSTOM_QUOTE_ID,
+          isPartsSale: true,
           job: null,
           kind: 'custom',
           plannedDeliveryDate: null,
@@ -126,6 +127,7 @@ describe('findQuotes contract', () => {
     });
     expect(response[0]?.product).not.toHaveProperty('thumbnailDataUrl');
     expect(response[1]).toMatchObject({
+      isPartsSale: true,
       kind: 'custom',
       links: {
         app: `/equipment/quotes/${CUSTOM_QUOTE_ID}/edit`,

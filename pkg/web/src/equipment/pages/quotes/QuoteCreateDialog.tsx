@@ -1,5 +1,10 @@
-import { defaultQuoteSalespersonId, quoteKindLabels, quoteStatusLabels } from '@pkg/domain/equipment';
-import type { Quote } from '@pkg/schema/equipment';
+import {
+  defaultQuoteSalespersonId,
+  PARTS_SALE_DEFAULT_WORK_TITLE,
+  quoteOfferingTypeLabels,
+  quoteStatusLabels,
+} from '@pkg/domain/equipment';
+import { type Quote, QuoteOfferingType } from '@pkg/schema/equipment';
 import { useMutation } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import type React from 'react';
@@ -7,6 +12,7 @@ import { useEffect, useMemo } from 'react';
 import { toast } from 'sonner';
 import { CreateEntityDialog } from '@/components/form/index.js';
 import { getFieldErrors } from '@/components/form/utils/field-errors.js';
+import { HelpLink } from '@/components/help/index.js';
 import { Field, FieldError, FieldLabel } from '@/components/ui/field.js';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select.js';
 import { useProductRangeForQuoteOptions, useSalesPersonOptions } from '@/equipment/hooks/options/index.js';
@@ -71,7 +77,12 @@ export const QuoteCreateDialog: React.FC<QuoteCreateDialogProps> = ({ onOpenChan
       onOpenChange={onOpenChange}
       open={open}
       submitLabel="Save"
-      title="New quote"
+      title={
+        <span className="flex items-center gap-2">
+          New quote
+          <HelpLink label="How to raise a Parts Sale" topic="partsSale" />
+        </span>
+      }
       validator={QuoteCreateFormValues}
     >
       {(form) => (
@@ -134,20 +145,29 @@ export const QuoteCreateDialog: React.FC<QuoteCreateDialogProps> = ({ onOpenChan
               );
             }}
           </form.Field>
-          <form.AppField name="kind">
+          <form.AppField
+            listeners={{
+              onChange: ({ value }) => {
+                if (value === 'parts-sale' && !form.getFieldValue('workTitle').trim()) {
+                  form.setFieldValue('workTitle', PARTS_SALE_DEFAULT_WORK_TITLE);
+                }
+              },
+            }}
+            name="offeringType"
+          >
             {(field) => (
               <field.SelectField
-                label="Kind"
-                options={[
-                  { label: quoteKindLabels.product, value: 'product' },
-                  { label: quoteKindLabels.custom, value: 'custom' },
-                ]}
+                label="Type"
+                options={QuoteOfferingType.options.map((type) => ({
+                  label: quoteOfferingTypeLabels[type],
+                  value: type,
+                }))}
               />
             )}
           </form.AppField>
-          <form.Subscribe selector={(state) => state.values.kind}>
-            {(kind) =>
-              kind === 'product' ? (
+          <form.Subscribe selector={(state) => state.values.offeringType}>
+            {(offeringType) =>
+              offeringType === 'product' ? (
                 <form.Field name="rangeId">
                   {(field) => {
                     const selectedRange = productRangeOptions.items.find((range) => range.id === field.state.value);
@@ -187,9 +207,11 @@ export const QuoteCreateDialog: React.FC<QuoteCreateDialogProps> = ({ onOpenChan
               ) : null
             }
           </form.Subscribe>
-          <form.Subscribe selector={(state) => ({ kind: state.values.kind, rangeId: state.values.rangeId })}>
-            {({ kind, rangeId }) =>
-              kind === 'product' ? (
+          <form.Subscribe
+            selector={(state) => ({ offeringType: state.values.offeringType, rangeId: state.values.rangeId })}
+          >
+            {({ offeringType, rangeId }) =>
+              offeringType === 'product' ? (
                 <form.Field name="productId">
                   {(field) => {
                     const fieldErrors = getFieldErrors(field.state.meta.errors);
@@ -225,9 +247,11 @@ export const QuoteCreateDialog: React.FC<QuoteCreateDialogProps> = ({ onOpenChan
               )
             }
           </form.Subscribe>
-          <form.Subscribe selector={(state) => ({ kind: state.values.kind, productId: state.values.productId })}>
-            {({ kind, productId }) =>
-              kind === 'product' ? (
+          <form.Subscribe
+            selector={(state) => ({ offeringType: state.values.offeringType, productId: state.values.productId })}
+          >
+            {({ offeringType, productId }) =>
+              offeringType === 'product' ? (
                 <form.Field name="productUnitId">
                   {(field) => (
                     <Field>

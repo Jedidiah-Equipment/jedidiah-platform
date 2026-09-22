@@ -33,7 +33,7 @@ import {
   ProductName,
   ProductRequiresVinNumber,
 } from '../products/product.js';
-import { QuoteKind, QuoteWorkTitle } from './quote-shared.js';
+import { QuoteKind, QuoteOfferingType, QuoteWorkTitle } from './quote-shared.js';
 
 export type QuoteStatus = z.infer<typeof QuoteStatus>;
 export const QuoteStatus = z.enum(['draft', 'sent', 'accepted', 'rejected', 'cancelled']);
@@ -48,7 +48,7 @@ export const LEGACY_QUOTE_CANCELLATION_REASON =
   'Reason not recorded (cancelled before cancellation reasons were required).';
 
 export { formatQuoteCode, parseQuoteCodeNumber, QuoteCode, QuoteCodeInput } from '../common/public-code.js';
-export { QuoteKind, QuoteProductSource, QuoteWorkTitle } from './quote-shared.js';
+export { QuoteKind, QuoteOfferingType, QuoteProductSource, QuoteWorkTitle } from './quote-shared.js';
 
 export type QuoteNotes = z.infer<typeof QuoteNotes>;
 export const QuoteNotes = nullableTrimmedText();
@@ -103,6 +103,7 @@ const quoteBaseShape = {
   notes: QuoteNotes,
   documentNotes: QuoteDocumentNotes,
   invoiceNumber: QuoteInvoiceNumber.default(null),
+  isPartsSale: z.boolean().default(false),
   quotedBasePrice: Price,
   quotedCurrencyCode: ProductCurrencyCode,
   createdAt: DateIso,
@@ -426,6 +427,7 @@ export const QuoteOfferingInput = z.discriminatedUnion('kind', [
   }),
   z.strictObject({
     kind: z.literal('custom'),
+    isPartsSale: z.boolean().default(false),
     workTitle: QuoteWorkTitle,
     workItems: z.array(QuoteWorkItemInput).default([]),
   }),
@@ -674,6 +676,7 @@ export const QuoteListFilters = z
     customerId: UUID.optional(),
     invoiced: QuoteInvoicedFilter.optional(),
     kind: QuoteKind.optional(),
+    offeringType: QuoteOfferingType.optional(),
     productId: UUID.optional(),
     quoteCode: QuoteCode.optional(),
     salesPersonId: AuthId.optional(),

@@ -1,0 +1,2 @@
+ALTER TABLE "equipment"."quote" ADD COLUMN "is_parts_sale" boolean DEFAULT false NOT NULL;--> statement-breakpoint
+ALTER TABLE "equipment"."quote" ADD CONSTRAINT "quote_parts_sale_is_custom" CHECK ("equipment"."quote"."is_parts_sale" = false or "equipment"."quote"."kind" = 'custom');

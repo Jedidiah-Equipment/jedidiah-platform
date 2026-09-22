@@ -66,6 +66,7 @@ import {
   unassignJobBayOperator,
 } from './job-bay-service.js';
 import { sweepJobCompletions } from './job-completion-service.js';
+import { JobCreateFromQuoteDeniedError } from './job-errors.js';
 import { getJob, listBayQueueAvailability, listBays, listJobCustomerOptions, listJobs } from './job-read-service.js';
 import {
   addIdleJobSlot,
@@ -1046,6 +1047,18 @@ describe('createJob', () => {
         await expect(attempt).rejects.toThrow(testCase.message);
       }
     }
+  });
+
+  test('refuses to start a Job from a Parts Sale', async ({ context }) => {
+    const partsSale = await createCustomQuote(context.db, {
+      isPartsSale: true,
+      status: 'accepted',
+      workTitle: 'Parts sale',
+    });
+
+    await expect(
+      createJob({ actorUserId, db: context.db, input: { baySeeds: [], quoteId: partsSale.id } }),
+    ).rejects.toBeInstanceOf(JobCreateFromQuoteDeniedError);
   });
 
   test('creates a Rework Job on the allocated Unit for only the Assemblies being added', async ({ context }) => {
@@ -4144,9 +4157,11 @@ async function createQuote(
 async function createCustomQuote(
   db: Db,
   {
+    isPartsSale = false,
     status,
     workTitle,
   }: {
+    isPartsSale?: boolean;
     status: QuoteStatus;
     workTitle: string;
   },
@@ -4165,6 +4180,7 @@ async function createCustomQuote(
     .values({
       cancellationReason: status === 'cancelled' ? 'Test cancellation reason' : null,
       customerId: customer.id,
+      isPartsSale,
       kind: 'custom',
       productId: null,
       quotedBasePrice: 0,

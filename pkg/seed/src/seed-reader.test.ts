@@ -15,24 +15,27 @@ describe('readExistingSnapshotTable', () => {
 
     const select = vi.fn((projection: Record<string, unknown>) => ({
       from: () => {
-        if ('deliveryTerms' in projection) {
+        if ('isPartsSale' in projection) {
           return Promise.reject(Object.assign(new Error('column does not exist'), { code: '42703' }));
         }
 
-        return Promise.resolve([{ cancellationReason: null, deliveryPrice: 350, kind: 'custom', status: 'draft' }]);
+        return Promise.resolve([
+          { cancellationReason: null, deliveryPrice: 350, deliveryTerms: 'tbc', kind: 'custom', status: 'draft' },
+        ]);
       },
     }));
 
     const rows = await readExistingSnapshotTable({ select } as unknown as Db, quoteConfig);
 
     expect(select).toHaveBeenCalledTimes(2);
-    expect(select.mock.calls[1]?.[0]).not.toHaveProperty('deliveryTerms');
-    expect(select.mock.calls[1]?.[0]).toHaveProperty('cancellationReason');
+    expect(select.mock.calls[1]?.[0]).not.toHaveProperty('isPartsSale');
+    expect(select.mock.calls[1]?.[0]).toHaveProperty('deliveryTerms');
     expect(rows).toEqual([
       {
         cancellationReason: null,
         deliveryPrice: 350,
-        deliveryTerms: 'additional_charge',
+        deliveryTerms: 'tbc',
+        isPartsSale: false,
         kind: 'custom',
         status: 'draft',
       },

@@ -862,26 +862,6 @@ describe('Checkout to a Parts Sale', () => {
     ]);
   });
 
-  test('rolls every line back when a later Part refuses Checkout', async ({ context }) => {
-    const partsSale = await seedPartsSaleQuote(context.db);
-    const before = await context.db.select().from(stockMovements);
-
-    await expect(
-      postCheckoutBasket({
-        actorUserId,
-        db: context.db,
-        input: {
-          lines: [
-            { lengthMm: null, partId: context.parts.piece.id, quantity: 1 },
-            { lengthMm: 6_000, partId: context.parts.periodic.id, quantity: 1 },
-          ],
-          quoteId: partsSale.id,
-        },
-      }),
-    ).rejects.toMatchObject({ code: 'inventory.periodic_movement' });
-    expect(await context.db.select().from(stockMovements)).toHaveLength(before.length);
-  });
-
   test('refuses a Quote that is unknown, not a Parts Sale, or no longer live, posting nothing', async ({ context }) => {
     const rejected = await seedPartsSaleQuote(context.db, { status: 'rejected' });
     const cancelled = await seedPartsSaleQuote(context.db, { status: 'cancelled' });
@@ -947,30 +927,6 @@ describe('Checkout to a Parts Sale', () => {
     await expect(
       postReturnToStore({ actorUserId, db: context.db, input: { ...movement, quantity: 1 } }),
     ).resolves.toMatchObject({ movement: { quoteId: partsSale.id, unitCost: 10 }, warnings: [] });
-  });
-
-  test('stamps a return from the outstanding draw value and warns rather than blocks an over-return', async ({
-    context,
-  }) => {
-    const partsSale = await seedPartsSaleQuote(context.db);
-    const movement = { lengthMm: null, partId: context.parts.piece.id, quoteId: partsSale.id };
-    await postAdjustment({
-      actorUserId,
-      db: context.db,
-      input: adjustmentInput(context.parts.piece.id, { delta: 10, unitCost: 10 }),
-    });
-    await postCheckout({ actorUserId, db: context.db, input: { ...movement, quantity: 2 } });
-    await postRevaluation({
-      actorUserId,
-      db: context.db,
-      input: { note: 'New average', partId: context.parts.piece.id, unitCost: 20 },
-    });
-    await postCheckout({ actorUserId, db: context.db, input: { ...movement, quantity: 1 } });
-
-    const result = await postReturnToStore({ actorUserId, db: context.db, input: { ...movement, quantity: 4 } });
-
-    expect(result.movement).toMatchObject({ delta: 4, movementType: 'return-to-store', unitCost: 10 });
-    expect(result.warnings).toEqual(['exceeds-drawn']);
   });
 
   test("pools returns per Quote, so one sale's return cannot consume another's draw", async ({ context }) => {

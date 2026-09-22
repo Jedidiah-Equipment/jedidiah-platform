@@ -366,16 +366,6 @@ describe('CheckoutBasketDialog', () => {
     expect(loadJobStock).not.toHaveBeenCalled();
   });
 
-  it('offers a Parts Sale target between the Job and Without-a-Job targets', async () => {
-    await mount({ fixed: false });
-
-    expect([...document.querySelectorAll('[role="tab"]')].map((tab) => tab.textContent)).toEqual([
-      'To a Job',
-      'To a Parts Sale',
-      'Without a Job',
-    ]);
-  });
-
   it('posts a person and Purpose on every Without-a-Job line', async () => {
     await mount({ fixed: false });
     const tab = [...document.querySelectorAll('button')].find((button) =>

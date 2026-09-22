@@ -146,7 +146,7 @@ export const permissionDescriptions = {
   'equipment_feedback:update': 'Update any Feedback status and internal notes.',
   'equipment_part:read': 'View part records.',
   'equipment_part:update': 'Create and edit part records.',
-  'equipment_part_category:update': 'Add and rename Part Categories.',
+  'equipment_part_category:update': 'Add and rename Part Categories and set their markup.',
   'equipment_job:cancel': 'Cancel a job outright and remove its future slots, without touching its quote.',
   'equipment_job:create': 'Create new production jobs.',
   'equipment_job:read': 'View production jobs and their general feedback.',

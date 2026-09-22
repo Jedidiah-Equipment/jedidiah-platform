@@ -19,6 +19,14 @@ export function PartCategoriesPage() {
   const columns = useMemo<DataTableColumnDef<PartCategory>[]>(
     () => [
       { accessorKey: 'name', header: 'Name', enableSorting: true },
+      {
+        accessorFn: (category) => category.markupPercent ?? undefined,
+        id: 'markupPercent',
+        header: 'Markup',
+        enableSorting: true,
+        sortUndefined: 'last',
+        cell: ({ row }) => <PartCategoryMarkup markupPercent={row.original.markupPercent} />,
+      },
       { accessorKey: 'partCount', header: 'Parts', enableSorting: true },
     ],
     [],
@@ -49,4 +57,8 @@ export function PartCategoriesPage() {
       />
     </>
   );
+}
+
+function PartCategoryMarkup({ markupPercent }: { markupPercent: number | null }) {
+  return markupPercent === null ? <span className="text-muted-foreground">Not set</span> : `${markupPercent}%`;
 }

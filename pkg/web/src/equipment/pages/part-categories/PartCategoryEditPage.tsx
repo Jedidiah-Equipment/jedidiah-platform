@@ -7,7 +7,7 @@ import { useAutosaveForm } from '@/components/form/index.js';
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
 import { useQueryInvalidation } from '@/equipment/hooks/use-query-invalidation.js';
 import { useTRPC } from '@/lib/trpc.js';
-import { PartCategoryFormValues } from './types.js';
+import { PartCategoryFormValues, partCategoryFormToInput, partCategoryFormValues } from './types.js';
 
 export function PartCategoryEditPage({ id }: { id: string }) {
   const trpc = useTRPC();
@@ -27,16 +27,25 @@ function PartCategoryForm({ category }: { category: PartCategory }) {
   const { invalidatePartCategories } = useQueryInvalidation();
   const update = useMutation(trpc.partCategories.update.mutationOptions({ onSuccess: invalidatePartCategories }));
   const { autosave, form, formProps } = useAutosaveForm({
-    defaultValues: { name: category.name },
-    failureMessage: 'Unable to rename Part Category.',
+    defaultValues: partCategoryFormValues(category),
+    failureMessage: 'Unable to save Part Category.',
     validator: PartCategoryFormValues,
-    toInput: (values) => ({ id: category.id, ...values }),
+    toInput: (values) => partCategoryFormToInput(category.id, values),
     save: (input) => update.mutateAsync(input),
   });
 
   return (
     <AutosaveFormCard formProps={formProps} autosave={autosave} disabled={false}>
       <form.AppField name="name">{(field) => <field.TextField label="Name" />}</form.AppField>
+      <form.AppField name="markupPercent">
+        {(field) => (
+          <field.NumberField
+            label="Markup (%)"
+            placeholder="Not set"
+            description="Added to a Part's average cost when it is picked onto a Quote. Leave blank until you have decided one: a blank category offers no price."
+          />
+        )}
+      </form.AppField>
     </AutosaveFormCard>
   );
 }

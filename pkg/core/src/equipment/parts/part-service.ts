@@ -1004,7 +1004,9 @@ async function assertPartCategoryExists({
     .select({ id: partCategories.id })
     .from(partCategories)
     .where(eq(partCategories.id, categoryId))
-    .limit(1);
+    .limit(1)
+    // Waits out a Part Category Merge deleting this category, then sees it gone instead of hitting the FK.
+    .for('share');
 
   if (!row) throw new PartCategoryNotFoundError(categoryId);
 }

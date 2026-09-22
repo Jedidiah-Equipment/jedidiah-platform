@@ -1,11 +1,12 @@
 import { auditEvents, createDatabaseClient, user } from '@pkg/db';
 import { partCategories, parts, supplier } from '@pkg/db/equipment';
-import { eq, inArray } from 'drizzle-orm';
+import { eq, inArray, sql } from 'drizzle-orm';
 import { describe, expect } from 'vitest';
 
 import { createTester } from '../../test/create-tester.js';
 import { partValues } from '../test/part-fixtures.js';
 import { getPartCategoryMergePreview, mergePartCategories } from './part-category-service.js';
+import { createPart } from './part-service.js';
 
 const ACTOR_ID = 'part-category-merge-test-user';
 const SUPPLIER_ID = '00000000-0000-4000-8000-000000000001';
@@ -169,6 +170,74 @@ describe('mergePartCategories', () => {
     });
     await expect(context.db.$count(parts, inArray(parts.categoryId, [BOLT_NUT_ID, BOLTS_NUTS_ID]))).resolves.toBe(0);
   });
+});
+
+test('refuses a Part assignment that waited behind the merge deleting its category', async ({ context }) => {
+  const mergeClient = createDatabaseClient(context.databaseUrl, { max: 1 });
+  let releaseMerge = () => {};
+  const holdMerge = new Promise<void>((resolve) => {
+    releaseMerge = resolve;
+  });
+  let signalMergeLocked = () => {};
+  const mergeLocked = new Promise<void>((resolve) => {
+    signalMergeLocked = resolve;
+  });
+  // Stands in for a merge paused between locking the source and deleting it.
+  const merge = mergeClient.db.transaction(async (tx) => {
+    await tx
+      .select({ id: partCategories.id })
+      .from(partCategories)
+      .where(eq(partCategories.id, EMPTY_ID))
+      .for('update');
+    signalMergeLocked();
+    await holdMerge;
+    await tx.delete(partCategories).where(eq(partCategories.id, EMPTY_ID));
+  });
+  await mergeLocked;
+
+  const creation = createPart({
+    actorUserId: ACTOR_ID,
+    db: context.db,
+    input: {
+      averageUtilizationPercent: null,
+      categoryId: EMPTY_ID,
+      code: 'RACE-1',
+      description: 'Concurrent Part Category merge regression',
+      drawingCode: null,
+      finish: 'None',
+      isInternallyFabricated: false,
+      minimumStock: null,
+      name: 'RACE-1',
+      standardPurchaseLengthMm: null,
+      stockTrackingMode: 'perpetual',
+      storageLocation: null,
+      supplierCode: 'RACE-1',
+      supplierId: SUPPLIER_ID,
+      unitOfMeasure: 'piece',
+    },
+  }).then(
+    () => ({ status: 'fulfilled' as const }),
+    (error: unknown) => ({ error, status: 'rejected' as const }),
+  );
+
+  try {
+    await expect
+      .poll(async () => {
+        const result = await context.db.execute<{ count: number }>(sql`
+          select count(*)::int as count
+          from pg_stat_activity
+          where datname = current_database() and wait_event_type = 'Lock'
+        `);
+        return Number(result[0]?.count ?? 0);
+      })
+      .toBeGreaterThan(0);
+  } finally {
+    releaseMerge();
+  }
+  await merge;
+  await mergeClient.close();
+
+  await expect(creation).resolves.toMatchObject({ error: { code: 'part.category_not_found' }, status: 'rejected' });
 });
 
 describe('getPartCategoryMergePreview', () => {

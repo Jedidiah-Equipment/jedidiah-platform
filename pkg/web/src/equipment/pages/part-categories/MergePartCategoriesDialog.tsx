@@ -6,6 +6,7 @@ import type React from 'react';
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
+import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { SearchableCombobox } from '@/components/common/SearchableCombobox.js';
 import { HelpLink } from '@/components/help/index.js';
 import { Button } from '@/components/ui/button.js';
@@ -63,6 +64,7 @@ export const MergePartCategoriesDialog: React.FC<MergePartCategoriesDialogProps>
   const [confirming, setConfirming] = useState(false);
   const categories = useQuery(trpc.partCategories.list.queryOptions(undefined, { enabled: open }));
   const items = categories.data ?? [];
+  const listUnavailable = categories.isPending || categories.isError;
   const names = useMemo(() => new Map(items.map((category) => [category.id, category.name])), [items]);
   const labelFor = (id: string) => names.get(id) ?? id;
   const targetOptions = useMemo(() => getPartCategoryMergeTargetOptions(items), [items]);
@@ -126,10 +128,11 @@ export const MergePartCategoriesDialog: React.FC<MergePartCategoriesDialogProps>
           <MergePreview error={preview.error} preview={preview.data} />
         ) : (
           <div className="grid gap-4">
+            <ErrorMessage error={categories.error} fallbackMessage="Unable to load Part Categories." />
             <Field>
               <FieldLabel htmlFor="part-category-merge-target">Keep</FieldLabel>
               <SearchableCombobox
-                disabled={categories.isPending}
+                disabled={listUnavailable}
                 emptyMessage="No Part Categories found."
                 inputId="part-category-merge-target"
                 onValueChange={chooseTarget}
@@ -141,7 +144,7 @@ export const MergePartCategoriesDialog: React.FC<MergePartCategoriesDialogProps>
             <Field>
               <FieldLabel htmlFor="part-category-merge-sources">Merge into it</FieldLabel>
               <Combobox
-                disabled={categories.isPending}
+                disabled={listUnavailable}
                 items={sourceOptions.map((option) => option.value)}
                 itemToStringLabel={labelFor}
                 multiple

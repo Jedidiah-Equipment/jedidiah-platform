@@ -29,8 +29,9 @@ export function PartCategoryEditPage({ id }: { id: string }) {
               <EntityActionsFooter>
                 <MergePartCategoriesDialog
                   initialSourceId={category.id}
+                  key={category.id}
                   onMerged={(survivor) =>
-                    void navigate({ to: '/equipment/part-categories/$id/edit', params: { id: survivor.id } })
+                    navigate({ to: '/equipment/part-categories/$id/edit', params: { id: survivor.id } })
                   }
                   triggerLabel="Merge into…"
                 />

@@ -1,4 +1,4 @@
-import type { PartCategory } from '@pkg/schema/equipment';
+import type { PartCategory, PartCategoryMergePreview } from '@pkg/schema/equipment';
 import { PartCategoryMergeInput } from '@pkg/schema/equipment';
 import { IconLoader2 } from '@tabler/icons-react';
 import { useMutation, useQuery } from '@tanstack/react-query';
@@ -44,7 +44,7 @@ import {
 type MergePartCategoriesDialogProps = {
   /** Opened from a duplicate's own page: it starts as the one Part Category to merge away. */
   initialSourceId?: string;
-  onMerged?: (survivor: PartCategory) => void;
+  onMerged?: (survivor: PartCategory) => Promise<void>;
   triggerLabel: string;
 };
 
@@ -64,6 +64,7 @@ export const MergePartCategoriesDialog: React.FC<MergePartCategoriesDialogProps>
   const categories = useQuery(trpc.partCategories.list.queryOptions(undefined, { enabled: open }));
   const items = categories.data ?? [];
   const names = useMemo(() => new Map(items.map((category) => [category.id, category.name])), [items]);
+  const labelFor = (id: string) => names.get(id) ?? id;
   const targetOptions = useMemo(() => getPartCategoryMergeTargetOptions(items), [items]);
   const sourceOptions = useMemo(() => getPartCategoryMergeSourceOptions(items, targetId), [items, targetId]);
   const input = { sourceIds, targetId };
@@ -101,7 +102,7 @@ export const MergePartCategoriesDialog: React.FC<MergePartCategoriesDialogProps>
     // Leave before invalidating: the preview, and a duplicate's own page, name categories that no longer exist.
     handleOpenChange(false);
     toast.success(`Merged into ${survivor.name}`);
-    onMerged?.(survivor);
+    await onMerged?.(survivor);
     await Promise.all([invalidatePartCategories(), invalidateParts(), invalidateAudit()]);
   };
 
@@ -142,7 +143,7 @@ export const MergePartCategoriesDialog: React.FC<MergePartCategoriesDialogProps>
               <Combobox
                 disabled={categories.isPending}
                 items={sourceOptions.map((option) => option.value)}
-                itemToStringLabel={(id: string) => names.get(id) ?? id}
+                itemToStringLabel={labelFor}
                 multiple
                 onValueChange={setSourceIds}
                 value={sourceIds}
@@ -150,7 +151,7 @@ export const MergePartCategoriesDialog: React.FC<MergePartCategoriesDialogProps>
                 <ComboboxChips>
                   <ComboboxValue>
                     {sourceIds.map((id) => (
-                      <ComboboxChip key={id}>{names.get(id) ?? id}</ComboboxChip>
+                      <ComboboxChip key={id}>{labelFor(id)}</ComboboxChip>
                     ))}
                   </ComboboxValue>
                   <ComboboxChipsInput id="part-category-merge-sources" placeholder="Search duplicates…" />
@@ -160,7 +161,7 @@ export const MergePartCategoriesDialog: React.FC<MergePartCategoriesDialogProps>
                   <ComboboxList>
                     {(id: string) => (
                       <ComboboxItem key={id} value={id}>
-                        {names.get(id) ?? id}
+                        {labelFor(id)}
                       </ComboboxItem>
                     )}
                   </ComboboxList>
@@ -204,13 +205,7 @@ export const MergePartCategoriesDialog: React.FC<MergePartCategoriesDialogProps>
   );
 };
 
-function MergePreview({
-  error,
-  preview,
-}: {
-  error: unknown;
-  preview: Parameters<typeof formatPartCategoryMergeConfirmation>[0] | undefined;
-}) {
+function MergePreview({ error, preview }: { error: unknown; preview: PartCategoryMergePreview | undefined }) {
   if (!preview) {
     return <p className="text-sm">{error ? 'Unable to load the merge counts.' : 'Loading merge counts…'}</p>;
   }

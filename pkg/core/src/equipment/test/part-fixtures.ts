@@ -11,7 +11,6 @@ export async function seedPartCategory(db: Db, name = 'General'): Promise<string
 
 /** The columns every seeded Part needs, with the Supplier XOR BOM invariant already satisfied. */
 export function partValues({
-  averageUtilizationPercent = null,
   categoryId,
   code,
   isInternallyFabricated = false,
@@ -20,8 +19,6 @@ export function partValues({
   supplierId,
   unitOfMeasure,
 }: {
-  /** A plate: needs `stockTrackingMode: 'periodic'` and a discrete unit, per the eligibility check. */
-  averageUtilizationPercent?: number | null;
   categoryId: string;
   code: string;
   isInternallyFabricated?: boolean;
@@ -31,7 +28,6 @@ export function partValues({
   unitOfMeasure: 'kg' | 'mm' | 'piece';
 }): typeof parts.$inferInsert {
   return {
-    averageUtilizationPercent,
     categoryId,
     code,
     description: `${code} description`,

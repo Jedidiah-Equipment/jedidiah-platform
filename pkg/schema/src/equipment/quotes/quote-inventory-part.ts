@@ -38,19 +38,27 @@ export const QuoteInventoryPartOption = z.object({
   unitOfMeasure: PartUnitOfMeasure,
 });
 
-/** Not `.strict()`: tRPC's infinite query appends its own `direction` key to the page params. */
+/**
+ * Not `.strict()`: tRPC's infinite query appends its own `direction` key to the page params. No
+ * `limit: 0`: every row replays its Part's whole ledger, so the read is only ever one narrow page.
+ */
 export type QuoteInventoryPartListInput = z.infer<typeof QuoteInventoryPartListInput>;
-export const QuoteInventoryPartListInput = CursorQueryInput.extend({ search: SearchText });
+export const QuoteInventoryPartListInput = CursorQueryInput.extend({
+  limit: CursorQueryInput.shape.limit.pipe(z.int().min(1)),
+  search: SearchText,
+});
 
 export type QuoteInventoryPartListResult = z.infer<typeof QuoteInventoryPartListResult>;
 export const QuoteInventoryPartListResult = createCursorQueryResult(QuoteInventoryPartOption);
 
 /** How long a piece of a linear Part is being sold, in whole millimetres. */
+export type QuoteInventoryPartLengthMm = z.infer<typeof QuoteInventoryPartLengthMm>;
 export const QuoteInventoryPartLengthMm = z.int('Must be a whole number').positive('Must be 1 or greater');
 
-/** Part area ÷ plate area, no waste. Two decimals, like any percentage typed into a Quote. */
+/** Part area ÷ plate area, no waste. */
+export type QuoteInventoryPartPlatePercent = z.infer<typeof QuoteInventoryPartPlatePercent>;
 export const QuoteInventoryPartPlatePercent = z
   .number()
   .positive('Must be greater than 0')
   .max(100, 'Must be 100 or less')
-  .refine((value) => Math.abs(value * 100 - Math.round(value * 100)) < 1e-9, 'Use at most 2 decimals');
+  .multipleOf(0.01, 'Use at most 2 decimals');

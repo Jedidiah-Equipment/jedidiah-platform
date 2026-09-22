@@ -7,7 +7,7 @@ import { QuoteInventoryPartListResult as QuoteInventoryPartListResultSchema } fr
 import { and, asc, count, desc, eq, ne, sql } from 'drizzle-orm';
 
 import { loadMovingAverages } from '../inventory/ledger.js';
-import { loadPlantStockPosition } from '../inventory/stock-movement-service.js';
+import { loadPlantStockPosition } from '../inventory/plant-stock-position.js';
 
 /**
  * The Parts catalog as a Work Item's "Add inventory part" dialog searches it: every Part, in-stock
@@ -61,7 +61,6 @@ export async function listQuoteInventoryParts({
     loadPlantStockPosition({ db, partIds }),
   ]);
 
-  // Parsed so that nothing beyond the option's own keys, cost and markup above all, can ride along.
   return QuoteInventoryPartListResultSchema.parse({
     items: rows.map(({ markupPercent, ...row }) => {
       const price = applyPartCategoryMarkup({ averageUnitCost: averages.get(row.id) ?? null, markupPercent });

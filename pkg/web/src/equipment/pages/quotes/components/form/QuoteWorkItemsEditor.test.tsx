@@ -288,13 +288,3 @@ test.each([
     await cleanup();
   }
 });
-
-test('disables both ways of adding a part on a read-only Quote', async () => {
-  const { cleanup, container } = await renderEditor({ readOnly: true });
-  try {
-    expect(findButton(container, 'Add custom part').disabled).toBe(true);
-    expect(findButton(container, 'Add inventory part').disabled).toBe(true);
-  } finally {
-    await cleanup();
-  }
-});

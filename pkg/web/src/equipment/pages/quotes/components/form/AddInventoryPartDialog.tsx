@@ -32,12 +32,11 @@ import { Field, FieldDescription, FieldError, FieldLabel } from '@/components/ui
 import { Input } from '@/components/ui/input.js';
 import { useQuoteInventoryPartOptions } from '@/equipment/hooks/options/index.js';
 import { formatPartQuantity } from '@/equipment/utils/part-quantity-format.js';
-
-export type InventoryPartRow = { name: string; quantity: number; unitPrice: number };
+import type { QuoteWorkItemPartFormInput } from '../types.js';
 
 type AddInventoryPartDialogProps = {
   currencyCode: string;
-  onAdd: (row: InventoryPartRow) => void;
+  onAdd: (row: QuoteWorkItemPartFormInput) => void;
   onOpenChange: (open: boolean) => void;
   open: boolean;
 };
@@ -126,7 +125,7 @@ function InventoryPartAmountForm({
   part,
 }: {
   currencyCode: string;
-  onAdd: (row: InventoryPartRow, options: { pickAnother: boolean }) => void;
+  onAdd: (row: QuoteWorkItemPartFormInput, options: { pickAnother: boolean }) => void;
   part: QuoteInventoryPartOption;
 }) {
   const basis = quoteInventoryPartBasis(part);

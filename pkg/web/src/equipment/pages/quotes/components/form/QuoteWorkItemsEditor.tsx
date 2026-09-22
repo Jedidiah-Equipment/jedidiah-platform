@@ -71,7 +71,6 @@ export const QuoteWorkItemsEditor: React.FC<QuoteWorkItemsEditorProps> = ({
   const trpc = useTRPC();
   const rates = useQuery(trpc.laborRates.billing.queryOptions()).data;
   const workItems = workItemsField.state.value;
-  // Which Work Item the inventory part dialog is adding to; one dialog serves every Work Item.
   const [inventoryPartWorkItemIndex, setInventoryPartWorkItemIndex] = useState<number | null>(null);
 
   return (

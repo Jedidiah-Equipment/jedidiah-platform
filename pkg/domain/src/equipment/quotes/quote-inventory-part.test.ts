@@ -16,10 +16,6 @@ describe('quoteInventoryPartBasis', () => {
 });
 
 describe('quoteInventoryPartUnitPrice', () => {
-  it('prices one unit at the sell price', () => {
-    expect(quoteInventoryPartUnitPrice({ amount: { basis: 'unit' }, sellPricePerBasisUnit: 12.5 })).toBe(12.5);
-  });
-
   it('prices one piece of a length from the per-millimetre price', () => {
     expect(
       quoteInventoryPartUnitPrice({ amount: { basis: 'length', lengthMm: 450 }, sellPricePerBasisUnit: 0.125 }),

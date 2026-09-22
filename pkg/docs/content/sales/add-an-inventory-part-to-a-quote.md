@@ -1,42 +1,27 @@
 # Add an inventory part to a Quote
 
-Anyone who can edit a Custom Quote can fill in a Work Item's part row from the Parts catalog instead of
-typing the name and working out the price by hand. The price is the Part's average cost marked up by its
-Part Category's markup. You never see the cost itself.
+Anyone who can edit a Custom Quote can fill in a Work Item Part from the Parts catalog, priced at the Part's
+moving-average cost plus its Part Category's Markup %.
 
-1. Open the Custom Quote and find the Work Item the part belongs to.
-2. Under **Parts**, select **Add inventory part**. (**Add custom part** still adds an empty row to type
-   into.)
-3. Search by Part code, name, or Part Category, and pick the Part. The list shows in-stock Parts first and
-   how much of each is free. Parts with none free can still be picked, so you can quote something that
-   still has to be ordered.
-4. Say how much is being sold, which depends on the Part:
-   - **Most Parts** are sold by the unit. Enter the **Quantity**.
-   - **Tube, bar, and other Parts bought by length**: enter the **Length (mm)** of one piece. It starts at
-     the length the Part is bought in. Then enter how many **Pieces** of that length. The row is named
-     with the length, for example `50x50 tube (450 mm)`, and the unit price is for one piece.
-   - **Plate** (a Part with an Average Utilization % set): enter the **% of plate** the cut part takes up,
-     with no allowance for waste. The price covers the scrap too: the dialog shows the working, for
-     example `8% of plate ÷ 70% yield = 11.43% of a plate`. The row carries the plate's name, and the
-     **Quantity** is how many cut parts.
-5. Check the **Unit price**, then select **Add to work item**. To add several Parts in a row, select
-   **Add and pick another** instead.
+1. Open the Custom Quote and find the Work Item.
+2. Under **Parts**, select **Add inventory part**. (**Add custom part** adds an empty row to type into.)
+3. Search by Part code, name, or Part Category, and pick the Part. In-stock Parts come first; Parts with
+   none free can still be picked.
+4. Enter how much is being sold:
+   - **Most Parts**: the **Quantity**.
+   - **Parts bought by length** (tube, bar): the **Length (mm)** of one piece, then how many **Pieces**.
+     The row is named with the length, for example `50x50 tube (450 mm)`.
+   - **Plate** (a Part with an Average Utilization % set): the **% of plate** the cut part takes up, with no
+     allowance for waste, then the **Quantity** of cut parts. The price divides by the Average Utilization %
+     to cover the scrap, and the dialog shows the working.
+5. Check the **Unit price**, then select **Add to work item**, or **Add and pick another** to add more.
+6. Edit the new row like any other. It keeps no link to the Part, so a later cost or Markup % change never
+   reprices it.
 
-The Quote saves on its own. The new row is an ordinary part row: change its name, quantity, or price
-however you need. It keeps no link to the Part, so a later cost or markup change never changes a price
-already on a Quote.
+If the dialog says the row will be added at R 0.00, price the row by hand, and:
 
-## When the price is R 0.00
-
-If no price can be worked out, the dialog says why and the row is added at R 0.00 for you to price by hand:
-
-- **This Part has no cost yet**: nothing has been received or loaded against it. Once a receipt or an
-  opening balance gives it a cost, it is priced.
-- **The Part Category has no markup set**: ask an administrator or procurement manager to set one under
+- **This Part has no cost yet**: post a Receipt or opening balance for the Part.
+- **The Part Category has no markup set**: set its Markup % under
   [Maintain Part categories](/admin/maintain-part-categories).
 
-## What it does not do
-
-Adding a Part to a Quote reserves nothing and moves no stock; Free Stock stays as it was. Cut steel and
-plate are [periodic stock](/inventory/perpetual-and-periodic-stock), so they are never checked out
-against the sale either.
+Adding a Part reserves nothing and moves no stock; see [Stock on hand and Free Stock](/inventory/stock-on-hand-and-free-stock).

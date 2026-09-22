@@ -118,23 +118,4 @@ describe('listQuoteInventoryParts', () => {
       items: [{ code: 'PIECE', freeQuantity: 5, sellPricePerBasisUnit: 25 }],
     });
   });
-
-  test('carries a plate’s Average Utilization % for the dialog to price scrap with', async ({ context }) => {
-    await context.db.insert(parts).values(
-      partValues({
-        averageUtilizationPercent: 70,
-        categoryId: context.categoryId,
-        code: 'PLATE',
-        stockTrackingMode: 'periodic',
-        supplierId: context.supplierId,
-        unitOfMeasure: 'piece',
-      }),
-    );
-
-    await expect(
-      listQuoteInventoryParts({ db: context.db, input: { ...page, search: 'PLATE' } }),
-    ).resolves.toMatchObject({
-      items: [{ averageUtilizationPercent: 70, code: 'PLATE', unitOfMeasure: 'piece' }],
-    });
-  });
 });

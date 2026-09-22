@@ -27,11 +27,12 @@ A **Stock returned to store** toast confirms it.
 
 ## From a Parts Sale
 
-1. Open the Parts Sale's Quote and click **Return to store** in its **Stock drawn** panel. From
-   **Inventory**, click **Return to store**, choose **Parts Sale**, and pick the Quote. On the stores
-   tablet, scan the Part, tap **Return to store**, then choose **To a Parts Sale**.
+1. Open the Parts Sale's Quote and click **Return to store** in its **Stock drawn** panel. Or open
+   **Inventory**, click **Return to store**, choose **Parts Sale**, and pick the Quote.
 2. Choose the **Part**, enter the **Quantity**, and set **Length (mm)** for a linear Part.
 3. Click or tap **Return stock**.
+
+On the stores tablet, scan the Part, tap **Return to store**, then choose **To a Parts Sale**.
 
 The return comes back at the cost the parts left with, and the Stock drawn panel's quantity falls.
 
@@ -57,8 +58,9 @@ selected or an earlier Checkout was recorded incorrectly. See
 
 - Returning is always better than posting a negative Checkout. It is the movement built for this,
   and it reverses at the right cost.
-- A cancelled Job, and a rejected or cancelled Parts Sale, can still take returns. That is deliberate — material recovered from work that
-  never finished would otherwise be stranded off the ledger.
+- A cancelled Job, and a rejected or cancelled Parts Sale, can still take returns. That is
+  deliberate — material recovered from work that never finished would otherwise be stranded off the
+  ledger.
 - Returning what is left over is the normal last step before closing a Job out. See
   [Close out a Job's stock](./close-out-a-job.md).
 - A disabled historic Recipient does not prevent a valid Operator from returning unused Parts.

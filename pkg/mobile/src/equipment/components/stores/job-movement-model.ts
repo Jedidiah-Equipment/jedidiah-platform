@@ -17,7 +17,11 @@ import {
   PostReturnToStoreInput as PostReturnToStoreInputSchema,
 } from '@pkg/schema/equipment';
 
-import { bucketQuantityOnHand, previewJobMovementWarnings } from '@/equipment/lib/movement-preview';
+import {
+  bucketQuantityOnHand,
+  drawnBucketQuantity,
+  previewJobMovementWarnings,
+} from '@/equipment/lib/movement-preview';
 
 /**
  * Who the tablet is posting to, or returning from, holding whatever that target has chosen so far.
@@ -124,18 +128,11 @@ export function previewStoresMovementWarnings({
       return previewJobMovementWarnings({ jobStock, lengthMm, movementType, quantity, row });
     case 'quote': {
       if (movementType === 'checkout') return previewRackOnlyCheckout(row, lengthMm, quantity);
-      // Silent until the sale's stock arrives: every figure would read zero and warn on any return.
       if (quoteStock === undefined) return [];
       const partStock = quoteStock.items.find((item) => item.partId === row.partId);
 
       return deriveMovementWarnings({
-        facts: {
-          drawnBucketQuantity:
-            lengthMm === null
-              ? (partStock?.drawnQuantity ?? 0)
-              : (partStock?.lengthBuckets.find((bucket) => bucket.lengthMm === lengthMm)?.drawnQuantity ?? 0),
-          kind: 'return-to-store',
-        },
+        facts: { drawnBucketQuantity: drawnBucketQuantity(partStock, lengthMm), kind: 'return-to-store' },
         quantity,
       });
     }

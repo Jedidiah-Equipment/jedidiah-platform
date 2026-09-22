@@ -21,6 +21,18 @@ export function bucketQuantityOnHand(row: StockOnHandRow, lengthMm: number | nul
   return row.buckets.find((bucket) => bucket.lengthMm === lengthMm)?.quantity ?? 0;
 }
 
+/** What a Job or Parts Sale still holds in one bucket; a movement with no length names the Part's whole draw. */
+export function drawnBucketQuantity(
+  partStock:
+    | { drawnQuantity: number; lengthBuckets: readonly { drawnQuantity: number; lengthMm: number }[] }
+    | undefined,
+  lengthMm: number | null,
+): number {
+  if (lengthMm === null) return partStock?.drawnQuantity ?? 0;
+
+  return partStock?.lengthBuckets.find((bucket) => bucket.lengthMm === lengthMm)?.drawnQuantity ?? 0;
+}
+
 export function previewJobMovementWarnings({
   jobStock,
   lengthMm,
@@ -40,11 +52,7 @@ export function previewJobMovementWarnings({
   const facts: JobMovementFacts = {
     bucketQuantityOnHand: bucketQuantityOnHand(row, lengthMm),
     cfoQuantity: partStock?.cfoQuantity ?? 0,
-    // A movement with no length names the Part's whole draw; the Job's buckets carry only lengths.
-    drawnBucketQuantity:
-      lengthMm === null
-        ? (partStock?.drawnQuantity ?? 0)
-        : (partStock?.lengthBuckets.find((bucket) => bucket.lengthMm === lengthMm)?.drawnQuantity ?? 0),
+    drawnBucketQuantity: drawnBucketQuantity(partStock, lengthMm),
     drawnQuantity: partStock?.drawnQuantity ?? 0,
   };
 

@@ -79,8 +79,8 @@ export const stockMovements = equipmentSchema.table(
     stocktakeSessionId: uuid('stocktake_session_id').references(() => stocktakeSessions.id, { onDelete: 'restrict' }),
     // A Return to Store linked to a Checkout Without a Job. The shape check below says which rows may
     // carry it; a trigger (migrations 0149 and 0161, like the driver role in contracting 0134) says what
-    // it may point at — a Checkout Without a Job, never one to a Job or a Parts Sale — and that the return inherits its Part, length and
-    // Recipient, which one row's CHECK cannot read off another row.
+    // it may point at — a Checkout Without a Job, never one to a Job or a Parts Sale — and that the
+    // return inherits its Part, length and Recipient, which one row's CHECK cannot read off another row.
     sourceCheckoutId: uuid('source_checkout_id'),
     unitCost: numeric('unit_cost', { mode: 'number', precision: 18, scale: 6 }),
   },

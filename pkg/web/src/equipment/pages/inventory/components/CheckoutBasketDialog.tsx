@@ -59,7 +59,6 @@ export function CheckoutBasketDialog({
   parts,
 }: {
   fixedJob?: FixedTarget;
-  /** Opens onto one Parts Sale, as its Quote page does. */
   fixedQuote?: FixedTarget;
   isLoadingParts?: boolean;
   items: readonly StockOnHandRow[];

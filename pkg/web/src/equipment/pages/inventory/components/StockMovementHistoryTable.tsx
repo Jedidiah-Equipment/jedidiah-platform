@@ -25,8 +25,8 @@ type MovementReference = {
 
 /**
  * What a movement points back at. A ledger row is never posted in a vacuum — stock arrives on an
- * order, is drawn to a Job, or is corrected by a stocktake walk — and each of those is a page the
- * reader can open to see why the number moved. A Parts Sale names the Quote the parts were sold on. A movement with no reference of its own (a
+ * order, is drawn to a Job or a Parts Sale, or is corrected by a stocktake walk — and each of those is
+ * a page the reader can open to see why the number moved. A movement with no reference of its own (a
  * hand-posted adjustment, a revaluation) genuinely has none; its note carries the reason instead.
  */
 function movementReference(item: StockMovementHistoryRow): MovementReference | null {

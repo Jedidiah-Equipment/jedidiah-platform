@@ -53,7 +53,7 @@ parts were sold on, and carries no CFO warning because a Parts Sale has no CFO.
 4. Review the lines, then click **Check out N lines**.
 
 On the stores tablet, scan the Part, tap **Check out**, choose **To a Parts Sale**, and pick the
-Quote. The tablet shows no price.
+Quote.
 
 ## Without a Job
 

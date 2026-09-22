@@ -14,6 +14,7 @@ import { isReleasableJobSlot, projectJobSlots, resolveUnitRemovalOffer } from '@
 import { DateOnlyIso, type UUID } from '@pkg/schema';
 import { type CancellationLinkedUnit, JobCancellationPlan, QuoteCancellationPlan } from '@pkg/schema/equipment';
 import { and, asc, eq, isNull } from 'drizzle-orm';
+
 import { loadQuoteStockBuckets } from '../inventory/quote-stock-read.js';
 import { JobNotFoundError } from '../jobs/job-errors.js';
 import { loadBayWorkingCalendar } from '../jobs/working-calendar-service.js';

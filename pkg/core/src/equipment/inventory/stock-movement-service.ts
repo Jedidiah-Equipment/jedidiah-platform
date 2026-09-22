@@ -481,14 +481,7 @@ async function loadDrawFacts(
     case 'quote': {
       const pool = quoteDrawPool(target.quoteId, partId, lengthMm);
 
-      if (target.movementType === 'checkout') {
-        const [bucketQuantityOnHand, unitCost] = await Promise.all([
-          sumDelta(db, bucketOnHandMatches(partId, lengthMm)),
-          deriveCheckoutUnitCost(db, partId, lengthMm),
-        ]);
-        // No Job, so no CFO: the same judgement a Checkout Without a Job gets.
-        return { facts: { bucketQuantityOnHand, cfoQuantity: 0, drawnQuantity: 0, kind: 'checkout' }, unitCost };
-      }
+      if (target.movementType === 'checkout') return loadUnplannedCheckoutFacts(db, partId, lengthMm);
 
       const [outstanding, unitCost] = await Promise.all([
         sumDelta(db, pool).then((delta) => -delta),
@@ -496,15 +489,8 @@ async function loadDrawFacts(
       ]);
       return { facts: { drawnBucketQuantity: outstanding, kind: 'return-to-store' }, unitCost };
     }
-    case 'recipient': {
-      const [bucketQuantityOnHand, unitCost] = await Promise.all([
-        sumDelta(db, bucketOnHandMatches(partId, lengthMm)),
-        deriveCheckoutUnitCost(db, partId, lengthMm),
-      ]);
-
-      // No Job, so nothing planned this draw: a CFO of zero is what "no CFO" means to the judgement.
-      return { facts: { bucketQuantityOnHand, cfoQuantity: 0, drawnQuantity: 0, kind: 'checkout' }, unitCost };
-    }
+    case 'recipient':
+      return loadUnplannedCheckoutFacts(db, partId, lengthMm);
     case 'source': {
       const pool = sourceDrawPool(target.source.id);
       const [outstanding, unitCost] = await Promise.all([
@@ -515,6 +501,23 @@ async function loadDrawFacts(
       return { facts: { drawnBucketQuantity: outstanding, kind: 'return-to-store' }, unitCost };
     }
   }
+}
+
+/**
+ * A draw no CFO planned — to a person or a Parts Sale. A CFO of zero is what "no CFO" means to the
+ * judgement, so only the rack can warn.
+ */
+async function loadUnplannedCheckoutFacts(
+  db: DatabaseTransaction,
+  partId: UUID,
+  lengthMm: number | null,
+): Promise<{ facts: StockMovementFacts; unitCost: number | null }> {
+  const [bucketQuantityOnHand, unitCost] = await Promise.all([
+    sumDelta(db, bucketOnHandMatches(partId, lengthMm)),
+    deriveCheckoutUnitCost(db, partId, lengthMm),
+  ]);
+
+  return { facts: { bucketQuantityOnHand, cfoQuantity: 0, drawnQuantity: 0, kind: 'checkout' }, unitCost };
 }
 
 /** A Job's draws and returns of one Part in one length bucket: what a Job return reverses. */

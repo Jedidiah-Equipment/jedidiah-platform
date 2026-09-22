@@ -26,11 +26,16 @@ import { LengthBucketField } from './LengthBucketField';
 import { MovementWarningModal } from './MovementWarningModal';
 import { PostButton } from './PostButton';
 import { hasRequiredLength, parseQuantity, QuantityField } from './QuantityField';
+import { QuotePicker } from './QuotePicker';
 import { RecipientPicker } from './RecipientPicker';
 import { SourceCheckoutPicker } from './SourceCheckoutPicker';
 import { NoActorNotice, StoresPartScreen } from './StoresPartScreen';
 
-const MODE_LABELS: Record<StoresMovementMode, string> = { job: 'To a Job', person: 'Without a Job' };
+const MODE_LABELS: Record<StoresMovementMode, string> = {
+  job: 'To a Job',
+  person: 'Without a Job',
+  quote: 'To a Parts Sale',
+};
 
 /**
  * Checkout and return-to-store, which are the same screen twice: pick the target, key the quantity,
@@ -118,6 +123,8 @@ function JobMovementForm({
   const parsedQuantity = parseQuantity(quantity);
   const parsedLength = isLinear ? parseQuantity(lengthMm) : null;
   const jobIdToPost = target.kind === 'job' ? (fixedJobId ?? target.job?.id ?? null) : null;
+  // A Parts Sale checkout judges against the rack alone; only its return needs what the sale still holds.
+  const quoteIdToJudge = target.kind === 'quote' && !isCheckout ? (target.quote?.id ?? null) : null;
   const canPost =
     actorUserId !== null &&
     parsedQuantity !== null &&
@@ -128,11 +135,15 @@ function JobMovementForm({
   const jobStockQuery = useQuery(
     trpc.inventory.jobStock.queryOptions({ jobId: jobIdToPost ?? '' }, { enabled: jobIdToPost !== null }),
   );
+  const quoteStockQuery = useQuery(
+    trpc.inventory.quoteStock.queryOptions({ quoteId: quoteIdToJudge ?? '' }, { enabled: quoteIdToJudge !== null }),
+  );
   const previewWarnings = previewStoresMovementWarnings({
     jobStock: jobStockQuery.data,
     lengthMm: parsedLength,
     movementType,
     quantity: parsedQuantity,
+    quoteStock: quoteStockQuery.data,
     row,
     target,
   });
@@ -145,7 +156,7 @@ function JobMovementForm({
             MOVEMENT TARGET
           </Text>
           <View className="flex-row gap-2">
-            {(['job', 'person'] as const).map((candidate) => (
+            {(['job', 'quote', 'person'] as const).map((candidate) => (
               <Pressable
                 accessibilityRole="button"
                 accessibilityState={{ selected: mode === candidate }}
@@ -156,7 +167,7 @@ function JobMovementForm({
                   setSearch('');
                 }}
               >
-                <Text className="text-sm text-surface-foreground" weight="semibold">
+                <Text className="text-center text-sm text-surface-foreground" weight="semibold">
                   {MODE_LABELS[candidate]}
                 </Text>
               </Pressable>
@@ -187,6 +198,14 @@ function JobMovementForm({
             selected={target.job}
           />
         ) : null
+      ) : target.kind === 'quote' ? (
+        <QuotePicker
+          movementType={movementType}
+          onSearchChange={setSearch}
+          onSelect={(quote) => setTarget({ kind: 'quote', quote })}
+          search={search}
+          selected={target.quote}
+        />
       ) : target.kind === 'recipient' ? (
         <>
           <RecipientPicker
@@ -208,7 +227,7 @@ function JobMovementForm({
             />
           </View>
         </>
-      ) : (
+      ) : target.kind === 'source' ? (
         <SourceCheckoutPicker
           onSearchChange={setSearch}
           onSelect={(sourceCheckout) => setTarget({ kind: 'source', sourceCheckout })}
@@ -216,7 +235,7 @@ function JobMovementForm({
           search={search}
           selected={target.sourceCheckout}
         />
-      )}
+      ) : null}
 
       <QuantityField
         label="Quantity"

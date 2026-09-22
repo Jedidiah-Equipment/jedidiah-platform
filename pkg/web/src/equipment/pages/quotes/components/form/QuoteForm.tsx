@@ -44,6 +44,7 @@ import { QuoteAssembliesSelector } from './QuoteAssembliesSelector.js';
 import { QuoteDocumentsSection } from './QuoteDocumentsSection.js';
 import { QuoteFormSection } from './QuoteFormSection.js';
 import { QuoteRightPanel } from './QuoteRightPanel.js';
+import { QuoteStockSection } from './QuoteStockSection.js';
 import { QuoteAddWorkItemButton, QuoteWorkItemsEditor } from './QuoteWorkItemsEditor.js';
 
 type QuoteFormProps = {
@@ -71,6 +72,7 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ onSave, priorityQuote, quo
   const salespeopleOptions = useSalesPersonOptions();
   const auditAccess = useCan('equipment_audit:read');
   const jobReadAccess = useCan('equipment_job:read');
+  const inventoryReadAccess = useCan('equipment_inventory:read');
   const canOpenJobs = jobReadAccess.can;
   const trpc = useTRPC();
   const [generationWarnings, setGenerationWarnings] = useState<QuoteDocumentGenerationWarning[]>([]);
@@ -292,6 +294,10 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ onSave, priorityQuote, quo
                   <QuoteFormSection icon={IconNotes} title="Internal notes">
                     <form.AppField name="notes">{(field) => <field.TextareaField rows={4} />}</form.AppField>
                   </QuoteFormSection>
+
+                  {quote.kind === 'custom' && quote.isPartsSale && inventoryReadAccess.can ? (
+                    <QuoteStockSection quote={quote} />
+                  ) : null}
 
                   {isCustom ? null : (
                     <QuoteFormSection

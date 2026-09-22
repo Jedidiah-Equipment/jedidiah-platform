@@ -14,7 +14,7 @@ import { isReleasableJobSlot, projectJobSlots, resolveUnitRemovalOffer } from '@
 import { DateOnlyIso, type UUID } from '@pkg/schema';
 import { type CancellationLinkedUnit, JobCancellationPlan, QuoteCancellationPlan } from '@pkg/schema/equipment';
 import { and, asc, eq, isNull } from 'drizzle-orm';
-
+import { loadQuoteStockBuckets } from '../inventory/quote-stock-read.js';
 import { JobNotFoundError } from '../jobs/job-errors.js';
 import { loadBayWorkingCalendar } from '../jobs/working-calendar-service.js';
 import { QuoteNotFoundError } from '../quotes/quote-errors.js';
@@ -42,13 +42,16 @@ type JobCancellationFacts = {
  */
 export async function getQuoteCancellationPlan({ db, id }: { db: Db; id: UUID }): Promise<QuoteCancellationPlan> {
   const [quote] = await db
-    .select({ id: quotes.id, productUnitId: quotes.productUnitId })
+    .select({ id: quotes.id, isPartsSale: quotes.isPartsSale, productUnitId: quotes.productUnitId })
     .from(quotes)
     .where(eq(quotes.id, id));
 
   if (!quote) {
     throw new QuoteNotFoundError(id);
   }
+
+  // A Parts Sale sources no Job, so stock still out against it is the one thing cancelling leaves behind.
+  const drawnStock = quote.isPartsSale ? await loadOutstandingQuoteStock(db, id) : [];
 
   const [job] = await db
     .select({
@@ -62,13 +65,14 @@ export async function getQuoteCancellationPlan({ db, id }: { db: Db; id: UUID })
     .where(and(eq(jobs.quoteId, id), isNull(jobs.cancelledAt)));
 
   if (!job) {
-    return QuoteCancellationPlan.parse({ job: null, unit: null });
+    return QuoteCancellationPlan.parse({ drawnStock, job: null, unit: null });
   }
 
   const facts = await loadJobCancellationFacts({ completedOn: job.completedOn, jobId: job.id, db });
   const sellsExistingUnit = quote.productUnitId !== null;
 
   return QuoteCancellationPlan.parse({
+    drawnStock,
     job: {
       code: job.code,
       description: job.description,
@@ -77,6 +81,24 @@ export async function getQuoteCancellationPlan({ db, id }: { db: Db; id: UUID })
     },
     unit: sellsExistingUnit ? null : await loadLinkedUnit({ db, facts, productUnitId: job.productUnitId }),
   });
+}
+
+async function loadOutstandingQuoteStock(db: Db, quoteId: UUID): Promise<QuoteCancellationPlan['drawnStock']> {
+  const buckets = await loadQuoteStockBuckets(db, quoteId);
+
+  return buckets.flatMap((bucket) =>
+    bucket.drawnQuantity > 0
+      ? [
+          {
+            lengthMm: bucket.lengthMm,
+            outstandingQuantity: bucket.drawnQuantity,
+            partCode: bucket.partCode,
+            partName: bucket.partName,
+            unitOfMeasure: bucket.unitOfMeasure,
+          },
+        ]
+      : [],
+  );
 }
 
 /**

@@ -5,6 +5,7 @@ import {
   jobs,
   parts,
   purchaseOrders,
+  quotes,
   stockMovements,
   stocktakeSessions,
   supplier,
@@ -19,6 +20,7 @@ import {
   derivePartStockActions,
   isCheckoutWithoutJob,
   type JobMovementFacts,
+  PARTS_SALE_CHECKOUT_STATUSES,
   type StockMovementFacts,
   valueStockBucket,
   valueStockMovement,
@@ -33,6 +35,7 @@ import type {
   PostCheckoutBasketInput,
   PostCheckoutInput,
   PostJobMovementInput,
+  PostQuoteMovementInput,
   PostReturnToStoreInput,
   PostRevaluationInput,
   StockMovement,
@@ -55,7 +58,13 @@ import { and, asc, eq, inArray, ne, or, type SQL, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { lockJob, lockMutableJob } from '../jobs/job-mutation-guards.js';
 import { loadOpenOrderLines } from '../purchase-orders/purchase-order-service.js';
-import { CheckoutRecipientIneligibleError, InvalidSourceCheckoutError } from './checkout-errors.js';
+import {
+  CheckoutQuoteNotFoundError,
+  CheckoutQuoteNotOpenError,
+  CheckoutQuoteNotPartsSaleError,
+  CheckoutRecipientIneligibleError,
+  InvalidSourceCheckoutError,
+} from './checkout-errors.js';
 import { JobClosedOutError } from './close-out-errors.js';
 import { getJobCloseOutAt } from './close-out-service.js';
 
@@ -156,6 +165,8 @@ export async function postRevaluation({
  */
 type DrawTarget =
   | { jobId: UUID; kind: 'job'; movementType: JobStockMovementType }
+  /** A Parts Sale: parts leaving for a customer's Quote, with no Job and so no CFO. */
+  | { kind: 'quote'; movementType: JobStockMovementType; quoteId: UUID }
   /** A Checkout Without a Job: drawn to a person for a stated purpose, consumed on the spot. */
   | { kind: 'recipient'; note: string; recipientUserId: AuthId }
   /** A Return to Store linked to one Checkout Without a Job, which fixes its Part, length and Recipient. */
@@ -194,6 +205,30 @@ export async function postJobMovement({
   );
 }
 
+/** Draws a Part to a Parts Sale, or returns it: the Job shape, pooled by Quote instead of Job. */
+async function postQuoteMovement({
+  actorUserId,
+  db,
+  input,
+  movementType,
+}: {
+  actorUserId: AuthId;
+  db: Db;
+  input: PostQuoteMovementInput;
+  movementType: JobStockMovementType;
+}): Promise<StockMovementPostResult> {
+  return db.transaction((tx) =>
+    postDraw(tx, {
+      actorUserId,
+      assertedActorUserId: input.actorUserId,
+      lengthMm: input.lengthMm,
+      partId: input.partId,
+      quantity: input.quantity,
+      target: { kind: 'quote', movementType, quoteId: input.quoteId },
+    }),
+  );
+}
+
 export async function postCheckout({
   actorUserId,
   db,
@@ -204,6 +239,7 @@ export async function postCheckout({
   input: PostCheckoutInput;
 }): Promise<StockMovementPostResult> {
   if ('jobId' in input) return postJobMovement({ actorUserId, db, input, movementType: 'checkout' });
+  if ('quoteId' in input) return postQuoteMovement({ actorUserId, db, input, movementType: 'checkout' });
 
   return db.transaction((tx) =>
     postDraw(tx, {
@@ -230,7 +266,9 @@ export async function postCheckoutBasket({
   const target: DrawTarget =
     'jobId' in input
       ? { jobId: input.jobId, kind: 'job', movementType: 'checkout' }
-      : { kind: 'recipient', note: input.note, recipientUserId: input.recipientUserId };
+      : 'quoteId' in input
+        ? { kind: 'quote', movementType: 'checkout', quoteId: input.quoteId }
+        : { kind: 'recipient', note: input.note, recipientUserId: input.recipientUserId };
 
   return db.transaction(async (tx) => {
     const partIds = [...new Set(input.lines.map((line) => line.partId))].sort();
@@ -265,6 +303,7 @@ export async function postReturnToStore({
   input: PostReturnToStoreInput;
 }): Promise<StockMovementPostResult> {
   if ('jobId' in input) return postJobMovement({ actorUserId, db, input, movementType: 'return-to-store' });
+  if ('quoteId' in input) return postQuoteMovement({ actorUserId, db, input, movementType: 'return-to-store' });
 
   return db.transaction(async (tx) => {
     const source = await loadSourceCheckout(tx, input.sourceCheckoutId);
@@ -358,6 +397,7 @@ async function drawLine(
 function drawMovementType(target: DrawTarget): JobStockMovementType {
   switch (target.kind) {
     case 'job':
+    case 'quote':
       return target.movementType;
     case 'recipient':
       return 'checkout';
@@ -370,6 +410,8 @@ function drawColumns(target: DrawTarget): Partial<typeof stockMovements.$inferIn
   switch (target.kind) {
     case 'job':
       return { jobId: target.jobId };
+    case 'quote':
+      return { quoteId: target.quoteId };
     case 'recipient':
       return { note: target.note, recipientUserId: target.recipientUserId };
     case 'source':
@@ -387,6 +429,20 @@ async function lockDrawTarget(tx: DatabaseTransaction, target: DrawTarget): Prom
         throw new JobClosedOutError(target.jobId);
       }
       return;
+    case 'quote': {
+      const [quote] = await tx
+        .select({ id: quotes.id, isPartsSale: quotes.isPartsSale, status: quotes.status })
+        .from(quotes)
+        .where(eq(quotes.id, target.quoteId))
+        .for('update');
+      if (!quote) throw new CheckoutQuoteNotFoundError(target.quoteId);
+      if (!quote.isPartsSale) throw new CheckoutQuoteNotPartsSaleError(target.quoteId);
+      // Returns stay open whatever became of the sale: recovered stock must reach the ledger.
+      if (target.movementType === 'checkout' && !PARTS_SALE_CHECKOUT_STATUSES.has(quote.status)) {
+        throw new CheckoutQuoteNotOpenError(target.quoteId);
+      }
+      return;
+    }
     case 'recipient':
       await assertEligibleRecipient(tx, target.recipientUserId);
       return;
@@ -422,6 +478,24 @@ async function loadDrawFacts(
 
       return { facts: { ...context, kind: target.movementType }, unitCost };
     }
+    case 'quote': {
+      const pool = quoteDrawPool(target.quoteId, partId, lengthMm);
+
+      if (target.movementType === 'checkout') {
+        const [bucketQuantityOnHand, unitCost] = await Promise.all([
+          sumDelta(db, bucketOnHandMatches(partId, lengthMm)),
+          deriveCheckoutUnitCost(db, partId, lengthMm),
+        ]);
+        // No Job, so no CFO: the same judgement a Checkout Without a Job gets.
+        return { facts: { bucketQuantityOnHand, cfoQuantity: 0, drawnQuantity: 0, kind: 'checkout' }, unitCost };
+      }
+
+      const [outstanding, unitCost] = await Promise.all([
+        sumDelta(db, pool).then((delta) => -delta),
+        deriveReturnUnitCost(db, pool, quantity),
+      ]);
+      return { facts: { drawnBucketQuantity: outstanding, kind: 'return-to-store' }, unitCost };
+    }
     case 'recipient': {
       const [bucketQuantityOnHand, unitCost] = await Promise.all([
         sumDelta(db, bucketOnHandMatches(partId, lengthMm)),
@@ -453,6 +527,16 @@ function jobDrawPool(jobId: UUID, partId: UUID, lengthMm: number | null): SQL {
   ) as SQL;
 }
 
+/** A Parts Sale's draws and returns of one Part in one length bucket: the Job pool keyed on the Quote. */
+function quoteDrawPool(quoteId: UUID, partId: UUID, lengthMm: number | null): SQL {
+  return and(
+    eq(stockMovements.quoteId, quoteId),
+    eq(stockMovements.partId, partId),
+    bucketMatches(lengthMm),
+    inArray(stockMovements.movementType, JOB_STOCK_MOVEMENT_TYPES),
+  ) as SQL;
+}
+
 /** One Checkout Without a Job and the returns linked to it: what a source-linked return reverses. */
 function sourceDrawPool(sourceCheckoutId: UUID): SQL {
   return or(eq(stockMovements.id, sourceCheckoutId), eq(stockMovements.sourceCheckoutId, sourceCheckoutId)) as SQL;
@@ -475,6 +559,7 @@ async function loadSourceCheckout(db: DatabaseTransaction, sourceCheckoutId: UUI
       lengthMm: stockMovements.lengthMm,
       movementType: stockMovements.movementType,
       partId: stockMovements.partId,
+      quoteId: stockMovements.quoteId,
       recipientUserId: stockMovements.recipientUserId,
     })
     .from(stockMovements)
@@ -747,6 +832,8 @@ export async function getStockMovementHistory({
       partId: stockMovements.partId,
       purchaseOrderId: stockMovements.purchaseOrderId,
       purchaseOrderCode: purchaseOrders.code,
+      quoteCode: quotes.code,
+      quoteId: stockMovements.quoteId,
       recipientName: recipient.name,
       recipientUserId: stockMovements.recipientUserId,
       reason: stockMovements.reason,
@@ -761,6 +848,7 @@ export async function getStockMovementHistory({
     .innerJoin(user, eq(user.id, stockMovements.actorUserId))
     .leftJoin(purchaseOrders, eq(purchaseOrders.id, stockMovements.purchaseOrderId))
     .leftJoin(jobs, eq(jobs.id, stockMovements.jobId))
+    .leftJoin(quotes, eq(quotes.id, stockMovements.quoteId))
     .leftJoin(stocktakeSessions, eq(stocktakeSessions.id, stockMovements.stocktakeSessionId))
     .leftJoin(recipient, eq(recipient.id, stockMovements.recipientUserId))
     .leftJoin(sourceCheckout, eq(sourceCheckout.id, stockMovements.sourceCheckoutId))

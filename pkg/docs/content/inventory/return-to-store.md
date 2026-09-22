@@ -1,7 +1,7 @@
 # Return to Store
 
-A Return to Store puts a Part back on the rack against the Job or Checkout Without a Job that drew
-it. It comes back at the cost its exact source is still carrying, rather than at whatever the
+A Return to Store puts a Part back on the rack against the Job, Parts Sale, or Checkout Without a Job
+that drew it. It comes back at the cost its exact source is still carrying, rather than at whatever the
 average has drifted to since.
 
 ## From the Job
@@ -15,7 +15,7 @@ average has drifted to since.
 
 1. Open **Inventory**.
 2. Click **Return to store**.
-3. Keep **To a Job**, then click **Select Job** and choose the Job.
+3. Keep **Job**, then click **Select Job** and choose the Job. For a Parts Sale, see below.
    The picker opens on **Last updated**; **Last created** and **Not complete** are the other two
    lists. Search narrows the list you are on, by Job code, Product, work title, or Customer. Returns
    are never refused for lifecycle state, so **Last updated** reaches every Job. The footer says how
@@ -24,6 +24,16 @@ average has drifted to since.
 5. Click **Return stock**.
 
 A **Stock returned to store** toast confirms it.
+
+## From a Parts Sale
+
+1. Open the Parts Sale's Quote and click **Return to store** in its **Stock drawn** panel. From
+   **Inventory**, click **Return to store**, choose **Parts Sale**, and pick the Quote. On the stores
+   tablet, scan the Part, tap **Return to store**, then choose **To a Parts Sale**.
+2. Choose the **Part**, enter the **Quantity**, and set **Length (mm)** for a linear Part.
+3. Click or tap **Return stock**.
+
+The return comes back at the cost the parts left with, and the Stock drawn panel's quantity falls.
 
 ## From a Checkout Without a Job
 
@@ -47,7 +57,7 @@ selected or an earlier Checkout was recorded incorrectly. See
 
 - Returning is always better than posting a negative Checkout. It is the movement built for this,
   and it reverses at the right cost.
-- A cancelled Job can still take returns. That is deliberate — material recovered from work that
+- A cancelled Job, and a rejected or cancelled Parts Sale, can still take returns. That is deliberate — material recovered from work that
   never finished would otherwise be stranded off the ledger.
 - Returning what is left over is the normal last step before closing a Job out. See
   [Close out a Job's stock](./close-out-a-job.md).

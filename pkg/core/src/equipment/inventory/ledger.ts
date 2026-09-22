@@ -155,9 +155,16 @@ export function bucketMatches(lengthMm: number | null): SQL {
   return lengthMm === null ? isNull(stockMovements.lengthMm) : eq(stockMovements.lengthMm, lengthMm);
 }
 
-/** The ledger rows that are Checkouts Without a Job; the shape constraint pins the rest of such a row. */
+/**
+ * The ledger rows that are Checkouts Without a Job; the shape constraint pins the rest of such a row.
+ * A Parts Sale Checkout carries no Job either, so the Quote must be absent too.
+ */
 export function checkoutWithoutJobMatches(): SQL {
-  return and(eq(stockMovements.movementType, 'checkout'), isNull(stockMovements.jobId)) as SQL;
+  return and(
+    eq(stockMovements.movementType, 'checkout'),
+    isNull(stockMovements.jobId),
+    isNull(stockMovements.quoteId),
+  ) as SQL;
 }
 
 /** The net delta of whatever slice of the ledger the condition selects. */

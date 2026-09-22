@@ -6,9 +6,11 @@ import { Price } from '../../common/price.js';
 import { nullableTrimmedText, nullableTrimmedTextInput, requiredTrimmedText, SearchText } from '../../common/text.js';
 import { NullableThumbnailDataUrl } from '../../common/thumbnail.js';
 import { UUID } from '../../common/uuid.js';
-import { JobCode, PurchaseOrderCode } from '../common/public-code.js';
+import { JobCode, PurchaseOrderCode, QuoteCode } from '../common/public-code.js';
 import { JobPickerOption, JobPickerTab } from '../jobs/job.js';
 import { PartCode, PartStandardPurchaseLengthMm, PartStockTrackingMode, PartUnitOfMeasure } from '../parts/part.js';
+import { QuoteStatus } from '../quotes/quote.js';
+import { QuoteWorkTitle } from '../quotes/quote-shared.js';
 import { SupplierCompanyName } from '../suppliers/supplier.js';
 import { declareInventoryCostFields, InventoryCost, InventoryUnitCost, InventoryValue } from './inventory-cost.js';
 import { StocktakeScope } from './stocktake-scope.js';
@@ -116,9 +118,17 @@ export const PostCheckoutWithoutJobInput = MovementTargetInput.extend({
   recipientUserId: AuthId,
 }).strict();
 
-/** Existing Job payloads remain one strict arm; mixed Job/person targets match neither arm. */
+/** A draw to, or a return from, a Parts Sale: the Job shape with a Quote where the Job would be. */
+export type PostQuoteMovementInput = z.infer<typeof PostQuoteMovementInput>;
+export const PostQuoteMovementInput = MovementTargetInput.extend({
+  actorUserId: AssertedActorUserId,
+  quantity: StockMovementQuantity,
+  quoteId: UUID,
+}).strict();
+
+/** Every arm is strict, so a payload naming two targets matches none. */
 export type PostCheckoutInput = z.infer<typeof PostCheckoutInput>;
-export const PostCheckoutInput = z.union([PostJobMovementInput, PostCheckoutWithoutJobInput]);
+export const PostCheckoutInput = z.union([PostJobMovementInput, PostQuoteMovementInput, PostCheckoutWithoutJobInput]);
 
 /** One Part leaving in a Basket. No target here — the Basket carries it once for every line. */
 export type CheckoutBasketLineInput = z.infer<typeof CheckoutBasketLineInput>;
@@ -152,6 +162,11 @@ export const PostJobCheckoutBasketInput = z
   .object({ actorUserId: AssertedActorUserId, jobId: UUID, lines: CheckoutBasketLines })
   .strict();
 
+export type PostQuoteCheckoutBasketInput = z.infer<typeof PostQuoteCheckoutBasketInput>;
+export const PostQuoteCheckoutBasketInput = z
+  .object({ actorUserId: AssertedActorUserId, lines: CheckoutBasketLines, quoteId: UUID })
+  .strict();
+
 export type PostCheckoutBasketWithoutJobInput = z.infer<typeof PostCheckoutBasketWithoutJobInput>;
 export const PostCheckoutBasketWithoutJobInput = z
   .object({
@@ -163,7 +178,11 @@ export const PostCheckoutBasketWithoutJobInput = z
   .strict();
 
 export type PostCheckoutBasketInput = z.infer<typeof PostCheckoutBasketInput>;
-export const PostCheckoutBasketInput = z.union([PostJobCheckoutBasketInput, PostCheckoutBasketWithoutJobInput]);
+export const PostCheckoutBasketInput = z.union([
+  PostJobCheckoutBasketInput,
+  PostQuoteCheckoutBasketInput,
+  PostCheckoutBasketWithoutJobInput,
+]);
 
 /** A linked return derives every stock target fact from its original no-Job Checkout. */
 export type PostCheckoutReturnInput = z.infer<typeof PostCheckoutReturnInput>;
@@ -176,7 +195,7 @@ export const PostCheckoutReturnInput = z
   .strict();
 
 export type PostReturnToStoreInput = z.infer<typeof PostReturnToStoreInput>;
-export const PostReturnToStoreInput = z.union([PostJobMovementInput, PostCheckoutReturnInput]);
+export const PostReturnToStoreInput = z.union([PostJobMovementInput, PostQuoteMovementInput, PostCheckoutReturnInput]);
 
 export type PostAdjustmentInput = z.infer<typeof PostAdjustmentInput>;
 export const PostAdjustmentInput = MovementTargetInput.extend({
@@ -262,6 +281,7 @@ export const StockMovement = z.object({
   note: nullableTrimmedText(),
   partId: UUID,
   purchaseOrderId: UUID.nullable(),
+  quoteId: UUID.nullable(),
   recipientUserId: AuthId.nullable(),
   reason: StockMovementReason.nullable(),
   sourceCheckoutId: UUID.nullable(),
@@ -459,6 +479,46 @@ export const InventoryJobOptionListInput = CursorQueryInput.extend({
 export type InventoryJobOptionListResult = z.infer<typeof InventoryJobOptionListResult>;
 export const InventoryJobOptionListResult = createCursorQueryResult(JobPickerOption);
 
+/** The Quote facts a stores surface needs. They ride inventory reads because `stores` holds no Quote permission. */
+export type InventoryQuoteOption = z.infer<typeof InventoryQuoteOption>;
+export const InventoryQuoteOption = z.object({
+  code: QuoteCode,
+  customerCompanyName: z.string(),
+  id: UUID,
+  status: QuoteStatus,
+  workTitle: QuoteWorkTitle,
+});
+
+export type InventoryQuoteOptionListInput = z.infer<typeof InventoryQuoteOptionListInput>;
+export const InventoryQuoteOptionListInput = CursorQueryInput.extend({
+  movementType: JobStockMovementType,
+  search: SearchText,
+});
+
+export type InventoryQuoteOptionListResult = z.infer<typeof InventoryQuoteOptionListResult>;
+export const InventoryQuoteOptionListResult = createCursorQueryResult(InventoryQuoteOption);
+
+/** One Part still drawn to a Parts Sale, net of its returns. No CFO half: a Parts Sale plans nothing. */
+export type QuoteStockRow = z.infer<typeof QuoteStockRow>;
+export const QuoteStockRow = z.object({
+  drawnQuantity: z.number().finite(),
+  /** What the still-drawn stock left stores at. Gated like every other inventory cost. */
+  drawnValue: InventoryValue,
+  lengthBuckets: z.array(JobStockLengthBucket),
+  partCode: z.string(),
+  partId: UUID,
+  partName: z.string(),
+  unitOfMeasure: PartUnitOfMeasure,
+});
+
+export const QuoteStockRowCostFields = declareInventoryCostFields(QuoteStockRow, 'drawnValue');
+
+export type QuoteStockInput = z.infer<typeof QuoteStockInput>;
+export const QuoteStockInput = z.object({ quoteId: UUID }).strict();
+
+export type QuoteStockResult = z.infer<typeof QuoteStockResult>;
+export const QuoteStockResult = z.object({ items: z.array(QuoteStockRow), quote: InventoryQuoteOption });
+
 /**
  * What a scanned Part label resolves to. The code is matched exactly — a Code 128 read is all-or-
  * nothing, so a partial match would mean a damaged label silently resolved to a neighbouring Part.
@@ -555,7 +615,8 @@ export const StockMovementHistoryInput = z.object({ partId: UUID });
 
 /**
  * One ledger row as the Part's history shows it, carrying the reference that explains *why* it was
- * posted: the order it arrived on, the Job it was drawn to, or the stocktake walk that counted it.
+ * posted: the order it arrived on, the Job or Parts Sale it was drawn to, or the stocktake walk that
+ * counted it.
  * Each is the movement's own foreign key resolved to something a reader can follow.
  */
 export type StockMovementHistoryRow = z.infer<typeof StockMovementHistoryRow>;
@@ -564,6 +625,7 @@ export const StockMovementHistoryRow = StockMovement.extend({
   jobCode: JobCode.nullable(),
   movementValue: InventoryValue,
   purchaseOrderCode: PurchaseOrderCode.nullable(),
+  quoteCode: QuoteCode.nullable(),
   recipientName: z.string().nullable(),
   runningBalance: z.number().finite(),
   sourceCheckoutCreatedAt: DateIso.nullable(),

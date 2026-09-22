@@ -19,14 +19,14 @@ import { formatUnitCost, getPartQuantityUnitDisplay } from '@/equipment/utils/pa
 
 type MovementReference = {
   id: UUID;
-  kind: 'job' | 'purchase-order' | 'source-checkout' | 'stocktake';
+  kind: 'job' | 'purchase-order' | 'quote' | 'source-checkout' | 'stocktake';
   label: string;
 };
 
 /**
  * What a movement points back at. A ledger row is never posted in a vacuum — stock arrives on an
  * order, is drawn to a Job, or is corrected by a stocktake walk — and each of those is a page the
- * reader can open to see why the number moved. A movement with no reference of its own (a
+ * reader can open to see why the number moved. A Parts Sale names the Quote the parts were sold on. A movement with no reference of its own (a
  * hand-posted adjustment, a revaluation) genuinely has none; its note carries the reason instead.
  */
 function movementReference(item: StockMovementHistoryRow): MovementReference | null {
@@ -45,6 +45,10 @@ function movementReference(item: StockMovementHistoryRow): MovementReference | n
     return { id: item.jobId, kind: 'job', label: item.jobCode };
   }
 
+  if (item.quoteId && item.quoteCode) {
+    return { id: item.quoteId, kind: 'quote', label: item.quoteCode };
+  }
+
   if (item.stocktakeSessionId && item.stocktakeSessionScope) {
     return {
       id: item.stocktakeSessionId,
@@ -58,12 +62,21 @@ function movementReference(item: StockMovementHistoryRow): MovementReference | n
 
 const REFERENCE_LINK_CLASS = 'font-medium underline-offset-4 hover:underline';
 
-function MovementReferenceCell({ canReadJobs, item }: { canReadJobs: boolean; item: StockMovementHistoryRow }) {
+function MovementReferenceCell({
+  canReadJobs,
+  canReadQuotes,
+  item,
+}: {
+  canReadJobs: boolean;
+  canReadQuotes: boolean;
+  item: StockMovementHistoryRow;
+}) {
   const reference = movementReference(item);
   if (!reference) return '—';
 
   // A reference nobody may open is still worth naming; it just stops pretending to be a way there.
   if (reference.kind === 'job' && !canReadJobs) return reference.label;
+  if (reference.kind === 'quote' && !canReadQuotes) return reference.label;
   if (reference.kind === 'source-checkout') return reference.label;
 
   if (reference.kind === 'purchase-order') {
@@ -82,6 +95,14 @@ function MovementReferenceCell({ canReadJobs, item }: { canReadJobs: boolean; it
     );
   }
 
+  if (reference.kind === 'quote') {
+    return (
+      <Link className={REFERENCE_LINK_CLASS} params={{ id: reference.id }} to="/equipment/quotes/$id/edit">
+        {reference.label}
+      </Link>
+    );
+  }
+
   return (
     <Link
       className={REFERENCE_LINK_CLASS}
@@ -95,12 +116,14 @@ function MovementReferenceCell({ canReadJobs, item }: { canReadJobs: boolean; it
 
 export function StockMovementHistoryTable({
   canReadJobs,
+  canReadQuotes,
   items,
   onReturnCheckout,
   showCosts,
   unitOfMeasure,
 }: {
   canReadJobs: boolean;
+  canReadQuotes: boolean;
   items: readonly StockMovementHistoryRow[];
   /** Offered on each Checkout Without a Job; absent where the reader may not post, or the Part refuses returns. */
   onReturnCheckout?: ((sourceCheckoutId: UUID) => void) | undefined;
@@ -108,8 +131,8 @@ export function StockMovementHistoryTable({
   unitOfMeasure: PartUnitOfMeasure;
 }) {
   const columns = useMemo(
-    () => createStockMovementHistoryColumns({ canReadJobs, onReturnCheckout, showCosts, unitOfMeasure }),
-    [canReadJobs, onReturnCheckout, showCosts, unitOfMeasure],
+    () => createStockMovementHistoryColumns({ canReadJobs, canReadQuotes, onReturnCheckout, showCosts, unitOfMeasure }),
+    [canReadJobs, canReadQuotes, onReturnCheckout, showCosts, unitOfMeasure],
   );
   const data = useMemo(() => [...items], [items]);
   const table = useDataTable({
@@ -134,11 +157,13 @@ export function StockMovementHistoryTable({
 
 function createStockMovementHistoryColumns({
   canReadJobs,
+  canReadQuotes,
   onReturnCheckout,
   showCosts,
   unitOfMeasure,
 }: {
   canReadJobs: boolean;
+  canReadQuotes: boolean;
   onReturnCheckout: ((sourceCheckoutId: UUID) => void) | undefined;
   showCosts: boolean;
   unitOfMeasure: PartUnitOfMeasure;
@@ -198,7 +223,9 @@ function createStockMovementHistoryColumns({
       : []),
     {
       accessorFn: (item) => movementReference(item)?.label ?? '—',
-      cell: ({ row }) => <MovementReferenceCell canReadJobs={canReadJobs} item={row.original} />,
+      cell: ({ row }) => (
+        <MovementReferenceCell canReadJobs={canReadJobs} canReadQuotes={canReadQuotes} item={row.original} />
+      ),
       header: 'Reference',
       id: 'reference',
     },

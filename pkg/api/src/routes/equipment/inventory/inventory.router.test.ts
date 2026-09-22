@@ -71,8 +71,22 @@ const test = createTester(async ({ db }) => {
   if (!quote) throw new Error('Quote insert did not return a row');
   const [job] = await db.insert(jobs).values({ quoteId: quote.id }).returning();
   if (!job) throw new Error('Job insert did not return a row');
+  const [partsSale] = await db
+    .insert(quotes)
+    .values({
+      customerId: customer.id,
+      isPartsSale: true,
+      kind: 'custom',
+      quotedBasePrice: 0,
+      quotedCurrencyCode: 'ZAR',
+      salesPersonId: 'test-user-id',
+      status: 'accepted',
+      workTitle: 'Spare bearings',
+    })
+    .returning();
+  if (!partsSale) throw new Error('Parts Sale insert did not return a row');
 
-  return { db, job, part };
+  return { db, job, part, partsSale, serviceWorkQuote: quote };
 });
 
 describe('inventory procedure permissions', () => {
@@ -490,6 +504,21 @@ describe('inventory cost projection', () => {
         recipientUserId: 'test-user-id',
       } as never),
     ).rejects.toMatchObject({ code: 'BAD_REQUEST' });
+    await expect(
+      stores.inventory.postCheckoutBasket({
+        jobId: context.job.id,
+        lines: [{ lengthMm: null, partId: context.part.id, quantity: 1 }],
+        quoteId: context.partsSale.id,
+      } as never),
+    ).rejects.toMatchObject({ code: 'BAD_REQUEST' });
+    await expect(
+      stores.inventory.postCheckout({
+        jobId: context.job.id,
+        partId: context.part.id,
+        quantity: 1,
+        quoteId: context.partsSale.id,
+      } as never),
+    ).rejects.toMatchObject({ code: 'BAD_REQUEST' });
   });
 
   test('serves recipient and source pickers while keeping no-Job costs behind the existing gate', async ({
@@ -535,6 +564,75 @@ describe('inventory cost projection', () => {
       context.createCaller(mockSession('sales')).inventory.recipientOptions({ search: '' }),
     ).rejects.toMatchObject({
       code: 'FORBIDDEN',
+    });
+  });
+});
+
+describe('Parts Sale stock', () => {
+  test('offers Parts Sales to stores, price-free, and refuses a caller who cannot move stock', async ({ context }) => {
+    await expect(
+      context.createCaller(mockSession('stores')).inventory.quoteOptions({ movementType: 'checkout', search: '' }),
+    ).resolves.toMatchObject({
+      items: [
+        {
+          customerCompanyName: 'Inventory Customer',
+          id: context.partsSale.id,
+          status: 'accepted',
+          workTitle: 'Spare bearings',
+        },
+      ],
+      total: 1,
+    });
+    await expect(
+      context.createCaller(mockSession('sales')).inventory.quoteOptions({ movementType: 'checkout', search: '' }),
+    ).rejects.toMatchObject({ code: 'FORBIDDEN' });
+  });
+
+  test('shows drawn value to a procurement manager and holds it back from stores', async ({ context }) => {
+    const admin = context.createCaller();
+    await admin.inventory.postAdjustment({
+      delta: 3,
+      partId: context.part.id,
+      reason: 'opening-balance',
+      unitCost: 25,
+    });
+    await admin.inventory.postCheckout({ partId: context.part.id, quantity: 2, quoteId: context.partsSale.id });
+
+    await expect(
+      context.createCaller(mockSession('procurement-manager')).inventory.quoteStock({ quoteId: context.partsSale.id }),
+    ).resolves.toMatchObject({ items: [{ drawnQuantity: 2, drawnValue: 50 }] });
+    await expect(
+      context.createCaller(mockSession('stores')).inventory.quoteStock({ quoteId: context.partsSale.id }),
+    ).resolves.toMatchObject({ items: [{ drawnQuantity: 2, drawnValue: null }] });
+  });
+
+  test('maps each Parts Sale refusal to its own code', async ({ context }) => {
+    const caller = context.createCaller();
+    const checkout = (quoteId: string) =>
+      caller.inventory.postCheckout({ partId: context.part.id, quantity: 1, quoteId });
+    await context.db.insert(quotes).values({
+      customerId: context.serviceWorkQuote.customerId,
+      id: '00000000-0000-4000-8000-00000000c0de',
+      isPartsSale: true,
+      kind: 'custom',
+      quotedBasePrice: 0,
+      quotedCurrencyCode: 'ZAR',
+      salesPersonId: 'test-user-id',
+      status: 'rejected',
+      workTitle: 'Rejected parts',
+    });
+
+    await expect(checkout('00000000-0000-4000-8000-000000000999')).rejects.toMatchObject({
+      appCode: 'inventory.quote_not_found',
+      code: 'NOT_FOUND',
+    });
+    await expect(checkout(context.serviceWorkQuote.id)).rejects.toMatchObject({
+      appCode: 'inventory.quote_not_parts_sale',
+      code: 'BAD_REQUEST',
+    });
+    await expect(checkout('00000000-0000-4000-8000-00000000c0de')).rejects.toMatchObject({
+      appCode: 'inventory.quote_not_open',
+      code: 'BAD_REQUEST',
     });
   });
 });

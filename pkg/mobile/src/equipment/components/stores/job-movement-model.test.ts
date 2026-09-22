@@ -1,5 +1,10 @@
 import { DateIso } from '@pkg/schema';
-import type { SourceCheckoutOption, StockOnHandRow } from '@pkg/schema/equipment';
+import type {
+  InventoryQuoteOption,
+  QuoteStockResult,
+  SourceCheckoutOption,
+  StockOnHandRow,
+} from '@pkg/schema/equipment';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -13,6 +18,14 @@ import {
 const PART_ID = '00000000-0000-4000-8000-000000000001';
 const JOB_ID = '00000000-0000-4000-8000-000000000002';
 const SOURCE_ID = '00000000-0000-4000-8000-000000000003';
+const QUOTE_ID = '00000000-0000-4000-8000-000000000004';
+const quote = {
+  code: 'QUO-00004',
+  customerCompanyName: 'Acme Farms',
+  id: QUOTE_ID,
+  status: 'accepted',
+  workTitle: 'Hitch pins',
+} as InventoryQuoteOption;
 const actor = { id: 'operator', name: 'Operator', thumbnailDataUrl: null };
 const job = { code: 'JOB-1', id: JOB_ID } as never;
 const sourceCheckout: SourceCheckoutOption = {
@@ -64,6 +77,12 @@ describe('stores movement targets', () => {
       kind: 'source',
       sourceCheckout: null,
     });
+    for (const movementType of ['checkout', 'return-to-store'] as const) {
+      expect(initialStoresMovementTarget({ actor, mode: 'quote', movementType })).toEqual({
+        kind: 'quote',
+        quote: null,
+      });
+    }
   });
 
   it('follows a changed operator only while the recipient is still the operator default', () => {
@@ -96,6 +115,8 @@ describe('stores movement targets', () => {
     expect(hasStoresMovementTarget({ kind: 'recipient', purpose: ' ', recipient: actor }, undefined)).toBe(false);
     expect(hasStoresMovementTarget({ kind: 'recipient', purpose: 'Repair', recipient: actor }, undefined)).toBe(true);
     expect(hasStoresMovementTarget({ kind: 'source', sourceCheckout }, undefined)).toBe(true);
+    expect(hasStoresMovementTarget({ kind: 'quote', quote: null }, undefined)).toBe(false);
+    expect(hasStoresMovementTarget({ kind: 'quote', quote }, undefined)).toBe(true);
   });
 
   it('posts each target as its own strict payload', () => {
@@ -125,10 +146,14 @@ describe('stores movement targets', () => {
     expect(
       toStoresMovementInput({ ...facts, movementType: 'return-to-store', target: { kind: 'source', sourceCheckout } }),
     ).toEqual({ actorUserId: actor.id, quantity: 2, sourceCheckoutId: SOURCE_ID });
+    const partsSale = { actorUserId: actor.id, lengthMm: null, partId: PART_ID, quantity: 2, quoteId: QUOTE_ID };
+    const target = { kind: 'quote', quote } as const;
+    expect(toStoresMovementInput({ ...facts, movementType: 'checkout', target })).toEqual(partsSale);
+    expect(toStoresMovementInput({ ...facts, movementType: 'return-to-store', target })).toEqual(partsSale);
   });
 
   it('judges a Checkout Without a Job against the rack and a linked return against its source', () => {
-    const base = { jobStock: undefined, lengthMm: null, quantity: 2, row };
+    const base = { jobStock: undefined, lengthMm: null, quantity: 2, quoteStock: undefined, row };
 
     expect(
       previewStoresMovementWarnings({
@@ -152,5 +177,32 @@ describe('stores movement targets', () => {
         target: { kind: 'source', sourceCheckout },
       }),
     ).toEqual(['exceeds-drawn']);
+  });
+
+  it('judges a Parts Sale draw against the rack alone and its return against what the sale still holds', () => {
+    const quoteStock = {
+      items: [
+        {
+          drawnQuantity: 2,
+          drawnValue: null,
+          lengthBuckets: [],
+          partCode: 'P-100',
+          partId: PART_ID,
+          partName: 'Bearing',
+          unitOfMeasure: 'piece',
+        },
+      ],
+      quote,
+    } as QuoteStockResult;
+    const base = { jobStock: undefined, lengthMm: null, quoteStock, row, target: { kind: 'quote', quote } } as const;
+
+    expect(previewStoresMovementWarnings({ ...base, movementType: 'checkout', quantity: 1 })).toEqual([]);
+    expect(previewStoresMovementWarnings({ ...base, movementType: 'checkout', quantity: 2 })).toEqual([
+      'negative-stock-on-hand',
+    ]);
+    expect(previewStoresMovementWarnings({ ...base, movementType: 'return-to-store', quantity: 2 })).toEqual([]);
+    expect(previewStoresMovementWarnings({ ...base, movementType: 'return-to-store', quantity: 3 })).toEqual([
+      'exceeds-drawn',
+    ]);
   });
 });

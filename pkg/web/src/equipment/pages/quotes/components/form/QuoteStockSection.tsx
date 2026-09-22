@@ -93,7 +93,7 @@ function QuoteStockTable({ items, showValue }: { items: QuoteStockRow[]; showVal
 
   return (
     <DataTable
-      emptyMessage="Nothing has been checked out to this Parts Sale."
+      emptyMessage="Nothing is checked out to this Parts Sale."
       hideGlobalFilter
       paginationMode="complete"
       table={table}

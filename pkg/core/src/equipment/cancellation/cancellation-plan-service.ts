@@ -87,19 +87,13 @@ export async function getQuoteCancellationPlan({ db, id }: { db: Db; id: UUID })
 async function loadOutstandingQuoteStock(db: Db, quoteId: UUID): Promise<QuoteCancellationPlan['drawnStock']> {
   const buckets = await loadQuoteStockBuckets(db, quoteId);
 
-  return buckets.flatMap((bucket) =>
-    bucket.drawnQuantity > 0
-      ? [
-          {
-            lengthMm: bucket.lengthMm,
-            outstandingQuantity: bucket.drawnQuantity,
-            partCode: bucket.partCode,
-            partName: bucket.partName,
-            unitOfMeasure: bucket.unitOfMeasure,
-          },
-        ]
-      : [],
-  );
+  return buckets.map((bucket) => ({
+    lengthMm: bucket.lengthMm,
+    outstandingQuantity: bucket.drawnQuantity,
+    partCode: bucket.partCode,
+    partName: bucket.partName,
+    unitOfMeasure: bucket.unitOfMeasure,
+  }));
 }
 
 /**

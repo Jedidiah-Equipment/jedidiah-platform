@@ -29,8 +29,9 @@ export type QuoteStockBucket = {
 };
 
 /**
- * What a Parts Sale has drawn, grouped the way its returns pool: by Part and length bucket. Shared by
- * the Quote page's Stock drawn panel and the cancel dialog, so the two name the same stock.
+ * What a Parts Sale still has out, grouped the way its returns pool: by Part and length bucket. A
+ * bucket returned in full, or past what it drew, holds nothing out and is left off. Shared by the
+ * Quote page's Stock drawn panel and the cancel dialog, so the two name the same stock.
  */
 export async function loadQuoteStockBuckets(db: Db, quoteId: UUID): Promise<QuoteStockBucket[]> {
   const rows = await db
@@ -50,7 +51,9 @@ export async function loadQuoteStockBuckets(db: Db, quoteId: UUID): Promise<Quot
     .groupBy(stockMovements.partId, parts.code, parts.name, parts.unitOfMeasure, stockMovements.lengthMm)
     .orderBy(asc(parts.code), asc(stockMovements.partId), asc(stockMovements.lengthMm));
 
-  return rows.map((row) => ({ ...row, drawnQuantity: toLedgerQuantity(row.drawnQuantity) }));
+  return rows
+    .map((row) => ({ ...row, drawnQuantity: toLedgerQuantity(row.drawnQuantity) }))
+    .filter((row) => row.drawnQuantity > 0);
 }
 
 /** The Quote facts a stores surface may see: never a price, since `stores` holds no Quote permission. */

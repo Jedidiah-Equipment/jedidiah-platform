@@ -37,14 +37,14 @@ Cancelling is refused outright if that machine has since moved on to someone els
 entry means another record now depends on this one, and taking the machine back would quietly strip
 it from whoever holds it now.
 
-A Parts Sale with stock still checked out to it lists that stock before you confirm. Cancelling does not
-return it and does not stop you; stores can still post a
-[Return to Store](/inventory/return-to-store#from-a-parts-sale) against the Quote afterwards.
-
 ## What you choose
 
 These are offered on the web. A device cancels with the safe answers already taken — the Job goes, the
 machine stays — so cancel from the web when a machine that was never made should go too.
+
+A Parts Sale with stock still checked out to it lists that stock before you confirm. Cancelling does not
+return it and does not stop you; stores can still post a
+[Return to Store](/inventory/return-to-store#from-a-parts-sale) against the Quote afterwards.
 
 **Also cancel the Job.** Ticked by default, and almost always right: the sale is dead, so the work is
 too. Upcoming bay slots come off the schedules; work already done or under way stays on record, as does

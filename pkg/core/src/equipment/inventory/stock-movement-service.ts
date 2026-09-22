@@ -479,9 +479,9 @@ async function loadDrawFacts(
       return { facts: { ...context, kind: target.movementType }, unitCost };
     }
     case 'quote': {
-      const pool = quoteDrawPool(target.quoteId, partId, lengthMm);
-
       if (target.movementType === 'checkout') return loadUnplannedCheckoutFacts(db, partId, lengthMm);
+
+      const pool = quoteDrawPool(target.quoteId, partId, lengthMm);
 
       const [outstanding, unitCost] = await Promise.all([
         sumDelta(db, pool).then((delta) => -delta),

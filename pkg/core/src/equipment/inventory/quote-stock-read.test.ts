@@ -5,7 +5,7 @@ import { listQuoteStock } from './quote-stock-read.js';
 import { postAdjustment, postCheckout, postReturnToStore } from './stock-movement-service.js';
 
 describe('listQuoteStock', () => {
-  test("groups a Parts Sale's net draws by Part and length, valued at what left stores", async ({ context }) => {
+  test("groups what a Parts Sale still has out by Part and length, valued at what left stores", async ({ context }) => {
     const partsSale = await seedPartsSaleQuote(context.db);
     await postAdjustment({
       actorUserId,
@@ -26,16 +26,16 @@ describe('listQuoteStock', () => {
     await postReturnToStore(move(context.parts.piece.id, 1));
     await postCheckout(move(context.parts.linear.id, 2, 6_000));
     await postCheckout(move(context.parts.linear.id, 1, 3_000));
+    await postReturnToStore(move(context.parts.linear.id, 1, 3_000));
+    await postCheckout(move(context.parts.measured.id, 1));
+    await postReturnToStore(move(context.parts.measured.id, 2));
 
     await expect(listQuoteStock({ db: context.db, quoteId: partsSale.id })).resolves.toEqual({
       items: [
         {
-          drawnQuantity: 3,
-          drawnValue: 1_500,
-          lengthBuckets: [
-            { drawnQuantity: 1, lengthMm: 3_000 },
-            { drawnQuantity: 2, lengthMm: 6_000 },
-          ],
+          drawnQuantity: 2,
+          drawnValue: 1_200,
+          lengthBuckets: [{ drawnQuantity: 2, lengthMm: 6_000 }],
           partCode: 'LINEAR',
           partId: context.parts.linear.id,
           partName: 'LINEAR',

@@ -8,13 +8,16 @@ import { ClientDataTable } from '@/components/data-table/ClientDataTable.js';
 import type { DataTableColumnDef } from '@/components/data-table/features.js';
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
 import { Button } from '@/components/ui/button.js';
+import { useCan } from '@/hooks/use-access.js';
 import { useTRPC } from '@/lib/trpc.js';
+import { MergePartCategoriesDialog } from './MergePartCategoriesDialog.js';
 import { PartCategoryCreateDialog } from './PartCategoryCreateDialog.js';
 
 export function PartCategoriesPage() {
   const trpc = useTRPC();
   const navigate = useNavigate();
   const [createOpen, setCreateOpen] = useState(false);
+  const canMerge = useCan('equipment_part_category:merge').can;
   const query = useQuery(trpc.partCategories.list.queryOptions());
   const columns = useMemo<DataTableColumnDef<PartCategory>[]>(
     () => [
@@ -38,7 +41,12 @@ export function PartCategoriesPage() {
         title="Part categories"
         description="The groups every Part belongs to. Parts pick from this list; the Parts CSV matches it by name."
         size="lg"
-        actions={<Button onClick={() => setCreateOpen(true)}>New Part Category</Button>}
+        actions={
+          <>
+            {canMerge ? <MergePartCategoriesDialog triggerLabel="Merge categories…" /> : null}
+            <Button onClick={() => setCreateOpen(true)}>New Part Category</Button>
+          </>
+        }
       >
         <ErrorMessage error={query.error} fallbackMessage="Unable to load Part Categories." />
         <ClientDataTable

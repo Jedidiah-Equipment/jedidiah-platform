@@ -48,3 +48,25 @@ test('serves Part Category names to any Part reader for pickers, never their mar
     categories: [{ id: created.id, name: 'Pipe' }],
   });
 });
+
+test('keeps Part Category merges to the roles that hold the merge permission', async ({ context }) => {
+  const admin = context.createCaller();
+  const survivor = await admin.partCategories.create({ name: 'Consumables' });
+  const duplicate = await admin.partCategories.create({ name: 'Cons' });
+  const input = { sourceIds: [duplicate.id], targetId: survivor.id };
+
+  for (const role of ['sales', 'stores'] as const) {
+    const caller = context.createCaller(mockSession(role));
+    await expect(caller.partCategories.mergePreview(input)).rejects.toMatchObject({ code: 'FORBIDDEN' });
+    await expect(caller.partCategories.merge(input)).rejects.toMatchObject({ code: 'FORBIDDEN' });
+  }
+
+  const procurement = context.createCaller(mockSession('procurement-manager'));
+  await expect(procurement.partCategories.mergePreview(input)).resolves.toMatchObject({
+    movedPartCount: 0,
+    sources: [{ id: duplicate.id, name: 'Cons' }],
+    target: { id: survivor.id, name: 'Consumables' },
+  });
+  await expect(procurement.partCategories.merge(input)).resolves.toMatchObject({ id: survivor.id });
+  await expect(procurement.partCategories.list()).resolves.toEqual([expect.objectContaining({ id: survivor.id })]);
+});

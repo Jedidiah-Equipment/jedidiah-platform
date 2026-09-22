@@ -46,6 +46,7 @@ export const EQUIPMENT_SECTIONS: DocsSection[] = [
       { text: 'Manage Users', link: '/admin/manage-users' },
       { text: 'Maintain Labor rates', link: '/admin/maintain-labor-rates' },
       { text: 'Maintain Part categories', link: '/admin/maintain-part-categories' },
+      { text: 'Merge duplicate Part categories', link: '/admin/merge-duplicate-part-categories' },
     ],
   },
   {

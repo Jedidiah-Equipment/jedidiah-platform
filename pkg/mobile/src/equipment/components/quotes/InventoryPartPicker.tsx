@@ -7,6 +7,7 @@ import {
   quoteInventoryPartUnitPrice,
 } from '@pkg/domain/equipment';
 import {
+  type PartUnitOfMeasure,
   QuoteInventoryPartLengthMm,
   type QuoteInventoryPartOption,
   QuoteInventoryPartPlatePercent,
@@ -323,10 +324,20 @@ function priceNoteMessage(part: QuoteInventoryPartOption, currencyCode: string):
   return `${reason}, so no price can be worked out. The row will be added at ${formatCurrency(0, currencyCode)}.`;
 }
 
+const UNIT_SUFFIXES = {
+  box: 'box',
+  kg: 'kg',
+  litre: 'L',
+  mm: 'mm',
+  pair: 'pair',
+  piece: 'pc',
+  set: 'set',
+} as const satisfies Record<PartUnitOfMeasure, string>;
+
 /** A linear Part's stock is a count of pieces, never a length. */
-function formatFreeQuantity(part: QuoteInventoryPartOption): string {
-  const quantity = formatNumber(part.freeQuantity, { decimals: Number.isInteger(part.freeQuantity) ? 0 : 2 });
-  return part.unitOfMeasure === 'mm' ? `${quantity} pieces` : `${quantity} ${part.unitOfMeasure}`;
+function formatFreeQuantity({ freeQuantity, unitOfMeasure }: QuoteInventoryPartOption): string {
+  const quantity = formatNumber(freeQuantity, { decimals: Number.isInteger(freeQuantity) ? 0 : 2 });
+  return unitOfMeasure === 'mm' ? `${quantity} pieces` : `${quantity} ${UNIT_SUFFIXES[unitOfMeasure]}`;
 }
 
 const partLabel = (part: QuoteInventoryPartOption) => `${part.code} · ${part.name}`;

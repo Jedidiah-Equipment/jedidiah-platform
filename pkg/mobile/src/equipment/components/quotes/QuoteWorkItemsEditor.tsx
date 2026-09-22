@@ -192,7 +192,7 @@ export function QuoteWorkItemsEditor({ autosave, currencyCode, form, readOnly }:
                             Parts
                           </Text>
                           <View className="flex-row flex-wrap gap-2">
-                            <PartsButton
+                            <AddPartButton
                               disabled={readOnly}
                               label="Add custom part"
                               onPress={() => {
@@ -205,7 +205,7 @@ export function QuoteWorkItemsEditor({ autosave, currencyCode, form, readOnly }:
                                 autosave.markChanged();
                               }}
                             />
-                            <PartsButton
+                            <AddPartButton
                               disabled={readOnly}
                               label="Add inventory part"
                               onPress={() => setInventoryPartTarget(workItemIndex)}
@@ -317,7 +317,7 @@ export function QuoteWorkItemsEditor({ autosave, currencyCode, form, readOnly }:
   );
 }
 
-function PartsButton({ disabled, label, onPress }: { disabled: boolean; label: string; onPress: () => void }) {
+function AddPartButton({ disabled, label, onPress }: { disabled: boolean; label: string; onPress: () => void }) {
   return (
     <Pressable
       accessibilityRole="button"

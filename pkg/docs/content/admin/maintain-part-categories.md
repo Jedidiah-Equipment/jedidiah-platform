@@ -8,6 +8,6 @@ Parts pick their Part Category from this list, and the Parts CSV matches its Cat
    differs from an existing one only by capitals is refused.
 3. To rename one, open it and change its **Name**. The change saves when you leave the field, and every
    Part in that Part Category shows the new name.
-4. To add a Part Category while creating or editing a Part, select **New Part Category** beside the
-   **Part Category** picker. The new one is selected for that Part.
+4. To add a Part Category while creating or editing a Part, type its name into the **Part Category**
+   picker and choose **Create "…"**. The new one is added and selected for that Part.
 5. To trace a change, open **Audit** and filter to **Part Category**.

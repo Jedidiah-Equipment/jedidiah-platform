@@ -4,14 +4,25 @@ import { DateIso } from '../../common/date.js';
 import { requiredTrimmedText } from '../../common/text.js';
 import { UUID } from '../../common/uuid.js';
 
+const PART_CATEGORY_WHITESPACE_RUN = /[ \t\n\r\f\v]+/g;
+
 /**
  * Inner runs of whitespace collapse to one space, so the name the unique index sees (casing folded)
  * and the name a CSV cell is matched by (casing and whitespace folded) can never name two categories.
  */
 export type PartCategoryName = z.infer<typeof PartCategoryName>;
 export const PartCategoryName = requiredTrimmedText('Part Category name is required').overwrite((name) =>
-  name.replaceAll(/[ \t\n\r\f\v]+/g, ' '),
+  name.replaceAll(PART_CATEGORY_WHITESPACE_RUN, ' '),
 );
+
+/**
+ * How two spellings are judged to name one Part Category: the stored shape of the name with its
+ * casing folded. The whitespace class is spelled out rather than `\s` because Postgres applies the
+ * same rule and does not count a non-breaking space as whitespace; only what both agree on is noise.
+ */
+export function partCategoryLookupKey(name: string): string {
+  return name.replaceAll(PART_CATEGORY_WHITESPACE_RUN, ' ').replaceAll(/^ | $/g, '').toLowerCase();
+}
 
 /** Markup on cost: a sell price is the cost times `1 + markup / 100`, so it may exceed 100. */
 export type PartCategoryMarkupPercent = z.infer<typeof PartCategoryMarkupPercent>;

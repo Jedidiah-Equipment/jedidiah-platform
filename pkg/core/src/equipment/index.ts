@@ -43,6 +43,7 @@ export * from './jobs/working-calendar-service.js';
 export * from './labor-rates/labor-rate-service.js';
 export * from './parts/part-bom-errors.js';
 export * from './parts/part-bom-service.js';
+export * from './parts/part-bulk-service.js';
 export * from './parts/part-category-service.js';
 export * from './parts/part-errors.js';
 export * from './parts/part-label-service.js';

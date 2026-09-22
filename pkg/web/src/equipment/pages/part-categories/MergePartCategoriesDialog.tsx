@@ -32,15 +32,11 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog.js';
 import { Field, FieldLabel } from '@/components/ui/field.js';
+import { toSelectOptions } from '@/equipment/hooks/options/helpers.js';
 import { useQueryInvalidation } from '@/equipment/hooks/use-query-invalidation.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useTRPC } from '@/lib/trpc.js';
-import {
-  formatPartCategoryMergeConfirmation,
-  getPartCategoryMarkupWarnings,
-  getPartCategoryMergeSourceOptions,
-  getPartCategoryMergeTargetOptions,
-} from './part-category-merge.js';
+import { formatPartCategoryMergeConfirmation, getPartCategoryMarkupWarnings } from './part-category-merge.js';
 
 type MergePartCategoriesDialogProps = {
   /** Opened from a duplicate's own page: it starts as the one Part Category to merge away. */
@@ -67,9 +63,13 @@ export const MergePartCategoriesDialog: React.FC<MergePartCategoriesDialogProps>
   const listUnavailable = categories.isPending || categories.isError;
   const names = useMemo(() => new Map(items.map((category) => [category.id, category.name])), [items]);
   const labelFor = (id: string) => names.get(id) ?? id;
-  const targetOptions = useMemo(() => getPartCategoryMergeTargetOptions(items), [items]);
-  const sourceOptions = useMemo(() => getPartCategoryMergeSourceOptions(items, targetId), [items, targetId]);
+  const targetOptions = useMemo(() => toSelectOptions(items, (category) => category.name), [items]);
+  const sourceIdOptions = useMemo(
+    () => items.flatMap((category) => (category.id === targetId ? [] : [category.id])),
+    [items, targetId],
+  );
   const input = { sourceIds, targetId };
+  // The schema refuses a target among the sources and a repeated source; nothing here re-checks it.
   const isValid = PartCategoryMergeInput.safeParse(input).success;
   const preview = useQuery(
     trpc.partCategories.mergePreview.queryOptions(input, { enabled: open && confirming && isValid }),
@@ -89,11 +89,6 @@ export const MergePartCategoriesDialog: React.FC<MergePartCategoriesDialogProps>
     }
   };
 
-  const chooseTarget = (nextTargetId: string) => {
-    setTargetId(nextTargetId);
-    setSourceIds((current) => current.filter((id) => id !== nextTargetId));
-  };
-
   const confirmMerge = async () => {
     let survivor: PartCategory;
     try {
@@ -105,7 +100,7 @@ export const MergePartCategoriesDialog: React.FC<MergePartCategoriesDialogProps>
     handleOpenChange(false);
     toast.success(`Merged into ${survivor.name}`);
     await onMerged?.(survivor);
-    await Promise.all([invalidatePartCategories(), invalidateParts(), invalidateAudit()]);
+    await Promise.all([invalidatePartCategories({ nameChanged: true }), invalidateParts(), invalidateAudit()]);
   };
 
   return (
@@ -135,7 +130,7 @@ export const MergePartCategoriesDialog: React.FC<MergePartCategoriesDialogProps>
                 disabled={listUnavailable}
                 emptyMessage="No Part Categories found."
                 inputId="part-category-merge-target"
-                onValueChange={chooseTarget}
+                onValueChange={setTargetId}
                 options={targetOptions}
                 placeholder="Search Part Categories"
                 value={targetId}
@@ -145,7 +140,7 @@ export const MergePartCategoriesDialog: React.FC<MergePartCategoriesDialogProps>
               <FieldLabel htmlFor="part-category-merge-sources">Merge into it</FieldLabel>
               <Combobox
                 disabled={listUnavailable}
-                items={sourceOptions.map((option) => option.value)}
+                items={sourceIdOptions}
                 itemToStringLabel={labelFor}
                 multiple
                 onValueChange={setSourceIds}

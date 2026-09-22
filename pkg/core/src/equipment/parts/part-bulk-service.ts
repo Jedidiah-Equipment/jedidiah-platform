@@ -1,0 +1,565 @@
+import { type DatabaseTransaction, type Db, getUniqueViolationConstraint } from '@pkg/db';
+import { partCategories, parts, supplier } from '@pkg/db/equipment';
+import type { AuthId, UUID } from '@pkg/schema';
+import type {
+  PartBulkExportInput,
+  PartBulkExportRow,
+  PartBulkImportInput,
+  PartBulkImportResult,
+} from '@pkg/schema/equipment';
+import { partCategoryLookupKey, unitClassFor } from '@pkg/schema/equipment';
+import { and, asc, eq, inArray, isNull, sql } from 'drizzle-orm';
+
+import { diffAuditUpdate, recordAuditCreate, recordAuditUpdate } from '../../audit/audit-writer.js';
+import { supplierAuditDescriptor } from '../suppliers/supplier-service.js';
+import {
+  NO_SUPPLIER_LABEL,
+  PartBulkImportConflictError,
+  PartNotFoundError,
+  PartSupplierLockedByPurchaseOrderError,
+  PartSupplierNotFoundError,
+  PartUnitOfMeasureLockedError,
+} from './part-errors.js';
+import { assertSupplierMutable, assertUnitOfMeasureMutable, partAuditDescriptor } from './part-service.js';
+
+type PartRow = typeof parts.$inferSelect;
+type SupplierRow = Pick<typeof supplier.$inferSelect, 'companyName' | 'id'>;
+
+/**
+ * How an import decides that a CSV cell and a stored Supplier name mean the same thing: the fold Part
+ * Categories are matched by, since casing and whitespace are noise for both. It never touches what is
+ * stored: a matched Supplier keeps its own spelling, and a created one is stored as the row wrote it.
+ * Anything looser than this ("Night Wolves" against "Nightwolves") is a merge somebody has to decide on.
+ *
+ * Whitespace is pinned to the class Postgres agrees on; casing is not, and cannot be. Postgres `lower`
+ * and JavaScript `toLowerCase` part company on a few letters, so a Supplier named with one of them can
+ * still be missed and duplicated. Pinning the fold to ASCII would trade that rare miss for a common
+ * one, since every accented name matches correctly today.
+ */
+const supplierLookupName = partCategoryLookupKey;
+
+/**
+ * The Parts catalog in the shape the bulk import reads back, so a user can take the file out, edit
+ * it, and put it in again. It carries only what the import writes — the stock policy, location and
+ * minimum a Part also holds are not the CSV's to own, so they are not the CSV's to hand out either.
+ */
+export async function bulkExportParts({
+  db,
+  input,
+}: {
+  db: Db;
+  input: PartBulkExportInput;
+}): Promise<PartBulkExportRow[]> {
+  const { supplierId } = input;
+
+  return (
+    db
+      .select({
+        category: partCategories.name,
+        code: parts.code,
+        description: parts.description,
+        drawingCode: parts.drawingCode,
+        finish: parts.finish,
+        isInternallyFabricated: parts.isInternallyFabricated,
+        name: parts.name,
+        standardPurchaseLengthMm: parts.standardPurchaseLengthMm,
+        supplierCode: parts.supplierCode,
+        supplierName: supplier.companyName,
+        unitOfMeasure: parts.unitOfMeasure,
+      })
+      .from(parts)
+      .innerJoin(partCategories, eq(parts.categoryId, partCategories.id))
+      .leftJoin(supplier, eq(parts.supplierId, supplier.id))
+      // The same removed-Supplier filter the Parts list applies. Without it the export would write a
+      // row the import cannot read back: the import resolves Suppliers among the live ones only, so a
+      // removed one reads as a Supplier that does not exist yet and the row is refused as a conflict.
+      // A Built Part joins to no Supplier at all, and a null `deletedAt` keeps it in.
+      .where(and(isNull(supplier.deletedAt), supplierId ? eq(parts.supplierId, supplierId) : undefined))
+      .orderBy(asc(parts.code))
+  );
+}
+
+export async function bulkImportParts({
+  actorUserId,
+  db,
+  input,
+}: {
+  actorUserId: AuthId;
+  db: Db;
+  input: PartBulkImportInput;
+}): Promise<PartBulkImportResult> {
+  try {
+    return await db.transaction(async (tx) => {
+      const errors: string[] = [];
+      let importedCount = 0;
+      let updatedCount = 0;
+      // Supplier retirement takes child locks before Supplier locks. Keep the import in that order
+      // too, or a merge and an import of the same Part can each wait on the other's row.
+      const { duplicateLookupCodes, lookupCodeByInputCode, partsByLookupCode } = await loadImportPartsByCode({
+        db: tx,
+        rows: input.rows,
+      });
+      const scopedSupplier = input.supplierId
+        ? await getImportSupplierById({ db: tx, supplierId: input.supplierId })
+        : undefined;
+
+      // Preload every supplier and part the import touches in two batched reads rather than two
+      // queries per row, so importing thousands of rows stays a constant number of round trips.
+      // Suppliers/parts created mid-loop are folded back into these maps so later rows referencing
+      // the same name or code resolve them without re-querying.
+      const suppliersByLookupName = scopedSupplier
+        ? new Map<string, SupplierRow[]>()
+        : await loadImportSuppliersByLookupName({ db: tx, rows: input.rows });
+      const categoriesByLookupName = await loadImportPartCategoriesByLookupName({ db: tx });
+
+      for (const row of input.rows) {
+        const lookupCode = lookupCodeByInputCode.get(row.code);
+        if (!lookupCode) {
+          throw new Error(`Part import did not normalize code "${row.code}"`);
+        }
+        if (duplicateLookupCodes.has(lookupCode)) {
+          errors.push(`Line ${row.lineNumber}: Part Code "${row.code}" appears more than once in this file.`);
+          continue;
+        }
+
+        const category = categoriesByLookupName.get(partCategoryLookupKey(row.category));
+        if (!category) {
+          errors.push(
+            `Line ${row.lineNumber}: Part Category "${row.category}" does not exist. Add it under Admin → Part categories first.`,
+          );
+          continue;
+        }
+
+        const partByCode = partsByLookupCode.get(lookupCode);
+        // Whether this row names a Supplier is settled once, here. Everything below reads the one
+        // resolved value, so a built Part — made in-house and bought from nobody — takes the same
+        // path as a bought one rather than branching at every step.
+        const rowSupplier = resolveRowSupplier({ row, scopedSupplier, storedPart: partByCode, suppliersByLookupName });
+        if ('error' in rowSupplier) {
+          errors.push(rowSupplier.error);
+          continue;
+        }
+
+        if (partByCode && !matchesStoredIdentity(rowSupplier, partByCode)) {
+          errors.push(
+            await formatBulkImportIdentityConflict({
+              db: tx,
+              existingPart: partByCode,
+              row,
+            }),
+          );
+          continue;
+        }
+
+        // Created only now, so a row rejected above never leaves a stray Supplier behind.
+        const supplierId = await ensureImportSupplierId({ actorUserId, db: tx, rowSupplier, suppliersByLookupName });
+
+        // Bulk CSV owns catalog identity; stock policy/location/minimum default on create and survive updates.
+        const partInput = {
+          categoryId: category.id,
+          code: row.code,
+          description: row.description,
+          drawingCode: row.drawingCode,
+          finish: row.finish,
+          isInternallyFabricated: row.isInternallyFabricated,
+          name: row.name,
+          standardPurchaseLengthMm: row.standardPurchaseLengthMm ?? null,
+          supplierCode: row.supplierCode,
+          supplierId,
+          unitOfMeasure: row.unitOfMeasure,
+        };
+        const existingPart = partByCode;
+
+        if (!existingPart) {
+          const [created] = await tx.insert(parts).values(partInput).returning();
+
+          if (!created) {
+            throw new Error('Part import insert did not return a row');
+          }
+
+          await recordAuditCreate({ db: tx, descriptor: partAuditDescriptor, actorUserId, input: created });
+          partsByLookupCode.set(lookupCode, created);
+          importedCount += 1;
+          continue;
+        }
+
+        const [lockedPart] = await tx.select().from(parts).where(eq(parts.id, existingPart.id)).for('update');
+        if (!lockedPart) throw new PartNotFoundError(existingPart.id);
+
+        if (lockedPart.averageUtilizationPercent !== null && unitClassFor(partInput.unitOfMeasure) !== 'discrete') {
+          errors.push(
+            `Line ${row.lineNumber}: clear Average utilization % before changing this Part to a measured or linear unit.`,
+          );
+          continue;
+        }
+
+        const after = {
+          ...lockedPart,
+          ...partInput,
+        };
+        const changes = diffAuditUpdate(partAuditDescriptor, lockedPart, after);
+
+        if (!changes) {
+          continue;
+        }
+
+        try {
+          await assertUnitOfMeasureMutable({
+            before: lockedPart,
+            db: tx,
+            nextUnitOfMeasure: partInput.unitOfMeasure,
+          });
+          await assertSupplierMutable({
+            before: lockedPart,
+            db: tx,
+            nextSupplierId: partInput.supplierId,
+          });
+        } catch (error) {
+          const rowError = formatBulkImportLockError(error, row.lineNumber);
+          if (!rowError) throw error;
+
+          errors.push(rowError);
+          continue;
+        }
+
+        const [updated] = await tx.update(parts).set(partInput).where(eq(parts.id, existingPart.id)).returning();
+
+        if (!updated) {
+          throw new PartNotFoundError(existingPart.id);
+        }
+
+        await recordAuditUpdate({ db: tx, descriptor: partAuditDescriptor, actorUserId, after: updated, changes });
+        partsByLookupCode.set(lookupCode, updated);
+        updatedCount += 1;
+      }
+
+      return {
+        errors,
+        importedCount,
+        updatedCount,
+      };
+    });
+  } catch (error) {
+    throw mapPartUniqueViolationForBulkImport(error, input);
+  }
+}
+
+function formatBulkImportLockError(error: unknown, lineNumber: number): string | undefined {
+  if (error instanceof PartUnitOfMeasureLockedError) {
+    return `Line ${lineNumber}: Unit of Measure is locked because this Part has stock history.`;
+  }
+
+  if (error instanceof PartSupplierLockedByPurchaseOrderError) {
+    // Supplier identity conflicts skip earlier today; keep this paired with the assertion so a
+    // future bulk-update path cannot accidentally turn its expected lock into a transaction abort.
+    return `Line ${lineNumber}: Supplier is locked because this Part appears on a Purchase Order.`;
+  }
+
+  return undefined;
+}
+
+/**
+ * What one CSV row says about its Supplier, settled before anything is written. A row either names
+ * no Supplier at all (a built Part), names one already loaded, or names one nobody has seen yet —
+ * and the last of those only becomes a Supplier once the row's identity has passed.
+ */
+type RowSupplier =
+  | { kind: 'existing'; supplier: SupplierRow }
+  | { kind: 'new'; companyName: string }
+  | { kind: 'none' };
+
+function resolveRowSupplier({
+  row,
+  scopedSupplier,
+  storedPart,
+  suppliersByLookupName,
+}: {
+  row: PartBulkImportInput['rows'][number];
+  scopedSupplier: SupplierRow | undefined;
+  storedPart: Pick<PartRow, 'supplierId'> | undefined;
+  suppliersByLookupName: ReadonlyMap<string, SupplierRow[]>;
+}): RowSupplier | { error: string } {
+  if (row.supplierName === null) return { kind: 'none' };
+
+  if (scopedSupplier) {
+    return supplierLookupName(row.supplierName) === supplierLookupName(scopedSupplier.companyName)
+      ? { kind: 'existing', supplier: scopedSupplier }
+      : { error: `Line ${row.lineNumber}: Supplier ${row.supplierName} does not match ${scopedSupplier.companyName}.` };
+  }
+
+  const existing = pickRowSupplier({
+    candidates: suppliersByLookupName.get(supplierLookupName(row.supplierName)) ?? [],
+    storedPart,
+  });
+
+  return existing ? { kind: 'existing', supplier: existing } : { kind: 'new', companyName: row.supplierName };
+}
+
+/**
+ * Which of several live Suppliers a row means, once the lookup stopped distinguishing them by casing
+ * and spacing. A Part already attached to one of them stays attached to it: the loosened lookup is
+ * there to stop duplicates being created, never to move a Part between the duplicates that already
+ * exist, and re-importing an untouched export of such a Part has to stay the no-op it was.
+ *
+ * Anything else takes the oldest. A row cannot ask for one of the duplicates by spelling it exactly,
+ * because by the time a name reaches here the CSV reader has already title-cased the Supplier cell —
+ * so a rule reading the row's own spelling would fire for a Part typed against the API and not for
+ * the same Part imported through the app, which is worse than not having the rule.
+ */
+function pickRowSupplier({
+  candidates,
+  storedPart,
+}: {
+  candidates: readonly SupplierRow[];
+  storedPart: Pick<PartRow, 'supplierId'> | undefined;
+}): SupplierRow | undefined {
+  return candidates.find((candidate) => candidate.id === storedPart?.supplierId) ?? candidates[0];
+}
+
+/**
+ * A Part's identity is its code plus who supplies it. A row naming a Supplier that does not exist
+ * yet can never match a stored Part, since no stored Part could already point at it.
+ */
+function matchesStoredIdentity(rowSupplier: RowSupplier, part: Pick<PartRow, 'supplierId'>): boolean {
+  if (rowSupplier.kind === 'none') return part.supplierId === null;
+
+  return rowSupplier.kind === 'existing' && part.supplierId === rowSupplier.supplier.id;
+}
+
+async function ensureImportSupplierId({
+  actorUserId,
+  db,
+  rowSupplier,
+  suppliersByLookupName,
+}: {
+  actorUserId: AuthId;
+  db: DatabaseTransaction;
+  rowSupplier: RowSupplier;
+  suppliersByLookupName: Map<string, SupplierRow[]>;
+}): Promise<string | null> {
+  if (rowSupplier.kind === 'none') return null;
+  if (rowSupplier.kind === 'existing') return rowSupplier.supplier.id;
+
+  const created = await createImportSupplier({ actorUserId, companyName: rowSupplier.companyName, db });
+  // Folded back so a later row naming the same Supplier resolves it without creating a second one.
+  // Nothing was stored under this lookup name or the row would have resolved to it instead.
+  suppliersByLookupName.set(supplierLookupName(created.companyName), [created]);
+
+  return created.id;
+}
+
+async function formatBulkImportIdentityConflict({
+  db,
+  existingPart,
+  row,
+}: {
+  db: DatabaseTransaction;
+  existingPart: Pick<PartRow, 'code' | 'supplierCode' | 'supplierId'>;
+  row: PartBulkImportInput['rows'][number];
+}): Promise<string> {
+  const existingSupplier =
+    existingPart.supplierId === null
+      ? null
+      : await db.query.supplier.findFirst({
+          columns: {
+            companyName: true,
+            id: true,
+          },
+          where: eq(supplier.id, existingPart.supplierId),
+        });
+  const existingSupplierName =
+    existingPart.supplierId === null ? NO_SUPPLIER_LABEL : (existingSupplier?.companyName ?? 'an unknown supplier');
+  const existingIdentity = `${existingSupplierName} / supplier code ${existingPart.supplierCode}`;
+  const importIdentity = `${row.supplierName ?? NO_SUPPLIER_LABEL} / ${row.supplierCode}`;
+
+  return `Line ${row.lineNumber}: Part code ${existingPart.code} already exists with supplier ${existingIdentity}; CSV row has ${importIdentity}.`;
+}
+
+async function loadImportSuppliersByLookupName({
+  db,
+  rows,
+}: {
+  db: DatabaseTransaction;
+  rows: PartBulkImportInput['rows'];
+}): Promise<Map<string, SupplierRow[]>> {
+  const byLookupName = new Map<string, SupplierRow[]>();
+  const lookupNames = [
+    ...new Set(rows.flatMap((row) => (row.supplierName ? [supplierLookupName(row.supplierName)] : []))),
+  ];
+
+  if (lookupNames.length === 0) {
+    return byLookupName;
+  }
+
+  const supplierRows = await db
+    .select({
+      companyName: supplier.companyName,
+      id: supplier.id,
+      lookupName: supplierLookupNameSql,
+    })
+    .from(supplier)
+    .where(and(inArray(supplierLookupNameSql, lookupNames), isNull(supplier.deletedAt)))
+    // Two live Suppliers can share a lookup name — the unique index covers the exact stored spelling
+    // only — so they are collected oldest first and each row picks between them for itself.
+    .orderBy(supplier.createdAt, supplier.id)
+    // Pair with Supplier retirement so an import cannot attach a Part after the merge has swept children.
+    .for('share');
+
+  for (const supplierRow of supplierRows) {
+    // Keyed by the value the database computed, so a Supplier the filter matched can never miss the
+    // map through the two normalizers disagreeing.
+    const candidates = byLookupName.get(supplierRow.lookupName);
+    const candidate = { companyName: supplierRow.companyName, id: supplierRow.id };
+
+    if (candidates) {
+      candidates.push(candidate);
+    } else {
+      byLookupName.set(supplierRow.lookupName, [candidate]);
+    }
+  }
+
+  return byLookupName;
+}
+
+/** The database's side of {@link supplierLookupName}: the same whitespace class, Postgres's own fold. */
+const supplierLookupNameSql = sql<string>`btrim(regexp_replace(lower(${supplier.companyName}), '[ \\t\\n\\r\\f\\v]+', ' ', 'g'))`;
+
+/** Part Code keeps its stored spelling, but PostgreSQL's case fold defines catalog identity. */
+const partCodeLookupKeySql = sql<string>`lower(${parts.code})`;
+
+async function loadImportPartsByCode({
+  db,
+  rows,
+}: {
+  db: DatabaseTransaction;
+  rows: PartBulkImportInput['rows'];
+}): Promise<{
+  duplicateLookupCodes: Set<string>;
+  lookupCodeByInputCode: Map<string, string>;
+  partsByLookupCode: Map<string, PartRow>;
+}> {
+  const partsByLookupCode = new Map<string, PartRow>();
+  const lookupCodeByInputCode = new Map<string, string>();
+  const inputCodes = [...new Set(rows.map((row) => row.code))];
+
+  if (inputCodes.length === 0) {
+    return { duplicateLookupCodes: new Set(), lookupCodeByInputCode, partsByLookupCode };
+  }
+
+  // The unique index uses PostgreSQL lower(), whose Unicode behavior is not identical to
+  // JavaScript toLowerCase(). Ask the database to derive every input key so preload, duplicate
+  // detection, and the constraint all agree on what a Part Code means.
+  const normalizedCodes = await db.execute<{ code: string; lookupCode: string }>(sql`
+    select input.code, lower(input.code) as "lookupCode"
+    from jsonb_array_elements_text(${JSON.stringify(inputCodes)}::jsonb) as input(code)
+  `);
+  for (const normalized of normalizedCodes) {
+    lookupCodeByInputCode.set(normalized.code, normalized.lookupCode);
+  }
+
+  const lookupCodeCounts = new Map<string, number>();
+  for (const row of rows) {
+    const lookupCode = lookupCodeByInputCode.get(row.code);
+    if (!lookupCode) throw new Error(`Part import did not normalize code "${row.code}"`);
+    lookupCodeCounts.set(lookupCode, (lookupCodeCounts.get(lookupCode) ?? 0) + 1);
+  }
+
+  const duplicateLookupCodes = new Set(
+    [...lookupCodeCounts].filter(([, count]) => count > 1).map(([lookupCode]) => lookupCode),
+  );
+  const lookupCodes = [...lookupCodeCounts.keys()];
+
+  // FOR UPDATE locks the matching rows up front, the same exclusive locking the per-row read used
+  // to take — just in one statement with a consistent lock order.
+  const partRows = await db
+    .select({ lookupCode: partCodeLookupKeySql, part: parts })
+    .from(parts)
+    .where(inArray(partCodeLookupKeySql, lookupCodes))
+    .for('update');
+
+  for (const { lookupCode, part } of partRows) {
+    partsByLookupCode.set(lookupCode, part);
+  }
+
+  return { duplicateLookupCodes, lookupCodeByInputCode, partsByLookupCode };
+}
+
+/**
+ * Every Part Category, keyed the way a CSV cell is looked up. The list is short and an import never
+ * creates one, so reading it whole beats a filtered read.
+ */
+async function loadImportPartCategoriesByLookupName({
+  db,
+}: {
+  db: DatabaseTransaction;
+}): Promise<Map<string, { id: UUID }>> {
+  const rows = await db.select({ id: partCategories.id, name: partCategories.name }).from(partCategories);
+
+  return new Map(rows.map((row) => [partCategoryLookupKey(row.name), { id: row.id }]));
+}
+
+async function getImportSupplierById({
+  db,
+  supplierId,
+}: {
+  db: DatabaseTransaction;
+  supplierId: UUID;
+}): Promise<SupplierRow> {
+  const [row] = await db
+    .select({ companyName: supplier.companyName, id: supplier.id })
+    .from(supplier)
+    .where(and(eq(supplier.id, supplierId), isNull(supplier.deletedAt)))
+    .limit(1)
+    .for('share');
+
+  if (!row) {
+    throw new PartSupplierNotFoundError(supplierId);
+  }
+
+  return row;
+}
+
+async function createImportSupplier({
+  actorUserId,
+  companyName,
+  db,
+}: {
+  actorUserId: AuthId;
+  companyName: string;
+  db: DatabaseTransaction;
+}): Promise<SupplierRow> {
+  const [created] = await db.insert(supplier).values({ companyName }).returning();
+
+  if (!created) {
+    throw new Error('Supplier import insert did not return a row');
+  }
+
+  await recordAuditCreate({ db, descriptor: supplierAuditDescriptor, actorUserId, input: created });
+
+  return {
+    companyName: created.companyName,
+    id: created.id,
+  };
+}
+
+function mapPartUniqueViolationForBulkImport(error: unknown, input: PartBulkImportInput): Error {
+  if (error instanceof PartBulkImportConflictError) {
+    return error;
+  }
+
+  const constraint = getUniqueViolationConstraint(error);
+  const conflictingRow =
+    constraint?.includes('parts_code_unique') || constraint?.includes('code')
+      ? input.rows.find((row) => row.code)
+      : undefined;
+
+  if (constraint !== null && conflictingRow) {
+    return new PartBulkImportConflictError({
+      code: conflictingRow.code,
+      supplierCode: conflictingRow.supplierCode,
+      supplierName: conflictingRow.supplierName,
+    });
+  }
+
+  return error instanceof Error ? error : new Error(String(error));
+}

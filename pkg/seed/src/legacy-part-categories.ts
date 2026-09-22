@@ -1,5 +1,7 @@
 import { createHash } from 'node:crypto';
 
+import { PartCategoryName, partCategoryLookupKey } from '@pkg/schema/equipment';
+
 import type { SnapshotRow } from './snapshot-table-definitions.js';
 
 /**
@@ -16,12 +18,12 @@ export function legacyPartCategoryName(row: SnapshotRow): string | undefined {
   if (typeof row.category !== 'string') return undefined;
   if (row.code === 'SEMP-0001' && row.category === '6000') return 'Pipe';
 
-  return row.category.trim().replaceAll(/[ \t\n\r\f\v]+/g, ' ') || undefined;
+  return PartCategoryName.safeParse(row.category).data;
 }
 
-/** A UUID v5 of the lowercased name, so every spelling of one Part Category lands on the same id. */
+/** A UUID v5 of the name's lookup key, so every spelling of one Part Category lands on the same id. */
 export function legacyPartCategoryId(name: string): string {
-  const hash = createHash('sha1').update(PART_CATEGORY_ID_NAMESPACE).update(name.trim().toLowerCase()).digest();
+  const hash = createHash('sha1').update(PART_CATEGORY_ID_NAMESPACE).update(partCategoryLookupKey(name)).digest();
   hash[6] = ((hash[6] ?? 0) & 0x0f) | 0x50;
   hash[8] = ((hash[8] ?? 0) & 0x3f) | 0x80;
   const hex = hash.subarray(0, 16).toString('hex');

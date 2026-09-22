@@ -2,12 +2,7 @@ import { DateIso } from '@pkg/schema';
 import type { PartCategory } from '@pkg/schema/equipment';
 import { describe, expect, it } from 'vitest';
 
-import {
-  formatPartCategoryMergeConfirmation,
-  getPartCategoryMarkupWarnings,
-  getPartCategoryMergeSourceOptions,
-  getPartCategoryMergeTargetOptions,
-} from './part-category-merge.js';
+import { formatPartCategoryMergeConfirmation, getPartCategoryMarkupWarnings } from './part-category-merge.js';
 
 const partCategory = (
   id: string,
@@ -28,17 +23,6 @@ const boltsNuts = partCategory('00000000-0000-4000-8000-000000000002', 'Bolts & 
 const survivor = partCategory('00000000-0000-4000-8000-000000000003', 'Bolt & Nuts', 9, 25);
 
 describe('Part Category merge presentation', () => {
-  it('offers every Part Category to keep, and every other one to merge into it', () => {
-    expect(getPartCategoryMergeTargetOptions([boltNut, survivor]).map((option) => option.label)).toEqual([
-      'Bolt & Nut',
-      'Bolt & Nuts',
-    ]);
-    expect(getPartCategoryMergeSourceOptions([boltNut, boltsNuts, survivor], survivor.id)).toEqual([
-      { label: 'Bolt & Nut', value: boltNut.id },
-      { label: 'Bolts & Nuts', value: boltsNuts.id },
-    ]);
-  });
-
   it('spells out the moved Parts, the deletions, and irreversibility', () => {
     expect(
       formatPartCategoryMergeConfirmation({ movedPartCount: 62, sources: [boltNut, boltsNuts], target: survivor }),

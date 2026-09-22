@@ -43,22 +43,26 @@ export function useQueryInvalidation() {
     () => queryClient.invalidateQueries({ queryKey: trpc.inventory.pathKey() }),
     [queryClient, trpc],
   );
-  // Renaming a Part Category changes the name every Part reads, and the order Product Assemblies list Parts in.
+  // Pickers read Part Category names through `parts.categories`. When the name some Part reads changed
+  // (a rename, or a merge moving Parts under the survivor's name), every Part row and the order Product
+  // Assemblies list Parts in change with it.
   const invalidatePartCategories = useCallback(
-    () =>
+    ({ nameChanged = false }: { nameChanged?: boolean } = {}) =>
       Promise.all([
         queryClient.invalidateQueries({ queryKey: trpc.partCategories.pathKey() }),
-        queryClient.invalidateQueries({ queryKey: trpc.parts.pathKey() }),
-        queryClient.invalidateQueries({ queryKey: trpc.products.pathKey() }),
+        queryClient.invalidateQueries({
+          queryKey: nameChanged ? trpc.parts.pathKey() : trpc.parts.categories.pathKey(),
+        }),
+        nameChanged ? queryClient.invalidateQueries({ queryKey: trpc.products.pathKey() }) : undefined,
       ]),
     [queryClient, trpc],
   );
-  // A Part write moves Part Category counts too.
+  // A Part write moves Part Category counts, which only the admin list reads.
   const invalidateParts = useCallback(
     () =>
       Promise.all([
         queryClient.invalidateQueries({ queryKey: trpc.parts.pathKey() }),
-        queryClient.invalidateQueries({ queryKey: trpc.partCategories.pathKey() }),
+        queryClient.invalidateQueries({ queryKey: trpc.partCategories.list.pathKey() }),
       ]),
     [queryClient, trpc],
   );

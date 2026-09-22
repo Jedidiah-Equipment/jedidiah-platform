@@ -1,5 +1,7 @@
 import type { LaborDepartmentRate, LaborRateCard, WorkItemDepartment } from '@pkg/schema/equipment';
 
+import { roundToCents } from '../../formatting/money.js';
+
 export type ProductLaborLineInput = {
   daysPerStaff: number;
   department: WorkItemDepartment;
@@ -45,26 +47,26 @@ export function costProductLabor(
     const hourlyRate = rate?.costToCompanyRate ?? 0;
     const consumablesPercentage = rate?.consumablesPercentage ?? 0;
     const hours = line.daysPerStaff * card.hoursPerWorkingDay;
-    const laborCost = roundCurrency(hours * line.staffCount * hourlyRate);
-    const consumablesCost = roundCurrency((laborCost * consumablesPercentage) / 100);
+    const laborCost = roundToCents(hours * line.staffCount * hourlyRate);
+    const consumablesCost = roundToCents((laborCost * consumablesPercentage) / 100);
 
     return {
       ...line,
       consumablesCost,
       consumablesPercentage,
-      departmentTotal: roundCurrency(laborCost + consumablesCost),
+      departmentTotal: roundToCents(laborCost + consumablesCost),
       hourlyRate,
       hours,
       laborCost,
     };
   });
-  const laborCostFloor = roundCurrency(lines.reduce((total, line) => total + line.laborCost, 0));
+  const laborCostFloor = roundToCents(lines.reduce((total, line) => total + line.laborCost, 0));
 
   return {
-    consumablesCostFloor: roundCurrency(lines.reduce((total, line) => total + line.consumablesCost, 0)),
+    consumablesCostFloor: roundToCents(lines.reduce((total, line) => total + line.consumablesCost, 0)),
     laborCostFloor,
     lines,
-    managementOverheadCostFloor: roundCurrency((laborCostFloor * card.managementOverheadPercentage) / 100),
+    managementOverheadCostFloor: roundToCents((laborCostFloor * card.managementOverheadPercentage) / 100),
     managementOverheadPercentage: card.managementOverheadPercentage,
     unratedDepartments: lines.filter((line) => line.hourlyRate === 0).map((line) => line.department),
   };
@@ -76,9 +78,5 @@ export function productLaborTotal(costing: {
   laborCostFloor: number;
   managementOverheadCostFloor: number;
 }): number {
-  return roundCurrency(costing.laborCostFloor + costing.consumablesCostFloor + costing.managementOverheadCostFloor);
-}
-
-function roundCurrency(value: number): number {
-  return Math.round(value * 100) / 100;
+  return roundToCents(costing.laborCostFloor + costing.consumablesCostFloor + costing.managementOverheadCostFloor);
 }

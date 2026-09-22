@@ -16,9 +16,7 @@ import { PartCategoryName } from '../parts/part-category.js';
 export type QuoteInventoryPartPriceNote = z.infer<typeof QuoteInventoryPartPriceNote>;
 export const QuoteInventoryPartPriceNote = z.enum(['no-cost', 'no-markup']);
 
-/** A catalog Part as the Work Item's "Add inventory part" dialog offers it: a sell price, never a cost. */
-export type QuoteInventoryPartOption = z.infer<typeof QuoteInventoryPartOption>;
-export const QuoteInventoryPartOption = z.object({
+const quoteInventoryPartShape = {
   averageUtilizationPercent: PartAverageUtilizationPercent.nullable(),
   code: PartCode,
   /** Free Stock: on hand minus open Job commitments. Shown, never enforced. */
@@ -26,17 +24,22 @@ export const QuoteInventoryPartOption = z.object({
   id: UUID,
   name: PartName,
   partCategoryName: PartCategoryName,
-  /** Why there is no price. Null exactly when `sellPricePerBasisUnit` is a number. */
-  priceNote: QuoteInventoryPartPriceNote.nullable(),
-  /**
-   * Moving average marked up by the Part Category, per costing basis unit: per millimetre for a
-   * linear Part, per whole unit otherwise. A sell price, deliberately NOT an inventory cost field:
-   * it must reach `sales`, who are cost-blind.
-   */
-  sellPricePerBasisUnit: Price.nullable(),
   standardPurchaseLengthMm: PartStandardPurchaseLengthMm.nullable(),
   unitOfMeasure: PartUnitOfMeasure,
-});
+};
+
+/**
+ * A catalog Part as the Work Item's "Add inventory part" dialog offers it: a sell price, never a
+ * cost. `sellPricePerBasisUnit` is the moving average marked up by the Part Category, per costing
+ * basis unit: per millimetre for a linear Part, per whole unit otherwise. It must reach `sales`,
+ * who are cost-blind, so it is deliberately NOT an inventory cost field. Where no price can be
+ * offered, `priceNote` says why and the price is null, never zero.
+ */
+export type QuoteInventoryPartOption = z.infer<typeof QuoteInventoryPartOption>;
+export const QuoteInventoryPartOption = z.discriminatedUnion('priceNote', [
+  z.object({ ...quoteInventoryPartShape, priceNote: z.null(), sellPricePerBasisUnit: Price }),
+  z.object({ ...quoteInventoryPartShape, priceNote: QuoteInventoryPartPriceNote, sellPricePerBasisUnit: z.null() }),
+]);
 
 /**
  * Not `.strict()`: tRPC's infinite query appends its own `direction` key to the page params. No

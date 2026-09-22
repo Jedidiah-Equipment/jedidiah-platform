@@ -1,11 +1,13 @@
-import { formatCurrency, formatNumber } from '@pkg/domain';
+import { formatCurrency } from '@pkg/domain';
 import {
-  effectivePlateFraction,
-  formatPartQuantity,
-  type QuoteInventoryPartAmount,
+  formatFreeStock,
+  formatPlateWorking,
+  proposeQuoteInventoryPartRow,
+  type QuoteInventoryPartRow,
   quoteInventoryPartBasis,
-  quoteInventoryPartName,
-  quoteInventoryPartUnitPrice,
+  quoteInventoryPartLabel,
+  quoteInventoryPartPriceNote,
+  quoteInventoryPartQuantityLabel,
 } from '@pkg/domain/equipment';
 import {
   QuoteInventoryPartLengthMm,
@@ -31,8 +33,6 @@ import { useAppToast } from '@/components/ui/toast';
 import { useTRPC } from '@/lib/trpc';
 import { useDebouncedSearch } from '@/lib/use-debounced-search';
 
-export type InventoryPartRow = { name: string; quantity: number; unitPrice: number };
-
 /**
  * Pre-fills an ordinary Work Item Part row from a catalog Part. The row keeps no link to the Part:
  * every field stays editable, and a later cost or markup change never reaches it.
@@ -44,7 +44,7 @@ export function InventoryPartPicker({
   open,
 }: {
   currencyCode: string;
-  onAdd: (row: InventoryPartRow) => void;
+  onAdd: (row: QuoteInventoryPartRow) => void;
   onClose: () => void;
   open: boolean;
 }) {
@@ -134,7 +134,7 @@ function PartSearchField({
             if (!part) setExpanded(true);
           }}
           placeholder={results.isFetching ? 'Searching Parts…' : 'Search by code, name, or Part Category'}
-          value={expanded || !part ? search : partLabel(part)}
+          value={expanded || !part ? search : quoteInventoryPartLabel(part)}
         />
         <PickerDropdown
           emptyMessage="No Parts found."
@@ -154,7 +154,7 @@ function PartSearchField({
             <>
               <View className="min-w-0 flex-1">
                 <Text className="text-sm text-surface-foreground" numberOfLines={1} weight="semibold">
-                  {partLabel(row)}
+                  {quoteInventoryPartLabel(row)}
                 </Text>
                 <Text className="text-xs text-muted-foreground" numberOfLines={1}>
                   {row.partCategoryName}
@@ -164,7 +164,7 @@ function PartSearchField({
                 className={`shrink-0 text-xs ${row.freeQuantity > 0 ? 'text-surface-foreground' : 'text-muted-foreground'}`}
                 mono
               >
-                {row.freeQuantity > 0 ? `${formatPartQuantity(row.freeQuantity, row.unitOfMeasure)} free` : 'None free'}
+                {formatFreeStock(row)}
               </Text>
             </>
           )}
@@ -182,7 +182,7 @@ function InventoryPartAmountForm({
   part,
 }: {
   currencyCode: string;
-  onAdd: (row: InventoryPartRow) => void;
+  onAdd: (row: QuoteInventoryPartRow) => void;
   onCancel: () => void;
   part: QuoteInventoryPartOption;
 }) {
@@ -199,13 +199,7 @@ function InventoryPartAmountForm({
   const lengthMm = parseAmount(QuoteInventoryPartLengthMm, values.lengthMm);
   const platePercent = parseAmount(QuoteInventoryPartPlatePercent, values.platePercent);
   const quantity = parseAmount(QuoteWorkItemPartQuantity, values.quantity);
-  const amount = toAmount(part, { lengthMm, platePercent });
-  const unitPrice =
-    amount === null ? null : quoteInventoryPartUnitPrice({ amount, sellPricePerBasisUnit: part.sellPricePerBasisUnit });
-  const row =
-    amount === null || unitPrice === null || quantity === null
-      ? null
-      : { name: quoteInventoryPartName(part, amount), quantity, unitPrice };
+  const row = proposeQuoteInventoryPartRow(part, { lengthMm, platePercent, quantity });
 
   return (
     <>
@@ -225,21 +219,17 @@ function InventoryPartAmountForm({
             </form.AppField>
             {platePercent !== null && part.averageUtilizationPercent !== null ? (
               <Text className="text-xs text-muted-foreground">
-                {platePercent}% of plate ÷ {part.averageUtilizationPercent}% yield ={' '}
-                {formatNumber(effectivePlateFraction(platePercent, part.averageUtilizationPercent) * 100, {
-                  decimals: 2,
-                })}
-                % of a plate
+                {formatPlateWorking(platePercent, part.averageUtilizationPercent)}
               </Text>
             ) : null}
           </View>
         ) : null}
         <form.AppField name="quantity" validators={{ onChange: fieldValidator(QuoteWorkItemPartQuantity) }}>
-          {(field) => <field.NumberField label={basis === 'length' ? 'Pieces' : 'Quantity'} />}
+          {(field) => <field.NumberField label={quoteInventoryPartQuantityLabel(basis)} />}
         </form.AppField>
         {part.priceNote ? (
           <View className="rounded-xl border border-border bg-muted px-3 py-2.5">
-            <Text className="text-sm text-foreground">{priceNoteMessage(part, currencyCode)}</Text>
+            <Text className="text-sm text-foreground">{quoteInventoryPartPriceNote(part, currencyCode)}</Text>
           </View>
         ) : (
           <View className="flex-row items-center justify-between gap-3 rounded-xl border border-border px-3 py-2.5">
@@ -247,7 +237,7 @@ function InventoryPartAmountForm({
               Unit price
             </Text>
             <Text className="text-sm text-foreground" mono>
-              {unitPrice === null ? '—' : formatCurrency(unitPrice, currencyCode)}
+              {row === null ? '—' : formatCurrency(row.unitPrice, currencyCode)}
             </Text>
           </View>
         )}
@@ -294,22 +284,6 @@ function PickerFooter({ add, onCancel }: { add?: { disabled: boolean; onPress: (
   );
 }
 
-function toAmount(
-  part: QuoteInventoryPartOption,
-  { lengthMm, platePercent }: { lengthMm: number | null; platePercent: number | null },
-): QuoteInventoryPartAmount | null {
-  switch (quoteInventoryPartBasis(part)) {
-    case 'length':
-      return lengthMm === null ? null : { basis: 'length', lengthMm };
-    case 'plate':
-      return platePercent === null || part.averageUtilizationPercent === null
-        ? null
-        : { averageUtilizationPercent: part.averageUtilizationPercent, basis: 'plate', platePercent };
-    case 'unit':
-      return { basis: 'unit' };
-  }
-}
-
 /** An empty box (NaN) is not an error yet; it only keeps Add disabled. */
 function fieldValidator(schema: z.ZodType<number>) {
   return ({ value }: { value: number }) =>
@@ -320,12 +294,3 @@ function parseAmount(schema: z.ZodType<number>, value: number): number | null {
   const parsed = schema.safeParse(value);
   return parsed.success ? parsed.data : null;
 }
-
-function priceNoteMessage(part: QuoteInventoryPartOption, currencyCode: string): string {
-  const reason =
-    part.priceNote === 'no-cost' ? 'This Part has no cost yet' : `${part.partCategoryName} has no markup set`;
-
-  return `${reason}, so no price can be worked out. The row will be added at ${formatCurrency(0, currencyCode)}.`;
-}
-
-const partLabel = (part: QuoteInventoryPartOption) => `${part.code} · ${part.name}`;

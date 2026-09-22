@@ -8,6 +8,7 @@ export * from './fonts.js';
 export * from './formatting/date.js';
 export * from './formatting/date-only.js';
 export * from './formatting/email.js';
+export * from './formatting/money.js';
 export * from './formatting/number.js';
 export * from './formatting/phone-number.js';
 export * from './formatting/text.js';

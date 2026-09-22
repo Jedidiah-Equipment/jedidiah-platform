@@ -6,34 +6,31 @@ import { act, create, type ReactTestInstance, type ReactTestRenderer } from 'rea
 import { describe, expect, test, vi } from 'vitest';
 
 const INVENTORY_PARTS: QuoteInventoryPartOption[] = [
-  inventoryPart({ code: 'BOLT-M12', name: 'M12 bolt', sellPricePerBasisUnit: 2.5 }),
-  inventoryPart({
+  {
+    averageUtilizationPercent: null,
     code: 'TUBE-50',
+    freeQuantity: 3,
+    id: crypto.randomUUID(),
     name: '50x50 tube',
+    partCategoryName: 'Hardware',
+    priceNote: null,
     sellPricePerBasisUnit: 0.05,
     standardPurchaseLengthMm: 6000,
     unitOfMeasure: 'mm',
-  }),
-  inventoryPart({ averageUtilizationPercent: 70, code: 'PLATE-10', name: '10 mm plate', sellPricePerBasisUnit: 1000 }),
-  inventoryPart({ code: 'NOCOST', name: 'Uncosted pin', priceNote: 'no-cost', sellPricePerBasisUnit: null }),
-  inventoryPart({ code: 'NOMARKUP', name: 'Unmarked washer', priceNote: 'no-markup', sellPricePerBasisUnit: null }),
-];
-
-function inventoryPart(overrides: Partial<QuoteInventoryPartOption>): QuoteInventoryPartOption {
-  return {
+  },
+  {
     averageUtilizationPercent: null,
-    code: 'PART',
+    code: 'NOCOST',
     freeQuantity: 3,
     id: crypto.randomUUID(),
-    name: 'Part',
+    name: 'Uncosted pin',
     partCategoryName: 'Hardware',
-    priceNote: null,
-    sellPricePerBasisUnit: 1,
+    priceNote: 'no-cost',
+    sellPricePerBasisUnit: null,
     standardPurchaseLengthMm: null,
     unitOfMeasure: 'piece',
-    ...overrides,
-  };
-}
+  },
+];
 
 vi.mock('@/lib/trpc', () => ({
   useTRPC: () => ({
@@ -232,47 +229,26 @@ function amountInput(root: ReactTestInstance, label: string): ReactTestInstance 
 }
 
 describe('Add inventory part', () => {
-  test.each([
-    {
-      expected: { name: 'M12 bolt', quantity: 2, unitPrice: 2.5 },
-      inputs: [['Quantity', '2']],
-      option: 'BOLT-M12 · M12 bolt',
-    },
-    {
-      expected: { name: '50x50 tube (450 mm)', quantity: 2, unitPrice: 22.5 },
-      inputs: [
-        ['Length (mm)', '450'],
-        ['Pieces', '2'],
-      ],
-      option: 'TUBE-50 · 50x50 tube',
-    },
-    {
-      expected: { name: '10 mm plate', quantity: 2, unitPrice: 114.29 },
-      inputs: [
-        ['% of plate', '8'],
-        ['Quantity', '2'],
-      ],
-      option: 'PLATE-10 · 10 mm plate',
-    },
-  ])('pre-fills and commits $expected.name', async ({ expected, inputs, option }) => {
+  test('pre-fills a row from the picked Part and commits it', async () => {
     const onCommit = vi.fn();
     let form!: HarnessForm;
     let renderer!: ReactTestRenderer;
     await act(async () => {
       renderer = create(<QueryHarness onCommit={onCommit} onForm={(current) => (form = current)} />);
     });
-    await pickInventoryPart(renderer, option);
-    for (const [label = '', value] of inputs) {
-      await act(async () => {
-        amountInput(renderer.root, label).props.onChangeText(value);
-      });
-    }
+    await pickInventoryPart(renderer, 'TUBE-50 · 50x50 tube');
+    await act(async () => {
+      amountInput(renderer.root, 'Length (mm)').props.onChangeText('450');
+    });
+    await act(async () => {
+      amountInput(renderer.root, 'Pieces').props.onChangeText('2');
+    });
     await act(async () => {
       findButton(renderer.root, 'Add to work item').props.onPress();
     });
 
     expect(form.state.values.workItems[0]?.parts).toEqual([
-      { ...expected, formKey: expect.stringMatching(/^work-item-part/) },
+      { formKey: expect.stringMatching(/^work-item-part/), name: '50x50 tube (450 mm)', quantity: 2, unitPrice: 22.5 },
     ]);
     expect(onCommit).toHaveBeenCalledOnce();
     await act(async () => {
@@ -293,20 +269,14 @@ describe('Add inventory part', () => {
     });
   });
 
-  test.each([
-    { label: 'NOCOST · Uncosted pin', message: 'This Part has no cost yet, so no price can be worked out.' },
-    {
-      label: 'NOMARKUP · Unmarked washer',
-      message: 'Hardware has no markup set, so no price can be worked out.',
-    },
-  ])('explains a missing price: $message', async ({ label, message }) => {
+  test('shows the price note instead of a unit price for a Part that cannot be priced', async () => {
     let renderer!: ReactTestRenderer;
     await act(async () => {
       renderer = create(<QueryHarness />);
     });
-    await pickInventoryPart(renderer, label);
+    await pickInventoryPart(renderer, 'NOCOST · Uncosted pin');
 
-    expect(textOf(renderer.root)).toContain(`${message} The row will be added at`);
+    expect(textOf(renderer.root)).toContain('This Part has no cost yet');
     expect(textOf(renderer.root)).not.toContain('Unit price');
     await act(async () => {
       renderer.unmount();

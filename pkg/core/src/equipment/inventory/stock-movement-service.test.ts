@@ -1105,6 +1105,7 @@ describe('listStockOnHand', () => {
       .insert(parts)
       .values({
         ...partValues({
+          categoryId: context.categoryId,
           code: 'PLATE',
           stockTrackingMode: 'periodic',
           supplierId: context.supplierId,

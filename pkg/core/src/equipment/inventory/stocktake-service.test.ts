@@ -16,7 +16,7 @@ import { describe, expect } from 'vitest';
 import { createTester } from '../../test/create-tester.js';
 import { getProductCostEstimate } from '../products/product-cost-estimate-service.js';
 import { estimateSnapshot } from '../test/inventory-fixtures.js';
-import { partValues as testPartValues } from '../test/part-fixtures.js';
+import { seedPartCategory, partValues as testPartValues } from '../test/part-fixtures.js';
 import { listBuyList } from './buy-list-service.js';
 import { StockMovementDeltaError } from './stock-movement-errors.js';
 import { getStockMovementHistory, listStockOnHand, postAdjustment } from './stock-movement-service.js';
@@ -54,8 +54,9 @@ const test = createTester(async ({ db }) => {
   const [createdSupplier] = await db.insert(supplier).values({ companyName: 'Stocktake Supplier' }).returning();
   if (!createdSupplier) throw new Error('Supplier insert did not return a row');
 
+  const categoryId = await seedPartCategory(db, 'Stocktake');
   const partValues = {
-    category: 'Stocktake',
+    categoryId,
     description: 'Stocktake part',
     finish: 'Plain',
     supplierId: createdSupplier.id,
@@ -89,7 +90,7 @@ const test = createTester(async ({ db }) => {
     input: { delta: 9, lengthMm: 13_000, note: null, partId: channel.id, reason: 'opening-balance', unitCost: 6.5 },
   });
 
-  return { boltId: bolt.id, channelId: channel.id, spareId: spare.id, supplierId: createdSupplier.id };
+  return { boltId: bolt.id, categoryId, channelId: channel.id, spareId: spare.id, supplierId: createdSupplier.id };
 });
 
 async function openStoresSession(db: Parameters<typeof openStocktakeSession>[0]['db']) {
@@ -362,6 +363,7 @@ describe('the session variance report', () => {
       .insert(parts)
       .values({
         ...testPartValues({
+          categoryId: context.categoryId,
           code: 'PLATE',
           stockTrackingMode: 'periodic',
           supplierId: context.supplierId,

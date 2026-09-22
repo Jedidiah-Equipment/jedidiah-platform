@@ -11,7 +11,7 @@ import {
   supplier,
 } from '@pkg/db/equipment';
 import { describe, expect } from 'vitest';
-
+import { seedPartCategory } from '../../../equipment/test/part-category-fixtures.js';
 import { type AppRouterCaller, createTester } from '../../../test/create-tester.js';
 import { mockSession } from '../../../test/test-utils.js';
 
@@ -30,9 +30,10 @@ const test = createTester(async ({ db }) => {
     updatedAt: new Date(),
   });
   await db.insert(supplier).values({ companyName: 'Router Supplies', id: SUPPLIER_ID });
+  const categoryId = await seedPartCategory(db, 'Pipe');
   await db.insert(parts).values([
     {
-      category: 'Pipe',
+      categoryId,
       code: 'PO-ROUTER-PART',
       description: 'Router test Part',
       finish: 'Plain',
@@ -43,7 +44,7 @@ const test = createTester(async ({ db }) => {
       unitOfMeasure: 'piece',
     },
     {
-      category: 'Pipe',
+      categoryId,
       code: 'PO-ROUTER-SPARE',
       description: 'Router spare Part',
       finish: 'Plain',

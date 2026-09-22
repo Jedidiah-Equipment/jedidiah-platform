@@ -36,6 +36,7 @@ export const AUDIT_ENTITY_TYPES = {
     'job_bay',
     'labor_rate_card',
     'part',
+    'part_category',
     'product',
     'product_unit',
     'purchase_order',

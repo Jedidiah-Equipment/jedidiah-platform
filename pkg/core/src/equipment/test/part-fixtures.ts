@@ -1,7 +1,17 @@
-import type { parts } from '@pkg/db/equipment';
+import type { Db } from '@pkg/db';
+import { partCategories, type parts } from '@pkg/db/equipment';
+
+/** Every Part belongs to one Part Category, so a suite seeds one before its Parts. */
+export async function seedPartCategory(db: Db, name = 'General'): Promise<string> {
+  const [row] = await db.insert(partCategories).values({ name }).returning({ id: partCategories.id });
+  if (!row) throw new Error('Part Category insert did not return a row');
+
+  return row.id;
+}
 
 /** The columns every seeded Part needs, with the Supplier XOR BOM invariant already satisfied. */
 export function partValues({
+  categoryId,
   code,
   isInternallyFabricated = false,
   standardPurchaseLengthMm = null,
@@ -9,6 +19,7 @@ export function partValues({
   supplierId,
   unitOfMeasure,
 }: {
+  categoryId: string;
   code: string;
   isInternallyFabricated?: boolean;
   standardPurchaseLengthMm?: number | null;
@@ -17,7 +28,7 @@ export function partValues({
   unitOfMeasure: 'kg' | 'mm' | 'piece';
 }): typeof parts.$inferInsert {
   return {
-    category: 'Test',
+    categoryId,
     code,
     description: `${code} description`,
     finish: 'None',

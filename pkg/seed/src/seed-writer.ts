@@ -19,6 +19,7 @@ import {
   prepareSnapshotRow,
   projectWritableRow,
   type SnapshotRow,
+  type SnapshotRowsByTable,
   type SnapshotTableConfig,
   snapshotCleanupTables,
   snapshotTables,
@@ -64,12 +65,14 @@ export async function writeLocalSeedSnapshot(database?: Db): Promise<void> {
     assertLocalSeedStorageTarget(readSeedStorageConfig(''));
   }
 
-  const snapshots = await Promise.all(
-    snapshotTables.map(async (config) => ({
-      config,
-      rows: prepareRowsForSeed(config, await readSnapshotFile(config)),
-    })),
+  const capturedRows = await Promise.all(
+    snapshotTables.map(async (config) => ({ config, rows: await readSnapshotFile(config) })),
   );
+  const snapshotRows: SnapshotRowsByTable = new Map(capturedRows.map(({ config, rows }) => [config.tableName, rows]));
+  const snapshots = capturedRows.map(({ config, rows }) => ({
+    config,
+    rows: prepareRowsForSeed(config, rows, snapshotRows),
+  }));
   const localClient = database ? null : createDatabaseClient(localDatabaseUrl);
   const writableDb = database ?? localClient?.db;
 
@@ -92,8 +95,14 @@ export async function writeLocalSeedSnapshot(database?: Db): Promise<void> {
 }
 
 // Add rollout defaults beneath captured values, then normalize legacy values for the current schema.
-export function prepareRowsForSeed(config: SnapshotTableConfig, rows: readonly SnapshotRow[]): SnapshotRow[] {
-  const source = rows.length === 0 ? (config.emptySnapshotRows ?? rows) : rows;
+export function prepareRowsForSeed(
+  config: SnapshotTableConfig,
+  rows: readonly SnapshotRow[],
+  snapshotRows: SnapshotRowsByTable = new Map(),
+): SnapshotRow[] {
+  const emptyRows =
+    typeof config.emptySnapshotRows === 'function' ? config.emptySnapshotRows(snapshotRows) : config.emptySnapshotRows;
+  const source = rows.length === 0 ? (emptyRows ?? rows) : rows;
   return source.map((row, index) => prepareSnapshotRow(config, projectWritableRow(config, row), index));
 }
 

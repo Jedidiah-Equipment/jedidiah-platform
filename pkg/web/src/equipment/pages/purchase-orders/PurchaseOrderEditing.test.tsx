@@ -33,6 +33,7 @@ const lineId = 'a9af52b0-9476-4f86-8b1d-f121b2b6e702';
 const part: Part = {
   averageUtilizationPercent: null,
   category: 'Fasteners',
+  categoryId: '5de0e2a1-2b2f-4b2e-9a5f-6a0d0a1b2c3d',
   code: 'BN1-0324',
   description: 'M12 Flatwasher',
   drawingCode: null,

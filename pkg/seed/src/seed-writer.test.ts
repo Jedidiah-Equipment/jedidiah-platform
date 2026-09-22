@@ -107,3 +107,36 @@ it('initializes Labor rates for old snapshots and preserves captured rates', () 
   const legacy = [{ id: 'fabrication', costToCompanyRate: 250, billingRate: 600, consumablesPercentage: 70 }];
   expect(prepareRowsForSeed(config, legacy)).toEqual(captured);
 });
+
+it('derives Part Categories from Parts captured before Part Categories existed', () => {
+  const partCategoryConfig = snapshotCleanupTables.find((table) => table.tableName === 'part_category');
+  const partsConfig = snapshotCleanupTables.find((table) => table.tableName === 'parts');
+  if (!partCategoryConfig || !partsConfig) throw new Error('Missing Part Category or Parts config');
+  const legacyParts = [
+    { category: 'Axle', code: 'AX-1', unitOfMeasure: 'piece' },
+    { category: 'Axle ', code: 'AX-2', unitOfMeasure: 'piece' },
+    { category: 'axle', code: 'AX-3', unitOfMeasure: 'piece' },
+    { category: '6000', code: 'SEMP-0001', unitOfMeasure: 'mm' },
+  ];
+  const snapshotRows = new Map([['parts', legacyParts]]);
+
+  const categories = prepareRowsForSeed(partCategoryConfig, [], snapshotRows);
+  const seededParts = prepareRowsForSeed(partsConfig, legacyParts, snapshotRows);
+
+  expect(categories.map((category) => category.name)).toEqual(['Axle', 'Pipe']);
+  const idByName = new Map(categories.map((category) => [category.name, category.id]));
+  expect(seededParts.map((part) => part.categoryId)).toEqual([
+    idByName.get('Axle'),
+    idByName.get('Axle'),
+    idByName.get('Axle'),
+    idByName.get('Pipe'),
+  ]);
+  expect(seededParts.every((part) => !('category' in part))).toBe(true);
+
+  const captured = [{ createdAt: new Date(), id: '00000000-0000-4000-8000-000000000001', name: 'Axle' }];
+  expect(prepareRowsForSeed(partCategoryConfig, captured, snapshotRows)).toEqual(captured);
+  const currentPart = { categoryId: '00000000-0000-4000-8000-000000000001', code: 'AX-1', unitOfMeasure: 'piece' };
+  expect(prepareRowsForSeed(partsConfig, [currentPart], new Map())[0]).toMatchObject({
+    categoryId: currentPart.categoryId,
+  });
+});

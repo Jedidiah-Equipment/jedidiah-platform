@@ -51,6 +51,7 @@ import { createTester } from '../../test/create-tester.js';
 import { getJobCancellationPlan } from '../cancellation/cancellation-plan-service.js';
 import { deleteProductDocument } from '../products/product-service.js';
 import { updateQuote } from '../quotes/quote-service.js';
+import { seedPartCategory } from '../test/part-fixtures.js';
 import { createProductRangeFixture } from '../test/product-range-fixtures.js';
 import { getProductUnit } from '../units/product-unit-read-service.js';
 import { removeProductUnit, transferProductUnitOwnership } from '../units/product-unit-service.js';
@@ -3905,12 +3906,13 @@ async function createCatalog(db: Db) {
     .returning();
   if (!createdSupplier) throw new Error('Supplier insert did not return a row');
 
+  const categoryId = await seedPartCategory(db, 'Fabrication');
   const createdParts = await db
     .insert(parts)
     .values([
-      partInput(createdSupplier.id, 'PART-CHASSIS', 'Chassis Plate', 'mm'),
-      partInput(createdSupplier.id, 'PART-AXLE', 'Standard Axle'),
-      partInput(createdSupplier.id, 'PART-HEAVY-AXLE', 'Heavy Axle'),
+      partInput(categoryId, createdSupplier.id, 'PART-CHASSIS', 'Chassis Plate', 'mm'),
+      partInput(categoryId, createdSupplier.id, 'PART-AXLE', 'Standard Axle'),
+      partInput(categoryId, createdSupplier.id, 'PART-HEAVY-AXLE', 'Heavy Axle'),
     ])
     .returning();
 
@@ -4070,13 +4072,14 @@ async function createProductDocuments(
 }
 
 function partInput(
+  categoryId: string,
   supplierId: string,
   code: string,
   name: string,
   unitOfMeasure: PartUnitOfMeasure = 'piece',
 ): typeof parts.$inferInsert {
   return {
-    category: 'Fabrication',
+    categoryId,
     code,
     description: name,
     finish: 'Raw',

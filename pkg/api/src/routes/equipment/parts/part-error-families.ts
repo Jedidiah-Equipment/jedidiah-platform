@@ -22,6 +22,8 @@ export const partCoreErrorFamily = defineCoreErrorFamily<PartCoreError>({
   codes: {
     'part.bom_locked': 'CONFLICT',
     'part.bulk_import_conflict': 'CONFLICT',
+    'part.category_name_taken': 'CONFLICT',
+    'part.category_not_found': 'NOT_FOUND',
     'part.duplicate_code': 'CONFLICT',
     'part.label_selection_empty': 'NOT_FOUND',
     'part.not_found': 'NOT_FOUND',
@@ -33,6 +35,8 @@ export const partCoreErrorFamily = defineCoreErrorFamily<PartCoreError>({
   // Only where the core error's own wording is too internal to show a user.
   messages: {
     'part.bulk_import_conflict': 'A CSV row matches an existing part code with a different supplier.',
+    'part.category_name_taken': 'A Part Category with this name already exists.',
+    'part.category_not_found': 'Part Category not found.',
     'part.duplicate_code': 'A part with this code already exists.',
     'part.label_selection_empty': 'No Parts match this label selection.',
     'part.not_found': 'Part not found.',

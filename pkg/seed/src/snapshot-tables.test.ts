@@ -1,6 +1,7 @@
 import { getTableColumns } from 'drizzle-orm';
 import { describe, expect, it } from 'vitest';
 
+import { legacyPartCategoryId } from './legacy-part-categories.js';
 import {
   collectStorageFiles,
   prepareSnapshotRow,
@@ -36,6 +37,7 @@ describe('snapshot table registry', () => {
       'account',
       'customers',
       'supplier',
+      'part_category',
       'parts',
       'product_ranges',
       'product_range_variants',
@@ -94,6 +96,7 @@ describe('snapshot table registry', () => {
       'account.json',
       'customers.json',
       'supplier.json',
+      'part_category.json',
       'parts.json',
       'product_ranges.json',
       'product_range_variants.json',
@@ -206,7 +209,7 @@ describe('snapshot table registry', () => {
     expect(
       prepareSnapshotRow(partsConfig, { category: '6000', code: 'SEMP-0001', unitOfMeasure: 'mm' }, 0),
     ).toMatchObject({
-      category: 'Pipe',
+      categoryId: legacyPartCategoryId('Pipe'),
       standardPurchaseLengthMm: 6000,
       unitOfMeasure: 'mm',
     });
@@ -225,7 +228,7 @@ describe('snapshot table registry', () => {
         },
         0,
       ),
-    ).toMatchObject({ category: 'Tube', standardPurchaseLengthMm: 12000 });
+    ).toMatchObject({ categoryId: legacyPartCategoryId('Tube'), standardPurchaseLengthMm: 12000 });
   });
 
   it('keeps rollout Work Item tables optional until the source migration deploys', () => {

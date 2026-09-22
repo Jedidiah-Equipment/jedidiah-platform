@@ -13,6 +13,7 @@ export const helpTopicForPath = createHelpTopicResolver(
     ['/equipment/jobs', 'jobs'],
     ['/equipment/jobs/activity', 'jobActivity'],
     ['/equipment/labor-rates', 'laborRates'],
+    ['/equipment/part-categories', 'partCategories'],
     ['/equipment/parts', 'parts'],
     ['/equipment/products', 'products'],
     ['/equipment/purchase-orders', 'purchaseOrders'],

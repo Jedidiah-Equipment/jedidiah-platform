@@ -99,7 +99,8 @@ export const ProductAssembliesEditor: React.FC<ProductAssembliesEditorProps> = (
   const categoryOptions = usePartCategoryOptions();
   const assemblyNameOptions = useAssemblyNameOptions();
   const parts = partOptions.items;
-  const categories = categoryOptions.items;
+  // The filter matches `Part.category`, which is the Part Category's name.
+  const categories = React.useMemo(() => categoryOptions.items.map((item) => item.name), [categoryOptions.items]);
   const assemblyNames = assemblyNameOptions.items;
   const indexedAssemblies = assembliesField.state.value.map((assembly, index) => ({ assembly, index }));
   const standardAssemblies = getAssembliesByKind(indexedAssemblies, 'standard');

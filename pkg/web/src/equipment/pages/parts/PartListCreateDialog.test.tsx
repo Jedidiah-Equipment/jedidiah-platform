@@ -4,7 +4,6 @@ import { describe, expect, it, vi } from 'vitest';
 vi.mock('@tanstack/react-query', () => ({ useMutation: () => ({ mutateAsync: vi.fn() }) }));
 vi.mock('@/hooks/use-api-mutation-error-toast.js', () => ({ useApiMutationErrorToast: () => vi.fn() }));
 vi.mock('@/equipment/hooks/options/index.js', () => ({
-  usePartCategoryOptions: () => ({ isPending: false, items: [] }),
   useSupplierOptions: () => ({ isPending: false, selectOptions: [] }),
 }));
 vi.mock('@/equipment/hooks/use-query-invalidation.js', () => ({
@@ -13,6 +12,7 @@ vi.mock('@/equipment/hooks/use-query-invalidation.js', () => ({
 vi.mock('@/lib/trpc.js', () => ({
   useTRPC: () => ({ parts: { create: { mutationOptions: (options: unknown) => options } } }),
 }));
+vi.mock('./components/PartCategoryField.js', () => ({ PartCategoryField: () => <span>Part Category</span> }));
 const setFieldValue = vi.fn();
 /** The unit select's commit handler, captured on render so a unit change can be replayed. */
 let commitUnitOfMeasure: ((unitOfMeasure: string) => void) | undefined;
@@ -62,7 +62,7 @@ describe('PartListCreateDialog', () => {
     for (const name of [
       'name',
       'code',
-      'category',
+      'categoryId',
       'finish',
       'supplierId',
       'supplierCode',

@@ -4,7 +4,7 @@ import { parts, supplier } from '@pkg/db/equipment';
 import { createTester } from '../../test/create-tester.js';
 import { postAdjustment } from '../inventory/stock-movement-service.js';
 import { savePartBom } from '../parts/part-bom-service.js';
-import { partValues } from './part-fixtures.js';
+import { partValues, seedPartCategory } from './part-fixtures.js';
 
 /**
  * The world a Built Part lives in: an assembly with a BOM of bought components plus raw plate that
@@ -76,21 +76,24 @@ export function opening(partId: string, overrides: { delta: number; unitCost: nu
 }
 
 export async function seedParts(db: Db, supplierId: string) {
+  const categoryId = await seedPartCategory(db);
   const [bolt, cylinder, plate, channel, assembly, periodicBuilt] = await db
     .insert(parts)
     .values([
-      partValues({ code: 'BOLT', supplierId, unitOfMeasure: 'piece' }),
-      partValues({ code: 'CYLINDER', supplierId, unitOfMeasure: 'piece' }),
+      partValues({ categoryId, code: 'BOLT', supplierId, unitOfMeasure: 'piece' }),
+      partValues({ categoryId, code: 'CYLINDER', supplierId, unitOfMeasure: 'piece' }),
       partValues({
+        categoryId,
         code: 'PLATE',
         standardPurchaseLengthMm: 6_000,
         stockTrackingMode: 'periodic',
         supplierId,
         unitOfMeasure: 'mm',
       }),
-      partValues({ code: 'CHANNEL', standardPurchaseLengthMm: 6_000, supplierId, unitOfMeasure: 'mm' }),
-      partValues({ code: 'ASSEMBLY', isInternallyFabricated: true, supplierId, unitOfMeasure: 'piece' }),
+      partValues({ categoryId, code: 'CHANNEL', standardPurchaseLengthMm: 6_000, supplierId, unitOfMeasure: 'mm' }),
+      partValues({ categoryId, code: 'ASSEMBLY', isInternallyFabricated: true, supplierId, unitOfMeasure: 'piece' }),
       partValues({
+        categoryId,
         code: 'PERIODIC-BUILT',
         isInternallyFabricated: true,
         stockTrackingMode: 'periodic',

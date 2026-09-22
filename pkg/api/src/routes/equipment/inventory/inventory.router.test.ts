@@ -10,7 +10,7 @@ import {
   supplier,
 } from '@pkg/db/equipment';
 import { describe, expect } from 'vitest';
-
+import { seedPartCategory } from '@/equipment/test/part-category-fixtures.js';
 import { createTester } from '@/test/create-tester.js';
 import { mockSession } from '@/test/test-utils.js';
 
@@ -34,10 +34,11 @@ const test = createTester(async ({ db }) => {
     throw new Error('Supplier insert did not return a row');
   }
 
+  const categoryId = await seedPartCategory(db, 'Bearings');
   const [part] = await db
     .insert(parts)
     .values({
-      category: 'Bearings',
+      categoryId,
       code: 'P-100',
       description: 'Main bearing',
       finish: 'None',
@@ -404,7 +405,7 @@ describe('inventory cost projection', () => {
     const [builtPart] = await context.db
       .insert(parts)
       .values({
-        category: 'Assemblies',
+        categoryId: await seedPartCategory(context.db, 'Assemblies'),
         code: 'P-200',
         description: 'Bearing housing assembly',
         finish: 'None',

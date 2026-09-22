@@ -4,7 +4,7 @@ import { describe, expect } from 'vitest';
 import { InMemoryStorageAdapter } from '../../storage/in-memory-storage-adapter.js';
 import { createTester } from '../../test/create-tester.js';
 import { postAdjustment } from '../inventory/stock-movement-service.js';
-import { partValues } from '../test/part-fixtures.js';
+import { partValues, seedPartCategory } from '../test/part-fixtures.js';
 import { createPurchaseOrderDraftsFromSelection } from './purchase-order-selection-service.js';
 import {
   approvePurchaseOrder,
@@ -37,10 +37,15 @@ const test = createTester(async ({ db }) => {
     { companyName: 'Zeta Steel', id: SUPPLIER_A_ID },
     { companyName: 'Acme Supplies', id: SUPPLIER_B_ID },
   ]);
+  const categoryId = await seedPartCategory(db);
   await db.insert(parts).values([
-    { ...partValues({ code: 'S-100', supplierId: SUPPLIER_A_ID, unitOfMeasure: 'piece' }), id: ALPHA_PART_ID },
+    {
+      ...partValues({ categoryId, code: 'S-100', supplierId: SUPPLIER_A_ID, unitOfMeasure: 'piece' }),
+      id: ALPHA_PART_ID,
+    },
     {
       ...partValues({
+        categoryId,
         code: 'S-200',
         standardPurchaseLengthMm: 6_000,
         supplierId: SUPPLIER_A_ID,
@@ -48,9 +53,13 @@ const test = createTester(async ({ db }) => {
       }),
       id: ALPHA_LINEAR_PART_ID,
     },
-    { ...partValues({ code: 'S-300', supplierId: SUPPLIER_B_ID, unitOfMeasure: 'piece' }), id: BETA_PART_ID },
+    {
+      ...partValues({ categoryId, code: 'S-300', supplierId: SUPPLIER_B_ID, unitOfMeasure: 'piece' }),
+      id: BETA_PART_ID,
+    },
     {
       ...partValues({
+        categoryId,
         code: 'S-400',
         isInternallyFabricated: true,
         supplierId: SUPPLIER_A_ID,

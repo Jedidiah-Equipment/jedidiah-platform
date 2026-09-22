@@ -14,6 +14,7 @@ import { eq } from 'drizzle-orm';
 import { describe, expect } from 'vitest';
 
 import { createTester } from '../../test/create-tester.js';
+import { seedPartCategory } from '../test/part-fixtures.js';
 import { JobAlreadyClosedOutError, JobClosedOutError, JobNotCompletedError } from './close-out-errors.js';
 import { closeOutJob, listCloseOutQueue } from './close-out-service.js';
 import { listJobStock, listStockOnHand, postAdjustment, postJobMovement } from './stock-movement-service.js';
@@ -35,10 +36,11 @@ const test = createTester(async ({ db }) => {
   const [createdSupplier] = await db.insert(supplier).values({ companyName: 'Close-out Supplier' }).returning();
   if (!createdSupplier) throw new Error('Supplier insert did not return a row');
 
+  const categoryId = await seedPartCategory(db, 'Bearings');
   const [part] = await db
     .insert(parts)
     .values({
-      category: 'Bearings',
+      categoryId,
       code: 'PIECE',
       description: 'Close-out part',
       finish: 'Plain',

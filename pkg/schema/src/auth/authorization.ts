@@ -65,6 +65,7 @@ export const APP_PERMISSIONS = [
   'equipment_labor_rate:update',
   'equipment_part:read',
   'equipment_part:update',
+  'equipment_part_category:update',
   'equipment_product:read',
   'equipment_product:create',
   'equipment_product:update',

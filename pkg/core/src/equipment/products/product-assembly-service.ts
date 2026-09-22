@@ -18,7 +18,7 @@ type AssemblyRow = typeof productAssemblies.$inferSelect;
 type AssemblyDb = DatabaseTransaction | Db;
 export type AssemblyListRow = AssemblyRow & {
   assemblyParts: (typeof assemblyParts.$inferSelect & {
-    part: Pick<typeof parts.$inferSelect, 'category' | 'code'>;
+    part: Pick<typeof parts.$inferSelect, 'code'> & { category: { name: string } };
   })[];
   optionalOverrides: (typeof assemblyOverrides.$inferSelect)[];
 };
@@ -143,6 +143,11 @@ export async function exportProductAssemblies({ db }: { db: Db }): Promise<Assem
     .orderBy(asc(products.modelCode), ...productAssemblyOrderBy);
 }
 
+/** What {@link mapAssembly} reads off each assembly Part: it orders them by Part Category name, then code. */
+export const assemblyPartWith = {
+  part: { columns: { code: true }, with: { category: { columns: { name: true } } } },
+} as const;
+
 export const productAssemblyOrderBy = [
   sql`case when ${productAssemblies.kind} = 'standard' then 0 else 1 end`,
   asc(productAssemblies.displayOrder),
@@ -153,16 +158,7 @@ export async function listAssemblies({ tx, productId }: { tx: AssemblyDb; produc
     where: eq(productAssemblies.productId, productId),
     orderBy: productAssemblyOrderBy,
     with: {
-      assemblyParts: {
-        with: {
-          part: {
-            columns: {
-              category: true,
-              code: true,
-            },
-          },
-        },
-      },
+      assemblyParts: { with: assemblyPartWith },
       optionalOverrides: true,
     },
   });
@@ -173,7 +169,7 @@ export async function listAssemblies({ tx, productId }: { tx: AssemblyDb; produc
 export function mapAssembly(row: AssemblyListRow): Assembly {
   const assemblyPartsForRow = row.assemblyParts
     .map((part) => ({
-      category: part.part.category,
+      category: part.part.category.name,
       code: part.part.code,
       partId: part.partId,
       quantity: part.quantity,

@@ -78,6 +78,7 @@ import {
 } from '../documents/document-service.js';
 import {
   type AssemblyListRow,
+  assemblyPartWith,
   listAssemblies,
   mapAssembly,
   productAssemblyOrderBy,
@@ -141,16 +142,7 @@ const productListWith = {
   assemblies: {
     orderBy: productAssemblyOrderBy,
     with: {
-      assemblyParts: {
-        with: {
-          part: {
-            columns: {
-              category: true,
-              code: true,
-            },
-          },
-        },
-      },
+      assemblyParts: { with: assemblyPartWith },
       optionalOverrides: true,
     },
   },
@@ -630,16 +622,7 @@ async function loadProductDetailRow({
         assemblies: {
           orderBy: productAssemblyOrderBy,
           with: {
-            assemblyParts: {
-              with: {
-                part: {
-                  columns: {
-                    category: true,
-                    code: true,
-                  },
-                },
-              },
-            },
+            assemblyParts: { with: assemblyPartWith },
             optionalOverrides: true,
           },
         },

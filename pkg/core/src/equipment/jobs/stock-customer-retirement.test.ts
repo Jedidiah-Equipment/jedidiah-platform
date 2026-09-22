@@ -21,6 +21,7 @@ import { asc, eq, sql } from 'drizzle-orm';
 import { describe, expect } from 'vitest';
 
 import { createTester } from '../../test/create-tester.js';
+import { seedPartCategory } from '../test/part-fixtures.js';
 import { createProductRangeFixture } from '../test/product-range-fixtures.js';
 
 // The placeholder Customer to retire — the id Dean supplied on 2026-07-28, the same one #1010's
@@ -468,10 +469,11 @@ async function seedPlaceholderShape(db: Db) {
     .returning();
   if (!createdSupplier) throw new Error('Supplier insert did not return a row');
 
+  const categoryId = await seedPartCategory(db, 'Fabrication');
   const [part] = await db
     .insert(parts)
     .values({
-      category: 'Fabrication',
+      categoryId,
       code: 'PART-CHASSIS',
       description: 'Chassis Plate',
       finish: 'Raw',

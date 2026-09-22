@@ -11,6 +11,7 @@ describe('equipmentNavSections', () => {
       'Bays',
       'Users',
       'Labor rates',
+      'Part categories',
       'Product Ranges',
       'Translations',
       'Feedback',

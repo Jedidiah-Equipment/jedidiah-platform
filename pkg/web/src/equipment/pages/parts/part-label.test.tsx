@@ -37,7 +37,7 @@ describe('Part label actions', () => {
 
   test.each([
     [{ selection: 'all' }, 'selection=all'],
-    [{ category: 'Bright bar', selection: 'category' }, 'selection=category&amp;category=Bright+bar'],
+    [{ categoryId: PART_ID, selection: 'category' }, `selection=category&amp;categoryId=${PART_ID}`],
     [
       { selection: 'storageLocation', storageLocation: 'Rack A/04' },
       'selection=storageLocation&amp;storageLocation=Rack+A%2F04',

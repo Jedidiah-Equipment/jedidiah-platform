@@ -3,6 +3,7 @@ import { IconPrinter } from '@tabler/icons-react';
 import type React from 'react';
 import { useMemo, useState } from 'react';
 
+import { SearchableCombobox } from '@/components/common/SearchableCombobox.js';
 import { Button, type ButtonSize } from '@/components/ui/button.js';
 import {
   Combobox,
@@ -42,7 +43,7 @@ type PartLabelBatchDialogProps = {
 export const PartLabelBatchDialog: React.FC<PartLabelBatchDialogProps> = ({ buttonSize = 'default' }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [mode, setMode] = useState<BatchMode>('all');
-  const [category, setCategory] = useState('');
+  const [categoryId, setCategoryId] = useState('');
   const [storageLocation, setStorageLocation] = useState('');
   const [partIds, setPartIds] = useState<string[]>([]);
   const categories = usePartCategoryOptions();
@@ -52,11 +53,11 @@ export const PartLabelBatchDialog: React.FC<PartLabelBatchDialogProps> = ({ butt
     () => new Map(parts.items.map((part) => [part.id, `${part.code} · ${part.name}`])),
     [parts.items],
   );
-  const selection = resolveSelection({ category, mode, partIds, storageLocation });
+  const selection = resolveSelection({ categoryId, mode, partIds, storageLocation });
 
   const openDialog = () => {
     setMode('all');
-    setCategory('');
+    setCategoryId('');
     setStorageLocation('');
     setPartIds([]);
     setIsOpen(true);
@@ -91,19 +92,15 @@ export const PartLabelBatchDialog: React.FC<PartLabelBatchDialogProps> = ({ butt
             </Field>
             {mode === 'category' ? (
               <Field>
-                <FieldLabel htmlFor="part-label-category">Category</FieldLabel>
-                <Select onValueChange={(value) => setCategory(value ?? '')} value={category}>
-                  <SelectTrigger className="w-full" id="part-label-category">
-                    <SelectValue placeholder="Select category" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {categories.items.map((item) => (
-                      <SelectItem key={item} value={item}>
-                        {item}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <FieldLabel htmlFor="part-label-category">Part Category</FieldLabel>
+                <SearchableCombobox
+                  emptyMessage="No Part Categories found."
+                  inputId="part-label-category"
+                  onValueChange={setCategoryId}
+                  options={categories.selectOptions}
+                  placeholder="Search Part Categories"
+                  value={categoryId}
+                />
               </Field>
             ) : null}
             {mode === 'storageLocation' ? (
@@ -177,12 +174,12 @@ export const PartLabelBatchDialog: React.FC<PartLabelBatchDialogProps> = ({ butt
 };
 
 function resolveSelection({
-  category,
+  categoryId,
   mode,
   partIds,
   storageLocation,
 }: {
-  category: string;
+  categoryId: string;
   mode: BatchMode;
   partIds: string[];
   storageLocation: string;
@@ -191,7 +188,7 @@ function resolveSelection({
     mode === 'all'
       ? { selection: mode }
       : mode === 'category'
-        ? { category, selection: mode }
+        ? { categoryId, selection: mode }
         : mode === 'storageLocation'
           ? { selection: mode, storageLocation }
           : { ids: partIds, selection: mode };

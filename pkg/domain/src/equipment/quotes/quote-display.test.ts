@@ -61,6 +61,7 @@ describe('quote display helpers', () => {
   it('returns product and custom subtitles from one policy', () => {
     expect(
       getQuoteOfferingSubtitle({
+        isPartsSale: false,
         kind: 'product',
         product: { buildTimeDays: 12, modelCode: 'EX-100', name: 'Excavator' },
         workTitle: null,
@@ -68,6 +69,7 @@ describe('quote display helpers', () => {
     ).toEqual({ mono: false, text: 'EX-100 / 12d build' });
     expect(
       getQuoteOfferingSubtitle({
+        isPartsSale: false,
         kind: 'custom',
         product: null,
         workTitle: 'Hydraulic repair',

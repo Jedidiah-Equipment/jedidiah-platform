@@ -134,8 +134,6 @@ export function quoteProductSourceOf(quote: {
 }
 
 export type QuoteOfferingDisplaySource = {
-  /** Absent on the Job side, which a Parts Sale never reaches. */
-  isPartsSale?: boolean;
   kind: 'product' | 'custom';
   product: {
     buildTimeDays: number;
@@ -154,11 +152,13 @@ export function getQuoteOfferingName(quote: QuoteOfferingDisplaySource): string 
   return quote.kind === 'custom' ? (quote.workTitle ?? quoteKindLabels.custom) : (quote.product?.name ?? '—');
 }
 
-export function getQuoteOfferingSubtitle(quote: QuoteOfferingDisplaySource): QuoteOfferingSubtitle | null {
+export function getQuoteOfferingSubtitle(
+  quote: QuoteOfferingDisplaySource & { isPartsSale: boolean },
+): QuoteOfferingSubtitle | null {
   if (quote.kind === 'custom') {
     return {
       mono: false,
-      text: quoteOfferingTypeLabels[quoteOfferingType({ isPartsSale: quote.isPartsSale ?? false, kind: 'custom' })],
+      text: quoteOfferingTypeLabels[quoteOfferingType(quote)],
     };
   }
 

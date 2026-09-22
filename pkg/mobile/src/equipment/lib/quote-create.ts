@@ -1,10 +1,11 @@
+import { PARTS_SALE_DEFAULT_WORK_TITLE } from '@pkg/domain/equipment';
 import { AuthId, UUID } from '@pkg/schema';
 import {
   Customer,
   CustomerCompanyName,
   QuoteCreateInput,
   type QuoteCreateInput as QuoteCreateInputValue,
-  QuoteKind,
+  QuoteOfferingType,
   QuoteStatus,
   QuoteWorkTitle,
 } from '@pkg/schema/equipment';
@@ -24,7 +25,7 @@ export const QuoteCreateStatus = QuoteStatus.exclude(['cancelled']);
 
 const QuoteCreateFormValuesShape = z.object({
   customer: CustomerSelection.nullable(),
-  kind: QuoteKind,
+  offeringType: QuoteOfferingType,
   productId: z.string(),
   rangeId: z.string(),
   salesPersonId: z.string(),
@@ -44,7 +45,7 @@ export const QuoteCreateFormValues = QuoteCreateFormValuesShape.superRefine((val
     context.addIssue({ code: 'custom', message: 'Select or create a customer', path: ['customer'] });
   }
 
-  if (value.kind === 'product') {
+  if (value.offeringType === 'product') {
     if (!UUID.safeParse(value.productId).success) {
       context.addIssue({ code: 'custom', message: 'Select a product', path: ['productId'] });
     }
@@ -62,7 +63,7 @@ export const QuoteCreateFormValues = QuoteCreateFormValuesShape.superRefine((val
 
 export const QUOTE_CREATE_DEFAULT_VALUES: QuoteCreateFormValues = {
   customer: null,
-  kind: 'product',
+  offeringType: 'product',
   productId: '',
   rangeId: '',
   salesPersonId: '',
@@ -70,11 +71,17 @@ export const QUOTE_CREATE_DEFAULT_VALUES: QuoteCreateFormValues = {
   workTitle: '',
 };
 
+/** Clears the other type's fields; a Parts Sale with no Work Title yet starts from an editable default. */
 export function clearQuoteKindFields(
   values: QuoteCreateFormValues,
-  kind: QuoteCreateFormValues['kind'],
+  offeringType: QuoteOfferingType,
 ): QuoteCreateFormValues {
-  return kind === 'product' ? { ...values, kind, workTitle: '' } : { ...values, kind, productId: '', rangeId: '' };
+  if (offeringType === 'product') return { ...values, offeringType, workTitle: '' };
+
+  const workTitle =
+    offeringType === 'parts-sale' && !values.workTitle.trim() ? PARTS_SALE_DEFAULT_WORK_TITLE : values.workTitle;
+
+  return { ...values, offeringType, productId: '', rangeId: '', workTitle };
 }
 
 /**
@@ -89,9 +96,9 @@ export function toQuoteCreateInput(value: QuoteCreateFormValues): QuoteCreateInp
         ? { type: 'existing', customerId: value.customer.customer.id }
         : { type: 'inline', companyName: value.customer?.companyName ?? '' },
     offering:
-      value.kind === 'product'
+      value.offeringType === 'product'
         ? { kind: 'product', productId: value.productId }
-        : { kind: 'custom', workTitle: value.workTitle },
+        : { kind: 'custom', isPartsSale: value.offeringType === 'parts-sale', workTitle: value.workTitle },
     salesPersonId: value.salesPersonId,
     status: value.status,
   });

@@ -1,7 +1,7 @@
 import { type DatabaseTransaction, type Db, notRemoved, user } from '@pkg/db';
 import { customers, jobs, products, quotes } from '@pkg/db/equipment';
 import { getPlantDateNow } from '@pkg/domain';
-import { assertQuoteEditable, isQuoteLocked, quoteKindLabels, validateDiscount } from '@pkg/domain/equipment';
+import { assertQuoteEditable, isQuoteLocked, validateDiscount } from '@pkg/domain/equipment';
 import type { AuditChanges, AuthId, UUID } from '@pkg/schema';
 import {
   DEFAULT_PRODUCT_CURRENCY_CODE,
@@ -51,6 +51,7 @@ import {
 import { listQuoteWorkItems, persistQuoteWorkItems, type QuoteWorkItemRow } from './quote-work-items.js';
 
 type QuoteOfferingRow = {
+  isPartsSale: boolean;
   kind: QuoteKind;
   productId: UUID | null;
   productUnitId: UUID | null;
@@ -226,6 +227,7 @@ export async function createQuote({
         deliveryPrice: input.deliveryPrice,
         deliveryTerms: input.deliveryTerms,
         discountPercent: input.discountPercent,
+        isPartsSale: offering.isPartsSale,
         kind: offering.kind,
         invoiceNumber: input.invoiceNumber,
         notes: input.notes,
@@ -332,6 +334,7 @@ export async function updateQuote({
       deliveryPrice: input.deliveryPrice,
       deliveryTerms: input.deliveryTerms,
       discountPercent: input.discountPercent,
+      isPartsSale: before.isPartsSale,
       kind: before.kind,
       invoiceNumber: input.invoiceNumber,
       notes: input.notes,
@@ -736,6 +739,7 @@ async function resolveQuoteOffering({
 
     return {
       allocationSeed: [],
+      isPartsSale: input.offering.isPartsSale,
       kind: 'custom',
       productId: null,
       productUnitId: null,
@@ -772,6 +776,7 @@ async function resolveQuoteOffering({
 
   return {
     allocationSeed,
+    isPartsSale: false,
     kind: 'product',
     productId: product.id,
     productUnitId: input.offering.productUnitId,
@@ -785,7 +790,7 @@ function assertNoCustomSelectedAssemblies(
   input: Pick<QuoteCreateInput | QuotePatchInput | QuoteUpdateInput, 'selectedAssemblies'>,
 ): void {
   if ((input.selectedAssemblies?.length ?? 0) > 0) {
-    throw new QuoteCustomSelectedAssembliesError(`${quoteKindLabels.custom} Quotes cannot have Selected Assemblies.`);
+    throw new QuoteCustomSelectedAssembliesError('Custom Quotes cannot have Selected Assemblies.');
   }
 }
 

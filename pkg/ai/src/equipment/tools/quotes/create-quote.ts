@@ -52,7 +52,16 @@ const CreateQuoteCustomerInput = z.discriminatedUnion('type', [
 
 const CreateQuoteOfferingInput = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('product'), productId: UUID }).strict(),
-  z.object({ kind: z.literal('custom'), workTitle: QuoteWorkTitle }).strict(),
+  z
+    .object({
+      isPartsSale: z
+        .boolean()
+        .optional()
+        .describe('True for a Parts Sale: loose or machined parts sold to a customer with no workshop Job.'),
+      kind: z.literal('custom'),
+      workTitle: QuoteWorkTitle,
+    })
+    .strict(),
 ]);
 
 // Provider tool schemas are JSON-only, so compose non-transforming schema leaves and normalize in the mapper.
@@ -76,7 +85,7 @@ export const CreateQuoteInput = z
     documentNotes: QuoteDocumentNotes.default(null),
     notes: QuoteNotes.default(null),
     offering: CreateQuoteOfferingInput.describe(
-      `A Product offering requires a Product UUID from findProducts. A ${quoteKindLabels.custom} offering requires only a Work Title; its price comes from Work Items added afterwards.`,
+      `A Product offering requires a Product UUID from findProducts. A ${quoteKindLabels.custom} or Parts Sale offering is kind custom and requires only a Work Title; set isPartsSale for a Parts Sale. Its price comes from Work Items added afterwards.`,
     ),
     plannedDeliveryDate: DateOnlyIsoString.nullable().default(null),
     preferredDeliveryDate: DateOnlyIsoString.nullable().default(null),
@@ -121,7 +130,8 @@ export function toCreateQuoteResponse(quote: QuoteDetail, access: UserAccessSumm
 export const createQuoteDefinition = {
   name: 'createQuote',
   description: [
-    `Create one Product Quote or ${quoteKindLabels.custom} Quote when the user explicitly asks for it.`,
+    `Create one Product, ${quoteKindLabels.custom}, or Parts Sale Quote when the user explicitly asks for it.`,
+    'A Parts Sale sells loose or machined parts and never becomes a Job; its type cannot be changed later.',
     'Use findProducts to resolve a Product Quote productId and findCustomers to resolve an existing Customer; use an inline Customer when the company is new.',
     'Omit salesPersonId to assign the acting user. Do not choose another salesperson unless the user explicitly requests it.',
     'A cancelled Quote always requires cancellationReason; omit it for every other status.',

@@ -4,12 +4,22 @@ import {
   getQuoteOfferingName,
   getQuoteOfferingSubtitle,
   quoteKindLabels,
+  quoteOfferingType,
+  quoteOfferingTypeLabels,
   quoteProductSourceOf,
 } from './quote-display.js';
 
 describe('quote kind presentation', () => {
   it('presents the custom kind as Service Work', () => {
     expect(quoteKindLabels.custom).toBe('Service Work');
+  });
+});
+
+describe('quoteOfferingType', () => {
+  it('names a Product Quote, a Service Work Quote, and a Parts Sale', () => {
+    expect(quoteOfferingTypeLabels[quoteOfferingType({ isPartsSale: false, kind: 'product' })]).toBe('Product');
+    expect(quoteOfferingTypeLabels[quoteOfferingType({ isPartsSale: false, kind: 'custom' })]).toBe('Service Work');
+    expect(quoteOfferingTypeLabels[quoteOfferingType({ isPartsSale: true, kind: 'custom' })]).toBe('Parts Sale');
   });
 });
 
@@ -63,6 +73,9 @@ describe('quote display helpers', () => {
         workTitle: 'Hydraulic repair',
       }),
     ).toEqual({ mono: false, text: 'Service Work' });
+    expect(
+      getQuoteOfferingSubtitle({ isPartsSale: true, kind: 'custom', product: null, workTitle: 'Parts sale' }),
+    ).toEqual({ mono: false, text: 'Parts Sale' });
   });
 });
 

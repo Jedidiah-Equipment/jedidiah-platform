@@ -282,11 +282,12 @@ export const snapshotTableDefinitions = [
     fileName: 'quote.json',
     tableName: 'quote',
     timestampColumns: ['createdAt', 'statusChangedAt', 'updatedAt'],
-    optionalReadColumns: ['deliveryTerms', 'cancellationReason'],
+    optionalReadColumns: ['isPartsSale', 'deliveryTerms', 'cancellationReason'],
     seedRowDefaults: (row) => ({
       cancellationReason: row.status === 'cancelled' ? LEGACY_QUOTE_CANCELLATION_REASON : null,
       // Before Delivery Terms the price alone told included from charged, so the backfill reads it.
       deliveryTerms: Number(row.deliveryPrice) > 0 ? 'additional_charge' : 'included',
+      isPartsSale: false,
     }),
     resetSequence: { sequence: quoteCodeSequence, columnName: 'code' },
   },

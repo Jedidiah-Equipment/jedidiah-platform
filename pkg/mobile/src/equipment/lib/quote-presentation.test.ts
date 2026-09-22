@@ -126,7 +126,8 @@ describe('Quote sort presentation', () => {
 
 describe('quoteMetaLine', () => {
   it('describes Custom Quotes without Product facts', () => {
-    expect(quoteMetaLine({ kind: 'custom' })).toBe('Service Work');
+    expect(quoteMetaLine({ isPartsSale: false, kind: 'custom' })).toBe('Service Work');
+    expect(quoteMetaLine({ isPartsSale: true, kind: 'custom' })).toBe('Parts Sale');
   });
 
   it('shows Product model, build time, and only live selected options', () => {

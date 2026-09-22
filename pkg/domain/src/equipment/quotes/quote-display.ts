@@ -2,6 +2,7 @@ import {
   type QuoteDeliveryTerms,
   QuoteDeliveryTerms as QuoteDeliveryTermsSchema,
   type QuoteKind,
+  type QuoteOfferingType,
   type QuoteProductSource,
   type QuoteStatus,
 } from '@pkg/schema/equipment';
@@ -78,6 +79,29 @@ export const quoteKindColorClassNames: Record<QuoteKind, BadgeColorClassNames> =
   product: statusBadgeColorClassNames.yellow,
 };
 
+/** Pre-filled when a new Quote becomes a Parts Sale with no Work Title yet; the user can change it. */
+export const PARTS_SALE_DEFAULT_WORK_TITLE = 'Parts sale';
+
+export function quoteOfferingType(quote: { isPartsSale: boolean; kind: QuoteKind }): QuoteOfferingType {
+  if (quote.kind === 'product') return 'product';
+
+  return quote.isPartsSale ? 'parts-sale' : 'custom';
+}
+
+/** What people call each Quote type. The Job side still speaks in kinds, since a Parts Sale never reaches it. */
+export const quoteOfferingTypeLabels: Record<QuoteOfferingType, string> = {
+  custom: quoteKindLabels.custom,
+  'parts-sale': 'Parts Sale',
+  product: quoteKindLabels.product,
+};
+
+/** Parts Sale takes purple: no Quote or Job status uses it, and From Order, its other use, only marks Product Quotes. */
+export const quoteOfferingTypeColorClassNames: Record<QuoteOfferingType, BadgeColorClassNames> = {
+  custom: quoteKindColorClassNames.custom,
+  'parts-sale': statusBadgeColorClassNames.purple,
+  product: quoteKindColorClassNames.product,
+};
+
 export const quoteProductSourceLabels: Record<QuoteProductSource, string> = {
   order: 'From Order',
   stock: 'From Stock',
@@ -110,6 +134,8 @@ export function quoteProductSourceOf(quote: {
 }
 
 export type QuoteOfferingDisplaySource = {
+  /** Absent on the Job side, which a Parts Sale never reaches. */
+  isPartsSale?: boolean;
   kind: 'product' | 'custom';
   product: {
     buildTimeDays: number;
@@ -130,7 +156,10 @@ export function getQuoteOfferingName(quote: QuoteOfferingDisplaySource): string 
 
 export function getQuoteOfferingSubtitle(quote: QuoteOfferingDisplaySource): QuoteOfferingSubtitle | null {
   if (quote.kind === 'custom') {
-    return { mono: false, text: quoteKindLabels.custom };
+    return {
+      mono: false,
+      text: quoteOfferingTypeLabels[quoteOfferingType({ isPartsSale: quote.isPartsSale ?? false, kind: 'custom' })],
+    };
   }
 
   const modelCode = quote.product?.modelCode ?? '—';

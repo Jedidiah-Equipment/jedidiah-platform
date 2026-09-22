@@ -1,6 +1,7 @@
 import {
   computeAdditionalDeliveryPrice,
-  quoteKindLabels,
+  quoteOfferingType,
+  quoteOfferingTypeLabels,
   quoteStatusLabels,
   toQuoteWorkItemFormState,
 } from '@pkg/domain/equipment';
@@ -71,7 +72,7 @@ export function shouldPinPriorityQuotes({
 }
 
 type QuoteMetaFacts =
-  | { kind: 'custom' }
+  | { isPartsSale: boolean; kind: 'custom' }
   | {
       kind: 'product';
       product: Pick<NonNullable<QuoteSummary['product']>, 'buildTimeDays' | 'modelCode'>;
@@ -79,7 +80,7 @@ type QuoteMetaFacts =
     };
 
 export function quoteMetaLine(quote: QuoteMetaFacts): string {
-  if (quote.kind === 'custom') return quoteKindLabels.custom;
+  if (quote.kind === 'custom') return quoteOfferingTypeLabels[quoteOfferingType(quote)];
 
   const liveOptionCount = quote.selectedAssemblies.filter((selection) => selection.productAssemblyId !== null).length;
   const optionSuffix = liveOptionCount === 0 ? '' : ` · ${liveOptionCount} option${liveOptionCount === 1 ? '' : 's'}`;

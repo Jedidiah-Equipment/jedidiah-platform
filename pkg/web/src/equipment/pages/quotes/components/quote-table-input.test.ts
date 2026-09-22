@@ -12,7 +12,7 @@ describe('getQuoteListInputExtras', () => {
     const filters = [
       { id: 'customerCompanyName', value: CUSTOMER_ID },
       { id: 'invoiceNumber', value: 'invoiced' },
-      { id: 'kind', value: 'custom' },
+      { id: 'kind', value: 'parts-sale' },
       { id: 'productName', value: PRODUCT_ID },
       { id: 'salesPersonName', value: 'sales-user-id' },
       { id: 'status', value: ['draft', 'not-a-status'] },
@@ -22,7 +22,7 @@ describe('getQuoteListInputExtras', () => {
       filters: {
         customerId: CUSTOMER_ID,
         invoiced: 'invoiced',
-        kind: 'custom',
+        offeringType: 'parts-sale',
         productId: PRODUCT_ID,
         salesPersonId: 'sales-user-id',
         statuses: ['draft'],
@@ -41,7 +41,7 @@ describe('getQuoteListInputExtras', () => {
       filters: {
         customerId: undefined,
         invoiced: undefined,
-        kind: undefined,
+        offeringType: undefined,
         productId: undefined,
         salesPersonId: undefined,
         statuses: [],

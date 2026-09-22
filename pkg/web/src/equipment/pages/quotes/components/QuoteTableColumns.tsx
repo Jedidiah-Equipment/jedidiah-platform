@@ -3,14 +3,15 @@ import {
   getQuoteOfferingName,
   getQuoteOfferingSubtitle,
   pricePersistedQuote,
-  quoteKindLabels,
+  quoteOfferingType,
+  quoteOfferingTypeLabels,
   quoteProductSourceOf,
   quoteStatusLabels,
 } from '@pkg/domain/equipment';
 import {
   type PriorityQuote,
   QuoteInvoicedFilter,
-  QuoteKind,
+  QuoteOfferingType,
   QuoteStatus,
   type QuoteSummary,
 } from '@pkg/schema/equipment';
@@ -46,9 +47,9 @@ export const quoteStatusFilterOptions = QuoteStatus.options.map((status) => ({
   value: status,
 }));
 
-export const quoteKindFilterOptions = QuoteKind.options.map((kind) => ({
-  label: quoteKindLabels[kind],
-  value: kind,
+export const quoteKindFilterOptions = QuoteOfferingType.options.map((offeringType) => ({
+  label: quoteOfferingTypeLabels[offeringType],
+  value: offeringType,
 }));
 
 export const quoteInvoicedLabels = {
@@ -113,11 +114,11 @@ export function createQuoteTableColumns({
       size: 192,
     },
     {
-      accessorFn: (row) => row.quote.kind,
-      cell: ({ row }) => <QuoteKindBadge kind={row.original.quote.kind} />,
+      accessorFn: (row) => quoteOfferingType(row.quote),
+      cell: ({ row }) => <QuoteKindBadge isPartsSale={row.original.quote.isPartsSale} kind={row.original.quote.kind} />,
       enableColumnFilter: true,
       enableSorting: false,
-      header: 'Kind',
+      header: 'Type',
       id: 'kind',
       meta: {
         filterOptions: quoteKindFilterOptions,

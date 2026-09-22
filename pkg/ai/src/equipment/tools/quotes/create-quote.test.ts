@@ -132,9 +132,22 @@ describe('createQuote contract', () => {
     });
 
     expect(toCoreQuoteCreateInput(input, 'test-user-id').offering).toEqual({
+      isPartsSale: false,
       kind: 'custom',
       workItems: [],
       workTitle: 'Workshop repairs',
+    });
+  });
+
+  test('creates a Parts Sale as a Custom Quote flagged at creation', () => {
+    const input = CreateQuoteInput.parse({
+      customer: { customerId: CUSTOMER_ID, type: 'existing' },
+      offering: { isPartsSale: true, kind: 'custom', workTitle: 'Parts sale' },
+    });
+
+    expect(toCoreQuoteCreateInput(input, 'test-user-id').offering).toMatchObject({
+      isPartsSale: true,
+      kind: 'custom',
     });
   });
 

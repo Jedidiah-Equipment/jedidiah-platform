@@ -154,6 +154,8 @@ export async function listPriorityQuotes({
       and(
         eq(quotes.status, 'accepted'),
         isNull(quotes.productUnitId),
+        // A Parts Sale is complete without a Job, as an Allocation Quote is.
+        eq(quotes.isPartsSale, false),
         customerId ? eq(quotes.customerId, customerId) : undefined,
         sql`${earliestDeliveryDate} is not null`,
         sql`${earliestDeliveryDate} <= ${priorityWindowEndDate}::date`,
@@ -208,6 +210,8 @@ export async function listAwaitingJobCreationQuotes({ db }: { db: Db }): Promise
       and(
         eq(quotes.status, 'accepted'),
         isNull(quotes.productUnitId),
+        // A Parts Sale is complete without a Job, as an Allocation Quote is.
+        eq(quotes.isPartsSale, false),
         sql`not exists (
           select 1
           from ${jobs}
@@ -583,6 +587,11 @@ export function buildQuoteListWhere(input: QuoteListInput): SQL | undefined {
   if (input.filters.kind) {
     conditions.push(eq(quotes.kind, input.filters.kind));
   }
+
+  if (input.filters.offeringType === 'product') conditions.push(eq(quotes.kind, 'product'));
+  if (input.filters.offeringType === 'custom')
+    conditions.push(eq(quotes.kind, 'custom'), eq(quotes.isPartsSale, false));
+  if (input.filters.offeringType === 'parts-sale') conditions.push(eq(quotes.isPartsSale, true));
 
   if (input.filters.productId) {
     conditions.push(eq(quotes.productId, input.filters.productId));

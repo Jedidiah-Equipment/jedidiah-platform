@@ -75,6 +75,27 @@ describe('QuoteCreateInput', () => {
     ).toThrow('Unrecognized key');
   });
 
+  it('lets only a Custom Quote be a Parts Sale, defaulting to Service Work', () => {
+    expect(
+      QuoteCreateInput.parse({
+        ...baseCreateInput,
+        offering: { kind: 'custom', workTitle: 'Hydraulic repair' },
+      }),
+    ).toMatchObject({ offering: { isPartsSale: false, kind: 'custom' } });
+    expect(
+      QuoteCreateInput.parse({
+        ...baseCreateInput,
+        offering: { isPartsSale: true, kind: 'custom', workTitle: 'Parts sale' },
+      }),
+    ).toMatchObject({ offering: { isPartsSale: true, kind: 'custom' } });
+    expect(() =>
+      QuoteCreateInput.parse({
+        ...baseCreateInput,
+        offering: { ...baseCreateInput.offering, isPartsSale: true },
+      }),
+    ).toThrow('Unrecognized key');
+  });
+
   it('defaults inline customer contact fields to null and trims provided values', () => {
     expect(QuoteCreateInput.parse(baseCreateInput)).toMatchObject({
       customer: {

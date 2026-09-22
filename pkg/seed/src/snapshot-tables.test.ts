@@ -152,14 +152,16 @@ describe('snapshot table registry', () => {
     expect(configFor('quote').seedRowDefaults?.({ deliveryPrice: 0, kind: 'custom', status: 'draft' }, 0)).toEqual({
       cancellationReason: null,
       deliveryTerms: 'included',
+      isPartsSale: false,
     });
     expect(
       configFor('quote').seedRowDefaults?.({ deliveryPrice: 350, kind: 'product', status: 'cancelled' }, 0),
     ).toEqual({
       cancellationReason: 'Reason not recorded (cancelled before cancellation reasons were required).',
       deliveryTerms: 'additional_charge',
+      isPartsSale: false,
     });
-    expect(configFor('quote').optionalReadColumns).toEqual(['deliveryTerms', 'cancellationReason']);
+    expect(configFor('quote').optionalReadColumns).toEqual(['isPartsSale', 'deliveryTerms', 'cancellationReason']);
   });
 
   it('keeps captured rollout values ahead of seed fallbacks', () => {

@@ -104,7 +104,7 @@ function buildCreateFormValues(overrides: Partial<QuoteCreateFormValues> = {}): 
     customerId: CUSTOMER_ID,
     customerMode: 'existing',
     inlineCompanyName: '',
-    kind: 'product',
+    offeringType: 'product',
     productId: PRODUCT_ID,
     productUnitId: '',
     rangeId: '',
@@ -226,7 +226,7 @@ describe('QuoteCreateFormValues', () => {
       customerId: '',
       customerMode: 'existing',
       inlineCompanyName: '',
-      kind: 'product',
+      offeringType: 'product',
       productId: '',
       productUnitId: '',
       rangeId: '',
@@ -255,11 +255,17 @@ describe('QuoteCreateFormValues', () => {
     expect(QuoteCreateFormValues.safeParse(buildCreateFormValues({ productId: '' })).success).toBe(false);
     expect(
       QuoteCreateFormValues.safeParse(
-        buildCreateFormValues({ kind: 'custom', productId: '', workTitle: 'Hydraulic repair' }),
+        buildCreateFormValues({ offeringType: 'custom', productId: '', workTitle: 'Hydraulic repair' }),
       ).success,
     ).toBe(true);
     expect(
-      QuoteCreateFormValues.safeParse(buildCreateFormValues({ kind: 'custom', productId: '', workTitle: '' })).success,
+      QuoteCreateFormValues.safeParse(buildCreateFormValues({ offeringType: 'custom', productId: '', workTitle: '' }))
+        .success,
+    ).toBe(false);
+    expect(
+      QuoteCreateFormValues.safeParse(
+        buildCreateFormValues({ offeringType: 'parts-sale', productId: '', workTitle: '' }),
+      ).success,
     ).toBe(false);
   });
 
@@ -312,17 +318,26 @@ describe('toQuoteCreateInput', () => {
   it('builds the custom offering from work title and base price', () => {
     const input = toQuoteCreateInput(
       buildCreateFormValues({
-        kind: 'custom',
+        offeringType: 'custom',
         productId: '',
         workTitle: 'Hydraulic repair',
       }),
     );
 
     expect(input.offering).toEqual({
+      isPartsSale: false,
       kind: 'custom',
       workTitle: 'Hydraulic repair',
       workItems: [],
     });
+  });
+
+  it('maps a Parts Sale onto a flagged Custom Quote offering', () => {
+    const input = toQuoteCreateInput(
+      buildCreateFormValues({ offeringType: 'parts-sale', productId: '', workTitle: 'Parts sale' }),
+    );
+
+    expect(input.offering).toEqual({ isPartsSale: true, kind: 'custom', workTitle: 'Parts sale', workItems: [] });
   });
 
   it('ignores the create-dialog Range filter in create submissions', () => {

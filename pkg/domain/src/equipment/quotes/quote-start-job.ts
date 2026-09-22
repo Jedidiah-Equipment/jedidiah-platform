@@ -28,19 +28,27 @@ export function isReworkQuote(quote: { productUnitId: UUID | null }): boolean {
   return quote.productUnitId !== null;
 }
 
+export const PARTS_SALE_NO_JOB_REASON = 'A Parts Sale never sources a Job.';
+
 export function canStartJobFromQuote({
   hasLiveJob,
   hasProductUnit,
+  isPartsSale,
   kind,
   reworkRequired,
   status,
 }: {
   hasLiveJob: boolean;
   hasProductUnit: boolean;
+  isPartsSale: boolean;
   kind: QuoteKind;
   reworkRequired: boolean;
   status: QuoteStatus;
 }): QuoteStartJobEligibility {
+  if (isPartsSale) {
+    return { allowed: false, reason: PARTS_SALE_NO_JOB_REASON };
+  }
+
   if (hasLiveJob) {
     return { allowed: false, reason: 'Quote already has a Job.' };
   }

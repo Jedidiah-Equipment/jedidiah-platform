@@ -1604,6 +1604,32 @@ describe('quotes.list', () => {
     expect(customerEndpointResult.map((quote) => quote.code)).toEqual([overdueAlert.code]);
   });
 
+  test('round-trips a Parts Sale through create, read, and the type filter', async ({ context }) => {
+    const caller = context.createCaller(mockSession('sales'));
+    const partsSale = await caller.quotes.create({
+      customer: { type: 'inline', companyName: 'Parts Counter Customer' },
+      documentNotes: null,
+      notes: null,
+      offering: { isPartsSale: true, kind: 'custom', workTitle: 'Parts sale' },
+      salesPersonId: 'test-user-id',
+      status: 'draft',
+    });
+    await createReadyQuote(caller, context.product.id);
+
+    const partsSales = await caller.quotes.list({
+      cursor: 0,
+      filters: { offeringType: 'parts-sale', statuses: [] },
+      limit: 10,
+      search: '',
+      sortBy: 'createdAt',
+      sortDirection: 'asc',
+    });
+
+    expect(partsSale).toMatchObject({ isPartsSale: true, kind: 'custom' });
+    await expect(caller.quotes.get({ id: partsSale.id })).resolves.toMatchObject({ isPartsSale: true });
+    expect(partsSales.items).toMatchObject([{ id: partsSale.id, isPartsSale: true }]);
+  });
+
   test('separates invoiced from uninvoiced quotes, sorts by invoice number, and searches it', async ({ context }) => {
     const caller = context.createCaller(mockSession('sales'));
     const firstInvoiced = await caller.quotes.update({

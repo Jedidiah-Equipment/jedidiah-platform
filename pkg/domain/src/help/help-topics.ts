@@ -51,6 +51,7 @@ export const HELP_TOPICS = {
   purchaseOrders: '/inventory/approve-a-purchase-order',
   purchaseOrderCustomLines: '/inventory/add-a-custom-line-to-a-purchase-order',
   quotes: '/sales/cancel-a-quote',
+  quoteInventoryParts: '/sales/add-an-inventory-part-to-a-quote',
   storesTablet: '/inventory/work-the-stores-tablet',
   suppliers: '/inventory/maintain-suppliers',
   supplierMerge: '/inventory/merge-duplicate-suppliers',

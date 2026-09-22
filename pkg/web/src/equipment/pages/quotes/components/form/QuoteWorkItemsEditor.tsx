@@ -6,9 +6,10 @@ import {
   workItemDepartmentRate,
 } from '@pkg/domain/equipment';
 import type { LaborBillingRates } from '@pkg/schema/equipment';
-import { IconPlus, IconTrash } from '@tabler/icons-react';
+import { IconPackage, IconPlus, IconTrash } from '@tabler/icons-react';
 import { useQuery } from '@tanstack/react-query';
 import type React from 'react';
+import { useState } from 'react';
 import { useTypedAppFormContext } from '@/components/form/index.js';
 import type { ArrayFieldApi } from '@/components/form/types.js';
 import { Button } from '@/components/ui/button.js';
@@ -20,11 +21,14 @@ import {
   type QuoteFormValues,
   toQuoteWorkItemInput,
 } from '../types.js';
+import { AddInventoryPartDialog } from './AddInventoryPartDialog.js';
 
 type QuoteWorkItemFormInput = QuoteFormValues['workItems'][number];
 
 type QuoteWorkItemsEditorProps = {
   currencyCode: string;
+  /** A row written by code rather than typed; nothing else would tell autosave it happened. */
+  onPartsChanged: () => void;
   onRemoveWorkItem: () => void;
   readOnly: boolean;
   workItemsField: ArrayFieldApi<QuoteWorkItemFormInput>;
@@ -58,6 +62,7 @@ function useQuoteForm() {
 
 export const QuoteWorkItemsEditor: React.FC<QuoteWorkItemsEditorProps> = ({
   currencyCode,
+  onPartsChanged,
   onRemoveWorkItem,
   readOnly,
   workItemsField,
@@ -66,6 +71,7 @@ export const QuoteWorkItemsEditor: React.FC<QuoteWorkItemsEditorProps> = ({
   const trpc = useTRPC();
   const rates = useQuery(trpc.laborRates.billing.queryOptions()).data;
   const workItems = workItemsField.state.value;
+  const [inventoryPartWorkItemIndex, setInventoryPartWorkItemIndex] = useState<number | null>(null);
 
   return (
     <div className="grid gap-3">
@@ -195,16 +201,28 @@ export const QuoteWorkItemsEditor: React.FC<QuoteWorkItemsEditorProps> = ({
                 <div className="grid gap-2 border-l-2 pl-3">
                   <div className="flex items-center justify-between gap-3">
                     <span className="font-medium text-sm">Parts</span>
-                    <Button
-                      disabled={readOnly}
-                      onClick={() => partsField.pushValue({ ...DEFAULT_WORK_ITEM_PART })}
-                      size="xs"
-                      type="button"
-                      variant="outline"
-                    >
-                      <IconPlus data-icon="inline-start" />
-                      Add part
-                    </Button>
+                    <div className="flex flex-wrap justify-end gap-2">
+                      <Button
+                        disabled={readOnly}
+                        onClick={() => partsField.pushValue({ ...DEFAULT_WORK_ITEM_PART })}
+                        size="xs"
+                        type="button"
+                        variant="outline"
+                      >
+                        <IconPlus data-icon="inline-start" />
+                        Add custom part
+                      </Button>
+                      <Button
+                        disabled={readOnly}
+                        onClick={() => setInventoryPartWorkItemIndex(workItemIndex)}
+                        size="xs"
+                        type="button"
+                        variant="outline"
+                      >
+                        <IconPackage data-icon="inline-start" />
+                        Add inventory part
+                      </Button>
+                    </div>
                   </div>
                   {partsField.state.value.length === 0 ? (
                     <span className="text-muted-foreground text-xs">No parts.</span>
@@ -263,6 +281,18 @@ export const QuoteWorkItemsEditor: React.FC<QuoteWorkItemsEditorProps> = ({
           </div>
         ))
       )}
+      <AddInventoryPartDialog
+        currencyCode={currencyCode}
+        onAdd={(row) => {
+          if (inventoryPartWorkItemIndex === null) return;
+          quoteForm.pushFieldValue(`workItems[${inventoryPartWorkItemIndex}].parts`, row);
+          onPartsChanged();
+        }}
+        onOpenChange={(open) => {
+          if (!open) setInventoryPartWorkItemIndex(null);
+        }}
+        open={inventoryPartWorkItemIndex !== null}
+      />
     </div>
   );
 };

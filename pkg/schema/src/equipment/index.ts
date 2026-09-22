@@ -35,6 +35,7 @@ export * from './purchase-orders/purchase-order-return.js';
 export * from './purchase-orders/supplier-invoice.js';
 export * from './quotes/quote.js';
 export * from './quotes/quote-document.js';
+export * from './quotes/quote-inventory-part.js';
 export * from './suppliers/supplier.js';
 export * from './units/product-unit.js';
 export * from './units/product-unit-stock-export.js';

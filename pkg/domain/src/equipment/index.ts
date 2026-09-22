@@ -52,6 +52,7 @@ export * from './products/product-range-logo-policy.js';
 export * from './quotes/effective-bom.js';
 export * from './quotes/quote-display.js';
 export * from './quotes/quote-document-policy.js';
+export * from './quotes/quote-inventory-part.js';
 export * from './quotes/quote-lock.js';
 export * from './quotes/quote-pricing.js';
 export * from './quotes/quote-salesperson.js';

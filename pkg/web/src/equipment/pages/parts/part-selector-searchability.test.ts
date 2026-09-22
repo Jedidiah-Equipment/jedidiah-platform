@@ -15,6 +15,9 @@ const controlledPartSelectors = [
   './components/PartBomTab.tsx',
 ] as const;
 
+/** Pickers over the whole catalog, searched on the server a page at a time. */
+const serverSearchedPartSelectors = ['../quotes/components/form/AddInventoryPartDialog.tsx'] as const;
+
 describe('Part selector searchability', () => {
   it.each(simpleFormPartSelectors)('%s uses the searchable form field', (relativePath) => {
     expect(readSource(relativePath)).toContain('<field.ComboboxField');
@@ -32,6 +35,10 @@ describe('Part selector searchability', () => {
 
   it.each(controlledPartSelectors)('%s uses the searchable controlled combobox', (relativePath) => {
     expect(readSource(relativePath)).toContain('<SearchableCombobox');
+  });
+
+  it.each(serverSearchedPartSelectors)('%s uses the server-searched combobox', (relativePath) => {
+    expect(readSource(relativePath)).toContain('<EntityCombobox');
   });
 
   it('keeps the Product Assembly Part picker searchable', () => {

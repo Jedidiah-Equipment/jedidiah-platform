@@ -37,6 +37,7 @@ export const OTHER_WORK_ITEM_DEPARTMENT = 'other';
 
 const WorkItemDepartmentSelection = z.union([Department, z.literal(OTHER_WORK_ITEM_DEPARTMENT)]);
 
+export type QuoteWorkItemPartFormInput = z.infer<typeof QuoteWorkItemPartFormInput>;
 const QuoteWorkItemPartFormInput = z.object({
   name: QuoteWorkItemPartName,
   quantity: QuoteWorkItemPartQuantity,

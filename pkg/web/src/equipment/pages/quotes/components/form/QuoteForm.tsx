@@ -278,6 +278,7 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ onSave, priorityQuote, quo
                         >
                           <QuoteWorkItemsEditor
                             currencyCode={quoteCurrencyCode}
+                            onPartsChanged={autosave.commit}
                             onRemoveWorkItem={autosave.commit}
                             readOnly={!canEdit('workItems')}
                             workItemsField={workItemsField}

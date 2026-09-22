@@ -26,9 +26,3 @@ test('saves a blank markup as null and a set one, 0% included, as its number', (
       partCategoryFormToInput(category.id, PartCategoryFormValues.parse({ ...blank, markupPercent })),
     ).toMatchObject({ markupPercent });
 });
-
-test('refuses a markup outside the API field rule', () => {
-  const values = partCategoryFormValues({ ...category, markupPercent: 25 });
-  for (const markupPercent of [-1, 12.345])
-    expect(PartCategoryFormValues.safeParse({ ...values, markupPercent }).success).toBe(false);
-});

@@ -1,14 +1,11 @@
-import type { JobStockMovementType } from '@pkg/schema/equipment';
 import { IconArrowDown, IconArrowUp, IconShoppingCartPlus } from '@tabler/icons-react';
 import { useQuery } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
 
 import { Button } from '@/components/ui/button.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
-import { CheckoutBasketDialog } from '@/equipment/pages/inventory/components/CheckoutBasketDialog.js';
 import { CreatePurchaseOrdersDialog } from '@/equipment/pages/inventory/components/CreatePurchaseOrdersDialog.js';
-import { StockMovementDialog } from '@/equipment/pages/inventory/components/StockMovementDialog.js';
-import { partOptionsAllowing } from '@/equipment/pages/inventory/components/types.js';
+import { useStockMovementDialogs } from '@/equipment/pages/inventory/components/use-stock-movement-dialogs.js';
 import { useCan } from '@/hooks/use-access.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { JobStockTable } from './JobStockTable.js';
@@ -19,18 +16,8 @@ export function JobStockTab({ isCancelled, job }: { isCancelled: boolean; job: {
   const canMove = useCan('equipment_inventory:move').can;
   const canCreatePurchaseOrders = useCan('equipment_purchase_order:create').can;
   const jobStockQuery = useQuery(trpc.inventory.jobStock.queryOptions({ jobId: job.id }));
-  const [movementType, setMovementType] = useState<JobStockMovementType | null>(null);
   const [isCreatingPurchaseOrders, setIsCreatingPurchaseOrders] = useState(false);
-  // The stock-on-hand report replays the whole ledger; only the movement dialog's Part picker needs
-  // it, so the tab does not pay for it until one opens.
-  const stockOnHandQuery = useQuery(
-    trpc.inventory.stockOnHand.queryOptions(undefined, { enabled: canMove && movementType !== null }),
-  );
-  const stockOnHandItems = useMemo(() => stockOnHandQuery.data?.items ?? [], [stockOnHandQuery.data?.items]);
-  const parts = useMemo(
-    () => partOptionsAllowing(stockOnHandItems, movementType === 'return-to-store' ? 'returnToStore' : 'checkout'),
-    [movementType, stockOnHandItems],
-  );
+  const movementDialogs = useStockMovementDialogs({ canMove, fixedTarget: { ...job, kind: 'job' } });
   const purchaseCandidates = useMemo(
     () => toJobStockPurchaseCandidates(jobStockQuery.data?.items ?? []),
     [jobStockQuery.data?.items],
@@ -49,13 +36,13 @@ export function JobStockTab({ isCancelled, job }: { isCancelled: boolean; job: {
       {canMove || canCreatePurchaseOrders ? (
         <div className="flex flex-wrap gap-2">
           {canMove && !isCancelled ? (
-            <Button onClick={() => setMovementType('checkout')} variant="outline">
+            <Button onClick={() => movementDialogs.openDialog('checkout')} variant="outline">
               <IconArrowDown data-icon="inline-start" />
               Check out
             </Button>
           ) : null}
           {canMove ? (
-            <Button onClick={() => setMovementType('return-to-store')} variant="outline">
+            <Button onClick={() => movementDialogs.openDialog('return-to-store')} variant="outline">
               <IconArrowUp data-icon="inline-start" />
               Return to store
             </Button>
@@ -73,30 +60,7 @@ export function JobStockTab({ isCancelled, job }: { isCancelled: boolean; job: {
       ) : (
         <JobStockTable items={jobStockQuery.data.items} />
       )}
-      {movementType === 'checkout' ? (
-        <CheckoutBasketDialog
-          fixedJob={job}
-          isLoadingParts={stockOnHandQuery.isPending}
-          items={stockOnHandItems}
-          onOpenChange={(open) => {
-            if (!open) setMovementType(null);
-          }}
-          open={true}
-          parts={parts}
-        />
-      ) : null}
-      {movementType === 'return-to-store' ? (
-        <StockMovementDialog
-          fixedJob={job}
-          isLoadingParts={stockOnHandQuery.isPending}
-          items={stockOnHandItems}
-          onOpenChange={(open) => {
-            if (!open) setMovementType(null);
-          }}
-          open={true}
-          parts={parts}
-        />
-      ) : null}
+      {movementDialogs.dialogs}
       <CreatePurchaseOrdersDialog
         candidates={purchaseCandidates}
         jobId={job.id}

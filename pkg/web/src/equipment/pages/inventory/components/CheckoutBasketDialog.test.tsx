@@ -49,6 +49,7 @@ vi.mock('@/lib/auth-client.js', () => ({
 }));
 vi.mock('@/equipment/hooks/options/index.js', () => ({
   useInventoryJobPicker: () => ({ isLoading: false, items: [] }),
+  useInventoryQuotePicker: () => ({ isPending: false, items: [], search: '', setSearch: vi.fn(), total: 0 }),
 }));
 vi.mock('@/equipment/components/job-picker/index.js', () => ({
   JobPicker: ({ children }: { children: React.ReactNode }) => <>{children}</>,
@@ -58,16 +59,13 @@ vi.mock('@/equipment/components/job-picker/index.js', () => ({
     </button>
   ),
 }));
-vi.mock('./use-inventory-quote-picker.js', () => ({
-  useInventoryQuotePicker: () => ({ isPending: false, items: [], search: '', setSearch: vi.fn(), total: 0 }),
-}));
 vi.mock('@/equipment/hooks/use-query-invalidation.js', () => ({
   useQueryInvalidation: () => ({ invalidateInventory }),
 }));
 vi.mock('@/hooks/use-api-mutation-error-toast.js', () => ({ useApiMutationErrorToast: () => vi.fn() }));
 
 import { CheckoutBasketDialog } from './CheckoutBasketDialog.js';
-import type { StockPartOption } from './types.js';
+import type { FixedMovementTarget, StockPartOption } from './types.js';
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -129,13 +127,11 @@ afterEach(async () => {
 });
 
 async function mount({
-  fixed = true,
-  fixedQuote,
+  fixedTarget = { code: 'JOB-00001', id: '00000000-0000-4000-8000-000000000009', kind: 'job' },
   onOpenChange = vi.fn<(open: boolean) => void>(),
   stockItems = items,
 }: {
-  fixed?: boolean;
-  fixedQuote?: { code: string; id: string };
+  fixedTarget?: FixedMovementTarget | null;
   onOpenChange?: (open: boolean) => void;
   stockItems?: readonly StockOnHandRow[];
 } = {}) {
@@ -149,10 +145,7 @@ async function mount({
     root.render(
       <QueryClientProvider client={queryClient}>
         <CheckoutBasketDialog
-          {...(fixed && !fixedQuote
-            ? { fixedJob: { code: 'JOB-00001', id: '00000000-0000-4000-8000-000000000009' } }
-            : {})}
-          {...(fixedQuote ? { fixedQuote } : {})}
+          {...(fixedTarget ? { fixedTarget } : {})}
           items={stockItems}
           onOpenChange={onOpenChange}
           open
@@ -341,7 +334,7 @@ describe('CheckoutBasketDialog', () => {
   });
 
   it('posts a fixed Parts Sale Basket without ever waiting on Job stock', async () => {
-    await mount({ fixedQuote: { code: 'QUO-00042', id: '00000000-0000-4000-8000-000000000042' } });
+    await mount({ fixedTarget: { code: 'QUO-00042', id: '00000000-0000-4000-8000-000000000042', kind: 'quote' } });
     expect(document.body.textContent).toContain('QUO-00042');
     expect(document.body.textContent).not.toContain('Without a Job');
     await scan('HYD-0052');
@@ -367,7 +360,7 @@ describe('CheckoutBasketDialog', () => {
   });
 
   it('posts a person and Purpose on every Without-a-Job line', async () => {
-    await mount({ fixed: false });
+    await mount({ fixedTarget: null });
     const tab = [...document.querySelectorAll('button')].find((button) =>
       button.textContent?.includes('Without a Job'),
     );

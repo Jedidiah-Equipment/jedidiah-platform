@@ -1,7 +1,12 @@
 import { StockMovementHistoryResult } from '@pkg/schema/equipment';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+const permissions = vi.hoisted(() => new Set<string>());
+
+vi.mock('@/hooks/use-access.js', () => ({
+  useCan: (permission: string) => ({ can: permissions.has(permission) }),
+}));
 vi.mock('@tanstack/react-router', () => ({
   Link: ({ children, params, to }: { children: React.ReactNode; params: Record<string, string>; to: string }) => (
     <a href={to.replace(/\$(\w+)/, (_, key: string) => params[key] ?? '')}>{children}</a>
@@ -163,16 +168,17 @@ const result = StockMovementHistoryResult.parse({
   },
 });
 
+function grant(...granted: string[]) {
+  permissions.clear();
+  for (const permission of granted) permissions.add(permission);
+}
+
 describe('StockMovementHistoryTable', () => {
+  beforeEach(() => grant('equipment_job:read', 'equipment_quote:read'));
+
   it('shows movement details, actor, running balance, and cost-bearing values', () => {
     const html = renderToStaticMarkup(
-      <StockMovementHistoryTable
-        canReadJobs={true}
-        canReadQuotes={true}
-        items={result.items}
-        showCosts={true}
-        unitOfMeasure="piece"
-      />,
+      <StockMovementHistoryTable items={result.items} showCosts={true} unitOfMeasure="piece" />,
     );
 
     expect(html).toContain('Opening balance');
@@ -198,13 +204,7 @@ describe('StockMovementHistoryTable', () => {
 
   it('removes cost columns for a caller without cost-read access', () => {
     const html = renderToStaticMarkup(
-      <StockMovementHistoryTable
-        canReadJobs={true}
-        canReadQuotes={true}
-        items={result.items}
-        showCosts={false}
-        unitOfMeasure="piece"
-      />,
+      <StockMovementHistoryTable items={result.items} showCosts={false} unitOfMeasure="piece" />,
     );
 
     expect(html).not.toContain('Unit cost');
@@ -213,14 +213,9 @@ describe('StockMovementHistoryTable', () => {
   });
 
   it('names the Job without linking it for a caller who cannot open Jobs', () => {
+    grant('equipment_quote:read');
     const html = renderToStaticMarkup(
-      <StockMovementHistoryTable
-        canReadJobs={false}
-        canReadQuotes={true}
-        items={result.items}
-        showCosts={true}
-        unitOfMeasure="piece"
-      />,
+      <StockMovementHistoryTable items={result.items} showCosts={true} unitOfMeasure="piece" />,
     );
 
     // Stores reads this ledger and holds no `equipment_job:read`; the link would only reach a sheet that
@@ -244,17 +239,17 @@ describe('StockMovementHistoryTable', () => {
       recipientName: null,
       recipientUserId: null,
     } as (typeof result.items)[number];
-    const render = (canReadQuotes: boolean) =>
-      renderToStaticMarkup(
+    const render = (canReadQuotes: boolean) => {
+      grant('equipment_job:read', ...(canReadQuotes ? ['equipment_quote:read'] : []));
+      return renderToStaticMarkup(
         <StockMovementHistoryTable
-          canReadJobs={true}
-          canReadQuotes={canReadQuotes}
           items={[partsSaleDraw]}
           onReturnCheckout={() => undefined}
           showCosts={false}
           unitOfMeasure="piece"
         />,
       );
+    };
 
     expect(render(true)).toContain('/equipment/quotes/00000000-0000-4000-8000-000000000042/edit');
     expect(render(false)).toContain('QUO-00042');

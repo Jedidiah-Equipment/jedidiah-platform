@@ -1,5 +1,11 @@
 import { describe, expect, test } from 'vitest';
-import { deriveCheckoutBasketWarnings, deriveMovementWarnings, unacknowledgedWarnings } from './movement-warnings.js';
+import {
+  deriveCheckoutBasketWarnings,
+  deriveMovementWarnings,
+  drawnBucketQuantity,
+  unacknowledgedWarnings,
+  unplannedCheckoutFacts,
+} from './movement-warnings.js';
 
 const jobFacts = {
   bucketQuantityOnHand: 10,
@@ -196,5 +202,29 @@ describe('unacknowledgedWarnings', () => {
 
   test('treats an unpreviewed post as entirely unacknowledged', () => {
     expect(unacknowledgedWarnings({ acknowledged: [], posted: ['exceeds-received'] })).toEqual(['exceeds-received']);
+  });
+});
+
+describe('drawnBucketQuantity', () => {
+  const row = { drawnQuantity: 9, lengthBuckets: [{ drawnQuantity: 2, lengthMm: 6_000 }] };
+
+  test('reads the whole Part where no length is named, else the one bucket', () => {
+    expect(drawnBucketQuantity(row, null)).toBe(9);
+    expect(drawnBucketQuantity(row, 6_000)).toBe(2);
+    expect(drawnBucketQuantity(row, 3_000)).toBe(0);
+  });
+
+  test('holds nothing for a Part the target never drew', () => {
+    expect(drawnBucketQuantity(undefined, null)).toBe(0);
+    expect(drawnBucketQuantity(undefined, 6_000)).toBe(0);
+  });
+});
+
+describe('unplannedCheckoutFacts', () => {
+  test('lets only the rack warn: no CFO, nothing drawn', () => {
+    expect(deriveMovementWarnings({ facts: unplannedCheckoutFacts(3), quantity: 99 })).toEqual([
+      'negative-stock-on-hand',
+    ]);
+    expect(deriveMovementWarnings({ facts: unplannedCheckoutFacts(3), quantity: 3 })).toEqual([]);
   });
 });

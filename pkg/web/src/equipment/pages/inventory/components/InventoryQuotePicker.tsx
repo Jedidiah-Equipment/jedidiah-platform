@@ -1,8 +1,7 @@
 import type { InventoryQuoteOption } from '@pkg/schema/equipment';
 
 import { EntityCombobox } from '@/components/common/EntityCombobox.js';
-
-import type { InventoryQuotePickerController } from './use-inventory-quote-picker.js';
+import type { InventoryQuotePickerController } from '@/equipment/hooks/options/index.js';
 
 /** Picks the Parts Sale stock leaves for, or comes back from. Shows no price: stores are price-blind by role. */
 export function InventoryQuotePicker({

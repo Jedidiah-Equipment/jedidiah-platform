@@ -1,29 +1,18 @@
 import { type DatabaseTransaction, type Db, user } from '@pkg/db';
-import {
-  jobCfoAssemblies,
-  jobCfoParts,
-  jobs,
-  parts,
-  purchaseOrders,
-  quotes,
-  stockMovements,
-  stocktakeSessions,
-  supplier,
-} from '@pkg/db/equipment';
+import { jobCfoAssemblies, jobCfoParts, parts, quotes, stockMovements, supplier } from '@pkg/db/equipment';
 import { groupBy } from '@pkg/domain';
 import {
   deriveCommitment,
   deriveMovementWarnings,
   deriveMovingAverage,
-  deriveMovingAverageTimeline,
   deriveOutstandingDrawUnitCost,
   derivePartStockActions,
   isCheckoutWithoutJob,
   type JobMovementFacts,
   PARTS_SALE_CHECKOUT_STATUSES,
   type StockMovementFacts,
+  unplannedCheckoutFacts,
   valueStockBucket,
-  valueStockMovement,
 } from '@pkg/domain/equipment';
 import type { AuthId, UUID } from '@pkg/schema';
 import type {
@@ -34,12 +23,12 @@ import type {
   PostAdjustmentInput,
   PostCheckoutBasketInput,
   PostCheckoutInput,
+  PostCheckoutWithoutJobInput,
   PostJobMovementInput,
   PostQuoteMovementInput,
   PostReturnToStoreInput,
   PostRevaluationInput,
   StockMovement,
-  StockMovementHistoryResult,
   StockMovementPostResult,
   StockOnHandResult,
   StockOnHandRow,
@@ -49,13 +38,11 @@ import {
   isPeriodicStockAdjustmentReason,
   JOB_STOCK_MOVEMENT_TYPES,
   JobStockResult as JobStockResultSchema,
-  StockMovementHistoryResult as StockMovementHistoryResultSchema,
   StockMovementPostResult as StockMovementPostResultSchema,
   StockOnHandResult as StockOnHandResultSchema,
   unitClassFor,
 } from '@pkg/schema/equipment';
 import { and, asc, eq, inArray, ne, or, type SQL, sql } from 'drizzle-orm';
-import { alias } from 'drizzle-orm/pg-core';
 import { lockJob, lockMutableJob } from '../jobs/job-mutation-guards.js';
 import { loadOpenOrderLines } from '../purchase-orders/purchase-order-service.js';
 import {
@@ -78,8 +65,10 @@ import {
   loadMovingAverages,
   loadStockPart,
   lockStockParts,
+  onHandDeltaSum,
   scalar,
   scaleUnitCost,
+  stockOnHandJoin,
   sumDelta,
 } from './ledger.js';
 import { resolveMovementActor } from './movement-actor.js';
@@ -174,6 +163,20 @@ type DrawTarget =
 
 type SourceCheckout = { id: UUID; lengthMm: number | null; partId: UUID; recipientUserId: AuthId };
 
+/** What names the target on every strict input arm but the source-linked return, which loads its own. */
+type DrawTargetInput =
+  | Pick<PostJobMovementInput, 'jobId'>
+  | Pick<PostQuoteMovementInput, 'quoteId'>
+  | Pick<PostCheckoutWithoutJobInput, 'note' | 'recipientUserId'>;
+
+/** The union's one constructor: each strict input arm names exactly one target, and its shape says which. */
+function drawTargetOf(input: DrawTargetInput, movementType: JobStockMovementType): DrawTarget {
+  if ('jobId' in input) return { jobId: input.jobId, kind: 'job', movementType };
+  if ('quoteId' in input) return { kind: 'quote', movementType, quoteId: input.quoteId };
+
+  return { kind: 'recipient', note: input.note, recipientUserId: input.recipientUserId };
+}
+
 /**
  * Draws a Part against a Job, or returns it. The two directions share every rule but three: a return
  * is still valid on a cancelled Job (physically recovered stock must not be stranded off-ledger), it
@@ -193,40 +196,7 @@ export async function postJobMovement({
   input: PostJobMovementInput;
   movementType: JobStockMovementType;
 }): Promise<StockMovementPostResult> {
-  return db.transaction((tx) =>
-    postDraw(tx, {
-      actorUserId,
-      assertedActorUserId: input.actorUserId,
-      lengthMm: input.lengthMm,
-      partId: input.partId,
-      quantity: input.quantity,
-      target: { jobId: input.jobId, kind: 'job', movementType },
-    }),
-  );
-}
-
-/** Draws a Part to a Parts Sale, or returns it: the Job shape, pooled by Quote instead of Job. */
-async function postQuoteMovement({
-  actorUserId,
-  db,
-  input,
-  movementType,
-}: {
-  actorUserId: AuthId;
-  db: Db;
-  input: PostQuoteMovementInput;
-  movementType: JobStockMovementType;
-}): Promise<StockMovementPostResult> {
-  return db.transaction((tx) =>
-    postDraw(tx, {
-      actorUserId,
-      assertedActorUserId: input.actorUserId,
-      lengthMm: input.lengthMm,
-      partId: input.partId,
-      quantity: input.quantity,
-      target: { kind: 'quote', movementType, quoteId: input.quoteId },
-    }),
-  );
+  return postMovement(db, { actorUserId, input, target: drawTargetOf(input, movementType) });
 }
 
 export async function postCheckout({
@@ -238,19 +208,7 @@ export async function postCheckout({
   db: Db;
   input: PostCheckoutInput;
 }): Promise<StockMovementPostResult> {
-  if ('jobId' in input) return postJobMovement({ actorUserId, db, input, movementType: 'checkout' });
-  if ('quoteId' in input) return postQuoteMovement({ actorUserId, db, input, movementType: 'checkout' });
-
-  return db.transaction((tx) =>
-    postDraw(tx, {
-      actorUserId,
-      assertedActorUserId: input.actorUserId,
-      lengthMm: input.lengthMm,
-      partId: input.partId,
-      quantity: input.quantity,
-      target: { kind: 'recipient', note: input.note, recipientUserId: input.recipientUserId },
-    }),
-  );
+  return postMovement(db, { actorUserId, input, target: drawTargetOf(input, 'checkout') });
 }
 
 /** Posts every Checkout Basket line in one transaction, preserving ordinary ledger rows. */
@@ -263,12 +221,7 @@ export async function postCheckoutBasket({
   db: Db;
   input: PostCheckoutBasketInput;
 }): Promise<CheckoutBasketPostResult> {
-  const target: DrawTarget =
-    'jobId' in input
-      ? { jobId: input.jobId, kind: 'job', movementType: 'checkout' }
-      : 'quoteId' in input
-        ? { kind: 'quote', movementType: 'checkout', quoteId: input.quoteId }
-        : { kind: 'recipient', note: input.note, recipientUserId: input.recipientUserId };
+  const target = drawTargetOf(input, 'checkout');
 
   return db.transaction(async (tx) => {
     const partIds = [...new Set(input.lines.map((line) => line.partId))].sort();
@@ -302,8 +255,9 @@ export async function postReturnToStore({
   db: Db;
   input: PostReturnToStoreInput;
 }): Promise<StockMovementPostResult> {
-  if ('jobId' in input) return postJobMovement({ actorUserId, db, input, movementType: 'return-to-store' });
-  if ('quoteId' in input) return postQuoteMovement({ actorUserId, db, input, movementType: 'return-to-store' });
+  if (!('sourceCheckoutId' in input)) {
+    return postMovement(db, { actorUserId, input, target: drawTargetOf(input, 'return-to-store') });
+  }
 
   return db.transaction(async (tx) => {
     const source = await loadSourceCheckout(tx, input.sourceCheckoutId);
@@ -317,6 +271,31 @@ export async function postReturnToStore({
       target: { kind: 'source', source },
     });
   });
+}
+
+/** One Part against one target, in a transaction of its own. */
+async function postMovement(
+  db: Db,
+  {
+    actorUserId,
+    input,
+    target,
+  }: {
+    actorUserId: AuthId;
+    input: Pick<PostJobMovementInput, 'actorUserId' | 'lengthMm' | 'partId' | 'quantity'>;
+    target: DrawTarget;
+  },
+): Promise<StockMovementPostResult> {
+  return db.transaction((tx) =>
+    postDraw(tx, {
+      actorUserId,
+      assertedActorUserId: input.actorUserId,
+      lengthMm: input.lengthMm,
+      partId: input.partId,
+      quantity: input.quantity,
+      target,
+    }),
+  );
 }
 
 async function postDraw(
@@ -473,40 +452,23 @@ async function loadDrawFacts(
         loadStockMovementContext(db, { jobId: target.jobId, lengthMm, partId }),
         target.movementType === 'checkout'
           ? deriveCheckoutUnitCost(db, partId, lengthMm)
-          : deriveReturnUnitCost(db, jobDrawPool(target.jobId, partId, lengthMm), quantity),
+          : deriveReturnUnitCost(db, drawPool(eq(stockMovements.jobId, target.jobId), partId, lengthMm), quantity),
       ]);
 
       return { facts: { ...context, kind: target.movementType }, unitCost };
     }
-    case 'quote': {
-      if (target.movementType === 'checkout') return loadUnplannedCheckoutFacts(db, partId, lengthMm);
-
-      const pool = quoteDrawPool(target.quoteId, partId, lengthMm);
-
-      const [outstanding, unitCost] = await Promise.all([
-        sumDelta(db, pool).then((delta) => -delta),
-        deriveReturnUnitCost(db, pool, quantity),
-      ]);
-      return { facts: { drawnBucketQuantity: outstanding, kind: 'return-to-store' }, unitCost };
-    }
+    case 'quote':
+      return target.movementType === 'checkout'
+        ? loadUnplannedCheckoutFacts(db, partId, lengthMm)
+        : loadPoolReturnFacts(db, drawPool(eq(stockMovements.quoteId, target.quoteId), partId, lengthMm), quantity);
     case 'recipient':
       return loadUnplannedCheckoutFacts(db, partId, lengthMm);
-    case 'source': {
-      const pool = sourceDrawPool(target.source.id);
-      const [outstanding, unitCost] = await Promise.all([
-        sumDelta(db, pool).then((delta) => -delta),
-        deriveReturnUnitCost(db, pool, quantity),
-      ]);
-
-      return { facts: { drawnBucketQuantity: outstanding, kind: 'return-to-store' }, unitCost };
-    }
+    case 'source':
+      return loadPoolReturnFacts(db, sourceDrawPool(target.source.id), quantity);
   }
 }
 
-/**
- * A draw no CFO planned — to a person or a Parts Sale. A CFO of zero is what "no CFO" means to the
- * judgement, so only the rack can warn.
- */
+/** A draw no CFO planned, to a person or a Parts Sale: only the rack can warn (`unplannedCheckoutFacts`). */
 async function loadUnplannedCheckoutFacts(
   db: DatabaseTransaction,
   partId: UUID,
@@ -517,23 +479,30 @@ async function loadUnplannedCheckoutFacts(
     deriveCheckoutUnitCost(db, partId, lengthMm),
   ]);
 
-  return { facts: { bucketQuantityOnHand, cfoQuantity: 0, drawnQuantity: 0, kind: 'checkout' }, unitCost };
+  return { facts: unplannedCheckoutFacts(bucketQuantityOnHand), unitCost };
 }
 
-/** A Job's draws and returns of one Part in one length bucket: what a Job return reverses. */
-function jobDrawPool(jobId: UUID, partId: UUID, lengthMm: number | null): SQL {
-  return and(
-    eq(stockMovements.jobId, jobId),
-    eq(stockMovements.partId, partId),
-    bucketMatches(lengthMm),
-    inArray(stockMovements.movementType, JOB_STOCK_MOVEMENT_TYPES),
-  ) as SQL;
+/** A pooled return is judged against what its pool still has out, and stamped at what those draws left with. */
+async function loadPoolReturnFacts(
+  db: DatabaseTransaction,
+  pool: SQL,
+  quantity: number,
+): Promise<{ facts: StockMovementFacts; unitCost: number | null }> {
+  const [outstanding, unitCost] = await Promise.all([
+    sumDelta(db, pool).then((delta) => -delta),
+    deriveReturnUnitCost(db, pool, quantity),
+  ]);
+
+  return { facts: { drawnBucketQuantity: outstanding, kind: 'return-to-store' }, unitCost };
 }
 
-/** A Parts Sale's draws and returns of one Part in one length bucket: the Job pool keyed on the Quote. */
-function quoteDrawPool(quoteId: UUID, partId: UUID, lengthMm: number | null): SQL {
+/**
+ * A target's draws and returns of one Part in one length bucket: what a pooled return reverses. The
+ * key names the target column, a Job or a Parts Sale.
+ */
+function drawPool(key: SQL, partId: UUID, lengthMm: number | null): SQL {
   return and(
-    eq(stockMovements.quoteId, quoteId),
+    key,
     eq(stockMovements.partId, partId),
     bucketMatches(lengthMm),
     inArray(stockMovements.movementType, JOB_STOCK_MOVEMENT_TYPES),
@@ -702,17 +671,13 @@ async function listStockOnHandSnapshot(db: DatabaseTransaction, partId?: UUID): 
         partCode: parts.code,
         partId: parts.id,
         partName: parts.name,
-        quantity: sql<number>`coalesce(sum(${stockMovements.delta}), 0)::double precision`,
+        quantity: onHandDeltaSum,
         standardPurchaseLengthMm: parts.standardPurchaseLengthMm,
         stockTrackingMode: parts.stockTrackingMode,
         unitOfMeasure: parts.unitOfMeasure,
       })
       .from(parts)
-      // A revaluation moves cost, never quantity, so it must not open a length bucket of its own.
-      .leftJoin(
-        stockMovements,
-        and(eq(stockMovements.partId, parts.id), ne(stockMovements.movementType, 'revaluation')),
-      )
+      .leftJoin(stockMovements, stockOnHandJoin())
       .where(partCondition)
       .groupBy(
         parts.id,
@@ -809,74 +774,6 @@ async function listStockOnHandSnapshot(db: DatabaseTransaction, partId?: UUID): 
   });
 }
 
-export async function getStockMovementHistory({
-  db,
-  partId,
-}: {
-  db: Db;
-  partId: UUID;
-}): Promise<StockMovementHistoryResult> {
-  const part = await loadStockPartDetails({ db, partId });
-  const recipient = alias(user, 'recipient');
-  const sourceCheckout = alias(stockMovements, 'source_checkout');
-  const rows = await db
-    .select({
-      actorName: user.name,
-      actorUserId: stockMovements.actorUserId,
-      buildId: stockMovements.buildId,
-      createdAt: stockMovements.createdAt,
-      delta: stockMovements.delta,
-      id: stockMovements.id,
-      jobCode: jobs.code,
-      jobId: stockMovements.jobId,
-      lengthMm: stockMovements.lengthMm,
-      movementType: stockMovements.movementType,
-      note: stockMovements.note,
-      partId: stockMovements.partId,
-      purchaseOrderId: stockMovements.purchaseOrderId,
-      purchaseOrderCode: purchaseOrders.code,
-      quoteCode: quotes.code,
-      quoteId: stockMovements.quoteId,
-      recipientName: recipient.name,
-      recipientUserId: stockMovements.recipientUserId,
-      reason: stockMovements.reason,
-      runningBalance: sql<number>`(sum(${stockMovements.delta}) over (order by ${stockMovements.createdAt}, ${stockMovements.id}))::double precision`,
-      stocktakeSessionId: stockMovements.stocktakeSessionId,
-      stocktakeSessionScope: stocktakeSessions.scope,
-      sourceCheckoutCreatedAt: sourceCheckout.createdAt,
-      sourceCheckoutId: stockMovements.sourceCheckoutId,
-      unitCost: stockMovements.unitCost,
-    })
-    .from(stockMovements)
-    .innerJoin(user, eq(user.id, stockMovements.actorUserId))
-    .leftJoin(purchaseOrders, eq(purchaseOrders.id, stockMovements.purchaseOrderId))
-    .leftJoin(jobs, eq(jobs.id, stockMovements.jobId))
-    .leftJoin(quotes, eq(quotes.id, stockMovements.quoteId))
-    .leftJoin(stocktakeSessions, eq(stocktakeSessions.id, stockMovements.stocktakeSessionId))
-    .leftJoin(recipient, eq(recipient.id, stockMovements.recipientUserId))
-    .leftJoin(sourceCheckout, eq(sourceCheckout.id, stockMovements.sourceCheckoutId))
-    .where(eq(stockMovements.partId, partId))
-    .orderBy(asc(stockMovements.createdAt), asc(stockMovements.id));
-
-  const movingAverageTimeline = deriveMovingAverageTimeline(rows);
-
-  return StockMovementHistoryResultSchema.parse({
-    items: rows.map((row, index) => ({
-      ...row,
-      movementValue:
-        row.delta === 0
-          ? null
-          : valueStockMovement({
-              averageUnitCost: movingAverageTimeline[index] ?? null,
-              delta: row.delta,
-              lengthMm: row.lengthMm,
-              unitCost: row.unitCost,
-            }),
-    })),
-    part,
-  });
-}
-
 /** Loads the four stock facts a Job movement is judged against, all scoped to its Job, Part, bucket. */
 async function loadStockMovementContext(
   db: DatabaseTransaction,
@@ -918,18 +815,6 @@ async function deriveCheckoutUnitCost(
   partId: UUID,
   lengthMm: number | null,
 ): Promise<number | null> {
-  return derivePartUnitCost(db, partId, lengthMm);
-}
-
-/**
- * A Part's current average, scaled to the piece length for linear stock. Null when the ledger holds
- * no costed row yet ("no cost yet").
- */
-async function derivePartUnitCost(
-  db: DatabaseTransaction,
-  partId: UUID,
-  lengthMm: number | null,
-): Promise<number | null> {
   const averages = await loadMovingAverages(db, [partId]);
 
   return scaleUnitCost(averages.get(partId) ?? null, lengthMm);
@@ -948,24 +833,4 @@ async function deriveReturnUnitCost(db: DatabaseTransaction, pool: SQL, quantity
     .orderBy(asc(stockMovements.createdAt), asc(stockMovements.id));
 
   return deriveOutstandingDrawUnitCost(rows, quantity);
-}
-
-async function loadStockPartDetails({ db, partId }: { db: Db; partId: UUID }) {
-  const [part] = await db
-    .select({
-      code: parts.code,
-      id: parts.id,
-      isInternallyFabricated: parts.isInternallyFabricated,
-      name: parts.name,
-      stockTrackingMode: parts.stockTrackingMode,
-      unitOfMeasure: parts.unitOfMeasure,
-    })
-    .from(parts)
-    .where(eq(parts.id, partId));
-
-  if (!part) {
-    throw new StockMovementPartNotFoundError(partId);
-  }
-
-  return part;
 }

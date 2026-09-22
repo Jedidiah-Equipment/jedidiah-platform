@@ -24,9 +24,7 @@ describe('getQuoteCancellationPlan for a Parts Sale', () => {
     await postReturnToStore({ actorUserId, db: context.db, input: { ...linear, quantity: 1 } });
 
     await expect(getQuoteCancellationPlan({ db: context.db, id: partsSale.id })).resolves.toEqual({
-      drawnStock: [
-        { lengthMm: null, outstandingQuantity: 3, partCode: 'PIECE', partName: 'PIECE', unitOfMeasure: 'piece' },
-      ],
+      drawnStock: [{ drawnQuantity: 3, lengthMm: null, partCode: 'PIECE', partName: 'PIECE', unitOfMeasure: 'piece' }],
       job: null,
       unit: null,
     });

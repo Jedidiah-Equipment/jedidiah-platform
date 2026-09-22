@@ -100,9 +100,8 @@ export function JobCloseOutPage({ jobId }: { jobId: UUID }) {
       {returningPartId === null ? null : (
         <StockMovementDialog
           defaultPartId={returningPartId}
-          fixedJob={{ code: job.code, id: job.id }}
+          fixedTarget={{ code: job.code, id: job.id, kind: 'job' }}
           isLoadingParts={stockOnHandQuery.isPending}
-          items={stockOnHandQuery.data?.items ?? []}
           onOpenChange={(open) => {
             if (!open) setReturningPartId(null);
           }}

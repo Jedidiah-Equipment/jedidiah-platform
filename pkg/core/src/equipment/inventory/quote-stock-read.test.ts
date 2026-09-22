@@ -5,7 +5,7 @@ import { listQuoteStock } from './quote-stock-read.js';
 import { postAdjustment, postCheckout, postReturnToStore } from './stock-movement-service.js';
 
 describe('listQuoteStock', () => {
-  test("groups what a Parts Sale still has out by Part and length, valued at what left stores", async ({ context }) => {
+  test('groups what a Parts Sale still has out by Part and length, valued at what left stores', async ({ context }) => {
     const partsSale = await seedPartsSaleQuote(context.db);
     await postAdjustment({
       actorUserId,

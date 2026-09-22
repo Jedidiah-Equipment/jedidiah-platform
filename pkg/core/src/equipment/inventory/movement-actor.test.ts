@@ -19,7 +19,8 @@ import {
 } from './movement-actor-errors.js';
 import { postReceipt } from './receipt-service.js';
 import { postReturnToSupplier } from './return-to-supplier-service.js';
-import { getStockMovementHistory, postAdjustment, postJobMovement } from './stock-movement-service.js';
+import { getStockMovementHistory } from './stock-movement-history-read.js';
+import { postAdjustment, postJobMovement } from './stock-movement-service.js';
 
 describe('resolveMovementActor', () => {
   test('attributes the signed-in user when the caller asserts nobody', async ({ context }) => {

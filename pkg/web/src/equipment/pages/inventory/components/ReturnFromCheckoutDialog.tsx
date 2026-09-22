@@ -1,16 +1,16 @@
-import { useDebouncedValue } from '@mantine/hooks';
 import { formatDate, formatNumber } from '@pkg/domain';
 import { deriveMovementWarnings } from '@pkg/domain/equipment';
 import type { SourceCheckoutOption, StockMovementWarningCode } from '@pkg/schema/equipment';
-import { keepPreviousData, useInfiniteQuery, useMutation } from '@tanstack/react-query';
-import { useMemo, useState } from 'react';
+import { keepPreviousData, useMutation } from '@tanstack/react-query';
+import { useMemo } from 'react';
 import { toast } from 'sonner';
 
 import { EntityCombobox } from '@/components/common/EntityCombobox.js';
-import { cursorInfiniteQueryOptions, useCombinedCursorQueryPages } from '@/components/data-table/cursor-query.js';
+import { cursorInfiniteQueryOptions } from '@/components/data-table/cursor-query.js';
 import { CreateEntityDialog } from '@/components/form/index.js';
 import { getFieldErrors } from '@/components/form/utils/field-errors.js';
 import { Field, FieldError, FieldLabel } from '@/components/ui/field.js';
+import { useCursorOptions } from '@/equipment/hooks/options/index.js';
 import { useMovementWarnings } from '@/equipment/hooks/use-movement-warnings.js';
 import { useQueryInvalidation } from '@/equipment/hooks/use-query-invalidation.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
@@ -47,18 +47,15 @@ export function ReturnFromCheckoutDialog({
   const { invalidateInventory } = useQueryInvalidation();
   const showMutationError = useApiMutationErrorToast();
   const movementWarningsOutcome = useMovementWarnings();
-  const [search, setSearch] = useState('');
-  const [debouncedSearch] = useDebouncedValue(search, 250);
-  const sourceQuery = useInfiniteQuery(
+  const sources = useCursorOptions((search) =>
     trpc.inventory.sourceCheckouts.infiniteQueryOptions(
       // One Part holds few Checkouts Without a Job, so its list is read whole — which is also what
       // keeps a pre-selected Checkout among the options rather than on some later page.
-      { limit: partId === undefined ? SOURCE_PAGE_SIZE : 0, partId, search: debouncedSearch },
+      { limit: partId === undefined ? SOURCE_PAGE_SIZE : 0, partId, search },
       { ...cursorInfiniteQueryOptions, enabled: open, placeholderData: keepPreviousData },
     ),
   );
-  const sourcePage = useCombinedCursorQueryPages(sourceQuery.data?.pages);
-  const validator = useMemo(() => returnFromCheckoutValidator(sourcePage.items), [sourcePage.items]);
+  const validator = useMemo(() => returnFromCheckoutValidator(sources.items), [sources.items]);
   const mutation = useMutation(
     trpc.inventory.postReturnToStore.mutationOptions({
       onError: (error) => showMutationError(error, 'Unable to return stock.'),
@@ -66,7 +63,7 @@ export function ReturnFromCheckoutDialog({
   );
 
   function sourceFor(values: ReturnFromCheckoutFormValues): SourceCheckoutOption | null {
-    return sourcePage.items.find((candidate) => candidate.id === values.sourceCheckoutId) ?? null;
+    return sources.items.find((candidate) => candidate.id === values.sourceCheckoutId) ?? null;
   }
 
   /** The ledger's own judgement, run against the outstanding quantity the picker already carries. */
@@ -115,28 +112,28 @@ export function ReturnFromCheckoutDialog({
                       <Field data-invalid={errors.length > 0}>
                         <FieldLabel htmlFor={field.name}>Original Checkout</FieldLabel>
                         <EntityCombobox
-                          disabled={sourceQuery.isPending}
+                          disabled={sources.isPending}
                           emptyMessage="No Checkouts without a Job found."
                           inputId={field.name}
-                          inputValue={search}
-                          isFetching={sourceQuery.isFetching}
+                          inputValue={sources.search}
+                          isFetching={sources.isFetching}
                           itemToLabel={sourceCheckoutLabel}
                           loadMore={{
-                            hasNextPage: sourceQuery.hasNextPage,
-                            isFetchingNextPage: sourceQuery.isFetchingNextPage,
-                            loadedCount: sourcePage.items.length,
-                            onLoadMore: () => void sourceQuery.fetchNextPage(),
-                            total: sourcePage.total,
+                            hasNextPage: sources.hasNextPage,
+                            isFetchingNextPage: sources.isFetchingNextPage,
+                            loadedCount: sources.items.length,
+                            onLoadMore: sources.loadMore,
+                            total: sources.total,
                             totalLabel: (total) => `${total} ${total === 1 ? 'Checkout' : 'Checkouts'}`,
                           }}
-                          onInputValueChange={setSearch}
+                          onInputValueChange={sources.setSearch}
                           onSelected={(next) => {
                             field.handleChange(next?.id ?? '');
-                            setSearch('');
+                            sources.setSearch('');
                             // The selection commits first; defer until the form exposes the new source to the dependent validator.
                             queueMicrotask(() => void form.validateField('quantity', 'blur'));
                           }}
-                          options={sourcePage.items}
+                          options={sources.items}
                           placeholder="Select original Checkout"
                           renderItem={sourceCheckoutLabel}
                           searchPlaceholder="Search by Part, recipient, or purpose"

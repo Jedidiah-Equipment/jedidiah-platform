@@ -25,6 +25,7 @@ export * from './inventory/recipient-read.js';
 export * from './inventory/return-to-supplier-service.js';
 export * from './inventory/source-checkout-read.js';
 export * from './inventory/stock-movement-errors.js';
+export * from './inventory/stock-movement-history-read.js';
 export * from './inventory/stock-movement-service.js';
 export * from './inventory/stocktake-errors.js';
 export * from './inventory/stocktake-service.js';

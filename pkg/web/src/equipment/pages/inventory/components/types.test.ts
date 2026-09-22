@@ -132,12 +132,11 @@ describe('stock adjustment form', () => {
     expect(stockAdjustmentValidator([piece]).safeParse({ ...adjustment, delta: Number.NaN }).success).toBe(false);
     expect(
       returnStockValidator([piece]).safeParse({
-        jobId: '00000000-0000-4000-8000-000000000009',
         lengthMm: Number.NaN,
         partId: piece.partId,
         quantity: Number.NaN,
-        quoteId: '',
         target: 'job',
+        targetId: '00000000-0000-4000-8000-000000000009',
       }).success,
     ).toBe(false);
   });
@@ -171,12 +170,11 @@ describe('stock revaluation form', () => {
 
 describe('Return to Store form', () => {
   const values = {
-    jobId: piece.partId,
     lengthMm: 6_000,
     partId: linear.partId,
     quantity: 2,
-    quoteId: '',
     target: 'job' as const,
+    targetId: piece.partId,
   };
 
   it('maps a linear movement with its selected piece length', () => {
@@ -201,7 +199,9 @@ describe('Return to Store form', () => {
     const validator = returnStockValidator([piece, linear]);
 
     expect(validator.safeParse(values).success).toBe(true);
-    expect(validator.safeParse({ ...values, jobId: '' }).success).toBe(false);
+    expect(validator.safeParse({ ...values, targetId: '' }).error?.issues).toMatchObject([
+      { message: 'Select a Job', path: ['targetId'] },
+    ]);
     expect(validator.safeParse({ ...values, quantity: 0 }).success).toBe(false);
     expect(validator.safeParse({ ...values, lengthMm: Number.NaN }).success).toBe(false);
     expect(validator.safeParse({ ...values, lengthMm: Number.NaN, partId: piece.partId }).success).toBe(true);
@@ -209,11 +209,11 @@ describe('Return to Store form', () => {
 
   it('returns against a Parts Sale instead of a Job when that target is chosen', () => {
     const validator = returnStockValidator([piece, linear]);
-    const partsSale = { ...values, jobId: '', quoteId: measured.partId, target: 'quote' as const };
+    const partsSale = { ...values, target: 'quote' as const, targetId: measured.partId };
 
     expect(validator.safeParse(partsSale).success).toBe(true);
-    expect(validator.safeParse({ ...partsSale, quoteId: '' }).error?.issues).toMatchObject([
-      { message: 'Select a Parts Sale', path: ['quoteId'] },
+    expect(validator.safeParse({ ...partsSale, targetId: '' }).error?.issues).toMatchObject([
+      { message: 'Select a Parts Sale', path: ['targetId'] },
     ]);
     expect(toReturnStockInput(partsSale, linear)).toEqual({
       lengthMm: 6_000,
@@ -255,32 +255,29 @@ describe('Checkout Basket form', () => {
   it('maps only the selected target into the strict Basket input', () => {
     expect(
       toCheckoutBasketInput({
-        jobId: piece.partId,
         lines: [first],
         note: 'unused',
-        quoteId: 'unused',
         recipientUserId: 'unused',
         target: 'job',
+        targetId: piece.partId,
       }),
     ).toEqual({ jobId: piece.partId, lines: [first] });
     expect(
       toCheckoutBasketInput({
-        jobId: '',
         lines: [first],
         note: 'unused',
-        quoteId: measured.partId,
         recipientUserId: 'unused',
         target: 'quote',
+        targetId: measured.partId,
       }),
     ).toEqual({ lines: [first], quoteId: measured.partId });
     expect(
       toCheckoutBasketInput({
-        jobId: '',
         lines: [first],
         note: ' repair press ',
-        quoteId: '',
         recipientUserId: 'connor',
         target: 'person',
+        targetId: '',
       }),
     ).toEqual({ lines: [first], note: 'repair press', recipientUserId: 'connor' });
   });
@@ -288,25 +285,24 @@ describe('Checkout Basket form', () => {
   it('requires a target and at least one line', () => {
     const validator = checkoutBasketValidator([piece]);
     const values = {
-      jobId: piece.partId,
       lines: [first],
       note: '',
-      quoteId: '',
       recipientUserId: '',
       target: 'job' as const,
+      targetId: piece.partId,
     };
 
     expect(validator.safeParse(values).success).toBe(true);
     // A Parts Sale needs only the Quote: no Recipient, no Purpose.
-    expect(validator.safeParse({ ...values, jobId: '', quoteId: measured.partId, target: 'quote' }).success).toBe(true);
-    expect(validator.safeParse({ ...values, jobId: '', target: 'quote' }).error?.issues).toMatchObject([
-      { message: 'Select a Parts Sale', path: ['quoteId'] },
+    expect(validator.safeParse({ ...values, target: 'quote', targetId: measured.partId }).success).toBe(true);
+    expect(validator.safeParse({ ...values, target: 'quote', targetId: '' }).error?.issues).toMatchObject([
+      { message: 'Select a Parts Sale', path: ['targetId'] },
     ]);
-    expect(validator.safeParse({ ...values, jobId: '' }).success).toBe(false);
+    expect(validator.safeParse({ ...values, targetId: '' }).success).toBe(false);
     expect(validator.safeParse({ ...values, lines: [] }).success).toBe(false);
     expect(validator.safeParse({ ...values, lines: [{ ...first, quantity: 1.5 }] }).success).toBe(false);
     expect(
-      validator.safeParse({ ...values, jobId: '', note: ' ', recipientUserId: '', target: 'person' }).success,
+      validator.safeParse({ ...values, note: ' ', recipientUserId: '', target: 'person', targetId: '' }).success,
     ).toBe(false);
   });
 

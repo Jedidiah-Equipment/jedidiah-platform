@@ -52,18 +52,19 @@ export async function getQuoteCancellationPlan({ db, id }: { db: Db; id: UUID })
   }
 
   // A Parts Sale sources no Job, so stock still out against it is the one thing cancelling leaves behind.
-  const drawnStock = quote.isPartsSale ? await loadOutstandingQuoteStock(db, id) : [];
-
-  const [job] = await db
-    .select({
-      code: jobs.code,
-      completedOn: jobs.completedOn,
-      description: jobs.description,
-      id: jobs.id,
-      productUnitId: jobs.productUnitId,
-    })
-    .from(jobs)
-    .where(and(eq(jobs.quoteId, id), isNull(jobs.cancelledAt)));
+  const [drawnStock, [job]] = await Promise.all([
+    quote.isPartsSale ? loadQuoteStockBuckets(db, id) : [],
+    db
+      .select({
+        code: jobs.code,
+        completedOn: jobs.completedOn,
+        description: jobs.description,
+        id: jobs.id,
+        productUnitId: jobs.productUnitId,
+      })
+      .from(jobs)
+      .where(and(eq(jobs.quoteId, id), isNull(jobs.cancelledAt))),
+  ]);
 
   if (!job) {
     return QuoteCancellationPlan.parse({ drawnStock, job: null, unit: null });
@@ -82,18 +83,6 @@ export async function getQuoteCancellationPlan({ db, id }: { db: Db; id: UUID })
     },
     unit: sellsExistingUnit ? null : await loadLinkedUnit({ db, facts, productUnitId: job.productUnitId }),
   });
-}
-
-async function loadOutstandingQuoteStock(db: Db, quoteId: UUID): Promise<QuoteCancellationPlan['drawnStock']> {
-  const buckets = await loadQuoteStockBuckets(db, quoteId);
-
-  return buckets.map((bucket) => ({
-    lengthMm: bucket.lengthMm,
-    outstandingQuantity: bucket.drawnQuantity,
-    partCode: bucket.partCode,
-    partName: bucket.partName,
-    unitOfMeasure: bucket.unitOfMeasure,
-  }));
 }
 
 /**

@@ -150,6 +150,18 @@ export async function loadBucketQuantities(
   return quantities;
 }
 
+/**
+ * Joins each Part to the ledger rows that carry quantity: a revaluation moves cost, never quantity,
+ * so it must not reach a stock-on-hand sum or open a length bucket of its own. Paired with
+ * `onHandDeltaSum` on a `parts`-driven left join, so a Part with no ledger at all still lists at zero.
+ */
+export function stockOnHandJoin(): SQL {
+  return and(eq(stockMovements.partId, parts.id), ne(stockMovements.movementType, 'revaluation')) as SQL;
+}
+
+/** Stock on hand as the grouped sum of the joined rows; an empty join sums to zero, not null. */
+export const onHandDeltaSum = sql<number>`coalesce(sum(${stockMovements.delta}), 0)::double precision`;
+
 /** Matches one length bucket, or the single `null` bucket a non-linear Part holds. */
 export function bucketMatches(lengthMm: number | null): SQL {
   return lengthMm === null ? isNull(stockMovements.lengthMm) : eq(stockMovements.lengthMm, lengthMm);
@@ -169,12 +181,7 @@ export function checkoutWithoutJobMatches(): SQL {
 
 /** The net delta of whatever slice of the ledger the condition selects. */
 export async function sumDelta(db: LedgerDb, where: SQL | undefined): Promise<number> {
-  return scalar(
-    db
-      .select({ value: sql<number>`coalesce(sum(${stockMovements.delta}), 0)::double precision` })
-      .from(stockMovements)
-      .where(where),
-  );
+  return scalar(db.select({ value: onHandDeltaSum }).from(stockMovements).where(where));
 }
 
 /**

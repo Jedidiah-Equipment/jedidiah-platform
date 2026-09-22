@@ -16,6 +16,7 @@ import { DataTable } from '@/components/data-table/DataTable.js';
 import { type DataTableColumnDef, useDataTable } from '@/components/data-table/features.js';
 import { Button } from '@/components/ui/button.js';
 import { formatUnitCost, getPartQuantityUnitDisplay } from '@/equipment/utils/part-quantity-format.js';
+import { useCan } from '@/hooks/use-access.js';
 
 type MovementReference = {
   id: UUID;
@@ -62,15 +63,11 @@ function movementReference(item: StockMovementHistoryRow): MovementReference | n
 
 const REFERENCE_LINK_CLASS = 'font-medium underline-offset-4 hover:underline';
 
-function MovementReferenceCell({
-  canReadJobs,
-  canReadQuotes,
-  item,
-}: {
-  canReadJobs: boolean;
-  canReadQuotes: boolean;
-  item: StockMovementHistoryRow;
-}) {
+function MovementReferenceCell({ item }: { item: StockMovementHistoryRow }) {
+  // Stores reads this ledger and holds neither `equipment_job:read` nor any Quote permission, so a
+  // link would only land them on a page that refuses to load.
+  const canReadJobs = useCan('equipment_job:read').can;
+  const canReadQuotes = useCan('equipment_quote:read').can;
   const reference = movementReference(item);
   if (!reference) return '—';
 
@@ -115,15 +112,11 @@ function MovementReferenceCell({
 }
 
 export function StockMovementHistoryTable({
-  canReadJobs,
-  canReadQuotes,
   items,
   onReturnCheckout,
   showCosts,
   unitOfMeasure,
 }: {
-  canReadJobs: boolean;
-  canReadQuotes: boolean;
   items: readonly StockMovementHistoryRow[];
   /** Offered on each Checkout Without a Job; absent where the reader may not post, or the Part refuses returns. */
   onReturnCheckout?: ((sourceCheckoutId: UUID) => void) | undefined;
@@ -131,8 +124,8 @@ export function StockMovementHistoryTable({
   unitOfMeasure: PartUnitOfMeasure;
 }) {
   const columns = useMemo(
-    () => createStockMovementHistoryColumns({ canReadJobs, canReadQuotes, onReturnCheckout, showCosts, unitOfMeasure }),
-    [canReadJobs, canReadQuotes, onReturnCheckout, showCosts, unitOfMeasure],
+    () => createStockMovementHistoryColumns({ onReturnCheckout, showCosts, unitOfMeasure }),
+    [onReturnCheckout, showCosts, unitOfMeasure],
   );
   const data = useMemo(() => [...items], [items]);
   const table = useDataTable({
@@ -156,14 +149,10 @@ export function StockMovementHistoryTable({
 }
 
 function createStockMovementHistoryColumns({
-  canReadJobs,
-  canReadQuotes,
   onReturnCheckout,
   showCosts,
   unitOfMeasure,
 }: {
-  canReadJobs: boolean;
-  canReadQuotes: boolean;
   onReturnCheckout: ((sourceCheckoutId: UUID) => void) | undefined;
   showCosts: boolean;
   unitOfMeasure: PartUnitOfMeasure;
@@ -223,9 +212,7 @@ function createStockMovementHistoryColumns({
       : []),
     {
       accessorFn: (item) => movementReference(item)?.label ?? '—',
-      cell: ({ row }) => (
-        <MovementReferenceCell canReadJobs={canReadJobs} canReadQuotes={canReadQuotes} item={row.original} />
-      ),
+      cell: ({ row }) => <MovementReferenceCell item={row.original} />,
       header: 'Reference',
       id: 'reference',
     },

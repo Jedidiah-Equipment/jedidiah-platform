@@ -14,6 +14,7 @@ import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 import { CheckoutQuoteNotFoundError, CheckoutQuoteNotPartsSaleError } from './checkout-errors.js';
 import { drawnCostedValueExpression, uncostedDrawnQuantityExpression } from './job-stock-facts.js';
 import { toLedgerQuantity } from './ledger.js';
+import { inventoryQuoteSelection } from './quote-options-read.js';
 import { sumBy } from './row-grouping.js';
 
 /** One Part and length bucket still out against a Parts Sale, net of its returns. */
@@ -56,17 +57,10 @@ export async function loadQuoteStockBuckets(db: Db, quoteId: UUID): Promise<Quot
     .filter((row) => row.drawnQuantity > 0);
 }
 
-/** The Quote facts a stores surface may see: never a price, since `stores` holds no Quote permission. */
+/** One Parts Sale as a stores surface may see it, refusing any other Quote. */
 export async function loadInventoryQuote(db: Db, quoteId: UUID): Promise<InventoryQuoteOption> {
   const [quote] = await db
-    .select({
-      code: quotes.code,
-      customerCompanyName: customers.companyName,
-      id: quotes.id,
-      isPartsSale: quotes.isPartsSale,
-      status: quotes.status,
-      workTitle: quotes.workTitle,
-    })
+    .select({ ...inventoryQuoteSelection, isPartsSale: quotes.isPartsSale })
     .from(quotes)
     .innerJoin(customers, eq(customers.id, quotes.customerId))
     .where(eq(quotes.id, quoteId))

@@ -28,6 +28,27 @@ export type ReturnToStoreFacts = {
 export type JobMovementFacts = CheckoutFacts & ReturnToStoreFacts;
 
 /**
+ * A draw no CFO planned: to a person, or to a Parts Sale. A CFO of zero is what "no CFO" means to
+ * the judgement, so only the rack can warn.
+ */
+export function unplannedCheckoutFacts(bucketQuantityOnHand: number): CheckoutFacts & { kind: 'checkout' } {
+  return { bucketQuantityOnHand, cfoQuantity: 0, drawnQuantity: 0, kind: 'checkout' };
+}
+
+/**
+ * What a Job or Parts Sale still holds in one bucket, read off the row its stock read serves: the
+ * whole Part where the movement names no length, else the one length bucket.
+ */
+export function drawnBucketQuantity(
+  row: { drawnQuantity: number; lengthBuckets: readonly { drawnQuantity: number; lengthMm: number }[] } | undefined,
+  lengthMm: number | null,
+): number {
+  if (lengthMm === null) return row?.drawnQuantity ?? 0;
+
+  return row?.lengthBuckets.find((bucket) => bucket.lengthMm === lengthMm)?.drawnQuantity ?? 0;
+}
+
+/**
  * A Basket judged the way its post will judge it: line by line, with earlier draws of the same Part
  * carried into the Job-level facts while each length bucket keeps its own served rack quantity.
  */

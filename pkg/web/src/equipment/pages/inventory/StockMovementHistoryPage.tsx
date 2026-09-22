@@ -17,11 +17,6 @@ export function StockMovementHistoryPage({ partId }: { partId: UUID }) {
   const historyQuery = useQuery(trpc.inventory.history.queryOptions({ partId }));
   const [returnSourceCheckoutId, setReturnSourceCheckoutId] = useState<UUID | null>(null);
   const showCosts = hasPermission(accessQuery.data, 'equipment_inventory_cost:read');
-  // Stores reads this ledger and holds no `equipment_job:read`, so a Job link would only ever land them on a
-  // sheet that refuses to load. The code still shows — it is what the row was drawn against.
-  const canReadJobs = hasPermission(accessQuery.data, 'equipment_job:read');
-  // Stores holds no Quote permission either, so a Parts Sale code is named but not linked for them.
-  const canReadQuotes = hasPermission(accessQuery.data, 'equipment_quote:read');
   const part = historyQuery.data?.part;
   // The same gate the post applies: a Part that refuses returns is not offered one from its history.
   const canReturn =
@@ -41,8 +36,6 @@ export function StockMovementHistoryPage({ partId }: { partId: UUID }) {
       ) : null}
       {historyQuery.data?.items.length ? (
         <StockMovementHistoryTable
-          canReadJobs={canReadJobs}
-          canReadQuotes={canReadQuotes}
           items={historyQuery.data.items}
           onReturnCheckout={canReturn ? setReturnSourceCheckoutId : undefined}
           showCosts={showCosts}

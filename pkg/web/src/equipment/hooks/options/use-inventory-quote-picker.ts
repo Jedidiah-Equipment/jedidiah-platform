@@ -19,7 +19,7 @@ export function useInventoryQuotePicker({
   const trpc = useTRPC();
 
   return useCursorOptions((search) =>
-    trpc.inventory.quoteOptions.infiniteQueryOptions(
+    trpc.inventoryQuotes.quoteOptions.infiniteQueryOptions(
       { limit: QUOTE_OPTION_PAGE_SIZE, movementType, search },
       { ...cursorInfiniteQueryOptions, enabled, placeholderData: keepPreviousData },
     ),

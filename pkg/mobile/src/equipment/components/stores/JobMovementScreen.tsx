@@ -136,7 +136,10 @@ function JobMovementForm({
     trpc.inventory.jobStock.queryOptions({ jobId: jobIdToPost ?? '' }, { enabled: jobIdToPost !== null }),
   );
   const quoteStockQuery = useQuery(
-    trpc.inventory.quoteStock.queryOptions({ quoteId: quoteIdToJudge ?? '' }, { enabled: quoteIdToJudge !== null }),
+    trpc.inventoryQuotes.quoteStock.queryOptions(
+      { quoteId: quoteIdToJudge ?? '' },
+      { enabled: quoteIdToJudge !== null },
+    ),
   );
   const previewWarnings = previewStoresMovementWarnings({
     jobStock: jobStockQuery.data,

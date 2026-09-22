@@ -1,9 +1,7 @@
 import { deriveCheckoutBasketWarnings, unplannedCheckoutFacts, warningMessageFor } from '@pkg/domain/equipment';
 import type {
   CheckoutBasketPostResult,
-  InventoryQuoteOption,
   InventoryRecipientOption,
-  JobPickerOption,
   StockMovementWarningCode,
   StockOnHandRow,
 } from '@pkg/schema/equipment';
@@ -21,15 +19,13 @@ import { Button } from '@/components/ui/button.js';
 import { Field, FieldLabel } from '@/components/ui/field.js';
 import { Input } from '@/components/ui/input.js';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs.js';
-import { JobPicker, JobPickerTrigger } from '@/equipment/components/job-picker/index.js';
-import { useInventoryJobPicker, useInventoryQuotePicker } from '@/equipment/hooks/options/index.js';
 import { useQueryInvalidation } from '@/equipment/hooks/use-query-invalidation.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { getApiErrorMetadata } from '@/lib/api-errors.js';
 import { authClient } from '@/lib/auth-client.js';
 import { useTRPC } from '@/lib/trpc.js';
 
-import { InventoryQuotePicker } from './InventoryQuotePicker.js';
+import { MovementTargetPicker, type SelectedMovementTarget } from './MovementTargetPicker.js';
 import { StockMovementWarningPrompt } from './StockMovementWarningPrompt.js';
 import {
   type CheckoutBasketFormValues,
@@ -48,7 +44,7 @@ import {
   wholeUnitQuantityMessage,
 } from './types.js';
 
-type SelectedTarget = { kind: 'job'; option: JobPickerOption } | { kind: 'quote'; option: InventoryQuoteOption };
+const TARGET_INPUT_ID = 'checkout-basket-target';
 
 export function CheckoutBasketDialog({
   fixedTarget,
@@ -69,8 +65,7 @@ export function CheckoutBasketDialog({
   const { data: session } = authClient.useSession();
   const { invalidateInventory } = useQueryInvalidation();
   const showMutationError = useApiMutationErrorToast();
-  const [isJobPickerOpen, setJobPickerOpen] = useState(false);
-  const [selectedTarget, setSelectedTarget] = useState<SelectedTarget | null>(null);
+  const [selectedTarget, setSelectedTarget] = useState<SelectedMovementTarget | null>(null);
   const [refusedPartId, setRefusedPartId] = useState<string | null>(null);
   const lineCount = useRef(0);
   const postedSuccessfully = useRef(false);
@@ -80,11 +75,8 @@ export function CheckoutBasketDialog({
   const targetKind = fixedTarget?.kind ?? selectedTarget?.kind;
   const targetId = fixedTarget?.id ?? selectedTarget?.option.id ?? '';
   const pickersEnabled = open && fixedTarget === undefined;
-  const selectedJob = selectedTarget?.kind === 'job' ? selectedTarget.option : null;
   const validator = useMemo(() => checkoutBasketValidator(parts), [parts]);
 
-  const jobPicker = useInventoryJobPicker({ enabled: pickersEnabled, movementType: 'checkout' });
-  const quotePicker = useInventoryQuotePicker({ enabled: pickersEnabled, movementType: 'checkout' });
   // Only a Job has a CFO to judge a draw against; a Parts Sale or a person judges on the rack alone.
   const targetStock = useQuery(
     trpc.inventory.jobStock.queryOptions(
@@ -195,6 +187,8 @@ export function CheckoutBasketDialog({
           {(values) => {
             lineCount.current = values.lines.length;
             const lineWarnings = warningsFor(values);
+            // A person is named by `recipientUserId`; the other two targets are the ones picked.
+            const pickedKind = values.target === 'person' ? null : values.target;
 
             return (
               <>
@@ -232,7 +226,7 @@ export function CheckoutBasketDialog({
                     <FieldLabel>{movementTargetLabels[fixedTarget.kind]}</FieldLabel>
                     <div className="rounded-md border px-3 py-2 font-mono text-sm">{fixedTarget.code}</div>
                   </Field>
-                ) : values.target === 'person' ? (
+                ) : pickedKind === null ? (
                   <>
                     <Field>
                       <FieldLabel>Operator</FieldLabel>
@@ -254,46 +248,23 @@ export function CheckoutBasketDialog({
                       {(field) => <field.TextareaField label="Purpose" placeholder="Repair factory drill" rows={2} />}
                     </form.AppField>
                   </>
-                ) : values.target === 'quote' ? (
-                  <form.AppField name="targetId">
-                    {(field) => (
-                      <Field data-invalid={field.state.meta.errors.length > 0}>
-                        <FieldLabel htmlFor="checkout-basket-quote">Parts Sale</FieldLabel>
-                        <InventoryQuotePicker
-                          controller={quotePicker}
-                          inputId="checkout-basket-quote"
-                          onSelected={(quote) => {
-                            setSelectedTarget(quote ? { kind: 'quote', option: quote } : null);
-                            field.handleChange(quote?.id ?? '');
-                          }}
-                          value={selectedTarget?.kind === 'quote' ? selectedTarget.option : null}
-                        />
-                      </Field>
-                    )}
-                  </form.AppField>
                 ) : (
                   <form.AppField name="targetId">
                     {(field) => (
                       <Field data-invalid={field.state.meta.errors.length > 0}>
-                        <FieldLabel htmlFor="checkout-basket-job">Job</FieldLabel>
-                        <JobPicker
-                          controller={jobPicker}
+                        <FieldLabel htmlFor={TARGET_INPUT_ID}>{movementTargetLabels[pickedKind]}</FieldLabel>
+                        <MovementTargetPicker
+                          enabled={pickersEnabled}
+                          inputId={TARGET_INPUT_ID}
+                          kind={pickedKind}
+                          movementType="checkout"
                           nothingPickableMessage="No Jobs are available for Checkout."
-                          onOpenChange={setJobPickerOpen}
-                          onSelect={(job) => {
-                            setSelectedTarget({ kind: 'job', option: job });
-                            field.handleChange(job.id);
+                          onSelected={(target) => {
+                            setSelectedTarget(target);
+                            field.handleChange(target?.option.id ?? '');
                           }}
-                          open={isJobPickerOpen}
-                          value={selectedJob}
-                        >
-                          <JobPickerTrigger
-                            className="w-full"
-                            id="checkout-basket-job"
-                            placeholder="Select Job"
-                            value={selectedJob}
-                          />
-                        </JobPicker>
+                          value={selectedTarget}
+                        />
                       </Field>
                     )}
                   </form.AppField>

@@ -17,7 +17,7 @@ import {
   type StocktakeError,
 } from '@pkg/core/equipment';
 
-import { defineCoreErrorFamily } from '../../../trpc/errors.js';
+import { defineCoreErrorFamily, mapCoreErrors } from '../../../trpc/errors.js';
 
 /**
  * The inventory boundary's error families. Each procedure names only the families it can actually
@@ -133,3 +133,15 @@ export const stockMovementJobErrorFamily = defineCoreErrorFamily<StockMovementJo
     error instanceof JobCancelledError || error instanceof JobNotFoundError,
   messages: { 'job.not_found': 'Job not found.' },
 });
+
+/** Both strict Checkout/Return alternatives, each surfacing only the domain families it can reach. */
+export async function mapCheckoutErrors<T>(action: () => Promise<T>): Promise<T> {
+  return mapCoreErrors(
+    action,
+    stockMovementErrorFamily,
+    stockMovementJobErrorFamily,
+    jobCloseOutErrorFamily,
+    checkoutErrorFamily,
+    assertedActorErrorFamily,
+  );
+}

@@ -3,7 +3,8 @@ import { useMemo } from 'react';
 import { DataTable } from '@/components/data-table/DataTable.js';
 import { type DataTableColumnDef, useDataTable } from '@/components/data-table/features.js';
 import { Button } from '@/components/ui/button.js';
-import { formatLengthBucket, formatPartQuantity } from '@/equipment/utils/part-quantity-format.js';
+import { drawnColumn, partColumn } from '@/equipment/pages/inventory/components/drawn-stock-columns.js';
+import { formatPartQuantity } from '@/equipment/utils/part-quantity-format.js';
 
 /** `onReturn` turns each drawn row into a leftover the close-out screen can hand straight back. */
 export function JobStockTable({
@@ -32,45 +33,6 @@ export function JobStockTable({
       totalLabel={(value) => `${value} ${value === 1 ? 'part' : 'parts'}`}
     />
   );
-}
-
-/** What a Job or Parts Sale stock row carries for the Part and Drawn columns both screens show. */
-type DrawnStockRow = Pick<JobStockRow, 'drawnQuantity' | 'lengthBuckets' | 'partCode' | 'partName' | 'unitOfMeasure'>;
-
-export function partColumn<TRow extends DrawnStockRow>(): DataTableColumnDef<TRow> {
-  return {
-    accessorFn: (item) => `${item.partName} ${item.partCode}`,
-    cell: ({ row }) => (
-      <>
-        <span className="block font-medium">{row.original.partName}</span>
-        <span className="block text-muted-foreground text-xs">{row.original.partCode}</span>
-      </>
-    ),
-    header: 'Part',
-    id: 'part',
-  };
-}
-
-/** Net drawn for the Part, with each length bucket still out beneath it. */
-export function drawnColumn<TRow extends DrawnStockRow>(): DataTableColumnDef<TRow> {
-  return {
-    accessorFn: (item) => item.drawnQuantity,
-    cell: ({ row }) => (
-      <>
-        <span className="block">{formatPartQuantity(row.original.drawnQuantity, row.original.unitOfMeasure)}</span>
-        {row.original.lengthBuckets.map((bucket) => (
-          <span key={bucket.lengthMm} className="block text-muted-foreground text-xs">
-            {formatLengthBucket(bucket.lengthMm, bucket.drawnQuantity)}
-          </span>
-        ))}
-      </>
-    ),
-    header: 'Drawn',
-    id: 'drawnQuantity',
-    meta: {
-      cellClassName: 'tabular-nums',
-    },
-  };
 }
 
 function createJobStockColumns(onReturn: ((partId: string) => void) | undefined): DataTableColumnDef<JobStockRow>[] {

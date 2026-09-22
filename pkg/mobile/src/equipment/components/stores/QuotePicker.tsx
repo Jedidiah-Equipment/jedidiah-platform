@@ -28,7 +28,7 @@ export function QuotePicker({
   const trpc = useTRPC();
   const debouncedSearch = useDebouncedSearch(search);
   const quotes = useInfiniteQuery(
-    trpc.inventory.quoteOptions.infiniteQueryOptions(
+    trpc.inventoryQuotes.quoteOptions.infiniteQueryOptions(
       { limit: QUOTE_PAGE_SIZE, movementType, search: debouncedSearch },
       {
         enabled: selected === null,

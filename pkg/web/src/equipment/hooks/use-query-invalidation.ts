@@ -39,30 +39,33 @@ export function useQueryInvalidation() {
     () => queryClient.invalidateQueries({ queryKey: trpc.laborRates.pathKey() }),
     [queryClient, trpc],
   );
+  // A movement also changes what a Parts Sale has drawn, which is served from its own root.
   const invalidateInventory = useCallback(
-    () => queryClient.invalidateQueries({ queryKey: trpc.inventory.pathKey() }),
+    () =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: trpc.inventory.pathKey() }),
+        queryClient.invalidateQueries({ queryKey: trpc.inventoryQuotes.pathKey() }),
+      ]),
     [queryClient, trpc],
   );
-  // Pickers read Part Category names through `parts.categories`. When the name some Part reads changed
-  // (a rename, or a merge moving Parts under the survivor's name), every Part row and the order Product
-  // Assemblies list Parts in change with it.
+  // Parts read their Category's name, so a Category write moves both roots. A rename (or a merge
+  // moving Parts under the survivor's name) also changes the name Products show for a Part and the
+  // order Product Assemblies list Parts in, so Products joins the affected roots then.
   const invalidatePartCategories = useCallback(
     ({ nameChanged = false }: { nameChanged?: boolean } = {}) =>
       Promise.all([
         queryClient.invalidateQueries({ queryKey: trpc.partCategories.pathKey() }),
-        queryClient.invalidateQueries({
-          queryKey: nameChanged ? trpc.parts.pathKey() : trpc.parts.categories.pathKey(),
-        }),
+        queryClient.invalidateQueries({ queryKey: trpc.parts.pathKey() }),
         nameChanged ? queryClient.invalidateQueries({ queryKey: trpc.products.pathKey() }) : undefined,
       ]),
     [queryClient, trpc],
   );
-  // A Part write moves Part Category counts, which only the admin list reads.
+  // A Part write moves the Part Category counts the admin list reads.
   const invalidateParts = useCallback(
     () =>
       Promise.all([
         queryClient.invalidateQueries({ queryKey: trpc.parts.pathKey() }),
-        queryClient.invalidateQueries({ queryKey: trpc.partCategories.list.pathKey() }),
+        queryClient.invalidateQueries({ queryKey: trpc.partCategories.pathKey() }),
       ]),
     [queryClient, trpc],
   );
@@ -82,14 +85,13 @@ export function useQueryInvalidation() {
     () => queryClient.invalidateQueries({ queryKey: trpc.productUnits.pathKey() }),
     [queryClient, trpc],
   );
-  // A Parts Sale's code, Customer, title and status also ride the two inventory reads stores pick it
-  // from; the rest of the inventory root replays the ledger and never reads a Quote.
+  // A Parts Sale's code, Customer, title and status also ride the Quote reads stores make, which sit
+  // on their own root precisely so a Quote write does not replay the inventory ledger.
   const invalidateQuotes = useCallback(
     () =>
       Promise.all([
         queryClient.invalidateQueries({ queryKey: trpc.quotes.pathKey() }),
-        queryClient.invalidateQueries({ queryKey: trpc.inventory.quoteOptions.pathKey() }),
-        queryClient.invalidateQueries({ queryKey: trpc.inventory.quoteStock.pathKey() }),
+        queryClient.invalidateQueries({ queryKey: trpc.inventoryQuotes.pathKey() }),
       ]),
     [queryClient, trpc],
   );

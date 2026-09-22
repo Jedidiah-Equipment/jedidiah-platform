@@ -1,25 +1,18 @@
 import { deriveMovementWarnings, drawnBucketQuantity } from '@pkg/domain/equipment';
-import type {
-  InventoryQuoteOption,
-  JobPickerOption,
-  JobStockLengthBucket,
-  StockMovementWarningCode,
-} from '@pkg/schema/equipment';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import type { StockMovementWarningCode } from '@pkg/schema/equipment';
+import { useMutation } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
 import { CreateEntityDialog } from '@/components/form/index.js';
 import { Field, FieldLabel } from '@/components/ui/field.js';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs.js';
-import { JobPicker, JobPickerTrigger } from '@/equipment/components/job-picker/index.js';
-import { useInventoryJobPicker, useInventoryQuotePicker } from '@/equipment/hooks/options/index.js';
 import { useMovementWarnings } from '@/equipment/hooks/use-movement-warnings.js';
 import { useQueryInvalidation } from '@/equipment/hooks/use-query-invalidation.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useTRPC } from '@/lib/trpc.js';
 
-import { InventoryQuotePicker } from './InventoryQuotePicker.js';
+import { MovementTargetPicker, type SelectedMovementTarget } from './MovementTargetPicker.js';
 import { StockMovementWarningPrompt } from './StockMovementWarningPrompt.js';
 import {
   type FixedMovementTarget,
@@ -33,11 +26,9 @@ import {
   type StockPartOption,
   toReturnStockInput,
 } from './types.js';
+import { useTargetStock } from './use-target-stock.js';
 
-type SelectedTarget = { kind: 'job'; option: JobPickerOption } | { kind: 'quote'; option: InventoryQuoteOption };
-
-/** What a Job or Parts Sale stock read serves per Part, as far as a return is judged against it. */
-type TargetStockRow = { drawnQuantity: number; lengthBuckets: readonly JobStockLengthBucket[]; partId: string };
+const TARGET_INPUT_ID = 'inventory-return-target';
 
 /**
  * Returns one Part from a Job or a Parts Sale, pooled like the draws it reverses. Checkout owns a
@@ -64,28 +55,13 @@ export function StockMovementDialog({
   const trpc = useTRPC();
   const { invalidateInventory } = useQueryInvalidation();
   const showMutationError = useApiMutationErrorToast();
-  const [isJobPickerOpen, setJobPickerOpen] = useState(false);
-  const [selectedTarget, setSelectedTarget] = useState<SelectedTarget | null>(null);
+  const [selectedTarget, setSelectedTarget] = useState<SelectedMovementTarget | null>(null);
   const movementWarningsOutcome = useMovementWarnings();
   const validator = useMemo(() => returnStockValidator(parts), [parts]);
   const targetKind = fixedTarget?.kind ?? selectedTarget?.kind;
   const targetId = fixedTarget?.id ?? selectedTarget?.option.id ?? '';
-  const pickersEnabled = open && fixedTarget === undefined;
-  const selectedJob = selectedTarget?.kind === 'job' ? selectedTarget.option : null;
 
-  const jobPicker = useInventoryJobPicker({ enabled: pickersEnabled, movementType: 'return-to-store' });
-  const quotePicker = useInventoryQuotePicker({ enabled: pickersEnabled, movementType: 'return-to-store' });
-  const jobStockQuery = useQuery(
-    trpc.inventory.jobStock.queryOptions({ jobId: targetId }, { enabled: targetKind === 'job' && targetId !== '' }),
-  );
-  const quoteStockQuery = useQuery(
-    trpc.inventory.quoteStock.queryOptions(
-      { quoteId: targetId },
-      { enabled: targetKind === 'quote' && targetId !== '' },
-    ),
-  );
-  const targetStock = targetKind === 'quote' ? quoteStockQuery : jobStockQuery;
-  const targetStockRows: readonly TargetStockRow[] | undefined = targetStock.data?.items;
+  const targetStock = useTargetStock({ kind: targetKind, targetId });
   const returnMutation = useMutation(
     trpc.inventory.postReturnToStore.mutationOptions({
       onError: (error) => showMutationError(error, 'Unable to return stock.'),
@@ -102,7 +78,7 @@ export function StockMovementDialog({
     // Staying quiet is the honest state: the post still returns the ledger's own verdict.
     if (values.targetId === '' || targetStock.isPending) return [];
 
-    const row = targetStockRows?.find((candidate) => candidate.partId === values.partId);
+    const row = targetStock.rows?.find((candidate) => candidate.partId === values.partId);
     const lengthMm = Number.isNaN(values.lengthMm) ? null : values.lengthMm;
 
     return deriveMovementWarnings({
@@ -175,46 +151,23 @@ export function StockMovementDialog({
                     <FieldLabel>{movementTargetLabels[fixedTarget.kind]}</FieldLabel>
                     <div className="rounded-md border px-3 py-2 font-mono text-sm">{fixedTarget.code}</div>
                   </Field>
-                ) : values.target === 'quote' ? (
-                  <form.AppField name="targetId">
-                    {(field) => (
-                      <Field data-invalid={field.state.meta.errors.length > 0}>
-                        <FieldLabel htmlFor="inventory-return-quote">Parts Sale</FieldLabel>
-                        <InventoryQuotePicker
-                          controller={quotePicker}
-                          inputId="inventory-return-quote"
-                          onSelected={(quote) => {
-                            setSelectedTarget(quote ? { kind: 'quote', option: quote } : null);
-                            field.handleChange(quote?.id ?? '');
-                          }}
-                          value={selectedTarget?.kind === 'quote' ? selectedTarget.option : null}
-                        />
-                      </Field>
-                    )}
-                  </form.AppField>
                 ) : (
                   <form.AppField name="targetId">
                     {(field) => (
                       <Field data-invalid={field.state.meta.errors.length > 0}>
-                        <FieldLabel htmlFor="inventory-job-movement-job">Job</FieldLabel>
-                        <JobPicker
-                          controller={jobPicker}
+                        <FieldLabel htmlFor={TARGET_INPUT_ID}>{movementTargetLabels[values.target]}</FieldLabel>
+                        <MovementTargetPicker
+                          enabled={open}
+                          inputId={TARGET_INPUT_ID}
+                          kind={values.target}
+                          movementType="return-to-store"
                           nothingPickableMessage="No Jobs are available for this movement."
-                          onOpenChange={setJobPickerOpen}
-                          onSelect={(job) => {
-                            setSelectedTarget({ kind: 'job', option: job });
-                            field.handleChange(job.id);
+                          onSelected={(target) => {
+                            setSelectedTarget(target);
+                            field.handleChange(target?.option.id ?? '');
                           }}
-                          open={isJobPickerOpen}
-                          value={selectedJob}
-                        >
-                          <JobPickerTrigger
-                            className="w-full"
-                            id="inventory-job-movement-job"
-                            placeholder="Select Job"
-                            value={selectedJob}
-                          />
-                        </JobPicker>
+                          value={selectedTarget}
+                        />
                       </Field>
                     )}
                   </form.AppField>

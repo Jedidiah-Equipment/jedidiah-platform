@@ -571,7 +571,9 @@ describe('inventory cost projection', () => {
 describe('Parts Sale stock', () => {
   test('offers Parts Sales to stores, price-free, and refuses a caller who cannot move stock', async ({ context }) => {
     await expect(
-      context.createCaller(mockSession('stores')).inventory.quoteOptions({ movementType: 'checkout', search: '' }),
+      context
+        .createCaller(mockSession('stores'))
+        .inventoryQuotes.quoteOptions({ movementType: 'checkout', search: '' }),
     ).resolves.toMatchObject({
       items: [
         {
@@ -584,7 +586,7 @@ describe('Parts Sale stock', () => {
       total: 1,
     });
     await expect(
-      context.createCaller(mockSession('sales')).inventory.quoteOptions({ movementType: 'checkout', search: '' }),
+      context.createCaller(mockSession('sales')).inventoryQuotes.quoteOptions({ movementType: 'checkout', search: '' }),
     ).rejects.toMatchObject({ code: 'FORBIDDEN' });
   });
 
@@ -599,10 +601,12 @@ describe('Parts Sale stock', () => {
     await admin.inventory.postCheckout({ partId: context.part.id, quantity: 2, quoteId: context.partsSale.id });
 
     await expect(
-      context.createCaller(mockSession('procurement-manager')).inventory.quoteStock({ quoteId: context.partsSale.id }),
+      context
+        .createCaller(mockSession('procurement-manager'))
+        .inventoryQuotes.quoteStock({ quoteId: context.partsSale.id }),
     ).resolves.toMatchObject({ items: [{ drawnQuantity: 2, drawnValue: 50 }] });
     await expect(
-      context.createCaller(mockSession('stores')).inventory.quoteStock({ quoteId: context.partsSale.id }),
+      context.createCaller(mockSession('stores')).inventoryQuotes.quoteStock({ quoteId: context.partsSale.id }),
     ).resolves.toMatchObject({ items: [{ drawnQuantity: 2, drawnValue: null }] });
   });
 

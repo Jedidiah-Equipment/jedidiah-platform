@@ -9,8 +9,8 @@ import { DataTable } from '@/components/data-table/DataTable.js';
 import { type DataTableColumnDef, useDataTable } from '@/components/data-table/features.js';
 import { Button } from '@/components/ui/button.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
+import { drawnColumn, partColumn } from '@/equipment/pages/inventory/components/drawn-stock-columns.js';
 import { useStockMovementDialogs } from '@/equipment/pages/inventory/components/use-stock-movement-dialogs.js';
-import { drawnColumn, partColumn } from '@/equipment/pages/jobs/components/JobStockTable.js';
 import { useCan } from '@/hooks/use-access.js';
 import { useTRPC } from '@/lib/trpc.js';
 
@@ -21,7 +21,7 @@ export function QuoteStockSection({ quote }: { quote: Pick<QuoteDetail, 'code' |
   const trpc = useTRPC();
   const canMove = useCan('equipment_inventory:move').can;
   const showValue = useCan('equipment_inventory_cost:read').can;
-  const quoteStockQuery = useQuery(trpc.inventory.quoteStock.queryOptions({ quoteId: quote.id }));
+  const quoteStockQuery = useQuery(trpc.inventoryQuotes.quoteStock.queryOptions({ quoteId: quote.id }));
   const movementDialogs = useStockMovementDialogs({
     canMove,
     fixedTarget: { code: quote.code, id: quote.id, kind: 'quote' },

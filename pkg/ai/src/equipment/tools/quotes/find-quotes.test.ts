@@ -126,9 +126,10 @@ describe('findQuotes contract', () => {
       },
     });
     expect(response[0]?.product).not.toHaveProperty('thumbnailDataUrl');
+    expect(response[1]).not.toHaveProperty('isPartsSale');
     expect(response[1]).toMatchObject({
-      isPartsSale: true,
       kind: 'custom',
+      offeringType: 'parts-sale',
       links: {
         app: `/equipment/quotes/${CUSTOM_QUOTE_ID}/edit`,
         customer: `/equipment/customers/${CUSTOMER_ID}/edit`,

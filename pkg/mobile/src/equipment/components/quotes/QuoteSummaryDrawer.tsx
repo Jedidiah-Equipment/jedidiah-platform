@@ -3,8 +3,7 @@ import {
   formatQuoteDeliverySummary,
   getQuoteOfferingName,
   type QuoteComputedSummary,
-  quoteOfferingType,
-  quoteOfferingTypeLabels,
+  quoteOfferingTypeLabel,
   quoteProductSourceOf,
   quoteWorkItemSummaryRows,
 } from '@pkg/domain/equipment';
@@ -150,7 +149,7 @@ function CustomWorkCard({ quote }: { quote: Extract<QuoteDetail, { kind: 'custom
     <SummaryCard>
       <View className="flex-row items-start justify-between gap-3">
         <View className="min-w-0 flex-1">
-          <CardLabel>{quoteOfferingTypeLabels[quoteOfferingType(quote)]}</CardLabel>
+          <CardLabel>{quoteOfferingTypeLabel(quote)}</CardLabel>
           <Text className="mt-1 text-[15px] text-foreground" numberOfLines={2} weight="bold">
             {workTitle}
           </Text>

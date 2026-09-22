@@ -8,7 +8,7 @@ export function getQuoteListInputExtras(columnFilters: ColumnFiltersState, custo
     filters: {
       customerId: customerId ?? getQuoteIdFilterValue(columnFilters, 'customerCompanyName'),
       invoiced: getEnumFilterValue(columnFilters, 'invoiceNumber', QuoteInvoicedFilter),
-      offeringType: getEnumFilterValue(columnFilters, 'kind', QuoteOfferingType),
+      offeringType: getEnumFilterValue(columnFilters, 'offeringType', QuoteOfferingType),
       productId: getQuoteIdFilterValue(columnFilters, 'productName'),
       salesPersonId: getQuoteIdFilterValue(columnFilters, 'salesPersonName'),
       statuses: getStatusFilterValues(columnFilters),
@@ -33,7 +33,7 @@ function getStatusFilterValues(columnFilters: ColumnFiltersState) {
 
 function getEnumFilterValue<TValue extends string>(
   columnFilters: ColumnFiltersState,
-  id: 'invoiceNumber' | 'kind',
+  id: 'invoiceNumber' | 'offeringType',
   schema: z.ZodEnum<Record<string, TValue>>,
 ): TValue | undefined {
   const value = columnFilters.find((filter) => filter.id === id)?.value;

@@ -1,6 +1,8 @@
 import {
   computeAdditionalDeliveryPrice,
+  quoteOfferingFieldError,
   quoteOfferingTypeLabels,
+  toQuoteOfferingInput,
   toQuoteWorkItemFormState,
 } from '@pkg/domain/equipment';
 import { AuthId, DateIsoString, DateOnlyIsoString, Price, UUID } from '@pkg/schema';
@@ -229,10 +231,7 @@ export function toQuoteCreateInput(value: QuoteCreateFormValues): QuoteCreateInp
       value.customerMode === 'existing'
         ? { type: 'existing', customerId: value.customerId }
         : { type: 'inline', companyName: value.inlineCompanyName },
-    offering:
-      value.offeringType === 'product'
-        ? { kind: 'product', productId: value.productId, productUnitId: value.productUnitId || null }
-        : { kind: 'custom', isPartsSale: value.offeringType === 'parts-sale', workTitle: value.workTitle },
+    offering: toQuoteOfferingInput(value.offeringType, value),
     salesPersonId: value.salesPersonId,
     status: value.status,
   });
@@ -319,20 +318,10 @@ function refineQuoteOfferingSelection(
   value: Pick<QuoteCreateFormSelectionValues, 'offeringType' | 'productId' | 'workTitle'>,
   context: z.RefinementCtx,
 ) {
-  if (value.offeringType === 'product' && !UUID.safeParse(value.productId).success) {
-    context.addIssue({
-      code: 'custom',
-      message: 'Select a product',
-      path: ['productId'],
-    });
-  }
+  const error = quoteOfferingFieldError(value.offeringType, value);
 
-  if (value.offeringType !== 'product' && !QuoteWorkTitle.safeParse(value.workTitle).success) {
-    context.addIssue({
-      code: 'custom',
-      message: 'Work title is required',
-      path: ['workTitle'],
-    });
+  if (error) {
+    context.addIssue({ code: 'custom', message: error.message, path: [error.path] });
   }
 }
 

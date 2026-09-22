@@ -12,8 +12,7 @@ describe('canStartJobFromQuote', () => {
         canStartJobFromQuote({
           hasLiveJob: false,
           hasProductUnit: false,
-          isPartsSale: true,
-          kind: 'custom',
+          offering: { isPartsSale: true, kind: 'custom' },
           reworkRequired: false,
           status,
         }),
@@ -26,8 +25,7 @@ describe('canStartJobFromQuote', () => {
       canStartJobFromQuote({
         hasLiveJob: true,
         hasProductUnit: false,
-        isPartsSale: false,
-        kind: 'custom',
+        offering: { isPartsSale: false, kind: 'custom' },
         reworkRequired: false,
         status: 'draft',
       }),
@@ -42,8 +40,7 @@ describe('canStartJobFromQuote', () => {
       canStartJobFromQuote({
         hasLiveJob: false,
         hasProductUnit: false,
-        isPartsSale: false,
-        kind: 'custom',
+        offering: { isPartsSale: false, kind: 'custom' },
         reworkRequired: false,
         status,
       }),
@@ -57,8 +54,7 @@ describe('canStartJobFromQuote', () => {
       canStartJobFromQuote({
         hasLiveJob: false,
         hasProductUnit: false,
-        isPartsSale: false,
-        kind: 'custom',
+        offering: { isPartsSale: false, kind: 'custom' },
         reworkRequired: false,
         status,
       }),
@@ -73,8 +69,7 @@ describe('canStartJobFromQuote', () => {
       canStartJobFromQuote({
         hasLiveJob: false,
         hasProductUnit: false,
-        isPartsSale: false,
-        kind: 'product',
+        offering: { kind: 'product' },
         reworkRequired: false,
         status: 'accepted',
       }),
@@ -88,8 +83,7 @@ describe('canStartJobFromQuote', () => {
       canStartJobFromQuote({
         hasLiveJob: false,
         hasProductUnit: false,
-        isPartsSale: false,
-        kind: 'product',
+        offering: { kind: 'product' },
         reworkRequired: false,
         status,
       }),
@@ -104,8 +98,7 @@ describe('canStartJobFromQuote', () => {
       canStartJobFromQuote({
         hasLiveJob: false,
         hasProductUnit: true,
-        isPartsSale: false,
-        kind: 'product',
+        offering: { kind: 'product' },
         reworkRequired: true,
         status: 'accepted',
       }),
@@ -119,8 +112,7 @@ describe('canStartJobFromQuote', () => {
       canStartJobFromQuote({
         hasLiveJob: false,
         hasProductUnit: true,
-        isPartsSale: false,
-        kind: 'product',
+        offering: { kind: 'product' },
         reworkRequired: false,
         status: 'accepted',
       }),
@@ -135,8 +127,7 @@ describe('canStartJobFromQuote', () => {
       canStartJobFromQuote({
         hasLiveJob: false,
         hasProductUnit: true,
-        isPartsSale: false,
-        kind: 'product',
+        offering: { kind: 'product' },
         reworkRequired: false,
         status: 'sent',
       }),

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   type CustomerSelection,
-  clearQuoteKindFields,
+  clearQuoteOfferingTypeFields,
   QUOTE_CREATE_DEFAULT_VALUES,
   QuoteCreateFormValues,
   toQuoteCreateInput,
@@ -146,7 +146,7 @@ describe('mobile quote creation', () => {
 
   it('clears fields belonging to the other quote kind', () => {
     expect(
-      clearQuoteKindFields(
+      clearQuoteOfferingTypeFields(
         {
           ...QUOTE_CREATE_DEFAULT_VALUES,
           productId: 'f36a4b28-d552-439c-8928-bf6da8aa42b2',
@@ -157,17 +157,20 @@ describe('mobile quote creation', () => {
     ).toMatchObject({ offeringType: 'custom', productId: '', rangeId: '' });
 
     expect(
-      clearQuoteKindFields({ ...QUOTE_CREATE_DEFAULT_VALUES, offeringType: 'custom', workTitle: 'Repair' }, 'product'),
+      clearQuoteOfferingTypeFields(
+        { ...QUOTE_CREATE_DEFAULT_VALUES, offeringType: 'custom', workTitle: 'Repair' },
+        'product',
+      ),
     ).toMatchObject({ offeringType: 'product', workTitle: '' });
   });
 
   it('pre-fills an empty Work Title when the quote becomes a Parts Sale, keeping one already typed', () => {
-    expect(clearQuoteKindFields(QUOTE_CREATE_DEFAULT_VALUES, 'parts-sale')).toMatchObject({
+    expect(clearQuoteOfferingTypeFields(QUOTE_CREATE_DEFAULT_VALUES, 'parts-sale')).toMatchObject({
       offeringType: 'parts-sale',
       workTitle: 'Parts sale',
     });
     expect(
-      clearQuoteKindFields(
+      clearQuoteOfferingTypeFields(
         { ...QUOTE_CREATE_DEFAULT_VALUES, offeringType: 'custom', workTitle: 'Bushes' },
         'parts-sale',
       ),

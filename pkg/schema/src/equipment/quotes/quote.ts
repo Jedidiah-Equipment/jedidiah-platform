@@ -33,7 +33,7 @@ import {
   ProductName,
   ProductRequiresVinNumber,
 } from '../products/product.js';
-import { QuoteKind, QuoteOfferingType, QuoteWorkTitle } from './quote-shared.js';
+import { QuoteOfferingType, QuoteWorkTitle } from './quote-shared.js';
 
 export type QuoteStatus = z.infer<typeof QuoteStatus>;
 export const QuoteStatus = z.enum(['draft', 'sent', 'accepted', 'rejected', 'cancelled']);
@@ -103,7 +103,6 @@ const quoteBaseShape = {
   notes: QuoteNotes,
   documentNotes: QuoteDocumentNotes,
   invoiceNumber: QuoteInvoiceNumber.default(null),
-  isPartsSale: z.boolean().default(false),
   quotedBasePrice: Price,
   quotedCurrencyCode: ProductCurrencyCode,
   createdAt: DateIso,
@@ -117,8 +116,10 @@ const quoteProductOfferingShape = {
   workTitle: z.null(),
 };
 
+/** A Parts Sale is a fact about a Custom offering, so only this arm carries the flag. */
 const quoteCustomOfferingShape = {
   kind: z.literal('custom'),
+  isPartsSale: z.boolean(),
   productId: z.null(),
   productUnitId: z.null().default(null),
   workTitle: QuoteWorkTitle,
@@ -675,7 +676,6 @@ export const QuoteListFilters = z
   .object({
     customerId: UUID.optional(),
     invoiced: QuoteInvoicedFilter.optional(),
-    kind: QuoteKind.optional(),
     offeringType: QuoteOfferingType.optional(),
     productId: UUID.optional(),
     quoteCode: QuoteCode.optional(),

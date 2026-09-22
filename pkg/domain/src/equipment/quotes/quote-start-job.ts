@@ -1,6 +1,8 @@
 import type { UUID } from '@pkg/schema';
 import type { QuoteKind, QuoteStatus } from '@pkg/schema/equipment';
 
+import type { QuoteOfferingFacts } from './quote-display.js';
+
 export type QuoteStartJobEligibility =
   | {
       allowed: true;
@@ -33,19 +35,17 @@ export const PARTS_SALE_NO_JOB_REASON = 'A Parts Sale never sources a Job.';
 export function canStartJobFromQuote({
   hasLiveJob,
   hasProductUnit,
-  isPartsSale,
-  kind,
+  offering,
   reworkRequired,
   status,
 }: {
   hasLiveJob: boolean;
   hasProductUnit: boolean;
-  isPartsSale: boolean;
-  kind: QuoteKind;
+  offering: QuoteOfferingFacts;
   reworkRequired: boolean;
   status: QuoteStatus;
 }): QuoteStartJobEligibility {
-  if (isPartsSale) {
+  if (offering.kind === 'custom' && offering.isPartsSale) {
     return { allowed: false, reason: PARTS_SALE_NO_JOB_REASON };
   }
 
@@ -53,8 +53,8 @@ export function canStartJobFromQuote({
     return { allowed: false, reason: 'Quote already has a Job.' };
   }
 
-  if (!startableStatuses[kind].has(status)) {
-    return { allowed: false, reason: statusDenialReasons[kind] };
+  if (!startableStatuses[offering.kind].has(status)) {
+    return { allowed: false, reason: statusDenialReasons[offering.kind] };
   }
 
   // A Rework Job's Build Spec is only the Assemblies being added, so an Allocation Quote that adds

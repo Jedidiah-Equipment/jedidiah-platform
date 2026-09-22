@@ -1,5 +1,5 @@
 import { formatDate } from '@pkg/domain';
-import { quoteOfferingType, quoteOfferingTypeLabels } from '@pkg/domain/equipment';
+import { quoteOfferingTypeLabel } from '@pkg/domain/equipment';
 import type { PriorityQuote } from '@pkg/schema/equipment';
 import { IconAlertTriangle } from '@tabler/icons-react-native';
 import { View } from 'react-native';
@@ -10,7 +10,7 @@ import { Text } from '@/components/ui/text';
 export function QuotePriorityAlert({ quote }: { quote: PriorityQuote }) {
   const deliveryCopy = describeDeliveryDates(quote);
   const date = formatDate(quote.earliestDeliveryDate, 'd MMM yyyy');
-  const typeLabel = quoteOfferingTypeLabels[quoteOfferingType(quote)];
+  const typeLabel = quoteOfferingTypeLabel(quote);
   const title = quote.kind === 'custom' ? `Accepted ${typeLabel} quote` : 'Needs job';
   const message =
     quote.kind === 'custom'

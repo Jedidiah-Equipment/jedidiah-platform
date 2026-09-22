@@ -2,12 +2,7 @@ import { type DatabaseTransaction, notRemoved } from '@pkg/db';
 import { jobs, products, quoteSelectedAssemblies, quotes } from '@pkg/db/equipment';
 import { type BuildSpecAssembly, canStartJobFromQuote, selectReworkBuildSpec } from '@pkg/domain/equipment';
 import type { UUID } from '@pkg/schema';
-import {
-  isStockBuildCreateInput,
-  type JobCreateInput,
-  type QuoteKind,
-  type QuoteOffering,
-} from '@pkg/schema/equipment';
+import { isStockBuildCreateInput, type JobCreateInput, type QuoteOffering } from '@pkg/schema/equipment';
 import { and, asc, desc, eq } from 'drizzle-orm';
 
 import { listAssemblies } from '../products/product-assembly-service.js';
@@ -83,7 +78,7 @@ export async function resolveJobBlueprint({
   });
 
   if (offering.kind === 'custom') {
-    assertQuoteCanStartJob({ hasLiveJob, hasProductUnit: false, kind: 'custom', reworkRequired: false, quote });
+    assertQuoteCanStartJob({ hasLiveJob, hasProductUnit: false, offering, reworkRequired: false, quote });
 
     return { kind: 'custom', quote };
   }
@@ -102,7 +97,7 @@ export async function resolveJobBlueprint({
     assertQuoteCanStartJob({
       hasLiveJob,
       hasProductUnit: true,
-      kind: 'product',
+      offering,
       reworkRequired: reworkBuildSpec.length > 0,
       quote,
     });
@@ -116,7 +111,7 @@ export async function resolveJobBlueprint({
     };
   }
 
-  assertQuoteCanStartJob({ hasLiveJob, hasProductUnit: false, kind: 'product', reworkRequired: false, quote });
+  assertQuoteCanStartJob({ hasLiveJob, hasProductUnit: false, offering, reworkRequired: false, quote });
 
   return { kind: 'product', quote, productId: offering.productId, reuseProductUnitId, buildSpec };
 }
@@ -230,21 +225,20 @@ async function lockQuoteForJobCreate({ quoteId, tx }: { quoteId: UUID; tx: Datab
 function assertQuoteCanStartJob({
   hasLiveJob,
   hasProductUnit,
-  kind,
+  offering,
   reworkRequired,
   quote,
 }: {
   hasLiveJob: boolean;
   hasProductUnit: boolean;
-  kind: QuoteKind;
+  offering: QuoteOffering;
   reworkRequired: boolean;
   quote: QuoteRow;
 }): void {
   const eligibility = canStartJobFromQuote({
     hasLiveJob,
     hasProductUnit,
-    isPartsSale: quote.isPartsSale,
-    kind,
+    offering,
     reworkRequired,
     status: quote.status,
   });

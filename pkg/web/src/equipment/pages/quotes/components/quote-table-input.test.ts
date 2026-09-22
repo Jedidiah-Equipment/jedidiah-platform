@@ -12,7 +12,7 @@ describe('getQuoteListInputExtras', () => {
     const filters = [
       { id: 'customerCompanyName', value: CUSTOMER_ID },
       { id: 'invoiceNumber', value: 'invoiced' },
-      { id: 'kind', value: 'parts-sale' },
+      { id: 'offeringType', value: 'parts-sale' },
       { id: 'productName', value: PRODUCT_ID },
       { id: 'salesPersonName', value: 'sales-user-id' },
       { id: 'status', value: ['draft', 'not-a-status'] },
@@ -33,7 +33,7 @@ describe('getQuoteListInputExtras', () => {
   it('drops filter values the API does not accept', () => {
     const filters = [
       { id: 'invoiceNumber', value: 'partially-invoiced' },
-      { id: 'kind', value: 'not-a-kind' },
+      { id: 'offeringType', value: 'not-a-type' },
       { id: 'status', value: 'draft' },
     ] satisfies ColumnFiltersState;
 

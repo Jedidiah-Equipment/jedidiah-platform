@@ -22,7 +22,6 @@ describe('start Job eligibility', () => {
 
   it('does not offer a Rework Job when an Allocation Quote adds no Assemblies', () => {
     const quote = {
-      isPartsSale: false,
       job: null,
       kind: 'product',
       productUnitId,
@@ -37,7 +36,6 @@ describe('start Job eligibility', () => {
   it('offers a Rework Job when an Allocation Quote adds Assemblies', () => {
     expect(
       canStartJobFromQuote({
-        isPartsSale: false,
         job: null,
         kind: 'product',
         productUnitId,
@@ -50,7 +48,6 @@ describe('start Job eligibility', () => {
   it('offers a Job on an accepted product quote with no Product Unit', () => {
     expect(
       canStartJobFromQuote({
-        isPartsSale: false,
         job: null,
         kind: 'product',
         productUnitId: null,

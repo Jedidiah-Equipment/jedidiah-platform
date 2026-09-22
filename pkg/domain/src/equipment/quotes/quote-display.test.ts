@@ -5,7 +5,7 @@ import {
   getQuoteOfferingSubtitle,
   quoteKindLabels,
   quoteOfferingType,
-  quoteOfferingTypeLabels,
+  quoteOfferingTypeLabel,
   quoteProductSourceOf,
 } from './quote-display.js';
 
@@ -16,10 +16,16 @@ describe('quote kind presentation', () => {
 });
 
 describe('quoteOfferingType', () => {
+  it('reads the type off the offering arm', () => {
+    expect(quoteOfferingType({ kind: 'product' })).toBe('product');
+    expect(quoteOfferingType({ isPartsSale: false, kind: 'custom' })).toBe('custom');
+    expect(quoteOfferingType({ isPartsSale: true, kind: 'custom' })).toBe('parts-sale');
+  });
+
   it('names a Product Quote, a Service Work Quote, and a Parts Sale', () => {
-    expect(quoteOfferingTypeLabels[quoteOfferingType({ isPartsSale: false, kind: 'product' })]).toBe('Product');
-    expect(quoteOfferingTypeLabels[quoteOfferingType({ isPartsSale: false, kind: 'custom' })]).toBe('Service Work');
-    expect(quoteOfferingTypeLabels[quoteOfferingType({ isPartsSale: true, kind: 'custom' })]).toBe('Parts Sale');
+    expect(quoteOfferingTypeLabel({ kind: 'product' })).toBe('Product');
+    expect(quoteOfferingTypeLabel({ isPartsSale: false, kind: 'custom' })).toBe('Service Work');
+    expect(quoteOfferingTypeLabel({ isPartsSale: true, kind: 'custom' })).toBe('Parts Sale');
   });
 });
 
@@ -61,7 +67,6 @@ describe('quote display helpers', () => {
   it('returns product and custom subtitles from one policy', () => {
     expect(
       getQuoteOfferingSubtitle({
-        isPartsSale: false,
         kind: 'product',
         product: { buildTimeDays: 12, modelCode: 'EX-100', name: 'Excavator' },
         workTitle: null,

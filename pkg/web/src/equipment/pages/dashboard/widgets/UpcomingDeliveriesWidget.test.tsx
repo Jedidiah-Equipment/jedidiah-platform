@@ -88,6 +88,7 @@ function buildUpcomingDelivery(kind: 'custom' | 'product'): UpcomingDeliveryQuot
         }
       : {
           ...shared,
+          isPartsSale: false,
           kind,
           product: null,
           productId: null,

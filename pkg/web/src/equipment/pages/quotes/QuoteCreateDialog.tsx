@@ -1,6 +1,6 @@
 import {
   defaultQuoteSalespersonId,
-  PARTS_SALE_DEFAULT_WORK_TITLE,
+  partsSaleWorkTitle,
   quoteOfferingTypeLabels,
   quoteStatusLabels,
 } from '@pkg/domain/equipment';
@@ -139,9 +139,7 @@ export const QuoteCreateDialog: React.FC<QuoteCreateDialogProps> = ({ onOpenChan
           <form.AppField
             listeners={{
               onChange: ({ value }) => {
-                if (value === 'parts-sale' && !form.getFieldValue('workTitle').trim()) {
-                  form.setFieldValue('workTitle', PARTS_SALE_DEFAULT_WORK_TITLE);
-                }
+                form.setFieldValue('workTitle', partsSaleWorkTitle(value, form.getFieldValue('workTitle')));
               },
             }}
             name="offeringType"

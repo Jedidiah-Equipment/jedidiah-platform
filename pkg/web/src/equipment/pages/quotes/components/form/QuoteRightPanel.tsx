@@ -3,8 +3,7 @@ import {
   formatQuoteDeliverySummary,
   getQuoteOfferingName,
   type QuoteComputedSummary,
-  quoteOfferingType,
-  quoteOfferingTypeLabels,
+  quoteOfferingTypeLabel,
   quoteProductSourceOf,
   quoteStatusLabels,
   quoteWorkItemSummaryRows,
@@ -336,7 +335,7 @@ function QuoteCustomWorkCard({ quote }: { quote: Extract<QuoteDetail, { kind: 'c
   return (
     <Card size="sm">
       <CardHeader>
-        <CardDescription>{quoteOfferingTypeLabels[quoteOfferingType(quote)]}</CardDescription>
+        <CardDescription>{quoteOfferingTypeLabel(quote)}</CardDescription>
         <CardTitle className="min-w-0 truncate">{workTitle}</CardTitle>
         <CardAction>
           <OfferingThumbnail className="size-10" kind="custom" label={workTitle} size="lg" thumbnailDataUrl={null} />

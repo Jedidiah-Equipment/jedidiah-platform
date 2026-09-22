@@ -239,6 +239,7 @@ describe('Quote edit presentation', () => {
     const productQuote = buildQuoteDetail();
     const customQuote = QuoteDetail.parse({
       ...productQuote,
+      isPartsSale: false,
       kind: 'custom',
       quotedBasePrice: 0,
       product: null,
@@ -311,6 +312,7 @@ describe('Quote edit presentation', () => {
     const values = toQuoteEditFormValues(
       QuoteDetail.parse({
         ...buildQuoteDetail(),
+        isPartsSale: false,
         kind: 'custom',
         quotedBasePrice: 0,
         product: null,

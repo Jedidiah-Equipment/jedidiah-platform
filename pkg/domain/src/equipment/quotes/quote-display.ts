@@ -79,10 +79,10 @@ export const quoteKindColorClassNames: Record<QuoteKind, BadgeColorClassNames> =
   product: statusBadgeColorClassNames.yellow,
 };
 
-/** Pre-filled when a new Quote becomes a Parts Sale with no Work Title yet; the user can change it. */
-export const PARTS_SALE_DEFAULT_WORK_TITLE = 'Parts sale';
+/** The offering facts that name a Quote's type; only a Custom offering can be a Parts Sale. */
+export type QuoteOfferingFacts = { kind: 'product' } | { isPartsSale: boolean; kind: 'custom' };
 
-export function quoteOfferingType(quote: { isPartsSale: boolean; kind: QuoteKind }): QuoteOfferingType {
+export function quoteOfferingType(quote: QuoteOfferingFacts): QuoteOfferingType {
   if (quote.kind === 'product') return 'product';
 
   return quote.isPartsSale ? 'parts-sale' : 'custom';
@@ -94,6 +94,10 @@ export const quoteOfferingTypeLabels: Record<QuoteOfferingType, string> = {
   'parts-sale': 'Parts Sale',
   product: quoteKindLabels.product,
 };
+
+export function quoteOfferingTypeLabel(quote: QuoteOfferingFacts): string {
+  return quoteOfferingTypeLabels[quoteOfferingType(quote)];
+}
 
 /** Parts Sale takes purple: no Quote or Job status uses it, and From Order, its other use, only marks Product Quotes. */
 export const quoteOfferingTypeColorClassNames: Record<QuoteOfferingType, BadgeColorClassNames> = {
@@ -134,7 +138,7 @@ export function quoteProductSourceOf(quote: {
 }
 
 export type QuoteOfferingDisplaySource = {
-  kind: 'product' | 'custom';
+  kind: QuoteKind;
   product: {
     buildTimeDays: number;
     modelCode: string;
@@ -153,13 +157,10 @@ export function getQuoteOfferingName(quote: QuoteOfferingDisplaySource): string 
 }
 
 export function getQuoteOfferingSubtitle(
-  quote: QuoteOfferingDisplaySource & { isPartsSale: boolean },
+  quote: QuoteOfferingDisplaySource & QuoteOfferingFacts,
 ): QuoteOfferingSubtitle | null {
   if (quote.kind === 'custom') {
-    return {
-      mono: false,
-      text: quoteOfferingTypeLabels[quoteOfferingType(quote)],
-    };
+    return { mono: false, text: quoteOfferingTypeLabel(quote) };
   }
 
   const modelCode = quote.product?.modelCode ?? '—';

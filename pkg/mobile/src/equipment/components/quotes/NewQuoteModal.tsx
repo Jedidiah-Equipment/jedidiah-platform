@@ -17,7 +17,7 @@ import { CustomerPicker } from '@/equipment/components/quotes/CustomerPicker';
 import { ProductPicker, type ProductSelection } from '@/equipment/components/quotes/ProductPicker';
 import { SalespersonSelectField } from '@/equipment/components/quotes/SalespersonSelectField';
 import {
-  clearQuoteKindFields,
+  clearQuoteOfferingTypeFields,
   QUOTE_CREATE_DEFAULT_VALUES,
   QuoteCreateFormValues,
   QuoteCreateStatus,
@@ -26,7 +26,10 @@ import {
 import { useTRPC } from '@/lib/trpc';
 import { useAccess } from '@/lib/use-access';
 
-const KIND_OPTIONS = QuoteOfferingType.options.map((value) => ({ label: quoteOfferingTypeLabels[value], value }));
+const OFFERING_TYPE_OPTIONS = QuoteOfferingType.options.map((value) => ({
+  label: quoteOfferingTypeLabels[value],
+  value,
+}));
 
 export function NewQuoteModal({ onClose }: { onClose: () => void }) {
   const trpc = useTRPC();
@@ -75,11 +78,11 @@ export function NewQuoteModal({ onClose }: { onClose: () => void }) {
     if (!isSubmitting) onClose();
   };
 
-  const changeKind = (nextKind: string) => {
-    const parsed = QuoteOfferingType.safeParse(nextKind);
+  const changeOfferingType = (nextOfferingType: string) => {
+    const parsed = QuoteOfferingType.safeParse(nextOfferingType);
     if (!parsed.success) return;
 
-    const cleared = clearQuoteKindFields(form.store.state.values, parsed.data);
+    const cleared = clearQuoteOfferingTypeFields(form.store.state.values, parsed.data);
     form.setFieldValue('productId', cleared.productId);
     form.setFieldValue('rangeId', cleared.rangeId);
     form.setFieldValue('workTitle', cleared.workTitle);
@@ -124,7 +127,9 @@ export function NewQuoteModal({ onClose }: { onClose: () => void }) {
           </form.Field>
 
           <form.AppField name="offeringType">
-            {(field) => <field.SegmentedField label="Type" onValueCommit={changeKind} options={KIND_OPTIONS} />}
+            {(field) => (
+              <field.SegmentedField label="Type" onValueCommit={changeOfferingType} options={OFFERING_TYPE_OPTIONS} />
+            )}
           </form.AppField>
 
           {offeringType === 'product' ? (

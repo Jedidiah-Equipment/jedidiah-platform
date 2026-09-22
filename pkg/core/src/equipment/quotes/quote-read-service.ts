@@ -152,19 +152,10 @@ export async function listPriorityQuotes({
     .leftJoin(user, eq(quotes.salesPersonId, user.id))
     .where(
       and(
-        eq(quotes.status, 'accepted'),
-        isNull(quotes.productUnitId),
-        // A Parts Sale is complete without a Job, as an Allocation Quote is.
-        eq(quotes.isPartsSale, false),
+        awaitsJobCreationCondition(),
         customerId ? eq(quotes.customerId, customerId) : undefined,
         sql`${earliestDeliveryDate} is not null`,
         sql`${earliestDeliveryDate} <= ${priorityWindowEndDate}::date`,
-        sql`not exists (
-          select 1
-          from ${jobs}
-          where ${jobs.quoteId} = ${quotes.id}
-            and ${jobs.cancelledAt} is null
-        )`,
       ),
     )
     .orderBy(asc(earliestDeliveryDate), asc(quotes.code), asc(quotes.id));
@@ -206,20 +197,7 @@ export async function listAwaitingJobCreationQuotes({ db }: { db: Db }): Promise
     .innerJoin(customers, eq(quotes.customerId, customers.id))
     .leftJoin(products, eq(quotes.productId, products.id))
     .leftJoin(user, eq(quotes.salesPersonId, user.id))
-    .where(
-      and(
-        eq(quotes.status, 'accepted'),
-        isNull(quotes.productUnitId),
-        // A Parts Sale is complete without a Job, as an Allocation Quote is.
-        eq(quotes.isPartsSale, false),
-        sql`not exists (
-          select 1
-          from ${jobs}
-          where ${jobs.quoteId} = ${quotes.id}
-            and ${jobs.cancelledAt} is null
-        )`,
-      ),
-    )
+    .where(awaitsJobCreationCondition())
     .orderBy(asc(earliestDeliveryDate), asc(quotes.code), asc(quotes.id));
   const { selectedAssembliesByQuoteId, workItemsByQuoteId } = await loadQuoteAssociations({
     db,
@@ -565,6 +543,24 @@ export async function getJobByQuoteId({
   return byQuoteId;
 }
 
+/**
+ * An accepted Quote still owed a Job: the SQL twin of `canStartJobFromQuote`. An Allocation Quote
+ * (one naming a Product Unit) and a Parts Sale are complete without one, so neither is owed.
+ */
+function awaitsJobCreationCondition(): SQL | undefined {
+  return and(
+    eq(quotes.status, 'accepted'),
+    isNull(quotes.productUnitId),
+    eq(quotes.isPartsSale, false),
+    sql`not exists (
+      select 1
+      from ${jobs}
+      where ${jobs.quoteId} = ${quotes.id}
+        and ${jobs.cancelledAt} is null
+    )`,
+  );
+}
+
 export function buildQuoteListWhere(input: QuoteListInput): SQL | undefined {
   const conditions: SQL[] = [];
 
@@ -582,10 +578,6 @@ export function buildQuoteListWhere(input: QuoteListInput): SQL | undefined {
     conditions.push(
       input.filters.invoiced === 'invoiced' ? isNotNull(quotes.invoiceNumber) : isNull(quotes.invoiceNumber),
     );
-  }
-
-  if (input.filters.kind) {
-    conditions.push(eq(quotes.kind, input.filters.kind));
   }
 
   if (input.filters.offeringType === 'product') conditions.push(eq(quotes.kind, 'product'));

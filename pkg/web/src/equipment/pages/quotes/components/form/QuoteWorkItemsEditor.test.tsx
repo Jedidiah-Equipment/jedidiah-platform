@@ -64,7 +64,7 @@ vi.mock('@/lib/trpc.js', () => ({
 }));
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
-function Harness({ onPartsChanged = () => {}, readOnly = false }: { onPartsChanged?: () => void; readOnly?: boolean }) {
+function Harness({ onCommit = () => {}, readOnly = false }: { onCommit?: () => void; readOnly?: boolean }) {
   const form = useAppForm({
     defaultValues: {
       ...emptyQuoteFormValues,
@@ -85,13 +85,7 @@ function Harness({ onPartsChanged = () => {}, readOnly = false }: { onPartsChang
       <form.Field name="workItems" mode="array">
         {(field) => (
           <>
-            <QuoteWorkItemsEditor
-              workItemsField={field}
-              currencyCode="ZAR"
-              onPartsChanged={onPartsChanged}
-              onRemoveWorkItem={() => {}}
-              readOnly={readOnly}
-            />
+            <QuoteWorkItemsEditor workItemsField={field} currencyCode="ZAR" onCommit={onCommit} readOnly={readOnly} />
             <QuoteAddWorkItemButton workItemsField={field} readOnly={readOnly} />
           </>
         )}
@@ -214,8 +208,8 @@ function inputValues(container: HTMLElement): string[] {
 }
 
 test('adds a length of an inventory Part as an ordinary row and tells autosave', async () => {
-  const onPartsChanged = vi.fn();
-  const { cleanup, container } = await renderEditor({ onPartsChanged });
+  const onCommit = vi.fn();
+  const { cleanup, container } = await renderEditor({ onCommit });
   try {
     await openDialogAndPick(container, 'TUBE-50');
     const length = dialog().querySelector<HTMLInputElement>('#quote-inventory-part-length');
@@ -228,7 +222,7 @@ test('adds a length of an inventory Part as an ordinary row and tells autosave',
 
     await click(findButton(dialog(), 'Add to work item'));
 
-    expect(onPartsChanged).toHaveBeenCalledTimes(1);
+    expect(onCommit).toHaveBeenCalledTimes(1);
     expect(document.querySelector('[role="dialog"]')).toBeNull();
     expect(inputValues(container)).toEqual(expect.arrayContaining(['50x50 tube (450 mm)', '4', '56.25']));
   } finally {

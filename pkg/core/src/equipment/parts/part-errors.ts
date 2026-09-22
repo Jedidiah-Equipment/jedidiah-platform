@@ -53,6 +53,17 @@ export class DuplicatePartCategoryNameError extends Error {
   }
 }
 
+export class PartCategoryMergeSelfError extends Error {
+  readonly code = 'part.category_merge_self';
+  readonly metadata: { categoryId: string };
+
+  constructor(categoryId: string) {
+    super('A Part Category cannot be merged into itself.');
+    this.name = 'PartCategoryMergeSelfError';
+    this.metadata = { categoryId };
+  }
+}
+
 /** How a Part with no Supplier reads to a human. A built Part is made in-house and bought from nobody. */
 export const NO_SUPPLIER_LABEL = 'no supplier (built in-house)';
 
@@ -128,6 +139,7 @@ export type PartCoreError =
   | PartBulkImportConflictError
   | DuplicatePartCategoryNameError
   | DuplicatePartCodeError
+  | PartCategoryMergeSelfError
   | PartCategoryNotFoundError
   | PartLabelSelectionEmptyError
   | PartNotFoundError
@@ -141,6 +153,7 @@ export function isPartCoreError(error: unknown): error is PartCoreError {
     error instanceof PartBulkImportConflictError ||
     error instanceof DuplicatePartCategoryNameError ||
     error instanceof DuplicatePartCodeError ||
+    error instanceof PartCategoryMergeSelfError ||
     error instanceof PartCategoryNotFoundError ||
     error instanceof PartLabelSelectionEmptyError ||
     error instanceof PartNotFoundError ||

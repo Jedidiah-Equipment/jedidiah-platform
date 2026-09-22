@@ -1,11 +1,13 @@
 import {
   createPartCategory,
   getPartCategory,
+  getPartCategoryMergePreview,
   listManagedPartCategories,
+  mergePartCategories,
   updatePartCategory,
 } from '@pkg/core/equipment';
 import { UUID } from '@pkg/schema';
-import { PartCategoryCreateInput, PartCategoryUpdateInput } from '@pkg/schema/equipment';
+import { PartCategoryCreateInput, PartCategoryMergeInput, PartCategoryUpdateInput } from '@pkg/schema/equipment';
 import { z } from 'zod';
 
 import { mapCoreErrors } from '../../../trpc/errors.js';
@@ -35,6 +37,16 @@ export const partCategoriesRouter = router({
     .input(PartCategoryUpdateInput)
     .mutation(({ ctx, input }) =>
       mapPartCategoryErrors(() => updatePartCategory({ actorUserId: ctx.session.user.id, db: ctx.db, input })),
+    ),
+
+  mergePreview: authorizedProcedure('equipment_part_category:merge')
+    .input(PartCategoryMergeInput)
+    .query(({ ctx, input }) => mapPartCategoryErrors(() => getPartCategoryMergePreview({ db: ctx.db, input }))),
+
+  merge: authorizedProcedure('equipment_part_category:merge')
+    .input(PartCategoryMergeInput)
+    .mutation(({ ctx, input }) =>
+      mapPartCategoryErrors(() => mergePartCategories({ actorUserId: ctx.session.user.id, db: ctx.db, input })),
     ),
 });
 

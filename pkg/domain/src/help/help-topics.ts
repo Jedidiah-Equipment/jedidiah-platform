@@ -42,6 +42,7 @@ export const HELP_TOPICS = {
   jobs: '/production/find-a-job',
   laborRates: '/admin/maintain-labor-rates',
   partCategories: '/admin/maintain-part-categories',
+  partCategoryMerge: '/admin/merge-duplicate-part-categories',
   parts: '/inventory/export-and-import-parts',
   partLabels: '/inventory/print-part-labels',
   plan: '/production/open-a-bay-plan',

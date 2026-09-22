@@ -1,13 +1,23 @@
 import { type DatabaseTransaction, type Db, getUniqueViolationConstraint } from '@pkg/db';
 import { partCategories, parts } from '@pkg/db/equipment';
 import type { AuthId, UUID } from '@pkg/schema';
-import type { PartCategory, PartCategoryCreateInput, PartCategoryUpdateInput } from '@pkg/schema/equipment';
+import type {
+  PartCategory,
+  PartCategoryCreateInput,
+  PartCategoryMergeInput,
+  PartCategoryMergePreview,
+  PartCategoryUpdateInput,
+} from '@pkg/schema/equipment';
 import { PartCategory as PartCategorySchema } from '@pkg/schema/equipment';
-import { asc, count, eq, type SQL, sql } from 'drizzle-orm';
+import { asc, count, eq, inArray, type SQL, sql } from 'drizzle-orm';
 
-import { defineAuditDescriptor, recordAuditCreate } from '../../audit/audit-writer.js';
+import { defineAuditDescriptor, recordAuditCreate, recordAuditEvent } from '../../audit/audit-writer.js';
 import { mutateEntity } from '../../audit/mutate-entity.js';
-import { DuplicatePartCategoryNameError, PartCategoryNotFoundError } from './part-errors.js';
+import {
+  DuplicatePartCategoryNameError,
+  PartCategoryMergeSelfError,
+  PartCategoryNotFoundError,
+} from './part-errors.js';
 
 type PartCategoryRow = typeof partCategories.$inferSelect;
 
@@ -80,6 +90,108 @@ export async function updatePartCategory({
   } catch (error) {
     throw mapPartCategoryUniqueViolation(error, input.name);
   }
+}
+
+export async function getPartCategoryMergePreview({
+  db,
+  input,
+}: {
+  db: Db;
+  input: PartCategoryMergeInput;
+}): Promise<PartCategoryMergePreview> {
+  const { sourceIds, targetId } = input;
+  if (sourceIds.includes(targetId)) throw new PartCategoryMergeSelfError(targetId);
+
+  const rows = (await selectPartCategories(db, inArray(partCategories.id, [...sourceIds, targetId]))).map(
+    mapPartCategory,
+  );
+  const target = findPartCategory(rows, targetId);
+  const sources = sourceIds.map((id) => findPartCategory(rows, id));
+
+  return {
+    movedPartCount: sources.reduce((total, source) => total + source.partCount, 0),
+    sources,
+    target,
+  };
+}
+
+/**
+ * Many into one: every Part on the duplicates moves to the survivor and the duplicates are deleted.
+ * The survivor keeps its own name and markup; nothing is copied from a duplicate.
+ */
+export async function mergePartCategories({
+  actorUserId,
+  db,
+  input,
+}: {
+  actorUserId: AuthId;
+  db: Db;
+  input: PartCategoryMergeInput;
+}): Promise<PartCategory> {
+  const { sourceIds, targetId } = input;
+  if (sourceIds.includes(targetId)) throw new PartCategoryMergeSelfError(targetId);
+
+  return db.transaction(async (tx) => {
+    // Part edits start at the Part row, so take the Part locks before any Part Category lock.
+    await tx
+      .select({ id: parts.id })
+      .from(parts)
+      .where(inArray(parts.categoryId, sourceIds))
+      .orderBy(parts.id)
+      .for('update');
+
+    // One statement locks every Part Category involved, so concurrent merges cannot disagree on lock order.
+    const rows = await tx
+      .select()
+      .from(partCategories)
+      .where(inArray(partCategories.id, [...sourceIds, targetId]))
+      .orderBy(partCategories.id)
+      .for('update');
+    const target = findPartCategory(rows, targetId);
+    const sources = sourceIds.map((id) => findPartCategory(rows, id));
+
+    for (const source of sources) {
+      const moved = await tx
+        .update(parts)
+        .set({ categoryId: targetId })
+        .where(eq(parts.categoryId, source.id))
+        .returning({ id: parts.id });
+      await tx.delete(partCategories).where(eq(partCategories.id, source.id));
+
+      const counts = { movedParts: { from: null, to: moved.length } };
+      await recordAuditEvent({
+        db: tx,
+        descriptor: partCategoryAuditDescriptor,
+        action: 'merged',
+        actorUserId,
+        entityId: source.id,
+        changes: { mergedIntoPartCategory: { from: source.name, to: target.name }, ...counts },
+        record: partCategoryAuditDescriptor.toRecord(source),
+        summary: `Merged part category '${source.name}' into '${target.name}'`,
+      });
+      await recordAuditEvent({
+        db: tx,
+        descriptor: partCategoryAuditDescriptor,
+        action: 'merged',
+        actorUserId,
+        entityId: targetId,
+        changes: { absorbedPartCategory: { from: source.name, to: target.name }, ...counts },
+        record: partCategoryAuditDescriptor.toRecord(target),
+        summary: `Absorbed part category '${source.name}' (${moved.length} parts)`,
+      });
+    }
+
+    await tx.update(partCategories).set({ updatedAt: new Date() }).where(eq(partCategories.id, targetId));
+
+    return getPartCategory({ db: tx, id: targetId });
+  });
+}
+
+function findPartCategory<Row extends { id: string }>(rows: readonly Row[], id: UUID): Row {
+  const row = rows.find((candidate) => candidate.id === id);
+  if (!row) throw new PartCategoryNotFoundError(id);
+
+  return row;
 }
 
 function selectPartCategories(db: Db | DatabaseTransaction, where?: SQL) {

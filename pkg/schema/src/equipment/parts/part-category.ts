@@ -41,3 +41,24 @@ export type PartCategoryUpdateInput = z.infer<typeof PartCategoryUpdateInput>;
 export const PartCategoryUpdateInput = z
   .object({ id: UUID, markupPercent: PartCategoryMarkupPercent.nullable(), name: PartCategoryName })
   .strict();
+
+export type PartCategoryMergeInput = z.infer<typeof PartCategoryMergeInput>;
+export const PartCategoryMergeInput = z
+  .object({ sourceIds: z.array(UUID).min(1).max(50), targetId: UUID })
+  .strict()
+  .superRefine((input, context) => {
+    if (new Set(input.sourceIds).size !== input.sourceIds.length) {
+      context.addIssue({ code: 'custom', message: 'Each Part Category appears once', path: ['sourceIds'] });
+    }
+    if (input.sourceIds.includes(input.targetId)) {
+      context.addIssue({ code: 'custom', message: 'A Part Category cannot be merged into itself', path: ['targetId'] });
+    }
+  });
+
+/** What the confirm step shows: the full `PartCategory` rows, so counts and markups are the server's. */
+export type PartCategoryMergePreview = z.infer<typeof PartCategoryMergePreview>;
+export const PartCategoryMergePreview = z.object({
+  movedPartCount: z.number().int().nonnegative(),
+  sources: z.array(PartCategory),
+  target: PartCategory,
+});

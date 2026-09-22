@@ -22,6 +22,7 @@ export const partCoreErrorFamily = defineCoreErrorFamily<PartCoreError>({
   codes: {
     'part.bom_locked': 'CONFLICT',
     'part.bulk_import_conflict': 'CONFLICT',
+    'part.category_merge_self': 'BAD_REQUEST',
     'part.category_name_taken': 'CONFLICT',
     'part.category_not_found': 'NOT_FOUND',
     'part.duplicate_code': 'CONFLICT',

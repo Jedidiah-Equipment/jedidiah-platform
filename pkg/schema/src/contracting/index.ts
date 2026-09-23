@@ -5,6 +5,7 @@ export * from './fleet/fleet.js';
 export * from './jobs/field.js';
 export * from './jobs/job.js';
 export * from './jobs/job-enums.js';
+export * from './jobs/pricing.js';
 export * from './rate-card/rate-card.js';
 export * from './readings/reading.js';
 export * from './readings/reading-enums.js';

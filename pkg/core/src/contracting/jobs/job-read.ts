@@ -8,7 +8,16 @@ import {
   contractingMachineAssignments,
   contractingWorkTypes,
 } from '@pkg/db/contracting';
-import { deriveStintHours, formatJobNumber, looksFinished, meterDisagreementHint } from '@pkg/domain/contracting';
+import {
+  canMarkPriced,
+  computeDieselAmount,
+  computeJobTotals,
+  deriveStintHours,
+  formatJobNumber,
+  looksFinished,
+  meterDisagreementHint,
+  priceStint,
+} from '@pkg/domain/contracting';
 import {
   Assignment,
   JobDetail,
@@ -17,6 +26,7 @@ import {
   JobReading,
   type JobStatus,
   JobSummary,
+  type RateBasis,
 } from '@pkg/schema/contracting';
 import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 import { assertOwner, JobError, jobNotFound } from './job-errors.js';
@@ -102,7 +112,10 @@ type LoadedJob = typeof contractingJobs.$inferSelect & {
       implement: { code: string } | null;
       machine: { code: string; category: { name: string; icon: string; colour: string } };
       measures: Array<
-        { measureTypeId: string; measureType: { name: string; displayOrder: number } } & Record<string, unknown>
+        { measureTypeId: string; quantity: number; measureType: { name: string; displayOrder: number } } & Record<
+          string,
+          unknown
+        >
       >;
       previousDepartureValue: number | string | null;
     }
@@ -144,7 +157,48 @@ function assertLoadedJob(row: unknown): asserts row is LoadedJob | undefined {
   }
 }
 
-function mapAssignment(row: LoadedJob['assignments'][number]) {
+type StintPricingColumns = Pick<
+  typeof contractingMachineAssignments.$inferSelect,
+  'rateBasis' | 'rateUnitAmount' | 'rateMeasureTypeId' | 'computedAmount' | 'finalAmount'
+>;
+
+/**
+ * An override is a stored final amount that differs from the stored computed one; the two are always
+ * written together. While the Job is Completed its hours and Measures may still move, so the computed
+ * amount is re-derived from live facts and only an override survives; once Priced the stored figures
+ * are the snapshot and are returned untouched.
+ */
+function priceAssignment(
+  row: StintPricingColumns,
+  facts: { billableHours: number | null; measures: readonly { measureTypeId: string; quantity: number }[] },
+  live: boolean,
+) {
+  if (row.rateUnitAmount === null)
+    return {
+      computedAmount: null,
+      finalAmount: null,
+      amountEdited: false,
+      measureMissing: false,
+      billedQuantity: null,
+    };
+  const price = priceStint({
+    basis: row.rateBasis as RateBasis | null,
+    unitAmount: row.rateUnitAmount,
+    measureTypeId: row.rateMeasureTypeId,
+    ...facts,
+  });
+  const amountEdited = row.finalAmount !== row.computedAmount;
+  const computedAmount = live ? price.computedAmount : row.computedAmount;
+  return {
+    computedAmount,
+    finalAmount: live && !amountEdited ? price.computedAmount : row.finalAmount,
+    amountEdited,
+    measureMissing: price.measureMissing,
+    billedQuantity: price.quantity,
+  };
+}
+
+function mapAssignment(row: LoadedJob['assignments'][number], live: boolean) {
   const arrival = mapJobReading(row.arrivalReading);
   const departure = mapJobReading(row.departureReading);
   const gapResolved = row.gapResolvedAt !== null;
@@ -160,6 +214,9 @@ function mapAssignment(row: LoadedJob['assignments'][number]) {
         }
       : null,
   });
+  const measures = [...row.measures]
+    .sort((left, right) => left.measureType.displayOrder - right.measureType.displayOrder)
+    .map(({ measureType, ...measure }) => ({ ...measure, measureTypeName: measureType.name }));
   const assignment = Assignment.parse({
     ...row,
     machineCode: row.machine.code,
@@ -173,9 +230,15 @@ function mapAssignment(row: LoadedJob['assignments'][number]) {
     departure,
     ...derived,
     gapResolved,
-    measures: [...row.measures]
-      .sort((left, right) => left.measureType.displayOrder - right.measureType.displayOrder)
-      .map(({ measureType, ...measure }) => ({ ...measure, measureTypeName: measureType.name })),
+    measures,
+    ...priceAssignment(
+      row,
+      {
+        billableHours: derived.billableHours,
+        measures,
+      },
+      live,
+    ),
   });
   return {
     assignment,
@@ -202,14 +265,16 @@ export async function getJob({ db, id, code }: { db: Db | DatabaseTransaction; i
   const row = await loadJob(db, id ? eq(contractingJobs.id, id) : eq(contractingJobs.code, numericCode ?? Number.NaN));
   if (!row) throw jobNotFound();
   const { assignments: rawAssignments, chargeLines, customer, farm, foreman, workType, ...job } = row;
+  const live = job.status === 'completed';
   const assignmentRows = rawAssignments
     .sort((left, right) => {
       const leftArrival = left.arrivalReading?.capturedAt.getTime() ?? Number.POSITIVE_INFINITY;
       const rightArrival = right.arrivalReading?.capturedAt.getTime() ?? Number.POSITIVE_INFINITY;
       return leftArrival - rightArrival || left.createdAt.getTime() - right.createdAt.getTime();
     })
-    .map(mapAssignment);
+    .map((assignment) => mapAssignment(assignment, live));
   const assignments = assignmentRows.map((row) => row.assignment);
+  const pricing = priceJob(job, assignments, chargeLines);
   const states = assignments.map((assignment) => assignment.state);
   const openGapFlags = assignments.filter((assignment) => assignment.gapFlag).length;
   const needsALook = openGapFlags + assignmentRows.reduce((count, row) => count + row.needsALook, 0);
@@ -231,9 +296,44 @@ export async function getJob({ db, id, code }: { db: Db | DatabaseTransaction; i
     completedAt: job.completedAt?.toISOString() ?? null,
     pricedAt: job.pricedAt?.toISOString() ?? null,
     invoicedAt: job.invoicedAt?.toISOString() ?? null,
+    reopenedAt: job.reopenedAt?.toISOString() ?? null,
+    dieselAmountEdited: pricing.dieselAmountEdited,
+    discountAmount: live ? (pricing.hasDiscount ? pricing.totals.discountAmount : null) : job.discountAmount,
+    pricing: { ...pricing.totals, gate: pricing.gate },
     assignments,
     chargeLines,
   });
+}
+
+/** Totals and the Mark as Priced gate from the stints' amounts, the Charge Lines, Diesel and the Discount. */
+function priceJob(
+  job: typeof contractingJobs.$inferSelect,
+  assignments: readonly Assignment[],
+  chargeLines: readonly { amount: number | null }[],
+) {
+  const stints = assignments.filter((assignment) => assignment.state === 'left');
+  const discount =
+    job.discountKind !== null && job.discountValue !== null
+      ? { kind: job.discountKind, value: job.discountValue }
+      : null;
+  const dieselComputed =
+    job.dieselUnitPrice === null ? null : computeDieselAmount(job.dieselLitres, job.dieselUnitPrice);
+  return {
+    hasDiscount: discount !== null,
+    dieselAmountEdited: job.dieselAmount !== null && dieselComputed !== null && job.dieselAmount !== dieselComputed,
+    totals: computeJobTotals({
+      stintFinalAmounts: stints.map((stint) => stint.finalAmount ?? 0),
+      chargeLineAmounts: chargeLines.map((line) => line.amount ?? 0),
+      discount,
+      dieselAmount: job.dieselLitres > 0 ? (job.dieselAmount ?? 0) : 0,
+    }),
+    gate: canMarkPriced({
+      dieselLitres: job.dieselLitres,
+      dieselAmount: job.dieselAmount,
+      stints: stints.map((stint) => ({ priced: stint.rateUnitAmount !== null })),
+      chargeLines,
+    }),
+  };
 }
 
 export async function getReadableJob({
@@ -440,16 +540,20 @@ export async function listJobs({
     );
 }
 
-export function redactMoney(job: ReturnType<typeof JobDetail.parse>) {
+export function redactMoney(job: JobDetail) {
   return JobDetail.parse({
     ...job,
     dieselUnitPrice: null,
     dieselAmount: null,
+    dieselAmountEdited: false,
     discountKind: null,
     discountValue: null,
     discountAmount: null,
     pricedSubtotal: null,
     pricedTotal: null,
+    reopenedAt: null,
+    repricingNote: null,
+    pricing: null,
     assignments: job.assignments.map((assignment) => ({
       ...assignment,
       rateId: null,
@@ -459,6 +563,9 @@ export function redactMoney(job: ReturnType<typeof JobDetail.parse>) {
       rateUnitAmount: null,
       computedAmount: null,
       finalAmount: null,
+      amountEdited: false,
+      measureMissing: false,
+      billedQuantity: null,
     })),
     chargeLines: job.chargeLines.map((line) => ({ ...line, amount: null })),
   });

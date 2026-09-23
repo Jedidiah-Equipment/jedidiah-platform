@@ -1,6 +1,7 @@
 import {
   addAssignment,
   cancelJob,
+  clearStintRate,
   completeJob,
   countJobQueues,
   createChargeLine,
@@ -14,6 +15,7 @@ import {
   listForemen,
   listJobs,
   listMeasureTypes,
+  markPriced,
   patchAssignment,
   patchChargeLine,
   patchJob,
@@ -22,7 +24,11 @@ import {
   removeChargeLine,
   removeMeasure,
   resolveGap,
+  setDieselPrice,
+  setDiscount,
   setMeasure,
+  setStintAmount,
+  setStintRate,
 } from '@pkg/core/contracting';
 import { hasPermission } from '@pkg/domain';
 import {
@@ -33,6 +39,8 @@ import {
   ChargeLineCreateInput,
   ChargeLineIdInput,
   ChargeLinePatchInput,
+  DieselPriceInput,
+  DiscountSetInput,
   FieldDriver,
   FieldImplement,
   FieldJob,
@@ -43,11 +51,15 @@ import {
   JobIdInput,
   JobListInput,
   JobLookupInput,
+  JobMarkPricedInput,
   JobPatchInput,
   JobQueueCounts,
   MeasureRemoveInput,
   MeasureSetInput,
   MeasureType,
+  StintAmountSetInput,
+  StintRateClearInput,
+  StintRateSetInput,
 } from '@pkg/schema/contracting';
 import { z } from 'zod';
 import { createAuthTRPCError, mapCoreErrors } from '../../../trpc/errors.js';
@@ -250,6 +262,38 @@ export const contractingJobsRouter = router({
           () => removeChargeLine({ db: ctx.db, actorUserId: ctx.session.user.id, id: input.id }),
           jobErrorFamily,
         ),
+      ),
+  }),
+  pricing: router({
+    setStintRate: authorizedProcedure('contracting_job:price')
+      .input(StintRateSetInput)
+      .mutation(({ ctx, input }) =>
+        mapCoreErrors(() => setStintRate({ db: ctx.db, actorUserId: ctx.session.user.id, input }), jobErrorFamily),
+      ),
+    clearStintRate: authorizedProcedure('contracting_job:price')
+      .input(StintRateClearInput)
+      .mutation(({ ctx, input }) =>
+        mapCoreErrors(() => clearStintRate({ db: ctx.db, actorUserId: ctx.session.user.id, input }), jobErrorFamily),
+      ),
+    setStintAmount: authorizedProcedure('contracting_job:price')
+      .input(StintAmountSetInput)
+      .mutation(({ ctx, input }) =>
+        mapCoreErrors(() => setStintAmount({ db: ctx.db, actorUserId: ctx.session.user.id, input }), jobErrorFamily),
+      ),
+    setDiesel: authorizedProcedure('contracting_job:price')
+      .input(DieselPriceInput)
+      .mutation(({ ctx, input }) =>
+        mapCoreErrors(() => setDieselPrice({ db: ctx.db, actorUserId: ctx.session.user.id, input }), jobErrorFamily),
+      ),
+    setDiscount: authorizedProcedure('contracting_job:price')
+      .input(DiscountSetInput)
+      .mutation(({ ctx, input }) =>
+        mapCoreErrors(() => setDiscount({ db: ctx.db, actorUserId: ctx.session.user.id, input }), jobErrorFamily),
+      ),
+    markPriced: authorizedProcedure('contracting_job:price')
+      .input(JobMarkPricedInput)
+      .mutation(({ ctx, input }) =>
+        mapCoreErrors(() => markPriced({ db: ctx.db, actorUserId: ctx.session.user.id, input }), jobErrorFamily),
       ),
   }),
   options: router({

@@ -1135,6 +1135,13 @@
       "when": 1790074261459,
       "tag": "0161_stock_movement_parts_sale_quote",
       "breakpoints": true
+    },
+    {
+      "idx": 162,
+      "version": "7",
+      "when": 1790144815333,
+      "tag": "0162_contracting_repricing_flag",
+      "breakpoints": true
     }
   ]
 }

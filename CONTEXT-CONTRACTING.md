@@ -20,7 +20,7 @@ machine starts; cancellable by management with a mandatory reason), **Completed*
 Contracting Manager's sign-off, reachable only once every Assignment has left and every Gap Flag
 is resolved: work confirmed done, Charge Lines and notes added, final start and end dates stamped
 — suggested from the earliest arrival and latest departure capture times, tweakable), **Priced**
-(rates applied and frozen as a snapshot; a reading amendment reopens the Job to Completed for
+(rates applied and frozen as a snapshot — diesel litres and travel lock with it; a reading amendment reopens the Job to Completed for
 re-pricing — the chosen Rates and their snapshotted unit amounts stay, line amounts recompute from
 the amended hours, and manual amount edits are discarded), and **Invoiced** (the invoice number stamped; the wall — after it, nothing moves). There is no "submitted" status: foremen never close Jobs; a
 Job whose machines have all stopped surfaces in the Contracting Manager's queue as looking

@@ -21,6 +21,7 @@ export const HELP_TOPICS = {
   contractingHome: '/contracting/',
   contractingJobs: '/contracting/set-up-a-job',
   contractingJobSignOff: '/contracting/sign-off-a-job',
+  contractingJobPricing: '/contracting/price-a-job',
   contractingReadings: '/contracting/resolve-reading-exceptions',
   contractingFleet: '/contracting/maintain-machines',
   contractingCategories: '/contracting/maintain-categories',

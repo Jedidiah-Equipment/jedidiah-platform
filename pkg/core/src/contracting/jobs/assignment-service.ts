@@ -108,6 +108,12 @@ export async function patchAssignment({
           if (['cancelled', 'invoiced'].includes(job.status))
             throw wrongStatus('A Cancelled or Invoiced Job cannot be changed.');
           if (
+            input.travelIncluded !== undefined &&
+            input.travelIncluded !== before.travelIncluded &&
+            job.status === 'priced'
+          )
+            throw wrongStatus('This Job is Priced, so its travel can no longer change.');
+          if (
             (input.implementId !== undefined || input.driverUserId !== undefined) &&
             before.departureReadingId !== null
           )

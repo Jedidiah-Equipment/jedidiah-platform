@@ -28,6 +28,7 @@ export function JobsPage({ queue }: { queue: JobQueue }) {
   const showError = useApiMutationErrorToast();
   const canCreate = useCan('contracting_job:create').can;
   const canAssign = useCan('contracting_job:assign').can;
+  const canPrice = useCan('contracting_job:price').can;
   const counts = useQuery(trpc.contractingJobs.jobs.queueCounts.queryOptions());
   const activeAttention = useQuery(trpc.contractingJobs.jobs.activeAttention.queryOptions());
   const [pageCountByQueue, setPageCountByQueue] = useState<Partial<Record<JobQueue, number>>>({});
@@ -144,8 +145,31 @@ export function JobsPage({ queue }: { queue: JobQueue }) {
             } as DataTableColumnDef<JobSummary>,
           ]
         : []),
+      ...(queue === 'awaiting-pricing' && canPrice
+        ? [
+            {
+              id: 'price',
+              header: '',
+              cell: ({ row }) => (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() =>
+                    void navigate({
+                      to: '/contracting/jobs/$code',
+                      params: { code: row.original.jobNumber },
+                      hash: 'pricing',
+                    })
+                  }
+                >
+                  Price
+                </Button>
+              ),
+            } as DataTableColumnDef<JobSummary>,
+          ]
+        : []),
     ],
-    [queue, canAssign, foremen.data, assign.mutate, navigate],
+    [queue, canAssign, canPrice, foremen.data, assign.mutate, navigate],
   );
   return (
     <>

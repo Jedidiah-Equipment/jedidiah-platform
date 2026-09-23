@@ -65,6 +65,8 @@ export const contractingJobs = contractingSchema.table(
     cancelledAt: timestamp('cancelled_at', { withTimezone: true }),
     cancelledByUserId: text('cancelled_by_user_id').references(() => user.id),
     cancellationReason: text('cancellation_reason'),
+    reopenedAt: timestamp('reopened_at', { withTimezone: true }),
+    repricingNote: text('repricing_note'),
     ...timestamps(),
   },
   (table) => [
@@ -92,6 +94,10 @@ export const contractingJobs = contractingSchema.table(
     check(
       'job_cancelled_shape',
       sql`(${table.status} = 'cancelled') = (${table.cancelledAt} IS NOT NULL) AND (${table.cancelledAt} IS NULL) = (${table.cancellationReason} IS NULL) AND (${table.cancellationReason} IS NULL OR length(btrim(${table.cancellationReason})) > 0)`,
+    ),
+    check(
+      'job_reopened_shape',
+      sql`(${table.reopenedAt} IS NULL) = (${table.repricingNote} IS NULL) AND (${table.reopenedAt} IS NULL OR ${table.status} = 'completed')`,
     ),
     check(
       'job_diesel_shape',

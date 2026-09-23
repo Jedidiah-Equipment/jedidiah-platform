@@ -99,6 +99,11 @@ describe('Job sign-off helpers', () => {
       signOff: true,
       editMeasures: false,
       editChargeLines: false,
+      editSignOffDetails: true,
+      editDieselLitres: false,
+      patchTravel: false,
+      price: false,
+      seePricing: true,
     });
     expect(jobCapabilities({ status: 'invoiced' } as JobDetail, can)).toMatchObject({
       editSetup: false,

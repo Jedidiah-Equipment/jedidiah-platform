@@ -49,7 +49,11 @@ export function SignOffCard({ job, capabilities }: { job: JobDetail; capabilitie
         {job.status === 'active' ? (
           <DraftSignOffDetails job={job} capabilities={capabilities} plannedIds={planned.map((stint) => stint.id)} />
         ) : (
-          <SavedSignOffDetails job={job} editable={capabilities.editSignOffDetails} />
+          <SavedSignOffDetails
+            job={job}
+            editable={capabilities.editSignOffDetails}
+            dieselEditable={capabilities.editDieselLitres}
+          />
         )}
         {job.status === 'active' && planned.length ? (
           <section className="space-y-2">
@@ -211,7 +215,15 @@ function DraftSignOffDetails({
 
 const SavedValues = z.object({ startDate: DateOnlyIso, endDate: DateOnlyIso, dieselLitres: Litres, notes: z.string() });
 
-function SavedSignOffDetails({ job, editable }: { job: JobDetail; editable: boolean }) {
+function SavedSignOffDetails({
+  job,
+  editable,
+  dieselEditable,
+}: {
+  job: JobDetail;
+  editable: boolean;
+  dieselEditable: boolean;
+}) {
   const trpc = useTRPC();
   const { invalidateJobs } = useQueryInvalidation();
   const patch = useMutation(trpc.contractingJobs.jobs.patch.mutationOptions({ onSuccess: invalidateJobs }));
@@ -232,7 +244,9 @@ function SavedSignOffDetails({ job, editable }: { job: JobDetail; editable: bool
       <AutosaveStatus state={autosave.state} onRetry={() => void autosave.retry()} />
       <fieldset disabled={!editable} className="grid gap-3 sm:grid-cols-2">
         <form.AppField name="dieselLitres">
-          {(field) => <field.NumberField label="Diesel supplied (litres)" decimals={2} min={0} />}
+          {(field) => (
+            <field.NumberField label="Diesel supplied (litres)" decimals={2} min={0} disabled={!dieselEditable} />
+          )}
         </form.AppField>
         <form.AppField name="startDate">
           {(field) => <field.DatePickerField label="Start" onValueCommit={autosave.commit} />}

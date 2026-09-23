@@ -13,13 +13,13 @@ import { CreateEntityDialog, useAutosaveForm } from '@/components/form/index.js'
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
 import { Badge } from '@/components/ui/badge.js';
 import { Button } from '@/components/ui/button.js';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card.js';
 import { useQueryInvalidation } from '@/contracting/hooks/use-query-invalidation.js';
 import { useAccess } from '@/hooks/use-access.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { ChargeLinesCard } from './ChargeLinesCard.js';
 import { MachinesCard } from './MachinesCard.js';
+import { PricingCard } from './PricingCard.js';
 import { SignOffCard } from './SignOffCard.js';
 import { JobCreateValues, jobCapabilities, toJobCreateInput } from './types.js';
 
@@ -54,15 +54,14 @@ export function JobPage({ code }: { code: string }) {
               <SetupCard key={`setup-${job.id}`} job={job} capabilities={capabilities} />
               <MachinesCard job={job} capabilities={capabilities} />
               {capabilities.signOff ? <SignOffCard job={job} capabilities={capabilities} /> : null}
+              <PricingCard job={job} capabilities={capabilities} />
               {job.status !== 'upcoming' ? (
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Pricing</CardTitle>
-                  </CardHeader>
-                  <CardContent className="text-muted-foreground">Pricing is prepared after sign-off.</CardContent>
-                </Card>
+                <ChargeLinesCard
+                  job={job}
+                  editable={capabilities.editChargeLines}
+                  amountEditable={capabilities.price}
+                />
               ) : null}
-              {job.status !== 'upcoming' ? <ChargeLinesCard job={job} editable={capabilities.editChargeLines} /> : null}
               <CancelJob job={job} enabled={capabilities.cancel} />
             </div>
           ) : null

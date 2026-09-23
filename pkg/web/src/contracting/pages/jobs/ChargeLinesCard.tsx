@@ -15,10 +15,19 @@ import { Input } from '@/components/ui/input.js';
 import { useQueryInvalidation } from '@/contracting/hooks/use-query-invalidation.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useTRPC } from '@/lib/trpc.js';
+import { MoneyInput } from './MoneyInput.js';
 
 const ChargeLineValues = z.object({ description: requiredTrimmedText('A description is required') });
 
-export function ChargeLinesCard({ job, editable }: { job: JobDetail; editable: boolean }) {
+export function ChargeLinesCard({
+  job,
+  editable,
+  amountEditable,
+}: {
+  job: JobDetail;
+  editable: boolean;
+  amountEditable: boolean;
+}) {
   const trpc = useTRPC();
   const showError = useApiMutationErrorToast();
   const { invalidateJobs } = useQueryInvalidation();
@@ -58,8 +67,14 @@ export function ChargeLinesCard({ job, editable }: { job: JobDetail; editable: b
         id: 'amount',
         header: 'Amount',
         cell: ({ row }) =>
-          row.original.amount === null ? (
-            <span className="text-muted-foreground">Jed at pricing</span>
+          amountEditable ? (
+            <MoneyInput
+              label={`Amount for ${row.original.description}`}
+              value={row.original.amount}
+              onCommit={(amount) => patch.mutate({ id: row.original.id, amount })}
+            />
+          ) : row.original.amount === null ? (
+            <span className="text-muted-foreground">Set at pricing</span>
           ) : (
             formatCurrency(row.original.amount)
           ),
@@ -81,11 +96,11 @@ export function ChargeLinesCard({ job, editable }: { job: JobDetail; editable: b
           ) : null,
       },
     ],
-    [editable, patch.mutate, remove.isPending, remove.mutate],
+    [editable, amountEditable, patch.mutate, remove.isPending, remove.mutate],
   );
   return (
     <>
-      <Card>
+      <Card id="charge-lines" className="scroll-mt-4">
         <CardHeader>
           <CardTitle>Charge lines</CardTitle>
           {editable ? (

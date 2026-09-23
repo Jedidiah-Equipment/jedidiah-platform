@@ -440,7 +440,7 @@ export const snapshotTableDefinitions = [
   {
     fileName: 'contracting_job.json',
     tableName: 'contracting_job',
-    timestampColumns: ['cancelledAt', 'completedAt', 'createdAt', 'invoicedAt', 'pricedAt', 'updatedAt'],
+    timestampColumns: ['cancelledAt', 'completedAt', 'createdAt', 'invoicedAt', 'pricedAt', 'reopenedAt', 'updatedAt'],
     optionalReadTable: true,
     resetSequence: { sequence: contractingJobCodeSequence, columnName: 'code' },
   },

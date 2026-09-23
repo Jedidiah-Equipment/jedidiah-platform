@@ -13,6 +13,7 @@ export * from './jobs/job-errors.js';
 export * from './jobs/job-read.js';
 export * from './jobs/job-service.js';
 export * from './jobs/measure-service.js';
+export * from './jobs/pricing-service.js';
 export * from './rate-card/measure-type-service.js';
 export * from './rate-card/rate-card-errors.js';
 export * from './rate-card/rate-service.js';

@@ -485,7 +485,10 @@ describe('Purchase Order send and cancel', () => {
     });
     await expect(
       renderPurchaseOrderPreview({ db: context.db, id: purchaseOrder.id, pdfRenderer: render }),
-    ).rejects.toMatchObject({ code: 'purchase_order.already_sent' });
+    ).rejects.toMatchObject({
+      code: 'purchase_order.already_sent',
+      message: 'This Purchase Order has been sent, so it is read from the PDF saved when it was sent.',
+    });
   });
 
   test('names the last editor of this order, not the newest edit anywhere', async ({ context }) => {

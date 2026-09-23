@@ -175,7 +175,10 @@ const refusals = {
     code: 'purchase_order.has_receipts',
     state: 'Stock has already moved against this Purchase Order',
   },
-  'not-approved': { code: 'purchase_order.not_approved', state: 'This Purchase Order is not approved' },
+  'not-approved': {
+    code: 'purchase_order.not_approved',
+    state: 'This Purchase Order is not approved and waiting to be sent',
+  },
   'not-draft': { code: 'purchase_order.not_draft', state: 'This Purchase Order is no longer a draft' },
   'not-sent': { code: 'purchase_order.not_sent', state: 'This Purchase Order has not been sent' },
   'nothing-received': { code: 'purchase_order.no_receipts', state: 'Nothing has arrived against this Purchase Order' },
@@ -208,7 +211,12 @@ export class PurchaseOrderActionRefusedError extends Error {
     readonly reason: PurchaseOrderActionBlockedReason,
     readonly id: UUID,
   ) {
-    super(`${refusals[reason].state}, so ${consequences[action]}.`);
+    // A sent order's preview is an explanation rather than a refusal: its Supplier copy already exists.
+    const consequence =
+      action === 'preview' && reason === 'sent'
+        ? 'it is read from the PDF saved when it was sent'
+        : consequences[action];
+    super(`${refusals[reason].state}, so ${consequence}.`);
     this.code = refusals[reason].code;
   }
 }

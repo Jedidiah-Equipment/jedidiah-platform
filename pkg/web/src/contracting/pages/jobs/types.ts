@@ -2,14 +2,21 @@ import { hasJobCard, round1 } from '@pkg/domain/contracting';
 import type { AppPermission } from '@pkg/schema';
 import { DateOnlyIso, UUID } from '@pkg/schema';
 import {
+  closedJobStatuses,
+  hasJobStatus,
   JobCompleteInput,
   type JobCreateInput,
   JobDescription,
   type JobDetail,
   type JobQueue,
   type JobQueueCounts,
+  type JobStatus,
   jobQueues,
   Litres,
+  openJobStatuses,
+  signedOffJobStatuses,
+  unpricedJobStatuses,
+  workedJobStatuses,
 } from '@pkg/schema/contracting';
 import { z } from 'zod';
 import { emptyStringOr, requiredSelection } from '@/components/form/utils/form-schema.js';
@@ -58,30 +65,34 @@ export function complementGap(gapHours: number, travel: number) {
 }
 
 export function jobCapabilities(job: JobDetail, can: (permission: AppPermission) => boolean) {
-  const open = job.status === 'upcoming' || job.status === 'active';
-  const readsJobMoney = hasJobCard(job.status) && (can('contracting_job:read') || can('contracting_job:read-priced'));
+  const { status } = job;
+  const is = (statuses: readonly JobStatus[]) => hasJobStatus(statuses, status);
+  const readsJobMoney = hasJobCard(status) && (can('contracting_job:read') || can('contracting_job:read-priced'));
   return {
-    editSetup: open && can('contracting_job:update'),
-    assign: open && can('contracting_job:assign'),
-    planStints: open && can('contracting_job:assign'),
-    signOff: job.status !== 'upcoming' && job.status !== 'cancelled' && can('contracting_job:update'),
-    editMeasures: (job.status === 'active' || job.status === 'completed') && can('contracting_job:update'),
-    editChargeLines: (job.status === 'active' || job.status === 'completed') && can('contracting_job:update'),
+    editSetup: is(openJobStatuses) && can('contracting_job:update'),
+    assign: is(openJobStatuses) && can('contracting_job:assign'),
+    planStints: is(openJobStatuses) && can('contracting_job:assign'),
+    signOff: status !== 'upcoming' && status !== 'cancelled' && can('contracting_job:update'),
+    editMeasures: is(workedJobStatuses) && can('contracting_job:update'),
+    editChargeLines: is(workedJobStatuses) && can('contracting_job:update'),
     patchTravel:
-      !['priced', 'invoiced', 'cancelled'].includes(job.status) &&
-      (can('contracting_job:assign') || (job.status === 'active' && can('contracting_assignment:update-own'))),
-    editSignOffDetails: (job.status === 'completed' || job.status === 'priced') && can('contracting_job:update'),
-    editDieselLitres: job.status === 'completed' && can('contracting_job:update'),
-    price: job.status === 'completed' && can('contracting_job:price'),
+      is(unpricedJobStatuses) &&
+      (can('contracting_job:assign') || (status === 'active' && can('contracting_assignment:update-own'))),
+    editSignOffDetails: is(signedOffJobStatuses) && can('contracting_job:update'),
+    editDieselLitres: status === 'completed' && can('contracting_job:update'),
+    price: status === 'completed' && can('contracting_job:price'),
     seePricing: readsJobMoney,
     jobCard: readsJobMoney,
-    stampInvoice: job.status === 'priced' && can('contracting_invoice:update'),
-    resolveGaps: (job.status === 'active' || job.status === 'completed') && can('contracting_gap:resolve'),
-    amendReadings: job.status !== 'invoiced' && job.status !== 'cancelled' && can('contracting_reading:update'),
-    complete: job.status === 'active' && can('contracting_job:complete'),
-    cancel: ['upcoming', 'active', 'completed'].includes(job.status) && can('contracting_job:cancel'),
+    stampInvoice: status === 'priced' && can('contracting_invoice:update'),
+    resolveGaps: is(workedJobStatuses) && can('contracting_gap:resolve'),
+    amendReadings: !is(closedJobStatuses) && can('contracting_reading:update'),
+    complete: status === 'active' && can('contracting_job:complete'),
+    cancel: is(unpricedJobStatuses) && can('contracting_job:cancel'),
   };
 }
+
+/** What the signed-in person may do to a Job in its current status. */
+export type JobCapabilities = ReturnType<typeof jobCapabilities>;
 
 export const jobQueueLabels: Record<JobQueue, string> = {
   upcoming: 'Upcoming',

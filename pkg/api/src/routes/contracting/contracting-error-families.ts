@@ -64,6 +64,7 @@ export const readingErrorFamily = defineCoreErrorFamily<ReadingError>({
 export const jobErrorFamily = defineCoreErrorFamily<JobError>({
   codes: {
     'contracting_job.duplicate': 'CONFLICT',
+    'contracting_job.forbidden': 'FORBIDDEN',
     'contracting_job.has_on_site_stints': 'CONFLICT',
     'contracting_job.implement_on_site': 'CONFLICT',
     'contracting_job.invalid_driver': 'BAD_REQUEST',
@@ -71,7 +72,6 @@ export const jobErrorFamily = defineCoreErrorFamily<JobError>({
     'contracting_job.invalid_reference': 'BAD_REQUEST',
     'contracting_job.invalid_role': 'BAD_REQUEST',
     'contracting_job.machine_on_site': 'CONFLICT',
-    'contracting_job.measure_type_inactive': 'BAD_REQUEST',
     'contracting_job.not_found': 'NOT_FOUND',
     'contracting_job.not_owner': 'FORBIDDEN',
     'contracting_job.open_gap_flags': 'CONFLICT',

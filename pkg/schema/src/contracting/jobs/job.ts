@@ -88,8 +88,6 @@ export const AssignmentPlanInput = z
   })
   .strict();
 export type AssignmentPlanInput = z.infer<typeof AssignmentPlanInput>;
-export const AssignmentAddInput = AssignmentPlanInput;
-export type AssignmentAddInput = z.infer<typeof AssignmentAddInput>;
 export const AssignmentPatchInput = z
   .object({
     id: UUID,

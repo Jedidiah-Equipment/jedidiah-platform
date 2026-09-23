@@ -1,11 +1,16 @@
 import { type DatabaseTransaction, type Db, user } from '@pkg/db';
 import {
+  contractingCategories,
   contractingChargeLines,
   contractingCustomers,
   contractingFarms,
-  type contractingHourReadings,
+  contractingHourReadings,
+  contractingImplements,
   contractingJobs,
   contractingMachineAssignments,
+  contractingMachines,
+  contractingMeasures,
+  contractingMeasureTypes,
   contractingWorkTypes,
 } from '@pkg/db/contracting';
 import { JOHANNESBURG_TIME_ZONE } from '@pkg/domain';
@@ -15,39 +20,148 @@ import {
   computeJobTotals,
   deriveStintHours,
   formatJobNumber,
+  isAiFlaggedVerification,
+  type JobReadMode,
+  jobReadSeesMoney,
+  jobReadStatuses,
   looksFinished,
   meterDisagreementHint,
+  parseJobNumber,
   priceStint,
 } from '@pkg/domain/contracting';
 import {
   Assignment,
+  type ChargeLine,
+  hasJobStatus,
   JobDetail,
   type JobQueue,
   JobQueueCounts,
   JobReading,
   type JobStatus,
   JobSummary,
+  jobQueues,
 } from '@pkg/schema/contracting';
-import { and, asc, eq, inArray, sql } from 'drizzle-orm';
+import { and, asc, eq, getTableColumns, inArray, sql } from 'drizzle-orm';
+import { alias } from 'drizzle-orm/pg-core';
 import { assertOwner, JobError, jobNotFound } from './job-errors.js';
+import * as jobSql from './job-sql.js';
 
-type LoadedReading = (typeof contractingHourReadings.$inferSelect & { capturedBy: { name: string } | null }) | null;
+type DbOrTx = Db | DatabaseTransaction;
+export type JobLookup = { id: string } | { code: string };
+/** Who is reading Jobs, and through which read mode. */
+export type JobReader = { mode: JobReadMode; actorUserId: string };
 
-function readingAttention(row: LoadedReading) {
-  if (!row) return [];
-  const kinds: Array<'disputed' | 'ai-pending' | 'ai-disagrees' | 'ai-low-confidence' | 'missing-photo'> = [];
+// Plain joins rather than the relational API: Drizzle 0.45 keys relation types on the unqualified table
+// name, so `contracting.job` and `equipment.job` collide and `@pkg/db` erases the contracting relation types.
+const foreman = alias(user, 'job_foreman');
+const invoicer = alias(user, 'job_invoicer');
+const driver = alias(user, 'job_driver');
+const arrivalReading = alias(contractingHourReadings, 'job_arrival_reading');
+const departureReading = alias(contractingHourReadings, 'job_departure_reading');
+const arrivalCapturer = alias(user, 'job_arrival_capturer');
+const departureCapturer = alias(user, 'job_departure_capturer');
+
+async function loadJob(db: DbOrTx, lookup: JobLookup) {
+  const [row] = await db
+    .select({
+      job: getTableColumns(contractingJobs),
+      customerName: contractingCustomers.name,
+      farmName: contractingFarms.name,
+      workTypeName: contractingWorkTypes.name,
+      foremanName: foreman.name,
+      invoicedByName: invoicer.name,
+    })
+    .from(contractingJobs)
+    .innerJoin(contractingCustomers, eq(contractingCustomers.id, contractingJobs.customerId))
+    .innerJoin(
+      contractingFarms,
+      and(eq(contractingFarms.id, contractingJobs.farmId), eq(contractingFarms.customerId, contractingJobs.customerId)),
+    )
+    .innerJoin(contractingWorkTypes, eq(contractingWorkTypes.id, contractingJobs.workTypeId))
+    .leftJoin(foreman, eq(foreman.id, contractingJobs.foremanUserId))
+    .leftJoin(invoicer, eq(invoicer.id, contractingJobs.invoicedByUserId))
+    .where('id' in lookup ? eq(contractingJobs.id, lookup.id) : eq(contractingJobs.code, parseJobNumber(lookup.code)));
+  if (!row) throw jobNotFound();
+  const [assignments, measures, chargeLines] = await Promise.all([
+    loadAssignments(db, row.job.id),
+    loadMeasures(db, row.job.id),
+    db
+      .select()
+      .from(contractingChargeLines)
+      .where(eq(contractingChargeLines.jobId, row.job.id))
+      .orderBy(asc(contractingChargeLines.displayOrder)),
+  ]);
+  return { ...row, assignments, measures, chargeLines };
+}
+
+function loadAssignments(db: DbOrTx, jobId: string) {
+  return db
+    .select({
+      stint: getTableColumns(contractingMachineAssignments),
+      machineCode: contractingMachines.code,
+      categoryName: contractingCategories.name,
+      categoryIcon: contractingCategories.icon,
+      categoryColour: contractingCategories.colour,
+      implementCode: contractingImplements.code,
+      driverName: driver.name,
+      rateMeasureTypeName: contractingMeasureTypes.name,
+      arrival: getTableColumns(arrivalReading),
+      arrivalCapturedByName: arrivalCapturer.name,
+      departure: getTableColumns(departureReading),
+      departureCapturedByName: departureCapturer.name,
+      previousDepartureValue: sql<
+        number | string | null
+      >`${jobSql.previousDepartureValue(contractingMachineAssignments.machineId, arrivalReading.sequence)}`,
+    })
+    .from(contractingMachineAssignments)
+    .innerJoin(contractingMachines, eq(contractingMachines.id, contractingMachineAssignments.machineId))
+    .innerJoin(contractingCategories, eq(contractingCategories.id, contractingMachines.categoryId))
+    .leftJoin(contractingImplements, eq(contractingImplements.id, contractingMachineAssignments.implementId))
+    .leftJoin(driver, eq(driver.id, contractingMachineAssignments.driverUserId))
+    .leftJoin(contractingMeasureTypes, eq(contractingMeasureTypes.id, contractingMachineAssignments.rateMeasureTypeId))
+    .leftJoin(arrivalReading, eq(arrivalReading.id, contractingMachineAssignments.arrivalReadingId))
+    .leftJoin(arrivalCapturer, eq(arrivalCapturer.id, arrivalReading.capturedByUserId))
+    .leftJoin(departureReading, eq(departureReading.id, contractingMachineAssignments.departureReadingId))
+    .leftJoin(departureCapturer, eq(departureCapturer.id, departureReading.capturedByUserId))
+    .where(eq(contractingMachineAssignments.jobId, jobId))
+    .orderBy(asc(contractingMachineAssignments.createdAt));
+}
+
+function loadMeasures(db: DbOrTx, jobId: string) {
+  return db
+    .select({
+      id: contractingMeasures.id,
+      assignmentId: contractingMeasures.assignmentId,
+      measureTypeId: contractingMeasures.measureTypeId,
+      measureTypeName: contractingMeasureTypes.name,
+      quantity: contractingMeasures.quantity,
+    })
+    .from(contractingMeasures)
+    .innerJoin(contractingMachineAssignments, eq(contractingMachineAssignments.id, contractingMeasures.assignmentId))
+    .innerJoin(contractingMeasureTypes, eq(contractingMeasureTypes.id, contractingMeasures.measureTypeId))
+    .where(eq(contractingMachineAssignments.jobId, jobId))
+    .orderBy(asc(contractingMeasureTypes.displayOrder));
+}
+
+type LoadedJob = Awaited<ReturnType<typeof loadJob>>;
+type LoadedAssignment = LoadedJob['assignments'][number];
+type LoadedMeasure = LoadedJob['measures'][number];
+type LoadedReading = typeof contractingHourReadings.$inferSelect;
+
+function readingAttention(row: LoadedReading): JobReading['needsALook'] {
+  const kinds: JobReading['needsALook'] = [];
   if (row.disputed) kinds.push('disputed');
-  if (row.evidenceReviewedAt === null) {
-    if (row.aiVerification === 'pending') kinds.push('ai-pending');
-    if (row.aiVerification === 'disagrees') kinds.push('ai-disagrees');
-    if (row.aiVerification === 'low-confidence') kinds.push('ai-low-confidence');
-  }
+  if (row.evidenceReviewedAt === null && isAiFlaggedVerification(row.aiVerification))
+    kinds.push(`ai-${row.aiVerification}` as const);
   // Missing photo belongs in sign-off's strip, but does not count toward the queue's needsALook total.
   if (row.photo === null) kinds.push('missing-photo');
   return kinds;
 }
 
-function mapJobReading(row: LoadedReading) {
+const readingNeedsALook = (reading: JobReading | null) =>
+  !!reading?.needsALook.some((kind) => kind !== 'missing-photo');
+
+function mapJobReading(row: LoadedReading | null, capturedByName: string | null) {
   if (!row) return null;
   return JobReading.parse({
     ...row,
@@ -56,115 +170,10 @@ function mapJobReading(row: LoadedReading) {
     amendedAt: row.amendedAt?.toISOString() ?? null,
     aiHint: meterDisagreementHint(row),
     photoBacked: row.photo !== null,
-    capturedByName: row.capturedBy?.name ?? null,
+    capturedByName,
     needsALook: readingAttention(row),
   });
 }
-
-async function loadJob(db: Db | DatabaseTransaction, condition: ReturnType<typeof eq>) {
-  const query = db.query.contractingJobs;
-  const findFirst = query.findFirst as unknown as (config: unknown) => Promise<LoadedJob | undefined>;
-  const row = await findFirst.call(query, {
-    where: condition,
-    with: {
-      assignments: {
-        extras: {
-          previousDepartureValue: sql<string | null>`(
-            select previous.value
-            from contracting.hour_reading previous
-            where previous.machine_id = ${contractingMachineAssignments.machineId}
-              and previous.role = 'departure'
-              and previous.sequence < (
-                select current.sequence from contracting.hour_reading current
-                where current.id = ${contractingMachineAssignments.arrivalReadingId}
-              )
-            order by previous.sequence desc
-            limit 1
-          )`.as('previous_departure_value'),
-        },
-        orderBy: [asc(contractingMachineAssignments.createdAt)],
-        with: {
-          arrivalReading: { with: { capturedBy: true } },
-          departureReading: { with: { capturedBy: true } },
-          driver: true,
-          implement: true,
-          machine: { with: { category: true } },
-          measures: { with: { measureType: true } },
-          rateMeasureType: true,
-        },
-      },
-      chargeLines: { orderBy: [asc(contractingChargeLines.displayOrder)] },
-      customer: true,
-      farm: true,
-      foreman: true,
-      invoicedBy: true,
-      workType: true,
-    },
-  });
-  assertLoadedJob(row);
-  return row;
-}
-
-type LoadedJob = typeof contractingJobs.$inferSelect & {
-  assignments: Array<
-    typeof contractingMachineAssignments.$inferSelect & {
-      arrivalReading: LoadedReading;
-      departureReading: LoadedReading;
-      driver: typeof user.$inferSelect | null;
-      implement: { code: string } | null;
-      machine: { code: string; category: { name: string; icon: string; colour: string } };
-      rateMeasureType: { name: string } | null;
-      measures: Array<
-        { measureTypeId: string; quantity: number; measureType: { name: string; displayOrder: number } } & Record<
-          string,
-          unknown
-        >
-      >;
-      previousDepartureValue: number | string | null;
-    }
-  >;
-  chargeLines: (typeof contractingChargeLines.$inferSelect)[];
-  customer: { name: string };
-  farm: { name: string };
-  foreman: { name: string } | null;
-  invoicedBy: { name: string } | null;
-  workType: { name: string };
-};
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null;
-}
-
-function assertLoadedJob(row: unknown): asserts row is LoadedJob | undefined {
-  if (row === undefined) return;
-  if (
-    !isRecord(row) ||
-    !Array.isArray(row.assignments) ||
-    !Array.isArray(row.chargeLines) ||
-    !isRecord(row.customer) ||
-    !isRecord(row.farm) ||
-    !isRecord(row.workType)
-  )
-    throw new Error('Contracting Job query returned an invalid relation shape.');
-  for (const assignment of row.assignments) {
-    if (
-      !isRecord(assignment) ||
-      !isRecord(assignment.machine) ||
-      !isRecord(assignment.machine.category) ||
-      !Array.isArray(assignment.measures) ||
-      !Object.hasOwn(assignment, 'previousDepartureValue') ||
-      (assignment.previousDepartureValue !== null &&
-        typeof assignment.previousDepartureValue !== 'string' &&
-        typeof assignment.previousDepartureValue !== 'number')
-    )
-      throw new Error('Contracting Machine Assignment query returned an invalid relation shape.');
-  }
-}
-
-type StintPricingColumns = Pick<
-  typeof contractingMachineAssignments.$inferSelect,
-  'rateBasis' | 'rateUnitAmount' | 'rateMeasureTypeId' | 'computedAmount' | 'finalAmount'
->;
 
 /**
  * An override is a stored final amount that differs from the stored computed one; the two are always
@@ -173,7 +182,7 @@ type StintPricingColumns = Pick<
  * are the snapshot and are returned untouched.
  */
 function priceAssignment(
-  row: StintPricingColumns,
+  row: LoadedAssignment['stint'],
   facts: { billableHours: number | null; measures: readonly { measureTypeId: string; quantity: number }[] },
   live: boolean,
 ) {
@@ -192,9 +201,8 @@ function priceAssignment(
     ...facts,
   });
   const amountEdited = row.finalAmount !== row.computedAmount;
-  const computedAmount = live ? price.computedAmount : row.computedAmount;
   return {
-    computedAmount,
+    computedAmount: live ? price.computedAmount : row.computedAmount,
     finalAmount: live && !amountEdited ? price.computedAmount : row.finalAmount,
     amountEdited,
     measureMissing: price.measureMissing,
@@ -202,101 +210,73 @@ function priceAssignment(
   };
 }
 
-function mapAssignment(row: LoadedJob['assignments'][number], live: boolean) {
-  const arrival = mapJobReading(row.arrivalReading);
-  const departure = mapJobReading(row.departureReading);
-  const gapResolved = row.gapResolvedAt !== null;
+function mapAssignment(row: LoadedAssignment, measures: readonly LoadedMeasure[], live: boolean) {
+  const { stint } = row;
+  const arrival = mapJobReading(row.arrival, row.arrivalCapturedByName);
+  const departure = mapJobReading(row.departure, row.departureCapturedByName);
+  const gapResolved = stint.gapResolvedAt !== null;
   const derived = deriveStintHours({
     arrival,
     departure,
     previousDeparture: row.previousDepartureValue === null ? null : { value: Number(row.previousDepartureValue) },
-    travelIncluded: row.travelIncluded,
+    travelIncluded: stint.travelIncluded,
     gap: gapResolved
-      ? {
-          travelHours: row.gapTravelHours ?? 0,
-          unaccountedHours: row.gapUnaccountedHours ?? 0,
-        }
+      ? { travelHours: stint.gapTravelHours ?? 0, unaccountedHours: stint.gapUnaccountedHours ?? 0 }
       : null,
   });
-  const measures = [...row.measures]
-    .sort((left, right) => left.measureType.displayOrder - right.measureType.displayOrder)
-    .map(({ measureType, ...measure }) => ({ ...measure, measureTypeName: measureType.name }));
-  const assignment = Assignment.parse({
-    ...row,
-    machineCode: row.machine.code,
-    categoryName: row.machine.category.name,
-    categoryIcon: row.machine.category.icon,
-    categoryColour: row.machine.category.colour,
-    implementCode: row.implement?.code ?? null,
-    driverName: row.driver?.name ?? null,
-    rateMeasureTypeName: row.rateMeasureType?.name ?? null,
-    createdAt: row.createdAt.toISOString(),
+  return Assignment.parse({
+    ...stint,
+    machineCode: row.machineCode,
+    categoryName: row.categoryName,
+    categoryIcon: row.categoryIcon,
+    categoryColour: row.categoryColour,
+    implementCode: row.implementCode,
+    driverName: row.driverName,
+    rateMeasureTypeName: row.rateMeasureTypeName,
+    createdAt: stint.createdAt.toISOString(),
     arrival,
     departure,
     ...derived,
     gapResolved,
     measures,
-    ...priceAssignment(
-      row,
-      {
-        billableHours: derived.billableHours,
-        measures,
-      },
-      live,
-    ),
+    ...priceAssignment(stint, { billableHours: derived.billableHours, measures }, live),
   });
-  return {
-    assignment,
-    needsALook: Number(readingNeedsALook(row.arrivalReading)) + Number(readingNeedsALook(row.departureReading)),
-  };
 }
 
-function readingNeedsALook(
-  reading: Pick<
-    typeof contractingHourReadings.$inferSelect,
-    'disputed' | 'evidenceReviewedAt' | 'aiVerification'
-  > | null,
-) {
-  return (
-    !!reading &&
-    (reading.disputed ||
-      (reading.evidenceReviewedAt === null &&
-        ['pending', 'disagrees', 'low-confidence'].includes(reading.aiVerification)))
-  );
-}
+const arrivalOrder = (assignment: LoadedAssignment) =>
+  assignment.arrival?.capturedAt.getTime() ?? Number.POSITIVE_INFINITY;
 
-export async function getJob({ db, id, code }: { db: Db | DatabaseTransaction; id?: string; code?: string }) {
-  const numericCode = code ? Number(code.slice('CJOB-'.length)) : undefined;
-  const row = await loadJob(db, id ? eq(contractingJobs.id, id) : eq(contractingJobs.code, numericCode ?? Number.NaN));
-  if (!row) throw jobNotFound();
-  const { assignments: rawAssignments, chargeLines, customer, farm, foreman, invoicedBy, workType, ...job } = row;
+export async function getJob({ db, ...lookup }: { db: DbOrTx } & JobLookup) {
+  const { job, assignments: rows, measures, chargeLines, ...names } = await loadJob(db, lookup);
   const live = job.status === 'completed';
-  const assignmentRows = rawAssignments
-    .sort((left, right) => {
-      const leftArrival = left.arrivalReading?.capturedAt.getTime() ?? Number.POSITIVE_INFINITY;
-      const rightArrival = right.arrivalReading?.capturedAt.getTime() ?? Number.POSITIVE_INFINITY;
-      return leftArrival - rightArrival || left.createdAt.getTime() - right.createdAt.getTime();
-    })
-    .map((assignment) => mapAssignment(assignment, live));
-  const assignments = assignmentRows.map((row) => row.assignment);
+  const assignments = rows
+    .sort(
+      (left, right) =>
+        arrivalOrder(left) - arrivalOrder(right) || left.stint.createdAt.getTime() - right.stint.createdAt.getTime(),
+    )
+    .map((row) =>
+      mapAssignment(
+        row,
+        measures.filter((measure) => measure.assignmentId === row.stint.id),
+        live,
+      ),
+    );
   const pricing = priceJob(job, assignments, chargeLines);
   const states = assignments.map((assignment) => assignment.state);
   const openGapFlags = assignments.filter((assignment) => assignment.gapFlag).length;
-  const needsALook = openGapFlags + assignmentRows.reduce((count, row) => count + row.needsALook, 0);
+  const flaggedReadings = assignments
+    .flatMap((assignment) => [assignment.arrival, assignment.departure])
+    .filter(readingNeedsALook).length;
   return JobDetail.parse({
     ...job,
-    customerName: customer.name,
-    farmName: farm.name,
-    workTypeName: workType.name,
-    foremanName: foreman?.name ?? null,
-    invoicedByName: invoicedBy?.name ?? null,
+    ...names,
     jobNumber: formatJobNumber(job.code),
     plannedStints: states.filter((state) => state === 'planned').length,
     onSiteStints: states.filter((state) => state === 'on-site').length,
     leftStints: states.filter((state) => state === 'left').length,
     looksFinished: looksFinished(job, states),
     openGapFlags,
-    needsALook,
+    needsALook: openGapFlags + flaggedReadings,
     createdAt: job.createdAt.toISOString(),
     updatedAt: job.updatedAt.toISOString(),
     completedAt: job.completedAt?.toISOString() ?? null,
@@ -309,6 +289,19 @@ export async function getJob({ db, id, code }: { db: Db | DatabaseTransaction; i
     assignments,
     chargeLines,
   });
+}
+
+/** The Machine Assignment inside a Job read, which a write to it has just returned. */
+export function assignmentIn(job: JobDetail, id: string): Assignment {
+  const assignment = job.assignments.find((candidate) => candidate.id === id);
+  if (!assignment) throw jobNotFound('Machine Assignment');
+  return assignment;
+}
+
+export function chargeLineIn(job: JobDetail, id: string): ChargeLine {
+  const line = job.chargeLines.find((candidate) => candidate.id === id);
+  if (!line) throw jobNotFound('Charge Line');
+  return line;
 }
 
 /** Totals and the Mark as Priced gate from the stints' amounts, the Charge Lines, Diesel and the Discount. */
@@ -342,127 +335,65 @@ function priceJob(
   };
 }
 
-export async function getReadableJob({
-  db,
-  actorUserId,
-  mode,
-  id,
-  code,
-}: {
-  db: Db;
-  actorUserId: string;
-  mode: 'all' | 'own' | 'priced';
-  id?: string;
-  code?: string;
-}) {
-  const job = await getJob({ db, ...(id === undefined ? {} : { id }), ...(code === undefined ? {} : { code }) });
-  if (mode === 'own') {
-    assertOwner(job, actorUserId);
-    if (!['upcoming', 'active', 'completed'].includes(job.status))
-      throw new JobError('contracting_job.not_owner', 'Foremen can only view their open and completed Jobs.');
-    return redactMoney(job);
-  }
-  if (mode === 'priced' && !['completed', 'priced', 'invoiced'].includes(job.status))
-    throw new JobError('contracting_job.not_owner', 'Invoicing can only view Completed, Priced, or Invoiced Jobs.');
-  return job;
+const readRefusals: Record<JobReadMode, string> = {
+  all: 'You do not have permission to view this Job.',
+  own: 'Foremen can only view their open and completed Jobs.',
+  priced: 'Invoicing can only view Completed, Priced, or Invoiced Jobs.',
+};
+
+export async function getReadableJob({ db, reader, ...lookup }: { db: Db; reader: JobReader } & JobLookup) {
+  const job = await getJob({ db, ...lookup });
+  if (reader.mode === 'own') assertOwner(job, reader.actorUserId);
+  if (!hasJobStatus(jobReadStatuses[reader.mode], job.status))
+    throw new JobError('contracting_job.forbidden', readRefusals[reader.mode]);
+  return jobReadSeesMoney(reader.mode) ? job : redactMoney(job);
 }
 
-const plannedStints = sql<number>`(
-  select count(*)::integer
-  from contracting.machine_assignment summary_assignment
-  where summary_assignment.job_id = ${contractingJobs.id}
-    and summary_assignment.arrival_reading_id is null
-)`;
-const onSiteStints = sql<number>`(
-  select count(*)::integer
-  from contracting.machine_assignment summary_assignment
-  where summary_assignment.job_id = ${contractingJobs.id}
-    and summary_assignment.arrival_reading_id is not null
-    and summary_assignment.departure_reading_id is null
-)`;
-const leftStints = sql<number>`(
-  select count(*)::integer
-  from contracting.machine_assignment summary_assignment
-  where summary_assignment.job_id = ${contractingJobs.id}
-    and summary_assignment.departure_reading_id is not null
-)`;
-const openGapFlags = sql<number>`(
-  select count(*)::integer
-  from contracting.machine_assignment summary_assignment
-  join contracting.hour_reading summary_arrival
-    on summary_arrival.id = summary_assignment.arrival_reading_id
-  where summary_assignment.job_id = ${contractingJobs.id}
-    and summary_assignment.gap_resolved_at is null
-    and summary_arrival.value - (
-      select previous.value
-      from contracting.hour_reading previous
-      where previous.machine_id = summary_assignment.machine_id
-        and previous.role = 'departure'
-        and previous.sequence < summary_arrival.sequence
-      order by previous.sequence desc
-      limit 1
-    ) > 4
-)`;
-const readingsNeedingALook = sql<number>`(
-  select count(*)::integer
-  from contracting.machine_assignment summary_assignment
-  join contracting.hour_reading summary_reading
-    on summary_reading.id = summary_assignment.arrival_reading_id
-    or summary_reading.id = summary_assignment.departure_reading_id
-  where summary_assignment.job_id = ${contractingJobs.id}
-    and (
-      summary_reading.disputed
-      or (
-        summary_reading.evidence_reviewed_at is null
-        and summary_reading.ai_verification in ('pending', 'disagrees', 'low-confidence')
-      )
-    )
-)`;
-const looksFinishedInSql = sql<boolean>`(
-  ${contractingJobs.status} = 'active'
-  and ${leftStints} > 0
-  and ${onSiteStints} = 0
-)`;
+/** The Jobs a reader may see: their mode's statuses, and a Foreman's own Jobs only. */
+function readableBy({ mode, actorUserId }: JobReader) {
+  return and(
+    inArray(contractingJobs.status, [...jobReadStatuses[mode]]),
+    mode === 'own' ? eq(contractingJobs.foremanUserId, actorUserId) : undefined,
+  );
+}
 
-export async function countJobQueues({ db, foremanUserId }: { db: Db; foremanUserId?: string }) {
+/** Each queue is one status; Looks finished narrows Active to Jobs whose machines have all left. */
+const queueStatus: Record<JobQueue, JobStatus> = {
+  upcoming: 'upcoming',
+  active: 'active',
+  'looks-finished': 'active',
+  'awaiting-pricing': 'completed',
+  'awaiting-invoice': 'priced',
+  invoiced: 'invoiced',
+  cancelled: 'cancelled',
+};
+
+export async function countJobQueues({ db, reader }: { db: Db; reader: JobReader }) {
   const rows = await db
     .select({
       status: contractingJobs.status,
-      looksFinished: looksFinishedInSql,
+      looksFinished: jobSql.looksFinished,
       count: sql<number>`count(*)::integer`,
     })
     .from(contractingJobs)
-    .where(
-      and(
-        foremanUserId ? eq(contractingJobs.foremanUserId, foremanUserId) : undefined,
-        foremanUserId ? inArray(contractingJobs.status, ['upcoming', 'active', 'completed']) : undefined,
-      ),
-    )
-    .groupBy(contractingJobs.status, looksFinishedInSql);
-  const count = (status: JobStatus, finished?: boolean) =>
+    .where(readableBy(reader))
+    .groupBy(contractingJobs.status, jobSql.looksFinished);
+  const count = (queue: JobQueue) =>
     rows
-      .filter((row) => row.status === status && (finished === undefined || row.looksFinished === finished))
+      .filter((row) => row.status === queueStatus[queue] && (queue !== 'looks-finished' || row.looksFinished))
       .reduce((total, row) => total + row.count, 0);
-  return JobQueueCounts.parse({
-    upcoming: count('upcoming'),
-    active: count('active'),
-    'looks-finished': count('active', true),
-    'awaiting-pricing': count('completed'),
-    'awaiting-invoice': count('priced'),
-    invoiced: count('invoiced'),
-    cancelled: count('cancelled'),
-  });
+  return JobQueueCounts.parse(Object.fromEntries(jobQueues.map((queue) => [queue, count(queue)])));
 }
 
-export async function hasActiveJobAttention({ db, foremanUserId }: { db: Db; foremanUserId?: string }) {
+export async function hasActiveJobAttention({ db, reader }: { db: Db; reader: JobReader }) {
   const rows = await db
     .select({ id: contractingJobs.id })
     .from(contractingJobs)
     .where(
       and(
         eq(contractingJobs.status, 'active'),
-        foremanUserId ? eq(contractingJobs.foremanUserId, foremanUserId) : undefined,
-        sql`${openGapFlags} + ${readingsNeedingALook} > 0`,
+        readableBy(reader),
+        sql`${jobSql.openGapFlags} + ${jobSql.readingsNeedingALook} > 0`,
       ),
     )
     .limit(1);
@@ -471,33 +402,26 @@ export async function hasActiveJobAttention({ db, foremanUserId }: { db: Db; for
 
 export async function listJobs({
   db,
+  reader,
   queue,
   limit,
   offset,
-  foremanUserId,
   invoicedInMonth,
 }: {
   db: Db;
+  reader: JobReader;
   queue: JobQueue;
   limit: number;
   offset: number;
-  foremanUserId?: string;
   /** Honoured only for the invoiced queue: Jobs stamped in this South African calendar month. */
   invoicedInMonth?: string | undefined;
 }) {
-  const candidateStatuses =
-    queue === 'looks-finished'
-      ? (['active'] as const)
-      : queue === 'awaiting-pricing'
-        ? (['completed'] as const)
-        : queue === 'awaiting-invoice'
-          ? (['priced'] as const)
-          : ([queue] as const);
-  return db
+  if (!hasJobStatus(jobReadStatuses[reader.mode], queueStatus[queue]))
+    throw new JobError('contracting_job.forbidden', readRefusals[reader.mode]);
+  const rows = await db
     .select({
       id: contractingJobs.id,
       code: contractingJobs.code,
-      jobNumber: sql<string>`'CJOB-' || lpad(${contractingJobs.code}::text, 5, '0')`,
       customerId: contractingJobs.customerId,
       customerName: contractingCustomers.name,
       farmId: contractingJobs.farmId,
@@ -508,12 +432,12 @@ export async function listJobs({
       foremanUserId: contractingJobs.foremanUserId,
       foremanName: user.name,
       status: contractingJobs.status,
-      plannedStints,
-      onSiteStints,
-      leftStints,
-      looksFinished: looksFinishedInSql,
-      openGapFlags,
-      needsALook: sql<number>`${openGapFlags} + ${readingsNeedingALook}`,
+      plannedStints: jobSql.stintCount('planned'),
+      onSiteStints: jobSql.stintCount('on-site'),
+      leftStints: jobSql.stintCount('left'),
+      looksFinished: jobSql.looksFinished,
+      openGapFlags: jobSql.openGapFlags,
+      needsALook: sql<number>`${jobSql.openGapFlags} + ${jobSql.readingsNeedingALook}`,
       startDate: contractingJobs.startDate,
       endDate: contractingJobs.endDate,
       pricedAt: contractingJobs.pricedAt,
@@ -533,10 +457,9 @@ export async function listJobs({
     .leftJoin(user, eq(user.id, contractingJobs.foremanUserId))
     .where(
       and(
-        inArray(contractingJobs.status, candidateStatuses),
-        queue === 'looks-finished' ? looksFinishedInSql : undefined,
-        foremanUserId ? eq(contractingJobs.foremanUserId, foremanUserId) : undefined,
-        foremanUserId ? inArray(contractingJobs.status, ['upcoming', 'active', 'completed']) : undefined,
+        eq(contractingJobs.status, queueStatus[queue]),
+        queue === 'looks-finished' ? jobSql.looksFinished : undefined,
+        readableBy(reader),
         queue === 'invoiced' && invoicedInMonth
           ? sql`date_trunc('month', ${contractingJobs.invoicedAt} at time zone ${JOHANNESBURG_TIME_ZONE}) = date_trunc('month', ${invoicedInMonth}::timestamp)`
           : undefined,
@@ -544,40 +467,20 @@ export async function listJobs({
     )
     .orderBy(asc(contractingJobs.code))
     .limit(limit)
-    .offset(offset)
-    .then((rows) =>
-      rows.map((row) =>
-        JobSummary.parse({
-          ...row,
-          pricedAt: row.pricedAt?.toISOString() ?? null,
-          invoicedAt: row.invoicedAt?.toISOString() ?? null,
-          createdAt: row.createdAt.toISOString(),
-          updatedAt: row.updatedAt.toISOString(),
-        }),
-      ),
-    );
+    .offset(offset);
+  const seesMoney = jobReadSeesMoney(reader.mode);
+  return rows.map((row) =>
+    JobSummary.parse({
+      ...row,
+      jobNumber: formatJobNumber(row.code),
+      pricedTotal: seesMoney ? row.pricedTotal : null,
+      pricedAt: row.pricedAt?.toISOString() ?? null,
+      invoicedAt: row.invoicedAt?.toISOString() ?? null,
+      createdAt: row.createdAt.toISOString(),
+      updatedAt: row.updatedAt.toISOString(),
+    }),
+  );
 }
-
-export async function listReadableJobs({
-  db,
-  actorUserId,
-  mode,
-  ...input
-}: {
-  db: Db;
-  actorUserId: string;
-  mode: 'all' | 'own' | 'priced';
-  queue: JobQueue;
-  limit: number;
-  offset: number;
-  invoicedInMonth?: string | undefined;
-}) {
-  if (mode !== 'own') return listJobs({ db, ...input });
-  const jobs = await listJobs({ db, ...input, foremanUserId: actorUserId });
-  return jobs.map(redactSummaryMoney);
-}
-
-export const redactSummaryMoney = (job: JobSummary) => JobSummary.parse({ ...job, pricedTotal: null });
 
 export function redactMoney(job: JobDetail) {
   return JobDetail.parse({

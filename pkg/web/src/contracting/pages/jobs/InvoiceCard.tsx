@@ -5,11 +5,9 @@ import { Badge } from '@/components/ui/badge.js';
 import { Button } from '@/components/ui/button.js';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card.js';
 import { StampInvoiceDialog } from '../invoicing/StampInvoiceDialog.js';
-import type { jobCapabilities } from './types.js';
+import type { JobCapabilities } from './types.js';
 
-type Capabilities = ReturnType<typeof jobCapabilities>;
-
-export function InvoiceCard({ job, capabilities }: { job: JobDetail; capabilities: Capabilities }) {
+export function InvoiceCard({ job, capabilities }: { job: JobDetail; capabilities: JobCapabilities }) {
   const [stamping, setStamping] = useState(false);
   if (!capabilities.seePricing || (job.status !== 'priced' && job.status !== 'invoiced')) return null;
   return (

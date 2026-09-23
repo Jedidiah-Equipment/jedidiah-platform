@@ -12,7 +12,7 @@ import { createMeasureType } from '../rate-card/measure-type-service.js';
 import { createRate, patchRate } from '../rate-card/rate-service.js';
 import { amendReading, captureReading } from '../readings/reading-service.js';
 import { createWorkType } from '../work-types/work-type-service.js';
-import { patchAssignment, planAssignment, resolveGap } from './assignment-service.js';
+import { createAssignment, patchAssignment, resolveGap } from './assignment-service.js';
 import { createChargeLine, patchChargeLine } from './charge-line-service.js';
 import { getJob, listJobs } from './job-read.js';
 import { completeJob, createJob, patchJob } from './job-service.js';
@@ -97,7 +97,12 @@ const nextCapture = () => {
 };
 
 async function stint(db: Db, jobId: string, machineId: string, arrival: number, departure: number) {
-  const planned = await planAssignment({ db, actorUserId: adminId, input: { jobId, machineId, implementId: null } });
+  const planned = await createAssignment({
+    actingAs: 'manager',
+    db,
+    actorUserId: adminId,
+    input: { jobId, machineId, implementId: null },
+  });
   if (!planned) throw new Error('Expected a planned stint');
   const capture = (role: 'arrival' | 'departure', value: number) =>
     captureReading({
@@ -381,9 +386,17 @@ describe('Mark as Priced', () => {
     expect(priced).toMatchObject({ status: 'priced', pricedSubtotal: 5_500, pricedTotal: 8_500, dieselAmount: 3_000 });
     expect(priced.pricing?.total).toBe(priced.pricedTotal);
     expect(priced.assignments[0]).toMatchObject({ computedAmount: 6_000, finalAmount: 5_500, amountEdited: true });
-    expect((await listJobs({ db, queue: 'awaiting-invoice', limit: 50, offset: 0 })).map((job) => job.id)).toEqual([
-      jobId,
-    ]);
+    expect(
+      (
+        await listJobs({
+          db,
+          reader: { mode: 'all', actorUserId: 'reader' },
+          queue: 'awaiting-invoice',
+          limit: 50,
+          offset: 0,
+        })
+      ).map((job) => job.id),
+    ).toEqual([jobId]);
 
     for (const attempt of [
       () => setStintRate({ db, actorUserId: adminId, input: { assignmentId: dig.id, rateId: context.wetHire.id } }),
@@ -395,7 +408,7 @@ describe('Mark as Priced', () => {
     ])
       await expect(attempt()).rejects.toMatchObject({ code: 'contracting_job.wrong_status' });
     await expect(
-      patchAssignment({ db, actorUserId: adminId, input: { id: dig.id, travelIncluded: false } }),
+      patchAssignment({ actingAs: 'manager', db, actorUserId: adminId, input: { id: dig.id, travelIncluded: false } }),
     ).rejects.toMatchObject({ code: 'contracting_job.wrong_status' });
     await expect(patchJob({ db, actorUserId: adminId, input: { id: jobId, dieselLitres: 90 } })).rejects.toMatchObject({
       code: 'contracting_job.wrong_status',
@@ -453,9 +466,17 @@ describe('a reading amendment on a Priced Job', () => {
     expect(reopened.reopenedAt).not.toBeNull();
     expect(reopened.assignments[0]).toMatchObject({ rateName: 'Dry hire', finalAmount: 5_400, amountEdited: false });
     expect(await jobEvents(db, jobId)).toBe(eventsBefore + 1);
-    expect((await listJobs({ db, queue: 'awaiting-pricing', limit: 50, offset: 0 })).map((job) => job.id)).toEqual([
-      jobId,
-    ]);
+    expect(
+      (
+        await listJobs({
+          db,
+          reader: { mode: 'all', actorUserId: 'reader' },
+          queue: 'awaiting-pricing',
+          limit: 50,
+          offset: 0,
+        })
+      ).map((job) => job.id),
+    ).toEqual([jobId]);
 
     const repriced = await markPriced({ db, actorUserId: adminId, input: { id: jobId, expectedTotal: 5_400 } });
     expect(repriced).toMatchObject({ reopenedAt: null, repricingNote: null });

@@ -5,7 +5,7 @@ import { createCustomer } from '../customers/customer-service.js';
 import { createFarm } from '../customers/farm-service.js';
 import { createCategory } from '../fleet/category-service.js';
 import { createMachine } from '../fleet/machine-service.js';
-import { planAssignment } from '../jobs/assignment-service.js';
+import { createAssignment } from '../jobs/assignment-service.js';
 import { getJob } from '../jobs/job-read.js';
 import { completeJob, createJob } from '../jobs/job-service.js';
 import { markPriced, setStintRate } from '../jobs/pricing-service.js';
@@ -83,7 +83,12 @@ const nextCapture = () => {
 
 /** A planned stint that arrived and left, with its readings. */
 export async function leftStint(db: Db, jobId: string, machineId: string, arrival: number, departure: number) {
-  const planned = await planAssignment({ db, actorUserId: adminId, input: { jobId, machineId, implementId: null } });
+  const planned = await createAssignment({
+    actingAs: 'manager',
+    db,
+    actorUserId: adminId,
+    input: { jobId, machineId, implementId: null },
+  });
   if (!planned) throw new Error('Expected a planned stint');
   const capture = (role: 'arrival' | 'departure', value: number) =>
     captureReading({

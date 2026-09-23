@@ -11,7 +11,7 @@ import {
   sendHttpError,
 } from '../../http-route-helpers.js';
 import { jobErrorFamily } from '../contracting-error-families.js';
-import { readMode } from './job-read-mode.js';
+import { jobReader } from './job-read-mode.js';
 
 const JobCardParams = z.object({ code: JobNumber });
 
@@ -33,8 +33,7 @@ export async function registerJobCardHttpRoutes(
       const { variant } = JobCardQuery.parse(request.query);
       const result = await renderJobCard({
         db,
-        actorUserId: auth.session.user.id,
-        mode: readMode(auth.access),
+        reader: jobReader(auth.access, auth.session.user.id),
         code,
         variant,
         pdfRenderer,

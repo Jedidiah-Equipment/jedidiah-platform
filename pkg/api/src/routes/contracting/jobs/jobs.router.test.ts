@@ -1,5 +1,6 @@
 import {
   captureReading,
+  createAssignment,
   createCategory,
   createChargeLine,
   createCustomer,
@@ -9,7 +10,6 @@ import {
   createMachine,
   createMeasureType,
   createWorkType,
-  planAssignment,
 } from '@pkg/core/contracting';
 import { eq, user } from '@pkg/db';
 import { contractingHourReadings, contractingJobs, contractingMachineAssignments } from '@pkg/db/contracting';
@@ -154,13 +154,15 @@ const test = createTester(async ({ db }) => {
     actorUserId: managerId,
     input: { ...base, foremanUserId: otherForemanId },
   });
-  const stint = await planAssignment({
+  const stint = await createAssignment({
+    actingAs: 'manager',
     db,
     actorUserId: managerId,
     input: { jobId: ownJob.id, machineId: machine.id, implementId: null },
   });
   if (!stint) throw new Error('Expected Machine Assignment');
-  const otherStint = await planAssignment({
+  const otherStint = await createAssignment({
+    actingAs: 'manager',
     db,
     actorUserId: managerId,
     input: { jobId: otherJob.id, machineId: otherMachine.id, implementId: implement.id },
@@ -285,8 +287,8 @@ test('enforces the Job queue role matrix and strips money from Foreman reads', a
   });
   await expect(foreman.jobs.get({ id: context.otherJob.id })).rejects.toMatchObject({ code: 'FORBIDDEN' });
   await expect(foreman.jobs.get({ id: context.pricedJob.id })).rejects.toMatchObject({ code: 'FORBIDDEN' });
-  expect(await foreman.jobs.list({ queue: 'awaiting-invoice' })).toEqual([]);
-  await expect(foreman.stints.remove({ id: context.stint.id })).rejects.toMatchObject({ code: 'FORBIDDEN' });
+  await expect(foreman.jobs.list({ queue: 'awaiting-invoice' })).rejects.toMatchObject({ code: 'FORBIDDEN' });
+  await expect(foreman.assignments.remove({ id: context.stint.id })).rejects.toMatchObject({ code: 'FORBIDDEN' });
 
   const workshop = context.createCaller(contractingSession('workshop-manager')).contractingJobs;
   expect((await workshop.jobs.list({ queue: 'upcoming' })).map((job) => job.id)).toEqual([context.ownJob.id]);
@@ -445,7 +447,7 @@ test('lets Invoicing list, read and stamp Priced Jobs while every other write st
   for (const attempt of [
     () => invoicing.pricing.markPriced({ id: context.completedJob.id, expectedTotal: 0 }),
     () => invoicing.jobs.patch({ id: context.pricedJob.id, notes: 'Keyed in' }),
-    () => invoicing.stints.remove({ id: context.stint.id }),
+    () => invoicing.assignments.remove({ id: context.stint.id }),
   ])
     await expect(attempt()).rejects.toMatchObject({ code: 'FORBIDDEN' });
 

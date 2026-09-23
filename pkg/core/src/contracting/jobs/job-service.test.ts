@@ -13,7 +13,7 @@ import { createMeasureType, removeMeasureType } from '../rate-card/measure-type-
 import { createRate, listRates, removeRate } from '../rate-card/rate-service.js';
 import { captureReading } from '../readings/reading-service.js';
 import { createWorkType } from '../work-types/work-type-service.js';
-import { patchAssignment, planAssignment, removeAssignment, resolveGap } from './assignment-service.js';
+import { createAssignment, patchAssignment, removeAssignment, resolveGap } from './assignment-service.js';
 import { getJob, listJobs } from './job-read.js';
 import { cancelJob, completeJob, createJob } from './job-service.js';
 import { setMeasure } from './measure-service.js';
@@ -163,7 +163,8 @@ describe('Job setup', () => {
 describe('Machine Assignment lifecycle', () => {
   test('rejects retired Implements and device Drivers when an arrival starts a stint', async ({ context }) => {
     const job = await createJob({ db: context.db, actorUserId: managerId, input: jobInput(context) });
-    const planned = await planAssignment({
+    const planned = await createAssignment({
+      actingAs: 'manager',
       db: context.db,
       actorUserId: managerId,
       input: { jobId: job.id, machineId: context.machine.id, implementId: null },
@@ -273,7 +274,8 @@ describe('Machine Assignment lifecycle', () => {
         comment: 'Photo unavailable',
       },
     });
-    const planned = await planAssignment({
+    const planned = await createAssignment({
+      actingAs: 'manager',
       db: context.db,
       actorUserId: managerId,
       input: { jobId: secondJob.id, machineId: context.machine.id, implementId: null },
@@ -321,12 +323,14 @@ describe('Machine Assignment lifecycle', () => {
   }) => {
     const firstJob = await createJob({ db: context.db, actorUserId: managerId, input: jobInput(context) });
     const secondJob = await createJob({ db: context.db, actorUserId: managerId, input: jobInput(context) });
-    const first = await planAssignment({
+    const first = await createAssignment({
+      actingAs: 'manager',
       db: context.db,
       actorUserId: managerId,
       input: { jobId: firstJob.id, machineId: context.machine.id, implementId: null },
     });
-    const second = await planAssignment({
+    const second = await createAssignment({
+      actingAs: 'manager',
       db: context.db,
       actorUserId: managerId,
       input: { jobId: secondJob.id, machineId: context.machine.id, implementId: null },
@@ -415,9 +419,25 @@ describe('Machine Assignment lifecycle', () => {
     });
     expect((await getJob({ db: context.db, id: secondJob.id })).status).toBe('active');
     expect(
-      (await listJobs({ db: context.db, queue: 'looks-finished', limit: 50, offset: 0 })).map((job) => job.id),
+      (
+        await listJobs({
+          db: context.db,
+          reader: { mode: 'all', actorUserId: 'reader' },
+          queue: 'looks-finished',
+          limit: 50,
+          offset: 0,
+        })
+      ).map((job) => job.id),
     ).toEqual([firstJob.id]);
-    expect(await listJobs({ db: context.db, queue: 'active', limit: 1, offset: 1 })).toHaveLength(1);
+    expect(
+      await listJobs({
+        db: context.db,
+        reader: { mode: 'all', actorUserId: 'reader' },
+        queue: 'active',
+        limit: 1,
+        offset: 1,
+      }),
+    ).toHaveLength(1);
 
     await captureReading({
       db: context.db,
@@ -440,7 +460,8 @@ describe('Machine Assignment lifecycle', () => {
 
   test('freezes assignment changes after cancellation', async ({ context }) => {
     const job = await createJob({ db: context.db, actorUserId: managerId, input: jobInput(context) });
-    const planned = await planAssignment({
+    const planned = await createAssignment({
+      actingAs: 'manager',
       db: context.db,
       actorUserId: managerId,
       input: { jobId: job.id, machineId: context.machine.id, implementId: null },
@@ -453,6 +474,7 @@ describe('Machine Assignment lifecycle', () => {
     });
     await expect(
       patchAssignment({
+        actingAs: 'manager',
         db: context.db,
         actorUserId: managerId,
         input: { id: planned.id, travelIncluded: false },
@@ -469,7 +491,8 @@ describe('Completion and billable facts', () => {
     context,
   }) => {
     const job = await createJob({ db: context.db, actorUserId: managerId, input: jobInput(context) });
-    const arrived = await planAssignment({
+    const arrived = await createAssignment({
+      actingAs: 'manager',
       db: context.db,
       actorUserId: managerId,
       input: { jobId: job.id, machineId: context.machine.id, implementId: null },
@@ -539,7 +562,8 @@ describe('Completion and billable facts', () => {
       }),
     ).rejects.toBeDefined();
 
-    const planned = await planAssignment({
+    const planned = await createAssignment({
+      actingAs: 'manager',
       db: context.db,
       actorUserId: managerId,
       input: { jobId: job.id, machineId: context.machine.id, implementId: null },
@@ -605,7 +629,8 @@ describe('Completion and billable facts', () => {
 
   test('requires a resolved split when a sequential stint opens a Gap Flag', async ({ context }) => {
     const firstJob = await createJob({ db: context.db, actorUserId: managerId, input: jobInput(context) });
-    const first = await planAssignment({
+    const first = await createAssignment({
+      actingAs: 'manager',
       db: context.db,
       actorUserId: managerId,
       input: { jobId: firstJob.id, machineId: context.machine.id, implementId: null },
@@ -637,7 +662,8 @@ describe('Completion and billable facts', () => {
       },
     });
     const secondJob = await createJob({ db: context.db, actorUserId: managerId, input: jobInput(context) });
-    const second = await planAssignment({
+    const second = await createAssignment({
+      actingAs: 'manager',
       db: context.db,
       actorUserId: managerId,
       input: { jobId: secondJob.id, machineId: context.machine.id, implementId: null },

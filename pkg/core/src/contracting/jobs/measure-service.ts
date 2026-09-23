@@ -1,22 +1,18 @@
 import type { DatabaseTransaction, Db } from '@pkg/db';
-import {
-  contractingJobs,
-  contractingMachineAssignments,
-  contractingMeasures,
-  contractingMeasureTypes,
-} from '@pkg/db/contracting';
+import { contractingMeasures, contractingMeasureTypes } from '@pkg/db/contracting';
 import type { AuthId } from '@pkg/schema';
-import type { MeasureRemoveInput, MeasureSetInput } from '@pkg/schema/contracting';
-import { and, eq } from 'drizzle-orm';
 import {
-  defineAuditDescriptor,
-  diffAuditUpdate,
-  recordAuditCreate,
-  recordAuditDelete,
-  recordAuditUpdate,
-} from '../../audit/audit-writer.js';
+  hasJobStatus,
+  type MeasureRemoveInput,
+  type MeasureSetInput,
+  workedJobStatuses,
+} from '@pkg/schema/contracting';
+import { and, eq } from 'drizzle-orm';
+import { defineAuditDescriptor, recordAuditCreate, recordAuditDelete } from '../../audit/audit-writer.js';
+import { mutateEntity } from '../../audit/mutate-entity.js';
 import { jobNotFound, withJobConstraints, wrongStatus } from './job-errors.js';
-import { getJob } from './job-read.js';
+import { lockAssignment } from './job-lock.js';
+import { assignmentIn, getJob } from './job-read.js';
 
 type Row = typeof contractingMeasures.$inferSelect;
 export const measureDescriptor = (measureTypeName: string) =>
@@ -29,8 +25,8 @@ export const measureDescriptor = (measureTypeName: string) =>
     toRecord: ({ id: _id, createdAt: _createdAt, updatedAt: _updatedAt, ...row }) => row,
   });
 
-async function getMeasureTypeName(db: DatabaseTransaction, id: string) {
-  const [measureType] = await db
+async function getMeasureTypeName(tx: DatabaseTransaction, id: string) {
+  const [measureType] = await tx
     .select({ name: contractingMeasureTypes.name })
     .from(contractingMeasureTypes)
     .where(eq(contractingMeasureTypes.id, id));
@@ -38,60 +34,54 @@ async function getMeasureTypeName(db: DatabaseTransaction, id: string) {
   return measureType.name;
 }
 
-async function lockMeasureJob(db: DatabaseTransaction, assignmentId: string) {
-  const [reference] = await db
-    .select({ jobId: contractingMachineAssignments.jobId })
-    .from(contractingMachineAssignments)
-    .where(eq(contractingMachineAssignments.id, assignmentId));
-  if (!reference) throw jobNotFound('Machine Assignment');
-  const [job] = await db.select().from(contractingJobs).where(eq(contractingJobs.id, reference.jobId)).for('update');
-  if (!job) throw jobNotFound();
-  const [stint] = await db
-    .select()
-    .from(contractingMachineAssignments)
-    .where(eq(contractingMachineAssignments.id, assignmentId))
-    .for('update');
-  if (!stint) throw jobNotFound('Machine Assignment');
+/** Locks the stint and its Job, and checks its Measures may change. */
+async function lockMeasurable(tx: DatabaseTransaction, assignmentId: string) {
+  const { job, stint } = await lockAssignment(tx, assignmentId);
   if (!stint.arrivalReadingId) throw wrongStatus('Measures can only be recorded after the Machine has arrived.');
-  if (!['active', 'completed'].includes(job.status))
+  if (!hasJobStatus(workedJobStatuses, job.status))
     throw wrongStatus('Measures can only be changed on an Active or Completed Job.');
-  return { job, stint };
+  return job;
 }
 
+async function lockMeasure(tx: DatabaseTransaction, { assignmentId, measureTypeId }: MeasureRemoveInput) {
+  const [row] = await tx
+    .select()
+    .from(contractingMeasures)
+    .where(
+      and(eq(contractingMeasures.assignmentId, assignmentId), eq(contractingMeasures.measureTypeId, measureTypeId)),
+    )
+    .for('update');
+  return row;
+}
+
+/** Records a stint's quantity of one Measure Type, replacing any quantity already recorded. */
 export async function setMeasure({ db, actorUserId, input }: { db: Db; actorUserId: AuthId; input: MeasureSetInput }) {
   return withJobConstraints(() =>
     db.transaction(async (tx) => {
-      const { job } = await lockMeasureJob(tx, input.assignmentId);
+      const job = await lockMeasurable(tx, input.assignmentId);
       const descriptor = measureDescriptor(await getMeasureTypeName(tx, input.measureTypeId));
-      const [before] = await tx
-        .select()
-        .from(contractingMeasures)
-        .where(
-          and(
-            eq(contractingMeasures.assignmentId, input.assignmentId),
-            eq(contractingMeasures.measureTypeId, input.measureTypeId),
-          ),
-        )
-        .for('update');
-      const now = new Date();
-      const [row] = await tx
-        .insert(contractingMeasures)
-        .values({ ...input, updatedAt: now })
-        .onConflictDoUpdate({
-          target: [contractingMeasures.assignmentId, contractingMeasures.measureTypeId],
-          set: { quantity: input.quantity, updatedAt: now },
-        })
-        .returning();
-      if (!row) throw new Error('Measure upsert returned no row');
-      if (!before) {
-        await recordAuditCreate({ db: tx, actorUserId, descriptor, input: row });
+      const before = await lockMeasure(tx, input);
+      if (before) {
+        await mutateEntity({
+          db: tx,
+          actorUserId,
+          descriptor,
+          table: contractingMeasures,
+          id: before.id,
+          notFound: () => jobNotFound('Measure'),
+          set: () => ({ quantity: input.quantity, updatedAt: new Date() }),
+          project: () => undefined,
+        });
       } else {
-        const changes = diffAuditUpdate(descriptor, before, row);
-        if (changes) await recordAuditUpdate({ db: tx, actorUserId, descriptor, after: row, changes });
+        const [row] = await tx.insert(contractingMeasures).values(input).returning();
+        if (!row) throw new Error('Measure insert returned no row');
+        await recordAuditCreate({ db: tx, actorUserId, descriptor, input: row });
       }
-      return (await getJob({ db: tx, id: job.id })).assignments
-        .find((assignment) => assignment.id === input.assignmentId)
-        ?.measures.find((measure) => measure.measureTypeId === input.measureTypeId);
+      const measure = assignmentIn(await getJob({ db: tx, id: job.id }), input.assignmentId).measures.find(
+        (candidate) => candidate.measureTypeId === input.measureTypeId,
+      );
+      if (!measure) throw jobNotFound('Measure');
+      return measure;
     }),
   );
 }
@@ -107,17 +97,8 @@ export async function removeMeasure({
 }) {
   return withJobConstraints(() =>
     db.transaction(async (tx) => {
-      await lockMeasureJob(tx, input.assignmentId);
-      const [row] = await tx
-        .select()
-        .from(contractingMeasures)
-        .where(
-          and(
-            eq(contractingMeasures.assignmentId, input.assignmentId),
-            eq(contractingMeasures.measureTypeId, input.measureTypeId),
-          ),
-        )
-        .for('update');
+      await lockMeasurable(tx, input.assignmentId);
+      const row = await lockMeasure(tx, input);
       if (!row) throw jobNotFound('Measure');
       const descriptor = measureDescriptor(await getMeasureTypeName(tx, row.measureTypeId));
       await tx.delete(contractingMeasures).where(eq(contractingMeasures.id, row.id));

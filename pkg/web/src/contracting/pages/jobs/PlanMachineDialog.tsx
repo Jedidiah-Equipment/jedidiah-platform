@@ -29,7 +29,7 @@ export function PlanMachineDialog({
   const implementOptions = useQuery(trpc.contractingJobs.field.implements.queryOptions(undefined, { enabled: open }));
   const drivers = useQuery(trpc.contractingJobs.field.drivers.queryOptions(undefined, { enabled: open }));
   const plan = useMutation(
-    trpc.contractingJobs.stints.plan.mutationOptions({
+    trpc.contractingJobs.assignments.plan.mutationOptions({
       onSuccess: invalidateJobs,
       onError: (error) => showError(error, 'Unable to plan Machine.'),
     }),

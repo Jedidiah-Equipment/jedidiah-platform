@@ -23,7 +23,7 @@ import { JobCardMenu } from './JobCardMenu.js';
 import { MachinesCard } from './MachinesCard.js';
 import { PricingCard } from './PricingCard.js';
 import { SignOffCard } from './SignOffCard.js';
-import { JobCreateValues, jobCapabilities, toJobCreateInput } from './types.js';
+import { type JobCapabilities, JobCreateValues, jobCapabilities, toJobCreateInput } from './types.js';
 
 export function JobPage({ code }: { code: string }) {
   const trpc = useTRPC();
@@ -75,9 +75,7 @@ export function JobPage({ code }: { code: string }) {
   );
 }
 
-type Capabilities = ReturnType<typeof jobCapabilities>;
-
-function SetupCard({ job, capabilities }: { job: JobDetail; capabilities: Capabilities }) {
+function SetupCard({ job, capabilities }: { job: JobDetail; capabilities: JobCapabilities }) {
   const trpc = useTRPC();
   const { invalidateJobs } = useQueryInvalidation();
   const [customerId, setCustomerId] = useState(job.customerId);

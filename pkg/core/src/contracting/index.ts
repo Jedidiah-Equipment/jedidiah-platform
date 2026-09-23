@@ -19,6 +19,7 @@ export * from './jobs/pricing-service.js';
 export * from './rate-card/measure-type-service.js';
 export * from './rate-card/rate-card-errors.js';
 export * from './rate-card/rate-service.js';
+export * from './readings/reading-errors.js';
 export * from './readings/reading-evidence.js';
 export * from './readings/reading-service.js';
 export * from './work-types/work-type-service.js';

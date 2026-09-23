@@ -1,4 +1,9 @@
-import type { ReadingExceptionType } from '@pkg/schema/contracting';
+import {
+  type AiFlaggedVerification,
+  aiFlaggedVerifications,
+  type ReadingExceptionType,
+  type ReadingVerification,
+} from '@pkg/schema/contracting';
 import { getBusinessRole } from '../auth/authorization.js';
 import { type BadgeColorClassNames, statusBadgeColorClassNames } from '../theme/status-badge.js';
 
@@ -12,6 +17,9 @@ export const readingExceptionTypeColorClassNames: Record<ReadingExceptionType, B
   'ai-flagged': statusBadgeColorClassNames.yellow,
   disputed: statusBadgeColorClassNames.red,
 };
+
+export const isAiFlaggedVerification = (verification: ReadingVerification): verification is AiFlaggedVerification =>
+  (aiFlaggedVerifications as readonly ReadingVerification[]).includes(verification);
 
 export function canCaptureBaseline(access: Parameters<typeof getBusinessRole>[0]): boolean {
   const role = getBusinessRole(access, 'contracting');

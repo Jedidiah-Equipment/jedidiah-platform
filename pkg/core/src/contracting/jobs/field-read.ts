@@ -12,10 +12,19 @@ import {
 } from '@pkg/db/contracting';
 import { assignmentState, fieldJobAccessMode, formatJobNumber } from '@pkg/domain/contracting';
 import type { UserAccessSummary } from '@pkg/schema';
-import { FieldDriver, FieldJob, FieldReading, FieldStint, finishedJobStatuses } from '@pkg/schema/contracting';
+import {
+  FieldDriver,
+  FieldJob,
+  FieldReading,
+  FieldStint,
+  finishedJobStatuses,
+  hasJobStatus,
+  type JobStatus,
+  openJobStatuses,
+} from '@pkg/schema/contracting';
 import { and, asc, eq, getTableColumns, gte, inArray, or, type SQL } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
-import { JobError, jobNotFound } from './job-errors.js';
+import { assertOwner, JobError, jobNotFound } from './job-errors.js';
 
 function fieldReadMode(actor: UserAccessSummary): 'all' | 'own' {
   const mode = fieldJobAccessMode(actor);
@@ -128,7 +137,7 @@ export async function listFieldJobs({
   now?: Date;
 }) {
   const mode = fieldReadMode(actor);
-  const open = inArray(contractingJobs.status, ['upcoming', 'active']);
+  const open = inArray(contractingJobs.status, [...openJobStatuses]);
   const recentlyFinished = and(
     inArray(contractingJobs.status, [...finishedJobStatuses]),
     gte(contractingJobs.completedAt, new Date(now.getTime() - FINISHED_WINDOW_DAYS * 24 * 60 * 60 * 1000)),
@@ -148,11 +157,10 @@ export async function getFieldJob({ db, actor, id }: { db: Db; actor: UserAccess
   const mode = fieldReadMode(actor);
   const [row] = await loadFieldJobs(db, eq(contractingJobs.id, id));
   if (!row) throw jobNotFound();
-  if (mode === 'own' && row.job.foremanUserId !== actor.userId)
-    throw new JobError('contracting_job.not_owner', 'This Job is assigned to another Foreman.');
-  const readable: readonly string[] =
-    mode === 'all' ? ['upcoming', 'active', ...finishedJobStatuses] : ['upcoming', 'active'];
-  if (!readable.includes(row.job.status))
+  if (mode === 'own') assertOwner(row.job, actor.userId);
+  const readable: readonly JobStatus[] =
+    mode === 'all' ? [...openJobStatuses, ...finishedJobStatuses] : openJobStatuses;
+  if (!hasJobStatus(readable, row.job.status))
     throw new JobError('contracting_job.wrong_status', 'This Job is no longer open.');
   return mapFieldJob(row);
 }

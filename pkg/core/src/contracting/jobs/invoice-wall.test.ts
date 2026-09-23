@@ -10,7 +10,7 @@ import {
   type JobFixtures,
   seedJobFixtures,
 } from '../test/job-fixtures.js';
-import { addAssignment, patchAssignment, planAssignment, removeAssignment, resolveGap } from './assignment-service.js';
+import { createAssignment, patchAssignment, removeAssignment, resolveGap } from './assignment-service.js';
 import { createChargeLine, patchChargeLine, removeChargeLine } from './charge-line-service.js';
 import { stampInvoice } from './invoicing-service.js';
 import { getJob } from './job-read.js';
@@ -63,13 +63,28 @@ test('an Invoiced Job refuses every write, and nothing about it moves', async ({
     'patchJob diesel': () => patchJob({ db, actorUserId: adminId, input: { id: jobId, dieselLitres: 10 } }),
     'patchJob foreman': () => patchJob({ db, actorUserId: adminId, input: { id: jobId, foremanUserId: null } }),
     'patchAssignment travel': () =>
-      patchAssignment({ db, actorUserId: adminId, input: { id: stint.id, travelIncluded: false } }),
+      patchAssignment({
+        actingAs: 'manager',
+        db,
+        actorUserId: adminId,
+        input: { id: stint.id, travelIncluded: false },
+      }),
     'patchAssignment implement': () =>
-      patchAssignment({ db, actorUserId: adminId, input: { id: stint.id, implementId: null } }),
+      patchAssignment({ actingAs: 'manager', db, actorUserId: adminId, input: { id: stint.id, implementId: null } }),
     planAssignment: () =>
-      planAssignment({ db, actorUserId: adminId, input: { jobId, machineId: context.tipper.id, implementId: null } }),
+      createAssignment({
+        actingAs: 'manager',
+        db,
+        actorUserId: adminId,
+        input: { jobId, machineId: context.tipper.id, implementId: null },
+      }),
     addAssignment: () =>
-      addAssignment({ db, actorUserId: foremanId, input: { jobId, machineId: context.tipper.id, implementId: null } }),
+      createAssignment({
+        actingAs: 'foreman',
+        db,
+        actorUserId: foremanId,
+        input: { jobId, machineId: context.tipper.id, implementId: null },
+      }),
     removeAssignment: () => removeAssignment({ db, actorUserId: adminId, id: stint.id }),
     setMeasure: () =>
       setMeasure({

@@ -1,6 +1,7 @@
 import multipart from '@fastify/multipart';
 import { InMemoryStorageAdapter } from '@pkg/core';
 import {
+  createAssignment,
   createCategory,
   createCustomer,
   createFarm,
@@ -9,7 +10,6 @@ import {
   createWorkType,
   getJob,
   listReadingsByMachine,
-  planAssignment,
 } from '@pkg/core/contracting';
 import { user } from '@pkg/db';
 import { MachineCreateInput } from '@pkg/schema/contracting';
@@ -55,7 +55,8 @@ const test = createTester(async ({ db, auth }) => {
       foremanUserId: actorUserId,
     },
   });
-  const assignment = await planAssignment({
+  const assignment = await createAssignment({
+    actingAs: 'manager',
     db,
     actorUserId,
     input: { jobId: job.id, machineId: machine.id, implementId: null },

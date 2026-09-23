@@ -7,6 +7,7 @@ export type JobErrorCode =
   | 'contracting_job.invalid_foreman'
   | 'contracting_job.invalid_driver'
   | 'contracting_job.not_owner'
+  | 'contracting_job.forbidden'
   | 'contracting_job.wrong_status'
   | 'contracting_job.machine_on_site'
   | 'contracting_job.implement_on_site'
@@ -15,7 +16,6 @@ export type JobErrorCode =
   | 'contracting_job.has_on_site_stints'
   | 'contracting_job.open_gap_flags'
   | 'contracting_job.invalid_role'
-  | 'contracting_job.measure_type_inactive'
   | 'contracting_job.pricing_incomplete'
   | 'contracting_job.total_changed'
   | 'contracting_job.rate_inactive';

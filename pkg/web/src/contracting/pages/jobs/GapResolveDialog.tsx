@@ -14,7 +14,7 @@ export function GapResolveDialog({ stint, onClose }: { stint: Assignment | null;
   const showError = useApiMutationErrorToast();
   const { invalidateJobs } = useQueryInvalidation();
   const resolve = useMutation(
-    trpc.contractingJobs.stints.resolveGap.mutationOptions({
+    trpc.contractingJobs.assignments.resolveGap.mutationOptions({
       onSuccess: invalidateJobs,
       onError: (error) => showError(error, 'Unable to resolve Gap Flag.'),
     }),

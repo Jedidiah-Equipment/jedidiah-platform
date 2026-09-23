@@ -478,7 +478,6 @@ export async function listJobs({
   queue: JobQueue;
   limit: number;
   offset: number;
-  /** Scopes to a Foreman's own Jobs, without their money. */
   foremanUserId?: string;
   /** Honoured only for the invoiced queue: Jobs stamped in this South African calendar month. */
   invoicedInMonth?: string | undefined;
@@ -548,7 +547,6 @@ export async function listJobs({
         JobSummary.parse({
           ...row,
           pricedAt: row.pricedAt?.toISOString() ?? null,
-          pricedTotal: foremanUserId ? null : row.pricedTotal,
           invoicedAt: row.invoicedAt?.toISOString() ?? null,
           createdAt: row.createdAt.toISOString(),
           updatedAt: row.updatedAt.toISOString(),
@@ -556,6 +554,27 @@ export async function listJobs({
       ),
     );
 }
+
+export async function listReadableJobs({
+  db,
+  actorUserId,
+  mode,
+  ...input
+}: {
+  db: Db;
+  actorUserId: string;
+  mode: 'all' | 'own' | 'priced';
+  queue: JobQueue;
+  limit: number;
+  offset: number;
+  invoicedInMonth?: string | undefined;
+}) {
+  if (mode !== 'own') return listJobs({ db, ...input });
+  const jobs = await listJobs({ db, ...input, foremanUserId: actorUserId });
+  return jobs.map(redactSummaryMoney);
+}
+
+export const redactSummaryMoney = (job: JobSummary) => JobSummary.parse({ ...job, pricedTotal: null });
 
 export function redactMoney(job: JobDetail) {
   return JobDetail.parse({

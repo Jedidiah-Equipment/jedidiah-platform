@@ -14,8 +14,8 @@ import {
   listFieldImplements,
   listFieldJobs,
   listForemen,
-  listJobs,
   listMeasureTypes,
+  listReadableJobs,
   markPriced,
   patchAssignment,
   patchChargeLine,
@@ -145,11 +145,7 @@ export const contractingJobsRouter = router({
           const mode = readMode(ctx.access);
           if (mode === 'priced' && !['awaiting-pricing', 'awaiting-invoice', 'invoiced'].includes(input.queue))
             refuseRead();
-          return listJobs({
-            db: ctx.db,
-            ...input,
-            ...(mode === 'own' ? { foremanUserId: ctx.session.user.id } : {}),
-          });
+          return listReadableJobs({ db: ctx.db, actorUserId: ctx.session.user.id, mode, ...input });
         }, jobErrorFamily),
       ),
     get: authorizedProcedure(readPermissions)

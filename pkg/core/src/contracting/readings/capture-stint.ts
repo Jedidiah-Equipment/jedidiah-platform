@@ -26,7 +26,6 @@ type MachineRow = typeof contractingMachines.$inferSelect;
 export type CaptureStint = { job: JobRow; stint: StintRow };
 
 const stintNotFound = () => new ReadingError('reading.not_found', 'Machine Assignment not found.');
-const alreadyArrived = () => new ReadingError('reading.invalid_role', 'This Machine Assignment already arrived.');
 
 async function lockPlannedStint(
   tx: DatabaseTransaction,
@@ -68,7 +67,6 @@ async function startStint(
         .for('update');
   if (!stint || stint.jobId !== job.id || stint.machineId !== input.machineId)
     throw new ReadingError('reading.capture_id_conflict', 'This Machine Assignment identifier is already used.');
-  if (stint.arrivalReadingId) throw alreadyArrived();
   if (inserted)
     await recordAuditCreate({
       db: tx,
@@ -111,10 +109,10 @@ async function assertArrivalResources(
   }
 }
 
-/** Finds, or starts, the stint a capture belongs to, and checks the capture may land on it. */
+/** Finds, or starts, the stint a capture belongs to, and checks the actor may capture on its Job. */
 export async function resolveCaptureStint(
   tx: DatabaseTransaction,
-  context: { actor: JobActor; input: ReadingCaptureInput; machine: MachineRow; hasPhoto: boolean },
+  context: { actor: JobActor; input: ReadingCaptureInput; machine: MachineRow },
 ): Promise<CaptureStint | null> {
   const { input } = context;
   const resolved = input.assignmentId

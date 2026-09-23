@@ -33,23 +33,6 @@ const test = createTester(async ({ db }) => {
   return { actor: accessForRole('contracting-manager', actorUserId), actorUserId, machineId: machine.id };
 });
 
-test('refuses a spot below the latest reading but accepts an idle machine with equal hours', async ({ context }) => {
-  const { db, actor, machineId } = context;
-  const input = {
-    machineId,
-    role: 'baseline' as const,
-    value: 120.5,
-    capturedAt: '2026-09-07T08:00:00Z',
-    disputePrevious: false,
-  };
-  await captureReading({ db, actor, input });
-  await expect(captureReading({ db, actor, input: { ...input, role: 'spot', value: 120.4 } })).rejects.toMatchObject({
-    code: 'reading.below_latest',
-  });
-  await captureReading({ db, actor, input: { ...input, role: 'spot' } });
-  expect((await listReadingsByMachine({ db, machineId })).map((row) => row.value)).toEqual([120.5, 120.5]);
-});
-
 test('flags both disputed readings and clears the resolved pair with an audited amendment', async ({ context }) => {
   const { db, actor, actorUserId, machineId } = context;
   const { amendReading, listReadingExceptions } = await import('./reading-service.js');

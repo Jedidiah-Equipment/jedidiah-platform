@@ -1,4 +1,4 @@
-import { type CaptureWorld, judgeCapture } from '@pkg/domain/contracting';
+import type { CaptureWorld } from '@pkg/domain/contracting';
 import type {
   AssignmentState,
   FieldImplement,
@@ -59,10 +59,16 @@ export function captureWorld({
   implementRows,
   management,
   hasPhoto,
+  unresolvedStint = null,
 }: {
   machineId: string;
   /** The stint the capture lands on; null for a spot reading or a stint the capture starts. */
   stintId: string | null;
+  /**
+   * What to believe of a stint the phone cannot find — its Jobs never cached while offline: the state
+   * the screen that opened the capture already showed. The server stays the authority.
+   */
+  unresolvedStint?: AssignmentState | null;
   queued: readonly QueuedReading[];
   history: readonly Pick<FieldReading, 'id' | 'value' | 'capturedAt'>[] | undefined;
   jobs: readonly FieldJob[];
@@ -120,31 +126,9 @@ export function captureWorld({
       ? startedStint.left
         ? 'left'
         : 'on-site'
-      : null;
+      : stintId
+        ? unresolvedStint
+        : null;
 
   return { latest: latestKnownReading(machineId, queued, history), stint, onSite, management, hasPhoto };
-}
-
-/**
- * The Job a Machine or Implement is on elsewhere, as the capture rules judge an arrival bringing it:
- * what the Add Machine picker greys out and labels.
- */
-export function onSiteElsewhere(
-  world: CaptureWorld,
-  { machineId = null, implementId = null }: { machineId?: string | null; implementId?: string | null },
-): string | null {
-  const verdict = judgeCapture(
-    { ...world, latest: null, stint: null },
-    {
-      role: 'arrival',
-      value: 0,
-      machineId: machineId ?? '',
-      implementId,
-      disputePrevious: false,
-      expectedPreviousId: undefined,
-      comment: null,
-    },
-  );
-  if (verdict.ok || (verdict.rule !== 'machine-busy' && verdict.rule !== 'implement-busy')) return null;
-  return verdict.jobNumber ?? 'another Job';
 }

@@ -142,14 +142,13 @@ export async function captureReading({
         if (delivered) return delivered;
         if (machine.retiredAt)
           throw new ReadingError('reading.retired_machine', 'Cannot capture readings for a retired Machine.');
-        const stint = await resolveCaptureStint(tx, { actor, input, machine, hasPhoto: !!evidence });
+        const stint = await resolveCaptureStint(tx, { actor, input, machine });
         const [latest] = await tx
           .select()
           .from(contractingHourReadings)
           .where(eq(contractingHourReadings.machineId, input.machineId))
           .orderBy(desc(contractingHourReadings.sequence))
           .limit(1);
-        // The server's world never lists what is on site: the stint's unique constraints answer that.
         const judgement = judgeCapture(
           {
             latest: latest ? { id: latest.id, value: latest.value } : null,
@@ -191,7 +190,7 @@ export async function captureReading({
             photo,
             ...verdict,
             disputed,
-            disputedPreviousId: disputed && latest ? latest.id : null,
+            disputedPreviousId: judgement.disputes,
             disputeReason: disputed ? 'The previous reading is wrong.' : null,
           })
           .returning();

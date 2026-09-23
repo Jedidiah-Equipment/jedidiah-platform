@@ -48,6 +48,12 @@ describe('judgeCapture', () => {
       { ok: true, disputes: 'latest' },
     ],
     [
+      'disputes nothing when a capture flagged as a dispute is not below the latest',
+      world(),
+      capture({ value: 110, disputePrevious: true, expectedPreviousId: 'latest' }),
+      { ok: true, disputes: null },
+    ],
+    [
       'refuses a dispute aimed at a reading that is no longer the latest',
       world(),
       capture({ value: 90, disputePrevious: true, expectedPreviousId: 'older' }),
@@ -86,6 +92,12 @@ describe('judgeCapture', () => {
     [
       'refuses a departure on a stint that never arrived',
       world({ stint: 'planned' }),
+      capture({ role: 'departure' }),
+      { ok: false, reason: 'reading.invalid_role', rule: 'not-on-site' },
+    ],
+    [
+      'refuses a departure on a stint that has already left',
+      world({ stint: 'left' }),
       capture({ role: 'departure' }),
       { ok: false, reason: 'reading.invalid_role', rule: 'not-on-site' },
     ],
@@ -139,8 +151,16 @@ describe('captureRefusal', () => {
     expect(
       refuse(world({ onSite: [{ machineId: 'tractor', implementId: null, jobNumber: 'CJOB-00041' }] }), capture()),
     ).toBe('This Machine is still on site on CJOB-00041 — capture its departure there first.');
-    expect(captureRefusal({ ok: false, reason: 'reading.implement_on_site', rule: 'implement-busy' })).toBe(
-      'This Implement is still on site on another Job — capture its departure there first.',
+    expect(captureRefusal({ ok: false, reason: 'reading.machine_on_site', rule: 'machine-busy' })).toBe(
+      'This Machine is still on site on another Job — capture its departure there first.',
     );
+    expect(
+      captureRefusal({
+        ok: false,
+        reason: 'reading.implement_on_site',
+        rule: 'implement-busy',
+        jobNumber: 'CJOB-00007',
+      }),
+    ).toBe('This Implement is still on site on CJOB-00007 — capture its departure there first.');
   });
 });

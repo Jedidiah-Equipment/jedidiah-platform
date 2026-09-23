@@ -1,7 +1,8 @@
+import { onSiteElsewhere } from '@pkg/domain/contracting';
 import { DateIso } from '@pkg/schema';
 import type { FieldImplement, FieldJob, FieldMachine, FieldStint } from '@pkg/schema/contracting';
 import { describe, expect, test } from 'vitest';
-import { captureWorld, onSiteElsewhere } from './capture-world';
+import { captureWorld } from './capture-world';
 import type { QueuedReading } from './reading-queue';
 
 const ids = {
@@ -97,6 +98,11 @@ describe('captureWorld', () => {
     expect(captureWorld({ ...base, queued: [start], stintId: ids.start }).stint).toBe('on-site');
   });
 
+  test('believes the state the opening screen showed for a stint the phone has not cached', () => {
+    expect(captureWorld({ ...base, stintId: ids.stint, unresolvedStint: 'on-site' }).stint).toBe('on-site');
+    expect(captureWorld({ ...base, stintId: null, unresolvedStint: 'on-site' }).stint).toBeNull();
+  });
+
   test('frees a Machine and its Implement once their departure is queued, whatever the server last said', () => {
     const onSite = stint({ state: 'on-site', implementId: ids.disc });
     const departure = queued({ role: 'departure', assignmentId: ids.stint });
@@ -125,15 +131,21 @@ describe('captureWorld', () => {
   });
 });
 
-describe('onSiteElsewhere', () => {
+describe('onSiteElsewhere over the phone’s world', () => {
   test('names the Job a Machine or Implement is on, as the capture rules judge it', () => {
     const world = captureWorld({
       ...base,
       fleet: [machine(ids.digger, 'CJOB-00007')],
       implementRows: [implement(ids.disc, 'CJOB-00008')],
     });
-    expect(onSiteElsewhere(world, { machineId: ids.digger })).toBe('CJOB-00007');
-    expect(onSiteElsewhere(world, { implementId: ids.disc })).toBe('CJOB-00008');
+    expect(onSiteElsewhere(world, { machineId: ids.digger })).toEqual({
+      rule: 'machine-busy',
+      jobNumber: 'CJOB-00007',
+    });
+    expect(onSiteElsewhere(world, { implementId: ids.disc })).toEqual({
+      rule: 'implement-busy',
+      jobNumber: 'CJOB-00008',
+    });
     expect(onSiteElsewhere(world, { machineId: ids.tractor })).toBeNull();
   });
 });

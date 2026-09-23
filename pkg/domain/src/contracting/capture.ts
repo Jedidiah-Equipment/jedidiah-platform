@@ -59,6 +59,20 @@ const refuse = (rule: CaptureRule, jobNumber?: string | null): CaptureRefused =>
   ...(jobNumber ? { jobNumber } : {}),
 });
 
+/**
+ * The Job a Machine or Implement is on elsewhere in this world, if any: what an arrival bringing it
+ * is refused for, and what a picker greys out before a capture exists.
+ */
+export function onSiteElsewhere(
+  world: Pick<CaptureWorld, 'onSite'>,
+  { machineId = null, implementId = null }: { machineId?: string | null; implementId?: string | null },
+): { rule: 'machine-busy' | 'implement-busy'; jobNumber: string | null } | null {
+  const machine = machineId === null ? undefined : world.onSite.find((stint) => stint.machineId === machineId);
+  if (machine) return { rule: 'machine-busy', jobNumber: machine.jobNumber };
+  const implement = implementId === null ? undefined : world.onSite.find((stint) => stint.implementId === implementId);
+  return implement ? { rule: 'implement-busy', jobNumber: implement.jobNumber } : null;
+}
+
 /** Whether this capture may land in this world: the one judgement the phone's queue and the server's ledger share. */
 export function judgeCapture(world: CaptureWorld, capture: CaptureAttempt): CaptureVerdict {
   if (capture.role === 'departure' && world.management && !world.hasPhoto && !capture.comment?.trim())
@@ -66,13 +80,8 @@ export function judgeCapture(world: CaptureWorld, capture: CaptureAttempt): Capt
   if (capture.role === 'arrival' && world.stint !== null && world.stint !== 'planned') return refuse('already-arrived');
   if (capture.role === 'departure' && world.stint !== 'on-site') return refuse('not-on-site');
   if (capture.role === 'arrival') {
-    const machine = world.onSite.find((stint) => stint.machineId === capture.machineId);
-    if (machine) return refuse('machine-busy', machine.jobNumber);
-    const implement =
-      capture.implementId === null
-        ? undefined
-        : world.onSite.find((stint) => stint.implementId === capture.implementId);
-    if (implement) return refuse('implement-busy', implement.jobNumber);
+    const busy = onSiteElsewhere(world, capture);
+    if (busy) return refuse(busy.rule, busy.jobNumber);
   }
   if (
     capture.disputePrevious &&

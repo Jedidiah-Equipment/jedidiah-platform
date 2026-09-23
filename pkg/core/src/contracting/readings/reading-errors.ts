@@ -9,8 +9,6 @@ import type { JobActionName, ReadingErrorCode } from '@pkg/schema/contracting';
 import { translatingConstraintViolations } from '../../errors/constraint-violations.js';
 import type { RefusedJobAction } from '../jobs/job-errors.js';
 
-export type { ReadingErrorCode };
-
 export class ReadingError extends Error {
   constructor(
     readonly code: ReadingErrorCode,

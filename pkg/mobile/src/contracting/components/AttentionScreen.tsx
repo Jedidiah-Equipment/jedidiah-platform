@@ -1,4 +1,5 @@
 import { formatDate, formatHours } from '@pkg/domain';
+import type { ReadingErrorCode } from '@pkg/schema/contracting';
 import { type Href, router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { ScrollView, View } from 'react-native';
@@ -12,6 +13,9 @@ import { useSessionPermission } from '@/lib/auth-session';
 import { addBreadcrumb, captureEvent } from '@/lib/observability';
 import { useBusyAction } from '@/lib/use-busy-action';
 import { attentionParent } from './attention-parent';
+
+/** A refusal the Foreman can answer by disputing the previous reading. */
+const disputable: readonly ReadingErrorCode[] = ['reading.below_latest', 'reading.previous_changed'];
 
 export default function AttentionScreen() {
   const parent = attentionParent(useLocalSearchParams<{ from?: string; jobId?: string }>());
@@ -59,8 +63,7 @@ export default function AttentionScreen() {
                   Fix the Job on another phone or with management, then discard this capture and start again.
                 </Text>
               ) : null}
-              {['reading.below_latest', 'reading.previous_changed'].includes(item.attention?.code ?? '') &&
-              canCapture ? (
+              {disputable.includes(item.attention?.code as ReadingErrorCode) && canCapture ? (
                 <DisputeAction
                   machineId={item.machineId}
                   busy={busy}

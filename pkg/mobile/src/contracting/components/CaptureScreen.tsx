@@ -1,5 +1,5 @@
 import { formatHours } from '@pkg/domain';
-import { captureRefusal, fieldJobAccessMode } from '@pkg/domain/contracting';
+import { captureRefusal, fieldJobAccessMode, onSiteElsewhere } from '@pkg/domain/contracting';
 import { ReadingComment } from '@pkg/schema/contracting';
 import { useStore } from '@tanstack/react-form';
 import { onlineManager } from '@tanstack/react-query';
@@ -90,7 +90,13 @@ function CaptureForm({ params }: { params: CaptureParams }) {
     implementRows: implementsQuery.data ?? [],
     management,
     hasPhoto: photo !== null,
+    // The Start or Stop button that opened this screen already showed the stint in this state.
+    unresolvedStint: role === 'departure' ? 'on-site' : 'planned',
   });
+  const implementOnJob = (implementId: string) => {
+    const busy = onSiteElsewhere(world, { implementId });
+    return busy ? (busy.jobNumber ?? 'another Job') : null;
+  };
   const latest = world.latest?.value;
   const latestId = world.latest?.id ?? null;
   const plannedImplementId =
@@ -248,9 +254,11 @@ function CaptureForm({ params }: { params: CaptureParams }) {
                         options={[
                           { label: 'No implement', value: '' },
                           ...(implementsQuery.data ?? []).map((row) => ({
-                            label: row.onSiteJobNumber ? `${row.code} · On Job · ${row.onSiteJobNumber}` : row.code,
+                            label: implementOnJob(row.id)
+                              ? `${row.code} · On Job · ${implementOnJob(row.id)}`
+                              : row.code,
                             value: row.id,
-                            disabled: row.onSiteJobNumber !== null,
+                            disabled: implementOnJob(row.id) !== null,
                           })),
                         ]}
                       />

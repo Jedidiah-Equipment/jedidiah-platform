@@ -1,4 +1,4 @@
-import { deriveJobActions } from '@pkg/domain/contracting';
+import { deriveJobActions, onSiteElsewhere } from '@pkg/domain/contracting';
 import { useStore } from '@tanstack/react-form';
 import { type Href, router, useLocalSearchParams } from 'expo-router';
 import { useMemo, useState } from 'react';
@@ -15,7 +15,7 @@ import {
   type MachineSort,
   normalizeMachineCategory,
 } from '@/contracting/lib/machine-catalog';
-import { captureWorld, onSiteElsewhere } from '@/contracting/readings/capture-world';
+import { captureWorld } from '@/contracting/readings/capture-world';
 import { useReadingQueue } from '@/contracting/readings/ReadingQueueProvider';
 import { newLocalId } from '@/contracting/readings/reading-queue';
 import { useFleet } from '@/contracting/readings/use-fleet';
@@ -29,7 +29,6 @@ export default function AddMachineScreen() {
     jobId: string;
     machineId?: string;
     implementId?: string;
-    afterAssignmentId?: string;
   }>();
   const fleet = useFleet();
   const jobs = useJobs();
@@ -58,7 +57,6 @@ export default function AddMachineScreen() {
     categories.map((option) => option.value),
   );
   const machines = getVisibleMachines(fleet.data ?? [], { search, category: normalizedCategory, sort });
-  // A queued departure frees its Machine and Implement, which is what lets one just stopped be re-added.
   const world = useMemo(
     () =>
       captureWorld({
@@ -74,8 +72,9 @@ export default function AddMachineScreen() {
       }),
     [fleet.data, implementQuery.data, items, jobs.data, machineId],
   );
-  const machineOnJob = (id: string) => onSiteElsewhere(world, { machineId: id });
-  const implementOnJob = (id: string) => onSiteElsewhere(world, { implementId: id });
+  const onJob = (busy: ReturnType<typeof onSiteElsewhere>) => (busy ? (busy.jobNumber ?? 'another Job') : null);
+  const machineOnJob = (id: string) => onJob(onSiteElsewhere(world, { machineId: id }));
+  const implementOnJob = (id: string) => onJob(onSiteElsewhere(world, { implementId: id }));
 
   const selectedImplementBusy = values.implementId !== '' && implementOnJob(values.implementId) !== null;
 

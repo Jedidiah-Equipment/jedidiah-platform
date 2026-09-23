@@ -132,7 +132,9 @@ context's `JOB-xxxxx`.
 was captured, and its evidence. Whoever captures it types the value — the Foreman in the field,
 an administrator for a Baseline Reading; a photo is attached whenever
 the camera allows, and a reading without one is stamped **Missing Photo Evidence**. Capture never
-waits for signal — readings queue on the phone and sync when they can. The phone judges a capture by the same rules the server does, over the readings it knows and the captures it has queued, so a refusal reaches the Foreman before the reading leaves his hands wherever it can. After sync the server reads
+waits for signal — readings queue on the phone and sync when they can. The phone judges a capture by the same rules the server does,
+over the readings it knows and the captures it has queued, so a refusal reaches the Foreman before
+the reading leaves his hands wherever it can. After sync the server reads
 the photo itself and records its own value and confidence: a reading is **photo-backed** when it
 carries a photo and **AI-verified** when the server's read agrees with the typed value.
 Disagreements, low confidence, and disputes surface to management as **Reading Exceptions** — a

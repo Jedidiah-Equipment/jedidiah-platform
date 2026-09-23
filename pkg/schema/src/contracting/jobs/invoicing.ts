@@ -8,7 +8,6 @@ export const JobStampInvoiceInput = z
   .object({
     id: UUID,
     invoiceNumber: InvoiceNumber,
-    /** The frozen total on screen; a mismatch means the Job was reopened and re-priced under the user. */
     expectedTotal: Money,
   })
   .strict();

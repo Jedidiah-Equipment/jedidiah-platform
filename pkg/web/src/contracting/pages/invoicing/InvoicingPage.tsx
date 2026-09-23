@@ -14,7 +14,14 @@ import { useCan } from '@/hooks/use-access.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { queueTabLabel } from '../jobs/types.js';
 import { type StampableJob, StampInvoiceDialog } from './StampInvoiceDialog.js';
-import { currentMonth, type InvoicingTab, invoicedInMonth, invoicedMonthOptions, invoicingTabs } from './types.js';
+import {
+  type InvoicingTab,
+  invoicedInMonth,
+  invoicedMonthOptions,
+  invoicingTabs,
+  monthKey,
+  monthLabel,
+} from './types.js';
 
 const PAGE_SIZE = 200;
 
@@ -23,7 +30,7 @@ export function InvoicingPage({ tab, month: requestedMonth }: { tab: InvoicingTa
   const navigate = useNavigate();
   const canStamp = useCan('contracting_invoice:update').can;
   const [now] = useState(() => new Date());
-  const month = requestedMonth ?? currentMonth(now);
+  const month = requestedMonth ?? monthKey(now);
   const monthOptions = useMemo(() => invoicedMonthOptions(now), [now]);
   const monthLabels = useMemo(
     () => Object.fromEntries(monthOptions.map((option) => [option.value, option.label])),
@@ -60,7 +67,7 @@ export function InvoicingPage({ tab, month: requestedMonth }: { tab: InvoicingTa
       {
         id: 'customer',
         header: 'Customer · Farm',
-        cell: ({ row }) => `${row.original.customerName} · ${row.original.farmName}`,
+        accessorFn: (job) => `${job.customerName} · ${job.farmName}`,
       },
       { accessorKey: 'workTypeName', header: 'Work type' },
       {
@@ -78,24 +85,26 @@ export function InvoicingPage({ tab, month: requestedMonth }: { tab: InvoicingTa
             {
               id: 'stamp',
               header: 'Invoice №',
-              cell: ({ row }) =>
-                canStamp ? (
+              cell: ({ row }) => {
+                const { pricedTotal } = row.original;
+                return canStamp && pricedTotal !== null ? (
                   <Button
                     size="sm"
                     variant="outline"
                     onClick={(event) => {
                       event.stopPropagation();
-                      setStamping(row.original);
+                      setStamping({ ...row.original, pricedTotal });
                     }}
                   >
                     Stamp
                   </Button>
-                ) : null,
+                ) : null;
+              },
             } satisfies DataTableColumnDef<JobSummary>,
           ]
         : [
             {
-              id: 'invoiceNumber',
+              accessorKey: 'invoiceNumber',
               header: 'Invoice №',
               cell: ({ row }) => <span className="font-mono">{row.original.invoiceNumber}</span>,
             } satisfies DataTableColumnDef<JobSummary>,
@@ -131,16 +140,14 @@ export function InvoicingPage({ tab, month: requestedMonth }: { tab: InvoicingTa
         rows={jobs.data}
         loading={jobs.isPending}
         emptyMessage={
-          tab === 'invoiced'
-            ? `No Jobs were invoiced in ${monthLabels[month] ?? formatDate(invoicedInMonth(month), 'month')}.`
-            : 'Nothing is waiting for an invoice.'
+          tab === 'invoiced' ? `No Jobs were invoiced in ${monthLabel(month)}.` : 'Nothing is waiting for an invoice.'
         }
         searchPlaceholder="Search Jobs…"
         controls={
           tab === 'invoiced' ? (
             <EnumSelect
               aria-label="Invoiced in"
-              labels={{ ...monthLabels, [month]: monthLabels[month] ?? formatDate(invoicedInMonth(month), 'month') }}
+              labels={{ ...monthLabels, [month]: monthLabel(month) }}
               options={monthOptions.map((option) => option.value)}
               value={month}
               onChange={(next) => void navigate({ to: '/contracting/invoicing', search: { tab, month: next } })}

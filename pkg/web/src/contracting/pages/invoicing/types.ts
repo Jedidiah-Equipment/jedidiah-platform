@@ -15,19 +15,20 @@ export type InvoicingSearch = z.infer<typeof InvoicingSearch>;
 
 const MONTHS_OFFERED = 24;
 
-/** yyyy-MM of the South African calendar month containing `now`. */
-export function currentMonth(now: Date) {
+/** yyyy-MM of the South African calendar month `monthsBack` before the one containing `now`. */
+export function monthKey(now: Date, monthsBack = 0) {
   const { month, year } = getZonedDateParts(now, JOHANNESBURG_TIME_ZONE);
-  return `${year}-${String(month).padStart(2, '0')}`;
+  const offset = year * 12 + (month - 1) - monthsBack;
+  return `${Math.floor(offset / 12)}-${String((offset % 12) + 1).padStart(2, '0')}`;
 }
 
 export const invoicedInMonth = (month: string) => DateOnlyIso.parse(`${month}-01`);
 
+export const monthLabel = (month: string) => formatDate(invoicedInMonth(month), 'month');
+
 export function invoicedMonthOptions(now: Date) {
-  const { month, year } = getZonedDateParts(now, JOHANNESBURG_TIME_ZONE);
   return Array.from({ length: MONTHS_OFFERED }, (_, index) => {
-    const offset = year * 12 + (month - 1) - index;
-    const value = `${Math.floor(offset / 12)}-${String((offset % 12) + 1).padStart(2, '0')}`;
-    return { value, label: formatDate(invoicedInMonth(value), 'month') };
+    const value = monthKey(now, index);
+    return { value, label: monthLabel(value) };
   });
 }

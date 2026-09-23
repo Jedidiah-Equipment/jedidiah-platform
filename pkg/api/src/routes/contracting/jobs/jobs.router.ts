@@ -21,7 +21,6 @@ import {
   patchChargeLine,
   patchJob,
   planAssignment,
-  redactSummaryMoney,
   removeAssignment,
   removeChargeLine,
   removeMeasure,
@@ -146,9 +145,11 @@ export const contractingJobsRouter = router({
           const mode = readMode(ctx.access);
           if (mode === 'priced' && !['awaiting-pricing', 'awaiting-invoice', 'invoiced'].includes(input.queue))
             refuseRead();
-          if (mode !== 'own') return listJobs({ db: ctx.db, ...input });
-          const jobs = await listJobs({ db: ctx.db, ...input, foremanUserId: ctx.session.user.id });
-          return jobs.map(redactSummaryMoney);
+          return listJobs({
+            db: ctx.db,
+            ...input,
+            ...(mode === 'own' ? { foremanUserId: ctx.session.user.id } : {}),
+          });
         }, jobErrorFamily),
       ),
     get: authorizedProcedure(readPermissions)

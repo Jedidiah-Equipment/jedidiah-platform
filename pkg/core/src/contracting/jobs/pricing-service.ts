@@ -18,7 +18,7 @@ import { mutateEntity } from '../../audit/mutate-entity.js';
 import { isRateCardError } from '../rate-card/rate-card-errors.js';
 import { getRate } from '../rate-card/rate-service.js';
 import { assignmentDescriptor } from './assignment-service.js';
-import { JobError, jobNotFound, withJobConstraints, wrongStatus } from './job-errors.js';
+import { JobError, jobNotFound, totalChanged, withJobConstraints, wrongStatus } from './job-errors.js';
 import { lockJob } from './job-lock.js';
 import { getJob } from './job-read.js';
 import { writeJob } from './job-write.js';
@@ -273,10 +273,7 @@ export async function markPriced({
               `This Job cannot be priced yet: ${pricingGateReasons(pricing.gate).join(' · ')}.`,
             );
           if (pricing.total !== input.expectedTotal)
-            throw new JobError(
-              'contracting_job.total_changed',
-              'The total changed while you were pricing. Review it and mark as Priced again.',
-            );
+            throw totalChanged('The total changed while you were pricing. Review it and mark as Priced again.');
           // The live figures become the snapshot: from here the read model trusts the stored amounts.
           for (const stint of detail.assignments)
             if (stint.state === 'left' && stint.computedAmount !== null && stint.finalAmount !== null)

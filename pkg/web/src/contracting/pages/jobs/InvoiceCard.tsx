@@ -34,14 +34,16 @@ export function InvoiceCard({ job, capabilities }: { job: JobDetail; capabilitie
                 {job.pricedTotal === null ? null : `${formatCurrency(job.pricedTotal)} ex VAT · `}
                 Priced {formatDate(job.pricedAt)} · awaiting an invoice number
               </p>
-              {capabilities.stampInvoice ? (
+              {capabilities.stampInvoice && job.pricedTotal !== null ? (
                 <Button onClick={() => setStamping(true)}>Stamp invoice number</Button>
               ) : null}
             </div>
           )}
         </CardContent>
       </Card>
-      {stamping ? <StampInvoiceDialog job={job} open onOpenChange={setStamping} /> : null}
+      {stamping && job.pricedTotal !== null ? (
+        <StampInvoiceDialog job={{ ...job, pricedTotal: job.pricedTotal }} open onOpenChange={setStamping} />
+      ) : null}
     </section>
   );
 }

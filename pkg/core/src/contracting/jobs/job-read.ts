@@ -478,6 +478,7 @@ export async function listJobs({
   queue: JobQueue;
   limit: number;
   offset: number;
+  /** Scopes to a Foreman's own Jobs, without their money. */
   foremanUserId?: string;
   /** Honoured only for the invoiced queue: Jobs stamped in this South African calendar month. */
   invoicedInMonth?: string | undefined;
@@ -547,17 +548,13 @@ export async function listJobs({
         JobSummary.parse({
           ...row,
           pricedAt: row.pricedAt?.toISOString() ?? null,
+          pricedTotal: foremanUserId ? null : row.pricedTotal,
           invoicedAt: row.invoicedAt?.toISOString() ?? null,
           createdAt: row.createdAt.toISOString(),
           updatedAt: row.updatedAt.toISOString(),
         }),
       ),
     );
-}
-
-/** Foremen never see what a Job is worth, not even in a queue row. */
-export function redactSummaryMoney(job: JobSummary) {
-  return { ...job, pricedTotal: null };
 }
 
 export function redactMoney(job: JobDetail) {

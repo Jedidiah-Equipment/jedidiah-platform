@@ -10,10 +10,9 @@ import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.j
 import { getApiErrorAppCode } from '@/lib/api-errors.js';
 import { useTRPC } from '@/lib/trpc.js';
 
-export type StampableJob = Pick<
-  JobSummary,
-  'id' | 'jobNumber' | 'customerName' | 'farmName' | 'pricedTotal' | 'pricedAt'
->;
+export type StampableJob = Pick<JobSummary, 'id' | 'jobNumber' | 'customerName' | 'farmName' | 'pricedAt'> & {
+  pricedTotal: number;
+};
 
 const StampInvoiceValues = z.object({ invoiceNumber: InvoiceNumber });
 
@@ -43,7 +42,7 @@ export function StampInvoiceDialog({
   const description = [
     job.customerName,
     job.farmName,
-    job.pricedTotal === null ? null : `Total ex VAT ${formatCurrency(job.pricedTotal)}`,
+    `Total ex VAT ${formatCurrency(job.pricedTotal)}`,
     job.pricedAt ? `Priced ${formatDate(job.pricedAt)}` : null,
   ]
     .filter(Boolean)
@@ -58,7 +57,7 @@ export function StampInvoiceDialog({
       defaultValues={{ invoiceNumber: '' }}
       validator={StampInvoiceValues}
       onCreate={(values) =>
-        stamp.mutateAsync({ id: job.id, invoiceNumber: values.invoiceNumber, expectedTotal: job.pricedTotal ?? 0 })
+        stamp.mutateAsync({ id: job.id, invoiceNumber: values.invoiceNumber, expectedTotal: job.pricedTotal })
       }
       onCreated={async () => {
         onOpenChange(false);

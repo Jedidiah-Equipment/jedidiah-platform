@@ -4,7 +4,7 @@ import { formatJobNumber } from '@pkg/domain/contracting';
 import type { AuthId } from '@pkg/schema';
 import type { JobStampInvoiceInput } from '@pkg/schema/contracting';
 import { asc, eq, sql } from 'drizzle-orm';
-import { JobError, withJobConstraints, wrongStatus } from './job-errors.js';
+import { totalChanged, withJobConstraints, wrongStatus } from './job-errors.js';
 import { writeJob } from './job-write.js';
 
 /** Stamps the accounting system's Invoice Number on a Priced Job, making it Invoiced: the wall. */
@@ -22,12 +22,8 @@ export async function stampInvoice({
       writeJob(tx, actorUserId, input.id, {
         assert: (_tx, before) => {
           if (before.status !== 'priced') throw wrongStatus('Only a Priced Job can be invoiced.');
-          // The wall is only as good as what it freezes: refuse to stamp a total the user did not see.
           if (before.pricedTotal !== input.expectedTotal)
-            throw new JobError(
-              'contracting_job.total_changed',
-              'This Job was re-priced. Review the new total before stamping.',
-            );
+            throw totalChanged('This Job was re-priced. Review the new total before stamping.');
         },
         set: () => ({
           status: 'invoiced',

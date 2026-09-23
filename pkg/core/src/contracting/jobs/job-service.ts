@@ -1,6 +1,6 @@
 import type { Db } from '@pkg/db';
 import { contractingJobs, contractingMachineAssignments } from '@pkg/db/contracting';
-import { canComplete, formatJobNumber } from '@pkg/domain/contracting';
+import { canComplete, computeDieselAmount, formatJobNumber } from '@pkg/domain/contracting';
 import type { AuthId } from '@pkg/schema';
 import type { JobCancelInput, JobCompleteInput, JobCreateInput, JobPatchInput } from '@pkg/schema/contracting';
 import { eq } from 'drizzle-orm';
@@ -22,6 +22,7 @@ export const jobDescriptor = defineAuditDescriptor<Row>({
     ...row,
     completedAt: row.completedAt?.toISOString() ?? null,
     pricedAt: row.pricedAt?.toISOString() ?? null,
+    reopenedAt: row.reopenedAt?.toISOString() ?? null,
     invoicedAt: row.invoicedAt?.toISOString() ?? null,
     cancelledAt: row.cancelledAt?.toISOString() ?? null,
   }),
@@ -64,6 +65,12 @@ export async function patchJob({ db, actorUserId, input }: { db: Db; actorUserId
           input.dieselLitres !== undefined;
         if (changesSignOff && !['completed', 'priced'].includes(before.status))
           throw wrongStatus('Sign-off details can only be changed after Completion.');
+        if (
+          input.dieselLitres !== undefined &&
+          input.dieselLitres !== before.dieselLitres &&
+          before.status === 'priced'
+        )
+          throw wrongStatus('This Job is Priced, so its diesel litres can no longer change.');
         const startDate = input.startDate ?? before.startDate;
         const endDate = input.endDate ?? before.endDate;
         if (startDate && endDate && startDate > endDate)
@@ -79,11 +86,27 @@ export async function patchJob({ db, actorUserId, input }: { db: Db; actorUserId
         startDate: input.startDate ?? before.startDate,
         endDate: input.endDate ?? before.endDate,
         dieselLitres: input.dieselLitres ?? before.dieselLitres,
+        ...repricedDiesel(before, input.dieselLitres),
         updatedAt: new Date(),
       }),
       project: (tx, row) => getJob({ db: tx, id: row.id }),
     }),
   );
+}
+
+/**
+ * A computed Diesel amount follows the litres; an overridden one is the pricer's and stays. Litres
+ * corrected to zero mean no diesel was supplied, so its price goes too.
+ */
+function repricedDiesel(before: Row, dieselLitres: number | undefined) {
+  const kept = { dieselUnitPrice: before.dieselUnitPrice, dieselAmount: before.dieselAmount };
+  if (dieselLitres === undefined || dieselLitres === before.dieselLitres) return kept;
+  if (dieselLitres === 0) return { dieselUnitPrice: null, dieselAmount: null };
+  if (before.dieselUnitPrice === null || before.dieselAmount === null) return kept;
+  const computed = computeDieselAmount(before.dieselLitres, before.dieselUnitPrice);
+  return before.dieselAmount === computed
+    ? { ...kept, dieselAmount: computeDieselAmount(dieselLitres, before.dieselUnitPrice) }
+    : kept;
 }
 
 export async function cancelJob({ db, actorUserId, input }: { db: Db; actorUserId: AuthId; input: JobCancelInput }) {
@@ -115,6 +138,8 @@ export async function cancelJob({ db, actorUserId, input }: { db: Db; actorUserI
           cancellationReason: input.reason,
           completedAt: null,
           completedByUserId: null,
+          reopenedAt: null,
+          repricingNote: null,
           updatedAt: now,
         })
         .where(eq(contractingJobs.id, input.id))

@@ -15,7 +15,10 @@ export type JobErrorCode =
   | 'contracting_job.has_on_site_stints'
   | 'contracting_job.open_gap_flags'
   | 'contracting_job.invalid_role'
-  | 'contracting_job.measure_type_inactive';
+  | 'contracting_job.measure_type_inactive'
+  | 'contracting_job.pricing_incomplete'
+  | 'contracting_job.total_changed'
+  | 'contracting_job.rate_inactive';
 
 export class JobError extends Error {
   constructor(

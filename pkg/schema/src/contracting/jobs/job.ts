@@ -4,6 +4,7 @@ import { DateIso, DateOnlyIso } from '../../common/date.js';
 import { nullableTrimmedTextInput, nullableTrimmedTextInputOptional, requiredTrimmedText } from '../../common/text.js';
 import { UUID } from '../../common/uuid.js';
 import { CategoryColour, CategoryIconKey } from '../fleet/fleet.js';
+import { RateBasis } from '../rate-card/rate-card.js';
 import { HourReading } from '../readings/reading.js';
 import { assignmentStates, discountKinds, jobQueues, jobStatuses } from './job-enums.js';
 
@@ -200,11 +201,17 @@ export const Assignment = z.object({
   measures: z.array(Measure),
   rateId: UUID.nullable(),
   rateName: z.string().nullable(),
-  rateBasis: z.string().nullable(),
+  rateBasis: RateBasis.nullable(),
   rateMeasureTypeId: UUID.nullable(),
   rateUnitAmount: Money.nullable(),
   computedAmount: Money.nullable(),
   finalAmount: Money.nullable(),
+  /** The final amount differs from the computed one: a pricer typed it. */
+  amountEdited: z.boolean(),
+  /** A measure Rate is chosen but the stint has no Measure of its type, so it bills 0. */
+  measureMissing: z.boolean(),
+  /** Hours or Measure quantity the chosen Rate bills; null while the stint is un-priced. */
+  billedQuantity: z.number().nonnegative().nullable(),
 });
 export type Assignment = z.infer<typeof Assignment>;
 
@@ -236,12 +243,32 @@ const jobSummaryShape = {
 export const JobSummary = z.object(jobSummaryShape);
 export type JobSummary = z.infer<typeof JobSummary>;
 
+export const PricingGate = z.object({
+  ok: z.boolean(),
+  unpricedStints: z.number().int().nonnegative(),
+  chargeLinesWithoutAmount: z.number().int().nonnegative(),
+  dieselUnpriced: z.boolean(),
+});
+export type PricingGate = z.infer<typeof PricingGate>;
+/** Live while the Job is Completed; recomputed from the frozen snapshot once Priced. */
+export const JobPricing = z.object({
+  stintsTotal: Money,
+  chargeLinesTotal: Money,
+  subtotal: Money,
+  discountAmount: Money,
+  dieselAmount: Money,
+  total: Money,
+  gate: PricingGate,
+});
+export type JobPricing = z.infer<typeof JobPricing>;
+
 export const JobDetail = z.object({
   ...jobSummaryShape,
   notes: z.string().nullable(),
   dieselLitres: Litres,
   dieselUnitPrice: Money.nullable(),
   dieselAmount: Money.nullable(),
+  dieselAmountEdited: z.boolean(),
   discountKind: z.enum(discountKinds).nullable(),
   discountValue: Money.nullable(),
   discountAmount: Money.nullable(),
@@ -252,6 +279,9 @@ export const JobDetail = z.object({
   invoiceNumber: z.string().nullable(),
   invoicedAt: DateIso.nullable(),
   cancellationReason: z.string().nullable(),
+  reopenedAt: DateIso.nullable(),
+  repricingNote: z.string().nullable(),
+  pricing: JobPricing.nullable(),
   assignments: z.array(Assignment),
   chargeLines: z.array(ChargeLine),
 });

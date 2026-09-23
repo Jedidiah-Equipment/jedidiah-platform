@@ -8,4 +8,4 @@
 6. Enter **Diesel supplied** and **Add charge line** for transport, parts, or a fixed quote. Amounts are set at Pricing.
 7. Check the suggested **Start** and **End** dates, then choose **Complete**. Planned Machines that never arrived are removed, and the Job moves to Awaiting pricing.
 
-After Completion, you can still edit the details and amend readings.
+After Completion, you can still edit the details and amend readings. Once the Job is Priced, its diesel litres and travel no longer change.

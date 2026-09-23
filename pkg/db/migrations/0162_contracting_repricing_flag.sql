@@ -1,0 +1,3 @@
+ALTER TABLE "contracting"."job" ADD COLUMN "reopened_at" timestamp with time zone;--> statement-breakpoint
+ALTER TABLE "contracting"."job" ADD COLUMN "repricing_note" text;--> statement-breakpoint
+ALTER TABLE "contracting"."job" ADD CONSTRAINT "job_reopened_shape" CHECK (("contracting"."job"."reopened_at" IS NULL) = ("contracting"."job"."repricing_note" IS NULL) AND ("contracting"."job"."reopened_at" IS NULL OR "contracting"."job"."status" = 'completed'));

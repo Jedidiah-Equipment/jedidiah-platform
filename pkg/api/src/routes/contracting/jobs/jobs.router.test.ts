@@ -270,6 +270,7 @@ test('enforces the Job queue role matrix and strips money from Foreman reads', a
   expect(await foreman.jobs.get({ id: context.ownJob.id })).toMatchObject({
     dieselUnitPrice: null,
     dieselAmount: null,
+    pricing: null,
     assignments: [{ rateUnitAmount: null, computedAmount: null, finalAmount: null }],
   });
   await expect(foreman.jobs.get({ id: context.otherJob.id })).rejects.toMatchObject({ code: 'FORBIDDEN' });
@@ -390,5 +391,31 @@ test('counts queue tabs by read mode and exposes capture evidence on Job details
   await captureReading({ db: context.db, actorUserId: managerId, input: { ...departure, comment: 'Shift ended' } });
   expect(await manager.get({ id: context.otherJob.id })).toMatchObject({
     assignments: [{ departure: { capturedByName: 'Henk', comment: 'Shift ended', photoBacked: false } }],
+  });
+});
+
+test('keeps Pricing to contracting-admin and super-admin while managers read the live totals', async ({ context }) => {
+  const jobId = context.completedJob.id;
+  const manager = context.createCaller(contractingSession('contracting-manager')).contractingJobs;
+  const attempts = [
+    () => manager.pricing.setStintRate({ assignmentId: context.stint.id, rateId: null }),
+    () => manager.pricing.clearStintRate({ assignmentId: context.stint.id }),
+    () => manager.pricing.setStintAmount({ assignmentId: context.stint.id, finalAmount: null }),
+    () => manager.pricing.setDiesel({ jobId, unitPrice: null }),
+    () => manager.pricing.setDiscount({ jobId, discount: null }),
+    () => manager.pricing.markPriced({ id: jobId, expectedTotal: 0 }),
+  ];
+  for (const attempt of attempts) await expect(attempt()).rejects.toMatchObject({ code: 'FORBIDDEN' });
+
+  const superAdmin = context.createCaller(mockSession('super-admin')).contractingJobs;
+  await expect(
+    superAdmin.pricing.setDiscount({ jobId, discount: { kind: 'percent', value: 5 } }),
+  ).resolves.toMatchObject({ discountKind: 'percent', pricing: { total: 0, gate: { ok: true } } });
+  expect(await manager.jobs.get({ id: jobId })).toMatchObject({ pricing: { total: 0 } });
+  const admin = context.createCaller(contractingSession('contracting-admin')).contractingJobs;
+  await expect(admin.pricing.markPriced({ id: jobId, expectedTotal: 1 })).rejects.toMatchObject({ code: 'CONFLICT' });
+  await expect(admin.pricing.markPriced({ id: jobId, expectedTotal: 0 })).resolves.toMatchObject({
+    status: 'priced',
+    pricedTotal: 0,
   });
 });

@@ -18,7 +18,7 @@ import {
   ReadingCaptureInput,
   type ReadingExceptionType,
 } from '@pkg/schema/contracting';
-import { and, asc, desc, eq, getTableColumns, inArray, isNull, or } from 'drizzle-orm';
+import { and, asc, desc, eq, getTableColumns, gt, inArray, isNull, or } from 'drizzle-orm';
 import {
   defineAuditDescriptor,
   diffAuditUpdate,
@@ -30,6 +30,7 @@ import { FilePolicyViolationError } from '../../files/file-errors.js';
 import { readStoredObject, type StorageAdapter } from '../../storage/storage-adapter.js';
 import { assignmentDescriptor } from '../jobs/assignment-service.js';
 import { jobDescriptor } from '../jobs/job-service.js';
+import { reopenPricingWithin } from '../jobs/pricing-service.js';
 import { READING_PHOTO_POLICY, type ReadMeterPhoto, readingVerification, verifyPhoto } from './reading-evidence.js';
 
 export type ReadingErrorCode =
@@ -46,7 +47,8 @@ export type ReadingErrorCode =
   | 'reading.machine_on_site'
   | 'reading.implement_on_site'
   | 'reading.no_photo'
-  | 'reading.verification_failed';
+  | 'reading.verification_failed'
+  | 'reading.job_invoiced';
 export class ReadingError extends Error {
   constructor(
     readonly code: ReadingErrorCode,
@@ -478,12 +480,22 @@ export async function amendReading({
   actorUserId: AuthId;
   input: ReadingAmendInput;
 }) {
-  // #1401: a Priced Job must return to Completed here once pricing writes exist.
   const input = ReadingAmendInput.parse(raw);
   return db.transaction(async (tx) => {
     const owner = await tx.query.contractingHourReadings.findFirst({ where: eq(contractingHourReadings.id, input.id) });
     if (!owner) throw notFound();
-    await tx.select().from(contractingMachines).where(eq(contractingMachines.id, owner.machineId)).for('update');
+    const [machine] = await tx
+      .select()
+      .from(contractingMachines)
+      .where(eq(contractingMachines.id, owner.machineId))
+      .for('update');
+    if (!machine) throw notFound();
+    const affected = await lockJobsMovedBy(tx, owner);
+    if (affected.some((job) => job.status === 'invoiced'))
+      throw new ReadingError(
+        'reading.job_invoiced',
+        'This reading belongs to an Invoiced Job and can no longer be amended.',
+      );
     const rows = await tx
       .select()
       .from(contractingHourReadings)
@@ -515,8 +527,58 @@ export async function amendReading({
           : {}),
       });
     }
+    for (const job of affected.filter((candidate) => candidate.status === 'priced'))
+      await reopenPricingWithin(
+        tx,
+        actorUserId,
+        job.id,
+        `Hour Reading amended on ${machine.code} — amounts recomputed.`,
+      );
     return getReading({ db: tx, id: input.id });
   });
+}
+
+/**
+ * The Jobs whose derived hours an amendment of this reading moves, locked after the machine: the stint
+ * the reading bounds, and — for a departure — the machine's next stint, whose Hour Gap starts at this
+ * value and which may be on another Job.
+ */
+async function lockJobsMovedBy(tx: DatabaseTransaction, reading: Row) {
+  const bounded = await tx
+    .select({ jobId: contractingMachineAssignments.jobId })
+    .from(contractingMachineAssignments)
+    .where(
+      or(
+        eq(contractingMachineAssignments.arrivalReadingId, reading.id),
+        eq(contractingMachineAssignments.departureReadingId, reading.id),
+      ),
+    );
+  const next =
+    reading.role === 'departure'
+      ? await tx
+          .select({ jobId: contractingMachineAssignments.jobId })
+          .from(contractingMachineAssignments)
+          .innerJoin(
+            contractingHourReadings,
+            eq(contractingHourReadings.id, contractingMachineAssignments.arrivalReadingId),
+          )
+          .where(
+            and(
+              eq(contractingHourReadings.machineId, reading.machineId),
+              gt(contractingHourReadings.sequence, reading.sequence),
+            ),
+          )
+          .orderBy(asc(contractingHourReadings.sequence))
+          .limit(1)
+      : [];
+  const jobIds = [...new Set([...bounded, ...next].map((row) => row.jobId))];
+  if (!jobIds.length) return [];
+  return tx
+    .select({ id: contractingJobs.id, status: contractingJobs.status })
+    .from(contractingJobs)
+    .where(inArray(contractingJobs.id, jobIds))
+    .orderBy(asc(contractingJobs.id))
+    .for('update');
 }
 
 export async function getReading({ db, id }: { db: Db | DatabaseTransaction; id: string }) {

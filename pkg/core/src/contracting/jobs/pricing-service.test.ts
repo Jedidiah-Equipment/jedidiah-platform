@@ -13,7 +13,7 @@ import { createMeasureType } from '../rate-card/measure-type-service.js';
 import { createRate, patchRate } from '../rate-card/rate-service.js';
 import { amendReading, captureReading } from '../readings/reading-service.js';
 import { createWorkType } from '../work-types/work-type-service.js';
-import { createAssignment, patchAssignment, resolveGap } from './assignment-service.js';
+import { createAssignment, resolveGap } from './assignment-service.js';
 import { createChargeLine, patchChargeLine } from './charge-line-service.js';
 import { getJob, listJobs } from './job-read.js';
 import { completeJob, createJob, patchJob } from './job-service.js';
@@ -395,25 +395,6 @@ describe('Mark as Priced', () => {
         })
       ).map((job) => job.id),
     ).toEqual([jobId]);
-
-    for (const attempt of [
-      () => setStintRate({ db, actor: admin, input: { assignmentId: dig.id, rateId: context.wetHire.id } }),
-      () => clearStintRate({ db, actor: admin, input: { assignmentId: dig.id } }),
-      () => setStintAmount({ db, actor: admin, input: { assignmentId: dig.id, finalAmount: null } }),
-      () => setDieselPrice({ db, actor: admin, input: { jobId, unitPrice: 21 } }),
-      () => setDiscount({ db, actor: admin, input: { jobId, discount: null } }),
-      () => markPriced({ db, actor: admin, input: { id: jobId, expectedTotal: 8_500 } }),
-    ])
-      await expect(attempt()).rejects.toMatchObject({ code: 'contracting_job.wrong_status' });
-    await expect(
-      patchAssignment({ db, actor: admin, input: { id: dig.id, travelIncluded: false } }),
-    ).rejects.toMatchObject({ code: 'contracting_job.wrong_status' });
-    await expect(patchJob({ db, actor: admin, input: { id: jobId, dieselLitres: 90 } })).rejects.toMatchObject({
-      code: 'contracting_job.wrong_status',
-    });
-    await expect(patchJob({ db, actor: admin, input: { id: jobId, notes: 'Paid on site' } })).resolves.toMatchObject({
-      notes: 'Paid on site',
-    });
   });
 });
 

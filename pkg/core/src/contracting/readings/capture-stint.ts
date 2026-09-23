@@ -5,20 +5,14 @@ import {
   contractingMachineAssignments,
   type contractingMachines,
 } from '@pkg/db/contracting';
-import {
-  isContractingManagement,
-  type JobActor,
-  jobActionRefusal,
-  judgeJobAction,
-  transitionJob,
-} from '@pkg/domain/contracting';
+import { isContractingManagement, type JobActor, transitionJob } from '@pkg/domain/contracting';
 import type { ReadingCaptureInput } from '@pkg/schema/contracting';
 import { eq } from 'drizzle-orm';
 import { recordAuditCreate } from '../../audit/audit-writer.js';
 import { assignmentDescriptor } from '../jobs/job-audit.js';
 import { lockAssignment, lockJob } from '../jobs/job-lock.js';
 import { writeAssignment, writeJobRow } from '../jobs/job-write.js';
-import { ReadingError } from './reading-errors.js';
+import { assertReadingJobAction, ReadingError } from './reading-errors.js';
 
 /**
  * The Machine Assignment side of an Hour Reading capture: a planned stint arriving or leaving, or a
@@ -34,18 +28,6 @@ export type CaptureStint = { job: JobRow; stint: StintRow };
 const stintNotFound = () => new ReadingError('reading.not_found', 'Machine Assignment not found.');
 const alreadyArrived = () => new ReadingError('reading.invalid_role', 'This Machine Assignment already arrived.');
 
-/** The capture Job Action, refused as a Reading error because the phone reports it. */
-function assertCanCaptureOn(job: JobRow, actor: JobActor) {
-  const verdict = judgeJobAction('capture', job, actor);
-  if (verdict.allowed) return;
-  const forbidden = verdict.reason === 'no-permission' || verdict.reason === 'not-your-job';
-  throw new ReadingError(
-    forbidden ? 'reading.forbidden' : 'reading.wrong_status',
-    jobActionRefusal('capture', verdict.reason, job, actor),
-    { action: 'capture', reason: verdict.reason },
-  );
-}
-
 async function lockPlannedStint(
   tx: DatabaseTransaction,
   { actor, input, hasPhoto }: { actor: JobActor; input: ReadingCaptureInput; hasPhoto: boolean },
@@ -55,7 +37,7 @@ async function lockPlannedStint(
   if (stint.machineId !== input.machineId) throw stintNotFound();
   if (input.role === 'departure' && isContractingManagement(actor) && !hasPhoto && !input.comment)
     throw new ReadingError('reading.invalid_role', 'A reason is required for a photo-less departure reading.');
-  assertCanCaptureOn(job, actor);
+  assertReadingJobAction('capture', job, actor);
   if (input.role === 'arrival' && stint.arrivalReadingId) throw alreadyArrived();
   if (input.role === 'departure' && (!stint.arrivalReadingId || stint.departureReadingId))
     throw new ReadingError('reading.invalid_role', 'This Machine Assignment is not on site.');
@@ -69,7 +51,7 @@ async function startStint(
   start: NonNullable<ReadingCaptureInput['startAssignment']>,
 ): Promise<CaptureStint> {
   const job = await lockJob(tx, start.jobId, () => new ReadingError('reading.not_found', 'Job not found.'));
-  assertCanCaptureOn(job, actor);
+  assertReadingJobAction('capture', job, actor);
   const [inserted] = await tx
     .insert(contractingMachineAssignments)
     .values({

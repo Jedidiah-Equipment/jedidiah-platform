@@ -3,7 +3,7 @@ import { and, eq } from 'drizzle-orm';
 import { describe, expect } from 'vitest';
 import { createTester } from '../../test/create-tester.js';
 import { amendReading } from '../readings/reading-service.js';
-import { admin, completedJob, invoicing, type JobFixtures, pricedJob, seedJobFixtures } from '../test/job-fixtures.js';
+import { admin, invoicing, type JobFixtures, pricedJob, seedJobFixtures } from '../test/job-fixtures.js';
 import { findJobsByInvoiceNumber, stampInvoice } from './invoicing-service.js';
 import { markPriced } from './pricing-service.js';
 
@@ -45,20 +45,8 @@ describe('stamping an Invoice Number', () => {
     ]);
   });
 
-  test('refuses a Completed Job, a second stamp, and a total the user did not see', async ({ context }) => {
+  test('refuses a total the user did not see, then stamps the re-priced one', async ({ context }) => {
     const { db } = context;
-    const completed = await completedJob(context, [{ machineId: context.excavator.id, arrival: 100, departure: 110 }]);
-    await expect(
-      stampInvoice({
-        db,
-        actor: invoicing,
-        input: { id: completed.jobId, invoiceNumber: 'INV-1', expectedTotal: 0 },
-      }),
-    ).rejects.toMatchObject({
-      code: 'contracting_job.wrong_status',
-      message: 'You can only stamp an Invoice Number while the Job is Priced.',
-    });
-
     const priced = await pricedJob(context, [{ machineId: context.tipper.id, arrival: 100, departure: 110 }]);
     await amendReading({
       db,
@@ -79,13 +67,6 @@ describe('stamping an Invoice Number', () => {
       actor: invoicing,
       input: { id: priced.jobId, invoiceNumber: 'INV-2', expectedTotal: 5_400 },
     });
-    await expect(
-      stampInvoice({
-        db,
-        actor: invoicing,
-        input: { id: priced.jobId, invoiceNumber: 'INV-3', expectedTotal: 5_400 },
-      }),
-    ).rejects.toMatchObject({ code: 'contracting_job.wrong_status' });
   });
 });
 

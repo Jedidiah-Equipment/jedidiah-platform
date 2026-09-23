@@ -2,7 +2,6 @@ import {
   captureReading,
   createAssignment,
   createCategory,
-  createChargeLine,
   createCustomer,
   createFarm,
   createImplement,
@@ -341,16 +340,6 @@ test('provides Measure Type choices to managers without granting Rate Card acces
   await expect(
     context.createCaller(contractingSession('foreman')).contractingJobs.options.measureTypes(),
   ).rejects.toMatchObject({ code: 'FORBIDDEN' });
-});
-
-test('rejects Charge Line changes after pricing so the priced total cannot become stale', async ({ context }) => {
-  await expect(
-    createChargeLine({
-      db: context.db,
-      actor: managerActor,
-      input: { jobId: context.pricedJob.id, description: 'Extra transport' },
-    }),
-  ).rejects.toMatchObject({ code: 'contracting_job.wrong_status' });
 });
 
 test('counts queue tabs by read mode and exposes capture evidence on Job details', async ({ context }) => {

@@ -28,13 +28,7 @@ export const JobActionVerdict = z.discriminatedUnion('allowed', [
 ]);
 export type JobActionVerdict = z.infer<typeof JobActionVerdict>;
 
-/**
- * What the person asking may do to this Job in its current status — derived, never stored, and the
- * same answer the server's own write gates apply. Unlike Purchase Order Actions the actor is part of
- * the judgement (a Foreman works only their own Jobs), so permission sits inside the verdict. A check
- * that judges an input instead (the Mark as Priced gate, the invoice total, a departure without a
- * photo) stays with the write that reads that input.
- */
+/** The Job Actions verdicts for the person asking (see CONTEXT-CONTRACTING.md); permission sits inside them. */
 export const JobActions = z.object(
   Object.fromEntries(jobActionNames.map((name) => [name, JobActionVerdict])) as Record<
     JobActionName,

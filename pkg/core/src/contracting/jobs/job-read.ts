@@ -257,7 +257,6 @@ function mapAssignment(row: LoadedAssignment, measures: readonly LoadedMeasure[]
 const arrivalOrder = (assignment: LoadedAssignment) =>
   assignment.arrival?.capturedAt.getTime() ?? Number.POSITIVE_INFINITY;
 
-/** One Job for no one in particular: what writes return and what core reasons over. */
 export async function getJob({ db, ...lookup }: { db: DbOrTx } & JobLookup): Promise<JobFacts> {
   const { job, assignments: rows, measures, chargeLines, ...names } = await loadJob(db, lookup);
   const live = job.status === 'completed';

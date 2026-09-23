@@ -59,9 +59,9 @@ export function complementGap(gapHours: number, travel: number) {
 }
 
 /**
- * The Job sheet's reading of the Job Actions the server served for the signed-in person. It derives
- * nothing from status or permissions itself: a control renders when its verdict allows it, hides when
- * the person lacks the permission, and otherwise shows disabled with the server's own refusal.
+ * The Job sheet's reading of the Job Actions the server served for the signed-in person: a control
+ * renders when its verdict allows it, hides when the person lacks the permission, and otherwise shows
+ * disabled with the server's own refusal. Which cards appear at all is presentation, not a Job Action.
  */
 export function jobSheet(job: JobDetail, access: UserAccessSummary | null | undefined) {
   const verdict = (action: JobActionName) => job.actions[action];

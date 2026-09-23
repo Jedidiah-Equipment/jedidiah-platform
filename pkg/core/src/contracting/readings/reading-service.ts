@@ -10,10 +10,7 @@ import {
 import { validateFile } from '@pkg/domain';
 import {
   isAiFlaggedVerification,
-  type JobActionSubject,
   type JobActor,
-  jobActionRefusal,
-  judgeJobAction,
   meterDisagreementHint,
   resolveReadingAmendment,
 } from '@pkg/domain/contracting';
@@ -32,7 +29,7 @@ import { FilePolicyViolationError } from '../../files/file-errors.js';
 import { readStoredObject, type StorageAdapter } from '../../storage/storage-adapter.js';
 import { reopenPricingWithin } from '../jobs/pricing-service.js';
 import { attachReadingToStint, resolveCaptureStint } from './capture-stint.js';
-import { ReadingError, withCaptureConstraints } from './reading-errors.js';
+import { assertReadingJobAction, ReadingError, withCaptureConstraints } from './reading-errors.js';
 import { READING_PHOTO_POLICY, type ReadMeterPhoto, readingVerification, verifyPhoto } from './reading-evidence.js';
 
 const notFound = () => new ReadingError('reading.not_found', 'Hour Reading not found.');
@@ -282,7 +279,7 @@ export async function amendReading({ db, actor, input: raw }: { db: Db; actor: J
       .for('update');
     if (!machine) throw notFound();
     const affected = await lockJobsMovedBy(tx, owner);
-    for (const job of affected) assertCanAmendOn(job, actor);
+    for (const job of affected) assertReadingJobAction('amendReadings', job, actor);
     const rows = await tx
       .select()
       .from(contractingHourReadings)
@@ -322,22 +319,6 @@ export async function amendReading({ db, actor, input: raw }: { db: Db; actor: J
         `Hour Reading amended on ${machine.code} — amounts recomputed.`,
       );
     return getReading({ db: tx, id: input.id });
-  });
-}
-
-/** The amendReadings Job Action on every Job an amendment moves, refused as a Reading error. */
-function assertCanAmendOn(job: JobActionSubject, actor: JobActor) {
-  const verdict = judgeJobAction('amendReadings', job, actor);
-  if (verdict.allowed) return;
-  const code =
-    verdict.reason === 'no-permission'
-      ? 'reading.forbidden'
-      : job.status === 'invoiced'
-        ? 'reading.job_invoiced'
-        : 'reading.wrong_status';
-  throw new ReadingError(code, jobActionRefusal('amendReadings', verdict.reason, job, actor), {
-    action: 'amendReadings',
-    reason: verdict.reason,
   });
 }
 

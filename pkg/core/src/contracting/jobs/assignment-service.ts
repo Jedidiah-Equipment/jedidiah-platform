@@ -51,9 +51,9 @@ export async function patchAssignment({ db, actor, input }: { db: Db; actor: Job
       await writeAssignment(tx, actor.userId, machineCode, input.id, {
         assert: (_tx, before) => {
           const changesResources = input.implementId !== undefined || input.driverUserId !== undefined;
-          if (changesResources) assertJobAction('assign', job, actor);
-          if (input.travelIncluded !== undefined && input.travelIncluded !== before.travelIncluded)
-            assertJobAction('patchTravel', job, actor);
+          const changesTravel = input.travelIncluded !== undefined && input.travelIncluded !== before.travelIncluded;
+          if (changesResources || !changesTravel) assertJobAction('assign', job, actor);
+          if (changesTravel) assertJobAction('patchTravel', job, actor);
           // Judges the stint, not the Job: what a Machine brought is history once it has left.
           if (
             (input.implementId !== undefined || input.driverUserId !== undefined) &&

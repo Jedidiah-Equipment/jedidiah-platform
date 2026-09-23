@@ -48,9 +48,11 @@ export function MachinesCard({ job, sheet }: { job: JobDetail; sheet: JobSheet }
       <Card>
         <CardHeader>
           <CardTitle>Machines</CardTitle>
-          {sheet.can('assign') ? (
+          {sheet.holds('assign') ? (
             <CardAction>
-              <Button onClick={() => setPlanning(true)}>Plan machine</Button>
+              <Button disabled={!sheet.can('assign')} title={sheet.refusal('assign')} onClick={() => setPlanning(true)}>
+                Plan machine
+              </Button>
             </CardAction>
           ) : null}
         </CardHeader>

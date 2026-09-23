@@ -63,7 +63,7 @@ export function JobPage({ code }: { code: string }) {
                   amountEditable={sheet.can('price')}
                 />
               ) : null}
-              <CancelJob job={job} enabled={sheet.can('cancel')} />
+              <CancelJob job={job} sheet={sheet} />
             </div>
           ) : null
         }
@@ -73,6 +73,8 @@ export function JobPage({ code }: { code: string }) {
 }
 
 function SetupCard({ job, sheet }: { job: JobDetail; sheet: JobSheet }) {
+  // Naming the Foreman is setup that assigns the Job, so it needs both.
+  const setsForeman = sheet.can('editSetup') && sheet.can('assign');
   const trpc = useTRPC();
   const { invalidateJobs } = useQueryInvalidation();
   const [customerId, setCustomerId] = useState(job.customerId);
@@ -81,7 +83,7 @@ function SetupCard({ job, sheet }: { job: JobDetail; sheet: JobSheet }) {
   const workTypes = useQuery(trpc.contractingDirectory.workTypes.options.queryOptions());
   const foremen = useQuery(
     trpc.contractingJobs.options.foremen.queryOptions(undefined, {
-      enabled: sheet.can('editSetup') && sheet.can('assign'),
+      enabled: setsForeman,
     }),
   );
   const patch = useMutation(trpc.contractingJobs.jobs.patch.mutationOptions({ onSuccess: invalidateJobs }));
@@ -138,7 +140,7 @@ function SetupCard({ job, sheet }: { job: JobDetail; sheet: JobSheet }) {
           {(field) => (
             <field.ComboboxField
               label="Foreman"
-              disabled={!(sheet.can('editSetup') && sheet.can('assign'))}
+              disabled={!setsForeman}
               options={(foremen.data ?? []).map((row) => ({ value: row.id, label: row.name }))}
               onValueCommit={autosave.commit}
             />
@@ -149,7 +151,7 @@ function SetupCard({ job, sheet }: { job: JobDetail; sheet: JobSheet }) {
   );
 }
 
-function CancelJob({ job, enabled }: { job: JobDetail; enabled: boolean }) {
+function CancelJob({ job, sheet }: { job: JobDetail; sheet: JobSheet }) {
   const trpc = useTRPC();
   const showError = useApiMutationErrorToast();
   const { invalidateJobs } = useQueryInvalidation();
@@ -163,10 +165,15 @@ function CancelJob({ job, enabled }: { job: JobDetail; enabled: boolean }) {
       onError: (error) => showError(error, 'Unable to cancel Job.'),
     }),
   );
-  if (!enabled) return null;
+  if (!sheet.holds('cancel')) return null;
   return (
     <EntityActionsFooter>
-      <Button variant="destructive" onClick={() => setOpen(true)}>
+      <Button
+        variant="destructive"
+        disabled={!sheet.can('cancel')}
+        title={sheet.refusal('cancel')}
+        onClick={() => setOpen(true)}
+      >
         Cancel job
       </Button>
       <CreateEntityDialog

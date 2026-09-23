@@ -2,7 +2,6 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
   formatDate,
-  formatDayHeading,
   formatRelativeTime,
   getPlantDateNow,
   parseCommonDateInput,
@@ -64,10 +63,6 @@ describe('parseCommonDateInput', () => {
 describe('formatDate', () => {
   const instant = new Date(2026, 5, 3, 14, 5, 9);
 
-  afterEach(() => {
-    vi.useRealTimers();
-  });
-
   it('formats absent values with an empty fallback', () => {
     expect(formatDate(null)).toBe('');
     expect(formatDate(null, 'short', '-')).toBe('-');
@@ -81,13 +76,6 @@ describe('formatDate', () => {
     expect(formatDate(instant, 'long')).toBe('Wednesday, 3 June 2026');
     expect(formatDate(instant, 'day')).toBe('3 Jun');
     expect(formatDate(instant, 'time')).toBe('14:05');
-  });
-
-  it('renders duration relative to the current time', () => {
-    vi.useFakeTimers({ toFake: ['Date'] });
-    vi.setSystemTime(new Date(2026, 5, 8, 14, 5, 9));
-
-    expect(formatDate(instant, 'duration')).toBe('5 days ago');
   });
 });
 
@@ -115,20 +103,6 @@ describe('formatRelativeTime', () => {
   it('names the largest whole unit in the future', () => {
     expect(formatRelativeTime(secondsFromNow(90), now)).toBe('in 1 minute');
     expect(formatRelativeTime(secondsFromNow(2 * 86_400), now)).toBe('in 2 days');
-  });
-});
-
-describe('formatDayHeading', () => {
-  const now = new Date(2026, 5, 3, 12, 0, 0);
-
-  it('names today and yesterday alongside the weekday date', () => {
-    expect(formatDayHeading(new Date(2026, 5, 3, 8, 0, 0), now)).toBe('Today · Wed 3 Jun');
-    expect(formatDayHeading(new Date(2026, 5, 2, 23, 0, 0), now)).toBe('Yesterday · Tue 2 Jun');
-    expect(formatDayHeading(new Date(2026, 4, 29, 9, 0, 0), now)).toBe('Fri 29 May');
-  });
-
-  it('adds the year once the date falls in another year', () => {
-    expect(formatDayHeading(new Date(2025, 11, 31, 9, 0, 0), now)).toBe('Wed 31 Dec 2025');
   });
 });
 

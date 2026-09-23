@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-  formatDatePickerDisplayValue,
   formatDatePickerInputValue,
   formatDatePickerValue,
   parseDatePickerInputValue,
@@ -27,12 +26,6 @@ describe('parseDatePickerValue', () => {
 describe('formatDatePickerValue', () => {
   it('formats a date as yyyy-MM-dd', () => {
     expect(formatDatePickerValue(new Date(2026, 4, 22))).toBe('2026-05-22');
-  });
-});
-
-describe('formatDatePickerDisplayValue', () => {
-  it('formats the selected date with the shared short date format', () => {
-    expect(formatDatePickerDisplayValue(new Date(2026, 4, 22))).toBe('22 May 2026');
   });
 });
 

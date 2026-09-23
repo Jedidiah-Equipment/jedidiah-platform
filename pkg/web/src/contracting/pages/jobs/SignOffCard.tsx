@@ -1,4 +1,4 @@
-import { canComplete, suggestJobDates } from '@pkg/domain/contracting';
+import { canComplete, plannedNeverArrived, suggestJobDates } from '@pkg/domain/contracting';
 import { DateOnlyIso } from '@pkg/schema';
 import { JobCompleteInput, type JobDetail, JobPatchInput, Litres } from '@pkg/schema/contracting';
 import { useMutation } from '@tanstack/react-query';
@@ -23,7 +23,7 @@ import {
 import { useQueryInvalidation } from '@/contracting/hooks/use-query-invalidation.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useTRPC } from '@/lib/trpc.js';
-import { type jobCapabilities, plannedNeverArrived, SignOffValues, toCompleteInput } from './types.js';
+import { type jobCapabilities, SignOffValues, toCompleteInput } from './types.js';
 
 type Capabilities = ReturnType<typeof jobCapabilities>;
 

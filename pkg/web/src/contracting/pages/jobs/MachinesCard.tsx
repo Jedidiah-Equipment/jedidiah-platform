@@ -1,5 +1,10 @@
 import { formatHours } from '@pkg/domain';
-import { readingExceptionTypeColorClassNames, readingExceptionTypeLabels } from '@pkg/domain/contracting';
+import {
+  groupStints,
+  readingExceptionTypeColorClassNames,
+  readingExceptionTypeLabels,
+  type StintRow,
+} from '@pkg/domain/contracting';
 import type { Assignment, JobDetail, JobReading } from '@pkg/schema/contracting';
 import { IconMessage } from '@tabler/icons-react';
 import { useMutation, useQuery } from '@tanstack/react-query';
@@ -25,7 +30,7 @@ import { DepartureCaptureDialog } from './DepartureCaptureDialog.js';
 import { GapResolveDialog } from './GapResolveDialog.js';
 import { PlanMachineDialog } from './PlanMachineDialog.js';
 import { ReadingSheet } from './ReadingSheet.js';
-import { groupStints, type jobCapabilities, type StintRow } from './types.js';
+import type { jobCapabilities } from './types.js';
 
 type Capabilities = ReturnType<typeof jobCapabilities>;
 type SelectedReading = { reading: JobReading; stint: Assignment };

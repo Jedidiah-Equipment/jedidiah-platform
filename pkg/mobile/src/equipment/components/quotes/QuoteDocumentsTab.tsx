@@ -17,7 +17,6 @@ import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { useAppToast } from '@/components/ui/toast';
 import { GenerateQuoteDocumentModal } from '@/equipment/components/quotes/GenerateQuoteDocumentModal';
-import { saveDocument } from '@/equipment/lib/document-actions';
 import { quoteDocumentDownloadPath } from '@/equipment/lib/equipment-http-paths';
 import {
   presentQuoteDocuments,
@@ -25,6 +24,7 @@ import {
   quoteDocumentCountLabel,
   quoteDocumentMetaLine,
 } from '@/equipment/lib/quote-documents';
+import { saveDocument } from '@/lib/document-actions';
 import { captureException } from '@/lib/observability';
 import { useTRPC } from '@/lib/trpc';
 

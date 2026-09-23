@@ -3,7 +3,7 @@ import { View } from 'react-native';
 import Pdf from 'react-native-pdf';
 
 import { Text } from '@/components/ui/text';
-import { downloadDocumentToCache } from '@/equipment/lib/document-actions';
+import { downloadDocumentToCache } from '@/lib/document-actions';
 import { captureException, captureSanitizedException } from '@/lib/observability';
 
 export type DocumentPageProps = {

@@ -1,65 +1,52 @@
 import type { DatabaseTransaction, Db } from '@pkg/db';
 import { contractingJobs, contractingMachineAssignments } from '@pkg/db/contracting';
-import { canComplete, computeDieselAmount } from '@pkg/domain/contracting';
-import type { AuthId } from '@pkg/schema';
-import {
-  hasJobStatus,
-  type JobCancelInput,
-  type JobCompleteInput,
-  type JobCreateInput,
-  type JobPatchInput,
-  openJobStatuses,
-  signedOffJobStatuses,
-  unpricedJobStatuses,
-} from '@pkg/schema/contracting';
+import { canComplete, computeDieselAmount, type JobActor, transitionJob } from '@pkg/domain/contracting';
+import type { JobCancelInput, JobCompleteInput, JobCreateInput, JobPatchInput } from '@pkg/schema/contracting';
 import { eq } from 'drizzle-orm';
 import { recordAuditCreate, recordAuditDelete } from '../../audit/audit-writer.js';
 import { deletePlannedAssignment } from './assignment-service.js';
 import { jobDescriptor } from './job-audit.js';
-import { JobError, jobNotFound, withJobConstraints, wrongStatus } from './job-errors.js';
+import { assertJobAction, JobError, jobNotFound, withJobConstraints } from './job-errors.js';
 import { lockJob } from './job-lock.js';
 import { assignmentIn, getJob } from './job-read.js';
 import { writeJob } from './job-write.js';
 
 type Row = typeof contractingJobs.$inferSelect;
 
-export async function createJob({ db, actorUserId, input }: { db: Db; actorUserId: AuthId; input: JobCreateInput }) {
+export async function createJob({ db, actor, input }: { db: Db; actor: JobActor; input: JobCreateInput }) {
   return withJobConstraints(() =>
     db.transaction(async (tx) => {
       const [row] = await tx.insert(contractingJobs).values(input).returning();
       if (!row) throw new Error('Job insert returned no row');
-      await recordAuditCreate({ db: tx, actorUserId, descriptor: jobDescriptor, input: row });
+      await recordAuditCreate({ db: tx, actorUserId: actor.userId, descriptor: jobDescriptor, input: row });
       return getJob({ db: tx, id: row.id });
     }),
   );
 }
 
-export async function patchJob({ db, actorUserId, input }: { db: Db; actorUserId: AuthId; input: JobPatchInput }) {
+export async function patchJob({ db, actor, input }: { db: Db; actor: JobActor; input: JobPatchInput }) {
+  const { id: _id, ...fields } = input;
+  // A patch naming nothing asks for no Job Action, so it writes nothing either.
+  if (Object.values(fields).every((value) => value === undefined)) return getJob({ db, id: input.id });
   return withJobConstraints(() =>
-    writeJob(db, actorUserId, input.id, {
+    writeJob(db, actor.userId, input.id, {
       assert: (_tx, before) => {
-        if (before.status === 'invoiced') throw wrongStatus('An Invoiced Job cannot be changed.');
         const changesSetup =
           input.customerId !== undefined ||
           input.farmId !== undefined ||
           input.workTypeId !== undefined ||
           input.description !== undefined ||
           input.foremanUserId !== undefined;
-        if (changesSetup && !hasJobStatus(openJobStatuses, before.status))
-          throw wrongStatus('Job setup can only be changed while the Job is Upcoming or Active.');
+        if (changesSetup) assertJobAction('editSetup', before, actor);
         const changesSignOff =
           input.startDate !== undefined ||
           input.endDate !== undefined ||
           input.notes !== undefined ||
           input.dieselLitres !== undefined;
-        if (changesSignOff && !hasJobStatus(signedOffJobStatuses, before.status))
-          throw wrongStatus('Sign-off details can only be changed after Completion.');
-        if (
-          input.dieselLitres !== undefined &&
-          input.dieselLitres !== before.dieselLitres &&
-          before.status === 'priced'
-        )
-          throw wrongStatus('This Job is Priced, so its diesel litres can no longer change.');
+        if (changesSignOff) assertJobAction('editSignOffDetails', before, actor);
+        // The sign-off form saves its litres with every edit; only a real change is a diesel edit.
+        if (input.dieselLitres !== undefined && input.dieselLitres !== before.dieselLitres)
+          assertJobAction('editDieselLitres', before, actor);
         const startDate = input.startDate ?? before.startDate;
         const endDate = input.endDate ?? before.endDate;
         if (startDate && endDate && startDate > endDate)
@@ -108,12 +95,11 @@ function lockAssignments(tx: DatabaseTransaction, jobId: string) {
 const onSiteRefusal = (count: number, instruction: string) =>
   new JobError('contracting_job.has_on_site_stints', `${count} machine(s) are still on site. ${instruction}`);
 
-export async function cancelJob({ db, actorUserId, input }: { db: Db; actorUserId: AuthId; input: JobCancelInput }) {
+export async function cancelJob({ db, actor, input }: { db: Db; actor: JobActor; input: JobCancelInput }) {
   return withJobConstraints(() =>
     db.transaction(async (tx) => {
       const before = await lockJob(tx, input.id);
-      if (!hasJobStatus(unpricedJobStatuses, before.status))
-        throw wrongStatus('Only an Upcoming, Active, or Completed Job can be cancelled.');
+      assertJobAction('cancel', before, actor);
       const onSite = (await lockAssignments(tx, before.id)).filter(
         (assignment) => assignment.arrivalReadingId !== null && assignment.departureReadingId === null,
       ).length;
@@ -122,38 +108,23 @@ export async function cancelJob({ db, actorUserId, input }: { db: Db; actorUserI
       const [cancelled] = await tx
         .update(contractingJobs)
         .set({
-          status: 'cancelled',
-          cancelledAt: now,
-          cancelledByUserId: actorUserId,
-          cancellationReason: input.reason,
-          completedAt: null,
-          completedByUserId: null,
-          reopenedAt: null,
-          repricingNote: null,
+          ...transitionJob(before, { type: 'cancel', at: now, byUserId: actor.userId, reason: input.reason }),
           updatedAt: now,
         })
         .where(eq(contractingJobs.id, input.id))
         .returning();
       if (!cancelled) throw jobNotFound();
-      await recordAuditDelete({ db: tx, actorUserId, descriptor: jobDescriptor, input: cancelled });
+      await recordAuditDelete({ db: tx, actorUserId: actor.userId, descriptor: jobDescriptor, input: cancelled });
       return getJob({ db: tx, id: cancelled.id });
     }),
   );
 }
 
-export async function completeJob({
-  db,
-  actorUserId,
-  input,
-}: {
-  db: Db;
-  actorUserId: AuthId;
-  input: JobCompleteInput;
-}) {
+export async function completeJob({ db, actor, input }: { db: Db; actor: JobActor; input: JobCompleteInput }) {
   return withJobConstraints(() =>
-    writeJob(db, actorUserId, input.id, {
+    writeJob(db, actor.userId, input.id, {
       assert: async (tx, before) => {
-        if (before.status !== 'active') throw wrongStatus('Only an Active Job can be completed.');
+        assertJobAction('complete', before, actor);
         const locked = await lockAssignments(tx, before.id);
         const detail = await getJob({ db: tx, id: before.id });
         const gate = canComplete(detail.assignments);
@@ -173,14 +144,16 @@ export async function completeJob({
             'The planned stints changed. Reload and complete again.',
           );
         for (const stint of planned)
-          await deletePlannedAssignment(tx, actorUserId, stint, assignmentIn(detail, stint.id).machineCode);
+          await deletePlannedAssignment(tx, actor.userId, stint, assignmentIn(detail, stint.id).machineCode);
       },
-      set: () => ({
-        status: 'completed' as const,
-        completedAt: new Date(),
-        completedByUserId: actorUserId,
-        startDate: input.startDate,
-        endDate: input.endDate,
+      set: (before) => ({
+        ...transitionJob(before, {
+          type: 'complete',
+          at: new Date(),
+          byUserId: actor.userId,
+          startDate: input.startDate,
+          endDate: input.endDate,
+        }),
         dieselLitres: input.dieselLitres,
         notes: input.notes,
       }),

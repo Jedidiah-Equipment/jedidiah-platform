@@ -116,8 +116,18 @@ describe('deriveStint', () => {
       foremanUserId: 'foreman',
       stints: [],
     };
-    expect(jobSummary(job, [start])).toEqual({ machines: 1, running: 1, hasArrived: true });
-    expect(jobSummary(job, [start, queued('departure')])).toEqual({ machines: 1, running: 0, hasArrived: true });
+    expect(jobSummary({ ...job, status: 'upcoming' }, [start])).toEqual({
+      machines: 1,
+      running: 1,
+      status: 'active',
+      hasArrived: true,
+    });
+    expect(jobSummary(job, [start, queued('departure')])).toEqual({
+      machines: 1,
+      running: 0,
+      status: 'active',
+      hasArrived: true,
+    });
   });
 
   test('projects queued planned-assignment overrides while the arrival is offline', () => {

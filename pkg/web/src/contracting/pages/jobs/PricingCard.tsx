@@ -23,11 +23,11 @@ import { useTRPC } from '@/lib/trpc.js';
 import { pricingColumns, pricingRowId } from './PricingCells.js';
 import { pricingRows } from './pricing.js';
 import { PricingContext, type PricingMutations, usePricingMutations } from './pricing-context.js';
-import type { JobCapabilities } from './types.js';
+import type { JobSheet } from './types.js';
 
-export function PricingCard({ job, capabilities }: { job: JobDetail; capabilities: JobCapabilities }) {
+export function PricingCard({ job, sheet }: { job: JobDetail; sheet: JobSheet }) {
   const trpc = useTRPC();
-  const editable = capabilities.price;
+  const editable = sheet.can('price');
   const rates = useQuery(trpc.contractingRateCard.rates.options.queryOptions(undefined, { enabled: editable }));
   const mutations = usePricingMutations();
   const hash = useLocation({ select: (location) => location.hash });
@@ -42,7 +42,7 @@ export function PricingCard({ job, capabilities }: { job: JobDetail; capabilitie
     () => ({ job, editable, rates: rates.data ?? [], mutations }),
     [job, editable, rates.data, mutations],
   );
-  if (!capabilities.seePricing) return null;
+  if (!sheet.seesMoney) return null;
   return (
     <section id="pricing" ref={section} aria-label="Pricing" className="scroll-mt-4">
       <Card>

@@ -5,15 +5,14 @@ import {
   contractingMachineAssignments,
   type contractingMachines,
 } from '@pkg/db/contracting';
-import { isContractingManagement } from '@pkg/domain/contracting';
-import type { AuthId } from '@pkg/schema';
-import { hasJobStatus, openJobStatuses, type ReadingCaptureInput } from '@pkg/schema/contracting';
+import { isContractingManagement, type JobActor, transitionJob } from '@pkg/domain/contracting';
+import type { ReadingCaptureInput } from '@pkg/schema/contracting';
 import { eq } from 'drizzle-orm';
 import { recordAuditCreate } from '../../audit/audit-writer.js';
 import { assignmentDescriptor } from '../jobs/job-audit.js';
 import { lockAssignment, lockJob } from '../jobs/job-lock.js';
 import { writeAssignment, writeJobRow } from '../jobs/job-write.js';
-import { ReadingError } from './reading-errors.js';
+import { assertReadingJobAction, ReadingError } from './reading-errors.js';
 
 /**
  * The Machine Assignment side of an Hour Reading capture: a planned stint arriving or leaving, or a
@@ -29,32 +28,16 @@ export type CaptureStint = { job: JobRow; stint: StintRow };
 const stintNotFound = () => new ReadingError('reading.not_found', 'Machine Assignment not found.');
 const alreadyArrived = () => new ReadingError('reading.invalid_role', 'This Machine Assignment already arrived.');
 
-async function isManagement(tx: DatabaseTransaction, actorUserId: AuthId) {
-  const [actor] = await tx
-    .select({ contractingRole: user.contractingRole, equipmentRole: user.role })
-    .from(user)
-    .where(eq(user.id, actorUserId));
-  return isContractingManagement(actor);
-}
-
-function assertCanCaptureOn(job: JobRow, actorUserId: AuthId, management: boolean) {
-  if (!management && job.foremanUserId !== actorUserId)
-    throw new ReadingError('reading.forbidden', 'This is not your Job.');
-  if (!hasJobStatus(openJobStatuses, job.status))
-    throw new ReadingError('reading.wrong_status', 'This Job is no longer open.');
-}
-
 async function lockPlannedStint(
   tx: DatabaseTransaction,
-  { actorUserId, input, hasPhoto }: { actorUserId: AuthId; input: ReadingCaptureInput; hasPhoto: boolean },
+  { actor, input, hasPhoto }: { actor: JobActor; input: ReadingCaptureInput; hasPhoto: boolean },
   assignmentId: string,
 ): Promise<CaptureStint> {
   const { job, stint } = await lockAssignment(tx, assignmentId, stintNotFound);
   if (stint.machineId !== input.machineId) throw stintNotFound();
-  const management = await isManagement(tx, actorUserId);
-  if (input.role === 'departure' && management && !hasPhoto && !input.comment)
+  if (input.role === 'departure' && isContractingManagement(actor) && !hasPhoto && !input.comment)
     throw new ReadingError('reading.invalid_role', 'A reason is required for a photo-less departure reading.');
-  assertCanCaptureOn(job, actorUserId, management);
+  assertReadingJobAction('capture', job, actor);
   if (input.role === 'arrival' && stint.arrivalReadingId) throw alreadyArrived();
   if (input.role === 'departure' && (!stint.arrivalReadingId || stint.departureReadingId))
     throw new ReadingError('reading.invalid_role', 'This Machine Assignment is not on site.');
@@ -64,11 +47,11 @@ async function lockPlannedStint(
 /** A Foreman's phone names the new stint's id, so a retried capture finds the stint it already started. */
 async function startStint(
   tx: DatabaseTransaction,
-  { actorUserId, input, machine }: { actorUserId: AuthId; input: ReadingCaptureInput; machine: MachineRow },
+  { actor, input, machine }: { actor: JobActor; input: ReadingCaptureInput; machine: MachineRow },
   start: NonNullable<ReadingCaptureInput['startAssignment']>,
 ): Promise<CaptureStint> {
   const job = await lockJob(tx, start.jobId, () => new ReadingError('reading.not_found', 'Job not found.'));
-  assertCanCaptureOn(job, actorUserId, await isManagement(tx, actorUserId));
+  assertReadingJobAction('capture', job, actor);
   const [inserted] = await tx
     .insert(contractingMachineAssignments)
     .values({
@@ -77,7 +60,7 @@ async function startStint(
       machineId: input.machineId,
       implementId: start.implementId,
       driverUserId: start.driverUserId ?? machine.currentDriverUserId,
-      createdByUserId: actorUserId,
+      createdByUserId: actor.userId,
     })
     .onConflictDoNothing({ target: contractingMachineAssignments.id })
     .returning();
@@ -92,7 +75,12 @@ async function startStint(
     throw new ReadingError('reading.capture_id_conflict', 'This Machine Assignment identifier is already used.');
   if (stint.arrivalReadingId) throw alreadyArrived();
   if (inserted)
-    await recordAuditCreate({ db: tx, actorUserId, descriptor: assignmentDescriptor(machine.code), input: stint });
+    await recordAuditCreate({
+      db: tx,
+      actorUserId: actor.userId,
+      descriptor: assignmentDescriptor(machine.code),
+      input: stint,
+    });
   return { job, stint };
 }
 
@@ -131,7 +119,7 @@ async function assertArrivalResources(
 /** Finds, or starts, the stint a capture belongs to, and checks the capture may land on it. */
 export async function resolveCaptureStint(
   tx: DatabaseTransaction,
-  context: { actorUserId: AuthId; input: ReadingCaptureInput; machine: MachineRow; hasPhoto: boolean },
+  context: { actor: JobActor; input: ReadingCaptureInput; machine: MachineRow; hasPhoto: boolean },
 ): Promise<CaptureStint | null> {
   const { input } = context;
   const resolved = input.assignmentId
@@ -148,20 +136,20 @@ export async function resolveCaptureStint(
 export async function attachReadingToStint(
   tx: DatabaseTransaction,
   {
-    actorUserId,
+    actor,
     machineCode,
     input,
     readingId,
     job,
     stint,
-  }: CaptureStint & { actorUserId: AuthId; machineCode: string; input: ReadingCaptureInput; readingId: string },
+  }: CaptureStint & { actor: JobActor; machineCode: string; input: ReadingCaptureInput; readingId: string },
 ) {
-  await writeAssignment(tx, actorUserId, machineCode, stint.id, {
+  await writeAssignment(tx, actor.userId, machineCode, stint.id, {
     set: () =>
       input.role === 'arrival'
         ? { arrivalReadingId: readingId, ...arrivalResources(stint, input.stintOverrides) }
         : { departureReadingId: readingId },
   });
   if (input.role === 'arrival' && job.status === 'upcoming')
-    await writeJobRow(tx, actorUserId, job.id, { set: () => ({ status: 'active' }) });
+    await writeJobRow(tx, actor.userId, job.id, { set: (before) => transitionJob(before, { type: 'activate' }) });
 }

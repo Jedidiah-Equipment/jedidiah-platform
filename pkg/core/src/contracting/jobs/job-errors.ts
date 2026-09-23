@@ -1,3 +1,5 @@
+import { type JobActionSubject, type JobActor, jobActionRefusal, judgeJobAction } from '@pkg/domain/contracting';
+import type { JobActionBlockedReason, JobActionName } from '@pkg/schema/contracting';
 import { translatingConstraintViolations } from '../../errors/constraint-violations.js';
 
 export type JobErrorCode =
@@ -20,10 +22,14 @@ export type JobErrorCode =
   | 'contracting_job.total_changed'
   | 'contracting_job.rate_inactive';
 
+/** Which Job Action a refusal refused, and why: public context a surface can branch on. */
+export type RefusedJobAction = { action: JobActionName; reason: JobActionBlockedReason };
+
 export class JobError extends Error {
   constructor(
     readonly code: JobErrorCode,
     message: string,
+    readonly refused?: RefusedJobAction,
   ) {
     super(message);
     this.name = 'JobError';
@@ -61,6 +67,25 @@ export const withJobConstraints = <T>(action: () => Promise<T>) =>
     action,
   );
 
+const refusalCodes: Record<JobActionBlockedReason, JobErrorCode> = {
+  'no-permission': 'contracting_job.forbidden',
+  'not-your-job': 'contracting_job.not_owner',
+  'wrong-status': 'contracting_job.wrong_status',
+  priced: 'contracting_job.wrong_status',
+  closed: 'contracting_job.wrong_status',
+};
+
+/** Refuses unless this actor may take this Job Action on this Job now: every status refusal is raised here. */
+export function assertJobAction(action: JobActionName, job: JobActionSubject, actor: JobActor) {
+  const verdict = judgeJobAction(action, job, actor);
+  if (!verdict.allowed)
+    throw new JobError(refusalCodes[verdict.reason], jobActionRefusal(action, verdict.reason, job, actor), {
+      action,
+      reason: verdict.reason,
+    });
+}
+
+/** A read-side check: a Foreman reads only the Jobs they are Foreman on. */
 export function assertOwner(job: { foremanUserId: string | null }, actorUserId: string) {
   if (job.foremanUserId !== actorUserId)
     throw new JobError('contracting_job.not_owner', 'This Job is assigned to another Foreman.');

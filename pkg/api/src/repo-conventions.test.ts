@@ -86,6 +86,31 @@ describe('display formatting', () => {
   });
 });
 
+describe('Contracting Job Actions', () => {
+  it('keeps the status groups out of web and mobile, which read Job Actions instead', () => {
+    const result = spawnSync(
+      'git',
+      [
+        'grep',
+        '--untracked',
+        '-nwE',
+        '(open|worked|unpriced|signedOff|closed|finished)JobStatuses',
+        '--',
+        'pkg/web/src/**',
+        'pkg/mobile/src/**',
+        'pkg/mobile/app/**',
+      ],
+      { cwd: repoRoot, encoding: 'utf8' },
+    );
+    const offenders = result.stdout.split('\n').filter((line) => line.length > 0);
+
+    expect(
+      offenders,
+      'Gate a Contracting Job control on its served Job Action (JobDetail.actions) or deriveJobActions, not a status group',
+    ).toEqual([]);
+  });
+});
+
 describe('.git-blame-ignore-revs', () => {
   it('lists only commits reachable from HEAD', () => {
     const entries = readFileSync(join(repoRoot, '.git-blame-ignore-revs'), 'utf8')

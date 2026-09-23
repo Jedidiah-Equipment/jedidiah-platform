@@ -1,3 +1,4 @@
+import { deriveJobActions } from '@pkg/domain/contracting';
 import { useStore } from '@tanstack/react-form';
 import { type Href, router, useLocalSearchParams } from 'expo-router';
 import { useMemo, useState } from 'react';
@@ -17,8 +18,9 @@ import {
 import { useReadingQueue } from '@/contracting/readings/ReadingQueueProvider';
 import { newLocalId } from '@/contracting/readings/reading-queue';
 import { useFleet } from '@/contracting/readings/use-fleet';
+import { useSessionAccessSummary } from '@/lib/auth-session';
 import { MachineCatalogControls } from '../components/MachineCatalogControls';
-import { deriveStint } from './derive-stint';
+import { deriveStint, jobSummary } from './derive-stint';
 import { useDrivers, useImplements, useJobs } from './use-jobs';
 
 const BUSY_VIEWS = new Set(['starting', 'running', 'stopping']);
@@ -35,6 +37,12 @@ export default function AddMachineScreen() {
   const implementQuery = useImplements();
   const drivers = useDrivers();
   const { items } = useReadingQueue();
+  const access = useSessionAccessSummary();
+  const job = jobs.data?.find((candidate) => candidate.id === params.jobId);
+  // Starting a stint is a capture, judged against the Job as it will stand once the queue syncs.
+  const canStart = job
+    ? deriveJobActions({ ...job, status: jobSummary(job, items).status }, access).capture.allowed
+    : false;
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('all');
   const [sort, setSort] = useState<MachineSort>('code');
@@ -238,7 +246,7 @@ export default function AddMachineScreen() {
         <Button
           primary
           title="Continue — capture arrival"
-          disabled={!selected || machineJobs.has(selected.id) || selectedImplementBusy}
+          disabled={!canStart || !selected || machineJobs.has(selected.id) || selectedImplementBusy}
           onPress={continueToCapture}
         />
       </ScrollView>

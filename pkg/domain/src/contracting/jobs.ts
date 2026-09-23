@@ -55,3 +55,12 @@ export const jobReadSeesMoney = (mode: JobReadMode) => mode !== 'own';
 export function looksFinished(job: { status: JobStatus }, states: readonly AssignmentState[]): boolean {
   return job.status === 'active' && states.includes('left') && !states.includes('on-site');
 }
+
+export const jobStatusLabels: Record<JobStatus, string> = {
+  upcoming: 'Upcoming',
+  active: 'Active',
+  completed: 'Completed',
+  priced: 'Priced',
+  invoiced: 'Invoiced',
+  cancelled: 'Cancelled',
+};

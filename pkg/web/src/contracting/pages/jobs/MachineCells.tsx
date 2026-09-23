@@ -98,8 +98,8 @@ function MachineCell({ row }: { row: StintRow }) {
 }
 
 function ImplementCell({ stint }: { stint: Assignment }) {
-  const { capabilities, implementOptions, mutations } = useMachines();
-  if (!capabilities.planStints || stint.state === 'left') return stint.implementCode ?? '—';
+  const { sheet, implementOptions, mutations } = useMachines();
+  if (!sheet.can('assign') || stint.state === 'left') return stint.implementCode ?? '—';
   return (
     <div>
       <SearchableCombobox
@@ -116,8 +116,8 @@ function ImplementCell({ stint }: { stint: Assignment }) {
 }
 
 function DriverCell({ stint }: { stint: Assignment }) {
-  const { capabilities, drivers, mutations } = useMachines();
-  if (!capabilities.planStints || stint.state === 'left') return stint.driverName ?? '—';
+  const { sheet, drivers, mutations } = useMachines();
+  if (!sheet.can('assign') || stint.state === 'left') return stint.driverName ?? '—';
   return (
     <div>
       <SearchableCombobox
@@ -152,13 +152,13 @@ function ReadingCell({ reading, stint }: { reading: JobReading | null; stint: As
 }
 
 function DepartureCell({ stint }: { stint: Assignment }) {
-  const { capabilities, openDeparture } = useMachines();
+  const { sheet, openDeparture } = useMachines();
   if (stint.departure) return <ReadingCell reading={stint.departure} stint={stint} />;
   if (stint.state !== 'on-site') return null;
   return (
     <div>
       On site{' '}
-      {capabilities.signOff || capabilities.resolveGaps ? (
+      {sheet.showsSignOff || sheet.can('resolveGaps') ? (
         <Button size="sm" variant="outline" onClick={() => openDeparture(stint)}>
           Enter departure reading
         </Button>
@@ -168,7 +168,7 @@ function DepartureCell({ stint }: { stint: Assignment }) {
 }
 
 function TravelCell({ row }: { row: StintRow }) {
-  const { capabilities, mutations, openGap } = useMachines();
+  const { sheet, mutations, openGap } = useMachines();
   if (row.kind === 'subtotal') return formatHours(row.travelHours);
   if (row.kind === 'planned') return '—';
   const { stint } = row;
@@ -179,7 +179,7 @@ function TravelCell({ row }: { row: StintRow }) {
         <Switch
           aria-label={`Include travel for ${stint.machineCode}`}
           checked={stint.travelIncluded}
-          disabled={!capabilities.patchTravel}
+          disabled={!sheet.can('patchTravel')}
           onCheckedChange={(travelIncluded) => mutations.patch.mutate({ id: stint.id, travelIncluded })}
         />{' '}
         <span>Included</span>
@@ -187,7 +187,7 @@ function TravelCell({ row }: { row: StintRow }) {
       {stint.gapFlag ? (
         <div>
           <Badge variant="destructive">Gap flag</Badge>{' '}
-          {capabilities.resolveGaps ? (
+          {sheet.can('resolveGaps') ? (
             <Button size="sm" variant="outline" onClick={() => openGap(stint)}>
               Resolve
             </Button>
@@ -207,7 +207,7 @@ function TravelCell({ row }: { row: StintRow }) {
 }
 
 function MeasuresCell({ row }: { row: StintRow }) {
-  const { capabilities, mutations } = useMachines();
+  const { sheet, mutations } = useMachines();
   if (row.kind === 'subtotal')
     return Object.entries(row.measures).map(([name, quantity]) => (
       <Badge key={name} variant="outline">
@@ -221,7 +221,7 @@ function MeasuresCell({ row }: { row: StintRow }) {
       {stint.measures.map((item) => (
         <Badge key={item.id} variant="outline">
           {item.quantity} {item.measureTypeName}
-          {capabilities.editMeasures ? (
+          {sheet.can('editMeasures') ? (
             <button
               type="button"
               aria-label={`Remove ${item.measureTypeName}`}
@@ -235,7 +235,7 @@ function MeasuresCell({ row }: { row: StintRow }) {
           ) : null}
         </Badge>
       ))}
-      {capabilities.editMeasures ? <AddMeasurePopover stint={stint} /> : null}
+      {sheet.can('editMeasures') ? <AddMeasurePopover stint={stint} /> : null}
     </div>
   );
 }
@@ -255,8 +255,8 @@ function AttentionCell({ stint }: { stint: Assignment }) {
 }
 
 function RemovePlannedCell({ stint }: { stint: Assignment }) {
-  const { capabilities, mutations } = useMachines();
-  if (!capabilities.planStints) return null;
+  const { sheet, mutations } = useMachines();
+  if (!sheet.can('assign')) return null;
   return (
     <RemoveEntityButton
       title="Remove planned Machine"

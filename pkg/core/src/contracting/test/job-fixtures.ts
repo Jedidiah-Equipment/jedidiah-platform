@@ -1,5 +1,6 @@
 import type { Db } from '@pkg/db';
 import { user } from '@pkg/db';
+import { accessForRole } from '@pkg/domain/testing';
 import { DateOnlyIso } from '@pkg/schema';
 import { createCustomer } from '../customers/customer-service.js';
 import { createFarm } from '../customers/farm-service.js';
@@ -17,6 +18,9 @@ import { createWorkType } from '../work-types/work-type-service.js';
 export const adminId = 'fixture-admin';
 export const foremanId = 'fixture-foreman';
 export const invoicingId = 'fixture-invoicing';
+export const admin = accessForRole('contracting-admin', adminId);
+export const foreman = accessForRole('foreman', foremanId);
+export const invoicing = accessForRole('contracting-invoicing', invoicingId);
 
 /** Users, a Customer with a Farm, two Machines, a Measure Type and a time Rate: enough to take a Job to Invoiced. */
 export async function seedJobFixtures(db: Db) {
@@ -84,16 +88,15 @@ const nextCapture = () => {
 /** A planned stint that arrived and left, with its readings. */
 export async function leftStint(db: Db, jobId: string, machineId: string, arrival: number, departure: number) {
   const planned = await createAssignment({
-    actingAs: 'manager',
     db,
-    actorUserId: adminId,
+    actor: admin,
     input: { jobId, machineId, implementId: null },
   });
   if (!planned) throw new Error('Expected a planned stint');
   const capture = (role: 'arrival' | 'departure', value: number) =>
     captureReading({
       db,
-      actorUserId: foremanId,
+      actor: foreman,
       input: {
         machineId,
         assignmentId: planned.id,
@@ -116,7 +119,7 @@ export async function completedJob(
   const { db } = fixtures;
   const job = await createJob({
     db,
-    actorUserId: adminId,
+    actor: admin,
     input: {
       customerId: fixtures.customer.id,
       farmId: fixtures.farm.id,
@@ -129,7 +132,7 @@ export async function completedJob(
   for (const item of stints) created.push(await leftStint(db, job.id, item.machineId, item.arrival, item.departure));
   await completeJob({
     db,
-    actorUserId: adminId,
+    actor: admin,
     input: {
       id: job.id,
       startDate: DateOnlyIso.parse('2026-09-01'),
@@ -150,8 +153,8 @@ export async function pricedJob(
   const { db } = fixtures;
   const completed = await completedJob(fixtures, stints);
   for (const stint of completed.stints)
-    await setStintRate({ db, actorUserId: adminId, input: { assignmentId: stint.id, rateId: fixtures.dryHire.id } });
+    await setStintRate({ db, actor: admin, input: { assignmentId: stint.id, rateId: fixtures.dryHire.id } });
   const total = (await getJob({ db, id: completed.jobId })).pricing?.total ?? 0;
-  await markPriced({ db, actorUserId: adminId, input: { id: completed.jobId, expectedTotal: total } });
+  await markPriced({ db, actor: admin, input: { id: completed.jobId, expectedTotal: total } });
   return { ...completed, total };
 }

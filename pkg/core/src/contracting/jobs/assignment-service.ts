@@ -1,50 +1,24 @@
 import type { DatabaseTransaction, Db } from '@pkg/db';
 import { contractingMachineAssignments, contractingMachines } from '@pkg/db/contracting';
 import { formatHours } from '@pkg/domain';
-import { round1 } from '@pkg/domain/contracting';
+import { type JobActor, round1 } from '@pkg/domain/contracting';
 import type { AuthId } from '@pkg/schema';
-import {
-  type AssignmentPatchInput,
-  type AssignmentPlanInput,
-  closedJobStatuses,
-  type GapResolveInput,
-  hasJobStatus,
-  openJobStatuses,
-  workedJobStatuses,
-} from '@pkg/schema/contracting';
+import type { AssignmentPatchInput, AssignmentPlanInput, GapResolveInput } from '@pkg/schema/contracting';
 import { eq } from 'drizzle-orm';
 import { recordAuditCreate, recordAuditDelete } from '../../audit/audit-writer.js';
 import { assignmentDescriptor } from './job-audit.js';
-import { assertOwner, JobError, withJobConstraints, wrongStatus } from './job-errors.js';
+import { assertJobAction, JobError, withJobConstraints, wrongStatus } from './job-errors.js';
 import { lockAssignment, lockJob } from './job-lock.js';
 import { assignmentIn, getJob } from './job-read.js';
 import { writeAssignment } from './job-write.js';
 
 type Row = typeof contractingMachineAssignments.$inferSelect;
 
-/**
- * Who is changing a Machine Assignment. A manager works any open Job; a Foreman works only their own, and
- * changes an existing stint only while the Job is Active.
- */
-export type AssignmentActor = 'manager' | 'foreman';
-
-export async function createAssignment({
-  db,
-  actorUserId,
-  actingAs,
-  input,
-}: {
-  db: Db;
-  actorUserId: AuthId;
-  actingAs: AssignmentActor;
-  input: AssignmentPlanInput;
-}) {
+export async function createAssignment({ db, actor, input }: { db: Db; actor: JobActor; input: AssignmentPlanInput }) {
   return withJobConstraints(() =>
     db.transaction(async (tx) => {
       const job = await lockJob(tx, input.jobId);
-      if (!hasJobStatus(openJobStatuses, job.status))
-        throw wrongStatus('Machine Assignments can only be added to an Upcoming or Active Job.');
-      if (actingAs === 'foreman') assertOwner(job, actorUserId);
+      assertJobAction('assign', job, actor);
       const [machine] = await tx
         .select({ code: contractingMachines.code, currentDriverUserId: contractingMachines.currentDriverUserId })
         .from(contractingMachines)
@@ -55,44 +29,32 @@ export async function createAssignment({
         .values({
           ...input,
           driverUserId: input.driverUserId === undefined ? machine.currentDriverUserId : input.driverUserId,
-          createdByUserId: actorUserId,
+          createdByUserId: actor.userId,
         })
         .returning();
       if (!row) throw new Error('Machine Assignment insert returned no row');
-      await recordAuditCreate({ db: tx, actorUserId, descriptor: assignmentDescriptor(machine.code), input: row });
+      await recordAuditCreate({
+        db: tx,
+        actorUserId: actor.userId,
+        descriptor: assignmentDescriptor(machine.code),
+        input: row,
+      });
       return assignmentIn(await getJob({ db: tx, id: job.id }), row.id);
     }),
   );
 }
 
-export async function patchAssignment({
-  db,
-  actorUserId,
-  actingAs,
-  input,
-}: {
-  db: Db;
-  actorUserId: AuthId;
-  actingAs: AssignmentActor;
-  input: AssignmentPatchInput;
-}) {
+export async function patchAssignment({ db, actor, input }: { db: Db; actor: JobActor; input: AssignmentPatchInput }) {
   return withJobConstraints(() =>
     db.transaction(async (tx) => {
       const { job, machineCode } = await lockAssignment(tx, input.id);
-      await writeAssignment(tx, actorUserId, machineCode, input.id, {
+      await writeAssignment(tx, actor.userId, machineCode, input.id, {
         assert: (_tx, before) => {
-          if (actingAs === 'foreman') {
-            assertOwner(job, actorUserId);
-            if (job.status !== 'active') throw wrongStatus('Foremen can change stints only while the Job is Active.');
-          }
-          if (hasJobStatus(closedJobStatuses, job.status))
-            throw wrongStatus('A Cancelled or Invoiced Job cannot be changed.');
-          if (
-            input.travelIncluded !== undefined &&
-            input.travelIncluded !== before.travelIncluded &&
-            job.status === 'priced'
-          )
-            throw wrongStatus('This Job is Priced, so its travel can no longer change.');
+          const changesResources = input.implementId !== undefined || input.driverUserId !== undefined;
+          const changesTravel = input.travelIncluded !== undefined && input.travelIncluded !== before.travelIncluded;
+          if (changesResources || !changesTravel) assertJobAction('assign', job, actor);
+          if (changesTravel) assertJobAction('patchTravel', job, actor);
+          // Judges the stint, not the Job: what a Machine brought is history once it has left.
           if (
             (input.implementId !== undefined || input.driverUserId !== undefined) &&
             before.departureReadingId !== null
@@ -124,24 +86,22 @@ export async function deletePlannedAssignment(
   return stint;
 }
 
-export async function removeAssignment({ db, actorUserId, id }: { db: Db; actorUserId: AuthId; id: string }) {
+export async function removeAssignment({ db, actor, id }: { db: Db; actor: JobActor; id: string }) {
   return withJobConstraints(() =>
     db.transaction(async (tx) => {
       const { job, stint, machineCode } = await lockAssignment(tx, id);
-      if (!hasJobStatus(openJobStatuses, job.status))
-        throw wrongStatus('Machine Assignments can only be removed from an Upcoming or Active Job.');
-      return deletePlannedAssignment(tx, actorUserId, stint, machineCode);
+      assertJobAction('assign', job, actor);
+      return deletePlannedAssignment(tx, actor.userId, stint, machineCode);
     }),
   );
 }
 
-export async function resolveGap({ db, actorUserId, input }: { db: Db; actorUserId: AuthId; input: GapResolveInput }) {
+export async function resolveGap({ db, actor, input }: { db: Db; actor: JobActor; input: GapResolveInput }) {
   return withJobConstraints(() =>
     db.transaction(async (tx) => {
       const { job, machineCode } = await lockAssignment(tx, input.id);
-      if (!hasJobStatus(workedJobStatuses, job.status))
-        throw wrongStatus('Hour Gaps can only be resolved on an Active or Completed Job.');
-      await writeAssignment(tx, actorUserId, machineCode, input.id, {
+      assertJobAction('resolveGaps', job, actor);
+      await writeAssignment(tx, actor.userId, machineCode, input.id, {
         assert: async (innerTx, before) => {
           if (!before.arrivalReadingId || !before.departureReadingId)
             throw new JobError('contracting_job.stint_not_on_site', 'The Machine Assignment must have left the Job.');
@@ -159,7 +119,7 @@ export async function resolveGap({ db, actorUserId, input }: { db: Db; actorUser
           gapUnaccountedHours: input.unaccountedHours,
           gapReason: input.reason,
           gapResolvedAt: new Date(),
-          gapResolvedByUserId: actorUserId,
+          gapResolvedByUserId: actor.userId,
         }),
       });
       return assignmentIn(await getJob({ db: tx, id: job.id }), input.id);

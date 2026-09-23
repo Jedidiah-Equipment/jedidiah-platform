@@ -1,35 +1,27 @@
 import type { Db } from '@pkg/db';
 import { contractingCustomers, contractingJobs } from '@pkg/db/contracting';
-import { formatJobNumber } from '@pkg/domain/contracting';
-import type { AuthId } from '@pkg/schema';
+import { formatJobNumber, type JobActor, transitionJob } from '@pkg/domain/contracting';
 import type { JobStampInvoiceInput } from '@pkg/schema/contracting';
 import { asc, eq, sql } from 'drizzle-orm';
-import { totalChanged, withJobConstraints, wrongStatus } from './job-errors.js';
+import { assertJobAction, totalChanged, withJobConstraints } from './job-errors.js';
 import { writeJob } from './job-write.js';
 
 /** Stamps the accounting system's Invoice Number on a Priced Job, making it Invoiced: the wall. */
-export async function stampInvoice({
-  db,
-  actorUserId,
-  input,
-}: {
-  db: Db;
-  actorUserId: AuthId;
-  input: JobStampInvoiceInput;
-}) {
+export async function stampInvoice({ db, actor, input }: { db: Db; actor: JobActor; input: JobStampInvoiceInput }) {
   return withJobConstraints(() =>
-    writeJob(db, actorUserId, input.id, {
+    writeJob(db, actor.userId, input.id, {
       assert: (_tx, before) => {
-        if (before.status !== 'priced') throw wrongStatus('Only a Priced Job can be invoiced.');
+        assertJobAction('stampInvoice', before, actor);
         if (before.pricedTotal !== input.expectedTotal)
           throw totalChanged('This Job was re-priced. Review the new total before stamping.');
       },
-      set: () => ({
-        status: 'invoiced',
-        invoiceNumber: input.invoiceNumber,
-        invoicedAt: new Date(),
-        invoicedByUserId: actorUserId,
-      }),
+      set: (before) =>
+        transitionJob(before, {
+          type: 'invoice',
+          at: new Date(),
+          byUserId: actor.userId,
+          invoiceNumber: input.invoiceNumber,
+        }),
     }),
   );
 }

@@ -1,3 +1,4 @@
+import { transitionJob } from '@pkg/domain/contracting';
 import {
   type FieldDriver,
   type FieldImplement,
@@ -124,18 +125,21 @@ export function jobSummary(job: FieldJob, queued: readonly QueuedReading[]) {
       return departure ? 'stopping' : arrival.attention ? 'attention' : 'starting';
     });
   const views = [...server.map((stint) => stint.view), ...local];
-  const hasArrived =
-    job.status === 'active' ||
-    queued.some(
-      (capture) =>
-        capture.role === 'arrival' &&
-        !capture.attention &&
-        (capture.startAssignment?.jobId === job.id ||
-          (typeof capture.assignmentId === 'string' && stintIds.has(capture.assignmentId))),
-    );
+  const queuedArrival = queued.some(
+    (capture) =>
+      capture.role === 'arrival' &&
+      !capture.attention &&
+      (capture.startAssignment?.jobId === job.id ||
+        (typeof capture.assignmentId === 'string' && stintIds.has(capture.assignmentId))),
+  );
+  // The server starts an Upcoming Job on its first arrival; a queued arrival will, so the phone believes it has.
+  const status =
+    queuedArrival && job.status === 'upcoming' ? transitionJob(job, { type: 'activate' }).status : job.status;
   return {
     machines: job.stints.length + local.length,
     running: views.filter((view) => view === 'running' || view === 'starting').length,
-    hasArrived,
+    /** The status the Job will have once the queue syncs. */
+    status,
+    hasArrived: status === 'active',
   };
 }

@@ -61,7 +61,7 @@ export async function registerReadingHttpRoutes(
         });
       const row = await captureReading({
         db,
-        actorUserId: auth.session.user.id,
+        actor: auth.access,
         input,
         ...(photoBytes === undefined ? {} : { evidence: { storage, readPhoto, photoBytes } }),
       });

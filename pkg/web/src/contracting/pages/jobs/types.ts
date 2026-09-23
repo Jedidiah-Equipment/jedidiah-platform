@@ -1,22 +1,16 @@
-import { hasJobCard, round1 } from '@pkg/domain/contracting';
-import type { AppPermission } from '@pkg/schema';
+import { hasJobCard, jobActionRefusal, round1 } from '@pkg/domain/contracting';
+import type { UserAccessSummary } from '@pkg/schema';
 import { DateOnlyIso, UUID } from '@pkg/schema';
 import {
-  closedJobStatuses,
-  hasJobStatus,
+  type JobActionName,
   JobCompleteInput,
   type JobCreateInput,
   JobDescription,
   type JobDetail,
   type JobQueue,
   type JobQueueCounts,
-  type JobStatus,
   jobQueues,
   Litres,
-  openJobStatuses,
-  signedOffJobStatuses,
-  unpricedJobStatuses,
-  workedJobStatuses,
 } from '@pkg/schema/contracting';
 import { z } from 'zod';
 import { emptyStringOr, requiredSelection } from '@/components/form/utils/form-schema.js';
@@ -64,35 +58,33 @@ export function complementGap(gapHours: number, travel: number) {
   return { travelHours, unaccountedHours: round1(Math.max(0, gapHours - travelHours)) };
 }
 
-export function jobCapabilities(job: JobDetail, can: (permission: AppPermission) => boolean) {
-  const { status } = job;
-  const is = (statuses: readonly JobStatus[]) => hasJobStatus(statuses, status);
-  const readsJobMoney = hasJobCard(status) && (can('contracting_job:read') || can('contracting_job:read-priced'));
+/**
+ * The Job sheet's reading of the Job Actions the server served for the signed-in person: a control
+ * renders when its verdict allows it, hides when the person lacks the permission, and otherwise shows
+ * disabled with the server's own refusal. Which cards appear at all is presentation, not a Job Action.
+ */
+export function jobSheet(job: JobDetail, access: UserAccessSummary | null | undefined) {
+  const verdict = (action: JobActionName) => job.actions[action];
+  const holds = (action: JobActionName) => {
+    const judged = verdict(action);
+    return judged.allowed || judged.reason !== 'no-permission';
+  };
   return {
-    editSetup: is(openJobStatuses) && can('contracting_job:update'),
-    assign: is(openJobStatuses) && can('contracting_job:assign'),
-    planStints: is(openJobStatuses) && can('contracting_job:assign'),
-    signOff: status !== 'upcoming' && status !== 'cancelled' && can('contracting_job:update'),
-    editMeasures: is(workedJobStatuses) && can('contracting_job:update'),
-    editChargeLines: is(workedJobStatuses) && can('contracting_job:update'),
-    patchTravel:
-      is(unpricedJobStatuses) &&
-      (can('contracting_job:assign') || (status === 'active' && can('contracting_assignment:update-own'))),
-    editSignOffDetails: is(signedOffJobStatuses) && can('contracting_job:update'),
-    editDieselLitres: status === 'completed' && can('contracting_job:update'),
-    price: status === 'completed' && can('contracting_job:price'),
-    seePricing: readsJobMoney,
-    jobCard: readsJobMoney,
-    stampInvoice: status === 'priced' && can('contracting_invoice:update'),
-    resolveGaps: is(workedJobStatuses) && can('contracting_gap:resolve'),
-    amendReadings: !is(closedJobStatuses) && can('contracting_reading:update'),
-    complete: status === 'active' && can('contracting_job:complete'),
-    cancel: is(unpricedJobStatuses) && can('contracting_job:cancel'),
+    can: (action: JobActionName) => verdict(action).allowed,
+    /** The person holds the action's permission; only the Job's state or ownership can still refuse it. */
+    holds,
+    refusal: (action: JobActionName) => {
+      const judged = verdict(action);
+      return judged.allowed || !access ? undefined : jobActionRefusal(action, judged.reason, job, access);
+    },
+    /** Money reaches only the readers the server sends it to, once there is a Job Card to price. */
+    seesMoney: hasJobCard(job.status) && job.pricing !== null,
+    showsSignOff: job.status !== 'upcoming' && job.status !== 'cancelled' && holds('editSignOffDetails'),
   };
 }
 
-/** What the signed-in person may do to a Job in its current status. */
-export type JobCapabilities = ReturnType<typeof jobCapabilities>;
+/** What the signed-in person may do on the Job sheet, read from the served Job Actions. */
+export type JobSheet = ReturnType<typeof jobSheet>;
 
 export const jobQueueLabels: Record<JobQueue, string> = {
   upcoming: 'Upcoming',

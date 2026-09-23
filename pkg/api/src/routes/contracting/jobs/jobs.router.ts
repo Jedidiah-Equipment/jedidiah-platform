@@ -31,7 +31,6 @@ import {
   setStintRate,
   stampInvoice,
 } from '@pkg/core/contracting';
-import { hasPermission } from '@pkg/domain';
 import {
   AssignmentIdInput,
   AssignmentPatchInput,
@@ -68,7 +67,6 @@ import { z } from 'zod';
 import { mapCoreErrors } from '../../../trpc/errors.js';
 import { authorizedProcedure, requirePermission, router } from '../../../trpc/init.js';
 import { jobErrorFamily } from '../contracting-error-families.js';
-import { assignmentActor, jobReader } from './job-read-mode.js';
 
 const readPermissions = ['contracting_job:read', 'contracting_job:read-own', 'contracting_job:read-priced'] as const;
 
@@ -100,65 +98,48 @@ export const contractingJobsRouter = router({
     activeAttention: authorizedProcedure(readPermissions)
       .output(z.boolean())
       .query(({ ctx }) =>
-        mapCoreErrors(
-          () => hasActiveJobAttention({ db: ctx.db, reader: jobReader(ctx.access, ctx.session.user.id) }),
-          jobErrorFamily,
-        ),
+        mapCoreErrors(() => hasActiveJobAttention({ db: ctx.db, actor: ctx.access }), jobErrorFamily),
       ),
     queueCounts: authorizedProcedure(readPermissions)
       .output(JobQueueCounts)
-      .query(({ ctx }) =>
-        mapCoreErrors(
-          () => countJobQueues({ db: ctx.db, reader: jobReader(ctx.access, ctx.session.user.id) }),
-          jobErrorFamily,
-        ),
-      ),
+      .query(({ ctx }) => mapCoreErrors(() => countJobQueues({ db: ctx.db, actor: ctx.access }), jobErrorFamily)),
     list: authorizedProcedure(readPermissions)
       .input(JobListInput)
       .query(({ ctx, input }) =>
-        mapCoreErrors(
-          () => listJobs({ db: ctx.db, reader: jobReader(ctx.access, ctx.session.user.id), ...input }),
-          jobErrorFamily,
-        ),
+        mapCoreErrors(() => listJobs({ db: ctx.db, actor: ctx.access, ...input }), jobErrorFamily),
       ),
     get: authorizedProcedure(readPermissions)
       .input(JobLookupInput)
       .query(({ ctx, input }) =>
-        mapCoreErrors(
-          () => getReadableJob({ db: ctx.db, reader: jobReader(ctx.access, ctx.session.user.id), ...input }),
-          jobErrorFamily,
-        ),
+        mapCoreErrors(() => getReadableJob({ db: ctx.db, actor: ctx.access, ...input }), jobErrorFamily),
       ),
     create: authorizedProcedure('contracting_job:create')
       .input(JobCreateInput)
       .mutation(({ ctx, input }) =>
-        mapCoreErrors(() => createJob({ db: ctx.db, actorUserId: ctx.session.user.id, input }), jobErrorFamily),
+        mapCoreErrors(() => createJob({ db: ctx.db, actor: ctx.access, input }), jobErrorFamily),
       ),
     patch: authorizedProcedure('contracting_job:update')
       .input(JobPatchInput)
       .mutation(({ ctx, input }) => {
         if (input.foremanUserId !== undefined) requirePermission(ctx.access, 'contracting_job:assign');
-        return mapCoreErrors(() => patchJob({ db: ctx.db, actorUserId: ctx.session.user.id, input }), jobErrorFamily);
+        return mapCoreErrors(() => patchJob({ db: ctx.db, actor: ctx.access, input }), jobErrorFamily);
       }),
     complete: authorizedProcedure('contracting_job:complete')
       .input(JobCompleteInput)
       .mutation(({ ctx, input }) =>
-        mapCoreErrors(() => completeJob({ db: ctx.db, actorUserId: ctx.session.user.id, input }), jobErrorFamily),
+        mapCoreErrors(() => completeJob({ db: ctx.db, actor: ctx.access, input }), jobErrorFamily),
       ),
     cancel: authorizedProcedure('contracting_job:cancel')
       .input(JobCancelInput)
       .mutation(({ ctx, input }) =>
-        mapCoreErrors(() => cancelJob({ db: ctx.db, actorUserId: ctx.session.user.id, input }), jobErrorFamily),
+        mapCoreErrors(() => cancelJob({ db: ctx.db, actor: ctx.access, input }), jobErrorFamily),
       ),
   }),
   assignments: router({
     plan: authorizedProcedure('contracting_job:assign')
       .input(AssignmentPlanInput)
       .mutation(({ ctx, input }) =>
-        mapCoreErrors(
-          () => createAssignment({ db: ctx.db, actorUserId: ctx.session.user.id, actingAs: 'manager', input }),
-          jobErrorFamily,
-        ),
+        mapCoreErrors(() => createAssignment({ db: ctx.db, actor: ctx.access, input }), jobErrorFamily),
       ),
     add: authorizedProcedure(['contracting_job:assign', 'contracting_assignment:update-own'])
       .input(AssignmentPlanInput)
@@ -167,8 +148,7 @@ export const contractingJobsRouter = router({
           () =>
             createAssignment({
               db: ctx.db,
-              actorUserId: ctx.session.user.id,
-              actingAs: assignmentActor(ctx.access),
+              actor: ctx.access,
               input,
             }),
           jobErrorFamily,
@@ -181,44 +161,40 @@ export const contractingJobsRouter = router({
           () =>
             patchAssignment({
               db: ctx.db,
-              actorUserId: ctx.session.user.id,
-              actingAs: assignmentActor(ctx.access),
+              actor: ctx.access,
               input,
             }),
           jobErrorFamily,
         ),
       ),
-    remove: authorizedProcedure('contracting_job:assign')
+    remove: authorizedProcedure(['contracting_job:assign', 'contracting_assignment:update-own'])
       .input(AssignmentIdInput)
       .mutation(({ ctx, input }) =>
-        mapCoreErrors(
-          () => removeAssignment({ db: ctx.db, actorUserId: ctx.session.user.id, id: input.id }),
-          jobErrorFamily,
-        ),
+        mapCoreErrors(() => removeAssignment({ db: ctx.db, actor: ctx.access, id: input.id }), jobErrorFamily),
       ),
     resolveGap: authorizedProcedure('contracting_gap:resolve')
       .input(GapResolveInput)
       .mutation(({ ctx, input }) =>
-        mapCoreErrors(() => resolveGap({ db: ctx.db, actorUserId: ctx.session.user.id, input }), jobErrorFamily),
+        mapCoreErrors(() => resolveGap({ db: ctx.db, actor: ctx.access, input }), jobErrorFamily),
       ),
   }),
   measures: router({
     set: authorizedProcedure('contracting_job:update')
       .input(MeasureSetInput)
       .mutation(({ ctx, input }) =>
-        mapCoreErrors(() => setMeasure({ db: ctx.db, actorUserId: ctx.session.user.id, input }), jobErrorFamily),
+        mapCoreErrors(() => setMeasure({ db: ctx.db, actor: ctx.access, input }), jobErrorFamily),
       ),
     remove: authorizedProcedure('contracting_job:update')
       .input(MeasureRemoveInput)
       .mutation(({ ctx, input }) =>
-        mapCoreErrors(() => removeMeasure({ db: ctx.db, actorUserId: ctx.session.user.id, input }), jobErrorFamily),
+        mapCoreErrors(() => removeMeasure({ db: ctx.db, actor: ctx.access, input }), jobErrorFamily),
       ),
   }),
   chargeLines: router({
     create: authorizedProcedure('contracting_job:update')
       .input(ChargeLineCreateInput)
       .mutation(({ ctx, input }) =>
-        mapCoreErrors(() => createChargeLine({ db: ctx.db, actorUserId: ctx.session.user.id, input }), jobErrorFamily),
+        mapCoreErrors(() => createChargeLine({ db: ctx.db, actor: ctx.access, input }), jobErrorFamily),
       ),
     patch: authorizedProcedure('contracting_job:update')
       .input(ChargeLinePatchInput)
@@ -227,9 +203,8 @@ export const contractingJobsRouter = router({
           () =>
             patchChargeLine({
               db: ctx.db,
-              actorUserId: ctx.session.user.id,
+              actor: ctx.access,
               input,
-              canPrice: hasPermission(ctx.access, 'contracting_job:price'),
             }),
           jobErrorFamily,
         ),
@@ -237,49 +212,46 @@ export const contractingJobsRouter = router({
     remove: authorizedProcedure('contracting_job:update')
       .input(ChargeLineIdInput)
       .mutation(({ ctx, input }) =>
-        mapCoreErrors(
-          () => removeChargeLine({ db: ctx.db, actorUserId: ctx.session.user.id, id: input.id }),
-          jobErrorFamily,
-        ),
+        mapCoreErrors(() => removeChargeLine({ db: ctx.db, actor: ctx.access, id: input.id }), jobErrorFamily),
       ),
   }),
   pricing: router({
     setStintRate: authorizedProcedure('contracting_job:price')
       .input(StintRateSetInput)
       .mutation(({ ctx, input }) =>
-        mapCoreErrors(() => setStintRate({ db: ctx.db, actorUserId: ctx.session.user.id, input }), jobErrorFamily),
+        mapCoreErrors(() => setStintRate({ db: ctx.db, actor: ctx.access, input }), jobErrorFamily),
       ),
     clearStintRate: authorizedProcedure('contracting_job:price')
       .input(StintRateClearInput)
       .mutation(({ ctx, input }) =>
-        mapCoreErrors(() => clearStintRate({ db: ctx.db, actorUserId: ctx.session.user.id, input }), jobErrorFamily),
+        mapCoreErrors(() => clearStintRate({ db: ctx.db, actor: ctx.access, input }), jobErrorFamily),
       ),
     setStintAmount: authorizedProcedure('contracting_job:price')
       .input(StintAmountSetInput)
       .mutation(({ ctx, input }) =>
-        mapCoreErrors(() => setStintAmount({ db: ctx.db, actorUserId: ctx.session.user.id, input }), jobErrorFamily),
+        mapCoreErrors(() => setStintAmount({ db: ctx.db, actor: ctx.access, input }), jobErrorFamily),
       ),
     setDiesel: authorizedProcedure('contracting_job:price')
       .input(DieselPriceInput)
       .mutation(({ ctx, input }) =>
-        mapCoreErrors(() => setDieselPrice({ db: ctx.db, actorUserId: ctx.session.user.id, input }), jobErrorFamily),
+        mapCoreErrors(() => setDieselPrice({ db: ctx.db, actor: ctx.access, input }), jobErrorFamily),
       ),
     setDiscount: authorizedProcedure('contracting_job:price')
       .input(DiscountSetInput)
       .mutation(({ ctx, input }) =>
-        mapCoreErrors(() => setDiscount({ db: ctx.db, actorUserId: ctx.session.user.id, input }), jobErrorFamily),
+        mapCoreErrors(() => setDiscount({ db: ctx.db, actor: ctx.access, input }), jobErrorFamily),
       ),
     markPriced: authorizedProcedure('contracting_job:price')
       .input(JobMarkPricedInput)
       .mutation(({ ctx, input }) =>
-        mapCoreErrors(() => markPriced({ db: ctx.db, actorUserId: ctx.session.user.id, input }), jobErrorFamily),
+        mapCoreErrors(() => markPriced({ db: ctx.db, actor: ctx.access, input }), jobErrorFamily),
       ),
   }),
   invoicing: router({
     stamp: authorizedProcedure('contracting_invoice:update')
       .input(JobStampInvoiceInput)
       .mutation(({ ctx, input }) =>
-        mapCoreErrors(() => stampInvoice({ db: ctx.db, actorUserId: ctx.session.user.id, input }), jobErrorFamily),
+        mapCoreErrors(() => stampInvoice({ db: ctx.db, actor: ctx.access, input }), jobErrorFamily),
       ),
     byNumber: authorizedProcedure(['contracting_invoice:update', 'contracting_job:read'])
       .input(InvoiceNumberLookupInput)

@@ -59,6 +59,7 @@ export const readingErrorFamily = defineCoreErrorFamily<ReadingError>({
     'reading.wrong_status': 'CONFLICT',
   },
   is: isReadingError,
+  metadata: (error) => error.refused,
 });
 
 export const jobErrorFamily = defineCoreErrorFamily<JobError>({
@@ -83,6 +84,7 @@ export const jobErrorFamily = defineCoreErrorFamily<JobError>({
     'contracting_job.wrong_status': 'CONFLICT',
   },
   is: isJobError,
+  metadata: (error) => error.refused,
 });
 
 export const rateCardErrorFamily = defineCoreErrorFamily<RateCardError>({

@@ -5,11 +5,11 @@ import { Badge } from '@/components/ui/badge.js';
 import { Button } from '@/components/ui/button.js';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card.js';
 import { StampInvoiceDialog } from '../invoicing/StampInvoiceDialog.js';
-import type { JobCapabilities } from './types.js';
+import type { JobSheet } from './types.js';
 
-export function InvoiceCard({ job, capabilities }: { job: JobDetail; capabilities: JobCapabilities }) {
+export function InvoiceCard({ job, sheet }: { job: JobDetail; sheet: JobSheet }) {
   const [stamping, setStamping] = useState(false);
-  if (!capabilities.seePricing || (job.status !== 'priced' && job.status !== 'invoiced')) return null;
+  if (!sheet.seesMoney || (job.status !== 'priced' && job.status !== 'invoiced')) return null;
   return (
     <section aria-label="Invoice">
       <Card>
@@ -32,7 +32,7 @@ export function InvoiceCard({ job, capabilities }: { job: JobDetail; capabilitie
                 {job.pricedTotal === null ? null : `${formatCurrency(job.pricedTotal)} ex VAT · `}
                 Priced {formatDate(job.pricedAt)} · awaiting an invoice number
               </p>
-              {capabilities.stampInvoice && job.pricedTotal !== null ? (
+              {sheet.can('stampInvoice') && job.pricedTotal !== null ? (
                 <Button onClick={() => setStamping(true)}>Stamp invoice number</Button>
               ) : null}
             </div>

@@ -1,16 +1,11 @@
 import type { DatabaseTransaction, Db } from '@pkg/db';
 import { contractingMeasures, contractingMeasureTypes } from '@pkg/db/contracting';
-import type { AuthId } from '@pkg/schema';
-import {
-  hasJobStatus,
-  type MeasureRemoveInput,
-  type MeasureSetInput,
-  workedJobStatuses,
-} from '@pkg/schema/contracting';
+import type { JobActor } from '@pkg/domain/contracting';
+import type { MeasureRemoveInput, MeasureSetInput } from '@pkg/schema/contracting';
 import { and, eq } from 'drizzle-orm';
 import { defineAuditDescriptor, recordAuditCreate, recordAuditDelete } from '../../audit/audit-writer.js';
 import { mutateEntity } from '../../audit/mutate-entity.js';
-import { jobNotFound, withJobConstraints, wrongStatus } from './job-errors.js';
+import { assertJobAction, jobNotFound, withJobConstraints, wrongStatus } from './job-errors.js';
 import { lockAssignment } from './job-lock.js';
 import { assignmentIn, getJob } from './job-read.js';
 
@@ -35,11 +30,10 @@ async function getMeasureTypeName(tx: DatabaseTransaction, id: string) {
 }
 
 /** Locks the stint and its Job, and checks its Measures may change. */
-async function lockMeasurable(tx: DatabaseTransaction, assignmentId: string) {
+async function lockMeasurable(tx: DatabaseTransaction, assignmentId: string, actor: JobActor) {
   const { job, stint } = await lockAssignment(tx, assignmentId);
+  assertJobAction('editMeasures', job, actor);
   if (!stint.arrivalReadingId) throw wrongStatus('Measures can only be recorded after the Machine has arrived.');
-  if (!hasJobStatus(workedJobStatuses, job.status))
-    throw wrongStatus('Measures can only be changed on an Active or Completed Job.');
   return job;
 }
 
@@ -55,10 +49,11 @@ async function lockMeasure(tx: DatabaseTransaction, { assignmentId, measureTypeI
 }
 
 /** Records a stint's quantity of one Measure Type, replacing any quantity already recorded. */
-export async function setMeasure({ db, actorUserId, input }: { db: Db; actorUserId: AuthId; input: MeasureSetInput }) {
+export async function setMeasure({ db, actor, input }: { db: Db; actor: JobActor; input: MeasureSetInput }) {
+  const actorUserId = actor.userId;
   return withJobConstraints(() =>
     db.transaction(async (tx) => {
-      const job = await lockMeasurable(tx, input.assignmentId);
+      const job = await lockMeasurable(tx, input.assignmentId, actor);
       const descriptor = measureDescriptor(await getMeasureTypeName(tx, input.measureTypeId));
       const before = await lockMeasure(tx, input);
       if (before) {
@@ -86,18 +81,11 @@ export async function setMeasure({ db, actorUserId, input }: { db: Db; actorUser
   );
 }
 
-export async function removeMeasure({
-  db,
-  actorUserId,
-  input,
-}: {
-  db: Db;
-  actorUserId: AuthId;
-  input: MeasureRemoveInput;
-}) {
+export async function removeMeasure({ db, actor, input }: { db: Db; actor: JobActor; input: MeasureRemoveInput }) {
+  const actorUserId = actor.userId;
   return withJobConstraints(() =>
     db.transaction(async (tx) => {
-      await lockMeasurable(tx, input.assignmentId);
+      await lockMeasurable(tx, input.assignmentId, actor);
       const row = await lockMeasure(tx, input);
       if (!row) throw jobNotFound('Measure');
       const descriptor = measureDescriptor(await getMeasureTypeName(tx, row.measureTypeId));

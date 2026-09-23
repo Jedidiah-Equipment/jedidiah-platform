@@ -8,7 +8,12 @@ import {
   contractingMachines,
 } from '@pkg/db/contracting';
 import { validateFile } from '@pkg/domain';
-import { isAiFlaggedVerification, meterDisagreementHint, resolveReadingAmendment } from '@pkg/domain/contracting';
+import {
+  isAiFlaggedVerification,
+  type JobActor,
+  meterDisagreementHint,
+  resolveReadingAmendment,
+} from '@pkg/domain/contracting';
 import type { AuthId } from '@pkg/schema';
 import {
   aiFlaggedVerifications,
@@ -24,7 +29,7 @@ import { FilePolicyViolationError } from '../../files/file-errors.js';
 import { readStoredObject, type StorageAdapter } from '../../storage/storage-adapter.js';
 import { reopenPricingWithin } from '../jobs/pricing-service.js';
 import { attachReadingToStint, resolveCaptureStint } from './capture-stint.js';
-import { ReadingError, withCaptureConstraints } from './reading-errors.js';
+import { assertReadingJobAction, ReadingError, withCaptureConstraints } from './reading-errors.js';
 import { READING_PHOTO_POLICY, type ReadMeterPhoto, readingVerification, verifyPhoto } from './reading-evidence.js';
 
 const notFound = () => new ReadingError('reading.not_found', 'Hour Reading not found.');
@@ -111,15 +116,16 @@ function assertCaptureAllowed(input: ReadingCaptureInput, latest: Row | undefine
 
 export async function captureReading({
   db,
-  actorUserId,
+  actor,
   input: raw,
   evidence,
 }: {
   db: Db;
-  actorUserId: AuthId;
+  actor: JobActor;
   input: ReadingCaptureInput;
   evidence?: ReadingEvidence;
 }) {
+  const actorUserId = actor.userId;
   const input = ReadingCaptureInput.parse(raw);
   // A mobile retry of an already delivered capture returns the stored row instead of a duplicate.
   async function replay(db: Db | DatabaseTransaction) {
@@ -157,7 +163,7 @@ export async function captureReading({
         if (delivered) return delivered;
         if (machine.retiredAt)
           throw new ReadingError('reading.retired_machine', 'Cannot capture readings for a retired Machine.');
-        const stint = await resolveCaptureStint(tx, { actorUserId, input, machine, hasPhoto: !!evidence });
+        const stint = await resolveCaptureStint(tx, { actor, input, machine, hasPhoto: !!evidence });
         const [latest] = await tx
           .select()
           .from(contractingHourReadings)
@@ -193,7 +199,7 @@ export async function captureReading({
         if (stint)
           await attachReadingToStint(tx, {
             ...stint,
-            actorUserId,
+            actor,
             machineCode: machine.code,
             input,
             readingId: row.id,
@@ -260,15 +266,8 @@ async function updateAudited(
     project: (_tx, row) => withHint(row),
   });
 }
-export async function amendReading({
-  db,
-  actorUserId,
-  input: raw,
-}: {
-  db: Db;
-  actorUserId: AuthId;
-  input: ReadingAmendInput;
-}) {
+export async function amendReading({ db, actor, input: raw }: { db: Db; actor: JobActor; input: ReadingAmendInput }) {
+  const actorUserId = actor.userId;
   const input = ReadingAmendInput.parse(raw);
   return db.transaction(async (tx) => {
     const owner = await tx.query.contractingHourReadings.findFirst({ where: eq(contractingHourReadings.id, input.id) });
@@ -280,11 +279,7 @@ export async function amendReading({
       .for('update');
     if (!machine) throw notFound();
     const affected = await lockJobsMovedBy(tx, owner);
-    if (affected.some((job) => job.status === 'invoiced'))
-      throw new ReadingError(
-        'reading.job_invoiced',
-        'This reading belongs to an Invoiced Job and can no longer be amended.',
-      );
+    for (const job of affected) assertReadingJobAction('amendReadings', job, actor);
     const rows = await tx
       .select()
       .from(contractingHourReadings)
@@ -363,7 +358,7 @@ async function lockJobsMovedBy(tx: DatabaseTransaction, reading: Row) {
   const jobIds = [...new Set([...bounded, ...next].map((row) => row.jobId))];
   if (!jobIds.length) return [];
   return tx
-    .select({ id: contractingJobs.id, status: contractingJobs.status })
+    .select({ id: contractingJobs.id, status: contractingJobs.status, foremanUserId: contractingJobs.foremanUserId })
     .from(contractingJobs)
     .where(inArray(contractingJobs.id, jobIds))
     .orderBy(asc(contractingJobs.id))

@@ -1,0 +1,48 @@
+{
+  "business": "contracting",
+  "releasedAt": "2026-09-23T14:10:42.118Z",
+  "sections": [
+    {
+      "surface": "app",
+      "entries": [
+        {
+          "title": "Price completed jobs",
+          "description": "Apply rates, no-charge lines, diesel pricing and discounts, then mark the job as Priced. Amending a reading returns it to Completed and flags it for repricing."
+        },
+        {
+          "title": "Track jobs through invoicing",
+          "description": "Find priced jobs awaiting invoices and record the invoice number from your accounting system. Invoiced jobs are locked against further changes and can be reviewed by month."
+        },
+        {
+          "title": "Print customer and internal job cards",
+          "description": "Preview, print or save job cards for completed jobs. Choose a customer summary or an internal copy with work and travel details, reading evidence and capture comments."
+        },
+        {
+          "title": "Manage planned machines on your own jobs",
+          "description": "Foremen can add, change and remove planned machine assignments on their own Upcoming or Active jobs. Unavailable job actions now explain why they are blocked."
+        },
+        {
+          "title": "Read dates and amounts more easily",
+          "description": "Dates now use consistent day-first formats, and relative times use plain language such as “5 days ago”. Monetary amounts default to rand unless another currency is specified."
+        }
+      ]
+    },
+    {
+      "surface": "mobile",
+      "entries": [
+        {
+          "title": "Share job cards from your phone",
+          "description": "Management can open the Finished jobs list and share a customer or internal job card through an installed app."
+        },
+        {
+          "title": "Keep capturing machine movements offline",
+          "description": "Queued departures now free machines and implements for selection on another job before syncing. Valid departure readings are no longer blocked when the phone is missing saved job details."
+        },
+        {
+          "title": "Tap recent timestamps for the exact time",
+          "description": "Recent timestamps use readable labels such as “Today at 14:05” or “3 days ago”. Tap these labels to see the exact date and time."
+        }
+      ]
+    }
+  ]
+}

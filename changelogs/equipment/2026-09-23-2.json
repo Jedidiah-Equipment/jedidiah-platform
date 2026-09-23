@@ -1,0 +1,28 @@
+{
+  "business": "equipment",
+  "releasedAt": "2026-09-23T14:10:42.118Z",
+  "sections": [
+    {
+      "surface": "app",
+      "entries": [
+        {
+          "title": "See why a purchase order cannot be previewed",
+          "description": "Empty purchase orders now disable preview, with clearer explanations when preview is unavailable."
+        },
+        {
+          "title": "Read dates and amounts more easily",
+          "description": "Dates now use consistent day-first formats, and relative times use plain language such as “5 days ago”. Monetary amounts default to rand unless another currency is specified."
+        }
+      ]
+    },
+    {
+      "surface": "mobile",
+      "entries": [
+        {
+          "title": "Tap recent timestamps for the exact time",
+          "description": "Recent timestamps use readable labels such as “Today at 14:05” or “3 days ago”. Tap these labels to see the exact date and time."
+        }
+      ]
+    }
+  ]
+}

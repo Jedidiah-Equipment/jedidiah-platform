@@ -23,17 +23,15 @@ import {
 import { useQueryInvalidation } from '@/contracting/hooks/use-query-invalidation.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useTRPC } from '@/lib/trpc.js';
-import { type jobCapabilities, SignOffValues, toCompleteInput } from './types.js';
+import { type JobCapabilities, SignOffValues, toCompleteInput } from './types.js';
 
-type Capabilities = ReturnType<typeof jobCapabilities>;
-
-export function SignOffCard({ job, capabilities }: { job: JobDetail; capabilities: Capabilities }) {
+export function SignOffCard({ job, capabilities }: { job: JobDetail; capabilities: JobCapabilities }) {
   const trpc = useTRPC();
   const { invalidateJobs } = useQueryInvalidation();
   const showError = useApiMutationErrorToast();
   const planned = plannedNeverArrived(job.assignments);
   const remove = useMutation(
-    trpc.contractingJobs.stints.remove.mutationOptions({
+    trpc.contractingJobs.assignments.remove.mutationOptions({
       onSuccess: invalidateJobs,
       onError: (error) => showError(error, 'Unable to remove planned Machine.'),
     }),
@@ -90,7 +88,7 @@ function DraftSignOffDetails({
   plannedIds,
 }: {
   job: JobDetail;
-  capabilities: Capabilities;
+  capabilities: JobCapabilities;
   plannedIds: string[];
 }) {
   const trpc = useTRPC();

@@ -34,8 +34,7 @@ describe('rendering a Job Card', () => {
 
     const result = await renderJobCard({
       db: context.db,
-      actorUserId: invoicingId,
-      mode: 'priced',
+      reader: { mode: 'priced', actorUserId: invoicingId },
       code: priced.jobNumber,
       variant: 'customer',
       pdfRenderer,
@@ -54,13 +53,12 @@ describe('rendering a Job Card', () => {
     await expect(
       renderJobCard({
         db: context.db,
-        actorUserId: foremanId,
-        mode: 'own',
+        reader: { mode: 'own', actorUserId: foremanId },
         code: completed.jobNumber,
         variant: 'customer',
         pdfRenderer,
       }),
-    ).rejects.toMatchObject({ code: 'contracting_job.invalid_role' });
+    ).rejects.toMatchObject({ code: 'contracting_job.forbidden' });
 
     const active = await createJob({
       db: context.db,
@@ -77,8 +75,7 @@ describe('rendering a Job Card', () => {
     await expect(
       renderJobCard({
         db: context.db,
-        actorUserId: adminId,
-        mode: 'all',
+        reader: { mode: 'all', actorUserId: adminId },
         code: active.jobNumber,
         variant: 'customer',
         pdfRenderer,
@@ -87,12 +84,11 @@ describe('rendering a Job Card', () => {
     await expect(
       renderJobCard({
         db: context.db,
-        actorUserId: invoicingId,
-        mode: 'priced',
+        reader: { mode: 'priced', actorUserId: invoicingId },
         code: active.jobNumber,
         variant: 'customer',
         pdfRenderer,
       }),
-    ).rejects.toMatchObject({ code: 'contracting_job.not_owner' });
+    ).rejects.toMatchObject({ code: 'contracting_job.forbidden' });
   });
 });

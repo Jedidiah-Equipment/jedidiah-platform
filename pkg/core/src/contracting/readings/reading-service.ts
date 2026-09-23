@@ -1,77 +1,39 @@
 import { randomUUID } from 'node:crypto';
 import type { DatabaseTransaction, Db, StoredFile } from '@pkg/db';
-import { getForeignKeyViolationConstraint, getUniqueViolationConstraint, isUniqueViolation, user } from '@pkg/db';
 import {
   contractingCategories,
   contractingHourReadings,
-  contractingImplements,
   contractingJobs,
   contractingMachineAssignments,
   contractingMachines,
 } from '@pkg/db/contracting';
 import { validateFile } from '@pkg/domain';
-import { meterDisagreementHint, resolveReadingAmendment } from '@pkg/domain/contracting';
+import { isAiFlaggedVerification, meterDisagreementHint, resolveReadingAmendment } from '@pkg/domain/contracting';
 import type { AuthId } from '@pkg/schema';
 import {
+  aiFlaggedVerifications,
   FieldReading,
   ReadingAmendInput,
   ReadingCaptureInput,
   type ReadingExceptionType,
 } from '@pkg/schema/contracting';
 import { and, asc, desc, eq, getTableColumns, gt, inArray, isNull, or } from 'drizzle-orm';
-import {
-  defineAuditDescriptor,
-  diffAuditUpdate,
-  recordAuditCreate,
-  recordAuditUpdate,
-} from '../../audit/audit-writer.js';
+import { defineAuditDescriptor, recordAuditCreate } from '../../audit/audit-writer.js';
 import { mutateEntity } from '../../audit/mutate-entity.js';
 import { FilePolicyViolationError } from '../../files/file-errors.js';
 import { readStoredObject, type StorageAdapter } from '../../storage/storage-adapter.js';
-import { assignmentDescriptor } from '../jobs/assignment-service.js';
-import { jobDescriptor } from '../jobs/job-service.js';
 import { reopenPricingWithin } from '../jobs/pricing-service.js';
+import { attachReadingToStint, resolveCaptureStint } from './capture-stint.js';
+import { ReadingError, withCaptureConstraints } from './reading-errors.js';
 import { READING_PHOTO_POLICY, type ReadMeterPhoto, readingVerification, verifyPhoto } from './reading-evidence.js';
 
-export type ReadingErrorCode =
-  | 'reading.not_found'
-  | 'reading.retired_machine'
-  | 'reading.capture_id_conflict'
-  | 'reading.previous_changed'
-  | 'reading.below_latest'
-  | 'reading.baseline_exists'
-  | 'reading.invalid_amendment'
-  | 'reading.forbidden'
-  | 'reading.wrong_status'
-  | 'reading.invalid_role'
-  | 'reading.machine_on_site'
-  | 'reading.implement_on_site'
-  | 'reading.no_photo'
-  | 'reading.verification_failed'
-  | 'reading.job_invoiced';
-export class ReadingError extends Error {
-  constructor(
-    readonly code: ReadingErrorCode,
-    message: string,
-  ) {
-    super(message);
-    this.name = 'ReadingError';
-  }
-}
-export const isReadingError = (error: unknown): error is ReadingError => error instanceof ReadingError;
 const notFound = () => new ReadingError('reading.not_found', 'Hour Reading not found.');
 type Row = typeof contractingHourReadings.$inferSelect;
-const aiExceptionVerifications = [
-  'pending',
-  'disagrees',
-  'low-confidence',
-] as const satisfies readonly Row['aiVerification'][];
-const aiExceptionVerificationSet = new Set<Row['aiVerification']>(aiExceptionVerifications);
 
 function getReadingExceptionTypes(row: Row): ReadingExceptionType[] {
   const types: ReadingExceptionType[] = [];
   if (row.disputed) types.push('disputed');
-  if (row.evidenceReviewedAt === null && aiExceptionVerificationSet.has(row.aiVerification)) types.push('ai-flagged');
+  if (row.evidenceReviewedAt === null && isAiFlaggedVerification(row.aiVerification)) types.push('ai-flagged');
   return types;
 }
 
@@ -103,31 +65,6 @@ export async function listReadingsByMachine({ db, machineId }: { db: Db; machine
 export type ReadingEvidence = { storage: StorageAdapter; readPhoto: ReadMeterPhoto; photoBytes: Uint8Array };
 type AiVerdict = { aiValue: number | null; aiConfidence: number | null; aiVerification: Row['aiVerification'] };
 const manualVerdict: AiVerdict = { aiValue: null, aiConfidence: null, aiVerification: 'not-applicable' };
-
-async function assertArrivalResources(
-  tx: DatabaseTransaction,
-  implementId: string | null,
-  driverUserId: string | null,
-) {
-  if (implementId) {
-    const [implement] = await tx
-      .select({ retiredAt: contractingImplements.retiredAt })
-      .from(contractingImplements)
-      .where(eq(contractingImplements.id, implementId))
-      .for('update');
-    if (!implement || implement.retiredAt)
-      throw new ReadingError('reading.invalid_role', 'The selected Implement is no longer available.');
-  }
-  if (driverUserId) {
-    const [driver] = await tx
-      .select({ contractingRole: user.contractingRole, isDevice: user.isDevice })
-      .from(user)
-      .where(eq(user.id, driverUserId))
-      .for('update');
-    if (driver?.contractingRole !== 'driver' || driver.isDevice)
-      throw new ReadingError('reading.invalid_role', 'Select a person with the Contracting driver role.');
-  }
-}
 
 async function storeMeterPhoto({ storage, photoBytes }: ReadingEvidence): Promise<StoredFile> {
   const validation = validateFile(photoBytes, READING_PHOTO_POLICY);
@@ -208,224 +145,76 @@ export async function captureReading({
       evidence && photo
         ? await verifyPhoto(input.value, evidence.photoBytes, photo.contentType, evidence.readPhoto)
         : manualVerdict;
-    const result = await db.transaction(async (tx) => {
-      const [machine] = await tx
-        .select()
-        .from(contractingMachines)
-        .where(eq(contractingMachines.id, input.machineId))
-        .for('update');
-      if (!machine) throw new ReadingError('reading.not_found', 'Machine not found.');
-      const delivered = await replay(tx);
-      if (delivered) return delivered;
-      if (machine.retiredAt)
-        throw new ReadingError('reading.retired_machine', 'Cannot capture readings for a retired Machine.');
-      let stint: typeof contractingMachineAssignments.$inferSelect | undefined;
-      let stintJob: typeof contractingJobs.$inferSelect | undefined;
-      let createdStint = false;
-      const [actor] =
-        input.assignmentId || input.startAssignment
-          ? await tx
-              .select({ contractingRole: user.contractingRole, equipmentRole: user.role })
-              .from(user)
-              .where(eq(user.id, actorUserId))
-          : [];
-      const management =
-        actor?.equipmentRole === 'super-admin' ||
-        actor?.contractingRole === 'contracting-admin' ||
-        actor?.contractingRole === 'contracting-manager';
-      if (input.assignmentId) {
-        const [unlockedStint] = await tx
-          .select({ jobId: contractingMachineAssignments.jobId })
-          .from(contractingMachineAssignments)
-          .where(eq(contractingMachineAssignments.id, input.assignmentId));
-        if (!unlockedStint) throw new ReadingError('reading.not_found', 'Machine Assignment not found.');
-        [stintJob] = await tx
+    const result = await withCaptureConstraints(() =>
+      db.transaction(async (tx) => {
+        const [machine] = await tx
           .select()
-          .from(contractingJobs)
-          .where(eq(contractingJobs.id, unlockedStint.jobId))
+          .from(contractingMachines)
+          .where(eq(contractingMachines.id, input.machineId))
           .for('update');
-        [stint] = await tx
+        if (!machine) throw new ReadingError('reading.not_found', 'Machine not found.');
+        const delivered = await replay(tx);
+        if (delivered) return delivered;
+        if (machine.retiredAt)
+          throw new ReadingError('reading.retired_machine', 'Cannot capture readings for a retired Machine.');
+        const stint = await resolveCaptureStint(tx, { actorUserId, input, machine, hasPhoto: !!evidence });
+        const [latest] = await tx
           .select()
-          .from(contractingMachineAssignments)
-          .where(eq(contractingMachineAssignments.id, input.assignmentId))
-          .for('update');
-        if (!stint || !stintJob || stint.machineId !== input.machineId)
-          throw new ReadingError('reading.not_found', 'Machine Assignment not found.');
-        if (input.role === 'departure' && management && !evidence && !input.comment)
-          throw new ReadingError('reading.invalid_role', 'A reason is required for a photo-less departure reading.');
-        if (!management && stintJob.foremanUserId !== actorUserId)
-          throw new ReadingError('reading.forbidden', 'This is not your Job.');
-        if (!['upcoming', 'active'].includes(stintJob.status))
-          throw new ReadingError('reading.wrong_status', 'This Job is no longer open.');
-        if (input.role === 'arrival' && stint.arrivalReadingId)
-          throw new ReadingError('reading.invalid_role', 'This Machine Assignment already arrived.');
-        if (input.role === 'departure' && (!stint.arrivalReadingId || stint.departureReadingId))
-          throw new ReadingError('reading.invalid_role', 'This Machine Assignment is not on site.');
-      } else if (input.startAssignment) {
-        [stintJob] = await tx
-          .select()
-          .from(contractingJobs)
-          .where(eq(contractingJobs.id, input.startAssignment.jobId))
-          .for('update');
-        if (!stintJob) throw new ReadingError('reading.not_found', 'Job not found.');
-        if (!management && stintJob.foremanUserId !== actorUserId)
-          throw new ReadingError('reading.forbidden', 'This is not your Job.');
-        if (!['upcoming', 'active'].includes(stintJob.status))
-          throw new ReadingError('reading.wrong_status', 'This Job is no longer open.');
-        const [inserted] = await tx
-          .insert(contractingMachineAssignments)
+          .from(contractingHourReadings)
+          .where(eq(contractingHourReadings.machineId, input.machineId))
+          .orderBy(desc(contractingHourReadings.sequence))
+          .limit(1);
+        const disputed = assertCaptureAllowed(input, latest);
+        if (disputed && latest)
+          await updateAudited(tx, actorUserId, latest, {
+            disputed: true,
+            disputeReason: 'The next capture disputes this reading.',
+          });
+        const [row] = await tx
+          .insert(contractingHourReadings)
           .values({
-            id: input.startAssignment.localId,
-            jobId: input.startAssignment.jobId,
+            ...(input.localId ? { id: input.localId } : {}),
             machineId: input.machineId,
-            implementId: input.startAssignment.implementId,
-            driverUserId: input.startAssignment.driverUserId ?? machine.currentDriverUserId,
-            createdByUserId: actorUserId,
+            role: input.role,
+            value: input.value,
+            capturedAt: new Date(input.capturedAt),
+            capturedByUserId: actorUserId,
+            method: photo ? 'photo' : 'manual',
+            comment: input.comment ?? null,
+            photo,
+            ...verdict,
+            disputed,
+            disputedPreviousId: disputed && latest ? latest.id : null,
+            disputeReason: disputed ? 'The previous reading is wrong.' : null,
           })
-          .onConflictDoNothing({ target: contractingMachineAssignments.id })
           .returning();
-        createdStint = !!inserted;
-        [stint] = inserted
-          ? [inserted]
-          : await tx
-              .select()
-              .from(contractingMachineAssignments)
-              .where(eq(contractingMachineAssignments.id, input.startAssignment.localId))
-              .for('update');
-        if (!stint || stint.jobId !== stintJob.id || stint.machineId !== input.machineId)
-          throw new ReadingError('reading.capture_id_conflict', 'This Machine Assignment identifier is already used.');
-        if (stint.arrivalReadingId)
-          throw new ReadingError('reading.invalid_role', 'This Machine Assignment already arrived.');
-        if (createdStint)
-          await recordAuditCreate({
-            db: tx,
+        if (!row) throw new Error('Reading insert returned no row');
+        await recordAuditCreate({ db: tx, actorUserId, descriptor, input: row });
+        if (stint)
+          await attachReadingToStint(tx, {
+            ...stint,
             actorUserId,
-            descriptor: assignmentDescriptor(machine.code),
-            input: stint,
+            machineCode: machine.code,
+            input,
+            readingId: row.id,
           });
-      }
-      if (input.role === 'arrival' && stint) {
-        const implementId =
-          input.stintOverrides?.implementId !== undefined ? input.stintOverrides.implementId : stint.implementId;
-        const driverUserId =
-          input.stintOverrides?.driverUserId !== undefined ? input.stintOverrides.driverUserId : stint.driverUserId;
-        await assertArrivalResources(tx, implementId, driverUserId);
-      }
-      const [latest] = await tx
-        .select()
-        .from(contractingHourReadings)
-        .where(eq(contractingHourReadings.machineId, input.machineId))
-        .orderBy(desc(contractingHourReadings.sequence))
-        .limit(1);
-      const disputed = assertCaptureAllowed(input, latest);
-      if (disputed && latest)
-        await updateAudited(tx, actorUserId, latest, {
-          disputed: true,
-          disputeReason: 'The next capture disputes this reading.',
-        });
-      const [row] = await tx
-        .insert(contractingHourReadings)
-        .values({
-          ...(input.localId ? { id: input.localId } : {}),
-          machineId: input.machineId,
-          role: input.role,
-          value: input.value,
-          capturedAt: new Date(input.capturedAt),
-          capturedByUserId: actorUserId,
-          method: photo ? 'photo' : 'manual',
-          comment: input.comment ?? null,
-          photo,
-          ...verdict,
-          disputed,
-          disputedPreviousId: disputed && latest ? latest.id : null,
-          disputeReason: disputed ? 'The previous reading is wrong.' : null,
-        })
-        .returning();
-      if (!row) throw new Error('Reading insert returned no row');
-      await recordAuditCreate({ db: tx, actorUserId, descriptor, input: row });
-      if (stint && stintJob) {
-        const now = new Date();
-        const patch =
-          input.role === 'arrival'
-            ? {
-                arrivalReadingId: row.id,
-                ...(input.stintOverrides?.implementId !== undefined
-                  ? { implementId: input.stintOverrides.implementId }
-                  : {}),
-                ...(input.stintOverrides?.driverUserId !== undefined
-                  ? { driverUserId: input.stintOverrides.driverUserId }
-                  : {}),
-                updatedAt: now,
-              }
-            : { departureReadingId: row.id, updatedAt: now };
-        const [updatedStint] = await tx
-          .update(contractingMachineAssignments)
-          .set(patch)
-          .where(eq(contractingMachineAssignments.id, stint.id))
-          .returning();
-        if (!updatedStint) throw new ReadingError('reading.not_found', 'Machine Assignment not found.');
-        const stintDescriptor = assignmentDescriptor(machine.code);
-        const stintChanges = diffAuditUpdate(stintDescriptor, stint, updatedStint);
-        if (stintChanges)
-          await recordAuditUpdate({
-            db: tx,
-            actorUserId,
-            descriptor: stintDescriptor,
-            after: updatedStint,
-            changes: stintChanges,
-          });
-        if (input.role === 'arrival' && stintJob.status === 'upcoming') {
-          const [activeJob] = await tx
-            .update(contractingJobs)
-            .set({ status: 'active', updatedAt: now })
-            .where(eq(contractingJobs.id, stintJob.id))
-            .returning();
-          if (!activeJob) throw new ReadingError('reading.not_found', 'Job not found.');
-          const jobChanges = diffAuditUpdate(jobDescriptor, stintJob, activeJob);
-          if (jobChanges)
-            await recordAuditUpdate({
-              db: tx,
-              actorUserId,
-              descriptor: jobDescriptor,
-              after: activeJob,
-              changes: jobChanges,
-            });
-        }
-      }
-      return withHint(row);
-    });
+        return withHint(row);
+      }),
+    );
     // A replay that won the lock inside the transaction leaves this upload orphaned.
     if (photo && evidence && result.photo?.storageKey !== photo.storageKey) {
       await evidence.storage.deleteObject(photo.storageKey);
     }
     return result;
   } catch (error) {
-    const uniqueConstraint = isUniqueViolation(error) ? getUniqueViolationConstraint(error) : null;
-    const foreignKeyConstraint = getForeignKeyViolationConstraint(error);
-    const translatedError =
-      uniqueConstraint === 'machine_assignment_machine_on_site_unique'
-        ? new ReadingError(
-            'reading.machine_on_site',
-            'This Machine is still on site on another Job — capture its departure there first.',
-          )
-        : uniqueConstraint === 'machine_assignment_implement_on_site_unique'
-          ? new ReadingError(
-              'reading.implement_on_site',
-              'This Implement is still on site on another Job — capture its departure there first.',
-            )
-          : foreignKeyConstraint === 'machine_assignment_driver_role'
-            ? new ReadingError('reading.invalid_role', 'Select a person with the Contracting driver role.')
-            : foreignKeyConstraint
-              ? new ReadingError('reading.invalid_role', 'The selected Job, Implement, or Driver is no longer valid.')
-              : error;
     if (photo && evidence) {
       try {
         await evidence.storage.deleteObject(photo.storageKey);
       } catch (cleanupError) {
-        throw new AggregateError([translatedError, cleanupError], 'Reading failed and uploaded photo cleanup failed');
+        throw new AggregateError([error, cleanupError], 'Reading failed and uploaded photo cleanup failed');
       }
     }
-    throw translatedError;
+    throw error;
   }
 }
 
@@ -445,7 +234,7 @@ export async function listReadingExceptions({ db }: { db: Db }) {
         eq(contractingHourReadings.disputed, true),
         and(
           isNull(contractingHourReadings.evidenceReviewedAt),
-          inArray(contractingHourReadings.aiVerification, aiExceptionVerifications),
+          inArray(contractingHourReadings.aiVerification, [...aiFlaggedVerifications]),
         ),
       ),
     )

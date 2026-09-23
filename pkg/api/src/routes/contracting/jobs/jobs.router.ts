@@ -1,9 +1,9 @@
 import {
-  addAssignment,
   cancelJob,
   clearStintRate,
   completeJob,
   countJobQueues,
+  createAssignment,
   createChargeLine,
   createJob,
   findJobsByInvoiceNumber,
@@ -14,13 +14,12 @@ import {
   listFieldImplements,
   listFieldJobs,
   listForemen,
+  listJobs,
   listMeasureTypes,
-  listReadableJobs,
   markPriced,
   patchAssignment,
   patchChargeLine,
   patchJob,
-  planAssignment,
   removeAssignment,
   removeChargeLine,
   removeMeasure,
@@ -34,7 +33,6 @@ import {
 } from '@pkg/core/contracting';
 import { hasPermission } from '@pkg/domain';
 import {
-  AssignmentAddInput,
   AssignmentIdInput,
   AssignmentPatchInput,
   AssignmentPlanInput,
@@ -67,20 +65,12 @@ import {
   StintRateSetInput,
 } from '@pkg/schema/contracting';
 import { z } from 'zod';
-import { createAuthTRPCError, mapCoreErrors } from '../../../trpc/errors.js';
+import { mapCoreErrors } from '../../../trpc/errors.js';
 import { authorizedProcedure, requirePermission, router } from '../../../trpc/init.js';
 import { jobErrorFamily } from '../contracting-error-families.js';
-import { readMode } from './job-read-mode.js';
+import { assignmentActor, jobReader } from './job-read-mode.js';
 
 const readPermissions = ['contracting_job:read', 'contracting_job:read-own', 'contracting_job:read-priced'] as const;
-
-function refuseRead() {
-  throw createAuthTRPCError({
-    appCode: 'auth.forbidden',
-    code: 'FORBIDDEN',
-    message: 'You do not have permission to view this Job.',
-  });
-}
 
 export const contractingJobsRouter = router({
   field: router({
@@ -109,54 +99,35 @@ export const contractingJobsRouter = router({
   jobs: router({
     activeAttention: authorizedProcedure(readPermissions)
       .output(z.boolean())
-      .query(({ ctx }) => {
-        const mode = readMode(ctx.access);
-        if (mode === 'priced') return false;
-        return mapCoreErrors(
-          () =>
-            hasActiveJobAttention({
-              db: ctx.db,
-              ...(mode === 'own' ? { foremanUserId: ctx.session.user.id } : {}),
-            }),
+      .query(({ ctx }) =>
+        mapCoreErrors(
+          () => hasActiveJobAttention({ db: ctx.db, reader: jobReader(ctx.access, ctx.session.user.id) }),
           jobErrorFamily,
-        );
-      }),
+        ),
+      ),
     queueCounts: authorizedProcedure(readPermissions)
       .output(JobQueueCounts)
-      .query(async ({ ctx }) => {
-        const mode = readMode(ctx.access);
-        const counts = await countJobQueues({
-          db: ctx.db,
-          ...(mode === 'own' ? { foremanUserId: ctx.session.user.id } : {}),
-        });
-        if (mode !== 'priced') return counts;
-        return JobQueueCounts.parse({
-          upcoming: 0,
-          active: 0,
-          'looks-finished': 0,
-          'awaiting-pricing': counts['awaiting-pricing'],
-          'awaiting-invoice': counts['awaiting-invoice'],
-          invoiced: counts.invoiced,
-          cancelled: 0,
-        });
-      }),
+      .query(({ ctx }) =>
+        mapCoreErrors(
+          () => countJobQueues({ db: ctx.db, reader: jobReader(ctx.access, ctx.session.user.id) }),
+          jobErrorFamily,
+        ),
+      ),
     list: authorizedProcedure(readPermissions)
       .input(JobListInput)
       .query(({ ctx, input }) =>
-        mapCoreErrors(async () => {
-          const mode = readMode(ctx.access);
-          if (mode === 'priced' && !['awaiting-pricing', 'awaiting-invoice', 'invoiced'].includes(input.queue))
-            refuseRead();
-          return listReadableJobs({ db: ctx.db, actorUserId: ctx.session.user.id, mode, ...input });
-        }, jobErrorFamily),
+        mapCoreErrors(
+          () => listJobs({ db: ctx.db, reader: jobReader(ctx.access, ctx.session.user.id), ...input }),
+          jobErrorFamily,
+        ),
       ),
     get: authorizedProcedure(readPermissions)
       .input(JobLookupInput)
       .query(({ ctx, input }) =>
-        mapCoreErrors(async () => {
-          const mode = readMode(ctx.access);
-          return getReadableJob({ db: ctx.db, actorUserId: ctx.session.user.id, mode, ...input });
-        }, jobErrorFamily),
+        mapCoreErrors(
+          () => getReadableJob({ db: ctx.db, reader: jobReader(ctx.access, ctx.session.user.id), ...input }),
+          jobErrorFamily,
+        ),
       ),
     create: authorizedProcedure('contracting_job:create')
       .input(JobCreateInput)
@@ -180,20 +151,26 @@ export const contractingJobsRouter = router({
         mapCoreErrors(() => cancelJob({ db: ctx.db, actorUserId: ctx.session.user.id, input }), jobErrorFamily),
       ),
   }),
-  stints: router({
+  assignments: router({
     plan: authorizedProcedure('contracting_job:assign')
       .input(AssignmentPlanInput)
       .mutation(({ ctx, input }) =>
-        mapCoreErrors(() => planAssignment({ db: ctx.db, actorUserId: ctx.session.user.id, input }), jobErrorFamily),
+        mapCoreErrors(
+          () => createAssignment({ db: ctx.db, actorUserId: ctx.session.user.id, actingAs: 'manager', input }),
+          jobErrorFamily,
+        ),
       ),
     add: authorizedProcedure(['contracting_job:assign', 'contracting_assignment:update-own'])
-      .input(AssignmentAddInput)
+      .input(AssignmentPlanInput)
       .mutation(({ ctx, input }) =>
         mapCoreErrors(
           () =>
-            hasPermission(ctx.access, 'contracting_job:assign')
-              ? planAssignment({ db: ctx.db, actorUserId: ctx.session.user.id, input })
-              : addAssignment({ db: ctx.db, actorUserId: ctx.session.user.id, input }),
+            createAssignment({
+              db: ctx.db,
+              actorUserId: ctx.session.user.id,
+              actingAs: assignmentActor(ctx.access),
+              input,
+            }),
           jobErrorFamily,
         ),
       ),
@@ -205,8 +182,8 @@ export const contractingJobsRouter = router({
             patchAssignment({
               db: ctx.db,
               actorUserId: ctx.session.user.id,
+              actingAs: assignmentActor(ctx.access),
               input,
-              ownerOnly: !hasPermission(ctx.access, 'contracting_job:assign'),
             }),
           jobErrorFamily,
         ),

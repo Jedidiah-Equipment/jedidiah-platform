@@ -18,21 +18,19 @@ export async function stampInvoice({
   input: JobStampInvoiceInput;
 }) {
   return withJobConstraints(() =>
-    db.transaction((tx) =>
-      writeJob(tx, actorUserId, input.id, {
-        assert: (_tx, before) => {
-          if (before.status !== 'priced') throw wrongStatus('Only a Priced Job can be invoiced.');
-          if (before.pricedTotal !== input.expectedTotal)
-            throw totalChanged('This Job was re-priced. Review the new total before stamping.');
-        },
-        set: () => ({
-          status: 'invoiced',
-          invoiceNumber: input.invoiceNumber,
-          invoicedAt: new Date(),
-          invoicedByUserId: actorUserId,
-        }),
+    writeJob(db, actorUserId, input.id, {
+      assert: (_tx, before) => {
+        if (before.status !== 'priced') throw wrongStatus('Only a Priced Job can be invoiced.');
+        if (before.pricedTotal !== input.expectedTotal)
+          throw totalChanged('This Job was re-priced. Review the new total before stamping.');
+      },
+      set: () => ({
+        status: 'invoiced',
+        invoiceNumber: input.invoiceNumber,
+        invoicedAt: new Date(),
+        invoicedByUserId: actorUserId,
       }),
-    ),
+    }),
   );
 }
 

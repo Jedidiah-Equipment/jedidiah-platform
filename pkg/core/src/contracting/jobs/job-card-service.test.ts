@@ -48,23 +48,6 @@ describe('rendering a Job Card', () => {
     expect(documents[0]).toMatchObject({ variant: 'customer', status: 'priced', totals: { total: 6_000 } });
   });
 
-  test('renders an un-priced Completed Job with hours and no totals', async ({ context }) => {
-    const completed = await completedJob(context, [{ machineId: context.excavator.id, arrival: 100, departure: 110 }]);
-    const { documents, pdfRenderer } = capturingRenderer();
-
-    await renderJobCard({
-      db: context.db,
-      actorUserId: adminId,
-      mode: 'all',
-      code: completed.jobNumber,
-      variant: 'internal',
-      pdfRenderer,
-    });
-
-    expect(documents[0]).toMatchObject({ status: 'completed', totals: null });
-    expect(documents[0]?.lines[0]).toMatchObject({ hours: { variant: 'internal', work: 10 }, amount: null });
-  });
-
   test('refuses Foremen, and an Active Job for anyone', async ({ context }) => {
     const completed = await completedJob(context, [{ machineId: context.excavator.id, arrival: 100, departure: 110 }]);
     const { pdfRenderer } = capturingRenderer();

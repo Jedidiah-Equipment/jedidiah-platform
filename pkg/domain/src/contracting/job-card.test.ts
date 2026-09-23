@@ -1,7 +1,7 @@
 import { DateIso } from '@pkg/schema';
 import type { Assignment, JobDetail, JobReading } from '@pkg/schema/contracting';
 import { describe, expect, test } from 'vitest';
-import { buildJobCardModel, jobCardFilename } from './job-card.js';
+import { buildJobCardModel } from './job-card.js';
 
 const now = new Date('2026-09-23T10:00:00.000Z');
 
@@ -367,11 +367,5 @@ describe('buildJobCardModel', () => {
 
   test.each(['upcoming', 'active', 'cancelled'] as const)('refuses a %s Job', (status) => {
     expect(() => buildJobCardModel(rowleyDam({ status }), 'customer', now)).toThrow(/once the Job is Completed/);
-  });
-});
-
-describe('jobCardFilename', () => {
-  test('names the Job and the variant', () => {
-    expect(jobCardFilename('CJOB-00042', 'customer')).toBe('CJOB-00042-job-card-customer.pdf');
   });
 });

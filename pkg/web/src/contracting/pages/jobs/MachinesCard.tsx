@@ -206,7 +206,7 @@ export function MachinesCard({ job, capabilities }: { job: JobDetail; capabiliti
       },
       {
         id: 'work',
-        header: 'Work h',
+        header: 'Work',
         cell: ({ row }) =>
           row.original.kind === 'subtotal'
             ? formatHours(row.original.workHours)
@@ -218,7 +218,7 @@ export function MachinesCard({ job, capabilities }: { job: JobDetail; capabiliti
       },
       {
         id: 'travel',
-        header: 'Travel h',
+        header: 'Travel',
         cell: ({ row }) => {
           if (row.original.kind === 'subtotal') return formatHours(row.original.travelHours);
           if (row.original.kind === 'planned') return '—';

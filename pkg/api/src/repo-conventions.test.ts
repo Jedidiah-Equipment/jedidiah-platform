@@ -144,11 +144,14 @@ describe('biome.json overrides', () => {
     const configured = overrides.filter((override) => override.linter?.rules?.style?.noRestrictedImports);
 
     for (const override of configured) {
-      const restricted = override.linter?.rules?.style?.noRestrictedImports?.options?.paths?.['date-fns'] !== undefined;
+      const options = override.linter?.rules?.style?.noRestrictedImports?.options;
+      const restricted =
+        options?.paths?.['date-fns'] !== undefined &&
+        (options.patterns ?? []).some((pattern) => pattern.group?.includes('date-fns/format'));
 
       expect(
         restricted,
-        `override ${JSON.stringify(override.includes)} ${restricted ? 'restricts' : 'does not restrict'} date-fns formatting; an override replaces noRestrictedImports wholesale, so every override outside the allowlist must restate the date-fns path`,
+        `override ${JSON.stringify(override.includes)} ${restricted ? 'restricts' : 'does not restrict'} date-fns formatting; an override replaces noRestrictedImports wholesale, so every override outside the allowlist must restate the date-fns path and its subpath patterns`,
       ).toBe(!isDateFnsFormattingAllowlisted(override));
     }
   });

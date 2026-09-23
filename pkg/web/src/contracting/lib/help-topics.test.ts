@@ -13,6 +13,7 @@ describe('helpTopicForPath', () => {
     expect(helpTopicForPath('/contracting/measure-types')).toBe('contractingMeasureTypes');
     expect(helpTopicForPath('/contracting/readings/exceptions')).toBe('contractingReadings');
     expect(helpTopicForPath('/contracting/jobs/CJOB-00037')).toBe('contractingJobs');
+    expect(helpTopicForPath('/contracting/invoicing')).toBe('contractingInvoicing');
     expect(helpTopicForPath('/contracting/fleet/42/edit')).toBe('contractingFleet');
     expect(helpTopicForPath('/contracting/fleet/categories/42/edit')).toBe('contractingCategories');
     expect(helpTopicForPath('/contracting/fleet/implements')).toBe('contractingImplements');

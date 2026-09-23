@@ -18,6 +18,7 @@ import { useAccess } from '@/hooks/use-access.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { ChargeLinesCard } from './ChargeLinesCard.js';
+import { InvoiceCard } from './InvoiceCard.js';
 import { MachinesCard } from './MachinesCard.js';
 import { PricingCard } from './PricingCard.js';
 import { SignOffCard } from './SignOffCard.js';
@@ -55,6 +56,7 @@ export function JobPage({ code }: { code: string }) {
               <MachinesCard job={job} capabilities={capabilities} />
               {capabilities.signOff ? <SignOffCard job={job} capabilities={capabilities} /> : null}
               <PricingCard job={job} capabilities={capabilities} />
+              <InvoiceCard job={job} capabilities={capabilities} />
               {job.status !== 'upcoming' ? (
                 <ChargeLinesCard
                   job={job}

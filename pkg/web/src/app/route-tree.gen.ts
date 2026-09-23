@@ -23,6 +23,7 @@ import { Route as AuthedContractingIndexRouteImport } from './../routes/_authed.
 import { Route as AuthedContractingAuditRouteImport } from './../routes/_authed.contracting.audit'
 import { Route as AuthedContractingCustomersRouteImport } from './../routes/_authed.contracting.customers'
 import { Route as AuthedContractingFleetRouteImport } from './../routes/_authed.contracting.fleet'
+import { Route as AuthedContractingInvoicingRouteImport } from './../routes/_authed.contracting.invoicing'
 import { Route as AuthedContractingJobsRouteImport } from './../routes/_authed.contracting.jobs'
 import { Route as AuthedContractingMeasureTypesRouteImport } from './../routes/_authed.contracting.measure-types'
 import { Route as AuthedContractingRatesRouteImport } from './../routes/_authed.contracting.rates'
@@ -50,6 +51,7 @@ import { Route as AuthedContractingCustomersIndexRouteImport } from './../routes
 import { Route as AuthedContractingFleetIndexRouteImport } from './../routes/_authed.contracting.fleet.index'
 import { Route as AuthedContractingFleetCategoriesRouteImport } from './../routes/_authed.contracting.fleet.categories'
 import { Route as AuthedContractingFleetImplementsRouteImport } from './../routes/_authed.contracting.fleet.implements'
+import { Route as AuthedContractingInvoicingIndexRouteImport } from './../routes/_authed.contracting.invoicing.index'
 import { Route as AuthedContractingJobsIndexRouteImport } from './../routes/_authed.contracting.jobs.index'
 import { Route as AuthedContractingJobsCodeRouteImport } from './../routes/_authed.contracting.jobs.$code'
 import { Route as AuthedContractingMeasureTypesIndexRouteImport } from './../routes/_authed.contracting.measure-types.index'
@@ -170,6 +172,12 @@ const AuthedContractingFleetRoute = AuthedContractingFleetRouteImport.update({
   path: '/fleet',
   getParentRoute: () => AuthedContractingRoute,
 } as any)
+const AuthedContractingInvoicingRoute =
+  AuthedContractingInvoicingRouteImport.update({
+    id: '/invoicing',
+    path: '/invoicing',
+    getParentRoute: () => AuthedContractingRoute,
+  } as any)
 const AuthedContractingJobsRoute = AuthedContractingJobsRouteImport.update({
   id: '/jobs',
   path: '/jobs',
@@ -319,6 +327,12 @@ const AuthedContractingFleetImplementsRoute =
     id: '/implements',
     path: '/implements',
     getParentRoute: () => AuthedContractingFleetRoute,
+  } as any)
+const AuthedContractingInvoicingIndexRoute =
+  AuthedContractingInvoicingIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AuthedContractingInvoicingRoute,
   } as any)
 const AuthedContractingJobsIndexRoute =
   AuthedContractingJobsIndexRouteImport.update({
@@ -625,6 +639,7 @@ export interface FileRoutesByFullPath {
   '/contracting/audit': typeof AuthedContractingAuditRoute
   '/contracting/customers': typeof AuthedContractingCustomersRouteWithChildren
   '/contracting/fleet': typeof AuthedContractingFleetRouteWithChildren
+  '/contracting/invoicing': typeof AuthedContractingInvoicingRouteWithChildren
   '/contracting/jobs': typeof AuthedContractingJobsRouteWithChildren
   '/contracting/measure-types': typeof AuthedContractingMeasureTypesRouteWithChildren
   '/contracting/rates': typeof AuthedContractingRatesRouteWithChildren
@@ -667,6 +682,7 @@ export interface FileRoutesByFullPath {
   '/equipment/units/$id': typeof AuthedEquipmentUnitsIdRoute
   '/contracting/customers/': typeof AuthedContractingCustomersIndexRoute
   '/contracting/fleet/': typeof AuthedContractingFleetIndexRoute
+  '/contracting/invoicing/': typeof AuthedContractingInvoicingIndexRoute
   '/contracting/jobs/': typeof AuthedContractingJobsIndexRoute
   '/contracting/measure-types/': typeof AuthedContractingMeasureTypesIndexRoute
   '/contracting/rates/': typeof AuthedContractingRatesIndexRoute
@@ -737,6 +753,7 @@ export interface FileRoutesByTo {
   '/equipment/units/$id': typeof AuthedEquipmentUnitsIdRoute
   '/contracting/customers': typeof AuthedContractingCustomersIndexRoute
   '/contracting/fleet': typeof AuthedContractingFleetIndexRoute
+  '/contracting/invoicing': typeof AuthedContractingInvoicingIndexRoute
   '/contracting/jobs': typeof AuthedContractingJobsIndexRoute
   '/contracting/measure-types': typeof AuthedContractingMeasureTypesIndexRoute
   '/contracting/rates': typeof AuthedContractingRatesIndexRoute
@@ -788,6 +805,7 @@ export interface FileRoutesById {
   '/_authed/contracting/audit': typeof AuthedContractingAuditRoute
   '/_authed/contracting/customers': typeof AuthedContractingCustomersRouteWithChildren
   '/_authed/contracting/fleet': typeof AuthedContractingFleetRouteWithChildren
+  '/_authed/contracting/invoicing': typeof AuthedContractingInvoicingRouteWithChildren
   '/_authed/contracting/jobs': typeof AuthedContractingJobsRouteWithChildren
   '/_authed/contracting/measure-types': typeof AuthedContractingMeasureTypesRouteWithChildren
   '/_authed/contracting/rates': typeof AuthedContractingRatesRouteWithChildren
@@ -830,6 +848,7 @@ export interface FileRoutesById {
   '/_authed/equipment/units/$id': typeof AuthedEquipmentUnitsIdRoute
   '/_authed/contracting/customers/': typeof AuthedContractingCustomersIndexRoute
   '/_authed/contracting/fleet/': typeof AuthedContractingFleetIndexRoute
+  '/_authed/contracting/invoicing/': typeof AuthedContractingInvoicingIndexRoute
   '/_authed/contracting/jobs/': typeof AuthedContractingJobsIndexRoute
   '/_authed/contracting/measure-types/': typeof AuthedContractingMeasureTypesIndexRoute
   '/_authed/contracting/rates/': typeof AuthedContractingRatesIndexRoute
@@ -881,6 +900,7 @@ export interface FileRouteTypes {
     | '/contracting/audit'
     | '/contracting/customers'
     | '/contracting/fleet'
+    | '/contracting/invoicing'
     | '/contracting/jobs'
     | '/contracting/measure-types'
     | '/contracting/rates'
@@ -923,6 +943,7 @@ export interface FileRouteTypes {
     | '/equipment/units/$id'
     | '/contracting/customers/'
     | '/contracting/fleet/'
+    | '/contracting/invoicing/'
     | '/contracting/jobs/'
     | '/contracting/measure-types/'
     | '/contracting/rates/'
@@ -993,6 +1014,7 @@ export interface FileRouteTypes {
     | '/equipment/units/$id'
     | '/contracting/customers'
     | '/contracting/fleet'
+    | '/contracting/invoicing'
     | '/contracting/jobs'
     | '/contracting/measure-types'
     | '/contracting/rates'
@@ -1043,6 +1065,7 @@ export interface FileRouteTypes {
     | '/_authed/contracting/audit'
     | '/_authed/contracting/customers'
     | '/_authed/contracting/fleet'
+    | '/_authed/contracting/invoicing'
     | '/_authed/contracting/jobs'
     | '/_authed/contracting/measure-types'
     | '/_authed/contracting/rates'
@@ -1085,6 +1108,7 @@ export interface FileRouteTypes {
     | '/_authed/equipment/units/$id'
     | '/_authed/contracting/customers/'
     | '/_authed/contracting/fleet/'
+    | '/_authed/contracting/invoicing/'
     | '/_authed/contracting/jobs/'
     | '/_authed/contracting/measure-types/'
     | '/_authed/contracting/rates/'
@@ -1231,6 +1255,13 @@ declare module '@tanstack/react-router' {
       path: '/fleet'
       fullPath: '/contracting/fleet'
       preLoaderRoute: typeof AuthedContractingFleetRouteImport
+      parentRoute: typeof AuthedContractingRoute
+    }
+    '/_authed/contracting/invoicing': {
+      id: '/_authed/contracting/invoicing'
+      path: '/invoicing'
+      fullPath: '/contracting/invoicing'
+      preLoaderRoute: typeof AuthedContractingInvoicingRouteImport
       parentRoute: typeof AuthedContractingRoute
     }
     '/_authed/contracting/jobs': {
@@ -1421,6 +1452,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/contracting/fleet/implements'
       preLoaderRoute: typeof AuthedContractingFleetImplementsRouteImport
       parentRoute: typeof AuthedContractingFleetRoute
+    }
+    '/_authed/contracting/invoicing/': {
+      id: '/_authed/contracting/invoicing/'
+      path: '/'
+      fullPath: '/contracting/invoicing/'
+      preLoaderRoute: typeof AuthedContractingInvoicingIndexRouteImport
+      parentRoute: typeof AuthedContractingInvoicingRoute
     }
     '/_authed/contracting/jobs/': {
       id: '/_authed/contracting/jobs/'
@@ -1843,6 +1881,20 @@ const AuthedContractingFleetRouteWithChildren =
     AuthedContractingFleetRouteChildren,
   )
 
+interface AuthedContractingInvoicingRouteChildren {
+  AuthedContractingInvoicingIndexRoute: typeof AuthedContractingInvoicingIndexRoute
+}
+
+const AuthedContractingInvoicingRouteChildren: AuthedContractingInvoicingRouteChildren =
+  {
+    AuthedContractingInvoicingIndexRoute: AuthedContractingInvoicingIndexRoute,
+  }
+
+const AuthedContractingInvoicingRouteWithChildren =
+  AuthedContractingInvoicingRoute._addFileChildren(
+    AuthedContractingInvoicingRouteChildren,
+  )
+
 interface AuthedContractingJobsRouteChildren {
   AuthedContractingJobsCodeRoute: typeof AuthedContractingJobsCodeRoute
   AuthedContractingJobsIndexRoute: typeof AuthedContractingJobsIndexRoute
@@ -1913,6 +1965,7 @@ interface AuthedContractingRouteChildren {
   AuthedContractingAuditRoute: typeof AuthedContractingAuditRoute
   AuthedContractingCustomersRoute: typeof AuthedContractingCustomersRouteWithChildren
   AuthedContractingFleetRoute: typeof AuthedContractingFleetRouteWithChildren
+  AuthedContractingInvoicingRoute: typeof AuthedContractingInvoicingRouteWithChildren
   AuthedContractingJobsRoute: typeof AuthedContractingJobsRouteWithChildren
   AuthedContractingMeasureTypesRoute: typeof AuthedContractingMeasureTypesRouteWithChildren
   AuthedContractingRatesRoute: typeof AuthedContractingRatesRouteWithChildren
@@ -1926,6 +1979,7 @@ const AuthedContractingRouteChildren: AuthedContractingRouteChildren = {
   AuthedContractingAuditRoute: AuthedContractingAuditRoute,
   AuthedContractingCustomersRoute: AuthedContractingCustomersRouteWithChildren,
   AuthedContractingFleetRoute: AuthedContractingFleetRouteWithChildren,
+  AuthedContractingInvoicingRoute: AuthedContractingInvoicingRouteWithChildren,
   AuthedContractingJobsRoute: AuthedContractingJobsRouteWithChildren,
   AuthedContractingMeasureTypesRoute:
     AuthedContractingMeasureTypesRouteWithChildren,

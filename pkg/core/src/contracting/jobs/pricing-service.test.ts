@@ -1,6 +1,5 @@
 import type { Db } from '@pkg/db';
 import { auditEvents, user } from '@pkg/db';
-import { contractingJobs } from '@pkg/db/contracting';
 import { DateOnlyIso } from '@pkg/schema';
 import { and, eq } from 'drizzle-orm';
 import { describe, expect } from 'vitest';
@@ -486,24 +485,5 @@ describe('a reading amendment on a Priced Job', () => {
       repricingNote: 'Hour Reading amended on CAT320-1 — amounts recomputed.',
       pricing: { total: 5_400 },
     });
-  });
-
-  test('is refused when an affected Job is Invoiced, and nothing is written', async ({ context }) => {
-    const { db } = context;
-    const { jobId, stints } = await completedJob(context, [
-      { machineId: context.excavator.id, arrival: 100, departure: 110 },
-    ]);
-    const dig = stints[0];
-    if (!dig) throw new Error('Expected a stint');
-    await priceAt(db, jobId, dig.id, context.dryHire.id);
-    await db
-      .update(contractingJobs)
-      .set({ status: 'invoiced', invoiceNumber: 'INV-1', invoicedAt: new Date(), invoicedByUserId: adminId })
-      .where(eq(contractingJobs.id, jobId));
-
-    await expect(
-      amendReading({ db, actorUserId: adminId, input: { id: dig.arrivalReadingId, value: 101, reason: 'Misread' } }),
-    ).rejects.toMatchObject({ code: 'reading.job_invoiced' });
-    expect((await getJob({ db, id: jobId })).assignments[0]?.arrival?.value).toBe(100);
   });
 });

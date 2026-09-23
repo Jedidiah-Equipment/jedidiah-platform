@@ -226,6 +226,7 @@ export const contractingJobsRelations = relations(contractingJobs, ({ many, one 
     references: [contractingFarms.id, contractingFarms.customerId],
   }),
   foreman: one(user, { fields: [contractingJobs.foremanUserId], references: [user.id] }),
+  invoicedBy: one(user, { fields: [contractingJobs.invoicedByUserId], references: [user.id] }),
   workType: one(contractingWorkTypes, {
     fields: [contractingJobs.workTypeId],
     references: [contractingWorkTypes.id],

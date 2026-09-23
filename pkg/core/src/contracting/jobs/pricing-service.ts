@@ -1,5 +1,5 @@
 import type { DatabaseTransaction, Db } from '@pkg/db';
-import { contractingJobs, contractingMachineAssignments, contractingMachines } from '@pkg/db/contracting';
+import { type contractingJobs, contractingMachineAssignments, contractingMachines } from '@pkg/db/contracting';
 import { formatNumber } from '@pkg/domain';
 import { computeDieselAmount, computeDiscountAmount, priceStint, pricingGateReasons } from '@pkg/domain/contracting';
 import type { AuthId } from '@pkg/schema';
@@ -18,10 +18,10 @@ import { mutateEntity } from '../../audit/mutate-entity.js';
 import { isRateCardError } from '../rate-card/rate-card-errors.js';
 import { getRate } from '../rate-card/rate-service.js';
 import { assignmentDescriptor } from './assignment-service.js';
-import { JobError, jobNotFound, withJobConstraints, wrongStatus } from './job-errors.js';
+import { JobError, jobNotFound, totalChanged, withJobConstraints, wrongStatus } from './job-errors.js';
 import { lockJob } from './job-lock.js';
 import { getJob } from './job-read.js';
-import { jobDescriptor } from './job-service.js';
+import { writeJob } from './job-write.js';
 
 type JobRow = typeof contractingJobs.$inferSelect;
 type StintPricing = Pick<
@@ -75,31 +75,6 @@ function writeStintPricing(
     notFound: () => jobNotFound('Machine Assignment'),
     set: () => ({ ...values, updatedAt: new Date() }),
     project: () => undefined,
-  });
-}
-
-function writeJob(
-  tx: DatabaseTransaction,
-  actorUserId: AuthId,
-  id: string,
-  {
-    assert,
-    set,
-  }: {
-    assert?: (tx: DatabaseTransaction, before: JobRow) => Promise<void> | void;
-    set: (before: JobRow) => Partial<typeof contractingJobs.$inferInsert>;
-  },
-) {
-  return mutateEntity({
-    db: tx,
-    actorUserId,
-    descriptor: jobDescriptor,
-    table: contractingJobs,
-    id,
-    notFound: jobNotFound,
-    ...(assert ? { assert } : {}),
-    set: (before) => ({ ...set(before), updatedAt: new Date() }),
-    project: (innerTx, row) => getJob({ db: innerTx, id: row.id }),
   });
 }
 
@@ -298,10 +273,7 @@ export async function markPriced({
               `This Job cannot be priced yet: ${pricingGateReasons(pricing.gate).join(' · ')}.`,
             );
           if (pricing.total !== input.expectedTotal)
-            throw new JobError(
-              'contracting_job.total_changed',
-              'The total changed while you were pricing. Review it and mark as Priced again.',
-            );
+            throw totalChanged('The total changed while you were pricing. Review it and mark as Priced again.');
           // The live figures become the snapshot: from here the read model trusts the stored amounts.
           for (const stint of detail.assignments)
             if (stint.state === 'left' && stint.computedAmount !== null && stint.finalAmount !== null)

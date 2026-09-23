@@ -51,6 +51,7 @@ describe('scheduling timezone tripwire', () => {
       duration: '3 months ago',
       long: 'Tuesday, 9 June 2026',
       medium: '9 Jun 2026, 00:00',
+      month: 'June 2026',
       short: '9 Jun 2026',
       time: '00:00',
     } as const satisfies Record<DateFormat, string>;

@@ -131,7 +131,10 @@ export function jobCapabilities(job: JobDetail, can: (permission: AppPermission)
     editSignOffDetails: (job.status === 'completed' || job.status === 'priced') && can('contracting_job:update'),
     editDieselLitres: job.status === 'completed' && can('contracting_job:update'),
     price: job.status === 'completed' && can('contracting_job:price'),
-    seePricing: ['completed', 'priced', 'invoiced'].includes(job.status) && can('contracting_job:read'),
+    seePricing:
+      ['completed', 'priced', 'invoiced'].includes(job.status) &&
+      (can('contracting_job:read') || can('contracting_job:read-priced')),
+    stampInvoice: job.status === 'priced' && can('contracting_invoice:update'),
     resolveGaps: (job.status === 'active' || job.status === 'completed') && can('contracting_gap:resolve'),
     amendReadings: job.status !== 'invoiced' && job.status !== 'cancelled' && can('contracting_reading:update'),
     complete: job.status === 'active' && can('contracting_job:complete'),

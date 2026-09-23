@@ -9,6 +9,7 @@ export * from './fleet/machine-service.js';
 export * from './jobs/assignment-service.js';
 export * from './jobs/charge-line-service.js';
 export * from './jobs/field-read.js';
+export * from './jobs/invoicing-service.js';
 export * from './jobs/job-errors.js';
 export * from './jobs/job-read.js';
 export * from './jobs/job-service.js';

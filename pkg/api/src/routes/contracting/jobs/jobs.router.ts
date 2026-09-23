@@ -6,6 +6,7 @@ import {
   countJobQueues,
   createChargeLine,
   createJob,
+  findJobsByInvoiceNumber,
   getFieldJob,
   getReadableJob,
   hasActiveJobAttention,
@@ -13,8 +14,8 @@ import {
   listFieldImplements,
   listFieldJobs,
   listForemen,
-  listJobs,
   listMeasureTypes,
+  listReadableJobs,
   markPriced,
   patchAssignment,
   patchChargeLine,
@@ -29,6 +30,7 @@ import {
   setMeasure,
   setStintAmount,
   setStintRate,
+  stampInvoice,
 } from '@pkg/core/contracting';
 import { hasPermission } from '@pkg/domain';
 import {
@@ -45,6 +47,7 @@ import {
   FieldImplement,
   FieldJob,
   GapResolveInput,
+  InvoiceNumberLookupInput,
   JobCancelInput,
   JobCompleteInput,
   JobCreateInput,
@@ -54,6 +57,7 @@ import {
   JobMarkPricedInput,
   JobPatchInput,
   JobQueueCounts,
+  JobStampInvoiceInput,
   MeasureRemoveInput,
   MeasureSetInput,
   MeasureType,
@@ -141,11 +145,7 @@ export const contractingJobsRouter = router({
           const mode = readMode(ctx.access);
           if (mode === 'priced' && !['awaiting-pricing', 'awaiting-invoice', 'invoiced'].includes(input.queue))
             refuseRead();
-          return listJobs({
-            db: ctx.db,
-            ...input,
-            ...(mode === 'own' ? { foremanUserId: ctx.session.user.id } : {}),
-          });
+          return listReadableJobs({ db: ctx.db, actorUserId: ctx.session.user.id, mode, ...input });
         }, jobErrorFamily),
       ),
     get: authorizedProcedure(readPermissions)
@@ -295,6 +295,16 @@ export const contractingJobsRouter = router({
       .mutation(({ ctx, input }) =>
         mapCoreErrors(() => markPriced({ db: ctx.db, actorUserId: ctx.session.user.id, input }), jobErrorFamily),
       ),
+  }),
+  invoicing: router({
+    stamp: authorizedProcedure('contracting_invoice:update')
+      .input(JobStampInvoiceInput)
+      .mutation(({ ctx, input }) =>
+        mapCoreErrors(() => stampInvoice({ db: ctx.db, actorUserId: ctx.session.user.id, input }), jobErrorFamily),
+      ),
+    byNumber: authorizedProcedure(['contracting_invoice:update', 'contracting_job:read'])
+      .input(InvoiceNumberLookupInput)
+      .query(({ ctx, input }) => findJobsByInvoiceNumber({ db: ctx.db, ...input })),
   }),
   options: router({
     foremen: authorizedProcedure('contracting_job:assign').query(({ ctx }) => listForemen({ db: ctx.db })),

@@ -205,6 +205,8 @@ export const Assignment = z.object({
   rateName: z.string().nullable(),
   rateBasis: RateBasis.nullable(),
   rateMeasureTypeId: UUID.nullable(),
+  /** The measure Rate's unit, named even when the stint has no Measure of that type. */
+  rateMeasureTypeName: z.string().nullable(),
   rateUnitAmount: Money.nullable(),
   computedAmount: Money.nullable(),
   finalAmount: Money.nullable(),

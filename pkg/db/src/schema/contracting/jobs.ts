@@ -261,6 +261,10 @@ export const contractingMachineAssignmentsRelations = relations(contractingMachi
     references: [contractingMachines.id],
   }),
   measures: many(contractingMeasures),
+  rateMeasureType: one(contractingMeasureTypes, {
+    fields: [contractingMachineAssignments.rateMeasureTypeId],
+    references: [contractingMeasureTypes.id],
+  }),
 }));
 
 export const contractingMeasuresRelations = relations(contractingMeasures, ({ one }) => ({

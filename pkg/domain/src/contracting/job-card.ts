@@ -44,14 +44,11 @@ function cardReading(reading: JobReading | null, internal: boolean): JobCardRead
 
 function cardRate(stint: Assignment): JobCardStintLine['rate'] {
   if (stint.rateUnitAmount === null || stint.rateBasis === null) return null;
-  const measureName = stint.measures.find(
-    (measure) => measure.measureTypeId === stint.rateMeasureTypeId,
-  )?.measureTypeName;
   return {
     name: stint.rateName ?? '',
     basis: stint.rateBasis,
     unitAmount: stint.rateUnitAmount,
-    per: stint.rateBasis === 'time' ? 'h' : (measureName ?? 'unit'),
+    per: stint.rateBasis === 'time' ? 'h' : (stint.rateMeasureTypeName ?? 'unit'),
   };
 }
 
@@ -138,7 +135,7 @@ export function buildJobCardModel(job: JobDetail, variant: JobCardVariant, now: 
     diesel: {
       litres: job.dieselLitres,
       unitPrice: priced ? job.dieselUnitPrice : null,
-      amount: priced ? job.dieselAmount : null,
+      amount: priced ? pricing.dieselAmount : null,
     },
     discount: priced ? discountLine(job, pricing.discountAmount) : null,
     totals: priced

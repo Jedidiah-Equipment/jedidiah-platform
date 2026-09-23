@@ -90,6 +90,7 @@ async function loadJob(db: Db | DatabaseTransaction, condition: ReturnType<typeo
           implement: true,
           machine: { with: { category: true } },
           measures: { with: { measureType: true } },
+          rateMeasureType: true,
         },
       },
       chargeLines: { orderBy: [asc(contractingChargeLines.displayOrder)] },
@@ -112,6 +113,7 @@ type LoadedJob = typeof contractingJobs.$inferSelect & {
       driver: typeof user.$inferSelect | null;
       implement: { code: string } | null;
       machine: { code: string; category: { name: string; icon: string; colour: string } };
+      rateMeasureType: { name: string } | null;
       measures: Array<
         { measureTypeId: string; quantity: number; measureType: { name: string; displayOrder: number } } & Record<
           string,
@@ -227,6 +229,7 @@ function mapAssignment(row: LoadedJob['assignments'][number], live: boolean) {
     categoryColour: row.machine.category.colour,
     implementCode: row.implement?.code ?? null,
     driverName: row.driver?.name ?? null,
+    rateMeasureTypeName: row.rateMeasureType?.name ?? null,
     createdAt: row.createdAt.toISOString(),
     arrival,
     departure,
@@ -596,6 +599,7 @@ export function redactMoney(job: JobDetail) {
       rateName: null,
       rateBasis: null,
       rateMeasureTypeId: null,
+      rateMeasureTypeName: null,
       rateUnitAmount: null,
       computedAmount: null,
       finalAmount: null,

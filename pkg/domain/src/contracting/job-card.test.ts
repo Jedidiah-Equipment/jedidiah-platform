@@ -61,6 +61,7 @@ function stint(overrides: Partial<Assignment>): Assignment {
     rateName: null,
     rateBasis: null,
     rateMeasureTypeId: null,
+    rateMeasureTypeName: null,
     rateUnitAmount: null,
     computedAmount: null,
     finalAmount: null,
@@ -123,6 +124,7 @@ const tractor = stint({
   rateName: 'Tractor and tanker',
   rateBasis: 'measure',
   rateMeasureTypeId: 'loads',
+  rateMeasureTypeName: 'Loads',
   rateUnitAmount: 850,
   computedAmount: 15_300,
   finalAmount: 15_300,
@@ -304,6 +306,27 @@ describe('buildJobCardModel', () => {
     expect(card.lines[0]).toMatchObject({ noCharge: false });
     expect(card.discount).toEqual({ label: 'Discount (5%)', amount: 3_621.75 });
     expect(card.totals).toMatchObject({ discount: 3_621.75, total: 73_643.25 });
+  });
+
+  test('names a measure Rate’s unit even when its Measure was never captured', () => {
+    const noLoads = { ...tractor, measures: [], measureMissing: true, computedAmount: 0, finalAmount: 0 };
+    const [line] = stintLines(rowleyDam({ assignments: [noLoads] }), 'customer');
+    expect(line).toMatchObject({ rate: { per: 'Loads' }, amount: 0 });
+  });
+
+  test('prints no Diesel as R 0.00 on a Priced Job, as its totals do', () => {
+    const card = buildJobCardModel(
+      rowleyDam({
+        dieselLitres: 0,
+        dieselUnitPrice: null,
+        dieselAmount: null,
+        pricing: { ...rowleyPricing, dieselAmount: 0, total: 72_435 },
+      }),
+      'customer',
+      now,
+    );
+    expect(card.diesel).toEqual({ litres: 0, unitPrice: null, amount: 0 });
+    expect(card.totals).toMatchObject({ diesel: 0 });
   });
 
   test('a Completed Job with any line still un-priced prints hours with no rates, amounts or totals', () => {

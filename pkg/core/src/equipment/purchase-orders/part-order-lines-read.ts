@@ -1,9 +1,9 @@
 import { purchaseOrderLines, purchaseOrders, supplier } from '@pkg/db/equipment';
-import { compareNullableDateOnly } from '@pkg/domain/equipment';
+import { compareNullableDateOnly, derivePurchaseOrderActions, purchaseOrderActionFacts } from '@pkg/domain/equipment';
 import type { UUID } from '@pkg/schema';
 import type { PartPurchaseOrderLineResult } from '@pkg/schema/equipment';
 import { PartPurchaseOrderLineResult as PartPurchaseOrderLineResultSchema } from '@pkg/schema/equipment';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, inArray } from 'drizzle-orm';
 
 import { loadLineIntake } from './purchase-order-line-intake.js';
 import type { PurchaseOrderDb } from './purchase-order-service.js';
@@ -38,6 +38,7 @@ export async function listPartPurchaseOrderLines({
       orderedQuantity: purchaseOrderLines.quantity,
       purchaseOrderCode: purchaseOrders.code,
       purchaseOrderId: purchaseOrders.id,
+      status: purchaseOrders.status,
       supplierName: supplier.companyName,
     })
     .from(purchaseOrderLines)
@@ -46,18 +47,41 @@ export async function listPartPurchaseOrderLines({
     .where(and(eq(purchaseOrderLines.partId, partId), eq(purchaseOrders.status, 'sent')));
 
   const purchaseOrderIds = [...new Set(lines.map((line) => line.purchaseOrderId))];
-  const [received, receiptBuckets] = await Promise.all([
+  const [received, receiptBuckets, orderLines] = await Promise.all([
     loadLineIntake({ db, purchaseOrderIds }),
     loadReceiptBuckets({ db, purchaseOrderIds }),
+    purchaseOrderIds.length === 0
+      ? []
+      : db
+          .select({
+            id: purchaseOrderLines.id,
+            purchaseOrderId: purchaseOrderLines.purchaseOrderId,
+            quantity: purchaseOrderLines.quantity,
+          })
+          .from(purchaseOrderLines)
+          .where(inArray(purchaseOrderLines.purchaseOrderId, purchaseOrderIds)),
   ]);
+  // Judged on the whole order, not the scanned Part's line alone: history and remainder are the order's.
+  const orderActionsFor = (line: (typeof lines)[number]) => {
+    const { receive, returnToSupplier } = derivePurchaseOrderActions(
+      purchaseOrderActionFacts({
+        row: line,
+        lines: orderLines.filter((candidate) => candidate.purchaseOrderId === line.purchaseOrderId),
+        intake: received,
+      }),
+    );
+    return { receive, returnToSupplier };
+  };
 
   return PartPurchaseOrderLineResultSchema.parse({
     items: lines
-      .map(({ lineId, ...line }) => {
+      .map((row) => {
+        const { closedShortAt: _closedShortAt, lineId, status: _status, ...line } = row;
         const receivedQuantity = received.get(lineId) ?? 0;
 
         return {
           ...line,
+          orderActions: orderActionsFor(row),
           outstandingQuantity: Math.max(0, line.orderedQuantity - receivedQuantity),
           receiptBuckets: receiptBuckets.get(receiptBucketKey(line.purchaseOrderId, partId)) ?? [],
           receivedQuantity,

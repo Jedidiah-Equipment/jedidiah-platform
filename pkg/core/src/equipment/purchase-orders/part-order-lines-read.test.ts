@@ -21,7 +21,7 @@ describe('listPartPurchaseOrderLines', () => {
       {
         items: [
           {
-            closedShortAt: null,
+            orderActions: { receive: { allowed: true }, returnToSupplier: { allowed: true } },
             orderedQuantity: 10,
             outstandingQuantity: 6,
             purchaseOrderId,
@@ -35,12 +35,10 @@ describe('listPartPurchaseOrderLines', () => {
 
   /**
    * The rule the dock turns on: a closed-short line still holds an outstanding quantity, but the
-   * receipt service refuses it. Without this flag a receiving screen would offer the line and only
-   * discover the refusal on the post.
+   * receipt gate refuses it. The row carries the order's own verdicts, so a receiving screen offers
+   * only what the post will take.
    */
-  test('keeps a closed-short line and marks it, so receiving can tell it apart from a live one', async ({
-    context,
-  }) => {
+  test('keeps a closed-short line, refusing receipts while still taking returns', async ({ context }) => {
     const purchaseOrderId = await seedSentPurchaseOrder(context.db, context.supplierId, [
       { partId: context.parts.piece.id, quantity: 10 },
     ]);
@@ -57,7 +55,10 @@ describe('listPartPurchaseOrderLines', () => {
     const result = await listPartPurchaseOrderLines({ db: context.db, partId: context.parts.piece.id });
 
     expect(result.items[0]?.outstandingQuantity).toBe(6);
-    expect(result.items[0]?.closedShortAt).not.toBeNull();
+    expect(result.items[0]?.orderActions).toEqual({
+      receive: { allowed: false, reason: 'closed-short' },
+      returnToSupplier: { allowed: true },
+    });
   });
 
   test('ignores an order that was never sent, since nothing can arrive against a draft', async ({ context }) => {

@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import type { PostReturnToSupplierInput } from '@pkg/schema/equipment';
 import { describe, expect } from 'vitest';
 
@@ -15,9 +16,11 @@ import {
   pdfBytes,
   receive,
   SPARE_PART_ID,
+  SUPPLIER_ID,
   sendOrder,
   test,
 } from './purchase-order-amendment-fixtures.js';
+import { createPurchaseOrder } from './purchase-order-service.js';
 
 async function postReturn(
   context: AmendmentTestContext,
@@ -42,6 +45,25 @@ async function postReturn(
 }
 
 describe('credit notes', () => {
+  test('refuses a credit note against an order the Supplier was never sent', async ({ context }) => {
+    const draft = await createPurchaseOrder({
+      actorUserId: ACTOR_ID,
+      db: context.db,
+      input: { expectedDeliveryDate: null, supplierId: SUPPLIER_ID },
+    });
+
+    await expect(
+      uploadCreditNote({
+        actorUserId: ACTOR_ID,
+        bytes: pdfBytes(),
+        db: context.db,
+        filename: 'CN-1.pdf',
+        input: { purchaseOrderId: draft.id, stockMovementIds: [randomUUID()] },
+        storage: context.storage,
+      }),
+    ).rejects.toMatchObject({ code: 'purchase_order.not_sent', action: 'fileDocuments', reason: 'not-sent' });
+  });
+
   test('files a credit note into the order collection and records the returns it settles', async ({ context }) => {
     const purchaseOrder = await sendOrder(context, [{ partId: PIECE_PART_ID, quantity: 10, unitPrice: 25 }]);
     await receive(context, purchaseOrder.id, PIECE_PART_ID, 10);

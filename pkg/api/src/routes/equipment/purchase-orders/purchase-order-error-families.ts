@@ -4,6 +4,7 @@ import {
   isPurchaseOrderCoreError,
   isSupplierInvoiceCoreError,
   JobNotFoundError,
+  PurchaseOrderActionRefusedError,
   type PurchaseOrderCoreError,
   type SupplierInvoiceCoreError,
 } from '@pkg/core/equipment';
@@ -42,6 +43,9 @@ export const purchaseOrderErrorFamily = defineCoreErrorFamily<PurchaseOrderCoreE
     'purchase_order.supplier_not_found': 'NOT_FOUND',
   },
   is: isPurchaseOrderCoreError,
+  // Which Purchase Order Action a state refusal refused, and why — the served verdict's own words.
+  metadata: (error) =>
+    error instanceof PurchaseOrderActionRefusedError ? { action: error.action, reason: error.reason } : undefined,
 });
 
 /** A credit note fails on the returns it claims, never on the document itself. */

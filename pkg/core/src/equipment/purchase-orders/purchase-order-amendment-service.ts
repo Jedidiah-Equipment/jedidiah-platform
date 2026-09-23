@@ -25,7 +25,6 @@ import { aliasedTable, and, asc, eq, isNull, sql } from 'drizzle-orm';
 import { diffAuditUpdate, recordAuditUpdate } from '../../audit/audit-writer.js';
 import type { StorageAdapter } from '../../storage/storage-adapter.js';
 import {
-  assertPurchaseOrderAction,
   PurchaseOrderAmendmentBelowReceivedError,
   PurchaseOrderAmendmentLastLineError,
   PurchaseOrderAmendmentLineHasArrivalsError,
@@ -34,12 +33,12 @@ import {
   PurchaseOrderLineNotPricedError,
   PurchaseOrderSubstitutionHasReceiptsError,
 } from './purchase-order-errors.js';
+import { openPurchaseOrder } from './purchase-order-gate.js';
 import {
   assertLinePartsMatchSupplier,
   getPurchaseOrder,
   lineHasStockMovements,
   loadNextPurchaseOrderRevision,
-  lockPurchaseOrder,
   purchaseOrderAggregateAuditDescriptor,
   storePurchaseOrderPdfRevision,
 } from './purchase-order-service.js';
@@ -363,12 +362,11 @@ async function applyAmendment(
 
   try {
     return await db.transaction(async (tx) => {
-      await lockPurchaseOrder(tx, id);
-      const before = await getPurchaseOrder({ db: tx, id });
       // Drafts stay log-free: they are edited whole through the draft save, which is why an empty
       // log reads as "unchanged since it went out" rather than "we did not record anything". And
       // closing short asserted the remainder is not coming, so amending it would take that back.
-      assertPurchaseOrderAction(before.actions.amend, id);
+      await openPurchaseOrder(tx, id, 'amend');
+      const before = await getPurchaseOrder({ db: tx, id });
       const amendment = await apply(tx, before);
 
       await tx.insert(purchaseOrderAmendments).values({

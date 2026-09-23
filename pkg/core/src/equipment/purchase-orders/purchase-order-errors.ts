@@ -1,27 +1,11 @@
 import type { UUID } from '@pkg/schema';
-import type { PurchaseOrderActionVerdict } from '@pkg/schema/equipment';
+import type { PurchaseOrderActionBlockedReason, PurchaseOrderActionName } from '@pkg/schema/equipment';
 
 export class PurchaseOrderNotFoundError extends Error {
   readonly code = 'purchase_order.not_found' as const;
 
   constructor(readonly id: UUID) {
     super('Purchase Order not found.');
-  }
-}
-
-export class PurchaseOrderNotDraftError extends Error {
-  readonly code = 'purchase_order.not_draft' as const;
-
-  constructor(readonly id: UUID) {
-    super('Only a draft Purchase Order can be edited or approved.');
-  }
-}
-
-export class PurchaseOrderAlreadyCancelledError extends Error {
-  readonly code = 'purchase_order.already_cancelled' as const;
-
-  constructor(readonly id: UUID) {
-    super('This Purchase Order is already cancelled.');
   }
 }
 
@@ -96,43 +80,6 @@ export class PurchaseOrderInvalidQuantityError extends Error {
   }
 }
 
-export class PurchaseOrderEmptyError extends Error {
-  readonly code = 'purchase_order.empty' as const;
-
-  constructor(readonly id: UUID) {
-    super('Add at least one line before marking this Purchase Order sent.');
-  }
-}
-
-/**
- * An order goes to the Supplier only once an admin has signed the draft off, and it is reopened for
- * editing only while that sign-off stands — so the one state fact answers both refusals.
- */
-export class PurchaseOrderNotApprovedError extends Error {
-  readonly code = 'purchase_order.not_approved' as const;
-
-  constructor(readonly id: UUID) {
-    super('Only an approved Purchase Order can be sent or reverted to draft.');
-  }
-}
-
-/** Stock arrives against an order the Supplier has actually been given — never a draft or a dead one. */
-export class PurchaseOrderNotSentError extends Error {
-  readonly code = 'purchase_order.not_sent' as const;
-
-  constructor(readonly id: UUID) {
-    super('Only a sent Purchase Order can be received against.');
-  }
-}
-
-export class PurchaseOrderAlreadySentError extends Error {
-  readonly code = 'purchase_order.already_sent' as const;
-
-  constructor(readonly id: UUID) {
-    super('A sent Purchase Order is read from the PDF saved when it was sent.');
-  }
-}
-
 export class PurchaseOrderLineNotFoundError extends Error {
   readonly code = 'purchase_order.line_not_found' as const;
 
@@ -160,15 +107,6 @@ export class PurchaseOrderArrivalBelowZeroError extends Error {
     readonly arrivedQuantity: number,
   ) {
     super(`${lineDescription} has only ${arrivedQuantity} arrived; its arrival cannot be reversed past zero.`);
-  }
-}
-
-/** A closed-short order has no open remainder left, so nothing can still arrive or be changed on it. */
-export class PurchaseOrderClosedShortError extends Error {
-  readonly code = 'purchase_order.closed_short' as const;
-
-  constructor(readonly id: UUID) {
-    super('This Purchase Order was closed short and can no longer be amended or received against.');
   }
 }
 
@@ -223,97 +161,78 @@ export class PurchaseOrderSubstitutionHasReceiptsError extends Error {
   }
 }
 
-/** Close-short releases an open remainder, so there has to be a delivery behind it to close short of. */
-export class PurchaseOrderNoReceiptsError extends Error {
-  readonly code = 'purchase_order.no_receipts' as const;
+const refusedCodes = {
+  'already-closed-short': 'purchase_order.already_closed_short',
+  cancelled: 'purchase_order.already_cancelled',
+  'closed-short': 'purchase_order.closed_short',
+  empty: 'purchase_order.empty',
+  'fully-received': 'purchase_order.fully_received',
+  'has-movements': 'purchase_order.has_receipts',
+  'not-approved': 'purchase_order.not_approved',
+  'not-draft': 'purchase_order.not_draft',
+  'not-sent': 'purchase_order.not_sent',
+  'nothing-received': 'purchase_order.no_receipts',
+  sent: 'purchase_order.already_sent',
+} as const satisfies Record<PurchaseOrderActionBlockedReason, `purchase_order.${string}`>;
 
-  constructor(readonly id: UUID) {
-    super('A Purchase Order can only be closed short once something has arrived against it. Cancel it instead.');
-  }
-}
+const states: Record<PurchaseOrderActionBlockedReason, string> = {
+  'already-closed-short': 'This Purchase Order is already closed short',
+  cancelled: 'This Purchase Order is cancelled',
+  'closed-short': 'This Purchase Order is closed short',
+  empty: 'This Purchase Order has no lines',
+  'fully-received': 'This Purchase Order is fully received',
+  'has-movements': 'Stock has already moved against this Purchase Order',
+  'not-approved': 'This Purchase Order is not approved',
+  'not-draft': 'This Purchase Order is no longer a draft',
+  'not-sent': 'This Purchase Order has not been sent',
+  'nothing-received': 'Nothing has arrived against this Purchase Order',
+  sent: 'This Purchase Order has been sent',
+};
 
-export class PurchaseOrderFullyReceivedError extends Error {
-  readonly code = 'purchase_order.fully_received' as const;
-
-  constructor(readonly id: UUID) {
-    super('A fully received Purchase Order has no outstanding quantity to close short.');
-  }
-}
-
-export class PurchaseOrderAlreadyClosedShortError extends Error {
-  readonly code = 'purchase_order.already_closed_short' as const;
-
-  constructor(readonly id: UUID) {
-    super('This Purchase Order is already closed short.');
-  }
-}
-
-export class PurchaseOrderHasReceiptsError extends Error {
-  readonly code = 'purchase_order.has_receipts' as const;
-
-  constructor(readonly id: UUID) {
-    super('A Purchase Order with receipts cannot be cancelled.');
-  }
-}
+const consequences: Record<PurchaseOrderActionName, string> = {
+  amend: 'it cannot be amended',
+  approve: 'it cannot be approved',
+  cancel: 'it cannot be cancelled',
+  closeShort: 'it cannot be closed short',
+  edit: 'it cannot be edited',
+  fileDocuments: 'nothing can be filed against it',
+  preview: 'it is read from the PDF saved when it was sent',
+  receive: 'nothing can be received against it',
+  returnToSupplier: 'nothing can be returned against it',
+  revertToDraft: 'it cannot be reverted to draft',
+  send: 'it cannot be sent',
+};
 
 /**
- * Refuses a write the order's own state does not allow, in the words that write already used. The
- * verdict is derived once in `@pkg/domain` and read by both sides of the seam — the payload a
- * surface renders its controls from, and this gate — so a control can no longer offer an action the
- * post then refuses. The mapping is a lookup and nothing more: judgement lives in the derivation.
+ * A Purchase Order Action the order's own state refuses: the one class every order-level gate throws.
+ * The code is the reason's, unchanged on the wire; the message names what was refused.
  */
-export function assertPurchaseOrderAction(verdict: PurchaseOrderActionVerdict, id: UUID): void {
-  if (verdict.allowed) return;
+export class PurchaseOrderActionRefusedError extends Error {
+  readonly code: (typeof refusedCodes)[PurchaseOrderActionBlockedReason];
 
-  switch (verdict.reason) {
-    case 'already-closed-short':
-      throw new PurchaseOrderAlreadyClosedShortError(id);
-    case 'cancelled':
-      throw new PurchaseOrderAlreadyCancelledError(id);
-    case 'closed-short':
-      throw new PurchaseOrderClosedShortError(id);
-    case 'empty':
-      throw new PurchaseOrderEmptyError(id);
-    case 'fully-received':
-      throw new PurchaseOrderFullyReceivedError(id);
-    case 'has-movements':
-      throw new PurchaseOrderHasReceiptsError(id);
-    case 'not-approved':
-      throw new PurchaseOrderNotApprovedError(id);
-    case 'not-draft':
-      throw new PurchaseOrderNotDraftError(id);
-    case 'not-sent':
-      throw new PurchaseOrderNotSentError(id);
-    case 'nothing-received':
-      throw new PurchaseOrderNoReceiptsError(id);
-    case 'sent':
-      throw new PurchaseOrderAlreadySentError(id);
+  constructor(
+    readonly action: PurchaseOrderActionName,
+    readonly reason: PurchaseOrderActionBlockedReason,
+    readonly id: UUID,
+  ) {
+    super(`${states[reason]}, so ${consequences[action]}.`);
+    this.code = refusedCodes[reason];
   }
 }
 
 export type PurchaseOrderCoreError =
+  | PurchaseOrderActionRefusedError
   | PurchaseOrderArrivalBelowZeroError
-  | PurchaseOrderAlreadyCancelledError
-  | PurchaseOrderAlreadyClosedShortError
-  | PurchaseOrderAlreadySentError
   | PurchaseOrderAmendmentBelowReceivedError
   | PurchaseOrderAmendmentLineHasArrivalsError
   | PurchaseOrderAmendmentLastLineError
-  | PurchaseOrderClosedShortError
-  | PurchaseOrderEmptyError
-  | PurchaseOrderFullyReceivedError
-  | PurchaseOrderHasReceiptsError
   | PurchaseOrderInvalidQuantityError
   | PurchaseOrderLineExistsError
   | PurchaseOrderLineNotFoundError
   | PurchaseOrderLineNotCustomError
   | PurchaseOrderLineNotPricedError
   | PurchaseOrderLineIdConflictError
-  | PurchaseOrderNoReceiptsError
-  | PurchaseOrderNotApprovedError
-  | PurchaseOrderNotDraftError
   | PurchaseOrderNotFoundError
-  | PurchaseOrderNotSentError
   | PurchaseOrderPartNotFoundError
   | PurchaseOrderPartNotPurchasableError
   | PurchaseOrderPartSupplierMismatchError
@@ -322,28 +241,18 @@ export type PurchaseOrderCoreError =
 
 export function isPurchaseOrderCoreError(error: unknown): error is PurchaseOrderCoreError {
   return (
+    error instanceof PurchaseOrderActionRefusedError ||
     error instanceof PurchaseOrderArrivalBelowZeroError ||
-    error instanceof PurchaseOrderAlreadyCancelledError ||
-    error instanceof PurchaseOrderAlreadyClosedShortError ||
-    error instanceof PurchaseOrderAlreadySentError ||
     error instanceof PurchaseOrderAmendmentBelowReceivedError ||
     error instanceof PurchaseOrderAmendmentLineHasArrivalsError ||
     error instanceof PurchaseOrderAmendmentLastLineError ||
-    error instanceof PurchaseOrderClosedShortError ||
-    error instanceof PurchaseOrderEmptyError ||
-    error instanceof PurchaseOrderFullyReceivedError ||
-    error instanceof PurchaseOrderHasReceiptsError ||
     error instanceof PurchaseOrderInvalidQuantityError ||
     error instanceof PurchaseOrderLineExistsError ||
     error instanceof PurchaseOrderLineNotFoundError ||
     error instanceof PurchaseOrderLineNotCustomError ||
     error instanceof PurchaseOrderLineNotPricedError ||
     error instanceof PurchaseOrderLineIdConflictError ||
-    error instanceof PurchaseOrderNoReceiptsError ||
-    error instanceof PurchaseOrderNotApprovedError ||
-    error instanceof PurchaseOrderNotDraftError ||
     error instanceof PurchaseOrderNotFoundError ||
-    error instanceof PurchaseOrderNotSentError ||
     error instanceof PurchaseOrderPartNotFoundError ||
     error instanceof PurchaseOrderPartNotPurchasableError ||
     error instanceof PurchaseOrderPartSupplierMismatchError ||

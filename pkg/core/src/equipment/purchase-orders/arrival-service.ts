@@ -1,7 +1,7 @@
 import type { Db } from '@pkg/db';
 import { user } from '@pkg/db';
 import { purchaseOrderLineArrivals, purchaseOrderLines } from '@pkg/db/equipment';
-import { deriveMovementWarnings, derivePurchaseOrderActions } from '@pkg/domain/equipment';
+import { deriveMovementWarnings } from '@pkg/domain/equipment';
 import type { AuthId, UUID } from '@pkg/schema';
 import {
   type PostArrivalInput,
@@ -13,13 +13,11 @@ import {
 import { and, desc, eq } from 'drizzle-orm';
 
 import {
-  assertPurchaseOrderAction,
   PurchaseOrderArrivalBelowZeroError,
   PurchaseOrderLineNotCustomError,
   PurchaseOrderLineNotFoundError,
 } from './purchase-order-errors.js';
-import { loadLineIntake } from './purchase-order-line-intake.js';
-import { loadPurchaseOrderActionFacts, lockPurchaseOrder } from './purchase-order-service.js';
+import { openPurchaseOrder } from './purchase-order-gate.js';
 
 export async function postArrival({
   actorUserId,
@@ -31,9 +29,12 @@ export async function postArrival({
   input: PostArrivalInput;
 }): Promise<PostArrivalResult> {
   return db.transaction(async (tx) => {
-    const row = await lockPurchaseOrder(tx, input.purchaseOrderId);
-    const actions = derivePurchaseOrderActions(await loadPurchaseOrderActionFacts({ db: tx, row }));
-    assertPurchaseOrderAction(input.quantity > 0 ? actions.receive : actions.returnToSupplier, row.id);
+    // A reversing Arrival is a Custom Line's correction path, so it borrows the return verdict.
+    const { row, intake } = await openPurchaseOrder(
+      tx,
+      input.purchaseOrderId,
+      input.quantity > 0 ? 'receive' : 'returnToSupplier',
+    );
 
     const [line] = await tx
       .select({
@@ -48,7 +49,7 @@ export async function postArrival({
     if (line.partId !== null) throw new PurchaseOrderLineNotCustomError(line.id);
     if (!line.customDescription) throw new Error('Custom Line has no description');
 
-    const arrivedQuantity = (await loadLineIntake({ db: tx, purchaseOrderIds: [row.id] })).get(line.id) ?? 0;
+    const arrivedQuantity = intake.get(line.id) ?? 0;
     if (arrivedQuantity + input.quantity < -0.000001) {
       throw new PurchaseOrderArrivalBelowZeroError(line.customDescription, arrivedQuantity);
     }

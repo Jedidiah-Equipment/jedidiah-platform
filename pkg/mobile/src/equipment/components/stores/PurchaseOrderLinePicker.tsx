@@ -62,13 +62,10 @@ export function PurchaseOrderLinePicker({
 
   const relevant = (lines.data?.items ?? []).filter((line) =>
     mode === 'receive'
-      ? // Exactly what the server's own receive gate allows: a sent order that has not been closed
-        // short. Deliberately *not* filtered on outstanding quantity — a Supplier who ships twelve
-        // against ten has delivered twelve, and the ledger has to be able to say so. Over-receipt
-        // warns and posts (spec §3); hiding the line would leave the dock unable to book what is
-        // physically in front of it. A closed-short line refuses receipts, so it stays out here and
-        // stays available to a return below.
-        line.closedShortAt === null
+      ? // The order's own served verdict, so the dock offers exactly what the receive gate takes.
+        // Deliberately *not* filtered on outstanding quantity — a Supplier who ships twelve against
+        // ten has delivered twelve, and the ledger has to be able to say so (spec §3).
+        line.orderActions.receive.allowed
       : line.receivedQuantity > 0,
   );
 

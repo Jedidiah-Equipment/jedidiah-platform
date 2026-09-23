@@ -21,7 +21,7 @@ import { assertDocumentAcceptable } from '../documents/document-service.js';
 import { insertMovement, loadMovingAverages, loadStockPart } from '../inventory/ledger.js';
 import { assertPartStockAction } from '../inventory/part-stock-action-errors.js';
 import { filePurchaseOrderDocument } from './purchase-order-document-filing.js';
-import { PurchaseOrderNotSentError } from './purchase-order-errors.js';
+import { openPurchaseOrder } from './purchase-order-gate.js';
 import { getPurchaseOrder, type PurchaseOrderDb } from './purchase-order-service.js';
 import {
   InvoiceFlagAlreadyResolvedError,
@@ -88,12 +88,11 @@ export async function uploadSupplierInvoice({
   onExtractionError?: (error: unknown) => void;
   storage: StorageAdapter;
 }): Promise<PurchaseOrderDocumentRow> {
-  const purchaseOrder = await getPurchaseOrder({ db, id: input.purchaseOrderId });
-  // Only an order the Supplier is actually holding can have been invoiced. A draft has not been
-  // sent and a cancelled one was called off, so a bill against either describes nothing — and the
-  // browser's own check of this is UX, never the boundary (`pkg/web/AGENTS.md`). Closed-short
-  // orders still qualify: closing short says nothing more is coming, not that nothing arrived.
-  if (purchaseOrder.status !== 'sent') throw new PurchaseOrderNotSentError(input.purchaseOrderId);
+  // Only an order the Supplier is holding can have been invoiced, and the bytes must not reach the
+  // provider for one that is refused — so the gate judges before the read and again under the filing
+  // lock, in case the order was cancelled while the model was reading.
+  const fileDocuments = (tx: DatabaseTransaction) => openPurchaseOrder(tx, input.purchaseOrderId, 'fileDocuments');
+  await db.transaction(fileDocuments);
 
   // Validated against the *sniffed* bytes rather than the multipart content type, and before the
   // model is called: filing would refuse a spoofed PDF anyway, but only after this function had
@@ -114,6 +113,9 @@ export async function uploadSupplierInvoice({
 
   return filePurchaseOrderDocument({
     actorUserId,
+    assertWritable: async (tx) => {
+      await fileDocuments(tx);
+    },
     bytes,
     db,
     filename,

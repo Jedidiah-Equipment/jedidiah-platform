@@ -21,6 +21,7 @@ import { and, asc, eq, inArray, isNull } from 'drizzle-orm';
 import type { StorageAdapter } from '../../storage/storage-adapter.js';
 import { CreditNoteAlreadySettledError, CreditNoteReturnNotFoundError } from './credit-note-errors.js';
 import { filePurchaseOrderDocument } from './purchase-order-document-filing.js';
+import { openPurchaseOrder } from './purchase-order-gate.js';
 import { getPurchaseOrder, newestPurchaseOrderDocumentFirst } from './purchase-order-service.js';
 
 /**
@@ -55,11 +56,12 @@ export async function uploadCreditNote({
   input: CreditNoteSettlementInput;
   storage: StorageAdapter;
 }): Promise<PurchaseOrderDocumentRow> {
-  await getPurchaseOrder({ db, id: input.purchaseOrderId });
-
   return filePurchaseOrderDocument({
     actorUserId,
-    assertWritable: (tx) => assertReturnsAreSettleable(tx, input),
+    assertWritable: async (tx) => {
+      await openPurchaseOrder(tx, input.purchaseOrderId, 'fileDocuments');
+      await assertReturnsAreSettleable(tx, input);
+    },
     bytes,
     db,
     filename,

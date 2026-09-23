@@ -25,10 +25,9 @@ import {
   comparePurchaseOrderLines,
   derivePartStockActions,
   derivePurchaseOrderActions,
-  derivePurchaseOrderProgress,
   derivePurchaseOrderStatus,
   formatPurchaseOrderLineLabel,
-  type PurchaseOrderActionFacts,
+  purchaseOrderActionFacts,
   purchaseOrderLineSubjectKey,
 } from '@pkg/domain/equipment';
 import { type AuthId, DateIso, getNextCursor, type UUID } from '@pkg/schema';
@@ -66,8 +65,7 @@ import {
 import { assertPartStockAction } from '../inventory/part-stock-action-errors.js';
 import { JobNotFoundError } from '../jobs/job-errors.js';
 import {
-  assertPurchaseOrderAction,
-  PurchaseOrderEmptyError,
+  PurchaseOrderActionRefusedError,
   PurchaseOrderInvalidQuantityError,
   PurchaseOrderLineIdConflictError,
   PurchaseOrderLineNotPricedError,
@@ -77,6 +75,7 @@ import {
   PurchaseOrderPartSupplierMismatchError,
   PurchaseOrderSupplierNotFoundError,
 } from './purchase-order-errors.js';
+import { judgePurchaseOrder, openPurchaseOrder } from './purchase-order-gate.js';
 import { loadLineIntake, type PurchaseOrderLineIntake } from './purchase-order-line-intake.js';
 import { loadReceiptBuckets, receiptBucketKey } from './receipt-pool.js';
 
@@ -207,40 +206,6 @@ export async function lineHasStockMovements({
     .limit(1);
 
   return row !== undefined;
-}
-
-/**
- * The whole world an action verdict is judged against, read under whatever lock the caller already
- * holds, so every gate asks one question of one read.
- *
- * History and remainder are separate facts of the same intake: `hasAnyMovement` is whether any line
- * has moved at all, `progress` only what the lines have kept. An order can therefore never refuse
- * cancelling *and* closing short for want of history — which is what stranded one whose receipts had
- * all gone back as replacement-owed returns: netted to nothing, it read `sent` and looked untouched
- * to close-short, while its rows were real enough to block cancelling.
- */
-export async function loadPurchaseOrderActionFacts({
-  db,
-  row,
-}: {
-  db: PurchaseOrderDb;
-  row: Pick<PurchaseOrderRow, 'closedShortAt' | 'id' | 'status'>;
-}): Promise<PurchaseOrderActionFacts> {
-  const [lines, intake] = await Promise.all([
-    db
-      .select({ id: purchaseOrderLines.id, quantity: purchaseOrderLines.quantity })
-      .from(purchaseOrderLines)
-      .where(eq(purchaseOrderLines.purchaseOrderId, row.id)),
-    loadLineIntake({ db, purchaseOrderIds: [row.id] }),
-  ]);
-
-  return {
-    closedShortAt: row.closedShortAt,
-    hasAnyMovement: intake.size > 0,
-    isEmpty: lines.length === 0,
-    progress: derivePurchaseOrderProgress({ lines, receivedByLineId: intake }),
-    status: row.status,
-  };
 }
 
 /** One open line of a sent order: what is still owed on it, and the order it is owed by. */
@@ -506,11 +471,10 @@ export async function savePurchaseOrderDraftWithin({
   db: DatabaseTransaction;
   input: PurchaseOrderSaveDraftInput;
 }): Promise<PurchaseOrder> {
-  await lockPurchaseOrder(db, input.id);
-  const before = await getPurchaseOrder({ db, id: input.id });
   // A sent order is amended, never edited whole — the log and its PDF revisions are how a change
   // after it went out is recorded.
-  assertPurchaseOrderAction(before.actions.edit, input.id);
+  await openPurchaseOrder(db, input.id, 'edit');
+  const before = await getPurchaseOrder({ db, id: input.id });
   // A Job link is a set membership, so a repeated id is the same link, not a second one. Collapsing
   // here keeps the existence check exact and makes a core caller that repeats one idempotent rather
   // than a unique-constraint failure; the router contract still refuses duplicates outright.
@@ -583,9 +547,12 @@ export async function renderPurchaseOrderPreview({
   id: UUID;
   pdfRenderer: PurchaseOrderPdfRenderer;
 }): Promise<{ bytes: Uint8Array; filename: string }> {
-  const purchaseOrder = await getPurchaseOrder({ db, id });
-  assertPurchaseOrderAction(purchaseOrder.actions.preview, id);
-  if (purchaseOrder.lines.length === 0) throw new PurchaseOrderEmptyError(id);
+  // Judged under the lock, rendered after it: a preview is a read and holds nothing while the PDF draws.
+  const purchaseOrder = await db.transaction(async (tx) => {
+    await openPurchaseOrder(tx, id, 'preview');
+    return getPurchaseOrder({ db: tx, id });
+  });
+  if (purchaseOrder.lines.length === 0) throw new PurchaseOrderActionRefusedError('preview', 'empty', id);
   const filename = `${purchaseOrder.code}.pdf`;
   const lastModified = await loadPurchaseOrderLastModified({ db, id });
   return {
@@ -611,11 +578,10 @@ export async function markPurchaseOrderSent({
 
   try {
     return await db.transaction(async (tx) => {
-      const before = await lockPurchaseOrder(tx, id);
+      // Approval and having something on it are the order's own state; whether each line carries an
+      // agreed price judges the lines themselves, so it stays here with the write that reads them.
+      const { row: before } = await openPurchaseOrder(tx, id, 'send');
       const purchaseOrder = await getPurchaseOrder({ db: tx, id });
-      // Draft-ness and having something on it are the order's own state; whether each line carries
-      // an agreed price judges the lines themselves, so it stays here with the write that reads them.
-      assertPurchaseOrderAction(purchaseOrder.actions.send, id);
       assertLinesArePriced(purchaseOrder);
 
       const sentAt = new Date();
@@ -672,8 +638,7 @@ export async function approvePurchaseOrder({
   return mutateEntity({
     actorUserId,
     assert: async (tx, before) => {
-      const actions = derivePurchaseOrderActions(await loadPurchaseOrderActionFacts({ db: tx, row: before }));
-      assertPurchaseOrderAction(actions.approve, id);
+      await judgePurchaseOrder(tx, before, 'approve');
     },
     db,
     descriptor: purchaseOrderAuditDescriptor,
@@ -706,8 +671,7 @@ export async function revertPurchaseOrderToDraft({
   return mutateEntity({
     actorUserId,
     assert: async (tx, before) => {
-      const actions = derivePurchaseOrderActions(await loadPurchaseOrderActionFacts({ db: tx, row: before }));
-      assertPurchaseOrderAction(actions.revertToDraft, id);
+      await judgePurchaseOrder(tx, before, 'revertToDraft');
     },
     db,
     descriptor: purchaseOrderAuditDescriptor,
@@ -732,8 +696,7 @@ export async function cancelPurchaseOrder({
     actorUserId,
     // Cancel reads `hasAnyMovement`: an order with history is closed short, never disowned.
     assert: async (tx, before) => {
-      const actions = derivePurchaseOrderActions(await loadPurchaseOrderActionFacts({ db: tx, row: before }));
-      assertPurchaseOrderAction(actions.cancel, id);
+      await judgePurchaseOrder(tx, before, 'cancel');
     },
     db,
     descriptor: purchaseOrderAuditDescriptor,
@@ -765,8 +728,7 @@ export async function closePurchaseOrderShort({
     // `progress` is the open remainder to release. Both come from the one derivation, so this can
     // never disagree with what the Close Short control offered.
     assert: async (tx, before) => {
-      const actions = derivePurchaseOrderActions(await loadPurchaseOrderActionFacts({ db: tx, row: before }));
-      assertPurchaseOrderAction(actions.closeShort, id);
+      await judgePurchaseOrder(tx, before, 'closeShort');
     },
     db,
     descriptor: purchaseOrderAuditDescriptor,
@@ -830,13 +792,7 @@ function mapPurchaseOrder({
   return PurchaseOrderSchema.parse({
     // Reduced from the facts this read already loaded — no extra query — so the payload a surface
     // renders its controls from carries the same verdict the write gate will apply.
-    actions: derivePurchaseOrderActions({
-      closedShortAt: row.closedShortAt,
-      hasAnyMovement: row.lines.some((line) => intake.has(line.id)),
-      isEmpty: row.lines.length === 0,
-      progress: derivePurchaseOrderProgress({ lines: row.lines, receivedByLineId: intake }),
-      status: row.status,
-    }),
+    actions: derivePurchaseOrderActions(purchaseOrderActionFacts({ row, lines: row.lines, intake })),
     approvedAt: row.approvedAt,
     closedShortAt: row.closedShortAt,
     code: row.code,
@@ -915,12 +871,6 @@ function mapPurchaseOrderLine({
     supplierCode: line.part.supplierCode,
     unitOfMeasure: line.part.unitOfMeasure,
   };
-}
-
-export async function lockPurchaseOrder(tx: DatabaseTransaction, id: UUID): Promise<PurchaseOrderRow> {
-  const [row] = await tx.select().from(purchaseOrders).where(eq(purchaseOrders.id, id)).for('update');
-  if (!row) throw new PurchaseOrderNotFoundError(id);
-  return row;
 }
 
 /**

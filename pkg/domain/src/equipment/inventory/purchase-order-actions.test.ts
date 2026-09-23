@@ -1,7 +1,11 @@
 import type { PurchaseOrderProgress, PurchaseOrderStatus } from '@pkg/schema/equipment';
 import { describe, expect, it } from 'vitest';
 
-import { derivePurchaseOrderActions, type PurchaseOrderActionFacts } from './purchase-order-actions.js';
+import {
+  derivePurchaseOrderActions,
+  type PurchaseOrderActionFacts,
+  purchaseOrderActionFacts,
+} from './purchase-order-actions.js';
 
 function facts({
   closedShortAt = null,
@@ -230,5 +234,32 @@ describe('derivePurchaseOrderActions', () => {
       expect(actions.closeShort).toEqual({ allowed: false, reason: 'not-sent' });
       expect(actions.returnToSupplier).toEqual({ allowed: false, reason: 'not-sent' });
     });
+  });
+});
+
+describe('purchaseOrderActionFacts', () => {
+  const lines = [
+    { id: 'bolts', quantity: 10 },
+    { id: 'plate', quantity: 4 },
+  ];
+
+  it('counts a line whose receipts all went back as history, while its remainder reads unreceived', () => {
+    expect(
+      purchaseOrderActionFacts({
+        row: { closedShortAt: null, status: 'sent' },
+        lines,
+        intake: new Map([['bolts', 0]]),
+      }),
+    ).toEqual({ closedShortAt: null, hasAnyMovement: true, isEmpty: false, progress: 'sent', status: 'sent' });
+  });
+
+  it('ignores intake no line of the order owns, and reads an order with no lines as empty', () => {
+    expect(
+      purchaseOrderActionFacts({
+        row: { closedShortAt: null, status: 'draft' },
+        lines: [],
+        intake: new Map([['gone', 3]]),
+      }),
+    ).toEqual({ closedShortAt: null, hasAnyMovement: false, isEmpty: true, progress: 'sent', status: 'draft' });
   });
 });

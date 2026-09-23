@@ -46,6 +46,7 @@ import {
   FieldDriver,
   FieldImplement,
   FieldJob,
+  FieldJobsInput,
   GapResolveInput,
   InvoiceNumberLookupInput,
   JobCancelInput,
@@ -69,14 +70,9 @@ import { z } from 'zod';
 import { createAuthTRPCError, mapCoreErrors } from '../../../trpc/errors.js';
 import { authorizedProcedure, requirePermission, router } from '../../../trpc/init.js';
 import { jobErrorFamily } from '../contracting-error-families.js';
+import { readMode } from './job-read-mode.js';
 
 const readPermissions = ['contracting_job:read', 'contracting_job:read-own', 'contracting_job:read-priced'] as const;
-
-function readMode(access: Parameters<typeof hasPermission>[0]) {
-  if (hasPermission(access, 'contracting_job:read')) return 'all' as const;
-  if (hasPermission(access, 'contracting_job:read-own')) return 'own' as const;
-  return 'priced' as const;
-}
 
 function refuseRead() {
   throw createAuthTRPCError({
@@ -89,8 +85,14 @@ function refuseRead() {
 export const contractingJobsRouter = router({
   field: router({
     jobs: authorizedProcedure(['contracting_job:read', 'contracting_job:read-own'])
+      .input(FieldJobsInput)
       .output(FieldJob.array())
-      .query(({ ctx }) => mapCoreErrors(() => listFieldJobs({ db: ctx.db, actor: ctx.access }), jobErrorFamily)),
+      .query(({ ctx, input }) =>
+        mapCoreErrors(
+          () => listFieldJobs({ db: ctx.db, actor: ctx.access, includeFinished: input?.includeFinished ?? false }),
+          jobErrorFamily,
+        ),
+      ),
     job: authorizedProcedure(['contracting_job:read', 'contracting_job:read-own'])
       .input(JobIdInput)
       .output(FieldJob)

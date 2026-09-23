@@ -1,5 +1,8 @@
 export const jobStatuses = ['upcoming', 'active', 'completed', 'priced', 'invoiced', 'cancelled'] as const;
 export type JobStatus = (typeof jobStatuses)[number];
+/** A Job from Completion onward: it has a Job Card. */
+export const finishedJobStatuses = ['completed', 'priced', 'invoiced'] as const satisfies readonly JobStatus[];
+export type FinishedJobStatus = (typeof finishedJobStatuses)[number];
 
 export const assignmentStates = ['planned', 'on-site', 'left'] as const;
 export type AssignmentState = (typeof assignmentStates)[number];

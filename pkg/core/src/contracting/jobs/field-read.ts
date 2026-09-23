@@ -12,8 +12,8 @@ import {
 } from '@pkg/db/contracting';
 import { assignmentState, fieldJobAccessMode, formatJobNumber } from '@pkg/domain/contracting';
 import type { UserAccessSummary } from '@pkg/schema';
-import { FieldDriver, FieldJob, FieldReading, FieldStint } from '@pkg/schema/contracting';
-import { and, asc, eq, getTableColumns, inArray } from 'drizzle-orm';
+import { FieldDriver, FieldJob, FieldReading, FieldStint, finishedJobStatuses } from '@pkg/schema/contracting';
+import { and, asc, eq, getTableColumns, gte, inArray, or, type SQL } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { JobError, jobNotFound } from './job-errors.js';
 
@@ -36,7 +36,7 @@ function mapReading(reading: typeof contractingHourReadings.$inferSelect | null)
 const arrivalReadings = alias(contractingHourReadings, 'field_arrival_reading');
 const departureReadings = alias(contractingHourReadings, 'field_departure_reading');
 
-async function loadFieldJobs(db: Db, where: ReturnType<typeof and>) {
+async function loadFieldJobs(db: Db, where: SQL | undefined) {
   const jobs = await db
     .select({
       job: getTableColumns(contractingJobs),
@@ -114,14 +114,32 @@ function mapFieldJob(row: LoadedFieldJob) {
   });
 }
 
-export async function listFieldJobs({ db, actor }: { db: Db; actor: UserAccessSummary }) {
+const FINISHED_WINDOW_DAYS = 90;
+
+export async function listFieldJobs({
+  db,
+  actor,
+  includeFinished = false,
+  now = new Date(),
+}: {
+  db: Db;
+  actor: UserAccessSummary;
+  includeFinished?: boolean;
+  now?: Date;
+}) {
   const mode = fieldReadMode(actor);
+  const open = inArray(contractingJobs.status, ['upcoming', 'active']);
+  const recentlyFinished = and(
+    inArray(contractingJobs.status, [...finishedJobStatuses]),
+    gte(contractingJobs.completedAt, new Date(now.getTime() - FINISHED_WINDOW_DAYS * 24 * 60 * 60 * 1000)),
+  );
   const rows = await loadFieldJobs(
     db,
-    and(
-      inArray(contractingJobs.status, ['upcoming', 'active']),
-      mode === 'own' ? eq(contractingJobs.foremanUserId, actor.userId) : undefined,
-    ),
+    mode === 'own'
+      ? and(open, eq(contractingJobs.foremanUserId, actor.userId))
+      : includeFinished
+        ? or(open, recentlyFinished)
+        : open,
   );
   return rows.map(mapFieldJob);
 }
@@ -132,7 +150,9 @@ export async function getFieldJob({ db, actor, id }: { db: Db; actor: UserAccess
   if (!row) throw jobNotFound();
   if (mode === 'own' && row.job.foremanUserId !== actor.userId)
     throw new JobError('contracting_job.not_owner', 'This Job is assigned to another Foreman.');
-  if (!['upcoming', 'active'].includes(row.job.status))
+  const readable: readonly string[] =
+    mode === 'all' ? ['upcoming', 'active', ...finishedJobStatuses] : ['upcoming', 'active'];
+  if (!readable.includes(row.job.status))
     throw new JobError('contracting_job.wrong_status', 'This Job is no longer open.');
   return mapFieldJob(row);
 }

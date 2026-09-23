@@ -23,6 +23,7 @@ export const CONTRACTING_SECTIONS: DocsSection[] = [
       { text: 'Sign off a Job', link: '/contracting/sign-off-a-job' },
       { text: 'Price a Job', link: '/contracting/price-a-job' },
       { text: 'Stamp an Invoice Number', link: '/contracting/stamp-an-invoice-number' },
+      { text: 'Print a Job Card', link: '/contracting/print-a-job-card' },
       { text: 'Find a Machine', link: '/contracting/find-a-machine' },
       { text: 'Read Machine hours', link: '/contracting/read-machine-hours' },
       { text: 'Capture a reading', link: '/contracting/capture-a-reading' },

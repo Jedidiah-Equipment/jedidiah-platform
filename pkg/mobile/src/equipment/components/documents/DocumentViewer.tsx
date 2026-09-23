@@ -6,8 +6,8 @@ import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { DocumentPage } from '@/equipment/components/documents/DocumentPage';
 import { SecondaryPageToolbar } from '@/equipment/components/TopToolbar';
-import { type DocumentAction, saveDocument, shareDocument } from '@/equipment/lib/document-actions';
-import { canPreviewDocument } from '@/equipment/lib/document-content';
+import { type DocumentAction, saveDocument, shareDocument } from '@/lib/document-actions';
+import { canPreviewDocument } from '@/lib/document-content';
 import { captureException } from '@/lib/observability';
 
 /**

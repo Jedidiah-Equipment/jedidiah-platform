@@ -4,7 +4,7 @@ import { DateIso } from '../../common/date.js';
 import { UUID } from '../../common/uuid.js';
 import { CategoryColour, CategoryIconKey, FleetCode, FleetName, Implement } from '../fleet/fleet.js';
 import { FieldReading } from '../readings/reading.js';
-import { assignmentStates } from './job-enums.js';
+import { assignmentStates, jobStatuses } from './job-enums.js';
 
 export const FieldStint = z.object({
   id: UUID,
@@ -29,7 +29,7 @@ export const FieldJob = z.object({
   id: UUID,
   code: z.number().int(),
   jobNumber: z.string(),
-  status: z.enum(['upcoming', 'active']),
+  status: z.enum(jobStatuses),
   customerName: z.string(),
   farmName: z.string(),
   workTypeName: z.string(),
@@ -38,6 +38,13 @@ export const FieldJob = z.object({
   stints: FieldStint.array(),
 });
 export type FieldJob = z.infer<typeof FieldJob>;
+
+/** `includeFinished` adds management's recently finished Jobs; a Foreman's phone only ever lists open ones. */
+export const FieldJobsInput = z
+  .object({ includeFinished: z.boolean().default(false) })
+  .strict()
+  .optional();
+export type FieldJobsInput = z.infer<typeof FieldJobsInput>;
 
 export const FieldImplement = Implement.pick({
   id: true,

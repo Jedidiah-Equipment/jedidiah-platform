@@ -1,7 +1,6 @@
 import { formatCurrency, formatHours, formatNumber } from '@pkg/domain';
-import { round2 } from '@pkg/domain/contracting';
+import { groupStints, round2 } from '@pkg/domain/contracting';
 import type { Assignment, ChargeLine, DiscountKind, JobDetail, Rate } from '@pkg/schema/contracting';
-import { groupStints } from './types.js';
 
 /** The select value for the built-in No charge choice; never a Rate id. */
 export const NO_CHARGE = 'no-charge';

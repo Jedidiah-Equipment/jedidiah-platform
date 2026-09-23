@@ -1,4 +1,4 @@
-import { fieldJobAccessMode } from '@pkg/domain/contracting';
+import { fieldJobAccessMode, hasJobCard } from '@pkg/domain/contracting';
 import { FieldDriver, FieldImplement, FieldJob } from '@pkg/schema/contracting';
 import { type UseQueryResult, useQuery } from '@tanstack/react-query';
 import { useCallback, useEffect } from 'react';
@@ -68,14 +68,31 @@ export function useJobs() {
   return savedQuery(canRead, query, useSavedQueryData(['jobs', 'v1'], isFieldJobs, query.data));
 }
 
+export const isFinishedJob = (job: Pick<FieldJob, 'status'>) => hasJobCard(job.status);
+export const jobStatusLabel = (status: FieldJob['status']) => `${status[0]?.toUpperCase()}${status.slice(1)}`;
+
+/** Management's Jobs finished in the last 90 days; live only, since sharing their Job Card needs the network anyway. */
+export function useFinishedJobs() {
+  const canRead = fieldJobAccessMode(useSessionAccessSummary()) === 'all';
+  const trpc = useTRPC();
+  const query = useQuery(
+    trpc.contractingJobs.field.jobs.queryOptions(
+      { includeFinished: true },
+      { enabled: canRead, select: (jobs) => jobs.filter(isFinishedJob) },
+    ),
+  );
+  return savedQuery(canRead, query, query.data);
+}
+
 export function useJob(jobId: string) {
   const jobs = useJobs();
+  const finished = useFinishedJobs();
   const trpc = useTRPC();
   const query = useQuery(
     trpc.contractingJobs.field.job.queryOptions({ id: jobId }, { enabled: jobs.canRead && !!jobId }),
   );
-  const listed = jobs.data?.find((job) => job.id === jobId);
-  const disappeared = jobs.isSuccess && listed === undefined;
+  const listed = [...(jobs.data ?? []), ...(finished.data ?? [])].find((job) => job.id === jobId);
+  const disappeared = jobs.isSuccess && (!finished.canRead || finished.isSuccess) && listed === undefined;
   const live = disappeared ? undefined : (query.data ?? listed);
   return savedQuery(jobs.canRead, query, useSavedQueryData(['jobs', 'v1', jobId], isFieldJob, live, disappeared));
 }

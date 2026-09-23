@@ -10,6 +10,7 @@ import type { DataTableColumnDef } from '@/components/data-table/features.js';
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
 import { Button } from '@/components/ui/button.js';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs.js';
+import { jobCardUrl } from '@/contracting/lib/contracting-http-paths.js';
 import { useCan } from '@/hooks/use-access.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { queueTabLabel } from '../jobs/types.js';
@@ -114,6 +115,26 @@ export function InvoicingPage({ tab, month: requestedMonth }: { tab: InvoicingTa
               cell: ({ row }) => formatDate(row.original.invoicedAt, 'short', '—'),
             } satisfies DataTableColumnDef<JobSummary>,
           ]),
+      {
+        id: 'job-card',
+        header: 'Job card',
+        cell: ({ row }) => (
+          <Button
+            render={
+              <a
+                href={jobCardUrl(row.original.jobNumber, 'customer')}
+                rel="noreferrer"
+                target="_blank"
+                onClick={(event) => event.stopPropagation()}
+              />
+            }
+            size="sm"
+            variant="outline"
+          >
+            Job card
+          </Button>
+        ),
+      },
     ],
     [tab, canStamp],
   );

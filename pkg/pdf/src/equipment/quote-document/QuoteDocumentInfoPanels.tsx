@@ -1,7 +1,7 @@
 import type { QuoteDocumentModel } from '@pkg/schema/equipment';
 import { StyleSheet, Text, View } from '@react-pdf/renderer';
+import { pdfBorder, pdfColors, pdfLineHeight, pdfSpacing } from '../../pdf-theme.js';
 import { pdfStyles } from './pdf-styles.js';
-import { pdfBorder, pdfColors, pdfLineHeight, pdfSpacing } from './pdf-theme.js';
 
 type QuoteDocumentInfoPanelsProps = {
   document: QuoteDocumentModel;

@@ -8,8 +8,8 @@ import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { JobSectionCard } from '@/equipment/components/bays/JobSectionCard';
 import { useDocumentDownload } from '@/equipment/hooks/use-document-download';
-import { getDocumentListAction } from '@/equipment/lib/document-content';
 import { jobDocumentDownloadPath } from '@/equipment/lib/equipment-http-paths';
+import { getDocumentListAction } from '@/lib/document-content';
 
 /**
  * The DOCUMENTS card shared by the Job Slot detail pane (#520) and Job Detail (#615): the job's

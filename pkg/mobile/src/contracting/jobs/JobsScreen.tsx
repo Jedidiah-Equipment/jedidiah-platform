@@ -1,3 +1,4 @@
+import { formatNumber } from '@pkg/domain';
 import type { FieldJob } from '@pkg/schema/contracting';
 import { type Href, router } from 'expo-router';
 import { useState } from 'react';
@@ -68,7 +69,7 @@ export default function JobsScreen() {
                 className="flex-row items-center justify-between py-1"
               >
                 <Text className="text-muted-foreground" weight="bold">
-                  Finished ({finished.data?.length ?? 0})
+                  Finished ({formatNumber(finished.data?.length ?? 0)})
                 </Text>
                 <Text className="text-muted-foreground">{showFinished ? 'Hide' : 'Show'}</Text>
               </Pressable>

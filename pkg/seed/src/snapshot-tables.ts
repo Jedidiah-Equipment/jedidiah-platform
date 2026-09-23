@@ -59,7 +59,6 @@ export {
   prepareSnapshotRow,
   projectWritableRow,
   type SnapshotRow,
-  type SnapshotRowsByTable,
   type SnapshotStorageFile,
   type SnapshotTableConfig,
   type SnapshotTableDefinition,

@@ -85,7 +85,8 @@ export function derivePurchaseOrderActions(facts: PurchaseOrderActionFacts): Pur
     fileDocuments: isSent ? ALLOWED : blocked('not-sent'),
     // What goes to the Supplier is rendered live until sending saves it; from then on the saved copy
     // is the order, and a fresh render would show amendments the Supplier was sent as revisions.
-    preview: status === 'cancelled' ? blocked('cancelled') : isSent ? blocked('sent') : ALLOWED,
+    preview:
+      status === 'cancelled' ? blocked('cancelled') : isSent ? blocked('sent') : isEmpty ? blocked('empty') : ALLOWED,
     receive: whileSentAndOpen(),
     // Deliberately outlives close-short: releasing a remainder says nothing more is coming, not that
     // what already arrived can never go back.

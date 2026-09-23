@@ -45,7 +45,6 @@ export async function postReturnToSupplier({
       db: tx,
       sessionUserId: actorUserId,
     });
-    // Returning deliberately outlives close-short; the gate's verdict says so, not a check skipped here.
     const { row: purchaseOrder } = await openPurchaseOrder(tx, input.purchaseOrderId, 'returnToSupplier');
     await assertPurchaseOrderLineExists(tx, input.purchaseOrderId, input.partId);
     const unitClass = unitClassFor(part.unitOfMeasure);

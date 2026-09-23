@@ -199,63 +199,6 @@ describe('Purchase Order amendments', () => {
     ).rejects.toMatchObject({ code: 'purchase_order.amendment_last_line' });
   });
 
-  test('refuses every Custom amendment on Draft and closed-short orders', async ({ context }) => {
-    const draft = await createPurchaseOrder({
-      actorUserId: ACTOR_ID,
-      db: context.db,
-      input: { expectedDeliveryDate: null, supplierId: SUPPLIER_ID },
-    });
-    const order = await sendCustomOrder(context, [{ description: 'Office chair', quantity: 4, unitPrice: 800 }]);
-    const lineId = order.lines[0]?.id ?? '';
-    const { postArrival } = await import('./arrival-service.js');
-    await postArrival({
-      actorUserId: ACTOR_ID,
-      db: context.db,
-      input: { purchaseOrderId: order.id, lineId, quantity: 1, note: null },
-    });
-    await closePurchaseOrderShort({ actorUserId: ACTOR_ID, db: context.db, id: order.id });
-    for (const [id, code] of [
-      [draft.id, 'purchase_order.not_sent'],
-      [order.id, 'purchase_order.closed_short'],
-    ] as const) {
-      for (const amendment of [
-        () =>
-          amendPurchaseOrderQuantity({
-            actorUserId: ACTOR_ID,
-            db: context.db,
-            input: { id, lineId, note: 'Not permitted', quantity: 3 },
-            pdfRenderer: renderStubPdf,
-            storage: context.storage,
-          }),
-        () =>
-          amendPurchaseOrderAddCustomLine({
-            actorUserId: ACTOR_ID,
-            db: context.db,
-            input: {
-              id,
-              description: 'Desk lamp',
-              quantity: 1,
-              supplierCode: null,
-              unit: 'each',
-              unitPrice: 80,
-              note: 'Not permitted',
-            },
-            pdfRenderer: renderStubPdf,
-            storage: context.storage,
-          }),
-        () =>
-          amendPurchaseOrderRemoveCustomLine({
-            actorUserId: ACTOR_ID,
-            db: context.db,
-            input: { id, lineId, note: 'Not permitted' },
-            pdfRenderer: renderStubPdf,
-            storage: context.storage,
-          }),
-      ]) {
-        await expect(amendment()).rejects.toMatchObject({ code });
-      }
-    }
-  });
   test('changes the expected delivery date, logs the call, revises the PDF, and makes an overdue order late', async ({
     context,
   }) => {

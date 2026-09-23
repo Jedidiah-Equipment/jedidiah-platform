@@ -116,6 +116,11 @@ export const PurchaseOrderDocumentListResult = z.object({ items: z.array(Purchas
  */
 export type PartPurchaseOrderLine = z.infer<typeof PartPurchaseOrderLine>;
 export const PartPurchaseOrderLine = z.object({
+  /**
+   * @deprecated Read `orderActions`. Kept one release for stores tablets on 1.47.0 and older, which
+   * still filter receivable lines on it; remove once they have updated.
+   */
+  closedShortAt: DateIso.nullable(),
   expectedDeliveryDate: DateOnlyIso.nullable(),
   orderedQuantity: z.number().finite(),
   /**

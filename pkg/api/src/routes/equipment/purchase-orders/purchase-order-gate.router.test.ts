@@ -8,7 +8,11 @@ import {
 } from '@pkg/core/equipment';
 import { type Db, user } from '@pkg/db';
 import { parts, supplier } from '@pkg/db/equipment';
-import type { PurchaseOrderActionName, PurchaseOrderActionVerdict } from '@pkg/schema/equipment';
+import type {
+  PurchaseOrderActionBlockedReason,
+  PurchaseOrderActionName,
+  PurchaseOrderActionVerdict,
+} from '@pkg/schema/equipment';
 import { TRPCError } from '@trpc/server';
 import { describe, expect } from 'vitest';
 import { seedPartCategory } from '../../../equipment/test/part-category-fixtures.js';
@@ -49,6 +53,7 @@ type Context = { db: Db };
 type Order = { id: string; customLineId: string };
 
 const states = [
+  'empty draft',
   'draft',
   'approved',
   'sent',
@@ -63,8 +68,9 @@ type State = (typeof states)[number];
 async function orderIn(admin: AppRouterCaller, state: State): Promise<Order> {
   const { id } = await admin.purchaseOrders.create({ supplierId: SUPPLIER_ID });
   const customLineId = randomUUID();
-  await admin.purchaseOrders.saveDraft(draftOf(id, customLineId));
   const order = { id, customLineId };
+  if (state === 'empty draft') return order;
+  await admin.purchaseOrders.saveDraft(draftOf(id, customLineId));
   if (state === 'draft') return order;
   if (state === 'cancelled') {
     await admin.purchaseOrders.cancel({ id });
@@ -126,9 +132,9 @@ const writes: Record<
   send: (admin, order) => admin.purchaseOrders.markSent({ id: order.id }),
   amend: async (admin, order) => {
     const { lines } = await admin.purchaseOrders.get({ id: order.id });
-    const partLine = lines.find((line) => line.kind === 'part');
-    if (!partLine) throw new Error('Expected the Part Line');
-    return admin.purchaseOrders.amendQuantity({ id: order.id, lineId: partLine.id, note: 'Agreed', quantity: 5 });
+    // An empty order has no line to name; the gate refuses it before any line is read.
+    const lineId = lines.find((line) => line.kind === 'part')?.id ?? randomUUID();
+    return admin.purchaseOrders.amendQuantity({ id: order.id, lineId, note: 'Agreed', quantity: 5 });
   },
   receive: (admin, order) => admin.purchaseOrders.receive(receipt(order.id, 1)),
   returnToSupplier: (admin, order) =>
@@ -142,10 +148,9 @@ const writes: Record<
     }),
   cancel: (admin, order) => admin.purchaseOrders.cancel({ id: order.id }),
   closeShort: (admin, order) => admin.purchaseOrders.closeShort({ id: order.id }),
-  // Invoice and credit note arrive as multipart uploads; the route hands over to these same calls.
-  fileDocuments: async (_admin, order, { db }) => {
-    const storage = new InMemoryStorageAdapter();
-    await uploadSupplierInvoice({
+  // Invoice and credit note arrive as multipart uploads; the routes hand over to these same calls.
+  fileDocuments: (_admin, order, { db }) =>
+    uploadSupplierInvoice({
       actorUserId: ACTOR_ID,
       bytes: pdf(),
       db,
@@ -154,27 +159,31 @@ const writes: Record<
       },
       filename: `INV-${order.id}.pdf`,
       input: { purchaseOrderId: order.id },
-      storage,
-    });
-    return uploadCreditNote({
-      actorUserId: ACTOR_ID,
-      bytes: pdf(),
-      db,
-      filename: `CN-${order.id}.pdf`,
-      input: { purchaseOrderId: order.id, stockMovementIds: [randomUUID()] },
-      storage,
-    });
-  },
+      storage: new InMemoryStorageAdapter(),
+    }),
 };
+
+/** A credit note shares the invoice's verdict. It names no real return, so an allowed one fails on that alone. */
+const fileCreditNote = (_admin: AppRouterCaller, order: Order, { db }: Context) =>
+  uploadCreditNote({
+    actorUserId: ACTOR_ID,
+    bytes: pdf(),
+    db,
+    filename: `CN-${order.id}.pdf`,
+    input: { purchaseOrderId: order.id, stockMovementIds: [randomUUID()] },
+    storage: new InMemoryStorageAdapter(),
+  });
 
 /** A Custom Line arrives through its own write, judged on the receive verdict. */
 const arrive = (admin: AppRouterCaller, order: Order) =>
   admin.purchaseOrders.postArrival({ lineId: order.customLineId, note: null, purchaseOrderId: order.id, quantity: 1 });
 
+type Refusal = { action: PurchaseOrderActionName; reason: PurchaseOrderActionBlockedReason };
+
 /** The Purchase Order Action a write was refused under, if the order's own state refused it. */
-function refusalOf(error: unknown): { action: string; reason: string } | undefined {
+function refusalOf(error: unknown): Refusal | undefined {
   if (error instanceof PurchaseOrderActionRefusedError) return { action: error.action, reason: error.reason };
-  if (error instanceof TRPCError) return getTRPCPublicMetadata(error) as { action: string; reason: string } | undefined;
+  if (error instanceof TRPCError) return getTRPCPublicMetadata(error) as Refusal | undefined;
   return undefined;
 }
 
@@ -187,27 +196,27 @@ async function settle(write: Promise<unknown>) {
   }
 }
 
+/** Allowed means the write goes through, save one named input failure; refused means refused for the served reason. */
 function expectAgreement(
   action: PurchaseOrderActionName,
   verdict: PurchaseOrderActionVerdict,
   error: unknown,
   label: string,
+  inputFailure?: string,
 ) {
-  const refused = refusalOf(error);
   if (verdict.allowed) {
-    // Allowed means the order's state did not refuse it; an input this fixture cannot satisfy (a credit
-    // note naming no real return) may still fail on its own terms.
-    expect(refused, `${label}: ${String(error)}`).toBeUndefined();
-    expect(error instanceof TRPCError && error.code === 'FORBIDDEN', label).toBe(false);
+    if (inputFailure) expect(error, label).toMatchObject({ code: inputFailure });
+    else expect(error, label).toBeNull();
     return;
   }
-  expect(refused, label).toEqual({ action, reason: verdict.reason });
+  expect(refusalOf(error), label).toEqual({ action, reason: verdict.reason });
 }
 
 describe('Purchase Order Actions served on the order agree with what every write does', () => {
   test.for(states)('an order that is %s', async (state, { context }) => {
     const admin = context.createCaller();
     const { actions } = await admin.purchaseOrders.get({ id: (await orderIn(admin, state)).id });
+    const attempt = async (write: (order: Order) => Promise<unknown>) => settle(write(await orderIn(admin, state)));
     for (const [action, write] of Object.entries(writes) as [
       PurchaseOrderActionName,
       (typeof writes)[PurchaseOrderActionName],
@@ -215,14 +224,16 @@ describe('Purchase Order Actions served on the order agree with what every write
       expectAgreement(
         action,
         actions[action],
-        await settle(write(admin, await orderIn(admin, state), context)),
+        await attempt((order) => write(admin, order, context)),
         `${state} · ${action}`,
       );
+    expectAgreement('receive', actions.receive, await attempt((order) => arrive(admin, order)), `${state} · arrive`);
     expectAgreement(
-      'receive',
-      actions.receive,
-      await settle(arrive(admin, await orderIn(admin, state))),
-      `${state} · arrive`,
+      'fileDocuments',
+      actions.fileDocuments,
+      await attempt((order) => fileCreditNote(admin, order, context)),
+      `${state} · credit note`,
+      'credit_note.return_not_found',
     );
   });
 });

@@ -65,7 +65,6 @@ import {
 import { assertPartStockAction } from '../inventory/part-stock-action-errors.js';
 import { JobNotFoundError } from '../jobs/job-errors.js';
 import {
-  PurchaseOrderActionRefusedError,
   PurchaseOrderInvalidQuantityError,
   PurchaseOrderLineIdConflictError,
   PurchaseOrderLineNotPricedError,
@@ -552,7 +551,6 @@ export async function renderPurchaseOrderPreview({
     await openPurchaseOrder(tx, id, 'preview');
     return getPurchaseOrder({ db: tx, id });
   });
-  if (purchaseOrder.lines.length === 0) throw new PurchaseOrderActionRefusedError('preview', 'empty', id);
   const filename = `${purchaseOrder.code}.pdf`;
   const lastModified = await loadPurchaseOrderLastModified({ db, id });
   return {

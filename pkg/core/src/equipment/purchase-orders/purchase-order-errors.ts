@@ -161,33 +161,26 @@ export class PurchaseOrderSubstitutionHasReceiptsError extends Error {
   }
 }
 
-const refusedCodes = {
-  'already-closed-short': 'purchase_order.already_closed_short',
-  cancelled: 'purchase_order.already_cancelled',
-  'closed-short': 'purchase_order.closed_short',
-  empty: 'purchase_order.empty',
-  'fully-received': 'purchase_order.fully_received',
-  'has-movements': 'purchase_order.has_receipts',
-  'not-approved': 'purchase_order.not_approved',
-  'not-draft': 'purchase_order.not_draft',
-  'not-sent': 'purchase_order.not_sent',
-  'nothing-received': 'purchase_order.no_receipts',
-  sent: 'purchase_order.already_sent',
-} as const satisfies Record<PurchaseOrderActionBlockedReason, `purchase_order.${string}`>;
-
-const states: Record<PurchaseOrderActionBlockedReason, string> = {
-  'already-closed-short': 'This Purchase Order is already closed short',
-  cancelled: 'This Purchase Order is cancelled',
-  'closed-short': 'This Purchase Order is closed short',
-  empty: 'This Purchase Order has no lines',
-  'fully-received': 'This Purchase Order is fully received',
-  'has-movements': 'Stock has already moved against this Purchase Order',
-  'not-approved': 'This Purchase Order is not approved',
-  'not-draft': 'This Purchase Order is no longer a draft',
-  'not-sent': 'This Purchase Order has not been sent',
-  'nothing-received': 'Nothing has arrived against this Purchase Order',
-  sent: 'This Purchase Order has been sent',
-};
+/** Each blocked reason's wire code, unchanged from the classes it replaced, and the state it names. */
+const refusals = {
+  'already-closed-short': {
+    code: 'purchase_order.already_closed_short',
+    state: 'This Purchase Order is already closed short',
+  },
+  cancelled: { code: 'purchase_order.already_cancelled', state: 'This Purchase Order is cancelled' },
+  'closed-short': { code: 'purchase_order.closed_short', state: 'This Purchase Order is closed short' },
+  empty: { code: 'purchase_order.empty', state: 'This Purchase Order has no lines' },
+  'fully-received': { code: 'purchase_order.fully_received', state: 'This Purchase Order is fully received' },
+  'has-movements': {
+    code: 'purchase_order.has_receipts',
+    state: 'Stock has already moved against this Purchase Order',
+  },
+  'not-approved': { code: 'purchase_order.not_approved', state: 'This Purchase Order is not approved' },
+  'not-draft': { code: 'purchase_order.not_draft', state: 'This Purchase Order is no longer a draft' },
+  'not-sent': { code: 'purchase_order.not_sent', state: 'This Purchase Order has not been sent' },
+  'nothing-received': { code: 'purchase_order.no_receipts', state: 'Nothing has arrived against this Purchase Order' },
+  sent: { code: 'purchase_order.already_sent', state: 'This Purchase Order has been sent' },
+} as const satisfies Record<PurchaseOrderActionBlockedReason, { code: `purchase_order.${string}`; state: string }>;
 
 const consequences: Record<PurchaseOrderActionName, string> = {
   amend: 'it cannot be amended',
@@ -196,7 +189,7 @@ const consequences: Record<PurchaseOrderActionName, string> = {
   closeShort: 'it cannot be closed short',
   edit: 'it cannot be edited',
   fileDocuments: 'nothing can be filed against it',
-  preview: 'it is read from the PDF saved when it was sent',
+  preview: 'it cannot be previewed',
   receive: 'nothing can be received against it',
   returnToSupplier: 'nothing can be returned against it',
   revertToDraft: 'it cannot be reverted to draft',
@@ -208,15 +201,15 @@ const consequences: Record<PurchaseOrderActionName, string> = {
  * The code is the reason's, unchanged on the wire; the message names what was refused.
  */
 export class PurchaseOrderActionRefusedError extends Error {
-  readonly code: (typeof refusedCodes)[PurchaseOrderActionBlockedReason];
+  readonly code: (typeof refusals)[PurchaseOrderActionBlockedReason]['code'];
 
   constructor(
     readonly action: PurchaseOrderActionName,
     readonly reason: PurchaseOrderActionBlockedReason,
     readonly id: UUID,
   ) {
-    super(`${states[reason]}, so ${consequences[action]}.`);
-    this.code = refusedCodes[reason];
+    super(`${refusals[reason].state}, so ${consequences[action]}.`);
+    this.code = refusals[reason].code;
   }
 }
 

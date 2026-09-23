@@ -513,8 +513,7 @@ async function mapHttpDocumentErrors<T>(action: () => Promise<T>): Promise<T> {
       throw mapOwnerNotFound(error, { notFoundCode: 'quote.not_found', label: 'Quote', otherStatus: 400 });
     }
 
-    // The Purchase Order families the tRPC routers use, so a refusal carries the same status and
-    // metadata on both transports.
+    // The Purchase Order families the tRPC routers use, so a refusal carries the same status on both.
     const mapped = mapCoreErrorToRoute(error, purchaseOrderErrorFamily, creditNoteErrorFamily);
     if (mapped !== error) throw mapped;
 

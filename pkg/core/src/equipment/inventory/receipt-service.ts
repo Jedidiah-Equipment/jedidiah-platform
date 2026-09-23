@@ -41,7 +41,6 @@ export async function postReceipt({
       db: tx,
       sessionUserId: actorUserId,
     });
-    // The same row lock cancel and close-short take, so a receipt cannot race either decision.
     const { row: purchaseOrder, intake } = await openPurchaseOrder(tx, input.purchaseOrderId, 'receive');
     const line = await loadPurchaseOrderLine(tx, input.purchaseOrderId, input.partId);
     const unitClass = unitClassFor(part.unitOfMeasure);

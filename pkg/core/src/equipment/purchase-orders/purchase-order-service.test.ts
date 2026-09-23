@@ -921,23 +921,6 @@ describe('Purchase Order receiving progress', () => {
     );
   });
 
-  test('refuses to close a draft or a cancelled order short', async ({ context }) => {
-    const draft = await createPurchaseOrder({
-      actorUserId: ACTOR_ID,
-      db: context.db,
-      input: { expectedDeliveryDate: null, supplierId: SUPPLIER_A_ID },
-    });
-
-    await expect(
-      closePurchaseOrderShort({ actorUserId: ACTOR_ID, db: context.db, id: draft.id }),
-    ).rejects.toMatchObject({ code: 'purchase_order.not_sent' });
-
-    await cancelPurchaseOrder({ actorUserId: ACTOR_ID, db: context.db, id: draft.id });
-    await expect(
-      closePurchaseOrderShort({ actorUserId: ACTOR_ID, db: context.db, id: draft.id }),
-    ).rejects.toMatchObject({ code: 'purchase_order.not_sent' });
-  });
-
   test('closes an order short after everything it took in went back as replacement-owed', async ({ context }) => {
     const purchaseOrder = await sendOrder(context, [{ partId: PIECE_PART_ID, quantity: 10, unitPrice: 125.5 }]);
     await receive(context, purchaseOrder.id, PIECE_PART_ID, 2);
@@ -971,15 +954,6 @@ describe('Purchase Order receiving progress', () => {
     await expect(
       closePurchaseOrderShort({ actorUserId: ACTOR_ID, db: context.db, id: purchaseOrder.id }),
     ).resolves.toMatchObject({ closedShortAt: expect.any(String), derivedStatus: 'closed-short', status: 'sent' });
-  });
-
-  test('refuses to close a fully received order short — there is no remainder to release', async ({ context }) => {
-    const purchaseOrder = await sendOrder(context, [{ partId: PIECE_PART_ID, quantity: 4, unitPrice: 125.5 }]);
-    await receive(context, purchaseOrder.id, PIECE_PART_ID, 4);
-
-    await expect(
-      closePurchaseOrderShort({ actorUserId: ACTOR_ID, db: context.db, id: purchaseOrder.id }),
-    ).rejects.toMatchObject({ code: 'purchase_order.fully_received' });
   });
 });
 

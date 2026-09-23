@@ -107,6 +107,13 @@ describe('derivePurchaseOrderActions', () => {
         reason: 'cancelled',
       });
     });
+
+    it('is not offered for a draft with no lines, which has nothing to render', () => {
+      expect(derivePurchaseOrderActions(facts({ status: 'draft', isEmpty: true })).preview).toEqual({
+        allowed: false,
+        reason: 'empty',
+      });
+    });
   });
 
   describe('a sent order', () => {

@@ -67,6 +67,7 @@ function jobStock(overrides: Partial<JobStockResult['items'][number]> = {}): Job
 function orderLine(overrides: Partial<PartPurchaseOrderLine> = {}): PartPurchaseOrderLine {
   return {
     closedShortAt: null,
+    orderActions: { receive: { allowed: true }, returnToSupplier: { allowed: true } },
     expectedDeliveryDate: null,
     orderedQuantity: 10,
     outstandingQuantity: 5,

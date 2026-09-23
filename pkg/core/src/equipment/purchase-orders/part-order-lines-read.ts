@@ -1,9 +1,9 @@
 import { purchaseOrderLines, purchaseOrders, supplier } from '@pkg/db/equipment';
-import { compareNullableDateOnly } from '@pkg/domain/equipment';
+import { compareNullableDateOnly, derivePurchaseOrderActions, purchaseOrderActionFacts } from '@pkg/domain/equipment';
 import type { UUID } from '@pkg/schema';
 import type { PartPurchaseOrderLineResult } from '@pkg/schema/equipment';
 import { PartPurchaseOrderLineResult as PartPurchaseOrderLineResultSchema } from '@pkg/schema/equipment';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, inArray } from 'drizzle-orm';
 
 import { loadLineIntake } from './purchase-order-line-intake.js';
 import type { PurchaseOrderDb } from './purchase-order-service.js';
@@ -18,10 +18,9 @@ import { loadReceiptBuckets, receiptBucketKey } from './receipt-pool.js';
  * return (that is what "defective" means), and a line half received can do both on the same
  * delivery. Splitting them would have made the tablet ask twice and still get the overlap wrong.
  *
- * Closed-short orders stay in, carrying `closedShortAt` so the caller can tell them apart: closing
- * short says nothing more is *coming*, not that what already arrived is beyond question (spec §4).
- * So a closed-short line still takes returns while refusing receipts — and a receiving surface that
- * filtered on outstanding quantity alone would offer exactly those lines and then fail on the post.
+ * Closed-short orders stay in: closing short says nothing more is *coming*, not that what already
+ * arrived is beyond question (spec §4). Each row carries its order's own receive and return verdicts,
+ * so a closed-short line still offers returns while refusing receipts, exactly as the posts will.
  */
 export async function listPartPurchaseOrderLines({
   db,
@@ -38,6 +37,7 @@ export async function listPartPurchaseOrderLines({
       orderedQuantity: purchaseOrderLines.quantity,
       purchaseOrderCode: purchaseOrders.code,
       purchaseOrderId: purchaseOrders.id,
+      status: purchaseOrders.status,
       supplierName: supplier.companyName,
     })
     .from(purchaseOrderLines)
@@ -46,18 +46,41 @@ export async function listPartPurchaseOrderLines({
     .where(and(eq(purchaseOrderLines.partId, partId), eq(purchaseOrders.status, 'sent')));
 
   const purchaseOrderIds = [...new Set(lines.map((line) => line.purchaseOrderId))];
-  const [received, receiptBuckets] = await Promise.all([
+  const [received, receiptBuckets, orderLines] = await Promise.all([
     loadLineIntake({ db, purchaseOrderIds }),
     loadReceiptBuckets({ db, purchaseOrderIds }),
+    purchaseOrderIds.length === 0
+      ? []
+      : db
+          .select({
+            id: purchaseOrderLines.id,
+            purchaseOrderId: purchaseOrderLines.purchaseOrderId,
+            quantity: purchaseOrderLines.quantity,
+          })
+          .from(purchaseOrderLines)
+          .where(inArray(purchaseOrderLines.purchaseOrderId, purchaseOrderIds)),
   ]);
+  // Judged once per order, on the whole order: history and remainder are the order's, not one line's.
+  const linesByOrder = new Map<string, (typeof orderLines)[number][]>();
+  for (const line of orderLines)
+    linesByOrder.set(line.purchaseOrderId, [...(linesByOrder.get(line.purchaseOrderId) ?? []), line]);
+  const orderActions = new Map(
+    lines.map((line) => {
+      const { receive, returnToSupplier } = derivePurchaseOrderActions(
+        purchaseOrderActionFacts({ row: line, lines: linesByOrder.get(line.purchaseOrderId) ?? [], intake: received }),
+      );
+      return [line.purchaseOrderId, { receive, returnToSupplier }] as const;
+    }),
+  );
 
   return PartPurchaseOrderLineResultSchema.parse({
     items: lines
-      .map(({ lineId, ...line }) => {
+      .map(({ lineId, status: _status, ...line }) => {
         const receivedQuantity = received.get(lineId) ?? 0;
 
         return {
           ...line,
+          orderActions: orderActions.get(line.purchaseOrderId),
           outstandingQuantity: Math.max(0, line.orderedQuantity - receivedQuantity),
           receiptBuckets: receiptBuckets.get(receiptBucketKey(line.purchaseOrderId, partId)) ?? [],
           receivedQuantity,

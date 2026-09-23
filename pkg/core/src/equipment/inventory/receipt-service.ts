@@ -1,18 +1,13 @@
 import type { DatabaseTransaction, Db } from '@pkg/db';
-import { purchaseOrderLines, purchaseOrders } from '@pkg/db/equipment';
-import { deriveMovementWarnings, derivePurchaseOrderActions } from '@pkg/domain/equipment';
+import { purchaseOrderLines } from '@pkg/db/equipment';
+import { deriveMovementWarnings } from '@pkg/domain/equipment';
 import type { AuthId, UUID } from '@pkg/schema';
 import type { PostReceiptInput, StockMovementPostResult } from '@pkg/schema/equipment';
 import { StockMovementPostResult as StockMovementPostResultSchema, unitClassFor } from '@pkg/schema/equipment';
 import { and, eq } from 'drizzle-orm';
 
-import {
-  assertPurchaseOrderAction,
-  PurchaseOrderLineNotFoundError,
-  PurchaseOrderNotFoundError,
-} from '../purchase-orders/purchase-order-errors.js';
-import { loadLineIntake } from '../purchase-orders/purchase-order-line-intake.js';
-import { loadPurchaseOrderActionFacts } from '../purchase-orders/purchase-order-service.js';
+import { PurchaseOrderLineNotFoundError } from '../purchase-orders/purchase-order-errors.js';
+import { openPurchaseOrder } from '../purchase-orders/purchase-order-gate.js';
 import { insertMovement, loadStockPart } from './ledger.js';
 import { resolveMovementActor } from './movement-actor.js';
 import { assertDeltaMatchesUnitClass, assertLengthMatchesUnitClass } from './unit-class-rules.js';
@@ -46,7 +41,7 @@ export async function postReceipt({
       db: tx,
       sessionUserId: actorUserId,
     });
-    const purchaseOrder = await lockReceivablePurchaseOrder(tx, input.purchaseOrderId);
+    const { row: purchaseOrder, intake } = await openPurchaseOrder(tx, input.purchaseOrderId, 'receive');
     const line = await loadPurchaseOrderLine(tx, input.purchaseOrderId, input.partId);
     const unitClass = unitClassFor(part.unitOfMeasure);
     // A dock that keys nothing takes the length the Part is bought in; a short delivery keys its own.
@@ -58,7 +53,7 @@ export async function postReceipt({
     // The same netted figure the order's own projection reads, so the dock's warning and the line's
     // outstanding quantity cannot disagree: stock returned as defective is owed again, and the
     // replacement delivery must not read as an over-receipt.
-    const receivedQuantity = (await loadLineIntake({ db: tx, purchaseOrderIds: [purchaseOrder.id] })).get(line.id) ?? 0;
+    const receivedQuantity = intake.get(line.id) ?? 0;
     const movement = await insertMovement(tx, {
       actorUserId: movementActorUserId,
       delta: input.quantity,
@@ -77,22 +72,6 @@ export async function postReceipt({
       }),
     });
   });
-}
-
-async function lockReceivablePurchaseOrder(tx: DatabaseTransaction, id: UUID) {
-  const [row] = await tx
-    .select({ closedShortAt: purchaseOrders.closedShortAt, id: purchaseOrders.id, status: purchaseOrders.status })
-    .from(purchaseOrders)
-    .where(eq(purchaseOrders.id, id))
-    // The same row lock cancel and close-short take, so a receipt cannot race either decision.
-    .for('update');
-  if (!row) throw new PurchaseOrderNotFoundError(id);
-  // Read under the lock and judged by the one derivation: close-short asserted the remainder will
-  // never come, and a later receipt would make that a lie.
-  const actions = derivePurchaseOrderActions(await loadPurchaseOrderActionFacts({ db: tx, row }));
-  assertPurchaseOrderAction(actions.receive, id);
-
-  return row;
 }
 
 async function loadPurchaseOrderLine(tx: DatabaseTransaction, purchaseOrderId: UUID, partId: UUID) {

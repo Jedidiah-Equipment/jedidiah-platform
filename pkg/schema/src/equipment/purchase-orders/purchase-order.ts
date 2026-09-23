@@ -209,6 +209,9 @@ export const PurchaseOrderActions = z.object({
   send: PurchaseOrderActionVerdict,
 });
 
+/** One Purchase Order Action by name, as a gate asks for it. */
+export type PurchaseOrderActionName = keyof PurchaseOrderActions;
+
 export type PurchaseOrder = z.infer<typeof PurchaseOrder>;
 export const PurchaseOrder = z.object({
   actions: PurchaseOrderActions,

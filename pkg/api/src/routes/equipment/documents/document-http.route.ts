@@ -4,11 +4,9 @@ import type { StorageAdapter } from '@pkg/core';
 import {
   createJobPurchaseOrder,
   createProductDocument,
-  isCreditNoteCoreError,
   isDocumentCoreError,
   isJobCoreError,
   isProductCoreError,
-  isPurchaseOrderCoreError,
   isQuoteCoreError,
   readJobDocument,
   readProductDocument,
@@ -39,6 +37,7 @@ import { getApiConfig } from '@/env.js';
 import { log } from '@/logger.js';
 import {
   createContentDisposition,
+  mapCoreErrorToRoute,
   RouteHttpError,
   requireAnyPermission,
   requirePermission,
@@ -47,6 +46,7 @@ import {
   streamObjectBody,
 } from '@/routes/http-route-helpers.js';
 import { serializeError } from '@/trpc/errors.js';
+import { creditNoteErrorFamily, purchaseOrderErrorFamily } from '../purchase-orders/purchase-order-error-families.js';
 import { mapDocumentCoreError } from './documents.router.js';
 
 const JobDocumentUploadInput = JobDocumentInput.pick({ jobId: true });
@@ -342,7 +342,7 @@ export async function registerDocumentHttpRoutes(
         purchaseOrderId: params.purchaseOrderId,
         stockMovementIds: readMultipartJsonField(file.fields.stockMovementIds),
       });
-      const document = await mapHttpCreditNoteErrors(() =>
+      const document = await mapHttpDocumentErrors(() =>
         uploadCreditNote({
           actorUserId: auth.session.user.id,
           bytes,
@@ -513,35 +513,12 @@ async function mapHttpDocumentErrors<T>(action: () => Promise<T>): Promise<T> {
       throw mapOwnerNotFound(error, { notFoundCode: 'quote.not_found', label: 'Quote', otherStatus: 400 });
     }
 
-    if (isPurchaseOrderCoreError(error)) {
-      throw mapOwnerNotFound(error, {
-        notFoundCode: 'purchase_order.not_found',
-        label: 'Purchase Order',
-        otherStatus: 400,
-      });
-    }
+    // The Purchase Order families the tRPC routers use, so a refusal carries the same status on both.
+    const mapped = mapCoreErrorToRoute(error, purchaseOrderErrorFamily, creditNoteErrorFamily);
+    if (mapped !== error) throw mapped;
 
     throw error;
   }
-}
-
-/** A credit note also fails on the returns it claims, which the document families know nothing of. */
-async function mapHttpCreditNoteErrors<T>(action: () => Promise<T>): Promise<T> {
-  return mapHttpDocumentErrors(async () => {
-    try {
-      return await action();
-    } catch (error) {
-      if (isCreditNoteCoreError(error)) {
-        throw new RouteHttpError({
-          appCode: error.code,
-          message: error.message,
-          statusCode: error.code === 'credit_note.return_not_found' ? 404 : 409,
-        });
-      }
-
-      throw error;
-    }
-  });
 }
 
 // Owner reads share one shape: the owner's not-found code becomes a 404 with a public label, and every

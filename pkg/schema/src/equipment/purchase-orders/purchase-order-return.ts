@@ -8,7 +8,7 @@ import { DocumentContentType, PurchaseOrderDocumentType } from '../documents/doc
 import { declareInventoryCostFields, InventoryValue } from '../inventory/inventory-cost.js';
 import { StockMovementLengthMm, StockReturnToSupplierReason } from '../inventory/stock-movement.js';
 import { SupplierCompanyName } from '../suppliers/supplier.js';
-import { PurchaseOrderReceiptBucket } from './purchase-order.js';
+import { PurchaseOrderActions, PurchaseOrderReceiptBucket } from './purchase-order.js';
 
 /**
  * One `return-to-supplier` movement on an order, with whether a credit note has answered it yet.
@@ -117,13 +117,17 @@ export const PurchaseOrderDocumentListResult = z.object({ items: z.array(Purchas
 export type PartPurchaseOrderLine = z.infer<typeof PartPurchaseOrderLine>;
 export const PartPurchaseOrderLine = z.object({
   /**
-   * When the order was closed short, or null. A closed-short line still takes returns — closing
-   * short says nothing more is *coming*, not that what arrived is beyond question (spec §4) — but it
-   * refuses receipts, so the dock must be able to tell the two apart before offering the line.
+   * @deprecated Read `orderActions`. Kept one release for stores tablets on 1.47.0 and older, which
+   * still filter receivable lines on it; remove once they have updated.
    */
   closedShortAt: DateIso.nullable(),
   expectedDeliveryDate: DateOnlyIso.nullable(),
   orderedQuantity: z.number().finite(),
+  /**
+   * The order's own verdicts for the two dock flows, from the derivation the order aggregate serves.
+   * A closed-short order still takes returns but refuses receipts, so the dock offers what these allow.
+   */
+  orderActions: PurchaseOrderActions.pick({ receive: true, returnToSupplier: true }),
   /** `ordered − received`, floored at zero: a line received twice over owes nothing, never less. */
   outstandingQuantity: z.number().finite(),
   purchaseOrderCode: PurchaseOrderCode,

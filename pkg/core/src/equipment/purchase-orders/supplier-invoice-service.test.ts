@@ -21,7 +21,7 @@ import {
   test,
 } from './purchase-order-amendment-fixtures.js';
 import { amendPurchaseOrderQuantity } from './purchase-order-amendment-service.js';
-import { createPurchaseOrder } from './purchase-order-service.js';
+import { cancelPurchaseOrder, createPurchaseOrder } from './purchase-order-service.js';
 import {
   applyInvoicePrice,
   dismissInvoiceFlag,
@@ -457,16 +457,27 @@ describe('supplier invoice cross-check', () => {
     expect((await listInvoicePriceVariance({ db: context.db })).items).toMatchObject([{ resolution: 'dismissed' }]);
   });
 
-  test('refuses an invoice against an order the Supplier was never sent', async ({ context }) => {
+  test('refuses an invoice against an order the Supplier was never sent, or that was called off', async ({
+    context,
+  }) => {
     const draft = await createPurchaseOrder({
       actorUserId: ACTOR_ID,
       db: context.db,
       input: { expectedDeliveryDate: null, supplierId: SUPPLIER_ID },
     });
-
-    await expect(upload(context, draft.id, reads(extraction({ lines: [line()] })))).rejects.toMatchObject({
-      code: 'purchase_order.not_sent',
+    const cancelled = await createPurchaseOrder({
+      actorUserId: ACTOR_ID,
+      db: context.db,
+      input: { expectedDeliveryDate: null, supplierId: SUPPLIER_ID },
     });
+    await cancelPurchaseOrder({ actorUserId: ACTOR_ID, db: context.db, id: cancelled.id });
+
+    for (const purchaseOrder of [draft, cancelled])
+      await expect(upload(context, purchaseOrder.id, reads(extraction({ lines: [line()] })))).rejects.toMatchObject({
+        code: 'purchase_order.not_sent',
+        action: 'fileDocuments',
+        reason: 'not-sent',
+      });
   });
 
   test('refuses a file whose bytes are not a PDF before it reaches the model', async ({ context }) => {

@@ -1,21 +1,13 @@
 import type { DatabaseTransaction, Db } from '@pkg/db';
-import { purchaseOrderLines, purchaseOrders, stockMovements } from '@pkg/db/equipment';
-import {
-  deriveMovementWarnings,
-  deriveOutstandingReceiptUnitCost,
-  derivePurchaseOrderActions,
-} from '@pkg/domain/equipment';
+import { purchaseOrderLines, stockMovements } from '@pkg/db/equipment';
+import { deriveMovementWarnings, deriveOutstandingReceiptUnitCost } from '@pkg/domain/equipment';
 import type { AuthId, UUID } from '@pkg/schema';
 import type { PostReturnToSupplierInput, StockMovementPostResult } from '@pkg/schema/equipment';
 import { StockMovementPostResult as StockMovementPostResultSchema, unitClassFor } from '@pkg/schema/equipment';
 import { and, asc, eq, inArray } from 'drizzle-orm';
 
-import {
-  assertPurchaseOrderAction,
-  PurchaseOrderLineNotFoundError,
-  PurchaseOrderNotFoundError,
-} from '../purchase-orders/purchase-order-errors.js';
-import { loadPurchaseOrderActionFacts } from '../purchase-orders/purchase-order-service.js';
+import { PurchaseOrderLineNotFoundError } from '../purchase-orders/purchase-order-errors.js';
+import { openPurchaseOrder } from '../purchase-orders/purchase-order-gate.js';
 import { RECEIPT_POOL_MOVEMENT_TYPES } from '../purchase-orders/receipt-pool.js';
 import { bucketMatches, insertMovement, loadStockPart } from './ledger.js';
 import { resolveMovementActor } from './movement-actor.js';
@@ -53,7 +45,7 @@ export async function postReturnToSupplier({
       db: tx,
       sessionUserId: actorUserId,
     });
-    const purchaseOrder = await lockReturnablePurchaseOrder(tx, input.purchaseOrderId);
+    const { row: purchaseOrder } = await openPurchaseOrder(tx, input.purchaseOrderId, 'returnToSupplier');
     await assertPurchaseOrderLineExists(tx, input.purchaseOrderId, input.partId);
     const unitClass = unitClassFor(part.unitOfMeasure);
     // A return keys nothing for a Part bought in one standard length; a short piece keys its own.
@@ -96,22 +88,6 @@ export async function postReturnToSupplier({
       }),
     });
   });
-}
-
-async function lockReturnablePurchaseOrder(tx: DatabaseTransaction, id: UUID) {
-  const [row] = await tx
-    .select({ closedShortAt: purchaseOrders.closedShortAt, id: purchaseOrders.id, status: purchaseOrders.status })
-    .from(purchaseOrders)
-    .where(eq(purchaseOrders.id, id))
-    // The same row lock receiving takes, so a return cannot race a receipt onto the same line.
-    .for('update');
-  if (!row) throw new PurchaseOrderNotFoundError(id);
-  // Returning deliberately outlives close-short, and that difference from receiving is now one
-  // named verdict rather than a check this function happens not to make.
-  const actions = derivePurchaseOrderActions(await loadPurchaseOrderActionFacts({ db: tx, row }));
-  assertPurchaseOrderAction(actions.returnToSupplier, id);
-
-  return row;
 }
 
 async function assertPurchaseOrderLineExists(

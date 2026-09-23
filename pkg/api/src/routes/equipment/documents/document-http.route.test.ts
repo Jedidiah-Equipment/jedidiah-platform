@@ -487,6 +487,37 @@ describe('document HTTP routes', () => {
     expect(response.json()).toMatchObject({ data: { appCode: 'document.forbidden' } });
   });
 
+  test("refuses a credit note against an order the Supplier was never sent, in the tRPC family's terms", async ({
+    context,
+  }) => {
+    const storage = new MemoryStorage();
+    const app = await createDocumentApp(storage);
+    const [poSupplier] = await context.db
+      .insert(supplier)
+      .values({ companyName: 'Draft Supplier' })
+      .returning({ id: supplier.id });
+    if (!poSupplier) throw new Error('Supplier fixture was not created');
+    const [draft] = await context.db
+      .insert(purchaseOrders)
+      .values({ supplierId: poSupplier.id })
+      .returning({ id: purchaseOrders.id });
+    if (!draft) throw new Error('Purchase Order fixture was not created');
+
+    const response = await app.inject({
+      method: 'POST',
+      url: `/api/purchase-orders/${draft.id}/credit-notes`,
+      ...buildMultipartUpload({
+        bytes: pdfBytes(),
+        fields: { stockMovementIds: JSON.stringify(['00000000-0000-4000-8000-000000000499']) },
+        filename: 'CN-1.pdf',
+      }),
+    });
+
+    expect(response.statusCode, response.body).toBe(400);
+    expect(response.json()).toMatchObject({ data: { appCode: 'purchase_order.not_sent' } });
+    expect(storage.objects.size).toBe(0);
+  });
+
   test('files a credit note against the returns it settles, and gates it on the amend right', async ({ context }) => {
     const storage = new MemoryStorage();
     const app = await createDocumentApp(storage);

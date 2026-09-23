@@ -5,6 +5,7 @@ import type {
   PurchaseOrderProgress,
   PurchaseOrderStatus,
 } from '@pkg/schema/equipment';
+import { derivePurchaseOrderProgress, type PurchaseOrderProgressLine } from './purchase-order-progress.js';
 
 /**
  * What every action verdict is judged against: the two stored facts, whether the order carries any
@@ -21,6 +22,30 @@ export type PurchaseOrderActionFacts = {
   progress: PurchaseOrderProgress;
   status: PurchaseOrderStatus;
 };
+
+/**
+ * The facts a verdict is judged on, reduced from what a read or a gate has already loaded: the order's
+ * stored state, every one of its lines, and what each line has taken in. The one reduction both the
+ * served verdict and the write gates use, so they cannot disagree.
+ */
+export function purchaseOrderActionFacts({
+  row,
+  lines,
+  intake,
+}: {
+  row: { closedShortAt: Date | string | null; status: PurchaseOrderStatus };
+  lines: readonly PurchaseOrderProgressLine[];
+  intake: ReadonlyMap<string, number>;
+}): PurchaseOrderActionFacts {
+  return {
+    closedShortAt: row.closedShortAt,
+    // History is the rows, never the netted quantity: a line whose receipts all went back still moved.
+    hasAnyMovement: lines.some((line) => intake.has(line.id)),
+    isEmpty: lines.length === 0,
+    progress: derivePurchaseOrderProgress({ lines, receivedByLineId: intake }),
+    status: row.status,
+  };
+}
 
 const ALLOWED: PurchaseOrderActionVerdict = { allowed: true };
 
@@ -60,7 +85,8 @@ export function derivePurchaseOrderActions(facts: PurchaseOrderActionFacts): Pur
     fileDocuments: isSent ? ALLOWED : blocked('not-sent'),
     // What goes to the Supplier is rendered live until sending saves it; from then on the saved copy
     // is the order, and a fresh render would show amendments the Supplier was sent as revisions.
-    preview: status === 'cancelled' ? blocked('cancelled') : isSent ? blocked('sent') : ALLOWED,
+    preview:
+      status === 'cancelled' ? blocked('cancelled') : isSent ? blocked('sent') : isEmpty ? blocked('empty') : ALLOWED,
     receive: whileSentAndOpen(),
     // Deliberately outlives close-short: releasing a remainder says nothing more is coming, not that
     // what already arrived can never go back.

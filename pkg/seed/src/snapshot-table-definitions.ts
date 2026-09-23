@@ -3,12 +3,8 @@ import { contractingJobCodeSequence } from '@pkg/db/contracting';
 import { jobCodeSequence, quoteCodeSequence } from '@pkg/db/equipment';
 import { LEGACY_QUOTE_CANCELLATION_REASON } from '@pkg/schema/equipment';
 import type { PgSequence, PgTable } from 'drizzle-orm/pg-core';
-import { deriveLegacyPartCategories, legacyPartCategoryId, legacyPartCategoryName } from './legacy-part-categories.js';
 
 export type SnapshotRow = Record<string, unknown>;
-
-/** Every table's captured rows, by table name, so one table's empty snapshot can derive from another's. */
-export type SnapshotRowsByTable = ReadonlyMap<string, readonly SnapshotRow[]>;
 
 // A reference to one object in the doc store (bucket-relative key + its content type), extracted from a
 // row's StoredFile-shaped columns.
@@ -28,9 +24,8 @@ export type SnapshotTableDefinition = {
   // A newly introduced table may not exist in the selected source yet. Treat only that expected rollout
   // gap as empty; once deployed, normal snapshot reads and writes preserve its rows.
   optionalReadTable?: boolean;
-  // Required singleton/reference data when a pre-rollout snapshot has no rows, either fixed or derived
-  // from the other tables' captured rows.
-  emptySnapshotRows?: readonly SnapshotRow[] | ((snapshotRows: SnapshotRowsByTable) => readonly SnapshotRow[]);
+  // Required singleton/reference data when a pre-rollout snapshot has no rows.
+  emptySnapshotRows?: readonly SnapshotRow[];
   // Column (property name) to order the source read by, so positional seed defaults are deterministic.
   readOrderColumn?: string;
   // Values merged into each row after reading, keyed by index — used to populate columns omitted above.
@@ -182,20 +177,12 @@ export const snapshotTableDefinitions = [
     fileName: 'part_category.json',
     tableName: 'part_category',
     timestampColumns: standardTimestampColumns,
-    optionalReadTable: true,
-    emptySnapshotRows: (snapshotRows) => deriveLegacyPartCategories(snapshotRows.get('parts') ?? []),
   },
   {
     fileName: 'parts.json',
     tableName: 'parts',
     timestampColumns: [],
-    optionalReadColumns: [
-      'categoryId',
-      'minimumStock',
-      'standardPurchaseLengthMm',
-      'stockTrackingMode',
-      'storageLocation',
-    ],
+    optionalReadColumns: ['minimumStock', 'standardPurchaseLengthMm', 'stockTrackingMode', 'storageLocation'],
     seedRowDefaults: () => ({ minimumStock: null, stockTrackingMode: 'perpetual', storageLocation: null }),
     // Owns every legacy normalization: its `== null` test covers both a column the source never read
     // and one it read as empty, so the defaults above stay plain. Delete once the source is migrated.
@@ -203,12 +190,8 @@ export const snapshotTableDefinitions = [
       const legacyPurchaseLength =
         typeof row.code === 'string' ? legacyPartStandardPurchaseLengthsMm[row.code] : undefined;
 
-      const { category: _legacyCategory, ...current } = row;
-      const legacyCategory = legacyPartCategoryName(row);
-
       return {
-        ...current,
-        categoryId: row.categoryId ?? (legacyCategory === undefined ? undefined : legacyPartCategoryId(legacyCategory)),
+        ...row,
         standardPurchaseLengthMm:
           row.standardPurchaseLengthMm == null ? (legacyPurchaseLength ?? null) : row.standardPurchaseLengthMm,
         unitOfMeasure: row.unitOfMeasure === 'quantity' ? 'piece' : row.unitOfMeasure,

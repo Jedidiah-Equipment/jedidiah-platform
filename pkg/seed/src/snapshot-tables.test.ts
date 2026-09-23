@@ -1,7 +1,6 @@
 import { getTableColumns } from 'drizzle-orm';
 import { describe, expect, it } from 'vitest';
 
-import { legacyPartCategoryId } from './legacy-part-categories.js';
 import {
   collectStorageFiles,
   prepareSnapshotRow,
@@ -24,6 +23,12 @@ function configFor(tableName: string): SnapshotTableConfig {
 }
 
 describe('snapshot table registry', () => {
+  it('requires Part Categories from every snapshot source', () => {
+    expect(configFor('part_category').optionalReadTable).toBeUndefined();
+    expect(configFor('part_category').emptySnapshotRows).toBeUndefined();
+    expect(configFor('parts').optionalReadColumns).not.toContain('categoryId');
+  });
+
   it('lists snapshot tables in dependency order', () => {
     expect(snapshotTableNames).toEqual([
       'labor_rate_settings',
@@ -202,16 +207,16 @@ describe('snapshot table registry', () => {
 
   it('normalizes legacy part inventory values while preparing snapshots', () => {
     const partsConfig = configFor('parts');
+    const categoryId = '00000000-0000-4000-8000-000000000001';
 
-    expect(prepareSnapshotRow(partsConfig, { code: 'P-100', unitOfMeasure: 'quantity' }, 0)).toMatchObject({
+    expect(prepareSnapshotRow(partsConfig, { categoryId, code: 'P-100', unitOfMeasure: 'quantity' }, 0)).toMatchObject({
+      categoryId,
       standardPurchaseLengthMm: null,
       stockTrackingMode: 'perpetual',
       unitOfMeasure: 'piece',
     });
-    expect(
-      prepareSnapshotRow(partsConfig, { category: '6000', code: 'SEMP-0001', unitOfMeasure: 'mm' }, 0),
-    ).toMatchObject({
-      categoryId: legacyPartCategoryId('Pipe'),
+    expect(prepareSnapshotRow(partsConfig, { categoryId, code: 'SEMP-0001', unitOfMeasure: 'mm' }, 0)).toMatchObject({
+      categoryId,
       standardPurchaseLengthMm: 6000,
       unitOfMeasure: 'mm',
     });
@@ -223,14 +228,14 @@ describe('snapshot table registry', () => {
       prepareSnapshotRow(
         partsConfig,
         {
-          category: 'Tube',
+          categoryId,
           code: 'SEMP-0001',
           standardPurchaseLengthMm: 12000,
           unitOfMeasure: 'mm',
         },
         0,
       ),
-    ).toMatchObject({ categoryId: legacyPartCategoryId('Tube'), standardPurchaseLengthMm: 12000 });
+    ).toMatchObject({ categoryId, standardPurchaseLengthMm: 12000 });
   });
 
   it('keeps rollout Work Item tables optional until the source migration deploys', () => {

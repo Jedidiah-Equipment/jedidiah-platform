@@ -4,9 +4,9 @@ import { applyPartCategoryMarkup } from '@pkg/domain/equipment';
 import { getNextCursor } from '@pkg/schema';
 import type { QuoteInventoryPartListInput, QuoteInventoryPartListResult } from '@pkg/schema/equipment';
 import { QuoteInventoryPartListResult as QuoteInventoryPartListResultSchema } from '@pkg/schema/equipment';
-import { and, asc, count, desc, eq, ne, sql } from 'drizzle-orm';
+import { asc, count, desc, eq, sql } from 'drizzle-orm';
 
-import { loadMovingAverages } from '../inventory/ledger.js';
+import { loadMovingAverages, onHandDeltaSum, stockOnHandJoin } from '../inventory/ledger.js';
 import { loadPlantStockPosition } from '../inventory/plant-stock-position.js';
 
 /**
@@ -26,7 +26,6 @@ export async function listQuoteInventoryParts({
     sql`${parts.name}`,
     sql`${partCategories.name}`,
   ]);
-  const onHand = sql<number>`coalesce(sum(${stockMovements.delta}), 0)`;
   const page = db
     .select({
       averageUtilizationPercent: parts.averageUtilizationPercent,
@@ -40,12 +39,11 @@ export async function listQuoteInventoryParts({
     })
     .from(parts)
     .innerJoin(partCategories, eq(partCategories.id, parts.categoryId))
-    // A revaluation moves cost, never quantity.
-    .leftJoin(stockMovements, and(eq(stockMovements.partId, parts.id), ne(stockMovements.movementType, 'revaluation')))
+    .leftJoin(stockMovements, stockOnHandJoin())
     .where(where)
     .groupBy(parts.id, partCategories.id)
     // On hand, not free: free needs commitments, which are not one SQL sum.
-    .orderBy(desc(sql`(${onHand} > 0)`), asc(parts.code), asc(parts.id))
+    .orderBy(desc(sql`(${onHandDeltaSum} > 0)`), asc(parts.code), asc(parts.id))
     .$dynamic();
   const countQuery = db
     .select({ total: count() })

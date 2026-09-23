@@ -5,7 +5,7 @@ import {
   isQuoteLocked,
   quoteDeliveryTermsOptions,
   quoteOfferingType,
-  quoteOfferingTypeLabels,
+  quoteOfferingTypeLabel,
   quoteStatusLabels,
 } from '@pkg/domain/equipment';
 import {
@@ -69,7 +69,9 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ onSave, priorityQuote, quo
   const canEdit = (field: string) => !isLocked || lockEditableFields.has(field);
   const quoteCurrencyCode = quote.product?.currencyCode ?? quote.quotedCurrencyCode;
   const catalogAssemblies = quote.product?.assemblies ?? [];
-  const salespeopleOptions = useSalesPersonOptions();
+  const salespeopleOptions = useSalesPersonOptions({
+    assigned: { id: quote.salesPersonId, name: quote.salesPersonName },
+  });
   const auditAccess = useCan('equipment_audit:read');
   const jobReadAccess = useCan('equipment_job:read');
   const inventoryReadAccess = useCan('equipment_inventory:read');
@@ -153,7 +155,6 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ onSave, priorityQuote, quo
                             onValueCommit={autosave.commit}
                             options={salespeopleOptions.selectOptions}
                             placeholder="Select salesperson"
-                            unlistedSelectedLabel={quote.salesPersonName}
                           />
                         )}
                       </form.AppField>
@@ -281,8 +282,7 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ onSave, priorityQuote, quo
                         >
                           <QuoteWorkItemsEditor
                             currencyCode={quoteCurrencyCode}
-                            onPartsChanged={autosave.commit}
-                            onRemoveWorkItem={autosave.commit}
+                            onCommit={autosave.commit}
                             readOnly={!canEdit('workItems')}
                             workItemsField={workItemsField}
                           />
@@ -295,7 +295,7 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ onSave, priorityQuote, quo
                     <form.AppField name="notes">{(field) => <field.TextareaField rows={4} />}</form.AppField>
                   </QuoteFormSection>
 
-                  {quote.kind === 'custom' && quote.isPartsSale && inventoryReadAccess.can ? (
+                  {quoteOfferingType(quote) === 'parts-sale' && inventoryReadAccess.can ? (
                     <QuoteStockSection quote={quote} />
                   ) : null}
 
@@ -389,7 +389,7 @@ const QuotePriorityAlert: React.FC<{
   priorityQuote: PriorityQuote;
 }> = ({ priorityQuote }) => {
   if (priorityQuote.kind === 'custom') {
-    const typeLabel = quoteOfferingTypeLabels[quoteOfferingType(priorityQuote)];
+    const typeLabel = quoteOfferingTypeLabel(priorityQuote);
 
     return (
       <Alert className="border-warning/45 bg-warning/10 text-warning-foreground">

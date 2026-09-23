@@ -114,29 +114,39 @@ export const StockMovementTarget = z.enum(['job', 'quote', 'person']);
 export type ReturnStockTarget = z.infer<typeof ReturnStockTarget>;
 export const ReturnStockTarget = StockMovementTarget.extract(['job', 'quote']);
 
-/** Returns one Part to one Job or Parts Sale. Checkout is owned by the separate multi-line Basket form. */
+/** A Job or Parts Sale a dialog opens already pointed at, which nothing inside it can change. */
+export type FixedMovementTarget = { code: string; id: string; kind: ReturnStockTarget };
+
+export const movementTargetLabels = { job: 'Job', quote: 'Parts Sale' } as const satisfies Record<
+  ReturnStockTarget,
+  string
+>;
+
+/**
+ * Returns one Part to one Job or Parts Sale. Checkout is owned by the separate multi-line Basket form.
+ * `targetId` names whichever of the two `target` says.
+ */
 export type ReturnStockFormValues = z.infer<typeof ReturnStockFormValues>;
 export const ReturnStockFormValues = z.object({
-  jobId: z.string(),
   lengthMm: StockMovementLengthValue,
   partId: requiredSelection(UUID, 'Select a Part'),
   quantity: StockMovementQuantity,
-  quoteId: z.string(),
   target: ReturnStockTarget,
+  targetId: z.string(),
 });
 
 export type CheckoutBasketLineValues = CheckoutBasketLineInput;
 
 export type CheckoutBasketFormValues = z.infer<typeof CheckoutBasketFormValues>;
 export const CheckoutBasketFormValues = z.object({
-  jobId: z.string(),
   lines: z
     .array(CheckoutBasketLineSchema.extend({ lengthMm: StockMovementLengthMm.nullable() }))
     .min(1, 'Add at least one line'),
   note: z.string(),
-  quoteId: z.string(),
   recipientUserId: z.string(),
   target: StockMovementTarget,
+  /** The Job or Parts Sale; unused for a person, who is named by `recipientUserId` instead. */
+  targetId: z.string(),
 });
 
 export function checkoutBasketValidator(parts: readonly StockPartOption[]) {
@@ -148,7 +158,7 @@ export function checkoutBasketValidator(parts: readonly StockPartOption[]) {
     switch (values.target) {
       case 'job':
       case 'quote':
-        refineMovementTarget(values, context);
+        refineMovementTarget({ target: values.target, targetId: values.targetId }, context);
         return;
       case 'person':
         if (values.recipientUserId.trim() === '') {
@@ -161,16 +171,14 @@ export function checkoutBasketValidator(parts: readonly StockPartOption[]) {
   });
 }
 
-/** A Job or Parts Sale target is one selection; each names its own missing field. */
-function refineMovementTarget(
-  values: { jobId: string; quoteId: string; target: StockMovementTarget },
-  context: z.RefinementCtx,
-): void {
-  if (values.target === 'job' && !UUID.safeParse(values.jobId).success) {
-    context.addIssue({ code: 'custom', message: 'Select a Job', path: ['jobId'] });
-  }
-  if (values.target === 'quote' && !UUID.safeParse(values.quoteId).success) {
-    context.addIssue({ code: 'custom', message: 'Select a Parts Sale', path: ['quoteId'] });
+/** A Job or Parts Sale target is one selection, named in the words of the target it is missing. */
+function refineMovementTarget(values: { target: ReturnStockTarget; targetId: string }, context: z.RefinementCtx): void {
+  if (!UUID.safeParse(values.targetId).success) {
+    context.addIssue({
+      code: 'custom',
+      message: `Select a ${movementTargetLabels[values.target]}`,
+      path: ['targetId'],
+    });
   }
 }
 
@@ -202,9 +210,9 @@ export function toCheckoutBasketInput(values: CheckoutBasketFormValues): PostChe
 
   switch (values.target) {
     case 'job':
-      return PostCheckoutBasketInput.parse({ jobId: values.jobId, lines });
+      return PostCheckoutBasketInput.parse({ jobId: values.targetId, lines });
     case 'quote':
-      return PostCheckoutBasketInput.parse({ lines, quoteId: values.quoteId });
+      return PostCheckoutBasketInput.parse({ lines, quoteId: values.targetId });
     case 'person':
       return PostCheckoutBasketInput.parse({ lines, note: values.note, recipientUserId: values.recipientUserId });
   }
@@ -439,8 +447,8 @@ export function toReturnStockInput(
   };
 
   return values.target === 'job'
-    ? PostJobMovementInput.parse({ ...movement, jobId: values.jobId })
-    : PostQuoteMovementInput.parse({ ...movement, quoteId: values.quoteId });
+    ? PostJobMovementInput.parse({ ...movement, jobId: values.targetId })
+    : PostQuoteMovementInput.parse({ ...movement, quoteId: values.targetId });
 }
 
 export function toReturnFromCheckoutInput(values: ReturnFromCheckoutFormValues) {

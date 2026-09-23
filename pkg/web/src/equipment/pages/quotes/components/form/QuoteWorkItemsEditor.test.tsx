@@ -23,18 +23,6 @@ const inventoryParts: QuoteInventoryPartOption[] = [
     unitOfMeasure: 'mm',
   },
   {
-    averageUtilizationPercent: 70,
-    code: 'PLATE-10',
-    freeQuantity: 0,
-    id: '00000000-0000-4000-8000-000000000002',
-    name: '10mm plate',
-    partCategoryName: 'Plate',
-    priceNote: null,
-    sellPricePerBasisUnit: 1_000,
-    standardPurchaseLengthMm: null,
-    unitOfMeasure: 'piece',
-  },
-  {
     averageUtilizationPercent: null,
     code: 'BOLT-M10',
     freeQuantity: 12,
@@ -42,18 +30,6 @@ const inventoryParts: QuoteInventoryPartOption[] = [
     name: 'M10 bolt',
     partCategoryName: 'Fasteners',
     priceNote: 'no-markup',
-    sellPricePerBasisUnit: null,
-    standardPurchaseLengthMm: null,
-    unitOfMeasure: 'piece',
-  },
-  {
-    averageUtilizationPercent: null,
-    code: 'NUT-M10',
-    freeQuantity: 0,
-    id: '00000000-0000-4000-8000-000000000004',
-    name: 'M10 nut',
-    partCategoryName: 'Fasteners',
-    priceNote: 'no-cost',
     sellPricePerBasisUnit: null,
     standardPurchaseLengthMm: null,
     unitOfMeasure: 'piece',
@@ -88,7 +64,7 @@ vi.mock('@/lib/trpc.js', () => ({
 }));
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
-function Harness({ onPartsChanged = () => {}, readOnly = false }: { onPartsChanged?: () => void; readOnly?: boolean }) {
+function Harness({ onCommit = () => {}, readOnly = false }: { onCommit?: () => void; readOnly?: boolean }) {
   const form = useAppForm({
     defaultValues: {
       ...emptyQuoteFormValues,
@@ -109,13 +85,7 @@ function Harness({ onPartsChanged = () => {}, readOnly = false }: { onPartsChang
       <form.Field name="workItems" mode="array">
         {(field) => (
           <>
-            <QuoteWorkItemsEditor
-              workItemsField={field}
-              currencyCode="ZAR"
-              onPartsChanged={onPartsChanged}
-              onRemoveWorkItem={() => {}}
-              readOnly={readOnly}
-            />
+            <QuoteWorkItemsEditor workItemsField={field} currencyCode="ZAR" onCommit={onCommit} readOnly={readOnly} />
             <QuoteAddWorkItemButton workItemsField={field} readOnly={readOnly} />
           </>
         )}
@@ -238,8 +208,8 @@ function inputValues(container: HTMLElement): string[] {
 }
 
 test('adds a length of an inventory Part as an ordinary row and tells autosave', async () => {
-  const onPartsChanged = vi.fn();
-  const { cleanup, container } = await renderEditor({ onPartsChanged });
+  const onCommit = vi.fn();
+  const { cleanup, container } = await renderEditor({ onCommit });
   try {
     await openDialogAndPick(container, 'TUBE-50');
     const length = dialog().querySelector<HTMLInputElement>('#quote-inventory-part-length');
@@ -252,7 +222,7 @@ test('adds a length of an inventory Part as an ordinary row and tells autosave',
 
     await click(findButton(dialog(), 'Add to work item'));
 
-    expect(onPartsChanged).toHaveBeenCalledTimes(1);
+    expect(onCommit).toHaveBeenCalledTimes(1);
     expect(document.querySelector('[role="dialog"]')).toBeNull();
     expect(inputValues(container)).toEqual(expect.arrayContaining(['50x50 tube (450 mm)', '4', '56.25']));
   } finally {
@@ -260,30 +230,13 @@ test('adds a length of an inventory Part as an ordinary row and tells autosave',
   }
 });
 
-test('shows how a share of a plate is priced to cover its scrap', async () => {
+test('shows the price note instead of a unit price for a Part that cannot be priced', async () => {
   const { cleanup, container } = await renderEditor();
   try {
-    await openDialogAndPick(container, 'PLATE-10');
-    const percent = dialog().querySelector<HTMLInputElement>('#quote-inventory-part-plate-percent');
-    if (!percent) throw new Error('Missing % of plate');
-    await typeInto(percent, '8');
+    await openDialogAndPick(container, 'BOLT-M10');
 
-    expect(dialog().textContent).toContain('8% of plate ÷ 70% yield = 11.43% of a plate');
-    expect(dialog().textContent).toContain('R 114.29');
-  } finally {
-    await cleanup();
-  }
-});
-
-test.each([
-  ['BOLT-M10', 'Fasteners has no markup set, so no price can be worked out. The row will be added at R 0.00.'],
-  ['NUT-M10', 'This Part has no cost yet, so no price can be worked out. The row will be added at R 0.00.'],
-])('says why %s cannot be priced', async (code, message) => {
-  const { cleanup, container } = await renderEditor();
-  try {
-    await openDialogAndPick(container, code);
-
-    expect(dialog().textContent).toContain(message);
+    expect(dialog().textContent).toContain('Fasteners has no markup set');
+    expect(dialog().textContent).not.toContain('Unit price');
   } finally {
     await cleanup();
   }

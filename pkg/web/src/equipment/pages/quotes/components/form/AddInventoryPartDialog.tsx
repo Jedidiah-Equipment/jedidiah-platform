@@ -1,10 +1,12 @@
-import { formatCurrency, formatNumber } from '@pkg/domain';
+import { formatCurrency } from '@pkg/domain';
 import {
-  effectivePlateFraction,
-  type QuoteInventoryPartAmount,
+  formatFreeStock,
+  formatPlateWorking,
+  proposeQuoteInventoryPartRow,
   quoteInventoryPartBasis,
-  quoteInventoryPartName,
-  quoteInventoryPartUnitPrice,
+  quoteInventoryPartLabel,
+  quoteInventoryPartPriceNote,
+  quoteInventoryPartQuantityLabel,
 } from '@pkg/domain/equipment';
 import {
   QuoteInventoryPartLengthMm,
@@ -31,7 +33,6 @@ import {
 import { Field, FieldDescription, FieldError, FieldLabel } from '@/components/ui/field.js';
 import { Input } from '@/components/ui/input.js';
 import { useQuoteInventoryPartOptions } from '@/equipment/hooks/options/index.js';
-import { formatPartQuantity } from '@/equipment/utils/part-quantity-format.js';
 import type { QuoteWorkItemPartFormInput } from '../types.js';
 
 type AddInventoryPartDialogProps = {
@@ -77,7 +78,7 @@ export function AddInventoryPartDialog({ currencyCode, onAdd, onOpenChange, open
             inputId="quote-inventory-part-search"
             inputValue={options.search}
             isFetching={options.isFetching}
-            itemToLabel={getPartLabel}
+            itemToLabel={quoteInventoryPartLabel}
             loadMore={{
               hasNextPage: options.hasNextPage,
               isFetchingNextPage: options.isFetchingNextPage,
@@ -135,13 +136,11 @@ function InventoryPartAmountForm({
   const length = parseNumber(QuoteInventoryPartLengthMm, lengthMm);
   const plate = parseNumber(QuoteInventoryPartPlatePercent, platePercent);
   const pieces = parseNumber(QuoteWorkItemPartQuantity, quantity);
-  const amount = toAmount(part, { lengthMm: length.value, platePercent: plate.value });
-  const unitPrice =
-    amount === null ? null : quoteInventoryPartUnitPrice({ amount, sellPricePerBasisUnit: part.sellPricePerBasisUnit });
-  const row =
-    amount === null || unitPrice === null || pieces.value === null
-      ? null
-      : { name: quoteInventoryPartName(part, amount), quantity: pieces.value, unitPrice };
+  const row = proposeQuoteInventoryPartRow(part, {
+    lengthMm: length.value,
+    platePercent: plate.value,
+    quantity: pieces.value,
+  });
 
   return (
     <>
@@ -177,19 +176,13 @@ function InventoryPartAmountForm({
               value={platePercent}
             />
             {plate.value !== null && part.averageUtilizationPercent !== null ? (
-              <FieldDescription>
-                {plate.value}% of plate ÷ {part.averageUtilizationPercent}% yield ={' '}
-                {formatNumber(effectivePlateFraction(plate.value, part.averageUtilizationPercent) * 100, {
-                  decimals: 2,
-                })}
-                % of a plate
-              </FieldDescription>
+              <FieldDescription>{formatPlateWorking(plate.value, part.averageUtilizationPercent)}</FieldDescription>
             ) : null}
             <FieldError>{plate.error}</FieldError>
           </Field>
         ) : null}
         <Field data-invalid={pieces.error !== null}>
-          <FieldLabel htmlFor="quote-inventory-part-quantity">{basis === 'length' ? 'Pieces' : 'Quantity'}</FieldLabel>
+          <FieldLabel htmlFor="quote-inventory-part-quantity">{quoteInventoryPartQuantityLabel(basis)}</FieldLabel>
           <Input
             aria-invalid={pieces.error !== null}
             id="quote-inventory-part-quantity"
@@ -205,12 +198,12 @@ function InventoryPartAmountForm({
       </div>
       {part.priceNote ? (
         <Alert>
-          <AlertDescription>{priceNoteMessage(part, currencyCode)}</AlertDescription>
+          <AlertDescription>{quoteInventoryPartPriceNote(part, currencyCode)}</AlertDescription>
         </Alert>
       ) : (
         <div className="flex items-center justify-between gap-3 rounded-md border px-3 py-2 text-sm">
           <span className="font-medium">Unit price</span>
-          <span className="tabular-nums">{unitPrice === null ? '—' : formatCurrency(unitPrice, currencyCode)}</span>
+          <span className="tabular-nums">{row === null ? '—' : formatCurrency(row.unitPrice, currencyCode)}</span>
         </div>
       )}
       <DialogFooter>
@@ -231,22 +224,6 @@ function InventoryPartAmountForm({
   );
 }
 
-function toAmount(
-  part: QuoteInventoryPartOption,
-  { lengthMm, platePercent }: { lengthMm: number | null; platePercent: number | null },
-): QuoteInventoryPartAmount | null {
-  switch (quoteInventoryPartBasis(part)) {
-    case 'length':
-      return lengthMm === null ? null : { basis: 'length', lengthMm };
-    case 'plate':
-      return platePercent === null || part.averageUtilizationPercent === null
-        ? null
-        : { averageUtilizationPercent: part.averageUtilizationPercent, basis: 'plate', platePercent };
-    case 'unit':
-      return { basis: 'unit' };
-  }
-}
-
 /** An untouched empty box is not an error yet; it only keeps the add buttons disabled. */
 function parseNumber(schema: z.ZodType<number>, text: string): { error: string | null; value: number | null } {
   if (text.trim() === '') return { error: null, value: null };
@@ -257,27 +234,14 @@ function parseNumber(schema: z.ZodType<number>, text: string): { error: string |
     : { error: parsed.error.issues[0]?.message ?? 'Invalid value', value: null };
 }
 
-function priceNoteMessage(part: QuoteInventoryPartOption, currencyCode: string): string {
-  const reason =
-    part.priceNote === 'no-cost' ? 'This Part has no cost yet' : `${part.partCategoryName} has no markup set`;
-
-  return `${reason}, so no price can be worked out. The row will be added at ${formatCurrency(0, currencyCode)}.`;
-}
-
-const getPartLabel = (part: QuoteInventoryPartOption) => `${part.code} · ${part.name}`;
-
 const renderPartOption = (part: QuoteInventoryPartOption) => (
   <span className="flex min-w-0 flex-1 items-center justify-between gap-3">
     <span className="flex min-w-0 flex-col">
-      <span className="truncate">{getPartLabel(part)}</span>
+      <span className="truncate">{quoteInventoryPartLabel(part)}</span>
       <span className="truncate text-muted-foreground text-xs">{part.partCategoryName}</span>
     </span>
-    {part.freeQuantity > 0 ? (
-      <span className="shrink-0 text-xs tabular-nums">
-        {formatPartQuantity(part.freeQuantity, part.unitOfMeasure)} free
-      </span>
-    ) : (
-      <span className="shrink-0 text-muted-foreground text-xs">None free</span>
-    )}
+    <span className={`shrink-0 text-xs ${part.freeQuantity > 0 ? 'tabular-nums' : 'text-muted-foreground'}`}>
+      {formatFreeStock(part)}
+    </span>
   </span>
 );

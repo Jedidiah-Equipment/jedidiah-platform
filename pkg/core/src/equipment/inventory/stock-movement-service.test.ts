@@ -26,8 +26,8 @@ import { partValues } from '../test/part-fixtures.js';
 import { sumJobDrawnCosts } from './job-cost-read.js';
 import { getJobMaterialVariance } from './job-variance-read.js';
 import { postReceipt } from './receipt-service.js';
+import { getStockMovementHistory } from './stock-movement-history-read.js';
 import {
-  getStockMovementHistory,
   listJobStock,
   listStockOnHand,
   postAdjustment,

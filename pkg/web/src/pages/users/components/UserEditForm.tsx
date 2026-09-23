@@ -16,7 +16,6 @@ export const UserEditFormValues = UserAccount.pick({
   isDevice: true,
   name: true,
   phoneNumber: true,
-  quoteSalesperson: true,
   contractingRole: true,
   equipmentRole: true,
   thumbnailDataUrl: true,
@@ -64,7 +63,6 @@ export const UserEditForm: React.FC<UserEditFormProps> = ({
       emailVerified: initialUser.emailVerified,
       name: initialUser.name,
       phoneNumber: initialUser.phoneNumber,
-      quoteSalesperson: initialUser.quoteSalesperson,
       isDevice: initialUser.isDevice,
       contractingRole: initialUser.contractingRole,
       equipmentRole: initialUser.equipmentRole,
@@ -111,17 +109,6 @@ export const UserEditForm: React.FC<UserEditFormProps> = ({
                 <form.AppField name="assistantEnabled">
                   {(field) => <field.CheckboxField disabled={isPending} label="Assistant enabled" />}
                 </form.AppField>
-                {business === 'equipment' ? (
-                  <form.AppField name="quoteSalesperson">
-                    {(field) => (
-                      <field.CheckboxField
-                        description="Lists this person in the Salesperson picker on Quotes. It changes nothing about what they can see or do."
-                        disabled={isPending}
-                        label="Quote salesperson"
-                      />
-                    )}
-                  </form.AppField>
-                ) : null}
               </>
             ) : null}
             {canSetEmail ? (

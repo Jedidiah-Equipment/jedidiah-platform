@@ -1,11 +1,16 @@
 import type React from 'react';
 
-import { SearchableCombobox, type SearchableComboboxOption } from '@/components/common/SearchableCombobox.js';
+import {
+  SearchableCombobox,
+  type SearchableComboboxCreate,
+  type SearchableComboboxOption,
+} from '@/components/common/SearchableCombobox.js';
 import { Field, FieldError, FieldLabel } from '@/components/ui/field.js';
 import { useFieldContext } from '../hooks/form-context.js';
 import { getFieldErrors } from '../utils/field-errors.js';
 
 export type ComboboxFieldProps = {
+  create?: SearchableComboboxCreate | undefined;
   disabled?: boolean;
   emptyMessage?: string;
   label: React.ReactNode;
@@ -17,6 +22,7 @@ export type ComboboxFieldProps = {
 };
 
 export function ComboboxField({
+  create,
   disabled = false,
   emptyMessage,
   label,
@@ -35,6 +41,7 @@ export function ComboboxField({
       <FieldLabel htmlFor={field.name}>{label}</FieldLabel>
       <SearchableCombobox
         aria-invalid={isInvalid}
+        create={create}
         disabled={disabled}
         emptyMessage={emptyMessage}
         inputId={field.name}

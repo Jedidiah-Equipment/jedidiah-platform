@@ -57,7 +57,6 @@ export type UserAccountRow = Pick<
   | 'isDevice'
   | 'name'
   | 'phoneNumber'
-  | 'quoteSalesperson'
   | 'role'
 >;
 
@@ -70,7 +69,6 @@ export function mapUserAccount(row: UserAccountRow): UserAccount {
     isDevice: row.isDevice,
     name: row.name,
     phoneNumber: NullablePhoneNumber.parse(row.phoneNumber),
-    quoteSalesperson: row.quoteSalesperson,
     contractingRole: ContractingRole.nullable().parse(row.contractingRole),
     equipmentRole: EquipmentRole.nullable().parse(row.role),
     thumbnailDataUrl: NullableThumbnailDataUrl.parse(row.image),
@@ -86,7 +84,6 @@ const userAccountColumns = {
   isDevice: user.isDevice,
   name: user.name,
   phoneNumber: user.phoneNumber,
-  quoteSalesperson: user.quoteSalesperson,
   contractingRole: user.contractingRole,
   role: user.role,
 };

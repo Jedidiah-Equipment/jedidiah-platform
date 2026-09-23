@@ -95,9 +95,7 @@ export function StockMovementActions({
       {checkoutOpen ? (
         <CheckoutBasketDialog items={items} onOpenChange={setCheckoutOpen} open={true} parts={checkoutParts} />
       ) : null}
-      {returnOpen ? (
-        <StockMovementDialog items={items} onOpenChange={setReturnOpen} open={true} parts={returnParts} />
-      ) : null}
+      {returnOpen ? <StockMovementDialog onOpenChange={setReturnOpen} open={true} parts={returnParts} /> : null}
       {returnFromCheckoutOpen ? <ReturnFromCheckoutDialog onOpenChange={setReturnFromCheckoutOpen} open /> : null}
     </>
   );

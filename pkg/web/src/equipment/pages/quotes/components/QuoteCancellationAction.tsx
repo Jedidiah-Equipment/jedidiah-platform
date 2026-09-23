@@ -147,8 +147,8 @@ export function QuoteCancellationDialog({
                   <li key={`${stock.partCode}:${stock.lengthMm ?? ''}`}>
                     {stock.partCode} · {stock.partName}:{' '}
                     {stock.lengthMm === null
-                      ? formatPartQuantity(stock.outstandingQuantity, stock.unitOfMeasure)
-                      : formatLengthBucket(stock.lengthMm, stock.outstandingQuantity)}
+                      ? formatPartQuantity(stock.drawnQuantity, stock.unitOfMeasure)
+                      : formatLengthBucket(stock.lengthMm, stock.drawnQuantity)}
                   </li>
                 ))}
               </ul>

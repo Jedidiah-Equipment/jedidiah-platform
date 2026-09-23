@@ -1,6 +1,6 @@
 import {
   defaultQuoteSalespersonId,
-  PARTS_SALE_DEFAULT_WORK_TITLE,
+  partsSaleWorkTitle,
   quoteOfferingTypeLabels,
   quoteStatusLabels,
 } from '@pkg/domain/equipment';
@@ -8,7 +8,7 @@ import { type Quote, QuoteOfferingType } from '@pkg/schema/equipment';
 import { useMutation } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import type React from 'react';
-import { useEffect, useMemo } from 'react';
+import { useMemo } from 'react';
 import { toast } from 'sonner';
 import { CreateEntityDialog } from '@/components/form/index.js';
 import { getFieldErrors } from '@/components/form/utils/field-errors.js';
@@ -46,6 +46,7 @@ export const QuoteCreateDialog: React.FC<QuoteCreateDialogProps> = ({ onOpenChan
   const salespeopleOptions = useSalesPersonOptions();
   const showMutationError = useApiMutationErrorToast();
 
+  // The dialog resets to these on open, so it waits for the roster rather than prefilling afterwards.
   const defaultValues = useMemo((): QuoteCreateFormValues => {
     return {
       ...QUOTE_CREATE_DEFAULT_VALUES,
@@ -75,7 +76,7 @@ export const QuoteCreateDialog: React.FC<QuoteCreateDialogProps> = ({ onOpenChan
         await navigate({ params: { id: quote.id }, to: '/equipment/quotes/$id/edit' });
       }}
       onOpenChange={onOpenChange}
-      open={open}
+      open={open && !salespeopleOptions.isPending}
       submitLabel="Save"
       title={
         <span className="flex items-center gap-2">
@@ -87,16 +88,6 @@ export const QuoteCreateDialog: React.FC<QuoteCreateDialogProps> = ({ onOpenChan
     >
       {(form) => (
         <div className="grid gap-4">
-          <form.Field name="salesPersonId">
-            {(field) => (
-              <QuoteSalespersonPrefill
-                currentId={field.state.value}
-                defaultId={defaultValues.salesPersonId}
-                isTouched={field.state.meta.isTouched}
-                onPrefill={field.handleChange}
-              />
-            )}
-          </form.Field>
           <form.Field name="customerId">
             {(field) => {
               const fieldErrors = getFieldErrors(field.state.meta.errors);
@@ -148,9 +139,7 @@ export const QuoteCreateDialog: React.FC<QuoteCreateDialogProps> = ({ onOpenChan
           <form.AppField
             listeners={{
               onChange: ({ value }) => {
-                if (value === 'parts-sale' && !form.getFieldValue('workTitle').trim()) {
-                  form.setFieldValue('workTitle', PARTS_SALE_DEFAULT_WORK_TITLE);
-                }
+                form.setFieldValue('workTitle', partsSaleWorkTitle(value, form.getFieldValue('workTitle')));
               },
             }}
             name="offeringType"
@@ -296,21 +285,3 @@ export const QuoteCreateDialog: React.FC<QuoteCreateDialogProps> = ({ onOpenChan
     </CreateEntityDialog>
   );
 };
-
-function QuoteSalespersonPrefill({
-  currentId,
-  defaultId,
-  isTouched,
-  onPrefill,
-}: {
-  currentId: string;
-  defaultId: string;
-  isTouched: boolean;
-  onPrefill: (id: string) => void;
-}) {
-  useEffect(() => {
-    if (!isTouched && !currentId && defaultId) onPrefill(defaultId);
-  }, [currentId, defaultId, isTouched, onPrefill]);
-
-  return null;
-}

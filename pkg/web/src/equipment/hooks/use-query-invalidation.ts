@@ -43,17 +43,19 @@ export function useQueryInvalidation() {
     () => queryClient.invalidateQueries({ queryKey: trpc.inventory.pathKey() }),
     [queryClient, trpc],
   );
-  // Renaming a Part Category changes the name every Part reads, and the order Product Assemblies list Parts in.
+  // Parts read their Category's name, so a Category write moves both roots. A rename (or a merge
+  // moving Parts under the survivor's name) also changes the name Products show for a Part and the
+  // order Product Assemblies list Parts in, so Products joins the affected roots then.
   const invalidatePartCategories = useCallback(
-    () =>
+    ({ nameChanged = false }: { nameChanged?: boolean } = {}) =>
       Promise.all([
         queryClient.invalidateQueries({ queryKey: trpc.partCategories.pathKey() }),
         queryClient.invalidateQueries({ queryKey: trpc.parts.pathKey() }),
-        queryClient.invalidateQueries({ queryKey: trpc.products.pathKey() }),
+        nameChanged ? queryClient.invalidateQueries({ queryKey: trpc.products.pathKey() }) : undefined,
       ]),
     [queryClient, trpc],
   );
-  // A Part write moves Part Category counts too.
+  // A Part write moves the Part Category counts the admin list reads.
   const invalidateParts = useCallback(
     () =>
       Promise.all([
@@ -78,7 +80,8 @@ export function useQueryInvalidation() {
     () => queryClient.invalidateQueries({ queryKey: trpc.productUnits.pathKey() }),
     [queryClient, trpc],
   );
-  // A Parts Sale's code, Customer, title and status also ride the inventory reads stores pick it from.
+  // The inventory root reads Quote facts (the Job picker's work title and kind, the Parts Sale picker
+  // and stock panel), so a Quote write affects the whole root.
   const invalidateQuotes = useCallback(
     () =>
       Promise.all([

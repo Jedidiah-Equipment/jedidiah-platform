@@ -3,7 +3,9 @@ import { parts, stockMovements } from '@pkg/db/equipment';
 import { getNextCursor } from '@pkg/schema';
 import type { PartSearchInput, PartSearchResult } from '@pkg/schema/equipment';
 import { PartSearchResult as PartSearchResultSchema } from '@pkg/schema/equipment';
-import { and, asc, eq, ne, sql } from 'drizzle-orm';
+import { asc, sql } from 'drizzle-orm';
+
+import { onHandDeltaSum, stockOnHandJoin } from './ledger.js';
 
 /**
  * The stores tablet's type-ahead: find a Part by code or name when its label will not scan (spec §10).
@@ -24,14 +26,13 @@ export async function searchPartStock({ db, input }: { db: Db; input: PartSearch
       partCode: parts.code,
       partId: parts.id,
       partName: parts.name,
-      // A revaluation moves cost, never quantity, so it must not reach this sum. Parts with no
-      // movements at all still belong in the results — a shelf being empty is an answer, and a
-      // storeman looking for one of those has to be able to find it.
-      quantity: sql<number>`coalesce(sum(${stockMovements.delta}), 0)::double precision`,
+      // Parts with no movements at all still belong in the results — a shelf being empty is an
+      // answer, and a storeman looking for one of those has to be able to find it.
+      quantity: onHandDeltaSum,
       unitOfMeasure: parts.unitOfMeasure,
     })
     .from(parts)
-    .leftJoin(stockMovements, and(eq(stockMovements.partId, parts.id), ne(stockMovements.movementType, 'revaluation')))
+    .leftJoin(stockMovements, stockOnHandJoin())
     .where(where)
     .groupBy(parts.id, parts.code, parts.name, parts.unitOfMeasure)
     .orderBy(asc(parts.code), asc(parts.id))

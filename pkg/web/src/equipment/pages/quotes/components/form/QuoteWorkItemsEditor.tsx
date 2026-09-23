@@ -27,9 +27,8 @@ type QuoteWorkItemFormInput = QuoteFormValues['workItems'][number];
 
 type QuoteWorkItemsEditorProps = {
   currencyCode: string;
-  /** A row written by code rather than typed; nothing else would tell autosave it happened. */
-  onPartsChanged: () => void;
-  onRemoveWorkItem: () => void;
+  /** A row added or removed by code rather than typed; nothing else would tell autosave it happened. */
+  onCommit: () => void;
   readOnly: boolean;
   workItemsField: ArrayFieldApi<QuoteWorkItemFormInput>;
 };
@@ -62,8 +61,7 @@ function useQuoteForm() {
 
 export const QuoteWorkItemsEditor: React.FC<QuoteWorkItemsEditorProps> = ({
   currencyCode,
-  onPartsChanged,
-  onRemoveWorkItem,
+  onCommit,
   readOnly,
   workItemsField,
 }) => {
@@ -182,7 +180,7 @@ export const QuoteWorkItemsEditor: React.FC<QuoteWorkItemsEditorProps> = ({
                         disabled={readOnly}
                         onClick={() => {
                           workItemsField.removeValue(workItemIndex);
-                          onRemoveWorkItem();
+                          onCommit();
                         }}
                         size="icon-sm"
                         type="button"
@@ -263,7 +261,7 @@ export const QuoteWorkItemsEditor: React.FC<QuoteWorkItemsEditorProps> = ({
                             disabled={readOnly}
                             onClick={() => {
                               partsField.removeValue(partIndex);
-                              onRemoveWorkItem();
+                              onCommit();
                             }}
                             size="icon-sm"
                             type="button"
@@ -286,7 +284,7 @@ export const QuoteWorkItemsEditor: React.FC<QuoteWorkItemsEditorProps> = ({
         onAdd={(row) => {
           if (inventoryPartWorkItemIndex === null) return;
           quoteForm.pushFieldValue(`workItems[${inventoryPartWorkItemIndex}].parts`, row);
-          onPartsChanged();
+          onCommit();
         }}
         onOpenChange={(open) => {
           if (!open) setInventoryPartWorkItemIndex(null);

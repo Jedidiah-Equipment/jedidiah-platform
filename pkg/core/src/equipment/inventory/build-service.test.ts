@@ -6,7 +6,8 @@ import { actorUserId, opening, test } from '../test/build-fixtures.js';
 import { BuildPeriodicPartError, BuildSelfComponentError } from './build-errors.js';
 import { postBuild } from './build-service.js';
 import { FabricatedPartCostError } from './stock-movement-errors.js';
-import { getStockMovementHistory, listStockOnHand, postAdjustment, postRevaluation } from './stock-movement-service.js';
+import { getStockMovementHistory } from './stock-movement-history-read.js';
+import { listStockOnHand, postAdjustment, postRevaluation } from './stock-movement-service.js';
 
 describe('postBuild', () => {
   test('is value preserving: what the consume rows take out, the produce row puts back', async ({ context }) => {

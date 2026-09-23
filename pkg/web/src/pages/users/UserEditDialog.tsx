@@ -21,11 +21,11 @@ import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.j
 import { useUserAdminInvalidation } from '@/hooks/use-user-admin-invalidation.js';
 import { authClient } from '@/lib/auth-client.js';
 import { useTRPC } from '@/lib/trpc.js';
+import { buildProfileUpdateData } from './components/types.js';
 import { UserEditForm, type UserEditFormValues } from './components/UserEditForm.js';
 import type { UserPasswordFormValues } from './components/UserPasswordForm.js';
 import { AuthAdminError, unwrapAuthResult } from './user-admin-client.js';
 import type { UserAdminExtension } from './user-admin-extension.js';
-import { buildProfileUpdateData } from './user-profile-update.js';
 
 type UserEditDialogProps = {
   business: Business;

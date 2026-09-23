@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 import { DateIso } from '../../common/date.js';
-import { requiredTrimmedText } from '../../common/text.js';
+import { collapseWhitespaceRuns, nameLookupKey, requiredTrimmedText } from '../../common/text.js';
 import { UUID } from '../../common/uuid.js';
 
 /**
@@ -9,9 +9,10 @@ import { UUID } from '../../common/uuid.js';
  * and the name a CSV cell is matched by (casing and whitespace folded) can never name two categories.
  */
 export type PartCategoryName = z.infer<typeof PartCategoryName>;
-export const PartCategoryName = requiredTrimmedText('Part Category name is required').overwrite((name) =>
-  name.replaceAll(/[ \t\n\r\f\v]+/g, ' '),
-);
+export const PartCategoryName = requiredTrimmedText('Part Category name is required').overwrite(collapseWhitespaceRuns);
+
+/** The Part Category spelling of {@link nameLookupKey}: how two names are judged to be one category. */
+export const partCategoryLookupKey = nameLookupKey;
 
 /** Markup on cost: a sell price is the cost times `1 + markup / 100`, so it may exceed 100. */
 export type PartCategoryMarkupPercent = z.infer<typeof PartCategoryMarkupPercent>;

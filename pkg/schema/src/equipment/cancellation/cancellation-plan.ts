@@ -24,18 +24,19 @@ export const CancellationLinkedUnit = z.object({
 /** What cancelling this Quote reaches: the live Job it would take with it, and that Job's machine. */
 export type QuoteCancellationPlan = z.infer<typeof QuoteCancellationPlan>;
 export const QuoteCancellationPlan = z.object({
-  /** Stock still out against a Parts Sale. Named so the person cancelling knows it is there; never a block. */
-  drawnStock: z
-    .array(
-      z.object({
-        lengthMm: StockMovementLengthMm.nullable(),
-        outstandingQuantity: z.number().finite(),
-        partCode: z.string(),
-        partName: z.string(),
-        unitOfMeasure: PartUnitOfMeasure,
-      }),
-    )
-    .default([]),
+  /**
+   * Stock still out against a Parts Sale, per Part and length bucket, net of returns. Named so the
+   * person cancelling knows it is there; never a block.
+   */
+  drawnStock: z.array(
+    z.object({
+      drawnQuantity: z.number().finite(),
+      lengthMm: StockMovementLengthMm.nullable(),
+      partCode: z.string(),
+      partName: z.string(),
+      unitOfMeasure: PartUnitOfMeasure,
+    }),
+  ),
   job: z
     .object({
       code: JobCode,

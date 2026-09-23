@@ -21,9 +21,8 @@ import type { DataTableColumnDef } from '@/components/data-table/features.js';
 import { EntityThumbnail } from '@/components/thumbnail/EntityThumbnail.js';
 import { OfferingThumbnail } from '@/equipment/components/thumbnail/OfferingThumbnail.js';
 import { cn } from '@/lib/utils.js';
-
-import { QuoteKindBadge } from './QuoteKindBadge.js';
 import { QuoteLinkedJob } from './QuoteLinkedJob.js';
+import { QuoteOfferingTypeBadge } from './QuoteOfferingTypeBadge.js';
 import { QuoteProductSourceBadge } from './QuoteProductSourceBadge.js';
 import { QuoteStatusBadge } from './QuoteStatusBadge.js';
 
@@ -47,7 +46,7 @@ export const quoteStatusFilterOptions = QuoteStatus.options.map((status) => ({
   value: status,
 }));
 
-export const quoteKindFilterOptions = QuoteOfferingType.options.map((offeringType) => ({
+export const quoteOfferingTypeFilterOptions = QuoteOfferingType.options.map((offeringType) => ({
   label: quoteOfferingTypeLabels[offeringType],
   value: offeringType,
 }));
@@ -115,13 +114,13 @@ export function createQuoteTableColumns({
     },
     {
       accessorFn: (row) => quoteOfferingType(row.quote),
-      cell: ({ row }) => <QuoteKindBadge isPartsSale={row.original.quote.isPartsSale} kind={row.original.quote.kind} />,
+      cell: ({ row }) => <QuoteOfferingTypeBadge quote={row.original.quote} />,
       enableColumnFilter: true,
       enableSorting: false,
       header: 'Type',
-      id: 'kind',
+      id: 'offeringType',
       meta: {
-        filterOptions: quoteKindFilterOptions,
+        filterOptions: quoteOfferingTypeFilterOptions,
         filterVariant: 'select',
         headerClassName: 'min-w-28',
       },

@@ -432,6 +432,7 @@ describe('QuoteDetail', () => {
       documentNotes: null,
       id: '550e8400-e29b-41d4-a716-446655440010',
       job: null,
+      isPartsSale: false,
       kind: 'custom',
       hourlyRate: 850,
       notes: null,

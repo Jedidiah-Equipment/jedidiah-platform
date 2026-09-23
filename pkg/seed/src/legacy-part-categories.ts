@@ -1,5 +1,7 @@
 import { createHash } from 'node:crypto';
 
+import { PartCategoryName, partCategoryLookupKey } from '@pkg/schema/equipment';
+
 import type { SnapshotRow } from './snapshot-table-definitions.js';
 
 /**
@@ -7,7 +9,7 @@ import type { SnapshotRow } from './snapshot-table-definitions.js';
  * no `part_category.json`. Seeding it derives one Part Category per name ignoring casing and
  * whitespace runs, the most-used spelling winning — the same collapse migration 0158 performs — and gives
  * each a deterministic id so the Parts and the categories agree without seeing each other. Delete once
- * every snapshot source has been re-read after that migration.
+ * every snapshot source has been re-read after that migration (#1545).
  */
 const PART_CATEGORY_ID_NAMESPACE = Buffer.from('6f1c2d4e9a3b4c5d8e7f0a1b2c3d4e5f', 'hex');
 
@@ -16,12 +18,12 @@ export function legacyPartCategoryName(row: SnapshotRow): string | undefined {
   if (typeof row.category !== 'string') return undefined;
   if (row.code === 'SEMP-0001' && row.category === '6000') return 'Pipe';
 
-  return row.category.trim().replaceAll(/[ \t\n\r\f\v]+/g, ' ') || undefined;
+  return PartCategoryName.safeParse(row.category).data;
 }
 
-/** A UUID v5 of the lowercased name, so every spelling of one Part Category lands on the same id. */
+/** A UUID v5 of the name's lookup key, so every spelling of one Part Category lands on the same id. */
 export function legacyPartCategoryId(name: string): string {
-  const hash = createHash('sha1').update(PART_CATEGORY_ID_NAMESPACE).update(name.trim().toLowerCase()).digest();
+  const hash = createHash('sha1').update(PART_CATEGORY_ID_NAMESPACE).update(partCategoryLookupKey(name)).digest();
   hash[6] = ((hash[6] ?? 0) & 0x0f) | 0x50;
   hash[8] = ((hash[8] ?? 0) & 0x3f) | 0x80;
   const hex = hash.subarray(0, 16).toString('hex');

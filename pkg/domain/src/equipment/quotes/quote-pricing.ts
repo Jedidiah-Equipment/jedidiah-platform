@@ -1,6 +1,7 @@
 import type { UUID } from '@pkg/schema';
 import type { Assembly, QuoteDeliveryTerms } from '@pkg/schema/equipment';
 
+import { roundToCents } from '../../formatting/money.js';
 import { resolveEffectiveBom } from './effective-bom.js';
 
 export type QuotePricingResult =
@@ -46,11 +47,11 @@ function computeQuoteDiscountAmount({
   const workItemTotal = computeQuoteWorkItemsTotal(workItems);
   const discountableSubtotal = Math.max(0, quotedBasePrice + selectedAssemblyTotal + workItemTotal);
 
-  return roundCurrency(discountableSubtotal * (discountPercent / 100));
+  return roundToCents(discountableSubtotal * (discountPercent / 100));
 }
 
 export function computeWorkItemLabourCost(input: { hourlyRate: number; hours: number }): number {
-  return roundCurrency(input.hourlyRate * input.hours);
+  return roundToCents(input.hourlyRate * input.hours);
 }
 
 export function computeWorkItemPartAmount(part: WorkItemPartPricingInput): number {
@@ -85,7 +86,7 @@ export function computeAdditionalDeliveryPrice({
 }
 
 export function computeQuoteVatAmount(subtotal: number, vatPercent: number = VAT_PERCENT): number {
-  return roundCurrency((subtotal * vatPercent) / 100);
+  return roundToCents((subtotal * vatPercent) / 100);
 }
 
 function computeQuoteTotal({
@@ -217,8 +218,4 @@ export function priceQuoteWithCatalog<TSelection extends { productAssemblyId: UU
 
 function deny(reason: string): QuotePricingResult {
   return { allowed: false, reason };
-}
-
-function roundCurrency(value: number): number {
-  return Math.round(value * 100) / 100;
 }

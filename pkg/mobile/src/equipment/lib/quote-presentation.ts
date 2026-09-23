@@ -1,7 +1,6 @@
 import {
   computeAdditionalDeliveryPrice,
-  quoteOfferingType,
-  quoteOfferingTypeLabels,
+  quoteOfferingTypeLabel,
   quoteStatusLabels,
   toQuoteWorkItemFormState,
 } from '@pkg/domain/equipment';
@@ -80,7 +79,7 @@ type QuoteMetaFacts =
     };
 
 export function quoteMetaLine(quote: QuoteMetaFacts): string {
-  if (quote.kind === 'custom') return quoteOfferingTypeLabels[quoteOfferingType(quote)];
+  if (quote.kind === 'custom') return quoteOfferingTypeLabel(quote);
 
   const liveOptionCount = quote.selectedAssemblies.filter((selection) => selection.productAssemblyId !== null).length;
   const optionSuffix = liveOptionCount === 0 ? '' : ` · ${liveOptionCount} option${liveOptionCount === 1 ? '' : 's'}`;

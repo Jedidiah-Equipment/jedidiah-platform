@@ -1,9 +1,11 @@
 import * as quotesCore from '@pkg/core/equipment';
+import { quoteOfferingType } from '@pkg/domain/equipment';
 import { type UserAccessSummary, UUID } from '@pkg/schema';
 import {
   QuoteCodeInput,
   type QuoteListInput,
   type QuoteListResult,
+  QuoteOfferingType,
   QuoteProductSummaryFacts,
   QuoteStatus,
   QuoteSummary,
@@ -30,7 +32,6 @@ const FindProductQuote = QuoteSummary.options[0]
     customerCompanyName: true,
     customerId: true,
     id: true,
-    isPartsSale: true,
     job: true,
     kind: true,
     plannedDeliveryDate: true,
@@ -40,7 +41,7 @@ const FindProductQuote = QuoteSummary.options[0]
     status: true,
     workTitle: true,
   })
-  .extend({ links: QuoteLinks, product: FindQuoteProduct });
+  .extend({ links: QuoteLinks, offeringType: QuoteOfferingType, product: FindQuoteProduct });
 
 const FindCustomQuote = QuoteSummary.options[1]
   .pick({
@@ -49,7 +50,6 @@ const FindCustomQuote = QuoteSummary.options[1]
     customerCompanyName: true,
     customerId: true,
     id: true,
-    isPartsSale: true,
     job: true,
     kind: true,
     plannedDeliveryDate: true,
@@ -59,7 +59,7 @@ const FindCustomQuote = QuoteSummary.options[1]
     status: true,
     workTitle: true,
   })
-  .extend({ links: QuoteLinks, product: z.null() });
+  .extend({ links: QuoteLinks, offeringType: QuoteOfferingType, product: z.null() });
 
 export type FindQuotesResponse = z.infer<typeof FindQuotesResponse>;
 export const FindQuotesResponse = z.array(z.discriminatedUnion('kind', [FindProductQuote, FindCustomQuote]));
@@ -91,10 +91,10 @@ export function toFindQuotesResponse(result: QuoteListResult, access: UserAccess
       customerCompanyName: quote.customerCompanyName,
       customerId: quote.customerId,
       id: quote.id,
-      isPartsSale: quote.isPartsSale,
       job: quote.job,
       kind: quote.kind,
       links: createQuoteLinks(quote, access),
+      offeringType: quoteOfferingType(quote),
       plannedDeliveryDate: quote.plannedDeliveryDate,
       product: quote.product,
       productId: quote.productId,
@@ -111,7 +111,7 @@ export const findQuotesDefinition = {
   description: [
     'Find Quotes using exactly one selector: an exact Quote Code, Customer ID, or Product ID.',
     'To find Quotes by customer or product name, call findCustomers or findProducts first, then pass the selected id here.',
-    'Returns lightweight commercial and identity matches with app and relationship links.',
+    'Returns lightweight commercial and identity matches with app and relationship links; offeringType tells a Product, Service Work (custom), or Parts Sale Quote apart.',
     'Call getQuote with the selected id when full Quote details are needed.',
   ].join('\n'),
   inputSchema: FindQuotesInput,

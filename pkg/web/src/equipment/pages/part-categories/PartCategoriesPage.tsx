@@ -8,7 +8,6 @@ import { ClientDataTable } from '@/components/data-table/ClientDataTable.js';
 import type { DataTableColumnDef } from '@/components/data-table/features.js';
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
 import { Button } from '@/components/ui/button.js';
-import { useCan } from '@/hooks/use-access.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { MergePartCategoriesDialog } from './MergePartCategoriesDialog.js';
 import { PartCategoryCreateDialog } from './PartCategoryCreateDialog.js';
@@ -17,7 +16,6 @@ export function PartCategoriesPage() {
   const trpc = useTRPC();
   const navigate = useNavigate();
   const [createOpen, setCreateOpen] = useState(false);
-  const canMerge = useCan('equipment_part_category:merge').can;
   const query = useQuery(trpc.partCategories.list.queryOptions());
   const columns = useMemo<DataTableColumnDef<PartCategory>[]>(
     () => [
@@ -43,7 +41,7 @@ export function PartCategoriesPage() {
         size="lg"
         actions={
           <>
-            {canMerge ? <MergePartCategoriesDialog triggerLabel="Merge categories…" /> : null}
+            <MergePartCategoriesDialog triggerLabel="Merge categories…" />
             <Button onClick={() => setCreateOpen(true)}>New Part Category</Button>
           </>
         }

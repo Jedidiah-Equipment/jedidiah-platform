@@ -50,7 +50,15 @@ import {
 
 import { createOrgWorkingCalendar, listWorkingCalendarOffDays } from '../jobs/working-calendar-service.js';
 import { loadEstimatedStockOnHand } from './estimated-stock-on-hand-read.js';
-import { bucketKey, insertMovement, loadBucketQuantities, loadStockPart, toLedgerQuantity } from './ledger.js';
+import {
+  bucketKey,
+  insertMovement,
+  loadBucketQuantities,
+  loadStockPart,
+  onHandDeltaSum,
+  stockOnHandJoin,
+  toLedgerQuantity,
+} from './ledger.js';
 import { resolveMovementActor } from './movement-actor.js';
 import { sumBy, sumNullableBy } from './row-grouping.js';
 import {
@@ -564,12 +572,11 @@ export async function listStocktakeUncounted({
       partCode: parts.code,
       partId: parts.id,
       partName: parts.name,
-      // A revaluation moves cost and never quantity, so it must not reach a stock-on-hand sum.
-      quantity: sql<number>`coalesce(sum(${stockMovements.delta}), 0)::double precision`,
+      quantity: onHandDeltaSum,
       unitOfMeasure: parts.unitOfMeasure,
     })
     .from(parts)
-    .leftJoin(stockMovements, and(eq(stockMovements.partId, parts.id), ne(stockMovements.movementType, 'revaluation')))
+    .leftJoin(stockMovements, stockOnHandJoin())
     .where(where)
     .groupBy(parts.id, parts.code, parts.name, parts.unitOfMeasure)
     .orderBy(asc(parts.code), asc(parts.id))

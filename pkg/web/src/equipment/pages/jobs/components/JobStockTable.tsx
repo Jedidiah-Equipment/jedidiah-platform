@@ -3,7 +3,8 @@ import { useMemo } from 'react';
 import { DataTable } from '@/components/data-table/DataTable.js';
 import { type DataTableColumnDef, useDataTable } from '@/components/data-table/features.js';
 import { Button } from '@/components/ui/button.js';
-import { formatLengthBucket, formatPartQuantity } from '@/equipment/utils/part-quantity-format.js';
+import { drawnColumn, partColumn } from '@/equipment/pages/inventory/components/drawn-stock-columns.js';
+import { formatPartQuantity } from '@/equipment/utils/part-quantity-format.js';
 
 /** `onReturn` turns each drawn row into a leftover the close-out screen can hand straight back. */
 export function JobStockTable({
@@ -36,17 +37,7 @@ export function JobStockTable({
 
 function createJobStockColumns(onReturn: ((partId: string) => void) | undefined): DataTableColumnDef<JobStockRow>[] {
   return [
-    {
-      accessorFn: (item) => `${item.partName} ${item.partCode}`,
-      cell: ({ row }) => (
-        <>
-          <span className="block font-medium">{row.original.partName}</span>
-          <span className="block text-muted-foreground text-xs">{row.original.partCode}</span>
-        </>
-      ),
-      header: 'Part',
-      id: 'part',
-    },
+    partColumn<JobStockRow>(),
     {
       accessorKey: 'cfoQuantity',
       cell: ({ row }) => formatPartQuantity(row.original.cfoQuantity, row.original.unitOfMeasure),
@@ -55,23 +46,7 @@ function createJobStockColumns(onReturn: ((partId: string) => void) | undefined)
         cellClassName: 'tabular-nums',
       },
     },
-    {
-      accessorKey: 'drawnQuantity',
-      cell: ({ row }) => (
-        <>
-          <span className="block">{formatPartQuantity(row.original.drawnQuantity, row.original.unitOfMeasure)}</span>
-          {row.original.lengthBuckets.map((bucket) => (
-            <span key={bucket.lengthMm} className="block text-muted-foreground text-xs">
-              {formatLengthBucket(bucket.lengthMm, bucket.drawnQuantity)}
-            </span>
-          ))}
-        </>
-      ),
-      header: 'Drawn',
-      meta: {
-        cellClassName: 'tabular-nums',
-      },
-    },
+    drawnColumn<JobStockRow>(),
     {
       accessorKey: 'committedQuantity',
       cell: ({ row }) => formatPartQuantity(row.original.committedQuantity, row.original.unitOfMeasure),

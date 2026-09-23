@@ -155,6 +155,7 @@ describe('toQuoteFormValues', () => {
   it('maps custom quote commercial facts and nested work items into form state', () => {
     const values = toQuoteFormValues(
       buildQuoteDetail({
+        isPartsSale: false,
         kind: 'custom',
         product: null,
         productId: null,

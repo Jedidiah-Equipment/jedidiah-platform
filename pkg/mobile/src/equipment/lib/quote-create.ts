@@ -1,4 +1,4 @@
-import { PARTS_SALE_DEFAULT_WORK_TITLE } from '@pkg/domain/equipment';
+import { partsSaleWorkTitle, quoteOfferingFieldError, toQuoteOfferingInput } from '@pkg/domain/equipment';
 import { AuthId, UUID } from '@pkg/schema';
 import {
   Customer,
@@ -7,7 +7,6 @@ import {
   type QuoteCreateInput as QuoteCreateInputValue,
   QuoteOfferingType,
   QuoteStatus,
-  QuoteWorkTitle,
 } from '@pkg/schema/equipment';
 import { z } from 'zod';
 
@@ -45,15 +44,9 @@ export const QuoteCreateFormValues = QuoteCreateFormValuesShape.superRefine((val
     context.addIssue({ code: 'custom', message: 'Select or create a customer', path: ['customer'] });
   }
 
-  if (value.offeringType === 'product') {
-    if (!UUID.safeParse(value.productId).success) {
-      context.addIssue({ code: 'custom', message: 'Select a product', path: ['productId'] });
-    }
-  } else {
-    const workTitleResult = QuoteWorkTitle.safeParse(value.workTitle);
-    if (!workTitleResult.success) {
-      context.addIssue({ code: 'custom', message: workTitleResult.error.issues[0]?.message, path: ['workTitle'] });
-    }
+  const offeringError = quoteOfferingFieldError(value.offeringType, value);
+  if (offeringError) {
+    context.addIssue({ code: 'custom', message: offeringError.message, path: [offeringError.path] });
   }
 
   if (!AuthId.safeParse(value.salesPersonId).success) {
@@ -72,16 +65,19 @@ export const QUOTE_CREATE_DEFAULT_VALUES: QuoteCreateFormValues = {
 };
 
 /** Clears the other type's fields; a Parts Sale with no Work Title yet starts from an editable default. */
-export function clearQuoteKindFields(
+export function clearQuoteOfferingTypeFields(
   values: QuoteCreateFormValues,
   offeringType: QuoteOfferingType,
 ): QuoteCreateFormValues {
   if (offeringType === 'product') return { ...values, offeringType, workTitle: '' };
 
-  const workTitle =
-    offeringType === 'parts-sale' && !values.workTitle.trim() ? PARTS_SALE_DEFAULT_WORK_TITLE : values.workTitle;
-
-  return { ...values, offeringType, productId: '', rangeId: '', workTitle };
+  return {
+    ...values,
+    offeringType,
+    productId: '',
+    rangeId: '',
+    workTitle: partsSaleWorkTitle(offeringType, values.workTitle),
+  };
 }
 
 /**
@@ -95,10 +91,7 @@ export function toQuoteCreateInput(value: QuoteCreateFormValues): QuoteCreateInp
       value.customer?.type === 'existing'
         ? { type: 'existing', customerId: value.customer.customer.id }
         : { type: 'inline', companyName: value.customer?.companyName ?? '' },
-    offering:
-      value.offeringType === 'product'
-        ? { kind: 'product', productId: value.productId }
-        : { kind: 'custom', isPartsSale: value.offeringType === 'parts-sale', workTitle: value.workTitle },
+    offering: toQuoteOfferingInput(value.offeringType, value),
     salesPersonId: value.salesPersonId,
     status: value.status,
   });

@@ -1,4 +1,4 @@
-import { deriveMovementWarnings } from '@pkg/domain/equipment';
+import { deriveMovementWarnings, drawnBucketQuantity, unplannedCheckoutFacts } from '@pkg/domain/equipment';
 import type {
   InventoryQuoteOption,
   JobPickerOption,
@@ -17,11 +17,7 @@ import {
   PostReturnToStoreInput as PostReturnToStoreInputSchema,
 } from '@pkg/schema/equipment';
 
-import {
-  bucketQuantityOnHand,
-  drawnBucketQuantity,
-  previewJobMovementWarnings,
-} from '@/equipment/lib/movement-preview';
+import { bucketQuantityOnHand, previewJobMovementWarnings } from '@/equipment/lib/movement-preview';
 
 /**
  * Who the tablet is posting to, or returning from, holding whatever that target has chosen so far.
@@ -151,21 +147,13 @@ export function previewStoresMovementWarnings({
   }
 }
 
-/** No Job, so nothing planned the draw: a CFO of zero is what "no CFO" means to the judgement. */
+/** No Job, so nothing planned the draw: only the rack can warn. */
 function previewRackOnlyCheckout(
   row: StockOnHandRow,
   lengthMm: number | null,
   quantity: number,
 ): StockMovementWarningCode[] {
-  return deriveMovementWarnings({
-    facts: {
-      bucketQuantityOnHand: bucketQuantityOnHand(row, lengthMm),
-      cfoQuantity: 0,
-      drawnQuantity: 0,
-      kind: 'checkout',
-    },
-    quantity,
-  });
+  return deriveMovementWarnings({ facts: unplannedCheckoutFacts(bucketQuantityOnHand(row, lengthMm)), quantity });
 }
 
 type StoresMovementFacts = {

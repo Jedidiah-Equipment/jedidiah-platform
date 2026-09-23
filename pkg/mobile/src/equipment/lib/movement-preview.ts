@@ -1,4 +1,4 @@
-import { deriveMovementWarnings, type JobMovementFacts } from '@pkg/domain/equipment';
+import { deriveMovementWarnings, drawnBucketQuantity, type JobMovementFacts } from '@pkg/domain/equipment';
 import type {
   JobStockMovementType,
   JobStockResult,
@@ -19,18 +19,6 @@ import type {
 /** Stock on hand in the bucket a movement names; a Part with no such bucket holds nothing there. */
 export function bucketQuantityOnHand(row: StockOnHandRow, lengthMm: number | null): number {
   return row.buckets.find((bucket) => bucket.lengthMm === lengthMm)?.quantity ?? 0;
-}
-
-/** What a Job or Parts Sale still holds in one bucket; a movement with no length names the Part's whole draw. */
-export function drawnBucketQuantity(
-  partStock:
-    | { drawnQuantity: number; lengthBuckets: readonly { drawnQuantity: number; lengthMm: number }[] }
-    | undefined,
-  lengthMm: number | null,
-): number {
-  if (lengthMm === null) return partStock?.drawnQuantity ?? 0;
-
-  return partStock?.lengthBuckets.find((bucket) => bucket.lengthMm === lengthMm)?.drawnQuantity ?? 0;
 }
 
 export function previewJobMovementWarnings({

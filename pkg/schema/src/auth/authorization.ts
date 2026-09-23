@@ -66,7 +66,6 @@ export const APP_PERMISSIONS = [
   'equipment_part:read',
   'equipment_part:update',
   'equipment_part_category:update',
-  'equipment_part_category:merge',
   'equipment_product:read',
   'equipment_product:create',
   'equipment_product:update',

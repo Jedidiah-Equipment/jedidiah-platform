@@ -1047,7 +1047,7 @@ describe('custom quotes', () => {
       listQuotes({
         db: context.db,
         input: {
-          filters: { kind: 'custom', statuses: [] },
+          filters: { offeringType: 'custom', statuses: [] },
           cursor: 0,
           limit: 10,
           search: 'Axle',

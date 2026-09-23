@@ -1,8 +1,10 @@
 export { mergeSelectedOption, type SelectOption, stringsToSelectOptions, toSelectOptions } from './helpers.js';
 export { useAssemblyNameOptions } from './use-assembly-name-options.js';
+export { useCursorOptions } from './use-cursor-options.js';
 export { useCustomerForQuoteOptions } from './use-customer-for-quote-options.js';
 export { type CustomerOption, useCustomerOptions } from './use-customer-options.js';
 export { useInventoryJobPicker } from './use-inventory-job-picker.js';
+export { type InventoryQuotePickerController, useInventoryQuotePicker } from './use-inventory-quote-picker.js';
 export { usePartCategoryOptions } from './use-part-category-options.js';
 export { usePartOptions } from './use-part-options.js';
 export { usePartStorageLocationOptions } from './use-part-storage-location-options.js';

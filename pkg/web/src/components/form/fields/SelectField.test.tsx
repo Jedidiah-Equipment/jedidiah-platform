@@ -17,7 +17,7 @@ afterEach(() => {
 });
 
 describe('SelectField', () => {
-  it('displays a former selection while offering only current options', async () => {
+  it('displays a disabled selection while offering only the enabled options', async () => {
     let readSalesperson = () => '';
     function Form() {
       const form = useAppForm({ defaultValues: { salesPersonId: 'former-id' } });
@@ -27,8 +27,10 @@ describe('SelectField', () => {
           {(field) => (
             <field.SelectField
               label="Salesperson"
-              options={[{ label: 'Current Seller', value: 'current-id' }]}
-              unlistedSelectedLabel="Former Seller"
+              options={[
+                { label: 'Current Seller', value: 'current-id' },
+                { disabled: true, label: 'Former Seller', value: 'former-id' },
+              ]}
             />
           )}
         </form.AppField>
@@ -44,10 +46,10 @@ describe('SelectField', () => {
     expect(trigger?.textContent).toContain('Former Seller');
     await act(async () => trigger?.click());
 
-    await vi.waitFor(() => expect(document.querySelectorAll('[data-slot="select-item"]')).toHaveLength(1));
-    const option = document.querySelector<HTMLElement>('[data-slot="select-item"]');
-    expect(option?.textContent).toContain('Current Seller');
-    await act(async () => option?.click());
+    await vi.waitFor(() => expect(document.querySelectorAll('[data-slot="select-item"]')).toHaveLength(2));
+    const [current, former] = document.querySelectorAll<HTMLElement>('[data-slot="select-item"]');
+    expect(former?.hasAttribute('data-disabled')).toBe(true);
+    await act(async () => current?.click());
     expect(readSalesperson()).toBe('current-id');
     expect(trigger?.textContent).toContain('Current Seller');
   });

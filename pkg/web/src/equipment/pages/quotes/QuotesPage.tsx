@@ -51,7 +51,8 @@ function createQuoteTableStore(persistName: string) {
       ],
     },
     persistName,
-    persistVersion: 4,
+    // 5: the Type column id moved from 'kind' to 'offeringType'.
+    persistVersion: 5,
   });
 }
 

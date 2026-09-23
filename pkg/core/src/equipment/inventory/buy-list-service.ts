@@ -5,7 +5,7 @@ import { compareBuyListRows, compareNullableDateOnly, deriveBuyListSignal } from
 import type { DateOnlyIso } from '@pkg/schema';
 import type { BuyListResult } from '@pkg/schema/equipment';
 import { BuyListResult as BuyListResultSchema } from '@pkg/schema/equipment';
-import { and, asc, eq, inArray, ne, sql } from 'drizzle-orm';
+import { asc, eq, inArray, sql } from 'drizzle-orm';
 
 import { findBoardBayRowsForJobs, toProjectedBoard } from '../jobs/board-read.js';
 import { jobDisplayNameOf, jobDisplaySelection } from '../jobs/job-display.js';
@@ -13,6 +13,7 @@ import { listWorkingCalendarOffDays } from '../jobs/working-calendar-service.js'
 import { loadOpenOrderLines } from '../purchase-orders/purchase-order-service.js';
 import { loadOpenCommitments, type OpenCommitmentRow, sumCommitmentsByPart } from './commitment-read.js';
 import { loadEstimatedStockOnHand } from './estimated-stock-on-hand-read.js';
+import { onHandDeltaSum, stockOnHandJoin } from './ledger.js';
 
 /**
  * Procurement's radar (spec §3, §12): every Part the shop is short of, why, how much of it is
@@ -61,17 +62,13 @@ async function listBuyListSnapshot(db: DatabaseTransaction, now: Date, today: Da
         originAt: sql<
           string | null
         >`(select min(origin_movement.created_at) from ${stockMovements} origin_movement where origin_movement.part_id = ${parts.id})`,
-        // A revaluation moves cost, never quantity, so it must not reach a stock-on-hand sum.
-        quantity: sql<number>`coalesce(sum(${stockMovements.delta}), 0)::double precision`,
+        quantity: onHandDeltaSum,
         supplierId: parts.supplierId,
         supplierName: supplier.companyName,
         unitOfMeasure: parts.unitOfMeasure,
       })
       .from(parts)
-      .leftJoin(
-        stockMovements,
-        and(eq(stockMovements.partId, parts.id), ne(stockMovements.movementType, 'revaluation')),
-      )
+      .leftJoin(stockMovements, stockOnHandJoin())
       .leftJoin(supplier, eq(supplier.id, parts.supplierId))
       .groupBy(parts.id, supplier.companyName)
       .orderBy(asc(parts.code)),

@@ -1,14 +1,4 @@
-import type { PartCategory, PartCategoryMergePreview } from '@pkg/schema/equipment';
-
-type Option = { label: string; value: string };
-
-export function getPartCategoryMergeTargetOptions(categories: readonly PartCategory[]): Option[] {
-  return categories.map(toOption);
-}
-
-export function getPartCategoryMergeSourceOptions(categories: readonly PartCategory[], targetId: string): Option[] {
-  return categories.filter((category) => category.id !== targetId).map(toOption);
-}
+import type { PartCategoryMergePreview } from '@pkg/schema/equipment';
 
 export function formatPartCategoryMergeConfirmation({ movedPartCount, sources, target }: PartCategoryMergePreview) {
   const moved = movedPartCount === 1 ? '1 Part moves' : `${movedPartCount} Parts move`;
@@ -33,10 +23,6 @@ export function getPartCategoryMarkupWarnings({ sources, target }: PartCategoryM
 
       return `${before}. ${after}.`;
     });
-}
-
-function toOption(category: PartCategory): Option {
-  return { label: category.name, value: category.id };
 }
 
 function joinNames(names: readonly string[]): string {

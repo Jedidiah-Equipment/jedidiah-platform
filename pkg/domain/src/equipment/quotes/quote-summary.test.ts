@@ -186,6 +186,7 @@ describe('computeQuoteSummary', () => {
   it('uses entered base price and no assemblies for custom quotes', () => {
     const quote = buildQuoteDetail({
       hourlyRate: 850,
+      isPartsSale: false,
       kind: 'custom',
       product: null,
       productId: null,

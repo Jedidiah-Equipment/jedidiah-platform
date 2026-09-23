@@ -1,3 +1,4 @@
+export * from './capture.js';
 export * from './company.js';
 export * from './fleet/index.js';
 export * from './hours.js';

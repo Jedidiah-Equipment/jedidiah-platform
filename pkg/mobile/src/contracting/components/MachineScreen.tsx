@@ -6,7 +6,7 @@ import { SecondaryToolbar } from '@/components/TopToolbar';
 import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
-import { latestKnownReading } from '@/contracting/readings/latest-reading';
+import { latestKnownReading } from '@/contracting/readings/capture-world';
 import { useReadingQueue } from '@/contracting/readings/ReadingQueueProvider';
 import { newLocalId } from '@/contracting/readings/reading-queue';
 import { useFleet, useMachineReadings } from '@/contracting/readings/use-fleet';

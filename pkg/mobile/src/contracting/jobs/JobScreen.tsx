@@ -137,7 +137,6 @@ export default function JobScreen() {
                   jobId,
                   machineId: stint.machineId,
                   implementId: stint.implementId ?? '',
-                  afterAssignmentId: stint.id,
                 },
               } as unknown as Href)
             }

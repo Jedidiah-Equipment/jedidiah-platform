@@ -69,14 +69,9 @@ import { z } from 'zod';
 import { createAuthTRPCError, mapCoreErrors } from '../../../trpc/errors.js';
 import { authorizedProcedure, requirePermission, router } from '../../../trpc/init.js';
 import { jobErrorFamily } from '../contracting-error-families.js';
+import { readMode } from './job-read-mode.js';
 
 const readPermissions = ['contracting_job:read', 'contracting_job:read-own', 'contracting_job:read-priced'] as const;
-
-function readMode(access: Parameters<typeof hasPermission>[0]) {
-  if (hasPermission(access, 'contracting_job:read')) return 'all' as const;
-  if (hasPermission(access, 'contracting_job:read-own')) return 'own' as const;
-  return 'priced' as const;
-}
 
 function refuseRead() {
   throw createAuthTRPCError({

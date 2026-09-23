@@ -6,6 +6,7 @@ import type { StorageAdapter } from '@pkg/core';
 import { sweepJobCompletions } from '@pkg/core/equipment';
 import { db } from '@pkg/db';
 import { PRODUCT_DOCUMENT_MAX_BYTES } from '@pkg/domain/equipment';
+import { renderJobCardPdf } from '@pkg/pdf/contracting';
 import { type FastifyTRPCPluginOptions, fastifyTRPCPlugin } from '@trpc/server/adapters/fastify';
 import Fastify, { type FastifyBaseLogger } from 'fastify';
 import { type Auth, auth as appAuth } from './app-auth.js';
@@ -18,6 +19,7 @@ import { registerHealthRoutes } from './health.js';
 import { log } from './logger.js';
 import { createObservability, type Observability } from './observability.js';
 import { createFileChangelogLoader } from './routes/changelog/changelog-loader.js';
+import { registerJobCardHttpRoutes } from './routes/contracting/jobs/job-card-http.route.js';
 import { registerReadingHttpRoutes } from './routes/contracting/readings/readings-http.route.js';
 import { registerAiChatRoute } from './routes/equipment/ai/ai-chat.route.js';
 import { registerDocumentHttpRoutes } from './routes/equipment/documents/document-http.route.js';
@@ -100,6 +102,7 @@ export async function buildServer(
   const meterReader = (input: { bytes: Uint8Array; contentType: string }) =>
     readMeterPhoto({ ...input, model: meterModel });
   await registerReadingHttpRoutes(app, { db, storage, readPhoto: meterReader });
+  await registerJobCardHttpRoutes(app, { db, pdfRenderer: renderJobCardPdf });
   await registerAiChatRoute(app, { storage });
   await registerDocumentHttpRoutes(app, storage);
   await registerPartLabelHttpRoutes(app);

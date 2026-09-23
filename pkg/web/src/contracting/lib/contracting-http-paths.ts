@@ -1,3 +1,4 @@
+import type { JobCardVariant } from '@pkg/schema/contracting';
 import { getClientConfig } from '@/lib/app-config.js';
 
 export function readingCapturePath(): string {
@@ -6,4 +7,8 @@ export function readingCapturePath(): string {
 
 export function readingPhotoUrl(readingId: string): string {
   return `${getClientConfig().apiBaseUrl}/api/contracting/readings/${encodeURIComponent(readingId)}/photo`;
+}
+
+export function jobCardUrl(code: string, variant: JobCardVariant): string {
+  return `${getClientConfig().apiBaseUrl}/api/contracting/jobs/${encodeURIComponent(code)}/job-card?variant=${variant}`;
 }

@@ -23,6 +23,7 @@ export const HELP_TOPICS = {
   contractingJobSignOff: '/contracting/sign-off-a-job',
   contractingJobPricing: '/contracting/price-a-job',
   contractingInvoicing: '/contracting/stamp-an-invoice-number',
+  contractingJobCard: '/contracting/print-a-job-card',
   contractingReadings: '/contracting/resolve-reading-exceptions',
   contractingFleet: '/contracting/maintain-machines',
   contractingCategories: '/contracting/maintain-categories',

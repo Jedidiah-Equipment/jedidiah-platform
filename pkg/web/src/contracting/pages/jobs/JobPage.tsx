@@ -19,6 +19,7 @@ import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.j
 import { useTRPC } from '@/lib/trpc.js';
 import { ChargeLinesCard } from './ChargeLinesCard.js';
 import { InvoiceCard } from './InvoiceCard.js';
+import { JobCardMenu } from './JobCardMenu.js';
 import { MachinesCard } from './MachinesCard.js';
 import { PricingCard } from './PricingCard.js';
 import { SignOffCard } from './SignOffCard.js';
@@ -38,6 +39,7 @@ export function JobPage({ code }: { code: string }) {
         query.data ? `${query.data.customerName} · ${query.data.farmName} · ${query.data.workTypeName}` : undefined
       }
       size="lg"
+      actions={query.data && capabilities?.jobCard ? <JobCardMenu job={query.data} /> : null}
     >
       <ErrorMessage error={query.error} fallbackMessage="Unable to load Job." />
       <QueryContent errorMessage="Unable to load Job." query={query}>

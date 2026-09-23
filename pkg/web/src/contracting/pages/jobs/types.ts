@@ -1,4 +1,4 @@
-import { round1 } from '@pkg/domain/contracting';
+import { hasJobCard, round1 } from '@pkg/domain/contracting';
 import type { AppPermission } from '@pkg/schema';
 import { DateOnlyIso, UUID } from '@pkg/schema';
 import {
@@ -59,6 +59,7 @@ export function complementGap(gapHours: number, travel: number) {
 
 export function jobCapabilities(job: JobDetail, can: (permission: AppPermission) => boolean) {
   const open = job.status === 'upcoming' || job.status === 'active';
+  const readsJobMoney = hasJobCard(job.status) && (can('contracting_job:read') || can('contracting_job:read-priced'));
   return {
     editSetup: open && can('contracting_job:update'),
     assign: open && can('contracting_job:assign'),
@@ -72,9 +73,8 @@ export function jobCapabilities(job: JobDetail, can: (permission: AppPermission)
     editSignOffDetails: (job.status === 'completed' || job.status === 'priced') && can('contracting_job:update'),
     editDieselLitres: job.status === 'completed' && can('contracting_job:update'),
     price: job.status === 'completed' && can('contracting_job:price'),
-    seePricing:
-      ['completed', 'priced', 'invoiced'].includes(job.status) &&
-      (can('contracting_job:read') || can('contracting_job:read-priced')),
+    seePricing: readsJobMoney,
+    jobCard: readsJobMoney,
     stampInvoice: job.status === 'priced' && can('contracting_invoice:update'),
     resolveGaps: (job.status === 'active' || job.status === 'completed') && can('contracting_gap:resolve'),
     amendReadings: job.status !== 'invoiced' && job.status !== 'cancelled' && can('contracting_reading:update'),

@@ -86,9 +86,17 @@ describe('Job sign-off helpers', () => {
         .map(([name]) => name);
     expect(granted(jobCapabilities({ status: 'priced' } as JobDetail, invoicingCan))).toEqual([
       'seePricing',
+      'jobCard',
       'stampInvoice',
     ]);
-    expect(granted(jobCapabilities({ status: 'invoiced' } as JobDetail, invoicingCan))).toEqual(['seePricing']);
+    expect(granted(jobCapabilities({ status: 'invoiced' } as JobDetail, invoicingCan))).toEqual([
+      'seePricing',
+      'jobCard',
+    ]);
+    expect(jobCapabilities({ status: 'completed' } as JobDetail, invoicingCan).jobCard).toBe(true);
+    expect(jobCapabilities({ status: 'active' } as JobDetail, () => true).jobCard).toBe(false);
+    const foremanCan = (permission: string) => permission === 'contracting_job:read-own';
+    expect(jobCapabilities({ status: 'completed' } as JobDetail, foremanCan).jobCard).toBe(false);
     const managerCan = (permission: string) => permission !== 'contracting_invoice:update';
     expect(jobCapabilities({ status: 'priced' } as JobDetail, managerCan).stampInvoice).toBe(false);
   });

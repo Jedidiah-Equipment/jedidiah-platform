@@ -108,6 +108,7 @@ describe('audit change display helpers', () => {
 
   it('formats dates, empty values, booleans, and objects safely', () => {
     expect(formatAuditChangeValue('validUntil', '2026-05-20T08:30:00.000Z')).toContain('May');
+    expect(formatAuditChangeValue('validUntil', Date.parse('2026-05-20T08:30:00.000Z'))).toContain('May 2026');
     expect(formatAuditChangeValue('name', '')).toBe('Empty');
     expect(formatAuditChangeValue('member', true)).toBe('Yes');
     expect(formatAuditChangeValue('metadata', { source: 'seed' })).toBe('{\n  "source": "seed"\n}');

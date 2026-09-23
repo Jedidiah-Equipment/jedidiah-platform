@@ -155,7 +155,7 @@ export function formatAuditChangeValue(field: string, value: unknown, valueLabel
   }
 
   if (dateFields.has(field) && (typeof value === 'string' || typeof value === 'number' || value instanceof Date)) {
-    const formattedDate = formatDate(value, 'medium');
+    const formattedDate = formatDate(typeof value === 'number' ? new Date(value) : value, 'medium');
 
     if (formattedDate) {
       return formattedDate;

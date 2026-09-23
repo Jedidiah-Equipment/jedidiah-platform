@@ -61,5 +61,5 @@ function describeCadence(row: StocktakeOverdueRow): string {
 
   if (!row.isOverdue) return `${lastCounted}. Due by ${formatDate(row.dueBy)}.`;
 
-  return `${lastCounted}. Was due by ${formatDate(row.dueBy)}, ${formatDate(row.dueBy, 'duration')}.`;
+  return `${lastCounted}. Was due by ${formatDate(row.dueBy)}, ${row.overdueDays === 1 ? '1 day' : `${row.overdueDays} days`} ago.`;
 }

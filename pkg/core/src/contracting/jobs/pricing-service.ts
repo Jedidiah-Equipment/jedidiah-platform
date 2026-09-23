@@ -1,7 +1,7 @@
 import type { DatabaseTransaction, Db } from '@pkg/db';
 import { contractingJobs, contractingMachineAssignments, contractingMachines } from '@pkg/db/contracting';
 import { formatNumber } from '@pkg/domain';
-import { computeDieselAmount, computeJobTotals, priceStint, pricingGateReasons } from '@pkg/domain/contracting';
+import { computeDieselAmount, computeDiscountAmount, priceStint, pricingGateReasons } from '@pkg/domain/contracting';
 import type { AuthId } from '@pkg/schema';
 import type {
   Assignment,
@@ -15,6 +15,7 @@ import type {
 } from '@pkg/schema/contracting';
 import { eq } from 'drizzle-orm';
 import { mutateEntity } from '../../audit/mutate-entity.js';
+import { isRateCardError } from '../rate-card/rate-card-errors.js';
 import { getRate } from '../rate-card/rate-service.js';
 import { assignmentDescriptor } from './assignment-service.js';
 import { JobError, jobNotFound, withJobConstraints, wrongStatus } from './job-errors.js';
@@ -102,6 +103,15 @@ function writeJob(
   });
 }
 
+async function findRate(tx: DatabaseTransaction, id: string) {
+  try {
+    return await getRate({ db: tx, id });
+  } catch (error) {
+    if (isRateCardError(error)) throw new JobError('contracting_job.invalid_reference', 'That Rate no longer exists.');
+    throw error;
+  }
+}
+
 export async function setStintRate({
   db,
   actorUserId,
@@ -114,7 +124,7 @@ export async function setStintRate({
   return withJobConstraints(() =>
     db.transaction(async (tx) => {
       const { reference, job } = await openStint(tx, input.assignmentId);
-      const rate = input.rateId ? await getRate({ db: tx, id: input.rateId }) : null;
+      const rate = input.rateId ? await findRate(tx, input.rateId) : null;
       if (rate && !rate.active)
         throw new JobError('contracting_job.rate_inactive', 'That Rate is no longer active. Pick another.');
       // The read model orders stints by arrival, so the first of the machine's stints is its first stint.
@@ -193,7 +203,8 @@ export async function setStintAmount({
     db.transaction(async (tx) => {
       const { reference, job, stint } = await openStint(tx, input.assignmentId);
       if (!isPriced(stint) || stint.computedAmount === null)
-        throw wrongStatus('Pick a Rate or No charge before changing the amount.');
+        throw wrongStatus('Pick a Rate before changing the amount.');
+      if (stint.rateBasis === null) throw wrongStatus('A No charge line is included in the quote and bills nothing.');
       // Computed is rewritten to the live figure in the same write, so final ≠ computed stays the override test.
       await writeStintPricing(tx, actorUserId, reference.machineCode, stint.id, {
         computedAmount: stint.computedAmount,
@@ -255,12 +266,7 @@ export async function setDiscount({
                 discountKind: discount.kind,
                 discountValue: discount.value,
                 // Kept current for the audit trail; the read model recomputes it while Completed.
-                discountAmount: computeJobTotals({
-                  stintFinalAmounts: [live.stintsTotal],
-                  chargeLineAmounts: [live.chargeLinesTotal],
-                  discount,
-                  dieselAmount: live.dieselAmount,
-                }).discountAmount,
+                discountAmount: computeDiscountAmount(live.subtotal, discount),
               },
       });
     }),

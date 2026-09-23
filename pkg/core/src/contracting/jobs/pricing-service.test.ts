@@ -351,10 +351,13 @@ describe('Mark as Priced', () => {
     ).rejects.toMatchObject({
       code: 'contracting_job.pricing_incomplete',
       message:
-        'This Job cannot be priced yet: 1 stint has no Rate · 1 charge line has no amount · Diesel is not priced.',
+        'This Job cannot be priced yet: 1 Assignment has no Rate · 1 charge line has no amount · Diesel is not priced.',
     });
 
     await setStintRate({ db, actorUserId: adminId, input: { assignmentId: haul.id, rateId: null } });
+    await expect(
+      setStintAmount({ db, actorUserId: adminId, input: { assignmentId: haul.id, finalAmount: 500 } }),
+    ).rejects.toMatchObject({ code: 'contracting_job.wrong_status' });
     await patchChargeLine({ db, actorUserId: adminId, input: { id: line.id, amount: 0 }, canPrice: true });
     await setDieselPrice({ db, actorUserId: adminId, input: { jobId, unitPrice: 20 } });
     await patchJob({ db, actorUserId: adminId, input: { id: jobId, dieselLitres: 150 } });
@@ -376,9 +379,15 @@ describe('Mark as Priced', () => {
       jobId,
     ]);
 
-    await expect(
-      setStintRate({ db, actorUserId: adminId, input: { assignmentId: dig.id, rateId: context.wetHire.id } }),
-    ).rejects.toMatchObject({ code: 'contracting_job.wrong_status' });
+    for (const attempt of [
+      () => setStintRate({ db, actorUserId: adminId, input: { assignmentId: dig.id, rateId: context.wetHire.id } }),
+      () => clearStintRate({ db, actorUserId: adminId, input: { assignmentId: dig.id } }),
+      () => setStintAmount({ db, actorUserId: adminId, input: { assignmentId: dig.id, finalAmount: null } }),
+      () => setDieselPrice({ db, actorUserId: adminId, input: { jobId, unitPrice: 21 } }),
+      () => setDiscount({ db, actorUserId: adminId, input: { jobId, discount: null } }),
+      () => markPriced({ db, actorUserId: adminId, input: { id: jobId, expectedTotal: 8_500 } }),
+    ])
+      await expect(attempt()).rejects.toMatchObject({ code: 'contracting_job.wrong_status' });
     await expect(
       patchAssignment({ db, actorUserId: adminId, input: { id: dig.id, travelIncluded: false } }),
     ).rejects.toMatchObject({ code: 'contracting_job.wrong_status' });

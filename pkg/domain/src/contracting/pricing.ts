@@ -39,6 +39,12 @@ export type JobTotals = {
   total: number;
 };
 
+/** A percentage of the base, or a fixed amount that cannot exceed it. */
+export function computeDiscountAmount(base: number, discount: JobDiscount | null) {
+  if (!discount) return 0;
+  return discount.kind === 'percent' ? round2((base * discount.value) / 100) : Math.min(round2(discount.value), base);
+}
+
 const sum = (values: readonly number[]) => round2(values.reduce((total, value) => total + value, 0));
 
 /** The Discount base is stints + Charge Lines, never Diesel; a fixed Discount cannot exceed its base. */
@@ -51,11 +57,7 @@ export function computeJobTotals(input: {
   const stintsTotal = sum(input.stintFinalAmounts);
   const chargeLinesTotal = sum(input.chargeLineAmounts);
   const subtotal = round2(stintsTotal + chargeLinesTotal);
-  const discountAmount = !input.discount
-    ? 0
-    : input.discount.kind === 'percent'
-      ? round2((subtotal * input.discount.value) / 100)
-      : Math.min(round2(input.discount.value), subtotal);
+  const discountAmount = computeDiscountAmount(subtotal, input.discount);
   return {
     stintsTotal,
     chargeLinesTotal,
@@ -96,7 +98,7 @@ const plural = (count: number, one: string, many: string) => `${formatNumber(cou
 /** Why a Job cannot be marked as Priced yet, one phrase per unmet condition. */
 export function pricingGateReasons(gate: PricingGate): string[] {
   return [
-    ...(gate.unpricedStints ? [`${plural(gate.unpricedStints, 'stint has', 'stints have')} no Rate`] : []),
+    ...(gate.unpricedStints ? [`${plural(gate.unpricedStints, 'Assignment has', 'Assignments have')} no Rate`] : []),
     ...(gate.chargeLinesWithoutAmount
       ? [`${plural(gate.chargeLinesWithoutAmount, 'charge line has', 'charge lines have')} no amount`]
       : []),

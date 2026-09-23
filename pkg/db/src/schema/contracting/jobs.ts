@@ -1,4 +1,4 @@
-import { discountKinds, jobStatuses } from '@pkg/schema/contracting';
+import { discountKinds, jobStatuses, type RateBasis } from '@pkg/schema/contracting';
 import { relations, sql } from 'drizzle-orm';
 import {
   boolean,
@@ -136,7 +136,7 @@ export const contractingMachineAssignments = contractingSchema.table(
     gapResolvedByUserId: text('gap_resolved_by_user_id').references(() => user.id),
     rateId: uuid('rate_id').references(() => contractingRates.id, { onDelete: 'restrict' }),
     rateName: text('rate_name'),
-    rateBasis: text('rate_basis'),
+    rateBasis: text('rate_basis').$type<RateBasis>(),
     rateMeasureTypeId: uuid('rate_measure_type_id').references(() => contractingMeasureTypes.id, {
       onDelete: 'restrict',
     }),

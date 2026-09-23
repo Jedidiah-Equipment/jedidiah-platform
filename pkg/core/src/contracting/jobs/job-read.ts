@@ -26,7 +26,6 @@ import {
   JobReading,
   type JobStatus,
   JobSummary,
-  type RateBasis,
 } from '@pkg/schema/contracting';
 import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 import { assertOwner, JobError, jobNotFound } from './job-errors.js';
@@ -182,7 +181,7 @@ function priceAssignment(
       billedQuantity: null,
     };
   const price = priceStint({
-    basis: row.rateBasis as RateBasis | null,
+    basis: row.rateBasis,
     unitAmount: row.rateUnitAmount,
     measureTypeId: row.rateMeasureTypeId,
     ...facts,

@@ -1,4 +1,5 @@
 import { CURRENCY_SYMBOL_BY_CODE, PLANT_CURRENCY_CODE } from '@pkg/domain';
+import { round2 } from '@pkg/domain/contracting';
 import { useEffect, useState } from 'react';
 import {
   formatCurrencyFieldValue,
@@ -17,6 +18,7 @@ export function MoneyInput({
   disabled = false,
   autoFocus = false,
   unit = CURRENCY_SYMBOL_BY_CODE[PLANT_CURRENCY_CODE],
+  onDone,
 }: {
   value: number | null;
   onCommit: (value: number | null) => void;
@@ -25,18 +27,20 @@ export function MoneyInput({
   autoFocus?: boolean;
   /** The addon beside the figure; a percentage Discount shows %. */
   unit?: string | undefined;
+  /** Runs after every blur, whether or not the value changed. */
+  onDone?: (() => void) | undefined;
 }) {
   const [text, setText] = useState(() => display(value));
   useEffect(() => setText(display(value)), [value]);
   const commit = () => {
     const parsed = parseCurrencyFieldValue(text, false);
-    const next = Number.isNaN(parsed) ? null : Math.round(parsed * 100) / 100;
-    if (next !== null && next < 0) {
-      setText(display(value));
-      return;
+    const next = Number.isNaN(parsed) ? null : round2(parsed);
+    if (next !== null && next < 0) setText(display(value));
+    else {
+      if (next !== value) onCommit(next);
+      setText(display(next));
     }
-    if (next !== value) onCommit(next);
-    setText(display(next));
+    onDone?.();
   };
   return (
     <InputGroup className="w-36">

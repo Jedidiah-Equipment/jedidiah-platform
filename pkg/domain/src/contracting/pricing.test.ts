@@ -100,7 +100,7 @@ describe('canMarkPriced', () => {
     });
     expect(gate).toEqual({ ok: false, unpricedStints: 2, chargeLinesWithoutAmount: 1, dieselUnpriced: true });
     expect(pricingGateReasons(gate)).toEqual([
-      '2 stints have no Rate',
+      '2 Assignments have no Rate',
       '1 charge line has no amount',
       'Diesel is not priced',
     ]);

@@ -24,10 +24,12 @@ import {
 } from '@/components/ui/dialog.js';
 import { useQueryInvalidation } from '@/contracting/hooks/use-query-invalidation.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
+import { getApiErrorAppCode } from '@/lib/api-errors.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { AddMeasurePopover } from './AddMeasurePopover.js';
 import { MoneyInput } from './MoneyInput.js';
 import {
+  formatQuantity,
   formulaLabel,
   NO_CHARGE,
   type PricingRow,
@@ -64,7 +66,7 @@ function usePricingMutations() {
           toast.success('Job priced');
         },
         onError: async (error) => {
-          if ((error as { data?: { appCode?: string } }).data?.appCode === 'contracting_job.total_changed') {
+          if (getApiErrorAppCode(error) === 'contracting_job.total_changed') {
             toast.error('The total changed while you were pricing — review it and mark as Priced again.');
             await invalidateJobs();
           } else showError(error, 'Unable to mark the Job as Priced.');
@@ -234,8 +236,7 @@ function QuantityCell({ row, editable }: { row: PricingRow; editable: boolean })
       <div className="flex flex-wrap items-center gap-1">
         {stint.measures.map((measure) => (
           <Badge key={measure.id} variant="secondary">
-            {formatNumber(measure.quantity, { decimals: Number.isInteger(measure.quantity) ? 0 : 2 })}{' '}
-            {measure.measureTypeName}
+            {formatQuantity(measure.quantity)} {measure.measureTypeName}
           </Badge>
         ))}
         {editable ? <AddMeasurePopover stint={stint} /> : null}
@@ -325,7 +326,8 @@ function DiscountInput({
             aria-pressed={kind === option}
             onClick={() => {
               setKind(option);
-              if (row.discount && row.discount.kind !== option) save(option, row.discount.value);
+              if (row.discount && row.discount.kind !== option && (option === 'amount' || row.discount.value <= 100))
+                save(option, row.discount.value);
             }}
           >
             {option === 'amount' ? 'R' : '%'}
@@ -406,7 +408,7 @@ function StintAmount({
     <div className="space-y-1">
       <EditableAmount
         amount={stint.finalAmount}
-        editable={editable && stint.rateUnitAmount !== null}
+        editable={editable && stint.rateBasis !== null}
         edited={stint.amountEdited}
         formula={formulaLabel(stint, measureTypeName)}
         label={`Amount for ${stint.machineCode}`}
@@ -414,7 +416,7 @@ function StintAmount({
       />
       {stint.measureMissing ? (
         <p className="text-destructive text-xs">
-          No {missingName ? `${missingName} ` : ''}measure recorded on this stint
+          No {missingName ? `${missingName} ` : ''}measure recorded on this Assignment
         </p>
       ) : null}
     </div>
@@ -447,9 +449,9 @@ function EditableAmount({
           label={label}
           value={amount}
           onCommit={(value) => {
-            setEditing(false);
             if (value !== null) onCommit(value);
           }}
+          onDone={() => setEditing(false)}
         />
       ) : editable ? (
         <button type="button" className="font-medium hover:underline" onClick={() => setEditing(true)}>

@@ -1,4 +1,5 @@
 import { formatCurrency, formatHours, formatNumber } from '@pkg/domain';
+import { round2 } from '@pkg/domain/contracting';
 import type { Assignment, ChargeLine, DiscountKind, JobDetail, Rate } from '@pkg/schema/contracting';
 import { groupStints } from './types.js';
 
@@ -22,7 +23,7 @@ export function pricingRows(job: JobDetail, { editable }: { editable: boolean })
       group.push(row.stint);
       rows.push(row);
     } else if (row.kind === 'subtotal') {
-      const amount = Math.round(group.reduce((total, stint) => total + (stint.finalAmount ?? 0), 0) * 100) / 100;
+      const amount = round2(group.reduce((total, stint) => total + (stint.finalAmount ?? 0), 0));
       rows.push({ kind: 'subtotal', machineCode: row.machineCode, amount });
     }
   }
@@ -43,7 +44,8 @@ export function pricingRows(job: JobDetail, { editable }: { editable: boolean })
   return rows;
 }
 
-const quantityLabel = (quantity: number) => formatNumber(quantity, { decimals: Number.isInteger(quantity) ? 0 : 2 });
+export const formatQuantity = (quantity: number) =>
+  formatNumber(quantity, { decimals: Number.isInteger(quantity) ? 0 : 2 });
 
 /** What the computed amount multiplies, shown under it; null while the stint is un-priced. */
 export function formulaLabel(stint: Assignment, measureTypeName: (id: string) => string | undefined): string | null {
@@ -53,7 +55,7 @@ export function formulaLabel(stint: Assignment, measureTypeName: (id: string) =>
   const unit = formatCurrency(stint.rateUnitAmount);
   if (stint.rateBasis === 'time') return `${formatHours(quantity)} × ${unit}`;
   const name = (stint.rateMeasureTypeId && measureTypeName(stint.rateMeasureTypeId)) ?? 'units';
-  return `${quantityLabel(quantity)} ${name.toLowerCase()} × ${unit}`;
+  return `${formatQuantity(quantity)} ${name.toLowerCase()} × ${unit}`;
 }
 
 const perUnit = (rate: Pick<Rate, 'basis' | 'measureTypeName'>) =>

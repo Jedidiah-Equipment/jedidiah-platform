@@ -315,6 +315,13 @@ describe('Diesel and Discount', () => {
       gate: { ok: true },
     });
     expect(discounted).toMatchObject({ discountKind: 'percent', discountValue: 5, discountAmount: 1_633 });
+
+    await setDieselPrice({ db, actorUserId: adminId, input: { jobId, unitPrice: 23, amount: 5_000 } });
+    expect(await patchJob({ db, actorUserId: adminId, input: { id: jobId, dieselLitres: 0 } })).toMatchObject({
+      dieselUnitPrice: null,
+      dieselAmount: null,
+      pricing: { dieselAmount: 0 },
+    });
   });
 
   test('refuses a diesel price when no diesel was supplied', async ({ context }) => {

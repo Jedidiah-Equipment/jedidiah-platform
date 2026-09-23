@@ -258,9 +258,10 @@ export async function setDiscount({
       assertPricingOpen(await lockJob(tx, input.jobId));
       const { discount } = input;
       const live = (await getJob({ db: tx, id: input.jobId })).pricing;
+      if (!live) throw new Error('A Completed Job always carries its pricing.');
       return writeJob(tx, actorUserId, input.jobId, {
         set: () =>
-          discount === null || live === null
+          discount === null
             ? { discountKind: null, discountValue: null, discountAmount: null }
             : {
                 discountKind: discount.kind,

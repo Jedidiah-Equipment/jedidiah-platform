@@ -52,6 +52,9 @@ function usePricingMutations() {
   });
   return {
     setRate: useMutation(trpc.contractingJobs.pricing.setStintRate.mutationOptions(options('Unable to set the Rate.'))),
+    clearRate: useMutation(
+      trpc.contractingJobs.pricing.clearStintRate.mutationOptions(options('Unable to clear the Rate.')),
+    ),
     setAmount: useMutation(
       trpc.contractingJobs.pricing.setStintAmount.mutationOptions(options('Unable to change the amount.')),
     ),
@@ -270,7 +273,9 @@ function RateCell({
           placeholder="Choose a Rate…"
           value={rateSelectValue(stint)}
           onValueChange={(value) =>
-            mutations.setRate.mutate({ assignmentId: stint.id, rateId: value === NO_CHARGE ? null : value })
+            value === ''
+              ? mutations.clearRate.mutate({ assignmentId: stint.id })
+              : mutations.setRate.mutate({ assignmentId: stint.id, rateId: value === NO_CHARGE ? null : value })
           }
         />
         {drift ? <p className="text-muted-foreground text-xs">{drift}</p> : null}
@@ -325,9 +330,12 @@ function DiscountInput({
             variant={kind === option ? 'default' : 'outline'}
             aria-pressed={kind === option}
             onClick={() => {
+              if (row.discount && option === 'percent' && row.discount.value > 100) {
+                toast.error('A percentage discount cannot exceed 100. Enter the percentage instead.');
+                return;
+              }
               setKind(option);
-              if (row.discount && row.discount.kind !== option && (option === 'amount' || row.discount.value <= 100))
-                save(option, row.discount.value);
+              if (row.discount && row.discount.kind !== option) save(option, row.discount.value);
             }}
           >
             {option === 'amount' ? 'R' : '%'}

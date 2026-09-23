@@ -86,7 +86,7 @@ export async function patchJob({ db, actorUserId, input }: { db: Db; actorUserId
         startDate: input.startDate ?? before.startDate,
         endDate: input.endDate ?? before.endDate,
         dieselLitres: input.dieselLitres ?? before.dieselLitres,
-        dieselAmount: repricedDiesel(before, input.dieselLitres),
+        ...repricedDiesel(before, input.dieselLitres),
         updatedAt: new Date(),
       }),
       project: (tx, row) => getJob({ db: tx, id: row.id }),
@@ -94,14 +94,19 @@ export async function patchJob({ db, actorUserId, input }: { db: Db; actorUserId
   );
 }
 
-/** A computed Diesel amount follows the litres; an overridden one is the pricer's and stays. */
+/**
+ * A computed Diesel amount follows the litres; an overridden one is the pricer's and stays. Litres
+ * corrected to zero mean no diesel was supplied, so its price goes too.
+ */
 function repricedDiesel(before: Row, dieselLitres: number | undefined) {
-  if (dieselLitres === undefined || before.dieselUnitPrice === null || before.dieselAmount === null)
-    return before.dieselAmount;
+  const kept = { dieselUnitPrice: before.dieselUnitPrice, dieselAmount: before.dieselAmount };
+  if (dieselLitres === undefined || dieselLitres === before.dieselLitres) return kept;
+  if (dieselLitres === 0) return { dieselUnitPrice: null, dieselAmount: null };
+  if (before.dieselUnitPrice === null || before.dieselAmount === null) return kept;
   const computed = computeDieselAmount(before.dieselLitres, before.dieselUnitPrice);
   return before.dieselAmount === computed
-    ? computeDieselAmount(dieselLitres, before.dieselUnitPrice)
-    : before.dieselAmount;
+    ? { ...kept, dieselAmount: computeDieselAmount(dieselLitres, before.dieselUnitPrice) }
+    : kept;
 }
 
 export async function cancelJob({ db, actorUserId, input }: { db: Db; actorUserId: AuthId; input: JobCancelInput }) {

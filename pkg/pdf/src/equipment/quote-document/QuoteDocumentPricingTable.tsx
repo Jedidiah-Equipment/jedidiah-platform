@@ -6,8 +6,8 @@ import type {
   QuoteWorkItemCharge,
 } from '@pkg/schema/equipment';
 import { StyleSheet, Text, View } from '@react-pdf/renderer';
+import { pdfBorder, pdfColors, pdfSpacing } from '../../pdf-theme.js';
 import { pdfStyles } from './pdf-styles.js';
-import { pdfBorder, pdfColors, pdfSpacing } from './pdf-theme.js';
 
 type QuoteDocumentPricingTableProps = {
   document: QuoteDocumentModel;

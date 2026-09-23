@@ -1,6 +1,6 @@
 import { StyleSheet } from '@react-pdf/renderer';
 
-import { pdfBorder, pdfColors, pdfFontSize, pdfFontWeight, pdfSpacing } from './pdf-theme.js';
+import { pdfBorder, pdfColors, pdfFontSize, pdfFontWeight, pdfSpacing } from '../../pdf-theme.js';
 
 export const pdfStyles = StyleSheet.create({
   bgBlack: {

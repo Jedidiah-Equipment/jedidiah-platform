@@ -8,7 +8,7 @@ import { Document, Image, Page, Path, StyleSheet, type Styles, Svg, Text, View }
 
 import { pdfFontFamily, pdfTitleFontFamily } from '../../pdf-fonts.js';
 import { jedidiahFooterBannerSrc, jedidiahLogoSrc } from '../../pdf-logo.js';
-import { pdfColors, pdfFontSize, pdfFontWeight, pdfLineHeight } from '../quote-document/pdf-theme.js';
+import { pdfColors, pdfFontSize, pdfFontWeight, pdfLineHeight } from '../../pdf-theme.js';
 import { brochureMessages } from './messages/index.js';
 import type { Messages } from './messages/types.js';
 

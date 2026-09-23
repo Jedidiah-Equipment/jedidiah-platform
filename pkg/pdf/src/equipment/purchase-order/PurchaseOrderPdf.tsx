@@ -5,7 +5,7 @@ import { Document, Image, Page, StyleSheet, Text, View } from '@react-pdf/render
 
 import { pdfFontFamily, pdfTitleFontFamily } from '../../pdf-fonts.js';
 import { jedidiahLogoSrc } from '../../pdf-logo.js';
-import { pdfColors } from '../quote-document/pdf-theme.js';
+import { pdfColors } from '../../pdf-theme.js';
 
 const layout = { pagePadding: 24, sectionGap: 8 } as const;
 

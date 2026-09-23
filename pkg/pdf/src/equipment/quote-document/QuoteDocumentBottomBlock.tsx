@@ -1,8 +1,8 @@
 import { formatCurrency } from '@pkg/domain';
 import type { QuoteDocumentModel } from '@pkg/schema/equipment';
 import { StyleSheet, Text, View } from '@react-pdf/renderer';
+import { pdfBorder, pdfColors, pdfSpacing } from '../../pdf-theme.js';
 import { pdfStyles } from './pdf-styles.js';
-import { pdfBorder, pdfColors, pdfSpacing } from './pdf-theme.js';
 
 type QuoteDocumentBottomBlockProps = {
   document: QuoteDocumentModel;

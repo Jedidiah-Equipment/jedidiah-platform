@@ -1,5 +1,5 @@
 import { formatHours } from '@pkg/domain';
-import { fieldJobAccessMode } from '@pkg/domain/contracting';
+import { captureRefusal, fieldJobAccessMode } from '@pkg/domain/contracting';
 import { ReadingComment } from '@pkg/schema/contracting';
 import { useStore } from '@tanstack/react-form';
 import { onlineManager } from '@tanstack/react-query';
@@ -13,10 +13,10 @@ import { SecondaryToolbar } from '@/components/TopToolbar';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { TextInput } from '@/components/ui/text-input';
-import { useDrivers, useImplements } from '@/contracting/jobs/use-jobs';
+import { useDrivers, useImplements, useJobs } from '@/contracting/jobs/use-jobs';
 import { recordReadingCaptured } from '@/contracting/observability';
+import { captureWorld } from '@/contracting/readings/capture-world';
 import { deriveCapture } from '@/contracting/readings/derive-capture';
-import { latestKnownReading } from '@/contracting/readings/latest-reading';
 import { useReadingQueue } from '@/contracting/readings/ReadingQueueProvider';
 import { keepReadingPhoto, removeReadingPhoto } from '@/contracting/readings/reading-files';
 import { newLocalId } from '@/contracting/readings/reading-queue';
@@ -58,6 +58,7 @@ function CaptureForm({ params }: { params: CaptureParams }) {
   const readings = useMachineReadings(id);
   const { queue, items } = useReadingQueue();
   const implementsQuery = useImplements();
+  const jobs = useJobs();
   const driversQuery = useDrivers();
   const canCapture = useSessionPermission('contracting_reading:capture');
   const management = fieldJobAccessMode(useSessionAccessSummary()) === 'all';
@@ -79,22 +80,46 @@ function CaptureForm({ params }: { params: CaptureParams }) {
   });
   const overrides = useStore(overrideForm.store, (state) => state.values);
   const { busy, error, setError, run } = useBusyAction();
-  const known = latestKnownReading(id, items, readings.data);
-  const latest = known?.value;
-  const latestId = known?.id ?? null;
-  const commentRequired = role === 'departure' && management && photo === null;
-  const { parsed, below, disputeConfirmed, missingComment, canSave } = deriveCapture({
+  const world = captureWorld({
+    machineId: id,
+    stintId: params.assignmentId ?? null,
+    queued: items,
+    history: readings.data,
+    jobs: jobs.data ?? [],
+    fleet: fleet.data ?? [],
+    implementRows: implementsQuery.data ?? [],
+    management,
+    hasPhoto: photo !== null,
+  });
+  const latest = world.latest?.value;
+  const latestId = world.latest?.id ?? null;
+  const plannedImplementId =
+    jobs.data?.flatMap((job) => job.stints).find((stint) => stint.id === params.assignmentId)?.implementId ?? null;
+  const arrivingImplementId = params.startLocalId
+    ? params.implementId || null
+    : changeStint
+      ? overrides.implementId || null
+      : plannedImplementId;
+  const { parsed, verdict, canSave } = deriveCapture({
     value,
-    latest,
-    latestId,
-    disputePrevious,
-    disputedReadingId,
+    world,
+    capture: {
+      role,
+      machineId: id,
+      implementId: role === 'arrival' ? arrivingImplementId : null,
+      disputePrevious,
+      expectedPreviousId: disputedReadingId,
+      comment: comment.trim() || null,
+    },
     canCapture,
     machineKnown: !!machine,
     cameraOpen,
-    comment,
-    commentRequired,
   });
+  // The form's hint; the refusal itself is the capture rules' verdict below.
+  const commentRequired = role === 'departure' && management && photo === null;
+  const refused = verdict && !verdict.ok ? verdict : null;
+  const disputeConfirmed = !!verdict?.ok && verdict.disputes !== null;
+  const below = disputeConfirmed || refused?.rule === 'below-latest' || refused?.rule === 'previous-changed';
   async function openCamera() {
     addBreadcrumb('contracting', 'camera permission requested');
     try {
@@ -329,7 +354,7 @@ function CaptureForm({ params }: { params: CaptureParams }) {
             maxLength={ReadingComment.maxLength ?? undefined}
             onChangeText={setComment}
           />
-          {missingComment ? <Text className="text-danger">Explain why this departure has no meter photo.</Text> : null}
+          {refused && !below ? <Text className="text-danger">{captureRefusal(refused)}</Text> : null}
           {below ? (
             <View className="gap-3 rounded-xl border border-danger p-4">
               <Text className="text-foreground">

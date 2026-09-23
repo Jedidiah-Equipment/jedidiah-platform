@@ -35,17 +35,14 @@ vi.mock('@/components/ui/text-input', () => ({ TextInput: 'TextInput' }));
 vi.mock('@/contracting/jobs/use-jobs', () => ({
   useDrivers: () => ({ data: [] }),
   useImplements: () => ({ data: [] }),
+  useJobs: () => ({ data: [] }),
 }));
 vi.mock('@/contracting/readings/derive-capture', () => ({
-  deriveCapture: () => ({
-    parsed: undefined,
-    below: false,
-    disputeConfirmed: false,
-    missingComment: false,
-    canSave: false,
-  }),
+  deriveCapture: () => ({ parsed: undefined, verdict: null, canSave: false }),
 }));
-vi.mock('@/contracting/readings/latest-reading', () => ({ latestKnownReading: () => undefined }));
+vi.mock('@/contracting/readings/capture-world', () => ({
+  captureWorld: () => ({ latest: null, stint: null, onSite: [], management: false, hasPhoto: false }),
+}));
 vi.mock('@/contracting/readings/ReadingQueueProvider', () => ({
   useReadingQueue: () => ({ queue: { enqueue: vi.fn() }, items: [] }),
 }));

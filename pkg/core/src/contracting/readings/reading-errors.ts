@@ -1,24 +1,16 @@
-import { type JobActionSubject, type JobActor, jobActionRefusal, judgeJobAction } from '@pkg/domain/contracting';
-import type { JobActionName } from '@pkg/schema/contracting';
+import {
+  captureRefusal,
+  type JobActionSubject,
+  type JobActor,
+  jobActionRefusal,
+  judgeJobAction,
+} from '@pkg/domain/contracting';
+import type { JobActionName, ReadingErrorCode } from '@pkg/schema/contracting';
 import { translatingConstraintViolations } from '../../errors/constraint-violations.js';
 import type { RefusedJobAction } from '../jobs/job-errors.js';
 
-export type ReadingErrorCode =
-  | 'reading.not_found'
-  | 'reading.retired_machine'
-  | 'reading.capture_id_conflict'
-  | 'reading.previous_changed'
-  | 'reading.below_latest'
-  | 'reading.baseline_exists'
-  | 'reading.invalid_amendment'
-  | 'reading.forbidden'
-  | 'reading.wrong_status'
-  | 'reading.invalid_role'
-  | 'reading.machine_on_site'
-  | 'reading.implement_on_site'
-  | 'reading.no_photo'
-  | 'reading.verification_failed'
-  | 'reading.job_invoiced';
+export type { ReadingErrorCode };
+
 export class ReadingError extends Error {
   constructor(
     readonly code: ReadingErrorCode,
@@ -63,12 +55,12 @@ export const withCaptureConstraints = <T>(action: () => Promise<T>) =>
         if (constraint === 'machine_assignment_machine_on_site_unique')
           return new ReadingError(
             'reading.machine_on_site',
-            'This Machine is still on site on another Job — capture its departure there first.',
+            captureRefusal({ ok: false, reason: 'reading.machine_on_site', rule: 'machine-busy' }),
           );
         if (constraint === 'machine_assignment_implement_on_site_unique')
           return new ReadingError(
             'reading.implement_on_site',
-            'This Implement is still on site on another Job — capture its departure there first.',
+            captureRefusal({ ok: false, reason: 'reading.implement_on_site', rule: 'implement-busy' }),
           );
         return undefined;
       },

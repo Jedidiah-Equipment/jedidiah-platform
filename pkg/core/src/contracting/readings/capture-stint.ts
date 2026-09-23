@@ -5,7 +5,7 @@ import {
   contractingMachineAssignments,
   type contractingMachines,
 } from '@pkg/db/contracting';
-import { isContractingManagement, type JobActor, transitionJob } from '@pkg/domain/contracting';
+import { type JobActor, transitionJob } from '@pkg/domain/contracting';
 import type { ReadingCaptureInput } from '@pkg/schema/contracting';
 import { eq } from 'drizzle-orm';
 import { recordAuditCreate } from '../../audit/audit-writer.js';
@@ -30,17 +30,12 @@ const alreadyArrived = () => new ReadingError('reading.invalid_role', 'This Mach
 
 async function lockPlannedStint(
   tx: DatabaseTransaction,
-  { actor, input, hasPhoto }: { actor: JobActor; input: ReadingCaptureInput; hasPhoto: boolean },
+  { actor, input }: { actor: JobActor; input: ReadingCaptureInput },
   assignmentId: string,
 ): Promise<CaptureStint> {
   const { job, stint } = await lockAssignment(tx, assignmentId, stintNotFound);
   if (stint.machineId !== input.machineId) throw stintNotFound();
-  if (input.role === 'departure' && isContractingManagement(actor) && !hasPhoto && !input.comment)
-    throw new ReadingError('reading.invalid_role', 'A reason is required for a photo-less departure reading.');
   assertReadingJobAction('capture', job, actor);
-  if (input.role === 'arrival' && stint.arrivalReadingId) throw alreadyArrived();
-  if (input.role === 'departure' && (!stint.arrivalReadingId || stint.departureReadingId))
-    throw new ReadingError('reading.invalid_role', 'This Machine Assignment is not on site.');
   return { job, stint };
 }
 

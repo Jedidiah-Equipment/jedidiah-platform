@@ -15,15 +15,14 @@ import {
   type MachineSort,
   normalizeMachineCategory,
 } from '@/contracting/lib/machine-catalog';
+import { captureWorld, onSiteElsewhere } from '@/contracting/readings/capture-world';
 import { useReadingQueue } from '@/contracting/readings/ReadingQueueProvider';
 import { newLocalId } from '@/contracting/readings/reading-queue';
 import { useFleet } from '@/contracting/readings/use-fleet';
 import { useSessionAccessSummary } from '@/lib/auth-session';
 import { MachineCatalogControls } from '../components/MachineCatalogControls';
-import { deriveStint, jobSummary } from './derive-stint';
+import { jobSummary } from './derive-stint';
 import { useDrivers, useImplements, useJobs } from './use-jobs';
-
-const BUSY_VIEWS = new Set(['starting', 'running', 'stopping']);
 
 export default function AddMachineScreen() {
   const params = useLocalSearchParams<{
@@ -59,80 +58,29 @@ export default function AddMachineScreen() {
     categories.map((option) => option.value),
   );
   const machines = getVisibleMachines(fleet.data ?? [], { search, category: normalizedCategory, sort });
-  const readdSourceKnown =
-    params.afterAssignmentId !== undefined &&
-    params.machineId !== undefined &&
-    ((jobs.data ?? []).some(
-      (job) =>
-        job.id === params.jobId &&
-        job.stints.some((stint) => stint.id === params.afterAssignmentId && stint.machineId === params.machineId),
-    ) ||
-      items.some((capture) => {
-        const start = capture.startAssignment;
-        if (!start) return false;
-        return (
-          capture.machineId === params.machineId &&
-          start.localId === params.afterAssignmentId &&
-          start.jobId === params.jobId
-        );
-      }));
-  const readdReady =
-    readdSourceKnown &&
-    items.some(
-      (capture) =>
-        capture.role === 'departure' &&
-        capture.assignmentId === params.afterAssignmentId &&
-        capture.machineId === params.machineId,
-    );
-  const { machineJobs, implementJobs } = useMemo(() => {
-    const machineJobs = new Map<string, string>();
-    const implementJobs = new Map<string, string>();
-    for (const job of jobs.data ?? []) {
-      for (const stint of job.stints.map((row) =>
-        deriveStint(row, items, { implements: implementQuery.data ?? [], drivers: drivers.data ?? [] }),
-      )) {
-        if (!BUSY_VIEWS.has(stint.view)) continue;
-        if (readdReady && stint.id === params.afterAssignmentId) continue;
-        machineJobs.set(stint.machineId, job.jobNumber);
-        if (stint.implementId) implementJobs.set(stint.implementId, job.jobNumber);
-      }
-      for (const capture of items) {
-        if (capture.startAssignment?.jobId !== job.id) continue;
-        if (capture.attention) continue;
-        if (readdReady && capture.startAssignment.localId === params.afterAssignmentId) continue;
-        machineJobs.set(capture.machineId, job.jobNumber);
-        if (capture.startAssignment.implementId) implementJobs.set(capture.startAssignment.implementId, job.jobNumber);
-      }
-    }
-    for (const machine of fleet.data ?? []) {
-      if (machine.onSiteJobNumber && !machineJobs.has(machine.id) && !(readdReady && machine.id === params.machineId))
-        machineJobs.set(machine.id, machine.onSiteJobNumber);
-    }
-    for (const implement of implementQuery.data ?? []) {
-      if (
-        implement.onSiteJobNumber &&
-        !implementJobs.has(implement.id) &&
-        !(readdReady && implement.id === params.implementId)
-      )
-        implementJobs.set(implement.id, implement.onSiteJobNumber);
-    }
-    return { machineJobs, implementJobs };
-  }, [
-    drivers.data,
-    fleet.data,
-    implementQuery.data,
-    items,
-    jobs.data,
-    params.afterAssignmentId,
-    params.implementId,
-    params.machineId,
-    readdReady,
-  ]);
+  // A queued departure frees its Machine and Implement, which is what lets one just stopped be re-added.
+  const world = useMemo(
+    () =>
+      captureWorld({
+        machineId: machineId,
+        stintId: null,
+        queued: items,
+        history: undefined,
+        jobs: jobs.data ?? [],
+        fleet: fleet.data ?? [],
+        implementRows: implementQuery.data ?? [],
+        management: false,
+        hasPhoto: false,
+      }),
+    [fleet.data, implementQuery.data, items, jobs.data, machineId],
+  );
+  const machineOnJob = (id: string) => onSiteElsewhere(world, { machineId: id });
+  const implementOnJob = (id: string) => onSiteElsewhere(world, { implementId: id });
 
-  const selectedImplementBusy = values.implementId !== '' && implementJobs.has(values.implementId);
+  const selectedImplementBusy = values.implementId !== '' && implementOnJob(values.implementId) !== null;
 
   const continueToCapture = () => {
-    if (!selected || machineJobs.has(selected.id) || selectedImplementBusy) return;
+    if (!selected || machineOnJob(selected.id) !== null || selectedImplementBusy) return;
     router.push({
       pathname: '/contracting/machines/[id]/capture',
       params: {
@@ -172,7 +120,7 @@ export default function AddMachineScreen() {
         />
         <View className="gap-2">
           {machines.map((machine) => {
-            const onJob = machineJobs.get(machine.id);
+            const onJob = machineOnJob(machine.id);
             const active = machine.id === machineId;
             return (
               <Pressable
@@ -209,7 +157,7 @@ export default function AddMachineScreen() {
               options={[
                 { label: 'No implement', value: '' },
                 ...(implementQuery.data ?? []).map((implement) => {
-                  const onJob = implementJobs.get(implement.id);
+                  const onJob = implementOnJob(implement.id);
                   return {
                     label: onJob ? `${implement.code} · On Job · ${onJob}` : implement.code,
                     value: implement.id,
@@ -246,7 +194,7 @@ export default function AddMachineScreen() {
         <Button
           primary
           title="Continue — capture arrival"
-          disabled={!canStart || !selected || machineJobs.has(selected.id) || selectedImplementBusy}
+          disabled={!canStart || !selected || machineOnJob(selected.id) !== null || selectedImplementBusy}
           onPress={continueToCapture}
         />
       </ScrollView>

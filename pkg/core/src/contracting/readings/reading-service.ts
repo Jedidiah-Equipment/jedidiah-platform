@@ -9,8 +9,12 @@ import {
 } from '@pkg/db/contracting';
 import { validateFile } from '@pkg/domain';
 import {
+  assignmentState,
+  captureRefusal,
   isAiFlaggedVerification,
+  isContractingManagement,
   type JobActor,
+  judgeCapture,
   meterDisagreementHint,
   resolveReadingAmendment,
 } from '@pkg/domain/contracting';
@@ -89,31 +93,6 @@ async function storeMeterPhoto({ storage, photoBytes }: ReadingEvidence): Promis
   return photo;
 }
 
-/**
- * The ledger rules for a new reading against the latest one. Returns whether the capture disputes
- * the latest reading, which happens only when the value falls below it and the capturer asserted so.
- */
-function assertCaptureAllowed(input: ReadingCaptureInput, latest: Row | undefined): boolean {
-  if (
-    input.disputePrevious &&
-    input.expectedPreviousId !== undefined &&
-    input.expectedPreviousId !== (latest?.id ?? null)
-  )
-    throw new ReadingError(
-      'reading.previous_changed',
-      'Another reading landed first. Review the latest reading before resubmitting a dispute.',
-    );
-  const below = !!latest && input.value < latest.value;
-  if (below && !input.disputePrevious)
-    throw new ReadingError(
-      'reading.below_latest',
-      'Reading is below the latest reading. Retake it or assert that the previous reading is wrong.',
-    );
-  if (input.role === 'baseline' && latest)
-    throw new ReadingError('reading.baseline_exists', 'A Baseline Reading must be the first reading.');
-  return below && input.disputePrevious;
-}
-
 export async function captureReading({
   db,
   actor,
@@ -170,7 +149,29 @@ export async function captureReading({
           .where(eq(contractingHourReadings.machineId, input.machineId))
           .orderBy(desc(contractingHourReadings.sequence))
           .limit(1);
-        const disputed = assertCaptureAllowed(input, latest);
+        // The server's world never lists what is on site: the stint's unique constraints answer that.
+        const judgement = judgeCapture(
+          {
+            latest: latest ? { id: latest.id, value: latest.value } : null,
+            stint: stint ? assignmentState(stint.stint) : null,
+            onSite: [],
+            management: isContractingManagement(actor),
+            hasPhoto: !!evidence,
+          },
+          {
+            role: input.role,
+            value: input.value,
+            machineId: input.machineId,
+            implementId: null,
+            disputePrevious: input.disputePrevious,
+            expectedPreviousId: input.expectedPreviousId,
+            comment: input.comment ?? null,
+          },
+        );
+        if (!judgement.ok) throw new ReadingError(judgement.reason, captureRefusal(judgement));
+        if (input.role === 'baseline' && latest)
+          throw new ReadingError('reading.baseline_exists', 'A Baseline Reading must be the first reading.');
+        const disputed = judgement.disputes !== null;
         if (disputed && latest)
           await updateAudited(tx, actorUserId, latest, {
             disputed: true,

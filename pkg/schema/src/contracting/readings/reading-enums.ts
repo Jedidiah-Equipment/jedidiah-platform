@@ -14,3 +14,23 @@ export const aiFlaggedVerifications = [
 export type AiFlaggedVerification = (typeof aiFlaggedVerifications)[number];
 export const readingExceptionTypes = ['disputed', 'ai-flagged'] as const;
 export type ReadingExceptionType = (typeof readingExceptionTypes)[number];
+
+/** Every refusal a reading write can carry, as the server sends it and the phone reports it. */
+export const readingErrorCodes = [
+  'reading.not_found',
+  'reading.retired_machine',
+  'reading.capture_id_conflict',
+  'reading.previous_changed',
+  'reading.below_latest',
+  'reading.baseline_exists',
+  'reading.invalid_amendment',
+  'reading.forbidden',
+  'reading.wrong_status',
+  'reading.invalid_role',
+  'reading.machine_on_site',
+  'reading.implement_on_site',
+  'reading.no_photo',
+  'reading.verification_failed',
+  'reading.job_invoiced',
+] as const;
+export type ReadingErrorCode = (typeof readingErrorCodes)[number];

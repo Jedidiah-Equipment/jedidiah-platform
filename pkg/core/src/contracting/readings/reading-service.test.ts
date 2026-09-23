@@ -370,3 +370,21 @@ test('carries the capture comment through to the Reading Exceptions list', async
     [false, null],
   ]);
 });
+
+/**
+ * Two phones on one Machine: the one that captured later syncs first. The ledger's order is the
+ * dispute trail, so the earlier capture is judged against what the ledger already holds — never
+ * re-ordered by a device clock.
+ */
+test('judges a late-synced earlier capture against the ledger’s latest, not its own capture time', async ({
+  context,
+}) => {
+  const { db, actor, machineId } = context;
+  const spot = { machineId, role: 'spot' as const, disputePrevious: false };
+  await captureReading({ db, actor, input: { ...spot, value: 160, capturedAt: '2026-09-08T09:00:00Z' } });
+
+  await expect(
+    captureReading({ db, actor, input: { ...spot, value: 150, capturedAt: '2026-09-08T08:00:00Z' } }),
+  ).rejects.toMatchObject({ code: 'reading.below_latest' });
+  expect((await listReadingsByMachine({ db, machineId })).map((row) => row.value)).toEqual([160]);
+});

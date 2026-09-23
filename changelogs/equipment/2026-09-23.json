@@ -1,0 +1,44 @@
+{
+  "business": "equipment",
+  "releasedAt": "2026-09-23T05:03:11.350Z",
+  "sections": [
+    {
+      "surface": "app",
+      "entries": [
+        {
+          "title": "Manage Part Categories",
+          "description": "Create, rename and select standard Part Categories from the Admin area and Part forms. Bulk imports and filters now use these managed categories."
+        },
+        {
+          "title": "Set category markup",
+          "description": "Set a markup percentage for each Part Category to support consistent pricing."
+        },
+        {
+          "title": "Merge duplicate Part Categories",
+          "description": "Combine duplicate categories and move their Parts into one selected category."
+        },
+        {
+          "title": "Add inventory Parts to quote work items",
+          "description": "Select an existing inventory Part when adding a custom work item to a Quote."
+        },
+        {
+          "title": "Create Parts Sale Quotes",
+          "description": "Use the new Parts Sale Quote type for sales that should not create a Job."
+        },
+        {
+          "title": "Manage stock for Parts Sales",
+          "description": "Check out and return stock against a Parts Sale from the app or Stores Tablet. The Quote shows stock still out and warns you before cancellation."
+        }
+      ]
+    },
+    {
+      "surface": "mobile",
+      "entries": [
+        {
+          "title": "Add inventory Parts to quote work items",
+          "description": "Select an existing inventory Part when adding a custom work item to a Quote."
+        }
+      ]
+    }
+  ]
+}

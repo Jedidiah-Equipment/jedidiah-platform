@@ -740,7 +740,6 @@ const staleSentQuoteBaseShape = {
   customerThumbnailDataUrl: NullableThumbnailDataUrl,
   currencyCode: ProductCurrencyCode,
   job: QuoteLinkedJob.nullable(),
-  sentDaysAgo: z.number().int().min(0),
   statusChangedAt: DateIso,
   totalValue: Price,
 };

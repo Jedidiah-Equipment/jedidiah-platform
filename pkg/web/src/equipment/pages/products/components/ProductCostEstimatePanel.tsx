@@ -258,11 +258,7 @@ const materialColumns: DataTableColumnDef<ProductCostEstimateMaterialLine>[] = [
     cell: ({ row }) => <UnitCostCell fallback="No cost yet" line={row.original} />,
     header: 'Unit cost',
   },
-  {
-    accessorKey: 'costFloor',
-    cell: ({ row }) => formatCurrency(row.original.costFloor),
-    header: 'Cost',
-  },
+  { accessorKey: 'costFloor', cell: ({ row }) => formatCurrency(row.original.costFloor), header: 'Cost' },
 ];
 
 const partColumns: DataTableColumnDef<ProductCostEstimatePartLine>[] = [
@@ -282,11 +278,7 @@ const partColumns: DataTableColumnDef<ProductCostEstimatePartLine>[] = [
     ),
     header: 'Unit cost',
   },
-  {
-    accessorKey: 'costFloor',
-    cell: ({ row }) => formatCurrency(row.original.costFloor),
-    header: 'Cost',
-  },
+  { accessorKey: 'costFloor', cell: ({ row }) => formatCurrency(row.original.costFloor), header: 'Cost' },
 ];
 
 const laborColumns: DataTableColumnDef<ProductCostEstimateLaborLine>[] = [
@@ -298,16 +290,8 @@ const laborColumns: DataTableColumnDef<ProductCostEstimateLaborLine>[] = [
   },
   { accessorKey: 'staffCount', header: 'Staff' },
   { accessorKey: 'hours', cell: ({ row }) => formatNumber(row.original.hours, { decimals: 2 }), header: 'Hours' },
-  {
-    accessorKey: 'hourlyRate',
-    cell: ({ row }) => formatCurrency(row.original.hourlyRate),
-    header: 'Rate',
-  },
-  {
-    accessorKey: 'laborCost',
-    cell: ({ row }) => formatCurrency(row.original.laborCost),
-    header: 'Labor cost',
-  },
+  { accessorKey: 'hourlyRate', cell: ({ row }) => formatCurrency(row.original.hourlyRate), header: 'Rate' },
+  { accessorKey: 'laborCost', cell: ({ row }) => formatCurrency(row.original.laborCost), header: 'Labor cost' },
   {
     accessorKey: 'consumablesCost',
     cell: ({ row }) => (

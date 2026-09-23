@@ -335,9 +335,7 @@ describe('summarizeQuotePipeline', () => {
 });
 
 describe('listStaleSentQuotes', () => {
-  const fixedClock = () => new Date('2026-06-04T10:00:00.000Z');
-
-  test('lists sent quotes oldest-first with plant-day staleness and quote totals', async ({ context }) => {
+  test('lists sent quotes oldest-first with quote totals', async ({ context }) => {
     await createQuoteRows(context.db, {
       customerId: context.customer.id,
       productId: context.product.id,
@@ -366,7 +364,7 @@ describe('listStaleSentQuotes', () => {
       statusChangedAt: zonedInstant('2026-05-01T09:00:00'),
     });
 
-    const result = await listStaleSentQuotes({ clock: fixedClock, db: context.db });
+    const result = await listStaleSentQuotes({ db: context.db });
 
     expect(result.items).toHaveLength(2);
     expect(result.items[0]).toMatchObject({
@@ -377,11 +375,9 @@ describe('listStaleSentQuotes', () => {
         name: 'Quote Report Product',
         thumbnailDataUrl: 'data:image/webp;base64,cHJvZHVjdA==',
       },
-      sentDaysAgo: 15,
       totalValue: 3507.5,
     });
     expect(result.items[1]).toMatchObject({
-      sentDaysAgo: 3,
       totalValue: 1725,
     });
   });
@@ -407,7 +403,7 @@ describe('listStaleSentQuotes', () => {
       .insert(quoteWorkItemParts)
       .values({ name: 'Fuel', quantity: 2, unitPrice: 50, workItemId: workItem.id });
 
-    const result = await listStaleSentQuotes({ clock: fixedClock, db: context.db });
+    const result = await listStaleSentQuotes({ db: context.db });
 
     // 3 x R320 labour + R100 parts, plus VAT.
     expect(result.items).toEqual([
@@ -415,7 +411,6 @@ describe('listStaleSentQuotes', () => {
         id: customQuote.id,
         kind: 'custom',
         product: null,
-        sentDaysAgo: 15,
         totalValue: 1219,
         workTitle: 'Stale repair',
       }),
@@ -431,7 +426,7 @@ describe('listStaleSentQuotes', () => {
       statusChangedAt: zonedInstant('2026-05-20T09:00:00'),
     });
 
-    const result = await listStaleSentQuotes({ clock: fixedClock, db: context.db });
+    const result = await listStaleSentQuotes({ db: context.db });
 
     expect(result.items).toHaveLength(8);
   });

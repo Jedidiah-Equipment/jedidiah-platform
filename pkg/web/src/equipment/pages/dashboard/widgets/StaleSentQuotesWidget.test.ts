@@ -30,7 +30,6 @@ describe('StaleSentQuoteRowContent', () => {
               thumbnailDataUrl: 'data:image/webp;base64,cHJvZHVjdA==',
             }
           : null,
-      sentDaysAgo: 12,
       statusChangedAt: '2026-08-01T08:00:00.000Z',
       totalValue: 1_500,
       workTitle: kind === 'custom' ? 'Trailer repair' : null,

@@ -13,6 +13,7 @@ export function jobCardFixture(variant: JobCardVariant): JobCardModel {
     capturedAt,
     marker: internal ? marker : null,
     comment: internal ? comment : null,
+    capturedByName: internal ? 'Sipho' : null,
   });
   const hours = (work: number, travel: number, unaccounted = 0, gapReason: string | null = null) =>
     internal

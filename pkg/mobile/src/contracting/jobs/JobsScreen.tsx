@@ -43,8 +43,8 @@ export default function JobsScreen() {
         data={jobs.data ?? []}
         keyExtractor={(job) => job.id}
         contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 4, paddingBottom: 16, gap: 10 }}
-        refreshing={!offline && jobs.isRefetching}
-        onRefresh={() => void jobs.refetch()}
+        refreshing={!offline && (jobs.isRefetching || finished.isRefetching)}
+        onRefresh={() => void Promise.all([jobs.refetch(), finished.canRead ? finished.refetch() : null])}
         ListEmptyComponent={
           <Text className="text-muted-foreground">
             {!jobs.canRead

@@ -39,6 +39,7 @@ function cardReading(reading: JobReading | null, internal: boolean): JobCardRead
     capturedAt: reading.capturedAt,
     marker: internal ? readingMarker(reading) : null,
     comment: internal ? reading.comment : null,
+    capturedByName: internal ? reading.capturedByName : null,
   };
 }
 

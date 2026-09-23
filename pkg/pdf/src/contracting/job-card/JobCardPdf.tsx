@@ -231,6 +231,7 @@ function ReadingCell({ reading }: { reading: JobCardReading | null }) {
     <View style={styles.reading}>
       <Text>{`${formatHours(reading.value)}${marker}`}</Text>
       <Text style={styles.muted}>{formatDate(reading.capturedAt, 'medium')}</Text>
+      {reading.capturedByName ? <Text style={styles.muted}>{`by ${reading.capturedByName}`}</Text> : null}
     </View>
   );
 }

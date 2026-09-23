@@ -18,6 +18,8 @@ const JobCardReading = z.object({
   marker: z.enum(jobCardReadingMarkers).nullable(),
   /** Internal copy only. */
   comment: z.string().nullable(),
+  /** Internal copy only: who captured the reading. */
+  capturedByName: z.string().nullable(),
 });
 export type JobCardReading = z.infer<typeof JobCardReading>;
 

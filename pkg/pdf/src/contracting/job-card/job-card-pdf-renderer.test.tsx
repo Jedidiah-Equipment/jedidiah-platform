@@ -4,7 +4,7 @@ import { JobCardPdf } from './JobCardPdf.js';
 import { jobCardFixture } from './job-card-fixture.js';
 import { renderJobCardPdf } from './job-card-pdf-renderer.js';
 
-const evidence = /travel|unaccounted|Foreman's|yard work|Thabo|northern gate|●|▲/;
+const evidence = /travel|unaccounted|Foreman's|yard work|Thabo|by Sipho|northern gate|●|▲/;
 
 describe('Job Card PDF', () => {
   test('the customer copy prints one hours figure per line, amounts and the ex-VAT total', () => {
@@ -42,6 +42,7 @@ describe('Job Card PDF', () => {
       '+ 7.0 h unaccounted — yard work at Stony Brook',
       "Foreman's note: meter glass cracked",
       'Driver: Thabo',
+      'by Sipho',
       '4 002.6 h ●',
       '7 152.4 h ▲',
       'Access through the northern gate.',

@@ -218,7 +218,13 @@ describe('buildJobCardModel', () => {
         kind: 'stint',
         machineCode: 'CAT320-1',
         driverName: null,
-        arrival: { value: 4002.6, capturedAt: '2026-09-01T07:00:00.000Z', marker: null, comment: null },
+        arrival: {
+          value: 4002.6,
+          capturedAt: '2026-09-01T07:00:00.000Z',
+          marker: null,
+          comment: null,
+          capturedByName: null,
+        },
         hours: { variant: 'customer', total: 48.6 },
         rate: { name: 'Excavator, supervised', basis: 'time', unitAmount: 600, per: 'h' },
         amount: 29_160,
@@ -271,7 +277,11 @@ describe('buildJobCardModel', () => {
       }),
       expect.objectContaining({
         machineCode: 'GRAD140K-1',
-        arrival: expect.objectContaining({ marker: 'verified', comment: 'Meter glass cracked' }),
+        arrival: expect.objectContaining({
+          marker: 'verified',
+          comment: 'Meter glass cracked',
+          capturedByName: 'Sipho',
+        }),
         departure: expect.objectContaining({ marker: 'no-photo' }),
         hours: { variant: 'internal', work: 42.4, travel: 2.1, unaccounted: 7, gapReason: 'yard work at Stony Brook' },
       }),

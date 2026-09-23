@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { DateIso, DateOnlyIso } from '../../common/date.js';
 import { ReadingValue } from '../readings/reading.js';
 import { Hours, JobNumber, Litres, Money, Quantity } from './job.js';
+import { finishedJobStatuses } from './job-enums.js';
 
 export const JobCardVariant = z.enum(['internal', 'customer']);
 export type JobCardVariant = z.infer<typeof JobCardVariant>;
@@ -41,7 +42,7 @@ const JobCardStintLine = z.object({
     }),
   ]),
   measures: z.array(z.object({ name: z.string(), quantity: Quantity })),
-  /** Null while un-priced or when the stint is No charge. */
+  /** Null when the stint is No charge, or while any line on the Job is un-priced. */
   rate: z
     .object({ name: z.string(), basis: z.enum(['time', 'measure']), unitAmount: Money, per: z.string() })
     .nullable(),
@@ -53,7 +54,10 @@ export type JobCardStintLine = z.infer<typeof JobCardStintLine>;
 const JobCardSubtotal = z.object({
   kind: z.literal('subtotal'),
   machineCode: z.string(),
-  hours: Hours,
+  hours: z.discriminatedUnion('variant', [
+    z.object({ variant: z.literal('customer'), total: Hours }),
+    z.object({ variant: z.literal('internal'), work: Hours, travel: Hours }),
+  ]),
   amount: Money.nullable(),
 });
 export type JobCardSubtotal = z.infer<typeof JobCardSubtotal>;
@@ -61,7 +65,7 @@ export type JobCardSubtotal = z.infer<typeof JobCardSubtotal>;
 export const JobCardModel = z.object({
   variant: JobCardVariant,
   jobNumber: JobNumber,
-  status: z.enum(['completed', 'priced', 'invoiced']),
+  status: z.enum(finishedJobStatuses),
   customerName: z.string(),
   farmName: z.string(),
   workTypeName: z.string(),
@@ -77,7 +81,7 @@ export const JobCardModel = z.object({
   /** Always printed, VAT-exempt; the amount is null while un-priced. */
   diesel: z.object({ litres: Litres, unitPrice: Money.nullable(), amount: Money.nullable() }),
   discount: z.object({ label: z.string(), amount: Money }).nullable(),
-  /** Null while un-priced. */
+  /** Null while any line is un-priced; every amount on the card is then null too. */
   totals: z.object({ subtotal: Money, discount: Money, diesel: Money, total: Money }).nullable(),
   /** Internal copy only: site notes. */
   notes: z.string().nullable(),

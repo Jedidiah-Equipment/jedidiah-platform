@@ -1,4 +1,4 @@
-import { fieldJobAccessMode } from '@pkg/domain/contracting';
+import { fieldJobAccessMode, hasJobCard } from '@pkg/domain/contracting';
 import { FieldDriver, FieldImplement, FieldJob } from '@pkg/schema/contracting';
 import { type UseQueryResult, useQuery } from '@tanstack/react-query';
 import { useCallback, useEffect } from 'react';
@@ -68,7 +68,8 @@ export function useJobs() {
   return savedQuery(canRead, query, useSavedQueryData(['jobs', 'v1'], isFieldJobs, query.data));
 }
 
-export const isFinishedJob = (job: Pick<FieldJob, 'status'>) => job.status !== 'upcoming' && job.status !== 'active';
+export const isFinishedJob = (job: Pick<FieldJob, 'status'>) => hasJobCard(job.status);
+export const jobStatusLabel = (status: FieldJob['status']) => `${status[0]?.toUpperCase()}${status.slice(1)}`;
 
 /** Management's Jobs finished in the last 90 days; live only, since sharing their Job Card needs the network anyway. */
 export function useFinishedJobs() {

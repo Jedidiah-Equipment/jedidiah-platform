@@ -27,14 +27,27 @@ function fixture(): JobCardModel {
   // Ten stints on one Machine, a long Farm name and an Invoice Number: overflows onto a second page.
   const [first, ...rest] = reference.lines;
   if (first?.kind !== 'stint') throw new Error('Fixture starts with a stint');
-  const repeats = Array.from({ length: 10 }, (_, index) => ({ ...first, amount: 2_940 + index }));
+  const repeats = Array.from({ length: 10 }, (_, index) => ({
+    ...first,
+    arrival: first.arrival && { ...first.arrival, capturedAt: `2026-08-${String(index + 10)}T07:00:00.000Z` },
+    amount: 2_940 + index,
+  }));
   return JobCardModel.parse({
     ...reference,
     status: 'invoiced',
     farmName: 'Rooikraal Noord-Oos Besproeiingsblok en Opgaardam (ou Van der Merwe-plaas)',
     invoiceNumber: 'INV-4471',
     invoicedAt: '2026-09-15T09:00:00.000Z',
-    lines: [...repeats, { kind: 'subtotal', machineCode: first.machineCode, hours: 486, amount: 29_445 }, ...rest],
+    lines: [
+      ...repeats,
+      {
+        kind: 'subtotal',
+        machineCode: first.machineCode,
+        hours: variant === 'internal' ? { variant, work: 486, travel: 0 } : { variant, total: 486 },
+        amount: 29_445,
+      },
+      ...rest,
+    ],
     discount: { label: 'Discount (5%)', amount: 3_621.75 },
     totals: { subtotal: 72_435, discount: 3_621.75, diesel: 4_830, total: 73_643.25 },
     repricingNote: variant === 'internal' ? 'Lowbed move was double-counted on the first pricing.' : null,

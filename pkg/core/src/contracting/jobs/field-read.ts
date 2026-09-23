@@ -12,7 +12,7 @@ import {
 } from '@pkg/db/contracting';
 import { assignmentState, fieldJobAccessMode, formatJobNumber } from '@pkg/domain/contracting';
 import type { UserAccessSummary } from '@pkg/schema';
-import { FieldDriver, FieldJob, FieldReading, FieldStint } from '@pkg/schema/contracting';
+import { FieldDriver, FieldJob, FieldReading, FieldStint, finishedJobStatuses } from '@pkg/schema/contracting';
 import { and, asc, eq, getTableColumns, gte, inArray, or, type SQL } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { JobError, jobNotFound } from './job-errors.js';
@@ -115,7 +115,6 @@ function mapFieldJob(row: LoadedFieldJob) {
 }
 
 const FINISHED_WINDOW_DAYS = 90;
-const finishedStatuses = ['completed', 'priced', 'invoiced'] as const;
 
 export async function listFieldJobs({
   db,
@@ -131,7 +130,7 @@ export async function listFieldJobs({
   const mode = fieldReadMode(actor);
   const open = inArray(contractingJobs.status, ['upcoming', 'active']);
   const recentlyFinished = and(
-    inArray(contractingJobs.status, [...finishedStatuses]),
+    inArray(contractingJobs.status, [...finishedJobStatuses]),
     gte(contractingJobs.completedAt, new Date(now.getTime() - FINISHED_WINDOW_DAYS * 24 * 60 * 60 * 1000)),
   );
   const rows = await loadFieldJobs(
@@ -152,7 +151,7 @@ export async function getFieldJob({ db, actor, id }: { db: Db; actor: UserAccess
   if (mode === 'own' && row.job.foremanUserId !== actor.userId)
     throw new JobError('contracting_job.not_owner', 'This Job is assigned to another Foreman.');
   const readable: readonly string[] =
-    mode === 'all' ? ['upcoming', 'active', ...finishedStatuses] : ['upcoming', 'active'];
+    mode === 'all' ? ['upcoming', 'active', ...finishedJobStatuses] : ['upcoming', 'active'];
   if (!readable.includes(row.job.status))
     throw new JobError('contracting_job.wrong_status', 'This Job is no longer open.');
   return mapFieldJob(row);

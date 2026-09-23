@@ -10,7 +10,7 @@ import { useReadingQueue } from '@/contracting/readings/ReadingQueueProvider';
 import type { QueuedReading } from '@/contracting/readings/reading-queue';
 import { useIsOffline } from '@/lib/connectivity';
 import { jobSummary } from './derive-stint';
-import { isFinishedJob, useFinishedJobs, useJobs } from './use-jobs';
+import { isFinishedJob, jobStatusLabel, useFinishedJobs, useJobs } from './use-jobs';
 
 export default function JobsScreen() {
   const jobs = useJobs();
@@ -85,11 +85,7 @@ export default function JobsScreen() {
 
 function JobRow({ job, queued }: { job: FieldJob; queued: readonly QueuedReading[] }) {
   const summary = jobSummary(job, queued);
-  const chip = isFinishedJob(job)
-    ? `${job.status[0]?.toUpperCase()}${job.status.slice(1)}`
-    : summary.hasArrived
-      ? null
-      : 'Upcoming';
+  const chip = isFinishedJob(job) ? jobStatusLabel(job.status) : summary.hasArrived ? null : 'Upcoming';
   return (
     <Pressable
       accessibilityRole="button"

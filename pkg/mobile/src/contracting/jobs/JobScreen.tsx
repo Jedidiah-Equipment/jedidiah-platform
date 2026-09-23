@@ -16,7 +16,7 @@ import { useIsOffline } from '@/lib/connectivity';
 import { shareDocument } from '@/lib/document-actions';
 import { useBusyAction } from '@/lib/use-busy-action';
 import { deriveStint, queuedUnplannedStints, type StintView } from './derive-stint';
-import { isFinishedJob, useDrivers, useImplements, useJob } from './use-jobs';
+import { isFinishedJob, jobStatusLabel, useDrivers, useImplements, useJob } from './use-jobs';
 
 const ORDER: Record<StintView['view'], number> = {
   running: 0,
@@ -106,9 +106,7 @@ export default function JobScreen() {
             </Text>
             <Text className="text-muted-foreground">{job.workTypeName}</Text>
             {job.description ? <Text className="text-muted-foreground">{job.description}</Text> : null}
-            {finished ? (
-              <Text className="text-muted-foreground">{`${job.status[0]?.toUpperCase()}${job.status.slice(1)}`}</Text>
-            ) : null}
+            {finished ? <Text className="text-muted-foreground">{jobStatusLabel(job.status)}</Text> : null}
           </View>
         ) : (
           <Text className="text-muted-foreground">

@@ -306,26 +306,25 @@ describe('buildJobCardModel', () => {
     expect(card.totals).toMatchObject({ discount: 3_621.75, total: 73_643.25 });
   });
 
-  test('an un-priced Completed Job prints hours with no amounts or totals', () => {
-    const unpriced = [excavator, grader].map((line) => ({
-      ...line,
+  test('a Completed Job with any line still un-priced prints hours with no rates, amounts or totals', () => {
+    const unpricedGrader = {
+      ...grader,
       rateId: null,
       rateName: null,
       rateBasis: null,
       rateUnitAmount: null,
       computedAmount: null,
       finalAmount: null,
-    }));
+    };
     const card = buildJobCardModel(
       rowleyDam({
         status: 'completed',
         pricedAt: null,
-        assignments: unpriced,
-        dieselUnitPrice: null,
-        dieselAmount: null,
+        assignments: [excavator, unpricedGrader],
+        dieselAmount: 4_830,
         pricing: {
           ...rowleyPricing,
-          gate: { ok: false, unpricedStints: 2, chargeLinesWithoutAmount: 0, dieselUnpriced: true },
+          gate: { ok: false, unpricedStints: 1, chargeLinesWithoutAmount: 0, dieselUnpriced: false },
         },
       }),
       'customer',
@@ -334,6 +333,7 @@ describe('buildJobCardModel', () => {
     expect(card.totals).toBeNull();
     expect(card.lines.map((line) => line.amount)).toEqual([null, null]);
     expect(card.lines[0]).toMatchObject({ rate: null, noCharge: false, hours: { total: 48.6 } });
+    expect(card.chargeLines).toEqual([{ description: 'Lowbed move', amount: null }]);
     expect(card.diesel).toEqual({ litres: 210, unitPrice: null, amount: null });
   });
 
@@ -342,17 +342,27 @@ describe('buildJobCardModel', () => {
       ...excavator,
       id: 'cat-2',
       arrival: reading(4060, '2026-09-10T07:00:00.000Z'),
+      workHours: 2,
       billableHours: 2,
       finalAmount: 1_200,
     };
-    const card = buildJobCardModel(rowleyDam({ assignments: [secondVisit, grader, excavator] }), 'customer', now);
+    const job = rowleyDam({ assignments: [secondVisit, grader, excavator] });
+    const card = buildJobCardModel(job, 'customer', now);
     expect(card.lines.map((line) => [line.kind, line.machineCode])).toEqual([
       ['stint', 'CAT320-1'],
       ['stint', 'CAT320-1'],
       ['subtotal', 'CAT320-1'],
       ['stint', 'GRAD140K-1'],
     ]);
-    expect(card.lines[2]).toEqual({ kind: 'subtotal', machineCode: 'CAT320-1', hours: 50.6, amount: 30_360 });
+    expect(card.lines[2]).toEqual({
+      kind: 'subtotal',
+      machineCode: 'CAT320-1',
+      hours: { variant: 'customer', total: 50.6 },
+      amount: 30_360,
+    });
+    expect(buildJobCardModel(job, 'internal', now).lines[2]).toMatchObject({
+      hours: { variant: 'internal', work: 50.6, travel: 0 },
+    });
   });
 
   test.each(['upcoming', 'active', 'cancelled'] as const)('refuses a %s Job', (status) => {

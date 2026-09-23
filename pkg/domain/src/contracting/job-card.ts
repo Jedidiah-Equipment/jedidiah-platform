@@ -1,24 +1,27 @@
 import { DateIso } from '@pkg/schema';
-import type {
-  Assignment,
-  JobCardModel,
-  JobCardReading,
-  JobCardReadingMarker,
-  JobCardStintLine,
-  JobCardVariant,
-  JobDetail,
-  JobReading,
+import {
+  type Assignment,
+  type FinishedJobStatus,
+  finishedJobStatuses,
+  type JobCardModel,
+  type JobCardReading,
+  type JobCardReadingMarker,
+  type JobCardStintLine,
+  type JobCardVariant,
+  type JobDetail,
+  type JobReading,
 } from '@pkg/schema/contracting';
 import { formatPercent } from '../formatting/number.js';
 import { round1 } from './hours.js';
 import { round2 } from './pricing.js';
 import { groupStints } from './stints.js';
 
-const jobCardStatuses = ['completed', 'priced', 'invoiced'] as const;
-type JobCardStatus = (typeof jobCardStatuses)[number];
+export const hasJobCard = (status: string): status is FinishedJobStatus =>
+  (finishedJobStatuses as readonly string[]).includes(status);
 
-export const hasJobCard = (status: string): status is JobCardStatus =>
-  (jobCardStatuses as readonly string[]).includes(status);
+/** The API route that renders a Job Card, relative to the API origin. */
+export const jobCardPath = (jobNumber: string, variant: JobCardVariant) =>
+  `/api/contracting/jobs/${encodeURIComponent(jobNumber)}/job-card?variant=${variant}`;
 
 export const jobCardFilename = (jobNumber: string, variant: JobCardVariant) => `${jobNumber}-job-card-${variant}.pdf`;
 
@@ -52,7 +55,7 @@ function cardRate(stint: Assignment): JobCardStintLine['rate'] {
   };
 }
 
-function stintLine(stint: Assignment, internal: boolean): JobCardStintLine {
+function stintLine(stint: Assignment, internal: boolean, priced: boolean): JobCardStintLine {
   return {
     kind: 'stint',
     machineCode: stint.machineCode,
@@ -71,9 +74,9 @@ function stintLine(stint: Assignment, internal: boolean): JobCardStintLine {
         }
       : { variant: 'customer', total: stint.billableHours },
     measures: stint.measures.map((measure) => ({ name: measure.measureTypeName, quantity: measure.quantity })),
-    rate: cardRate(stint),
-    noCharge: stint.rateUnitAmount !== null && stint.rateBasis === null,
-    amount: stint.rateUnitAmount === null ? null : stint.finalAmount,
+    rate: priced ? cardRate(stint) : null,
+    noCharge: priced && stint.rateBasis === null,
+    amount: priced ? stint.finalAmount : null,
   };
 }
 
@@ -90,6 +93,8 @@ export function buildJobCardModel(job: JobDetail, variant: JobCardVariant, now: 
   const { status } = job;
   if (!hasJobCard(status)) throw new Error('A Job Card exists once the Job is Completed.');
   const internal = variant === 'internal';
+  const pricing = job.pricing;
+  const priced = pricing !== null && (status !== 'completed' || pricing.gate.ok);
 
   const lines: JobCardModel['lines'] = [];
   let group: Assignment[] = [];
@@ -98,22 +103,18 @@ export function buildJobCardModel(job: JobDetail, variant: JobCardVariant, now: 
     if (row.kind === 'stint') {
       if (row.firstOfMachine) group = [];
       group.push(row.stint);
-      lines.push(stintLine(row.stint, internal));
+      lines.push(stintLine(row.stint, internal, priced));
       continue;
     }
-    const amounts = group.map((stint) => (stint.rateUnitAmount === null ? null : stint.finalAmount));
     lines.push({
       kind: 'subtotal',
       machineCode: row.machineCode,
-      hours: round1(group.reduce((total, stint) => total + (stint.billableHours ?? 0), 0)),
-      amount: amounts.some((amount) => amount === null)
-        ? null
-        : round2(amounts.reduce<number>((total, amount) => total + (amount ?? 0), 0)),
+      hours: internal
+        ? { variant: 'internal', work: row.workHours, travel: row.travelHours }
+        : { variant: 'customer', total: round1(row.workHours + row.travelHours) },
+      amount: priced ? round2(group.reduce((total, stint) => total + (stint.finalAmount ?? 0), 0)) : null,
     });
   }
-
-  const pricing = job.pricing;
-  const priced = pricing !== null && (status !== 'completed' || pricing.gate.ok);
 
   return {
     variant,
@@ -130,8 +131,15 @@ export function buildJobCardModel(job: JobDetail, variant: JobCardVariant, now: 
     invoicedAt: job.invoicedAt,
     pricedAt: job.pricedAt,
     lines,
-    chargeLines: job.chargeLines.map((line) => ({ description: line.description, amount: line.amount })),
-    diesel: { litres: job.dieselLitres, unitPrice: job.dieselUnitPrice, amount: job.dieselAmount },
+    chargeLines: job.chargeLines.map((line) => ({
+      description: line.description,
+      amount: priced ? line.amount : null,
+    })),
+    diesel: {
+      litres: job.dieselLitres,
+      unitPrice: priced ? job.dieselUnitPrice : null,
+      amount: priced ? job.dieselAmount : null,
+    },
     discount: priced ? discountLine(job, pricing.discountAmount) : null,
     totals: priced
       ? {

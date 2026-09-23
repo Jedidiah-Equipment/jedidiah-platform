@@ -35,7 +35,13 @@ const styles = StyleSheet.create({
   },
   brand: { alignItems: 'center', flexDirection: 'row', gap: 8, marginBottom: 10 },
   mark: { height: 30, objectFit: 'contain', width: 23 },
-  wordmark: { color: pdfColors.yellow, fontFamily: pdfTitleFontFamily, fontSize: 16, fontWeight: 700 },
+  wordmark: {
+    color: pdfColors.yellow,
+    fontFamily: pdfTitleFontFamily,
+    fontSize: 16,
+    fontWeight: 700,
+    textTransform: 'uppercase',
+  },
   title: { fontFamily: pdfTitleFontFamily, fontSize: 24, fontWeight: 700 },
   subtitle: { color: pdfColors.mutedOnDark, fontSize: 8, marginTop: 2 },
   businessDetails: { alignItems: 'flex-end', fontSize: 7, gap: 2, textAlign: 'right' },
@@ -100,13 +106,16 @@ const styles = StyleSheet.create({
   },
 });
 
-const markerGlyph: Record<JobCardReadingMarker, string> = {
-  verified: '●',
-  photo: '○',
-  'no-photo': '▲',
-  disputed: '!',
-  amended: '~',
+const markers: Record<JobCardReadingMarker, { glyph: string; meaning: string }> = {
+  verified: { glyph: '●', meaning: 'photo, AI-verified' },
+  photo: { glyph: '○', meaning: 'photo' },
+  'no-photo': { glyph: '▲', meaning: 'no photo' },
+  disputed: { glyph: '!', meaning: 'disputed' },
+  amended: { glyph: '~', meaning: 'amended' },
 };
+const markerLegend = `Readings: ${Object.values(markers)
+  .map(({ glyph, meaning }) => `${glyph} ${meaning}`)
+  .join(' · ')}`;
 
 const formatAmount = (amount: number | null) => (amount === null ? '—' : formatCurrency(amount));
 const formatQuantity = (quantity: number) => formatNumber(quantity, { decimals: Number.isInteger(quantity) ? 0 : 2 });
@@ -121,7 +130,7 @@ export function JobCardPdf({ document }: { document: JobCardModel }) {
           <View>
             <View style={styles.brand}>
               <Image src={jedidiahMarkWhiteSrc} style={styles.mark} />
-              <Text style={styles.wordmark}>JEDIDIAH CONTRACTING</Text>
+              <Text style={styles.wordmark}>{details.tradingName}</Text>
             </View>
             <Text style={styles.title}>JOB CARD</Text>
             <Text style={styles.subtitle}>
@@ -183,11 +192,7 @@ export function JobCardPdf({ document }: { document: JobCardModel }) {
           <ChargeRow key={`${line.description}-${line.amount}`} label={line.description} amount={line.amount} />
         ))}
         <ChargeRow label={dieselLabel(document.diesel)} amount={document.diesel.amount} />
-        {internal ? (
-          <Text style={styles.legend}>
-            Readings: ● photo, AI-verified · ○ photo · ▲ no photo · ! disputed · ~ amended
-          </Text>
-        ) : null}
+        {internal ? <Text style={styles.legend}>{markerLegend}</Text> : null}
 
         {document.totals ? (
           <Totals totals={document.totals} discount={document.discount} />
@@ -221,7 +226,7 @@ export function JobCardPdf({ document }: { document: JobCardModel }) {
 
 function ReadingCell({ reading }: { reading: JobCardReading | null }) {
   if (!reading) return <Text style={styles.reading}>—</Text>;
-  const marker = reading.marker ? ` ${markerGlyph[reading.marker]}` : '';
+  const marker = reading.marker ? ` ${markers[reading.marker].glyph}` : '';
   return (
     <View style={styles.reading}>
       <Text>{`${formatHours(reading.value)}${marker}`}</Text>
@@ -304,7 +309,11 @@ function SubtotalRow({ line }: { line: JobCardSubtotal }) {
         <Text style={styles.machine}>{`${line.machineCode} subtotal`}</Text>
         <Text style={styles.reading} />
         <Text style={styles.reading} />
-        <Text style={styles.hours}>{formatHours(line.hours)}</Text>
+        <Text style={styles.hours}>
+          {line.hours.variant === 'customer'
+            ? formatHours(line.hours.total)
+            : `${formatHours(line.hours.work)} + ${formatHours(line.hours.travel)} travel`}
+        </Text>
         <Text style={styles.rate} />
         <Text style={styles.amount}>{formatAmount(line.amount)}</Text>
       </View>

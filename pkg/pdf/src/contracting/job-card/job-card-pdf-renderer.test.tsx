@@ -49,6 +49,28 @@ describe('Job Card PDF', () => {
       expect(text).toContain(expected);
   });
 
+  test('splits a repeated Machine’s subtotal into work and travel on the internal copy only', () => {
+    const subtotal = (variant: 'customer' | 'internal') =>
+      collectText(
+        JobCardPdf({
+          document: {
+            ...jobCardFixture(variant),
+            lines: [
+              {
+                kind: 'subtotal',
+                machineCode: 'CAT320-1',
+                hours: variant === 'internal' ? { variant, work: 50.6, travel: 2 } : { variant, total: 52.6 },
+                amount: 31_560,
+              },
+            ],
+          },
+        }),
+      ).join('\n');
+
+    expect(subtotal('customer')).toContain('52.6 h');
+    expect(subtotal('internal')).toContain('50.6 h + 2.0 h travel');
+  });
+
   test('prints neither Equipment’s company details nor a VAT number', () => {
     const text = collectText(JobCardPdf({ document: jobCardFixture('internal') })).join('\n');
 

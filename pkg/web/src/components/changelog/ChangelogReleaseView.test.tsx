@@ -22,7 +22,7 @@ const release = {
 
 test('renders the release date', () => {
   const markup = renderToStaticMarkup(<ChangelogReleaseView changelog={release} />);
-  expect(markup).toContain('Jul 1, 2026');
+  expect(markup).toContain('1 Jul 2026');
 });
 
 test('groups entries under Surface labels in canonical order', () => {

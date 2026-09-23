@@ -47,4 +47,6 @@
   Tailwind 3 and Babel 7 unless their mobile peers support the next majors. The `expo.install.exclude`
   list records packages intentionally tested ahead of Expo's bundled-version metadata; review each
   exception on every SDK move.
+- Format for display with the `@pkg/domain` formatters (see `pkg/domain/AGENTS.md`), and render recent
+  timestamps with `src/components/DateText.tsx`, never `toLocaleString`.
 - Native Android launch requires a local Android SDK and Java runtime.

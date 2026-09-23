@@ -61,7 +61,7 @@ export function ChargeLinesCard({ job, editable }: { job: JobDetail; editable: b
           row.original.amount === null ? (
             <span className="text-muted-foreground">Jed at pricing</span>
           ) : (
-            formatCurrency(row.original.amount, 'ZAR')
+            formatCurrency(row.original.amount)
           ),
       },
       {

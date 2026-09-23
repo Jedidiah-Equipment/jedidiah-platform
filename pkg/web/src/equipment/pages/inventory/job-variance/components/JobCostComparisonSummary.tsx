@@ -48,7 +48,7 @@ export function JobCostComparisonSummary({ jobId }: { jobId: UUID }) {
           <CostTerm label="Estimate total" value={formatEstimateFloor(estimate.totalCostFloor, estimate.complete)} />
           <CostTerm
             label="Actual drawn parts"
-            value={actualCost === null ? 'Not priced' : formatCurrency(actualCost, 'ZAR')}
+            value={actualCost === null ? 'Not priced' : formatCurrency(actualCost)}
           />
           <CostTerm
             label={termComplete.parts ? 'Parts variance' : 'Parts variance ceiling'}

@@ -133,7 +133,7 @@ function JobScheduleSummary({ job }: { job: JobSummary }) {
         <View className="flex-row items-center gap-1">
           <Icon className="text-status-next" icon={IconCheck} size={11} />
           <Text className="text-[9px] text-status-next" mono numberOfLines={1} weight="semibold">
-            {formatDate(job.completedOn, 'd MMM yyyy')}
+            {formatDate(job.completedOn, 'short')}
           </Text>
         </View>
       ) : null}

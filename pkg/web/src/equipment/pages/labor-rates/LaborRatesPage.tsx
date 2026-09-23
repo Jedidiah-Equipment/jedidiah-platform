@@ -100,7 +100,7 @@ function rateColumn(
     header,
     cell: ({ row }) => {
       const value = row.original[field];
-      return value == null ? 'Not set' : field === 'consumablesPercentage' ? `${value}%` : formatCurrency(value, 'ZAR');
+      return value == null ? 'Not set' : field === 'consumablesPercentage' ? `${value}%` : formatCurrency(value);
     },
   };
 }

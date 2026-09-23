@@ -362,7 +362,7 @@ function ActiveHero({
             {active.isCancelled ? 'slot ends' : 'ends'}
           </Text>
           <Text className="text-xs text-surface-foreground" weight="semibold">
-            {formatDate(active.lastWorkDay, 'EEE d MMM')}
+            {formatDate(active.lastWorkDay, 'day')}
           </Text>
         </View>
       </View>
@@ -374,7 +374,7 @@ function ActiveHero({
         />
       </View>
       <View className="mt-2 flex-row justify-between">
-        <Text className="text-[10px] text-muted-foreground">{formatDate(active.firstWorkDay, 'd MMM')}</Text>
+        <Text className="text-[10px] text-muted-foreground">{formatDate(active.firstWorkDay, 'day')}</Text>
         <Text className="text-[10px] text-muted-foreground">
           {active.elapsedWorkDays} of {active.totalWorkDays} work days
         </Text>
@@ -420,7 +420,7 @@ function TimelineItem({
   onSelect: () => void;
 }) {
   const rangeLabel =
-    `${formatDate(slot.firstWorkDay, 'd MMM')} – ${formatDate(slot.lastWorkDay, 'd MMM')} · ${slot.workDays} work ${
+    `${formatDate(slot.firstWorkDay, 'day')} – ${formatDate(slot.lastWorkDay, 'day')} · ${slot.workDays} work ${
       slot.workDays === 1 ? 'day' : 'days'
     } · ${slot.isCancelled ? 'cancelled' : slot.status === 'done' ? 'done' : 'scheduled'}`.toUpperCase();
   const isMuted = slot.isCancelled || slot.status === 'done';

@@ -6,8 +6,7 @@ import type {
   JobWorkTimeActivityState,
   WorkItemDepartment,
 } from '@pkg/schema/equipment';
-import { isSameDay, isSameYear, subDays } from 'date-fns';
-import { formatDate, parseDate, toPlantDateOnly } from '../../formatting/date.js';
+import { formatDate, formatDayHeading, parseDate, toPlantDateOnly } from '../../formatting/date.js';
 import { getFirstName } from '../../formatting/text.js';
 import type { StatusBadgeColor } from '../../theme/status-badge.js';
 import { departmentLabels } from '../departments.js';
@@ -175,28 +174,9 @@ export function groupJobActivityByDay(
   return groups;
 }
 
-/**
- * The heading over a day's entries. Today and Yesterday are named as well as dated: the weekday is
- * what places an entry in the reader's week, but the two most-read days should not have to be
- * counted back to. The year only appears once it is no longer the obvious one.
- */
 function formatJobActivityDayLabel(occurredAt: DateIso, now: DateIso): string {
   const date = parseDate(occurredAt);
   const nowDate = parseDate(now);
 
-  if (!date || !nowDate) {
-    return '';
-  }
-
-  const dayLabel = formatDate(date, isSameYear(date, nowDate) ? 'EEE d MMM' : 'EEE d MMM yyyy');
-
-  if (isSameDay(date, nowDate)) {
-    return `Today · ${dayLabel}`;
-  }
-
-  if (isSameDay(date, subDays(nowDate, 1))) {
-    return `Yesterday · ${dayLabel}`;
-  }
-
-  return dayLabel;
+  return date && nowDate ? formatDayHeading(date, nowDate) : '';
 }

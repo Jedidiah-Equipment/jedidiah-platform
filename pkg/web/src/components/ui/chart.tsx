@@ -1,5 +1,6 @@
 'use client';
 
+import { formatNumber } from '@pkg/domain';
 import * as React from 'react';
 import type { TooltipValueType } from 'recharts';
 import * as RechartsPrimitive from 'recharts';
@@ -212,7 +213,9 @@ function ChartTooltipContent({
                       </div>
                       {item.value != null && (
                         <span className="shrink-0 font-mono font-medium text-foreground tabular-nums">
-                          {typeof item.value === 'number' ? item.value.toLocaleString() : String(item.value)}
+                          {typeof item.value === 'number'
+                            ? formatNumber(item.value, { decimals: Number.isInteger(item.value) ? 0 : 2 })
+                            : String(item.value)}
                         </span>
                       )}
                     </div>

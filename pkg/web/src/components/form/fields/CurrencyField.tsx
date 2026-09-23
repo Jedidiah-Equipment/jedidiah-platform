@@ -1,4 +1,4 @@
-import { CURRENCY_SYMBOL_BY_CODE, formatCurrency, formatNumber } from '@pkg/domain';
+import { CURRENCY_SYMBOL_BY_CODE, formatNumber, PLANT_CURRENCY_CODE } from '@pkg/domain';
 import * as React from 'react';
 import { Field, FieldDescription, FieldError, FieldLabel } from '@/components/ui/field.js';
 import { InputGroup, InputGroupAddon, InputGroupInput, InputGroupText } from '@/components/ui/input-group.js';
@@ -18,7 +18,7 @@ export type CurrencyFieldProps = {
 } & CurrencyFieldInputProps;
 
 export function CurrencyField({
-  currencyCode = 'ZAR',
+  currencyCode = PLANT_CURRENCY_CODE,
   description,
   displayZeroAsEmpty = false,
   label,
@@ -80,7 +80,7 @@ export function CurrencyField({
 }
 
 export function formatCurrencyFieldValue(value: number, displayZeroAsEmpty: boolean): string {
-  return displayZeroAsEmpty && value === 0 ? '' : formatCurrency(value);
+  return displayZeroAsEmpty && value === 0 ? '' : formatNumber(value, { decimals: 2 });
 }
 
 export function hasCurrencyFieldValueChanged(previousValue: number, nextValue: number): boolean {

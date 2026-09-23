@@ -307,7 +307,7 @@ function ProductDocumentRow({ document, product }: { document: ProductDocument; 
       contentType={document.contentType}
       downloadPath={productDocumentDownloadPath(product.id, document.id)}
       filename={document.filename}
-      metadata={`${formatBytes(document.byteSize)} · ${formatDate(document.createdAt, 'd MMM yyyy')}`}
+      metadata={`${formatBytes(document.byteSize)} · ${formatDate(document.createdAt, 'short')}`}
       onOpen={getDocumentListAction(document.contentType) === 'preview' ? open : undefined}
     />
   );

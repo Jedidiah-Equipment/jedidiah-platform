@@ -105,7 +105,7 @@ function OwnershipTransferRow({ transfer }: { transfer: ProductUnitOwnershipTran
     <View className="gap-1 border-t border-border py-3">
       <View className="flex-row items-center gap-2">
         <Text className="text-sm text-surface-foreground" mono weight="semibold">
-          {formatDate(transfer.occurredOn, 'd MMM yyyy')}
+          {formatDate(transfer.occurredOn, 'short')}
         </Text>
         {/* A null Customer on either side is us: the machine came from, or returned to, Stock. */}
         <View className="min-w-0 flex-1 flex-row items-center gap-1.5">
@@ -160,7 +160,7 @@ function UnitJobRow({ canOpen, job }: { canOpen: boolean; job: ProductUnitJob })
         {job.code}
       </Text>
       <Text className="mt-1 text-[10px] text-muted-foreground" mono numberOfLines={1}>
-        {formatJobLifecycleStatus(job, 'd MMM yyyy')}
+        {formatJobLifecycleStatus(job, 'short')}
       </Text>
     </>
   );

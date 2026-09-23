@@ -26,7 +26,7 @@ export function quoteDocumentMetaLine(
   document: Pick<QuoteDocument, 'byteSize' | 'createdAt' | 'uploaderEmail' | 'uploaderName'>,
 ): string {
   const uploader = document.uploaderName ?? document.uploaderEmail ?? 'Unknown uploader';
-  return `${formatBytes(document.byteSize)} · ${uploader} · ${formatDate(document.createdAt, 'd MMM yyyy')}`;
+  return `${formatBytes(document.byteSize)} · ${uploader} · ${formatDate(document.createdAt, 'short')}`;
 }
 
 export function quoteDocumentCountLabel(count: number): string {

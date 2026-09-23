@@ -1961,12 +1961,10 @@ describe('quotes.staleSent', () => {
     expect(result.items.map((item) => item.id)).toEqual([oldSent.id, freshSent.id]);
     expect(result.items[0]).toMatchObject({
       customerCompanyName: 'Old Sent Customer',
-      sentDaysAgo: 14,
       totalValue: 1207.5,
     });
     expect(result.items[1]).toMatchObject({
       customerCompanyName: 'Fresh Sent Customer',
-      sentDaysAgo: 0,
       totalValue: 1150,
     });
   });

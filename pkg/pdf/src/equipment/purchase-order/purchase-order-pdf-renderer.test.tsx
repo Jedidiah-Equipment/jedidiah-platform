@@ -15,7 +15,7 @@ describe('Purchase Order PDF', () => {
         'PO-00042',
         'Acme Supplies',
         'JOB-00007, JOB-00012',
-        '20 August 2026',
+        'Thursday, 20 August 2026',
         'P-100 - Hydraulic pipe',
         '2 x 6000 mm',
         'Please quote PO-00042 on correspondence and invoices.',
@@ -95,7 +95,7 @@ describe('Purchase Order PDF', () => {
   test('prints who last modified the order and when', () => {
     const text = collectText(PurchaseOrderPdf({ document: model() }));
 
-    expect(text).toContain('Last modified by Priya Buyer on 5 August 2026');
+    expect(text).toContain('Last modified by Priya Buyer on Wednesday, 5 August 2026');
   });
 
   test('names a missing audit actor System', () => {
@@ -103,7 +103,7 @@ describe('Purchase Order PDF', () => {
       PurchaseOrderPdf({ document: model({ lastModified: { actorName: null, occurredAt: model().issueDate } }) }),
     );
 
-    expect(text).toContain('Last modified by System on 2 August 2026');
+    expect(text).toContain('Last modified by System on Sunday, 2 August 2026');
   });
 });
 

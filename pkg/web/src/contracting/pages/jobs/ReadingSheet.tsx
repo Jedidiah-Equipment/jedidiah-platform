@@ -1,4 +1,4 @@
-import { formatDate } from '@pkg/domain';
+import { formatDate, formatHours } from '@pkg/domain';
 import { type Assignment, type JobReading, ReadingAmendInput } from '@pkg/schema/contracting';
 import { useMutation } from '@tanstack/react-query';
 import { useCallback, useState } from 'react';
@@ -77,10 +77,9 @@ export function ReadingSheet({
             <div className="space-y-4 pb-6">
               {reading ? (
                 <>
-                  <div className="text-2xl font-semibold">{reading.value.toFixed(1)} h</div>
+                  <div className="text-2xl font-semibold">{formatHours(reading.value)}</div>
                   <p>
-                    Captured {formatDate(reading.capturedAt, 'dd MMM yyyy HH:mm')} by{' '}
-                    {reading.capturedByName ?? 'Unknown'}
+                    Captured {formatDate(reading.capturedAt, 'medium')} by {reading.capturedByName ?? 'Unknown'}
                   </p>
                   <ReadingEvidenceBadge
                     reading={reading}
@@ -100,7 +99,7 @@ export function ReadingSheet({
                   {reading.disputed ? <p>Disputed: {reading.disputeReason}</p> : null}
                   {reading.amendedAt ? (
                     <p>
-                      Amended {formatDate(reading.amendedAt, 'dd MMM yyyy HH:mm')}: {reading.amendmentReason}
+                      Amended {formatDate(reading.amendedAt, 'medium')}: {reading.amendmentReason}
                     </p>
                   ) : null}
                   <ErrorMessage error={reverify.error} fallbackMessage="Unable to re-verify reading." />
@@ -143,7 +142,7 @@ export function ReadingSheet({
       <FilePreviewSheet
         open={preview && !!reading}
         onOpenChange={setPreview}
-        description={reading ? `Captured ${formatDate(reading.capturedAt, 'dd MMM yyyy HH:mm')}` : ''}
+        description={reading ? `Captured ${formatDate(reading.capturedAt, 'medium')}` : ''}
         downloadFilename={`${selected?.stint.machineCode ?? 'meter'}-reading.jpg`}
         fetchBlob={fetchBlob}
         kind="image"

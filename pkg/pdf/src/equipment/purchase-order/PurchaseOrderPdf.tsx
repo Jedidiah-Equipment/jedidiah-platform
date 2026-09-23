@@ -105,12 +105,12 @@ export function PurchaseOrderPdf({ document }: { document: PurchaseOrderPdfModel
           </View>
           <View style={styles.panel}>
             <Text style={styles.label}>Order details</Text>
-            <Text style={styles.line}>Issued: {formatDate(document.issueDate, 'd MMMM yyyy')}</Text>
+            <Text style={styles.line}>Issued: {formatDate(document.issueDate, 'long')}</Text>
             {document.revision > 1 ? (
               <Text style={styles.line}>{`Revision ${document.revision} - supersedes all earlier revisions`}</Text>
             ) : null}
             <Text style={styles.line}>
-              Expected: {formatDate(document.expectedDeliveryDate, 'd MMMM yyyy', 'Not specified')}
+              Expected: {formatDate(document.expectedDeliveryDate, 'long', 'Not specified')}
             </Text>
             <Text style={styles.label}>Linked Jobs</Text>
             <Text>{document.jobCodes.length > 0 ? document.jobCodes.join(', ') : 'Restock - no linked Job'}</Text>
@@ -134,7 +134,7 @@ export function PurchaseOrderPdf({ document }: { document: PurchaseOrderPdfModel
         <View style={styles.footer} fixed>
           <Text>{`Last modified by ${document.lastModified.actorName ?? 'System'} on ${formatDate(
             document.lastModified.occurredAt,
-            'd MMMM yyyy',
+            'long',
           )}`}</Text>
           <Text>{`Please quote ${document.code} on correspondence and invoices.`}</Text>
         </View>

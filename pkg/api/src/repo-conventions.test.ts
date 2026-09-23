@@ -12,7 +12,7 @@ type BiomeOverride = {
       style?: {
         noRestrictedImports?: {
           level?: string;
-          options?: { patterns?: { group?: string[] }[] };
+          options?: { paths?: Record<string, unknown>; patterns?: { group?: string[] }[] };
         };
       };
     };
@@ -29,6 +29,62 @@ function readBiomeOverrides(): BiomeOverride[] {
 function targetsFrontendSource(override: BiomeOverride): boolean {
   return (override.includes ?? []).some((pattern) => /^pkg\/(web|mobile)\//.test(pattern) && !pattern.endsWith('.css'));
 }
+
+// Files that may call date-fns formatting directly: the domain formatters themselves, the schema's
+// DateOnlyIso coercion, and vendored calendar chrome.
+const DATE_FNS_FORMATTING_ALLOWLIST = [
+  'pkg/domain/src/',
+  'pkg/schema/src/common/date.ts',
+  'pkg/web/src/components/kibo-ui/',
+  'pkg/web/src/components/ui/calendar.tsx',
+];
+
+function isDateFnsFormattingAllowlisted(override: BiomeOverride): boolean {
+  const positiveIncludes = (override.includes ?? []).filter((pattern) => !pattern.startsWith('!'));
+
+  return (
+    positiveIncludes.length > 0 &&
+    positiveIncludes.every((pattern) => DATE_FNS_FORMATTING_ALLOWLIST.some((prefix) => pattern.startsWith(prefix)))
+  );
+}
+
+// Display formatting belongs to `pkg/domain/src/formatting`; these are the only other places a raw
+// locale or fixed-decimal formatter may run, each for a reason that is not display of a value.
+const RAW_FORMATTER_ALLOWLIST = [
+  'pkg/domain/src/formatting/',
+  // Upload size limits in error copy: `1.5 MB`, not a reading.
+  'pkg/domain/src/files/file-policy.ts',
+  // Vendored react-day-picker chrome and its data attributes.
+  'pkg/web/src/components/ui/calendar.tsx',
+  // Sub-cent ledger precision checks, not rendering.
+  'pkg/web/src/equipment/utils/part-quantity-format.ts',
+];
+
+describe('display formatting', () => {
+  it('formats dates, amounts, and counts only through the @pkg/domain formatters', () => {
+    const result = spawnSync(
+      'git',
+      [
+        'grep',
+        '--untracked',
+        '-nE',
+        String.raw`toLocaleDateString\(|toLocaleTimeString\(|toLocaleString\(|Intl\.DateTimeFormat\(|Intl\.NumberFormat\(|\.toFixed\(`,
+        '--',
+        'pkg/*/src/**',
+        'pkg/mobile/app/**',
+      ],
+      { cwd: repoRoot, encoding: 'utf8' },
+    );
+    const offenders = result.stdout
+      .split('\n')
+      .filter((line) => line.length > 0 && !RAW_FORMATTER_ALLOWLIST.some((prefix) => line.startsWith(prefix)));
+
+    expect(
+      offenders,
+      'Render through formatDate (named format), formatCurrency, formatNumber, formatPercent, or formatHours from @pkg/domain',
+    ).toEqual([]);
+  });
+});
 
 describe('.git-blame-ignore-revs', () => {
   it('lists only commits reachable from HEAD', () => {
@@ -81,6 +137,22 @@ describe('biome.json overrides', () => {
         override.linter?.rules?.style?.noRestrictedImports?.level,
         `override ${JSON.stringify(override.includes)} must set noRestrictedImports level to "error"`,
       ).toBe('error');
+    }
+  });
+
+  it('restates the date-fns formatting restriction on every override outside its allowlist', () => {
+    const configured = overrides.filter((override) => override.linter?.rules?.style?.noRestrictedImports);
+
+    for (const override of configured) {
+      const options = override.linter?.rules?.style?.noRestrictedImports?.options;
+      const restricted =
+        options?.paths?.['date-fns'] !== undefined &&
+        (options.patterns ?? []).some((pattern) => pattern.group?.includes('date-fns/format'));
+
+      expect(
+        restricted,
+        `override ${JSON.stringify(override.includes)} ${restricted ? 'restricts' : 'does not restrict'} date-fns formatting; an override replaces noRestrictedImports wholesale, so every override outside the allowlist must restate the date-fns path and its subpath patterns`,
+      ).toBe(!isDateFnsFormattingAllowlisted(override));
     }
   });
 });

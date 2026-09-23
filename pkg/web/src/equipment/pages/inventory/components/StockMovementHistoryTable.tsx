@@ -283,7 +283,7 @@ function formatLedgerQuantity(quantity: number, unitOfMeasure: PartUnitOfMeasure
 }
 
 function formatCost(value: number | null): string {
-  return value === null ? '—' : formatCurrency(value, 'ZAR');
+  return value === null ? '—' : formatCurrency(value);
 }
 
 /** A revaluation stamps a linear Part's per-millimetre average verbatim, so this column holds sub-cent

@@ -1,4 +1,4 @@
-import { formatCurrency, formatNumber } from '@pkg/domain';
+import { formatCurrency, formatNumber, PLANT_CURRENCY_CODE } from '@pkg/domain';
 import { formatPartQuantityValue, PART_UNIT_SUFFIXES } from '@pkg/domain/equipment';
 import { PART_UNIT_OF_MEASURE_LABELS, type PartUnitOfMeasure } from '@pkg/schema/equipment';
 
@@ -59,14 +59,15 @@ function purchasePieceLengthMm({ standardPurchaseLengthMm, unitOfMeasure }: Part
  * round away, since R0.00 against stock that carries value reads as free rather than as cheap.
  */
 export function formatUnitCost(value: number, unitOfMeasure: PartUnitOfMeasure): string {
-  if (unitOfMeasure !== 'mm' && !roundsToNothing(value, 2)) return formatCurrency(value, 'ZAR', { decimals: 2 });
+  if (unitOfMeasure !== 'mm' && !roundsToNothing(value, 2))
+    return formatCurrency(value, PLANT_CURRENCY_CODE, { decimals: 2 });
 
   // Finer than the ledger itself holds — a bound is the honest reading, where a row of zeros is not.
   if (roundsToNothing(value, LEDGER_COST_DECIMALS)) {
-    return `< ${formatCurrency(10 ** -LEDGER_COST_DECIMALS, 'ZAR', { decimals: LEDGER_COST_DECIMALS })}`;
+    return `< ${formatCurrency(10 ** -LEDGER_COST_DECIMALS, PLANT_CURRENCY_CODE, { decimals: LEDGER_COST_DECIMALS })}`;
   }
 
-  return formatCurrency(value, 'ZAR', { decimals: subCentDecimals(value) });
+  return formatCurrency(value, PLANT_CURRENCY_CODE, { decimals: subCentDecimals(value) });
 }
 
 /** Whether a cost that is really there renders as nothing at `decimals`. Zero itself is not that claim. */

@@ -33,9 +33,9 @@ export function missingEstimateLabels(missing: ProductCostEstimate['missing']): 
 }
 
 export function formatEstimateFloor(value: number, complete: boolean): string {
-  return `${complete ? '' : '≥ '}${formatCurrency(value, 'ZAR')}`;
+  return `${complete ? '' : '≥ '}${formatCurrency(value)}`;
 }
 
 export function formatEstimateCeiling(value: number, complete: boolean): string {
-  return `${complete ? '' : '≤ '}${formatCurrency(value, 'ZAR')}`;
+  return `${complete ? '' : '≤ '}${formatCurrency(value)}`;
 }

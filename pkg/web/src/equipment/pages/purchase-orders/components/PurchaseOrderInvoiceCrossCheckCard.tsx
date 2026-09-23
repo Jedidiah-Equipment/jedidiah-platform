@@ -259,7 +259,7 @@ function RowActions({
         correction?.canApply ? (
           <Button disabled={isPending} onClick={() => onApply(partId)} size="sm" type="button">
             {isPending ? <IconLoader2 className="animate-spin" data-icon="inline-start" /> : null}
-            Apply — average to {formatCurrency(correction.newAverageUnitCost ?? 0, 'ZAR')}
+            Apply — average to {formatCurrency(correction.newAverageUnitCost ?? 0)}
           </Button>
         ) : (
           // The stock this arrived as has already been drawn and its Job costs are stamped, so
@@ -310,7 +310,7 @@ function quantityPair(row: SupplierInvoiceMatchRow): string {
 }
 
 function pricePair(row: SupplierInvoiceMatchRow): string {
-  return `${row.unitPrice === null ? '—' : formatCurrency(row.unitPrice, 'ZAR')} / ${
-    row.invoiceUnitPrice === null ? '—' : formatCurrency(row.invoiceUnitPrice, 'ZAR')
+  return `${row.unitPrice === null ? '—' : formatCurrency(row.unitPrice)} / ${
+    row.invoiceUnitPrice === null ? '—' : formatCurrency(row.invoiceUnitPrice)
   }`;
 }

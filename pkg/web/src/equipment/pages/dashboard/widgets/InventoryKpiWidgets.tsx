@@ -1,4 +1,4 @@
-import { formatCurrency } from '@pkg/domain';
+import { formatCurrency, formatNumber } from '@pkg/domain';
 import type { InventoryKpis } from '@pkg/schema/equipment';
 import { STOCK_ADJUSTMENT_REASON_LABELS } from '@pkg/schema/equipment';
 import { useQuery } from '@tanstack/react-query';
@@ -36,7 +36,7 @@ export const InventoryTurnsWidget: React.FC = () => {
         <Link className="flex flex-1 hover:underline" to="/equipment/inventory">
           <StatCard
             sublabel="Annualized, trailing 90d, perpetual stock"
-            value={data.inventoryTurns === null ? '—' : `${data.inventoryTurns.toFixed(2)}×`}
+            value={data.inventoryTurns === null ? '—' : `${formatNumber(data.inventoryTurns, { decimals: 2 })}×`}
           />
         </Link>
       )}
@@ -120,5 +120,5 @@ function KpiListRow({ label, value }: { label: string; value: number | null }) {
 }
 
 function formatValue(value: number | null): string {
-  return value === null ? 'No cost yet' : formatCurrency(value, 'ZAR');
+  return value === null ? 'No cost yet' : formatCurrency(value);
 }

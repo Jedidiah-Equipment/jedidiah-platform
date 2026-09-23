@@ -90,7 +90,7 @@ export function ScheduledJobRow({
           {subtitle ? <span className="block truncate text-muted-foreground">{subtitle}</span> : null}
         </span>
       </span>
-      <span className="font-medium tabular-nums">{formatDate(scheduledJob.startDate, 'MMM d')}</span>
+      <span className="font-medium tabular-nums">{formatDate(scheduledJob.startDate, 'day')}</span>
     </div>
   );
 }

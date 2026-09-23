@@ -1,7 +1,7 @@
 import { DateOnlyIso } from '@pkg/schema';
 import { describe, expect, it, vi } from 'vitest';
 
-import { formatDate, toPlantDateOnly } from '../../formatting/date.js';
+import { type DateFormat, formatDate, toPlantDateOnly } from '../../formatting/date.js';
 import { resolveInsertAtDatePlacement } from './job-slot-insert-at-date.js';
 import { projectJobSlots } from './job-slot-projection.js';
 
@@ -45,9 +45,26 @@ describe('scheduling timezone tripwire', () => {
     }
   });
 
-  it('renders a date-only value as the same calendar date in any process timezone', () => {
-    for (const rendered of inEveryTimeZone(() => formatDate('2026-06-09', 'MMM d'))) {
-      expect(rendered).toBe('Jun 9');
+  it('renders a date-only value as the same calendar date through every named format in any process timezone', () => {
+    const expected = {
+      day: '9 Jun',
+      duration: '3 months ago',
+      long: 'Tuesday, 9 June 2026',
+      medium: '9 Jun 2026, 00:00',
+      short: '9 Jun 2026',
+      time: '00:00',
+    } as const satisfies Record<DateFormat, string>;
+
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-09-23T12:00:00.000Z'));
+    try {
+      for (const [format, rendering] of Object.entries(expected)) {
+        for (const rendered of inEveryTimeZone(() => formatDate('2026-06-09', format as DateFormat))) {
+          expect(rendered).toBe(rendering);
+        }
+      }
+    } finally {
+      vi.useRealTimers();
     }
   });
 

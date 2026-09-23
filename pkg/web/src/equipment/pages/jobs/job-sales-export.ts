@@ -1,8 +1,8 @@
-import { formatDate } from '@pkg/domain';
+import { toCsvAmount, toFileDateStamp } from '@pkg/domain';
 import type { JobSalesExportRow } from '@pkg/schema/equipment';
 import Papa from 'papaparse';
 
-import { downloadCsv, toCsvAmount } from '@/utils/csv-export.js';
+import { downloadCsv } from '@/utils/csv-export.js';
 
 export const JOB_SALES_EXPORT_COLUMNS = [
   'job_number',
@@ -44,7 +44,7 @@ export function buildJobSalesExportCsv(rows: readonly JobSalesExportRow[]): stri
 }
 
 export function createJobSalesExportFilename(date: Date): string {
-  return `completed-jobs-${formatDate(date, 'yyyy-MM-dd')}.csv`;
+  return `completed-jobs-${toFileDateStamp(date)}.csv`;
 }
 
 export function downloadJobSalesExport(rows: readonly JobSalesExportRow[], date = new Date()): void {

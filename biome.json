@@ -79,8 +79,36 @@
                   {
                     "group": ["contracting/**", "**/contracting/**", "@pkg/*/contracting"],
                     "message": "Business namespaces may import shared code, never each other."
+                  },
+                  {
+                    "group": [
+                      "date-fns/format",
+                      "date-fns/formatDate",
+                      "date-fns/formatDistance*",
+                      "date-fns/formatDuration",
+                      "date-fns/formatRelative",
+                      "date-fns/intlFormat*"
+                    ],
+                    "message": "Display formatting goes through the @pkg/domain formatters (formatDate with a named format); date-fns is for date arithmetic here."
                   }
-                ]
+                ],
+                "paths": {
+                  "date-fns": {
+                    "importNames": [
+                      "format",
+                      "formatDate",
+                      "formatDistance",
+                      "formatDistanceStrict",
+                      "formatDistanceToNow",
+                      "formatDistanceToNowStrict",
+                      "formatDuration",
+                      "formatRelative",
+                      "intlFormat",
+                      "intlFormatDistance"
+                    ],
+                    "message": "Display formatting goes through the @pkg/domain formatters (formatDate with a named format); date-fns is for date arithmetic here."
+                  }
+                }
               }
             }
           }
@@ -107,8 +135,36 @@
                   {
                     "group": ["equipment/**", "**/equipment/**", "@pkg/*/equipment"],
                     "message": "Business namespaces may import shared code, never each other."
+                  },
+                  {
+                    "group": [
+                      "date-fns/format",
+                      "date-fns/formatDate",
+                      "date-fns/formatDistance*",
+                      "date-fns/formatDuration",
+                      "date-fns/formatRelative",
+                      "date-fns/intlFormat*"
+                    ],
+                    "message": "Display formatting goes through the @pkg/domain formatters (formatDate with a named format); date-fns is for date arithmetic here."
                   }
-                ]
+                ],
+                "paths": {
+                  "date-fns": {
+                    "importNames": [
+                      "format",
+                      "formatDate",
+                      "formatDistance",
+                      "formatDistanceStrict",
+                      "formatDistanceToNow",
+                      "formatDistanceToNowStrict",
+                      "formatDuration",
+                      "formatRelative",
+                      "intlFormat",
+                      "intlFormatDistance"
+                    ],
+                    "message": "Display formatting goes through the @pkg/domain formatters (formatDate with a named format); date-fns is for date arithmetic here."
+                  }
+                }
               }
             }
           }
@@ -160,8 +216,36 @@
                       "@pkg/*/contracting"
                     ],
                     "message": "Shared modules cannot import a business namespace; keep business composition in explicit app wiring."
+                  },
+                  {
+                    "group": [
+                      "date-fns/format",
+                      "date-fns/formatDate",
+                      "date-fns/formatDistance*",
+                      "date-fns/formatDuration",
+                      "date-fns/formatRelative",
+                      "date-fns/intlFormat*"
+                    ],
+                    "message": "Display formatting goes through the @pkg/domain formatters (formatDate with a named format); date-fns is for date arithmetic here."
                   }
-                ]
+                ],
+                "paths": {
+                  "date-fns": {
+                    "importNames": [
+                      "format",
+                      "formatDate",
+                      "formatDistance",
+                      "formatDistanceStrict",
+                      "formatDistanceToNow",
+                      "formatDistanceToNowStrict",
+                      "formatDuration",
+                      "formatRelative",
+                      "intlFormat",
+                      "intlFormatDistance"
+                    ],
+                    "message": "Display formatting goes through the @pkg/domain formatters (formatDate with a named format); date-fns is for date arithmetic here."
+                  }
+                }
               }
             }
           }
@@ -189,8 +273,36 @@
                   {
                     "group": ["contracting/**", "**/contracting/**", "@pkg/*/contracting"],
                     "message": "Business namespaces may import shared code, never each other."
+                  },
+                  {
+                    "group": [
+                      "date-fns/format",
+                      "date-fns/formatDate",
+                      "date-fns/formatDistance*",
+                      "date-fns/formatDuration",
+                      "date-fns/formatRelative",
+                      "date-fns/intlFormat*"
+                    ],
+                    "message": "Display formatting goes through the @pkg/domain formatters (formatDate with a named format); date-fns is for date arithmetic here."
                   }
-                ]
+                ],
+                "paths": {
+                  "date-fns": {
+                    "importNames": [
+                      "format",
+                      "formatDate",
+                      "formatDistance",
+                      "formatDistanceStrict",
+                      "formatDistanceToNow",
+                      "formatDistanceToNowStrict",
+                      "formatDuration",
+                      "formatRelative",
+                      "intlFormat",
+                      "intlFormatDistance"
+                    ],
+                    "message": "Display formatting goes through the @pkg/domain formatters (formatDate with a named format); date-fns is for date arithmetic here."
+                  }
+                }
               }
             }
           }
@@ -218,8 +330,36 @@
                   {
                     "group": ["equipment/**", "**/equipment/**", "@pkg/*/equipment"],
                     "message": "Business namespaces may import shared code, never each other."
+                  },
+                  {
+                    "group": [
+                      "date-fns/format",
+                      "date-fns/formatDate",
+                      "date-fns/formatDistance*",
+                      "date-fns/formatDuration",
+                      "date-fns/formatRelative",
+                      "date-fns/intlFormat*"
+                    ],
+                    "message": "Display formatting goes through the @pkg/domain formatters (formatDate with a named format); date-fns is for date arithmetic here."
                   }
-                ]
+                ],
+                "paths": {
+                  "date-fns": {
+                    "importNames": [
+                      "format",
+                      "formatDate",
+                      "formatDistance",
+                      "formatDistanceStrict",
+                      "formatDistanceToNow",
+                      "formatDistanceToNowStrict",
+                      "formatDuration",
+                      "formatRelative",
+                      "intlFormat",
+                      "intlFormatDistance"
+                    ],
+                    "message": "Display formatting goes through the @pkg/domain formatters (formatDate with a named format); date-fns is for date arithmetic here."
+                  }
+                }
               }
             }
           }
@@ -268,8 +408,36 @@
                       "@pkg/*/contracting"
                     ],
                     "message": "Shared frontend modules cannot import a business namespace; keep business composition in explicit route wiring."
+                  },
+                  {
+                    "group": [
+                      "date-fns/format",
+                      "date-fns/formatDate",
+                      "date-fns/formatDistance*",
+                      "date-fns/formatDuration",
+                      "date-fns/formatRelative",
+                      "date-fns/intlFormat*"
+                    ],
+                    "message": "Display formatting goes through the @pkg/domain formatters (formatDate with a named format); date-fns is for date arithmetic here."
                   }
-                ]
+                ],
+                "paths": {
+                  "date-fns": {
+                    "importNames": [
+                      "format",
+                      "formatDate",
+                      "formatDistance",
+                      "formatDistanceStrict",
+                      "formatDistanceToNow",
+                      "formatDistanceToNowStrict",
+                      "formatDuration",
+                      "formatRelative",
+                      "intlFormat",
+                      "intlFormatDistance"
+                    ],
+                    "message": "Display formatting goes through the @pkg/domain formatters (formatDate with a named format); date-fns is for date arithmetic here."
+                  }
+                }
               }
             }
           }
@@ -295,8 +463,36 @@
                   {
                     "group": ["../../**", "../../../**"],
                     "message": "Use the @/* alias instead of imports that traverse more than one parent directory."
+                  },
+                  {
+                    "group": [
+                      "date-fns/format",
+                      "date-fns/formatDate",
+                      "date-fns/formatDistance*",
+                      "date-fns/formatDuration",
+                      "date-fns/formatRelative",
+                      "date-fns/intlFormat*"
+                    ],
+                    "message": "Display formatting goes through the @pkg/domain formatters (formatDate with a named format); date-fns is for date arithmetic here."
                   }
-                ]
+                ],
+                "paths": {
+                  "date-fns": {
+                    "importNames": [
+                      "format",
+                      "formatDate",
+                      "formatDistance",
+                      "formatDistanceStrict",
+                      "formatDistanceToNow",
+                      "formatDistanceToNowStrict",
+                      "formatDuration",
+                      "formatRelative",
+                      "intlFormat",
+                      "intlFormatDistance"
+                    ],
+                    "message": "Display formatting goes through the @pkg/domain formatters (formatDate with a named format); date-fns is for date arithmetic here."
+                  }
+                }
               }
             }
           }
@@ -315,6 +511,137 @@
                   {
                     "group": ["../../**", "../../../**"],
                     "message": "Use the @/* alias instead of imports that traverse more than one parent directory."
+                  },
+                  {
+                    "group": [
+                      "date-fns/format",
+                      "date-fns/formatDate",
+                      "date-fns/formatDistance*",
+                      "date-fns/formatDuration",
+                      "date-fns/formatRelative",
+                      "date-fns/intlFormat*"
+                    ],
+                    "message": "Display formatting goes through the @pkg/domain formatters (formatDate with a named format); date-fns is for date arithmetic here."
+                  }
+                ],
+                "paths": {
+                  "date-fns": {
+                    "importNames": [
+                      "format",
+                      "formatDate",
+                      "formatDistance",
+                      "formatDistanceStrict",
+                      "formatDistanceToNow",
+                      "formatDistanceToNowStrict",
+                      "formatDuration",
+                      "formatRelative",
+                      "intlFormat",
+                      "intlFormatDistance"
+                    ],
+                    "message": "Display formatting goes through the @pkg/domain formatters (formatDate with a named format); date-fns is for date arithmetic here."
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": [
+        "pkg/domain/src/**",
+        "!pkg/domain/src/**/equipment/**",
+        "!pkg/domain/src/**/contracting/**",
+        "pkg/schema/src/common/date.ts"
+      ],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "patterns": [
+                  {
+                    "group": [
+                      "equipment/**",
+                      "**/equipment/**",
+                      "@pkg/*/equipment",
+                      "contracting/**",
+                      "**/contracting/**",
+                      "@pkg/*/contracting"
+                    ],
+                    "message": "Shared modules cannot import a business namespace; keep business composition in explicit app wiring."
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["pkg/domain/src/**/equipment/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "patterns": [
+                  {
+                    "group": ["contracting/**", "**/contracting/**", "@pkg/*/contracting"],
+                    "message": "Business namespaces may import shared code, never each other."
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["pkg/domain/src/**/contracting/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "patterns": [
+                  {
+                    "group": ["equipment/**", "**/equipment/**", "@pkg/*/equipment"],
+                    "message": "Business namespaces may import shared code, never each other."
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["pkg/web/src/components/kibo-ui/**", "pkg/web/src/components/ui/calendar.tsx"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "patterns": [
+                  {
+                    "group": ["../../**", "../../../**"],
+                    "message": "Use the @/* alias instead of imports that traverse more than one parent directory."
+                  },
+                  {
+                    "group": [
+                      "equipment/**",
+                      "**/equipment/**",
+                      "@pkg/*/equipment",
+                      "contracting/**",
+                      "**/contracting/**",
+                      "@pkg/*/contracting"
+                    ],
+                    "message": "Shared frontend modules cannot import a business namespace; keep business composition in explicit route wiring."
                   }
                 ]
               }

@@ -51,8 +51,8 @@ describe('formatJobLifecycleStatus', () => {
   });
 
   it('dates a completion in the format the surface asked for, and leaves an open Job in progress', () => {
-    expect(formatJobLifecycleStatus({ cancelledAt: null, completedOn: '2026-07-16' }, 'd MMM yyyy')).toBe(
-      'Completed 16 Jul 2026',
+    expect(formatJobLifecycleStatus({ cancelledAt: null, completedOn: '2026-07-16' }, 'long')).toBe(
+      'Completed Thursday, 16 July 2026',
     );
     expect(formatJobLifecycleStatus({ cancelledAt: null, completedOn: null }, 'short')).toBe('In progress');
   });

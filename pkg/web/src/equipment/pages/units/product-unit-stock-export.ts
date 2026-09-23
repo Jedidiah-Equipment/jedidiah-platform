@@ -1,8 +1,8 @@
-import { formatDate } from '@pkg/domain';
+import { toCsvAmount, toFileDateStamp } from '@pkg/domain';
 import type { ProductUnitStockExportRow } from '@pkg/schema/equipment';
 import Papa from 'papaparse';
 
-import { downloadCsv, toCsvAmount } from '@/utils/csv-export.js';
+import { downloadCsv } from '@/utils/csv-export.js';
 
 export const PRODUCT_UNIT_STOCK_EXPORT_COLUMNS = [
   'serial_number',
@@ -44,7 +44,7 @@ export function buildProductUnitStockExportCsv(rows: readonly ProductUnitStockEx
 }
 
 export function createProductUnitStockExportFilename(date: Date): string {
-  return `unit-stock-${formatDate(date, 'yyyy-MM-dd')}.csv`;
+  return `unit-stock-${toFileDateStamp(date)}.csv`;
 }
 
 export function downloadProductUnitStockExport(rows: readonly ProductUnitStockExportRow[], date = new Date()): void {

@@ -2,7 +2,6 @@ import type { Db } from '@pkg/db';
 import { customers, jobs, products, quotes } from '@pkg/db/equipment';
 import {
   addDateOnlyDays,
-  diffDateOnlyDays,
   JOHANNESBURG_TIME_ZONE,
   startOfDateOnlyWeek,
   toPlantDateOnly,
@@ -213,11 +212,9 @@ async function listUnfinishedJobQuoteRows({ db, today }: { db: Db; today: DateOn
 }
 
 export async function listStaleSentQuotes({
-  clock = () => new Date(),
   db,
   limit = STALE_SENT_QUOTE_LIMIT,
 }: {
-  clock?: () => Date;
   db: Db;
   limit?: number;
 }): Promise<StaleSentQuoteList> {
@@ -252,8 +249,6 @@ export async function listStaleSentQuotes({
     includeJobs: true,
     quoteIds: rows.map((row) => row.id),
   });
-  const today = toPlantDateOnly(clock());
-
   return StaleSentQuoteList.parse({
     items: rows.map((row) => {
       const job = jobByQuoteId.get(row.id);
@@ -264,7 +259,6 @@ export async function listStaleSentQuotes({
         customerThumbnailDataUrl: row.customerThumbnailDataUrl,
         id: row.id,
         job: job ? mapQuoteLinkedJob(job) : null,
-        sentDaysAgo: Math.max(0, diffDateOnlyDays(today, toPlantDateOnly(row.statusChangedAt))),
         statusChangedAt: row.statusChangedAt.toISOString(),
         totalValue: priceReportQuote({
           row,

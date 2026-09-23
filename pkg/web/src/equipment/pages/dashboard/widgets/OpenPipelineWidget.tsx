@@ -23,8 +23,8 @@ export const OpenPipelineWidget: React.FC = () => {
 
   return (
     <StatCard
-      sublabel={`${formatCurrency(newlySent30dValue, 'ZAR')} newly sent in last 30d · ${openPipelineCount} open`}
-      value={formatCurrency(openPipelineValue, 'ZAR')}
+      sublabel={`${formatCurrency(newlySent30dValue)} newly sent in last 30d · ${openPipelineCount} open`}
+      value={formatCurrency(openPipelineValue)}
     />
   );
 };

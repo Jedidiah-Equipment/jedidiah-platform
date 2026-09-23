@@ -108,7 +108,7 @@ export function UpcomingDeliveryRow({
     <div className="grid min-w-0 grid-cols-[1fr_auto] items-center gap-x-4 gap-y-1 text-sm">
       <DashboardQuoteIdentity canOpenJob={canOpenJobs} quote={quote} />
       <span className="flex flex-col items-end gap-1 text-right">
-        <span className="font-medium tabular-nums">{formatDate(quote.plannedDeliveryDate, 'MMM d')}</span>
+        <span className="font-medium tabular-nums">{formatDate(quote.plannedDeliveryDate, 'day')}</span>
         <span className="flex flex-wrap justify-end gap-1">
           {isOverdue ? <Badge variant="destructive">Overdue</Badge> : null}
           {isAtRisk ? <Badge variant="destructive">At risk</Badge> : null}

@@ -109,7 +109,7 @@ export function ProductCostEstimatePanel({ productId }: { productId: UUID }) {
                 <dt className="text-muted-foreground">
                   Management overhead ({formatLaborPercent(estimate.managementOverheadPercentage)} of labor cost)
                 </dt>
-                <dd className="tabular-nums">{formatCurrency(estimate.managementOverheadCostFloor, 'ZAR')}</dd>
+                <dd className="tabular-nums">{formatCurrency(estimate.managementOverheadCostFloor)}</dd>
               </div>
               <div className="flex justify-between gap-4 font-medium">
                 <dt>Labor total</dt>
@@ -169,7 +169,7 @@ function AssemblyEstimate({ assembly }: { assembly: ProductCostEstimateAssembly 
         <p className="text-muted-foreground tabular-nums">
           {assembly.partial ? 'Bought-parts cost' : 'Parts cost'}:{' '}
           {formatEstimateFloor(assembly.costFloor, assembly.complete)}
-          {assembly.upgradePrice === null ? '' : ` · upgrade delta ${formatCurrency(assembly.upgradePrice, 'ZAR')}`}
+          {assembly.upgradePrice === null ? '' : ` · upgrade delta ${formatCurrency(assembly.upgradePrice)}`}
         </p>
       </div>
       <EstimateDataTable
@@ -240,7 +240,7 @@ function UnitCostCell({
 
   return (
     <>
-      <span className="block tabular-nums">{formatCurrency(line.unitCost, 'ZAR')}</span>
+      <span className="block tabular-nums">{formatCurrency(line.unitCost)}</span>
       {basis === null ? null : <span className="text-muted-foreground text-xs">{basis}</span>}
     </>
   );
@@ -258,7 +258,7 @@ const materialColumns: DataTableColumnDef<ProductCostEstimateMaterialLine>[] = [
     cell: ({ row }) => <UnitCostCell fallback="No cost yet" line={row.original} />,
     header: 'Unit cost',
   },
-  { accessorKey: 'costFloor', cell: ({ row }) => formatCurrency(row.original.costFloor, 'ZAR'), header: 'Cost' },
+  { accessorKey: 'costFloor', cell: ({ row }) => formatCurrency(row.original.costFloor), header: 'Cost' },
 ];
 
 const partColumns: DataTableColumnDef<ProductCostEstimatePartLine>[] = [
@@ -278,7 +278,7 @@ const partColumns: DataTableColumnDef<ProductCostEstimatePartLine>[] = [
     ),
     header: 'Unit cost',
   },
-  { accessorKey: 'costFloor', cell: ({ row }) => formatCurrency(row.original.costFloor, 'ZAR'), header: 'Cost' },
+  { accessorKey: 'costFloor', cell: ({ row }) => formatCurrency(row.original.costFloor), header: 'Cost' },
 ];
 
 const laborColumns: DataTableColumnDef<ProductCostEstimateLaborLine>[] = [
@@ -290,17 +290,13 @@ const laborColumns: DataTableColumnDef<ProductCostEstimateLaborLine>[] = [
   },
   { accessorKey: 'staffCount', header: 'Staff' },
   { accessorKey: 'hours', cell: ({ row }) => formatNumber(row.original.hours, { decimals: 2 }), header: 'Hours' },
-  { accessorKey: 'hourlyRate', cell: ({ row }) => formatCurrency(row.original.hourlyRate, 'ZAR'), header: 'Rate' },
-  {
-    accessorKey: 'laborCost',
-    cell: ({ row }) => formatCurrency(row.original.laborCost, 'ZAR'),
-    header: 'Labor cost',
-  },
+  { accessorKey: 'hourlyRate', cell: ({ row }) => formatCurrency(row.original.hourlyRate), header: 'Rate' },
+  { accessorKey: 'laborCost', cell: ({ row }) => formatCurrency(row.original.laborCost), header: 'Labor cost' },
   {
     accessorKey: 'consumablesCost',
     cell: ({ row }) => (
       <>
-        <span className="block tabular-nums">{formatCurrency(row.original.consumablesCost, 'ZAR')}</span>
+        <span className="block tabular-nums">{formatCurrency(row.original.consumablesCost)}</span>
         <span className="text-muted-foreground text-xs">{formatLaborPercent(row.original.consumablesPercentage)}</span>
       </>
     ),
@@ -308,7 +304,7 @@ const laborColumns: DataTableColumnDef<ProductCostEstimateLaborLine>[] = [
   },
   {
     accessorKey: 'departmentTotal',
-    cell: ({ row }) => formatCurrency(row.original.departmentTotal, 'ZAR'),
+    cell: ({ row }) => formatCurrency(row.original.departmentTotal),
     header: 'Department total',
   },
 ];

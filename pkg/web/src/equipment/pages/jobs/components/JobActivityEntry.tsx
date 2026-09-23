@@ -249,7 +249,7 @@ const ActivityRow: React.FC<{
           className={cn('flex items-center font-mono text-xs tabular-nums text-muted-foreground', head)}
           dateTime={item.occurredAt}
         >
-          {formatDate(item.occurredAt, 'HH:mm')}
+          {formatDate(item.occurredAt, 'time')}
         </time>
         <span className={cn('flex items-center justify-center', head)}>{who}</span>
         <div className="flex min-w-0 items-start gap-2">{children}</div>

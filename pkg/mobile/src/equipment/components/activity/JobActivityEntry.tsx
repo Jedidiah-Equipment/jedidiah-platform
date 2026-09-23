@@ -172,7 +172,7 @@ function ActivityEntryShell({
       <View className="h-7 flex-row items-center">
         <View className="h-2 w-2 items-center justify-center">{marker}</View>
         <Text className="ml-1.5 text-[11px] text-muted-foreground" mono>
-          {formatDate(occurredAt, 'HH:mm')}
+          {formatDate(occurredAt, 'time')}
         </Text>
       </View>
       <View className="mt-1 min-w-0 flex-row items-start pl-3">

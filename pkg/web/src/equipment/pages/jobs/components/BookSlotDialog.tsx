@@ -191,7 +191,7 @@ export const BookSlotDialog: React.FC = () => {
                             {bayOperatorName(selectedBay) ? ` - ${bayOperatorName(selectedBay)}` : ''}
                           </span>
                           <span className="shrink-0 text-muted-foreground">
-                            {formatDate(selectedBay.nextAvailableDate, 'MMM d')}
+                            {formatDate(selectedBay.nextAvailableDate, 'day')}
                           </span>
                         </>
                       ) : null}
@@ -203,7 +203,7 @@ export const BookSlotDialog: React.FC = () => {
                         <SelectItem key={bay.id} value={bay.id}>
                           {bay.name}
                           {bayOperatorName(bay) ? ` - ${bayOperatorName(bay)}` : ''}
-                          <span className="text-muted-foreground">{formatDate(bay.nextAvailableDate, 'MMM d')}</span>
+                          <span className="text-muted-foreground">{formatDate(bay.nextAvailableDate, 'day')}</span>
                         </SelectItem>
                       ))}
                     </SelectGroup>

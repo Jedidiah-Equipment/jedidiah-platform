@@ -2,7 +2,10 @@
 
 - Browser access checks are UX only; the server/API is the authorization boundary.
 - Login is email/password only unless asked otherwise.
-- Use `@pkg/domain` `formatDate` and `formatCurrency`; do not add one-off `Intl` or locale formatting in components.
+- Format for display with the `@pkg/domain` formatters (see `pkg/domain/AGENTS.md`), and render recent
+  timestamps with `src/components/common/DateDisplay.tsx`. Only the vendored `src/components/kibo-ui/**` and
+  `src/components/ui/calendar.tsx` may format dates themselves; `CurrencyField`/`NumberField` keep their own
+  input-parsing rules.
 - Route each business's React Query invalidation through its own `src/<business>/hooks/use-query-invalidation.ts`; invalidate whole affected tRPC root paths. Shared auth cache clearing stays in `src/hooks/use-clear-query-cache.ts`, and the shared user admin invalidates through `src/hooks/use-user-admin-invalidation.ts`.
 - Use shared UI primitives for standard surfaces: `Card` composition from `src/components/ui/card.tsx` and `ScrollArea` for page/panel scrolling.
 - Whenever the UI presents tabular data, render it through `src/components/data-table/DataTable.tsx`;

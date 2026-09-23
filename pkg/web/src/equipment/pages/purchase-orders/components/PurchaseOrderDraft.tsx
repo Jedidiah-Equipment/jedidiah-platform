@@ -201,9 +201,7 @@ export const PurchaseOrderLinesEditor: React.FC<{
             </CardContent>
             <div className="border-t px-4 pt-4 text-right font-medium">
               Total{' '}
-              {lines.some(isPurchaseOrderLineUnpriced)
-                ? 'Not priced'
-                : formatCurrency(purchaseOrderLinesTotal(lines), 'ZAR')}
+              {lines.some(isPurchaseOrderLineUnpriced) ? 'Not priced' : formatCurrency(purchaseOrderLinesTotal(lines))}
             </div>
           </Card>
         );

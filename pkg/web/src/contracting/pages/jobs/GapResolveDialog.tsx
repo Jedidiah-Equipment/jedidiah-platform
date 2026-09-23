@@ -1,3 +1,4 @@
+import { formatHours } from '@pkg/domain';
 import { type Assignment, GapResolveInput } from '@pkg/schema/contracting';
 import { useMutation } from '@tanstack/react-query';
 import { CreateEntityDialog } from '@/components/form/index.js';
@@ -26,7 +27,7 @@ export function GapResolveDialog({ stint, onClose }: { stint: Assignment | null;
       onOpenChange={(open) => {
         if (!open) onClose();
       }}
-      title={`${gapHours.toFixed(1)} h gap on ${stint?.machineCode ?? 'Machine'}`}
+      title={`${formatHours(gapHours)} gap on ${stint?.machineCode ?? 'Machine'}`}
       defaultValues={{ travelHours: gapHours, unaccountedHours: 0, reason: '' }}
       validator={GapValues}
       onCreate={(values) => resolve.mutateAsync({ id: stint?.id ?? '', ...values })}

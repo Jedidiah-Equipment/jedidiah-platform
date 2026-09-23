@@ -65,7 +65,7 @@ export function AwaitingJobCreationRow({ canOpenJobs, quote }: { canOpenJobs: bo
       <span className="text-right">
         {earliestDeliveryDate ? (
           <>
-            <span className="block font-medium tabular-nums">{formatDate(earliestDeliveryDate, 'MMM d')}</span>
+            <span className="block font-medium tabular-nums">{formatDate(earliestDeliveryDate, 'day')}</span>
             <span className="block text-muted-foreground text-xs">Earliest delivery</span>
           </>
         ) : (

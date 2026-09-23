@@ -68,7 +68,7 @@ export function UnitCatalogControls({
 
 export function UnitCatalogCard({ unit }: { unit: ProductUnitSummary }) {
   const router = useRouter();
-  const createdOn = formatDate(unit.createdAt, 'd MMM yyyy');
+  const createdOn = formatDate(unit.createdAt, 'short');
 
   return (
     <CatalogListCard

@@ -1,3 +1,4 @@
+import { formatDate, formatHours } from '@pkg/domain';
 import { type Href, router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { ScrollView, View } from 'react-native';
@@ -49,9 +50,9 @@ export default function AttentionScreen() {
             <View key={item.localId} className="gap-3 rounded-xl border border-border bg-surface p-4">
               <Text className="text-lg text-foreground" weight="bold">
                 {fleet.data?.find((machine) => machine.id === item.machineId)?.code ?? 'Machine details unavailable'} ·{' '}
-                {item.value.toFixed(1)} h
+                {formatHours(item.value)}
               </Text>
-              <Text className="text-sm text-muted-foreground">{new Date(item.capturedAt).toLocaleString()}</Text>
+              <Text className="text-sm text-muted-foreground">{formatDate(item.capturedAt, 'medium')}</Text>
               <Text className="text-foreground">{item.attention?.message}</Text>
               {item.assignmentId || item.startAssignment ? (
                 <Text className="text-sm text-muted-foreground">
@@ -114,7 +115,7 @@ function DisputeAction({
     <View className="gap-3">
       <Text className="text-foreground">
         {latest
-          ? `Review the last known reading: ${latest.value.toFixed(1)} h (${new Date(latest.capturedAt).toLocaleString()}).`
+          ? `Review the last known reading: ${formatHours(latest.value)} (${formatDate(latest.capturedAt, 'medium')}).`
           : 'Connect to load the latest reading before disputing it.'}
       </Text>
       <Button

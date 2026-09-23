@@ -26,7 +26,7 @@ describe('ShopFloorTodayContent', () => {
     );
 
     expect(html.indexOf('Dewald Van Niekerk')).toBeLessThan(html.indexOf('Fabrication Bay 2'));
-    expect(html).not.toContain('Aug 19, 2026');
+    expect(html).not.toContain('19 Aug 2026');
     expect(html.match(/data-slot="avatar" data-size="default"/g)).toHaveLength(2);
     expect(html).toContain('tabler-icon-package');
     expect(html).toContain('In progress');

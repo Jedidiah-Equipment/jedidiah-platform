@@ -38,7 +38,7 @@ vi.mock('@/contracting/jobs/use-jobs', () => ({
   useJobs: () => ({ data: [] }),
 }));
 vi.mock('@/contracting/readings/derive-capture', () => ({
-  deriveCapture: () => ({ parsed: undefined, verdict: null, canSave: false }),
+  deriveCapture: () => ({ parsed: undefined, verdict: null, advisory: false, canSave: false }),
 }));
 vi.mock('@/contracting/readings/capture-world', () => ({
   captureWorld: () => ({ latest: null, stint: null, onSite: [], management: false, hasPhoto: false }),

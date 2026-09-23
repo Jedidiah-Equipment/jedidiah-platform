@@ -29,3 +29,20 @@ test('saves a parsed value the capture rules accept, and nothing the form itself
     canSave: false,
   });
 });
+
+test('warns without blocking when the phone believes the Machine is on site elsewhere, since that may be stale', () => {
+  const busy = {
+    ...base,
+    world: {
+      ...base.world,
+      stint: 'planned' as const,
+      onSite: [{ machineId: 'machine-1', implementId: null, jobNumber: 'CJOB-00041' }],
+    },
+    capture: { ...base.capture, role: 'arrival' as const },
+  };
+  expect(deriveCapture(busy)).toMatchObject({
+    verdict: { ok: false, rule: 'machine-busy' },
+    advisory: true,
+    canSave: true,
+  });
+});

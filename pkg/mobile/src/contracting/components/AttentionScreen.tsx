@@ -1,5 +1,5 @@
 import { formatDate, formatHours } from '@pkg/domain';
-import type { ReadingErrorCode } from '@pkg/schema/contracting';
+import { isReadingErrorCode, type ReadingErrorCode } from '@pkg/schema/contracting';
 import { type Href, router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { ScrollView, View } from 'react-native';
@@ -63,7 +63,7 @@ export default function AttentionScreen() {
                   Fix the Job on another phone or with management, then discard this capture and start again.
                 </Text>
               ) : null}
-              {disputable.includes(item.attention?.code as ReadingErrorCode) && canCapture ? (
+              {isReadingErrorCode(item.attention?.code) && disputable.includes(item.attention.code) && canCapture ? (
                 <DisputeAction
                   machineId={item.machineId}
                   busy={busy}

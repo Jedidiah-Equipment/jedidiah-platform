@@ -34,3 +34,6 @@ export const readingErrorCodes = [
   'reading.job_invoiced',
 ] as const;
 export type ReadingErrorCode = (typeof readingErrorCodes)[number];
+/** Whether a code the phone stored is one the server sends; the phone also stores codes of its own. */
+export const isReadingErrorCode = (code: string | undefined): code is ReadingErrorCode =>
+  (readingErrorCodes as readonly string[]).includes(code ?? '');

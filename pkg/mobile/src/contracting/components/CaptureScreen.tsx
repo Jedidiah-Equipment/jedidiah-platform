@@ -106,7 +106,7 @@ function CaptureForm({ params }: { params: CaptureParams }) {
     : changeStint
       ? overrides.implementId || null
       : plannedImplementId;
-  const { parsed, verdict, canSave } = deriveCapture({
+  const { parsed, verdict, advisory, canSave } = deriveCapture({
     value,
     world,
     capture: {
@@ -362,7 +362,9 @@ function CaptureForm({ params }: { params: CaptureParams }) {
             maxLength={ReadingComment.maxLength ?? undefined}
             onChangeText={setComment}
           />
-          {refused && !below ? <Text className="text-danger">{captureRefusal(refused)}</Text> : null}
+          {refused && !below ? (
+            <Text className={advisory ? 'text-muted-foreground' : 'text-danger'}>{captureRefusal(refused)}</Text>
+          ) : null}
           {below ? (
             <View className="gap-3 rounded-xl border border-danger p-4">
               <Text className="text-foreground">

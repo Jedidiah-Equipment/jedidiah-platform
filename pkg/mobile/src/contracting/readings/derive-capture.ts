@@ -22,6 +22,9 @@ export function deriveCapture({
 }) {
   const parsed = value.trim() ? ReadingValue.safeParse(Number(value.replace(',', '.'))) : null;
   const verdict = parsed?.success ? judgeCapture(world, { ...capture, value: parsed.data }) : null;
-  const canSave = !!verdict?.ok && canCapture && machineKnown && !cameraOpen;
-  return { parsed, verdict, canSave };
+  // What the phone believes is on site may be stale offline, and the server's constraint decides under
+  // the lock; a busy refusal here warns without blocking the capture.
+  const advisory = !!verdict && !verdict.ok && (verdict.rule === 'machine-busy' || verdict.rule === 'implement-busy');
+  const canSave = (!!verdict?.ok || advisory) && canCapture && machineKnown && !cameraOpen;
+  return { parsed, verdict, advisory, canSave };
 }

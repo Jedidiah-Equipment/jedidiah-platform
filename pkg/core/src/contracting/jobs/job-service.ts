@@ -25,6 +25,9 @@ export async function createJob({ db, actor, input }: { db: Db; actor: JobActor;
 }
 
 export async function patchJob({ db, actor, input }: { db: Db; actor: JobActor; input: JobPatchInput }) {
+  const { id: _id, ...fields } = input;
+  // A patch naming nothing asks for no Job Action, so it writes nothing either.
+  if (Object.values(fields).every((value) => value === undefined)) return getJob({ db, id: input.id });
   return withJobConstraints(() =>
     writeJob(db, actor.userId, input.id, {
       assert: (_tx, before) => {

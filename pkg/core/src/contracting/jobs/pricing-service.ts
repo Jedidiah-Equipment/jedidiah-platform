@@ -235,7 +235,8 @@ export async function markPriced({ db, actor, input }: { db: Db; actor: JobActor
  * lock and the reading writes, so the lock order stays machine → job → stint.
  */
 export async function reopenPricingWithin(tx: DatabaseTransaction, actorUserId: AuthId, jobId: string, reason: string) {
-  await lockJob(tx, jobId);
+  const job = await lockJob(tx, jobId);
+  if (job.status !== 'priced') throw wrongStatus('Only a Priced Job can be reopened for pricing.');
   const stints = await tx
     .select({
       computedAmount: contractingMachineAssignments.computedAmount,

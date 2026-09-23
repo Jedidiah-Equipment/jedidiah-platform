@@ -243,6 +243,16 @@ test('projects only open field Jobs, enforces ownership, and never returns money
   const superAdmin = context.createCaller(mockSession('super-admin')).contractingJobs.field;
   expect((await superAdmin.jobs()).map((job) => job.id)).toEqual([context.ownJob.id, context.otherJob.id]);
 
+  expect((await manager.jobs({ includeFinished: true })).map((job) => [job.id, job.status])).toEqual([
+    [context.ownJob.id, 'upcoming'],
+    [context.otherJob.id, 'active'],
+    [context.pricedJob.id, 'priced'],
+    [context.completedJob.id, 'completed'],
+  ]);
+  await expect(manager.job({ id: context.pricedJob.id })).resolves.toMatchObject({ status: 'priced' });
+  expect((await foreman.jobs({ includeFinished: true })).map((job) => job.id)).toEqual([context.ownJob.id]);
+  await expect(foreman.job({ id: context.pricedJob.id })).rejects.toMatchObject({ code: 'CONFLICT' });
+
   const workshopCaller = context.createCaller(contractingSession('workshop-manager'));
   await expect(workshopCaller.contractingJobs.field.jobs()).rejects.toMatchObject({ code: 'FORBIDDEN' });
   await captureReading({

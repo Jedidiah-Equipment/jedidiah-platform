@@ -46,6 +46,7 @@ import {
   FieldDriver,
   FieldImplement,
   FieldJob,
+  FieldJobsInput,
   GapResolveInput,
   InvoiceNumberLookupInput,
   JobCancelInput,
@@ -84,8 +85,14 @@ function refuseRead() {
 export const contractingJobsRouter = router({
   field: router({
     jobs: authorizedProcedure(['contracting_job:read', 'contracting_job:read-own'])
+      .input(FieldJobsInput)
       .output(FieldJob.array())
-      .query(({ ctx }) => mapCoreErrors(() => listFieldJobs({ db: ctx.db, actor: ctx.access }), jobErrorFamily)),
+      .query(({ ctx, input }) =>
+        mapCoreErrors(
+          () => listFieldJobs({ db: ctx.db, actor: ctx.access, includeFinished: input?.includeFinished ?? false }),
+          jobErrorFamily,
+        ),
+      ),
     job: authorizedProcedure(['contracting_job:read', 'contracting_job:read-own'])
       .input(JobIdInput)
       .output(FieldJob)

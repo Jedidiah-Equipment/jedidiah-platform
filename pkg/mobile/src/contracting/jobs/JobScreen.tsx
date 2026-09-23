@@ -1,5 +1,5 @@
 import { formatHours } from '@pkg/domain';
-import type { CategoryColour, CategoryIconKey } from '@pkg/schema/contracting';
+import type { CategoryColour, CategoryIconKey, JobCardVariant } from '@pkg/schema/contracting';
 import { type Href, router, useLocalSearchParams } from 'expo-router';
 import { ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -7,13 +7,16 @@ import { SecondaryToolbar } from '@/components/TopToolbar';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { CategoryIcon } from '@/contracting/components/CategoryIcon';
+import { jobCardShareAction } from '@/contracting/lib/job-card';
 import { useReadingQueue } from '@/contracting/readings/ReadingQueueProvider';
 import { newLocalId } from '@/contracting/readings/reading-queue';
 import { useFleet } from '@/contracting/readings/use-fleet';
 import { useSessionPermission } from '@/lib/auth-session';
 import { useIsOffline } from '@/lib/connectivity';
+import { shareDocument } from '@/lib/document-actions';
+import { useBusyAction } from '@/lib/use-busy-action';
 import { deriveStint, queuedUnplannedStints, type StintView } from './derive-stint';
-import { useDrivers, useImplements, useJob } from './use-jobs';
+import { isFinishedJob, useDrivers, useImplements, useJob } from './use-jobs';
 
 const ORDER: Record<StintView['view'], number> = {
   running: 0,
@@ -43,6 +46,13 @@ export default function JobScreen() {
   const canAdd = useSessionPermission('contracting_assignment:update-own', 'contracting_job:assign');
   const offline = useIsOffline();
   const job = jobQuery.data;
+  const finished = job ? isFinishedJob(job) : false;
+  const canShareJobCard = useSessionPermission('contracting_job:read') && finished;
+  const share = useBusyAction();
+  const shareJobCard = (variant: JobCardVariant) => {
+    if (job)
+      void share.run(() => shareDocument(jobCardShareAction(job.jobNumber, variant)), 'Unable to share the Job Card.');
+  };
   const serverIds = new Set(job?.stints.map((stint) => stint.id) ?? []);
   const stints = job
     ? [
@@ -96,6 +106,9 @@ export default function JobScreen() {
             </Text>
             <Text className="text-muted-foreground">{job.workTypeName}</Text>
             {job.description ? <Text className="text-muted-foreground">{job.description}</Text> : null}
+            {finished ? (
+              <Text className="text-muted-foreground">{`${job.status[0]?.toUpperCase()}${job.status.slice(1)}`}</Text>
+            ) : null}
           </View>
         ) : (
           <Text className="text-muted-foreground">
@@ -109,7 +122,7 @@ export default function JobScreen() {
 
         {stints.map((stint) => (
           <StintCard
-            canAdd={canAdd}
+            canAdd={canAdd && !finished}
             canCapture={canCapture}
             key={stint.id}
             stint={stint}
@@ -143,7 +156,23 @@ export default function JobScreen() {
           </Text>
         ) : null}
         {error ? <Text className="text-danger">{error}</Text> : null}
-        {job && canAdd ? (
+        {canShareJobCard ? (
+          <View className="gap-2">
+            <Button
+              primary
+              title="Share Job Card"
+              disabled={share.busy || offline}
+              onPress={() => shareJobCard('customer')}
+            />
+            <Button
+              title="Share internal copy"
+              disabled={share.busy || offline}
+              onPress={() => shareJobCard('internal')}
+            />
+            {share.error ? <Text className="text-danger">{share.error}</Text> : null}
+          </View>
+        ) : null}
+        {job && canAdd && !finished ? (
           <Button
             primary
             title="+ Add machine"

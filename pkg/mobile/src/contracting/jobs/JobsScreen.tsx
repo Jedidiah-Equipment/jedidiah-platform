@@ -1,16 +1,21 @@
+import type { FieldJob } from '@pkg/schema/contracting';
 import { type Href, router } from 'expo-router';
+import { useState } from 'react';
 import { FlatList, Pressable, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MainToolbar } from '@/components/TopToolbar';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { useReadingQueue } from '@/contracting/readings/ReadingQueueProvider';
+import type { QueuedReading } from '@/contracting/readings/reading-queue';
 import { useIsOffline } from '@/lib/connectivity';
 import { jobSummary } from './derive-stint';
-import { useJobs } from './use-jobs';
+import { isFinishedJob, useFinishedJobs, useJobs } from './use-jobs';
 
 export default function JobsScreen() {
   const jobs = useJobs();
+  const finished = useFinishedJobs();
+  const [showFinished, setShowFinished] = useState(false);
   const { items, error } = useReadingQueue();
   const offline = useIsOffline();
   const attention = items.filter((item) => item.attention).length;
@@ -52,29 +57,54 @@ export default function JobsScreen() {
                     : 'Loading Jobs…'}
           </Text>
         }
-        renderItem={({ item }) => {
-          const summary = jobSummary(item, items);
-          return (
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => router.push(`/contracting/jobs/${item.id}` as Href)}
-              className="w-full gap-2 rounded-xl border border-border bg-surface p-4"
-            >
-              <View className="flex-row items-center justify-between gap-2">
-                <Text className="min-w-0 flex-1 text-lg text-foreground" weight="bold" numberOfLines={1}>
-                  {item.jobNumber} · {item.farmName}
+        renderItem={({ item }) => <JobRow job={item} queued={items} />}
+        ListFooterComponent={
+          finished.canRead && (finished.data?.length ?? 0) > 0 ? (
+            <View className="gap-2.5 pt-4">
+              <Pressable
+                accessibilityRole="button"
+                accessibilityState={{ expanded: showFinished }}
+                onPress={() => setShowFinished((current) => !current)}
+                className="flex-row items-center justify-between py-1"
+              >
+                <Text className="text-muted-foreground" weight="bold">
+                  Finished ({finished.data?.length ?? 0})
                 </Text>
-                {!summary.hasArrived ? (
-                  <Text className="rounded-full bg-muted px-3 py-1 text-xs text-foreground">Upcoming</Text>
-                ) : null}
-              </View>
-              <Text className="text-sm text-muted-foreground">
-                {item.workTypeName} · {summary.machines} machines · {summary.running} running
-              </Text>
-            </Pressable>
-          );
-        }}
+                <Text className="text-muted-foreground">{showFinished ? 'Hide' : 'Show'}</Text>
+              </Pressable>
+              {showFinished
+                ? (finished.data ?? []).map((job) => <JobRow key={job.id} job={job} queued={items} />)
+                : null}
+            </View>
+          ) : null
+        }
       />
     </SafeAreaView>
+  );
+}
+
+function JobRow({ job, queued }: { job: FieldJob; queued: readonly QueuedReading[] }) {
+  const summary = jobSummary(job, queued);
+  const chip = isFinishedJob(job)
+    ? `${job.status[0]?.toUpperCase()}${job.status.slice(1)}`
+    : summary.hasArrived
+      ? null
+      : 'Upcoming';
+  return (
+    <Pressable
+      accessibilityRole="button"
+      onPress={() => router.push(`/contracting/jobs/${job.id}` as Href)}
+      className="w-full gap-2 rounded-xl border border-border bg-surface p-4"
+    >
+      <View className="flex-row items-center justify-between gap-2">
+        <Text className="min-w-0 flex-1 text-lg text-foreground" weight="bold" numberOfLines={1}>
+          {job.jobNumber} · {job.farmName}
+        </Text>
+        {chip ? <Text className="rounded-full bg-muted px-3 py-1 text-xs text-foreground">{chip}</Text> : null}
+      </View>
+      <Text className="text-sm text-muted-foreground">
+        {job.workTypeName} · {summary.machines} machines · {summary.running} running
+      </Text>
+    </Pressable>
   );
 }

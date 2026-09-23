@@ -50,8 +50,8 @@ export function SlotDetailPane({
       <FactCard title="SLOT">
         <View className="gap-4">
           <FactRow>
-            <FactField label="SLOT START" value={formatDate(slot.firstWorkDay, 'd MMM yyyy')} />
-            <FactField label="SLOT END" value={formatDate(slot.lastWorkDay, 'd MMM yyyy')} />
+            <FactField label="SLOT START" value={formatDate(slot.firstWorkDay, 'short')} />
+            <FactField label="SLOT END" value={formatDate(slot.lastWorkDay, 'short')} />
           </FactRow>
           <FactRow>
             <FactField label="WORK DAYS" value={`${slot.workDays} ${slot.workDays === 1 ? 'day' : 'days'}`} />

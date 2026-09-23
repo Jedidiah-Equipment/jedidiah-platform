@@ -58,7 +58,7 @@ export const JobCalendarDayCell: React.FC<JobCalendarDayCellProps> = ({
     >
       <button
         aria-disabled={!canEditCalendar}
-        aria-label={`Edit calendar for ${formatDate(date, 'PPP')}`}
+        aria-label={`Edit calendar for ${formatDate(date, 'long')}`}
         className="absolute inset-0 z-0 cursor-default outline-none focus-visible:ring-2 focus-visible:ring-ring"
         tabIndex={canEditCalendar ? 0 : -1}
         onClick={() => {
@@ -75,12 +75,12 @@ export const JobCalendarDayCell: React.FC<JobCalendarDayCellProps> = ({
             offDay && !isToday(date) && 'bg-destructive/10 text-destructive',
           )}
         >
-          {formatDate(date, 'd')}
+          {date.getDate()}
         </span>
         {offDay ? (
           <div
             className="flex min-w-0 items-center gap-1.5 rounded-sm bg-destructive/10 px-1.5 py-1 text-destructive text-xs"
-            title={`${formatDate(date, 'PPP')}${offDay.label ? `: ${offDay.label}` : ''}`}
+            title={`${formatDate(date, 'long')}${offDay.label ? `: ${offDay.label}` : ''}`}
           >
             <div className="size-1.5 shrink-0 rounded-full bg-destructive" />
             <span className="truncate">{offDay.label ?? 'Off-Day'}</span>

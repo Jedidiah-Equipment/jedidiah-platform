@@ -42,7 +42,7 @@ export const OffDayDialog: React.FC<OffDayDialogProps> = ({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>{selectedDay?.offDay ? 'Edit Off-Day' : 'Mark Off-Day'}</DialogTitle>
-          <DialogDescription>{selectedDay ? formatDate(selectedDay.date, 'PPP') : null}</DialogDescription>
+          <DialogDescription>{selectedDay ? formatDate(selectedDay.date, 'long') : null}</DialogDescription>
         </DialogHeader>
         <Field>
           <FieldLabel htmlFor="job-calendar-label">Reason</FieldLabel>

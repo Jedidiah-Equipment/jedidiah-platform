@@ -1,4 +1,4 @@
-import { formatDate, toSentenceCase } from '@pkg/domain';
+import { formatDate, formatHours, toSentenceCase } from '@pkg/domain';
 import { readingExceptionTypeColorClassNames, readingExceptionTypeLabels } from '@pkg/domain/contracting';
 import { ReadingAmendInput, type ReadingException } from '@pkg/schema/contracting';
 import { IconEye } from '@tabler/icons-react';
@@ -68,7 +68,7 @@ export function ReadingExceptionsPage() {
       {
         id: 'capture',
         header: 'Capture',
-        cell: ({ row }) => formatDate(row.original.capturedAt, 'dd MMM yyyy HH:mm'),
+        cell: ({ row }) => formatDate(row.original.capturedAt, 'medium'),
       },
       { accessorKey: 'role', header: 'Reading type', cell: ({ row }) => toSentenceCase(row.original.role) },
       {
@@ -91,7 +91,7 @@ export function ReadingExceptionsPage() {
           </div>
         ),
       },
-      { accessorKey: 'value', header: 'Hours', cell: ({ row }) => row.original.value.toFixed(1) },
+      { accessorKey: 'value', header: 'Hours', cell: ({ row }) => formatHours(row.original.value) },
       {
         accessorKey: 'comment',
         header: 'Capture comment',
@@ -223,7 +223,7 @@ export function ReadingExceptionsPage() {
         )}
       </CreateEntityDialog>
       <FilePreviewSheet
-        description={previewReading ? `Captured ${formatDate(previewReading.capturedAt, 'dd MMM yyyy HH:mm')}` : ''}
+        description={previewReading ? `Captured ${formatDate(previewReading.capturedAt, 'medium')}` : ''}
         downloadFilename={`${previewReading?.machineCode ?? 'meter'}-reading.${previewReading?.photo?.contentType === 'image/png' ? 'png' : 'jpg'}`}
         fetchBlob={fetchPreviewBlob}
         kind="image"

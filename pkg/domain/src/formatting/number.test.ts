@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { formatCurrency, formatNumber, formatPercent } from './number.js';
+import { formatCurrency, formatHours, formatNumber, formatPercent, toCsvAmount } from './number.js';
 
 describe('formatNumber', () => {
   it('formats finite values with space grouping and no decimal places by default', () => {
@@ -23,15 +23,10 @@ describe('formatNumber', () => {
 });
 
 describe('formatCurrency', () => {
-  it('formats finite values with space grouping and two decimal places', () => {
-    expect(formatCurrency(1)).toBe('1.00');
-    expect(formatCurrency(1000)).toBe('1 000.00');
-    expect(formatCurrency(1000.5)).toBe('1 000.50');
-    expect(formatCurrency(1000.56)).toBe('1 000.56');
-  });
-
-  it('formats finite values with a currency code prefix', () => {
-    expect(formatCurrency(1000, 'ZAR')).toBe('R 1 000.00');
+  it('prefixes the currency symbol and shows two grouped decimal places', () => {
+    expect(formatCurrency(1000.5)).toBe('R 1 000.50');
+    expect(formatCurrency(1, 'ZAR')).toBe('R 1.00');
+    expect(formatCurrency(1000.5, 'ZAR')).toBe('R 1 000.50');
     expect(formatCurrency(1000.56, 'USD')).toBe('USD 1 000.56');
   });
 
@@ -42,8 +37,8 @@ describe('formatCurrency', () => {
   });
 
   it('formats non-finite values as empty text', () => {
-    expect(formatCurrency(NaN)).toBe('');
-    expect(formatCurrency(Infinity)).toBe('');
+    expect(formatCurrency(NaN, 'ZAR')).toBe('');
+    expect(formatCurrency(Infinity, 'ZAR')).toBe('');
   });
 });
 
@@ -69,5 +64,22 @@ describe('formatPercent', () => {
   it('formats non-finite values as empty text', () => {
     expect(formatPercent(NaN)).toBe('');
     expect(formatPercent(Infinity)).toBe('');
+  });
+});
+
+describe('formatHours', () => {
+  it('formats hour-meter values to one grouped decimal with an h suffix', () => {
+    expect(formatHours(12.46)).toBe('12.5 h');
+    expect(formatHours(0)).toBe('0.0 h');
+    expect(formatHours(12345.6)).toBe('12 345.6 h');
+    expect(formatHours(NaN)).toBe('');
+  });
+});
+
+describe('toCsvAmount', () => {
+  it('writes cents without grouping and leaves unknown amounts empty', () => {
+    expect(toCsvAmount(1234.5)).toBe('1234.50');
+    expect(toCsvAmount(0)).toBe('0.00');
+    expect(toCsvAmount(null)).toBe('');
   });
 });

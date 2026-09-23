@@ -49,7 +49,7 @@ export const BoardGhostBars: React.FC<{
               top,
               width,
             }}
-            title={`${label}${bayName ? ` — ${bayName}` : ''}: ${formatDate(ghost.firstWorkDay, 'PPP')} - ${formatDate(ghost.lastWorkDay, 'PPP')}`}
+            title={`${label}${bayName ? ` — ${bayName}` : ''}: ${formatDate(ghost.firstWorkDay, 'long')} - ${formatDate(ghost.lastWorkDay, 'long')}`}
           >
             <span className="flex min-w-0 flex-col gap-0.5">
               <span className="truncate font-medium">

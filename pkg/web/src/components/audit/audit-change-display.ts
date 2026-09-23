@@ -155,7 +155,7 @@ export function formatAuditChangeValue(field: string, value: unknown, valueLabel
   }
 
   if (dateFields.has(field) && (typeof value === 'string' || typeof value === 'number' || value instanceof Date)) {
-    const formattedDate = formatValidDate(value);
+    const formattedDate = formatDate(value, 'medium');
 
     if (formattedDate) {
       return formattedDate;
@@ -195,16 +195,6 @@ function formatAuditChangePreview(
   }
 
   return `${label}: ${from} -> ${to}`;
-}
-
-function formatValidDate(value: string | number | Date): string | undefined {
-  const candidate = value instanceof Date ? value : new Date(value);
-
-  if (Number.isNaN(candidate.getTime())) {
-    return undefined;
-  }
-
-  return formatDate(candidate, 'medium');
 }
 
 function stringifyJsonValue(value: object): string {

@@ -85,8 +85,7 @@ function createQuoteStockColumns(showValue: boolean): DataTableColumnDef<QuoteSt
       ? [
           {
             accessorKey: 'drawnValue',
-            cell: ({ row }) =>
-              row.original.drawnValue === null ? '—' : formatCurrency(row.original.drawnValue, 'ZAR'),
+            cell: ({ row }) => (row.original.drawnValue === null ? '—' : formatCurrency(row.original.drawnValue)),
             header: 'Value',
             meta: { cellClassName: 'tabular-nums' },
           } satisfies DataTableColumnDef<QuoteStockRow>,

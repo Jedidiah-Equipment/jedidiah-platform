@@ -77,7 +77,7 @@ export function PurchaseOrderReturnsCard({
         ? [
             {
               accessorKey: 'value',
-              cell: ({ row }) => (row.original.value === null ? '—' : formatCurrency(row.original.value, 'ZAR')),
+              cell: ({ row }) => (row.original.value === null ? '—' : formatCurrency(row.original.value)),
               header: 'Value reversed',
               meta: { cellClassName: 'text-right tabular-nums', headerClassName: 'text-right' },
             } satisfies DataTableColumnDef<PurchaseOrderReturnRow>,

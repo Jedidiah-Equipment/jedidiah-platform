@@ -193,9 +193,7 @@ function formatCountStatus(item: StockOnHandRow): string {
     return 'Live';
   }
 
-  return item.asOfLastCount === null
-    ? 'No count yet'
-    : `As of last count ${formatDate(item.asOfLastCount, 'd MMM yyyy')}`;
+  return item.asOfLastCount === null ? 'No count yet' : `As of last count ${formatDate(item.asOfLastCount, 'short')}`;
 }
 
 function formatAverageCost(item: StockOnHandRow): string {
@@ -208,5 +206,5 @@ function formatAverageCost(item: StockOnHandRow): string {
 }
 
 function formatInventoryValue(value: number | null): string {
-  return value === null ? 'No cost yet' : formatCurrency(value, 'ZAR');
+  return value === null ? 'No cost yet' : formatCurrency(value);
 }

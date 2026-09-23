@@ -1,6 +1,7 @@
 import { formatCurrency, formatDate } from '@pkg/domain';
+import { DateOnlyIso } from '@pkg/schema';
 import { PriorityQuote, type PriorityQuote as PriorityQuoteType } from '@pkg/schema/equipment';
-import { addDays, format as formatDateFns } from 'date-fns';
+import { addDays } from 'date-fns';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import { DataTable } from '@/components/data-table/DataTable.js';
@@ -107,7 +108,7 @@ describe('Quote table priority rows', () => {
 });
 
 function toDateOnly(date: Date): string {
-  return formatDateFns(date, 'yyyy-MM-dd');
+  return DateOnlyIso.parse(date);
 }
 
 function renderQuoteTableRows(rows: QuoteTableRow[]) {

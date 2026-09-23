@@ -120,7 +120,7 @@ function PlanScheduleSummary({ bay }: { bay: BayListCard }) {
         {bay.active.remainingWorkDays} {bay.active.remainingWorkDays === 1 ? 'DAY' : 'DAYS'} LEFT
       </Text>
       <Text className="text-[9px] text-muted-foreground" mono numberOfLines={1}>
-        {formatDate(bay.active.lastWorkDay, 'd MMM yyyy')}
+        {formatDate(bay.active.lastWorkDay, 'short')}
       </Text>
     </View>
   );

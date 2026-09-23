@@ -258,7 +258,7 @@ const ReadOnlyLinesCard: React.FC<{
           Total{' '}
           {purchaseOrderHasUnpricedLines(purchaseOrder)
             ? 'Not priced'
-            : formatCurrency(purchaseOrderLinesTotal(purchaseOrder.lines), 'ZAR')}
+            : formatCurrency(purchaseOrderLinesTotal(purchaseOrder.lines))}
         </div>
       ) : null}
       {amendment ? (
@@ -312,8 +312,7 @@ const PurchaseOrderReadOnlyLinesTable: React.FC<{
         ? [
             {
               accessorKey: 'unitPrice',
-              cell: ({ row }) =>
-                row.original.unitPrice === null ? '—' : formatCurrency(row.original.unitPrice, 'ZAR'),
+              cell: ({ row }) => (row.original.unitPrice === null ? '—' : formatCurrency(row.original.unitPrice)),
               header: 'Unit price',
               meta: { cellClassName: 'text-right tabular-nums', headerClassName: 'text-right' },
             } satisfies DataTableColumnDef<PurchaseOrderView['lines'][number]>,
@@ -321,7 +320,7 @@ const PurchaseOrderReadOnlyLinesTable: React.FC<{
               accessorFn: (line) => (line.unitPrice === null ? null : line.quantity * line.unitPrice),
               cell: ({ getValue }) => {
                 const value = getValue<number | null>();
-                return value === null ? '—' : formatCurrency(value, 'ZAR');
+                return value === null ? '—' : formatCurrency(value);
               },
               header: 'Amount',
               id: 'amount',

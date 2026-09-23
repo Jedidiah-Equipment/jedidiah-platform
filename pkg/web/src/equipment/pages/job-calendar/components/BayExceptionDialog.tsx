@@ -52,7 +52,7 @@ export const BayExceptionDialog: React.FC<BayExceptionDialogProps> = ({
           <DialogTitle>
             {state?.existingException ? 'Edit' : 'Add'} {state?.direction === 'work' ? 'bay overtime' : 'bay closure'}
           </DialogTitle>
-          <DialogDescription>{state ? formatDate(fromJobCalendarDateKey(state.date), 'PPP') : null}</DialogDescription>
+          <DialogDescription>{state ? formatDate(fromJobCalendarDateKey(state.date), 'long') : null}</DialogDescription>
         </DialogHeader>
         <div className="grid gap-4">
           <Field>

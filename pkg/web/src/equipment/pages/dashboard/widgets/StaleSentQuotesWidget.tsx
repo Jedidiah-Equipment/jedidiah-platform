@@ -1,4 +1,4 @@
-import { formatCurrency } from '@pkg/domain';
+import { formatCurrency, formatDate } from '@pkg/domain';
 import type { StaleSentQuote } from '@pkg/schema/equipment';
 import { useQuery } from '@tanstack/react-query';
 import type React from 'react';
@@ -70,7 +70,9 @@ export function StaleSentQuoteRowContent({ canOpenJobs, quote }: { canOpenJobs: 
       <DashboardQuoteIdentity canOpenJob={canOpenJobs} quote={quote} />
       <span className="text-right">
         <span className="block font-medium tabular-nums">{formatCurrency(quote.totalValue, quote.currencyCode)}</span>
-        <span className="block text-muted-foreground text-xs">{formatSentDaysAgo(quote.sentDaysAgo)}</span>
+        <span className="block text-muted-foreground text-xs">
+          sent {formatDate(quote.statusChangedAt, 'duration')}
+        </span>
       </span>
     </>
   );
@@ -96,12 +98,4 @@ function StaleSentQuotesWidgetSkeleton() {
       ))}
     </div>
   );
-}
-
-function formatSentDaysAgo(sentDaysAgo: number): string {
-  if (sentDaysAgo === 0) {
-    return 'sent today';
-  }
-
-  return sentDaysAgo === 1 ? 'sent 1 day ago' : `sent ${sentDaysAgo} days ago`;
 }

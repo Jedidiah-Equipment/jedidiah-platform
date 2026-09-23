@@ -1,3 +1,4 @@
+import { formatHours } from '@pkg/domain';
 import { fieldJobAccessMode } from '@pkg/domain/contracting';
 import { ReadingComment } from '@pkg/schema/contracting';
 import { useStore } from '@tanstack/react-form';
@@ -299,7 +300,7 @@ function CaptureForm({ params }: { params: CaptureParams }) {
               Hour meter value
             </Text>
             {latest !== undefined ? (
-              <Text className="text-sm text-muted-foreground">Minimum allowed: {latest.toFixed(1)} h</Text>
+              <Text className="text-sm text-muted-foreground">Minimum allowed: {formatHours(latest)}</Text>
             ) : null}
           </View>
           <TextInput

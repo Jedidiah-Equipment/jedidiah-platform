@@ -81,7 +81,7 @@ function JobVarianceTotals({ report, showCosts }: { report: JobMaterialVarianceR
 
 /** A total is unpriced as soon as one drawn Part has no cost — never quietly smaller. */
 function formatActualCost(value: number | null): string {
-  return value === null ? 'not priced' : formatCurrency(value, 'ZAR');
+  return value === null ? 'not priced' : formatCurrency(value);
 }
 
 /** How the Job's stock life stands, since this report is read as often after close-out as before. */
@@ -141,7 +141,7 @@ function createVarianceColumns(showCosts: boolean): DataTableColumnDef<JobMateri
               row.original.actualCost === null ? (
                 <span className="text-muted-foreground">No cost yet</span>
               ) : (
-                formatCurrency(row.original.actualCost, 'ZAR')
+                formatCurrency(row.original.actualCost)
               ),
             header: 'Actual cost',
             id: 'actualCost',

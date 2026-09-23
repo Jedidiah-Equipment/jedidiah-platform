@@ -10,6 +10,10 @@
   entrypoints; the package root and everything outside both folders is shared. Shared code never imports
   a business, businesses never import each other, and only the wiring files the ADR names compose both.
   Biome enforces this; when it fails, move the code or the consumer rather than widening an override.
+- Every displayed date, amount, count, and percentage goes through the `@pkg/domain` formatters: `formatDate`
+  with a named format (`DateFormat` is a closed union), `formatCurrency` (rand by default), `formatNumber`,
+  `formatPercent`, `formatHours`. Outside `pkg/domain/src/formatting`, never call `date-fns` formatting,
+  `toLocaleString`, `Intl.*Format`, or `toFixed` for display; Biome and a `pkg/api` conventions test enforce it.
 - Mass renames go into `.git-blame-ignore-revs` as the squash commit that landed on `main`, added after
   the merge; a test in `pkg/api` rejects hashes that are not ancestors of HEAD.
 - `CONTEXT.md` holds the domain vocabulary and invariants; `docs/adr/` holds the decisions behind them.

@@ -23,10 +23,10 @@ describe('audit change display helpers', () => {
     ).toEqual([
       {
         field: 'Base price',
-        from: '143 750.00',
+        from: 'R 143 750.00',
         key: 'basePrice',
-        preview: 'Base price: 143 750.00 -> 143 937.00',
-        to: '143 937.00',
+        preview: 'Base price: R 143 750.00 -> R 143 937.00',
+        to: 'R 143 937.00',
       },
     ]);
   });
@@ -53,10 +53,10 @@ describe('audit change display helpers', () => {
       },
       {
         field: 'Quoted base price',
-        from: '120 000.00',
+        from: 'R 120 000.00',
         key: 'quotedBasePrice',
-        preview: 'Quoted base price: 120 000.00 -> 125 000.00',
-        to: '125 000.00',
+        preview: 'Quoted base price: R 120 000.00 -> R 125 000.00',
+        to: 'R 125 000.00',
       },
     ]);
   });

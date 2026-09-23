@@ -1,4 +1,4 @@
-import { formatDate } from '@pkg/domain';
+import { toFileDateStamp } from '@pkg/domain';
 import type { AssemblyKind } from '@pkg/schema/equipment';
 import Papa from 'papaparse';
 
@@ -37,7 +37,7 @@ export function buildProductAssemblyExportCsv(rows: ProductAssemblyExportRow[]):
 }
 
 export function createProductAssemblyExportFilename(date: Date): string {
-  return `product-assemblies-${formatDate(date, 'yyyy-MM-dd')}.csv`;
+  return `product-assemblies-${toFileDateStamp(date)}.csv`;
 }
 
 export function downloadProductAssemblyExport(rows: ProductAssemblyExportRow[], date = new Date()): void {

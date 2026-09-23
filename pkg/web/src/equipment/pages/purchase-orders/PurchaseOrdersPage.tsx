@@ -119,9 +119,7 @@ function createPurchaseOrderColumns(canReadCosts: boolean): DataTableColumnDef<P
           {
             accessorFn: totalFor,
             cell: ({ row }) =>
-              purchaseOrderHasUnpricedLines(row.original)
-                ? 'Not priced'
-                : formatCurrency(totalFor(row.original), 'ZAR'),
+              purchaseOrderHasUnpricedLines(row.original) ? 'Not priced' : formatCurrency(totalFor(row.original)),
             header: 'Total',
             id: 'total',
             meta: {

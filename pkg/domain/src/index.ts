@@ -6,6 +6,7 @@ export * from './environment.js';
 export * from './files/file-policy.js';
 export * from './fonts.js';
 export * from './formatting/date.js';
+export * from './formatting/date-display.js';
 export * from './formatting/date-only.js';
 export * from './formatting/email.js';
 export * from './formatting/money.js';

@@ -225,7 +225,7 @@ function SortableRateRow({
         </div>
         <div className="flex items-center gap-3">
           {!rate.active ? <Badge variant="secondary">Inactive</Badge> : null}
-          <span className="font-medium tabular-nums">{formatCurrency(rate.amount, 'ZAR')}</span>
+          <span className="font-medium tabular-nums">{formatCurrency(rate.amount)}</span>
         </div>
       </CardHeader>
     </Card>

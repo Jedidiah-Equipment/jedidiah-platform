@@ -70,7 +70,7 @@ describe('JobActivityEntry', () => {
       buildChangeItem('job-completed', { completedOn: '2026-08-09', occurredAt: '2026-08-10T09:00:00.000Z' }),
     );
 
-    expect(JSON.stringify(renderer.toJSON())).toContain('Aug 9, 2026');
+    expect(JSON.stringify(renderer.toJSON())).toContain('9 Aug 2026');
   });
 
   test.each([buildChangeItem('job-completed'), buildFeedbackItem()])(

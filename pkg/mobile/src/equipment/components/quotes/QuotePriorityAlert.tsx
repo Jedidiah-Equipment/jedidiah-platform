@@ -9,7 +9,7 @@ import { Text } from '@/components/ui/text';
 
 export function QuotePriorityAlert({ quote }: { quote: PriorityQuote }) {
   const deliveryCopy = describeDeliveryDates(quote);
-  const date = formatDate(quote.earliestDeliveryDate, 'd MMM yyyy');
+  const date = formatDate(quote.earliestDeliveryDate, 'short');
   const typeLabel = quoteOfferingTypeLabel(quote);
   const title = quote.kind === 'custom' ? `Accepted ${typeLabel} quote` : 'Needs job';
   const message =
@@ -31,8 +31,8 @@ export function QuotePriorityAlert({ quote }: { quote: PriorityQuote }) {
 }
 
 function describeDeliveryDates(quote: PriorityQuote): string {
-  const preferred = quote.preferredDeliveryDate ? formatDate(quote.preferredDeliveryDate, 'd MMM yyyy') : null;
-  const planned = quote.plannedDeliveryDate ? formatDate(quote.plannedDeliveryDate, 'd MMM yyyy') : null;
+  const preferred = quote.preferredDeliveryDate ? formatDate(quote.preferredDeliveryDate, 'short') : null;
+  const planned = quote.plannedDeliveryDate ? formatDate(quote.plannedDeliveryDate, 'short') : null;
   if (preferred && planned)
     return `The customer prefers delivery by ${preferred}, and delivery is planned for ${planned}.`;
   if (preferred) return `The customer prefers delivery by ${preferred}.`;

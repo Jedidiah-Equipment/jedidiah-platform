@@ -80,12 +80,12 @@ export function QuoteDocumentPricingTable({ document }: QuoteDocumentPricingTabl
   return (
     <View style={styles.table}>
       <TableHeader />
-      {baseRow ? <PricingRow row={baseRow} product /> : null}
+      {baseRow ? <PricingRow currencyCode={document.currencyCode} row={baseRow} product /> : null}
       {optionalRows.length > 0 ? (
         <>
           <SectionRow label="Optional Extras" />
           {optionalRows.map((row) => (
-            <PricingRow key={getPricingRowKey(row)} row={row} />
+            <PricingRow currencyCode={document.currencyCode} key={getPricingRowKey(row)} row={row} />
           ))}
         </>
       ) : null}
@@ -98,7 +98,7 @@ export function QuoteDocumentPricingTable({ document }: QuoteDocumentPricingTabl
         </>
       ) : null}
       {adjustmentRows.map((row) => (
-        <PricingRow key={getPricingRowKey(row)} row={row} />
+        <PricingRow currencyCode={document.currencyCode} key={getPricingRowKey(row)} row={row} />
       ))}
       {document.staleSelectionNotes.length > 0 ? (
         <View style={styles.noticeRow}>
@@ -199,9 +199,17 @@ function SectionRow({ label }: { label: string }) {
   );
 }
 
-function PricingRow({ row, product = false }: { product?: boolean; row: QuoteDocumentPricingRow }) {
-  const unitPrice = formatCurrency(row.unitPrice);
-  const subtotal = formatCurrency(row.amount);
+function PricingRow({
+  currencyCode,
+  row,
+  product = false,
+}: {
+  currencyCode: string;
+  product?: boolean;
+  row: QuoteDocumentPricingRow;
+}) {
+  const unitPrice = formatCurrency(row.unitPrice, currencyCode);
+  const subtotal = formatCurrency(row.amount, currencyCode);
 
   return (
     <View style={pdfStyles.flexRow}>

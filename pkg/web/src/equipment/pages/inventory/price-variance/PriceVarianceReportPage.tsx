@@ -35,14 +35,13 @@ const columns: DataTableColumnDef<InvoicePriceVarianceRow>[] = [
   },
   {
     accessorKey: 'unitPrice',
-    cell: ({ row }) => (row.original.unitPrice === null ? '—' : formatCurrency(row.original.unitPrice, 'ZAR')),
+    cell: ({ row }) => (row.original.unitPrice === null ? '—' : formatCurrency(row.original.unitPrice)),
     header: 'Agreed',
     meta: { cellClassName: 'text-right tabular-nums', headerClassName: 'text-right' },
   },
   {
     accessorKey: 'invoiceUnitPrice',
-    cell: ({ row }) =>
-      row.original.invoiceUnitPrice === null ? '—' : formatCurrency(row.original.invoiceUnitPrice, 'ZAR'),
+    cell: ({ row }) => (row.original.invoiceUnitPrice === null ? '—' : formatCurrency(row.original.invoiceUnitPrice)),
     header: 'Billed',
     meta: { cellClassName: 'text-right tabular-nums', headerClassName: 'text-right' },
   },
@@ -55,7 +54,7 @@ const columns: DataTableColumnDef<InvoicePriceVarianceRow>[] = [
   },
   {
     accessorKey: 'varianceValue',
-    cell: ({ row }) => (row.original.varianceValue === null ? '—' : formatCurrency(row.original.varianceValue, 'ZAR')),
+    cell: ({ row }) => (row.original.varianceValue === null ? '—' : formatCurrency(row.original.varianceValue)),
     header: 'Variance',
     meta: { cellClassName: 'text-right tabular-nums', headerClassName: 'text-right' },
   },

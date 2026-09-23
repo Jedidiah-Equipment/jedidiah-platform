@@ -1,5 +1,6 @@
 import { formatDate, parseCommonDateInput } from '@pkg/domain';
-import { endOfDay, format, isAfter, isBefore, isValid, parse, startOfDay } from 'date-fns';
+import { DateOnlyIso } from '@pkg/schema';
+import { endOfDay, isAfter, isBefore, isValid, parse, startOfDay } from 'date-fns';
 import * as React from 'react';
 import { Calendar } from '@/components/ui/calendar.js';
 import { Input } from '@/components/ui/input.js';
@@ -127,11 +128,11 @@ export function parseDatePickerValue(value: string): Date | null {
 
   if (!isValid(parsedDate)) return null;
 
-  return format(parsedDate, dateOnlyFormat) === value ? parsedDate : null;
+  return DateOnlyIso.parse(parsedDate) === value ? parsedDate : null;
 }
 
 export function formatDatePickerValue(date: Date): string {
-  return format(date, dateOnlyFormat);
+  return DateOnlyIso.parse(date);
 }
 
 export function formatDatePickerDisplayValue(date: Date): string {

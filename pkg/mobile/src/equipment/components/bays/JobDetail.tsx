@@ -272,7 +272,7 @@ function RouteStop({ isCancelled, stop }: { isCancelled: boolean; stop: JobRoute
 
         <View className="mt-3 flex-row items-center justify-between">
           <Text className="text-[10px] text-muted-foreground" mono>
-            {formatDate(stop.firstWorkDay, 'd MMM')} – {formatDate(stop.lastWorkDay, 'd MMM')}
+            {formatDate(stop.firstWorkDay, 'day')} – {formatDate(stop.lastWorkDay, 'day')}
           </Text>
           <Text className={`text-[10px] ${progressAppearance.textByScheme[resolved]}`} mono>
             {routeDaysLabel(stop, isCancelled)}
@@ -297,7 +297,7 @@ function routeDaysLabel(stop: JobRouteStopCard, isCancelled: boolean): string {
     return `${stop.remainingWorkDays} ${stop.remainingWorkDays === 1 ? 'working day' : 'working days'} left`;
   }
 
-  return `Starts ${formatDate(stop.firstWorkDay, 'd MMM')}`;
+  return `Starts ${formatDate(stop.firstWorkDay, 'day')}`;
 }
 
 /**

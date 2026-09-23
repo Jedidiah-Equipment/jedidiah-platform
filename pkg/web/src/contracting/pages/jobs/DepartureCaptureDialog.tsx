@@ -1,3 +1,4 @@
+import { formatHours } from '@pkg/domain';
 import { type Assignment, ReadingReason, ReadingValue, readingCaptureMultipartFields } from '@pkg/schema/contracting';
 import { useState } from 'react';
 import { toast } from 'sonner';
@@ -51,7 +52,7 @@ export function DepartureCaptureDialog({ stint, onClose }: { stint: Assignment |
     >
       {(form) => (
         <>
-          <p>Minimum allowed: {stint?.arrival?.value.toFixed(1) ?? '—'} h</p>
+          <p>Minimum allowed: {stint?.arrival ? formatHours(stint.arrival.value) : '—'}</p>
           <p className="text-muted-foreground">
             Typed by management without a photo. The reason is recorded on the reading.
           </p>

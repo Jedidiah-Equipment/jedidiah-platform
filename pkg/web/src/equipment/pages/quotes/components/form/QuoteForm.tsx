@@ -397,7 +397,7 @@ const QuotePriorityAlert: React.FC<{
         <AlertTitle>Accepted {typeLabel} quote</AlertTitle>
         <AlertDescription className="text-warning-foreground/85">
           This {typeLabel} quote is accepted and not linked to a Job. {describeDeliveryDates(priorityQuote)} Keep the
-          delivery commitment visible for {formatQuoteDate(priorityQuote.earliestDeliveryDate)}.
+          delivery commitment visible for {formatDate(priorityQuote.earliestDeliveryDate)}.
         </AlertDescription>
       </Alert>
     );
@@ -413,15 +413,15 @@ const QuotePriorityAlert: React.FC<{
       <AlertDescription className="text-warning-foreground/85">
         This quote is accepted but no Job has been started. {describeDeliveryDates(priorityQuote)} The {productName}{' '}
         takes {buildDuration} to build, so start a Job soon to reserve Bay capacity in time for{' '}
-        {formatQuoteDate(priorityQuote.earliestDeliveryDate)}.
+        {formatDate(priorityQuote.earliestDeliveryDate)}.
       </AlertDescription>
     </Alert>
   );
 };
 
 function describeDeliveryDates(quote: PriorityQuote): string {
-  const preferred = quote.preferredDeliveryDate ? formatQuoteDate(quote.preferredDeliveryDate) : null;
-  const planned = quote.plannedDeliveryDate ? formatQuoteDate(quote.plannedDeliveryDate) : null;
+  const preferred = quote.preferredDeliveryDate ? formatDate(quote.preferredDeliveryDate) : null;
+  const planned = quote.plannedDeliveryDate ? formatDate(quote.plannedDeliveryDate) : null;
 
   if (preferred && planned) {
     return `The customer prefers delivery by ${preferred}, and delivery is planned for ${planned}.`;
@@ -432,10 +432,6 @@ function describeDeliveryDates(quote: PriorityQuote): string {
   }
 
   return planned ? `Delivery is planned for ${planned}.` : '';
-}
-
-function formatQuoteDate(value: string): string {
-  return formatDate(value, 'MMM d, yyyy');
 }
 
 function formatWorkingDays(days: number): string {

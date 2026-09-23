@@ -32,13 +32,13 @@ describe('formatDatePickerValue', () => {
 
 describe('formatDatePickerDisplayValue', () => {
   it('formats the selected date with the shared short date format', () => {
-    expect(formatDatePickerDisplayValue(new Date(2026, 4, 22))).toBe('May 22, 2026');
+    expect(formatDatePickerDisplayValue(new Date(2026, 4, 22))).toBe('22 May 2026');
   });
 });
 
 describe('formatDatePickerInputValue', () => {
   it('formats a wire date for text entry display', () => {
-    expect(formatDatePickerInputValue('2026-05-22')).toBe('May 22, 2026');
+    expect(formatDatePickerInputValue('2026-05-22')).toBe('22 May 2026');
   });
 
   it('leaves invalid wire values blank', () => {

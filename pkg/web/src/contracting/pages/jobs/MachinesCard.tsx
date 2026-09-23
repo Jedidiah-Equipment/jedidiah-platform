@@ -1,3 +1,4 @@
+import { formatHours } from '@pkg/domain';
 import { readingExceptionTypeColorClassNames, readingExceptionTypeLabels } from '@pkg/domain/contracting';
 import type { Assignment, JobDetail, JobReading } from '@pkg/schema/contracting';
 import { IconMessage } from '@tabler/icons-react';
@@ -59,7 +60,7 @@ function ReadingCell({
   return (
     <div className="flex items-center gap-1">
       <Button size="sm" variant="link" onClick={() => onOpen({ reading, stint })}>
-        {reading.value.toFixed(1)}
+        {formatHours(reading.value)}
       </Button>
       <ReadingEvidenceBadge reading={reading} onPreview={() => onOpen({ reading, stint })} />
       {reading.comment ? (
@@ -208,22 +209,24 @@ export function MachinesCard({ job, capabilities }: { job: JobDetail; capabiliti
         header: 'Work h',
         cell: ({ row }) =>
           row.original.kind === 'subtotal'
-            ? row.original.workHours.toFixed(1)
+            ? formatHours(row.original.workHours)
             : row.original.kind === 'stint'
-              ? (row.original.stint.workHours?.toFixed(1) ?? '—')
+              ? row.original.stint.workHours === null
+                ? '—'
+                : formatHours(row.original.stint.workHours)
               : '—',
       },
       {
         id: 'travel',
         header: 'Travel h',
         cell: ({ row }) => {
-          if (row.original.kind === 'subtotal') return row.original.travelHours.toFixed(1);
+          if (row.original.kind === 'subtotal') return formatHours(row.original.travelHours);
           if (row.original.kind === 'planned') return '—';
           const stint = row.original.stint;
           return (
             <div className="space-y-1">
               <div className="flex items-center gap-1">
-                {stint.travelHours.toFixed(1)}{' '}
+                {formatHours(stint.travelHours)}{' '}
                 <Switch
                   aria-label={`Include travel for ${stint.machineCode}`}
                   checked={stint.travelIncluded}
@@ -245,7 +248,7 @@ export function MachinesCard({ job, capabilities }: { job: JobDetail; capabiliti
               {stint.gapResolved ? (
                 <Tooltip>
                   <TooltipTrigger render={<span className="cursor-help" />}>
-                    {stint.travelHours.toFixed(1)} travel · {stint.unaccountedHours.toFixed(1)} unaccounted
+                    {formatHours(stint.travelHours)} travel · {formatHours(stint.unaccountedHours)} unaccounted
                   </TooltipTrigger>
                   <TooltipContent>{stint.gapReason ?? 'Gap split recorded'}</TooltipContent>
                 </Tooltip>

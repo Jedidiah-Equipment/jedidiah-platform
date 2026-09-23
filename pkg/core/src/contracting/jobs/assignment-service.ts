@@ -1,5 +1,6 @@
 import type { DatabaseTransaction, Db } from '@pkg/db';
 import { contractingMachineAssignments, contractingMachines } from '@pkg/db/contracting';
+import { formatHours } from '@pkg/domain';
 import { round1 } from '@pkg/domain/contracting';
 import type { AuthId } from '@pkg/schema';
 import type {
@@ -204,7 +205,7 @@ export async function resolveGap({ db, actorUserId, input }: { db: Db; actorUser
           if (round1(input.travelHours + input.unaccountedHours) !== stint.gapHours)
             throw new JobError(
               'contracting_job.invalid_reference',
-              `Travel Hours and the Unaccounted Interval must total ${stint.gapHours.toFixed(1)} h.`,
+              `Travel Hours and the Unaccounted Interval must total ${formatHours(stint.gapHours)}.`,
             );
         },
         set: () => ({

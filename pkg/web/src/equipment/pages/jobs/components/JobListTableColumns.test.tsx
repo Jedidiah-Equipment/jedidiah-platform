@@ -56,10 +56,10 @@ describe('Job List table columns', () => {
     expect(html).toContain('2 Scheduled');
     expect(html).not.toContain('Not scheduled');
     // Start date / End date columns label the working window, not the raw queue span.
-    expect(html).toContain('Jun 8, 2026');
-    expect(html).toContain('Jun 19, 2026');
-    expect(html).not.toContain('Jun 6, 2026');
-    expect(html).not.toContain('Jun 20, 2026');
+    expect(html).toContain('8 Jun 2026');
+    expect(html).toContain('19 Jun 2026');
+    expect(html).not.toContain('6 Jun 2026');
+    expect(html).not.toContain('20 Jun 2026');
     // The Job carries no stored completion date, so the Complete column shows no check icon.
     expect(html).not.toContain('tabler-icon-check');
   });
@@ -81,7 +81,7 @@ describe('Job List table columns', () => {
     ]);
 
     expect(html).toContain('tabler-icon-check');
-    expect(html).toContain('Jun 14, 2026');
+    expect(html).toContain('14 Jun 2026');
   });
 
   it('leaves the Complete column blank for a Job whose Slots are all done but was never stamped', () => {

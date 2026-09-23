@@ -44,7 +44,7 @@ describe('schedule UI timezone tripwire', () => {
   it('describes the same server placement in any browser timezone', () => {
     for (const feedback of inEveryTimeZone(() => describeInsertAtDatePlacement(splitPlacement()))) {
       expect(feedback).toEqual({
-        startText: 'Starts Tue, Jun 9',
+        startText: 'Starts 9 Jun',
         splitWarning: "Splits JOB-01042's 10-day slot into 4 + 6.",
       });
     }

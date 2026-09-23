@@ -1,7 +1,29 @@
 import type { DateOnlyIso } from '@pkg/schema';
-import { differenceInSeconds, formatDate as formatDateDfns, fromUnixTime, isValid, parse, parseISO } from 'date-fns';
+import {
+  differenceInSeconds,
+  formatDate as formatDateDfns,
+  fromUnixTime,
+  isSameDay,
+  isSameYear,
+  isValid,
+  parse,
+  parseISO,
+  subDays,
+} from 'date-fns';
 
-export type DateFormat = 'short' | 'medium' | 'long' | 'duration' | 'duration-short' | (string & NonNullable<unknown>);
+/**
+ * Every date a person reads renders in one of these shapes, in South African order. A surface that
+ * needs a new shape adds it here as a named format rather than passing a pattern at the call site.
+ */
+export type DateFormat = 'short' | 'medium' | 'long' | 'duration' | 'day' | 'time';
+
+const DATE_FORMAT_PATTERNS = {
+  day: 'd MMM',
+  long: 'EEEE, d MMMM yyyy',
+  medium: 'd MMM yyyy, HH:mm',
+  short: 'd MMM yyyy',
+  time: 'HH:mm',
+} as const satisfies Record<Exclude<DateFormat, 'duration'>, string>;
 
 export const JOHANNESBURG_TIME_ZONE = 'Africa/Johannesburg';
 const MILLISECONDS_PER_DAY = 24 * 60 * 60 * 1000;
@@ -79,93 +101,63 @@ export const parseCommonDateInput = (value: string): Date | null => {
 export const formatDate = (date?: Date | string | number | null, format: DateFormat = 'short', emptyValue?: string) => {
   const parsedDate = parseDate(date);
 
-  if (!parsedDate) {
+  if (!parsedDate || !isValid(parsedDate)) {
     return emptyValue ?? '';
   }
 
-  if (format === 'short') {
-    return formatDateDfns(parsedDate, 'PP');
+  if (format === 'duration') {
+    return formatRelativeTime(parsedDate);
   }
 
-  if (format === 'medium') {
-    if (new Date().getFullYear() === parsedDate.getFullYear()) {
-      return formatDateDfns(parsedDate, 'LLL do, HH:mm:ss');
-    }
-    return formatDateDfns(parsedDate, 'LLL do, yyyy, HH:mm:ss');
-  }
-
-  if (format === 'long') {
-    return formatDateDfns(parsedDate, 'PPpp');
-  }
-
-  if (format === 'duration' || format === 'duration-short') {
-    return secondsToAgeString(
-      Math.max(
-        differenceInSeconds(new Date(), parsedDate, {
-          roundingMethod: 'floor',
-        }),
-        1,
-      ),
-      format === 'duration-short',
-    );
-  }
-
-  return formatDateDfns(parsedDate, format);
+  return formatDateDfns(parsedDate, DATE_FORMAT_PATTERNS[format]);
 };
 
-export const secondsToAgeString = (seconds: number, short = false) => {
-  const years = Math.floor(seconds / 31_536_000);
-  const max = 2;
-  let current = 0;
-  let str = '';
+const RELATIVE_TIME_UNITS = [
+  { name: 'year', seconds: 365 * 24 * 60 * 60 },
+  { name: 'month', seconds: 30 * 24 * 60 * 60 },
+  { name: 'day', seconds: 24 * 60 * 60 },
+  { name: 'hour', seconds: 60 * 60 },
+  { name: 'minute', seconds: 60 },
+] as const;
 
-  let secs = seconds;
+/** The largest whole unit between `date` and `now`: `5 days ago`, `in 2 days`, `just now` under a minute. */
+export function formatRelativeTime(date: Date, now: Date = new Date()): string {
+  const secondsAgo = differenceInSeconds(now, date, { roundingMethod: 'trunc' });
+  const magnitude = Math.abs(secondsAgo);
+  const unit = RELATIVE_TIME_UNITS.find((candidate) => magnitude >= candidate.seconds);
 
-  if (years && current < max) {
-    str += `${years}y `;
-    if (short) {
-      return str;
-    }
-    current++;
+  if (!unit) {
+    return 'just now';
   }
 
-  secs %= 31_536_000;
-  const days = Math.floor(secs / 86_400);
-  if (days && current < max) {
-    str += `${days}d `;
-    if (short) {
-      return str;
-    }
-    current++;
-    return str;
+  const count = Math.floor(magnitude / unit.seconds);
+  const amount = `${count} ${unit.name}${count === 1 ? '' : 's'}`;
+
+  return secondsAgo > 0 ? `${amount} ago` : `in ${amount}`;
+}
+
+/**
+ * The heading over a day's entries in an activity feed. Today and Yesterday are named as well as
+ * dated, and the year only appears once it is no longer the obvious one.
+ */
+export function formatDayHeading(date: Date, now: Date): string {
+  const dayLabel = formatDateDfns(date, isSameYear(date, now) ? 'EEE d MMM' : 'EEE d MMM yyyy');
+
+  if (isSameDay(date, now)) {
+    return `Today · ${dayLabel}`;
   }
 
-  secs %= 86_400;
-  const hours = Math.floor(secs / 3_600);
-  if (hours && current < max) {
-    str += `${hours}h `;
-    if (short) {
-      return str;
-    }
-    current++;
+  if (isSameDay(date, subDays(now, 1))) {
+    return `Yesterday · ${dayLabel}`;
   }
 
-  secs %= 3_600;
-  const minutes = Math.floor(secs / 60);
-  if (minutes && current < max) {
-    str += `${minutes}m `;
-    current++;
-    return str;
-  }
+  return dayLabel;
+}
 
-  const s = seconds % 60;
-  if (s && current < max) {
-    str += `${s}s `;
-    current++;
-  }
-
-  return str || '1s';
-};
+/** A machine-readable calendar date for file names, never for display. */
+export function toFileDateStamp(date: Date): string {
+  return formatDateDfns(date, 'yyyy-MM-dd');
+}
 
 export function getZonedDateParts(
   date: Date,

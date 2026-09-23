@@ -69,8 +69,8 @@ export function QuoteDocumentBottomBlock({ document }: QuoteDocumentBottomBlockP
         </View>
       </View>
       <View style={styles.summary}>
-        <SummaryRow label="Subtotal" value={formatCurrency(document.subtotal)} />
-        <SummaryRow label="VAT" value={formatCurrency(document.vatAmount)} />
+        <SummaryRow label="Subtotal" value={formatCurrency(document.subtotal, document.currencyCode)} />
+        <SummaryRow label="VAT" value={formatCurrency(document.vatAmount, document.currencyCode)} />
         <SummaryRow label="Total" total value={formatCurrency(document.total, document.currencyCode)} />
       </View>
     </View>

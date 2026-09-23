@@ -71,7 +71,7 @@ describe('describeInsertAtDatePlacement', () => {
     const placement = splitPlacement(workSlot({ durationDays: 10, jobCode: 'JOB-01042' }));
 
     expect(describeInsertAtDatePlacement(placement)).toEqual({
-      startText: 'Starts Tue, Jun 9',
+      startText: 'Starts 9 Jun',
       splitWarning: "Splits JOB-01042's 10-day slot into 4 + 6.",
     });
   });
@@ -88,7 +88,7 @@ describe('describeInsertAtDatePlacement', () => {
 
   it('describes a clean append without a split warning', () => {
     expect(describeInsertAtDatePlacement({ idleGapDays: 0, startDate: day('2026-06-09'), type: 'append' })).toEqual({
-      startText: 'Starts Tue, Jun 9',
+      startText: 'Starts 9 Jun',
       splitWarning: null,
     });
   });

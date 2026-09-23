@@ -62,7 +62,7 @@ export const QuoteFlowWidget: React.FC = () => {
 
   const chartData = summary.items.map((item) => ({
     ...item,
-    label: formatDate(item.weekStartDate, 'MMM d'),
+    label: formatDate(item.weekStartDate, 'day'),
   }));
 
   return (
@@ -84,7 +84,7 @@ export const QuoteFlowWidget: React.FC = () => {
               <ChartTooltipContent
                 labelFormatter={(_, payload) => {
                   const item = payload[0]?.payload;
-                  return typeof item?.weekStartDate === 'string' ? formatDate(item.weekStartDate, 'PP') : null;
+                  return typeof item?.weekStartDate === 'string' ? formatDate(item.weekStartDate, 'short') : null;
                 }}
               />
             }

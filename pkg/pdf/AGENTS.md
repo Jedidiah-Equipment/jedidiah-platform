@@ -2,6 +2,8 @@
 
 - Keep PDF changes focused on deterministic renderers and small testable helpers.
 - Use React-PDF APIs for layout; avoid browser-only APIs.
+- Format dates and amounts with the `@pkg/domain` formatters: `long` for ceremonial dates, and pass the
+  document's stored currency code to `formatCurrency`.
 - Shared brand font assets live in `@pkg/domain/fonts`, with PDF registration in `src/pdf-fonts.ts`. After a
   font change, generate a sample PDF and confirm the embedded font names — fallback is silent.
 - Keep this package's `react` dependency aligned with `@pkg/mobile`. Expo Doctor scans the whole monorepo

@@ -1,3 +1,4 @@
+import { formatNumber } from '@pkg/domain';
 import {
   PART_LABEL_BATCH_MAX_COPIES,
   PartLabelBatchSelection,
@@ -152,7 +153,7 @@ export function PurchaseOrderPartLabelsDialog({ lines }: { lines: PurchaseOrderL
             totalLabel={(value) => `${value} received ${value === 1 ? 'Part' : 'Parts'}`}
           />
           <p className="text-xs text-muted-foreground">
-            Label counts must be whole numbers. A PDF can contain up to {PART_LABEL_BATCH_MAX_COPIES.toLocaleString()}{' '}
+            Label counts must be whole numbers. A PDF can contain up to {formatNumber(PART_LABEL_BATCH_MAX_COPIES)}{' '}
             labels.
           </p>
           <DialogFooter>

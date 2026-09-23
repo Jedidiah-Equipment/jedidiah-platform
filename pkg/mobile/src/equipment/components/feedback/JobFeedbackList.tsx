@@ -1,8 +1,8 @@
-import { formatDate } from '@pkg/domain';
 import { useQuery } from '@tanstack/react-query';
 import { View } from 'react-native';
 
 import { Avatar } from '@/components/Avatar';
+import { DateText } from '@/components/DateText';
 import { Pulse } from '@/components/ui/pulse';
 import { Text } from '@/components/ui/text';
 import { FactCard } from '@/equipment/components/bays/job-facts';
@@ -36,9 +36,7 @@ export function JobFeedbackList({ jobCode, jobId }: { jobCode: string; jobId: st
               <Text className="min-w-0 flex-1 text-sm text-surface-foreground" numberOfLines={1} weight="semibold">
                 {item.submitter.name}
               </Text>
-              <Text className="text-[10px] text-muted-foreground" mono>
-                {formatDate(item.createdAt, 'd MMM yyyy')}
-              </Text>
+              <DateText className="text-[10px] text-muted-foreground" date={item.createdAt} mono />
             </View>
             <Text className="text-sm leading-5 text-surface-foreground">{item.text}</Text>
           </View>

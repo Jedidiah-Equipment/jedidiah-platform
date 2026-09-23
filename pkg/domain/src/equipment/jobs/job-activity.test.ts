@@ -16,7 +16,7 @@ describe('presentJobActivityEvent', () => {
     ],
     [{ type: 'job-description-updated', description: null }, 'cleared the Job description', null],
     [{ type: 'job-completed', completedOn: '2026-08-18' }, 'completed this Job', null],
-    [{ type: 'job-completed', completedOn: '2026-08-17' }, 'completed this Job', 'Aug 17, 2026'],
+    [{ type: 'job-completed', completedOn: '2026-08-17' }, 'completed this Job', '17 Aug 2026'],
     [
       { type: 'job-document-added', document: { contentType: 'application/pdf', filename: 'handover.pdf' } },
       'added a document',
@@ -41,7 +41,7 @@ describe('presentJobActivityEvent', () => {
     [
       'corrected',
       'corrected Fabrication work times',
-      'Aug 1, 2026 → Aug 4, 2026 · Fiona Fabricator',
+      '1 Aug 2026 → 4 Aug 2026 · Fiona Fabricator',
       ['Fiona Fabricator'],
     ],
     ['cleared', 'cleared Fabrication work times', null, []],
@@ -64,9 +64,9 @@ describe('presentJobActivityEvent', () => {
   });
 
   test.each([
-    [null, [], 'Aug 18, 2026'],
-    [null, ['Fiona Fabricator', 'Sam Smith'], 'Aug 18, 2026 · Fiona Fabricator, Sam Smith'],
-    ['2026-08-19T12:00:00.000Z', [], 'Aug 18, 2026 → Aug 19, 2026'],
+    [null, [], '18 Aug 2026'],
+    [null, ['Fiona Fabricator', 'Sam Smith'], '18 Aug 2026 · Fiona Fabricator, Sam Smith'],
+    ['2026-08-19T12:00:00.000Z', [], '18 Aug 2026 → 19 Aug 2026'],
   ])('keeps the resulting corrected span and crew: %j, %j', (completedAt, crew, detail) => {
     const item = buildChangeItem({
       type: 'job-work-time-updated',
@@ -86,7 +86,7 @@ describe('presentJobActivityEvent', () => {
 
       expect(presentJobActivityEvent(buildChangeItem({ ...payload, completedOn: '2026-08-19' })).detail).toBeNull();
       expect(presentJobActivityEvent(buildChangeItem({ ...payload, completedOn: '2026-08-18' })).detail).toBe(
-        'Aug 18, 2026',
+        '18 Aug 2026',
       );
     },
   );

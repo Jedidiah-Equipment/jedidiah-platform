@@ -1,3 +1,4 @@
+import { formatHours } from '@pkg/domain';
 import type { CategoryColour, CategoryIconKey } from '@pkg/schema/contracting';
 import { type Href, router, useLocalSearchParams } from 'expo-router';
 import { ScrollView, View } from 'react-native';
@@ -193,11 +194,12 @@ function StintCard({
       </Text>
       {stint.arrival ? (
         <Text className="text-sm text-muted-foreground">
-          Arrived {stint.arrival.value.toFixed(1)} h{stint.arrival.photoBacked ? ' · photo' : ' · no photo'}
+          Arrived {formatHours(stint.arrival.value)}
+          {stint.arrival.photoBacked ? ' · photo' : ' · no photo'}
         </Text>
       ) : null}
       {stint.departure ? (
-        <Text className="text-sm text-muted-foreground">Departed {stint.departure.value.toFixed(1)} h</Text>
+        <Text className="text-sm text-muted-foreground">Departed {formatHours(stint.departure.value)}</Text>
       ) : null}
       {stint.view === 'planned' && canCapture ? (
         <Button primary title="Start — capture arrival" onPress={onStart} />

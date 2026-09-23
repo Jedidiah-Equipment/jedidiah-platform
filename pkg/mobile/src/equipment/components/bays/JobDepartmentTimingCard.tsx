@@ -115,11 +115,11 @@ export function JobDepartmentTimingCard({
         <View className="-mx-4 h-px bg-border" />
 
         <FactRow className="gap-0">
-          <FactField className="pr-2" label="STARTED" value={formatDate(timing.startedAt, 'd MMM yyyy', '—')} />
+          <FactField className="pr-2" label="STARTED" value={formatDate(timing.startedAt, 'short', '—')} />
           <FactField
             className="border-l border-border px-2"
             label="FINISHED"
-            value={formatDate(timing.completedAt, 'd MMM yyyy', '—')}
+            value={formatDate(timing.completedAt, 'short', '—')}
           />
           <FactField
             className="border-l border-border pl-2"

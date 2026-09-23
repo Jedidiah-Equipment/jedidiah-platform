@@ -1,3 +1,4 @@
+import { formatDate, formatHours } from '@pkg/domain';
 import { type Href, router, useLocalSearchParams } from 'expo-router';
 import { ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -50,7 +51,7 @@ export default function MachineScreen() {
             {machine?.categoryName} · {machine?.onSiteJobNumber ? `On Job · ${machine.onSiteJobNumber}` : 'In Yard'}
           </Text>
           <Text className="text-3xl text-foreground" weight="bold">
-            {latest ? `${latest.value.toFixed(1)} h` : 'No known reading'}
+            {latest ? formatHours(latest.value) : 'No known reading'}
           </Text>
           {latest ? (
             <View className="flex-row items-center gap-1">
@@ -60,7 +61,7 @@ export default function MachineScreen() {
           ) : null}
           {pending[0] && !latestLocal ? (
             <Text className="text-foreground">
-              Latest local capture: {pending[0].value.toFixed(1)} h · {queuedReadingStatus(pending[0]).label}
+              Latest local capture: {formatHours(pending[0].value)} · {queuedReadingStatus(pending[0]).label}
             </Text>
           ) : null}
         </View>
@@ -87,18 +88,18 @@ export default function MachineScreen() {
         {pending.map((row) => (
           <View key={row.localId} className="gap-1 rounded-xl border border-border p-4">
             <Text className="text-foreground" weight="semibold">
-              {row.value.toFixed(1)} h · {queuedReadingStatus(row).label}
+              {formatHours(row.value)} · {queuedReadingStatus(row).label}
             </Text>
-            <Text className="text-sm text-muted-foreground">{new Date(row.capturedAt).toLocaleString()}</Text>
+            <Text className="text-sm text-muted-foreground">{formatDate(row.capturedAt, 'medium')}</Text>
           </View>
         ))}
         {readings.data?.map((row) => (
           <View key={row.id} className="gap-1 rounded-xl border border-border bg-surface p-4">
             <Text className="text-foreground" weight="semibold">
-              {row.value.toFixed(1)} h ·{' '}
+              {formatHours(row.value)} ·{' '}
               {{ baseline: 'Baseline', spot: 'Spot', arrival: 'Arrival', departure: 'Departure' }[row.role]}
             </Text>
-            <Text className="text-sm text-muted-foreground">{new Date(row.capturedAt).toLocaleString()}</Text>
+            <Text className="text-sm text-muted-foreground">{formatDate(row.capturedAt, 'medium')}</Text>
             <Text className="text-sm text-muted-foreground">
               {row.photoBacked ? 'Photo-backed' : 'Missing Photo Evidence'}
               {row.disputed ? ' · Disputed' : ''}

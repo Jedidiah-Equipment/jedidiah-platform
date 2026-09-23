@@ -1,4 +1,4 @@
-import { formatDate } from '@pkg/domain';
+import { toFileDateStamp } from '@pkg/domain';
 import {
   type PartBulkExportRow,
   PartBulkImportRow,
@@ -144,7 +144,7 @@ export function buildPartBulkExportCsv(rows: readonly PartBulkExportRow[]): stri
 export function createPartBulkExportFilename(date: Date, supplierName?: string): string {
   const scope = supplierName ? `${toFilenameSlug(supplierName)}-` : '';
 
-  return `parts-${scope}${formatDate(date, 'yyyy-MM-dd')}.csv`;
+  return `parts-${scope}${toFileDateStamp(date)}.csv`;
 }
 
 function toFilenameSlug(value: string): string {

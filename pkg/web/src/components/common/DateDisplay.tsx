@@ -1,23 +1,7 @@
-import { type DateFormat, formatDate, parseDate, secondsToAgeString } from '@pkg/domain';
-import {
-  differenceInSeconds,
-  formatDate as formatDateFns,
-  isAfter,
-  isSameDay,
-  isWithinInterval,
-  subDays,
-  subWeeks,
-} from 'date-fns';
+import { type DateFormat, getDateDisplayParts } from '@pkg/domain';
 import type React from 'react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip.js';
 import { cn } from '@/lib/utils.js';
-
-type DateDisplayParts = {
-  label: string;
-  tooltip: string | null;
-};
-
-const SECONDS_PER_DAY = 24 * 60 * 60;
 
 export type DateDisplayProps = Omit<React.ComponentPropsWithoutRef<'span'>, 'children'> & {
   date?: Date | string | number | null;
@@ -58,77 +42,3 @@ export const DateDisplay: React.FC<DateDisplayProps> = ({
     </Tooltip>
   );
 };
-
-export function getDateDisplayParts({
-  date,
-  emptyValue,
-  format = 'short',
-  now = new Date(),
-}: {
-  date?: Date | string | number | null | undefined;
-  emptyValue?: string | undefined;
-  format?: DateFormat;
-  now?: Date;
-}): DateDisplayParts {
-  const parsedDate = parseDate(date);
-
-  if (!parsedDate) {
-    return {
-      label: emptyValue ?? '',
-      tooltip: null,
-    };
-  }
-
-  if (!isAfter(parsedDate, now)) {
-    const tooltip = formatDate(parsedDate, 'medium');
-    const secondsAgo = differenceInSeconds(now, parsedDate, {
-      roundingMethod: 'floor',
-    });
-
-    if (isSameDay(parsedDate, now)) {
-      return {
-        label: `Today at ${formatDateFns(parsedDate, 'HH:mm')}`,
-        tooltip,
-      };
-    }
-
-    const isPreviousCalendarDay = isSameDay(parsedDate, subDays(now, 1));
-    // The duration formatter floors whole days, so anything from one full day
-    // up to but not including two full days would otherwise render as "1d ago".
-    const wouldRenderAsOneDayAgo = secondsAgo >= SECONDS_PER_DAY && secondsAgo < 2 * SECONDS_PER_DAY;
-    if (isPreviousCalendarDay || wouldRenderAsOneDayAgo) {
-      return {
-        label: `Yesterday at ${formatDateFns(parsedDate, 'HH:mm')}`,
-        tooltip,
-      };
-    }
-  }
-
-  if (isWithinRecentDateWindow(parsedDate, now)) {
-    const duration = secondsToAgeString(
-      Math.max(
-        differenceInSeconds(now, parsedDate, {
-          roundingMethod: 'floor',
-        }),
-        1,
-      ),
-    ).trim();
-
-    return {
-      label: `${duration} ago`,
-      tooltip: formatDate(parsedDate, 'medium'),
-    };
-  }
-
-  return {
-    label: formatDate(parsedDate, format, emptyValue),
-    tooltip: null,
-  };
-}
-
-function isWithinRecentDateWindow(date: Date, now: Date): boolean {
-  return isWithinInterval(date, {
-    end: now,
-    start: subWeeks(now, 1),
-  });
-}

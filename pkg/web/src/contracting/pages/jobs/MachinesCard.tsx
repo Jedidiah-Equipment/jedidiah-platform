@@ -14,26 +14,26 @@ import { AttentionBadge, machineColumns } from './MachineCells.js';
 import { MachinesContext, type SelectedReading, useMachineMutations } from './machines-context.js';
 import { PlanMachineDialog } from './PlanMachineDialog.js';
 import { ReadingSheet } from './ReadingSheet.js';
-import type { JobCapabilities } from './types.js';
+import type { JobSheet } from './types.js';
 
-export function MachinesCard({ job, capabilities }: { job: JobDetail; capabilities: JobCapabilities }) {
+export function MachinesCard({ job, sheet }: { job: JobDetail; sheet: JobSheet }) {
   const trpc = useTRPC();
   const [planning, setPlanning] = useState(false);
   const [reading, setReading] = useState<SelectedReading | null>(null);
   const [gap, setGap] = useState<Assignment | null>(null);
   const [departure, setDeparture] = useState<Assignment | null>(null);
   const implementOptions = useQuery(
-    trpc.contractingJobs.field.implements.queryOptions(undefined, { enabled: capabilities.planStints }),
+    trpc.contractingJobs.field.implements.queryOptions(undefined, { enabled: sheet.can('assign') }),
   );
   const drivers = useQuery(
-    trpc.contractingJobs.field.drivers.queryOptions(undefined, { enabled: capabilities.planStints }),
+    trpc.contractingJobs.field.drivers.queryOptions(undefined, { enabled: sheet.can('assign') }),
   );
   const mutations = useMachineMutations();
   const rows = useMemo(() => groupStints(job.assignments), [job.assignments]);
   const table = useDataTable({ data: rows, columns: machineColumns });
   const machines = useMemo(
     () => ({
-      capabilities,
+      sheet,
       implementOptions: implementOptions.data ?? [],
       drivers: drivers.data ?? [],
       mutations,
@@ -41,14 +41,14 @@ export function MachinesCard({ job, capabilities }: { job: JobDetail; capabiliti
       openGap: setGap,
       openDeparture: setDeparture,
     }),
-    [capabilities, implementOptions.data, drivers.data, mutations],
+    [sheet, implementOptions.data, drivers.data, mutations],
   );
   return (
     <>
       <Card>
         <CardHeader>
           <CardTitle>Machines</CardTitle>
-          {capabilities.planStints ? (
+          {sheet.can('assign') ? (
             <CardAction>
               <Button onClick={() => setPlanning(true)}>Plan machine</Button>
             </CardAction>
@@ -69,13 +69,13 @@ export function MachinesCard({ job, capabilities }: { job: JobDetail; capabiliti
               getRowClassName={(row) => (row.kind === 'planned' ? 'opacity-60' : undefined)}
             />
           </MachinesContext.Provider>
-          <NeedsALook job={job} canResolveGaps={capabilities.resolveGaps} onReading={setReading} onGap={setGap} />
+          <NeedsALook job={job} canResolveGaps={sheet.can('resolveGaps')} onReading={setReading} onGap={setGap} />
         </CardContent>
       </Card>
       <PlanMachineDialog jobId={job.id} open={planning} onOpenChange={setPlanning} />
       <GapResolveDialog stint={gap} onClose={() => setGap(null)} />
       <DepartureCaptureDialog stint={departure} onClose={() => setDeparture(null)} />
-      <ReadingSheet selected={reading} onClose={() => setReading(null)} amendReadings={capabilities.amendReadings} />
+      <ReadingSheet selected={reading} onClose={() => setReading(null)} amendReadings={sheet.can('amendReadings')} />
     </>
   );
 }

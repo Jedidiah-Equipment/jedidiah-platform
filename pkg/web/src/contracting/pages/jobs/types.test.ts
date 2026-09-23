@@ -1,7 +1,6 @@
 import { DateOnlyIso } from '@pkg/schema';
-import type { JobDetail } from '@pkg/schema/contracting';
 import { describe, expect, it } from 'vitest';
-import { complementGap, jobCapabilities, queueTabLabel, toCompleteInput, toJobCreateInput } from './types.js';
+import { complementGap, queueTabLabel, toCompleteInput, toJobCreateInput } from './types.js';
 
 describe('Job sign-off helpers', () => {
   it('complements a rounded Hour Gap without exceeding it', () => {
@@ -39,65 +38,7 @@ describe('Job sign-off helpers', () => {
     });
   });
 
-  it('gates actions by status and permission and labels queue counts', () => {
-    const can = () => true;
-    expect(jobCapabilities({ status: 'active' } as JobDetail, can)).toMatchObject({
-      editSetup: true,
-      complete: true,
-      editSignOffDetails: false,
-      editMeasures: true,
-      editChargeLines: true,
-      patchTravel: true,
-      resolveGaps: true,
-    });
-    expect(jobCapabilities({ status: 'priced' } as JobDetail, can)).toMatchObject({
-      signOff: true,
-      editMeasures: false,
-      editChargeLines: false,
-      editSignOffDetails: true,
-      editDieselLitres: false,
-      patchTravel: false,
-      price: false,
-      seePricing: true,
-    });
-    expect(jobCapabilities({ status: 'invoiced' } as JobDetail, can)).toMatchObject({
-      editSetup: false,
-      complete: false,
-      amendReadings: false,
-      cancel: false,
-      editMeasures: false,
-      patchTravel: false,
-    });
-    const workshopCan = (permission: string) => permission === 'contracting_job:read';
-    expect(jobCapabilities({ status: 'active' } as JobDetail, workshopCan)).toMatchObject({
-      signOff: false,
-      editMeasures: false,
-      patchTravel: false,
-    });
+  it('labels a queue tab with its count', () => {
     expect(queueTabLabel('looks-finished', { 'looks-finished': 2 } as never)).toBe('Looks finished (2)');
-  });
-
-  it('lets Invoicing read a Priced Job’s money and stamp it, and nothing else', () => {
-    const invoicingCan = (permission: string) =>
-      permission === 'contracting_job:read-priced' || permission === 'contracting_invoice:update';
-    const granted = (capabilities: Record<string, boolean>) =>
-      Object.entries(capabilities)
-        .filter(([, allowed]) => allowed)
-        .map(([name]) => name);
-    expect(granted(jobCapabilities({ status: 'priced' } as JobDetail, invoicingCan))).toEqual([
-      'seePricing',
-      'jobCard',
-      'stampInvoice',
-    ]);
-    expect(granted(jobCapabilities({ status: 'invoiced' } as JobDetail, invoicingCan))).toEqual([
-      'seePricing',
-      'jobCard',
-    ]);
-    expect(jobCapabilities({ status: 'completed' } as JobDetail, invoicingCan).jobCard).toBe(true);
-    expect(jobCapabilities({ status: 'active' } as JobDetail, () => true).jobCard).toBe(false);
-    const foremanCan = (permission: string) => permission === 'contracting_job:read-own';
-    expect(jobCapabilities({ status: 'completed' } as JobDetail, foremanCan).jobCard).toBe(false);
-    const managerCan = (permission: string) => permission !== 'contracting_invoice:update';
-    expect(jobCapabilities({ status: 'priced' } as JobDetail, managerCan).stampInvoice).toBe(false);
   });
 });

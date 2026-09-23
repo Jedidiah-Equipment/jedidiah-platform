@@ -1,4 +1,5 @@
 import { formatHours } from '@pkg/domain';
+import { deriveJobActions } from '@pkg/domain/contracting';
 import type { CategoryColour, CategoryIconKey, JobCardVariant } from '@pkg/schema/contracting';
 import { type Href, router, useLocalSearchParams } from 'expo-router';
 import { ScrollView, View } from 'react-native';
@@ -11,11 +12,11 @@ import { jobCardShareAction } from '@/contracting/lib/job-card';
 import { useReadingQueue } from '@/contracting/readings/ReadingQueueProvider';
 import { newLocalId } from '@/contracting/readings/reading-queue';
 import { useFleet } from '@/contracting/readings/use-fleet';
-import { useSessionPermission } from '@/lib/auth-session';
+import { useSessionAccessSummary, useSessionPermission } from '@/lib/auth-session';
 import { useIsOffline } from '@/lib/connectivity';
 import { shareDocument } from '@/lib/document-actions';
 import { useBusyAction } from '@/lib/use-busy-action';
-import { deriveStint, queuedUnplannedStints, type StintView } from './derive-stint';
+import { deriveStint, jobSummary, queuedUnplannedStints, type StintView } from './derive-stint';
 import { isFinishedJob, jobStatusLabel, useDrivers, useImplements, useJob } from './use-jobs';
 
 const ORDER: Record<StintView['view'], number> = {
@@ -42,11 +43,14 @@ export default function JobScreen() {
   const implementQuery = useImplements();
   const driversQuery = useDrivers();
   const { items, error } = useReadingQueue();
-  const canCapture = useSessionPermission('contracting_reading:capture');
-  const canAdd = useSessionPermission('contracting_assignment:update-own', 'contracting_job:assign');
+  const access = useSessionAccessSummary();
   const offline = useIsOffline();
   const job = jobQuery.data;
   const finished = job ? isFinishedJob(job) : false;
+  // Judged against the Job as it will stand once the queue syncs, since the phone captures offline.
+  const actions = job ? deriveJobActions({ ...job, status: jobSummary(job, items).status }, access) : null;
+  const canCapture = actions?.capture.allowed ?? false;
+  const canAdd = actions?.assign.allowed ?? false;
   const canShareJobCard = useSessionPermission('contracting_job:read') && finished;
   const share = useBusyAction();
   const shareJobCard = (variant: JobCardVariant) => {
@@ -120,7 +124,7 @@ export default function JobScreen() {
 
         {stints.map((stint) => (
           <StintCard
-            canAdd={canAdd && !finished}
+            canAdd={canAdd}
             canCapture={canCapture}
             key={stint.id}
             stint={stint}
@@ -170,7 +174,7 @@ export default function JobScreen() {
             {share.error ? <Text className="text-danger">{share.error}</Text> : null}
           </View>
         ) : null}
-        {job && canAdd && !finished ? (
+        {job && canAdd ? (
           <Button
             primary
             title="+ Add machine"

@@ -2,10 +2,11 @@ import type { JobCardModel } from '@pkg/schema/contracting';
 import { describe, expect } from 'vitest';
 import { createTester } from '../../test/create-tester.js';
 import {
-  adminId,
+  admin,
   completedJob,
+  foreman,
   foremanId,
-  invoicingId,
+  invoicing,
   type JobFixtures,
   leftStint,
   pricedJob,
@@ -34,7 +35,7 @@ describe('rendering a Job Card', () => {
 
     const result = await renderJobCard({
       db: context.db,
-      reader: { mode: 'priced', actorUserId: invoicingId },
+      actor: invoicing,
       code: priced.jobNumber,
       variant: 'customer',
       pdfRenderer,
@@ -53,7 +54,7 @@ describe('rendering a Job Card', () => {
     await expect(
       renderJobCard({
         db: context.db,
-        reader: { mode: 'own', actorUserId: foremanId },
+        actor: foreman,
         code: completed.jobNumber,
         variant: 'customer',
         pdfRenderer,
@@ -62,7 +63,7 @@ describe('rendering a Job Card', () => {
 
     const active = await createJob({
       db: context.db,
-      actorUserId: adminId,
+      actor: admin,
       input: {
         customerId: context.customer.id,
         farmId: context.farm.id,
@@ -75,7 +76,7 @@ describe('rendering a Job Card', () => {
     await expect(
       renderJobCard({
         db: context.db,
-        reader: { mode: 'all', actorUserId: adminId },
+        actor: admin,
         code: active.jobNumber,
         variant: 'customer',
         pdfRenderer,
@@ -84,7 +85,7 @@ describe('rendering a Job Card', () => {
     await expect(
       renderJobCard({
         db: context.db,
-        reader: { mode: 'priced', actorUserId: invoicingId },
+        actor: invoicing,
         code: active.jobNumber,
         variant: 'customer',
         pdfRenderer,

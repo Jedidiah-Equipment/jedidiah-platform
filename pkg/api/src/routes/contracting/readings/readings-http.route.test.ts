@@ -12,6 +12,7 @@ import {
   listReadingsByMachine,
 } from '@pkg/core/contracting';
 import { user } from '@pkg/db';
+import { accessForRole } from '@pkg/domain/testing';
 import { MachineCreateInput } from '@pkg/schema/contracting';
 import Fastify from 'fastify';
 import { expect, vi } from 'vitest';
@@ -26,6 +27,7 @@ vi.mock('../../../auth/session.js', async (original) => ({
 }));
 const test = createTester(async ({ db, auth }) => {
   const actorUserId = 'test-user-id';
+  const actor = accessForRole('foreman', actorUserId);
   await db.insert(user).values({
     id: actorUserId,
     name: 'Test',
@@ -46,7 +48,7 @@ const test = createTester(async ({ db, auth }) => {
   const workType = await createWorkType({ db, actorUserId, input: { name: 'Dam building' } });
   const job = await createJob({
     db,
-    actorUserId,
+    actor,
     input: {
       customerId: customer.id,
       farmId: farm.id,
@@ -56,9 +58,8 @@ const test = createTester(async ({ db, auth }) => {
     },
   });
   const assignment = await createAssignment({
-    actingAs: 'manager',
     db,
-    actorUserId,
+    actor,
     input: { jobId: job.id, machineId: machine.id, implementId: null },
   });
   if (!assignment) throw new Error('Expected Machine Assignment');

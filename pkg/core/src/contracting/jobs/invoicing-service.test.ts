@@ -3,14 +3,7 @@ import { and, eq } from 'drizzle-orm';
 import { describe, expect } from 'vitest';
 import { createTester } from '../../test/create-tester.js';
 import { amendReading } from '../readings/reading-service.js';
-import {
-  adminId,
-  completedJob,
-  invoicingId,
-  type JobFixtures,
-  pricedJob,
-  seedJobFixtures,
-} from '../test/job-fixtures.js';
+import { admin, completedJob, invoicing, type JobFixtures, pricedJob, seedJobFixtures } from '../test/job-fixtures.js';
 import { findJobsByInvoiceNumber, stampInvoice } from './invoicing-service.js';
 import { markPriced } from './pricing-service.js';
 
@@ -31,7 +24,7 @@ describe('stamping an Invoice Number', () => {
 
     const invoiced = await stampInvoice({
       db: context.db,
-      actorUserId: invoicingId,
+      actor: invoicing,
       input: { id: jobId, invoiceNumber: 'INV-2041', expectedTotal: total },
     });
 
@@ -58,35 +51,38 @@ describe('stamping an Invoice Number', () => {
     await expect(
       stampInvoice({
         db,
-        actorUserId: invoicingId,
+        actor: invoicing,
         input: { id: completed.jobId, invoiceNumber: 'INV-1', expectedTotal: 0 },
       }),
-    ).rejects.toMatchObject({ code: 'contracting_job.wrong_status', message: 'Only a Priced Job can be invoiced.' });
+    ).rejects.toMatchObject({
+      code: 'contracting_job.wrong_status',
+      message: 'You can only stamp an Invoice Number while the Job is Priced.',
+    });
 
     const priced = await pricedJob(context, [{ machineId: context.tipper.id, arrival: 100, departure: 110 }]);
     await amendReading({
       db,
-      actorUserId: adminId,
+      actor: admin,
       input: { id: priced.stints[0]?.arrivalReadingId ?? '', value: 101, reason: 'Misread' },
     });
-    await markPriced({ db, actorUserId: adminId, input: { id: priced.jobId, expectedTotal: 5_400 } });
+    await markPriced({ db, actor: admin, input: { id: priced.jobId, expectedTotal: 5_400 } });
     await expect(
       stampInvoice({
         db,
-        actorUserId: invoicingId,
+        actor: invoicing,
         input: { id: priced.jobId, invoiceNumber: 'INV-2', expectedTotal: priced.total },
       }),
     ).rejects.toMatchObject({ code: 'contracting_job.total_changed' });
 
     await stampInvoice({
       db,
-      actorUserId: invoicingId,
+      actor: invoicing,
       input: { id: priced.jobId, invoiceNumber: 'INV-2', expectedTotal: 5_400 },
     });
     await expect(
       stampInvoice({
         db,
-        actorUserId: invoicingId,
+        actor: invoicing,
         input: { id: priced.jobId, invoiceNumber: 'INV-3', expectedTotal: 5_400 },
       }),
     ).rejects.toMatchObject({ code: 'contracting_job.wrong_status' });
@@ -104,7 +100,7 @@ describe('finding Jobs by Invoice Number', () => {
     ] as const)
       await stampInvoice({
         db: context.db,
-        actorUserId: invoicingId,
+        actor: invoicing,
         input: { id: job.jobId, invoiceNumber, expectedTotal: job.total },
       });
 

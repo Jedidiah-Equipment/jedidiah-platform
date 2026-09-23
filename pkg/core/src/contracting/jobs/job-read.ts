@@ -18,10 +18,13 @@ import {
   canMarkPriced,
   computeDieselAmount,
   computeJobTotals,
+  deriveJobActions,
   deriveStintHours,
   formatJobNumber,
   isAiFlaggedVerification,
+  type JobActor,
   type JobReadMode,
+  jobReadMode,
   jobReadSeesMoney,
   jobReadStatuses,
   looksFinished,
@@ -34,6 +37,7 @@ import {
   type ChargeLine,
   hasJobStatus,
   JobDetail,
+  JobFacts,
   type JobQueue,
   JobQueueCounts,
   JobReading,
@@ -49,7 +53,14 @@ import * as jobSql from './job-sql.js';
 type DbOrTx = Db | DatabaseTransaction;
 export type JobLookup = { id: string } | { code: string };
 /** Who is reading Jobs, and through which read mode. */
-export type JobReader = { mode: JobReadMode; actorUserId: string };
+type JobReader = { mode: JobReadMode; actorUserId: string };
+
+/** The read mode a person reads Jobs through; one with no Job read permission is refused. */
+function readerFor(actor: JobActor): JobReader {
+  const mode = jobReadMode(actor);
+  if (!mode) throw new JobError('contracting_job.forbidden', 'You do not have permission to view Jobs.');
+  return { mode, actorUserId: actor.userId };
+}
 
 // Plain joins rather than the relational API: Drizzle 0.45 keys relation types on the unqualified table
 // name, so `contracting.job` and `equipment.job` collide and `@pkg/db` erases the contracting relation types.
@@ -246,7 +257,8 @@ function mapAssignment(row: LoadedAssignment, measures: readonly LoadedMeasure[]
 const arrivalOrder = (assignment: LoadedAssignment) =>
   assignment.arrival?.capturedAt.getTime() ?? Number.POSITIVE_INFINITY;
 
-export async function getJob({ db, ...lookup }: { db: DbOrTx } & JobLookup) {
+/** One Job for no one in particular: what writes return and what core reasons over. */
+export async function getJob({ db, ...lookup }: { db: DbOrTx } & JobLookup): Promise<JobFacts> {
   const { job, assignments: rows, measures, chargeLines, ...names } = await loadJob(db, lookup);
   const live = job.status === 'completed';
   const assignments = rows
@@ -267,7 +279,7 @@ export async function getJob({ db, ...lookup }: { db: DbOrTx } & JobLookup) {
   const flaggedReadings = assignments
     .flatMap((assignment) => [assignment.arrival, assignment.departure])
     .filter(readingNeedsALook).length;
-  return JobDetail.parse({
+  return JobFacts.parse({
     ...job,
     ...names,
     jobNumber: formatJobNumber(job.code),
@@ -292,13 +304,13 @@ export async function getJob({ db, ...lookup }: { db: DbOrTx } & JobLookup) {
 }
 
 /** The Machine Assignment inside a Job read, which a write to it has just returned. */
-export function assignmentIn(job: JobDetail, id: string): Assignment {
+export function assignmentIn(job: JobFacts, id: string): Assignment {
   const assignment = job.assignments.find((candidate) => candidate.id === id);
   if (!assignment) throw jobNotFound('Machine Assignment');
   return assignment;
 }
 
-export function chargeLineIn(job: JobDetail, id: string): ChargeLine {
+export function chargeLineIn(job: JobFacts, id: string): ChargeLine {
   const line = job.chargeLines.find((candidate) => candidate.id === id);
   if (!line) throw jobNotFound('Charge Line');
   return line;
@@ -341,12 +353,15 @@ const readRefusals: Record<JobReadMode, string> = {
   priced: 'Invoicing can only view Completed, Priced, or Invoiced Jobs.',
 };
 
-export async function getReadableJob({ db, reader, ...lookup }: { db: Db; reader: JobReader } & JobLookup) {
+/** One Job as the person asking reads it: their read mode's view, and what they may do to it. */
+export async function getReadableJob({ db, actor, ...lookup }: { db: Db; actor: JobActor } & JobLookup) {
+  const reader = readerFor(actor);
   const job = await getJob({ db, ...lookup });
   if (reader.mode === 'own') assertOwner(job, reader.actorUserId);
   if (!hasJobStatus(jobReadStatuses[reader.mode], job.status))
     throw new JobError('contracting_job.forbidden', readRefusals[reader.mode]);
-  return jobReadSeesMoney(reader.mode) ? job : redactMoney(job);
+  const read = { ...job, actions: deriveJobActions(job, actor) };
+  return JobDetail.parse(jobReadSeesMoney(reader.mode) ? read : redactMoney(read));
 }
 
 /** The Jobs a reader may see: their mode's statuses, and a Foreman's own Jobs only. */
@@ -368,7 +383,8 @@ const queueStatus: Record<JobQueue, JobStatus> = {
   cancelled: 'cancelled',
 };
 
-export async function countJobQueues({ db, reader }: { db: Db; reader: JobReader }) {
+export async function countJobQueues({ db, actor }: { db: Db; actor: JobActor }) {
+  const reader = readerFor(actor);
   const rows = await db
     .select({
       status: contractingJobs.status,
@@ -385,7 +401,8 @@ export async function countJobQueues({ db, reader }: { db: Db; reader: JobReader
   return JobQueueCounts.parse(Object.fromEntries(jobQueues.map((queue) => [queue, count(queue)])));
 }
 
-export async function hasActiveJobAttention({ db, reader }: { db: Db; reader: JobReader }) {
+export async function hasActiveJobAttention({ db, actor }: { db: Db; actor: JobActor }) {
+  const reader = readerFor(actor);
   const rows = await db
     .select({ id: contractingJobs.id })
     .from(contractingJobs)
@@ -402,20 +419,21 @@ export async function hasActiveJobAttention({ db, reader }: { db: Db; reader: Jo
 
 export async function listJobs({
   db,
-  reader,
+  actor,
   queue,
   limit,
   offset,
   invoicedInMonth,
 }: {
   db: Db;
-  reader: JobReader;
+  actor: JobActor;
   queue: JobQueue;
   limit: number;
   offset: number;
   /** Honoured only for the invoiced queue: Jobs stamped in this South African calendar month. */
   invoicedInMonth?: string | undefined;
 }) {
+  const reader = readerFor(actor);
   if (!hasJobStatus(jobReadStatuses[reader.mode], queueStatus[queue]))
     throw new JobError('contracting_job.forbidden', readRefusals[reader.mode]);
   const rows = await db
@@ -482,8 +500,8 @@ export async function listJobs({
   );
 }
 
-export function redactMoney(job: JobDetail) {
-  return JobDetail.parse({
+export function redactMoney<T extends JobFacts>(job: T): T {
+  return {
     ...job,
     dieselUnitPrice: null,
     dieselAmount: null,
@@ -511,7 +529,7 @@ export function redactMoney(job: JobDetail) {
       billedQuantity: null,
     })),
     chargeLines: job.chargeLines.map((line) => ({ ...line, amount: null })),
-  });
+  };
 }
 
 export async function listForemen({ db }: { db: Db }) {

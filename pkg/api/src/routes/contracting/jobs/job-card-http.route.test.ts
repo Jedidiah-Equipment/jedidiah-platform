@@ -1,6 +1,7 @@
 import { createCustomer, createFarm, createJob, createWorkType } from '@pkg/core/contracting';
 import { eq, user } from '@pkg/db';
 import { contractingJobs } from '@pkg/db/contracting';
+import { accessForRole } from '@pkg/domain/testing';
 import type { ContractingRole } from '@pkg/schema';
 import type { JobCardModel } from '@pkg/schema/contracting';
 import Fastify from 'fastify';
@@ -23,6 +24,7 @@ function signIn(role: ContractingRole | null) {
 
 const test = createTester(async ({ db, auth }) => {
   const actorUserId = 'test-user-id';
+  const actor = accessForRole('contracting-manager', actorUserId);
   const now = new Date();
   await db.insert(user).values({
     id: actorUserId,
@@ -39,7 +41,7 @@ const test = createTester(async ({ db, auth }) => {
   const job = async (status: 'active' | 'completed') => {
     const created = await createJob({
       db,
-      actorUserId,
+      actor,
       input: {
         customerId: customer.id,
         farmId: farm.id,

@@ -38,9 +38,9 @@ two places at once; planned Assignments never count against that. An Assignment 
 records zero or more **Measures** on an Assignment — a Measure Type and a quantity (hectares
 disked, loads hauled), at most one per Measure Type — the production figures Pricing may bill on.
 A planned Assignment whose Machine never arrives is removed — by the Foreman while the Job is
-Active, by management at sign-off, or by Completion itself, which removes any still waiting — and
+open (Upcoming or Active), by management at sign-off, or by Completion itself, which removes any still waiting — and
 leaves nothing behind. The Foreman edits only his own
-Job's Assignments and only while the Job is Active; after Completion only management amends. Avoid
+Job's Assignments and only while the Job is open (Upcoming or Active); after Completion only management amends. Avoid
 Slot (an Equipment scheduling term).
 
 **Job Card** is the rendered document of a Job — its Assignments, hours, travel, Charge Lines,
@@ -53,8 +53,18 @@ dispute trail of readings and amounts that shows **one total hours figure per li
 work/travel split**. Reading values print; meter photos stay in the app. Diesel is shown
 VAT-exempt. Its ex-VAT total is a works summary — a Job Card is never an invoice.
 
+**Job Actions** are the derived verdicts of what one person may do to a Job in its current status:
+change its setup, Machine Assignments, travel, Measures, Charge Lines, Hour Gaps, sign-off details
+and diesel litres; complete, cancel, price or stamp it; amend its readings; capture on it. They are
+computed, never stored, and judged for the person asking — a Foreman works only his own Jobs, while
+open — and they are the same answer the server's write gates apply, so a screen shows a control
+when its verdict allows it and hides it when the person lacks the permission. Invoiced and Cancelled
+are both closed: no Job Action is open on either. A check that judges an input rather than the Job
+— the Mark as Priced gate, the invoice total, a departure reading without a photo, a stint that has
+already left — is not a Job Action and stays with the write that reads that input.
+
 **Charge Line** is a non-hourly amount on a Job — transport (e.g. a low-bed move), a supplied
-part, or a fixed quoted total — a description management writes at Completion, with an amount
+part, or a fixed quoted total — a description management writes from Active onward, usually at Completion, with an amount
 management may leave blank and Pricing must then set (zero allowed). **Diesel** is not a Charge
 Line but a dedicated field on every Job: litres supplied (default zero, set at Completion) and,
 when litres are non-zero, a price per litre set at Pricing, from which the amount computes

@@ -1,4 +1,3 @@
-import { hasPermission } from '@pkg/domain';
 import { requiredTrimmedText } from '@pkg/schema';
 import type { JobDetail } from '@pkg/schema/contracting';
 import { useMutation, useQuery } from '@tanstack/react-query';
@@ -23,15 +22,13 @@ import { JobCardMenu } from './JobCardMenu.js';
 import { MachinesCard } from './MachinesCard.js';
 import { PricingCard } from './PricingCard.js';
 import { SignOffCard } from './SignOffCard.js';
-import { type JobCapabilities, JobCreateValues, jobCapabilities, toJobCreateInput } from './types.js';
+import { JobCreateValues, type JobSheet, jobSheet, toJobCreateInput } from './types.js';
 
 export function JobPage({ code }: { code: string }) {
   const trpc = useTRPC();
   const query = useQuery(trpc.contractingJobs.jobs.get.queryOptions({ code }));
   const access = useAccess();
-  const capabilities = query.data
-    ? jobCapabilities(query.data, (permission) => hasPermission(access.data, permission))
-    : null;
+  const sheet = query.data ? jobSheet(query.data, access.data) : null;
   return (
     <PageLayout
       title={query.data?.jobNumber ?? code}
@@ -39,12 +36,12 @@ export function JobPage({ code }: { code: string }) {
         query.data ? `${query.data.customerName} · ${query.data.farmName} · ${query.data.workTypeName}` : undefined
       }
       size="lg"
-      actions={query.data && capabilities?.jobCard ? <JobCardMenu job={query.data} /> : null}
+      actions={query.data && sheet?.seesMoney ? <JobCardMenu job={query.data} /> : null}
     >
       <ErrorMessage error={query.error} fallbackMessage="Unable to load Job." />
       <QueryContent errorMessage="Unable to load Job." query={query}>
         {(job) =>
-          capabilities ? (
+          sheet ? (
             <div className="space-y-5">
               <div className="flex items-center gap-3">
                 <Badge variant="secondary">
@@ -54,19 +51,19 @@ export function JobPage({ code }: { code: string }) {
                 <span>{job.foremanName ?? 'No Foreman assigned'}</span>
                 {job.cancellationReason ? <span>Cancelled: {job.cancellationReason}</span> : null}
               </div>
-              <SetupCard key={`setup-${job.id}`} job={job} capabilities={capabilities} />
-              <MachinesCard job={job} capabilities={capabilities} />
-              {capabilities.signOff ? <SignOffCard job={job} capabilities={capabilities} /> : null}
-              <PricingCard job={job} capabilities={capabilities} />
-              <InvoiceCard job={job} capabilities={capabilities} />
+              <SetupCard key={`setup-${job.id}`} job={job} sheet={sheet} />
+              <MachinesCard job={job} sheet={sheet} />
+              {sheet.showsSignOff ? <SignOffCard job={job} sheet={sheet} /> : null}
+              <PricingCard job={job} sheet={sheet} />
+              <InvoiceCard job={job} sheet={sheet} />
               {job.status !== 'upcoming' ? (
                 <ChargeLinesCard
                   job={job}
-                  editable={capabilities.editChargeLines}
-                  amountEditable={capabilities.price}
+                  editable={sheet.can('editChargeLines')}
+                  amountEditable={sheet.can('price')}
                 />
               ) : null}
-              <CancelJob job={job} enabled={capabilities.cancel} />
+              <CancelJob job={job} enabled={sheet.can('cancel')} />
             </div>
           ) : null
         }
@@ -75,7 +72,7 @@ export function JobPage({ code }: { code: string }) {
   );
 }
 
-function SetupCard({ job, capabilities }: { job: JobDetail; capabilities: JobCapabilities }) {
+function SetupCard({ job, sheet }: { job: JobDetail; sheet: JobSheet }) {
   const trpc = useTRPC();
   const { invalidateJobs } = useQueryInvalidation();
   const [customerId, setCustomerId] = useState(job.customerId);
@@ -83,7 +80,9 @@ function SetupCard({ job, capabilities }: { job: JobDetail; capabilities: JobCap
   const farms = useQuery(trpc.contractingDirectory.farms.list.queryOptions({ customerId }));
   const workTypes = useQuery(trpc.contractingDirectory.workTypes.options.queryOptions());
   const foremen = useQuery(
-    trpc.contractingJobs.options.foremen.queryOptions(undefined, { enabled: capabilities.assign }),
+    trpc.contractingJobs.options.foremen.queryOptions(undefined, {
+      enabled: sheet.can('editSetup') && sheet.can('assign'),
+    }),
   );
   const patch = useMutation(trpc.contractingJobs.jobs.patch.mutationOptions({ onSuccess: invalidateJobs }));
   const { autosave, form, formProps } = useAutosaveForm({
@@ -102,7 +101,7 @@ function SetupCard({ job, capabilities }: { job: JobDetail; capabilities: JobCap
   return (
     <section aria-label="Setup">
       <h2 className="mb-2 font-heading text-lg">Setup</h2>
-      <AutosaveFormCard autosave={autosave} formProps={formProps} disabled={!capabilities.editSetup}>
+      <AutosaveFormCard autosave={autosave} formProps={formProps} disabled={!sheet.can('editSetup')}>
         <form.AppField name="customerId">
           {(field) => (
             <field.ComboboxField
@@ -139,7 +138,7 @@ function SetupCard({ job, capabilities }: { job: JobDetail; capabilities: JobCap
           {(field) => (
             <field.ComboboxField
               label="Foreman"
-              disabled={!capabilities.assign}
+              disabled={!(sheet.can('editSetup') && sheet.can('assign'))}
               options={(foremen.data ?? []).map((row) => ({ value: row.id, label: row.name }))}
               onValueCommit={autosave.commit}
             />

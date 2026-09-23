@@ -1,5 +1,5 @@
 import { formatDate } from '@pkg/domain';
-import type { JobCreateInput, JobDetail, JobQueue, JobSummary } from '@pkg/schema/contracting';
+import type { JobCreateInput, JobFacts, JobQueue, JobSummary } from '@pkg/schema/contracting';
 import { jobQueues } from '@pkg/schema/contracting';
 import { useMutation, useQueries, useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
@@ -238,9 +238,9 @@ function NewJobDialog({
     dialogProps: {
       open: boolean;
       onOpenChange: (open: boolean) => void;
-      onCreated: (created: JobDetail) => Promise<void> | void;
+      onCreated: (created: JobFacts) => Promise<void> | void;
     };
-    create: (input: JobCreateInput) => Promise<JobDetail>;
+    create: (input: JobCreateInput) => Promise<JobFacts>;
   };
   canAssign: boolean;
 }) {

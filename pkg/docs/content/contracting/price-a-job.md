@@ -8,4 +8,4 @@
 6. Optionally set a **Discount** in rands (**R**) or as a percentage (**%**). It applies to Machine Assignments and Charge Lines, never to Diesel.
 7. Check the **Total ex VAT** and choose **Mark as Priced**. The amounts freeze and the Job moves to **Awaiting invoice**.
 
-Amending an Hour Reading on a Priced Job returns it here with its amounts recomputed and any edited amounts reset; an Invoiced Job cannot change.
+Amending an Hour Reading on a Priced Job returns it here with its amounts recomputed and any edited amounts reset; an Invoiced or Cancelled Job cannot change.

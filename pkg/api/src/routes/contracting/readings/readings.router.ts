@@ -40,7 +40,7 @@ export function createContractingReadingsRouter(readPhoto: ReadMeterPhoto) {
     amend: authorizedProcedure('contracting_reading:update')
       .input(ReadingAmendInput)
       .mutation(({ ctx, input }) =>
-        mapCoreErrors(() => amendReading({ db: ctx.db, actorUserId: ctx.session.user.id, input }), readingErrorFamily),
+        mapCoreErrors(() => amendReading({ db: ctx.db, actor: ctx.access, input }), readingErrorFamily),
       ),
     reverify: authorizedProcedure('contracting_reading:update')
       .input(ReadingIdInput)

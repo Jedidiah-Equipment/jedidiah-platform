@@ -4,7 +4,7 @@ import { createContext, useContext } from 'react';
 import { useQueryInvalidation } from '@/contracting/hooks/use-query-invalidation.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useTRPC } from '@/lib/trpc.js';
-import type { JobCapabilities } from './types.js';
+import type { JobSheet } from './types.js';
 
 export type SelectedReading = { reading: JobReading; stint: Assignment };
 
@@ -31,7 +31,7 @@ export function useMachineMutations() {
 
 /** What every Machines cell reads: permissions, pick-list options, the writes, and the dialogs it opens. */
 type Machines = {
-  capabilities: JobCapabilities;
+  sheet: JobSheet;
   implementOptions: readonly FieldImplement[];
   drivers: readonly FieldDriver[];
   mutations: ReturnType<typeof useMachineMutations>;

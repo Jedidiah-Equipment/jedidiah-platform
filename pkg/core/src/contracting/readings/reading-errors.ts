@@ -1,4 +1,5 @@
 import { translatingConstraintViolations } from '../../errors/constraint-violations.js';
+import type { RefusedJobAction } from '../jobs/job-errors.js';
 
 export type ReadingErrorCode =
   | 'reading.not_found'
@@ -20,6 +21,8 @@ export class ReadingError extends Error {
   constructor(
     readonly code: ReadingErrorCode,
     message: string,
+    /** The Job Action a refusal refused, when a Job's status or ownership refused it. */
+    readonly refused?: RefusedJobAction,
   ) {
     super(message);
     this.name = 'ReadingError';

@@ -1,4 +1,5 @@
 import { user } from '@pkg/db';
+import { accessForRole } from '@pkg/domain/testing';
 import { MachineCreateInput } from '@pkg/schema/contracting';
 import { expect } from 'vitest';
 import { createTester } from '../../test/create-tester.js';
@@ -29,11 +30,11 @@ const test = createTester(async ({ db }) => {
     actorUserId,
     input: MachineCreateInput.parse({ code: 'T1', make: 'Deere', model: '6140', categoryId: category.id }),
   });
-  return { actorUserId, machineId: machine.id };
+  return { actor: accessForRole('contracting-manager', actorUserId), actorUserId, machineId: machine.id };
 });
 
 test('refuses a spot below the latest reading but accepts an idle machine with equal hours', async ({ context }) => {
-  const { db, actorUserId, machineId } = context;
+  const { db, actor, machineId } = context;
   const input = {
     machineId,
     role: 'baseline' as const,
@@ -41,16 +42,16 @@ test('refuses a spot below the latest reading but accepts an idle machine with e
     capturedAt: '2026-09-07T08:00:00Z',
     disputePrevious: false,
   };
-  await captureReading({ db, actorUserId, input });
-  await expect(
-    captureReading({ db, actorUserId, input: { ...input, role: 'spot', value: 120.4 } }),
-  ).rejects.toMatchObject({ code: 'reading.below_latest' });
-  await captureReading({ db, actorUserId, input: { ...input, role: 'spot' } });
+  await captureReading({ db, actor, input });
+  await expect(captureReading({ db, actor, input: { ...input, role: 'spot', value: 120.4 } })).rejects.toMatchObject({
+    code: 'reading.below_latest',
+  });
+  await captureReading({ db, actor, input: { ...input, role: 'spot' } });
   expect((await listReadingsByMachine({ db, machineId })).map((row) => row.value)).toEqual([120.5, 120.5]);
 });
 
 test('flags both disputed readings and clears the resolved pair with an audited amendment', async ({ context }) => {
-  const { db, actorUserId, machineId } = context;
+  const { db, actor, actorUserId, machineId } = context;
   const { amendReading, listReadingExceptions } = await import('./reading-service.js');
   const input = {
     machineId,
@@ -59,13 +60,11 @@ test('flags both disputed readings and clears the resolved pair with an audited 
     capturedAt: '2026-09-07T08:00:00Z',
     disputePrevious: false,
   };
-  const previous = await captureReading({ db, actorUserId, input });
-  await captureReading({ db, actorUserId, input: { ...input, value: 121, disputePrevious: true } });
+  const previous = await captureReading({ db, actor, input });
+  await captureReading({ db, actor, input: { ...input, value: 121, disputePrevious: true } });
   expect((await listReadingExceptions({ db })).map((row) => row.disputed)).toEqual([true, true]);
-  await expect(
-    amendReading({ db, actorUserId, input: { id: previous.id, value: 120, reason: ' ' } }),
-  ).rejects.toThrow();
-  await amendReading({ db, actorUserId, input: { id: previous.id, value: 120, reason: 'Tenths drum misread' } });
+  await expect(amendReading({ db, actor, input: { id: previous.id, value: 120, reason: ' ' } })).rejects.toThrow();
+  await amendReading({ db, actor, input: { id: previous.id, value: 120, reason: 'Tenths drum misread' } });
   expect(await listReadingExceptions({ db })).toEqual([]);
   expect((await listReadingsByMachine({ db, machineId })).find((row) => row.id === previous.id)).toMatchObject({
     value: 120,
@@ -78,13 +77,13 @@ test('flags both disputed readings and clears the resolved pair with an audited 
 test('keeps photo evidence on AI failure and verifies it later without changing the typed value', async ({
   context,
 }) => {
-  const { db, actorUserId, machineId } = context;
+  const { db, actor, actorUserId, machineId } = context;
   const { InMemoryStorageAdapter } = await import('../../storage/in-memory-storage-adapter.js');
   const { reverifyReading } = await import('./reading-service.js');
   const storage = new InMemoryStorageAdapter();
   const row = await captureReading({
     db,
-    actorUserId,
+    actor,
     evidence: photoEvidence(storage, async () => {
       throw new Error('Model unavailable');
     }),
@@ -107,7 +106,7 @@ test('keeps photo evidence on AI failure and verifies it later without changing 
 });
 
 test('serializes competing captures and preserves the ledger when an upload or insert fails', async ({ context }) => {
-  const { db, actorUserId, machineId } = context;
+  const { db, actor, machineId } = context;
   const { InMemoryStorageAdapter } = await import('../../storage/in-memory-storage-adapter.js');
   const storage = new InMemoryStorageAdapter();
   const input = {
@@ -117,9 +116,9 @@ test('serializes competing captures and preserves the ledger when an upload or i
     capturedAt: '2026-09-07T08:00:00Z',
     disputePrevious: false,
   };
-  await captureReading({ db, actorUserId, input });
+  await captureReading({ db, actor, input });
   const results = await Promise.allSettled(
-    [110, 105].map((value) => captureReading({ db, actorUserId, input: { ...input, value } })),
+    [110, 105].map((value) => captureReading({ db, actor, input: { ...input, value } })),
   );
   expect(results.some((result) => result.status === 'fulfilled')).toBe(true);
   const history = await listReadingsByMachine({ db, machineId });
@@ -127,7 +126,7 @@ test('serializes competing captures and preserves the ledger when an upload or i
   await expect(
     captureReading({
       db,
-      actorUserId,
+      actor,
       input: { ...input, value: 90 },
       evidence: photoEvidence(storage, async () => ({ value: 90, confidence: 0.9 })),
     }),
@@ -144,7 +143,7 @@ test('serializes competing captures and preserves the ledger when an upload or i
   await expect(
     captureReading({
       db,
-      actorUserId,
+      actor,
       input: { ...input, value: 120 },
       evidence: photoEvidence(brokenStorage, async () => ({ value: 120, confidence: 0.9 })),
     }),
@@ -153,13 +152,13 @@ test('serializes competing captures and preserves the ledger when an upload or i
 });
 
 test('surfaces disagreements and low confidence and recalculates verification after amendment', async ({ context }) => {
-  const { db, actorUserId, machineId } = context;
+  const { db, actor, machineId } = context;
   const { InMemoryStorageAdapter } = await import('../../storage/in-memory-storage-adapter.js');
   const { amendReading, listReadingExceptions } = await import('./reading-service.js');
   const storage = new InMemoryStorageAdapter();
   const args = {
     db,
-    actorUserId,
+    actor,
     input: {
       machineId,
       role: 'spot' as const,
@@ -173,7 +172,7 @@ test('surfaces disagreements and low confidence and recalculates verification af
     evidence: photoEvidence(storage, async () => ({ value: 120, confidence: 0.9 })),
   });
   expect(row).toMatchObject({ aiVerification: 'disagrees', aiHint: 'Possible tenths-drum misread (≈10× / 0.1×).' });
-  await amendReading({ db, actorUserId, input: { id: row.id, value: 120, reason: 'Corrected tenths' } });
+  await amendReading({ db, actor, input: { id: row.id, value: 120, reason: 'Corrected tenths' } });
   expect(await listReadingExceptions({ db })).toEqual([]);
   const low = await captureReading({
     ...args,
@@ -191,21 +190,21 @@ test('surfaces disagreements and low confidence and recalculates verification af
 test('management can acknowledge an incorrect AI warning without claiming AI agreement; reverify reopens it', async ({
   context,
 }) => {
-  const { db, actorUserId, machineId } = context;
+  const { db, actor, actorUserId, machineId } = context;
   const { InMemoryStorageAdapter } = await import('../../storage/in-memory-storage-adapter.js');
   const { amendReading, listReadingExceptions, reverifyReading } = await import('./reading-service.js');
   const storage = new InMemoryStorageAdapter();
   const readPhoto = async () => ({ value: 1234, confidence: 0.6 });
   const reading = await captureReading({
     db,
-    actorUserId,
+    actor,
     evidence: photoEvidence(storage, readPhoto),
     input: { machineId, role: 'spot', value: 123.4, capturedAt: '2026-09-07T08:00:00Z', disputePrevious: false },
   });
   expect((await listReadingExceptions({ db })).length).toBe(1);
   const amended = await amendReading({
     db,
-    actorUserId,
+    actor,
     input: {
       id: reading.id,
       value: 123.4,
@@ -223,7 +222,7 @@ test('management can acknowledge an incorrect AI warning without claiming AI agr
 });
 
 test('ignores a stale dispute flag on equal and increasing captures', async ({ context }) => {
-  const { db, actorUserId, machineId } = context;
+  const { db, actor, machineId } = context;
   const { listReadingExceptions } = await import('./reading-service.js');
   const input = {
     machineId,
@@ -232,9 +231,9 @@ test('ignores a stale dispute flag on equal and increasing captures', async ({ c
     capturedAt: '2026-09-07T08:00:00Z',
     disputePrevious: false,
   };
-  await captureReading({ db, actorUserId, input });
+  await captureReading({ db, actor, input });
   for (const value of [100, 110])
-    expect(await captureReading({ db, actorUserId, input: { ...input, value, disputePrevious: true } })).toMatchObject({
+    expect(await captureReading({ db, actor, input: { ...input, value, disputePrevious: true } })).toMatchObject({
       disputed: false,
       disputedPreviousId: null,
     });
@@ -244,19 +243,19 @@ test('ignores a stale dispute flag on equal and increasing captures', async ({ c
 test('failed re-verification preserves the previous AI evidence and its management acknowledgement', async ({
   context,
 }) => {
-  const { db, actorUserId, machineId } = context;
+  const { db, actor, actorUserId, machineId } = context;
   const { InMemoryStorageAdapter } = await import('../../storage/in-memory-storage-adapter.js');
   const { amendReading, reverifyReading, getReading } = await import('./reading-service.js');
   const storage = new InMemoryStorageAdapter();
   const row = await captureReading({
     db,
-    actorUserId,
+    actor,
     evidence: photoEvidence(storage, async () => ({ value: 1000, confidence: 0.6 })),
     input: { machineId, role: 'spot', value: 100, capturedAt: '2026-09-07T08:00:00Z', disputePrevious: false },
   });
   const reviewed = await amendReading({
     db,
-    actorUserId,
+    actor,
     input: { id: row.id, value: 100, reason: 'The photo confirms 100 hours' },
   });
   await expect(
@@ -276,7 +275,7 @@ test('failed re-verification preserves the previous AI evidence and its manageme
 test('acknowledges evidence on an unchanged disputed value while keeping the unresolved pair visible', async ({
   context,
 }) => {
-  const { db, actorUserId, machineId } = context;
+  const { db, actor, machineId } = context;
   const { InMemoryStorageAdapter } = await import('../../storage/in-memory-storage-adapter.js');
   const { amendReading, listReadingExceptions } = await import('./reading-service.js');
   const storage = new InMemoryStorageAdapter();
@@ -287,10 +286,10 @@ test('acknowledges evidence on an unchanged disputed value while keeping the unr
     capturedAt: '2026-09-07T08:00:00Z',
     disputePrevious: false,
   };
-  await captureReading({ db, actorUserId, input });
+  await captureReading({ db, actor, input });
   const disputed = await captureReading({
     db,
-    actorUserId,
+    actor,
     evidence: photoEvidence(storage, async () => ({ value: null, confidence: 0.99 })),
     input: { ...input, value: 90, disputePrevious: true },
   });
@@ -301,7 +300,7 @@ test('acknowledges evidence on an unchanged disputed value while keeping the unr
   expect(
     await amendReading({
       db,
-      actorUserId,
+      actor,
       input: { id: disputed.id, value: 90, reason: 'This value is correct; investigate the preceding reading' },
     }),
   ).toMatchObject({ disputed: true, evidenceReviewedAt: expect.any(Date) });
@@ -311,7 +310,7 @@ test('acknowledges evidence on an unchanged disputed value while keeping the unr
 test('retries a delivered mobile capture without creating another reading or disputing a newer one', async ({
   context,
 }) => {
-  const { db, actorUserId, machineId } = context;
+  const { db, actor, machineId } = context;
   const input = {
     localId: '8766e188-5041-4d7c-98f2-cbd47dca3c00',
     machineId,
@@ -320,9 +319,9 @@ test('retries a delivered mobile capture without creating another reading or dis
     capturedAt: '2026-09-08T08:00:00Z',
     disputePrevious: false,
   };
-  const first = await captureReading({ db, actorUserId, input });
-  await captureReading({ db, actorUserId, input: { ...input, localId: undefined, value: 110 } });
-  const retry = await captureReading({ db, actorUserId, input });
+  const first = await captureReading({ db, actor, input });
+  await captureReading({ db, actor, input: { ...input, localId: undefined, value: 110 } });
+  const retry = await captureReading({ db, actor, input });
   expect(retry.id).toBe(first.id);
   expect((await listReadingsByMachine({ db, machineId })).map((row) => row.value)).toEqual([110, 100]);
 });
@@ -330,7 +329,7 @@ test('retries a delivered mobile capture without creating another reading or dis
 test('a dispute captured against an older reading waits for attention when another reading lands first', async ({
   context,
 }) => {
-  const { db, actorUserId, machineId } = context;
+  const { db, actor, machineId } = context;
   const input = {
     machineId,
     role: 'spot' as const,
@@ -338,19 +337,19 @@ test('a dispute captured against an older reading waits for attention when anoth
     capturedAt: '2026-09-08T08:00:00Z',
     disputePrevious: false,
   };
-  const previous = await captureReading({ db, actorUserId, input });
-  const newer = await captureReading({ db, actorUserId, input: { ...input, value: 210 } });
+  const previous = await captureReading({ db, actor, input });
+  const newer = await captureReading({ db, actor, input: { ...input, value: 210 } });
   const dispute = { ...input, value: 190, disputePrevious: true, expectedPreviousId: previous.id };
-  await expect(captureReading({ db, actorUserId, input: dispute })).rejects.toMatchObject({
+  await expect(captureReading({ db, actor, input: dispute })).rejects.toMatchObject({
     code: 'reading.previous_changed',
   });
   expect((await listReadingsByMachine({ db, machineId })).map((row) => row.disputed)).toEqual([false, false]);
-  const accepted = await captureReading({ db, actorUserId, input: { ...dispute, expectedPreviousId: newer.id } });
+  const accepted = await captureReading({ db, actor, input: { ...dispute, expectedPreviousId: newer.id } });
   expect(accepted).toMatchObject({ disputed: true, disputedPreviousId: newer.id });
 });
 
 test('carries the capture comment through to the Reading Exceptions list', async ({ context }) => {
-  const { db, actorUserId, machineId } = context;
+  const { db, actor, machineId } = context;
   const { listReadingExceptions } = await import('./reading-service.js');
   const input = {
     machineId,
@@ -359,10 +358,10 @@ test('carries the capture comment through to the Reading Exceptions list', async
     capturedAt: '2026-09-08T08:00:00Z',
     disputePrevious: false,
   };
-  await captureReading({ db, actorUserId, input });
+  await captureReading({ db, actor, input });
   const disputed = await captureReading({
     db,
-    actorUserId,
+    actor,
     input: { ...input, value: 90, disputePrevious: true, comment: '  Meter glass cracked, digits hard to read  ' },
   });
   expect(disputed.comment).toBe('Meter glass cracked, digits hard to read');

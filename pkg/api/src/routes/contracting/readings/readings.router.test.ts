@@ -1,5 +1,6 @@
 import { captureReading } from '@pkg/core/contracting';
 import { user } from '@pkg/db';
+import { accessForRole } from '@pkg/domain/testing';
 import { expect } from 'vitest';
 import { createTester } from '@/test/create-tester.js';
 import { mockSession } from '@/test/test-utils.js';
@@ -45,7 +46,7 @@ test('foremen can find active Machines and read field history without fleet mana
   });
   await captureReading({
     db: context.db,
-    actorUserId: adminSession.user.id,
+    actor: accessForRole('contracting-admin', adminSession.user.id),
     input: {
       machineId: machine.id,
       role: 'spot',

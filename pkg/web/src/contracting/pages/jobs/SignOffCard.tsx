@@ -23,9 +23,9 @@ import {
 import { useQueryInvalidation } from '@/contracting/hooks/use-query-invalidation.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useTRPC } from '@/lib/trpc.js';
-import { type JobCapabilities, SignOffValues, toCompleteInput } from './types.js';
+import { type JobSheet, SignOffValues, toCompleteInput } from './types.js';
 
-export function SignOffCard({ job, capabilities }: { job: JobDetail; capabilities: JobCapabilities }) {
+export function SignOffCard({ job, sheet }: { job: JobDetail; sheet: JobSheet }) {
   const trpc = useTRPC();
   const { invalidateJobs } = useQueryInvalidation();
   const showError = useApiMutationErrorToast();
@@ -45,12 +45,12 @@ export function SignOffCard({ job, capabilities }: { job: JobDetail; capabilitie
       </CardHeader>
       <CardContent className="space-y-4">
         {job.status === 'active' ? (
-          <DraftSignOffDetails job={job} capabilities={capabilities} plannedIds={planned.map((stint) => stint.id)} />
+          <DraftSignOffDetails job={job} sheet={sheet} plannedIds={planned.map((stint) => stint.id)} />
         ) : (
           <SavedSignOffDetails
             job={job}
-            editable={capabilities.editSignOffDetails}
-            dieselEditable={capabilities.editDieselLitres}
+            editable={sheet.can('editSignOffDetails')}
+            dieselEditable={sheet.can('editDieselLitres')}
           />
         )}
         {job.status === 'active' && planned.length ? (
@@ -62,7 +62,7 @@ export function SignOffCard({ job, capabilities }: { job: JobDetail; capabilitie
                 <span>
                   {stint.machineCode} · {stint.implementCode ?? 'No Implement'}
                 </span>
-                {capabilities.planStints ? (
+                {sheet.can('assign') ? (
                   <RemoveEntityButton
                     title="Remove planned Machine"
                     description="Remove this Machine Assignment?"
@@ -82,15 +82,7 @@ export function SignOffCard({ job, capabilities }: { job: JobDetail; capabilitie
   );
 }
 
-function DraftSignOffDetails({
-  job,
-  capabilities,
-  plannedIds,
-}: {
-  job: JobDetail;
-  capabilities: JobCapabilities;
-  plannedIds: string[];
-}) {
+function DraftSignOffDetails({ job, sheet, plannedIds }: { job: JobDetail; sheet: JobSheet; plannedIds: string[] }) {
   const trpc = useTRPC();
   const { invalidateJobs } = useQueryInvalidation();
   const showError = useApiMutationErrorToast();
@@ -163,7 +155,8 @@ function DraftSignOffDetails({
             <>
               <div className="flex items-center gap-3">
                 <Button
-                  disabled={!capabilities.complete || !gate.ok || !input.success}
+                  disabled={!sheet.can('complete') || !gate.ok || !input.success}
+                  title={sheet.refusal('complete')}
                   onClick={() => setConfirm(true)}
                 >
                   Complete

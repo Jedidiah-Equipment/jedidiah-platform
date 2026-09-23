@@ -6,6 +6,7 @@ import { UUID } from '../../common/uuid.js';
 import { CategoryColour, CategoryIconKey } from '../fleet/fleet.js';
 import { RateBasis } from '../rate-card/rate-card.js';
 import { HourReading } from '../readings/reading.js';
+import { JobActions } from './job-actions.js';
 import { assignmentStates, discountKinds, jobQueues, jobStatuses } from './job-enums.js';
 
 export const Hours = z.number().nonnegative().max(999999999.9).multipleOf(0.1);
@@ -268,7 +269,8 @@ export const JobPricing = z.object({
 });
 export type JobPricing = z.infer<typeof JobPricing>;
 
-export const JobDetail = z.object({
+/** One Job read for no one in particular: what writes return and what core reasons over. */
+export const JobFacts = z.object({
   ...jobSummaryShape,
   notes: z.string().nullable(),
   dieselLitres: Litres,
@@ -288,4 +290,8 @@ export const JobDetail = z.object({
   assignments: z.array(Assignment),
   chargeLines: z.array(ChargeLine),
 });
+export type JobFacts = z.infer<typeof JobFacts>;
+
+/** One Job as the person asking reads it: the facts and what they may do to it. */
+export const JobDetail = JobFacts.extend({ actions: JobActions });
 export type JobDetail = z.infer<typeof JobDetail>;

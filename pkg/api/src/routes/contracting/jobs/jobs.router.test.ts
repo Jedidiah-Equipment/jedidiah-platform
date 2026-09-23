@@ -13,6 +13,7 @@ import {
 } from '@pkg/core/contracting';
 import { eq, user } from '@pkg/db';
 import { contractingHourReadings, contractingJobs, contractingMachineAssignments } from '@pkg/db/contracting';
+import { accessForRole } from '@pkg/domain/testing';
 import type { ContractingRole } from '@pkg/schema';
 import { expect } from 'vitest';
 import { createTester } from '@/test/create-tester.js';
@@ -21,6 +22,9 @@ import { mockSession } from '@/test/test-utils.js';
 const foremanId = 'test-user-id';
 const managerId = 'router-manager';
 const otherForemanId = 'router-other-foreman';
+const managerActor = accessForRole('contracting-manager', managerId);
+const foremanActor = accessForRole('foreman', foremanId);
+const otherForemanActor = accessForRole('foreman', otherForemanId);
 const driverId = 'router-driver';
 
 function contractingSession(role: ContractingRole) {
@@ -136,41 +140,39 @@ const test = createTester(async ({ db }) => {
   const base = { customerId: customer.id, farmId: farm.id, workTypeId: workType.id, description: null };
   const ownJob = await createJob({
     db,
-    actorUserId: managerId,
+    actor: managerActor,
     input: { ...base, foremanUserId: foremanId },
   });
   const otherJob = await createJob({
     db,
-    actorUserId: managerId,
+    actor: managerActor,
     input: { ...base, foremanUserId: otherForemanId },
   });
   const pricedJob = await createJob({
     db,
-    actorUserId: managerId,
+    actor: managerActor,
     input: { ...base, foremanUserId: foremanId },
   });
   const completedJob = await createJob({
     db,
-    actorUserId: managerId,
+    actor: managerActor,
     input: { ...base, foremanUserId: otherForemanId },
   });
   const stint = await createAssignment({
-    actingAs: 'manager',
     db,
-    actorUserId: managerId,
+    actor: managerActor,
     input: { jobId: ownJob.id, machineId: machine.id, implementId: null },
   });
   if (!stint) throw new Error('Expected Machine Assignment');
   const otherStint = await createAssignment({
-    actingAs: 'manager',
     db,
-    actorUserId: managerId,
+    actor: managerActor,
     input: { jobId: otherJob.id, machineId: otherMachine.id, implementId: implement.id },
   });
   if (!otherStint) throw new Error('Expected other Machine Assignment');
   await captureReading({
     db,
-    actorUserId: otherForemanId,
+    actor: otherForemanActor,
     input: {
       machineId: otherMachine.id,
       assignmentId: otherStint.id,
@@ -259,7 +261,7 @@ test('projects only open field Jobs, enforces ownership, and never returns money
   await expect(workshopCaller.contractingJobs.field.jobs()).rejects.toMatchObject({ code: 'FORBIDDEN' });
   await captureReading({
     db: context.db,
-    actorUserId: foremanId,
+    actor: foremanActor,
     input: {
       machineId: context.machine.id,
       assignmentId: context.stint.id,
@@ -288,7 +290,10 @@ test('enforces the Job queue role matrix and strips money from Foreman reads', a
   await expect(foreman.jobs.get({ id: context.otherJob.id })).rejects.toMatchObject({ code: 'FORBIDDEN' });
   await expect(foreman.jobs.get({ id: context.pricedJob.id })).rejects.toMatchObject({ code: 'FORBIDDEN' });
   await expect(foreman.jobs.list({ queue: 'awaiting-invoice' })).rejects.toMatchObject({ code: 'FORBIDDEN' });
-  await expect(foreman.assignments.remove({ id: context.stint.id })).rejects.toMatchObject({ code: 'FORBIDDEN' });
+  await expect(foreman.assignments.remove({ id: context.otherStint.id })).rejects.toMatchObject({
+    code: 'FORBIDDEN',
+  });
+  await expect(foreman.assignments.remove({ id: context.stint.id })).resolves.toMatchObject({ id: context.stint.id });
 
   const workshop = context.createCaller(contractingSession('workshop-manager')).contractingJobs;
   expect((await workshop.jobs.list({ queue: 'upcoming' })).map((job) => job.id)).toEqual([context.ownJob.id]);
@@ -342,7 +347,7 @@ test('rejects Charge Line changes after pricing so the priced total cannot becom
   await expect(
     createChargeLine({
       db: context.db,
-      actorUserId: managerId,
+      actor: managerActor,
       input: { jobId: context.pricedJob.id, description: 'Extra transport' },
     }),
   ).rejects.toMatchObject({ code: 'contracting_job.wrong_status' });
@@ -395,12 +400,12 @@ test('counts queue tabs by read mode and exposes capture evidence on Job details
     disputePrevious: false,
   };
   await expect(
-    captureReading({ db: context.db, actorUserId: foremanId, input: { ...departure, comment: 'Shift ended' } }),
+    captureReading({ db: context.db, actor: foremanActor, input: { ...departure, comment: 'Shift ended' } }),
   ).rejects.toMatchObject({ code: 'reading.forbidden' });
-  await expect(captureReading({ db: context.db, actorUserId: managerId, input: departure })).rejects.toMatchObject({
+  await expect(captureReading({ db: context.db, actor: managerActor, input: departure })).rejects.toMatchObject({
     code: 'reading.invalid_role',
   });
-  await captureReading({ db: context.db, actorUserId: managerId, input: { ...departure, comment: 'Shift ended' } });
+  await captureReading({ db: context.db, actor: managerActor, input: { ...departure, comment: 'Shift ended' } });
   expect(await manager.get({ id: context.otherJob.id })).toMatchObject({
     assignments: [{ departure: { capturedByName: 'Henk', comment: 'Shift ended', photoBacked: false } }],
   });

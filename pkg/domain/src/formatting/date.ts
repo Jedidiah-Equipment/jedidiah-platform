@@ -15,12 +15,13 @@ import {
  * Every date a person reads renders in one of these shapes, in South African order. A surface that
  * needs a new shape adds it here as a named format rather than passing a pattern at the call site.
  */
-export type DateFormat = 'short' | 'medium' | 'long' | 'duration' | 'day' | 'time';
+export type DateFormat = 'short' | 'medium' | 'long' | 'duration' | 'day' | 'time' | 'month';
 
 const DATE_FORMAT_PATTERNS = {
   day: 'd MMM',
   long: 'EEEE, d MMMM yyyy',
   medium: 'd MMM yyyy, HH:mm',
+  month: 'MMMM yyyy',
   short: 'd MMM yyyy',
   time: 'HH:mm',
 } as const satisfies Record<Exclude<DateFormat, 'duration'>, string>;

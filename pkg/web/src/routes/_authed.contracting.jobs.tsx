@@ -1,8 +1,10 @@
 import { createFileRoute, Outlet } from '@tanstack/react-router';
-import { requireRoutePermission } from '@/lib/route-auth.js';
+import { requireAnyRoutePermission } from '@/lib/route-auth.js';
 
 export const Route = createFileRoute('/_authed/contracting/jobs')({
-  beforeLoad: ({ context }) => requireRoutePermission(context, 'contracting_job:read'),
+  // Invoicing reads Job pages without the workshop's queues, which the index route keeps to itself.
+  beforeLoad: ({ context }) =>
+    requireAnyRoutePermission(context, ['contracting_job:read', 'contracting_job:read-priced']),
   component: Outlet,
   staticData: { pageLabel: 'Jobs' },
 });

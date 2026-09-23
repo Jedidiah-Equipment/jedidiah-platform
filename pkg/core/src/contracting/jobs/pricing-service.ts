@@ -1,5 +1,5 @@
 import type { DatabaseTransaction, Db } from '@pkg/db';
-import { contractingJobs, contractingMachineAssignments, contractingMachines } from '@pkg/db/contracting';
+import { type contractingJobs, contractingMachineAssignments, contractingMachines } from '@pkg/db/contracting';
 import { formatNumber } from '@pkg/domain';
 import { computeDieselAmount, computeDiscountAmount, priceStint, pricingGateReasons } from '@pkg/domain/contracting';
 import type { AuthId } from '@pkg/schema';
@@ -21,7 +21,7 @@ import { assignmentDescriptor } from './assignment-service.js';
 import { JobError, jobNotFound, withJobConstraints, wrongStatus } from './job-errors.js';
 import { lockJob } from './job-lock.js';
 import { getJob } from './job-read.js';
-import { jobDescriptor } from './job-service.js';
+import { writeJob } from './job-write.js';
 
 type JobRow = typeof contractingJobs.$inferSelect;
 type StintPricing = Pick<
@@ -75,31 +75,6 @@ function writeStintPricing(
     notFound: () => jobNotFound('Machine Assignment'),
     set: () => ({ ...values, updatedAt: new Date() }),
     project: () => undefined,
-  });
-}
-
-function writeJob(
-  tx: DatabaseTransaction,
-  actorUserId: AuthId,
-  id: string,
-  {
-    assert,
-    set,
-  }: {
-    assert?: (tx: DatabaseTransaction, before: JobRow) => Promise<void> | void;
-    set: (before: JobRow) => Partial<typeof contractingJobs.$inferInsert>;
-  },
-) {
-  return mutateEntity({
-    db: tx,
-    actorUserId,
-    descriptor: jobDescriptor,
-    table: contractingJobs,
-    id,
-    notFound: jobNotFound,
-    ...(assert ? { assert } : {}),
-    set: (before) => ({ ...set(before), updatedAt: new Date() }),
-    project: (innerTx, row) => getJob({ db: innerTx, id: row.id }),
   });
 }
 

@@ -121,4 +121,20 @@ describe('Job sign-off helpers', () => {
     });
     expect(queueTabLabel('looks-finished', { 'looks-finished': 2 } as never)).toBe('Looks finished (2)');
   });
+
+  it('lets Invoicing read a Priced Job’s money and stamp it, and nothing else', () => {
+    const invoicingCan = (permission: string) =>
+      permission === 'contracting_job:read-priced' || permission === 'contracting_invoice:update';
+    const granted = (capabilities: Record<string, boolean>) =>
+      Object.entries(capabilities)
+        .filter(([, allowed]) => allowed)
+        .map(([name]) => name);
+    expect(granted(jobCapabilities({ status: 'priced' } as JobDetail, invoicingCan))).toEqual([
+      'seePricing',
+      'stampInvoice',
+    ]);
+    expect(granted(jobCapabilities({ status: 'invoiced' } as JobDetail, invoicingCan))).toEqual(['seePricing']);
+    const managerCan = (permission: string) => permission !== 'contracting_invoice:update';
+    expect(jobCapabilities({ status: 'priced' } as JobDetail, managerCan).stampInvoice).toBe(false);
+  });
 });

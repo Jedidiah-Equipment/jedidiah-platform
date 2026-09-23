@@ -58,10 +58,18 @@ export async function requireRouteBusinessAccess(context: RouterContext, busines
 }
 
 export async function requireRoutePermission(context: RouterContext, permission: AppPermission) {
+  return requireAnyRoutePermission(context, [permission]);
+}
+
+/** Passes when the session holds any of the permissions; all of them must belong to one business. */
+export async function requireAnyRoutePermission(
+  context: RouterContext,
+  permissions: readonly [AppPermission, ...AppPermission[]],
+) {
   const access = await getRouteAccess(context);
 
-  if (!hasPermission(access, permission)) {
-    const business = getPermissionBusiness(permission);
+  if (!permissions.some((permission) => hasPermission(access, permission))) {
+    const business = getPermissionBusiness(permissions[0]);
 
     throw redirect({ to: hasBusinessAccess(access, business) ? BUSINESS_HOME[business] : businessHomeFor(access) });
   }

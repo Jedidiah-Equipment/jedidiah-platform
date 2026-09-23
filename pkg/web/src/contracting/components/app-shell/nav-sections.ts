@@ -5,6 +5,7 @@ import {
   IconClipboardList,
   IconCoins,
   IconGauge,
+  IconReceipt,
   IconRuler2,
   IconTools,
   IconTractor,
@@ -43,6 +44,12 @@ export const contractingNavSections = [
         permission: 'contracting_job:read',
         link: linkOptions({ to: '/contracting/jobs' }),
         icon: IconClipboardCheck,
+      },
+      {
+        title: 'Invoicing',
+        permission: 'contracting_job:read-priced',
+        link: linkOptions({ to: '/contracting/invoicing' }),
+        icon: IconReceipt,
       },
       {
         title: 'Fleet',

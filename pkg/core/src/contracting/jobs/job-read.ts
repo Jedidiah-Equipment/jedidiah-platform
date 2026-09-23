@@ -8,6 +8,7 @@ import {
   contractingMachineAssignments,
   contractingWorkTypes,
 } from '@pkg/db/contracting';
+import { JOHANNESBURG_TIME_ZONE } from '@pkg/domain';
 import {
   canMarkPriced,
   computeDieselAmount,
@@ -95,6 +96,7 @@ async function loadJob(db: Db | DatabaseTransaction, condition: ReturnType<typeo
       customer: true,
       farm: true,
       foreman: true,
+      invoicedBy: true,
       workType: true,
     },
   });
@@ -123,6 +125,7 @@ type LoadedJob = typeof contractingJobs.$inferSelect & {
   customer: { name: string };
   farm: { name: string };
   foreman: { name: string } | null;
+  invoicedBy: { name: string } | null;
   workType: { name: string };
 };
 
@@ -263,7 +266,7 @@ export async function getJob({ db, id, code }: { db: Db | DatabaseTransaction; i
   const numericCode = code ? Number(code.slice('CJOB-'.length)) : undefined;
   const row = await loadJob(db, id ? eq(contractingJobs.id, id) : eq(contractingJobs.code, numericCode ?? Number.NaN));
   if (!row) throw jobNotFound();
-  const { assignments: rawAssignments, chargeLines, customer, farm, foreman, workType, ...job } = row;
+  const { assignments: rawAssignments, chargeLines, customer, farm, foreman, invoicedBy, workType, ...job } = row;
   const live = job.status === 'completed';
   const assignmentRows = rawAssignments
     .sort((left, right) => {
@@ -283,6 +286,7 @@ export async function getJob({ db, id, code }: { db: Db | DatabaseTransaction; i
     farmName: farm.name,
     workTypeName: workType.name,
     foremanName: foreman?.name ?? null,
+    invoicedByName: invoicedBy?.name ?? null,
     jobNumber: formatJobNumber(job.code),
     plannedStints: states.filter((state) => state === 'planned').length,
     onSiteStints: states.filter((state) => state === 'on-site').length,
@@ -468,12 +472,15 @@ export async function listJobs({
   limit,
   offset,
   foremanUserId,
+  invoicedInMonth,
 }: {
   db: Db;
   queue: JobQueue;
   limit: number;
   offset: number;
   foremanUserId?: string;
+  /** Honoured only for the invoiced queue: Jobs stamped in this South African calendar month. */
+  invoicedInMonth?: string | undefined;
 }) {
   const candidateStatuses =
     queue === 'looks-finished'
@@ -506,6 +513,10 @@ export async function listJobs({
       needsALook: sql<number>`${openGapFlags} + ${readingsNeedingALook}`,
       startDate: contractingJobs.startDate,
       endDate: contractingJobs.endDate,
+      pricedAt: contractingJobs.pricedAt,
+      pricedTotal: contractingJobs.pricedTotal,
+      invoiceNumber: contractingJobs.invoiceNumber,
+      invoicedAt: contractingJobs.invoicedAt,
       createdAt: contractingJobs.createdAt,
       updatedAt: contractingJobs.updatedAt,
     })
@@ -523,6 +534,9 @@ export async function listJobs({
         queue === 'looks-finished' ? looksFinishedInSql : undefined,
         foremanUserId ? eq(contractingJobs.foremanUserId, foremanUserId) : undefined,
         foremanUserId ? inArray(contractingJobs.status, ['upcoming', 'active', 'completed']) : undefined,
+        queue === 'invoiced' && invoicedInMonth
+          ? sql`date_trunc('month', ${contractingJobs.invoicedAt} at time zone ${JOHANNESBURG_TIME_ZONE}) = date_trunc('month', ${invoicedInMonth}::timestamp)`
+          : undefined,
       ),
     )
     .orderBy(asc(contractingJobs.code))
@@ -532,11 +546,18 @@ export async function listJobs({
       rows.map((row) =>
         JobSummary.parse({
           ...row,
+          pricedAt: row.pricedAt?.toISOString() ?? null,
+          invoicedAt: row.invoicedAt?.toISOString() ?? null,
           createdAt: row.createdAt.toISOString(),
           updatedAt: row.updatedAt.toISOString(),
         }),
       ),
     );
+}
+
+/** Foremen never see what a Job is worth, not even in a queue row. */
+export function redactSummaryMoney(job: JobSummary) {
+  return { ...job, pricedTotal: null };
 }
 
 export function redactMoney(job: JobDetail) {

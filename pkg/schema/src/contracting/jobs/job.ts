@@ -68,6 +68,8 @@ export const JobListInput = z
     queue: z.enum(jobQueues),
     limit: z.number().int().positive().max(200).default(50),
     offset: z.number().int().nonnegative().default(0),
+    /** First day of a month; filters the invoiced queue to Jobs stamped in that South African month. */
+    invoicedInMonth: DateOnlyIso.optional(),
   })
   .strict();
 export type JobListInput = z.infer<typeof JobListInput>;
@@ -237,6 +239,10 @@ const jobSummaryShape = {
   needsALook: z.number().int().nonnegative(),
   startDate: DateOnlyIso.nullable(),
   endDate: DateOnlyIso.nullable(),
+  pricedAt: DateIso.nullable(),
+  pricedTotal: Money.nullable(),
+  invoiceNumber: z.string().nullable(),
+  invoicedAt: DateIso.nullable(),
   createdAt: DateIso,
   updatedAt: DateIso,
 };
@@ -273,11 +279,8 @@ export const JobDetail = z.object({
   discountValue: Money.nullable(),
   discountAmount: Money.nullable(),
   pricedSubtotal: Money.nullable(),
-  pricedTotal: Money.nullable(),
   completedAt: DateIso.nullable(),
-  pricedAt: DateIso.nullable(),
-  invoiceNumber: z.string().nullable(),
-  invoicedAt: DateIso.nullable(),
+  invoicedByName: z.string().nullable(),
   cancellationReason: z.string().nullable(),
   reopenedAt: DateIso.nullable(),
   repricingNote: z.string().nullable(),

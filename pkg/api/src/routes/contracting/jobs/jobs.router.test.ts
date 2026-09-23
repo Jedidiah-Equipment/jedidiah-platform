@@ -419,3 +419,62 @@ test('keeps Pricing to contracting-admin and super-admin while managers read the
     pricedTotal: 0,
   });
 });
+
+test('lets Invoicing list, read and stamp Priced Jobs while every other write stays out of reach', async ({
+  context,
+}) => {
+  const invoicing = context.createCaller(contractingSession('contracting-invoicing')).contractingJobs;
+  expect(await invoicing.jobs.list({ queue: 'awaiting-invoice' })).toMatchObject([
+    { id: context.pricedJob.id, pricedTotal: 100, pricedAt: expect.any(String), invoiceNumber: null },
+  ]);
+  await expect(invoicing.jobs.list({ queue: 'active' })).rejects.toMatchObject({ code: 'FORBIDDEN' });
+  await expect(invoicing.jobs.get({ id: context.pricedJob.id })).resolves.toMatchObject({
+    pricedSubtotal: 100,
+    pricedTotal: 100,
+  });
+  for (const attempt of [
+    () => invoicing.pricing.markPriced({ id: context.completedJob.id, expectedTotal: 0 }),
+    () => invoicing.jobs.patch({ id: context.pricedJob.id, notes: 'Keyed in' }),
+    () => invoicing.stints.remove({ id: context.stint.id }),
+  ])
+    await expect(attempt()).rejects.toMatchObject({ code: 'FORBIDDEN' });
+
+  const manager = context.createCaller(contractingSession('contracting-manager')).contractingJobs;
+  expect(await manager.jobs.list({ queue: 'awaiting-invoice' })).toMatchObject([{ pricedTotal: 100 }]);
+  await expect(
+    manager.invoicing.stamp({ id: context.pricedJob.id, invoiceNumber: 'INV-1', expectedTotal: 100 }),
+  ).rejects.toMatchObject({ code: 'FORBIDDEN' });
+
+  await expect(
+    invoicing.invoicing.stamp({ id: context.pricedJob.id, invoiceNumber: 'INV-1', expectedTotal: 99 }),
+  ).rejects.toMatchObject({ code: 'CONFLICT' });
+  await expect(
+    invoicing.invoicing.stamp({ id: context.pricedJob.id, invoiceNumber: ' INV-1 ', expectedTotal: 100 }),
+  ).resolves.toMatchObject({ status: 'invoiced', invoiceNumber: 'INV-1' });
+  expect(await invoicing.invoicing.byNumber({ invoiceNumber: 'inv-1' })).toEqual([
+    expect.objectContaining({ id: context.pricedJob.id, jobNumber: context.pricedJob.jobNumber }),
+  ]);
+  expect(await manager.invoicing.byNumber({ invoiceNumber: 'INV-1' })).toHaveLength(1);
+  await expect(
+    context.createCaller(contractingSession('foreman')).contractingJobs.invoicing.byNumber({ invoiceNumber: 'INV-1' }),
+  ).rejects.toMatchObject({ code: 'FORBIDDEN' });
+});
+
+test('filters the Invoiced queue by the South African month it was stamped in, and no other queue', async ({
+  context,
+}) => {
+  // 23:30 UTC on 31 August is 01:30 on 1 September in Johannesburg.
+  await context.db
+    .update(contractingJobs)
+    .set({ status: 'invoiced', invoiceNumber: 'INV-9', invoicedAt: new Date('2026-08-31T23:30:00Z') })
+    .where(eq(contractingJobs.id, context.pricedJob.id));
+  const invoicing = context.createCaller(contractingSession('contracting-invoicing')).contractingJobs.jobs;
+  const invoicedIn = async (month: string) =>
+    (await invoicing.list({ queue: 'invoiced', invoicedInMonth: month })).map((job) => job.id);
+
+  expect(await invoicedIn('2026-09-01')).toEqual([context.pricedJob.id]);
+  expect(await invoicedIn('2026-08-01')).toEqual([]);
+  expect(
+    (await invoicing.list({ queue: 'awaiting-pricing', invoicedInMonth: '2026-08-01' })).map((job) => job.id),
+  ).toEqual([context.completedJob.id]);
+});

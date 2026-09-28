@@ -400,6 +400,19 @@ describe('parts.list, parts.categories, and parts.locations', () => {
     });
   });
 
+  test('lets the price-blind stores role read the label pickers but not the Part list', async ({ context }) => {
+    const stores = context.createCaller(mockSession('stores'));
+
+    await expect(stores.parts.categories()).resolves.toEqual({
+      categories: [
+        { id: BEARINGS_ID, name: 'Bearings' },
+        { id: FASTENERS_ID, name: 'Fasteners' },
+      ],
+    });
+    await expect(stores.parts.locations()).resolves.toEqual({ locations: [] });
+    await expect(stores.parts.list({})).rejects.toMatchObject({ code: 'FORBIDDEN' });
+  });
+
   test('lists, searches, filters, sorts, and returns distinct categories', async ({ context }) => {
     const caller = context.createCaller();
     const acme = await createSupplier(caller, 'Acme Supplies');

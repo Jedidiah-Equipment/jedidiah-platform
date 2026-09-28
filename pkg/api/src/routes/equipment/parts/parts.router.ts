@@ -35,14 +35,17 @@ import { mapCoreErrors } from '../../../trpc/errors.js';
 import { authorizedProcedure, router } from '../../../trpc/init.js';
 import { partBomErrorFamily, partCoreErrorFamily } from './part-error-families.js';
 
+const partLabelPickerReaders = ['equipment_part:read', 'equipment_inventory:read'] as const;
+
 export const partsRouter = router({
   list: authorizedProcedure('equipment_part:read')
     .input(PartListInput)
     .query(({ ctx, input }) => listParts({ db: ctx.db, input })),
 
-  categories: authorizedProcedure('equipment_part:read').query(({ ctx }) => listPartCategories({ db: ctx.db })),
+  // Names only, no cost: the price-blind stores role picks its label batches from these.
+  categories: authorizedProcedure(partLabelPickerReaders).query(({ ctx }) => listPartCategories({ db: ctx.db })),
 
-  locations: authorizedProcedure('equipment_part:read').query(({ ctx }) => listPartStorageLocations({ db: ctx.db })),
+  locations: authorizedProcedure(partLabelPickerReaders).query(({ ctx }) => listPartStorageLocations({ db: ctx.db })),
 
   get: authorizedProcedure('equipment_part:read')
     .input(z.object({ id: UUID }))

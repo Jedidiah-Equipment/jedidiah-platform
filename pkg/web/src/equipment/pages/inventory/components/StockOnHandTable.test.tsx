@@ -1,6 +1,6 @@
 import { StockOnHandResult } from '@pkg/schema/equipment';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { StockOnHandTable } from './StockOnHandTable.js';
 
@@ -46,6 +46,21 @@ const result = StockOnHandResult.parse({
       unitOfMeasure: 'piece',
     },
   ],
+});
+
+beforeEach(() => {
+  vi.stubGlobal('window', {
+    __APP_CONFIG__: {
+      appBaseUrl: 'http://localhost:7001',
+      appEnv: 'development',
+      apiBaseUrl: 'http://localhost:7002',
+      authBaseUrl: 'http://localhost:7002/api/auth',
+    },
+  });
+});
+
+afterEach(() => {
+  vi.unstubAllGlobals();
 });
 
 describe('StockOnHandTable', () => {
@@ -152,5 +167,15 @@ describe('StockOnHandTable', () => {
     expect(html).not.toContain('Value');
     expect(html).not.toContain('R 0.10/mm');
     expect(html).not.toContain('No cost yet');
+  });
+
+  it('offers every Part its label to a price-blind stores reader', () => {
+    const html = renderToStaticMarkup(
+      <StockOnHandTable items={result.items} onOpenHistory={vi.fn()} showCosts={false} />,
+    );
+
+    expect(html.match(/Print label/g)).toHaveLength(2);
+    expect(html).toContain('http://localhost:7002/api/parts/00000000-0000-4000-8000-000000000001/label');
+    expect(html).toContain('http://localhost:7002/api/parts/00000000-0000-4000-8000-000000000002/label');
   });
 });

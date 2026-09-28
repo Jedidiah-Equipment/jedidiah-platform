@@ -671,3 +671,48 @@ function bulkImportRow(overrides: Partial<BulkImportRowInput> = {}): BulkImportR
     ...overrides,
   };
 }
+
+describe('parts.merge', () => {
+  test('lets procurement managers preview and merge a duplicate Part', async ({ context }) => {
+    const supplier = await createSupplier(context.createCaller());
+    const survivor = await createPart(context.createCaller(), supplier.id, { code: 'P-100' });
+    const duplicate = await createPart(context.createCaller(), supplier.id, { code: 'P-100-OLD' });
+    const procurementCaller = context.createCaller(mockSession('procurement-manager'));
+
+    await expect(
+      procurementCaller.parts.mergePreview({ sourceId: duplicate.id, targetId: survivor.id }),
+    ).resolves.toMatchObject({ blockers: [], combinedOnHand: 0, source: { code: 'P-100-OLD' } });
+    await expect(
+      procurementCaller.parts.merge({ sourceId: duplicate.id, targetId: survivor.id }),
+    ).resolves.toMatchObject({ id: survivor.id });
+    await expect(procurementCaller.parts.get({ id: duplicate.id })).rejects.toMatchObject({ code: 'NOT_FOUND' });
+  });
+
+  test('refuses roles without the merge permission', async ({ context }) => {
+    const input = {
+      sourceId: '00000000-0000-4000-8000-000000000001',
+      targetId: '00000000-0000-4000-8000-000000000002',
+    };
+
+    await expect(context.createAnonCaller().parts.merge(input)).rejects.toMatchObject({ code: 'UNAUTHORIZED' });
+    await expect(context.createCaller(mockSession('stores')).parts.mergePreview(input)).rejects.toMatchObject({
+      code: 'FORBIDDEN',
+    });
+  });
+
+  test('maps a self-merge and a blocked pair to user-facing errors', async ({ context }) => {
+    const caller = context.createCaller();
+    const supplier = await createSupplier(caller);
+    const survivor = await createPart(caller, supplier.id, { code: 'P-100' });
+    const duplicate = await createPart(caller, supplier.id, { code: 'P-100-KG', unitOfMeasure: 'kg' });
+
+    await expect(caller.parts.merge({ sourceId: survivor.id, targetId: survivor.id })).rejects.toMatchObject({
+      code: 'BAD_REQUEST',
+      message: 'A Part cannot be merged into itself.',
+    });
+    await expect(caller.parts.merge({ sourceId: duplicate.id, targetId: survivor.id })).rejects.toMatchObject({
+      code: 'CONFLICT',
+      message: 'These Parts cannot be merged yet. Review the merge preview for what to fix first.',
+    });
+  });
+});

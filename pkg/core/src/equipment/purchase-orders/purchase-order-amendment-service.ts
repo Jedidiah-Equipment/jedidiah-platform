@@ -116,8 +116,11 @@ export async function amendPurchaseOrderQuantity({
   return applyAmendment({ actorUserId, db, id: input.id, pdfRenderer, storage }, async (tx, purchaseOrder) => {
     const line = findLine(purchaseOrder, input.lineId);
     if (line.kind === 'part') {
+      // More or less of what the order already names: which Supplier the Part now sits with is not
+      // the question, and after a Part Merge (ADR 0020) the answer may have changed.
       await assertLinePartsMatchSupplier({
         db: tx,
+        judgeSupplier: false,
         lines: [{ partId: line.partId, quantity: input.quantity }],
         supplierId: purchaseOrder.supplierId,
       });

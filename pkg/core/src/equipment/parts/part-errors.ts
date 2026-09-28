@@ -1,3 +1,5 @@
+import type { PartMergeBlocker } from '@pkg/schema/equipment';
+
 export class DuplicatePartCodeError extends Error {
   readonly code = 'part.duplicate_code';
   readonly metadata: { code: string };
@@ -126,6 +128,29 @@ export class PartSupplierLockedByPurchaseOrderError extends Error {
   }
 }
 
+export class PartMergeSelfError extends Error {
+  readonly code = 'part.merge_self';
+  readonly metadata: { id: string };
+
+  constructor(id: string) {
+    super('A Part cannot be merged into itself.');
+    this.name = 'PartMergeSelfError';
+    this.metadata = { id };
+  }
+}
+
+/** Every reason the pair cannot merge yet, so the user sees the whole list rather than the first. */
+export class PartMergeBlockedError extends Error {
+  readonly code = 'part.merge_blocked';
+  readonly metadata: { blockers: PartMergeBlocker[] };
+
+  constructor(blockers: PartMergeBlocker[]) {
+    super(`These Parts cannot be merged yet: ${blockers.map((blocker) => blocker.kind).join(', ')}`);
+    this.name = 'PartMergeBlockedError';
+    this.metadata = { blockers };
+  }
+}
+
 export class PartLabelSelectionEmptyError extends Error {
   readonly code = 'part.label_selection_empty';
 
@@ -142,6 +167,8 @@ export type PartCoreError =
   | PartCategoryMergeSelfError
   | PartCategoryNotFoundError
   | PartLabelSelectionEmptyError
+  | PartMergeBlockedError
+  | PartMergeSelfError
   | PartNotFoundError
   | PartSupplierLockedByPurchaseOrderError
   | PartSupplierNotFoundError
@@ -156,6 +183,8 @@ export function isPartCoreError(error: unknown): error is PartCoreError {
     error instanceof PartCategoryMergeSelfError ||
     error instanceof PartCategoryNotFoundError ||
     error instanceof PartLabelSelectionEmptyError ||
+    error instanceof PartMergeBlockedError ||
+    error instanceof PartMergeSelfError ||
     error instanceof PartNotFoundError ||
     error instanceof PartBomLockedError ||
     error instanceof PartSupplierLockedByPurchaseOrderError ||

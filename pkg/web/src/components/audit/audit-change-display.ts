@@ -41,8 +41,13 @@ const auditFieldLabels: Record<string, string> = {
   keyFeatures: 'Key features',
   member: 'Department membership',
   modelCode: 'Model code',
+  movedBomLines: 'BOM lines moved',
+  movedJobs: 'Jobs moved',
   movedParts: 'Parts moved',
+  movedProductLines: 'Product lines moved',
+  movedPurchaseOrderLines: 'Purchase order lines moved',
   movedPurchaseOrders: 'Purchase orders moved',
+  movedStockMovements: 'Stock movements moved',
   name: 'Name',
   notes: 'Notes',
   ownerCustomerId: 'Owner',
@@ -92,7 +97,15 @@ const dateFields = new Set([
 ]);
 const percentFields = new Set(['depositPercent', 'discountPercent']);
 
-const terminalCountFields = new Set(['movedParts', 'movedPurchaseOrders']);
+const terminalCountFields = new Set([
+  'movedBomLines',
+  'movedJobs',
+  'movedParts',
+  'movedProductLines',
+  'movedPurchaseOrderLines',
+  'movedPurchaseOrders',
+  'movedStockMovements',
+]);
 
 export function getAuditChangeDisplays(
   changes: AuditChangeMap | null,

@@ -4,9 +4,11 @@ import {
   createPart,
   getPart,
   getPartBom,
+  getPartMergePreview,
   listPartCategories,
   listPartStorageLocations,
   listParts,
+  mergePart,
   savePartBom,
   updatePart,
 } from '@pkg/core/equipment';
@@ -19,11 +21,16 @@ import {
   PartBulkImportInput,
   PartCreateInput,
   PartListInput,
+  PartMergeInput,
+  PartMergePreview,
+  PartMergePreviewCostFields,
+  PartMergeSideCostFields,
   PartUpdateInput,
   SavePartBomInput,
 } from '@pkg/schema/equipment';
 import { z } from 'zod';
 
+import { projectInventoryCostFields } from '../../../equipment/trpc/inventory-cost-projection.js';
 import { mapCoreErrors } from '../../../trpc/errors.js';
 import { authorizedProcedure, router } from '../../../trpc/init.js';
 import { partBomErrorFamily, partCoreErrorFamily } from './part-error-families.js';
@@ -64,6 +71,27 @@ export const partsRouter = router({
     .output(PartBomResult)
     .mutation(({ ctx, input }) =>
       mapPartErrors(() => savePartBom({ actorUserId: ctx.session.user.id, db: ctx.db, input })),
+    ),
+
+  mergePreview: authorizedProcedure('equipment_part:merge')
+    .input(PartMergeInput)
+    .output(PartMergePreview)
+    .query(async ({ ctx, input }) => {
+      const preview = await mapPartErrors(() => getPartMergePreview({ db: ctx.db, input }));
+      const projectSide = (side: PartMergePreview['source']) =>
+        projectInventoryCostFields({ access: ctx.access, costFields: PartMergeSideCostFields, output: side });
+
+      return {
+        ...projectInventoryCostFields({ access: ctx.access, costFields: PartMergePreviewCostFields, output: preview }),
+        source: projectSide(preview.source),
+        target: projectSide(preview.target),
+      };
+    }),
+
+  merge: authorizedProcedure('equipment_part:merge')
+    .input(PartMergeInput)
+    .mutation(({ ctx, input }) =>
+      mapPartErrors(() => mergePart({ actorUserId: ctx.session.user.id, db: ctx.db, input })),
     ),
 
   bulkImport: authorizedProcedure('equipment_part:update')

@@ -899,10 +899,13 @@ async function assertSupplierExists({ db, supplierId }: { db: PurchaseOrderDb; s
  */
 export async function assertLinePartsMatchSupplier({
   db,
+  judgeSupplier = true,
   lines,
   supplierId,
 }: {
   db: DatabaseTransaction;
+  /** False for a Part already on the order, which a Part Merge may have joined to another Supplier's Part. */
+  judgeSupplier?: boolean;
   lines: readonly { partId: UUID; quantity: number }[];
   supplierId: UUID;
 }): Promise<void> {
@@ -934,7 +937,7 @@ export async function assertLinePartsMatchSupplier({
     // question as having a Supplier. Asked directly too, so a Part with neither still reads as
     // unbuyable rather than as belonging to some other Supplier.
     if (part.supplierId === null) throw new PurchaseOrderPartNotPurchasableError(line.partId);
-    if (part.supplierId !== supplierId) throw new PurchaseOrderPartSupplierMismatchError(line.partId);
+    if (judgeSupplier && part.supplierId !== supplierId) throw new PurchaseOrderPartSupplierMismatchError(line.partId);
     if (!isWholeUnitQuantity(line.quantity, unitClassFor(part.unitOfMeasure))) {
       throw new PurchaseOrderInvalidQuantityError(line.partId);
     }

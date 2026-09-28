@@ -12,6 +12,7 @@ import { useTRPC } from '@/lib/trpc.js';
 import { PartBomTab } from './components/PartBomTab.js';
 import { PartForm } from './components/PartForm.js';
 import { type PartFormValues, toPartInput } from './components/types.js';
+import { MergePartDialog } from './MergePartDialog.js';
 import { PartLabelPrintButton } from './PartLabelPrintButton.js';
 
 type PartEditDialogProps = {
@@ -24,6 +25,7 @@ type PartEditDialogProps = {
 export const PartEditDialog: React.FC<PartEditDialogProps> = ({ onClose, part, supplier }) => {
   const trpc = useTRPC();
   const canUpdatePart = useCan('equipment_part:update').can;
+  const canMergePart = useCan('equipment_part:merge').can;
   const { invalidateParts } = useQueryInvalidation();
   const showMutationError = useApiMutationErrorToast();
 
@@ -49,9 +51,11 @@ export const PartEditDialog: React.FC<PartEditDialogProps> = ({ onClose, part, s
         </DialogHeader>
         {part ? (
           <PartEditBody
+            canMergePart={canMergePart}
             canUpdatePart={canUpdatePart}
             isPending={updatePartMutation.isPending}
             key={part.id}
+            onMerged={onClose}
             onSubmit={(value) =>
               updatePartMutation.mutateAsync({
                 // Only a dialog that really is supplier-scoped pins the Supplier. A built Part has
@@ -75,19 +79,26 @@ export const PartEditDialog: React.FC<PartEditDialogProps> = ({ onClose, part, s
  * question at every level of one tree.
  */
 const PartEditBody: React.FC<{
+  canMergePart: boolean;
   canUpdatePart: boolean;
   isPending: boolean;
+  onMerged: () => void;
   onSubmit: (value: PartFormValues) => Promise<unknown>;
   part: Part;
   supplier: Pick<Supplier, 'companyName' | 'id'> | null;
-}> = ({ canUpdatePart, isPending, onSubmit, part, supplier }) => {
+}> = ({ canMergePart, canUpdatePart, isPending, onMerged, onSubmit, part, supplier }) => {
   const details = (
     <PartForm
       fixedSupplier={supplier ?? undefined}
       initialPart={part}
       isPending={isPending}
       onSubmit={onSubmit}
-      footerActions={<PartLabelPrintButton partId={part.id} />}
+      footerActions={
+        <>
+          <PartLabelPrintButton partId={part.id} />
+          {canMergePart ? <MergePartDialog onMerged={onMerged} part={part} /> : null}
+        </>
+      }
       submitLabel="Save part"
     />
   );

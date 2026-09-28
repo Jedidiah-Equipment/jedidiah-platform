@@ -70,8 +70,9 @@ See [Work the stores tablet](./work-the-stores-tablet.md).
 ## Notes
 
 - The QR code encodes only the Part code. Nothing about quantity, length, Job, or Supplier is in it.
-- A Part code can be at most 13 characters, so it prints on one line. A longer code from before that
-  limit still prints and scans; only its printed line is cut short. Editing that Part asks you to
+- A Part code can be at most 13 characters, so it fits the label's code line. A code packed with wide
+  letters such as M or W, or a longer code from before that limit, still prints and scans; only its
+  printed line is cut short. Editing that Part asks you to
   shorten the code before anything else saves.
 - Labels are never scoped by Supplier — one Part, one label, whoever supplied it.
 - A linear Part gets one label per Part, not one per length. Length lives on the movement, not on the

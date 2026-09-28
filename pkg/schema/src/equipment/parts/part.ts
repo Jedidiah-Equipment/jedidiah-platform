@@ -13,8 +13,9 @@ export type PartCode = z.infer<typeof PartCode>;
 export const PartCode = requiredTrimmedText('Part code is required');
 
 /**
- * The longest Part code one line of the label's code text holds across a 40 × 30 mm Part Label. The QR
- * symbol carries any length; this keeps the printed code readable. `@pkg/pdf` pins it to the font.
+ * The longest typical Part code one line of the label's code text holds across a 40 × 30 mm Part
+ * Label. The QR code carries any length; this keeps the printed code readable. `@pkg/pdf` pins it to
+ * the font.
  */
 export const PART_CODE_MAX_LENGTH = 13;
 

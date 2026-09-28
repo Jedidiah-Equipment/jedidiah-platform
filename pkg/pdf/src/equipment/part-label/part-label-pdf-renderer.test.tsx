@@ -41,7 +41,8 @@ describe('Part label PDF', () => {
   test('fits the longest Part code a label carries on one code line, and not one character more', async () => {
     const font = Font.getFont({ fontFamily: PART_LABEL_CODE_STYLE.fontFamily, fontWeight: 700 });
     await font?.load();
-    // Capitals as wide as H: most codes are uppercase and digits, which run no wider.
+    // Capitals as wide as H, the run of a typical uppercase-and-digit code. M and W are wider, so a code
+    // heavy in them truncates with an ellipsis; the QR code still carries it whole.
     const lineWidth = (length: number) =>
       length *
       (((font?.data?.layout('H').advanceWidth ?? Number.NaN) / (font?.data?.unitsPerEm ?? 1)) *

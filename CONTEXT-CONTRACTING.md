@@ -161,7 +161,7 @@ backward: a capture strictly below the latest reading is refused (equal is accep
 machine reads its departure value), unless the Foreman asserts the previous reading is wrong,
 which saves his value as disputed and flags the pair for management. The Foreman may
 re-capture a reading only while his Assignment is open; from Completion onward only management
-amends, with a mandatory reason; an amendment on a Priced Job returns it to Completed for
+amends, with a mandatory reason — an amendment changes the value, never Read At; an amendment on a Priced Job returns it to Completed for
 re-pricing, and Invoiced freezes everything. Derived values always recompute after an amendment.
 
 **Baseline Reading** is an optional, administrator-captured Hour Reading that anchors a Machine

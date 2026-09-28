@@ -1,4 +1,4 @@
-import { createAutosaveController, toFormIssues } from '@pkg/domain';
+import { createAutosaveController, stableSerialize, toFormIssues } from '@pkg/domain';
 import { useBlocker } from '@tanstack/react-router';
 import type React from 'react';
 import { useCallback, useEffect, useMemo, useRef, useSyncExternalStore } from 'react';
@@ -12,6 +12,8 @@ type AutosaveTrigger = 'blur' | 'change' | 'none';
 
 type UseAutosaveFormOptions<TValues extends Record<string, unknown>, TInput> = {
   defaultValues: TValues;
+  /** A read-only record never saves: flushing succeeds without a request and leaving is never blocked. */
+  enabled?: boolean;
   failureMessage: string;
   onSaved?: (input: TInput) => Promise<void> | void;
   save: (input: TInput) => Promise<unknown>;
@@ -23,14 +25,15 @@ const TEXT_INPUT_TYPES = new Set(['', 'email', 'number', 'password', 'search', '
 
 export function useAutosaveForm<TValues extends Record<string, unknown>, TInput>({
   defaultValues,
+  enabled = true,
   failureMessage,
   onSaved,
   save,
   toInput,
   validator,
 }: UseAutosaveFormOptions<TValues, TInput>) {
-  const optionsRef = useRef({ failureMessage, onSaved, save, toInput, validator });
-  optionsRef.current = { failureMessage, onSaved, save, toInput, validator };
+  const optionsRef = useRef({ enabled, failureMessage, onSaved, save, toInput, validator });
+  optionsRef.current = { enabled, failureMessage, onSaved, save, toInput, validator };
 
   const form = useAppForm({
     defaultValues,
@@ -84,7 +87,20 @@ export function useAutosaveForm<TValues extends Record<string, unknown>, TInput>
   );
   const autosaveState = useSyncExternalStore(subscribe, controller.getState, controller.getState);
 
+  // An untouched form adopts refetched defaults, so the saved snapshot follows them; otherwise the
+  // next flush posts server data back to the server as though someone had edited it.
+  const defaultSnapshot = stableSerialize(defaultValues);
+  const syncedDefaultSnapshotRef = useRef(defaultSnapshot);
+  useEffect(() => {
+    if (syncedDefaultSnapshotRef.current === defaultSnapshot) return;
+    syncedDefaultSnapshotRef.current = defaultSnapshot;
+    const values = formRef.current.state.values as TValues;
+    if (stableSerialize(values) === defaultSnapshot) controller.updateSavedValues(values);
+  }, [controller, defaultSnapshot]);
+
   const flush = useCallback(async () => {
+    if (!optionsRef.current.enabled) return true;
+
     const result = optionsRef.current.validator.safeParse(formRef.current.state.values);
     if (!result.success) {
       void formRef.current.handleSubmit();
@@ -145,7 +161,7 @@ export function useAutosaveForm<TValues extends Record<string, unknown>, TInput>
 
   useEffect(() => {
     const handleBeforeUnload = (event: BeforeUnloadEvent) => {
-      if (!controller.hasPendingChanges()) {
+      if (!optionsRef.current.enabled || !controller.hasPendingChanges()) {
         return;
       }
 
@@ -165,7 +181,7 @@ export function useAutosaveForm<TValues extends Record<string, unknown>, TInput>
       if (current.pathname === next.pathname) return false;
       return !didSave && controller.getState().shouldBlockNavigation;
     },
-    enableBeforeUnload: () => controller.hasPendingChanges(),
+    enableBeforeUnload: () => optionsRef.current.enabled && controller.hasPendingChanges(),
   });
 
   return {

@@ -3,9 +3,22 @@
 import type { AppRouter } from '@pkg/api';
 import { createUserAccessSummary } from '@pkg/domain';
 import { derivePurchaseOrderActions } from '@pkg/domain/equipment';
-import { type Part, PurchaseOrderSaveDraftInput, PurchaseOrderView } from '@pkg/schema/equipment';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { createMemoryHistory, createRootRoute, createRouter, RouterProvider } from '@tanstack/react-router';
+import {
+  type Part,
+  PurchaseOrderLinkedJob,
+  PurchaseOrderSaveDraftInput,
+  PurchaseOrderView,
+} from '@pkg/schema/equipment';
+import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query';
+import {
+  createMemoryHistory,
+  createRootRoute,
+  createRoute,
+  createRouter,
+  Outlet,
+  type RouterHistory,
+  RouterProvider,
+} from '@tanstack/react-router';
 import { createTRPCClient, httpLink } from '@trpc/client';
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
@@ -13,7 +26,7 @@ import { Toaster, toast } from 'sonner';
 import { afterEach, expect, it, vi } from 'vitest';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs.js';
 
-import { createTrpcOptions, TRPCProvider } from '@/lib/trpc.js';
+import { createTrpcOptions, TRPCProvider, useTRPC } from '@/lib/trpc.js';
 import { PurchaseOrderEditing } from './PurchaseOrderEditing.js';
 
 vi.hoisted(() => {
@@ -51,6 +64,7 @@ const part: Part = {
   unitOfMeasure: 'piece',
   unitOfMeasureLocked: false,
 };
+const linkedJob = PurchaseOrderLinkedJob.parse({ code: 'JOB-00007', id: '8c6f2a1e-4d3b-4c5a-9e8f-7a6b5c4d3e2f' });
 const purchaseOrder = PurchaseOrderView.parse({
   actions: derivePurchaseOrderActions({
     closedShortAt: null,
@@ -92,6 +106,7 @@ const purchaseOrder = PurchaseOrderView.parse({
 });
 
 const cleanups: Array<() => void> = [];
+let harness: { history: RouterHistory; queryClient: QueryClient };
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
 afterEach(() => {
@@ -271,6 +286,32 @@ it.each([
   },
 );
 
+it('leaves an approved order whose server copy changed without saving it', async () => {
+  let served = orderInStatus('approved');
+  const saveDraft = vi.fn(() => {
+    throw new Error('This Purchase Order is no longer a draft, so it cannot be edited.');
+  });
+  const container = await mount({ 'purchaseOrders.get': () => served, 'purchaseOrders.saveDraft': saveDraft }, served);
+
+  served = { ...served, jobs: [linkedJob] };
+  await refetchOrder();
+  await leave(container);
+
+  expect(saveDraft).not.toHaveBeenCalled();
+});
+
+it('does not save a Draft whose server copy changed while untouched', async () => {
+  let served = purchaseOrder;
+  const saveDraft = vi.fn(() => served);
+  const container = await mount({ 'purchaseOrders.get': () => served, 'purchaseOrders.saveDraft': saveDraft }, served);
+
+  served = { ...served, jobs: [linkedJob] };
+  await refetchOrder();
+  await leave(container);
+
+  expect(saveDraft).not.toHaveBeenCalled();
+});
+
 function orderInStatus(status: PurchaseOrderView['status']): PurchaseOrderView {
   return {
     ...purchaseOrder,
@@ -326,6 +367,7 @@ async function mount(overrides: Record<string, RequestHandler> = {}, order = pur
     'suppliers.list': () => page([purchaseOrder.supplier]),
     'jobs.list': () => page([]),
     'inventory.stockOnHand': () => page([]),
+    'purchaseOrders.get': () => order,
     'purchaseOrders.saveDraft': (input) => ({ ...purchaseOrder, ...PurchaseOrderSaveDraftInput.parse(input) }),
     ...overrides,
   };
@@ -360,32 +402,26 @@ async function mount(overrides: Record<string, RequestHandler> = {}, order = pur
       }),
     ],
   });
-  await queryClient.fetchQuery(createTrpcOptions(queryClient, trpcClient).auth.access.queryOptions());
-  const route = createRootRoute({
-    component: () => (
-      <PurchaseOrderEditing purchaseOrder={order}>
-        {({ actions, draft }) => (
-          <>
-            {actions}
-            <Tabs defaultValue="details">
-              <TabsList>
-                <TabsTrigger value="details">Details</TabsTrigger>
-                <TabsTrigger value="audit">Audit</TabsTrigger>
-              </TabsList>
-              <TabsContent value="details">{draft ?? 'Read-only Purchase Order'}</TabsContent>
-              <TabsContent value="audit">Audit history</TabsContent>
-            </Tabs>
-            <Toaster theme="light" />
-          </>
-        )}
-      </PurchaseOrderEditing>
-    ),
+  const trpcOptions = createTrpcOptions(queryClient, trpcClient);
+  await queryClient.fetchQuery(trpcOptions.auth.access.queryOptions());
+  await queryClient.fetchQuery(trpcOptions.purchaseOrders.get.queryOptions({ id: order.id }));
+  const rootRoute = createRootRoute({ component: Outlet });
+  const editorRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/',
+    component: () => <ServedPurchaseOrder id={order.id} />,
+  });
+  const elsewhereRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/elsewhere',
+    component: () => 'Somewhere else',
   });
   const router = createRouter({
-    routeTree: route,
+    routeTree: rootRoute.addChildren([editorRoute, elsewhereRoute]),
     history: createMemoryHistory({ initialEntries: ['/'] }),
     scrollRestoration: false,
   });
+  harness = { history: router.history, queryClient };
   vi.spyOn(window, 'scrollTo').mockImplementation(() => undefined);
   const container = document.createElement('div');
   document.body.append(container);
@@ -409,6 +445,47 @@ async function mount(overrides: Record<string, RequestHandler> = {}, order = pur
     await vi.waitFor(() => expect(queryClient.isFetching()).toBe(0));
   });
   return container;
+}
+
+/** The detail page's shape: the order the editor sees is whatever `purchaseOrders.get` last served. */
+function ServedPurchaseOrder({ id }: { id: PurchaseOrderView['id'] }) {
+  const trpc = useTRPC();
+  const { data } = useQuery(trpc.purchaseOrders.get.queryOptions({ id }));
+  if (!data) return null;
+  return (
+    <PurchaseOrderEditing purchaseOrder={data}>
+      {({ actions, draft }) => (
+        <>
+          {actions}
+          <Tabs defaultValue="details">
+            <TabsList>
+              <TabsTrigger value="details">Details</TabsTrigger>
+              <TabsTrigger value="audit">Audit</TabsTrigger>
+            </TabsList>
+            <TabsContent value="details">{draft ?? 'Read-only Purchase Order'}</TabsContent>
+            <TabsContent value="audit">Audit history</TabsContent>
+          </Tabs>
+          <Toaster theme="light" />
+        </>
+      )}
+    </PurchaseOrderEditing>
+  );
+}
+
+async function refetchOrder() {
+  await act(async () => {
+    await harness.queryClient.refetchQueries();
+    // React Query notifies observers on a timer, so the editor only re-renders with the new order after it.
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  });
+}
+
+/** Leaves through the same history the blocker guards; the blocker settles before the next page renders. */
+async function leave(container: HTMLElement) {
+  await act(async () => {
+    harness.history.push('/elsewhere');
+    await vi.waitFor(() => expect(container.textContent).toContain('Somewhere else'));
+  });
 }
 
 async function editQuantity(container: HTMLElement, value: string) {

@@ -197,10 +197,16 @@ describe('Purchase Order receiving values', () => {
   });
 
   it('sends no length for a discrete line and ignores a price from a price-blind dock', () => {
-    const values = PurchaseOrderReceiveFormValues.parse({ lengthMm: Number.NaN, quantity: 3, unitCost: 140 });
+    const values = PurchaseOrderReceiveFormValues.parse({
+      actorUserId: 'stores-abel',
+      lengthMm: Number.NaN,
+      quantity: 3,
+      unitCost: 140,
+    });
 
     expect(toReceiptInput({ canReadCosts: false, line: pieceLine, purchaseOrderId: purchaseOrder.id, values })).toEqual(
       {
+        actorUserId: 'stores-abel',
         lengthMm: null,
         partId: PART_ID,
         purchaseOrderId: purchaseOrder.id,
@@ -211,7 +217,12 @@ describe('Purchase Order receiving values', () => {
   });
 
   it('carries an optional cost override from an authorized dock', () => {
-    const values = PurchaseOrderReceiveFormValues.parse({ lengthMm: Number.NaN, quantity: 3, unitCost: 140 });
+    const values = PurchaseOrderReceiveFormValues.parse({
+      actorUserId: 'stores-abel',
+      lengthMm: Number.NaN,
+      quantity: 3,
+      unitCost: 140,
+    });
 
     expect(
       toReceiptInput({ canReadCosts: true, line: pieceLine, purchaseOrderId: purchaseOrder.id, values }),
@@ -219,7 +230,12 @@ describe('Purchase Order receiving values', () => {
   });
 
   it('leaves a blank linear length null so the ledger fills the standard purchase length', () => {
-    const values = PurchaseOrderReceiveFormValues.parse({ lengthMm: Number.NaN, quantity: 2, unitCost: Number.NaN });
+    const values = PurchaseOrderReceiveFormValues.parse({
+      actorUserId: 'stores-abel',
+      lengthMm: Number.NaN,
+      quantity: 2,
+      unitCost: Number.NaN,
+    });
 
     expect(
       toReceiptInput({ canReadCosts: true, line: linearLine, purchaseOrderId: purchaseOrder.id, values }),
@@ -230,7 +246,12 @@ describe('Purchase Order receiving values', () => {
   });
 
   it('carries a keyed length through for a short delivery', () => {
-    const values = PurchaseOrderReceiveFormValues.parse({ lengthMm: 3_000, quantity: 1, unitCost: Number.NaN });
+    const values = PurchaseOrderReceiveFormValues.parse({
+      actorUserId: 'stores-abel',
+      lengthMm: 3_000,
+      quantity: 1,
+      unitCost: Number.NaN,
+    });
 
     expect(
       toReceiptInput({ canReadCosts: true, line: linearLine, purchaseOrderId: purchaseOrder.id, values }),
@@ -241,7 +262,12 @@ describe('Purchase Order receiving values', () => {
 
   it('rejects a receipt of nothing', () => {
     expect(
-      PurchaseOrderReceiveFormValues.safeParse({ lengthMm: Number.NaN, quantity: 0, unitCost: Number.NaN }).success,
+      PurchaseOrderReceiveFormValues.safeParse({
+        actorUserId: 'stores-abel',
+        lengthMm: Number.NaN,
+        quantity: 0,
+        unitCost: Number.NaN,
+      }).success,
     ).toBe(false);
   });
 });
@@ -331,6 +357,7 @@ describe('Purchase Order return values', () => {
 
   it('sends no length for a discrete line and blanks an empty note', () => {
     const values = PurchaseOrderReturnFormValues.parse({
+      actorUserId: 'stores-abel',
       lengthMm: Number.NaN,
       note: '',
       quantity: 2,
@@ -338,6 +365,7 @@ describe('Purchase Order return values', () => {
     });
 
     expect(toReturnToSupplierInput({ line: pieceLine, purchaseOrderId: purchaseOrder.id, values })).toEqual({
+      actorUserId: 'stores-abel',
       lengthMm: null,
       note: null,
       partId: pieceLine.partId,
@@ -349,7 +377,13 @@ describe('Purchase Order return values', () => {
 
   it('keys a length only on a linear line, and only when the dock typed one', () => {
     const parse = (lengthMm: number) =>
-      PurchaseOrderReturnFormValues.parse({ lengthMm, note: 'Bent', quantity: 1, reason: 'wrong-item' });
+      PurchaseOrderReturnFormValues.parse({
+        actorUserId: 'stores-abel',
+        lengthMm,
+        note: 'Bent',
+        quantity: 1,
+        reason: 'wrong-item',
+      });
     const forLine = (line: typeof linearLine, lengthMm: number) =>
       toReturnToSupplierInput({ line, purchaseOrderId: purchaseOrder.id, values: parse(lengthMm) });
 

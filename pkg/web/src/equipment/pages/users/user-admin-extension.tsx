@@ -32,7 +32,7 @@ function useDepartmentMemberships() {
 
 /**
  * Equipment's side of user admin: Department Membership on the table and forms, the Quote
- * salesperson roster on the forms, and the stores badge.
+ * salesperson roster on the forms, and the Badge Card.
  */
 export const equipmentUserAdminExtension: UserAdminExtension = {
   useListQuery: (input, columnFilters) => {
@@ -140,7 +140,8 @@ export const equipmentUserAdminExtension: UserAdminExtension = {
 
     return {
       actions:
-        user && canSetRole && user.equipmentRole === 'stores' && !user.isDevice ? (
+        // Anyone the Quick-switch can name gets a card; a disabled person's card is refused at the scan.
+        user && canSetRole && user.equipmentRole !== null && !user.isDevice ? (
           <UserBadgePrintButton userId={user.id} />
         ) : null,
       fields: canUpdateUser ? (

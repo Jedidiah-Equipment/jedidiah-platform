@@ -8,17 +8,18 @@ change: negative removes stock, positive adds it.
 
 1. Open **Inventory**.
 2. Click **Post adjustment**.
-3. Choose the **Part**.
-4. Enter the **Signed quantity delta** — `10` adds ten, `-2` removes two.
-5. For a linear Part, enter **Length (mm)** so the change lands in the right length bucket.
-6. Choose the **Reason**:
+3. Check **Operator**. It starts as you; choose whoever is doing the work if that is someone else.
+4. Choose the **Part**.
+5. Enter the **Signed quantity delta** — `10` adds ten, `-2` removes two.
+6. For a linear Part, enter **Length (mm)** so the change lands in the right length bucket.
+7. Choose the **Reason**:
    - **Opening balance** — putting a Part on the ledger for the first time
    - **Stock count** — a count correcting what the ledger believed
    - **Correction** — fixing a movement posted wrongly
    - **Damage**
    - **Scrap**
-7. Write a **Note**. It is required for every reason except an opening balance.
-8. Click **Post adjustment**.
+8. Write a **Note**. It is required for every reason except an opening balance.
+9. Click **Post adjustment**.
 
 A **Stock adjustment posted** toast confirms it.
 

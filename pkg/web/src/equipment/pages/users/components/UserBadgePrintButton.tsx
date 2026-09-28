@@ -6,8 +6,8 @@ import { Button } from '@/components/ui/button.js';
 import { userBadgeUrl } from '../user-badge.js';
 
 /**
- * Prints the card the stores tablet's quick-switch scans (spec §11). Offered only for stores people,
- * because that is the only role the quick-switch grid ever offers — a card for anyone else would
+ * Prints the Badge Card the stores tablet's Quick-switch scans. Offered for anyone with an Equipment
+ * role who is not a device, because that is who the Quick-switch offers — a card for anyone else would
  * scan to a name the tablet then refuses, which reads as a broken badge rather than a wrong one.
  */
 export const UserBadgePrintButton: React.FC<{ userId: AuthId }> = ({ userId }) => (

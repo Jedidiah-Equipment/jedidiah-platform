@@ -29,6 +29,7 @@ import { z } from 'zod';
 
 import { roundNumberFieldValue } from '@/components/form/fields/NumberField.js';
 import { emptyStringOr, optionalNumber, requiredSelection } from '@/components/form/utils/form-schema.js';
+import { MovementOperatorValue } from '@/equipment/pages/inventory/components/types.js';
 
 export type PurchaseOrderCreateFormValues = z.infer<typeof PurchaseOrderCreateFormValues>;
 export const PurchaseOrderCreateFormValues = z.object({
@@ -133,6 +134,7 @@ function toExpectedDeliveryDate(value: string) {
 /** What the dock keys in. Every rule beyond the length being optional stays owned by `@pkg/schema`. */
 export type PurchaseOrderReceiveFormValues = z.infer<typeof PurchaseOrderReceiveFormValues>;
 export const PurchaseOrderReceiveFormValues = z.object({
+  actorUserId: MovementOperatorValue,
   lengthMm: optionalNumber(StockMovementLengthMm),
   quantity: StockMovementQuantity,
   unitCost: optionalNumber(InventoryUnitCost),
@@ -206,6 +208,7 @@ export function purchaseOrderAmendmentValidator(
 /** What goes back to the Supplier. The value is never keyed — the ledger takes it off the receipts. */
 export type PurchaseOrderReturnFormValues = z.infer<typeof PurchaseOrderReturnFormValues>;
 export const PurchaseOrderReturnFormValues = z.object({
+  actorUserId: MovementOperatorValue,
   lengthMm: optionalNumber(StockMovementLengthMm),
   note: z.string(),
   quantity: StockMovementQuantity,
@@ -222,6 +225,7 @@ export function toReturnToSupplierInput({
   values: PurchaseOrderReturnFormValues;
 }) {
   return PostReturnToSupplierInput.parse({
+    actorUserId: values.actorUserId,
     lengthMm: isLinearLine(line) && !Number.isNaN(values.lengthMm) ? values.lengthMm : null,
     note: values.note,
     partId: line.partId,
@@ -271,6 +275,7 @@ export function toReceiptInput({
   values: PurchaseOrderReceiveFormValues;
 }) {
   return PostReceiptInput.parse({
+    actorUserId: values.actorUserId,
     lengthMm: isLinearLine(line) && !Number.isNaN(values.lengthMm) ? values.lengthMm : null,
     partId: line.partId,
     purchaseOrderId,

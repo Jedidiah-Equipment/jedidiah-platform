@@ -8,6 +8,7 @@ import { useQueryInvalidation } from '@/equipment/hooks/use-query-invalidation.j
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useTRPC } from '@/lib/trpc.js';
 
+import { MovementOperatorField, useDefaultMovementOperator } from './MovementOperatorField.js';
 import {
   partQuantityValidationMessage,
   partSelectOptions,
@@ -36,6 +37,7 @@ export function StockAdjustmentDialog({
   const trpc = useTRPC();
   const { invalidateInventory } = useQueryInvalidation();
   const showMutationError = useApiMutationErrorToast();
+  const defaultOperator = useDefaultMovementOperator();
   const validator = useMemo(() => stockAdjustmentValidator(parts), [parts]);
   const mutation = useMutation(
     trpc.inventory.postAdjustment.mutationOptions({
@@ -46,6 +48,7 @@ export function StockAdjustmentDialog({
   return (
     <CreateEntityDialog<StockAdjustmentFormValues, unknown>
       defaultValues={{
+        actorUserId: defaultOperator,
         delta: Number.NaN,
         lengthMm: Number.NaN,
         note: '',
@@ -73,6 +76,7 @@ export function StockAdjustmentDialog({
     >
       {(form) => (
         <>
+          <form.AppField name="actorUserId">{() => <MovementOperatorField enabled={open} />}</form.AppField>
           <form.AppField name="partId">
             {(field) => (
               <field.ComboboxField

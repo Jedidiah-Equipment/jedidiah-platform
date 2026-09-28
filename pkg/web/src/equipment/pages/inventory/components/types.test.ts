@@ -74,7 +74,11 @@ function stockRow(overrides: Partial<StockOnHandRow> = {}): StockOnHandRow {
   };
 }
 
+/** Whoever the form names — not necessarily whoever is signed in. */
+const operator = 'stores-abel';
+
 const adjustment = {
+  actorUserId: operator,
   delta: 2,
   lengthMm: 6_000,
   note: '  Go-live count  ',
@@ -86,6 +90,7 @@ const adjustment = {
 describe('stock adjustment form', () => {
   it('maps a linear opening balance, trimming its note', () => {
     expect(toAdjustmentInput(adjustment, true, linear)).toMatchObject({
+      actorUserId: operator,
       delta: 2,
       lengthMm: 6_000,
       note: 'Go-live count',
@@ -170,6 +175,7 @@ describe('stock revaluation form', () => {
 
 describe('Return to Store form', () => {
   const values = {
+    actorUserId: operator,
     lengthMm: 6_000,
     partId: linear.partId,
     quantity: 2,
@@ -216,6 +222,7 @@ describe('Return to Store form', () => {
       { message: 'Select a Parts Sale', path: ['targetId'] },
     ]);
     expect(toReturnStockInput(partsSale, linear)).toEqual({
+      actorUserId: operator,
       lengthMm: 6_000,
       partId: linear.partId,
       quantity: 2,
@@ -255,36 +262,40 @@ describe('Checkout Basket form', () => {
   it('maps only the selected target into the strict Basket input', () => {
     expect(
       toCheckoutBasketInput({
+        actorUserId: operator,
         lines: [first],
         note: 'unused',
         recipientUserId: 'unused',
         target: 'job',
         targetId: piece.partId,
       }),
-    ).toEqual({ jobId: piece.partId, lines: [first] });
+    ).toEqual({ actorUserId: operator, jobId: piece.partId, lines: [first] });
     expect(
       toCheckoutBasketInput({
+        actorUserId: operator,
         lines: [first],
         note: 'unused',
         recipientUserId: 'unused',
         target: 'quote',
         targetId: measured.partId,
       }),
-    ).toEqual({ lines: [first], quoteId: measured.partId });
+    ).toEqual({ actorUserId: operator, lines: [first], quoteId: measured.partId });
     expect(
       toCheckoutBasketInput({
+        actorUserId: operator,
         lines: [first],
         note: ' repair press ',
         recipientUserId: 'connor',
         target: 'person',
         targetId: '',
       }),
-    ).toEqual({ lines: [first], note: 'repair press', recipientUserId: 'connor' });
+    ).toEqual({ actorUserId: operator, lines: [first], note: 'repair press', recipientUserId: 'connor' });
   });
 
   it('requires a target and at least one line', () => {
     const validator = checkoutBasketValidator([piece]);
     const values = {
+      actorUserId: operator,
       lines: [first],
       note: '',
       recipientUserId: '',
@@ -293,6 +304,9 @@ describe('Checkout Basket form', () => {
     };
 
     expect(validator.safeParse(values).success).toBe(true);
+    expect(validator.safeParse({ ...values, actorUserId: '' }).error?.issues).toMatchObject([
+      { message: 'Select the Operator', path: ['actorUserId'] },
+    ]);
     // A Parts Sale needs only the Quote: no Recipient, no Purpose.
     expect(validator.safeParse({ ...values, target: 'quote', targetId: measured.partId }).success).toBe(true);
     expect(validator.safeParse({ ...values, target: 'quote', targetId: '' }).error?.issues).toMatchObject([
@@ -338,15 +352,19 @@ describe('Return from a Checkout Without a Job form', () => {
   };
 
   it('maps to the source-linked payload', () => {
-    expect(toReturnFromCheckoutInput({ quantity: 2, sourceCheckoutId })).toEqual({ quantity: 2, sourceCheckoutId });
+    expect(toReturnFromCheckoutInput({ actorUserId: operator, quantity: 2, sourceCheckoutId })).toEqual({
+      actorUserId: operator,
+      quantity: 2,
+      sourceCheckoutId,
+    });
   });
 
   it('needs a source, and holds the quantity to the source Part unit class', () => {
     const validator = returnFromCheckoutValidator([source]);
 
-    expect(validator.safeParse({ quantity: 2, sourceCheckoutId }).success).toBe(true);
-    expect(validator.safeParse({ quantity: 2, sourceCheckoutId: '' }).success).toBe(false);
-    expect(validator.safeParse({ quantity: 1.5, sourceCheckoutId }).success).toBe(false);
+    expect(validator.safeParse({ actorUserId: operator, quantity: 2, sourceCheckoutId }).success).toBe(true);
+    expect(validator.safeParse({ actorUserId: operator, quantity: 2, sourceCheckoutId: '' }).success).toBe(false);
+    expect(validator.safeParse({ actorUserId: operator, quantity: 1.5, sourceCheckoutId }).success).toBe(false);
   });
 });
 
@@ -382,11 +400,16 @@ describe('toCloseOutJobInput', () => {
   const jobId = '00000000-0000-4000-8000-000000000001';
 
   it('drops an empty or whitespace-only note rather than storing a blank one', () => {
-    expect(toCloseOutJobInput(jobId, { note: '   ' })).toEqual({ jobId, note: null });
+    expect(toCloseOutJobInput(jobId, { actorUserId: operator, note: '   ' })).toEqual({
+      actorUserId: operator,
+      jobId,
+      note: null,
+    });
   });
 
   it('trims a note the closer actually wrote', () => {
-    expect(toCloseOutJobInput(jobId, { note: '  Two bars back in bin A  ' })).toEqual({
+    expect(toCloseOutJobInput(jobId, { actorUserId: operator, note: '  Two bars back in bin A  ' })).toEqual({
+      actorUserId: operator,
       jobId,
       note: 'Two bars back in bin A',
     });
@@ -453,8 +476,11 @@ describe('stock build rows', () => {
   it('drops a zeroed row rather than posting a zero-quantity movement', () => {
     const rows = deriveStockBuildRows({ bomLines, items, values: { consumption: { [BOLT]: '0' }, quantity: 1 } });
 
-    expect(toBuildInput(ASSEMBLY, rows, 1).consumption).toEqual([
-      { componentPartId: PLATE, lengthMm: 6_000, quantity: 2 },
-    ]);
+    expect(toBuildInput(ASSEMBLY, rows, { actorUserId: operator, quantity: 1 })).toEqual({
+      actorUserId: operator,
+      builtPartId: ASSEMBLY,
+      consumption: [{ componentPartId: PLATE, lengthMm: 6_000, quantity: 2 }],
+      quantity: 1,
+    });
   });
 });

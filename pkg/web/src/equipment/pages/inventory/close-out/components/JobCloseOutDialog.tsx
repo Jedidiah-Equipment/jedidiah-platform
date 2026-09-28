@@ -5,10 +5,13 @@ import { toast } from 'sonner';
 
 import { CreateEntityDialog } from '@/components/form/index.js';
 import { useQueryInvalidation } from '@/equipment/hooks/use-query-invalidation.js';
+import {
+  MovementOperatorField,
+  useDefaultMovementOperator,
+} from '@/equipment/pages/inventory/components/MovementOperatorField.js';
 import { JobCloseOutFormValues, toCloseOutJobInput } from '@/equipment/pages/inventory/components/types.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useTRPC } from '@/lib/trpc.js';
-
 export function JobCloseOutDialog({
   committedPartCount,
   drawnPartCount,
@@ -26,6 +29,7 @@ export function JobCloseOutDialog({
   const navigate = useNavigate();
   const { invalidateInventory } = useQueryInvalidation();
   const showMutationError = useApiMutationErrorToast();
+  const defaultOperator = useDefaultMovementOperator();
   const mutation = useMutation(
     trpc.inventory.closeOutJob.mutationOptions({
       onError: (error) => showMutationError(error, 'Unable to close this Job out.'),
@@ -34,7 +38,7 @@ export function JobCloseOutDialog({
 
   return (
     <CreateEntityDialog<JobCloseOutFormValues, unknown>
-      defaultValues={{ note: '' }}
+      defaultValues={{ actorUserId: defaultOperator, note: '' }}
       description={describeOutstanding(drawnPartCount, committedPartCount)}
       onCreate={(values) => mutation.mutateAsync(toCloseOutJobInput(jobId, values))}
       onCreated={async () => {
@@ -50,9 +54,12 @@ export function JobCloseOutDialog({
       validator={JobCloseOutFormValues}
     >
       {(form) => (
-        <form.AppField name="note">
-          {(field) => <field.TextareaField label="Note" placeholder="Anything worth recording about the close" />}
-        </form.AppField>
+        <>
+          <form.AppField name="actorUserId">{() => <MovementOperatorField enabled={open} />}</form.AppField>
+          <form.AppField name="note">
+            {(field) => <field.TextareaField label="Note" placeholder="Anything worth recording about the close" />}
+          </form.AppField>
+        </>
       )}
     </CreateEntityDialog>
   );

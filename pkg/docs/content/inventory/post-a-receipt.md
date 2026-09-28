@@ -10,14 +10,15 @@ exists — there is no separate paper step afterwards.
 2. Find the **Receiving** card. Each line shows **Received** as a running `x / y`, and
    **Outstanding** as what is still to come.
 3. Click **Receive** on the line that arrived.
-4. Check **Quantity received**. It is prefilled with the outstanding quantity, which is right when
+4. Check **Operator**. It starts as you; choose whoever is doing the work if that is someone else.
+5. Check **Quantity received**. It is prefilled with the outstanding quantity, which is right when
    the delivery completes the line and wrong when it is a part delivery — change it to what actually
    arrived.
-5. For a linear Part, set **Length (mm)** only if the pieces came in a length other than the
+6. For a linear Part, set **Length (mm)** only if the pieces came in a length other than the
    standard one. Leave it blank otherwise; the field tells you which length it will assume.
-6. If you have cost access, leave **Unit cost override** blank to use the Purchase Order price. Fill
+7. If you have cost access, leave **Unit cost override** blank to use the Purchase Order price. Fill
    it only when the invoice disagrees with the order.
-7. Click **Receive**. If the delivery is bigger than the line ordered, the button reads **Receive it
+8. Click **Receive**. If the delivery is bigger than the line ordered, the button reads **Receive it
    anyway** — click it once you have read the panel and the delivery really was that size.
 
 A **Delivery received** toast confirms it, and the Part's stock on hand goes up immediately.

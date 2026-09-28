@@ -5,6 +5,7 @@ import { createRoot } from 'react-dom/client';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 const access = vi.hoisted(() => ({ canReadAudit: true }));
+vi.mock('@/lib/auth-client.js', () => ({ authClient: { useSession: () => ({ data: null }) } }));
 vi.mock('@/hooks/use-api-mutation-error-toast.js', () => ({ useApiMutationErrorToast: () => vi.fn() }));
 vi.mock('@/hooks/use-access.js', () => ({
   useAccess: vi.fn(),

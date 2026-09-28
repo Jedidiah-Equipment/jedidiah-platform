@@ -117,9 +117,9 @@ export function useStoresActor(): StoresActorContextValue {
 /**
  * The actor id to send with a post, or `null` when nobody is selected.
  *
- * Screens gate their post buttons on this being non-null. That gate is UX: the server accepts a post
- * with no asserted actor and attributes it to the tablet's own session, so the reason to disable the
- * button is to stop movements landing under "Stores Tablet", not to stop them landing at all.
+ * Screens gate their post buttons on this being non-null. That gate is UX: the server refuses a post
+ * from the tablet's device session that names nobody, so the disabled button only spares the person
+ * a round trip that could only fail.
  */
 export function useMovementActorUserId(): string | null {
   return useStoresActor().actor?.id ?? null;

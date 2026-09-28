@@ -58,7 +58,7 @@ export const test = createTester(async ({ db }) => {
 });
 
 /**
- * A stores person the tablet's quick-switch can name — the "person attributes" half of spec §11.
+ * A stores person the tablet's quick-switch can name as the Operator.
  * Distinct from `actorUserId`, which stands in for the signed-in device session.
  */
 export async function seedQuickSwitchPerson(

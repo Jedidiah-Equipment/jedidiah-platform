@@ -85,18 +85,17 @@ const MovementTargetInput = z.object({
 });
 
 /**
- * Who the shared stores tablet attributes this movement to (spec §11): the device authorizes, the
- * person attributes. The tablet holds one session as the "Stores Tablet" user and names the person
- * at the scan field through its quick-switch, so the ledger records the hand that moved the stock
- * rather than the device it was keyed on.
+ * The Operator this movement is attributed to: the session authorizes, the Operator field attributes.
+ * The tablet names the person at the scan field through its Quick-switch, and every web movement form
+ * names one in its Operator field, so the ledger records the hand that moved the stock rather than
+ * the account it was keyed on.
  *
- * Omitted — every web surface, and the tablet before anyone has identified themselves — attributes
- * the signed-in user. Asserting an actor never widens what the caller may do: the asserted person's
- * own permissions are never consulted, and an unknown or disabled one is refused rather than ignored.
+ * Omitted, a person session attributes itself and a device session is refused. Asserting an actor
+ * never widens what the caller may do: the asserted person's own permissions are never consulted,
+ * and an unknown or disabled one is refused rather than ignored.
  *
  * Optional rather than defaulted-to-null, because absence *is* the meaning: a caller with nobody to
- * name leaves the field off entirely, and every surface that predates the tablet keeps compiling
- * without being made to spell out that it has no quick-switch.
+ * name leaves the field off entirely.
  */
 export type AssertedActorUserId = z.infer<typeof AssertedActorUserId>;
 export const AssertedActorUserId = AuthId.nullish();

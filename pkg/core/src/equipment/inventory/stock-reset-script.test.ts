@@ -239,7 +239,7 @@ async function signedOffCounts(db: Db) {
   };
 }
 
-function runReset(databaseUrl: string, counts: Record<string, number>) {
+function runReset(databaseUrl: string, counts: Awaited<ReturnType<typeof signedOffCounts>>) {
   const variables = Object.entries({ actor_email: 'inventory@example.com', ...counts }).flatMap(([name, value]) => [
     '-v',
     `${name}=${value}`,

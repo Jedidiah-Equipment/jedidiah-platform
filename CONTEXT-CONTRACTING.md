@@ -19,7 +19,7 @@ to management only until a Foreman is assigned), **Active** (entered automatical
 machine starts; cancellable by management with a mandatory reason), **Completed** (the
 Contracting Manager's sign-off, reachable only once every Assignment has left and every Gap Flag
 is resolved: work confirmed done, Charge Lines and notes added, final start and end dates stamped
-— suggested from the earliest arrival and latest departure capture times, tweakable), **Priced**
+— suggested from the earliest arrival and latest departure **Read At** times, never from when they were accepted, tweakable), **Priced**
 (rates applied and frozen as a snapshot — diesel litres and travel lock with it; a reading amendment reopens the Job to Completed for
 re-pricing — the chosen Rates and their snapshotted unit amounts stay, line amounts recompute from
 the amended hours, and manual amount edits are discarded), and **Invoiced** (the invoice number stamped; the wall — after it, nothing moves). There is no "submitted" status: foremen never close Jobs; a
@@ -133,8 +133,9 @@ read (its **Read At** time) and by whom, and its evidence. Whoever captures it t
 the Foreman in the field, an administrator for a Baseline Reading; a photo is attached whenever
 the camera allows, taken on the spot or chosen from the phone's gallery, and a reading without
 one is stamped **Missing Photo Evidence**. Read At defaults to when a chosen photo says it was
-taken, and otherwise to the moment of capture; the Foreman may correct it, and it is never in the
-future. Read At
+taken, and otherwise to the moment of capture — a photo with no usable time, or one whose time
+lies in the future, is still accepted and defaults to that moment; the Foreman may correct it,
+and it is never in the future. Read At
 describes a reading; it never orders them. A Machine's readings are ordered by acceptance: the
 **latest reading** is the one the server accepted last, every capture is judged against that
 reading whatever its Read At, and a late-entered reading takes its place after it. An Hour Gap

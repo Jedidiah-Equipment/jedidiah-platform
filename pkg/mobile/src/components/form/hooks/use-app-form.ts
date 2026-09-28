@@ -4,6 +4,7 @@ import { CurrencyField } from '../fields/CurrencyField';
 import { DateField } from '../fields/DateField';
 import { MultiSelectField } from '../fields/MultiSelectField';
 import { NumberField } from '../fields/NumberField';
+import { SearchSelectField } from '../fields/SearchSelectField';
 import { SegmentedField } from '../fields/SegmentedField';
 import { SelectField } from '../fields/SelectField';
 import { TextareaField } from '../fields/TextareaField';
@@ -18,6 +19,7 @@ export const { useAppForm, useTypedAppFormContext, withForm } = createFormHook({
     DateField,
     MultiSelectField,
     NumberField,
+    SearchSelectField,
     SelectField,
     SegmentedField,
     TextField,

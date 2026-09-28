@@ -1,4 +1,5 @@
 import { IconPlus } from '@tabler/icons-react';
+import type React from 'react';
 import { useRef, useState } from 'react';
 import {
   Combobox,
@@ -8,8 +9,11 @@ import {
   ComboboxItem,
   ComboboxList,
 } from '@/components/ui/combobox.js';
+import { InputGroupAddon } from '@/components/ui/input-group.js';
 
 export type SearchableComboboxOption = {
+  /** Shown before the label in the list, and before the input while this option is selected. */
+  icon?: React.ReactNode;
   label: string;
   value: string;
 };
@@ -64,6 +68,9 @@ export function SearchableCombobox({
   const createItem = create ? creatableItem({ create, inputValue, options, selectedOption }) : undefined;
   const items = createItem ? [...options, createItem] : options;
   const isDisabled = disabled || creating;
+  // Hidden while the user types something else, so the icon never sits beside a search it does not describe.
+  const selectedIcon =
+    selectedOption?.icon && (inputValue === '' || inputValue === selectedOption.label) ? selectedOption.icon : null;
 
   const createAndSelect = async (name: string) => {
     if (!create) return;
@@ -128,7 +135,13 @@ export function SearchableCombobox({
         }}
         placeholder={placeholder}
         showClear
-      />
+      >
+        {selectedIcon ? (
+          <InputGroupAddon align="inline-start" className="py-0">
+            {selectedIcon}
+          </InputGroupAddon>
+        ) : null}
+      </ComboboxInput>
       <ComboboxContent>
         <ComboboxEmpty>{emptyMessage}</ComboboxEmpty>
         <ComboboxList>
@@ -140,7 +153,10 @@ export function SearchableCombobox({
                   Create "{option.label}"
                 </>
               ) : (
-                option.label
+                <>
+                  {option.icon}
+                  {option.label}
+                </>
               )}
             </ComboboxItem>
           )}

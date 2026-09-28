@@ -7,6 +7,11 @@ import {
   unpricedJobStatuses,
 } from '@pkg/schema/contracting';
 import { hasPermission } from '../auth/authorization.js';
+import {
+  type BadgeColorClassNames,
+  cancelledBadgeColorClassNames,
+  statusBadgeColorClassNames,
+} from '../theme/status-badge.js';
 
 const JOB_NUMBER_PREFIX = 'CJOB-';
 
@@ -63,4 +68,14 @@ export const jobStatusLabels: Record<JobStatus, string> = {
   priced: 'Priced',
   invoiced: 'Invoiced',
   cancelled: 'Cancelled',
+};
+
+/** Tailwind classes split so native surfaces can put the text colour on the Text element. */
+export const jobStatusColorClassNames: Record<JobStatus, BadgeColorClassNames> = {
+  upcoming: statusBadgeColorClassNames.gray,
+  active: statusBadgeColorClassNames.blue,
+  completed: statusBadgeColorClassNames.teal,
+  priced: statusBadgeColorClassNames.purple,
+  invoiced: statusBadgeColorClassNames.green,
+  cancelled: cancelledBadgeColorClassNames,
 };

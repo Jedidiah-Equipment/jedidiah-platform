@@ -10,7 +10,6 @@ import { QueryContent } from '@/components/common/QueryContent.js';
 import { AutosaveFormCard } from '@/components/form/AutosaveFormCard.js';
 import { CreateEntityDialog, useAutosaveForm } from '@/components/form/index.js';
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
-import { Badge } from '@/components/ui/badge.js';
 import { Button } from '@/components/ui/button.js';
 import { useQueryInvalidation } from '@/contracting/hooks/use-query-invalidation.js';
 import { useAccess } from '@/hooks/use-access.js';
@@ -19,6 +18,7 @@ import { useTRPC } from '@/lib/trpc.js';
 import { ChargeLinesCard } from './ChargeLinesCard.js';
 import { InvoiceCard } from './InvoiceCard.js';
 import { JobCardMenu } from './JobCardMenu.js';
+import { JobStatusBadge } from './JobStatusBadge.js';
 import { MachinesCard } from './MachinesCard.js';
 import { PricingCard } from './PricingCard.js';
 import { SignOffCard } from './SignOffCard.js';
@@ -36,21 +36,21 @@ export function JobPage({ code }: { code: string }) {
         query.data ? `${query.data.customerName} · ${query.data.farmName} · ${query.data.workTypeName}` : undefined
       }
       size="lg"
-      actions={query.data && sheet?.seesMoney ? <JobCardMenu job={query.data} /> : null}
+      actions={
+        query.data ? (
+          <div className="flex items-center gap-2">
+            {sheet?.seesMoney ? <JobCardMenu job={query.data} /> : null}
+            <JobStatusBadge size="lg" status={query.data.status} />
+          </div>
+        ) : null
+      }
     >
       <ErrorMessage error={query.error} fallbackMessage="Unable to load Job." />
       <QueryContent errorMessage="Unable to load Job." query={query}>
         {(job) =>
           sheet ? (
             <div className="space-y-5">
-              <div className="flex items-center gap-3">
-                <Badge variant="secondary">
-                  {job.status[0]?.toUpperCase()}
-                  {job.status.slice(1)}
-                </Badge>
-                <span>{job.foremanName ?? 'No Foreman assigned'}</span>
-                {job.cancellationReason ? <span>Cancelled: {job.cancellationReason}</span> : null}
-              </div>
+              {job.cancellationReason ? <p>Cancelled: {job.cancellationReason}</p> : null}
               <SetupCard key={`setup-${job.id}`} job={job} sheet={sheet} />
               <MachinesCard job={job} sheet={sheet} />
               {sheet.showsSignOff ? <SignOffCard job={job} sheet={sheet} /> : null}
@@ -86,6 +86,10 @@ function SetupCard({ job, sheet }: { job: JobDetail; sheet: JobSheet }) {
       enabled: setsForeman,
     }),
   );
+  // Foremen only load for whoever can change the Foreman; everyone else still needs the current one to show.
+  const foremanOptions = (foremen.data ?? []).map((row) => ({ value: row.id, label: row.name }));
+  if (job.foremanUserId && job.foremanName && !foremanOptions.some((option) => option.value === job.foremanUserId))
+    foremanOptions.push({ value: job.foremanUserId, label: job.foremanName });
   const patch = useMutation(trpc.contractingJobs.jobs.patch.mutationOptions({ onSuccess: invalidateJobs }));
   const { autosave, form, formProps } = useAutosaveForm({
     defaultValues: {
@@ -135,17 +139,17 @@ function SetupCard({ job, sheet }: { job: JobDetail; sheet: JobSheet }) {
             />
           )}
         </form.AppField>
-        <form.AppField name="description">{(field) => <field.TextareaField label="Description" />}</form.AppField>
         <form.AppField name="foremanUserId">
           {(field) => (
             <field.ComboboxField
               label="Foreman"
               disabled={!setsForeman}
-              options={(foremen.data ?? []).map((row) => ({ value: row.id, label: row.name }))}
+              options={foremanOptions}
               onValueCommit={autosave.commit}
             />
           )}
         </form.AppField>
+        <form.AppField name="description">{(field) => <field.TextareaField label="Description" />}</form.AppField>
       </AutosaveFormCard>
     </section>
   );

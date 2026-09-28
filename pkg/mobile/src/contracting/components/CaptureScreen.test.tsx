@@ -32,6 +32,7 @@ vi.mock('@/components/TopToolbar', () => ({ SecondaryToolbar: 'SecondaryToolbar'
 vi.mock('@/components/ui/button', () => ({ Button: 'Button' }));
 vi.mock('@/components/ui/text', () => ({ Text: 'Text' }));
 vi.mock('@/components/ui/text-input', () => ({ TextInput: 'TextInput' }));
+vi.mock('@/contracting/components/CategoryIcon', () => ({ CategoryIcon: 'CategoryIcon' }));
 vi.mock('@/contracting/jobs/use-jobs', () => ({
   useDrivers: () => ({ data: [] }),
   useImplements: () => ({ data: [] }),

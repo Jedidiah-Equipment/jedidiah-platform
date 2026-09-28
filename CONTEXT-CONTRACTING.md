@@ -29,7 +29,7 @@ the invoice — that chain is the app's core promise.
 
 **Machine Assignment** is one Machine's stint on one Job. Management may plan it when setting
 the Job up — machine and Implement chosen ahead of arrival, a **planned** Assignment — or the
-Foreman adds it on site; either way it becomes **on site** when its arrival Hour Reading is
+Foreman adds it from the phone, planned until the Machine arrives; either way it becomes **on site** when its arrival Hour Reading is
 captured and **left** when its departure is. A Machine may have **several sequential Assignments
 on the same Job** — leaving and returning, often with a different Implement — but **at most one
 on-site Assignment at a time across all Jobs**, which is what enforces that a machine is never in

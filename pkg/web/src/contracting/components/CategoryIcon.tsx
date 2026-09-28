@@ -17,7 +17,7 @@ export function CategoryIcon({
 }: {
   icon: CategoryIconKey;
   colour: CategoryColour;
-  size?: 16 | 20 | 24;
+  size?: 14 | 16 | 20 | 24;
   className?: string;
 }) {
   const glyph = categoryIcon(icon);
@@ -37,6 +37,8 @@ export function CategoryIcon({
         aria-label={glyph.label}
         width={size}
         height={size}
+        // Menu rows size unclassed svgs to 16px; the inline size keeps the glyph at the size asked for.
+        style={{ width: size, height: size }}
         viewBox={CATEGORY_ICON_VIEW_BOX}
         fill="none"
         stroke="currentColor"
@@ -64,7 +66,7 @@ export function CategoryLabel({
   icon: CategoryIconKey;
   colour: CategoryColour;
   name: React.ReactNode;
-  size?: 16 | 20 | 24;
+  size?: 14 | 16 | 20 | 24;
   className?: string;
 }) {
   return (

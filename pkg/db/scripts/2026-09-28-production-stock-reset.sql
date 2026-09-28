@@ -28,13 +28,15 @@
 
 begin;
 
--- Stock writers append under row locks on Parts; this holds every one of them off until commit, so the
--- counts checked below are the rows deleted.
+-- Holds every writer off until commit, so the counts checked below are the rows deleted. Taken in the
+-- writers' own order (the Part row, then the Purchase Order row, then what hangs off them) so a receipt
+-- caught mid-write finishes first instead of deadlocking against the reset.
 lock table
+  equipment.parts,
+  equipment.purchase_order,
   equipment.stock_movement,
   equipment.stock_build,
   equipment.stocktake_session,
-  equipment.purchase_order,
   equipment.purchase_order_line,
   equipment.purchase_order_line_arrival,
   equipment.purchase_order_amendment,

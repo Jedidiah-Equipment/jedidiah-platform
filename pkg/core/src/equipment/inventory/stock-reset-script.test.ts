@@ -29,6 +29,11 @@ const scriptPath = fileURLToPath(
   new URL('../../../../db/scripts/2026-09-28-production-stock-reset.sql', import.meta.url),
 );
 const runPsql = promisify(execFile);
+// The operator runs the script with a host psql; a machine without one has nothing to verify it with.
+const hasPsql = await runPsql('psql', ['--version']).then(
+  () => true,
+  () => false,
+);
 
 type World = {
   jobs: Awaited<ReturnType<typeof seedJobs>>;
@@ -248,7 +253,7 @@ function runReset(databaseUrl: string, counts: Awaited<ReturnType<typeof signedO
   return runPsql('psql', ['-X', '-q', databaseUrl, ...variables, '-f', scriptPath]);
 }
 
-describe('2026-09-28 production stock reset', () => {
+describe.skipIf(!hasPsql)('2026-09-28 production stock reset (needs psql on PATH)', () => {
   test('carries every costed Part over at its moving average and leaves an uncosted Part uncosted', async ({
     context,
   }) => {

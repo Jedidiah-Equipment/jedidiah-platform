@@ -166,7 +166,7 @@ Server/API checks are the security boundary. Browser access checks are UX only.
 
 **Quick-switch** is how the Stores Tablet names the Operator: a name tap or a **Badge Card** scan sets the actor for the scan session, and an idle timeout clears it. It offers the same people as the web Operator field and Received by — any active, non-device user with an Equipment role. It is not a session and grants nothing — *the session authorizes, the Operator field attributes*. Authorization always comes from the signed-in session; the Quick-switch, like the web Operator field, only decides whose name the Stock Movement's `actor_user_id` records, so a signed-in person can post under someone else's name. An actor who is unknown, disabled, or itself a device is refused rather than ignored, and a device that names nobody is refused outright — so a movement never lands under a machine's name. No PIN backs this in v1 — the timeout is the control. Avoid "log in as" for the quick-switch.
 
-**Badge Card** is a printed Code 128 label encoding `badge:<userId>`, scanned at the Stores Tablet's scan field to quick-switch to that person. It identifies; it does not authenticate. Printed from the user screen under `user:set-role` for anyone the Quick-switch offers — any user with an Equipment role — and never for a Device Account.
+**Badge Card** is a printed Code 128 label encoding `badge:<userId>`, scanned at the Stores Tablet's scan field to quick-switch to that person. It identifies; it does not authenticate. Printed from the user screen under `user:set-role` for any user with an Equipment role, and never for a Device Account; a card for someone the Quick-switch does not offer, such as a disabled person, is refused at the scan.
 
 ## Feedback
 

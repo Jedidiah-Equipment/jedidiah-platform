@@ -1,8 +1,12 @@
 # Print Part Labels
 
-A Part Label is a printable identity for one Part: a barcode of the Part code, plus readable text
+A Part Label is a printable identity for one Part: a QR code of the Part code, plus readable text
 repeating the code, the name, and the Storage Location. Labels are printed on demand and are never
 stored or tracked — print another whenever one goes missing or a location changes.
+
+Labels are 40 × 30 mm, one per page. Load 40 × 30 mm stock and print at 100% (actual size) with no
+fit-to-page scaling — a scaled QR code prints blurred and may not scan. Labels printed before the
+switch to QR carry a Code 128 barcode; they still scan until you reprint them.
 
 ## One Part
 
@@ -46,7 +50,7 @@ higher.
 
 ## A stores badge card
 
-A badge card is the same label stock carrying a person's name and a barcode the stores tablet reads
+A badge card is the same label stock carrying a person's name and a QR code the stores tablet reads
 to switch to them. Only users with the **Stores** role have one.
 
 1. Open **Users** and click the person.
@@ -65,7 +69,10 @@ See [Work the stores tablet](./work-the-stores-tablet.md).
 
 ## Notes
 
-- The barcode encodes only the Part code. Nothing about quantity, length, Job, or Supplier is in it.
+- The QR code encodes only the Part code. Nothing about quantity, length, Job, or Supplier is in it.
+- A Part code can be at most 13 characters, so it prints on one line. A longer code from before that
+  limit still prints and scans; only its printed line is cut short. Editing that Part asks you to
+  shorten the code before anything else saves.
 - Labels are never scoped by Supplier — one Part, one label, whoever supplied it.
 - A linear Part gets one label per Part, not one per length. Length lives on the movement, not on the
   identity of the Part.

@@ -1,7 +1,7 @@
 /**
  * What a keyboard-wedge scan means (spec §10, §11).
  *
- * The stores tablet has one scan field and two kinds of label going into it: our own Code 128 Part
+ * The stores tablet has one scan field and two kinds of label going into it: our own QR Part
  * labels, and the badge cards the quick-switch reads. They are told apart by prefix rather than by
  * shape, because a Part code is free text — reserving a prefix is the only rule a new Part code
  * cannot accidentally collide with.

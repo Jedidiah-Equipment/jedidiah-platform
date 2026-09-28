@@ -9,7 +9,12 @@ const outputPath = path.join(REPO_ROOT, 'tmp/pdfs/part-label-fixture.pdf');
 const bytes = await renderPartLabelsPdf({
   document: [
     { code: 'P-100', name: 'Main bearing', storageLocation: 'Bin A-04' },
-    { code: 'SEMP-0001', name: 'Hydraulic pipe - long descriptive name', storageLocation: 'Raw material rack' },
+    {
+      code: 'SKF-UCF212-60',
+      name: 'Hydraulic pipe - long descriptive name',
+      storageLocation: 'Raw material rack, bay 4 top shelf',
+    },
+    { code: 'Grade 80 chain short link 20mm Apex 80', name: 'Grade 80 chain short link', storageLocation: null },
   ],
   filename: 'part-label-fixture.pdf',
 });

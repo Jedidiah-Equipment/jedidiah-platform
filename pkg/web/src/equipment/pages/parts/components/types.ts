@@ -4,7 +4,7 @@ import {
   PART_UNIT_OF_MEASURE_LABELS,
   type Part,
   PartAverageUtilizationPercent,
-  PartCode,
+  PartCodeInput,
   PartCreateInput,
   PartDescription,
   PartDrawingCode,
@@ -28,7 +28,7 @@ import { emptyStringOr, requiredSelection } from '@/components/form/utils/form-s
 const PartFormFields = z.object({
   averageUtilizationPercent: z.union([PartAverageUtilizationPercent, z.nan()]),
   categoryId: requiredSelection(UUIDSchema, 'Select a Part Category'),
-  code: PartCode,
+  code: PartCodeInput,
   description: PartDescription,
   drawingCode: emptyStringOr(PartDrawingCode),
   finish: PartFinish,

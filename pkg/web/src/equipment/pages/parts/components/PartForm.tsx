@@ -1,4 +1,5 @@
 import {
+  PART_CODE_MAX_LENGTH,
   type Part,
   PartAverageUtilizationPercent,
   PartUnitOfMeasure,
@@ -56,7 +57,9 @@ export const PartForm: React.FC<PartFormProps> = ({
     >
       <EditFormGrid>
         <form.AppField name="name">{(field) => <field.TextField autoComplete="off" label="Name" />}</form.AppField>
-        <form.AppField name="code">{(field) => <field.TextField autoComplete="off" label="Code" />}</form.AppField>
+        <form.AppField name="code">
+          {(field) => <field.TextField autoComplete="off" label="Code" maxLength={PART_CODE_MAX_LENGTH} />}
+        </form.AppField>
         <form.AppField name="drawingCode">
           {(field) => <field.TextField autoComplete="off" label="Drawing code" />}
         </form.AppField>

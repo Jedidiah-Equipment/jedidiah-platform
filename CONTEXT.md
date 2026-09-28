@@ -48,7 +48,7 @@ Buyer in code and docs.
 
 **Job Estimate Snapshot** is the Product Cost Estimate, including its missing-input flags, frozen on a Product Job inside Job creation. A Build Job freezes the full Product estimate. A Rework Job freezes only the Optional Assembly Parts in its Rework CFO; Product-level material and labor stay explicitly unattributed rather than being charged to the Rework. A Custom Job has no snapshot. The Job's estimate-vs-actual comparison compares the snapshot's Assembly Part floor with costs stamped on its Checkouts; frozen material, labor and overheads remain context because none has a comparable Checkout total. Snapshots frozen before the Labor Rate Card were rewritten once, by migration, to the same shape: one staff member at nine hours a day with no consumables or management overhead, so their frozen totals stand. **Raw Material Drift** compares physical depletion between two raw-material stocktake sessions with material lines frozen on the snapshots of Product Jobs completed in that window. Rework snapshots contribute no Product-level material. Its expected figure is a floor because Jobs without a completion date or estimate snapshot do not count.
 
-A **Part Label** is an on-demand printable identity for exactly one Part: Code 128 encodes only the Part code, while readable text repeats its code, name, and Storage Location. Labels are never stored or tracked, are never scoped by Supplier, and linear labels stay per Part rather than per length bucket.
+A **Part Label** is an on-demand printable identity for exactly one Part: a QR code encodes only the Part code, while readable text repeats its code, name, and Storage Location. Labels are never stored or tracked, are never scoped by Supplier, and linear labels stay per Part rather than per length bucket. A label is one 40 × 30 mm page printed at actual size. A Part code typed anywhere is capped at what one line of the label's printed code holds (`PART_CODE_MAX_LENGTH`); the QR code carries any length, so a code from before the cap still loads, prints, and scans, with only its printed line cut short.
 
 ## Stock
 
@@ -166,7 +166,7 @@ Server/API checks are the security boundary. Browser access checks are UX only.
 
 **Quick-switch** is how the Stores Tablet names the person doing the work: a name tap or a **Badge Card** scan sets the actor for the scan session, and an idle timeout clears it. It is not a session and grants nothing — *the device authorizes, the person attributes*. Authorization always comes from the tablet's own session; the quick-switch only decides whose name the Stock Movement's `actor_user_id` records. An actor who is unknown, disabled, or itself a device is refused rather than ignored, and a device that names nobody is refused outright — so a movement never lands under a machine's name. No PIN backs this in v1 — the timeout is the control. Avoid "log in as" for the quick-switch.
 
-**Badge Card** is a printed Code 128 label encoding `badge:<userId>`, scanned at the Stores Tablet's scan field to quick-switch to that person. It identifies; it does not authenticate. Printed from the user screen under `user:set-role`, and never for a Device Account.
+**Badge Card** is a printed label whose QR code encodes `badge:<userId>`, scanned at the Stores Tablet's scan field to quick-switch to that person. It identifies; it does not authenticate. Printed from the user screen under `user:set-role`, and never for a Device Account.
 
 ## Feedback
 

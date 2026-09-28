@@ -1,54 +1,43 @@
-import { badgeScanToken, parseScanToken } from '@pkg/domain/equipment';
+import { parseScanToken } from '@pkg/domain/equipment';
 import type { UserBadgePdfModel } from '@pkg/schema/equipment';
 import { isValidElement, type ReactElement, type ReactNode } from 'react';
 import { describe, expect, test } from 'vitest';
 
 import { getPdfPageSizes } from '../../bytes/pdf-bytes.js';
-import { getCode128BarPattern } from '../part-label/code128.js';
-import { USER_BADGE_PAGE_SIZE, UserBadgePdf } from './UserBadgePdf.js';
+import { LabelQrSymbol } from '../part-label/label-stock.js';
+import { UserBadgePdf } from './UserBadgePdf.js';
 import { renderUserBadgesPdf } from './user-badge-pdf-renderer.js';
 
+const POINTS_PER_MILLIMETRE = 72 / 25.4;
+
+// Real user ids are 32 characters, so each badge token is 38.
 const BADGES = [
-  { id: 'user-abc', name: 'Thabo Mokoena' },
-  { id: 'user-def', name: 'Ruan Botha' },
+  { id: 'rFljpEBlRlbFzOCe6AzxjN3Ez365cQJ1', name: 'Thabo Mokoena' },
+  { id: 'G4mw3WTWhCpH1VCQDwaqk8de509oAAQB', name: 'Ruan Botha' },
 ] satisfies UserBadgePdfModel[];
 
 describe('stores badge PDF', () => {
-  test('encodes the prefixed token the tablet resolves back to the person', () => {
-    // The pattern is the encoder's, but what matters is the payload it was handed.
-    expect(getCode128BarPattern(badgeScanToken('user-abc'))).toBe(getCode128BarPattern('badge:user-abc'));
-    expect(parseScanToken(badgeScanToken('user-abc'))).toEqual({ kind: 'badge', userId: 'user-abc' });
+  test('encodes a token the tablet resolves back to each person', () => {
+    const payloads = collectQrPayloads(UserBadgePdf({ badges: BADGES }));
+
+    expect(payloads.map(parseScanToken)).toEqual(BADGES.map(({ id }) => ({ kind: 'badge', userId: id })));
   });
 
-  test('prints the person’s name, so a card can be picked off a bench by eye', () => {
-    const text = collectText(
-      UserBadgePdf({
-        items: BADGES.map((badge, index) => ({
-          badge,
-          barcodeDataUri: index === 0 ? 'first' : 'second',
-          barcodeWidth: 100,
-        })),
-      }),
-    );
-
-    expect(text).toEqual(expect.arrayContaining(['Thabo Mokoena', 'Ruan Botha']));
-  });
-
-  test('renders one label-stock page per person', async () => {
+  test('renders one 40 by 30 millimetre label-stock page per person', async () => {
     const bytes = await renderUserBadgesPdf({ document: BADGES, filename: 'stores-badges.pdf' });
     const pageSizes = await getPdfPageSizes(bytes);
 
     expect(new TextDecoder().decode(bytes.slice(0, 5))).toBe('%PDF-');
     expect(pageSizes).toHaveLength(2);
     for (const page of pageSizes) {
-      expect(page.width).toBeCloseTo(USER_BADGE_PAGE_SIZE.width, 3);
-      expect(page.height).toBeCloseTo(USER_BADGE_PAGE_SIZE.height, 3);
+      expect(page.width).toBeCloseTo(40 * POINTS_PER_MILLIMETRE, 3);
+      expect(page.height).toBeCloseTo(30 * POINTS_PER_MILLIMETRE, 3);
     }
   });
 
   test('keeps a long name on one physical card', async () => {
     const bytes = await renderUserBadgesPdf({
-      document: [{ id: 'user-long', name: 'Long stores person name '.repeat(6) }],
+      document: [{ id: 'rFljpEBlRlbFzOCe6AzxjN3Ez365cQJ1', name: 'Long stores person name '.repeat(6) }],
       filename: 'stores-badge.pdf',
     });
 
@@ -56,16 +45,15 @@ describe('stores badge PDF', () => {
   });
 });
 
-type RenderedElement = ReactElement<{ children?: ReactNode }>;
+type RenderedElement = ReactElement<{ children?: ReactNode; payload?: string }>;
 
-function collectText(node: ReactNode): string[] {
-  if (node === null || node === undefined || typeof node === 'boolean') return [];
-  if (typeof node === 'string' || typeof node === 'number') return [String(node)];
-  if (Array.isArray(node)) return node.flatMap(collectText);
+function collectQrPayloads(node: ReactNode): string[] {
+  if (Array.isArray(node)) return node.flatMap(collectQrPayloads);
   if (!isValidElement(node)) return [];
   const element = node as RenderedElement;
+  if (element.type === LabelQrSymbol) return element.props.payload === undefined ? [] : [element.props.payload];
   if (typeof element.type === 'function') {
-    return collectText((element.type as (props: typeof element.props) => ReactNode)(element.props));
+    return collectQrPayloads((element.type as (props: typeof element.props) => ReactNode)(element.props));
   }
-  return collectText(element.props.children);
+  return collectQrPayloads(element.props.children);
 }

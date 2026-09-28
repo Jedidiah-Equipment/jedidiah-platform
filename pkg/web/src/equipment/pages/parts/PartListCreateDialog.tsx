@@ -1,4 +1,4 @@
-import type { Part } from '@pkg/schema/equipment';
+import { PART_CODE_MAX_LENGTH, type Part } from '@pkg/schema/equipment';
 import { useMutation } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
@@ -56,7 +56,9 @@ export function PartListCreateDialog({
       {(form) => (
         <>
           <form.AppField name="name">{(field) => <field.TextField autoComplete="off" label="Name" />}</form.AppField>
-          <form.AppField name="code">{(field) => <field.TextField autoComplete="off" label="Code" />}</form.AppField>
+          <form.AppField name="code">
+            {(field) => <field.TextField autoComplete="off" label="Code" maxLength={PART_CODE_MAX_LENGTH} />}
+          </form.AppField>
           <form.AppField name="categoryId">{() => <PartCategoryField />}</form.AppField>
           <form.AppField name="finish">
             {(field) => <field.TextField autoComplete="off" label="Finish" />}

@@ -14,6 +14,33 @@ import {
   unitClassFor,
 } from './part.js';
 
+describe('Part code length', () => {
+  const input = {
+    categoryId: '00000000-0000-4000-8000-000000000009',
+    description: 'Main bearing',
+    drawingCode: null,
+    finish: 'Zinc',
+    name: 'Bearing',
+    supplierCode: 'SUP-100',
+    supplierId: '00000000-0000-4000-8000-000000000001',
+    unitOfMeasure: 'piece',
+  } as const;
+
+  it('refuses a typed code longer than one line of label text holds', () => {
+    expect(PartCreateInput.safeParse({ ...input, code: 'ABCDEFGHIJKLM' }).success).toBe(true);
+
+    const refused = PartCreateInput.safeParse({ ...input, code: 'ABCDEFGHIJKLMN' });
+    expect(refused.success).toBe(false);
+    expect(refused.error?.issues[0]?.message).toBe('Part code must be 13 characters or fewer to fit on its label');
+  });
+
+  it('still reads a Part whose code predates the limit', () => {
+    const code = 'Grade 80 chain short link 20mm Apex 80';
+
+    expect(Part.shape.code.parse(code)).toBe(code);
+  });
+});
+
 describe('PartCreateInput', () => {
   it('normalizes part fields', () => {
     expect(

@@ -1,10 +1,10 @@
 import { parseScanToken } from '@pkg/domain/equipment';
 import type { UserBadgePdfModel } from '@pkg/schema/equipment';
-import { isValidElement, type ReactElement, type ReactNode } from 'react';
+import { type ComponentProps, isValidElement, type ReactElement, type ReactNode } from 'react';
 import { describe, expect, test } from 'vitest';
 
 import { getPdfPageSizes } from '../../bytes/pdf-bytes.js';
-import { LabelQrSymbol } from '../part-label/label-stock.js';
+import { LabelPage, layoutLabel } from '../part-label/label-stock.js';
 import { UserBadgePdf } from './UserBadgePdf.js';
 import { renderUserBadgesPdf } from './user-badge-pdf-renderer.js';
 
@@ -18,9 +18,15 @@ const BADGES = [
 
 describe('stores badge PDF', () => {
   test('encodes a token the tablet resolves back to each person', () => {
-    const payloads = collectQrPayloads(UserBadgePdf({ badges: BADGES }));
+    const payloads = collectLabelPages(UserBadgePdf({ badges: BADGES })).map(({ payload }) => payload);
 
     expect(payloads.map(parseScanToken)).toEqual(BADGES.map(({ id }) => ({ kind: 'badge', userId: id })));
+  });
+
+  test('prints each badge token at 0.625 mm modules, five dots of the 203 dpi head', () => {
+    for (const { footer, payload } of collectLabelPages(UserBadgePdf({ badges: BADGES }))) {
+      expect(layoutLabel(payload, footer.style).moduleWidth).toBeCloseTo(0.625 * POINTS_PER_MILLIMETRE, 3);
+    }
   });
 
   test('renders one 40 by 30 millimetre label-stock page per person', async () => {
@@ -45,15 +51,16 @@ describe('stores badge PDF', () => {
   });
 });
 
-type RenderedElement = ReactElement<{ children?: ReactNode; payload?: string }>;
+type LabelPageProps = ComponentProps<typeof LabelPage>;
+type RenderedElement = ReactElement<{ children?: ReactNode }>;
 
-function collectQrPayloads(node: ReactNode): string[] {
-  if (Array.isArray(node)) return node.flatMap(collectQrPayloads);
+function collectLabelPages(node: ReactNode): LabelPageProps[] {
+  if (Array.isArray(node)) return node.flatMap(collectLabelPages);
   if (!isValidElement(node)) return [];
   const element = node as RenderedElement;
-  if (element.type === LabelQrSymbol) return element.props.payload === undefined ? [] : [element.props.payload];
+  if (element.type === LabelPage) return [element.props as unknown as LabelPageProps];
   if (typeof element.type === 'function') {
-    return collectQrPayloads((element.type as (props: typeof element.props) => ReactNode)(element.props));
+    return collectLabelPages((element.type as (props: typeof element.props) => ReactNode)(element.props));
   }
-  return collectQrPayloads(element.props.children);
+  return collectLabelPages(element.props.children);
 }

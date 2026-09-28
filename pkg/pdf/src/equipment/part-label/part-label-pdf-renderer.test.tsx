@@ -4,11 +4,22 @@ import { isValidElement, type ReactElement, type ReactNode } from 'react';
 import { describe, expect, test } from 'vitest';
 
 import { getPdfPageSizes } from '../../bytes/pdf-bytes.js';
-import { encodeLabelQr, LABEL_TEXT_WIDTH } from './label-stock.js';
+import { pdfFontFamily } from '../../pdf-fonts.js';
+import {
+  breakColumnWord,
+  LABEL_INSET,
+  LABEL_PAGE_SIZE,
+  LABEL_PRINTER_DOT,
+  LABEL_TEXT_WIDTH,
+  layoutLabel,
+  QR_QUIET_ZONE_MODULES,
+} from './label-stock.js';
 import { PART_LABEL_CODE_STYLE, PartLabelPdf } from './PartLabelPdf.js';
 import { renderPartLabelsPdf } from './part-label-pdf-renderer.js';
 
 const POINTS_PER_MILLIMETRE = 72 / 25.4;
+// Layout is float arithmetic in points; a boundary that lands exactly on a limit may miss it by rounding.
+const EPSILON = 1e-9;
 
 const LABELS = [
   { code: 'P-100', name: 'Main bearing', storageLocation: 'Bin A-04' },
@@ -17,7 +28,7 @@ const LABELS = [
 
 describe('Part label PDF', () => {
   test('draws a standard, unmirrored QR symbol at error correction M or better', () => {
-    const symbol = encodeLabelQr('P-100');
+    const symbol = layoutLabel('P-100', PART_LABEL_CODE_STYLE);
     const dark = darkModules(symbol.path);
     const version = (symbol.moduleCount - 17) / 4;
 
@@ -28,21 +39,47 @@ describe('Part label PDF', () => {
     expect(['M', 'Q', 'H']).toContain(readFormatErrorCorrection(dark));
   });
 
-  test('prints each module 0.375 mm wide, three dots of the 203 dpi head, with a four-module quiet zone', () => {
-    expect(encodeLabelQr('P-100').side).toBeCloseTo((21 + 8) * 0.375 * POINTS_PER_MILLIMETRE, 3);
+  test('prints a typed Part code at 0.75 mm modules, the largest whole-dot module the label holds', () => {
+    const symbol = layoutLabel('SKF-UCF212-60', PART_LABEL_CODE_STYLE);
+
+    expect(symbol.moduleCount).toBe(21);
+    expect(symbol.moduleWidth).toBeCloseTo(0.75 * POINTS_PER_MILLIMETRE, 3);
+    expect(symbol.symbol.width).toBeCloseTo(15.75 * POINTS_PER_MILLIMETRE, 3);
   });
 
-  test('fits a 38-character payload, the longest Part code and every badge token, at full module width', () => {
-    const symbol = encodeLabelQr('Grade 80 chain short link 20mm Apex 80');
+  test.each([
+    ['a typed Part code', 'SKF-UCF212-60'],
+    ['a legacy code past 42 characters', 'Grade 80 chain short link 20mm Apex 80 galvanised'],
+  ])('keeps a quiet zone round %s, clear of the feed drift, the column, and the code line', (_, payload) => {
+    const { column, footerTop, moduleWidth, symbol } = layoutLabel(payload, PART_LABEL_CODE_STYLE);
+    const quietZone = QR_QUIET_ZONE_MODULES * moduleWidth;
+    const clearance = Math.max(LABEL_INSET, quietZone);
+    const dots = moduleWidth / LABEL_PRINTER_DOT;
 
-    expect(symbol.side).toBeCloseTo((29 + 8) * 0.375 * POINTS_PER_MILLIMETRE, 3);
+    expect(dots).toBeCloseTo(Math.round(dots), 6);
+    expect(Math.round(dots)).toBeGreaterThanOrEqual(2);
+    expect(symbol.left).toBeGreaterThanOrEqual(clearance - EPSILON);
+    expect(symbol.top).toBeGreaterThanOrEqual(clearance - EPSILON);
+    expect(footerTop - (symbol.top + symbol.height)).toBeGreaterThanOrEqual(quietZone - EPSILON);
+    expect(column.left - (symbol.left + symbol.width)).toBeGreaterThanOrEqual(quietZone - EPSILON);
+    expect(column.left + column.width).toBeLessThanOrEqual(LABEL_PAGE_SIZE.width - LABEL_INSET + EPSILON);
   });
 
-  test('drops to two-dot modules rather than outgrow the label when a payload runs past 42 characters', () => {
-    const symbol = encodeLabelQr('Grade 80 chain short link 20mm Apex 80 galvanised');
+  test('shrinks the modules rather than outgrow the label when a legacy code needs a bigger symbol', () => {
+    const symbol = layoutLabel('Grade 80 chain short link 20mm Apex 80 galvanised', PART_LABEL_CODE_STYLE);
 
     expect(symbol.moduleCount).toBe(33);
-    expect(symbol.side).toBeCloseTo((33 + 8) * 0.25 * POINTS_PER_MILLIMETRE, 3);
+    expect(symbol.moduleWidth).toBeCloseTo(0.5 * POINTS_PER_MILLIMETRE, 3);
+  });
+
+  test('keeps a column word whole while it fits the column, and breaks only a word wider than it', async () => {
+    await Font.getFont({ fontFamily: pdfFontFamily, fontWeight: 400 })?.load();
+    const columnWidth = 16 * POINTS_PER_MILLIMETRE;
+
+    expect(breakColumnWord('Stainless', { fontSize: 7 }, columnWidth)).toEqual(['Stainless']);
+    expect(breakColumnWord('Hydraulicmotorcoupling', { fontSize: 7 }, columnWidth)).toEqual([
+      ...'Hydraulicmotorcoupling',
+    ]);
   });
 
   test('fits the longest Part code a label carries on one code line, and not one character more', async () => {

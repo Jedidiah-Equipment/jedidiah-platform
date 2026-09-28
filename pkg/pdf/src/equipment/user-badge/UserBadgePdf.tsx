@@ -1,27 +1,20 @@
 import { badgeScanToken } from '@pkg/domain/equipment';
 import type { UserBadgePdfModel } from '@pkg/schema/equipment';
-import { Document, StyleSheet, Text } from '@react-pdf/renderer';
+import { Document } from '@react-pdf/renderer';
 
 import { pdfTitleFontFamily } from '../../pdf-fonts.js';
-import { LabelPage, LabelQrSymbol, labelLineStyle } from '../part-label/label-stock.js';
+import { LabelPage } from '../part-label/label-stock.js';
 
-const styles = StyleSheet.create({
-  name: {
-    ...labelLineStyle,
-    fontFamily: pdfTitleFontFamily,
-    fontSize: 12,
-    fontWeight: 700,
-    letterSpacing: 0.3,
-    lineHeight: 1.1,
-    marginTop: 4,
-  },
-  caption: {
-    ...labelLineStyle,
-    fontSize: 6,
-    lineHeight: 1.15,
-    marginTop: 4,
-  },
-});
+const NAME_STYLE = {
+  fontFamily: pdfTitleFontFamily,
+  fontSize: 12,
+  fontWeight: 700,
+  letterSpacing: 0.3,
+  lineHeight: 1.1,
+} as const;
+
+const TITLE_STYLE = { fontSize: 8, fontWeight: 700, lineHeight: 1.15, maxLines: 2 } as const;
+const CAPTION_STYLE = { fontSize: 7, lineHeight: 1.15, marginTop: 2, maxLines: 3 } as const;
 
 /**
  * The symbol carries `badge:<userId>` rather than the bare id: one scan field takes both Part labels and
@@ -31,12 +24,16 @@ export function UserBadgePdf({ badges }: { badges: UserBadgePdfModel[] }) {
   return (
     <Document title={badges.length === 1 ? `Stores badge ${badges[0]?.name ?? ''}` : 'Stores badges'}>
       {badges.map((badge) => (
-        <LabelPage key={badge.id}>
-          <LabelQrSymbol payload={badgeScanToken(badge.id)} />
-          <Text style={styles.name}>{badge.name}</Text>
-          {/* The card names a person, not a right — the printed line says so where it is read. */}
-          <Text style={styles.caption}>Stores badge · scan to sign for stock</Text>
-        </LabelPage>
+        <LabelPage
+          column={{
+            title: { style: TITLE_STYLE, text: 'Stores badge' },
+            // The card names a person, not a right — the printed caption says so where it is read.
+            caption: { style: CAPTION_STYLE, text: 'Scan to sign for stock' },
+          }}
+          footer={{ style: NAME_STYLE, text: badge.name }}
+          key={badge.id}
+          payload={badgeScanToken(badge.id)}
+        />
       ))}
     </Document>
   );

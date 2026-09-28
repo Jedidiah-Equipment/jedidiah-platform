@@ -19,9 +19,11 @@ export const LABEL_PAGE_SIZE = {
 const LABEL_INSET = 2 * POINTS_PER_MILLIMETRE;
 export const LABEL_TEXT_WIDTH = LABEL_PAGE_SIZE.width - 2 * LABEL_INSET;
 
-// 2 dots on a 203 dpi head and 3 on a 300 dpi one, so either prints every module without resampling.
-const QR_MODULE_WIDTH = 0.25 * POINTS_PER_MILLIMETRE;
+// Whole dots on the 203 dpi head (docs/notes/stores-label-hardware.md): three where the symbol fits the
+// label's symbol budget, two for the rare legacy code long enough to need a bigger QR version.
+const QR_MODULE_WIDTHS = [0.375 * POINTS_PER_MILLIMETRE, 0.25 * POINTS_PER_MILLIMETRE] as const;
 const QR_QUIET_ZONE_MODULES = 4;
+const QR_MAX_SIDE = 14 * POINTS_PER_MILLIMETRE;
 
 export type LabelQr = {
   moduleCount: number;
@@ -55,7 +57,10 @@ export function encodeLabelQr(payload: string): LabelQr {
     }
   }
 
-  return { moduleCount: size, path, side: (size + 2 * QR_QUIET_ZONE_MODULES) * QR_MODULE_WIDTH };
+  const extent = size + 2 * QR_QUIET_ZONE_MODULES;
+  const moduleWidth = QR_MODULE_WIDTHS.find((width) => extent * width <= QR_MAX_SIDE) ?? QR_MODULE_WIDTHS[1];
+
+  return { moduleCount: size, path, side: extent * moduleWidth };
 }
 
 const styles = StyleSheet.create({

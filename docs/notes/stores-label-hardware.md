@@ -20,10 +20,12 @@ symbology; they were confirmed with product on 2026-09-28 while grooming
 - The PDF page must be exactly 40 × 30 mm and printed at 100%. Any print-dialog scaling shrinks the
   bars below what the scanner resolves; that was the cause of #1568.
 - A barcode module must be a whole number of printer dots or the bars print unevenly. At 203 dpi the
-  usable choices are 0.125 mm (1 dot, at the scanner's 1D floor) and 0.25 mm (2 dots, comfortable).
+  usable choices are 0.125 mm (1 dot, at the scanner's 1D floor), 0.25 mm (2 dots), and 0.375 mm (3 dots).
 - Code 128 at 0.25 mm holds about 8 mixed characters across 40 mm. The badge token `badge:<userId>`
-  is 38 characters and many Part codes exceed 8, so the label symbology is QR (module 0.25 mm,
-  10 mil, double the scanner's 2D floor, error correction M). A 38-byte QR is about 9 mm square.
+  is 38 characters and many Part codes exceed 8, so the label symbology is QR, error correction M.
+- QR modules are 0.375 mm (3 dots), so a Part code of up to 13 characters prints about 11 mm square
+  and a 38-byte badge token about 14 mm. A symbol that would outgrow 14 mm — only a legacy Part code
+  over 42 characters — drops to 0.25 mm (2 dots) so the text still fits below it.
 - The tablet camera fallback (`ScanCameraModal.tsx`) must list every symbology in circulation:
   `qr` plus `code128` while old labels are still on the shelves.
 

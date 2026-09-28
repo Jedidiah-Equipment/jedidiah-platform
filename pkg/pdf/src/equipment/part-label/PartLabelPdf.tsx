@@ -17,7 +17,6 @@ const styles = StyleSheet.create({
     ...labelLineStyle,
     ...PART_LABEL_CODE_STYLE,
     lineHeight: 1,
-    marginTop: 3,
   },
   name: {
     ...labelLineStyle,

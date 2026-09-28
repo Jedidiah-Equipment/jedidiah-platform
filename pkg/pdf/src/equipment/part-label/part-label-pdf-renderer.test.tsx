@@ -28,14 +28,21 @@ describe('Part label PDF', () => {
     expect(['M', 'Q', 'H']).toContain(readFormatErrorCorrection(dark));
   });
 
-  test('prints each module 0.25 mm wide with a four-module quiet zone', () => {
-    expect(encodeLabelQr('P-100').side).toBeCloseTo((21 + 8) * 0.25 * POINTS_PER_MILLIMETRE, 3);
+  test('prints each module 0.375 mm wide, three dots of the 203 dpi head, with a four-module quiet zone', () => {
+    expect(encodeLabelQr('P-100').side).toBeCloseTo((21 + 8) * 0.375 * POINTS_PER_MILLIMETRE, 3);
   });
 
-  test('fits a 38-character payload, the longest Part code and every badge token, in under 10 mm', () => {
+  test('fits a 38-character payload, the longest Part code and every badge token, at full module width', () => {
     const symbol = encodeLabelQr('Grade 80 chain short link 20mm Apex 80');
 
-    expect(symbol.side).toBeLessThan(10 * POINTS_PER_MILLIMETRE);
+    expect(symbol.side).toBeCloseTo((29 + 8) * 0.375 * POINTS_PER_MILLIMETRE, 3);
+  });
+
+  test('drops to two-dot modules rather than outgrow the label when a payload runs past 42 characters', () => {
+    const symbol = encodeLabelQr('Grade 80 chain short link 20mm Apex 80 galvanised');
+
+    expect(symbol.moduleCount).toBe(33);
+    expect(symbol.side).toBeCloseTo((33 + 8) * 0.25 * POINTS_PER_MILLIMETRE, 3);
   });
 
   test('fits the longest Part code a label carries on one code line, and not one character more', async () => {
@@ -72,14 +79,17 @@ describe('Part label PDF', () => {
     }
   });
 
-  test('keeps a long code and unbounded readable fields on one physical label page', async () => {
+  test('keeps the longest codes and unbounded readable fields on one physical label page each', async () => {
     const repeated = 'Long label content '.repeat(12);
     const bytes = await renderPartLabelsPdf({
-      document: [{ code: 'Grade 80 chain short link 20mm Apex 80', name: repeated, storageLocation: repeated }],
+      document: [
+        { code: 'Grade 80 chain short link 20mm Apex 80', name: repeated, storageLocation: repeated },
+        { code: 'Grade 80 chain short link 20mm Apex 80 galvanised', name: repeated, storageLocation: repeated },
+      ],
       filename: 'long-part-label.pdf',
     });
 
-    expect(await getPdfPageSizes(bytes)).toHaveLength(1);
+    expect(await getPdfPageSizes(bytes)).toHaveLength(2);
   });
 });
 

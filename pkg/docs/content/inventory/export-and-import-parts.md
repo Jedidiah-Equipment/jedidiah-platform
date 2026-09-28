@@ -22,7 +22,8 @@ and the import refuses a row naming anyone else.
 
 ## Notes
 
-- Bad rows do not stop good ones. Every row issue — including a Part Category that does not exist, or an
+- Bad rows do not stop good ones. Every row issue — including a Code longer than 13 characters (too long
+  for one line on its label), a Part Category that does not exist, or an
   attempt to change a Part's **Unit of Measure** after it has Stock Movements — is reported against its line number, that row is skipped,
   and the rest of the file imports.
 - Cutting rows out of the file is safe. An import only ever creates and updates, so a Part you delete

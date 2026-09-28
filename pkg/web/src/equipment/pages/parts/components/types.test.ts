@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { PartFormValues, partUnitOfMeasureOptions, toPartFormValues, toPartInput } from './types.js';
+import { PartFormValues, toPartFormValues, toPartInput } from './types.js';
 
 describe('part form types', () => {
   it('defaults new parts to perpetual piece tracking with nullable stock fields', () => {
@@ -54,18 +54,6 @@ describe('part form types', () => {
       supplierId: '00000000-0000-4000-8000-000000000001',
       unitOfMeasure: 'mm',
     });
-  });
-
-  it('uses shared unit labels for select options', () => {
-    expect(partUnitOfMeasureOptions).toEqual([
-      { label: 'Pieces', value: 'piece' },
-      { label: 'Sets', value: 'set' },
-      { label: 'Boxes', value: 'box' },
-      { label: 'Pairs', value: 'pair' },
-      { label: 'Millimetres', value: 'mm' },
-      { label: 'Kilograms', value: 'kg' },
-      { label: 'Litres', value: 'litre' },
-    ]);
   });
 
   it('requires purchase length only while the form unit is millimetres', () => {

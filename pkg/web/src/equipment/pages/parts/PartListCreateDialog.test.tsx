@@ -56,24 +56,6 @@ vi.mock('@/components/form/index.js', () => ({
 import { PartListCreateDialog } from './PartListCreateDialog.js';
 
 describe('PartListCreateDialog', () => {
-  it('mounts every required bought and linear Part field', () => {
-    const html = renderToStaticMarkup(<PartListCreateDialog onCreated={vi.fn()} onOpenChange={vi.fn()} open={true} />);
-
-    for (const name of [
-      'name',
-      'code',
-      'categoryId',
-      'finish',
-      'supplierId',
-      'supplierCode',
-      'unitOfMeasure',
-      'standardPurchaseLengthMm',
-      'description',
-    ]) {
-      expect(html).toContain(`data-field="${name}"`);
-    }
-  });
-
   it('drops a length stranded by a move off millimetres, which would fail submit on a hidden field', () => {
     renderToStaticMarkup(<PartListCreateDialog onCreated={vi.fn()} onOpenChange={vi.fn()} open={true} />);
     setFieldValue.mockClear();

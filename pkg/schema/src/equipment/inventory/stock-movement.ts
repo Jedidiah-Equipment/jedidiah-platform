@@ -519,7 +519,7 @@ export type QuoteStockResult = z.infer<typeof QuoteStockResult>;
 export const QuoteStockResult = z.object({ items: z.array(QuoteStockRow), quote: InventoryQuoteOption });
 
 /**
- * What a scanned Part label resolves to. The code is matched exactly — a Code 128 read is all-or-
+ * What a scanned Part label resolves to. The code is matched exactly — a label scan is all-or-
  * nothing, so a partial match would mean a damaged label silently resolved to a neighbouring Part.
  * Type-ahead search is the fallback for that (spec §10), and it goes through the ordinary Part list.
  */

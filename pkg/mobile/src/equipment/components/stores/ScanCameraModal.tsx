@@ -11,8 +11,9 @@ import { addBreadcrumb, captureException } from '@/lib/observability';
  * scanner with a flat battery. Not the everyday path, which is why the permission is only asked for
  * the first time somebody opens this.
  *
- * Code 128 only, matching what we print. Accepting every symbology the camera can decode would let
- * a supplier's own barcode resolve here, and supplier barcodes are trusted for nothing (spec §10).
+ * QR and Code 128 only: labels print as QR, and Code 128 keeps older labels scanning until they are
+ * reprinted. Accepting every symbology the camera can decode would let a supplier's own barcode
+ * resolve here, and supplier barcodes are trusted for nothing (spec §10).
  */
 export function ScanCameraModal({
   onClose,
@@ -74,7 +75,7 @@ export function ScanCameraModal({
         ) : (
           <View className="h-64 overflow-hidden rounded-xl bg-image-backdrop">
             <CameraView
-              barcodeScannerSettings={{ barcodeTypes: ['code128'] }}
+              barcodeScannerSettings={{ barcodeTypes: ['qr', 'code128'] }}
               onBarcodeScanned={({ data }) => {
                 if (hasScanned.current) return;
                 hasScanned.current = true;

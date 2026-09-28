@@ -17,7 +17,7 @@ export const UserDepartmentListResult = z.object({
 });
 
 /**
- * What a stores badge card carries: the person's name to read, and their id inside the Code 128 the
+ * What a stores badge card carries: the person's name to read, and their id inside the QR code the
  * tablet's scan field resolves (spec §11). No role, no email, nothing else — the card is dropped on
  * a bench beside the scanner all shift, and it identifies rather than authenticates. Losing one
  * means someone else can sign for stock under that name, which is exactly the exposure a PIN would

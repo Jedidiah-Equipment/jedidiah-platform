@@ -12,6 +12,20 @@ export const PartName = requiredTrimmedText('Part name is required');
 export type PartCode = z.infer<typeof PartCode>;
 export const PartCode = requiredTrimmedText('Part code is required');
 
+/**
+ * The longest typical Part code one line of the label's code text holds across a 40 × 30 mm Part
+ * Label. The QR code carries any length; this keeps the printed code readable. `@pkg/pdf` pins it to
+ * the font.
+ */
+export const PART_CODE_MAX_LENGTH = 13;
+
+/** Every place a code is typed. Reads stay on `PartCode`: codes from before the limit must still load. */
+export type PartCodeInput = z.infer<typeof PartCodeInput>;
+export const PartCodeInput = PartCode.max(
+  PART_CODE_MAX_LENGTH,
+  `Part code must be ${PART_CODE_MAX_LENGTH} characters or fewer to fit on its label`,
+);
+
 export type PartSupplierCode = z.infer<typeof PartSupplierCode>;
 export const PartSupplierCode = requiredTrimmedText('Supplier code is required');
 
@@ -134,7 +148,7 @@ export const PartColumnFilters = z
 const PartInputFields = z.object({
   averageUtilizationPercent: PartAverageUtilizationPercent.nullable().default(null),
   categoryId: UUID,
-  code: PartCode,
+  code: PartCodeInput,
   description: PartDescription,
   drawingCode: PartDrawingCodeInput,
   finish: PartFinish,
@@ -269,7 +283,7 @@ export const PartBulkExportRow = z.object({
 export type PartBulkImportRow = z.infer<typeof PartBulkImportRow>;
 export const PartBulkImportRow = PartBulkExportRow
   // Only the import carries a line number: it is where the row came from, not something a Part has.
-  .extend({ lineNumber: z.number().int().min(1) })
+  .extend({ code: PartCodeInput, lineNumber: z.number().int().min(1) })
   .superRefine((input, context) => {
     refinePartBuiltIsNotLinear(input, context);
     refinePartStandardPurchaseLength(

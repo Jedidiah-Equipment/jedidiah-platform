@@ -141,6 +141,15 @@ describe('parsePartBulkImportCsv', () => {
     });
   });
 
+  it('reports a code too long for its label as a row error', () => {
+    const result = parsePartBulkImportCsv(
+      '100x50x4.5 rectangular tube,,Tube,Acme Supplies,SUP-100,GALV,Tube,Tube,piece,false',
+      { hasHeader: false },
+    );
+
+    expect(result.errors).toEqual(['Row 1: Code - Part code must be 13 characters or fewer to fit on its label']);
+  });
+
   it('parses CSV without a header by column position', () => {
     const result = parsePartBulkImportCsv(
       'P-100,,Main bearing,Acme Supplies,SUP-100,GALV,Bearings,Bearing,piece,false',

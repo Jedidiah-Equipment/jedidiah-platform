@@ -1,77 +1,49 @@
 import type { PartLabelPdfModel } from '@pkg/schema/equipment';
-import { Document, Image, Page, StyleSheet, Text, View } from '@react-pdf/renderer';
+import { Document, StyleSheet, Text } from '@react-pdf/renderer';
 
-import { pdfFontFamily, pdfTitleFontFamily } from '../../pdf-fonts.js';
+import { pdfTitleFontFamily } from '../../pdf-fonts.js';
+import { LabelPage, LabelQrSymbol, labelLineStyle } from './label-stock.js';
 
-const POINTS_PER_MILLIMETRE = 72 / 25.4;
-
-// Confirm this single hardware seam against the purchased printer and label stock before the go-live batch.
-export const PART_LABEL_PAGE_SIZE = {
-  height: 50 * POINTS_PER_MILLIMETRE,
-  width: 100 * POINTS_PER_MILLIMETRE,
+/** `PART_CODE_MAX_LENGTH` is what one line of this style holds across the label. */
+export const PART_LABEL_CODE_STYLE = {
+  fontFamily: pdfTitleFontFamily,
+  fontSize: 14,
+  fontWeight: 700,
+  letterSpacing: 0.5,
 } as const;
 
 const styles = StyleSheet.create({
-  page: {
-    backgroundColor: '#FFFFFF',
-    color: '#000000',
-    fontFamily: pdfFontFamily,
-    paddingBottom: 10,
-    paddingHorizontal: 17,
-    paddingTop: 9,
-  },
-  barcode: {
-    alignSelf: 'center',
-    height: 50,
-    marginBottom: 3,
-    maxWidth: '100%',
-    objectFit: 'contain',
-  },
   code: {
-    fontFamily: pdfTitleFontFamily,
-    fontSize: 17,
-    fontWeight: 700,
-    letterSpacing: 0.7,
+    ...labelLineStyle,
+    ...PART_LABEL_CODE_STYLE,
     lineHeight: 1,
-    textAlign: 'center',
+    marginTop: 3,
   },
   name: {
-    fontSize: 10,
+    ...labelLineStyle,
+    fontSize: 8,
     fontWeight: 700,
-    height: 22,
-    lineHeight: 1.1,
-    marginTop: 4,
-    overflow: 'hidden',
-    textAlign: 'center',
+    lineHeight: 1.15,
+    marginTop: 3,
   },
   location: {
-    fontSize: 8,
-    height: 18,
-    lineHeight: 1.1,
-    marginTop: 3,
-    overflow: 'hidden',
-    textAlign: 'center',
+    ...labelLineStyle,
+    fontSize: 7,
+    lineHeight: 1.15,
+    marginTop: 2,
   },
 });
 
-export type PartLabelRenderItem = {
-  barcodeDataUri: string;
-  barcodeWidth: number;
-  label: PartLabelPdfModel;
-};
-
-export function PartLabelPdf({ items }: { items: PartLabelRenderItem[] }) {
+export function PartLabelPdf({ labels }: { labels: PartLabelPdfModel[] }) {
   return (
-    <Document title={items.length === 1 ? `Part label ${items[0]?.label.code ?? ''}` : 'Part labels'}>
-      {items.map(({ barcodeDataUri, barcodeWidth, label }) => (
-        <Page key={label.code} size={[PART_LABEL_PAGE_SIZE.width, PART_LABEL_PAGE_SIZE.height]} style={styles.page}>
-          <View wrap={false}>
-            <Image src={barcodeDataUri} style={[styles.barcode, { width: barcodeWidth }]} />
-            <Text style={styles.code}>{label.code}</Text>
-            <Text style={styles.name}>{label.name}</Text>
-            <Text style={styles.location}>{label.storageLocation ?? 'Location not set'}</Text>
-          </View>
-        </Page>
+    <Document title={labels.length === 1 ? `Part label ${labels[0]?.code ?? ''}` : 'Part labels'}>
+      {labels.map((label) => (
+        <LabelPage key={label.code}>
+          <LabelQrSymbol payload={label.code} />
+          <Text style={styles.code}>{label.code}</Text>
+          <Text style={styles.name}>{label.name}</Text>
+          <Text style={styles.location}>{label.storageLocation ?? 'Location not set'}</Text>
+        </LabelPage>
       ))}
     </Document>
   );

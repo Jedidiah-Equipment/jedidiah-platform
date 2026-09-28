@@ -641,7 +641,7 @@ export async function listStockOnHand({ db }: { db: Db }): Promise<StockOnHandRe
  * screen wants the same figures the stock report shows — quantity, free, and the length buckets the
  * checkout screen then asks a question about. One read, one snapshot, no second round trip.
  *
- * The match is exact and case-sensitive. A Code 128 read either succeeds whole or fails, so a fuzzy
+ * The match is exact and case-sensitive. A label scan either succeeds whole or fails, so a fuzzy
  * match here could only ever resolve a *mis*-read — and resolving a mis-read to a neighbouring Part
  * is how stock moves against the wrong code. A damaged label is retyped through search instead.
  */

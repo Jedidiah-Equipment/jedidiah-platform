@@ -73,7 +73,7 @@ export const PartLabelBatchDialog: React.FC<PartLabelBatchDialogProps> = ({ butt
         <DialogContent className="sm:max-w-[560px]">
           <DialogHeader>
             <DialogTitle>Print Part labels</DialogTitle>
-            <DialogDescription>Generate one 100 × 50 mm label per selected Part.</DialogDescription>
+            <DialogDescription>Generate one 40 × 30 mm label per selected Part.</DialogDescription>
           </DialogHeader>
           <div className="grid gap-4">
             <Field>

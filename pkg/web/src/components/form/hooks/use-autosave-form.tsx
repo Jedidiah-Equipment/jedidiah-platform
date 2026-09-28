@@ -63,7 +63,7 @@ export function useAutosaveForm<TValues extends Record<string, unknown>, TInput>
             action: {
               label: 'Retry',
               onClick: () => {
-                void controllerRef.current?.retry();
+                if (optionsRef.current.enabled) void controllerRef.current?.retry();
               },
             },
           });

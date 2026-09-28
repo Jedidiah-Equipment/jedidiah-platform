@@ -313,6 +313,9 @@ it('lets the buyer leave a Draft that was approved under their refused edit', as
   });
   served = orderInStatus('approved');
   await refetchOrder();
+  const retry = [...document.body.querySelectorAll('button')].find((item) => item.textContent?.trim() === 'Retry');
+  if (!retry) throw new Error('Retry did not render');
+  await act(async () => retry.click());
   const unload = new Event('beforeunload', { cancelable: true });
   window.dispatchEvent(unload);
   await leave(container);

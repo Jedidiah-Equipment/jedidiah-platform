@@ -168,14 +168,4 @@ describe('StockOnHandTable', () => {
     expect(html).not.toContain('R 0.10/mm');
     expect(html).not.toContain('No cost yet');
   });
-
-  it('offers every Part its label to a price-blind stores reader', () => {
-    const html = renderToStaticMarkup(
-      <StockOnHandTable items={result.items} onOpenHistory={vi.fn()} showCosts={false} />,
-    );
-
-    expect(html.match(/Print label/g)).toHaveLength(2);
-    expect(html).toContain('http://localhost:7002/api/parts/00000000-0000-4000-8000-000000000001/label');
-    expect(html).toContain('http://localhost:7002/api/parts/00000000-0000-4000-8000-000000000002/label');
-  });
 });

@@ -210,7 +210,7 @@ Server/API checks are the security boundary. Browser access checks are UX only.
 
 **Breadcrumb Trail** is mobile's bounded, in-memory sequence of the operator and app context immediately
 before a failure: route-pattern navigation, app lifecycle, connectivity and offline-gate state, auth identity
-transitions, body-free network outcomes, OTA progress, and business-specific queue or operator actions. Every
+transitions, body-free network outcomes, OTA progress, and business-specific operator actions. Every
 mobile exception carries the trail; it never carries typed text, scanned values, request data, identity data,
 or file/photo paths.
 

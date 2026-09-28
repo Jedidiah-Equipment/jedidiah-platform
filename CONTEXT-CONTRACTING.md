@@ -19,7 +19,7 @@ to management only until a Foreman is assigned), **Active** (entered automatical
 machine starts; cancellable by management with a mandatory reason), **Completed** (the
 Contracting Manager's sign-off, reachable only once every Assignment has left and every Gap Flag
 is resolved: work confirmed done, Charge Lines and notes added, final start and end dates stamped
-— suggested from the earliest arrival and latest departure capture times, tweakable), **Priced**
+— suggested from the earliest arrival and latest departure **Read At** times, never from when they were accepted, tweakable), **Priced**
 (rates applied and frozen as a snapshot — diesel litres and travel lock with it; a reading amendment reopens the Job to Completed for
 re-pricing — the chosen Rates and their snapshotted unit amounts stay, line amounts recompute from
 the amended hours, and manual amount edits are discarded), and **Invoiced** (the invoice number stamped; the wall — after it, nothing moves). There is no "submitted" status: foremen never close Jobs; a
@@ -128,13 +128,21 @@ context's `JOB-xxxxx`.
 
 ## Hours
 
-**Hour Reading** is one captured value of a Machine's hour meter: the value, when and by whom it
-was captured, and its evidence. Whoever captures it types the value — the Foreman in the field,
-an administrator for a Baseline Reading; a photo is attached whenever
-the camera allows, and a reading without one is stamped **Missing Photo Evidence**. Capture never
-waits for signal — readings queue on the phone and sync when they can. The phone judges a capture by the same rules the server does,
-over the readings it knows and the captures it has queued, so a refusal reaches the Foreman before
-the reading leaves his hands wherever it can. After sync the server reads
+**Hour Reading** is one captured value of a Machine's hour meter: the value, when the meter was
+read (its **Read At** time) and by whom, and its evidence. Whoever captures it types the value —
+the Foreman in the field, an administrator for a Baseline Reading; a photo is attached whenever
+the camera allows, taken on the spot or chosen from the phone's gallery, and a reading without
+one is stamped **Missing Photo Evidence**. Read At defaults to when a chosen photo says it was
+taken, and otherwise to the moment of capture — a photo with no usable time, or one whose time
+lies in the future, is still accepted and defaults to that moment; whoever captures may correct
+it, and it is never in the future. Gallery photos and Read At correction are phone affordances:
+a reading captured on the web takes the moment of capture as its Read At. Read At
+describes a reading; it never orders them. A Machine's readings are ordered by acceptance: the
+**latest reading** is the one the server accepted last, every capture is judged against that
+reading whatever its Read At, and a late-entered reading takes its place after it. An Hour Gap
+reads the two readings its Assignments name, so a backdated Read At moves no hour between
+Jobs. Capture needs a connection: the server judges every capture as the ledger's truth, and a
+Foreman without signal keeps a Field Note instead. On capture the server reads
 the photo itself and records its own value and confidence: a reading is **photo-backed** when it
 carries a photo and **AI-verified** when the server's read agrees with the typed value.
 Disagreements, low confidence, and disputes surface to management as **Reading Exceptions** — a
@@ -153,7 +161,7 @@ backward: a capture strictly below the latest reading is refused (equal is accep
 machine reads its departure value), unless the Foreman asserts the previous reading is wrong,
 which saves his value as disputed and flags the pair for management. The Foreman may
 re-capture a reading only while his Assignment is open; from Completion onward only management
-amends, with a mandatory reason; an amendment on a Priced Job returns it to Completed for
+amends, with a mandatory reason — an amendment changes the value, never Read At; an amendment on a Priced Job returns it to Completed for
 re-pricing, and Invoiced freezes everything. Derived values always recompute after an amendment.
 
 **Baseline Reading** is an optional, administrator-captured Hour Reading that anchors a Machine
@@ -172,6 +180,15 @@ sign-off and blocking nothing in the field — the Job cannot be Completed while
 management resolves it by splitting the gap into billable Travel
 Hours and an **Unaccounted Interval** with a mandatory reason, which clears the flag. Time in the
 yard is an Unaccounted Interval — there are no internal Jobs.
+
+**Field Note** is evidence a Foreman keeps on his phone when the app cannot take a capture —
+without signal, typically — for entry once it can: a description, one or more photos, and the
+moment it was made. It is **Open** until the Foreman has entered what it holds and closes it, and
+may be reopened; nothing closes it but him. A Field Note lives only on the phone, per signed-in
+user, and never reaches the server; its photos are also saved to the phone's gallery, which is
+where a later capture picks them up. It is not a capture, a queue, or a task: the app never reads
+a Field Note back into a Job or a Machine.
+_Avoid_: task, to-do, offline capture, queued reading
 
 ## Workshop
 

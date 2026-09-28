@@ -1,8 +1,8 @@
 import type { PartLabelPdfModel } from '@pkg/schema/equipment';
-import { Document, StyleSheet } from '@react-pdf/renderer';
+import { Document } from '@react-pdf/renderer';
 
 import { pdfTitleFontFamily } from '../../pdf-fonts.js';
-import { LabelColumnText, LabelPage } from './label-stock.js';
+import { LabelPage } from './label-stock.js';
 
 /** `PART_CODE_MAX_LENGTH` is what one line of this style holds across the label. */
 export const PART_LABEL_CODE_STYLE = {
@@ -13,29 +13,22 @@ export const PART_LABEL_CODE_STYLE = {
   lineHeight: 1,
 } as const;
 
-const styles = StyleSheet.create({
-  name: {
-    fontSize: 8,
-    fontWeight: 700,
-    lineHeight: 1.15,
-    maxLines: 3,
-  },
-  location: {
-    fontSize: 7,
-    lineHeight: 1.15,
-    marginTop: 2,
-    maxLines: 2,
-  },
-});
+const NAME_STYLE = { fontSize: 8, fontWeight: 700, lineHeight: 1.15, maxLines: 3 } as const;
+const LOCATION_STYLE = { fontSize: 7, lineHeight: 1.15, marginTop: 2, maxLines: 2 } as const;
 
 export function PartLabelPdf({ labels }: { labels: PartLabelPdfModel[] }) {
   return (
     <Document title={labels.length === 1 ? `Part label ${labels[0]?.code ?? ''}` : 'Part labels'}>
       {labels.map((label) => (
-        <LabelPage footer={{ style: PART_LABEL_CODE_STYLE, text: label.code }} key={label.code} payload={label.code}>
-          <LabelColumnText style={styles.name}>{label.name}</LabelColumnText>
-          <LabelColumnText style={styles.location}>{label.storageLocation ?? 'Location not set'}</LabelColumnText>
-        </LabelPage>
+        <LabelPage
+          column={{
+            name: { style: NAME_STYLE, text: label.name },
+            location: { style: LOCATION_STYLE, text: label.storageLocation ?? 'Location not set' },
+          }}
+          footer={{ style: PART_LABEL_CODE_STYLE, text: label.code }}
+          key={label.code}
+          payload={label.code}
+        />
       ))}
     </Document>
   );

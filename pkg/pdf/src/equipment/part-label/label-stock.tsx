@@ -1,6 +1,5 @@
-import { Page, Path, StyleSheet, type Styles, Svg, Text, View } from '@react-pdf/renderer';
+import { Font, Page, Path, StyleSheet, type Styles, Svg, Text, View } from '@react-pdf/renderer';
 import bwipjs from 'bwip-js';
-import type React from 'react';
 
 import { pdfFontFamily } from '../../pdf-fonts.js';
 
@@ -119,23 +118,20 @@ const styles = StyleSheet.create({
     position: 'absolute',
     right: 0,
   },
-  columnText: {
-    textOverflow: 'ellipsis',
-  },
 });
 
-// React-PDF's default hyphenation splits words the narrow column could carry whole onto the next line;
-// only a word too long for any line may break, and then anywhere.
-const COLUMN_UNBREAKABLE_WORD_LENGTH = 8;
-const keepWordsWhole = (word: string) => (word.length > COLUMN_UNBREAKABLE_WORD_LENGTH ? [...word] : [word]);
+type LabelColumnStyle = Styles[string] & { fontSize: number; fontWeight?: number };
 
-/** Text in the column beside the symbol: whole words, cut short with an ellipsis after `maxLines`. */
-export function LabelColumnText({ children, style }: { children: React.ReactNode; style: Styles[string] }) {
-  return (
-    <Text hyphenationCallback={keepWordsWhole} style={[styles.columnText, style]}>
-      {children}
-    </Text>
-  );
+/**
+ * React-PDF's default hyphenation splits words the narrow column could carry whole onto the next line, so
+ * a word breaks only when it is wider than the column, and then anywhere. Before its font has loaded a
+ * word stays whole; the renderer loads every font before it lays out text.
+ */
+export function breakColumnWord(word: string, style: LabelColumnStyle, columnWidth: number): string[] {
+  const font = Font.getFont({ fontFamily: pdfFontFamily, fontWeight: style.fontWeight ?? 400 })?.data;
+  if (!font) return [word];
+  const width = (font.layout(word).advanceWidth / font.unitsPerEm) * style.fontSize;
+  return width > columnWidth ? [...word] : [word];
 }
 
 /** One line of label text, inset from the edge and truncated rather than wrapped. */
@@ -146,13 +142,13 @@ const labelLineStyle = {
   textOverflow: 'ellipsis',
 } as const;
 
-/** `children` go in the column beside the symbol. */
+/** Each `column` line, in order, wraps within the column beside the symbol and ends in an ellipsis past its `maxLines`. */
 export function LabelPage({
-  children,
+  column: lines,
   footer,
   payload,
 }: {
-  children: React.ReactNode;
+  column: Record<string, { style: LabelColumnStyle; text: string }>;
   footer: { style: LabelFooterStyle & Styles[string]; text: string };
   payload: string;
 }) {
@@ -177,7 +173,15 @@ export function LabelPage({
           width: column.width,
         }}
       >
-        {children}
+        {Object.entries(lines).map(([key, { style, text }]) => (
+          <Text
+            hyphenationCallback={(word) => breakColumnWord(word, style, column.width)}
+            key={key}
+            style={[{ textOverflow: 'ellipsis' }, style]}
+          >
+            {text}
+          </Text>
+        ))}
       </View>
       <Text style={[labelLineStyle, footer.style, styles.footer, { top: layout.footerTop }]}>{footer.text}</Text>
     </Page>

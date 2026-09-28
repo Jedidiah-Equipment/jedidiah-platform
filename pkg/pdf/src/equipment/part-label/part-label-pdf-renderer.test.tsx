@@ -4,7 +4,9 @@ import { isValidElement, type ReactElement, type ReactNode } from 'react';
 import { describe, expect, test } from 'vitest';
 
 import { getPdfPageSizes } from '../../bytes/pdf-bytes.js';
+import { pdfFontFamily } from '../../pdf-fonts.js';
 import {
+  breakColumnWord,
   LABEL_INSET,
   LABEL_PAGE_SIZE,
   LABEL_PRINTER_DOT,
@@ -68,6 +70,16 @@ describe('Part label PDF', () => {
 
     expect(symbol.moduleCount).toBe(33);
     expect(symbol.moduleWidth).toBeCloseTo(0.5 * POINTS_PER_MILLIMETRE, 3);
+  });
+
+  test('keeps a column word whole while it fits the column, and breaks only a word wider than it', async () => {
+    await Font.getFont({ fontFamily: pdfFontFamily, fontWeight: 400 })?.load();
+    const columnWidth = 16 * POINTS_PER_MILLIMETRE;
+
+    expect(breakColumnWord('Stainless', { fontSize: 7 }, columnWidth)).toEqual(['Stainless']);
+    expect(breakColumnWord('Hydraulicmotorcoupling', { fontSize: 7 }, columnWidth)).toEqual([
+      ...'Hydraulicmotorcoupling',
+    ]);
   });
 
   test('fits the longest Part code a label carries on one code line, and not one character more', async () => {

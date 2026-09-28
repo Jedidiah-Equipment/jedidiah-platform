@@ -7,6 +7,7 @@ export { useInventoryJobPicker } from './use-inventory-job-picker.js';
 export { type InventoryQuotePickerController, useInventoryQuotePicker } from './use-inventory-quote-picker.js';
 export { usePartCategoryOptions } from './use-part-category-options.js';
 export { usePartOptions } from './use-part-options.js';
+export { usePartSearchOptions } from './use-part-search-options.js';
 export { usePartStorageLocationOptions } from './use-part-storage-location-options.js';
 export { useProductForQuoteOptions } from './use-product-for-quote-options.js';
 export { type ProductOption, useProductOptions } from './use-product-options.js';

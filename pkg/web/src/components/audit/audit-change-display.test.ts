@@ -201,6 +201,24 @@ describe('audit change display helpers', () => {
     ]);
   });
 
+  it('formats Part merge counts as totals rather than value transitions', () => {
+    expect(
+      getAuditChangeDisplays({
+        movedBomLines: { from: null, to: 1 },
+        movedJobs: { from: null, to: 2 },
+        movedProductLines: { from: null, to: 3 },
+        movedPurchaseOrderLines: { from: null, to: 4 },
+        movedStockMovements: { from: null, to: 5 },
+      }).map((display) => display.preview),
+    ).toEqual([
+      'BOM lines moved: 1',
+      'Jobs moved: 2',
+      'Product lines moved: 3',
+      'Purchase order lines moved: 4',
+      'Stock movements moved: 5',
+    ]);
+  });
+
   it('collapses long text and object values in row previews', () => {
     expect(
       getAuditChangeDisplays({

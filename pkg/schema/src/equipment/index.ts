@@ -21,6 +21,7 @@ export * from './labor-rates/labor-rate-card.js';
 export * from './parts/part.js';
 export * from './parts/part-bom.js';
 export * from './parts/part-category.js';
+export * from './parts/part-merge.js';
 export * from './products/brochure-document.js';
 export * from './products/catalog-translation.js';
 export * from './products/catalog-translation-review.js';

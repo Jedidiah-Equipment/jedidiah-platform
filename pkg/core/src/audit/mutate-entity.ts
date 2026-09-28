@@ -22,6 +22,8 @@ import { type AuditDescriptor, diffAuditUpdate, recordAuditUpdate } from './audi
  *   same transaction before the aggregate audit diff is recorded.
  * - Supplier merge — Parts and Purchase Orders move in the same transaction before the survivor's
  *   fill-forward diff and both merge events are recorded.
+ * - Part merge — every reference, the ledger included, moves to the survivor before its fill-empty
+ *   diff, the duplicate is deleted, and both merge events are recorded.
  * - Unit Reassignment — two Jobs and a vacated Allocation Quote re-point in one transaction, each with
  *   a single known before/after value, so there is no per-entity diff for the pair to compute.
  * - The Job completion sweep — the order is inverted: it writes first (`WHERE completedOn IS NULL` is

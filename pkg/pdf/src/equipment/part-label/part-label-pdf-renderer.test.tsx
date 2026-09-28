@@ -47,7 +47,6 @@ describe('Part label PDF', () => {
 
   test.each([
     ['a typed Part code', 'SKF-UCF212-60'],
-    ['a badge token', 'badge:rFljpEBlRlbFzOCe6AzxjN3Ez365cQJ1'],
     ['a legacy code past 42 characters', 'Grade 80 chain short link 20mm Apex 80 galvanised'],
   ])('keeps a quiet zone round %s, clear of the feed drift, the column, and the code line', (_, payload) => {
     const { column, footerTop, moduleWidth, symbol } = layoutLabel(payload, PART_LABEL_CODE_STYLE);

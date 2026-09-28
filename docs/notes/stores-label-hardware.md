@@ -19,13 +19,15 @@ symbology; they were confirmed with product on 2026-09-28 while grooming
 
 - The PDF page must be exactly 40 × 30 mm and printed at 100%. Any print-dialog scaling shrinks the
   bars below what the scanner resolves; that was the cause of #1568.
-- A barcode module must be a whole number of printer dots or the bars print unevenly. At 203 dpi the
-  usable choices are 0.125 mm (1 dot, at the scanner's 1D floor), 0.25 mm (2 dots), and 0.375 mm (3 dots).
+- A barcode module must be a whole number of printer dots or the bars print unevenly. At 203 dpi a
+  dot is 0.125 mm (1 dot sits at the scanner's 1D floor), so modules come in 0.125 mm steps from 0.25 mm.
 - Code 128 at 0.25 mm holds about 8 mixed characters across 40 mm. The badge token `badge:<userId>`
   is 38 characters and many Part codes exceed 8, so the label symbology is QR, error correction M.
-- QR modules are 0.375 mm (3 dots), so a Part code of up to 13 characters prints about 11 mm square
-  and a 38-byte badge token about 14 mm. A symbol that would outgrow 14 mm — only a legacy Part code
-  over 42 characters — drops to 0.25 mm (2 dots) so the text still fits below it.
+- The bigger the module, the faster the scanner locks on (#1578). The symbol sits top-left with the
+  name and location in a column beside it and the code as one line across the bottom, and takes the
+  largest whole-dot module whose four-module quiet zone stays on the label and clear of the column
+  and that line; the dark modules never come within 2 mm of the edge. A Part code of up to 13 characters prints at 0.75 mm (6 dots), about 16 mm square;
+  a badge token at 0.625 mm (5 dots), about 18 mm. A longer legacy code steps down on its own.
 - The tablet camera fallback (`ScanCameraModal.tsx`) must list every symbology in circulation:
   `qr` plus `code128` while old labels are still on the shelves.
 

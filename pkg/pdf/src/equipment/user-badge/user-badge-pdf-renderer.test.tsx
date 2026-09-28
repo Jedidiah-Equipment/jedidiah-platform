@@ -4,7 +4,7 @@ import { isValidElement, type ReactElement, type ReactNode } from 'react';
 import { describe, expect, test } from 'vitest';
 
 import { getPdfPageSizes } from '../../bytes/pdf-bytes.js';
-import { LabelQrSymbol } from '../part-label/label-stock.js';
+import { LabelPage } from '../part-label/label-stock.js';
 import { UserBadgePdf } from './UserBadgePdf.js';
 import { renderUserBadgesPdf } from './user-badge-pdf-renderer.js';
 
@@ -18,7 +18,7 @@ const BADGES = [
 
 describe('stores badge PDF', () => {
   test('encodes a token the tablet resolves back to each person', () => {
-    const payloads = collectQrPayloads(UserBadgePdf({ badges: BADGES }));
+    const payloads = collectLabelPayloads(UserBadgePdf({ badges: BADGES }));
 
     expect(payloads.map(parseScanToken)).toEqual(BADGES.map(({ id }) => ({ kind: 'badge', userId: id })));
   });
@@ -47,13 +47,13 @@ describe('stores badge PDF', () => {
 
 type RenderedElement = ReactElement<{ children?: ReactNode; payload?: string }>;
 
-function collectQrPayloads(node: ReactNode): string[] {
-  if (Array.isArray(node)) return node.flatMap(collectQrPayloads);
+function collectLabelPayloads(node: ReactNode): string[] {
+  if (Array.isArray(node)) return node.flatMap(collectLabelPayloads);
   if (!isValidElement(node)) return [];
   const element = node as RenderedElement;
-  if (element.type === LabelQrSymbol) return element.props.payload === undefined ? [] : [element.props.payload];
+  if (element.type === LabelPage) return element.props.payload === undefined ? [] : [element.props.payload];
   if (typeof element.type === 'function') {
-    return collectQrPayloads((element.type as (props: typeof element.props) => ReactNode)(element.props));
+    return collectLabelPayloads((element.type as (props: typeof element.props) => ReactNode)(element.props));
   }
-  return collectQrPayloads(element.props.children);
+  return collectLabelPayloads(element.props.children);
 }

@@ -4,9 +4,8 @@ A Checkout draws a Part from stock to a Job, to a Parts Sale, or Without a Job t
 It is what you post when material leaves the rack for the floor, for a Customer who bought the parts,
 or for a quick repair elsewhere in the factory.
 
-Every Checkout names an **Operator**, the person doing it. On the web the **Operator** field starts as
-you and can be changed to anyone who works in Equipment; on the stores PC, signed in as the stores
-tablet, it starts empty and must be chosen before anything posts.
+Every Checkout names an **Operator**, the person doing it; on the stores PC it starts empty — see
+[Work the stores tablet](./work-the-stores-tablet.md).
 
 ## From the Job
 

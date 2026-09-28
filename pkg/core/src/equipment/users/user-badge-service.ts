@@ -13,7 +13,7 @@ export type UserBadgePdfResult = {
 };
 
 /**
- * The printable Badge Card for one person (spec §11). Anyone the Quick-switch can name may carry one,
+ * The printable Badge Card for one person. Anyone the Quick-switch can name may carry one,
  * and what the card *does* stays bounded by that list: a card for someone it does not offer is refused
  * at the scan field, the same as a name the post would refuse.
  *

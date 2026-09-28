@@ -203,7 +203,6 @@ export const inventoryRouter = router({
     'equipment_inventory:adjust',
     'equipment_inventory:build',
     'equipment_inventory:close-out',
-    'equipment_inventory:count',
     'equipment_purchase_order:amend',
     'equipment_purchase_order:receive',
   ])

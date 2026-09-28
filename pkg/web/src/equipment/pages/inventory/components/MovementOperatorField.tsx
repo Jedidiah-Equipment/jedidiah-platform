@@ -1,3 +1,4 @@
+import type { InventoryRecipientOption } from '@pkg/schema/equipment';
 import { useQuery } from '@tanstack/react-query';
 
 import { ComboboxField } from '@/components/form/fields/ComboboxField.js';
@@ -26,8 +27,12 @@ export function MovementOperatorField({ enabled }: { enabled: boolean }) {
     <ComboboxField
       emptyMessage="No active Equipment users found."
       label="Operator"
-      options={(people.data?.items ?? []).map((person) => ({ label: person.name, value: person.id }))}
+      options={personOptions(people.data?.items ?? [])}
       placeholder="Search people"
     />
   );
+}
+
+export function personOptions(people: readonly InventoryRecipientOption[]) {
+  return people.map((person) => ({ label: person.name, value: person.id }));
 }

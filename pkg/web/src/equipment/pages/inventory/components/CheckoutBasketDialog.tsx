@@ -1,10 +1,5 @@
 import { deriveCheckoutBasketWarnings, unplannedCheckoutFacts, warningMessageFor } from '@pkg/domain/equipment';
-import type {
-  CheckoutBasketPostResult,
-  InventoryRecipientOption,
-  StockMovementWarningCode,
-  StockOnHandRow,
-} from '@pkg/schema/equipment';
+import type { CheckoutBasketPostResult, StockMovementWarningCode, StockOnHandRow } from '@pkg/schema/equipment';
 import { StockMovementLengthMm, StockMovementQuantity } from '@pkg/schema/equipment';
 import { IconAlertTriangle, IconPlus, IconTrash } from '@tabler/icons-react';
 import { useMutation, useQuery } from '@tanstack/react-query';
@@ -24,7 +19,7 @@ import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.j
 import { getApiErrorMetadata } from '@/lib/api-errors.js';
 import { useTRPC } from '@/lib/trpc.js';
 
-import { MovementOperatorField, useDefaultMovementOperator } from './MovementOperatorField.js';
+import { MovementOperatorField, personOptions, useDefaultMovementOperator } from './MovementOperatorField.js';
 import { MovementTargetPicker, type SelectedMovementTarget } from './MovementTargetPicker.js';
 import { StockMovementWarningPrompt } from './StockMovementWarningPrompt.js';
 import {
@@ -236,7 +231,7 @@ export function CheckoutBasketDialog({
                         <field.ComboboxField
                           emptyMessage="No active Equipment users found."
                           label="Received by"
-                          options={recipientOptions(recipientQuery.data?.items ?? [])}
+                          options={personOptions(recipientQuery.data?.items ?? [])}
                           placeholder="Search people"
                         />
                       )}
@@ -577,10 +572,6 @@ function CheckoutBasketQuantityInput({
       value={text}
     />
   );
-}
-
-function recipientOptions(items: readonly InventoryRecipientOption[]) {
-  return items.map((item) => ({ label: item.name, value: item.id }));
 }
 
 function refusedPartIdFrom(error: unknown): string | null {

@@ -46,7 +46,7 @@ higher.
 
 ## A stores badge card
 
-A badge card is the same label stock carrying a person's name and a barcode the stores tablet reads
+A **Badge Card** is the same label stock carrying a person's name and a barcode the stores tablet reads
 to switch to them. Anyone with an Equipment role can have one — the same people the tablet lists by
 name.
 

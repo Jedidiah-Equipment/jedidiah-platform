@@ -132,8 +132,9 @@ context's `JOB-xxxxx`.
 read (its **Read At** time) and by whom, and its evidence. Whoever captures it types the value —
 the Foreman in the field, an administrator for a Baseline Reading; a photo is attached whenever
 the camera allows, taken on the spot or chosen from the phone's gallery, and a reading without
-one is stamped **Missing Photo Evidence**. Read At defaults to the moment of capture, or to when
-a chosen photo was taken, and the Foreman may correct it; it is never in the future. Read At
+one is stamped **Missing Photo Evidence**. Read At defaults to when a chosen photo says it was
+taken, and otherwise to the moment of capture; the Foreman may correct it, and it is never in the
+future. Read At
 describes a reading; it never orders them. A Machine's readings are ordered by acceptance: the
 **latest reading** is the one the server accepted last, every capture is judged against that
 reading whatever its Read At, and a late-entered reading takes its place after it. An Hour Gap

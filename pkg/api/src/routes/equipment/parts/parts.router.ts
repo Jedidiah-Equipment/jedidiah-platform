@@ -34,15 +34,16 @@ import { projectInventoryCostFields } from '../../../equipment/trpc/inventory-co
 import { mapCoreErrors } from '../../../trpc/errors.js';
 import { authorizedProcedure, router } from '../../../trpc/init.js';
 import { partBomErrorFamily, partCoreErrorFamily } from './part-error-families.js';
+import { partLabelReaders } from './part-label-http.route.js';
 
 export const partsRouter = router({
   list: authorizedProcedure('equipment_part:read')
     .input(PartListInput)
     .query(({ ctx, input }) => listParts({ db: ctx.db, input })),
 
-  categories: authorizedProcedure('equipment_part:read').query(({ ctx }) => listPartCategories({ db: ctx.db })),
+  categories: authorizedProcedure(partLabelReaders).query(({ ctx }) => listPartCategories({ db: ctx.db })),
 
-  locations: authorizedProcedure('equipment_part:read').query(({ ctx }) => listPartStorageLocations({ db: ctx.db })),
+  locations: authorizedProcedure(partLabelReaders).query(({ ctx }) => listPartStorageLocations({ db: ctx.db })),
 
   get: authorizedProcedure('equipment_part:read')
     .input(z.object({ id: UUID }))

@@ -10,10 +10,10 @@ switch to QR carry a Code 128 barcode; they still scan until you reprint them.
 
 ## One Part
 
-From the **Parts** list, or from a Purchase Order's **Receiving** card once a line has received
-something:
+From the **Parts** list, from **Inventory** (a Part's row or its history), or from a Purchase Order's
+**Receiving** card once a line has received something:
 
-1. Click **Print label** on the Part's row.
+1. Click **Print label** on the Part's row, or at the top of its history.
 2. The label opens in a new browser tab.
 3. Print it from there.
 
@@ -37,16 +37,18 @@ higher.
 
 ## A batch
 
-1. Open **Parts**.
+1. Open **Parts** or **Inventory**.
 2. Click **Print labels**.
 3. Under **Parts to label**, choose the set:
    - **All Parts**
-   - **By category**
+   - **By Part Category**
    - **By storage location**
    - **Choose Parts** — pick them individually
 4. Fill in the category or storage location if the mode asks for one. **Open printable PDF** stays
    disabled until the selection is complete.
 5. Click **Open printable PDF** and print the sheet from the tab that opens.
+
+Stores users and the stores PC print from **Inventory**.
 
 ## A stores badge card
 

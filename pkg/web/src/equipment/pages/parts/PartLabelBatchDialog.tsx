@@ -36,11 +36,18 @@ import { type PartLabelUrlSelection, partLabelBatchModeLabels, partLabelBatchUrl
 
 type BatchMode = PartLabelUrlSelection['selection'];
 
+type PartLabelBatchPart = { code: string; id: string; name: string };
+
 type PartLabelBatchDialogProps = {
   buttonSize?: ButtonSize;
+  /** Parts to choose from when the page already holds them; omitted, the priced catalog is read instead. */
+  parts?: readonly PartLabelBatchPart[];
 };
 
-export const PartLabelBatchDialog: React.FC<PartLabelBatchDialogProps> = ({ buttonSize = 'default' }) => {
+export const PartLabelBatchDialog: React.FC<PartLabelBatchDialogProps> = ({
+  buttonSize = 'default',
+  parts: pageParts,
+}) => {
   const [isOpen, setIsOpen] = useState(false);
   const [mode, setMode] = useState<BatchMode>('all');
   const [categoryId, setCategoryId] = useState('');
@@ -48,11 +55,9 @@ export const PartLabelBatchDialog: React.FC<PartLabelBatchDialogProps> = ({ butt
   const [partIds, setPartIds] = useState<string[]>([]);
   const categories = usePartCategoryOptions();
   const locations = usePartStorageLocationOptions();
-  const parts = usePartOptions({ enabled: isOpen && mode === 'ids', limit: 0 });
-  const partLabels = useMemo(
-    () => new Map(parts.items.map((part) => [part.id, `${part.code} · ${part.name}`])),
-    [parts.items],
-  );
+  const catalogParts = usePartOptions({ enabled: isOpen && mode === 'ids' && !pageParts, limit: 0 });
+  const parts = pageParts ?? catalogParts.items;
+  const partLabels = useMemo(() => new Map(parts.map((part) => [part.id, `${part.code} · ${part.name}`])), [parts]);
   const selection = resolveSelection({ categoryId, mode, partIds, storageLocation });
 
   const openDialog = () => {
@@ -124,7 +129,7 @@ export const PartLabelBatchDialog: React.FC<PartLabelBatchDialogProps> = ({ butt
               <Field>
                 <FieldLabel htmlFor="part-label-parts">Parts</FieldLabel>
                 <Combobox
-                  items={parts.items.map((part) => part.id)}
+                  items={parts.map((part) => part.id)}
                   itemToStringLabel={(id) => partLabels.get(id) ?? id}
                   multiple
                   onValueChange={setPartIds}

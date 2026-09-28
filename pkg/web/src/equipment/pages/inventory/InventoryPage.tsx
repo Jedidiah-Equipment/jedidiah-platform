@@ -1,8 +1,10 @@
 import { hasPermission } from '@pkg/domain';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
+import { useMemo } from 'react';
 
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
+import { PartLabelBatchDialog } from '@/equipment/pages/parts/PartLabelBatchDialog.js';
 import { inventoryPageDescription } from '@/equipment/utils/page-descriptions.js';
 import { useAccess } from '@/hooks/use-access.js';
 import { getApiQueryErrorMessage } from '@/lib/api-errors.js';
@@ -20,18 +22,30 @@ export function InventoryPage() {
   const canBuild = hasPermission(accessQuery.data, 'equipment_inventory:build');
   const canMove = hasPermission(accessQuery.data, 'equipment_inventory:move');
   const canRevalue = hasPermission(accessQuery.data, 'equipment_inventory_cost:revalue');
+  const labelParts = useMemo(
+    () =>
+      (stockOnHandQuery.data?.items ?? []).map((item) => ({
+        code: item.partCode,
+        id: item.partId,
+        name: item.partName,
+      })),
+    [stockOnHandQuery.data],
+  );
 
   return (
     <PageLayout
       actions={
-        <StockMovementActions
-          canAdjust={canAdjust}
-          canBuild={canBuild}
-          canMove={canMove}
-          canReadCost={showCosts}
-          canRevalue={canRevalue}
-          items={stockOnHandQuery.data?.items ?? []}
-        />
+        <>
+          <PartLabelBatchDialog parts={labelParts} />
+          <StockMovementActions
+            canAdjust={canAdjust}
+            canBuild={canBuild}
+            canMove={canMove}
+            canReadCost={showCosts}
+            canRevalue={canRevalue}
+            items={stockOnHandQuery.data?.items ?? []}
+          />
+        </>
       }
       description={inventoryPageDescription}
       title="Stock on hand"

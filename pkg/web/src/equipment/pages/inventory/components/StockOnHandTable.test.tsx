@@ -1,6 +1,6 @@
 import { StockOnHandResult } from '@pkg/schema/equipment';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { StockOnHandTable } from './StockOnHandTable.js';
 
@@ -46,6 +46,21 @@ const result = StockOnHandResult.parse({
       unitOfMeasure: 'piece',
     },
   ],
+});
+
+beforeEach(() => {
+  vi.stubGlobal('window', {
+    __APP_CONFIG__: {
+      appBaseUrl: 'http://localhost:7001',
+      appEnv: 'development',
+      apiBaseUrl: 'http://localhost:7002',
+      authBaseUrl: 'http://localhost:7002/api/auth',
+    },
+  });
+});
+
+afterEach(() => {
+  vi.unstubAllGlobals();
 });
 
 describe('StockOnHandTable', () => {

@@ -8,6 +8,7 @@ import { DataTable } from '@/components/data-table/DataTable.js';
 import { type DataTableColumnDef, useDataTable } from '@/components/data-table/features.js';
 import { Badge } from '@/components/ui/badge.js';
 import { Button } from '@/components/ui/button.js';
+import { PartLabelPrintButton } from '@/equipment/pages/parts/PartLabelPrintButton.js';
 import {
   formatLengthBucket,
   formatPartQuantity,
@@ -151,13 +152,16 @@ function createStockOnHandColumns({
       : []),
     {
       cell: ({ row }) => (
-        <Button onClick={() => onOpenHistory(row.original.partId)} size="sm" variant="link">
-          View history
-        </Button>
+        <div className="flex items-center justify-end gap-2">
+          <PartLabelPrintButton partId={row.original.partId} size="xs" />
+          <Button onClick={() => onOpenHistory(row.original.partId)} size="sm" variant="link">
+            View history
+          </Button>
+        </div>
       ),
       enableSorting: false,
-      header: 'History',
-      id: 'history',
+      header: '',
+      id: 'actions',
       meta: {
         cellClassName: 'text-right',
         headerClassName: 'text-right',

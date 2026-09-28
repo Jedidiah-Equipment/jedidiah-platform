@@ -70,11 +70,14 @@ export async function registerPartLabelHttpRoutes(
  * A label carries a Part's own identity — code, name, location — and no cost, so the physical roles
  * print it as readily as the catalog ones. Spec §10 puts a print button on receiving lines, which
  * the price-blind `stores` role works: it holds `equipment_inventory:read` but no `equipment_part:read` (§11's matrix).
+ * The label batch pickers (Part Category and Storage Location names) share this gate.
  */
+export const partLabelReaders = ['equipment_part:read', 'equipment_inventory:read'] as const;
+
 function requirePartLabelAccess(auth: Parameters<typeof requireAnyPermission>[0]): void {
   requireAnyPermission(
     auth,
-    ['equipment_part:read', 'equipment_inventory:read'],
+    partLabelReaders,
     'You do not have permission to print Part labels.',
     'part.label_forbidden',
   );

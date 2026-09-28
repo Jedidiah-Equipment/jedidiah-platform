@@ -6,6 +6,7 @@ import { useState } from 'react';
 
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
+import { PartLabelPrintButton } from '@/equipment/pages/parts/PartLabelPrintButton.js';
 import { useAccess } from '@/hooks/use-access.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { ReturnFromCheckoutDialog } from './components/ReturnFromCheckoutDialog.js';
@@ -26,6 +27,7 @@ export function StockMovementHistoryPage({ partId }: { partId: UUID }) {
 
   return (
     <PageLayout
+      actions={<PartLabelPrintButton partId={partId} />}
       description={part ? `${part.code} · Complete append-only movement ledger` : undefined}
       title={part ? `${part.name} history` : undefined}
     >

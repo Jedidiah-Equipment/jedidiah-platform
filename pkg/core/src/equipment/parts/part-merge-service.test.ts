@@ -90,6 +90,33 @@ describe('mergePart', () => {
     await expect(context.db.$count(parts, eq(parts.id, duplicate.id))).resolves.toBe(0);
   });
 
+  test('keeps the stock value both Parts held when their averages differ', async ({ context }) => {
+    const survivor = context.parts.piece;
+    const duplicate = await seedDuplicate(context.db, survivor);
+    await context.db.insert(stockMovements).values([
+      openingBalance(survivor.id, 10, 10, '2026-08-03T08:00:00.000Z'),
+      openingBalance(duplicate.id, 10, 30, '2026-08-04T08:00:00.000Z'),
+      {
+        actorUserId,
+        createdAt: new Date('2026-08-05T08:00:00.000Z'),
+        delta: -5,
+        jobId: context.jobs.custom.id,
+        movementType: 'checkout',
+        partId: survivor.id,
+        unitCost: 10,
+      },
+    ]);
+    // Worth 5 × R10 + 10 × R30 = R350 before; a bare replay would say 15 × R20 = R300.
+    await expect(
+      getPartMergePreview({ db: context.db, input: { sourceId: duplicate.id, targetId: survivor.id } }),
+    ).resolves.toMatchObject({ combinedAverageUnitCost: 350 / 15 });
+
+    await merge(context.db, duplicate.id, survivor.id);
+
+    const average = (await loadMovingAverages(context.db, [survivor.id])).get(survivor.id) ?? 0;
+    expect(average * 15).toBeCloseTo(350, 4);
+  });
+
   test('re-points order lines together with the receipts booked against them', async ({ context }) => {
     const survivor = context.parts.piece;
     const duplicate = await seedDuplicate(context.db, survivor);
@@ -299,9 +326,7 @@ describe('mergePart', () => {
     );
   });
 
-  test('keeps the survivor’s own BOM and drops the duplicate’s, but adopts it when the survivor has none', async ({
-    context,
-  }) => {
+  test('keeps the survivor’s own BOM, even an empty one, and drops the duplicate’s', async ({ context }) => {
     const built = context.parts.fabricated;
     const recipeless = await seedDuplicate(context.db, built, { code: 'BUILT-EMPTY' });
     const duplicate = await seedDuplicate(context.db, built);
@@ -314,11 +339,12 @@ describe('mergePart', () => {
       getPartMergePreview({ db: context.db, input: { sourceId: duplicate.id, targetId: built.id } }),
     ).resolves.toMatchObject({ droppedBomLineCount: 1 });
     await merge(context.db, duplicate.id, built.id);
-    await merge(context.db, built.id, recipeless.id);
-
     await expect(
       context.db.select({ componentPartId: partBom.componentPartId, parentPartId: partBom.parentPartId }).from(partBom),
-    ).resolves.toEqual([{ componentPartId: context.parts.piece.id, parentPartId: recipeless.id }]);
+    ).resolves.toEqual([{ componentPartId: context.parts.piece.id, parentPartId: built.id }]);
+
+    await merge(context.db, built.id, recipeless.id);
+    await expect(context.db.$count(partBom)).resolves.toBe(0);
   });
 
   test('refuses a merge into itself or with a missing Part', async ({ context }) => {

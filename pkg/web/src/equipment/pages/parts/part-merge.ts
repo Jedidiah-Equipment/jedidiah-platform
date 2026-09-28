@@ -35,7 +35,7 @@ export function formatPartMergeMoves({ moved, source, target }: PartMergePreview
   ];
   const listed = `${counts.slice(0, -1).join(', ')} and ${counts.at(-1)}`;
 
-  return `${listed} will move to ${target.code}. ${source.code} will be deleted and its label will no longer scan. This cannot be undone.`;
+  return `${listed} will move to ${target.code}. ${source.code} will be deleted and its label will no longer scan, so reprint the label for ${target.code}. This cannot be undone.`;
 }
 
 /** The two sides and the result. Cost is null for a reader without cost access, and then stays unshown. */

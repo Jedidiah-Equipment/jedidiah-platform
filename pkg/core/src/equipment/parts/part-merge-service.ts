@@ -69,7 +69,7 @@ export async function getPartMergePreview({ db, input }: { db: Db; input: PartMe
 
   return {
     blockers,
-    combinedAverageUnitCost: ledger.combinedAverageUnitCost,
+    combinedAverageUnitCost: scaleUnitCost(ledger.combinedAverage, pair.target.standardPurchaseLengthMm),
     combinedOnHand: ledger.source.onHand + ledger.target.onHand,
     droppedBomLineCount: plan.droppedBomLineCount,
     moved: plan.moved,
@@ -126,7 +126,7 @@ export async function mergePart({
     const blockers = await findBlockers(tx, pair);
     if (blockers.length > 0) throw new PartMergeBlockedError(blockers);
 
-    const { moved } = await loadMergePlan(tx, pair);
+    const [{ moved }, ledger] = await Promise.all([loadMergePlan(tx, pair), loadLedgerFacts(tx, pair)]);
 
     // The ledger's receipt rows reference their order line through `(purchase_order_id, part_id)`.
     // Both sides move in one statement so the non-deferrable key is only checked once they agree; a
@@ -147,12 +147,8 @@ export async function mergePart({
       .set({ newPartId: targetId })
       .where(eq(purchaseOrderAmendments.newPartId, sourceId));
 
-    // The survivor keeps its own recipe; it adopts the duplicate's only when it has none.
-    if (await hasRecipe(tx, targetId)) {
-      await tx.delete(partBom).where(eq(partBom.parentPartId, sourceId));
-    } else {
-      await tx.update(partBom).set({ parentPartId: targetId }).where(eq(partBom.parentPartId, sourceId));
-    }
+    // The survivor keeps its own recipe, even an empty one: an empty BOM is a real, trivial build.
+    await tx.delete(partBom).where(eq(partBom.parentPartId, sourceId));
     for (const summed of SUMMED_TABLES) await sumAndRepoint(tx, summed, pair);
 
     // Two references carry the Part id without a key. Only the id changes; a snapshot keeps its
@@ -169,6 +165,19 @@ export async function mergePart({
         flagKey: sql`left(${invoiceFlagResolutions.flagKey}, length(${invoiceFlagResolutions.flagKey}) - ${sourceId.length}) || ${targetId}::text`,
       })
       .where(sql`${invoiceFlagResolutions.flagKey} LIKE ${`%:${sourceId}`}`);
+
+    // The merged ledger replays the two histories as one; a revaluation at its end restores the
+    // stock value the two Parts held apart. It is appended, like every revaluation.
+    if (ledger.combinedAverage !== null && !sameCost(ledger.combinedAverage, ledger.replayedAverage)) {
+      await tx.insert(stockMovements).values({
+        actorUserId,
+        delta: 0,
+        movementType: 'revaluation',
+        note: `Part Merge kept the stock value of ${pair.source.code} and ${pair.target.code}`,
+        partId: targetId,
+        unitCost: ledger.combinedAverage,
+      });
+    }
 
     const merged = await fillEmptyFields(tx, pair, actorUserId);
     await tx.delete(parts).where(eq(parts.id, sourceId));
@@ -287,10 +296,6 @@ async function loadOpenStocktakeScopes(
   return rows.map((row) => row.scope);
 }
 
-async function hasRecipe(db: Db | DatabaseTransaction, partId: UUID): Promise<boolean> {
-  return (await db.$count(partBom, eq(partBom.parentPartId, partId))) > 0;
-}
-
 async function loadMergePlan(
   db: Db | DatabaseTransaction,
   { source, target }: Pair,
@@ -300,7 +305,6 @@ async function loadMergePlan(
     purchaseOrderLineCount,
     componentLineCount,
     recipeLineCount,
-    targetHasRecipe,
     assemblyLineCount,
     materialLineCount,
     jobCount,
@@ -310,7 +314,6 @@ async function loadMergePlan(
     db.$count(purchaseOrderLines, eq(purchaseOrderLines.partId, source.id)),
     db.$count(partBom, eq(partBom.componentPartId, source.id)),
     db.$count(partBom, eq(partBom.parentPartId, source.id)),
-    hasRecipe(db, target.id),
     db.$count(assemblyParts, eq(assemblyParts.partId, source.id)),
     db.$count(productMaterialLines, eq(productMaterialLines.partId, source.id)),
     countJobs(db, source.id),
@@ -318,9 +321,9 @@ async function loadMergePlan(
   ]);
 
   return {
-    droppedBomLineCount: targetHasRecipe ? recipeLineCount : 0,
+    droppedBomLineCount: recipeLineCount,
     moved: {
-      bomLines: componentLineCount + (targetHasRecipe ? 0 : recipeLineCount),
+      bomLines: componentLineCount,
       jobs: jobCount,
       productLines: assemblyLineCount + materialLineCount,
       purchaseOrderLines: purchaseOrderLineCount,
@@ -419,10 +422,16 @@ async function loadSummedLines(
   ];
 }
 
-async function loadLedgerFacts(
-  db: Db | DatabaseTransaction,
-  { source, target }: Pair,
-): Promise<{ combinedAverageUnitCost: number | null; source: PartMergeSide; target: PartMergeSide }> {
+type LedgerFacts = {
+  /** Per basis unit (a millimetre for linear stock): what the survivor's average must be to keep both Parts' stock value. */
+  combinedAverage: number | null;
+  /** Per basis unit: what replaying both ledgers as one would make the average. */
+  replayedAverage: number | null;
+  source: PartMergeSide;
+  target: PartMergeSide;
+};
+
+async function loadLedgerFacts(db: Db | DatabaseTransaction, { source, target }: Pair): Promise<LedgerFacts> {
   const rows = await db
     .select({
       delta: stockMovements.delta,
@@ -436,22 +445,52 @@ async function loadLedgerFacts(
     .where(inArray(stockMovements.partId, [source.id, target.id]))
     .orderBy(asc(stockMovements.createdAt), asc(stockMovements.id));
 
-  const side = (part: PartRow): PartMergeSide => {
+  const facts = (part: PartRow) => {
     const ledger = rows.filter((row) => row.partId === part.id);
+    const quantityRows = ledger.filter((row) => row.movementType !== 'revaluation');
     return {
-      averageUnitCost: scaleUnitCost(deriveMovingAverage(ledger), part.standardPurchaseLengthMm),
-      code: part.code,
-      id: part.id,
-      name: part.name,
-      onHand: ledger.reduce((total, row) => (row.movementType === 'revaluation' ? total : total + row.delta), 0),
+      average: deriveMovingAverage(ledger),
+      basisOnHand: Math.max(
+        0,
+        quantityRows.reduce((total, row) => total + row.delta * (row.lengthMm ?? 1), 0),
+      ),
+      side: {
+        averageUnitCost: scaleUnitCost(deriveMovingAverage(ledger), part.standardPurchaseLengthMm),
+        code: part.code,
+        id: part.id,
+        name: part.name,
+        onHand: quantityRows.reduce((total, row) => total + row.delta, 0),
+      },
     };
   };
+  const sourceFacts = facts(source);
+  const targetFacts = facts(target);
+  const replayedAverage = deriveMovingAverage(rows);
 
   return {
-    combinedAverageUnitCost: scaleUnitCost(deriveMovingAverage(rows), target.standardPurchaseLengthMm),
-    source: side(source),
-    target: side(target),
+    combinedAverage: combineAverages(sourceFacts, targetFacts) ?? replayedAverage,
+    replayedAverage,
+    source: sourceFacts.side,
+    target: targetFacts.side,
   };
+}
+
+/**
+ * Each ledger drew at its own average until now, so the value each holds is its stock at that
+ * average. Replaying the two as one would re-price those past draws and move value that has
+ * already left; weighting the two averages by what is on the shelf keeps it. Null when nothing is
+ * on either shelf, where the replay has no value to disturb.
+ */
+function combineAverages(
+  source: { average: number | null; basisOnHand: number },
+  target: { average: number | null; basisOnHand: number },
+): number | null {
+  if (source.average === null) return target.average;
+  if (target.average === null) return source.average;
+  const onHand = source.basisOnHand + target.basisOnHand;
+  if (onHand === 0) return null;
+
+  return (source.basisOnHand * source.average + target.basisOnHand * target.average) / onHand;
 }
 
 /**
@@ -502,6 +541,10 @@ async function fillEmptyFields(tx: DatabaseTransaction, { source, target }: Pair
   }
 
   return updated;
+}
+
+function sameCost(left: number, right: number | null): boolean {
+  return right !== null && Math.abs(left - right) < 1e-6;
 }
 
 function isEmptyPartField(value: string | number | null): boolean {

@@ -6,6 +6,7 @@ import type { PurchaseOrderPdfModel } from '@pkg/schema/equipment';
 import { and, eq } from 'drizzle-orm';
 import { describe, expect, vi } from 'vitest';
 
+import { mergePart } from '../parts/part-merge-service.js';
 import { listPurchaseOrderDocuments } from './credit-note-service.js';
 import {
   ACTOR_ID,
@@ -314,6 +315,32 @@ describe('Purchase Order amendments', () => {
       }),
       filename: 'PO-00001 rev 2.pdf',
     });
+  });
+
+  test('moves the quantity of a line whose Part a Part Merge joined to another Supplier’s Part', async ({
+    context,
+  }) => {
+    const purchaseOrder = await sendOrder(context, [{ partId: PIECE_PART_ID, quantity: 4, unitPrice: 10 }]);
+    await mergePart({
+      actorUserId: ACTOR_ID,
+      db: context.db,
+      input: { sourceId: PIECE_PART_ID, targetId: OTHER_SUPPLIER_PART_ID },
+    });
+
+    const amended = await amendPurchaseOrderQuantity({
+      actorUserId: ACTOR_ID,
+      db: context.db,
+      input: {
+        id: purchaseOrder.id,
+        lineId: partLineId(purchaseOrder, PIECE_PART_ID),
+        note: 'Supplier can send 6',
+        quantity: 6,
+      },
+      pdfRenderer: async () => renderStubPdf(),
+      storage: context.storage,
+    });
+
+    expect(amended.lines).toMatchObject([{ partId: OTHER_SUPPLIER_PART_ID, quantity: 6 }]);
   });
 
   test('lowers a quantity, but never below what has already turned up', async ({ context }) => {

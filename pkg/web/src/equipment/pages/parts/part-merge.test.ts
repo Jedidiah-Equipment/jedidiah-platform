@@ -32,7 +32,7 @@ describe('describePartMergeBlocker', () => {
 describe('formatPartMergeMoves', () => {
   it('says what moves, that the duplicate goes, and that its code stops scanning', () => {
     expect(formatPartMergeMoves(preview)).toBe(
-      '12 stock movements, 1 purchase order line, 0 BOM lines, 2 product lines and 1 job will move to TUBE. TUBE-OLD will be deleted and its label will no longer scan. This cannot be undone.',
+      '12 stock movements, 1 purchase order line, 0 BOM lines, 2 product lines and 1 job will move to TUBE. TUBE-OLD will be deleted and its label will no longer scan, so reprint the label for TUBE. This cannot be undone.',
     );
   });
 });

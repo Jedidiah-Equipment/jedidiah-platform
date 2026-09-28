@@ -1,11 +1,13 @@
 import { formatHours } from '@pkg/domain';
 import { deriveJobActions } from '@pkg/domain/contracting';
 import type { CategoryColour, CategoryIconKey, JobCardVariant } from '@pkg/schema/contracting';
+import { IconPlayerPlay, IconPlayerStop, IconPlus, type Icon as TablerIcon } from '@tabler/icons-react-native';
 import { type Href, router, useLocalSearchParams } from 'expo-router';
-import { ScrollView, View } from 'react-native';
+import { Pressable, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { SecondaryToolbar } from '@/components/TopToolbar';
 import { Button } from '@/components/ui/button';
+import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { CategoryIcon } from '@/contracting/components/CategoryIcon';
 import { jobCardShareAction } from '@/contracting/lib/job-card';
@@ -122,6 +124,24 @@ export default function JobScreen() {
           </Text>
         )}
 
+        {job ? (
+          <View className="-mb-2 flex-row items-center justify-between gap-2">
+            <Text className="text-lg text-foreground" weight="bold">
+              Machines
+            </Text>
+            {canAdd ? (
+              <Pressable
+                accessibilityLabel="Add machine"
+                accessibilityRole="button"
+                className="h-10 w-10 items-center justify-center rounded-xl border border-border bg-surface active:bg-muted"
+                onPress={() => router.push(`/contracting/jobs/${job.id}/add-machine` as Href)}
+              >
+                <Icon className="text-foreground" icon={IconPlus} size={20} />
+              </Pressable>
+            ) : null}
+          </View>
+        ) : null}
+
         {stints.map((stint) => (
           <StintCard
             canAdd={canAdd}
@@ -172,13 +192,6 @@ export default function JobScreen() {
             />
             {share.error ? <Text className="text-danger">{share.error}</Text> : null}
           </View>
-        ) : null}
-        {job && canAdd ? (
-          <Button
-            primary
-            title="+ Add machine"
-            onPress={() => router.push(`/contracting/jobs/${job.id}/add-machine` as Href)}
-          />
         ) : null}
       </ScrollView>
     </SafeAreaView>
@@ -232,15 +245,30 @@ function StintCard({
         <Text className="text-sm text-muted-foreground">Departed {formatHours(stint.departure.value)}</Text>
       ) : null}
       {stint.view === 'planned' && canCapture ? (
-        <Button primary title="Start — capture arrival" onPress={onStart} />
+        <CaptureButton icon={IconPlayerPlay} label="Start — capture arrival" onPress={onStart} />
       ) : null}
       {(stint.view === 'running' || stint.view === 'starting') && canCapture ? (
-        <Button primary title="Stop — capture departure" onPress={onStop} />
+        <CaptureButton icon={IconPlayerStop} label="Stop — capture departure" onPress={onStop} />
       ) : null}
       {(stint.view === 'left' || stint.view === 'stopping') && canAdd ? (
         <Button title="Re-add machine" onPress={onReadd} />
       ) : null}
       {stint.view === 'attention' ? <Button title="Open Needs attention" onPress={onAttention} /> : null}
     </View>
+  );
+}
+
+function CaptureButton({ icon, label, onPress }: { icon: TablerIcon; label: string; onPress: () => void }) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      className="flex-row items-center justify-center gap-2 rounded-lg border border-border bg-muted px-3 py-3 active:bg-surface"
+      onPress={onPress}
+    >
+      <Icon className="text-primary" icon={icon} size={16} />
+      <Text className="text-sm text-foreground" weight="semibold">
+        {label}
+      </Text>
+    </Pressable>
   );
 }

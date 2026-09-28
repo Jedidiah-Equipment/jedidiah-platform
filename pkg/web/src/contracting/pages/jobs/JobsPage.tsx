@@ -1,6 +1,6 @@
 import { formatDate } from '@pkg/domain';
 import type { JobCreateInput, JobFacts, JobQueue, JobSummary } from '@pkg/schema/contracting';
-import { jobQueues } from '@pkg/schema/contracting';
+import { CustomerName, FarmName, jobQueues, WorkTypeName } from '@pkg/schema/contracting';
 import { useMutation, useQueries, useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import { useMemo, useState } from 'react';
@@ -245,6 +245,24 @@ function NewJobDialog({
   canAssign: boolean;
 }) {
   const trpc = useTRPC();
+  const { invalidateDirectory } = useQueryInvalidation();
+  const showError = useApiMutationErrorToast();
+  const canUpdateDirectory = useCan('contracting_directory:update').can;
+  const createCustomer = useMutation(
+    trpc.contractingDirectory.customers.create.mutationOptions({
+      onError: (error) => showError(error, 'Unable to create Customer.'),
+    }),
+  );
+  const createFarm = useMutation(
+    trpc.contractingDirectory.farms.create.mutationOptions({
+      onError: (error) => showError(error, 'Unable to create Farm.'),
+    }),
+  );
+  const createWorkType = useMutation(
+    trpc.contractingDirectory.workTypes.create.mutationOptions({
+      onError: (error) => showError(error, 'Unable to create Work type.'),
+    }),
+  );
   const [customerId, setCustomerId] = useState('');
   const customers = useQuery(trpc.contractingDirectory.customers.list.queryOptions());
   const farms = useQuery(trpc.contractingDirectory.farms.list.queryOptions({ customerId }, { enabled: !!customerId }));
@@ -264,6 +282,22 @@ function NewJobDialog({
             {(field) => (
               <field.ComboboxField
                 label="Customer"
+                placeholder={canUpdateDirectory ? 'Search or type a new Customer...' : 'Search...'}
+                create={
+                  canUpdateDirectory
+                    ? {
+                        onCreate: async (name) => {
+                          const customer = await createCustomer.mutateAsync({ name }).catch(() => undefined);
+                          if (!customer) return undefined;
+
+                          // The new option has to be in the list before the field points at it, or the input shows blank.
+                          await invalidateDirectory();
+                          return customer.id;
+                        },
+                        toName: (inputValue) => CustomerName.safeParse(inputValue).data,
+                      }
+                    : undefined
+                }
                 options={(customers.data ?? []).map((row) => ({ value: row.id, label: row.name }))}
                 onValueCommit={(id) => {
                   setCustomerId(id);
@@ -277,19 +311,48 @@ function NewJobDialog({
               <field.ComboboxField
                 label="Farm"
                 disabled={!customerId}
+                placeholder={canUpdateDirectory ? 'Search or type a new Farm...' : 'Search...'}
+                create={
+                  canUpdateDirectory
+                    ? {
+                        onCreate: async (name) => {
+                          const farm = await createFarm.mutateAsync({ customerId, name }).catch(() => undefined);
+                          if (!farm) return undefined;
+
+                          await invalidateDirectory();
+                          return farm.id;
+                        },
+                        toName: (inputValue) => FarmName.safeParse(inputValue).data,
+                      }
+                    : undefined
+                }
                 options={(farms.data ?? []).map((row) => ({ value: row.id, label: row.name }))}
               />
             )}
           </form.AppField>
           <form.AppField name="workTypeId">
             {(field) => (
-              <field.SelectField
+              <field.ComboboxField
                 label="Work type"
+                placeholder={canUpdateDirectory ? 'Search or type a new Work type...' : 'Search...'}
+                create={
+                  canUpdateDirectory
+                    ? {
+                        onCreate: async (name) => {
+                          const workType = await createWorkType.mutateAsync({ name }).catch(() => undefined);
+                          if (!workType) return undefined;
+
+                          await invalidateDirectory();
+                          return workType.id;
+                        },
+                        toName: (inputValue) => WorkTypeName.safeParse(inputValue).data,
+                      }
+                    : undefined
+                }
                 options={(workTypes.data ?? []).map((row) => ({ value: row.id, label: row.name }))}
               />
             )}
           </form.AppField>
-          <form.AppField name="description">{(field) => <field.TextareaField label="Description" />}</form.AppField>
           {canAssign ? (
             <form.AppField name="foremanUserId">
               {(field) => (
@@ -300,6 +363,7 @@ function NewJobDialog({
               )}
             </form.AppField>
           ) : null}
+          <form.AppField name="description">{(field) => <field.TextareaField label="Description" />}</form.AppField>
         </>
       )}
     </CreateEntityDialog>

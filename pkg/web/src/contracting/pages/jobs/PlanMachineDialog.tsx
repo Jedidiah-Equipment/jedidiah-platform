@@ -3,6 +3,7 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import { z } from 'zod';
 import { CreateEntityDialog } from '@/components/form/index.js';
 import { emptyStringOr, requiredSelection } from '@/components/form/utils/form-schema.js';
+import { CategoryIcon } from '@/contracting/components/CategoryIcon.js';
 import { useQueryInvalidation } from '@/contracting/hooks/use-query-invalidation.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useTRPC } from '@/lib/trpc.js';
@@ -60,6 +61,7 @@ export function PlanMachineDialog({
                 onValueSelect={(id) => !machines.data?.some((row) => row.id === id && row.onSiteJobNumber !== null)}
                 options={(machines.data ?? []).map((row) => ({
                   value: row.id,
+                  icon: <CategoryIcon icon={row.categoryIcon} colour={row.categoryColour} size={14} />,
                   label: `${row.code} · ${row.make} ${row.model}${row.onSiteJobNumber ? ` · On Job ${row.onSiteJobNumber}` : ''}`,
                 }))}
               />
@@ -71,7 +73,11 @@ export function PlanMachineDialog({
                 label="Implement"
                 options={[
                   { value: '', label: 'None' },
-                  ...(implementOptions.data ?? []).map((row) => ({ value: row.id, label: row.code })),
+                  ...(implementOptions.data ?? []).map((row) => ({
+                    value: row.id,
+                    label: row.code,
+                    icon: <CategoryIcon icon={row.categoryIcon} colour={row.categoryColour} size={14} />,
+                  })),
                 ]}
               />
             )}

@@ -13,7 +13,7 @@ import { Badge } from '@/components/ui/badge.js';
 import { Button } from '@/components/ui/button.js';
 import { Switch } from '@/components/ui/switch.js';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip.js';
-import { CategoryLabel } from '@/contracting/components/CategoryIcon.js';
+import { CategoryIcon, CategoryLabel } from '@/contracting/components/CategoryIcon.js';
 import { ReadingEvidenceBadge } from '@/contracting/components/ReadingEvidence.js';
 import { cn } from '@/lib/utils.js';
 import { AddMeasurePopover } from './AddMeasurePopover.js';
@@ -107,7 +107,11 @@ function ImplementCell({ stint }: { stint: Assignment }) {
         value={stint.implementId ?? ''}
         options={[
           { value: '', label: '—' },
-          ...implementOptions.map((entry) => ({ value: entry.id, label: entry.code })),
+          ...implementOptions.map((entry) => ({
+            value: entry.id,
+            label: entry.code,
+            icon: <CategoryIcon icon={entry.categoryIcon} colour={entry.categoryColour} size={14} />,
+          })),
         ]}
         onValueChange={(implementId) => mutations.patch.mutate({ id: stint.id, implementId: implementId || null })}
       />

@@ -13,6 +13,7 @@ import { SecondaryToolbar } from '@/components/TopToolbar';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { TextInput } from '@/components/ui/text-input';
+import { CategoryIcon } from '@/contracting/components/CategoryIcon';
 import { useDrivers, useImplements, useJobs } from '@/contracting/jobs/use-jobs';
 import { recordReadingCaptured } from '@/contracting/observability';
 import { captureWorld } from '@/contracting/readings/capture-world';
@@ -32,10 +33,6 @@ type CaptureParams = {
   role?: string;
   assignmentId?: string;
   jobId?: string;
-  startAssignmentJobId?: string;
-  implementId?: string;
-  driverUserId?: string;
-  startLocalId?: string;
   overrideImplementId?: string;
   overrideDriverUserId?: string;
   implementCode?: string;
@@ -45,7 +42,7 @@ type CaptureParams = {
 
 export default function CaptureScreen() {
   const params = useLocalSearchParams<CaptureParams>();
-  const fallbackSessionId = [params.id, params.role, params.assignmentId, params.startLocalId].join(':');
+  const fallbackSessionId = [params.id, params.role, params.assignmentId].join(':');
   return <CaptureForm key={params.captureSessionId ?? fallbackSessionId} params={params} />;
 }
 
@@ -101,11 +98,7 @@ function CaptureForm({ params }: { params: CaptureParams }) {
   const latestId = world.latest?.id ?? null;
   const plannedImplementId =
     jobs.data?.flatMap((job) => job.stints).find((stint) => stint.id === params.assignmentId)?.implementId ?? null;
-  const arrivingImplementId = params.startLocalId
-    ? params.implementId || null
-    : changeStint
-      ? overrides.implementId || null
-      : plannedImplementId;
+  const arrivingImplementId = changeStint ? overrides.implementId || null : plannedImplementId;
   const { parsed, verdict, advisory, canSave } = deriveCapture({
     value,
     world,
@@ -174,16 +167,6 @@ function CaptureForm({ params }: { params: CaptureParams }) {
           machineId: id,
           role,
           ...(params.assignmentId ? { assignmentId: params.assignmentId } : {}),
-          ...(params.startLocalId && params.startAssignmentJobId
-            ? {
-                startAssignment: {
-                  localId: params.startLocalId,
-                  jobId: params.startAssignmentJobId,
-                  implementId: params.implementId || null,
-                  ...(params.driverUserId ? { driverUserId: params.driverUserId } : {}),
-                },
-              }
-            : {}),
           ...(role === 'arrival' && params.assignmentId && changeStint
             ? {
                 stintOverrides: {
@@ -249,25 +232,34 @@ function CaptureForm({ params }: { params: CaptureParams }) {
                 <View className="gap-3">
                   <overrideForm.AppField name="implementId">
                     {(field) => (
-                      <field.SelectField
+                      <field.SearchSelectField
                         label="Implement"
+                        placeholder="No implement"
+                        searchPlaceholder="Search by code or category…"
+                        emptyMessage="No Implements match."
                         options={[
                           { label: 'No implement', value: '' },
-                          ...(implementsQuery.data ?? []).map((row) => ({
-                            label: implementOnJob(row.id)
-                              ? `${row.code} · On Job · ${implementOnJob(row.id)}`
-                              : row.code,
-                            value: row.id,
-                            disabled: implementOnJob(row.id) !== null,
-                          })),
+                          ...(implementsQuery.data ?? []).map((row) => {
+                            const onJob = implementOnJob(row.id);
+                            return {
+                              value: row.id,
+                              label: row.code,
+                              description: onJob ? `${row.categoryName} · On Job ${onJob}` : row.categoryName,
+                              icon: <CategoryIcon icon={row.categoryIcon} colour={row.categoryColour} size={16} />,
+                              disabled: onJob !== null,
+                            };
+                          }),
                         ]}
                       />
                     )}
                   </overrideForm.AppField>
                   <overrideForm.AppField name="driverUserId">
                     {(field) => (
-                      <field.SelectField
+                      <field.SearchSelectField
                         label="Driver"
+                        placeholder="No driver"
+                        searchPlaceholder="Search drivers…"
+                        emptyMessage="No drivers match."
                         options={[
                           { label: 'No driver', value: '' },
                           ...(driversQuery.data ?? []).map((row) => ({ label: row.name, value: row.id })),

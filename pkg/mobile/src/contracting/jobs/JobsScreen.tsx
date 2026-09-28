@@ -11,7 +11,8 @@ import { useReadingQueue } from '@/contracting/readings/ReadingQueueProvider';
 import type { QueuedReading } from '@/contracting/readings/reading-queue';
 import { useIsOffline } from '@/lib/connectivity';
 import { jobSummary } from './derive-stint';
-import { isFinishedJob, jobStatusLabel, useFinishedJobs, useJobs } from './use-jobs';
+import { JobStatusChip } from './JobStatusChip';
+import { isFinishedJob, useFinishedJobs, useJobs } from './use-jobs';
 
 export default function JobsScreen() {
   const jobs = useJobs();
@@ -86,7 +87,7 @@ export default function JobsScreen() {
 
 function JobRow({ job, queued }: { job: FieldJob; queued: readonly QueuedReading[] }) {
   const summary = jobSummary(job, queued);
-  const chip = isFinishedJob(job) ? jobStatusLabel(job.status) : summary.hasArrived ? null : 'Upcoming';
+  const chip = isFinishedJob(job) ? job.status : summary.hasArrived ? null : 'upcoming';
   return (
     <Pressable
       accessibilityRole="button"
@@ -95,9 +96,13 @@ function JobRow({ job, queued }: { job: FieldJob; queued: readonly QueuedReading
     >
       <View className="flex-row items-center justify-between gap-2">
         <Text className="min-w-0 flex-1 text-lg text-foreground" weight="bold" numberOfLines={1}>
-          {job.jobNumber} · {job.farmName}
+          {job.customerName} · {job.farmName}
         </Text>
-        {chip ? <Text className="rounded-full bg-muted px-3 py-1 text-xs text-foreground">{chip}</Text> : null}
+        {chip ? (
+          <View className="shrink-0">
+            <JobStatusChip status={chip} />
+          </View>
+        ) : null}
       </View>
       <Text className="text-sm text-muted-foreground">
         {job.workTypeName} · {summary.machines} machines · {summary.running} running

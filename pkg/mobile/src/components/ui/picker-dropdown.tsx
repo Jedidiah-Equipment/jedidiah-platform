@@ -6,10 +6,12 @@ import { isNearVerticalScrollEnd } from '@/lib/scroll-pagination';
 
 /**
  * Expandable option list rendered under a picker input. Row content comes from `renderRow`;
- * pass `selectedKey` when rows should expose a selected accessibility state.
+ * pass `selectedKey` when rows should expose a selected accessibility state, and `isDisabled`
+ * for rows that are shown but cannot be picked.
  */
 export function PickerDropdown<T>({
   emptyMessage,
+  isDisabled,
   keyOf,
   loadingMore = false,
   onLoadMore,
@@ -21,6 +23,7 @@ export function PickerDropdown<T>({
   selectedKey,
 }: {
   emptyMessage: string;
+  isDisabled?: (row: T) => boolean;
   keyOf: (row: T) => string;
   loadingMore?: boolean;
   onLoadMore?: (() => void) | undefined;
@@ -52,19 +55,27 @@ export function PickerDropdown<T>({
           }}
           scrollEventThrottle={100}
         >
-          {rows.map((row, index) => (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityState={selectedKey === undefined ? undefined : { selected: keyOf(row) === selectedKey }}
-              className={`flex-row items-center gap-3 px-3 py-3 active:bg-muted ${
-                index > 0 ? 'border-t border-border' : ''
-              }`}
-              key={keyOf(row)}
-              onPress={() => onSelect(row)}
-            >
-              {renderRow(row)}
-            </Pressable>
-          ))}
+          {rows.map((row, index) => {
+            const disabled = isDisabled?.(row) ?? false;
+            return (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityState={
+                  selectedKey === undefined && !disabled
+                    ? undefined
+                    : { disabled, ...(selectedKey === undefined ? {} : { selected: keyOf(row) === selectedKey }) }
+                }
+                className={`flex-row items-center gap-3 px-3 py-3 ${disabled ? 'opacity-50' : 'active:bg-muted'} ${
+                  index > 0 ? 'border-t border-border' : ''
+                }`}
+                disabled={disabled}
+                key={keyOf(row)}
+                onPress={() => onSelect(row)}
+              >
+                {renderRow(row)}
+              </Pressable>
+            );
+          })}
           {loadingMore ? (
             <View className="items-center border-t border-border px-3 py-3">
               <ActivityIndicator size="small" />

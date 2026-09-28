@@ -109,6 +109,11 @@ export function useAutosaveForm<TValues extends Record<string, unknown>, TInput>
     return controller.flush();
   }, [controller]);
 
+  const hasPendingChanges = useCallback(
+    () => optionsRef.current.enabled && controller.hasPendingChanges(),
+    [controller],
+  );
+
   const markChanged = useCallback(() => {
     controller.markChanged();
   }, [controller]);
@@ -161,7 +166,7 @@ export function useAutosaveForm<TValues extends Record<string, unknown>, TInput>
 
   useEffect(() => {
     const handleBeforeUnload = (event: BeforeUnloadEvent) => {
-      if (!optionsRef.current.enabled || !controller.hasPendingChanges()) {
+      if (!hasPendingChanges()) {
         return;
       }
 
@@ -171,7 +176,7 @@ export function useAutosaveForm<TValues extends Record<string, unknown>, TInput>
 
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, [controller]);
+  }, [hasPendingChanges]);
 
   useBlocker({
     shouldBlockFn: async ({ current, next }) => {
@@ -181,14 +186,14 @@ export function useAutosaveForm<TValues extends Record<string, unknown>, TInput>
       if (current.pathname === next.pathname) return false;
       return !didSave && controller.getState().shouldBlockNavigation;
     },
-    enableBeforeUnload: () => optionsRef.current.enabled && controller.hasPendingChanges(),
+    enableBeforeUnload: hasPendingChanges,
   });
 
   return {
     autosave: {
       commit,
       flush,
-      hasPendingChanges: controller.hasPendingChanges,
+      hasPendingChanges,
       markChanged,
       resetToSavedValues,
       retry,

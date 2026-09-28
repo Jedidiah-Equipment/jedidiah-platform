@@ -300,6 +300,27 @@ it('leaves an approved order whose server copy changed without saving it', async
   expect(saveDraft).not.toHaveBeenCalled();
 });
 
+it('lets the buyer leave a Draft that was approved under their refused edit', async () => {
+  let served = purchaseOrder;
+  const saveDraft = vi.fn(() => {
+    throw new Error('This Purchase Order is no longer a draft, so it cannot be edited.');
+  });
+  const container = await mount({ 'purchaseOrders.get': () => served, 'purchaseOrders.saveDraft': saveDraft }, served);
+
+  await editQuantity(container, '6');
+  await act(async () => {
+    await vi.waitFor(() => expect(saveDraft).toHaveBeenCalledTimes(1));
+  });
+  served = orderInStatus('approved');
+  await refetchOrder();
+  const unload = new Event('beforeunload', { cancelable: true });
+  window.dispatchEvent(unload);
+  await leave(container);
+
+  expect(unload.defaultPrevented).toBe(false);
+  expect(saveDraft).toHaveBeenCalledTimes(1);
+});
+
 it('does not save a Draft whose server copy changed while untouched', async () => {
   let served = purchaseOrder;
   const saveDraft = vi.fn(() => served);

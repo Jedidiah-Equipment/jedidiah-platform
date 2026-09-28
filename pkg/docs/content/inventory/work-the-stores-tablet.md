@@ -11,7 +11,8 @@ a **Device Account**, which is why it can never be the name on a movement: it ha
 Nothing moves until the tablet knows who is at it. The name shows in large type at the top of every
 screen.
 
-1. Scan your badge card at the scan field, **or** tap the name panel and tap your name.
+1. Scan your badge card at the scan field, **or** tap the name panel and tap your name. Everyone who
+   works in Equipment is listed, not only the stores team.
 2. Check the big name is yours before you move anything.
 3. Tap **Done** when you walk away.
 
@@ -83,3 +84,5 @@ what you meant. See [Warnings are judgments, not blocks](./warnings-are-judgment
   [Build stock](./build-stock.md).
 - The tablet needs its dock connection. There is no offline mode.
 - Badge cards are printed from the user's record. See [Print Part Labels](./print-part-labels.md).
+- The stores PC's web app signs in with the tablet's account too. There is no name panel: every
+  stock form has an **Operator** field that starts empty, and nothing posts until you choose a name.

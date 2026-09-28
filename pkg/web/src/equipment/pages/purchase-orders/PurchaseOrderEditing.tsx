@@ -70,6 +70,8 @@ export function PurchaseOrderEditing({ purchaseOrder, children }: PurchaseOrderE
   );
   const editor = useAutosaveForm({
     defaultValues: toPurchaseOrderDraftFormValues(purchaseOrder),
+    // Only a draft the reader may edit saves: the gate refuses any other, and a refused save would trap them.
+    enabled: canEdit,
     failureMessage: 'Unable to save this Purchase Order.',
     save: (input: PurchaseOrderSaveDraftInput) => saveMutation.mutateAsync(input),
     toInput: (values) => toPurchaseOrderDraftInput(purchaseOrder.id, values),

@@ -12,6 +12,10 @@ import { toast } from 'sonner';
 import { CreateEntityDialog } from '@/components/form/index.js';
 import { useMovementWarnings } from '@/equipment/hooks/use-movement-warnings.js';
 import { useQueryInvalidation } from '@/equipment/hooks/use-query-invalidation.js';
+import {
+  MovementOperatorField,
+  useDefaultMovementOperator,
+} from '@/equipment/pages/inventory/components/MovementOperatorField.js';
 import { StockMovementWarningPrompt } from '@/equipment/pages/inventory/components/StockMovementWarningPrompt.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useTRPC } from '@/lib/trpc.js';
@@ -41,6 +45,7 @@ export function PurchaseOrderReturnDialog({
   const { invalidateInventory, invalidatePurchaseOrders } = useQueryInvalidation();
   const showMutationError = useApiMutationErrorToast();
   const movementWarnings = useMovementWarnings();
+  const defaultOperator = useDefaultMovementOperator();
   const mutation = useMutation(
     trpc.purchaseOrders.returnToSupplier.mutationOptions({
       onError: (error) => showMutationError(error, 'Unable to return this stock.'),
@@ -71,6 +76,7 @@ export function PurchaseOrderReturnDialog({
   return (
     <CreateEntityDialog<PurchaseOrderReturnFormValues, { warnings: StockMovementWarningCode[] }>
       defaultValues={{
+        actorUserId: defaultOperator,
         lengthMm: Number.NaN,
         note: '',
         quantity: standardLengthOutstanding > 0 ? standardLengthOutstanding : Number.NaN,
@@ -96,6 +102,7 @@ export function PurchaseOrderReturnDialog({
     >
       {(form) => (
         <>
+          <form.AppField name="actorUserId">{() => <MovementOperatorField enabled={true} />}</form.AppField>
           <form.AppField name="quantity">
             {(field) => <field.NumberField label="Quantity returned" min={0.001} step="0.001" />}
           </form.AppField>

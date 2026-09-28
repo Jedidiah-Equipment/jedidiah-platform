@@ -16,6 +16,7 @@ import { useQueryInvalidation } from '@/equipment/hooks/use-query-invalidation.j
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useTRPC } from '@/lib/trpc.js';
 
+import { MovementOperatorField, useDefaultMovementOperator } from './MovementOperatorField.js';
 import { StockMovementWarningPrompt } from './StockMovementWarningPrompt.js';
 import {
   type ReturnFromCheckoutFormValues,
@@ -47,6 +48,7 @@ export function ReturnFromCheckoutDialog({
   const { invalidateInventory } = useQueryInvalidation();
   const showMutationError = useApiMutationErrorToast();
   const movementWarningsOutcome = useMovementWarnings();
+  const defaultOperator = useDefaultMovementOperator();
   const sources = useCursorOptions((search) =>
     trpc.inventory.sourceCheckouts.infiniteQueryOptions(
       // One Part holds few Checkouts Without a Job, so its list is read whole — which is also what
@@ -79,7 +81,7 @@ export function ReturnFromCheckoutDialog({
 
   return (
     <CreateEntityDialog<ReturnFromCheckoutFormValues, { warnings: StockMovementWarningCode[] }>
-      defaultValues={{ quantity: Number.NaN, sourceCheckoutId: defaultSourceCheckoutId }}
+      defaultValues={{ actorUserId: defaultOperator, quantity: Number.NaN, sourceCheckoutId: defaultSourceCheckoutId }}
       description="Return a Part that was checked out without a Job."
       onCreate={(values) => {
         movementWarningsOutcome.acknowledge(movementWarnings(values));
@@ -104,6 +106,7 @@ export function ReturnFromCheckoutDialog({
 
             return (
               <>
+                <form.AppField name="actorUserId">{() => <MovementOperatorField enabled={open} />}</form.AppField>
                 <form.AppField name="sourceCheckoutId">
                   {(field) => {
                     const errors = getFieldErrors(field.state.meta.errors);

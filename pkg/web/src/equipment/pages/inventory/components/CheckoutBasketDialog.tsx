@@ -1,10 +1,5 @@
 import { deriveCheckoutBasketWarnings, unplannedCheckoutFacts, warningMessageFor } from '@pkg/domain/equipment';
-import type {
-  CheckoutBasketPostResult,
-  InventoryRecipientOption,
-  StockMovementWarningCode,
-  StockOnHandRow,
-} from '@pkg/schema/equipment';
+import type { CheckoutBasketPostResult, StockMovementWarningCode, StockOnHandRow } from '@pkg/schema/equipment';
 import { StockMovementLengthMm, StockMovementQuantity } from '@pkg/schema/equipment';
 import { IconAlertTriangle, IconPlus, IconTrash } from '@tabler/icons-react';
 import { useMutation, useQuery } from '@tanstack/react-query';
@@ -22,9 +17,9 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs.js';
 import { useQueryInvalidation } from '@/equipment/hooks/use-query-invalidation.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { getApiErrorMetadata } from '@/lib/api-errors.js';
-import { authClient } from '@/lib/auth-client.js';
 import { useTRPC } from '@/lib/trpc.js';
 
+import { MovementOperatorField, personOptions, useDefaultMovementOperator } from './MovementOperatorField.js';
 import { MovementTargetPicker, type SelectedMovementTarget } from './MovementTargetPicker.js';
 import { StockMovementWarningPrompt } from './StockMovementWarningPrompt.js';
 import {
@@ -62,7 +57,7 @@ export function CheckoutBasketDialog({
   parts: readonly StockPartOption[];
 }) {
   const trpc = useTRPC();
-  const { data: session } = authClient.useSession();
+  const defaultOperator = useDefaultMovementOperator();
   const { invalidateInventory } = useQueryInvalidation();
   const showMutationError = useApiMutationErrorToast();
   const [selectedTarget, setSelectedTarget] = useState<SelectedMovementTarget | null>(null);
@@ -136,6 +131,7 @@ export function CheckoutBasketDialog({
       // Only a Job has a CFO whose facts must load first; a Parts Sale judges like a person target.
       canSubmit={(values) => values.target !== 'job' || (values.targetId !== '' && targetStock.isSuccess)}
       defaultValues={{
+        actorUserId: defaultOperator,
         lines: [],
         note: '',
         recipientUserId: '',
@@ -192,6 +188,8 @@ export function CheckoutBasketDialog({
 
             return (
               <>
+                <form.AppField name="actorUserId">{() => <MovementOperatorField enabled={open} />}</form.AppField>
+
                 {fixedTarget === undefined ? (
                   <Field>
                     <FieldLabel>Movement target</FieldLabel>
@@ -201,7 +199,7 @@ export function CheckoutBasketDialog({
                         form.setFieldValue('target', target);
                         form.setFieldValue('targetId', '');
                         form.setFieldValue('note', '');
-                        form.setFieldValue('recipientUserId', target === 'person' ? (session?.user.id ?? '') : '');
+                        form.setFieldValue('recipientUserId', target === 'person' ? values.actorUserId : '');
                         setSelectedTarget(null);
                       }}
                       value={values.target}
@@ -228,18 +226,12 @@ export function CheckoutBasketDialog({
                   </Field>
                 ) : pickedKind === null ? (
                   <>
-                    <Field>
-                      <FieldLabel>Operator</FieldLabel>
-                      <div className="rounded-md border px-3 py-2 text-sm">
-                        {session?.user.name ?? 'Signed-in user'}
-                      </div>
-                    </Field>
                     <form.AppField name="recipientUserId">
                       {(field) => (
                         <field.ComboboxField
                           emptyMessage="No active Equipment users found."
                           label="Received by"
-                          options={recipientOptions(recipientQuery.data?.items ?? [])}
+                          options={personOptions(recipientQuery.data?.items ?? [])}
                           placeholder="Search people"
                         />
                       )}
@@ -580,10 +572,6 @@ function CheckoutBasketQuantityInput({
       value={text}
     />
   );
-}
-
-function recipientOptions(items: readonly InventoryRecipientOption[]) {
-  return items.map((item) => ({ label: item.name, value: item.id }));
 }
 
 function refusedPartIdFrom(error: unknown): string | null {

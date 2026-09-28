@@ -17,12 +17,12 @@ import {
 const UserBadgeParams = z.object({ userId: AuthId });
 
 /**
- * Printing a stores badge card, served as a PDF rather than through tRPC for the same reason the
- * Part labels are: the browser opens it straight into the print dialog.
+ * Printing a Badge Card, served as a PDF rather than through tRPC for the same reason the Part labels
+ * are: the browser opens it straight into the print dialog.
  *
  * Gated on `user:set-role` rather than a printing right of its own. The card names a person to the
- * quick-switch, and who may be named there follows from who may set someone's role to `stores` —
- * handing out badges is that same decision in physical form, so it should not be separately grantable.
+ * Quick-switch, and who may be named there follows from who holds a role at all — handing out badges
+ * is that same decision in physical form, so it should not be separately grantable.
  */
 export async function registerUserBadgeHttpRoutes(
   app: FastifyInstance,

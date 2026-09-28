@@ -74,7 +74,7 @@ import {
 import { resolveMovementActor } from './movement-actor.js';
 import { assertPartStockAction } from './part-stock-action-errors.js';
 import { loadPlantStockPosition } from './plant-stock-position.js';
-import { eligibleRecipientCondition } from './recipient-read.js';
+import { eligibleMovementPersonCondition } from './recipient-read.js';
 import { sumBy, sumNullableBy } from './row-grouping.js';
 import {
   PeriodicStockMovementError,
@@ -546,7 +546,7 @@ async function assertEligibleRecipient(db: DatabaseTransaction, recipientUserId:
   const [recipient] = await db
     .select({ id: user.id })
     .from(user)
-    .where(and(eq(user.id, recipientUserId), eligibleRecipientCondition()))
+    .where(and(eq(user.id, recipientUserId), eligibleMovementPersonCondition()))
     .limit(1);
   if (!recipient) throw new CheckoutRecipientIneligibleError(recipientUserId);
 }

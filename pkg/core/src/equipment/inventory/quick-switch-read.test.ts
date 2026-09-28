@@ -5,7 +5,7 @@ import { test } from '../test/inventory-fixtures.js';
 import { listQuickSwitchActors } from './quick-switch-read.js';
 
 describe('listQuickSwitchActors', () => {
-  test('lists the stores people the tablet may attribute to, and nobody else', async ({ context }) => {
+  test('lists every active person with a role — the Received by list — and nobody else', async ({ context }) => {
     const now = new Date('2026-08-01T08:00:00.000Z');
     await context.db.insert(user).values([
       {
@@ -45,13 +45,24 @@ describe('listQuickSwitchActors', () => {
         role: 'sales',
         updatedAt: now,
       },
+      {
+        createdAt: now,
+        email: 'roleless@example.com',
+        emailVerified: true,
+        id: 'roleless',
+        name: 'Roleless Person',
+        role: null,
+        updatedAt: now,
+      },
     ]);
 
     const result = await listQuickSwitchActors({ db: context.db });
 
-    // Sorted by name: the grid is read by eye, and the fixture's admin actor is not a stores person.
+    // Sorted by name: the grid is read by eye. The fixture's admin actor is a person with a role too.
     expect(result.items).toEqual([
       { id: 'stores-abel', name: 'Abel Stores', thumbnailDataUrl: null },
+      { id: 'inventory-test-user', name: 'Inventory Tester', thumbnailDataUrl: null },
+      { id: 'sales-person', name: 'Sales Person', thumbnailDataUrl: null },
       { id: 'stores-zola', name: 'Zola Stores', thumbnailDataUrl: null },
     ]);
   });
@@ -86,7 +97,10 @@ describe('listQuickSwitchActors', () => {
     ]);
 
     await expect(listQuickSwitchActors({ db: context.db })).resolves.toEqual({
-      items: [{ id: 'stores-person', name: 'Stores Person', thumbnailDataUrl: null }],
+      items: [
+        { id: 'inventory-test-user', name: 'Inventory Tester', thumbnailDataUrl: null },
+        { id: 'stores-person', name: 'Stores Person', thumbnailDataUrl: null },
+      ],
     });
   });
 });

@@ -17,6 +17,10 @@ vi.hoisted(() => {
   });
 });
 
+const personSession = { user: { id: 'recipient', isDevice: false, name: 'Stores Operator' } };
+const deviceSession = { user: { id: 'stores-tablet', isDevice: true, name: 'Stores Tablet' } };
+let session: typeof personSession = personSession;
+
 const postBasket = vi.fn(async () => ({ lines: [{ movement: {}, warnings: [] }], warnings: [] }));
 const loadJobStock = vi.fn(async () => ({ items: [], job: {} }));
 const invalidateInventory = vi.fn(async () => undefined);
@@ -36,7 +40,13 @@ vi.mock('@/lib/trpc.js', () => ({
       },
       recipientOptions: {
         queryOptions: (input: unknown, options: Record<string, unknown>) => ({
-          queryFn: async () => ({ items: [{ id: 'recipient', name: 'Connor' }], total: 1 }),
+          queryFn: async () => ({
+            items: [
+              { id: 'abel', name: 'Abel' },
+              { id: 'recipient', name: 'Connor' },
+            ],
+            total: 2,
+          }),
           queryKey: ['recipientOptions', input],
           ...options,
         }),
@@ -45,7 +55,7 @@ vi.mock('@/lib/trpc.js', () => ({
   }),
 }));
 vi.mock('@/lib/auth-client.js', () => ({
-  authClient: { useSession: () => ({ data: { user: { id: 'recipient', name: 'Stores Operator' } } }) },
+  authClient: { useSession: () => ({ data: session }) },
 }));
 vi.mock('@/equipment/hooks/options/index.js', () => ({
   useInventoryJobPicker: () => ({ isLoading: false, items: [] }),
@@ -115,6 +125,7 @@ const items: StockOnHandRow[] = parts.map((part) => ({
 
 const roots: Root[] = [];
 afterEach(async () => {
+  session = personSession;
   postBasket.mockClear();
   loadJobStock.mockReset();
   loadJobStock.mockResolvedValue({ items: [], job: {} });
@@ -173,6 +184,31 @@ async function press(input: HTMLElement, key: string) {
   });
 }
 
+async function click(element: HTMLElement) {
+  await act(async () => {
+    element.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true }));
+    element.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+    element.click();
+  });
+}
+
+async function chooseOperator(name: string) {
+  const input = document.querySelector<HTMLInputElement>('#actorUserId');
+  if (!input) throw new Error('Operator input missing');
+  await act(async () => input.focus());
+  await type(input, name);
+  await press(input, 'ArrowDown');
+  const option = [...document.querySelectorAll<HTMLElement>('[role="option"]')].find(
+    (candidate) => candidate.textContent === name,
+  );
+  if (!option) throw new Error(`Operator option ${name} missing`);
+  await click(option);
+}
+
+function submitButton(label: string) {
+  return [...document.querySelectorAll('button')].find((button) => button.textContent?.includes(label));
+}
+
 async function scan(code: string) {
   const input = document.querySelector<HTMLInputElement>('#checkout-basket-part');
   if (!input) throw new Error('Part scanner input missing');
@@ -213,6 +249,7 @@ describe('CheckoutBasketDialog', () => {
     await vi.waitFor(() =>
       expect(postBasket).toHaveBeenCalledWith(
         {
+          actorUserId: 'recipient',
           jobId: '00000000-0000-4000-8000-000000000009',
           lines: [{ lengthMm: null, partId: piece.partId, quantity: 5 }],
         },
@@ -275,6 +312,7 @@ describe('CheckoutBasketDialog', () => {
     await vi.waitFor(() =>
       expect(postBasket).toHaveBeenCalledWith(
         {
+          actorUserId: 'recipient',
           jobId: '00000000-0000-4000-8000-000000000009',
           lines: [{ lengthMm: null, partId: measured.partId, quantity: 1.5 }],
         },
@@ -350,6 +388,7 @@ describe('CheckoutBasketDialog', () => {
     await vi.waitFor(() =>
       expect(postBasket).toHaveBeenCalledWith(
         {
+          actorUserId: 'recipient',
           lines: [{ lengthMm: null, partId: piece.partId, quantity: 1 }],
           quoteId: '00000000-0000-4000-8000-000000000042',
         },
@@ -380,9 +419,68 @@ describe('CheckoutBasketDialog', () => {
     await vi.waitFor(() =>
       expect(postBasket).toHaveBeenCalledWith(
         {
+          actorUserId: 'recipient',
           lines: [{ lengthMm: null, partId: piece.partId, quantity: 1 }],
           note: 'repair factory drill',
           recipientUserId: 'recipient',
+        },
+        expect.anything(),
+      ),
+    );
+  });
+
+  it('keeps a shared device from checking out until it names the Operator, then posts under that name', async () => {
+    session = deviceSession;
+    await mount();
+    await scan('HYD-0052');
+    const quantity = document.querySelector<HTMLInputElement>('#checkout-basket-quantity');
+    if (!quantity) throw new Error('Quantity input missing');
+    await press(quantity, 'Enter');
+    await vi.waitFor(() => expect(loadJobStock).toHaveBeenCalled());
+
+    expect(document.querySelector<HTMLInputElement>('#actorUserId')?.value).toBe('');
+    expect(submitButton('Check out 1 line')?.disabled).toBe(true);
+
+    await chooseOperator('Abel');
+    expect(submitButton('Check out 1 line')?.disabled).toBe(false);
+    await act(async () => submitButton('Check out 1 line')?.click());
+
+    await vi.waitFor(() =>
+      expect(postBasket).toHaveBeenCalledWith(
+        {
+          actorUserId: 'abel',
+          jobId: '00000000-0000-4000-8000-000000000009',
+          lines: [{ lengthMm: null, partId: piece.partId, quantity: 1 }],
+        },
+        expect.anything(),
+      ),
+    );
+  });
+
+  it('pre-fills Received by with the chosen Operator rather than the device', async () => {
+    session = deviceSession;
+    await mount({ fixedTarget: null });
+    await chooseOperator('Abel');
+    const tab = [...document.querySelectorAll('button')].find((button) =>
+      button.textContent?.includes('Without a Job'),
+    );
+    await act(async () => tab?.click());
+    const purpose = document.querySelector<HTMLTextAreaElement>('textarea[name="note"]');
+    if (!purpose) throw new Error('Purpose field missing');
+    await type(purpose, 'repair factory drill');
+    await scan('HYD-0052');
+    const quantity = document.querySelector<HTMLInputElement>('#checkout-basket-quantity');
+    if (!quantity) throw new Error('Quantity input missing');
+    await press(quantity, 'Enter');
+    await act(async () => submitButton('Check out 1 line')?.click());
+
+    await vi.waitFor(() =>
+      expect(postBasket).toHaveBeenCalledWith(
+        {
+          actorUserId: 'abel',
+          lines: [{ lengthMm: null, partId: piece.partId, quantity: 1 }],
+          note: 'repair factory drill',
+          recipientUserId: 'abel',
         },
         expect.anything(),
       ),

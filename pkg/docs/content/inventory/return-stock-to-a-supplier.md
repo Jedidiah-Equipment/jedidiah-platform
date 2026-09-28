@@ -14,16 +14,17 @@ does not gain permission to Checkout stock or Return it to Store.
 
 1. Open **Purchase Orders** and select the order the stock arrived on.
 2. Find the **Returns to Supplier** card and click **Return** for the Part going back.
-3. Check **Quantity returned**. It is prefilled from the standard length's stock; the line below the
+3. Check **Operator**. It starts as you; choose whoever is doing the work if that is someone else.
+4. Check **Quantity returned**. It is prefilled from the standard length's stock; the line below the
    length field always says what the length you have keyed still holds.
-4. Choose the **Reason**:
+5. Choose the **Reason**:
    - **Wrong item** — not what was ordered.
    - **Defective** — the right item, unusable.
    - **Order error** — we ordered the wrong thing.
-5. For a linear Part, set **Length (mm)** only if the pieces going back are a length other than the
+6. For a linear Part, set **Length (mm)** only if the pieces going back are a length other than the
    standard one.
-6. Add a **Note** if there is anything to say about what the Supplier was told.
-7. Click **Post return**. Sending back more than that length took in makes it read **Post it
+7. Add a **Note** if there is anything to say about what the Supplier was told.
+8. Click **Post return**. Sending back more than that length took in makes it read **Post it
    anyway**, which still posts.
 
 A **Return to Supplier posted** toast confirms it, and stock on hand goes down immediately.

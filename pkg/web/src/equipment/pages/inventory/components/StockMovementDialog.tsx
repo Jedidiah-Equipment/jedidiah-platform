@@ -12,6 +12,7 @@ import { useQueryInvalidation } from '@/equipment/hooks/use-query-invalidation.j
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useTRPC } from '@/lib/trpc.js';
 
+import { MovementOperatorField, useDefaultMovementOperator } from './MovementOperatorField.js';
 import { MovementTargetPicker, type SelectedMovementTarget } from './MovementTargetPicker.js';
 import { StockMovementWarningPrompt } from './StockMovementWarningPrompt.js';
 import {
@@ -57,6 +58,7 @@ export function StockMovementDialog({
   const showMutationError = useApiMutationErrorToast();
   const [selectedTarget, setSelectedTarget] = useState<SelectedMovementTarget | null>(null);
   const movementWarningsOutcome = useMovementWarnings();
+  const defaultOperator = useDefaultMovementOperator();
   const validator = useMemo(() => returnStockValidator(parts), [parts]);
   const targetKind = fixedTarget?.kind ?? selectedTarget?.kind;
   const targetId = fixedTarget?.id ?? selectedTarget?.option.id ?? '';
@@ -90,6 +92,7 @@ export function StockMovementDialog({
   return (
     <CreateEntityDialog<ReturnStockFormValues, { warnings: StockMovementWarningCode[] }>
       defaultValues={{
+        actorUserId: defaultOperator,
         lengthMm: Number.NaN,
         partId: defaultPartId,
         quantity: Number.NaN,
@@ -123,6 +126,8 @@ export function StockMovementDialog({
 
             return (
               <>
+                <form.AppField name="actorUserId">{() => <MovementOperatorField enabled={open} />}</form.AppField>
+
                 {fixedTarget === undefined ? (
                   <Field>
                     <FieldLabel>Returned from</FieldLabel>

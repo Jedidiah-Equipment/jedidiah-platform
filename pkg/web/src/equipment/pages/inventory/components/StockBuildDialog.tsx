@@ -12,6 +12,7 @@ import { useQueryInvalidation } from '@/equipment/hooks/use-query-invalidation.j
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useTRPC } from '@/lib/trpc.js';
 
+import { MovementOperatorField, useDefaultMovementOperator } from './MovementOperatorField.js';
 import { StockMovementWarningPrompt } from './StockMovementWarningPrompt.js';
 import {
   deriveStockBuildRows,
@@ -46,6 +47,7 @@ export function StockBuildDialog({
   const showMutationError = useApiMutationErrorToast();
   const [builtPartId, setBuiltPartId] = useState(buildableParts[0]?.partId ?? '');
   const movementWarnings = useMovementWarnings();
+  const defaultOperator = useDefaultMovementOperator();
   const bomQuery = useQuery(trpc.parts.bom.queryOptions({ partId: builtPartId }, { enabled: builtPartId !== '' }));
 
   const bomLines = useMemo(
@@ -79,12 +81,12 @@ export function StockBuildDialog({
       // The one fact the form schema cannot see: an unknown BOM is indistinguishable from an empty
       // one once it reaches the server, and the ledger rows it would write cannot be undone.
       canSubmit={builtPartId !== '' && !bomQuery.error && !bomQuery.isPending}
-      defaultValues={{ consumption: {}, quantity: 1 }}
+      defaultValues={{ actorUserId: defaultOperator, consumption: {}, quantity: 1 }}
       description="Record what came off the rack, and what it took to make it."
       onCreate={(values) => {
         movementWarnings.acknowledge(warningsFor(values));
 
-        return mutation.mutateAsync(toBuildInput(builtPartId, rowsFor(values), values.quantity));
+        return mutation.mutateAsync(toBuildInput(builtPartId, rowsFor(values), values));
       }}
       onCreated={async (result) => {
         await invalidateInventory();
@@ -100,6 +102,7 @@ export function StockBuildDialog({
     >
       {(form) => (
         <>
+          <form.AppField name="actorUserId">{() => <MovementOperatorField enabled={open} />}</form.AppField>
           <Field>
             <FieldLabel htmlFor="stock-build-part">Built Part</FieldLabel>
             <SearchableCombobox

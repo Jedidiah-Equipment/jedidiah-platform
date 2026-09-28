@@ -6,7 +6,7 @@ import {
   parseScanToken,
   unacknowledgedWarnings,
 } from '@pkg/domain/equipment';
-import { Price, UUID } from '@pkg/schema';
+import { AuthId, Price, UUID } from '@pkg/schema';
 import {
   CHECKOUT_BASKET_MAX_LINES,
   type CheckoutBasketLineInput,
@@ -90,8 +90,16 @@ export function wholeUnitQuantityMessage(quantity: number, unitOfMeasure: PartUn
   return isWholeUnitQuantity(quantity, unitClassFor(unitOfMeasure)) ? undefined : 'This Part is counted in whole units';
 }
 
+/**
+ * Who the movement is attributed to: the person named on the form, not whoever is signed in. A
+ * person session starts it as itself; a shared device starts it empty, and the post refuses a device
+ * that names nobody.
+ */
+export const MovementOperatorValue = requiredSelection(AuthId, 'Select the Operator');
+
 export type StockAdjustmentFormValues = z.infer<typeof StockAdjustmentFormValues>;
 export const StockAdjustmentFormValues = z.object({
+  actorUserId: MovementOperatorValue,
   delta: StockMovementDelta,
   lengthMm: StockMovementLengthValue,
   note: z.string(),
@@ -128,6 +136,7 @@ export const movementTargetLabels = { job: 'Job', quote: 'Parts Sale' } as const
  */
 export type ReturnStockFormValues = z.infer<typeof ReturnStockFormValues>;
 export const ReturnStockFormValues = z.object({
+  actorUserId: MovementOperatorValue,
   lengthMm: StockMovementLengthValue,
   partId: requiredSelection(UUID, 'Select a Part'),
   quantity: StockMovementQuantity,
@@ -139,6 +148,7 @@ export type CheckoutBasketLineValues = CheckoutBasketLineInput;
 
 export type CheckoutBasketFormValues = z.infer<typeof CheckoutBasketFormValues>;
 export const CheckoutBasketFormValues = z.object({
+  actorUserId: MovementOperatorValue,
   lines: z
     .array(CheckoutBasketLineSchema.extend({ lengthMm: StockMovementLengthMm.nullable() }))
     .min(1, 'Add at least one line'),
@@ -206,15 +216,21 @@ export function mergeCheckoutBasketLine(
 }
 
 export function toCheckoutBasketInput(values: CheckoutBasketFormValues): PostCheckoutBasketInput {
+  const { actorUserId } = values;
   const lines = values.lines.map(({ lengthMm, partId, quantity }) => ({ lengthMm, partId, quantity }));
 
   switch (values.target) {
     case 'job':
-      return PostCheckoutBasketInput.parse({ jobId: values.targetId, lines });
+      return PostCheckoutBasketInput.parse({ actorUserId, jobId: values.targetId, lines });
     case 'quote':
-      return PostCheckoutBasketInput.parse({ lines, quoteId: values.targetId });
+      return PostCheckoutBasketInput.parse({ actorUserId, lines, quoteId: values.targetId });
     case 'person':
-      return PostCheckoutBasketInput.parse({ lines, note: values.note, recipientUserId: values.recipientUserId });
+      return PostCheckoutBasketInput.parse({
+        actorUserId,
+        lines,
+        note: values.note,
+        recipientUserId: values.recipientUserId,
+      });
   }
 }
 
@@ -245,13 +261,14 @@ export function unacknowledgedCheckoutBasketWarnings({
 /** A source-linked return names the Checkout it reverses; that Checkout fixes the Part, length and Recipient. */
 export type ReturnFromCheckoutFormValues = z.infer<typeof ReturnFromCheckoutFormValues>;
 export const ReturnFromCheckoutFormValues = z.object({
+  actorUserId: MovementOperatorValue,
   quantity: StockMovementQuantity,
   sourceCheckoutId: requiredSelection(UUID, 'Select the original Checkout'),
 });
 
 /** Closing out asserts a fact about the whole Job, so the note is all the screen has left to ask. */
 export type JobCloseOutFormValues = z.infer<typeof JobCloseOutFormValues>;
-export const JobCloseOutFormValues = z.object({ note: z.string() });
+export const JobCloseOutFormValues = z.object({ actorUserId: MovementOperatorValue, note: z.string() });
 
 /**
  * The build's size and its consumption rows. The rows live in the form rather than beside it so one
@@ -264,6 +281,7 @@ export const JobCloseOutFormValues = z.object({ note: z.string() });
 export type StockBuildFormValues = z.infer<typeof StockBuildFormValues>;
 export const StockBuildFormValues = z
   .object({
+    actorUserId: MovementOperatorValue,
     consumption: z.record(z.string(), z.string()),
     quantity: StockMovementQuantity,
   })
@@ -362,8 +380,13 @@ export function deriveStockBuildWarnings({
 }
 
 /** A row the builder zeroed means none of it left the rack — a dropped line, not a zero movement. */
-export function toBuildInput(builtPartId: string, rows: readonly StockBuildRow[], quantity: number): PostBuildInput {
+export function toBuildInput(
+  builtPartId: string,
+  rows: readonly StockBuildRow[],
+  { actorUserId, quantity }: Pick<StockBuildFormValues, 'actorUserId' | 'quantity'>,
+): PostBuildInput {
   return PostBuildInput.parse({
+    actorUserId,
     builtPartId,
     consumption: rows
       .map((row) => ({
@@ -407,6 +430,7 @@ export function returnFromCheckoutValidator(sources: readonly SourceCheckoutOpti
 
 export function toAdjustmentInput(values: StockAdjustmentFormValues, canReadCost: boolean, part: StockPartOption) {
   return PostAdjustmentInput.parse({
+    actorUserId: values.actorUserId,
     delta: values.delta,
     lengthMm: part.unitOfMeasure === 'mm' ? values.lengthMm : null,
     note: values.note,
@@ -441,6 +465,7 @@ export function toReturnStockInput(
   part: StockPartOption,
 ): PostJobMovementInput | PostQuoteMovementInput {
   const movement = {
+    actorUserId: values.actorUserId,
     lengthMm: part.unitOfMeasure === 'mm' ? values.lengthMm : null,
     partId: values.partId,
     quantity: values.quantity,
@@ -456,7 +481,7 @@ export function toReturnFromCheckoutInput(values: ReturnFromCheckoutFormValues) 
 }
 
 export function toCloseOutJobInput(jobId: UUID, values: JobCloseOutFormValues) {
-  return CloseOutJobInput.parse({ jobId, note: values.note });
+  return CloseOutJobInput.parse({ actorUserId: values.actorUserId, jobId, note: values.note });
 }
 
 export function toStockPartOption(item: StockOnHandRow): StockPartOption {

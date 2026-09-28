@@ -193,7 +193,19 @@ export const inventoryRouter = router({
       };
     }),
 
-  recipientOptions: authorizedProcedure('equipment_inventory:move')
+  /**
+   * Received by, and the Operator every web form that moves stock names. Every gate on a web form's write may
+   * read it — a receiver or adjuster without `move` still has to say whose hand the stock went through —
+   * and it carries names and thumbnails only.
+   */
+  recipientOptions: authorizedProcedure([
+    'equipment_inventory:move',
+    'equipment_inventory:adjust',
+    'equipment_inventory:build',
+    'equipment_inventory:close-out',
+    'equipment_purchase_order:amend',
+    'equipment_purchase_order:receive',
+  ])
     .input(InventoryRecipientOptionListInput)
     .output(InventoryRecipientOptionListResult)
     .query(({ ctx, input }) => listInventoryRecipients({ db: ctx.db, input })),

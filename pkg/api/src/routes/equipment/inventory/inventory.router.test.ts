@@ -553,6 +553,10 @@ describe('inventory cost projection', () => {
       items: [{ id: 'connor-api', name: 'Connor API' }],
       total: 1,
     });
+    // Receiving and adjusting name an Operator too, so the list follows every movement right, not `move` alone.
+    await expect(
+      context.createCaller(mockSession('procurement-manager')).inventory.recipientOptions({ search: 'Connor' }),
+    ).resolves.toMatchObject({ total: 1 });
     await expect(stores.inventory.sourceCheckouts({ partId: context.part.id, search: '' })).resolves.toMatchObject({
       items: [{ id: checkout.movement.id, returnedQuantity: 0, unitCost: null }],
       total: 1,
@@ -657,9 +661,10 @@ describe('buy list', () => {
 
 describe('the stores tablet’s quick-switch', () => {
   /**
-   * The invariant spec §11 turns on: the device authorizes, the person attributes. Naming a person
-   * who could not have posted this themselves still posts, under their name — and naming one from a
-   * session that may not post is still refused, because the assertion never confers anything.
+   * The invariant the Operator rests on: the session authorizes, the Operator field attributes.
+   * Naming a person who could not have posted this themselves still posts, under their name — and
+   * naming one from a session that may not post is still refused, because the assertion never confers
+   * anything.
    */
   test('attributes the named person while authorizing off the device session', async ({ context }) => {
     const now = new Date('2026-08-01T08:00:00.000Z');
@@ -709,7 +714,9 @@ describe('the stores tablet’s quick-switch', () => {
     ).rejects.toMatchObject({ appCode: 'inventory.actor_not_found', code: 'BAD_REQUEST' });
   });
 
-  test('offers the stores names to a mover and refuses a session that cannot move stock', async ({ context }) => {
+  test('offers the people a movement may name to a mover and refuses a session that cannot move stock', async ({
+    context,
+  }) => {
     const now = new Date('2026-08-01T08:00:00.000Z');
     await context.db.insert(user).values({
       createdAt: now,
@@ -722,7 +729,10 @@ describe('the stores tablet’s quick-switch', () => {
     });
 
     await expect(context.createCaller(mockSession('stores')).inventory.quickSwitchActors()).resolves.toEqual({
-      items: [{ id: 'stores-person', name: 'Stores Person', thumbnailDataUrl: null }],
+      items: [
+        { id: 'stores-person', name: 'Stores Person', thumbnailDataUrl: null },
+        { id: 'test-user-id', name: 'Test User', thumbnailDataUrl: null },
+      ],
     });
     await expect(context.createCaller(mockSession('sales')).inventory.quickSwitchActors()).rejects.toMatchObject({
       code: 'FORBIDDEN',
@@ -810,7 +820,9 @@ describe('shared devices at the boundary', () => {
       }),
     ).rejects.toMatchObject({ appCode: 'inventory.actor_is_device', code: 'BAD_REQUEST' });
 
-    await expect(stores.inventory.quickSwitchActors()).resolves.toEqual({ items: [] });
+    await expect(stores.inventory.quickSwitchActors()).resolves.toEqual({
+      items: [{ id: 'test-user-id', name: 'Test User', thumbnailDataUrl: null }],
+    });
   });
 });
 

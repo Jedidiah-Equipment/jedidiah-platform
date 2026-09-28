@@ -8,20 +8,22 @@ average has drifted to since.
 
 1. Open the Job and go to its **Stock** tab.
 2. Click **Return to store**.
-3. Choose the **Part**, enter the **Quantity**, and set **Length (mm)** for a linear Part.
-4. Click **Return stock**.
+3. Check **Operator**. It starts as you; choose whoever is doing the work if that is someone else.
+4. Choose the **Part**, enter the **Quantity**, and set **Length (mm)** for a linear Part.
+5. Click **Return stock**.
 
 ## From Stock on hand
 
 1. Open **Inventory**.
 2. Click **Return to store**.
-3. Keep **Job**, then click **Select Job** and choose the Job. For a Parts Sale, see below.
+3. Check **Operator**. It starts as you; choose whoever is doing the work if that is someone else.
+4. Keep **Job**, then click **Select Job** and choose the Job. For a Parts Sale, see below.
    The picker opens on **Last updated**; **Last created** and **Not complete** are the other two
    lists. Search narrows the list you are on, by Job code, Product, work title, or Customer. Returns
    are never refused for lifecycle state, so **Last updated** reaches every Job. The footer says how
    many of the matching Jobs it has loaded; use **Load more** to reach the rest.
-4. Choose the **Part**, enter the **Quantity**, and set **Length (mm)** for a linear Part.
-5. Click **Return stock**.
+5. Choose the **Part**, enter the **Quantity**, and set **Length (mm)** for a linear Part.
+6. Click **Return stock**.
 
 A **Stock returned to store** toast confirms it.
 
@@ -29,8 +31,9 @@ A **Stock returned to store** toast confirms it.
 
 1. Open the Parts Sale's Quote and click **Return to store** in its **Stock drawn** panel. Or open
    **Inventory**, click **Return to store**, choose **Parts Sale**, and pick the Quote.
-2. Choose the **Part**, enter the **Quantity**, and set **Length (mm)** for a linear Part.
-3. Click or tap **Return stock**.
+2. Check **Operator**. It starts as you; choose whoever is doing the work if that is someone else.
+3. Choose the **Part**, enter the **Quantity**, and set **Length (mm)** for a linear Part.
+4. Click or tap **Return stock**.
 
 On the stores tablet, scan the Part, tap **Return to store**, then choose **To a Parts Sale**.
 
@@ -45,7 +48,8 @@ The return comes back at the cost the parts left with, and the Stock drawn panel
    show the date, quantity taken, and quantity already returned. Fully returned Checkouts remain
    available when the physical quantity disagrees with the ledger.
 3. Enter the **Quantity** coming back. The original Checkout fixes the Part, length, and Recipient.
-4. On the tablet, check the separately displayed **Operator**. Then click or tap **Return stock**.
+4. Check **Operator** on the web, or the name at the top of the screen on the tablet. Then click or
+   tap **Return stock**.
 
 ## If it warns you
 

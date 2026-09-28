@@ -1,6 +1,7 @@
+import { formatNumber } from '@pkg/domain';
 import type { Part, PartMergePreview } from '@pkg/schema/equipment';
 import { IconLoader2 } from '@tabler/icons-react';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { skipToken, useMutation, useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import type React from 'react';
 import { useState } from 'react';
@@ -49,8 +50,7 @@ export const MergePartDialog: React.FC<{ onMerged: () => void; part: Part }> = (
   const candidates = options.items.filter((candidate) => candidate.id !== part.id);
   const preview = useQuery(
     trpc.parts.mergePreview.queryOptions(
-      { sourceId: part.id, targetId: target?.id ?? part.id },
-      { enabled: open && confirming && target !== null },
+      open && confirming && target ? { sourceId: part.id, targetId: target.id } : skipToken,
     ),
   );
   const mergeMutation = useMutation(
@@ -78,7 +78,9 @@ export const MergePartDialog: React.FC<{ onMerged: () => void; part: Part }> = (
     }
     handleOpenChange(false);
     onMerged();
-    toast.success(`${part.code} merged into ${merged.code}. Reprint the label for ${merged.code}.`);
+    toast.success(
+      `${part.code} merged into ${merged.code}. Reprint the label for ${merged.code}; ${part.code} will no longer scan.`,
+    );
     // Leave first: the preview names a Part that no longer exists, and an invalidation while it is
     // still mounted would refetch it into a 404.
     await navigate({ to: '/equipment/inventory/$partId', params: { partId: merged.id } });
@@ -128,7 +130,7 @@ export const MergePartDialog: React.FC<{ onMerged: () => void; part: Part }> = (
                 loadedCount: candidates.length,
                 onLoadMore: options.loadMore,
                 total: options.total - (options.items.length - candidates.length),
-                totalLabel: (total) => `${total} ${total === 1 ? 'Part' : 'Parts'}`,
+                totalLabel: (total) => `${formatNumber(total)} ${total === 1 ? 'Part' : 'Parts'}`,
               }}
               onInputValueChange={options.setSearch}
               onSelected={(selected) => {
@@ -190,7 +192,9 @@ const MergePreviewBody: React.FC<{ error: boolean; preview: PartMergePreview | u
         <AlertDescription>
           <ul className="list-disc pl-4">
             {preview.blockers.map((blocker) => (
-              <li key={blocker.kind}>{describePartMergeBlocker(blocker)}</li>
+              <li key={blocker.kind === 'open-stocktake' ? `${blocker.kind}:${blocker.scope}` : blocker.kind}>
+                {describePartMergeBlocker(blocker)}
+              </li>
             ))}
           </ul>
         </AlertDescription>

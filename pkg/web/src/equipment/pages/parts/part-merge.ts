@@ -1,4 +1,4 @@
-import { formatCurrency } from '@pkg/domain';
+import { formatCurrency, formatNumber } from '@pkg/domain';
 import { formatPartQuantity } from '@pkg/domain/equipment';
 import type { PartMergeBlocker, PartMergePreview } from '@pkg/schema/equipment';
 import { STOCKTAKE_SCOPE_LABELS } from '@pkg/schema/equipment';
@@ -54,5 +54,5 @@ export function formatPartMergeStock(preview: PartMergePreview) {
 }
 
 function count(value: number, noun: string): string {
-  return `${value} ${noun}${value === 1 ? '' : 's'}`;
+  return `${formatNumber(value)} ${noun}${value === 1 ? '' : 's'}`;
 }

@@ -12,6 +12,6 @@ A Stock Movement is append-only: it is never edited or deleted. A **Part Merge**
 - A merge is refused while the two Parts' quantities would mean different things: a different Unit of Measure, Standard Purchase Length, Stock Tracking Mode, or built versus bought.
 - A merge is refused while both Parts share a Purchase Order, while one is in the other's BOM, while the duplicate is on a draft or approved order from another Supplier, and while a stocktake of their scope is open.
 - Where one Product, Assembly, BOM or Job CFO lists both Parts, the quantities are added together; the survivor keeps its own BOM.
-- A `substitute-part` amendment between the pair ends up naming the survivor on both sides, so the amendment shape no longer requires the two Parts to differ; the amendment service still refuses substituting a Part for itself.
+- A `substitute-part` amendment between the pair ends up naming the survivor on both sides, so the amendment shape no longer requires the two Parts to differ; the amendment input still refuses substituting a Part for itself.
 - The duplicate's code stops resolving on printed labels and the stores tablet; there is no code alias.
 - The duplicate's past audit rows stay under its old id; both Parts get a `merged` event.

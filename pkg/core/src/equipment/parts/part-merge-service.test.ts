@@ -1,4 +1,4 @@
-import { auditEvents, type Db } from '@pkg/db';
+import { auditEvents, createDatabaseClient, type Db } from '@pkg/db';
 import {
   assemblyParts,
   documents,
@@ -11,11 +11,12 @@ import {
   productMaterialLines,
   purchaseOrderAmendments,
   purchaseOrderLines,
+  purchaseOrders,
   stockMovements,
   stocktakeSessions,
   supplier,
 } from '@pkg/db/equipment';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 import { describe, expect } from 'vitest';
 
 import { loadBucketQuantities, loadMovingAverages } from '../inventory/ledger.js';
@@ -378,6 +379,16 @@ describe('mergePart', () => {
     await seedSentPurchaseOrder(context.db, otherSupplier.id, [{ partId: otherDuplicate.id, quantity: 1 }], {
       status: 'draft',
     });
+    const approvedId = await seedSentPurchaseOrder(
+      context.db,
+      otherSupplier.id,
+      [{ partId: otherDuplicate.id, quantity: 1 }],
+      { status: 'draft' },
+    );
+    await context.db
+      .update(purchaseOrders)
+      .set({ approvedAt: new Date(), status: 'approved' })
+      .where(eq(purchaseOrders.id, approvedId));
     await seedSentPurchaseOrder(context.db, otherSupplier.id, [{ partId: otherDuplicate.id, quantity: 1 }]);
 
     const sameOrder = await merge(context.db, duplicate.id, survivor.id).catch((error: unknown) => error);
@@ -385,9 +396,16 @@ describe('mergePart', () => {
     expect(sameOrder).toMatchObject({
       metadata: { blockers: [{ kind: 'same-purchase-order', purchaseOrderCodes: [expect.stringMatching(/^PO-/)] }] },
     });
-    // Only the draft blocks; the sent order is history and would follow the Part.
+    // The draft and the approved order block; the sent order is history and would follow the Part.
     await expect(merge(context.db, otherDuplicate.id, survivor.id)).rejects.toMatchObject({
-      metadata: { blockers: [{ kind: 'open-order-supplier', purchaseOrderCodes: [expect.stringMatching(/^PO-/)] }] },
+      metadata: {
+        blockers: [
+          {
+            kind: 'open-order-supplier',
+            purchaseOrderCodes: [expect.stringMatching(/^PO-/), expect.stringMatching(/^PO-/)],
+          },
+        ],
+      },
     });
   });
 
@@ -406,6 +424,54 @@ describe('mergePart', () => {
     await expect(merge(context.db, built.id, duplicate.id)).rejects.toMatchObject({
       metadata: { blockers: [{ kind: 'bom-link' }] },
     });
+    await expect(merge(context.db, middle.id, built.id)).rejects.toMatchObject({
+      metadata: { blockers: [{ kind: 'bom-link' }] },
+    });
+  });
+
+  test('waits for a ledger writer holding the duplicate, then carries its movement across', async ({ context }) => {
+    const survivor = context.parts.piece;
+    const duplicate = await seedDuplicate(context.db, survivor);
+    const mergeClient = createDatabaseClient(context.databaseUrl, { max: 1 });
+    let releaseWriter = () => {};
+    const waitToPost = new Promise<void>((resolve) => {
+      releaseWriter = resolve;
+    });
+    let signalPartLocked = () => {};
+    const partLocked = new Promise<void>((resolve) => {
+      signalPartLocked = resolve;
+    });
+    const writer = context.db.transaction(async (tx) => {
+      await tx.select({ id: parts.id }).from(parts).where(eq(parts.id, duplicate.id)).for('update');
+      signalPartLocked();
+      await waitToPost;
+      await tx.insert(stockMovements).values(openingBalance(duplicate.id, 3, 10, '2026-08-05T08:00:00.000Z'));
+    });
+    await partLocked;
+
+    const merging = mergePart({
+      actorUserId,
+      db: mergeClient.db,
+      input: { sourceId: duplicate.id, targetId: survivor.id },
+    });
+    await expect
+      .poll(async () => {
+        const result = await context.db.execute<{ count: number }>(sql`
+          select count(*)::int as count
+          from pg_stat_activity
+          where datname = current_database() and wait_event_type = 'Lock'
+        `);
+        return Number(result[0]?.count ?? 0);
+      })
+      .toBeGreaterThan(0);
+    releaseWriter();
+
+    const [writerResult, mergeResult] = await Promise.allSettled([writer, merging]);
+    await mergeClient.close();
+    expect(writerResult).toMatchObject({ status: 'fulfilled' });
+    expect(mergeResult).toMatchObject({ status: 'fulfilled', value: { id: survivor.id } });
+    const onHand = await loadBucketQuantities(context.db, [survivor.id]);
+    expect(onHand.get(survivor.id)?.get(null)).toBe(3);
   });
 
   test('refuses while a stocktake is open for the pair’s scope', async ({ context }) => {

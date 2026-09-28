@@ -59,8 +59,8 @@ export const purchaseOrderAmendments = equipmentSchema.table(
         sql`${table.oldQuantity} IS NULL OR ${table.oldQuantity} > 0`,
       ),
       // One branch per kind, the same way the ledger pins each movement type's shape. A substitution
-      // may name one Part on both sides once a Part Merge joins the pair (ADR 0020); the service still
-      // refuses substituting a Part for itself.
+      // may name one Part on both sides once a Part Merge joins the pair (ADR 0020); the amendment
+      // input still refuses substituting a Part for itself.
       check(
         'purchase_order_amendment_shape',
         sql`(

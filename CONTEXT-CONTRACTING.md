@@ -133,9 +133,13 @@ read (its **Read At** time) and by whom, and its evidence. Whoever captures it t
 the Foreman in the field, an administrator for a Baseline Reading; a photo is attached whenever
 the camera allows, taken on the spot or chosen from the phone's gallery, and a reading without
 one is stamped **Missing Photo Evidence**. Read At defaults to the moment of capture, or to when
-a chosen photo was taken, and the Foreman may correct it; it is never in the future. Capture
-needs a connection: the server judges every capture as the ledger's truth, and a Foreman without
-signal keeps a Field Note instead. On capture the server reads
+a chosen photo was taken, and the Foreman may correct it; it is never in the future. Read At
+describes a reading; it never orders them. A Machine's readings are ordered by acceptance: the
+**latest reading** is the one the server accepted last, every capture is judged against that
+reading whatever its Read At, and a late-entered reading takes its place after it. An Hour Gap
+reads the two readings its Assignments name, so a backdated Read At moves no hour between
+Jobs. Capture needs a connection: the server judges every capture as the ledger's truth, and a
+Foreman without signal keeps a Field Note instead. On capture the server reads
 the photo itself and records its own value and confidence: a reading is **photo-backed** when it
 carries a photo and **AI-verified** when the server's read agrees with the typed value.
 Disagreements, low confidence, and disputes surface to management as **Reading Exceptions** — a

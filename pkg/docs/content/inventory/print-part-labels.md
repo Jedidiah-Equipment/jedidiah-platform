@@ -48,8 +48,7 @@ higher.
    disabled until the selection is complete.
 5. Click **Open printable PDF** and print the sheet from the tab that opens.
 
-Stores users and the stores PC print from **Inventory**, since **Parts** is not in their menu. A label
-carries no price, and printing one changes nothing about the Part or its stock.
+Stores users and the stores PC print from **Inventory**.
 
 ## A stores badge card
 

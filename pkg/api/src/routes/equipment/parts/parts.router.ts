@@ -34,18 +34,16 @@ import { projectInventoryCostFields } from '../../../equipment/trpc/inventory-co
 import { mapCoreErrors } from '../../../trpc/errors.js';
 import { authorizedProcedure, router } from '../../../trpc/init.js';
 import { partBomErrorFamily, partCoreErrorFamily } from './part-error-families.js';
-
-const partLabelPickerReaders = ['equipment_part:read', 'equipment_inventory:read'] as const;
+import { partLabelReaders } from './part-label-http.route.js';
 
 export const partsRouter = router({
   list: authorizedProcedure('equipment_part:read')
     .input(PartListInput)
     .query(({ ctx, input }) => listParts({ db: ctx.db, input })),
 
-  // Names only, no cost: the price-blind stores role picks its label batches from these.
-  categories: authorizedProcedure(partLabelPickerReaders).query(({ ctx }) => listPartCategories({ db: ctx.db })),
+  categories: authorizedProcedure(partLabelReaders).query(({ ctx }) => listPartCategories({ db: ctx.db })),
 
-  locations: authorizedProcedure(partLabelPickerReaders).query(({ ctx }) => listPartStorageLocations({ db: ctx.db })),
+  locations: authorizedProcedure(partLabelReaders).query(({ ctx }) => listPartStorageLocations({ db: ctx.db })),
 
   get: authorizedProcedure('equipment_part:read')
     .input(z.object({ id: UUID }))

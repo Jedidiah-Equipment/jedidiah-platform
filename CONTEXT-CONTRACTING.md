@@ -128,13 +128,14 @@ context's `JOB-xxxxx`.
 
 ## Hours
 
-**Hour Reading** is one captured value of a Machine's hour meter: the value, when and by whom it
-was captured, and its evidence. Whoever captures it types the value — the Foreman in the field,
-an administrator for a Baseline Reading; a photo is attached whenever
-the camera allows, and a reading without one is stamped **Missing Photo Evidence**. Capture never
-waits for signal — readings queue on the phone and sync when they can. The phone judges a capture by the same rules the server does,
-over the readings it knows and the captures it has queued, so a refusal reaches the Foreman before
-the reading leaves his hands wherever it can. After sync the server reads
+**Hour Reading** is one captured value of a Machine's hour meter: the value, when the meter was
+read (its **Read At** time) and by whom, and its evidence. Whoever captures it types the value —
+the Foreman in the field, an administrator for a Baseline Reading; a photo is attached whenever
+the camera allows, taken on the spot or chosen from the phone's gallery, and a reading without
+one is stamped **Missing Photo Evidence**. Read At defaults to the moment of capture, or to when
+a chosen photo was taken, and the Foreman may correct it; it is never in the future. Capture
+needs a connection: the server judges every capture as the ledger's truth, and a Foreman without
+signal keeps a Field Note instead. On capture the server reads
 the photo itself and records its own value and confidence: a reading is **photo-backed** when it
 carries a photo and **AI-verified** when the server's read agrees with the typed value.
 Disagreements, low confidence, and disputes surface to management as **Reading Exceptions** — a
@@ -172,6 +173,15 @@ sign-off and blocking nothing in the field — the Job cannot be Completed while
 management resolves it by splitting the gap into billable Travel
 Hours and an **Unaccounted Interval** with a mandatory reason, which clears the flag. Time in the
 yard is an Unaccounted Interval — there are no internal Jobs.
+
+**Field Note** is evidence a Foreman keeps on his phone when the app cannot take a capture —
+without signal, typically — for entry once it can: a description, one or more photos, and the
+moment it was made. It is **Open** until the Foreman has entered what it holds and closes it, and
+may be reopened; nothing closes it but him. A Field Note lives only on the phone, per signed-in
+user, and never reaches the server; its photos are also saved to the phone's gallery, which is
+where a later capture picks them up. It is not a capture, a queue, or a task: the app never reads
+a Field Note back into a Job or a Machine.
+_Avoid_: task, to-do, offline capture, queued reading
 
 ## Workshop
 

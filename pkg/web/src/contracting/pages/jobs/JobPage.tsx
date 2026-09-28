@@ -86,6 +86,10 @@ function SetupCard({ job, sheet }: { job: JobDetail; sheet: JobSheet }) {
       enabled: setsForeman,
     }),
   );
+  // Foremen only load for whoever can change the Foreman; everyone else still needs the current one to show.
+  const foremanOptions = (foremen.data ?? []).map((row) => ({ value: row.id, label: row.name }));
+  if (job.foremanUserId && job.foremanName && !foremanOptions.some((option) => option.value === job.foremanUserId))
+    foremanOptions.push({ value: job.foremanUserId, label: job.foremanName });
   const patch = useMutation(trpc.contractingJobs.jobs.patch.mutationOptions({ onSuccess: invalidateJobs }));
   const { autosave, form, formProps } = useAutosaveForm({
     defaultValues: {
@@ -140,7 +144,7 @@ function SetupCard({ job, sheet }: { job: JobDetail; sheet: JobSheet }) {
             <field.ComboboxField
               label="Foreman"
               disabled={!setsForeman}
-              options={(foremen.data ?? []).map((row) => ({ value: row.id, label: row.name }))}
+              options={foremanOptions}
               onValueCommit={autosave.commit}
             />
           )}

@@ -78,12 +78,17 @@ export default function AddMachineScreen() {
   const machineOnJob = (id: string) => onJob(onSiteElsewhere(world, { machineId: id }));
   const implementOnJob = (id: string) => onJob(onSiteElsewhere(world, { implementId: id }));
 
+  // A re-added stint's Implement may since have been retired and left the list; the field then reads No implement.
+  const implementId = implementQuery.data?.some((implement) => implement.id === values.implementId)
+    ? values.implementId
+    : null;
+
   const save = () => {
     if (!selected) return;
     add.mutate({
       jobId: params.jobId,
       machineId: selected.id,
-      implementId: values.implementId || null,
+      implementId,
       ...(values.driverUserId ? { driverUserId: values.driverUserId } : {}),
     });
   };

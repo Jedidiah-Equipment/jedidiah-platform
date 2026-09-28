@@ -1,0 +1,40 @@
+{
+  "business": "equipment",
+  "releasedAt": "2026-09-28T11:39:36.639Z",
+  "sections": [
+    {
+      "surface": "app",
+      "entries": [
+        {
+          "title": "Leave purchase orders without unnecessary save prompts",
+          "description": "Approved and read-only orders no longer attempt to autosave or block navigation and reloads. Untouched drafts also avoid unnecessary saves after background updates."
+        },
+        {
+          "title": "Name the operator on every stock movement",
+          "description": "Stock movement forms now let you select the person doing the work. Your name is selected by default, while shared devices require an operator to be chosen."
+        },
+        {
+          "title": "Print clearer part labels and staff badges",
+          "description": "Labels and badges now use larger QR codes sized for 40 × 30 mm label stock. Badge printing is also available for staff beyond the stores role."
+        },
+        {
+          "title": "Keep new part codes within the label limit",
+          "description": "Newly entered part codes are limited to 13 characters. Existing longer codes remain readable."
+        }
+      ]
+    },
+    {
+      "surface": "mobile",
+      "entries": [
+        {
+          "title": "Scan new QR labels and existing barcodes",
+          "description": "The stores camera scanner now accepts QR codes on part labels and staff badges while continuing to read older barcodes."
+        },
+        {
+          "title": "Select more staff as stores operators",
+          "description": "The stores quick-switch now includes active staff beyond the stores role, so the person doing the work can be named."
+        }
+      ]
+    }
+  ]
+}

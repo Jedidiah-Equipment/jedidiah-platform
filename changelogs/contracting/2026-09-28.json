@@ -1,0 +1,36 @@
+{
+  "business": "contracting",
+  "releasedAt": "2026-09-28T11:39:36.639Z",
+  "sections": [
+    {
+      "surface": "app",
+      "entries": [
+        {
+          "title": "Create job details as you go",
+          "description": "Search for or create a customer, farm and work type directly when creating a job."
+        },
+        {
+          "title": "Find job status and machine choices more easily",
+          "description": "Job status now appears prominently in the header. Machine and implement choices show category icons to help you identify them."
+        }
+      ]
+    },
+    {
+      "surface": "mobile",
+      "entries": [
+        {
+          "title": "Find jobs by customer and farm",
+          "description": "Job list rows now lead with the customer and farm and show coloured status labels for easier scanning."
+        },
+        {
+          "title": "Plan a machine without recording its arrival",
+          "description": "Use the plus action in a job's Machines section to search for a machine, implement and driver. Adding a machine while online now returns you to the job without requiring an arrival capture."
+        },
+        {
+          "title": "Search for implement and driver changes during capture",
+          "description": "Capture screens now provide searchable selectors for implement and driver overrides."
+        }
+      ]
+    }
+  ]
+}

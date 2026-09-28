@@ -5,13 +5,14 @@ import { InventoryRecipientOptionListResult as InventoryRecipientOptionListResul
 import { and, asc, eq, isNotNull, isNull, or, type SQL, sql } from 'drizzle-orm';
 
 /**
- * Who may receive a Checkout Without a Job: any active Equipment person. Wider than the quick-switch
- * grid — a mechanic receives parts without ever working the tablet — but never a disabled account
- * or a device, for the reason `resolveMovementActor` refuses them as an Operator: the ledger keeps
- * the name forever, and a name that cannot answer for the stock should not be offered. One
- * predicate serves the picker and the post, so nothing the picker offers is refused on write.
+ * Who may be named on a Stock Movement, as its Operator or as the Recipient of a Checkout Without a
+ * Job: any active Equipment person. Never a disabled account or a device, for the reason
+ * `resolveMovementActor` refuses them as an Operator: the ledger keeps the name forever, and a name
+ * that cannot answer for the stock should not be offered. One predicate serves Received by, the web
+ * Operator field, the tablet's Quick-switch, and the Recipient check on the post, so nothing a picker
+ * offers is refused on write.
  */
-export function eligibleRecipientCondition(): SQL {
+export function eligibleMovementPersonCondition(): SQL {
   return and(isNotNull(user.role), eq(user.isDevice, false), or(isNull(user.banned), eq(user.banned, false))) as SQL;
 }
 
@@ -22,7 +23,7 @@ export async function listInventoryRecipients({
   db: Db;
   input: InventoryRecipientOptionListInput;
 }): Promise<InventoryRecipientOptionListResult> {
-  const where = and(eligibleRecipientCondition(), createGlobalSearchCondition(input.search, [sql`${user.name}`]));
+  const where = and(eligibleMovementPersonCondition(), createGlobalSearchCondition(input.search, [sql`${user.name}`]));
   const page = db
     .select({ id: user.id, name: user.name, thumbnailDataUrl: user.image })
     .from(user)

@@ -8,11 +8,12 @@ units go on.
 
 1. Open **Inventory**.
 2. Click **Build stock**.
-3. Choose the **Built Part**. Only Built Parts tracked perpetually appear in the list.
-4. Enter **Units built** — how many finished units came off the rack.
-5. Check the consumption rows. They prefill at BOM quantity × units built. Edit them to what
+3. Check **Operator**. It starts as you; choose whoever is doing the work if that is someone else.
+4. Choose the **Built Part**. Only Built Parts tracked perpetually appear in the list.
+5. Enter **Units built** — how many finished units came off the rack.
+6. Check the consumption rows. They prefill at BOM quantity × units built. Edit them to what
    actually left the rack.
-6. Click **Post build**.
+7. Click **Post build**.
 
 ## If it warns you
 

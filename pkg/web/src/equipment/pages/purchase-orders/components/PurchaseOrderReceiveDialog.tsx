@@ -6,6 +6,10 @@ import { toast } from 'sonner';
 import { CreateEntityDialog } from '@/components/form/index.js';
 import { useMovementWarnings } from '@/equipment/hooks/use-movement-warnings.js';
 import { useQueryInvalidation } from '@/equipment/hooks/use-query-invalidation.js';
+import {
+  MovementOperatorField,
+  useDefaultMovementOperator,
+} from '@/equipment/pages/inventory/components/MovementOperatorField.js';
 import { StockMovementWarningPrompt } from '@/equipment/pages/inventory/components/StockMovementWarningPrompt.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useTRPC } from '@/lib/trpc.js';
@@ -38,6 +42,7 @@ export function PurchaseOrderReceiveDialog({
   const { invalidateInventory, invalidatePurchaseOrders } = useQueryInvalidation();
   const showMutationError = useApiMutationErrorToast();
   const movementWarnings = useMovementWarnings();
+  const defaultOperator = useDefaultMovementOperator();
   const outstanding = outstandingQuantity(line);
 
   const mutation = useMutation(
@@ -59,6 +64,7 @@ export function PurchaseOrderReceiveDialog({
   return (
     <CreateEntityDialog<PurchaseOrderReceiveFormValues, { warnings: StockMovementWarningCode[] }>
       defaultValues={{
+        actorUserId: defaultOperator,
         lengthMm: Number.NaN,
         quantity: outstanding > 0 ? outstanding : Number.NaN,
         unitCost: Number.NaN,
@@ -83,6 +89,7 @@ export function PurchaseOrderReceiveDialog({
     >
       {(form) => (
         <>
+          <form.AppField name="actorUserId">{() => <MovementOperatorField enabled={open} />}</form.AppField>
           <form.AppField name="quantity">
             {(field) => <field.NumberField label="Quantity received" min={0.001} step="0.001" />}
           </form.AppField>

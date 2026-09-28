@@ -13,12 +13,9 @@ export type UserBadgePdfResult = {
 };
 
 /**
- * The printable badge card for one person (spec §11).
- *
- * Deliberately not scoped to the `stores` role even though the quick-switch is: reprinting is an
- * administrative act on a user, and a role changed the day before a card is printed would otherwise
- * make the button vanish exactly when it is needed. What the card *does* is still bounded by the
- * quick-switch, which only ever offers stores people.
+ * The printable Badge Card for one person. Anyone the Quick-switch can name may carry one,
+ * and what the card *does* stays bounded by that list: a card for someone it does not offer is refused
+ * at the scan field, the same as a name the post would refuse.
  *
  * A shared device is the one account refused outright — it can never be the actor on a movement, so
  * its card could only ever be rejected at the scan field.

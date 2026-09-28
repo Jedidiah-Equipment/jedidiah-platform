@@ -4,6 +4,9 @@ A Checkout draws a Part from stock to a Job, to a Parts Sale, or Without a Job t
 It is what you post when material leaves the rack for the floor, for a Customer who bought the parts,
 or for a quick repair elsewhere in the factory.
 
+Every Checkout names an **Operator**, the person doing it; on the stores PC it starts empty — see
+[Work the stores tablet](./work-the-stores-tablet.md).
+
 ## From the Job
 
 Use this when you already have the Job open — it is the shorter path, because the Job is fixed for
@@ -11,12 +14,13 @@ you.
 
 1. Open the Job and go to its **Stock** tab.
 2. Click **Check out**.
-3. Scan or search for a **Part**, confirm the **Quantity**, and for a linear Part confirm **Length
+3. Check **Operator**. It starts as you; choose whoever is doing the work if that is someone else.
+4. Scan or search for a **Part**, confirm the **Quantity**, and for a linear Part confirm **Length
    (mm)**. The standard purchase length is filled in when the Part has one.
-4. Click **Add**, then repeat for every Part leaving stores.
-5. Review the lines. You can edit a Quantity or remove a line; scanning the same Part and length
+5. Click **Add**, then repeat for every Part leaving stores.
+6. Review the lines. You can edit a Quantity or remove a line; scanning the same Part and length
    again adds its Quantity to the existing line.
-6. Click **Check out N lines**.
+7. Click **Check out N lines**.
 
 ## From Stock on hand
 
@@ -24,15 +28,16 @@ Use this when you are working from the rack rather than from a Job.
 
 1. Open **Inventory**.
 2. Click **Check out**.
-3. Keep **To a Job**, then click **Select Job** and choose the Job.
+3. Check **Operator**. It starts as you; choose whoever is doing the work if that is someone else.
+4. Keep **To a Job**, then click **Select Job** and choose the Job.
    The picker opens on **Not complete**, the open work stock is normally drawn for. Search narrows
    the list you are on — by Job code, Product, work title, or Customer — so a completed Job is found
    from **Last updated** or **Last created**, not from **Not complete**. A completed Job stays
    pickable there until its stock has been closed out. The footer says how many of the matching Jobs
    it has loaded; use **Load more** to reach the rest.
-4. Scan or search for a **Part**, confirm the **Quantity**, and set **Length (mm)** for a linear
+5. Scan or search for a **Part**, confirm the **Quantity**, and set **Length (mm)** for a linear
    Part. Click **Add** and repeat for the other Parts leaving stores.
-5. Review the lines, then click **Check out N lines**. You can edit a Quantity or remove a line;
+6. Review the lines, then click **Check out N lines**. You can edit a Quantity or remove a line;
    scanning the same Part and length again adds its Quantity to the existing line.
 
 A success toast confirms how many Parts were checked out. Closing the window with unrecorded lines
@@ -45,12 +50,13 @@ parts were sold on, and carries no CFO warning because a Parts Sale has no CFO.
 
 1. On the web, open **Inventory** and click **Check out**, or open the Parts Sale's Quote and click
    **Check out** in its **Stock drawn** panel.
-2. From **Inventory**, choose **To a Parts Sale**, then click **Select Parts Sale** and choose the
+2. Check **Operator**. It starts as you; choose whoever is doing the work if that is someone else.
+3. From **Inventory**, choose **To a Parts Sale**, then click **Select Parts Sale** and choose the
    Quote. Search by Quote code, Customer, or work title. Only draft, sent, and accepted Parts Sales
    are offered.
-3. Scan or search for a **Part**, confirm the **Quantity**, and set **Length (mm)** for a linear
+4. Scan or search for a **Part**, confirm the **Quantity**, and set **Length (mm)** for a linear
    Part. Click **Add** and repeat for every Part leaving stores.
-4. Review the lines, then click **Check out N lines**.
+5. Review the lines, then click **Check out N lines**.
 
 On the stores tablet, scan the Part, tap **Check out**, choose **To a Parts Sale**, and pick the
 Quote.
@@ -61,11 +67,11 @@ Use this for a quick repair or factory work that has no Job. The Parts count as 
 stores; this does not create a personal stock balance for the Recipient.
 
 1. On the web, open **Inventory** and click **Check out**.
-2. Choose **Without a Job**.
-3. Choose **Received by**. It starts with the current Operator, but you can select any active
-   Equipment user.
-4. Enter a short **Purpose**, such as “Repair factory drill”.
-5. Check the separately displayed **Operator**.
+2. Check **Operator**. It starts as you; choose whoever is doing the work if that is someone else.
+3. Choose **Without a Job**.
+4. Choose **Received by**. It starts with the Operator, but you can select any active Equipment
+   user.
+5. Enter a short **Purpose**, such as “Repair factory drill”.
 6. Scan or search for a **Part**, confirm the **Quantity**, and set **Length (mm)** for a linear
    Part. Click **Add** and repeat for every Part leaving stores.
 7. Review the lines, then click **Check out N lines**.

@@ -12,17 +12,19 @@ import {
 /**
  * Who a movement is stamped with, given who is signed in and who — if anyone — the caller asserted.
  *
- * This is the whole of "the device authorizes, the person attributes" (spec §11), and it is the
- * boundary that rule lives at. Authorization has already happened against the session by the time
- * this runs, and this never revisits it: it does not read the asserted person's role or permissions,
- * because doing so would turn a name tap into a privilege change. All it decides is whose name the
- * append-only ledger records.
+ * This is the whole of "the session authorizes, the Operator field attributes", and it is the boundary
+ * that rule lives at. Any session may name an Operator: the tablet's Quick-switch does, and so does
+ * every web form that moves stock, where a person session defaults to itself. Authorization has already
+ * happened against the session by the time this runs, and this never revisits it: it does not read
+ * the asserted person's role or permissions, because doing so would turn a name into a privilege
+ * change. All it decides is whose name the append-only ledger records.
  *
  * Three refusals, each preventing a movement whose recorded actor would be a lie:
  *
- * - A shared device that named nobody. "No person, no movements" is a rule about the record, so it
- *   is asserted here rather than left to a disabled button — a button is UX, and the ledger keeps
- *   its row forever. Every write the `stores` role can reach goes through this: draws and returns,
+ * - A shared device that named nobody — the tablet before a Quick-switch, or the web app signed in as
+ *   the tablet's account with an empty Operator field. "No person, no movements" is a rule about the
+ *   record, so it is asserted here rather than left to a disabled button — a button is UX, and the
+ *   ledger keeps its row forever. Every write the `stores` role can reach goes through this: draws and returns,
  *   receipts and supplier returns, adjustments, builds, and close-out. Revaluation does not, and
  *   does not need to — it is gated on `equipment_inventory_cost:revalue`, which no device holds.
  * - A device named as the actor. A device is not somebody; attributing stock to one says a machine
@@ -51,7 +53,7 @@ export async function resolveMovementActor({
 
   if (asserted === null) {
     // An unknown session is not this function's failure to report — the request authorized, so the
-    // account exists; treating a missing row as "not a device" keeps every web surface unchanged.
+    // account exists; a missing row is treated as "not a device" and the session attributes itself.
     if (session?.isDevice === true) throw new DeviceActorRequiredError(sessionUserId);
 
     return sessionUserId;

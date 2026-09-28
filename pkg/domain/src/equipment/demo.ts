@@ -57,9 +57,8 @@ export const demoUsers: readonly DemoUser[] = [
     password: DEFAULT_DEMO_USER_PASSWORD,
     equipmentRole: 'bay-operator',
   },
-  // The stores tablet and two people to quick-switch between. Without all three a fresh seed leaves
-  // every device rule inert and the tablet impossible to exercise — the flag only bites when some
-  // account carries it, and the quick-switch grid is empty without stores people to offer.
+  // The stores tablet and two stores people to quick-switch between. Without the tablet a fresh seed
+  // leaves every device rule inert — the flag only bites when some account carries it.
   {
     departments: [],
     id: 'seed-stores-tablet',

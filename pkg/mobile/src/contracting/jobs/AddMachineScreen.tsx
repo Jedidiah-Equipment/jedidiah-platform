@@ -11,7 +11,9 @@ import { SecondaryToolbar } from '@/components/TopToolbar';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { CategoryIcon } from '@/contracting/components/CategoryIcon';
+import { implementOption } from '@/contracting/components/implement-option';
 import { getVisibleMachines } from '@/contracting/lib/machine-catalog';
+import { recordMachineAdded } from '@/contracting/observability';
 import { captureWorld } from '@/contracting/readings/capture-world';
 import { useReadingQueue } from '@/contracting/readings/ReadingQueueProvider';
 import { useFleet } from '@/contracting/readings/use-fleet';
@@ -43,7 +45,8 @@ export default function AddMachineScreen() {
   const backToJob = () => router.replace(`/contracting/jobs/${params.jobId}` as Href);
   const add = useMutation(
     trpc.contractingJobs.assignments.add.mutationOptions({
-      onSuccess: async () => {
+      onSuccess: async (_assignment, input) => {
+        recordMachineAdded(input.jobId, input.machineId);
         await queryClient.invalidateQueries({ queryKey: trpc.contractingJobs.field.pathKey() });
         backToJob();
       },
@@ -130,15 +133,9 @@ export default function AddMachineScreen() {
               emptyMessage="No Implements match."
               options={[
                 { label: 'No implement', value: '' },
-                ...(implementQuery.data ?? []).map((implement) => {
-                  const onJob = implementOnJob(implement.id);
-                  return {
-                    value: implement.id,
-                    label: implement.code,
-                    description: onJob ? `${implement.categoryName} · On Job ${onJob}` : implement.categoryName,
-                    icon: <CategoryIcon icon={implement.categoryIcon} colour={implement.categoryColour} size={16} />,
-                  };
-                }),
+                ...(implementQuery.data ?? []).map((implement) =>
+                  implementOption(implement, implementOnJob(implement.id)),
+                ),
               ]}
             />
           )}

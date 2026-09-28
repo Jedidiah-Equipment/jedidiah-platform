@@ -58,7 +58,6 @@ export function PlanMachineDialog({
             {(field) => (
               <field.ComboboxField
                 label="Machine"
-                onValueSelect={(id) => !machines.data?.some((row) => row.id === id && row.onSiteJobNumber !== null)}
                 options={(machines.data ?? []).map((row) => ({
                   value: row.id,
                   icon: <CategoryIcon icon={row.categoryIcon} colour={row.categoryColour} size={14} />,

@@ -15,9 +15,10 @@ export function recordReadingCaptured(item: QueuedReading, offline: boolean): vo
   const properties = { hasPhoto: item.photoLocalUri !== null, offline, role: item.role };
   addBreadcrumb('contracting', 'reading enqueued', properties);
   captureEvent('reading captured', properties);
-  if (item.startAssignment) {
-    captureEvent('machine added to job', { jobId: item.startAssignment.jobId, machineId: item.machineId });
-  }
+}
+
+export function recordMachineAdded(jobId: string, machineId: string): void {
+  captureEvent('machine added to job', { jobId, machineId });
 }
 
 export function recordReadingSynced(item: QueuedReading): void {

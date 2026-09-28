@@ -87,7 +87,7 @@ export default function JobsScreen() {
 
 function JobRow({ job, queued }: { job: FieldJob; queued: readonly QueuedReading[] }) {
   const summary = jobSummary(job, queued);
-  const chip = isFinishedJob(job) ? job.status : summary.hasArrived ? null : 'upcoming';
+  const chipStatus = isFinishedJob(job) ? job.status : summary.hasArrived ? null : 'upcoming';
   return (
     <Pressable
       accessibilityRole="button"
@@ -98,9 +98,9 @@ function JobRow({ job, queued }: { job: FieldJob; queued: readonly QueuedReading
         <Text className="min-w-0 flex-1 text-lg text-foreground" weight="bold" numberOfLines={1}>
           {job.customerName} · {job.farmName}
         </Text>
-        {chip ? (
+        {chipStatus ? (
           <View className="shrink-0">
-            <JobStatusChip status={chip} />
+            <JobStatusChip status={chipStatus} />
           </View>
         ) : null}
       </View>

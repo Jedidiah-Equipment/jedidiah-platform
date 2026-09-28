@@ -153,7 +153,7 @@ function OptionContent({ active = false, option }: { active?: boolean; option: S
   );
 }
 
-export function filterOptions(
+function filterOptions(
   options: readonly SearchSelectFieldOption[],
   search: string,
 ): readonly SearchSelectFieldOption[] {

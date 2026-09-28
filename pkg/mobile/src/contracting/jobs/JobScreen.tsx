@@ -19,7 +19,8 @@ import { useIsOffline } from '@/lib/connectivity';
 import { shareDocument } from '@/lib/document-actions';
 import { useBusyAction } from '@/lib/use-busy-action';
 import { deriveStint, jobSummary, queuedUnplannedStints, type StintView } from './derive-stint';
-import { isFinishedJob, jobStatusLabel, useDrivers, useImplements, useJob } from './use-jobs';
+import { JobStatusChip } from './JobStatusChip';
+import { isFinishedJob, useDrivers, useImplements, useJob } from './use-jobs';
 
 const ORDER: Record<StintView['view'], number> = {
   running: 0,
@@ -104,15 +105,21 @@ export default function JobScreen() {
         {offline ? <Text className="text-muted-foreground">Offline · showing the saved Job</Text> : null}
         {job ? (
           <View className="gap-2 rounded-xl border border-border bg-surface p-4">
-            <Text className="text-xl text-foreground" weight="bold">
-              {job.jobNumber}
-            </Text>
+            <View className="flex-row items-center justify-between gap-2">
+              <Text className="min-w-0 flex-1 text-xl text-foreground" weight="bold" numberOfLines={1}>
+                {job.jobNumber}
+              </Text>
+              {finished ? (
+                <View className="shrink-0">
+                  <JobStatusChip status={job.status} />
+                </View>
+              ) : null}
+            </View>
             <Text className="text-foreground">
               {job.customerName} · {job.farmName}
             </Text>
             <Text className="text-muted-foreground">{job.workTypeName}</Text>
             {job.description ? <Text className="text-muted-foreground">{job.description}</Text> : null}
-            {finished ? <Text className="text-muted-foreground">{jobStatusLabel(job.status)}</Text> : null}
           </View>
         ) : (
           <Text className="text-muted-foreground">

@@ -13,7 +13,7 @@ import { SecondaryToolbar } from '@/components/TopToolbar';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { TextInput } from '@/components/ui/text-input';
-import { CategoryIcon } from '@/contracting/components/CategoryIcon';
+import { implementOption } from '@/contracting/components/implement-option';
 import { useDrivers, useImplements, useJobs } from '@/contracting/jobs/use-jobs';
 import { recordReadingCaptured } from '@/contracting/observability';
 import { captureWorld } from '@/contracting/readings/capture-world';
@@ -241,13 +241,7 @@ function CaptureForm({ params }: { params: CaptureParams }) {
                           { label: 'No implement', value: '' },
                           ...(implementsQuery.data ?? []).map((row) => {
                             const onJob = implementOnJob(row.id);
-                            return {
-                              value: row.id,
-                              label: row.code,
-                              description: onJob ? `${row.categoryName} · On Job ${onJob}` : row.categoryName,
-                              icon: <CategoryIcon icon={row.categoryIcon} colour={row.categoryColour} size={16} />,
-                              disabled: onJob !== null,
-                            };
+                            return { ...implementOption(row, onJob), disabled: onJob !== null };
                           }),
                         ]}
                       />

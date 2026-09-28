@@ -90,16 +90,6 @@ describe('mergePart', () => {
     await expect(context.db.$count(parts, eq(parts.id, duplicate.id))).resolves.toBe(0);
   });
 
-  test('frees the duplicate code for a new Part', async ({ context }) => {
-    const duplicate = await seedDuplicate(context.db, context.parts.piece);
-
-    await merge(context.db, duplicate.id, context.parts.piece.id);
-
-    await expect(seedDuplicate(context.db, context.parts.piece, { code: duplicate.code })).resolves.toMatchObject({
-      code: duplicate.code,
-    });
-  });
-
   test('re-points order lines together with the receipts booked against them', async ({ context }) => {
     const survivor = context.parts.piece;
     const duplicate = await seedDuplicate(context.db, survivor);

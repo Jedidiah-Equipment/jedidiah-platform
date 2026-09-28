@@ -14,7 +14,7 @@ import {
  *
  * This is the whole of "the session authorizes, the Operator field attributes", and it is the boundary
  * that rule lives at. Any session may name an Operator: the tablet's Quick-switch does, and so does
- * every web movement form, where a person session defaults to itself. Authorization has already
+ * every web form that moves stock, where a person session defaults to itself. Authorization has already
  * happened against the session by the time this runs, and this never revisits it: it does not read
  * the asserted person's role or permissions, because doing so would turn a name into a privilege
  * change. All it decides is whose name the append-only ledger records.

@@ -86,7 +86,7 @@ const MovementTargetInput = z.object({
 
 /**
  * The Operator this movement is attributed to: the session authorizes, the Operator field attributes.
- * The tablet names the person at the scan field through its Quick-switch, and every web movement form
+ * The tablet names the person at the scan field through its Quick-switch, and every web form that moves stock
  * names one in its Operator field, so the ledger records the hand that moved the stock rather than
  * the account it was keyed on.
  *

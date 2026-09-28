@@ -194,7 +194,7 @@ export const inventoryRouter = router({
     }),
 
   /**
-   * Received by, and the Operator every web movement form names. Every gate on a web form's write may
+   * Received by, and the Operator every web form that moves stock names. Every gate on a web form's write may
    * read it — a receiver or adjuster without `move` still has to say whose hand the stock went through —
    * and it carries names and thumbnails only.
    */

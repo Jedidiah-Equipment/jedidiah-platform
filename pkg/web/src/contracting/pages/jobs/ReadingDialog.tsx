@@ -1,4 +1,4 @@
-import { formatHours } from '@pkg/domain';
+import { formatHours, statusBadgeColorClassNames } from '@pkg/domain';
 import { type Assignment, type JobReading, ReadingAmendInput } from '@pkg/schema/contracting';
 import { IconAlertTriangle, IconRefresh } from '@tabler/icons-react';
 import { useMutation, useQuery } from '@tanstack/react-query';
@@ -39,9 +39,9 @@ type Tone = 'success' | 'warning' | 'destructive' | 'info' | 'neutral';
 
 const toneClasses: Record<Tone, { badge: string; result: string; segment: string }> = {
   success: {
-    badge: 'border-emerald-500/40 bg-emerald-500/10 text-emerald-300',
-    result: 'text-emerald-300',
-    segment: 'bg-emerald-400',
+    badge: `${statusBadgeColorClassNames.green.chip} ${statusBadgeColorClassNames.green.text}`,
+    result: statusBadgeColorClassNames.green.text,
+    segment: statusBadgeColorClassNames.green.dot,
   },
   warning: { badge: 'border-warning/50 bg-warning/10 text-warning', result: 'text-warning', segment: 'bg-warning' },
   destructive: {
@@ -49,7 +49,11 @@ const toneClasses: Record<Tone, { badge: string; result: string; segment: string
     result: 'text-destructive',
     segment: 'bg-destructive',
   },
-  info: { badge: 'border-sky-500/40 bg-sky-500/10 text-sky-300', result: 'text-sky-300', segment: 'bg-sky-400' },
+  info: {
+    badge: `${statusBadgeColorClassNames.blue.chip} ${statusBadgeColorClassNames.blue.text}`,
+    result: statusBadgeColorClassNames.blue.text,
+    segment: statusBadgeColorClassNames.blue.dot,
+  },
   neutral: {
     badge: 'border-border bg-muted/30 text-muted-foreground',
     result: 'text-muted-foreground',
@@ -110,10 +114,9 @@ function assessment(reading: JobReading) {
 function confidenceLabel(reading: JobReading): string {
   if (!reading.photoBacked) return 'No photo to assess';
   if (reading.aiConfidence === null) return 'Waiting for AI';
-  const grade = reading.aiConfidence >= 0.9 ? 'High' : reading.aiConfidence >= 0.8 ? 'Moderate' : 'Low';
   return reading.aiValue === null
-    ? `${grade} certainty that no readable meter is visible`
-    : `${grade} confidence in the extracted value`;
+    ? 'Confidence that no readable meter is visible'
+    : 'Confidence in the extracted value';
 }
 
 function MeterPhoto({ reading, onExpand }: { reading: JobReading; onExpand: () => void }) {

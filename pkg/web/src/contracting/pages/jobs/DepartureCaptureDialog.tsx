@@ -7,7 +7,10 @@ import { CreateEntityDialog } from '@/components/form/index.js';
 import { ReadingPhotoPicker } from './ReadingPhotoPicker.js';
 import { useReadingCapture } from './use-reading-capture.js';
 
-const DepartureValues = z.object({ value: ReadingValue, reason: z.union([z.literal(''), ReadingReason]) });
+const DepartureValues = z.object({
+  value: ReadingValue,
+  reason: z.union([z.string().trim().length(0), ReadingReason]),
+});
 export function DepartureCaptureDialog({ stint, onClose }: { stint: Assignment | null; onClose: () => void }) {
   const capture = useReadingCapture();
   const [error, setError] = useState('');

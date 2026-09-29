@@ -208,3 +208,28 @@ test('round-trips assignmentId through multipart and activates its Job on arriva
     await context.app.close();
   }
 });
+
+test('foremen can view photos for their own Job readings but not other readings', async ({ context }) => {
+  const { app, assignmentId, machineId } = context;
+  try {
+    const own = await app.inject(
+      upload(machineId, Buffer.from([255, 216, 255]), true, { role: 'arrival', assignmentId }),
+    );
+    expect(own.statusCode).toBe(201);
+    const ownPhotoUrl = `/api/contracting/readings/${own.json().id}/photo`;
+    expect((await app.inject({ method: 'GET', url: ownPhotoUrl })).statusCode).toBe(200);
+
+    const unattached = await app.inject(upload(machineId, Buffer.from([255, 216, 255])));
+    expect(unattached.statusCode).toBe(201);
+    expect(
+      (await app.inject({ method: 'GET', url: `/api/contracting/readings/${unattached.json().id}/photo` })).statusCode,
+    ).toBe(403);
+
+    (state.session as ReturnType<typeof mockSession>).user.id = 'different-user-id';
+    expect((await app.inject({ method: 'GET', url: ownPhotoUrl })).statusCode).toBe(403);
+    (state.session as ReturnType<typeof mockSession>).user.contractingRole = 'contracting-admin';
+    expect((await app.inject({ method: 'GET', url: ownPhotoUrl })).statusCode).toBe(200);
+  } finally {
+    await app.close();
+  }
+});

@@ -1,5 +1,5 @@
-import { formatHours, statusBadgeColorClassNames } from '@pkg/domain';
-import { assignmentStateColorClassNames, deriveJobActions } from '@pkg/domain/contracting';
+import { formatHours } from '@pkg/domain';
+import { assignmentStateColorClassNames, deriveJobActions, jobAttentionColorClassNames } from '@pkg/domain/contracting';
 import type { CategoryColour, CategoryIconKey, JobCardVariant } from '@pkg/schema/contracting';
 import { IconPlayerPlay, IconPlayerStop, IconPlus, type Icon as TablerIcon } from '@tabler/icons-react-native';
 import { type Href, router, useLocalSearchParams } from 'expo-router';
@@ -45,7 +45,7 @@ const STINT_VIEW_COLORS = {
   running: assignmentStateColorClassNames['on-site'],
   stopping: assignmentStateColorClassNames['on-site'],
   left: assignmentStateColorClassNames.left,
-  attention: statusBadgeColorClassNames.yellow,
+  attention: jobAttentionColorClassNames,
 } satisfies Record<StintView['view'], typeof assignmentStateColorClassNames.planned>;
 
 export default function JobScreen() {

@@ -46,7 +46,12 @@ export function AddMeasureDialog({ stint }: { stint: Assignment }) {
     <>
       <Button
         aria-label={triggerLabel}
-        onClick={() => setOpen(true)}
+        onClick={() => {
+          form.reset();
+          set.reset();
+          remove.reset();
+          setOpen(true);
+        }}
         size="icon-sm"
         title={triggerLabel}
         type="button"
@@ -112,7 +117,8 @@ export function AddMeasureDialog({ stint }: { stint: Assignment }) {
             <form.AppField name="quantity">
               {(field) => <field.NumberField label="Quantity" decimals={2} min={0.01} />}
             </form.AppField>
-            <ErrorMessage error={set.error ?? types.error} fallbackMessage="Unable to set Measure." />
+            <ErrorMessage error={types.error} fallbackMessage="Unable to load Measure Types." />
+            <ErrorMessage error={set.error} fallbackMessage="Unable to set Measure." />
             <DialogFooter>
               <DialogClose render={<Button disabled={set.isPending} type="button" variant="outline" />}>
                 Cancel

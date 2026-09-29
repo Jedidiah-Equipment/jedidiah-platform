@@ -19,7 +19,7 @@ import { useReadingCapture } from './use-reading-capture.js';
 
 const ArrivalValues = z.object({
   value: ReadingValue,
-  comment: z.union([z.literal(''), ReadingComment]),
+  comment: z.union([z.string().trim().length(0), ReadingComment]),
   confirmedDispute: z.object({ value: ReadingValue, previousId: UUID }).nullable(),
   changeAssignment: z.boolean(),
   implementId: emptyStringOr(UUID),

@@ -47,7 +47,7 @@ export function ClientDataTable<T extends RowData>({
       isLoading={loading}
       onRowClick={onOpen}
       rightSection={controls}
-      globalFilterPlaceholder={searchPlaceholder}
+      {...(searchPlaceholder ? { globalFilterPlaceholder: searchPlaceholder } : {})}
       hideGlobalFilter={hideGlobalFilter}
     />
   );

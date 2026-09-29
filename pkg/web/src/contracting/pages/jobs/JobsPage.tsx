@@ -10,6 +10,7 @@ import { IconAlertTriangle } from '@tabler/icons-react';
 import { useMutation, useQueries, useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import { useMemo, useState } from 'react';
+import { DateDisplay } from '@/components/common/DateDisplay.js';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { SearchableCombobox, type SearchableComboboxCreate } from '@/components/common/SearchableCombobox.js';
 import { ClientDataTable } from '@/components/data-table/ClientDataTable.js';
@@ -116,7 +117,9 @@ export function JobsPage({ queue }: { queue: JobQueue }) {
                 onValueChange={(foremanUserId) => assign.mutate({ id: row.original.id, foremanUserId })}
               />
             ) : (
-              <div className="mt-1 text-xs text-muted-foreground">{row.original.foremanName ?? 'Foreman unassigned'}</div>
+              <div className="mt-1 text-xs text-muted-foreground">
+                {row.original.foremanName ?? 'Foreman unassigned'}
+              </div>
             )}
           </div>
         ),
@@ -166,9 +169,13 @@ export function JobsPage({ queue }: { queue: JobQueue }) {
             </div>
             <div className="mt-1 text-xs text-muted-foreground">
               {row.original.invoiceNumber ??
-                (row.original.pricedTotal !== null
-                  ? formatCurrency(row.original.pricedTotal)
-                  : `Updated ${formatDate(row.original.updatedAt, 'short')}`)}
+                (row.original.pricedTotal !== null ? (
+                  formatCurrency(row.original.pricedTotal)
+                ) : (
+                  <>
+                    Updated <DateDisplay date={row.original.updatedAt} />
+                  </>
+                ))}
             </div>
           </div>
         ),
@@ -230,12 +237,15 @@ export function JobsPage({ queue }: { queue: JobQueue }) {
           error={counts.error ?? jobs.error ?? foremen.error ?? activeAttention.error}
           fallbackMessage="Unable to load Jobs."
         />
-        <div className="scrollbar-none flex gap-1.5 overflow-x-auto" role="group" aria-label="Job queues">
+        <fieldset className="scrollbar-none flex gap-1.5 overflow-x-auto" aria-label="Job queues">
           {jobQueues.map((item) => (
             <Button
               key={item}
               aria-pressed={queue === item}
-              className={cn('h-9 gap-1.5 px-2', queue === item && 'border-muted-foreground/60 bg-muted text-foreground')}
+              className={cn(
+                'h-9 gap-1.5 px-2',
+                queue === item && 'border-muted-foreground/60 bg-muted text-foreground',
+              )}
               onClick={() => void navigate({ to: '/contracting/jobs', search: { queue: item } })}
               size="sm"
               type="button"
@@ -254,7 +264,7 @@ export function JobsPage({ queue }: { queue: JobQueue }) {
               ) : null}
             </Button>
           ))}
-        </div>
+        </fieldset>
         <ClientDataTable
           columns={columns}
           rows={jobs.data}

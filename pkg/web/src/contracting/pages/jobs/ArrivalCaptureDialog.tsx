@@ -1,5 +1,6 @@
 import { formatHours } from '@pkg/domain';
-import { type Assignment, ReadingComment, ReadingValue, readingCaptureMultipartFields } from '@pkg/schema/contracting';
+import { AuthId, UUID } from '@pkg/schema';
+import { type Assignment, ReadingComment, ReadingValue } from '@pkg/schema/contracting';
 import { IconArrowRight } from '@tabler/icons-react';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
@@ -7,29 +8,60 @@ import { toast } from 'sonner';
 import { z } from 'zod';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { CreateEntityDialog } from '@/components/form/index.js';
-import { useQueryInvalidation } from '@/contracting/hooks/use-query-invalidation.js';
-import { readingCapturePath } from '@/contracting/lib/contracting-http-paths.js';
+import { emptyStringOr } from '@/components/form/utils/form-schema.js';
+import { Button } from '@/components/ui/button.js';
+import { Checkbox } from '@/components/ui/checkbox.js';
+import { Field, FieldContent, FieldDescription, FieldLabel } from '@/components/ui/field.js';
+import { CategoryIcon } from '@/contracting/components/CategoryIcon.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { ReadingPhotoPicker } from './ReadingPhotoPicker.js';
+import { useReadingCapture } from './use-reading-capture.js';
 
 const ArrivalValues = z.object({
   value: ReadingValue,
   comment: z.union([z.literal(''), ReadingComment]),
-  disputePrevious: z.boolean(),
+  confirmedDispute: z.object({ value: ReadingValue, previousId: UUID }).nullable(),
+  changeAssignment: z.boolean(),
+  implementId: emptyStringOr(UUID),
+  driverUserId: emptyStringOr(AuthId),
 });
 
 export function ArrivalCaptureDialog({ stint, onClose }: { stint: Assignment | null; onClose: () => void }) {
   const trpc = useTRPC();
-  const { invalidateJobs, invalidateReadings } = useQueryInvalidation();
+  const capture = useReadingCapture();
   const [error, setError] = useState('');
   const [photo, setPhoto] = useState<File | null>(null);
   const [readingFocused, setReadingFocused] = useState(false);
   const history = useQuery(
     trpc.contractingReadings.fieldHistory.queryOptions({ machineId: stint?.machineId ?? '' }, { enabled: !!stint }),
   );
+  const implementsQuery = useQuery(trpc.contractingJobs.field.implements.queryOptions(undefined, { enabled: !!stint }));
+  const driversQuery = useQuery(trpc.contractingJobs.field.drivers.queryOptions(undefined, { enabled: !!stint }));
   const latest = history.data?.[0];
   const canCapture = (values: z.infer<typeof ArrivalValues>) =>
-    history.isSuccess && (!latest || values.value >= latest.value || values.disputePrevious);
+    history.isSuccess &&
+    (!values.changeAssignment || (implementsQuery.isSuccess && driversQuery.isSuccess)) &&
+    (!latest ||
+      values.value >= latest.value ||
+      (values.confirmedDispute?.value === values.value && values.confirmedDispute.previousId === latest.id));
+  const implementOptions = [
+    { value: '', label: 'No implement' },
+    ...(implementsQuery.data ?? [])
+      .filter((entry) => !entry.onSiteJobNumber || entry.id === stint?.implementId)
+      .map((entry) => ({
+        value: entry.id,
+        label: entry.code,
+        icon: <CategoryIcon icon={entry.categoryIcon} colour={entry.categoryColour} size={14} />,
+      })),
+  ];
+  if (stint?.implementId && stint.implementCode && !implementOptions.some((entry) => entry.value === stint.implementId))
+    implementOptions.push({ value: stint.implementId, label: stint.implementCode });
+  const driverOptions = [
+    { value: '', label: 'No driver' },
+    ...(driversQuery.data ?? []).map((entry) => ({ value: entry.id, label: entry.name })),
+  ];
+  if (stint?.driverUserId && stint.driverName && !driverOptions.some((entry) => entry.value === stint.driverUserId))
+    driverOptions.push({ value: stint.driverUserId, label: stint.driverName });
 
   return (
     <CreateEntityDialog
@@ -45,7 +77,14 @@ export function ArrivalCaptureDialog({ stint, onClose }: { stint: Assignment | n
       }}
       title={`Capture arrival · ${stint?.machineCode ?? ''}`}
       contentClassName="sm:max-w-md"
-      defaultValues={{ value: Number.NaN, comment: '', disputePrevious: false }}
+      defaultValues={{
+        value: Number.NaN,
+        comment: '',
+        confirmedDispute: null,
+        changeAssignment: false,
+        implementId: stint?.implementId ?? '',
+        driverUserId: stint?.driverUserId ?? '',
+      }}
       validator={ArrivalValues}
       canSubmit={canCapture}
       disableSubmitWhenInvalid
@@ -53,27 +92,32 @@ export function ArrivalCaptureDialog({ stint, onClose }: { stint: Assignment | n
       onCreate={async (values) => {
         if (!stint) throw new Error('No Machine Assignment selected.');
         setError('');
-        const body = new FormData();
-        for (const [name, value] of readingCaptureMultipartFields({
-          machineId: stint.machineId,
-          assignmentId: stint.id,
-          role: 'arrival',
-          value: values.value,
-          capturedAt: new Date().toISOString(),
-          comment: values.comment.trim() || null,
-          disputePrevious: !!latest && values.value < latest.value && values.disputePrevious,
-          expectedPreviousId: latest?.id ?? null,
-        }))
-          body.append(name, value);
-        if (photo) body.append('photo', photo, photo.name);
-        const response = await fetch(readingCapturePath(), { method: 'POST', body, credentials: 'include' });
-        if (!response.ok) {
-          const payload = await response.json().catch(() => null);
-          const message = payload?.message ?? 'Unable to capture arrival reading.';
-          setError(message);
-          throw new Error(message);
+        try {
+          await capture(
+            {
+              machineId: stint.machineId,
+              assignmentId: stint.id,
+              role: 'arrival',
+              value: values.value,
+              capturedAt: new Date().toISOString(),
+              comment: values.comment.trim() || null,
+              disputePrevious:
+                !!latest &&
+                values.value < latest.value &&
+                values.confirmedDispute?.value === values.value &&
+                values.confirmedDispute.previousId === latest.id,
+              expectedPreviousId: latest?.id ?? null,
+              stintOverrides: values.changeAssignment
+                ? { implementId: values.implementId || null, driverUserId: values.driverUserId || null }
+                : undefined,
+            },
+            photo,
+            'Unable to capture arrival reading.',
+          );
+        } catch (cause) {
+          setError(cause instanceof Error ? cause.message : 'Unable to capture arrival reading.');
+          throw cause;
         }
-        await Promise.all([invalidateJobs(), invalidateReadings()]);
         toast.success('Arrival reading captured');
         return true;
       }}
@@ -104,6 +148,7 @@ export function ArrivalCaptureDialog({ stint, onClose }: { stint: Assignment | n
                       decimals={1}
                       min={0}
                       className="text-lg font-semibold md:text-lg"
+                      onInput={() => form.setFieldValue('confirmedDispute', null)}
                     />
                   )}
                 </form.AppField>
@@ -113,12 +158,24 @@ export function ArrivalCaptureDialog({ stint, onClose }: { stint: Assignment | n
               {(value) =>
                 !readingFocused && latest && value < latest.value ? (
                   <div className="rounded-lg border border-warning/45 bg-warning/10 p-3">
-                    <form.AppField name="disputePrevious">
+                    <form.AppField name="confirmedDispute">
                       {(field) => (
-                        <field.CheckboxField
-                          label="The previous reading is wrong"
-                          description={`Record ${formatHours(value)} and dispute the ${formatHours(latest.value)} reading.`}
-                        />
+                        <Field orientation="horizontal">
+                          <Checkbox
+                            checked={field.state.value?.value === value && field.state.value.previousId === latest.id}
+                            id={field.name}
+                            onBlur={field.handleBlur}
+                            onCheckedChange={(checked) =>
+                              field.handleChange(checked === true ? { value, previousId: latest.id } : null)
+                            }
+                          />
+                          <FieldContent>
+                            <FieldLabel htmlFor={field.name}>The previous reading is wrong</FieldLabel>
+                            <FieldDescription>
+                              Record {formatHours(value)} and dispute the {formatHours(latest.value)} reading.
+                            </FieldDescription>
+                          </FieldContent>
+                        </Field>
                       )}
                     </form.AppField>
                   </div>
@@ -126,6 +183,39 @@ export function ArrivalCaptureDialog({ stint, onClose }: { stint: Assignment | n
               }
             </form.Subscribe>
           </div>
+          <form.Subscribe selector={(state) => state.values.changeAssignment}>
+            {(changing) => (
+              <div className="space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
+                  <span className="text-muted-foreground">
+                    Starting with {stint?.implementCode ?? 'no implement'} · {stint?.driverName ?? 'no driver'}
+                  </span>
+                  <Button
+                    onClick={() => form.setFieldValue('changeAssignment', !changing)}
+                    size="sm"
+                    type="button"
+                    variant="outline"
+                  >
+                    {changing ? 'Keep planned assignment' : 'Change assignment'}
+                  </Button>
+                </div>
+                {changing ? (
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <form.AppField name="implementId">
+                      {(field) => <field.ComboboxField label="Implement" options={implementOptions} />}
+                    </form.AppField>
+                    <form.AppField name="driverUserId">
+                      {(field) => <field.ComboboxField label="Driver" options={driverOptions} />}
+                    </form.AppField>
+                    <ErrorMessage
+                      error={implementsQuery.error ?? driversQuery.error}
+                      fallbackMessage="Unable to load Implement and Driver options."
+                    />
+                  </div>
+                ) : null}
+              </div>
+            )}
+          </form.Subscribe>
           <ReadingPhotoPicker
             id={`arrival-photo-${stint?.id ?? 'closed'}`}
             photo={photo}

@@ -107,7 +107,7 @@ export function MachinesCard({ job, sheet }: { job: JobDetail; sheet: JobSheet }
           <MachinesContext.Provider value={machines}>
             {stints.length ? (
               <>
-                <div aria-label="Filter machines" className="flex flex-wrap items-center gap-1" role="group">
+                <fieldset aria-label="Filter machines" className="flex flex-wrap items-center gap-1">
                   {filters.map(({ value, label }) => (
                     <Button
                       aria-pressed={filter === value}
@@ -124,7 +124,7 @@ export function MachinesCard({ job, sheet }: { job: JobDetail; sheet: JobSheet }
                   <span className="ml-auto text-xs text-muted-foreground">
                     {formatNumber(visible.length)} of {formatNumber(stints.length)}
                   </span>
-                </div>
+                </fieldset>
                 {visible.length ? (
                   <div className="grid grid-cols-1 items-stretch gap-3 md:grid-cols-2">
                     {visible.map(({ stint, stintNumber }) => (
@@ -145,7 +145,11 @@ export function MachinesCard({ job, sheet }: { job: JobDetail; sheet: JobSheet }
       <ArrivalCaptureDialog stint={arrival} onClose={() => setArrival(null)} />
       <GapResolveDialog stint={gap} onClose={() => setGap(null)} />
       <DepartureCaptureDialog stint={departure} onClose={() => setDeparture(null)} />
-      <ReadingDialog selected={selectedReading} onClose={() => setReading(null)} amendReadings={sheet.can('amendReadings')} />
+      <ReadingDialog
+        selected={selectedReading}
+        onClose={() => setReading(null)}
+        amendReadings={sheet.can('amendReadings')}
+      />
     </>
   );
 }

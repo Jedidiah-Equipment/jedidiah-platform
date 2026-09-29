@@ -11,7 +11,14 @@ import { CreateEntityDialog } from '@/components/form/index.js';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert.js';
 import { Badge } from '@/components/ui/badge.js';
 import { Button } from '@/components/ui/button.js';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog.js';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip.js';
 import { useQueryInvalidation } from '@/contracting/hooks/use-query-invalidation.js';
@@ -43,7 +50,11 @@ const toneClasses: Record<Tone, { badge: string; result: string; segment: string
     segment: 'bg-destructive',
   },
   info: { badge: 'border-sky-500/40 bg-sky-500/10 text-sky-300', result: 'text-sky-300', segment: 'bg-sky-400' },
-  neutral: { badge: 'border-border bg-muted/30 text-muted-foreground', result: 'text-muted-foreground', segment: 'bg-muted-foreground' },
+  neutral: {
+    badge: 'border-border bg-muted/30 text-muted-foreground',
+    result: 'text-muted-foreground',
+    segment: 'bg-muted-foreground',
+  },
 };
 
 function assessment(reading: JobReading) {
@@ -293,7 +304,8 @@ export function ReadingDialog({
                       ) : null}
                       {reading.evidenceReviewedAt ? (
                         <p className="mt-3 border-l-2 pl-2.5 text-xs text-muted-foreground">
-                          <span className="font-medium text-foreground">Review acknowledged</span> · The AI result is retained for context.
+                          <span className="font-medium text-foreground">Review acknowledged</span> · The AI result is
+                          retained for context.
                         </p>
                       ) : null}
                     </div>

@@ -60,9 +60,7 @@ export function AddChargeLineDialog({
       onCreate={(values) => create.mutateAsync({ jobId, description: values.description })}
       onCreated={() => onOpenChange(false)}
     >
-      {(form) => (
-        <form.AppField name="description">{(field) => <field.TextField label="Description" />}</form.AppField>
-      )}
+      {(form) => <form.AppField name="description">{(field) => <field.TextField label="Description" />}</form.AppField>}
     </CreateEntityDialog>
   );
 }

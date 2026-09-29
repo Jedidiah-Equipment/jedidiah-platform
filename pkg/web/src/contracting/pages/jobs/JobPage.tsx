@@ -56,7 +56,7 @@ export function JobPage({ code }: { code: string }) {
               {sheet.showsSignOff ? <SignOffCard job={job} sheet={sheet} /> : null}
               <PricingCard job={job} sheet={sheet} />
               <InvoiceCard job={job} sheet={sheet} />
-              {job.status !== 'upcoming' ? (
+              {job.status !== 'upcoming' && !sheet.seesMoney ? (
                 <ChargeLinesCard
                   job={job}
                   editable={sheet.can('editChargeLines')}

@@ -7,6 +7,7 @@ import {
   parseCurrencyFieldValue,
 } from '@/components/form/fields/CurrencyField.js';
 import { InputGroup, InputGroupAddon, InputGroupInput, InputGroupText } from '@/components/ui/input-group.js';
+import { cn } from '@/lib/utils.js';
 
 const display = (value: number | null) => (value === null ? '' : formatCurrencyFieldValue(value, false));
 
@@ -18,6 +19,8 @@ export function MoneyInput({
   disabled = false,
   autoFocus = false,
   unit = CURRENCY_SYMBOL_BY_CODE[PLANT_CURRENCY_CODE],
+  suffix,
+  className,
   onDone,
 }: {
   value: number | null;
@@ -27,6 +30,9 @@ export function MoneyInput({
   autoFocus?: boolean;
   /** The addon beside the figure; a percentage Discount shows %. */
   unit?: string | undefined;
+  /** Text shown at the end of the input group, such as a pricing unit. */
+  suffix?: string;
+  className?: string;
   /** Runs after every blur, whether or not the value changed. */
   onDone?: (() => void) | undefined;
 }) {
@@ -43,7 +49,7 @@ export function MoneyInput({
     onDone?.();
   };
   return (
-    <InputGroup className="w-36">
+    <InputGroup className={cn('w-36', className)}>
       <InputGroupInput
         aria-label={label}
         autoFocus={autoFocus}
@@ -60,6 +66,11 @@ export function MoneyInput({
       <InputGroupAddon align="inline-start">
         <InputGroupText>{unit}</InputGroupText>
       </InputGroupAddon>
+      {suffix ? (
+        <InputGroupAddon align="inline-end">
+          <InputGroupText className="whitespace-nowrap">{suffix}</InputGroupText>
+        </InputGroupAddon>
+      ) : null}
     </InputGroup>
   );
 }

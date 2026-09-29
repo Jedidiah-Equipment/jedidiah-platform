@@ -46,6 +46,7 @@ export const RemoveEntityButton: React.FC<RemoveEntityButtonProps> = ({
           <Button
             aria-label={triggerIconOnly ? triggerLabel : undefined}
             size={triggerSize}
+            title={triggerIconOnly ? triggerLabel : undefined}
             type="button"
             variant={triggerVariant}
           />

@@ -46,6 +46,7 @@ type DataTableProps<TData extends RowData> = {
   getRowState?: ((item: TData) => 'selected' | undefined) | undefined;
   globalFilterPlaceholder?: string;
   hideGlobalFilter?: boolean;
+  hideFooter?: boolean;
   isLoading?: boolean;
   loadingRowCount?: number;
   onRowClick?: ((item: TData) => void) | undefined;
@@ -84,6 +85,7 @@ export function DataTable<TData extends RowData>({
   getRowState,
   globalFilterPlaceholder = 'Search...',
   hideGlobalFilter = false,
+  hideFooter = false,
   isLoading = false,
   loadMore,
   loadingRowCount = 10,
@@ -190,7 +192,7 @@ export function DataTable<TData extends RowData>({
         </ScrollArea>
       </div>
 
-      {paginationMode === 'cursor' ? (
+      {hideFooter ? null : paginationMode === 'cursor' ? (
         <DataTableLoadMore
           hasNextPage={loadMore.hasNextPage}
           isFetchingNextPage={loadMore.isFetchingNextPage}

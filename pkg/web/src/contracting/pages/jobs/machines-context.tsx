@@ -23,19 +23,17 @@ export function useMachineMutations() {
     remove: useMutation(
       trpc.contractingJobs.assignments.remove.mutationOptions(options('Unable to remove Machine Assignment.')),
     ),
-    removeMeasure: useMutation(
-      trpc.contractingJobs.measures.remove.mutationOptions(options('Unable to remove Measure.')),
-    ),
   };
 }
 
-/** What every Machines cell reads: permissions, pick-list options, the writes, and the dialogs it opens. */
+/** What each Machine card reads: permissions, pick-list options, writes, and dialogs. */
 type Machines = {
   sheet: JobSheet;
   implementOptions: readonly FieldImplement[];
   drivers: readonly FieldDriver[];
   mutations: ReturnType<typeof useMachineMutations>;
   openReading: (selected: SelectedReading) => void;
+  openArrival: (stint: Assignment) => void;
   openGap: (stint: Assignment) => void;
   openDeparture: (stint: Assignment) => void;
 };
@@ -44,6 +42,6 @@ export const MachinesContext = createContext<Machines | null>(null);
 
 export function useMachines() {
   const machines = useContext(MachinesContext);
-  if (!machines) throw new Error('Machines cells render inside MachinesCard.');
+  if (!machines) throw new Error('Machine cards render inside MachinesCard.');
   return machines;
 }

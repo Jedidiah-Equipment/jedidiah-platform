@@ -1,12 +1,13 @@
 import { formatCurrency, formatHours, formatNumber, formatPercent } from '@pkg/domain';
 import type { Assignment, DiscountKind } from '@pkg/schema/contracting';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
+import { RemoveEntityButton } from '@/components/common/RemoveEntityButton.js';
 import { SearchableCombobox } from '@/components/common/SearchableCombobox.js';
 import type { DataTableColumnDef } from '@/components/data-table/features.js';
 import { Badge } from '@/components/ui/badge.js';
 import { Button } from '@/components/ui/button.js';
-import { AddMeasurePopover } from './AddMeasurePopover.js';
+import { ChargeLineDescription } from './ChargeLineEditing.js';
 import { MoneyInput } from './MoneyInput.js';
 import {
   formatQuantity,
@@ -19,16 +20,32 @@ import {
 } from './pricing.js';
 import { usePricing } from './pricing-context.js';
 
-export const pricingColumns: DataTableColumnDef<PricingRow>[] = [
+const amountColumn: DataTableColumnDef<PricingRow> = {
+  id: 'amount',
+  header: 'Amount',
+  meta: { cellClassName: 'text-right', headerClassName: 'text-right' },
+  cell: ({ row }) => <AmountCell row={row.original} />,
+};
+
+export const machinePricingColumns: DataTableColumnDef<PricingRow>[] = [
   { id: 'line', header: 'Line', cell: ({ row }) => <LineCell row={row.original} /> },
-  { id: 'quantity', header: 'Hours · measures', cell: ({ row }) => <QuantityCell row={row.original} /> },
-  { id: 'rate', header: 'Rate', cell: ({ row }) => <RateCell row={row.original} /> },
-  {
-    id: 'amount',
-    header: 'Amount',
-    meta: { cellClassName: 'text-right', headerClassName: 'text-right' },
-    cell: ({ row }) => <AmountCell row={row.original} />,
-  },
+  { id: 'quantity', header: 'Hours', cell: ({ row }) => <QuantityCell row={row.original} /> },
+  { id: 'measures', header: 'Measures', cell: ({ row }) => <MeasuresCell row={row.original} /> },
+  { id: 'rate', header: 'Rate / price', cell: ({ row }) => <RateCell row={row.original} /> },
+  amountColumn,
+];
+
+export const chargeLinePricingColumns: DataTableColumnDef<PricingRow>[] = [
+  { id: 'line', header: 'Line', cell: ({ row }) => <LineCell row={row.original} /> },
+  { id: 'rate', header: 'Type', cell: ({ row }) => <RateCell row={row.original} /> },
+  amountColumn,
+];
+
+export const adjustmentPricingColumns: DataTableColumnDef<PricingRow>[] = [
+  { id: 'line', header: 'Adjustment', cell: ({ row }) => <LineCell row={row.original} /> },
+  { id: 'quantity', header: 'Quantity', cell: ({ row }) => <QuantityCell row={row.original} /> },
+  { id: 'rate', header: 'Rate / price', cell: ({ row }) => <RateCell row={row.original} /> },
+  amountColumn,
 ];
 
 export const pricingRowId = (row: PricingRow) => {
@@ -45,6 +62,7 @@ export const pricingRowId = (row: PricingRow) => {
 };
 
 function LineCell({ row }: { row: PricingRow }) {
+  const { chargeEditable, chargeLineMutations } = usePricing();
   switch (row.kind) {
     case 'stint':
       return (
@@ -56,7 +74,29 @@ function LineCell({ row }: { row: PricingRow }) {
     case 'subtotal':
       return <span>{row.machineCode} subtotal</span>;
     case 'charge-line':
-      return <span>{row.line.description}</span>;
+      return (
+        <div className="flex min-w-44 items-center gap-2">
+          <div className="min-w-0 flex-1">
+            <ChargeLineDescription
+              key={row.line.id}
+              line={row.line}
+              editable={chargeEditable}
+              onSave={(description) => chargeLineMutations.patch.mutate({ id: row.line.id, description })}
+            />
+          </div>
+          {chargeEditable ? (
+            <RemoveEntityButton
+              title="Remove Charge Line"
+              description="Remove this Charge Line?"
+              triggerIconOnly
+              triggerLabel={`Remove ${row.line.description}`}
+              triggerSize="icon-sm"
+              isPending={chargeLineMutations.remove.isPending}
+              onConfirm={() => chargeLineMutations.remove.mutate({ id: row.line.id })}
+            />
+          ) : null}
+        </div>
+      );
     case 'diesel':
       return (
         <span className="flex items-center gap-2">
@@ -69,34 +109,37 @@ function LineCell({ row }: { row: PricingRow }) {
 }
 
 function QuantityCell({ row }: { row: PricingRow }) {
-  const { editable } = usePricing();
   if (row.kind === 'diesel') return <span>{formatNumber(row.litres, { decimals: 2 })} L</span>;
   if (row.kind !== 'stint') return null;
   const { stint } = row;
-  return (
-    <div className="space-y-1">
-      {stint.billableHours !== null ? (
-        <div>
-          <span>{formatHours(stint.billableHours)}</span>
-          <span className="block text-muted-foreground text-xs">
-            work {formatHours(stint.workHours ?? 0)} + travel {formatHours(stint.travelHours)}
-          </span>
-        </div>
-      ) : null}
-      <div className="flex flex-wrap items-center gap-1">
-        {stint.measures.map((measure) => (
-          <Badge key={measure.id} variant="secondary">
-            {formatQuantity(measure.quantity)} {measure.measureTypeName}
-          </Badge>
-        ))}
-        {editable ? <AddMeasurePopover stint={stint} /> : null}
-      </div>
+  return stint.billableHours !== null ? (
+    <div>
+      <span>{formatHours(stint.billableHours)}</span>
+      <span className="block text-muted-foreground text-xs">
+        work {formatHours(stint.workHours ?? 0)} + travel {formatHours(stint.travelHours)}
+      </span>
     </div>
+  ) : null;
+}
+
+function MeasuresCell({ row }: { row: PricingRow }) {
+  if (row.kind !== 'stint') return null;
+  return row.stint.measures.length ? (
+    <div className="flex min-w-32 flex-wrap gap-1">
+      {row.stint.measures.map((measure) => (
+        <Badge key={measure.id} variant="secondary">
+          {formatQuantity(measure.quantity)} {measure.measureTypeName}
+        </Badge>
+      ))}
+    </div>
+  ) : (
+    <span className="text-muted-foreground">—</span>
   );
 }
 
 function RateCell({ row }: { row: PricingRow }) {
   const { job, editable, rates, mutations } = usePricing();
+  if (row.kind === 'charge-line') return <span className="text-muted-foreground text-xs">Fixed amount</span>;
   if (row.kind === 'stint') {
     const { stint } = row;
     if (!editable) return <span>{stint.rateUnitAmount === null ? '—' : (stint.rateName ?? 'No charge')}</span>;
@@ -121,13 +164,14 @@ function RateCell({ row }: { row: PricingRow }) {
   if (row.kind === 'diesel') {
     if (!editable) return row.unitPrice === null ? <span>—</span> : <span>{formatCurrency(row.unitPrice)} / L</span>;
     return (
-      <div className="flex items-center gap-2">
+      <div className="grid grid-cols-[4.5rem_11rem] items-center gap-2">
         <MoneyInput
+          className="col-start-2 w-full"
           label="Diesel price per litre"
+          suffix="per litre"
           value={row.unitPrice}
           onCommit={(unitPrice) => mutations.setDiesel.mutate({ jobId: job.id, unitPrice })}
         />
-        <span className="text-muted-foreground text-sm">per litre</span>
       </div>
     );
   }
@@ -137,17 +181,38 @@ function RateCell({ row }: { row: PricingRow }) {
 
 function DiscountInput({ row }: { row: Extract<PricingRow, { kind: 'discount' }> }) {
   const { job, editable, mutations } = usePricing();
-  const [kind, setKind] = useState<DiscountKind>(row.discount?.kind ?? 'amount');
+  const savedKind = row.discount?.kind;
+  const savedValue = row.discount?.value ?? null;
+  const [kind, setKind] = useState<DiscountKind>(savedKind ?? 'amount');
+  const currentValue = useRef(savedValue);
+  const pendingSave = useRef<Promise<void>>(Promise.resolve());
+  useEffect(() => {
+    currentValue.current = savedValue;
+  }, [savedValue]);
+  useEffect(() => {
+    if (savedKind) setKind(savedKind);
+  }, [savedKind]);
   if (!editable)
     return row.discount ? (
       <span>
         {row.discount.kind === 'percent' ? formatPercent(row.discount.value) : formatCurrency(row.discount.value)}
       </span>
     ) : null;
-  const save = (nextKind: DiscountKind, value: number | null) =>
-    mutations.setDiscount.mutate({ jobId: job.id, discount: value === null ? null : { kind: nextKind, value } });
+  const save = (nextKind: DiscountKind, value: number | null) => {
+    currentValue.current = value;
+    // A kind click blurs the amount field first. Keep both writes in order and use the just-entered value.
+    pendingSave.current = pendingSave.current
+      .then(() =>
+        mutations.setDiscount.mutateAsync({
+          jobId: job.id,
+          discount: value === null ? null : { kind: nextKind, value },
+        }),
+      )
+      .then(() => undefined)
+      .catch(() => undefined);
+  };
   return (
-    <div className="flex items-center gap-2">
+    <div className="grid grid-cols-[4.5rem_11rem] items-center gap-2">
       <fieldset className="flex" aria-label="Discount kind">
         {(['amount', 'percent'] as const).map((option) => (
           <Button
@@ -156,12 +221,13 @@ function DiscountInput({ row }: { row: Extract<PricingRow, { kind: 'discount' }>
             variant={kind === option ? 'default' : 'outline'}
             aria-pressed={kind === option}
             onClick={() => {
-              if (row.discount && option === 'percent' && row.discount.value > 100) {
+              if (option === kind) return;
+              if (option === 'percent' && currentValue.current !== null && currentValue.current > 100) {
                 toast.error('A percentage discount cannot exceed 100. Enter the percentage instead.');
                 return;
               }
               setKind(option);
-              if (row.discount && row.discount.kind !== option) save(option, row.discount.value);
+              if (currentValue.current !== null) save(option, currentValue.current);
             }}
           >
             {option === 'amount' ? 'R' : '%'}
@@ -169,9 +235,10 @@ function DiscountInput({ row }: { row: Extract<PricingRow, { kind: 'discount' }>
         ))}
       </fieldset>
       <MoneyInput
+        className="w-full"
         label="Discount"
         unit={kind === 'percent' ? '%' : undefined}
-        value={row.discount?.value ?? null}
+        value={savedValue}
         onCommit={(value) => save(kind, value)}
       />
     </div>
@@ -179,14 +246,22 @@ function DiscountInput({ row }: { row: Extract<PricingRow, { kind: 'discount' }>
 }
 
 function AmountCell({ row }: { row: PricingRow }) {
-  const { job, editable, mutations } = usePricing();
+  const { job, editable, mutations, chargeLineMutations } = usePricing();
   switch (row.kind) {
     case 'stint':
       return <StintAmount stint={row.stint} />;
     case 'subtotal':
       return <span>{formatCurrency(row.amount)}</span>;
     case 'charge-line':
-      return row.line.amount === null ? (
+      return editable ? (
+        <div className="flex justify-end [&_input]:text-right">
+          <MoneyInput
+            label={`Amount for ${row.line.description}`}
+            value={row.line.amount}
+            onCommit={(amount) => chargeLineMutations.patch.mutate({ id: row.line.id, amount })}
+          />
+        </div>
+      ) : row.line.amount === null ? (
         <span className="text-destructive">Needs an amount</span>
       ) : (
         <span>{formatCurrency(row.line.amount)}</span>
@@ -207,7 +282,7 @@ function AmountCell({ row }: { row: PricingRow }) {
         />
       );
     case 'discount':
-      return row.amount ? <span>− {formatCurrency(row.amount)}</span> : null;
+      return row.discount ? <span>− {formatCurrency(row.amount ?? 0)}</span> : null;
   }
 }
 

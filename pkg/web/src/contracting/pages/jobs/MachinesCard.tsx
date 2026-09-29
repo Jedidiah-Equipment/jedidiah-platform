@@ -1,27 +1,53 @@
+import { formatNumber } from '@pkg/domain';
 import { groupStints } from '@pkg/domain/contracting';
 import type { Assignment, JobDetail } from '@pkg/schema/contracting';
 import { useQuery } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
-import { DataTable } from '@/components/data-table/DataTable.js';
-import { useDataTable } from '@/components/data-table/features.js';
 import { Button } from '@/components/ui/button.js';
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@/components/ui/card.js';
 import { useTRPC } from '@/lib/trpc.js';
+import { ArrivalCaptureDialog } from './ArrivalCaptureDialog.js';
 import { DepartureCaptureDialog } from './DepartureCaptureDialog.js';
 import { GapResolveDialog } from './GapResolveDialog.js';
-import { AttentionBadge, machineColumns } from './MachineCells.js';
+import { MachineStintCard } from './MachineStintCard.js';
 import { MachinesContext, type SelectedReading, useMachineMutations } from './machines-context.js';
 import { PlanMachineDialog } from './PlanMachineDialog.js';
-import { ReadingSheet } from './ReadingSheet.js';
+import { ReadingDialog } from './ReadingDialog.js';
 import type { JobSheet } from './types.js';
+
+type MachineFilter = 'all' | 'planned' | 'on-site' | 'attention' | 'left' | 'repeat';
+const filters: { value: MachineFilter; label: string }[] = [
+  { value: 'all', label: 'All' },
+  { value: 'planned', label: 'Planned' },
+  { value: 'on-site', label: 'On site' },
+  { value: 'attention', label: 'Needs a look' },
+  { value: 'left', label: 'Left' },
+  { value: 'repeat', label: 'Repeat stint' },
+];
+
+function hasAttention(stint: Assignment): boolean {
+  return stint.gapFlag || !!stint.arrival?.needsALook.length || !!stint.departure?.needsALook.length;
+}
 
 export function MachinesCard({ job, sheet }: { job: JobDetail; sheet: JobSheet }) {
   const trpc = useTRPC();
   const [planning, setPlanning] = useState(false);
   const [reading, setReading] = useState<SelectedReading | null>(null);
+  const [arrival, setArrival] = useState<Assignment | null>(null);
   const [gap, setGap] = useState<Assignment | null>(null);
   const [departure, setDeparture] = useState<Assignment | null>(null);
+  const [filter, setFilter] = useState<MachineFilter>('all');
+  const selectedStint = reading ? job.assignments.find((stint) => stint.id === reading.stint.id) : null;
+  const selectedReading =
+    reading && selectedStint
+      ? {
+          stint: selectedStint,
+          reading:
+            [selectedStint.arrival, selectedStint.departure].find((value) => value?.id === reading.reading.id) ??
+            reading.reading,
+        }
+      : reading;
   const implementOptions = useQuery(
     trpc.contractingJobs.field.implements.queryOptions(undefined, { enabled: sheet.can('assign') }),
   );
@@ -29,8 +55,24 @@ export function MachinesCard({ job, sheet }: { job: JobDetail; sheet: JobSheet }
     trpc.contractingJobs.field.drivers.queryOptions(undefined, { enabled: sheet.can('assign') }),
   );
   const mutations = useMachineMutations();
-  const rows = useMemo(() => groupStints(job.assignments), [job.assignments]);
-  const table = useDataTable({ data: rows, columns: machineColumns });
+  const stints = useMemo(() => {
+    const numbers = new Map<string, number>();
+    return groupStints(job.assignments).flatMap((row) => {
+      if (row.kind === 'subtotal') return [];
+      const stintNumber = (numbers.get(row.stint.machineId) ?? 0) + 1;
+      numbers.set(row.stint.machineId, stintNumber);
+      return [{ stint: row.stint, stintNumber }];
+    });
+  }, [job.assignments]);
+  const visible = stints.filter(({ stint, stintNumber }) =>
+    filter === 'all'
+      ? true
+      : filter === 'attention'
+        ? hasAttention(stint)
+        : filter === 'repeat'
+          ? stintNumber > 1
+          : stint.state === filter,
+  );
   const machines = useMemo(
     () => ({
       sheet,
@@ -38,6 +80,7 @@ export function MachinesCard({ job, sheet }: { job: JobDetail; sheet: JobSheet }
       drivers: drivers.data ?? [],
       mutations,
       openReading: setReading,
+      openArrival: setArrival,
       openGap: setGap,
       openDeparture: setDeparture,
     }),
@@ -58,74 +101,51 @@ export function MachinesCard({ job, sheet }: { job: JobDetail; sheet: JobSheet }
         </CardHeader>
         <CardContent className="space-y-4">
           <ErrorMessage
-            error={mutations.patch.error ?? mutations.remove.error ?? mutations.removeMeasure.error}
+            error={mutations.patch.error ?? mutations.remove.error}
             fallbackMessage="Unable to update Machines."
           />
           <MachinesContext.Provider value={machines}>
-            <DataTable
-              table={table}
-              paginationMode="complete"
-              total={rows.length}
-              emptyMessage="No Machines planned."
-              hideGlobalFilter
-              getRowClassName={(row) => (row.kind === 'planned' ? 'opacity-60' : undefined)}
-            />
+            {stints.length ? (
+              <>
+                <div aria-label="Filter machines" className="flex flex-wrap items-center gap-1" role="group">
+                  {filters.map(({ value, label }) => (
+                    <Button
+                      aria-pressed={filter === value}
+                      className="h-7 px-2.5"
+                      key={value}
+                      onClick={() => setFilter(value)}
+                      size="sm"
+                      type="button"
+                      variant={filter === value ? 'secondary' : 'ghost'}
+                    >
+                      {label}
+                    </Button>
+                  ))}
+                  <span className="ml-auto text-xs text-muted-foreground">
+                    {formatNumber(visible.length)} of {formatNumber(stints.length)}
+                  </span>
+                </div>
+                {visible.length ? (
+                  <div className="grid grid-cols-1 items-stretch gap-3 md:grid-cols-2">
+                    {visible.map(({ stint, stintNumber }) => (
+                      <MachineStintCard key={stint.id} stint={stint} stintNumber={stintNumber} />
+                    ))}
+                  </div>
+                ) : (
+                  <p className="py-4 text-sm text-muted-foreground">No Machines match this filter.</p>
+                )}
+              </>
+            ) : (
+              <p className="py-4 text-sm text-muted-foreground">No Machines planned.</p>
+            )}
           </MachinesContext.Provider>
-          <NeedsALook job={job} canResolveGaps={sheet.can('resolveGaps')} onReading={setReading} onGap={setGap} />
         </CardContent>
       </Card>
       <PlanMachineDialog jobId={job.id} open={planning} onOpenChange={setPlanning} />
+      <ArrivalCaptureDialog stint={arrival} onClose={() => setArrival(null)} />
       <GapResolveDialog stint={gap} onClose={() => setGap(null)} />
       <DepartureCaptureDialog stint={departure} onClose={() => setDeparture(null)} />
-      <ReadingSheet selected={reading} onClose={() => setReading(null)} amendReadings={sheet.can('amendReadings')} />
+      <ReadingDialog selected={selectedReading} onClose={() => setReading(null)} amendReadings={sheet.can('amendReadings')} />
     </>
-  );
-}
-
-/** Every flagged reading and open Gap Flag on the Job, each with the action that clears it. */
-function NeedsALook({
-  job,
-  canResolveGaps,
-  onReading,
-  onGap,
-}: {
-  job: JobDetail;
-  canResolveGaps: boolean;
-  onReading: (selected: SelectedReading) => void;
-  onGap: (stint: Assignment) => void;
-}) {
-  const attention = job.assignments.flatMap((stint) =>
-    [stint.arrival, stint.departure].flatMap((item) => (item?.needsALook.length ? [{ stint, reading: item }] : [])),
-  );
-  const gaps = job.assignments.filter((stint) => stint.gapFlag);
-  if (!attention.length && !gaps.length)
-    return job.status === 'active' ? <p className="text-muted-foreground">Nothing needs a look</p> : null;
-  return (
-    <div className="rounded-lg border p-3">
-      <h3 className="font-medium">Needs a look</h3>
-      {attention.map(({ stint, reading }) => (
-        <div key={reading.id} className="flex items-center justify-between gap-2 py-1">
-          <span className="flex flex-wrap items-center gap-2">
-            {stint.machineCode} · {reading.role === 'arrival' ? 'Arrival' : 'Departure'}
-            {reading.needsALook.map((kind) => (
-              <AttentionBadge key={kind} kind={kind} />
-            ))}
-          </span>
-          <Button size="sm" variant="outline" onClick={() => onReading({ stint, reading })}>
-            Open
-          </Button>
-        </div>
-      ))}
-      {gaps.map((stint) => (
-        <div key={stint.id} className="flex items-center justify-between gap-2 py-1">
-          <span>{stint.machineCode} · Gap Flag</span>
-          {canResolveGaps ? (
-            <Button size="sm" variant="outline" onClick={() => onGap(stint)}>
-              Resolve
-            </Button>
-          ) : null}
-        </div>
-      ))}
-    </div>
   );
 }

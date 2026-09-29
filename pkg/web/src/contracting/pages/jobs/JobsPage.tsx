@@ -1,10 +1,16 @@
-import { formatDate } from '@pkg/domain';
+import { formatCurrency, formatDate, formatNumber } from '@pkg/domain';
+import {
+  jobAttentionColorClassNames,
+  jobAttentionIconColorClassName,
+  jobQueueColorClassNames,
+} from '@pkg/domain/contracting';
 import type { JobCreateInput, JobFacts, JobQueue, JobSummary } from '@pkg/schema/contracting';
 import { CustomerName, FarmName, jobQueues, WorkTypeName } from '@pkg/schema/contracting';
+import { IconAlertTriangle } from '@tabler/icons-react';
 import { useMutation, useQueries, useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import { useMemo, useState } from 'react';
-import { AttentionTabTrigger } from '@/components/common/AttentionTabTrigger.js';
+import { DateDisplay } from '@/components/common/DateDisplay.js';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { SearchableCombobox, type SearchableComboboxCreate } from '@/components/common/SearchableCombobox.js';
 import { ClientDataTable } from '@/components/data-table/ClientDataTable.js';
@@ -14,12 +20,22 @@ import { CreateEntityDialog } from '@/components/form/index.js';
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
 import { Badge } from '@/components/ui/badge.js';
 import { Button } from '@/components/ui/button.js';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs.js';
 import { useQueryInvalidation } from '@/contracting/hooks/use-query-invalidation.js';
 import { useCan } from '@/hooks/use-access.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useTRPC } from '@/lib/trpc.js';
-import { JobCreateValues, queueTabLabel, toJobCreateInput } from './types.js';
+import { cn } from '@/lib/utils.js';
+import { JobStatusBadge } from './JobStatusBadge.js';
+import { JobCreateValues, jobQueueLabels, toJobCreateInput } from './types.js';
+
+function machineSummary(job: JobSummary) {
+  const parts = [
+    job.plannedStints ? `${formatNumber(job.plannedStints)} planned` : null,
+    job.onSiteStints ? `${formatNumber(job.onSiteStints)} on site` : null,
+    job.leftStints ? `${formatNumber(job.leftStints)} left` : null,
+  ];
+  return parts.filter(Boolean).join(' · ') || `${formatNumber(0)} machines`;
+}
 
 export function JobsPage({ queue }: { queue: JobQueue }) {
   const trpc = useTRPC();
@@ -62,20 +78,37 @@ export function JobsPage({ queue }: { queue: JobQueue }) {
         accessorKey: 'jobNumber',
         header: 'Job',
         enableSorting: true,
-        cell: ({ row }) => <span className="font-mono font-semibold">{row.original.jobNumber}</span>,
+        cell: ({ row }) => (
+          <div className="min-w-44">
+            <div className="flex items-center gap-2">
+              <span className="font-mono font-semibold">{row.original.jobNumber}</span>
+              <JobStatusBadge status={row.original.status} />
+            </div>
+            {row.original.description ? (
+              <div className="mt-1 max-w-64 truncate text-xs text-muted-foreground" title={row.original.description}>
+                {row.original.description}
+              </div>
+            ) : null}
+          </div>
+        ),
       },
       {
         id: 'customer',
         header: 'Customer · Farm',
-        cell: ({ row }) => `${row.original.customerName} · ${row.original.farmName}`,
+        cell: ({ row }) => (
+          <div className="min-w-36">
+            <div className="font-medium">{row.original.customerName}</div>
+            <div className="mt-1 text-xs text-muted-foreground">{row.original.farmName}</div>
+          </div>
+        ),
       },
-      { accessorKey: 'workTypeName', header: 'Work type' },
       {
-        id: 'foreman',
-        header: 'Foreman',
-        cell: ({ row }) =>
-          queue === 'upcoming' && row.original.foremanUserId === null && canAssign ? (
-            <div>
+        id: 'work-and-foreman',
+        header: 'Work · Foreman',
+        cell: ({ row }) => (
+          <div className="min-w-36">
+            <div className="font-medium">{row.original.workTypeName}</div>
+            {queue === 'upcoming' && row.original.foremanUserId === null && canAssign ? (
               <SearchableCombobox
                 inputId={`foreman-${row.original.id}`}
                 options={(foremen.data ?? []).map((person) => ({ value: person.id, label: person.name }))}
@@ -83,48 +116,69 @@ export function JobsPage({ queue }: { queue: JobQueue }) {
                 value=""
                 onValueChange={(foremanUserId) => assign.mutate({ id: row.original.id, foremanUserId })}
               />
-            </div>
-          ) : (
-            (row.original.foremanName ?? '—')
-          ),
+            ) : (
+              <div className="mt-1 text-xs text-muted-foreground">
+                {row.original.foremanName ?? 'Foreman unassigned'}
+              </div>
+            )}
+          </div>
+        ),
       },
       {
         id: 'machines',
         header: 'Machines',
-        cell: ({ row }) => {
-          const { plannedStints, onSiteStints, leftStints } = row.original;
-          return (
-            [
-              plannedStints ? `${plannedStints} planned` : null,
-              onSiteStints ? `${onSiteStints} on site` : null,
-              leftStints ? `${leftStints} left` : null,
-            ]
-              .filter(Boolean)
-              .join(' · ') || '0 machines'
-          );
-        },
+        cell: ({ row }) => (
+          <div className="min-w-32">
+            <div className="font-medium">{machineSummary(row.original)}</div>
+            <div className="mt-1 text-xs text-muted-foreground">
+              {row.original.onSiteStints
+                ? `${formatNumber(row.original.onSiteStints)} currently on site`
+                : 'No machine on site'}
+            </div>
+          </div>
+        ),
       },
       {
         id: 'attention',
         header: 'Needs a look',
         cell: ({ row }) => (
-          <div className="flex gap-1">
-            {row.original.openGapFlags > 0 ? (
-              <Badge variant="outline">Gap flag ×{row.original.openGapFlags}</Badge>
-            ) : null}
-            {row.original.needsALook > row.original.openGapFlags ? (
-              <Badge variant="outline">Readings ×{row.original.needsALook - row.original.openGapFlags}</Badge>
-            ) : null}
+          <div className="min-w-36">
+            {row.original.needsALook > 0 ? (
+              <Badge
+                className={cn(jobAttentionColorClassNames.chip, jobAttentionColorClassNames.text)}
+                variant="outline"
+              >
+                <IconAlertTriangle aria-hidden="true" />
+                {formatNumber(row.original.needsALook)} {row.original.needsALook === 1 ? 'item' : 'items'} to review
+              </Badge>
+            ) : (
+              <span className="text-muted-foreground">No issues</span>
+            )}
           </div>
         ),
       },
       {
         id: 'dates',
-        header: 'Dates',
-        cell: ({ row }) =>
-          row.original.startDate && row.original.endDate
-            ? `${formatDate(row.original.startDate)} – ${formatDate(row.original.endDate)}`
-            : '—',
+        header: 'Dates / value',
+        cell: ({ row }) => (
+          <div className="min-w-32">
+            <div className="font-medium">
+              {row.original.startDate && row.original.endDate
+                ? `${formatDate(row.original.startDate, 'short')} – ${formatDate(row.original.endDate, 'short')}`
+                : 'Dates not set'}
+            </div>
+            <div className="mt-1 text-xs text-muted-foreground">
+              {row.original.invoiceNumber ??
+                (row.original.pricedTotal !== null ? (
+                  formatCurrency(row.original.pricedTotal)
+                ) : (
+                  <>
+                    Updated <DateDisplay date={row.original.updatedAt} />
+                  </>
+                ))}
+            </div>
+          </div>
+        ),
       },
       ...(queue === 'looks-finished'
         ? [
@@ -173,38 +227,44 @@ export function JobsPage({ queue }: { queue: JobQueue }) {
   );
   return (
     <>
-      <PageLayout title="Jobs" size="lg" actions={canCreate ? <Button onClick={flow.open}>New job</Button> : undefined}>
+      <PageLayout
+        title="Jobs"
+        description="Plan work, track Machines, and move Jobs through each stage."
+        size="full"
+        actions={canCreate ? <Button onClick={flow.open}>New job</Button> : undefined}
+      >
         <ErrorMessage
           error={counts.error ?? jobs.error ?? foremen.error ?? activeAttention.error}
           fallbackMessage="Unable to load Jobs."
         />
-        <Tabs
-          value={queue}
-          onValueChange={(value) => void navigate({ to: '/contracting/jobs', search: { queue: value as JobQueue } })}
-        >
-          <TabsList className="flex h-auto flex-wrap justify-start">
-            {jobQueues.map((item) => {
-              const label = queueTabLabel(item, counts.data);
-              const attention =
-                item === 'looks-finished'
-                  ? (counts.data?.['looks-finished'] ?? 0) > 0
-                  : item === 'active' && activeAttention.data === true;
-              return item === 'looks-finished' || item === 'active' ? (
-                <AttentionTabTrigger
-                  key={item}
-                  value={item}
-                  label={label}
-                  needsAttention={attention}
-                  attentionLabel="Jobs need a look"
+        <fieldset className="scrollbar-none flex gap-1.5 overflow-x-auto" aria-label="Job queues">
+          {jobQueues.map((item) => (
+            <Button
+              key={item}
+              aria-pressed={queue === item}
+              className={cn(
+                'h-9 gap-1.5 px-2',
+                queue === item && 'border-muted-foreground/60 bg-muted text-foreground',
+              )}
+              onClick={() => void navigate({ to: '/contracting/jobs', search: { queue: item } })}
+              size="sm"
+              type="button"
+              variant="outline"
+            >
+              <span aria-hidden="true" className={cn('size-2 rounded-full', jobQueueColorClassNames[item].dot)} />
+              <span>{jobQueueLabels[item]}</span>
+              <span className="rounded bg-muted px-1 text-xs text-muted-foreground">
+                {formatNumber(counts.data?.[item] ?? 0)}
+              </span>
+              {item === 'active' && activeAttention.data ? (
+                <IconAlertTriangle
+                  aria-label="Jobs need a look"
+                  className={cn('size-3.5', jobAttentionIconColorClassName)}
                 />
-              ) : (
-                <TabsTrigger key={item} value={item}>
-                  {label}
-                </TabsTrigger>
-              );
-            })}
-          </TabsList>
-        </Tabs>
+              ) : null}
+            </Button>
+          ))}
+        </fieldset>
         <ClientDataTable
           columns={columns}
           rows={jobs.data}

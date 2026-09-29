@@ -1,7 +1,8 @@
 import { FilePolicyViolationError, type StorageAdapter } from '@pkg/core';
-import { captureReading, getReading, READING_PHOTO_POLICY, type ReadMeterPhoto } from '@pkg/core/contracting';
+import { captureReading, getReading, type ReadMeterPhoto, readingBelongsToForemanJob } from '@pkg/core/contracting';
 import type { Db } from '@pkg/db';
-import { canCaptureBaseline } from '@pkg/domain/contracting';
+import { fileTooLargeMessage, hasPermission } from '@pkg/domain';
+import { canCaptureBaseline, READING_PHOTO_POLICY } from '@pkg/domain/contracting';
 import {
   ReadingCaptureMultipart,
   ReadingComment,
@@ -74,13 +75,21 @@ export async function registerReadingHttpRoutes(
     const auth = await requireRouteAuth(request, reply);
     if (!auth) return;
     try {
-      requirePermission(
-        auth,
-        'contracting_machine:read',
-        'You cannot view Hour Reading evidence.',
-        'reading.forbidden',
-      );
       const { id } = ReadingIdInput.parse(request.params);
+      if (!hasPermission(auth.access, 'contracting_machine:read')) {
+        requirePermission(
+          auth,
+          'contracting_job:read-own',
+          'You cannot view Hour Reading evidence.',
+          'reading.forbidden',
+        );
+        if (!(await readingBelongsToForemanJob({ db, id, foremanUserId: auth.session.user.id })))
+          throw new RouteHttpError({
+            statusCode: 403,
+            appCode: 'reading.forbidden',
+            message: 'You cannot view Hour Reading evidence.',
+          });
+      }
       const row = await getReading({ db, id });
       if (!row.photo)
         throw new RouteHttpError({ statusCode: 404, message: 'This reading has Missing Photo Evidence.' });
@@ -110,6 +119,6 @@ function sendReadingError(reply: FastifyReply, error: unknown) {
   return sendUploadHttpError(reply, mapped, {
     fallbackMessage: 'Reading request failed.',
     invalidRequestMessage: 'Invalid Hour Reading.',
-    onFileTooLarge: () => ({ appCode: 'file.too_large', message: 'Meter photo must be 10 MB or smaller.' }),
+    onFileTooLarge: () => ({ appCode: 'file.too_large', message: fileTooLargeMessage(READING_PHOTO_POLICY.maxBytes) }),
   });
 }

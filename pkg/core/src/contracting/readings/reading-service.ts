@@ -14,6 +14,7 @@ import {
   isAiFlaggedVerification,
   isContractingManagement,
   type JobActor,
+  jobReadStatuses,
   judgeCapture,
   meterDisagreementHint,
   resolveReadingAmendment,
@@ -369,6 +370,34 @@ export async function getReading({ db, id }: { db: Db | DatabaseTransaction; id:
   const row = await db.query.contractingHourReadings.findFirst({ where: eq(contractingHourReadings.id, id) });
   if (!row) throw notFound();
   return withHint(row);
+}
+
+/** Scope a field user's evidence read to readings attached to one of their visible Jobs. */
+export async function readingBelongsToForemanJob({
+  db,
+  id,
+  foremanUserId,
+}: {
+  db: Db;
+  id: string;
+  foremanUserId: AuthId;
+}): Promise<boolean> {
+  const [assignment] = await db
+    .select({ id: contractingMachineAssignments.id })
+    .from(contractingMachineAssignments)
+    .innerJoin(contractingJobs, eq(contractingJobs.id, contractingMachineAssignments.jobId))
+    .where(
+      and(
+        eq(contractingJobs.foremanUserId, foremanUserId),
+        inArray(contractingJobs.status, jobReadStatuses.own),
+        or(
+          eq(contractingMachineAssignments.arrivalReadingId, id),
+          eq(contractingMachineAssignments.departureReadingId, id),
+        ),
+      ),
+    )
+    .limit(1);
+  return !!assignment;
 }
 export async function reverifyReading({
   db,

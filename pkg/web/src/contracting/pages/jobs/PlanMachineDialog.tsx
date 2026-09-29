@@ -47,7 +47,7 @@ export function PlanMachineDialog({
           jobId,
           machineId: values.machineId,
           implementId: values.implementId || null,
-          driverUserId: values.driverUserId || null,
+          ...(values.driverUserId ? { driverUserId: values.driverUserId } : {}),
         })
       }
       onCreated={() => onOpenChange(false)}

@@ -1,10 +1,8 @@
+import { READING_PHOTO_POLICY } from '@pkg/domain/contracting';
 import type { MeterExtraction } from '@pkg/schema/contracting';
 import { MeterExtraction as ExtractionSchema } from '@pkg/schema/contracting';
 export type ReadMeterPhoto = (input: { bytes: Uint8Array; contentType: string }) => Promise<MeterExtraction>;
-export const READING_PHOTO_POLICY = {
-  allowedContentTypes: ['image/jpeg', 'image/png'],
-  maxBytes: 10 * 1024 * 1024,
-} as const;
+export { READING_PHOTO_POLICY };
 // Below 80% remains a management exception even when the digits happen to agree.
 export const METER_CONFIDENCE_THRESHOLD = 0.8;
 export function readingVerification(value: number, aiValue: number | null, aiConfidence: number | null) {

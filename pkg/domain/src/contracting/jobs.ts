@@ -2,6 +2,7 @@ import type { UserAccessSummary } from '@pkg/schema';
 import {
   type AssignmentState,
   finishedJobStatuses,
+  type JobQueue,
   type JobStatus,
   jobStatuses,
   unpricedJobStatuses,
@@ -78,4 +79,28 @@ export const jobStatusColorClassNames: Record<JobStatus, BadgeColorClassNames> =
   priced: statusBadgeColorClassNames.purple,
   invoiced: statusBadgeColorClassNames.green,
   cancelled: cancelledBadgeColorClassNames,
+};
+
+/** Queue filters describe workflow stages, which may differ from the Job's persisted status. */
+export const jobQueueColorClassNames = {
+  upcoming: statusBadgeColorClassNames.gray,
+  active: statusBadgeColorClassNames.blue,
+  'looks-finished': statusBadgeColorClassNames.orange,
+  'awaiting-pricing': statusBadgeColorClassNames.teal,
+  'awaiting-invoice': statusBadgeColorClassNames.purple,
+  invoiced: statusBadgeColorClassNames.green,
+  cancelled: cancelledBadgeColorClassNames,
+} satisfies Record<JobQueue, BadgeColorClassNames & { dot: string }>;
+
+/** A Job needing review uses the same warning tint across its list surfaces. */
+export const jobAttentionColorClassNames = statusBadgeColorClassNames.orange;
+
+/** Standalone warning icons use the theme warning colour instead of the chip's pale text. */
+export const jobAttentionIconColorClassName = 'text-warning';
+
+/** Machine Assignment badges share the same status palette on web and mobile. */
+export const assignmentStateColorClassNames: Record<AssignmentState, BadgeColorClassNames> = {
+  planned: statusBadgeColorClassNames.gray,
+  'on-site': statusBadgeColorClassNames.blue,
+  left: statusBadgeColorClassNames.green,
 };

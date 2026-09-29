@@ -13,6 +13,7 @@ export function ClientDataTable<T extends RowData>({
   controls,
   emptyMessage,
   searchPlaceholder,
+  hideGlobalFilter = false,
   getRowId,
 }: {
   rows: T[];
@@ -21,7 +22,8 @@ export function ClientDataTable<T extends RowData>({
   onOpen: (row: T) => void;
   controls?: ReactNode;
   emptyMessage: string;
-  searchPlaceholder: string;
+  searchPlaceholder?: string;
+  hideGlobalFilter?: boolean;
   getRowId?: (row: T) => string;
 }) {
   const [globalFilter, setGlobalFilter] = useState('');
@@ -45,7 +47,8 @@ export function ClientDataTable<T extends RowData>({
       isLoading={loading}
       onRowClick={onOpen}
       rightSection={controls}
-      globalFilterPlaceholder={searchPlaceholder}
+      {...(searchPlaceholder ? { globalFilterPlaceholder: searchPlaceholder } : {})}
+      hideGlobalFilter={hideGlobalFilter}
     />
   );
 }

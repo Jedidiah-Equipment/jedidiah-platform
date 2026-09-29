@@ -1,15 +1,16 @@
-import { formatCurrency, formatDate, formatNumber } from '@pkg/domain';
+import { formatCurrency, formatDate } from '@pkg/domain';
 import { pricingGateReasons } from '@pkg/domain/contracting';
 import type { JobDetail } from '@pkg/schema/contracting';
 import { useQuery } from '@tanstack/react-query';
 import { useLocation } from '@tanstack/react-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { DataTable } from '@/components/data-table/DataTable.js';
 import { useDataTable } from '@/components/data-table/features.js';
 import { HelpLink } from '@/components/help/index.js';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert.js';
 import { Button } from '@/components/ui/button.js';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card.js';
+import { Card, CardAction, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card.js';
 import {
   Dialog,
   DialogClose,
@@ -20,7 +21,13 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog.js';
 import { useTRPC } from '@/lib/trpc.js';
-import { pricingColumns, pricingRowId } from './PricingCells.js';
+import { AddChargeLineDialog, useChargeLineMutations } from './ChargeLineEditing.js';
+import {
+  adjustmentPricingColumns,
+  chargeLinePricingColumns,
+  machinePricingColumns,
+  pricingRowId,
+} from './PricingCells.js';
 import { pricingRows } from './pricing.js';
 import { PricingContext, type PricingMutations, usePricingMutations } from './pricing-context.js';
 import type { JobSheet } from './types.js';
@@ -28,30 +35,52 @@ import type { JobSheet } from './types.js';
 export function PricingCard({ job, sheet }: { job: JobDetail; sheet: JobSheet }) {
   const trpc = useTRPC();
   const editable = sheet.can('price');
+  const chargeEditable = sheet.can('editChargeLines');
   const rates = useQuery(trpc.contractingRateCard.rates.options.queryOptions(undefined, { enabled: editable }));
   const mutations = usePricingMutations();
+  const chargeLineMutations = useChargeLineMutations();
+  const [addingChargeLine, setAddingChargeLine] = useState(false);
   const hash = useLocation({ select: (location) => location.hash });
   const section = useRef<HTMLElement>(null);
   useEffect(() => {
     if (hash === 'pricing') section.current?.scrollIntoView({ block: 'start' });
   }, [hash]);
-  const rows = useMemo(() => pricingRows(job, { editable }), [job, editable]);
-  const nothingChosen = job.assignments.every((stint) => stint.rateUnitAmount === null);
-  const table = useDataTable({ columns: pricingColumns, data: rows, getRowId: pricingRowId });
+  const { machineRows, chargeRows, adjustmentRows } = useMemo(() => {
+    const pricedRows = pricingRows(job, { editable });
+    const machineRows = pricedRows.filter((row) => row.kind === 'stint' || row.kind === 'subtotal');
+    const chargeRows = pricedRows.filter((row) => row.kind === 'charge-line');
+    const adjustmentRows = pricedRows.filter((row) => row.kind === 'diesel' || row.kind === 'discount');
+    return { machineRows, chargeRows, adjustmentRows };
+  }, [job, editable]);
+  const machineTable = useDataTable({ columns: machinePricingColumns, data: machineRows, getRowId: pricingRowId });
+  const chargeTable = useDataTable({ columns: chargeLinePricingColumns, data: chargeRows, getRowId: pricingRowId });
+  const adjustmentTable = useDataTable({
+    columns: adjustmentPricingColumns,
+    data: adjustmentRows,
+    getRowId: pricingRowId,
+  });
   const pricing = useMemo(
-    () => ({ job, editable, rates: rates.data ?? [], mutations }),
-    [job, editable, rates.data, mutations],
+    () => ({
+      job,
+      editable,
+      chargeEditable,
+      rates: rates.data ?? [],
+      mutations,
+      chargeLineMutations,
+    }),
+    [job, editable, chargeEditable, rates.data, mutations, chargeLineMutations],
   );
   if (!sheet.seesMoney) return null;
   return (
     <section id="pricing" ref={section} aria-label="Pricing" className="scroll-mt-4">
       <Card>
         <CardHeader>
-          <CardTitle>
-            Pricing <HelpLink label="How to price a Job" topic="contractingJobPricing" />
-          </CardTitle>
+          <CardTitle>Pricing</CardTitle>
+          <CardAction>
+            <HelpLink label="How to price a Job" topic="contractingJobPricing" />
+          </CardAction>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-6">
           {job.reopenedAt ? (
             <Alert>
               <AlertTitle>Re-pricing needed</AlertTitle>
@@ -65,32 +94,73 @@ export function PricingCard({ job, sheet }: { job: JobDetail; sheet: JobSheet })
               Priced {formatDate(job.pricedAt)} · {formatCurrency(job.pricedTotal)} ex VAT
             </p>
           ) : null}
-          {!editable && job.status === 'completed' && nothingChosen ? (
-            <p className="text-muted-foreground">Awaiting pricing.</p>
-          ) : (
-            <>
-              <PricingContext.Provider value={pricing}>
+          <ErrorMessage
+            error={
+              chargeLineMutations.create.error ?? chargeLineMutations.patch.error ?? chargeLineMutations.remove.error
+            }
+            fallbackMessage="Unable to update Charge Lines."
+          />
+          <PricingContext.Provider value={pricing}>
+            <div className="space-y-6">
+              <div className="space-y-2">
+                <h3 className="text-sm font-semibold">Machine Assignments</h3>
                 <DataTable
-                  table={table}
+                  table={machineTable}
                   paginationMode="complete"
-                  total={rows.length}
+                  total={machineRows.length}
                   hideGlobalFilter
-                  emptyMessage="Nothing to price."
+                  hideFooter
+                  emptyMessage="No Machine Assignments to price."
                   getRowClassName={(row) => (row.kind === 'subtotal' ? 'bg-muted/40 font-medium' : undefined)}
-                  totalLabel={(value) => `${formatNumber(value)} ${value === 1 ? 'line' : 'lines'}`}
                 />
-              </PricingContext.Provider>
-              {job.chargeLines.length && editable ? (
-                <a className="text-primary text-sm underline-offset-4 hover:underline" href="#charge-lines">
-                  Edit charge lines ↓
-                </a>
+              </div>
+              <div id="charge-lines" className="scroll-mt-4 space-y-2">
+                <div className="flex items-center justify-between gap-3">
+                  <h3 className="text-sm font-semibold">Charge lines</h3>
+                  {chargeEditable ? (
+                    <Button size="sm" onClick={() => setAddingChargeLine(true)}>
+                      Add charge line
+                    </Button>
+                  ) : null}
+                </div>
+                <DataTable
+                  table={chargeTable}
+                  paginationMode="complete"
+                  total={chargeRows.length}
+                  hideGlobalFilter
+                  hideFooter
+                  emptyMessage="No Charge Lines."
+                />
+              </div>
+              {adjustmentRows.length ? (
+                <div className="space-y-2">
+                  <h3 className="text-sm font-semibold">Adjustments</h3>
+                  <DataTable
+                    table={adjustmentTable}
+                    paginationMode="complete"
+                    total={adjustmentRows.length}
+                    hideGlobalFilter
+                    hideFooter
+                    emptyMessage="No adjustments."
+                  />
+                </div>
               ) : null}
-              <PricingTotals job={job} />
-            </>
-          )}
-          {editable ? <MarkPriced job={job} mutations={mutations} /> : null}
+            </div>
+          </PricingContext.Provider>
+          <PricingTotals job={job} />
         </CardContent>
+        {editable ? (
+          <CardFooter className="justify-end gap-3">
+            <MarkPriced job={job} mutations={mutations} />
+          </CardFooter>
+        ) : null}
       </Card>
+      <AddChargeLineDialog
+        jobId={job.id}
+        open={addingChargeLine}
+        onOpenChange={setAddingChargeLine}
+        create={chargeLineMutations.create}
+      />
     </section>
   );
 }
@@ -122,11 +192,11 @@ function MarkPriced({ job, mutations }: { job: JobDetail; mutations: PricingMuta
   if (!pricing) return null;
   const reasons = pricingGateReasons(pricing.gate);
   return (
-    <div className="flex flex-wrap items-center gap-3">
+    <div className="flex w-full flex-wrap items-center justify-end gap-3">
+      {reasons.length ? <p className="text-destructive">{reasons.join(' · ')}</p> : null}
       <Button disabled={!pricing.gate.ok} onClick={() => setConfirm(true)}>
         Mark as Priced
       </Button>
-      {reasons.length ? <p className="text-destructive">{reasons.join(' · ')}</p> : null}
       <Dialog open={confirm} onOpenChange={setConfirm}>
         <DialogContent>
           <DialogHeader>

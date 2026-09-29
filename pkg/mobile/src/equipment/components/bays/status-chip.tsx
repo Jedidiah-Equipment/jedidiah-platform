@@ -1,4 +1,4 @@
-import { type JobStatusTone, statusBadgeColorClassNames } from '@pkg/domain';
+import { cancelledBadgeColorClassNames, type JobStatusTone, statusBadgeColorClassNames } from '@pkg/domain';
 
 import { StatusBadge, type StatusBadgeClassNames } from '@/components/ui/status-badge';
 
@@ -19,7 +19,7 @@ export const STATUS_TONE: Record<ChipTone, StatusBadgeClassNames & { dot: string
   'in-progress': { ...statusBadgeColorClassNames.blue, dot: 'bg-status-in-progress' },
   next: { ...statusBadgeColorClassNames.green, dot: 'bg-status-next' },
   muted: { ...statusBadgeColorClassNames.gray, dot: 'bg-muted-foreground' },
-  cancelled: statusBadgeColorClassNames.orange,
+  cancelled: cancelledBadgeColorClassNames,
 };
 
 /** The shared status badge used by the Bay slot and Job detail panes. */

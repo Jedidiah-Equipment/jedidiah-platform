@@ -1,5 +1,5 @@
 import { formatHours } from '@pkg/domain';
-import { deriveJobActions } from '@pkg/domain/contracting';
+import { assignmentStateColorClassNames, deriveJobActions, jobAttentionColorClassNames } from '@pkg/domain/contracting';
 import type { CategoryColour, CategoryIconKey, JobCardVariant } from '@pkg/schema/contracting';
 import { IconPlayerPlay, IconPlayerStop, IconPlus, type Icon as TablerIcon } from '@tabler/icons-react-native';
 import { type Href, router, useLocalSearchParams } from 'expo-router';
@@ -8,6 +8,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { SecondaryToolbar } from '@/components/TopToolbar';
 import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/icon';
+import { StatusBadge } from '@/components/ui/status-badge';
 import { Text } from '@/components/ui/text';
 import { CategoryIcon } from '@/contracting/components/CategoryIcon';
 import { jobCardShareAction } from '@/contracting/lib/job-card';
@@ -38,6 +39,14 @@ const LABELS: Record<StintView['view'], string> = {
   left: 'Left site',
   attention: 'Needs attention',
 };
+const STINT_VIEW_COLORS = {
+  planned: assignmentStateColorClassNames.planned,
+  starting: assignmentStateColorClassNames['on-site'],
+  running: assignmentStateColorClassNames['on-site'],
+  stopping: assignmentStateColorClassNames['on-site'],
+  left: assignmentStateColorClassNames.left,
+  attention: jobAttentionColorClassNames,
+} satisfies Record<StintView['view'], typeof assignmentStateColorClassNames.planned>;
 
 export default function JobScreen() {
   const { jobId } = useLocalSearchParams<{ jobId: string }>();
@@ -235,7 +244,7 @@ function StintCard({
             {stint.machineCode}
           </Text>
         </View>
-        <Text className="rounded-full bg-muted px-3 py-1 text-xs text-foreground">{LABELS[stint.view]}</Text>
+        <StatusBadge classNames={STINT_VIEW_COLORS[stint.view]} label={LABELS[stint.view]} />
       </View>
       <Text className="text-sm text-muted-foreground">
         {stint.categoryName}

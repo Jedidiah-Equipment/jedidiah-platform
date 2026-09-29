@@ -139,7 +139,7 @@ export function InvoicingPage({ tab, month: requestedMonth }: { tab: InvoicingTa
     [tab, canStamp],
   );
   return (
-    <PageLayout title="Invoicing" size="lg">
+    <PageLayout title="Invoicing" description="Stamp invoice numbers and review invoiced Jobs." size="full">
       <ErrorMessage error={counts.error ?? jobs.error} fallbackMessage="Unable to load Invoicing." />
       <Tabs
         value={tab}

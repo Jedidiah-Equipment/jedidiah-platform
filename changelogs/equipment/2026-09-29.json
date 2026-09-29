@@ -1,0 +1,23 @@
+{
+  "business": "equipment",
+  "releasedAt": "2026-09-29T04:53:07.820Z",
+  "sections": [
+    {
+      "surface": "app",
+      "entries": [
+        {
+          "title": "Merge duplicate parts",
+          "description": "Combine a duplicate part into the part you want to keep, preserving stock value, bills of materials and changes to sent purchase orders."
+        },
+        {
+          "title": "Scan printed labels more easily",
+          "description": "Part labels now use larger QR codes, with the name and location alongside them and the part code underneath."
+        },
+        {
+          "title": "Print part labels from Inventory",
+          "description": "Print labels individually or in batches from Stock on hand, or print a label from a part’s history page. Users with Inventory access can now print labels without needing access to Parts."
+        }
+      ]
+    }
+  ]
+}

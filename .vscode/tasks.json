@@ -147,24 +147,13 @@
       "problemMatcher": []
     },
     {
-      "label": "Parallel Up",
+      "label": "Use Slot",
       "type": "shell",
       "command": "pnpm",
-      "args": ["parallel:up"],
+      "args": ["use-slot", "--", "${input:localSlot}"],
       "icon": {
         "id": "server-process",
         "color": "terminal.ansiGreen"
-      },
-      "problemMatcher": []
-    },
-    {
-      "label": "Parallel Down",
-      "type": "shell",
-      "command": "pnpm",
-      "args": ["parallel:down"],
-      "icon": {
-        "id": "server-process",
-        "color": "terminal.ansiRed"
       },
       "problemMatcher": []
     },
@@ -233,6 +222,14 @@
         "color": "terminal.ansiYellow"
       },
       "problemMatcher": []
+    }
+  ],
+  "inputs": [
+    {
+      "id": "localSlot",
+      "type": "pickString",
+      "description": "Take over a local slot (deletes its Docker volumes and data)",
+      "options": ["1", "2", "3", "4", "5", "6", "7", "8", "9"]
     }
   ]
 }

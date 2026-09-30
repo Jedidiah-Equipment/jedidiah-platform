@@ -13,7 +13,7 @@ export type StagingSeedConfig = {
   stagingStorage: SeedStorageConfig;
 };
 
-// The ordinary writer is used by db:up and parallel:up, so it stays loopback-only.
+// The ordinary writer is used by db:up and use-slot, so it stays loopback-only.
 export function assertLocalSeedTarget(databaseUrl: string, env: NodeJS.ProcessEnv = process.env): void {
   assertLocalDatabaseTarget(databaseUrl, 'writing the local seed snapshot', env);
 }

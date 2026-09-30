@@ -54,7 +54,7 @@ import { Input } from '@/components/ui/input.js';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select.js';
 import { FieldUsageLabel, PRODUCT_FIELD_USAGE } from '@/equipment/components/catalog/index.js';
 import { useAssemblyNameOptions, usePartCategoryOptions, usePartOptions } from '@/equipment/hooks/options/index.js';
-import { getPartQuantityUnitDisplay } from '@/equipment/utils/part-quantity-format.js';
+import { formatPurchaseUnitLabel, getPartQuantityUnitDisplay } from '@/equipment/utils/part-quantity-format.js';
 import { cn } from '@/lib/utils.js';
 import {
   type ProductAssemblyFormInput as AssemblyInput,
@@ -1003,7 +1003,7 @@ type PartQuantityFieldProps = {
   partOptions: Part[];
 };
 
-const PartQuantityField: React.FC<PartQuantityFieldProps> = ({
+export const PartQuantityField: React.FC<PartQuantityFieldProps> = ({
   errors,
   field,
   isInvalid,
@@ -1017,7 +1017,10 @@ const PartQuantityField: React.FC<PartQuantityFieldProps> = ({
     <productForm.Subscribe selector={(state) => state.values.assemblies[parentIndex]?.parts[partIndex]?.partId}>
       {(partId) => {
         const selectedPart = partOptions.find((option) => option.id === partId);
-        const quantityUnitDisplay = getPartQuantityUnitDisplay(selectedPart?.unitOfMeasure);
+        const quantityUnitDisplay =
+          selectedPart?.unitOfMeasure === 'mm'
+            ? { label: 'Pieces', suffix: formatPurchaseUnitLabel(selectedPart) }
+            : getPartQuantityUnitDisplay(selectedPart?.unitOfMeasure);
 
         return (
           <Field data-invalid={isInvalid}>
@@ -1025,7 +1028,7 @@ const PartQuantityField: React.FC<PartQuantityFieldProps> = ({
               <span className="font-medium text-sm">Qty</span>
               <Input
                 aria-invalid={isInvalid}
-                className="w-24"
+                className="w-24 shrink-0"
                 inputMode="numeric"
                 value={Number.isFinite(field.state.value) ? String(field.state.value) : ''}
                 onBlur={field.handleBlur}

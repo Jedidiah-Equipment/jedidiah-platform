@@ -78,7 +78,7 @@ describe('formatUnitCost', () => {
 
 describe('formatUnitCostBasis', () => {
   it('names the piece a linear Part is costed by, since its average is kept per millimetre', () => {
-    expect(formatUnitCostBasis({ standardPurchaseLengthMm: 13_000, unitOfMeasure: 'mm' })).toBe('per 13000 mm piece');
+    expect(formatUnitCostBasis({ standardPurchaseLengthMm: 13_000, unitOfMeasure: 'mm' })).toBe('per 13 000 mm piece');
   });
 
   it('leaves a Part counted in its own unit unqualified', () => {

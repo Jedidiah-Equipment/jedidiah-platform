@@ -103,8 +103,8 @@ export function PartImportBatchList({ onSelect }: { onSelect: (batchId: string) 
 
 const memberColumns: DataTableColumnDef<PartImportBatchMember>[] = [
   {
+    // A CSV line is a position in the file, shown as the import's row errors name it: never grouped.
     accessorKey: 'lineNumber',
-    cell: ({ row }) => formatNumber(row.original.lineNumber),
     header: 'Line',
     meta: { cellClassName: 'tabular-nums' },
   },

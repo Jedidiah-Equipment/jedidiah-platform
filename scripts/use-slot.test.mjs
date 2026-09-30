@@ -1,14 +1,28 @@
 import assert from 'node:assert/strict';
 import { spawn, spawnSync } from 'node:child_process';
 import { once } from 'node:events';
-import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
 
-function fixture(t, overrides = {}) {
-  const root = mkdtempSync(join(tmpdir(), 'jedidiah-slot-'));
-  t.after(() => rmSync(root, { recursive: true, force: true }));
+function fixture(t, overrides = {}, { withPrimary = false, localSnapshot = true } = {}) {
+  const temporary = mkdtempSync(join(tmpdir(), 'jedidiah-slot-'));
+  t.after(() => rmSync(temporary, { recursive: true, force: true }));
+  const root = join(temporary, 'linked checkout');
+  const primary = join(temporary, 'primary checkout');
+  if (withPrimary) {
+    mkdirSync(primary);
+    const git = (...args) => {
+      const result = spawnSync('git', ['-C', primary, ...args], { encoding: 'utf8' });
+      assert.equal(result.status, 0, result.stderr);
+    };
+    git('init');
+    git('-c', 'user.name=Slot Test', '-c', 'user.email=slot@example.test', '-c', 'commit.gpgsign=false', 'commit', '--allow-empty', '-m', 'fixture');
+    git('worktree', 'add', '--detach', root);
+  } else {
+    mkdirSync(root);
+  }
   mkdirSync(join(root, 'scripts'));
   mkdirSync(join(root, 'bin'));
   cpSync(new URL('./use-slot.sh', import.meta.url), join(root, 'scripts/use-slot.sh'));
@@ -40,13 +54,16 @@ if ('${tool}' === 'lsof') {
       { mode: 0o755 },
     );
   }
-  const write = (path, content) => {
-    mkdirSync(join(root, path, '..'), { recursive: true });
-    writeFileSync(join(root, path), content);
+  const writeAt = (checkout, path, content) => {
+    mkdirSync(join(checkout, path, '..'), { recursive: true });
+    writeFileSync(join(checkout, path), content);
   };
+  if (localSnapshot) writeAt(root, 'pkg/seed/snapshot/users.json', '[]\n');
   return {
     root,
-    write,
+    primary,
+    write: (path, content) => writeAt(root, path, content),
+    writePrimary: (path, content) => writeAt(primary, path, content),
     read: (path) => readFileSync(join(root, path), 'utf8'),
     calls: () => (existsSync(join(root, 'calls')) ? readFileSync(join(root, 'calls'), 'utf8').trim().split('\n').map(JSON.parse) : []),
     run: (...args) => spawnSync('sh', [join(root, 'scripts/use-slot.sh'), ...args], { env, encoding: 'utf8' }),
@@ -72,6 +89,75 @@ test('an unavailable Docker daemon leaves handwritten env and services alone', (
   assert.match(result.stderr, /Docker is not running/);
   assert.equal(f.read('.env.dev'), 'KEEP=custom\n');
   assert.deepEqual(f.calls().map((call) => call.tool), ['docker']);
+});
+
+for (const state of ['missing', 'empty']) {
+  test(`copies a ${state} worktree snapshot from the primary checkout, including objects`, (t) => {
+    const f = fixture(t, {}, { withPrimary: true, localSnapshot: false });
+    if (state === 'empty') mkdirSync(join(f.root, 'pkg/seed/snapshot'), { recursive: true });
+    f.writePrimary('pkg/seed/snapshot/users.json', '[{"id":"primary-user"}]\n');
+    f.writePrimary('pkg/seed/snapshot/objects/products/image.png', 'image-bytes');
+    f.writePrimary('pkg/seed/snapshot/.capture-info', 'metadata');
+    const result = f.run('2');
+    assert.equal(result.status, 0, result.stderr);
+    assert.match(result.stdout, /Copying seed snapshot from .*primary checkout\/pkg\/seed\/snapshot/);
+    assert.equal(f.read('pkg/seed/snapshot/users.json'), '[{"id":"primary-user"}]\n');
+    assert.equal(f.read('pkg/seed/snapshot/objects/products/image.png'), 'image-bytes');
+    assert.equal(f.read('pkg/seed/snapshot/.capture-info'), 'metadata');
+    assert.ok(result.stdout.indexOf('Copying seed snapshot') < result.stdout.indexOf('Taking slot'));
+    // Copies are independent: changing the worktree snapshot leaves the primary untouched.
+    f.write('pkg/seed/snapshot/users.json', '[]\n');
+    assert.equal(readFileSync(join(f.primary, 'pkg/seed/snapshot/users.json'), 'utf8'), '[{"id":"primary-user"}]\n');
+  });
+}
+
+test('keeps an existing local snapshot instead of copying the primary checkout', (t) => {
+  const f = fixture(t, {}, { withPrimary: true });
+  f.write('pkg/seed/snapshot/users.json', '[{"id":"local-user"}]\n');
+  f.writePrimary('pkg/seed/snapshot/users.json', '[{"id":"primary-user"}]\n');
+  f.writePrimary('pkg/seed/snapshot/objects/image.png', 'primary-image');
+  const result = f.run('2');
+  assert.equal(result.status, 0, result.stderr);
+  assert.doesNotMatch(result.stdout, /Copying seed snapshot/);
+  assert.equal(f.read('pkg/seed/snapshot/users.json'), '[{"id":"local-user"}]\n');
+  assert.equal(existsSync(join(f.root, 'pkg/seed/snapshot/objects')), false);
+});
+
+for (const state of ['missing', 'empty']) {
+  test(`a failed copy leaves the ${state} local snapshot retryable and services untouched`, (t) => {
+    const f = fixture(t, {}, { withPrimary: true, localSnapshot: false });
+    if (state === 'empty') mkdirSync(join(f.root, 'pkg/seed/snapshot'), { recursive: true });
+    f.writePrimary('pkg/seed/snapshot/users.json', '[{"id":"primary-user"}]\n');
+    f.writePrimary('pkg/seed/snapshot/objects/image.png', 'image-bytes');
+    f.write('.env.dev', 'KEEP=custom\n');
+    writeFileSync(join(f.root, 'bin/cp'), '#!/bin/sh\nprintf "[]\\n" > "$3/users.json"\necho "deliberate partial copy" >&2\nexit 7\n', { mode: 0o755 });
+
+    const failed = f.run('2');
+    assert.equal(failed.status, 7, failed.stderr);
+    assert.match(failed.stderr, /Failed \(exit 7\): cp/);
+    assert.equal(existsSync(join(f.root, 'pkg/seed/snapshot/users.json')), false);
+    assert.deepEqual(readdirSync(join(f.root, 'pkg/seed')).filter((name) => name.startsWith('.snapshot-copy-')), []);
+    assert.equal(f.read('.env.dev'), 'KEEP=custom\n');
+    assert.deepEqual(f.calls().map((call) => [call.tool, call.args]), [['docker', ['info']]]);
+
+    rmSync(join(f.root, 'bin/cp'));
+    const retried = f.run('2');
+    assert.equal(retried.status, 0, retried.stderr);
+    assert.match(retried.stdout, /Copying seed snapshot/);
+    assert.equal(f.read('pkg/seed/snapshot/users.json'), '[{"id":"primary-user"}]\n');
+    assert.equal(f.read('pkg/seed/snapshot/objects/image.png'), 'image-bytes');
+  });
+}
+
+test('a missing primary snapshot leaves services, volumes, and handwritten env alone', (t) => {
+  const f = fixture(t, {}, { withPrimary: true, localSnapshot: false });
+  f.write('.env.dev', 'KEEP=custom\n');
+  const result = f.run('2');
+  assert.equal(result.status, 1, result.stderr);
+  assert.match(result.stderr, /No seed snapshot.*seed:read in the primary checkout/);
+  assert.equal(f.read('.env.dev'), 'KEEP=custom\n');
+  assert.deepEqual(f.calls().map((call) => [call.tool, call.args]), [['docker', ['info']]]);
+  assert.doesNotMatch(result.stdout, /is ready/);
 });
 
 test('takes over the named stack, preserves handwritten lines, and migrates both databases before seeding', (t) => {

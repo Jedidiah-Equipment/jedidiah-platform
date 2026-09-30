@@ -16,7 +16,11 @@ description: Take over a numbered local Jedidiah slot with fresh Docker data and
    still point at the slot and its data has been replaced. On failure, report the failing command and
    relevant output, then stop.
 
-The script stops listeners on the slot's web, API, Expo, and lander ports, removes
+If this checkout's `pkg/seed/snapshot` is missing or empty, the script first copies the primary
+checkout's snapshot, including its objects. Existing local content is left alone. If neither has content,
+the slot is untouched; capture a snapshot in the primary checkout with `pnpm --filter @pkg/seed seed:read`.
+
+It then stops listeners on the slot's web, API, Expo, and lander ports, removes
 `jedidiah_slot<N>` and its volumes, then starts Docker, migrates both databases, and loads Jedidiah's
 snapshot seed. It preserves hand-written env lines and replaces generated `use-slot`, `parallel-env`,
 and `worktree-setup` blocks. Port and env-file mappings live in `scripts/use-slot.sh`.

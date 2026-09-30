@@ -54,6 +54,11 @@ slot: it stops listeners on its four dev ports, deletes its Docker stack and vol
 blocks, migrates the dev and test-template databases, and seeds the snapshot. Ports are `7N01`–`7N07`
 for web, API, Expo, lander, Postgres, MinIO API, and MinIO console.
 
+When this checkout's gitignored `pkg/seed/snapshot` directory is missing or empty, `use-slot` copies
+the primary checkout's snapshot, including document-store objects, before taking over the slot. An
+existing local snapshot is left alone. If neither checkout has snapshot content, setup stops before
+changing services or volumes; capture one with `pnpm --filter @pkg/seed seed:read` in the primary checkout.
+
 Hand-written env values survive, including secrets; generated blocks from the old slot setup are
 replaced. A previous holder's env files still point at the slot, but its data has been replaced.
 Switching slots leaves the checkout's previous stack running. `pnpm compose:down` removes the currently

@@ -159,6 +159,37 @@ EXPO_PUBLIC_API_PORT=${api_port}
 EXPO_PUBLIC_LANDER_ORIGIN=http://localhost:${lander_port}"
 }
 
+snapshot_has_content() {
+  for entry in "$1"/* "$1"/.[!.]* "$1"/..?*; do
+    if [ -e "$entry" ] || [ -L "$entry" ]; then return 0; fi
+  done
+  return 1
+}
+
+# Worktrees omit the gitignored snapshot. Copy it before taking over any services or volumes.
+snapshot="$ROOT/pkg/seed/snapshot"
+if ! snapshot_has_content "$snapshot"; then
+  if ! worktrees=$(git -C "$ROOT" -c core.quotePath=false worktree list --porcelain); then
+    echo "Cannot locate the primary checkout for the seed snapshot." >&2
+    exit 1
+  fi
+  primary=$(printf '%s\n' "$worktrees" | sed -n '1s/^worktree //p')
+  primary_snapshot="$primary/pkg/seed/snapshot"
+  if [ -z "$primary" ] || ! snapshot_has_content "$primary_snapshot"; then
+    echo "No seed snapshot in this checkout or at ${primary_snapshot}. Run pnpm --filter @pkg/seed seed:read in the primary checkout." >&2
+    exit 1
+  fi
+  echo "Copying seed snapshot from ${primary_snapshot}"
+  run mkdir -p "$ROOT/pkg/seed"
+  snapshot_tmp=$(mktemp -d "$ROOT/pkg/seed/.snapshot-copy-XXXXXX")
+  trap 'rm -rf "$snapshot_tmp"' 0
+  trap 'exit 1' HUP INT TERM
+  run cp -R "$primary_snapshot/." "$snapshot_tmp/"
+  if [ -e "$snapshot" ] || [ -L "$snapshot" ]; then run rmdir "$snapshot"; fi
+  run mv "$snapshot_tmp" "$snapshot"
+  trap - 0 HUP INT TERM
+fi
+
 previous=$(sed -n 's/^COMPOSE_PROJECT_NAME=//p' .env.dev 2>/dev/null | tail -1)
 holder=$(docker ps -a --filter "label=com.docker.compose.project=$PROJECT" \
   --format '{{.Label "com.docker.compose.project.working_dir"}}' | sort -u)

@@ -1,0 +1,44 @@
+{
+  "business": "contracting",
+  "releasedAt": "2026-09-30T09:54:37.513Z",
+  "sections": [
+    {
+      "surface": "app",
+      "entries": [
+        {
+          "title": "Track jobs at a glance",
+          "description": "The refreshed job list makes workflow stages, machine activity, items needing review, and job values easier to scan. Each machine now has a timeline showing its assignment, arrival, departure, and measures."
+        },
+        {
+          "title": "Capture arrivals and departures with clearer forms",
+          "description": "Update the implement and driver while capturing arrival, then save them with the reading. Drag in a meter photo, preview or enlarge it before saving, and see a clear prompt when departure needs a photo or reason."
+        },
+        {
+          "title": "Review readings alongside their evidence",
+          "description": "Reading dialogs separate the recorded hours and meter photo from the AI assessment, with actions to correct a reading or recheck its photo. Foremen can now view meter photos attached to their assigned jobs."
+        },
+        {
+          "title": "Manage charges directly in pricing",
+          "description": "Pricing now groups machine assignments, charge lines, and adjustments separately. Add or edit charge descriptions and amounts in place, and keep the value you entered when switching between rand and percentage discounts."
+        },
+        {
+          "title": "Distinguish cancellations from warnings",
+          "description": "Cancelled items now use red status badges."
+        },
+        {
+          "title": "Use simpler control styling",
+          "description": "Focused fields, buttons, and other controls no longer show extra highlight rings. Validation errors remain highlighted."
+        }
+      ]
+    },
+    {
+      "surface": "mobile",
+      "entries": [
+        {
+          "title": "Recognise machine status at a glance",
+          "description": "Machine cards now use coloured badges to distinguish planned machines, machines on site, machines that have left, and captures needing attention."
+        }
+      ]
+    }
+  ]
+}

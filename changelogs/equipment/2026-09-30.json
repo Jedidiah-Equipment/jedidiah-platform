@@ -1,0 +1,32 @@
+{
+  "business": "equipment",
+  "releasedAt": "2026-09-30T09:54:37.513Z",
+  "sections": [
+    {
+      "surface": "app",
+      "entries": [
+        {
+          "title": "Enter assembly quantities in pieces",
+          "description": "Assembly quantities for parts measured in millimetres now clearly show a piece count and the standard length of each piece. Length labels are easier to read."
+        },
+        {
+          "title": "Distinguish cancellations from warnings",
+          "description": "Cancelled items now use red status badges."
+        },
+        {
+          "title": "Use simpler control styling",
+          "description": "Focused fields, buttons, and other controls no longer show extra highlight rings. Validation errors remain highlighted."
+        }
+      ]
+    },
+    {
+      "surface": "mobile",
+      "entries": [
+        {
+          "title": "Spot cancelled jobs in the bay schedule",
+          "description": "Cancelled job badges now appear in red."
+        }
+      ]
+    }
+  ]
+}

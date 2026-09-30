@@ -38,7 +38,7 @@ export const BAY_RUNWAY_BAR_CLASS_NAMES = {
 } as const;
 
 export const BAY_RUNWAY_AXIS_TICK_STYLE = {
-  fill: 'var(--foreground)',
+  color: 'var(--foreground)',
   fontSize: 14,
 } as const satisfies React.CSSProperties;
 

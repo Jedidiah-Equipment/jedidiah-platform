@@ -47,6 +47,7 @@ describe('PlanCatalogCard', () => {
         <PlanCatalogCard bay={{ ...bay, operator: { name: 'Piet Pompies', thumbnailDataUrl: null } } as BayListCard} />,
       );
     });
+    expect(rendered.root.findByType(Pressable).props.accessibilityLabel).toBe('Piet Pompies - Supply 1');
     await act(() => {
       rendered.update(<PlanCatalogCard bay={bay} />);
     });

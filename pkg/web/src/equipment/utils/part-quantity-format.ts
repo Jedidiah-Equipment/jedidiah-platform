@@ -32,7 +32,9 @@ export function getPartQuantityUnitDisplay(unitOfMeasure: PartUnitOfMeasure | un
 export function formatPurchaseUnitLabel(part: PartPurchaseUnit): string {
   const pieceLengthMm = purchasePieceLengthMm(part);
 
-  return pieceLengthMm === null ? PART_UNIT_OF_MEASURE_LABELS[part.unitOfMeasure] : `Pieces · ${pieceLengthMm} mm each`;
+  return pieceLengthMm === null
+    ? PART_UNIT_OF_MEASURE_LABELS[part.unitOfMeasure]
+    : `Pieces · ${formatNumber(pieceLengthMm)} mm each`;
 }
 
 /**
@@ -44,7 +46,7 @@ export function formatPurchaseUnitLabel(part: PartPurchaseUnit): string {
 export function formatUnitCostBasis(part: PartPurchaseUnit): string | null {
   const pieceLengthMm = purchasePieceLengthMm(part);
 
-  return pieceLengthMm === null ? null : `per ${pieceLengthMm} mm piece`;
+  return pieceLengthMm === null ? null : `per ${formatNumber(pieceLengthMm)} mm piece`;
 }
 
 /** The length of the piece a Part is bought and costed as, or null where it is not bought by length. */

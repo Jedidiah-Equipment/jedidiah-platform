@@ -34,7 +34,7 @@ describe('Assembly Part quantity', () => {
   it('names six cable pieces by their standard length instead of presenting the count as millimetres', () => {
     const html = renderQuantity();
 
-    expect(html).toContain('Pieces · 1000 mm each');
+    expect(html).toContain('Pieces · 1 000 mm each');
     expect(html).toContain('value="6"');
     expect(html).not.toContain('title="Millimetres"');
   });
@@ -45,8 +45,8 @@ describe('Assembly Part quantity', () => {
 
     const html = renderQuantity();
 
-    expect(html).toContain('Pieces · 6000 mm each');
-    expect(html).not.toContain('1000 mm');
+    expect(html).toContain('Pieces · 6 000 mm each');
+    expect(html).not.toContain('1 000 mm');
     expect(html).toContain('value="6"');
   });
 

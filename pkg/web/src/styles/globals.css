@@ -11,6 +11,13 @@
 @source "../../../domain/src";
 
 @custom-variant dark (&:is(.dark *));
+/* Focus indicators are off by default. Set data-focus-rings="on" on <html> to restore them.
+   Gate focus-only styling; validation rings and persistent borders keep their own colours. */
+@custom-variant focus-rings (&:where(html[data-focus-rings="on"] *));
+
+html:not([data-focus-rings="on"]) :focus-visible {
+  outline: none;
+}
 
 html {
   color-scheme: light;

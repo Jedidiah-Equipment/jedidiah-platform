@@ -1,5 +1,5 @@
 import { formatHours, statusBadgeColorClassNames } from '@pkg/domain';
-import { type Assignment, type JobReading, ReadingAmendInput } from '@pkg/schema/contracting';
+import type { Assignment, JobReading } from '@pkg/schema/contracting';
 import { IconAlertTriangle, IconRefresh } from '@tabler/icons-react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useCallback, useEffect, useState } from 'react';
@@ -7,7 +7,6 @@ import { toast } from 'sonner';
 import { DateDisplay } from '@/components/common/DateDisplay.js';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { FilePreviewSheet } from '@/components/file-preview/FilePreviewSheet.js';
-import { CreateEntityDialog } from '@/components/form/index.js';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert.js';
 import { Badge } from '@/components/ui/badge.js';
 import { Button } from '@/components/ui/button.js';
@@ -21,12 +20,14 @@ import {
 } from '@/components/ui/dialog.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip.js';
+import { MachineDialogTitle } from '@/contracting/components/MachineDialogTitle.js';
 import { useQueryInvalidation } from '@/contracting/hooks/use-query-invalidation.js';
 import { readingPhotoUrl } from '@/contracting/lib/contracting-http-paths.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useTRPC } from '@/lib/trpc.js';
 
-const AmendValues = ReadingAmendInput.omit({ id: true });
+import { ReadingAmendDialog } from './ReadingAmendDialog.js';
+
 const confidenceSegments = [0, 1, 2, 3, 4];
 
 async function fetchReadingPhoto(readingId: string, signal: AbortSignal): Promise<Blob> {
@@ -214,7 +215,7 @@ export function ReadingDialog({
         <DialogContent className="sm:max-w-[780px]">
           <DialogHeader>
             <DialogTitle>
-              {selected?.stint.machineCode ?? 'Reading'} · {reading?.role ?? ''}
+              <MachineDialogTitle machine={selected?.stint ?? null}>{reading?.role ?? 'Reading'}</MachineDialogTitle>
             </DialogTitle>
             <DialogDescription>Hours and gaps recompute from the amended value.</DialogDescription>
           </DialogHeader>
@@ -333,31 +334,29 @@ export function ReadingDialog({
               </div>
               {amendReadings ? (
                 <DialogFooter>
-                  <Button onClick={() => setAmending(true)}>Amend reading</Button>
+                  <Button
+                    onClick={() => {
+                      amend.reset();
+                      setAmending(true);
+                    }}
+                  >
+                    Amend reading
+                  </Button>
                 </DialogFooter>
               ) : null}
             </>
           ) : null}
         </DialogContent>
       </Dialog>
-      <CreateEntityDialog
-        key={reading?.id ?? 'closed'}
+      <ReadingAmendDialog
+        reading={reading ?? null}
+        machine={selected?.stint ?? null}
         open={amending && !!reading}
         onOpenChange={setAmending}
-        title="Amend reading"
-        description="Hours and gaps recompute from the amended value."
-        defaultValues={{ value: reading?.value ?? 0, reason: '' }}
-        validator={AmendValues}
-        onCreate={(values) => amend.mutateAsync({ id: reading?.id ?? '', ...values })}
-        onCreated={() => setAmending(false)}
-      >
-        {(form) => (
-          <>
-            <form.AppField name="value">{(field) => <field.NumberField label="Hours" decimals={1} />}</form.AppField>
-            <form.AppField name="reason">{(field) => <field.TextareaField label="Reason" />}</form.AppField>
-          </>
-        )}
-      </CreateEntityDialog>
+        onAmend={(input) => amend.mutateAsync(input)}
+        onAmended={() => setAmending(false)}
+        error={amend.error}
+      />
       <FilePreviewSheet
         open={preview && !!reading}
         onOpenChange={setPreview}

@@ -51,7 +51,7 @@ export function DataTableSearch<TData extends RowData>({
         <div className="relative min-w-0 flex-1 text-xs">
           <IconSearch className="-translate-y-1/2 pointer-events-none absolute top-1/2 left-0 size-4 text-muted-foreground" />
           <Input
-            className="h-6 translate-y-px border-0 bg-transparent! pr-0 pl-6 shadow-none focus-visible:border-0 focus-visible:ring-0"
+            className="h-6 translate-y-px border-0 bg-transparent! pr-0 pl-6 shadow-none focus-rings:focus-visible:border-0 focus-rings:focus-visible:ring-0"
             onChange={(event) => setGlobalFilterDraft(event.target.value)}
             placeholder={placeholder}
             value={globalFilterDraft}

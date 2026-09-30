@@ -20,6 +20,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog.js';
+import { MachineDialogTitle } from '@/contracting/components/MachineDialogTitle.js';
 import { useQueryInvalidation } from '@/contracting/hooks/use-query-invalidation.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useTRPC } from '@/lib/trpc.js';
@@ -125,7 +126,7 @@ function DraftSignOffDetails({ job, sheet }: { job: JobDetail; sheet: JobSheet }
                 </span>
                 {sheet.can('assign') ? (
                   <RemoveEntityButton
-                    title="Remove planned Machine"
+                    title={<MachineDialogTitle machine={stint}>Remove planned Machine</MachineDialogTitle>}
                     description="Remove this Machine Assignment?"
                     triggerIconOnly
                     triggerLabel={`Remove ${stint.machineCode}`}

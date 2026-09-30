@@ -1,7 +1,6 @@
 import { formatHours } from '@pkg/domain';
 import { AuthId, UUID } from '@pkg/schema';
 import { type Assignment, ReadingComment, ReadingValue } from '@pkg/schema/contracting';
-import { IconArrowRight } from '@tabler/icons-react';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { toast } from 'sonner';
@@ -9,12 +8,14 @@ import { z } from 'zod';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { CreateEntityDialog } from '@/components/form/index.js';
 import { emptyStringOr } from '@/components/form/utils/form-schema.js';
-import { Button } from '@/components/ui/button.js';
+import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@/components/ui/card.js';
 import { Checkbox } from '@/components/ui/checkbox.js';
 import { Field, FieldContent, FieldDescription, FieldLabel } from '@/components/ui/field.js';
 import { CategoryIcon } from '@/contracting/components/CategoryIcon.js';
+import { MachineDialogTitle } from '@/contracting/components/MachineDialogTitle.js';
 import { useTRPC } from '@/lib/trpc.js';
-import { ReadingPhotoPicker } from './ReadingPhotoPicker.js';
+import { AssignmentEditorDialog } from './AssignmentEditDialog.js';
+import { ReadingCaptureCard, ReadingCaptureDetails, ReadingValueField } from './ReadingCaptureFields.js';
 import { useReadingCapture } from './use-reading-capture.js';
 
 const ArrivalValues = z.object({
@@ -75,7 +76,7 @@ export function ArrivalCaptureDialog({ stint, onClose }: { stint: Assignment | n
           onClose();
         }
       }}
-      title={`Capture arrival · ${stint?.machineCode ?? ''}`}
+      title={<MachineDialogTitle machine={stint}>Capture arrival</MachineDialogTitle>}
       contentClassName="sm:max-w-md"
       defaultValues={{
         value: Number.NaN,
@@ -130,104 +131,114 @@ export function ArrivalCaptureDialog({ stint, onClose }: { stint: Assignment | n
       {(form) => (
         <>
           <ErrorMessage error={history.error} fallbackMessage="Unable to load the Machine's previous reading." />
-          {history.isPending ? <p className="text-muted-foreground">Loading the previous reading…</p> : null}
-          <div className="mt-2 space-y-3">
-            <div className="grid grid-cols-[minmax(6rem,0.85fr)_1.25rem_minmax(0,1.3fr)] items-end gap-2">
-              <div className="min-w-0 space-y-2">
-                <span className="block text-xs font-medium">Previous reading</span>
-                <span className="flex h-8 items-center text-lg font-semibold">
-                  {history.isSuccess ? (latest ? formatHours(latest.value) : 'None') : '—'}
-                </span>
-              </div>
-              <IconArrowRight aria-hidden="true" className="mb-1.5 size-5 text-muted-foreground" />
-              <div onFocusCapture={() => setReadingFocused(true)} onBlurCapture={() => setReadingFocused(false)}>
-                <form.AppField name="value">
-                  {(field) => (
-                    <field.NumberField
-                      label={<span className="text-xs">Current reading</span>}
-                      decimals={1}
-                      min={0}
-                      className="text-lg font-semibold md:text-lg"
-                      onInput={() => form.setFieldValue('confirmedDispute', null)}
-                    />
-                  )}
-                </form.AppField>
-              </div>
+          <ReadingCaptureCard
+            previousValue={history.isSuccess ? (latest?.value ?? null) : undefined}
+            loading={history.isPending}
+            warning={
+              <form.Subscribe selector={(state) => state.values.value}>
+                {(value) =>
+                  !readingFocused && latest && value < latest.value ? (
+                    <div className="rounded-lg border border-warning/45 bg-warning/10 p-3">
+                      <form.AppField name="confirmedDispute">
+                        {(field) => (
+                          <Field orientation="horizontal">
+                            <Checkbox
+                              checked={field.state.value?.value === value && field.state.value.previousId === latest.id}
+                              id={field.name}
+                              onBlur={field.handleBlur}
+                              onCheckedChange={(checked) =>
+                                field.handleChange(checked === true ? { value, previousId: latest.id } : null)
+                              }
+                            />
+                            <FieldContent>
+                              <FieldLabel htmlFor={field.name}>The previous reading is wrong</FieldLabel>
+                              <FieldDescription>
+                                Record {formatHours(value)} and dispute the {formatHours(latest.value)} reading.
+                              </FieldDescription>
+                            </FieldContent>
+                          </Field>
+                        )}
+                      </form.AppField>
+                    </div>
+                  ) : null
+                }
+              </form.Subscribe>
+            }
+          >
+            <div onFocusCapture={() => setReadingFocused(true)} onBlurCapture={() => setReadingFocused(false)}>
+              <form.AppField name="value">
+                {() => <ReadingValueField onInput={() => form.setFieldValue('confirmedDispute', null)} />}
+              </form.AppField>
             </div>
-            <form.Subscribe selector={(state) => state.values.value}>
-              {(value) =>
-                !readingFocused && latest && value < latest.value ? (
-                  <div className="rounded-lg border border-warning/45 bg-warning/10 p-3">
-                    <form.AppField name="confirmedDispute">
-                      {(field) => (
-                        <Field orientation="horizontal">
-                          <Checkbox
-                            checked={field.state.value?.value === value && field.state.value.previousId === latest.id}
-                            id={field.name}
-                            onBlur={field.handleBlur}
-                            onCheckedChange={(checked) =>
-                              field.handleChange(checked === true ? { value, previousId: latest.id } : null)
-                            }
-                          />
-                          <FieldContent>
-                            <FieldLabel htmlFor={field.name}>The previous reading is wrong</FieldLabel>
-                            <FieldDescription>
-                              Record {formatHours(value)} and dispute the {formatHours(latest.value)} reading.
-                            </FieldDescription>
-                          </FieldContent>
-                        </Field>
-                      )}
-                    </form.AppField>
-                  </div>
-                ) : null
-              }
-            </form.Subscribe>
-          </div>
-          <form.Subscribe selector={(state) => state.values.changeAssignment}>
-            {(changing) => (
-              <div className="space-y-3">
-                <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
-                  <span className="text-muted-foreground">
-                    Starting with {stint?.implementCode ?? 'no implement'} · {stint?.driverName ?? 'no driver'}
-                  </span>
-                  <Button
-                    onClick={() => form.setFieldValue('changeAssignment', !changing)}
-                    size="sm"
-                    type="button"
-                    variant="outline"
-                  >
-                    {changing ? 'Keep planned assignment' : 'Change assignment'}
-                  </Button>
-                </div>
-                {changing ? (
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <form.AppField name="implementId">
-                      {(field) => <field.ComboboxField label="Implement" options={implementOptions} />}
-                    </form.AppField>
-                    <form.AppField name="driverUserId">
-                      {(field) => <field.ComboboxField label="Driver" options={driverOptions} />}
-                    </form.AppField>
-                    <ErrorMessage
-                      error={implementsQuery.error ?? driversQuery.error}
-                      fallbackMessage="Unable to load Implement and Driver options."
-                    />
-                  </div>
-                ) : null}
-              </div>
-            )}
+          </ReadingCaptureCard>
+          <form.Subscribe
+            selector={(state) => ({ implementId: state.values.implementId, driverUserId: state.values.driverUserId })}
+          >
+            {({ implementId, driverUserId }) => {
+              const implement = implementsQuery.data?.find((entry) => entry.id === implementId);
+              const implementLabel =
+                implementOptions.find((entry) => entry.value === implementId)?.label ?? 'No implement';
+              const driverLabel = driverOptions.find((entry) => entry.value === driverUserId)?.label ?? 'No driver';
+              return (
+                <Card className="bg-muted/30" size="sm">
+                  <CardHeader>
+                    <CardTitle>Starting assignment</CardTitle>
+                    <CardAction>
+                      {stint ? (
+                        <AssignmentEditorDialog
+                          stint={{ ...stint, implementId: implementId || null, driverUserId: driverUserId || null }}
+                          implementOptions={implementOptions}
+                          driverOptions={driverOptions}
+                          canSave={implementsQuery.isSuccess && driversQuery.isSuccess}
+                          error={implementsQuery.error ?? driversQuery.error}
+                          submitLabel="Apply"
+                          onSave={async (draft) => {
+                            form.setFieldValue('implementId', draft.implementId);
+                            form.setFieldValue('driverUserId', draft.driverUserId);
+                            form.setFieldValue(
+                              'changeAssignment',
+                              draft.implementId !== (stint.implementId ?? '') ||
+                                draft.driverUserId !== (stint.driverUserId ?? ''),
+                            );
+                          }}
+                        />
+                      ) : null}
+                    </CardAction>
+                  </CardHeader>
+                  <CardContent className="grid grid-cols-2 gap-3">
+                    <div className="min-w-0 space-y-2">
+                      <span className="block text-xs text-muted-foreground">Implement</span>
+                      <span className="flex min-h-6 items-center gap-2">
+                        {implement ? (
+                          <CategoryIcon icon={implement.categoryIcon} colour={implement.categoryColour} size={14} />
+                        ) : null}
+                        <span className="truncate" title={implementLabel}>
+                          {implementLabel}
+                        </span>
+                      </span>
+                    </div>
+                    <div className="min-w-0 space-y-2">
+                      <span className="block text-xs text-muted-foreground">Driver</span>
+                      <span className="flex min-h-6 items-center truncate" title={driverLabel}>
+                        {driverLabel}
+                      </span>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            }}
           </form.Subscribe>
-          <ReadingPhotoPicker
+          <ReadingCaptureDetails
             id={`arrival-photo-${stint?.id ?? 'closed'}`}
             photo={photo}
-            onChange={setPhoto}
+            onPhotoChange={setPhoto}
+            error={error}
             onError={setError}
-          />
-          {error ? (
-            <p role="alert" className="text-destructive">
-              {error}
-            </p>
-          ) : null}
-          <form.AppField name="comment">{(field) => <field.TextareaField label="Comment (optional)" />}</form.AppField>
+          >
+            <form.AppField name="comment">
+              {(field) => <field.TextareaField label="Comment (optional)" />}
+            </form.AppField>
+          </ReadingCaptureDetails>
         </>
       )}
     </CreateEntityDialog>

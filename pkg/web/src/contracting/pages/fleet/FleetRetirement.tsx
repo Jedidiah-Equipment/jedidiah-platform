@@ -8,6 +8,7 @@ import { EntityActionsFooter } from '@/components/common/EntityActionsFooter.js'
 import { RemoveEntityButton } from '@/components/common/RemoveEntityButton.js';
 import { CreateEntityDialog } from '@/components/form/index.js';
 import { Button } from '@/components/ui/button.js';
+import { type MachineDialogSubject, MachineDialogTitle } from '@/contracting/components/MachineDialogTitle.js';
 import { useQueryInvalidation } from '@/contracting/hooks/use-query-invalidation.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 
@@ -21,6 +22,7 @@ type MutationFnOptions<TVariables> = Pick<
 
 type FleetRetirementProps = {
   id: string;
+  machine?: MachineDialogSubject;
   noun: keyof typeof listRoutes;
   /** Retirement locks the form, so unsaved edits must land first. */
   autosave: { flush: () => Promise<boolean> };
@@ -30,6 +32,7 @@ type FleetRetirementProps = {
 
 export function FleetRetirement({
   id,
+  machine,
   noun,
   autosave,
   retire: retireOptions,
@@ -59,7 +62,7 @@ export function FleetRetirement({
         Retire {noun}
       </Button>
       <RemoveEntityButton
-        title={`Delete ${noun}`}
+        title={machine ? <MachineDialogTitle machine={machine}>Delete {noun}</MachineDialogTitle> : `Delete ${noun}`}
         triggerLabel={`Delete ${noun}`}
         description={`Permanently delete this unused ${noun}. Entries with linked history must be retired instead.`}
         isPending={remove.isPending}
@@ -68,7 +71,7 @@ export function FleetRetirement({
       <CreateEntityDialog
         open={open}
         onOpenChange={setOpen}
-        title={`Retire ${noun}`}
+        title={machine ? <MachineDialogTitle machine={machine}>Retire {noun}</MachineDialogTitle> : `Retire ${noun}`}
         description="Retirement is permanent. History remains available, and this entry is hidden from active fleet pickers."
         submitLabel="Retire"
         defaultValues={{ reason: '' }}

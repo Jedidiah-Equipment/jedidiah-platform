@@ -59,7 +59,7 @@ export const JobCalendarDayCell: React.FC<JobCalendarDayCellProps> = ({
       <button
         aria-disabled={!canEditCalendar}
         aria-label={`Edit calendar for ${formatDate(date, 'long')}`}
-        className="absolute inset-0 z-0 cursor-default outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className="absolute inset-0 z-0 cursor-default outline-none focus-rings:focus-visible:ring-2 focus-rings:focus-visible:ring-ring"
         tabIndex={canEditCalendar ? 0 : -1}
         onClick={() => {
           if (canEditCalendar) onSelectDay(date, offDay);

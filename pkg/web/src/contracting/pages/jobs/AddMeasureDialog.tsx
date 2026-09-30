@@ -10,6 +10,7 @@ import { useAppForm } from '@/components/form/index.js';
 import { requiredSelection } from '@/components/form/utils/form-schema.js';
 import { Button } from '@/components/ui/button.js';
 import { Dialog, DialogClose, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog.js';
+import { MachineDialogTitle } from '@/contracting/components/MachineDialogTitle.js';
 import { useQueryInvalidation } from '@/contracting/hooks/use-query-invalidation.js';
 import { useTRPC } from '@/lib/trpc.js';
 
@@ -62,7 +63,9 @@ export function AddMeasureDialog({ stint }: { stint: Assignment }) {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Measures · {stint.machineCode}</DialogTitle>
+            <DialogTitle>
+              <MachineDialogTitle machine={stint}>Measures</MachineDialogTitle>
+            </DialogTitle>
           </DialogHeader>
           {stint.measures.length ? (
             <div className="space-y-2 border-b pb-4">

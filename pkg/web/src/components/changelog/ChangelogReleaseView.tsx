@@ -57,7 +57,7 @@ export const ChangelogReleaseView: React.FC<ChangelogReleaseViewProps> = ({ chan
               onOpenChange={(nextOpen) => setOpenSurface(nextOpen ? section.surface : null)}
               open={isOpen}
             >
-              <CollapsibleTrigger className="flex min-h-14 w-full items-center justify-between gap-4 px-4 text-left outline-none transition-colors hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50">
+              <CollapsibleTrigger className="flex min-h-14 w-full items-center justify-between gap-4 px-4 text-left outline-none transition-colors hover:bg-muted focus-rings:focus-visible:ring-3 focus-rings:focus-visible:ring-ring/50">
                 <span className={`font-heading text-base font-medium ${isOpen ? 'text-primary' : 'text-foreground'}`}>
                   {label}
                 </span>
@@ -82,7 +82,7 @@ export const ChangelogReleaseView: React.FC<ChangelogReleaseViewProps> = ({ chan
 
                 {remainingEntryCount > 0 ? (
                   <button
-                    className="mt-3 text-left text-xs font-medium text-primary outline-none hover:underline focus-visible:ring-3 focus-visible:ring-ring/50"
+                    className="mt-3 text-left text-xs font-medium text-primary outline-none hover:underline focus-rings:focus-visible:ring-3 focus-rings:focus-visible:ring-ring/50"
                     onClick={() => {
                       setExpandedSurfaces((current) => new Set(current).add(section.surface));
                     }}

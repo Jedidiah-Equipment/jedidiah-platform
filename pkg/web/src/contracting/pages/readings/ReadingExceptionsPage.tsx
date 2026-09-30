@@ -1,6 +1,6 @@
 import { formatDate, formatHours, toSentenceCase } from '@pkg/domain';
 import { readingExceptionTypeColorClassNames, readingExceptionTypeLabels } from '@pkg/domain/contracting';
-import { ReadingAmendInput, type ReadingException } from '@pkg/schema/contracting';
+import type { ReadingException } from '@pkg/schema/contracting';
 import { IconEye } from '@tabler/icons-react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useCallback, useMemo, useState } from 'react';
@@ -9,7 +9,6 @@ import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { DataTable } from '@/components/data-table/DataTable.js';
 import { type DataTableColumnDef, useDataTable } from '@/components/data-table/features.js';
 import { FilePreviewSheet } from '@/components/file-preview/FilePreviewSheet.js';
-import { CreateEntityDialog } from '@/components/form/index.js';
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
 import { Badge } from '@/components/ui/badge.js';
 import { Button } from '@/components/ui/button.js';
@@ -18,10 +17,10 @@ import { CategoryLabel } from '@/contracting/components/CategoryIcon.js';
 import { NoReadableMeterResult, readingEvidence } from '@/contracting/components/ReadingEvidence.js';
 import { useQueryInvalidation } from '@/contracting/hooks/use-query-invalidation.js';
 import { readingPhotoUrl } from '@/contracting/lib/contracting-http-paths.js';
+import { ReadingAmendDialog } from '@/contracting/pages/jobs/ReadingAmendDialog.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { cn } from '@/lib/utils.js';
 
-const amendmentValues = ReadingAmendInput.omit({ id: true });
 async function fetchReadingPhoto(readingId: string, signal: AbortSignal) {
   const response = await fetch(readingPhotoUrl(readingId), { credentials: 'include', signal });
   if (!response.ok) throw new Error('Unable to preview meter photo.');
@@ -200,28 +199,18 @@ export function ReadingExceptionsPage() {
           globalFilterPlaceholder="Search machines..."
         />
       </PageLayout>
-      <CreateEntityDialog
-        key={selected?.id ?? 'closed'}
+      <ReadingAmendDialog
+        reading={selected}
+        machine={selected}
         open={!!selected}
         onOpenChange={(open) => {
           if (!open) setSelected(null);
         }}
-        title="Amend Hour Reading"
         description="Check the photo and both disputed readings. Confirm or correct the value and give a reason. This acknowledges the current evidence warning."
-        submitLabel="Amend reading"
-        defaultValues={{ value: selected?.value ?? 0, reason: '' }}
-        validator={amendmentValues}
-        onCreate={(values) => amend.mutateAsync(ReadingAmendInput.parse({ ...values, id: selected?.id }))}
-        onCreated={() => setSelected(null)}
-      >
-        {(form) => (
-          <>
-            <ErrorMessage error={amend.error} fallbackMessage="Unable to amend reading." />
-            <form.AppField name="value">{(field) => <field.NumberField label="Hours" />}</form.AppField>
-            <form.AppField name="reason">{(field) => <field.TextareaField label="Amendment reason" />}</form.AppField>
-          </>
-        )}
-      </CreateEntityDialog>
+        onAmend={(input) => amend.mutateAsync(input)}
+        onAmended={() => setSelected(null)}
+        error={amend.error}
+      />
       <FilePreviewSheet
         description={previewReading ? `Captured ${formatDate(previewReading.capturedAt, 'medium')}` : ''}
         downloadFilename={`${previewReading?.machineCode ?? 'meter'}-reading.${previewReading?.photo?.contentType === 'image/png' ? 'png' : 'jpg'}`}

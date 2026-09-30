@@ -163,7 +163,7 @@ export const BaySlotBar: React.FC<{
   const slotFillClass = isCancelled ? 'bg-muted/80 text-muted-foreground' : 'bg-card';
   const resizeHandleToneClass = {
     active: scheduleResizeHandleToneClass.active,
-    default: 'border-foreground/30 bg-foreground/5 hover:bg-foreground/10 focus-visible:ring-ring',
+    default: 'border-foreground/30 bg-foreground/5 hover:bg-foreground/10 focus-rings:focus-visible:ring-ring',
     next: scheduleResizeHandleToneClass.scheduled,
   }[tone];
   const height = SLOT_CARD_HEIGHT;
@@ -282,7 +282,7 @@ export const BaySlotBar: React.FC<{
             ) : (
               <button
                 className={cn(
-                  'relative z-10 block h-full w-full cursor-pointer text-left outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                  'relative z-10 block h-full w-full cursor-pointer text-left outline-none focus-rings:focus-visible:ring-2 focus-rings:focus-visible:ring-ring',
                   contentPaddingClass,
                 )}
                 disabled={!job || slot.previewSplit !== undefined}
@@ -302,8 +302,8 @@ export const BaySlotBar: React.FC<{
                   <button
                     aria-label={`Remove ${label}`}
                     className={cn(
-                      'absolute top-1/2 right-4 z-20 flex size-7 -translate-y-1/2 items-center justify-center rounded-sm bg-card/80 outline-none focus-visible:ring-2 disabled:cursor-not-allowed disabled:opacity-50',
-                      'hover:bg-destructive hover:text-white focus-visible:ring-ring',
+                      'absolute top-1/2 right-4 z-20 flex size-7 -translate-y-1/2 items-center justify-center rounded-sm bg-card/80 outline-none focus-rings:focus-visible:ring-2 disabled:cursor-not-allowed disabled:opacity-50',
+                      'hover:bg-destructive hover:text-white focus-rings:focus-visible:ring-ring',
                     )}
                     disabled={isScheduleMutationPending || isRemoving}
                     onClick={() => setIsRemoveDialogOpen(true)}
@@ -316,7 +316,7 @@ export const BaySlotBar: React.FC<{
                   <button
                     aria-label={`Resize ${label}`}
                     className={cn(
-                      'absolute top-0 right-0 z-30 h-full w-3 cursor-ew-resize border-r-2 outline-none focus-visible:ring-2 disabled:cursor-not-allowed disabled:opacity-50',
+                      'absolute top-0 right-0 z-30 h-full w-3 cursor-ew-resize border-r-2 outline-none focus-rings:focus-visible:ring-2 disabled:cursor-not-allowed disabled:opacity-50',
                       resizeHandleToneClass,
                     )}
                     disabled={isScheduleMutationPending || isRemoving}

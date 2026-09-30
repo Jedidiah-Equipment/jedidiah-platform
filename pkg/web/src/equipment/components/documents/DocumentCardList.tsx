@@ -114,7 +114,7 @@ export function DocumentCardList<TDocument extends DocumentSummary>({
               <IconSearch className="-translate-y-1/2 pointer-events-none absolute top-1/2 left-0 size-4 text-muted-foreground" />
               <Input
                 aria-label="Search documents"
-                className="h-6 translate-y-px border-0 bg-transparent! pr-0 pl-6 shadow-none focus-visible:border-0 focus-visible:ring-0"
+                className="h-6 translate-y-px border-0 bg-transparent! pr-0 pl-6 shadow-none focus-rings:focus-visible:border-0 focus-rings:focus-visible:ring-0"
                 placeholder={isCompact ? 'Search...' : 'Search documents...'}
                 value={search}
                 onChange={(event) => setSearch(event.currentTarget.value)}
@@ -123,7 +123,7 @@ export function DocumentCardList<TDocument extends DocumentSummary>({
             <Select value={sort} onValueChange={(value) => setSort(parseDocumentCardSortValue(value ?? ''))}>
               <SelectTrigger
                 aria-label="Sort documents"
-                className="h-6 w-fit border-0 bg-transparent! px-0 py-0 shadow-none focus-visible:border-0 focus-visible:ring-0 sm:justify-end"
+                className="h-6 w-fit border-0 bg-transparent! px-0 py-0 shadow-none focus-rings:focus-visible:border-0 focus-rings:focus-visible:ring-0 sm:justify-end"
               >
                 <SelectValue>{selectedSortOption.label}</SelectValue>
               </SelectTrigger>

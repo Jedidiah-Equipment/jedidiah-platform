@@ -1,4 +1,5 @@
 import { formatDate, jobStatusAccentColor } from '@pkg/domain';
+import { getBayDisplayText } from '@pkg/domain/equipment';
 import type { BayOperator } from '@pkg/schema/equipment';
 import { IconChevronRight } from '@tabler/icons-react-native';
 import { useState } from 'react';
@@ -168,6 +169,7 @@ function Ready({
 
   const showList = isWide || !detailOpen;
   const showDetail = isWide || detailOpen;
+  const display = getBayDisplayText({ bayName: bay.name, operatorName: bay.operator?.name ?? null });
   const onDetail = !isWide && detailOpen;
 
   return (
@@ -185,8 +187,8 @@ function Ready({
         helpTopic="plan"
         onBack={handleBack}
         parentLabel={bayToolbarParentLabel(onDetail)}
-        subtitle={onDetail && selected ? selected.jobDisplayName : bay.name}
-        title={onDetail && selected ? selected.jobCode : (bay.operator?.name ?? 'No operator')}
+        subtitle={onDetail && selected ? selected.jobDisplayName : display.secondaryText}
+        title={onDetail && selected ? selected.jobCode : display.primaryText}
       />
       <View className="flex-1 flex-row">
         {showList ? (

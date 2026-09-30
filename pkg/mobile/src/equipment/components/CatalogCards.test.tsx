@@ -193,7 +193,7 @@ describe('catalog card mappings', () => {
     expect(JSON.stringify(card.props.trailing)).toContain('5');
   });
 
-  test('keeps the operator-first title for an idle unassigned Bay', () => {
+  test('promotes the physical Bay for an idle unassigned Bay', () => {
     const card = asElement(
       PlanCatalogCard({
         bay: {
@@ -207,7 +207,7 @@ describe('catalog card mappings', () => {
 
     expect(card.props).toMatchObject({
       avatarName: 'Unassigned',
-      mainText: 'Unassigned - Supply',
+      mainText: 'Supply - No operator',
       monoText: undefined,
       subText: 'NO ACTIVE JOB',
     });

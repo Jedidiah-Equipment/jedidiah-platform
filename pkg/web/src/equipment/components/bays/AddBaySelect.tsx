@@ -1,4 +1,4 @@
-import { departmentLabels } from '@pkg/domain/equipment';
+import { getBayDisplayText } from '@pkg/domain/equipment';
 import type { UUID } from '@pkg/schema';
 import type { Bay } from '@pkg/schema/equipment';
 import { IconPlus } from '@tabler/icons-react';
@@ -7,7 +7,6 @@ import { useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button.js';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select.js';
 import { cn } from '@/lib/utils.js';
-import { bayOperatorName } from './bay-label.js';
 import { sortBaysByDepartmentPipeline } from './sort-bays.js';
 
 type AddBaySelectProps = {
@@ -33,6 +32,9 @@ export const AddBaySelect: React.FC<AddBaySelectProps> = ({
     [bays, excludeBayIds],
   );
   const selectedAddBay = availableBays.find((bay) => bay.id === selectedAddBayId);
+  const selectedDisplay = selectedAddBay
+    ? getBayDisplayText({ bayName: selectedAddBay.name, operatorName: selectedAddBay.currentOperator?.name ?? null })
+    : null;
   const handleAddBay = () => {
     if (!selectedAddBay) {
       return;
@@ -45,18 +47,19 @@ export const AddBaySelect: React.FC<AddBaySelectProps> = ({
     <Select disabled={disabled} onValueChange={(value) => setSelectedAddBayId(value ?? '')} value={selectedAddBayId}>
       <SelectTrigger className="w-full sm:w-72">
         <SelectValue placeholder={availableBays.length === 0 ? 'No Bays available' : 'Select Bay'}>
-          {selectedAddBay
-            ? `${selectedAddBay.name} - ${bayOperatorName(selectedAddBay) ?? departmentLabels[selectedAddBay.department]}`
-            : null}
+          {selectedDisplay ? `${selectedDisplay.primaryText} - ${selectedDisplay.secondaryText}` : null}
         </SelectValue>
       </SelectTrigger>
       <SelectContent>
         <SelectGroup>
-          {availableBays.map((bay) => (
-            <SelectItem key={bay.id} value={bay.id}>
-              {bay.name} - {bayOperatorName(bay) ?? departmentLabels[bay.department]}
-            </SelectItem>
-          ))}
+          {availableBays.map((bay) => {
+            const display = getBayDisplayText({ bayName: bay.name, operatorName: bay.currentOperator?.name ?? null });
+            return (
+              <SelectItem key={bay.id} value={bay.id}>
+                {`${display.primaryText} - ${display.secondaryText}`}
+              </SelectItem>
+            );
+          })}
         </SelectGroup>
       </SelectContent>
     </Select>

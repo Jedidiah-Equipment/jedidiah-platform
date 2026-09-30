@@ -27,6 +27,7 @@ export * from './inventory/purchase-order-progress.js';
 export * from './inventory/scan-token.js';
 export * from './inventory/stocktake.js';
 export * from './jobs/bay-active-job.js';
+export { getBayDisplayText } from './jobs/bay-display.js';
 export * from './jobs/bay-working-calendars.js';
 export * from './jobs/board-derivations.js';
 export * from './jobs/board-projection.js';

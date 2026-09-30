@@ -1,5 +1,5 @@
 import { formatDate } from '@pkg/domain';
-import { departmentLabels } from '@pkg/domain/equipment';
+import { departmentLabels, getBayDisplayText } from '@pkg/domain/equipment';
 import type { Department } from '@pkg/schema/equipment';
 import { IconArrowsSort } from '@tabler/icons-react-native';
 import { useRouter } from 'expo-router';
@@ -14,7 +14,6 @@ import { Text } from '@/components/ui/text';
 import { CatalogListCard } from '@/equipment/components/CatalogList';
 import { DepartmentIcon } from '@/equipment/components/departments/DepartmentIcon';
 import { StockBadge } from '@/equipment/components/StockBadge';
-import { stripOperatorSuffix } from '@/equipment/lib/bay-name';
 import type { BaySort } from '@/equipment/lib/bay-sort';
 import type { BayListCard } from '@/equipment/lib/use-bay-list';
 
@@ -73,9 +72,8 @@ export function PlanDepartmentHeader({ department }: { department: Department })
 
 export function PlanCatalogCard({ bay }: { bay: BayListCard }) {
   const router = useRouter();
-  const operatorName = bay.operator?.name ?? 'Unassigned';
-  const bayName = stripOperatorSuffix({ bayName: bay.name, operatorName: bay.operator?.name ?? null });
-  const title = `${operatorName} - ${bayName}`;
+  const display = getBayDisplayText({ bayName: bay.name, operatorName: bay.operator?.name ?? null });
+  const title = `${display.primaryText} - ${display.secondaryText}`;
   const activeSummary = bay.active?.customerCompanyName
     ? `${bay.active.jobDisplayName} · ${bay.active.customerCompanyName}`
     : undefined;
@@ -83,8 +81,8 @@ export function PlanCatalogCard({ bay }: { bay: BayListCard }) {
   return (
     <CatalogListCard
       accessibilityHint="Opens Bay schedule"
-      accessibilityLabel={`Bay ${bay.name}`}
-      avatarName={operatorName}
+      accessibilityLabel={title}
+      avatarName={bay.operator?.name ?? 'Unassigned'}
       avatarUri={bay.operator?.thumbnailDataUrl}
       mainText={title}
       metadata={

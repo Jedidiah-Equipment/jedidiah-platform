@@ -1,4 +1,5 @@
 import { formatDate } from '@pkg/domain';
+import { getBayDisplayText } from '@pkg/domain/equipment';
 import type { ProjectedBayQueue } from '@pkg/schema/equipment';
 import { IconLoader2, IconMoon, IconSun, IconTrash } from '@tabler/icons-react';
 import type React from 'react';
@@ -15,7 +16,6 @@ import {
 import { Field, FieldLabel } from '@/components/ui/field.js';
 import { Input } from '@/components/ui/input.js';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select.js';
-import { bayOperatorName } from '@/equipment/components/bays/bay-label.js';
 import { fromJobCalendarDateKey } from '@/equipment/pages/jobs/components/job-date-key.js';
 import { getBayCalendarException } from '../bay-exceptions.js';
 import type { BayExceptionDialogState } from '../types.js';
@@ -44,6 +44,9 @@ export const BayExceptionDialog: React.FC<BayExceptionDialogProps> = ({
   onRemove,
 }) => {
   const selectedBay = state ? (bays.find((bay) => bay.id === state.bayId) ?? null) : null;
+  const selectedDisplay = selectedBay
+    ? getBayDisplayText({ bayName: selectedBay.name, operatorName: selectedBay.currentOperator?.name ?? null })
+    : null;
 
   return (
     <Dialog onOpenChange={(open) => !open && onClose()} open={state !== null}>
@@ -82,19 +85,22 @@ export const BayExceptionDialog: React.FC<BayExceptionDialogProps> = ({
             >
               <SelectTrigger id="bay-exception-bay" className="w-full">
                 <SelectValue placeholder="Select bay">
-                  {selectedBay
-                    ? `${selectedBay.name}${bayOperatorName(selectedBay) ? ` - ${bayOperatorName(selectedBay)}` : ''}`
-                    : null}
+                  {selectedDisplay ? `${selectedDisplay.primaryText} - ${selectedDisplay.secondaryText}` : null}
                 </SelectValue>
               </SelectTrigger>
               <SelectContent align="start">
                 <SelectGroup>
-                  {bays.map((bay) => (
-                    <SelectItem key={bay.id} value={bay.id}>
-                      {bay.name}
-                      {bayOperatorName(bay) ? ` - ${bayOperatorName(bay)}` : ''}
-                    </SelectItem>
-                  ))}
+                  {bays.map((bay) => {
+                    const display = getBayDisplayText({
+                      bayName: bay.name,
+                      operatorName: bay.currentOperator?.name ?? null,
+                    });
+                    return (
+                      <SelectItem key={bay.id} value={bay.id}>
+                        {`${display.primaryText} - ${display.secondaryText}`}
+                      </SelectItem>
+                    );
+                  })}
                 </SelectGroup>
               </SelectContent>
             </Select>

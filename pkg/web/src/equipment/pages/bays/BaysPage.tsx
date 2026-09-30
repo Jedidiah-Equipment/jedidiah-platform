@@ -1,5 +1,5 @@
 import { formatDate, hasPermission } from '@pkg/domain';
-import { departmentLabels, JOB_DEPARTMENT_PIPELINE } from '@pkg/domain/equipment';
+import { departmentLabels, getBayDisplayText, JOB_DEPARTMENT_PIPELINE } from '@pkg/domain/equipment';
 import type { AuthId } from '@pkg/schema';
 import {
   type Bay,
@@ -42,7 +42,6 @@ import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectVa
 import { Skeleton } from '@/components/ui/skeleton.js';
 import { Switch } from '@/components/ui/switch.js';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip.js';
-import { bayNameWithOperator } from '@/equipment/components/bays/bay-label.js';
 import { BayOperatorIndicator } from '@/equipment/components/bays/index.js';
 import { DepartmentIcon } from '@/equipment/components/departments/index.js';
 import { useQueryInvalidation } from '@/equipment/hooks/use-query-invalidation.js';
@@ -163,81 +162,92 @@ export const BaysPage: React.FC = () => {
                   </Card>
                 ) : (
                   <div className="grid gap-3">
-                    {bays.map((bay) => (
-                      <Card key={bay.id} className="min-w-0" size="sm">
-                        <CardHeader className="min-w-0 has-data-[slot=card-action]:grid-cols-[minmax(0,1fr)_auto] gap-0">
-                          <div className="flex min-w-0 items-center gap-3">
-                            <BayOperatorIndicator operator={bay.currentOperator} />
-                            <div className="min-w-0 space-y-0.5">
-                              <div className="flex min-w-0 flex-wrap items-center gap-2">
-                                <CardTitle className="truncate">{bayNameWithOperator(bay)}</CardTitle>
-                                {bay.disabledAt ? <Badge variant="outline">Disabled</Badge> : null}
+                    {bays.map((bay) => {
+                      const display = getBayDisplayText({
+                        bayName: bay.name,
+                        operatorName: bay.currentOperator?.name ?? null,
+                      });
+                      return (
+                        <Card key={bay.id} className="min-w-0" size="sm">
+                          <CardHeader className="min-w-0 has-data-[slot=card-action]:grid-cols-[minmax(0,1fr)_auto] gap-0">
+                            <div className="flex min-w-0 items-center gap-3">
+                              <BayOperatorIndicator operator={bay.currentOperator} />
+                              <div className="min-w-0 space-y-0.5">
+                                <div className="flex min-w-0 flex-wrap items-center gap-2">
+                                  <CardTitle className="truncate" title={display.primaryText}>
+                                    {display.primaryText}
+                                  </CardTitle>
+                                  {bay.disabledAt ? <Badge variant="outline">Disabled</Badge> : null}
+                                </div>
+                                <CardDescription className="truncate text-xs" title={display.secondaryText}>
+                                  {display.secondaryText}
+                                </CardDescription>
+                                <CardDescription className="text-xs">
+                                  Origin {formatDate(bay.scheduleOrigin, 'short')}
+                                  {bay.disabledAt ? ` / Disabled ${formatDate(bay.disabledAt, 'medium')}` : ''}
+                                </CardDescription>
                               </div>
-                              <CardDescription className="text-xs">
-                                Origin {formatDate(bay.scheduleOrigin, 'short')}
-                                {bay.disabledAt ? ` / Disabled ${formatDate(bay.disabledAt, 'medium')}` : ''}
-                              </CardDescription>
                             </div>
-                          </div>
-                          <CardAction className="flex items-center gap-1" span="header">
-                            {canReadBayHistory ? (
-                              <Tooltip>
-                                <TooltipTrigger
-                                  render={
-                                    <Button
-                                      aria-label={`View Operator history for ${bay.name}`}
-                                      onClick={() => setHistoryBay(bay)}
-                                      size="icon-sm"
-                                      type="button"
-                                      variant="ghost"
-                                    />
-                                  }
-                                >
-                                  <IconHistory />
-                                </TooltipTrigger>
-                                <TooltipContent>Operator history</TooltipContent>
-                              </Tooltip>
-                            ) : null}
-                            {canManageBays ? (
-                              <>
+                            <CardAction className="flex items-center gap-1" span="header">
+                              {canReadBayHistory ? (
                                 <Tooltip>
                                   <TooltipTrigger
                                     render={
                                       <Button
-                                        aria-label={`Edit ${bay.name}`}
-                                        onClick={() => setEditingBayId(bay.id)}
+                                        aria-label={`View Operator history for ${bay.name}`}
+                                        onClick={() => setHistoryBay(bay)}
                                         size="icon-sm"
                                         type="button"
                                         variant="ghost"
                                       />
                                     }
                                   >
-                                    <IconPencil />
+                                    <IconHistory />
                                   </TooltipTrigger>
-                                  <TooltipContent>Edit Bay</TooltipContent>
+                                  <TooltipContent>Operator history</TooltipContent>
                                 </Tooltip>
-                                <Tooltip>
-                                  <TooltipTrigger
-                                    render={
-                                      <Button
-                                        aria-label={`Delete ${bay.name}`}
-                                        onClick={() => setDeletingBay(bay)}
-                                        size="icon-sm"
-                                        type="button"
-                                        variant="ghost"
-                                      />
-                                    }
-                                  >
-                                    <IconTrash />
-                                  </TooltipTrigger>
-                                  <TooltipContent>Delete Bay</TooltipContent>
-                                </Tooltip>
-                              </>
-                            ) : null}
-                          </CardAction>
-                        </CardHeader>
-                      </Card>
-                    ))}
+                              ) : null}
+                              {canManageBays ? (
+                                <>
+                                  <Tooltip>
+                                    <TooltipTrigger
+                                      render={
+                                        <Button
+                                          aria-label={`Edit ${bay.name}`}
+                                          onClick={() => setEditingBayId(bay.id)}
+                                          size="icon-sm"
+                                          type="button"
+                                          variant="ghost"
+                                        />
+                                      }
+                                    >
+                                      <IconPencil />
+                                    </TooltipTrigger>
+                                    <TooltipContent>Edit Bay</TooltipContent>
+                                  </Tooltip>
+                                  <Tooltip>
+                                    <TooltipTrigger
+                                      render={
+                                        <Button
+                                          aria-label={`Delete ${bay.name}`}
+                                          onClick={() => setDeletingBay(bay)}
+                                          size="icon-sm"
+                                          type="button"
+                                          variant="ghost"
+                                        />
+                                      }
+                                    >
+                                      <IconTrash />
+                                    </TooltipTrigger>
+                                    <TooltipContent>Delete Bay</TooltipContent>
+                                  </Tooltip>
+                                </>
+                              ) : null}
+                            </CardAction>
+                          </CardHeader>
+                        </Card>
+                      );
+                    })}
                   </div>
                 )}
               </CardContent>

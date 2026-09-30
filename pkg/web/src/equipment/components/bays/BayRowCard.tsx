@@ -1,4 +1,4 @@
-import { departmentLabels } from '@pkg/domain/equipment';
+import { departmentLabels, getBayDisplayText } from '@pkg/domain/equipment';
 import type { Bay } from '@pkg/schema/equipment';
 import { IconTrash } from '@tabler/icons-react';
 import type React from 'react';
@@ -26,35 +26,48 @@ export const BayRowCard: React.FC<BayRowCardProps> = ({
   removeLabel,
   showOperator = false,
   unavailableHint,
-}) => (
-  <Card size="sm">
-    <CardContent>
-      <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto_auto]">
-        <div className="flex min-w-0 items-center gap-3 self-center">
-          {showOperator ? <BayOperatorIndicator operator={bay?.currentOperator ?? null} /> : null}
-          <div className="min-w-0">
-            <div className="flex min-w-0 flex-wrap items-center gap-2">
-              <span className="truncate font-medium">{bay?.name ?? 'Unavailable Bay'}</span>
-              {bay?.disabledAt ? <Badge variant="outline">Disabled</Badge> : null}
+}) => {
+  const display =
+    bay && showOperator
+      ? getBayDisplayText({ bayName: bay.name, operatorName: bay.currentOperator?.name ?? null })
+      : null;
+  return (
+    <Card size="sm">
+      <CardContent>
+        <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto_auto]">
+          <div className="flex min-w-0 items-center gap-3 self-center">
+            {showOperator ? <BayOperatorIndicator operator={bay?.currentOperator ?? null} /> : null}
+            <div className="min-w-0">
+              <div className="flex min-w-0 flex-wrap items-center gap-2">
+                <span className="truncate font-medium" title={display?.primaryText ?? bay?.name}>
+                  {display?.primaryText ?? bay?.name ?? 'Unavailable Bay'}
+                </span>
+                {bay?.disabledAt ? <Badge variant="outline">Disabled</Badge> : null}
+              </div>
+              {display ? (
+                <p className="truncate text-muted-foreground text-xs" title={display.secondaryText}>
+                  {display.secondaryText}
+                </p>
+              ) : null}
+              <p className="text-muted-foreground text-xs font-mono">
+                {bay ? departmentLabels[bay.department] : unavailableHint}
+              </p>
             </div>
-            <p className="text-muted-foreground text-xs font-mono">
-              {bay ? departmentLabels[bay.department] : unavailableHint}
-            </p>
           </div>
+          {children}
+          <Button
+            aria-label={removeLabel}
+            className="self-center"
+            disabled={removeDisabled}
+            onClick={onRemove}
+            size="icon"
+            type="button"
+            variant="ghost"
+          >
+            <IconTrash />
+          </Button>
         </div>
-        {children}
-        <Button
-          aria-label={removeLabel}
-          className="self-center"
-          disabled={removeDisabled}
-          onClick={onRemove}
-          size="icon"
-          type="button"
-          variant="ghost"
-        >
-          <IconTrash />
-        </Button>
-      </div>
-    </CardContent>
-  </Card>
-);
+      </CardContent>
+    </Card>
+  );
+};

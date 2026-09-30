@@ -36,6 +36,11 @@ describe('BayRunwayWidget', () => {
     });
 
     expect(chartData.map(({ label }) => label)).toEqual(['Mkhukhu', 'Procurement 1', 'Assembly']);
+    expect(chartData.map(({ identityDescription }) => identityDescription)).toEqual([
+      'Mkhukhu - Fabrication Bay 2',
+      'Procurement 1 - No operator',
+      'Assembly - No operator',
+    ]);
   });
 
   it('shows remaining active work separately from scheduled work using the domain status colors', () => {

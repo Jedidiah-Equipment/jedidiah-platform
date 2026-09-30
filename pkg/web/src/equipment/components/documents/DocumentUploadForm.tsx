@@ -1,10 +1,10 @@
-import { validateDocumentPolicy } from '@pkg/domain/equipment';
 import type { DocumentOwnerType } from '@pkg/schema/equipment';
 import { IconLoader2, IconUpload } from '@tabler/icons-react';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button.js';
 import { Field, FieldLabel } from '@/components/ui/field.js';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select.js';
+import { validateDocumentFile } from '@/equipment/utils/document.js';
 import { DocumentFileField } from './DocumentFileField.js';
 
 export function DocumentUploadForm({
@@ -36,15 +36,7 @@ export function DocumentUploadForm({
       onSubmit={(event) => {
         event.preventDefault();
         if (isPending) return;
-        const validation = selectedFile
-          ? validateDocumentPolicy({
-              byteSize: selectedFile.size,
-              contentType:
-                selectedFile.type || (selectedFile.name.toLowerCase().endsWith('.zip') ? 'application/zip' : ''),
-              metadata: { type: selectedType },
-              ownerType,
-            })
-          : null;
+        const validation = selectedFile ? validateDocumentFile(selectedFile, ownerType, { type: selectedType }) : null;
         setError(
           !selectedFile ? 'Choose a document to upload.' : validation && !validation.ok ? validation.message : '',
         );

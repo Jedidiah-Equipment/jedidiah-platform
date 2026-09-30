@@ -1,5 +1,4 @@
-import { formatBytes } from '@pkg/domain';
-import { getDocumentPolicy } from '@pkg/domain/equipment';
+import { getDocumentPolicy, validateDocumentPolicy } from '@pkg/domain/equipment';
 import type { UUID } from '@pkg/schema';
 import {
   type DocumentOwnerType,
@@ -9,12 +8,10 @@ import {
   type ProductDocumentType,
   PurchaseOrderDocumentRow,
 } from '@pkg/schema/equipment';
-import { toast } from 'sonner';
 
 import { getClientConfig } from '@/lib/app-config.js';
 import { saveBlobAsFile } from '@/utils/download.js';
 
-export const PRODUCT_DOCUMENT_ACCEPT = [...getDocumentPolicy('product').allowedContentTypes, '.zip'].join(',');
 export const JOB_DOCUMENT_ACCEPT = getDocumentPolicy('job').allowedContentTypes.join(',');
 
 export type DocumentPreviewOwner = {
@@ -27,17 +24,25 @@ export type PreviewableDocument = Pick<DocumentSummary, 'byteSize' | 'contentTyp
 
 export type DocumentPreviewKind = 'image' | 'pdf';
 
-export function validateSelectedFile(file: File | null, ownerType: DocumentOwnerType = 'product'): File | null {
-  if (!file) return null;
-
-  const policy = getDocumentPolicy(ownerType);
-
-  if (file.size > policy.maxBytes) {
-    toast.error(`Document must be ${formatBytes(policy.maxBytes)} or smaller.`);
-    return null;
+// Browser MIME declarations vary by OS. Normalize known document aliases for selection and
+// presentation; the server remains the authority and sniffs the uploaded bytes.
+export function getDocumentFileContentType(file: File): string {
+  if (['application/x-zip-compressed', 'application/x-zip'].includes(file.type)) return 'application/zip';
+  if (file.type === 'application/x-pdf') return 'application/pdf';
+  if (!file.type || file.type === 'application/octet-stream') {
+    if (file.name.toLowerCase().endsWith('.zip')) return 'application/zip';
+    if (file.name.toLowerCase().endsWith('.pdf')) return 'application/pdf';
   }
+  return file.type;
+}
 
-  return file;
+export function validateDocumentFile(file: File, ownerType: DocumentOwnerType, metadata?: unknown) {
+  return validateDocumentPolicy({
+    byteSize: file.size,
+    contentType: getDocumentFileContentType(file),
+    metadata,
+    ownerType,
+  });
 }
 
 export type ProductDocumentUploadDraft = {

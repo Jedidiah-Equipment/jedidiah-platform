@@ -1,6 +1,7 @@
-import { getDocumentPolicy, validateDocumentPolicy } from '@pkg/domain/equipment';
+import { getDocumentPolicy } from '@pkg/domain/equipment';
 import type { DocumentOwnerType } from '@pkg/schema/equipment';
 import { AttachmentField } from '@/components/attachments/AttachmentField.js';
+import { getDocumentFileContentType, validateDocumentFile } from '@/equipment/utils/document.js';
 
 export function DocumentFileField({
   error,
@@ -30,6 +31,7 @@ export function DocumentFileField({
         ...policy.allowedContentTypes,
         ...(policy.allowedContentTypes.includes('application/zip') ? ['.zip'] : []),
       ].join(',')}
+      contentType={file ? getDocumentFileContentType(file) : undefined}
       error={error}
       file={file}
       id={id}
@@ -38,12 +40,7 @@ export function DocumentFileField({
       policy={policy}
       onChange={(selected) => {
         if (selected) {
-          const result = validateDocumentPolicy({
-            byteSize: selected.size,
-            contentType: selected.type || (selected.name.toLowerCase().endsWith('.zip') ? 'application/zip' : ''),
-            metadata,
-            ownerType,
-          });
+          const result = validateDocumentFile(selected, ownerType, metadata);
           if (!result.ok) {
             onError(result.message);
             return;

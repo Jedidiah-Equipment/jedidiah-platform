@@ -19,6 +19,7 @@ import { cn } from '@/lib/utils.js';
 
 type AttachmentFieldProps = {
   accept?: string;
+  contentType?: string | undefined;
   disabled?: boolean;
   error?: string;
   file: File | null;
@@ -32,6 +33,7 @@ type AttachmentFieldProps = {
 /** Selection and draft preview only. The owner validates selections and decides when to persist. */
 export function AttachmentField({
   accept,
+  contentType: presentedContentType,
   disabled,
   error,
   file,
@@ -46,8 +48,9 @@ export function AttachmentField({
   const input = useRef<HTMLInputElement>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
-  const isImage = file?.type.startsWith('image/') ?? false;
-  const canPreview = file?.type === 'application/pdf' || isImage;
+  const contentType = presentedContentType ?? file?.type ?? '';
+  const isImage = contentType.startsWith('image/');
+  const canPreview = contentType === 'application/pdf' || isImage;
   const blocked = disabled || pending;
 
   useEffect(() => {
@@ -63,7 +66,7 @@ export function AttachmentField({
   const Icon =
     isImage || (!file && policy.allowedContentTypes.every((type) => type.startsWith('image/')))
       ? IconPhoto
-      : file?.type === 'application/pdf'
+      : contentType === 'application/pdf'
         ? IconFileTypePdf
         : file?.name.toLowerCase().endsWith('.csv')
           ? IconFileTypeCsv
@@ -180,9 +183,9 @@ export function AttachmentField({
             <p className="truncate text-xs font-medium" title={file?.name}>
               {pending ? 'Processing…' : (file?.name ?? `Attach ${label.toLowerCase()}`)}
             </p>
-            <p className="mt-1 truncate text-[0.65rem] text-muted-foreground" title={file?.type}>
+            <p className="mt-1 truncate text-[0.65rem] text-muted-foreground" title={contentType}>
               {file
-                ? `${file.type || describeFileContentTypes(policy.allowedContentTypes)} · ${formatBytes(file.size)}`
+                ? `${contentType || describeFileContentTypes(policy.allowedContentTypes)} · ${formatBytes(file.size)}`
                 : 'Choose a file or drop it here'}
             </p>
           </div>

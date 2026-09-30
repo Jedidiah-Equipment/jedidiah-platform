@@ -94,7 +94,7 @@ it('requires an explicit Job document type and sends the selected replacement on
   expect(document.body.textContent).toContain('Choose a document type.');
   expect(request).not.toHaveBeenCalled();
   await chooseType('Purchase Order');
-  const replacement = new File(['%PDF-new'], 'new.pdf', { type: 'application/pdf' });
+  const replacement = new File(['%PDF-new'], 'new.pdf', { type: '' });
   await select(replacement);
   await submit();
   await submit();
@@ -104,18 +104,21 @@ it('requires an explicit Job document type and sends the selected replacement on
   expect((options.body as FormData).get('file')).toBe(replacement);
 });
 
-it('applies the Product Drawing ZIP policy at submit and retains metadata in the multipart payload', async () => {
-  await mount('product');
-  await select(new File(['%PDF'], 'general.pdf', { type: 'application/pdf' }));
-  await chooseType('Drawing');
-  await submit();
-  expect(document.body.textContent).toContain('Only ZIP documents');
-  expect(request).not.toHaveBeenCalled();
-  const drawing = new File(['zip'], 'drawing.zip', { type: '' });
-  await select(drawing);
-  await submit();
-  expect(request).toHaveBeenCalledOnce();
-  const [, options] = request.mock.calls[0] as unknown as [string, RequestInit];
-  expect((options.body as FormData).get('file')).toBe(drawing);
-  expect((options.body as FormData).get('type')).toBe('drawing');
-});
+it.each(['', 'application/x-zip-compressed'])(
+  'applies Drawing ZIP policy and retains metadata for browser MIME %s',
+  async (contentType) => {
+    await mount('product');
+    await select(new File(['%PDF'], 'general.pdf', { type: 'application/pdf' }));
+    await chooseType('Drawing');
+    await submit();
+    expect(document.body.textContent).toContain('Only ZIP documents');
+    expect(request).not.toHaveBeenCalled();
+    const drawing = new File(['zip'], 'drawing.zip', { type: contentType });
+    await select(drawing);
+    await submit();
+    expect(request).toHaveBeenCalledOnce();
+    const [, options] = request.mock.calls[0] as unknown as [string, RequestInit];
+    expect((options.body as FormData).get('file')).toBe(drawing);
+    expect((options.body as FormData).get('type')).toBe('drawing');
+  },
+);

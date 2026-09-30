@@ -36,7 +36,7 @@ import {
 } from '@/equipment/hooks/options/index.js';
 import { getApiQueryErrorMessage } from '@/lib/api-errors.js';
 import { useTRPC } from '@/lib/trpc.js';
-import { PartImportBatchList, PartImportBatchView, printableLabelCount } from './PartImportBatchPicker.js';
+import { PartImportBatchList, PartImportBatchView, printableLabelCount } from './PartImportBatchPanels.js';
 import {
   fetchPartLabelsBlob,
   type PartLabelBatchMode,
@@ -44,8 +44,6 @@ import {
   partLabelBatchModeLabels,
   partLabelBatchUrl,
 } from './part-label.js';
-
-type BatchMode = PartLabelBatchMode;
 
 type PartLabelBatchPart = { code: string; id: string; name: string };
 
@@ -93,7 +91,7 @@ export function PartLabelBatchPrintDialog({
   parts: pageParts,
 }: PartLabelBatchPrintDialogProps) {
   const trpc = useTRPC();
-  const [mode, setMode] = useState<BatchMode>(initialImportBatchId ? 'importBatch' : 'all');
+  const [mode, setMode] = useState<PartLabelBatchMode>(initialImportBatchId ? 'importBatch' : 'all');
   const [categoryId, setCategoryId] = useState('');
   const [storageLocation, setStorageLocation] = useState('');
   const [partIds, setPartIds] = useState<string[]>([]);
@@ -140,7 +138,7 @@ export function PartLabelBatchPrintDialog({
           <div className="grid min-w-0 gap-4">
             <Field>
               <FieldLabel htmlFor="part-label-batch-mode">Parts to label</FieldLabel>
-              <Select onValueChange={(value) => value && setMode(value as BatchMode)} value={mode}>
+              <Select onValueChange={(value) => value && setMode(value as PartLabelBatchMode)} value={mode}>
                 <SelectTrigger className="w-full" id="part-label-batch-mode">
                   <SelectValue>{partLabelBatchModeLabels[mode]}</SelectValue>
                 </SelectTrigger>

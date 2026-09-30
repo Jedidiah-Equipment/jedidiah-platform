@@ -4,7 +4,7 @@ import { AuthId } from '../../auth/auth-id.js';
 import { DateIso } from '../../common/date.js';
 import { CursorQueryInput, createCursorQueryResult } from '../../common/pagination.js';
 import { UUID } from '../../common/uuid.js';
-import { PartCode, PartName, PartStorageLocation } from './part.js';
+import { PartCode, PartImportFileName, PartName, PartStorageLocation } from './part.js';
 
 /**
  * What one successful CSV row did to its Part. A rejected row changed nothing and names no Part it
@@ -27,7 +27,7 @@ export type PartImportBatch = z.infer<typeof PartImportBatch>;
 export const PartImportBatch = z.object({
   completedAt: DateIso,
   createdCount: z.number().int().nonnegative(),
-  fileName: z.string().nullable(),
+  fileName: PartImportFileName.nullable(),
   id: UUID,
   /** Null once the importing User is removed; the batch outlives them. */
   importedBy: PartImportBatchImporter.nullable(),

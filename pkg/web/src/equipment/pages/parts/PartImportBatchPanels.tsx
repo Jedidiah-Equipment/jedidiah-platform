@@ -20,12 +20,12 @@ import { getApiQueryErrorMessage } from '@/lib/api-errors.js';
 import { useTRPC } from '@/lib/trpc.js';
 
 /** What an import is called when it was sent without a file name. */
-export const PART_IMPORT_BATCH_FALLBACK_NAME = 'CSV import';
+const PART_IMPORT_BATCH_FALLBACK_NAME = 'CSV import';
 const UNAVAILABLE_IMPORTER = 'Unavailable user';
 
 const PAGE_SIZE = 10;
 
-export function partImportBatchName(batch: Pick<PartImportBatch, 'fileName'>): string {
+function partImportBatchName(batch: Pick<PartImportBatch, 'fileName'>): string {
   return batch.fileName ?? PART_IMPORT_BATCH_FALLBACK_NAME;
 }
 
@@ -213,14 +213,26 @@ export function PartImportBatchView({
       {detail ? (
         <Alert>
           <AlertDescription>
-            {labelCount === 0
-              ? 'Nothing to print: no Part in this selection is still in the catalog.'
-              : `${formatNumber(labelCount)} ${labelCount === 1 ? 'label' : 'labels'} to print, one per Part, with each Part's current details.`}
+            {labelCount > 0
+              ? `${formatNumber(labelCount)} ${labelCount === 1 ? 'label' : 'labels'} to print, one per Part, with each Part's current details.`
+              : emptySelectionMessage(detail, includeUpdated)}
           </AlertDescription>
         </Alert>
       ) : null}
     </div>
   );
+}
+
+/** Why a selection prints nothing: the import added nothing to label, or what it added has since gone. */
+function emptySelectionMessage(detail: PartImportBatchDetail, includeUpdated: boolean): string {
+  const selected = detail.members.some(
+    (member) => member.outcome === 'created' || (includeUpdated && member.outcome === 'updated'),
+  );
+  if (selected) return 'Nothing to print: the Parts in this selection are no longer in the catalog.';
+
+  return includeUpdated
+    ? 'Nothing to print: this import added and updated no Parts.'
+    : 'Nothing to print: this import added no new Parts. Tick Include updated Parts to label the ones it changed.';
 }
 
 export function printableLabelCount(detail: PartImportBatchDetail, includeUpdated: boolean): number {

@@ -3,6 +3,7 @@ import {
   PART_IMPORT_FILE_NAME_MAX_LENGTH,
   PART_UNIT_OF_MEASURE_LABELS,
   type PartBulkImportResult,
+  PartImportFileName,
   type Supplier,
 } from '@pkg/schema/equipment';
 import { IconLoader2, IconPrinter, IconUpload } from '@tabler/icons-react';
@@ -252,10 +253,13 @@ export const PartBulkImportDialog: React.FC<PartBulkImportDialogProps> = ({ supp
   );
 };
 
-/** The file's own name, never a path, cut to what a Part Import Batch keeps. */
+/**
+ * The file's own name — a browser never reports its path — cut to what a Part Import Batch keeps.
+ * A name the batch cannot keep is left off rather than failing the import it labels.
+ */
 function importFileName(file: File): string | undefined {
-  const name = file.name.slice(0, PART_IMPORT_FILE_NAME_MAX_LENGTH).trim();
-  return name === '' ? undefined : name;
+  const parsed = PartImportFileName.safeParse(file.name.slice(0, PART_IMPORT_FILE_NAME_MAX_LENGTH));
+  return parsed.success ? parsed.data : undefined;
 }
 
 type PartBulkImportPreviewRow = ParsePartBulkImportCsvResult['rows'][number];

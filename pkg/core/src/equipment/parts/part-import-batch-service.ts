@@ -1,8 +1,7 @@
-import { type DatabaseTransaction, type Db, user } from '@pkg/db';
+import type { Db } from '@pkg/db';
 import { partImportBatches, partImportBatchMembers } from '@pkg/db/equipment';
 import { getNextCursor, type UUID } from '@pkg/schema';
 import {
-  PartImportBatch,
   type PartImportBatchDetail,
   PartImportBatchDetail as PartImportBatchDetailSchema,
   type PartImportBatchListInput,
@@ -11,16 +10,26 @@ import {
   type PartImportBatchMember,
   type PartImportBatchOutcome,
 } from '@pkg/schema/equipment';
-import { and, asc, desc, eq, inArray, isNotNull, type SQL } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, isNotNull } from 'drizzle-orm';
 
 import { PartImportBatchNotFoundError } from './part-errors.js';
 
+/** A batch as every read shows it: its own facts, and only the importing User's name. */
+const batchColumns = {
+  columns: {
+    completedAt: true,
+    createdCount: true,
+    fileName: true,
+    id: true,
+    rejectedCount: true,
+    unchangedCount: true,
+    updatedCount: true,
+  },
+  with: { importedBy: { columns: { id: true, name: true } } },
+} as const;
+
 /** A label prints for what an import added; the Parts it only updated join when asked. */
-export function partImportBatchLabelOutcomes({
-  includeUpdated,
-}: {
-  includeUpdated: boolean;
-}): PartImportBatchOutcome[] {
+function partImportBatchLabelOutcomes({ includeUpdated }: { includeUpdated: boolean }): PartImportBatchOutcome[] {
   return includeUpdated ? ['created', 'updated'] : ['created'];
 }
 
@@ -36,11 +45,18 @@ export async function listPartImportBatches({
   input: PartImportBatchListInput;
 }): Promise<PartImportBatchListResult> {
   const { cursor, limit } = input;
-  const query = batchQuery(db).orderBy(desc(partImportBatches.completedAt), desc(partImportBatches.id)).offset(cursor);
-  const [rows, total] = await Promise.all([limit === 0 ? query : query.limit(limit), db.$count(partImportBatches)]);
+  const [rows, total] = await Promise.all([
+    db.query.partImportBatches.findMany({
+      ...batchColumns,
+      offset: cursor,
+      orderBy: [desc(partImportBatches.completedAt), desc(partImportBatches.id)],
+      ...(limit === 0 ? {} : { limit }),
+    }),
+    db.$count(partImportBatches),
+  ]);
 
   return PartImportBatchListResultSchema.parse({
-    items: rows.map(toBatch),
+    items: rows,
     nextCursor: getNextCursor({ count: rows.length, cursor, total }),
     total,
   });
@@ -52,19 +68,27 @@ export async function listPartImportBatches({
  * none and prints no label.
  */
 export async function getPartImportBatch({ batchId, db }: { batchId: UUID; db: Db }): Promise<PartImportBatchDetail> {
-  const batch = await loadBatch({ batchId, db });
-  const memberRows = await db.query.partImportBatchMembers.findMany({
-    columns: { lineNumber: true, outcome: true, partCode: true, partName: true },
-    orderBy: asc(partImportBatchMembers.lineNumber),
-    where: eq(partImportBatchMembers.batchId, batchId),
-    with: { part: { columns: { code: true, id: true, name: true, storageLocation: true } } },
+  const row = await db.query.partImportBatches.findFirst({
+    columns: batchColumns.columns,
+    where: eq(partImportBatches.id, batchId),
+    with: {
+      ...batchColumns.with,
+      members: {
+        columns: { lineNumber: true, outcome: true, partCode: true, partName: true },
+        orderBy: asc(partImportBatchMembers.lineNumber),
+        with: { part: { columns: { code: true, id: true, name: true, storageLocation: true } } },
+      },
+    },
   });
-  const members: PartImportBatchMember[] = memberRows.map((row) => ({
-    importedCode: row.partCode,
-    importedName: row.partName,
-    lineNumber: row.lineNumber,
-    outcome: row.outcome,
-    part: row.part ?? null,
+  if (!row) throw new PartImportBatchNotFoundError(batchId);
+
+  const { members: memberRows, ...batch } = row;
+  const members: PartImportBatchMember[] = memberRows.map((member) => ({
+    importedCode: member.partCode,
+    importedName: member.partName,
+    lineNumber: member.lineNumber,
+    outcome: member.outcome,
+    part: member.part ?? null,
   }));
 
   return PartImportBatchDetailSchema.parse({
@@ -90,7 +114,11 @@ export async function partImportBatchLabelPartIds({
   db: Db;
   includeUpdated: boolean;
 }): Promise<UUID[]> {
-  await loadBatch({ batchId, db });
+  const batch = await db.query.partImportBatches.findFirst({
+    columns: { id: true },
+    where: eq(partImportBatches.id, batchId),
+  });
+  if (!batch) throw new PartImportBatchNotFoundError(batchId);
 
   const rows = await db
     .selectDistinct({ id: partImportBatchMembers.partId })
@@ -112,40 +140,4 @@ function countLabelParts(members: readonly PartImportBatchMember[], { includeUpd
   return new Set(
     members.flatMap((member) => (member.part && outcomes.includes(member.outcome) ? [member.part.id] : [])),
   ).size;
-}
-
-async function loadBatch({ batchId, db }: { batchId: UUID; db: Db }): Promise<PartImportBatch> {
-  const [row] = await batchQuery(db, eq(partImportBatches.id, batchId)).limit(1);
-  if (!row) throw new PartImportBatchNotFoundError(batchId);
-
-  return PartImportBatch.parse(toBatch(row));
-}
-
-function batchQuery(db: Db | DatabaseTransaction, where?: SQL) {
-  return db
-    .select({
-      completedAt: partImportBatches.completedAt,
-      createdCount: partImportBatches.createdCount,
-      fileName: partImportBatches.fileName,
-      id: partImportBatches.id,
-      importedById: user.id,
-      importedByName: user.name,
-      rejectedCount: partImportBatches.rejectedCount,
-      unchangedCount: partImportBatches.unchangedCount,
-      updatedCount: partImportBatches.updatedCount,
-    })
-    .from(partImportBatches)
-    .leftJoin(user, eq(user.id, partImportBatches.importedByUserId))
-    .where(where)
-    .$dynamic();
-}
-
-type BatchRow = Awaited<ReturnType<ReturnType<typeof batchQuery>['execute']>>[number];
-
-/** The row as the batch schema reads it; parsing turns its Date into the wire's ISO string. */
-function toBatch({ importedById, importedByName, ...row }: BatchRow) {
-  return {
-    ...row,
-    importedBy: importedById !== null && importedByName !== null ? { id: importedById, name: importedByName } : null,
-  };
 }

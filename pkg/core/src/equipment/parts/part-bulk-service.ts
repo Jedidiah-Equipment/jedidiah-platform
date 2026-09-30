@@ -272,6 +272,8 @@ async function recordImportBatch({
   const [batch] = await db
     .insert(partImportBatches)
     .values({
+      // `now()` would stamp when the transaction began; a long import finishes later than that.
+      completedAt: sql`clock_timestamp()`,
       createdCount: countOf('created'),
       fileName,
       importedByUserId: actorUserId,

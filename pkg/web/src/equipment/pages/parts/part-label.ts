@@ -3,8 +3,8 @@ import type { PartLabelBatchSelection } from '@pkg/schema/equipment';
 import { readApiErrorMessage } from '@/equipment/utils/document.js';
 import { getClientConfig } from '@/lib/app-config.js';
 
-/** The modes small enough to ride a query string; a copy-count selection is posted instead. */
-export type PartLabelUrlSelection = Exclude<PartLabelBatchSelection, { selection: 'copies' }>;
+/** The modes small enough to ride a query string; copy-count and import-batch selections are posted instead. */
+export type PartLabelUrlSelection = Exclude<PartLabelBatchSelection, { selection: 'copies' | 'importBatch' }>;
 
 /** Every way the batch dialog picks Parts: the URL modes, plus one saved Part Import Batch. */
 export type PartLabelBatchMode = PartLabelUrlSelection['selection'] | 'importBatch';

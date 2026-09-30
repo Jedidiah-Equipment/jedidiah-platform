@@ -57,8 +57,7 @@ Every finished Bulk Parts Import is kept, newest first, for everyone who prints 
 1. Open **Parts** or **Inventory** and click **Print labels**, or click **Print new Part labels** when an
    import finishes.
 2. Under **Parts to label**, choose **Recent imports**, then click the import by its file name and time.
-3. Review its Parts. Each shows its current code, name, and Storage Location, and whether the import
-   added or updated it.
+3. Check the Parts it lists. Labels print each Part's current details, not what the import wrote.
 4. Tick **Include updated Parts** to label the Parts the import changed as well as the ones it added.
 5. Click **Open printable PDF**. One PDF opens in a preview panel with one label per Part. Print it from
    the preview, or click **Download** to save it.

@@ -22,7 +22,7 @@ import {
   validateSelectedProductImage,
 } from '@/equipment/utils/product-image.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
-import { getApiMutationErrorMessage, getApiQueryErrorMessage } from '@/lib/api-errors.js';
+import { getApiQueryErrorMessage } from '@/lib/api-errors.js';
 
 type ProductImageSlotTileProps = {
   canEdit: boolean;
@@ -59,7 +59,6 @@ export const ProductImageSlotTile: React.FC<ProductImageSlotTileProps> = ({
       toast.success(`${label} updated`);
     },
     onError: (error) => {
-      setError(getApiMutationErrorMessage(error, 'Unable to upload image.'));
       showMutationError(error, 'Unable to upload image.');
     },
   });

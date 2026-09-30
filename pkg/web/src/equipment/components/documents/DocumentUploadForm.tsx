@@ -48,6 +48,7 @@ export function DocumentUploadForm({
         error={error}
         file={selectedFile}
         label={label}
+        metadata={{ type: selectedType }}
         onChange={onFileChange}
         onError={setError}
         ownerType={ownerType}
@@ -60,7 +61,8 @@ export function DocumentUploadForm({
             disabled={isPending}
             onValueChange={(value) => {
               setTypeError('');
-              setError('');
+              const validation = selectedFile ? validateDocumentFile(selectedFile, ownerType, { type: value }) : null;
+              setError(validation && !validation.ok ? validation.message : '');
               onTypeChange(value);
             }}
             value={selectedType ?? ''}

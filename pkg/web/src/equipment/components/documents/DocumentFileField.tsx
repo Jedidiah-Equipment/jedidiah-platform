@@ -42,6 +42,7 @@ export function DocumentFileField({
         if (selected) {
           const result = validateDocumentFile(selected, ownerType, metadata);
           if (!result.ok) {
+            onChange(null);
             onError(result.message);
             return;
           }

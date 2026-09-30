@@ -15,7 +15,7 @@ import {
   validateSelectedRangeLogo,
 } from '@/equipment/utils/range-logo.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
-import { getApiMutationErrorMessage, getApiQueryErrorMessage } from '@/lib/api-errors.js';
+import { getApiQueryErrorMessage } from '@/lib/api-errors.js';
 
 type RangeLogoUploadProps = {
   canEdit: boolean;
@@ -44,7 +44,6 @@ export const RangeLogoUpload: React.FC<RangeLogoUploadProps> = ({ canEdit, logo,
       toast.success('Logo updated');
     },
     onError: (error) => {
-      setError(getApiMutationErrorMessage(error, 'Unable to upload logo.'));
       showMutationError(error, 'Unable to upload logo.');
     },
   });

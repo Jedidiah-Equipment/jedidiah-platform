@@ -118,3 +118,19 @@ it('parses headerless rows in Supplier scope, reports partial results and resets
   await act(async () => button('Import parts').click());
   expect(importParts).toHaveBeenCalledOnce();
 });
+
+it('discards parsed rows after rejecting a replacement CSV', async () => {
+  await mount();
+  const file = new File([], 'previous.csv', { type: 'text/csv' });
+  Object.defineProperty(file, 'text', {
+    value: async () =>
+      'Code,Drawing code,Description,Supplier,Supplier Code,Finish,Category,Name,Unit,Internally Fabricated\nP1,,Seal description,Test Supplier,S1,Steel,Seals,Seal,piece,No',
+  });
+  await select(file);
+  expect(document.body.textContent).toContain('Seal');
+  await select(new File(['%PDF'], 'replacement.pdf', { type: 'application/pdf' }));
+  expect(document.body.textContent).not.toContain('Seal');
+  expect(document.body.textContent).not.toContain('previous.csv');
+  await act(async () => button('Import parts').click());
+  expect(importParts).not.toHaveBeenCalled();
+});

@@ -17,7 +17,7 @@ import {
   validateSelectedRangeImage,
 } from '@/equipment/utils/range-image.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
-import { getApiMutationErrorMessage, getApiQueryErrorMessage } from '@/lib/api-errors.js';
+import { getApiQueryErrorMessage } from '@/lib/api-errors.js';
 
 type RangeImageUploadProps = {
   canEdit: boolean;
@@ -47,7 +47,6 @@ export const RangeImageUpload: React.FC<RangeImageUploadProps> = ({ canEdit, ima
       toast.success('Image updated');
     },
     onError: (error) => {
-      setError(getApiMutationErrorMessage(error, 'Unable to upload image.'));
       showMutationError(error, 'Unable to upload image.');
     },
   });

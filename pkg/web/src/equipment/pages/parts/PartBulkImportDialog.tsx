@@ -111,15 +111,16 @@ export const PartBulkImportDialog: React.FC<PartBulkImportDialogProps> = ({ supp
 
   const handleFileChange = (nextFile: File | null) => {
     if (importMutation.isPending || isParsing) return;
+    parseVersion.current += 1;
+    setParseResult({ errors: [], rows: [] });
+    setResult(null);
     if (nextFile && nextFile.type !== 'text/csv' && !nextFile.name.toLowerCase().endsWith('.csv')) {
+      setFile(null);
       setError(fileContentTypeRejectedMessage(['text/csv']));
       return;
     }
     setFile(nextFile);
     setError('');
-    parseVersion.current += 1;
-    setParseResult({ errors: [], rows: [] });
-    setResult(null);
     if (nextFile) void parseFile(nextFile, hasHeader);
   };
 

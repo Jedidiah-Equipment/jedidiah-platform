@@ -73,8 +73,10 @@ it('shows missing and invalid PDF errors without starting a request', async () =
   expect(button('File invoice').disabled).toBe(false);
   await act(async () => button('File invoice').click());
   expect(document.querySelector('[role=alert]')?.textContent).toContain('Choose a Supplier invoice');
+  await select(new File(['%PDF'], 'previous.pdf', { type: 'application/pdf' }));
   await select(new File(['image'], 'wrong.png', { type: 'image/png' }));
   expect(document.querySelector('[role=alert]')?.textContent).toContain('Only PDF documents');
+  await act(async () => button('File invoice').click());
   expect(request).not.toHaveBeenCalled();
 });
 
@@ -134,6 +136,10 @@ it('requires credit note returns and submits only the checked settlement IDs', a
   expect(document.body.textContent).toContain('Choose at least one return');
   expect(request).not.toHaveBeenCalled();
   await act(async () => document.querySelector<HTMLButtonElement>('[role=checkbox]')?.click());
+  await select(new File(['image'], 'replacement.png', { type: 'image/png' }));
+  await act(async () => button('File credit note').click());
+  expect(request).not.toHaveBeenCalled();
+  await select(file);
   await act(async () => button('File credit note').click());
   await act(async () => {
     await new Promise((resolve) => setTimeout(resolve, 5));

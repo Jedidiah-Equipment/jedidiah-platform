@@ -110,6 +110,7 @@ it.each(['', 'application/x-zip-compressed'])(
     await mount('product');
     await select(new File(['%PDF'], 'general.pdf', { type: 'application/pdf' }));
     await chooseType('Drawing');
+    expect(document.body.textContent).toContain('Only ZIP documents');
     await submit();
     expect(document.body.textContent).toContain('Only ZIP documents');
     expect(request).not.toHaveBeenCalled();
@@ -122,3 +123,26 @@ it.each(['', 'application/x-zip-compressed'])(
     expect((options.body as FormData).get('type')).toBe('drawing');
   },
 );
+
+it('applies the selected Product document type before accepting a draft', async () => {
+  await mount('product');
+  await chooseType('Drawing');
+  await select(new File(['%PDF'], 'wrong.pdf', { type: 'application/pdf' }));
+  expect(document.body.textContent).toContain('Only ZIP documents');
+  expect(document.body.textContent).not.toContain('wrong.pdf');
+  await chooseType('General');
+  await select(new File(['zip'], 'wrong.zip', { type: 'application/zip' }));
+  expect(document.body.textContent).toContain('Only PDF documents');
+  await submit();
+  expect(request).not.toHaveBeenCalled();
+});
+
+it.each(['job', 'product'] as const)('discards a %s document after rejecting its replacement', async (ownerType) => {
+  await mount(ownerType);
+  await chooseType(ownerType === 'job' ? 'Purchase Order' : 'General');
+  await select(new File(['%PDF'], 'previous.pdf', { type: 'application/pdf' }));
+  await select(new File(['image'], 'replacement.png', { type: 'image/png' }));
+  expect(document.body.textContent).not.toContain('previous.pdf');
+  await submit();
+  expect(request).not.toHaveBeenCalled();
+});

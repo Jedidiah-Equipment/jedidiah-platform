@@ -1,4 +1,4 @@
-import { getDocumentPolicy, validateDocumentPolicy } from '@pkg/domain/equipment';
+import { validateDocumentPolicy } from '@pkg/domain/equipment';
 import type { UUID } from '@pkg/schema';
 import {
   type DocumentOwnerType,
@@ -11,8 +11,6 @@ import {
 
 import { getClientConfig } from '@/lib/app-config.js';
 import { saveBlobAsFile } from '@/utils/download.js';
-
-export const JOB_DOCUMENT_ACCEPT = getDocumentPolicy('job').allowedContentTypes.join(',');
 
 export type DocumentPreviewOwner = {
   id: UUID;

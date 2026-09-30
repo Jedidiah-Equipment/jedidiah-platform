@@ -185,7 +185,7 @@ export function AttachmentField({
             </p>
             <p className="mt-1 truncate text-[0.65rem] text-muted-foreground" title={contentType}>
               {file
-                ? `${contentType || describeFileContentTypes(policy.allowedContentTypes)} · ${formatBytes(file.size)}`
+                ? `${describeFileContentTypes(contentType ? [contentType] : policy.allowedContentTypes)} · ${formatBytes(file.size)}`
                 : 'Choose a file or drop it here'}
             </p>
           </div>

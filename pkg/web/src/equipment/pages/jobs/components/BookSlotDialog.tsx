@@ -1,4 +1,5 @@
 import { formatDate, hasPermission } from '@pkg/domain';
+import { getBayDisplayText } from '@pkg/domain/equipment';
 import { IconAlertTriangle, IconCalendarPlus, IconLoader2 } from '@tabler/icons-react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import type React from 'react';
@@ -11,7 +12,6 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '
 import { Field, FieldDescription, FieldGroup, FieldLabel } from '@/components/ui/field.js';
 import { Input } from '@/components/ui/input.js';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select.js';
-import { bayOperatorName } from '@/equipment/components/bays/bay-label.js';
 import { JobPicker, JobPickerTrigger, useJobPicker } from '@/equipment/components/job-picker/index.js';
 import { useBayCalendars } from '@/equipment/hooks/use-bay-calendars.js';
 import { useQueryInvalidation } from '@/equipment/hooks/use-query-invalidation.js';
@@ -59,6 +59,9 @@ export const BookSlotDialog: React.FC = () => {
   const [startDate, setStartDate] = useState('');
 
   const selectedBay = schedulableBays.find((bay) => bay.id === selectedBayId) ?? null;
+  const selectedDisplay = selectedBay
+    ? getBayDisplayText({ bayName: selectedBay.name, operatorName: selectedBay.currentOperator?.name ?? null })
+    : null;
   const selectedJob = jobs.find((job) => job.id === selectedJobId) ?? null;
   const filteredJobs = useMemo(() => filterBookSlotJobs(jobs, jobFilter), [jobFilter, jobs]);
   // The picker searches and orders whatever the schedule filter above it left standing: the two ask
@@ -184,11 +187,10 @@ export const BookSlotDialog: React.FC = () => {
                 >
                   <SelectTrigger id="book-slot-bay" className="w-full">
                     <SelectValue placeholder="Select bay">
-                      {selectedBay ? (
+                      {selectedDisplay && selectedBay ? (
                         <>
                           <span className="truncate">
-                            {selectedBay.name}
-                            {bayOperatorName(selectedBay) ? ` - ${bayOperatorName(selectedBay)}` : ''}
+                            {`${selectedDisplay.primaryText} - ${selectedDisplay.secondaryText}`}
                           </span>
                           <span className="shrink-0 text-muted-foreground">
                             {formatDate(selectedBay.nextAvailableDate, 'day')}
@@ -199,13 +201,18 @@ export const BookSlotDialog: React.FC = () => {
                   </SelectTrigger>
                   <SelectContent align="start">
                     <SelectGroup>
-                      {schedulableBays.map((bay) => (
-                        <SelectItem key={bay.id} value={bay.id}>
-                          {bay.name}
-                          {bayOperatorName(bay) ? ` - ${bayOperatorName(bay)}` : ''}
-                          <span className="text-muted-foreground">{formatDate(bay.nextAvailableDate, 'day')}</span>
-                        </SelectItem>
-                      ))}
+                      {schedulableBays.map((bay) => {
+                        const display = getBayDisplayText({
+                          bayName: bay.name,
+                          operatorName: bay.currentOperator?.name ?? null,
+                        });
+                        return (
+                          <SelectItem key={bay.id} value={bay.id}>
+                            {`${display.primaryText} - ${display.secondaryText}`}
+                            <span className="text-muted-foreground">{formatDate(bay.nextAvailableDate, 'day')}</span>
+                          </SelectItem>
+                        );
+                      })}
                     </SelectGroup>
                   </SelectContent>
                 </Select>

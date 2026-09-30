@@ -1,9 +1,10 @@
-import { statusBadgeColorClassNames } from '@pkg/domain';
+import { formatNumber, statusBadgeColorClassNames } from '@pkg/domain';
 import {
   BAY_RUNWAY_CAP_WORKING_DAYS,
   byBayDepartmentPipeline,
   computeBayRunway,
   departmentLabels,
+  getBayDisplayText,
   groupBaysByDepartmentPipeline,
   type WorkingCalendar,
 } from '@pkg/domain/equipment';
@@ -37,7 +38,7 @@ export const BAY_RUNWAY_BAR_CLASS_NAMES = {
 } as const;
 
 export const BAY_RUNWAY_AXIS_TICK_STYLE = {
-  fill: 'var(--foreground)',
+  color: 'var(--foreground)',
   fontSize: 14,
 } as const satisfies React.CSSProperties;
 
@@ -116,9 +117,11 @@ function BayRunwayAxisTick({ payload, x = 0, y = 0 }: { payload?: { value?: unkn
   const label = typeof value === 'string' || typeof value === 'number' ? String(value) : '';
 
   return (
-    <text x={x} y={y} dy="0.355em" textAnchor="end" style={BAY_RUNWAY_AXIS_TICK_STYLE}>
-      {label}
-    </text>
+    <foreignObject x={x - 108} y={y - 12} width={108} height={24}>
+      <div className="truncate text-right leading-6" style={BAY_RUNWAY_AXIS_TICK_STYLE} title={label}>
+        {label}
+      </div>
+    </foreignObject>
   );
 }
 
@@ -131,6 +134,12 @@ function BayRunwayChart({ chartData }: { chartData: ReturnType<typeof buildBayRu
     >
       <BarChart
         accessibilityLayer
+        aria-label={chartData
+          .map(
+            (row) =>
+              `${row.identityDescription}: ${formatNumber(row.inProgressWorkDays)} in progress days, ${formatNumber(row.scheduledWorkDays)} scheduled days${row.overflowLabel ? ', more work beyond the window' : ''}`,
+          )
+          .join('; ')}
         barCategoryGap="20%"
         data={chartData}
         layout="vertical"
@@ -147,7 +156,11 @@ function BayRunwayChart({ chartData }: { chartData: ReturnType<typeof buildBayRu
           type="category"
           width={112}
         />
-        <ChartTooltip content={<ChartTooltipContent />} />
+        <ChartTooltip
+          content={
+            <ChartTooltipContent labelFormatter={(_label, payload) => payload[0]?.payload.identityDescription} />
+          }
+        />
         <Bar
           background={BAY_RUNWAY_ROW_BACKGROUND}
           className={BAY_RUNWAY_BAR_CLASS_NAMES.inProgressWorkDays}
@@ -199,7 +212,9 @@ export function buildBayRunwayChartData({
       workingCalendar: workingCalendarsByBayId.get(bay.id) ?? {},
     });
 
+    const display = getBayDisplayText({ bayName: bay.name, operatorName: bay.currentOperator?.name ?? null });
     return {
+      identityDescription: `${display.primaryText} - ${display.secondaryText}`,
       department: bay.department,
       inProgressWorkDays: runway.inProgressWorkDays,
       label: runway.label,

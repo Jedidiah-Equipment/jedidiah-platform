@@ -7,8 +7,8 @@ import type {
   ProjectedJobSlot,
   ProjectedWorkJobSlot,
 } from '@pkg/schema/equipment';
-
 import { addDateOnlyDays, endOfDateOnlyWeek } from '../../formatting/date-only.js';
+import { getBayDisplayText } from './bay-display.js';
 import { JOB_DEPARTMENT_PIPELINE } from './job-department-pipeline.js';
 import { isWorkingDay, type WorkingCalendar } from './working-calendar.js';
 
@@ -202,7 +202,7 @@ export function computeBayRunway({
   return {
     bayId: bay.id,
     inProgressWorkDays,
-    label: bay.currentOperator?.name ?? bay.name,
+    label: getBayDisplayText({ bayName: bay.name, operatorName: bay.currentOperator?.name ?? null }).primaryText,
     overflow: bay.slots.some((slot) => slot.kind === 'work' && slot.state !== 'done' && slot.endDate > cursor),
     scheduledWorkDays,
   };
@@ -284,7 +284,7 @@ export type ScheduledJob = {
   bayId: UUID;
   bayName: string;
   jobId: UUID;
-  /** Who is on that Bay today, or null while it has no operator — the Bay name already carries it. */
+  /** Who is on that Bay today, or null while it has no Operator. Bay and Operator names are raw facts. */
   operatorName: string | null;
   /** Earliest first working day across the Job's Slots — the day work is due to begin. */
   startDate: DateOnlyIso;

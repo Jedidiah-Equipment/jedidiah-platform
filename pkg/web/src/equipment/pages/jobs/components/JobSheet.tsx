@@ -1,6 +1,7 @@
 import { cancelledBadgeColorClassNames, formatDate, getPlantDateNow } from '@pkg/domain';
 import {
   departmentLabels,
+  getBayDisplayText,
   getJobDisplayName,
   getJobOfferingKind,
   getJobWorkLabel,
@@ -565,6 +566,7 @@ const ScheduleTimelineItem: React.FC<{
   isNext: boolean;
   slot: JobScheduleSlot;
 }> = ({ bayName, department, isFirst, isLast, isNext, slot }) => {
+  const display = getBayDisplayText({ bayName, operatorName: slot.operator?.name ?? null });
   const tone = scheduleTimelineTone[slot.state === 'active' ? 'active' : isNext ? 'next' : slot.state];
   const breakdownNote = [
     slot.dayBreakdown.closureDays > 0 ? `${slot.dayBreakdown.closureDays}d closure` : null,
@@ -587,17 +589,29 @@ const ScheduleTimelineItem: React.FC<{
       <div className={cn('min-w-0 flex-1', isLast ? '' : 'pb-3')}>
         <Card className={cn('gap-0 py-0', tone.card)} size="sm">
           <div className="flex min-w-0 items-center gap-3 px-3 py-2">
-            <span className="min-w-0 flex-1 truncate">
-              <span className="font-medium">{departmentLabels[department]}</span>
-              <span className="text-muted-foreground"> · {bayName}</span>
-            </span>
+            {slot.operator ? (
+              <EntityThumbnail
+                className="shrink-0"
+                label={slot.operator.name}
+                size="sm"
+                thumbnailDataUrl={slot.operator.thumbnailDataUrl}
+              />
+            ) : null}
+            <div className="min-w-0 flex-1">
+              <p className="truncate font-medium" title={display.primaryText}>
+                {display.primaryText}
+              </p>
+              <p className="truncate text-muted-foreground text-xs" title={display.secondaryText}>
+                {display.secondaryText}
+              </p>
+              <p className="text-muted-foreground text-xs">{departmentLabels[department]}</p>
+            </div>
             <Badge className={cn('shrink-0', tone.badge)} variant="outline">
               {tone.label}
             </Badge>
           </div>
           <CardSeparator />
           <div className="flex min-w-0 items-center gap-3 px-3 py-2">
-            <OperatorValue operator={slot.operator} />
             <div className="flex min-w-0 flex-1 flex-col">
               <span className="truncate tabular-nums">
                 {formatDate(slot.firstWorkDay, 'short')} to {formatDate(slot.lastWorkDay, 'short')}
@@ -611,26 +625,6 @@ const ScheduleTimelineItem: React.FC<{
         </Card>
       </div>
     </div>
-  );
-};
-
-const OperatorValue: React.FC<{
-  operator: JobScheduleSlot['operator'];
-}> = ({ operator }) => {
-  if (!operator) {
-    return <span className="shrink-0 text-muted-foreground">No operator</span>;
-  }
-
-  return (
-    <span className="inline-flex min-w-0 max-w-40 shrink-0 items-center gap-2">
-      <EntityThumbnail
-        className="shrink-0"
-        label={operator.name}
-        size="sm"
-        thumbnailDataUrl={operator.thumbnailDataUrl}
-      />
-      <span className="min-w-0 truncate">{operator.name}</span>
-    </span>
   );
 };
 

@@ -1,5 +1,5 @@
 import { formatDate, jobStatusAccentColor, resolveJobStatusTone } from '@pkg/domain';
-import { isJobCancelled, type JobProgress, type JobRouteStopState } from '@pkg/domain/equipment';
+import { getBayDisplayText, isJobCancelled, type JobProgress, type JobRouteStopState } from '@pkg/domain/equipment';
 import type { ReactNode } from 'react';
 import { ScrollView, useWindowDimensions, View } from 'react-native';
 import { Avatar } from '@/components/Avatar';
@@ -244,7 +244,7 @@ function RouteStop({ isCancelled, stop }: { isCancelled: boolean; stop: JobRoute
       });
   const progressAppearance = STATUS_TONE[progressTone];
   const decor = isCancelled ? ROUTE_DECOR.done : ROUTE_DECOR[stop.state];
-  const operatorName = stop.operator?.name ?? 'No operator';
+  const display = getBayDisplayText({ bayName: stop.bayName, operatorName: stop.operator?.name ?? null });
 
   return (
     <View className="relative mb-3.5">
@@ -259,11 +259,20 @@ function RouteStop({ isCancelled, stop }: { isCancelled: boolean; stop: JobRoute
               uri={stop.operator?.thumbnailDataUrl}
             />
             <View className="min-w-0 flex-1">
-              <Text className="text-[15px] text-surface-foreground" numberOfLines={1} weight="bold">
-                {operatorName}
+              <Text
+                className="text-[15px] text-surface-foreground"
+                accessibilityLabel={display.primaryText}
+                numberOfLines={1}
+                weight="bold"
+              >
+                {display.primaryText}
               </Text>
-              <Text className="mt-0.5 text-xs text-muted-foreground" numberOfLines={1}>
-                {stop.bayName}
+              <Text
+                accessibilityLabel={display.secondaryText}
+                className="mt-0.5 text-xs text-muted-foreground"
+                numberOfLines={1}
+              >
+                {display.secondaryText}
               </Text>
             </View>
           </View>

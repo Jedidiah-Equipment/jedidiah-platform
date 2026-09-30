@@ -1,5 +1,11 @@
 import { formatDate } from '@pkg/domain';
-import { getJobDisplayName, getJobOfferingKind, listScheduledJobs, type ScheduledJob } from '@pkg/domain/equipment';
+import {
+  getBayDisplayText,
+  getJobDisplayName,
+  getJobOfferingKind,
+  listScheduledJobs,
+  type ScheduledJob,
+} from '@pkg/domain/equipment';
 import type { JobSummary } from '@pkg/schema/equipment';
 import type React from 'react';
 import { ScrollArea } from '@/components/ui/scroll-area.js';
@@ -69,8 +75,8 @@ export function ScheduledJobRow({
   job: JobSummary | null;
   scheduledJob: ScheduledJob;
 }) {
-  // An unmanned Bay has nobody to name, and the row still has to say where the work is sitting.
-  const where = scheduledJob.operatorName ?? scheduledJob.bayName;
+  const display = getBayDisplayText(scheduledJob);
+  const where = `${display.primaryText} - ${display.secondaryText}`;
   const jobDisplayName = job ? getJobDisplayName(job) : null;
   const subtitle = scheduledJobSubtitle(where, jobDisplayName);
 
@@ -95,11 +101,7 @@ export function ScheduledJobRow({
   );
 }
 
-/**
- * Where the work is and what it is, on one line. `where` is the operator when the Bay has one: the
- * Bay name already carries it ("Fabrication Bay 3 - Bonginkosi"), so naming both said the same thing
- * twice. An unmanned Bay falls back to the Bay name rather than leaving the row with no location.
- */
+/** The paired Bay identity followed by the Product or custom work title. */
 export function scheduledJobSubtitle(where: string | null, jobDisplayName: string | null): string | null {
   if (!jobDisplayName) return where;
   if (!where) return jobDisplayName;

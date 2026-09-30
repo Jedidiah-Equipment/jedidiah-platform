@@ -25,7 +25,7 @@ export const BayOperatorIndicator: React.FC<BayOperatorIndicatorProps> = ({
         <TooltipTrigger
           render={
             <span
-              aria-label="No Operator assigned"
+              aria-label="No operator"
               className={cn(
                 'flex shrink-0 items-center justify-center rounded-md border border-dashed text-muted-foreground',
                 emptyClassName,
@@ -37,7 +37,7 @@ export const BayOperatorIndicator: React.FC<BayOperatorIndicatorProps> = ({
         >
           <IconUserOff className={iconClassName} />
         </TooltipTrigger>
-        <TooltipContent>No Operator assigned</TooltipContent>
+        <TooltipContent>No operator</TooltipContent>
       </Tooltip>
     );
   }

@@ -1,5 +1,5 @@
 import { formatDate, hasPermission } from '@pkg/domain';
-import { departmentLabels, type WorkingCalendar } from '@pkg/domain/equipment';
+import { departmentLabels, getBayDisplayText, type WorkingCalendar } from '@pkg/domain/equipment';
 import type { DateOnlyIso, UUID } from '@pkg/schema';
 import type {
   JobSlotMoveDirection,
@@ -26,7 +26,6 @@ import { PageLayoutFullscreenToggle } from '@/components/page-layout/PageLayoutF
 import { Card, CardContent, CardHeader, CardSeparator } from '@/components/ui/card.js';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
-import { bayNameWithOperatorFirstName } from '@/equipment/components/bays/bay-label.js';
 import { BayOperatorIndicator } from '@/equipment/components/bays/index.js';
 import { useBayCalendars } from '@/equipment/hooks/use-bay-calendars.js';
 import { useQueryInvalidation } from '@/equipment/hooks/use-query-invalidation.js';
@@ -458,6 +457,10 @@ const BoardSidebar: React.FC<{
             </h3>
             <div>
               {group.bays.map((bay) => {
+                const display = getBayDisplayText({
+                  bayName: bay.name,
+                  operatorName: bay.currentOperator?.name ?? null,
+                });
                 const warning = horizonWarnings.get(bay.id);
                 const currentSlot = getCurrentBaySlot(bay.slots);
                 const statusText =
@@ -472,9 +475,15 @@ const BoardSidebar: React.FC<{
                     style={{ height: BAY_ROW_HEIGHT }}
                   >
                     <BayOperatorIndicator operator={bay.currentOperator} />
-                    <div className="flex min-w-40 flex-1 flex-col gap-1">
-                      <p className="truncate text-base text-foreground leading-tight">
-                        {bayNameWithOperatorFirstName(bay)}
+                    <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                      <p
+                        className="truncate text-base font-medium text-foreground leading-tight"
+                        title={display.primaryText}
+                      >
+                        {display.primaryText}
+                      </p>
+                      <p className="truncate text-muted-foreground text-xs leading-tight" title={display.secondaryText}>
+                        {display.secondaryText}
                       </p>
                       <p className="truncate font-mono text-muted-foreground text-xs leading-tight">{statusText}</p>
                     </div>

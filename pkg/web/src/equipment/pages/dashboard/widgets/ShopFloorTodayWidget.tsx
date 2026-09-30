@@ -2,6 +2,7 @@ import { statusBadgeColorClassNames } from '@pkg/domain';
 import {
   type BayTodayOccupancy,
   departmentLabels,
+  getBayDisplayText,
   getBayTodayOccupancy,
   getJobDisplayName,
   getJobOfferingKind,
@@ -119,6 +120,7 @@ export function ShopFloorBayRow({
   today: DateOnlyIso;
   workingCalendar: WorkingCalendar;
 }) {
+  const display = getBayDisplayText({ bayName: bay.name, operatorName: bay.currentOperator?.name ?? null });
   const occupancy = getBayTodayOccupancy({ bay, today, workingCalendar });
 
   return (
@@ -126,8 +128,12 @@ export function ShopFloorBayRow({
       <span className="flex min-w-0 items-center gap-2">
         <BayOperatorIndicator operator={bay.currentOperator} />
         <span className="min-w-0">
-          <span className="block truncate font-medium">{bay.currentOperator?.name ?? 'No Operator assigned'}</span>
-          <span className="block truncate text-xs text-muted-foreground">{bay.name}</span>
+          <span className="block truncate font-medium" title={display.primaryText}>
+            {display.primaryText}
+          </span>
+          <span className="block truncate text-xs text-muted-foreground" title={display.secondaryText}>
+            {display.secondaryText}
+          </span>
         </span>
       </span>
       <ShopFloorOccupancyCell jobsById={jobsById} occupancy={occupancy} offDays={offDays} today={today} />
@@ -170,7 +176,9 @@ function ShopFloorOccupancyCell({
             {occupancy.slot.jobCode}
           </Link>
           {jobDisplayName ? (
-            <span className="block truncate text-xs text-muted-foreground">{jobDisplayName}</span>
+            <span className="block truncate text-xs text-muted-foreground" title={jobDisplayName}>
+              {jobDisplayName}
+            </span>
           ) : null}
         </span>
       </span>

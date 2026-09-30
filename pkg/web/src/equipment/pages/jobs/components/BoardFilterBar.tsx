@@ -1,4 +1,4 @@
-import { departmentLabels, JOB_DEPARTMENT_PIPELINE } from '@pkg/domain/equipment';
+import { departmentLabels, getBayDisplayText, JOB_DEPARTMENT_PIPELINE } from '@pkg/domain/equipment';
 import type { UUID } from '@pkg/schema';
 import type { Bay, Department, JobPickerOption, JobSummary } from '@pkg/schema/equipment';
 import type React from 'react';
@@ -13,7 +13,6 @@ import {
   ComboboxItem,
   ComboboxList,
 } from '@/components/ui/combobox.js';
-import { bayOperatorName } from '@/equipment/components/bays/bay-label.js';
 import { JobPicker, JobPickerTrigger, useJobPicker } from '@/equipment/components/job-picker/index.js';
 import { type BoardFilter, emptyBoardFilter, hasActiveBoardFilter } from './board-filter.js';
 
@@ -69,8 +68,8 @@ export const BoardFilterBar: React.FC<BoardFilterBarProps> = ({
   const bayOptions = useMemo<FilterOption<UUID>[]>(
     () =>
       bays.map((bay) => {
-        const operator = bayOperatorName(bay);
-        return { id: bay.id, label: operator ? `${bay.name} - ${operator}` : bay.name };
+        const display = getBayDisplayText({ bayName: bay.name, operatorName: bay.currentOperator?.name ?? null });
+        return { id: bay.id, label: `${display.primaryText} - ${display.secondaryText}` };
       }),
     [bays],
   );

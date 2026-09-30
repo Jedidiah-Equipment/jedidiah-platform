@@ -100,12 +100,12 @@ const ProductEditTabs: React.FC<ProductEditTabsProps> = ({ onProductSave, onTabC
   return (
     <div className={cn('grid gap-4', showAside && 'xl:grid-cols-[minmax(0,1fr)_22rem]')}>
       <Tabs
-        className="w-full"
+        className="min-w-0 w-full"
         onValueChange={(value) => onTabChange(ProductEditTab.parse(value))}
         size="sm"
         value={activeTab}
       >
-        <TabsList variant="default">
+        <TabsList className="max-w-full justify-start overflow-x-auto" variant="default">
           <TabsTrigger value="details">Details</TabsTrigger>
           <ProductBaysTabTrigger productId={product.id} />
           <ProductAssembliesTabTrigger productId={product.id} />

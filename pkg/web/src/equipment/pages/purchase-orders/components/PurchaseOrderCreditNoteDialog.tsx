@@ -1,5 +1,4 @@
 import { formatDate, formatNumber } from '@pkg/domain';
-import { getDocumentPolicy } from '@pkg/domain/equipment';
 import type { UUID } from '@pkg/schema';
 import { type PurchaseOrderReturnRow, STOCK_RETURN_TO_SUPPLIER_REASON_LABELS } from '@pkg/schema/equipment';
 import { IconLoader2 } from '@tabler/icons-react';
@@ -19,12 +18,10 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog.js';
 import { Field, FieldLabel } from '@/components/ui/field.js';
-import { Input } from '@/components/ui/input.js';
+import { DocumentFileField } from '@/equipment/components/documents/DocumentFileField.js';
 import { useQueryInvalidation } from '@/equipment/hooks/use-query-invalidation.js';
-import { uploadCreditNote, validateSelectedFile } from '@/equipment/utils/document.js';
+import { uploadCreditNote } from '@/equipment/utils/document.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
-
-const CREDIT_NOTE_ACCEPT = getDocumentPolicy('purchase_order').allowedContentTypes.join(',');
 
 /**
  * Files a supplier credit and ticks the returns it answers.
@@ -45,6 +42,8 @@ export function PurchaseOrderCreditNoteDialog({
   const { invalidateInventory, invalidatePurchaseOrders } = useQueryInvalidation();
   const showMutationError = useApiMutationErrorToast();
   const [file, setFile] = useState<File | null>(null);
+  const [error, setError] = useState('');
+  const [returnsError, setReturnsError] = useState('');
   const [settledIds, setSettledIds] = useState<readonly UUID[]>([]);
   const mutation = useMutation({
     mutationFn: () => {
@@ -68,15 +67,16 @@ export function PurchaseOrderCreditNoteDialog({
           <DialogDescription>Attach the Supplier's credit note and tick the returns it settles.</DialogDescription>
         </DialogHeader>
         <div className="grid gap-4">
-          <Field>
-            <FieldLabel htmlFor="credit-note-file">Credit note PDF</FieldLabel>
-            <Input
-              accept={CREDIT_NOTE_ACCEPT}
-              id="credit-note-file"
-              onChange={(event) => setFile(validateSelectedFile(event.target.files?.[0] ?? null, 'purchase_order'))}
-              type="file"
-            />
-          </Field>
+          <DocumentFileField
+            error={error}
+            file={file}
+            id="credit-note-file"
+            label="Credit note PDF"
+            onChange={setFile}
+            onError={setError}
+            ownerType="purchase_order"
+            pending={mutation.isPending}
+          />
           <Field>
             <FieldLabel>Returns this credit note settles</FieldLabel>
             <div className="grid gap-2">
@@ -84,12 +84,15 @@ export function PurchaseOrderCreditNoteDialog({
                 <div className="flex items-start gap-2 text-sm" key={row.id}>
                   <Checkbox
                     checked={settledIds.includes(row.id)}
+                    disabled={mutation.isPending}
+                    aria-describedby={returnsError ? 'credit-note-returns-error' : undefined}
                     id={`credit-note-return-${row.id}`}
-                    onCheckedChange={(checked) =>
+                    onCheckedChange={(checked) => {
+                      setReturnsError('');
                       setSettledIds((current) =>
                         checked ? [...current, row.id] : current.filter((id) => id !== row.id),
-                      )
-                    }
+                      );
+                    }}
                   />
                   <label htmlFor={`credit-note-return-${row.id}`}>
                     <span className="font-medium">{row.partCode}</span> · {formatNumber(row.quantity)} ·{' '}
@@ -99,6 +102,11 @@ export function PurchaseOrderCreditNoteDialog({
                 </div>
               ))}
             </div>
+            {returnsError ? (
+              <p id="credit-note-returns-error" role="alert" className="text-sm text-destructive">
+                {returnsError}
+              </p>
+            ) : null}
           </Field>
         </div>
         <DialogFooter>
@@ -106,8 +114,13 @@ export function PurchaseOrderCreditNoteDialog({
             Cancel
           </DialogClose>
           <Button
-            disabled={mutation.isPending || !file || settledIds.length === 0}
-            onClick={() => void mutation.mutateAsync().catch(() => undefined)}
+            disabled={mutation.isPending}
+            onClick={() => {
+              if (mutation.isPending) return;
+              setError(file ? '' : 'Choose a credit note to upload.');
+              setReturnsError(settledIds.length ? '' : 'Choose at least one return this credit note settles.');
+              if (file && settledIds.length) mutation.mutate();
+            }}
             type="button"
           >
             {mutation.isPending ? <IconLoader2 className="animate-spin" data-icon="inline-start" /> : null}

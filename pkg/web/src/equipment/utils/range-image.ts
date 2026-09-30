@@ -12,8 +12,8 @@ import {
 
 export { IMAGE_ACCEPT };
 
-export function validateSelectedRangeImage(file: File | null): File | null {
-  return validateSelectedImage(file, RANGE_IMAGE_MAX_BYTES);
+export function validateSelectedRangeImage(file: File | null, onError?: (message: string) => void): File | null {
+  return validateSelectedImage(file, RANGE_IMAGE_MAX_BYTES, onError);
 }
 
 export async function uploadProductRangeImage(rangeId: UUID, file: File): Promise<ProductRange> {

@@ -95,7 +95,7 @@ it('allows a departure with a meter photo and no reason', async () => {
   await selectPhoto(photo);
   expect(document.querySelector('img')?.getAttribute('src')).toBe('blob:http://localhost/meter.jpg');
   await act(async () => button('Enlarge meter photo').click());
-  const enlarged = document.querySelector('img[alt="Enlarged hour meter"]');
+  const enlarged = document.querySelector('img[alt="Enlarged meter photo"]');
   expect(enlarged?.getAttribute('src')).toBe('blob:http://localhost/meter.jpg');
   expect(capture).not.toHaveBeenCalled();
   const closePreview = enlarged

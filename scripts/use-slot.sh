@@ -168,13 +168,32 @@ if [ -n "$previous" ] && [ "$previous" != "$PROJECT" ]; then
   echo "  this checkout was on ${previous}; that stack is left running"
 fi
 
-# Clear only this slot's web, API, Expo and lander listeners, whoever started them.
+# Stop listener groups so Turbo and tsx watch cannot restart the old checkout's servers.
+self_pgid=$(ps -o pgid= -p "$$" | tr -d ' ')
 for offset in 1 2 3 4; do
   port=$((BASE + offset))
   pids=$(lsof -nP -ti "tcp:${port}" -sTCP:LISTEN 2>/dev/null || true)
   if [ -n "$pids" ]; then
     echo "Stopping dev servers on ${port}..."
-    for pid in $pids; do kill -TERM "$pid"; done
+    pgids=$(for pid in $pids; do ps -o pgid= -p "$pid"; done | sort -un)
+    for pgid in $pgids; do
+      if [ "$pgid" = "$self_pgid" ]; then
+        echo "Port ${port} shares this command's process group; stop its dev server first." >&2
+        exit 1
+      fi
+      kill -TERM "-$pgid" 2>/dev/null || true
+      attempts=0
+      # Ignore zombies waiting for their parent to reap them.
+      while ps -axo pgid=,stat= | awk -v group="$pgid" \
+        '$1 == group && $2 !~ /^Z/ { found = 1 } END { exit found ? 0 : 1 }'; do
+        attempts=$((attempts + 1))
+        if [ "$attempts" -ge 5 ]; then
+          kill -KILL "-$pgid" 2>/dev/null || true
+          break
+        fi
+        sleep 1
+      done
+    done
     attempts=0
     while lsof -nP -ti "tcp:${port}" -sTCP:LISTEN >/dev/null 2>&1; do
       attempts=$((attempts + 1))

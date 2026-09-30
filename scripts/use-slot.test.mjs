@@ -147,9 +147,9 @@ test('bootstrap failures stop before later commands and never report readiness',
   }
 });
 
-test('stops a previous holder’s listener before rebuilding Docker', async (t) => {
+test('stops a previous holder’s listener and its supervisor before rebuilding Docker', async (t) => {
   const f = fixture(t);
-  const child = spawn(process.execPath, ['-e', `
+  const listenerCode = `
     const fs = require('node:fs');
     fs.writeFileSync(${JSON.stringify(join(f.root, 'listener'))}, String(process.pid));
     process.on('SIGTERM', () => {
@@ -158,13 +158,47 @@ test('stops a previous holder’s listener before rebuilding Docker', async (t) 
     });
     console.log('ready');
     setInterval(() => {}, 1000);
-  `]);
-  t.after(() => child.kill());
+  `;
+  const child = spawn(process.execPath, ['-e', `
+    const fs = require('node:fs');
+    fs.writeFileSync(${JSON.stringify(join(f.root, 'supervisor'))}, String(process.pid));
+    process.on('SIGTERM', () => {
+      fs.unlinkSync(${JSON.stringify(join(f.root, 'supervisor'))});
+      process.exit(0);
+    });
+    require('node:child_process').spawn(process.execPath, ['-e', ${JSON.stringify(listenerCode)}], { stdio: 'inherit' });
+    setInterval(() => {}, 1000);
+  `], { detached: true });
+  t.after(() => {
+    try { process.kill(-child.pid, 'SIGKILL'); } catch (error) {
+      if (error.code !== 'ESRCH') throw error;
+    }
+  });
   await once(child.stdout, 'data');
   const exited = once(child, 'exit');
   const result = f.run('2');
   assert.equal(result.status, 0, result.stderr);
   assert.match(result.stdout, /Stopping dev servers on 7202/);
   assert.equal(existsSync(join(f.root, 'listener')), false);
+  assert.equal(existsSync(join(f.root, 'supervisor')), false, 'the supervisor must not survive to restart the old API');
   await exited;
+});
+
+test('refuses to kill its own process group before changing Docker or env files', async (t) => {
+  const f = fixture(t);
+  f.write('.env.dev', 'KEEP=custom\n');
+  const child = spawn(process.execPath, ['-e', `
+    require('node:fs').writeFileSync(${JSON.stringify(join(f.root, 'listener'))}, String(process.pid));
+    console.log('ready');
+    setInterval(() => {}, 1000);
+  `]);
+  t.after(() => child.kill('SIGKILL'));
+  await once(child.stdout, 'data');
+  const result = f.run('2');
+  assert.equal(result.status, 1, result.stderr);
+  assert.match(result.stderr, /shares this command's process group/);
+  assert.equal(f.read('.env.dev'), 'KEEP=custom\n');
+  assert.equal(existsSync(join(f.root, 'listener')), true);
+  assert.equal(f.calls().some((call) => call.tool === 'docker' && call.args[0] === 'compose'), false);
+  assert.equal(f.calls().some((call) => call.tool === 'pnpm'), false);
 });

@@ -84,6 +84,7 @@ export function PartImportBatchList({ onSelect }: { onSelect: (batchId: string) 
       errorMessage={getApiQueryErrorMessage(batchesQuery.error, 'Unable to load recent imports.')}
       getRowAriaLabel={(batch) => `Open ${partImportBatchName(batch)}`}
       hideGlobalFilter
+      maxHeightClassName="max-h-80"
       isLoading={batchesQuery.isPending}
       loadMore={{
         hasNextPage: batchesQuery.hasNextPage,
@@ -193,6 +194,7 @@ export function PartImportBatchView({
         emptyMessage="No Parts were added or updated by this import."
         errorMessage={errorMessage}
         hideGlobalFilter
+        maxHeightClassName="max-h-80"
         isLoading={isLoading}
         paginationMode="incremental"
         table={table}
@@ -230,9 +232,11 @@ function emptySelectionMessage(detail: PartImportBatchDetail, includeUpdated: bo
   );
   if (selected) return 'Nothing to print: the Parts in this selection are no longer in the catalog.';
 
-  return includeUpdated
-    ? 'Nothing to print: this import added and updated no Parts.'
-    : 'Nothing to print: this import added no new Parts. Tick Include updated Parts to label the ones it changed.';
+  if (includeUpdated) return 'Nothing to print: this import added and updated no Parts.';
+
+  return detail.members.some((member) => member.outcome === 'updated')
+    ? 'Nothing to print: this import added no new Parts. Tick Include updated Parts to label the ones it changed.'
+    : 'Nothing to print: this import added no new Parts.';
 }
 
 export function printableLabelCount(detail: PartImportBatchDetail, includeUpdated: boolean): number {

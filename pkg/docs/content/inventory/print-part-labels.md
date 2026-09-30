@@ -44,6 +44,8 @@ higher.
    - **By Part Category**
    - **By storage location**
    - **Choose Parts** — pick them individually
+   - **Recent imports** — the Parts one Bulk Parts Import added; see
+     [Parts from a recent import](#parts-from-a-recent-import)
 4. Fill in the category or storage location if the mode asks for one. **Open printable PDF** stays
    disabled until the selection is complete.
 5. Click **Open printable PDF** and print the sheet from the tab that opens.

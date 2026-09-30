@@ -6,6 +6,7 @@ import { useCallback, useMemo, useState } from 'react';
 
 import { SearchableCombobox } from '@/components/common/SearchableCombobox.js';
 import { FilePreviewSheet } from '@/components/file-preview/FilePreviewSheet.js';
+import { HelpLink } from '@/components/help/index.js';
 import { Button, type ButtonSize } from '@/components/ui/button.js';
 import {
   Combobox,
@@ -132,7 +133,10 @@ export function PartLabelBatchPrintDialog({
       <Dialog onOpenChange={onOpenChange} open={open}>
         <DialogContent className={mode === 'importBatch' ? 'sm:max-w-3xl' : 'sm:max-w-[560px]'}>
           <DialogHeader>
-            <DialogTitle>Print Part labels</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              Print Part labels
+              <HelpLink label="How to print Part labels" topic="partLabels" />
+            </DialogTitle>
             <DialogDescription>Generate one 40 × 30 mm label per selected Part.</DialogDescription>
           </DialogHeader>
           <div className="grid min-w-0 gap-4">

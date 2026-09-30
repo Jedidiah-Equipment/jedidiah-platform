@@ -14,29 +14,31 @@ import {
   JobUploadDocumentType,
   type JobVisibleDocument,
 } from '@pkg/schema/equipment';
-import { IconActivity, IconInfoCircle } from '@tabler/icons-react';
+import { IconActivity, IconInfoCircle, IconLoader2, IconUpload } from '@tabler/icons-react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import type React from 'react';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { AutosaveStatus, useAutosaveForm } from '@/components/form/index.js';
 import { EntityThumbnail } from '@/components/thumbnail/EntityThumbnail.js';
 import { Badge } from '@/components/ui/badge.js';
+import { Button } from '@/components/ui/button.js';
 import { Card, CardAction, CardContent, CardHeader, CardSeparator, CardTitle } from '@/components/ui/card.js';
+import { Input } from '@/components/ui/input.js';
 import { ScrollArea } from '@/components/ui/scroll-area.js';
+import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select.js';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs.js';
 import { StockBadge } from '@/equipment/components/common/StockBadge.js';
 import { DocumentCardList } from '@/equipment/components/documents/DocumentCardList.js';
-import { DocumentUploadForm } from '@/equipment/components/documents/DocumentUploadForm.js';
 import { GiveFeedbackButton } from '@/equipment/components/feedback/GiveFeedbackButton.js';
 import { OfferingThumbnail } from '@/equipment/components/thumbnail/OfferingThumbnail.js';
 import { useQueryInvalidation } from '@/equipment/hooks/use-query-invalidation.js';
 import { JobVarianceTab } from '@/equipment/pages/inventory/job-variance/components/JobVarianceTab.js';
-import { uploadJobPurchaseOrder } from '@/equipment/utils/document.js';
+import { JOB_DOCUMENT_ACCEPT, uploadJobPurchaseOrder, validateSelectedFile } from '@/equipment/utils/document.js';
 import { useCan } from '@/hooks/use-access.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useTRPC } from '@/lib/trpc.js';
@@ -360,6 +362,7 @@ const JobDocumentsTab: React.FC<{
   const canEditJobs = useCan('equipment_job:update').can && !readOnly;
   const { invalidateJobActivity, invalidateJobs } = useQueryInvalidation();
   const showMutationError = useApiMutationErrorToast();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [selectedType, setSelectedType] = useState<JobUploadDocumentType | null>(null);
   const uploadMutation = useMutation({
@@ -367,6 +370,9 @@ const JobDocumentsTab: React.FC<{
     onSuccess: async () => {
       setSelectedFile(null);
       setSelectedType(null);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
       await Promise.all([invalidateJobs(), invalidateJobActivity()]);
       toast.success('Purchase Order uploaded');
     },
@@ -399,20 +405,18 @@ const JobDocumentsTab: React.FC<{
       owner={{ id: jobId, type: 'job' }}
       rightSection={
         canEditJobs ? (
-          <DocumentUploadForm
-            ownerType="job"
-            label="Purchase Order PDF"
-            typeOptions={JOB_UPLOAD_DOCUMENT_TYPE_OPTIONS}
+          <JobPurchaseOrderUpload
+            fileInputRef={fileInputRef}
             isPending={uploadMutation.isPending}
             selectedFile={selectedFile}
             selectedType={selectedType}
             onFileChange={setSelectedFile}
             onSubmit={() => {
               if (selectedFile && selectedType) {
-                uploadMutation.mutate(selectedFile);
+                void uploadMutation.mutateAsync(selectedFile);
               }
             }}
-            onTypeChange={(value) => setSelectedType(value ? JobUploadDocumentType.parse(value) : null)}
+            onTypeChange={setSelectedType}
           />
         ) : undefined
       }
@@ -420,6 +424,70 @@ const JobDocumentsTab: React.FC<{
     />
   );
 };
+
+const JobPurchaseOrderUpload: React.FC<{
+  fileInputRef: React.RefObject<HTMLInputElement | null>;
+  isPending: boolean;
+  onFileChange: (file: File | null) => void;
+  onSubmit: () => void;
+  onTypeChange: (type: JobUploadDocumentType | null) => void;
+  selectedFile: File | null;
+  selectedType: JobUploadDocumentType | null;
+}> = ({ fileInputRef, isPending, onFileChange, onSubmit, onTypeChange, selectedFile, selectedType }) => (
+  <form
+    className="flex flex-col gap-2 sm:flex-row sm:items-center"
+    onSubmit={(event) => {
+      event.preventDefault();
+      onSubmit();
+    }}
+  >
+    <Input
+      ref={fileInputRef}
+      accept={JOB_DOCUMENT_ACCEPT}
+      aria-label="Purchase Order PDF"
+      className="max-w-52"
+      disabled={isPending}
+      type="file"
+      onChange={(event) => {
+        const file = validateSelectedFile(event.currentTarget.files?.[0] ?? null, 'job');
+        onFileChange(file);
+        if (event.currentTarget.files?.[0] && !file) {
+          event.currentTarget.value = '';
+        }
+      }}
+    />
+    {/* Purchase Order is the only type a Job upload can carry today, but the picker still has to be
+        answered: naming the type is what stops a file going up as one by accident. */}
+    <Select
+      disabled={isPending}
+      onValueChange={(value) => onTypeChange(value ? JobUploadDocumentType.parse(value) : null)}
+      value={selectedType ?? ''}
+    >
+      <SelectTrigger aria-label="Document type" className="sm:w-40">
+        <SelectValue placeholder="Select type">
+          {selectedType ? JOB_DOCUMENT_TYPE_LABELS[selectedType] : null}
+        </SelectValue>
+      </SelectTrigger>
+      <SelectContent>
+        <SelectGroup>
+          {JOB_UPLOAD_DOCUMENT_TYPE_OPTIONS.map((option) => (
+            <SelectItem key={option.value} value={option.value}>
+              {option.label}
+            </SelectItem>
+          ))}
+        </SelectGroup>
+      </SelectContent>
+    </Select>
+    <Button disabled={!selectedFile || !selectedType || isPending} type="submit">
+      {isPending ? (
+        <IconLoader2 className="animate-spin" data-icon="inline-start" />
+      ) : (
+        <IconUpload data-icon="inline-start" />
+      )}
+      Upload
+    </Button>
+  </form>
+);
 
 type JobScheduleSlot = JobDetail['schedule'][number]['bays'][number]['slots'][number];
 

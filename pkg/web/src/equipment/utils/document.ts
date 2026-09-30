@@ -1,4 +1,5 @@
-import { validateDocumentPolicy } from '@pkg/domain/equipment';
+import { formatBytes } from '@pkg/domain';
+import { getDocumentPolicy, validateDocumentPolicy } from '@pkg/domain/equipment';
 import type { UUID } from '@pkg/schema';
 import {
   type DocumentOwnerType,
@@ -8,9 +9,22 @@ import {
   type ProductDocumentType,
   PurchaseOrderDocumentRow,
 } from '@pkg/schema/equipment';
-
+import { toast } from 'sonner';
 import { getClientConfig } from '@/lib/app-config.js';
 import { saveBlobAsFile } from '@/utils/download.js';
+
+export const PRODUCT_DOCUMENT_ACCEPT = [...getDocumentPolicy('product').allowedContentTypes, '.zip'].join(',');
+export const JOB_DOCUMENT_ACCEPT = getDocumentPolicy('job').allowedContentTypes.join(',');
+
+export function validateSelectedFile(file: File | null, ownerType: DocumentOwnerType = 'product'): File | null {
+  if (!file) return null;
+  const policy = getDocumentPolicy(ownerType);
+  if (file.size > policy.maxBytes) {
+    toast.error(`Document must be ${formatBytes(policy.maxBytes)} or smaller.`);
+    return null;
+  }
+  return file;
+}
 
 export type DocumentPreviewOwner = {
   id: UUID;

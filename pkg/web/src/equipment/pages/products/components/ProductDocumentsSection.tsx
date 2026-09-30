@@ -1,21 +1,16 @@
 import { hasPermission } from '@pkg/domain';
 import { JOB_DOCUMENT_TYPE_LABELS } from '@pkg/domain/equipment';
 import { type Product, type ProductDocument, ProductDocumentType } from '@pkg/schema/equipment';
-import { IconLoader2, IconUpload } from '@tabler/icons-react';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { type RefObject, useMemo, useRef, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
-import { Button } from '@/components/ui/button.js';
-import { Input } from '@/components/ui/input.js';
-import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select.js';
 import { DocumentCardList } from '@/equipment/components/documents/DocumentCardList.js';
+import { DocumentUploadForm } from '@/equipment/components/documents/DocumentUploadForm.js';
 import { useQueryInvalidation } from '@/equipment/hooks/use-query-invalidation.js';
 import {
   getReadyProductDocumentUpload,
-  PRODUCT_DOCUMENT_ACCEPT,
   type ReadyProductDocumentUpload,
   uploadProductDocument,
-  validateSelectedFile,
 } from '@/equipment/utils/document.js';
 import { useAccess } from '@/hooks/use-access.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
@@ -42,8 +37,6 @@ export function ProductDocumentsSection({ product }: ProductDocumentsSectionProp
   const accessQuery = useAccess();
   const canDeleteDocuments = hasPermission(accessQuery.data, 'equipment_product:update');
 
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [selectedType, setSelectedType] = useState<ProductDocumentType | null>(null);
 
@@ -54,9 +47,6 @@ export function ProductDocumentsSection({ product }: ProductDocumentsSectionProp
     onSuccess: async () => {
       setSelectedFile(null);
       setSelectedType(null);
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
       await Promise.all([invalidateDocuments(), invalidateQuotes()]);
       toast.success('Document uploaded');
     },
@@ -96,96 +86,26 @@ export function ProductDocumentsSection({ product }: ProductDocumentsSectionProp
         metadata={productDocumentMetadata}
         owner={{ id: productId, type: 'product' }}
         rightSection={
-          <DocumentUploadForm
-            fileInputRef={fileInputRef}
-            isPending={uploadMutation.isPending}
-            onFileChange={setSelectedFile}
-            onSubmit={() => {
-              const upload = getReadyProductDocumentUpload({ file: selectedFile, type: selectedType });
-              if (!upload) return;
-              void uploadMutation.mutateAsync(upload);
-            }}
-            onTypeChange={setSelectedType}
-            selectedFile={selectedFile}
-            selectedType={selectedType}
-          />
+          canDeleteDocuments ? (
+            <DocumentUploadForm
+              ownerType="product"
+              label="Product document"
+              typeOptions={PRODUCT_DOCUMENT_TYPE_OPTIONS}
+              isPending={uploadMutation.isPending}
+              onFileChange={setSelectedFile}
+              onSubmit={() => {
+                const upload = getReadyProductDocumentUpload({ file: selectedFile, type: selectedType });
+                if (!upload) return;
+                uploadMutation.mutate(upload);
+              }}
+              onTypeChange={(value) => setSelectedType(value ? ProductDocumentType.parse(value) : null)}
+              selectedFile={selectedFile}
+              selectedType={selectedType}
+            />
+          ) : undefined
         }
         onDelete={(document) => deleteMutation.mutateAsync({ documentId: document.id, productId })}
       />
     </div>
-  );
-}
-
-type DocumentUploadFormProps = {
-  fileInputRef: RefObject<HTMLInputElement | null>;
-  isPending: boolean;
-  selectedFile: File | null;
-  selectedType: ProductDocumentType | null;
-  onFileChange: (file: File | null) => void;
-  onTypeChange: (type: ProductDocumentType | null) => void;
-  onSubmit: () => void;
-};
-
-function DocumentUploadForm({
-  fileInputRef,
-  isPending,
-  onFileChange,
-  onSubmit,
-  onTypeChange,
-  selectedFile,
-  selectedType,
-}: DocumentUploadFormProps) {
-  const canUpload = getReadyProductDocumentUpload({ file: selectedFile, type: selectedType }) !== null;
-  const selectedTypeOption = PRODUCT_DOCUMENT_TYPE_OPTIONS.find((option) => option.value === selectedType);
-
-  return (
-    <form
-      className="flex flex-col gap-2 sm:flex-row sm:items-center"
-      onSubmit={(event) => {
-        event.preventDefault();
-        onSubmit();
-      }}
-    >
-      <Input
-        ref={fileInputRef}
-        accept={PRODUCT_DOCUMENT_ACCEPT}
-        className="max-w-72"
-        disabled={isPending}
-        type="file"
-        onChange={(event) => {
-          const file = validateSelectedFile(event.currentTarget.files?.[0] ?? null);
-          onFileChange(file);
-          if (event.currentTarget.files?.[0] && !file) {
-            event.currentTarget.value = '';
-          }
-        }}
-      />
-      <Select
-        disabled={isPending}
-        onValueChange={(value) => onTypeChange(value ? ProductDocumentType.parse(value) : null)}
-        value={selectedType ?? ''}
-      >
-        <SelectTrigger aria-label="Document type" className="sm:w-40">
-          <SelectValue placeholder="Select type">{selectedTypeOption?.label ?? null}</SelectValue>
-        </SelectTrigger>
-        <SelectContent>
-          <SelectGroup>
-            {PRODUCT_DOCUMENT_TYPE_OPTIONS.map((option) => (
-              <SelectItem key={option.value} value={option.value}>
-                {option.label}
-              </SelectItem>
-            ))}
-          </SelectGroup>
-        </SelectContent>
-      </Select>
-      <Button disabled={!canUpload || isPending} type="submit">
-        {isPending ? (
-          <IconLoader2 data-icon="inline-start" className="animate-spin" />
-        ) : (
-          <IconUpload data-icon="inline-start" />
-        )}
-        Upload
-      </Button>
-    </form>
   );
 }

@@ -18,7 +18,7 @@ const BASE_PROPS: ImageUploadControlProps = {
 };
 
 describe('ImageUploadControl', () => {
-  it('uses the thumbnail itself as the upload button', () => {
+  it('provides a labelled upload action beside the thumbnail', () => {
     const html = renderToStaticMarkup(<ImageUploadControl {...BASE_PROPS} />);
 
     expect(html).toContain('aria-label="Upload thumbnail"');
@@ -30,12 +30,12 @@ describe('ImageUploadControl', () => {
     const html = renderToStaticMarkup(<ImageUploadControl {...BASE_PROPS} trigger="button" />);
 
     expect(html).toContain('data-slot="avatar"');
-    expect(html).toContain('gap-3');
+    expect(html).toContain('gap-2');
     expect(html).toContain('flex-wrap');
     expect(html).toContain('>Upload thumbnail<');
   });
 
-  it('uses the image as the replace button while preserving the remove action', () => {
+  it('provides a labelled replace action while preserving the remove action', () => {
     const html = renderToStaticMarkup(<ImageUploadControl {...BASE_PROPS} value="data:image/png;base64,YQ==" />);
 
     expect(html).toContain('aria-label="Replace thumbnail"');

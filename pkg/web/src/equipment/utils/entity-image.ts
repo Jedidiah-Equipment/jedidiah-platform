@@ -16,16 +16,20 @@ export const IMAGE_ACCEPT = IMAGE_CONTENT_TYPES.join(',');
 // Client-side guard mirroring the server policy so an obviously wrong file is rejected before upload.
 // The server re-validates by sniffing the bytes, so this is UX only. Returns the file when acceptable,
 // otherwise toasts the reason and returns null.
-export function validateSelectedImage(file: File | null, maxBytes: number): File | null {
+export function validateSelectedImage(
+  file: File | null,
+  maxBytes: number,
+  onError: (message: string) => void = toast.error,
+): File | null {
   if (!file) return null;
 
   if (!ALLOWED_CONTENT_TYPES.has(file.type)) {
-    toast.error(fileContentTypeRejectedMessage(IMAGE_CONTENT_TYPES));
+    onError(fileContentTypeRejectedMessage(IMAGE_CONTENT_TYPES));
     return null;
   }
 
   if (file.size > maxBytes) {
-    toast.error(fileTooLargeMessage(maxBytes));
+    onError(fileTooLargeMessage(maxBytes));
     return null;
   }
 

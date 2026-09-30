@@ -1,7 +1,6 @@
-import { IconPencil, IconPhoto, IconTrash, IconUpload } from '@tabler/icons-react';
+import { IconLoader2, IconRefresh, IconTrash, IconUpload } from '@tabler/icons-react';
 import type * as React from 'react';
-import { useRef, useState } from 'react';
-import { toast } from 'sonner';
+import { useEffect, useRef, useState } from 'react';
 import { EntityThumbnail } from '@/components/thumbnail/EntityThumbnail.js';
 import { Button } from '@/components/ui/button.js';
 import { Input } from '@/components/ui/input.js';
@@ -18,7 +17,7 @@ export type ImageUploadControlProps = {
   removeLabel: string;
   replaceLabel: string;
   // Turns the picked file into the data URL stored on the field (resize, re-encode, validate, etc.).
-  // Throw an `Error` to surface its message to the user as a toast.
+  // Throw an `Error` to surface its message beside the field.
   transform: (file: File) => Promise<string>;
   trigger?: 'button' | 'thumbnail';
   uploadLabel: string;
@@ -46,30 +45,46 @@ export function ImageUploadControl({
 }: ImageUploadControlProps) {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [error, setError] = useState('');
+  const processing = useRef(false);
+  const mounted = useRef(true);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
 
   async function handleFileChange(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     event.target.value = '';
 
-    if (!file) {
+    if (!file || disabled || processing.current) {
       return;
     }
 
+    processing.current = true;
+    setError('');
     setIsProcessing(true);
     try {
-      onChange(await transform(file));
+      const dataUrl = await transform(file);
+      if (mounted.current) onChange(dataUrl);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : errorFallbackMessage);
+      if (mounted.current) setError(error instanceof Error ? error.message : errorFallbackMessage);
     } finally {
-      setIsProcessing(false);
+      processing.current = false;
+      if (mounted.current) setIsProcessing(false);
     }
   }
 
   const fileInput = (
     <Input
       accept={accept}
-      aria-invalid={isInvalid}
+      aria-invalid={isInvalid || !!error}
+      aria-describedby={error ? `${inputId}-processing-error` : undefined}
       className="sr-only"
+      tabIndex={-1}
+      aria-label={value ? replaceLabel : uploadLabel}
       disabled={disabled || isProcessing}
       id={inputId}
       onBlur={onBlur}
@@ -80,8 +95,12 @@ export function ImageUploadControl({
   );
   const removeButton = value ? (
     <Button
+      title={removeLabel}
       disabled={disabled || isProcessing}
-      onClick={() => onChange(null)}
+      onClick={() => {
+        setError('');
+        onChange(null);
+      }}
       size="icon-sm"
       type="button"
       variant="outline"
@@ -91,50 +110,43 @@ export function ImageUploadControl({
     </Button>
   ) : null;
 
-  if (trigger === 'button') {
-    return (
-      <div className="flex items-center gap-3">
-        <EntityThumbnail label={fallbackLabel} size="lg" thumbnailDataUrl={value} />
-        <div className="flex min-w-0 flex-wrap items-center gap-2">
-          {fileInput}
-          <Button
-            disabled={disabled || isProcessing}
-            onClick={() => inputRef.current?.click()}
-            size="sm"
-            type="button"
-            variant="outline"
-          >
-            {value ? <IconPhoto data-icon="inline-start" /> : <IconUpload data-icon="inline-start" />}
-            {value ? replaceLabel : uploadLabel}
-          </Button>
-          {removeButton}
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="flex items-center gap-2">
-      {fileInput}
-      <Button
-        aria-invalid={isInvalid}
-        aria-label={value ? replaceLabel : uploadLabel}
-        className="group relative size-10 overflow-hidden rounded-md p-0"
-        disabled={disabled || isProcessing}
-        onClick={() => inputRef.current?.click()}
-        size="icon-lg"
-        type="button"
-        variant="ghost"
-      >
-        <EntityThumbnail label={fallbackLabel} preview={false} size="lg" thumbnailDataUrl={value} />
-        <span
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center rounded-md bg-black/45 text-white opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100"
+    <div className="min-w-0 space-y-2" aria-busy={isProcessing}>
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="relative size-10 shrink-0">
+          <EntityThumbnail label={fallbackLabel} size="lg" thumbnailDataUrl={value} />
+          {isProcessing ? (
+            <span
+              role="status"
+              aria-label="Processing image"
+              className="absolute inset-0 flex items-center justify-center rounded-md bg-background/80"
+            >
+              <IconLoader2 className="size-4 animate-spin" />
+            </span>
+          ) : null}
+        </div>
+        {fileInput}
+        <Button
+          aria-label={value ? replaceLabel : uploadLabel}
+          aria-invalid={isInvalid || !!error}
+          aria-describedby={error ? `${inputId}-processing-error` : undefined}
+          title={value ? replaceLabel : uploadLabel}
+          disabled={disabled || isProcessing}
+          onClick={() => inputRef.current?.click()}
+          size={trigger === 'thumbnail' ? 'icon-sm' : 'sm'}
+          type="button"
+          variant="outline"
         >
-          <IconPencil />
-        </span>
-      </Button>
-      {removeButton}
+          {value ? <IconRefresh /> : <IconUpload />}
+          {trigger === 'button' ? (value ? replaceLabel : uploadLabel) : null}
+        </Button>
+        {removeButton}
+      </div>
+      {error ? (
+        <p id={`${inputId}-processing-error`} role="alert" className="text-sm text-destructive">
+          {error}
+        </p>
+      ) : null}
     </div>
   );
 }

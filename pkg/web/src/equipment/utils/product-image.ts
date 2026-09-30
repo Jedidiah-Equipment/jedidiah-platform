@@ -12,8 +12,8 @@ import {
 
 export { IMAGE_ACCEPT };
 
-export function validateSelectedProductImage(file: File | null): File | null {
-  return validateSelectedImage(file, PRODUCT_IMAGE_MAX_BYTES);
+export function validateSelectedProductImage(file: File | null, onError?: (message: string) => void): File | null {
+  return validateSelectedImage(file, PRODUCT_IMAGE_MAX_BYTES, onError);
 }
 
 export async function uploadProductImage(productId: UUID, slot: ProductImageSlot, file: File): Promise<Product> {

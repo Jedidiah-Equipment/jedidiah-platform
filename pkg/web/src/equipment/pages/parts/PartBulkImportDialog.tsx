@@ -1,4 +1,4 @@
-import { formatNumber } from '@pkg/domain';
+import { fileContentTypeRejectedMessage, formatNumber } from '@pkg/domain';
 import {
   PART_IMPORT_FILE_NAME_MAX_LENGTH,
   PART_UNIT_OF_MEASURE_LABELS,
@@ -9,8 +9,9 @@ import {
 import { IconLoader2, IconPrinter, IconUpload } from '@tabler/icons-react';
 import { useMutation } from '@tanstack/react-query';
 import type React from 'react';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { toast } from 'sonner';
+import { AttachmentField } from '@/components/attachments/AttachmentField.js';
 import { DataTable } from '@/components/data-table/DataTable.js';
 import { type DataTableColumnDef, useDataTable } from '@/components/data-table/features.js';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert.js';
@@ -26,7 +27,6 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog.js';
 import { Field, FieldContent, FieldDescription, FieldLabel } from '@/components/ui/field.js';
-import { Input } from '@/components/ui/input.js';
 import { ScrollArea } from '@/components/ui/scroll-area.js';
 import { useQueryInvalidation } from '@/equipment/hooks/use-query-invalidation.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
@@ -48,7 +48,9 @@ export const PartBulkImportDialog: React.FC<PartBulkImportDialogProps> = ({ supp
   const [hasHeader, setHasHeader] = useState(true);
 
   const [file, setFile] = useState<File | null>(null);
-  const [fileInputKey, setFileInputKey] = useState(0);
+  const [error, setError] = useState('');
+  const [isParsing, setIsParsing] = useState(false);
+  const parseVersion = useRef(0);
 
   const [result, setResult] = useState<PartBulkImportResult | null>(null);
   // The batch the label dialog opens onto; it stays set while that dialog closes.
@@ -73,7 +75,9 @@ export const PartBulkImportDialog: React.FC<PartBulkImportDialogProps> = ({ supp
 
   const resetForm = () => {
     setFile(null);
-    setFileInputKey((key) => key + 1);
+    parseVersion.current += 1;
+    setIsParsing(false);
+    setError('');
     setHasHeader(true);
     setParseResult({ errors: [], rows: [] });
     setResult(null);
@@ -81,9 +85,19 @@ export const PartBulkImportDialog: React.FC<PartBulkImportDialogProps> = ({ supp
   };
 
   const parseFile = async (nextFile: File, nextHasHeader: boolean) => {
-    const text = await nextFile.text();
-    setParseResult(parsePartBulkImportCsv(text, { hasHeader: nextHasHeader }));
+    const version = ++parseVersion.current;
+    setIsParsing(true);
+    setError('');
+    setParseResult({ errors: [], rows: [] });
     setResult(null);
+    try {
+      const text = await nextFile.text();
+      if (version === parseVersion.current) setParseResult(parsePartBulkImportCsv(text, { hasHeader: nextHasHeader }));
+    } catch {
+      if (version === parseVersion.current) setError('Unable to read this CSV file.');
+    } finally {
+      if (version === parseVersion.current) setIsParsing(false);
+    }
   };
 
   const handleOpenChange = (nextOpen: boolean) => {
@@ -95,17 +109,18 @@ export const PartBulkImportDialog: React.FC<PartBulkImportDialogProps> = ({ supp
     setIsOpen(true);
   };
 
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const nextFile = event.target.files?.[0] ?? null;
-    setFile(nextFile);
-
-    if (!nextFile) {
-      setParseResult({ errors: [], rows: [] });
-      setResult(null);
+  const handleFileChange = (nextFile: File | null) => {
+    if (importMutation.isPending || isParsing) return;
+    if (nextFile && nextFile.type !== 'text/csv' && !nextFile.name.toLowerCase().endsWith('.csv')) {
+      setError(fileContentTypeRejectedMessage(['text/csv']));
       return;
     }
-
-    void parseFile(nextFile, hasHeader);
+    setFile(nextFile);
+    setError('');
+    parseVersion.current += 1;
+    setParseResult({ errors: [], rows: [] });
+    setResult(null);
+    if (nextFile) void parseFile(nextFile, hasHeader);
   };
 
   const handleHeaderChange = (checked: boolean) => {
@@ -116,7 +131,7 @@ export const PartBulkImportDialog: React.FC<PartBulkImportDialogProps> = ({ supp
     }
   };
 
-  const canImport = file !== null && parseResult.rows.length > 0 && !importMutation.isPending;
+  const canImport = file !== null && parseResult.rows.length > 0 && !importMutation.isPending && !isParsing;
   const displayedErrors = result ? [...parseResult.errors, ...result.errors] : parseResult.errors;
   const previewRows = parseResult.rows.slice(0, 10);
 
@@ -138,6 +153,11 @@ export const PartBulkImportDialog: React.FC<PartBulkImportDialogProps> = ({ supp
             className="grid gap-4"
             onSubmit={(event) => {
               event.preventDefault();
+              if (importMutation.isPending || isParsing) return;
+              if (!canImport) {
+                setError(file ? 'The CSV has no valid Part rows to import.' : 'Choose a CSV file to import.');
+                return;
+              }
               if (canImport) {
                 importMutation.mutate({
                   fileName: file ? importFileName(file) : undefined,
@@ -147,20 +167,24 @@ export const PartBulkImportDialog: React.FC<PartBulkImportDialogProps> = ({ supp
               }
             }}
           >
-            <Field>
-              <FieldLabel htmlFor="parts-import-file">CSV file</FieldLabel>
-              <Input
+            <div className="min-w-0 space-y-2">
+              <AttachmentField
                 accept=".csv,text/csv"
                 id="parts-import-file"
-                key={fileInputKey}
+                label="CSV file"
+                file={file}
+                error={error}
+                pending={isParsing || importMutation.isPending}
+                disabled={!!result}
+                policy={{ allowedContentTypes: ['text/csv'] }}
                 onChange={handleFileChange}
-                type="file"
               />
               <FieldDescription>Expected columns: {PART_BULK_CSV_COLUMNS.join(', ')}.</FieldDescription>
-            </Field>
+            </div>
             <Field orientation="horizontal">
               <Checkbox
                 checked={hasHeader}
+                disabled={isParsing || importMutation.isPending || !!result}
                 id="parts-import-has-header"
                 onCheckedChange={(checked) => handleHeaderChange(checked === true)}
               />
@@ -187,7 +211,8 @@ export const PartBulkImportDialog: React.FC<PartBulkImportDialogProps> = ({ supp
               <Alert>
                 <AlertTitle>Ready to import</AlertTitle>
                 <AlertDescription>
-                  {parseResult.rows.length} {parseResult.rows.length === 1 ? 'part row' : 'part rows'} ready.
+                  {formatNumber(parseResult.rows.length)} {parseResult.rows.length === 1 ? 'part row' : 'part rows'}{' '}
+                  ready.
                   {parseResult.errors.length > 0 ? ' Rows with issues will be skipped.' : null}
                 </AlertDescription>
               </Alert>
@@ -211,7 +236,11 @@ export const PartBulkImportDialog: React.FC<PartBulkImportDialogProps> = ({ supp
               </Alert>
             ) : null}
             <DialogFooter className="mt-0">
-              <DialogClose render={<Button variant="outline" />}>Close</DialogClose>
+              <DialogClose
+                render={<Button disabled={isParsing || importMutation.isPending} type="button" variant="outline" />}
+              >
+                Close
+              </DialogClose>
               {result ? (
                 <>
                   <Button onClick={resetForm} type="button" variant="link">
@@ -232,8 +261,10 @@ export const PartBulkImportDialog: React.FC<PartBulkImportDialogProps> = ({ supp
                   ) : null}
                 </>
               ) : (
-                <Button disabled={!canImport} type="submit">
-                  {importMutation.isPending ? <IconLoader2 data-icon="inline-start" className="animate-spin" /> : null}
+                <Button disabled={isParsing || importMutation.isPending} type="submit">
+                  {isParsing || importMutation.isPending ? (
+                    <IconLoader2 data-icon="inline-start" className="animate-spin" />
+                  ) : null}
                   Import parts
                 </Button>
               )}
@@ -297,7 +328,7 @@ function PartBulkImportPreviewTable({ items, total }: { items: PartBulkImportPre
       paginationMode="complete"
       table={table}
       total={total}
-      totalLabel={(value) => `${value} ${value === 1 ? 'part row' : 'part rows'}`}
+      totalLabel={(value) => `${formatNumber(value)} ${value === 1 ? 'part row' : 'part rows'}`}
     />
   );
 }

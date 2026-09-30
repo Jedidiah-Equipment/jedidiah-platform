@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 // Fetches an entity image as a credentialed blob and exposes a temporary object URL for preview. Shared by
 // every entity that stores images in private object storage (brochure slots, Product Range image). Key the
 // query by the image's `updatedAt` so a replace busts the cache and the superseded object URL is revoked.
-export function useCredentialedImagePreview({
+export function useCredentialedImagePreviewState({
   enabled,
   fetchBlob,
   queryKey,
@@ -13,7 +13,7 @@ export function useCredentialedImagePreview({
   // React Query always supplies an abort signal to the query function, so callers receive a defined one.
   fetchBlob: (args: { signal: AbortSignal }) => Promise<Blob>;
   queryKey: readonly unknown[];
-}): string | null {
+}) {
   const previewQuery = useQuery({
     enabled,
     queryFn: ({ signal }) => fetchBlob({ signal }),
@@ -36,5 +36,12 @@ export function useCredentialedImagePreview({
     return () => URL.revokeObjectURL(url);
   }, [blob]);
 
-  return objectUrl;
+  return { url: objectUrl, error: previewQuery.error, isLoading: enabled && !objectUrl && !previewQuery.isError };
+}
+
+// The URL-only view remains convenient for small catalogue thumbnails.
+export function useCredentialedImagePreview(
+  options: Parameters<typeof useCredentialedImagePreviewState>[0],
+): string | null {
+  return useCredentialedImagePreviewState(options).url;
 }

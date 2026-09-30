@@ -1,4 +1,3 @@
-import { getDocumentPolicy } from '@pkg/domain/equipment';
 import type { UUID } from '@pkg/schema';
 import { IconLoader2 } from '@tabler/icons-react';
 import { useMutation } from '@tanstack/react-query';
@@ -15,13 +14,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog.js';
-import { Field, FieldLabel } from '@/components/ui/field.js';
-import { Input } from '@/components/ui/input.js';
+import { DocumentFileField } from '@/equipment/components/documents/DocumentFileField.js';
 import { useQueryInvalidation } from '@/equipment/hooks/use-query-invalidation.js';
-import { uploadSupplierInvoice, validateSelectedFile } from '@/equipment/utils/document.js';
+import { uploadSupplierInvoice } from '@/equipment/utils/document.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
-
-const SUPPLIER_INVOICE_ACCEPT = getDocumentPolicy('purchase_order').allowedContentTypes.join(',');
 
 /**
  * Files the Supplier's bill against the order and reads it on the way in.
@@ -41,6 +37,7 @@ export function PurchaseOrderSupplierInvoiceDialog({
   const { invalidateInventory, invalidatePurchaseOrders } = useQueryInvalidation();
   const showMutationError = useApiMutationErrorToast();
   const [file, setFile] = useState<File | null>(null);
+  const [error, setError] = useState('');
   const mutation = useMutation({
     mutationFn: () => {
       if (!file) throw new Error('Choose a Supplier invoice to upload.');
@@ -65,15 +62,16 @@ export function PurchaseOrderSupplierInvoiceDialog({
             never a change to the order.
           </DialogDescription>
         </DialogHeader>
-        <Field>
-          <FieldLabel htmlFor="supplier-invoice-file">Invoice PDF</FieldLabel>
-          <Input
-            accept={SUPPLIER_INVOICE_ACCEPT}
-            id="supplier-invoice-file"
-            onChange={(event) => setFile(validateSelectedFile(event.target.files?.[0] ?? null, 'purchase_order'))}
-            type="file"
-          />
-        </Field>
+        <DocumentFileField
+          error={error}
+          file={file}
+          id="supplier-invoice-file"
+          label="Invoice PDF"
+          onChange={setFile}
+          onError={setError}
+          ownerType="purchase_order"
+          pending={mutation.isPending}
+        />
         {/* The read runs inside the upload, so the wait is the AI's. Saying so before the click is what
             stops it reading as a stuck upload. */}
         <p className="text-muted-foreground text-sm">
@@ -85,8 +83,16 @@ export function PurchaseOrderSupplierInvoiceDialog({
             Cancel
           </DialogClose>
           <Button
-            disabled={mutation.isPending || !file}
-            onClick={() => void mutation.mutateAsync().catch(() => undefined)}
+            disabled={mutation.isPending}
+            onClick={() => {
+              if (mutation.isPending) return;
+              if (!file) {
+                setError('Choose a Supplier invoice to upload.');
+                return;
+              }
+              setError('');
+              mutation.mutate();
+            }}
             type="button"
           >
             {mutation.isPending ? <IconLoader2 className="animate-spin" data-icon="inline-start" /> : null}

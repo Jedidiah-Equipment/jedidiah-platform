@@ -1,0 +1,4 @@
+interface:
+  display_name: "Use Slot"
+  short_description: "Take over a local slot with fresh Docker data"
+  default_prompt: "Use $use-slot to point this checkout at slot 2."

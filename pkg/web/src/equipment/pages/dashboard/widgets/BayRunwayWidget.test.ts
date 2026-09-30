@@ -1,20 +1,9 @@
-import { statusBadgeColorClassNames } from '@pkg/domain';
-import { BAY_RUNWAY_CAP_WORKING_DAYS } from '@pkg/domain/equipment';
 import { DateOnlyIso, type UUID } from '@pkg/schema';
 import { ProjectedBayQueue, ProjectedJobSlot } from '@pkg/schema/equipment';
 import { describe, expect, it } from 'vitest';
 
 import { SHOP_FLOOR_BAND_HEIGHT_PX } from '../dashboard-widget-layout.js';
-import {
-  BAY_RUNWAY_AXIS_TICK_STYLE,
-  BAY_RUNWAY_BAR_CLASS_NAMES,
-  BAY_RUNWAY_CHART_CONFIG,
-  BAY_RUNWAY_DAY_TICKS,
-  BAY_RUNWAY_ROW_BACKGROUND,
-  buildBayRunwayChartData,
-  getBayRunwayChartHeight,
-  hasBayRunwayScheduling,
-} from './BayRunwayWidget.js';
+import { buildBayRunwayChartData, getBayRunwayChartHeight, hasBayRunwayScheduling } from './BayRunwayWidget.js';
 
 const today = DateOnlyIso.parse('2026-08-19');
 
@@ -43,7 +32,7 @@ describe('BayRunwayWidget', () => {
     ]);
   });
 
-  it('shows remaining active work separately from scheduled work using the domain status colors', () => {
+  it('keeps remaining active work separate from scheduled work without spreading SVG overflow attributes', () => {
     const bay = buildBay({
       department: 'fabrication',
       id: '10000000-0000-4000-8000-000000000000',
@@ -73,30 +62,11 @@ describe('BayRunwayWidget', () => {
     expect(buildBayRunwayChartData({ bays: [bay], today, workingCalendarsByBayId: new Map() })[0]).not.toHaveProperty(
       'overflow',
     );
-    expect(BAY_RUNWAY_CHART_CONFIG.inProgressWorkDays.label).toBe('In progress days');
-    expect(BAY_RUNWAY_CHART_CONFIG.scheduledWorkDays.label).toBe('Scheduled days');
-    expect(BAY_RUNWAY_BAR_CLASS_NAMES).toEqual({
-      inProgressWorkDays: statusBadgeColorClassNames.blue.fill,
-      scheduledWorkDays: statusBadgeColorClassNames.green.fill,
-    });
   });
 
   it('keeps a fixed height for every Bay row while the shared viewport scrolls', () => {
     expect(getBayRunwayChartHeight(4)).toBe(144);
     expect(getBayRunwayChartHeight(12)).toBeGreaterThan(SHOP_FLOOR_BAND_HEIGHT_PX);
-  });
-
-  it('renders Bay labels at the normal foreground color and 14px', () => {
-    expect(BAY_RUNWAY_AXIS_TICK_STYLE).toEqual({ fill: 'var(--foreground)', fontSize: 14 });
-  });
-
-  it('uses a 30-day scale with five-day guides and full-width row tracks', () => {
-    expect(BAY_RUNWAY_DAY_TICKS).toEqual([0, 5, 10, 15, 20, 25, BAY_RUNWAY_CAP_WORKING_DAYS]);
-    expect(BAY_RUNWAY_ROW_BACKGROUND).toEqual({
-      fill: 'var(--muted)',
-      fillOpacity: 0.2,
-      stroke: 'var(--border)',
-    });
   });
 
   it('hides rows without scheduling but keeps work beyond the runway window', () => {

@@ -180,8 +180,14 @@ if ! snapshot_has_content "$snapshot"; then
     exit 1
   fi
   echo "Copying seed snapshot from ${primary_snapshot}"
-  run mkdir -p "$snapshot"
-  run cp -R "$primary_snapshot/." "$snapshot/"
+  run mkdir -p "$ROOT/pkg/seed"
+  snapshot_tmp=$(mktemp -d "$ROOT/pkg/seed/.snapshot-copy-XXXXXX")
+  trap 'rm -rf "$snapshot_tmp"' 0
+  trap 'exit 1' HUP INT TERM
+  run cp -R "$primary_snapshot/." "$snapshot_tmp/"
+  if [ -e "$snapshot" ] || [ -L "$snapshot" ]; then run rmdir "$snapshot"; fi
+  run mv "$snapshot_tmp" "$snapshot"
+  trap - 0 HUP INT TERM
 fi
 
 previous=$(sed -n 's/^COMPOSE_PROJECT_NAME=//p' .env.dev 2>/dev/null | tail -1)

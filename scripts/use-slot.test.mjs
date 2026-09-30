@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { spawn, spawnSync } from 'node:child_process';
 import { once } from 'node:events';
-import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
@@ -122,6 +122,32 @@ test('keeps an existing local snapshot instead of copying the primary checkout',
   assert.equal(f.read('pkg/seed/snapshot/users.json'), '[{"id":"local-user"}]\n');
   assert.equal(existsSync(join(f.root, 'pkg/seed/snapshot/objects')), false);
 });
+
+for (const state of ['missing', 'empty']) {
+  test(`a failed copy leaves the ${state} local snapshot retryable and services untouched`, (t) => {
+    const f = fixture(t, {}, { withPrimary: true, localSnapshot: false });
+    if (state === 'empty') mkdirSync(join(f.root, 'pkg/seed/snapshot'), { recursive: true });
+    f.writePrimary('pkg/seed/snapshot/users.json', '[{"id":"primary-user"}]\n');
+    f.writePrimary('pkg/seed/snapshot/objects/image.png', 'image-bytes');
+    f.write('.env.dev', 'KEEP=custom\n');
+    writeFileSync(join(f.root, 'bin/cp'), '#!/bin/sh\nprintf "[]\\n" > "$3/users.json"\necho "deliberate partial copy" >&2\nexit 7\n', { mode: 0o755 });
+
+    const failed = f.run('2');
+    assert.equal(failed.status, 7, failed.stderr);
+    assert.match(failed.stderr, /Failed \(exit 7\): cp/);
+    assert.equal(existsSync(join(f.root, 'pkg/seed/snapshot/users.json')), false);
+    assert.deepEqual(readdirSync(join(f.root, 'pkg/seed')).filter((name) => name.startsWith('.snapshot-copy-')), []);
+    assert.equal(f.read('.env.dev'), 'KEEP=custom\n');
+    assert.deepEqual(f.calls().map((call) => [call.tool, call.args]), [['docker', ['info']]]);
+
+    rmSync(join(f.root, 'bin/cp'));
+    const retried = f.run('2');
+    assert.equal(retried.status, 0, retried.stderr);
+    assert.match(retried.stdout, /Copying seed snapshot/);
+    assert.equal(f.read('pkg/seed/snapshot/users.json'), '[{"id":"primary-user"}]\n');
+    assert.equal(f.read('pkg/seed/snapshot/objects/image.png'), 'image-bytes');
+  });
+}
 
 test('a missing primary snapshot leaves services, volumes, and handwritten env alone', (t) => {
   const f = fixture(t, {}, { withPrimary: true, localSnapshot: false });

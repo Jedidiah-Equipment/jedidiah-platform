@@ -2,10 +2,16 @@ import { ScrollArea as ScrollAreaPrimitive } from '@base-ui/react/scroll-area';
 
 import { cn } from '@/lib/utils';
 
-function ScrollArea({ className, children, ...props }: ScrollAreaPrimitive.Root.Props) {
+/** `viewportClassName` bounds the part that scrolls: a `max-h-*` on the root only clips its content. */
+function ScrollArea({
+  className,
+  children,
+  viewportClassName,
+  ...props
+}: ScrollAreaPrimitive.Root.Props & { viewportClassName?: string | undefined }) {
   return (
     <ScrollAreaRoot className={className} {...props}>
-      <ScrollAreaViewport>{children}</ScrollAreaViewport>
+      <ScrollAreaViewport className={viewportClassName}>{children}</ScrollAreaViewport>
       <ScrollBar />
       <ScrollAreaPrimitive.Corner />
     </ScrollAreaRoot>

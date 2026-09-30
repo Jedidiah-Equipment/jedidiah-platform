@@ -352,11 +352,19 @@ describe('PartBulkImportInput', () => {
   });
 });
 
+const BATCH_ID = '11111111-1111-4111-8111-111111111111';
+
 describe('PartBulkImportResult', () => {
   it('accepts non-negative import counts', () => {
     expect(
-      PartBulkImportResult.parse({ errors: ['Line 4: Part was skipped.'], importedCount: 1, updatedCount: 2 }),
+      PartBulkImportResult.parse({
+        batchId: BATCH_ID,
+        errors: ['Line 4: Part was skipped.'],
+        importedCount: 1,
+        updatedCount: 2,
+      }),
     ).toEqual({
+      batchId: BATCH_ID,
       errors: ['Line 4: Part was skipped.'],
       importedCount: 1,
       updatedCount: 2,

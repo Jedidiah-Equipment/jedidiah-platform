@@ -91,6 +91,9 @@ async function mapPartLabelErrors<T>(action: () => Promise<T>): Promise<T> {
       if (error.code === 'part.not_found') {
         throw new RouteHttpError({ appCode: error.code, message: 'Part not found.', statusCode: 404 });
       }
+      if (error.code === 'part.import_batch_not_found') {
+        throw new RouteHttpError({ appCode: error.code, message: 'Part import not found.', statusCode: 404 });
+      }
       if (error.code === 'part.label_selection_empty') {
         throw new RouteHttpError({
           appCode: error.code,

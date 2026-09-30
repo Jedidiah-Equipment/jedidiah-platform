@@ -47,6 +47,7 @@ export * from './parts/part-bom-service.js';
 export * from './parts/part-bulk-service.js';
 export * from './parts/part-category-service.js';
 export * from './parts/part-errors.js';
+export * from './parts/part-import-batch-service.js';
 export * from './parts/part-label-service.js';
 export * from './parts/part-merge-service.js';
 export * from './parts/part-service.js';

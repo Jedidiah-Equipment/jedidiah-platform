@@ -18,6 +18,7 @@ import * as jobStockCloseOutSchema from './schema/equipment/job-stock-close-out.
 import * as laborRateSchema from './schema/equipment/labor-rate-card.js';
 import * as partSchema from './schema/equipment/part.js';
 import * as partCategorySchema from './schema/equipment/part-category.js';
+import * as partImportBatchSchema from './schema/equipment/part-import-batch.js';
 import * as productSchema from './schema/equipment/product.js';
 import * as productRangeSchema from './schema/equipment/product-range.js';
 import * as productUnitSchema from './schema/equipment/product-unit.js';
@@ -61,6 +62,7 @@ export const schema = {
   ...jobStockCloseOutSchema,
   ...partSchema,
   ...partCategorySchema,
+  ...partImportBatchSchema,
   ...productRangeSchema,
   ...productSchema,
   ...productUnitSchema,

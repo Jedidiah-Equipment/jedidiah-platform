@@ -66,6 +66,7 @@ describe('listParts', () => {
           importRow(),
           importRow({
             code: 'P-200',
+            lineNumber: 3,
             name: 'Linear rail',
             standardPurchaseLengthMm: 6000,
             supplierCode: 'SUP-200',
@@ -75,6 +76,7 @@ describe('listParts', () => {
           importRow({
             code: 'P-300',
             isInternallyFabricated: true,
+            lineNumber: 4,
             name: 'Weld bracket',
             supplierCode: 'SUP-300',
             supplierName: null,

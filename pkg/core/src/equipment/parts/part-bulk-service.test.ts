@@ -56,6 +56,7 @@ describe('bulkImportParts and Part Categories', () => {
     });
 
     expect(result).toEqual({
+      batchId: expect.any(String),
       errors: ['Line 3: Part Category "Widgets" does not exist. Add it under Admin → Part categories first.'],
       importedCount: 2,
       updatedCount: 0,
@@ -111,6 +112,7 @@ describe('bulkImportParts', () => {
     });
 
     expect(result).toEqual({
+      batchId: expect.any(String),
       errors: ['Line 2: clear Average utilization % before changing this Part to a measured or linear unit.'],
       importedCount: 1,
       updatedCount: 0,
@@ -129,6 +131,7 @@ describe('bulkImportParts', () => {
           importRow(),
           importRow({
             code: 'P-200',
+            lineNumber: 3,
             name: 'Bolt',
             standardPurchaseLengthMm: 6000,
             supplierCode: 'BET-200',
@@ -143,7 +146,7 @@ describe('bulkImportParts', () => {
     const importedParts = await listParts({ db: context.db, input: PartListInput.parse({ limit: 0 }) });
     const events = await context.db.select().from(auditEvents).orderBy(auditEvents.occurredAt);
 
-    expect(result).toEqual({ errors: [], importedCount: 2, updatedCount: 0 });
+    expect(result).toEqual({ batchId: expect.any(String), errors: [], importedCount: 2, updatedCount: 0 });
     expect(suppliers.map((row) => row.companyName)).toEqual(['Acme Supplies', 'Beta Supplies']);
     expect(importedParts.items.map((part) => part.code)).toEqual(['P-100', 'P-200']);
     expect(importedParts.items.map((part) => part.isInternallyFabricated)).toEqual([false, false]);
@@ -183,7 +186,7 @@ describe('bulkImportParts', () => {
     const result = await bulkImportParts({ actorUserId, db: context.db, input });
     const events = await context.db.select().from(auditEvents);
 
-    expect(result).toEqual({ errors: [], importedCount: 0, updatedCount: 0 });
+    expect(result).toEqual({ batchId: expect.any(String), errors: [], importedCount: 0, updatedCount: 0 });
     expect(events).toHaveLength(2);
   });
 
@@ -198,7 +201,7 @@ describe('bulkImportParts', () => {
     });
     const importedParts = await listParts({ db: context.db, input: PartListInput.parse({ limit: 0 }) });
 
-    expect(result).toEqual({ errors: [], importedCount: 0, updatedCount: 1 });
+    expect(result).toEqual({ batchId: expect.any(String), errors: [], importedCount: 0, updatedCount: 1 });
     expect(importedParts.items).toEqual([
       expect.objectContaining({ id: original?.id, code: 'p-100', name: 'Updated bearing' }),
     ]);
@@ -219,6 +222,7 @@ describe('bulkImportParts', () => {
     const importedParts = await context.db.select().from(parts).orderBy(parts.code);
 
     expect(result).toEqual({
+      batchId: expect.any(String),
       errors: [
         'Line 2: Part Code "P-100" appears more than once in this file.',
         'Line 3: Part Code "p-100" appears more than once in this file.',
@@ -244,7 +248,7 @@ describe('bulkImportParts', () => {
     });
     const importedParts = await context.db.select().from(parts);
 
-    expect(result).toEqual({ errors: [], importedCount: 0, updatedCount: 1 });
+    expect(result).toEqual({ batchId: expect.any(String), errors: [], importedCount: 0, updatedCount: 1 });
     expect(importedParts).toEqual([expect.objectContaining({ id: original?.id, code: 'i-100' })]);
   });
 
@@ -261,7 +265,7 @@ describe('bulkImportParts', () => {
     const suppliers = await context.db.select().from(supplier).orderBy(supplier.companyName);
     const importedParts = await listParts({ db: context.db, input: PartListInput.parse({ limit: 0 }) });
 
-    expect(result).toEqual({ errors: [], importedCount: 1, updatedCount: 0 });
+    expect(result).toEqual({ batchId: expect.any(String), errors: [], importedCount: 1, updatedCount: 0 });
     expect(suppliers.map((row) => row.companyName)).toEqual([' Acme  Supplies ']);
     expect(importedParts.items[0]?.supplierId).toBe(suppliers[0]?.id);
   });
@@ -279,7 +283,7 @@ describe('bulkImportParts', () => {
     });
     const suppliers = await context.db.select().from(supplier).orderBy(supplier.companyName);
 
-    expect(result).toEqual({ errors: [], importedCount: 2, updatedCount: 0 });
+    expect(result).toEqual({ batchId: expect.any(String), errors: [], importedCount: 2, updatedCount: 0 });
     expect(suppliers.map((row) => row.companyName)).toEqual(['Acme Supplies']);
   });
 
@@ -293,7 +297,7 @@ describe('bulkImportParts', () => {
     });
     const importedParts = await listParts({ db: context.db, input: PartListInput.parse({ limit: 0 }) });
 
-    expect(result).toEqual({ errors: [], importedCount: 1, updatedCount: 0 });
+    expect(result).toEqual({ batchId: expect.any(String), errors: [], importedCount: 1, updatedCount: 0 });
     expect(importedParts.items[0]?.supplierId).toBe(scoped?.id);
   });
 
@@ -320,7 +324,7 @@ describe('bulkImportParts', () => {
     });
     const importedParts = await listParts({ db: context.db, input: PartListInput.parse({ limit: 0 }) });
 
-    expect(result).toEqual({ errors: [], importedCount: 2, updatedCount: 0 });
+    expect(result).toEqual({ batchId: expect.any(String), errors: [], importedCount: 2, updatedCount: 0 });
     expect(importedParts.items.map((part) => part.supplierId)).toEqual([older?.id, older?.id]);
   });
 
@@ -367,7 +371,7 @@ describe('bulkImportParts', () => {
       .where(isNull(supplier.deletedAt))
       .orderBy(supplier.companyName);
 
-    expect(result).toEqual({ errors: [], importedCount: 1, updatedCount: 0 });
+    expect(result).toEqual({ batchId: expect.any(String), errors: [], importedCount: 1, updatedCount: 0 });
     expect(liveSuppliers.map((row) => row.companyName)).toEqual(['Acme Supplies']);
   });
 
@@ -391,7 +395,7 @@ describe('bulkImportParts', () => {
     const suppliers = await context.db.select().from(supplier);
     const importedParts = await listParts({ db: context.db, input: PartListInput.parse({ limit: 0 }) });
 
-    expect(result).toEqual({ errors: [], importedCount: 1, updatedCount: 0 });
+    expect(result).toEqual({ batchId: expect.any(String), errors: [], importedCount: 1, updatedCount: 0 });
     expect(suppliers).toHaveLength(1);
     expect(importedParts.items.map((part) => part.code).sort()).toEqual(['P-100', 'P-101']);
     expect(importedParts.items.every((part) => part.supplier?.companyName === 'Acme Supplies')).toBe(true);
@@ -419,7 +423,7 @@ describe('bulkImportParts', () => {
     const importedParts = await listParts({ db: context.db, input: PartListInput.parse({ limit: 0 }) });
     const events = await context.db.select().from(auditEvents).orderBy(auditEvents.occurredAt);
 
-    expect(result).toEqual({ errors: [], importedCount: 0, updatedCount: 1 });
+    expect(result).toEqual({ batchId: expect.any(String), errors: [], importedCount: 0, updatedCount: 1 });
     expect(importedParts.items[0]).toMatchObject({
       description: 'Updated main bearing',
       finish: 'Painted',
@@ -482,6 +486,7 @@ describe('bulkImportParts', () => {
 
     const importedParts = await context.db.select().from(parts);
     expect(result).toEqual({
+      batchId: expect.any(String),
       errors: ['Line 4: Unit of Measure is locked because this Part has stock history.'],
       importedCount: 1,
       updatedCount: 0,
@@ -506,7 +511,7 @@ describe('bulkImportParts', () => {
     });
     const importedParts = await listParts({ db: context.db, input: PartListInput.parse({ limit: 0 }) });
 
-    expect(result).toEqual({ errors: [], importedCount: 1, updatedCount: 0 });
+    expect(result).toEqual({ batchId: expect.any(String), errors: [], importedCount: 1, updatedCount: 0 });
     expect(importedParts.items.map((part) => part.code).sort()).toEqual(['P-100', 'P-101']);
     expect(importedParts.items.every((part) => part.supplierCode === 'SUP-100')).toBe(true);
   });
@@ -543,7 +548,7 @@ describe('bulkImportParts', () => {
     });
     const importedParts = await listParts({ db: context.db, input: PartListInput.parse({ limit: 0 }) });
 
-    expect(result).toEqual({ errors: [], importedCount: 3, updatedCount: 0 });
+    expect(result).toEqual({ batchId: expect.any(String), errors: [], importedCount: 3, updatedCount: 0 });
     expect(importedParts.items.map((part) => part.code).sort()).toEqual(['FAB1-1', 'FAB1-2', 'FAB1-4']);
     expect(importedParts.items.every((part) => part.supplierCode === 'NC')).toBe(true);
   });
@@ -575,6 +580,7 @@ describe('bulkImportParts', () => {
     const importedParts = await context.db.select().from(parts);
     const suppliers = await context.db.select().from(supplier);
     expect(result).toEqual({
+      batchId: expect.any(String),
       errors: [
         'Line 4: Part code P-100 already exists with supplier Acme Supplies / supplier code SUP-100; CSV row has Beta Supplies / BET-100.',
       ],
@@ -605,6 +611,7 @@ describe('bulkImportParts', () => {
     const suppliers = await context.db.select().from(supplier);
 
     expect(result).toEqual({
+      batchId: expect.any(String),
       errors: [
         'Line 4: Part code P-100 already exists with supplier Acme Supplies / supplier code SUP-100; CSV row has Beta Supplies / BET-100.',
       ],
@@ -629,7 +636,13 @@ describe('bulkImportParts and the Supplier-or-BOM invariant', () => {
       input: {
         rows: [
           importRow({ code: 'C-100', supplierCode: 'SUP-100' }),
-          importRow({ code: 'B-100', isInternallyFabricated: true, name: 'Weld bracket', supplierName: null }),
+          importRow({
+            code: 'B-100',
+            isInternallyFabricated: true,
+            lineNumber: 3,
+            name: 'Weld bracket',
+            supplierName: null,
+          }),
         ],
       },
     });
@@ -671,7 +684,9 @@ describe('bulkExportParts', () => {
     await bulkImportParts({
       actorUserId,
       db: context.db,
-      input: { rows: [importRow({ code: 'P-100' }), importRow({ code: 'P-200', supplierCode: 'SUP-200' })] },
+      input: {
+        rows: [importRow({ code: 'P-100' }), importRow({ code: 'P-200', lineNumber: 3, supplierCode: 'SUP-200' })],
+      },
     });
 
     // The user's edited file keeps only one of the two rows.
@@ -699,6 +714,7 @@ describe('bulkExportParts', () => {
           importRow({
             code: 'P-100',
             drawingCode: 'DR-100',
+            lineNumber: 3,
             standardPurchaseLengthMm: 6000,
             unitOfMeasure: 'mm',
           }),
@@ -759,7 +775,7 @@ describe('bulkExportParts', () => {
       input: {
         rows: [
           importRow({ code: 'P-100' }),
-          importRow({ code: 'P-300', supplierCode: 'OTH-300', supplierName: 'Other Supplies' }),
+          importRow({ code: 'P-300', lineNumber: 3, supplierCode: 'OTH-300', supplierName: 'Other Supplies' }),
         ],
       },
     });
@@ -777,7 +793,7 @@ describe('bulkExportParts', () => {
       input: {
         rows: [
           importRow({ code: 'P-100' }),
-          importRow({ code: 'P-300', supplierCode: 'OTH-300', supplierName: 'Other Supplies' }),
+          importRow({ code: 'P-300', lineNumber: 3, supplierCode: 'OTH-300', supplierName: 'Other Supplies' }),
         ],
       },
     });

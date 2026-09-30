@@ -4,8 +4,10 @@ import {
   createPart,
   getPart,
   getPartBom,
+  getPartImportBatch,
   getPartMergePreview,
   listPartCategories,
+  listPartImportBatches,
   listPartStorageLocations,
   listParts,
   mergePart,
@@ -20,6 +22,10 @@ import {
   type PartBulkExportRow,
   PartBulkImportInput,
   PartCreateInput,
+  PartImportBatchDetail,
+  PartImportBatchInput,
+  PartImportBatchListInput,
+  PartImportBatchListResult,
   PartListInput,
   PartMergeInput,
   PartMergePreview,
@@ -100,6 +106,18 @@ export const partsRouter = router({
     .mutation(({ ctx, input }) =>
       mapPartErrors(() => bulkImportParts({ db: ctx.db, input, actorUserId: ctx.session.user.id })),
     ),
+
+  // Import history is for labelling, so it takes the label gate: the price-blind stores role labels
+  // what someone else imported. Its outputs carry identity only — no cost, no contact details.
+  importBatches: authorizedProcedure(partLabelReaders)
+    .input(PartImportBatchListInput)
+    .output(PartImportBatchListResult)
+    .query(({ ctx, input }) => listPartImportBatches({ db: ctx.db, input })),
+
+  importBatch: authorizedProcedure(partLabelReaders)
+    .input(PartImportBatchInput)
+    .output(PartImportBatchDetail)
+    .query(({ ctx, input }) => mapPartErrors(() => getPartImportBatch({ batchId: input.batchId, db: ctx.db }))),
 
   // Reading the catalog out, so `equipment_part:read` — the same rows `list` already hands a reader.
   bulkExport: authorizedProcedure('equipment_part:read')

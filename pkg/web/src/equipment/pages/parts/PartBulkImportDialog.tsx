@@ -1,5 +1,12 @@
-import { PART_UNIT_OF_MEASURE_LABELS, type Supplier } from '@pkg/schema/equipment';
-import { IconLoader2, IconUpload } from '@tabler/icons-react';
+import { formatNumber } from '@pkg/domain';
+import {
+  PART_IMPORT_FILE_NAME_MAX_LENGTH,
+  PART_UNIT_OF_MEASURE_LABELS,
+  type PartBulkImportResult,
+  PartImportFileName,
+  type Supplier,
+} from '@pkg/schema/equipment';
+import { IconLoader2, IconPrinter, IconUpload } from '@tabler/icons-react';
 import { useMutation } from '@tanstack/react-query';
 import type React from 'react';
 import { useState } from 'react';
@@ -24,13 +31,8 @@ import { ScrollArea } from '@/components/ui/scroll-area.js';
 import { useQueryInvalidation } from '@/equipment/hooks/use-query-invalidation.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useTRPC } from '@/lib/trpc.js';
+import { PartLabelBatchPrintDialog } from './PartLabelBatchDialog.js';
 import { PART_BULK_CSV_COLUMNS, type ParsePartBulkImportCsvResult, parsePartBulkImportCsv } from './part-bulk-csv.js';
-
-type BulkImportResult = {
-  errors: string[];
-  importedCount: number;
-  updatedCount: number;
-};
 
 type PartBulkImportDialogProps = {
   supplier?: Pick<Supplier, 'companyName' | 'id'>;
@@ -48,7 +50,10 @@ export const PartBulkImportDialog: React.FC<PartBulkImportDialogProps> = ({ supp
   const [file, setFile] = useState<File | null>(null);
   const [fileInputKey, setFileInputKey] = useState(0);
 
-  const [result, setResult] = useState<BulkImportResult | null>(null);
+  const [result, setResult] = useState<PartBulkImportResult | null>(null);
+  // The batch the label dialog opens onto; it stays set while that dialog closes.
+  const [labelBatchId, setLabelBatchId] = useState<string | null>(null);
+  const [isLabelDialogOpen, setIsLabelDialogOpen] = useState(false);
   const [parseResult, setParseResult] = useState<ParsePartBulkImportCsvResult>({ errors: [], rows: [] });
 
   const importMutation = useMutation(
@@ -134,7 +139,11 @@ export const PartBulkImportDialog: React.FC<PartBulkImportDialogProps> = ({ supp
             onSubmit={(event) => {
               event.preventDefault();
               if (canImport) {
-                importMutation.mutate({ rows: parseResult.rows, supplierId: supplier?.id });
+                importMutation.mutate({
+                  fileName: file ? importFileName(file) : undefined,
+                  rows: parseResult.rows,
+                  supplierId: supplier?.id,
+                });
               }
             }}
           >
@@ -195,17 +204,33 @@ export const PartBulkImportDialog: React.FC<PartBulkImportDialogProps> = ({ supp
                   {displayedErrors.length > 0 ? 'Import complete with issues' : 'Import complete'}
                 </AlertTitle>
                 <AlertDescription>
-                  Imported {result.importedCount} {result.importedCount === 1 ? 'part' : 'parts'} and updated{' '}
-                  {result.updatedCount} {result.updatedCount === 1 ? 'part' : 'parts'}.
+                  Imported {formatNumber(result.importedCount)} {result.importedCount === 1 ? 'part' : 'parts'} and
+                  updated {formatNumber(result.updatedCount)} {result.updatedCount === 1 ? 'part' : 'parts'}. Find this
+                  import again under Print labels → Recent imports.
                 </AlertDescription>
               </Alert>
             ) : null}
             <DialogFooter className="mt-0">
               <DialogClose render={<Button variant="outline" />}>Close</DialogClose>
               {result ? (
-                <Button onClick={resetForm} type="button" variant="link">
-                  Import Another
-                </Button>
+                <>
+                  <Button onClick={resetForm} type="button" variant="link">
+                    Import Another
+                  </Button>
+                  {result.importedCount > 0 ? (
+                    <Button
+                      onClick={() => {
+                        setLabelBatchId(result.batchId);
+                        setIsLabelDialogOpen(true);
+                        setIsOpen(false);
+                      }}
+                      type="button"
+                    >
+                      <IconPrinter data-icon="inline-start" />
+                      Print new Part labels
+                    </Button>
+                  ) : null}
+                </>
               ) : (
                 <Button disabled={!canImport} type="submit">
                   {importMutation.isPending ? <IconLoader2 data-icon="inline-start" className="animate-spin" /> : null}
@@ -216,9 +241,26 @@ export const PartBulkImportDialog: React.FC<PartBulkImportDialogProps> = ({ supp
           </form>
         </DialogContent>
       </Dialog>
+      {labelBatchId ? (
+        <PartLabelBatchPrintDialog
+          initialImportBatchId={labelBatchId}
+          key={labelBatchId}
+          onOpenChange={setIsLabelDialogOpen}
+          open={isLabelDialogOpen}
+        />
+      ) : null}
     </>
   );
 };
+
+/**
+ * The file's own name — a browser never reports its path — cut to what a Part Import Batch keeps.
+ * A name the batch cannot keep is left off rather than failing the import it labels.
+ */
+function importFileName(file: File): string | undefined {
+  const parsed = PartImportFileName.safeParse(file.name.slice(0, PART_IMPORT_FILE_NAME_MAX_LENGTH));
+  return parsed.success ? parsed.data : undefined;
+}
 
 type PartBulkImportPreviewRow = ParsePartBulkImportCsvResult['rows'][number];
 

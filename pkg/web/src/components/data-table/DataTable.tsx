@@ -49,6 +49,11 @@ type DataTableProps<TData extends RowData> = {
   hideFooter?: boolean;
   isLoading?: boolean;
   loadingRowCount?: number;
+  /**
+   * Caps the table's own height (a Tailwind `max-h-*` class) so a long list scrolls inside it with its
+   * header pinned, rather than growing the dialog or panel around it.
+   */
+  maxHeightClassName?: string;
   onRowClick?: ((item: TData) => void) | undefined;
   rightSection?: React.ReactNode;
   tableClassName?: string;
@@ -89,6 +94,7 @@ export function DataTable<TData extends RowData>({
   isLoading = false,
   loadMore,
   loadingRowCount = 10,
+  maxHeightClassName,
   onRowClick,
   pageSize = DEFAULT_INCREMENTAL_PAGE_SIZE,
   paginationMode,
@@ -133,7 +139,7 @@ export function DataTable<TData extends RowData>({
           />
         ) : null}
 
-        <ScrollArea className="w-full">
+        <ScrollArea className="w-full" viewportClassName={maxHeightClassName}>
           <table
             data-slot="table"
             className={cn(
@@ -142,7 +148,7 @@ export function DataTable<TData extends RowData>({
               tableClassName,
             )}
           >
-            <TableHeader>
+            <TableHeader className={maxHeightClassName ? 'sticky top-0 z-10 bg-card' : undefined}>
               {table.getHeaderGroups().map((headerGroup) => (
                 <TableRow key={headerGroup.id}>
                   {headerGroup.headers.map((header) => (

@@ -1,8 +1,9 @@
 import fastifyMultipart from '@fastify/multipart';
+import { bulkImportParts } from '@pkg/core/equipment';
 import type { Db } from '@pkg/db';
 import { user } from '@pkg/db';
 import { parts, supplier } from '@pkg/db/equipment';
-import type { PartLabelPdfModel, PartLabelPdfRenderer } from '@pkg/schema/equipment';
+import type { PartBulkImportRow, PartLabelPdfModel, PartLabelPdfRenderer } from '@pkg/schema/equipment';
 import Fastify, { type FastifyInstance } from 'fastify';
 import { afterEach, beforeEach, describe, expect, vi } from 'vitest';
 
@@ -137,6 +138,49 @@ describe('Part label HTTP routes', () => {
     ]);
   });
 
+  test('prints a posted import batch by its reference: new Parts by default, updated ones on request', async ({
+    context,
+  }) => {
+    const rendered: PartLabelPdfModel[][] = [];
+    const app = await createApp(capturingRenderer(rendered));
+    const { batchId } = await bulkImportParts({
+      actorUserId: 'test-user-id',
+      db: context.db,
+      input: {
+        rows: [
+          importRow('I-100', 2),
+          importRow('P-100', 3, { name: 'Main bearing, revised' }),
+          importRow('T-100', 4, {
+            category: 'Tube',
+            description: 'Hydraulic tube description',
+            name: 'Hydraulic tube',
+          }),
+        ],
+      },
+    });
+    const post = (payload: object) => app.inject({ method: 'POST', payload, url: '/api/parts/labels' });
+
+    const newOnly = await post({ batchId, selection: 'importBatch' });
+    const withUpdated = await post({ batchId, includeUpdated: true, selection: 'importBatch' });
+    const onQueryString = await app.inject(`/api/parts/labels?selection=importBatch&batchId=${batchId}`);
+    const missing = await post({ batchId: '00000000-0000-4000-8000-000000000999', selection: 'importBatch' });
+
+    expect(newOnly.statusCode, newOnly.body).toBe(200);
+    expect(withUpdated.statusCode, withUpdated.body).toBe(200);
+    expect(rendered.map((labels) => labels.map((label) => label.code))).toEqual([['I-100'], ['I-100', 'P-100']]);
+    expect(onQueryString.statusCode, onQueryString.body).toBe(400);
+    expect(missing.statusCode, missing.body).toBe(404);
+
+    // The stores role labels a batch someone else imported.
+    routeTestState.session = mockSession('stores');
+    const stores = await post({ batchId, selection: 'importBatch' });
+    routeTestState.session = mockSession('job-viewer');
+    const forbidden = await post({ batchId, selection: 'importBatch' });
+
+    expect(stores.statusCode, stores.body).toBe(200);
+    expect(forbidden.statusCode, forbidden.body).toBe(403);
+  });
+
   test('rejects a label batch above the printable copy limit before rendering', async ({ context }) => {
     const rendered: PartLabelPdfModel[][] = [];
     const app = await createApp(capturingRenderer(rendered));
@@ -202,6 +246,23 @@ function capturingRenderer(rendered: PartLabelPdfModel[][]): PartLabelPdfRendere
   return async ({ document }) => {
     rendered.push(document);
     return new TextEncoder().encode('%PDF-label');
+  };
+}
+
+function importRow(code: string, lineNumber: number, overrides: Partial<PartBulkImportRow> = {}): PartBulkImportRow {
+  return {
+    category: 'Bearings',
+    code,
+    description: `${code} description`,
+    drawingCode: null,
+    finish: 'Plain',
+    isInternallyFabricated: false,
+    lineNumber,
+    name: `${code} name`,
+    supplierCode: `SUP-${code}`,
+    supplierName: 'Label Supplier',
+    unitOfMeasure: 'piece',
+    ...overrides,
   };
 }
 

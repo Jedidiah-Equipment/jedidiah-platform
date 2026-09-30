@@ -304,9 +304,25 @@ export const PartBulkImportRow = PartBulkExportRow
     }
   });
 
+/** The name of the file a Part Import Batch came from, as the browser reports it — never a local path. */
+export const PART_IMPORT_FILE_NAME_MAX_LENGTH = 255;
+
+export type PartImportFileName = z.infer<typeof PartImportFileName>;
+export const PartImportFileName = requiredTrimmedText().max(
+  PART_IMPORT_FILE_NAME_MAX_LENGTH,
+  `File name must be ${PART_IMPORT_FILE_NAME_MAX_LENGTH} characters or fewer`,
+);
+
 export type PartBulkImportInput = z.infer<typeof PartBulkImportInput>;
 export const PartBulkImportInput = z.object({
-  rows: z.array(PartBulkImportRow).min(1, 'At least one part row is required'),
+  fileName: PartImportFileName.optional(),
+  rows: z
+    .array(PartBulkImportRow)
+    .min(1, 'At least one part row is required')
+    // A Part Import Batch remembers each row by its line, so two rows cannot claim the same one.
+    .refine((rows) => new Set(rows.map((row) => row.lineNumber)).size === rows.length, {
+      message: 'Each part row needs its own line number',
+    }),
   supplierId: UUID.optional(),
 });
 
@@ -318,6 +334,8 @@ export const PartBulkExportInput = z.object({
 
 export type PartBulkImportResult = z.infer<typeof PartBulkImportResult>;
 export const PartBulkImportResult = z.object({
+  /** The Part Import Batch this import was saved as, so its new Parts can be labelled straight away. */
+  batchId: UUID,
   errors: z.array(z.string()),
   importedCount: z.number().int().min(0),
   updatedCount: z.number().int().min(0),
@@ -350,7 +368,7 @@ export type PartLabelPdfModel = z.infer<typeof PartLabelPdfModel>;
 export const PartLabelPdfModel = Part.pick({ code: true, name: true, storageLocation: true });
 
 export type PartLabelSelectionMode = z.infer<typeof PartLabelSelectionMode>;
-export const PartLabelSelectionMode = z.enum(['all', 'category', 'storageLocation', 'ids', 'copies']);
+export const PartLabelSelectionMode = z.enum(['all', 'category', 'storageLocation', 'ids', 'copies', 'importBatch']);
 
 /** A dialog may hold zero to omit a Part; only positive counts cross into a rendered selection. */
 export const PART_LABEL_BATCH_MAX_COPIES = 1_000;
@@ -368,6 +386,19 @@ const PartLabelCopiesSelection = z
     message: `A PDF can contain at most ${PART_LABEL_BATCH_MAX_COPIES} labels`,
     path: ['copies'],
   });
+
+/**
+ * The Parts one Part Import Batch created — and, when asked, the ones it updated — resolved on the
+ * server from the batch's membership. It names the batch rather than its Parts, so a batch of
+ * thousands still posts as one short reference.
+ */
+const PartLabelImportBatchSelection = z
+  .object({
+    batchId: UUID,
+    includeUpdated: z.boolean().default(false),
+    selection: z.literal(PartLabelSelectionMode.enum.importBatch),
+  })
+  .strict();
 
 const partLabelUrlSelectionVariants = [
   z.object({ selection: z.literal(PartLabelSelectionMode.enum.all) }).strict(),
@@ -388,19 +419,20 @@ export type PartLabelBatchSelection = z.infer<typeof PartLabelBatchSelection>;
 export const PartLabelBatchSelection = z.discriminatedUnion('selection', [
   ...partLabelUrlSelectionVariants,
   PartLabelCopiesSelection,
+  PartLabelImportBatchSelection,
 ]);
 
 /**
  * The batch selection as it arrives on a query string: every mode's field is flat and optional, and
- * `ids` is comma-separated. Narrowing to the union belongs here, not in the route. A copy-count
- * selection can outgrow a request target, so it only ever arrives as a posted body — never here.
+ * `ids` is comma-separated. Narrowing to the union belongs here, not in the route. Copy-count and
+ * import-batch selections only ever arrive as a posted body — never here.
  */
 export type PartLabelBatchQuery = z.infer<typeof PartLabelBatchQuery>;
 export const PartLabelBatchQuery = z
   .object({
     categoryId: UUID.optional(),
     ids: z.string().optional(),
-    selection: PartLabelSelectionMode.exclude(['copies']),
+    selection: PartLabelSelectionMode.exclude(['copies', 'importBatch']),
     storageLocation: PartStorageLocation.unwrap().optional(),
   })
   .transform((query) => ({

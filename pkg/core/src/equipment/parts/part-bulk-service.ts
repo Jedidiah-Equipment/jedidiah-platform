@@ -1,11 +1,12 @@
 import { type DatabaseTransaction, type Db, getUniqueViolationConstraint } from '@pkg/db';
-import { partCategories, parts, supplier } from '@pkg/db/equipment';
+import { partCategories, partImportBatches, partImportBatchMembers, parts, supplier } from '@pkg/db/equipment';
 import { type AuthId, nameLookupKey, type UUID } from '@pkg/schema';
 import type {
   PartBulkExportInput,
   PartBulkExportRow,
   PartBulkImportInput,
   PartBulkImportResult,
+  PartImportBatchOutcome,
 } from '@pkg/schema/equipment';
 import { partCategoryLookupKey, unitClassFor } from '@pkg/schema/equipment';
 import { and, asc, eq, inArray, isNull, sql } from 'drizzle-orm';
@@ -23,6 +24,11 @@ import {
 import { assertSupplierMutable, assertUnitOfMeasureMutable, partAuditDescriptor } from './part-service.js';
 
 type PartRow = typeof parts.$inferSelect;
+type ImportMember = {
+  lineNumber: number;
+  outcome: PartImportBatchOutcome;
+  part: Pick<PartRow, 'code' | 'id' | 'name'>;
+};
 type SupplierRow = Pick<typeof supplier.$inferSelect, 'companyName' | 'id'>;
 
 /**
@@ -78,8 +84,8 @@ export async function bulkImportParts({
   try {
     return await db.transaction(async (tx) => {
       const errors: string[] = [];
-      let importedCount = 0;
-      let updatedCount = 0;
+      // Every row that succeeded, in file order; the Part Import Batch is written from these.
+      const members: ImportMember[] = [];
       // Supplier retirement takes child locks before Supplier locks. Keep the import in that order
       // too, or a merge and an import of the same Part can each wait on the other's row.
       const { duplicateLookupCodes, lookupCodeByInputCode, partsByLookupCode } = await loadImportPartsByCode({
@@ -166,7 +172,7 @@ export async function bulkImportParts({
 
           await recordAuditCreate({ db: tx, descriptor: partAuditDescriptor, actorUserId, input: created });
           partsByLookupCode.set(lookupCode, created);
-          importedCount += 1;
+          members.push({ lineNumber: row.lineNumber, outcome: 'created', part: created });
           continue;
         }
 
@@ -187,6 +193,7 @@ export async function bulkImportParts({
         const changes = diffAuditUpdate(partAuditDescriptor, lockedPart, after);
 
         if (!changes) {
+          members.push({ lineNumber: row.lineNumber, outcome: 'unchanged', part: lockedPart });
           continue;
         }
 
@@ -217,18 +224,78 @@ export async function bulkImportParts({
 
         await recordAuditUpdate({ db: tx, descriptor: partAuditDescriptor, actorUserId, after: updated, changes });
         partsByLookupCode.set(lookupCode, updated);
-        updatedCount += 1;
+        members.push({ lineNumber: row.lineNumber, outcome: 'updated', part: updated });
       }
 
+      const batch = await recordImportBatch({
+        actorUserId,
+        db: tx,
+        fileName: input.fileName ?? null,
+        members,
+        rejectedCount: errors.length,
+      });
+
       return {
+        batchId: batch.id,
         errors,
-        importedCount,
-        updatedCount,
+        importedCount: batch.createdCount,
+        updatedCount: batch.updatedCount,
       };
     });
   } catch (error) {
     throw mapPartUniqueViolationForBulkImport(error, input);
   }
+}
+
+/** Postgres caps one statement's parameters, so a large file's members go in slices. */
+const IMPORT_MEMBER_INSERT_CHUNK = 1_000;
+
+/**
+ * Saves the import as a Part Import Batch in the same transaction as the catalog writes, so a batch
+ * exists exactly when its changes do. Every rejected row pushed one error, so their count is the
+ * rejected count.
+ */
+async function recordImportBatch({
+  actorUserId,
+  db,
+  fileName,
+  members,
+  rejectedCount,
+}: {
+  actorUserId: AuthId;
+  db: DatabaseTransaction;
+  fileName: string | null;
+  members: readonly ImportMember[];
+  rejectedCount: number;
+}) {
+  const countOf = (outcome: PartImportBatchOutcome) => members.filter((member) => member.outcome === outcome).length;
+  const [batch] = await db
+    .insert(partImportBatches)
+    .values({
+      createdCount: countOf('created'),
+      fileName,
+      importedByUserId: actorUserId,
+      rejectedCount,
+      unchangedCount: countOf('unchanged'),
+      updatedCount: countOf('updated'),
+    })
+    .returning();
+  if (!batch) throw new Error('Part import batch insert did not return a row');
+
+  for (let start = 0; start < members.length; start += IMPORT_MEMBER_INSERT_CHUNK) {
+    await db.insert(partImportBatchMembers).values(
+      members.slice(start, start + IMPORT_MEMBER_INSERT_CHUNK).map((member) => ({
+        batchId: batch.id,
+        lineNumber: member.lineNumber,
+        outcome: member.outcome,
+        partCode: member.part.code,
+        partId: member.part.id,
+        partName: member.part.name,
+      })),
+    );
+  }
+
+  return batch;
 }
 
 function formatBulkImportLockError(error: unknown, lineNumber: number): string | undefined {

@@ -160,12 +160,24 @@ export class PartLabelSelectionEmptyError extends Error {
   }
 }
 
+export class PartImportBatchNotFoundError extends Error {
+  readonly code = 'part.import_batch_not_found';
+  readonly metadata: { batchId: string };
+
+  constructor(batchId: string) {
+    super(`Part import batch not found: ${batchId}`);
+    this.name = 'PartImportBatchNotFoundError';
+    this.metadata = { batchId };
+  }
+}
+
 export type PartCoreError =
   | PartBulkImportConflictError
   | DuplicatePartCategoryNameError
   | DuplicatePartCodeError
   | PartCategoryMergeSelfError
   | PartCategoryNotFoundError
+  | PartImportBatchNotFoundError
   | PartLabelSelectionEmptyError
   | PartMergeBlockedError
   | PartMergeSelfError
@@ -182,6 +194,7 @@ export function isPartCoreError(error: unknown): error is PartCoreError {
     error instanceof DuplicatePartCodeError ||
     error instanceof PartCategoryMergeSelfError ||
     error instanceof PartCategoryNotFoundError ||
+    error instanceof PartImportBatchNotFoundError ||
     error instanceof PartLabelSelectionEmptyError ||
     error instanceof PartMergeBlockedError ||
     error instanceof PartMergeSelfError ||

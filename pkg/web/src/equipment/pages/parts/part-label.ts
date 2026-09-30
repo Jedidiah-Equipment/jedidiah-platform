@@ -6,12 +6,16 @@ import { getClientConfig } from '@/lib/app-config.js';
 /** The modes small enough to ride a query string; a copy-count selection is posted instead. */
 export type PartLabelUrlSelection = Exclude<PartLabelBatchSelection, { selection: 'copies' }>;
 
+/** Every way the batch dialog picks Parts: the URL modes, plus one saved Part Import Batch. */
+export type PartLabelBatchMode = PartLabelUrlSelection['selection'] | 'importBatch';
+
 export const partLabelBatchModeLabels = {
   all: 'All Parts',
   category: 'By Part Category',
   ids: 'Choose Parts',
+  importBatch: 'Recent imports',
   storageLocation: 'By storage location',
-} satisfies Record<PartLabelUrlSelection['selection'], string>;
+} satisfies Record<PartLabelBatchMode, string>;
 
 export function partLabelUrl(partId: UUID): string {
   return `${getClientConfig().apiBaseUrl}/api/parts/${encodeURIComponent(partId)}/label`;
@@ -37,7 +41,10 @@ export function partLabelBatchUrl(selection: PartLabelUrlSelection): string {
   return `${getClientConfig().apiBaseUrl}/api/parts/labels?${params.toString()}`;
 }
 
-/** Copy-count batches can outgrow an HTTP request target, so their structural selection rides in JSON. */
+/**
+ * Copy-count and import-batch selections can outgrow an HTTP request target, so their structural
+ * selection rides in JSON.
+ */
 export async function fetchPartLabelsBlob({
   selection,
   signal,

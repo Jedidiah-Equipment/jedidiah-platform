@@ -8,6 +8,7 @@ import { mockSession } from '@/test/test-utils.js';
 
 const BEARINGS_ID = '00000000-0000-4000-8000-0000000000b1';
 const FASTENERS_ID = '00000000-0000-4000-8000-0000000000f1';
+const MISSING_ID = '00000000-0000-4000-8000-000000000999';
 const CATEGORY_IDS = { Bearings: BEARINGS_ID, Fasteners: FASTENERS_ID } as const;
 
 const test = createTester(async ({ db }) => {
@@ -250,6 +251,7 @@ describe('parts.bulkImport', () => {
         rows: [bulkImportRow()],
       }),
     ).resolves.toEqual({
+      batchId: expect.any(String),
       errors: [],
       importedCount: 1,
       updatedCount: 0,
@@ -266,6 +268,7 @@ describe('parts.bulkImport', () => {
         ],
       }),
     ).resolves.toEqual({
+      batchId: expect.any(String),
       errors: [],
       importedCount: 0,
       updatedCount: 1,
@@ -302,6 +305,7 @@ describe('parts.bulkImport', () => {
         ],
       }),
     ).resolves.toEqual({
+      batchId: expect.any(String),
       errors: [
         'Line 4: Part code P-100 already exists with supplier Acme Supplies / supplier code SUP-100; CSV row has Beta Supplies / BET-100.',
       ],
@@ -342,6 +346,7 @@ describe('parts.bulkImport', () => {
         supplierId: supplier.id,
       }),
     ).resolves.toEqual({
+      batchId: expect.any(String),
       errors: [],
       importedCount: 3,
       updatedCount: 0,
@@ -374,6 +379,7 @@ describe('parts.bulkImport', () => {
         supplierId: supplier.id,
       }),
     ).resolves.toEqual({
+      batchId: expect.any(String),
       errors: ['Line 5: Supplier Beta Supplies does not match Acme Supplies.'],
       importedCount: 1,
       updatedCount: 0,
@@ -386,6 +392,66 @@ describe('parts.bulkImport', () => {
       code: 'P-100',
       supplierId: supplier.id,
     });
+  });
+});
+
+describe('parts.importBatches and parts.importBatch', () => {
+  test('shares import history with the price-blind stores role, carrying identity and no cost', async ({ context }) => {
+    const { batchId } = await context.createCaller().parts.bulkImport({
+      fileName: 'bearings.csv',
+      rows: [bulkImportRow()],
+    });
+    const stores = context.createCaller(mockSession('stores'));
+
+    const history = await stores.parts.importBatches({});
+    const detail = await stores.parts.importBatch({ batchId });
+
+    expect(history).toEqual({
+      items: [
+        {
+          completedAt: expect.any(String),
+          createdCount: 1,
+          fileName: 'bearings.csv',
+          id: batchId,
+          importedBy: { id: 'test-user-id', name: 'Test User' },
+          rejectedCount: 0,
+          unchangedCount: 0,
+          updatedCount: 0,
+        },
+      ],
+      nextCursor: null,
+      total: 1,
+    });
+    expect(detail.members).toEqual([
+      {
+        importedCode: 'P-100',
+        importedName: 'Bearing',
+        lineNumber: 2,
+        outcome: 'created',
+        part: { code: 'P-100', id: expect.any(String), name: 'Bearing', storageLocation: null },
+      },
+    ]);
+  });
+
+  test('refuses readers without Part or inventory access, and a batch that does not exist', async ({ context }) => {
+    const sales = context.createCaller(mockSession('sales'));
+
+    await expect(sales.parts.importBatches({})).rejects.toMatchObject({ code: 'FORBIDDEN' });
+    await expect(sales.parts.importBatch({ batchId: MISSING_ID })).rejects.toMatchObject({ code: 'FORBIDDEN' });
+    await expect(context.createCaller().parts.importBatch({ batchId: MISSING_ID })).rejects.toMatchObject({
+      code: 'NOT_FOUND',
+    });
+  });
+
+  test('refuses a file name too long to keep and two rows claiming one line', async ({ context }) => {
+    const caller = context.createCaller();
+
+    await expect(
+      caller.parts.bulkImport({ fileName: `${'x'.repeat(252)}.csv`, rows: [bulkImportRow()] }),
+    ).rejects.toMatchObject({ code: 'BAD_REQUEST' });
+    await expect(
+      caller.parts.bulkImport({ rows: [bulkImportRow(), bulkImportRow({ code: 'P-200' })] }),
+    ).rejects.toMatchObject({ code: 'BAD_REQUEST' });
   });
 });
 

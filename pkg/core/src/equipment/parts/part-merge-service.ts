@@ -7,6 +7,7 @@ import {
   jobEstimateSnapshots,
   jobs,
   partBom,
+  partImportBatchMembers,
   parts,
   productAssemblies,
   productMaterialLines,
@@ -178,6 +179,12 @@ export async function mergePart({
         unitCost: ledger.combinedAverage,
       });
     }
+
+    // A Part Import Batch keeps its original outcomes; its members just follow the Part to the survivor.
+    await tx
+      .update(partImportBatchMembers)
+      .set({ partId: targetId })
+      .where(eq(partImportBatchMembers.partId, sourceId));
 
     const merged = await fillEmptyFields(tx, pair, actorUserId);
     await tx.delete(parts).where(eq(parts.id, sourceId));

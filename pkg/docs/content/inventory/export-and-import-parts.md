@@ -15,6 +15,9 @@ first edit.
    [**Admin → Part categories**](../admin/maintain-part-categories.md) before importing.
 4. Click **Bulk parts import**, choose the file, and leave **CSV has header** ticked.
 5. Check the preview and the row issues it lists, then click **Import parts**.
+6. To label the Parts the import added, click **Print new Part labels** and follow
+   [Print Part Labels](print-part-labels.md#parts-from-a-recent-import). The button appears only when
+   the import added at least one Part.
 
 To work one Supplier at a time, use the **Bulk parts export** and **Bulk parts import** buttons on a
 Supplier's **Parts** tab instead. Both are scoped to that Supplier: the export writes only its Parts,
@@ -26,6 +29,8 @@ and the import refuses a row naming anyone else.
   for one line on its label), a Part Category that does not exist, or an
   attempt to change a Part's **Unit of Measure** after it has Stock Movements — is reported against its line number, that row is skipped,
   and the rest of the file imports.
+- Every finished import is kept under **Print labels → Recent imports**, with its file name, when it
+  finished, and who ran it, so anyone can label its Parts later — even after closing the import.
 - Cutting rows out of the file is safe. An import only ever creates and updates, so a Part you delete
   from the CSV is left alone rather than removed.
 - Headers are matched loosely: spacing, punctuation, and case are ignored, and `Category` is accepted

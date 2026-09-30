@@ -10,6 +10,7 @@ import {
 import { asc, eq, inArray, type SQL } from 'drizzle-orm';
 
 import { PartLabelSelectionEmptyError, PartNotFoundError } from './part-errors.js';
+import { partImportBatchLabelPartIds } from './part-import-batch-service.js';
 
 export type PartLabelPdfResult = {
   bytes: Uint8Array;
@@ -70,7 +71,7 @@ async function listLabelModels({
   const rows = await db
     .select({ code: parts.code, id: parts.id, name: parts.name, storageLocation: parts.storageLocation })
     .from(parts)
-    .where(getSelectionCondition(selection))
+    .where(await getSelectionCondition(db, selection))
     .orderBy(asc(parts.code));
 
   const copiesByPartId =
@@ -82,7 +83,7 @@ async function listLabelModels({
   });
 }
 
-function getSelectionCondition(selection: PartLabelBatchSelection): SQL | undefined {
+async function getSelectionCondition(db: Db, selection: PartLabelBatchSelection): Promise<SQL | undefined> {
   switch (selection.selection) {
     case 'all':
       return undefined;
@@ -97,5 +98,9 @@ function getSelectionCondition(selection: PartLabelBatchSelection): SQL | undefi
         parts.id,
         selection.copies.map((copy) => copy.partId),
       );
+    case 'importBatch':
+      // One label per distinct current Part, however many members a merge has pointed at it. No cap:
+      // like an explicit id list, a batch prints whole rather than silently cut short.
+      return inArray(parts.id, await partImportBatchLabelPartIds({ db, ...selection }));
   }
 }

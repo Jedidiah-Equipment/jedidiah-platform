@@ -50,6 +50,23 @@ higher.
 
 Stores users and the stores PC print from **Inventory**.
 
+## Parts from a recent import
+
+Every finished Bulk Parts Import is kept, newest first, for everyone who prints labels.
+
+1. Open **Parts** or **Inventory** and click **Print labels**, or click **Print new Part labels** when an
+   import finishes.
+2. Under **Parts to label**, choose **Recent imports**, then click the import by its file name and time.
+3. Review its Parts. Each shows its current code, name, and Storage Location, and whether the import
+   added or updated it.
+4. Tick **Include updated Parts** to label the Parts the import changed as well as the ones it added.
+5. Click **Open printable PDF**. One PDF opens in a preview panel with one label per Part. Print it from
+   the preview, or click **Download** to save it.
+
+Rows the import refused or left unchanged never get a label here. A Part merged into another prints
+once, as the Part it was merged into; a Part no longer in the catalog is marked and left out. Imports
+from before this list existed are not in it.
+
 ## A stores badge card
 
 A **Badge Card** is the same label stock carrying a person's name and a QR code the stores tablet

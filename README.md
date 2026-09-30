@@ -48,8 +48,19 @@ pnpm dev
 ```
 
 `pnpm dev` runs the API, web, lander, and mobile dev servers. Local ports: web `7001`, API `7002`, mobile
-web `7003`, lander `7004`. If this is not your only checkout of the repo, run `pnpm parallel:up` first to
-claim an isolated slot with its own Docker stack and remapped `7N0x` ports (see [AGENTS.md](AGENTS.md)).
+web `7003`, lander `7004`. For another checkout, replace the database setup commands above with
+`pnpm use-slot -- 2` (choose a slot from 1–9), then run `pnpm dev`. Every invocation takes over the chosen
+slot: it stops listeners on its four dev ports, deletes its Docker stack and volumes, writes local env
+blocks, migrates the dev and test-template databases, and seeds the snapshot. Ports are `7N01`–`7N07`
+for web, API, Expo, lander, Postgres, MinIO API, and MinIO console.
+
+Hand-written env values survive, including secrets; generated blocks from the old slot setup are
+replaced. A previous holder's env files still point at the slot, but its data has been replaced.
+Switching slots leaves the checkout's previous stack running. `pnpm compose:down` removes the currently
+configured Docker stack and volumes; `pnpm dev:kill` stops this checkout's dev processes.
+
+The docs dev server still starts on `7006` and tries the next free port. `.claude/launch.json` still uses
+default ports; open the URLs printed by the slot script when using a slot.
 
 Seeded users all sign in with the shared password `test123`.
 
@@ -99,8 +110,8 @@ pnpm db:migrate:test
 pnpm db:seed
 pnpm db:studio
 
-pnpm parallel:up     # claim an isolated Docker slot for this checkout
-pnpm parallel:down
+pnpm use-slot -- 2   # take over slot 2 and rebuild its local data
+pnpm compose:down    # remove the configured Docker stack and volumes
 ```
 
 `db:seed:staging` replaces staging's database contents with the current local seed tables and copies their

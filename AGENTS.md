@@ -38,13 +38,14 @@
 
 ## Local environments
 
-- Slot 0 is the committed default environment. Any other checkout — a git worktree included — needs its own
-  slot: run `pnpm parallel:up` before starting dev services, or `pnpm parallel:up -- 2` to request one.
+- Slot 0 is the committed default environment. Other checkouts need a user-chosen slot (1–9): use
+  `$use-slot` or run `pnpm use-slot -- <N>` before starting dev services. Every run takes over that slot,
+  stops its dev listeners, removes its Docker stack and volumes, then migrates and seeds fresh data.
 - A slot is `COMPOSE_PROJECT_NAME=jedidiah_slot<N>` on ports `7N01`-`7N07`: web, API, Expo, lander, Postgres,
-  MinIO API, MinIO console. Availability comes from Docker state, not from worktrees or running services.
-- `pnpm parallel:down` removes the slot's Docker stack and volumes and strips the generated env blocks,
-  preserving hand-written local env lines. Generated env files are gitignored and read directly by the
-  apps; no shell sourcing or launch-file patching is involved.
+  MinIO API, MinIO console. Switching slots leaves the previous stack running; the previous holder's env
+  files still point at a taken-over slot.
+- Generated `use-slot` env blocks replace legacy slot blocks and preserve hand-written local env lines.
+  Apps read the gitignored files directly; no shell sourcing or launch-file patching is involved.
 - `pnpm dev:kill` stops this checkout's dev services; `pnpm dev:kill:all` sweeps all known slot ports.
 
 ## Publishing

@@ -80,7 +80,7 @@ const ThreadScrollToBottom: FC = () => {
 
 const Composer: FC = () => {
   return (
-    <ComposerPrimitive.Root className="relative flex w-full flex-col rounded-lg border bg-background p-2 shadow-sm focus-within:border-ring/75 focus-within:ring-2 focus-within:ring-ring/20">
+    <ComposerPrimitive.Root className="relative flex w-full flex-col rounded-lg border bg-background p-2 shadow-sm focus-rings:focus-within:border-ring/75 focus-rings:focus-within:ring-2 focus-rings:focus-within:ring-ring/20">
       <ComposerPrimitive.Input
         aria-label="Message"
         autoFocus

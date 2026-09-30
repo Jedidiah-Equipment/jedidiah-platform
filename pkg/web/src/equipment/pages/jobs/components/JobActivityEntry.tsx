@@ -262,7 +262,7 @@ const ActivityRow: React.FC<{
       {linkToJob ? (
         <Link
           aria-label={`Open ${formatJobLabel(item.job)}`}
-          className="absolute inset-0 rounded-lg focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+          className="absolute inset-0 rounded-lg focus-rings:focus-visible:ring-2 focus-rings:focus-visible:ring-ring focus-rings:focus-visible:outline-none"
           search={{ job: item.job.id }}
           to="/equipment/jobs/activity"
         />

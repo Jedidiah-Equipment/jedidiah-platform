@@ -24,6 +24,7 @@ import {
 } from '@/components/ui/dropdown-menu.js';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip.js';
 import { CategoryIcon } from '@/contracting/components/CategoryIcon.js';
+import { MachineDialogTitle } from '@/contracting/components/MachineDialogTitle.js';
 import { readingEvidence } from '@/contracting/components/ReadingEvidence.js';
 import { cn } from '@/lib/utils.js';
 import { AddMeasureDialog } from './AddMeasureDialog.js';
@@ -217,7 +218,7 @@ export function MachineStintCard({ stint, stintNumber }: { stint: Assignment; st
                       description="Remove this Machine Assignment?"
                       isPending={mutations.remove.isPending}
                       onConfirm={() => mutations.remove.mutate({ id: stint.id })}
-                      title="Remove planned Machine"
+                      title={<MachineDialogTitle machine={stint}>Remove planned Machine</MachineDialogTitle>}
                       triggerIconOnly
                       triggerLabel={`Remove ${stint.machineCode}`}
                       triggerSize="icon-sm"

@@ -3,6 +3,7 @@ import { type Assignment, GapResolveInput } from '@pkg/schema/contracting';
 import { useMutation } from '@tanstack/react-query';
 import { CreateEntityDialog } from '@/components/form/index.js';
 import { Input } from '@/components/ui/input.js';
+import { MachineDialogTitle } from '@/contracting/components/MachineDialogTitle.js';
 import { useQueryInvalidation } from '@/contracting/hooks/use-query-invalidation.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useTRPC } from '@/lib/trpc.js';
@@ -27,7 +28,7 @@ export function GapResolveDialog({ stint, onClose }: { stint: Assignment | null;
       onOpenChange={(open) => {
         if (!open) onClose();
       }}
-      title={`${formatHours(gapHours)} gap on ${stint?.machineCode ?? 'Machine'}`}
+      title={<MachineDialogTitle machine={stint}>Resolve {formatHours(gapHours)} gap</MachineDialogTitle>}
       defaultValues={{ travelHours: gapHours, unaccountedHours: 0, reason: '' }}
       validator={GapValues}
       onCreate={(values) => resolve.mutateAsync({ id: stint?.id ?? '', ...values })}

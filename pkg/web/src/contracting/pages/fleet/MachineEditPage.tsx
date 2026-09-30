@@ -111,6 +111,11 @@ function MachineForm({ machine }: { machine: Machine }) {
       </AutosaveFormCard>
       {canEdit ? (
         <FleetRetirement
+          machine={{
+            machineCode: machine.code,
+            categoryIcon: machine.categoryIcon,
+            categoryColour: machine.categoryColour,
+          }}
           id={machine.id}
           noun="machine"
           autosave={autosave}

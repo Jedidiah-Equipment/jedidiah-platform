@@ -112,7 +112,7 @@ const JobDepartmentTimingCard: React.FC<{
       <Card>
         <CardHeader className="min-w-0 has-data-[slot=card-action]:grid-cols-1! sm:has-data-[slot=card-action]:grid-cols-[minmax(0,1fr)_auto]!">
           <CardTitle className="flex min-w-0 items-center gap-2">
-            <CollapsibleTrigger className="flex min-w-0 flex-1 items-center gap-2 rounded-sm text-left outline-none focus-visible:ring-3 focus-visible:ring-ring/50">
+            <CollapsibleTrigger className="flex min-w-0 flex-1 items-center gap-2 rounded-sm text-left outline-none focus-rings:focus-visible:ring-3 focus-rings:focus-visible:ring-ring/50">
               <DepartmentIcon className="size-5 shrink-0" department={department} />
               <span className="truncate">{presentation.headline}</span>
               <IconChevronDown

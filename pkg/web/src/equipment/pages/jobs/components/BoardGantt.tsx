@@ -499,7 +499,7 @@ const MaintainedHorizonWarningBadge: React.FC<{
         render={
           <button
             aria-label="Unmaintained calendar warning"
-            className="flex size-6 shrink-0 items-center justify-center rounded-sm bg-amber-500/15 text-amber-700 outline-none focus-visible:ring-2 focus-visible:ring-amber-500 dark:text-amber-300"
+            className="flex size-6 shrink-0 items-center justify-center rounded-sm bg-amber-500/15 text-amber-700 outline-none focus-rings:focus-visible:ring-2 focus-rings:focus-visible:ring-amber-500 dark:text-amber-300"
             type="button"
           />
         }

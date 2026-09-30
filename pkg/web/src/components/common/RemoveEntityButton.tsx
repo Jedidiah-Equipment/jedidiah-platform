@@ -19,7 +19,7 @@ type RemoveEntityButtonProps = {
   description: React.ReactNode;
   isPending: boolean;
   onConfirm: () => void;
-  title: string;
+  title: React.ReactNode;
   triggerIconOnly?: boolean;
   triggerLabel: string;
   triggerSize?: React.ComponentProps<typeof Button>['size'];

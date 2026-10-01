@@ -37,7 +37,12 @@ import {
   recordAuditUpdate,
 } from '../../audit/audit-writer.js';
 import { mutateEntity } from '../../audit/mutate-entity.js';
-import { CustomerInUseError, CustomerMergeSelfError, CustomerNotFoundError } from './customer-errors.js';
+import {
+  CustomerInUseError,
+  CustomerMergeBusyError,
+  CustomerMergeSelfError,
+  CustomerNotFoundError,
+} from './customer-errors.js';
 
 type CustomerRow = typeof customers.$inferSelect;
 
@@ -310,115 +315,124 @@ export async function mergeCustomer({
   const { sourceId, targetId } = input;
   if (sourceId === targetId) throw new CustomerMergeSelfError(sourceId);
 
-  return db.transaction(async (tx) => {
-    // Quote writes lock the Quote before FK-checking its Customer; ownership writes lock the Unit.
-    // Take those locks first so we never hold a Customer lock while waiting on either writer.
-    await tx
-      .select({ id: quotes.id })
-      .from(quotes)
-      .where(eq(quotes.customerId, sourceId))
-      .orderBy(quotes.id)
-      .for('update');
-    // EXISTS gives one row per Unit without DISTINCT, which PostgreSQL cannot combine with FOR UPDATE.
-    await tx
-      .select({ id: productUnits.id })
-      .from(productUnits)
-      .where(
-        exists(
-          tx
-            .select({ id: productUnitOwnershipTransfers.id })
-            .from(productUnitOwnershipTransfers)
-            .where(
-              and(
-                eq(productUnitOwnershipTransfers.productUnitId, productUnits.id),
-                or(
-                  eq(productUnitOwnershipTransfers.fromCustomerId, sourceId),
-                  eq(productUnitOwnershipTransfers.toCustomerId, sourceId),
+  return retryCustomerMerge(sourceId, () =>
+    db.transaction(async (tx) => {
+      // Writers and removal take these rows in different orders. NOWAIT releases the whole attempt
+      // on contention, so a merge never holds one of their needed rows while waiting for another.
+      await tx
+        .select({ id: quotes.id })
+        .from(quotes)
+        .where(eq(quotes.customerId, sourceId))
+        .orderBy(quotes.id)
+        .for('update', { noWait: true });
+      // EXISTS gives one row per Unit without DISTINCT, which PostgreSQL cannot combine with FOR UPDATE.
+      await tx
+        .select({ id: productUnits.id })
+        .from(productUnits)
+        .where(
+          exists(
+            tx
+              .select({ id: productUnitOwnershipTransfers.id })
+              .from(productUnitOwnershipTransfers)
+              .where(
+                and(
+                  eq(productUnitOwnershipTransfers.productUnitId, productUnits.id),
+                  or(
+                    eq(productUnitOwnershipTransfers.fromCustomerId, sourceId),
+                    eq(productUnitOwnershipTransfers.toCustomerId, sourceId),
+                  ),
                 ),
               ),
-            ),
-        ),
-      )
-      .orderBy(productUnits.id)
-      .for('update');
-    // A single ordered statement keeps crossing merges on the same Customer lock order.
-    const rows = await tx
-      .select()
-      .from(customers)
-      .where(inArray(customers.id, [sourceId, targetId]))
-      .orderBy(customers.id)
-      .for('update');
-    const source = rows.find((row) => row.id === sourceId);
-    const target = rows.find((row) => row.id === targetId);
-    if (!source) throw new CustomerNotFoundError(sourceId);
-    if (!target) throw new CustomerNotFoundError(targetId);
+          ),
+        )
+        .orderBy(productUnits.id)
+        .for('update', { noWait: true });
+      // A single ordered statement keeps crossing merges on the same Customer lock order.
+      const rows = await tx
+        .select()
+        .from(customers)
+        .where(inArray(customers.id, [sourceId, targetId]))
+        .orderBy(customers.id)
+        .for('update', { noWait: true });
+      const source = rows.find((row) => row.id === sourceId);
+      const target = rows.find((row) => row.id === targetId);
+      if (!source) throw new CustomerNotFoundError(sourceId);
+      if (!target) throw new CustomerNotFoundError(targetId);
 
-    const unitCount = await tx.$count(productUnits, eq(currentOwnerCustomerId(productUnits.id), sourceId));
-    const now = new Date();
-    const movedQuotes = await tx
-      .update(quotes)
-      .set({ customerId: targetId, updatedAt: now })
-      .where(eq(quotes.customerId, sourceId))
-      .returning({ id: quotes.id });
-    await tx
-      .update(productUnitOwnershipTransfers)
-      .set({ fromCustomerId: targetId })
-      .where(eq(productUnitOwnershipTransfers.fromCustomerId, sourceId));
-    await tx
-      .update(productUnitOwnershipTransfers)
-      .set({ toCustomerId: targetId })
-      .where(eq(productUnitOwnershipTransfers.toCustomerId, sourceId));
+      const unitCount = await tx.$count(productUnits, eq(currentOwnerCustomerId(productUnits.id), sourceId));
+      const now = new Date();
+      const movedQuotes = await tx
+        .update(quotes)
+        .set({ customerId: targetId, updatedAt: now })
+        .where(eq(quotes.customerId, sourceId))
+        .returning({ id: quotes.id });
+      await tx
+        .update(productUnitOwnershipTransfers)
+        .set({ fromCustomerId: targetId })
+        .where(eq(productUnitOwnershipTransfers.fromCustomerId, sourceId));
+      await tx
+        .update(productUnitOwnershipTransfers)
+        .set({ toCustomerId: targetId })
+        .where(eq(productUnitOwnershipTransfers.toCustomerId, sourceId));
 
-    const fillPatch: Partial<CustomerRow> = {};
-    for (const field of CUSTOMER_FILL_EMPTY_FIELDS) {
-      if (isEmptyCustomerField(target[field]) && !isEmptyCustomerField(source[field])) fillPatch[field] = source[field];
-    }
-    let mergedTarget = target;
-    if (Object.keys(fillPatch).length > 0) {
-      const [updated] = await tx
-        .update(customers)
-        .set({ ...fillPatch, updatedAt: now })
-        .where(eq(customers.id, targetId))
-        .returning();
-      if (!updated) throw new Error('Customer merge fill update did not return a row');
-      mergedTarget = updated;
-      const changes = diffAuditUpdate(customerAuditDescriptor, target, updated);
-      if (changes)
-        await recordAuditUpdate({ db: tx, descriptor: customerAuditDescriptor, actorUserId, after: updated, changes });
-    }
-    // A future reference unknown to this merge must fail closed, as Customer Removal does.
-    try {
-      await tx.delete(customers).where(eq(customers.id, sourceId));
-    } catch (error) {
-      if (getForeignKeyViolationConstraint(error)) throw new CustomerInUseError(sourceId);
-      throw error;
-    }
-    const counts = {
-      movedQuotes: { from: null, to: movedQuotes.length },
-      movedUnits: { from: null, to: unitCount },
-    };
-    await recordAuditEvent({
-      db: tx,
-      descriptor: customerAuditDescriptor,
-      action: 'merged',
-      actorUserId,
-      entityId: sourceId,
-      changes: { mergedIntoCustomer: { from: source.companyName, to: target.companyName }, ...counts },
-      record: customerAuditDescriptor.toRecord(source),
-      summary: `Merged customer '${source.companyName}' into '${target.companyName}'`,
-    });
-    await recordAuditEvent({
-      db: tx,
-      descriptor: customerAuditDescriptor,
-      action: 'merged',
-      actorUserId,
-      entityId: targetId,
-      changes: { absorbedCustomer: { from: source.companyName, to: target.companyName }, ...counts },
-      record: customerAuditDescriptor.toRecord(mergedTarget),
-      summary: `Absorbed customer '${source.companyName}' (${formatNumber(movedQuotes.length)} quotes, ${formatNumber(unitCount)} units)`,
-    });
-    return mapCustomer(mergedTarget);
-  });
+      const fillPatch: Partial<CustomerRow> = {};
+      for (const field of CUSTOMER_FILL_EMPTY_FIELDS) {
+        if (isEmptyCustomerField(target[field]) && !isEmptyCustomerField(source[field]))
+          fillPatch[field] = source[field];
+      }
+      let mergedTarget = target;
+      if (Object.keys(fillPatch).length > 0) {
+        const [updated] = await tx
+          .update(customers)
+          .set({ ...fillPatch, updatedAt: now })
+          .where(eq(customers.id, targetId))
+          .returning();
+        if (!updated) throw new Error('Customer merge fill update did not return a row');
+        mergedTarget = updated;
+        const changes = diffAuditUpdate(customerAuditDescriptor, target, updated);
+        if (changes)
+          await recordAuditUpdate({
+            db: tx,
+            descriptor: customerAuditDescriptor,
+            actorUserId,
+            after: updated,
+            changes,
+          });
+      }
+      // A future reference unknown to this merge must fail closed, as Customer Removal does.
+      try {
+        await tx.delete(customers).where(eq(customers.id, sourceId));
+      } catch (error) {
+        if (getForeignKeyViolationConstraint(error)) throw new CustomerInUseError(sourceId);
+        throw error;
+      }
+      const counts = {
+        movedQuotes: { from: null, to: movedQuotes.length },
+        movedUnits: { from: null, to: unitCount },
+      };
+      await recordAuditEvent({
+        db: tx,
+        descriptor: customerAuditDescriptor,
+        action: 'merged',
+        actorUserId,
+        entityId: sourceId,
+        changes: { mergedIntoCustomer: { from: source.companyName, to: target.companyName }, ...counts },
+        record: customerAuditDescriptor.toRecord(source),
+        summary: `Merged customer '${source.companyName}' into '${target.companyName}'`,
+      });
+      await recordAuditEvent({
+        db: tx,
+        descriptor: customerAuditDescriptor,
+        action: 'merged',
+        actorUserId,
+        entityId: targetId,
+        changes: { absorbedCustomer: { from: source.companyName, to: target.companyName }, ...counts },
+        record: customerAuditDescriptor.toRecord(mergedTarget),
+        summary: `Absorbed customer '${source.companyName}' (${formatNumber(movedQuotes.length)} ${movedQuotes.length === 1 ? 'quote' : 'quotes'}, ${formatNumber(unitCount)} ${unitCount === 1 ? 'unit' : 'units'})`,
+      });
+      return mapCustomer(mergedTarget);
+    }),
+  );
 }
 
 const CUSTOMER_FILL_EMPTY_FIELDS = [
@@ -432,4 +446,25 @@ const CUSTOMER_FILL_EMPTY_FIELDS = [
 ] as const;
 function isEmptyCustomerField(value: string | null): boolean {
   return value === null || value.trim() === '';
+}
+
+/** Retry a fresh transaction only when a NOWAIT row lock was unavailable; no attempt has committed. */
+async function retryCustomerMerge(sourceId: UUID, merge: () => Promise<Customer>): Promise<Customer> {
+  const deadline = Date.now() + 10_000;
+  for (;;) {
+    try {
+      return await merge();
+    } catch (error) {
+      if (!isMergeLockUnavailable(error)) throw error;
+      if (Date.now() >= deadline) throw new CustomerMergeBusyError(sourceId);
+      // Jitter lets two crossing merges stop colliding on the same rows without holding DB locks.
+      await new Promise<void>((resolve) => setTimeout(resolve, 50 + Math.random() * 100));
+    }
+  }
+}
+
+function isMergeLockUnavailable(error: unknown): boolean {
+  if (typeof error !== 'object' || error === null) return false;
+  if ('code' in error && error.code === '55P03') return true;
+  return 'cause' in error && isMergeLockUnavailable(error.cause);
 }

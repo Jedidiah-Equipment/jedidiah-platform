@@ -77,7 +77,7 @@ const CustomerEditTabs: React.FC<CustomerEditTabsProps> = ({ customer, onCustome
         {canReadJobs ? <TabsTrigger value="jobs">Jobs</TabsTrigger> : null}
         {auditAccess.can ? <TabsTrigger value="audit">Audit</TabsTrigger> : null}
       </TabsList>
-      <TabsContent className="pt-4" value="details">
+      <TabsContent className="space-y-4 pt-4" value="details">
         <CustomerForm customer={customer} key={customer.id} onSave={onCustomerSave} />
         {canMergeCustomer || canRemoveCustomer ? (
           <EntityActionsFooter>

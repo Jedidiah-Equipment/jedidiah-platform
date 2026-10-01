@@ -1,7 +1,7 @@
-import { auditEvents, type Db, user } from '@pkg/db';
-import { products, productUnitOwnershipTransfers, productUnits, quotes } from '@pkg/db/equipment';
+import { auditEvents, type Db, eq, user } from '@pkg/db';
+import { customers, products, productUnitOwnershipTransfers, productUnits, quotes } from '@pkg/db/equipment';
 import type { Customer } from '@pkg/schema/equipment';
-import { describe, expect } from 'vitest';
+import { describe, expect, vi } from 'vitest';
 import { createProductRangeFixture } from '@/equipment/test/product-range-fixtures.js';
 import { type AppRouterCaller, createTester } from '@/test/create-tester.js';
 import { expectIsoDatetime, mockSession } from '@/test/test-utils.js';
@@ -631,6 +631,51 @@ describe('customers.merge', () => {
       id: target.id,
     });
   });
+  test('returns a retryable conflict for sustained merge contention without changing either Customer', async ({
+    context,
+  }) => {
+    const db = context.db;
+    const caller = context.createCaller();
+    const source = await createCustomer(caller, 'Duplicate');
+    const target = await createCustomer(caller, 'Survivor');
+    let release = () => {};
+    let held = () => {};
+    const released = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const locked = new Promise<void>((resolve) => {
+      held = resolve;
+    });
+    const writer = db.transaction(async (tx) => {
+      await tx.select().from(customers).where(eq(customers.id, source.id)).for('update');
+      held();
+      await released;
+    });
+    await locked;
+    const realNow = Date.now.bind(Date);
+    let elapsed = 0;
+    const clock = vi.spyOn(Date, 'now').mockImplementation(() => realNow() + elapsed);
+    const attempts = vi.spyOn(db, 'transaction');
+    const merge = caller.customers.merge({ sourceId: source.id, targetId: target.id });
+    const rejected = expect(merge).rejects.toMatchObject({
+      code: 'CONFLICT',
+      appCode: 'customer.merge_busy',
+      message: 'Another change is still using this customer or its records. Wait a moment and try merging again.',
+    });
+    try {
+      await expect.poll(() => attempts.mock.calls.length).toBeGreaterThan(1);
+      elapsed = 10_001;
+      await rejected;
+    } finally {
+      clock.mockRestore();
+      attempts.mockRestore();
+      release();
+      await writer;
+    }
+    await expect(caller.customers.get({ id: source.id })).resolves.toEqual(source);
+    await expect(caller.customers.get({ id: target.id })).resolves.toEqual(target);
+  });
+
   test('maps self merges and missing Customers to stable errors', async ({ context }) => {
     const caller = context.createCaller();
     const source = await createCustomer(caller, 'Source');

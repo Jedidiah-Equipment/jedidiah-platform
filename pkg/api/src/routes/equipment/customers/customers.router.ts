@@ -65,6 +65,11 @@ function mapCustomerCoreError(error: CustomerCoreError): CoreErrorMapping<Custom
 }
 
 const customerErrorMappings = {
+  'customer.merge_busy': {
+    appCode: 'customer.merge_busy',
+    code: 'CONFLICT',
+    message: 'Another change is still using this customer or its records. Wait a moment and try merging again.',
+  },
   'customer.merge_self': {
     appCode: 'customer.merge_self',
     code: 'BAD_REQUEST',

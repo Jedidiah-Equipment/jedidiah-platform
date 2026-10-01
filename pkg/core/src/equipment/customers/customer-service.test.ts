@@ -1,10 +1,10 @@
 import { auditEvents, type Db, sql, user } from '@pkg/db';
-import { customers, jobs, products, productUnitOwnershipTransfers, quotes } from '@pkg/db/equipment';
+import { customers, jobs, products, productUnitOwnershipTransfers, productUnits, quotes } from '@pkg/db/equipment';
 import { getPlantDateNow } from '@pkg/domain';
 import type { UUID } from '@pkg/schema';
 import { CustomerCreateInput, QuoteCreateInput } from '@pkg/schema/equipment';
 import { and, eq } from 'drizzle-orm';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { createTester } from '../../test/create-tester.js';
 import { getQuote } from '../quotes/quote-read-service.js';
 import { cancelQuote, createQuote } from '../quotes/quote-service.js';
@@ -24,6 +24,7 @@ import {
   mapCustomer,
   mergeCustomer,
   patchCustomer,
+  removeCustomer,
 } from './customer-service.js';
 
 const test = createTester(async ({ db }) => {
@@ -496,6 +497,93 @@ test('serialises crossing merges with shared ownership history without deadlocki
   });
 });
 
+test('releases Quote locks while a Unit writer holds the Unit and then needs that Quote', async ({ context }) => {
+  const db = context.db;
+  const source = await makeCustomer(db, 'Duplicate');
+  const target = await makeCustomer(db, 'Survivor');
+  const productId = await makeProduct(db);
+  const quoteId = await makeQuote(db, source.id, productId);
+  const unit = await db.transaction((tx) =>
+    createProductUnit({
+      actorUserId: 'actor-user-id',
+      initialOwner: { customerId: source.id, sourceQuoteId: quoteId },
+      plantToday: getPlantDateNow(),
+      productId,
+      tx,
+    }),
+  );
+  const held = deferred();
+  const release = deferred();
+  const writer = db.transaction(async (tx) => {
+    await tx.select().from(productUnits).where(eq(productUnits.id, unit.id)).for('update');
+    held.resolve();
+    await release.promise;
+    // Reassignment of an Allocation sale takes these locks in this order.
+    await tx.select().from(quotes).where(eq(quotes.id, quoteId)).for('update');
+    await tx.update(quotes).set({ notes: 'Unit writer finished' }).where(eq(quotes.id, quoteId));
+  });
+  await held.promise;
+  const attempts = vi.spyOn(db, 'transaction');
+  const merging = mergeCustomer({
+    actorUserId: 'actor-user-id',
+    db,
+    input: { sourceId: source.id, targetId: target.id },
+  });
+  try {
+    await expect.poll(() => attempts.mock.calls.length).toBeGreaterThan(1);
+  } finally {
+    attempts.mockRestore();
+    release.resolve();
+    await writer;
+    await merging;
+  }
+  await expect(getQuote({ db, id: quoteId })).resolves.toMatchObject({
+    customerId: target.id,
+    notes: 'Unit writer finished',
+  });
+});
+
+test('lets Customer removal fail its restrictive FK while a merge backs off', async ({ context }) => {
+  const db = context.db;
+  const source = await makeCustomer(db, 'Duplicate');
+  const target = await makeCustomer(db, 'Survivor');
+  const quoteId = await makeQuote(db, source.id, await makeProduct(db));
+  const held = deferred();
+  const release = deferred();
+  const writer = db.transaction(async (tx) => {
+    await tx.select().from(quotes).where(eq(quotes.id, quoteId)).for('update');
+    held.resolve();
+    await release.promise;
+  });
+  await held.promise;
+  const removal = removeCustomer({ actorUserId: 'actor-user-id', db, id: source.id });
+  const removed = expect(removal).rejects.toMatchObject({ code: 'customer.in_use' });
+  await expect
+    .poll(async () => {
+      const rows = await db.execute<{ count: number }>(
+        sql`select count(*)::int as count from pg_stat_activity where datname = current_database() and wait_event_type = 'Lock'`,
+      );
+      return rows[0]?.count ?? 0;
+    })
+    .toBeGreaterThan(0);
+  const attempts = vi.spyOn(db, 'transaction');
+  const merging = mergeCustomer({
+    actorUserId: 'actor-user-id',
+    db,
+    input: { sourceId: source.id, targetId: target.id },
+  });
+  try {
+    await expect.poll(() => attempts.mock.calls.length).toBeGreaterThan(1);
+  } finally {
+    attempts.mockRestore();
+    release.resolve();
+    await writer;
+    await removed;
+    await merging;
+  }
+  await expect(getQuote({ db, id: quoteId })).resolves.toMatchObject({ customerId: target.id });
+});
+
 test('waits for a Quote edit before merging and preserves the edit', async ({ context }) => {
   const db = context.db;
   const source = await makeCustomer(db, 'Duplicate');
@@ -511,21 +599,16 @@ test('waits for a Quote edit before merging and preserves the edit', async ({ co
     await tx.update(quotes).set({ notes: 'Concurrent edit' }).where(eq(quotes.id, quoteId));
   });
   await held.promise;
+  const attempts = vi.spyOn(db, 'transaction');
   const merging = mergeCustomer({
     actorUserId: 'actor-user-id',
     db,
     input: { sourceId: source.id, targetId: target.id },
   });
   try {
-    await expect
-      .poll(async () => {
-        const rows = await db.execute<{ count: number }>(
-          sql`select count(*)::int as count from pg_stat_activity where datname = current_database() and wait_event_type = 'Lock'`,
-        );
-        return rows[0]?.count ?? 0;
-      })
-      .toBeGreaterThan(0);
+    await expect.poll(() => attempts.mock.calls.length).toBeGreaterThan(1);
   } finally {
+    attempts.mockRestore();
     release.resolve();
     await writer;
   }

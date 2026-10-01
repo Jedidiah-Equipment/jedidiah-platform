@@ -31,12 +31,28 @@ export class CustomerMergeSelfError extends Error {
   }
 }
 
-export type CustomerCoreError = CustomerInUseError | CustomerNotFoundError | CustomerMergeSelfError;
+export class CustomerMergeBusyError extends Error {
+  readonly code = 'customer.merge_busy';
+  readonly metadata: { id: string };
+
+  constructor(id: string) {
+    super(`Customer merge is waiting for another change: ${id}`);
+    this.name = 'CustomerMergeBusyError';
+    this.metadata = { id };
+  }
+}
+
+export type CustomerCoreError =
+  | CustomerInUseError
+  | CustomerNotFoundError
+  | CustomerMergeSelfError
+  | CustomerMergeBusyError;
 
 export function isCustomerCoreError(error: unknown): error is CustomerCoreError {
   return (
     error instanceof CustomerInUseError ||
     error instanceof CustomerNotFoundError ||
-    error instanceof CustomerMergeSelfError
+    error instanceof CustomerMergeSelfError ||
+    error instanceof CustomerMergeBusyError
   );
 }

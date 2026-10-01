@@ -66,6 +66,10 @@ export const MergeCustomerDialog: React.FC<{ customer: Customer }> = ({ customer
     } catch {
       return;
     }
+    handleOpenChange(false);
+    toast.success(`${customer.companyName} merged into ${merged.companyName}`);
+    // Leave the deleted Customer before refreshing its still-mounted detail and preview queries.
+    await navigate({ to: '/equipment/customers/$id/edit', params: { id: merged.id } });
     await Promise.all([
       invalidateCustomers(),
       invalidateQuotes(),
@@ -73,9 +77,6 @@ export const MergeCustomerDialog: React.FC<{ customer: Customer }> = ({ customer
       invalidateJobs(),
       invalidateAudit(),
     ]);
-    handleOpenChange(false);
-    toast.success(`${customer.companyName} merged into ${merged.companyName}`);
-    await navigate({ to: '/equipment/customers/$id/edit', params: { id: merged.id } });
   };
 
   return (

@@ -59,6 +59,7 @@ export const EQUIPMENT_SECTIONS: DocsSection[] = [
       { text: 'Change an accepted Quote', link: '/sales/change-an-accepted-quote' },
       { text: 'Raise a Parts Sale', link: '/sales/raise-a-parts-sale' },
       { text: 'Reassign a Unit', link: '/sales/reassign-a-unit' },
+      { text: 'Choose a Customer', link: '/sales/choose-a-customer' },
       { text: 'Remove a Customer', link: '/sales/remove-a-customer' },
       { text: 'Merge duplicate Customers', link: '/sales/merge-duplicate-customers' },
     ],

@@ -27,9 +27,9 @@ import {
   QuoteWorkTitle,
 } from '@pkg/schema/equipment';
 import { z } from 'zod';
-
 import { requireAiActorId } from '@/equipment/actor.js';
 import type { AiContext } from '@/equipment/context.js';
+import { CustomerMatchResponse, toCustomerMatchResponse } from '@/equipment/tools/customers/customer-match-response.js';
 import {
   QuoteDetailResponse as SharedQuoteDetailResponse,
   type QuoteDetailResponse as SharedQuoteDetailResponseType,
@@ -42,6 +42,10 @@ const CreateQuoteCustomerInput = z.discriminatedUnion('type', [
     .object({
       address: CustomerOptionalText.default(null),
       companyName: CustomerCompanyName,
+      allowPossibleMatch: z
+        .boolean()
+        .optional()
+        .describe('Set true only when the user explicitly says a possible match is a different company.'),
       contactPerson: CustomerOptionalText.default(null),
       email: CustomerEmail.nullable().default(null),
       phone: CustomerOptionalText.default(null),
@@ -113,8 +117,8 @@ export const CreateQuoteInput = z
     }
   });
 
-export type CreateQuoteResponse = SharedQuoteDetailResponseType;
-export const CreateQuoteResponse = SharedQuoteDetailResponse;
+export type CreateQuoteResponse = SharedQuoteDetailResponseType | CustomerMatchResponse;
+export const CreateQuoteResponse = z.union([SharedQuoteDetailResponse, CustomerMatchResponse]);
 
 export function toCoreQuoteCreateInput(input: CreateQuoteInput, actorUserId: AuthIdType): CoreQuoteCreateInputType {
   return CoreQuoteCreateInput.parse({
@@ -123,13 +127,17 @@ export function toCoreQuoteCreateInput(input: CreateQuoteInput, actorUserId: Aut
   });
 }
 
-export function toCreateQuoteResponse(quote: QuoteDetail, access: UserAccessSummary | null): CreateQuoteResponse {
+export function toCreateQuoteResponse(
+  quote: QuoteDetail,
+  access: UserAccessSummary | null,
+): SharedQuoteDetailResponseType {
   return toQuoteDetailResponse(quote, access);
 }
 
 export const createQuoteDefinition = {
   name: 'createQuote',
   description: [
+    'If creation returns possible_match, tell the user and use the existing Customer unless they say it is a different company. Ask which one when several match; never set allowPossibleMatch merely to retry.',
     `Create one Product, ${quoteKindLabels.custom}, or Parts Sale Quote when the user explicitly asks for it.`,
     'A Parts Sale sells loose or machined parts and never becomes a Job; its type cannot be changed later.',
     'Use findProducts to resolve a Product Quote productId and findCustomers to resolve an existing Customer; use an inline Customer when the company is new.',
@@ -143,7 +151,13 @@ export const createQuoteDefinition = {
   async handler(args: unknown, ctx: AiContext): Promise<CreateQuoteResponse> {
     const actorUserId = requireAiActorId(ctx);
     const input = toCoreQuoteCreateInput(CreateQuoteInput.parse(args), actorUserId);
-    const quote = await quotesCore.createQuote({ actorUserId, db: ctx.db, input });
-    return toCreateQuoteResponse(quote, ctx.access);
+    try {
+      const quote = await quotesCore.createQuote({ actorUserId, db: ctx.db, input });
+      return toCreateQuoteResponse(quote, ctx.access);
+    } catch (error) {
+      if (error instanceof quotesCore.CustomerPossibleMatchError)
+        return toCustomerMatchResponse(error.metadata.matches);
+      throw error;
+    }
   },
 } as const;

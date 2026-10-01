@@ -16,7 +16,7 @@ import {
 } from '@pkg/db/equipment';
 import { formatNumber } from '@pkg/domain';
 import type { AuthId, UUID } from '@pkg/schema';
-import { getNextCursor } from '@pkg/schema';
+import { getNextCursor, nameLookupKey } from '@pkg/schema';
 import type {
   CustomerCreateInput,
   CustomerListInput,
@@ -26,7 +26,7 @@ import type {
   CustomerPatchInput,
   CustomerUpdateInput,
 } from '@pkg/schema/equipment';
-import { Customer } from '@pkg/schema/equipment';
+import { Customer, CustomerPossibleMatch } from '@pkg/schema/equipment';
 import { and, asc, eq, exists, inArray, or, type SQL, sql } from 'drizzle-orm';
 
 import {
@@ -43,6 +43,7 @@ import {
   CustomerMergeBusyError,
   CustomerMergeSelfError,
   CustomerNotFoundError,
+  CustomerPossibleMatchError,
 } from './customer-errors.js';
 
 type CustomerRow = typeof customers.$inferSelect;
@@ -162,7 +163,9 @@ export async function createCustomer({
   input: CustomerCreateInput;
 }): Promise<Customer> {
   return db.transaction(async (tx) => {
-    const [row] = await tx.insert(customers).values(input).returning();
+    await assertCustomerCreationAllowed({ db: tx, ...input });
+    const { allowPossibleMatch: _allowPossibleMatch, ...fields } = input;
+    const [row] = await tx.insert(customers).values(fields).returning();
 
     if (!row) {
       throw new Error('Customer insert did not return a row');
@@ -476,4 +479,49 @@ function isMergeLockUnavailable(error: unknown): boolean {
   if (typeof error !== 'object' || error === null) return false;
   if ('code' in error && error.code === '55P03') return true;
   return 'cause' in error && isMergeLockUnavailable(error.cause);
+}
+
+/** The same exact name reading as Part Categories; never rewrites stored Customer spelling. */
+export async function findPossibleCustomerMatches({
+  db,
+  companyName,
+}: {
+  db: Db | DatabaseTransaction;
+  companyName: string;
+}): Promise<CustomerPossibleMatch[]> {
+  const key = nameLookupKey(companyName);
+  const rows = await db
+    .select({
+      id: customers.id,
+      companyName: customers.companyName,
+      contactPerson: customers.contactPerson,
+      email: customers.email,
+      createdAt: customers.createdAt,
+    })
+    .from(customers)
+    // Match the import lookup's database normalization before transferring candidate rows.
+    .where(sql`btrim(regexp_replace(lower(${customers.companyName}), '[ \\t\\n\\r\\f\\v]+', ' ', 'g')) = ${key}`)
+    .orderBy(customers.createdAt, customers.id);
+  return rows
+    .filter((row) => nameLookupKey(row.companyName) === key)
+    .map((row) => CustomerPossibleMatch.parse({ ...row, createdAt: row.createdAt.toISOString() }));
+}
+
+export async function assertCustomerCreationAllowed({
+  db,
+  companyName,
+  allowPossibleMatch,
+}: {
+  db: DatabaseTransaction;
+  companyName: string;
+  allowPossibleMatch?: boolean | undefined;
+}): Promise<void> {
+  // Serialize creations of the same name, including inline Quotes, until the transaction commits.
+  // This closes the lookup/insert race while still allowing an explicitly acknowledged duplicate.
+  await db.execute(
+    sql`select pg_advisory_xact_lock(hashtextextended(${`equipment.customer-name:${nameLookupKey(companyName)}`}, 0))`,
+  );
+  if (allowPossibleMatch) return;
+  const matches = await findPossibleCustomerMatches({ db, companyName });
+  if (matches.length) throw new CustomerPossibleMatchError(matches);
 }

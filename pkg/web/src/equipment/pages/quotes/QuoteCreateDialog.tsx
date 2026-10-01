@@ -15,6 +15,7 @@ import { getFieldErrors } from '@/components/form/utils/field-errors.js';
 import { HelpLink } from '@/components/help/index.js';
 import { Field, FieldError, FieldLabel } from '@/components/ui/field.js';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select.js';
+import { useCustomerMatchChoice } from '@/equipment/components/customers/use-customer-match-choice.js';
 import { useProductRangeForQuoteOptions, useSalesPersonOptions } from '@/equipment/hooks/options/index.js';
 import { useQueryInvalidation } from '@/equipment/hooks/use-query-invalidation.js';
 import { useAccess } from '@/hooks/use-access.js';
@@ -39,6 +40,7 @@ type QuoteCreateDialogProps = {
 
 export const QuoteCreateDialog: React.FC<QuoteCreateDialogProps> = ({ onOpenChange, open }) => {
   const trpc = useTRPC();
+  const { choose, dialog } = useCustomerMatchChoice(open);
   const navigate = useNavigate();
   const { invalidateQuotes } = useQueryInvalidation();
   const accessQuery = useAccess();
@@ -66,222 +68,237 @@ export const QuoteCreateDialog: React.FC<QuoteCreateDialogProps> = ({ onOpenChan
   );
 
   return (
-    <CreateEntityDialog
-      defaultValues={defaultValues}
-      onCreate={(values) => createQuoteMutation.mutateAsync(toQuoteCreateInput(values))}
-      onCreated={async (quote: Quote) => {
-        await invalidateQuotes();
-        onOpenChange(false);
-        toast.success('Quote created');
-        await navigate({ params: { id: quote.id }, to: '/equipment/quotes/$id/edit' });
-      }}
-      onOpenChange={onOpenChange}
-      open={open && !salespeopleOptions.isPending}
-      submitLabel="Save"
-      title={
-        <span className="flex items-center gap-2">
-          New quote
-          <HelpLink label="How to raise a Parts Sale" topic="partsSale" />
-        </span>
-      }
-      validator={QuoteCreateFormValues}
-    >
-      {(form) => (
-        <div className="grid gap-4">
-          <form.Field name="customerId">
-            {(field) => {
-              const fieldErrors = getFieldErrors(field.state.meta.errors);
-              const isInvalid = fieldErrors.length > 0;
+    <>
+      {dialog}
+      <CreateEntityDialog
+        defaultValues={defaultValues}
+        onCreate={async (values) => {
+          const input = toQuoteCreateInput(values);
+          if (input.customer.type === 'inline') {
+            const choice = await choose(input.customer.companyName);
+            if (!choice) return null;
+            input.customer =
+              typeof choice === 'string'
+                ? { ...input.customer, allowPossibleMatch: choice === 'create' }
+                : { type: 'existing', customerId: choice.id };
+          }
+          return createQuoteMutation.mutateAsync(input);
+        }}
+        onCreated={async (quote: Quote | null) => {
+          if (!quote) return;
+          await invalidateQuotes();
+          onOpenChange(false);
+          toast.success('Quote created');
+          await navigate({ params: { id: quote.id }, to: '/equipment/quotes/$id/edit' });
+        }}
+        onOpenChange={onOpenChange}
+        open={open && !salespeopleOptions.isPending}
+        submitLabel="Save"
+        title={
+          <span className="flex items-center gap-2">
+            New quote
+            <HelpLink label="How to raise a Parts Sale" topic="partsSale" />
+          </span>
+        }
+        validator={QuoteCreateFormValues}
+      >
+        {(form) => (
+          <div className="grid gap-4">
+            <form.Field name="customerId">
+              {(field) => {
+                const fieldErrors = getFieldErrors(field.state.meta.errors);
+                const isInvalid = fieldErrors.length > 0;
 
-              return (
-                <form.Subscribe
-                  selector={(state) => ({
-                    customerMode: state.values.customerMode,
-                    inlineCompanyName: state.values.inlineCompanyName,
-                  })}
-                >
-                  {({ customerMode, inlineCompanyName }) => (
-                    <Field data-invalid={isInvalid}>
-                      <FieldLabel htmlFor={field.name}>Customer</FieldLabel>
-                      <QuoteCustomerCombobox
-                        allowCreate
-                        disabled={false}
-                        inlineValue={inlineCompanyName}
-                        mode={customerMode}
-                        onSelected={(selection) => {
-                          if (!selection) {
+                return (
+                  <form.Subscribe
+                    selector={(state) => ({
+                      customerMode: state.values.customerMode,
+                      inlineCompanyName: state.values.inlineCompanyName,
+                    })}
+                  >
+                    {({ customerMode, inlineCompanyName }) => (
+                      <Field data-invalid={isInvalid}>
+                        <FieldLabel htmlFor={field.name}>Customer</FieldLabel>
+                        <QuoteCustomerCombobox
+                          allowCreate
+                          disabled={false}
+                          inlineValue={inlineCompanyName}
+                          mode={customerMode}
+                          onSelected={(selection) => {
+                            if (!selection) {
+                              form.setFieldValue('customerMode', 'existing');
+                              form.setFieldValue('inlineCompanyName', '');
+                              field.handleChange('');
+                              return;
+                            }
+
+                            if (selection.type === 'inline') {
+                              form.setFieldValue('customerMode', 'inline');
+                              form.setFieldValue('inlineCompanyName', selection.companyName);
+                              field.handleChange('');
+                              return;
+                            }
+
                             form.setFieldValue('customerMode', 'existing');
                             form.setFieldValue('inlineCompanyName', '');
-                            field.handleChange('');
-                            return;
-                          }
-
-                          if (selection.type === 'inline') {
-                            form.setFieldValue('customerMode', 'inline');
-                            form.setFieldValue('inlineCompanyName', selection.companyName);
-                            field.handleChange('');
-                            return;
-                          }
-
-                          form.setFieldValue('customerMode', 'existing');
-                          form.setFieldValue('inlineCompanyName', '');
-                          field.handleChange(selection.customer.id);
-                        }}
-                        value={field.state.value}
-                      />
-                      <FieldError errors={fieldErrors} />
-                    </Field>
-                  )}
-                </form.Subscribe>
-              );
-            }}
-          </form.Field>
-          <form.AppField
-            listeners={{
-              onChange: ({ value }) => {
-                form.setFieldValue('workTitle', partsSaleWorkTitle(value, form.getFieldValue('workTitle')));
-              },
-            }}
-            name="offeringType"
-          >
-            {(field) => (
-              <field.SelectField
-                label="Type"
-                options={QuoteOfferingType.options.map((type) => ({
-                  label: quoteOfferingTypeLabels[type],
-                  value: type,
-                }))}
-              />
-            )}
-          </form.AppField>
-          <form.Subscribe selector={(state) => state.values.offeringType}>
-            {(offeringType) =>
-              offeringType === 'product' ? (
-                <form.Field name="rangeId">
-                  {(field) => {
-                    const selectedRange = productRangeOptions.items.find((range) => range.id === field.state.value);
-
-                    return (
-                      <Field>
-                        <FieldLabel htmlFor={field.name}>Range</FieldLabel>
-                        <Select
-                          disabled={productRangeOptions.isPending}
-                          onValueChange={(value) => {
-                            field.handleChange(value === ALL_RANGES_SELECT_VALUE ? '' : (value ?? ''));
+                            field.handleChange(selection.customer.id);
                           }}
-                          value={field.state.value || ALL_RANGES_SELECT_VALUE}
-                        >
-                          <SelectTrigger id={field.name} className="w-full">
-                            <SelectValue
-                              placeholder={productRangeOptions.isPending ? 'Loading ranges...' : 'All ranges'}
-                            >
-                              {field.state.value ? selectedRange?.name : 'All ranges'}
-                            </SelectValue>
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectGroup>
-                              <SelectItem value={ALL_RANGES_SELECT_VALUE}>All ranges</SelectItem>
-                              {productRangeOptions.items.map((range) => (
-                                <SelectItem key={range.id} value={range.id}>
-                                  {range.name}
-                                </SelectItem>
-                              ))}
-                            </SelectGroup>
-                          </SelectContent>
-                        </Select>
-                      </Field>
-                    );
-                  }}
-                </form.Field>
-              ) : null
-            }
-          </form.Subscribe>
-          <form.Subscribe
-            selector={(state) => ({ offeringType: state.values.offeringType, rangeId: state.values.rangeId })}
-          >
-            {({ offeringType, rangeId }) =>
-              offeringType === 'product' ? (
-                <form.Field name="productId">
-                  {(field) => {
-                    const fieldErrors = getFieldErrors(field.state.meta.errors);
-                    const isInvalid = fieldErrors.length > 0;
-
-                    return (
-                      <Field data-invalid={isInvalid}>
-                        <FieldLabel htmlFor={field.name}>Product</FieldLabel>
-                        <QuoteProductCombobox
-                          disabled={false}
-                          onSelected={(product) => {
-                            const nextProductId = product?.id ?? '';
-
-                            if (nextProductId !== field.state.value) {
-                              form.setFieldValue('productUnitId', '');
-                            }
-                            field.handleChange(nextProductId);
-                          }}
-                          rangeId={rangeId}
                           value={field.state.value}
                         />
                         <FieldError errors={fieldErrors} />
                       </Field>
-                    );
-                  }}
-                </form.Field>
-              ) : (
-                <div className="grid gap-4">
-                  <form.AppField name="workTitle">
-                    {(field) => <field.TextField autoComplete="off" label="Work title" />}
-                  </form.AppField>
-                </div>
-              )
-            }
-          </form.Subscribe>
-          <form.Subscribe
-            selector={(state) => ({ offeringType: state.values.offeringType, productId: state.values.productId })}
-          >
-            {({ offeringType, productId }) =>
-              offeringType === 'product' ? (
-                <form.Field name="productUnitId">
-                  {(field) => (
-                    <Field>
-                      <FieldLabel htmlFor={field.name}>Product Unit</FieldLabel>
-                      <QuoteProductUnitSelect
-                        id={field.name}
-                        onChange={field.handleChange}
-                        productId={productId}
-                        value={field.state.value}
-                      />
-                      <p className="text-muted-foreground text-xs">
-                        Optional. Only Stock units for the selected Product are offered.
-                      </p>
-                    </Field>
-                  )}
-                </form.Field>
-              ) : null
-            }
-          </form.Subscribe>
-          <form.AppField name="salesPersonId">
-            {(field) => (
-              <field.SelectField
-                label="Salesperson"
-                options={salespeopleOptions.selectOptions}
-                placeholder="Select salesperson"
-              />
-            )}
-          </form.AppField>
-          <form.AppField name="status">
-            {(field) => (
-              <field.SelectField
-                label="Status"
-                options={QuoteCreateStatus.options.map((status) => ({
-                  label: quoteStatusLabels[status],
-                  value: status,
-                }))}
-              />
-            )}
-          </form.AppField>
-        </div>
-      )}
-    </CreateEntityDialog>
+                    )}
+                  </form.Subscribe>
+                );
+              }}
+            </form.Field>
+            <form.AppField
+              listeners={{
+                onChange: ({ value }) => {
+                  form.setFieldValue('workTitle', partsSaleWorkTitle(value, form.getFieldValue('workTitle')));
+                },
+              }}
+              name="offeringType"
+            >
+              {(field) => (
+                <field.SelectField
+                  label="Type"
+                  options={QuoteOfferingType.options.map((type) => ({
+                    label: quoteOfferingTypeLabels[type],
+                    value: type,
+                  }))}
+                />
+              )}
+            </form.AppField>
+            <form.Subscribe selector={(state) => state.values.offeringType}>
+              {(offeringType) =>
+                offeringType === 'product' ? (
+                  <form.Field name="rangeId">
+                    {(field) => {
+                      const selectedRange = productRangeOptions.items.find((range) => range.id === field.state.value);
+
+                      return (
+                        <Field>
+                          <FieldLabel htmlFor={field.name}>Range</FieldLabel>
+                          <Select
+                            disabled={productRangeOptions.isPending}
+                            onValueChange={(value) => {
+                              field.handleChange(value === ALL_RANGES_SELECT_VALUE ? '' : (value ?? ''));
+                            }}
+                            value={field.state.value || ALL_RANGES_SELECT_VALUE}
+                          >
+                            <SelectTrigger id={field.name} className="w-full">
+                              <SelectValue
+                                placeholder={productRangeOptions.isPending ? 'Loading ranges...' : 'All ranges'}
+                              >
+                                {field.state.value ? selectedRange?.name : 'All ranges'}
+                              </SelectValue>
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectGroup>
+                                <SelectItem value={ALL_RANGES_SELECT_VALUE}>All ranges</SelectItem>
+                                {productRangeOptions.items.map((range) => (
+                                  <SelectItem key={range.id} value={range.id}>
+                                    {range.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectGroup>
+                            </SelectContent>
+                          </Select>
+                        </Field>
+                      );
+                    }}
+                  </form.Field>
+                ) : null
+              }
+            </form.Subscribe>
+            <form.Subscribe
+              selector={(state) => ({ offeringType: state.values.offeringType, rangeId: state.values.rangeId })}
+            >
+              {({ offeringType, rangeId }) =>
+                offeringType === 'product' ? (
+                  <form.Field name="productId">
+                    {(field) => {
+                      const fieldErrors = getFieldErrors(field.state.meta.errors);
+                      const isInvalid = fieldErrors.length > 0;
+
+                      return (
+                        <Field data-invalid={isInvalid}>
+                          <FieldLabel htmlFor={field.name}>Product</FieldLabel>
+                          <QuoteProductCombobox
+                            disabled={false}
+                            onSelected={(product) => {
+                              const nextProductId = product?.id ?? '';
+
+                              if (nextProductId !== field.state.value) {
+                                form.setFieldValue('productUnitId', '');
+                              }
+                              field.handleChange(nextProductId);
+                            }}
+                            rangeId={rangeId}
+                            value={field.state.value}
+                          />
+                          <FieldError errors={fieldErrors} />
+                        </Field>
+                      );
+                    }}
+                  </form.Field>
+                ) : (
+                  <div className="grid gap-4">
+                    <form.AppField name="workTitle">
+                      {(field) => <field.TextField autoComplete="off" label="Work title" />}
+                    </form.AppField>
+                  </div>
+                )
+              }
+            </form.Subscribe>
+            <form.Subscribe
+              selector={(state) => ({ offeringType: state.values.offeringType, productId: state.values.productId })}
+            >
+              {({ offeringType, productId }) =>
+                offeringType === 'product' ? (
+                  <form.Field name="productUnitId">
+                    {(field) => (
+                      <Field>
+                        <FieldLabel htmlFor={field.name}>Product Unit</FieldLabel>
+                        <QuoteProductUnitSelect
+                          id={field.name}
+                          onChange={field.handleChange}
+                          productId={productId}
+                          value={field.state.value}
+                        />
+                        <p className="text-muted-foreground text-xs">
+                          Optional. Only Stock units for the selected Product are offered.
+                        </p>
+                      </Field>
+                    )}
+                  </form.Field>
+                ) : null
+              }
+            </form.Subscribe>
+            <form.AppField name="salesPersonId">
+              {(field) => (
+                <field.SelectField
+                  label="Salesperson"
+                  options={salespeopleOptions.selectOptions}
+                  placeholder="Select salesperson"
+                />
+              )}
+            </form.AppField>
+            <form.AppField name="status">
+              {(field) => (
+                <field.SelectField
+                  label="Status"
+                  options={QuoteCreateStatus.options.map((status) => ({
+                    label: quoteStatusLabels[status],
+                    value: status,
+                  }))}
+                />
+              )}
+            </form.AppField>
+          </div>
+        )}
+      </CreateEntityDialog>
+    </>
   );
 };

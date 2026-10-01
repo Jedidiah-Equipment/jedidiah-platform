@@ -2380,6 +2380,8 @@ async function createReadyQuote(caller: AppRouterCaller, productId: string) {
     customer: {
       type: 'inline',
       companyName: 'Ready Customer',
+      // These fixtures test Quote state and intentionally repeat the Customer name.
+      allowPossibleMatch: true,
     },
     discountPercent: 25,
     notes: null,

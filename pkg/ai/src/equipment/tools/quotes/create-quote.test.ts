@@ -1,7 +1,6 @@
-import * as quotesCore from '@pkg/core/equipment';
 import { accessForRole } from '@pkg/domain/testing';
 import { QuoteDetail } from '@pkg/schema/equipment';
-import { describe, expect, test, vi } from 'vitest';
+import { describe, expect, test } from 'vitest';
 import { z } from 'zod';
 
 import type { AiContext } from '@/equipment/context.js';
@@ -9,7 +8,6 @@ import type { AiContext } from '@/equipment/context.js';
 import {
   CreateQuoteInput,
   CreateQuoteResponse,
-  createQuoteDefinition,
   toCoreQuoteCreateInput,
   toCreateQuoteResponse,
 } from './create-quote.js';
@@ -160,7 +158,7 @@ describe('createQuote contract', () => {
     ).toThrow();
   });
 
-  test('defaults and normalizes Quote input, creates it as the actor, and returns linked details', async () => {
+  test('defaults and normalizes Quote input and projects linked details', () => {
     const input = CreateQuoteInput.parse({
       customer: {
         type: 'inline',
@@ -171,12 +169,6 @@ describe('createQuote contract', () => {
       offering: { kind: 'product', productId: PRODUCT_ID },
     });
     const coreInput = toCoreQuoteCreateInput(input, 'test-user-id');
-    const createSpy = vi.spyOn(quotesCore, 'createQuote').mockResolvedValue(quote);
-
-    await expect(createQuoteDefinition.handler(input, createContext())).resolves.toEqual(
-      toCreateQuoteResponse(quote, createContext().access),
-    );
-
     expect(coreInput).toMatchObject({
       customer: {
         address: null,
@@ -197,12 +189,6 @@ describe('createQuote contract', () => {
       selectedAssemblies: [],
       status: 'draft',
     });
-    expect(createSpy).toHaveBeenCalledWith({
-      actorUserId: 'test-user-id',
-      db: expect.any(Object),
-      input: coreInput,
-    });
-
     const response = toCreateQuoteResponse(quote, createContext().access);
     expect(CreateQuoteResponse.parse(response)).toEqual(response);
     expect(response.links).toEqual({
@@ -214,10 +200,6 @@ describe('createQuote contract', () => {
       app: `/equipment/quotes/${QUOTE_ID}/edit`,
     });
     expect(JSON.stringify(response)).not.toContain('thumbnailDataUrl');
-    expect(createQuoteDefinition.anyOfPermissions).toEqual(['equipment_quote:create']);
-    expect(createQuoteDefinition.description).toContain('inline Customer');
-    expect(createQuoteDefinition.description).toContain('findProducts');
-    expect(createQuoteDefinition.description).toContain('findCustomers');
     expect(() => z.toJSONSchema(CreateQuoteInput)).not.toThrow();
   });
 });

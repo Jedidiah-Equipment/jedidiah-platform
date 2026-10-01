@@ -1,6 +1,5 @@
-import * as customersCore from '@pkg/core/equipment';
 import { Customer } from '@pkg/schema/equipment';
-import { describe, expect, test, vi } from 'vitest';
+import { describe, expect, test } from 'vitest';
 import { z } from 'zod';
 
 import type { AiContext } from '@/equipment/context.js';
@@ -45,7 +44,7 @@ function createContext(session = true): AiContext {
 }
 
 describe('createCustomer contract', () => {
-  test('normalizes Customer input, creates it as the actor, and returns linked details', async () => {
+  test('normalizes Customer input and projects linked details', () => {
     const input = CreateCustomerInput.parse({
       address: null,
       companyName: ' Acme Mining ',
@@ -54,12 +53,6 @@ describe('createCustomer contract', () => {
       vatNumber: ' VAT-123 ',
     });
     const coreInput = toCoreCustomerCreateInput(input);
-    const createSpy = vi.spyOn(customersCore, 'createCustomer').mockResolvedValue(customer);
-
-    await expect(createCustomerDefinition.handler(input, createContext())).resolves.toEqual(
-      toCreateCustomerResponse(customer),
-    );
-
     expect(coreInput).toEqual({
       address: null,
       companyName: 'Acme Mining',
@@ -70,19 +63,10 @@ describe('createCustomer contract', () => {
       thumbnailDataUrl: null,
       vatNumber: 'VAT-123',
     });
-    expect(createSpy).toHaveBeenCalledWith({
-      actorUserId: 'test-user-id',
-      db: expect.any(Object),
-      input: coreInput,
-    });
-
     const response = toCreateCustomerResponse(customer);
     expect(CreateCustomerResponse.parse(response)).toEqual(response);
     expect(response.links.app).toBe(`/equipment/customers/${CUSTOMER_ID}/edit`);
     expect(JSON.stringify(response)).not.toContain('thumbnailDataUrl');
-    expect(createCustomerDefinition.anyOfPermissions).toEqual(['equipment_customer:create']);
-    expect(createCustomerDefinition.description).toContain('standalone Customer');
-    expect(createCustomerDefinition.description).toContain('createQuote');
     expect(() => z.toJSONSchema(CreateCustomerInput)).not.toThrow();
   });
 

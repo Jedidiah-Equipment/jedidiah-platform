@@ -10,7 +10,8 @@ or Department timing. A Parts Sale cannot be turned into Service Work later; rai
 2. Pick the **Customer**.
 3. Set **Type** to **Parts Sale**. The **Work title** fills in as `Parts sale`; change it if a better name
    helps the Customer.
-4. Pick the **Salesperson** and **Status**, then select **Save**.
+4. Pick the **Salesperson** and **Status**, then select **Save**. If a new Customer has a possible match,
+   [choose the existing Customer or create a different company](/sales/choose-a-customer).
 5. On the Quote, add a Work Item for the parts, and
    [add inventory parts](/sales/add-an-inventory-part-to-a-quote) or type the rows in. Machine time on a
    CNC'd part goes in the Work Item's hours.

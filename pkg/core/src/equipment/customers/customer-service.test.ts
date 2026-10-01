@@ -19,6 +19,7 @@ import {
 } from '../units/product-unit-service.js';
 import {
   createCustomer,
+  findPossibleCustomerMatches,
   getCustomer,
   getCustomerMergePreview,
   mapCustomer,
@@ -281,7 +282,11 @@ test('keeps the MRB reassignment history, Owner and both Quotes locked after mer
 });
 
 async function makeCustomer(db: Db, companyName: string) {
-  return createCustomer({ actorUserId: 'actor-user-id', db, input: CustomerCreateInput.parse({ companyName }) });
+  return createCustomer({
+    actorUserId: 'actor-user-id',
+    db,
+    input: CustomerCreateInput.parse({ companyName, allowPossibleMatch: true }),
+  });
 }
 async function makeProduct(db: Db): Promise<UUID> {
   const [row] = await db
@@ -626,3 +631,104 @@ function deferred() {
   });
   return { promise, resolve };
 }
+
+describe('Possible Customer matches', () => {
+  test('matches case and whitespace only and returns every matching Customer', async ({ context: { db } }) => {
+    const first = await createCustomer({
+      actorUserId: 'actor-user-id',
+      db,
+      input: CustomerCreateInput.parse({ companyName: 'MRB Farming', contactPerson: 'Mark Buhr' }),
+    });
+    const second = await createCustomer({
+      actorUserId: 'actor-user-id',
+      db,
+      input: CustomerCreateInput.parse({ companyName: 'mrb  Farming', allowPossibleMatch: true }),
+    });
+    await createCustomer({
+      actorUserId: 'actor-user-id',
+      db,
+      input: CustomerCreateInput.parse({ companyName: 'MRB Farming Pty Ltd' }),
+    });
+    expect(
+      (await findPossibleCustomerMatches({ db, companyName: '  MRB\tFARMING  ' })).map((c) => c.id).sort(),
+    ).toEqual([first.id, second.id].sort());
+    expect(
+      (await findPossibleCustomerMatches({ db, companyName: '\rMRB\n\f\vFARMING\t' })).map((c) => c.id).sort(),
+    ).toEqual([first.id, second.id].sort());
+    const accented = await createCustomer({
+      actorUserId: 'actor-user-id',
+      db,
+      input: CustomerCreateInput.parse({ companyName: 'Élan Mining' }),
+    });
+    expect(await findPossibleCustomerMatches({ db, companyName: ' éLAN  Mining ' })).toMatchObject([
+      { id: accented.id },
+    ]);
+    await expect(
+      createCustomer({
+        actorUserId: 'actor-user-id',
+        db,
+        input: CustomerCreateInput.parse({ companyName: 'MRB  farming' }),
+      }),
+    ).rejects.toMatchObject({
+      code: 'customer.possible_match',
+      metadata: {
+        matches: expect.arrayContaining([expect.objectContaining({ id: first.id, contactPerson: 'Mark Buhr' })]),
+      },
+    });
+  });
+});
+
+test('inline Quote creation requires an explicit choice and can reuse a matching Customer', async ({
+  context: { db },
+}) => {
+  const existing = await makeCustomer(db, 'MRB Farming');
+  const input = QuoteCreateInput.parse({
+    customer: { type: 'inline', companyName: 'mrb  farming' },
+    offering: { kind: 'custom', workTitle: 'Repair' },
+    status: 'draft',
+    salesPersonId: 'actor-user-id',
+  });
+  await expect(createQuote({ db, actorUserId: 'actor-user-id', input })).rejects.toMatchObject({
+    code: 'customer.possible_match',
+  });
+  expect(await findPossibleCustomerMatches({ db, companyName: 'MRB Farming' })).toHaveLength(1);
+  const reused = await createQuote({
+    db,
+    actorUserId: 'actor-user-id',
+    input: { ...input, customer: { type: 'existing', customerId: existing.id } },
+  });
+  expect((await getQuote({ db, id: reused.id })).customerId).toBe(existing.id);
+  const created = await createQuote({
+    db,
+    actorUserId: 'actor-user-id',
+    input: {
+      ...input,
+      customer: {
+        type: 'inline',
+        companyName: 'mrb  farming',
+        allowPossibleMatch: true,
+        address: null,
+        phone: null,
+        email: null,
+        contactPerson: null,
+      },
+    },
+  });
+  expect((await getQuote({ db, id: created.id })).customerId).not.toBe(existing.id);
+  expect(await findPossibleCustomerMatches({ db, companyName: 'MRB Farming' })).toHaveLength(2);
+});
+
+test('concurrent unacknowledged creates leave one Customer and offer the other caller its match', async ({
+  context: { db },
+}) => {
+  const results = await Promise.allSettled(
+    ['MRB Farming', 'mrb  FARMING'].map((companyName) =>
+      createCustomer({ db, actorUserId: 'actor-user-id', input: CustomerCreateInput.parse({ companyName }) }),
+    ),
+  );
+  expect(results.filter((result) => result.status === 'fulfilled')).toHaveLength(1);
+  expect(results.find((result) => result.status === 'rejected')).toMatchObject({
+    reason: { code: 'customer.possible_match' },
+  });
+  expect(await findPossibleCustomerMatches({ db, companyName: 'MRB Farming' })).toHaveLength(1);
+});

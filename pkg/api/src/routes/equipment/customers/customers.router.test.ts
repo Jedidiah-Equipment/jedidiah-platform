@@ -1,5 +1,7 @@
+import { type AiContext, createAiSdkTools } from '@pkg/ai/equipment';
 import { auditEvents, type Db, eq, user } from '@pkg/db';
 import { customers, products, productUnitOwnershipTransfers, productUnits, quotes } from '@pkg/db/equipment';
+import { accessForRole } from '@pkg/domain/testing';
 import type { Customer } from '@pkg/schema/equipment';
 import { describe, expect, vi } from 'vitest';
 import { createProductRangeFixture } from '@/equipment/test/product-range-fixtures.js';
@@ -123,10 +125,13 @@ describe('customers.create', () => {
     ]);
   });
 
-  test('allows duplicate company names and emails', async ({ context }) => {
+  test('allows explicitly acknowledged duplicate company names and emails', async ({ context }) => {
     const caller = context.createCaller();
     const first = await createCustomer(caller, 'Duplicate Customer', { email: 'duplicate@example.com' });
-    const second = await createCustomer(caller, 'Duplicate Customer', { email: 'duplicate@example.com' });
+    const second = await createCustomer(caller, 'Duplicate Customer', {
+      email: 'duplicate@example.com',
+      allowPossibleMatch: true,
+    });
 
     expect(first.id).not.toBe(second.id);
   });
@@ -699,4 +704,77 @@ describe('customers.merge', () => {
       });
     }
   });
+});
+
+test('offers possible matches to Quote creators and maps an unacknowledged create to a public conflict', async ({
+  context,
+}) => {
+  const admin = context.createCaller();
+  const existing = await createCustomer(admin, 'MRB Farming', { contactPerson: 'Mark Buhr' });
+  const sales = context.createCaller(mockSession('sales'));
+  await expect(sales.customers.findPossibleMatches({ companyName: ' MRB  FARMING ' })).resolves.toEqual([
+    expect.objectContaining({ id: existing.id, contactPerson: 'Mark Buhr' }),
+  ]);
+  await expect(
+    context.createAnonCaller().customers.findPossibleMatches({ companyName: 'MRB Farming' }),
+  ).rejects.toMatchObject({ code: 'UNAUTHORIZED' });
+  await expect(
+    context.createCaller(mockSession('job-viewer')).customers.findPossibleMatches({ companyName: 'MRB Farming' }),
+  ).rejects.toMatchObject({ code: 'FORBIDDEN' });
+  await expect(admin.customers.create({ companyName: 'mrb farming' })).rejects.toMatchObject({
+    code: 'CONFLICT',
+    appCode: 'customer.possible_match',
+    publicMetadata: { matches: [expect.objectContaining({ id: existing.id })] },
+  });
+  await expect(
+    sales.quotes.create({
+      customer: { type: 'inline', companyName: 'mrb farming' },
+      offering: { kind: 'custom', workTitle: 'Repair' },
+      status: 'draft',
+      salesPersonId: 'test-user-id',
+    }),
+  ).rejects.toMatchObject({ code: 'CONFLICT', appCode: 'customer.possible_match' });
+});
+
+test('Assistant tools return matches without creating, then support reuse and an explicit different company', async ({
+  context,
+}) => {
+  const caller = context.createCaller();
+  const existing = await createCustomer(caller, 'MRB Farming', { contactPerson: 'Mark Buhr' });
+  await context.db.update(user).set({ quoteSalesperson: true }).where(eq(user.id, 'test-user-id'));
+  const tools = createAiSdkTools({
+    db: context.db,
+    access: accessForRole('admin', 'test-user-id'),
+    session: { user: { id: 'test-user-id', email: 'actor@example.com', assistantEnabled: true } },
+  } as AiContext);
+  const options = { toolCallId: 'customer-match-test', messages: [] };
+  // ToolSet erases each tool's input into a union; the SDK accepts unknown JSON at this boundary.
+  const execute = (name: string, input: unknown) => {
+    const handler = tools[name]?.execute as
+      | ((input: unknown, executionOptions: typeof options) => Promise<unknown>)
+      | undefined;
+    if (!handler) throw new Error(`Missing tool: ${name}`);
+    return handler(input, options);
+  };
+  const customerArgs = { companyName: 'mrb  farming' };
+  const quoteArgs = {
+    customer: { type: 'inline', companyName: 'MRB FARMING' },
+    offering: { kind: 'custom', workTitle: 'Repair' },
+  };
+  await expect(execute('createCustomer', customerArgs)).resolves.toMatchObject({
+    status: 'possible_match',
+    possibleMatches: [expect.objectContaining({ id: existing.id, contactPerson: 'Mark Buhr' })],
+  });
+  await expect(execute('createQuote', quoteArgs)).resolves.toMatchObject({
+    status: 'possible_match',
+    possibleMatches: [expect.objectContaining({ id: existing.id })],
+  });
+  expect(await caller.customers.findPossibleMatches({ companyName: 'MRB Farming' })).toHaveLength(1);
+  await expect(
+    execute('createQuote', { ...quoteArgs, customer: { type: 'existing', customerId: existing.id } }),
+  ).resolves.toMatchObject({ customerId: existing.id });
+  await expect(execute('createCustomer', { ...customerArgs, allowPossibleMatch: true })).resolves.toMatchObject({
+    companyName: 'mrb  farming',
+  });
+  expect(await caller.customers.findPossibleMatches({ companyName: 'MRB Farming' })).toHaveLength(2);
 });

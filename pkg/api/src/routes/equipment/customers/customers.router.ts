@@ -1,22 +1,32 @@
 import {
-  type CustomerCoreError,
   createCustomer,
+  findPossibleCustomerMatches,
   getCustomer,
   getCustomerMergePreview,
-  isCustomerCoreError,
   listCustomers,
   mergeCustomer,
   removeCustomer,
   updateCustomer,
 } from '@pkg/core/equipment';
 import { UUID } from '@pkg/schema';
-import { CustomerCreateInput, CustomerListInput, CustomerMergeInput, CustomerUpdateInput } from '@pkg/schema/equipment';
+import {
+  CustomerCreateInput,
+  CustomerListInput,
+  CustomerMergeInput,
+  CustomerPossibleMatch,
+  CustomerPossibleMatchInput,
+  CustomerUpdateInput,
+} from '@pkg/schema/equipment';
 import { z } from 'zod';
-
-import { type CoreErrorMapping, mapKnownCoreError } from '../../../trpc/errors.js';
 import { authorizedProcedure, router } from '../../../trpc/init.js';
+import { mapCustomerErrors } from './customer-error-mapping.js';
 
 export const customersRouter = router({
+  findPossibleMatches: authorizedProcedure(['equipment_customer:create', 'equipment_quote:create'])
+    .input(CustomerPossibleMatchInput)
+    .output(z.array(CustomerPossibleMatch))
+    .query(({ ctx, input }) => findPossibleCustomerMatches({ db: ctx.db, companyName: input.companyName })),
+
   list: authorizedProcedure('equipment_customer:read')
     .input(CustomerListInput)
     .query(({ ctx, input }) => listCustomers({ db: ctx.db, input })),
@@ -55,36 +65,3 @@ export const customersRouter = router({
       mapCustomerErrors(() => removeCustomer({ db: ctx.db, id: input.id, actorUserId: ctx.session.user.id })),
     ),
 });
-
-async function mapCustomerErrors<T>(action: () => Promise<T>): Promise<T> {
-  return mapKnownCoreError(action, isCustomerCoreError, mapCustomerCoreError);
-}
-
-function mapCustomerCoreError(error: CustomerCoreError): CoreErrorMapping<CustomerCoreError['code']> {
-  return customerErrorMappings[error.code];
-}
-
-const customerErrorMappings = {
-  'customer.merge_busy': {
-    appCode: 'customer.merge_busy',
-    code: 'CONFLICT',
-    message: 'Another change is still using this customer or its records. Wait a moment and try merging again.',
-  },
-  'customer.merge_self': {
-    appCode: 'customer.merge_self',
-    code: 'BAD_REQUEST',
-    message: 'A customer cannot be merged into itself.',
-  },
-  'customer.in_use': {
-    appCode: 'customer.in_use',
-    code: 'CONFLICT',
-    message: 'This customer cannot be removed because another record still references it.',
-  },
-  'customer.not_found': {
-    appCode: 'customer.not_found',
-    code: 'NOT_FOUND',
-    message: 'Customer not found.',
-  },
-} satisfies {
-  [TCode in CustomerCoreError['code']]: CoreErrorMapping<TCode>;
-};

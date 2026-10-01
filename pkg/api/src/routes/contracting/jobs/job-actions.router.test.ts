@@ -1,4 +1,3 @@
-import { randomUUID } from 'node:crypto';
 import {
   captureReading,
   completeJob,
@@ -134,7 +133,12 @@ const test = createTester(async ({ db }) => {
   return { db, jobAt, loadsId: loads.id };
 });
 
-type Fixture = { job: { id: string }; stint: { id: string }; spare: { id: string }; arrivalReadingId: string | null };
+type Fixture = {
+  job: { id: string };
+  stint: { id: string; machineId: string };
+  spare: { id: string };
+  arrivalReadingId: string | null;
+};
 type Seeded = { db: Db; loadsId: string };
 
 /** One write per Job Action, as a surface asks for it; null where the fixture has nothing to act on. */
@@ -177,17 +181,17 @@ const attempts: Record<
       ? null
       : caller.contractingReadings.amend({ id: arrivalReadingId, value: 100, reason: 'Checked the photo' }),
   // Capture arrives over multipart HTTP, so it is judged where that route hands over: the core capture.
-  capture: (_caller, { job, spare }, { db }, role) =>
+  capture: (_caller, { stint }, { db }, role) =>
     captureReading({
       db,
       actor: accessForRole(role, callerId),
       input: {
-        machineId: spare.id,
+        machineId: stint.machineId,
+        assignmentId: stint.id,
         role: 'arrival',
-        value: 5,
+        value: 500,
         capturedAt: '2026-09-20T08:00:00Z',
         disputePrevious: false,
-        startAssignment: { jobId: job.id, localId: randomUUID(), implementId: null },
       },
     }),
 };

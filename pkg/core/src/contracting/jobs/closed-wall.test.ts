@@ -1,4 +1,3 @@
-import { randomUUID } from 'node:crypto';
 import { DateOnlyIso } from '@pkg/schema';
 import { expect } from 'vitest';
 import { createTester } from '../../test/create-tester.js';
@@ -136,15 +135,16 @@ test.for(['invoiced', 'cancelled'] as const)(
         db,
         actor: foreman,
         input: {
-          machineId: context.tipper.id,
-          role: 'arrival',
-          value: 50,
+          machineId: context.excavator.id,
+          assignmentId: stint.id,
+          role: 'departure',
+          value: 150,
           capturedAt: '2026-09-20T08:00:00+02:00',
           disputePrevious: false,
-          startAssignment: { jobId, localId: randomUUID(), implementId: null },
+          comment: 'Photo unavailable',
         },
       }),
-      'a phone starting a stint',
+      'a capture on its stint',
     ).rejects.toMatchObject({ code: 'reading.wrong_status' });
 
     const readingAmendments = {

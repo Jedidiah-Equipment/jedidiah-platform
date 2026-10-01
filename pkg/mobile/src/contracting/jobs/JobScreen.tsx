@@ -1,5 +1,5 @@
 import { formatHours } from '@pkg/domain';
-import { assignmentStateColorClassNames, deriveJobActions, jobAttentionColorClassNames } from '@pkg/domain/contracting';
+import { assignmentStateColorClassNames, deriveJobActions } from '@pkg/domain/contracting';
 import type { CategoryColour, CategoryIconKey, JobCardVariant } from '@pkg/schema/contracting';
 import { IconPlayerPlay, IconPlayerStop, IconPlus, type Icon as TablerIcon } from '@tabler/icons-react-native';
 import { type Href, router, useLocalSearchParams } from 'expo-router';
@@ -12,55 +12,29 @@ import { StatusBadge } from '@/components/ui/status-badge';
 import { Text } from '@/components/ui/text';
 import { CategoryIcon } from '@/contracting/components/CategoryIcon';
 import { jobCardShareAction } from '@/contracting/lib/job-card';
-import { useReadingQueue } from '@/contracting/readings/ReadingQueueProvider';
-import { newLocalId } from '@/contracting/readings/reading-queue';
-import { useFleet } from '@/contracting/readings/use-fleet';
+import { newLocalId } from '@/contracting/readings/capture-attempt';
 import { useSessionAccessSummary, useSessionPermission } from '@/lib/auth-session';
-import { useIsOffline } from '@/lib/connectivity';
 import { shareDocument } from '@/lib/document-actions';
 import { useBusyAction } from '@/lib/use-busy-action';
-import { deriveStint, jobSummary, queuedUnplannedStints, type StintView } from './derive-stint';
+import { deriveStint, type StintView } from './derive-stint';
 import { JobStatusChip } from './JobStatusChip';
-import { isFinishedJob, useDrivers, useImplements, useJob } from './use-jobs';
+import { isFinishedJob, useJob } from './use-jobs';
 
-const ORDER: Record<StintView['view'], number> = {
-  running: 0,
-  starting: 1,
-  stopping: 1,
-  attention: 2,
-  planned: 3,
-  left: 4,
-};
-const LABELS: Record<StintView['view'], string> = {
-  planned: 'Planned',
-  starting: 'Starting…',
-  running: 'Running',
-  stopping: 'Stopping…',
-  left: 'Left site',
-  attention: 'Needs attention',
-};
+const ORDER: Record<StintView['view'], number> = { running: 0, planned: 1, left: 2 };
+const LABELS: Record<StintView['view'], string> = { planned: 'Planned', running: 'Running', left: 'Left site' };
 const STINT_VIEW_COLORS = {
   planned: assignmentStateColorClassNames.planned,
-  starting: assignmentStateColorClassNames['on-site'],
   running: assignmentStateColorClassNames['on-site'],
-  stopping: assignmentStateColorClassNames['on-site'],
   left: assignmentStateColorClassNames.left,
-  attention: jobAttentionColorClassNames,
 } satisfies Record<StintView['view'], typeof assignmentStateColorClassNames.planned>;
 
 export default function JobScreen() {
   const { jobId } = useLocalSearchParams<{ jobId: string }>();
   const jobQuery = useJob(jobId);
-  const fleet = useFleet();
-  const implementQuery = useImplements();
-  const driversQuery = useDrivers();
-  const { items, error } = useReadingQueue();
   const access = useSessionAccessSummary();
-  const offline = useIsOffline();
   const job = jobQuery.data;
   const finished = job ? isFinishedJob(job) : false;
-  // Judged against the Job as it will stand once the queue syncs, since the phone captures offline.
-  const actions = job ? deriveJobActions({ ...job, status: jobSummary(job, items).status }, access) : null;
+  const actions = job ? deriveJobActions(job, access) : null;
   const canCapture = actions?.capture.allowed ?? false;
   const canAdd = actions?.assign.allowed ?? false;
   const canShareJobCard = useSessionPermission('contracting_job:read') && finished;
@@ -69,21 +43,9 @@ export default function JobScreen() {
     if (job)
       void share.run(() => shareDocument(jobCardShareAction(job.jobNumber, variant)), 'Unable to share the Job Card.');
   };
-  const serverIds = new Set(job?.stints.map((stint) => stint.id) ?? []);
-  const stints = job
-    ? [
-        ...job.stints.map((stint) =>
-          deriveStint(stint, items, { implements: implementQuery.data ?? [], drivers: driversQuery.data ?? [] }),
-        ),
-        ...queuedUnplannedStints(
-          job.id,
-          items,
-          fleet.data ?? [],
-          implementQuery.data ?? [],
-          driversQuery.data ?? [],
-        ).filter((stint) => !serverIds.has(stint.id)),
-      ].sort((left, right) => ORDER[left.view] - ORDER[right.view] || left.createdAt.localeCompare(right.createdAt))
-    : [];
+  const stints = (job?.stints ?? [])
+    .map(deriveStint)
+    .sort((left, right) => ORDER[left.view] - ORDER[right.view] || left.createdAt.localeCompare(right.createdAt));
 
   const openCapture = (stint: StintView, role: 'arrival' | 'departure') =>
     router.push({
@@ -111,7 +73,6 @@ export default function JobScreen() {
         helpTopic="contractingMobileJob"
       />
       <ScrollView contentContainerStyle={{ padding: 16, gap: 16 }}>
-        {offline ? <Text className="text-muted-foreground">Offline · showing the saved Job</Text> : null}
         {job ? (
           <View className="gap-2 rounded-xl border border-border bg-surface p-4">
             <View className="flex-row items-center justify-between gap-2">
@@ -176,12 +137,6 @@ export default function JobScreen() {
                 },
               } as unknown as Href)
             }
-            onAttention={() =>
-              router.push({
-                pathname: '/contracting/attention',
-                params: { from: 'job', jobId },
-              } as unknown as Href)
-            }
           />
         ))}
 
@@ -192,20 +147,10 @@ export default function JobScreen() {
               : 'No Machines are assigned to this Job.'}
           </Text>
         ) : null}
-        {error ? <Text className="text-danger">{error}</Text> : null}
         {canShareJobCard ? (
           <View className="gap-2">
-            <Button
-              primary
-              title="Share Job Card"
-              disabled={share.busy || offline}
-              onPress={() => shareJobCard('customer')}
-            />
-            <Button
-              title="Share internal copy"
-              disabled={share.busy || offline}
-              onPress={() => shareJobCard('internal')}
-            />
+            <Button primary title="Share Job Card" disabled={share.busy} onPress={() => shareJobCard('customer')} />
+            <Button title="Share internal copy" disabled={share.busy} onPress={() => shareJobCard('internal')} />
             {share.error ? <Text className="text-danger">{share.error}</Text> : null}
           </View>
         ) : null}
@@ -221,7 +166,6 @@ function StintCard({
   onStart,
   onStop,
   onReadd,
-  onAttention,
 }: {
   stint: StintView;
   canCapture: boolean;
@@ -229,7 +173,6 @@ function StintCard({
   onStart: () => void;
   onStop: () => void;
   onReadd: () => void;
-  onAttention: () => void;
 }) {
   return (
     <View className="gap-2 rounded-xl border border-border bg-surface p-4">
@@ -263,13 +206,10 @@ function StintCard({
       {stint.view === 'planned' && canCapture ? (
         <CaptureButton icon={IconPlayerPlay} label="Start — capture arrival" onPress={onStart} />
       ) : null}
-      {(stint.view === 'running' || stint.view === 'starting') && canCapture ? (
+      {stint.view === 'running' && canCapture ? (
         <CaptureButton icon={IconPlayerStop} label="Stop — capture departure" onPress={onStop} />
       ) : null}
-      {(stint.view === 'left' || stint.view === 'stopping') && canAdd ? (
-        <Button title="Re-add machine" onPress={onReadd} />
-      ) : null}
-      {stint.view === 'attention' ? <Button title="Open Needs attention" onPress={onAttention} /> : null}
+      {stint.view === 'left' && canAdd ? <Button title="Re-add machine" onPress={onReadd} /> : null}
     </View>
   );
 }

@@ -7,12 +7,7 @@ export const BUSINESS_HOME = {
   equipment: '/equipment',
 } as const satisfies Record<Business, Href>;
 
-/** Businesses whose field routes keep working while disconnected. */
-const OFFLINE_CAPABLE_BUSINESSES: readonly Business[] = ['contracting'];
-
-export function isOfflineCapableRoute(pathname: string): boolean {
-  return OFFLINE_CAPABLE_BUSINESSES.some((business) => {
-    const home = BUSINESS_HOME[business];
-    return pathname === home || pathname.startsWith(`${home}/`);
-  });
+/** Every route sits behind the offline cover: capture is online only (ADR 0021). */
+export function isOfflineCapableRoute(_pathname: string): boolean {
+  return false;
 }

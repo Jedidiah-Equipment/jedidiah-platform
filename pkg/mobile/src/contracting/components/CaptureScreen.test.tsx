@@ -26,6 +26,7 @@ vi.mock('react-native-safe-area-context', () => ({
   useSafeAreaInsets: () => ({ bottom: 0 }),
 }));
 vi.mock('@tanstack/react-form', () => ({ useStore: () => ({ implementId: '', driverUserId: '' }) }));
+vi.mock('@tanstack/react-query', () => ({ useQueryClient: () => ({}) }));
 vi.mock('@pkg/domain/contracting', () => ({ fieldJobAccessMode: () => 'own' }));
 vi.mock('@/components/form', () => ({ useAppForm: () => ({ store: {}, AppField: () => null }) }));
 vi.mock('@/components/TopToolbar', () => ({ SecondaryToolbar: 'SecondaryToolbar' }));
@@ -36,23 +37,17 @@ vi.mock('@/contracting/components/CategoryIcon', () => ({ CategoryIcon: 'Categor
 vi.mock('@/contracting/jobs/use-jobs', () => ({
   useDrivers: () => ({ data: [] }),
   useImplements: () => ({ data: [] }),
-  useJobs: () => ({ data: [] }),
 }));
-vi.mock('@/contracting/readings/derive-capture', () => ({
-  deriveCapture: () => ({ parsed: undefined, verdict: null, advisory: false, canSave: false }),
+vi.mock('@/contracting/readings/reading-upload', () => ({
+  CAPTURE_FAILED: 'failed',
+  captureReading: vi.fn(),
+  ReadingRefusedError: class ReadingRefusedError extends Error {},
 }));
-vi.mock('@/contracting/readings/capture-world', () => ({
-  captureWorld: () => ({ latest: null, stint: null, onSite: [], management: false, hasPhoto: false }),
-}));
-vi.mock('@/contracting/readings/ReadingQueueProvider', () => ({
-  useReadingQueue: () => ({ queue: { enqueue: vi.fn() }, items: [] }),
-}));
-vi.mock('@/contracting/readings/reading-files', () => ({ keepReadingPhoto: vi.fn(), removeReadingPhoto: vi.fn() }));
-vi.mock('@/contracting/readings/reading-queue', () => ({ newLocalId: () => 'local-1' }));
 vi.mock('@/contracting/readings/use-fleet', () => ({
   useFleet: () => ({ data: [{ id: 'machine-1', code: 'JD-1' }] }),
   useMachineReadings: () => ({ data: [] }),
 }));
+vi.mock('@/lib/trpc', () => ({ useTRPC: () => ({}) }));
 vi.mock('@/lib/auth-session', () => ({
   useSessionAccessSummary: () => ({}),
   useSessionPermission: () => true,

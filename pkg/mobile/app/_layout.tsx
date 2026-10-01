@@ -67,7 +67,7 @@ function ThemedAppShell() {
           <RouteObservability />
           {/* Auth gating lives in app/(protected)/_layout.tsx; login is the public route. */}
           <Stack screenOptions={{ headerShown: false }} />
-          {/* Offline-capable business routes (Contracting field capture) stay available while disconnected. */}
+          {/* Covers every route while disconnected; `isOfflineCapableRoute` names any that opt out. */}
           <OfflineGate />
           {/* Single update prompt: offers a downloaded new version wherever the user is. */}
           <UpdatePrompt />

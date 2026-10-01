@@ -1,28 +1,20 @@
 import { type DatabaseTransaction, user } from '@pkg/db';
-import {
-  contractingImplements,
-  type contractingJobs,
-  contractingMachineAssignments,
-  type contractingMachines,
-} from '@pkg/db/contracting';
+import { contractingImplements, type contractingJobs, type contractingMachineAssignments } from '@pkg/db/contracting';
 import { type JobActor, transitionJob } from '@pkg/domain/contracting';
 import type { ReadingCaptureInput } from '@pkg/schema/contracting';
 import { eq } from 'drizzle-orm';
-import { recordAuditCreate } from '../../audit/audit-writer.js';
-import { assignmentDescriptor } from '../jobs/job-audit.js';
-import { lockAssignment, lockJob } from '../jobs/job-lock.js';
+import { lockAssignment } from '../jobs/job-lock.js';
 import { writeAssignment, writeJobRow } from '../jobs/job-write.js';
 import { assertReadingJobAction, ReadingError } from './reading-errors.js';
 
 /**
- * The Machine Assignment side of an Hour Reading capture: a planned stint arriving or leaving, or a
- * Foreman starting a stint from the phone. Runs inside the capture's transaction after the Machine lock,
- * so the lock order stays machine → job → stint. Refusals are Reading errors because the phone reports them.
+ * The Machine Assignment side of an Hour Reading capture: a planned stint arriving or leaving. Runs inside
+ * the capture's transaction after the Machine lock, so the lock order stays machine → job → stint. Refusals
+ * are Reading errors because the phone reports them.
  */
 
 type JobRow = typeof contractingJobs.$inferSelect;
 type StintRow = typeof contractingMachineAssignments.$inferSelect;
-type MachineRow = typeof contractingMachines.$inferSelect;
 export type CaptureStint = { job: JobRow; stint: StintRow };
 
 const stintNotFound = () => new ReadingError('reading.not_found', 'Machine Assignment not found.');
@@ -35,45 +27,6 @@ async function lockPlannedStint(
   const { job, stint } = await lockAssignment(tx, assignmentId, stintNotFound);
   if (stint.machineId !== input.machineId) throw stintNotFound();
   assertReadingJobAction('capture', job, actor);
-  return { job, stint };
-}
-
-/** A Foreman's phone names the new stint's id, so a retried capture finds the stint it already started. */
-async function startStint(
-  tx: DatabaseTransaction,
-  { actor, input, machine }: { actor: JobActor; input: ReadingCaptureInput; machine: MachineRow },
-  start: NonNullable<ReadingCaptureInput['startAssignment']>,
-): Promise<CaptureStint> {
-  const job = await lockJob(tx, start.jobId, () => new ReadingError('reading.not_found', 'Job not found.'));
-  assertReadingJobAction('capture', job, actor);
-  const [inserted] = await tx
-    .insert(contractingMachineAssignments)
-    .values({
-      id: start.localId,
-      jobId: start.jobId,
-      machineId: input.machineId,
-      implementId: start.implementId,
-      driverUserId: start.driverUserId ?? machine.currentDriverUserId,
-      createdByUserId: actor.userId,
-    })
-    .onConflictDoNothing({ target: contractingMachineAssignments.id })
-    .returning();
-  const [stint] = inserted
-    ? [inserted]
-    : await tx
-        .select()
-        .from(contractingMachineAssignments)
-        .where(eq(contractingMachineAssignments.id, start.localId))
-        .for('update');
-  if (!stint || stint.jobId !== job.id || stint.machineId !== input.machineId)
-    throw new ReadingError('reading.capture_id_conflict', 'This Machine Assignment identifier is already used.');
-  if (inserted)
-    await recordAuditCreate({
-      db: tx,
-      actorUserId: actor.userId,
-      descriptor: assignmentDescriptor(machine.code),
-      input: stint,
-    });
   return { job, stint };
 }
 
@@ -109,17 +62,13 @@ async function assertArrivalResources(
   }
 }
 
-/** Finds, or starts, the stint a capture belongs to, and checks the actor may capture on its Job. */
+/** Finds the stint a capture belongs to, and checks the actor may capture on its Job. */
 export async function resolveCaptureStint(
   tx: DatabaseTransaction,
-  context: { actor: JobActor; input: ReadingCaptureInput; machine: MachineRow },
+  context: { actor: JobActor; input: ReadingCaptureInput },
 ): Promise<CaptureStint | null> {
   const { input } = context;
-  const resolved = input.assignmentId
-    ? await lockPlannedStint(tx, context, input.assignmentId)
-    : input.startAssignment
-      ? await startStint(tx, context, input.startAssignment)
-      : null;
+  const resolved = input.assignmentId ? await lockPlannedStint(tx, context, input.assignmentId) : null;
   if (resolved && input.role === 'arrival')
     await assertArrivalResources(tx, arrivalResources(resolved.stint, input.stintOverrides));
   return resolved;

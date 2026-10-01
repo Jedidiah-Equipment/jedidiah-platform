@@ -5,11 +5,7 @@ import { useState } from 'react';
 import { FlatList, Pressable, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MainToolbar } from '@/components/TopToolbar';
-import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
-import { useReadingQueue } from '@/contracting/readings/ReadingQueueProvider';
-import type { QueuedReading } from '@/contracting/readings/reading-queue';
-import { useIsOffline } from '@/lib/connectivity';
 import { jobSummary } from './derive-stint';
 import { JobStatusChip } from './JobStatusChip';
 import { isFinishedJob, useFinishedJobs, useJobs } from './use-jobs';
@@ -18,33 +14,14 @@ export default function JobsScreen() {
   const jobs = useJobs();
   const finished = useFinishedJobs();
   const [showFinished, setShowFinished] = useState(false);
-  const { items, error } = useReadingQueue();
-  const offline = useIsOffline();
-  const attention = items.filter((item) => item.attention).length;
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top', 'left', 'right']}>
       <MainToolbar title="Jobs" subtitle="CONTRACTING" helpTopic="contractingMobileJobs" />
-      <View className="gap-3 px-4 py-3">
-        {offline ? (
-          <Text className="text-sm text-muted-foreground">
-            Offline · showing saved Jobs. Captures stay on this phone until synced.
-          </Text>
-        ) : null}
-        {attention > 0 ? (
-          <Button
-            title={`Needs attention (${attention})`}
-            onPress={() =>
-              router.push({ pathname: '/contracting/attention', params: { from: 'jobs' } } as unknown as Href)
-            }
-          />
-        ) : null}
-        {error ? <Text className="text-danger">{error}</Text> : null}
-      </View>
       <FlatList
         data={jobs.data ?? []}
         keyExtractor={(job) => job.id}
-        contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 4, paddingBottom: 16, gap: 10 }}
-        refreshing={!offline && (jobs.isRefetching || finished.isRefetching)}
+        contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: 16, gap: 10 }}
+        refreshing={jobs.isRefetching || finished.isRefetching}
         onRefresh={() => void Promise.all([jobs.refetch(), finished.canRead ? finished.refetch() : null])}
         ListEmptyComponent={
           <Text className="text-muted-foreground">
@@ -52,14 +29,12 @@ export default function JobsScreen() {
               ? 'Your role cannot view field Jobs.'
               : jobs.data
                 ? 'No Jobs are assigned to you.'
-                : offline
-                  ? 'Connect once to save your Jobs on this phone.'
-                  : jobs.isError
-                    ? 'Unable to load Jobs. Pull to retry.'
-                    : 'Loading Jobs…'}
+                : jobs.isError
+                  ? 'Unable to load Jobs. Pull to retry.'
+                  : 'Loading Jobs…'}
           </Text>
         }
-        renderItem={({ item }) => <JobRow job={item} queued={items} />}
+        renderItem={({ item }) => <JobRow job={item} />}
         ListFooterComponent={
           finished.canRead && (finished.data?.length ?? 0) > 0 ? (
             <View className="gap-2.5 pt-4">
@@ -74,9 +49,7 @@ export default function JobsScreen() {
                 </Text>
                 <Text className="text-muted-foreground">{showFinished ? 'Hide' : 'Show'}</Text>
               </Pressable>
-              {showFinished
-                ? (finished.data ?? []).map((job) => <JobRow key={job.id} job={job} queued={items} />)
-                : null}
+              {showFinished ? (finished.data ?? []).map((job) => <JobRow key={job.id} job={job} />) : null}
             </View>
           ) : null
         }
@@ -85,8 +58,8 @@ export default function JobsScreen() {
   );
 }
 
-function JobRow({ job, queued }: { job: FieldJob; queued: readonly QueuedReading[] }) {
-  const summary = jobSummary(job, queued);
+function JobRow({ job }: { job: FieldJob }) {
+  const summary = jobSummary(job);
   const chipStatus = isFinishedJob(job) ? job.status : summary.hasArrived ? null : 'upcoming';
   return (
     <Pressable

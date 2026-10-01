@@ -4,7 +4,6 @@ import { type CaptureAttempt, type CaptureWorld, captureRefusal, judgeCapture } 
 const world = (overrides: Partial<CaptureWorld> = {}): CaptureWorld => ({
   latest: { id: 'latest', value: 100 },
   stint: 'planned',
-  onSite: [],
   management: false,
   hasPhoto: true,
   ...overrides,
@@ -13,8 +12,6 @@ const world = (overrides: Partial<CaptureWorld> = {}): CaptureWorld => ({
 const capture = (overrides: Partial<CaptureAttempt> = {}): CaptureAttempt => ({
   role: 'arrival',
   value: 120,
-  machineId: 'tractor',
-  implementId: null,
   disputePrevious: false,
   expectedPreviousId: undefined,
   comment: null,
@@ -102,26 +99,8 @@ describe('judgeCapture', () => {
       { ok: false, reason: 'reading.invalid_role', rule: 'not-on-site' },
     ],
     [
-      'refuses an arrival for a Machine on site on another Job, naming the Job',
-      world({ onSite: [{ machineId: 'tractor', implementId: null, jobNumber: 'CJOB-00041' }] }),
-      capture(),
-      { ok: false, reason: 'reading.machine_on_site', rule: 'machine-busy', jobNumber: 'CJOB-00041' },
-    ],
-    [
-      'refuses an arrival bringing an Implement on site elsewhere, naming the Job',
-      world({ onSite: [{ machineId: 'digger', implementId: 'disc', jobNumber: 'CJOB-00007' }] }),
-      capture({ implementId: 'disc' }),
-      { ok: false, reason: 'reading.implement_on_site', rule: 'implement-busy', jobNumber: 'CJOB-00007' },
-    ],
-    [
-      'starts a stint on a free Machine',
-      world({ stint: null, onSite: [{ machineId: 'digger', implementId: null, jobNumber: 'CJOB-00007' }] }),
-      capture(),
-      { ok: true, disputes: null },
-    ],
-    [
-      'accepts a spot reading whatever is on site',
-      world({ stint: null, onSite: [{ machineId: 'tractor', implementId: null, jobNumber: 'CJOB-00041' }] }),
+      'accepts a spot reading with no stint',
+      world({ stint: null }),
       capture({ role: 'spot' }),
       { ok: true, disputes: null },
     ],
@@ -131,7 +110,7 @@ describe('judgeCapture', () => {
 });
 
 describe('captureRefusal', () => {
-  test('says why in the words the phone and the server both show', () => {
+  test('says why in the one sentence the server sends', () => {
     const refuse = (w: CaptureWorld, c: CaptureAttempt) => {
       const verdict = judgeCapture(w, c);
       if (verdict.ok) throw new Error('Expected a refusal');
@@ -148,19 +127,11 @@ describe('captureRefusal', () => {
     );
     expect(refuse(world({ stint: 'on-site' }), capture())).toBe('This Machine Assignment already arrived.');
     expect(refuse(world(), capture({ role: 'departure' }))).toBe('This Machine Assignment is not on site.');
-    expect(
-      refuse(world({ onSite: [{ machineId: 'tractor', implementId: null, jobNumber: 'CJOB-00041' }] }), capture()),
-    ).toBe('This Machine is still on site on CJOB-00041 — capture its departure there first.');
     expect(captureRefusal({ ok: false, reason: 'reading.machine_on_site', rule: 'machine-busy' })).toBe(
       'This Machine is still on site on another Job — capture its departure there first.',
     );
-    expect(
-      captureRefusal({
-        ok: false,
-        reason: 'reading.implement_on_site',
-        rule: 'implement-busy',
-        jobNumber: 'CJOB-00007',
-      }),
-    ).toBe('This Implement is still on site on CJOB-00007 — capture its departure there first.');
+    expect(captureRefusal({ ok: false, reason: 'reading.implement_on_site', rule: 'implement-busy' })).toBe(
+      'This Implement is still on site on another Job — capture its departure there first.',
+    );
   });
 });

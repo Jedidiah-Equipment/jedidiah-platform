@@ -27,7 +27,6 @@ export const CONTRACTING_SECTIONS: DocsSection[] = [
       { text: 'Find a Machine', link: '/contracting/find-a-machine' },
       { text: 'Read Machine hours', link: '/contracting/read-machine-hours' },
       { text: 'Capture a reading', link: '/contracting/capture-a-reading' },
-      { text: 'Resolve queued readings', link: '/contracting/resolve-queued-readings' },
       { text: 'Resolve Reading Exceptions', link: '/contracting/resolve-reading-exceptions' },
       { text: 'Maintain Customers and Farms', link: '/contracting/maintain-customers-and-farms' },
       { text: 'Maintain Work Types', link: '/contracting/maintain-work-types' },

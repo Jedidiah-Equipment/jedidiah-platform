@@ -146,8 +146,8 @@ export default defineRailway((ctx) => {
     ),
   });
 
-  // Match the existing environment topology: docs is production-only; reset-db is staging-only.
-  const environmentService = production
+  // Documentation is deployed only in production.
+  const docs = production
     ? service('docs', {
         source,
         replicas: { iad: 1 },
@@ -164,31 +164,9 @@ export default defineRailway((ctx) => {
           sleepApplication: true,
         },
       })
-    : service('reset-db', {
-        source: github('Jedidiah-Equipment/jedidiah-platform', { branch: 'main' }),
-        replicas: { iad: 1 },
-        build: {
-          builder: 'RAILPACK',
-          buildCommand: 'pnpm --filter @pkg/seed... build',
-          // An empty list deploys on every push. This nonexistent path makes resets manual-only.
-          watchPatterns: ['.railway/reset-db-deploys-manually-only'],
-        },
-        deploy: {
-          startCommand: 'pnpm --filter @pkg/seed db:reset:remote',
-          restartPolicyType: 'NEVER',
-          sleepApplication: true,
-        },
-        env: preserveAll(
-          'APP_ENV',
-          'CONFIRM_DB_RESET',
-          'DATABASE_URL',
-          'NODE_ENV',
-          'PRODUCTION_DATABASE_URL',
-          'STAGING_DATABASE_URL',
-        ),
-      });
+    : undefined;
 
   return project('Jedidiah Equipment', {
-    resources: [api, web, lander, environmentService, Postgres, postgresVolume, documents],
+    resources: [api, web, lander, ...(docs ? [docs] : []), Postgres, postgresVolume, documents],
   });
 });

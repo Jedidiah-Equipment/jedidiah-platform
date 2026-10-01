@@ -12,6 +12,10 @@
     "build": "turbo run build",
     "typecheck": "pnpm railway:typecheck && turbo run typecheck",
     "railway:typecheck": "tsc --noEmit --strict --skipLibCheck --target ES2023 --module NodeNext --moduleResolution NodeNext .railway/railway.ts",
+    "railway:plan:staging": "railway link --project 'Jedidiah Equipment' --environment staging && railway config plan",
+    "railway:apply:staging": "railway link --project 'Jedidiah Equipment' --environment staging && railway config apply",
+    "railway:plan:production": "railway link --project 'Jedidiah Equipment' --environment production && railway config plan",
+    "railway:apply:production": "railway link --project 'Jedidiah Equipment' --environment production && railway config apply",
     "test": "turbo run test --concurrency=2",
     "lint": "biome check --error-on-warnings",
     "lint:fix": "biome check --write --error-on-warnings",
@@ -40,6 +44,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.10",
+    "@railway/cli": "5.63.1",
     "@types/node": "^26.2.0",
     "dotenv": "^17.4.2",
     "railway": "3.11.0",

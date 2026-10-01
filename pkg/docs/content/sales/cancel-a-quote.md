@@ -1,7 +1,8 @@
 # Cancel a Quote
 
 Cancelling ends the sale. The Quote reads **Cancelled**, drops out of every live list and picker, and
-cannot be reopened — raise a new Quote instead.
+cannot be reopened — raise a new Quote instead. To replace an accepted Quote whose prices or specification
+changed, follow [Change an accepted Quote](/sales/change-an-accepted-quote) rather than cancelling first.
 
 It is also the moment to settle everything the sale left behind. One confirmation shows you the Job it
 started and the machine that Job is building, and each of them is a choice you make there and then
@@ -27,11 +28,15 @@ Both open the same confirmation and do the same thing.
 4. Type a cancellation reason. It is required, and it is what anyone opening the Quote later will read.
 5. Click **Cancel Quote** to confirm.
 
-## What always happens
+## What happens to the machine
 
 A machine this Quote sold goes back to Stock. The sale moved it to the Customer; cancelling moves it
 back, as a further entry in the machine's ownership history rather than an erasure. The sale did
 happen, and the history says so.
+
+Two cases keep the machine with the Customer. If you untick **Also cancel the Job**, a Build Job carries
+on and keeps the machine it is building. If the Job was already [reassigned](/sales/reassign-a-unit) to
+another Quote, the machine went with it, and this Quote no longer has a Job or a machine to settle.
 
 Cancelling is refused outright if that machine has since moved on to someone else — a later ownership
 entry means another record now depends on this one, and taking the machine back would quietly strip

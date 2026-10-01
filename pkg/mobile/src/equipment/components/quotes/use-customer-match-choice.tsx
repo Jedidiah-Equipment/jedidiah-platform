@@ -7,16 +7,18 @@ import { Text } from '@/components/ui/text';
 import { useTRPC } from '@/lib/trpc';
 
 export function useCustomerMatchChoice() {
+  const mounted = useRef(true);
   const trpc = useTRPC();
   const queryClient = useQueryClient();
   const [matches, setMatches] = useState<CustomerPossibleMatch[]>([]);
   const resolve = useRef<((choice: CustomerPossibleMatch | 'create' | null) => void) | null>(null);
-  useEffect(
-    () => () => {
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
       resolve.current?.(null);
-    },
-    [],
-  );
+    };
+  }, []);
   const finish = (choice: CustomerPossibleMatch | 'create' | null) => {
     resolve.current?.(choice);
     resolve.current = null;
@@ -27,6 +29,7 @@ export function useCustomerMatchChoice() {
       ...trpc.customers.findPossibleMatches.queryOptions({ companyName }),
       staleTime: 0,
     });
+    if (!mounted.current) return null;
     if (!found.length) return 'new' as const;
     setMatches(found);
     return new Promise<CustomerPossibleMatch | 'create' | null>((done) => {

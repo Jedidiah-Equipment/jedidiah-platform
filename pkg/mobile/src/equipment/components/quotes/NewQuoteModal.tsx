@@ -116,7 +116,7 @@ export function NewQuoteModal({ onClose }: { onClose: () => void }) {
           <Pressable
             accessibilityLabel="Close"
             accessibilityRole="button"
-            accessibilityState={{ disabled: isSubmitting }}
+            accessibilityState={{ disabled: isSubmitting && !matchContent }}
             className="rounded-lg p-2 active:bg-muted"
             disabled={isSubmitting && !matchContent}
             onPress={close}

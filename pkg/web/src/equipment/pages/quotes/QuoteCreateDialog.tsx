@@ -40,7 +40,7 @@ type QuoteCreateDialogProps = {
 
 export const QuoteCreateDialog: React.FC<QuoteCreateDialogProps> = ({ onOpenChange, open }) => {
   const trpc = useTRPC();
-  const { choose, dialog } = useCustomerMatchChoice();
+  const { choose, dialog } = useCustomerMatchChoice(open);
   const navigate = useNavigate();
   const { invalidateQuotes } = useQueryInvalidation();
   const accessQuery = useAccess();
@@ -76,7 +76,7 @@ export const QuoteCreateDialog: React.FC<QuoteCreateDialogProps> = ({ onOpenChan
           const input = toQuoteCreateInput(values);
           if (input.customer.type === 'inline') {
             const choice = await choose(input.customer.companyName);
-            if (!choice) throw new Error('Quote creation cancelled');
+            if (!choice) return null;
             input.customer =
               typeof choice === 'string'
                 ? { ...input.customer, allowPossibleMatch: choice === 'create' }
@@ -84,7 +84,8 @@ export const QuoteCreateDialog: React.FC<QuoteCreateDialogProps> = ({ onOpenChan
           }
           return createQuoteMutation.mutateAsync(input);
         }}
-        onCreated={async (quote: Quote) => {
+        onCreated={async (quote: Quote | null) => {
+          if (!quote) return;
           await invalidateQuotes();
           onOpenChange(false);
           toast.success('Quote created');

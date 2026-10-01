@@ -4,13 +4,16 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 import { HelpLink } from '@/components/help/index.js';
 import { Button } from '@/components/ui/button.js';
+import { Card, CardContent } from '@/components/ui/card.js';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog.js';
 import { ScrollArea } from '@/components/ui/scroll-area.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useTRPC } from '@/lib/trpc.js';
 
 /** Pauses creation until the user chooses an existing Customer or explicitly creates another. */
-export function useCustomerMatchChoice() {
+export function useCustomerMatchChoice(open: boolean) {
+  const openRef = useRef(open);
+  openRef.current = open;
   const trpc = useTRPC();
   const showError = useApiMutationErrorToast();
   const queryClient = useQueryClient();
@@ -22,6 +25,13 @@ export function useCustomerMatchChoice() {
     },
     [],
   );
+  useEffect(() => {
+    if (!open) {
+      resolve.current?.(null);
+      resolve.current = null;
+      setMatches([]);
+    }
+  }, [open]);
   const finish = (choice: CustomerPossibleMatch | 'create' | null) => {
     resolve.current?.(choice);
     resolve.current = null;
@@ -35,6 +45,7 @@ export function useCustomerMatchChoice() {
         showError(error, 'Unable to check possible Customer matches.');
         throw error;
       });
+    if (!openRef.current) return null;
     if (!found.length) return 'new' as const;
     setMatches(found);
     return new Promise<CustomerPossibleMatch | 'create' | null>((done) => {
@@ -59,18 +70,20 @@ export function useCustomerMatchChoice() {
           <ScrollArea className="max-h-[50vh]">
             <div className="grid gap-3">
               {matches.map((match) => (
-                <div key={match.id} className="grid gap-2 rounded-md border p-3">
-                  <p>
-                    Possible match: {match.companyName}
-                    {match.contactPerson ? ` (${match.contactPerson})` : ''} — use it instead?
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    {match.email ? `${match.email} · ` : ''}Created {formatDate(match.createdAt, 'medium')}
-                  </p>
-                  <Button type="button" variant="outline" onClick={() => finish(match)}>
-                    Use this Customer
-                  </Button>
-                </div>
+                <Card key={match.id} size="sm">
+                  <CardContent className="grid gap-2">
+                    <p>
+                      Possible match: {match.companyName}
+                      {match.contactPerson ? ` (${match.contactPerson})` : ''} — use it instead?
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      {match.email ? `${match.email} · ` : ''}Created {formatDate(match.createdAt, 'medium')}
+                    </p>
+                    <Button type="button" variant="outline" onClick={() => finish(match)}>
+                      Use this Customer
+                    </Button>
+                  </CardContent>
+                </Card>
               ))}
             </div>
           </ScrollArea>

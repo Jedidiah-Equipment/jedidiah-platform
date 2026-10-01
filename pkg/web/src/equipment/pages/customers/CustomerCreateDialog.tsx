@@ -21,7 +21,7 @@ const CUSTOMER_CREATE_DEFAULT_VALUES: CustomerCreateFormValues = {
 
 export const CustomerCreateDialog: React.FC<CustomerCreateDialogProps> = ({ onOpenChange, open }) => {
   const trpc = useTRPC();
-  const { choose, dialog } = useCustomerMatchChoice();
+  const { choose, dialog } = useCustomerMatchChoice(open);
   const navigate = useNavigate();
   const { invalidateCustomers } = useQueryInvalidation();
 
@@ -42,7 +42,7 @@ export const CustomerCreateDialog: React.FC<CustomerCreateDialogProps> = ({ onOp
         defaultValues={CUSTOMER_CREATE_DEFAULT_VALUES}
         onCreate={async (values) => {
           const choice = await choose(values.companyName);
-          if (!choice) throw new Error('Customer creation cancelled');
+          if (!choice) return null;
           if (typeof choice !== 'string') return { id: choice.id, created: false };
           const customer = await createCustomerMutation.mutateAsync({
             ...toCustomerMinimalCreateInput(values),
@@ -50,7 +50,8 @@ export const CustomerCreateDialog: React.FC<CustomerCreateDialogProps> = ({ onOp
           });
           return { id: customer.id, created: true };
         }}
-        onCreated={async (customer: { id: string; created: boolean }) => {
+        onCreated={async (customer: { id: string; created: boolean } | null) => {
+          if (!customer) return;
           await invalidateCustomers();
           onOpenChange(false);
           if (customer.created) toast.success('Customer created');

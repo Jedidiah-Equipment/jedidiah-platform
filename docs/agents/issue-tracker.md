@@ -9,7 +9,7 @@ clone, which infers the repository from its remote. Outside the clone, pass
 - **Publish a spec or ticket:** `gh issue create --title "..." --body-file <path>`.
 - **Fetch a ticket:** `gh issue view <number> --comments`; use `--json body,comments,labels` when
   structured output is needed.
-- **List:** `gh issue list --state open --json number,title,body,labels,comments`, with appropriate
+- **List:** `gh issue list --state open --limit 1000 --json number,title,body,labels,comments`, with appropriate
   `--label` filters.
 - **Comment:** `gh issue comment <number> --body-file <path>`.
 - **Edit a body:** `gh issue edit <number> --body-file <path>`.
@@ -19,6 +19,9 @@ clone, which infers the repository from its remote. Outside the clone, pass
 
 Write multiline bodies to a file and pass `--body-file`. Posting issues or comments follows the
 invoked skill's authorization requirements and the user's instructions.
+
+Issue discovery must cover every matching issue. `--limit` caps the fetched results; if the result
+count reaches that limit, increase it and repeat until fewer results are returned.
 
 ## Business labels
 

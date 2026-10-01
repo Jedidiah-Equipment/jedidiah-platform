@@ -355,11 +355,11 @@ test('carries the capture comment through to the Reading Exceptions list', async
 });
 
 /**
- * Two phones on one Machine: the one that captured later syncs first. The ledger's order is the
- * dispute trail, so the earlier capture is judged against what the ledger already holds — never
+ * Two phones on one Machine: the one that captured later reaches the server first. The ledger's order
+ * is the dispute trail, so the earlier capture is judged against what the ledger already holds — never
  * re-ordered by a device clock.
  */
-test('judges a late-synced earlier capture against the ledger’s latest, not its own capture time', async ({
+test('judges a late-arriving earlier capture against the ledger’s latest, not its own capture time', async ({
   context,
 }) => {
   const { db, actor, machineId } = context;

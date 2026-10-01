@@ -15,7 +15,7 @@ export type AiFlaggedVerification = (typeof aiFlaggedVerifications)[number];
 export const readingExceptionTypes = ['disputed', 'ai-flagged'] as const;
 export type ReadingExceptionType = (typeof readingExceptionTypes)[number];
 
-/** Every refusal a reading write can carry, as the server sends it and the phone reports it. */
+/** Every refusal a reading write can carry, as the server sends it. */
 export const readingErrorCodes = [
   'reading.not_found',
   'reading.retired_machine',
@@ -34,6 +34,3 @@ export const readingErrorCodes = [
   'reading.job_invoiced',
 ] as const;
 export type ReadingErrorCode = (typeof readingErrorCodes)[number];
-/** Whether a code the phone stored is one the server sends; the phone also stores codes of its own. */
-export const isReadingErrorCode = (code: string | undefined): code is ReadingErrorCode =>
-  (readingErrorCodes as readonly string[]).includes(code ?? '');

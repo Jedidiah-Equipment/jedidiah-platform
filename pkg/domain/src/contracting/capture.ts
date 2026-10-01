@@ -1,16 +1,11 @@
 import type { AssignmentState, ReadingErrorCode, ReadingRole } from '@pkg/schema/contracting';
 
-/**
- * What an Hour Reading capture is judged against, as one adapter believes it: the phone's view of
- * served Jobs with its queue applied, or the server's rows under the Machine lock.
- */
+/** What an Hour Reading capture is judged against: the server's rows under the Machine lock. */
 export type CaptureWorld = {
-  /** The Machine's latest known reading, or null while its ledger is empty. */
+  /** The Machine's latest reading, or null while its ledger is empty. */
   latest: { id: string; value: number } | null;
-  /** The stint the capture lands on; null for a spot or baseline reading, or a stint the capture starts. */
+  /** The stint the capture lands on; null for a spot or baseline reading. */
   stint: AssignmentState | null;
-  /** Every stint believed on site, on any Job. The server passes none: its constraints answer this. */
-  onSite: readonly { machineId: string | null; implementId: string | null; jobNumber: string | null }[];
   /** Contracting management, whose photo-less departures must say why. */
   management: boolean;
   hasPhoto: boolean;
@@ -19,16 +14,16 @@ export type CaptureWorld = {
 export type CaptureAttempt = {
   role: ReadingRole;
   value: number;
-  machineId: string;
-  /** The Implement an arrival brings to site. */
-  implementId: string | null;
   disputePrevious: boolean;
   /** The reading the capturer believes is latest; a dispute must name the one that actually is. */
   expectedPreviousId: string | null | undefined;
   comment: string | null;
 };
 
-/** Which rule refused a capture. Several share one wire code, so the copy and the form key off this. */
+/**
+ * Which rule refused a capture. Several share one wire code, so the copy keys off this. The two busy
+ * rules are the stint constraints' refusals, which the database raises rather than `judgeCapture`.
+ */
 export type CaptureRule =
   | 'comment-required'
   | 'already-arrived'
@@ -38,7 +33,7 @@ export type CaptureRule =
   | 'previous-changed'
   | 'below-latest';
 
-export type CaptureRefused = { ok: false; reason: ReadingErrorCode; rule: CaptureRule; jobNumber?: string };
+export type CaptureRefused = { ok: false; reason: ReadingErrorCode; rule: CaptureRule };
 /** `disputes` names the latest reading an accepted capture below it disputes. */
 export type CaptureVerdict = { ok: true; disputes: string | null } | CaptureRefused;
 
@@ -52,37 +47,14 @@ const reasons: Record<CaptureRule, ReadingErrorCode> = {
   'below-latest': 'reading.below_latest',
 };
 
-const refuse = (rule: CaptureRule, jobNumber?: string | null): CaptureRefused => ({
-  ok: false,
-  reason: reasons[rule],
-  rule,
-  ...(jobNumber ? { jobNumber } : {}),
-});
+const refuse = (rule: CaptureRule): CaptureRefused => ({ ok: false, reason: reasons[rule], rule });
 
-/**
- * The Job a Machine or Implement is on elsewhere in this world, if any: what an arrival bringing it
- * is refused for, and what a picker greys out before a capture exists.
- */
-export function onSiteElsewhere(
-  world: Pick<CaptureWorld, 'onSite'>,
-  { machineId = null, implementId = null }: { machineId?: string | null; implementId?: string | null },
-): { rule: 'machine-busy' | 'implement-busy'; jobNumber: string | null } | null {
-  const machine = machineId === null ? undefined : world.onSite.find((stint) => stint.machineId === machineId);
-  if (machine) return { rule: 'machine-busy', jobNumber: machine.jobNumber };
-  const implement = implementId === null ? undefined : world.onSite.find((stint) => stint.implementId === implementId);
-  return implement ? { rule: 'implement-busy', jobNumber: implement.jobNumber } : null;
-}
-
-/** Whether this capture may land in this world: the one judgement the phone's queue and the server's ledger share. */
+/** Whether this capture may land on the Machine's ledger as the server holds it under the lock. */
 export function judgeCapture(world: CaptureWorld, capture: CaptureAttempt): CaptureVerdict {
   if (capture.role === 'departure' && world.management && !world.hasPhoto && !capture.comment?.trim())
     return refuse('comment-required');
   if (capture.role === 'arrival' && world.stint !== null && world.stint !== 'planned') return refuse('already-arrived');
   if (capture.role === 'departure' && world.stint !== 'on-site') return refuse('not-on-site');
-  if (capture.role === 'arrival') {
-    const busy = onSiteElsewhere(world, capture);
-    if (busy) return refuse(busy.rule, busy.jobNumber);
-  }
   if (
     capture.disputePrevious &&
     capture.expectedPreviousId !== undefined &&
@@ -94,9 +66,7 @@ export function judgeCapture(world: CaptureWorld, capture: CaptureAttempt): Capt
   return { ok: true, disputes: below && world.latest ? world.latest.id : null };
 }
 
-const where = (jobNumber: string | undefined) => (jobNumber ? `on ${jobNumber}` : 'on another Job');
-
-/** The one sentence a refused capture shows, on the phone and in the server's refusal alike. */
+/** The one sentence a refused capture shows: the server sends it and the phone displays it. */
 export function captureRefusal(verdict: CaptureRefused): string {
   switch (verdict.rule) {
     case 'comment-required':
@@ -106,9 +76,9 @@ export function captureRefusal(verdict: CaptureRefused): string {
     case 'not-on-site':
       return 'This Machine Assignment is not on site.';
     case 'machine-busy':
-      return `This Machine is still on site ${where(verdict.jobNumber)} — capture its departure there first.`;
+      return 'This Machine is still on site on another Job — capture its departure there first.';
     case 'implement-busy':
-      return `This Implement is still on site ${where(verdict.jobNumber)} — capture its departure there first.`;
+      return 'This Implement is still on site on another Job — capture its departure there first.';
     case 'previous-changed':
       return 'Another reading landed first. Review the latest reading before resubmitting a dispute.';
     case 'below-latest':

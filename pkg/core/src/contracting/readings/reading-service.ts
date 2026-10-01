@@ -143,7 +143,7 @@ export async function captureReading({
         if (delivered) return delivered;
         if (machine.retiredAt)
           throw new ReadingError('reading.retired_machine', 'Cannot capture readings for a retired Machine.');
-        const stint = await resolveCaptureStint(tx, { actor, input, machine });
+        const stint = await resolveCaptureStint(tx, { actor, input });
         const [latest] = await tx
           .select()
           .from(contractingHourReadings)
@@ -154,15 +154,12 @@ export async function captureReading({
           {
             latest: latest ? { id: latest.id, value: latest.value } : null,
             stint: stint ? assignmentState(stint.stint) : null,
-            onSite: [],
             management: isContractingManagement(actor),
             hasPhoto: !!evidence,
           },
           {
             role: input.role,
             value: input.value,
-            machineId: input.machineId,
-            implementId: null,
             disputePrevious: input.disputePrevious,
             expectedPreviousId: input.expectedPreviousId,
             comment: input.comment ?? null,

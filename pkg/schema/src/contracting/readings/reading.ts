@@ -8,14 +8,6 @@ import { readingExceptionTypes, readingMethods, readingRoles, readingVerificatio
 export const ReadingValue = z.number().nonnegative().max(999999999.9).multipleOf(0.1);
 export const ReadingReason = z.string().trim().min(1, 'A reason is required').max(2000);
 export const ReadingComment = z.string().trim().min(1).max(2000);
-export const StartAssignment = z
-  .object({
-    localId: UUID,
-    jobId: UUID,
-    implementId: UUID.nullable().default(null),
-    driverUserId: AuthId.nullable().optional(),
-  })
-  .strict();
 export const StintOverrides = z
   .object({ implementId: UUID.nullable().optional(), driverUserId: AuthId.nullable().optional() })
   .strict();
@@ -26,7 +18,6 @@ export const ReadingCaptureInput = z
     machineId: UUID,
     role: z.enum(readingRoles),
     assignmentId: UUID.nullable().optional(),
-    startAssignment: StartAssignment.nullable().optional(),
     stintOverrides: StintOverrides.optional(),
     value: ReadingValue,
     capturedAt: z.iso.datetime({ offset: true }),
@@ -36,23 +27,12 @@ export const ReadingCaptureInput = z
   .strict()
   .superRefine((value, ctx) => {
     const hasAssignment = !!value.assignmentId;
-    const hasStart = !!value.startAssignment;
-    if (value.role === 'arrival' && Number(hasAssignment) + Number(hasStart) !== 1)
-      ctx.addIssue({ code: 'custom', path: ['assignmentId'], message: 'Choose exactly one Machine Assignment.' });
-    if (value.role === 'arrival' && value.stintOverrides && !hasAssignment)
-      ctx.addIssue({ code: 'custom', path: ['stintOverrides'], message: 'Only a planned stint accepts overrides.' });
-    if (value.role === 'departure' && !hasAssignment)
+    const stintRole = value.role === 'arrival' || value.role === 'departure';
+    if (stintRole && !hasAssignment)
       ctx.addIssue({ code: 'custom', path: ['assignmentId'], message: 'Choose the Machine Assignment.' });
-    if (value.role === 'departure' && (hasStart || value.stintOverrides !== undefined))
-      ctx.addIssue({
-        code: 'custom',
-        path: ['startAssignment'],
-        message: 'A departure cannot start or change a stint.',
-      });
-    if (
-      !['arrival', 'departure'].includes(value.role) &&
-      (hasAssignment || hasStart || value.stintOverrides !== undefined)
-    )
+    if (value.role !== 'arrival' && value.stintOverrides !== undefined)
+      ctx.addIssue({ code: 'custom', path: ['stintOverrides'], message: 'Only an arrival can change a stint.' });
+    if (!stintRole && hasAssignment)
       ctx.addIssue({
         code: 'custom',
         path: ['assignmentId'],
@@ -86,20 +66,17 @@ export const ReadingCaptureMultipart = z.preprocess((fields) => {
   if (record.disputePrevious === 'false') record.disputePrevious = false;
   record.expectedPreviousId = blankAsNull(record.expectedPreviousId);
   record.assignmentId = blankAsNull(record.assignmentId);
-  for (const field of ['startAssignment', 'stintOverrides'] as const) {
-    const value = blankAsNull(record[field]);
-    if (typeof value === 'string' && value.trim() !== '') {
-      try {
-        record[field] = JSON.parse(value);
-      } catch {
-        record[field] = value;
-      }
-    } else record[field] = value;
-  }
+  const overrides = blankAsNull(record.stintOverrides);
+  if (typeof overrides === 'string' && overrides.trim() !== '') {
+    try {
+      record.stintOverrides = JSON.parse(overrides);
+    } catch {
+      record.stintOverrides = overrides;
+    }
+  } else record.stintOverrides = overrides;
   record.comment = blankAsNull(record.comment);
   if (record.expectedPreviousId === undefined) delete record.expectedPreviousId;
   if (record.assignmentId === undefined) delete record.assignmentId;
-  if (record.startAssignment === undefined) delete record.startAssignment;
   if (record.stintOverrides === undefined) delete record.stintOverrides;
   if (record.comment === undefined) delete record.comment;
   return record;

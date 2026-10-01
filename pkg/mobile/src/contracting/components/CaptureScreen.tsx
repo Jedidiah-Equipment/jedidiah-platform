@@ -130,14 +130,14 @@ function CaptureForm({ params }: { params: CaptureParams }) {
         : undefined;
     // Name the latest only once history has loaded; the server then refuses a capture judged against an older one.
     const expectedPreviousId = readings.data ? (latest?.id ?? null) : undefined;
+    // Only what the Foreman entered: a reconnect refetches history, and a retry after it must still replay.
     attempt.current = captureAttempt(attempt.current, [
       role,
       params.assignmentId ?? null,
       reading,
       photo,
       comment.trim(),
-      disputeConfirmed,
-      expectedPreviousId ?? null,
+      disputePrevious,
       stintOverrides ?? null,
     ]);
     const { localId, capturedAt } = attempt.current;

@@ -258,7 +258,6 @@ describe('Machine Assignment lifecycle', () => {
           ...input,
           localId: '5f1c2d3e-0001-4a00-8000-000000000014',
           assignmentId: foreign.id,
-          stintOverrides: undefined,
           value: 112,
         },
       }),

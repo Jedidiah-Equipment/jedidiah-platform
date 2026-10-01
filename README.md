@@ -156,6 +156,11 @@ configured. Public browser config is served through `/env.js` and read from `win
 
 ## Releases
 
+Railway infrastructure is defined in [`.railway/railway.ts`](.railway/railway.ts), following the AMS
+project's `railway/iac` pattern. It keeps staging on `main` and production on `production`, with variable
+values retained in Railway. See [`.railway/README.md`](.railway/README.md) for planning, applying, legacy
+config migration, and the manual staging reset procedure.
+
 Production releases fast-forward the `production` branch to a commit already on `origin/main`:
 
 ```sh

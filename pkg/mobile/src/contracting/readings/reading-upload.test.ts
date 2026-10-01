@@ -76,4 +76,7 @@ test('separates the server’s refusals from connection, sign-in and server fail
       throw new TypeError('Network request failed');
     }),
   ).rejects.toThrow(CAPTURE_FAILED);
+  await expect(captureReading(input, null, async () => new Response('<html>', { status: 201 }))).rejects.toThrow(
+    CAPTURE_FAILED,
+  );
 });

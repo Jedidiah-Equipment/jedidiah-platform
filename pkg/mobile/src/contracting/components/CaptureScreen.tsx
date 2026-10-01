@@ -1,6 +1,6 @@
 import { formatHours } from '@pkg/domain';
 import { fieldJobAccessMode } from '@pkg/domain/contracting';
-import { ReadingComment } from '@pkg/schema/contracting';
+import { ReadingComment, type ReadingErrorCode } from '@pkg/schema/contracting';
 import { useStore } from '@tanstack/react-form';
 import { useQueryClient } from '@tanstack/react-query';
 import { CameraView, useCameraPermissions } from 'expo-camera';
@@ -27,7 +27,7 @@ import { useBusyAction } from '@/lib/use-busy-action';
 
 const CAMERA_FAILURE = 'The camera could not take a photo. Try again or continue without a photo.';
 /** Refusals that mean the ledger moved under the form: its latest reading must be fetched again. */
-const LEDGER_MOVED = ['reading.below_latest', 'reading.previous_changed'];
+const LEDGER_MOVED = new Set<string>(['reading.below_latest', 'reading.previous_changed'] satisfies ReadingErrorCode[]);
 
 type CaptureParams = {
   id: string;
@@ -172,7 +172,7 @@ function CaptureForm({ params }: { params: CaptureParams }) {
       } catch (error) {
         if (error instanceof ReadingRefusedError) {
           recordReadingCaptured({ role, hasPhoto, refused: error.code });
-          if (LEDGER_MOVED.includes(error.code)) {
+          if (LEDGER_MOVED.has(error.code)) {
             setDisputePrevious(false);
             void queryClient.invalidateQueries({
               queryKey: trpc.contractingReadings.fieldHistory.queryKey({ machineId: id }),

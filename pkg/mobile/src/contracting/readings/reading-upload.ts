@@ -47,8 +47,12 @@ export async function captureReading(
   try {
     const response = await observedReadingUpload(body, cookie, controller.signal, send);
     if (response.ok) {
-      const row = DeliveredReading.parse(await response.json());
-      return FieldReading.parse({ ...row, photoBacked: !!row.photo });
+      try {
+        const row = DeliveredReading.parse(await response.json());
+        return FieldReading.parse({ ...row, photoBacked: !!row.photo });
+      } catch (error) {
+        throw new Error(CAPTURE_FAILED, { cause: error });
+      }
     }
     if (response.status >= 400 && response.status < 500 && ![401, 408, 429].includes(response.status)) {
       const refusal = RefusalBody.parse(

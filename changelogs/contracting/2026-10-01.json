@@ -1,0 +1,15 @@
+{
+  "business": "contracting",
+  "releasedAt": "2026-10-01T08:13:58.214Z",
+  "sections": [
+    {
+      "surface": "app",
+      "entries": [
+        {
+          "title": "Find profile image controls more easily",
+          "description": "Upload and replace buttons now sit beside the image preview. If an image cannot be processed, the error stays beside the controls."
+        }
+      ]
+    }
+  ]
+}

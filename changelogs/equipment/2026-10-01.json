@@ -1,0 +1,44 @@
+{
+  "business": "equipment",
+  "releasedAt": "2026-10-01T08:13:58.214Z",
+  "sections": [
+    {
+      "surface": "app",
+      "entries": [
+        {
+          "title": "Print labels from recent Parts imports",
+          "description": "Print labels immediately after importing new Parts, or find the import later under Print labels → Recent imports. You can also include updated Parts, using their current details."
+        },
+        {
+          "title": "Identify operators and bays more easily",
+          "description": "Scheduling screens and dashboard widgets now show operator names first, with bay names alongside them. Bays without an operator are clearly marked."
+        },
+        {
+          "title": "Enlarge product images and logos",
+          "description": "Click image previews to inspect them at a larger size. Upload controls now show file limits, loading progress and errors beside the image."
+        },
+        {
+          "title": "Preview supplier documents before uploading",
+          "description": "Drag and drop supplier invoices and credit notes, then preview the PDF before uploading. File problems and missing return selections are explained beside the controls."
+        },
+        {
+          "title": "Import the correct CSV after replacing a file",
+          "description": "Choosing an unsupported replacement now clears the previous file and its import preview, preventing an accidental import of the earlier selection."
+        },
+        {
+          "title": "Find profile image controls more easily",
+          "description": "Upload and replace buttons now sit beside the image preview. If an image cannot be processed, the error stays beside the controls."
+        }
+      ]
+    },
+    {
+      "surface": "mobile",
+      "entries": [
+        {
+          "title": "Identify operators and bays more easily",
+          "description": "Bay lists, queues and job routes now display operator and bay names consistently, without repeating the operator name. Bays without an operator are clearly marked."
+        }
+      ]
+    }
+  ]
+}

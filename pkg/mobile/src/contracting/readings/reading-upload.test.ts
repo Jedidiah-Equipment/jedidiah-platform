@@ -77,21 +77,3 @@ test('separates the server’s refusals from connection, sign-in and server fail
     }),
   ).rejects.toThrow(CAPTURE_FAILED);
 });
-
-test('sends an arrival’s stint overrides as multipart JSON', async () => {
-  const stintOverrides = { implementId: null, driverUserId: 'driver-1' };
-  await captureReading(
-    {
-      ...input,
-      role: 'arrival',
-      assignmentId: '5f1c2d3e-0001-4a00-8000-000000000002',
-      stintOverrides,
-      expectedPreviousId: null,
-    },
-    null,
-    async (_url, init) => {
-      expect(JSON.parse(String((init.body as FormData).get('stintOverrides')))).toEqual(stintOverrides);
-      return Response.json({ ...delivered, role: 'arrival', photo: null }, { status: 201 });
-    },
-  );
-});

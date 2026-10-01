@@ -1,0 +1,1 @@
+ALTER TABLE "equipment"."product_unit_ownership_transfer" DROP CONSTRAINT "product_unit_ownership_transfer_moves_owner";

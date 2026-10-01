@@ -2,13 +2,15 @@ import {
   type CustomerCoreError,
   createCustomer,
   getCustomer,
+  getCustomerMergePreview,
   isCustomerCoreError,
   listCustomers,
+  mergeCustomer,
   removeCustomer,
   updateCustomer,
 } from '@pkg/core/equipment';
 import { UUID } from '@pkg/schema';
-import { CustomerCreateInput, CustomerListInput, CustomerUpdateInput } from '@pkg/schema/equipment';
+import { CustomerCreateInput, CustomerListInput, CustomerMergeInput, CustomerUpdateInput } from '@pkg/schema/equipment';
 import { z } from 'zod';
 
 import { type CoreErrorMapping, mapKnownCoreError } from '../../../trpc/errors.js';
@@ -35,6 +37,18 @@ export const customersRouter = router({
       mapCustomerErrors(() => updateCustomer({ db: ctx.db, input, actorUserId: ctx.session.user.id })),
     ),
 
+  mergePreview: authorizedProcedure('equipment_customer:merge')
+    .input(z.object({ sourceId: UUID }))
+    .query(({ ctx, input }) =>
+      mapCustomerErrors(() => getCustomerMergePreview({ db: ctx.db, sourceId: input.sourceId })),
+    ),
+
+  merge: authorizedProcedure('equipment_customer:merge')
+    .input(CustomerMergeInput)
+    .mutation(({ ctx, input }) =>
+      mapCustomerErrors(() => mergeCustomer({ db: ctx.db, input, actorUserId: ctx.session.user.id })),
+    ),
+
   remove: authorizedProcedure('equipment_customer:remove')
     .input(z.object({ id: UUID }))
     .mutation(({ ctx, input }) =>
@@ -51,6 +65,16 @@ function mapCustomerCoreError(error: CustomerCoreError): CoreErrorMapping<Custom
 }
 
 const customerErrorMappings = {
+  'customer.merge_busy': {
+    appCode: 'customer.merge_busy',
+    code: 'CONFLICT',
+    message: 'Another change is still using this customer or its records. Wait a moment and try merging again.',
+  },
+  'customer.merge_self': {
+    appCode: 'customer.merge_self',
+    code: 'BAD_REQUEST',
+    message: 'A customer cannot be merged into itself.',
+  },
   'customer.in_use': {
     appCode: 'customer.in_use',
     code: 'CONFLICT',

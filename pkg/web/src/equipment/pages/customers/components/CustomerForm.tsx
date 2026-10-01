@@ -9,9 +9,10 @@ import { CustomerFormValues, toCustomerFormValues, toCustomerUpdateInput } from 
 type CustomerFormProps = {
   customer: Customer;
   onSave: (value: CustomerUpdateInput) => Promise<unknown>;
+  renderActions: (discardChanges: () => void) => React.ReactNode;
 };
 
-export const CustomerForm: React.FC<CustomerFormProps> = ({ customer, onSave }) => {
+export const CustomerForm: React.FC<CustomerFormProps> = ({ customer, onSave, renderActions }) => {
   const { autosave, form, formProps } = useAutosaveForm({
     defaultValues: toCustomerFormValues(customer),
     failureMessage: 'Unable to update customer.',
@@ -19,6 +20,12 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({ customer, onSave }) 
     toInput: (value) => toCustomerUpdateInput(customer.id, value),
     validator: CustomerFormValues,
   });
+
+  const discardChanges = () => {
+    autosave.resetToSavedValues(toCustomerFormValues(customer));
+    // Recognize the restored snapshot as saved, including when an earlier autosave failed.
+    autosave.markChanged();
+  };
 
   const saveCommittedField = () => {
     autosave.markChanged();
@@ -70,6 +77,7 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({ customer, onSave }) 
           </EditFormGrid>
         </CardContent>
       </Card>
+      {renderActions(discardChanges)}
     </form>
   );
 };

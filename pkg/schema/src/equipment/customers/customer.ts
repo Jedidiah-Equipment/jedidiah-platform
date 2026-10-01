@@ -107,3 +107,12 @@ export const CustomerListInput = createSearchedSortedCursorQueryInput({
 
 export type CustomerListResult = z.infer<typeof CustomerListResult>;
 export const CustomerListResult = createCursorQueryResult(Customer);
+
+export type CustomerMergeInput = z.infer<typeof CustomerMergeInput>;
+export const CustomerMergeInput = z.object({ sourceId: UUID, targetId: UUID });
+
+export type CustomerMergePreview = z.infer<typeof CustomerMergePreview>;
+export const CustomerMergePreview = z.object({
+  quoteCount: z.number().int().nonnegative(),
+  unitCount: z.number().int().nonnegative(),
+});

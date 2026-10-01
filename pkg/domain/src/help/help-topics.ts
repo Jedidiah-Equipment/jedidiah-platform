@@ -30,6 +30,7 @@ export const HELP_TOPICS = {
   contractingUsers: '/contracting/manage-users',
   contractingAudit: '/contracting/trace-a-change-in-the-audit-log',
   bays: '/production/delete-a-bay',
+  customerMerge: '/sales/merge-duplicate-customers',
   customers: '/sales/remove-a-customer',
   home: '/',
   inventory: '/inventory/stock-on-hand-and-free-stock',

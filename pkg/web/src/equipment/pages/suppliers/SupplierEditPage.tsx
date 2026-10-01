@@ -80,7 +80,7 @@ const SupplierEditTabs: React.FC<SupplierEditTabsProps> = ({ onSupplierSave, sup
         {canReadPart ? <TabsTrigger value="parts">Parts</TabsTrigger> : null}
         {auditAccess.can ? <TabsTrigger value="audit">Audit</TabsTrigger> : null}
       </TabsList>
-      <TabsContent className="pt-4" value="supplier">
+      <TabsContent className="space-y-4 pt-4" value="supplier">
         <SupplierForm key={supplier.id} onSave={onSupplierSave} supplier={supplier} />
         {canMergeSupplier || canRemoveSupplier ? (
           <EntityActionsFooter>

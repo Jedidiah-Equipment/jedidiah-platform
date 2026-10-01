@@ -18,6 +18,7 @@ import { useTRPC } from '@/lib/trpc.js';
 import { JobListTable } from '../jobs/JobListPage.js';
 import { QuoteTable } from '../quotes/QuotesPage.js';
 import { CustomerForm } from './components/CustomerForm.js';
+import { MergeCustomerDialog } from './MergeCustomerDialog.js';
 
 type CustomerEditPageProps = {
   customerId: UUID;
@@ -55,6 +56,7 @@ type CustomerEditTabsProps = {
 };
 
 const CustomerEditTabs: React.FC<CustomerEditTabsProps> = ({ customer, onCustomerSave }) => {
+  const canMergeCustomer = useCan('equipment_customer:merge').can;
   const canRemoveCustomer = useCan('equipment_customer:remove').can;
   const canReadJobs = useCan('equipment_job:read').can;
   const canReadQuotes = useCan('equipment_quote:read').can;
@@ -76,12 +78,19 @@ const CustomerEditTabs: React.FC<CustomerEditTabsProps> = ({ customer, onCustome
         {auditAccess.can ? <TabsTrigger value="audit">Audit</TabsTrigger> : null}
       </TabsList>
       <TabsContent className="pt-4" value="details">
-        <CustomerForm customer={customer} key={customer.id} onSave={onCustomerSave} />
-        {canRemoveCustomer ? (
-          <EntityActionsFooter>
-            <RemoveCustomerButton customer={customer} />
-          </EntityActionsFooter>
-        ) : null}
+        <CustomerForm
+          customer={customer}
+          key={customer.id}
+          onSave={onCustomerSave}
+          renderActions={(discardChanges) =>
+            canMergeCustomer || canRemoveCustomer ? (
+              <EntityActionsFooter>
+                {canMergeCustomer ? <MergeCustomerDialog customer={customer} onMerged={discardChanges} /> : null}
+                {canRemoveCustomer ? <RemoveCustomerButton customer={customer} /> : null}
+              </EntityActionsFooter>
+            ) : null
+          }
+        />
       </TabsContent>
       {canReadQuotes ? (
         <TabsContent className="pt-4" value="quotes">

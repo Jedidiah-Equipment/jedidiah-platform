@@ -54,10 +54,6 @@ export const productUnitOwnershipTransfers = equipmentSchema.table(
   },
   (table) => [
     check(
-      'product_unit_ownership_transfer_moves_owner',
-      sql`${table.fromCustomerId} IS DISTINCT FROM ${table.toCustomerId}`,
-    ),
-    check(
       'product_unit_ownership_transfer_note_nonempty',
       sql`${table.note} IS NULL OR length(trim(${table.note})) > 0`,
     ),

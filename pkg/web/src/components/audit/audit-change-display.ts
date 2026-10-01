@@ -1,4 +1,4 @@
-import { formatCurrency, formatDate, formatPercent } from '@pkg/domain';
+import { formatCurrency, formatDate, formatNumber, formatPercent } from '@pkg/domain';
 
 export type AuditChange = { from?: unknown; to?: unknown };
 export type AuditChangeMap = Record<string, AuditChange>;
@@ -48,6 +48,8 @@ const auditFieldLabels: Record<string, string> = {
   movedPurchaseOrderLines: 'Purchase order lines moved',
   movedPurchaseOrders: 'Purchase orders moved',
   movedStockMovements: 'Stock movements moved',
+  movedQuotes: 'Quotes moved',
+  movedUnits: 'Units moved',
   name: 'Name',
   notes: 'Notes',
   ownerCustomerId: 'Owner',
@@ -105,6 +107,8 @@ const terminalCountFields = new Set([
   'movedPurchaseOrderLines',
   'movedPurchaseOrders',
   'movedStockMovements',
+  'movedQuotes',
+  'movedUnits',
 ]);
 
 export function getAuditChangeDisplays(
@@ -160,6 +164,8 @@ export function formatAuditChangeValue(field: string, value: unknown, valueLabel
   if (percentFields.has(field) && typeof value === 'number') {
     return formatPercent(value);
   }
+
+  if (terminalCountFields.has(field) && typeof value === 'number') return formatNumber(value);
 
   const valueLabel = typeof value === 'string' ? valueLabels?.[field]?.[value] : undefined;
 

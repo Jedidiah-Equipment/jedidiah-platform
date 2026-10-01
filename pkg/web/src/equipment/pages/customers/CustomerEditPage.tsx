@@ -18,6 +18,7 @@ import { useTRPC } from '@/lib/trpc.js';
 import { JobListTable } from '../jobs/JobListPage.js';
 import { QuoteTable } from '../quotes/QuotesPage.js';
 import { CustomerForm } from './components/CustomerForm.js';
+import { MergeCustomerDialog } from './MergeCustomerDialog.js';
 
 type CustomerEditPageProps = {
   customerId: UUID;
@@ -55,6 +56,7 @@ type CustomerEditTabsProps = {
 };
 
 const CustomerEditTabs: React.FC<CustomerEditTabsProps> = ({ customer, onCustomerSave }) => {
+  const canMergeCustomer = useCan('equipment_customer:merge').can;
   const canRemoveCustomer = useCan('equipment_customer:remove').can;
   const canReadJobs = useCan('equipment_job:read').can;
   const canReadQuotes = useCan('equipment_quote:read').can;
@@ -77,9 +79,10 @@ const CustomerEditTabs: React.FC<CustomerEditTabsProps> = ({ customer, onCustome
       </TabsList>
       <TabsContent className="pt-4" value="details">
         <CustomerForm customer={customer} key={customer.id} onSave={onCustomerSave} />
-        {canRemoveCustomer ? (
+        {canMergeCustomer || canRemoveCustomer ? (
           <EntityActionsFooter>
-            <RemoveCustomerButton customer={customer} />
+            {canMergeCustomer ? <MergeCustomerDialog customer={customer} /> : null}
+            {canRemoveCustomer ? <RemoveCustomerButton customer={customer} /> : null}
           </EntityActionsFooter>
         ) : null}
       </TabsContent>

@@ -41,6 +41,7 @@ export const APP_PERMISSIONS = [
   'equipment_customer:create',
   'equipment_customer:update',
   'equipment_customer:remove',
+  'equipment_customer:merge',
   'equipment_email:send',
   'equipment_feedback:read',
   'equipment_feedback:update',

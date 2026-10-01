@@ -9,6 +9,7 @@ import { mergeSelectedOption, toSelectOptions } from './helpers.js';
 export type CustomerOption = Pick<Customer, 'companyName' | 'email' | 'id'>;
 
 type UseCustomerOptionsOptions = {
+  enabled?: boolean;
   fallbackCustomer?: CustomerOption | null;
   limit?: number;
   search?: string;
@@ -24,6 +25,7 @@ const defaultCustomerListInput = {
 } as const satisfies Omit<CustomerListInput, 'limit'>;
 
 export function useCustomerOptions({
+  enabled = true,
   fallbackCustomer = null,
   limit = 20,
   search = '',
@@ -35,14 +37,14 @@ export function useCustomerOptions({
     limit,
     search,
   };
-  const customersQuery = useQuery(trpc.customers.list.queryOptions(input));
+  const customersQuery = useQuery(trpc.customers.list.queryOptions(input, { enabled }));
   const selectedCustomerQuery = useQuery({
     ...trpc.customers.list.queryOptions({
       ...defaultCustomerListInput,
       columnFilters: { id: value },
       limit: 1,
     }),
-    enabled: Boolean(value),
+    enabled: enabled && Boolean(value),
   });
   const selectedItem = selectedCustomerQuery.data?.items.find((customer) => customer.id === value) ?? null;
   const items = customersQuery.data?.items ?? [];

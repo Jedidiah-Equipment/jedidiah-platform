@@ -48,6 +48,7 @@ export const permissionLabels = {
   'equipment_customer:create': 'Create customers',
   'equipment_customer:read': 'View customers',
   'equipment_customer:remove': 'Remove customers',
+  'equipment_customer:merge': 'Merge customers',
   'equipment_customer:update': 'Update customers',
   'equipment_email:send': 'Send email',
   'equipment_feedback:read': 'View feedback',
@@ -141,6 +142,7 @@ export const permissionDescriptions = {
   'equipment_customer:create': 'Add new customer directory records.',
   'equipment_customer:read': 'View customer directory records.',
   'equipment_customer:remove': 'Permanently remove unreferenced customer directory records.',
+  'equipment_customer:merge': 'Merge a duplicate customer into another, moving its quotes and unit ownership history.',
   'equipment_customer:update': 'Edit existing customer directory records.',
   'equipment_email:send': 'Send assistant-authored email to an explicitly chosen recipient.',
   'equipment_feedback:read': 'View all submitted Feedback records, including Corrective Feedback.',
@@ -237,7 +239,7 @@ export const permissionDescriptions = {
 
 export const authorizationStatement = {
   equipment_audit: ['read'],
-  equipment_customer: ['read', 'create', 'update', 'remove'],
+  equipment_customer: ['read', 'create', 'update', 'remove', 'merge'],
   equipment_email: ['send'],
   equipment_feedback: ['read', 'update'],
   equipment_job: ['read', 'create', 'update', 'schedule', 'update-calendar', 'cancel'],
@@ -279,7 +281,7 @@ type RoleAccess = Partial<{
 
 const adminAccess = {
   equipment_audit: ['read'],
-  equipment_customer: ['read', 'create', 'update', 'remove'],
+  equipment_customer: ['read', 'create', 'update', 'remove', 'merge'],
   equipment_email: ['send'],
   equipment_job: ['read', 'create', 'update', 'schedule', 'update-calendar', 'cancel'],
   equipment_job_bay: ['read', 'update'],
@@ -330,7 +332,7 @@ export const appRoleAccess = {
     equipment_feedback: ['read', 'update'],
   },
   'procurement-manager': {
-    equipment_customer: ['read', 'create', 'update', 'remove'],
+    equipment_customer: ['read', 'create', 'update', 'remove', 'merge'],
     equipment_inventory: ['read', 'adjust'],
     equipment_inventory_cost: ['read', 'revalue'],
     equipment_job: ['read'],

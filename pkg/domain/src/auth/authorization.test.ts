@@ -21,6 +21,13 @@ import {
 const nonAdminRoles = APP_ROLES.filter((role) => role !== 'admin' && role !== 'super-admin');
 
 describe('getRolePermissions', () => {
+  it('grants Customer Merge only to directory managers', () => {
+    expect(APP_ROLES.filter((role) => getRolePermissions(role).includes('equipment_customer:merge')).sort()).toEqual([
+      'admin',
+      'procurement-manager',
+      'super-admin',
+    ]);
+  });
   it('grants Customer removal to exactly the roles that can update Customers', () => {
     for (const role of APP_ROLES) {
       expect(getRolePermissions(role).includes('equipment_customer:remove'), `role ${role}`).toBe(
@@ -33,6 +40,7 @@ describe('getRolePermissions', () => {
     expect(getRolePermissions('admin')).toEqual([
       'equipment_audit:read',
       'equipment_customer:create',
+      'equipment_customer:merge',
       'equipment_customer:read',
       'equipment_customer:remove',
       'equipment_customer:update',
@@ -154,6 +162,7 @@ describe('getRolePermissions', () => {
   it('grants procurement permissions to procurement managers', () => {
     expect(getRolePermissions('procurement-manager')).toEqual([
       'equipment_customer:create',
+      'equipment_customer:merge',
       'equipment_customer:read',
       'equipment_customer:remove',
       'equipment_customer:update',

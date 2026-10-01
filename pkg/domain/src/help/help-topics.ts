@@ -58,6 +58,7 @@ export const HELP_TOPICS = {
   quoteInventoryParts: '/sales/add-an-inventory-part-to-a-quote',
   storesTablet: '/inventory/work-the-stores-tablet',
   suppliers: '/inventory/maintain-suppliers',
+  customerMerge: '/sales/merge-duplicate-customers',
   supplierMerge: '/inventory/merge-duplicate-suppliers',
   unitReassignment: '/sales/reassign-a-unit',
   units: '/production/remove-a-unit',

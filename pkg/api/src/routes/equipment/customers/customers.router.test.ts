@@ -608,3 +608,50 @@ async function createProduct(db: Db, suffix: string): Promise<string> {
 
   return product.id;
 }
+
+describe('customers.merge', () => {
+  test('gates both procedures on Customer Merge permission', async ({ context }) => {
+    const admin = context.createCaller();
+    const source = await createCustomer(admin, 'Duplicate');
+    const target = await createCustomer(admin, 'Survivor');
+    for (const caller of [context.createAnonCaller(), context.createCaller(mockSession('sales'))]) {
+      await expect(caller.customers.mergePreview({ sourceId: source.id })).rejects.toMatchObject({
+        code: expect.stringMatching(/UNAUTHORIZED|FORBIDDEN/),
+      });
+      await expect(caller.customers.merge({ sourceId: source.id, targetId: target.id })).rejects.toMatchObject({
+        code: expect.stringMatching(/UNAUTHORIZED|FORBIDDEN/),
+      });
+    }
+    const caller = context.createCaller(mockSession('procurement-manager'));
+    await expect(caller.customers.mergePreview({ sourceId: source.id })).resolves.toEqual({
+      quoteCount: 0,
+      unitCount: 0,
+    });
+    await expect(caller.customers.merge({ sourceId: source.id, targetId: target.id })).resolves.toMatchObject({
+      id: target.id,
+    });
+  });
+  test('maps self merges and missing Customers to stable errors', async ({ context }) => {
+    const caller = context.createCaller();
+    const source = await createCustomer(caller, 'Source');
+    await expect(caller.customers.merge({ sourceId: source.id, targetId: source.id })).rejects.toMatchObject({
+      appCode: 'customer.merge_self',
+      code: 'BAD_REQUEST',
+      message: 'A customer cannot be merged into itself.',
+    });
+    const missing = '00000000-0000-4000-8000-000000000001';
+    await expect(caller.customers.mergePreview({ sourceId: missing })).rejects.toMatchObject({
+      appCode: 'customer.not_found',
+      code: 'NOT_FOUND',
+    });
+    for (const input of [
+      { sourceId: source.id, targetId: missing },
+      { sourceId: missing, targetId: source.id },
+    ]) {
+      await expect(caller.customers.merge(input)).rejects.toMatchObject({
+        appCode: 'customer.not_found',
+        code: 'NOT_FOUND',
+      });
+    }
+  });
+});

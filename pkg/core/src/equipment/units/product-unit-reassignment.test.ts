@@ -107,7 +107,7 @@ describe('reassignProductUnitToQuote', () => {
     await expect(readJobQuoteId(db, stock.jobId)).resolves.toBe(quoteId);
   });
 
-  // The DB check `product_unit_ownership_transfer_moves_owner` would reject a row that moves nothing,
+  // New Transfers reject unchanged Owners via ProductUnitOwnerUnchangedError; Reassignment skips them,
   // so the Job audit events are what carry a move between two deals of the same Customer.
   test('skips the Transfer row when the Unit already belongs to the receiving Customer', async ({ context }) => {
     const { db, seed } = context;

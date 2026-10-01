@@ -1,4 +1,4 @@
-import { account, CREDENTIAL_ACCOUNT_ISSUER, user } from '@pkg/db';
+import { account, user } from '@pkg/db';
 import { hashPassword } from 'better-auth/crypto';
 import { expect } from 'vitest';
 import { createTester } from '@/test/create-tester.js';
@@ -30,7 +30,6 @@ const test = createTester(async ({ db, auth }) => {
     id: 'admin-credential',
     accountId: 'test-user-id',
     userId: 'test-user-id',
-    issuer: CREDENTIAL_ACCOUNT_ISSUER,
     providerId: 'credential',
     password: await hashPassword('test123'),
     createdAt: now,

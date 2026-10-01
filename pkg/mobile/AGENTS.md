@@ -40,7 +40,7 @@
 - Document viewing uses native base files plus `.web` overrides. Native renders PDFs with
   `react-native-pdf`; web fetches authed blobs for iframe/download behavior.
 - Root `pnpm verify` covers lint/typecheck/test. Expo release checks are explicit package commands
-  such as `pnpm --filter @pkg/mobile doctor` and the Android EAS scripts.
+  such as `pnpm --filter @pkg/mobile run doctor` and the Android EAS scripts.
 - Upgrade Expo one SDK at a time: bump `expo`, run
   `APP_VARIANT=staging pnpm --filter @pkg/mobile exec expo install --fix`, then keep the resulting
   React version aligned with `@pkg/pdf`. Re-check the version-scoped Worklets extension and keep

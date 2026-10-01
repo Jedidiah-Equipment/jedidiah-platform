@@ -1,4 +1,3 @@
-import { CREDENTIAL_ACCOUNT_ISSUER } from '@pkg/db';
 import { contractingJobCodeSequence } from '@pkg/db/contracting';
 import { jobCodeSequence, quoteCodeSequence } from '@pkg/db/equipment';
 import { LEGACY_QUOTE_CANCELLATION_REASON } from '@pkg/schema/equipment';
@@ -153,14 +152,9 @@ export const snapshotTableDefinitions = [
     tableName: 'account',
     timestampColumns: authTimestampColumns,
     omitReadColumns: ['password'],
-    // `issuer` arrived with better-auth 1.7; a source still on the preceding schema reads without it.
-    // Defaulted only for `credential`, the same stance migration 0130 takes: an OAuth row would need
-    // `local:oauth:<encoded providerId>`, so leaving it unset fails the insert rather than guessing.
-    optionalReadColumns: ['issuer'],
-    seedRowDefaults: (row) => ({
-      password: null,
-      ...(row.providerId === 'credential' ? { issuer: CREDENTIAL_ACCOUNT_ISSUER } : {}),
-    }),
+    seedRowDefaults: () => ({ password: null }),
+    // Snapshots captured under Better Auth 1.7.0–1.7.2 still carry the removed account column.
+    seedRowTransform: ({ issuer: _issuer, ...row }) => row,
     seedCredentialPassword: true,
   },
   {

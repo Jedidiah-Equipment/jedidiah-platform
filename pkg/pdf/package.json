@@ -30,13 +30,13 @@
   "dependencies": {
     "@pkg/domain": "workspace:*",
     "@pkg/schema": "workspace:*",
-    "@react-pdf/renderer": "^4.8.1",
+    "@react-pdf/renderer": "^4.9.0",
     "bwip-js": "4.11.4",
     "pdf-lib": "^1.17.1",
-    "react": "19.2.8"
+    "react": "19.3.0"
   },
   "devDependencies": {
-    "@types/react": "^19.2.18",
-    "vitest": "^4.1.11"
+    "@types/react": "^19.3.0",
+    "vitest": "^5.0.3"
   }
 }

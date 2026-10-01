@@ -2,13 +2,12 @@ packages:
   - "pkg/*"
 
 packageExtensions:
-  "@config-plugins/react-native-pdf@*":
+  # This release imports Expo config plugins without declaring the dependency.
+  "@config-plugins/react-native-pdf@14.0.2":
     dependencies:
       "@expo/config-plugins": "^57"
-  # The worklets Babel plugin imports these packages but 0.10.1 does not declare them. Pin them to
-  # the Babel 7.29.7 that @babel/core anchors for Expo, and keep the key version-scoped so an SDK
-  # move forces us to re-check upstream rather than preserve a stale patch.
-  "react-native-worklets@0.10.1":
+  # Expo 57 needs Worklets 0.10, whose Babel plugin still omits these dependencies.
+  "react-native-worklets@0.10.4":
     dependencies:
       "@babel/generator": "7.29.7"
       "@babel/traverse": "7.29.7"
@@ -24,10 +23,9 @@ overrides:
   # One esbuild for the whole tree. Without this, drizzle-kit, tsx and Vite each bring their
   # own — four copies, four platform binaries — and every consumer accepts this one.
   esbuild: 0.28.2
+  # Expo's cyclic peers otherwise auto-install a second Reanimated beyond Expo 57's Worklets range.
+  react-native-reanimated: 4.5.5
   # patch-package asks for ^0.0.33, from long before tmp closed its symlink escape.
-  tmp: 0.2.7
-  # xcode asks for ^7.
-  uuid: 11.1.1
-
-minimumReleaseAgeExclude:
-  - '@posthog/cli@0.18.3'
+  "patch-package>tmp": 0.2.7
+  # xcode asks for ^7 and requires CommonJS; uuid 11 is the last CommonJS release.
+  "xcode>uuid": 11.1.1

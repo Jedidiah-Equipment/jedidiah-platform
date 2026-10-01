@@ -1,4 +1,4 @@
-import { account, CREDENTIAL_ACCOUNT_ISSUER, type Db, user } from '@pkg/db';
+import { account, type Db, user } from '@pkg/db';
 import { DEFAULT_DEMO_USER_PASSWORD } from '@pkg/domain';
 import type { EquipmentRole } from '@pkg/schema';
 import { hashPassword } from 'better-auth/crypto';
@@ -217,7 +217,6 @@ async function createUserWithCredential(
       accountId: input.id,
       createdAt: now,
       id: `${input.id}-credential-account`,
-      issuer: CREDENTIAL_ACCOUNT_ISSUER,
       password: 'passwordHash' in input ? input.passwordHash : await hashPassword(input.password),
       providerId: 'credential',
       updatedAt: now,

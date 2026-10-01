@@ -16,7 +16,7 @@ import { TextInput } from '@/components/ui/text-input';
 import { implementOption } from '@/contracting/components/implement-option';
 import { useDrivers, useImplements } from '@/contracting/jobs/use-jobs';
 import { recordReadingCaptured } from '@/contracting/observability';
-import { type CaptureAttempt, captureAttempt } from '@/contracting/readings/capture-attempt';
+import { type AttemptIdentity, captureAttempt } from '@/contracting/readings/capture-attempt';
 import { deriveCapture } from '@/contracting/readings/derive-capture';
 import { CAPTURE_FAILED, captureReading, ReadingRefusedError } from '@/contracting/readings/reading-upload';
 import { useFleet, useMachineReadings } from '@/contracting/readings/use-fleet';
@@ -78,7 +78,7 @@ function CaptureForm({ params }: { params: CaptureParams }) {
   });
   const overrides = useStore(overrideForm.store, (state) => state.values);
   const { busy, error, setError, run } = useBusyAction();
-  const attempt = useRef<CaptureAttempt | null>(null);
+  const attempt = useRef<AttemptIdentity | null>(null);
   const latestRow = readings.data?.[0];
   const latest = latestRow ? { id: latestRow.id, value: latestRow.value } : null;
   const commentRequired = role === 'departure' && management && photo === null;

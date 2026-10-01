@@ -7,10 +7,10 @@ export function newLocalId(): string {
 }
 
 /** One press of Save and its retries: the server replays a capture only when its id and time match. */
-export type CaptureAttempt = { localId: string; capturedAt: string; fingerprint: string };
+export type AttemptIdentity = { localId: string; capturedAt: string; fingerprint: string };
 
 /** The attempt to send: the current one while nothing in the payload changed, else a new identity. */
-export function captureAttempt(current: CaptureAttempt | null, payload: readonly unknown[]): CaptureAttempt {
+export function captureAttempt(current: AttemptIdentity | null, payload: readonly unknown[]): AttemptIdentity {
   const fingerprint = JSON.stringify(payload);
   if (current?.fingerprint === fingerprint) return current;
   return { localId: newLocalId(), capturedAt: new Date().toISOString(), fingerprint };

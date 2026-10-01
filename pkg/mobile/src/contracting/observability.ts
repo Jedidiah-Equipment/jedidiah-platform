@@ -1,6 +1,6 @@
 import { addBreadcrumb, captureEvent } from '@/lib/observability';
 
-/** Once per server answer to a capture: `refused` is the refusal's app code, null when it was saved. */
+/** Once per capture the server saves or refuses: `refused` is the refusal's app code, null when saved. */
 export function recordReadingCaptured(properties: {
   role: 'spot' | 'arrival' | 'departure';
   hasPhoto: boolean;

@@ -42,8 +42,8 @@ The named event catalog is:
 
 - Auth: `signed in`, `sign in failed` (`reason` category only), `signed out`, `password reset requested`.
 - Contracting: `reading captured` (`role`, `hasPhoto`, `refused` — the refusal's app code, or `null` when
-  saved), once per server answer to a capture; and `machine added to job` (`jobId`, `machineId`). A capture
-  that never reaches the server sends no event: its `reading upload failed` breadcrumb and exception cover it.
+  saved), once per capture the server saves or refuses; and `machine added to job` (`jobId`, `machineId`). A
+  capture that fails any other way sends no event: its breadcrumb and exception cover it.
 - Equipment mutations: `quote created`, `quote updated`, `quote cancelled`, `quote document generated`,
   `department timing started`, `department timing updated`, `department timing completed`, `part checked out`,
   `part returned to store`, `part received`, `part returned to supplier`, `stock count posted`,

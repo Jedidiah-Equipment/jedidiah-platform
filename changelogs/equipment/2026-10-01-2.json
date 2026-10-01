@@ -1,0 +1,28 @@
+{
+  "business": "equipment",
+  "releasedAt": "2026-10-01T12:07:28.963Z",
+  "sections": [
+    {
+      "surface": "app",
+      "entries": [
+        {
+          "title": "Merge duplicate customers",
+          "description": "Review linked quotes and units, then merge duplicate customers while preserving quotes, unit ownership history and missing contact details. The duplicate customer is permanently removed."
+        },
+        {
+          "title": "Check for duplicate customers before saving",
+          "description": "When adding a customer or creating a quote, review matching names and choose an existing customer or confirm a different company. The Assistant also checks for possible duplicates."
+        }
+      ]
+    },
+    {
+      "surface": "mobile",
+      "entries": [
+        {
+          "title": "Choose an existing customer when creating a quote",
+          "description": "Creating a quote with a new customer now warns you about matching names. Review the matches, use an existing customer, or confirm that this is a different company."
+        }
+      ]
+    }
+  ]
+}

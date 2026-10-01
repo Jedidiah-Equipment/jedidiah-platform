@@ -1,0 +1,15 @@
+{
+  "business": "contracting",
+  "releasedAt": "2026-10-01T12:07:28.963Z",
+  "sections": [
+    {
+      "surface": "mobile",
+      "entries": [
+        {
+          "title": "Capture hour readings while connected",
+          "description": "The mobile app now requires a connection and saves hour readings directly, showing any refusal immediately so you can address it. Offline capture and the Needs attention queue have been removed."
+        }
+      ]
+    }
+  ]
+}

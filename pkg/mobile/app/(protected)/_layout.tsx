@@ -1,12 +1,12 @@
-import { hasBusinessAccess, isStoredUserSignInEligible } from '@pkg/domain';
+import { isStoredUserSignInEligible } from '@pkg/domain';
 import { type ErrorBoundaryProps, Redirect, Stack } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppErrorBoundary } from '@/components/AppErrorBoundary';
-import { ReadingQueueProvider } from '@/contracting/readings/ReadingQueueProvider';
+import { purgeLegacyContractingStorage } from '@/contracting/lib/purge-legacy-storage';
 import { signOut, useSession } from '@/lib/auth';
-import { AuthSessionProvider, getSessionRoleSlots } from '@/lib/auth-session';
+import { AuthSessionProvider } from '@/lib/auth-session';
 import { useIsOffline } from '@/lib/connectivity';
 import { addBreadcrumb, identifyObservabilityUser } from '@/lib/observability';
 import { isHydratedSession } from '@/lib/session-state';
@@ -59,6 +59,11 @@ export default function ProtectedLayout() {
     };
   }, [reconnecting, refetch]);
 
+  // Every operator who used this phone shares the purge: the old keys carry their user id inside them.
+  useEffect(() => {
+    if (hasSession) void purgeLegacyContractingStorage();
+  }, [hasSession]);
+
   // Still resolving, offline with no resolved session, or reconnecting after coming back online:
   // hold (behind the OfflineScreen cover) rather than redirecting on a session we can't yet trust.
   if (isPending || reconnecting || (!hasSession && isOffline)) {
@@ -73,22 +78,13 @@ export default function ProtectedLayout() {
     return <SignOutIneligibleSession />;
   }
 
-  const screens = (
-    <Stack screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="contracting" />
-      <Stack.Screen name="equipment" />
-    </Stack>
-  );
-  // Queued readings keep syncing while an operator with both businesses works on Equipment screens,
-  // so the queue sits above both business stacks rather than inside the Contracting layout.
   return (
     <AuthSessionProvider session={session}>
       <SessionObservability userId={session.user.id} />
-      {hasBusinessAccess(getSessionRoleSlots(session), 'contracting') ? (
-        <ReadingQueueProvider key={session.user.id}>{screens}</ReadingQueueProvider>
-      ) : (
-        screens
-      )}
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="contracting" />
+        <Stack.Screen name="equipment" />
+      </Stack>
     </AuthSessionProvider>
   );
 }

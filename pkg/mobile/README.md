@@ -41,10 +41,9 @@ a page is missing from that catalog.
 The named event catalog is:
 
 - Auth: `signed in`, `sign in failed` (`reason` category only), `signed out`, `password reset requested`.
-- Contracting: `reading captured` (`role`, `hasPhoto`, `offline`), `reading synced` (`role`, `hasPhoto`,
-  `queueAgeSeconds`), `reading sync failed` (`role`, `hasPhoto`, `queueAgeSeconds`, `stage`, `code`, plus the
-  existing version/platform properties), `reading attention resolved` (`resolution`), and
-  `machine added to job` (`jobId`, `machineId`).
+- Contracting: `reading captured` (`role`, `hasPhoto`, `refused` — the refusal's app code, or `null` when
+  saved), once per server answer to a capture; and `machine added to job` (`jobId`, `machineId`). A capture
+  that never reaches the server sends no event: its `reading upload failed` breadcrumb and exception cover it.
 - Equipment mutations: `quote created`, `quote updated`, `quote cancelled`, `quote document generated`,
   `department timing started`, `department timing updated`, `department timing completed`, `part checked out`,
   `part returned to store`, `part received`, `part returned to supplier`, `stock count posted`,
@@ -57,7 +56,7 @@ The named event catalog is:
   `offline gate shown`. PostHog's default installed/updated/opened/backgrounded lifecycle events remain on.
 
 The **breadcrumb trail** is the last 50 bounded, in-memory navigation, lifecycle, connectivity, auth,
-network, OTA, Contracting-queue, and Equipment-action entries. It is attached as `breadcrumbs` to every
+network, OTA, Contracting-capture, and Equipment-action entries. It is attached as `breadcrumbs` to every
 captured exception. Network entries contain only method, route pattern or procedure path, status, and
 duration—never bodies, query parameters, cookies, or headers. The SDK also adds PostHog tracing headers for
 the configured API hostname.
@@ -84,9 +83,9 @@ query strings, or any form value.
    lifecycle breadcrumbs and resolves to repository source. Confirm Reload recovers the boundary.
 4. Sign out and sign in as a second internal user. Confirm the first event after the switch uses only the
    second internal user ID and carries no profile properties.
-5. Force one queued reading failure with and without a photo. Confirm the `reading sync failed` event carries
-   `stage`, `code`, `queueAgeSeconds`, `hasPhoto`, and `role` alongside the shared properties, and no machine,
-   photo-path, or comment data.
+5. Capture one reading the server refuses (below the latest) with and without a photo. Confirm the
+   `reading captured` event carries `refused`, `hasPhoto`, and `role` alongside the shared properties, and no
+   machine, photo-path, or comment data.
 6. Publish with `ota:staging`. The script uploads `dist` Hermes maps after EAS Update; force another exception
    and confirm its OTA stack resolves to repository source.
 

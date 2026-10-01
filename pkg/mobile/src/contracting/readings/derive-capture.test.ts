@@ -3,46 +3,38 @@ import { deriveCapture } from './derive-capture';
 
 const base = {
   value: '120,5',
-  world: { latest: { id: 'server-1', value: 100 }, stint: null, onSite: [], management: false, hasPhoto: true },
-  capture: {
-    role: 'spot' as const,
-    machineId: 'machine-1',
-    implementId: null,
-    disputePrevious: false,
-    expectedPreviousId: null,
-    comment: null,
-  },
+  latest: { id: 'latest', value: 100 },
+  disputePrevious: false,
+  disputedReadingId: null,
+  comment: '',
+  commentRequired: false,
   canCapture: true,
   machineKnown: true,
   cameraOpen: false,
 };
 
-test('saves a parsed value the capture rules accept, and nothing the form itself cannot stand behind', () => {
-  expect(deriveCapture(base)).toMatchObject({ verdict: { ok: true }, canSave: true });
-  expect(deriveCapture({ ...base, value: '  ' })).toMatchObject({ parsed: null, verdict: null, canSave: false });
-  expect(deriveCapture({ ...base, value: '12.34' })).toMatchObject({ verdict: null, canSave: false });
+test('saves a parsed value at or above the latest reading, and nothing the form cannot stand behind', () => {
+  expect(deriveCapture(base)).toMatchObject({ below: false, canSave: true });
+  expect(deriveCapture({ ...base, latest: null, value: '3' }).canSave).toBe(true);
+  expect(deriveCapture({ ...base, value: '  ' })).toMatchObject({ parsed: null, canSave: false });
+  expect(deriveCapture({ ...base, value: '12.34' }).canSave).toBe(false);
   expect(deriveCapture({ ...base, machineKnown: false }).canSave).toBe(false);
   expect(deriveCapture({ ...base, canCapture: false }).canSave).toBe(false);
   expect(deriveCapture({ ...base, cameraOpen: true }).canSave).toBe(false);
-  expect(deriveCapture({ ...base, value: '90' })).toMatchObject({
-    verdict: { ok: false, rule: 'below-latest' },
-    canSave: false,
-  });
 });
 
-test('warns without blocking when the phone believes the Machine is on site elsewhere, since that may be stale', () => {
-  const busy = {
-    ...base,
-    world: {
-      ...base.world,
-      stint: 'planned' as const,
-      onSite: [{ machineId: 'machine-1', implementId: null, jobNumber: 'CJOB-00041' }],
-    },
-    capture: { ...base.capture, role: 'arrival' as const },
-  };
-  expect(deriveCapture(busy)).toMatchObject({
-    verdict: { ok: false, rule: 'machine-busy' },
-    advisory: true,
-    canSave: true,
+test('a value below the latest saves only once the Foreman disputes that very reading', () => {
+  expect(deriveCapture({ ...base, value: '90' })).toMatchObject({
+    below: true,
+    disputeConfirmed: false,
+    canSave: false,
   });
+  const disputed = { ...base, value: '90', disputePrevious: true, disputedReadingId: 'latest' };
+  expect(deriveCapture(disputed)).toMatchObject({ below: true, disputeConfirmed: true, canSave: true });
+  expect(deriveCapture({ ...disputed, latest: { id: 'newer', value: 100 } }).canSave).toBe(false);
+});
+
+test('a required comment gates Save until it is written', () => {
+  expect(deriveCapture({ ...base, commentRequired: true })).toMatchObject({ missingComment: true, canSave: false });
+  expect(deriveCapture({ ...base, commentRequired: true, comment: 'Camera broken' }).canSave).toBe(true);
 });

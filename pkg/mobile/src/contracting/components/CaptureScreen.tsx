@@ -1,8 +1,8 @@
 import { formatHours } from '@pkg/domain';
-import { captureRefusal, fieldJobAccessMode, onSiteElsewhere } from '@pkg/domain/contracting';
+import { fieldJobAccessMode } from '@pkg/domain/contracting';
 import { ReadingComment } from '@pkg/schema/contracting';
 import { useStore } from '@tanstack/react-form';
-import { onlineManager } from '@tanstack/react-query';
+import { useQueryClient } from '@tanstack/react-query';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { type Href, router, useLocalSearchParams } from 'expo-router';
 import { useRef, useState } from 'react';
@@ -14,19 +14,20 @@ import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { TextInput } from '@/components/ui/text-input';
 import { implementOption } from '@/contracting/components/implement-option';
-import { useDrivers, useImplements, useJobs } from '@/contracting/jobs/use-jobs';
+import { useDrivers, useImplements } from '@/contracting/jobs/use-jobs';
 import { recordReadingCaptured } from '@/contracting/observability';
-import { captureWorld } from '@/contracting/readings/capture-world';
+import { type CaptureAttempt, captureAttempt } from '@/contracting/readings/capture-attempt';
 import { deriveCapture } from '@/contracting/readings/derive-capture';
-import { useReadingQueue } from '@/contracting/readings/ReadingQueueProvider';
-import { keepReadingPhoto, removeReadingPhoto } from '@/contracting/readings/reading-files';
-import { newLocalId } from '@/contracting/readings/reading-queue';
+import { CAPTURE_FAILED, captureReading, ReadingRefusedError } from '@/contracting/readings/reading-upload';
 import { useFleet, useMachineReadings } from '@/contracting/readings/use-fleet';
 import { useSessionAccessSummary, useSessionPermission } from '@/lib/auth-session';
 import { addBreadcrumb, captureException, captureSanitizedException } from '@/lib/observability';
+import { useTRPC } from '@/lib/trpc';
 import { useBusyAction } from '@/lib/use-busy-action';
 
 const CAMERA_FAILURE = 'The camera could not take a photo. Try again or continue without a photo.';
+/** Refusals that mean the ledger moved under the form: its latest reading must be fetched again. */
+const LEDGER_MOVED = ['reading.below_latest', 'reading.previous_changed'];
 
 type CaptureParams = {
   id: string;
@@ -53,10 +54,10 @@ function CaptureForm({ params }: { params: CaptureParams }) {
   const fleet = useFleet();
   const machine = fleet.data?.find((row) => row.id === id);
   const readings = useMachineReadings(id);
-  const { queue, items } = useReadingQueue();
   const implementsQuery = useImplements();
-  const jobs = useJobs();
   const driversQuery = useDrivers();
+  const queryClient = useQueryClient();
+  const trpc = useTRPC();
   const canCapture = useSessionPermission('contracting_reading:capture');
   const management = fieldJobAccessMode(useSessionAccessSummary()) === 'all';
   const [permission, requestPermission] = useCameraPermissions();
@@ -77,48 +78,21 @@ function CaptureForm({ params }: { params: CaptureParams }) {
   });
   const overrides = useStore(overrideForm.store, (state) => state.values);
   const { busy, error, setError, run } = useBusyAction();
-  const world = captureWorld({
-    machineId: id,
-    stintId: params.assignmentId ?? null,
-    queued: items,
-    history: readings.data,
-    jobs: jobs.data ?? [],
-    fleet: fleet.data ?? [],
-    implementRows: implementsQuery.data ?? [],
-    management,
-    hasPhoto: photo !== null,
-    // The Start or Stop button that opened this screen already showed the stint in this state.
-    unresolvedStint: role === 'departure' ? 'on-site' : 'planned',
-  });
-  const implementOnJob = (implementId: string) => {
-    const busy = onSiteElsewhere(world, { implementId });
-    return busy ? (busy.jobNumber ?? 'another Job') : null;
-  };
-  const latest = world.latest?.value;
-  const latestId = world.latest?.id ?? null;
-  const plannedImplementId =
-    jobs.data?.flatMap((job) => job.stints).find((stint) => stint.id === params.assignmentId)?.implementId ?? null;
-  const arrivingImplementId = changeStint ? overrides.implementId || null : plannedImplementId;
-  const { parsed, verdict, advisory, canSave } = deriveCapture({
+  const attempt = useRef<CaptureAttempt | null>(null);
+  const latestRow = readings.data?.[0];
+  const latest = latestRow ? { id: latestRow.id, value: latestRow.value } : null;
+  const commentRequired = role === 'departure' && management && photo === null;
+  const { parsed, below, disputeConfirmed, canSave } = deriveCapture({
     value,
-    world,
-    capture: {
-      role,
-      machineId: id,
-      implementId: role === 'arrival' ? arrivingImplementId : null,
-      disputePrevious,
-      expectedPreviousId: disputedReadingId,
-      comment: comment.trim() || null,
-    },
+    latest,
+    disputePrevious,
+    disputedReadingId,
+    comment,
+    commentRequired,
     canCapture,
     machineKnown: !!machine,
     cameraOpen,
   });
-  // The form's hint; the refusal itself is the capture rules' verdict below.
-  const commentRequired = role === 'departure' && management && photo === null;
-  const refused = verdict && !verdict.ok ? verdict : null;
-  const disputeConfirmed = !!verdict?.ok && verdict.disputes !== null;
-  const below = disputeConfirmed || refused?.rule === 'below-latest' || refused?.rule === 'previous-changed';
   async function openCamera() {
     addBreadcrumb('contracting', 'camera permission requested');
     try {
@@ -150,51 +124,67 @@ function CaptureForm({ params }: { params: CaptureParams }) {
   function save() {
     if (!canSave || !parsed?.success) return;
     const reading = parsed.data;
+    const stintOverrides =
+      role === 'arrival' && params.assignmentId && changeStint
+        ? { implementId: overrides.implementId || null, driverUserId: overrides.driverUserId || null }
+        : undefined;
+    // Name the latest only once history has loaded; the server then refuses a capture judged against an older one.
+    const expectedPreviousId = readings.data ? (latest?.id ?? null) : undefined;
+    attempt.current = captureAttempt(attempt.current, [
+      role,
+      params.assignmentId ?? null,
+      reading,
+      photo,
+      comment.trim(),
+      disputeConfirmed,
+      expectedPreviousId ?? null,
+      stintOverrides ?? null,
+    ]);
+    const { localId, capturedAt } = attempt.current;
+    const hasPhoto = photo !== null;
     return run(async () => {
-      const localId = newLocalId();
-      let photoLocalUri: string | null = null;
-      if (photo) {
-        try {
-          photoLocalUri = await keepReadingPhoto(photo, localId);
-        } catch (error) {
-          captureSanitizedException(error, 'Reading photo storage failed', { source: 'reading_photo_storage' });
-          throw error;
-        }
-      }
       try {
-        const queued = {
-          localId,
-          machineId: id,
-          role,
-          ...(params.assignmentId ? { assignmentId: params.assignmentId } : {}),
-          ...(role === 'arrival' && params.assignmentId && changeStint
-            ? {
-                stintOverrides: {
-                  implementId: overrides.implementId || null,
-                  driverUserId: overrides.driverUserId || null,
-                },
-              }
-            : {}),
-          value: reading,
-          capturedAt: new Date().toISOString(),
-          photoLocalUri,
-          comment: comment.trim() || null,
-          disputePrevious: disputeConfirmed,
-          expectedPreviousId: latestId,
-        } as const;
-        await queue.enqueue(queued);
-        recordReadingCaptured(queued, !onlineManager.isOnline());
+        const row = await captureReading(
+          {
+            localId,
+            machineId: id,
+            role,
+            ...(params.assignmentId ? { assignmentId: params.assignmentId } : {}),
+            ...(stintOverrides ? { stintOverrides } : {}),
+            value: reading,
+            capturedAt,
+            comment: comment.trim() || null,
+            disputePrevious: disputeConfirmed,
+            ...(expectedPreviousId !== undefined ? { expectedPreviousId } : {}),
+          },
+          photo,
+        );
+        recordReadingCaptured({ role, hasPhoto, refused: null });
+        queryClient.setQueryData(trpc.contractingReadings.fieldHistory.queryKey({ machineId: id }), (rows) => [
+          row,
+          ...(rows ?? []).filter((candidate) => candidate.id !== row.id),
+        ]);
+        void Promise.all([
+          queryClient.invalidateQueries({ queryKey: trpc.contractingReadings.pathKey() }),
+          queryClient.invalidateQueries({ queryKey: trpc.contractingJobs.field.pathKey() }),
+        ]);
+        router.replace((params.jobId ? `/contracting/jobs/${params.jobId}` : `/contracting/machines/${id}`) as Href);
       } catch (error) {
-        if (photoLocalUri)
-          await removeReadingPhoto(photoLocalUri).catch((cleanupError) =>
-            captureSanitizedException(cleanupError, 'Reading photo cleanup failed', {
-              source: 'reading_photo_cleanup',
-            }),
-          );
+        if (error instanceof ReadingRefusedError) {
+          recordReadingCaptured({ role, hasPhoto, refused: error.code });
+          if (LEDGER_MOVED.includes(error.code)) {
+            setDisputePrevious(false);
+            void queryClient.invalidateQueries({
+              queryKey: trpc.contractingReadings.fieldHistory.queryKey({ machineId: id }),
+            });
+          }
+          setError(error.message);
+          return;
+        }
+        captureSanitizedException(error, 'Reading capture failed', { source: 'reading_capture' });
         throw error;
       }
-      router.replace((params.jobId ? `/contracting/jobs/${params.jobId}` : `/contracting/machines/${id}`) as Href);
-    }, 'Capture could not be saved. Please try again.');
+    }, CAPTURE_FAILED);
   }
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top', 'left', 'right']}>
@@ -216,10 +206,7 @@ function CaptureForm({ params }: { params: CaptureParams }) {
           keyboardShouldPersistTaps="handled"
           contentContainerStyle={{ padding: 16, gap: 16 }}
         >
-          <Text className="text-muted-foreground">
-            Photograph the hour meter when you can, then type its value. Your capture is saved on this phone before
-            syncing.
-          </Text>
+          <Text className="text-muted-foreground">Photograph the hour meter when you can, then type its value.</Text>
           {role === 'arrival' && params.assignmentId ? (
             <View className="gap-3 rounded-xl border border-border bg-surface p-4">
               <View className="flex-row items-center justify-between gap-3">
@@ -239,10 +226,10 @@ function CaptureForm({ params }: { params: CaptureParams }) {
                         emptyMessage="No Implements match."
                         options={[
                           { label: 'No implement', value: '' },
-                          ...(implementsQuery.data ?? []).map((row) => {
-                            const onJob = implementOnJob(row.id);
-                            return { ...implementOption(row, onJob), disabled: onJob !== null };
-                          }),
+                          ...(implementsQuery.data ?? []).map((row) => ({
+                            ...implementOption(row, row.onSiteJobNumber),
+                            disabled: row.onSiteJobNumber !== null,
+                          })),
                         ]}
                       />
                     )}
@@ -318,8 +305,8 @@ function CaptureForm({ params }: { params: CaptureParams }) {
             <Text className="text-foreground" weight="semibold">
               Hour meter value
             </Text>
-            {latest !== undefined ? (
-              <Text className="text-sm text-muted-foreground">Minimum allowed: {formatHours(latest)}</Text>
+            {latest ? (
+              <Text className="text-sm text-muted-foreground">Minimum allowed: {formatHours(latest.value)}</Text>
             ) : null}
           </View>
           <TextInput
@@ -348,9 +335,6 @@ function CaptureForm({ params }: { params: CaptureParams }) {
             maxLength={ReadingComment.maxLength ?? undefined}
             onChangeText={setComment}
           />
-          {refused && !below ? (
-            <Text className={advisory ? 'text-muted-foreground' : 'text-danger'}>{captureRefusal(refused)}</Text>
-          ) : null}
           {below ? (
             <View className="gap-3 rounded-xl border border-danger p-4">
               <Text className="text-foreground">
@@ -360,7 +344,7 @@ function CaptureForm({ params }: { params: CaptureParams }) {
               <Button
                 title={disputeConfirmed ? 'Previous reading disputed · undo' : 'The previous reading is wrong'}
                 onPress={() => {
-                  setDisputedReadingId(latestId);
+                  setDisputedReadingId(latest?.id ?? null);
                   setDisputePrevious(!disputeConfirmed);
                 }}
                 disabled={busy}

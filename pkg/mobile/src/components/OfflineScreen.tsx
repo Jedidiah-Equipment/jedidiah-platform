@@ -8,7 +8,7 @@ import { Text } from '@/components/ui/text';
 import { offlineMessage, offlineTitle, refreshConnectivity, useIsOffline } from '@/lib/connectivity';
 import { addBreadcrumb, captureEvent } from '@/lib/observability';
 
-/** Covers online-only routes while disconnected; the root opts Contracting field routes out. */
+/** Covers online-only routes while disconnected; the root names any route that opts out. */
 export function OfflineScreen({ allowOffline = false }: { allowOffline?: boolean }) {
   const isOffline = useIsOffline();
   const shown = isOffline && !allowOffline;

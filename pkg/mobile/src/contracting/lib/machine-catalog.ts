@@ -28,7 +28,7 @@ export function normalizeMachineCategory(category: string, availableIds: readonl
   return category === 'all' || availableIds.includes(category) ? category : 'all';
 }
 
-/** Filter and sort the complete saved fleet so these controls also work offline. */
+/** Filter and sort the fleet on the phone, so search and the Category filter need no round trip. */
 export function getVisibleMachines<T extends MachineListItem>(
   machines: readonly T[],
   { search, category, sort }: { search: string; category: string; sort: MachineSort },

@@ -19,7 +19,6 @@ const SIGNED_IN_PERMISSION_LOADING_SURFACES = {
 } as const;
 
 const SIGNED_IN_ROUTE_TOOLBARS = {
-  'contracting/attention.tsx': toolbar('secondary', 'src/contracting/components/AttentionScreen.tsx'),
   'contracting/(tabs)/jobs/index.tsx': toolbar('main', 'src/contracting/jobs/JobsScreen.tsx'),
   'contracting/(tabs)/jobs/[jobId].tsx': toolbar('secondary', 'src/contracting/jobs/JobScreen.tsx'),
   'contracting/(tabs)/jobs/[jobId]/add-machine.tsx': toolbar('secondary', 'src/contracting/jobs/AddMachineScreen.tsx'),

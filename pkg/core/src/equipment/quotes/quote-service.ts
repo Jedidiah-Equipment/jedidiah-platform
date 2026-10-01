@@ -18,7 +18,7 @@ import {
 } from '@pkg/schema/equipment';
 import { and, eq, isNull } from 'drizzle-orm';
 import { diffAuditUpdate, recordAuditCreate, recordAuditUpdate } from '../../audit/audit-writer.js';
-import { customerAuditDescriptor } from '../customers/customer-service.js';
+import { assertCustomerCreationAllowed, customerAuditDescriptor } from '../customers/customer-service.js';
 import { cancelJobForQuote } from '../jobs/job-service.js';
 import { quoteEverPlacedAUnit, removeProductUnitWithin } from '../units/product-unit-service.js';
 import {
@@ -706,6 +706,8 @@ async function resolveQuoteCustomer({
     await assertQuoteCustomer({ customerId: input.customer.customerId, tx });
     return input.customer.customerId;
   }
+
+  await assertCustomerCreationAllowed({ db: tx, ...input.customer });
 
   const [customer] = await tx
     .insert(customers)

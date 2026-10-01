@@ -1,3 +1,5 @@
+import type { CustomerPossibleMatch } from '@pkg/schema/equipment';
+
 export class CustomerNotFoundError extends Error {
   readonly code = 'customer.not_found';
   readonly metadata: { id: string };
@@ -42,7 +44,18 @@ export class CustomerMergeBusyError extends Error {
   }
 }
 
+export class CustomerPossibleMatchError extends Error {
+  readonly code = 'customer.possible_match';
+  readonly metadata: { matches: CustomerPossibleMatch[] };
+  constructor(matches: CustomerPossibleMatch[]) {
+    super('A Customer with this name already exists. Use a possible match or explicitly choose to create anyway.');
+    this.name = 'CustomerPossibleMatchError';
+    this.metadata = { matches };
+  }
+}
+
 export type CustomerCoreError =
+  | CustomerPossibleMatchError
   | CustomerInUseError
   | CustomerNotFoundError
   | CustomerMergeSelfError
@@ -50,6 +63,7 @@ export type CustomerCoreError =
 
 export function isCustomerCoreError(error: unknown): error is CustomerCoreError {
   return (
+    error instanceof CustomerPossibleMatchError ||
     error instanceof CustomerInUseError ||
     error instanceof CustomerNotFoundError ||
     error instanceof CustomerMergeSelfError ||

@@ -16,6 +16,7 @@ import { useAppToast } from '@/components/ui/toast';
 import { CustomerPicker } from '@/equipment/components/quotes/CustomerPicker';
 import { ProductPicker, type ProductSelection } from '@/equipment/components/quotes/ProductPicker';
 import { SalespersonSelectField } from '@/equipment/components/quotes/SalespersonSelectField';
+import { useCustomerMatchChoice } from '@/equipment/components/quotes/use-customer-match-choice';
 import {
   clearQuoteOfferingTypeFields,
   QUOTE_CREATE_DEFAULT_VALUES,
@@ -33,6 +34,7 @@ const OFFERING_TYPE_OPTIONS = QuoteOfferingType.options.map((value) => ({
 
 export function NewQuoteModal({ onClose }: { onClose: () => void }) {
   const trpc = useTRPC();
+  const { choose, content: matchContent, cancel: cancelMatchChoice } = useCustomerMatchChoice();
   const router = useRouter();
   const queryClient = useQueryClient();
   const showToast = useAppToast();
@@ -45,7 +47,18 @@ export function NewQuoteModal({ onClose }: { onClose: () => void }) {
     defaultValues: QUOTE_CREATE_DEFAULT_VALUES,
     validators: { onSubmit: QuoteCreateFormValues },
     onSubmit: async ({ value }) => {
-      const created = await createQuote.mutateAsync(toQuoteCreateInput(value)).catch((error: unknown) => {
+      const created = await (async () => {
+        const input = toQuoteCreateInput(value);
+        if (input.customer.type === 'inline') {
+          const choice = await choose(input.customer.companyName);
+          if (!choice) return null;
+          input.customer =
+            typeof choice === 'string'
+              ? { ...input.customer, allowPossibleMatch: choice === 'create' }
+              : { type: 'existing', customerId: choice.id };
+        }
+        return createQuote.mutateAsync(input);
+      })().catch((error: unknown) => {
         showToast('error', quoteCreateErrorMessage(error));
         return null;
       });
@@ -75,7 +88,8 @@ export function NewQuoteModal({ onClose }: { onClose: () => void }) {
   }, [access.data, form, salesPersonId, salespeople.data]);
 
   const close = () => {
-    if (!isSubmitting) onClose();
+    if (matchContent) cancelMatchChoice();
+    else if (!isSubmitting) onClose();
   };
 
   const changeOfferingType = (nextOfferingType: string) => {
@@ -90,7 +104,7 @@ export function NewQuoteModal({ onClose }: { onClose: () => void }) {
   };
 
   return (
-    <ThemedModal backdropLabel="Cancel new quote" dismissDisabled={isSubmitting} onClose={onClose} open>
+    <ThemedModal backdropLabel="Cancel new quote" dismissDisabled={isSubmitting && !matchContent} onClose={close} open>
       <View
         className="w-full overflow-hidden rounded-[20px] border border-border bg-surface shadow-2xl"
         style={{ maxHeight: '92%', maxWidth: 400 }}
@@ -104,108 +118,116 @@ export function NewQuoteModal({ onClose }: { onClose: () => void }) {
             accessibilityRole="button"
             accessibilityState={{ disabled: isSubmitting }}
             className="rounded-lg p-2 active:bg-muted"
-            disabled={isSubmitting}
+            disabled={isSubmitting && !matchContent}
             onPress={close}
           >
             <Icon className="text-muted-foreground" icon={IconX} size={20} />
           </Pressable>
         </View>
 
-        <ScrollView
-          contentContainerClassName="gap-4 px-5 pb-4 pt-3"
-          keyboardShouldPersistTaps="handled"
-          nestedScrollEnabled
-        >
-          <form.Field name="customer">
-            {(field) => (
-              <CustomerPicker
-                errors={getFieldErrors(field.state.meta.errors)}
-                onSelected={field.handleChange}
-                selection={field.state.value}
-              />
-            )}
-          </form.Field>
-
-          <form.AppField name="offeringType">
-            {(field) => (
-              <field.SegmentedField label="Type" onValueCommit={changeOfferingType} options={OFFERING_TYPE_OPTIONS} />
-            )}
-          </form.AppField>
-
-          {offeringType === 'product' ? (
-            <form.Subscribe
-              selector={(state) => ({ productId: state.values.productId, rangeId: state.values.rangeId })}
+        {matchContent ?? (
+          <>
+            <ScrollView
+              contentContainerClassName="gap-4 px-5 pb-4 pt-3"
+              keyboardShouldPersistTaps="handled"
+              nestedScrollEnabled
             >
-              {({ productId, rangeId }) => (
-                <form.Field name="productId">
-                  {(field) => (
-                    <ProductPicker
-                      errors={getFieldErrors(field.state.meta.errors)}
-                      onProductSelected={(product) => {
-                        setProductSelection(product);
-                        field.handleChange(product?.id ?? '');
-                      }}
-                      onRangeChange={(value) => {
-                        form.setFieldValue('rangeId', value);
-                        if (productId) form.setFieldValue('productId', '');
-                      }}
-                      product={productSelection}
-                      rangeId={rangeId}
-                    />
-                  )}
-                </form.Field>
-              )}
-            </form.Subscribe>
-          ) : (
-            <View className="gap-4">
-              <form.AppField name="workTitle">
-                {(field) => <field.TextField label="Work title" placeholder="e.g. On-site repair" />}
+              <form.Field name="customer">
+                {(field) => (
+                  <CustomerPicker
+                    errors={getFieldErrors(field.state.meta.errors)}
+                    onSelected={field.handleChange}
+                    selection={field.state.value}
+                  />
+                )}
+              </form.Field>
+
+              <form.AppField name="offeringType">
+                {(field) => (
+                  <field.SegmentedField
+                    label="Type"
+                    onValueCommit={changeOfferingType}
+                    options={OFFERING_TYPE_OPTIONS}
+                  />
+                )}
               </form.AppField>
+
+              {offeringType === 'product' ? (
+                <form.Subscribe
+                  selector={(state) => ({ productId: state.values.productId, rangeId: state.values.rangeId })}
+                >
+                  {({ productId, rangeId }) => (
+                    <form.Field name="productId">
+                      {(field) => (
+                        <ProductPicker
+                          errors={getFieldErrors(field.state.meta.errors)}
+                          onProductSelected={(product) => {
+                            setProductSelection(product);
+                            field.handleChange(product?.id ?? '');
+                          }}
+                          onRangeChange={(value) => {
+                            form.setFieldValue('rangeId', value);
+                            if (productId) form.setFieldValue('productId', '');
+                          }}
+                          product={productSelection}
+                          rangeId={rangeId}
+                        />
+                      )}
+                    </form.Field>
+                  )}
+                </form.Subscribe>
+              ) : (
+                <View className="gap-4">
+                  <form.AppField name="workTitle">
+                    {(field) => <field.TextField label="Work title" placeholder="e.g. On-site repair" />}
+                  </form.AppField>
+                </View>
+              )}
+
+              <form.AppField name="salesPersonId">{(_field) => <SalespersonSelectField />}</form.AppField>
+
+              <form.AppField name="status">
+                {(field) => (
+                  <field.SelectField
+                    label="Status"
+                    options={QuoteCreateStatus.options.map((status) => ({
+                      label: quoteStatusLabels[status],
+                      value: status,
+                    }))}
+                  />
+                )}
+              </form.AppField>
+            </ScrollView>
+
+            <View className="flex-row justify-end gap-2.5 border-t border-border px-5 pb-5 pt-4">
+              <Pressable
+                accessibilityRole="button"
+                accessibilityState={{ disabled: isSubmitting }}
+                className="rounded-xl border border-border bg-muted px-5 py-3 active:opacity-80"
+                disabled={isSubmitting}
+                onPress={close}
+              >
+                <Text className="text-sm text-foreground" weight="semibold">
+                  Cancel
+                </Text>
+              </Pressable>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityState={{ disabled: isSubmitting }}
+                className={`min-w-24 flex-row items-center justify-center gap-2 rounded-xl bg-primary px-6 py-3 ${
+                  isSubmitting ? 'opacity-60' : 'active:opacity-90'
+                }`}
+                disabled={isSubmitting}
+                onPress={() => void form.handleSubmit()}
+              >
+                {isSubmitting ? <ActivityIndicator className="text-primary-foreground" size="small" /> : null}
+                <Text className="text-sm text-primary-foreground" weight="bold">
+                  Save
+                </Text>
+              </Pressable>
             </View>
-          )}
-
-          <form.AppField name="salesPersonId">{(_field) => <SalespersonSelectField />}</form.AppField>
-
-          <form.AppField name="status">
-            {(field) => (
-              <field.SelectField
-                label="Status"
-                options={QuoteCreateStatus.options.map((status) => ({
-                  label: quoteStatusLabels[status],
-                  value: status,
-                }))}
-              />
-            )}
-          </form.AppField>
-        </ScrollView>
-
-        <View className="flex-row justify-end gap-2.5 border-t border-border px-5 pb-5 pt-4">
-          <Pressable
-            accessibilityRole="button"
-            accessibilityState={{ disabled: isSubmitting }}
-            className="rounded-xl border border-border bg-muted px-5 py-3 active:opacity-80"
-            disabled={isSubmitting}
-            onPress={close}
-          >
-            <Text className="text-sm text-foreground" weight="semibold">
-              Cancel
-            </Text>
-          </Pressable>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityState={{ disabled: isSubmitting }}
-            className={`min-w-24 flex-row items-center justify-center gap-2 rounded-xl bg-primary px-6 py-3 ${
-              isSubmitting ? 'opacity-60' : 'active:opacity-90'
-            }`}
-            disabled={isSubmitting}
-            onPress={() => void form.handleSubmit()}
-          >
-            {isSubmitting ? <ActivityIndicator className="text-primary-foreground" size="small" /> : null}
-            <Text className="text-sm text-primary-foreground" weight="bold">
-              Save
-            </Text>
-          </Pressable>
-        </View>
+          </>
+        )}
       </View>
     </ThemedModal>
   );

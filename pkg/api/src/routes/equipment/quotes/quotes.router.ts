@@ -43,10 +43,10 @@ import {
   QuoteUpdateInput,
 } from '@pkg/schema/equipment';
 import { z } from 'zod';
-
 import { log } from '@/logger.js';
 import { assertNever, type CoreErrorMapping, mapKnownCoreError } from '../../../trpc/errors.js';
 import { authorizedProcedure, router } from '../../../trpc/init.js';
+import { mapCustomerErrors } from '../customers/customer-error-mapping.js';
 
 export const quotesRouter = router({
   list: authorizedProcedure('equipment_quote:read')
@@ -184,7 +184,9 @@ async function mapQuoteErrors<T>(action: () => Promise<T>): Promise<T> {
 }
 
 async function mapQuoteMutationErrors<T>(action: () => Promise<T>): Promise<T> {
-  return mapQuoteErrors(() => mapKnownCoreError(action, isProductUnitCoreError, mapProductUnitCoreError));
+  return mapCustomerErrors(() =>
+    mapQuoteErrors(() => mapKnownCoreError(action, isProductUnitCoreError, mapProductUnitCoreError)),
+  );
 }
 
 function mapProductUnitCoreError(error: ProductUnitCoreError): CoreErrorMapping<ProductUnitCoreError['code']> {

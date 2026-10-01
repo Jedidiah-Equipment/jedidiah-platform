@@ -411,6 +411,7 @@ export const QuoteCustomerInput = z.discriminatedUnion('type', [
   }),
   z.object({
     type: z.literal('inline'),
+    allowPossibleMatch: z.boolean().optional(),
     companyName: requiredTrimmedText('Company name is required'),
     contactPerson: CustomerOptionalTextInput,
     email: CustomerEmailInput,

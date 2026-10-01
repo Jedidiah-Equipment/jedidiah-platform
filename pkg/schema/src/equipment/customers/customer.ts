@@ -65,6 +65,7 @@ export const CustomerColumnFilters = z
 
 export type CustomerCreateInput = z.infer<typeof CustomerCreateInput>;
 export const CustomerCreateInput = z.object({
+  allowPossibleMatch: z.boolean().optional(),
   companyName: CustomerCompanyName,
   email: CustomerEmailInput,
   vatNumber: CustomerVatNumberInput,
@@ -76,7 +77,7 @@ export const CustomerCreateInput = z.object({
 });
 
 export type CustomerUpdateInput = z.infer<typeof CustomerUpdateInput>;
-export const CustomerUpdateInput = CustomerCreateInput.extend({
+export const CustomerUpdateInput = CustomerCreateInput.omit({ allowPossibleMatch: true }).extend({
   id: UUID,
 });
 
@@ -116,3 +117,13 @@ export const CustomerMergePreview = z.object({
   quoteCount: z.number().int().nonnegative(),
   unitCount: z.number().int().nonnegative(),
 });
+
+export type CustomerPossibleMatch = z.infer<typeof CustomerPossibleMatch>;
+export const CustomerPossibleMatch = Customer.pick({
+  id: true,
+  companyName: true,
+  contactPerson: true,
+  email: true,
+  createdAt: true,
+});
+export const CustomerPossibleMatchInput = z.object({ companyName: CustomerCompanyName });

@@ -1,6 +1,7 @@
 import {
   createEscapedContainsSearchCondition,
   createGlobalSearchCondition,
+  type DatabaseTransaction,
   type Db,
   getForeignKeyViolationConstraint,
   getPaginationQueryOptions,
@@ -319,34 +320,7 @@ export async function mergeCustomer({
     db.transaction(async (tx) => {
       // Writers and removal take these rows in different orders. NOWAIT releases the whole attempt
       // on contention, so a merge never holds one of their needed rows while waiting for another.
-      await tx
-        .select({ id: quotes.id })
-        .from(quotes)
-        .where(eq(quotes.customerId, sourceId))
-        .orderBy(quotes.id)
-        .for('update', { noWait: true });
-      // EXISTS gives one row per Unit without DISTINCT, which PostgreSQL cannot combine with FOR UPDATE.
-      await tx
-        .select({ id: productUnits.id })
-        .from(productUnits)
-        .where(
-          exists(
-            tx
-              .select({ id: productUnitOwnershipTransfers.id })
-              .from(productUnitOwnershipTransfers)
-              .where(
-                and(
-                  eq(productUnitOwnershipTransfers.productUnitId, productUnits.id),
-                  or(
-                    eq(productUnitOwnershipTransfers.fromCustomerId, sourceId),
-                    eq(productUnitOwnershipTransfers.toCustomerId, sourceId),
-                  ),
-                ),
-              ),
-          ),
-        )
-        .orderBy(productUnits.id)
-        .for('update', { noWait: true });
+      await lockCustomerMergeReferences(tx, sourceId);
       // A single ordered statement keeps crossing merges on the same Customer lock order.
       const rows = await tx
         .select()
@@ -358,6 +332,10 @@ export async function mergeCustomer({
       const target = rows.find((row) => row.id === targetId);
       if (!source) throw new CustomerNotFoundError(sourceId);
       if (!target) throw new CustomerNotFoundError(targetId);
+
+      // A reference can commit between the first scan and the Customer locks. Recheck under those
+      // locks so every row our writes can encounter is held without waiting on a concurrent writer.
+      await lockCustomerMergeReferences(tx, sourceId);
 
       const unitCount = await tx.$count(productUnits, eq(currentOwnerCustomerId(productUnits.id), sourceId));
       const now = new Date();
@@ -433,6 +411,37 @@ export async function mergeCustomer({
       return mapCustomer(mergedTarget);
     }),
   );
+}
+
+async function lockCustomerMergeReferences(tx: DatabaseTransaction, sourceId: UUID): Promise<void> {
+  await tx
+    .select({ id: quotes.id })
+    .from(quotes)
+    .where(eq(quotes.customerId, sourceId))
+    .orderBy(quotes.id)
+    .for('update', { noWait: true });
+  // EXISTS gives one row per Unit without DISTINCT, which PostgreSQL cannot combine with FOR UPDATE.
+  await tx
+    .select({ id: productUnits.id })
+    .from(productUnits)
+    .where(
+      exists(
+        tx
+          .select({ id: productUnitOwnershipTransfers.id })
+          .from(productUnitOwnershipTransfers)
+          .where(
+            and(
+              eq(productUnitOwnershipTransfers.productUnitId, productUnits.id),
+              or(
+                eq(productUnitOwnershipTransfers.fromCustomerId, sourceId),
+                eq(productUnitOwnershipTransfers.toCustomerId, sourceId),
+              ),
+            ),
+          ),
+      ),
+    )
+    .orderBy(productUnits.id)
+    .for('update', { noWait: true });
 }
 
 const CUSTOMER_FILL_EMPTY_FIELDS = [

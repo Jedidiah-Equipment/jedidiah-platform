@@ -15,4 +15,4 @@ A Transfer's `sourceQuoteId` is durable proof that its Quote is Locked even afte
 - Quote Documents already generated remain immutable and retain the printed Customer name.
 - Earlier audit events remain under the duplicate's id. Both Customers receive a `merged` event, and filling empty survivor contact fields adds an `updated` event.
 - Stale App Links to the deleted duplicate stop resolving.
-- Merge takes Quote, Unit and Customer row locks with `NOWAIT`: a contended attempt rolls back and retries with jitter for up to ten seconds, then returns a retryable conflict. This avoids holding a Quote while waiting on a Unit writer or a Customer removal that needs that Quote.
+- Merge takes Quote, Unit and Customer row locks with `NOWAIT`: a contended attempt rolls back and retries with jitter for up to ten seconds, then returns a retryable conflict. References are scanned again under the Customer locks to catch newly committed references before any writes. This avoids holding a Quote while waiting on a Unit writer or a Customer removal that needs that Quote.

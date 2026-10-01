@@ -26,7 +26,7 @@ import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.j
 import { useTRPC } from '@/lib/trpc.js';
 import { formatCustomerMergeConfirmation, getCustomerMergeOptions } from './customer-merge.js';
 
-export const MergeCustomerDialog: React.FC<{ customer: Customer }> = ({ customer }) => {
+export const MergeCustomerDialog: React.FC<{ customer: Customer; onMerged: () => void }> = ({ customer, onMerged }) => {
   const trpc = useTRPC();
   const navigate = useNavigate();
   const showMutationError = useApiMutationErrorToast();
@@ -66,6 +66,8 @@ export const MergeCustomerDialog: React.FC<{ customer: Customer }> = ({ customer
     } catch {
       return;
     }
+    // The source is gone: discard its obsolete form state so its autosave blocker cannot trap navigation.
+    onMerged();
     handleOpenChange(false);
     toast.success(`${customer.companyName} merged into ${merged.companyName}`);
     // Leave the deleted Customer before refreshing its still-mounted detail and preview queries.

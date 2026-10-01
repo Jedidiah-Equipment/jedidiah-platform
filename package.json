@@ -1,7 +1,7 @@
 {
   "name": "jedidiah-platform",
   "private": true,
-  "packageManager": "pnpm@11.5.2+sha512.71c631e382066efc25625d5cf029075de07b61b37f6e27350fbd84b1bda5864c8c1967adc280776b45c30a715c0359a3be08fef42d5bb09e2b99029979692916",
+  "packageManager": "pnpm@12.8.1+sha512.f64ba907507f5ceafe06c8d38e6052d0179444580ec1279ddd5bfc11cb48aa8a2644b66598e07e761da84872a9fc57d5f902b87fa49d024198d558612aabbe45",
   "engines": {
     "node": ">=24 <25"
   },
@@ -38,20 +38,20 @@
   },
   "dependencies": {
     "@pkg/schema": "workspace:*",
-    "better-auth": "1.7.1",
-    "fastify": "^5.12.1",
-    "zod": "^4.4.3"
+    "better-auth": "1.7.6",
+    "fastify": "^5.12.5",
+    "zod": "^4.6.5"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.5.10",
+    "@biomejs/biome": "^2.5.15",
     "@railway/cli": "5.63.1",
-    "@types/node": "^26.2.0",
-    "dotenv": "^17.4.2",
-    "railway": "3.11.0",
-    "shadcn": "^4.19.0",
-    "tsx": "^4.23.12",
-    "turbo": "^2.10.11",
+    "@types/node": "^26.6.3",
+    "dotenv": "^18.0.4",
+    "railway": "3.12.0",
+    "shadcn": "^4.21.0",
+    "tsx": "^4.23.15",
+    "turbo": "^2.11.5",
     "typescript": "^7.0.2",
-    "vitest": "^4.1.11"
+    "vitest": "^5.0.3"
   }
 }

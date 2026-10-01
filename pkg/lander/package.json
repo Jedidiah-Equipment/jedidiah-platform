@@ -13,30 +13,30 @@
     "verify:server-bundle": "tsx scripts/verify-server-bundle.ts"
   },
   "dependencies": {
-    "@aws-sdk/client-s3": "^3.1116.0",
+    "@aws-sdk/client-s3": "^3.1143.0",
     "@pkg/core": "workspace:*",
     "@pkg/db": "workspace:*",
     "@pkg/domain": "workspace:*",
     "@pkg/pdf": "workspace:*",
     "@pkg/schema": "workspace:*",
-    "@tabler/icons-react": "3.46.0",
-    "@tanstack/react-router": "^1.170.32",
-    "@tanstack/react-start": "^1.168.49",
-    "posthog-js": "^1.418.10",
-    "react": "^19.2.8",
-    "react-dom": "^19.2.8",
-    "resend": "^6.22.0",
-    "sharp": "^0.35.3",
-    "srvx": "^0.12.7"
+    "@tabler/icons-react": "3.48.0",
+    "@tanstack/react-router": "^1.170.40",
+    "@tanstack/react-start": "^1.168.59",
+    "posthog-js": "^1.435.3",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "resend": "^6.31.0",
+    "sharp": "^0.35.5",
+    "srvx": "^1.0.5"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.3.3",
-    "@types/react": "^19.2.18",
-    "@types/react-dom": "^19.2.5",
-    "@vitejs/plugin-react": "^6.1.0",
-    "jsdom": "^30.0.1",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.1.1",
+    "jsdom": "^30.1.1",
     "tailwindcss": "^4.3.3",
-    "vite": "^8.2.2",
-    "vitest": "^4.1.11"
+    "vite": "^8.3.1",
+    "vitest": "^5.0.3"
   }
 }

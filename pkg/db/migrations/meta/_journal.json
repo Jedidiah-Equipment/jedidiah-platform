@@ -1163,6 +1163,13 @@
       "when": 1790849809871,
       "tag": "0165_volatile_sabretooth",
       "breakpoints": true
+    },
+    {
+      "idx": 166,
+      "version": "7",
+      "when": 1790868636830,
+      "tag": "0166_glorious_hedge_knight",
+      "breakpoints": true
     }
   ]
 }

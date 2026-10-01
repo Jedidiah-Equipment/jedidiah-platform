@@ -67,7 +67,7 @@ describe('router error handling', () => {
   });
   const routeTree = rootRoute.addChildren([throwsRoute, missingRoute]);
 
-  async function render(path: string, onCatch: (error: Error) => void) {
+  async function render(path: string, onCatch: (error: unknown) => void) {
     const router = createRouter({
       routeTree,
       history: createMemoryHistory({ initialEntries: [path] }),

@@ -107,3 +107,18 @@ it('initializes Labor rates for old snapshots and preserves captured rates', () 
   const legacy = [{ id: 'fabrication', costToCompanyRate: 250, billingRate: 600, consumablesPercentage: 70 }];
   expect(prepareRowsForSeed(config, legacy)).toEqual(captured);
 });
+
+it('loads credential snapshots from Better Auth 1.7.1 without the retired issuer column', () => {
+  const config = snapshotCleanupTables.find((table) => table.tableName === 'account');
+  if (!config) throw new Error('Missing account config');
+  const account = {
+    id: 'credential-account',
+    userId: 'user-id',
+    accountId: 'user-id',
+    providerId: 'credential',
+    password: null,
+  };
+
+  expect(prepareRowsForSeed(config, [{ ...account, issuer: 'local:credential' }])).toEqual([account]);
+  expect(prepareRowsForSeed(config, [account])).toEqual([account]);
+});

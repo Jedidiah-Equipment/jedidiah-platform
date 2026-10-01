@@ -32,12 +32,12 @@
   "dependencies": {
     "@pkg/domain": "workspace:*",
     "@pkg/schema": "workspace:*",
-    "better-auth": "1.7.1",
-    "dotenv": "^17.4.2",
-    "drizzle-orm": "^0.45.2",
+    "better-auth": "1.7.6",
+    "dotenv": "^18.0.4",
+    "drizzle-orm": "^0.45.3",
     "postgres": "^3.4.9"
   },
   "devDependencies": {
-    "drizzle-kit": "^0.31.10"
+    "drizzle-kit": "^0.31.11"
   }
 }

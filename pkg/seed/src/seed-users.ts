@@ -1,14 +1,6 @@
 import { pathToFileURL } from 'node:url';
 import './load-write-env.js';
-import {
-  account,
-  CREDENTIAL_ACCOUNT_ISSUER,
-  closeDatabaseConnection,
-  type Db,
-  db,
-  getDatabaseUrl,
-  user,
-} from '@pkg/db';
+import { account, closeDatabaseConnection, type Db, db, getDatabaseUrl, user } from '@pkg/db';
 import { userDepartment } from '@pkg/db/equipment';
 import { demoUsers } from '@pkg/domain/equipment';
 import { hashPassword } from 'better-auth/crypto';
@@ -68,7 +60,6 @@ export async function seedDemoUsers(database?: Db): Promise<void> {
         userId: demoUser.id,
         accountId: demoUser.id,
         providerId: 'credential',
-        issuer: CREDENTIAL_ACCOUNT_ISSUER,
         accessToken: null,
         refreshToken: null,
         accessTokenExpiresAt: null,

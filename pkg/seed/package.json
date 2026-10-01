@@ -22,15 +22,15 @@
     "db:reset:remote": "tsx src/reset-remote.ts"
   },
   "dependencies": {
-    "@aws-sdk/client-s3": "^3.1116.0",
+    "@aws-sdk/client-s3": "^3.1143.0",
     "@pkg/core": "workspace:*",
     "@pkg/db": "workspace:*",
     "@pkg/domain": "workspace:*",
     "@pkg/schema": "workspace:*",
-    "better-auth": "1.7.1",
+    "better-auth": "1.7.6",
     "date-fns": "^4.4.0",
-    "dotenv": "^17.4.2",
-    "drizzle-orm": "^0.45.2",
-    "tsx": "^4.23.12"
+    "dotenv": "^18.0.4",
+    "drizzle-orm": "^0.45.3",
+    "tsx": "^4.23.15"
   }
 }

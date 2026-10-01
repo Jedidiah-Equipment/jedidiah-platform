@@ -652,6 +652,17 @@ describe('Possible Customer matches', () => {
     expect(
       (await findPossibleCustomerMatches({ db, companyName: '  MRB\tFARMING  ' })).map((c) => c.id).sort(),
     ).toEqual([first.id, second.id].sort());
+    expect(
+      (await findPossibleCustomerMatches({ db, companyName: '\rMRB\n\f\vFARMING\t' })).map((c) => c.id).sort(),
+    ).toEqual([first.id, second.id].sort());
+    const accented = await createCustomer({
+      actorUserId: 'actor-user-id',
+      db,
+      input: CustomerCreateInput.parse({ companyName: 'Élan Mining' }),
+    });
+    expect(await findPossibleCustomerMatches({ db, companyName: ' éLAN  Mining ' })).toMatchObject([
+      { id: accented.id },
+    ]);
     await expect(
       createCustomer({
         actorUserId: 'actor-user-id',

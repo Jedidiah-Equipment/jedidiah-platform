@@ -499,6 +499,8 @@ export async function findPossibleCustomerMatches({
       createdAt: customers.createdAt,
     })
     .from(customers)
+    // Match the import lookup's database normalization before transferring candidate rows.
+    .where(sql`btrim(regexp_replace(lower(${customers.companyName}), '[ \\t\\n\\r\\f\\v]+', ' ', 'g')) = ${key}`)
     .orderBy(customers.createdAt, customers.id);
   return rows
     .filter((row) => nameLookupKey(row.companyName) === key)

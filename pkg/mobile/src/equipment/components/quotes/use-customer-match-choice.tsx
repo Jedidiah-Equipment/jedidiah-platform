@@ -58,8 +58,12 @@ export function useCustomerMatchChoice() {
           </Pressable>
         </View>
       ))}
-      <Pressable accessibilityRole="button" className="rounded-lg bg-primary p-3" onPress={() => finish('create')}>
-        <Text className="text-primary-foreground">Create anyway</Text>
+      <Pressable
+        accessibilityRole="button"
+        className="rounded-lg border border-border p-3"
+        onPress={() => finish('create')}
+      >
+        <Text className="text-foreground">Create anyway</Text>
       </Pressable>
       <Pressable
         accessibilityRole="button"

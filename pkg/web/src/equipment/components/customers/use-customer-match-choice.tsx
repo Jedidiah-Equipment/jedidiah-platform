@@ -14,6 +14,7 @@ import { useTRPC } from '@/lib/trpc.js';
 export function useCustomerMatchChoice(open: boolean) {
   const openRef = useRef(open);
   openRef.current = open;
+  const generation = useRef(0);
   const trpc = useTRPC();
   const showError = useApiMutationErrorToast();
   const queryClient = useQueryClient();
@@ -21,11 +22,13 @@ export function useCustomerMatchChoice(open: boolean) {
   const resolve = useRef<((choice: CustomerPossibleMatch | 'create' | null) => void) | null>(null);
   useEffect(
     () => () => {
+      generation.current += 1;
       resolve.current?.(null);
     },
     [],
   );
   useEffect(() => {
+    generation.current += 1;
     if (!open) {
       resolve.current?.(null);
       resolve.current = null;
@@ -38,6 +41,7 @@ export function useCustomerMatchChoice(open: boolean) {
     setMatches([]);
   };
   const choose = async (companyName: string) => {
+    const startedGeneration = generation.current;
     // Always read at submission: a cached match list must not silently create a duplicate.
     const found = await queryClient
       .fetchQuery({ ...trpc.customers.findPossibleMatches.queryOptions({ companyName }), staleTime: 0 })
@@ -45,7 +49,7 @@ export function useCustomerMatchChoice(open: boolean) {
         showError(error, 'Unable to check possible Customer matches.');
         throw error;
       });
-    if (!openRef.current) return null;
+    if (!openRef.current || generation.current !== startedGeneration) return null;
     if (!found.length) return 'new' as const;
     setMatches(found);
     return new Promise<CustomerPossibleMatch | 'create' | null>((done) => {
@@ -79,7 +83,7 @@ export function useCustomerMatchChoice(open: boolean) {
                     <p className="text-sm text-muted-foreground">
                       {match.email ? `${match.email} · ` : ''}Created {formatDate(match.createdAt, 'medium')}
                     </p>
-                    <Button type="button" variant="outline" onClick={() => finish(match)}>
+                    <Button type="button" onClick={() => finish(match)}>
                       Use this Customer
                     </Button>
                   </CardContent>
@@ -88,7 +92,7 @@ export function useCustomerMatchChoice(open: boolean) {
             </div>
           </ScrollArea>
           <HelpLink topic="customerCreate" label="How to choose a Customer" />
-          <Button type="button" onClick={() => finish('create')}>
+          <Button type="button" variant="outline" onClick={() => finish('create')}>
             Create anyway
           </Button>
           <Button type="button" variant="outline" onClick={() => finish(null)}>

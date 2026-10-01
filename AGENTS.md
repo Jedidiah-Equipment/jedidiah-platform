@@ -50,6 +50,8 @@
 
 ## Publishing
 
+- Before engineering skills publish specs/tickets or triage work, read `docs/agents/issue-tracker.md`
+  and `docs/agents/triage-labels.md`; before domain work, read `docs/agents/domain.md`.
 - The `gh` CLI is installed and authenticated. Issues and PRDs live in GitHub Issues for
   `Jedidiah-Equipment/jedidiah-platform` (`gh issue create|view|list|comment|edit|close`); pass multi-line
   bodies with `--body-file`.

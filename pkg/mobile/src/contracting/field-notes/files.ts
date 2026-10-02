@@ -3,7 +3,7 @@ import { Album, Asset, requestPermissionsAsync } from 'expo-media-library';
 import type { FieldNoteFiles } from './store';
 
 const DIRECTORY = 'field-notes/';
-export const GALLERY_ALBUM = 'Jedidiah';
+const GALLERY_ALBUM = 'Jedidiah';
 
 /**
  * Every photo is copied into the app's sandbox, which is what the note renders. A photo the camera just

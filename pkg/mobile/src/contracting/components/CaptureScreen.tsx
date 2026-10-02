@@ -1,6 +1,6 @@
 import { formatHours } from '@pkg/domain';
-import { fieldJobAccessMode } from '@pkg/domain/contracting';
-import { ReadingComment, type ReadingErrorCode } from '@pkg/schema/contracting';
+import { FUTURE_READ_AT_REFUSAL, fieldJobAccessMode } from '@pkg/domain/contracting';
+import { ReadingComment, type ReadingErrorCode, type ReadingRole } from '@pkg/schema/contracting';
 import { useStore } from '@tanstack/react-form';
 import { useQueryClient } from '@tanstack/react-query';
 import { CameraView, useCameraPermissions } from 'expo-camera';
@@ -16,17 +16,11 @@ import { TextInput } from '@/components/ui/text-input';
 import { implementOption } from '@/contracting/components/implement-option';
 import { ReadAtField } from '@/contracting/components/ReadAtField';
 import { useDrivers, useImplements } from '@/contracting/jobs/use-jobs';
-import { chooseMeterPhoto } from '@/contracting/lib/photo-picker';
+import { chooseMeterPhoto, type PhotoSource } from '@/contracting/lib/photo-picker';
 import { recordReadingCaptured } from '@/contracting/observability';
 import { type AttemptIdentity, captureAttempt } from '@/contracting/readings/capture-attempt';
 import { deriveCapture } from '@/contracting/readings/derive-capture';
-import {
-  capturedAtFor,
-  FUTURE_READ_AT,
-  isBackdated,
-  isFutureReadAt,
-  parseExifDateTime,
-} from '@/contracting/readings/read-at';
+import { capturedAtFor, isBackdated, isFutureReadAt, parseExifDateTime } from '@/contracting/readings/read-at';
 import { CAPTURE_FAILED, captureReading, ReadingRefusedError } from '@/contracting/readings/reading-upload';
 import { useFleet, useMachineReadings } from '@/contracting/readings/use-fleet';
 import { useSessionAccessSummary, useSessionPermission } from '@/lib/auth-session';
@@ -59,7 +53,7 @@ export default function CaptureScreen() {
 
 function CaptureForm({ params }: { params: CaptureParams }) {
   const { id } = params;
-  const role: 'spot' | 'arrival' | 'departure' =
+  const role: Exclude<ReadingRole, 'baseline'> =
     params.role === 'arrival' || params.role === 'departure' ? params.role : 'spot';
   const { bottom: safeAreaBottom } = useSafeAreaInsets();
   const fleet = useFleet();
@@ -76,7 +70,7 @@ function CaptureForm({ params }: { params: CaptureParams }) {
   const [cameraOpen, setCameraOpen] = useState(false);
   const [cameraReady, setCameraReady] = useState(false);
   const [photo, setPhoto] = useState<string | null>(null);
-  const [photoSource, setPhotoSource] = useState<'camera' | 'gallery' | null>(null);
+  const [photoSource, setPhotoSource] = useState<PhotoSource | null>(null);
   // Null is "now"; a hand-set Read At survives a new photo, a suggested one does not.
   const [readAt, setReadAt] = useState<Date | null>(null);
   const [readAtEdited, setReadAtEdited] = useState(false);
@@ -146,7 +140,7 @@ function CaptureForm({ params }: { params: CaptureParams }) {
       if (chosen) attachPhoto(chosen.uri, 'gallery', parseExifDateTime(chosen.exif));
     }, GALLERY_FAILURE);
   }
-  function attachPhoto(uri: string | null, source: 'camera' | 'gallery' | null, takenAt: Date | null) {
+  function attachPhoto(uri: string | null, source: PhotoSource | null, takenAt: Date | null) {
     setPhoto(uri);
     setPhotoSource(source);
     if (takenAt) {
@@ -383,7 +377,7 @@ function CaptureForm({ params }: { params: CaptureParams }) {
               setReadAtEdited(next !== null);
             }}
           />
-          {readAt && isFutureReadAt(readAt) ? <Text className="text-danger">{FUTURE_READ_AT}</Text> : null}
+          {readAt && isFutureReadAt(readAt) ? <Text className="text-danger">{FUTURE_READ_AT_REFUSAL}</Text> : null}
           <Text className="text-foreground" weight="semibold">
             {commentRequired ? 'Comment (required without photo)' : 'Comment (optional)'}
           </Text>

@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest';
-import { isOfflineCapableRoute, offlineCoverAction } from './business-home';
+import { isOfflineCapableRoute, offlineCoverAction } from './offline-routes';
 
 test('only the Field Note routes work offline', () => {
   expect(isOfflineCapableRoute('/contracting/notes')).toBe(true);

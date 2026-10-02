@@ -1,9 +1,16 @@
 import { UUID } from '@pkg/schema';
 import { z } from 'zod';
+import { contractingStorageKey } from '@/contracting/lib/contracting-storage';
+import type { PhotoSource, PickedPhoto } from '@/contracting/lib/photo-picker';
 import { newLocalId } from '@/contracting/readings/capture-attempt';
 
 export const FIELD_NOTE_DESCRIPTION_MAX = 2000;
 const NEEDS_CONTENT = 'A Field Note needs a description or a photo.';
+const GONE = 'This Field Note no longer exists.';
+
+/** One JSON array per API and signed-in operator: someone else signing in on the phone sees none of it. */
+export const fieldNotesStorageKey = (apiBaseUrl: string, userId: string) =>
+  contractingStorageKey('field-notes', 'v1', apiBaseUrl, userId);
 
 /** `uri` is sandbox-relative on a phone (`field-notes/<noteId>/<photoId>.jpg`) and a data URI on web. */
 export const FieldNotePhoto = z.object({ id: UUID, uri: z.string() }).strict();
@@ -19,13 +26,10 @@ export const FieldNote = z
   .strict();
 export type FieldNote = z.infer<typeof FieldNote>;
 
-/** A photo the picker returned: the camera's or the gallery's temporary URI. */
-export type PickedPhoto = { uri: string; source: 'camera' | 'gallery' };
-
 export type FieldNoteFiles = {
   photoLimit: number;
   /** Copies the photo into the note's own storage; `inGallery` is false when a camera photo missed the album. */
-  keep(sourceUri: string, noteId: string, photoId: string, source: PickedPhoto['source']): Promise<KeptPhoto>;
+  keep(sourceUri: string, noteId: string, photoId: string, source: PhotoSource): Promise<KeptPhoto>;
   removePhoto(uri: string): Promise<void>;
   removeNote(noteId: string): Promise<void>;
 };
@@ -73,7 +77,7 @@ export function createFieldNoteStore({ storage, key, files, now = () => new Date
   }
   function edit(noteId: string, change: (note: FieldNote) => FieldNote) {
     return mutate((notes) => {
-      if (!notes.some((note) => note.id === noteId)) throw new FieldNoteError('This Field Note no longer exists.');
+      if (!notes.some((note) => note.id === noteId)) throw new FieldNoteError(GONE);
       return { notes: notes.map((note) => (note.id === noteId ? change(note) : note)), result: undefined };
     });
   }
@@ -114,7 +118,7 @@ export function createFieldNoteStore({ storage, key, files, now = () => new Date
     },
     async addPhotos(noteId: string, picked: readonly PickedPhoto[]) {
       const current = (await list()).find((note) => note.id === noteId);
-      if (!current) throw new FieldNoteError('This Field Note no longer exists.');
+      if (!current) throw new FieldNoteError(GONE);
       const room = Math.max(0, files.photoLimit - current.photos.length);
       const { photos, galleryFailed } = await keepPhotos(noteId, picked.slice(0, room));
       let dropped: FieldNotePhoto[] = photos;

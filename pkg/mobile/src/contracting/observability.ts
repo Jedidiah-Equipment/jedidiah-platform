@@ -1,10 +1,12 @@
+import type { ReadingRole } from '@pkg/schema/contracting';
+import type { PhotoSource } from '@/contracting/lib/photo-picker';
 import { addBreadcrumb, captureEvent } from '@/lib/observability';
 
 /** Once per capture the server saves or refuses: `refused` is the refusal's app code, null when saved. */
 export function recordReadingCaptured(properties: {
-  role: 'spot' | 'arrival' | 'departure';
+  role: Exclude<ReadingRole, 'baseline'>;
   hasPhoto: boolean;
-  photoSource: 'camera' | 'gallery' | null;
+  photoSource: PhotoSource | null;
   backdated: boolean;
   refused: string | null;
 }): void {

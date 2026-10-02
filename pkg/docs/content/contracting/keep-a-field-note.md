@@ -1,6 +1,6 @@
 # Keep a Field Note
 
-A Field Note stays on this phone and is never sent anywhere; the reading only exists once you capture it. Keep one when you cannot capture a reading because there is no signal. **Notes** works without a connection.
+A Field Note stays on this phone and is never sent anywhere; the reading only exists once you capture it. Keep one when there is no signal to capture a reading.
 
 1. Open **Notes** and choose **New Field Note**.
 2. Choose **Take photo** to photograph the hour meter, or **Choose from gallery** for a photo taken earlier. Photos you take here are also saved to the **Jedidiah** album in your gallery; allow photo library access if asked.

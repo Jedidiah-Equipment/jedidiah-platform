@@ -1,6 +1,10 @@
 import * as ImagePicker from 'expo-image-picker';
 import { Platform } from 'react-native';
-import { FieldNoteError, type PickedPhoto } from '@/contracting/field-notes/store';
+import { FieldNoteError } from '@/contracting/field-notes/store';
+
+export type PhotoSource = 'camera' | 'gallery';
+/** A photo the picker returned, still at the camera's or the gallery's temporary URI. */
+export type PickedPhoto = { uri: string; source: PhotoSource };
 
 const QUALITY = 0.7;
 // The web preview keeps photos inside the stored value, so it needs the bytes rather than a blob: URL.
@@ -11,14 +15,14 @@ function pickedUri(asset: ImagePicker.ImagePickerAsset): string {
   return asset.uri;
 }
 
-/** One photo from the system camera, asking only for the camera; null when the Foreman cancels. */
-export async function takePhoto(): Promise<PickedPhoto | null> {
+/** One photo from the system camera, asking only for the camera; none when the Foreman cancels. */
+export async function takePhoto(): Promise<PickedPhoto[]> {
   const permission = await ImagePicker.requestCameraPermissionsAsync();
   if (!permission.granted)
     throw new FieldNoteError('Camera permission is unavailable. Choose a photo from the gallery instead.');
   const result = await ImagePicker.launchCameraAsync({ quality: QUALITY, base64 });
   const asset = result.canceled ? undefined : result.assets[0];
-  return asset ? { uri: pickedUri(asset), source: 'camera' } : null;
+  return asset ? [{ uri: pickedUri(asset), source: 'camera' }] : [];
 }
 
 /** Up to `limit` photos from the system picker, which needs no library permission. */

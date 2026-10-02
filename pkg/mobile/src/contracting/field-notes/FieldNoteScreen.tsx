@@ -1,5 +1,5 @@
 import { formatDate, statusBadgeColorClassNames } from '@pkg/domain';
-import { type Href, Redirect, router, useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { Redirect, router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -8,15 +8,16 @@ import { Button } from '@/components/ui/button';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { Text } from '@/components/ui/text';
 import { TextInput } from '@/components/ui/text-input';
-import { choosePhotos, takePhoto } from '@/contracting/lib/photo-picker';
+import { CONTRACTING_TAB_HREF } from '@/contracting/lib/app-tabs';
+import { choosePhotos, type PickedPhoto, takePhoto } from '@/contracting/lib/photo-picker';
 import { confirm } from '@/lib/confirm';
 import { FieldNotePhotoStrip } from './FieldNotePhotoStrip';
 import { useFieldNotes } from './FieldNotesProvider';
 import { fieldNoteFiles, resolveFieldNotePhotoUri } from './files';
-import { FIELD_NOTE_DESCRIPTION_MAX, type FieldNote, type PickedPhoto } from './store';
+import { FIELD_NOTE_DESCRIPTION_MAX, type FieldNote } from './store';
 import { useFieldNoteAction } from './use-field-note-action';
 
-const backToNotes = () => router.replace('/contracting/notes' as Href);
+const backToNotes = () => router.replace(CONTRACTING_TAB_HREF.notes);
 
 export default function FieldNoteScreen() {
   const { noteId } = useLocalSearchParams<{ noteId: string }>();
@@ -25,7 +26,7 @@ export default function FieldNoteScreen() {
   const [leaving, setLeaving] = useState(false);
   if (notes === null || leaving) return <SafeAreaView className="flex-1 bg-background" />;
   // Deleted on this phone, or a link to a note this operator never kept.
-  if (!note) return <Redirect href={'/contracting/notes' as Href} />;
+  if (!note) return <Redirect href={CONTRACTING_TAB_HREF.notes} />;
   return <FieldNoteDetail key={note.id} note={note} onLeave={() => setLeaving(true)} />;
 }
 
@@ -65,12 +66,7 @@ function FieldNoteDetail({ note, onLeave }: { note: FieldNote; onLeave: () => vo
       if (galleryFailed) setGalleryHint(true);
     }, 'The photo could not be added. Try again.');
   const removePhoto = async (photoId: string) => {
-    const remove = await confirm({
-      title: 'Remove this photo?',
-      message: 'It stays in your gallery.',
-      confirmLabel: 'Remove',
-      destructive: true,
-    });
+    const remove = await confirm({ title: 'Remove this photo?', confirmLabel: 'Remove', destructive: true });
     if (remove) await act(() => notes.removePhoto(note.id, photoId), 'The photo could not be removed.');
   };
   const deleteNote = async () => {
@@ -82,8 +78,8 @@ function FieldNoteDetail({ note, onLeave }: { note: FieldNote; onLeave: () => vo
     });
     if (!remove) return;
     await act(async () => {
-      onLeave();
       await notes.remove(note.id);
+      onLeave();
       backToNotes();
     }, 'The Field Note could not be deleted.');
   };
@@ -110,7 +106,7 @@ function FieldNoteDetail({ note, onLeave }: { note: FieldNote; onLeave: () => vo
             limit={fieldNoteFiles.photoLimit}
             busy={busy}
             galleryHint={galleryHint}
-            onTake={() => void add(async () => [await takePhoto()].filter((photo) => photo !== null))}
+            onTake={() => void add(takePhoto)}
             onChoose={() => void add(() => choosePhotos(fieldNoteFiles.photoLimit - note.photos.length))}
             onRemove={(photoId) => void removePhoto(photoId)}
           />

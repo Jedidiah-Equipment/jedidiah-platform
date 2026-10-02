@@ -1,5 +1,4 @@
 const BACKDATED_AFTER_MS = 5 * 60_000;
-export const FUTURE_READ_AT = 'Read At cannot be in the future.';
 
 /** EXIF DateTimeOriginal is 'YYYY:MM:DD HH:MM:SS' with no zone: read it as the phone's local time. */
 export function parseExifDateTime(exif: Record<string, unknown> | null | undefined, now = new Date()): Date | null {
@@ -24,5 +23,4 @@ export const isFutureReadAt = (readAt: Date, now = new Date()) => readAt.getTime
 export const isBackdated = (readAt: Date | null, attemptedAt: Date) =>
   readAt !== null && attemptedAt.getTime() - readAt.getTime() > BACKDATED_AFTER_MS;
 
-/** What the request carries: the Foreman's Read At, else the moment the attempt was minted. */
 export const capturedAtFor = (readAt: Date | null, attemptedAt: Date) => (readAt ?? attemptedAt).toISOString();

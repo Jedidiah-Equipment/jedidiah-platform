@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { beforeEach, expect, test, vi } from 'vitest';
-import { createFieldNoteStore, FieldNoteError, type FieldNoteFiles } from './store';
+import { createFieldNoteStore, FieldNoteError, type FieldNoteFiles, fieldNotesStorageKey } from './store';
 
 const NOTE_NEEDS_CONTENT = 'A Field Note needs a description or a photo.';
 let clock = Date.parse('2026-10-01T06:00:00Z');
@@ -113,7 +113,8 @@ test('keeps at most the photo limit on a note', async () => {
   expect(files.keep).toHaveBeenCalledTimes(2);
 });
 
-test('each operator has their own notes', async () => {
+test('each operator has their own notes, under a key the legacy purge leaves alone', async () => {
+  expect(fieldNotesStorageKey('https://api.test', 'user-1')).toBe('contracting:field-notes:v1:https://api.test:user-1');
   await store('contracting:field-notes:v1:https://api.test:user-1').create({ description: 'mine', photos: [] });
   expect(await store('contracting:field-notes:v1:https://api.test:user-2').list()).toEqual([]);
 });

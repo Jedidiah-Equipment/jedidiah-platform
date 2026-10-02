@@ -11,6 +11,7 @@ import { validateFile } from '@pkg/domain';
 import {
   assignmentState,
   captureRefusal,
+  FUTURE_READ_AT_REFUSAL,
   isAiFlaggedVerification,
   isContractingManagement,
   type JobActor,
@@ -130,7 +131,7 @@ export async function captureReading({
   const delivered = await replay(db);
   if (delivered) return delivered;
   if (Date.parse(input.capturedAt) > now.getTime() + FUTURE_READ_AT_TOLERANCE_MS)
-    throw new ReadingError('reading.future_read_at', 'Read At cannot be in the future.');
+    throw new ReadingError('reading.future_read_at', FUTURE_READ_AT_REFUSAL);
   const photo = evidence ? await storeMeterPhoto(evidence) : null;
   try {
     const verdict =

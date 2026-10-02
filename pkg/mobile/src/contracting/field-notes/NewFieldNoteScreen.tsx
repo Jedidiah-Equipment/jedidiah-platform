@@ -1,4 +1,4 @@
-import { type Href, router, useNavigation } from 'expo-router';
+import { router, useNavigation } from 'expo-router';
 import { usePreventRemove } from 'expo-router/react-navigation';
 import { useEffect, useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, View } from 'react-native';
@@ -8,17 +8,18 @@ import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { TextInput } from '@/components/ui/text-input';
 import { useAppToast } from '@/components/ui/toast';
-import { choosePhotos, takePhoto } from '@/contracting/lib/photo-picker';
+import { CONTRACTING_TAB_HREF } from '@/contracting/lib/app-tabs';
+import { choosePhotos, type PickedPhoto, takePhoto } from '@/contracting/lib/photo-picker';
 import { newLocalId } from '@/contracting/readings/capture-attempt';
 import { confirm } from '@/lib/confirm';
 import { FieldNotePhotoStrip, GALLERY_HINT } from './FieldNotePhotoStrip';
 import { useFieldNotes } from './FieldNotesProvider';
 import { fieldNoteFiles } from './files';
-import { FIELD_NOTE_DESCRIPTION_MAX, type PickedPhoto } from './store';
+import { FIELD_NOTE_DESCRIPTION_MAX } from './store';
 import { useFieldNoteAction } from './use-field-note-action';
 
 const PICK_FAILED = 'The photo could not be added. Try again.';
-const backToNotes = () => router.replace('/contracting/notes' as Href);
+const backToNotes = () => router.replace(CONTRACTING_TAB_HREF.notes);
 
 /** A draft in component state: nothing reaches storage, the sandbox, or the gallery until Save note. */
 export default function NewFieldNoteScreen() {
@@ -73,7 +74,7 @@ export default function NewFieldNoteScreen() {
             limit={limit}
             busy={busy}
             galleryHint={false}
-            onTake={() => void pick(async () => [await takePhoto()].filter((photo) => photo !== null))}
+            onTake={() => void pick(takePhoto)}
             onChoose={() => void pick(() => choosePhotos(limit - photos.length))}
             onRemove={(photoId) => setPhotos((current) => current.filter((photo) => photo.id !== photoId))}
           />

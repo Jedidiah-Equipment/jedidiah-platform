@@ -1,7 +1,5 @@
 import type { FieldNoteFiles } from './store';
 
-export const GALLERY_ALBUM = 'Jedidiah';
-
 /** The web preview keeps each photo as a data URI inside the note itself, so localStorage caps it at two. */
 export const fieldNoteFiles: FieldNoteFiles = {
   photoLimit: 2,

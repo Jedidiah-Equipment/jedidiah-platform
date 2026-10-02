@@ -27,7 +27,6 @@ export const CONTRACTING_TAB_HREF = {
   notes: '/contracting/notes' as Href,
 } as const satisfies Record<ContractingTab, Href>;
 
-/** The orange dot: Notes while any Field Note is still Open. */
 export const contractingTabBadge = (tab: ContractingTab, notes: readonly { status: 'open' | 'closed' }[]) =>
   tab === 'notes' && notes.some((note) => note.status === 'open');
 

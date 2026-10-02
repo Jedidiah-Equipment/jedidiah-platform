@@ -1,12 +1,11 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createContext, type ReactNode, useContext, useEffect, useMemo, useState } from 'react';
-import { contractingStorageKey } from '@/contracting/lib/contracting-storage';
 import { recordFieldNoteChanged, recordFieldNoteCreated } from '@/contracting/observability';
 import { apiBaseUrl } from '@/lib/api-base-url';
 import { useAuthSession } from '@/lib/auth-session';
 import { captureSanitizedException } from '@/lib/observability';
 import { fieldNoteFiles } from './files';
-import { createFieldNoteStore, type FieldNote, type FieldNoteStore } from './store';
+import { createFieldNoteStore, type FieldNote, type FieldNoteStore, fieldNotesStorageKey } from './store';
 
 // Outlives the provider, which remounts when the signed-in operator changes, so one operator's writes
 // are always serialized through the same chain.
@@ -20,7 +19,7 @@ const Context = createContext<FieldNotesValue | null>(null);
 
 export function FieldNotesProvider({ children }: { children: ReactNode }) {
   const session = useAuthSession();
-  const key = contractingStorageKey('field-notes', 'v1', apiBaseUrl, session.user.id);
+  const key = fieldNotesStorageKey(apiBaseUrl, session.user.id);
   const store = useMemo(() => {
     let store = stores.get(key);
     if (!store) {

@@ -22,5 +22,5 @@ export function useFieldNoteAction() {
       }, failure),
     [run, setError],
   );
-  return { busy, error, setError, act };
+  return { busy, error, act };
 }

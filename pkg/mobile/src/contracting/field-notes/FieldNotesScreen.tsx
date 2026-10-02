@@ -64,7 +64,7 @@ function FieldNoteRow({ note }: { note: FieldNote }) {
         {firstLine || 'Photo note'}
       </Text>
       <Text className="text-sm text-muted-foreground">
-        {photoCount === 1 ? '1 photo' : `${formatNumber(photoCount)} photos`}
+        {formatNumber(photoCount)} {photoCount === 1 ? 'photo' : 'photos'}
       </Text>
     </Pressable>
   );

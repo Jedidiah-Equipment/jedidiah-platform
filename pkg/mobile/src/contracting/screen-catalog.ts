@@ -21,4 +21,10 @@ export const CONTRACTING_SCREEN_CATALOG = {
     business: 'contracting',
     name: '/contracting/machines/[id]/capture',
   },
+  '(protected)/contracting/(tabs)/notes/index.tsx': { business: 'contracting', name: '/contracting/notes' },
+  '(protected)/contracting/(tabs)/notes/new.tsx': { business: 'contracting', name: '/contracting/notes/new' },
+  '(protected)/contracting/(tabs)/notes/[noteId].tsx': {
+    business: 'contracting',
+    name: '/contracting/notes/[noteId]',
+  },
 } satisfies ScreenCatalog;

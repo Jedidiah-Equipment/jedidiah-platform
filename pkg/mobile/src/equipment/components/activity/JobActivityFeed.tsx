@@ -13,6 +13,7 @@ import {
   ListDropdownControl,
   ListSearchControl,
 } from '@/components/ListControls';
+import { MAIN_PAGE_CONTENT_STYLE } from '@/components/page-frame';
 import { Pulse } from '@/components/ui/pulse';
 import { RefreshControl } from '@/components/ui/refresh-control';
 import { Text } from '@/components/ui/text';
@@ -121,7 +122,7 @@ export function JobActivityFeed({
       <SectionList
         className="flex-1"
         // NativeWind does not remap contentContainerClassName for SectionList.
-        contentContainerStyle={{ paddingBottom: 32, paddingHorizontal: 16, paddingTop: 4 }}
+        contentContainerStyle={MAIN_PAGE_CONTENT_STYLE}
         initialNumToRender={12}
         keyExtractor={activityKey}
         keyboardShouldPersistTaps="handled"

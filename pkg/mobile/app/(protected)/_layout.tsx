@@ -1,12 +1,13 @@
-import { isStoredUserSignInEligible } from '@pkg/domain';
+import { hasBusinessAccess, isStoredUserSignInEligible } from '@pkg/domain';
 import { type ErrorBoundaryProps, Redirect, Stack } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppErrorBoundary } from '@/components/AppErrorBoundary';
+import { FieldNotesProvider } from '@/contracting/field-notes/FieldNotesProvider';
 import { purgeLegacyContractingStorage } from '@/contracting/lib/purge-legacy-storage';
 import { signOut, useSession } from '@/lib/auth';
-import { AuthSessionProvider } from '@/lib/auth-session';
+import { AuthSessionProvider, getSessionRoleSlots } from '@/lib/auth-session';
 import { useIsOffline } from '@/lib/connectivity';
 import { addBreadcrumb, identifyObservabilityUser } from '@/lib/observability';
 import { isHydratedSession } from '@/lib/session-state';
@@ -78,13 +79,20 @@ export default function ProtectedLayout() {
     return <SignOutIneligibleSession />;
   }
 
+  const screens = (
+    <Stack screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="contracting" />
+      <Stack.Screen name="equipment" />
+    </Stack>
+  );
   return (
     <AuthSessionProvider session={session}>
       <SessionObservability userId={session.user.id} />
-      <Stack screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="contracting" />
-        <Stack.Screen name="equipment" />
-      </Stack>
+      {hasBusinessAccess(getSessionRoleSlots(session), 'contracting') ? (
+        <FieldNotesProvider key={session.user.id}>{screens}</FieldNotesProvider>
+      ) : (
+        screens
+      )}
     </AuthSessionProvider>
   );
 }

@@ -4,6 +4,7 @@ import { type Href, router } from 'expo-router';
 import { useState } from 'react';
 import { FlatList, Pressable, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { MAIN_PAGE_CONTENT_STYLE } from '@/components/page-frame';
 import { MainToolbar } from '@/components/TopToolbar';
 import { Text } from '@/components/ui/text';
 import { jobSummary } from './derive-stint';
@@ -20,7 +21,7 @@ export default function JobsScreen() {
       <FlatList
         data={jobs.data ?? []}
         keyExtractor={(job) => job.id}
-        contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: 16, gap: 10 }}
+        contentContainerStyle={{ ...MAIN_PAGE_CONTENT_STYLE, gap: 10 }}
         refreshing={jobs.isRefetching || finished.isRefetching}
         onRefresh={() => void Promise.all([jobs.refetch(), finished.canRead ? finished.refetch() : null])}
         ListEmptyComponent={

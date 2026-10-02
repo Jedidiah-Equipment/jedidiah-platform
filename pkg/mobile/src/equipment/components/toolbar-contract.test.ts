@@ -25,6 +25,9 @@ const SIGNED_IN_ROUTE_TOOLBARS = {
   'contracting/(tabs)/machines/index.tsx': toolbar('main', 'src/contracting/components/MachinesScreen.tsx'),
   'contracting/(tabs)/machines/[id]/index.tsx': toolbar('secondary', 'src/contracting/components/MachineScreen.tsx'),
   'contracting/(tabs)/machines/[id]/capture.tsx': toolbar('secondary', 'src/contracting/components/CaptureScreen.tsx'),
+  'contracting/(tabs)/notes/index.tsx': toolbar('main', 'src/contracting/field-notes/FieldNotesScreen.tsx'),
+  'contracting/(tabs)/notes/new.tsx': toolbar('secondary', 'src/contracting/field-notes/NewFieldNoteScreen.tsx'),
+  'contracting/(tabs)/notes/[noteId].tsx': toolbar('secondary', 'src/contracting/field-notes/FieldNoteScreen.tsx'),
   'equipment/(tabs)/(plan)/bays/[bayId].tsx': toolbar('secondary', 'src/equipment/components/bays/BayQueueScreen.tsx'),
   'equipment/(tabs)/(plan)/plan/index.tsx': toolbar('main', 'app/(protected)/equipment/(tabs)/(plan)/plan/index.tsx'),
   'equipment/(tabs)/activity/index.tsx': toolbar('main', 'app/(protected)/equipment/(tabs)/activity/index.tsx'),
@@ -166,6 +169,12 @@ function toolbarComponent(route: string, kind: ToolbarKind): string {
 function expectToolbarKinds(contracts: Record<string, ToolbarContract>): void {
   for (const [route, contract] of Object.entries(contracts)) {
     const source = readFileSync(join(MOBILE_DIR, contract.owner), 'utf8');
+    // The page frame's top inset depends on whether the toolbar above it has a border.
+    const wrongFrame = contract.kind === 'main' ? 'SECONDARY_PAGE_CONTENT_STYLE' : 'MAIN_PAGE_CONTENT_STYLE';
+    expect({ owner: contract.owner, usesWrongFrame: source.includes(wrongFrame) }).toEqual({
+      owner: contract.owner,
+      usesWrongFrame: false,
+    });
     const expected = `<${toolbarComponent(route, contract.kind)}`;
     const unexpected = contract.kind === 'main' ? '<SecondaryPageToolbar' : '<MainTabToolbar';
 

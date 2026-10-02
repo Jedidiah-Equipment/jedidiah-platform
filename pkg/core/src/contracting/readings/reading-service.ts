@@ -11,6 +11,7 @@ import { validateFile } from '@pkg/domain';
 import {
   assignmentState,
   captureRefusal,
+  FUTURE_READ_AT_REFUSAL,
   isAiFlaggedVerification,
   isContractingManagement,
   type JobActor,
@@ -37,6 +38,8 @@ import { attachReadingToStint, resolveCaptureStint } from './capture-stint.js';
 import { assertReadingJobAction, ReadingError, withCaptureConstraints } from './reading-errors.js';
 import { READING_PHOTO_POLICY, type ReadMeterPhoto, readingVerification, verifyPhoto } from './reading-evidence.js';
 
+// Phone clocks drift; a Read At this far ahead of the server is still the Foreman's "now".
+const FUTURE_READ_AT_TOLERANCE_MS = 5 * 60_000;
 const notFound = () => new ReadingError('reading.not_found', 'Hour Reading not found.');
 type Row = typeof contractingHourReadings.$inferSelect;
 
@@ -99,11 +102,13 @@ export async function captureReading({
   actor,
   input: raw,
   evidence,
+  now = new Date(),
 }: {
   db: Db;
   actor: JobActor;
   input: ReadingCaptureInput;
   evidence?: ReadingEvidence;
+  now?: Date;
 }) {
   const actorUserId = actor.userId;
   const input = ReadingCaptureInput.parse(raw);
@@ -125,6 +130,8 @@ export async function captureReading({
   }
   const delivered = await replay(db);
   if (delivered) return delivered;
+  if (Date.parse(input.capturedAt) > now.getTime() + FUTURE_READ_AT_TOLERANCE_MS)
+    throw new ReadingError('reading.future_read_at', FUTURE_READ_AT_REFUSAL);
   const photo = evidence ? await storeMeterPhoto(evidence) : null;
   try {
     const verdict =

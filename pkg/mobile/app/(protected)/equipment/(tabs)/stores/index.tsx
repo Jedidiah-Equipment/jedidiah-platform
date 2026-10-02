@@ -3,6 +3,7 @@ import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { MAIN_PAGE_CONTENT_STYLE } from '@/components/page-frame';
 import { Icon } from '@/components/ui/icon';
 import { RefreshControl } from '@/components/ui/refresh-control';
 import { Text } from '@/components/ui/text';
@@ -42,7 +43,7 @@ export default function StoresScanHomeRoute() {
         title="Stores"
       />
       <ScrollView
-        contentContainerClassName="w-full gap-5 px-4 pb-8 pt-4"
+        contentContainerStyle={{ ...MAIN_PAGE_CONTENT_STYLE, gap: 20 }}
         keyboardShouldPersistTaps="handled"
         refreshControl={<RefreshControl {...refresh} />}
       >

@@ -3,6 +3,7 @@ import type React from 'react';
 import { useState } from 'react';
 import { ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { SECONDARY_PAGE_CONTENT_STYLE } from '@/components/page-frame';
 import { RefreshControl } from '@/components/ui/refresh-control';
 import { StoresActorHeader } from '@/equipment/components/stores/StoresActorHeader';
 import { SecondaryPageToolbar } from '@/equipment/components/TopToolbar';
@@ -49,7 +50,7 @@ export function StoresScreen({
         title={title}
       />
       <ScrollView
-        contentContainerClassName="w-full gap-5 px-4 pb-10 pt-4"
+        contentContainerStyle={{ ...SECONDARY_PAGE_CONTENT_STYLE, gap: 20 }}
         keyboardShouldPersistTaps="handled"
         onScroll={
           onNearScrollEnd

@@ -1,7 +1,7 @@
 import '../global.css';
 
 import { useFonts } from 'expo-font';
-import { type ErrorBoundaryProps, Stack, usePathname, useSegments } from 'expo-router';
+import { type ErrorBoundaryProps, router, Stack, usePathname, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { ActivityIndicator, Text, View } from 'react-native';
@@ -10,11 +10,11 @@ import { AppErrorBoundary } from '@/components/AppErrorBoundary';
 import { OfflineScreen } from '@/components/OfflineScreen';
 import { UpdatePrompt } from '@/components/UpdatePrompt';
 import { GluestackUIProvider } from '@/components/ui/gluestack-ui-provider';
+import { isOfflineCapableRoute, offlineCoverAction } from '@/contracting/lib/offline-routes';
 import { CONTRACTING_SCREEN_CATALOG } from '@/contracting/screen-catalog';
 import { EQUIPMENT_MUTATION_EVENTS } from '@/equipment/observability';
 import { EQUIPMENT_SCREEN_CATALOG } from '@/equipment/screen-catalog';
 import { ApiProvider } from '@/lib/ApiProvider';
-import { isOfflineCapableRoute } from '@/lib/business-home';
 import { ConnectivityProvider } from '@/lib/connectivity';
 import { initializeObservability, prepareScreenContext, trackScreen } from '@/lib/observability';
 import { createScreenResolver, SHARED_SCREEN_CATALOG } from '@/lib/screen-catalog';
@@ -109,7 +109,15 @@ function StartupLoader() {
 function OfflineGate() {
   const pathname = usePathname();
   const allowOffline = isOfflineCapableRoute(pathname);
-  return <OfflineScreen allowOffline={allowOffline} />;
+  const action = offlineCoverAction(pathname);
+  return (
+    <OfflineScreen
+      allowOffline={allowOffline}
+      action={
+        action ? { label: action.label, hint: action.hint, onPress: () => router.replace(action.href) } : undefined
+      }
+    />
+  );
 }
 
 function RouteObservability() {

@@ -309,6 +309,26 @@ test('retries a delivered mobile capture without creating another reading or dis
   expect((await listReadingsByMachine({ db, machineId })).map((row) => row.value)).toEqual([110, 100]);
 });
 
+test('refuses a Read At more than five minutes ahead, but still replays a stored capture', async ({ context }) => {
+  const { db, actor, machineId } = context;
+  const now = new Date('2026-10-01T08:00:00Z');
+  const input = {
+    localId: '0f2b7a64-5d0e-4f43-9b0b-2a7c3e0d9f11',
+    machineId,
+    role: 'spot' as const,
+    value: 100,
+    capturedAt: '2026-10-01T08:04:00Z',
+    disputePrevious: false,
+  };
+  const stored = await captureReading({ db, actor, input, now });
+  await expect(
+    captureReading({ db, actor, input: { ...input, localId: undefined, capturedAt: '2026-10-01T08:06:00Z' }, now }),
+  ).rejects.toMatchObject({ code: 'reading.future_read_at', message: 'Read At cannot be in the future.' });
+
+  const later = new Date('2026-09-30T08:00:00Z');
+  expect((await captureReading({ db, actor, input, now: later })).id).toBe(stored.id);
+});
+
 test('a dispute captured against an older reading waits for attention when another reading lands first', async ({
   context,
 }) => {

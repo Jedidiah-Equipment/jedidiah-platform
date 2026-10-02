@@ -2,6 +2,8 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { FlatList, Pressable, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { ListHeader, ListRow } from '@/components/ListControls';
+import { MAIN_PAGE_CONTENT_STYLE } from '@/components/page-frame';
 import { MainToolbar } from '@/components/TopToolbar';
 import { Text } from '@/components/ui/text';
 import { contractingStorageKey } from '@/contracting/lib/contracting-storage';
@@ -35,21 +37,24 @@ export default function MachinesScreen() {
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top', 'left', 'right']}>
       <MainToolbar title="Machines" subtitle="CONTRACTING" helpTopic="contractingMobileMachines" />
-      <View className="gap-3 px-4 py-3">
-        <MachineCatalogControls
-          categories={categories}
-          category={category}
-          search={search}
-          sort={sort}
-          onCategoryChange={setCategory}
-          onSearchChange={setSearch}
-          onSortChange={setSort}
-        />
-      </View>
       <FlatList
         data={machines}
         keyExtractor={(item) => item.id}
-        contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 4, paddingBottom: 16, gap: 10 }}
+        keyboardShouldPersistTaps="handled"
+        contentContainerStyle={MAIN_PAGE_CONTENT_STYLE}
+        ListHeaderComponent={
+          <ListHeader>
+            <MachineCatalogControls
+              categories={categories}
+              category={category}
+              search={search}
+              sort={sort}
+              onCategoryChange={setCategory}
+              onSearchChange={setSearch}
+              onSortChange={setSort}
+            />
+          </ListHeader>
+        }
         refreshing={fleet.isRefetching}
         onRefresh={() => {
           void fleet.refetch();
@@ -66,26 +71,28 @@ export default function MachinesScreen() {
           </Text>
         }
         renderItem={({ item }) => (
-          <Pressable
-            accessibilityRole="button"
-            onPress={() => router.push(`/contracting/machines/${item.id}`)}
-            className="w-full gap-2 rounded-xl border border-border bg-surface p-4"
-          >
-            <View className="flex-row items-center justify-between gap-2">
-              <View className="flex-row items-center gap-3">
-                <CategoryIcon icon={item.categoryIcon} colour={item.categoryColour} size={20} />
-                <Text className="text-lg text-foreground" weight="bold">
-                  {item.code}
+          <ListRow>
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => router.push(`/contracting/machines/${item.id}`)}
+              className="w-full gap-2 rounded-xl border border-border bg-surface p-4"
+            >
+              <View className="flex-row items-center justify-between gap-2">
+                <View className="flex-row items-center gap-3">
+                  <CategoryIcon icon={item.categoryIcon} colour={item.categoryColour} size={20} />
+                  <Text className="text-lg text-foreground" weight="bold">
+                    {item.code}
+                  </Text>
+                </View>
+                <Text className="rounded-full bg-muted px-3 py-1 text-xs text-foreground">
+                  {item.onSiteJobNumber ? `On Job · ${item.onSiteJobNumber}` : 'In Yard'}
                 </Text>
               </View>
-              <Text className="rounded-full bg-muted px-3 py-1 text-xs text-foreground">
-                {item.onSiteJobNumber ? `On Job · ${item.onSiteJobNumber}` : 'In Yard'}
+              <Text className="text-sm text-muted-foreground">
+                {item.make} {item.model} · {item.categoryName}
               </Text>
-            </View>
-            <Text className="text-sm text-muted-foreground">
-              {item.make} {item.model} · {item.categoryName}
-            </Text>
-          </Pressable>
+            </Pressable>
+          </ListRow>
         )}
       />
     </SafeAreaView>

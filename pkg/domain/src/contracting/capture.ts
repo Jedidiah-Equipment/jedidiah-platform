@@ -85,3 +85,6 @@ export function captureRefusal(verdict: CaptureRefused): string {
       return 'Reading is below the latest reading. Retake it or assert that the previous reading is wrong.';
   }
 }
+
+/** Read At is the Foreman's word for when the meter was read; only a time still to come is refused. */
+export const FUTURE_READ_AT_REFUSAL = 'Read At cannot be in the future.';

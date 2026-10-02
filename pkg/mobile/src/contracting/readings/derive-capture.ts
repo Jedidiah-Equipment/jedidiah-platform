@@ -14,6 +14,7 @@ export function deriveCapture({
   canCapture,
   machineKnown,
   cameraOpen,
+  futureReadAt,
 }: {
   value: string;
   /** The served latest reading, or null while the ledger is empty or history is loading. */
@@ -25,12 +26,19 @@ export function deriveCapture({
   canCapture: boolean;
   machineKnown: boolean;
   cameraOpen: boolean;
+  futureReadAt: boolean;
 }) {
   const parsed = value.trim() ? ReadingValue.safeParse(Number(value.replace(',', '.'))) : null;
   const below = !!parsed?.success && latest !== null && parsed.data < latest.value;
   const disputeConfirmed = below && disputePrevious && disputedReadingId === latest?.id;
   const missingComment = commentRequired && comment.trim() === '';
   const canSave =
-    !!parsed?.success && (!below || disputeConfirmed) && !missingComment && canCapture && machineKnown && !cameraOpen;
+    !!parsed?.success &&
+    (!below || disputeConfirmed) &&
+    !missingComment &&
+    canCapture &&
+    machineKnown &&
+    !cameraOpen &&
+    !futureReadAt;
   return { parsed, below, disputeConfirmed, missingComment, canSave };
 }

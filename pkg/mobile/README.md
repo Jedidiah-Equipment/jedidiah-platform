@@ -41,9 +41,12 @@ a page is missing from that catalog.
 The named event catalog is:
 
 - Auth: `signed in`, `sign in failed` (`reason` category only), `signed out`, `password reset requested`.
-- Contracting: `reading captured` (`role`, `hasPhoto`, `refused` — the refusal's app code, or `null` when
-  saved), once per capture the server saves or refuses; and `machine added to job` (`jobId`, `machineId`). A
-  capture that fails any other way sends no event: its breadcrumb and exception cover it.
+- Contracting: `reading captured` (`role`, `hasPhoto`, `photoSource` — `camera`, `gallery`, or `null` without
+  a photo, `backdated` — Read At more than 5 minutes before the attempt, and `refused` — the refusal's app
+  code, or `null` when saved), once per capture the server saves or refuses; `machine added to job` (`jobId`,
+  `machineId`); and `field note created` (`hasPhoto`, `photoCount`, `hasDescription`), `field note closed`,
+  `field note reopened`, `field note deleted`, which never carry a note's words or photos. A capture that
+  fails any other way sends no event: its breadcrumb and exception cover it.
 - Equipment mutations: `quote created`, `quote updated`, `quote cancelled`, `quote document generated`,
   `department timing started`, `department timing updated`, `department timing completed`, `part checked out`,
   `part returned to store`, `part received`, `part returned to supplier`, `stock count posted`,

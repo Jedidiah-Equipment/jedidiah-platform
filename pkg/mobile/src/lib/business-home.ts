@@ -6,8 +6,3 @@ export const BUSINESS_HOME = {
   contracting: '/contracting',
   equipment: '/equipment',
 } as const satisfies Record<Business, Href>;
-
-/** Every route sits behind the offline cover: capture is online only (ADR 0021). */
-export function isOfflineCapableRoute(_pathname: string): boolean {
-  return false;
-}

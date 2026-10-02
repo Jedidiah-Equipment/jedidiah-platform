@@ -8,8 +8,10 @@ import { Text } from '@/components/ui/text';
 import { offlineMessage, offlineTitle, refreshConnectivity, useIsOffline } from '@/lib/connectivity';
 import { addBreadcrumb, captureEvent } from '@/lib/observability';
 
-/** Covers online-only routes while disconnected; the root names any route that opts out. */
-export function OfflineScreen({ allowOffline = false }: { allowOffline?: boolean }) {
+export type OfflineAction = { label: string; hint: string; onPress: () => void };
+
+/** Covers online-only routes while disconnected; the root names any route that opts out and any way out. */
+export function OfflineScreen({ allowOffline = false, action }: { allowOffline?: boolean; action?: OfflineAction }) {
   const isOffline = useIsOffline();
   const shown = isOffline && !allowOffline;
   const wasShown = useRef(false);
@@ -44,6 +46,20 @@ export function OfflineScreen({ allowOffline = false }: { allowOffline?: boolean
           </Text>
           <Text className="text-center text-sm text-muted-foreground">{offlineMessage}</Text>
         </View>
+        {action ? (
+          <View className="items-center gap-2">
+            <Pressable
+              accessibilityRole="button"
+              className="rounded-xl bg-primary px-5 py-2.5 active:opacity-80"
+              onPress={action.onPress}
+            >
+              <Text className="text-sm text-primary-foreground" weight="semibold">
+                {action.label}
+              </Text>
+            </Pressable>
+            <Text className="text-center text-sm text-muted-foreground">{action.hint}</Text>
+          </View>
+        ) : null}
         <Pressable
           accessibilityRole="button"
           className="rounded-xl border border-border bg-surface px-5 py-2.5 active:bg-muted"

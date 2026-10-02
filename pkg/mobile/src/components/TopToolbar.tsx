@@ -5,6 +5,7 @@ import { Pressable, View } from 'react-native';
 
 import { AppIcon } from '@/components/AppLogo';
 import { ProfileMenuButton } from '@/components/ProfileMenuButton';
+import { TOOLBAR_INSET } from '@/components/page-frame';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 
@@ -76,10 +77,10 @@ export function SecondaryToolbar({
 function ToolbarFrame({ bordered = false, children }: { bordered?: boolean; children: React.ReactNode }) {
   return (
     <View
-      className={`min-h-16 w-full flex-row items-center gap-2 bg-background px-4 py-3 ${
+      className={`min-h-16 w-full flex-row items-center gap-2 bg-background px-4 ${
         bordered ? 'border-b border-border' : ''
       }`}
-      style={{ minHeight: 64 }}
+      style={{ minHeight: 64, paddingVertical: TOOLBAR_INSET }}
     >
       {children}
     </View>

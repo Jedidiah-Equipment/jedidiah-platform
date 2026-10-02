@@ -7,6 +7,7 @@ import * as Clipboard from 'expo-clipboard';
 import { useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, ScrollView, View } from 'react-native';
+import { SECONDARY_PAGE_CONTENT_STYLE } from '@/components/page-frame';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { useAppToast } from '@/components/ui/toast';
@@ -23,7 +24,7 @@ import { useTRPC } from '@/lib/trpc';
 export function ProductDetail({ product }: { product: Product }) {
   return (
     <View className="flex-1 bg-background">
-      <ScrollView contentContainerClassName="w-full gap-4 px-4 pb-8 pt-4">
+      <ScrollView contentContainerStyle={{ ...SECONDARY_PAGE_CONTENT_STYLE, gap: 16 }}>
         <ProductIdentity product={product} />
         <ProductDetailsCard product={product} />
         <ProductAssembliesCard product={product} />

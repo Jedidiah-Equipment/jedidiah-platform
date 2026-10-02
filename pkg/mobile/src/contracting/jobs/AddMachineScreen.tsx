@@ -6,6 +6,7 @@ import { type Href, router, useLocalSearchParams } from 'expo-router';
 import { ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAppForm } from '@/components/form';
+import { SECONDARY_PAGE_CONTENT_STYLE } from '@/components/page-frame';
 import { SecondaryToolbar } from '@/components/TopToolbar';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
@@ -78,7 +79,10 @@ export default function AddMachineScreen() {
         onBack={backToJob}
         helpTopic="contractingMobileAddMachine"
       />
-      <ScrollView contentContainerStyle={{ padding: 16, gap: 16 }} keyboardShouldPersistTaps="handled">
+      <ScrollView
+        contentContainerStyle={{ ...SECONDARY_PAGE_CONTENT_STYLE, gap: 16 }}
+        keyboardShouldPersistTaps="handled"
+      >
         <form.AppField name="machineId">
           {(field) => (
             <field.SearchSelectField

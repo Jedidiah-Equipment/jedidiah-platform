@@ -73,18 +73,26 @@ describe('route layout contract', () => {
     expect(baySchedule).not.toContain('helpTopic="jobs"');
   });
 
-  test('keeps flat and sectioned list toolbars at the same gap below the page header', () => {
-    const catalogList = readFileSync(join(MOBILE_DIR, 'src/equipment/components/CatalogList.tsx'), 'utf8');
-    const activityFeed = readFileSync(
-      join(MOBILE_DIR, 'src/equipment/components/activity/JobActivityFeed.tsx'),
-      'utf8',
-    );
+  test('positions every page through the shared page frame, never hand-written content padding', () => {
+    // Dialogs, sheets, drawers, menus and the signed-out screens size their own content.
+    const overlays = new Set([
+      'app/login.tsx',
+      'src/components/ForgotPasswordScreen.tsx',
+      'src/components/ListControls.tsx',
+      'src/equipment/components/bays/JobDepartmentTimingCard.tsx',
+      'src/equipment/components/feedback/GiveFeedbackButton.tsx',
+      'src/equipment/components/quotes/GenerateQuoteDocumentModal.tsx',
+      'src/equipment/components/quotes/InventoryPartPicker.tsx',
+      'src/equipment/components/quotes/NewQuoteModal.tsx',
+      'src/equipment/components/quotes/QuoteSummaryDrawer.tsx',
+      'src/equipment/components/quotes/use-customer-match-choice.tsx',
+    ]);
+    const handWritten =
+      /contentContainerClassName="[^"]*\bp[xytb]?-\d|contentContainerStyle=\{\{[^}]*\bpadding(?:Top|Bottom|Horizontal|Vertical)?:/;
+    const offenders = [...listTsxFiles(join(MOBILE_DIR, 'app')), ...listTsxFiles(join(MOBILE_DIR, 'src'))]
+      .map((file) => relative(MOBILE_DIR, file))
+      .filter((file) => !overlays.has(file) && handWritten.test(readFileSync(join(MOBILE_DIR, file), 'utf8')));
 
-    expect(catalogList).toContain('contentContainerClassName="w-full px-4 pb-8 pt-1"');
-    // NativeWind remaps this prop for FlatList but not SectionList, so Activity must use native style.
-    expect(activityFeed).toContain('contentContainerStyle={{');
-    expect(activityFeed).toContain('paddingBottom: 32');
-    expect(activityFeed).toContain('paddingHorizontal: 16');
-    expect(activityFeed).toContain('paddingTop: 4');
+    expect(offenders).toEqual([]);
   });
 });

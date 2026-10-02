@@ -1,7 +1,8 @@
 import { type ReactNode, useEffect, useRef } from 'react';
 import { FlatList, Pressable, View } from 'react-native';
-
 import { Avatar } from '@/components/Avatar';
+import { ListHeader, ListRow } from '@/components/ListControls';
+import { MAIN_PAGE_CONTENT_STYLE } from '@/components/page-frame';
 import { Pulse } from '@/components/ui/pulse';
 import { RefreshControl } from '@/components/ui/refresh-control';
 import { Text } from '@/components/ui/text';
@@ -150,7 +151,7 @@ export function PaginatedCatalogList<T>({
   return (
     <FlatList
       className="flex-1"
-      contentContainerClassName="w-full px-4 pb-8 pt-1"
+      contentContainerStyle={MAIN_PAGE_CONTENT_STYLE}
       data={rows}
       keyExtractor={(row) => row.key}
       keyboardShouldPersistTaps="handled"
@@ -160,14 +161,14 @@ export function PaginatedCatalogList<T>({
           <Text className="pb-1 pt-0.5 text-center text-sm text-muted-foreground">{loadingMoreLabel}</Text>
         ) : null
       }
-      ListHeaderComponent={header === undefined ? null : <View className="mb-4">{header}</View>}
+      ListHeaderComponent={header === undefined ? null : <ListHeader>{header}</ListHeader>}
       onEndReached={loadMore}
       onEndReachedThreshold={0.35}
       refreshControl={<RefreshControl onRefresh={onRefresh} refreshing={refreshing} />}
       renderItem={({ item: row }) => {
         if (row.kind === 'section-separator') return <View className="h-2" />;
         if (row.kind === 'section-header') return <View className="mb-2.5 mt-1">{row.content}</View>;
-        return <View className="mb-3.5 w-full">{renderItem(row.item)}</View>;
+        return <ListRow>{renderItem(row.item)}</ListRow>;
       }}
     />
   );

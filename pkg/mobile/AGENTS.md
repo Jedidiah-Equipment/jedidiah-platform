@@ -28,6 +28,9 @@
 - Every page content surface spans the full available width. Horizontal page padding is allowed, but
   do not center page content or cap it with `mx-auto`, `max-w-*`, or equivalent inline styles. This
   rule does not apply to dialogs, drawers, sheets, chat bubbles, or deliberately sized field content.
+- Page content is positioned only by `src/components/page-frame.ts`: `MAIN_PAGE_CONTENT_STYLE` under a main
+  tab toolbar, `SECONDARY_PAGE_CONTENT_STYLE` under a secondary one, whose gap below the border equals the
+  toolbar's own `TOOLBAR_INSET`. Never hand-write a page's content padding.
 - Style with NativeWind v4 + gluestack-ui v2 semantic classes. Runtime theme tokens live in
   `src/theme/gluestack-config.ts`; `global.css` is only the NativeWind/Tailwind input.
   Use `cssInterop` for native props that need concrete colors.

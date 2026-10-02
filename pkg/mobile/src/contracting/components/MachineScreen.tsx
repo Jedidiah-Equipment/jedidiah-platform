@@ -2,6 +2,7 @@ import { formatDate, formatHours } from '@pkg/domain';
 import { type Href, router, useLocalSearchParams } from 'expo-router';
 import { ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { SECONDARY_PAGE_CONTENT_STYLE } from '@/components/page-frame';
 import { SecondaryToolbar } from '@/components/TopToolbar';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
@@ -26,7 +27,7 @@ export default function MachineScreen() {
         onBack={() => router.replace('/contracting/machines' as Href)}
         helpTopic="contractingMobileMachine"
       />
-      <ScrollView contentContainerStyle={{ padding: 16, gap: 16 }}>
+      <ScrollView contentContainerStyle={{ ...SECONDARY_PAGE_CONTENT_STYLE, gap: 16 }}>
         <View className="gap-2 rounded-xl border border-border bg-surface p-4">
           <View className="flex-row items-center gap-3">
             {machine ? <CategoryIcon icon={machine.categoryIcon} colour={machine.categoryColour} size={24} /> : null}

@@ -1,12 +1,13 @@
 import { formatCurrency, formatDate } from '@pkg/domain';
 import { pricePersistedQuote } from '@pkg/domain/equipment';
 import type { QuoteSummary } from '@pkg/schema/equipment';
-import { IconAlertTriangle, IconArrowsSort, IconFilter, IconPlus } from '@tabler/icons-react-native';
+import { IconAlertTriangle, IconArrowsSort, IconFilter } from '@tabler/icons-react-native';
 import { useRouter } from 'expo-router';
-import { Pressable, useWindowDimensions, View } from 'react-native';
+import { View } from 'react-native';
 import {
   type ListControlOption,
   ListControlRow,
+  ListCreateControl,
   ListDropdownControl,
   ListSearchControl,
 } from '@/components/ListControls';
@@ -18,7 +19,6 @@ import { QuoteStatusChip } from '@/equipment/components/quotes/QuoteStatusChip';
 import { QUOTE_STATUS_OPTIONS, type QuoteSort, type QuoteStatusFilter } from '@/equipment/lib/quote-presentation';
 import { useColorMode } from '@/theme/use-color-mode';
 
-const WIDE_BREAKPOINT = 760;
 const STATUS_OPTIONS: readonly ListControlOption<QuoteStatusFilter>[] = [
   { label: 'All statuses', value: 'all' },
   ...QUOTE_STATUS_OPTIONS,
@@ -47,8 +47,6 @@ export function QuoteCatalogControls({
   sort: QuoteSort;
   status: QuoteStatusFilter;
 }) {
-  const isWide = useWindowDimensions().width >= WIDE_BREAKPOINT;
-
   return (
     <ListControlRow
       leading={
@@ -79,21 +77,7 @@ export function QuoteCatalogControls({
             options={QUOTE_SORT_OPTIONS}
             value={sort}
           />
-          {canCreate ? (
-            <Pressable
-              accessibilityLabel="New quote"
-              accessibilityRole="button"
-              className="h-10 flex-row items-center gap-2 rounded-xl bg-primary px-3 active:opacity-90"
-              onPress={onCreate}
-            >
-              <Icon className="text-primary-foreground" icon={IconPlus} size={18} strokeWidth={2.5} />
-              {isWide ? (
-                <Text className="text-toolbar text-primary-foreground" weight="bold">
-                  New quote
-                </Text>
-              ) : null}
-            </Pressable>
-          ) : null}
+          {canCreate ? <ListCreateControl label="New quote" onPress={onCreate} /> : null}
         </View>
       }
     />

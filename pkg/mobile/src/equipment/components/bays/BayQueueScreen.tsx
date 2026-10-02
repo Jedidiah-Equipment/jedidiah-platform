@@ -6,6 +6,7 @@ import { useState } from 'react';
 import { Pressable, ScrollView, useWindowDimensions, View } from 'react-native';
 
 import { Avatar } from '@/components/Avatar';
+import { SECONDARY_PAGE_CONTENT_STYLE } from '@/components/page-frame';
 import { Icon } from '@/components/ui/icon';
 import { Pulse } from '@/components/ui/pulse';
 import { RefreshControl } from '@/components/ui/refresh-control';
@@ -194,7 +195,7 @@ function Ready({
         {showList ? (
           <ScrollView
             className="border-border"
-            contentContainerClassName="w-full px-4 pb-10 pt-4"
+            contentContainerStyle={SECONDARY_PAGE_CONTENT_STYLE}
             refreshControl={<RefreshControl {...refresh} />}
             style={isWide ? { flex: 2, borderRightWidth: 1 } : { flex: 1 }}
           >
@@ -203,7 +204,7 @@ function Ready({
         ) : null}
         {showDetail ? (
           <ScrollView
-            contentContainerClassName="w-full px-4 pb-10 pt-4"
+            contentContainerStyle={SECONDARY_PAGE_CONTENT_STYLE}
             refreshControl={<RefreshControl {...refresh} />}
             style={isWide ? { flex: 3 } : { flex: 1 }}
           >
@@ -514,7 +515,7 @@ function Frame({
         subtitle="BAY SCHEDULE"
         title={title}
       />
-      <ScrollView contentContainerClassName="w-full px-4 pb-10 pt-4" refreshControl={<RefreshControl {...refresh} />}>
+      <ScrollView contentContainerStyle={SECONDARY_PAGE_CONTENT_STYLE} refreshControl={<RefreshControl {...refresh} />}>
         {children}
       </ScrollView>
     </>

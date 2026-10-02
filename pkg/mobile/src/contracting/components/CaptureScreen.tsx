@@ -2,7 +2,7 @@ import { formatHours } from '@pkg/domain';
 import { captureNeedsComment, captureRefusals, isFutureReadAt } from '@pkg/domain/contracting';
 import { ReadingComment, type ReadingErrorCode, type ReadingRole } from '@pkg/schema/contracting';
 import { useQueryClient } from '@tanstack/react-query';
-import { type Href, router, useLocalSearchParams } from 'expo-router';
+import { type Href, router, useLocalSearchParams, useNavigation } from 'expo-router';
 import { useRef, useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -85,6 +85,7 @@ function CaptureForm({ target }: { target: CaptureTarget }) {
     target.kind === 'stint' ? `/contracting/jobs/${target.jobId}` : `/contracting/machines/${machineId}`
   ) as Href;
   const leave = () => router.dismissTo(returnTo);
+  const navigation = useNavigation();
   const { bottom: safeAreaBottom } = useSafeAreaInsets();
   const fleet = useFleet();
   const machine = fleet.data?.find((row) => row.id === machineId);
@@ -185,7 +186,8 @@ function CaptureForm({ target }: { target: CaptureTarget }) {
         queryClient.invalidateQueries({ queryKey: trpc.contractingJobs.field.pathKey() }),
       ]);
       await Promise.race([refreshed, new Promise((resolve) => setTimeout(resolve, REFRESH_WAIT_MS))]);
-      leave();
+      // A swipe back during the wait may already have opened another capture; leaving now would close it.
+      if (navigation.isFocused()) leave();
     }, CAPTURE_FAILED);
   }
   return (

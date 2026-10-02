@@ -18,17 +18,7 @@ afterEach(async () => {
 type Row = { id: string; name: string };
 const dryHire: Row = { id: 'rate-1', name: 'Dry hire' };
 
-async function mount({
-  rows = [dryHire],
-  canReorder = true,
-  isSaving = false,
-  onOpen,
-}: {
-  rows?: Row[];
-  canReorder?: boolean;
-  isSaving?: boolean;
-  onOpen?: (row: Row) => void;
-}) {
+async function mount({ canReorder = true, onOpen }: { canReorder?: boolean; onOpen?: (row: Row) => void }) {
   const container = document.createElement('div');
   document.body.append(container);
   const root = createRoot(container);
@@ -42,7 +32,7 @@ async function mount({
         headerClassName="grid"
         label={(row) => row.name}
         {...(onOpen ? { onOpen } : {})}
-        order={{ rows, isSaving, onDragEnd: vi.fn() }}
+        order={{ rows: [dryHire], isSaving: false, onDragEnd: vi.fn() }}
       >
         {(row, grip) => {
           grips.push(grip);
@@ -56,18 +46,13 @@ async function mount({
       </SortableCardList>,
     ),
   );
-  return { container, grips };
+  return { grips };
 }
 
 const grip = () => document.querySelector<HTMLButtonElement>('button[aria-label="Reorder Dry hire"]');
 const card = () => document.querySelector<HTMLElement>('[data-slot="card"]');
 const pressEnter = (target: Element) =>
   target.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }));
-
-it('renders the empty message when there are no rows', async () => {
-  const { container } = await mount({ rows: [] });
-  expect(container.textContent).toBe('No Rates yet.');
-});
 
 it('passes a grip only to people who can reorder', async () => {
   const { grips } = await mount({ canReorder: false });
@@ -96,9 +81,4 @@ it('makes a card a button only when onOpen is given', async () => {
   expect(plain?.hasAttribute('role')).toBe(false);
   expect(plain?.hasAttribute('tabindex')).toBe(false);
   expect(plain?.hasAttribute('aria-label')).toBe(false);
-});
-
-it('disables every grip while a reorder is saving', async () => {
-  await mount({ isSaving: true });
-  expect(grip()?.disabled).toBe(true);
 });

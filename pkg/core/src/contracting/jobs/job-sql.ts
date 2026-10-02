@@ -1,11 +1,13 @@
-import { contractingJobs } from '@pkg/db/contracting';
+import { contractingHourReadings, contractingJobs } from '@pkg/db/contracting';
 import { GAP_FLAG_THRESHOLD_HOURS } from '@pkg/domain/contracting';
-import { type AssignmentState, aiFlaggedVerifications } from '@pkg/schema/contracting';
+import type { AssignmentState } from '@pkg/schema/contracting';
 import { type SQL, type SQLWrapper, sql } from 'drizzle-orm';
+import { alias } from 'drizzle-orm/pg-core';
+import { readingNeedsALookSql } from '../readings/reading-sql.js';
 
 /**
  * The Job read model's derived facts, in SQL for the queues. Each mirrors a domain rule the detail read
- * computes in TypeScript (`assignmentState`, `deriveStintHours`, `looksFinished`, reading attention), so a
+ * computes in TypeScript (`assignmentState`, `deriveStintHours`, `looksFinished`, `readingNeedsALook`), so a
  * rule changes here and there together.
  */
 
@@ -43,6 +45,8 @@ export const openGapFlags = sql<number>`(
     and summary_arrival.value - ${previousDepartureValue(sql`summary_assignment.machine_id`, sql`summary_arrival.sequence`)} > ${GAP_FLAG_THRESHOLD_HOURS}
 )`;
 
+const summaryReading = alias(contractingHourReadings, 'summary_reading');
+
 export const readingsNeedingALook = sql<number>`(
   select count(*)::integer
   from contracting.machine_assignment summary_assignment
@@ -50,16 +54,7 @@ export const readingsNeedingALook = sql<number>`(
     on summary_reading.id = summary_assignment.arrival_reading_id
     or summary_reading.id = summary_assignment.departure_reading_id
   where summary_assignment.job_id = ${contractingJobs.id}
-    and (
-      summary_reading.disputed
-      or (
-        summary_reading.evidence_reviewed_at is null
-        and summary_reading.ai_verification in (${sql.join(
-          aiFlaggedVerifications.map((verification) => sql`${verification}`),
-          sql`, `,
-        )})
-      )
-    )
+    and ${readingNeedsALookSql(summaryReading)}
 )`;
 
 /** Parameter-free, so the queue counts can group by it. */

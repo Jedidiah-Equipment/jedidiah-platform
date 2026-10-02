@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { type AmendableReading, readingPhotoPath, resolveReadingAmendment } from './readings.js';
+import {
+  type AmendableReading,
+  type ReadingAttentionFacts,
+  readingAttention,
+  readingNeedsALook,
+  readingPhotoPath,
+  readingVerification,
+  resolveReadingAmendment,
+} from './readings.js';
 
 const clean = (id: string, value: number): AmendableReading => ({
   id,
@@ -68,5 +76,57 @@ describe('resolveReadingAmendment', () => {
 describe('readingPhotoPath', () => {
   it('addresses a reading photo by its encoded id', () => {
     expect(readingPhotoPath('a/b')).toBe('/api/contracting/readings/a%2Fb/photo');
+  });
+});
+
+describe('readingVerification', () => {
+  it('is pending until the AI returns a confidence', () => {
+    expect(readingVerification(120, null, null)).toBe('pending');
+    expect(readingVerification(120, 120, null)).toBe('pending');
+  });
+
+  it('is low-confidence below the threshold or without a value', () => {
+    expect(readingVerification(120, 120, 0.79)).toBe('low-confidence');
+    expect(readingVerification(120, null, 0.95)).toBe('low-confidence');
+  });
+
+  it('compares to one decimal at or above the threshold', () => {
+    expect(readingVerification(120.04, 120, 0.8)).toBe('agrees');
+    expect(readingVerification(120.1, 120, 0.8)).toBe('disagrees');
+  });
+});
+
+describe('readingAttention', () => {
+  const facts = (overrides: Partial<ReadingAttentionFacts>): ReadingAttentionFacts => ({
+    disputed: false,
+    aiVerification: 'agrees',
+    evidenceReviewedAt: null,
+    ...overrides,
+  });
+
+  it('flags a disputed reading whatever its evidence', () => {
+    const reading = facts({ disputed: true, evidenceReviewedAt: '2026-09-01T08:00:00.000Z' });
+    expect(readingAttention(reading)).toEqual({ disputed: true, aiFlagged: null });
+    expect(readingNeedsALook(reading)).toBe(true);
+  });
+
+  it.each(['pending', 'disagrees', 'low-confidence'] as const)('flags an unreviewed %s reading', (aiVerification) => {
+    const reading = facts({ aiVerification });
+    expect(readingAttention(reading)).toEqual({ disputed: false, aiFlagged: aiVerification });
+    expect(readingNeedsALook(reading)).toBe(true);
+  });
+
+  it('stops flagging once the evidence is reviewed', () => {
+    for (const evidenceReviewedAt of ['2026-09-01T08:00:00.000Z', new Date('2026-09-01T08:00:00.000Z')]) {
+      const reading = facts({ aiVerification: 'disagrees', evidenceReviewedAt });
+      expect(readingAttention(reading)).toEqual({ disputed: false, aiFlagged: null });
+      expect(readingNeedsALook(reading)).toBe(false);
+    }
+  });
+
+  it.each(['agrees', 'not-applicable'] as const)('does not flag %s', (aiVerification) => {
+    const reading = facts({ aiVerification });
+    expect(readingAttention(reading)).toEqual({ disputed: false, aiFlagged: null });
+    expect(readingNeedsALook(reading)).toBe(false);
   });
 });

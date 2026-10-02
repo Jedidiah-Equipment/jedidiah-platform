@@ -11,24 +11,24 @@ import { hasPermission, validateFile } from '@pkg/domain';
 import {
   assignmentState,
   FUTURE_READ_AT_TOLERANCE_MS,
-  isAiFlaggedVerification,
   isFutureReadAt,
   type JobActor,
   jobReadStatuses,
   judgeCapture,
   meterDisagreementHint,
   READING_PHOTO_POLICY,
+  readingAttention,
+  readingVerification,
   resolveReadingAmendment,
 } from '@pkg/domain/contracting';
 import type { AuthId } from '@pkg/schema';
 import {
-  aiFlaggedVerifications,
   FieldReading,
   ReadingAmendInput,
   ReadingCaptureInput,
   type ReadingExceptionType,
 } from '@pkg/schema/contracting';
-import { and, asc, desc, eq, getTableColumns, gt, inArray, isNull, or } from 'drizzle-orm';
+import { and, asc, desc, eq, getTableColumns, gt, inArray, or } from 'drizzle-orm';
 import { defineAuditDescriptor, recordAuditCreate } from '../../audit/audit-writer.js';
 import { mutateEntity } from '../../audit/mutate-entity.js';
 import { FilePolicyViolationError } from '../../files/file-errors.js';
@@ -36,16 +36,15 @@ import { readStoredObject, type StorageAdapter } from '../../storage/storage-ada
 import { reopenPricingWithin } from '../jobs/pricing-service.js';
 import { attachReadingToStint, resolveCaptureStint } from './capture-stint.js';
 import { assertReadingJobAction, captureRefused, ReadingError, withCaptureConstraints } from './reading-errors.js';
-import { type ReadMeterPhoto, readingVerification, verifyPhoto } from './reading-evidence.js';
+import { type ReadMeterPhoto, verifyPhoto } from './reading-evidence.js';
+import { readingNeedsALookSql } from './reading-sql.js';
 
 const notFound = () => new ReadingError('reading.not_found', 'Hour Reading not found.');
 type Row = typeof contractingHourReadings.$inferSelect;
 
 function getReadingExceptionTypes(row: Row): ReadingExceptionType[] {
-  const types: ReadingExceptionType[] = [];
-  if (row.disputed) types.push('disputed');
-  if (row.evidenceReviewedAt === null && isAiFlaggedVerification(row.aiVerification)) types.push('ai-flagged');
-  return types;
+  const { disputed, aiFlagged } = readingAttention(row);
+  return [...(disputed ? (['disputed'] as const) : []), ...(aiFlagged ? (['ai-flagged'] as const) : [])];
 }
 
 function withHint<T extends Row>(row: T) {
@@ -240,15 +239,7 @@ export async function listReadingExceptions({ db }: { db: Db }) {
     .from(contractingHourReadings)
     .innerJoin(contractingMachines, eq(contractingMachines.id, contractingHourReadings.machineId))
     .innerJoin(contractingCategories, eq(contractingCategories.id, contractingMachines.categoryId))
-    .where(
-      or(
-        eq(contractingHourReadings.disputed, true),
-        and(
-          isNull(contractingHourReadings.evidenceReviewedAt),
-          inArray(contractingHourReadings.aiVerification, [...aiFlaggedVerifications]),
-        ),
-      ),
-    )
+    .where(readingNeedsALookSql(contractingHourReadings))
     .orderBy(desc(contractingHourReadings.sequence));
   return rows.map((row) => ({ ...withHint(row), exceptionTypes: getReadingExceptionTypes(row) }));
 }

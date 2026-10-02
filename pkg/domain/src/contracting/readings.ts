@@ -37,6 +37,45 @@ export const readingPhotoPath = (readingId: string) => `${READING_CAPTURE_PATH}/
 export const isAiFlaggedVerification = (verification: ReadingVerification): verification is AiFlaggedVerification =>
   (aiFlaggedVerifications as readonly ReadingVerification[]).includes(verification);
 
+// Below 80% remains a management exception even when the digits happen to agree.
+export const METER_CONFIDENCE_THRESHOLD = 0.8;
+
+export function readingVerification(
+  value: number,
+  aiValue: number | null,
+  aiConfidence: number | null,
+): 'pending' | 'low-confidence' | 'agrees' | 'disagrees' {
+  if (aiConfidence === null) return 'pending';
+  if (aiValue === null || aiConfidence < METER_CONFIDENCE_THRESHOLD) return 'low-confidence';
+  return Math.round(value * 10) === Math.round(aiValue * 10) ? 'agrees' : 'disagrees';
+}
+
+export type ReadingAttentionFacts = {
+  disputed: boolean;
+  aiVerification: ReadingVerification;
+  /** Null until the evidence has been reviewed: a Date in core, an ISO string on the wire. */
+  evidenceReviewedAt: Date | string | null;
+};
+
+/** Why an Hour Reading needs a look: it is disputed, or the AI could not confirm it and nobody has reviewed it. */
+export function readingAttention(reading: ReadingAttentionFacts): {
+  disputed: boolean;
+  aiFlagged: AiFlaggedVerification | null;
+} {
+  return {
+    disputed: reading.disputed,
+    aiFlagged:
+      reading.evidenceReviewedAt === null && isAiFlaggedVerification(reading.aiVerification)
+        ? reading.aiVerification
+        : null,
+  };
+}
+
+export function readingNeedsALook(reading: ReadingAttentionFacts): boolean {
+  const { disputed, aiFlagged } = readingAttention(reading);
+  return disputed || aiFlagged !== null;
+}
+
 export function meterDisagreementHint({
   value,
   aiValue,

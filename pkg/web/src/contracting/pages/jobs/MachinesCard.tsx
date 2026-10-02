@@ -10,7 +10,7 @@ import { useTRPC } from '@/lib/trpc.js';
 import { ArrivalCaptureDialog } from './ArrivalCaptureDialog.js';
 import { DepartureCaptureDialog } from './DepartureCaptureDialog.js';
 import { GapResolveDialog } from './GapResolveDialog.js';
-import { MachineStintCard } from './MachineStintCard.js';
+import { MachineStintCard, stintNeedsALook } from './MachineStintCard.js';
 import { MachinesContext, type SelectedReading, useMachineMutations } from './machines-context.js';
 import { PlanMachineDialog } from './PlanMachineDialog.js';
 import { ReadingDialog } from './ReadingDialog.js';
@@ -25,10 +25,6 @@ const filters: { value: MachineFilter; label: string }[] = [
   { value: 'left', label: 'Left' },
   { value: 'repeat', label: 'Repeat stint' },
 ];
-
-function hasAttention(stint: Assignment): boolean {
-  return stint.gapFlag || !!stint.arrival?.needsALook.length || !!stint.departure?.needsALook.length;
-}
 
 export function MachinesCard({ job, sheet }: { job: JobDetail; sheet: JobSheet }) {
   const trpc = useTRPC();
@@ -69,7 +65,7 @@ export function MachinesCard({ job, sheet }: { job: JobDetail; sheet: JobSheet }
     filter === 'all'
       ? true
       : filter === 'attention'
-        ? hasAttention(stint)
+        ? stintNeedsALook(stint)
         : filter === 'repeat'
           ? stintNumber > 1
           : stint.state === filter,

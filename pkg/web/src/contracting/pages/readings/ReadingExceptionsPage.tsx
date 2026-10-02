@@ -2,54 +2,32 @@ import { formatDate, formatHours, toSentenceCase } from '@pkg/domain';
 import { readingExceptionTypeColorClassNames, readingExceptionTypeLabels } from '@pkg/domain/contracting';
 import type { ReadingException } from '@pkg/schema/contracting';
 import { IconEye } from '@tabler/icons-react';
-import { useMutation, useQuery } from '@tanstack/react-query';
-import { useCallback, useMemo, useState } from 'react';
-import { toast } from 'sonner';
+import { useQuery } from '@tanstack/react-query';
+import { useMemo, useState } from 'react';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { DataTable } from '@/components/data-table/DataTable.js';
 import { type DataTableColumnDef, useDataTable } from '@/components/data-table/features.js';
-import { FilePreviewSheet } from '@/components/file-preview/FilePreviewSheet.js';
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
 import { Badge } from '@/components/ui/badge.js';
 import { Button } from '@/components/ui/button.js';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip.js';
 import { CategoryLabel } from '@/contracting/components/CategoryIcon.js';
+import { MeterPhotoPreview } from '@/contracting/components/MeterPhotoPreview.js';
 import { NoReadableMeterResult, readingEvidence } from '@/contracting/components/ReadingEvidence.js';
-import { useQueryInvalidation } from '@/contracting/hooks/use-query-invalidation.js';
-import { readingPhotoUrl } from '@/contracting/lib/contracting-http-paths.js';
+import { useReadingReview } from '@/contracting/hooks/use-reading-review.js';
 import { ReadingAmendDialog } from '@/contracting/pages/jobs/ReadingAmendDialog.js';
+import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { cn } from '@/lib/utils.js';
 
-async function fetchReadingPhoto(readingId: string, signal: AbortSignal) {
-  const response = await fetch(readingPhotoUrl(readingId), { credentials: 'include', signal });
-  if (!response.ok) throw new Error('Unable to preview meter photo.');
-  return response.blob();
-}
-
 export function ReadingExceptionsPage() {
   const trpc = useTRPC();
-  const { invalidateReadings } = useQueryInvalidation();
   const [selected, setSelected] = useState<ReadingException | null>(null);
   const [previewReading, setPreviewReading] = useState<ReadingException | null>(null);
   const [globalFilter, setGlobalFilter] = useState('');
   const query = useQuery(trpc.contractingReadings.listExceptions.queryOptions());
-  const amend = useMutation(
-    trpc.contractingReadings.amend.mutationOptions({
-      onSuccess: async () => {
-        await invalidateReadings();
-        toast.success('Reading amended');
-      },
-    }),
-  );
-  const reverify = useMutation(trpc.contractingReadings.reverify.mutationOptions({ onSuccess: invalidateReadings }));
-  const fetchPreviewBlob = useCallback(
-    ({ signal }: { signal: AbortSignal }) => {
-      if (!previewReading) throw new Error('No meter photo selected.');
-      return fetchReadingPhoto(previewReading.id, signal);
-    },
-    [previewReading],
-  );
+  const { amend, reverify } = useReadingReview();
+  const showError = useApiMutationErrorToast();
   const columns = useMemo<DataTableColumnDef<ReadingException>[]>(
     () => [
       {
@@ -170,7 +148,12 @@ export function ReadingExceptionsPage() {
               size="sm"
               variant="outline"
               disabled={!row.original.photo || reverify.isPending}
-              onClick={() => reverify.mutate({ id: row.original.id })}
+              onClick={() =>
+                reverify.mutate(
+                  { id: row.original.id },
+                  { onError: (error) => showError(error, 'Unable to re-verify reading.') },
+                )
+              }
             >
               Re-verify
             </Button>
@@ -178,7 +161,7 @@ export function ReadingExceptionsPage() {
         ),
       },
     ],
-    [amend.reset, reverify.isPending, reverify.mutate],
+    [amend.reset, reverify.isPending, reverify.mutate, showError],
   );
   const table = useDataTable({
     data: query.data ?? [],
@@ -189,7 +172,7 @@ export function ReadingExceptionsPage() {
   return (
     <>
       <PageLayout title="Reading exceptions" description="Review disputed readings and photo verification warnings.">
-        <ErrorMessage error={query.error ?? reverify.error} fallbackMessage="Unable to load or verify readings." />
+        <ErrorMessage error={query.error} fallbackMessage="Unable to load Reading Exceptions." />
         <DataTable
           table={table}
           paginationMode="incremental"
@@ -211,19 +194,10 @@ export function ReadingExceptionsPage() {
         onAmended={() => setSelected(null)}
         error={amend.error}
       />
-      <FilePreviewSheet
+      <MeterPhotoPreview
+        photo={previewReading ? { readingId: previewReading.id, machineCode: previewReading.machineCode } : null}
         description={previewReading ? `Captured ${formatDate(previewReading.capturedAt, 'medium')}` : ''}
-        downloadFilename={`${previewReading?.machineCode ?? 'meter'}-reading.${previewReading?.photo?.contentType === 'image/png' ? 'png' : 'jpg'}`}
-        fetchBlob={fetchPreviewBlob}
-        kind="image"
-        onOpenChange={(open) => {
-          if (!open) setPreviewReading(null);
-        }}
-        open={previewReading !== null}
-        queryKey={['contracting-reading-photo', previewReading?.id ?? 'closed']}
-        staleTime={Infinity}
-        subject="meter photo"
-        title={previewReading ? `${previewReading.machineCode} meter photo` : 'Meter photo'}
+        onClose={() => setPreviewReading(null)}
       />
     </>
   );

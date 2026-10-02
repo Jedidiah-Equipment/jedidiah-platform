@@ -7,12 +7,13 @@ vi.mock('@/lib/observability', () => ({ captureSanitizedException: vi.fn() }));
 
 import { purgeLegacyContractingStorage } from './purge-legacy-storage';
 
-test('removes the old queue and saved fleet and Jobs once, keeping the Machines list preferences', async () => {
+test('removes the old queue and saved fleet and Jobs once, keeping Field Notes and the Machines list preferences', async () => {
   await AsyncStorage.setMany({
     'contracting:readings:v1:https://api.test:user-1': '[]',
     'contracting:fleet:v3:https://api.test:user-1:machines': '[]',
     'contracting:fleet:v2:https://api.test:user-1:drivers': '[]',
     'contracting:jobs:v1:https://api.test:user-1': '[]',
+    'contracting:field-notes:v1:https://api.test:user-1': '[]',
     'contracting:machines:category': '"all"',
     'contracting:machines:sort': '"code"',
     'color-mode': '"dark"',
@@ -21,6 +22,7 @@ test('removes the old queue and saved fleet and Jobs once, keeping the Machines 
   await purgeLegacyContractingStorage();
   expect([...(await AsyncStorage.getAllKeys())].sort()).toEqual([
     'color-mode',
+    'contracting:field-notes:v1:https://api.test:user-1',
     'contracting:machines:category',
     'contracting:machines:sort',
   ]);

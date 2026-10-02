@@ -47,6 +47,7 @@ export const readingErrorFamily = defineCoreErrorFamily<ReadingError>({
     'reading.capture_id_conflict': 'CONFLICT',
     'reading.invalid_amendment': 'CONFLICT',
     'reading.forbidden': 'FORBIDDEN',
+    'reading.future_read_at': 'BAD_REQUEST',
     'reading.implement_on_site': 'CONFLICT',
     'reading.invalid_role': 'CONFLICT',
     'reading.job_invoiced': 'CONFLICT',

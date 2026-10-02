@@ -14,10 +14,19 @@ import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { TextInput } from '@/components/ui/text-input';
 import { implementOption } from '@/contracting/components/implement-option';
+import { ReadAtField } from '@/contracting/components/ReadAtField';
 import { useDrivers, useImplements } from '@/contracting/jobs/use-jobs';
+import { chooseMeterPhoto } from '@/contracting/lib/photo-picker';
 import { recordReadingCaptured } from '@/contracting/observability';
 import { type AttemptIdentity, captureAttempt } from '@/contracting/readings/capture-attempt';
 import { deriveCapture } from '@/contracting/readings/derive-capture';
+import {
+  capturedAtFor,
+  FUTURE_READ_AT,
+  isBackdated,
+  isFutureReadAt,
+  parseExifDateTime,
+} from '@/contracting/readings/read-at';
 import { CAPTURE_FAILED, captureReading, ReadingRefusedError } from '@/contracting/readings/reading-upload';
 import { useFleet, useMachineReadings } from '@/contracting/readings/use-fleet';
 import { useSessionAccessSummary, useSessionPermission } from '@/lib/auth-session';
@@ -26,6 +35,7 @@ import { useTRPC } from '@/lib/trpc';
 import { useBusyAction } from '@/lib/use-busy-action';
 
 const CAMERA_FAILURE = 'The camera could not take a photo. Try again or continue without a photo.';
+const GALLERY_FAILURE = 'The photo could not be opened. Try again or continue without a photo.';
 /** Refusals that mean the ledger moved under the form: its latest reading must be fetched again. */
 const LEDGER_MOVED = new Set<string>(['reading.below_latest', 'reading.previous_changed'] satisfies ReadingErrorCode[]);
 
@@ -49,7 +59,8 @@ export default function CaptureScreen() {
 
 function CaptureForm({ params }: { params: CaptureParams }) {
   const { id } = params;
-  const role = params.role === 'arrival' || params.role === 'departure' ? params.role : 'spot';
+  const role: 'spot' | 'arrival' | 'departure' =
+    params.role === 'arrival' || params.role === 'departure' ? params.role : 'spot';
   const { bottom: safeAreaBottom } = useSafeAreaInsets();
   const fleet = useFleet();
   const machine = fleet.data?.find((row) => row.id === id);
@@ -65,6 +76,10 @@ function CaptureForm({ params }: { params: CaptureParams }) {
   const [cameraOpen, setCameraOpen] = useState(false);
   const [cameraReady, setCameraReady] = useState(false);
   const [photo, setPhoto] = useState<string | null>(null);
+  const [photoSource, setPhotoSource] = useState<'camera' | 'gallery' | null>(null);
+  // Null is "now"; a hand-set Read At survives a new photo, a suggested one does not.
+  const [readAt, setReadAt] = useState<Date | null>(null);
+  const [readAtEdited, setReadAtEdited] = useState(false);
   const [value, setValue] = useState('');
   const [comment, setComment] = useState('');
   const [disputePrevious, setDisputePrevious] = useState(false);
@@ -92,6 +107,7 @@ function CaptureForm({ params }: { params: CaptureParams }) {
     canCapture,
     machineKnown: !!machine,
     cameraOpen,
+    futureReadAt: readAt !== null && isFutureReadAt(readAt),
   });
   async function openCamera() {
     addBreadcrumb('contracting', 'camera permission requested');
@@ -118,8 +134,25 @@ function CaptureForm({ params }: { params: CaptureParams }) {
       });
       setCameraOpen(false);
       if (!result) throw new Error(CAMERA_FAILURE);
-      setPhoto(result.uri);
+      attachPhoto(result.uri, 'camera', null);
     }, CAMERA_FAILURE);
+  }
+  function chooseFromGallery() {
+    return run(async () => {
+      const chosen = await chooseMeterPhoto().catch((error) => {
+        captureSanitizedException(error, 'Gallery pick failed', { source: 'gallery_pick' });
+        throw new Error(GALLERY_FAILURE);
+      });
+      if (chosen) attachPhoto(chosen.uri, 'gallery', parseExifDateTime(chosen.exif));
+    }, GALLERY_FAILURE);
+  }
+  function attachPhoto(uri: string | null, source: 'camera' | 'gallery' | null, takenAt: Date | null) {
+    setPhoto(uri);
+    setPhotoSource(source);
+    if (takenAt) {
+      setReadAt(takenAt);
+      setReadAtEdited(false);
+    } else if (!readAtEdited) setReadAt(null);
   }
   function save() {
     if (!canSave || !parsed?.success) return;
@@ -139,9 +172,16 @@ function CaptureForm({ params }: { params: CaptureParams }) {
       comment.trim(),
       disputePrevious,
       stintOverrides ?? null,
+      readAt?.toISOString() ?? null,
     ]);
-    const { localId, capturedAt } = attempt.current;
-    const hasPhoto = photo !== null;
+    const { localId, attemptedAt } = attempt.current;
+    const capturedAt = capturedAtFor(readAt, attemptedAt);
+    const captured = {
+      role,
+      hasPhoto: photo !== null,
+      photoSource: photo !== null ? photoSource : null,
+      backdated: isBackdated(readAt, attemptedAt),
+    };
     return run(async () => {
       try {
         const row = await captureReading(
@@ -159,7 +199,7 @@ function CaptureForm({ params }: { params: CaptureParams }) {
           },
           photo,
         );
-        recordReadingCaptured({ role, hasPhoto, refused: null });
+        recordReadingCaptured({ ...captured, refused: null });
         queryClient.setQueryData(trpc.contractingReadings.fieldHistory.queryKey({ machineId: id }), (rows) => [
           row,
           ...(rows ?? []).filter((candidate) => candidate.id !== row.id),
@@ -171,7 +211,7 @@ function CaptureForm({ params }: { params: CaptureParams }) {
         router.replace((params.jobId ? `/contracting/jobs/${params.jobId}` : `/contracting/machines/${id}`) as Href);
       } catch (error) {
         if (error instanceof ReadingRefusedError) {
-          recordReadingCaptured({ role, hasPhoto, refused: error.code });
+          recordReadingCaptured({ ...captured, refused: error.code });
           if (LEDGER_MOVED.has(error.code)) {
             setDisputePrevious(false);
             void queryClient.invalidateQueries({
@@ -298,7 +338,16 @@ function CaptureForm({ params }: { params: CaptureParams }) {
                   void openCamera();
                 }}
               />
-              {photo ? <Button title="Remove photo" disabled={busy} onPress={() => setPhoto(null)} /> : null}
+              <Button
+                title="Choose from gallery"
+                disabled={busy}
+                onPress={() => {
+                  void chooseFromGallery();
+                }}
+              />
+              {photo ? (
+                <Button title="Remove photo" disabled={busy} onPress={() => attachPhoto(null, null, null)} />
+              ) : null}
             </View>
           )}
           <View className="flex-row items-baseline justify-between">
@@ -323,6 +372,18 @@ function CaptureForm({ params }: { params: CaptureParams }) {
           {value && !parsed?.success ? (
             <Text className="text-danger">Enter a non-negative value with at most one decimal place.</Text>
           ) : null}
+          <Text className="text-foreground" weight="semibold">
+            Read At
+          </Text>
+          <ReadAtField
+            value={readAt}
+            disabled={busy}
+            onChange={(next) => {
+              setReadAt(next);
+              setReadAtEdited(next !== null);
+            }}
+          />
+          {readAt && isFutureReadAt(readAt) ? <Text className="text-danger">{FUTURE_READ_AT}</Text> : null}
           <Text className="text-foreground" weight="semibold">
             {commentRequired ? 'Comment (required without photo)' : 'Comment (optional)'}
           </Text>

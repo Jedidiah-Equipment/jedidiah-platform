@@ -32,5 +32,6 @@ export const readingErrorCodes = [
   'reading.no_photo',
   'reading.verification_failed',
   'reading.job_invoiced',
+  'reading.future_read_at',
 ] as const;
 export type ReadingErrorCode = (typeof readingErrorCodes)[number];

@@ -11,6 +11,7 @@ const base = {
   canCapture: true,
   machineKnown: true,
   cameraOpen: false,
+  futureReadAt: false,
 };
 
 test('saves a parsed value at or above the latest reading, and nothing the form cannot stand behind', () => {
@@ -21,6 +22,7 @@ test('saves a parsed value at or above the latest reading, and nothing the form 
   expect(deriveCapture({ ...base, machineKnown: false }).canSave).toBe(false);
   expect(deriveCapture({ ...base, canCapture: false }).canSave).toBe(false);
   expect(deriveCapture({ ...base, cameraOpen: true }).canSave).toBe(false);
+  expect(deriveCapture({ ...base, futureReadAt: true }).canSave).toBe(false);
 });
 
 test('a value below the latest saves only once the Foreman disputes that very reading', () => {

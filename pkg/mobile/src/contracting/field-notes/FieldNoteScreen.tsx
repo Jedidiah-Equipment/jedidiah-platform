@@ -134,7 +134,7 @@ function FieldNoteDetail({ note, onLeave }: { note: FieldNote; onLeave: () => vo
           <View className="flex-row gap-2">
             {open ? null : (
               <View className="flex-1">
-                <Button title="Delete" disabled={busy} onPress={() => void deleteNote()} />
+                <Button destructive title="Delete" disabled={busy} onPress={() => void deleteNote()} />
               </View>
             )}
             <View className="flex-1">

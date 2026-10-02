@@ -34,11 +34,16 @@ function button(label: string) {
   return result;
 }
 
-function editorButton(label: string) {
-  const dialog = [...document.querySelectorAll('[role="dialog"]')].find((item) =>
+function editorDialog() {
+  return [...document.querySelectorAll('[role="dialog"]')].find((item) =>
     item.textContent?.includes('Edit assignment'),
   );
-  const result = [...(dialog?.querySelectorAll('button') ?? [])].find((item) => item.textContent?.trim() === label);
+}
+
+function editorButton(label: string) {
+  const result = [...(editorDialog()?.querySelectorAll('button') ?? [])].find(
+    (item) => item.textContent?.trim() === label,
+  );
   if (!result) throw new Error(`Editor button missing: ${label}`);
   return result;
 }
@@ -138,9 +143,7 @@ it('shows a refused save inside the dialog and keeps the draft', async () => {
   await act(async () => editorButton('Apply').click());
   expect(onSave).toHaveBeenCalledOnce();
   await rerender({ onSave, error: new Error('Implement is on site on another Job') });
-  const editor = [...document.querySelectorAll('[role="dialog"]')].find((item) =>
-    item.textContent?.includes('Edit assignment'),
-  );
+  const editor = editorDialog();
   expect(editor?.textContent).toContain('Implement is on site on another Job');
   expect([...(editor?.querySelectorAll('input') ?? [])].some((input) => input.value === 'AFTAPKAR-2')).toBe(true);
 });

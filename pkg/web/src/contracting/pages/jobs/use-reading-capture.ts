@@ -1,22 +1,36 @@
-import { readingCaptureMultipartFields } from '@pkg/schema/contracting';
+import { useState } from 'react';
+import { toast } from 'sonner';
 import { useQueryInvalidation } from '@/contracting/hooks/use-query-invalidation.js';
-import { readingCapturePath } from '@/contracting/lib/contracting-http-paths.js';
+import { captureReading, type ReadingCaptureFields } from './capture-reading.js';
 
-type ReadingCaptureFields = Parameters<typeof readingCaptureMultipartFields>[0];
+const copy = {
+  arrival: { failed: 'Unable to capture arrival reading.', done: 'Arrival reading captured' },
+  departure: { failed: 'Unable to capture departure reading.', done: 'Departure reading captured' },
+} as const;
 
-export function useReadingCapture() {
+/** A capture dialog's meter photo, its refusal, and the submit that posts the reading. */
+export function useReadingCapture(role: keyof typeof copy) {
   const { invalidateJobs, invalidateReadings } = useQueryInvalidation();
-
-  return async (fields: ReadingCaptureFields, photo: File | null, fallbackMessage: string) => {
-    const body = new FormData();
-    for (const [name, value] of readingCaptureMultipartFields(fields)) body.append(name, value);
-    if (photo) body.append('photo', photo, photo.name);
-
-    const response = await fetch(readingCapturePath(), { method: 'POST', body, credentials: 'include' });
-    if (!response.ok) {
-      const payload = await response.json().catch(() => null);
-      throw new Error(typeof payload?.message === 'string' ? payload.message : fallbackMessage);
-    }
-    await Promise.all([invalidateJobs(), invalidateReadings()]);
+  const [photo, setPhoto] = useState<File | null>(null);
+  const [error, setError] = useState('');
+  return {
+    photo,
+    /** Spread onto `ReadingCaptureDetails`. */
+    details: { photo, onPhotoChange: setPhoto, error, onError: setError },
+    reset: () => {
+      setPhoto(null);
+      setError('');
+    },
+    submit: async (fields: Omit<ReadingCaptureFields, 'role' | 'capturedAt'>) => {
+      setError('');
+      try {
+        await captureReading({ ...fields, role, capturedAt: new Date().toISOString() }, photo, copy[role].failed);
+        await Promise.all([invalidateJobs(), invalidateReadings()]);
+      } catch (cause) {
+        setError(cause instanceof Error ? cause.message : copy[role].failed);
+        throw cause;
+      }
+      toast.success(copy[role].done);
+    },
   };
 }

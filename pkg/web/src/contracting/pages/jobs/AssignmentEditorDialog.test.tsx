@@ -1,7 +1,7 @@
 /** @vitest-environment jsdom */
 
 import type { Assignment } from '@pkg/schema/contracting';
-import { act } from 'react';
+import { act, type ComponentProps } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, expect, it, vi } from 'vitest';
 import { z } from 'zod';
@@ -34,14 +34,25 @@ function button(label: string) {
   return result;
 }
 
-async function mount() {
+function editorButton(label: string) {
+  const dialog = [...document.querySelectorAll('[role="dialog"]')].find((item) =>
+    item.textContent?.includes('Edit assignment'),
+  );
+  const result = [...(dialog?.querySelectorAll('button') ?? [])].find((item) => item.textContent?.trim() === label);
+  if (!result) throw new Error(`Editor button missing: ${label}`);
+  return result;
+}
+
+type EditorProps = Partial<ComponentProps<typeof AssignmentEditorDialog>>;
+
+async function mount(props: EditorProps = {}) {
   const container = document.createElement('div');
   document.body.append(container);
   const root = createRoot(container);
   roots.push(root);
   const captureArrival = vi.fn(async () => undefined);
   const applyAssignment = vi.fn(async (_draft: { implementId: string; driverUserId: string }) => undefined);
-  await act(async () => {
+  const render = (overrides: EditorProps = {}) =>
     root.render(
       <CreateEntityDialog
         open
@@ -63,13 +74,15 @@ async function mount() {
             driverOptions={[{ value: 'driver-1', label: 'Andile S' }]}
             onSave={applyAssignment}
             submitLabel="Apply"
+            {...props}
+            {...overrides}
           />
         )}
       </CreateEntityDialog>,
     );
-  });
+  await act(async () => render());
   await act(async () => button('Edit implement and driver for BEL14-1').click());
-  return { captureArrival, applyAssignment };
+  return { captureArrival, applyAssignment, rerender: (overrides: EditorProps) => act(async () => render(overrides)) };
 }
 
 async function chooseImplement(code: string) {
@@ -92,7 +105,7 @@ async function chooseImplement(code: string) {
 it('applies the assignment draft without submitting the parent arrival form', async () => {
   const { captureArrival, applyAssignment } = await mount();
   await chooseImplement('AFTAPKAR-2');
-  await act(async () => button('Apply').click());
+  await act(async () => editorButton('Apply').click());
   expect(applyAssignment).toHaveBeenCalledWith({ implementId: 'implement-2', driverUserId: 'driver-1' });
   expect(captureArrival).not.toHaveBeenCalled();
   await act(async () => button('Save').click());
@@ -102,10 +115,32 @@ it('applies the assignment draft without submitting the parent arrival form', as
 it('discards cancelled edits and opens again with the current assignment', async () => {
   const { captureArrival, applyAssignment } = await mount();
   await chooseImplement('No implement');
-  await act(async () => button('Cancel').click());
+  await act(async () => editorButton('Cancel').click());
   expect(applyAssignment).not.toHaveBeenCalled();
   expect(captureArrival).not.toHaveBeenCalled();
   await act(async () => button('Edit implement and driver for BEL14-1').click());
   expect([...document.querySelectorAll('input')].some((input) => input.value === 'AFTAPKAR-1')).toBe(true);
-  expect(button('Apply').disabled).toBe(true);
+  expect(editorButton('Apply').disabled).toBe(true);
+});
+
+it('keeps the submit disabled until the pick lists are ready', async () => {
+  await mount({ canSave: false });
+  await chooseImplement('AFTAPKAR-2');
+  expect(editorButton('Apply').disabled).toBe(true);
+});
+
+it('shows a refused save inside the dialog and keeps the draft', async () => {
+  const onSave = vi.fn(async () => {
+    throw new Error('Implement is on site on another Job');
+  });
+  const { rerender } = await mount({ onSave });
+  await chooseImplement('AFTAPKAR-2');
+  await act(async () => editorButton('Apply').click());
+  expect(onSave).toHaveBeenCalledOnce();
+  await rerender({ onSave, error: new Error('Implement is on site on another Job') });
+  const editor = [...document.querySelectorAll('[role="dialog"]')].find((item) =>
+    item.textContent?.includes('Edit assignment'),
+  );
+  expect(editor?.textContent).toContain('Implement is on site on another Job');
+  expect([...(editor?.querySelectorAll('input') ?? [])].some((input) => input.value === 'AFTAPKAR-2')).toBe(true);
 });

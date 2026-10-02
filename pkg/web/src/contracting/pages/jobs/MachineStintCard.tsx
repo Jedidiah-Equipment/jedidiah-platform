@@ -31,8 +31,10 @@ import { useTRPC } from '@/lib/trpc.js';
 import { cn } from '@/lib/utils.js';
 import { AddMeasureDialog } from './AddMeasureDialog.js';
 import { AssignmentEditDialog } from './AssignmentEditDialog.js';
-import { useMachines } from './machines-context.js';
+import type { JobSheet, MachineDialog } from './types.js';
 import { useJobWrite } from './use-job-write.js';
+
+type Opens = { onOpen: (dialog: MachineDialog) => void };
 
 type DotTone = 'done' | 'current' | 'empty';
 
@@ -104,15 +106,14 @@ function IconAction({
   );
 }
 
-function ReadingActions({ reading, stint }: { reading: JobReading; stint: Assignment }) {
-  const { open } = useMachines();
+function ReadingActions({ reading, stint, onOpen }: { reading: JobReading; stint: Assignment } & Opens) {
   const role = reading.role === 'arrival' ? 'arrival' : 'departure';
   if (!reading.needsALook.length)
     return (
       <IconAction
         icon={IconEye}
         label={`View ${role} reading`}
-        onClick={() => open({ kind: 'reading', stintId: stint.id, role })}
+        onClick={() => onOpen({ kind: 'reading', stintId: stint.id, role })}
       />
     );
   return reading.needsALook.map((kind) => (
@@ -120,7 +121,7 @@ function ReadingActions({ reading, stint }: { reading: JobReading; stint: Assign
       icon={kind === 'missing-photo' ? IconPhotoOff : IconAlertTriangle}
       key={kind}
       label={`Review ${role} · ${readingAttentionLabels[kind]}`}
-      onClick={() => open({ kind: 'reading', stintId: stint.id, role })}
+      onClick={() => onOpen({ kind: 'reading', stintId: stint.id, role })}
       tone={kind === 'disputed' ? 'danger' : 'warning'}
     />
   ));
@@ -135,14 +136,13 @@ function ReadingDetail({ reading }: { reading: JobReading }) {
   );
 }
 
-function GapAction({ stint }: { stint: Assignment }) {
-  const { sheet, open } = useMachines();
+function GapAction({ stint, sheet, onOpen }: { stint: Assignment; sheet: JobSheet } & Opens) {
   if (stint.gapFlag)
     return sheet.can('resolveGaps') && judgeAssignmentAction('resolveGap', stint).allowed ? (
       <IconAction
         icon={IconAlertTriangle}
         label={`Resolve gap · ${formatHours(stint.gapHours ?? 0)}`}
-        onClick={() => open({ kind: 'gap', stintId: stint.id })}
+        onClick={() => onOpen({ kind: 'gap', stintId: stint.id })}
         tone="warning"
       />
     ) : (
@@ -184,8 +184,12 @@ export function stintNeedsALook(stint: Assignment): boolean {
   return stint.gapFlag || !!stint.arrival?.needsALook.length || !!stint.departure?.needsALook.length;
 }
 
-export function MachineStintCard({ stint, stintNumber }: { stint: Assignment; stintNumber: number }) {
-  const { sheet, open } = useMachines();
+export function MachineStintCard({
+  stint,
+  stintNumber,
+  sheet,
+  onOpen,
+}: { stint: Assignment; stintNumber: number; sheet: JobSheet } & Opens) {
   const trpc = useTRPC();
   const write = useJobWrite();
   const travel = useMutation(
@@ -250,14 +254,14 @@ export function MachineStintCard({ stint, stintNumber }: { stint: Assignment; st
             actions={
               stint.arrival ? (
                 <>
-                  <ReadingActions reading={stint.arrival} stint={stint} />
-                  <GapAction stint={stint} />
+                  <ReadingActions reading={stint.arrival} stint={stint} onOpen={onOpen} />
+                  <GapAction stint={stint} sheet={sheet} onOpen={onOpen} />
                 </>
               ) : sheet.can('capture') ? (
                 <IconAction
                   icon={IconPlayerPlay}
                   label="Start — capture arrival"
-                  onClick={() => open({ kind: 'arrival', stintId: stint.id })}
+                  onClick={() => onOpen({ kind: 'arrival', stintId: stint.id })}
                 />
               ) : null
             }
@@ -268,12 +272,12 @@ export function MachineStintCard({ stint, stintNumber }: { stint: Assignment; st
           <TimelineRow
             actions={
               stint.departure ? (
-                <ReadingActions reading={stint.departure} stint={stint} />
+                <ReadingActions reading={stint.departure} stint={stint} onOpen={onOpen} />
               ) : onSite && sheet.can('capture') ? (
                 <IconAction
                   icon={IconPlayerStop}
                   label="Stop — capture departure"
-                  onClick={() => open({ kind: 'departure', stintId: stint.id })}
+                  onClick={() => onOpen({ kind: 'departure', stintId: stint.id })}
                 />
               ) : null
             }

@@ -121,7 +121,6 @@ function FieldNoteDetail({ note, onLeave }: { note: FieldNote; onLeave: () => vo
             className="min-h-28"
             textAlignVertical="top"
           />
-          <Button title="Delete" disabled={busy} onPress={() => void deleteNote()} />
         </ScrollView>
         <View
           className="gap-2 border-t border-border bg-background px-4 pt-3"
@@ -132,17 +131,26 @@ function FieldNoteDetail({ note, onLeave }: { note: FieldNote; onLeave: () => vo
               {error}
             </Text>
           ) : null}
-          <Button
-            primary={open}
-            title={open ? 'Close' : 'Reopen'}
-            disabled={busy}
-            onPress={() =>
-              void act(
-                () => (open ? notes.close(note.id) : notes.reopen(note.id)),
-                'The Field Note could not be updated. Try again.',
-              )
-            }
-          />
+          <View className="flex-row gap-2">
+            {open ? null : (
+              <View className="flex-1">
+                <Button title="Delete" disabled={busy} onPress={() => void deleteNote()} />
+              </View>
+            )}
+            <View className="flex-1">
+              <Button
+                primary={open}
+                title={open ? 'Close' : 'Reopen'}
+                disabled={busy}
+                onPress={() =>
+                  void act(
+                    () => (open ? notes.close(note.id) : notes.reopen(note.id)),
+                    'The Field Note could not be updated. Try again.',
+                  )
+                }
+              />
+            </View>
+          </View>
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>

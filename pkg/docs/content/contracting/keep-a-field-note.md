@@ -13,4 +13,4 @@ When you are back online:
 2. Check **Read At**. It takes the time the photo was taken; set it to when the meter was read if that differs.
 3. Save the reading, then open the note in **Notes** and choose **Close**.
 
-The orange dot on **Notes** shows while any note is Open. Open a note to add or remove photos, change its description, **Reopen** it, or **Delete** it; deleting a note leaves its photos in your gallery. Each person who signs in on the phone sees only their own notes.
+The orange dot on **Notes** shows while any note is Open. Open a note to add or remove photos or change its description. A Closed note shows **Reopen** and **Delete**; deleting a note leaves its photos in your gallery. Each person who signs in on the phone sees only their own notes.

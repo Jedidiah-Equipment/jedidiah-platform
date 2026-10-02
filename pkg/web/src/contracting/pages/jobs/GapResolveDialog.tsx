@@ -3,7 +3,6 @@ import { splitGap } from '@pkg/domain/contracting';
 import { type Assignment, GapResolveInput } from '@pkg/schema/contracting';
 import { useMutation } from '@tanstack/react-query';
 import { CreateEntityDialog } from '@/components/form/index.js';
-import { Input } from '@/components/ui/input.js';
 import { MachineDialogTitle } from '@/contracting/components/MachineDialogTitle.js';
 import { useQueryInvalidation } from '@/contracting/hooks/use-query-invalidation.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
@@ -36,42 +35,34 @@ export function GapResolveDialog({ stint, onClose }: { stint: Assignment | null;
     >
       {(form) => (
         <>
-          <form.Subscribe selector={(state) => state.values}>
-            {(values) => (
-              <>
-                <label className="space-y-1" htmlFor="gap-travel-hours">
-                  Travel Hours
-                  <Input
-                    id="gap-travel-hours"
-                    type="number"
-                    step="0.1"
-                    min="0"
-                    value={values.travelHours}
-                    onChange={(event) => {
-                      const split = splitGap(gapHours, Number(event.target.value));
-                      form.setFieldValue('travelHours', split.travelHours);
-                      form.setFieldValue('unaccountedHours', split.unaccountedHours);
-                    }}
-                  />
-                </label>
-                <label className="space-y-1" htmlFor="gap-unaccounted-hours">
-                  Unaccounted Interval
-                  <Input
-                    id="gap-unaccounted-hours"
-                    type="number"
-                    step="0.1"
-                    min="0"
-                    value={values.unaccountedHours}
-                    onChange={(event) => {
-                      const split = splitGap(gapHours, gapHours - Number(event.target.value));
-                      form.setFieldValue('travelHours', split.travelHours);
-                      form.setFieldValue('unaccountedHours', split.unaccountedHours);
-                    }}
-                  />
-                </label>
-              </>
-            )}
-          </form.Subscribe>
+          <form.AppField
+            name="travelHours"
+            listeners={{
+              onChange: ({ value }) =>
+                form.setFieldValue('unaccountedHours', splitGap(gapHours, value).unaccountedHours, {
+                  dontRunListeners: true,
+                }),
+              onBlur: ({ value }) =>
+                form.setFieldValue('travelHours', splitGap(gapHours, value).travelHours, { dontRunListeners: true }),
+            }}
+          >
+            {(field) => <field.NumberField label="Travel Hours" decimals={1} min={0} emptyValue={0} />}
+          </form.AppField>
+          <form.AppField
+            name="unaccountedHours"
+            listeners={{
+              onChange: ({ value }) =>
+                form.setFieldValue('travelHours', splitGap(gapHours, gapHours - value).travelHours, {
+                  dontRunListeners: true,
+                }),
+              onBlur: ({ value }) =>
+                form.setFieldValue('unaccountedHours', splitGap(gapHours, gapHours - value).unaccountedHours, {
+                  dontRunListeners: true,
+                }),
+            }}
+          >
+            {(field) => <field.NumberField label="Unaccounted Interval" decimals={1} min={0} emptyValue={0} />}
+          </form.AppField>
           <form.AppField name="reason">{(field) => <field.TextareaField label="Reason" />}</form.AppField>
         </>
       )}

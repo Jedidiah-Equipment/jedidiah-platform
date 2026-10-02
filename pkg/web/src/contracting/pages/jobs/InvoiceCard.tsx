@@ -9,7 +9,7 @@ import type { JobSheet } from './types.js';
 
 export function InvoiceCard({ job, sheet }: { job: JobDetail; sheet: JobSheet }) {
   const [stamping, setStamping] = useState(false);
-  if (!sheet.seesMoney || (job.status !== 'priced' && job.status !== 'invoiced')) return null;
+  if (!sheet.showsInvoice) return null;
   return (
     <section aria-label="Invoice">
       <Card>

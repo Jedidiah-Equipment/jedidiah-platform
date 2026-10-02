@@ -1,3 +1,4 @@
+import { formatDate, formatNumber } from '@pkg/domain';
 import { canComplete, completionGateReasons, plannedNeverArrived, suggestJobDates } from '@pkg/domain/contracting';
 import { DateOnlyIso } from '@pkg/schema';
 import { JobCompleteInput, type JobDetail, JobPatchInput, Litres } from '@pkg/schema/contracting';
@@ -7,7 +8,7 @@ import { toast } from 'sonner';
 import { z } from 'zod';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { RemoveEntityButton } from '@/components/common/RemoveEntityButton.js';
-import { AutosaveStatus, useAppForm, useAutosaveForm } from '@/components/form/index.js';
+import { AutosaveStatus, useAppForm, useAutosaveForm, useTypedAppFormContext } from '@/components/form/index.js';
 import { HelpLink } from '@/components/help/index.js';
 import { Button } from '@/components/ui/button.js';
 import { Card, CardAction, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card.js';
@@ -23,8 +24,37 @@ import {
 import { MachineDialogTitle } from '@/contracting/components/MachineDialogTitle.js';
 import { useQueryInvalidation } from '@/contracting/hooks/use-query-invalidation.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
+import { getApiErrorAppCode } from '@/lib/api-errors.js';
 import { useTRPC } from '@/lib/trpc.js';
-import { type JobSheet, SignOffValues, toCompleteInput } from './types.js';
+import type { JobSheet } from './types.js';
+
+const signOffFieldDefaults = { startDate: '', endDate: '', dieselLitres: 0, notes: '' };
+
+function SignOffFields({
+  onDateCommit,
+  dieselEditable = true,
+}: {
+  onDateCommit: (field: 'startDate' | 'endDate') => void;
+  dieselEditable?: boolean;
+}) {
+  const form = useTypedAppFormContext({ defaultValues: signOffFieldDefaults });
+  return (
+    <>
+      <form.AppField name="startDate">
+        {(field) => <field.DatePickerField label="Start" onValueCommit={() => onDateCommit('startDate')} />}
+      </form.AppField>
+      <form.AppField name="endDate">
+        {(field) => <field.DatePickerField label="End" onValueCommit={() => onDateCommit('endDate')} />}
+      </form.AppField>
+      <form.AppField name="dieselLitres">
+        {(field) => (
+          <field.NumberField label="Diesel supplied (litres)" decimals={2} min={0} disabled={!dieselEditable} />
+        )}
+      </form.AppField>
+      <form.AppField name="notes">{(field) => <field.TextareaField label="Site notes" />}</form.AppField>
+    </>
+  );
+}
 
 export function SignOffCard({ job, sheet }: { job: JobDetail; sheet: JobSheet }) {
   return (
@@ -89,7 +119,7 @@ function DraftSignOffDetails({ job, sheet }: { job: JobDetail; sheet: JobSheet }
         setConfirm(false);
       },
       onError: async (error) => {
-        if ((error as { data?: { appCode?: string } }).data?.appCode === 'contracting_job.stint_not_planned') {
+        if (getApiErrorAppCode(error) === 'contracting_job.stint_not_planned') {
           toast.error('The planned machines changed — reloading');
           await invalidateJobs();
         } else showError(error, 'Unable to complete Job.');
@@ -97,21 +127,17 @@ function DraftSignOffDetails({ job, sheet }: { job: JobDetail; sheet: JobSheet }
     }),
   );
   const gate = canComplete(job.assignments);
+  const completeAction = sheet.action('complete');
   return (
     <>
       <CardContent className="space-y-4">
-        <div className="grid gap-3 sm:grid-cols-2">
-          <form.AppField name="startDate">
-            {(field) => <field.DatePickerField label="Start" onValueCommit={() => setStartEdited(true)} />}
-          </form.AppField>
-          <form.AppField name="endDate">
-            {(field) => <field.DatePickerField label="End" onValueCommit={() => setEndEdited(true)} />}
-          </form.AppField>
-          <form.AppField name="dieselLitres">
-            {(field) => <field.NumberField label="Diesel supplied (litres)" decimals={2} min={0} />}
-          </form.AppField>
-          <form.AppField name="notes">{(field) => <field.TextareaField label="Site notes" />}</form.AppField>
-        </div>
+        <form.AppForm>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <SignOffFields
+              onDateCommit={(field) => (field === 'startDate' ? setStartEdited(true) : setEndEdited(true))}
+            />
+          </div>
+        </form.AppForm>
         {planned.length ? (
           <section className="space-y-2">
             <h3 className="font-medium">Planned, never arrived</h3>
@@ -150,22 +176,25 @@ function DraftSignOffDetails({ job, sheet }: { job: JobDetail; sheet: JobSheet }
             <>
               <CardFooter className="justify-end gap-3">
                 {!gate.ok ? <p className="text-destructive">{completionGateReasons(gate).join(' ')}</p> : null}
-                <Button
-                  className="shrink-0"
-                  disabled={!sheet.can('complete') || !gate.ok || !input.success}
-                  title={sheet.refusal('complete')}
-                  onClick={() => setConfirm(true)}
-                >
-                  Complete
-                </Button>
+                {completeAction ? (
+                  <Button
+                    className="shrink-0"
+                    disabled={completeAction.disabled || !gate.ok || !input.success}
+                    title={completeAction.title}
+                    onClick={() => setConfirm(true)}
+                  >
+                    Complete
+                  </Button>
+                ) : null}
               </CardFooter>
               <Dialog open={confirm} onOpenChange={setConfirm}>
                 <DialogContent>
                   <DialogHeader>
                     <DialogTitle>Complete Job?</DialogTitle>
                     <DialogDescription>
-                      Start {values.startDate} · End {values.endDate} · Diesel {values.dieselLitres} litres.{' '}
-                      {plannedIds.length} planned machines will be removed.
+                      Start {formatDate(values.startDate, 'short')} · End {formatDate(values.endDate, 'short')} · Diesel{' '}
+                      {formatNumber(values.dieselLitres, { decimals: 2 })} litres. {formatNumber(plannedIds.length)}{' '}
+                      planned machines will be removed.
                     </DialogDescription>
                   </DialogHeader>
                   <DialogFooter>
@@ -173,8 +202,7 @@ function DraftSignOffDetails({ job, sheet }: { job: JobDetail; sheet: JobSheet }
                     <Button
                       disabled={!input.success || complete.isPending}
                       onClick={() => {
-                        if (input.success)
-                          complete.mutate(toCompleteInput(job.id, SignOffValues.parse(values), plannedIds));
+                        if (input.success) complete.mutate(input.data);
                       }}
                     >
                       Complete
@@ -219,20 +247,11 @@ function SavedSignOffDetails({
   return (
     <form {...formProps} className="space-y-3">
       <AutosaveStatus state={autosave.state} onRetry={() => void autosave.retry()} />
-      <fieldset disabled={!editable} className="grid gap-3 sm:grid-cols-2">
-        <form.AppField name="startDate">
-          {(field) => <field.DatePickerField label="Start" onValueCommit={autosave.commit} />}
-        </form.AppField>
-        <form.AppField name="endDate">
-          {(field) => <field.DatePickerField label="End" onValueCommit={autosave.commit} />}
-        </form.AppField>
-        <form.AppField name="dieselLitres">
-          {(field) => (
-            <field.NumberField label="Diesel supplied (litres)" decimals={2} min={0} disabled={!dieselEditable} />
-          )}
-        </form.AppField>
-        <form.AppField name="notes">{(field) => <field.TextareaField label="Site notes" />}</form.AppField>
-      </fieldset>
+      <form.AppForm>
+        <fieldset disabled={!editable} className="grid gap-3 sm:grid-cols-2">
+          <SignOffFields onDateCommit={() => autosave.commit()} dieselEditable={dieselEditable} />
+        </fieldset>
+      </form.AppForm>
     </form>
   );
 }

@@ -32,6 +32,7 @@ function hasAttention(stint: Assignment): boolean {
 
 export function MachinesCard({ job, sheet }: { job: JobDetail; sheet: JobSheet }) {
   const trpc = useTRPC();
+  const planAction = sheet.action('assign');
   const [planning, setPlanning] = useState(false);
   const [reading, setReading] = useState<SelectedReading | null>(null);
   const [arrival, setArrival] = useState<Assignment | null>(null);
@@ -91,9 +92,9 @@ export function MachinesCard({ job, sheet }: { job: JobDetail; sheet: JobSheet }
       <Card>
         <CardHeader>
           <CardTitle>Machines</CardTitle>
-          {sheet.holds('assign') ? (
+          {planAction ? (
             <CardAction>
-              <Button disabled={!sheet.can('assign')} title={sheet.refusal('assign')} onClick={() => setPlanning(true)}>
+              <Button {...planAction} onClick={() => setPlanning(true)}>
                 Plan machine
               </Button>
             </CardAction>

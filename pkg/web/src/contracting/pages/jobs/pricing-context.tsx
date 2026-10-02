@@ -6,7 +6,6 @@ import { useQueryInvalidation } from '@/contracting/hooks/use-query-invalidation
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { getApiErrorAppCode } from '@/lib/api-errors.js';
 import { useTRPC } from '@/lib/trpc.js';
-import type { ChargeLineMutations } from './ChargeLineEditing.js';
 
 export function usePricingMutations() {
   const trpc = useTRPC();
@@ -48,15 +47,7 @@ export function usePricingMutations() {
 export type PricingMutations = ReturnType<typeof usePricingMutations>;
 
 /** What every Pricing cell reads: the Job, whether this person prices it, the Rate Card, and the writes. */
-type Pricing = {
-  job: JobDetail;
-  editable: boolean;
-  chargeEditable: boolean;
-  chargeAmountEditable: boolean;
-  rates: readonly Rate[];
-  mutations: PricingMutations;
-  chargeLineMutations: ChargeLineMutations;
-};
+type Pricing = { job: JobDetail; editable: boolean; rates: readonly Rate[]; mutations: PricingMutations };
 
 export const PricingContext = createContext<Pricing | null>(null);
 

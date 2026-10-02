@@ -3,114 +3,59 @@ import { stintAmount } from '@pkg/domain/contracting';
 import { type Assignment, type DiscountKind, JobDiscountInput } from '@pkg/schema/contracting';
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
-import { RemoveEntityButton } from '@/components/common/RemoveEntityButton.js';
 import { SearchableCombobox } from '@/components/common/SearchableCombobox.js';
 import type { DataTableColumnDef } from '@/components/data-table/features.js';
 import { Badge } from '@/components/ui/badge.js';
 import { Button } from '@/components/ui/button.js';
-import { ChargeLineDescription } from './ChargeLineEditing.js';
 import { MoneyInput } from './MoneyInput.js';
 import {
+  type AdjustmentRow,
   formatQuantity,
   formulaLabel,
+  type MachinePricingRow,
   NO_CHARGE,
-  type PricingRow,
   rateCardDrift,
   rateSelectOptions,
   rateSelectValue,
 } from './pricing.js';
 import { usePricing } from './pricing-context.js';
 
-const amountColumn: DataTableColumnDef<PricingRow> = {
-  id: 'amount',
-  header: 'Amount',
-  meta: { cellClassName: 'text-right', headerClassName: 'text-right' },
-  cell: ({ row }) => <AmountCell row={row.original} />,
-};
+const rightAligned = { cellClassName: 'text-right', headerClassName: 'text-right' };
 
-export const machinePricingColumns: DataTableColumnDef<PricingRow>[] = [
-  { id: 'line', header: 'Line', cell: ({ row }) => <LineCell row={row.original} /> },
-  { id: 'quantity', header: 'Hours', cell: ({ row }) => <QuantityCell row={row.original} /> },
+export const machinePricingColumns: DataTableColumnDef<MachinePricingRow>[] = [
+  { id: 'line', header: 'Line', cell: ({ row }) => <MachineLineCell row={row.original} /> },
+  { id: 'quantity', header: 'Hours', cell: ({ row }) => <StintHoursCell row={row.original} /> },
   { id: 'measures', header: 'Measures', cell: ({ row }) => <MeasuresCell row={row.original} /> },
-  { id: 'rate', header: 'Rate / price', cell: ({ row }) => <RateCell row={row.original} /> },
-  amountColumn,
+  { id: 'rate', header: 'Rate / price', cell: ({ row }) => <StintRateCell row={row.original} /> },
+  { id: 'amount', header: 'Amount', meta: rightAligned, cell: ({ row }) => <MachineAmountCell row={row.original} /> },
 ];
+export const machinePricingRowId = (row: MachinePricingRow) =>
+  row.kind === 'stint' ? row.stint.id : `subtotal-${row.machineCode}`;
 
-export const chargeLinePricingColumns: DataTableColumnDef<PricingRow>[] = [
-  { id: 'line', header: 'Line', cell: ({ row }) => <LineCell row={row.original} /> },
-  { id: 'rate', header: 'Type', cell: ({ row }) => <RateCell row={row.original} /> },
-  amountColumn,
+export const adjustmentPricingColumns: DataTableColumnDef<AdjustmentRow>[] = [
+  { id: 'line', header: 'Adjustment', cell: ({ row }) => <AdjustmentLineCell row={row.original} /> },
+  { id: 'quantity', header: 'Quantity', cell: ({ row }) => <AdjustmentQuantityCell row={row.original} /> },
+  { id: 'rate', header: 'Rate / price', cell: ({ row }) => <AdjustmentRateCell row={row.original} /> },
+  {
+    id: 'amount',
+    header: 'Amount',
+    meta: rightAligned,
+    cell: ({ row }) => <AdjustmentAmountCell row={row.original} />,
+  },
 ];
+export const adjustmentRowId = (row: AdjustmentRow) => row.kind;
 
-export const adjustmentPricingColumns: DataTableColumnDef<PricingRow>[] = [
-  { id: 'line', header: 'Adjustment', cell: ({ row }) => <LineCell row={row.original} /> },
-  { id: 'quantity', header: 'Quantity', cell: ({ row }) => <QuantityCell row={row.original} /> },
-  { id: 'rate', header: 'Rate / price', cell: ({ row }) => <RateCell row={row.original} /> },
-  amountColumn,
-];
-
-export const pricingRowId = (row: PricingRow) => {
-  switch (row.kind) {
-    case 'stint':
-      return row.stint.id;
-    case 'subtotal':
-      return `subtotal-${row.machineCode}`;
-    case 'charge-line':
-      return row.line.id;
-    default:
-      return row.kind;
-  }
-};
-
-function LineCell({ row }: { row: PricingRow }) {
-  const { chargeEditable, chargeLineMutations } = usePricing();
-  switch (row.kind) {
-    case 'stint':
-      return (
-        <span className={row.firstOfMachine ? 'font-medium' : 'pl-4'}>
-          {row.stint.machineCode}
-          {row.stint.implementCode ? ` · ${row.stint.implementCode}` : ''}
-        </span>
-      );
-    case 'subtotal':
-      return <span>{row.machineCode} subtotal</span>;
-    case 'charge-line':
-      return (
-        <div className="flex min-w-44 items-center gap-2">
-          <div className="min-w-0 flex-1">
-            <ChargeLineDescription
-              key={row.line.id}
-              line={row.line}
-              editable={chargeEditable}
-              onSave={(description) => chargeLineMutations.patch.mutate({ id: row.line.id, description })}
-            />
-          </div>
-          {chargeEditable ? (
-            <RemoveEntityButton
-              title="Remove Charge Line"
-              description="Remove this Charge Line?"
-              triggerIconOnly
-              triggerLabel={`Remove ${row.line.description}`}
-              triggerSize="icon-sm"
-              isPending={chargeLineMutations.remove.isPending}
-              onConfirm={() => chargeLineMutations.remove.mutate({ id: row.line.id })}
-            />
-          ) : null}
-        </div>
-      );
-    case 'diesel':
-      return (
-        <span className="flex items-center gap-2">
-          Diesel supplied <Badge variant="outline">VAT-exempt</Badge>
-        </span>
-      );
-    case 'discount':
-      return <span>Discount</span>;
-  }
+function MachineLineCell({ row }: { row: MachinePricingRow }) {
+  if (row.kind === 'subtotal') return <span>{row.machineCode} subtotal</span>;
+  return (
+    <span className={row.firstOfMachine ? 'font-medium' : 'pl-4'}>
+      {row.stint.machineCode}
+      {row.stint.implementCode ? ` · ${row.stint.implementCode}` : ''}
+    </span>
+  );
 }
 
-function QuantityCell({ row }: { row: PricingRow }) {
-  if (row.kind === 'diesel') return <span>{formatNumber(row.litres, { decimals: 2 })} L</span>;
+function StintHoursCell({ row }: { row: MachinePricingRow }) {
   if (row.kind !== 'stint') return null;
   const { stint } = row;
   return stint.billableHours !== null ? (
@@ -123,7 +68,7 @@ function QuantityCell({ row }: { row: PricingRow }) {
   ) : null;
 }
 
-function MeasuresCell({ row }: { row: PricingRow }) {
+function MeasuresCell({ row }: { row: MachinePricingRow }) {
   if (row.kind !== 'stint') return null;
   return row.stint.measures.length ? (
     <div className="flex min-w-32 flex-wrap gap-1">
@@ -138,52 +83,70 @@ function MeasuresCell({ row }: { row: PricingRow }) {
   );
 }
 
-function RateCell({ row }: { row: PricingRow }) {
-  const { job, editable, rates, mutations } = usePricing();
-  if (row.kind === 'charge-line') return <span className="text-muted-foreground text-xs">Fixed amount</span>;
-  if (row.kind === 'stint') {
-    const { stint } = row;
-    if (!editable)
-      return (
-        <span>{stint.pricing === null ? '—' : stint.pricing.kind === 'rate' ? stint.pricing.name : 'No charge'}</span>
-      );
-    const drift = rateCardDrift(rates, stint.pricing);
+function StintRateCell({ row }: { row: MachinePricingRow }) {
+  const { editable, rates, mutations } = usePricing();
+  if (row.kind !== 'stint') return null;
+  const { stint } = row;
+  if (!editable)
     return (
-      <div className="min-w-56 space-y-1">
-        <SearchableCombobox
-          inputId={`rate-${stint.id}`}
-          options={rateSelectOptions(rates, stint.pricing)}
-          placeholder="Choose a Rate…"
-          value={rateSelectValue(stint.pricing)}
-          onValueChange={(value) =>
-            value === ''
-              ? mutations.clearRate.mutate({ assignmentId: stint.id })
-              : mutations.setRate.mutate({ assignmentId: stint.id, rateId: value === NO_CHARGE ? null : value })
-          }
-        />
-        {drift ? <p className="text-muted-foreground text-xs">{drift}</p> : null}
-      </div>
+      <span>{stint.pricing === null ? '—' : stint.pricing.kind === 'rate' ? stint.pricing.name : 'No charge'}</span>
     );
-  }
-  if (row.kind === 'diesel') {
-    if (!editable) return row.unitPrice === null ? <span>—</span> : <span>{formatCurrency(row.unitPrice)} / L</span>;
-    return (
-      <div className="grid grid-cols-[4.5rem_11rem] items-center gap-2">
-        <MoneyInput
-          className="col-start-2 w-full"
-          label="Diesel price per litre"
-          suffix="per litre"
-          value={row.unitPrice}
-          onCommit={(unitPrice) => mutations.setDiesel.mutate({ jobId: job.id, unitPrice })}
-        />
-      </div>
-    );
-  }
-  if (row.kind === 'discount') return <DiscountInput row={row} />;
-  return null;
+  const drift = rateCardDrift(rates, stint.pricing);
+  return (
+    <div className="min-w-56 space-y-1">
+      <SearchableCombobox
+        inputId={`rate-${stint.id}`}
+        options={rateSelectOptions(rates, stint.pricing)}
+        placeholder="Choose a Rate…"
+        value={rateSelectValue(stint.pricing)}
+        onValueChange={(value) =>
+          value === ''
+            ? mutations.clearRate.mutate({ assignmentId: stint.id })
+            : mutations.setRate.mutate({ assignmentId: stint.id, rateId: value === NO_CHARGE ? null : value })
+        }
+      />
+      {drift ? <p className="text-muted-foreground text-xs">{drift}</p> : null}
+    </div>
+  );
 }
 
-function DiscountInput({ row }: { row: Extract<PricingRow, { kind: 'discount' }> }) {
+function MachineAmountCell({ row }: { row: MachinePricingRow }) {
+  if (row.kind === 'subtotal') return <span>{formatCurrency(row.amount)}</span>;
+  return <StintAmount stint={row.stint} />;
+}
+
+function AdjustmentLineCell({ row }: { row: AdjustmentRow }) {
+  if (row.kind === 'discount') return <span>Discount</span>;
+  return (
+    <span className="flex items-center gap-2">
+      Diesel supplied <Badge variant="outline">VAT-exempt</Badge>
+    </span>
+  );
+}
+
+function AdjustmentQuantityCell({ row }: { row: AdjustmentRow }) {
+  if (row.kind !== 'diesel') return null;
+  return <span>{formatNumber(row.litres, { decimals: 2 })} L</span>;
+}
+
+function AdjustmentRateCell({ row }: { row: AdjustmentRow }) {
+  const { job, editable, mutations } = usePricing();
+  if (row.kind === 'discount') return <DiscountInput row={row} />;
+  if (!editable) return row.unitPrice === null ? <span>—</span> : <span>{formatCurrency(row.unitPrice)} / L</span>;
+  return (
+    <div className="grid grid-cols-[4.5rem_11rem] items-center gap-2">
+      <MoneyInput
+        className="col-start-2 w-full"
+        label="Diesel price per litre"
+        suffix="per litre"
+        value={row.unitPrice}
+        onCommit={(unitPrice) => mutations.setDiesel.mutate({ jobId: job.id, unitPrice })}
+      />
+    </div>
+  );
+}
+
+function DiscountInput({ row }: { row: Extract<AdjustmentRow, { kind: 'discount' }> }) {
   const { job, editable, mutations } = usePricing();
   const savedKind = row.discount?.kind;
   const savedValue = row.discount?.value ?? null;
@@ -253,45 +216,23 @@ function DiscountInput({ row }: { row: Extract<PricingRow, { kind: 'discount' }>
   );
 }
 
-function AmountCell({ row }: { row: PricingRow }) {
-  const { job, editable, chargeAmountEditable, mutations, chargeLineMutations } = usePricing();
-  switch (row.kind) {
-    case 'stint':
-      return <StintAmount stint={row.stint} />;
-    case 'subtotal':
-      return <span>{formatCurrency(row.amount)}</span>;
-    case 'charge-line':
-      return chargeAmountEditable ? (
-        <div className="flex justify-end [&_input]:text-right">
-          <MoneyInput
-            label={`Amount for ${row.line.description}`}
-            value={row.line.amount}
-            onCommit={(amount) => chargeLineMutations.patch.mutate({ id: row.line.id, amount })}
-          />
-        </div>
-      ) : row.line.amount === null ? (
-        <span className="text-destructive">Needs an amount</span>
-      ) : (
-        <span>{formatCurrency(row.line.amount)}</span>
-      );
-    case 'diesel':
-      return (
-        <EditableAmount
-          amount={row.amount}
-          editable={editable && row.unitPrice !== null}
-          edited={row.edited}
-          formula={
-            row.unitPrice === null
-              ? null
-              : `${formatNumber(row.litres, { decimals: 2 })} L × ${formatCurrency(row.unitPrice)}`
-          }
-          label="Diesel amount"
-          onCommit={(amount) => mutations.setDiesel.mutate({ jobId: job.id, unitPrice: row.unitPrice, amount })}
-        />
-      );
-    case 'discount':
-      return row.discount ? <span>− {formatCurrency(row.discount.amount)}</span> : null;
-  }
+function AdjustmentAmountCell({ row }: { row: AdjustmentRow }) {
+  const { job, editable, mutations } = usePricing();
+  if (row.kind === 'discount') return row.discount ? <span>− {formatCurrency(row.discount.amount)}</span> : null;
+  return (
+    <EditableAmount
+      amount={row.amount}
+      editable={editable && row.unitPrice !== null}
+      edited={row.edited}
+      formula={
+        row.unitPrice === null
+          ? null
+          : `${formatNumber(row.litres, { decimals: 2 })} L × ${formatCurrency(row.unitPrice)}`
+      }
+      label="Diesel amount"
+      onCommit={(amount) => mutations.setDiesel.mutate({ jobId: job.id, unitPrice: row.unitPrice, amount })}
+    />
+  );
 }
 
 function StintAmount({ stint }: { stint: Assignment }) {

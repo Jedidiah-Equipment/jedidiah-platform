@@ -22,13 +22,14 @@ import {
 } from '@/components/ui/dialog.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { AddChargeLineDialog, useChargeLineMutations } from './ChargeLineEditing.js';
+import { ChargeLinesTable } from './ChargeLinesTable.js';
 import {
   adjustmentPricingColumns,
-  chargeLinePricingColumns,
+  adjustmentRowId,
   machinePricingColumns,
-  pricingRowId,
+  machinePricingRowId,
 } from './PricingCells.js';
-import { pricingRows } from './pricing.js';
+import { adjustmentRows, machinePricingRows } from './pricing.js';
 import { PricingContext, type PricingMutations, usePricingMutations } from './pricing-context.js';
 import type { JobSheet } from './types.js';
 
@@ -48,31 +49,21 @@ export function PricingCard({ job, sheet }: { job: JobDetail; sheet: JobSheet })
   useEffect(() => {
     if (hash === 'pricing') section.current?.scrollIntoView({ block: 'start' });
   }, [hash]);
-  const { machineRows, chargeRows, adjustmentRows } = useMemo(() => {
-    const pricedRows = pricingRows(job, { editable });
-    const machineRows = pricedRows.filter((row) => row.kind === 'stint' || row.kind === 'subtotal');
-    const chargeRows = pricedRows.filter((row) => row.kind === 'charge-line');
-    const adjustmentRows = pricedRows.filter((row) => row.kind === 'diesel' || row.kind === 'discount');
-    return { machineRows, chargeRows, adjustmentRows };
-  }, [job, editable]);
-  const machineTable = useDataTable({ columns: machinePricingColumns, data: machineRows, getRowId: pricingRowId });
-  const chargeTable = useDataTable({ columns: chargeLinePricingColumns, data: chargeRows, getRowId: pricingRowId });
+  const machineRows = useMemo(() => machinePricingRows(job.assignments), [job.assignments]);
+  const adjustments = useMemo(() => adjustmentRows(job, { editable }), [job, editable]);
+  const machineTable = useDataTable({
+    columns: machinePricingColumns,
+    data: machineRows,
+    getRowId: machinePricingRowId,
+  });
   const adjustmentTable = useDataTable({
     columns: adjustmentPricingColumns,
-    data: adjustmentRows,
-    getRowId: pricingRowId,
+    data: adjustments,
+    getRowId: adjustmentRowId,
   });
   const pricing = useMemo(
-    () => ({
-      job,
-      editable,
-      chargeEditable,
-      chargeAmountEditable,
-      rates: rates.data ?? [],
-      mutations,
-      chargeLineMutations,
-    }),
-    [job, editable, chargeEditable, chargeAmountEditable, rates.data, mutations, chargeLineMutations],
+    () => ({ job, editable, rates: rates.data ?? [], mutations }),
+    [job, editable, rates.data, mutations],
   );
   if (!sheet.seesMoney) return null;
   return (
@@ -118,7 +109,7 @@ export function PricingCard({ job, sheet }: { job: JobDetail; sheet: JobSheet })
                   getRowClassName={(row) => (row.kind === 'subtotal' ? 'bg-muted/40 font-medium' : undefined)}
                 />
               </div>
-              <div id="charge-lines" className="scroll-mt-4 space-y-2">
+              <div className="space-y-2">
                 <div className="flex items-center justify-between gap-3">
                   <h3 className="text-sm font-semibold">Charge lines</h3>
                   {addLineAction ? (
@@ -127,22 +118,21 @@ export function PricingCard({ job, sheet }: { job: JobDetail; sheet: JobSheet })
                     </Button>
                   ) : null}
                 </div>
-                <DataTable
-                  table={chargeTable}
-                  paginationMode="complete"
-                  total={chargeRows.length}
-                  hideGlobalFilter
-                  hideFooter
-                  emptyMessage="No Charge Lines."
+                <ChargeLinesTable
+                  lines={job.chargeLines}
+                  editable={chargeEditable}
+                  amountEditable={chargeAmountEditable}
+                  missingAmount="needs-amount"
+                  mutations={chargeLineMutations}
                 />
               </div>
-              {adjustmentRows.length ? (
+              {adjustments.length ? (
                 <div className="space-y-2">
                   <h3 className="text-sm font-semibold">Adjustments</h3>
                   <DataTable
                     table={adjustmentTable}
                     paginationMode="complete"
-                    total={adjustmentRows.length}
+                    total={adjustments.length}
                     hideGlobalFilter
                     hideFooter
                     emptyMessage="No adjustments."

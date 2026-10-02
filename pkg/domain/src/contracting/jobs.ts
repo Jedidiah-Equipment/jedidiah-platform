@@ -21,20 +21,12 @@ export const formatJobNumber = (code: number) => `${JOB_NUMBER_PREFIX}${String(c
 /** The Job code inside a Job Number such as CJOB-00037. */
 export const parseJobNumber = (jobNumber: string) => Number(jobNumber.slice(JOB_NUMBER_PREFIX.length));
 
-/** Contracting management works every Job; everyone else works only the Jobs they are Foreman on. */
-export function isContractingManagement(
-  access: Pick<UserAccessSummary, 'equipmentRole' | 'contractingRole'> | null | undefined,
-) {
-  return (
-    access?.equipmentRole === 'super-admin' ||
-    access?.contractingRole === 'contracting-admin' ||
-    access?.contractingRole === 'contracting-manager'
-  );
-}
-
-/** The money-free field Jobs projection is for operators, not every role that can read management Jobs. */
+/**
+ * The money-free field Jobs projection is for operators, not every role that can read management Jobs:
+ * whoever works every Job sees all of them, a Foreman his own.
+ */
 export function fieldJobAccessMode(access: UserAccessSummary | null | undefined): 'all' | 'own' | null {
-  if (isContractingManagement(access)) return 'all';
+  if (hasPermission(access, 'contracting_job:work-any')) return 'all';
   return hasPermission(access, 'contracting_job:read-own') ? 'own' : null;
 }
 

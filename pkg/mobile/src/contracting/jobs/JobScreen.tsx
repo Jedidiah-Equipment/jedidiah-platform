@@ -1,5 +1,5 @@
 import { formatHours } from '@pkg/domain';
-import { assignmentStateColorClassNames, judgeJobAction } from '@pkg/domain/contracting';
+import { assignmentStateColorClassNames, canOpenJobCards, judgeJobAction } from '@pkg/domain/contracting';
 import type { AssignmentState, FieldStint, JobCardVariant } from '@pkg/schema/contracting';
 import { IconPlayerPlay, IconPlayerStop, IconPlus, type Icon as TablerIcon } from '@tabler/icons-react-native';
 import { type Href, router, useLocalSearchParams } from 'expo-router';
@@ -14,7 +14,7 @@ import { Text } from '@/components/ui/text';
 import { CategoryIcon } from '@/contracting/components/CategoryIcon';
 import { jobCardShareAction } from '@/contracting/lib/job-card';
 import { newLocalId } from '@/contracting/readings/capture-attempt';
-import { useSessionAccessSummary, useSessionPermission } from '@/lib/auth-session';
+import { useSessionAccessSummary } from '@/lib/auth-session';
 import { shareDocument } from '@/lib/document-actions';
 import { useBusyAction } from '@/lib/use-busy-action';
 import { JobStatusChip } from './JobStatusChip';
@@ -31,7 +31,7 @@ export default function JobScreen() {
   const finished = job ? isFinishedJob(job) : false;
   const canCapture = job ? judgeJobAction('capture', job, access).allowed : false;
   const canAdd = job ? judgeJobAction('assign', job, access).allowed : false;
-  const canShareJobCard = useSessionPermission('contracting_job:read') && finished;
+  const canShareJobCard = canOpenJobCards(access) && finished;
   const share = useBusyAction();
   const shareJobCard = (variant: JobCardVariant) => {
     if (job)

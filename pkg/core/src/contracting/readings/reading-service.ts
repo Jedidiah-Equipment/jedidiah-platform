@@ -10,10 +10,8 @@ import {
 import { hasPermission, validateFile } from '@pkg/domain';
 import {
   assignmentState,
-  canCaptureBaseline,
   FUTURE_READ_AT_TOLERANCE_MS,
   isAiFlaggedVerification,
-  isContractingManagement,
   isFutureReadAt,
   type JobActor,
   jobReadStatuses,
@@ -112,7 +110,7 @@ export async function captureReading({
 }) {
   const actorUserId = actor.userId;
   const input = ReadingCaptureInput.parse(raw);
-  if (input.role === 'baseline' && !canCaptureBaseline(actor))
+  if (input.role === 'baseline' && !hasPermission(actor, 'contracting_reading:capture-baseline'))
     throw new ReadingError('reading.forbidden', 'Only a Contracting administrator can capture a Baseline Reading.');
   // A mobile retry of an already delivered capture returns the stored row instead of a duplicate.
   async function replay(db: Db | DatabaseTransaction) {
@@ -163,7 +161,7 @@ export async function captureReading({
           {
             latest: latest ? { id: latest.id, value: latest.value } : null,
             stint: stint ? assignmentState(stint.stint) : null,
-            management: isContractingManagement(actor),
+            management: hasPermission(actor, 'contracting_job:work-any'),
             hasPhoto: !!evidence,
           },
           {

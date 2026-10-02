@@ -1,11 +1,5 @@
 import { formatHours } from '@pkg/domain';
-import {
-  captureNeedsComment,
-  captureRefusals,
-  fieldJobAccessMode,
-  isFutureReadAt,
-  MISSING_PHOTO_EVIDENCE,
-} from '@pkg/domain/contracting';
+import { captureNeedsComment, captureRefusals, isFutureReadAt, MISSING_PHOTO_EVIDENCE } from '@pkg/domain/contracting';
 import { ReadingComment, type ReadingErrorCode, type ReadingRole } from '@pkg/schema/contracting';
 import { useStore } from '@tanstack/react-form';
 import { useQueryClient } from '@tanstack/react-query';
@@ -30,7 +24,7 @@ import { deriveCapture } from '@/contracting/readings/derive-capture';
 import { capturedAtFor, isBackdated, parseExifDateTime } from '@/contracting/readings/read-at';
 import { CAPTURE_FAILED, captureReading, ReadingRefusedError } from '@/contracting/readings/reading-upload';
 import { useFleet, useMachineReadings } from '@/contracting/readings/use-fleet';
-import { useSessionAccessSummary, useSessionPermission } from '@/lib/auth-session';
+import { useSessionPermission } from '@/lib/auth-session';
 import { addBreadcrumb, captureException, captureSanitizedException } from '@/lib/observability';
 import { useTRPC } from '@/lib/trpc';
 import { useBusyAction } from '@/lib/use-busy-action';
@@ -71,7 +65,7 @@ function CaptureForm({ params }: { params: CaptureParams }) {
   const queryClient = useQueryClient();
   const trpc = useTRPC();
   const canCapture = useSessionPermission('contracting_reading:capture');
-  const management = fieldJobAccessMode(useSessionAccessSummary()) === 'all';
+  const management = useSessionPermission('contracting_job:work-any');
   const [permission, requestPermission] = useCameraPermissions();
   const camera = useRef<CameraView>(null);
   const [cameraOpen, setCameraOpen] = useState(false);

@@ -1,4 +1,4 @@
-import { APP_PERMISSIONS, APP_ROLES } from '@pkg/schema';
+import { APP_PERMISSIONS, APP_ROLES, type AppPermission } from '@pkg/schema';
 import { describe, expect, it } from 'vitest';
 import { accessForRole, roleSlotsForRole } from '../testing/index.js';
 import {
@@ -249,6 +249,7 @@ describe('getRolePermissions', () => {
       'contracting_job:create',
       'contracting_job:read',
       'contracting_job:update',
+      'contracting_job:work-any',
       'contracting_machine:read',
       'contracting_machine:update',
       'contracting_reading:capture',
@@ -279,6 +280,14 @@ describe('getRolePermissions', () => {
     ]);
     expect(getRolePermissions('driver')).toEqual([]);
     expect(getRolePermissions('mechanic')).toEqual([]);
+  });
+
+  it('reserves reaching every Job for management and baseline capture for administrators', () => {
+    const holders = (permission: AppPermission) =>
+      APP_ROLES.filter((role) => getRolePermissions(role).includes(permission)).sort();
+
+    expect(holders('contracting_job:work-any')).toEqual(['contracting-admin', 'contracting-manager', 'super-admin']);
+    expect(holders('contracting_reading:capture-baseline')).toEqual(['contracting-admin', 'super-admin']);
   });
 });
 

@@ -27,10 +27,6 @@ vi.mock('react-native-safe-area-context', () => ({
 }));
 vi.mock('@tanstack/react-form', () => ({ useStore: () => ({ implementId: '', driverUserId: '' }) }));
 vi.mock('@tanstack/react-query', () => ({ useQueryClient: () => ({}) }));
-vi.mock('@pkg/domain/contracting', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@pkg/domain/contracting')>()),
-  fieldJobAccessMode: () => 'own',
-}));
 vi.mock('@/components/form', () => ({ useAppForm: () => ({ store: {}, AppField: () => null }) }));
 vi.mock('@/components/TopToolbar', () => ({ SecondaryToolbar: 'SecondaryToolbar' }));
 vi.mock('@/components/ui/button', () => ({ Button: 'Button' }));
@@ -55,7 +51,7 @@ vi.mock('@/contracting/readings/use-fleet', () => ({
 vi.mock('@/lib/trpc', () => ({ useTRPC: () => ({}) }));
 vi.mock('@/lib/auth-session', () => ({
   useSessionAccessSummary: () => ({}),
-  useSessionPermission: () => true,
+  useSessionPermission: (permission: string) => permission !== 'contracting_job:work-any',
 }));
 vi.mock('@/lib/use-busy-action', () => ({
   useBusyAction: () => ({ busy: false, error: null, setError: vi.fn(), run: vi.fn() }),

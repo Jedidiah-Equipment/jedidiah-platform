@@ -1,11 +1,12 @@
-import { type Db, getForeignKeyViolationConstraint } from '@pkg/db';
+import type { Db } from '@pkg/db';
 import { contractingFarms } from '@pkg/db/contracting';
 import type { AuthId } from '@pkg/schema';
 import { Farm, type FarmCreateInput, type FarmIdInput, type FarmPatchInput } from '@pkg/schema/contracting';
-import { and, asc, eq } from 'drizzle-orm';
-import { defineAuditDescriptor, recordAuditCreate, recordAuditDelete } from '../../audit/audit-writer.js';
+import { asc, eq } from 'drizzle-orm';
+import { defineAuditDescriptor, recordAuditCreate } from '../../audit/audit-writer.js';
 import { mutateEntity } from '../../audit/mutate-entity.js';
 import { DirectoryError, withDirectoryConstraints } from '../directory-errors.js';
+import { removeAudited } from '../remove-audited.js';
 
 const descriptor = defineAuditDescriptor<typeof contractingFarms.$inferSelect>({
   entityType: 'contracting_farm',
@@ -49,18 +50,14 @@ export async function patchFarm({ db, actorUserId, input }: { db: Db; actorUserI
   );
 }
 export async function removeFarm({ db, actorUserId, input }: { db: Db; actorUserId: AuthId; input: FarmIdInput }) {
-  await db.transaction(async (tx) => {
-    const where = and(eq(contractingFarms.id, input.id), eq(contractingFarms.customerId, input.customerId));
-    const [before] = await tx.select().from(contractingFarms).where(where).for('update');
-    if (!before) throw new DirectoryError('directory.not_found', 'Farm not found for this customer.');
-    try {
-      // Restrictive foreign keys remain the final guard as later features reference Farms.
-      await tx.delete(contractingFarms).where(where);
-    } catch (error) {
-      if (getForeignKeyViolationConstraint(error))
-        throw new DirectoryError('directory.in_use', 'This farm is referenced and cannot be deleted.');
-      throw error;
-    }
-    await recordAuditDelete({ db: tx, actorUserId, descriptor, input: before });
+  return removeAudited({
+    db,
+    actorUserId,
+    id: input.id,
+    table: contractingFarms,
+    descriptor,
+    lockWhere: eq(contractingFarms.customerId, input.customerId),
+    notFound: () => new DirectoryError('directory.not_found', 'Farm not found for this customer.'),
+    inUse: () => new DirectoryError('directory.in_use', 'This farm is referenced and cannot be deleted.'),
   });
 }

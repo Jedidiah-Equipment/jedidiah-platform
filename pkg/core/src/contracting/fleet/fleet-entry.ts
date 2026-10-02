@@ -1,10 +1,11 @@
-import { type DatabaseTransaction, type Db, getForeignKeyViolationConstraint } from '@pkg/db';
+import type { DatabaseTransaction, Db } from '@pkg/db';
 import type { AuthId } from '@pkg/schema';
 import { type CategoryColour, type CategoryIconKey, FleetRetireInput } from '@pkg/schema/contracting';
-import { eq, isNotNull, isNull, type SQL } from 'drizzle-orm';
+import { isNotNull, isNull, type SQL } from 'drizzle-orm';
 import type { PgColumn, PgTable } from 'drizzle-orm/pg-core';
-import { type AuditDescriptor, recordAuditDelete } from '../../audit/audit-writer.js';
+import type { AuditDescriptor } from '../../audit/audit-writer.js';
 import { mutateEntity } from '../../audit/mutate-entity.js';
+import { removeAudited } from '../remove-audited.js';
 import { assertNotRetired, FleetError, notFound } from './fleet-errors.js';
 
 /** What Machines and Implements share: a code, a category, and a retirement that ends their history. */
@@ -68,41 +69,20 @@ export async function retireFleetEntry<TTable extends FleetEntryTable, TResult>(
   });
 }
 
-// History tables must use restrictive foreign keys. The database is the final, concurrency-safe
-// guard, including for referencing tables added by later waves; never maintain a parallel holder list.
-export async function removeFleetEntry<TTable extends PgTable & { id: PgColumn }>({
-  db,
-  actorUserId,
-  id,
-  table,
-  descriptor,
-  assert,
-}: {
+export const removeFleetEntry = <TTable extends PgTable & { id: PgColumn }>(args: {
   db: Db;
   actorUserId: AuthId;
   id: string;
   table: TTable;
   descriptor: AuditDescriptor<TTable['$inferSelect']>;
   assert?: (row: TTable['$inferSelect']) => void;
-}) {
-  await db.transaction(async (tx) => {
-    const [row] = (await tx
-      .select()
-      .from(table as PgTable)
-      .where(eq(table.id, id))
-      .for('update')) as TTable['$inferSelect'][];
-    if (!row) throw notFound('Fleet entry');
-    assert?.(row);
-    try {
-      await tx.delete(table).where(eq(table.id, id));
-    } catch (error) {
-      if (getForeignKeyViolationConstraint(error))
-        throw new FleetError(
-          'fleet.in_use',
-          'This entry has linked records. Retire fleet entries with history instead of deleting them.',
-        );
-      throw error;
-    }
-    await recordAuditDelete({ db: tx, descriptor, actorUserId, input: row });
+}) =>
+  removeAudited({
+    ...args,
+    notFound: () => notFound('Fleet entry'),
+    inUse: () =>
+      new FleetError(
+        'fleet.in_use',
+        'This entry has linked records. Retire fleet entries with history instead of deleting them.',
+      ),
   });
-}

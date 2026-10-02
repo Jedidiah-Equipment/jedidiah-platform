@@ -12,7 +12,7 @@ import { createCategory } from '../fleet/category-service.js';
 import { createImplement, retireImplement } from '../fleet/implement-service.js';
 import { createMachine } from '../fleet/machine-service.js';
 import { createMeasureType, removeMeasureType } from '../rate-card/measure-type-service.js';
-import { createRate, listRates, removeRate } from '../rate-card/rate-service.js';
+import { createRate, removeRate } from '../rate-card/rate-service.js';
 import { captureReading } from '../readings/reading-service.js';
 import { plannedStint } from '../test/job-fixtures.js';
 import { createWorkType } from '../work-types/work-type-service.js';
@@ -612,7 +612,6 @@ describe('Completion and billable facts', () => {
         finalAmount: 10_000,
       })
       .where(eq(contractingMachineAssignments.id, arrived.id));
-    expect((await listRates({ db: context.db })).find((row) => row.id === rate.id)?.inUse).toBe(true);
     await expect(removeRate({ db: context.db, actorUserId: managerId, id: rate.id })).rejects.toMatchObject({
       code: 'rate_card.in_use',
     });

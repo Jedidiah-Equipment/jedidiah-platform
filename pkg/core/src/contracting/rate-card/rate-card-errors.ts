@@ -27,3 +27,5 @@ export const withRateCardConstraints = <T>(duplicateMessage: string, action: () 
     },
     action,
   );
+export const reorderMismatch = () =>
+  new RateCardError('rate_card.reorder_mismatch', 'The list changed. Reload and try again.');

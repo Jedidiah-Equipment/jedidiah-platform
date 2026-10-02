@@ -1,6 +1,6 @@
-import { closestCenter, DndContext, type DragEndEvent, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
+import { closestCenter, DndContext, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
-import { arrayMove, SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import type { ProductRange, ProductRangeVariant } from '@pkg/schema/equipment';
 import { IconGripVertical, IconLoader2, IconPlus, IconTrash } from '@tabler/icons-react';
 import { useMutation } from '@tanstack/react-query';
@@ -8,6 +8,7 @@ import type React from 'react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
+import { useOptimisticOrder } from '@/components/sortable/use-optimistic-order.js';
 import { Button } from '@/components/ui/button.js';
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card.js';
 import { Empty, EmptyDescription, EmptyHeader, EmptyIcon, EmptyTitle } from '@/components/ui/empty.js';
@@ -27,12 +28,7 @@ export const ProductRangeVariantsEditor: React.FC<ProductRangeVariantsEditorProp
   const showMutationError = useApiMutationErrorToast();
   const { invalidateCatalogTranslations, invalidateProductRanges } = useQueryInvalidation();
   const [newName, setNewName] = useState('');
-  const [orderedVariants, setOrderedVariants] = useState<ProductRangeVariant[]>(range.variants);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
-
-  useEffect(() => {
-    setOrderedVariants(range.variants);
-  }, [range.variants]);
 
   const createMutation = useMutation(
     trpc.productRanges.createVariant.mutationOptions({
@@ -62,33 +58,12 @@ export const ProductRangeVariantsEditor: React.FC<ProductRangeVariantsEditorProp
   const reorderMutation = useMutation(
     trpc.productRanges.reorderVariants.mutationOptions({
       onSuccess: () => invalidateProductRanges(),
-      onError: (error) => {
-        setOrderedVariants(range.variants);
-        showMutationError(error, 'Unable to reorder Variants.');
-      },
+      onError: (error) => showMutationError(error, 'Unable to reorder Variants.'),
     }),
   );
-
-  const handleDragEnd = (event: DragEndEvent) => {
-    if (reorderMutation.isPending) {
-      return;
-    }
-
-    const { active, over } = event;
-    if (!over || active.id === over.id) {
-      return;
-    }
-
-    const oldIndex = orderedVariants.findIndex((variant) => variant.id === active.id);
-    const newIndex = orderedVariants.findIndex((variant) => variant.id === over.id);
-    if (oldIndex === -1 || newIndex === -1) {
-      return;
-    }
-
-    const next = arrayMove(orderedVariants, oldIndex, newIndex);
-    setOrderedVariants(next);
-    reorderMutation.mutate({ rangeId: range.id, orderedIds: next.map((variant) => variant.id) });
-  };
+  const order = useOptimisticOrder(range.variants, (orderedIds) =>
+    reorderMutation.mutateAsync({ rangeId: range.id, orderedIds }),
+  );
 
   const handleCreate = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -133,7 +108,7 @@ export const ProductRangeVariantsEditor: React.FC<ProductRangeVariantsEditorProp
         ) : null}
       </CardHeader>
       <CardContent>
-        {orderedVariants.length === 0 ? (
+        {order.rows.length === 0 ? (
           <Empty>
             <EmptyHeader>
               <EmptyIcon />
@@ -145,18 +120,15 @@ export const ProductRangeVariantsEditor: React.FC<ProductRangeVariantsEditorProp
           <DndContext
             collisionDetection={closestCenter}
             modifiers={[restrictToVerticalAxis]}
-            onDragEnd={handleDragEnd}
+            onDragEnd={order.onDragEnd}
             sensors={sensors}
           >
-            <SortableContext
-              items={orderedVariants.map((variant) => variant.id)}
-              strategy={verticalListSortingStrategy}
-            >
+            <SortableContext items={order.rows.map((variant) => variant.id)} strategy={verticalListSortingStrategy}>
               <div className="flex flex-col gap-2">
-                {orderedVariants.map((variant) => (
+                {order.rows.map((variant) => (
                   <VariantRow
                     canEdit={canEdit}
-                    dragDisabled={reorderMutation.isPending}
+                    dragDisabled={order.isSaving}
                     key={variant.id}
                     onRemove={() => removeMutation.mutate({ id: variant.id, rangeId: range.id })}
                     onRename={(name) => updateMutation.mutateAsync({ id: variant.id, rangeId: range.id, name })}

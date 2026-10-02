@@ -1,5 +1,4 @@
 import type { DatabaseTransaction, Db } from '@pkg/db';
-import { getForeignKeyViolationConstraint } from '@pkg/db';
 import { contractingMeasureTypes, contractingRates } from '@pkg/db/contracting';
 import type { AuthId } from '@pkg/schema';
 import {
@@ -9,10 +8,12 @@ import {
   type RatePatchInput,
   type ReorderInput,
 } from '@pkg/schema/contracting';
-import { asc, eq, getTableColumns, sql } from 'drizzle-orm';
-import { defineAuditDescriptor, recordAuditCreate, recordAuditDelete } from '../../audit/audit-writer.js';
+import { asc, eq, getTableColumns } from 'drizzle-orm';
+import { defineAuditDescriptor, recordAuditCreate } from '../../audit/audit-writer.js';
 import { mutateEntity } from '../../audit/mutate-entity.js';
-import { RateCardError, rateCardNotFound, withRateCardConstraints } from './rate-card-errors.js';
+import { nextDisplayOrder, reorderDisplayOrder } from '../display-order.js';
+import { removeAudited } from '../remove-audited.js';
+import { RateCardError, rateCardNotFound, reorderMismatch, withRateCardConstraints } from './rate-card-errors.js';
 
 type Row = typeof contractingRates.$inferSelect;
 const descriptor = defineAuditDescriptor<Row>({
@@ -28,16 +29,12 @@ const descriptor = defineAuditDescriptor<Row>({
     active: row.active,
   }),
 });
-const inUse = sql<boolean>`exists (
-  select 1 from contracting.machine_assignment assignment
-  where assignment.rate_id = contracting.rate.id
-)`;
 const selectRates = (db: Db | DatabaseTransaction) =>
   db
-    .select({ ...getTableColumns(contractingRates), measureTypeName: contractingMeasureTypes.name, inUse })
+    .select({ ...getTableColumns(contractingRates), measureTypeName: contractingMeasureTypes.name })
     .from(contractingRates)
     .leftJoin(contractingMeasureTypes, eq(contractingMeasureTypes.id, contractingRates.measureTypeId));
-const mapRate = (row: Row & { measureTypeName: string | null; inUse: boolean }) =>
+const mapRate = (row: Row & { measureTypeName: string | null }) =>
   Rate.parse({ ...row, createdAt: row.createdAt.toISOString(), updatedAt: row.updatedAt.toISOString() });
 const byDisplayOrder = [asc(contractingRates.displayOrder), asc(contractingRates.id)];
 
@@ -64,7 +61,7 @@ export async function createRate({ db, actorUserId, input }: { db: Db; actorUser
     db.transaction(async (tx) => {
       const [row] = await tx
         .insert(contractingRates)
-        .values({ ...input, displayOrder: sql`coalesce((select max(display_order) + 1 from contracting.rate), 0)` })
+        .values({ ...input, displayOrder: nextDisplayOrder(contractingRates) })
         .returning();
       if (!row) throw new Error('Rate insert returned no row');
       await recordAuditCreate({ db: tx, actorUserId, descriptor, input: row });
@@ -96,41 +93,19 @@ export async function patchRate({ db, actorUserId, input }: { db: Db; actorUserI
 }
 
 export async function reorderRates({ db, input }: { db: Db; input: ReorderInput }) {
-  await db.transaction(async (tx) => {
-    const ids = new Set((await tx.select({ id: contractingRates.id }).from(contractingRates)).map((row) => row.id));
-    const distinct = new Set(input.orderedIds);
-    if (
-      distinct.size !== input.orderedIds.length ||
-      distinct.size !== ids.size ||
-      [...distinct].some((id) => !ids.has(id))
-    )
-      throw new RateCardError('rate_card.reorder_mismatch', 'The list changed. Reload and try again.');
-    await Promise.all(
-      input.orderedIds.map((id, index) =>
-        tx
-          .update(contractingRates)
-          .set({ displayOrder: index, updatedAt: new Date() })
-          .where(eq(contractingRates.id, id)),
-      ),
-    );
-  });
+  await db.transaction((tx) => reorderDisplayOrder(tx, contractingRates, input.orderedIds, reorderMismatch));
   return listRates({ db });
 }
 
 export async function removeRate({ db, actorUserId, id }: { db: Db; actorUserId: AuthId; id: string }) {
-  await db.transaction(async (tx) => {
-    const [row] = await tx.select().from(contractingRates).where(eq(contractingRates.id, id)).for('update');
-    if (!row) throw rateCardNotFound('Rate');
-    try {
-      await tx.delete(contractingRates).where(eq(contractingRates.id, id));
-    } catch (error) {
-      if (getForeignKeyViolationConstraint(error))
-        throw new RateCardError(
-          'rate_card.in_use',
-          'This rate is on priced jobs. Deactivate it instead of deleting it.',
-        );
-      throw error;
-    }
-    await recordAuditDelete({ db: tx, descriptor, actorUserId, input: row });
+  return removeAudited({
+    db,
+    actorUserId,
+    id,
+    table: contractingRates,
+    descriptor,
+    notFound: () => rateCardNotFound('Rate'),
+    inUse: () =>
+      new RateCardError('rate_card.in_use', 'This rate is on priced jobs. Deactivate it instead of deleting it.'),
   });
 }

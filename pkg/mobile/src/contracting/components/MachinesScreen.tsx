@@ -2,7 +2,8 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { FlatList, Pressable, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { LIST_CONTENT_STYLE, ListHeader, ListRow } from '@/components/ListControls';
+import { ListHeader, ListRow } from '@/components/ListControls';
+import { MAIN_PAGE_CONTENT_STYLE } from '@/components/page-frame';
 import { MainToolbar } from '@/components/TopToolbar';
 import { Text } from '@/components/ui/text';
 import { contractingStorageKey } from '@/contracting/lib/contracting-storage';
@@ -40,7 +41,7 @@ export default function MachinesScreen() {
         data={machines}
         keyExtractor={(item) => item.id}
         keyboardShouldPersistTaps="handled"
-        contentContainerStyle={LIST_CONTENT_STYLE}
+        contentContainerStyle={MAIN_PAGE_CONTENT_STYLE}
         ListHeaderComponent={
           <ListHeader>
             <MachineCatalogControls

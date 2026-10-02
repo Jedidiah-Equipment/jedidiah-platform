@@ -1,7 +1,8 @@
 import { type ReactNode, useEffect, useRef } from 'react';
 import { FlatList, Pressable, View } from 'react-native';
 import { Avatar } from '@/components/Avatar';
-import { LIST_CONTENT_STYLE, ListHeader, ListRow } from '@/components/ListControls';
+import { ListHeader, ListRow } from '@/components/ListControls';
+import { MAIN_PAGE_CONTENT_STYLE } from '@/components/page-frame';
 import { Pulse } from '@/components/ui/pulse';
 import { RefreshControl } from '@/components/ui/refresh-control';
 import { Text } from '@/components/ui/text';
@@ -150,7 +151,7 @@ export function PaginatedCatalogList<T>({
   return (
     <FlatList
       className="flex-1"
-      contentContainerStyle={LIST_CONTENT_STYLE}
+      contentContainerStyle={MAIN_PAGE_CONTENT_STYLE}
       data={rows}
       keyExtractor={(row) => row.key}
       keyboardShouldPersistTaps="handled"

@@ -4,6 +4,7 @@ import type { ProductUnitDetail, ProductUnitJob, ProductUnitOwnershipTransfer } 
 import { IconChevronRight } from '@tabler/icons-react-native';
 import { useRouter } from 'expo-router';
 import { Pressable, ScrollView, View } from 'react-native';
+import { SECONDARY_PAGE_CONTENT_STYLE } from '@/components/page-frame';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { CustomerName } from '@/equipment/components/CustomerName';
@@ -14,7 +15,7 @@ import { useCan } from '@/lib/use-access';
 export function UnitDetail({ unit }: { unit: ProductUnitDetail }) {
   return (
     <View className="flex-1 bg-background">
-      <ScrollView contentContainerClassName="w-full gap-4 px-4 pb-8 pt-4">
+      <ScrollView contentContainerStyle={{ ...SECONDARY_PAGE_CONTENT_STYLE, gap: 16 }}>
         <UnitFactsCard unit={unit} />
         <UnitAssembliesCard unit={unit} />
         <UnitOwnershipCard unit={unit} />

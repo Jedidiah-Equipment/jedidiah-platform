@@ -8,12 +8,12 @@ import type { ReactNode } from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { SectionList, View } from 'react-native';
 import {
-  LIST_CONTENT_STYLE,
   type ListControlOption,
   ListControlRow,
   ListDropdownControl,
   ListSearchControl,
 } from '@/components/ListControls';
+import { MAIN_PAGE_CONTENT_STYLE } from '@/components/page-frame';
 import { Pulse } from '@/components/ui/pulse';
 import { RefreshControl } from '@/components/ui/refresh-control';
 import { Text } from '@/components/ui/text';
@@ -122,7 +122,7 @@ export function JobActivityFeed({
       <SectionList
         className="flex-1"
         // NativeWind does not remap contentContainerClassName for SectionList.
-        contentContainerStyle={LIST_CONTENT_STYLE}
+        contentContainerStyle={MAIN_PAGE_CONTENT_STYLE}
         initialNumToRender={12}
         keyExtractor={activityKey}
         keyboardShouldPersistTaps="handled"

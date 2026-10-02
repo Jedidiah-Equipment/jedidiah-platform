@@ -5,6 +5,7 @@ import { IconPlayerPlay, IconPlayerStop, IconPlus, type Icon as TablerIcon } fro
 import { type Href, router, useLocalSearchParams } from 'expo-router';
 import { Pressable, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { SECONDARY_PAGE_CONTENT_STYLE } from '@/components/page-frame';
 import { SecondaryToolbar } from '@/components/TopToolbar';
 import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/icon';
@@ -72,7 +73,7 @@ export default function JobScreen() {
         onBack={() => router.replace('/contracting/jobs' as Href)}
         helpTopic="contractingMobileJob"
       />
-      <ScrollView contentContainerStyle={{ padding: 16, gap: 16 }}>
+      <ScrollView contentContainerStyle={{ ...SECONDARY_PAGE_CONTENT_STYLE, gap: 16 }}>
         {job ? (
           <View className="gap-2 rounded-xl border border-border bg-surface p-4">
             <View className="flex-row items-center justify-between gap-2">

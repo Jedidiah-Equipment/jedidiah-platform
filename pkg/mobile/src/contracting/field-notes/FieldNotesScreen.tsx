@@ -5,7 +5,6 @@ import { useState } from 'react';
 import { FlatList, Pressable, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
-  LIST_CONTENT_STYLE,
   type ListControlOption,
   ListControlRow,
   ListCreateControl,
@@ -14,6 +13,7 @@ import {
   ListRow,
   ListSearchControl,
 } from '@/components/ListControls';
+import { MAIN_PAGE_CONTENT_STYLE } from '@/components/page-frame';
 import { MainToolbar } from '@/components/TopToolbar';
 import { Text } from '@/components/ui/text';
 import { useFieldNotes } from './FieldNotesProvider';
@@ -37,7 +37,7 @@ export default function FieldNotesScreen() {
         data={visible}
         keyExtractor={(note) => note.id}
         keyboardShouldPersistTaps="handled"
-        contentContainerStyle={LIST_CONTENT_STYLE}
+        contentContainerStyle={MAIN_PAGE_CONTENT_STYLE}
         ListHeaderComponent={
           <ListHeader>
             <ListControlRow

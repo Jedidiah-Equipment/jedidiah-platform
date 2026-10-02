@@ -17,6 +17,7 @@ import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useAutosaveForm } from '@/components/form';
+import { SECONDARY_PAGE_CONTENT_STYLE } from '@/components/page-frame';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { useAppToast } from '@/components/ui/toast';
@@ -196,7 +197,7 @@ function QuoteEditor({
         </View>
       </View>
 
-      <ScrollView contentContainerClassName="px-4 pb-12 pt-4" keyboardShouldPersistTaps="handled">
+      <ScrollView contentContainerStyle={SECONDARY_PAGE_CONTENT_STYLE} keyboardShouldPersistTaps="handled">
         <form.AppForm>
           <View className="w-full gap-4">
             <AutosaveStatus canRetry={canUpdate} onRetry={() => void autosave.retry()} state={autosave.state} />

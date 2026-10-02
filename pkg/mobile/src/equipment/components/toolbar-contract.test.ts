@@ -169,6 +169,12 @@ function toolbarComponent(route: string, kind: ToolbarKind): string {
 function expectToolbarKinds(contracts: Record<string, ToolbarContract>): void {
   for (const [route, contract] of Object.entries(contracts)) {
     const source = readFileSync(join(MOBILE_DIR, contract.owner), 'utf8');
+    // The page frame's top inset depends on whether the toolbar above it has a border.
+    const wrongFrame = contract.kind === 'main' ? 'SECONDARY_PAGE_CONTENT_STYLE' : 'MAIN_PAGE_CONTENT_STYLE';
+    expect({ owner: contract.owner, usesWrongFrame: source.includes(wrongFrame) }).toEqual({
+      owner: contract.owner,
+      usesWrongFrame: false,
+    });
     const expected = `<${toolbarComponent(route, contract.kind)}`;
     const unexpected = contract.kind === 'main' ? '<SecondaryPageToolbar' : '<MainTabToolbar';
 

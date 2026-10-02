@@ -3,6 +3,7 @@ import { getBayDisplayText, isJobCancelled, type JobProgress, type JobRouteStopS
 import type { ReactNode } from 'react';
 import { ScrollView, useWindowDimensions, View } from 'react-native';
 import { Avatar } from '@/components/Avatar';
+import { SECONDARY_PAGE_CONTENT_STYLE } from '@/components/page-frame';
 import { Pulse } from '@/components/ui/pulse';
 import { RefreshControl } from '@/components/ui/refresh-control';
 import { StatusBadge } from '@/components/ui/status-badge';
@@ -133,14 +134,14 @@ function Ready({
           <View className="flex-1 flex-row">
             <ScrollView
               className="border-border"
-              contentContainerClassName="w-full px-4 pb-10 pt-4"
+              contentContainerStyle={SECONDARY_PAGE_CONTENT_STYLE}
               refreshControl={<RefreshControl {...refresh} />}
               style={{ borderRightWidth: 1, flex: 42 }}
             >
               <RoutePane isCancelled={isJobCancelled(state)} route={state.route} />
             </ScrollView>
             <ScrollView
-              contentContainerClassName="w-full px-4 pb-10 pt-4"
+              contentContainerStyle={SECONDARY_PAGE_CONTENT_STYLE}
               refreshControl={<RefreshControl {...refresh} />}
               style={{ flex: 58 }}
             >
@@ -149,7 +150,7 @@ function Ready({
           </View>
         ) : (
           <ScrollView
-            contentContainerClassName="w-full px-4 pb-10 pt-4"
+            contentContainerStyle={SECONDARY_PAGE_CONTENT_STYLE}
             refreshControl={<RefreshControl {...refresh} />}
           >
             <DetailPane isWide={false} jobId={jobId} state={state} />
@@ -162,7 +163,10 @@ function Ready({
           showControls={false}
         />
       ) : (
-        <ScrollView contentContainerClassName="w-full px-4 pb-10 pt-4" refreshControl={<RefreshControl {...refresh} />}>
+        <ScrollView
+          contentContainerStyle={SECONDARY_PAGE_CONTENT_STYLE}
+          refreshControl={<RefreshControl {...refresh} />}
+        >
           <WorkTimesPane jobId={jobId} state={state} />
         </ScrollView>
       )}
@@ -446,7 +450,7 @@ function Frame({
   return (
     <>
       <SecondaryPageToolbar helpTopic="jobs" onBack={onBack} parentLabel="Jobs" subtitle="JOB DETAIL" title="Job" />
-      <ScrollView contentContainerClassName="w-full px-4 pb-10 pt-4" refreshControl={<RefreshControl {...refresh} />}>
+      <ScrollView contentContainerStyle={SECONDARY_PAGE_CONTENT_STYLE} refreshControl={<RefreshControl {...refresh} />}>
         {children}
       </ScrollView>
     </>

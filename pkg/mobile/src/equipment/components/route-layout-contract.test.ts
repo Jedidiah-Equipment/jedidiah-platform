@@ -73,16 +73,26 @@ describe('route layout contract', () => {
     expect(baySchedule).not.toContain('helpTopic="jobs"');
   });
 
-  test('keeps every list screen with a controls row on the shared list frame', () => {
-    const lists = [
-      'src/equipment/components/CatalogList.tsx',
-      'src/equipment/components/activity/JobActivityFeed.tsx',
-      'src/contracting/components/MachinesScreen.tsx',
-      'src/contracting/field-notes/FieldNotesScreen.tsx',
-    ];
-    for (const path of lists) {
-      const source = readFileSync(join(MOBILE_DIR, path), 'utf8');
-      expect(source, path).toContain('contentContainerStyle={LIST_CONTENT_STYLE}');
-    }
+  test('positions every page through the shared page frame, never hand-written content padding', () => {
+    // Dialogs, sheets, drawers, menus and the signed-out screens size their own content.
+    const overlays = new Set([
+      'app/login.tsx',
+      'src/components/ForgotPasswordScreen.tsx',
+      'src/components/ListControls.tsx',
+      'src/equipment/components/bays/JobDepartmentTimingCard.tsx',
+      'src/equipment/components/feedback/GiveFeedbackButton.tsx',
+      'src/equipment/components/quotes/GenerateQuoteDocumentModal.tsx',
+      'src/equipment/components/quotes/InventoryPartPicker.tsx',
+      'src/equipment/components/quotes/NewQuoteModal.tsx',
+      'src/equipment/components/quotes/QuoteSummaryDrawer.tsx',
+      'src/equipment/components/quotes/use-customer-match-choice.tsx',
+    ]);
+    const handWritten =
+      /contentContainerClassName="[^"]*\bp[xytb]?-\d|contentContainerStyle=\{\{[^}]*\bpadding(?:Top|Bottom|Horizontal|Vertical)?:/;
+    const offenders = [...listTsxFiles(join(MOBILE_DIR, 'app')), ...listTsxFiles(join(MOBILE_DIR, 'src'))]
+      .map((file) => relative(MOBILE_DIR, file))
+      .filter((file) => !overlays.has(file) && handWritten.test(readFileSync(join(MOBILE_DIR, file), 'utf8')));
+
+    expect(offenders).toEqual([]);
   });
 });

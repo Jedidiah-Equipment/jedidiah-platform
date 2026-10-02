@@ -9,6 +9,7 @@ import { useRef, useState } from 'react';
 import { Image, KeyboardAvoidingView, Platform, ScrollView, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAppForm } from '@/components/form';
+import { SECONDARY_PAGE_CONTENT_STYLE } from '@/components/page-frame';
 import { SecondaryToolbar } from '@/components/TopToolbar';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
@@ -241,7 +242,7 @@ function CaptureForm({ params }: { params: CaptureParams }) {
         <ScrollView
           keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
           keyboardShouldPersistTaps="handled"
-          contentContainerStyle={{ padding: 16, gap: 16 }}
+          contentContainerStyle={{ ...SECONDARY_PAGE_CONTENT_STYLE, gap: 16 }}
         >
           <Text className="text-muted-foreground">Photograph the hour meter when you can, then type its value.</Text>
           {role === 'arrival' && params.assignmentId ? (

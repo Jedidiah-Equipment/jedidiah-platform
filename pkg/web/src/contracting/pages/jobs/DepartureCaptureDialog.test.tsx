@@ -16,7 +16,14 @@ const manager = createUserAccessSummary({
 });
 const foreman = createUserAccessSummary({ userId: 'foreman', equipmentRole: null, contractingRole: 'foreman' });
 const access = vi.hoisted(() => ({ current: null as unknown }));
-vi.mock('@/hooks/use-access.js', () => ({ useAccess: () => ({ data: access.current }) }));
+vi.mock('@/hooks/use-access.js', async () => {
+  const { hasPermission } = await import('@pkg/domain');
+  return {
+    useCan: (permission: Parameters<typeof hasPermission>[1]) => ({
+      can: hasPermission(access.current as Parameters<typeof hasPermission>[0], permission),
+    }),
+  };
+});
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 const roots: Root[] = [];

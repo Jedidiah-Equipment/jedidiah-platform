@@ -5,7 +5,6 @@ import {
   type ReadingRole,
   type ReadingVerification,
 } from '@pkg/schema/contracting';
-import { getBusinessRole } from '../auth/authorization.js';
 import { type BadgeColorClassNames, statusBadgeColorClassNames } from '../theme/status-badge.js';
 
 export const readingRoleLabels: Record<ReadingRole, string> = {
@@ -37,11 +36,6 @@ export const readingPhotoPath = (readingId: string) => `${READING_CAPTURE_PATH}/
 
 export const isAiFlaggedVerification = (verification: ReadingVerification): verification is AiFlaggedVerification =>
   (aiFlaggedVerifications as readonly ReadingVerification[]).includes(verification);
-
-export function canCaptureBaseline(access: Parameters<typeof getBusinessRole>[0]): boolean {
-  const role = getBusinessRole(access, 'contracting');
-  return role === 'super-admin' || role === 'contracting-admin';
-}
 
 export function meterDisagreementHint({
   value,

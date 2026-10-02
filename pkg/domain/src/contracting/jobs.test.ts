@@ -20,6 +20,12 @@ describe('fieldJobAccessMode', () => {
     expect(fieldJobAccessMode(access('contracting-manager'))).toBe('all');
     expect(fieldJobAccessMode(access('foreman'))).toBe('own');
     expect(fieldJobAccessMode(access('workshop-manager'))).toBeNull();
+    const superAdmin = createUserAccessSummary({
+      userId: 'owner',
+      equipmentRole: 'super-admin',
+      contractingRole: null,
+    });
+    expect(fieldJobAccessMode(superAdmin)).toBe('all');
   });
 });
 

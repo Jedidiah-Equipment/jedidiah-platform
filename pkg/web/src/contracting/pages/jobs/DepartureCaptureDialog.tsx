@@ -1,4 +1,4 @@
-import { captureNeedsComment, fieldJobAccessMode } from '@pkg/domain/contracting';
+import { captureNeedsComment } from '@pkg/domain/contracting';
 import { type Assignment, ReadingReason, ReadingValue } from '@pkg/schema/contracting';
 import { useState } from 'react';
 import { toast } from 'sonner';
@@ -6,7 +6,7 @@ import { z } from 'zod';
 import { CreateEntityDialog } from '@/components/form/index.js';
 import { Separator } from '@/components/ui/separator.js';
 import { MachineDialogTitle } from '@/contracting/components/MachineDialogTitle.js';
-import { useAccess } from '@/hooks/use-access.js';
+import { useCan } from '@/hooks/use-access.js';
 import { ReadingCaptureCard, ReadingCaptureDetails, ReadingValueField } from './ReadingCaptureFields.js';
 import { useReadingCapture } from './use-reading-capture.js';
 
@@ -18,7 +18,7 @@ export function DepartureCaptureDialog({ stint, onClose }: { stint: Assignment |
   const capture = useReadingCapture();
   const [error, setError] = useState('');
   const [photo, setPhoto] = useState<File | null>(null);
-  const management = fieldJobAccessMode(useAccess().data) === 'all';
+  const management = useCan('contracting_job:work-any').can;
   const needsReason = captureNeedsComment('departure', { management, hasPhoto: !!photo });
   return (
     <CreateEntityDialog

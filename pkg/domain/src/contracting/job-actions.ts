@@ -15,7 +15,7 @@ import {
   workedJobStatuses,
 } from '@pkg/schema/contracting';
 import { hasPermission } from '../auth/authorization.js';
-import { isContractingManagement, jobStatusLabels } from './jobs.js';
+import { jobStatusLabels } from './jobs.js';
 
 /**
  * Who is asking: the session's access summary, which already names the person, built once at the API
@@ -31,16 +31,13 @@ type Rule = {
   statuses: readonly JobStatus[];
   /** Holding any of these lets a person ask for the action at all. */
   permissions: readonly AppPermission[];
-  /** Who reaches every Job; anyone else who may ask reaches only the Jobs they are Foreman on. Absent, everyone does. */
-  anyJob?: (actor: JobActor) => boolean;
+  /** Holding this reaches every Job; anyone else who may ask reaches only the Jobs they are Foreman on. Absent, everyone does. */
+  anyJob?: AppPermission;
   /** The narrower statuses someone reaching only their own Jobs may act in. */
   ownStatuses?: readonly JobStatus[];
   /** What the refusal copy calls the action: "You can only <verb> while …". */
   verb: string;
 };
-
-/** Whoever may assign works every Job; a Foreman works only their own. */
-const assigns = (actor: JobActor) => hasPermission(actor, 'contracting_job:assign');
 
 const rules: Record<JobActionName, Rule> = {
   editSetup: { statuses: openJobStatuses, permissions: ['contracting_job:update'], verb: 'change Job setup' },
@@ -48,13 +45,13 @@ const rules: Record<JobActionName, Rule> = {
   assign: {
     statuses: openJobStatuses,
     permissions: ['contracting_job:assign', 'contracting_assignment:update-own'],
-    anyJob: assigns,
+    anyJob: 'contracting_job:work-any',
     verb: 'change Machine Assignments',
   },
   patchTravel: {
     statuses: unpricedJobStatuses,
     permissions: ['contracting_job:assign', 'contracting_assignment:update-own'],
-    anyJob: assigns,
+    anyJob: 'contracting_job:work-any',
     ownStatuses: openJobStatuses,
     verb: 'change travel',
   },
@@ -100,7 +97,7 @@ const rules: Record<JobActionName, Rule> = {
   capture: {
     statuses: openJobStatuses,
     permissions: ['contracting_reading:capture'],
-    anyJob: isContractingManagement,
+    anyJob: 'contracting_job:work-any',
     verb: 'capture readings',
   },
 };
@@ -111,7 +108,7 @@ const joinOr = (items: readonly string[]) =>
 const holdsAny = (actor: JobActor, permissions: readonly AppPermission[]) =>
   permissions.some((permission) => hasPermission(actor, permission));
 
-const reachesEveryJob = (rule: Rule, actor: JobActor) => rule.anyJob?.(actor) ?? true;
+const reachesEveryJob = (rule: Rule, actor: JobActor) => rule.anyJob === undefined || hasPermission(actor, rule.anyJob);
 const openStatuses = (rule: Rule, everyJob: boolean) =>
   everyJob ? rule.statuses : (rule.ownStatuses ?? rule.statuses);
 

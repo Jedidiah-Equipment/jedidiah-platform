@@ -12,6 +12,7 @@ export * from './jobs/field-read.js';
 export * from './jobs/invoicing-service.js';
 export * from './jobs/job-card-service.js';
 export * from './jobs/job-errors.js';
+export * from './jobs/job-queues.js';
 export * from './jobs/job-read.js';
 export * from './jobs/job-service.js';
 export * from './jobs/measure-service.js';

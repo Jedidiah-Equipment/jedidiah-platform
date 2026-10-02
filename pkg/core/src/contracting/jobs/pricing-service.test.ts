@@ -10,7 +10,8 @@ import { amendReading } from '../readings/reading-service.js';
 import { addedChargeLine, admin, adminId, completedJob, seedJobFixtures } from '../test/job-fixtures.js';
 import { resolveGap } from './assignment-service.js';
 import { patchChargeLine } from './charge-line-service.js';
-import { getJob, listJobs } from './job-read.js';
+import { listJobs } from './job-queues.js';
+import { getJob } from './job-read.js';
 import { patchJob } from './job-service.js';
 import { setMeasure } from './measure-service.js';
 import {

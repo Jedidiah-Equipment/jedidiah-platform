@@ -38,6 +38,7 @@ import { attachReadingToStint, resolveCaptureStint } from './capture-stint.js';
 import { assertReadingJobAction, captureRefused, ReadingError, withCaptureConstraints } from './reading-errors.js';
 import { type ReadMeterPhoto, verifyPhoto } from './reading-evidence.js';
 import { readingNeedsALookSql } from './reading-sql.js';
+import { readingToWire } from './reading-wire.js';
 
 const notFound = () => new ReadingError('reading.not_found', 'Hour Reading not found.');
 type Row = typeof contractingHourReadings.$inferSelect;
@@ -438,7 +439,10 @@ export async function reverifyReading({
 }
 
 export async function listFieldReadings({ db, machineId }: { db: Db; machineId: string }) {
-  return (await listReadingsByMachine({ db, machineId })).map((row) =>
-    FieldReading.parse({ ...row, photoBacked: !!row.photo }),
-  );
+  const rows = await db
+    .select()
+    .from(contractingHourReadings)
+    .where(eq(contractingHourReadings.machineId, machineId))
+    .orderBy(desc(contractingHourReadings.sequence));
+  return rows.map((row) => FieldReading.parse(readingToWire(row)));
 }

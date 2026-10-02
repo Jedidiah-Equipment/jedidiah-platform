@@ -17,7 +17,9 @@ import { captureReading } from '../readings/reading-service.js';
 import { plannedStint } from '../test/job-fixtures.js';
 import { createWorkType } from '../work-types/work-type-service.js';
 import { patchAssignment, removeAssignment, resolveGap } from './assignment-service.js';
-import { getJob, listJobs } from './job-read.js';
+import { listFieldJobs } from './field-read.js';
+import { listJobs } from './job-queues.js';
+import { getJob } from './job-read.js';
 import { cancelJob, completeJob, createJob, patchJob } from './job-service.js';
 import { setMeasure } from './measure-service.js';
 
@@ -275,6 +277,42 @@ describe('Machine Assignment lifecycle', () => {
         },
       }),
     ).rejects.toMatchObject({ code: 'reading.forbidden' });
+  });
+
+  test('lists field Jobs with their stints and readings', async ({ context }) => {
+    const first = await createJob({ db: context.db, actor: manager, input: jobInput(context) });
+    const second = await createJob({ db: context.db, actor: manager, input: jobInput(context) });
+    const planned = await plannedStint(context.db, manager, {
+      jobId: second.id,
+      machineId: context.machine.id,
+      implementId: null,
+    });
+    const arrival = await captureReading({
+      db: context.db,
+      actor: foreman,
+      input: {
+        machineId: context.machine.id,
+        assignmentId: planned.id,
+        role: 'arrival',
+        value: 100,
+        capturedAt: '2026-09-01T08:00:00+02:00',
+        disputePrevious: false,
+      },
+    });
+
+    const jobs = await listFieldJobs({ db: context.db, actor: foreman });
+    expect(jobs.map((job) => job.jobNumber)).toEqual([first.jobNumber, second.jobNumber]);
+    expect(jobs[0]?.stints).toEqual([]);
+    expect(jobs[1]?.stints).toMatchObject([{ id: planned.id, state: 'on-site' }]);
+    expect(jobs[1]?.stints[0]?.arrival).toEqual({
+      id: arrival.id,
+      machineId: context.machine.id,
+      role: 'arrival',
+      value: 100,
+      capturedAt: '2026-09-01T06:00:00.000Z',
+      disputed: false,
+      photoBacked: false,
+    });
   });
 
   test('activates on first arrival, refuses overlapping on-site stints, and allows a repeat stint after departure', async ({

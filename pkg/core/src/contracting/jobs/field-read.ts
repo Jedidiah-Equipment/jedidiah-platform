@@ -18,13 +18,11 @@ import {
   FieldReading,
   FieldStint,
   finishedJobStatuses,
-  hasJobStatus,
-  type JobStatus,
   openJobStatuses,
 } from '@pkg/schema/contracting';
 import { and, asc, eq, getTableColumns, gte, inArray, or, type SQL } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
-import { assertOwner, JobError, jobNotFound } from './job-errors.js';
+import { JobError } from './job-errors.js';
 
 function fieldReadMode(actor: UserAccessSummary): 'all' | 'own' {
   const mode = fieldJobAccessMode(actor);
@@ -151,18 +149,6 @@ export async function listFieldJobs({
         : open,
   );
   return rows.map(mapFieldJob);
-}
-
-export async function getFieldJob({ db, actor, id }: { db: Db; actor: UserAccessSummary; id: string }) {
-  const mode = fieldReadMode(actor);
-  const [row] = await loadFieldJobs(db, eq(contractingJobs.id, id));
-  if (!row) throw jobNotFound();
-  if (mode === 'own') assertOwner(row.job, actor.userId);
-  const readable: readonly JobStatus[] =
-    mode === 'all' ? [...openJobStatuses, ...finishedJobStatuses] : openJobStatuses;
-  if (!hasJobStatus(readable, row.job.status))
-    throw new JobError('contracting_job.wrong_status', 'This Job is no longer open.');
-  return mapFieldJob(row);
 }
 
 export async function listFieldDrivers({ db }: { db: Db }) {

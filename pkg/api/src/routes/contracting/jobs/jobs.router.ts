@@ -7,7 +7,6 @@ import {
   createChargeLine,
   createJob,
   findJobsByInvoiceNumber,
-  getFieldJob,
   getReadableJob,
   hasActiveJobAttention,
   listFieldDrivers,
@@ -49,7 +48,6 @@ import {
   JobCancelInput,
   JobCompleteInput,
   JobCreateInput,
-  JobIdInput,
   JobListInput,
   JobLookupInput,
   JobMarkPricedInput,
@@ -80,12 +78,6 @@ export const contractingJobsRouter = router({
           () => listFieldJobs({ db: ctx.db, actor: ctx.access, includeFinished: input?.includeFinished ?? false }),
           jobErrorFamily,
         ),
-      ),
-    job: authorizedProcedure(['contracting_job:read', 'contracting_job:read-own'])
-      .input(JobIdInput)
-      .output(FieldJob)
-      .query(({ ctx, input }) =>
-        mapCoreErrors(() => getFieldJob({ db: ctx.db, actor: ctx.access, id: input.id }), jobErrorFamily),
       ),
     implements: authorizedProcedure(['contracting_machine:read', 'contracting_assignment:update-own'])
       .output(FieldImplement.array())

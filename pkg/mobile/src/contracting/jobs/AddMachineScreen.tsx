@@ -16,7 +16,7 @@ import { getVisibleMachines } from '@/contracting/lib/machine-catalog';
 import { useFleet } from '@/contracting/readings/use-fleet';
 import { useSessionAccessSummary } from '@/lib/auth-session';
 import { useTRPC } from '@/lib/trpc';
-import { useDrivers, useImplements, useJobs } from './use-jobs';
+import { useDrivers, useImplements, useJob } from './use-jobs';
 
 export default function AddMachineScreen() {
   const params = useLocalSearchParams<{
@@ -25,13 +25,12 @@ export default function AddMachineScreen() {
     implementId?: string;
   }>();
   const fleet = useFleet();
-  const jobs = useJobs();
   const implementQuery = useImplements();
   const drivers = useDrivers();
   const access = useSessionAccessSummary();
   const trpc = useTRPC();
   const queryClient = useQueryClient();
-  const job = jobs.data?.find((candidate) => candidate.id === params.jobId);
+  const job = useJob(params.jobId).data;
   const canAdd = job ? judgeJobAction('assign', job, access).allowed : false;
   const backToJob = () => router.replace(`/contracting/jobs/${params.jobId}` as Href);
   const add = useMutation(

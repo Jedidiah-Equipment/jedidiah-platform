@@ -36,6 +36,7 @@ function nextPublish(notes: ReturnType<typeof store>) {
 }
 
 beforeEach(async () => {
+  vi.restoreAllMocks();
   await AsyncStorage.clear();
 });
 

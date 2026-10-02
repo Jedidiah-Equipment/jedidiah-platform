@@ -35,6 +35,8 @@ export default function NewFieldNoteScreen() {
   const hasContent = description.trim() !== '' || photos.length > 0;
 
   usePreventRemove(hasContent && !saved, ({ data }) => {
+    // A save in flight would write the note after a discard; leaving waits for it.
+    if (busy) return;
     void confirm({ title: 'Discard this Field Note?', confirmLabel: 'Discard', destructive: true }).then((discard) => {
       if (discard) navigation.dispatch(data.action);
     });
@@ -60,7 +62,9 @@ export default function NewFieldNoteScreen() {
         title="New Field Note"
         subtitle="CONTRACTING"
         parentLabel="Notes"
-        onBack={backToNotes}
+        onBack={() => {
+          if (!busy) backToNotes();
+        }}
         helpTopic="contractingMobileFieldNote"
       />
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} className="flex-1">

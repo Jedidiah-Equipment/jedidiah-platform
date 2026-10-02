@@ -36,7 +36,7 @@ function FieldNoteDetail({ note, onLeave }: { note: FieldNote; onLeave: () => vo
   const { bottom } = useSafeAreaInsets();
   const [description, setDescription] = useState(note.description);
   const [galleryHint, setGalleryHint] = useState(false);
-  const { busy, error, act } = useFieldNoteAction();
+  const { busy, error, act, report } = useFieldNoteAction();
   const open = note.status === 'open';
 
   const latest = useRef({ description, stored: note.description, setDescription: notes.setDescription });
@@ -44,15 +44,12 @@ function FieldNoteDetail({ note, onLeave }: { note: FieldNote; onLeave: () => vo
   const commitDescription = useCallback(() => {
     const { description, stored, setDescription: store } = latest.current;
     if (description.trim() === stored) return;
-    void act(async () => {
-      try {
-        await store(note.id, description);
-      } catch (error) {
-        setDescription(stored);
-        throw error;
-      }
-    }, 'The description could not be saved.');
-  }, [act, note.id]);
+    // Not through `act`: a blur fired by tapping Close or a photo control must not swallow that tap.
+    store(note.id, description).catch((error) => {
+      setDescription(stored);
+      report(error, 'The description could not be saved.');
+    });
+  }, [report, note.id]);
   useFocusEffect(useCallback(() => commitDescription, [commitDescription]));
   useEffect(() => {
     setDescription(note.description);

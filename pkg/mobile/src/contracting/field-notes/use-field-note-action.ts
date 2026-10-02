@@ -9,18 +9,18 @@ import { FieldNoteError } from './store';
  */
 export function useFieldNoteAction() {
   const { busy, error, setError, run } = useBusyAction();
+  const report = useCallback(
+    (error: unknown, failure: string) => {
+      if (!(error instanceof FieldNoteError))
+        captureSanitizedException(error, 'Field Note action failed', { source: 'field_notes' });
+      setError(error instanceof FieldNoteError ? error.message : failure);
+    },
+    [setError],
+  );
   const act = useCallback(
     (action: () => Promise<void>, failure: string) =>
-      run(async () => {
-        try {
-          await action();
-        } catch (error) {
-          if (!(error instanceof FieldNoteError))
-            captureSanitizedException(error, 'Field Note action failed', { source: 'field_notes' });
-          setError(error instanceof FieldNoteError ? error.message : failure);
-        }
-      }, failure),
-    [run, setError],
+      run(() => action().catch((error) => report(error, failure)), failure),
+    [run, report],
   );
-  return { busy, error, act };
+  return { busy, error, act, report };
 }

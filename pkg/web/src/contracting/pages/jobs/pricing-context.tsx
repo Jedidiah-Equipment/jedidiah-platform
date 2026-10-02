@@ -52,6 +52,7 @@ type Pricing = {
   job: JobDetail;
   editable: boolean;
   chargeEditable: boolean;
+  chargeAmountEditable: boolean;
   rates: readonly Rate[];
   mutations: PricingMutations;
   chargeLineMutations: ChargeLineMutations;

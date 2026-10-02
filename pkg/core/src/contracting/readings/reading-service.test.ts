@@ -5,8 +5,15 @@ import { expect } from 'vitest';
 import { createTester } from '../../test/create-tester.js';
 import { createCategory } from '../fleet/category-service.js';
 import { createMachine } from '../fleet/machine-service.js';
+import { createJob } from '../jobs/job-service.js';
+import { admin, foreman, foremanId, leftStint, seedJobFixtures } from '../test/job-fixtures.js';
 import type { ReadMeterPhoto } from './reading-evidence.js';
-import { captureReading, listReadingsByMachine, type ReadingEvidence } from './reading-service.js';
+import {
+  captureReading,
+  getReadingForEvidence,
+  listReadingsByMachine,
+  type ReadingEvidence,
+} from './reading-service.js';
 
 const photoEvidence = (storage: ReadingEvidence['storage'], readPhoto: ReadMeterPhoto): ReadingEvidence => ({
   storage,
@@ -390,4 +397,47 @@ test('judges a late-arriving earlier capture against the ledger’s latest, not 
     captureReading({ db, actor, input: { ...spot, value: 150, capturedAt: '2026-09-08T08:00:00Z' } }),
   ).rejects.toMatchObject({ code: 'reading.below_latest' });
   expect((await listReadingsByMachine({ db, machineId })).map((row) => row.value)).toEqual([160]);
+});
+
+test('reserves a Baseline Reading for Contracting administrators', async ({ context }) => {
+  const { db, actor, machineId } = context;
+  await expect(
+    captureReading({
+      db,
+      actor,
+      input: { machineId, role: 'baseline', value: 10, capturedAt: '2026-09-07T08:00:00Z', disputePrevious: false },
+    }),
+  ).rejects.toMatchObject({ code: 'reading.forbidden' });
+});
+
+test('scopes evidence to fleet readers and the Foreman’s own Jobs', async ({ context }) => {
+  const { db, actor, machineId } = context;
+  const fixtures = await seedJobFixtures(db);
+  const job = await createJob({
+    db,
+    actor: admin,
+    input: {
+      customerId: fixtures.customer.id,
+      farmId: fixtures.farm.id,
+      workTypeId: fixtures.workType.id,
+      description: null,
+      foremanUserId: foremanId,
+    },
+  });
+  const stint = await leftStint(db, job.id, fixtures.excavator.id, 100, 110);
+  const unattached = await captureReading({
+    db,
+    actor,
+    input: { machineId, role: 'spot', value: 5, capturedAt: '2026-09-07T08:00:00Z', disputePrevious: false },
+  });
+
+  await expect(getReadingForEvidence({ db, actor: admin, id: unattached.id })).resolves.toMatchObject({
+    id: unattached.id,
+  });
+  await expect(getReadingForEvidence({ db, actor: foreman, id: stint.arrivalReadingId })).resolves.toMatchObject({
+    id: stint.arrivalReadingId,
+  });
+  await expect(getReadingForEvidence({ db, actor: foreman, id: unattached.id })).rejects.toMatchObject({
+    code: 'reading.forbidden',
+  });
 });

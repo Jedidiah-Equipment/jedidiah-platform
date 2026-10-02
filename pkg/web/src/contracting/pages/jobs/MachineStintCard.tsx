@@ -1,5 +1,5 @@
 import { formatHours, formatNumber } from '@pkg/domain';
-import { assignmentStateColorClassNames } from '@pkg/domain/contracting';
+import { assignmentStateColorClassNames, judgeAssignmentAction } from '@pkg/domain/contracting';
 import type { Assignment, JobReading } from '@pkg/schema/contracting';
 import {
   IconAlertTriangle,
@@ -137,7 +137,7 @@ function ReadingDetail({ reading }: { reading: JobReading }) {
 function GapAction({ stint }: { stint: Assignment }) {
   const { sheet, openGap } = useMachines();
   if (stint.gapFlag)
-    return sheet.can('resolveGaps') ? (
+    return sheet.can('resolveGaps') && judgeAssignmentAction('resolveGap', stint).allowed ? (
       <IconAction
         icon={IconAlertTriangle}
         label={`Resolve gap · ${formatHours(stint.gapHours ?? 0)}`}
@@ -210,10 +210,10 @@ export function MachineStintCard({ stint, stintNumber }: { stint: Assignment; st
         <ol className="ml-2 space-y-3 border-l border-border pl-5">
           <TimelineRow
             actions={
-              sheet.can('assign') && stint.state !== 'left' ? (
+              sheet.can('assign') && judgeAssignmentAction('changeResources', stint).allowed ? (
                 <>
                   <AssignmentEditDialog stint={stint} />
-                  {planned ? (
+                  {judgeAssignmentAction('remove', stint).allowed ? (
                     <RemoveEntityButton
                       description="Remove this Machine Assignment?"
                       isPending={mutations.remove.isPending}
@@ -251,7 +251,7 @@ export function MachineStintCard({ stint, stintNumber }: { stint: Assignment; st
             actions={
               stint.departure ? (
                 <ReadingActions reading={stint.departure} stint={stint} />
-              ) : onSite && (sheet.showsSignOff || sheet.can('resolveGaps')) ? (
+              ) : onSite && sheet.can('capture') ? (
                 <IconAction
                   icon={IconPlayerStop}
                   label="Stop — capture departure"
@@ -264,7 +264,11 @@ export function MachineStintCard({ stint, stintNumber }: { stint: Assignment; st
             tone={stint.departure ? 'done' : onSite ? 'current' : 'empty'}
           />
           <TimelineRow
-            actions={!planned && sheet.can('editMeasures') ? <AddMeasureDialog stint={stint} /> : null}
+            actions={
+              sheet.can('editMeasures') && judgeAssignmentAction('editMeasures', stint).allowed ? (
+                <AddMeasureDialog stint={stint} />
+              ) : null
+            }
             detail={<MeasureDetail stint={stint} />}
             title="Measures"
             tone={stint.measures.length ? 'done' : 'empty'}

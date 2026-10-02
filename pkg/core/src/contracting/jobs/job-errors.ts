@@ -1,4 +1,11 @@
-import { type JobActionSubject, type JobActor, jobActionRefusal, judgeJobAction } from '@pkg/domain/contracting';
+import {
+  type AssignmentActionName,
+  assignmentState,
+  type JobActionSubject,
+  type JobActor,
+  judgeAssignmentAction,
+  judgeJobAction,
+} from '@pkg/domain/contracting';
 import type { JobActionBlockedReason, JobActionName } from '@pkg/schema/contracting';
 import { translatingConstraintViolations } from '../../errors/constraint-violations.js';
 
@@ -13,10 +20,8 @@ export type JobErrorCode =
   | 'contracting_job.wrong_status'
   | 'contracting_job.implement_on_site'
   | 'contracting_job.stint_not_planned'
-  | 'contracting_job.stint_not_on_site'
   | 'contracting_job.has_on_site_stints'
   | 'contracting_job.open_gap_flags'
-  | 'contracting_job.invalid_role'
   | 'contracting_job.pricing_incomplete'
   | 'contracting_job.total_changed'
   | 'contracting_job.rate_inactive';
@@ -76,10 +81,16 @@ const refusalCodes: Record<JobActionBlockedReason, JobErrorCode> = {
 export function assertJobAction(action: JobActionName, job: JobActionSubject, actor: JobActor) {
   const verdict = judgeJobAction(action, job, actor);
   if (!verdict.allowed)
-    throw new JobError(refusalCodes[verdict.reason], jobActionRefusal(action, verdict.reason, job, actor), {
-      action,
-      reason: verdict.reason,
-    });
+    throw new JobError(refusalCodes[verdict.reason], verdict.message, { action, reason: verdict.reason });
+}
+
+/** Refuses unless the Machine Assignment's state allows this Assignment Action; the Job Action is asserted first. */
+export function assertAssignmentAction(
+  action: AssignmentActionName,
+  stint: { arrivalReadingId: string | null; departureReadingId: string | null },
+) {
+  const verdict = judgeAssignmentAction(action, { state: assignmentState(stint) });
+  if (!verdict.allowed) throw wrongStatus(verdict.message);
 }
 
 /** A read-side check: a Foreman reads only the Jobs they are Foreman on. */

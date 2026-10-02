@@ -58,6 +58,12 @@ export const jobReadStatuses: Record<JobReadMode, readonly JobStatus[]> = {
 /** Foremen read their Jobs without money, so they neither see amounts nor open Job Cards. */
 export const jobReadSeesMoney = (mode: JobReadMode) => mode !== 'own';
 
+/** Job Cards carry money, so whoever reads Jobs with money opens them. */
+export function canOpenJobCards(access: UserAccessSummary | null | undefined): boolean {
+  const mode = jobReadMode(access);
+  return mode !== null && jobReadSeesMoney(mode);
+}
+
 export function looksFinished(job: { status: JobStatus }, states: readonly AssignmentState[]): boolean {
   return job.status === 'active' && states.includes('left') && !states.includes('on-site');
 }

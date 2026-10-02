@@ -3,10 +3,12 @@ import { z } from 'zod';
 /** Every write a person can ask of a Job; reads stay with the Job read modes. */
 export const jobActionNames = [
   'editSetup',
+  'assignForeman',
   'assign',
   'patchTravel',
   'editMeasures',
   'editChargeLines',
+  'priceChargeLines',
   'resolveGaps',
   'editSignOffDetails',
   'editDieselLitres',
@@ -24,7 +26,8 @@ export type JobActionBlockedReason = z.infer<typeof JobActionBlockedReason>;
 
 export const JobActionVerdict = z.discriminatedUnion('allowed', [
   z.object({ allowed: z.literal(true) }),
-  z.object({ allowed: z.literal(false), reason: JobActionBlockedReason }),
+  /** `message` is the one sentence that says why, as the server's refusal and the Job sheet both show it. */
+  z.object({ allowed: z.literal(false), reason: JobActionBlockedReason, message: z.string() }),
 ]);
 export type JobActionVerdict = z.infer<typeof JobActionVerdict>;
 

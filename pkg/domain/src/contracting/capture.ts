@@ -21,33 +21,55 @@ export type CaptureAttempt = {
 };
 
 /**
- * Which rule refused a capture. Several share one wire code, so the copy keys off this. The two busy
- * rules are the stint constraints' refusals, which the database raises rather than `judgeCapture`.
+ * Every way a capture is refused. `judgeCapture` returns the first five; the two busy rules are the stint
+ * constraints' refusals, which the database raises; a Read At still to come is refused before the ledger is read.
  */
 export type CaptureRule =
   | 'comment-required'
   | 'already-arrived'
   | 'not-on-site'
+  | 'previous-changed'
+  | 'below-latest'
   | 'machine-busy'
   | 'implement-busy'
-  | 'previous-changed'
-  | 'below-latest';
+  | 'future-read-at';
 
-export type CaptureRefused = { ok: false; reason: ReadingErrorCode; rule: CaptureRule };
+/** The wire code and the one sentence of each refusal: the server sends it and the phone displays it. */
+export const captureRefusals: Record<CaptureRule, { code: ReadingErrorCode; message: string }> = {
+  'comment-required': {
+    code: 'reading.invalid_role',
+    message: 'A reason is required for a photo-less departure reading.',
+  },
+  'already-arrived': { code: 'reading.invalid_role', message: 'This Machine Assignment already arrived.' },
+  'not-on-site': { code: 'reading.invalid_role', message: 'This Machine Assignment is not on site.' },
+  'previous-changed': {
+    code: 'reading.previous_changed',
+    message: 'Another reading landed first. Review the latest reading before resubmitting a dispute.',
+  },
+  'below-latest': {
+    code: 'reading.below_latest',
+    message: 'Reading is below the latest reading. Retake it or assert that the previous reading is wrong.',
+  },
+  'machine-busy': {
+    code: 'reading.machine_on_site',
+    message: 'This Machine is still on site on another Job — capture its departure there first.',
+  },
+  'implement-busy': {
+    code: 'reading.implement_on_site',
+    message: 'This Implement is still on site on another Job — capture its departure there first.',
+  },
+  'future-read-at': { code: 'reading.future_read_at', message: 'Read At cannot be in the future.' },
+};
+
+export type CaptureRefused = { ok: false; reason: ReadingErrorCode; message: string };
 /** `disputes` names the latest reading an accepted capture below it disputes. */
 export type CaptureVerdict = { ok: true; disputes: string | null } | CaptureRefused;
 
-const reasons: Record<CaptureRule, ReadingErrorCode> = {
-  'comment-required': 'reading.invalid_role',
-  'already-arrived': 'reading.invalid_role',
-  'not-on-site': 'reading.invalid_role',
-  'machine-busy': 'reading.machine_on_site',
-  'implement-busy': 'reading.implement_on_site',
-  'previous-changed': 'reading.previous_changed',
-  'below-latest': 'reading.below_latest',
-};
-
-const refuse = (rule: CaptureRule): CaptureRefused => ({ ok: false, reason: reasons[rule], rule });
+const refuse = (rule: CaptureRule): CaptureRefused => ({
+  ok: false,
+  reason: captureRefusals[rule].code,
+  message: captureRefusals[rule].message,
+});
 
 /** A capture below the Machine's latest reading lands only as a dispute. */
 export const captureIsBelowLatest = (value: number, latest: { value: number } | null | undefined): boolean =>
@@ -72,29 +94,6 @@ export function judgeCapture(world: CaptureWorld, capture: CaptureAttempt): Capt
   if (below && !capture.disputePrevious) return refuse('below-latest');
   return { ok: true, disputes: below && world.latest ? world.latest.id : null };
 }
-
-/** The one sentence a refused capture shows: the server sends it and the phone displays it. */
-export function captureRefusal(verdict: CaptureRefused): string {
-  switch (verdict.rule) {
-    case 'comment-required':
-      return 'A reason is required for a photo-less departure reading.';
-    case 'already-arrived':
-      return 'This Machine Assignment already arrived.';
-    case 'not-on-site':
-      return 'This Machine Assignment is not on site.';
-    case 'machine-busy':
-      return 'This Machine is still on site on another Job — capture its departure there first.';
-    case 'implement-busy':
-      return 'This Implement is still on site on another Job — capture its departure there first.';
-    case 'previous-changed':
-      return 'Another reading landed first. Review the latest reading before resubmitting a dispute.';
-    case 'below-latest':
-      return 'Reading is below the latest reading. Retake it or assert that the previous reading is wrong.';
-  }
-}
-
-/** Read At is the Foreman's word for when the meter was read; only a time still to come is refused. */
-export const FUTURE_READ_AT_REFUSAL = 'Read At cannot be in the future.';
 
 /** Phone clocks drift; a Read At this far ahead of the server is still the Foreman's "now". */
 export const FUTURE_READ_AT_TOLERANCE_MS = 5 * 60_000;

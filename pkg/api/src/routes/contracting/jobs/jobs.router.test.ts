@@ -302,6 +302,9 @@ test('enforces the Job queue role matrix and strips money from Foreman reads', a
     discount: null,
     pricing: null,
     assignments: [{ pricing: null }],
+    actions: {
+      complete: { allowed: false, reason: 'no-permission', message: 'You do not have permission to complete the Job.' },
+    },
   });
   await expect(foreman.jobs.get({ id: context.otherJob.id })).rejects.toMatchObject({ code: 'FORBIDDEN' });
   await expect(foreman.jobs.get({ id: context.pricedJob.id })).rejects.toMatchObject({ code: 'FORBIDDEN' });

@@ -1,12 +1,11 @@
 import type { DatabaseTransaction, Db } from '@pkg/db';
 import { contractingChargeLines } from '@pkg/db/contracting';
-import { hasPermission } from '@pkg/domain';
 import type { JobActor } from '@pkg/domain/contracting';
-import type { ChargeLineCreateInput, ChargeLinePatchInput } from '@pkg/schema/contracting';
+import type { ChargeLineCreateInput, ChargeLinePatchInput, JobActionName } from '@pkg/schema/contracting';
 import { eq, sql } from 'drizzle-orm';
 import { defineAuditDescriptor, recordAuditCreate, recordAuditDelete } from '../../audit/audit-writer.js';
 import { mutateEntity } from '../../audit/mutate-entity.js';
-import { JobError, jobNotFound } from './job-errors.js';
+import { assertJobAction, jobNotFound } from './job-errors.js';
 import { lockJobFor } from './job-lock.js';
 import { jobTransaction } from './job-write.js';
 
@@ -20,13 +19,18 @@ export const chargeLineDescriptor = defineAuditDescriptor<Row>({
 });
 
 /** The Job a Charge Line belongs to, locked before the line itself: the job → child order every writer keeps. */
-async function lockLineJob(tx: DatabaseTransaction, id: string, actor: JobActor) {
+async function lockLineJob(
+  tx: DatabaseTransaction,
+  id: string,
+  actor: JobActor,
+  action: JobActionName = 'editChargeLines',
+) {
   const [reference] = await tx
     .select({ jobId: contractingChargeLines.jobId })
     .from(contractingChargeLines)
     .where(eq(contractingChargeLines.id, id));
   if (!reference) throw jobNotFound('Charge Line');
-  return lockJobFor(tx, reference.jobId, 'editChargeLines', actor);
+  return lockJobFor(tx, reference.jobId, action, actor);
 }
 
 export async function createChargeLine({
@@ -61,11 +65,10 @@ export async function patchChargeLine({
   actor: JobActor;
   input: ChargeLinePatchInput;
 }): Promise<void> {
-  // Judges the input, not the Job: only whoever prices may set an amount on a line.
-  if (input.amount !== undefined && !hasPermission(actor, 'contracting_job:price'))
-    throw new JobError('contracting_job.invalid_role', 'Only Pricing may set a Charge Line amount.');
   await jobTransaction(db, async (tx) => {
-    await lockLineJob(tx, input.id, actor);
+    const prices = input.amount !== undefined;
+    const job = await lockLineJob(tx, input.id, actor, prices ? 'priceChargeLines' : 'editChargeLines');
+    if (prices) assertJobAction('editChargeLines', job, actor);
     await mutateEntity({
       db: tx,
       actorUserId: actor.userId,

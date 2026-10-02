@@ -4,13 +4,14 @@ import {
   jobAttentionIconColorClassName,
   jobQueueColorClassNames,
   jobQueueLabels,
+  judgeJobAction,
 } from '@pkg/domain/contracting';
 import type { JobQueue, JobSummary } from '@pkg/schema/contracting';
 import { CustomerName, FarmName, jobQueues, WorkTypeName } from '@pkg/schema/contracting';
 import { IconAlertTriangle } from '@tabler/icons-react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { DateDisplay } from '@/components/common/DateDisplay.js';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { SearchableCombobox, type SearchableComboboxCreate } from '@/components/common/SearchableCombobox.js';
@@ -22,7 +23,7 @@ import { PageLayout } from '@/components/page-layout/PageLayout.js';
 import { Badge } from '@/components/ui/badge.js';
 import { Button } from '@/components/ui/button.js';
 import { useQueryInvalidation } from '@/contracting/hooks/use-query-invalidation.js';
-import { useCan } from '@/hooks/use-access.js';
+import { useAccess, useCan } from '@/hooks/use-access.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { cn } from '@/lib/utils.js';
@@ -58,6 +59,11 @@ export function JobsPage({ queue }: { queue: JobQueue }) {
   const canCreate = useCan('contracting_job:create').can;
   const canAssign = useCan('contracting_job:assign').can;
   const canPrice = useCan('contracting_job:price').can;
+  const access = useAccess().data;
+  const canAssignForeman = useCallback(
+    (job: JobSummary) => !!access && judgeJobAction('assignForeman', job, access).allowed,
+    [access],
+  );
   const counts = useQuery(trpc.contractingJobs.jobs.queueCounts.queryOptions());
   const activeAttention = useQuery(trpc.contractingJobs.jobs.activeAttention.queryOptions());
   const jobs = useJobQueuePages({ queue }, counts.data?.[queue]);
@@ -105,7 +111,7 @@ export function JobsPage({ queue }: { queue: JobQueue }) {
         cell: ({ row }) => (
           <div className="min-w-36">
             <div className="font-medium">{row.original.workTypeName}</div>
-            {queue === 'upcoming' && row.original.foremanUserId === null && canAssign ? (
+            {queue === 'upcoming' && row.original.foremanUserId === null && canAssignForeman(row.original) ? (
               <SearchableCombobox
                 inputId={`foreman-${row.original.id}`}
                 options={(foremen.data ?? []).map((person) => ({ value: person.id, label: person.name }))}
@@ -220,7 +226,7 @@ export function JobsPage({ queue }: { queue: JobQueue }) {
           ]
         : []),
     ],
-    [queue, canAssign, canPrice, foremen.data, assign.mutate, navigate],
+    [queue, canAssignForeman, canPrice, foremen.data, assign.mutate, navigate],
   );
   return (
     <>

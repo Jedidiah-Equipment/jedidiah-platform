@@ -1,5 +1,4 @@
-import { hasJobCard, jobActionRefusal } from '@pkg/domain/contracting';
-import type { UserAccessSummary } from '@pkg/schema';
+import { hasJobCard } from '@pkg/domain/contracting';
 import { UUID } from '@pkg/schema';
 import { type JobActionName, type JobCreateInput, JobDescription, type JobDetail } from '@pkg/schema/contracting';
 import { z } from 'zod';
@@ -32,7 +31,7 @@ export function toJobCreateInput(values: JobCreateValues): JobCreateInput {
  * - Row controls (icon buttons and inline cells inside a stint card or table row) render only while `can` is true,
  *   and a value that is on display renders read-only.
  */
-export function jobSheet(job: JobDetail, access: UserAccessSummary | null | undefined) {
+export function jobSheet(job: JobDetail) {
   const verdict = (action: JobActionName) => job.actions[action];
   const can = (action: JobActionName) => verdict(action).allowed;
   const holds = (action: JobActionName) => {
@@ -41,7 +40,7 @@ export function jobSheet(job: JobDetail, access: UserAccessSummary | null | unde
   };
   const refusal = (action: JobActionName) => {
     const judged = verdict(action);
-    return judged.allowed || !access ? undefined : jobActionRefusal(action, judged.reason, job, access);
+    return judged.allowed ? undefined : judged.message;
   };
   const seesMoney = hasJobCard(job.status) && job.pricing !== null;
   /** Work has started and the Job was not cancelled. */

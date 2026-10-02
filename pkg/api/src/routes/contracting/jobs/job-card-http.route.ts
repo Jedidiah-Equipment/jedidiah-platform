@@ -6,7 +6,6 @@ import { z } from 'zod';
 import {
   createContentDisposition,
   mapCoreErrorToRoute,
-  requireAnyPermission,
   requireRouteAuth,
   sendHttpError,
 } from '../../http-route-helpers.js';
@@ -22,12 +21,6 @@ export async function registerJobCardHttpRoutes(
     const auth = await requireRouteAuth(request, reply);
     if (!auth) return;
     try {
-      requireAnyPermission(
-        auth,
-        ['contracting_job:read', 'contracting_job:read-priced'],
-        'You do not have permission to open Job Cards.',
-        'contracting_job.forbidden',
-      );
       const { code } = JobCardParams.parse(request.params);
       const { variant } = JobCardQuery.parse(request.query);
       const result = await renderJobCard({

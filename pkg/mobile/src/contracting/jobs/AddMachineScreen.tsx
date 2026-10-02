@@ -1,4 +1,4 @@
-import { deriveJobActions } from '@pkg/domain/contracting';
+import { judgeJobAction } from '@pkg/domain/contracting';
 import { IconPlus } from '@tabler/icons-react-native';
 import { useStore } from '@tanstack/react-form';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -32,7 +32,7 @@ export default function AddMachineScreen() {
   const trpc = useTRPC();
   const queryClient = useQueryClient();
   const job = jobs.data?.find((candidate) => candidate.id === params.jobId);
-  const canAdd = job ? deriveJobActions(job, access).assign.allowed : false;
+  const canAdd = job ? judgeJobAction('assign', job, access).allowed : false;
   const backToJob = () => router.replace(`/contracting/jobs/${params.jobId}` as Href);
   const add = useMutation(
     trpc.contractingJobs.assignments.add.mutationOptions({

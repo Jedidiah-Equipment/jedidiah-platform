@@ -254,14 +254,14 @@ function DiscountInput({ row }: { row: Extract<PricingRow, { kind: 'discount' }>
 }
 
 function AmountCell({ row }: { row: PricingRow }) {
-  const { job, editable, mutations, chargeLineMutations } = usePricing();
+  const { job, editable, chargeAmountEditable, mutations, chargeLineMutations } = usePricing();
   switch (row.kind) {
     case 'stint':
       return <StintAmount stint={row.stint} />;
     case 'subtotal':
       return <span>{formatCurrency(row.amount)}</span>;
     case 'charge-line':
-      return editable ? (
+      return chargeAmountEditable ? (
         <div className="flex justify-end [&_input]:text-right">
           <MoneyInput
             label={`Amount for ${row.line.description}`}

@@ -1,6 +1,7 @@
 import type { DatabaseTransaction, Db } from '@pkg/db';
 import { contractingJobs, contractingMachineAssignments } from '@pkg/db/contracting';
 import {
+  assignmentState,
   canComplete,
   completionGateReasons,
   computeDieselAmount,
@@ -39,6 +40,7 @@ export async function patchJob({ db, actor, input }: { db: Db; actor: JobActor; 
       input.description !== undefined ||
       input.foremanUserId !== undefined;
     if (changesSetup) assertJobAction('editSetup', before, actor);
+    if (input.foremanUserId !== undefined) assertJobAction('assignForeman', before, actor);
     const changesSignOff =
       input.startDate !== undefined ||
       input.endDate !== undefined ||
@@ -106,7 +108,7 @@ export async function cancelJob({
   await jobTransaction(db, async (tx) => {
     const before = await lockJobFor(tx, input.id, 'cancel', actor);
     const onSite = (await lockAssignments(tx, before.id)).filter(
-      (assignment) => assignment.arrivalReadingId !== null && assignment.departureReadingId === null,
+      (assignment) => assignmentState(assignment) === 'on-site',
     ).length;
     if (onSite) throw onSiteRefusal(onSite, 'Capture their departure readings before cancelling.');
     const now = new Date();
@@ -143,7 +145,7 @@ export async function completeJob({
         completionGateReasons(gate).join(' '),
       );
     // The pricer confirmed exactly these planned stints; anything else means the plan moved underneath them.
-    const planned = locked.filter((stint) => stint.arrivalReadingId === null);
+    const planned = locked.filter((stint) => assignmentState(stint) === 'planned');
     const requested = new Set(input.removePlannedAssignmentIds);
     if (
       requested.size !== input.removePlannedAssignmentIds.length ||

@@ -1,8 +1,8 @@
 import {
-  captureRefusal,
+  type CaptureRule,
+  captureRefusals,
   type JobActionSubject,
   type JobActor,
-  jobActionRefusal,
   judgeJobAction,
 } from '@pkg/domain/contracting';
 import type { JobActionName, ReadingErrorCode } from '@pkg/schema/contracting';
@@ -39,27 +39,20 @@ export function assertReadingJobAction(
       : action === 'amendReadings' && job.status === 'invoiced'
         ? 'reading.job_invoiced'
         : 'reading.wrong_status';
-  throw new ReadingError(code, jobActionRefusal(action, verdict.reason, job, actor), {
-    action,
-    reason: verdict.reason,
-  });
+  throw new ReadingError(code, verdict.message, { action, reason: verdict.reason });
 }
+
+/** A capture refusal as the Reading error the phone reports. */
+export const captureRefused = (rule: CaptureRule) =>
+  new ReadingError(captureRefusals[rule].code, captureRefusals[rule].message);
 
 /** Capture's reading of the stint constraints: the phone reports these, so they stay Reading errors. */
 export const withCaptureConstraints = <T>(action: () => Promise<T>) =>
   translatingConstraintViolations(
     {
       unique: (constraint) => {
-        if (constraint === 'machine_assignment_machine_on_site_unique')
-          return new ReadingError(
-            'reading.machine_on_site',
-            captureRefusal({ ok: false, reason: 'reading.machine_on_site', rule: 'machine-busy' }),
-          );
-        if (constraint === 'machine_assignment_implement_on_site_unique')
-          return new ReadingError(
-            'reading.implement_on_site',
-            captureRefusal({ ok: false, reason: 'reading.implement_on_site', rule: 'implement-busy' }),
-          );
+        if (constraint === 'machine_assignment_machine_on_site_unique') return captureRefused('machine-busy');
+        if (constraint === 'machine_assignment_implement_on_site_unique') return captureRefused('implement-busy');
         return undefined;
       },
       foreignKey: (constraint) =>

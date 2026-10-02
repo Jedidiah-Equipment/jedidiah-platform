@@ -1,7 +1,7 @@
 import { formatHours } from '@pkg/domain';
 import {
   captureNeedsComment,
-  FUTURE_READ_AT_REFUSAL,
+  captureRefusals,
   fieldJobAccessMode,
   isFutureReadAt,
   MISSING_PHOTO_EVIDENCE,
@@ -387,7 +387,9 @@ function CaptureForm({ params }: { params: CaptureParams }) {
               setReadAtEdited(next !== null);
             }}
           />
-          {readAt && isFutureReadAt(readAt) ? <Text className="text-danger">{FUTURE_READ_AT_REFUSAL}</Text> : null}
+          {readAt && isFutureReadAt(readAt) ? (
+            <Text className="text-danger">{captureRefusals['future-read-at'].message}</Text>
+          ) : null}
           <Text className="text-foreground" weight="semibold">
             {commentRequired ? 'Comment (required without photo)' : 'Comment (optional)'}
           </Text>

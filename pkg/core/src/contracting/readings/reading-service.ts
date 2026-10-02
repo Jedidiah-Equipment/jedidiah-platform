@@ -7,11 +7,10 @@ import {
   contractingMachineAssignments,
   contractingMachines,
 } from '@pkg/db/contracting';
-import { validateFile } from '@pkg/domain';
+import { hasPermission, validateFile } from '@pkg/domain';
 import {
   assignmentState,
-  captureRefusal,
-  FUTURE_READ_AT_REFUSAL,
+  canCaptureBaseline,
   FUTURE_READ_AT_TOLERANCE_MS,
   isAiFlaggedVerification,
   isContractingManagement,
@@ -38,7 +37,7 @@ import { FilePolicyViolationError } from '../../files/file-errors.js';
 import { readStoredObject, type StorageAdapter } from '../../storage/storage-adapter.js';
 import { reopenPricingWithin } from '../jobs/pricing-service.js';
 import { attachReadingToStint, resolveCaptureStint } from './capture-stint.js';
-import { assertReadingJobAction, ReadingError, withCaptureConstraints } from './reading-errors.js';
+import { assertReadingJobAction, captureRefused, ReadingError, withCaptureConstraints } from './reading-errors.js';
 import { type ReadMeterPhoto, readingVerification, verifyPhoto } from './reading-evidence.js';
 
 const notFound = () => new ReadingError('reading.not_found', 'Hour Reading not found.');
@@ -113,6 +112,8 @@ export async function captureReading({
 }) {
   const actorUserId = actor.userId;
   const input = ReadingCaptureInput.parse(raw);
+  if (input.role === 'baseline' && !canCaptureBaseline(actor))
+    throw new ReadingError('reading.forbidden', 'Only a Contracting administrator can capture a Baseline Reading.');
   // A mobile retry of an already delivered capture returns the stored row instead of a duplicate.
   async function replay(db: Db | DatabaseTransaction) {
     if (!input.localId) return null;
@@ -132,7 +133,7 @@ export async function captureReading({
   const delivered = await replay(db);
   if (delivered) return delivered;
   if (isFutureReadAt(new Date(input.capturedAt), now, FUTURE_READ_AT_TOLERANCE_MS))
-    throw new ReadingError('reading.future_read_at', FUTURE_READ_AT_REFUSAL);
+    throw captureRefused('future-read-at');
   const photo = evidence ? await storeMeterPhoto(evidence) : null;
   try {
     const verdict =
@@ -173,7 +174,7 @@ export async function captureReading({
             comment: input.comment ?? null,
           },
         );
-        if (!judgement.ok) throw new ReadingError(judgement.reason, captureRefusal(judgement));
+        if (!judgement.ok) throw new ReadingError(judgement.reason, judgement.message);
         if (input.role === 'baseline' && latest)
           throw new ReadingError('reading.baseline_exists', 'A Baseline Reading must be the first reading.');
         const disputed = judgement.disputes !== null;
@@ -377,8 +378,18 @@ export async function getReading({ db, id }: { db: Db | DatabaseTransaction; id:
   return withHint(row);
 }
 
+/** The reading whose evidence this person may open: fleet readers any, a Foreman only those on his readable Jobs. */
+export async function getReadingForEvidence({ db, actor, id }: { db: Db; actor: JobActor; id: string }) {
+  if (hasPermission(actor, 'contracting_machine:read')) return getReading({ db, id });
+  const ownJobReading =
+    hasPermission(actor, 'contracting_job:read-own') &&
+    (await readingBelongsToForemanJob({ db, id, foremanUserId: actor.userId }));
+  if (!ownJobReading) throw new ReadingError('reading.forbidden', 'You cannot view Hour Reading evidence.');
+  return getReading({ db, id });
+}
+
 /** Scope a field user's evidence read to readings attached to one of their visible Jobs. */
-export async function readingBelongsToForemanJob({
+async function readingBelongsToForemanJob({
   db,
   id,
   foremanUserId,

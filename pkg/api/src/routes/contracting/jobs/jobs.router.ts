@@ -65,7 +65,7 @@ import {
 } from '@pkg/schema/contracting';
 import { z } from 'zod';
 import { mapCoreErrors } from '../../../trpc/errors.js';
-import { authorizedProcedure, requirePermission, router } from '../../../trpc/init.js';
+import { authorizedProcedure, router } from '../../../trpc/init.js';
 import { jobErrorFamily } from '../contracting-error-families.js';
 
 const readPermissions = ['contracting_job:read', 'contracting_job:read-own', 'contracting_job:read-priced'] as const;
@@ -120,10 +120,9 @@ export const contractingJobsRouter = router({
       ),
     patch: authorizedProcedure('contracting_job:update')
       .input(JobPatchInput)
-      .mutation(({ ctx, input }) => {
-        if (input.foremanUserId !== undefined) requirePermission(ctx.access, 'contracting_job:assign');
-        return mapCoreErrors(() => patchJob({ db: ctx.db, actor: ctx.access, input }), jobErrorFamily);
-      }),
+      .mutation(({ ctx, input }) =>
+        mapCoreErrors(() => patchJob({ db: ctx.db, actor: ctx.access, input }), jobErrorFamily),
+      ),
     complete: authorizedProcedure('contracting_job:complete')
       .input(JobCompleteInput)
       .mutation(({ ctx, input }) =>

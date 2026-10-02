@@ -22,7 +22,7 @@ import type {
 import { eq } from 'drizzle-orm';
 import { isRateCardError } from '../rate-card/rate-card-errors.js';
 import { getRate } from '../rate-card/rate-service.js';
-import { JobError, jobNotFound, totalChanged, wrongStatus } from './job-errors.js';
+import { assertAssignmentAction, JobError, totalChanged, wrongStatus } from './job-errors.js';
 import { lockJob, lockJobFor, lockStintFor } from './job-lock.js';
 import { assignmentIn, getJob } from './job-read.js';
 import { jobTransaction, writeAssignment, writeJobRow } from './job-write.js';
@@ -38,10 +38,10 @@ const isPriced = (stint: Pick<Assignment, 'pricing'>) => stint.pricing !== null;
 
 /** Locks the stint and its Job, checks Pricing is open, and returns the live read of the Job and the stint. */
 async function openStint(tx: DatabaseTransaction, assignmentId: string, actor: JobActor) {
-  const { job: row, machineCode } = await lockStintFor(tx, assignmentId, 'price', actor);
+  const { job: row, stint: locked, machineCode } = await lockStintFor(tx, assignmentId, 'price', actor);
+  assertAssignmentAction('price', locked);
   const job = await getJob({ db: tx, id: row.id });
   const stint = assignmentIn(job, assignmentId);
-  if (stint.state !== 'left') throw jobNotFound('Machine Assignment');
   return { machineCode, job, stint };
 }
 

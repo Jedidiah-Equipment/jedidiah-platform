@@ -30,6 +30,9 @@ export function ArrivalCaptureDialog({ stint, onClose }: { stint: Assignment | n
   const trpc = useTRPC();
   const capture = useReadingCapture('arrival');
   const [readingFocused, setReadingFocused] = useState(false);
+  // A refetch can change the live stint mid-capture; the form starts from, and overrides compare against, the opened one.
+  const [opened, setOpened] = useState(stint);
+  if (stint?.id !== opened?.id) setOpened(stint);
   const history = useQuery(
     trpc.contractingReadings.fieldHistory.queryOptions({ machineId: stint?.machineId ?? '' }, { enabled: !!stint }),
   );
@@ -43,7 +46,7 @@ export function ArrivalCaptureDialog({ stint, onClose }: { stint: Assignment | n
   const latest = history.data?.[0];
   const canCapture = (values: z.infer<typeof ArrivalValues>) =>
     history.isSuccess &&
-    (!changesAssignment(stint, values) || options.ready) &&
+    (!changesAssignment(opened, values) || options.ready) &&
     (!captureIsBelowLatest(values.value, latest) ||
       (values.confirmedDispute?.value === values.value && values.confirmedDispute.previousId === latest?.id));
 
@@ -64,8 +67,8 @@ export function ArrivalCaptureDialog({ stint, onClose }: { stint: Assignment | n
         value: Number.NaN,
         comment: '',
         confirmedDispute: null,
-        implementId: stint?.implementId ?? '',
-        driverUserId: stint?.driverUserId ?? '',
+        implementId: opened?.implementId ?? '',
+        driverUserId: opened?.driverUserId ?? '',
       }}
       validator={ArrivalValues}
       canSubmit={canCapture}
@@ -83,7 +86,7 @@ export function ArrivalCaptureDialog({ stint, onClose }: { stint: Assignment | n
             values.confirmedDispute?.value === values.value &&
             values.confirmedDispute.previousId === latest?.id,
           expectedPreviousId: latest?.id ?? null,
-          stintOverrides: changesAssignment(stint, values)
+          stintOverrides: changesAssignment(opened, values)
             ? { implementId: values.implementId || null, driverUserId: values.driverUserId || null }
             : undefined,
         });

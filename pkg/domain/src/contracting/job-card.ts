@@ -12,10 +12,11 @@ import {
   type JobDetail,
   type JobReading,
   type JobStatus,
+  type StintPricing,
 } from '@pkg/schema/contracting';
 import { formatPercent } from '../formatting/number.js';
 import { round1 } from './hours.js';
-import { rateUnitLabel, round2 } from './pricing.js';
+import { rateUnitLabel, round2, stintAmount } from './pricing.js';
 import { groupStints } from './stints.js';
 
 export const hasJobCard = (status: JobStatus): status is FinishedJobStatus => hasJobStatus(finishedJobStatuses, status);
@@ -44,12 +45,12 @@ function cardReading(reading: JobReading | null, internal: boolean): JobCardRead
   };
 }
 
-function cardRate(stint: Assignment): JobCardStintLine['rate'] {
-  if (stint.rateUnitAmount === null || stint.rateBasis === null) return null;
+function cardRate(pricing: StintPricing | null): JobCardStintLine['rate'] {
+  if (pricing?.kind !== 'rate') return null;
   return {
-    name: stint.rateName ?? '',
-    unitAmount: stint.rateUnitAmount,
-    per: rateUnitLabel(stint.rateBasis, stint.rateMeasureTypeName),
+    name: pricing.name,
+    unitAmount: pricing.unitAmount,
+    per: rateUnitLabel(pricing.basis, pricing.measureTypeName),
   };
 }
 
@@ -72,18 +73,15 @@ function stintLine(stint: Assignment, internal: boolean, priced: boolean): JobCa
         }
       : { variant: 'customer', total: stint.billableHours },
     measures: stint.measures.map((measure) => ({ name: measure.measureTypeName, quantity: measure.quantity })),
-    rate: priced ? cardRate(stint) : null,
-    noCharge: priced && stint.rateBasis === null,
-    amount: priced ? stint.finalAmount : null,
+    rate: priced ? cardRate(stint.pricing) : null,
+    noCharge: priced && stint.pricing?.kind === 'no-charge',
+    amount: priced ? stintAmount(stint.pricing) : null,
   };
 }
 
-function discountLine(job: JobDetail, amount: number): JobCardModel['discount'] {
-  if (job.discountKind === null || job.discountValue === null) return null;
-  return {
-    label: job.discountKind === 'percent' ? `Discount (${formatPercent(job.discountValue)})` : 'Discount',
-    amount,
-  };
+function discountLine(discount: JobDetail['discount'], amount: number): JobCardModel['discount'] {
+  if (!discount) return null;
+  return { label: discount.kind === 'percent' ? `Discount (${formatPercent(discount.value)})` : 'Discount', amount };
 }
 
 /** The one place the Job Card's variant rules live; the renderer prints what this returns. */
@@ -110,7 +108,7 @@ export function buildJobCardModel(job: JobDetail, variant: JobCardVariant, now: 
       hours: internal
         ? { variant: 'internal', work: row.workHours, travel: row.travelHours }
         : { variant: 'customer', total: round1(row.workHours + row.travelHours) },
-      amount: priced ? round2(group.reduce((total, stint) => total + (stint.finalAmount ?? 0), 0)) : null,
+      amount: priced ? round2(group.reduce((total, stint) => total + stintAmount(stint.pricing), 0)) : null,
     });
   }
 
@@ -133,10 +131,10 @@ export function buildJobCardModel(job: JobDetail, variant: JobCardVariant, now: 
     })),
     diesel: {
       litres: job.dieselLitres,
-      unitPrice: priced ? job.dieselUnitPrice : null,
+      unitPrice: priced ? (job.diesel?.unitPrice ?? null) : null,
       amount: priced ? pricing.dieselAmount : null,
     },
-    discount: priced ? discountLine(job, pricing.discountAmount) : null,
+    discount: priced ? discountLine(job.discount, pricing.discountAmount) : null,
     totals: priced
       ? {
           subtotal: pricing.subtotal,

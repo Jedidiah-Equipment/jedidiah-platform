@@ -191,6 +191,25 @@ export const assignmentIdentityShape = {
   createdAt: DateIso,
 };
 
+export const StintPricing = z.discriminatedUnion('kind', [
+  z.object({ kind: z.literal('no-charge') }),
+  z.object({
+    kind: z.literal('rate'),
+    rateId: UUID,
+    name: z.string(),
+    basis: RateBasis,
+    measureTypeId: UUID.nullable(),
+    measureTypeName: z.string().nullable(),
+    unitAmount: Money,
+    billedQuantity: z.number().nonnegative(),
+    measureMissing: z.boolean(),
+    computedAmount: Money,
+    finalAmount: Money,
+    amountEdited: z.boolean(),
+  }),
+]);
+export type StintPricing = z.infer<typeof StintPricing>;
+
 export const Assignment = z.object({
   ...assignmentIdentityShape,
   arrival: JobReading.nullable(),
@@ -205,21 +224,8 @@ export const Assignment = z.object({
   gapResolved: z.boolean(),
   gapReason: z.string().nullable(),
   measures: z.array(Measure),
-  rateId: UUID.nullable(),
-  rateName: z.string().nullable(),
-  rateBasis: RateBasis.nullable(),
-  rateMeasureTypeId: UUID.nullable(),
-  /** The measure Rate's unit, named even when the stint has no Measure of that type. */
-  rateMeasureTypeName: z.string().nullable(),
-  rateUnitAmount: Money.nullable(),
-  computedAmount: Money.nullable(),
-  finalAmount: Money.nullable(),
-  /** The final amount differs from the computed one: a pricer typed it. */
-  amountEdited: z.boolean(),
-  /** A measure Rate is chosen but the stint has no Measure of its type, so it bills 0. */
-  measureMissing: z.boolean(),
-  /** Hours or Measure quantity the chosen Rate bills; null while the stint is un-priced. */
-  billedQuantity: z.number().nonnegative().nullable(),
+  /** Null while the stint is un-priced, or when money is redacted for this reader. */
+  pricing: StintPricing.nullable(),
 });
 export type Assignment = z.infer<typeof Assignment>;
 
@@ -279,29 +285,30 @@ export const JobPricing = z.object({
 });
 export type JobPricing = z.infer<typeof JobPricing>;
 
+export const JobDiesel = z.object({ unitPrice: Money, amount: Money, amountEdited: z.boolean() });
+export type JobDiesel = z.infer<typeof JobDiesel>;
+export const JobDiscount = z.object({ kind: z.enum(discountKinds), value: Money, amount: Money });
+export type JobDiscount = z.infer<typeof JobDiscount>;
+
 /** One Job read for no one in particular: what writes return and what core reasons over. */
 export const JobFacts = z.object({
   ...jobSummaryShape,
   notes: z.string().nullable(),
   dieselLitres: Litres,
-  dieselUnitPrice: Money.nullable(),
-  dieselAmount: Money.nullable(),
-  dieselAmountEdited: z.boolean(),
-  discountKind: z.enum(discountKinds).nullable(),
-  discountValue: Money.nullable(),
-  discountAmount: Money.nullable(),
-  pricedSubtotal: Money.nullable(),
+  /** Null until Diesel is priced, or when money is redacted. `dieselLitres` is not money and stays top-level. */
+  diesel: JobDiesel.nullable(),
+  discount: JobDiscount.nullable(),
   completedAt: DateIso.nullable(),
   invoicedByName: z.string().nullable(),
   cancellationReason: z.string().nullable(),
   reopenedAt: DateIso.nullable(),
   repricingNote: z.string().nullable(),
-  pricing: JobPricing.nullable(),
+  pricing: JobPricing,
   assignments: z.array(Assignment),
   chargeLines: z.array(ChargeLine),
 });
 export type JobFacts = z.infer<typeof JobFacts>;
 
-/** One Job as the person asking reads it: the facts and what they may do to it. */
-export const JobDetail = JobFacts.extend({ actions: JobActions });
+/** One Job as the person asking reads it: the facts, what they may do to it, and no money for a Foreman. */
+export const JobDetail = JobFacts.extend({ pricing: JobPricing.nullable(), actions: JobActions });
 export type JobDetail = z.infer<typeof JobDetail>;

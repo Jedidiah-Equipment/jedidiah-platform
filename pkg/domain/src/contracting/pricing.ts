@@ -1,4 +1,14 @@
-import type { DiscountKind, RateBasis } from '@pkg/schema/contracting';
+import type {
+  AssignmentState,
+  DiscountKind,
+  JobDiesel,
+  JobDiscount,
+  JobPricing,
+  JobStatus,
+  PricingGate,
+  RateBasis,
+  StintPricing,
+} from '@pkg/schema/contracting';
 import { countPhrase } from './count-phrase.js';
 
 export const round2 = (value: number) => Math.round(value * 100) / 100;
@@ -28,68 +38,126 @@ export function priceStint(facts: StintPricingFacts): StintPrice {
 
 export const computeDieselAmount = (litres: number, unitPrice: number) => round2(litres * unitPrice);
 
-export type JobDiscount = { kind: DiscountKind; value: number };
-
-export type JobTotals = {
-  stintsTotal: number;
-  chargeLinesTotal: number;
-  subtotal: number;
-  discountAmount: number;
-  dieselAmount: number;
-  total: number;
-};
-
 /** A percentage of the base, or a fixed amount that cannot exceed it. */
-export function computeDiscountAmount(base: number, discount: JobDiscount | null) {
+export function computeDiscountAmount(base: number, discount: Pick<JobDiscount, 'kind' | 'value'> | null): number {
   if (!discount) return 0;
   return discount.kind === 'percent' ? round2((base * discount.value) / 100) : Math.min(round2(discount.value), base);
 }
 
+/** What a stint bills: a rate's final amount; No charge and un-priced bill nothing. */
+export const stintAmount = (pricing: StintPricing | null): number =>
+  pricing?.kind === 'rate' ? pricing.finalAmount : 0;
+
 const sum = (values: readonly number[]) => round2(values.reduce((total, value) => total + value, 0));
 
-/** The Discount base is stints + Charge Lines, never Diesel; a fixed Discount cannot exceed its base. */
-export function computeJobTotals(input: {
-  stintFinalAmounts: readonly number[];
-  chargeLineAmounts: readonly number[];
-  discount: JobDiscount | null;
-  dieselAmount: number;
-}): JobTotals {
-  const stintsTotal = sum(input.stintFinalAmounts);
-  const chargeLinesTotal = sum(input.chargeLineAmounts);
-  const subtotal = round2(stintsTotal + chargeLinesTotal);
-  const discountAmount = computeDiscountAmount(subtotal, input.discount);
-  return {
-    stintsTotal,
-    chargeLinesTotal,
-    subtotal,
-    discountAmount,
-    dieselAmount: input.dieselAmount,
-    total: round2(subtotal - discountAmount + input.dieselAmount),
-  };
-}
+/** A stint's stored Rate snapshot and the amounts last written beside it. */
+export type StoredStintPricing =
+  | { kind: 'no-charge' }
+  | {
+      kind: 'rate';
+      rateId: string;
+      name: string;
+      basis: RateBasis;
+      measureTypeId: string | null;
+      measureTypeName: string | null;
+      unitAmount: number;
+      computedAmount: number;
+      finalAmount: number;
+    };
 
-export type PricingGate = {
-  ok: boolean;
-  unpricedStints: number;
-  chargeLinesWithoutAmount: number;
-  dieselUnpriced: boolean;
+export type JobPricingFacts = {
+  status: JobStatus;
+  stints: readonly {
+    state: AssignmentState;
+    billableHours: number | null;
+    measures: readonly { measureTypeId: string; quantity: number }[];
+    /** Null is un-priced. */
+    stored: StoredStintPricing | null;
+  }[];
+  chargeLines: readonly { amount: number | null }[];
+  diesel: { litres: number; unitPrice: number | null; amount: number | null };
+  discount: { kind: DiscountKind; value: number; amount: number | null } | null;
 };
 
-/** Every stint has a Rate or No charge, every Charge Line an amount (zero allowed), and supplied Diesel a price. */
-export function canMarkPriced(job: {
-  dieselLitres: number;
-  dieselAmount: number | null;
-  stints: readonly { priced: boolean }[];
-  chargeLines: readonly { amount: number | null }[];
-}): PricingGate {
-  const unpricedStints = job.stints.filter((stint) => !stint.priced).length;
-  const chargeLinesWithoutAmount = job.chargeLines.filter((line) => line.amount === null).length;
-  const dieselUnpriced = job.dieselLitres > 0 && job.dieselAmount === null;
+export type PricedJob = {
+  /** One entry per `facts.stints` entry, in the same order. */
+  stints: (StintPricing | null)[];
+  diesel: JobDiesel | null;
+  discount: JobDiscount | null;
+  pricing: JobPricing;
+};
+
+/**
+ * The one pricing policy: what a Job's stored figures and live facts price to, for no one in particular.
+ * While Completed, amounts re-derive from live hours and Measures and only an override survives.
+ */
+export function priceJob(facts: JobPricingFacts): PricedJob {
+  const live = facts.status === 'completed';
+  const stints = facts.stints.map((stint): StintPricing | null => {
+    const { stored } = stint;
+    if (stored === null) return null;
+    if (stored.kind === 'no-charge') return { kind: 'no-charge' };
+    const price = priceStint({
+      basis: stored.basis,
+      unitAmount: stored.unitAmount,
+      measureTypeId: stored.measureTypeId,
+      billableHours: stint.billableHours,
+      measures: stint.measures,
+    });
+    const amountEdited = stored.finalAmount !== stored.computedAmount;
+    return {
+      kind: 'rate',
+      rateId: stored.rateId,
+      name: stored.name,
+      basis: stored.basis,
+      measureTypeId: stored.measureTypeId,
+      measureTypeName: stored.measureTypeName,
+      unitAmount: stored.unitAmount,
+      billedQuantity: price.quantity,
+      measureMissing: price.measureMissing,
+      computedAmount: live ? price.computedAmount : stored.computedAmount,
+      finalAmount: live && !amountEdited ? price.computedAmount : stored.finalAmount,
+      amountEdited,
+    };
+  });
+  const left = stints.filter((_, index) => facts.stints[index]?.state === 'left');
+
+  const stintsTotal = sum(left.map(stintAmount));
+  const chargeLinesTotal = sum(facts.chargeLines.map((line) => line.amount ?? 0));
+  const subtotal = round2(stintsTotal + chargeLinesTotal);
+  const discountAmount = computeDiscountAmount(subtotal, facts.discount);
+  const { litres, unitPrice, amount } = facts.diesel;
+  const dieselAmount = litres > 0 ? (amount ?? 0) : 0;
+
+  const unpricedStints = left.filter((pricing) => pricing === null).length;
+  const chargeLinesWithoutAmount = facts.chargeLines.filter((line) => line.amount === null).length;
+  const dieselUnpriced = litres > 0 && amount === null;
+
   return {
-    ok: unpricedStints === 0 && chargeLinesWithoutAmount === 0 && !dieselUnpriced,
-    unpricedStints,
-    chargeLinesWithoutAmount,
-    dieselUnpriced,
+    stints,
+    diesel:
+      unitPrice === null || amount === null
+        ? null
+        : { unitPrice, amount, amountEdited: amount !== computeDieselAmount(litres, unitPrice) },
+    discount: facts.discount && {
+      kind: facts.discount.kind,
+      value: facts.discount.value,
+      amount: live ? discountAmount : (facts.discount.amount ?? discountAmount),
+    },
+    pricing: {
+      stintsTotal,
+      chargeLinesTotal,
+      subtotal,
+      discountAmount,
+      dieselAmount,
+      total: round2(subtotal - discountAmount + dieselAmount),
+      gate: {
+        ok: unpricedStints === 0 && chargeLinesWithoutAmount === 0 && !dieselUnpriced,
+        unpricedStints,
+        chargeLinesWithoutAmount,
+        dieselUnpriced,
+      },
+    },
   };
 }
 

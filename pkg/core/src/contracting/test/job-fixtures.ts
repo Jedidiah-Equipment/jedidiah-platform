@@ -155,7 +155,7 @@ export async function pricedJob(
   const completed = await completedJob(fixtures, stints);
   for (const stint of completed.stints)
     await setStintRate({ db, actor: admin, input: { assignmentId: stint.id, rateId: fixtures.dryHire.id } });
-  const total = (await getJob({ db, id: completed.jobId })).pricing?.total ?? 0;
+  const total = (await getJob({ db, id: completed.jobId })).pricing.total;
   await markPriced({ db, actor: admin, input: { id: completed.jobId, expectedTotal: total } });
   return { ...completed, total };
 }

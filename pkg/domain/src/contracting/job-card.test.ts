@@ -57,17 +57,7 @@ function stint(overrides: Partial<Assignment>): Assignment {
     gapResolved: false,
     gapReason: null,
     measures: [],
-    rateId: null,
-    rateName: null,
-    rateBasis: null,
-    rateMeasureTypeId: null,
-    rateMeasureTypeName: null,
-    rateUnitAmount: null,
-    computedAmount: null,
-    finalAmount: null,
-    amountEdited: false,
-    measureMissing: false,
-    billedQuantity: null,
+    pricing: null,
     ...overrides,
   } as Assignment;
 }
@@ -80,13 +70,20 @@ const excavator = stint({
   departure: reading(4051.2, '2026-09-06T16:00:00.000Z', { role: 'departure' }),
   workHours: 48.6,
   billableHours: 48.6,
-  rateId: 'rate-excavator',
-  rateName: 'Excavator, supervised',
-  rateBasis: 'time',
-  rateUnitAmount: 600,
-  computedAmount: 29_160,
-  finalAmount: 29_160,
-  billedQuantity: 48.6,
+  pricing: {
+    kind: 'rate',
+    rateId: 'rate-excavator',
+    name: 'Excavator, supervised',
+    basis: 'time',
+    measureTypeId: null,
+    measureTypeName: null,
+    unitAmount: 600,
+    billedQuantity: 48.6,
+    measureMissing: false,
+    computedAmount: 29_160,
+    finalAmount: 29_160,
+    amountEdited: false,
+  },
 });
 const grader = stint({
   id: 'grader',
@@ -99,13 +96,20 @@ const grader = stint({
   gapHours: 2.1,
   travelHours: 2.1,
   billableHours: 44.5,
-  rateId: 'rate-grader',
-  rateName: 'Grader',
-  rateBasis: 'time',
-  rateUnitAmount: 550,
-  computedAmount: 24_475,
-  finalAmount: 24_475,
-  billedQuantity: 44.5,
+  pricing: {
+    kind: 'rate',
+    rateId: 'rate-grader',
+    name: 'Grader',
+    basis: 'time',
+    measureTypeId: null,
+    measureTypeName: null,
+    unitAmount: 550,
+    billedQuantity: 44.5,
+    measureMissing: false,
+    computedAmount: 24_475,
+    finalAmount: 24_475,
+    amountEdited: false,
+  },
 });
 const tractor = stint({
   id: 'tractor',
@@ -120,16 +124,26 @@ const tractor = stint({
   travelHours: 1.2,
   billableHours: 40,
   measures: [{ id: 'measure', measureTypeId: 'loads', measureTypeName: 'Loads', quantity: 18 }],
-  rateId: 'rate-tanker',
-  rateName: 'Tractor and tanker',
-  rateBasis: 'measure',
-  rateMeasureTypeId: 'loads',
-  rateMeasureTypeName: 'Loads',
-  rateUnitAmount: 850,
-  computedAmount: 15_300,
-  finalAmount: 15_300,
-  billedQuantity: 18,
+  pricing: {
+    kind: 'rate',
+    rateId: 'rate-tanker',
+    name: 'Tractor and tanker',
+    basis: 'measure',
+    measureTypeId: 'loads',
+    measureTypeName: 'Loads',
+    unitAmount: 850,
+    billedQuantity: 18,
+    measureMissing: false,
+    computedAmount: 15_300,
+    finalAmount: 15_300,
+    amountEdited: false,
+  },
 });
+
+function rateOf(stint: Assignment) {
+  if (stint.pricing?.kind !== 'rate') throw new Error(`${stint.machineCode} is not on a Rate.`);
+  return stint.pricing;
+}
 
 const rowleyPricing: NonNullable<JobDetail['pricing']> = {
   stintsTotal: 68_935,
@@ -173,13 +187,8 @@ function rowleyDam(overrides: Partial<JobDetail> = {}): JobDetail {
     updatedAt: '2026-09-08T12:00:00.000Z',
     notes: 'Access through the northern gate.',
     dieselLitres: 210,
-    dieselUnitPrice: 23,
-    dieselAmount: 4_830,
-    dieselAmountEdited: false,
-    discountKind: null,
-    discountValue: null,
-    discountAmount: null,
-    pricedSubtotal: 72_435,
+    diesel: { unitPrice: 23, amount: 4_830, amountEdited: false },
+    discount: null,
     completedAt: '2026-09-07T12:00:00.000Z',
     invoicedByName: null,
     cancellationReason: null,
@@ -299,13 +308,11 @@ describe('buildJobCardModel', () => {
   });
 
   test('prints a No charge stint without a Rate and a percentage Discount as its own line', () => {
-    const free = { ...grader, rateId: null, rateName: null, rateBasis: null, rateUnitAmount: 0, finalAmount: 0 };
+    const free: Assignment = { ...grader, pricing: { kind: 'no-charge' } };
     const card = buildJobCardModel(
       rowleyDam({
         assignments: [excavator, free],
-        discountKind: 'percent',
-        discountValue: 5,
-        discountAmount: 3_621.75,
+        discount: { kind: 'percent', value: 5, amount: 3_621.75 },
         pricing: { ...rowleyPricing, discountAmount: 3_621.75, total: 73_643.25 },
       }),
       'customer',
@@ -318,7 +325,11 @@ describe('buildJobCardModel', () => {
   });
 
   test('names a measure Rate’s unit even when its Measure was never captured', () => {
-    const noLoads = { ...tractor, measures: [], measureMissing: true, computedAmount: 0, finalAmount: 0 };
+    const noLoads: Assignment = {
+      ...tractor,
+      measures: [],
+      pricing: { ...rateOf(tractor), measureMissing: true, computedAmount: 0, finalAmount: 0 },
+    };
     const [line] = stintLines(rowleyDam({ assignments: [noLoads] }), 'customer');
     expect(line).toMatchObject({ rate: { per: 'Loads' }, amount: 0 });
   });
@@ -327,8 +338,7 @@ describe('buildJobCardModel', () => {
     const card = buildJobCardModel(
       rowleyDam({
         dieselLitres: 0,
-        dieselUnitPrice: null,
-        dieselAmount: null,
+        diesel: null,
         pricing: { ...rowleyPricing, dieselAmount: 0, total: 72_435 },
       }),
       'customer',
@@ -339,21 +349,12 @@ describe('buildJobCardModel', () => {
   });
 
   test('a Completed Job with any line still un-priced prints hours with no rates, amounts or totals', () => {
-    const unpricedGrader = {
-      ...grader,
-      rateId: null,
-      rateName: null,
-      rateBasis: null,
-      rateUnitAmount: null,
-      computedAmount: null,
-      finalAmount: null,
-    };
+    const unpricedGrader: Assignment = { ...grader, pricing: null };
     const card = buildJobCardModel(
       rowleyDam({
         status: 'completed',
         pricedAt: null,
         assignments: [excavator, unpricedGrader],
-        dieselAmount: 4_830,
         pricing: {
           ...rowleyPricing,
           gate: { ok: false, unpricedStints: 1, chargeLinesWithoutAmount: 0, dieselUnpriced: false },
@@ -370,13 +371,13 @@ describe('buildJobCardModel', () => {
   });
 
   test('subtotals a Machine only when it has repeat stints', () => {
-    const secondVisit = {
+    const secondVisit: Assignment = {
       ...excavator,
       id: 'cat-2',
       arrival: reading(4060, '2026-09-10T07:00:00.000Z'),
       workHours: 2,
       billableHours: 2,
-      finalAmount: 1_200,
+      pricing: { ...rateOf(excavator), finalAmount: 1_200 },
     };
     const job = rowleyDam({ assignments: [secondVisit, grader, excavator] });
     const card = buildJobCardModel(job, 'customer', now);

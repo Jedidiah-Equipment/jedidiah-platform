@@ -4,10 +4,17 @@ export const JEDIDIAH_BUSINESS_DETAILS = {
   address: 'Stoneybrook Farm, Kokstad, 4700',
   cellphone: '082 419 4464',
   companyRegistrationNumber: 'C/K 2019/513612/07',
-  email: 'jed@jedidiahequipment.co.za',
+  ownerEmail: 'jed@jedidiahequipment.co.za',
+  partsEmail: 'parts@jedidiahequipment.co.za',
   registeredName: 'Jedidiah Equipment Pty Ltd',
   vatRegistrationNumber: '4420294821',
 } as const;
+
+// Suppliers call these people, not Jed, about a Purchase Order.
+export const JEDIDIAH_PURCHASE_ORDER_CONTACTS = [
+  { name: 'Jordan Robins', cellphone: '083 780 3747' },
+  { name: 'Dewald van Niekerk', cellphone: '083 331 9183' },
+] as const;
 
 export const JEDIDIAH_LOCATION = 'KZN, South Africa';
 

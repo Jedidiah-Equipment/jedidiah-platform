@@ -1,5 +1,9 @@
 import { formatDate } from '@pkg/domain';
-import { formatPurchaseOrderLineLabel, JEDIDIAH_BUSINESS_DETAILS } from '@pkg/domain/equipment';
+import {
+  formatPurchaseOrderLineLabel,
+  JEDIDIAH_BUSINESS_DETAILS,
+  JEDIDIAH_PURCHASE_ORDER_CONTACTS,
+} from '@pkg/domain/equipment';
 import { PART_UNIT_OF_MEASURE_LABELS, type PurchaseOrderPdfModel } from '@pkg/schema/equipment';
 import { Document, Image, Page, StyleSheet, Text, View } from '@react-pdf/renderer';
 
@@ -87,8 +91,10 @@ export function PurchaseOrderPdf({ document }: { document: PurchaseOrderPdfModel
             <Text>{`VAT registration: ${JEDIDIAH_BUSINESS_DETAILS.vatRegistrationNumber}`}</Text>
             <Text>{`Company registration: ${JEDIDIAH_BUSINESS_DETAILS.companyRegistrationNumber}`}</Text>
             <Text>{`Address: ${JEDIDIAH_BUSINESS_DETAILS.address}`}</Text>
-            <Text>{`Email: ${JEDIDIAH_BUSINESS_DETAILS.email}`}</Text>
-            <Text>{`Cell: ${JEDIDIAH_BUSINESS_DETAILS.cellphone}`}</Text>
+            <Text>{`Email: ${JEDIDIAH_BUSINESS_DETAILS.partsEmail}`}</Text>
+            {JEDIDIAH_PURCHASE_ORDER_CONTACTS.map((person) => (
+              <Text key={person.name}>{`${person.name}: ${person.cellphone}`}</Text>
+            ))}
           </View>
         </View>
 

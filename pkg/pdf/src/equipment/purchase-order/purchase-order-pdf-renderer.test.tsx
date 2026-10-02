@@ -78,10 +78,12 @@ describe('Purchase Order PDF', () => {
         'VAT registration: 4420294821',
         'Company registration: C/K 2019/513612/07',
         'Address: Stoneybrook Farm, Kokstad, 4700',
-        'Email: jed@jedidiahequipment.co.za',
-        'Cell: 082 419 4464',
+        'Email: parts@jedidiahequipment.co.za',
+        'Jordan Robins: 083 780 3747',
+        'Dewald van Niekerk: 083 331 9183',
       ]),
     );
+    expect(text.join(' ')).not.toMatch(/jed@|082 419 4464/);
   });
 
   test('prints the revision number so the Supplier knows which page supersedes which', () => {

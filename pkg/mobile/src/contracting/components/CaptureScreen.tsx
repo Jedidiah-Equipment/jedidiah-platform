@@ -4,6 +4,7 @@ import {
   FUTURE_READ_AT_REFUSAL,
   fieldJobAccessMode,
   isFutureReadAt,
+  MISSING_PHOTO_EVIDENCE,
 } from '@pkg/domain/contracting';
 import { ReadingComment, type ReadingErrorCode, type ReadingRole } from '@pkg/schema/contracting';
 import { useStore } from '@tanstack/react-form';
@@ -270,7 +271,7 @@ function CaptureForm({ params }: { params: CaptureParams }) {
                         options={[
                           { label: 'No implement', value: '' },
                           ...(implementsQuery.data ?? []).map((row) => ({
-                            ...implementOption(row, row.onSiteJobNumber),
+                            ...implementOption(row),
                             disabled: row.onSiteJobNumber !== null,
                           })),
                         ]}
@@ -332,7 +333,7 @@ function CaptureForm({ params }: { params: CaptureParams }) {
                   resizeMode="contain"
                 />
               ) : (
-                <Text className="text-muted-foreground">Missing Photo Evidence · no photo attached</Text>
+                <Text className="text-muted-foreground">{MISSING_PHOTO_EVIDENCE} · no photo attached</Text>
               )}
               <Button
                 title={photo ? 'Retake photo' : 'Photograph meter'}

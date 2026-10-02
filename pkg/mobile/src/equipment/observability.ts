@@ -1,4 +1,9 @@
-import type { MutationEventCatalog, ObservabilityProperties } from '@/lib/observability-contract';
+import {
+  type MutationEventCatalog,
+  type ObservabilityProperties,
+  pickRecordIds,
+  pickStringFields,
+} from '@/lib/observability-contract';
 
 const id =
   (property: string, eventProperty = `${property}Id`) =>
@@ -58,22 +63,4 @@ export function mutationEventProperties(
   data?: unknown,
 ): ObservabilityProperties {
   return EQUIPMENT_MUTATION_EVENTS[procedure].properties(variables, data);
-}
-
-function pickRecordIds(value: unknown, fields: readonly string[]): ObservabilityProperties {
-  return pickStringFields(
-    value,
-    fields.map((field) => [field, field] as const),
-  );
-}
-
-function pickStringFields(
-  value: unknown,
-  fields: readonly (readonly [source: string, destination: string])[],
-): ObservabilityProperties {
-  if (typeof value !== 'object' || value === null) return {};
-  const source = value as Record<string, unknown>;
-  return Object.fromEntries(
-    fields.flatMap(([from, to]) => (typeof source[from] === 'string' ? [[to, source[from]]] : [])),
-  );
 }

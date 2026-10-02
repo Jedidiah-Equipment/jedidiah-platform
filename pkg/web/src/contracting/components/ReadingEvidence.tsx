@@ -1,4 +1,5 @@
 import { formatHours } from '@pkg/domain';
+import { MISSING_PHOTO_EVIDENCE } from '@pkg/domain/contracting';
 import type { JobReading } from '@pkg/schema/contracting';
 import { IconInfoCircle } from '@tabler/icons-react';
 import { Badge } from '@/components/ui/badge.js';
@@ -35,7 +36,7 @@ export function readingEvidence(reading: EvidenceReading) {
           : `${confidencePercent}% confidence in extracted value`,
     evidenceLabel: reading.photoBacked
       ? ['Photo-backed', evidenceDetail].filter(Boolean).join(' · ')
-      : 'Missing Photo Evidence',
+      : MISSING_PHOTO_EVIDENCE,
     resultLabel:
       verification.resultLabel ??
       (reading.aiValue === null ? 'No readable meter detected' : formatHours(reading.aiValue)),

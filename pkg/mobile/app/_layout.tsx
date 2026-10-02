@@ -11,6 +11,7 @@ import { OfflineScreen } from '@/components/OfflineScreen';
 import { UpdatePrompt } from '@/components/UpdatePrompt';
 import { GluestackUIProvider } from '@/components/ui/gluestack-ui-provider';
 import { isOfflineCapableRoute, offlineCoverAction } from '@/contracting/lib/offline-routes';
+import { CONTRACTING_MUTATION_EVENTS } from '@/contracting/observability';
 import { CONTRACTING_SCREEN_CATALOG } from '@/contracting/screen-catalog';
 import { EQUIPMENT_MUTATION_EVENTS } from '@/equipment/observability';
 import { EQUIPMENT_SCREEN_CATALOG } from '@/equipment/screen-catalog';
@@ -36,6 +37,7 @@ const screenForSegments = createScreenResolver([
   CONTRACTING_SCREEN_CATALOG,
   EQUIPMENT_SCREEN_CATALOG,
 ]);
+const MUTATION_EVENTS = { ...EQUIPMENT_MUTATION_EVENTS, ...CONTRACTING_MUTATION_EVENTS };
 
 export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
   return <AppErrorBoundary error={error} retry={retry} />;
@@ -63,7 +65,7 @@ function ThemedAppShell() {
   return (
     <GluestackUIProvider mode={preference}>
       <ConnectivityProvider>
-        <ApiProvider mutationEvents={EQUIPMENT_MUTATION_EVENTS}>
+        <ApiProvider mutationEvents={MUTATION_EVENTS}>
           <RouteObservability />
           {/* Auth gating lives in app/(protected)/_layout.tsx; login is the public route. */}
           <Stack screenOptions={{ headerShown: false }} />

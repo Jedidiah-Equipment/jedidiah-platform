@@ -81,7 +81,6 @@ describe('Job Card PDF', () => {
   test('an un-priced Job prints hours only', () => {
     const document = {
       ...jobCardFixture('customer'),
-      status: 'completed' as const,
       totals: null,
       lines: jobCardFixture('customer').lines.map((line) =>
         line.kind === 'stint' ? { ...line, rate: null, amount: null } : line,

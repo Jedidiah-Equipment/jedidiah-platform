@@ -16,8 +16,6 @@ function fixture(): JobCardModel {
   if (shape === 'unpriced')
     return {
       ...reference,
-      status: 'completed',
-      pricedAt: null,
       lines: reference.lines.map((line) => (line.kind === 'stint' ? { ...line, rate: null, amount: null } : line)),
       chargeLines: reference.chargeLines.map((line) => ({ ...line, amount: null })),
       diesel: { ...reference.diesel, unitPrice: null, amount: null },
@@ -34,7 +32,6 @@ function fixture(): JobCardModel {
   }));
   return JobCardModel.parse({
     ...reference,
-    status: 'invoiced',
     farmName: 'Rooikraal Noord-Oos Besproeiingsblok en Opgaardam (ou Van der Merwe-plaas)',
     invoiceNumber: 'INV-4471',
     invoicedAt: '2026-09-15T09:00:00.000Z',
@@ -49,7 +46,7 @@ function fixture(): JobCardModel {
       ...rest,
     ],
     discount: { label: 'Discount (5%)', amount: 3_621.75 },
-    totals: { subtotal: 72_435, discount: 3_621.75, diesel: 4_830, total: 73_643.25 },
+    totals: { subtotal: 72_435, diesel: 4_830, total: 73_643.25 },
     repricingNote: variant === 'internal' ? 'Lowbed move was double-counted on the first pricing.' : null,
   });
 }

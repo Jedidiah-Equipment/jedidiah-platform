@@ -48,7 +48,6 @@ function cardRate(stint: Assignment): JobCardStintLine['rate'] {
   if (stint.rateUnitAmount === null || stint.rateBasis === null) return null;
   return {
     name: stint.rateName ?? '',
-    basis: stint.rateBasis,
     unitAmount: stint.rateUnitAmount,
     per: rateUnitLabel(stint.rateBasis, stint.rateMeasureTypeName),
   };
@@ -118,7 +117,6 @@ export function buildJobCardModel(job: JobDetail, variant: JobCardVariant, now: 
   return {
     variant,
     jobNumber: job.jobNumber,
-    status,
     customerName: job.customerName,
     farmName: job.farmName,
     workTypeName: job.workTypeName,
@@ -128,7 +126,6 @@ export function buildJobCardModel(job: JobDetail, variant: JobCardVariant, now: 
     endDate: job.endDate,
     invoiceNumber: job.invoiceNumber,
     invoicedAt: job.invoicedAt,
-    pricedAt: job.pricedAt,
     lines,
     chargeLines: job.chargeLines.map((line) => ({
       description: line.description,
@@ -143,7 +140,6 @@ export function buildJobCardModel(job: JobDetail, variant: JobCardVariant, now: 
     totals: priced
       ? {
           subtotal: pricing.subtotal,
-          discount: pricing.discountAmount,
           diesel: pricing.dieselAmount,
           total: pricing.total,
         }

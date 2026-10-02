@@ -2,10 +2,21 @@ import {
   type AiFlaggedVerification,
   aiFlaggedVerifications,
   type ReadingExceptionType,
+  type ReadingRole,
   type ReadingVerification,
 } from '@pkg/schema/contracting';
 import { getBusinessRole } from '../auth/authorization.js';
 import { type BadgeColorClassNames, statusBadgeColorClassNames } from '../theme/status-badge.js';
+
+export const readingRoleLabels: Record<ReadingRole, string> = {
+  baseline: 'Baseline',
+  spot: 'Spot',
+  arrival: 'Arrival',
+  departure: 'Departure',
+};
+
+/** The stamp on a reading captured without a photo. */
+export const MISSING_PHOTO_EVIDENCE = 'Missing Photo Evidence';
 
 export const readingExceptionTypeLabels = {
   'ai-flagged': 'AI flagged',

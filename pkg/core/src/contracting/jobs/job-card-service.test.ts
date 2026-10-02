@@ -45,7 +45,7 @@ describe('rendering a Job Card', () => {
       bytes: new Uint8Array([1, 2, 3]),
       filename: `${priced.jobNumber}-job-card-customer.pdf`,
     });
-    expect(documents[0]).toMatchObject({ variant: 'customer', status: 'priced', totals: { total: 6_000 } });
+    expect(documents[0]).toMatchObject({ variant: 'customer', totals: { total: 6_000 } });
   });
 
   test('refuses Foremen, and an Active Job for anyone', async ({ context }) => {

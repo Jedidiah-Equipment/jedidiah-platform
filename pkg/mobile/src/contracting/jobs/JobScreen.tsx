@@ -1,6 +1,6 @@
 import { formatHours } from '@pkg/domain';
 import { assignmentStateColorClassNames, deriveJobActions } from '@pkg/domain/contracting';
-import type { CategoryColour, CategoryIconKey, JobCardVariant } from '@pkg/schema/contracting';
+import type { AssignmentState, FieldStint, JobCardVariant } from '@pkg/schema/contracting';
 import { IconPlayerPlay, IconPlayerStop, IconPlus, type Icon as TablerIcon } from '@tabler/icons-react-native';
 import { type Href, router, useLocalSearchParams } from 'expo-router';
 import { Pressable, ScrollView, View } from 'react-native';
@@ -17,17 +17,11 @@ import { newLocalId } from '@/contracting/readings/capture-attempt';
 import { useSessionAccessSummary, useSessionPermission } from '@/lib/auth-session';
 import { shareDocument } from '@/lib/document-actions';
 import { useBusyAction } from '@/lib/use-busy-action';
-import { deriveStint, type StintView } from './derive-stint';
 import { JobStatusChip } from './JobStatusChip';
 import { isFinishedJob, useJob } from './use-jobs';
 
-const ORDER: Record<StintView['view'], number> = { running: 0, planned: 1, left: 2 };
-const LABELS: Record<StintView['view'], string> = { planned: 'Planned', running: 'Running', left: 'Left site' };
-const STINT_VIEW_COLORS = {
-  planned: assignmentStateColorClassNames.planned,
-  running: assignmentStateColorClassNames['on-site'],
-  left: assignmentStateColorClassNames.left,
-} satisfies Record<StintView['view'], typeof assignmentStateColorClassNames.planned>;
+const ORDER: Record<AssignmentState, number> = { 'on-site': 0, planned: 1, left: 2 };
+const LABELS: Record<AssignmentState, string> = { planned: 'Planned', 'on-site': 'Running', left: 'Left site' };
 
 export default function JobScreen() {
   const { jobId } = useLocalSearchParams<{ jobId: string }>();
@@ -44,11 +38,12 @@ export default function JobScreen() {
     if (job)
       void share.run(() => shareDocument(jobCardShareAction(job.jobNumber, variant)), 'Unable to share the Job Card.');
   };
-  const stints = (job?.stints ?? [])
-    .map(deriveStint)
-    .sort((left, right) => ORDER[left.view] - ORDER[right.view] || left.createdAt.localeCompare(right.createdAt));
+  // A copy: sorting the query's own array would reorder the cached Job.
+  const stints = [...(job?.stints ?? [])].sort(
+    (left, right) => ORDER[left.state] - ORDER[right.state] || left.createdAt.localeCompare(right.createdAt),
+  );
 
-  const openCapture = (stint: StintView, role: 'arrival' | 'departure') =>
+  const openCapture = (stint: FieldStint, role: 'arrival' | 'departure') =>
     router.push({
       pathname: '/contracting/machines/[id]/capture',
       params: {
@@ -168,7 +163,7 @@ function StintCard({
   onStop,
   onReadd,
 }: {
-  stint: StintView;
+  stint: FieldStint;
   canCapture: boolean;
   canAdd: boolean;
   onStart: () => void;
@@ -179,16 +174,12 @@ function StintCard({
     <View className="gap-2 rounded-xl border border-border bg-surface p-4">
       <View className="flex-row items-center justify-between gap-2">
         <View className="flex-row items-center gap-3">
-          <CategoryIcon
-            icon={stint.categoryIcon as CategoryIconKey}
-            colour={stint.categoryColour as CategoryColour}
-            size={20}
-          />
+          <CategoryIcon icon={stint.categoryIcon} colour={stint.categoryColour} size={20} />
           <Text className="text-lg text-foreground" weight="bold">
             {stint.machineCode}
           </Text>
         </View>
-        <StatusBadge classNames={STINT_VIEW_COLORS[stint.view]} label={LABELS[stint.view]} />
+        <StatusBadge classNames={assignmentStateColorClassNames[stint.state]} label={LABELS[stint.state]} />
       </View>
       <Text className="text-sm text-muted-foreground">
         {stint.categoryName}
@@ -204,13 +195,13 @@ function StintCard({
       {stint.departure ? (
         <Text className="text-sm text-muted-foreground">Departed {formatHours(stint.departure.value)}</Text>
       ) : null}
-      {stint.view === 'planned' && canCapture ? (
+      {stint.state === 'planned' && canCapture ? (
         <CaptureButton icon={IconPlayerPlay} label="Start — capture arrival" onPress={onStart} />
       ) : null}
-      {stint.view === 'running' && canCapture ? (
+      {stint.state === 'on-site' && canCapture ? (
         <CaptureButton icon={IconPlayerStop} label="Stop — capture departure" onPress={onStop} />
       ) : null}
-      {stint.view === 'left' && canAdd ? <Button title="Re-add machine" onPress={onReadd} /> : null}
+      {stint.state === 'left' && canAdd ? <Button title="Re-add machine" onPress={onReadd} /> : null}
     </View>
   );
 }

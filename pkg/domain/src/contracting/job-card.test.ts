@@ -202,7 +202,6 @@ describe('buildJobCardModel', () => {
     expect(card).toMatchObject({
       variant: 'customer',
       jobNumber: 'CJOB-00042',
-      status: 'priced',
       customerName: 'Mr Rowley',
       farmName: 'Rooikraal',
       notes: null,
@@ -210,7 +209,7 @@ describe('buildJobCardModel', () => {
       chargeLines: [{ description: 'Lowbed move', amount: 3_500 }],
       diesel: { litres: 210, unitPrice: 23, amount: 4_830 },
       discount: null,
-      totals: { subtotal: 72_435, discount: 0, diesel: 4_830, total: 77_265 },
+      totals: { subtotal: 72_435, diesel: 4_830, total: 77_265 },
       generatedAt: '2026-09-23T10:00:00.000Z',
     });
     expect(card.lines).toEqual([
@@ -226,7 +225,7 @@ describe('buildJobCardModel', () => {
           capturedByName: null,
         },
         hours: { variant: 'customer', total: 48.6 },
-        rate: { name: 'Excavator, supervised', basis: 'time', unitAmount: 600, per: 'h' },
+        rate: { name: 'Excavator, supervised', unitAmount: 600, per: 'h' },
         amount: 29_160,
       }),
       expect.objectContaining({ machineCode: 'GRAD140K-1', hours: { variant: 'customer', total: 44.5 } }),
@@ -234,7 +233,7 @@ describe('buildJobCardModel', () => {
         machineCode: 'JD6140M-2',
         implementCode: 'TIP-TRAIL-3',
         measures: [{ name: 'Loads', quantity: 18 }],
-        rate: { name: 'Tractor and tanker', basis: 'measure', unitAmount: 850, per: 'Loads' },
+        rate: { name: 'Tractor and tanker', unitAmount: 850, per: 'Loads' },
         amount: 15_300,
       }),
     ]);
@@ -315,7 +314,7 @@ describe('buildJobCardModel', () => {
     expect(card.lines[1]).toMatchObject({ machineCode: 'GRAD140K-1', rate: null, noCharge: true, amount: 0 });
     expect(card.lines[0]).toMatchObject({ noCharge: false });
     expect(card.discount).toEqual({ label: 'Discount (5%)', amount: 3_621.75 });
-    expect(card.totals).toMatchObject({ discount: 3_621.75, total: 73_643.25 });
+    expect(card.totals).toMatchObject({ total: 73_643.25 });
   });
 
   test('names a measure Rate’s unit even when its Measure was never captured', () => {

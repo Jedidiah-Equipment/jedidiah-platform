@@ -13,7 +13,6 @@ import { Text } from '@/components/ui/text';
 import { CategoryIcon } from '@/contracting/components/CategoryIcon';
 import { implementOption } from '@/contracting/components/implement-option';
 import { getVisibleMachines } from '@/contracting/lib/machine-catalog';
-import { recordMachineAdded } from '@/contracting/observability';
 import { useFleet } from '@/contracting/readings/use-fleet';
 import { useSessionAccessSummary } from '@/lib/auth-session';
 import { useTRPC } from '@/lib/trpc';
@@ -37,8 +36,7 @@ export default function AddMachineScreen() {
   const backToJob = () => router.replace(`/contracting/jobs/${params.jobId}` as Href);
   const add = useMutation(
     trpc.contractingJobs.assignments.add.mutationOptions({
-      onSuccess: async (_assignment, input) => {
-        recordMachineAdded(input.jobId, input.machineId);
+      onSuccess: async () => {
         await queryClient.invalidateQueries({ queryKey: trpc.contractingJobs.field.pathKey() });
         backToJob();
       },
@@ -51,9 +49,6 @@ export default function AddMachineScreen() {
   const machineId = values.machineId;
   const selected = fleet.data?.find((machine) => machine.id === machineId);
   const machines = getVisibleMachines(fleet.data ?? [], { search: '', category: 'all', sort: 'code' });
-  const machineOnJob = (id: string) => fleet.data?.find((machine) => machine.id === id)?.onSiteJobNumber ?? null;
-  const implementOnJob = (id: string) =>
-    implementQuery.data?.find((implement) => implement.id === id)?.onSiteJobNumber ?? null;
 
   // A re-added stint's Implement may since have been retired and left the list; the field then reads No implement.
   const implementId = implementQuery.data?.some((implement) => implement.id === values.implementId)
@@ -91,7 +86,7 @@ export default function AddMachineScreen() {
               searchPlaceholder="Search by code, make, model, or category…"
               emptyMessage="No Machines match."
               options={machines.map((machine) => {
-                const onJob = machineOnJob(machine.id);
+                const onJob = machine.onSiteJobNumber;
                 return {
                   value: machine.id,
                   label: machine.code,
@@ -118,9 +113,7 @@ export default function AddMachineScreen() {
               emptyMessage="No Implements match."
               options={[
                 { label: 'No implement', value: '' },
-                ...(implementQuery.data ?? []).map((implement) =>
-                  implementOption(implement, implementOnJob(implement.id)),
-                ),
+                ...(implementQuery.data ?? []).map((implement) => implementOption(implement)),
               ]}
             />
           )}

@@ -36,6 +36,7 @@ export function PricingCard({ job, sheet }: { job: JobDetail; sheet: JobSheet })
   const trpc = useTRPC();
   const editable = sheet.can('price');
   const chargeEditable = sheet.can('editChargeLines');
+  const chargeAmountEditable = sheet.can('priceChargeLines');
   const addLineAction = sheet.action('editChargeLines');
   const priceAction = sheet.action('price');
   const rates = useQuery(trpc.contractingRateCard.rates.options.queryOptions(undefined, { enabled: editable }));
@@ -66,11 +67,12 @@ export function PricingCard({ job, sheet }: { job: JobDetail; sheet: JobSheet })
       job,
       editable,
       chargeEditable,
+      chargeAmountEditable,
       rates: rates.data ?? [],
       mutations,
       chargeLineMutations,
     }),
-    [job, editable, chargeEditable, rates.data, mutations, chargeLineMutations],
+    [job, editable, chargeEditable, chargeAmountEditable, rates.data, mutations, chargeLineMutations],
   );
   if (!sheet.seesMoney) return null;
   return (

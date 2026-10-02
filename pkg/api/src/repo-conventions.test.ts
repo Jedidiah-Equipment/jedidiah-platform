@@ -106,7 +106,7 @@ describe('Contracting Job Actions', () => {
 
     expect(
       offenders,
-      'Gate a Contracting Job control on its served Job Action (JobDetail.actions) or deriveJobActions, not a status group',
+      'Gate a Contracting Job control on its served Job Action (JobDetail.actions) or judgeJobAction, not a status group',
     ).toEqual([]);
   });
 });

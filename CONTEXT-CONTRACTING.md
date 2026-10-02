@@ -54,14 +54,20 @@ work/travel split**. Reading values print; meter photos stay in the app. Diesel 
 VAT-exempt. Its ex-VAT total is a works summary — a Job Card is never an invoice.
 
 **Job Actions** are the derived verdicts of what one person may do to a Job in its current status:
-change its setup, Machine Assignments, travel, Measures, Charge Lines, Hour Gaps, sign-off details
-and diesel litres; complete, cancel, price or stamp it; amend its readings; capture on it. They are
-computed, never stored, and judged for the person asking — a Foreman works only his own Jobs, while
+change its setup, Foreman, Machine Assignments, travel, Measures, Charge Lines and their amounts, Hour Gaps,
+sign-off details and diesel litres; complete, cancel, price or stamp it; amend its readings; capture on it.
+They are computed, never stored, and judged for the person asking — a Foreman works only his own Jobs, while
 open — and they are the same answer the server's write gates apply, so a screen shows a control
-when its verdict allows it and hides it when the person lacks the permission. Invoiced and Cancelled
-are both closed: no Job Action is open on either. A check that judges an input rather than the Job
-— the Mark as Priced gate, the invoice total, a departure reading without a photo, a stint that has
-already left — is not a Job Action and stays with the write that reads that input.
+when its verdict allows it and hides it when the person lacks the permission. A refused verdict carries the
+one sentence that says why; the server's refusal and the screen show that sentence. Invoiced and Cancelled
+are both closed: no Job Action is open on either. A check that judges what a write carries rather than the
+Job — the Mark as Priced gate, the invoice total, a departure reading without a photo — is not a Job Action
+and stays with the write that reads that input.
+
+**Assignment Actions** are the verdicts of what a Machine Assignment's state allows, whoever asks: a planned
+Assignment can be removed; its Implement and Driver can change until it has left; Measures are recorded once
+it has arrived; its Hour Gap is resolved, and it is priced, once it has left. A write passes the Job Action
+first and the Assignment Action second, and a screen offers a control only when both allow it.
 
 **Charge Line** is a non-hourly amount on a Job — transport (e.g. a low-bed move), a supplied
 part, or a fixed quoted total — a description management writes from Active onward, usually at Completion, with an amount

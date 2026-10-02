@@ -1,5 +1,3 @@
-import { createUserAccessSummary } from '@pkg/domain';
-import { jobActionRefusal } from '@pkg/domain/contracting';
 import {
   type JobActionName,
   type JobActionVerdict,
@@ -44,36 +42,36 @@ describe('jobSheet card visibility', () => {
     ['invoiced', [true, false, true]],
     ['cancelled', [false, true, false]],
   ] as const)('shows the cards of a %s Job', (status, shown) => {
-    const sheet = jobSheet(job(status), null);
+    const sheet = jobSheet(job(status));
     expect([sheet.showsSignOff, sheet.showsChargeLines, sheet.showsInvoice]).toEqual(shown);
   });
 
   it('hides Sign-off from a person without the permission', () => {
-    const noPermission: JobActionVerdict = { allowed: false, reason: 'no-permission' };
-    expect(jobSheet(job('active', { editSignOffDetails: noPermission }), null).showsSignOff).toBe(false);
+    const noPermission: JobActionVerdict = { allowed: false, reason: 'no-permission', message: 'No.' };
+    expect(jobSheet(job('active', { editSignOffDetails: noPermission })).showsSignOff).toBe(false);
   });
 });
 
 describe('jobSheet action', () => {
   it('is null without the permission', () => {
-    const sheet = jobSheet(job('active', { price: { allowed: false, reason: 'no-permission' } }), null);
+    const sheet = jobSheet(job('active', { price: { allowed: false, reason: 'no-permission', message: 'No.' } }));
     expect(sheet.action('price')).toBeNull();
   });
 
   it('is enabled when allowed', () => {
-    expect(jobSheet(job('completed'), null).action('price')).toEqual({ disabled: false, title: undefined });
+    expect(jobSheet(job('completed')).action('price')).toEqual({ disabled: false, title: undefined });
   });
 
   it('is disabled with the refusal when the Job refuses it', () => {
-    const access = createUserAccessSummary({
-      userId: 'manager',
-      equipmentRole: null,
-      contractingRole: 'contracting-manager',
-    });
-    const priced = job('priced', { price: { allowed: false, reason: 'priced' } });
-    expect(jobSheet(priced, access).action('price')).toEqual({
-      disabled: true,
-      title: jobActionRefusal('price', 'priced', priced, access),
-    });
+    const message = 'This Job is Priced, so you can no longer price the Job.';
+    const priced = job('priced', { price: { allowed: false, reason: 'priced', message } });
+    expect(jobSheet(priced).action('price')).toEqual({ disabled: true, title: message });
+  });
+});
+
+describe('jobSheet refusal', () => {
+  it('reads a refusal from the served verdict', () => {
+    const sheet = jobSheet(job('priced', { cancel: { allowed: false, reason: 'priced', message: 'X' } }));
+    expect([sheet.can('cancel'), sheet.holds('cancel'), sheet.refusal('cancel')]).toEqual([false, true, 'X']);
   });
 });

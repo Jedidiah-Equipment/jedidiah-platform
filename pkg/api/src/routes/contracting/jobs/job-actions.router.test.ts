@@ -3,6 +3,7 @@ import {
   completeJob,
   createAssignment,
   createCategory,
+  createChargeLine,
   createCustomer,
   createFarm,
   createJob,
@@ -13,6 +14,7 @@ import {
   getJob,
   isReadingError,
   markPriced,
+  patchChargeLine,
   setStintRate,
 } from '@pkg/core/contracting';
 import { type Db, user } from '@pkg/db';
@@ -109,9 +111,14 @@ const test = createTester(async ({ db }) => {
           ...(role === 'departure' ? { comment: 'Photo unavailable' } : {}),
         },
       });
-    const fixture = { job, stint, spare, arrivalReadingId: null as string | null };
+    const fixture: Fixture = { job, stint, spare, arrivalReadingId: null, chargeLineId: null };
     if (status === 'upcoming') return fixture;
     fixture.arrivalReadingId = (await capture('arrival', 100)).id;
+    await createChargeLine({ db, actor: setup, input: { jobId: job.id, description: 'Low-bed' } });
+    const [line] = (await getJob({ db, id: job.id })).chargeLines;
+    if (!line) throw new Error('Expected Charge Line');
+    fixture.chargeLineId = line.id;
+    await patchChargeLine({ db, actor: setup, input: { id: line.id, amount: 0 } });
     if (status === 'active') return fixture;
     await capture('departure', 110);
     await completeJob({
@@ -141,6 +148,7 @@ type Fixture = {
   stint: { id: string; machineId: string };
   spare: { id: string };
   arrivalReadingId: string | null;
+  chargeLineId: string | null;
 };
 type Seeded = { db: Db; loadsId: string };
 
@@ -150,6 +158,7 @@ const attempts: Record<
   (caller: AppRouterCaller, fixture: Fixture, seeded: Seeded, role: ContractingRole) => Promise<unknown> | null
 > = {
   editSetup: (caller, { job }) => caller.contractingJobs.jobs.patch({ id: job.id, description: 'Changed' }),
+  assignForeman: (caller, { job }) => caller.contractingJobs.jobs.patch({ id: job.id, foremanUserId: callerId }),
   assign: (caller, { job, spare }) =>
     caller.contractingJobs.assignments.add({ jobId: job.id, machineId: spare.id, implementId: null }),
   patchTravel: (caller, { stint }) => caller.contractingJobs.assignments.patch({ id: stint.id, travelIncluded: false }),
@@ -157,6 +166,8 @@ const attempts: Record<
     caller.contractingJobs.measures.set({ assignmentId: stint.id, measureTypeId: loadsId, quantity: 3 }),
   editChargeLines: (caller, { job }) =>
     caller.contractingJobs.chargeLines.create({ jobId: job.id, description: 'Low-bed' }),
+  priceChargeLines: (caller, { chargeLineId }) =>
+    chargeLineId === null ? null : caller.contractingJobs.chargeLines.patch({ id: chargeLineId, amount: 1 }),
   resolveGaps: (caller, { stint }) =>
     caller.contractingJobs.assignments.resolveGap({
       id: stint.id,

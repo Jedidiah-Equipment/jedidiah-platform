@@ -1,8 +1,8 @@
 import { FilePolicyViolationError, type StorageAdapter } from '@pkg/core';
-import { captureReading, getReading, type ReadMeterPhoto, readingBelongsToForemanJob } from '@pkg/core/contracting';
+import { captureReading, getReadingForEvidence, type ReadMeterPhoto } from '@pkg/core/contracting';
 import type { Db } from '@pkg/db';
-import { fileTooLargeMessage, hasPermission } from '@pkg/domain';
-import { canCaptureBaseline, READING_CAPTURE_PATH, READING_PHOTO_POLICY } from '@pkg/domain/contracting';
+import { fileTooLargeMessage } from '@pkg/domain';
+import { READING_CAPTURE_PATH, READING_PHOTO_POLICY } from '@pkg/domain/contracting';
 import {
   ReadingCaptureMultipart,
   ReadingComment,
@@ -54,12 +54,6 @@ export async function registerReadingHttpRoutes(
         }
       }
       const input = ReadingCaptureMultipart.parse(fields);
-      if (input.role === 'baseline' && !canCaptureBaseline(auth.access))
-        throw new RouteHttpError({
-          statusCode: 403,
-          appCode: 'reading.forbidden',
-          message: 'Only a Contracting administrator can capture a Baseline Reading.',
-        });
       const row = await captureReading({
         db,
         actor: auth.access,
@@ -76,21 +70,7 @@ export async function registerReadingHttpRoutes(
     if (!auth) return;
     try {
       const { id } = ReadingIdInput.parse(request.params);
-      if (!hasPermission(auth.access, 'contracting_machine:read')) {
-        requirePermission(
-          auth,
-          'contracting_job:read-own',
-          'You cannot view Hour Reading evidence.',
-          'reading.forbidden',
-        );
-        if (!(await readingBelongsToForemanJob({ db, id, foremanUserId: auth.session.user.id })))
-          throw new RouteHttpError({
-            statusCode: 403,
-            appCode: 'reading.forbidden',
-            message: 'You cannot view Hour Reading evidence.',
-          });
-      }
-      const row = await getReading({ db, id });
+      const row = await getReadingForEvidence({ db, actor: auth.access, id });
       if (!row.photo)
         throw new RouteHttpError({ statusCode: 404, message: 'This reading has Missing Photo Evidence.' });
       const object = await storage.get(row.photo.storageKey);

@@ -59,7 +59,10 @@ describe('rendering a Job Card', () => {
         variant: 'customer',
         pdfRenderer,
       }),
-    ).rejects.toMatchObject({ code: 'contracting_job.forbidden' });
+    ).rejects.toMatchObject({
+      code: 'contracting_job.forbidden',
+      message: 'You do not have permission to open Job Cards.',
+    });
 
     const active = await createJob({
       db: context.db,

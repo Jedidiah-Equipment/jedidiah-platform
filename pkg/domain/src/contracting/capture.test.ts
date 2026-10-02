@@ -4,7 +4,7 @@ import {
   type CaptureWorld,
   captureIsBelowLatest,
   captureNeedsComment,
-  captureRefusal,
+  captureRefusals,
   FUTURE_READ_AT_TOLERANCE_MS,
   isFutureReadAt,
   judgeCapture,
@@ -45,7 +45,11 @@ describe('judgeCapture', () => {
       'refuses a value below the latest without a dispute',
       world(),
       capture({ value: 90 }),
-      { ok: false, reason: 'reading.below_latest', rule: 'below-latest' },
+      {
+        ok: false,
+        reason: 'reading.below_latest',
+        message: 'Reading is below the latest reading. Retake it or assert that the previous reading is wrong.',
+      },
     ],
     [
       'accepts a value below the latest when the capturer disputes the latest, and names it',
@@ -63,13 +67,21 @@ describe('judgeCapture', () => {
       'refuses a dispute aimed at a reading that is no longer the latest',
       world(),
       capture({ value: 90, disputePrevious: true, expectedPreviousId: 'older' }),
-      { ok: false, reason: 'reading.previous_changed', rule: 'previous-changed' },
+      {
+        ok: false,
+        reason: 'reading.previous_changed',
+        message: 'Another reading landed first. Review the latest reading before resubmitting a dispute.',
+      },
     ],
     [
       'refuses a manager’s departure with no photo and no comment',
       world({ stint: 'on-site', management: true, hasPhoto: false }),
       capture({ role: 'departure' }),
-      { ok: false, reason: 'reading.invalid_role', rule: 'comment-required' },
+      {
+        ok: false,
+        reason: 'reading.invalid_role',
+        message: 'A reason is required for a photo-less departure reading.',
+      },
     ],
     [
       'accepts a manager’s photo-less departure that says why',
@@ -87,25 +99,25 @@ describe('judgeCapture', () => {
       'refuses a second arrival on a stint already on site',
       world({ stint: 'on-site' }),
       capture(),
-      { ok: false, reason: 'reading.invalid_role', rule: 'already-arrived' },
+      { ok: false, reason: 'reading.invalid_role', message: 'This Machine Assignment already arrived.' },
     ],
     [
       'refuses an arrival on a stint that has left',
       world({ stint: 'left' }),
       capture(),
-      { ok: false, reason: 'reading.invalid_role', rule: 'already-arrived' },
+      { ok: false, reason: 'reading.invalid_role', message: 'This Machine Assignment already arrived.' },
     ],
     [
       'refuses a departure on a stint that never arrived',
       world({ stint: 'planned' }),
       capture({ role: 'departure' }),
-      { ok: false, reason: 'reading.invalid_role', rule: 'not-on-site' },
+      { ok: false, reason: 'reading.invalid_role', message: 'This Machine Assignment is not on site.' },
     ],
     [
       'refuses a departure on a stint that has already left',
       world({ stint: 'left' }),
       capture({ role: 'departure' }),
-      { ok: false, reason: 'reading.invalid_role', rule: 'not-on-site' },
+      { ok: false, reason: 'reading.invalid_role', message: 'This Machine Assignment is not on site.' },
     ],
     [
       'accepts a spot reading with no stint',
@@ -118,30 +130,33 @@ describe('judgeCapture', () => {
   });
 });
 
-describe('captureRefusal', () => {
-  test('says why in the one sentence the server sends', () => {
-    const refuse = (w: CaptureWorld, c: CaptureAttempt) => {
-      const verdict = judgeCapture(w, c);
-      if (verdict.ok) throw new Error('Expected a refusal');
-      return captureRefusal(verdict);
-    };
-    expect(refuse(world(), capture({ value: 90 }))).toBe(
-      'Reading is below the latest reading. Retake it or assert that the previous reading is wrong.',
-    );
-    expect(refuse(world(), capture({ value: 90, disputePrevious: true, expectedPreviousId: 'older' }))).toBe(
-      'Another reading landed first. Review the latest reading before resubmitting a dispute.',
-    );
-    expect(refuse(world({ stint: 'on-site', management: true, hasPhoto: false }), capture({ role: 'departure' }))).toBe(
-      'A reason is required for a photo-less departure reading.',
-    );
-    expect(refuse(world({ stint: 'on-site' }), capture())).toBe('This Machine Assignment already arrived.');
-    expect(refuse(world(), capture({ role: 'departure' }))).toBe('This Machine Assignment is not on site.');
-    expect(captureRefusal({ ok: false, reason: 'reading.machine_on_site', rule: 'machine-busy' })).toBe(
-      'This Machine is still on site on another Job — capture its departure there first.',
-    );
-    expect(captureRefusal({ ok: false, reason: 'reading.implement_on_site', rule: 'implement-busy' })).toBe(
-      'This Implement is still on site on another Job — capture its departure there first.',
-    );
+describe('captureRefusals', () => {
+  test('pairs every rule with its wire code and sentence', () => {
+    expect(captureRefusals).toEqual({
+      'comment-required': {
+        code: 'reading.invalid_role',
+        message: 'A reason is required for a photo-less departure reading.',
+      },
+      'already-arrived': { code: 'reading.invalid_role', message: 'This Machine Assignment already arrived.' },
+      'not-on-site': { code: 'reading.invalid_role', message: 'This Machine Assignment is not on site.' },
+      'previous-changed': {
+        code: 'reading.previous_changed',
+        message: 'Another reading landed first. Review the latest reading before resubmitting a dispute.',
+      },
+      'below-latest': {
+        code: 'reading.below_latest',
+        message: 'Reading is below the latest reading. Retake it or assert that the previous reading is wrong.',
+      },
+      'machine-busy': {
+        code: 'reading.machine_on_site',
+        message: 'This Machine is still on site on another Job — capture its departure there first.',
+      },
+      'implement-busy': {
+        code: 'reading.implement_on_site',
+        message: 'This Implement is still on site on another Job — capture its departure there first.',
+      },
+      'future-read-at': { code: 'reading.future_read_at', message: 'Read At cannot be in the future.' },
+    });
   });
 });
 

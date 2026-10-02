@@ -44,6 +44,7 @@ const assigns = (actor: JobActor) => hasPermission(actor, 'contracting_job:assig
 
 const rules: Record<JobActionName, Rule> = {
   editSetup: { statuses: openJobStatuses, permissions: ['contracting_job:update'], verb: 'change Job setup' },
+  assignForeman: { statuses: openJobStatuses, permissions: ['contracting_job:assign'], verb: 'assign the Foreman' },
   assign: {
     statuses: openJobStatuses,
     permissions: ['contracting_job:assign', 'contracting_assignment:update-own'],
@@ -62,6 +63,11 @@ const rules: Record<JobActionName, Rule> = {
     statuses: workedJobStatuses,
     permissions: ['contracting_job:update'],
     verb: 'change Charge Lines',
+  },
+  priceChargeLines: {
+    statuses: workedJobStatuses,
+    permissions: ['contracting_job:price'],
+    verb: 'price Charge Lines',
   },
   resolveGaps: { statuses: workedJobStatuses, permissions: ['contracting_gap:resolve'], verb: 'resolve Hour Gaps' },
   editSignOffDetails: {
@@ -99,7 +105,9 @@ const rules: Record<JobActionName, Rule> = {
   },
 };
 
-const blocked = (reason: JobActionBlockedReason): JobActionVerdict => ({ allowed: false, reason });
+const joinOr = (items: readonly string[]) =>
+  items.length < 2 ? (items[0] ?? '') : `${items.slice(0, -1).join(', ')} or ${items.at(-1)}`;
+
 const holdsAny = (actor: JobActor, permissions: readonly AppPermission[]) =>
   permissions.some((permission) => hasPermission(actor, permission));
 
@@ -107,35 +115,13 @@ const reachesEveryJob = (rule: Rule, actor: JobActor) => rule.anyJob?.(actor) ??
 const openStatuses = (rule: Rule, everyJob: boolean) =>
   everyJob ? rule.statuses : (rule.ownStatuses ?? rule.statuses);
 
-/** Whether this actor may take this action on this Job now, and if not, the first reason why not. */
-export function judgeJobAction(action: JobActionName, job: JobActionSubject, actor: JobActor): JobActionVerdict {
-  const rule = rules[action];
-  if (!holdsAny(actor, rule.permissions)) return blocked('no-permission');
-  const everyJob = reachesEveryJob(rule, actor);
-  if (!everyJob && job.foremanUserId !== actor.userId) return blocked('not-your-job');
-  if (hasJobStatus(closedJobStatuses, job.status)) return blocked('closed');
-  const statuses = openStatuses(rule, everyJob);
-  if (hasJobStatus(statuses, job.status)) return { allowed: true };
-  if (job.status === 'priced' && statuses.includes('completed')) return blocked('priced');
-  return blocked('wrong-status');
-}
-
-/** Every Job Action's verdict for this actor, as the Job read serves them. */
-export function deriveJobActions(job: JobActionSubject, actor: JobActor): JobActions {
-  return Object.fromEntries(jobActionNames.map((action) => [action, judgeJobAction(action, job, actor)])) as JobActions;
-}
-
-const joinOr = (items: readonly string[]) =>
-  items.length < 2 ? (items[0] ?? '') : `${items.slice(0, -1).join(', ')} or ${items.at(-1)}`;
-
 /** The one sentence a refused Job Action shows, on the Job sheet and in the server's refusal alike. */
-export function jobActionRefusal(
-  action: JobActionName,
+function refusalMessage(
+  rule: Rule,
   reason: JobActionBlockedReason,
   job: JobActionSubject,
-  actor: JobActor,
+  statuses: readonly JobStatus[],
 ): string {
-  const rule = rules[action];
   switch (reason) {
     case 'no-permission':
       return `You do not have permission to ${rule.verb}.`;
@@ -145,9 +131,30 @@ export function jobActionRefusal(
       return `This Job is ${jobStatusLabels[job.status]}, so nothing on it can change.`;
     case 'priced':
       return `This Job is Priced, so you can no longer ${rule.verb}.`;
-    case 'wrong-status': {
-      const allowed = openStatuses(rule, reachesEveryJob(rule, actor)).map((status) => jobStatusLabels[status]);
-      return `You can only ${rule.verb} while the Job is ${joinOr(allowed)}.`;
-    }
+    case 'wrong-status':
+      return `You can only ${rule.verb} while the Job is ${joinOr(statuses.map((status) => jobStatusLabels[status]))}.`;
   }
+}
+
+/** Whether this actor may take this action on this Job now, and if not, the first reason why not. */
+export function judgeJobAction(action: JobActionName, job: JobActionSubject, actor: JobActor): JobActionVerdict {
+  const rule = rules[action];
+  const everyJob = reachesEveryJob(rule, actor);
+  const statuses = openStatuses(rule, everyJob);
+  const blocked = (reason: JobActionBlockedReason): JobActionVerdict => ({
+    allowed: false,
+    reason,
+    message: refusalMessage(rule, reason, job, statuses),
+  });
+  if (!holdsAny(actor, rule.permissions)) return blocked('no-permission');
+  if (!everyJob && job.foremanUserId !== actor.userId) return blocked('not-your-job');
+  if (hasJobStatus(closedJobStatuses, job.status)) return blocked('closed');
+  if (hasJobStatus(statuses, job.status)) return { allowed: true };
+  if (job.status === 'priced' && statuses.includes('completed')) return blocked('priced');
+  return blocked('wrong-status');
+}
+
+/** Every Job Action's verdict for this actor, as the Job read serves them. */
+export function deriveJobActions(job: JobActionSubject, actor: JobActor): JobActions {
+  return Object.fromEntries(jobActionNames.map((action) => [action, judgeJobAction(action, job, actor)])) as JobActions;
 }

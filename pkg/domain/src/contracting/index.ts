@@ -1,3 +1,4 @@
+export * from './assignment-actions.js';
 export * from './capture.js';
 export * from './company.js';
 export * from './fleet/index.js';

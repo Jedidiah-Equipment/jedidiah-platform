@@ -5,7 +5,7 @@ import type { MeasureRemoveInput, MeasureSetInput } from '@pkg/schema/contractin
 import { and, eq } from 'drizzle-orm';
 import { defineAuditDescriptor, recordAuditCreate, recordAuditDelete } from '../../audit/audit-writer.js';
 import { mutateEntity } from '../../audit/mutate-entity.js';
-import { jobNotFound, wrongStatus } from './job-errors.js';
+import { assertAssignmentAction, jobNotFound } from './job-errors.js';
 import { lockStintFor } from './job-lock.js';
 import { jobTransaction } from './job-write.js';
 
@@ -32,7 +32,7 @@ async function getMeasureTypeName(tx: DatabaseTransaction, id: string) {
 /** Locks the stint and its Job, and checks its Measures may change. */
 async function lockMeasurable(tx: DatabaseTransaction, assignmentId: string, actor: JobActor) {
   const { stint } = await lockStintFor(tx, assignmentId, 'editMeasures', actor);
-  if (!stint.arrivalReadingId) throw wrongStatus('Measures can only be recorded after the Machine has arrived.');
+  assertAssignmentAction('editMeasures', stint);
 }
 
 async function lockMeasure(tx: DatabaseTransaction, { assignmentId, measureTypeId }: MeasureRemoveInput) {

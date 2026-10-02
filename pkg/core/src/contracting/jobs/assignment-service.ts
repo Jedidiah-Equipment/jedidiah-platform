@@ -7,7 +7,7 @@ import type { AssignmentPatchInput, AssignmentPlanInput, GapResolveInput } from 
 import { eq } from 'drizzle-orm';
 import { recordAuditCreate, recordAuditDelete } from '../../audit/audit-writer.js';
 import { assignmentDescriptor } from './job-audit.js';
-import { assertJobAction, JobError, wrongStatus } from './job-errors.js';
+import { assertAssignmentAction, assertJobAction, JobError } from './job-errors.js';
 import { lockAssignment, lockJobFor, lockStintFor } from './job-lock.js';
 import { assignmentIn, getJob } from './job-read.js';
 import { jobTransaction, writeAssignment } from './job-write.js';
@@ -63,9 +63,7 @@ export async function patchAssignment({
     const changesTravel = input.travelIncluded !== undefined && input.travelIncluded !== stint.travelIncluded;
     if (changesResources || !changesTravel) assertJobAction('assign', job, actor);
     if (changesTravel) assertJobAction('patchTravel', job, actor);
-    // Judges the stint, not the Job: what a Machine brought is history once it has left.
-    if (changesResources && stint.departureReadingId !== null)
-      throw wrongStatus('The Implement and Driver cannot change after the Machine has left.');
+    if (changesResources) assertAssignmentAction('changeResources', stint);
     await writeAssignment(tx, actor.userId, machineCode, input.id, (before) => ({
       implementId: input.implementId === undefined ? before.implementId : input.implementId,
       driverUserId: input.driverUserId === undefined ? before.driverUserId : input.driverUserId,
@@ -81,8 +79,7 @@ export async function deletePlannedAssignment(
   stint: Row,
   machineCode: string,
 ): Promise<void> {
-  if (stint.arrivalReadingId)
-    throw new JobError('contracting_job.stint_not_planned', 'Only a planned Machine Assignment can be removed.');
+  assertAssignmentAction('remove', stint);
   await tx.delete(contractingMachineAssignments).where(eq(contractingMachineAssignments.id, stint.id));
   await recordAuditDelete({ db: tx, actorUserId, descriptor: assignmentDescriptor(machineCode), input: stint });
 }
@@ -105,8 +102,7 @@ export async function resolveGap({
 }): Promise<void> {
   await jobTransaction(db, async (tx) => {
     const { job, stint, machineCode } = await lockStintFor(tx, input.id, 'resolveGaps', actor);
-    if (!stint.arrivalReadingId || !stint.departureReadingId)
-      throw new JobError('contracting_job.stint_not_on_site', 'The Machine Assignment must have left the Job.');
+    assertAssignmentAction('resolveGap', stint);
     const { gapHours } = assignmentIn(await getJob({ db: tx, id: job.id }), stint.id);
     if (gapHours === null)
       throw new JobError('contracting_job.invalid_reference', 'This Machine Assignment has no Hour Gap.');

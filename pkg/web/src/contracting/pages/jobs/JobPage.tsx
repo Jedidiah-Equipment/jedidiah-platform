@@ -12,7 +12,6 @@ import { CreateEntityDialog, useAutosaveForm } from '@/components/form/index.js'
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
 import { Button } from '@/components/ui/button.js';
 import { useQueryInvalidation } from '@/contracting/hooks/use-query-invalidation.js';
-import { useAccess } from '@/hooks/use-access.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { ChargeLinesCard } from './ChargeLinesCard.js';
@@ -27,8 +26,7 @@ import { JobCreateValues, type JobSheet, jobSheet, toJobCreateInput } from './ty
 export function JobPage({ code }: { code: string }) {
   const trpc = useTRPC();
   const query = useQuery(trpc.contractingJobs.jobs.get.queryOptions({ code }));
-  const access = useAccess();
-  const sheet = query.data ? jobSheet(query.data, access.data) : null;
+  const sheet = query.data ? jobSheet(query.data) : null;
   return (
     <PageLayout
       title={query.data?.jobNumber ?? code}
@@ -61,7 +59,7 @@ export function JobPage({ code }: { code: string }) {
                   job={job}
                   editable={sheet.can('editChargeLines')}
                   addAction={sheet.action('editChargeLines')}
-                  amountEditable={sheet.can('price')}
+                  amountEditable={sheet.can('priceChargeLines')}
                 />
               ) : null}
               <CancelJob job={job} sheet={sheet} />
@@ -75,7 +73,7 @@ export function JobPage({ code }: { code: string }) {
 
 function SetupCard({ job, sheet }: { job: JobDetail; sheet: JobSheet }) {
   // Naming the Foreman is setup that assigns the Job, so it needs both.
-  const setsForeman = sheet.can('editSetup') && sheet.can('assign');
+  const setsForeman = sheet.can('editSetup') && sheet.can('assignForeman');
   const trpc = useTRPC();
   const { invalidateJobs } = useQueryInvalidation();
   const [customerId, setCustomerId] = useState(job.customerId);

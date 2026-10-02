@@ -2,6 +2,7 @@ import { jobQueues } from '@pkg/schema/contracting';
 import { describe, expect, test } from 'vitest';
 import { createUserAccessSummary } from '../auth/authorization.js';
 import {
+  canOpenJobCards,
   fieldJobAccessMode,
   formatJobNumber,
   jobQueueLabels,
@@ -31,6 +32,21 @@ describe('jobReadMode', () => {
     expect(jobReadMode(access('foreman'))).toBe('own');
     expect(jobReadMode(access('contracting-invoicing'))).toBe('priced');
     expect(jobReadMode(access('driver'))).toBeNull();
+  });
+});
+
+describe('canOpenJobCards', () => {
+  test('opens Job Cards for whoever reads Jobs with money', () => {
+    const access = (contractingRole: Parameters<typeof createUserAccessSummary>[0]['contractingRole']) =>
+      createUserAccessSummary({ userId: 'actor', equipmentRole: null, contractingRole });
+
+    expect(canOpenJobCards(access('contracting-admin'))).toBe(true);
+    expect(canOpenJobCards(access('contracting-manager'))).toBe(true);
+    expect(canOpenJobCards(access('workshop-manager'))).toBe(true);
+    expect(canOpenJobCards(access('contracting-invoicing'))).toBe(true);
+    expect(canOpenJobCards(access('foreman'))).toBe(false);
+    expect(canOpenJobCards(access('driver'))).toBe(false);
+    expect(canOpenJobCards(null)).toBe(false);
   });
 });
 

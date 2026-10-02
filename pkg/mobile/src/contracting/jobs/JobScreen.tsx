@@ -1,5 +1,5 @@
 import { formatHours } from '@pkg/domain';
-import { assignmentStateColorClassNames, deriveJobActions } from '@pkg/domain/contracting';
+import { assignmentStateColorClassNames, judgeJobAction } from '@pkg/domain/contracting';
 import type { AssignmentState, FieldStint, JobCardVariant } from '@pkg/schema/contracting';
 import { IconPlayerPlay, IconPlayerStop, IconPlus, type Icon as TablerIcon } from '@tabler/icons-react-native';
 import { type Href, router, useLocalSearchParams } from 'expo-router';
@@ -29,9 +29,8 @@ export default function JobScreen() {
   const access = useSessionAccessSummary();
   const job = jobQuery.data;
   const finished = job ? isFinishedJob(job) : false;
-  const actions = job ? deriveJobActions(job, access) : null;
-  const canCapture = actions?.capture.allowed ?? false;
-  const canAdd = actions?.assign.allowed ?? false;
+  const canCapture = job ? judgeJobAction('capture', job, access).allowed : false;
+  const canAdd = job ? judgeJobAction('assign', job, access).allowed : false;
   const canShareJobCard = useSessionPermission('contracting_job:read') && finished;
   const share = useBusyAction();
   const shareJobCard = (variant: JobCardVariant) => {

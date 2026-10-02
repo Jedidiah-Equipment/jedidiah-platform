@@ -16,7 +16,7 @@ import { createRate, listRates, removeRate } from '../rate-card/rate-service.js'
 import { captureReading } from '../readings/reading-service.js';
 import { plannedStint } from '../test/job-fixtures.js';
 import { createWorkType } from '../work-types/work-type-service.js';
-import { resolveGap } from './assignment-service.js';
+import { patchAssignment, removeAssignment, resolveGap } from './assignment-service.js';
 import { getJob, listJobs } from './job-read.js';
 import { cancelJob, completeJob, createJob, patchJob } from './job-service.js';
 import { setMeasure } from './measure-service.js';
@@ -412,6 +412,39 @@ describe('Machine Assignment lifecycle', () => {
       workHours: null,
       billableHours: null,
     });
+  });
+
+  test('refuses each Assignment Action outside its states with its sentence', async ({ context }) => {
+    const db = context.db;
+    const job = await createJob({ db, actor: manager, input: jobInput(context) });
+    const stint = () => plannedStint(db, manager, { jobId: job.id, machineId: context.machine.id, implementId: null });
+    const capture = (assignmentId: string, role: 'arrival' | 'departure', value: number, capturedAt: string) =>
+      captureReading({
+        db,
+        actor: foreman,
+        input: { machineId: context.machine.id, assignmentId, role, value, capturedAt, disputePrevious: false },
+      });
+    const left = await stint();
+    await capture(left.id, 'arrival', 100, '2026-09-01T08:00:00+02:00');
+    await capture(left.id, 'departure', 110, '2026-09-01T17:00:00+02:00');
+    const onSite = await stint();
+    await capture(onSite.id, 'arrival', 110, '2026-09-02T08:00:00+02:00');
+    const planned = await stint();
+    const loads = await createMeasureType({ db, actorUserId: managerId, input: { name: 'Loads' } });
+    const refusal = (message: string) => ({ code: 'contracting_job.wrong_status', message });
+
+    await expect(removeAssignment({ db, actor: manager, id: onSite.id })).rejects.toMatchObject(
+      refusal('Only a planned Machine Assignment can be removed.'),
+    );
+    await expect(
+      patchAssignment({ db, actor: manager, input: { id: left.id, driverUserId: driverId } }),
+    ).rejects.toMatchObject(refusal('The Implement and Driver cannot change after the Machine has left.'));
+    await expect(
+      setMeasure({ db, actor: manager, input: { assignmentId: planned.id, measureTypeId: loads.id, quantity: 3 } }),
+    ).rejects.toMatchObject(refusal('Measures can only be recorded after the Machine has arrived.'));
+    await expect(
+      resolveGap({ db, actor: manager, input: { id: onSite.id, travelHours: 0, unaccountedHours: 0, reason: 'Yard' } }),
+    ).rejects.toMatchObject(refusal('The Machine Assignment must have left the Job.'));
   });
 });
 

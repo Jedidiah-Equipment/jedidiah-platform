@@ -94,7 +94,9 @@ on an Assignment names one. Rates hang on nothing but their name: not on a Categ
 an Implement. At Pricing every Assignment is given a Rate — or **No charge**, a built-in choice rather than a
 Rate, used when a Charge Line carries a fixed quote — and its amount computes from the basis,
 editable afterwards; choosing a different Rate discards the edit. Rate Card changes never reach a
-Job: a Priced Job holds its snapshot and a Completed one is not yet priced.
+Job: a Priced Job holds its snapshot and a Completed one is not yet priced. Until a Job is Priced
+nothing stores an amount: the chosen Rates, the Diesel price, the Discount and any typed amount are
+kept, every amount derives from them, and Mark as Priced writes the snapshot.
 
 **Invoice Number** is the terminal stamp on a Job, recorded by the invoicing user from the
 external accounting system. Stamping it is what makes a Job Invoiced.

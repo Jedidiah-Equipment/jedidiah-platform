@@ -608,8 +608,6 @@ describe('Completion and billable facts', () => {
         rateBasis: rate.basis,
         rateMeasureTypeId: measureType.id,
         rateUnitAmount: rate.amount,
-        computedAmount: 10_000,
-        finalAmount: 10_000,
       })
       .where(eq(contractingMachineAssignments.id, arrived.id));
     await expect(removeRate({ db: context.db, actorUserId: managerId, id: rate.id })).rejects.toMatchObject({

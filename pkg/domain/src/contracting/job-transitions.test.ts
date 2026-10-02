@@ -39,6 +39,8 @@ describe('jobTransitions', () => {
       pricedByUserId: null,
       pricedSubtotal: null,
       pricedTotal: null,
+      dieselAmount: null,
+      discountAmount: null,
       reopenedAt: at,
       repricingNote: 'Reading amended.',
     });

@@ -1,5 +1,6 @@
 import { contractingJobCodeSequence } from '@pkg/db/contracting';
 import { jobCodeSequence, quoteCodeSequence } from '@pkg/db/equipment';
+import { computeDieselAmount } from '@pkg/domain/contracting';
 import { LEGACY_QUOTE_CANCELLATION_REASON } from '@pkg/schema/equipment';
 import type { PgSequence, PgTable } from 'drizzle-orm/pg-core';
 
@@ -435,8 +436,11 @@ export const snapshotTableDefinitions = [
     fileName: 'contracting_job.json',
     tableName: 'contracting_job',
     timestampColumns: ['cancelledAt', 'completedAt', 'createdAt', 'invoicedAt', 'pricedAt', 'reopenedAt', 'updatedAt'],
-    optionalReadColumns: ['reopenedAt', 'repricingNote'],
-    seedRowDefaults: () => ({ reopenedAt: null, repricingNote: null }),
+    optionalReadColumns: ['dieselAmountOverride', 'reopenedAt', 'repricingNote'],
+    seedRowDefaults: () => ({ dieselAmountOverride: null, reopenedAt: null, repricingNote: null }),
+    // Snapshots read before the pricing-overrides migration store amounts on every status. Delete once
+    // every snapshot source has been re-read.
+    seedRowTransform: legacyJobPricing,
     optionalReadTable: true,
     resetSequence: { sequence: contractingJobCodeSequence, columnName: 'code' },
   },
@@ -444,6 +448,9 @@ export const snapshotTableDefinitions = [
     fileName: 'contracting_machine_assignment.json',
     tableName: 'contracting_machine_assignment',
     timestampColumns: ['createdAt', 'gapResolvedAt', 'updatedAt'],
+    optionalReadColumns: ['amountOverride'],
+    seedRowDefaults: () => ({ amountOverride: null }),
+    seedRowTransform: legacyStintPricing,
     optionalReadTable: true,
   },
   {
@@ -459,6 +466,30 @@ export const snapshotTableDefinitions = [
     optionalReadTable: true,
   },
 ] as const satisfies readonly SnapshotTableDefinition[];
+
+function legacyJobPricing(row: SnapshotRow): SnapshotRow {
+  const { dieselAmount, dieselUnitPrice, dieselLitres } = row;
+  const edited =
+    row.dieselAmountOverride === null &&
+    typeof dieselAmount === 'number' &&
+    typeof dieselUnitPrice === 'number' &&
+    typeof dieselLitres === 'number' &&
+    dieselAmount !== computeDieselAmount(dieselLitres, dieselUnitPrice);
+  const dieselAmountOverride = edited ? dieselAmount : row.dieselAmountOverride;
+  return row.status === 'priced' || row.status === 'invoiced'
+    ? { ...row, dieselAmountOverride }
+    : { ...row, dieselAmountOverride, dieselAmount: null, discountAmount: null };
+}
+
+/** A stint row cannot see its Job's status: the override is recovered, stale amounts stay until the next pricing write clears them. */
+function legacyStintPricing(row: SnapshotRow): SnapshotRow {
+  const edited =
+    row.amountOverride === null &&
+    typeof row.finalAmount === 'number' &&
+    typeof row.computedAmount === 'number' &&
+    row.finalAmount !== row.computedAmount;
+  return edited ? { ...row, amountOverride: row.finalAmount } : row;
+}
 
 // Extracts the doc-store object references for every row of a table, de-duplicated by storage key.
 // Returns an empty list for tables without a `storageFiles` extractor.

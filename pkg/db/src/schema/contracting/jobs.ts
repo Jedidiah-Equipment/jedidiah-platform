@@ -43,6 +43,7 @@ export const contractingJobs = contractingSchema.table(
     dieselLitres: decimal2('diesel_litres').notNull().default(0),
     dieselUnitPrice: money('diesel_unit_price'),
     dieselAmount: money('diesel_amount'),
+    dieselAmountOverride: money('diesel_amount_override'),
     discountKind: text('discount_kind', { enum: discountKinds }),
     discountValue: money('discount_value'),
     discountAmount: money('discount_amount'),
@@ -78,7 +79,7 @@ export const contractingJobs = contractingSchema.table(
     ),
     check(
       'job_priced_shape',
-      sql`(${table.status} IN ('priced', 'invoiced')) = (${table.pricedAt} IS NOT NULL) AND (${table.pricedAt} IS NULL) = (${table.pricedSubtotal} IS NULL) AND (${table.pricedAt} IS NULL) = (${table.pricedTotal} IS NULL) AND (${table.pricedAt} IS NULL OR ${table.dieselLitres} = 0 OR ${table.dieselAmount} IS NOT NULL)`,
+      sql`(${table.status} IN ('priced', 'invoiced')) = (${table.pricedAt} IS NOT NULL) AND (${table.pricedAt} IS NULL) = (${table.pricedSubtotal} IS NULL) AND (${table.pricedAt} IS NULL) = (${table.pricedTotal} IS NULL) AND (${table.pricedAt} IS NOT NULL OR (${table.dieselAmount} IS NULL AND ${table.discountAmount} IS NULL)) AND (${table.pricedAt} IS NULL OR ${table.dieselLitres} = 0 OR ${table.dieselAmount} IS NOT NULL) AND (${table.pricedAt} IS NULL OR (${table.discountKind} IS NULL) = (${table.discountAmount} IS NULL))`,
     ),
     check(
       'job_invoiced_shape',
@@ -94,11 +95,11 @@ export const contractingJobs = contractingSchema.table(
     ),
     check(
       'job_diesel_shape',
-      sql`${table.dieselLitres} >= 0 AND (${table.dieselUnitPrice} IS NULL OR ${table.dieselUnitPrice} >= 0) AND (${table.dieselAmount} IS NULL OR ${table.dieselAmount} >= 0)`,
+      sql`${table.dieselLitres} >= 0 AND (${table.dieselUnitPrice} IS NULL OR ${table.dieselUnitPrice} >= 0) AND (${table.dieselAmount} IS NULL OR ${table.dieselAmount} >= 0) AND (${table.dieselAmountOverride} IS NULL OR (${table.dieselAmountOverride} >= 0 AND ${table.dieselUnitPrice} IS NOT NULL)) AND (${table.dieselAmountOverride} IS NULL OR ${table.dieselAmount} IS NULL OR ${table.dieselAmount} = ${table.dieselAmountOverride})`,
     ),
     check(
       'job_discount_shape',
-      sql`(${table.discountKind} IS NULL AND ${table.discountValue} IS NULL AND ${table.discountAmount} IS NULL) OR (${table.discountKind} IN ('amount', 'percent') AND ${table.discountValue} >= 0 AND (${table.discountKind} <> 'percent' OR ${table.discountValue} <= 100))`,
+      sql`(${table.discountKind} IS NULL AND ${table.discountValue} IS NULL AND ${table.discountAmount} IS NULL) OR (${table.discountKind} IN ('amount', 'percent') AND ${table.discountValue} >= 0 AND (${table.discountKind} <> 'percent' OR ${table.discountValue} <= 100) AND (${table.discountAmount} IS NULL OR ${table.discountAmount} >= 0))`,
     ),
   ],
 );
@@ -136,6 +137,7 @@ export const contractingMachineAssignments = contractingSchema.table(
     rateUnitAmount: money('rate_unit_amount'),
     computedAmount: money('computed_amount'),
     finalAmount: money('final_amount'),
+    amountOverride: money('amount_override'),
     createdByUserId: text('created_by_user_id')
       .notNull()
       .references(() => user.id),
@@ -164,7 +166,7 @@ export const contractingMachineAssignments = contractingSchema.table(
     ),
     check(
       'machine_assignment_pricing_shape',
-      sql`(${table.rateUnitAmount} IS NULL AND ${table.computedAmount} IS NULL AND ${table.finalAmount} IS NULL AND ${table.rateName} IS NULL AND ${table.rateBasis} IS NULL AND ${table.rateId} IS NULL AND ${table.rateMeasureTypeId} IS NULL) OR (${table.computedAmount} >= 0 AND ${table.finalAmount} >= 0 AND ((${table.rateId} IS NULL AND ${table.rateName} IS NULL AND ${table.rateUnitAmount} = 0) OR (${table.rateId} IS NOT NULL AND length(btrim(${table.rateName})) > 0 AND ${table.rateBasis} IN ('time', 'measure') AND ${table.rateUnitAmount} > 0)))`,
+      sql`(${table.rateUnitAmount} IS NULL AND ${table.computedAmount} IS NULL AND ${table.finalAmount} IS NULL AND ${table.amountOverride} IS NULL AND ${table.rateName} IS NULL AND ${table.rateBasis} IS NULL AND ${table.rateId} IS NULL AND ${table.rateMeasureTypeId} IS NULL) OR (((${table.rateId} IS NULL AND ${table.rateName} IS NULL AND ${table.rateUnitAmount} = 0 AND ${table.amountOverride} IS NULL) OR (${table.rateId} IS NOT NULL AND length(btrim(${table.rateName})) > 0 AND ${table.rateBasis} IN ('time', 'measure') AND ${table.rateUnitAmount} > 0 AND (${table.amountOverride} IS NULL OR ${table.amountOverride} >= 0))) AND (${table.computedAmount} IS NULL) = (${table.finalAmount} IS NULL) AND (${table.computedAmount} IS NULL OR (${table.computedAmount} >= 0 AND ${table.finalAmount} = COALESCE(${table.amountOverride}, ${table.computedAmount}))))`,
     ),
   ],
 );

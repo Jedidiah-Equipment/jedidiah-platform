@@ -238,6 +238,51 @@ describe('snapshot table registry', () => {
     ).toMatchObject({ categoryId, standardPurchaseLengthMm: 12000 });
   });
 
+  it('recovers overrides and clears amounts from a pre-migration Contracting Job row', () => {
+    const jobConfig = configFor('contracting_job');
+    const legacy = {
+      dieselLitres: 210,
+      dieselUnitPrice: 23,
+      dieselAmount: 4_800,
+      discountKind: 'amount',
+      discountAmount: 100,
+    };
+
+    expect(prepareSnapshotRow(jobConfig, { ...legacy, status: 'completed' }, 0)).toMatchObject({
+      dieselAmountOverride: 4_800,
+      dieselAmount: null,
+      discountAmount: null,
+    });
+    expect(prepareSnapshotRow(jobConfig, { ...legacy, status: 'priced' }, 0)).toMatchObject({
+      dieselAmountOverride: 4_800,
+      dieselAmount: 4_800,
+      discountAmount: 100,
+    });
+    const migrated = {
+      ...legacy,
+      status: 'completed',
+      dieselAmount: null,
+      dieselAmountOverride: null,
+      discountAmount: null,
+      reopenedAt: null,
+      repricingNote: null,
+    };
+    expect(prepareSnapshotRow(jobConfig, migrated, 0)).toEqual(migrated);
+  });
+
+  it('recovers a stint override from a pre-migration row', () => {
+    const stintConfig = configFor('contracting_machine_assignment');
+
+    expect(prepareSnapshotRow(stintConfig, { finalAmount: 5_500, computedAmount: 6_000 }, 0)).toMatchObject({
+      amountOverride: 5_500,
+    });
+    expect(prepareSnapshotRow(stintConfig, { finalAmount: 6_000, computedAmount: 6_000 }, 0)).toMatchObject({
+      amountOverride: null,
+    });
+    const migrated = { amountOverride: 5_500, finalAmount: 5_500, computedAmount: 6_000 };
+    expect(prepareSnapshotRow(stintConfig, migrated, 0)).toEqual(migrated);
+  });
+
   it('keeps rollout Work Item tables optional until the source migration deploys', () => {
     expect(configFor('quote_work_items').optionalReadTable).toBe(true);
     expect(configFor('quote_work_item_parts').optionalReadTable).toBe(true);

@@ -12,7 +12,7 @@ export type StintRateClearInput = z.infer<typeof StintRateClearInput>;
 /** A null finalAmount resets the stint to its computed amount. */
 export const StintAmountSetInput = z.object({ assignmentId: UUID, finalAmount: Money.nullable() }).strict();
 export type StintAmountSetInput = z.infer<typeof StintAmountSetInput>;
-/** A null unitPrice clears Diesel pricing; an omitted or null amount computes from litres × unitPrice. */
+/** A null unitPrice clears Diesel pricing; an omitted or null amount computes from litres × unitPrice, and an amount equal to that product is not an override. */
 export const DieselPriceInput = z
   .object({ jobId: UUID, unitPrice: Money.nullable(), amount: Money.nullable().optional() })
   .strict();

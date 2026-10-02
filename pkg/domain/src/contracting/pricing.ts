@@ -50,7 +50,7 @@ export const stintAmount = (pricing: StintPricing | null): number =>
 
 const sum = (values: readonly number[]) => round2(values.reduce((total, value) => total + value, 0));
 
-/** A stint's stored Rate snapshot and the amounts last written beside it. */
+/** A stint's stored Rate snapshot, any typed amount, and the amounts Mark as Priced froze. */
 export type StoredStintPricing =
   | { kind: 'no-charge' }
   | {
@@ -61,8 +61,11 @@ export type StoredStintPricing =
       measureTypeId: string | null;
       measureTypeName: string | null;
       unitAmount: number;
-      computedAmount: number;
-      finalAmount: number;
+      /** A typed amount; null follows the computed one. */
+      amountOverride: number | null;
+      /** Null until Mark as Priced. */
+      computedAmount: number | null;
+      finalAmount: number | null;
     };
 
 export type JobPricingFacts = {
@@ -75,7 +78,8 @@ export type JobPricingFacts = {
     stored: StoredStintPricing | null;
   }[];
   chargeLines: readonly { amount: number | null }[];
-  diesel: { litres: number; unitPrice: number | null; amount: number | null };
+  /** `amount` is the frozen figure, null until Mark as Priced. */
+  diesel: { litres: number; unitPrice: number | null; amountOverride: number | null; amount: number | null };
   discount: { kind: DiscountKind; value: number; amount: number | null } | null;
 };
 
@@ -89,10 +93,10 @@ export type PricedJob = {
 
 /**
  * The one pricing policy: what a Job's stored figures and live facts price to, for no one in particular.
- * While Completed, amounts re-derive from live hours and Measures and only an override survives.
+ * Until Priced, amounts derive from live hours, Measures and any override; once Priced they are the frozen snapshot.
  */
 export function priceJob(facts: JobPricingFacts): PricedJob {
-  const live = facts.status === 'completed';
+  const frozen = facts.status === 'priced' || facts.status === 'invoiced';
   const stints = facts.stints.map((stint): StintPricing | null => {
     const { stored } = stint;
     if (stored === null) return null;
@@ -104,7 +108,11 @@ export function priceJob(facts: JobPricingFacts): PricedJob {
       billableHours: stint.billableHours,
       measures: stint.measures,
     });
-    const amountEdited = stored.finalAmount !== stored.computedAmount;
+    const { computedAmount, finalAmount } = frozen
+      ? stored
+      : { computedAmount: price.computedAmount, finalAmount: stored.amountOverride ?? price.computedAmount };
+    if (computedAmount === null || finalAmount === null)
+      throw new Error('A Priced Machine Assignment always stores its amounts.');
     return {
       kind: 'rate',
       rateId: stored.rateId,
@@ -115,9 +123,9 @@ export function priceJob(facts: JobPricingFacts): PricedJob {
       unitAmount: stored.unitAmount,
       billedQuantity: price.quantity,
       measureMissing: price.measureMissing,
-      computedAmount: live ? price.computedAmount : stored.computedAmount,
-      finalAmount: live && !amountEdited ? price.computedAmount : stored.finalAmount,
-      amountEdited,
+      computedAmount,
+      finalAmount,
+      amountEdited: stored.amountOverride !== null,
     };
   });
   const left = stints.filter((_, index) => facts.stints[index]?.state === 'left');
@@ -126,23 +134,21 @@ export function priceJob(facts: JobPricingFacts): PricedJob {
   const chargeLinesTotal = sum(facts.chargeLines.map((line) => line.amount ?? 0));
   const subtotal = round2(stintsTotal + chargeLinesTotal);
   const discountAmount = computeDiscountAmount(subtotal, facts.discount);
-  const { litres, unitPrice, amount } = facts.diesel;
-  const dieselAmount = litres > 0 ? (amount ?? 0) : 0;
+  const { litres, unitPrice } = facts.diesel;
+  const diesel = unitPrice === null ? null : pricedDiesel(facts.diesel, unitPrice, frozen);
+  const dieselAmount = litres > 0 ? (diesel?.amount ?? 0) : 0;
 
   const unpricedStints = left.filter((pricing) => pricing === null).length;
   const chargeLinesWithoutAmount = facts.chargeLines.filter((line) => line.amount === null).length;
-  const dieselUnpriced = litres > 0 && amount === null;
+  const dieselUnpriced = litres > 0 && unitPrice === null;
 
   return {
     stints,
-    diesel:
-      unitPrice === null || amount === null
-        ? null
-        : { unitPrice, amount, amountEdited: amount !== computeDieselAmount(litres, unitPrice) },
+    diesel,
     discount: facts.discount && {
       kind: facts.discount.kind,
       value: facts.discount.value,
-      amount: live ? discountAmount : (facts.discount.amount ?? discountAmount),
+      amount: frozen ? (facts.discount.amount ?? discountAmount) : discountAmount,
     },
     pricing: {
       stintsTotal,
@@ -159,6 +165,14 @@ export function priceJob(facts: JobPricingFacts): PricedJob {
       },
     },
   };
+}
+
+function pricedDiesel(facts: JobPricingFacts['diesel'], unitPrice: number, frozen: boolean): JobDiesel {
+  const amount =
+    frozen && facts.amount !== null
+      ? facts.amount
+      : (facts.amountOverride ?? computeDieselAmount(facts.litres, unitPrice));
+  return { unitPrice, amount, amountEdited: facts.amountOverride !== null };
 }
 
 /** What one unit of a Rate is: an hour, or the Rate's Measure Type. */

@@ -7,7 +7,6 @@ import {
   priceStint,
   pricingGateReasons,
   rateUnitLabel,
-  round2,
   type StoredStintPricing,
   stintAmount,
 } from './pricing.js';
@@ -18,7 +17,9 @@ const time = (billableHours: number, unitAmount: number) =>
 
 type Stint = JobPricingFacts['stints'][number];
 
-const timeRate = (unitAmount: number, amount: number, finalAmount = amount): StoredStintPricing => ({
+type StoredAmounts = Partial<Record<'amountOverride' | 'computedAmount' | 'finalAmount', number | null>>;
+
+const timeRate = (unitAmount: number, amounts: StoredAmounts = {}): StoredStintPricing => ({
   kind: 'rate',
   rateId: 'dry-hire',
   name: 'Dry hire',
@@ -26,15 +27,22 @@ const timeRate = (unitAmount: number, amount: number, finalAmount = amount): Sto
   measureTypeId: null,
   measureTypeName: null,
   unitAmount,
-  computedAmount: amount,
-  finalAmount,
+  amountOverride: null,
+  computedAmount: null,
+  finalAmount: null,
+  ...amounts,
 });
 
 const rated = (
   billableHours: number,
   unitAmount: number,
-  stored: StoredStintPricing = timeRate(unitAmount, round2(billableHours * unitAmount)),
-): Stint => ({ state: 'left', billableHours, measures: [], stored });
+  stored: StoredStintPricing = timeRate(unitAmount),
+): Stint => ({
+  state: 'left',
+  billableHours,
+  measures: [],
+  stored,
+});
 
 const unpriced = (state: AssignmentState = 'left'): Stint => ({ state, billableHours: 10, measures: [], stored: null });
 
@@ -50,8 +58,9 @@ const loadsStint: Stint = {
     measureTypeId: loads,
     measureTypeName: 'Loads',
     unitAmount: 850,
-    computedAmount: 15_300,
-    finalAmount: 15_300,
+    amountOverride: null,
+    computedAmount: null,
+    finalAmount: null,
   },
 };
 
@@ -59,7 +68,7 @@ const facts = (overrides: Partial<JobPricingFacts> = {}): JobPricingFacts => ({
   status: 'completed',
   stints: [],
   chargeLines: [],
-  diesel: { litres: 0, unitPrice: null, amount: null },
+  diesel: { litres: 0, unitPrice: null, amountOverride: null, amount: null },
   discount: null,
   ...overrides,
 });
@@ -115,7 +124,7 @@ describe('priceJob', () => {
   const scenario = facts({
     stints: [rated(48.6, 600), rated(44.5, 550), loadsStint],
     chargeLines: [{ amount: 3_500 }],
-    diesel: { litres: 210, unitPrice: 23, amount: 4_830 },
+    diesel: { litres: 210, unitPrice: 23, amountOverride: null, amount: null },
   });
 
   test('totals R 77,265.00 ex VAT with the low-bed charge line and diesel', () => {
@@ -145,16 +154,15 @@ describe('priceJob', () => {
         stints: [rated(10, 100)],
         chargeLines: [{ amount: 200 }],
         discount: { kind: 'amount', value: 5_000, amount: null },
-        diesel: { litres: 10, unitPrice: 30, amount: 300 },
+        diesel: { litres: 10, unitPrice: 30, amountOverride: null, amount: null },
       }),
     );
     expect(priced.pricing).toMatchObject({ subtotal: 1_200, discountAmount: 1_200, total: 300 });
   });
 
-  const moved = [rated(12, 600, timeRate(600, 6_000)), rated(12, 600, timeRate(600, 6_000, 5_500))];
+  const moved = [rated(12, 600), rated(12, 600, timeRate(600, { amountOverride: 5_500 }))];
 
-  test('recomputes a Completed Job from its live hours and keeps an override', () => {
-    const priced = priceJob(facts({ stints: moved }));
+  const expectDerived = (priced: PricedJob) => {
     expect(rateOf(priced, 0)).toMatchObject({
       computedAmount: 7_200,
       finalAmount: 7_200,
@@ -162,16 +170,42 @@ describe('priceJob', () => {
       billedQuantity: 12,
     });
     expect(rateOf(priced, 1)).toMatchObject({ computedAmount: 7_200, finalAmount: 5_500, amountEdited: true });
+  };
+
+  test('derives a Completed Job from its live hours and keeps an override', () => {
+    expectDerived(priceJob(facts({ stints: moved })));
   });
 
-  test.each<JobStatus>(['priced', 'invoiced', 'cancelled', 'active'])(
-    'returns the stored snapshot untouched while %s',
-    (status) => {
-      const priced = priceJob(facts({ status, stints: moved }));
-      expect(rateOf(priced, 0)).toMatchObject({ computedAmount: 6_000, finalAmount: 6_000, billedQuantity: 12 });
-      expect(rateOf(priced, 1)).toMatchObject({ computedAmount: 6_000, finalAmount: 5_500, billedQuantity: 12 });
-    },
-  );
+  test.each<JobStatus>(['priced', 'invoiced'])('reads the stored snapshot once %s', (status) => {
+    const frozen = [
+      rated(12, 600, timeRate(600, { computedAmount: 6_000, finalAmount: 6_000 })),
+      rated(12, 600, timeRate(600, { amountOverride: 5_500, computedAmount: 6_000, finalAmount: 5_500 })),
+    ];
+    const priced = priceJob(facts({ status, stints: frozen }));
+    expect(rateOf(priced, 0)).toMatchObject({ computedAmount: 6_000, finalAmount: 6_000, billedQuantity: 12 });
+    expect(rateOf(priced, 1)).toMatchObject({ computedAmount: 6_000, finalAmount: 5_500, amountEdited: true });
+  });
+
+  test.each<JobStatus>(['cancelled', 'active'])('derives amounts in every status that is not frozen: %s', (status) => {
+    expectDerived(priceJob(facts({ status, stints: moved })));
+  });
+
+  test('an override stays edited when it equals the computed amount', () => {
+    const priced = priceJob(
+      facts({
+        stints: [rated(12, 600, timeRate(600, { amountOverride: 7_200 }))],
+        diesel: { litres: 210, unitPrice: 23, amountOverride: 4_830, amount: null },
+      }),
+    );
+    expect(rateOf(priced, 0)).toMatchObject({ finalAmount: 7_200, amountEdited: true });
+    expect(priced.diesel).toEqual({ unitPrice: 23, amount: 4_830, amountEdited: true });
+  });
+
+  test('refuses a Priced stint that stores no amounts', () => {
+    expect(() => priceJob(facts({ status: 'priced', stints: [rated(12, 600)] }))).toThrow(
+      'A Priced Machine Assignment always stores its amounts.',
+    );
+  });
 
   test('bills No charge at nothing and counts it as priced', () => {
     const priced = priceJob(facts({ stints: [{ ...unpriced(), stored: { kind: 'no-charge' } }] }));
@@ -185,15 +219,17 @@ describe('priceJob', () => {
   });
 
   test('counts Diesel only when litres were supplied', () => {
-    const none = priceJob(facts({ diesel: { litres: 0, unitPrice: 23, amount: 4_830 } }));
+    const none = priceJob(facts({ diesel: { litres: 0, unitPrice: 23, amountOverride: null, amount: null } }));
     expect(none.pricing).toMatchObject({ dieselAmount: 0, gate: { dieselUnpriced: false } });
-    const unpricedDiesel = priceJob(facts({ diesel: { litres: 210, unitPrice: null, amount: null } }));
+    const unpricedDiesel = priceJob(
+      facts({ diesel: { litres: 210, unitPrice: null, amountOverride: null, amount: null } }),
+    );
     expect(unpricedDiesel.pricing).toMatchObject({ dieselAmount: 0, gate: { dieselUnpriced: true } });
     expect(unpricedDiesel.diesel).toBeNull();
   });
 
   test('marks an overridden Diesel amount as edited', () => {
-    const priced = priceJob(facts({ diesel: { litres: 210, unitPrice: 23, amount: 4_800 } }));
+    const priced = priceJob(facts({ diesel: { litres: 210, unitPrice: 23, amountOverride: 4_800, amount: null } }));
     expect(priced.diesel).toEqual({ unitPrice: 23, amount: 4_800, amountEdited: true });
   });
 
@@ -202,7 +238,7 @@ describe('priceJob', () => {
       facts({
         stints: [rated(10, 600), unpriced(), unpriced()],
         chargeLines: [{ amount: 0 }, { amount: null }],
-        diesel: { litres: 210, unitPrice: null, amount: null },
+        diesel: { litres: 210, unitPrice: null, amountOverride: null, amount: null },
       }),
     ).pricing;
     expect(gate).toEqual({ ok: false, unpricedStints: 2, chargeLinesWithoutAmount: 1, dieselUnpriced: true });
@@ -225,14 +261,14 @@ describe('priceJob', () => {
 
   test('keeps the stored discount amount outside Completed', () => {
     const discount = { kind: 'amount', value: 500, amount: 400 } as const;
-    const stints = [rated(10, 600)];
+    const stints = [rated(10, 600, timeRate(600, { computedAmount: 6_000, finalAmount: 6_000 }))];
     expect(priceJob(facts({ status: 'priced', stints, discount })).discount).toEqual(discount);
     const live = priceJob(facts({ stints, discount }));
     expect(live.discount?.amount).toBe(live.pricing.discountAmount);
   });
 
   test("stintAmount reads a rate's final amount and nothing else", () => {
-    const rate = rateOf(priceJob(facts({ stints: [rated(10, 600, timeRate(600, 6_000, 5_500))] })), 0);
+    const rate = rateOf(priceJob(facts({ stints: [rated(10, 600, timeRate(600, { amountOverride: 5_500 }))] })), 0);
     expect(stintAmount(rate)).toBe(5_500);
     expect(stintAmount({ kind: 'no-charge' })).toBe(0);
     expect(stintAmount(null)).toBe(0);

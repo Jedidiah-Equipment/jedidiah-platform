@@ -18,7 +18,6 @@ import {
   deriveJobActions,
   deriveStintHours,
   formatJobNumber,
-  isAiFlaggedVerification,
   type JobActor,
   type JobReadMode,
   jobQueueStatus,
@@ -29,6 +28,8 @@ import {
   meterDisagreementHint,
   parseJobNumber,
   priceJob,
+  readingAttention,
+  readingNeedsALook,
   type StoredStintPricing,
 } from '@pkg/domain/contracting';
 import {
@@ -156,18 +157,15 @@ type LoadedAssignment = LoadedJob['assignments'][number];
 type LoadedMeasure = LoadedJob['measures'][number];
 type LoadedReading = typeof contractingHourReadings.$inferSelect;
 
-function readingAttention(row: LoadedReading): JobReading['needsALook'] {
-  const kinds: JobReading['needsALook'] = [];
-  if (row.disputed) kinds.push('disputed');
-  if (row.evidenceReviewedAt === null && isAiFlaggedVerification(row.aiVerification))
-    kinds.push(`ai-${row.aiVerification}` as const);
-  // Missing photo belongs in sign-off's strip, but does not count toward the queue's needsALook total.
-  if (row.photo === null) kinds.push('missing-photo');
-  return kinds;
+function jobReadingAttention(row: LoadedReading): JobReading['needsALook'] {
+  const { disputed, aiFlagged } = readingAttention(row);
+  return [
+    ...(disputed ? (['disputed'] as const) : []),
+    ...(aiFlagged ? ([`ai-${aiFlagged}`] as const) : []),
+    // Missing photo belongs in sign-off's strip, but does not count toward the queue's needsALook total.
+    ...(row.photo === null ? (['missing-photo'] as const) : []),
+  ];
 }
-
-const readingNeedsALook = (reading: JobReading | null) =>
-  !!reading?.needsALook.some((kind) => kind !== 'missing-photo');
 
 function mapJobReading(row: LoadedReading | null, capturedByName: string | null) {
   if (!row) return null;
@@ -179,7 +177,7 @@ function mapJobReading(row: LoadedReading | null, capturedByName: string | null)
     aiHint: meterDisagreementHint(row),
     photoBacked: row.photo !== null,
     capturedByName,
-    needsALook: readingAttention(row),
+    needsALook: jobReadingAttention(row),
   });
 }
 
@@ -269,7 +267,7 @@ export async function getJob({ db, ...lookup }: { db: DbOrTx } & JobLookup): Pro
   const openGapFlags = assignments.filter((assignment) => assignment.gapFlag).length;
   const flaggedReadings = assignments
     .flatMap((assignment) => [assignment.arrival, assignment.departure])
-    .filter(readingNeedsALook).length;
+    .filter((reading) => reading !== null && readingNeedsALook(reading)).length;
   return JobFacts.parse({
     ...job,
     ...names,

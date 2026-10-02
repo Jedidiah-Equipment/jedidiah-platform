@@ -16,7 +16,7 @@ export type FilePreviewKind = 'image' | 'pdf';
 type FilePreviewSheetProps = {
   /** Shown under the title until the bytes land and can describe themselves. */
   description?: string;
-  downloadFilename: string;
+  downloadFilename: string | ((blob: Blob) => string);
   fetchBlob: (options: { signal: AbortSignal }) => Promise<Blob>;
   /** `null` for a file the browser cannot render inline — the sheet then offers the download alone. */
   kind: FilePreviewKind | null;
@@ -59,7 +59,10 @@ export function FilePreviewSheet({
     // The bytes on screen are the bytes that download; a file with no inline preview fetches on demand.
     mutationFn: async () => {
       const blob = previewQuery.data ?? (await fetchBlob({ signal: new AbortController().signal }));
-      saveBlobAsFile({ blob, filename: downloadFilename });
+      saveBlobAsFile({
+        blob,
+        filename: typeof downloadFilename === 'function' ? downloadFilename(blob) : downloadFilename,
+      });
     },
     onError: (error) => {
       showMutationError(error, `Unable to download this ${subject}.`);

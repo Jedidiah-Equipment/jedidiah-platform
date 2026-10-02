@@ -25,7 +25,7 @@ import {
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip.js';
 import { CategoryIcon } from '@/contracting/components/CategoryIcon.js';
 import { MachineDialogTitle } from '@/contracting/components/MachineDialogTitle.js';
-import { readingEvidence } from '@/contracting/components/ReadingEvidence.js';
+import { readingAttentionLabels, readingEvidence } from '@/contracting/components/ReadingEvidence.js';
 import { cn } from '@/lib/utils.js';
 import { AddMeasureDialog } from './AddMeasureDialog.js';
 import { AssignmentEditDialog } from './AssignmentEditDialog.js';
@@ -101,14 +101,6 @@ function IconAction({
   );
 }
 
-const attentionLabels: Record<JobReading['needsALook'][number], string> = {
-  disputed: 'disputed',
-  'ai-pending': 'AI verification pending',
-  'ai-disagrees': 'AI value differs',
-  'ai-low-confidence': 'AI confidence low',
-  'missing-photo': 'missing photo',
-};
-
 function ReadingActions({ reading, stint }: { reading: JobReading; stint: Assignment }) {
   const { openReading } = useMachines();
   const role = reading.role === 'arrival' ? 'arrival' : 'departure';
@@ -118,7 +110,7 @@ function ReadingActions({ reading, stint }: { reading: JobReading; stint: Assign
     <IconAction
       icon={kind === 'missing-photo' ? IconPhotoOff : IconAlertTriangle}
       key={kind}
-      label={`Review ${role} · ${attentionLabels[kind]}`}
+      label={`Review ${role} · ${readingAttentionLabels[kind]}`}
       onClick={() => openReading({ reading, stint })}
       tone={kind === 'disputed' ? 'danger' : 'warning'}
     />
@@ -178,11 +170,16 @@ function MeasureDetail({ stint }: { stint: Assignment }) {
   );
 }
 
+/** A Machine Assignment with an open Gap Flag or a flagged reading; a missing photo counts here. */
+export function stintNeedsALook(stint: Assignment): boolean {
+  return stint.gapFlag || !!stint.arrival?.needsALook.length || !!stint.departure?.needsALook.length;
+}
+
 export function MachineStintCard({ stint, stintNumber }: { stint: Assignment; stintNumber: number }) {
   const { sheet, mutations, openArrival, openDeparture } = useMachines();
   const planned = stint.state === 'planned';
   const onSite = stint.state === 'on-site';
-  const needsALook = stint.gapFlag || !!stint.arrival?.needsALook.length || !!stint.departure?.needsALook.length;
+  const needsALook = stintNeedsALook(stint);
   const stintLabel =
     stintNumber === 1 ? 'First stint' : stintNumber === 2 ? 'Second stint' : `Stint ${formatNumber(stintNumber)}`;
   return (

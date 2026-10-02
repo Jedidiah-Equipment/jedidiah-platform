@@ -1,12 +1,10 @@
 import { formatHours, statusBadgeColorClassNames } from '@pkg/domain';
 import type { Assignment, JobReading } from '@pkg/schema/contracting';
 import { IconAlertTriangle, IconRefresh } from '@tabler/icons-react';
-import { useMutation, useQuery } from '@tanstack/react-query';
-import { useCallback, useEffect, useState } from 'react';
-import { toast } from 'sonner';
+import { useQuery } from '@tanstack/react-query';
+import { useEffect, useState } from 'react';
 import { DateDisplay } from '@/components/common/DateDisplay.js';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
-import { FilePreviewSheet } from '@/components/file-preview/FilePreviewSheet.js';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert.js';
 import { Badge } from '@/components/ui/badge.js';
 import { Button } from '@/components/ui/button.js';
@@ -21,24 +19,15 @@ import {
 import { Skeleton } from '@/components/ui/skeleton.js';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip.js';
 import { MachineDialogTitle } from '@/contracting/components/MachineDialogTitle.js';
-import { useQueryInvalidation } from '@/contracting/hooks/use-query-invalidation.js';
-import { readingPhotoUrl } from '@/contracting/lib/contracting-http-paths.js';
-import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
-import { useTRPC } from '@/lib/trpc.js';
+import { fetchMeterPhoto, MeterPhotoPreview, meterPhotoQueryKey } from '@/contracting/components/MeterPhotoPreview.js';
+import { type AssessmentTone, readingAssessment } from '@/contracting/components/ReadingEvidence.js';
+import { useReadingReview } from '@/contracting/hooks/use-reading-review.js';
 
 import { ReadingAmendDialog } from './ReadingAmendDialog.js';
 
 const confidenceSegments = [0, 1, 2, 3, 4];
 
-async function fetchReadingPhoto(readingId: string, signal: AbortSignal): Promise<Blob> {
-  const response = await fetch(readingPhotoUrl(readingId), { signal, credentials: 'include' });
-  if (!response.ok) throw new Error('Unable to preview meter photo.');
-  return response.blob();
-}
-
-type Tone = 'success' | 'warning' | 'destructive' | 'info' | 'neutral';
-
-const toneClasses: Record<Tone, { badge: string; result: string; segment: string }> = {
+const toneClasses: Record<AssessmentTone, { badge: string; result: string; segment: string }> = {
   success: {
     badge: `${statusBadgeColorClassNames.green.chip} ${statusBadgeColorClassNames.green.text}`,
     result: statusBadgeColorClassNames.green.text,
@@ -62,68 +51,10 @@ const toneClasses: Record<Tone, { badge: string; result: string; segment: string
   },
 };
 
-function assessment(reading: JobReading) {
-  if (!reading.photoBacked)
-    return {
-      tone: 'neutral' as const,
-      badge: 'No AI result',
-      title: 'No photo to analyse',
-      description: 'The recorded reading has no meter photo, so AI cannot check its value.',
-      result: 'No analysis',
-    };
-  if (reading.aiVerification === 'pending')
-    return {
-      tone: 'info' as const,
-      badge: 'Checking photo',
-      title: 'Photo analysis pending',
-      description: 'The captured photo is available, but AI has not returned a result yet.',
-      result: 'Waiting for result',
-    };
-  if (reading.aiValue === null)
-    return {
-      tone: 'destructive' as const,
-      badge: 'Cannot verify from photo',
-      title: 'No readable meter found',
-      description: `AI could not find a readable hour meter in the photo. This does not confirm the recorded ${formatHours(reading.value)}.`,
-      result: 'No readable meter',
-    };
-  if (reading.aiVerification === 'low-confidence')
-    return {
-      tone: 'warning' as const,
-      badge: 'Uncertain result',
-      title: 'Possible reading, not reliable',
-      description: `AI tentatively read ${formatHours(reading.aiValue)}. The image is too unclear to verify the recorded ${formatHours(reading.value)}.`,
-      result: `Possibly ${formatHours(reading.aiValue)}`,
-    };
-  if (reading.aiVerification === 'disagrees')
-    return {
-      tone: 'destructive' as const,
-      badge: 'Different value found',
-      title: 'AI reading differs',
-      description: `AI read ${formatHours(reading.aiValue)} from the photo; the recorded reading is ${formatHours(reading.value)}. Review the photo before amending.`,
-      result: formatHours(reading.aiValue),
-    };
-  return {
-    tone: 'success' as const,
-    badge: 'Same value found',
-    title: 'AI reading matches',
-    description: `AI read ${formatHours(reading.aiValue)} from the photo, matching the recorded reading.`,
-    result: formatHours(reading.aiValue),
-  };
-}
-
-function confidenceLabel(reading: JobReading): string {
-  if (!reading.photoBacked) return 'No photo to assess';
-  if (reading.aiConfidence === null) return 'Waiting for AI';
-  return reading.aiValue === null
-    ? 'Confidence that no readable meter is visible'
-    : 'Confidence in the extracted value';
-}
-
 function MeterPhoto({ reading, onExpand }: { reading: JobReading; onExpand: () => void }) {
   const photoQuery = useQuery({
-    queryKey: ['contracting-reading-photo', reading.id],
-    queryFn: ({ signal }) => fetchReadingPhoto(reading.id, signal),
+    queryKey: meterPhotoQueryKey(reading.id),
+    queryFn: ({ signal }) => fetchMeterPhoto(reading.id, signal),
     staleTime: Infinity,
   });
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
@@ -167,38 +98,12 @@ export function ReadingDialog({
   onClose: () => void;
   amendReadings: boolean;
 }) {
-  const trpc = useTRPC();
-  const showError = useApiMutationErrorToast();
-  const { invalidateJobs, invalidateReadings } = useQueryInvalidation();
   const [amending, setAmending] = useState(false);
   const [preview, setPreview] = useState(false);
-  const amend = useMutation(
-    trpc.contractingReadings.amend.mutationOptions({
-      onSuccess: async () => {
-        await Promise.all([invalidateJobs(), invalidateReadings()]);
-        toast.success('Reading amended');
-      },
-      onError: (error) => showError(error, 'Unable to amend reading.'),
-    }),
-  );
-  const reverify = useMutation(
-    trpc.contractingReadings.reverify.mutationOptions({
-      onSuccess: async () => {
-        await Promise.all([invalidateJobs(), invalidateReadings()]);
-      },
-      onError: (error) => showError(error, 'Unable to re-verify reading.'),
-    }),
-  );
+  const { amend, reverify } = useReadingReview();
   const reading = selected?.reading;
-  const evidence = reading ? assessment(reading) : null;
+  const evidence = reading ? readingAssessment(reading) : null;
   const tone = evidence ? toneClasses[evidence.tone] : toneClasses.neutral;
-  const fetchBlob = useCallback(
-    ({ signal }: { signal: AbortSignal }) => {
-      if (!reading) throw new Error('No reading selected.');
-      return fetchReadingPhoto(reading.id, signal);
-    },
-    [reading],
-  );
 
   return (
     <>
@@ -325,7 +230,7 @@ export function ReadingDialog({
                             />
                           ))}
                         </div>
-                        <span className="text-xs text-muted-foreground">{confidenceLabel(reading)}</span>
+                        <span className="text-xs text-muted-foreground">{evidence?.confidenceCaption}</span>
                       </div>
                     </div>
                   </div>
@@ -357,17 +262,12 @@ export function ReadingDialog({
         onAmended={() => setAmending(false)}
         error={amend.error}
       />
-      <FilePreviewSheet
-        open={preview && !!reading}
-        onOpenChange={setPreview}
+      <MeterPhotoPreview
+        photo={
+          preview && reading && selected ? { readingId: reading.id, machineCode: selected.stint.machineCode } : null
+        }
         description="Captured meter photo"
-        downloadFilename={`${selected?.stint.machineCode ?? 'meter'}-reading.jpg`}
-        fetchBlob={fetchBlob}
-        kind="image"
-        queryKey={['contracting-reading-photo', reading?.id ?? 'closed']}
-        staleTime={Infinity}
-        subject="meter photo"
-        title={`${selected?.stint.machineCode ?? 'Machine'} meter photo`}
+        onClose={() => setPreview(false)}
       />
     </>
   );

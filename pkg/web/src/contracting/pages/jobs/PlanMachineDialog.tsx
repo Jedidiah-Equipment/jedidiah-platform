@@ -6,6 +6,7 @@ import { CreateEntityDialog } from '@/components/form/index.js';
 import { emptyStringOr, requiredSelection } from '@/components/form/utils/form-schema.js';
 import { CategoryIcon } from '@/contracting/components/CategoryIcon.js';
 import { useTRPC } from '@/lib/trpc.js';
+import { useAssignmentOptions } from './use-assignment-options.js';
 import { useJobWrite, useResetOnOpen } from './use-job-write.js';
 
 const PlanValues = z.object({
@@ -26,8 +27,11 @@ export function PlanMachineDialog({
   const trpc = useTRPC();
   const write = useJobWrite();
   const machines = useQuery(trpc.contractingReadings.fieldMachines.queryOptions(undefined, { enabled: open }));
-  const implementOptions = useQuery(trpc.contractingJobs.field.implements.queryOptions(undefined, { enabled: open }));
-  const drivers = useQuery(trpc.contractingJobs.field.drivers.queryOptions(undefined, { enabled: open }));
+  const options = useAssignmentOptions({
+    enabled: open,
+    noImplementLabel: 'None',
+    noDriverLabel: "Machine's current driver",
+  });
   const plan = useMutation(trpc.contractingJobs.assignments.add.mutationOptions(write.dialog));
   useResetOnOpen(plan, open);
   return (
@@ -62,29 +66,14 @@ export function PlanMachineDialog({
             )}
           </form.AppField>
           <form.AppField name="implementId">
-            {(field) => (
-              <field.ComboboxField
-                label="Implement"
-                options={[
-                  { value: '', label: 'None' },
-                  ...(implementOptions.data ?? []).map((row) => ({
-                    value: row.id,
-                    label: row.code,
-                    icon: <CategoryIcon icon={row.categoryIcon} colour={row.categoryColour} size={14} />,
-                  })),
-                ]}
-              />
-            )}
+            {(field) => <field.ComboboxField label="Implement" options={options.implementOptions} />}
           </form.AppField>
           <form.AppField name="driverUserId">
             {(field) => (
               <field.ComboboxField
                 label="Driver"
                 placeholder="Machine's current driver"
-                options={[
-                  { value: '', label: "Machine's current driver" },
-                  ...(drivers.data ?? []).map((row) => ({ value: row.id, label: row.name })),
-                ]}
+                options={options.driverOptions}
               />
             )}
           </form.AppField>

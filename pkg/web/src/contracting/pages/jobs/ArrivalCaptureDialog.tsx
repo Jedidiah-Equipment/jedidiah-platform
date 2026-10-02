@@ -4,7 +4,6 @@ import { AuthId, UUID } from '@pkg/schema';
 import { type Assignment, ReadingComment, ReadingValue } from '@pkg/schema/contracting';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
-import { toast } from 'sonner';
 import { z } from 'zod';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { CreateEntityDialog } from '@/components/form/index.js';
@@ -12,57 +11,44 @@ import { emptyStringOr } from '@/components/form/utils/form-schema.js';
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@/components/ui/card.js';
 import { Checkbox } from '@/components/ui/checkbox.js';
 import { Field, FieldContent, FieldDescription, FieldLabel } from '@/components/ui/field.js';
-import { CategoryIcon } from '@/contracting/components/CategoryIcon.js';
 import { MachineDialogTitle } from '@/contracting/components/MachineDialogTitle.js';
 import { useTRPC } from '@/lib/trpc.js';
-import { AssignmentEditorDialog } from './AssignmentEditorDialog.js';
+import { AssignmentEditorDialog, changesAssignment } from './AssignmentEditorDialog.js';
 import { ReadingCaptureCard, ReadingCaptureDetails, ReadingValueField } from './ReadingCaptureFields.js';
+import { useAssignmentOptions } from './use-assignment-options.js';
 import { useReadingCapture } from './use-reading-capture.js';
 
 const ArrivalValues = z.object({
   value: ReadingValue,
   comment: z.union([z.string().trim().length(0), ReadingComment]),
   confirmedDispute: z.object({ value: ReadingValue, previousId: UUID }).nullable(),
-  changeAssignment: z.boolean(),
   implementId: emptyStringOr(UUID),
   driverUserId: emptyStringOr(AuthId),
 });
 
 export function ArrivalCaptureDialog({ stint, onClose }: { stint: Assignment | null; onClose: () => void }) {
   const trpc = useTRPC();
-  const capture = useReadingCapture();
-  const [error, setError] = useState('');
-  const [photo, setPhoto] = useState<File | null>(null);
+  const capture = useReadingCapture('arrival');
   const [readingFocused, setReadingFocused] = useState(false);
+  // A refetch can change the live stint mid-capture; the form starts from, and overrides compare against, the opened one.
+  const [opened, setOpened] = useState(stint);
+  if (stint?.id !== opened?.id) setOpened(stint);
   const history = useQuery(
     trpc.contractingReadings.fieldHistory.queryOptions({ machineId: stint?.machineId ?? '' }, { enabled: !!stint }),
   );
-  const implementsQuery = useQuery(trpc.contractingJobs.field.implements.queryOptions(undefined, { enabled: !!stint }));
-  const driversQuery = useQuery(trpc.contractingJobs.field.drivers.queryOptions(undefined, { enabled: !!stint }));
+  const options = useAssignmentOptions({
+    enabled: !!stint,
+    stint,
+    noImplementLabel: 'No implement',
+    noDriverLabel: 'No driver',
+    freeImplementsOnly: true,
+  });
   const latest = history.data?.[0];
   const canCapture = (values: z.infer<typeof ArrivalValues>) =>
     history.isSuccess &&
-    (!values.changeAssignment || (implementsQuery.isSuccess && driversQuery.isSuccess)) &&
+    (!changesAssignment(opened, values) || options.ready) &&
     (!captureIsBelowLatest(values.value, latest) ||
       (values.confirmedDispute?.value === values.value && values.confirmedDispute.previousId === latest?.id));
-  const implementOptions = [
-    { value: '', label: 'No implement' },
-    ...(implementsQuery.data ?? [])
-      .filter((entry) => !entry.onSiteJobNumber || entry.id === stint?.implementId)
-      .map((entry) => ({
-        value: entry.id,
-        label: entry.code,
-        icon: <CategoryIcon icon={entry.categoryIcon} colour={entry.categoryColour} size={14} />,
-      })),
-  ];
-  if (stint?.implementId && stint.implementCode && !implementOptions.some((entry) => entry.value === stint.implementId))
-    implementOptions.push({ value: stint.implementId, label: stint.implementCode });
-  const driverOptions = [
-    { value: '', label: 'No driver' },
-    ...(driversQuery.data ?? []).map((entry) => ({ value: entry.id, label: entry.name })),
-  ];
-  if (stint?.driverUserId && stint.driverName && !driverOptions.some((entry) => entry.value === stint.driverUserId))
-    driverOptions.push({ value: stint.driverUserId, label: stint.driverName });
 
   return (
     <CreateEntityDialog
@@ -70,8 +56,7 @@ export function ArrivalCaptureDialog({ stint, onClose }: { stint: Assignment | n
       open={!!stint}
       onOpenChange={(open) => {
         if (!open) {
-          setError('');
-          setPhoto(null);
+          capture.reset();
           setReadingFocused(false);
           onClose();
         }
@@ -82,9 +67,8 @@ export function ArrivalCaptureDialog({ stint, onClose }: { stint: Assignment | n
         value: Number.NaN,
         comment: '',
         confirmedDispute: null,
-        changeAssignment: false,
-        implementId: stint?.implementId ?? '',
-        driverUserId: stint?.driverUserId ?? '',
+        implementId: opened?.implementId ?? '',
+        driverUserId: opened?.driverUserId ?? '',
       }}
       validator={ArrivalValues}
       canSubmit={canCapture}
@@ -92,37 +76,24 @@ export function ArrivalCaptureDialog({ stint, onClose }: { stint: Assignment | n
       onBeforeCreate={canCapture}
       onCreate={async (values) => {
         if (!stint) throw new Error('No Machine Assignment selected.');
-        setError('');
-        try {
-          await capture(
-            {
-              machineId: stint.machineId,
-              assignmentId: stint.id,
-              role: 'arrival',
-              value: values.value,
-              capturedAt: new Date().toISOString(),
-              comment: values.comment.trim() || null,
-              disputePrevious:
-                captureIsBelowLatest(values.value, latest) &&
-                values.confirmedDispute?.value === values.value &&
-                values.confirmedDispute.previousId === latest?.id,
-              expectedPreviousId: latest?.id ?? null,
-              stintOverrides: values.changeAssignment
-                ? { implementId: values.implementId || null, driverUserId: values.driverUserId || null }
-                : undefined,
-            },
-            photo,
-            'Unable to capture arrival reading.',
-          );
-        } catch (cause) {
-          setError(cause instanceof Error ? cause.message : 'Unable to capture arrival reading.');
-          throw cause;
-        }
-        toast.success('Arrival reading captured');
+        await capture.submit({
+          machineId: stint.machineId,
+          assignmentId: stint.id,
+          value: values.value,
+          comment: values.comment.trim() || null,
+          disputePrevious:
+            captureIsBelowLatest(values.value, latest) &&
+            values.confirmedDispute?.value === values.value &&
+            values.confirmedDispute.previousId === latest?.id,
+          expectedPreviousId: latest?.id ?? null,
+          stintOverrides: changesAssignment(opened, values)
+            ? { implementId: values.implementId || null, driverUserId: values.driverUserId || null }
+            : undefined,
+        });
         return true;
       }}
       onCreated={() => {
-        setPhoto(null);
+        capture.reset();
         setReadingFocused(false);
         onClose();
       }}
@@ -174,10 +145,10 @@ export function ArrivalCaptureDialog({ stint, onClose }: { stint: Assignment | n
             selector={(state) => ({ implementId: state.values.implementId, driverUserId: state.values.driverUserId })}
           >
             {({ implementId, driverUserId }) => {
-              const implement = implementsQuery.data?.find((entry) => entry.id === implementId);
-              const implementLabel =
-                implementOptions.find((entry) => entry.value === implementId)?.label ?? 'No implement';
-              const driverLabel = driverOptions.find((entry) => entry.value === driverUserId)?.label ?? 'No driver';
+              const selectedImplement = options.implementOptions.find((entry) => entry.value === implementId);
+              const implementLabel = selectedImplement?.label ?? 'No implement';
+              const driverLabel =
+                options.driverOptions.find((entry) => entry.value === driverUserId)?.label ?? 'No driver';
               return (
                 <Card className="bg-muted/30" size="sm">
                   <CardHeader>
@@ -186,19 +157,14 @@ export function ArrivalCaptureDialog({ stint, onClose }: { stint: Assignment | n
                       {stint ? (
                         <AssignmentEditorDialog
                           stint={{ ...stint, implementId: implementId || null, driverUserId: driverUserId || null }}
-                          implementOptions={implementOptions}
-                          driverOptions={driverOptions}
-                          canSave={implementsQuery.isSuccess && driversQuery.isSuccess}
-                          error={implementsQuery.error ?? driversQuery.error}
+                          implementOptions={options.implementOptions}
+                          driverOptions={options.driverOptions}
+                          canSave={options.ready}
+                          error={options.error}
                           submitLabel="Apply"
                           onSave={async (draft) => {
                             form.setFieldValue('implementId', draft.implementId);
                             form.setFieldValue('driverUserId', draft.driverUserId);
-                            form.setFieldValue(
-                              'changeAssignment',
-                              draft.implementId !== (stint.implementId ?? '') ||
-                                draft.driverUserId !== (stint.driverUserId ?? ''),
-                            );
                           }}
                         />
                       ) : null}
@@ -208,9 +174,7 @@ export function ArrivalCaptureDialog({ stint, onClose }: { stint: Assignment | n
                     <div className="min-w-0 space-y-2">
                       <span className="block text-xs text-muted-foreground">Implement</span>
                       <span className="flex min-h-6 items-center gap-2">
-                        {implement ? (
-                          <CategoryIcon icon={implement.categoryIcon} colour={implement.categoryColour} size={14} />
-                        ) : null}
+                        {selectedImplement?.icon}
                         <span className="truncate" title={implementLabel}>
                           {implementLabel}
                         </span>
@@ -227,13 +191,7 @@ export function ArrivalCaptureDialog({ stint, onClose }: { stint: Assignment | n
               );
             }}
           </form.Subscribe>
-          <ReadingCaptureDetails
-            id={`arrival-photo-${stint?.id ?? 'closed'}`}
-            photo={photo}
-            onPhotoChange={setPhoto}
-            error={error}
-            onError={setError}
-          >
+          <ReadingCaptureDetails id={`arrival-photo-${stint?.id ?? 'closed'}`} {...capture.details}>
             <form.AppField name="comment">
               {(field) => <field.TextareaField label="Comment (optional)" />}
             </form.AppField>

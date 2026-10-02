@@ -1,7 +1,5 @@
 import { captureNeedsComment } from '@pkg/domain/contracting';
 import { type Assignment, ReadingReason, ReadingValue } from '@pkg/schema/contracting';
-import { useState } from 'react';
-import { toast } from 'sonner';
 import { z } from 'zod';
 import { CreateEntityDialog } from '@/components/form/index.js';
 import { Separator } from '@/components/ui/separator.js';
@@ -15,19 +13,16 @@ const DepartureValues = z.object({
   reason: z.union([z.string().trim().length(0), ReadingReason]),
 });
 export function DepartureCaptureDialog({ stint, onClose }: { stint: Assignment | null; onClose: () => void }) {
-  const capture = useReadingCapture();
-  const [error, setError] = useState('');
-  const [photo, setPhoto] = useState<File | null>(null);
+  const capture = useReadingCapture('departure');
   const management = useCan('contracting_job:work-any').can;
-  const needsReason = captureNeedsComment('departure', { management, hasPhoto: !!photo });
+  const needsReason = captureNeedsComment('departure', { management, hasPhoto: !!capture.photo });
   return (
     <CreateEntityDialog
       key={stint?.id ?? 'closed'}
       open={!!stint}
       onOpenChange={(open) => {
         if (!open) {
-          setError('');
-          setPhoto(null);
+          capture.reset();
           onClose();
         }
       }}
@@ -38,29 +33,16 @@ export function DepartureCaptureDialog({ stint, onClose }: { stint: Assignment |
       onBeforeCreate={(values) => !needsReason || !!values.reason.trim()}
       onCreate={async (values) => {
         if (!stint) throw new Error('No Machine Assignment selected.');
-        setError('');
-        try {
-          await capture(
-            {
-              machineId: stint.machineId,
-              assignmentId: stint.id,
-              role: 'departure',
-              value: values.value,
-              capturedAt: new Date().toISOString(),
-              comment: values.reason.trim() || null,
-            },
-            photo,
-            'Unable to capture departure reading.',
-          );
-        } catch (cause) {
-          setError(cause instanceof Error ? cause.message : 'Unable to capture departure reading.');
-          throw cause;
-        }
-        toast.success('Departure reading captured');
+        await capture.submit({
+          machineId: stint.machineId,
+          assignmentId: stint.id,
+          value: values.value,
+          comment: values.reason.trim() || null,
+        });
         return true;
       }}
       onCreated={() => {
-        setPhoto(null);
+        capture.reset();
         onClose();
       }}
     >
@@ -69,13 +51,7 @@ export function DepartureCaptureDialog({ stint, onClose }: { stint: Assignment |
           <ReadingCaptureCard previousLabel="Arrival reading" previousValue={stint?.arrival?.value}>
             <form.AppField name="value">{() => <ReadingValueField min={stint?.arrival?.value ?? 0} />}</form.AppField>
           </ReadingCaptureCard>
-          <ReadingCaptureDetails
-            id={`departure-photo-${stint?.id ?? 'closed'}`}
-            photo={photo}
-            onPhotoChange={setPhoto}
-            error={error}
-            onError={setError}
-          >
+          <ReadingCaptureDetails id={`departure-photo-${stint?.id ?? 'closed'}`} {...capture.details}>
             <div className="flex items-center gap-3" aria-hidden="true">
               <Separator className="flex-1" />
               <span className="text-xs text-muted-foreground">or</span>

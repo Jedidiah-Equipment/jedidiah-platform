@@ -7,8 +7,11 @@ import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { DepartureCaptureDialog } from './DepartureCaptureDialog.js';
 
-const capture = vi.hoisted(() => vi.fn(async () => undefined));
-vi.mock('./use-reading-capture.js', () => ({ useReadingCapture: () => capture }));
+const capture = vi.hoisted(() => vi.fn(async (..._args: unknown[]) => undefined));
+vi.mock('./capture-reading.js', () => ({ captureReading: capture }));
+vi.mock('@/contracting/hooks/use-query-invalidation.js', () => ({
+  useQueryInvalidation: () => ({ invalidateJobs: async () => undefined, invalidateReadings: async () => undefined }),
+}));
 const manager = createUserAccessSummary({
   userId: 'manager',
   equipmentRole: null,
@@ -98,6 +101,7 @@ it('requires a photo-less departure reason and submits the shared reading field 
       role: 'departure',
       value: 125.5,
       comment: 'Camera unavailable',
+      capturedAt: expect.any(String),
     }),
     null,
     'Unable to capture departure reading.',
@@ -184,4 +188,17 @@ it('keeps Save enabled for invalid readings and presents field validation on sub
   expect(capture).not.toHaveBeenCalled();
   expect(document.querySelector('[name="value"]')?.getAttribute('aria-invalid')).toBe('true');
   expect(save.disabled).toBe(false);
+});
+
+it('shows a refused capture inside the dialog and stays open', async () => {
+  capture.mockRejectedValueOnce(new Error('This Machine Assignment is not on site.'));
+  const { save, onClose } = await mount();
+  await enter('value', '126');
+  await enter('reason', 'Camera unavailable');
+  await act(async () => save.click());
+  const alert = [...document.querySelectorAll('[role="alert"]')].find((item) =>
+    item.textContent?.includes('This Machine Assignment is not on site.'),
+  );
+  expect(alert).toBeDefined();
+  expect(onClose).not.toHaveBeenCalled();
 });

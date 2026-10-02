@@ -66,3 +66,9 @@ export function jobSheet(job: JobDetail) {
 
 /** What the signed-in person may do on the Job sheet, read from the served Job Actions. */
 export type JobSheet = ReturnType<typeof jobSheet>;
+
+/** The one dialog the Machines card has open, naming its Machine Assignment by id so it follows refetches. */
+export type MachineDialog =
+  | { kind: 'plan' }
+  | { kind: 'arrival' | 'departure' | 'gap'; stintId: string }
+  | { kind: 'reading'; stintId: string; role: 'arrival' | 'departure' };

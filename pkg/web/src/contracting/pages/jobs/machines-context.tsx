@@ -1,41 +1,19 @@
-import type { Assignment, FieldDriver, FieldImplement, JobReading } from '@pkg/schema/contracting';
-import { useMutation } from '@tanstack/react-query';
+import type { FieldDriver, FieldImplement } from '@pkg/schema/contracting';
 import { createContext, useContext } from 'react';
-import { useQueryInvalidation } from '@/contracting/hooks/use-query-invalidation.js';
-import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
-import { useTRPC } from '@/lib/trpc.js';
 import type { JobSheet } from './types.js';
 
-export type SelectedReading = { reading: JobReading; stint: Assignment };
+/** The one dialog the Machines card has open, naming its Machine Assignment by id so it follows refetches. */
+export type MachineDialog =
+  | { kind: 'plan' }
+  | { kind: 'arrival' | 'departure' | 'gap'; stintId: string }
+  | { kind: 'reading'; stintId: string; role: 'arrival' | 'departure' };
 
-export function useMachineMutations() {
-  const trpc = useTRPC();
-  const { invalidateJobs } = useQueryInvalidation();
-  const showError = useApiMutationErrorToast();
-  const options = (message: string) => ({
-    onSuccess: invalidateJobs,
-    onError: (error: unknown) => showError(error, message),
-  });
-  return {
-    patch: useMutation(
-      trpc.contractingJobs.assignments.patch.mutationOptions(options('Unable to update Machine Assignment.')),
-    ),
-    remove: useMutation(
-      trpc.contractingJobs.assignments.remove.mutationOptions(options('Unable to remove Machine Assignment.')),
-    ),
-  };
-}
-
-/** What each Machine card reads: permissions, pick-list options, writes, and dialogs. */
+/** What each Machine card reads: permissions, pick-list options, and how to open a dialog. */
 type Machines = {
   sheet: JobSheet;
   implementOptions: readonly FieldImplement[];
   drivers: readonly FieldDriver[];
-  mutations: ReturnType<typeof useMachineMutations>;
-  openReading: (selected: SelectedReading) => void;
-  openArrival: (stint: Assignment) => void;
-  openGap: (stint: Assignment) => void;
-  openDeparture: (stint: Assignment) => void;
+  open: (dialog: MachineDialog) => void;
 };
 
 export const MachinesContext = createContext<Machines | null>(null);

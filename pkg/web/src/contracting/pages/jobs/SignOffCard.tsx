@@ -23,10 +23,10 @@ import {
 } from '@/components/ui/dialog.js';
 import { MachineDialogTitle } from '@/contracting/components/MachineDialogTitle.js';
 import { useQueryInvalidation } from '@/contracting/hooks/use-query-invalidation.js';
-import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { getApiErrorAppCode } from '@/lib/api-errors.js';
 import { useTRPC } from '@/lib/trpc.js';
 import type { JobSheet } from './types.js';
+import { useJobWrite, useResetOnOpen } from './use-job-write.js';
 
 const signOffFieldDefaults = { startDate: '', endDate: '', dieselLitres: 0, notes: '' };
 
@@ -82,15 +82,11 @@ export function SignOffCard({ job, sheet }: { job: JobDetail; sheet: JobSheet })
 
 function DraftSignOffDetails({ job, sheet }: { job: JobDetail; sheet: JobSheet }) {
   const trpc = useTRPC();
-  const { invalidateJobs } = useQueryInvalidation();
-  const showError = useApiMutationErrorToast();
+  const write = useJobWrite();
   const { planned } = groupStints(job.assignments);
   const plannedIds = planned.map((stint) => stint.id);
   const remove = useMutation(
-    trpc.contractingJobs.assignments.remove.mutationOptions({
-      onSuccess: invalidateJobs,
-      onError: (error) => showError(error, 'Unable to remove planned Machine.'),
-    }),
+    trpc.contractingJobs.assignments.remove.mutationOptions(write.card('Unable to remove planned Machine.')),
   );
   const [confirm, setConfirm] = useState(false);
   const [startEdited, setStartEdited] = useState(false);
@@ -114,18 +110,17 @@ function DraftSignOffDetails({ job, sheet }: { job: JobDetail; sheet: JobSheet }
   const complete = useMutation(
     trpc.contractingJobs.jobs.complete.mutationOptions({
       onSuccess: async () => {
-        await invalidateJobs();
+        await write.invalidateJobs();
         toast.success('Job completed');
         setConfirm(false);
       },
       onError: async (error) => {
-        if (getApiErrorAppCode(error) === 'contracting_job.stint_not_planned') {
-          toast.error('The planned machines changed — reloading');
-          await invalidateJobs();
-        } else showError(error, 'Unable to complete Job.');
+        write.report(error);
+        if (getApiErrorAppCode(error) === 'contracting_job.stint_not_planned') await write.invalidateJobs();
       },
     }),
   );
+  useResetOnOpen(complete, confirm);
   const gate = canComplete(job.assignments);
   const completeAction = sheet.action('complete');
   return (
@@ -162,7 +157,6 @@ function DraftSignOffDetails({ job, sheet }: { job: JobDetail; sheet: JobSheet }
             ))}
           </section>
         ) : null}
-        <ErrorMessage error={complete.error} fallbackMessage="Unable to complete Job." />
       </CardContent>
       <form.Subscribe selector={(state) => state.values}>
         {(values) => {
@@ -197,6 +191,7 @@ function DraftSignOffDetails({ job, sheet }: { job: JobDetail; sheet: JobSheet }
                       planned machines will be removed.
                     </DialogDescription>
                   </DialogHeader>
+                  <ErrorMessage error={complete.error} fallbackMessage="Unable to complete Job." />
                   <DialogFooter>
                     <DialogClose render={<Button variant="outline" />}>Cancel</DialogClose>
                     <Button

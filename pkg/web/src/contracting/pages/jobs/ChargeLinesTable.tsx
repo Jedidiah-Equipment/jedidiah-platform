@@ -1,11 +1,14 @@
 import { formatCurrency } from '@pkg/domain';
 import type { ChargeLine } from '@pkg/schema/contracting';
+import { useMutation } from '@tanstack/react-query';
 import { useMemo } from 'react';
 import { RemoveEntityButton } from '@/components/common/RemoveEntityButton.js';
 import { DataTable } from '@/components/data-table/DataTable.js';
 import { type DataTableColumnDef, useDataTable } from '@/components/data-table/features.js';
-import { ChargeLineDescription, type ChargeLineMutations } from './ChargeLineEditing.js';
+import { useTRPC } from '@/lib/trpc.js';
+import { ChargeLineDescription } from './ChargeLineEditing.js';
 import { MoneyInput } from './MoneyInput.js';
+import { useJobWrite } from './use-job-write.js';
 
 const missingAmountCopy = {
   'needs-amount': <span className="text-destructive">Needs an amount</span>,
@@ -17,7 +20,6 @@ export function ChargeLinesTable({
   editable,
   amountEditable,
   missingAmount,
-  mutations: { patch, remove },
 }: {
   lines: ChargeLine[];
   /** Rename and remove lines. */
@@ -26,8 +28,15 @@ export function ChargeLinesTable({
   amountEditable: boolean;
   /** What a line without an amount reads while amounts cannot be typed. */
   missingAmount: keyof typeof missingAmountCopy;
-  mutations: Pick<ChargeLineMutations, 'patch' | 'remove'>;
 }) {
+  const trpc = useTRPC();
+  const write = useJobWrite();
+  const patch = useMutation(
+    trpc.contractingJobs.chargeLines.patch.mutationOptions(write.card('Unable to update Charge Line.')),
+  );
+  const remove = useMutation(
+    trpc.contractingJobs.chargeLines.remove.mutationOptions(write.card('Unable to remove Charge Line.')),
+  );
   const columns = useMemo<DataTableColumnDef<ChargeLine>[]>(
     () => [
       {

@@ -15,7 +15,7 @@ import { Field, FieldContent, FieldDescription, FieldLabel } from '@/components/
 import { CategoryIcon } from '@/contracting/components/CategoryIcon.js';
 import { MachineDialogTitle } from '@/contracting/components/MachineDialogTitle.js';
 import { useTRPC } from '@/lib/trpc.js';
-import { AssignmentEditorDialog } from './AssignmentEditDialog.js';
+import { AssignmentEditorDialog } from './AssignmentEditorDialog.js';
 import { ReadingCaptureCard, ReadingCaptureDetails, ReadingValueField } from './ReadingCaptureFields.js';
 import { useReadingCapture } from './use-reading-capture.js';
 

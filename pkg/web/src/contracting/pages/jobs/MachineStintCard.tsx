@@ -11,6 +11,7 @@ import {
   IconPlayerStop,
   type Icon as TablerIcon,
 } from '@tabler/icons-react';
+import { useMutation } from '@tanstack/react-query';
 import { RemoveEntityButton } from '@/components/common/RemoveEntityButton.js';
 import { Badge } from '@/components/ui/badge.js';
 import { Button } from '@/components/ui/button.js';
@@ -26,10 +27,12 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { CategoryIcon } from '@/contracting/components/CategoryIcon.js';
 import { MachineDialogTitle } from '@/contracting/components/MachineDialogTitle.js';
 import { readingAttentionLabels, readingEvidence } from '@/contracting/components/ReadingEvidence.js';
+import { useTRPC } from '@/lib/trpc.js';
 import { cn } from '@/lib/utils.js';
 import { AddMeasureDialog } from './AddMeasureDialog.js';
 import { AssignmentEditDialog } from './AssignmentEditDialog.js';
 import { useMachines } from './machines-context.js';
+import { useJobWrite } from './use-job-write.js';
 
 type DotTone = 'done' | 'current' | 'empty';
 
@@ -102,16 +105,22 @@ function IconAction({
 }
 
 function ReadingActions({ reading, stint }: { reading: JobReading; stint: Assignment }) {
-  const { openReading } = useMachines();
+  const { open } = useMachines();
   const role = reading.role === 'arrival' ? 'arrival' : 'departure';
   if (!reading.needsALook.length)
-    return <IconAction icon={IconEye} label={`View ${role} reading`} onClick={() => openReading({ reading, stint })} />;
+    return (
+      <IconAction
+        icon={IconEye}
+        label={`View ${role} reading`}
+        onClick={() => open({ kind: 'reading', stintId: stint.id, role })}
+      />
+    );
   return reading.needsALook.map((kind) => (
     <IconAction
       icon={kind === 'missing-photo' ? IconPhotoOff : IconAlertTriangle}
       key={kind}
       label={`Review ${role} · ${readingAttentionLabels[kind]}`}
-      onClick={() => openReading({ reading, stint })}
+      onClick={() => open({ kind: 'reading', stintId: stint.id, role })}
       tone={kind === 'disputed' ? 'danger' : 'warning'}
     />
   ));
@@ -127,13 +136,13 @@ function ReadingDetail({ reading }: { reading: JobReading }) {
 }
 
 function GapAction({ stint }: { stint: Assignment }) {
-  const { sheet, openGap } = useMachines();
+  const { sheet, open } = useMachines();
   if (stint.gapFlag)
     return sheet.can('resolveGaps') && judgeAssignmentAction('resolveGap', stint).allowed ? (
       <IconAction
         icon={IconAlertTriangle}
         label={`Resolve gap · ${formatHours(stint.gapHours ?? 0)}`}
-        onClick={() => openGap(stint)}
+        onClick={() => open({ kind: 'gap', stintId: stint.id })}
         tone="warning"
       />
     ) : (
@@ -176,7 +185,15 @@ export function stintNeedsALook(stint: Assignment): boolean {
 }
 
 export function MachineStintCard({ stint, stintNumber }: { stint: Assignment; stintNumber: number }) {
-  const { sheet, mutations, openArrival, openDeparture } = useMachines();
+  const { sheet, open } = useMachines();
+  const trpc = useTRPC();
+  const write = useJobWrite();
+  const travel = useMutation(
+    trpc.contractingJobs.assignments.patch.mutationOptions(write.card('Unable to update Machine Assignment.')),
+  );
+  const remove = useMutation(
+    trpc.contractingJobs.assignments.remove.mutationOptions(write.card('Unable to remove Machine Assignment.')),
+  );
   const planned = stint.state === 'planned';
   const onSite = stint.state === 'on-site';
   const needsALook = stintNeedsALook(stint);
@@ -213,8 +230,8 @@ export function MachineStintCard({ stint, stintNumber }: { stint: Assignment; st
                   {judgeAssignmentAction('remove', stint).allowed ? (
                     <RemoveEntityButton
                       description="Remove this Machine Assignment?"
-                      isPending={mutations.remove.isPending}
-                      onConfirm={() => mutations.remove.mutate({ id: stint.id })}
+                      isPending={remove.isPending}
+                      onConfirm={() => remove.mutate({ id: stint.id })}
                       title={<MachineDialogTitle machine={stint}>Remove planned Machine</MachineDialogTitle>}
                       triggerIconOnly
                       triggerLabel={`Remove ${stint.machineCode}`}
@@ -237,7 +254,11 @@ export function MachineStintCard({ stint, stintNumber }: { stint: Assignment; st
                   <GapAction stint={stint} />
                 </>
               ) : sheet.can('capture') ? (
-                <IconAction icon={IconPlayerPlay} label="Start — capture arrival" onClick={() => openArrival(stint)} />
+                <IconAction
+                  icon={IconPlayerPlay}
+                  label="Start — capture arrival"
+                  onClick={() => open({ kind: 'arrival', stintId: stint.id })}
+                />
               ) : null
             }
             detail={stint.arrival ? <ReadingDetail reading={stint.arrival} /> : 'Awaiting hour reading'}
@@ -252,7 +273,7 @@ export function MachineStintCard({ stint, stintNumber }: { stint: Assignment; st
                 <IconAction
                   icon={IconPlayerStop}
                   label="Stop — capture departure"
-                  onClick={() => openDeparture(stint)}
+                  onClick={() => open({ kind: 'departure', stintId: stint.id })}
                 />
               ) : null
             }
@@ -294,9 +315,7 @@ export function MachineStintCard({ stint, stintNumber }: { stint: Assignment; st
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-72">
                   <DropdownMenuRadioGroup
-                    onValueChange={(value) =>
-                      mutations.patch.mutate({ id: stint.id, travelIncluded: value === 'include' })
-                    }
+                    onValueChange={(value) => travel.mutate({ id: stint.id, travelIncluded: value === 'include' })}
                     value={stint.travelIncluded ? 'include' : 'exclude'}
                   >
                     <DropdownMenuRadioItem className="items-start py-2 pr-8" closeOnClick value="include">

@@ -7,7 +7,10 @@ import { afterEach, expect, it, vi } from 'vitest';
 import { GapResolveDialog } from './GapResolveDialog.js';
 
 const resolve = vi.hoisted(() => vi.fn(async () => undefined));
-vi.mock('@/hooks/use-api-mutation-error-toast.js', () => ({ useApiMutationErrorToast: () => () => undefined }));
+vi.mock('@/hooks/use-api-mutation-error-toast.js', () => ({
+  useApiMutationErrorReport: () => () => undefined,
+  useApiMutationErrorToast: () => () => undefined,
+}));
 vi.mock('@/contracting/hooks/use-query-invalidation.js', () => ({
   useQueryInvalidation: () => ({ invalidateJobs: async () => undefined }),
 }));
@@ -18,7 +21,7 @@ vi.mock('@/lib/trpc.js', () => ({
 }));
 vi.mock('@tanstack/react-query', async (original) => ({
   ...(await original<typeof import('@tanstack/react-query')>()),
-  useMutation: () => ({ mutateAsync: resolve }),
+  useMutation: () => ({ mutateAsync: resolve, reset: () => undefined, error: null }),
 }));
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;

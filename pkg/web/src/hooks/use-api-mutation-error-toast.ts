@@ -7,21 +7,32 @@ import { getClientConfig } from '@/lib/app-config.js';
 
 const config = getClientConfig();
 
-export function useApiMutationErrorToast() {
+/** Reports an unexpected mutation failure without showing it; for writes whose dialog renders the error. */
+export function useApiMutationErrorReport() {
   const posthog = usePostHog();
 
   return useCallback(
-    (error: unknown, fallbackMessage: string) => {
-      const shouldReport = shouldReportApiMutationError(error);
-
-      if (shouldReport && config.posthog.enabled) {
+    (error: unknown) => {
+      if (!shouldReportApiMutationError(error)) return;
+      if (config.posthog.enabled) {
         posthog.captureException(error, { source: 'api_mutation' });
       }
-      if (shouldReport && config.appEnv === 'development') {
+      if (config.appEnv === 'development') {
         console.error('Mutation failed', error);
       }
-      toast.error(getApiMutationErrorMessage(error, fallbackMessage));
     },
     [posthog],
+  );
+}
+
+export function useApiMutationErrorToast() {
+  const report = useApiMutationErrorReport();
+
+  return useCallback(
+    (error: unknown, fallbackMessage: string) => {
+      report(error);
+      toast.error(getApiMutationErrorMessage(error, fallbackMessage));
+    },
+    [report],
   );
 }

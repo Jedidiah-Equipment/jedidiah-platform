@@ -12,7 +12,6 @@ import { CreateEntityDialog, useAutosaveForm } from '@/components/form/index.js'
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
 import { Button } from '@/components/ui/button.js';
 import { useQueryInvalidation } from '@/contracting/hooks/use-query-invalidation.js';
-import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { ChargeLinesCard } from './ChargeLinesCard.js';
 import { InvoiceCard } from './InvoiceCard.js';
@@ -22,6 +21,7 @@ import { MachinesCard } from './MachinesCard.js';
 import { PricingCard } from './PricingCard.js';
 import { SignOffCard } from './SignOffCard.js';
 import { JobCreateValues, type JobSheet, jobSheet, toJobCreateInput } from './types.js';
+import { useJobWrite, useResetOnOpen } from './use-job-write.js';
 
 export function JobPage({ code }: { code: string }) {
   const trpc = useTRPC();
@@ -156,18 +156,18 @@ function SetupCard({ job, sheet }: { job: JobDetail; sheet: JobSheet }) {
 
 function CancelJob({ job, sheet }: { job: JobDetail; sheet: JobSheet }) {
   const trpc = useTRPC();
-  const showError = useApiMutationErrorToast();
-  const { invalidateJobs } = useQueryInvalidation();
+  const write = useJobWrite();
   const [open, setOpen] = useState(false);
   const cancel = useMutation(
     trpc.contractingJobs.jobs.cancel.mutationOptions({
       onSuccess: async () => {
-        await invalidateJobs();
+        await write.invalidateJobs();
         toast.success('Job cancelled');
       },
-      onError: (error) => showError(error, 'Unable to cancel Job.'),
+      onError: write.report,
     }),
   );
+  useResetOnOpen(cancel, open);
   const cancelAction = sheet.action('cancel');
   if (!cancelAction) return null;
   return (
@@ -185,7 +185,12 @@ function CancelJob({ job, sheet }: { job: JobDetail; sheet: JobSheet }) {
         onCreate={(values) => cancel.mutateAsync({ id: job.id, reason: values.reason })}
         onCreated={() => setOpen(false)}
       >
-        {(form) => <form.AppField name="reason">{(field) => <field.TextareaField label="Reason" />}</form.AppField>}
+        {(form) => (
+          <>
+            <form.AppField name="reason">{(field) => <field.TextareaField label="Reason" />}</form.AppField>
+            <ErrorMessage error={cancel.error} fallbackMessage="Unable to cancel Job." />
+          </>
+        )}
       </CreateEntityDialog>
     </EntityActionsFooter>
   );

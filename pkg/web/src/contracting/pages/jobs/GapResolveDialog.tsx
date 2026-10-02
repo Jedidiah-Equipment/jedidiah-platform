@@ -2,23 +2,18 @@ import { formatHours } from '@pkg/domain';
 import { splitGap } from '@pkg/domain/contracting';
 import { type Assignment, GapResolveInput } from '@pkg/schema/contracting';
 import { useMutation } from '@tanstack/react-query';
+import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { CreateEntityDialog } from '@/components/form/index.js';
 import { MachineDialogTitle } from '@/contracting/components/MachineDialogTitle.js';
-import { useQueryInvalidation } from '@/contracting/hooks/use-query-invalidation.js';
-import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useTRPC } from '@/lib/trpc.js';
+import { useJobWrite, useResetOnOpen } from './use-job-write.js';
 
 const GapValues = GapResolveInput.omit({ id: true });
 export function GapResolveDialog({ stint, onClose }: { stint: Assignment | null; onClose: () => void }) {
   const trpc = useTRPC();
-  const showError = useApiMutationErrorToast();
-  const { invalidateJobs } = useQueryInvalidation();
-  const resolve = useMutation(
-    trpc.contractingJobs.assignments.resolveGap.mutationOptions({
-      onSuccess: invalidateJobs,
-      onError: (error) => showError(error, 'Unable to resolve Gap Flag.'),
-    }),
-  );
+  const write = useJobWrite();
+  const resolve = useMutation(trpc.contractingJobs.assignments.resolveGap.mutationOptions(write.dialog));
+  useResetOnOpen(resolve, !!stint);
   const gapHours = stint?.gapHours ?? 0;
   return (
     <CreateEntityDialog
@@ -64,6 +59,7 @@ export function GapResolveDialog({ stint, onClose }: { stint: Assignment | null;
             {(field) => <field.NumberField label="Unaccounted Interval" decimals={1} min={0} emptyValue={0} />}
           </form.AppField>
           <form.AppField name="reason">{(field) => <field.TextareaField label="Reason" />}</form.AppField>
+          <ErrorMessage error={resolve.error} fallbackMessage="Unable to resolve Gap Flag." />
         </>
       )}
     </CreateEntityDialog>

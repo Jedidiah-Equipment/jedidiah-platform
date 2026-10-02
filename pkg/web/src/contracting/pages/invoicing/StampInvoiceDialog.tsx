@@ -4,11 +4,11 @@ import { InvoiceNumber, type JobSummary } from '@pkg/schema/contracting';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { z } from 'zod';
+import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { CreateEntityDialog } from '@/components/form/index.js';
-import { useQueryInvalidation } from '@/contracting/hooks/use-query-invalidation.js';
-import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { getApiErrorAppCode } from '@/lib/api-errors.js';
 import { useTRPC } from '@/lib/trpc.js';
+import { useJobWrite } from '../jobs/use-job-write.js';
 
 export type StampableJob = Pick<JobSummary, 'id' | 'jobNumber' | 'customerName' | 'farmName' | 'pricedAt'> & {
   pricedTotal: number;
@@ -26,16 +26,15 @@ export function StampInvoiceDialog({
   onOpenChange: (open: boolean) => void;
 }) {
   const trpc = useTRPC();
-  const { invalidateJobs } = useQueryInvalidation();
-  const showError = useApiMutationErrorToast();
+  const write = useJobWrite();
   const stamp = useMutation(
     trpc.contractingJobs.invoicing.stamp.mutationOptions({
       onError: async (error) => {
-        if (getApiErrorAppCode(error) === 'contracting_job.total_changed') {
-          toast.error('This Job was re-priced — review the new total');
-          onOpenChange(false);
-          await invalidateJobs();
-        } else showError(error, 'Unable to stamp the invoice number.');
+        write.report(error);
+        if (getApiErrorAppCode(error) !== 'contracting_job.total_changed') return;
+        toast.error('This Job was re-priced — review the new total');
+        onOpenChange(false);
+        await write.invalidateJobs();
       },
     }),
   );
@@ -62,7 +61,7 @@ export function StampInvoiceDialog({
       onCreated={async () => {
         onOpenChange(false);
         toast.success('Invoiced');
-        await invalidateJobs();
+        await write.invalidateJobs();
       }}
     >
       {(form) => (
@@ -74,6 +73,9 @@ export function StampInvoiceDialog({
             {(invoiceNumber) => <SharedInvoiceNumberNotice invoiceNumber={invoiceNumber} />}
           </form.Subscribe>
           <p className="text-muted-foreground text-sm">After stamping, nothing on this Job can change.</p>
+          {getApiErrorAppCode(stamp.error) === 'contracting_job.total_changed' ? null : (
+            <ErrorMessage error={stamp.error} fallbackMessage="Unable to stamp the invoice number." />
+          )}
         </>
       )}
     </CreateEntityDialog>

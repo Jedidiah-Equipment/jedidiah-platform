@@ -3,65 +3,53 @@ import type { ChargeLine } from '@pkg/schema/contracting';
 import { useMutation } from '@tanstack/react-query';
 import { useState } from 'react';
 import { z } from 'zod';
+import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { CreateEntityDialog } from '@/components/form/index.js';
+import { Button } from '@/components/ui/button.js';
 import { Input } from '@/components/ui/input.js';
-import { useQueryInvalidation } from '@/contracting/hooks/use-query-invalidation.js';
-import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useTRPC } from '@/lib/trpc.js';
+import type { JobSheet } from './types.js';
+import { useJobWrite, useResetOnOpen } from './use-job-write.js';
 
 const ChargeLineValues = z.object({ description: requiredTrimmedText('A description is required') });
 
-export function useChargeLineMutations() {
-  const trpc = useTRPC();
-  const showError = useApiMutationErrorToast();
-  const { invalidateJobs } = useQueryInvalidation();
-  return {
-    create: useMutation(
-      trpc.contractingJobs.chargeLines.create.mutationOptions({
-        onSuccess: invalidateJobs,
-        onError: (error) => showError(error, 'Unable to add Charge Line.'),
-      }),
-    ),
-    patch: useMutation(
-      trpc.contractingJobs.chargeLines.patch.mutationOptions({
-        onSuccess: invalidateJobs,
-        onError: (error) => showError(error, 'Unable to update Charge Line.'),
-      }),
-    ),
-    remove: useMutation(
-      trpc.contractingJobs.chargeLines.remove.mutationOptions({
-        onSuccess: invalidateJobs,
-        onError: (error) => showError(error, 'Unable to remove Charge Line.'),
-      }),
-    ),
-  };
-}
-
-export type ChargeLineMutations = ReturnType<typeof useChargeLineMutations>;
-
-export function AddChargeLineDialog({
+export function AddChargeLineButton({
   jobId,
-  open,
-  onOpenChange,
-  create,
+  size,
+  action,
 }: {
   jobId: string;
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  create: ChargeLineMutations['create'];
+  size?: React.ComponentProps<typeof Button>['size'];
+  /** From `sheet.action('editChargeLines')`: disabled with the refusal while the Job refuses it. */
+  action: NonNullable<ReturnType<JobSheet['action']>>;
 }) {
+  const trpc = useTRPC();
+  const write = useJobWrite();
+  const [open, setOpen] = useState(false);
+  const create = useMutation(trpc.contractingJobs.chargeLines.create.mutationOptions(write.dialog));
+  useResetOnOpen(create, open);
   return (
-    <CreateEntityDialog
-      open={open}
-      onOpenChange={onOpenChange}
-      title="Add charge line"
-      defaultValues={{ description: '' }}
-      validator={ChargeLineValues}
-      onCreate={(values) => create.mutateAsync({ jobId, description: values.description })}
-      onCreated={() => onOpenChange(false)}
-    >
-      {(form) => <form.AppField name="description">{(field) => <field.TextField label="Description" />}</form.AppField>}
-    </CreateEntityDialog>
+    <>
+      <Button size={size} {...action} onClick={() => setOpen(true)}>
+        Add charge line
+      </Button>
+      <CreateEntityDialog
+        open={open}
+        onOpenChange={setOpen}
+        title="Add charge line"
+        defaultValues={{ description: '' }}
+        validator={ChargeLineValues}
+        onCreate={(values) => create.mutateAsync({ jobId, description: values.description })}
+        onCreated={() => setOpen(false)}
+      >
+        {(form) => (
+          <>
+            <form.AppField name="description">{(field) => <field.TextField label="Description" />}</form.AppField>
+            <ErrorMessage error={create.error} fallbackMessage="Unable to add Charge Line." />
+          </>
+        )}
+      </CreateEntityDialog>
+    </>
   );
 }
 

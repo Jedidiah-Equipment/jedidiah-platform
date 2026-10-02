@@ -1,9 +1,8 @@
 import { formatNumber } from '@pkg/domain';
 import { groupStints } from '@pkg/domain/contracting';
-import type { Assignment, JobDetail } from '@pkg/schema/contracting';
+import type { JobDetail } from '@pkg/schema/contracting';
 import { useQuery } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
-import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { Button } from '@/components/ui/button.js';
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@/components/ui/card.js';
 import { useTRPC } from '@/lib/trpc.js';
@@ -11,7 +10,7 @@ import { ArrivalCaptureDialog } from './ArrivalCaptureDialog.js';
 import { DepartureCaptureDialog } from './DepartureCaptureDialog.js';
 import { GapResolveDialog } from './GapResolveDialog.js';
 import { MachineStintCard, stintNeedsALook } from './MachineStintCard.js';
-import { MachinesContext, type SelectedReading, useMachineMutations } from './machines-context.js';
+import { type MachineDialog, MachinesContext } from './machines-context.js';
 import { PlanMachineDialog } from './PlanMachineDialog.js';
 import { ReadingDialog } from './ReadingDialog.js';
 import type { JobSheet } from './types.js';
@@ -29,29 +28,18 @@ const filters: { value: MachineFilter; label: string }[] = [
 export function MachinesCard({ job, sheet }: { job: JobDetail; sheet: JobSheet }) {
   const trpc = useTRPC();
   const planAction = sheet.action('assign');
-  const [planning, setPlanning] = useState(false);
-  const [reading, setReading] = useState<SelectedReading | null>(null);
-  const [arrival, setArrival] = useState<Assignment | null>(null);
-  const [gap, setGap] = useState<Assignment | null>(null);
-  const [departure, setDeparture] = useState<Assignment | null>(null);
+  const [dialog, setDialog] = useState<MachineDialog | null>(null);
   const [filter, setFilter] = useState<MachineFilter>('all');
-  const selectedStint = reading ? job.assignments.find((stint) => stint.id === reading.stint.id) : null;
-  const selectedReading =
-    reading && selectedStint
-      ? {
-          stint: selectedStint,
-          reading:
-            [selectedStint.arrival, selectedStint.departure].find((value) => value?.id === reading.reading.id) ??
-            reading.reading,
-        }
-      : reading;
+  const close = () => setDialog(null);
+  const stint =
+    dialog && dialog.kind !== 'plan' ? (job.assignments.find((entry) => entry.id === dialog.stintId) ?? null) : null;
+  const reading = dialog?.kind === 'reading' ? (stint?.[dialog.role] ?? null) : null;
   const implementOptions = useQuery(
     trpc.contractingJobs.field.implements.queryOptions(undefined, { enabled: sheet.can('assign') }),
   );
   const drivers = useQuery(
     trpc.contractingJobs.field.drivers.queryOptions(undefined, { enabled: sheet.can('assign') }),
   );
-  const mutations = useMachineMutations();
   const stints = useMemo(() => {
     const { machines, planned } = groupStints(job.assignments);
     const numbers = new Map<string, number>();
@@ -70,19 +58,12 @@ export function MachinesCard({ job, sheet }: { job: JobDetail; sheet: JobSheet }
           ? stintNumber > 1
           : stint.state === filter,
   );
-  const machines = useMemo(
-    () => ({
-      sheet,
-      implementOptions: implementOptions.data ?? [],
-      drivers: drivers.data ?? [],
-      mutations,
-      openReading: setReading,
-      openArrival: setArrival,
-      openGap: setGap,
-      openDeparture: setDeparture,
-    }),
-    [sheet, implementOptions.data, drivers.data, mutations],
-  );
+  const machines = {
+    sheet,
+    implementOptions: implementOptions.data ?? [],
+    drivers: drivers.data ?? [],
+    open: setDialog,
+  };
   return (
     <>
       <Card>
@@ -90,17 +71,13 @@ export function MachinesCard({ job, sheet }: { job: JobDetail; sheet: JobSheet }
           <CardTitle>Machines</CardTitle>
           {planAction ? (
             <CardAction>
-              <Button {...planAction} onClick={() => setPlanning(true)}>
+              <Button {...planAction} onClick={() => setDialog({ kind: 'plan' })}>
                 Plan machine
               </Button>
             </CardAction>
           ) : null}
         </CardHeader>
         <CardContent className="space-y-4">
-          <ErrorMessage
-            error={mutations.patch.error ?? mutations.remove.error}
-            fallbackMessage="Unable to update Machines."
-          />
           <MachinesContext.Provider value={machines}>
             {stints.length ? (
               <>
@@ -138,13 +115,19 @@ export function MachinesCard({ job, sheet }: { job: JobDetail; sheet: JobSheet }
           </MachinesContext.Provider>
         </CardContent>
       </Card>
-      <PlanMachineDialog jobId={job.id} open={planning} onOpenChange={setPlanning} />
-      <ArrivalCaptureDialog stint={arrival} onClose={() => setArrival(null)} />
-      <GapResolveDialog stint={gap} onClose={() => setGap(null)} />
-      <DepartureCaptureDialog stint={departure} onClose={() => setDeparture(null)} />
+      <PlanMachineDialog
+        jobId={job.id}
+        open={dialog?.kind === 'plan'}
+        onOpenChange={(open) => {
+          if (!open) close();
+        }}
+      />
+      <ArrivalCaptureDialog stint={dialog?.kind === 'arrival' ? stint : null} onClose={close} />
+      <GapResolveDialog stint={dialog?.kind === 'gap' ? stint : null} onClose={close} />
+      <DepartureCaptureDialog stint={dialog?.kind === 'departure' ? stint : null} onClose={close} />
       <ReadingDialog
-        selected={selectedReading}
-        onClose={() => setReading(null)}
+        selected={stint && reading ? { stint, reading } : null}
+        onClose={close}
         amendReadings={sheet.can('amendReadings')}
       />
     </>

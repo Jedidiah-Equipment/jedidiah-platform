@@ -18,7 +18,7 @@ test('editing Read At after a failed attempt mints a new attempt, so the server 
     value: 120,
     photo: null,
     comment: ' ',
-    disputePrevious: false,
+    disputedReadingId: null,
     stintOverrides: null,
     readAt: null,
   };
@@ -26,4 +26,7 @@ test('editing Read At after a failed attempt mints a new attempt, so the server 
   expect(captureAttempt(first, captureAttemptPayload({ ...form, comment: '' }))).toBe(first);
   const backdated = captureAttempt(first, captureAttemptPayload({ ...form, readAt: new Date('2026-10-01T05:30:00Z') }));
   expect(backdated.localId).not.toBe(first.localId);
+  expect(captureAttempt(first, captureAttemptPayload({ ...form, disputedReadingId: 'r1' })).localId).not.toBe(
+    first.localId,
+  );
 });

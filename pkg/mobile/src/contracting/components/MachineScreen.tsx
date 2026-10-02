@@ -7,7 +7,6 @@ import { SECONDARY_PAGE_CONTENT_STYLE } from '@/components/page-frame';
 import { SecondaryToolbar } from '@/components/TopToolbar';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
-import { newLocalId } from '@/contracting/readings/capture-attempt';
 import { useFleet, useMachineReadings } from '@/contracting/readings/use-fleet';
 import { useSessionPermission } from '@/lib/auth-session';
 import { CategoryIcon } from './CategoryIcon';
@@ -50,7 +49,7 @@ export default function MachineScreen() {
             onPress={() =>
               router.push({
                 pathname: '/contracting/machines/[id]/capture',
-                params: { id, captureSessionId: newLocalId() },
+                params: { id },
               })
             }
           />

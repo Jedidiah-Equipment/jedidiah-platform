@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest';
-import { capturedAtFor, isBackdated, parseExifDateTime } from './read-at';
+import { capturedAtFor, isBackdated, parseExifDateTime, type ReadAtChoice, readAtAfterPhoto } from './read-at';
 
 const now = new Date(2026, 9, 1, 12, 0, 0);
 
@@ -28,4 +28,13 @@ test('detects a backdated Read At', () => {
   expect(isBackdated(null, now)).toBe(false);
   expect(isBackdated(new Date(now.getTime() - 5 * 60_000), now)).toBe(false);
   expect(isBackdated(new Date(now.getTime() - 5 * 60_000 - 1), now)).toBe(true);
+});
+
+test('a photo’s time replaces Read At, and without one only a hand-set Read At survives', () => {
+  const exif = new Date(2026, 9, 1, 7, 15);
+  const hand: ReadAtChoice = { at: new Date(2026, 9, 1, 6), by: 'hand' };
+  expect(readAtAfterPhoto(hand, exif)).toEqual({ at: exif, by: 'photo' });
+  expect(readAtAfterPhoto(hand, null)).toBe(hand);
+  expect(readAtAfterPhoto({ at: exif, by: 'photo' }, null)).toBeNull();
+  expect(readAtAfterPhoto(null, null)).toBeNull();
 });

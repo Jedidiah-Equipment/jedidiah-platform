@@ -12,6 +12,10 @@ export const CONTRACTING_SCREEN_CATALOG = {
     business: 'contracting',
     name: '/contracting/jobs/[jobId]/add-machine',
   },
+  '(protected)/contracting/(tabs)/jobs/[jobId]/capture.tsx': {
+    business: 'contracting',
+    name: '/contracting/jobs/[jobId]/capture',
+  },
   '(protected)/contracting/(tabs)/machines/index.tsx': { business: 'contracting', name: '/contracting/machines' },
   '(protected)/contracting/(tabs)/machines/[id]/index.tsx': {
     business: 'contracting',

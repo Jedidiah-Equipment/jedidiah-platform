@@ -1,0 +1,87 @@
+import { useStore } from '@tanstack/react-form';
+import { useState } from 'react';
+import { View } from 'react-native';
+import { useAppForm } from '@/components/form';
+import { Button } from '@/components/ui/button';
+import { Text } from '@/components/ui/text';
+import { implementOption } from '@/contracting/components/implement-option';
+import { useDrivers, useImplements } from '@/contracting/jobs/use-jobs';
+
+export type PlannedStint = {
+  implementId: string | null;
+  driverUserId: string | null;
+  implementCode: string | null;
+  driverName: string | null;
+};
+
+/** The arrival form's "change the planned Implement and Driver" state; `value` is undefined while the plan is kept. */
+export function useStintOverrides(planned: PlannedStint | null) {
+  const [changing, setChanging] = useState(false);
+  const form = useAppForm({
+    defaultValues: { implementId: planned?.implementId ?? '', driverUserId: planned?.driverUserId ?? '' },
+  });
+  const values = useStore(form.store, (state) => state.values);
+  const value = changing
+    ? { implementId: values.implementId || null, driverUserId: values.driverUserId || null }
+    : undefined;
+  return { form, changing, setChanging, value };
+}
+
+export function StintOverrideCard({
+  planned,
+  overrides,
+}: {
+  planned: PlannedStint;
+  overrides: ReturnType<typeof useStintOverrides>;
+}) {
+  const implementsQuery = useImplements();
+  const driversQuery = useDrivers();
+  return (
+    <View className="gap-3 rounded-xl border border-border bg-surface p-4">
+      <View className="flex-row items-center justify-between gap-3">
+        <Text className="min-w-0 flex-1 text-sm text-foreground">
+          Starting with {planned.implementCode ?? 'no implement'} · driver {planned.driverName ?? 'not set'}
+        </Text>
+        <Button
+          title={overrides.changing ? 'Keep planned' : 'Change'}
+          onPress={() => overrides.setChanging(!overrides.changing)}
+        />
+      </View>
+      {overrides.changing ? (
+        <View className="gap-3">
+          <overrides.form.AppField name="implementId">
+            {(field) => (
+              <field.SearchSelectField
+                label="Implement"
+                placeholder="No implement"
+                searchPlaceholder="Search by code or category…"
+                emptyMessage="No Implements match."
+                options={[
+                  { label: 'No implement', value: '' },
+                  ...(implementsQuery.data ?? []).map((row) => ({
+                    ...implementOption(row),
+                    disabled: row.onSiteJobNumber !== null,
+                  })),
+                ]}
+              />
+            )}
+          </overrides.form.AppField>
+          <overrides.form.AppField name="driverUserId">
+            {(field) => (
+              <field.SearchSelectField
+                label="Driver"
+                placeholder="No driver"
+                searchPlaceholder="Search drivers…"
+                emptyMessage="No drivers match."
+                options={[
+                  { label: 'No driver', value: '' },
+                  ...(driversQuery.data ?? []).map((row) => ({ label: row.name, value: row.id })),
+                ]}
+              />
+            )}
+          </overrides.form.AppField>
+        </View>
+      ) : null}
+    </View>
+  );
+}

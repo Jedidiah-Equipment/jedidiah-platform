@@ -7,143 +7,94 @@ import {
 import { PART_UNIT_OF_MEASURE_LABELS, type PurchaseOrderPdfModel } from '@pkg/schema/equipment';
 import { Document, Image, Page, StyleSheet, Text, View } from '@react-pdf/renderer';
 
-import { pdfFontFamily, pdfTitleFontFamily } from '../../pdf-fonts.js';
+import { DocumentFooter, DocumentHeader, documentFrameStyles, MetaPanel } from '../../document-frame.js';
 import { jedidiahLogoSrc } from '../../pdf-logo.js';
-import { pdfColors } from '../../pdf-theme.js';
-
-const layout = { pagePadding: 24, sectionGap: 8 } as const;
+import { pdfFontSize } from '../../pdf-theme.js';
 
 const styles = StyleSheet.create({
-  page: {
-    color: pdfColors.black,
-    fontFamily: pdfFontFamily,
-    fontSize: 9,
-    padding: layout.pagePadding,
-  },
-  header: {
-    alignItems: 'flex-start',
-    backgroundColor: pdfColors.black,
-    color: pdfColors.white,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: layout.sectionGap,
-    padding: 18,
-  },
+  page: { fontSize: pdfFontSize.body },
   // Sized to render at the same width as the logo on the Quote document.
   logo: { height: 29, marginBottom: 10, objectFit: 'contain', width: 132 },
-  title: { fontFamily: pdfTitleFontFamily, fontSize: 24, fontWeight: 700 },
-  businessDetails: { alignItems: 'flex-end', fontSize: 7, gap: 2, textAlign: 'right' },
-  businessName: { fontWeight: 700 },
-  code: {
-    color: pdfColors.yellow,
-    fontFamily: pdfTitleFontFamily,
-    fontSize: 18,
-    fontWeight: 700,
-    marginBottom: 4,
-  },
-  metaGrid: { flexDirection: 'row', gap: 12, marginBottom: layout.sectionGap },
-  panel: { backgroundColor: pdfColors.panel, flex: 1, minHeight: 92, padding: 12 },
-  label: { color: pdfColors.muted, fontSize: 7, marginBottom: 4, textTransform: 'uppercase' },
   strong: { fontWeight: 700, marginBottom: 3 },
-  line: { marginBottom: 2 },
-  tableHeader: {
-    backgroundColor: pdfColors.black,
-    color: pdfColors.white,
-    flexDirection: 'row',
-    fontWeight: 700,
-    paddingHorizontal: 8,
-    paddingVertical: 7,
-  },
-  tableRow: {
-    borderBottomColor: pdfColors.greyBorder,
-    borderBottomWidth: 1,
-    flexDirection: 'row',
-    paddingHorizontal: 8,
-    paddingVertical: 9,
-  },
+  tableHeader: { paddingVertical: 7 },
+  tableRow: { flexDirection: 'row', paddingVertical: 9 },
   description: { flex: 1 },
   quantity: { textAlign: 'right', width: 92 },
-  footer: {
-    bottom: 22,
-    color: pdfColors.muted,
-    fontSize: 7,
-    gap: 2,
-    left: layout.pagePadding,
-    position: 'absolute',
-    right: layout.pagePadding,
-  },
 });
 
 export function PurchaseOrderPdf({ document }: { document: PurchaseOrderPdfModel }) {
   return (
     <Document title={document.code}>
-      <Page size="A4" style={styles.page}>
-        <View style={styles.header}>
-          <View>
-            <Image src={jedidiahLogoSrc} style={styles.logo} />
-            <Text style={styles.title}>PURCHASE ORDER</Text>
-          </View>
-          <View style={styles.businessDetails}>
-            <Text style={styles.code}>
-              {document.revision > 1 ? `${document.code} REV ${document.revision}` : document.code}
-            </Text>
-            <Text style={styles.businessName}>{JEDIDIAH_BUSINESS_DETAILS.registeredName}</Text>
-            <Text>{`VAT registration: ${JEDIDIAH_BUSINESS_DETAILS.vatRegistrationNumber}`}</Text>
-            <Text>{`Company registration: ${JEDIDIAH_BUSINESS_DETAILS.companyRegistrationNumber}`}</Text>
-            <Text>{`Address: ${JEDIDIAH_BUSINESS_DETAILS.address}`}</Text>
-            <Text>{`Email: ${JEDIDIAH_BUSINESS_DETAILS.partsEmail}`}</Text>
-            {JEDIDIAH_PURCHASE_ORDER_CONTACTS.map((person) => (
-              <Text key={person.name}>{`${person.name}: ${person.cellphone}`}</Text>
-            ))}
-          </View>
-        </View>
+      <Page size="A4" style={[documentFrameStyles.page, styles.page]}>
+        <DocumentHeader
+          code={document.revision > 1 ? `${document.code} REV ${document.revision}` : document.code}
+          lead={
+            <>
+              <Image src={jedidiahLogoSrc} style={styles.logo} />
+              <Text style={documentFrameStyles.title}>PURCHASE ORDER</Text>
+            </>
+          }
+        >
+          <Text style={documentFrameStyles.businessName}>{JEDIDIAH_BUSINESS_DETAILS.registeredName}</Text>
+          <Text>{`VAT registration: ${JEDIDIAH_BUSINESS_DETAILS.vatRegistrationNumber}`}</Text>
+          <Text>{`Company registration: ${JEDIDIAH_BUSINESS_DETAILS.companyRegistrationNumber}`}</Text>
+          <Text>{`Address: ${JEDIDIAH_BUSINESS_DETAILS.address}`}</Text>
+          <Text>{`Email: ${JEDIDIAH_BUSINESS_DETAILS.partsEmail}`}</Text>
+          {JEDIDIAH_PURCHASE_ORDER_CONTACTS.map((person) => (
+            <Text key={person.name}>{`${person.name}: ${person.cellphone}`}</Text>
+          ))}
+        </DocumentHeader>
 
-        <View style={styles.metaGrid}>
-          <View style={styles.panel}>
-            <Text style={styles.label}>Supplier</Text>
+        <View style={documentFrameStyles.metaGrid}>
+          <MetaPanel label="Supplier" minHeight={92}>
             <Text style={styles.strong}>{document.supplier.companyName}</Text>
             {document.supplier.contactPerson ? (
-              <Text style={styles.line}>{document.supplier.contactPerson}</Text>
+              <Text style={documentFrameStyles.line}>{document.supplier.contactPerson}</Text>
             ) : null}
-            {document.supplier.address ? <Text style={styles.line}>{document.supplier.address}</Text> : null}
-            {document.supplier.email ? <Text style={styles.line}>{document.supplier.email}</Text> : null}
-            {document.supplier.phone ? <Text style={styles.line}>{document.supplier.phone}</Text> : null}
-          </View>
-          <View style={styles.panel}>
-            <Text style={styles.label}>Order details</Text>
-            <Text style={styles.line}>Issued: {formatDate(document.issueDate, 'long')}</Text>
+            {document.supplier.address ? (
+              <Text style={documentFrameStyles.line}>{document.supplier.address}</Text>
+            ) : null}
+            {document.supplier.email ? <Text style={documentFrameStyles.line}>{document.supplier.email}</Text> : null}
+            {document.supplier.phone ? <Text style={documentFrameStyles.line}>{document.supplier.phone}</Text> : null}
+          </MetaPanel>
+          <MetaPanel label="Order details" minHeight={92}>
+            <Text style={documentFrameStyles.line}>Issued: {formatDate(document.issueDate, 'long')}</Text>
             {document.revision > 1 ? (
-              <Text style={styles.line}>{`Revision ${document.revision} - supersedes all earlier revisions`}</Text>
+              <Text style={documentFrameStyles.line}>
+                {`Revision ${document.revision} - supersedes all earlier revisions`}
+              </Text>
             ) : null}
-            <Text style={styles.line}>
+            <Text style={documentFrameStyles.line}>
               Expected: {formatDate(document.expectedDeliveryDate, 'long', 'Not specified')}
             </Text>
-            <Text style={styles.label}>Linked Jobs</Text>
+            <Text style={documentFrameStyles.label}>Linked Jobs</Text>
             <Text>{document.jobCodes.length > 0 ? document.jobCodes.join(', ') : 'Restock - no linked Job'}</Text>
-          </View>
+          </MetaPanel>
         </View>
 
-        <View style={styles.tableHeader} fixed>
+        <View style={[documentFrameStyles.tableHeader, styles.tableHeader]} fixed>
           <Text style={styles.description}>Item</Text>
           <Text style={styles.quantity}>Quantity</Text>
         </View>
         {document.lines.map((line) => (
-          <View key={line.id} style={styles.tableRow} wrap={false}>
+          <View key={line.id} style={[documentFrameStyles.tableRow, styles.tableRow]} wrap={false}>
             <View style={styles.description}>
               <Text style={styles.strong}>{formatPurchaseOrderLineLabel(line)}</Text>
-              {line.supplierCode ? <Text style={styles.line}>Supplier code: {line.supplierCode}</Text> : null}
+              {line.supplierCode ? (
+                <Text style={documentFrameStyles.line}>Supplier code: {line.supplierCode}</Text>
+              ) : null}
             </View>
             <Text style={styles.quantity}>{formatLineQuantity(line)}</Text>
           </View>
         ))}
 
-        <View style={styles.footer} fixed>
+        <DocumentFooter bottom={22}>
           <Text>{`Last modified by ${document.lastModified.actorName ?? 'System'} on ${formatDate(
             document.lastModified.occurredAt,
             'long',
           )}`}</Text>
           <Text>{`Please quote ${document.code} on correspondence and invoices.`}</Text>
-        </View>
+        </DocumentFooter>
       </Page>
     </Document>
   );

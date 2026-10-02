@@ -3,9 +3,11 @@ import { contractingRates } from '@pkg/db/contracting';
 import { RateCreateInput } from '@pkg/schema/contracting';
 import { describe, expect } from 'vitest';
 import { createTester } from '../../test/create-tester.js';
+import { createJob } from '../jobs/job-service.js';
+import { setMeasure } from '../jobs/measure-service.js';
+import { admin, adminId, foremanId, leftStint, seedJobFixtures } from '../test/job-fixtures.js';
 import {
   createMeasureType,
-  getMeasureType,
   listMeasureTypes,
   patchMeasureType,
   removeMeasureType,
@@ -88,7 +90,6 @@ describe('Rate Card rules', () => {
     await patchRate({ db, actorUserId, input: { id: hourly.id, active: false } });
     expect((await listRates({ db })).map((rate) => rate.id)).toEqual([hourly.id, perHectare.id]);
     expect((await rateOptions({ db })).map((rate) => rate.id)).toEqual([perHectare.id]);
-    expect((await getMeasureType({ db, id: hectare.id })).inUse).toBe(true);
   });
 
   test('translates duplicate names and refuses deleting a Measure Type used by a Rate', async ({ context: { db } }) => {
@@ -103,6 +104,37 @@ describe('Rate Card rules', () => {
     });
     await expect(removeMeasureType({ db, actorUserId, id: hectare.id })).rejects.toMatchObject({
       code: 'rate_card.in_use',
+    });
+  });
+
+  test('names the holder when a Measure Type cannot be deleted', async ({ context: { db } }) => {
+    const { customer, excavator, farm, loads, workType } = await seedJobFixtures(db);
+    const perLoad = await createRate({
+      db,
+      actorUserId: adminId,
+      input: { name: 'Per load', basis: 'measure', measureTypeId: loads.id, amount: 500 },
+    });
+    await expect(removeMeasureType({ db, actorUserId: adminId, id: loads.id })).rejects.toMatchObject({
+      code: 'rate_card.in_use',
+      message: 'This measure type is used by a rate. Remove it from those rates first.',
+    });
+    const job = await createJob({
+      db,
+      actor: admin,
+      input: {
+        customerId: customer.id,
+        farmId: farm.id,
+        workTypeId: workType.id,
+        description: null,
+        foremanUserId: foremanId,
+      },
+    });
+    const stint = await leftStint(db, job.id, excavator.id, 100, 110);
+    await setMeasure({ db, actor: admin, input: { assignmentId: stint.id, measureTypeId: loads.id, quantity: 12 } });
+    await patchRate({ db, actorUserId: adminId, input: { id: perLoad.id, basis: 'time', measureTypeId: null } });
+    await expect(removeMeasureType({ db, actorUserId: adminId, id: loads.id })).rejects.toMatchObject({
+      code: 'rate_card.in_use',
+      message: 'This measure type is recorded on jobs, so it cannot be deleted.',
     });
   });
 

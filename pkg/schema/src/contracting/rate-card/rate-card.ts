@@ -16,7 +16,6 @@ export const MeasureType = z.object({
   id: UUID,
   name: MeasureTypeName,
   displayOrder: z.int(),
-  inUse: z.boolean(),
   createdAt: DateIso,
   updatedAt: DateIso,
 });
@@ -70,7 +69,6 @@ export const Rate = z.object({
   amount: RateAmount,
   displayOrder: z.int(),
   active: z.boolean(),
-  inUse: z.boolean(),
   createdAt: DateIso,
   updatedAt: DateIso,
 });

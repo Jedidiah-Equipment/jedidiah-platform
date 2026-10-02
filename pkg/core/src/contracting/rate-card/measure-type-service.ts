@@ -1,5 +1,4 @@
 import type { DatabaseTransaction, Db } from '@pkg/db';
-import { getForeignKeyViolationConstraint } from '@pkg/db';
 import { contractingMeasureTypes } from '@pkg/db/contracting';
 import type { AuthId } from '@pkg/schema';
 import {
@@ -8,10 +7,12 @@ import {
   type MeasureTypePatchInput,
   type ReorderInput,
 } from '@pkg/schema/contracting';
-import { asc, eq, getTableColumns, sql } from 'drizzle-orm';
-import { defineAuditDescriptor, recordAuditCreate, recordAuditDelete } from '../../audit/audit-writer.js';
+import { asc, eq } from 'drizzle-orm';
+import { defineAuditDescriptor, recordAuditCreate } from '../../audit/audit-writer.js';
 import { mutateEntity } from '../../audit/mutate-entity.js';
-import { RateCardError, rateCardNotFound, withRateCardConstraints } from './rate-card-errors.js';
+import { nextDisplayOrder, reorderDisplayOrder } from '../display-order.js';
+import { removeAudited } from '../remove-audited.js';
+import { RateCardError, rateCardNotFound, reorderMismatch, withRateCardConstraints } from './rate-card-errors.js';
 
 type Row = typeof contractingMeasureTypes.$inferSelect;
 const descriptor = defineAuditDescriptor<Row>({
@@ -21,13 +22,8 @@ const descriptor = defineAuditDescriptor<Row>({
   entityId: (row) => row.id,
   toRecord: (row) => ({ name: row.name }),
 });
-const inUse = sql<boolean>`
-  exists (select 1 from contracting.rate rate where rate.measure_type_id = contracting.measure_type.id)
-  or exists (select 1 from contracting.measure measure where measure.measure_type_id = contracting.measure_type.id)
-`;
-const selectMeasureTypes = (db: Db | DatabaseTransaction) =>
-  db.select({ ...getTableColumns(contractingMeasureTypes), inUse }).from(contractingMeasureTypes);
-const mapMeasureType = (row: Row & { inUse: boolean }) =>
+const selectMeasureTypes = (db: Db | DatabaseTransaction) => db.select().from(contractingMeasureTypes);
+const mapMeasureType = (row: Row) =>
   MeasureType.parse({ ...row, createdAt: row.createdAt.toISOString(), updatedAt: row.updatedAt.toISOString() });
 const byDisplayOrder = [asc(contractingMeasureTypes.displayOrder), asc(contractingMeasureTypes.id)];
 
@@ -54,10 +50,7 @@ export async function createMeasureType({
     db.transaction(async (tx) => {
       const [row] = await tx
         .insert(contractingMeasureTypes)
-        .values({
-          ...input,
-          displayOrder: sql`coalesce((select max(display_order) + 1 from contracting.measure_type), 0)`,
-        })
+        .values({ ...input, displayOrder: nextDisplayOrder(contractingMeasureTypes) })
         .returning();
       if (!row) throw new Error('Measure type insert returned no row');
       await recordAuditCreate({ db: tx, actorUserId, descriptor, input: row });
@@ -90,47 +83,24 @@ export async function patchMeasureType({
 }
 
 export async function reorderMeasureTypes({ db, input }: { db: Db; input: ReorderInput }) {
-  await db.transaction(async (tx) => {
-    const ids = new Set(
-      (await tx.select({ id: contractingMeasureTypes.id }).from(contractingMeasureTypes)).map((row) => row.id),
-    );
-    const distinct = new Set(input.orderedIds);
-    if (
-      distinct.size !== input.orderedIds.length ||
-      distinct.size !== ids.size ||
-      [...distinct].some((id) => !ids.has(id))
-    )
-      throw new RateCardError('rate_card.reorder_mismatch', 'The list changed. Reload and try again.');
-    await Promise.all(
-      input.orderedIds.map((id, index) =>
-        tx
-          .update(contractingMeasureTypes)
-          .set({ displayOrder: index, updatedAt: new Date() })
-          .where(eq(contractingMeasureTypes.id, id)),
-      ),
-    );
-  });
+  await db.transaction((tx) => reorderDisplayOrder(tx, contractingMeasureTypes, input.orderedIds, reorderMismatch));
   return listMeasureTypes({ db });
 }
 
 export async function removeMeasureType({ db, actorUserId, id }: { db: Db; actorUserId: AuthId; id: string }) {
-  await db.transaction(async (tx) => {
-    const [row] = await tx
-      .select()
-      .from(contractingMeasureTypes)
-      .where(eq(contractingMeasureTypes.id, id))
-      .for('update');
-    if (!row) throw rateCardNotFound('Measure type');
-    try {
-      await tx.delete(contractingMeasureTypes).where(eq(contractingMeasureTypes.id, id));
-    } catch (error) {
-      if (getForeignKeyViolationConstraint(error))
-        throw new RateCardError(
-          'rate_card.in_use',
-          'This measure type is used by a rate. Remove it from those rates first.',
-        );
-      throw error;
-    }
-    await recordAuditDelete({ db: tx, descriptor, actorUserId, input: row });
+  return removeAudited({
+    db,
+    actorUserId,
+    id,
+    table: contractingMeasureTypes,
+    descriptor,
+    notFound: () => rateCardNotFound('Measure type'),
+    inUse: (constraint) =>
+      new RateCardError(
+        'rate_card.in_use',
+        constraint === 'rate_measure_type_id_measure_type_id_fk'
+          ? 'This measure type is used by a rate. Remove it from those rates first.'
+          : 'This measure type is recorded on jobs, so it cannot be deleted.',
+      ),
   });
 }

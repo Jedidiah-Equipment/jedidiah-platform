@@ -5,6 +5,7 @@ import type { ChargeLineCreateInput, ChargeLinePatchInput, JobActionName } from 
 import { eq, sql } from 'drizzle-orm';
 import { defineAuditDescriptor, recordAuditCreate, recordAuditDelete } from '../../audit/audit-writer.js';
 import { mutateEntity } from '../../audit/mutate-entity.js';
+import { nextDisplayOrder } from '../display-order.js';
 import { assertJobAction, jobNotFound } from './job-errors.js';
 import { lockJobFor } from './job-lock.js';
 import { jobTransaction } from './job-write.js';
@@ -48,7 +49,7 @@ export async function createChargeLine({
       .insert(contractingChargeLines)
       .values({
         ...input,
-        displayOrder: sql`coalesce((select max(display_order) + 1 from contracting.charge_line where job_id = ${input.jobId}), 0)`,
+        displayOrder: nextDisplayOrder(contractingChargeLines, sql`job_id = ${input.jobId}`),
       })
       .returning();
     if (!row) throw new Error('Charge Line insert returned no row');

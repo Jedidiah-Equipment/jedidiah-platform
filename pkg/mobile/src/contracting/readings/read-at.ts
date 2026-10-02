@@ -17,8 +17,6 @@ export function parseExifDateTime(exif: Record<string, unknown> | null | undefin
   return Number.isNaN(date.getTime()) || date > now ? null : date;
 }
 
-export const isFutureReadAt = (readAt: Date, now = new Date()) => readAt.getTime() > now.getTime();
-
 /** Read At set more than five minutes before the attempt: the `backdated` flag on `reading captured`. */
 export const isBackdated = (readAt: Date | null, attemptedAt: Date) =>
   readAt !== null && attemptedAt.getTime() - readAt.getTime() > BACKDATED_AFTER_MS;

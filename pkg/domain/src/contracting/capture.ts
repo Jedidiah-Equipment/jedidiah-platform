@@ -95,3 +95,10 @@ export function captureRefusal(verdict: CaptureRefused): string {
 
 /** Read At is the Foreman's word for when the meter was read; only a time still to come is refused. */
 export const FUTURE_READ_AT_REFUSAL = 'Read At cannot be in the future.';
+
+/** Phone clocks drift; a Read At this far ahead of the server is still the Foreman's "now". */
+export const FUTURE_READ_AT_TOLERANCE_MS = 5 * 60_000;
+
+/** Whether a Read At is still to come. The server passes the tolerance; the phone, judging its own clock, none. */
+export const isFutureReadAt = (readAt: Date, now = new Date(), toleranceMs = 0) =>
+  readAt.getTime() > now.getTime() + toleranceMs;

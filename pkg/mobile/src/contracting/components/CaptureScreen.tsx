@@ -1,5 +1,10 @@
 import { formatHours } from '@pkg/domain';
-import { captureNeedsComment, FUTURE_READ_AT_REFUSAL, fieldJobAccessMode } from '@pkg/domain/contracting';
+import {
+  captureNeedsComment,
+  FUTURE_READ_AT_REFUSAL,
+  fieldJobAccessMode,
+  isFutureReadAt,
+} from '@pkg/domain/contracting';
 import { ReadingComment, type ReadingErrorCode, type ReadingRole } from '@pkg/schema/contracting';
 import { useStore } from '@tanstack/react-form';
 import { useQueryClient } from '@tanstack/react-query';
@@ -21,7 +26,7 @@ import { chooseMeterPhoto, type PhotoSource } from '@/contracting/lib/photo-pick
 import { recordReadingCaptured } from '@/contracting/observability';
 import { type AttemptIdentity, captureAttempt, captureAttemptPayload } from '@/contracting/readings/capture-attempt';
 import { deriveCapture } from '@/contracting/readings/derive-capture';
-import { capturedAtFor, isBackdated, isFutureReadAt, parseExifDateTime } from '@/contracting/readings/read-at';
+import { capturedAtFor, isBackdated, parseExifDateTime } from '@/contracting/readings/read-at';
 import { CAPTURE_FAILED, captureReading, ReadingRefusedError } from '@/contracting/readings/reading-upload';
 import { useFleet, useMachineReadings } from '@/contracting/readings/use-fleet';
 import { useSessionAccessSummary, useSessionPermission } from '@/lib/auth-session';

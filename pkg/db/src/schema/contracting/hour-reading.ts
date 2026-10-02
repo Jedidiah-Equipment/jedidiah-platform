@@ -1,5 +1,5 @@
 import { readingMethods, readingRoles, readingVerifications } from '@pkg/schema/contracting';
-import { relations, sql } from 'drizzle-orm';
+import { sql } from 'drizzle-orm';
 import {
   type AnyPgColumn,
   bigint,
@@ -13,6 +13,7 @@ import {
   uuid,
 } from 'drizzle-orm/pg-core';
 import { user } from '../auth.js';
+import { quotedList } from './columns.js';
 import { contractingMachines } from './fleet.js';
 import { contractingSchema } from './pg-schema.js';
 
@@ -46,24 +47,17 @@ export const contractingHourReadings = contractingSchema.table(
   },
   (table) => [
     index('hour_reading_machine_sequence_idx').on(table.machineId, table.sequence),
-    check('hour_reading_role', sql`${table.role} IN ('baseline', 'arrival', 'departure', 'spot')`),
+    check('hour_reading_role', sql`${table.role} IN (${quotedList(readingRoles)})`),
     check('hour_reading_value', sql`${table.value} >= 0 AND (${table.aiValue} IS NULL OR ${table.aiValue} >= 0)`),
     check('hour_reading_confidence', sql`${table.aiConfidence} BETWEEN 0 AND 1`),
     check(
       'hour_reading_method',
       sql`(${table.method} = 'manual' AND ${table.photo} IS NULL) OR (${table.method} = 'photo' AND ${table.photo} IS NOT NULL)`,
     ),
-    check(
-      'hour_reading_verification',
-      sql`${table.aiVerification} IN ('pending', 'agrees', 'disagrees', 'low-confidence', 'not-applicable')`,
-    ),
+    check('hour_reading_verification', sql`${table.aiVerification} IN (${quotedList(readingVerifications)})`),
     check(
       'hour_reading_amendment',
       sql`(${table.amendedBy} IS NULL AND ${table.amendedAt} IS NULL AND ${table.amendmentReason} IS NULL) OR (${table.amendedBy} IS NOT NULL AND ${table.amendedAt} IS NOT NULL AND ${table.amendmentReason} IS NOT NULL AND length(btrim(${table.amendmentReason})) > 0)`,
     ),
   ],
 );
-
-export const contractingHourReadingsRelations = relations(contractingHourReadings, ({ one }) => ({
-  capturedBy: one(user, { fields: [contractingHourReadings.capturedByUserId], references: [user.id] }),
-}));

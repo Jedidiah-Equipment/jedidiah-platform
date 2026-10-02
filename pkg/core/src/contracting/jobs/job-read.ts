@@ -63,7 +63,7 @@ function readerFor(actor: JobActor): JobReader {
 }
 
 // Plain joins rather than the relational API: Drizzle 0.45 keys relation types on the unqualified table
-// name, so `contracting.job` and `equipment.job` collide and `@pkg/db` erases the contracting relation types.
+// name, so `contracting.job` and `equipment.job` would collide. The Job tables declare no relations.
 const foreman = alias(user, 'job_foreman');
 const invoicer = alias(user, 'job_invoicer');
 const driver = alias(user, 'job_driver');

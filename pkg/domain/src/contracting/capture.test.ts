@@ -5,6 +5,8 @@ import {
   captureIsBelowLatest,
   captureNeedsComment,
   captureRefusal,
+  FUTURE_READ_AT_TOLERANCE_MS,
+  isFutureReadAt,
   judgeCapture,
 } from './capture.js';
 
@@ -155,5 +157,20 @@ describe('capture hints', () => {
     expect(captureNeedsComment('departure', { management: true, hasPhoto: true })).toBe(false);
     expect(captureNeedsComment('departure', { management: false, hasPhoto: false })).toBe(false);
     expect(captureNeedsComment('arrival', { management: true, hasPhoto: false })).toBe(false);
+  });
+});
+
+describe('isFutureReadAt', () => {
+  const now = new Date('2026-10-01T10:00:00Z');
+
+  test('is true one millisecond ahead and false at now', () => {
+    expect(isFutureReadAt(new Date(now.getTime() + 1), now)).toBe(true);
+    expect(isFutureReadAt(now, now)).toBe(false);
+  });
+
+  test('allows the tolerance: false at now + tolerance, true one millisecond past it', () => {
+    const limit = new Date(now.getTime() + FUTURE_READ_AT_TOLERANCE_MS);
+    expect(isFutureReadAt(limit, now, FUTURE_READ_AT_TOLERANCE_MS)).toBe(false);
+    expect(isFutureReadAt(new Date(limit.getTime() + 1), now, FUTURE_READ_AT_TOLERANCE_MS)).toBe(true);
   });
 });

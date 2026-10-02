@@ -18,6 +18,12 @@ export const readingExceptionTypeColorClassNames: Record<ReadingExceptionType, B
   disputed: statusBadgeColorClassNames.red,
 };
 
+/** The API route that captures an Hour Reading, relative to the API origin. */
+export const READING_CAPTURE_PATH = '/api/contracting/readings';
+
+/** The API route that serves an Hour Reading's meter photo, relative to the API origin. */
+export const readingPhotoPath = (readingId: string) => `${READING_CAPTURE_PATH}/${encodeURIComponent(readingId)}/photo`;
+
 export const isAiFlaggedVerification = (verification: ReadingVerification): verification is AiFlaggedVerification =>
   (aiFlaggedVerifications as readonly ReadingVerification[]).includes(verification);
 

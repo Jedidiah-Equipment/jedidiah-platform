@@ -73,7 +73,6 @@ export const jobErrorFamily = defineCoreErrorFamily<JobError>({
     'contracting_job.invalid_foreman': 'BAD_REQUEST',
     'contracting_job.invalid_reference': 'BAD_REQUEST',
     'contracting_job.invalid_role': 'BAD_REQUEST',
-    'contracting_job.machine_on_site': 'CONFLICT',
     'contracting_job.not_found': 'NOT_FOUND',
     'contracting_job.not_owner': 'FORBIDDEN',
     'contracting_job.open_gap_flags': 'CONFLICT',

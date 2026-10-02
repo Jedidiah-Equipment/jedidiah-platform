@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { type AmendableReading, resolveReadingAmendment } from './readings.js';
+import { type AmendableReading, readingPhotoPath, resolveReadingAmendment } from './readings.js';
 
 const clean = (id: string, value: number): AmendableReading => ({
   id,
@@ -62,5 +62,11 @@ describe('resolveReadingAmendment', () => {
         },
       ],
     });
+  });
+});
+
+describe('readingPhotoPath', () => {
+  it('addresses a reading photo by its encoded id', () => {
+    expect(readingPhotoPath('a/b')).toBe('/api/contracting/readings/a%2Fb/photo');
   });
 });

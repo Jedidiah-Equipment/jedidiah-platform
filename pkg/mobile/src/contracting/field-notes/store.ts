@@ -1,8 +1,8 @@
 import { UUID } from '@pkg/schema';
 import { z } from 'zod';
 import { contractingStorageKey } from '@/contracting/lib/contracting-storage';
-import type { PhotoSource, PickedPhoto } from '@/contracting/lib/photo-picker';
-import { newLocalId } from '@/contracting/readings/capture-attempt';
+import { newLocalId } from '@/contracting/lib/local-id';
+import type { PhotoSource } from '@/contracting/lib/photo-picker';
 
 export const FIELD_NOTE_DESCRIPTION_MAX = 2000;
 const NEEDS_CONTENT = 'A Field Note needs a description or a photo.';
@@ -25,6 +25,9 @@ export const FieldNote = z
   })
   .strict();
 export type FieldNote = z.infer<typeof FieldNote>;
+
+/** A photo the picker returned, still at the camera's or the gallery's temporary URI. */
+export type PickedPhoto = { uri: string; source: PhotoSource };
 
 export type FieldNoteFiles = {
   photoLimit: number;
@@ -53,6 +56,8 @@ type StorePorts = {
 /** One operator's Field Notes as one JSON array; every write is serialized behind the one before it. */
 export function createFieldNoteStore({ storage, key, files, now = () => new Date(), onError }: StorePorts) {
   let writes: Promise<unknown> = Promise.resolve();
+  let snapshot: FieldNote[] | null = null;
+  let loadStarted = false;
   const listeners = new Set<() => void>();
 
   async function read(): Promise<FieldNote[]> {
@@ -64,16 +69,33 @@ export function createFieldNoteStore({ storage, key, files, now = () => new Date
       return parsed.success ? [parsed.data] : [];
     });
   }
+  function publish(notes: FieldNote[]) {
+    snapshot = notes;
+    for (const listener of listeners) listener();
+  }
   function mutate<T>(change: (notes: FieldNote[]) => { notes: FieldNote[]; result: T }): Promise<T> {
     const result = writes.then(async () => {
       const next = change(await read());
       await storage.setItem(key, JSON.stringify(next.notes));
-      for (const listener of listeners) listener();
+      publish(next.notes);
       return next.result;
     });
     // The caller receives `result`; this handler only keeps the serialization chain usable after a failure.
     writes = result.then(undefined, () => undefined);
     return result;
+  }
+  // Queued behind any write already running, so a later write always publishes after this read.
+  function load() {
+    if (loadStarted) return;
+    loadStarted = true;
+    writes = writes.then(async () => {
+      try {
+        publish(await read());
+      } catch (error) {
+        onError?.(error, 'read');
+        publish(snapshot ?? []);
+      }
+    });
   }
   function edit(noteId: string, change: (note: FieldNote) => FieldNote) {
     return mutate((notes) => {
@@ -88,8 +110,12 @@ export function createFieldNoteStore({ storage, key, files, now = () => new Date
 
   return {
     list,
+    /** The notes as last read or written, null before the first read; the same array until the next write. */
+    getSnapshot: () => snapshot,
+    /** Starts the first read on the first subscription. */
     subscribe(listener: () => void) {
       listeners.add(listener);
+      load();
       return () => {
         listeners.delete(listener);
       };

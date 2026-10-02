@@ -1,7 +1,7 @@
 import { IconBriefcase2, IconNotes, IconTractor } from '@tabler/icons-react-native';
 import { useSegments } from 'expo-router';
 import { TabBar } from '@/components/tab-bar/TabBar';
-import { useFieldNotes } from '@/contracting/field-notes/FieldNotesProvider';
+import { useFieldNotes } from '@/contracting/field-notes/use-field-notes';
 import {
   activeContractingTab,
   CONTRACTING_TAB_HREF,

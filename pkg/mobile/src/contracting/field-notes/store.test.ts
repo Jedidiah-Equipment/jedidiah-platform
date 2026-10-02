@@ -16,12 +16,23 @@ function fakeFiles(overrides: Partial<FieldNoteFiles> = {}) {
   return files;
 }
 
-function store(key = 'contracting:field-notes:v1:https://api.test:user-1', files = fakeFiles()) {
+const KEY = 'contracting:field-notes:v1:https://api.test:user-1';
+
+function store(key = KEY, files = fakeFiles(), onError?: Parameters<typeof createFieldNoteStore>[0]['onError']) {
   const now = () => {
     clock += 60_000;
     return new Date(clock);
   };
-  return createFieldNoteStore({ storage: AsyncStorage, key, files, now });
+  return createFieldNoteStore({ storage: AsyncStorage, key, files, now, onError });
+}
+
+function nextPublish(notes: ReturnType<typeof store>) {
+  return new Promise<void>((resolve) => {
+    const unsubscribe = notes.subscribe(() => {
+      unsubscribe();
+      resolve();
+    });
+  });
 }
 
 beforeEach(async () => {
@@ -143,4 +154,42 @@ test('corrupt storage falls back to an empty list and drops rows that no longer 
 
 test('names refusals as Field Note errors', async () => {
   await expect(store().close('missing')).rejects.toBeInstanceOf(FieldNoteError);
+});
+
+test('the snapshot is null until the first subscription reads storage', async () => {
+  const { note } = await store().create({ description: 'T12 at Rietfontein', photos: [] });
+  const notes = store();
+  expect(notes.getSnapshot()).toBeNull();
+
+  await nextPublish(notes);
+
+  expect(notes.getSnapshot()).toEqual([note]);
+});
+
+test('a write publishes what it wrote, and the snapshot keeps its identity until the next write', async () => {
+  const notes = store();
+  const listener = vi.fn();
+  notes.subscribe(listener);
+  await vi.waitFor(() => expect(listener).toHaveBeenCalledTimes(1));
+
+  const { note } = await notes.create({ description: 'Meter fogged', photos: [] });
+  expect(listener).toHaveBeenCalledTimes(2);
+  const created = notes.getSnapshot();
+  expect(notes.getSnapshot()).toBe(created);
+
+  await notes.close(note.id);
+  expect(notes.getSnapshot()).not.toBe(created);
+  expect(notes.getSnapshot()).toEqual([{ ...note, status: 'closed' }]);
+});
+
+test('a failed first read publishes an empty list and reports it', async () => {
+  const failure = new Error('storage unavailable');
+  vi.spyOn(AsyncStorage, 'getItem').mockRejectedValueOnce(failure);
+  const onError = vi.fn();
+  const notes = store(KEY, fakeFiles(), onError);
+
+  await nextPublish(notes);
+
+  expect(notes.getSnapshot()).toEqual([]);
+  expect(onError).toHaveBeenCalledWith(failure, 'read');
 });

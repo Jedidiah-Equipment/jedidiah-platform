@@ -16,9 +16,9 @@ import {
 import { MAIN_PAGE_CONTENT_STYLE } from '@/components/page-frame';
 import { MainToolbar } from '@/components/TopToolbar';
 import { Text } from '@/components/ui/text';
-import { useFieldNotes } from './FieldNotesProvider';
 import { type FieldNoteStatusFilter, visibleFieldNotes } from './note-list';
 import type { FieldNote } from './store';
+import { useFieldNotes } from './use-field-notes';
 
 const STATUS_OPTIONS: readonly ListControlOption<FieldNoteStatusFilter>[] = [
   { label: 'Open notes', value: 'open' },

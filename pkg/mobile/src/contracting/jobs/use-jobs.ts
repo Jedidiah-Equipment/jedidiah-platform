@@ -1,45 +1,24 @@
-import { fieldJobAccessMode, hasJobCard } from '@pkg/domain/contracting';
-import type { FieldJob } from '@pkg/schema/contracting';
+import { fieldJobAccessMode } from '@pkg/domain/contracting';
 import { useQuery } from '@tanstack/react-query';
 import { fieldQuery } from '@/contracting/lib/field-query';
 import { useSessionAccessSummary, useSessionPermission } from '@/lib/auth-session';
 import { useTRPC } from '@/lib/trpc';
 
+/** The operator's field Jobs in one read: the open ones, plus management's Jobs finished in the last 90 days. */
 export function useJobs() {
-  const canRead = fieldJobAccessMode(useSessionAccessSummary()) !== null;
-  const trpc = useTRPC();
-  return fieldQuery(canRead, useQuery(trpc.contractingJobs.field.jobs.queryOptions(undefined, { enabled: canRead })));
-}
-
-export const isFinishedJob = (job: Pick<FieldJob, 'status'>) => hasJobCard(job.status);
-
-/** Management's Jobs finished in the last 90 days. */
-export function useFinishedJobs() {
-  const canRead = fieldJobAccessMode(useSessionAccessSummary()) === 'all';
+  const mode = fieldJobAccessMode(useSessionAccessSummary());
+  const canRead = mode !== null;
   const trpc = useTRPC();
   return fieldQuery(
     canRead,
-    useQuery(
-      trpc.contractingJobs.field.jobs.queryOptions(
-        { includeFinished: true },
-        { enabled: canRead, select: (jobs) => jobs.filter(isFinishedJob) },
-      ),
-    ),
+    useQuery(trpc.contractingJobs.field.jobs.queryOptions({ includeFinished: mode === 'all' }, { enabled: canRead })),
   );
 }
 
+/** One Job out of that list: undefined while the list loads, and once the Job has left it. */
 export function useJob(jobId: string) {
   const jobs = useJobs();
-  const finished = useFinishedJobs();
-  const trpc = useTRPC();
-  const query = useQuery(
-    trpc.contractingJobs.field.job.queryOptions({ id: jobId }, { enabled: jobs.canRead && !!jobId }),
-  );
-  const listed = [...(jobs.data ?? []), ...(finished.data ?? [])].find((job) => job.id === jobId);
-  // A Job that has left both lists is no longer the operator's, even while its own read is cached.
-  const disappeared = jobs.isSuccess && (!finished.canRead || finished.isSuccess) && listed === undefined;
-  const result = fieldQuery(jobs.canRead, query);
-  return { ...result, data: disappeared ? undefined : (result.data ?? (jobs.canRead ? listed : undefined)) };
+  return { ...jobs, data: jobs.data?.find((job) => job.id === jobId) };
 }
 
 export function useImplements() {

@@ -1,5 +1,5 @@
 import { formatHours } from '@pkg/domain';
-import { assignmentStateColorClassNames, canOpenJobCards, judgeJobAction } from '@pkg/domain/contracting';
+import { assignmentStateColorClassNames, canOpenJobCards, hasJobCard, judgeJobAction } from '@pkg/domain/contracting';
 import type { AssignmentState, FieldStint, JobCardVariant } from '@pkg/schema/contracting';
 import { IconPlayerPlay, IconPlayerStop, IconPlus, type Icon as TablerIcon } from '@tabler/icons-react-native';
 import { type Href, router, useLocalSearchParams } from 'expo-router';
@@ -18,7 +18,7 @@ import { useSessionAccessSummary } from '@/lib/auth-session';
 import { shareDocument } from '@/lib/document-actions';
 import { useBusyAction } from '@/lib/use-busy-action';
 import { JobStatusChip } from './JobStatusChip';
-import { isFinishedJob, useJob } from './use-jobs';
+import { useJob } from './use-jobs';
 
 const ORDER: Record<AssignmentState, number> = { 'on-site': 0, planned: 1, left: 2 };
 const LABELS: Record<AssignmentState, string> = { planned: 'Planned', 'on-site': 'Running', left: 'Left site' };
@@ -28,7 +28,8 @@ export default function JobScreen() {
   const jobQuery = useJob(jobId);
   const access = useSessionAccessSummary();
   const job = jobQuery.data;
-  const finished = job ? isFinishedJob(job) : false;
+  const finished = job ? hasJobCard(job.status) : false;
+  const gone = jobQuery.isSuccess && !job;
   const canCapture = job ? judgeJobAction('capture', job, access).allowed : false;
   const canAdd = job ? judgeJobAction('assign', job, access).allowed : false;
   const canShareJobCard = canOpenJobCards(access) && finished;
@@ -90,9 +91,11 @@ export default function JobScreen() {
           <Text className="text-muted-foreground">
             {!jobQuery.canRead
               ? 'Your role cannot view this Job.'
-              : jobQuery.isError
-                ? 'This Job could not be loaded.'
-                : 'Loading Job…'}
+              : gone
+                ? 'This Job is no longer open.'
+                : jobQuery.isError
+                  ? 'This Job could not be loaded.'
+                  : 'Loading Job…'}
           </Text>
         )}
 

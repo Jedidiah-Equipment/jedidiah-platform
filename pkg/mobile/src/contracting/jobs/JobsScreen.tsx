@@ -1,4 +1,5 @@
 import { formatNumber } from '@pkg/domain';
+import { hasJobCard } from '@pkg/domain/contracting';
 import type { FieldJob } from '@pkg/schema/contracting';
 import { type Href, router } from 'expo-router';
 import { useState } from 'react';
@@ -8,21 +9,22 @@ import { MAIN_PAGE_CONTENT_STYLE } from '@/components/page-frame';
 import { MainToolbar } from '@/components/TopToolbar';
 import { Text } from '@/components/ui/text';
 import { JobStatusChip } from './JobStatusChip';
-import { useFinishedJobs, useJobs } from './use-jobs';
+import { useJobs } from './use-jobs';
 
 export default function JobsScreen() {
   const jobs = useJobs();
-  const finished = useFinishedJobs();
   const [showFinished, setShowFinished] = useState(false);
+  const open = jobs.data?.filter((job) => !hasJobCard(job.status)) ?? [];
+  const finished = jobs.data?.filter((job) => hasJobCard(job.status)) ?? [];
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top', 'left', 'right']}>
       <MainToolbar title="Jobs" subtitle="CONTRACTING" helpTopic="contractingMobileJobs" />
       <FlatList
-        data={jobs.data ?? []}
+        data={open}
         keyExtractor={(job) => job.id}
         contentContainerStyle={{ ...MAIN_PAGE_CONTENT_STYLE, gap: 10 }}
-        refreshing={jobs.isRefetching || finished.isRefetching}
-        onRefresh={() => void Promise.all([jobs.refetch(), finished.canRead ? finished.refetch() : null])}
+        refreshing={jobs.isRefetching}
+        onRefresh={() => void jobs.refetch()}
         ListEmptyComponent={
           <Text className="text-muted-foreground">
             {!jobs.canRead
@@ -36,7 +38,7 @@ export default function JobsScreen() {
         }
         renderItem={({ item }) => <JobRow job={item} />}
         ListFooterComponent={
-          finished.canRead && (finished.data?.length ?? 0) > 0 ? (
+          finished.length > 0 ? (
             <View className="gap-2.5 pt-4">
               <Pressable
                 accessibilityRole="button"
@@ -45,11 +47,11 @@ export default function JobsScreen() {
                 className="flex-row items-center justify-between py-1"
               >
                 <Text className="text-muted-foreground" weight="bold">
-                  Finished ({formatNumber(finished.data?.length ?? 0)})
+                  Finished ({formatNumber(finished.length)})
                 </Text>
                 <Text className="text-muted-foreground">{showFinished ? 'Hide' : 'Show'}</Text>
               </Pressable>
-              {showFinished ? (finished.data ?? []).map((job) => <JobRow key={job.id} job={job} />) : null}
+              {showFinished ? finished.map((job) => <JobRow key={job.id} job={job} />) : null}
             </View>
           ) : null
         }

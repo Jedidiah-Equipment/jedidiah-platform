@@ -76,7 +76,6 @@ export const JobListInput = z
 export type JobListInput = z.infer<typeof JobListInput>;
 export const JobLookupInput = z.union([z.object({ id: UUID }).strict(), z.object({ code: JobNumber }).strict()]);
 export type JobLookupInput = z.infer<typeof JobLookupInput>;
-export const JobIdInput = z.object({ id: UUID }).strict();
 export const JobQueueCounts = z.record(z.enum(jobQueues), z.number().int().nonnegative());
 export type JobQueueCounts = z.infer<typeof JobQueueCounts>;
 

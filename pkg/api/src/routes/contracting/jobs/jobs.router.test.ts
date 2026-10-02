@@ -250,7 +250,6 @@ test('projects only open field Jobs, enforces ownership, and never returns money
     'stints',
   ]);
   expect(jobs[0]?.stints).toMatchObject([{ id: context.stint.id, state: 'planned' }]);
-  await expect(foreman.job({ id: context.otherJob.id })).rejects.toMatchObject({ code: 'FORBIDDEN' });
   await expect(foreman.implements()).resolves.toMatchObject([
     { id: context.implement.id, onSiteJobNumber: context.otherJob.jobNumber },
   ]);
@@ -269,9 +268,7 @@ test('projects only open field Jobs, enforces ownership, and never returns money
     [context.pricedJob.id, 'priced'],
     [context.completedJob.id, 'completed'],
   ]);
-  await expect(manager.job({ id: context.pricedJob.id })).resolves.toMatchObject({ status: 'priced' });
   expect((await foreman.jobs({ includeFinished: true })).map((job) => job.id)).toEqual([context.ownJob.id]);
-  await expect(foreman.job({ id: context.pricedJob.id })).rejects.toMatchObject({ code: 'CONFLICT' });
 
   const workshopCaller = context.createCaller(contractingSession('workshop-manager'));
   await expect(workshopCaller.contractingJobs.field.jobs()).rejects.toMatchObject({ code: 'FORBIDDEN' });

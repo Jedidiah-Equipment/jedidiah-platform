@@ -33,7 +33,6 @@ import {
 } from '@pkg/domain/contracting';
 import {
   Assignment,
-  type ChargeLine,
   hasJobStatus,
   JobDetail,
   JobFacts,
@@ -295,17 +294,11 @@ export async function getJob({ db, ...lookup }: { db: DbOrTx } & JobLookup): Pro
   });
 }
 
-/** The Machine Assignment inside a Job read, which a write to it has just returned. */
+/** The Machine Assignment inside a Job read: a derived fact a write checks under its lock. */
 export function assignmentIn(job: JobFacts, id: string): Assignment {
   const assignment = job.assignments.find((candidate) => candidate.id === id);
   if (!assignment) throw jobNotFound('Machine Assignment');
   return assignment;
-}
-
-export function chargeLineIn(job: JobFacts, id: string): ChargeLine {
-  const line = job.chargeLines.find((candidate) => candidate.id === id);
-  if (!line) throw jobNotFound('Charge Line');
-  return line;
 }
 
 const readRefusals: Record<JobReadMode, string> = {

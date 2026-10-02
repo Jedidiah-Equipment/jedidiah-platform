@@ -1,11 +1,20 @@
 import type { DatabaseTransaction } from '@pkg/db';
 import { contractingJobs, contractingMachineAssignments, contractingMachines } from '@pkg/db/contracting';
+import type { JobActor } from '@pkg/domain/contracting';
+import type { JobActionName } from '@pkg/schema/contracting';
 import { eq } from 'drizzle-orm';
-import { jobNotFound } from './job-errors.js';
+import { assertJobAction, jobNotFound } from './job-errors.js';
 
-export async function lockJob(tx: DatabaseTransaction, id: string, notFound: () => Error = jobNotFound) {
+export async function lockJob(tx: DatabaseTransaction, id: string) {
   const [job] = await tx.select().from(contractingJobs).where(eq(contractingJobs.id, id)).for('update');
-  if (!job) throw notFound();
+  if (!job) throw jobNotFound();
+  return job;
+}
+
+/** Locks a Job and refuses unless this actor may take this Job Action on it now. */
+export async function lockJobFor(tx: DatabaseTransaction, id: string, action: JobActionName, actor: JobActor) {
+  const job = await lockJob(tx, id);
+  assertJobAction(action, job, actor);
   return job;
 }
 
@@ -29,4 +38,16 @@ export async function lockAssignment(
     .for('update');
   if (!stint) throw notFound();
   return { job, stint, machineCode: reference.machineCode };
+}
+
+/** Locks a Machine Assignment and its Job, and refuses unless this actor may take this Job Action on the Job now. */
+export async function lockStintFor(
+  tx: DatabaseTransaction,
+  assignmentId: string,
+  action: JobActionName,
+  actor: JobActor,
+) {
+  const locked = await lockAssignment(tx, assignmentId);
+  assertJobAction(action, locked.job, actor);
+  return locked;
 }

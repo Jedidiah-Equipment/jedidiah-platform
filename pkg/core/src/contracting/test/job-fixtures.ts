@@ -1,12 +1,15 @@
 import type { Db } from '@pkg/db';
 import { user } from '@pkg/db';
+import type { JobActor } from '@pkg/domain/contracting';
 import { accessForRole } from '@pkg/domain/testing';
 import { DateOnlyIso } from '@pkg/schema';
+import type { AssignmentPlanInput, ChargeLineCreateInput } from '@pkg/schema/contracting';
 import { createCustomer } from '../customers/customer-service.js';
 import { createFarm } from '../customers/farm-service.js';
 import { createCategory } from '../fleet/category-service.js';
 import { createMachine } from '../fleet/machine-service.js';
 import { createAssignment } from '../jobs/assignment-service.js';
+import { createChargeLine } from '../jobs/charge-line-service.js';
 import { getJob } from '../jobs/job-read.js';
 import { completeJob, createJob } from '../jobs/job-service.js';
 import { markPriced, setStintRate } from '../jobs/pricing-service.js';
@@ -85,14 +88,27 @@ const nextCapture = () => {
   return new Date(clock).toISOString();
 };
 
+/** Plans a stint and returns it as the Job read shows it: a write returns nothing. */
+export async function plannedStint(db: Db, actor: JobActor, input: AssignmentPlanInput) {
+  const before = new Set((await getJob({ db, id: input.jobId })).assignments.map((assignment) => assignment.id));
+  await createAssignment({ db, actor, input });
+  const added = (await getJob({ db, id: input.jobId })).assignments.find((assignment) => !before.has(assignment.id));
+  if (!added) throw new Error('Expected a planned stint');
+  return added;
+}
+
+/** Adds a Charge Line and returns it as the Job read shows it. */
+export async function addedChargeLine(db: Db, actor: JobActor, input: ChargeLineCreateInput) {
+  const before = new Set((await getJob({ db, id: input.jobId })).chargeLines.map((line) => line.id));
+  await createChargeLine({ db, actor, input });
+  const added = (await getJob({ db, id: input.jobId })).chargeLines.find((line) => !before.has(line.id));
+  if (!added) throw new Error('Expected a charge line');
+  return added;
+}
+
 /** A planned stint that arrived and left, with its readings. */
 export async function leftStint(db: Db, jobId: string, machineId: string, arrival: number, departure: number) {
-  const planned = await createAssignment({
-    db,
-    actor: admin,
-    input: { jobId, machineId, implementId: null },
-  });
-  if (!planned) throw new Error('Expected a planned stint');
+  const planned = await plannedStint(db, admin, { jobId, machineId, implementId: null });
   const capture = (role: 'arrival' | 'departure', value: number) =>
     captureReading({
       db,

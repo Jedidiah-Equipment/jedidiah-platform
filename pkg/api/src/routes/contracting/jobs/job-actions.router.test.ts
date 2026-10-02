@@ -87,11 +87,14 @@ const test = createTester(async ({ db }) => {
         foremanUserId: callerId,
       },
     });
-    const stint = await createAssignment({
+    await createAssignment({
       db,
       actor: setup,
       input: { jobId: job.id, machineId: worked.id, implementId: null },
     });
+    const [planned] = (await getJob({ db, id: job.id })).assignments;
+    if (!planned) throw new Error('Expected Machine Assignment');
+    const stint = { id: planned.id, machineId: worked.id };
     const capture = (role: 'arrival' | 'departure', value: number) =>
       captureReading({
         db,

@@ -3,26 +3,28 @@ import { contractingCustomers, contractingJobs } from '@pkg/db/contracting';
 import { formatJobNumber, type JobActor, jobTransitions } from '@pkg/domain/contracting';
 import type { JobStampInvoiceInput } from '@pkg/schema/contracting';
 import { asc, eq, sql } from 'drizzle-orm';
-import { assertJobAction, totalChanged, withJobConstraints } from './job-errors.js';
-import { writeJob } from './job-write.js';
+import { totalChanged } from './job-errors.js';
+import { lockJobFor } from './job-lock.js';
+import { jobTransaction, writeJobRow } from './job-write.js';
 
 /** Stamps the accounting system's Invoice Number on a Priced Job, making it Invoiced: the wall. */
-export async function stampInvoice({ db, actor, input }: { db: Db; actor: JobActor; input: JobStampInvoiceInput }) {
-  return withJobConstraints(() =>
-    writeJob(db, actor.userId, input.id, {
-      assert: (_tx, before) => {
-        assertJobAction('stampInvoice', before, actor);
-        if (before.pricedTotal !== input.expectedTotal)
-          throw totalChanged('This Job was re-priced. Review the new total before stamping.');
-      },
-      set: (before) =>
-        jobTransitions.invoice(before, {
-          at: new Date(),
-          byUserId: actor.userId,
-          invoiceNumber: input.invoiceNumber,
-        }),
-    }),
-  );
+export async function stampInvoice({
+  db,
+  actor,
+  input,
+}: {
+  db: Db;
+  actor: JobActor;
+  input: JobStampInvoiceInput;
+}): Promise<void> {
+  await jobTransaction(db, async (tx) => {
+    const before = await lockJobFor(tx, input.id, 'stampInvoice', actor);
+    if (before.pricedTotal !== input.expectedTotal)
+      throw totalChanged('This Job was re-priced. Review the new total before stamping.');
+    await writeJobRow(tx, actor.userId, before.id, (row) =>
+      jobTransitions.invoice(row, { at: new Date(), byUserId: actor.userId, invoiceNumber: input.invoiceNumber }),
+    );
+  });
 }
 
 /** Jobs already carrying this number — a hint for the stamp dialog, never a rule. */

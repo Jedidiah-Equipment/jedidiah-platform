@@ -249,6 +249,23 @@ test('projects only open field Jobs, enforces ownership, and never returns money
     'foremanUserId',
     'stints',
   ]);
+  expect(Object.keys(jobs[0]?.stints[0] ?? {})).toEqual([
+    'id',
+    'jobId',
+    'machineId',
+    'machineCode',
+    'categoryName',
+    'categoryIcon',
+    'categoryColour',
+    'implementId',
+    'implementCode',
+    'driverUserId',
+    'driverName',
+    'state',
+    'createdAt',
+    'arrival',
+    'departure',
+  ]);
   expect(jobs[0]?.stints).toMatchObject([{ id: context.stint.id, state: 'planned' }]);
   await expect(foreman.implements()).resolves.toMatchObject([
     { id: context.implement.id, onSiteJobNumber: context.otherJob.jobNumber },

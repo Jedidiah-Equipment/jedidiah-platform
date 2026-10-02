@@ -1,19 +1,20 @@
 import type { Assignment } from '@pkg/schema/contracting';
 import { round1 } from './hours.js';
+import { round2, stintAmount } from './pricing.js';
 
-export type StintRow =
-  | { kind: 'stint'; stint: Assignment; firstOfMachine: boolean }
-  | { kind: 'subtotal'; machineCode: string; workHours: number; travelHours: number; measures: Record<string, number> }
-  | { kind: 'planned'; stint: Assignment };
+export type MachineStints = {
+  machineId: string;
+  machineCode: string;
+  stints: Assignment[];
+  /** Present only when the Machine has more than one stint. */
+  subtotal: { workHours: number; travelHours: number; amount: number } | null;
+};
 
-export function plannedNeverArrived(assignments: readonly Assignment[]): Assignment[] {
-  return assignments.filter((assignment) => assignment.state === 'planned');
-}
-
-export function groupStints(assignments: readonly Assignment[]): StintRow[] {
+/** Arrived stints grouped per Machine in first-arrival order, and the planned ones that never arrived. */
+export function groupStints(assignments: readonly Assignment[]): { machines: MachineStints[]; planned: Assignment[] } {
   const visited = new Map<string, Assignment[]>();
-  const arrived = assignments.filter((assignment) => assignment.state !== 'planned');
-  for (const stint of arrived) {
+  for (const stint of assignments) {
+    if (stint.state === 'planned') continue;
     const group = visited.get(stint.machineId) ?? [];
     group.push(stint);
     visited.set(stint.machineId, group);
@@ -28,33 +29,30 @@ export function groupStints(assignments: readonly Assignment[]): StintRow[] {
       firstArrival(left).localeCompare(firstArrival(right)) ||
       (left[0]?.createdAt ?? '').localeCompare(right[0]?.createdAt ?? ''),
   );
-  const rows: StintRow[] = [];
-  for (const group of groups) {
-    group.sort(
+  const machines = groups.map((stints) => {
+    stints.sort(
       (left, right) =>
         (left.arrival?.capturedAt ?? '').localeCompare(right.arrival?.capturedAt ?? '') ||
         left.createdAt.localeCompare(right.createdAt),
     );
-    for (const [index, stint] of group.entries()) rows.push({ kind: 'stint', stint, firstOfMachine: index === 0 });
-    if (group.length > 1) {
-      const measures: Record<string, number> = {};
-      for (const stint of group)
-        for (const measure of stint.measures)
-          measures[measure.measureTypeName] =
-            Math.round(((measures[measure.measureTypeName] ?? 0) + measure.quantity) * 100) / 100;
-      rows.push({
-        kind: 'subtotal',
-        machineCode: group[0]?.machineCode ?? '',
-        workHours: round1(group.reduce((total, stint) => total + (stint.workHours ?? 0), 0)),
-        travelHours: round1(group.reduce((total, stint) => total + stint.travelHours, 0)),
-        measures,
-      });
-    }
-  }
-  return [
-    ...rows,
-    ...plannedNeverArrived(assignments)
-      .sort((left, right) => left.createdAt.localeCompare(right.createdAt))
-      .map((stint) => ({ kind: 'planned' as const, stint })),
-  ];
+    return {
+      machineId: stints[0]?.machineId ?? '',
+      machineCode: stints[0]?.machineCode ?? '',
+      stints,
+      subtotal:
+        stints.length > 1
+          ? {
+              workHours: round1(stints.reduce((total, stint) => total + (stint.workHours ?? 0), 0)),
+              travelHours: round1(stints.reduce((total, stint) => total + stint.travelHours, 0)),
+              amount: round2(stints.reduce((total, stint) => total + stintAmount(stint.pricing), 0)),
+            }
+          : null,
+    };
+  });
+  return {
+    machines,
+    planned: assignments
+      .filter((stint) => stint.state === 'planned')
+      .sort((left, right) => left.createdAt.localeCompare(right.createdAt)),
+  };
 }

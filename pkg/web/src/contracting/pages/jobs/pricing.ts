@@ -1,32 +1,31 @@
 import { formatCurrency, formatHours, formatNumber } from '@pkg/domain';
-import { groupStints, rateUnitLabel, round2, stintAmount } from '@pkg/domain/contracting';
-import type { Assignment, ChargeLine, JobDetail, Rate, StintPricing } from '@pkg/schema/contracting';
+import { groupStints, rateUnitLabel } from '@pkg/domain/contracting';
+import type { Assignment, JobDetail, Rate, StintPricing } from '@pkg/schema/contracting';
 
 /** The select value for the built-in No charge choice; never a Rate id. */
 export const NO_CHARGE = 'no-charge';
 
-export type PricingRow =
+export type MachinePricingRow =
   | { kind: 'stint'; stint: Assignment; firstOfMachine: boolean }
-  | { kind: 'subtotal'; machineCode: string; amount: number }
-  | { kind: 'charge-line'; line: ChargeLine }
+  | { kind: 'subtotal'; machineCode: string; amount: number };
+
+/** Machine lines grouped as at sign-off, each repeat Machine followed by its subtotal. */
+export function machinePricingRows(assignments: readonly Assignment[]): MachinePricingRow[] {
+  return groupStints(assignments).machines.flatMap((machine) => [
+    ...machine.stints.map((stint, index) => ({ kind: 'stint' as const, stint, firstOfMachine: index === 0 })),
+    ...(machine.subtotal
+      ? [{ kind: 'subtotal' as const, machineCode: machine.machineCode, amount: machine.subtotal.amount }]
+      : []),
+  ]);
+}
+
+export type AdjustmentRow =
   | { kind: 'diesel'; litres: number; unitPrice: number | null; amount: number | null; edited: boolean }
   | { kind: 'discount'; discount: JobDetail['discount'] };
 
-/** Machine lines grouped as at sign-off, then Charge Lines, supplied Diesel, and the Discount when there is one to show. */
-export function pricingRows(job: JobDetail, { editable }: { editable: boolean }): PricingRow[] {
-  const rows: PricingRow[] = [];
-  let group: Assignment[] = [];
-  for (const row of groupStints(job.assignments)) {
-    if (row.kind === 'stint') {
-      if (row.firstOfMachine) group = [];
-      group.push(row.stint);
-      rows.push(row);
-    } else if (row.kind === 'subtotal') {
-      const amount = round2(group.reduce((total, stint) => total + stintAmount(stint.pricing), 0));
-      rows.push({ kind: 'subtotal', machineCode: row.machineCode, amount });
-    }
-  }
-  for (const line of job.chargeLines) rows.push({ kind: 'charge-line', line });
+/** Supplied Diesel, then the Discount when there is one to show or the person may set one. */
+export function adjustmentRows(job: JobDetail, { editable }: { editable: boolean }): AdjustmentRow[] {
+  const rows: AdjustmentRow[] = [];
   if (job.dieselLitres > 0)
     rows.push({
       kind: 'diesel',

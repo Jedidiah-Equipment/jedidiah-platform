@@ -53,12 +53,12 @@ export function MachinesCard({ job, sheet }: { job: JobDetail; sheet: JobSheet }
   );
   const mutations = useMachineMutations();
   const stints = useMemo(() => {
+    const { machines, planned } = groupStints(job.assignments);
     const numbers = new Map<string, number>();
-    return groupStints(job.assignments).flatMap((row) => {
-      if (row.kind === 'subtotal') return [];
-      const stintNumber = (numbers.get(row.stint.machineId) ?? 0) + 1;
-      numbers.set(row.stint.machineId, stintNumber);
-      return [{ stint: row.stint, stintNumber }];
+    return [...machines.flatMap((machine) => machine.stints), ...planned].map((stint) => {
+      const stintNumber = (numbers.get(stint.machineId) ?? 0) + 1;
+      numbers.set(stint.machineId, stintNumber);
+      return { stint, stintNumber };
     });
   }, [job.assignments]);
   const visible = stints.filter(({ stint, stintNumber }) =>

@@ -1,6 +1,13 @@
-import type { Assignment, ChargeLine, JobDetail, Rate, StintPricing } from '@pkg/schema/contracting';
+import type { Assignment, JobDetail, Rate, StintPricing } from '@pkg/schema/contracting';
 import { describe, expect, it } from 'vitest';
-import { formulaLabel, NO_CHARGE, pricingRows, rateCardDrift, rateSelectOptions } from './pricing.js';
+import {
+  adjustmentRows,
+  formulaLabel,
+  machinePricingRows,
+  NO_CHARGE,
+  rateCardDrift,
+  rateSelectOptions,
+} from './pricing.js';
 
 type RatePricing = Extract<StintPricing, { kind: 'rate' }>;
 
@@ -41,30 +48,37 @@ const priced = (
 const rate = (id: string, name: string, amount: number, measureTypeName: string | null = null) =>
   ({ id, name, amount, basis: measureTypeName ? 'measure' : 'time', measureTypeName }) as unknown as Rate;
 
-describe('pricingRows', () => {
-  it('orders machine lines, subtotals repeat stints by final amount, then charge lines, diesel and discount', () => {
+describe('machinePricingRows', () => {
+  it('orders machine lines and subtotals repeat stints by final amount', () => {
     const later = priced('a2', 'cat', '2026-09-03T08:00:00Z', 3_300);
     const first = priced('a1', 'cat', '2026-09-01T08:00:00Z', 6_000);
     const tipper = priced('b1', 'tip', '2026-09-02T08:00:00Z', 15_300);
-    const line = { id: 'l1', description: 'Low-bed', amount: 3_500, displayOrder: 0 } as ChargeLine;
+    const rows = machinePricingRows([later, tipper, first]);
+
+    expect(rows.map((row) => row.kind)).toEqual(['stint', 'stint', 'subtotal', 'stint']);
+    expect(rows.map((row) => (row.kind === 'stint' ? row.firstOfMachine : undefined))).toEqual([
+      true,
+      false,
+      undefined,
+      true,
+    ]);
+    expect(rows[2]).toEqual({ kind: 'subtotal', machineCode: 'CAT', amount: 9_300 });
+  });
+});
+
+describe('adjustmentRows', () => {
+  it('lists supplied Diesel, and the Discount only when editable or set', () => {
     const job = {
-      assignments: [later, tipper, first],
-      chargeLines: [line],
       dieselLitres: 210,
       diesel: { unitPrice: 23, amount: 4_830, amountEdited: false },
       discount: null,
     } as unknown as JobDetail;
 
-    expect(pricingRows(job, { editable: false }).map((row) => row.kind)).toEqual([
-      'stint',
-      'stint',
-      'subtotal',
-      'stint',
-      'charge-line',
-      'diesel',
-    ]);
-    expect(pricingRows(job, { editable: false })[2]).toEqual({ kind: 'subtotal', machineCode: 'CAT', amount: 9_300 });
-    expect(pricingRows(job, { editable: true }).at(-1)).toEqual({ kind: 'discount', discount: null });
+    expect(adjustmentRows(job, { editable: false }).map((row) => row.kind)).toEqual(['diesel']);
+    const editable = adjustmentRows(job, { editable: true });
+    expect(editable.map((row) => row.kind)).toEqual(['diesel', 'discount']);
+    expect(editable.at(-1)).toEqual({ kind: 'discount', discount: null });
+    expect(adjustmentRows({ ...job, dieselLitres: 0, diesel: null }, { editable: false })).toEqual([]);
   });
 });
 

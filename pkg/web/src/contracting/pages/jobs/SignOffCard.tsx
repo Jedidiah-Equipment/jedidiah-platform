@@ -1,5 +1,5 @@
 import { formatDate, formatNumber } from '@pkg/domain';
-import { canComplete, completionGateReasons, plannedNeverArrived, suggestJobDates } from '@pkg/domain/contracting';
+import { canComplete, completionGateReasons, groupStints, suggestJobDates } from '@pkg/domain/contracting';
 import { DateOnlyIso } from '@pkg/schema';
 import { JobCompleteInput, type JobDetail, JobPatchInput, Litres } from '@pkg/schema/contracting';
 import { useMutation } from '@tanstack/react-query';
@@ -84,7 +84,7 @@ function DraftSignOffDetails({ job, sheet }: { job: JobDetail; sheet: JobSheet }
   const trpc = useTRPC();
   const { invalidateJobs } = useQueryInvalidation();
   const showError = useApiMutationErrorToast();
-  const planned = plannedNeverArrived(job.assignments);
+  const { planned } = groupStints(job.assignments);
   const plannedIds = planned.map((stint) => stint.id);
   const remove = useMutation(
     trpc.contractingJobs.assignments.remove.mutationOptions({

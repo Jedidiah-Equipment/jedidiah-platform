@@ -16,7 +16,7 @@ import {
 } from '@pkg/schema/contracting';
 import { formatPercent } from '../formatting/number.js';
 import { round1 } from './hours.js';
-import { rateUnitLabel, round2, stintAmount } from './pricing.js';
+import { rateUnitLabel, stintAmount } from './pricing.js';
 import { groupStints } from './stints.js';
 
 export const hasJobCard = (status: JobStatus): status is FinishedJobStatus => hasJobStatus(finishedJobStatuses, status);
@@ -92,25 +92,26 @@ export function buildJobCardModel(job: JobDetail, variant: JobCardVariant, now: 
   const pricing = job.pricing;
   const priced = pricing !== null && (status !== 'completed' || pricing.gate.ok);
 
-  const lines: JobCardModel['lines'] = [];
-  let group: Assignment[] = [];
-  for (const row of groupStints(job.assignments)) {
-    if (row.kind === 'planned') throw new Error('A Completed Job has no planned stints.');
-    if (row.kind === 'stint') {
-      if (row.firstOfMachine) group = [];
-      group.push(row.stint);
-      lines.push(stintLine(row.stint, internal, priced));
-      continue;
-    }
-    lines.push({
-      kind: 'subtotal',
-      machineCode: row.machineCode,
-      hours: internal
-        ? { variant: 'internal', work: row.workHours, travel: row.travelHours }
-        : { variant: 'customer', total: round1(row.workHours + row.travelHours) },
-      amount: priced ? round2(group.reduce((total, stint) => total + stintAmount(stint.pricing), 0)) : null,
-    });
-  }
+  const { machines, planned } = groupStints(job.assignments);
+  if (planned.length) throw new Error('A Completed Job has no planned stints.');
+  const lines: JobCardModel['lines'] = machines.flatMap((machine) => [
+    ...machine.stints.map((stint) => stintLine(stint, internal, priced)),
+    ...(machine.subtotal
+      ? [
+          {
+            kind: 'subtotal' as const,
+            machineCode: machine.machineCode,
+            hours: internal
+              ? { variant: 'internal' as const, work: machine.subtotal.workHours, travel: machine.subtotal.travelHours }
+              : {
+                  variant: 'customer' as const,
+                  total: round1(machine.subtotal.workHours + machine.subtotal.travelHours),
+                },
+            amount: priced ? machine.subtotal.amount : null,
+          },
+        ]
+      : []),
+  ]);
 
   return {
     variant,

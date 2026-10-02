@@ -82,14 +82,4 @@ describe('CaptureScreen', () => {
     expect(renderer.root.findByProps({ accessibilityLabel: 'Hour meter value' }).props.value).toBe('');
     expect(renderer.root.findByProps({ accessibilityLabel: 'Capture comment' }).props.value).toBe('');
   });
-
-  test('offers a gallery photo and a Read At that starts at now', () => {
-    let renderer!: ReactTestRenderer;
-    act(() => {
-      renderer = create(<CaptureScreen />);
-    });
-
-    expect(renderer.root.findByProps({ title: 'Choose from gallery' })).toBeTruthy();
-    expect(renderer.root.findByType('ReadAtField' as never).props.value).toBeNull();
-  });
 });

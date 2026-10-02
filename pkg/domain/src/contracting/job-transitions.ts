@@ -57,6 +57,8 @@ export const jobTransitions = {
         pricedByUserId: null,
         pricedSubtotal: null,
         pricedTotal: null,
+        dieselAmount: null,
+        discountAmount: null,
         reopenedAt: event.at,
         repricingNote: event.note,
       }) as const,

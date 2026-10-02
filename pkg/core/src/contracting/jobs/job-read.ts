@@ -52,8 +52,6 @@ function storedPricing(row: LoadedStint): StoredStintPricing | null {
   const { stint } = row;
   if (stint.rateUnitAmount === null) return null;
   if (stint.rateId === null || stint.rateName === null || stint.rateBasis === null) return { kind: 'no-charge' };
-  if (stint.computedAmount === null || stint.finalAmount === null)
-    throw new Error('A rated Machine Assignment always stores its amounts.');
   return {
     kind: 'rate',
     rateId: stint.rateId,
@@ -62,6 +60,7 @@ function storedPricing(row: LoadedStint): StoredStintPricing | null {
     measureTypeId: stint.rateMeasureTypeId,
     measureTypeName: row.rateMeasureTypeName,
     unitAmount: stint.rateUnitAmount,
+    amountOverride: stint.amountOverride,
     computedAmount: stint.computedAmount,
     finalAmount: stint.finalAmount,
   };
@@ -133,7 +132,12 @@ export async function getJob({ db, ...lookup }: { db: DbOrTx } & JobLookup): Pro
       stored,
     })),
     chargeLines,
-    diesel: { litres: job.dieselLitres, unitPrice: job.dieselUnitPrice, amount: job.dieselAmount },
+    diesel: {
+      litres: job.dieselLitres,
+      unitPrice: job.dieselUnitPrice,
+      amountOverride: job.dieselAmountOverride,
+      amount: job.dieselAmount,
+    },
     discount:
       job.discountKind !== null && job.discountValue !== null
         ? { kind: job.discountKind, value: job.discountValue, amount: job.discountAmount }

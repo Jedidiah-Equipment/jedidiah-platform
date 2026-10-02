@@ -4,7 +4,6 @@ import {
   assignmentState,
   canComplete,
   completionGateReasons,
-  computeDieselAmount,
   formatJobNumber,
   type JobActor,
   jobTransitions,
@@ -18,8 +17,6 @@ import { assertJobAction, JobError, jobNotFound } from './job-errors.js';
 import { lockJob, lockJobFor } from './job-lock.js';
 import { assignmentIn, getJob } from './job-read.js';
 import { jobTransaction, writeJobRow } from './job-write.js';
-
-type Row = typeof contractingJobs.$inferSelect;
 
 export async function createJob({ db, actor, input }: { db: Db; actor: JobActor; input: JobCreateInput }) {
   return jobTransaction(db, async (tx) => {
@@ -64,24 +61,12 @@ export async function patchJob({ db, actor, input }: { db: Db; actor: JobActor; 
       startDate: input.startDate ?? row.startDate,
       endDate: input.endDate ?? row.endDate,
       dieselLitres: input.dieselLitres ?? row.dieselLitres,
-      ...repricedDiesel(row, input.dieselLitres),
+      // Litres corrected to zero mean no diesel was supplied, so its price goes too.
+      ...(input.dieselLitres === 0 && row.dieselLitres !== 0
+        ? { dieselUnitPrice: null, dieselAmountOverride: null }
+        : {}),
     }));
   });
-}
-
-/**
- * A computed Diesel amount follows the litres; an overridden one is the pricer's and stays. Litres
- * corrected to zero mean no diesel was supplied, so its price goes too.
- */
-function repricedDiesel(before: Row, dieselLitres: number | undefined) {
-  const kept = { dieselUnitPrice: before.dieselUnitPrice, dieselAmount: before.dieselAmount };
-  if (dieselLitres === undefined || dieselLitres === before.dieselLitres) return kept;
-  if (dieselLitres === 0) return { dieselUnitPrice: null, dieselAmount: null };
-  if (before.dieselUnitPrice === null || before.dieselAmount === null) return kept;
-  const computed = computeDieselAmount(before.dieselLitres, before.dieselUnitPrice);
-  return before.dieselAmount === computed
-    ? { ...kept, dieselAmount: computeDieselAmount(dieselLitres, before.dieselUnitPrice) }
-    : kept;
 }
 
 /** Locks every Machine Assignment on a Job, after the Job itself. */

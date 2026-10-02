@@ -184,13 +184,10 @@ const test = createTester(async ({ db }) => {
       disputePrevious: false,
     },
   });
-  await db
-    .update(contractingJobs)
-    .set({ dieselUnitPrice: 23, dieselAmount: 460 })
-    .where(eq(contractingJobs.id, ownJob.id));
+  await db.update(contractingJobs).set({ dieselUnitPrice: 23 }).where(eq(contractingJobs.id, ownJob.id));
   await db
     .update(contractingMachineAssignments)
-    .set({ rateUnitAmount: 0, computedAmount: 0, finalAmount: 0 })
+    .set({ rateUnitAmount: 0 })
     .where(eq(contractingMachineAssignments.id, stint.id));
   await db
     .update(contractingJobs)

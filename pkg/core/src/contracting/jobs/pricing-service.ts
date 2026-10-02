@@ -1,14 +1,7 @@
 import type { DatabaseTransaction, Db } from '@pkg/db';
 import { contractingMachineAssignments } from '@pkg/db/contracting';
 import { formatNumber } from '@pkg/domain';
-import {
-  computeDieselAmount,
-  computeDiscountAmount,
-  type JobActor,
-  jobTransitions,
-  priceStint,
-  pricingGateReasons,
-} from '@pkg/domain/contracting';
+import { computeDieselAmount, type JobActor, jobTransitions, pricingGateReasons } from '@pkg/domain/contracting';
 import type { AuthId } from '@pkg/schema';
 import type {
   Assignment,
@@ -29,10 +22,19 @@ import { jobTransaction, writeAssignment, writeJobRow } from './job-write.js';
 
 type StintPricingColumns = Pick<
   typeof contractingMachineAssignments.$inferInsert,
-  'rateId' | 'rateName' | 'rateBasis' | 'rateMeasureTypeId' | 'rateUnitAmount' | 'computedAmount' | 'finalAmount'
+  | 'rateId'
+  | 'rateName'
+  | 'rateBasis'
+  | 'rateMeasureTypeId'
+  | 'rateUnitAmount'
+  | 'amountOverride'
+  | 'computedAmount'
+  | 'finalAmount'
 >;
 
 const noRate = { rateId: null, rateName: null, rateBasis: null, rateMeasureTypeId: null } as const;
+/** A Job that is not Priced stores no amounts; every pricing write says so. */
+const unfrozen = { computedAmount: null, finalAmount: null } as const;
 
 const isPriced = (stint: Pick<Assignment, 'pricing'>) => stint.pricing !== null;
 
@@ -92,21 +94,13 @@ export async function setStintRate({
           rateUnitAmount: rate.amount,
         }
       : { ...noRate, rateUnitAmount: 0 };
-    for (const stint of targets) {
-      const { computedAmount } = priceStint({
-        basis: snapshot.rateBasis,
-        unitAmount: snapshot.rateUnitAmount,
-        measureTypeId: snapshot.rateMeasureTypeId,
-        billableHours: stint.billableHours,
-        measures: stint.measures,
-      });
-      // Final and computed are written equal, so choosing a Rate discards any amount override.
+    // Choosing a Rate discards any amount override.
+    for (const stint of targets)
       await writeStintPricing(tx, actorUserId, machineCode, stint.id, {
         ...snapshot,
-        computedAmount,
-        finalAmount: computedAmount,
+        amountOverride: null,
+        ...unfrozen,
       });
-    }
   });
 }
 
@@ -125,8 +119,8 @@ export async function clearStintRate({
     await writeStintPricing(tx, actorUserId, machineCode, input.assignmentId, {
       ...noRate,
       rateUnitAmount: null,
-      computedAmount: null,
-      finalAmount: null,
+      amountOverride: null,
+      ...unfrozen,
     });
   });
 }
@@ -146,11 +140,10 @@ export async function setStintAmount({
     const { pricing } = stint;
     if (pricing === null) throw wrongStatus('Pick a Rate before changing the amount.');
     if (pricing.kind === 'no-charge') throw wrongStatus('A No charge line is included in the quote and bills nothing.');
-    // Computed is rewritten to the live figure in the same write, so final ≠ computed stays the override test.
-    await writeStintPricing(tx, actorUserId, machineCode, stint.id, {
-      computedAmount: pricing.computedAmount,
-      finalAmount: input.finalAmount ?? pricing.computedAmount,
-    });
+    const { computedAmount } = pricing;
+    const amountOverride =
+      input.finalAmount === null || input.finalAmount === computedAmount ? null : input.finalAmount;
+    await writeStintPricing(tx, actorUserId, machineCode, stint.id, { amountOverride, ...unfrozen });
   });
 }
 
@@ -166,14 +159,16 @@ export async function setDieselPrice({
   await jobTransaction(db, async (tx) => {
     const before = await lockJobFor(tx, input.jobId, 'price', actor);
     if (input.unitPrice !== null && before.dieselLitres === 0) throw wrongStatus('No diesel was supplied on this Job.');
-    await writeJobRow(tx, actor.userId, before.id, (row) =>
-      input.unitPrice === null
-        ? { dieselUnitPrice: null, dieselAmount: null }
-        : {
-            dieselUnitPrice: input.unitPrice,
-            dieselAmount: input.amount ?? computeDieselAmount(row.dieselLitres, input.unitPrice),
-          },
-    );
+    await writeJobRow(tx, actor.userId, before.id, (row) => {
+      if (input.unitPrice === null) return { dieselUnitPrice: null, dieselAmountOverride: null, dieselAmount: null };
+      const computed = computeDieselAmount(row.dieselLitres, input.unitPrice);
+      const amount = input.amount ?? computed;
+      return {
+        dieselUnitPrice: input.unitPrice,
+        dieselAmountOverride: amount === computed ? null : amount,
+        dieselAmount: null,
+      };
+    });
   });
 }
 
@@ -186,21 +181,14 @@ export async function setDiscount({
   actor: JobActor;
   input: DiscountSetInput;
 }): Promise<void> {
-  const actorUserId = actor.userId;
+  const { discount } = input;
   await jobTransaction(db, async (tx) => {
     await lockJobFor(tx, input.jobId, 'price', actor);
-    const { discount } = input;
-    const { subtotal } = (await getJob({ db: tx, id: input.jobId })).pricing;
-    await writeJobRow(tx, actorUserId, input.jobId, () =>
-      discount === null
-        ? { discountKind: null, discountValue: null, discountAmount: null }
-        : {
-            discountKind: discount.kind,
-            discountValue: discount.value,
-            // Kept current for the audit trail; the read model recomputes it while Completed.
-            discountAmount: computeDiscountAmount(subtotal, discount),
-          },
-    );
+    await writeJobRow(tx, actor.userId, input.jobId, () => ({
+      discountKind: discount?.kind ?? null,
+      discountValue: discount?.value ?? null,
+      discountAmount: null,
+    }));
   });
 }
 
@@ -240,38 +228,32 @@ export async function markPriced({
         total: pricing.total,
       }),
       discountAmount: row.discountKind === null ? null : pricing.discountAmount,
-      dieselAmount: row.dieselLitres > 0 ? pricing.dieselAmount : row.dieselAmount,
+      dieselAmount: row.dieselLitres > 0 ? pricing.dieselAmount : null,
     }));
   });
 }
 
 /**
  * Returns a Priced Job to Completed after a reading amendment moved its hours. Rates, unit amounts, the
- * Diesel price, the Discount and Charge Line amounts stay; every stint amount recomputes from the amended
- * hours and amount overrides are discarded. Runs inside the amendment's transaction, after the machine
- * lock and the reading writes, so the lock order stays machine → job → stint.
+ * Diesel price, the Discount and Charge Line amounts stay; every stint amount is derived again from the
+ * amended hours and amount overrides are discarded. Runs inside the amendment's transaction, after the
+ * machine lock and the reading writes, so the lock order stays machine → job → stint.
  */
 export async function reopenPricingWithin(tx: DatabaseTransaction, actorUserId: AuthId, jobId: string, reason: string) {
   const job = await lockJob(tx, jobId);
   if (job.status !== 'priced') throw wrongStatus('Only a Priced Job can be reopened for pricing.');
   const stints = await tx
-    .select({
-      computedAmount: contractingMachineAssignments.computedAmount,
-      finalAmount: contractingMachineAssignments.finalAmount,
-    })
+    .select({ amountOverride: contractingMachineAssignments.amountOverride })
     .from(contractingMachineAssignments)
     .where(eq(contractingMachineAssignments.jobId, jobId))
     .for('update');
-  const edited = stints.filter((stint) => stint.finalAmount !== stint.computedAmount).length;
+  const edited = stints.filter((stint) => stint.amountOverride !== null).length;
   const note = edited
     ? `${reason} ${formatNumber(edited)} edited ${edited === 1 ? 'amount was' : 'amounts were'} reset.`
     : reason;
   await writeJobRow(tx, actorUserId, jobId, (row) => jobTransitions.reopen(row, { at: new Date(), note }));
   const reopened = await getJob({ db: tx, id: jobId });
   for (const stint of reopened.assignments)
-    if (stint.pricing?.kind === 'rate')
-      await writeStintPricing(tx, actorUserId, stint.machineCode, stint.id, {
-        computedAmount: stint.pricing.computedAmount,
-        finalAmount: stint.pricing.computedAmount,
-      });
+    if (stint.pricing !== null)
+      await writeStintPricing(tx, actorUserId, stint.machineCode, stint.id, { amountOverride: null, ...unfrozen });
 }

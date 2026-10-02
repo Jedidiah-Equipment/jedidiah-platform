@@ -1,5 +1,6 @@
 import type { Db } from '@pkg/db';
 import { auditEvents } from '@pkg/db';
+import { contractingJobs, contractingMachineAssignments } from '@pkg/db/contracting';
 import { stintAmount } from '@pkg/domain/contracting';
 import { accessForRole } from '@pkg/domain/testing';
 import { and, eq } from 'drizzle-orm';
@@ -43,6 +44,30 @@ const stintOf = async (db: Db, jobId: string, id: string) => {
   const found = (await getJob({ db, id: jobId })).assignments.find((assignment) => assignment.id === id);
   if (!found) throw new Error('Expected the stint');
   return found;
+};
+
+const storedStint = async (db: Db, id: string) => {
+  const [row] = await db
+    .select({
+      amountOverride: contractingMachineAssignments.amountOverride,
+      computedAmount: contractingMachineAssignments.computedAmount,
+      finalAmount: contractingMachineAssignments.finalAmount,
+    })
+    .from(contractingMachineAssignments)
+    .where(eq(contractingMachineAssignments.id, id));
+  return row;
+};
+
+const storedJob = async (db: Db, id: string) => {
+  const [row] = await db
+    .select({
+      dieselAmount: contractingJobs.dieselAmount,
+      dieselAmountOverride: contractingJobs.dieselAmountOverride,
+      discountAmount: contractingJobs.discountAmount,
+    })
+    .from(contractingJobs)
+    .where(eq(contractingJobs.id, id));
+  return row;
 };
 
 describe('picking a Rate', () => {
@@ -223,12 +248,101 @@ describe('Diesel and Discount', () => {
     });
   });
 
+  test('keeps a Diesel override through a litres edit', async ({ context }) => {
+    const { db } = context;
+    const { jobId } = await completedJob(
+      context,
+      [{ machineId: context.excavator.id, arrival: 100, departure: 110 }],
+      210,
+    );
+    await setDieselPrice({ db, actor: admin, input: { jobId, unitPrice: 23, amount: 4_800 } });
+    await patchJob({ db, actor: admin, input: { id: jobId, dieselLitres: 200 } });
+    expect(await getJob({ db, id: jobId })).toMatchObject({ diesel: { amount: 4_800, amountEdited: true } });
+  });
+
   test('refuses a diesel price when no diesel was supplied', async ({ context }) => {
     const { db } = context;
     const { jobId } = await completedJob(context, [{ machineId: context.excavator.id, arrival: 100, departure: 110 }]);
     await expect(setDieselPrice({ db, actor: admin, input: { jobId, unitPrice: 23 } })).rejects.toMatchObject({
       code: 'contracting_job.wrong_status',
       message: 'No diesel was supplied on this Job.',
+    });
+  });
+});
+
+describe('what a Completed Job stores', () => {
+  test('stores Rates and overrides, never amounts, while Completed', async ({ context }) => {
+    const { db } = context;
+    const { jobId, stints } = await completedJob(
+      context,
+      [{ machineId: context.excavator.id, arrival: 100, departure: 110 }],
+      210,
+    );
+    const dig = stints[0];
+    if (!dig) throw new Error('Expected a stint');
+    await setStintRate({ db, actor: admin, input: { assignmentId: dig.id, rateId: context.dryHire.id } });
+    await setStintAmount({ db, actor: admin, input: { assignmentId: dig.id, finalAmount: 5_500 } });
+    await setDieselPrice({ db, actor: admin, input: { jobId, unitPrice: 23 } });
+    await setDiscount({ db, actor: admin, input: { jobId, discount: { kind: 'percent', value: 5 } } });
+
+    expect(await storedStint(db, dig.id)).toEqual({ amountOverride: 5_500, computedAmount: null, finalAmount: null });
+    expect(await storedJob(db, jobId)).toEqual({
+      dieselAmount: null,
+      dieselAmountOverride: null,
+      discountAmount: null,
+    });
+    expect((await stintOf(db, jobId, dig.id)).pricing).toMatchObject({ computedAmount: 6_000, finalAmount: 5_500 });
+  });
+
+  test('an amount equal to the computed one stores no override', async ({ context }) => {
+    const { db } = context;
+    const { jobId, stints } = await completedJob(
+      context,
+      [{ machineId: context.excavator.id, arrival: 100, departure: 110 }],
+      210,
+    );
+    const dig = stints[0];
+    if (!dig) throw new Error('Expected a stint');
+    await setStintRate({ db, actor: admin, input: { assignmentId: dig.id, rateId: context.dryHire.id } });
+    await setStintAmount({ db, actor: admin, input: { assignmentId: dig.id, finalAmount: 6_000 } });
+    await setDieselPrice({ db, actor: admin, input: { jobId, unitPrice: 23, amount: 210 * 23 } });
+
+    expect(await storedStint(db, dig.id)).toMatchObject({ amountOverride: null });
+    expect(await storedJob(db, jobId)).toMatchObject({ dieselAmountOverride: null });
+    const job = await getJob({ db, id: jobId });
+    expect(job.assignments[0]).toMatchObject({ pricing: { amountEdited: false } });
+    expect(job.diesel).toMatchObject({ amountEdited: false });
+  });
+
+  test('Mark as Priced freezes the amounts and a reopen clears them', async ({ context }) => {
+    const { db } = context;
+    const { jobId, stints } = await completedJob(
+      context,
+      [{ machineId: context.excavator.id, arrival: 100, departure: 110 }],
+      210,
+    );
+    const dig = stints[0];
+    if (!dig) throw new Error('Expected a stint');
+    await setStintRate({ db, actor: admin, input: { assignmentId: dig.id, rateId: context.dryHire.id } });
+    await setStintAmount({ db, actor: admin, input: { assignmentId: dig.id, finalAmount: 5_500 } });
+    await setDieselPrice({ db, actor: admin, input: { jobId, unitPrice: 23 } });
+    await setDiscount({ db, actor: admin, input: { jobId, discount: { kind: 'percent', value: 5 } } });
+    const { total } = (await getJob({ db, id: jobId })).pricing;
+    await markPriced({ db, actor: admin, input: { id: jobId, expectedTotal: total } });
+
+    expect(await storedStint(db, dig.id)).toEqual({ amountOverride: 5_500, computedAmount: 6_000, finalAmount: 5_500 });
+    expect(await storedJob(db, jobId)).toEqual({
+      dieselAmount: 4_830,
+      dieselAmountOverride: null,
+      discountAmount: 275,
+    });
+
+    await amendReading({ db, actor: admin, input: { id: dig.arrivalReadingId, value: 101, reason: 'Misread' } });
+    expect(await storedStint(db, dig.id)).toEqual({ amountOverride: null, computedAmount: null, finalAmount: null });
+    expect(await storedJob(db, jobId)).toEqual({
+      dieselAmount: null,
+      dieselAmountOverride: null,
+      discountAmount: null,
     });
   });
 });

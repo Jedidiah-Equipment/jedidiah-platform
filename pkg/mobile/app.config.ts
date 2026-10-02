@@ -29,7 +29,7 @@ export default ({ config }: ConfigContext): AppConfig => {
     scheme: variant.scheme,
     // `version` is the human-facing string; EAS owns the Android `versionCode` remotely
     // (`cli.appVersionSource: remote` + per-profile `autoIncrement` in eas.json).
-    version: '1.59.0',
+    version: '1.60.0',
     orientation: 'portrait',
     userInterfaceStyle: 'automatic',
     newArchEnabled: true,
@@ -59,7 +59,7 @@ export default ({ config }: ConfigContext): AppConfig => {
           photosPermission: PHOTOS_PERMISSION,
           savePhotosPermission: PHOTOS_PERMISSION,
           isAccessMediaLocationEnabled: false,
-          granularPermissions: ['photo'],
+          granularPermissions: [],
         },
       ],
       '@config-plugins/react-native-pdf',
@@ -72,6 +72,13 @@ export default ({ config }: ConfigContext): AppConfig => {
     android: {
       package: variant.androidPackage,
       adaptiveIcon: variant.iconConfig.adaptiveIcon,
+      // Google Play refuses an upload that declares photo or video read access without a policy declaration.
+      // The system photo picker needs no grant, and saving our own camera photos to the album is write-only.
+      blockedPermissions: [
+        'android.permission.READ_MEDIA_IMAGES',
+        'android.permission.READ_MEDIA_VIDEO',
+        'android.permission.READ_MEDIA_VISUAL_USER_SELECTED',
+      ],
     },
     ios: {
       bundleIdentifier: variant.iosBundleIdentifier,

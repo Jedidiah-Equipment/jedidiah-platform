@@ -73,18 +73,16 @@ describe('route layout contract', () => {
     expect(baySchedule).not.toContain('helpTopic="jobs"');
   });
 
-  test('keeps flat and sectioned list toolbars at the same gap below the page header', () => {
-    const catalogList = readFileSync(join(MOBILE_DIR, 'src/equipment/components/CatalogList.tsx'), 'utf8');
-    const activityFeed = readFileSync(
-      join(MOBILE_DIR, 'src/equipment/components/activity/JobActivityFeed.tsx'),
-      'utf8',
-    );
-
-    expect(catalogList).toContain('contentContainerClassName="w-full px-4 pb-8 pt-1"');
-    // NativeWind remaps this prop for FlatList but not SectionList, so Activity must use native style.
-    expect(activityFeed).toContain('contentContainerStyle={{');
-    expect(activityFeed).toContain('paddingBottom: 32');
-    expect(activityFeed).toContain('paddingHorizontal: 16');
-    expect(activityFeed).toContain('paddingTop: 4');
+  test('keeps every list screen with a controls row on the shared list frame', () => {
+    const lists = [
+      'src/equipment/components/CatalogList.tsx',
+      'src/equipment/components/activity/JobActivityFeed.tsx',
+      'src/contracting/components/MachinesScreen.tsx',
+      'src/contracting/field-notes/FieldNotesScreen.tsx',
+    ];
+    for (const path of lists) {
+      const source = readFileSync(join(MOBILE_DIR, path), 'utf8');
+      expect(source, path).toContain('contentContainerStyle={LIST_CONTENT_STYLE}');
+    }
   });
 });

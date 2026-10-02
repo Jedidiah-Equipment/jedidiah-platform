@@ -13,6 +13,23 @@ export type ListControlOption<Value extends string> = {
   value: Value;
 };
 
+/**
+ * The frame every list screen shares below its toolbar: 16pt sides, 4pt above the controls row and 32pt
+ * below the last row. A style, not a class, because NativeWind remaps `contentContainerClassName` for
+ * FlatList but not SectionList.
+ */
+export const LIST_CONTENT_STYLE = { paddingBottom: 32, paddingHorizontal: 16, paddingTop: 4 } as const;
+
+/** A list's controls row as its scrolling header, 16pt above the first row. */
+export function ListHeader({ children }: { children: ReactNode }) {
+  return <View className="z-10 mb-4">{children}</View>;
+}
+
+/** One list row with the gap every list keeps between rows. */
+export function ListRow({ children }: { children: ReactNode }) {
+  return <View className="mb-3.5 w-full">{children}</View>;
+}
+
 /** Fixed-height list controls stay on one row; their labels truncate as available width shrinks. */
 export function ListControlRow({ leading, trailing }: { leading: ReactNode; trailing: ReactNode }) {
   return (

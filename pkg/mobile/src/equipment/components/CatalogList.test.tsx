@@ -6,10 +6,16 @@ vi.mock('react', () => ({
 }));
 vi.mock('react-native', () => ({ FlatList: 'FlatList', Pressable: 'Pressable', View: 'View' }));
 vi.mock('@/components/Avatar', () => ({ Avatar: 'Avatar' }));
+vi.mock('@/components/ListControls', () => ({
+  LIST_CONTENT_STYLE: { paddingTop: 4 },
+  ListHeader: 'ListHeader',
+  ListRow: 'ListRow',
+}));
 vi.mock('@/components/ui/pulse', () => ({ Pulse: 'Pulse' }));
 vi.mock('@/components/ui/refresh-control', () => ({ RefreshControl: 'RefreshControl' }));
 vi.mock('@/components/ui/text', () => ({ Text: 'Text' }));
 
+import { LIST_CONTENT_STYLE } from '@/components/ListControls';
 import { CatalogListCard, CatalogListSkeleton, PaginatedCatalogList } from './CatalogList';
 
 type ElementProps = { children?: unknown; className?: string; [key: string]: unknown };
@@ -149,8 +155,7 @@ describe('PaginatedCatalogList', () => {
 
     expect(list.type).toBe('FlatList');
     expect(list.props.className).toContain('flex-1');
-    expect(list.props.contentContainerClassName).toContain('w-full');
-    expect(list.props.contentContainerClassName).toContain('pt-1');
+    expect(list.props.contentContainerStyle).toBe(LIST_CONTENT_STYLE);
     expect(list.props.numColumns).toBeUndefined();
     expect(rows.map((row) => [row.kind, row.key])).toEqual([
       ['section-header', 'section:priority'],
@@ -158,7 +163,7 @@ describe('PaginatedCatalogList', () => {
       ['section-separator', 'separator:main'],
       ['item', 'item:main:main-1'],
     ]);
-    expect(renderedItem.props.className).toContain('w-full');
+    expect(renderedItem.type).toBe('ListRow');
   });
 
   test('loads near the end once per request only when another page is available and idle', () => {

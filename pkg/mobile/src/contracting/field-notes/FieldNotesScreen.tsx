@@ -5,10 +5,13 @@ import { useState } from 'react';
 import { FlatList, Pressable, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
+  LIST_CONTENT_STYLE,
   type ListControlOption,
   ListControlRow,
   ListCreateControl,
   ListDropdownControl,
+  ListHeader,
+  ListRow,
   ListSearchControl,
 } from '@/components/ListControls';
 import { MainToolbar } from '@/components/TopToolbar';
@@ -30,36 +33,42 @@ export default function FieldNotesScreen() {
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top', 'left', 'right']}>
       <MainToolbar title="Notes" subtitle="CONTRACTING" helpTopic="contractingMobileFieldNotes" />
-      <View className="gap-3 px-4 py-3">
-        <ListControlRow
-          leading={
-            <ListSearchControl
-              accessibilityLabel="Search Field Notes"
-              onChangeText={setSearch}
-              placeholder="Search by description…"
-              value={search}
-            />
-          }
-          trailing={
-            <View className="flex-row items-center gap-2">
-              <ListDropdownControl
-                accessibilityLabel="Filter Field Notes by status"
-                defaultValue="open"
-                dismissLabel="Dismiss Field Note status filter"
-                icon={IconFilter}
-                onChange={setStatus}
-                options={STATUS_OPTIONS}
-                value={status}
-              />
-              <ListCreateControl label="New Field Note" onPress={() => router.push('/contracting/notes/new' as Href)} />
-            </View>
-          }
-        />
-      </View>
       <FlatList
         data={visible}
         keyExtractor={(note) => note.id}
-        contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 4, paddingBottom: 16, gap: 10 }}
+        keyboardShouldPersistTaps="handled"
+        contentContainerStyle={LIST_CONTENT_STYLE}
+        ListHeaderComponent={
+          <ListHeader>
+            <ListControlRow
+              leading={
+                <ListSearchControl
+                  accessibilityLabel="Search Field Notes"
+                  onChangeText={setSearch}
+                  placeholder="Search by description…"
+                  value={search}
+                />
+              }
+              trailing={
+                <View className="flex-row items-center gap-2">
+                  <ListDropdownControl
+                    accessibilityLabel="Filter Field Notes by status"
+                    defaultValue="open"
+                    dismissLabel="Dismiss Field Note status filter"
+                    icon={IconFilter}
+                    onChange={setStatus}
+                    options={STATUS_OPTIONS}
+                    value={status}
+                  />
+                  <ListCreateControl
+                    label="New Field Note"
+                    onPress={() => router.push('/contracting/notes/new' as Href)}
+                  />
+                </View>
+              }
+            />
+          </ListHeader>
+        }
         ListEmptyComponent={
           <Text className="text-muted-foreground">
             {notes === null
@@ -71,7 +80,11 @@ export default function FieldNotesScreen() {
                   : 'No Closed Field Notes.'}
           </Text>
         }
-        renderItem={({ item }) => <FieldNoteRow note={item} />}
+        renderItem={({ item }) => (
+          <ListRow>
+            <FieldNoteRow note={item} />
+          </ListRow>
+        )}
       />
     </SafeAreaView>
   );

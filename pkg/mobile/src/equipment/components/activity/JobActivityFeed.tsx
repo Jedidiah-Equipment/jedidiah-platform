@@ -8,6 +8,7 @@ import type { ReactNode } from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { SectionList, View } from 'react-native';
 import {
+  LIST_CONTENT_STYLE,
   type ListControlOption,
   ListControlRow,
   ListDropdownControl,
@@ -121,7 +122,7 @@ export function JobActivityFeed({
       <SectionList
         className="flex-1"
         // NativeWind does not remap contentContainerClassName for SectionList.
-        contentContainerStyle={{ paddingBottom: 32, paddingHorizontal: 16, paddingTop: 4 }}
+        contentContainerStyle={LIST_CONTENT_STYLE}
         initialNumToRender={12}
         keyExtractor={activityKey}
         keyboardShouldPersistTaps="handled"

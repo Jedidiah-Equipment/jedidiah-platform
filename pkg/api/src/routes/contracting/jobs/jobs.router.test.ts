@@ -281,10 +281,10 @@ test('enforces the Job queue role matrix and strips money from Foreman reads', a
   const foreman = context.createCaller(contractingSession('foreman')).contractingJobs;
   expect((await foreman.jobs.list({ queue: 'upcoming' })).map((job) => job.id)).toEqual([context.ownJob.id]);
   expect(await foreman.jobs.get({ id: context.ownJob.id })).toMatchObject({
-    dieselUnitPrice: null,
-    dieselAmount: null,
+    diesel: null,
+    discount: null,
     pricing: null,
-    assignments: [{ rateUnitAmount: null, computedAmount: null, finalAmount: null }],
+    assignments: [{ pricing: null }],
   });
   await expect(foreman.jobs.get({ id: context.otherJob.id })).rejects.toMatchObject({ code: 'FORBIDDEN' });
   await expect(foreman.jobs.get({ id: context.pricedJob.id })).rejects.toMatchObject({ code: 'FORBIDDEN' });
@@ -416,7 +416,10 @@ test('keeps Pricing to contracting-admin and super-admin while managers read the
   const superAdmin = context.createCaller(mockSession('super-admin')).contractingJobs;
   await expect(
     superAdmin.pricing.setDiscount({ jobId, discount: { kind: 'percent', value: 5 } }),
-  ).resolves.toMatchObject({ discountKind: 'percent', pricing: { total: 0, gate: { ok: true } } });
+  ).resolves.toMatchObject({
+    discount: { kind: 'percent' },
+    pricing: { total: 0, gate: { ok: true } },
+  });
   expect(await manager.jobs.get({ id: jobId })).toMatchObject({ pricing: { total: 0 } });
   const admin = context.createCaller(contractingSession('contracting-admin')).contractingJobs;
   await expect(admin.pricing.markPriced({ id: jobId, expectedTotal: 1 })).rejects.toMatchObject({ code: 'CONFLICT' });
@@ -434,10 +437,7 @@ test('lets Invoicing list, read and stamp Priced Jobs while every other write st
     { id: context.pricedJob.id, pricedTotal: 100, pricedAt: expect.any(String), invoiceNumber: null },
   ]);
   await expect(invoicing.jobs.list({ queue: 'active' })).rejects.toMatchObject({ code: 'FORBIDDEN' });
-  await expect(invoicing.jobs.get({ id: context.pricedJob.id })).resolves.toMatchObject({
-    pricedSubtotal: 100,
-    pricedTotal: 100,
-  });
+  await expect(invoicing.jobs.get({ id: context.pricedJob.id })).resolves.toMatchObject({ pricedTotal: 100 });
   for (const attempt of [
     () => invoicing.pricing.markPriced({ id: context.completedJob.id, expectedTotal: 0 }),
     () => invoicing.jobs.patch({ id: context.pricedJob.id, notes: 'Keyed in' }),

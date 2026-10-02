@@ -1,4 +1,5 @@
 import { formatCurrency, formatHours, formatNumber, formatPercent } from '@pkg/domain';
+import { stintAmount } from '@pkg/domain/contracting';
 import { type Assignment, type DiscountKind, JobDiscountInput } from '@pkg/schema/contracting';
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
@@ -142,15 +143,18 @@ function RateCell({ row }: { row: PricingRow }) {
   if (row.kind === 'charge-line') return <span className="text-muted-foreground text-xs">Fixed amount</span>;
   if (row.kind === 'stint') {
     const { stint } = row;
-    if (!editable) return <span>{stint.rateUnitAmount === null ? '—' : (stint.rateName ?? 'No charge')}</span>;
-    const drift = rateCardDrift(rates, stint);
+    if (!editable)
+      return (
+        <span>{stint.pricing === null ? '—' : stint.pricing.kind === 'rate' ? stint.pricing.name : 'No charge'}</span>
+      );
+    const drift = rateCardDrift(rates, stint.pricing);
     return (
       <div className="min-w-56 space-y-1">
         <SearchableCombobox
           inputId={`rate-${stint.id}`}
-          options={rateSelectOptions(rates, stint)}
+          options={rateSelectOptions(rates, stint.pricing)}
           placeholder="Choose a Rate…"
-          value={rateSelectValue(stint)}
+          value={rateSelectValue(stint.pricing)}
           onValueChange={(value) =>
             value === ''
               ? mutations.clearRate.mutate({ assignmentId: stint.id })
@@ -286,30 +290,27 @@ function AmountCell({ row }: { row: PricingRow }) {
         />
       );
     case 'discount':
-      return row.discount ? <span>− {formatCurrency(row.amount ?? 0)}</span> : null;
+      return row.discount ? <span>− {formatCurrency(row.discount.amount)}</span> : null;
   }
 }
 
 function StintAmount({ stint }: { stint: Assignment }) {
-  const { editable, rates, mutations } = usePricing();
-  const measureTypeName = (id: string) =>
-    stint.measures.find((measure) => measure.measureTypeId === id)?.measureTypeName ??
-    rates.find((rate) => rate.measureTypeId === id)?.measureTypeName ??
-    undefined;
-  const missingName = stint.rateMeasureTypeId ? measureTypeName(stint.rateMeasureTypeId) : undefined;
+  const { editable, mutations } = usePricing();
+  const { pricing } = stint;
+  const rate = pricing?.kind === 'rate' ? pricing : null;
   return (
     <div className="space-y-1">
       <EditableAmount
-        amount={stint.finalAmount}
-        editable={editable && stint.rateBasis !== null}
-        edited={stint.amountEdited}
-        formula={formulaLabel(stint, measureTypeName)}
+        amount={pricing === null ? null : stintAmount(pricing)}
+        editable={editable && rate !== null}
+        edited={rate?.amountEdited ?? false}
+        formula={formulaLabel(pricing)}
         label={`Amount for ${stint.machineCode}`}
         onCommit={(finalAmount) => mutations.setAmount.mutate({ assignmentId: stint.id, finalAmount })}
       />
-      {stint.measureMissing ? (
+      {rate?.measureMissing ? (
         <p className="text-destructive text-xs">
-          No {missingName ? `${missingName} ` : ''}measure recorded on this Assignment
+          No {rate.measureTypeName ? `${rate.measureTypeName} ` : ''}measure recorded on this Assignment
         </p>
       ) : null}
     </div>

@@ -125,7 +125,7 @@ const test = createTester(async ({ db }) => {
     });
     if (status === 'completed') return fixture;
     await setStintRate({ db, actor: setup, input: { assignmentId: stint.id, rateId: rate.id } });
-    const total = (await getJob({ db, id: job.id })).pricing?.total ?? 0;
+    const total = (await getJob({ db, id: job.id })).pricing.total;
     await markPriced({ db, actor: setup, input: { id: job.id, expectedTotal: total } });
     return fixture;
   }

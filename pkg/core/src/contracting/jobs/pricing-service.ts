@@ -14,7 +14,6 @@ import type {
   Assignment,
   DieselPriceInput,
   DiscountSetInput,
-  JobFacts,
   JobMarkPricedInput,
   StintAmountSetInput,
   StintRateClearInput,
@@ -28,20 +27,14 @@ import { lockAssignment, lockJob } from './job-lock.js';
 import { assignmentIn, getJob } from './job-read.js';
 import { writeAssignment, writeJob } from './job-write.js';
 
-type StintPricing = Pick<
+type StintPricingColumns = Pick<
   typeof contractingMachineAssignments.$inferInsert,
   'rateId' | 'rateName' | 'rateBasis' | 'rateMeasureTypeId' | 'rateUnitAmount' | 'computedAmount' | 'finalAmount'
 >;
 
 const noRate = { rateId: null, rateName: null, rateBasis: null, rateMeasureTypeId: null } as const;
 
-const isPriced = (stint: Pick<Assignment, 'rateUnitAmount'>) => stint.rateUnitAmount !== null;
-
-/** A Completed Job's live figures; only a money-redacted read lacks them. */
-function livePricing(job: JobFacts) {
-  if (!job.pricing) throw new Error('A Completed Job always carries its pricing.');
-  return job.pricing;
-}
+const isPriced = (stint: Pick<Assignment, 'pricing'>) => stint.pricing !== null;
 
 /** Locks the stint and its Job, checks Pricing is open, and returns the live read of the Job and the stint. */
 async function openStint(tx: DatabaseTransaction, assignmentId: string, actor: JobActor) {
@@ -58,7 +51,7 @@ const writeStintPricing = (
   actorUserId: AuthId,
   machineCode: string,
   id: string,
-  values: StintPricing,
+  values: StintPricingColumns,
 ) => writeAssignment(tx, actorUserId, machineCode, id, { set: () => values });
 
 async function findRate(tx: DatabaseTransaction, id: string) {
@@ -134,13 +127,14 @@ export async function setStintAmount({ db, actor, input }: { db: Db; actor: JobA
   return withJobConstraints(() =>
     db.transaction(async (tx) => {
       const { machineCode, job, stint } = await openStint(tx, input.assignmentId, actor);
-      if (!isPriced(stint) || stint.computedAmount === null)
-        throw wrongStatus('Pick a Rate before changing the amount.');
-      if (stint.rateBasis === null) throw wrongStatus('A No charge line is included in the quote and bills nothing.');
+      const { pricing } = stint;
+      if (pricing === null) throw wrongStatus('Pick a Rate before changing the amount.');
+      if (pricing.kind === 'no-charge')
+        throw wrongStatus('A No charge line is included in the quote and bills nothing.');
       // Computed is rewritten to the live figure in the same write, so final ≠ computed stays the override test.
       await writeStintPricing(tx, actorUserId, machineCode, stint.id, {
-        computedAmount: stint.computedAmount,
-        finalAmount: input.finalAmount ?? stint.computedAmount,
+        computedAmount: pricing.computedAmount,
+        finalAmount: input.finalAmount ?? pricing.computedAmount,
       });
       return getJob({ db: tx, id: job.id });
     }),
@@ -173,7 +167,7 @@ export async function setDiscount({ db, actor, input }: { db: Db; actor: JobActo
     db.transaction(async (tx) => {
       assertJobAction('price', await lockJob(tx, input.jobId), actor);
       const { discount } = input;
-      const { subtotal } = livePricing(await getJob({ db: tx, id: input.jobId }));
+      const { subtotal } = (await getJob({ db: tx, id: input.jobId })).pricing;
       return writeJob(tx, actorUserId, input.jobId, {
         set: () =>
           discount === null
@@ -196,7 +190,7 @@ export async function markPriced({ db, actor, input }: { db: Db; actor: JobActor
       const before = await lockJob(tx, input.id);
       assertJobAction('price', before, actor);
       const detail = await getJob({ db: tx, id: before.id });
-      const pricing = livePricing(detail);
+      const { pricing } = detail;
       if (!pricing.gate.ok)
         throw new JobError(
           'contracting_job.pricing_incomplete',
@@ -206,10 +200,10 @@ export async function markPriced({ db, actor, input }: { db: Db; actor: JobActor
         throw totalChanged('The total changed while you were pricing. Review it and mark as Priced again.');
       // The live figures become the snapshot: from here the read model trusts the stored amounts.
       for (const stint of detail.assignments)
-        if (stint.state === 'left' && stint.computedAmount !== null && stint.finalAmount !== null)
+        if (stint.state === 'left' && stint.pricing?.kind === 'rate')
           await writeStintPricing(tx, actorUserId, stint.machineCode, stint.id, {
-            computedAmount: stint.computedAmount,
-            finalAmount: stint.finalAmount,
+            computedAmount: stint.pricing.computedAmount,
+            finalAmount: stint.pricing.finalAmount,
           });
       return writeJob(tx, actorUserId, input.id, {
         set: (row) => ({
@@ -252,9 +246,9 @@ export async function reopenPricingWithin(tx: DatabaseTransaction, actorUserId: 
     set: (row) => jobTransitions.reopen(row, { at: new Date(), note }),
   });
   for (const stint of reopened.assignments)
-    if (stint.computedAmount !== null)
+    if (stint.pricing?.kind === 'rate')
       await writeStintPricing(tx, actorUserId, stint.machineCode, stint.id, {
-        computedAmount: stint.computedAmount,
-        finalAmount: stint.computedAmount,
+        computedAmount: stint.pricing.computedAmount,
+        finalAmount: stint.pricing.computedAmount,
       });
 }

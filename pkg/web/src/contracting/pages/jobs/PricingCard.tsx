@@ -1,9 +1,10 @@
 import { formatCurrency, formatDate } from '@pkg/domain';
 import { pricingGateReasons } from '@pkg/domain/contracting';
 import type { JobDetail } from '@pkg/schema/contracting';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { useLocation } from '@tanstack/react-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { toast } from 'sonner';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { DataTable } from '@/components/data-table/DataTable.js';
 import { useDataTable } from '@/components/data-table/features.js';
@@ -20,8 +21,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog.js';
+import { getApiErrorAppCode } from '@/lib/api-errors.js';
 import { useTRPC } from '@/lib/trpc.js';
-import { AddChargeLineDialog, useChargeLineMutations } from './ChargeLineEditing.js';
+import { AddChargeLineButton } from './ChargeLineEditing.js';
 import { ChargeLinesTable } from './ChargeLinesTable.js';
 import {
   adjustmentPricingColumns,
@@ -30,8 +32,9 @@ import {
   machinePricingRowId,
 } from './PricingCells.js';
 import { adjustmentRows, machinePricingRows } from './pricing.js';
-import { PricingContext, type PricingMutations, usePricingMutations } from './pricing-context.js';
+import { PricingContext, usePricingMutations } from './pricing-context.js';
 import type { JobSheet } from './types.js';
+import { useJobWrite, useResetOnOpen } from './use-job-write.js';
 
 export function PricingCard({ job, sheet }: { job: JobDetail; sheet: JobSheet }) {
   const trpc = useTRPC();
@@ -42,8 +45,6 @@ export function PricingCard({ job, sheet }: { job: JobDetail; sheet: JobSheet })
   const priceAction = sheet.action('price');
   const rates = useQuery(trpc.contractingRateCard.rates.options.queryOptions(undefined, { enabled: editable }));
   const mutations = usePricingMutations();
-  const chargeLineMutations = useChargeLineMutations();
-  const [addingChargeLine, setAddingChargeLine] = useState(false);
   const hash = useLocation({ select: (location) => location.hash });
   const section = useRef<HTMLElement>(null);
   useEffect(() => {
@@ -61,10 +62,7 @@ export function PricingCard({ job, sheet }: { job: JobDetail; sheet: JobSheet })
     data: adjustments,
     getRowId: adjustmentRowId,
   });
-  const pricing = useMemo(
-    () => ({ job, editable, rates: rates.data ?? [], mutations }),
-    [job, editable, rates.data, mutations],
-  );
+  const pricing = { job, editable, rates: rates.data ?? [], mutations };
   if (!sheet.seesMoney) return null;
   return (
     <section id="pricing" ref={section} aria-label="Pricing" className="scroll-mt-4">
@@ -89,12 +87,6 @@ export function PricingCard({ job, sheet }: { job: JobDetail; sheet: JobSheet })
               Priced {formatDate(job.pricedAt)} · {formatCurrency(job.pricedTotal)} ex VAT
             </p>
           ) : null}
-          <ErrorMessage
-            error={
-              chargeLineMutations.create.error ?? chargeLineMutations.patch.error ?? chargeLineMutations.remove.error
-            }
-            fallbackMessage="Unable to update Charge Lines."
-          />
           <PricingContext.Provider value={pricing}>
             <div className="space-y-6">
               <div className="space-y-2">
@@ -112,18 +104,13 @@ export function PricingCard({ job, sheet }: { job: JobDetail; sheet: JobSheet })
               <div className="space-y-2">
                 <div className="flex items-center justify-between gap-3">
                   <h3 className="text-sm font-semibold">Charge lines</h3>
-                  {addLineAction ? (
-                    <Button size="sm" {...addLineAction} onClick={() => setAddingChargeLine(true)}>
-                      Add charge line
-                    </Button>
-                  ) : null}
+                  {addLineAction ? <AddChargeLineButton jobId={job.id} size="sm" action={addLineAction} /> : null}
                 </div>
                 <ChargeLinesTable
                   lines={job.chargeLines}
                   editable={chargeEditable}
                   amountEditable={chargeAmountEditable}
                   missingAmount="needs-amount"
-                  mutations={chargeLineMutations}
                 />
               </div>
               {adjustments.length ? (
@@ -145,16 +132,10 @@ export function PricingCard({ job, sheet }: { job: JobDetail; sheet: JobSheet })
         </CardContent>
         {priceAction ? (
           <CardFooter className="justify-end gap-3">
-            <MarkPriced job={job} mutations={mutations} action={priceAction} />
+            <MarkPriced job={job} action={priceAction} />
           </CardFooter>
         ) : null}
       </Card>
-      <AddChargeLineDialog
-        jobId={job.id}
-        open={addingChargeLine}
-        onOpenChange={setAddingChargeLine}
-        create={chargeLineMutations.create}
-      />
     </section>
   );
 }
@@ -180,16 +161,23 @@ function PricingTotals({ job }: { job: JobDetail }) {
   );
 }
 
-function MarkPriced({
-  job,
-  mutations,
-  action,
-}: {
-  job: JobDetail;
-  mutations: PricingMutations;
-  action: { disabled: boolean; title: string | undefined };
-}) {
+function MarkPriced({ job, action }: { job: JobDetail; action: NonNullable<ReturnType<JobSheet['action']>> }) {
+  const trpc = useTRPC();
+  const write = useJobWrite();
   const [confirm, setConfirm] = useState(false);
+  const markPriced = useMutation(
+    trpc.contractingJobs.pricing.markPriced.mutationOptions({
+      onSuccess: async () => {
+        await write.invalidateJobs();
+        toast.success('Job priced');
+        setConfirm(false);
+      },
+      onError: async (error) => {
+        if (getApiErrorAppCode(error) === 'contracting_job.total_changed') await write.invalidateJobs();
+      },
+    }),
+  );
+  useResetOnOpen(markPriced, confirm);
   const pricing = job.pricing;
   if (!pricing) return null;
   const reasons = pricingGateReasons(pricing.gate);
@@ -209,16 +197,12 @@ function MarkPriced({
               and the Job moves to Awaiting invoice.
             </DialogDescription>
           </DialogHeader>
+          <ErrorMessage error={markPriced.error} fallbackMessage="Unable to mark the Job as Priced." />
           <DialogFooter>
             <DialogClose render={<Button variant="outline" />}>Cancel</DialogClose>
             <Button
-              disabled={mutations.markPriced.isPending}
-              onClick={() =>
-                mutations.markPriced.mutate(
-                  { id: job.id, expectedTotal: pricing.total },
-                  { onSettled: () => setConfirm(false) },
-                )
-              }
+              disabled={markPriced.isPending}
+              onClick={() => markPriced.mutate({ id: job.id, expectedTotal: pricing.total })}
             >
               Mark as Priced
             </Button>

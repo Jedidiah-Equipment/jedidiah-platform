@@ -1,12 +1,12 @@
 import { UUID } from '@pkg/schema';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { z } from 'zod';
+import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { CreateEntityDialog } from '@/components/form/index.js';
 import { emptyStringOr, requiredSelection } from '@/components/form/utils/form-schema.js';
 import { CategoryIcon } from '@/contracting/components/CategoryIcon.js';
-import { useQueryInvalidation } from '@/contracting/hooks/use-query-invalidation.js';
-import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useTRPC } from '@/lib/trpc.js';
+import { useJobWrite, useResetOnOpen } from './use-job-write.js';
 
 const PlanValues = z.object({
   machineId: requiredSelection(UUID, 'Choose a Machine'),
@@ -24,17 +24,12 @@ export function PlanMachineDialog({
   onOpenChange: (open: boolean) => void;
 }) {
   const trpc = useTRPC();
-  const showError = useApiMutationErrorToast();
-  const { invalidateJobs } = useQueryInvalidation();
+  const write = useJobWrite();
   const machines = useQuery(trpc.contractingReadings.fieldMachines.queryOptions(undefined, { enabled: open }));
   const implementOptions = useQuery(trpc.contractingJobs.field.implements.queryOptions(undefined, { enabled: open }));
   const drivers = useQuery(trpc.contractingJobs.field.drivers.queryOptions(undefined, { enabled: open }));
-  const plan = useMutation(
-    trpc.contractingJobs.assignments.add.mutationOptions({
-      onSuccess: invalidateJobs,
-      onError: (error) => showError(error, 'Unable to plan Machine.'),
-    }),
-  );
+  const plan = useMutation(trpc.contractingJobs.assignments.add.mutationOptions(write.dialog));
+  useResetOnOpen(plan, open);
   return (
     <CreateEntityDialog
       open={open}
@@ -93,6 +88,7 @@ export function PlanMachineDialog({
               />
             )}
           </form.AppField>
+          <ErrorMessage error={plan.error} fallbackMessage="Unable to plan Machine." />
         </>
       )}
     </CreateEntityDialog>

@@ -7,6 +7,7 @@ import { afterEach, expect, it, vi } from 'vitest';
 import { GapResolveDialog } from './GapResolveDialog.js';
 
 const resolve = vi.hoisted(() => vi.fn(async () => undefined));
+const mutationError = vi.hoisted(() => ({ current: null as Error | null }));
 vi.mock('@/hooks/use-api-mutation-error-toast.js', () => ({ useApiMutationErrorToast: () => () => undefined }));
 vi.mock('@/contracting/hooks/use-query-invalidation.js', () => ({
   useQueryInvalidation: () => ({ invalidateJobs: async () => undefined }),
@@ -18,7 +19,7 @@ vi.mock('@/lib/trpc.js', () => ({
 }));
 vi.mock('@tanstack/react-query', async (original) => ({
   ...(await original<typeof import('@tanstack/react-query')>()),
-  useMutation: () => ({ mutateAsync: resolve }),
+  useMutation: () => ({ mutateAsync: resolve, reset: () => undefined, error: mutationError.current }),
 }));
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -37,6 +38,7 @@ afterEach(async () => {
   });
   document.body.replaceChildren();
   resolve.mockClear();
+  mutationError.current = null;
 });
 
 async function mount() {
@@ -113,4 +115,12 @@ it('requires a reason', async () => {
   await act(async () => save.click());
   expect(resolve).not.toHaveBeenCalled();
   expect(field('reason').getAttribute('aria-invalid')).toBe('true');
+});
+
+it('shows a refusal inside the dialog', async () => {
+  mutationError.current = new Error('Travel Hours and the Unaccounted Interval must total 9.5 h.');
+  await mount();
+  expect(document.querySelector('[role="dialog"]')?.textContent).toContain(
+    'Travel Hours and the Unaccounted Interval must total 9.5 h.',
+  );
 });

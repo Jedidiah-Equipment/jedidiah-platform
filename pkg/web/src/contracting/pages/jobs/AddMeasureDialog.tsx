@@ -11,25 +11,27 @@ import { requiredSelection } from '@/components/form/utils/form-schema.js';
 import { Button } from '@/components/ui/button.js';
 import { Dialog, DialogClose, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog.js';
 import { MachineDialogTitle } from '@/contracting/components/MachineDialogTitle.js';
-import { useQueryInvalidation } from '@/contracting/hooks/use-query-invalidation.js';
 import { useTRPC } from '@/lib/trpc.js';
+import { useJobWrite, useResetOnOpen } from './use-job-write.js';
 
 const MeasureValues = z.object({ measureTypeId: requiredSelection(UUID, 'Choose a Measure Type'), quantity: Quantity });
 
 export function AddMeasureDialog({ stint }: { stint: Assignment }) {
   const trpc = useTRPC();
-  const { invalidateJobs } = useQueryInvalidation();
+  const write = useJobWrite();
   const [open, setOpen] = useState(false);
   const types = useQuery(trpc.contractingJobs.options.measureTypes.queryOptions(undefined, { enabled: open }));
   const set = useMutation(
     trpc.contractingJobs.measures.set.mutationOptions({
       onSuccess: async () => {
-        await invalidateJobs();
+        await write.invalidateJobs();
         setOpen(false);
       },
     }),
   );
-  const remove = useMutation(trpc.contractingJobs.measures.remove.mutationOptions({ onSuccess: invalidateJobs }));
+  const remove = useMutation(trpc.contractingJobs.measures.remove.mutationOptions(write.dialog));
+  useResetOnOpen(set, open);
+  useResetOnOpen(remove, open);
   const triggerLabel = stint.measures.length ? 'Edit measures' : 'Add measure';
   const form = useAppForm({
     defaultValues: { measureTypeId: '', quantity: 1 },
@@ -49,8 +51,6 @@ export function AddMeasureDialog({ stint }: { stint: Assignment }) {
         aria-label={triggerLabel}
         onClick={() => {
           form.reset();
-          set.reset();
-          remove.reset();
           setOpen(true);
         }}
         size="icon-sm"

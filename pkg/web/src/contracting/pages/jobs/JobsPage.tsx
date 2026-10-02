@@ -30,6 +30,7 @@ import { cn } from '@/lib/utils.js';
 import { JobStatusBadge } from './JobStatusBadge.js';
 import { JobCreateValues, toJobCreateInput } from './types.js';
 import { JobQueueLoadMore, useJobQueuePages } from './use-job-queue-pages.js';
+import { useJobWrite } from './use-job-write.js';
 
 function machineSummary(job: JobSummary) {
   const parts = [
@@ -42,11 +43,11 @@ function machineSummary(job: JobSummary) {
 
 function useNewJobFlow() {
   const trpc = useTRPC();
-  const { invalidateJobs } = useQueryInvalidation();
+  const write = useJobWrite();
   return useCreateEntityFlow({
     mutation: trpc.contractingJobs.jobs.create.mutationOptions(),
     errorMessage: 'Unable to create Job.',
-    invalidate: invalidateJobs,
+    invalidate: write.invalidateJobs,
     navigateTo: (job) => ({ to: '/contracting/jobs/$code', params: { code: job.jobNumber } }),
   });
 }
@@ -54,8 +55,7 @@ function useNewJobFlow() {
 export function JobsPage({ queue }: { queue: JobQueue }) {
   const trpc = useTRPC();
   const navigate = useNavigate();
-  const { invalidateJobs } = useQueryInvalidation();
-  const showError = useApiMutationErrorToast();
+  const write = useJobWrite();
   const canCreate = useCan('contracting_job:create').can;
   const canAssign = useCan('contracting_job:assign').can;
   const canPrice = useCan('contracting_job:price').can;
@@ -68,12 +68,7 @@ export function JobsPage({ queue }: { queue: JobQueue }) {
   const activeAttention = useQuery(trpc.contractingJobs.jobs.activeAttention.queryOptions());
   const jobs = useJobQueuePages({ queue }, counts.data?.[queue]);
   const foremen = useQuery(trpc.contractingJobs.options.foremen.queryOptions(undefined, { enabled: canAssign }));
-  const assign = useMutation(
-    trpc.contractingJobs.jobs.patch.mutationOptions({
-      onSuccess: invalidateJobs,
-      onError: (error) => showError(error, 'Unable to assign Foreman.'),
-    }),
-  );
+  const assign = useMutation(trpc.contractingJobs.jobs.patch.mutationOptions(write.card('Unable to assign Foreman.')));
   const flow = useNewJobFlow();
   const columns = useMemo<DataTableColumnDef<JobSummary>[]>(
     () => [

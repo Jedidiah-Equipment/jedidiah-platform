@@ -6,13 +6,7 @@ import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, expect, it, vi } from 'vitest';
 import { z } from 'zod';
 import { CreateEntityDialog } from '@/components/form/CreateEntityDialog.js';
-import { AssignmentEditorDialog } from './AssignmentEditDialog.js';
-
-vi.mock('./machines-context.js', () => ({
-  useMachines: () => {
-    throw new Error('Arrival drafts do not use assignment mutations.');
-  },
-}));
+import { AssignmentEditorDialog } from './AssignmentEditorDialog.js';
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 const roots: Root[] = [];

@@ -11,7 +11,6 @@ export type JobErrorCode =
   | 'contracting_job.not_owner'
   | 'contracting_job.forbidden'
   | 'contracting_job.wrong_status'
-  | 'contracting_job.machine_on_site'
   | 'contracting_job.implement_on_site'
   | 'contracting_job.stint_not_planned'
   | 'contracting_job.stint_not_on_site'
@@ -54,8 +53,6 @@ export const withJobConstraints = <T>(action: () => Promise<T>) =>
   translatingConstraintViolations(
     {
       unique: (constraint) => {
-        if (constraint === 'machine_assignment_machine_on_site_unique')
-          return new JobError('contracting_job.machine_on_site', 'This Machine is already on site on another Job.');
         if (constraint === 'machine_assignment_implement_on_site_unique')
           return new JobError('contracting_job.implement_on_site', 'This Implement is already on site on another Job.');
         return new JobError('contracting_job.duplicate', 'That record already exists.');

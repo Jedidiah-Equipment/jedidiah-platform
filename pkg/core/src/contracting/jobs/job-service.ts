@@ -1,6 +1,12 @@
 import type { DatabaseTransaction, Db } from '@pkg/db';
 import { contractingJobs, contractingMachineAssignments } from '@pkg/db/contracting';
-import { canComplete, computeDieselAmount, type JobActor, transitionJob } from '@pkg/domain/contracting';
+import {
+  canComplete,
+  completionGateReasons,
+  computeDieselAmount,
+  type JobActor,
+  jobTransitions,
+} from '@pkg/domain/contracting';
 import type { JobCancelInput, JobCompleteInput, JobCreateInput, JobPatchInput } from '@pkg/schema/contracting';
 import { eq } from 'drizzle-orm';
 import { recordAuditCreate, recordAuditDelete } from '../../audit/audit-writer.js';
@@ -108,7 +114,7 @@ export async function cancelJob({ db, actor, input }: { db: Db; actor: JobActor;
       const [cancelled] = await tx
         .update(contractingJobs)
         .set({
-          ...transitionJob(before, { type: 'cancel', at: now, byUserId: actor.userId, reason: input.reason }),
+          ...jobTransitions.cancel(before, { at: now, byUserId: actor.userId, reason: input.reason }),
           updatedAt: now,
         })
         .where(eq(contractingJobs.id, input.id))
@@ -128,9 +134,11 @@ export async function completeJob({ db, actor, input }: { db: Db; actor: JobActo
         const locked = await lockAssignments(tx, before.id);
         const detail = await getJob({ db: tx, id: before.id });
         const gate = canComplete(detail.assignments);
-        if (!gate.ok && gate.onSite) throw onSiteRefusal(gate.onSite, 'Capture their departure readings first.');
-        if (!gate.ok && gate.openGapFlags)
-          throw new JobError('contracting_job.open_gap_flags', 'Resolve every Gap Flag before completing.');
+        if (!gate.ok)
+          throw new JobError(
+            gate.onSite ? 'contracting_job.has_on_site_stints' : 'contracting_job.open_gap_flags',
+            completionGateReasons(gate).join(' '),
+          );
         // The pricer confirmed exactly these planned stints; anything else means the plan moved underneath them.
         const planned = locked.filter((stint) => stint.arrivalReadingId === null);
         const requested = new Set(input.removePlannedAssignmentIds);
@@ -147,8 +155,7 @@ export async function completeJob({ db, actor, input }: { db: Db; actor: JobActo
           await deletePlannedAssignment(tx, actor.userId, stint, assignmentIn(detail, stint.id).machineCode);
       },
       set: (before) => ({
-        ...transitionJob(before, {
-          type: 'complete',
+        ...jobTransitions.complete(before, {
           at: new Date(),
           byUserId: actor.userId,
           startDate: input.startDate,

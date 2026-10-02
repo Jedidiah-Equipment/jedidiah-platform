@@ -94,7 +94,7 @@ describe('Contracting Job Actions', () => {
         'grep',
         '--untracked',
         '-nwE',
-        '(open|worked|unpriced|signedOff|closed|finished)JobStatuses',
+        '(open|worked|unpriced|signedOff|unclosed|closed|finished)JobStatuses',
         '--',
         'pkg/web/src/**',
         'pkg/mobile/src/**',

@@ -1,5 +1,5 @@
 import type { DiscountKind, RateBasis } from '@pkg/schema/contracting';
-import { formatNumber } from '../formatting/number.js';
+import { countPhrase } from './count-phrase.js';
 
 export const round2 = (value: number) => Math.round(value * 100) / 100;
 
@@ -93,14 +93,18 @@ export function canMarkPriced(job: {
   };
 }
 
-const plural = (count: number, one: string, many: string) => `${formatNumber(count)} ${count === 1 ? one : many}`;
+/** What one unit of a Rate is: an hour, or the Rate's Measure Type. */
+export const rateUnitLabel = (basis: RateBasis, measureTypeName: string | null): string =>
+  basis === 'time' ? 'h' : (measureTypeName ?? 'unit');
 
 /** Why a Job cannot be marked as Priced yet, one phrase per unmet condition. */
 export function pricingGateReasons(gate: PricingGate): string[] {
   return [
-    ...(gate.unpricedStints ? [`${plural(gate.unpricedStints, 'Assignment has', 'Assignments have')} no Rate`] : []),
+    ...(gate.unpricedStints
+      ? [`${countPhrase(gate.unpricedStints, 'Assignment has', 'Assignments have')} no Rate`]
+      : []),
     ...(gate.chargeLinesWithoutAmount
-      ? [`${plural(gate.chargeLinesWithoutAmount, 'charge line has', 'charge lines have')} no amount`]
+      ? [`${countPhrase(gate.chargeLinesWithoutAmount, 'charge line has', 'charge lines have')} no amount`]
       : []),
     ...(gate.dieselUnpriced ? ['Diesel is not priced'] : []),
   ];

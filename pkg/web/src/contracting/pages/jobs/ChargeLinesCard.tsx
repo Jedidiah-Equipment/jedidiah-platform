@@ -13,10 +13,12 @@ import { MoneyInput } from './MoneyInput.js';
 export function ChargeLinesCard({
   job,
   editable,
+  addAction,
   amountEditable,
 }: {
   job: JobDetail;
   editable: boolean;
+  addAction: { disabled: boolean; title: string | undefined } | null;
   amountEditable: boolean;
 }) {
   const [adding, setAdding] = useState(false);
@@ -74,9 +76,11 @@ export function ChargeLinesCard({
       <Card id="charge-lines" className="scroll-mt-4">
         <CardHeader>
           <CardTitle>Charge lines</CardTitle>
-          {editable ? (
+          {addAction ? (
             <CardAction>
-              <Button onClick={() => setAdding(true)}>Add charge line</Button>
+              <Button {...addAction} onClick={() => setAdding(true)}>
+                Add charge line
+              </Button>
             </CardAction>
           ) : null}
         </CardHeader>

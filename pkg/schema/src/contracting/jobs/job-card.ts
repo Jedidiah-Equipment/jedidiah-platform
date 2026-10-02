@@ -2,7 +2,6 @@ import { z } from 'zod';
 import { DateIso, DateOnlyIso } from '../../common/date.js';
 import { ReadingValue } from '../readings/reading.js';
 import { Hours, JobNumber, Litres, Money, Quantity } from './job.js';
-import { finishedJobStatuses } from './job-enums.js';
 
 export const JobCardVariant = z.enum(['internal', 'customer']);
 export type JobCardVariant = z.infer<typeof JobCardVariant>;
@@ -45,9 +44,7 @@ const JobCardStintLine = z.object({
   ]),
   measures: z.array(z.object({ name: z.string(), quantity: Quantity })),
   /** Null when the stint is No charge, or while any line on the Job is un-priced. */
-  rate: z
-    .object({ name: z.string(), basis: z.enum(['time', 'measure']), unitAmount: Money, per: z.string() })
-    .nullable(),
+  rate: z.object({ name: z.string(), unitAmount: Money, per: z.string() }).nullable(),
   noCharge: z.boolean(),
   amount: Money.nullable(),
 });
@@ -67,7 +64,6 @@ export type JobCardSubtotal = z.infer<typeof JobCardSubtotal>;
 export const JobCardModel = z.object({
   variant: JobCardVariant,
   jobNumber: JobNumber,
-  status: z.enum(finishedJobStatuses),
   customerName: z.string(),
   farmName: z.string(),
   workTypeName: z.string(),
@@ -77,14 +73,13 @@ export const JobCardModel = z.object({
   endDate: DateOnlyIso.nullable(),
   invoiceNumber: z.string().nullable(),
   invoicedAt: DateIso.nullable(),
-  pricedAt: DateIso.nullable(),
   lines: z.array(z.discriminatedUnion('kind', [JobCardStintLine, JobCardSubtotal])),
   chargeLines: z.array(z.object({ description: z.string(), amount: Money.nullable() })),
   /** Always printed, VAT-exempt; the amount is null while un-priced. */
   diesel: z.object({ litres: Litres, unitPrice: Money.nullable(), amount: Money.nullable() }),
   discount: z.object({ label: z.string(), amount: Money }).nullable(),
   /** Null while any line is un-priced; every amount on the card is then null too. */
-  totals: z.object({ subtotal: Money, discount: Money, diesel: Money, total: Money }).nullable(),
+  totals: z.object({ subtotal: Money, diesel: Money, total: Money }).nullable(),
   /** Internal copy only: site notes. */
   notes: z.string().nullable(),
   /** Internal copy only: why a reopened Job was re-priced. */

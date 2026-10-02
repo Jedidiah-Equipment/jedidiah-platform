@@ -1,22 +1,16 @@
 import type { Db } from '@pkg/db';
-import { auditEvents, user } from '@pkg/db';
+import { auditEvents } from '@pkg/db';
 import { accessForRole } from '@pkg/domain/testing';
-import { DateOnlyIso } from '@pkg/schema';
 import { and, eq } from 'drizzle-orm';
 import { describe, expect } from 'vitest';
-import { createTester, type TesterScope } from '../../test/create-tester.js';
-import { createCustomer } from '../customers/customer-service.js';
-import { createFarm } from '../customers/farm-service.js';
-import { createCategory } from '../fleet/category-service.js';
-import { createMachine } from '../fleet/machine-service.js';
-import { createMeasureType } from '../rate-card/measure-type-service.js';
+import { createTester } from '../../test/create-tester.js';
 import { createRate, patchRate } from '../rate-card/rate-service.js';
-import { amendReading, captureReading } from '../readings/reading-service.js';
-import { createWorkType } from '../work-types/work-type-service.js';
-import { createAssignment, resolveGap } from './assignment-service.js';
+import { amendReading } from '../readings/reading-service.js';
+import { admin, adminId, completedJob, seedJobFixtures } from '../test/job-fixtures.js';
+import { resolveGap } from './assignment-service.js';
 import { createChargeLine, patchChargeLine } from './charge-line-service.js';
 import { getJob, listJobs } from './job-read.js';
-import { completeJob, createJob, patchJob } from './job-service.js';
+import { patchJob } from './job-service.js';
 import { setMeasure } from './measure-service.js';
 import {
   clearStintRate,
@@ -27,137 +21,21 @@ import {
   setStintRate,
 } from './pricing-service.js';
 
-const adminId = 'pricing-admin';
-const foremanId = 'pricing-foreman';
-const admin = accessForRole('contracting-admin', adminId);
-const foreman = accessForRole('foreman', foremanId);
-
-async function seed({ db }: TesterScope) {
-  const now = new Date();
-  await db.insert(user).values([
-    {
-      id: adminId,
-      name: 'Jed',
-      email: 'jed-pricing@example.com',
-      emailVerified: true,
-      contractingRole: 'contracting-admin',
-      createdAt: now,
-      updatedAt: now,
-    },
-    {
-      id: foremanId,
-      name: 'Sipho',
-      email: 'sipho-pricing@example.com',
-      emailVerified: true,
-      contractingRole: 'foreman',
-      createdAt: now,
-      updatedAt: now,
-    },
-  ]);
-  const customer = await createCustomer({ db, actorUserId: adminId, input: { name: 'Rowley' } });
-  const farm = await createFarm({ db, actorUserId: adminId, input: { customerId: customer.id, name: 'Rooikraal' } });
-  const workType = await createWorkType({ db, actorUserId: adminId, input: { name: 'Dam building' } });
-  const category = await createCategory({ db, actorUserId: adminId, input: { name: 'Excavators', kind: 'machine' } });
-  const machine = (code: string) =>
-    createMachine({
-      db,
-      actorUserId: adminId,
-      input: {
-        code,
-        make: 'CAT',
-        model: '320',
-        categoryId: category.id,
-        year: null,
-        registration: null,
-        currentDriverUserId: null,
-        notes: null,
-        serviceIntervalHours: null,
-        nextServiceDueHours: null,
-      },
-    });
-  const excavator = await machine('CAT320-1');
-  const tipper = await machine('TIP-7');
-  const loads = await createMeasureType({ db, actorUserId: adminId, input: { name: 'Loads' } });
+const test = createTester(async ({ db }) => {
+  const fixtures = await seedJobFixtures(db);
   const rate = (name: string, amount: number, measureTypeId: string | null = null) =>
     createRate({
       db,
       actorUserId: adminId,
       input: { name, basis: measureTypeId ? 'measure' : 'time', measureTypeId, amount },
     });
-  const dryHire = await rate('Dry hire', 600);
-  const wetHire = await rate('Wet hire', 550);
-  const perLoad = await rate('Per load', 850, loads.id);
-  return { customer, excavator, farm, loads, perLoad, tipper, workType, dryHire, wetHire };
-}
-
-const test = createTester(seed);
-type Context = TesterScope & Awaited<ReturnType<typeof seed>>;
-
-let clock = Date.parse('2026-09-01T06:00:00+02:00');
-const nextCapture = () => {
-  clock += 60 * 60 * 1000;
-  return new Date(clock).toISOString();
-};
-
-async function stint(db: Db, jobId: string, machineId: string, arrival: number, departure: number) {
-  const planned = await createAssignment({
+  return {
+    ...fixtures,
     db,
-    actor: admin,
-    input: { jobId, machineId, implementId: null },
-  });
-  if (!planned) throw new Error('Expected a planned stint');
-  const capture = (role: 'arrival' | 'departure', value: number) =>
-    captureReading({
-      db,
-      actor: foreman,
-      input: {
-        machineId,
-        assignmentId: planned.id,
-        role,
-        value,
-        capturedAt: nextCapture(),
-        disputePrevious: false,
-        ...(role === 'departure' ? { comment: 'Photo unavailable' } : {}),
-      },
-    });
-  const arrived = await capture('arrival', arrival);
-  const departed = await capture('departure', departure);
-  return { id: planned.id, arrivalReadingId: arrived.id, departureReadingId: departed.id };
-}
-
-async function completedJob(
-  context: Context,
-  stints: ReadonlyArray<{ machineId: string; arrival: number; departure: number }>,
-  dieselLitres = 0,
-) {
-  const job = await createJob({
-    db: context.db,
-    actor: admin,
-    input: {
-      customerId: context.customer.id,
-      farmId: context.farm.id,
-      workTypeId: context.workType.id,
-      description: null,
-      foremanUserId: foremanId,
-    },
-  });
-  const created = [];
-  for (const item of stints)
-    created.push(await stint(context.db, job.id, item.machineId, item.arrival, item.departure));
-  await completeJob({
-    db: context.db,
-    actor: admin,
-    input: {
-      id: job.id,
-      startDate: DateOnlyIso.parse('2026-09-01'),
-      endDate: DateOnlyIso.parse('2026-09-10'),
-      dieselLitres,
-      notes: null,
-      removePlannedAssignmentIds: [],
-    },
-  });
-  return { jobId: job.id, stints: created };
-}
+    wetHire: await rate('Wet hire', 550),
+    perLoad: await rate('Per load', 850, fixtures.loads.id),
+  };
+});
 
 const stintOf = async (db: Db, jobId: string, id: string) => {
   const found = (await getJob({ db, id: jobId })).assignments.find((assignment) => assignment.id === id);

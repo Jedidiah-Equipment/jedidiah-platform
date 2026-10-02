@@ -136,36 +136,15 @@ export const contractingJobsRouter = router({
       ),
   }),
   assignments: router({
-    plan: authorizedProcedure('contracting_job:assign')
+    add: authorizedProcedure(['contracting_job:assign', 'contracting_assignment:update-own'])
       .input(AssignmentPlanInput)
       .mutation(({ ctx, input }) =>
         mapCoreErrors(() => createAssignment({ db: ctx.db, actor: ctx.access, input }), jobErrorFamily),
       ),
-    add: authorizedProcedure(['contracting_job:assign', 'contracting_assignment:update-own'])
-      .input(AssignmentPlanInput)
-      .mutation(({ ctx, input }) =>
-        mapCoreErrors(
-          () =>
-            createAssignment({
-              db: ctx.db,
-              actor: ctx.access,
-              input,
-            }),
-          jobErrorFamily,
-        ),
-      ),
     patch: authorizedProcedure(['contracting_job:assign', 'contracting_assignment:update-own'])
       .input(AssignmentPatchInput)
       .mutation(({ ctx, input }) =>
-        mapCoreErrors(
-          () =>
-            patchAssignment({
-              db: ctx.db,
-              actor: ctx.access,
-              input,
-            }),
-          jobErrorFamily,
-        ),
+        mapCoreErrors(() => patchAssignment({ db: ctx.db, actor: ctx.access, input }), jobErrorFamily),
       ),
     remove: authorizedProcedure(['contracting_job:assign', 'contracting_assignment:update-own'])
       .input(AssignmentIdInput)
@@ -199,15 +178,7 @@ export const contractingJobsRouter = router({
     patch: authorizedProcedure('contracting_job:update')
       .input(ChargeLinePatchInput)
       .mutation(({ ctx, input }) =>
-        mapCoreErrors(
-          () =>
-            patchChargeLine({
-              db: ctx.db,
-              actor: ctx.access,
-              input,
-            }),
-          jobErrorFamily,
-        ),
+        mapCoreErrors(() => patchChargeLine({ db: ctx.db, actor: ctx.access, input }), jobErrorFamily),
       ),
     remove: authorizedProcedure('contracting_job:update')
       .input(ChargeLineIdInput)

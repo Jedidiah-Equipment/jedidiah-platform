@@ -1,6 +1,14 @@
+import { jobQueues } from '@pkg/schema/contracting';
 import { describe, expect, test } from 'vitest';
 import { createUserAccessSummary } from '../auth/authorization.js';
-import { fieldJobAccessMode, formatJobNumber, jobReadMode, parseJobNumber } from './jobs.js';
+import {
+  fieldJobAccessMode,
+  formatJobNumber,
+  jobQueueLabels,
+  jobQueueStatus,
+  jobReadMode,
+  parseJobNumber,
+} from './jobs.js';
 
 describe('fieldJobAccessMode', () => {
   test('gives management all Jobs, Foremen their own, and keeps workshop readers out of the field queue', () => {
@@ -29,4 +37,12 @@ describe('jobReadMode', () => {
 test('parseJobNumber reverses formatJobNumber', () => {
   expect(parseJobNumber(formatJobNumber(37))).toBe(37);
   expect(parseJobNumber(formatJobNumber(123456))).toBe(123456);
+});
+
+describe('job queues', () => {
+  test('every queue names the status its Jobs hold', () => {
+    expect(jobQueueStatus['looks-finished']).toBe('active');
+    expect(Object.keys(jobQueueStatus).sort()).toEqual([...jobQueues].sort());
+    expect(Object.keys(jobQueueLabels).sort()).toEqual([...jobQueues].sort());
+  });
 });

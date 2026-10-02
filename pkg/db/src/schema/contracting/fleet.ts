@@ -1,13 +1,10 @@
 import { categoryColours, categoryIconKeys, categoryKinds } from '@pkg/schema/contracting';
 import { relations, sql } from 'drizzle-orm';
-import { check, index, integer, numeric, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
+import { check, index, integer, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
 import { user } from '../auth.js';
+import { decimal2, timestamps } from './columns.js';
 import { contractingSchema } from './pg-schema.js';
 
-const timestamps = () => ({
-  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
-  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
-});
 const retirement = () => ({
   retiredAt: timestamp('retired_at', { withTimezone: true }),
   retiredReason: text('retired_reason'),
@@ -52,8 +49,8 @@ export const contractingMachines = contractingSchema.table(
     // Cross-row role eligibility is enforced in migration 0134 in both write directions.
     currentDriverUserId: text('current_driver_user_id').references(() => user.id, { onDelete: 'restrict' }),
     notes: text('notes'),
-    serviceIntervalHours: numeric('service_interval_hours', { precision: 12, scale: 2, mode: 'number' }),
-    nextServiceDueHours: numeric('next_service_due_hours', { precision: 12, scale: 2, mode: 'number' }),
+    serviceIntervalHours: decimal2('service_interval_hours'),
+    nextServiceDueHours: decimal2('next_service_due_hours'),
     ...retirement(),
     ...timestamps(),
   },

@@ -115,6 +115,7 @@ export async function leftStint(db: Db, jobId: string, machineId: string, arriva
 export async function completedJob(
   fixtures: JobFixtures,
   stints: ReadonlyArray<{ machineId: string; arrival: number; departure: number }>,
+  dieselLitres = 0,
 ) {
   const { db } = fixtures;
   const job = await createJob({
@@ -137,7 +138,7 @@ export async function completedJob(
       id: job.id,
       startDate: DateOnlyIso.parse('2026-09-01'),
       endDate: DateOnlyIso.parse('2026-09-10'),
-      dieselLitres: 0,
+      dieselLitres,
       notes: null,
       removePlannedAssignmentIds: [],
     },

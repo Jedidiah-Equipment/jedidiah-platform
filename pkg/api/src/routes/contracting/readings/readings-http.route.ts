@@ -2,7 +2,7 @@ import { FilePolicyViolationError, type StorageAdapter } from '@pkg/core';
 import { captureReading, getReading, type ReadMeterPhoto, readingBelongsToForemanJob } from '@pkg/core/contracting';
 import type { Db } from '@pkg/db';
 import { fileTooLargeMessage, hasPermission } from '@pkg/domain';
-import { canCaptureBaseline, READING_PHOTO_POLICY } from '@pkg/domain/contracting';
+import { canCaptureBaseline, READING_CAPTURE_PATH, READING_PHOTO_POLICY } from '@pkg/domain/contracting';
 import {
   ReadingCaptureMultipart,
   ReadingComment,
@@ -27,7 +27,7 @@ export async function registerReadingHttpRoutes(
   const fieldCount = readingCaptureFieldNames.length;
   // Multipart caps bytes; the comment cap counts UTF-16 units, so allow the widest UTF-8 encoding.
   const fieldSize = 4 * (ReadingComment.maxLength ?? 1024);
-  app.post('/api/contracting/readings', async (request, reply) => {
+  app.post(READING_CAPTURE_PATH, async (request, reply) => {
     const auth = await requireRouteAuth(request, reply);
     if (!auth) return;
     try {
@@ -71,7 +71,7 @@ export async function registerReadingHttpRoutes(
       return sendReadingError(reply, error);
     }
   });
-  app.get('/api/contracting/readings/:id/photo', async (request, reply) => {
+  app.get(`${READING_CAPTURE_PATH}/:id/photo`, async (request, reply) => {
     const auth = await requireRouteAuth(request, reply);
     if (!auth) return;
     try {

@@ -1,6 +1,7 @@
 import type { ReadingRole } from '@pkg/schema/contracting';
 import type { PhotoSource } from '@/contracting/lib/photo-picker';
 import { addBreadcrumb, captureEvent } from '@/lib/observability';
+import { type MutationEventCatalog, pickRecordIds } from '@/lib/observability-contract';
 
 /** Once per capture the server saves or refuses: `refused` is the refusal's app code, null when saved. */
 export function recordReadingCaptured(properties: {
@@ -14,9 +15,13 @@ export function recordReadingCaptured(properties: {
   captureEvent('reading captured', properties);
 }
 
-export function recordMachineAdded(jobId: string, machineId: string): void {
-  captureEvent('machine added to job', { jobId, machineId });
-}
+/** Contracting's tRPC mutations that are events; the shared mutation cache emits each once on success. */
+export const CONTRACTING_MUTATION_EVENTS = {
+  'contractingJobs.assignments.add': {
+    event: 'machine added to job',
+    properties: (variables) => pickRecordIds(variables, ['jobId', 'machineId']),
+  },
+} satisfies MutationEventCatalog;
 
 /** Field Note events carry counts and flags only: a note's words and photos never leave the phone. */
 export function recordFieldNoteCreated(properties: { hasPhoto: boolean; photoCount: number; hasDescription: boolean }) {

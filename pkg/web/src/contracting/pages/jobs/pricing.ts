@@ -1,5 +1,5 @@
 import { formatCurrency, formatHours, formatNumber } from '@pkg/domain';
-import { groupStints, round2 } from '@pkg/domain/contracting';
+import { groupStints, rateUnitLabel, round2 } from '@pkg/domain/contracting';
 import type { Assignment, ChargeLine, DiscountKind, JobDetail, Rate } from '@pkg/schema/contracting';
 
 /** The select value for the built-in No charge choice; never a Rate id. */
@@ -58,7 +58,7 @@ export function formulaLabel(stint: Assignment, measureTypeName: (id: string) =>
 }
 
 const perUnit = (rate: Pick<Rate, 'basis' | 'measureTypeName'>) =>
-  rate.basis === 'time' ? '/ h' : `/ ${rate.measureTypeName ?? 'unit'}`;
+  `/ ${rateUnitLabel(rate.basis, rate.measureTypeName)}`;
 
 /** Active Rates in Rate Card order, the stint's own Rate kept if it has since gone inactive, then No charge. */
 export function rateSelectOptions(rates: readonly Rate[], stint: Assignment) {

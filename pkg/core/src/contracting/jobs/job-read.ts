@@ -24,6 +24,7 @@ import {
   isAiFlaggedVerification,
   type JobActor,
   type JobReadMode,
+  jobQueueStatus,
   jobReadMode,
   jobReadSeesMoney,
   jobReadStatuses,
@@ -41,7 +42,6 @@ import {
   type JobQueue,
   JobQueueCounts,
   JobReading,
-  type JobStatus,
   JobSummary,
   jobQueues,
 } from '@pkg/schema/contracting';
@@ -63,7 +63,7 @@ function readerFor(actor: JobActor): JobReader {
 }
 
 // Plain joins rather than the relational API: Drizzle 0.45 keys relation types on the unqualified table
-// name, so `contracting.job` and `equipment.job` collide and `@pkg/db` erases the contracting relation types.
+// name, so `contracting.job` and `equipment.job` would collide. The Job tables declare no relations.
 const foreman = alias(user, 'job_foreman');
 const invoicer = alias(user, 'job_invoicer');
 const driver = alias(user, 'job_driver');
@@ -371,17 +371,6 @@ function readableBy({ mode, actorUserId }: JobReader) {
   );
 }
 
-/** Each queue is one status; Looks finished narrows Active to Jobs whose machines have all left. */
-const queueStatus: Record<JobQueue, JobStatus> = {
-  upcoming: 'upcoming',
-  active: 'active',
-  'looks-finished': 'active',
-  'awaiting-pricing': 'completed',
-  'awaiting-invoice': 'priced',
-  invoiced: 'invoiced',
-  cancelled: 'cancelled',
-};
-
 export async function countJobQueues({ db, actor }: { db: Db; actor: JobActor }) {
   const reader = readerFor(actor);
   const rows = await db
@@ -395,7 +384,7 @@ export async function countJobQueues({ db, actor }: { db: Db; actor: JobActor })
     .groupBy(contractingJobs.status, jobSql.looksFinished);
   const count = (queue: JobQueue) =>
     rows
-      .filter((row) => row.status === queueStatus[queue] && (queue !== 'looks-finished' || row.looksFinished))
+      .filter((row) => row.status === jobQueueStatus[queue] && (queue !== 'looks-finished' || row.looksFinished))
       .reduce((total, row) => total + row.count, 0);
   return JobQueueCounts.parse(Object.fromEntries(jobQueues.map((queue) => [queue, count(queue)])));
 }
@@ -433,7 +422,7 @@ export async function listJobs({
   invoicedInMonth?: string | undefined;
 }) {
   const reader = readerFor(actor);
-  if (!hasJobStatus(jobReadStatuses[reader.mode], queueStatus[queue]))
+  if (!hasJobStatus(jobReadStatuses[reader.mode], jobQueueStatus[queue]))
     throw new JobError('contracting_job.forbidden', readRefusals[reader.mode]);
   const rows = await db
     .select({
@@ -474,7 +463,7 @@ export async function listJobs({
     .leftJoin(user, eq(user.id, contractingJobs.foremanUserId))
     .where(
       and(
-        eq(contractingJobs.status, queueStatus[queue]),
+        eq(contractingJobs.status, jobQueueStatus[queue]),
         queue === 'looks-finished' ? jobSql.looksFinished : undefined,
         readableBy(reader),
         queue === 'invoiced' && invoicedInMonth

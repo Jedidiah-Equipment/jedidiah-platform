@@ -1,5 +1,6 @@
 import type { AssignmentState } from '@pkg/schema/contracting';
 import { toPlantDateOnly } from '../formatting/date.js';
+import { countPhrase } from './count-phrase.js';
 
 export const GAP_FLAG_THRESHOLD_HOURS = 4;
 
@@ -28,19 +29,16 @@ function nonnegativeDifference(later: number, earlier: number) {
   return difference < 0 ? null : difference;
 }
 
-export function assignmentState({
-  arrivalReadingId,
-  departureReadingId,
-}: {
+const stateOf = (arrived: boolean, left: boolean): AssignmentState =>
+  !arrived ? 'planned' : left ? 'left' : 'on-site';
+
+export const assignmentState = (stint: {
   arrivalReadingId: string | null;
   departureReadingId: string | null;
-}): AssignmentState {
-  if (!arrivalReadingId) return 'planned';
-  return departureReadingId ? 'left' : 'on-site';
-}
+}): AssignmentState => stateOf(stint.arrivalReadingId !== null, stint.departureReadingId !== null);
 
 export function deriveStintHours(stint: StintReadings, threshold = GAP_FLAG_THRESHOLD_HOURS): StintHours {
-  const state: AssignmentState = !stint.arrival ? 'planned' : stint.departure ? 'left' : 'on-site';
+  const state = stateOf(stint.arrival !== null, stint.departure !== null);
   // A disputed reading may deliberately move the ledger backwards. Keep the Job readable while the
   // evidence is reviewed, but do not present a negative duration as meaningful operational hours.
   const workHours =
@@ -62,10 +60,9 @@ export function deriveStintHours(stint: StintReadings, threshold = GAP_FLAG_THRE
   };
 }
 
-export function suggestJobDates(stints: readonly StintReadings[]): {
-  startDate: string | null;
-  endDate: string | null;
-} {
+export function suggestJobDates(
+  stints: readonly { arrival: { capturedAt: string } | null; departure: { capturedAt: string } | null }[],
+): { startDate: string | null; endDate: string | null } {
   const arrivals = stints.flatMap((stint) => (stint.arrival ? [Date.parse(stint.arrival.capturedAt)] : []));
   const departures = stints.flatMap((stint) => (stint.departure ? [Date.parse(stint.departure.capturedAt)] : []));
   return {
@@ -74,10 +71,31 @@ export function suggestJobDates(stints: readonly StintReadings[]): {
   };
 }
 
-export function canComplete(
-  stints: readonly StintHours[],
-): { ok: true } | { ok: false; onSite: number; openGapFlags: number } {
+export type CompletionGate = { ok: true } | { ok: false; onSite: number; openGapFlags: number };
+
+export function canComplete(stints: readonly StintHours[]): CompletionGate {
   const onSite = stints.filter((stint) => stint.state === 'on-site').length;
   const openGapFlags = stints.filter((stint) => stint.gapFlag).length;
   return onSite || openGapFlags ? { ok: false, onSite, openGapFlags } : { ok: true };
+}
+
+/** Why a Job cannot be completed yet, one sentence per unmet condition. */
+export function completionGateReasons(gate: CompletionGate): string[] {
+  if (gate.ok) return [];
+  return [
+    ...(gate.onSite ? [`${countPhrase(gate.onSite, 'machine is', 'machines are')} still on site.`] : []),
+    ...(gate.openGapFlags ? [`${countPhrase(gate.openGapFlags, 'Gap Flag is', 'Gap Flags are')} open.`] : []),
+  ];
+}
+
+export type GapSplit = { travelHours: number; unaccountedHours: number };
+
+/** A resolved Hour Gap is wholly Travel Hours and Unaccounted Interval. */
+export const gapSplitTotals = (gapHours: number, split: GapSplit): boolean =>
+  round1(split.travelHours + split.unaccountedHours) === gapHours;
+
+/** The split that gives `travel` hours to Travel Hours, clamped to the gap, and the rest to the Unaccounted Interval. */
+export function splitGap(gapHours: number, travel: number): GapSplit {
+  const travelHours = round1(Math.max(0, Math.min(gapHours, travel)));
+  return { travelHours, unaccountedHours: round1(Math.max(0, gapHours - travelHours)) };
 }

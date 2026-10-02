@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest';
-import { FieldJob } from './field.js';
-import { JobListInput, JobNumber } from './job.js';
+import { FieldJob, FieldStint } from './field.js';
+import { Assignment, JobListInput, JobNumber } from './job.js';
 
 describe('Contracting Job inputs', () => {
   test('accepts padded Job Numbers after the five-digit range', () => {
@@ -44,5 +44,10 @@ describe('field Job projection', () => {
       foremanUserId: 'foreman-1',
       stints: [],
     });
+  });
+
+  test("names a stint with the fleet's own code rules", () => {
+    expect(FieldStint.shape.machineCode.parse(' cat-1 ')).toBe('CAT-1');
+    expect(Assignment.shape.machineCode.parse(' cat-1 ')).toBe('CAT-1');
   });
 });

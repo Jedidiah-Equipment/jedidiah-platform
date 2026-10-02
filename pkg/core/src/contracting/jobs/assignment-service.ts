@@ -1,7 +1,7 @@
 import type { DatabaseTransaction, Db } from '@pkg/db';
 import { contractingMachineAssignments, contractingMachines } from '@pkg/db/contracting';
 import { formatHours } from '@pkg/domain';
-import { type JobActor, round1 } from '@pkg/domain/contracting';
+import { gapSplitTotals, type JobActor } from '@pkg/domain/contracting';
 import type { AuthId } from '@pkg/schema';
 import type { AssignmentPatchInput, AssignmentPlanInput, GapResolveInput } from '@pkg/schema/contracting';
 import { eq } from 'drizzle-orm';
@@ -108,7 +108,7 @@ export async function resolveGap({ db, actor, input }: { db: Db; actor: JobActor
           const { gapHours } = assignmentIn(await getJob({ db: innerTx, id: job.id }), before.id);
           if (gapHours === null)
             throw new JobError('contracting_job.invalid_reference', 'This Machine Assignment has no Hour Gap.');
-          if (round1(input.travelHours + input.unaccountedHours) !== gapHours)
+          if (!gapSplitTotals(gapHours, input))
             throw new JobError(
               'contracting_job.invalid_reference',
               `Travel Hours and the Unaccounted Interval must total ${formatHours(gapHours)}.`,

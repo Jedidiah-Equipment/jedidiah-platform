@@ -81,6 +81,27 @@ export const jobStatusColorClassNames: Record<JobStatus, BadgeColorClassNames> =
   cancelled: cancelledBadgeColorClassNames,
 };
 
+/** The status every Job in a queue holds; Looks finished is the part of Active whose machines have all stopped. */
+export const jobQueueStatus: Record<JobQueue, JobStatus> = {
+  upcoming: 'upcoming',
+  active: 'active',
+  'looks-finished': 'active',
+  'awaiting-pricing': 'completed',
+  'awaiting-invoice': 'priced',
+  invoiced: 'invoiced',
+  cancelled: 'cancelled',
+};
+
+export const jobQueueLabels: Record<JobQueue, string> = {
+  upcoming: 'Upcoming',
+  active: 'Active',
+  'looks-finished': 'Looks finished',
+  'awaiting-pricing': 'Awaiting pricing',
+  'awaiting-invoice': 'Awaiting invoice',
+  invoiced: 'Invoiced',
+  cancelled: 'Cancelled',
+};
+
 /** Queue filters describe workflow stages, which may differ from the Job's persisted status. */
 export const jobQueueColorClassNames = {
   upcoming: statusBadgeColorClassNames.gray,

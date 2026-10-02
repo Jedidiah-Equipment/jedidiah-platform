@@ -1,6 +1,7 @@
-import { formatCurrency, formatDate } from '@pkg/domain';
+import { formatCurrency, formatDate, formatNumber } from '@pkg/domain';
+import { jobQueueLabels } from '@pkg/domain/contracting';
 import type { JobSummary } from '@pkg/schema/contracting';
-import { useQueries, useQuery } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import { useMemo, useState } from 'react';
 import { EnumSelect } from '@/components/common/EnumSelect.js';
@@ -13,7 +14,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs.js';
 import { jobCardUrl } from '@/contracting/lib/contracting-http-paths.js';
 import { useCan } from '@/hooks/use-access.js';
 import { useTRPC } from '@/lib/trpc.js';
-import { queueTabLabel } from '../jobs/types.js';
+import { JobQueueLoadMore, useJobQueuePages } from '../jobs/use-job-queue-pages.js';
 import { type StampableJob, StampInvoiceDialog } from './StampInvoiceDialog.js';
 import {
   type InvoicingTab,
@@ -23,8 +24,6 @@ import {
   monthKey,
   monthLabel,
 } from './types.js';
-
-const PAGE_SIZE = 200;
 
 export function InvoicingPage({ tab, month: requestedMonth }: { tab: InvoicingTab; month: string | undefined }) {
   const trpc = useTRPC();
@@ -39,24 +38,11 @@ export function InvoicingPage({ tab, month: requestedMonth }: { tab: InvoicingTa
   );
   const [stamping, setStamping] = useState<StampableJob | null>(null);
   const counts = useQuery(trpc.contractingJobs.jobs.queueCounts.queryOptions());
-  const [pageCountByView, setPageCountByView] = useState<Record<string, number>>({});
   const view = tab === 'invoiced' ? `invoiced:${month}` : tab;
-  const pageCount = pageCountByView[view] ?? 1;
-  const jobPages = useQueries({
-    queries: Array.from({ length: pageCount }, (_, page) =>
-      trpc.contractingJobs.jobs.list.queryOptions({
-        queue: tab,
-        limit: PAGE_SIZE,
-        offset: page * PAGE_SIZE,
-        ...(tab === 'invoiced' ? { invoicedInMonth: invoicedInMonth(month) } : {}),
-      }),
-    ),
-  });
-  const jobs = {
-    data: jobPages.flatMap((page) => page.data ?? []),
-    isPending: jobPages.some((page) => page.isPending),
-    error: jobPages.find((page) => page.error)?.error,
-  };
+  const jobs = useJobQueuePages(
+    tab === 'invoiced' ? { queue: tab, invoicedInMonth: invoicedInMonth(month) } : { queue: tab },
+    tab === 'invoiced' ? undefined : counts.data?.[tab],
+  );
   const columns = useMemo<DataTableColumnDef<JobSummary>[]>(
     () => [
       {
@@ -150,7 +136,9 @@ export function InvoicingPage({ tab, month: requestedMonth }: { tab: InvoicingTa
         <TabsList>
           {invoicingTabs.map((item) => (
             <TabsTrigger key={item} value={item}>
-              {item === 'awaiting-invoice' ? queueTabLabel(item, counts.data) : 'Invoiced'}
+              {item === 'awaiting-invoice'
+                ? `${jobQueueLabels[item]} (${formatNumber(counts.data?.[item] ?? 0)})`
+                : 'Invoiced'}
             </TabsTrigger>
           ))}
         </TabsList>
@@ -158,7 +146,7 @@ export function InvoicingPage({ tab, month: requestedMonth }: { tab: InvoicingTa
       <ClientDataTable
         key={view}
         columns={columns}
-        rows={jobs.data}
+        rows={jobs.rows}
         loading={jobs.isPending}
         emptyMessage={
           tab === 'invoiced' ? `No Jobs were invoiced in ${monthLabel(month)}.` : 'Nothing is waiting for an invoice.'
@@ -177,17 +165,7 @@ export function InvoicingPage({ tab, month: requestedMonth }: { tab: InvoicingTa
         }
         onOpen={(job) => void navigate({ to: '/contracting/jobs/$code', params: { code: job.jobNumber } })}
       />
-      {jobPages[pageCount - 1]?.data?.length === PAGE_SIZE ? (
-        <div className="mt-3 text-center">
-          <Button
-            variant="outline"
-            disabled={jobs.isPending}
-            onClick={() => setPageCountByView((current) => ({ ...current, [view]: pageCount + 1 }))}
-          >
-            Load more Jobs
-          </Button>
-        </div>
-      ) : null}
+      <JobQueueLoadMore pages={jobs} />
       {stamping ? (
         <StampInvoiceDialog
           job={stamping}

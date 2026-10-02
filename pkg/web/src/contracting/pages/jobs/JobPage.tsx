@@ -56,10 +56,11 @@ export function JobPage({ code }: { code: string }) {
               {sheet.showsSignOff ? <SignOffCard job={job} sheet={sheet} /> : null}
               <PricingCard job={job} sheet={sheet} />
               <InvoiceCard job={job} sheet={sheet} />
-              {job.status !== 'upcoming' && !sheet.seesMoney ? (
+              {sheet.showsChargeLines ? (
                 <ChargeLinesCard
                   job={job}
                   editable={sheet.can('editChargeLines')}
+                  addAction={sheet.action('editChargeLines')}
                   amountEditable={sheet.can('price')}
                 />
               ) : null}
@@ -169,15 +170,11 @@ function CancelJob({ job, sheet }: { job: JobDetail; sheet: JobSheet }) {
       onError: (error) => showError(error, 'Unable to cancel Job.'),
     }),
   );
-  if (!sheet.holds('cancel')) return null;
+  const cancelAction = sheet.action('cancel');
+  if (!cancelAction) return null;
   return (
     <EntityActionsFooter>
-      <Button
-        variant="destructive"
-        disabled={!sheet.can('cancel')}
-        title={sheet.refusal('cancel')}
-        onClick={() => setOpen(true)}
-      >
+      <Button variant="destructive" {...cancelAction} onClick={() => setOpen(true)}>
         Cancel job
       </Button>
       <CreateEntityDialog

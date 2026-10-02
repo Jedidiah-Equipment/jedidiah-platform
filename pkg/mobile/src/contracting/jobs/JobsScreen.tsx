@@ -7,9 +7,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { MAIN_PAGE_CONTENT_STYLE } from '@/components/page-frame';
 import { MainToolbar } from '@/components/TopToolbar';
 import { Text } from '@/components/ui/text';
-import { jobSummary } from './derive-stint';
 import { JobStatusChip } from './JobStatusChip';
-import { isFinishedJob, useFinishedJobs, useJobs } from './use-jobs';
+import { useFinishedJobs, useJobs } from './use-jobs';
 
 export default function JobsScreen() {
   const jobs = useJobs();
@@ -60,8 +59,8 @@ export default function JobsScreen() {
 }
 
 function JobRow({ job }: { job: FieldJob }) {
-  const summary = jobSummary(job);
-  const chipStatus = isFinishedJob(job) ? job.status : summary.hasArrived ? null : 'upcoming';
+  const running = job.stints.filter((stint) => stint.state === 'on-site').length;
+  const chipStatus = job.status === 'active' ? null : job.status;
   return (
     <Pressable
       accessibilityRole="button"
@@ -79,7 +78,7 @@ function JobRow({ job }: { job: FieldJob }) {
         ) : null}
       </View>
       <Text className="text-sm text-muted-foreground">
-        {job.workTypeName} · {summary.machines} machines · {summary.running} running
+        {job.workTypeName} · {formatNumber(job.stints.length)} machines · {formatNumber(running)} running
       </Text>
     </Pressable>
   );

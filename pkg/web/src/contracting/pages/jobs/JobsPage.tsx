@@ -3,11 +3,12 @@ import {
   jobAttentionColorClassNames,
   jobAttentionIconColorClassName,
   jobQueueColorClassNames,
+  jobQueueLabels,
 } from '@pkg/domain/contracting';
-import type { JobCreateInput, JobFacts, JobQueue, JobSummary } from '@pkg/schema/contracting';
+import type { JobQueue, JobSummary } from '@pkg/schema/contracting';
 import { CustomerName, FarmName, jobQueues, WorkTypeName } from '@pkg/schema/contracting';
 import { IconAlertTriangle } from '@tabler/icons-react';
-import { useMutation, useQueries, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import { useMemo, useState } from 'react';
 import { DateDisplay } from '@/components/common/DateDisplay.js';
@@ -26,7 +27,8 @@ import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.j
 import { useTRPC } from '@/lib/trpc.js';
 import { cn } from '@/lib/utils.js';
 import { JobStatusBadge } from './JobStatusBadge.js';
-import { JobCreateValues, jobQueueLabels, toJobCreateInput } from './types.js';
+import { JobCreateValues, toJobCreateInput } from './types.js';
+import { JobQueueLoadMore, useJobQueuePages } from './use-job-queue-pages.js';
 
 function machineSummary(job: JobSummary) {
   const parts = [
@@ -35,6 +37,17 @@ function machineSummary(job: JobSummary) {
     job.leftStints ? `${formatNumber(job.leftStints)} left` : null,
   ];
   return parts.filter(Boolean).join(' · ') || `${formatNumber(0)} machines`;
+}
+
+function useNewJobFlow() {
+  const trpc = useTRPC();
+  const { invalidateJobs } = useQueryInvalidation();
+  return useCreateEntityFlow({
+    mutation: trpc.contractingJobs.jobs.create.mutationOptions(),
+    errorMessage: 'Unable to create Job.',
+    invalidate: invalidateJobs,
+    navigateTo: (job) => ({ to: '/contracting/jobs/$code', params: { code: job.jobNumber } }),
+  });
 }
 
 export function JobsPage({ queue }: { queue: JobQueue }) {
@@ -47,18 +60,7 @@ export function JobsPage({ queue }: { queue: JobQueue }) {
   const canPrice = useCan('contracting_job:price').can;
   const counts = useQuery(trpc.contractingJobs.jobs.queueCounts.queryOptions());
   const activeAttention = useQuery(trpc.contractingJobs.jobs.activeAttention.queryOptions());
-  const [pageCountByQueue, setPageCountByQueue] = useState<Partial<Record<JobQueue, number>>>({});
-  const pageCount = pageCountByQueue[queue] ?? 1;
-  const jobPages = useQueries({
-    queries: Array.from({ length: pageCount }, (_, page) =>
-      trpc.contractingJobs.jobs.list.queryOptions({ queue, limit: 200, offset: page * 200 }),
-    ),
-  });
-  const jobs = {
-    data: jobPages.flatMap((page) => page.data ?? []),
-    isPending: jobPages.some((page) => page.isPending),
-    error: jobPages.find((page) => page.error)?.error,
-  };
+  const jobs = useJobQueuePages({ queue }, counts.data?.[queue]);
   const foremen = useQuery(trpc.contractingJobs.options.foremen.queryOptions(undefined, { enabled: canAssign }));
   const assign = useMutation(
     trpc.contractingJobs.jobs.patch.mutationOptions({
@@ -66,12 +68,7 @@ export function JobsPage({ queue }: { queue: JobQueue }) {
       onError: (error) => showError(error, 'Unable to assign Foreman.'),
     }),
   );
-  const flow = useCreateEntityFlow({
-    mutation: trpc.contractingJobs.jobs.create.mutationOptions(),
-    errorMessage: 'Unable to create Job.',
-    invalidate: invalidateJobs,
-    navigateTo: (job) => ({ to: '/contracting/jobs/$code', params: { code: job.jobNumber } }),
-  });
+  const flow = useNewJobFlow();
   const columns = useMemo<DataTableColumnDef<JobSummary>[]>(
     () => [
       {
@@ -196,7 +193,7 @@ export function JobsPage({ queue }: { queue: JobQueue }) {
                   Review & sign off
                 </Button>
               ),
-            } as DataTableColumnDef<JobSummary>,
+            } satisfies DataTableColumnDef<JobSummary>,
           ]
         : []),
       ...(queue === 'awaiting-pricing' && canPrice
@@ -219,7 +216,7 @@ export function JobsPage({ queue }: { queue: JobQueue }) {
                   Price
                 </Button>
               ),
-            } as DataTableColumnDef<JobSummary>,
+            } satisfies DataTableColumnDef<JobSummary>,
           ]
         : []),
     ],
@@ -267,43 +264,20 @@ export function JobsPage({ queue }: { queue: JobQueue }) {
         </fieldset>
         <ClientDataTable
           columns={columns}
-          rows={jobs.data}
+          rows={jobs.rows}
           loading={jobs.isPending}
           emptyMessage="No Jobs in this queue."
           searchPlaceholder="Search Jobs…"
           onOpen={(job) => void navigate({ to: '/contracting/jobs/$code', params: { code: job.jobNumber } })}
         />
-        {jobPages[pageCount - 1]?.data?.length === 200 ? (
-          <div className="mt-3 text-center">
-            <Button
-              variant="outline"
-              disabled={jobs.isPending}
-              onClick={() => setPageCountByQueue((current) => ({ ...current, [queue]: pageCount + 1 }))}
-            >
-              Load more Jobs
-            </Button>
-          </div>
-        ) : null}
+        <JobQueueLoadMore pages={jobs} />
       </PageLayout>
       <NewJobDialog flow={flow} canAssign={canAssign} />
     </>
   );
 }
 
-function NewJobDialog({
-  flow,
-  canAssign,
-}: {
-  flow: {
-    dialogProps: {
-      open: boolean;
-      onOpenChange: (open: boolean) => void;
-      onCreated: (created: JobFacts) => Promise<void> | void;
-    };
-    create: (input: JobCreateInput) => Promise<JobFacts>;
-  };
-  canAssign: boolean;
-}) {
+function NewJobDialog({ flow, canAssign }: { flow: ReturnType<typeof useNewJobFlow>; canAssign: boolean }) {
   const trpc = useTRPC();
   const { invalidateDirectory } = useQueryInvalidation();
   const showError = useApiMutationErrorToast();

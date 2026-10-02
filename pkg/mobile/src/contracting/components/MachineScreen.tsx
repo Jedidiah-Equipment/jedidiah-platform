@@ -1,4 +1,5 @@
 import { formatDate, formatHours } from '@pkg/domain';
+import { MISSING_PHOTO_EVIDENCE, readingRoleLabels } from '@pkg/domain/contracting';
 import { type Href, router, useLocalSearchParams } from 'expo-router';
 import { ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -60,12 +61,11 @@ export default function MachineScreen() {
         {readings.data?.map((row) => (
           <View key={row.id} className="gap-1 rounded-xl border border-border bg-surface p-4">
             <Text className="text-foreground" weight="semibold">
-              {formatHours(row.value)} ·{' '}
-              {{ baseline: 'Baseline', spot: 'Spot', arrival: 'Arrival', departure: 'Departure' }[row.role]}
+              {formatHours(row.value)} · {readingRoleLabels[row.role]}
             </Text>
             <Text className="text-sm text-muted-foreground">{formatDate(row.capturedAt, 'medium')}</Text>
             <Text className="text-sm text-muted-foreground">
-              {row.photoBacked ? 'Photo-backed' : 'Missing Photo Evidence'}
+              {row.photoBacked ? 'Photo-backed' : MISSING_PHOTO_EVIDENCE}
               {row.disputed ? ' · Disputed' : ''}
             </Text>
           </View>

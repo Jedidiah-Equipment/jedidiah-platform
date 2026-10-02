@@ -36,6 +36,8 @@ export function PricingCard({ job, sheet }: { job: JobDetail; sheet: JobSheet })
   const trpc = useTRPC();
   const editable = sheet.can('price');
   const chargeEditable = sheet.can('editChargeLines');
+  const addLineAction = sheet.action('editChargeLines');
+  const priceAction = sheet.action('price');
   const rates = useQuery(trpc.contractingRateCard.rates.options.queryOptions(undefined, { enabled: editable }));
   const mutations = usePricingMutations();
   const chargeLineMutations = useChargeLineMutations();
@@ -117,8 +119,8 @@ export function PricingCard({ job, sheet }: { job: JobDetail; sheet: JobSheet })
               <div id="charge-lines" className="scroll-mt-4 space-y-2">
                 <div className="flex items-center justify-between gap-3">
                   <h3 className="text-sm font-semibold">Charge lines</h3>
-                  {chargeEditable ? (
-                    <Button size="sm" onClick={() => setAddingChargeLine(true)}>
+                  {addLineAction ? (
+                    <Button size="sm" {...addLineAction} onClick={() => setAddingChargeLine(true)}>
                       Add charge line
                     </Button>
                   ) : null}
@@ -149,9 +151,9 @@ export function PricingCard({ job, sheet }: { job: JobDetail; sheet: JobSheet })
           </PricingContext.Provider>
           <PricingTotals job={job} />
         </CardContent>
-        {editable ? (
+        {priceAction ? (
           <CardFooter className="justify-end gap-3">
-            <MarkPriced job={job} mutations={mutations} />
+            <MarkPriced job={job} mutations={mutations} action={priceAction} />
           </CardFooter>
         ) : null}
       </Card>
@@ -186,15 +188,23 @@ function PricingTotals({ job }: { job: JobDetail }) {
   );
 }
 
-function MarkPriced({ job, mutations }: { job: JobDetail; mutations: PricingMutations }) {
+function MarkPriced({
+  job,
+  mutations,
+  action,
+}: {
+  job: JobDetail;
+  mutations: PricingMutations;
+  action: { disabled: boolean; title: string | undefined };
+}) {
   const [confirm, setConfirm] = useState(false);
   const pricing = job.pricing;
   if (!pricing) return null;
   const reasons = pricingGateReasons(pricing.gate);
   return (
     <div className="flex w-full flex-wrap items-center justify-end gap-3">
-      {reasons.length ? <p className="text-destructive">{reasons.join(' · ')}</p> : null}
-      <Button disabled={!pricing.gate.ok} onClick={() => setConfirm(true)}>
+      {reasons.length && !action.disabled ? <p className="text-destructive">{reasons.join(' · ')}</p> : null}
+      <Button disabled={action.disabled || !pricing.gate.ok} title={action.title} onClick={() => setConfirm(true)}>
         Mark as Priced
       </Button>
       <Dialog open={confirm} onOpenChange={setConfirm}>

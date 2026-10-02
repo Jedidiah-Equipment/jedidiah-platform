@@ -12,12 +12,15 @@ import {
   assignmentState,
   captureRefusal,
   FUTURE_READ_AT_REFUSAL,
+  FUTURE_READ_AT_TOLERANCE_MS,
   isAiFlaggedVerification,
   isContractingManagement,
+  isFutureReadAt,
   type JobActor,
   jobReadStatuses,
   judgeCapture,
   meterDisagreementHint,
+  READING_PHOTO_POLICY,
   resolveReadingAmendment,
 } from '@pkg/domain/contracting';
 import type { AuthId } from '@pkg/schema';
@@ -36,10 +39,8 @@ import { readStoredObject, type StorageAdapter } from '../../storage/storage-ada
 import { reopenPricingWithin } from '../jobs/pricing-service.js';
 import { attachReadingToStint, resolveCaptureStint } from './capture-stint.js';
 import { assertReadingJobAction, ReadingError, withCaptureConstraints } from './reading-errors.js';
-import { READING_PHOTO_POLICY, type ReadMeterPhoto, readingVerification, verifyPhoto } from './reading-evidence.js';
+import { type ReadMeterPhoto, readingVerification, verifyPhoto } from './reading-evidence.js';
 
-// Phone clocks drift; a Read At this far ahead of the server is still the Foreman's "now".
-const FUTURE_READ_AT_TOLERANCE_MS = 5 * 60_000;
 const notFound = () => new ReadingError('reading.not_found', 'Hour Reading not found.');
 type Row = typeof contractingHourReadings.$inferSelect;
 
@@ -130,7 +131,7 @@ export async function captureReading({
   }
   const delivered = await replay(db);
   if (delivered) return delivered;
-  if (Date.parse(input.capturedAt) > now.getTime() + FUTURE_READ_AT_TOLERANCE_MS)
+  if (isFutureReadAt(new Date(input.capturedAt), now, FUTURE_READ_AT_TOLERANCE_MS))
     throw new ReadingError('reading.future_read_at', FUTURE_READ_AT_REFUSAL);
   const photo = evidence ? await storeMeterPhoto(evidence) : null;
   try {

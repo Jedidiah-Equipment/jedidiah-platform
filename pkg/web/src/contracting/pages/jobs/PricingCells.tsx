@@ -1,5 +1,5 @@
 import { formatCurrency, formatHours, formatNumber, formatPercent } from '@pkg/domain';
-import type { Assignment, DiscountKind } from '@pkg/schema/contracting';
+import { type Assignment, type DiscountKind, JobDiscountInput } from '@pkg/schema/contracting';
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { RemoveEntityButton } from '@/components/common/RemoveEntityButton.js';
@@ -222,7 +222,11 @@ function DiscountInput({ row }: { row: Extract<PricingRow, { kind: 'discount' }>
             aria-pressed={kind === option}
             onClick={() => {
               if (option === kind) return;
-              if (option === 'percent' && currentValue.current !== null && currentValue.current > 100) {
+              if (
+                option === 'percent' &&
+                currentValue.current !== null &&
+                !JobDiscountInput.safeParse({ kind: option, value: currentValue.current }).success
+              ) {
                 toast.error('A percentage discount cannot exceed 100. Enter the percentage instead.');
                 return;
               }

@@ -13,3 +13,5 @@ A Foreman captures an Hour Reading as one request to the server, which judges it
 - A Field Note is never read back into a Job or Machine by the app; the Foreman transcribes it. Its photos are saved to the phone's gallery so the capture screen can pick them up.
 - An Hour Reading's Read At time is the Foreman's word, defaulted from the capture moment or the chosen photo's timestamp; the server refuses only a future time and orders the ledger by insertion, never by Read At.
 - Server-side idempotent replay by the phone's capture id and the dispute handshake remain for retried and racing online requests.
+- Builds from before this decision kept a reading queue, its meter photos and copies of the fleet and Jobs on
+  the phone. The app deletes them, unread, at start; that purge is itself deleted from 1 January 2027.

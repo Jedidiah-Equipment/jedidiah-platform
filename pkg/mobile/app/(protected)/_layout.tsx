@@ -60,10 +60,10 @@ export default function ProtectedLayout() {
     };
   }, [reconnecting, refetch]);
 
-  // Every operator who used this phone shares the purge: the old keys carry their user id inside them.
+  // No session needed: the old keys carry their user id inside them, so one purge covers every operator.
   useEffect(() => {
-    if (hasSession) void purgeLegacyContractingStorage();
-  }, [hasSession]);
+    void purgeLegacyContractingStorage();
+  }, []);
 
   // Still resolving, offline with no resolved session, or reconnecting after coming back online:
   // hold (behind the OfflineScreen cover) rather than redirecting on a session we can't yet trust.

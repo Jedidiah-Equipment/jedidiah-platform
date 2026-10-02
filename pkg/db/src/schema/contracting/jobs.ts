@@ -1,5 +1,5 @@
-import { discountKinds, jobStatuses, type RateBasis } from '@pkg/schema/contracting';
-import { relations, sql } from 'drizzle-orm';
+import { discountKinds, jobStatuses, rateBases } from '@pkg/schema/contracting';
+import { sql } from 'drizzle-orm';
 import {
   boolean,
   check,
@@ -7,25 +7,18 @@ import {
   foreignKey,
   index,
   integer,
-  numeric,
   text,
   timestamp,
   uniqueIndex,
   uuid,
 } from 'drizzle-orm/pg-core';
 import { user } from '../auth.js';
+import { decimal2, hours, money, quotedList, timestamps } from './columns.js';
 import { contractingCustomers, contractingFarms, contractingWorkTypes } from './directory.js';
 import { contractingImplements, contractingMachines } from './fleet.js';
 import { contractingHourReadings } from './hour-reading.js';
 import { contractingSchema } from './pg-schema.js';
 import { contractingMeasureTypes, contractingRates } from './rate-card.js';
-
-const money = (name: string) => numeric(name, { precision: 12, scale: 2, mode: 'number' });
-const hours = (name: string) => numeric(name, { precision: 10, scale: 1, mode: 'number' });
-const timestamps = () => ({
-  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
-  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
-});
 
 export const contractingJobCodeSequence = contractingSchema.sequence('job_code_seq');
 
@@ -47,7 +40,7 @@ export const contractingJobs = contractingSchema.table(
     startDate: date('start_date', { mode: 'string' }),
     endDate: date('end_date', { mode: 'string' }),
     notes: text('notes'),
-    dieselLitres: money('diesel_litres').notNull().default(0),
+    dieselLitres: decimal2('diesel_litres').notNull().default(0),
     dieselUnitPrice: money('diesel_unit_price'),
     dieselAmount: money('diesel_amount'),
     discountKind: text('discount_kind', { enum: discountKinds }),
@@ -78,7 +71,7 @@ export const contractingJobs = contractingSchema.table(
       foreignColumns: [contractingFarms.id, contractingFarms.customerId],
       name: 'job_farm_customer_fk',
     }).onDelete('restrict'),
-    check('job_status', sql`${table.status} IN ('upcoming', 'active', 'completed', 'priced', 'invoiced', 'cancelled')`),
+    check('job_status', sql`${table.status} IN (${quotedList(jobStatuses)})`),
     check(
       'job_completed_shape',
       sql`(${table.status} IN ('upcoming', 'active', 'cancelled')) = (${table.completedAt} IS NULL) AND (${table.completedAt} IS NULL) = (${table.completedByUserId} IS NULL) AND (${table.completedAt} IS NULL OR (${table.startDate} IS NOT NULL AND ${table.endDate} IS NOT NULL AND ${table.startDate} <= ${table.endDate}))`,
@@ -136,7 +129,7 @@ export const contractingMachineAssignments = contractingSchema.table(
     gapResolvedByUserId: text('gap_resolved_by_user_id').references(() => user.id),
     rateId: uuid('rate_id').references(() => contractingRates.id, { onDelete: 'restrict' }),
     rateName: text('rate_name'),
-    rateBasis: text('rate_basis').$type<RateBasis>(),
+    rateBasis: text('rate_basis', { enum: rateBases }),
     rateMeasureTypeId: uuid('rate_measure_type_id').references(() => contractingMeasureTypes.id, {
       onDelete: 'restrict',
     }),
@@ -186,7 +179,7 @@ export const contractingMeasures = contractingSchema.table(
     measureTypeId: uuid('measure_type_id')
       .notNull()
       .references(() => contractingMeasureTypes.id, { onDelete: 'restrict' }),
-    quantity: money('quantity').notNull(),
+    quantity: decimal2('quantity').notNull(),
     ...timestamps(),
   },
   (table) => [
@@ -213,74 +206,3 @@ export const contractingChargeLines = contractingSchema.table(
     check('charge_line_amount_nonnegative', sql`${table.amount} IS NULL OR ${table.amount} >= 0`),
   ],
 );
-
-export const contractingJobsRelations = relations(contractingJobs, ({ many, one }) => ({
-  assignments: many(contractingMachineAssignments),
-  chargeLines: many(contractingChargeLines),
-  customer: one(contractingCustomers, {
-    fields: [contractingJobs.customerId],
-    references: [contractingCustomers.id],
-  }),
-  farm: one(contractingFarms, {
-    fields: [contractingJobs.farmId, contractingJobs.customerId],
-    references: [contractingFarms.id, contractingFarms.customerId],
-  }),
-  foreman: one(user, { fields: [contractingJobs.foremanUserId], references: [user.id] }),
-  invoicedBy: one(user, { fields: [contractingJobs.invoicedByUserId], references: [user.id] }),
-  workType: one(contractingWorkTypes, {
-    fields: [contractingJobs.workTypeId],
-    references: [contractingWorkTypes.id],
-  }),
-}));
-
-export const contractingMachineAssignmentsRelations = relations(contractingMachineAssignments, ({ many, one }) => ({
-  arrivalReading: one(contractingHourReadings, {
-    fields: [contractingMachineAssignments.arrivalReadingId],
-    references: [contractingHourReadings.id],
-    relationName: 'assignmentArrivalReading',
-  }),
-  departureReading: one(contractingHourReadings, {
-    fields: [contractingMachineAssignments.departureReadingId],
-    references: [contractingHourReadings.id],
-    relationName: 'assignmentDepartureReading',
-  }),
-  driver: one(user, {
-    fields: [contractingMachineAssignments.driverUserId],
-    references: [user.id],
-  }),
-  implement: one(contractingImplements, {
-    fields: [contractingMachineAssignments.implementId],
-    references: [contractingImplements.id],
-  }),
-  job: one(contractingJobs, {
-    fields: [contractingMachineAssignments.jobId],
-    references: [contractingJobs.id],
-  }),
-  machine: one(contractingMachines, {
-    fields: [contractingMachineAssignments.machineId],
-    references: [contractingMachines.id],
-  }),
-  measures: many(contractingMeasures),
-  rateMeasureType: one(contractingMeasureTypes, {
-    fields: [contractingMachineAssignments.rateMeasureTypeId],
-    references: [contractingMeasureTypes.id],
-  }),
-}));
-
-export const contractingMeasuresRelations = relations(contractingMeasures, ({ one }) => ({
-  assignment: one(contractingMachineAssignments, {
-    fields: [contractingMeasures.assignmentId],
-    references: [contractingMachineAssignments.id],
-  }),
-  measureType: one(contractingMeasureTypes, {
-    fields: [contractingMeasures.measureTypeId],
-    references: [contractingMeasureTypes.id],
-  }),
-}));
-
-export const contractingChargeLinesRelations = relations(contractingChargeLines, ({ one }) => ({
-  job: one(contractingJobs, {
-    fields: [contractingChargeLines.jobId],
-    references: [contractingJobs.id],
-  }),
-}));

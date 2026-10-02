@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest';
-import { capturedAtFor, isBackdated, isFutureReadAt, parseExifDateTime } from './read-at';
+import { capturedAtFor, isBackdated, parseExifDateTime } from './read-at';
 
 const now = new Date(2026, 9, 1, 12, 0, 0);
 
@@ -24,9 +24,7 @@ test('the request carries Read At when set, else the attempt’s own moment', ()
   expect(capturedAtFor(null, attemptedAt)).toBe('2026-10-01T10:00:00.000Z');
 });
 
-test('detects a future Read At and a backdated one', () => {
-  expect(isFutureReadAt(new Date(now.getTime() + 1), now)).toBe(true);
-  expect(isFutureReadAt(now, now)).toBe(false);
+test('detects a backdated Read At', () => {
   expect(isBackdated(null, now)).toBe(false);
   expect(isBackdated(new Date(now.getTime() - 5 * 60_000), now)).toBe(false);
   expect(isBackdated(new Date(now.getTime() - 5 * 60_000 - 1), now)).toBe(true);

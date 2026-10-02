@@ -2,10 +2,21 @@ import {
   type AiFlaggedVerification,
   aiFlaggedVerifications,
   type ReadingExceptionType,
+  type ReadingRole,
   type ReadingVerification,
 } from '@pkg/schema/contracting';
 import { getBusinessRole } from '../auth/authorization.js';
 import { type BadgeColorClassNames, statusBadgeColorClassNames } from '../theme/status-badge.js';
+
+export const readingRoleLabels: Record<ReadingRole, string> = {
+  baseline: 'Baseline',
+  spot: 'Spot',
+  arrival: 'Arrival',
+  departure: 'Departure',
+};
+
+/** The stamp on a reading captured without a photo. */
+export const MISSING_PHOTO_EVIDENCE = 'Missing Photo Evidence';
 
 export const readingExceptionTypeLabels = {
   'ai-flagged': 'AI flagged',
@@ -17,6 +28,12 @@ export const readingExceptionTypeColorClassNames: Record<ReadingExceptionType, B
   'ai-flagged': statusBadgeColorClassNames.yellow,
   disputed: statusBadgeColorClassNames.red,
 };
+
+/** The API route that captures an Hour Reading, relative to the API origin. */
+export const READING_CAPTURE_PATH = '/api/contracting/readings';
+
+/** The API route that serves an Hour Reading's meter photo, relative to the API origin. */
+export const readingPhotoPath = (readingId: string) => `${READING_CAPTURE_PATH}/${encodeURIComponent(readingId)}/photo`;
 
 export const isAiFlaggedVerification = (verification: ReadingVerification): verification is AiFlaggedVerification =>
   (aiFlaggedVerifications as readonly ReadingVerification[]).includes(verification);

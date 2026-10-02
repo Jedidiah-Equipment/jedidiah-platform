@@ -49,10 +49,17 @@ const reasons: Record<CaptureRule, ReadingErrorCode> = {
 
 const refuse = (rule: CaptureRule): CaptureRefused => ({ ok: false, reason: reasons[rule], rule });
 
+/** A capture below the Machine's latest reading lands only as a dispute. */
+export const captureIsBelowLatest = (value: number, latest: { value: number } | null | undefined): boolean =>
+  !!latest && value < latest.value;
+
+/** Whoever works every Job must say why a departure has no photo. */
+export const captureNeedsComment = (role: ReadingRole, world: Pick<CaptureWorld, 'management' | 'hasPhoto'>): boolean =>
+  role === 'departure' && world.management && !world.hasPhoto;
+
 /** Whether this capture may land on the Machine's ledger as the server holds it under the lock. */
 export function judgeCapture(world: CaptureWorld, capture: CaptureAttempt): CaptureVerdict {
-  if (capture.role === 'departure' && world.management && !world.hasPhoto && !capture.comment?.trim())
-    return refuse('comment-required');
+  if (captureNeedsComment(capture.role, world) && !capture.comment?.trim()) return refuse('comment-required');
   if (capture.role === 'arrival' && world.stint !== null && world.stint !== 'planned') return refuse('already-arrived');
   if (capture.role === 'departure' && world.stint !== 'on-site') return refuse('not-on-site');
   if (
@@ -61,7 +68,7 @@ export function judgeCapture(world: CaptureWorld, capture: CaptureAttempt): Capt
     capture.expectedPreviousId !== (world.latest?.id ?? null)
   )
     return refuse('previous-changed');
-  const below = world.latest !== null && capture.value < world.latest.value;
+  const below = captureIsBelowLatest(capture.value, world.latest);
   if (below && !capture.disputePrevious) return refuse('below-latest');
   return { ok: true, disputes: below && world.latest ? world.latest.id : null };
 }
@@ -88,3 +95,10 @@ export function captureRefusal(verdict: CaptureRefused): string {
 
 /** Read At is the Foreman's word for when the meter was read; only a time still to come is refused. */
 export const FUTURE_READ_AT_REFUSAL = 'Read At cannot be in the future.';
+
+/** Phone clocks drift; a Read At this far ahead of the server is still the Foreman's "now". */
+export const FUTURE_READ_AT_TOLERANCE_MS = 5 * 60_000;
+
+/** Whether a Read At is still to come. The server passes the tolerance; the phone, judging its own clock, none. */
+export const isFutureReadAt = (readAt: Date, now = new Date(), toleranceMs = 0) =>
+  readAt.getTime() > now.getTime() + toleranceMs;

@@ -9,6 +9,7 @@ import {
   createMachine,
   createMeasureType,
   createWorkType,
+  getJob,
 } from '@pkg/core/contracting';
 import { eq, user } from '@pkg/db';
 import { contractingHourReadings, contractingJobs, contractingMachineAssignments } from '@pkg/db/contracting';
@@ -157,17 +158,19 @@ const test = createTester(async ({ db }) => {
     actor: managerActor,
     input: { ...base, foremanUserId: otherForemanId },
   });
-  const stint = await createAssignment({
+  await createAssignment({
     db,
     actor: managerActor,
     input: { jobId: ownJob.id, machineId: machine.id, implementId: null },
   });
+  const [stint] = (await getJob({ db, id: ownJob.id })).assignments;
   if (!stint) throw new Error('Expected Machine Assignment');
-  const otherStint = await createAssignment({
+  await createAssignment({
     db,
     actor: managerActor,
     input: { jobId: otherJob.id, machineId: otherMachine.id, implementId: implement.id },
   });
+  const [otherStint] = (await getJob({ db, id: otherJob.id })).assignments;
   if (!otherStint) throw new Error('Expected other Machine Assignment');
   await captureReading({
     db,
@@ -213,7 +216,21 @@ const test = createTester(async ({ db }) => {
       completedByUserId: managerId,
     })
     .where(eq(contractingJobs.id, completedJob.id));
-  return { completedJob, db, implement, machine, otherJob, otherMachine, otherStint, ownJob, pricedJob, stint };
+  return {
+    completedJob,
+    customer,
+    db,
+    farm,
+    implement,
+    machine,
+    otherJob,
+    otherMachine,
+    otherStint,
+    ownJob,
+    pricedJob,
+    stint,
+    workType,
+  };
 });
 
 test('projects only open field Jobs, enforces ownership, and never returns money', async ({ context }) => {
@@ -292,15 +309,16 @@ test('enforces the Job queue role matrix and strips money from Foreman reads', a
   await expect(foreman.assignments.remove({ id: context.otherStint.id })).rejects.toMatchObject({
     code: 'FORBIDDEN',
   });
-  await expect(foreman.assignments.remove({ id: context.stint.id })).resolves.toMatchObject({ id: context.stint.id });
+  await expect(foreman.assignments.remove({ id: context.stint.id })).resolves.toBeUndefined();
+  expect((await getJob({ db: context.db, id: context.ownJob.id })).assignments).toEqual([]);
 
   const workshop = context.createCaller(contractingSession('workshop-manager')).contractingJobs;
   expect((await workshop.jobs.list({ queue: 'upcoming' })).map((job) => job.id)).toEqual([context.ownJob.id]);
   await expect(
     workshop.jobs.create({
-      customerId: context.ownJob.customerId,
-      farmId: context.ownJob.farmId,
-      workTypeId: context.ownJob.workTypeId,
+      customerId: context.customer.id,
+      farmId: context.farm.id,
+      workTypeId: context.workType.id,
       description: null,
       foremanUserId: null,
     }),
@@ -416,17 +434,15 @@ test('keeps Pricing to contracting-admin and super-admin while managers read the
   const superAdmin = context.createCaller(mockSession('super-admin')).contractingJobs;
   await expect(
     superAdmin.pricing.setDiscount({ jobId, discount: { kind: 'percent', value: 5 } }),
-  ).resolves.toMatchObject({
+  ).resolves.toBeUndefined();
+  expect(await manager.jobs.get({ id: jobId })).toMatchObject({
     discount: { kind: 'percent' },
     pricing: { total: 0, gate: { ok: true } },
   });
-  expect(await manager.jobs.get({ id: jobId })).toMatchObject({ pricing: { total: 0 } });
   const admin = context.createCaller(contractingSession('contracting-admin')).contractingJobs;
   await expect(admin.pricing.markPriced({ id: jobId, expectedTotal: 1 })).rejects.toMatchObject({ code: 'CONFLICT' });
-  await expect(admin.pricing.markPriced({ id: jobId, expectedTotal: 0 })).resolves.toMatchObject({
-    status: 'priced',
-    pricedTotal: 0,
-  });
+  await expect(admin.pricing.markPriced({ id: jobId, expectedTotal: 0 })).resolves.toBeUndefined();
+  expect(await admin.jobs.get({ id: jobId })).toMatchObject({ status: 'priced', pricedTotal: 0 });
 });
 
 test('lets Invoicing list, read and stamp Priced Jobs while every other write stays out of reach', async ({
@@ -456,7 +472,11 @@ test('lets Invoicing list, read and stamp Priced Jobs while every other write st
   ).rejects.toMatchObject({ code: 'CONFLICT' });
   await expect(
     invoicing.invoicing.stamp({ id: context.pricedJob.id, invoiceNumber: ' INV-1 ', expectedTotal: 100 }),
-  ).resolves.toMatchObject({ status: 'invoiced', invoiceNumber: 'INV-1' });
+  ).resolves.toBeUndefined();
+  expect(await invoicing.jobs.get({ id: context.pricedJob.id })).toMatchObject({
+    status: 'invoiced',
+    invoiceNumber: 'INV-1',
+  });
   expect(await invoicing.invoicing.byNumber({ invoiceNumber: 'inv-1' })).toEqual([
     expect.objectContaining({ id: context.pricedJob.id, jobNumber: context.pricedJob.jobNumber }),
   ]);

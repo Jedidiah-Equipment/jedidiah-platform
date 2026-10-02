@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { auditEvents, user } from '@pkg/db';
 import { contractingMachineAssignments, contractingMeasures } from '@pkg/db/contracting';
 import { accessForRole } from '@pkg/domain/testing';
@@ -13,10 +14,11 @@ import { createMachine } from '../fleet/machine-service.js';
 import { createMeasureType, removeMeasureType } from '../rate-card/measure-type-service.js';
 import { createRate, listRates, removeRate } from '../rate-card/rate-service.js';
 import { captureReading } from '../readings/reading-service.js';
+import { plannedStint } from '../test/job-fixtures.js';
 import { createWorkType } from '../work-types/work-type-service.js';
-import { createAssignment, resolveGap } from './assignment-service.js';
+import { resolveGap } from './assignment-service.js';
 import { getJob, listJobs } from './job-read.js';
-import { cancelJob, completeJob, createJob } from './job-service.js';
+import { cancelJob, completeJob, createJob, patchJob } from './job-service.js';
 import { setMeasure } from './measure-service.js';
 
 const managerId = 'job-manager';
@@ -161,17 +163,29 @@ describe('Job setup', () => {
       context.db.update(user).set({ contractingRole: 'driver' }).where(eq(user.id, foremanId)),
     ).rejects.toBeDefined();
   });
+
+  test('an empty patch writes nothing and still refuses an unknown Job', async ({ context }) => {
+    const job = await createJob({ db: context.db, actor: manager, input: jobInput(context) });
+    const jobEventCount = async () =>
+      (await context.db.select().from(auditEvents).where(eq(auditEvents.entityType, 'contracting_job'))).length;
+    const before = await jobEventCount();
+
+    await expect(patchJob({ db: context.db, actor: manager, input: { id: job.id } })).resolves.toBeUndefined();
+    expect(await jobEventCount()).toBe(before);
+    await expect(patchJob({ db: context.db, actor: manager, input: { id: randomUUID() } })).rejects.toMatchObject({
+      code: 'contracting_job.not_found',
+    });
+  });
 });
 
 describe('Machine Assignment lifecycle', () => {
   test('rejects retired Implements and device Drivers when an arrival starts a stint', async ({ context }) => {
     const job = await createJob({ db: context.db, actor: manager, input: jobInput(context) });
-    const planned = await createAssignment({
-      db: context.db,
-      actor: manager,
-      input: { jobId: job.id, machineId: context.machine.id, implementId: null },
+    const planned = await plannedStint(context.db, manager, {
+      jobId: job.id,
+      machineId: context.machine.id,
+      implementId: null,
     });
-    if (!planned) throw new Error('Expected planned assignment');
     await retireImplement({
       db: context.db,
       actorUserId: managerId,
@@ -222,17 +236,16 @@ describe('Machine Assignment lifecycle', () => {
       actor: manager,
       input: { ...jobInput(context), foremanUserId: otherForemanId },
     });
-    const planned = await createAssignment({
-      db: context.db,
-      actor: manager,
-      input: { jobId: job.id, machineId: context.machine.id, implementId: null },
+    const planned = await plannedStint(context.db, manager, {
+      jobId: job.id,
+      machineId: context.machine.id,
+      implementId: null,
     });
-    const foreign = await createAssignment({
-      db: context.db,
-      actor: manager,
-      input: { jobId: otherJob.id, machineId: context.machine.id, implementId: null },
+    const foreign = await plannedStint(context.db, manager, {
+      jobId: otherJob.id,
+      machineId: context.machine.id,
+      implementId: null,
     });
-    if (!planned || !foreign) throw new Error('Expected planned assignments');
     const input = {
       localId: '5f1c2d3e-0001-4a00-8000-000000000011',
       machineId: context.machine.id,
@@ -269,17 +282,16 @@ describe('Machine Assignment lifecycle', () => {
   }) => {
     const firstJob = await createJob({ db: context.db, actor: manager, input: jobInput(context) });
     const secondJob = await createJob({ db: context.db, actor: manager, input: jobInput(context) });
-    const first = await createAssignment({
-      db: context.db,
-      actor: manager,
-      input: { jobId: firstJob.id, machineId: context.machine.id, implementId: null },
+    const first = await plannedStint(context.db, manager, {
+      jobId: firstJob.id,
+      machineId: context.machine.id,
+      implementId: null,
     });
-    const second = await createAssignment({
-      db: context.db,
-      actor: manager,
-      input: { jobId: secondJob.id, machineId: context.machine.id, implementId: null },
+    const second = await plannedStint(context.db, manager, {
+      jobId: secondJob.id,
+      machineId: context.machine.id,
+      implementId: null,
     });
-    if (!first || !second) throw new Error('Expected assignments');
     expect(
       (await context.db.select().from(auditEvents)).some(
         (event) => event.entityType === 'contracting_assignment' && event.summary.includes('CAT320-1'),
@@ -408,12 +420,11 @@ describe('Completion and billable facts', () => {
     context,
   }) => {
     const job = await createJob({ db: context.db, actor: manager, input: jobInput(context) });
-    const arrived = await createAssignment({
-      db: context.db,
-      actor: manager,
-      input: { jobId: job.id, machineId: context.machine.id, implementId: null },
+    const arrived = await plannedStint(context.db, manager, {
+      jobId: job.id,
+      machineId: context.machine.id,
+      implementId: null,
     });
-    if (!arrived) throw new Error('Expected assignment');
     await captureReading({
       db: context.db,
       actor: foreman,
@@ -478,12 +489,11 @@ describe('Completion and billable facts', () => {
       }),
     ).rejects.toBeDefined();
 
-    const planned = await createAssignment({
-      db: context.db,
-      actor: manager,
-      input: { jobId: job.id, machineId: context.machine.id, implementId: null },
+    const planned = await plannedStint(context.db, manager, {
+      jobId: job.id,
+      machineId: context.machine.id,
+      implementId: null,
     });
-    if (!planned) throw new Error('Expected planned assignment');
     await expect(
       completeJob({
         db: context.db,
@@ -498,7 +508,7 @@ describe('Completion and billable facts', () => {
         },
       }),
     ).rejects.toMatchObject({ code: 'contracting_job.stint_not_planned' });
-    const completed = await completeJob({
+    await completeJob({
       db: context.db,
       actor: manager,
       input: {
@@ -510,6 +520,7 @@ describe('Completion and billable facts', () => {
         removePlannedAssignmentIds: [planned.id],
       },
     });
+    const completed = await getJob({ db: context.db, id: job.id });
     expect(completed).toMatchObject({ status: 'completed', startDate: '2026-09-03', endDate: '2026-09-03' });
     expect(completed.assignments.map((assignment) => assignment.id)).toEqual([arrived.id]);
 
@@ -544,12 +555,11 @@ describe('Completion and billable facts', () => {
 
   test('requires a resolved split when a sequential stint opens a Gap Flag', async ({ context }) => {
     const firstJob = await createJob({ db: context.db, actor: manager, input: jobInput(context) });
-    const first = await createAssignment({
-      db: context.db,
-      actor: manager,
-      input: { jobId: firstJob.id, machineId: context.machine.id, implementId: null },
+    const first = await plannedStint(context.db, manager, {
+      jobId: firstJob.id,
+      machineId: context.machine.id,
+      implementId: null,
     });
-    if (!first) throw new Error('Expected assignment');
     await captureReading({
       db: context.db,
       actor: foreman,
@@ -576,12 +586,11 @@ describe('Completion and billable facts', () => {
       },
     });
     const secondJob = await createJob({ db: context.db, actor: manager, input: jobInput(context) });
-    const second = await createAssignment({
-      db: context.db,
-      actor: manager,
-      input: { jobId: secondJob.id, machineId: context.machine.id, implementId: null },
+    const second = await plannedStint(context.db, manager, {
+      jobId: secondJob.id,
+      machineId: context.machine.id,
+      implementId: null,
     });
-    if (!second) throw new Error('Expected assignment');
     await captureReading({
       db: context.db,
       actor: foreman,
@@ -633,19 +642,18 @@ describe('Completion and billable facts', () => {
       actor: manager,
       input: { id: second.id, travelHours: 2.5, unaccountedHours: 7.5, reason: 'Yard work' },
     });
-    await expect(
-      completeJob({
-        db: context.db,
-        actor: manager,
-        input: {
-          id: secondJob.id,
-          startDate: DateOnlyIso.parse('2026-09-05'),
-          endDate: DateOnlyIso.parse('2026-09-05'),
-          dieselLitres: 0,
-          notes: null,
-          removePlannedAssignmentIds: [],
-        },
-      }),
-    ).resolves.toMatchObject({ status: 'completed' });
+    await completeJob({
+      db: context.db,
+      actor: manager,
+      input: {
+        id: secondJob.id,
+        startDate: DateOnlyIso.parse('2026-09-05'),
+        endDate: DateOnlyIso.parse('2026-09-05'),
+        dieselLitres: 0,
+        notes: null,
+        removePlannedAssignmentIds: [],
+      },
+    });
+    expect((await getJob({ db: context.db, id: secondJob.id })).status).toBe('completed');
   });
 });

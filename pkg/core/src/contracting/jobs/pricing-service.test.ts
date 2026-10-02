@@ -7,9 +7,9 @@ import { describe, expect } from 'vitest';
 import { createTester } from '../../test/create-tester.js';
 import { createRate, patchRate } from '../rate-card/rate-service.js';
 import { amendReading } from '../readings/reading-service.js';
-import { admin, adminId, completedJob, seedJobFixtures } from '../test/job-fixtures.js';
+import { addedChargeLine, admin, adminId, completedJob, seedJobFixtures } from '../test/job-fixtures.js';
 import { resolveGap } from './assignment-service.js';
-import { createChargeLine, patchChargeLine } from './charge-line-service.js';
+import { patchChargeLine } from './charge-line-service.js';
 import { getJob, listJobs } from './job-read.js';
 import { patchJob } from './job-service.js';
 import { setMeasure } from './measure-service.js';
@@ -49,7 +49,7 @@ describe('picking a Rate', () => {
     context,
   }) => {
     const { db } = context;
-    const { stints } = await completedJob(context, [
+    const { jobId, stints } = await completedJob(context, [
       { machineId: context.excavator.id, arrival: 100, departure: 110 },
       { machineId: context.excavator.id, arrival: 111, departure: 115.5 },
       { machineId: context.excavator.id, arrival: 116, departure: 120 },
@@ -58,11 +58,12 @@ describe('picking a Rate', () => {
     if (!first || !second || !third) throw new Error('Expected three stints');
     await setStintRate({ db, actor: admin, input: { assignmentId: third.id, rateId: null } });
 
-    const job = await setStintRate({
+    await setStintRate({
       db,
       actor: admin,
       input: { assignmentId: first.id, rateId: context.dryHire.id },
     });
+    const job = await getJob({ db, id: jobId });
 
     expect(
       job.assignments.map((assignment) => [
@@ -88,7 +89,8 @@ describe('picking a Rate', () => {
     expect(job.assignments[2]).toMatchObject({ pricing: { kind: 'no-charge' } });
     expect(job.pricing.gate).toMatchObject({ ok: true, unpricedStints: 0 });
 
-    const cleared = await clearStintRate({ db, actor: admin, input: { assignmentId: third.id } });
+    await clearStintRate({ db, actor: admin, input: { assignmentId: third.id } });
+    const cleared = await getJob({ db, id: jobId });
     expect(cleared.assignments[2]).toMatchObject({ pricing: null });
     expect(cleared.pricing.gate).toMatchObject({ ok: false, unpricedStints: 1 });
   });
@@ -120,11 +122,12 @@ describe('amount overrides while Completed', () => {
     const [haul, dig, secondDig] = stints;
     if (!haul || !dig || !secondDig) throw new Error('Expected three stints');
 
-    const measured = await setStintRate({
+    await setStintRate({
       db,
       actor: admin,
       input: { assignmentId: haul.id, rateId: context.perLoad.id },
     });
+    const measured = await getJob({ db, id: jobId });
     expect(measured.assignments.find((stint) => stint.id === haul.id)).toMatchObject({
       pricing: { finalAmount: 0, measureMissing: true },
     });
@@ -181,25 +184,27 @@ describe('Diesel and Discount', () => {
       actor: admin,
       input: { assignmentId: stints[0]?.id ?? '', rateId: context.dryHire.id },
     });
-    const line = await createChargeLine({ db, actor: admin, input: { jobId, description: 'Low-bed' } });
-    if (!line) throw new Error('Expected a charge line');
+    const line = await addedChargeLine(db, admin, { jobId, description: 'Low-bed' });
     await patchChargeLine({ db, actor: admin, input: { id: line.id, amount: 3_500 } });
 
-    const priced = await setDieselPrice({ db, actor: admin, input: { jobId, unitPrice: 23 } });
+    await setDieselPrice({ db, actor: admin, input: { jobId, unitPrice: 23 } });
+    const priced = await getJob({ db, id: jobId });
     expect(priced).toMatchObject({ diesel: { unitPrice: 23, amount: 4_830, amountEdited: false } });
-    const overridden = await setDieselPrice({
+    await setDieselPrice({
       db,
       actor: admin,
       input: { jobId, unitPrice: 23, amount: 4_800 },
     });
+    const overridden = await getJob({ db, id: jobId });
     expect(overridden).toMatchObject({ diesel: { amount: 4_800, amountEdited: true } });
     await setDieselPrice({ db, actor: admin, input: { jobId, unitPrice: 23 } });
 
-    const discounted = await setDiscount({
+    await setDiscount({
       db,
       actor: admin,
       input: { jobId, discount: { kind: 'percent', value: 5 } },
     });
+    const discounted = await getJob({ db, id: jobId });
     expect(discounted.pricing).toMatchObject({
       subtotal: 32_660,
       discountAmount: 1_633,
@@ -210,7 +215,8 @@ describe('Diesel and Discount', () => {
     expect(discounted).toMatchObject({ discount: { kind: 'percent', value: 5, amount: 1_633 } });
 
     await setDieselPrice({ db, actor: admin, input: { jobId, unitPrice: 23, amount: 5_000 } });
-    expect(await patchJob({ db, actor: admin, input: { id: jobId, dieselLitres: 0 } })).toMatchObject({
+    await patchJob({ db, actor: admin, input: { id: jobId, dieselLitres: 0 } });
+    expect(await getJob({ db, id: jobId })).toMatchObject({
       diesel: null,
       pricing: { dieselAmount: 0 },
     });
@@ -241,8 +247,7 @@ describe('Mark as Priced', () => {
     );
     const [dig, haul] = stints;
     if (!dig || !haul) throw new Error('Expected two stints');
-    const line = await createChargeLine({ db, actor: admin, input: { jobId, description: 'Fixed quote' } });
-    if (!line) throw new Error('Expected a charge line');
+    const line = await addedChargeLine(db, admin, { jobId, description: 'Fixed quote' });
     await setStintRate({ db, actor: admin, input: { assignmentId: dig.id, rateId: context.dryHire.id } });
 
     await expect(markPriced({ db, actor: admin, input: { id: jobId, expectedTotal: 6_000 } })).rejects.toMatchObject({
@@ -265,7 +270,8 @@ describe('Mark as Priced', () => {
     await expect(markPriced({ db, actor: admin, input: { id: jobId, expectedTotal: 8_000 } })).rejects.toMatchObject({
       code: 'contracting_job.total_changed',
     });
-    const priced = await markPriced({ db, actor: admin, input: { id: jobId, expectedTotal: 8_500 } });
+    await markPriced({ db, actor: admin, input: { id: jobId, expectedTotal: 8_500 } });
+    const priced = await getJob({ db, id: jobId });
 
     expect(priced).toMatchObject({
       status: 'priced',
@@ -295,7 +301,7 @@ describe('a reading amendment on a Priced Job', () => {
   const priceAt = async (db: Db, jobId: string, assignmentId: string, rateId: string) => {
     await setStintRate({ db, actor: admin, input: { assignmentId, rateId } });
     const total = (await getJob({ db, id: jobId })).pricing.total;
-    return markPriced({ db, actor: admin, input: { id: jobId, expectedTotal: total } });
+    await markPriced({ db, actor: admin, input: { id: jobId, expectedTotal: total } });
   };
   const jobEvents = async (db: Db, jobId: string) =>
     (
@@ -350,7 +356,8 @@ describe('a reading amendment on a Priced Job', () => {
       ).map((job) => job.id),
     ).toEqual([jobId]);
 
-    const repriced = await markPriced({ db, actor: admin, input: { id: jobId, expectedTotal: 5_400 } });
+    await markPriced({ db, actor: admin, input: { id: jobId, expectedTotal: 5_400 } });
+    const repriced = await getJob({ db, id: jobId });
     expect(repriced).toMatchObject({ reopenedAt: null, repricingNote: null });
   });
 
@@ -364,7 +371,8 @@ describe('a reading amendment on a Priced Job', () => {
     const [nextStint] = next.stints;
     if (!firstStint || !nextStint) throw new Error('Expected stints');
     await priceAt(db, first.jobId, firstStint.id, context.dryHire.id);
-    expect((await priceAt(db, next.jobId, nextStint.id, context.dryHire.id)).pricedTotal).toBe(6_000);
+    await priceAt(db, next.jobId, nextStint.id, context.dryHire.id);
+    expect((await getJob({ db, id: next.jobId })).pricedTotal).toBe(6_000);
 
     await amendReading({
       db,

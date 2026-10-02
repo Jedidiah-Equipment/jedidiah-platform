@@ -22,10 +22,10 @@ import type {
 import { eq } from 'drizzle-orm';
 import { isRateCardError } from '../rate-card/rate-card-errors.js';
 import { getRate } from '../rate-card/rate-service.js';
-import { assertJobAction, JobError, jobNotFound, totalChanged, withJobConstraints, wrongStatus } from './job-errors.js';
-import { lockAssignment, lockJob } from './job-lock.js';
+import { JobError, jobNotFound, totalChanged, wrongStatus } from './job-errors.js';
+import { lockJob, lockJobFor, lockStintFor } from './job-lock.js';
 import { assignmentIn, getJob } from './job-read.js';
-import { writeAssignment, writeJob } from './job-write.js';
+import { jobTransaction, writeAssignment, writeJobRow } from './job-write.js';
 
 type StintPricingColumns = Pick<
   typeof contractingMachineAssignments.$inferInsert,
@@ -38,8 +38,7 @@ const isPriced = (stint: Pick<Assignment, 'pricing'>) => stint.pricing !== null;
 
 /** Locks the stint and its Job, checks Pricing is open, and returns the live read of the Job and the stint. */
 async function openStint(tx: DatabaseTransaction, assignmentId: string, actor: JobActor) {
-  const { job: row, machineCode } = await lockAssignment(tx, assignmentId);
-  assertJobAction('price', row, actor);
+  const { job: row, machineCode } = await lockStintFor(tx, assignmentId, 'price', actor);
   const job = await getJob({ db: tx, id: row.id });
   const stint = assignmentIn(job, assignmentId);
   if (stint.state !== 'left') throw jobNotFound('Machine Assignment');
@@ -52,7 +51,7 @@ const writeStintPricing = (
   machineCode: string,
   id: string,
   values: StintPricingColumns,
-) => writeAssignment(tx, actorUserId, machineCode, id, { set: () => values });
+) => writeAssignment(tx, actorUserId, machineCode, id, () => values);
 
 async function findRate(tx: DatabaseTransaction, id: string) {
   try {
@@ -63,162 +62,187 @@ async function findRate(tx: DatabaseTransaction, id: string) {
   }
 }
 
-export async function setStintRate({ db, actor, input }: { db: Db; actor: JobActor; input: StintRateSetInput }) {
+export async function setStintRate({
+  db,
+  actor,
+  input,
+}: {
+  db: Db;
+  actor: JobActor;
+  input: StintRateSetInput;
+}): Promise<void> {
   const actorUserId = actor.userId;
-  return withJobConstraints(() =>
-    db.transaction(async (tx) => {
-      const { machineCode, job, stint: chosen } = await openStint(tx, input.assignmentId, actor);
-      const rate = input.rateId ? await findRate(tx, input.rateId) : null;
-      if (rate && !rate.active)
-        throw new JobError('contracting_job.rate_inactive', 'That Rate is no longer active. Pick another.');
-      // The read model orders stints by arrival, so the first of the machine's stints is its first stint.
-      const stints = job.assignments.filter(
-        (assignment) => assignment.machineId === chosen.machineId && assignment.state === 'left',
-      );
-      const targets =
-        stints[0]?.id === chosen.id ? stints.filter((stint) => stint.id === chosen.id || !isPriced(stint)) : [chosen];
-      const snapshot = rate
-        ? {
-            rateId: rate.id,
-            rateName: rate.name,
-            rateBasis: rate.basis,
-            rateMeasureTypeId: rate.measureTypeId,
-            rateUnitAmount: rate.amount,
-          }
-        : { ...noRate, rateUnitAmount: 0 };
-      for (const stint of targets) {
-        const { computedAmount } = priceStint({
-          basis: snapshot.rateBasis,
-          unitAmount: snapshot.rateUnitAmount,
-          measureTypeId: snapshot.rateMeasureTypeId,
-          billableHours: stint.billableHours,
-          measures: stint.measures,
-        });
-        // Final and computed are written equal, so choosing a Rate discards any amount override.
-        await writeStintPricing(tx, actorUserId, machineCode, stint.id, {
-          ...snapshot,
-          computedAmount,
-          finalAmount: computedAmount,
-        });
-      }
-      return getJob({ db: tx, id: job.id });
-    }),
-  );
-}
-
-export async function clearStintRate({ db, actor, input }: { db: Db; actor: JobActor; input: StintRateClearInput }) {
-  const actorUserId = actor.userId;
-  return withJobConstraints(() =>
-    db.transaction(async (tx) => {
-      const { machineCode, job } = await openStint(tx, input.assignmentId, actor);
-      await writeStintPricing(tx, actorUserId, machineCode, input.assignmentId, {
-        ...noRate,
-        rateUnitAmount: null,
-        computedAmount: null,
-        finalAmount: null,
+  await jobTransaction(db, async (tx) => {
+    const { machineCode, job, stint: chosen } = await openStint(tx, input.assignmentId, actor);
+    const rate = input.rateId ? await findRate(tx, input.rateId) : null;
+    if (rate && !rate.active)
+      throw new JobError('contracting_job.rate_inactive', 'That Rate is no longer active. Pick another.');
+    // The read model orders stints by arrival, so the first of the machine's stints is its first stint.
+    const stints = job.assignments.filter(
+      (assignment) => assignment.machineId === chosen.machineId && assignment.state === 'left',
+    );
+    const targets =
+      stints[0]?.id === chosen.id ? stints.filter((stint) => stint.id === chosen.id || !isPriced(stint)) : [chosen];
+    const snapshot = rate
+      ? {
+          rateId: rate.id,
+          rateName: rate.name,
+          rateBasis: rate.basis,
+          rateMeasureTypeId: rate.measureTypeId,
+          rateUnitAmount: rate.amount,
+        }
+      : { ...noRate, rateUnitAmount: 0 };
+    for (const stint of targets) {
+      const { computedAmount } = priceStint({
+        basis: snapshot.rateBasis,
+        unitAmount: snapshot.rateUnitAmount,
+        measureTypeId: snapshot.rateMeasureTypeId,
+        billableHours: stint.billableHours,
+        measures: stint.measures,
       });
-      return getJob({ db: tx, id: job.id });
-    }),
-  );
-}
-
-export async function setStintAmount({ db, actor, input }: { db: Db; actor: JobActor; input: StintAmountSetInput }) {
-  const actorUserId = actor.userId;
-  return withJobConstraints(() =>
-    db.transaction(async (tx) => {
-      const { machineCode, job, stint } = await openStint(tx, input.assignmentId, actor);
-      const { pricing } = stint;
-      if (pricing === null) throw wrongStatus('Pick a Rate before changing the amount.');
-      if (pricing.kind === 'no-charge')
-        throw wrongStatus('A No charge line is included in the quote and bills nothing.');
-      // Computed is rewritten to the live figure in the same write, so final ≠ computed stays the override test.
+      // Final and computed are written equal, so choosing a Rate discards any amount override.
       await writeStintPricing(tx, actorUserId, machineCode, stint.id, {
-        computedAmount: pricing.computedAmount,
-        finalAmount: input.finalAmount ?? pricing.computedAmount,
+        ...snapshot,
+        computedAmount,
+        finalAmount: computedAmount,
       });
-      return getJob({ db: tx, id: job.id });
-    }),
-  );
+    }
+  });
 }
 
-export async function setDieselPrice({ db, actor, input }: { db: Db; actor: JobActor; input: DieselPriceInput }) {
+export async function clearStintRate({
+  db,
+  actor,
+  input,
+}: {
+  db: Db;
+  actor: JobActor;
+  input: StintRateClearInput;
+}): Promise<void> {
   const actorUserId = actor.userId;
-  return withJobConstraints(() =>
-    writeJob(db, actorUserId, input.jobId, {
-      assert: (_tx, before) => {
-        assertJobAction('price', before, actor);
-        if (input.unitPrice !== null && before.dieselLitres === 0)
-          throw wrongStatus('No diesel was supplied on this Job.');
-      },
-      set: (before) =>
-        input.unitPrice === null
-          ? { dieselUnitPrice: null, dieselAmount: null }
-          : {
-              dieselUnitPrice: input.unitPrice,
-              dieselAmount: input.amount ?? computeDieselAmount(before.dieselLitres, input.unitPrice),
-            },
-    }),
-  );
+  await jobTransaction(db, async (tx) => {
+    const { machineCode } = await openStint(tx, input.assignmentId, actor);
+    await writeStintPricing(tx, actorUserId, machineCode, input.assignmentId, {
+      ...noRate,
+      rateUnitAmount: null,
+      computedAmount: null,
+      finalAmount: null,
+    });
+  });
 }
 
-export async function setDiscount({ db, actor, input }: { db: Db; actor: JobActor; input: DiscountSetInput }) {
+export async function setStintAmount({
+  db,
+  actor,
+  input,
+}: {
+  db: Db;
+  actor: JobActor;
+  input: StintAmountSetInput;
+}): Promise<void> {
   const actorUserId = actor.userId;
-  return withJobConstraints(() =>
-    db.transaction(async (tx) => {
-      assertJobAction('price', await lockJob(tx, input.jobId), actor);
-      const { discount } = input;
-      const { subtotal } = (await getJob({ db: tx, id: input.jobId })).pricing;
-      return writeJob(tx, actorUserId, input.jobId, {
-        set: () =>
-          discount === null
-            ? { discountKind: null, discountValue: null, discountAmount: null }
-            : {
-                discountKind: discount.kind,
-                discountValue: discount.value,
-                // Kept current for the audit trail; the read model recomputes it while Completed.
-                discountAmount: computeDiscountAmount(subtotal, discount),
-              },
-      });
-    }),
-  );
+  await jobTransaction(db, async (tx) => {
+    const { machineCode, stint } = await openStint(tx, input.assignmentId, actor);
+    const { pricing } = stint;
+    if (pricing === null) throw wrongStatus('Pick a Rate before changing the amount.');
+    if (pricing.kind === 'no-charge') throw wrongStatus('A No charge line is included in the quote and bills nothing.');
+    // Computed is rewritten to the live figure in the same write, so final ≠ computed stays the override test.
+    await writeStintPricing(tx, actorUserId, machineCode, stint.id, {
+      computedAmount: pricing.computedAmount,
+      finalAmount: input.finalAmount ?? pricing.computedAmount,
+    });
+  });
 }
 
-export async function markPriced({ db, actor, input }: { db: Db; actor: JobActor; input: JobMarkPricedInput }) {
+export async function setDieselPrice({
+  db,
+  actor,
+  input,
+}: {
+  db: Db;
+  actor: JobActor;
+  input: DieselPriceInput;
+}): Promise<void> {
+  await jobTransaction(db, async (tx) => {
+    const before = await lockJobFor(tx, input.jobId, 'price', actor);
+    if (input.unitPrice !== null && before.dieselLitres === 0) throw wrongStatus('No diesel was supplied on this Job.');
+    await writeJobRow(tx, actor.userId, before.id, (row) =>
+      input.unitPrice === null
+        ? { dieselUnitPrice: null, dieselAmount: null }
+        : {
+            dieselUnitPrice: input.unitPrice,
+            dieselAmount: input.amount ?? computeDieselAmount(row.dieselLitres, input.unitPrice),
+          },
+    );
+  });
+}
+
+export async function setDiscount({
+  db,
+  actor,
+  input,
+}: {
+  db: Db;
+  actor: JobActor;
+  input: DiscountSetInput;
+}): Promise<void> {
   const actorUserId = actor.userId;
-  return withJobConstraints(() =>
-    db.transaction(async (tx) => {
-      const before = await lockJob(tx, input.id);
-      assertJobAction('price', before, actor);
-      const detail = await getJob({ db: tx, id: before.id });
-      const { pricing } = detail;
-      if (!pricing.gate.ok)
-        throw new JobError(
-          'contracting_job.pricing_incomplete',
-          `This Job cannot be priced yet: ${pricingGateReasons(pricing.gate).join(' · ')}.`,
-        );
-      if (pricing.total !== input.expectedTotal)
-        throw totalChanged('The total changed while you were pricing. Review it and mark as Priced again.');
-      // The live figures become the snapshot: from here the read model trusts the stored amounts.
-      for (const stint of detail.assignments)
-        if (stint.state === 'left' && stint.pricing?.kind === 'rate')
-          await writeStintPricing(tx, actorUserId, stint.machineCode, stint.id, {
-            computedAmount: stint.pricing.computedAmount,
-            finalAmount: stint.pricing.finalAmount,
-          });
-      return writeJob(tx, actorUserId, input.id, {
-        set: (row) => ({
-          ...jobTransitions.price(row, {
-            at: new Date(),
-            byUserId: actorUserId,
-            subtotal: pricing.subtotal,
-            total: pricing.total,
-          }),
-          discountAmount: row.discountKind === null ? null : pricing.discountAmount,
-          dieselAmount: row.dieselLitres > 0 ? pricing.dieselAmount : row.dieselAmount,
-        }),
-      });
-    }),
-  );
+  await jobTransaction(db, async (tx) => {
+    await lockJobFor(tx, input.jobId, 'price', actor);
+    const { discount } = input;
+    const { subtotal } = (await getJob({ db: tx, id: input.jobId })).pricing;
+    await writeJobRow(tx, actorUserId, input.jobId, () =>
+      discount === null
+        ? { discountKind: null, discountValue: null, discountAmount: null }
+        : {
+            discountKind: discount.kind,
+            discountValue: discount.value,
+            // Kept current for the audit trail; the read model recomputes it while Completed.
+            discountAmount: computeDiscountAmount(subtotal, discount),
+          },
+    );
+  });
+}
+
+export async function markPriced({
+  db,
+  actor,
+  input,
+}: {
+  db: Db;
+  actor: JobActor;
+  input: JobMarkPricedInput;
+}): Promise<void> {
+  const actorUserId = actor.userId;
+  await jobTransaction(db, async (tx) => {
+    const before = await lockJobFor(tx, input.id, 'price', actor);
+    const detail = await getJob({ db: tx, id: before.id });
+    const { pricing } = detail;
+    if (!pricing.gate.ok)
+      throw new JobError(
+        'contracting_job.pricing_incomplete',
+        `This Job cannot be priced yet: ${pricingGateReasons(pricing.gate).join(' · ')}.`,
+      );
+    if (pricing.total !== input.expectedTotal)
+      throw totalChanged('The total changed while you were pricing. Review it and mark as Priced again.');
+    // The live figures become the snapshot: from here the read model trusts the stored amounts.
+    for (const stint of detail.assignments)
+      if (stint.state === 'left' && stint.pricing?.kind === 'rate')
+        await writeStintPricing(tx, actorUserId, stint.machineCode, stint.id, {
+          computedAmount: stint.pricing.computedAmount,
+          finalAmount: stint.pricing.finalAmount,
+        });
+    await writeJobRow(tx, actorUserId, input.id, (row) => ({
+      ...jobTransitions.price(row, {
+        at: new Date(),
+        byUserId: actorUserId,
+        subtotal: pricing.subtotal,
+        total: pricing.total,
+      }),
+      discountAmount: row.discountKind === null ? null : pricing.discountAmount,
+      dieselAmount: row.dieselLitres > 0 ? pricing.dieselAmount : row.dieselAmount,
+    }));
+  });
 }
 
 /**
@@ -242,9 +266,8 @@ export async function reopenPricingWithin(tx: DatabaseTransaction, actorUserId: 
   const note = edited
     ? `${reason} ${formatNumber(edited)} edited ${edited === 1 ? 'amount was' : 'amounts were'} reset.`
     : reason;
-  const reopened = await writeJob(tx, actorUserId, jobId, {
-    set: (row) => jobTransitions.reopen(row, { at: new Date(), note }),
-  });
+  await writeJobRow(tx, actorUserId, jobId, (row) => jobTransitions.reopen(row, { at: new Date(), note }));
+  const reopened = await getJob({ db: tx, id: jobId });
   for (const stint of reopened.assignments)
     if (stint.pricing?.kind === 'rate')
       await writeStintPricing(tx, actorUserId, stint.machineCode, stint.id, {

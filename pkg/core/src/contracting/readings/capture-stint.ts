@@ -86,12 +86,11 @@ export async function attachReadingToStint(
     stint,
   }: CaptureStint & { actor: JobActor; machineCode: string; input: ReadingCaptureInput; readingId: string },
 ) {
-  await writeAssignment(tx, actor.userId, machineCode, stint.id, {
-    set: () =>
-      input.role === 'arrival'
-        ? { arrivalReadingId: readingId, ...arrivalResources(stint, input.stintOverrides) }
-        : { departureReadingId: readingId },
-  });
+  await writeAssignment(tx, actor.userId, machineCode, stint.id, () =>
+    input.role === 'arrival'
+      ? { arrivalReadingId: readingId, ...arrivalResources(stint, input.stintOverrides) }
+      : { departureReadingId: readingId },
+  );
   if (input.role === 'arrival' && job.status === 'upcoming')
-    await writeJobRow(tx, actor.userId, job.id, { set: (before) => jobTransitions.activate(before) });
+    await writeJobRow(tx, actor.userId, job.id, (before) => jobTransitions.activate(before));
 }

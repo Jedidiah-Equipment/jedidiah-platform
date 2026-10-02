@@ -57,11 +57,12 @@ const test = createTester(async ({ db, auth }) => {
       foremanUserId: actorUserId,
     },
   });
-  const assignment = await createAssignment({
+  await createAssignment({
     db,
     actor,
     input: { jobId: job.id, machineId: machine.id, implementId: null },
   });
+  const [assignment] = (await getJob({ db, id: job.id })).assignments;
   if (!assignment) throw new Error('Expected Machine Assignment');
   const storage = new InMemoryStorageAdapter();
   const app = Fastify();

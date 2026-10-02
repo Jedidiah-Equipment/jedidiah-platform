@@ -2,7 +2,15 @@ import { DateOnlyIso } from '@pkg/schema';
 import { expect } from 'vitest';
 import { createTester } from '../../test/create-tester.js';
 import { amendReading, captureReading } from '../readings/reading-service.js';
-import { admin, completedJob, foreman, invoicing, type JobFixtures, seedJobFixtures } from '../test/job-fixtures.js';
+import {
+  addedChargeLine,
+  admin,
+  completedJob,
+  foreman,
+  invoicing,
+  type JobFixtures,
+  seedJobFixtures,
+} from '../test/job-fixtures.js';
 import { createAssignment, patchAssignment, removeAssignment, resolveGap } from './assignment-service.js';
 import { createChargeLine, patchChargeLine, removeChargeLine } from './charge-line-service.js';
 import { stampInvoice } from './invoicing-service.js';
@@ -33,8 +41,7 @@ test.for(['invoiced', 'cancelled'] as const)(
     const stint = stints[0];
     const earlierStint = earlier.stints[0];
     if (!stint || !earlierStint) throw new Error('Expected stints');
-    const line = await createChargeLine({ db, actor: admin, input: { jobId, description: 'Low-bed' } });
-    if (!line) throw new Error('Expected a charge line');
+    const line = await addedChargeLine(db, admin, { jobId, description: 'Low-bed' });
     await patchChargeLine({ db, actor: admin, input: { id: line.id, amount: 1_500 } });
     await setMeasure({
       db,

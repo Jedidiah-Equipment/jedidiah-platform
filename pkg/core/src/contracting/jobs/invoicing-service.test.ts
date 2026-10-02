@@ -5,6 +5,7 @@ import { createTester } from '../../test/create-tester.js';
 import { amendReading } from '../readings/reading-service.js';
 import { admin, invoicing, type JobFixtures, pricedJob, seedJobFixtures } from '../test/job-fixtures.js';
 import { findJobsByInvoiceNumber, stampInvoice } from './invoicing-service.js';
+import { getJob } from './job-read.js';
 import { markPriced } from './pricing-service.js';
 
 const test = createTester(async ({ db }) => ({ ...(await seedJobFixtures(db)), db }) satisfies JobFixtures);
@@ -22,11 +23,12 @@ describe('stamping an Invoice Number', () => {
     ]);
     const eventsBefore = (await jobEvents(context, jobId)).length;
 
-    const invoiced = await stampInvoice({
+    await stampInvoice({
       db: context.db,
       actor: invoicing,
       input: { id: jobId, invoiceNumber: 'INV-2041', expectedTotal: total },
     });
+    const invoiced = await getJob({ db: context.db, id: jobId });
 
     expect(invoiced).toMatchObject({
       status: 'invoiced',

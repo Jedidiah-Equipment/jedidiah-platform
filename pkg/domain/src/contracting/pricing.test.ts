@@ -259,7 +259,7 @@ describe('priceJob', () => {
     expect(priced.pricing).toMatchObject({ stintsTotal: 6_000, gate: { unpricedStints: 0 } });
   });
 
-  test('keeps the stored discount amount outside Completed', () => {
+  test('keeps the stored discount amount once Priced', () => {
     const discount = { kind: 'amount', value: 500, amount: 400 } as const;
     const stints = [rated(10, 600, timeRate(600, { computedAmount: 6_000, finalAmount: 6_000 }))];
     expect(priceJob(facts({ status: 'priced', stints, discount })).discount).toEqual(discount);

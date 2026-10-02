@@ -27,7 +27,7 @@ const departureReading = alias(contractingHourReadings, 'job_departure_reading')
 const arrivalCapturer = alias(user, 'job_arrival_capturer');
 const departureCapturer = alias(user, 'job_departure_capturer');
 
-/** A Job row with the names every read shows. */
+/** A Job row with the names every read shows. A name added here needs its join in `selectJobs` and `listJobs`. */
 export const jobHeader = {
   job: getTableColumns(contractingJobs),
   customerName: contractingCustomers.name,
@@ -39,7 +39,11 @@ export const jobHeader = {
 
 // Plain joins rather than the relational API: Drizzle 0.45 keys relation types on the unqualified table
 // name, so `contracting.job` and `equipment.job` collide.
-/** Jobs joined to everything `jobHeader` names; the caller adds its filter and order. */
+/**
+ * Jobs joined to everything `jobHeader` names; the caller adds its filter and order. `listJobs` repeats these
+ * joins: its extra columns cannot pass through here without a cast (Drizzle cannot type a generic selection
+ * across chained joins).
+ */
 export function selectJobs(db: DbOrTx) {
   return db
     .select(jobHeader)

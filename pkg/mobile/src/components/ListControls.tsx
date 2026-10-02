@@ -1,4 +1,4 @@
-import { IconCheck, IconChevronDown, IconSearch, type Icon as TablerIcon } from '@tabler/icons-react-native';
+import { IconCheck, IconChevronDown, IconPlus, IconSearch, type Icon as TablerIcon } from '@tabler/icons-react-native';
 import { forwardRef, type ReactNode, useRef, useState } from 'react';
 import { Pressable, ScrollView, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -75,6 +75,29 @@ export function ListSearchControl({
         ) : null}
       </View>
     </View>
+  );
+}
+
+const CREATE_LABEL_BREAKPOINT = 760;
+
+/** The primary plus at the end of a list's controls; wide screens also spell out what it creates. */
+export function ListCreateControl({ label, onPress }: { label: string; onPress: () => void }) {
+  const isWide = useWindowDimensions().width >= CREATE_LABEL_BREAKPOINT;
+
+  return (
+    <Pressable
+      accessibilityLabel={label}
+      accessibilityRole="button"
+      className="h-10 flex-row items-center gap-2 rounded-xl bg-primary px-3 active:opacity-90"
+      onPress={onPress}
+    >
+      <Icon className="text-primary-foreground" icon={IconPlus} size={18} strokeWidth={2.5} />
+      {isWide ? (
+        <Text className="text-toolbar text-primary-foreground" weight="bold">
+          {label}
+        </Text>
+      ) : null}
+    </Pressable>
   );
 }
 

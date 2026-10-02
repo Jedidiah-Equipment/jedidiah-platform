@@ -24,11 +24,14 @@ const gallery = vi.hoisted(() => {
 
 vi.mock('expo-file-system/legacy', () => ({ documentDirectory: 'file:///current/Documents/', ...fileSystem }));
 vi.mock('expo-media-library', () => gallery);
+const platform = vi.hoisted(() => ({ OS: 'android' }));
+vi.mock('react-native', () => ({ Platform: platform }));
 
 import { fieldNoteFiles, resolveFieldNotePhotoUri } from './files';
 
 beforeEach(() => {
   vi.clearAllMocks();
+  platform.OS = 'android';
   gallery.albums.clear();
 });
 
@@ -60,6 +63,12 @@ test('a camera photo goes to the Jedidiah album, created the first time and appe
   await fieldNoteFiles.keep('file:///camera/b.jpg', 'note-1', 'photo-2', 'camera');
   expect(gallery.Album.create).toHaveBeenCalledOnce();
   expect(gallery.Asset.create).toHaveBeenLastCalledWith('file:///camera/b.jpg', { title: 'Jedidiah' });
+});
+
+test('iOS asks for read-write access, since add-only access cannot find or create the album', async () => {
+  platform.OS = 'ios';
+  await fieldNoteFiles.keep('file:///camera/a.jpg', 'note-1', 'photo-1', 'camera');
+  expect(gallery.requestPermissionsAsync).toHaveBeenCalledWith(false, ['photo']);
 });
 
 test('a refused gallery keeps the sandbox copy and reports the photo as not in the gallery', async () => {

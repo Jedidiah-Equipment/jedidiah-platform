@@ -1,5 +1,6 @@
 import * as FileSystem from 'expo-file-system/legacy';
 import { Album, Asset, requestPermissionsAsync } from 'expo-media-library';
+import { Platform } from 'react-native';
 import type { FieldNoteFiles } from './store';
 
 const DIRECTORY = 'field-notes/';
@@ -42,7 +43,8 @@ export function resolveFieldNotePhotoUri(key: string): string {
 }
 
 async function saveToGalleryAlbum(uri: string) {
-  const { granted } = await requestPermissionsAsync(true, ['photo']);
+  // iOS's add-only access cannot find or create an album, so the album needs read-write there.
+  const { granted } = await requestPermissionsAsync(Platform.OS !== 'ios', ['photo']);
   if (!granted) throw new Error('Photo library access denied.');
   const album = await Album.get(GALLERY_ALBUM);
   if (album) {

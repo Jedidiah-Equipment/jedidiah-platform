@@ -18,7 +18,7 @@ import { ReadAtField } from '@/contracting/components/ReadAtField';
 import { useDrivers, useImplements } from '@/contracting/jobs/use-jobs';
 import { chooseMeterPhoto, type PhotoSource } from '@/contracting/lib/photo-picker';
 import { recordReadingCaptured } from '@/contracting/observability';
-import { type AttemptIdentity, captureAttempt } from '@/contracting/readings/capture-attempt';
+import { type AttemptIdentity, captureAttempt, captureAttemptPayload } from '@/contracting/readings/capture-attempt';
 import { deriveCapture } from '@/contracting/readings/derive-capture';
 import { capturedAtFor, isBackdated, isFutureReadAt, parseExifDateTime } from '@/contracting/readings/read-at';
 import { CAPTURE_FAILED, captureReading, ReadingRefusedError } from '@/contracting/readings/reading-upload';
@@ -158,16 +158,19 @@ function CaptureForm({ params }: { params: CaptureParams }) {
     // Name the latest only once history has loaded; the server then refuses a capture judged against an older one.
     const expectedPreviousId = readings.data ? (latest?.id ?? null) : undefined;
     // Only what the Foreman entered: a reconnect refetches history, and a retry after it must still replay.
-    attempt.current = captureAttempt(attempt.current, [
-      role,
-      params.assignmentId ?? null,
-      reading,
-      photo,
-      comment.trim(),
-      disputePrevious,
-      stintOverrides ?? null,
-      readAt?.toISOString() ?? null,
-    ]);
+    attempt.current = captureAttempt(
+      attempt.current,
+      captureAttemptPayload({
+        role,
+        assignmentId: params.assignmentId ?? null,
+        value: reading,
+        photo,
+        comment,
+        disputePrevious,
+        stintOverrides: stintOverrides ?? null,
+        readAt,
+      }),
+    );
     const { localId, attemptedAt } = attempt.current;
     const capturedAt = capturedAtFor(readAt, attemptedAt);
     const captured = {

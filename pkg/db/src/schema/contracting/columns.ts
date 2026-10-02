@@ -10,5 +10,11 @@ export const decimal2 = (name: string) => numeric(name, { precision: 12, scale: 
 /** Rand amounts. */
 export const money = decimal2;
 export const hours = (name: string) => numeric(name, { precision: 10, scale: 1, mode: 'number' });
-/** A constant's values as a SQL list, so a CHECK follows the constant. */
-export const quotedList = (values: readonly string[]) => sql.raw(values.map((value) => `'${value}'`).join(', '));
+/** Schema enum tokens as SQL literals; CHECK constraints cannot use query parameters. */
+export const quotedList = (values: readonly string[]) =>
+  sql
+    .join(
+      values.map((value) => sql`${value}`),
+      sql`, `,
+    )
+    .inlineParams();

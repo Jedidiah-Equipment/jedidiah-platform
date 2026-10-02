@@ -9,30 +9,22 @@ import type {
 } from '@pkg/schema/contracting';
 import { Document, Image, Page, StyleSheet, Text, View } from '@react-pdf/renderer';
 
-import { pdfFontFamily, pdfTitleFontFamily } from '../../pdf-fonts.js';
+import {
+  DocumentFooter,
+  DocumentHeader,
+  documentFrameLayout,
+  documentFrameStyles,
+  MetaPanel,
+} from '../../document-frame.js';
+import { pdfTitleFontFamily } from '../../pdf-fonts.js';
 import { jedidiahMarkWhiteSrc } from '../../pdf-logo.js';
-import { pdfColors } from '../../pdf-theme.js';
+import { pdfColors, pdfFontSize } from '../../pdf-theme.js';
 
-const layout = { pagePadding: 24, footerSpace: 56, sectionGap: 8 } as const;
+const layout = { footerSpace: 56 } as const;
 const column = { machine: 96, reading: 70, hours: 90, amount: 64 } as const;
 
 const styles = StyleSheet.create({
-  page: {
-    color: pdfColors.black,
-    fontFamily: pdfFontFamily,
-    fontSize: 8,
-    padding: layout.pagePadding,
-    paddingBottom: layout.footerSpace,
-  },
-  header: {
-    alignItems: 'flex-start',
-    backgroundColor: pdfColors.black,
-    color: pdfColors.white,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: layout.sectionGap,
-    padding: 18,
-  },
+  page: { fontSize: pdfFontSize.bodyXs, paddingBottom: layout.footerSpace },
   brand: { alignItems: 'center', flexDirection: 'row', gap: 8, marginBottom: 10 },
   mark: { height: 30, objectFit: 'contain', width: 23 },
   wordmark: {
@@ -42,38 +34,11 @@ const styles = StyleSheet.create({
     fontWeight: 700,
     textTransform: 'uppercase',
   },
-  title: { fontFamily: pdfTitleFontFamily, fontSize: 24, fontWeight: 700 },
   subtitle: { color: pdfColors.mutedOnDark, fontSize: 8, marginTop: 2 },
-  businessDetails: { alignItems: 'flex-end', fontSize: 7, gap: 2, textAlign: 'right' },
-  businessName: { fontWeight: 700 },
-  code: {
-    color: pdfColors.yellow,
-    fontFamily: pdfTitleFontFamily,
-    fontSize: 18,
-    fontWeight: 700,
-    marginBottom: 4,
-  },
-  metaGrid: { flexDirection: 'row', gap: 12, marginBottom: layout.sectionGap },
-  panel: { backgroundColor: pdfColors.panel, flex: 1, padding: 12 },
-  label: { color: pdfColors.muted, fontSize: 7, marginBottom: 4, textTransform: 'uppercase' },
   strong: { fontWeight: 700, marginBottom: 2 },
-  line: { marginBottom: 2 },
   muted: { color: pdfColors.muted, fontSize: 7, marginTop: 1 },
-  tableHeader: {
-    backgroundColor: pdfColors.black,
-    color: pdfColors.white,
-    flexDirection: 'row',
-    fontWeight: 700,
-    gap: 6,
-    paddingHorizontal: 8,
-    paddingVertical: 6,
-  },
-  row: {
-    borderBottomColor: pdfColors.greyBorder,
-    borderBottomWidth: 1,
-    paddingHorizontal: 8,
-    paddingVertical: 6,
-  },
+  tableHeader: { gap: 6, paddingVertical: 6 },
+  row: { paddingVertical: 6 },
   cells: { flexDirection: 'row', gap: 6 },
   subtotalRow: { backgroundColor: pdfColors.panel, fontWeight: 700 },
   machine: { width: column.machine },
@@ -83,7 +48,7 @@ const styles = StyleSheet.create({
   amount: { textAlign: 'right', width: column.amount },
   wide: { flex: 1 },
   legend: { color: pdfColors.muted, fontSize: 7, marginTop: 4 },
-  totals: { alignSelf: 'flex-end', marginTop: layout.sectionGap, width: 260 },
+  totals: { alignSelf: 'flex-end', marginTop: documentFrameLayout.sectionGap, width: 260 },
   totalRow: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 8, paddingVertical: 3 },
   grandTotal: {
     backgroundColor: pdfColors.black,
@@ -93,18 +58,11 @@ const styles = StyleSheet.create({
     marginTop: 2,
     paddingVertical: 6,
   },
-  unpriced: { color: pdfColors.muted, marginTop: layout.sectionGap },
-  notes: { backgroundColor: pdfColors.panel, marginTop: layout.sectionGap, padding: 12 },
-  footer: {
-    bottom: 20,
-    color: pdfColors.muted,
-    fontSize: 7,
-    gap: 2,
-    left: layout.pagePadding,
-    position: 'absolute',
-    right: layout.pagePadding,
-  },
+  unpriced: { color: pdfColors.muted, marginTop: documentFrameLayout.sectionGap },
+  notes: { backgroundColor: pdfColors.panel, marginTop: documentFrameLayout.sectionGap, padding: 12 },
 });
+
+const rowStyle = [documentFrameStyles.tableRow, styles.row];
 
 const markers: Record<JobCardReadingMarker, { glyph: string; meaning: string }> = {
   verified: { glyph: '●', meaning: 'photo, AI-verified' },
@@ -125,55 +83,56 @@ export function JobCardPdf({ document }: { document: JobCardModel }) {
   const details = JEDIDIAH_CONTRACTING_BUSINESS_DETAILS;
   return (
     <Document title={`${document.jobNumber} Job Card`}>
-      <Page size="A4" style={styles.page}>
-        <View style={styles.header}>
-          <View>
-            <View style={styles.brand}>
-              <Image src={jedidiahMarkWhiteSrc} style={styles.mark} />
-              <Text style={styles.wordmark}>{details.tradingName}</Text>
-            </View>
-            <Text style={styles.title}>JOB CARD</Text>
-            <Text style={styles.subtitle}>
-              {`${internal ? 'Internal copy' : 'Customer copy'} · Works summary — not an invoice`}
-            </Text>
-          </View>
-          <View style={styles.businessDetails}>
-            <Text style={styles.code}>{document.jobNumber}</Text>
-            <Text style={styles.businessName}>{details.tradingName}</Text>
-            {details.registeredName ? <Text>{details.registeredName}</Text> : null}
-            {details.vatRegistrationNumber ? <Text>{`VAT registration: ${details.vatRegistrationNumber}`}</Text> : null}
-            {details.companyRegistrationNumber ? (
-              <Text>{`Company registration: ${details.companyRegistrationNumber}`}</Text>
-            ) : null}
-            <Text>{`Address: ${details.address}`}</Text>
-            {details.email ? <Text>{`Email: ${details.email}`}</Text> : null}
-            {details.cellphone ? <Text>{`Cell: ${details.cellphone}`}</Text> : null}
-          </View>
-        </View>
+      <Page size="A4" style={[documentFrameStyles.page, styles.page]}>
+        <DocumentHeader
+          code={document.jobNumber}
+          lead={
+            <>
+              <View style={styles.brand}>
+                <Image src={jedidiahMarkWhiteSrc} style={styles.mark} />
+                <Text style={styles.wordmark}>{details.tradingName}</Text>
+              </View>
+              <Text style={documentFrameStyles.title}>JOB CARD</Text>
+              <Text style={styles.subtitle}>
+                {`${internal ? 'Internal copy' : 'Customer copy'} · Works summary — not an invoice`}
+              </Text>
+            </>
+          }
+        >
+          <Text style={documentFrameStyles.businessName}>{details.tradingName}</Text>
+          {details.registeredName ? <Text>{details.registeredName}</Text> : null}
+          {details.vatRegistrationNumber ? <Text>{`VAT registration: ${details.vatRegistrationNumber}`}</Text> : null}
+          {details.companyRegistrationNumber ? (
+            <Text>{`Company registration: ${details.companyRegistrationNumber}`}</Text>
+          ) : null}
+          <Text>{`Address: ${details.address}`}</Text>
+          {details.email ? <Text>{`Email: ${details.email}`}</Text> : null}
+          {details.cellphone ? <Text>{`Cell: ${details.cellphone}`}</Text> : null}
+        </DocumentHeader>
 
-        <View style={styles.metaGrid}>
-          <View style={styles.panel}>
-            <Text style={styles.label}>Customer</Text>
+        <View style={documentFrameStyles.metaGrid}>
+          <MetaPanel label="Customer">
             <Text style={styles.strong}>{document.customerName}</Text>
-            <Text style={styles.line}>{document.farmName}</Text>
-          </View>
-          <View style={styles.panel}>
-            <Text style={styles.label}>Job</Text>
+            <Text style={documentFrameStyles.line}>{document.farmName}</Text>
+          </MetaPanel>
+          <MetaPanel label="Job">
             <Text style={styles.strong}>{document.workTypeName}</Text>
-            {document.description ? <Text style={styles.line}>{document.description}</Text> : null}
-            <Text style={styles.line}>
+            {document.description ? <Text style={documentFrameStyles.line}>{document.description}</Text> : null}
+            <Text style={documentFrameStyles.line}>
               {`${formatDate(document.startDate, 'short', '—')} – ${formatDate(document.endDate, 'short', '—')}`}
             </Text>
-            {document.foremanName ? <Text style={styles.line}>{`Foreman: ${document.foremanName}`}</Text> : null}
+            {document.foremanName ? (
+              <Text style={documentFrameStyles.line}>{`Foreman: ${document.foremanName}`}</Text>
+            ) : null}
             {document.invoiceNumber ? (
-              <Text style={styles.line}>
+              <Text style={documentFrameStyles.line}>
                 {`Invoice: ${document.invoiceNumber} · ${formatDate(document.invoicedAt, 'short')}`}
               </Text>
             ) : null}
-          </View>
+          </MetaPanel>
         </View>
 
-        <View style={styles.tableHeader} fixed>
+        <View style={[documentFrameStyles.tableHeader, styles.tableHeader]} fixed>
           <Text style={styles.machine}>Machine</Text>
           <Text style={styles.reading}>Arrival</Text>
           <Text style={styles.reading}>Departure</Text>
@@ -202,23 +161,23 @@ export function JobCardPdf({ document }: { document: JobCardModel }) {
 
         {internal && document.repricingNote ? (
           <View style={styles.notes} wrap={false}>
-            <Text style={styles.label}>Re-pricing note</Text>
+            <Text style={documentFrameStyles.label}>Re-pricing note</Text>
             <Text>{document.repricingNote}</Text>
           </View>
         ) : null}
         {internal && document.notes ? (
           <View style={styles.notes} wrap={false}>
-            <Text style={styles.label}>Site notes</Text>
+            <Text style={documentFrameStyles.label}>Site notes</Text>
             <Text>{document.notes}</Text>
           </View>
         ) : null}
 
-        <View style={styles.footer} fixed>
+        <DocumentFooter bottom={20}>
           <Text>
             {`Generated ${formatDate(document.generatedAt, 'medium')} · Readings are hour-meter values; meter photos are kept in the app.`}
           </Text>
           <Text>This is a works summary, not an invoice. Amounts exclude VAT; diesel is VAT-exempt.</Text>
-        </View>
+        </DocumentFooter>
       </Page>
     </Document>
   );
@@ -280,7 +239,7 @@ function StintRow({ line }: { line: JobCardStintLine }) {
     line.departure?.comment ? `Departure: ${line.departure.comment}` : null,
   ].filter((comment) => comment !== null);
   return (
-    <View style={styles.row} wrap={false}>
+    <View style={rowStyle} wrap={false}>
       <View style={styles.cells}>
         <View style={styles.machine}>
           <Text style={styles.strong}>{line.machineCode}</Text>
@@ -305,7 +264,7 @@ function StintRow({ line }: { line: JobCardStintLine }) {
 
 function SubtotalRow({ line }: { line: JobCardSubtotal }) {
   return (
-    <View style={[styles.row, styles.subtotalRow]} wrap={false}>
+    <View style={[...rowStyle, styles.subtotalRow]} wrap={false}>
       <View style={styles.cells}>
         <Text style={styles.machine}>{`${line.machineCode} subtotal`}</Text>
         <Text style={styles.reading} />
@@ -324,7 +283,7 @@ function SubtotalRow({ line }: { line: JobCardSubtotal }) {
 
 function ChargeRow({ label, amount }: { label: string; amount: number | null }) {
   return (
-    <View style={styles.row} wrap={false}>
+    <View style={rowStyle} wrap={false}>
       <View style={styles.cells}>
         <Text style={styles.wide}>{label}</Text>
         <Text style={styles.amount}>{formatAmount(amount)}</Text>

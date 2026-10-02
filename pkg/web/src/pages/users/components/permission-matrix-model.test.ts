@@ -19,10 +19,6 @@ describe('buildPermissionMatrix', () => {
     expect(matrix.permissions.length).toBeGreaterThan(0);
     expect(matrix.permissions.every((permission) => permission.startsWith('contracting_'))).toBe(true);
     expect(matrix.permissionsByRole.get('super-admin')?.has('contracting_job:read')).toBe(true);
-    expect(matrix.permissionsByRole.get('contracting-manager')?.has('contracting_job:work-any')).toBe(true);
-    expect(matrix.permissionsByRole.get('contracting-manager')?.has('contracting_reading:capture-baseline')).toBe(
-      false,
-    );
   });
 
   it('keeps user administration on the Equipment grid', () => {

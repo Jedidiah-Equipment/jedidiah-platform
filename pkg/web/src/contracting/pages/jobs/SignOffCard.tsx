@@ -115,6 +115,7 @@ function DraftSignOffDetails({ job, sheet }: { job: JobDetail; sheet: JobSheet }
         setConfirm(false);
       },
       onError: async (error) => {
+        write.report(error);
         if (getApiErrorAppCode(error) === 'contracting_job.stint_not_planned') await write.invalidateJobs();
       },
     }),

@@ -173,6 +173,7 @@ function MarkPriced({ job, action }: { job: JobDetail; action: NonNullable<Retur
         setConfirm(false);
       },
       onError: async (error) => {
+        write.report(error);
         if (getApiErrorAppCode(error) === 'contracting_job.total_changed') await write.invalidateJobs();
       },
     }),

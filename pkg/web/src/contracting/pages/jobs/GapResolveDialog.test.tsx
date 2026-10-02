@@ -7,7 +7,10 @@ import { afterEach, expect, it, vi } from 'vitest';
 import { GapResolveDialog } from './GapResolveDialog.js';
 
 const resolve = vi.hoisted(() => vi.fn(async () => undefined));
-vi.mock('@/hooks/use-api-mutation-error-toast.js', () => ({ useApiMutationErrorToast: () => () => undefined }));
+vi.mock('@/hooks/use-api-mutation-error-toast.js', () => ({
+  useApiMutationErrorReport: () => () => undefined,
+  useApiMutationErrorToast: () => () => undefined,
+}));
 vi.mock('@/contracting/hooks/use-query-invalidation.js', () => ({
   useQueryInvalidation: () => ({ invalidateJobs: async () => undefined }),
 }));

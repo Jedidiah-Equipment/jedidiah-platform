@@ -27,6 +27,7 @@ export function AddMeasureDialog({ stint }: { stint: Assignment }) {
         await write.invalidateJobs();
         setOpen(false);
       },
+      onError: write.report,
     }),
   );
   const remove = useMutation(trpc.contractingJobs.measures.remove.mutationOptions(write.dialog));

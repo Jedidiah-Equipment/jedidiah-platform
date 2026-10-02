@@ -30,6 +30,7 @@ export function StampInvoiceDialog({
   const stamp = useMutation(
     trpc.contractingJobs.invoicing.stamp.mutationOptions({
       onError: async (error) => {
+        write.report(error);
         if (getApiErrorAppCode(error) !== 'contracting_job.total_changed') return;
         toast.error('This Job was re-priced — review the new total');
         onOpenChange(false);

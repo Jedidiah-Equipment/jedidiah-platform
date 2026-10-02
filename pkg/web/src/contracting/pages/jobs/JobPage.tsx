@@ -164,6 +164,7 @@ function CancelJob({ job, sheet }: { job: JobDetail; sheet: JobSheet }) {
         await write.invalidateJobs();
         toast.success('Job cancelled');
       },
+      onError: write.report,
     }),
   );
   useResetOnOpen(cancel, open);

@@ -294,7 +294,7 @@ export async function getJob({ db, ...lookup }: { db: DbOrTx } & JobLookup): Pro
   });
 }
 
-/** The Machine Assignment inside a Job read: a derived fact a write checks under its lock. */
+/** The Machine Assignment inside a Job read: the derived facts a write reads under its lock. */
 export function assignmentIn(job: JobFacts, id: string): Assignment {
   const assignment = job.assignments.find((candidate) => candidate.id === id);
   if (!assignment) throw jobNotFound('Machine Assignment');

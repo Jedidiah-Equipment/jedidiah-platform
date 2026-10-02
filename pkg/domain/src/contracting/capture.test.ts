@@ -1,5 +1,12 @@
 import { describe, expect, test } from 'vitest';
-import { type CaptureAttempt, type CaptureWorld, captureRefusal, judgeCapture } from './capture.js';
+import {
+  type CaptureAttempt,
+  type CaptureWorld,
+  captureIsBelowLatest,
+  captureNeedsComment,
+  captureRefusal,
+  judgeCapture,
+} from './capture.js';
 
 const world = (overrides: Partial<CaptureWorld> = {}): CaptureWorld => ({
   latest: { id: 'latest', value: 100 },
@@ -133,5 +140,20 @@ describe('captureRefusal', () => {
     expect(captureRefusal({ ok: false, reason: 'reading.implement_on_site', rule: 'implement-busy' })).toBe(
       'This Implement is still on site on another Job — capture its departure there first.',
     );
+  });
+});
+
+describe('capture hints', () => {
+  test('below the latest reading only when a latest exists and the value is under it', () => {
+    expect(captureIsBelowLatest(90, { value: 100 })).toBe(true);
+    expect(captureIsBelowLatest(100, { value: 100 })).toBe(false);
+    expect(captureIsBelowLatest(90, null)).toBe(false);
+  });
+
+  test("only management's photo-less departure needs a comment", () => {
+    expect(captureNeedsComment('departure', { management: true, hasPhoto: false })).toBe(true);
+    expect(captureNeedsComment('departure', { management: true, hasPhoto: true })).toBe(false);
+    expect(captureNeedsComment('departure', { management: false, hasPhoto: false })).toBe(false);
+    expect(captureNeedsComment('arrival', { management: true, hasPhoto: false })).toBe(false);
   });
 });

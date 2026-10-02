@@ -1,4 +1,5 @@
 import { formatHours } from '@pkg/domain';
+import { splitGap } from '@pkg/domain/contracting';
 import { type Assignment, GapResolveInput } from '@pkg/schema/contracting';
 import { useMutation } from '@tanstack/react-query';
 import { CreateEntityDialog } from '@/components/form/index.js';
@@ -7,7 +8,6 @@ import { MachineDialogTitle } from '@/contracting/components/MachineDialogTitle.
 import { useQueryInvalidation } from '@/contracting/hooks/use-query-invalidation.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useTRPC } from '@/lib/trpc.js';
-import { complementGap } from './types.js';
 
 const GapValues = GapResolveInput.omit({ id: true });
 export function GapResolveDialog({ stint, onClose }: { stint: Assignment | null; onClose: () => void }) {
@@ -48,7 +48,7 @@ export function GapResolveDialog({ stint, onClose }: { stint: Assignment | null;
                     min="0"
                     value={values.travelHours}
                     onChange={(event) => {
-                      const split = complementGap(gapHours, Number(event.target.value));
+                      const split = splitGap(gapHours, Number(event.target.value));
                       form.setFieldValue('travelHours', split.travelHours);
                       form.setFieldValue('unaccountedHours', split.unaccountedHours);
                     }}
@@ -63,7 +63,7 @@ export function GapResolveDialog({ stint, onClose }: { stint: Assignment | null;
                     min="0"
                     value={values.unaccountedHours}
                     onChange={(event) => {
-                      const split = complementGap(gapHours, gapHours - Number(event.target.value));
+                      const split = splitGap(gapHours, gapHours - Number(event.target.value));
                       form.setFieldValue('travelHours', split.travelHours);
                       form.setFieldValue('unaccountedHours', split.unaccountedHours);
                     }}

@@ -5,9 +5,9 @@ import {
   computeDieselAmount,
   computeDiscountAmount,
   type JobActor,
+  jobTransitions,
   priceStint,
   pricingGateReasons,
-  transitionJob,
 } from '@pkg/domain/contracting';
 import type { AuthId } from '@pkg/schema';
 import type {
@@ -213,8 +213,7 @@ export async function markPriced({ db, actor, input }: { db: Db; actor: JobActor
           });
       return writeJob(tx, actorUserId, input.id, {
         set: (row) => ({
-          ...transitionJob(row, {
-            type: 'price',
+          ...jobTransitions.price(row, {
             at: new Date(),
             byUserId: actorUserId,
             subtotal: pricing.subtotal,
@@ -250,7 +249,7 @@ export async function reopenPricingWithin(tx: DatabaseTransaction, actorUserId: 
     ? `${reason} ${formatNumber(edited)} edited ${edited === 1 ? 'amount was' : 'amounts were'} reset.`
     : reason;
   const reopened = await writeJob(tx, actorUserId, jobId, {
-    set: (row) => transitionJob(row, { type: 'reopen', at: new Date(), note }),
+    set: (row) => jobTransitions.reopen(row, { at: new Date(), note }),
   });
   for (const stint of reopened.assignments)
     if (stint.computedAmount !== null)

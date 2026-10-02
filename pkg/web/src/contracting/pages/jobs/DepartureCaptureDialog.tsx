@@ -1,3 +1,4 @@
+import { captureNeedsComment, fieldJobAccessMode } from '@pkg/domain/contracting';
 import { type Assignment, ReadingReason, ReadingValue } from '@pkg/schema/contracting';
 import { useState } from 'react';
 import { toast } from 'sonner';
@@ -5,6 +6,7 @@ import { z } from 'zod';
 import { CreateEntityDialog } from '@/components/form/index.js';
 import { Separator } from '@/components/ui/separator.js';
 import { MachineDialogTitle } from '@/contracting/components/MachineDialogTitle.js';
+import { useAccess } from '@/hooks/use-access.js';
 import { ReadingCaptureCard, ReadingCaptureDetails, ReadingValueField } from './ReadingCaptureFields.js';
 import { useReadingCapture } from './use-reading-capture.js';
 
@@ -16,6 +18,8 @@ export function DepartureCaptureDialog({ stint, onClose }: { stint: Assignment |
   const capture = useReadingCapture();
   const [error, setError] = useState('');
   const [photo, setPhoto] = useState<File | null>(null);
+  const management = fieldJobAccessMode(useAccess().data) === 'all';
+  const needsReason = captureNeedsComment('departure', { management, hasPhoto: !!photo });
   return (
     <CreateEntityDialog
       key={stint?.id ?? 'closed'}
@@ -31,7 +35,7 @@ export function DepartureCaptureDialog({ stint, onClose }: { stint: Assignment |
       contentClassName="sm:max-w-md"
       defaultValues={{ value: stint?.arrival?.value ?? 0, reason: '' }}
       validator={DepartureValues}
-      onBeforeCreate={(values) => !!photo || !!values.reason.trim()}
+      onBeforeCreate={(values) => !needsReason || !!values.reason.trim()}
       onCreate={async (values) => {
         if (!stint) throw new Error('No Machine Assignment selected.');
         setError('');
@@ -81,14 +85,14 @@ export function DepartureCaptureDialog({ stint, onClose }: { stint: Assignment |
               selector={(state) => ({ submitted: state.submissionAttempts > 0, reason: state.values.reason })}
             >
               {({ submitted, reason }) => {
-                const missingEvidence = submitted && !photo && !reason.trim();
+                const missingEvidence = submitted && needsReason && !reason.trim();
                 const errorId = `departure-evidence-error-${stint?.id ?? 'closed'}`;
                 return (
                   <>
                     <form.AppField name="reason">
                       {(field) => (
                         <field.TextareaField
-                          label={photo ? 'Reason (optional)' : 'Reason'}
+                          label={needsReason ? 'Reason' : 'Reason (optional)'}
                           aria-describedby={missingEvidence ? errorId : undefined}
                         />
                       )}

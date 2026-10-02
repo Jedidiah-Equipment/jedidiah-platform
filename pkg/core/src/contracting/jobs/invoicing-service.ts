@@ -1,6 +1,6 @@
 import type { Db } from '@pkg/db';
 import { contractingCustomers, contractingJobs } from '@pkg/db/contracting';
-import { formatJobNumber, type JobActor, transitionJob } from '@pkg/domain/contracting';
+import { formatJobNumber, type JobActor, jobTransitions } from '@pkg/domain/contracting';
 import type { JobStampInvoiceInput } from '@pkg/schema/contracting';
 import { asc, eq, sql } from 'drizzle-orm';
 import { assertJobAction, totalChanged, withJobConstraints } from './job-errors.js';
@@ -16,8 +16,7 @@ export async function stampInvoice({ db, actor, input }: { db: Db; actor: JobAct
           throw totalChanged('This Job was re-priced. Review the new total before stamping.');
       },
       set: (before) =>
-        transitionJob(before, {
-          type: 'invoice',
+        jobTransitions.invoice(before, {
           at: new Date(),
           byUserId: actor.userId,
           invoiceNumber: input.invoiceNumber,

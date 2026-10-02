@@ -49,10 +49,17 @@ const reasons: Record<CaptureRule, ReadingErrorCode> = {
 
 const refuse = (rule: CaptureRule): CaptureRefused => ({ ok: false, reason: reasons[rule], rule });
 
+/** A capture below the Machine's latest reading lands only as a dispute. */
+export const captureIsBelowLatest = (value: number, latest: { value: number } | null | undefined): boolean =>
+  !!latest && value < latest.value;
+
+/** Whoever works every Job must say why a departure has no photo. */
+export const captureNeedsComment = (role: ReadingRole, world: Pick<CaptureWorld, 'management' | 'hasPhoto'>): boolean =>
+  role === 'departure' && world.management && !world.hasPhoto;
+
 /** Whether this capture may land on the Machine's ledger as the server holds it under the lock. */
 export function judgeCapture(world: CaptureWorld, capture: CaptureAttempt): CaptureVerdict {
-  if (capture.role === 'departure' && world.management && !world.hasPhoto && !capture.comment?.trim())
-    return refuse('comment-required');
+  if (captureNeedsComment(capture.role, world) && !capture.comment?.trim()) return refuse('comment-required');
   if (capture.role === 'arrival' && world.stint !== null && world.stint !== 'planned') return refuse('already-arrived');
   if (capture.role === 'departure' && world.stint !== 'on-site') return refuse('not-on-site');
   if (
@@ -61,7 +68,7 @@ export function judgeCapture(world: CaptureWorld, capture: CaptureAttempt): Capt
     capture.expectedPreviousId !== (world.latest?.id ?? null)
   )
     return refuse('previous-changed');
-  const below = world.latest !== null && capture.value < world.latest.value;
+  const below = captureIsBelowLatest(capture.value, world.latest);
   if (below && !capture.disputePrevious) return refuse('below-latest');
   return { ok: true, disputes: below && world.latest ? world.latest.id : null };
 }

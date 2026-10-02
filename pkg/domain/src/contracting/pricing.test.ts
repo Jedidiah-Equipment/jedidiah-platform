@@ -1,5 +1,12 @@
 import { describe, expect, test } from 'vitest';
-import { canMarkPriced, computeDieselAmount, computeJobTotals, priceStint, pricingGateReasons } from './pricing.js';
+import {
+  canMarkPriced,
+  computeDieselAmount,
+  computeJobTotals,
+  priceStint,
+  pricingGateReasons,
+  rateUnitLabel,
+} from './pricing.js';
 
 const loads = 'loads-measure-type';
 const time = (billableHours: number, unitAmount: number) =>
@@ -110,5 +117,11 @@ describe('canMarkPriced', () => {
     expect(
       canMarkPriced({ dieselLitres: 0, dieselAmount: null, stints: [{ priced: true }], chargeLines: [{ amount: 0 }] }),
     ).toEqual({ ok: true, unpricedStints: 0, chargeLinesWithoutAmount: 0, dieselUnpriced: false });
+  });
+
+  test("names a Rate's unit", () => {
+    expect(rateUnitLabel('time', null)).toBe('h');
+    expect(rateUnitLabel('measure', 'Loads')).toBe('Loads');
+    expect(rateUnitLabel('measure', null)).toBe('unit');
   });
 });

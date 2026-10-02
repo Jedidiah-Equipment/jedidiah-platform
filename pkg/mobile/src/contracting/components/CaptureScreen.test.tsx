@@ -27,7 +27,10 @@ vi.mock('react-native-safe-area-context', () => ({
 }));
 vi.mock('@tanstack/react-form', () => ({ useStore: () => ({ implementId: '', driverUserId: '' }) }));
 vi.mock('@tanstack/react-query', () => ({ useQueryClient: () => ({}) }));
-vi.mock('@pkg/domain/contracting', () => ({ fieldJobAccessMode: () => 'own' }));
+vi.mock('@pkg/domain/contracting', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@pkg/domain/contracting')>()),
+  fieldJobAccessMode: () => 'own',
+}));
 vi.mock('@/components/form', () => ({ useAppForm: () => ({ store: {}, AppField: () => null }) }));
 vi.mock('@/components/TopToolbar', () => ({ SecondaryToolbar: 'SecondaryToolbar' }));
 vi.mock('@/components/ui/button', () => ({ Button: 'Button' }));

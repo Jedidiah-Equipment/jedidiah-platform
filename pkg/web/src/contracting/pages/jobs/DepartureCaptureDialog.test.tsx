@@ -1,5 +1,6 @@
 /** @vitest-environment jsdom */
 
+import { createUserAccessSummary } from '@pkg/domain';
 import type { Assignment } from '@pkg/schema/contracting';
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
@@ -8,6 +9,14 @@ import { DepartureCaptureDialog } from './DepartureCaptureDialog.js';
 
 const capture = vi.hoisted(() => vi.fn(async () => undefined));
 vi.mock('./use-reading-capture.js', () => ({ useReadingCapture: () => capture }));
+const manager = createUserAccessSummary({
+  userId: 'manager',
+  equipmentRole: null,
+  contractingRole: 'contracting-manager',
+});
+const foreman = createUserAccessSummary({ userId: 'foreman', equipmentRole: null, contractingRole: 'foreman' });
+const access = vi.hoisted(() => ({ current: null as unknown }));
+vi.mock('@/hooks/use-access.js', () => ({ useAccess: () => ({ data: access.current }) }));
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 const roots: Root[] = [];
@@ -21,6 +30,7 @@ const stint = {
 } as Assignment;
 
 beforeEach(() => {
+  access.current = manager;
   vi.spyOn(URL, 'createObjectURL').mockImplementation((blob) => `blob:http://localhost/${(blob as File).name}`);
   vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => undefined);
 });
@@ -109,6 +119,19 @@ it('allows a departure with a meter photo and no reason', async () => {
   expect(capture).toHaveBeenCalledWith(
     expect.objectContaining({ role: 'departure', value: 126, comment: null }),
     photo,
+    'Unable to capture departure reading.',
+  );
+});
+
+it('lets a Foreman save a photo-less departure without a reason', async () => {
+  access.current = foreman;
+  const { save } = await mount();
+  await enter('value', '126');
+  await act(async () => save.click());
+  expect(document.querySelector('[role="alert"]')).toBeNull();
+  expect(capture).toHaveBeenCalledWith(
+    expect.objectContaining({ role: 'departure', value: 126, comment: null }),
+    null,
     'Unable to capture departure reading.',
   );
 });

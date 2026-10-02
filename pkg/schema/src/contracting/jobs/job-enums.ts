@@ -11,6 +11,13 @@ export const workedJobStatuses = ['active', 'completed'] as const satisfies read
 export const unpricedJobStatuses = ['upcoming', 'active', 'completed'] as const satisfies readonly JobStatus[];
 /** Signed off but not invoiced: the sign-off details can still be corrected. */
 export const signedOffJobStatuses = ['completed', 'priced'] as const satisfies readonly JobStatus[];
+/** Neither Invoiced nor Cancelled: its readings can still be amended. */
+export const unclosedJobStatuses = [
+  'upcoming',
+  'active',
+  'completed',
+  'priced',
+] as const satisfies readonly JobStatus[];
 /** Nothing on the Job can change any more. */
 export const closedJobStatuses = ['invoiced', 'cancelled'] as const satisfies readonly JobStatus[];
 /** Whether a status belongs to one of the groups above. */

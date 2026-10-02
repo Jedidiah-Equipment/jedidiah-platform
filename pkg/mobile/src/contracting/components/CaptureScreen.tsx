@@ -1,5 +1,5 @@
 import { formatHours } from '@pkg/domain';
-import { FUTURE_READ_AT_REFUSAL, fieldJobAccessMode } from '@pkg/domain/contracting';
+import { captureNeedsComment, FUTURE_READ_AT_REFUSAL, fieldJobAccessMode } from '@pkg/domain/contracting';
 import { ReadingComment, type ReadingErrorCode, type ReadingRole } from '@pkg/schema/contracting';
 import { useStore } from '@tanstack/react-form';
 import { useQueryClient } from '@tanstack/react-query';
@@ -91,7 +91,7 @@ function CaptureForm({ params }: { params: CaptureParams }) {
   const attempt = useRef<AttemptIdentity | null>(null);
   const latestRow = readings.data?.[0];
   const latest = latestRow ? { id: latestRow.id, value: latestRow.value } : null;
-  const commentRequired = role === 'departure' && management && photo === null;
+  const commentRequired = captureNeedsComment(role, { management, hasPhoto: photo !== null });
   const { parsed, below, disputeConfirmed, canSave } = deriveCapture({
     value,
     latest,

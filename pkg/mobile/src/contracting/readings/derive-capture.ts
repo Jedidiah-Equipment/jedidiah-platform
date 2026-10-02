@@ -1,3 +1,4 @@
+import { captureIsBelowLatest } from '@pkg/domain/contracting';
 import { ReadingValue } from '@pkg/schema/contracting';
 
 /**
@@ -29,7 +30,7 @@ export function deriveCapture({
   futureReadAt: boolean;
 }) {
   const parsed = value.trim() ? ReadingValue.safeParse(Number(value.replace(',', '.'))) : null;
-  const below = !!parsed?.success && latest !== null && parsed.data < latest.value;
+  const below = !!parsed?.success && captureIsBelowLatest(parsed.data, latest);
   const disputeConfirmed = below && disputePrevious && disputedReadingId === latest?.id;
   const missingComment = commentRequired && comment.trim() === '';
   const canSave =

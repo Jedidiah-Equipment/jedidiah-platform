@@ -3,6 +3,7 @@ import {
   jobAttentionColorClassNames,
   jobAttentionIconColorClassName,
   jobQueueColorClassNames,
+  jobQueueLabels,
 } from '@pkg/domain/contracting';
 import type { JobCreateInput, JobFacts, JobQueue, JobSummary } from '@pkg/schema/contracting';
 import { CustomerName, FarmName, jobQueues, WorkTypeName } from '@pkg/schema/contracting';
@@ -26,7 +27,7 @@ import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.j
 import { useTRPC } from '@/lib/trpc.js';
 import { cn } from '@/lib/utils.js';
 import { JobStatusBadge } from './JobStatusBadge.js';
-import { JobCreateValues, jobQueueLabels, toJobCreateInput } from './types.js';
+import { JobCreateValues, toJobCreateInput } from './types.js';
 
 function machineSummary(job: JobSummary) {
   const parts = [

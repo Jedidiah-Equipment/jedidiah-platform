@@ -3,7 +3,7 @@ import { AuthId } from '../../auth/auth-id.js';
 import { DateIso, DateOnlyIso } from '../../common/date.js';
 import { nullableTrimmedTextInput, nullableTrimmedTextInputOptional, requiredTrimmedText } from '../../common/text.js';
 import { UUID } from '../../common/uuid.js';
-import { CategoryColour, CategoryIconKey } from '../fleet/fleet.js';
+import { CategoryColour, CategoryIconKey, FleetCode, FleetName } from '../fleet/fleet.js';
 import { RateBasis } from '../rate-card/rate-card.js';
 import { HourReading } from '../readings/reading.js';
 import { JobActions } from './job-actions.js';
@@ -174,20 +174,25 @@ export const JobReading = HourReading.pick({
 });
 export type JobReading = z.infer<typeof JobReading>;
 
-export const Assignment = z.object({
+/** What names a Machine Assignment on every read: the Job sheet's Assignment and the phone's FieldStint. */
+export const assignmentIdentityShape = {
   id: UUID,
   jobId: UUID,
   machineId: UUID,
-  machineCode: z.string(),
-  categoryName: z.string(),
+  machineCode: FleetCode,
+  categoryName: FleetName,
   categoryIcon: CategoryIconKey,
   categoryColour: CategoryColour,
   implementId: UUID.nullable(),
-  implementCode: z.string().nullable(),
+  implementCode: FleetCode.nullable(),
   driverUserId: AuthId.nullable(),
   driverName: z.string().nullable(),
   state: z.enum(assignmentStates),
   createdAt: DateIso,
+};
+
+export const Assignment = z.object({
+  ...assignmentIdentityShape,
   arrival: JobReading.nullable(),
   departure: JobReading.nullable(),
   travelIncluded: z.boolean(),
@@ -218,20 +223,25 @@ export const Assignment = z.object({
 });
 export type Assignment = z.infer<typeof Assignment>;
 
-const jobSummaryShape = {
+/** What names a Job on every read: the queues' JobSummary and the phone's FieldJob. */
+export const jobIdentityShape = {
   id: UUID,
   code: z.number().int().positive(),
   jobNumber: JobNumber,
-  customerId: UUID,
+  status: z.enum(jobStatuses),
   customerName: z.string(),
-  farmId: UUID,
   farmName: z.string(),
-  workTypeId: UUID,
   workTypeName: z.string(),
   description: z.string().nullable(),
   foremanUserId: AuthId.nullable(),
+};
+
+const jobSummaryShape = {
+  ...jobIdentityShape,
+  customerId: UUID,
+  farmId: UUID,
+  workTypeId: UUID,
   foremanName: z.string().nullable(),
-  status: z.enum(jobStatuses),
   plannedStints: z.number().int().nonnegative(),
   onSiteStints: z.number().int().nonnegative(),
   leftStints: z.number().int().nonnegative(),

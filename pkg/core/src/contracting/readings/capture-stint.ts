@@ -1,6 +1,6 @@
 import { type DatabaseTransaction, user } from '@pkg/db';
 import { contractingImplements, type contractingJobs, type contractingMachineAssignments } from '@pkg/db/contracting';
-import { type JobActor, transitionJob } from '@pkg/domain/contracting';
+import { type JobActor, jobTransitions } from '@pkg/domain/contracting';
 import type { ReadingCaptureInput } from '@pkg/schema/contracting';
 import { eq } from 'drizzle-orm';
 import { lockAssignment } from '../jobs/job-lock.js';
@@ -93,5 +93,5 @@ export async function attachReadingToStint(
         : { departureReadingId: readingId },
   });
   if (input.role === 'arrival' && job.status === 'upcoming')
-    await writeJobRow(tx, actor.userId, job.id, { set: (before) => transitionJob(before, { type: 'activate' }) });
+    await writeJobRow(tx, actor.userId, job.id, { set: (before) => jobTransitions.activate(before) });
 }

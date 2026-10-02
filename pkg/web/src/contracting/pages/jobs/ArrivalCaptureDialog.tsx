@@ -1,4 +1,5 @@
 import { formatHours } from '@pkg/domain';
+import { captureIsBelowLatest } from '@pkg/domain/contracting';
 import { AuthId, UUID } from '@pkg/schema';
 import { type Assignment, ReadingComment, ReadingValue } from '@pkg/schema/contracting';
 import { useQuery } from '@tanstack/react-query';
@@ -42,9 +43,8 @@ export function ArrivalCaptureDialog({ stint, onClose }: { stint: Assignment | n
   const canCapture = (values: z.infer<typeof ArrivalValues>) =>
     history.isSuccess &&
     (!values.changeAssignment || (implementsQuery.isSuccess && driversQuery.isSuccess)) &&
-    (!latest ||
-      values.value >= latest.value ||
-      (values.confirmedDispute?.value === values.value && values.confirmedDispute.previousId === latest.id));
+    (!captureIsBelowLatest(values.value, latest) ||
+      (values.confirmedDispute?.value === values.value && values.confirmedDispute.previousId === latest?.id));
   const implementOptions = [
     { value: '', label: 'No implement' },
     ...(implementsQuery.data ?? [])
@@ -103,10 +103,9 @@ export function ArrivalCaptureDialog({ stint, onClose }: { stint: Assignment | n
               capturedAt: new Date().toISOString(),
               comment: values.comment.trim() || null,
               disputePrevious:
-                !!latest &&
-                values.value < latest.value &&
+                captureIsBelowLatest(values.value, latest) &&
                 values.confirmedDispute?.value === values.value &&
-                values.confirmedDispute.previousId === latest.id,
+                values.confirmedDispute.previousId === latest?.id,
               expectedPreviousId: latest?.id ?? null,
               stintOverrides: values.changeAssignment
                 ? { implementId: values.implementId || null, driverUserId: values.driverUserId || null }
@@ -137,7 +136,7 @@ export function ArrivalCaptureDialog({ stint, onClose }: { stint: Assignment | n
             warning={
               <form.Subscribe selector={(state) => state.values.value}>
                 {(value) =>
-                  !readingFocused && latest && value < latest.value ? (
+                  !readingFocused && latest && captureIsBelowLatest(value, latest) ? (
                     <div className="rounded-lg border border-warning/45 bg-warning/10 p-3">
                       <form.AppField name="confirmedDispute">
                         {(field) => (

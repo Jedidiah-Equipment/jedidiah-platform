@@ -8,6 +8,11 @@ import {
   type JobActionVerdict,
   type JobStatus,
   jobActionNames,
+  openJobStatuses,
+  signedOffJobStatuses,
+  unclosedJobStatuses,
+  unpricedJobStatuses,
+  workedJobStatuses,
 } from '@pkg/schema/contracting';
 import { hasPermission } from '../auth/authorization.js';
 import { isContractingManagement, jobStatusLabels } from './jobs.js';
@@ -34,35 +39,33 @@ type Rule = {
   verb: string;
 };
 
-const open = ['upcoming', 'active'] as const satisfies readonly JobStatus[];
-const worked = ['active', 'completed'] as const satisfies readonly JobStatus[];
 /** Whoever may assign works every Job; a Foreman works only their own. */
 const assigns = (actor: JobActor) => hasPermission(actor, 'contracting_job:assign');
 
 const rules: Record<JobActionName, Rule> = {
-  editSetup: { statuses: open, permissions: ['contracting_job:update'], verb: 'change Job setup' },
+  editSetup: { statuses: openJobStatuses, permissions: ['contracting_job:update'], verb: 'change Job setup' },
   assign: {
-    statuses: open,
+    statuses: openJobStatuses,
     permissions: ['contracting_job:assign', 'contracting_assignment:update-own'],
     anyJob: assigns,
     verb: 'change Machine Assignments',
   },
   patchTravel: {
-    statuses: ['upcoming', 'active', 'completed'],
+    statuses: unpricedJobStatuses,
     permissions: ['contracting_job:assign', 'contracting_assignment:update-own'],
     anyJob: assigns,
-    ownStatuses: open,
+    ownStatuses: openJobStatuses,
     verb: 'change travel',
   },
-  editMeasures: { statuses: worked, permissions: ['contracting_job:update'], verb: 'change Measures' },
+  editMeasures: { statuses: workedJobStatuses, permissions: ['contracting_job:update'], verb: 'change Measures' },
   editChargeLines: {
-    statuses: worked,
+    statuses: workedJobStatuses,
     permissions: ['contracting_job:update'],
     verb: 'change Charge Lines',
   },
-  resolveGaps: { statuses: worked, permissions: ['contracting_gap:resolve'], verb: 'resolve Hour Gaps' },
+  resolveGaps: { statuses: workedJobStatuses, permissions: ['contracting_gap:resolve'], verb: 'resolve Hour Gaps' },
   editSignOffDetails: {
-    statuses: ['completed', 'priced'],
+    statuses: signedOffJobStatuses,
     permissions: ['contracting_job:update'],
     verb: 'change sign-off details',
   },
@@ -73,7 +76,7 @@ const rules: Record<JobActionName, Rule> = {
   },
   complete: { statuses: ['active'], permissions: ['contracting_job:complete'], verb: 'complete the Job' },
   cancel: {
-    statuses: ['upcoming', 'active', 'completed'],
+    statuses: unpricedJobStatuses,
     permissions: ['contracting_job:cancel'],
     verb: 'cancel the Job',
   },
@@ -84,12 +87,12 @@ const rules: Record<JobActionName, Rule> = {
     verb: 'stamp an Invoice Number',
   },
   amendReadings: {
-    statuses: ['upcoming', 'active', 'completed', 'priced'],
+    statuses: unclosedJobStatuses,
     permissions: ['contracting_reading:update'],
     verb: 'amend readings',
   },
   capture: {
-    statuses: open,
+    statuses: openJobStatuses,
     permissions: ['contracting_reading:capture'],
     anyJob: isContractingManagement,
     verb: 'capture readings',

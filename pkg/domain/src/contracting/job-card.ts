@@ -3,6 +3,7 @@ import {
   type Assignment,
   type FinishedJobStatus,
   finishedJobStatuses,
+  hasJobStatus,
   type JobCardModel,
   type JobCardReading,
   type JobCardReadingMarker,
@@ -10,14 +11,14 @@ import {
   type JobCardVariant,
   type JobDetail,
   type JobReading,
+  type JobStatus,
 } from '@pkg/schema/contracting';
 import { formatPercent } from '../formatting/number.js';
 import { round1 } from './hours.js';
-import { round2 } from './pricing.js';
+import { rateUnitLabel, round2 } from './pricing.js';
 import { groupStints } from './stints.js';
 
-export const hasJobCard = (status: string): status is FinishedJobStatus =>
-  (finishedJobStatuses as readonly string[]).includes(status);
+export const hasJobCard = (status: JobStatus): status is FinishedJobStatus => hasJobStatus(finishedJobStatuses, status);
 
 /** The API route that renders a Job Card, relative to the API origin. */
 export const jobCardPath = (jobNumber: string, variant: JobCardVariant) =>
@@ -49,7 +50,7 @@ function cardRate(stint: Assignment): JobCardStintLine['rate'] {
     name: stint.rateName ?? '',
     basis: stint.rateBasis,
     unitAmount: stint.rateUnitAmount,
-    per: stint.rateBasis === 'time' ? 'h' : (stint.rateMeasureTypeName ?? 'unit'),
+    per: rateUnitLabel(stint.rateBasis, stint.rateMeasureTypeName),
   };
 }
 

@@ -1,4 +1,4 @@
-import { canComplete, plannedNeverArrived, suggestJobDates } from '@pkg/domain/contracting';
+import { canComplete, completionGateReasons, plannedNeverArrived, suggestJobDates } from '@pkg/domain/contracting';
 import { DateOnlyIso } from '@pkg/schema';
 import { JobCompleteInput, type JobDetail, JobPatchInput, Litres } from '@pkg/schema/contracting';
 import { useMutation } from '@tanstack/react-query';
@@ -65,10 +65,7 @@ function DraftSignOffDetails({ job, sheet }: { job: JobDetail; sheet: JobSheet }
   const [confirm, setConfirm] = useState(false);
   const [startEdited, setStartEdited] = useState(false);
   const [endEdited, setEndEdited] = useState(false);
-  const suggestions = useMemo(
-    () => suggestJobDates(job.assignments.map((stint) => ({ ...stint, previousDeparture: null, gap: null }))),
-    [job.assignments],
-  );
+  const suggestions = useMemo(() => suggestJobDates(job.assignments), [job.assignments]);
   const form = useAppForm({
     defaultValues: {
       startDate: suggestions.startDate ?? '',
@@ -152,16 +149,7 @@ function DraftSignOffDetails({ job, sheet }: { job: JobDetail; sheet: JobSheet }
           return (
             <>
               <CardFooter className="justify-end gap-3">
-                {!gate.ok ? (
-                  <p className="text-destructive">
-                    {gate.onSite
-                      ? `${gate.onSite} ${gate.onSite === 1 ? 'machine is' : 'machines are'} still on site. `
-                      : ''}
-                    {gate.openGapFlags
-                      ? `${gate.openGapFlags} Gap ${gate.openGapFlags === 1 ? 'Flag is' : 'Flags are'} open.`
-                      : ''}
-                  </p>
-                ) : null}
+                {!gate.ok ? <p className="text-destructive">{completionGateReasons(gate).join(' ')}</p> : null}
                 <Button
                   className="shrink-0"
                   disabled={!sheet.can('complete') || !gate.ok || !input.success}

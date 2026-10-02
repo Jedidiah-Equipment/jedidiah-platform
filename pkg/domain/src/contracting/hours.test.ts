@@ -1,5 +1,13 @@
 import { describe, expect, test } from 'vitest';
-import { assignmentState, canComplete, deriveStintHours, suggestJobDates } from './hours.js';
+import {
+  assignmentState,
+  canComplete,
+  completionGateReasons,
+  deriveStintHours,
+  gapSplitTotals,
+  splitGap,
+  suggestJobDates,
+} from './hours.js';
 import { formatJobNumber, looksFinished } from './jobs.js';
 
 describe('contracting stint hours', () => {
@@ -126,21 +134,35 @@ describe('contracting stint hours', () => {
   });
 
   test('suggests dates across repeat stints in Johannesburg plant time', () => {
-    const base = { previousDeparture: null, travelIncluded: true, gap: null } as const;
     expect(
       suggestJobDates([
         {
-          ...base,
-          arrival: { value: 10, capturedAt: '2026-09-03T22:30:00Z' },
-          departure: { value: 20, capturedAt: '2026-09-05T20:00:00Z' },
+          arrival: { capturedAt: '2026-09-03T22:30:00Z' },
+          departure: { capturedAt: '2026-09-05T20:00:00Z' },
         },
         {
-          ...base,
-          arrival: { value: 30, capturedAt: '2026-09-01T23:00:00Z' },
-          departure: { value: 40, capturedAt: '2026-09-06T22:30:00Z' },
+          arrival: { capturedAt: '2026-09-01T23:00:00Z' },
+          departure: { capturedAt: '2026-09-06T22:30:00Z' },
         },
       ]),
     ).toEqual({ startDate: '2026-09-02', endDate: '2026-09-07' });
+  });
+
+  test('says why a Job cannot be completed, one sentence per condition', () => {
+    expect(completionGateReasons({ ok: true })).toEqual([]);
+    expect(completionGateReasons({ ok: false, onSite: 1, openGapFlags: 0 })).toEqual(['1 machine is still on site.']);
+    expect(completionGateReasons({ ok: false, onSite: 2, openGapFlags: 1 })).toEqual([
+      '2 machines are still on site.',
+      '1 Gap Flag is open.',
+    ]);
+    expect(completionGateReasons({ ok: false, onSite: 0, openGapFlags: 3 })).toEqual(['3 Gap Flags are open.']);
+  });
+
+  test('splits a gap without exceeding it, and the split totals the gap', () => {
+    expect(splitGap(9.5, 2.46)).toEqual({ travelHours: 2.5, unaccountedHours: 7 });
+    expect(splitGap(9.5, 12)).toEqual({ travelHours: 9.5, unaccountedHours: 0 });
+    expect(gapSplitTotals(9.5, splitGap(9.5, 2.46))).toBe(true);
+    expect(gapSplitTotals(9.5, { travelHours: 2, unaccountedHours: 7 })).toBe(false);
   });
 });
 

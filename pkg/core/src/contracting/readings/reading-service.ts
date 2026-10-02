@@ -18,6 +18,7 @@ import {
   jobReadStatuses,
   judgeCapture,
   meterDisagreementHint,
+  READING_PHOTO_POLICY,
   resolveReadingAmendment,
 } from '@pkg/domain/contracting';
 import type { AuthId } from '@pkg/schema';
@@ -36,7 +37,7 @@ import { readStoredObject, type StorageAdapter } from '../../storage/storage-ada
 import { reopenPricingWithin } from '../jobs/pricing-service.js';
 import { attachReadingToStint, resolveCaptureStint } from './capture-stint.js';
 import { assertReadingJobAction, ReadingError, withCaptureConstraints } from './reading-errors.js';
-import { READING_PHOTO_POLICY, type ReadMeterPhoto, readingVerification, verifyPhoto } from './reading-evidence.js';
+import { type ReadMeterPhoto, readingVerification, verifyPhoto } from './reading-evidence.js';
 
 // Phone clocks drift; a Read At this far ahead of the server is still the Foreman's "now".
 const FUTURE_READ_AT_TOLERANCE_MS = 5 * 60_000;

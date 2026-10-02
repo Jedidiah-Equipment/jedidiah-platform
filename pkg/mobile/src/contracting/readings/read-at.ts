@@ -22,3 +22,10 @@ export const isBackdated = (readAt: Date | null, attemptedAt: Date) =>
   readAt !== null && attemptedAt.getTime() - readAt.getTime() > BACKDATED_AFTER_MS;
 
 export const capturedAtFor = (readAt: Date | null, attemptedAt: Date) => (readAt ?? attemptedAt).toISOString();
+
+/** Read At as the capture form holds it; null is "now". `by` says who set it. */
+export type ReadAtChoice = { at: Date; by: 'hand' | 'photo' };
+
+/** A photo's EXIF time replaces Read At; without one a hand-set Read At stays and a photo-set one returns to now. */
+export const readAtAfterPhoto = (current: ReadAtChoice | null, takenAt: Date | null): ReadAtChoice | null =>
+  takenAt ? { at: takenAt, by: 'photo' } : current?.by === 'hand' ? current : null;

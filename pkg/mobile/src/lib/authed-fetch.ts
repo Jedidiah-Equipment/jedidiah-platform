@@ -14,8 +14,8 @@ export function withSessionCookie(init: RequestInit | undefined, cookie: string 
   return { ...init, credentials: 'include', headers };
 }
 
-// Fetch helper for the authed document HTTP routes (e.g. the PDF viewer in #521).
-// tRPC's batch link can't stream binary bodies, so documents go over plain HTTP.
+// Fetch helper for the authed plain-HTTP routes: document downloads and the multipart Reading capture.
+// tRPC's batch link can't stream binary bodies, so these go over plain HTTP.
 export async function authedFetch(path: string, init?: RequestInit): Promise<Response> {
   const url = path.startsWith('http') ? path : `${apiBaseUrl}${path.startsWith('/') ? '' : '/'}${path}`;
   const route = apiRoutePattern(new URL(url).pathname);

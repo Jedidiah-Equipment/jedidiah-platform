@@ -1,4 +1,4 @@
-import { expect, test, vi } from 'vitest';
+import { afterEach, expect, test, vi } from 'vitest';
 
 vi.mock('@/lib/api-base-url', () => ({ apiBaseUrl: 'https://api.jedidiah.test' }));
 vi.mock('@/lib/auth', () => ({ sessionCookieHeader: async () => 'better-auth.session_token=secret' }));
@@ -18,20 +18,15 @@ const input = {
   expectedPreviousId: '8766e188-5041-4d7c-98f2-cbd47dca3c01',
   comment: 'Glass cracked, digits hard to read',
 };
-const delivered = {
-  id: input.localId,
-  machineId: input.machineId,
-  role: 'spot',
-  value: 12.3,
-  capturedAt: '2026-09-08T08:00:00.000Z',
-  disputed: false,
-  photo: { storageKey: 'k', contentType: 'image/jpeg', byteSize: 5, updatedAt: '2026-09-08T08:00:01.000Z' },
-  aiVerification: 'disagrees',
-  aiValue: 123,
+
+const answer = (respond: (url: string, init: RequestInit) => Promise<Response>) => {
+  vi.stubGlobal('fetch', respond);
 };
 
-test('sends the fields and photo with the session cookie and returns the stored reading without AI results', async () => {
-  const result = await captureReading(input, 'file:///camera/meter.jpg', async (url, init) => {
+afterEach(() => vi.unstubAllGlobals());
+
+test('sends the fields and photo with the session cookie', async () => {
+  answer(async (url, init) => {
     expect(url).toBe('https://api.jedidiah.test/api/contracting/readings');
     expect(new Headers(init.headers).get('Cookie')).toBe('better-auth.session_token=secret');
     const body = init.body as FormData;
@@ -40,43 +35,35 @@ test('sends the fields and photo with the session cookie and returns the stored 
     expect(body.get('expectedPreviousId')).toBe(input.expectedPreviousId);
     expect(body.get('comment')).toBe('Glass cracked, digits hard to read');
     expect(await (body.get('photo') as Blob).text()).toBe('meter');
-    return Response.json(delivered, { status: 201 });
+    return new Response('<html>', { status: 201 });
   });
-  expect(result).toEqual({
-    id: input.localId,
-    machineId: input.machineId,
-    role: 'spot',
-    value: 12.3,
-    capturedAt: '2026-09-08T08:00:00.000Z',
-    disputed: false,
-    photoBacked: true,
-  });
+  await expect(captureReading(input, 'file:///camera/meter.jpg')).resolves.toBeUndefined();
 
-  await captureReading({ ...input, comment: '', expectedPreviousId: undefined }, null, async (_url, init) => {
+  answer(async (_url, init) => {
     const body = init.body as FormData;
     expect(body.has('comment')).toBe(false);
     expect(body.has('expectedPreviousId')).toBe(false);
     expect(body.has('photo')).toBe(false);
-    return Response.json({ ...delivered, photo: null }, { status: 201 });
+    return new Response(null, { status: 201 });
   });
+  await captureReading({ ...input, comment: '', expectedPreviousId: undefined }, null);
 });
 
 test('separates the server’s refusals from connection, sign-in and server failures', async () => {
-  await expect(
-    captureReading(input, null, async () =>
-      Response.json({ data: { appCode: 'reading.below_latest' }, message: 'Retake or dispute' }, { status: 409 }),
-    ),
-  ).rejects.toMatchObject({ name: 'ReadingRefusedError', code: 'reading.below_latest', message: 'Retake or dispute' });
-  for (const status of [401, 408, 429, 500])
-    await expect(captureReading(input, null, async () => new Response(null, { status }))).rejects.toThrow(
-      CAPTURE_FAILED,
-    );
-  await expect(
-    captureReading(input, null, async () => {
-      throw new TypeError('Network request failed');
-    }),
-  ).rejects.toThrow(CAPTURE_FAILED);
-  await expect(captureReading(input, null, async () => new Response('<html>', { status: 201 }))).rejects.toThrow(
-    CAPTURE_FAILED,
+  answer(async () =>
+    Response.json({ data: { appCode: 'reading.below_latest' }, message: 'Retake or dispute' }, { status: 409 }),
   );
+  await expect(captureReading(input, null)).rejects.toMatchObject({
+    name: 'ReadingRefusedError',
+    code: 'reading.below_latest',
+    message: 'Retake or dispute',
+  });
+  for (const status of [401, 408, 429, 500]) {
+    answer(async () => new Response(null, { status }));
+    await expect(captureReading(input, null)).rejects.toThrow(CAPTURE_FAILED);
+  }
+  answer(async () => {
+    throw new TypeError('Network request failed');
+  });
+  await expect(captureReading(input, null)).rejects.toThrow(CAPTURE_FAILED);
 });

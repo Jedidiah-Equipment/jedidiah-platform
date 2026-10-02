@@ -4,7 +4,6 @@ import { deriveCapture } from './derive-capture';
 const base = {
   value: '120,5',
   latest: { id: 'latest', value: 100 },
-  disputePrevious: false,
   disputedReadingId: null,
   comment: '',
   commentRequired: false,
@@ -31,12 +30,12 @@ test('a value below the latest saves only once the Foreman disputes that very re
     disputeConfirmed: false,
     canSave: false,
   });
-  const disputed = { ...base, value: '90', disputePrevious: true, disputedReadingId: 'latest' };
+  const disputed = { ...base, value: '90', disputedReadingId: 'latest' };
   expect(deriveCapture(disputed)).toMatchObject({ below: true, disputeConfirmed: true, canSave: true });
   expect(deriveCapture({ ...disputed, latest: { id: 'newer', value: 100 } }).canSave).toBe(false);
 });
 
 test('a required comment gates Save until it is written', () => {
-  expect(deriveCapture({ ...base, commentRequired: true })).toMatchObject({ missingComment: true, canSave: false });
+  expect(deriveCapture({ ...base, commentRequired: true }).canSave).toBe(false);
   expect(deriveCapture({ ...base, commentRequired: true, comment: 'Camera broken' }).canSave).toBe(true);
 });

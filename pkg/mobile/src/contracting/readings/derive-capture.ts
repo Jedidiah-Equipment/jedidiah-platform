@@ -8,7 +8,6 @@ import { ReadingValue } from '@pkg/schema/contracting';
 export function deriveCapture({
   value,
   latest,
-  disputePrevious,
   disputedReadingId,
   comment,
   commentRequired,
@@ -20,7 +19,7 @@ export function deriveCapture({
   value: string;
   /** The served latest reading, or null while the ledger is empty or history is loading. */
   latest: { id: string; value: number } | null;
-  disputePrevious: boolean;
+  /** The reading the Foreman said is wrong, or null. */
   disputedReadingId: string | null;
   comment: string;
   commentRequired: boolean;
@@ -31,15 +30,14 @@ export function deriveCapture({
 }) {
   const parsed = value.trim() ? ReadingValue.safeParse(Number(value.replace(',', '.'))) : null;
   const below = !!parsed?.success && captureIsBelowLatest(parsed.data, latest);
-  const disputeConfirmed = below && disputePrevious && disputedReadingId === latest?.id;
-  const missingComment = commentRequired && comment.trim() === '';
+  const disputeConfirmed = below && disputedReadingId === latest?.id;
   const canSave =
     !!parsed?.success &&
     (!below || disputeConfirmed) &&
-    !missingComment &&
+    !(commentRequired && comment.trim() === '') &&
     canCapture &&
     machineKnown &&
     !cameraOpen &&
     !futureReadAt;
-  return { parsed, below, disputeConfirmed, missingComment, canSave };
+  return { parsed, below, disputeConfirmed, canSave };
 }

@@ -19,7 +19,7 @@ export function captureAttemptPayload(form: {
   value: number;
   photo: string | null;
   comment: string;
-  disputePrevious: boolean;
+  disputedReadingId: string | null;
   stintOverrides: unknown;
   readAt: Date | null;
 }): readonly unknown[] {
@@ -29,7 +29,7 @@ export function captureAttemptPayload(form: {
     form.value,
     form.photo,
     form.comment.trim(),
-    form.disputePrevious,
+    form.disputedReadingId,
     form.stintOverrides,
     form.readAt?.toISOString() ?? null,
   ];

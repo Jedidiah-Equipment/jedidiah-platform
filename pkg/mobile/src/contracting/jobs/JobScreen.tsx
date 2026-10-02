@@ -13,7 +13,6 @@ import { StatusBadge } from '@/components/ui/status-badge';
 import { Text } from '@/components/ui/text';
 import { CategoryIcon } from '@/contracting/components/CategoryIcon';
 import { jobCardShareAction } from '@/contracting/lib/job-card';
-import { newLocalId } from '@/contracting/readings/capture-attempt';
 import { useSessionAccessSummary } from '@/lib/auth-session';
 import { shareDocument } from '@/lib/document-actions';
 import { useBusyAction } from '@/lib/use-busy-action';
@@ -45,17 +44,16 @@ export default function JobScreen() {
 
   const openCapture = (stint: FieldStint, role: 'arrival' | 'departure') =>
     router.push({
-      pathname: '/contracting/machines/[id]/capture',
+      pathname: '/contracting/jobs/[jobId]/capture',
       params: {
-        id: stint.machineId,
+        jobId,
+        machineId: stint.machineId,
         role,
         assignmentId: stint.id,
-        jobId,
         overrideImplementId: stint.implementId ?? '',
         overrideDriverUserId: stint.driverUserId ?? '',
         implementCode: stint.implementCode ?? '',
         driverName: stint.driverName ?? '',
-        captureSessionId: newLocalId(),
       },
     });
 

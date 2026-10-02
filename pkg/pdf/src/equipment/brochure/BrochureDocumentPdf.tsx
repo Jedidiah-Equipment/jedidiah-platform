@@ -834,7 +834,7 @@ function Footer({ messages }: { messages: Messages }) {
         </View>
         <View>
           <Text style={styles.footerContact}>Jed Van Niekerk {JEDIDIAH_BUSINESS_DETAILS.cellphone}</Text>
-          <Text style={styles.footerContact}>{JEDIDIAH_BUSINESS_DETAILS.email}</Text>
+          <Text style={styles.footerContact}>{JEDIDIAH_BUSINESS_DETAILS.ownerEmail}</Text>
         </View>
       </View>
       <View style={styles.footerRight}>

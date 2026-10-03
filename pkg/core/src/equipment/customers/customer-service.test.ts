@@ -5,7 +5,7 @@ import type { UUID } from '@pkg/schema';
 import { CustomerCreateInput, QuoteCreateInput } from '@pkg/schema/equipment';
 import { and, eq } from 'drizzle-orm';
 import { describe, expect, it, vi } from 'vitest';
-import { createTester } from '../../test/create-tester.js';
+import { createTester, type TesterScope } from '../../test/create-tester.js';
 import { getQuote } from '../quotes/quote-read-service.js';
 import { cancelQuote, createQuote } from '../quotes/quote-service.js';
 import { createProductRangeFixture } from '../test/product-range-fixtures.js';
@@ -28,7 +28,7 @@ import {
   removeCustomer,
 } from './customer-service.js';
 
-const test = createTester(async ({ db }) => {
+async function seedTester({ db }: TesterScope) {
   const now = new Date();
   await db.insert(user).values({
     createdAt: now,
@@ -42,7 +42,11 @@ const test = createTester(async ({ db }) => {
   });
 
   return { db };
-});
+}
+
+const test = createTester(seedTester);
+// Holder, blocked removal, observer, and retrying merge must have separate connections.
+const contentionTest = createTester(seedTester, { max: 4 });
 
 describe('patchCustomer', () => {
   test('changes only the named field and leaves the rest untouched', async ({ context }) => {
@@ -548,7 +552,7 @@ test('releases Quote locks while a Unit writer holds the Unit and then needs tha
   });
 });
 
-test('lets Customer removal fail its restrictive FK while a merge backs off', async ({ context }) => {
+contentionTest('lets Customer removal fail its restrictive FK while a merge backs off', async ({ context }) => {
   const db = context.db;
   const source = await makeCustomer(db, 'Duplicate');
   const target = await makeCustomer(db, 'Survivor');

@@ -51,8 +51,8 @@ pnpm dev
 web `7003`, lander `7004`. For another checkout, replace the database setup commands above with
 `pnpm use-slot -- 2` (choose a slot from 1–9), then run `pnpm dev`. Every invocation takes over the chosen
 slot: it stops listeners on its four dev ports, deletes its Docker stack and volumes, writes local env
-blocks, migrates the dev and test-template databases, and seeds the snapshot. Ports are `7N01`–`7N07`
-for web, API, Expo, lander, Postgres, MinIO API, and MinIO console.
+blocks, migrates the dev and test-template databases, and seeds the snapshot. Ports are `7N01`–`7N08`
+for web, API, Expo, lander, development Postgres, MinIO API, MinIO console, and test Postgres.
 
 When this checkout's gitignored `pkg/seed/snapshot` directory is missing or empty, `use-slot` copies
 the primary checkout's snapshot, including document-store objects, before taking over the slot. An
@@ -77,7 +77,7 @@ use them for secrets and developer-specific overrides. The API refuses to start 
 
 ```txt
 DATABASE_URL=postgres://postgres:postgres@localhost:5432/jedidiah
-TEST_DATABASE_URL=postgres://postgres:postgres@localhost:5432/jedidiah_template
+TEST_DATABASE_URL=postgres://postgres:postgres@localhost:5433/jedidiah_template
 APP_ENV=development
 PORT=7002
 APP_BASE_URL=http://localhost:7001
@@ -126,12 +126,31 @@ command can refuse matching production database or object-store targets. Each in
 `APP_ENV=staging` and `CONFIRM_STAGING_SEED=replace-staging`. All imported credential users receive the
 staging seed password `test123`.
 
+`pnpm test` runs two Turbo tasks concurrently. Every package defaults to four Vitest workers,
+including direct package test commands; `VITEST_MAX_WORKERS` overrides that limit.
+
 ## Database
 
 Local Postgres uses `postgres:postgres`. The app database is `jedidiah`; `jedidiah_template` is the stable
-test template. Integration tests clone the template into per-test ephemeral databases and keep those clone
-URLs in memory only. Generated Drizzle SQL lives in `pkg/db/migrations` and is committed with the schema
-change that produced it.
+test template. Development uses a durable volume on port `5432` (slot `7N05`). Disposable tests use a
+separate Postgres 17 service, `postgres-test`, on port `5433` (slot `7N08`), with tmpfs storage and
+durability disabled. Integration tests clone the migrated template into per-test ephemeral databases
+and keep those clone URLs in memory only. Snapshot seeding targets development; it does not seed the
+test template.
+
+Restarting or recreating `postgres-test` loses its template and ephemeral databases. After restarting
+only that service, rebuild the migrated template before running DB-backed tests:
+
+```sh
+docker compose --env-file .env.dev restart postgres-test  # slot checkout; omit --env-file for defaults
+pnpm db:up:template
+```
+
+`db:up:template` starts the configured services, recreates the test template, and applies every migration;
+it leaves development data intact. Test startup removes leftover ephemeral databases owned by dead test
+processes and preserves live workers' databases.
+
+Generated Drizzle SQL lives in `pkg/db/migrations` and is committed with the schema change that produced it.
 
 `pkg/db` holds Better Auth core tables plus the app-owned tables. Auth table IDs are Better Auth-owned
 strings; app-owned tables use UUID primary keys with database defaults unless there is a reason not to.

@@ -13,6 +13,7 @@ export default defineConfig({
     tsconfigPaths: true,
   },
   test: {
+    maxWorkers: 4,
     exclude: [...configDefaults.exclude, 'dist/**'],
   },
 });

@@ -12,7 +12,7 @@
   "scripts": {
     "build": "tsc -b",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "vitest run",
+    "test": "vitest run --config ../../vitest.config.ts",
     "seed:read": "tsx src/seed-reader.ts",
     "seed:read:production": "tsx src/seed-reader.ts production",
     "seed:read:staging": "tsx src/seed-reader.ts staging",

@@ -7,6 +7,7 @@ export default defineConfig({
     tsconfigPaths: true,
   },
   test: {
+    maxWorkers: 4,
     exclude: [...configDefaults.exclude, 'dist/**'],
     globalSetup: ['./src/test-global-setup.ts'],
     setupFiles: ['./src/test-setup.ts'],

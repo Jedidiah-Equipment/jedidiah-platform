@@ -19,6 +19,7 @@ type CreateTesterContext<T extends object> = (scope: TesterScope) => Promise<T> 
 
 export function createTester<T extends object = Record<string, never>>(
   createContext: CreateTesterContext<T> = () => ({}) as T,
+  { max = 2 }: { max?: number } = {},
 ): TestAPI<{ context: TesterScope & T }> {
   return testBase.extend<{ context: TesterScope & T }>({
     context: async ({ task: _task }: TestContext, use: (ctx: TesterScope & T) => Promise<void>) => {
@@ -26,7 +27,7 @@ export function createTester<T extends object = Record<string, never>>(
       const { databaseName, databaseUrl } = await createEphemeralTestDatabase({
         templateDatabaseUrl,
       });
-      const databaseClient = createDatabaseClient(databaseUrl, { max: 4 });
+      const databaseClient = createDatabaseClient(databaseUrl, { max });
 
       try {
         const context = await createContext({

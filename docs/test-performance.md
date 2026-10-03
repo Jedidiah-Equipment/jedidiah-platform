@@ -33,6 +33,9 @@ fixture pools, clone/drop admin clients, separate race clients, and auth work. B
 waits between samples can be missed. CPU can exceed 100% across cores. All retained runs had zero
 sampler errors; each had roughly 250–350 process samples and 35–50 database samples.
 
+Percentage deltas use unrounded medians; table values are rounded independently. For example,
+aggregate Postgres medians are 262,144,000 and 283,797,094.4 bytes: an 8.26% increase, rounded to 8.3%.
+
 Before/after SQL snapshots read `pg_stat_checkpointer.num_requested`, `num_timed`, `write_time`,
 `sync_time`, and `pg_stat_wal.wal_bytes` / `wal_fpi`. Counters are service-wide and include background
 work. A checkpoint crossing a sampling boundary can report its time separately from its count.
@@ -158,6 +161,7 @@ these messages are not failed test verdicts. Counts above use Vitest summaries a
 
 - `node --test scripts/use-slot.test.mjs`: all 13 cases pass. Split-port assertions went red before implementation and green afterward, including generated env files and bootstrap exports, secret preservation, takeover/switching, and failure paths.
 - Every package test command ran from its package cwd in the uncached suites. Effective limits were also resolved from each actual command binary: default 4, environment override 2. Mobile AsyncStorage alias and lander setup remain intact.
+- Turbo's test inputs include the shared root config so editing it invalidates cached passes for its five consumers. Dry-run input lists included it for all five; a temporary root-config comment changed all five test-task hashes and was restored before testing. This review follow-up changes cache dependency tracking, not Vitest settings or forced-run behavior.
 - Recovery passed on **slot 2** (dev 7205 / tests 7208) and **default ports** (5432 / 5433), using the README commands: restart only `postgres-test`, then `pnpm db:up:template`. The tmpfs template disappeared after restart and was rebuilt with all **168 migrations** and both Equipment/Contracting schemas.
 - Each environment then passed all five selected suites (`ai`, `db`, `lander`, `core`, `api`): **200 files / 2,097 cases**. The real DB cleanup tests drained tracked leftovers, swept dead-process databases, preserved live-process databases, and handled concurrent sweeps. Global-setup failure handling also passed.
 - The development marker survived restart, template rebuild, and DB suites. Development container ID/start time and user count stayed unchanged (slot 71; defaults 72). Only the temporary marker schema was removed afterward. Default checks temporarily hid the slot's gitignored env overrides and restored their exact bytes afterward.
@@ -165,6 +169,7 @@ these messages are not failed test verdicts. Counts above use Vitest summaries a
 - Idempotent `pnpm db:migrate` targets development in both environments. Actual seed env loading resolves development port 7205 or 5432; slot takeover migrated both databases and seeded development. Snapshot seeding remains separate from template migration.
 - Three final focused repetitions each passed the five core contention files (73 cases) and API customer router (31 cases). Existing gates, row locks, lock-wait observations, crossing merges and independent race clients remain unchanged. Only the holder/removal/observer/merge case explicitly allocates four fixture connections.
 - `CI=1 TURBO_FORCE=true pnpm verify` passed lint, typecheck, build and all 594 files / 4,749 cases with no worker override, new skip, or increased timeout. The test phase reported 21 successful tasks and zero cached tasks. The pruned web package also passed its typecheck; no staff procedure changed.
+- After the cache dependency follow-up, `CI=1 TURBO_FORCE=true pnpm verify` passed again, followed by two sequential `TURBO_FORCE=true CI=1 pnpm test` runs. All three passed 594 files / 4,749 cases with zero cached tasks (verify's Turbo test phase 87.315 s; subsequent command wall times 87.91 and 93.57 s). Memory tables above measure the unchanged worker/database settings before this cache-only correction; the forced commands bypass caching in both versions.
 
 ## Pruning record
 

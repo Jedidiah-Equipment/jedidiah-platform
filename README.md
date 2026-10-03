@@ -54,6 +54,11 @@ slot: it stops listeners on its four dev ports, deletes its Docker stack and vol
 blocks, migrates the dev and test-template databases, and seeds the snapshot. Ports are `7N01`–`7N08`
 for web, API, Expo, lander, development Postgres, MinIO API, MinIO console, and test Postgres.
 
+After pulling the test Postgres split into an existing slot checkout, rerun `pnpm use-slot -- <N>`
+with that checkout's chosen slot before starting Docker or tests. This resets the slot's data and
+regenerates its env blocks: older blocks still send tests to development Postgres and omit the new
+test-service port, which would otherwise fall back to slot 0's `5433`.
+
 When this checkout's gitignored `pkg/seed/snapshot` directory is missing or empty, `use-slot` copies
 the primary checkout's snapshot, including document-store objects, before taking over the slot. An
 existing local snapshot is left alone. If neither checkout has snapshot content, setup stops before

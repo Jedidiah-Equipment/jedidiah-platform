@@ -32,7 +32,7 @@ export default function AddMachineScreen() {
   const queryClient = useQueryClient();
   const job = useJob(params.jobId).data;
   const canAdd = job ? judgeJobAction('assign', job, access).allowed : false;
-  const backToJob = () => router.replace(`/contracting/jobs/${params.jobId}` as Href);
+  const backToJob = () => router.dismissTo(`/contracting/jobs/${params.jobId}` as Href);
   const add = useMutation(
     trpc.contractingJobs.assignments.add.mutationOptions({
       onSuccess: async () => {

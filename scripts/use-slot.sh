@@ -116,18 +116,21 @@ write_env_files() {
   expo_port=$((base + 3))
   lander_port=$((base + 4))
   pg_port=$((base + 5))
+  test_pg_port=$((base + 8))
   minio_api_port=$((base + 6))
   minio_console_port=$((base + 7))
   db_host="postgres://postgres:postgres@localhost:${pg_port}"
+  test_db_host="postgres://postgres:postgres@localhost:${test_pg_port}"
 
   echo "Configuring slot ${slot}:"
   echo "  web=${web_port} api=${api_port} expo=${expo_port} lander=${lander_port}"
-  echo "  db=${DB} template=${TEMPLATE} pg=localhost:${pg_port}"
+  echo "  db=${DB} pg=localhost:${pg_port} template=${TEMPLATE} test-pg=localhost:${test_pg_port}"
   echo "  stack=${project} minio-api=localhost:${minio_api_port} minio-console=localhost:${minio_console_port}"
   echo
 
   write_managed_block "$ROOT/.env.dev" "$slot" "COMPOSE_PROJECT_NAME=${project}
 POSTGRES_HOST_PORT=${pg_port}
+TEST_POSTGRES_HOST_PORT=${test_pg_port}
 MINIO_API_HOST_PORT=${minio_api_port}
 MINIO_CONSOLE_HOST_PORT=${minio_console_port}"
 
@@ -148,10 +151,10 @@ DATABASE_URL=${db_host}/${DB}
 DOCUMENT_STORAGE_ENDPOINT=http://localhost:${minio_api_port}"
 
   write_managed_block "$ROOT/pkg/db/.env.dev" "$slot" "DATABASE_URL=${db_host}/${DB}
-TEST_DATABASE_URL=${db_host}/${TEMPLATE}"
+TEST_DATABASE_URL=${test_db_host}/${TEMPLATE}"
 
   for pkg in ai api core db lander; do
-    write_managed_block "$ROOT/pkg/$pkg/.env.test" "$slot" "TEST_DATABASE_URL=${db_host}/${TEMPLATE}"
+    write_managed_block "$ROOT/pkg/$pkg/.env.test" "$slot" "TEST_DATABASE_URL=${test_db_host}/${TEMPLATE}"
   done
 
   write_managed_block "$ROOT/pkg/mobile/.env.local" "$slot" "RCT_METRO_PORT=${expo_port}
@@ -243,10 +246,11 @@ write_env_files "$SLOT"
 # Pin bootstrap targets even when the invoking shell has its own env overrides.
 export COMPOSE_PROJECT_NAME="$PROJECT"
 export POSTGRES_HOST_PORT="$pg_port"
+export TEST_POSTGRES_HOST_PORT="$test_pg_port"
 export MINIO_API_HOST_PORT="$minio_api_port"
 export MINIO_CONSOLE_HOST_PORT="$minio_console_port"
 export DATABASE_URL="${db_host}/${DB}"
-export TEST_DATABASE_URL="${db_host}/${TEMPLATE}"
+export TEST_DATABASE_URL="${test_db_host}/${TEMPLATE}"
 export DOCUMENT_STORAGE_ENDPOINT="http://localhost:${minio_api_port}"
 export NODE_ENV=development APP_ENV=development
 run pnpm compose:up
@@ -261,4 +265,5 @@ echo "  api       http://localhost:${api_port}"
 echo "  expo      http://localhost:${expo_port}"
 echo "  lander    http://localhost:${lander_port}"
 echo "  database  ${DATABASE_URL}"
+echo "  test      ${TEST_DATABASE_URL}"
 echo "  minio     http://localhost:${minio_api_port} (console http://localhost:${minio_console_port})"

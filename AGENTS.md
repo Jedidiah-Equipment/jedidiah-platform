@@ -2,8 +2,8 @@
 
 - Read the closest `pkg/*/AGENTS.md` before changing code in that package.
 - Use pnpm scripts. Normal verification is `pnpm verify` (lint + typecheck + build + test).
-- Keep `pnpm test` at `--concurrency=2`: each package's Vitest sizes its worker pool from the whole
-  machine, so more packages in flight oversubscribe the box until DB-backed tests time out.
+- Keep `pnpm test` at `--concurrency=2` and every Vitest runner bounded (default four workers,
+  `VITEST_MAX_WORKERS` override). More packages in flight oversubscribe the box until DB-backed tests time out.
 - Do not add CI, deployment, or production infrastructure unless explicitly asked.
 - The platform serves two businesses behind a symmetric wall (ADR 0016): every layer package has
   `equipment/` and `contracting/` folders and matching `@pkg/<name>/equipment` / `@pkg/<name>/contracting`
@@ -31,8 +31,9 @@
 
 - Schema changes: run `pnpm db:generate`, review and commit the generated SQL in `pkg/db/migrations`, then
   run `pnpm db:migrate` and `pnpm db:migrate:test`.
-- Run `pnpm db:up:template` after schema or seed changes, or when DB-backed tests fail with a stale
-  template-schema error. `pnpm db:up` drops the Docker volume and rebuilds the local database from scratch.
+- Run `pnpm db:up:template` after schema or seed changes, after restarting disposable `postgres-test`
+  (tmpfs loses its migrated template), or when DB-backed tests fail with a stale template-schema error.
+  `pnpm db:up` drops the Docker volume and rebuilds the local database from scratch.
 - `pnpm db:seed` loads `pkg/seed/snapshot`; every seeded user signs in with `test123`. Read
   `pkg/seed/AGENTS.md` before regenerating the snapshot.
 
@@ -41,9 +42,9 @@
 - Slot 0 is the committed default environment. Other checkouts need a user-chosen slot (1–9): use
   `$use-slot` or run `pnpm use-slot -- <N>` before starting dev services. Every run takes over that slot,
   stops its dev listeners, removes its Docker stack and volumes, then migrates and seeds fresh data.
-- A slot is `COMPOSE_PROJECT_NAME=jedidiah_slot<N>` on ports `7N01`-`7N07`: web, API, Expo, lander, Postgres,
-  MinIO API, MinIO console. Switching slots leaves the previous stack running; the previous holder's env
-  files still point at a taken-over slot.
+- A slot is `COMPOSE_PROJECT_NAME=jedidiah_slot<N>` on ports `7N01`-`7N08`: web, API, Expo, lander, development
+  Postgres, MinIO API, MinIO console, test Postgres. Switching slots leaves the previous stack running;
+  the previous holder's env files still point at a taken-over slot.
 - Generated `use-slot` env blocks replace legacy slot blocks and preserve hand-written local env lines.
   Apps read the gitignored files directly; no shell sourcing or launch-file patching is involved.
 - `pnpm dev:kill` stops this checkout's dev services; `pnpm dev:kill:all` sweeps all known slot ports.

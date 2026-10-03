@@ -38,7 +38,7 @@ const args = process.argv.slice(2);
 fs.appendFileSync(root + '/calls', JSON.stringify({ tool: '${tool}', args,
   project: process.env.COMPOSE_PROJECT_NAME, database: process.env.DATABASE_URL,
   template: process.env.TEST_DATABASE_URL, storage: process.env.DOCUMENT_STORAGE_ENDPOINT,
-  postgresPort: process.env.POSTGRES_HOST_PORT, minioPort: process.env.MINIO_API_HOST_PORT,
+  postgresPort: process.env.POSTGRES_HOST_PORT, testPostgresPort: process.env.TEST_POSTGRES_HOST_PORT, minioPort: process.env.MINIO_API_HOST_PORT,
   consolePort: process.env.MINIO_CONSOLE_HOST_PORT, nodeEnv: process.env.NODE_ENV }) + '\\n');
 const step = args[0];
 if (process.env.SLOT_TEST_FAIL === '${tool}:' + step) {
@@ -174,6 +174,7 @@ test('takes over the named stack, preserves handwritten lines, and migrates both
   assert.match(result.stdout, /postgres:\/\/postgres:postgres@localhost:7205\/jedidiah/);
   assert.match(f.read('.env.dev'), /^KEEP=root\nAFTER=root\n/);
   assert.match(f.read('.env.dev'), /COMPOSE_PROJECT_NAME=jedidiah_slot2/);
+  assert.match(f.read('.env.dev'), /POSTGRES_HOST_PORT=7205\nTEST_POSTGRES_HOST_PORT=7208/);
   assert.doesNotMatch(f.read('.env.dev'), /parallel-env/);
   assert.match(f.read('pkg/api/.env.dev'), /^OPENAI_API_KEY=private-test-key\nPORT=1234\nAFTER=api\n/);
   assert.match(f.read('pkg/api/.env.dev'), /PORT=7202/);
@@ -181,9 +182,10 @@ test('takes over the named stack, preserves handwritten lines, and migrates both
   assert.match(f.read('pkg/api/.env.dev'), /AUTH_TRUSTED_ORIGINS=http:\/\/localhost:7201,http:\/\/localhost:7202,http:\/\/localhost:7203,jedidiahops:\/\//);
   assert.match(f.read('pkg/web/.env.dev'), /AUTH_BASE_URL=http:\/\/localhost:7202\/api\/auth/);
   assert.match(f.read('pkg/lander/.env.dev'), /PORT=7204/);
-  assert.match(f.read('pkg/db/.env.dev'), /TEST_DATABASE_URL=.*:7205\/jedidiah_template/);
+  assert.match(f.read('pkg/db/.env.dev'), /DATABASE_URL=.*:7205\/jedidiah\n/);
+  assert.match(f.read('pkg/db/.env.dev'), /TEST_DATABASE_URL=.*:7208\/jedidiah_template/);
   for (const pkg of ['ai', 'api', 'core', 'db', 'lander']) {
-    assert.match(f.read(`pkg/${pkg}/.env.test`), /TEST_DATABASE_URL=.*:7205\/jedidiah_template/);
+    assert.match(f.read(`pkg/${pkg}/.env.test`), /TEST_DATABASE_URL=.*:7208\/jedidiah_template/);
   }
   assert.match(f.read('pkg/mobile/.env.local'), /^EXPO_PUBLIC_CUSTOM=value\n/);
   assert.match(f.read('pkg/mobile/.env.local'), /RCT_METRO_PORT=7203\nEXPO_PUBLIC_API_PORT=7202\nEXPO_PUBLIC_LANDER_ORIGIN=http:\/\/localhost:7204/);
@@ -195,9 +197,10 @@ test('takes over the named stack, preserves handwritten lines, and migrates both
   for (const call of bootstrap) {
     assert.equal(call.project, 'jedidiah_slot2');
     assert.equal(call.database, 'postgres://postgres:postgres@localhost:7205/jedidiah');
-    assert.equal(call.template, 'postgres://postgres:postgres@localhost:7205/jedidiah_template');
+    assert.equal(call.template, 'postgres://postgres:postgres@localhost:7208/jedidiah_template');
     assert.equal(call.storage, 'http://localhost:7206');
     assert.equal(call.postgresPort, '7205');
+    assert.equal(call.testPostgresPort, '7208');
     assert.equal(call.minioPort, '7206');
     assert.equal(call.consolePort, '7207');
     assert.equal(call.nodeEnv, 'development');
@@ -215,6 +218,8 @@ test('rerunning rebuilds the slot; switching replaces managed values without acc
   assert.equal(f.run('9').status, 0);
   assert.match(f.read('pkg/api/.env.dev'), /PORT=7902/);
   assert.doesNotMatch(f.read('pkg/api/.env.dev'), /7202/);
+  assert.match(f.read('pkg/db/.env.dev'), /DATABASE_URL=.*:7905\/jedidiah\n/);
+  assert.match(f.read('pkg/db/.env.test'), /TEST_DATABASE_URL=.*:7908\/jedidiah_template/);
   assert.equal(f.read('pkg/api/.env.dev').match(/# >>> use-slot/g).length, 1);
   const downs = f.calls().filter((call) => call.tool === 'docker' && call.args[0] === 'compose');
   assert.deepEqual(downs.map((call) => call.args[2]), ['jedidiah_slot2', 'jedidiah_slot2', 'jedidiah_slot9']);

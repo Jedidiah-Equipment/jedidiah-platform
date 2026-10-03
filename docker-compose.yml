@@ -2,18 +2,6 @@ services:
   postgres:
     image: postgres:17-alpine
     restart: unless-stopped
-    # Local data is disposable (db:up/db:seed rebuild it), so trade crash durability for test
-    # throughput: no per-commit fsync, and headroom for parallel test workers' pools.
-    command:
-      - postgres
-      - -c
-      - fsync=off
-      - -c
-      - synchronous_commit=off
-      - -c
-      - full_page_writes=off
-      - -c
-      - max_connections=200
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
@@ -28,10 +16,42 @@ services:
       timeout: 5s
       retries: 10
 
+  # Only disposable tests trade durability for throughput. Restarting loses the template and clones.
+  postgres-test:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    command:
+      - postgres
+      - -c
+      - fsync=off
+      - -c
+      - synchronous_commit=off
+      - -c
+      - full_page_writes=off
+      - -c
+      - shared_buffers=32MB
+      - -c
+      - min_wal_size=32MB
+      - -c
+      - max_wal_size=256MB
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: postgres
+    ports:
+      - "${TEST_POSTGRES_HOST_PORT:-5433}:5432"
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
   postgres-init:
     image: postgres:17-alpine
     depends_on:
-      postgres:
+      postgres-test:
         condition: service_healthy
     environment:
       PGPASSWORD: postgres
@@ -39,11 +59,11 @@ services:
       - sh
       - -c
       - |
-        psql -h postgres -U postgres -d postgres -tc "SELECT 1 FROM pg_database WHERE datname = 'jedidiah_template'" | grep -q 1 ||
-          psql -h postgres -U postgres -d postgres -c "CREATE DATABASE jedidiah_template"
+        psql -h postgres-test -U postgres -d postgres -tc "SELECT 1 FROM pg_database WHERE datname = 'jedidiah_template'" | grep -q 1 ||
+          psql -h postgres-test -U postgres -d postgres -c "CREATE DATABASE jedidiah_template"
         exec tail -f /dev/null
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -h postgres -U postgres -d jedidiah_template"]
+      test: ["CMD-SHELL", "pg_isready -h postgres-test -U postgres -d jedidiah_template"]
       interval: 5s
       timeout: 5s
       retries: 10

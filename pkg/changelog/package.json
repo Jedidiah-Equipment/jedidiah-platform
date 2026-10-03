@@ -12,7 +12,7 @@
   "scripts": {
     "build": "tsc -b",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "vitest run"
+    "test": "vitest run --config ../../vitest.config.ts"
   },
   "dependencies": {
     "@pkg/schema": "workspace:*",

@@ -5,6 +5,7 @@ export default defineConfig({
     tsconfigPaths: true,
   },
   test: {
+    maxWorkers: 4,
     exclude: [...configDefaults.exclude, 'dist/**'],
     // Full-document renders embed brand font faces and take several seconds when the repo-wide
     // test run saturates the machine; vitest's 5s default flakes there.

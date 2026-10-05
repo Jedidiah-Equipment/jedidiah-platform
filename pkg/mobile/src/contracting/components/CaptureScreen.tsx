@@ -268,13 +268,12 @@ function CaptureForm({ target }: { target: CaptureTarget }) {
           <Text className="text-danger">Enter a non-negative value with at most one decimal place.</Text>
         ) : null}
       </View>
-      {/* "photo or" only when the comment really stands in for a missing photo. */}
-      <Divider label={commentRequired ? 'photo or' : null} />
+      <Divider label={photo === null ? 'photo or' : null} />
       <View className="gap-2">
         <FieldLabel>{commentLabel(role, commentRequired)}</FieldLabel>
         <TextInput
           accessibilityLabel={commentLabel(role, commentRequired)}
-          placeholder={commentRequired ? 'No photo? Say why…' : 'Anything management should know about this reading'}
+          placeholder={photo === null ? 'No photo? Say why…' : 'Anything management should know about this reading'}
           value={comment}
           editable={!busy}
           multiline

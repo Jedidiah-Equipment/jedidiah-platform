@@ -463,6 +463,8 @@ export async function verifyCapturedReading({
     // The capture's own follow-up, so it is audited as the person who captured it.
     actorUserId: (before) => before.capturedByUserId,
     lands: (before) => before.aiVerification === 'pending' && before.photo?.storageKey === storageKey,
+    // A review made before the AI had looked never covers its verdict.
+    patch: { evidenceReviewedAt: null },
   });
 }
 

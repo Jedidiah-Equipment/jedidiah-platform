@@ -510,4 +510,20 @@ test('a background check lands on a pending reading against its current value, a
     readPhoto: async () => ({ value: 999, confidence: 0.95 }),
   });
   expect(late).toEqual(reverified);
+
+  const amended = await captureReading({
+    db,
+    actor,
+    evidence: photoEvidence(storage),
+    input: { ...input, value: 170 },
+  });
+  await amendReading({ db, actor, input: { id: amended.id, value: 171, reason: 'Typed the wrong tenth' } });
+  const disagreed = await verifyCapturedReading({
+    db,
+    id: amended.id,
+    storage,
+    readPhoto: async () => ({ value: 117, confidence: 0.95 }),
+  });
+  // An amend made before the AI had looked still leaves its disagreement for Reading Exceptions.
+  expect(disagreed).toMatchObject({ value: 171, aiVerification: 'disagrees', evidenceReviewedAt: null });
 });

@@ -125,7 +125,11 @@ export async function listJobs({
     .where(where)
     .orderBy(
       ...(input.sortBy === 'invoicedAt'
-        ? [sql`${contractingJobs.invoicedAt} ${sql.raw(input.sortDirection)} nulls last`]
+        ? [
+            input.sortDirection === 'desc'
+              ? sql`${contractingJobs.invoicedAt} desc nulls last`
+              : sql`${contractingJobs.invoicedAt} asc nulls last`,
+          ]
         : []),
       getSortOrder(contractingJobs.code, input.sortDirection),
       asc(contractingJobs.id),

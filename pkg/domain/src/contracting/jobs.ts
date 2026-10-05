@@ -3,6 +3,7 @@ import {
   type AssignmentState,
   finishedJobStatuses,
   type JobQueue,
+  type JobQueueCounts,
   type JobStatus,
   jobQueues,
   jobStatuses,
@@ -105,6 +106,12 @@ export const openJobQueues = [
   'awaiting-pricing',
   'awaiting-invoice',
 ] as const satisfies readonly JobQueue[];
+
+export const isJobQueue = (value: unknown): value is JobQueue => jobQueues.includes(value as JobQueue);
+
+/** How many Jobs the queue counts hold across these stages. */
+export const stagesCount = (counts: JobQueueCounts | undefined, stages: readonly JobQueue[] = jobQueues) =>
+  stages.reduce((total, queue) => total + (counts?.[queue] ?? 0), 0);
 
 const statusQueue: Record<JobStatus, JobQueue> = {
   upcoming: 'upcoming',

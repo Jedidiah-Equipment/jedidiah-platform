@@ -1,9 +1,8 @@
 import { listCatalogTranslationKeysNeedingTranslation } from '@pkg/core/equipment';
 import type { Db } from '@pkg/db';
 import type { CatalogTranslationKey } from '@pkg/domain/equipment';
-
+import { ConcurrencyLimit } from '../../concurrency-limit.js';
 import type { CatalogTranslationRunResult } from './catalog-translation-runner.js';
-import { ConcurrencyLimit } from './concurrency-limit.js';
 
 export type CatalogTranslationBackfillResult = {
   failed: number;

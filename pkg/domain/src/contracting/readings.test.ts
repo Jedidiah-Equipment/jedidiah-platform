@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   type AmendableReading,
+  amendmentSettledFinding,
   type ReadingAttentionFacts,
   readingAttention,
   readingAttentionKinds,
@@ -10,6 +11,7 @@ import {
   readingPhotoPath,
   readingVerification,
   resolveReadingAmendment,
+  shownReadingAttention,
 } from './readings.js';
 
 const clean = (id: string, value: number): AmendableReading => ({
@@ -145,5 +147,21 @@ describe('readingAttention', () => {
     const reading = facts({ aiVerification });
     expect(readingAttention(reading)).toEqual({ disputed: false, aiFlagged: null });
     expect(readingNeedsALook(reading)).toBe(false);
+  });
+});
+
+describe('an amended reading', () => {
+  const amended = { amendedAt: '2026-09-07T09:00:00.000Z', evidenceReviewedAt: '2026-09-07T09:00:00.000Z' };
+
+  it('shows only what still needs a look once amended', () => {
+    const attention = ['ai-pending', 'missing-photo', 'disputed'] as const;
+    expect(shownReadingAttention({ amendedAt: null, attention })).toEqual(attention);
+    expect(shownReadingAttention({ ...amended, attention })).toEqual(['disputed']);
+  });
+
+  it('settles the AI finding until a re-verify reopens it', () => {
+    expect(amendmentSettledFinding(amended)).toBe(true);
+    expect(amendmentSettledFinding({ ...amended, evidenceReviewedAt: null })).toBe(false);
+    expect(amendmentSettledFinding({ amendedAt: null, evidenceReviewedAt: amended.evidenceReviewedAt })).toBe(false);
   });
 });

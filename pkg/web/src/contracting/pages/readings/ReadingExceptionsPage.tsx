@@ -20,14 +20,12 @@ import { MeterPhotoPreview } from '@/contracting/components/MeterPhotoPreview.js
 import { NoReadableMeterResult, readingEvidence } from '@/contracting/components/ReadingEvidence.js';
 import { useReadingReview } from '@/contracting/hooks/use-reading-review.js';
 import { ReadingDialog } from '@/contracting/pages/jobs/ReadingDialog.js';
-import { useCan } from '@/hooks/use-access.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { cn } from '@/lib/utils.js';
 
 export function ReadingExceptionsPage() {
   const trpc = useTRPC();
-  const canAmend = useCan('contracting_reading:update').can;
   // Tracked by id so the dialog follows the refreshed row, and closes once an amendment resolves the exception.
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [previewReading, setPreviewReading] = useState<ReadingException | null>(null);
@@ -91,7 +89,7 @@ export function ReadingExceptionsPage() {
         id: 'evidence',
         header: 'Evidence',
         cell: ({ row: { original: row } }) => {
-          const presentation = readingEvidence({ ...row, photoBacked: row.photo !== null });
+          const presentation = readingEvidence(row);
           return (
             <div className="space-y-1">
               {row.photo ? (
@@ -124,7 +122,7 @@ export function ReadingExceptionsPage() {
         id: 'ai',
         header: 'AI meter result',
         cell: ({ row }) => {
-          const presentation = readingEvidence({ ...row.original, photoBacked: row.original.photo !== null });
+          const presentation = readingEvidence(row.original);
           return (
             <div>
               {presentation.resultConfidencePercent !== null ? (
@@ -185,11 +183,10 @@ export function ReadingExceptionsPage() {
         />
       </PageLayout>
       <ReadingDialog
-        selected={
-          selected ? { reading: { ...selected, photoBacked: selected.photo !== null }, machine: selected } : null
-        }
+        selected={selected ? { reading: selected, machine: selected } : null}
         onClose={() => setSelectedId(null)}
-        amendReadings={canAmend}
+        // The route admits only those who may amend readings.
+        amendReadings
         amendDescription="Check the photo and both disputed readings. Confirm or correct the value and give a reason. This acknowledges the current evidence warning."
       />
       <MeterPhotoPreview

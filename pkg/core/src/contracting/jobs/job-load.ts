@@ -15,6 +15,7 @@ import {
 } from '@pkg/db/contracting';
 import { and, asc, eq, getTableColumns, inArray } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
+import { type JobReader, readableBy } from './job-readers.js';
 import * as jobSql from './job-sql.js';
 
 export type DbOrTx = Db | DatabaseTransaction;
@@ -107,40 +108,50 @@ export const stintNames = ({
   driverName,
 }: LoadedStint) => ({ machineCode, categoryName, categoryIcon, categoryColour, implementCode, driverName });
 
-/** Where each arrived stint's Hour Gap starts: the Machine's last departure before its arrival, by stint id. */
 const previousReading = alias(contractingHourReadings, 'job_previous_departure');
 const previousAssignment = alias(contractingMachineAssignments, 'job_previous_assignment');
-const previousJob = alias(contractingJobs, 'job_previous_job');
-const previousCustomer = alias(contractingCustomers, 'job_previous_customer');
-const previousFarm = alias(contractingFarms, 'job_previous_farm');
+const previousDepartureOf = eq(
+  previousReading.id,
+  jobSql.previousDepartureId(contractingMachineAssignments.machineId, arrivalReading.sequence),
+);
 
-/** Each arrived stint's previous departure, the start of its Hour Gap, with the Job that Machine left. */
+/** Each arrived stint's previous departure: the Machine's last departure before its arrival, where its Hour Gap starts. */
 export async function loadPreviousDepartures(db: DbOrTx, jobId: string) {
   const rows = await db
     .select({
       id: contractingMachineAssignments.id,
       value: previousReading.value,
       capturedAt: previousReading.capturedAt,
-      jobCode: previousJob.code,
-      jobStatus: previousJob.status,
-      customerName: previousCustomer.name,
-      farmName: previousFarm.name,
     })
     .from(contractingMachineAssignments)
     .innerJoin(arrivalReading, eq(arrivalReading.id, contractingMachineAssignments.arrivalReadingId))
-    .innerJoin(
-      previousReading,
-      eq(
-        previousReading.id,
-        jobSql.previousDepartureId(contractingMachineAssignments.machineId, arrivalReading.sequence),
-      ),
-    )
-    .leftJoin(previousAssignment, eq(previousAssignment.departureReadingId, previousReading.id))
-    .leftJoin(previousJob, eq(previousJob.id, previousAssignment.jobId))
-    .leftJoin(previousCustomer, eq(previousCustomer.id, previousJob.customerId))
-    .leftJoin(previousFarm, eq(previousFarm.id, previousJob.farmId))
+    .innerJoin(previousReading, previousDepartureOf)
     .where(eq(contractingMachineAssignments.jobId, jobId));
   return new Map(rows.map(({ id, ...departure }) => [id, departure] as const));
+}
+
+/** The Job each arrived stint's Machine left before arriving, by stint id: only those the reader could open. */
+export async function loadPreviousJobs(db: DbOrTx, jobId: string, reader: JobReader) {
+  const rows = await db
+    .select({
+      id: contractingMachineAssignments.id,
+      code: contractingJobs.code,
+      status: contractingJobs.status,
+      customerName: contractingCustomers.name,
+      farmName: contractingFarms.name,
+    })
+    .from(contractingMachineAssignments)
+    .innerJoin(arrivalReading, eq(arrivalReading.id, contractingMachineAssignments.arrivalReadingId))
+    .innerJoin(previousReading, previousDepartureOf)
+    .innerJoin(previousAssignment, eq(previousAssignment.departureReadingId, previousReading.id))
+    .innerJoin(contractingJobs, and(eq(contractingJobs.id, previousAssignment.jobId), readableBy(reader)))
+    .innerJoin(contractingCustomers, eq(contractingCustomers.id, contractingJobs.customerId))
+    .innerJoin(
+      contractingFarms,
+      and(eq(contractingFarms.id, contractingJobs.farmId), eq(contractingFarms.customerId, contractingJobs.customerId)),
+    )
+    .where(eq(contractingMachineAssignments.jobId, jobId));
+  return new Map(rows.map(({ id, ...job }) => [id, job] as const));
 }
 
 export function loadMeasures(db: DbOrTx, jobId: string) {

@@ -8,7 +8,7 @@ import { CategoryColour, CategoryIconKey, FleetCode, FleetName } from '../fleet/
 import { RateBasis } from '../rate-card/rate-card.js';
 import { HourReading, ReadingValue } from '../readings/reading.js';
 import { JobActions } from './job-actions.js';
-import { assignmentStates, discountKinds, jobQueues, jobStatuses } from './job-enums.js';
+import { assignmentStates, discountKinds, jobQueues, jobStatuses, needsALookLevels } from './job-enums.js';
 
 export const Hours = z.number().nonnegative().max(999999999.9).multipleOf(0.1);
 export const Litres = z.number().nonnegative().max(9999999999.99).multipleOf(0.01);
@@ -81,6 +81,12 @@ export const JobLookupInput = z.union([z.object({ id: UUID }).strict(), z.object
 export type JobLookupInput = z.infer<typeof JobLookupInput>;
 export const JobQueueCounts = z.record(z.enum(jobQueues), z.number().int().nonnegative());
 export type JobQueueCounts = z.infer<typeof JobQueueCounts>;
+/** Each queue's Job count, and the loudest Machine Assignment attention needing a look across its Jobs. */
+export const JobQueueSummary = z.object({
+  counts: JobQueueCounts,
+  attention: z.record(z.enum(jobQueues), z.enum(needsALookLevels).nullable()),
+});
+export type JobQueueSummary = z.infer<typeof JobQueueSummary>;
 
 export const AssignmentPlanInput = z
   .object({

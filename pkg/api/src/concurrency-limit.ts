@@ -5,7 +5,7 @@ export class ConcurrencyLimit {
 
   constructor(concurrency: number) {
     if (!Number.isInteger(concurrency) || concurrency < 1) {
-      throw new Error('Translation concurrency must be a positive integer');
+      throw new Error('Concurrency must be a positive integer');
     }
     this.#concurrency = concurrency;
   }

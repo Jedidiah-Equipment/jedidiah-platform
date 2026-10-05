@@ -1,6 +1,7 @@
-import { user } from '@pkg/db';
+import { auditEvents, user } from '@pkg/db';
 import { accessForRole } from '@pkg/domain/testing';
 import { MachineCreateInput } from '@pkg/schema/contracting';
+import { and, desc, eq } from 'drizzle-orm';
 import { expect } from 'vitest';
 import { createTester } from '../../test/create-tester.js';
 import { createCategory } from '../fleet/category-service.js';
@@ -75,40 +76,45 @@ test('flags both disputed readings and clears the resolved pair with an audited 
   });
 });
 
-test('keeps photo evidence on AI failure and verifies it later without changing the typed value', async ({
+test('a failed check throws for the log, keeps the photo, and waits for Re-verify or the next start-up', async ({
   context,
 }) => {
   const { db, actor, actorUserId, machineId } = context;
   const { InMemoryStorageAdapter } = await import('../../storage/in-memory-storage-adapter.js');
-  const { reverifyReading } = await import('./reading-service.js');
+  const { getReading, listReadingsAwaitingVerification, reverifyReading } = await import('./reading-service.js');
   const storage = new InMemoryStorageAdapter();
-  const row = await withBackgroundCheck(
+  const captured = await captureReading({
     db,
-    storage,
-    async () => {
-      throw new Error('Model unavailable');
-    },
-    captureReading({
+    actor,
+    evidence: photoEvidence(storage),
+    input: { machineId, role: 'spot', value: 123.4, capturedAt: '2026-09-07T08:00:00Z', disputePrevious: false },
+  });
+  await expect(
+    verifyCapturedReading({
       db,
-      actor,
-      evidence: photoEvidence(storage),
-      input: { machineId, role: 'spot', value: 123.4, capturedAt: '2026-09-07T08:00:00Z', disputePrevious: false },
+      id: captured.id,
+      storage,
+      readPhoto: async () => {
+        throw new Error('Model unavailable');
+      },
     }),
-  );
-  expect(row).toMatchObject({
+  ).rejects.toMatchObject({ code: 'reading.verification_failed' });
+  expect(await getReading({ db, id: captured.id })).toMatchObject({
     method: 'photo',
     photo: { contentType: 'image/jpeg' },
     aiVerification: 'pending',
     value: 123.4,
   });
+  expect(await listReadingsAwaitingVerification({ db })).toEqual([captured.id]);
   const reverified = await reverifyReading({
     db,
     actorUserId,
-    id: row.id,
+    id: captured.id,
     storage,
     readPhoto: async () => ({ value: 123.4, confidence: 0.95 }),
   });
   expect(reverified).toMatchObject({ aiValue: 123.4, aiConfidence: 0.95, aiVerification: 'agrees', value: 123.4 });
+  expect(await listReadingsAwaitingVerification({ db })).toEqual([]);
 });
 
 test('serializes competing captures and preserves the ledger when an upload or insert fails', async ({ context }) => {
@@ -494,6 +500,14 @@ test('a background check lands on a pending reading against its current value, a
     readPhoto: async () => ({ value: 151, confidence: 0.95 }),
   });
   expect(judged).toMatchObject({ value: 151, aiValue: 151, aiVerification: 'agrees' });
+  const [verdictEvent] = await db
+    .select({ actorUserId: auditEvents.actorUserId })
+    .from(auditEvents)
+    .where(and(eq(auditEvents.entityId, captured.id), eq(auditEvents.action, 'updated')))
+    .orderBy(desc(auditEvents.occurredAt))
+    .limit(1);
+  // Nobody asked for the background check, so its verdict is the System's.
+  expect(verdictEvent).toEqual({ actorUserId: null });
 
   const second = await captureReading({ db, actor, evidence: photoEvidence(storage), input: { ...input, value: 160 } });
   const reverified = await reverifyReading({

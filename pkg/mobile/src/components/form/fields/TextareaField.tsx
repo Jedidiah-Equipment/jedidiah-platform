@@ -6,6 +6,9 @@ import { getFieldErrors } from '../utils/field-errors';
 import { fieldStateClassNames } from '../utils/field-style';
 import { FieldShell } from './FieldShell';
 
+/** A multi-line input's height for this many rows, so it holds its size empty or filled. */
+export const textareaStyle = (rows: number) => ({ minHeight: rows * 22 });
+
 type TextareaFieldProps = {
   disabled?: boolean;
   label?: ReactNode;
@@ -36,7 +39,7 @@ export function TextareaField({
           onValueCommit?.();
         }}
         onChangeText={field.handleChange}
-        style={{ minHeight: rows * 22 }}
+        style={textareaStyle(rows)}
         textAlignVertical="top"
         value={field.state.value}
         {...inputProps}

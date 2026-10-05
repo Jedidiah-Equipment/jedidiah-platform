@@ -419,25 +419,24 @@ test('counts queue tabs by read mode and exposes capture evidence on Job details
   const manager = context.createCaller(contractingSession('contracting-manager')).contractingJobs.jobs;
   const foreman = context.createCaller(contractingSession('foreman')).contractingJobs.jobs;
   const invoicing = context.createCaller(contractingSession('contracting-invoicing')).contractingJobs.jobs;
-  expect(await manager.queueCounts()).toMatchObject({
+  expect((await manager.queues()).counts).toMatchObject({
     upcoming: 1,
     active: 1,
     'looks-finished': 0,
     'awaiting-pricing': 1,
     'awaiting-invoice': 1,
   });
-  expect(await foreman.queueCounts()).toMatchObject({
+  expect((await foreman.queues()).counts).toMatchObject({
     upcoming: 1,
     active: 0,
     'awaiting-pricing': 0,
     'awaiting-invoice': 0,
     invoiced: 0,
   });
-  expect(await invoicing.queueCounts()).toMatchObject({ upcoming: 0, active: 0, 'awaiting-pricing': 1 });
+  expect((await invoicing.queues()).counts).toMatchObject({ upcoming: 0, active: 0, 'awaiting-pricing': 1 });
   // A missing photo is a notice, so it never needs a look.
-  expect(await manager.activeAttention()).toBeNull();
-  expect(await foreman.activeAttention()).toBeNull();
-  expect(await invoicing.activeAttention()).toBeNull();
+  expect((await manager.queues()).attention).toMatchObject({ active: null, 'awaiting-pricing': null });
+  expect((await foreman.queues()).attention.active).toBeNull();
   expect(await manager.get({ id: context.otherJob.id })).toMatchObject({
     assignments: [
       { arrival: { comment: null, aiConfidence: null, capturedByName: 'Other', attention: ['missing-photo'] } },
@@ -449,8 +448,8 @@ test('counts queue tabs by read mode and exposes capture evidence on Job details
     .update(contractingHourReadings)
     .set({ aiValue: 101, aiConfidence: 0.87, aiVerification: 'disagrees' })
     .where(eq(contractingHourReadings.id, arrivalId));
-  expect(await manager.activeAttention()).toBe('warning');
-  expect(await foreman.activeAttention()).toBeNull();
+  expect((await manager.queues()).attention).toMatchObject({ active: 'warning', 'awaiting-pricing': null });
+  expect((await foreman.queues()).attention.active).toBeNull();
   expect(await manager.get({ id: context.otherJob.id })).toMatchObject({
     assignments: [{ arrival: { aiConfidence: 0.87, attention: ['ai-disagrees', 'missing-photo'] } }],
   });

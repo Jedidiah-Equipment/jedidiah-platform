@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { PaginatedList } from '@/components/PaginatedList';
 import { Text } from '@/components/ui/text';
-import { CatalogListSkeleton, PaginatedCatalogList } from '@/equipment/components/CatalogList';
+import { CatalogListSkeleton } from '@/equipment/components/CatalogList';
 import { NewQuoteModal } from '@/equipment/components/quotes/NewQuoteModal';
 import {
   QuoteCatalogCard,
@@ -58,7 +59,7 @@ export default function QuotesRoute() {
         }
         title="Quotes"
       />
-      <PaginatedCatalogList
+      <PaginatedList
         emptyContent={emptyContent}
         hasNextPage={list.hasNextPage}
         header={

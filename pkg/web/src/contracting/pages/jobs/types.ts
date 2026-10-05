@@ -1,6 +1,17 @@
-import { hasJobCard } from '@pkg/domain/contracting';
+import {
+  type AssignmentActionName,
+  type AssignmentActionVerdict,
+  hasJobCard,
+  judgeAssignmentAction,
+} from '@pkg/domain/contracting';
 import { UUID } from '@pkg/schema';
-import { type JobActionName, type JobCreateInput, JobDescription, type JobDetail } from '@pkg/schema/contracting';
+import {
+  type AssignmentState,
+  type JobActionName,
+  type JobCreateInput,
+  JobDescription,
+  type JobDetail,
+} from '@pkg/schema/contracting';
 import { z } from 'zod';
 import { requiredSelection } from '@/components/form/utils/form-schema.js';
 
@@ -42,6 +53,17 @@ export function jobSheet(job: JobDetail) {
     const judged = verdict(action);
     return judged.allowed ? undefined : judged.message;
   };
+  /** A Job Action on one Machine Assignment: the Job must allow it, then the Assignment's state. */
+  const stintAction = (
+    jobAction: JobActionName,
+    assignmentAction: AssignmentActionName,
+    stint: { state: AssignmentState },
+  ): AssignmentActionVerdict => {
+    const judged = verdict(jobAction);
+    return judged.allowed
+      ? judgeAssignmentAction(assignmentAction, stint)
+      : { allowed: false, message: judged.message };
+  };
   const seesMoney = hasJobCard(job.status) && job.pricing !== null;
   /** Work has started and the Job was not cancelled. */
   const started = job.status === 'active' || hasJobCard(job.status);
@@ -50,6 +72,7 @@ export function jobSheet(job: JobDetail) {
     /** The person holds the action's permission; only the Job's state or ownership can still refuse it. */
     holds,
     refusal,
+    stintAction,
     /**
      * A card action's props: null when the person lacks the permission (render nothing), otherwise disabled with the
      * refusal while the Job refuses it. Row controls do not use this: they render only when `can` is true.

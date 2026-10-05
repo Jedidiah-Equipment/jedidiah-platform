@@ -22,6 +22,7 @@ import { Input } from '@/components/ui/input.js';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover.js';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select.js';
 import { cn } from '@/lib/utils.js';
+import { toDateRangeFilterValue, toMultiSelectFilterValue } from '../column-filter-values.js';
 import type { DataTableColumnInstance, DataTableHeaderInstance } from '../features.js';
 import { getColumnLabel, hasActiveFilterValue } from '../utils.js';
 
@@ -210,7 +211,7 @@ function DataTableMultiSelectFilter<TData extends RowData>({
   label,
 }: Pick<DataTableFilterControlProps<TData>, 'column' | 'label'>) {
   const options = column.columnDef.meta?.filterOptions ?? [];
-  const selectedValues = getStringArrayFilterValue(column.getFilterValue());
+  const selectedValues = toMultiSelectFilterValue(column.getFilterValue());
   const optionLabels = new Map(options.map((option) => [option.value, option.label]));
 
   return (
@@ -256,7 +257,7 @@ function DataTableDateRangeFilter<TData extends RowData>({
   column,
   label,
 }: Pick<DataTableFilterControlProps<TData>, 'column' | 'label'>) {
-  const filterValue = getDateRangeFilterValue(column.getFilterValue());
+  const filterValue = toDateRangeFilterValue(column.getFilterValue());
   const selectedRange = getSelectedDateRange(filterValue);
 
   return (
@@ -308,25 +309,6 @@ function ClearFilterButton({ disabled, label, onClear }: ClearFilterButtonProps)
       <IconX />
     </Button>
   );
-}
-
-function getStringArrayFilterValue(value: unknown): string[] {
-  return Array.isArray(value)
-    ? value.filter((item): item is string => typeof item === 'string' && item.length > 0)
-    : [];
-}
-
-function getDateRangeFilterValue(value: unknown): { end?: string; start?: string } {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) {
-    return {};
-  }
-
-  const range = value as { end?: unknown; start?: unknown };
-
-  return {
-    ...(typeof range.end === 'string' && range.end ? { end: range.end } : {}),
-    ...(typeof range.start === 'string' && range.start ? { start: range.start } : {}),
-  };
 }
 
 function getSelectedDateRange(value: { end?: string; start?: string }): DateRange | undefined {

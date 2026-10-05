@@ -2,6 +2,7 @@ import type { UUID } from '@pkg/schema';
 import { QuoteInvoicedFilter, type QuoteListInput, QuoteOfferingType, QuoteStatus } from '@pkg/schema/equipment';
 import type { ColumnFiltersState } from '@tanstack/react-table';
 import type { z } from 'zod';
+import { readMultiSelectFilter } from '@/components/data-table/column-filter-values.js';
 
 export function getQuoteListInputExtras(columnFilters: ColumnFiltersState, customerId?: UUID) {
   return {
@@ -26,9 +27,9 @@ export function getQuoteIdFilterValue(
 }
 
 function getStatusFilterValues(columnFilters: ColumnFiltersState) {
-  const value = columnFilters.find((filter) => filter.id === 'status')?.value;
-
-  return Array.isArray(value) ? value.filter((item): item is QuoteStatus => QuoteStatus.safeParse(item).success) : [];
+  return readMultiSelectFilter(columnFilters, 'status').filter(
+    (item): item is QuoteStatus => QuoteStatus.safeParse(item).success,
+  );
 }
 
 function getEnumFilterValue<TValue extends string>(

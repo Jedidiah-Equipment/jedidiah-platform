@@ -615,7 +615,12 @@ describe('Completion and billable facts', () => {
   });
 
   test('requires a resolved split when a sequential stint opens a Gap Flag', async ({ context }) => {
-    const firstJob = await createJob({ db: context.db, actor: manager, input: jobInput(context) });
+    // Another Foreman's Job, so this test's Foreman cannot open it.
+    const firstJob = await createJob({
+      db: context.db,
+      actor: manager,
+      input: { ...jobInput(context), foremanUserId: otherForemanId },
+    });
     const first = await plannedStint(context.db, manager, {
       jobId: firstJob.id,
       machineId: context.machine.id,
@@ -623,7 +628,7 @@ describe('Completion and billable facts', () => {
     });
     await captureReading({
       db: context.db,
-      actor: foreman,
+      actor: manager,
       input: {
         machineId: context.machine.id,
         assignmentId: first.id,
@@ -635,7 +640,7 @@ describe('Completion and billable facts', () => {
     });
     await captureReading({
       db: context.db,
-      actor: foreman,
+      actor: manager,
       input: {
         machineId: context.machine.id,
         assignmentId: first.id,
@@ -684,11 +689,14 @@ describe('Completion and billable facts', () => {
       previousDeparture: {
         value: 310,
         capturedAt: new Date('2026-09-04T17:00:00+02:00').toISOString(),
-        job: { jobNumber: firstJob.jobNumber, customerName: expect.any(String), farmName: expect.any(String) },
+        job: null,
       },
     });
     expect((await getJob({ db: context.db, id: firstJob.id })).assignments[0]?.previousDeparture).toBeNull();
-    // A Foreman reads only his own Jobs, so the Job the Machine left is not named to him.
+    expect(
+      (await getReadableJob({ db: context.db, actor: manager, id: secondJob.id })).assignments[0]?.previousDeparture,
+    ).toMatchObject({ value: 310, job: { jobNumber: firstJob.jobNumber } });
+    // The Job the Machine left is named only to a reader who could open it.
     expect(
       (await getReadableJob({ db: context.db, actor: foreman, id: secondJob.id })).assignments[0]?.previousDeparture,
     ).toMatchObject({ value: 310, job: null });

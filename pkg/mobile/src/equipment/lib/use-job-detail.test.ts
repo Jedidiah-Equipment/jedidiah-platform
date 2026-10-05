@@ -1,7 +1,7 @@
 import type { BoardListResult, JobDetail } from '@pkg/schema/equipment';
 import { describe, expect, it } from 'vitest';
 
-import { isJobNotFoundError, projectJobDetail } from './job-detail-projection';
+import { projectJobDetail } from './job-detail-projection';
 
 const JOB_ID = '11111111-1111-4111-8111-111111111111';
 const BAY_ID = '22222222-2222-4222-8222-222222222222';
@@ -35,14 +35,6 @@ describe('projectJobDetail', () => {
     expect(state).toMatchObject({ doneCount: 0, status: 'ready', tone: 'muted', totalCount: 0 });
     expect(state.progress).toBeNull();
     expect(state.route).toEqual([]);
-  });
-});
-
-describe('isJobNotFoundError', () => {
-  it('recognises only tRPC NOT_FOUND errors', () => {
-    expect(isJobNotFoundError({ data: { code: 'NOT_FOUND' } })).toBe(true);
-    expect(isJobNotFoundError({ data: { code: 'FORBIDDEN' } })).toBe(false);
-    expect(isJobNotFoundError(new Error('missing'))).toBe(false);
   });
 });
 

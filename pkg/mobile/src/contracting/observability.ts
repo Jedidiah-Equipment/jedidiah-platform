@@ -1,7 +1,7 @@
 import type { ReadingRole } from '@pkg/schema/contracting';
-import type { PhotoSource } from '@/contracting/lib/photo-picker';
 import { addBreadcrumb, captureEvent } from '@/lib/observability';
 import { type MutationEventCatalog, pickRecordIds } from '@/lib/observability-contract';
+import type { PhotoSource } from '@/lib/photo-picker';
 
 /** Once per capture the server saves or refuses: `refused` is the refusal's app code, null when saved. */
 export function recordReadingCaptured(properties: {

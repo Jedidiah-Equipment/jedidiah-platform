@@ -7,7 +7,6 @@ import {
   type JobActor,
   jobAssignmentAttentionCounts,
   jobReadSeesMoney,
-  jobReadStatuses,
   looksFinished,
   parseJobNumber,
   priceJob,
@@ -16,7 +15,7 @@ import {
   type StoredStintPricing,
   tallyAssignmentAttention,
 } from '@pkg/domain/contracting';
-import { type Assignment, hasJobStatus, type JobDetail, JobFacts, type JobStatus } from '@pkg/schema/contracting';
+import { type Assignment, type JobDetail, JobFacts } from '@pkg/schema/contracting';
 import { asc, eq } from 'drizzle-orm';
 import { readingToWire } from '../readings/reading-wire.js';
 import { assertOwner, jobNotFound } from './job-errors.js';
@@ -27,11 +26,12 @@ import {
   loadChargeLines,
   loadMeasures,
   loadPreviousDepartures,
+  loadPreviousJobs,
   loadStints,
   selectJobs,
   stintNames,
 } from './job-load.js';
-import { assertReadableStatus, type JobReader, readerFor } from './job-readers.js';
+import { assertReadableStatus, readerFor } from './job-readers.js';
 
 export type JobLookup = { id: string } | { code: string };
 type LoadedReading = typeof contractingHourReadings.$inferSelect;
@@ -66,17 +66,6 @@ function storedPricing(row: LoadedStint): StoredStintPricing | null {
   };
 }
 
-function previousJobOf({
-  jobCode,
-  jobStatus,
-  customerName,
-  farmName,
-}: { jobCode: number | null; jobStatus: JobStatus | null } & Record<'customerName' | 'farmName', string | null>) {
-  return jobCode === null || jobStatus === null || customerName === null || farmName === null
-    ? null
-    : { jobNumber: formatJobNumber(jobCode), status: jobStatus, customerName, farmName };
-}
-
 function mapAssignment(
   row: LoadedStint,
   measures: readonly LoadedMeasure[],
@@ -106,7 +95,7 @@ function mapAssignment(
       ? {
           value: previousDeparture.value,
           capturedAt: previousDeparture.capturedAt.toISOString(),
-          job: previousJobOf(previousDeparture),
+          job: null,
         }
       : null,
     ...derived,
@@ -214,25 +203,21 @@ export async function getReadableJob({
   if (reader.mode === 'own') assertOwner(job, reader.actorUserId);
   assertReadableStatus(job.status, reader);
   const read = { ...job, actions: deriveJobActions(job, actor) };
-  const scoped = hideUnreadablePreviousJobs(read, reader);
-  return jobReadSeesMoney(reader.mode) ? scoped : redactMoney(scoped);
+  const named = withPreviousJobs(read, await loadPreviousJobs(db, job.id, reader));
+  return jobReadSeesMoney(reader.mode) ? named : redactMoney(named);
 }
 
-/**
- * The Job a Machine left before arriving is named only to a reader who could open it: never to a Foreman, who
- * reads only his own Jobs, and to Invoicing only once it is Completed or later.
- */
-function hideUnreadablePreviousJobs(job: JobDetail, reader: JobReader): JobDetail {
-  const readable = (status: JobStatus) => reader.mode !== 'own' && hasJobStatus(jobReadStatuses[reader.mode], status);
+/** Names the Job each Machine left before arriving, where the reader could open it. */
+function withPreviousJobs(job: JobDetail, previousJobs: Awaited<ReturnType<typeof loadPreviousJobs>>): JobDetail {
   return {
     ...job,
-    assignments: job.assignments.map(({ previousDeparture, ...assignment }) => ({
-      ...assignment,
-      previousDeparture:
-        previousDeparture?.job && !readable(previousDeparture.job.status)
-          ? { ...previousDeparture, job: null }
-          : previousDeparture,
-    })),
+    assignments: job.assignments.map((assignment) => {
+      const previous = previousJobs.get(assignment.id);
+      if (!assignment.previousDeparture || !previous) return assignment;
+      const { code, ...names } = previous;
+      const previousJob = { ...names, jobNumber: formatJobNumber(code) };
+      return { ...assignment, previousDeparture: { ...assignment.previousDeparture, job: previousJob } };
+    }),
   };
 }
 

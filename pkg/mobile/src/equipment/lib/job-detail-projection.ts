@@ -22,7 +22,6 @@ import type {
   JobDetail,
   QuoteKind,
 } from '@pkg/schema/equipment';
-import { isNotFoundError } from '@/lib/trpc-errors';
 
 /** One Bay on the Job's production-route timeline, projected from its Work Slot. */
 export type JobRouteStopCard = JobRouteStop & {
@@ -116,5 +115,3 @@ export function projectJobDetail(job: JobDetail, board: BoardListResult): JobDet
     today,
   };
 }
-
-export const isJobNotFoundError = isNotFoundError;

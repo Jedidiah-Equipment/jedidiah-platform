@@ -1,6 +1,6 @@
 import { formatCurrency, formatDate, formatNumber } from '@pkg/domain';
-import { jobQueueColorClassNames, jobQueueLabels, jobQueueOf } from '@pkg/domain/contracting';
-import type { JobListInput, JobSummary } from '@pkg/schema/contracting';
+import { jobQueueLabels, jobQueueOf } from '@pkg/domain/contracting';
+import { type JobListInput, type JobQueueCounts, type JobSummary, jobQueues } from '@pkg/schema/contracting';
 import { keepPreviousData, useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import type { ColumnFiltersState } from '@tanstack/react-table';
@@ -16,24 +16,22 @@ import { Button } from '@/components/ui/button.js';
 import { useCan } from '@/hooks/use-access.js';
 import { getApiQueryErrorMessage } from '@/lib/api-errors.js';
 import { useTRPC } from '@/lib/trpc.js';
-import { cn } from '@/lib/utils.js';
 import { JobCardPreviewSheet } from '../jobs/JobCardPreviewSheet.js';
+import { JobStageQuickFilters } from '../jobs/JobStageQuickFilters.js';
 import { JobQueueBadge } from '../jobs/JobStatusBadge.js';
-import { STAGE_COLUMN_ID, stagesCount, toggleQuickFilter, toggleStages } from '../jobs/job-stage-filter.js';
-import { QuickFilterButton } from '../jobs/QuickFilterButton.js';
+import { STAGE_COLUMN_ID } from '../jobs/job-stage-filter.js';
 import { type StampableJob, StampInvoiceDialog } from './StampInvoiceDialog.js';
-import {
-  INVOICED_COLUMN_ID,
-  invoicedRange,
-  invoicingStages,
-  listedInvoicingStages,
-  showsAwaitingQuickFilter,
-} from './types.js';
+import { INVOICED_COLUMN_ID, invoicedRange, invoicingStages, listedInvoicingStages } from './types.js';
+
+/** Awaiting invoice is Invoicing's only quick filter; Invoiced stays in the Stage column filter. */
+const awaitingStages = ['awaiting-invoice'] as const;
 
 const useInvoicingTableStore = createPersistedDataTableStore({
   initialState: { sorting: [{ id: INVOICED_COLUMN_ID, desc: true }] },
   persistName: 'contracting-invoicing-table',
 });
+
+const noCounts = Object.fromEntries(jobQueues.map((queue) => [queue, 0])) as JobQueueCounts;
 
 const invoicingSortOptions: SortOptions<JobListInput> = {
   allowedSortIds: [INVOICED_COLUMN_ID, 'jobNumber'],
@@ -48,23 +46,25 @@ export function InvoicingPage() {
   const canStamp = useCan('contracting_invoice:update').can;
   const [stamping, setStamping] = useState<StampableJob | null>(null);
   const [previewing, setPreviewing] = useState<JobSummary | null>(null);
-  const counts = useQuery(trpc.contractingJobs.jobs.queueCounts.queryOptions());
+  const queues = useQuery(trpc.contractingJobs.jobs.queues.queryOptions());
+  // The default stages depend on what is waiting, so the list waits for the counts rather than guess.
+  const counts = queues.data?.counts ?? noCounts;
   const getListInputExtras = useCallback(
     (columnFilters: ColumnFiltersState) => ({
-      queues: listedInvoicingStages(columnFilters, counts.data),
+      queues: listedInvoicingStages(columnFilters, counts),
       ...invoicedRange(columnFilters),
     }),
-    [counts.data],
+    [counts],
   );
   const tableController = useServerSideTableController({
     store: useInvoicingTableStore,
     sortOptions: invoicingSortOptions,
     getListInputExtras,
   });
-  const listed = listedInvoicingStages(tableController.columnFilters, counts.data);
   const jobsQuery = useInfiniteQuery(
     trpc.contractingJobs.jobs.list.infiniteQueryOptions(tableController.listInput, {
       ...cursorInfiniteQueryOptions,
+      enabled: queues.isSuccess,
       placeholderData: keepPreviousData,
     }),
   );
@@ -162,39 +162,23 @@ export function InvoicingPage() {
       sorting: tableController.sorting,
     },
   });
-  const awaitingCount = counts.data?.['awaiting-invoice'] ?? 0;
+  const listed = listedInvoicingStages(tableController.columnFilters, counts);
   const awaitingOnly = listed.length === 1 && listed[0] === 'awaiting-invoice';
   return (
     <PageLayout title="Invoicing" description="Stamp invoice numbers and review invoiced Jobs." size="full">
-      <fieldset className="scrollbar-none flex gap-1.5 overflow-x-auto" aria-label="Invoicing stages">
-        {showsAwaitingQuickFilter(tableController.columnFilters, counts.data) ? (
-          <QuickFilterButton
-            count={awaitingCount}
-            pressed={awaitingOnly}
-            onClick={() =>
-              tableController.setColumnFilters((current) => toggleQuickFilter(current, 'awaiting-invoice'))
-            }
-          >
-            <span
-              aria-hidden="true"
-              className={cn('size-2 rounded-full', jobQueueColorClassNames['awaiting-invoice'].dot)}
-            />
-            <span>{jobQueueLabels['awaiting-invoice']}</span>
-          </QuickFilterButton>
-        ) : null}
-        <QuickFilterButton
-          count={stagesCount(counts.data, invoicingStages)}
-          pressed={listed.length === invoicingStages.length}
-          onClick={() => tableController.setColumnFilters((current) => toggleStages(current, invoicingStages))}
-        >
-          <span>All</span>
-        </QuickFilterButton>
-      </fieldset>
+      <JobStageQuickFilters
+        label="Invoicing stages"
+        stages={awaitingStages}
+        allStages={invoicingStages}
+        summary={queues.data}
+        columnFilters={tableController.columnFilters}
+        onColumnFiltersChange={tableController.setColumnFilters}
+      />
       <DataTable
         emptyMessage={awaitingOnly ? 'Nothing is waiting for an invoice.' : 'No Jobs found.'}
         errorMessage={
           getApiQueryErrorMessage(jobsQuery.error, 'Unable to load Invoicing.') ??
-          getApiQueryErrorMessage(counts.error, 'Unable to load Invoicing counts.')
+          getApiQueryErrorMessage(queues.error, 'Unable to load Invoicing counts.')
         }
         getRowAriaLabel={(job) => `Open ${job.jobNumber}`}
         globalFilterPlaceholder="Search Jobs…"

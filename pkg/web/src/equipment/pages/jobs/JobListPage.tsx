@@ -7,6 +7,7 @@ import { Link, useNavigate } from '@tanstack/react-router';
 import type { ColumnFiltersState } from '@tanstack/react-table';
 import type React from 'react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { readDateRangeFilter } from '@/components/data-table/column-filter-values.js';
 import { cursorInfiniteQueryOptions, useCombinedCursorQueryPages } from '@/components/data-table/cursor-query.js';
 import { DataTable } from '@/components/data-table/DataTable.js';
 import { useDataTable } from '@/components/data-table/features.js';
@@ -22,7 +23,6 @@ import { useAccess } from '@/hooks/use-access.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { getApiQueryErrorMessage } from '@/lib/api-errors.js';
 import { useTRPC } from '@/lib/trpc.js';
-
 import {
   createJobListColumns,
   jobTablePinnedEndColumns,
@@ -118,7 +118,7 @@ export const JobListTable: React.FC<JobListTableProps> = ({ customerId, render }
   const getListInputExtras = useCallback(
     (columnFilters: ColumnFiltersState) => {
       // Only completed Jobs carry a date, so the Complete range is meaningless while they are hidden.
-      const completedOn = includeCompleted ? getDateRangeColumnFilterValue(columnFilters, 'completedOn') : {};
+      const completedOn = includeCompleted ? readDateRangeFilter(columnFilters, 'completedOn') : {};
 
       return {
         columnFilters: {
@@ -306,22 +306,4 @@ function getColumnFilterValue(
   const value = columnFilters.find((filter) => filter.id === id)?.value;
 
   return typeof value === 'string' && value ? value : undefined;
-}
-
-function getDateRangeColumnFilterValue(
-  columnFilters: ColumnFiltersState,
-  id: 'completedOn',
-): { end?: string; start?: string } {
-  const value = columnFilters.find((filter) => filter.id === id)?.value;
-
-  if (!value || typeof value !== 'object' || Array.isArray(value)) {
-    return {};
-  }
-
-  const range = value as { end?: unknown; start?: unknown };
-
-  return {
-    ...(typeof range.end === 'string' && range.end ? { end: range.end } : {}),
-    ...(typeof range.start === 'string' && range.start ? { start: range.start } : {}),
-  };
 }

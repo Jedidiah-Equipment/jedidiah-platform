@@ -151,7 +151,9 @@ reading whatever its Read At, and a late-entered reading takes its place after i
 reads the two readings its Assignments name, so a backdated Read At moves no hour between
 Jobs. Capture needs a connection: the server judges every capture as the ledger's truth, and a
 Foreman without signal keeps a Field Note instead. Once a capture has landed the server reads
-the photo itself and records its own value and confidence, so capturing never waits on it: a reading is **photo-backed** when it
+the photo itself and records its own value and confidence as the System, so capturing never waits on it; a check
+that fails leaves the reading pending until Re-verify or the API's next start-up checks it again. A reading is
+**photo-backed** when it
 carries a photo and **AI-verified** when the server's read agrees with the typed value.
 Disagreements, low confidence, and disputes surface to management as **Reading Exceptions** — a
 reading is **Disputed** when it belongs to an unresolved out-of-sequence pair and **AI flagged**

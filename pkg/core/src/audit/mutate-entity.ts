@@ -45,7 +45,8 @@ export async function mutateEntity<TTable extends PgTable & { id: PgColumn }, TR
   set,
   table,
 }: {
-  actorUserId: AuthId;
+  /** Null records the write as the System's. */
+  actorUserId: AuthId | null;
   /**
    * Runs under the row lock, before the write. Domain gates (the cancelled-Job rule) and cross-entity
    * pre-checks (a Part's supplier) live here; throw to abort with the transaction still open.

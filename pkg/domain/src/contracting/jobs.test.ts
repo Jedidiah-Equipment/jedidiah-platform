@@ -5,12 +5,14 @@ import {
   canOpenJobCards,
   fieldJobAccessMode,
   formatJobNumber,
+  isJobQueue,
   jobQueueLabels,
   jobQueueOf,
   jobQueueStatus,
   jobReadMode,
   parseJobNumber,
   readableJobQueues,
+  stagesCount,
 } from './jobs.js';
 
 describe('fieldJobAccessMode', () => {
@@ -84,5 +86,28 @@ describe('readableJobQueues', () => {
     expect(readableJobQueues('all')).toEqual([...jobQueues]);
     expect(readableJobQueues('own')).toEqual(['upcoming', 'active', 'looks-finished', 'awaiting-pricing']);
     expect(readableJobQueues('priced')).toEqual(['awaiting-pricing', 'awaiting-invoice', 'invoiced']);
+  });
+});
+
+describe('stagesCount', () => {
+  const counts = {
+    upcoming: 2,
+    active: 1,
+    'looks-finished': 0,
+    'awaiting-pricing': 0,
+    'awaiting-invoice': 4,
+    invoiced: 9,
+    cancelled: 3,
+  };
+
+  test('adds up the stages asked for, or every stage', () => {
+    expect(stagesCount(counts, ['upcoming', 'awaiting-invoice'])).toBe(6);
+    expect(stagesCount(counts)).toBe(19);
+    expect(stagesCount(undefined)).toBe(0);
+  });
+
+  test('recognises a queue and nothing else', () => {
+    expect(isJobQueue('looks-finished')).toBe(true);
+    expect(isJobQueue('finished')).toBe(false);
   });
 });

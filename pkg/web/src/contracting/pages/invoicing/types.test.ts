@@ -1,7 +1,8 @@
 import type { JobQueueCounts } from '@pkg/schema/contracting';
 import { describe, expect, it } from 'vitest';
-import { invoicedRange, listedInvoicingStages, showsAwaitingQuickFilter } from './types.js';
+import { invoicedRange, listedInvoicingStages } from './types.js';
 
+const stage = (value: unknown) => [{ id: 'stage', value }];
 const counts = (awaiting: number): JobQueueCounts => ({
   upcoming: 0,
   active: 0,
@@ -11,12 +12,10 @@ const counts = (awaiting: number): JobQueueCounts => ({
   invoiced: 3,
   cancelled: 0,
 });
-const stage = (value: unknown) => [{ id: 'stage', value }];
 
 describe('listedInvoicingStages', () => {
-  it('lists Awaiting invoice by default, and both stages once nothing is waiting', () => {
+  it('lists Awaiting invoice until a stage is picked, and both stages once nothing is waiting', () => {
     expect(listedInvoicingStages([], counts(2))).toEqual(['awaiting-invoice']);
-    expect(listedInvoicingStages([], undefined)).toEqual(['awaiting-invoice']);
     expect(listedInvoicingStages([], counts(0))).toEqual(['awaiting-invoice', 'invoiced']);
   });
 
@@ -32,12 +31,6 @@ describe('listedInvoicingStages', () => {
     expect(listedInvoicingStages([{ id: 'invoicedAt', value: { start: '2026-09-01' } }], counts(2))).toEqual([
       'invoiced',
     ]);
-  });
-
-  it('keeps the Awaiting invoice quick filter while it holds a Job or is picked on its own', () => {
-    expect(showsAwaitingQuickFilter([], counts(2))).toBe(true);
-    expect(showsAwaitingQuickFilter([], counts(0))).toBe(false);
-    expect(showsAwaitingQuickFilter(stage(['awaiting-invoice']), counts(0))).toBe(true);
   });
 });
 

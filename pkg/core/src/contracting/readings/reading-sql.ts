@@ -1,33 +1,35 @@
-import { aiVerificationLevel, assignmentAttentionKindLevels } from '@pkg/domain/contracting';
-import { aiFlaggedVerifications, type NeedsALookLevel } from '@pkg/schema/contracting';
-import { type AnyColumn, type SQL, sql } from 'drizzle-orm';
+import { type AssignmentAttentionKind, assignmentAttentionKindLevels } from '@pkg/domain/contracting';
+import { aiFlaggedVerifications, needsALookLevels } from '@pkg/schema/contracting';
+import { type AnyColumn, or, type SQL, sql } from 'drizzle-orm';
 
 type ReadingColumns = Record<'disputed' | 'evidenceReviewedAt' | 'aiVerification', AnyColumn>;
 
-const verificationsAt = (level: NeedsALookLevel) =>
-  aiFlaggedVerifications.filter((verification) => aiVerificationLevel(verification) === level);
-
-function unreviewedVerdictAt(reading: ReadingColumns, level: NeedsALookLevel): SQL {
-  const verdicts = verificationsAt(level);
-  if (!verdicts.length) return sql`false`;
-  return sql`(${reading.evidenceReviewedAt} is null and ${reading.aiVerification} in (${sql.join(
-    verdicts.map((verdict) => sql`${verdict}`),
-    sql`, `,
-  )}))`;
-}
-
-const disputedAt = (reading: ReadingColumns, level: NeedsALookLevel): SQL =>
-  assignmentAttentionKindLevels.disputed === level ? sql`${reading.disputed}` : sql`false`;
+/** Each reading attention kind that can need a look, as the condition that raises it. */
+const kindConditions = (reading: ReadingColumns): [AssignmentAttentionKind, SQL][] => [
+  ['disputed', sql`${reading.disputed}`],
+  ...aiFlaggedVerifications.map(
+    (verdict) =>
+      [`ai-${verdict}`, sql`(${reading.evidenceReviewedAt} is null and ${reading.aiVerification} = ${verdict})`] as [
+        AssignmentAttentionKind,
+        SQL,
+      ],
+  ),
+];
 
 /**
- * SQL twin of domain `readingNeedsALookLevel`: the reading's loudest level that needs a look, or null. The two
- * change together. Takes the table or an alias of it.
+ * SQL twin of domain `readingNeedsALookLevel`: the reading's loudest level that needs a look, or null. Built from the
+ * domain's kind levels, so the two change together. Takes the table or an alias of it.
  */
-export const readingNeedsALookLevelSql = (reading: ReadingColumns): SQL<NeedsALookLevel | null> =>
-  sql<NeedsALookLevel | null>`(case
-    when ${disputedAt(reading, 'critical')} or ${unreviewedVerdictAt(reading, 'critical')} then 'critical'
-    when ${disputedAt(reading, 'warning')} or ${unreviewedVerdictAt(reading, 'warning')} then 'warning'
-  end)`;
+export function readingNeedsALookLevelSql(reading: ReadingColumns): SQL<string | null> {
+  const conditions = kindConditions(reading);
+  const whens = [...needsALookLevels].reverse().flatMap((level) => {
+    const raised = conditions.filter(([kind]) => assignmentAttentionKindLevels[kind] === level);
+    return raised.length
+      ? [sql`when ${or(...raised.map(([, condition]) => condition))} then ${sql.raw(`'${level}'`)}`]
+      : [];
+  });
+  return sql<string | null>`(case ${sql.join(whens, sql` `)} end)`;
+}
 
 /** SQL twin of domain `readingNeedsALook`. */
 export const readingNeedsALookSql = (reading: ReadingColumns): SQL<boolean> =>

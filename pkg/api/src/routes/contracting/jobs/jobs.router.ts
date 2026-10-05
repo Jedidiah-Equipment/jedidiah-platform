@@ -1,9 +1,7 @@
 import {
-  activeJobAttentionLevel,
   cancelJob,
   clearStintRate,
   completeJob,
-  countJobQueues,
   createAssignment,
   createChargeLine,
   createJob,
@@ -29,6 +27,7 @@ import {
   setStintAmount,
   setStintRate,
   stampInvoice,
+  summarizeJobQueues,
 } from '@pkg/core/contracting';
 import { UUID } from '@pkg/schema';
 import {
@@ -52,12 +51,11 @@ import {
   JobLookupInput,
   JobMarkPricedInput,
   JobPatchInput,
-  JobQueueCounts,
+  JobQueueSummary,
   JobStampInvoiceInput,
   MeasureRemoveInput,
   MeasureSetInput,
   MeasureType,
-  needsALookLevels,
   StintAmountSetInput,
   StintRateClearInput,
   StintRateSetInput,
@@ -85,14 +83,9 @@ export const contractingJobsRouter = router({
       .query(({ ctx }) => listFieldDrivers({ db: ctx.db })),
   }),
   jobs: router({
-    activeAttention: authorizedProcedure(readPermissions)
-      .output(z.enum(needsALookLevels).nullable())
-      .query(({ ctx }) =>
-        mapCoreErrors(() => activeJobAttentionLevel({ db: ctx.db, actor: ctx.access }), jobErrorFamily),
-      ),
-    queueCounts: authorizedProcedure(readPermissions)
-      .output(JobQueueCounts)
-      .query(({ ctx }) => mapCoreErrors(() => countJobQueues({ db: ctx.db, actor: ctx.access }), jobErrorFamily)),
+    queues: authorizedProcedure(readPermissions)
+      .output(JobQueueSummary)
+      .query(({ ctx }) => mapCoreErrors(() => summarizeJobQueues({ db: ctx.db, actor: ctx.access }), jobErrorFamily)),
     list: authorizedProcedure(readPermissions)
       .input(JobListInput)
       .query(({ ctx, input }) =>

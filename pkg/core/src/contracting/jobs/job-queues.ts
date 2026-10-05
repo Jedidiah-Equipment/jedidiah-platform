@@ -17,45 +17,44 @@ import {
   type JobListInput,
   type JobListResult,
   type JobQueue,
-  JobQueueCounts,
+  JobQueueSummary,
   JobSummary,
   jobQueues,
 } from '@pkg/schema/contracting';
-import { and, asc, count, eq, not, or, type SQL, type SQLWrapper, sql } from 'drizzle-orm';
+import { and, asc, eq, not, or, type SQL, type SQLWrapper, sql } from 'drizzle-orm';
 import { foreman, invoicer, jobHeader } from './job-load.js';
 import { assertReadableStatus, readableBy, readerFor } from './job-readers.js';
 import * as jobSql from './job-sql.js';
 
-export async function countJobQueues({ db, actor }: { db: Db; actor: JobActor }) {
+/** Each queue's Job count, and the loudest Machine Assignment attention needing a look across its Jobs. */
+export async function summarizeJobQueues({ db, actor }: { db: Db; actor: JobActor }): Promise<JobQueueSummary> {
   const reader = readerFor(actor);
   const rows = await db
     .select({
       status: contractingJobs.status,
       looksFinished: jobSql.looksFinished,
       count: sql<number>`count(*)::integer`,
+      openGapFlags: sql<number>`sum(${jobSql.openGapFlags})::integer`,
+      critical: sql<number>`sum(${jobSql.readingsNeedingALookAt('critical')})::integer`,
+      warning: sql<number>`sum(${jobSql.readingsNeedingALookAt('warning')})::integer`,
     })
     .from(contractingJobs)
     .where(readableBy(reader))
     .groupBy(contractingJobs.status, jobSql.looksFinished);
-  const counts = Object.fromEntries(jobQueues.map((queue) => [queue, 0])) as Record<JobQueue, number>;
-  for (const row of rows) counts[jobQueueOf(row)] += row.count;
-  return JobQueueCounts.parse(counts);
-}
-
-/** The loudest Machine Assignment attention needing a look across the Active Jobs this person reads. */
-export async function activeJobAttentionLevel({ db, actor }: { db: Db; actor: JobActor }) {
-  const reader = readerFor(actor);
-  const [totals] = await db
-    .select({
-      openGapFlags: sql<number>`coalesce(sum(${jobSql.openGapFlags}), 0)::integer`,
-      critical: sql<number>`coalesce(sum(${jobSql.readingsNeedingALookAt('critical')}), 0)::integer`,
-      warning: sql<number>`coalesce(sum(${jobSql.readingsNeedingALookAt('warning')}), 0)::integer`,
-    })
-    .from(contractingJobs)
-    .where(and(inQueue('active'), readableBy(reader)));
-  if (!totals) return null;
-  const { openGapFlags, ...readings } = totals;
-  return countedAssignmentAttentionLevel(jobAssignmentAttentionCounts(openGapFlags, readings));
+  const totals = new Map(jobQueues.map((queue) => [queue, { count: 0, critical: 0, warning: 0 }]));
+  for (const { openGapFlags, critical, warning, count, ...row } of rows) {
+    const total = totals.get(jobQueueOf(row));
+    if (!total) continue;
+    const attention = jobAssignmentAttentionCounts(openGapFlags, { critical, warning });
+    total.count += count;
+    total.critical += attention.critical;
+    total.warning += attention.warning;
+  }
+  const queues = [...totals];
+  return JobQueueSummary.parse({
+    counts: Object.fromEntries(queues.map(([queue, { count }]) => [queue, count])),
+    attention: Object.fromEntries(queues.map(([queue, total]) => [queue, countedAssignmentAttentionLevel(total)])),
+  });
 }
 
 /** The South African calendar day a Job was invoiced on. */
@@ -125,6 +124,7 @@ export async function listJobs({
       leftStints: jobSql.stintCount('left'),
       looksFinished: jobSql.looksFinished,
       openGapFlags: jobSql.openGapFlags,
+      total: sql<number>`count(*) over ()`.mapWith(Number),
       readings: {
         critical: jobSql.readingsNeedingALookAt('critical'),
         warning: jobSql.readingsNeedingALookAt('warning'),
@@ -142,26 +142,11 @@ export async function listJobs({
     .where(where)
     .orderBy(...jobListOrder(input))
     .$dynamic();
-  const [rows, [totalRow]] = await Promise.all([
-    withPagination(query, input),
-    db
-      .select({ total: count() })
-      .from(contractingJobs)
-      .innerJoin(contractingCustomers, eq(contractingCustomers.id, contractingJobs.customerId))
-      .innerJoin(
-        contractingFarms,
-        and(
-          eq(contractingFarms.id, contractingJobs.farmId),
-          eq(contractingFarms.customerId, contractingJobs.customerId),
-        ),
-      )
-      .innerJoin(contractingWorkTypes, eq(contractingWorkTypes.id, contractingJobs.workTypeId))
-      .leftJoin(foreman, eq(foreman.id, contractingJobs.foremanUserId))
-      .where(where),
-  ]);
-  const total = totalRow?.total ?? 0;
+  const rows = await withPagination(query, input);
+  // Every row carries the full match count, so an empty page past the end reads as none.
+  const total = rows[0]?.total ?? 0;
   const seesMoney = jobReadSeesMoney(reader.mode);
-  const items = rows.map(({ job, readings, ...row }) =>
+  const items = rows.map(({ job, readings, total: _total, ...row }) =>
     JobSummary.parse({
       ...job,
       ...row,

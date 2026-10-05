@@ -72,11 +72,6 @@ export function CatalogListCard({
   );
 }
 
-export {
-  PaginatedList as PaginatedCatalogList,
-  type PaginatedListSection as CatalogListSection,
-} from '@/components/PaginatedList';
-
 export function CatalogListSkeleton({ trailing = true }: { trailing?: boolean }) {
   return (
     <View className="gap-3.5">

@@ -1,4 +1,4 @@
-import { fieldJobAccessMode } from '@pkg/domain/contracting';
+import { fieldJobAccessMode, jobReadMode, openJobQueues, readableJobQueues } from '@pkg/domain/contracting';
 import type { JobListInput, JobQueue } from '@pkg/schema/contracting';
 import { keepPreviousData, useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { fieldQuery } from '@/contracting/lib/field-query';
@@ -16,9 +16,18 @@ const sortInput: Record<JobListSort, Pick<JobListInput, 'sortBy' | 'sortDirectio
   name: { sortBy: 'customerName', sortDirection: 'asc' },
 };
 
-/** Whether this person may open the Jobs tab: management works every Job, a Foreman his own. */
+/** Whether this person may open a field Job: management works every Job, a Foreman their own. */
 export function useCanReadJobs() {
   return fieldJobAccessMode(useSessionAccessSummary()) !== null;
+}
+
+/** The stages this person lists on the Jobs tab, and the open ones among them; with none, the tab reads nothing. */
+export function useJobListAccess() {
+  const access = useSessionAccessSummary();
+  const mode = fieldJobAccessMode(access) ? jobReadMode(access) : null;
+  const readable = mode ? readableJobQueues(mode) : [];
+  const open = openJobQueues.filter((queue) => readable.includes(queue));
+  return { canRead: readable.length > 0, readable, open };
 }
 
 /** The Job list web shows, a page at a time: searched, filtered by queue and sorted on the server. */
@@ -31,7 +40,7 @@ export function useJobList({
   queues: readonly JobQueue[];
   sort: JobListSort;
 }) {
-  const canRead = useCanReadJobs();
+  const { canRead } = useJobListAccess();
   const trpc = useTRPC();
   return useInfiniteQuery(
     trpc.contractingJobs.jobs.list.infiniteQueryOptions(
@@ -48,22 +57,18 @@ export function useJobList({
 
 /** How many Jobs sit in each queue for this person, for the filter's labels. */
 export function useJobQueueCounts() {
-  const canRead = useCanReadJobs();
+  const { canRead } = useJobListAccess();
   const trpc = useTRPC();
-  return useQuery(trpc.contractingJobs.jobs.queueCounts.queryOptions(undefined, { enabled: canRead }));
+  return useQuery(
+    trpc.contractingJobs.jobs.queues.queryOptions(undefined, { enabled: canRead, select: (summary) => summary.counts }),
+  );
 }
 
 /** One field Job, without money, read on its own so it opens whichever page of the list it came from. */
 export function useJob(jobId: string) {
   const canRead = useCanReadJobs();
   const trpc = useTRPC();
-  const query = useQuery(
-    trpc.contractingJobs.field.job.queryOptions(
-      { id: jobId },
-      // A Job that is not found stays not found; only a failed request is worth asking again.
-      { enabled: canRead && !!jobId, retry: (failures, error) => !isNotFoundError(error) && failures < 3 },
-    ),
-  );
+  const query = useQuery(trpc.contractingJobs.field.job.queryOptions({ id: jobId }, { enabled: canRead && !!jobId }));
   // Not found once it has left this person's Jobs: finished for a Foreman, or reassigned.
   return { ...fieldQuery(canRead, query), gone: isNotFoundError(query.error) };
 }

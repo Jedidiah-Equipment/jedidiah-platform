@@ -5,10 +5,6 @@ import { MAIN_PAGE_CONTENT_STYLE } from '@/components/page-frame';
 import { RefreshControl } from '@/components/ui/refresh-control';
 import { Text } from '@/components/ui/text';
 
-/**
- * A tab root's server-paged list: its controls as the scrolling header, optional sections, pull to refresh, and the
- * next page loaded as the end comes into view. Shared by both businesses; Equipment names it `PaginatedCatalogList`.
- */
 export type PaginatedListSection<T> = {
   data: readonly T[];
   header?: ReactNode;
@@ -20,6 +16,10 @@ type PaginatedListRow<T> =
   | { content: ReactNode; key: string; kind: 'section-header' }
   | { key: string; kind: 'section-separator' };
 
+/**
+ * A tab root's server-paged list: its controls as the scrolling header, optional sections, pull to refresh, and the
+ * next page loaded as the end comes into view. Shared by both businesses.
+ */
 export function PaginatedList<T>({
   emptyContent,
   hasNextPage,

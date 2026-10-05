@@ -1,13 +1,6 @@
 import { formatNumber } from '@pkg/domain';
-import {
-  jobQueueColorClassNames,
-  jobQueueLabels,
-  jobQueueOf,
-  jobReadMode,
-  openJobQueues,
-  readableJobQueues,
-} from '@pkg/domain/contracting';
-import { type JobQueue, type JobQueueCounts, type JobSummary, jobQueues } from '@pkg/schema/contracting';
+import { jobQueueColorClassNames, jobQueueLabels, jobQueueOf } from '@pkg/domain/contracting';
+import type { JobSummary } from '@pkg/schema/contracting';
 import { IconArrowsSort, IconFilter } from '@tabler/icons-react-native';
 import { type Href, router } from 'expo-router';
 import { useState } from 'react';
@@ -24,18 +17,15 @@ import { MainToolbar } from '@/components/TopToolbar';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { Text } from '@/components/ui/text';
 import { contractingStorageKey } from '@/contracting/lib/contracting-storage';
-import { useSessionAccessSummary } from '@/lib/auth-session';
 import { useDebouncedSearch } from '@/lib/use-debounced-search';
+import { useGlobalRefresh } from '@/lib/use-global-refresh';
 import { usePersistedState } from '@/lib/use-persisted-state';
-import { type JobListSort, jobListSorts, useCanReadJobs, useJobList, useJobQueueCounts } from './use-jobs';
+import { isStageFilter, readableStage, type StageFilter, stageOptions, stageQueues } from './job-stage-filter';
+import { type JobListSort, jobListSorts, useJobList, useJobListAccess, useJobQueueCounts } from './use-jobs';
 
 const STAGE_KEY = contractingStorageKey('jobs', 'stage');
 const SORT_KEY = contractingStorageKey('jobs', 'sort');
 
-/** Every open stage, or one stage, as web's Stage filter offers them. */
-type StageFilter = 'open' | JobQueue;
-const isStageFilter = (value: unknown): value is StageFilter =>
-  value === 'open' || jobQueues.includes(value as JobQueue);
 const isJobListSort = (value: unknown): value is JobListSort => jobListSorts.includes(value as JobListSort);
 
 const SORT_OPTIONS: readonly ListControlOption<JobListSort>[] = [
@@ -43,32 +33,16 @@ const SORT_OPTIONS: readonly ListControlOption<JobListSort>[] = [
   { label: 'Name', value: 'name' },
 ];
 
-function stageOptions(readable: readonly JobQueue[], counts: JobQueueCounts | undefined) {
-  const count = (queues: readonly JobQueue[]) =>
-    counts ? ` (${formatNumber(queues.reduce((total, queue) => total + counts[queue], 0))})` : '';
-  const open = openJobQueues.filter((queue) => readable.includes(queue));
-  return {
-    open,
-    options: [
-      { label: `Open stages${count(open)}`, value: 'open' as const },
-      ...readable.map((queue) => ({ label: `${jobQueueLabels[queue]}${count([queue])}`, value: queue })),
-    ] satisfies ListControlOption<StageFilter>[],
-  };
-}
-
 export default function JobsScreen() {
-  const canRead = useCanReadJobs();
-  const mode = jobReadMode(useSessionAccessSummary());
-  const readable = mode ? readableJobQueues(mode) : [];
+  const { canRead, readable, open } = useJobListAccess();
   const counts = useJobQueueCounts();
+  const refresh = useGlobalRefresh();
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebouncedSearch(search);
   const [savedStage, setStage] = usePersistedState<StageFilter>(STAGE_KEY, 'open', isStageFilter);
   const [sort, setSort] = usePersistedState<JobListSort>(SORT_KEY, 'newest', isJobListSort);
-  const { open, options } = stageOptions(readable, counts.data);
-  // A stage saved under a broader role falls back to the open stages.
-  const stage = savedStage === 'open' || readable.includes(savedStage) ? savedStage : 'open';
-  const list = useJobList({ search: debouncedSearch, queues: stage === 'open' ? open : [stage], sort });
+  const stage = readableStage(savedStage, readable);
+  const list = useJobList({ search: debouncedSearch, queues: stageQueues(stage, open), sort });
   const jobs = list.data?.pages.flatMap((page) => page.items) ?? [];
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top', 'left', 'right']}>
@@ -93,7 +67,7 @@ export default function JobsScreen() {
                   icon={IconFilter}
                   menuWidth={240}
                   onChange={setStage}
-                  options={options}
+                  options={stageOptions(readable, open, counts.data)}
                   value={stage}
                 />
                 <ListDropdownControl
@@ -129,11 +103,8 @@ export default function JobsScreen() {
         loadingMore={list.isFetchingNextPage}
         loadingMoreLabel="Loading more Jobs…"
         onLoadMore={() => void list.fetchNextPage()}
-        refreshing={list.isRefetching && !list.isFetchingNextPage}
-        onRefresh={() => {
-          void list.refetch();
-          void counts.refetch();
-        }}
+        refreshing={refresh.refreshing}
+        onRefresh={refresh.onRefresh}
       />
     </SafeAreaView>
   );

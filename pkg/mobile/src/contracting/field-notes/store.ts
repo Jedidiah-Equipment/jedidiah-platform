@@ -2,7 +2,7 @@ import { UUID } from '@pkg/schema';
 import { z } from 'zod';
 import { contractingStorageKey } from '@/contracting/lib/contracting-storage';
 import { newLocalId } from '@/contracting/lib/local-id';
-import type { PhotoSource } from '@/contracting/lib/photo-picker';
+import type { PhotoSource } from '@/lib/photo-picker';
 
 export const FIELD_NOTE_DESCRIPTION_MAX = 2000;
 const NEEDS_CONTENT = 'A Field Note needs a description or a photo.';

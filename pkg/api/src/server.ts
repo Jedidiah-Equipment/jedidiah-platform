@@ -3,7 +3,7 @@ import fastifyMultipart from '@fastify/multipart';
 import { createOpenAiChatModel } from '@pkg/ai';
 import { readMeterPhoto } from '@pkg/ai/contracting';
 import type { StorageAdapter } from '@pkg/core';
-import { verifyCapturedReading } from '@pkg/core/contracting';
+import { listReadingsAwaitingVerification, verifyCapturedReading } from '@pkg/core/contracting';
 import { sweepJobCompletions } from '@pkg/core/equipment';
 import { db } from '@pkg/db';
 import { PRODUCT_DOCUMENT_MAX_BYTES } from '@pkg/domain/equipment';
@@ -144,12 +144,15 @@ export async function buildServer(
 
   app.addHook('onClose', async () => {
     catalogTranslationScheduler.dispose();
-    readingVerifications.dispose();
+    await readingVerifications.dispose();
     jobCompletionSweeper.dispose();
     await observability.flush();
   });
 
   jobCompletionSweeper.start();
+  readingVerifications
+    .resume(() => listReadingsAwaitingVerification({ db }))
+    .catch((error: unknown) => log.ai.error({ error }, 'Resuming reading verifications failed'));
 
   return app;
 }

@@ -63,10 +63,12 @@ export async function listReadingsByMachine({ db, machineId }: { db: Db; machine
   return rows.map(withHint);
 }
 
-/** A photo capture: the bytes, where they are kept, and the reader that checks them against the typed value. */
-export type ReadingEvidence = { storage: StorageAdapter; readPhoto: ReadMeterPhoto; photoBytes: Uint8Array };
+/** A photo capture: the bytes and where they are kept. The AI checks them after the capture lands. */
+export type ReadingEvidence = { storage: StorageAdapter; photoBytes: Uint8Array };
 type AiVerdict = { aiValue: number | null; aiConfidence: number | null; aiVerification: Row['aiVerification'] };
 const manualVerdict: AiVerdict = { aiValue: null, aiConfidence: null, aiVerification: 'not-applicable' };
+/** A photo capture lands pending; `verifyCapturedReading` replaces it with the AI's verdict. */
+const awaitingVerdict: AiVerdict = { aiValue: null, aiConfidence: null, aiVerification: 'pending' };
 
 async function storeMeterPhoto({ storage, photoBytes }: ReadingEvidence): Promise<StoredFile> {
   const validation = validateFile(photoBytes, READING_PHOTO_POLICY);
@@ -125,10 +127,7 @@ export async function captureReading({
     throw captureRefused('future-read-at');
   const photo = evidence ? await storeMeterPhoto(evidence) : null;
   try {
-    const verdict =
-      evidence && photo
-        ? await verifyPhoto(input.value, evidence.photoBytes, photo.contentType, evidence.readPhoto)
-        : manualVerdict;
+    const verdict = photo ? awaitingVerdict : manualVerdict;
     const result = await withCaptureConstraints(() =>
       db.transaction(async (tx) => {
         const [machine] = await tx
@@ -403,6 +402,41 @@ async function readingBelongsToForemanJob({
     .limit(1);
   return !!assignment;
 }
+/**
+ * Checks a just-captured reading's photo and records the AI's verdict. It runs after the capture has answered, so
+ * the person capturing never waits on the AI. A verdict lands only on a reading still pending on the same photo, so a
+ * re-verify in the meantime wins, and it is judged against the value as it stands now, so an amendment is respected.
+ * A failed check leaves the reading pending, for Re-verify to finish.
+ */
+export async function verifyCapturedReading({
+  db,
+  id,
+  storage,
+  readPhoto,
+}: {
+  db: Db;
+  id: string;
+  storage: StorageAdapter;
+  readPhoto: ReadMeterPhoto;
+}) {
+  const captured = await getReading({ db, id });
+  if (!captured.photo || captured.aiVerification !== 'pending') return captured;
+  const storageKey = captured.photo.storageKey;
+  const photo = await readStoredObject(storage, storageKey);
+  const evidence = await verifyPhoto(captured.value, photo.bytes, photo.contentType, readPhoto);
+  if (evidence.aiVerification === 'pending') return captured;
+  return db.transaction(async (tx) => {
+    await tx.select().from(contractingMachines).where(eq(contractingMachines.id, captured.machineId)).for('update');
+    const before = await getReading({ db: tx, id });
+    if (before.aiVerification !== 'pending' || before.photo?.storageKey !== storageKey) return before;
+    // The capture's own follow-up, so it is audited as the person who captured it.
+    return updateAudited(tx, before.capturedByUserId, before, {
+      ...evidence,
+      aiVerification: readingVerification(before.value, evidence.aiValue, evidence.aiConfidence),
+    });
+  });
+}
+
 export async function reverifyReading({
   db,
   actorUserId,

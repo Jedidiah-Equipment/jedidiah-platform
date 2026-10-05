@@ -1,6 +1,6 @@
 # Work a Job
 
-1. Open **Jobs**. Your assigned Jobs are listed.
+1. Open **Jobs**. Your open Jobs are listed, newest first. Search by Job, customer, or farm; use the filter to pick one stage, such as **Awaiting pricing**; and sort by **Newest** or **Name**.
 2. Open the Job. Each Machine shows **Planned**, **Running**, or **Left site**.
 3. To start a planned Machine, choose **Start — capture arrival** and [capture the reading](./capture-a-reading). Change the Implement or Driver first if they differ from the plan.
 4. To stop it, choose **Stop — capture departure**.

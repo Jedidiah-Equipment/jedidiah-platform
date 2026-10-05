@@ -383,6 +383,26 @@ test('lists several queues in one page, searched on the server', async ({ contex
   });
 });
 
+test('opens one field Job without money, a Foreman only his own', async ({ context }) => {
+  const foreman = context.createCaller(contractingSession('foreman')).contractingJobs.field;
+  expect(await foreman.job({ id: context.ownJob.id })).toMatchObject({ id: context.ownJob.id });
+  expect(await foreman.job({ id: context.ownJob.id })).not.toHaveProperty('pricedTotal');
+  await expect(foreman.job({ id: context.otherJob.id })).rejects.toMatchObject({ code: 'NOT_FOUND' });
+  const manager = context.createCaller(contractingSession('contracting-manager')).contractingJobs.field;
+  expect(await manager.job({ id: context.pricedJob.id })).toMatchObject({ id: context.pricedJob.id });
+});
+
+test('sorts the Job list by when it was created and by customer, steady on equal values', async ({ context }) => {
+  const manager = context.createCaller(contractingSession('contracting-manager')).contractingJobs.jobs;
+  const queues = ['upcoming', 'active', 'looks-finished', 'awaiting-pricing', 'awaiting-invoice'] as const;
+  const ids = async (sortBy: 'createdAt' | 'customerName', sortDirection: 'asc' | 'desc') =>
+    (await manager.list({ queues: [...queues], sortBy, sortDirection })).items.map((job) => job.id);
+  const oldestFirst = await ids('createdAt', 'asc');
+  expect(oldestFirst).toHaveLength(4);
+  expect(await ids('createdAt', 'desc')).toEqual([...oldestFirst].reverse());
+  expect(await ids('customerName', 'asc')).toHaveLength(4);
+});
+
 test('provides Measure Type choices to managers without granting Rate Card access', async ({ context }) => {
   const first = await createMeasureType({ db: context.db, actorUserId: managerId, input: { name: 'Loads' } });
   const second = await createMeasureType({ db: context.db, actorUserId: managerId, input: { name: 'Hectares' } });

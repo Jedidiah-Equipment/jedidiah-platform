@@ -1,12 +1,13 @@
 import type { ReactNode } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, View } from 'react-native';
+import { Platform, ScrollView, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { SECONDARY_PAGE_CONTENT_STYLE } from '@/components/page-frame';
 import { Text } from '@/components/ui/text';
+import { useKeyboardBottomPadding } from '@/lib/keyboard-padding';
 
 /**
- * A secondary page that is one form: its toolbar, a keyboard-aware scrolling body, and a footer that stays
- * above the keyboard with the action's error over its buttons.
+ * A secondary page that is one form: its toolbar, a scrolling body, and a footer that stays above the keyboard
+ * with the action's error over its buttons.
  */
 export function FormPage({
   toolbar,
@@ -20,10 +21,12 @@ export function FormPage({
   error: string | null;
 }) {
   const { bottom } = useSafeAreaInsets();
+  // The footer rides on the keyboard's reported height, so Save stays visible while a field is being typed in.
+  const keyboardPadding = useKeyboardBottomPadding(bottom);
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top', 'left', 'right']}>
       {toolbar}
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} className="flex-1">
+      <View className="flex-1" style={{ paddingBottom: keyboardPadding }}>
         <ScrollView
           keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
           keyboardShouldPersistTaps="handled"
@@ -42,7 +45,7 @@ export function FormPage({
           ) : null}
           {footer}
         </View>
-      </KeyboardAvoidingView>
+      </View>
     </SafeAreaView>
   );
 }

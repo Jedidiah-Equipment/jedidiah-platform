@@ -3,6 +3,7 @@ import fastifyMultipart from '@fastify/multipart';
 import { createOpenAiChatModel } from '@pkg/ai';
 import { readMeterPhoto } from '@pkg/ai/contracting';
 import type { StorageAdapter } from '@pkg/core';
+import { verifyCapturedReading } from '@pkg/core/contracting';
 import { sweepJobCompletions } from '@pkg/core/equipment';
 import { db } from '@pkg/db';
 import { PRODUCT_DOCUMENT_MAX_BYTES } from '@pkg/domain/equipment';
@@ -11,6 +12,7 @@ import { type FastifyTRPCPluginOptions, fastifyTRPCPlugin } from '@trpc/server/a
 import Fastify, { type FastifyBaseLogger } from 'fastify';
 import { type Auth, auth as appAuth } from './app-auth.js';
 import { registerAuthHandler } from './auth/handler.js';
+import { ReadingVerificationQueue } from './contracting/readings/reading-verification-queue.js';
 import { type ApiConfig, getApiConfig } from './env.js';
 import { createCatalogTranslationRunner } from './equipment/catalog-translations/catalog-translation-runner.js';
 import { TranslationScheduler } from './equipment/catalog-translations/translation-scheduler.js';
@@ -101,7 +103,11 @@ export async function buildServer(
   const meterModel = createOpenAiChatModel({ apiKey: config.OPENAI_API_KEY, model: config.OPENAI_MODEL });
   const meterReader = (input: { bytes: Uint8Array; contentType: string }) =>
     readMeterPhoto({ ...input, model: meterModel });
-  await registerReadingHttpRoutes(app, { db, storage, readPhoto: meterReader });
+  const readingVerifications = new ReadingVerificationQueue({
+    run: (id) => verifyCapturedReading({ db, id, storage, readPhoto: meterReader }),
+    onError: (error, readingId) => log.ai.error({ error, readingId }, 'Reading verification failed'),
+  });
+  await registerReadingHttpRoutes(app, { db, storage, verifications: readingVerifications });
   await registerJobCardHttpRoutes(app, { db, pdfRenderer: renderJobCardPdf });
   await registerAiChatRoute(app, { storage });
   await registerDocumentHttpRoutes(app, storage);
@@ -138,6 +144,7 @@ export async function buildServer(
 
   app.addHook('onClose', async () => {
     catalogTranslationScheduler.dispose();
+    readingVerifications.dispose();
     jobCompletionSweeper.dispose();
     await observability.flush();
   });

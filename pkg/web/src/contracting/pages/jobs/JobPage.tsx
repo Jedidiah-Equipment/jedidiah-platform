@@ -11,6 +11,7 @@ import { AutosaveFormCard } from '@/components/form/AutosaveFormCard.js';
 import { CreateEntityDialog, useAutosaveForm } from '@/components/form/index.js';
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
 import { Button } from '@/components/ui/button.js';
+import { useAiVerdictRefetchInterval } from '@/contracting/hooks/use-ai-verdict-polling.js';
 import { useQueryInvalidation } from '@/contracting/hooks/use-query-invalidation.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { ChargeLinesCard } from './ChargeLinesCard.js';
@@ -25,7 +26,10 @@ import { useJobWrite, useResetOnOpen } from './use-job-write.js';
 
 export function JobPage({ code }: { code: string }) {
   const trpc = useTRPC();
-  const query = useQuery(trpc.contractingJobs.jobs.get.queryOptions({ code }));
+  const refetchInterval = useAiVerdictRefetchInterval((job: JobDetail) =>
+    job.assignments.flatMap((assignment) => [assignment.arrival, assignment.departure]),
+  );
+  const query = useQuery(trpc.contractingJobs.jobs.get.queryOptions({ code }, { refetchInterval }));
   const sheet = query.data ? jobSheet(query.data) : null;
   return (
     <PageLayout

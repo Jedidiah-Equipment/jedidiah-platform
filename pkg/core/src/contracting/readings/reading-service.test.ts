@@ -13,13 +13,24 @@ import {
   getReadingForEvidence,
   listReadingsByMachine,
   type ReadingEvidence,
+  verifyCapturedReading,
 } from './reading-service.js';
 
-const photoEvidence = (storage: ReadingEvidence['storage'], readPhoto: ReadMeterPhoto): ReadingEvidence => ({
+const photoEvidence = (storage: ReadingEvidence['storage']): ReadingEvidence => ({
   storage,
-  readPhoto,
   photoBytes: new Uint8Array([255, 216, 255]),
 });
+
+/** A photo capture followed by the AI check the API runs once the capture has answered. */
+async function verified(
+  db: Parameters<typeof verifyCapturedReading>[0]['db'],
+  storage: ReadingEvidence['storage'],
+  readPhoto: ReadMeterPhoto,
+  capture: ReturnType<typeof captureReading>,
+) {
+  const row = await capture;
+  return verifyCapturedReading({ db, id: row.id, storage, readPhoto });
+}
 
 const test = createTester(async ({ db }) => {
   const actorUserId = 'reading-actor';
@@ -71,28 +82,33 @@ test('keeps photo evidence on AI failure and verifies it later without changing 
   const { InMemoryStorageAdapter } = await import('../../storage/in-memory-storage-adapter.js');
   const { reverifyReading } = await import('./reading-service.js');
   const storage = new InMemoryStorageAdapter();
-  const row = await captureReading({
+  const row = await verified(
     db,
-    actor,
-    evidence: photoEvidence(storage, async () => {
+    storage,
+    async () => {
       throw new Error('Model unavailable');
+    },
+    captureReading({
+      db,
+      actor,
+      evidence: photoEvidence(storage),
+      input: { machineId, role: 'spot', value: 123.4, capturedAt: '2026-09-07T08:00:00Z', disputePrevious: false },
     }),
-    input: { machineId, role: 'spot', value: 123.4, capturedAt: '2026-09-07T08:00:00Z', disputePrevious: false },
-  });
+  );
   expect(row).toMatchObject({
     method: 'photo',
     photo: { contentType: 'image/jpeg' },
     aiVerification: 'pending',
     value: 123.4,
   });
-  const verified = await reverifyReading({
+  const reverified = await reverifyReading({
     db,
     actorUserId,
     id: row.id,
     storage,
     readPhoto: async () => ({ value: 123.4, confidence: 0.95 }),
   });
-  expect(verified).toMatchObject({ aiValue: 123.4, aiConfidence: 0.95, aiVerification: 'agrees', value: 123.4 });
+  expect(reverified).toMatchObject({ aiValue: 123.4, aiConfidence: 0.95, aiVerification: 'agrees', value: 123.4 });
 });
 
 test('serializes competing captures and preserves the ledger when an upload or insert fails', async ({ context }) => {
@@ -118,7 +134,7 @@ test('serializes competing captures and preserves the ledger when an upload or i
       db,
       actor,
       input: { ...input, value: 90 },
-      evidence: photoEvidence(storage, async () => ({ value: 90, confidence: 0.9 })),
+      evidence: photoEvidence(storage),
     }),
   ).rejects.toMatchObject({ code: 'reading.below_latest' });
   expect(storage.objects.size).toBe(0);
@@ -135,7 +151,7 @@ test('serializes competing captures and preserves the ledger when an upload or i
       db,
       actor,
       input: { ...input, value: 120 },
-      evidence: photoEvidence(brokenStorage, async () => ({ value: 120, confidence: 0.9 })),
+      evidence: photoEvidence(brokenStorage),
     }),
   ).rejects.toThrow('Storage unavailable');
   expect(await listReadingsByMachine({ db, machineId })).toEqual(history);
@@ -157,18 +173,21 @@ test('surfaces disagreements and low confidence and recalculates verification af
       disputePrevious: false,
     },
   };
-  const row = await captureReading({
-    ...args,
-    evidence: photoEvidence(storage, async () => ({ value: 120, confidence: 0.9 })),
-  });
+  const row = await verified(
+    db,
+    storage,
+    async () => ({ value: 120, confidence: 0.9 }),
+    captureReading({ ...args, evidence: photoEvidence(storage) }),
+  );
   expect(row).toMatchObject({ aiVerification: 'disagrees', aiHint: 'Possible tenths-drum misread (≈10× / 0.1×).' });
   await amendReading({ db, actor, input: { id: row.id, value: 120, reason: 'Corrected tenths' } });
   expect(await listReadingExceptions({ db })).toEqual([]);
-  const low = await captureReading({
-    ...args,
-    input: { ...args.input, value: 121 },
-    evidence: photoEvidence(storage, async () => ({ value: 121, confidence: 0.79 })),
-  });
+  const low = await verified(
+    db,
+    storage,
+    async () => ({ value: 121, confidence: 0.79 }),
+    captureReading({ ...args, input: { ...args.input, value: 121 }, evidence: photoEvidence(storage) }),
+  );
   expect((await listReadingExceptions({ db }))[0]).toMatchObject({
     id: low.id,
     aiValue: 121,
@@ -185,12 +204,17 @@ test('management can acknowledge an incorrect AI warning without claiming AI agr
   const { amendReading, listReadingExceptions, reverifyReading } = await import('./reading-service.js');
   const storage = new InMemoryStorageAdapter();
   const readPhoto = async () => ({ value: 1234, confidence: 0.6 });
-  const reading = await captureReading({
+  const reading = await verified(
     db,
-    actor,
-    evidence: photoEvidence(storage, readPhoto),
-    input: { machineId, role: 'spot', value: 123.4, capturedAt: '2026-09-07T08:00:00Z', disputePrevious: false },
-  });
+    storage,
+    readPhoto,
+    captureReading({
+      db,
+      actor,
+      evidence: photoEvidence(storage),
+      input: { machineId, role: 'spot', value: 123.4, capturedAt: '2026-09-07T08:00:00Z', disputePrevious: false },
+    }),
+  );
   expect((await listReadingExceptions({ db })).length).toBe(1);
   const amended = await amendReading({
     db,
@@ -240,7 +264,7 @@ test('failed re-verification preserves the previous AI evidence and its manageme
   const row = await captureReading({
     db,
     actor,
-    evidence: photoEvidence(storage, async () => ({ value: 1000, confidence: 0.6 })),
+    evidence: photoEvidence(storage),
     input: { machineId, role: 'spot', value: 100, capturedAt: '2026-09-07T08:00:00Z', disputePrevious: false },
   });
   const reviewed = await amendReading({
@@ -277,12 +301,17 @@ test('acknowledges evidence on an unchanged disputed value while keeping the unr
     disputePrevious: false,
   };
   await captureReading({ db, actor, input });
-  const disputed = await captureReading({
+  const disputed = await verified(
     db,
-    actor,
-    evidence: photoEvidence(storage, async () => ({ value: null, confidence: 0.99 })),
-    input: { ...input, value: 90, disputePrevious: true },
-  });
+    storage,
+    async () => ({ value: null, confidence: 0.99 }),
+    captureReading({
+      db,
+      actor,
+      evidence: photoEvidence(storage),
+      input: { ...input, value: 90, disputePrevious: true },
+    }),
+  );
   expect((await listReadingExceptions({ db })).map((row) => row.exceptionTypes)).toEqual([
     ['disputed', 'ai-flagged'],
     ['disputed'],
@@ -440,4 +469,45 @@ test('scopes evidence to fleet readers and the Foreman’s own Jobs', async ({ c
   await expect(getReadingForEvidence({ db, actor: foreman, id: unattached.id })).rejects.toMatchObject({
     code: 'reading.forbidden',
   });
+});
+
+test('a background check lands on a pending reading against its current value, and never over a re-verify', async ({
+  context,
+}) => {
+  const { db, actor, actorUserId, machineId } = context;
+  const { InMemoryStorageAdapter } = await import('../../storage/in-memory-storage-adapter.js');
+  const { amendReading, reverifyReading } = await import('./reading-service.js');
+  const storage = new InMemoryStorageAdapter();
+  const input = { machineId, role: 'spot' as const, capturedAt: '2026-09-07T08:00:00Z', disputePrevious: false };
+  const captured = await captureReading({
+    db,
+    actor,
+    evidence: photoEvidence(storage),
+    input: { ...input, value: 150 },
+  });
+  expect(captured).toMatchObject({ aiVerification: 'pending', aiValue: null });
+  await amendReading({ db, actor, input: { id: captured.id, value: 151, reason: 'Typed the wrong tenth' } });
+  const judged = await verifyCapturedReading({
+    db,
+    id: captured.id,
+    storage,
+    readPhoto: async () => ({ value: 151, confidence: 0.95 }),
+  });
+  expect(judged).toMatchObject({ value: 151, aiValue: 151, aiVerification: 'agrees' });
+
+  const second = await captureReading({ db, actor, evidence: photoEvidence(storage), input: { ...input, value: 160 } });
+  const reverified = await reverifyReading({
+    db,
+    actorUserId,
+    id: second.id,
+    storage,
+    readPhoto: async () => ({ value: 160, confidence: 0.95 }),
+  });
+  const late = await verifyCapturedReading({
+    db,
+    id: second.id,
+    storage,
+    readPhoto: async () => ({ value: 999, confidence: 0.95 }),
+  });
+  expect(late).toEqual(reverified);
 });

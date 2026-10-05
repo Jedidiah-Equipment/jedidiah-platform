@@ -36,7 +36,7 @@ export default function AddMachineScreen() {
   const add = useMutation(
     trpc.contractingJobs.assignments.add.mutationOptions({
       onSuccess: async () => {
-        await queryClient.invalidateQueries({ queryKey: trpc.contractingJobs.field.pathKey() });
+        await queryClient.invalidateQueries({ queryKey: trpc.contractingJobs.pathKey() });
         backToJob();
       },
     }),

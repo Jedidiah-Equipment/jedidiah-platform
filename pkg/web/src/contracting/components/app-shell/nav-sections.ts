@@ -14,6 +14,7 @@ import {
 import { linkOptions } from '@tanstack/react-router';
 
 import type { NavSection } from '@/components/app-shell/NavSections.js';
+import { ReadingExceptionsNavIndicator } from './AppNavIndicators.js';
 
 const isCategoriesPath = (pathname: string) => pathname.startsWith('/contracting/fleet/categories');
 
@@ -71,6 +72,7 @@ export const contractingNavSections = [
         permission: 'contracting_reading:update',
         link: linkOptions({ to: '/contracting/readings/exceptions' }),
         icon: IconGauge,
+        indicator: ReadingExceptionsNavIndicator,
       },
       {
         title: 'Customers',

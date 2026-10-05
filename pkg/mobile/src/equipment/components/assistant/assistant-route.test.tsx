@@ -34,7 +34,7 @@ vi.mock('@/equipment/components/assistant/chat-ai', () => ({
 vi.mock('@/components/ui/icon', () => ({ Icon: 'Icon' }));
 vi.mock('@/components/ui/text', () => ({ Text: 'Text' }));
 vi.mock('@/equipment/components/TopToolbar', () => ({ SecondaryPageToolbar: 'SecondaryPageToolbar' }));
-vi.mock('@/equipment/lib/assistant-keyboard', () => ({ useAssistantKeyboardBottomPadding: () => 301 }));
+vi.mock('@/lib/keyboard-padding', () => ({ useKeyboardBottomPadding: () => 301 }));
 
 // biome-ignore lint/style/noRestrictedImports: the @/* alias covers src/ only; this is the one test that renders an app/ route file directly.
 import AssistantRoute from '../../../../app/(protected)/equipment/assistant';

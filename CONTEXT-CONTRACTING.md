@@ -150,8 +150,8 @@ describes a reading; it never orders them. A Machine's readings are ordered by a
 reading whatever its Read At, and a late-entered reading takes its place after it. An Hour Gap
 reads the two readings its Assignments name, so a backdated Read At moves no hour between
 Jobs. Capture needs a connection: the server judges every capture as the ledger's truth, and a
-Foreman without signal keeps a Field Note instead. On capture the server reads
-the photo itself and records its own value and confidence: a reading is **photo-backed** when it
+Foreman without signal keeps a Field Note instead. Once a capture has landed the server reads
+the photo itself and records its own value and confidence, so capturing never waits on it: a reading is **photo-backed** when it
 carries a photo and **AI-verified** when the server's read agrees with the typed value.
 Disagreements, low confidence, and disputes surface to management as **Reading Exceptions** — a
 reading is **Disputed** when it belongs to an unresolved out-of-sequence pair and **AI flagged**

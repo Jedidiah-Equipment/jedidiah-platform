@@ -1,5 +1,5 @@
 import { FilePolicyViolationError, type StorageAdapter } from '@pkg/core';
-import { captureReading, getReadingForEvidence, type ReadMeterPhoto } from '@pkg/core/contracting';
+import { captureReading, getReadingForEvidence } from '@pkg/core/contracting';
 import type { Db } from '@pkg/db';
 import { fileTooLargeMessage } from '@pkg/domain';
 import { READING_CAPTURE_PATH, READING_PHOTO_POLICY } from '@pkg/domain/contracting';
@@ -10,6 +10,7 @@ import {
   readingCaptureFieldNames,
 } from '@pkg/schema/contracting';
 import type { FastifyInstance, FastifyReply } from 'fastify';
+import type { ReadingVerifications } from '../../../contracting/readings/reading-verification-queue.js';
 import {
   mapCoreErrorToRoute,
   RouteHttpError,
@@ -22,7 +23,7 @@ import { readingErrorFamily } from '../contracting-error-families.js';
 
 export async function registerReadingHttpRoutes(
   app: FastifyInstance,
-  { db, storage, readPhoto }: { db: Db; storage: StorageAdapter; readPhoto: ReadMeterPhoto },
+  { db, storage, verifications }: { db: Db; storage: StorageAdapter; verifications: ReadingVerifications },
 ) {
   const fieldCount = readingCaptureFieldNames.length;
   // Multipart caps bytes; the comment cap counts UTF-16 units, so allow the widest UTF-8 encoding.
@@ -58,8 +59,10 @@ export async function registerReadingHttpRoutes(
         db,
         actor: auth.access,
         input,
-        ...(photoBytes === undefined ? {} : { evidence: { storage, readPhoto, photoBytes } }),
+        ...(photoBytes === undefined ? {} : { evidence: { storage, photoBytes } }),
       });
+      // Answer at once; the photo's AI check follows in the background.
+      if (row.photo) verifications.schedule(row.id);
       return reply.status(201).send(row);
     } catch (error) {
       return sendReadingError(reply, error);

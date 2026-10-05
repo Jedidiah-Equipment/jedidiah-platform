@@ -26,7 +26,6 @@ import { useBusyAction } from '@/lib/use-busy-action';
 
 /** Refusals that mean the ledger moved under the form: its latest reading must be fetched again. */
 const LEDGER_MOVED = new Set<string>(['reading.below_latest', 'reading.previous_changed'] satisfies ReadingErrorCode[]);
-const REFRESH_WAIT_MS = 5_000;
 
 type CaptureTarget =
   | { kind: 'machine'; machineId: string }
@@ -97,6 +96,8 @@ function CaptureForm({ target }: { target: CaptureTarget }) {
   // Null is "now".
   const [readAt, setReadAt] = useState<ReadAtChoice | null>(null);
   const [value, setValue] = useState('');
+  // Judged once typing stops, as web does: a half-typed value is not yet below the previous reading.
+  const [valueFocused, setValueFocused] = useState(false);
   const [comment, setComment] = useState('');
   const [disputedReadingId, setDisputedReadingId] = useState<string | null>(null);
   const overrides = useStintOverrides(target.kind === 'stint' ? target.planned : null);
@@ -178,13 +179,9 @@ function CaptureForm({ target }: { target: CaptureTarget }) {
         throw error;
       }
       recordReadingCaptured({ ...captured, refused: null });
-      // The screens underneath stay mounted, so this refetches what they show before they are shown again.
-      const refreshed = Promise.all([
-        queryClient.invalidateQueries({ queryKey: trpc.contractingReadings.pathKey() }),
-        queryClient.invalidateQueries({ queryKey: trpc.contractingJobs.field.pathKey() }),
-      ]);
-      await Promise.race([refreshed, new Promise((resolve) => setTimeout(resolve, REFRESH_WAIT_MS))]);
-      // A swipe back during the wait may already have opened another capture; leaving now would close it.
+      // The screens underneath stay mounted, so they refetch in place: the form leaves without waiting on them.
+      void queryClient.invalidateQueries({ queryKey: trpc.contractingReadings.pathKey() });
+      void queryClient.invalidateQueries({ queryKey: trpc.contractingJobs.pathKey() });
       if (navigation.isFocused()) leave();
     }, CAPTURE_FAILED);
   }
@@ -208,7 +205,7 @@ function CaptureForm({ target }: { target: CaptureTarget }) {
         <>
           {!canCapture ? <Text className="text-danger">Your role cannot capture readings.</Text> : null}
           <Button
-            primary
+            primary={canSave && !busy}
             title={busy ? 'Saving…' : 'Save reading'}
             disabled={busy || !canSave}
             onPress={() => {
@@ -218,10 +215,6 @@ function CaptureForm({ target }: { target: CaptureTarget }) {
         </>
       }
     >
-      <Text className="text-muted-foreground">Photograph the hour meter when you can, then type its value.</Text>
-      {target.kind === 'stint' && target.role === 'arrival' ? (
-        <StintOverrideCard planned={target.planned} overrides={overrides} />
-      ) : null}
       <MeterPhotoField
         photo={photo}
         cameraOpen={cameraOpen}
@@ -232,55 +225,39 @@ function CaptureForm({ target }: { target: CaptureTarget }) {
           setReadAt((current) => readAtAfterPhoto(current, takenAt));
         }}
       />
-      <View className="flex-row items-baseline justify-between">
-        <Text className="text-foreground" weight="semibold">
-          Hour meter value
-        </Text>
-        {latest ? (
-          <Text className="text-sm text-muted-foreground">Minimum allowed: {formatHours(latest.value)}</Text>
+      <View className="gap-2">
+        <View className="flex-row items-baseline justify-between gap-3">
+          <FieldLabel>Current reading</FieldLabel>
+          {latest ? (
+            <Text className="text-xs text-muted-foreground">
+              Previous reading:{' '}
+              <Text className="text-xs text-primary" weight="semibold">
+                {formatHours(latest.value)}
+              </Text>
+            </Text>
+          ) : null}
+        </View>
+        <TextInput
+          accessibilityLabel="Current reading"
+          keyboardType="decimal-pad"
+          placeholder="e.g. 1234.5"
+          value={value}
+          editable={!busy}
+          onFocus={() => setValueFocused(true)}
+          onBlur={() => setValueFocused(false)}
+          onChangeText={(text) => {
+            setValue(text);
+            setDisputedReadingId(null);
+          }}
+        />
+        {!valueFocused && value && !parsed?.success ? (
+          <Text className="text-danger">Enter a non-negative value with at most one decimal place.</Text>
         ) : null}
       </View>
-      <TextInput
-        accessibilityLabel="Hour meter value"
-        keyboardType="decimal-pad"
-        placeholder="e.g. 1234.5"
-        value={value}
-        editable={!busy}
-        onChangeText={(text) => {
-          setValue(text);
-          setDisputedReadingId(null);
-        }}
-      />
-      {value && !parsed?.success ? (
-        <Text className="text-danger">Enter a non-negative value with at most one decimal place.</Text>
-      ) : null}
-      <Text className="text-foreground" weight="semibold">
-        Read At
-      </Text>
-      <ReadAtField
-        value={readAt?.at ?? null}
-        disabled={busy}
-        onChange={(next) => setReadAt(next ? { at: next, by: 'hand' } : null)}
-      />
-      {readAt && isFutureReadAt(readAt.at) ? (
-        <Text className="text-danger">{captureRefusals['future-read-at'].message}</Text>
-      ) : null}
-      <Text className="text-foreground" weight="semibold">
-        {commentRequired ? 'Comment (required without photo)' : 'Comment (optional)'}
-      </Text>
-      <TextInput
-        accessibilityLabel="Capture comment"
-        placeholder="Anything management should know about this reading"
-        value={comment}
-        editable={!busy}
-        multiline
-        maxLength={ReadingComment.maxLength ?? undefined}
-        onChangeText={setComment}
-      />
-      {below ? (
+      {below && !valueFocused ? (
         <View className="gap-3 rounded-xl border border-danger p-4">
           <Text className="text-foreground">
-            This is below the minimum allowed. Correct your value, retake the photo, or dispute the previous reading.
+            This is below the previous reading. Correct your value, retake the photo, or dispute the previous reading.
           </Text>
           <Button
             title={disputeConfirmed ? 'Previous reading disputed · undo' : 'The previous reading is wrong'}
@@ -289,6 +266,69 @@ function CaptureForm({ target }: { target: CaptureTarget }) {
           />
         </View>
       ) : null}
+      <Divider label={photo ? null : 'photo or'} />
+      <View className="gap-2">
+        <FieldLabel>{commentLabel(role, commentRequired)}</FieldLabel>
+        <TextInput
+          accessibilityLabel={commentLabel(role, commentRequired)}
+          placeholder={photo ? 'Anything management should know about this reading' : 'No photo? Say why…'}
+          value={comment}
+          editable={!busy}
+          multiline
+          maxLength={ReadingComment.maxLength ?? undefined}
+          onChangeText={setComment}
+          // Room for two lines, so swapping the placeholder when a photo is attached never moves the form.
+          style={{ minHeight: COMMENT_MIN_HEIGHT, textAlignVertical: 'top' }}
+        />
+      </View>
+      {target.kind === 'stint' && target.role === 'arrival' ? (
+        <StintOverrideCard planned={target.planned} overrides={overrides} />
+      ) : null}
+      <View className="gap-2">
+        <FieldLabel>Read At</FieldLabel>
+        <ReadAtField
+          value={readAt?.at ?? null}
+          disabled={busy}
+          onChange={(next) => setReadAt(next ? { at: next, by: 'hand' } : null)}
+        />
+        {readAt && isFutureReadAt(readAt.at) ? (
+          <Text className="text-danger">{captureRefusals['future-read-at'].message}</Text>
+        ) : null}
+      </View>
     </FormPage>
+  );
+}
+
+/** Web's wording: a departure asks for a reason, every other reading for a comment. */
+function commentLabel(role: Exclude<ReadingRole, 'baseline'>, required: boolean) {
+  if (role === 'departure') return required ? 'Reason' : 'Reason (optional)';
+  return required ? 'Comment' : 'Comment (optional)';
+}
+
+function FieldLabel({ children }: { children: string }) {
+  return (
+    <Text className="text-sm text-foreground" weight="semibold">
+      {children}
+    </Text>
+  );
+}
+
+const COMMENT_MIN_HEIGHT = 72;
+
+/** Points, not rem: the rule keeps one height with or without its word, so nothing below it moves. */
+const DIVIDER_HEIGHT = 20;
+
+/** A rule across the form, with a short word in its middle when there is one. */
+function Divider({ label }: { label: string | null }) {
+  return (
+    <View className="flex-row items-center gap-3" style={{ height: DIVIDER_HEIGHT }}>
+      <View className="h-px flex-1 bg-border" />
+      {label ? (
+        <>
+          <Text className="text-xs text-muted-foreground">{label}</Text>
+          <View className="h-px flex-1 bg-border" />
+        </>
+      ) : null}
+    </View>
   );
 }

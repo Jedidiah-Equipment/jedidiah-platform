@@ -70,7 +70,8 @@ function inQueue(queue: JobQueue): SQL | undefined {
 }
 
 /** SQL twin of domain `formatJobNumber`, so a search for the Job Number finds the Job. */
-const jobNumberText = sql`${JOB_NUMBER_PREFIX} || lpad(${contractingJobs.code}::text, ${JOB_NUMBER_DIGITS}, '0')`;
+// lpad truncates a longer value, so the width grows with the code as padStart does.
+const jobNumberText = sql`${JOB_NUMBER_PREFIX} || lpad(${contractingJobs.code}::text, greatest(${JOB_NUMBER_DIGITS}, length(${contractingJobs.code}::text)), '0')`;
 
 export async function listJobs({
   db,

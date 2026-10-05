@@ -370,6 +370,12 @@ test('lists several queues in one page, searched on the server', async ({ contex
   );
   const searched = await manager.list({ queues: [...open], search: context.pricedJob.jobNumber });
   expect(searched).toMatchObject({ total: 1, items: [{ id: context.pricedJob.id }] });
+  // Job Numbers keep every digit past the five-digit padding, as formatJobNumber does.
+  await context.db.update(contractingJobs).set({ code: 123456 }).where(eq(contractingJobs.id, context.pricedJob.id));
+  expect(await manager.list({ queues: [...open], search: 'CJOB-123456' })).toMatchObject({
+    total: 1,
+    items: [{ id: context.pricedJob.id, jobNumber: 'CJOB-123456' }],
+  });
 
   const invoicing = context.createCaller(contractingSession('contracting-invoicing')).contractingJobs.jobs;
   await expect(invoicing.list({ queues: ['awaiting-pricing', 'active'] })).rejects.toMatchObject({

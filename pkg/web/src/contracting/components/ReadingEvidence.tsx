@@ -145,7 +145,7 @@ export function readingAssessment(reading: EvidenceReading) {
   };
 }
 
-/** The stint card's tooltip wording for each served attention kind. */
+/** The AI meter result when no readable meter was found, with its confidence on hover. */
 export function NoReadableMeterResult({ confidencePercent }: { confidencePercent: number }) {
   return (
     <Tooltip>

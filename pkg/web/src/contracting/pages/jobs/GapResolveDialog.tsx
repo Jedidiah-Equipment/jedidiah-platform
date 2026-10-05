@@ -112,10 +112,11 @@ export function GapResolveDialog({ stint, onClose }: { stint: Assignment | null;
             <AlertTitle>What you are deciding</AlertTitle>
             <AlertDescription>
               Split the {formatHours(gapHours)} into the time the Machine spent travelling here and time that is
-              unaccounted for, such as standing in the yard or a repair.{' '}
+              unaccounted for, such as standing in the yard or a repair. Travel Hours are billed to this Job at the
+              Assignment’s rate
               {stint?.travelIncluded
-                ? 'Travel Hours are billed to this Job at the Assignment’s rate.'
-                : 'Travel is excluded on this Assignment, so Travel Hours are not billed unless you include travel.'}{' '}
+                ? '.'
+                : ', even though travel is excluded on this Assignment: enter 0 to bill none.'}{' '}
               An Unaccounted Interval is never billed. Give a reason either way; it stays on the Job.
             </AlertDescription>
           </Alert>
@@ -134,11 +135,7 @@ export function GapResolveDialog({ stint, onClose }: { stint: Assignment | null;
               {(field) => (
                 <field.NumberField
                   label="Travel Hours"
-                  description={
-                    stint?.travelIncluded
-                      ? `Billed to the client, up to ${formatHours(gapHours)}`
-                      : `Not billed while travel is excluded; up to ${formatHours(gapHours)}`
-                  }
+                  description={`Billed to the client, up to ${formatHours(gapHours)}`}
                   decimals={1}
                   min={0}
                   emptyValue={0}

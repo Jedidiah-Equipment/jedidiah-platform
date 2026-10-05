@@ -192,7 +192,10 @@ export function InvoicingPage() {
       </fieldset>
       <DataTable
         emptyMessage={awaitingOnly ? 'Nothing is waiting for an invoice.' : 'No Jobs found.'}
-        errorMessage={getApiQueryErrorMessage(jobsQuery.error, 'Unable to load Invoicing.')}
+        errorMessage={
+          getApiQueryErrorMessage(jobsQuery.error, 'Unable to load Invoicing.') ??
+          getApiQueryErrorMessage(counts.error, 'Unable to load Invoicing counts.')
+        }
         getRowAriaLabel={(job) => `Open ${job.jobNumber}`}
         globalFilterPlaceholder="Search Jobs…"
         isLoading={jobsQuery.isPending}

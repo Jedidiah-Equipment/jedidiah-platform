@@ -12,7 +12,6 @@ import {
   getReadableJob,
   listFieldDrivers,
   listFieldImplements,
-  listFieldJobs,
   listForemen,
   listJobs,
   listMeasureTypes,
@@ -44,7 +43,6 @@ import {
   FieldDriver,
   FieldImplement,
   FieldJob,
-  FieldJobsInput,
   GapResolveInput,
   InvoiceNumberLookupInput,
   JobCancelInput,
@@ -73,15 +71,6 @@ const readPermissions = ['contracting_job:read', 'contracting_job:read-own', 'co
 
 export const contractingJobsRouter = router({
   field: router({
-    jobs: authorizedProcedure(['contracting_job:read', 'contracting_job:read-own'])
-      .input(FieldJobsInput)
-      .output(FieldJob.array())
-      .query(({ ctx, input }) =>
-        mapCoreErrors(
-          () => listFieldJobs({ db: ctx.db, actor: ctx.access, includeFinished: input?.includeFinished ?? false }),
-          jobErrorFamily,
-        ),
-      ),
     job: authorizedProcedure(['contracting_job:read', 'contracting_job:read-own'])
       .input(z.object({ id: UUID }).strict())
       .output(FieldJob)

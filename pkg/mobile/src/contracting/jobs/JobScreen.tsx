@@ -28,7 +28,7 @@ export default function JobScreen() {
   const access = useSessionAccessSummary();
   const job = jobQuery.data;
   const finished = job ? hasJobCard(job.status) : false;
-  const gone = jobQuery.isSuccess && !job;
+  const gone = jobQuery.gone;
   const canCapture = job ? judgeJobAction('capture', job, access).allowed : false;
   const canAdd = job ? judgeJobAction('assign', job, access).allowed : false;
   const canShareJobCard = canOpenJobCards(access) && finished;

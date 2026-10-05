@@ -14,13 +14,6 @@ export type FieldStint = z.infer<typeof FieldStint>;
 export const FieldJob = z.object({ ...jobIdentityShape, stints: FieldStint.array() });
 export type FieldJob = z.infer<typeof FieldJob>;
 
-/** `includeFinished` adds management's recently finished Jobs; a Foreman's phone only ever lists open ones. */
-export const FieldJobsInput = z
-  .object({ includeFinished: z.boolean().default(false) })
-  .strict()
-  .optional();
-export type FieldJobsInput = z.infer<typeof FieldJobsInput>;
-
 export const FieldImplement = Implement.pick({
   id: true,
   code: true,

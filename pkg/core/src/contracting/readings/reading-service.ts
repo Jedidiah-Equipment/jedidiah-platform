@@ -402,11 +402,46 @@ async function readingBelongsToForemanJob({
     .limit(1);
   return !!assignment;
 }
+/** What the AI reads off a stored meter photo, measured against the value it was captured with. */
+async function checkStoredPhoto(storage: StorageAdapter, reading: Row, storageKey: string, readPhoto: ReadMeterPhoto) {
+  const photo = await readStoredObject(storage, storageKey);
+  return verifyPhoto(reading.value, photo.bytes, photo.contentType, readPhoto);
+}
+
+/**
+ * Lands an AI verdict under the Machine's lock, judged against the reading's value as it stands then, so an
+ * amendment made while the AI was reading is respected. `lands` may refuse it, returning the reading unchanged.
+ */
+async function recordVerdict(
+  db: Db,
+  reading: Row,
+  evidence: AiVerdict,
+  {
+    actorUserId,
+    lands = () => true,
+    patch = {},
+  }: {
+    actorUserId: (before: Row) => AuthId;
+    lands?: (before: Row) => boolean;
+    patch?: Partial<Omit<Row, 'sequence'>>;
+  },
+) {
+  return db.transaction(async (tx) => {
+    await tx.select().from(contractingMachines).where(eq(contractingMachines.id, reading.machineId)).for('update');
+    const before = await getReading({ db: tx, id: reading.id });
+    if (!lands(before)) return before;
+    return updateAudited(tx, actorUserId(before), before, {
+      ...evidence,
+      ...patch,
+      aiVerification: readingVerification(before.value, evidence.aiValue, evidence.aiConfidence),
+    });
+  });
+}
+
 /**
  * Checks a just-captured reading's photo and records the AI's verdict. It runs after the capture has answered, so
  * the person capturing never waits on the AI. A verdict lands only on a reading still pending on the same photo, so a
- * re-verify in the meantime wins, and it is judged against the value as it stands now, so an amendment is respected.
- * A failed check leaves the reading pending, for Re-verify to finish.
+ * re-verify in the meantime wins. A failed check leaves the reading pending, for Re-verify to finish.
  */
 export async function verifyCapturedReading({
   db,
@@ -422,18 +457,12 @@ export async function verifyCapturedReading({
   const captured = await getReading({ db, id });
   if (!captured.photo || captured.aiVerification !== 'pending') return captured;
   const storageKey = captured.photo.storageKey;
-  const photo = await readStoredObject(storage, storageKey);
-  const evidence = await verifyPhoto(captured.value, photo.bytes, photo.contentType, readPhoto);
+  const evidence = await checkStoredPhoto(storage, captured, storageKey, readPhoto);
   if (evidence.aiVerification === 'pending') return captured;
-  return db.transaction(async (tx) => {
-    await tx.select().from(contractingMachines).where(eq(contractingMachines.id, captured.machineId)).for('update');
-    const before = await getReading({ db: tx, id });
-    if (before.aiVerification !== 'pending' || before.photo?.storageKey !== storageKey) return before;
+  return recordVerdict(db, captured, evidence, {
     // The capture's own follow-up, so it is audited as the person who captured it.
-    return updateAudited(tx, before.capturedByUserId, before, {
-      ...evidence,
-      aiVerification: readingVerification(before.value, evidence.aiValue, evidence.aiConfidence),
-    });
+    actorUserId: (before) => before.capturedByUserId,
+    lands: (before) => before.aiVerification === 'pending' && before.photo?.storageKey === storageKey,
   });
 }
 
@@ -452,22 +481,14 @@ export async function reverifyReading({
 }) {
   const owner = await getReading({ db, id });
   if (!owner.photo) throw new ReadingError('reading.no_photo', 'This reading has Missing Photo Evidence.');
-  const photo = await readStoredObject(storage, owner.photo.storageKey);
-  const evidence = await verifyPhoto(owner.value, photo.bytes, photo.contentType, readPhoto);
+  const evidence = await checkStoredPhoto(storage, owner, owner.photo.storageKey, readPhoto);
   if (evidence.aiVerification === 'pending')
     throw new ReadingError(
       'reading.verification_failed',
       'AI verification failed. Previous evidence has been kept; try again.',
     );
-  return db.transaction(async (tx) => {
-    await tx.select().from(contractingMachines).where(eq(contractingMachines.id, owner.machineId)).for('update');
-    const before = await getReading({ db: tx, id });
-    return updateAudited(tx, actorUserId, before, {
-      ...evidence,
-      evidenceReviewedAt: null,
-      aiVerification: readingVerification(before.value, evidence.aiValue, evidence.aiConfidence),
-    });
-  });
+  // A fresh verdict reopens the evidence for review.
+  return recordVerdict(db, owner, evidence, { actorUserId: () => actorUserId, patch: { evidenceReviewedAt: null } });
 }
 
 export async function listFieldReadings({ db, machineId }: { db: Db; machineId: string }) {

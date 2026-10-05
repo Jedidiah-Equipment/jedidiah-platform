@@ -22,7 +22,7 @@ const photoEvidence = (storage: ReadingEvidence['storage']): ReadingEvidence => 
 });
 
 /** A photo capture followed by the AI check the API runs once the capture has answered. */
-async function verified(
+async function withBackgroundCheck(
   db: Parameters<typeof verifyCapturedReading>[0]['db'],
   storage: ReadingEvidence['storage'],
   readPhoto: ReadMeterPhoto,
@@ -82,7 +82,7 @@ test('keeps photo evidence on AI failure and verifies it later without changing 
   const { InMemoryStorageAdapter } = await import('../../storage/in-memory-storage-adapter.js');
   const { reverifyReading } = await import('./reading-service.js');
   const storage = new InMemoryStorageAdapter();
-  const row = await verified(
+  const row = await withBackgroundCheck(
     db,
     storage,
     async () => {
@@ -173,7 +173,7 @@ test('surfaces disagreements and low confidence and recalculates verification af
       disputePrevious: false,
     },
   };
-  const row = await verified(
+  const row = await withBackgroundCheck(
     db,
     storage,
     async () => ({ value: 120, confidence: 0.9 }),
@@ -182,7 +182,7 @@ test('surfaces disagreements and low confidence and recalculates verification af
   expect(row).toMatchObject({ aiVerification: 'disagrees', aiHint: 'Possible tenths-drum misread (≈10× / 0.1×).' });
   await amendReading({ db, actor, input: { id: row.id, value: 120, reason: 'Corrected tenths' } });
   expect(await listReadingExceptions({ db })).toEqual([]);
-  const low = await verified(
+  const low = await withBackgroundCheck(
     db,
     storage,
     async () => ({ value: 121, confidence: 0.79 }),
@@ -204,7 +204,7 @@ test('management can acknowledge an incorrect AI warning without claiming AI agr
   const { amendReading, listReadingExceptions, reverifyReading } = await import('./reading-service.js');
   const storage = new InMemoryStorageAdapter();
   const readPhoto = async () => ({ value: 1234, confidence: 0.6 });
-  const reading = await verified(
+  const reading = await withBackgroundCheck(
     db,
     storage,
     readPhoto,
@@ -301,7 +301,7 @@ test('acknowledges evidence on an unchanged disputed value while keeping the unr
     disputePrevious: false,
   };
   await captureReading({ db, actor, input });
-  const disputed = await verified(
+  const disputed = await withBackgroundCheck(
     db,
     storage,
     async () => ({ value: null, confidence: 0.99 }),

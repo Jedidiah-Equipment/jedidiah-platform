@@ -230,10 +230,9 @@ const test = createTester(async ({ db }) => {
   };
 });
 
-test('projects only open field Jobs, enforces ownership, and never returns money', async ({ context }) => {
+test('projects a field Job without money, a Foreman only his own', async ({ context }) => {
   const foreman = context.createCaller(contractingSession('foreman')).contractingJobs.field;
-  const jobs = await foreman.jobs();
-  expect(jobs.map((job) => job.id)).toEqual([context.ownJob.id]);
+  const jobs = [await foreman.job({ id: context.ownJob.id })];
   expect(Object.keys(jobs[0] ?? {})).toEqual([
     'id',
     'code',
@@ -269,23 +268,22 @@ test('projects only open field Jobs, enforces ownership, and never returns money
   ]);
   await expect(foreman.drivers()).resolves.toEqual([{ id: driverId, name: 'Willem' }]);
 
-  const manager = context.createCaller(contractingSession('contracting-manager')).contractingJobs.field;
-  expect((await manager.jobs()).map((job) => job.id)).toEqual([context.ownJob.id, context.otherJob.id]);
-  const admin = context.createCaller(contractingSession('contracting-admin')).contractingJobs.field;
-  expect((await admin.jobs()).map((job) => job.id)).toEqual([context.ownJob.id, context.otherJob.id]);
-  const superAdmin = context.createCaller(mockSession('super-admin')).contractingJobs.field;
-  expect((await superAdmin.jobs()).map((job) => job.id)).toEqual([context.ownJob.id, context.otherJob.id]);
-
-  expect((await manager.jobs({ includeFinished: true })).map((job) => [job.id, job.status])).toEqual([
-    [context.ownJob.id, 'upcoming'],
-    [context.otherJob.id, 'active'],
-    [context.pricedJob.id, 'priced'],
-    [context.completedJob.id, 'completed'],
-  ]);
-  expect((await foreman.jobs({ includeFinished: true })).map((job) => job.id)).toEqual([context.ownJob.id]);
+  for (const session of [
+    contractingSession('contracting-manager'),
+    contractingSession('contracting-admin'),
+    mockSession('super-admin'),
+  ]) {
+    const management = context.createCaller(session).contractingJobs.field;
+    await expect(management.job({ id: context.otherJob.id })).resolves.toMatchObject({ status: 'active' });
+    await expect(management.job({ id: context.pricedJob.id })).resolves.toMatchObject({ status: 'priced' });
+  }
+  await expect(foreman.job({ id: context.otherJob.id })).rejects.toMatchObject({ code: 'NOT_FOUND' });
+  await expect(foreman.job({ id: context.pricedJob.id })).rejects.toMatchObject({ code: 'NOT_FOUND' });
 
   const workshopCaller = context.createCaller(contractingSession('workshop-manager'));
-  await expect(workshopCaller.contractingJobs.field.jobs()).rejects.toMatchObject({ code: 'FORBIDDEN' });
+  await expect(workshopCaller.contractingJobs.field.job({ id: context.ownJob.id })).rejects.toMatchObject({
+    code: 'FORBIDDEN',
+  });
   await captureReading({
     db: context.db,
     actor: foremanActor,

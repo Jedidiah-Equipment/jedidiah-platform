@@ -4,6 +4,7 @@ import { keepPreviousData, useInfiniteQuery, useQuery } from '@tanstack/react-qu
 import { fieldQuery } from '@/contracting/lib/field-query';
 import { useSessionAccessSummary, useSessionPermission } from '@/lib/auth-session';
 import { useTRPC } from '@/lib/trpc';
+import { isNotFoundError } from '@/lib/trpc-errors';
 
 const PAGE_SIZE = 25;
 
@@ -56,10 +57,15 @@ export function useJobQueueCounts() {
 export function useJob(jobId: string) {
   const canRead = useCanReadJobs();
   const trpc = useTRPC();
-  return fieldQuery(
-    canRead,
-    useQuery(trpc.contractingJobs.field.job.queryOptions({ id: jobId }, { enabled: canRead && !!jobId })),
+  const query = useQuery(
+    trpc.contractingJobs.field.job.queryOptions(
+      { id: jobId },
+      // A Job that is not found stays not found; only a failed request is worth asking again.
+      { enabled: canRead && !!jobId, retry: (failures, error) => !isNotFoundError(error) && failures < 3 },
+    ),
   );
+  // Not found once it has left this person's Jobs: finished for a Foreman, or reassigned.
+  return { ...fieldQuery(canRead, query), gone: isNotFoundError(query.error) };
 }
 
 export function useImplements() {

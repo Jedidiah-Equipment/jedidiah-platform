@@ -204,6 +204,20 @@ function CaptureForm({ target }: { target: CaptureTarget }) {
       footer={
         <>
           {!canCapture ? <Text className="text-danger">Your role cannot capture readings.</Text> : null}
+          {/* In the fixed footer, so the warning never pushes the form's fields while it comes and goes. */}
+          {below && !valueFocused ? (
+            <View className="gap-3 rounded-xl border border-danger p-4">
+              <Text className="text-foreground">
+                This is below the previous reading. Correct your value, retake the photo, or dispute the previous
+                reading.
+              </Text>
+              <Button
+                title={disputeConfirmed ? 'Previous reading disputed · undo' : 'The previous reading is wrong'}
+                onPress={() => setDisputedReadingId(disputeConfirmed ? null : (latest?.id ?? null))}
+                disabled={busy}
+              />
+            </View>
+          ) : null}
           <Button
             primary={canSave && !busy}
             title={busy ? 'Saving…' : 'Save reading'}
@@ -254,24 +268,13 @@ function CaptureForm({ target }: { target: CaptureTarget }) {
           <Text className="text-danger">Enter a non-negative value with at most one decimal place.</Text>
         ) : null}
       </View>
-      {below && !valueFocused ? (
-        <View className="gap-3 rounded-xl border border-danger p-4">
-          <Text className="text-foreground">
-            This is below the previous reading. Correct your value, retake the photo, or dispute the previous reading.
-          </Text>
-          <Button
-            title={disputeConfirmed ? 'Previous reading disputed · undo' : 'The previous reading is wrong'}
-            onPress={() => setDisputedReadingId(disputeConfirmed ? null : (latest?.id ?? null))}
-            disabled={busy}
-          />
-        </View>
-      ) : null}
-      <Divider label={photo ? null : 'photo or'} />
+      {/* "photo or" only when the comment really stands in for a missing photo. */}
+      <Divider label={commentRequired ? 'photo or' : null} />
       <View className="gap-2">
         <FieldLabel>{commentLabel(role, commentRequired)}</FieldLabel>
         <TextInput
           accessibilityLabel={commentLabel(role, commentRequired)}
-          placeholder={photo ? 'Anything management should know about this reading' : 'No photo? Say why…'}
+          placeholder={commentRequired ? 'No photo? Say why…' : 'Anything management should know about this reading'}
           value={comment}
           editable={!busy}
           multiline

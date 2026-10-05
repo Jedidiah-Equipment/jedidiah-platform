@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
   type AmendableReading,
-  awaitsAiVerdict,
   type ReadingAttentionFacts,
   readingAttention,
   readingAttentionKinds,
@@ -146,13 +145,5 @@ describe('readingAttention', () => {
     const reading = facts({ aiVerification });
     expect(readingAttention(reading)).toEqual({ disputed: false, aiFlagged: null });
     expect(readingNeedsALook(reading)).toBe(false);
-  });
-});
-
-describe('awaitsAiVerdict', () => {
-  it('is true while any reading on screen is still pending its AI check', () => {
-    expect(awaitsAiVerdict([null, { aiVerification: 'agrees' }, { aiVerification: 'pending' }])).toBe(true);
-    expect(awaitsAiVerdict([undefined, { aiVerification: 'not-applicable' }])).toBe(false);
-    expect(awaitsAiVerdict([])).toBe(false);
   });
 });

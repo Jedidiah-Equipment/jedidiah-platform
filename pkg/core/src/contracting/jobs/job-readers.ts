@@ -34,7 +34,7 @@ export const ownedBy = ({ mode, actorUserId }: JobReader | FieldReader) =>
   mode === 'own' ? eq(contractingJobs.foremanUserId, actorUserId) : undefined;
 
 /** The Jobs a reader may see: their mode's statuses, and a Foreman's own Jobs only. */
-export const readableBy = (reader: JobReader) =>
+export const readableBy = (reader: JobReader | FieldReader) =>
   and(inArray(contractingJobs.status, [...jobReadStatuses[reader.mode]]), ownedBy(reader));
 
 const readRefusals: Record<JobReadMode, string> = {

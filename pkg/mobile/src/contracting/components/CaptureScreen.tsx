@@ -6,6 +6,8 @@ import { type Href, router, useLocalSearchParams, useNavigation } from 'expo-rou
 import { useRef, useState } from 'react';
 import { View } from 'react-native';
 import { FormPage } from '@/components/FormPage';
+import { FieldLabel, FieldShell } from '@/components/form/fields/FieldShell';
+import { textareaStyle } from '@/components/form/fields/TextareaField';
 import { SecondaryToolbar } from '@/components/TopToolbar';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
@@ -239,18 +241,26 @@ function CaptureForm({ target }: { target: CaptureTarget }) {
           setReadAt((current) => readAtAfterPhoto(current, takenAt));
         }}
       />
-      <View className="gap-2">
-        <View className="flex-row items-baseline justify-between gap-3">
-          <FieldLabel>Current reading</FieldLabel>
-          {latest ? (
-            <Text className="text-xs text-muted-foreground">
-              Previous reading:{' '}
-              <Text className="text-xs text-primary" weight="semibold">
-                {formatHours(latest.value)}
+      <FieldShell
+        label={
+          <View className="flex-row items-baseline justify-between gap-3">
+            <FieldLabel>Current reading</FieldLabel>
+            {latest ? (
+              <Text className="text-xs text-muted-foreground">
+                Previous reading:{' '}
+                <Text className="text-xs text-primary" weight="semibold">
+                  {formatHours(latest.value)}
+                </Text>
               </Text>
-            </Text>
-          ) : null}
-        </View>
+            ) : null}
+          </View>
+        }
+        errors={
+          !valueFocused && value && !parsed?.success
+            ? [{ message: 'Enter a non-negative value with at most one decimal place.' }]
+            : []
+        }
+      >
         <TextInput
           accessibilityLabel="Current reading"
           keyboardType="decimal-pad"
@@ -264,39 +274,35 @@ function CaptureForm({ target }: { target: CaptureTarget }) {
             setDisputedReadingId(null);
           }}
         />
-        {!valueFocused && value && !parsed?.success ? (
-          <Text className="text-danger">Enter a non-negative value with at most one decimal place.</Text>
-        ) : null}
-      </View>
+      </FieldShell>
       <Divider label={photo === null ? 'photo or' : null} />
-      <View className="gap-2">
-        <FieldLabel>{commentLabel(role, commentRequired)}</FieldLabel>
+      <FieldShell label={commentLabel(role, commentRequired)}>
         <TextInput
           accessibilityLabel={commentLabel(role, commentRequired)}
           placeholder={photo === null ? 'No photo? Say why…' : 'Anything management should know about this reading'}
           value={comment}
           editable={!busy}
           multiline
+          numberOfLines={COMMENT_ROWS}
           maxLength={ReadingComment.maxLength ?? undefined}
           onChangeText={setComment}
-          // Room for two lines, so swapping the placeholder when a photo is attached never moves the form.
-          style={{ minHeight: COMMENT_MIN_HEIGHT, textAlignVertical: 'top' }}
+          // Its rows' height, so swapping the placeholder when a photo is attached never moves the form.
+          style={{ ...textareaStyle(COMMENT_ROWS), textAlignVertical: 'top' }}
         />
-      </View>
+      </FieldShell>
       {target.kind === 'stint' && target.role === 'arrival' ? (
         <StintOverrideCard planned={target.planned} overrides={overrides} />
       ) : null}
-      <View className="gap-2">
-        <FieldLabel>Read At</FieldLabel>
+      <FieldShell
+        label="Read At"
+        errors={readAt && isFutureReadAt(readAt.at) ? [{ message: captureRefusals['future-read-at'].message }] : []}
+      >
         <ReadAtField
           value={readAt?.at ?? null}
           disabled={busy}
           onChange={(next) => setReadAt(next ? { at: next, by: 'hand' } : null)}
         />
-        {readAt && isFutureReadAt(readAt.at) ? (
-          <Text className="text-danger">{captureRefusals['future-read-at'].message}</Text>
-        ) : null}
-      </View>
+      </FieldShell>
     </FormPage>
   );
 }
@@ -307,15 +313,7 @@ function commentLabel(role: Exclude<ReadingRole, 'baseline'>, required: boolean)
   return required ? 'Comment' : 'Comment (optional)';
 }
 
-function FieldLabel({ children }: { children: string }) {
-  return (
-    <Text className="text-sm text-foreground" weight="semibold">
-      {children}
-    </Text>
-  );
-}
-
-const COMMENT_MIN_HEIGHT = 72;
+const COMMENT_ROWS = 3;
 
 /** Points, not rem: the rule keeps one height with or without its word, so nothing below it moves. */
 const DIVIDER_HEIGHT = 20;

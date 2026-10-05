@@ -6,8 +6,8 @@ import {
   assignmentAttentionKindLevels,
   assignmentNeedsALookLevel,
   countedAssignmentAttentionLevel,
-  highestAssignmentAttentionLevel,
   jobAssignmentAttentionCounts,
+  loudestNeedingALook,
 } from './assignment-attention.js';
 
 describe('assignment attention', () => {
@@ -18,9 +18,11 @@ describe('assignment attention', () => {
     }
   });
 
-  it('ranks notice below warning below critical', () => {
-    expect(highestAssignmentAttentionLevel([])).toBeNull();
-    expect(highestAssignmentAttentionLevel(['notice', 'critical', 'warning'])).toBe('critical');
+  it('ranks warning below critical, and a notice never needs a look', () => {
+    expect(loudestNeedingALook([])).toBeNull();
+    expect(loudestNeedingALook(['notice'])).toBeNull();
+    expect(loudestNeedingALook(['notice', 'warning'])).toBe('warning');
+    expect(loudestNeedingALook(['notice', 'critical', 'warning'])).toBe('critical');
   });
 
   it('lists the Gap Flag before each reading kind, and needs a look only for warning and critical', () => {

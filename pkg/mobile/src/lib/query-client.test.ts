@@ -68,3 +68,16 @@ describe('query observability', () => {
     expect(captureException).not.toHaveBeenCalled();
   });
 });
+
+describe('query retries', () => {
+  it('asks again after a failed read, but never for a record that is not found', () => {
+    const retry = createQueryClient().getDefaultOptions().queries?.retry as (
+      failures: number,
+      error: unknown,
+    ) => boolean;
+
+    expect(retry(0, new Error('offline'))).toBe(true);
+    expect(retry(3, new Error('offline'))).toBe(false);
+    expect(retry(0, { data: { code: 'NOT_FOUND' } })).toBe(false);
+  });
+});

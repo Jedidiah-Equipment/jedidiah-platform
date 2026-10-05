@@ -2,8 +2,9 @@ import { keepPreviousData, useInfiniteQuery } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
 import { View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { PaginatedList } from '@/components/PaginatedList';
 import { Text } from '@/components/ui/text';
-import { CatalogListSkeleton, PaginatedCatalogList } from '@/equipment/components/CatalogList';
+import { CatalogListSkeleton } from '@/equipment/components/CatalogList';
 import { JobCatalogCard, JobCatalogControls } from '@/equipment/components/jobs/JobCatalog';
 import { MainTabToolbar } from '@/equipment/components/TopToolbar';
 import {
@@ -69,7 +70,7 @@ export default function JobsRoute() {
         subtitle={total === null ? 'Loading Jobs…' : `${total} ${total === 1 ? 'Job' : 'Jobs'}`}
         title="Jobs"
       />
-      <PaginatedCatalogList
+      <PaginatedList
         emptyContent={emptyContent}
         hasNextPage={jobs.hasNextPage}
         header={

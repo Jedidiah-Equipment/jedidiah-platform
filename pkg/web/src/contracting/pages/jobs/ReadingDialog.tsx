@@ -1,5 +1,5 @@
 import { formatHours, statusBadgeColorClassNames } from '@pkg/domain';
-import { assignmentAttentionLevelColorClassNames } from '@pkg/domain/contracting';
+import { amendmentSettledFinding, assignmentAttentionLevelColorClassNames } from '@pkg/domain/contracting';
 import type { JobReading } from '@pkg/schema/contracting';
 import { IconAlertTriangle, IconChevronRight, IconPencil, IconRefresh } from '@tabler/icons-react';
 import { useQuery } from '@tanstack/react-query';
@@ -110,8 +110,7 @@ export function ReadingDialog({
     amend.reset();
     setAmending(true);
   };
-  // An amendment that acknowledged the current AI finding is the latest word on the reading; a re-verify reopens it.
-  const amendmentSettledFinding = !!reading?.amendedAt && !!reading.evidenceReviewedAt;
+  const settled = !!reading && amendmentSettledFinding(reading);
 
   return (
     <>
@@ -203,7 +202,7 @@ export function ReadingDialog({
                       {reading.amendmentReason ? (
                         <blockquote className="mt-3 border-l-2 pl-2.5 text-sm">{reading.amendmentReason}</blockquote>
                       ) : null}
-                      {amendmentSettledFinding ? (
+                      {settled ? (
                         <p className="mt-3 text-xs text-muted-foreground">
                           This amendment acknowledged the AI assessment below.
                         </p>
@@ -212,12 +211,12 @@ export function ReadingDialog({
                   </section>
                 ) : null}
                 <Collapsible
-                  key={`${reading.id}:${amendmentSettledFinding}`}
-                  defaultOpen={!amendmentSettledFinding}
+                  key={`${reading.id}:${settled}`}
+                  defaultOpen={!settled}
                   render={<section aria-labelledby="ai-assessment-heading" className="border-t pt-4" />}
                 >
                   <div className="mb-3 flex items-center justify-between gap-3">
-                    {amendmentSettledFinding ? (
+                    {settled ? (
                       <CollapsibleTrigger
                         className="group/ai flex min-w-0 items-center gap-2 text-left"
                         render={<button type="button" />}

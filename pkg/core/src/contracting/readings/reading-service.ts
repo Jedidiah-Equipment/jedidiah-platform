@@ -32,7 +32,7 @@ import { readStoredObject, type StorageAdapter } from '../../storage/storage-ada
 import { reopenPricingWithin } from '../jobs/pricing-service.js';
 import { attachReadingToStint, resolveCaptureStint } from './capture-stint.js';
 import { assertReadingJobAction, captureRefused, ReadingError, withCaptureConstraints } from './reading-errors.js';
-import { type ReadMeterPhoto, verifyPhoto } from './reading-evidence.js';
+import { type MeterMeasurement, measureMeterPhoto, type ReadMeterPhoto } from './reading-evidence.js';
 import { readingNeedsALookSql } from './reading-sql.js';
 import { readingToWire } from './reading-wire.js';
 
@@ -239,13 +239,17 @@ export async function listReadingExceptions({ db }: { db: Db }) {
     .leftJoin(amender, eq(amender.id, contractingHourReadings.amendedBy))
     .where(readingNeedsALookSql(contractingHourReadings))
     .orderBy(desc(contractingHourReadings.sequence));
-  return rows.map((row) => ({ ...withHint(row), exceptionTypes: readingExceptionTypes(row) }));
+  return rows.map((row) => ({
+    ...withHint(row),
+    exceptionTypes: readingExceptionTypes(row),
+    photoBacked: row.photo !== null,
+  }));
 }
 // The machine lock serializes captures and amendments. Pair resolution changes multiple rows in
 // the same transaction, so each resulting row is diffed and audited after that resolution.
 async function updateAudited(
   tx: DatabaseTransaction,
-  actorUserId: AuthId,
+  actorUserId: AuthId | null,
   before: Row,
   patch: Partial<Omit<Row, 'sequence'>>,
 ) {
@@ -402,46 +406,49 @@ async function readingBelongsToForemanJob({
     .limit(1);
   return !!assignment;
 }
-/** What the AI reads off a stored meter photo, measured against the value it was captured with. */
-async function checkStoredPhoto(storage: StorageAdapter, reading: Row, storageKey: string, readPhoto: ReadMeterPhoto) {
-  const photo = await readStoredObject(storage, storageKey);
-  return verifyPhoto(reading.value, photo.bytes, photo.contentType, readPhoto);
+async function measureStoredPhoto(storage: StorageAdapter, photo: StoredFile, readPhoto: ReadMeterPhoto) {
+  const stored = await readStoredObject(storage, photo.storageKey);
+  return measureMeterPhoto(stored.bytes, stored.contentType, readPhoto);
 }
 
+const verificationFailed = () =>
+  new ReadingError(
+    'reading.verification_failed',
+    'AI verification failed. Previous evidence has been kept; try again.',
+  );
+
 /**
- * Lands an AI verdict under the Machine's lock, judged against the reading's value as it stands then, so an
- * amendment made while the AI was reading is respected. `lands` may refuse it, returning the reading unchanged.
+ * Lands the AI's measurement under the Machine's lock, judged against the reading's value as it stands then, so an
+ * amendment made while the AI was reading is respected. A fresh verdict reopens the evidence for review, even one
+ * reviewed before the AI had looked. With `onlyIfPendingOn`, it lands only while the reading still awaits a check on
+ * that photo.
  */
 async function recordVerdict(
   db: Db,
   reading: Row,
-  evidence: AiVerdict,
-  {
-    actorUserId,
-    lands = () => true,
-    patch = {},
-  }: {
-    actorUserId: (before: Row) => AuthId;
-    lands?: (before: Row) => boolean;
-    patch?: Partial<Omit<Row, 'sequence'>>;
-  },
+  measurement: MeterMeasurement,
+  actorUserId: AuthId | null,
+  onlyIfPendingOn?: string,
 ) {
   return db.transaction(async (tx) => {
     await tx.select().from(contractingMachines).where(eq(contractingMachines.id, reading.machineId)).for('update');
     const before = await getReading({ db: tx, id: reading.id });
-    if (!lands(before)) return before;
-    return updateAudited(tx, actorUserId(before), before, {
-      ...evidence,
-      ...patch,
-      aiVerification: readingVerification(before.value, evidence.aiValue, evidence.aiConfidence),
+    const stale =
+      onlyIfPendingOn !== undefined &&
+      (before.aiVerification !== 'pending' || before.photo?.storageKey !== onlyIfPendingOn);
+    if (stale) return before;
+    return updateAudited(tx, actorUserId, before, {
+      ...measurement,
+      evidenceReviewedAt: null,
+      aiVerification: readingVerification(before.value, measurement.aiValue, measurement.aiConfidence),
     });
   });
 }
 
 /**
- * Checks a just-captured reading's photo and records the AI's verdict. It runs after the capture has answered, so
- * the person capturing never waits on the AI. A verdict lands only on a reading still pending on the same photo, so a
- * re-verify in the meantime wins. A failed check leaves the reading pending, for Re-verify to finish.
+ * Checks a just-captured reading's photo and records the AI's verdict, as the System. It runs after the capture has
+ * answered, so the person capturing never waits on the AI, and a re-verify in the meantime wins. A failed check
+ * throws for the caller to log and leaves the reading pending, for Re-verify or the next start-up to finish.
  */
 export async function verifyCapturedReading({
   db,
@@ -456,16 +463,19 @@ export async function verifyCapturedReading({
 }) {
   const captured = await getReading({ db, id });
   if (!captured.photo || captured.aiVerification !== 'pending') return captured;
-  const storageKey = captured.photo.storageKey;
-  const evidence = await checkStoredPhoto(storage, captured, storageKey, readPhoto);
-  if (evidence.aiVerification === 'pending') return captured;
-  return recordVerdict(db, captured, evidence, {
-    // The capture's own follow-up, so it is audited as the person who captured it.
-    actorUserId: (before) => before.capturedByUserId,
-    lands: (before) => before.aiVerification === 'pending' && before.photo?.storageKey === storageKey,
-    // A review made before the AI had looked never covers its verdict.
-    patch: { evidenceReviewedAt: null },
-  });
+  const measurement = await measureStoredPhoto(storage, captured.photo, readPhoto);
+  if (!measurement) throw verificationFailed();
+  return recordVerdict(db, captured, measurement, null, captured.photo.storageKey);
+}
+
+/** Photo readings still waiting on their AI check, such as those a restart interrupted. */
+export async function listReadingsAwaitingVerification({ db }: { db: Db }) {
+  const rows = await db
+    .select({ id: contractingHourReadings.id })
+    .from(contractingHourReadings)
+    .where(eq(contractingHourReadings.aiVerification, 'pending'))
+    .orderBy(contractingHourReadings.sequence);
+  return rows.map((row) => row.id);
 }
 
 export async function reverifyReading({
@@ -483,14 +493,9 @@ export async function reverifyReading({
 }) {
   const owner = await getReading({ db, id });
   if (!owner.photo) throw new ReadingError('reading.no_photo', 'This reading has Missing Photo Evidence.');
-  const evidence = await checkStoredPhoto(storage, owner, owner.photo.storageKey, readPhoto);
-  if (evidence.aiVerification === 'pending')
-    throw new ReadingError(
-      'reading.verification_failed',
-      'AI verification failed. Previous evidence has been kept; try again.',
-    );
-  // A fresh verdict reopens the evidence for review.
-  return recordVerdict(db, owner, evidence, { actorUserId: () => actorUserId, patch: { evidenceReviewedAt: null } });
+  const measurement = await measureStoredPhoto(storage, owner.photo, readPhoto);
+  if (!measurement) throw verificationFailed();
+  return recordVerdict(db, owner, measurement, actorUserId);
 }
 
 export async function listFieldReadings({ db, machineId }: { db: Db; machineId: string }) {

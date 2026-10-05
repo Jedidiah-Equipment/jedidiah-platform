@@ -117,6 +117,7 @@ export const HourReading = z.object({
 export type HourReading = z.infer<typeof HourReading>;
 export const ReadingException = HourReading.extend({
   exceptionTypes: z.array(z.enum(readingExceptionTypes)).min(1),
+  photoBacked: z.boolean(),
   capturedByName: z.string().nullable(),
   amendedByName: z.string().nullable(),
   machineCode: z.string(),

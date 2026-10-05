@@ -2,8 +2,9 @@ import { keepPreviousData, useInfiniteQuery } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
 import { View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { PaginatedList } from '@/components/PaginatedList';
 import { Text } from '@/components/ui/text';
-import { CatalogListSkeleton, PaginatedCatalogList } from '@/equipment/components/CatalogList';
+import { CatalogListSkeleton } from '@/equipment/components/CatalogList';
 import { MainTabToolbar } from '@/equipment/components/TopToolbar';
 import { UnitCatalogCard, UnitCatalogControls } from '@/equipment/components/units/UnitCatalog';
 import { MAIN_TAB_PARENTS } from '@/equipment/lib/toolbar-navigation';
@@ -68,7 +69,7 @@ export default function UnitsRoute() {
         subtitle={total === null ? 'Loading units…' : `${total} ${total === 1 ? 'unit' : 'units'}`}
         title="Units"
       />
-      <PaginatedCatalogList
+      <PaginatedList
         emptyContent={emptyContent}
         hasNextPage={units.hasNextPage}
         header={

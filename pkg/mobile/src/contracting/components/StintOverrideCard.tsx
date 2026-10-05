@@ -2,6 +2,7 @@ import { useStore } from '@tanstack/react-form';
 import { useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { useAppForm } from '@/components/form';
+import { FieldShell } from '@/components/form/fields/FieldShell';
 import { Text } from '@/components/ui/text';
 import { implementOption } from '@/contracting/components/implement-option';
 import { useDrivers, useImplements } from '@/contracting/jobs/use-jobs';
@@ -36,10 +37,7 @@ export function StintOverrideCard({
   const implementsQuery = useImplements();
   const driversQuery = useDrivers();
   return (
-    <View className="gap-2">
-      <Text className="text-sm text-foreground" weight="semibold">
-        Implement & driver
-      </Text>
+    <FieldShell label="Implement & driver">
       <View className="flex-row items-center gap-3 rounded-xl border border-border bg-surface px-4 py-3">
         <Text className="min-w-0 flex-1 text-sm text-foreground" numberOfLines={1}>
           {planned.implementCode ?? 'No implement'} · {planned.driverName ?? 'No driver'}
@@ -92,6 +90,6 @@ export function StintOverrideCard({
           </overrides.form.AppField>
         </View>
       ) : null}
-    </View>
+    </FieldShell>
   );
 }

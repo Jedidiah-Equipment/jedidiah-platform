@@ -1,10 +1,6 @@
 import { type AuditListInput, type Business, DateIso, getBusinessAuditEntityTypes } from '@pkg/schema';
 import type { ColumnFiltersState } from '@tanstack/react-table';
-
-type DateRangeFilterValue = {
-  end?: string;
-  start?: string;
-};
+import { readDateRangeFilter, readMultiSelectFilter } from '@/components/data-table/column-filter-values.js';
 
 export type AuditTableFixedFilters = Partial<Pick<AuditListInput['filters'], 'entityIds' | 'entityTypes'>>;
 
@@ -13,14 +9,14 @@ export function getAuditListInputExtras(
   columnFilters: ColumnFiltersState,
   fixedFilters: AuditTableFixedFilters = {},
 ) {
-  const occurredAtRange = getDateRangeFilterValue(columnFilters, 'occurredAt');
+  const occurredAtRange = readDateRangeFilter(columnFilters, 'occurredAt');
   const occurredAtStart = occurredAtRange.start ? DateIso.parse(toLocalDayStartIso(occurredAtRange.start)) : undefined;
   const occurredAtEnd = occurredAtRange.end ? DateIso.parse(toLocalDayEndIso(occurredAtRange.end)) : undefined;
 
   return {
     business,
     filters: {
-      actorUserIds: getMultiSelectFilterValue(columnFilters, 'actorUserId'),
+      actorUserIds: readMultiSelectFilter(columnFilters, 'actorUserId'),
       entityIds: fixedFilters.entityIds ?? [],
       entityTypes: fixedFilters.entityTypes ?? getEntityTypeFilterValue(business, columnFilters),
       ...(occurredAtStart ? { occurredAtStart } : {}),
@@ -29,38 +25,15 @@ export function getAuditListInputExtras(
   } satisfies Pick<AuditListInput, 'business' | 'filters'>;
 }
 
-function getMultiSelectFilterValue(columnFilters: ColumnFiltersState, id: 'actorUserId' | 'entityType'): string[] {
-  const value = columnFilters.find((filter) => filter.id === id)?.value;
-
-  return Array.isArray(value)
-    ? value.filter((item): item is string => typeof item === 'string' && item.length > 0)
-    : [];
-}
-
 function getEntityTypeFilterValue(
   business: Business,
   columnFilters: ColumnFiltersState,
 ): AuditListInput['filters']['entityTypes'] {
   const allowedEntityTypes = new Set<string>(getBusinessAuditEntityTypes(business));
 
-  return getMultiSelectFilterValue(columnFilters, 'entityType').filter((entityType) =>
+  return readMultiSelectFilter(columnFilters, 'entityType').filter((entityType) =>
     allowedEntityTypes.has(entityType),
   ) as AuditListInput['filters']['entityTypes'];
-}
-
-function getDateRangeFilterValue(columnFilters: ColumnFiltersState, id: 'occurredAt'): DateRangeFilterValue {
-  const value = columnFilters.find((filter) => filter.id === id)?.value;
-
-  if (!value || typeof value !== 'object' || Array.isArray(value)) {
-    return {};
-  }
-
-  const range = value as { end?: unknown; start?: unknown };
-
-  return {
-    ...(typeof range.end === 'string' && range.end ? { end: range.end } : {}),
-    ...(typeof range.start === 'string' && range.start ? { start: range.start } : {}),
-  };
 }
 
 function toLocalDayStartIso(value: string): string | undefined {

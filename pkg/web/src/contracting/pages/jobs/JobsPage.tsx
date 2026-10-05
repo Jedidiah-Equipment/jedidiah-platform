@@ -2,10 +2,10 @@ import { formatCurrency, formatDate, formatNumber } from '@pkg/domain';
 import {
   assignmentAttentionLevelColorClassNames,
   countedAssignmentAttentionLevel,
-  jobQueueColorClassNames,
   jobQueueLabels,
   jobQueueOf,
   judgeJobAction,
+  openJobQueues,
 } from '@pkg/domain/contracting';
 import type { JobListInput, JobSummary } from '@pkg/schema/contracting';
 import { CustomerName, FarmName, JobSortBy, jobQueues, WorkTypeName } from '@pkg/schema/contracting';
@@ -34,18 +34,9 @@ import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.j
 import { getApiQueryErrorMessage } from '@/lib/api-errors.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { cn } from '@/lib/utils.js';
+import { JobStageQuickFilters } from './JobStageQuickFilters.js';
 import { JobQueueBadge } from './JobStatusBadge.js';
-import {
-  isOnlyStage,
-  isPickedStages,
-  listedStages,
-  quickFilterStages,
-  STAGE_COLUMN_ID,
-  stagesCount,
-  toggleQuickFilter,
-  toggleStages,
-} from './job-stage-filter.js';
-import { QuickFilterButton } from './QuickFilterButton.js';
+import { listedStages, STAGE_COLUMN_ID } from './job-stage-filter.js';
 import { JobCreateValues, toJobCreateInput } from './types.js';
 import { useJobWrite } from './use-job-write.js';
 
@@ -95,8 +86,7 @@ export function JobsPage() {
     (job: JobSummary) => !!access && judgeJobAction('assignForeman', job, access).allowed,
     [access],
   );
-  const counts = useQuery(trpc.contractingJobs.jobs.queueCounts.queryOptions());
-  const activeAttention = useQuery(trpc.contractingJobs.jobs.activeAttention.queryOptions());
+  const queues = useQuery(trpc.contractingJobs.jobs.queues.queryOptions());
   const tableController = useServerSideTableController({
     store: useJobsTableStore,
     sortOptions: jobSortOptions,
@@ -278,7 +268,6 @@ export function JobsPage() {
       sorting: tableController.sorting,
     },
   });
-  const quickStages = quickFilterStages(counts.data, tableController.columnFilters);
   return (
     <>
       <PageLayout
@@ -287,38 +276,15 @@ export function JobsPage() {
         size="full"
         actions={canCreate ? <Button onClick={flow.open}>New job</Button> : undefined}
       >
-        <ErrorMessage
-          error={counts.error ?? foremen.error ?? activeAttention.error}
-          fallbackMessage="Unable to load Jobs."
+        <ErrorMessage error={queues.error ?? foremen.error} fallbackMessage="Unable to load Jobs." />
+        <JobStageQuickFilters
+          label="Job stages"
+          stages={openJobQueues}
+          allStages={jobQueues}
+          summary={queues.data}
+          columnFilters={tableController.columnFilters}
+          onColumnFiltersChange={tableController.setColumnFilters}
         />
-        <fieldset className="scrollbar-none flex gap-1.5 overflow-x-auto" aria-label="Job stages">
-          {quickStages.map((item) => (
-            <QuickFilterButton
-              key={item}
-              count={counts.data?.[item] ?? 0}
-              pressed={isOnlyStage(tableController.columnFilters, item)}
-              onClick={() => tableController.setColumnFilters((current) => toggleQuickFilter(current, item))}
-              attention={
-                item === 'active' && activeAttention.data ? (
-                  <IconAlertTriangle
-                    aria-label="Jobs need a look"
-                    className={cn('size-3.5', assignmentAttentionLevelColorClassNames[activeAttention.data].icon)}
-                  />
-                ) : null
-              }
-            >
-              <span aria-hidden="true" className={cn('size-2 rounded-full', jobQueueColorClassNames[item].dot)} />
-              <span>{jobQueueLabels[item]}</span>
-            </QuickFilterButton>
-          ))}
-          <QuickFilterButton
-            count={stagesCount(counts.data)}
-            pressed={isPickedStages(tableController.columnFilters, jobQueues)}
-            onClick={() => tableController.setColumnFilters((current) => toggleStages(current, jobQueues))}
-          >
-            <span>All</span>
-          </QuickFilterButton>
-        </fieldset>
         <DataTable
           emptyMessage="No Jobs found."
           errorMessage={getApiQueryErrorMessage(jobsQuery.error, 'Unable to load Jobs.')}

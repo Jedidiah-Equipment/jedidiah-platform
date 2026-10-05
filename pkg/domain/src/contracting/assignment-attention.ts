@@ -1,10 +1,9 @@
-import {
-  type AiFlaggedVerification,
-  type AssignmentAttentionLevel,
-  assignmentAttentionLevels,
-  type JobReadingAttentionKind,
-  type NeedsALookLevel,
-  type ReadingExceptionType,
+import type {
+  AiFlaggedVerification,
+  AssignmentAttentionLevel,
+  JobReadingAttentionKind,
+  NeedsALookLevel,
+  ReadingExceptionType,
 } from '@pkg/schema/contracting';
 import { type BadgeColorClassNames, statusBadgeColorClassNames } from '../theme/status-badge.js';
 
@@ -20,14 +19,14 @@ export const needsALook = (level: AssignmentAttentionLevel): level is NeedsALook
 /** Everything that can flag a Machine Assignment: its Gap Flag and each reading's attention kinds. */
 export type AssignmentAttentionKind = 'gap-flag' | JobReadingAttentionKind;
 
-export const assignmentAttentionKindLevels: Record<AssignmentAttentionKind, AssignmentAttentionLevel> = {
+export const assignmentAttentionKindLevels = {
   'gap-flag': 'critical',
   disputed: 'critical',
   'ai-disagrees': 'warning',
   'ai-low-confidence': 'warning',
   'ai-pending': 'notice',
   'missing-photo': 'notice',
-};
+} as const satisfies Record<AssignmentAttentionKind, AssignmentAttentionLevel>;
 
 export const assignmentAttentionKindLabels: Record<AssignmentAttentionKind, string> = {
   'gap-flag': 'Gap flag',
@@ -42,28 +41,18 @@ export const assignmentAttentionKindLabels: Record<AssignmentAttentionKind, stri
 export const aiVerificationLevel = (verification: AiFlaggedVerification): AssignmentAttentionLevel =>
   assignmentAttentionKindLevels[`ai-${verification}`];
 
-export const readingExceptionTypeLevels: Record<ReadingExceptionType, NeedsALookLevel> = {
-  disputed: 'critical',
+/** Each Reading Exceptions type at its kind's level; every AI verdict that needs a look is a warning. */
+export const readingExceptionTypeLevels = {
+  disputed: assignmentAttentionKindLevels.disputed,
   'ai-flagged': 'warning',
-};
-
-/** The loudest of these levels, or null when there are none. */
-export function highestAssignmentAttentionLevel(
-  levels: Iterable<AssignmentAttentionLevel>,
-): AssignmentAttentionLevel | null {
-  let highest: AssignmentAttentionLevel | null = null;
-  for (const level of levels)
-    if (highest === null || assignmentAttentionLevels.indexOf(level) > assignmentAttentionLevels.indexOf(highest))
-      highest = level;
-  return highest;
-}
+} as const satisfies Record<ReadingExceptionType, NeedsALookLevel>;
 
 export type AssignmentAttentionCounts = Record<NeedsALookLevel, number>;
 
 /** The loudest of these levels when it needs a look, or null when none does. */
 export function loudestNeedingALook(levels: Iterable<AssignmentAttentionLevel>): NeedsALookLevel | null {
-  const level = highestAssignmentAttentionLevel(levels);
-  return level !== null && needsALook(level) ? level : null;
+  const present = new Set(levels);
+  return present.has('critical') ? 'critical' : present.has('warning') ? 'warning' : null;
 }
 
 /** The level a count of items needing a look shows at, or null when nothing needs a look. */
@@ -81,10 +70,8 @@ export function jobAssignmentAttentionCounts(
   openGapFlags: number,
   readings: AssignmentAttentionCounts,
 ): AssignmentAttentionCounts {
-  const counts = { ...readings };
   const gapLevel = assignmentAttentionKindLevels['gap-flag'];
-  if (needsALook(gapLevel)) counts[gapLevel] += openGapFlags;
-  return counts;
+  return { ...readings, [gapLevel]: readings[gapLevel] + openGapFlags };
 }
 
 type AttentionReading = { attention: readonly JobReadingAttentionKind[] };

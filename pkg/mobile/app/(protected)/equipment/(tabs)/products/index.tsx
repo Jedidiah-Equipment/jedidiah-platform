@@ -2,8 +2,9 @@ import { keepPreviousData, useInfiniteQuery, useQuery } from '@tanstack/react-qu
 import { useMemo, useState } from 'react';
 import { View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { PaginatedList } from '@/components/PaginatedList';
 import { Text } from '@/components/ui/text';
-import { CatalogListSkeleton, PaginatedCatalogList } from '@/equipment/components/CatalogList';
+import { CatalogListSkeleton } from '@/equipment/components/CatalogList';
 import { ProductCatalogCard, ProductCatalogControls } from '@/equipment/components/products/ProductCatalog';
 import { MainTabToolbar } from '@/equipment/components/TopToolbar';
 import {
@@ -76,7 +77,7 @@ export default function ProductsRoute() {
         subtitle={count === null ? 'Loading catalog…' : `${count} ${count === 1 ? 'product' : 'products'}`}
         title="Products"
       />
-      <PaginatedCatalogList
+      <PaginatedList
         emptyContent={emptyContent}
         hasNextPage={products.hasNextPage}
         header={

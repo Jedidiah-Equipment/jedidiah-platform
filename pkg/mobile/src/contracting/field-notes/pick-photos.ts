@@ -1,6 +1,6 @@
 import * as ImagePicker from 'expo-image-picker';
 import { Platform } from 'react-native';
-import { PHOTO_QUALITY } from '@/contracting/lib/photo-picker';
+import { PHOTO_QUALITY } from '@/lib/photo-picker';
 import { FieldNoteError, type PickedPhoto } from './store';
 
 // The web preview keeps photos inside the stored value, so it needs the bytes rather than a blob: URL.

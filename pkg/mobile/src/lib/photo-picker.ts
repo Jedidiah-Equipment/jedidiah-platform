@@ -3,8 +3,8 @@ import * as ImagePicker from 'expo-image-picker';
 export type PhotoSource = 'camera' | 'gallery';
 export const PHOTO_QUALITY = 0.7;
 
-/** One meter photo from the gallery with its EXIF, for Read At; null when the Foreman cancels. */
-export async function chooseMeterPhoto(): Promise<{ uri: string; exif: Record<string, unknown> | null } | null> {
+/** One photo from the gallery with its EXIF, for when it was taken; null when the person cancels. */
+export async function choosePhoto(): Promise<{ uri: string; exif: Record<string, unknown> | null } | null> {
   const result = await ImagePicker.launchImageLibraryAsync({
     mediaTypes: ['images'],
     exif: true,

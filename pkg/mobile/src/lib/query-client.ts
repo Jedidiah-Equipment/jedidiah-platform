@@ -3,6 +3,7 @@ import { MutationCache, QueryCache, QueryClient } from '@tanstack/react-query';
 
 import { captureEvent, captureException } from './observability';
 import type { MutationEventCatalog } from './observability-contract';
+import { isNotFoundError } from './trpc-errors';
 
 // Mirror web's defaults (pkg/web/src/lib/query-client.ts) so device and browser
 // behave the same; window-focus refetch is web-only and harmless on native.
@@ -40,6 +41,8 @@ export function createQueryClient({
       queries: {
         refetchOnWindowFocus: true,
         refetchOnReconnect: true,
+        // A record that is not found stays not found; only a failed request is worth asking again.
+        retry: (failures, error) => !isNotFoundError(error) && failures < 3,
       },
     },
   });

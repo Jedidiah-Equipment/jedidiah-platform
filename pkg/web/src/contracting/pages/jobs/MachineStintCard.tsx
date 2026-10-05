@@ -7,8 +7,7 @@ import {
   assignmentStateColorClassNames,
   GAP_FLAG_THRESHOLD_HOURS,
   isOverGapWindow,
-  judgeAssignmentAction,
-  needsALook,
+  shownReadingAttention,
 } from '@pkg/domain/contracting';
 import type {
   Assignment,
@@ -132,10 +131,7 @@ const readingAttentionIcons: Record<JobReadingAttentionKind, TablerIcon> = {
 
 function ReadingActions({ reading, stint, onOpen }: { reading: JobReading; stint: Assignment } & Opens) {
   const role = reading.role === 'arrival' ? 'arrival' : 'departure';
-  // An amendment settles the reading's notices, so only what still needs a look keeps its own icon.
-  const shown = reading.amendedAt
-    ? reading.attention.filter((kind) => needsALook(assignmentAttentionKindLevels[kind]))
-    : reading.attention;
+  const shown = shownReadingAttention(reading);
   if (!shown.length)
     return (
       <IconAction
@@ -229,13 +225,13 @@ function GapDetail({
 function GapRow({ stint, sheet, onOpen }: { stint: Assignment; sheet: JobSheet } & Opens) {
   const gapHours = stint.gapHours;
   if (gapHours === null || gapHours === 0) return null;
-  const verdict = judgeAssignmentAction('resolveGap', stint);
-  const why = !sheet.can('resolveGaps') ? sheet.refusal('resolveGaps') : verdict.allowed ? null : verdict.message;
+  const verdict = sheet.stintAction('resolveGaps', 'resolveGap', stint);
+  const why = verdict.allowed ? null : verdict.message;
   const open = () => onOpen({ kind: 'gap', stintId: stint.id });
   const edit = why ? null : <IconAction icon={IconPencil} label="Edit gap split" onClick={open} />;
   const hours = formatHours(gapHours);
   // A gap over the window keeps the Gap Flag's colour on its dot, open or resolved.
-  const tone = isOverGapWindow(gapHours) && needsALook(gapFlagLevel) ? gapFlagLevel : ('done' as const);
+  const tone = isOverGapWindow(gapHours) ? gapFlagLevel : ('done' as const);
 
   if (stint.gapFlag)
     return (
@@ -353,10 +349,10 @@ export function MachineStintCard({
         <ol className="mb-4 ml-2 space-y-3 border-l border-border pl-5">
           <TimelineRow
             actions={
-              sheet.can('assign') && judgeAssignmentAction('changeResources', stint).allowed ? (
+              sheet.stintAction('assign', 'changeResources', stint).allowed ? (
                 <>
                   <AssignmentEditDialog stint={stint} />
-                  {judgeAssignmentAction('remove', stint).allowed ? (
+                  {sheet.stintAction('assign', 'remove', stint).allowed ? (
                     <RemoveEntityButton
                       description="Remove this Machine Assignment?"
                       isPending={remove.isPending}
@@ -410,7 +406,7 @@ export function MachineStintCard({
           />
           <TimelineRow
             actions={
-              sheet.can('editMeasures') && judgeAssignmentAction('editMeasures', stint).allowed ? (
+              sheet.stintAction('editMeasures', 'editMeasures', stint).allowed ? (
                 <AddMeasureDialog stint={stint} />
               ) : null
             }

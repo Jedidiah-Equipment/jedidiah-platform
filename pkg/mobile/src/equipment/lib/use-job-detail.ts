@@ -3,8 +3,9 @@ import type { UUID } from '@pkg/schema';
 import { useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
 import { useTRPC } from '@/lib/trpc';
+import { isNotFoundError } from '@/lib/trpc-errors';
 import { useAccess } from '@/lib/use-access';
-import { isJobNotFoundError, type JobDetailReadyState, projectJobDetail } from './job-detail-projection';
+import { type JobDetailReadyState, projectJobDetail } from './job-detail-projection';
 
 export type { JobDetailReadyState, JobRouteStopCard } from './job-detail-projection';
 
@@ -33,7 +34,7 @@ export function useJobDetail(jobId: string): JobDetailState {
     if (accessQuery.error && accessQuery.data === undefined) return { status: 'error', error: accessQuery.error };
     if (!canReadJobs) return { status: 'forbidden' };
 
-    if (jobQuery.error && isJobNotFoundError(jobQuery.error)) return { status: 'not-found' };
+    if (jobQuery.error && isNotFoundError(jobQuery.error)) return { status: 'not-found' };
     if (baysQuery.error || jobQuery.error) return { status: 'error', error: baysQuery.error ?? jobQuery.error };
     if (baysQuery.isPending || jobQuery.isPending) return { status: 'pending' };
 

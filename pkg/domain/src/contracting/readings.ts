@@ -101,10 +101,23 @@ export const readingNeedsALook = (reading: ReadingAttentionFacts): boolean => re
 export function readingExceptionTypes(reading: ReadingAttentionFacts): ReadingExceptionType[] {
   const { disputed, aiFlagged } = readingAttention(reading);
   return [
-    ...(disputed && needsALook(assignmentAttentionKindLevels.disputed) ? (['disputed'] as const) : []),
+    ...(disputed ? (['disputed'] as const) : []),
     ...(aiFlagged && needsALook(aiVerificationLevel(aiFlagged)) ? (['ai-flagged'] as const) : []),
   ];
 }
+
+/** The attention a reading's row shows: an amendment settles its notices, so only what still needs a look stays. */
+export const shownReadingAttention = (reading: {
+  amendedAt: string | null;
+  attention: readonly JobReadingAttentionKind[];
+}): readonly JobReadingAttentionKind[] =>
+  reading.amendedAt === null
+    ? reading.attention
+    : reading.attention.filter((kind) => needsALook(assignmentAttentionKindLevels[kind]));
+
+/** An amendment that acknowledged the current AI finding is the latest word on a reading; a re-verify reopens it. */
+export const amendmentSettledFinding = (reading: { amendedAt: string | null; evidenceReviewedAt: string | null }) =>
+  reading.amendedAt !== null && reading.evidenceReviewedAt !== null;
 
 export function meterDisagreementHint({
   value,

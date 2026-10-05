@@ -2,9 +2,10 @@ import { groupBaysByDepartmentPipeline } from '@pkg/domain/equipment';
 import { useMemo, useState } from 'react';
 import { View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { PaginatedList } from '@/components/PaginatedList';
 import { Text } from '@/components/ui/text';
 import { PlanCatalogCard, PlanCatalogControls, PlanDepartmentHeader } from '@/equipment/components/bays/PlanCatalog';
-import { CatalogListSkeleton, PaginatedCatalogList } from '@/equipment/components/CatalogList';
+import { CatalogListSkeleton } from '@/equipment/components/CatalogList';
 import { MainTabToolbar } from '@/equipment/components/TopToolbar';
 import { type BaySort, filterBayCards, isBaySort, sortBayCards } from '@/equipment/lib/bay-sort';
 import { MAIN_TAB_PARENTS } from '@/equipment/lib/toolbar-navigation';
@@ -44,7 +45,7 @@ export default function PlanRoute() {
         subtitle={total === null ? 'Loading Plan…' : `${total} ${total === 1 ? 'Bay' : 'Bays'}`}
         title="Plan"
       />
-      <PaginatedCatalogList
+      <PaginatedList
         emptyContent={emptyContent}
         hasNextPage={false}
         header={<PlanCatalogControls onSearchChange={setSearch} onSortChange={setSort} search={search} sort={sort} />}

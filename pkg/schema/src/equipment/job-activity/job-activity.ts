@@ -32,7 +32,7 @@ export const GeneralFeedbackActivityItem = z.object({
   occurredAt: DateIso,
   job: JobActivityJobRef,
   // No Status: it is a fact about the inbox queue, and this feed is read to catch up rather than to
-  // triage, so a subject surface never shows it (CONTEXT.md, Feedback).
+  // triage, so a subject surface never shows it (GLOSSARY-EQUIPMENT.md, Feedback).
   feedback: z.object({
     submitter: FeedbackSubmitter,
     text: FeedbackText,

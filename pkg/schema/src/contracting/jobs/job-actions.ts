@@ -31,7 +31,7 @@ export const JobActionVerdict = z.discriminatedUnion('allowed', [
 ]);
 export type JobActionVerdict = z.infer<typeof JobActionVerdict>;
 
-/** The Job Actions verdicts for the person asking (see CONTEXT-CONTRACTING.md); permission sits inside them. */
+/** The Job Actions verdicts for the person asking (see GLOSSARY-CONTRACTING.md); permission sits inside them. */
 export const JobActions = z.object(
   Object.fromEntries(jobActionNames.map((name) => [name, JobActionVerdict])) as Record<
     JobActionName,

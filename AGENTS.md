@@ -16,13 +16,14 @@
   `toLocaleString`, `Intl.*Format`, or `toFixed` for display; Biome and a `pkg/api` conventions test enforce it.
 - Mass renames go into `.git-blame-ignore-revs` as the squash commit that landed on `main`, added after
   the merge; a test in `pkg/api` rejects hashes that are not ancestors of HEAD.
-- `CONTEXT.md` holds the domain vocabulary and invariants; `docs/adr/` holds the decisions behind them.
-  Search both for the term you need rather than loading either wholesale, and use their terms in issues,
-  tests, and planning. If a needed term is missing, or a recommendation conflicts with an ADR, say so
-  instead of inventing local vocabulary.
+- `GLOSSARY-MAP.md` points at the per-business glossaries (`GLOSSARY-EQUIPMENT.md`, `GLOSSARY-CONTRACTING.md`),
+  which hold the domain vocabulary and invariants; `docs/adr/` holds the decisions behind them. Search
+  both for the term you need rather than loading either wholesale, and use their terms in issues, tests,
+  and planning. If a needed term is missing, or a recommendation conflicts with an ADR, say so instead of
+  inventing local vocabulary.
 - Definition of done: a `pkg/docs` page changes when the procedure it documents changes, when the change
   leaves it wrong, or when a genuinely new user-facing procedure ships — that page and its `HELP_TOPICS`
-  entry (`@pkg/domain`) land in the same PR, the same discipline `CONTEXT.md` already gets. Everything else
+  entry (`@pkg/domain`) land in the same PR, the same discipline the glossaries already get. Everything else
   leaves the docs alone: an edit that corrects nothing and adds no step is bloat, so ship the code and say
   the docs already hold. A test in `pkg/docs` fails when a registry entry names a page that does not exist;
   a screen shipping with no entry at all is on the author.

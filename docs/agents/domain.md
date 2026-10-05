@@ -1,15 +1,15 @@
 # Domain docs
 
-This repo has two bounded contexts under ADR 0016. Engineering skills use the existing `CONTEXT`
-documents as their glossaries; their references to `GLOSSARY-MAP.md` mean `CONTEXT-MAP.md`, and their
-references to `GLOSSARY.md` mean the relevant business glossary below. Update these canonical files
+This repo has two bounded contexts under ADR 0016. `GLOSSARY-MAP.md` at the root
+points at one glossary per business. There is no root `GLOSSARY.md` and none should be created: a skill's
+reference to `GLOSSARY.md` means the relevant business glossary below. Update these canonical files
 when resolving vocabulary or invariants.
 
 ## Read for the area being changed
 
-- `CONTEXT-MAP.md`: context boundaries, shared concepts, collision rules, and glossary locations.
-- `CONTEXT.md`: Equipment vocabulary and invariants.
-- `CONTEXT-CONTRACTING.md`: Contracting vocabulary and invariants.
+- `GLOSSARY-MAP.md`: context boundaries, shared concepts, collision rules, and glossary locations.
+- `GLOSSARY-EQUIPMENT.md`: Equipment vocabulary and invariants.
+- `GLOSSARY-CONTRACTING.md`: Contracting vocabulary and invariants.
 - `docs/adr/`: architectural decisions for both businesses and shared infrastructure.
 
 Search the map, relevant glossary, and ADRs for the concept first, then read the matching sections
@@ -29,4 +29,4 @@ terms in the relevant existing glossary and shared concepts or collision rules i
 
 If a recommendation conflicts with an ADR, identify that conflict explicitly. Record a new or revised
 architectural decision in `docs/adr/` when it is resolved. Preserve the consumer rule from ADR 0004:
-`CONTEXT.md` is a human glossary and must not be scraped wholesale into runtime prompts.
+the glossaries are for human readers and must not be scraped wholesale into runtime prompts.

@@ -10,7 +10,7 @@ Assembled 2026-07-28 from the decisions on wayfinder map [#881](https://github.c
 
 ## 1. Vocabulary
 
-New domain terms (CONTEXT.md gains these at implementation):
+New domain terms (GLOSSARY-EQUIPMENT.md gains these at implementation):
 
 - **Stock Movement** — one append-only ledger row changing an item's stock or cost. Never edited, never deleted.
 - **Stock Tracking Mode** — per-item: `perpetual` (every movement recorded; SOH = ledger sum) or `periodic` (receipts and stocktake counts only; no consumption movements).
@@ -19,7 +19,7 @@ New domain terms (CONTEXT.md gains these at implementation):
 - **Commitment** — derived, never stored: `max(0, CFO quantity − checked out)` per part per Job.
 - **Close-out** — the inventory-local action ending a Job's stock life: return leftovers, release remaining commitment. Not a Job status.
 - **Stocktake Session** — a first-class counting session: opened with a scope, counted item-by-item, closed; the close surfaces skipped items.
-- **Purchase Order** — now the live entity (supplier, lines, states). The historical `purchase_order` Job documents were hand-made ancestors of exactly this; CONTEXT.md's entry is rewritten.
+- **Purchase Order** — now the live entity (supplier, lines, states). The historical `purchase_order` Job documents were hand-made ancestors of exactly this; GLOSSARY-EQUIPMENT.md's entry is rewritten.
 
 "Part" widens from "the reusable purchasable item layer" to **"stockable catalog item, bought or built"**. "Assembly" stays Product-owned (Standard/Optional, quote-facing) — a standalone assembly is a Built Part, not an Assembly.
 

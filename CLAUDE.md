@@ -13,5 +13,5 @@ Use the five default triage roles. Before assigning a triage role, read `docs/ag
 
 ### Domain docs
 
-Multi-context layout uses `CONTEXT-MAP.md` and the existing business glossaries. Before domain work,
+Multi-context layout: `GLOSSARY-MAP.md` points at one glossary per business. Before domain work,
 read `docs/agents/domain.md`.

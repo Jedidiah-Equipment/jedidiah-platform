@@ -1,10 +1,9 @@
-# Context Map
+# Glossary Map
 
 This platform serves two businesses under one owner, as two bounded contexts (ADR 0016):
 
-- **Jedidiah Equipment** — glossary in [CONTEXT.md](CONTEXT.md) (renames to `CONTEXT-EQUIPMENT.md`
-  during the phase-0 symmetric migration).
-- **Jedidiah Contracting** — glossary in [CONTEXT-CONTRACTING.md](CONTEXT-CONTRACTING.md).
+- **Jedidiah Equipment** — glossary in [GLOSSARY-EQUIPMENT.md](GLOSSARY-EQUIPMENT.md).
+- **Jedidiah Contracting** — glossary in [GLOSSARY-CONTRACTING.md](GLOSSARY-CONTRACTING.md).
 
 An unqualified term means the context you are standing in. Crossing contexts, qualify it:
 **Equipment Job** / **Contracting Job**. The two contexts deliberately reuse ordinary words (Job,

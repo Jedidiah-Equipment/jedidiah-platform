@@ -2,7 +2,7 @@
 
 Core, API, and web have separate responsibilities. `@pkg/core` owns domain behavior and feature-specific expected errors. The API maps those errors to transport status, public messages, and exposed `appCode`s. The web presents API messages for expected failures and shared fallback copy for unknown failures.
 
-Runtime assistant guidance is code-owned in the AI API layer. Tool descriptors, relationship guidance, retrieval playbooks, and assistant-facing link projections should be structured code close to tool dispatch and route metadata. `CONTEXT.md` is a human glossary and must not be scraped wholesale into runtime prompts.
+Runtime assistant guidance is code-owned in the AI API layer. Tool descriptors, relationship guidance, retrieval playbooks, and assistant-facing link projections should be structured code close to tool dispatch and route metadata. `GLOSSARY-EQUIPMENT.md` is a human glossary and must not be scraped wholesale into runtime prompts.
 
 Top-level routed entities use a create-dialog/edit-autosave pattern. Creation happens in a list-owned dialog with the minimum fields needed to create a valid entity. Editing happens on the entity edit route with the full form, autosave, invalid/failed save feedback, and no positive success toast for ordinary autosaves. Nested child entities stay in-context unless a new decision changes that.
 

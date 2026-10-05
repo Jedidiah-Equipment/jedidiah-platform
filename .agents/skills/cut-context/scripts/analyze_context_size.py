@@ -33,8 +33,8 @@ def kind_for(rel_path: Path) -> str | None:
 
     if rel_path.name == "AGENTS.md":
         return "AGENTS.md"
-    if rel_path.name == "CONTEXT.md":
-        return "CONTEXT.md"
+    if rel_path.name.startswith("GLOSSARY-") and rel_path.suffix == ".md":
+        return "glossary"
     if len(parts) >= 2 and parts[-2] == "adr" and rel_path.suffix == ".md":
         return "ADR"
     if len(parts) >= 2 and parts[0] == "docs" and parts[1] == "agents" and rel_path.suffix in {".md", ".yaml", ".yml"}:

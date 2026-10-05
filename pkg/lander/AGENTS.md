@@ -27,7 +27,7 @@
 
 ## Localization
 
-- Follow `docs/adr/0011-lander-localization.md` and the Lander Localization vocabulary in `CONTEXT.md`.
+- Follow `docs/adr/0011-lander-localization.md` and the Lander Localization vocabulary in `GLOSSARY-EQUIPMENT.md`.
 - `src/messages/types.ts` is the single source of truth for static-copy shape. Every locale dictionary must
   conform to `Messages` without `any` or casts; do not introduce an i18n library.
 - All user-facing static copy belongs in the dictionaries — SEO titles/descriptions, aria labels, alt text,

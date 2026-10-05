@@ -38,7 +38,7 @@ import { QuoteOfferingType, QuoteWorkTitle } from './quote-shared.js';
 export type QuoteStatus = z.infer<typeof QuoteStatus>;
 export const QuoteStatus = z.enum(['draft', 'sent', 'accepted', 'rejected', 'cancelled']);
 
-/** Delivery Terms (see CONTEXT.md): only `additional_charge` carries a delivery price. */
+/** Delivery Terms (see GLOSSARY-EQUIPMENT.md): only `additional_charge` carries a delivery price. */
 export type QuoteDeliveryTerms = z.infer<typeof QuoteDeliveryTerms>;
 export const QuoteDeliveryTerms = z.enum(['included', 'additional_charge', 'ex_factory', 'tbc']);
 

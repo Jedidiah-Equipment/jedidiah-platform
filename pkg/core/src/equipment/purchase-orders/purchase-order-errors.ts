@@ -53,7 +53,7 @@ export class PurchaseOrderPartNotPurchasableError extends Error {
  * A never-costed line is written unpriced — a zero standing for "not priced yet". Sending is the
  * human assertion that the price was agreed (spec §4), and a receipt against a zero-priced line
  * would stamp that zero onto the ledger as cost, establishing a zero moving average for a Part that
- * should read "no cost yet" (CONTEXT.md). This check keeps the assertion honest; an order that
+ * should read "no cost yet" (GLOSSARY-EQUIPMENT.md). This check keeps the assertion honest; an order that
  * genuinely costs nothing has to say so on the draft rather than by omission.
  */
 export class PurchaseOrderLineNotPricedError extends Error {

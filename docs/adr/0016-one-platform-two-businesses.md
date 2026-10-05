@@ -57,7 +57,7 @@ codebase says so everywhere the same way:
   stored `business` field into this derivation). Only users with both slots filled (a handful of
   principals) see the mode switcher; everyone else experiences a single-business app. One
   `super-admin` role spans the split. Server-side checks remain the security boundary, as ever.
-- **Vocabulary.** Two bounded contexts under a root `CONTEXT-MAP.md`: the existing glossary
+- **Vocabulary.** Two bounded contexts under a root `GLOSSARY-MAP.md`: the existing glossary
   becomes the Equipment context, contracting gets its own, and the map holds the shared concepts
   and collision rules (an unqualified "Job" means the context you are standing in; crossing
   contexts you say Equipment Job / Contracting Job). The codename "JedConOps" does not survive

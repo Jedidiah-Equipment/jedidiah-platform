@@ -1,6 +1,6 @@
 # Jedidiah Contracting Context
 
-Glossary for the Jedidiah Contracting side of the platform (see [CONTEXT-MAP.md](CONTEXT-MAP.md)).
+Glossary for the Jedidiah Contracting side of the platform (see [GLOSSARY-MAP.md](GLOSSARY-MAP.md)).
 The app's modes display as **Jedidiah Equipment** and **Jedidiah Contracting**; the codename
 "JedConOps" is retired and never appears in code or UI.
 
@@ -245,7 +245,7 @@ readings from the field — and it notifies the workshop manager by push notific
 ## Access
 
 A user's contracting role fills one of the two role slots defined in
-[CONTEXT-MAP.md](CONTEXT-MAP.md); holding one is what grants Jedidiah Contracting access at all.
+[GLOSSARY-MAP.md](GLOSSARY-MAP.md); holding one is what grants Jedidiah Contracting access at all.
 The Users page in Contracting mode lists the people holding a contracting role (and the spanning
 super-admin) and assigns only contracting roles; it needs `user:list`, which no contracting role
 holds, so in practice a super-admin runs it. Server-side checks are the security boundary; browser

@@ -7,7 +7,7 @@
 Monorepo for Jedidah Ops: a manufacturing operations platform covering the quote → job → production-floor
 workflow, with a customer-facing marketing site and an Expo mobile app.
 
-- Domain vocabulary and invariants: [CONTEXT.md](CONTEXT.md)
+- Domain vocabulary and invariants: [GLOSSARY-MAP.md](GLOSSARY-MAP.md), [GLOSSARY-EQUIPMENT.md](GLOSSARY-EQUIPMENT.md) and [GLOSSARY-CONTRACTING.md](GLOSSARY-CONTRACTING.md)
 - Architecture decisions: [`docs/adr/`](docs/adr)
 - Conventions for working in the repo: [AGENTS.md](AGENTS.md) and each `pkg/*/AGENTS.md`
 
@@ -172,7 +172,7 @@ Role-to-permission mapping lives in `@pkg/domain/auth/authorization` and is shar
 plugin, server procedures, and the web access hooks. Server procedures use `authorizedProcedure(permission)`
 in [pkg/api/src/trpc/init.ts](pkg/api/src/trpc/init.ts); the browser uses `useAccess` / `canAccess` in
 `pkg/web`, which is UX only — the API is the authorization boundary. See the Access section of
-[CONTEXT.md](CONTEXT.md) for what each role can do.
+[GLOSSARY-EQUIPMENT.md](GLOSSARY-EQUIPMENT.md) for what each role can do.
 
 Auth is email/password only. There is intentionally no public registration UI; user provisioning stays
 admin-owned. Verification and password-reset emails are mocked locally unless `EMAIL_PROVIDER=resend` is

@@ -27,9 +27,9 @@
   does (Post a Receipt, Run a stocktake session) and explains theory in at most one linking sentence. A
   **concept page** explains one idea (why a warning is a judgment and not a block, perpetual versus
   periodic) and contains no steps.
-- **Vocabulary is `CONTEXT.md`'s, verbatim**, and matches what the UI says: Checkout, Receipt, Return to
+- **Vocabulary is `GLOSSARY-EQUIPMENT.md`'s, verbatim**, and matches what the UI says: Checkout, Receipt, Return to
   Store, Part. Never a synonym, never a second definition — these pages are the user-facing projection of
-  `CONTEXT.md`, not a competing glossary. If the right word is missing there, say so rather than coining one.
+  `GLOSSARY-EQUIPMENT.md`, not a competing glossary. If the right word is missing there, say so rather than coining one.
 - **Screenshot budget is zero by default.** Each image has to justify itself (what a Part Label looks like)
   and is cropped tight so incidental UI churn does not invalidate it. Numbered steps name the exact UI label
   instead of pointing at a picture.

@@ -10,6 +10,7 @@ import {
   jobQueueStatus,
   jobReadMode,
   parseJobNumber,
+  readableJobQueues,
 } from './jobs.js';
 
 describe('fieldJobAccessMode', () => {
@@ -75,5 +76,13 @@ describe('job queues', () => {
     expect(jobQueueOf({ status: 'completed', looksFinished: false })).toBe('awaiting-pricing');
     for (const queue of jobQueues)
       expect(jobQueueOf({ status: jobQueueStatus[queue], looksFinished: queue === 'looks-finished' })).toBe(queue);
+  });
+});
+
+describe('readableJobQueues', () => {
+  test('lists every queue for all-Jobs readers, open work for a Foreman, and Completed onward for Invoicing', () => {
+    expect(readableJobQueues('all')).toEqual([...jobQueues]);
+    expect(readableJobQueues('own')).toEqual(['upcoming', 'active', 'looks-finished', 'awaiting-pricing']);
+    expect(readableJobQueues('priced')).toEqual(['awaiting-pricing', 'awaiting-invoice', 'invoiced']);
   });
 });

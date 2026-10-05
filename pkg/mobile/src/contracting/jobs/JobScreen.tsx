@@ -28,7 +28,7 @@ export default function JobScreen() {
   const access = useSessionAccessSummary();
   const job = jobQuery.data;
   const finished = job ? hasJobCard(job.status) : false;
-  const gone = jobQuery.isSuccess && !job;
+  const gone = jobQuery.gone;
   const canCapture = job ? judgeJobAction('capture', job, access).allowed : false;
   const canAdd = job ? judgeJobAction('assign', job, access).allowed : false;
   const canShareJobCard = canOpenJobCards(access) && finished;
@@ -71,7 +71,7 @@ export default function JobScreen() {
           <View className="gap-2 rounded-xl border border-border bg-surface p-4">
             <View className="flex-row items-center justify-between gap-2">
               <Text className="min-w-0 flex-1 text-xl text-foreground" weight="bold" numberOfLines={1}>
-                {job.jobNumber}
+                {job.customerName} · {job.farmName}
               </Text>
               {finished ? (
                 <View className="shrink-0">
@@ -79,10 +79,8 @@ export default function JobScreen() {
                 </View>
               ) : null}
             </View>
-            <Text className="text-foreground">
-              {job.customerName} · {job.farmName}
-            </Text>
-            <Text className="text-muted-foreground">{job.workTypeName}</Text>
+            <Text className="text-foreground">{job.workTypeName}</Text>
+            <Text className="text-muted-foreground">{job.jobNumber}</Text>
             {job.description ? <Text className="text-muted-foreground">{job.description}</Text> : null}
           </View>
         ) : (

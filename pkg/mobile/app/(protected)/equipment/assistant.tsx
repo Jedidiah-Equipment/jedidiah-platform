@@ -8,8 +8,8 @@ import { Text } from '@/components/ui/text';
 import { useAssistant } from '@/equipment/components/assistant/AssistantProvider';
 import { Conversation, PromptInput } from '@/equipment/components/assistant/chat-ai';
 import { SecondaryPageToolbar } from '@/equipment/components/TopToolbar';
-import { useAssistantKeyboardBottomPadding } from '@/equipment/lib/assistant-keyboard';
 import { resolveAssistantParent } from '@/equipment/lib/toolbar-navigation';
+import { useKeyboardBottomPadding } from '@/lib/keyboard-padding';
 import { captureEvent } from '@/lib/observability';
 
 export default function AssistantRoute() {
@@ -20,7 +20,7 @@ export default function AssistantRoute() {
   const { clearError, error, messages, regenerate, sendMessage, status, stop } = useChat({ chat });
   const isStreaming = status === 'submitted' || status === 'streaming';
   const { bottom: safeAreaBottom } = useSafeAreaInsets();
-  const keyboardBottomPadding = useAssistantKeyboardBottomPadding(safeAreaBottom);
+  const keyboardBottomPadding = useKeyboardBottomPadding(safeAreaBottom);
 
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top', 'bottom', 'left', 'right']}>

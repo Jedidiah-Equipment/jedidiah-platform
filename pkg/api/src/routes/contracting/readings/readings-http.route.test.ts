@@ -9,7 +9,9 @@ import {
   createMachine,
   createWorkType,
   getJob,
+  getReading,
   listReadingsByMachine,
+  verifyCapturedReading,
 } from '@pkg/core/contracting';
 import { user } from '@pkg/db';
 import { accessForRole } from '@pkg/domain/testing';
@@ -18,6 +20,7 @@ import Fastify from 'fastify';
 import { expect, vi } from 'vitest';
 import { createTester } from '@/test/create-tester.js';
 import { mockSession } from '@/test/test-utils.js';
+import { ReadingVerificationQueue } from '../../../contracting/readings/reading-verification-queue.js';
 import { registerReadingHttpRoutes } from './readings-http.route.js';
 
 const state = vi.hoisted(() => ({ session: null as unknown }));
@@ -68,10 +71,14 @@ const test = createTester(async ({ db, auth }) => {
   const app = Fastify();
   app.decorate('auth', auth);
   await app.register(multipart);
-  await registerReadingHttpRoutes(app, { db, storage, readPhoto: async () => ({ value: 123.4, confidence: 0.91 }) });
+  const verifications = new ReadingVerificationQueue({
+    run: (id) =>
+      verifyCapturedReading({ db, id, storage, readPhoto: async () => ({ value: 123.4, confidence: 0.91 }) }),
+  });
+  await registerReadingHttpRoutes(app, { db, storage, verifications });
   state.session = mockSession(null);
   (state.session as ReturnType<typeof mockSession>).user.contractingRole = 'foreman';
-  return { assignmentId: assignment.id, db, app, jobId: job.id, machineId: machine.id, storage };
+  return { assignmentId: assignment.id, db, app, jobId: job.id, machineId: machine.id, storage, verifications };
 });
 function upload(machineId: string, photo: Buffer | null, close = true, extra: Record<string, string> = {}) {
   const boundary = 'reading-boundary';
@@ -98,7 +105,7 @@ function upload(machineId: string, photo: Buffer | null, close = true, extra: Re
 test('atomic multipart stores the complete photo and AI outcome; rejects broken and invalid uploads without a row', async ({
   context,
 }) => {
-  const { app, db, machineId, storage } = context;
+  const { app, db, machineId, storage, verifications } = context;
   try {
     for (const request of [
       upload(machineId, Buffer.from('not a photo')),
@@ -111,9 +118,15 @@ test('atomic multipart stores the complete photo and AI outcome; rejects broken 
     }
     const response = await app.inject(upload(machineId, Buffer.from([255, 216, 255])));
     expect(response.statusCode).toBe(201);
+    // The capture answers before the AI has looked; the check lands once it finishes.
     expect(response.json()).toMatchObject({
       method: 'photo',
       photo: { contentType: 'image/jpeg' },
+      aiValue: null,
+      aiVerification: 'pending',
+    });
+    await verifications.drain();
+    expect(await getReading({ db, id: response.json().id })).toMatchObject({
       aiValue: 123.4,
       aiConfidence: 0.91,
       aiVerification: 'agrees',

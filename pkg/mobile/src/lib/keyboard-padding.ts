@@ -1,31 +1,27 @@
 import { useEffect, useState } from 'react';
 import { Keyboard, type KeyboardEvent, Platform } from 'react-native';
 
-export function assistantKeyboardBottomPadding(
-  keyboardHeight: number,
-  safeAreaBottom: number,
-  platform = Platform.OS,
-): number {
+export function keyboardBottomPadding(keyboardHeight: number, safeAreaBottom: number, platform = Platform.OS): number {
   const coveredSafeArea = platform === 'ios' ? safeAreaBottom : 0;
   return Math.max(keyboardHeight - coveredSafeArea, 0);
 }
 
-export function assistantKeyboardInitialBottomPadding(safeAreaBottom: number, platform = Platform.OS): number {
+export function keyboardInitialBottomPadding(safeAreaBottom: number, platform = Platform.OS): number {
   if (platform === 'web') return 0;
-  return assistantKeyboardBottomPadding(Keyboard.metrics()?.height ?? 0, safeAreaBottom, platform);
+  return keyboardBottomPadding(Keyboard.metrics()?.height ?? 0, safeAreaBottom, platform);
 }
 
-export function useAssistantKeyboardBottomPadding(safeAreaBottom: number): number {
-  const [bottomPadding, setBottomPadding] = useState(() => assistantKeyboardInitialBottomPadding(safeAreaBottom));
+export function useKeyboardBottomPadding(safeAreaBottom: number): number {
+  const [bottomPadding, setBottomPadding] = useState(() => keyboardInitialBottomPadding(safeAreaBottom));
 
   useEffect(() => {
     if (Platform.OS === 'web') return;
 
     const updatePadding = (event: KeyboardEvent) => {
-      // Native keyboard avoidance is unreliable in the iOS modal and Android's
+      // Native keyboard avoidance is unreliable in an iOS modal and in Android's
       // edge-to-edge window, so apply the reported keyboard frame directly.
       Keyboard.scheduleLayoutAnimation(event);
-      setBottomPadding(assistantKeyboardBottomPadding(event.endCoordinates.height, safeAreaBottom));
+      setBottomPadding(keyboardBottomPadding(event.endCoordinates.height, safeAreaBottom));
     };
     const clearPadding = (event: KeyboardEvent) => {
       Keyboard.scheduleLayoutAnimation(event);

@@ -1,12 +1,10 @@
-import { MISSING_PHOTO_EVIDENCE } from '@pkg/domain/contracting';
-import { CameraView, useCameraPermissions } from 'expo-camera';
-import { useRef, useState } from 'react';
-import { Image, View } from 'react-native';
-import { Button } from '@/components/ui/button';
+import type { CameraView } from 'expo-camera';
+import { View } from 'react-native';
+import { PhotoField } from '@/components/PhotoField';
 import { Text } from '@/components/ui/text';
 import { chooseMeterPhoto, type PhotoSource } from '@/contracting/lib/photo-picker';
 import { parseExifDateTime } from '@/contracting/readings/read-at';
-import { addBreadcrumb, captureException, captureSanitizedException } from '@/lib/observability';
+import { captureSanitizedException } from '@/lib/observability';
 import type { useBusyAction } from '@/lib/use-busy-action';
 
 const CAMERA_FAILURE = 'The camera could not take a photo. Try again or continue without a photo.';
@@ -14,6 +12,7 @@ const GALLERY_FAILURE = 'The photo could not be opened. Try again or continue wi
 
 export type MeterPhoto = { uri: string; source: PhotoSource };
 
+/** The hour meter's photo: the shared photo field, with a guide for the digits and the gallery photo's EXIF time. */
 export function MeterPhotoField({
   photo,
   cameraOpen,
@@ -30,29 +29,9 @@ export function MeterPhotoField({
   /** The form's busy action: photo work shares its lock and its error line. */
   action: Pick<ReturnType<typeof useBusyAction>, 'busy' | 'run' | 'setError'>;
 }) {
-  const [permission, requestPermission] = useCameraPermissions();
-  const camera = useRef<CameraView>(null);
-  const [cameraReady, setCameraReady] = useState(false);
-  async function openCamera() {
-    addBreadcrumb('contracting', 'camera permission requested');
-    try {
-      const result = permission?.granted ? permission : await requestPermission();
-      if (result.granted) {
-        addBreadcrumb('contracting', 'camera permission granted');
-        setCameraReady(false);
-        onCameraOpenChange(true);
-      } else {
-        addBreadcrumb('contracting', 'camera permission denied');
-        action.setError('Camera permission is unavailable. You can type the reading without a photo.');
-      }
-    } catch (error) {
-      captureException(error, { source: 'camera_permission' });
-      action.setError('Camera unavailable. You can type the reading without a photo.');
-    }
-  }
-  function photograph() {
+  function photograph(camera: CameraView) {
     return action.run(async () => {
-      const result = await camera.current?.takePictureAsync({ quality: 0.7 }).catch((error) => {
+      const result = await camera.takePictureAsync({ quality: 0.7 }).catch((error) => {
         captureSanitizedException(error, 'Camera capture failed', { source: 'camera_capture' });
         return undefined;
       });
@@ -70,60 +49,29 @@ export function MeterPhotoField({
       if (chosen) onChange({ uri: chosen.uri, source: 'gallery' }, parseExifDateTime(chosen.exif));
     }, GALLERY_FAILURE);
   }
-  return cameraOpen && permission?.granted ? (
-    <View className="gap-3">
-      <View className="h-72 overflow-hidden rounded-xl bg-image-backdrop">
-        <CameraView
-          ref={camera}
-          facing="back"
-          onCameraReady={() => setCameraReady(true)}
-          onMountError={() => {
-            onCameraOpenChange(false);
-            action.setError('Camera unavailable. Continue without a photo if needed.');
-          }}
-          style={{ flex: 1 }}
-        />
-        <View pointerEvents="none" className="absolute inset-0 items-center justify-center">
-          <View className="h-24 w-4/5 rounded-xl border-2 border-white" />
-          <Text className="mt-3 text-white">Keep every digit sharp and inside the guide</Text>
-        </View>
-      </View>
-      <Button
-        title="Take photo"
-        disabled={action.busy || !cameraReady}
-        onPress={() => {
-          void photograph();
-        }}
-      />
-      <Button title="Continue without a photo" disabled={action.busy} onPress={() => onCameraOpenChange(false)} />
-    </View>
-  ) : (
-    <View className="gap-3">
-      {photo ? (
-        <Image
-          accessibilityLabel="Meter photo"
-          source={{ uri: photo.uri }}
-          className="h-56 w-full rounded-xl"
-          resizeMode="contain"
-        />
-      ) : (
-        <Text className="text-muted-foreground">{MISSING_PHOTO_EVIDENCE} · no photo attached</Text>
-      )}
-      <Button
-        title={photo ? 'Retake photo' : 'Photograph meter'}
-        disabled={action.busy}
-        onPress={() => {
-          void openCamera();
-        }}
-      />
-      <Button
-        title="Choose from gallery"
-        disabled={action.busy}
-        onPress={() => {
-          void chooseFromGallery();
-        }}
-      />
-      {photo ? <Button title="Remove photo" disabled={action.busy} onPress={() => onChange(null, null)} /> : null}
-    </View>
+  return (
+    <PhotoField
+      label="Meter photo"
+      emptyTitle="Attach meter photo"
+      emptyHint="Photograph the hour meter, or choose a photo taken earlier"
+      photoUri={photo?.uri ?? null}
+      busy={action.busy}
+      cameraOpen={cameraOpen}
+      onCameraOpenChange={onCameraOpenChange}
+      onCapture={(camera) => {
+        void photograph(camera);
+      }}
+      onChooseFromGallery={() => {
+        void chooseFromGallery();
+      }}
+      onRemove={() => onChange(null, null)}
+      onError={action.setError}
+      guide={
+        <>
+          <View className="h-16 w-4/5 rounded-xl border-2 border-white" />
+          <Text className="mt-2 text-xs text-white">Keep every digit sharp and inside the guide</Text>
+        </>
+      }
+    />
   );
 }

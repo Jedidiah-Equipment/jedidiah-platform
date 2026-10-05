@@ -65,7 +65,7 @@ export const JobCompleteInput = z
   });
 export type JobCompleteInput = z.infer<typeof JobCompleteInput>;
 
-export const JobSortBy = z.enum(['jobNumber', 'invoicedAt']);
+export const JobSortBy = z.enum(['jobNumber', 'invoicedAt', 'createdAt', 'customerName']);
 export const JobListInput = createSearchedSortedCursorQueryInput({
   shape: {
     queues: z.array(z.enum(jobQueues)).min(1),

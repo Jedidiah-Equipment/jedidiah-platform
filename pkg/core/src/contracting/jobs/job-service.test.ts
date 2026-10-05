@@ -18,7 +18,7 @@ import { captureReading } from '../readings/reading-service.js';
 import { plannedStint } from '../test/job-fixtures.js';
 import { createWorkType } from '../work-types/work-type-service.js';
 import { patchAssignment, removeAssignment, resolveGap } from './assignment-service.js';
-import { listFieldJobs } from './field-read.js';
+import { getFieldJob } from './field-read.js';
 import { listJobs } from './job-queues.js';
 import { getJob, getReadableJob } from './job-read.js';
 import { cancelJob, completeJob, createJob, patchJob } from './job-service.js';
@@ -280,7 +280,7 @@ describe('Machine Assignment lifecycle', () => {
     ).rejects.toMatchObject({ code: 'reading.forbidden' });
   });
 
-  test('lists field Jobs with their stints and readings', async ({ context }) => {
+  test('opens field Jobs with their stints and readings', async ({ context }) => {
     const first = await createJob({ db: context.db, actor: manager, input: jobInput(context) });
     const second = await createJob({ db: context.db, actor: manager, input: jobInput(context) });
     const planned = await plannedStint(context.db, manager, {
@@ -301,7 +301,9 @@ describe('Machine Assignment lifecycle', () => {
       },
     });
 
-    const jobs = await listFieldJobs({ db: context.db, actor: foreman });
+    const jobs = await Promise.all(
+      [first, second].map((job) => getFieldJob({ db: context.db, actor: foreman, id: job.id })),
+    );
     expect(jobs.map((job) => job.jobNumber)).toEqual([first.jobNumber, second.jobNumber]);
     expect(jobs[0]?.stints).toEqual([]);
     expect(jobs[1]?.stints).toMatchObject([{ id: planned.id, state: 'on-site' }]);

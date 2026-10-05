@@ -21,7 +21,7 @@ import {
   JobSummary,
   jobQueues,
 } from '@pkg/schema/contracting';
-import { and, asc, count, eq, not, or, type SQL, sql } from 'drizzle-orm';
+import { and, asc, count, eq, not, or, type SQL, type SQLWrapper, sql } from 'drizzle-orm';
 import { foreman, invoicer, jobHeader } from './job-load.js';
 import { assertReadableStatus, readableBy, readerFor } from './job-readers.js';
 import * as jobSql from './job-sql.js';
@@ -67,6 +67,23 @@ function inQueue(queue: JobQueue): SQL | undefined {
   if (queue === 'active') return and(status, not(jobSql.looksFinished));
   if (queue === 'looks-finished') return and(status, jobSql.looksFinished);
   return status;
+}
+
+/** The list's order: the chosen column first, then the Job Number, so equal values keep a stable order. */
+function jobListOrder({ sortBy, sortDirection }: Pick<JobListInput, 'sortBy' | 'sortDirection'>): SQL[] {
+  const direction = (column: SQLWrapper) => getSortOrder(column, sortDirection);
+  const byCode = [direction(contractingJobs.code), asc(contractingJobs.id)];
+  if (sortBy === 'createdAt') return [direction(contractingJobs.createdAt), ...byCode];
+  if (sortBy === 'customerName')
+    return [direction(contractingCustomers.name), direction(contractingFarms.name), ...byCode];
+  if (sortBy === 'invoicedAt')
+    return [
+      sortDirection === 'desc'
+        ? sql`${contractingJobs.invoicedAt} desc nulls last`
+        : sql`${contractingJobs.invoicedAt} asc nulls last`,
+      ...byCode,
+    ];
+  return byCode;
 }
 
 /** SQL twin of domain `formatJobNumber`, so a search for the Job Number finds the Job. */
@@ -123,17 +140,7 @@ export async function listJobs({
     .leftJoin(foreman, eq(foreman.id, contractingJobs.foremanUserId))
     .leftJoin(invoicer, eq(invoicer.id, contractingJobs.invoicedByUserId))
     .where(where)
-    .orderBy(
-      ...(input.sortBy === 'invoicedAt'
-        ? [
-            input.sortDirection === 'desc'
-              ? sql`${contractingJobs.invoicedAt} desc nulls last`
-              : sql`${contractingJobs.invoicedAt} asc nulls last`,
-          ]
-        : []),
-      getSortOrder(contractingJobs.code, input.sortDirection),
-      asc(contractingJobs.id),
-    )
+    .orderBy(...jobListOrder(input))
     .$dynamic();
   const [rows, [totalRow]] = await Promise.all([
     withPagination(query, input),

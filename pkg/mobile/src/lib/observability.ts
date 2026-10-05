@@ -11,6 +11,7 @@ const ingestHost = process.env.EXPO_PUBLIC_POSTHOG_HOST?.trim() || 'https://us.i
 
 export type BreadcrumbCategory =
   | 'auth'
+  | 'camera'
   | 'connectivity'
   | 'contracting'
   | 'equipment'

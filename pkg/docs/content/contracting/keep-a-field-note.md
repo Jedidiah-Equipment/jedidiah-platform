@@ -9,7 +9,7 @@ A Field Note stays on this phone and is never sent anywhere; the reading only ex
 
 When you are back online:
 
-1. Open the Job or Machine and [capture the reading](./capture-a-reading). Choose **Choose from gallery** and pick the note's photo.
+1. Open the Job or Machine and [capture the reading](./capture-a-reading). Under **Meter photo**, choose **Gallery** and pick the note's photo.
 2. Check **Read At**. It takes the time the photo was taken; set it to when the meter was read if that differs.
 3. Save the reading, then open the note in **Notes** and choose **Close**. **Notes** lists Open notes; filter to **Closed notes** to see the rest.
 

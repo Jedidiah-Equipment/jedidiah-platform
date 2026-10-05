@@ -21,6 +21,11 @@ export const readingRoleLabels: Record<ReadingRole, string> = {
   departure: 'Departure',
 };
 
+/** How often a screen showing a reading whose AI check is still running asks again. */
+export const AI_VERDICT_POLL_MS = 5_000;
+/** A check takes seconds; past this a pending reading is a failed check waiting on Re-verify, so screens stop asking. */
+export const AI_VERDICT_POLL_LIMIT_MS = 120_000;
+
 /** The stamp on a reading captured without a photo. */
 export const MISSING_PHOTO_EVIDENCE = 'Missing Photo Evidence';
 

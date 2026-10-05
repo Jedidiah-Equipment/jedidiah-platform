@@ -1,8 +1,7 @@
 import { useStore } from '@tanstack/react-form';
 import { useState } from 'react';
-import { View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import { useAppForm } from '@/components/form';
-import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { implementOption } from '@/contracting/components/implement-option';
 import { useDrivers, useImplements } from '@/contracting/jobs/use-jobs';
@@ -37,15 +36,26 @@ export function StintOverrideCard({
   const implementsQuery = useImplements();
   const driversQuery = useDrivers();
   return (
-    <View className="gap-3 rounded-xl border border-border bg-surface p-4">
-      <View className="flex-row items-center justify-between gap-3">
-        <Text className="min-w-0 flex-1 text-sm text-foreground">
-          Starting with {planned.implementCode ?? 'no implement'} · driver {planned.driverName ?? 'not set'}
+    <View className="gap-2">
+      <Text className="text-sm text-foreground" weight="semibold">
+        Implement & driver
+      </Text>
+      <View className="flex-row items-center gap-3 rounded-xl border border-border bg-surface px-4 py-3">
+        <Text className="min-w-0 flex-1 text-sm text-foreground" numberOfLines={1}>
+          {planned.implementCode ?? 'No implement'} · {planned.driverName ?? 'No driver'}
         </Text>
-        <Button
-          title={overrides.changing ? 'Keep planned' : 'Change'}
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={
+            overrides.changing ? 'Keep the planned implement and driver' : 'Change implement or driver'
+          }
+          hitSlop={8}
           onPress={() => overrides.setChanging(!overrides.changing)}
-        />
+        >
+          <Text className="text-sm text-muted-foreground" weight="semibold">
+            {overrides.changing ? 'Keep planned' : 'Change'}
+          </Text>
+        </Pressable>
       </View>
       {overrides.changing ? (
         <View className="gap-3">

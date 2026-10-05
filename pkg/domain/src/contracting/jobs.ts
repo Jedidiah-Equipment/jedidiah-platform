@@ -4,6 +4,7 @@ import {
   finishedJobStatuses,
   type JobQueue,
   type JobStatus,
+  jobQueues,
   jobStatuses,
   unpricedJobStatuses,
 } from '@pkg/schema/contracting';
@@ -48,6 +49,10 @@ export const jobReadStatuses: Record<JobReadMode, readonly JobStatus[]> = {
   own: unpricedJobStatuses,
   priced: finishedJobStatuses,
 };
+
+/** The queues a read mode may list, in queue order: Invoicing lists only Completed onward, a Foreman his open work. */
+export const readableJobQueues = (mode: JobReadMode): JobQueue[] =>
+  jobQueues.filter((queue) => jobReadStatuses[mode].includes(jobQueueStatus[queue]));
 
 /** Foremen read their Jobs without money, so they neither see amounts nor open Job Cards. */
 export const jobReadSeesMoney = (mode: JobReadMode) => mode !== 'own';

@@ -230,10 +230,9 @@ const test = createTester(async ({ db }) => {
   };
 });
 
-test('projects only open field Jobs, enforces ownership, and never returns money', async ({ context }) => {
+test('projects a field Job without money, a Foreman only his own', async ({ context }) => {
   const foreman = context.createCaller(contractingSession('foreman')).contractingJobs.field;
-  const jobs = await foreman.jobs();
-  expect(jobs.map((job) => job.id)).toEqual([context.ownJob.id]);
+  const jobs = [await foreman.job({ id: context.ownJob.id })];
   expect(Object.keys(jobs[0] ?? {})).toEqual([
     'id',
     'code',
@@ -269,23 +268,22 @@ test('projects only open field Jobs, enforces ownership, and never returns money
   ]);
   await expect(foreman.drivers()).resolves.toEqual([{ id: driverId, name: 'Willem' }]);
 
-  const manager = context.createCaller(contractingSession('contracting-manager')).contractingJobs.field;
-  expect((await manager.jobs()).map((job) => job.id)).toEqual([context.ownJob.id, context.otherJob.id]);
-  const admin = context.createCaller(contractingSession('contracting-admin')).contractingJobs.field;
-  expect((await admin.jobs()).map((job) => job.id)).toEqual([context.ownJob.id, context.otherJob.id]);
-  const superAdmin = context.createCaller(mockSession('super-admin')).contractingJobs.field;
-  expect((await superAdmin.jobs()).map((job) => job.id)).toEqual([context.ownJob.id, context.otherJob.id]);
-
-  expect((await manager.jobs({ includeFinished: true })).map((job) => [job.id, job.status])).toEqual([
-    [context.ownJob.id, 'upcoming'],
-    [context.otherJob.id, 'active'],
-    [context.pricedJob.id, 'priced'],
-    [context.completedJob.id, 'completed'],
-  ]);
-  expect((await foreman.jobs({ includeFinished: true })).map((job) => job.id)).toEqual([context.ownJob.id]);
+  for (const session of [
+    contractingSession('contracting-manager'),
+    contractingSession('contracting-admin'),
+    mockSession('super-admin'),
+  ]) {
+    const management = context.createCaller(session).contractingJobs.field;
+    await expect(management.job({ id: context.otherJob.id })).resolves.toMatchObject({ status: 'active' });
+    await expect(management.job({ id: context.pricedJob.id })).resolves.toMatchObject({ status: 'priced' });
+  }
+  await expect(foreman.job({ id: context.otherJob.id })).rejects.toMatchObject({ code: 'NOT_FOUND' });
+  await expect(foreman.job({ id: context.pricedJob.id })).rejects.toMatchObject({ code: 'NOT_FOUND' });
 
   const workshopCaller = context.createCaller(contractingSession('workshop-manager'));
-  await expect(workshopCaller.contractingJobs.field.jobs()).rejects.toMatchObject({ code: 'FORBIDDEN' });
+  await expect(workshopCaller.contractingJobs.field.job({ id: context.ownJob.id })).rejects.toMatchObject({
+    code: 'FORBIDDEN',
+  });
   await captureReading({
     db: context.db,
     actor: foremanActor,
@@ -381,6 +379,26 @@ test('lists several queues in one page, searched on the server', async ({ contex
   await expect(invoicing.list({ queues: ['awaiting-pricing', 'active'] })).rejects.toMatchObject({
     code: 'FORBIDDEN',
   });
+});
+
+test('opens one field Job without money, a Foreman only his own', async ({ context }) => {
+  const foreman = context.createCaller(contractingSession('foreman')).contractingJobs.field;
+  expect(await foreman.job({ id: context.ownJob.id })).toMatchObject({ id: context.ownJob.id });
+  expect(await foreman.job({ id: context.ownJob.id })).not.toHaveProperty('pricedTotal');
+  await expect(foreman.job({ id: context.otherJob.id })).rejects.toMatchObject({ code: 'NOT_FOUND' });
+  const manager = context.createCaller(contractingSession('contracting-manager')).contractingJobs.field;
+  expect(await manager.job({ id: context.pricedJob.id })).toMatchObject({ id: context.pricedJob.id });
+});
+
+test('sorts the Job list by when it was created and by customer, steady on equal values', async ({ context }) => {
+  const manager = context.createCaller(contractingSession('contracting-manager')).contractingJobs.jobs;
+  const queues = ['upcoming', 'active', 'looks-finished', 'awaiting-pricing', 'awaiting-invoice'] as const;
+  const ids = async (sortBy: 'createdAt' | 'customerName', sortDirection: 'asc' | 'desc') =>
+    (await manager.list({ queues: [...queues], sortBy, sortDirection })).items.map((job) => job.id);
+  const oldestFirst = await ids('createdAt', 'asc');
+  expect(oldestFirst).toHaveLength(4);
+  expect(await ids('createdAt', 'desc')).toEqual([...oldestFirst].reverse());
+  expect(await ids('customerName', 'asc')).toHaveLength(4);
 });
 
 test('provides Measure Type choices to managers without granting Rate Card access', async ({ context }) => {

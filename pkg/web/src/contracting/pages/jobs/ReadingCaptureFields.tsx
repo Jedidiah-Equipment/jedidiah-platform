@@ -26,7 +26,7 @@ export function ReadingCaptureCard({
         <div className="grid grid-cols-[minmax(6rem,0.85fr)_1.25rem_minmax(0,1.3fr)] items-end gap-2">
           <div className="min-w-0 space-y-2">
             <span className="block text-xs font-medium">{previousLabel}</span>
-            <div aria-busy={loading} className="flex h-8 items-center text-lg font-semibold">
+            <div aria-busy={loading} className="flex h-8 items-center text-lg font-semibold text-primary">
               {loading ? (
                 <>
                   <Skeleton aria-hidden="true" className="h-6 w-24 motion-reduce:animate-none" />

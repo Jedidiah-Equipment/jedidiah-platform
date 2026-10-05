@@ -1,0 +1,15 @@
+{
+  "business": "equipment",
+  "releasedAt": "2026-10-05T06:27:55.869Z",
+  "sections": [
+    {
+      "surface": "app",
+      "entries": [
+        {
+          "title": "Find parts contacts on purchase orders",
+          "description": "Purchase order PDFs now show the parts email address and contact names with phone numbers, so suppliers can reach the right people."
+        }
+      ]
+    }
+  ]
+}

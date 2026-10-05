@@ -1,0 +1,48 @@
+{
+  "business": "contracting",
+  "releasedAt": "2026-10-05T06:27:55.869Z",
+  "sections": [
+    {
+      "surface": "app",
+      "entries": [
+        {
+          "title": "See updated Jobs after correcting readings",
+          "description": "Amending a Reading Exception or re-verifying its photo now refreshes affected Jobs automatically."
+        },
+        {
+          "title": "Resolve Job errors in the dialog",
+          "description": "When a Job change is refused, the reason appears once in the dialog where you made the change. Reopening the dialog clears the previous error."
+        },
+        {
+          "title": "Keep driver and implement selections during arrival capture",
+          "description": "Your selections are now compared with the assignment you opened, so a background refresh cannot cause intended changes to be missed."
+        },
+        {
+          "title": "Keep manually edited prices as calculations change",
+          "description": "Manually edited machine and diesel amounts remain fixed even when the calculated amount catches up with them. Calculated amounts continue to update until the Job is marked as Priced."
+        },
+        {
+          "title": "See why a Measure Type cannot be deleted",
+          "description": "Deletion messages now distinguish between a Measure Type used by a Rate and one recorded on Jobs."
+        }
+      ]
+    },
+    {
+      "surface": "mobile",
+      "entries": [
+        {
+          "title": "Keep Field Notes offline",
+          "description": "Save notes and photos on your phone without a connection, then search, edit and close them later. Photos taken in Notes also save to the Jedidiah album for use when capturing readings online."
+        },
+        {
+          "title": "Capture readings from earlier photos",
+          "description": "Choose a meter photo from your gallery and set Read At to when the meter was read. The photo's capture time is suggested when available, and you can adjust it before saving."
+        },
+        {
+          "title": "Return to the open Job after adding a machine",
+          "description": "Adding a machine now returns you to the Job already open. Arrival and departure capture also stays within the Job's navigation."
+        }
+      ]
+    }
+  ]
+}

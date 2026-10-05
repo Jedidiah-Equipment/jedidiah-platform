@@ -401,6 +401,13 @@ test('sorts the Job list by when it was created and by customer, steady on equal
   expect(await ids('customerName', 'asc')).toHaveLength(4);
 });
 
+test('counts every matching Job on each page, even a stale page past the end', async ({ context }) => {
+  const manager = context.createCaller(contractingSession('contracting-manager')).contractingJobs.jobs;
+  const queues = ['upcoming', 'active', 'looks-finished', 'awaiting-pricing', 'awaiting-invoice'] as const;
+  expect(await manager.list({ queues: [...queues], limit: 1 })).toMatchObject({ total: 4, nextCursor: 1 });
+  expect(await manager.list({ queues: [...queues], limit: 1, cursor: 9 })).toMatchObject({ items: [], total: 4 });
+});
+
 test('provides Measure Type choices to managers without granting Rate Card access', async ({ context }) => {
   const first = await createMeasureType({ db: context.db, actorUserId: managerId, input: { name: 'Loads' } });
   const second = await createMeasureType({ db: context.db, actorUserId: managerId, input: { name: 'Hectares' } });

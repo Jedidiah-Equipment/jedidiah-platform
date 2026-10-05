@@ -116,35 +116,40 @@ export async function listJobs({
       sql`${contractingJobs.invoiceNumber}`,
     ]),
   );
-  const query = db
-    .select({
-      ...jobHeader,
-      plannedStints: jobSql.stintCount('planned'),
-      onSiteStints: jobSql.stintCount('on-site'),
-      leftStints: jobSql.stintCount('left'),
-      looksFinished: jobSql.looksFinished,
-      openGapFlags: jobSql.openGapFlags,
-      total: sql<number>`count(*) over ()`.mapWith(Number),
-      readings: {
-        critical: jobSql.readingsNeedingALookAt('critical'),
-        warning: jobSql.readingsNeedingALookAt('warning'),
-      },
-    })
-    .from(contractingJobs)
-    .innerJoin(contractingCustomers, eq(contractingCustomers.id, contractingJobs.customerId))
-    .innerJoin(
-      contractingFarms,
-      and(eq(contractingFarms.id, contractingJobs.farmId), eq(contractingFarms.customerId, contractingJobs.customerId)),
-    )
-    .innerJoin(contractingWorkTypes, eq(contractingWorkTypes.id, contractingJobs.workTypeId))
-    .leftJoin(foreman, eq(foreman.id, contractingJobs.foremanUserId))
-    .leftJoin(invoicer, eq(invoicer.id, contractingJobs.invoicedByUserId))
-    .where(where)
-    .orderBy(...jobListOrder(input))
-    .$dynamic();
-  const rows = await withPagination(query, input);
-  // Every row carries the full match count, so an empty page past the end reads as none.
-  const total = rows[0]?.total ?? 0;
+  const matching = () =>
+    db
+      .select({
+        ...jobHeader,
+        plannedStints: jobSql.stintCount('planned'),
+        onSiteStints: jobSql.stintCount('on-site'),
+        leftStints: jobSql.stintCount('left'),
+        looksFinished: jobSql.looksFinished,
+        openGapFlags: jobSql.openGapFlags,
+        total: sql<number>`count(*) over ()`.mapWith(Number),
+        readings: {
+          critical: jobSql.readingsNeedingALookAt('critical'),
+          warning: jobSql.readingsNeedingALookAt('warning'),
+        },
+      })
+      .from(contractingJobs)
+      .innerJoin(contractingCustomers, eq(contractingCustomers.id, contractingJobs.customerId))
+      .innerJoin(
+        contractingFarms,
+        and(
+          eq(contractingFarms.id, contractingJobs.farmId),
+          eq(contractingFarms.customerId, contractingJobs.customerId),
+        ),
+      )
+      .innerJoin(contractingWorkTypes, eq(contractingWorkTypes.id, contractingJobs.workTypeId))
+      .leftJoin(foreman, eq(foreman.id, contractingJobs.foremanUserId))
+      .leftJoin(invoicer, eq(invoicer.id, contractingJobs.invoicedByUserId))
+      .where(where)
+      .orderBy(...jobListOrder(input))
+      .$dynamic();
+  const rows = await withPagination(matching(), input);
+  // Every row carries the full match count; a stale cursor past the end asks for the first row to learn it.
+  const counted = rows[0] ?? (input.cursor > 0 ? (await matching().limit(1))[0] : undefined);
+  const total = counted?.total ?? 0;
   const seesMoney = jobReadSeesMoney(reader.mode);
   const items = rows.map(({ job, readings, total: _total, ...row }) =>
     JobSummary.parse({

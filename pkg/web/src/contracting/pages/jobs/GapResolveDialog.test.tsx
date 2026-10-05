@@ -76,26 +76,27 @@ async function blur(name: string) {
   });
 }
 
-it('opens with the whole gap as travel', async () => {
+const unaccounted = () => document.querySelector('output')?.textContent;
+
+it('opens with the whole gap as travel and shows nothing unaccounted', async () => {
   await mount();
   expect(field('travelHours').value).toBe('9.5');
-  expect(field('unaccountedHours').value).toBe('0.0');
+  expect(unaccounted()).toBe('0.0 h');
+  expect(document.querySelector('[name="unaccountedHours"]')).toBeNull();
 });
 
-it('moves the other field as one is typed', async () => {
+it('shows the rest of the gap as unaccounted while travel is typed', async () => {
   await mount();
   await enter('travelHours', '2.5');
-  expect(field('unaccountedHours').value).toBe('7.0');
-  await enter('unaccountedHours', '3');
-  expect(field('travelHours').value).toBe('6.5');
+  expect(unaccounted()).toBe('7.0 h');
 });
 
-it('clamps the typed field to the gap on blur', async () => {
+it('clamps travel to the gap on blur', async () => {
   await mount();
   await enter('travelHours', '12');
   await blur('travelHours');
   expect(field('travelHours').value).toBe('9.5');
-  expect(field('unaccountedHours').value).toBe('0.0');
+  expect(unaccounted()).toBe('0.0 h');
 });
 
 it('submits a split that totals the gap with its reason', async () => {

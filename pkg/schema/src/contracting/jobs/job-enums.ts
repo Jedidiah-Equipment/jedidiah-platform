@@ -39,3 +39,10 @@ export const jobQueues = [
   'cancelled',
 ] as const;
 export type JobQueue = (typeof jobQueues)[number];
+
+/** How loudly something on a Machine Assignment asks for a person, quietest first; the domain owns what each means. */
+export const assignmentAttentionLevels = ['notice', 'warning', 'critical'] as const;
+export type AssignmentAttentionLevel = (typeof assignmentAttentionLevels)[number];
+/** The levels that need a look. */
+export const needsALookLevels = ['warning', 'critical'] as const;
+export type NeedsALookLevel = (typeof needsALookLevels)[number];

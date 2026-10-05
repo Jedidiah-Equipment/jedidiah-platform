@@ -16,6 +16,7 @@ export function AssignmentEditDialog({ stint }: { stint: Assignment }) {
       implementOptions={options.implementOptions}
       driverOptions={options.driverOptions}
       error={patch.error}
+      triggerVariant="outline"
       onStart={() => patch.reset()}
       onSave={async (draft) => {
         await patch.mutateAsync({

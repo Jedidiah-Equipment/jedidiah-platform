@@ -6,6 +6,7 @@ import {
   fieldJobAccessMode,
   formatJobNumber,
   jobQueueLabels,
+  jobQueueOf,
   jobQueueStatus,
   jobReadMode,
   parseJobNumber,
@@ -66,5 +67,13 @@ describe('job queues', () => {
     expect(jobQueueStatus['looks-finished']).toBe('active');
     expect(Object.keys(jobQueueStatus).sort()).toEqual([...jobQueues].sort());
     expect(Object.keys(jobQueueLabels).sort()).toEqual([...jobQueues].sort());
+  });
+
+  test('puts each Job in exactly one queue, carving Looks finished out of Active', () => {
+    expect(jobQueueOf({ status: 'active', looksFinished: false })).toBe('active');
+    expect(jobQueueOf({ status: 'active', looksFinished: true })).toBe('looks-finished');
+    expect(jobQueueOf({ status: 'completed', looksFinished: false })).toBe('awaiting-pricing');
+    for (const queue of jobQueues)
+      expect(jobQueueOf({ status: jobQueueStatus[queue], looksFinished: queue === 'looks-finished' })).toBe(queue);
   });
 });

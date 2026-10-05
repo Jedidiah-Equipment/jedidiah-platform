@@ -1,22 +1,28 @@
 import { formatCurrency, formatDate, formatNumber } from '@pkg/domain';
 import {
-  jobAttentionColorClassNames,
-  jobAttentionIconColorClassName,
+  assignmentAttentionLevelColorClassNames,
+  countedAssignmentAttentionLevel,
   jobQueueColorClassNames,
   jobQueueLabels,
+  jobQueueOf,
   judgeJobAction,
 } from '@pkg/domain/contracting';
-import type { JobQueue, JobSummary } from '@pkg/schema/contracting';
-import { CustomerName, FarmName, jobQueues, WorkTypeName } from '@pkg/schema/contracting';
+import type { JobListInput, JobSummary } from '@pkg/schema/contracting';
+import { CustomerName, FarmName, JobSortBy, jobQueues, WorkTypeName } from '@pkg/schema/contracting';
 import { IconAlertTriangle } from '@tabler/icons-react';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useInfiniteQuery, useMutation, useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
+import type { ColumnFiltersState } from '@tanstack/react-table';
 import { useCallback, useMemo, useState } from 'react';
 import { DateDisplay } from '@/components/common/DateDisplay.js';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { SearchableCombobox, type SearchableComboboxCreate } from '@/components/common/SearchableCombobox.js';
-import { ClientDataTable } from '@/components/data-table/ClientDataTable.js';
-import type { DataTableColumnDef } from '@/components/data-table/features.js';
+import { cursorInfiniteQueryOptions, useCombinedCursorQueryPages } from '@/components/data-table/cursor-query.js';
+import { DataTable } from '@/components/data-table/DataTable.js';
+import { type DataTableColumnDef, useDataTable } from '@/components/data-table/features.js';
+import { useServerSideTableController } from '@/components/data-table/hooks/use-server-side-table-controller.js';
+import { createPersistedDataTableStore } from '@/components/data-table/store.js';
+import type { SortOptions } from '@/components/data-table/table-state.js';
 import { useCreateEntityFlow } from '@/components/form/hooks/use-create-entity-flow.js';
 import { CreateEntityDialog } from '@/components/form/index.js';
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
@@ -25,11 +31,22 @@ import { Button } from '@/components/ui/button.js';
 import { useQueryInvalidation } from '@/contracting/hooks/use-query-invalidation.js';
 import { useAccess, useCan } from '@/hooks/use-access.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
+import { getApiQueryErrorMessage } from '@/lib/api-errors.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { cn } from '@/lib/utils.js';
-import { JobStatusBadge } from './JobStatusBadge.js';
+import { JobQueueBadge } from './JobStatusBadge.js';
+import {
+  isOnlyStage,
+  isPickedStages,
+  listedStages,
+  quickFilterStages,
+  STAGE_COLUMN_ID,
+  stagesCount,
+  toggleQuickFilter,
+  toggleStages,
+} from './job-stage-filter.js';
+import { QuickFilterButton } from './QuickFilterButton.js';
 import { JobCreateValues, toJobCreateInput } from './types.js';
-import { JobQueueLoadMore, useJobQueuePages } from './use-job-queue-pages.js';
 import { useJobWrite } from './use-job-write.js';
 
 function machineSummary(job: JobSummary) {
@@ -52,7 +69,21 @@ function useNewJobFlow() {
   });
 }
 
-export function JobsPage({ queue }: { queue: JobQueue }) {
+const useJobsTableStore = createPersistedDataTableStore({
+  initialState: { sorting: [{ id: 'jobNumber', desc: false }] },
+  persistName: 'contracting-jobs-table',
+});
+
+const jobSortOptions: SortOptions<JobListInput> = {
+  allowedSortIds: JobSortBy.options,
+  defaultSort: { id: 'jobNumber' },
+};
+
+const jobListInputExtras = (columnFilters: ColumnFiltersState) => ({ queues: listedStages(columnFilters) });
+
+const stageFilterOptions = jobQueues.map((queue) => ({ value: queue, label: jobQueueLabels[queue] }));
+
+export function JobsPage() {
   const trpc = useTRPC();
   const navigate = useNavigate();
   const write = useJobWrite();
@@ -66,22 +97,36 @@ export function JobsPage({ queue }: { queue: JobQueue }) {
   );
   const counts = useQuery(trpc.contractingJobs.jobs.queueCounts.queryOptions());
   const activeAttention = useQuery(trpc.contractingJobs.jobs.activeAttention.queryOptions());
-  const jobs = useJobQueuePages({ queue }, counts.data?.[queue]);
+  const tableController = useServerSideTableController({
+    store: useJobsTableStore,
+    sortOptions: jobSortOptions,
+    getListInputExtras: jobListInputExtras,
+  });
+  const jobsQuery = useInfiniteQuery(
+    trpc.contractingJobs.jobs.list.infiniteQueryOptions(tableController.listInput, {
+      ...cursorInfiniteQueryOptions,
+      placeholderData: keepPreviousData,
+    }),
+  );
+  const { items: jobs, total } = useCombinedCursorQueryPages(jobsQuery.data?.pages);
   const foremen = useQuery(trpc.contractingJobs.options.foremen.queryOptions(undefined, { enabled: canAssign }));
   const assign = useMutation(trpc.contractingJobs.jobs.patch.mutationOptions(write.card('Unable to assign Foreman.')));
   const flow = useNewJobFlow();
+  const openJob = useCallback(
+    (job: JobSummary, hash?: string) =>
+      void navigate({ to: '/contracting/jobs/$code', params: { code: job.jobNumber }, ...(hash ? { hash } : {}) }),
+    [navigate],
+  );
   const columns = useMemo<DataTableColumnDef<JobSummary>[]>(
     () => [
       {
         accessorKey: 'jobNumber',
         header: 'Job',
+        enableColumnFilter: false,
         enableSorting: true,
         cell: ({ row }) => (
-          <div className="min-w-44">
-            <div className="flex items-center gap-2">
-              <span className="font-mono font-semibold">{row.original.jobNumber}</span>
-              <JobStatusBadge status={row.original.status} />
-            </div>
+          <div className="min-w-32">
+            <span className="font-mono font-semibold">{row.original.jobNumber}</span>
             {row.original.description ? (
               <div className="mt-1 max-w-64 truncate text-xs text-muted-foreground" title={row.original.description}>
                 {row.original.description}
@@ -89,6 +134,15 @@ export function JobsPage({ queue }: { queue: JobQueue }) {
             ) : null}
           </div>
         ),
+      },
+      {
+        id: STAGE_COLUMN_ID,
+        accessorFn: jobQueueOf,
+        header: 'Stage',
+        enableColumnFilter: true,
+        enableSorting: false,
+        meta: { filterOptions: stageFilterOptions, filterVariant: 'multi-select', headerClassName: 'min-w-32' },
+        cell: ({ row }) => <JobQueueBadge queue={jobQueueOf(row.original)} />,
       },
       {
         id: 'customer',
@@ -106,7 +160,9 @@ export function JobsPage({ queue }: { queue: JobQueue }) {
         cell: ({ row }) => (
           <div className="min-w-36">
             <div className="font-medium">{row.original.workTypeName}</div>
-            {queue === 'upcoming' && row.original.foremanUserId === null && canAssignForeman(row.original) ? (
+            {row.original.status === 'upcoming' &&
+            row.original.foremanUserId === null &&
+            canAssignForeman(row.original) ? (
               <SearchableCombobox
                 inputId={`foreman-${row.original.id}`}
                 options={(foremen.data ?? []).map((person) => ({ value: person.id, label: person.name }))}
@@ -139,21 +195,29 @@ export function JobsPage({ queue }: { queue: JobQueue }) {
       {
         id: 'attention',
         header: 'Needs a look',
-        cell: ({ row }) => (
-          <div className="min-w-36">
-            {row.original.needsALook > 0 ? (
-              <Badge
-                className={cn(jobAttentionColorClassNames.chip, jobAttentionColorClassNames.text)}
-                variant="outline"
-              >
-                <IconAlertTriangle aria-hidden="true" />
-                {formatNumber(row.original.needsALook)} {row.original.needsALook === 1 ? 'item' : 'items'} to review
-              </Badge>
-            ) : (
-              <span className="text-muted-foreground">No issues</span>
-            )}
-          </div>
-        ),
+        cell: ({ row }) => {
+          const { assignmentAttention } = row.original;
+          const level = countedAssignmentAttentionLevel(assignmentAttention);
+          const items = assignmentAttention.critical + assignmentAttention.warning;
+          return (
+            <div className="min-w-36">
+              {level ? (
+                <Badge
+                  className={cn(
+                    assignmentAttentionLevelColorClassNames[level].chip,
+                    assignmentAttentionLevelColorClassNames[level].text,
+                  )}
+                  variant="outline"
+                >
+                  <IconAlertTriangle aria-hidden="true" />
+                  {formatNumber(items)} {items === 1 ? 'item' : 'items'} to review
+                </Badge>
+              ) : (
+                <span className="text-muted-foreground">No issues</span>
+              )}
+            </div>
+          );
+        },
       },
       {
         id: 'dates',
@@ -178,51 +242,43 @@ export function JobsPage({ queue }: { queue: JobQueue }) {
           </div>
         ),
       },
-      ...(queue === 'looks-finished'
-        ? [
-            {
-              id: 'review',
-              header: '',
-              cell: ({ row }) => (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() =>
-                    void navigate({ to: '/contracting/jobs/$code', params: { code: row.original.jobNumber } })
-                  }
-                >
-                  Review & sign off
-                </Button>
-              ),
-            } satisfies DataTableColumnDef<JobSummary>,
-          ]
-        : []),
-      ...(queue === 'awaiting-pricing' && canPrice
-        ? [
-            {
-              id: 'price',
-              header: '',
-              cell: ({ row }) => (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() =>
-                    void navigate({
-                      to: '/contracting/jobs/$code',
-                      params: { code: row.original.jobNumber },
-                      hash: 'pricing',
-                    })
-                  }
-                >
-                  Price
-                </Button>
-              ),
-            } satisfies DataTableColumnDef<JobSummary>,
-          ]
-        : []),
+      {
+        id: 'next-step',
+        header: '',
+        cell: ({ row }) => {
+          const queue = jobQueueOf(row.original);
+          if (queue === 'looks-finished')
+            return (
+              <Button size="sm" variant="outline" onClick={() => openJob(row.original)}>
+                Review & sign off
+              </Button>
+            );
+          return queue === 'awaiting-pricing' && canPrice ? (
+            <Button size="sm" variant="outline" onClick={() => openJob(row.original, 'pricing')}>
+              Price
+            </Button>
+          ) : null;
+        },
+      },
     ],
-    [queue, canAssignForeman, canPrice, foremen.data, assign.mutate, navigate],
+    [canAssignForeman, canPrice, foremen.data, assign.mutate, openJob],
   );
+  const table = useDataTable({
+    columns,
+    data: jobs,
+    enableSortingRemoval: false,
+    manualFiltering: true,
+    manualSorting: true,
+    onColumnFiltersChange: tableController.setColumnFilters,
+    onGlobalFilterChange: tableController.setGlobalFilter,
+    onSortingChange: tableController.setSorting,
+    state: {
+      columnFilters: tableController.columnFilters,
+      globalFilter: tableController.globalFilter,
+      sorting: tableController.sorting,
+    },
+  });
+  const quickStages = quickFilterStages(counts.data);
   return (
     <>
       <PageLayout
@@ -232,46 +288,55 @@ export function JobsPage({ queue }: { queue: JobQueue }) {
         actions={canCreate ? <Button onClick={flow.open}>New job</Button> : undefined}
       >
         <ErrorMessage
-          error={counts.error ?? jobs.error ?? foremen.error ?? activeAttention.error}
+          error={counts.error ?? foremen.error ?? activeAttention.error}
           fallbackMessage="Unable to load Jobs."
         />
-        <fieldset className="scrollbar-none flex gap-1.5 overflow-x-auto" aria-label="Job queues">
-          {jobQueues.map((item) => (
-            <Button
+        <fieldset className="scrollbar-none flex gap-1.5 overflow-x-auto" aria-label="Job stages">
+          {quickStages.map((item) => (
+            <QuickFilterButton
               key={item}
-              aria-pressed={queue === item}
-              className={cn(
-                'h-9 gap-1.5 px-2',
-                queue === item && 'border-muted-foreground/60 bg-muted text-foreground',
-              )}
-              onClick={() => void navigate({ to: '/contracting/jobs', search: { queue: item } })}
-              size="sm"
-              type="button"
-              variant="outline"
+              count={counts.data?.[item] ?? 0}
+              pressed={isOnlyStage(tableController.columnFilters, item)}
+              onClick={() => tableController.setColumnFilters((current) => toggleQuickFilter(current, item))}
+              attention={
+                item === 'active' && activeAttention.data ? (
+                  <IconAlertTriangle
+                    aria-label="Jobs need a look"
+                    className={cn('size-3.5', assignmentAttentionLevelColorClassNames[activeAttention.data].icon)}
+                  />
+                ) : null
+              }
             >
               <span aria-hidden="true" className={cn('size-2 rounded-full', jobQueueColorClassNames[item].dot)} />
               <span>{jobQueueLabels[item]}</span>
-              <span className="rounded bg-muted px-1 text-xs text-muted-foreground">
-                {formatNumber(counts.data?.[item] ?? 0)}
-              </span>
-              {item === 'active' && activeAttention.data ? (
-                <IconAlertTriangle
-                  aria-label="Jobs need a look"
-                  className={cn('size-3.5', jobAttentionIconColorClassName)}
-                />
-              ) : null}
-            </Button>
+            </QuickFilterButton>
           ))}
+          <QuickFilterButton
+            count={stagesCount(counts.data)}
+            pressed={isPickedStages(tableController.columnFilters, jobQueues)}
+            onClick={() => tableController.setColumnFilters((current) => toggleStages(current, jobQueues))}
+          >
+            <span>All</span>
+          </QuickFilterButton>
         </fieldset>
-        <ClientDataTable
-          columns={columns}
-          rows={jobs.rows}
-          loading={jobs.isPending}
-          emptyMessage="No Jobs in this queue."
-          searchPlaceholder="Search Jobs…"
-          onOpen={(job) => void navigate({ to: '/contracting/jobs/$code', params: { code: job.jobNumber } })}
+        <DataTable
+          emptyMessage="No Jobs found."
+          errorMessage={getApiQueryErrorMessage(jobsQuery.error, 'Unable to load Jobs.')}
+          getRowAriaLabel={(job) => `Open ${job.jobNumber}`}
+          globalFilterPlaceholder="Search Jobs…"
+          isLoading={jobsQuery.isPending}
+          paginationMode="cursor"
+          loadMore={{
+            hasNextPage: jobsQuery.hasNextPage,
+            isFetchingNextPage: jobsQuery.isFetchingNextPage,
+            loadedCount: jobs.length,
+            onLoadMore: () => void jobsQuery.fetchNextPage(),
+          }}
+          onRowClick={(job) => openJob(job)}
+          table={table}
+          total={total}
+          totalLabel={(value) => `${formatNumber(value)} ${value === 1 ? 'Job' : 'Jobs'}`}
         />
-        <JobQueueLoadMore pages={jobs} />
       </PageLayout>
       <NewJobDialog flow={flow} canAssign={canAssign} />
     </>

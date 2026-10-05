@@ -307,7 +307,7 @@ test('projects only open field Jobs, enforces ownership, and never returns money
 
 test('enforces the Job queue role matrix and strips money from Foreman reads', async ({ context }) => {
   const foreman = context.createCaller(contractingSession('foreman')).contractingJobs;
-  expect((await foreman.jobs.list({ queue: 'upcoming' })).map((job) => job.id)).toEqual([context.ownJob.id]);
+  expect((await foreman.jobs.list({ queues: ['upcoming'] })).items.map((job) => job.id)).toEqual([context.ownJob.id]);
   expect(await foreman.jobs.get({ id: context.ownJob.id })).toMatchObject({
     diesel: null,
     discount: null,
@@ -319,7 +319,7 @@ test('enforces the Job queue role matrix and strips money from Foreman reads', a
   });
   await expect(foreman.jobs.get({ id: context.otherJob.id })).rejects.toMatchObject({ code: 'FORBIDDEN' });
   await expect(foreman.jobs.get({ id: context.pricedJob.id })).rejects.toMatchObject({ code: 'FORBIDDEN' });
-  await expect(foreman.jobs.list({ queue: 'awaiting-invoice' })).rejects.toMatchObject({ code: 'FORBIDDEN' });
+  await expect(foreman.jobs.list({ queues: ['awaiting-invoice'] })).rejects.toMatchObject({ code: 'FORBIDDEN' });
   await expect(foreman.assignments.remove({ id: context.otherStint.id })).rejects.toMatchObject({
     code: 'FORBIDDEN',
   });
@@ -327,7 +327,7 @@ test('enforces the Job queue role matrix and strips money from Foreman reads', a
   expect((await getJob({ db: context.db, id: context.ownJob.id })).assignments).toEqual([]);
 
   const workshop = context.createCaller(contractingSession('workshop-manager')).contractingJobs;
-  expect((await workshop.jobs.list({ queue: 'upcoming' })).map((job) => job.id)).toEqual([context.ownJob.id]);
+  expect((await workshop.jobs.list({ queues: ['upcoming'] })).items.map((job) => job.id)).toEqual([context.ownJob.id]);
   await expect(
     workshop.jobs.create({
       customerId: context.customer.id,
@@ -339,11 +339,11 @@ test('enforces the Job queue role matrix and strips money from Foreman reads', a
   ).rejects.toMatchObject({ code: 'FORBIDDEN' });
 
   const invoicing = context.createCaller(contractingSession('contracting-invoicing')).contractingJobs;
-  await expect(invoicing.jobs.list({ queue: 'upcoming' })).rejects.toMatchObject({ code: 'FORBIDDEN' });
-  expect((await invoicing.jobs.list({ queue: 'awaiting-pricing' })).map((job) => job.id)).toEqual([
+  await expect(invoicing.jobs.list({ queues: ['upcoming'] })).rejects.toMatchObject({ code: 'FORBIDDEN' });
+  expect((await invoicing.jobs.list({ queues: ['awaiting-pricing'] })).items.map((job) => job.id)).toEqual([
     context.completedJob.id,
   ]);
-  expect((await invoicing.jobs.list({ queue: 'awaiting-invoice' })).map((job) => job.id)).toEqual([
+  expect((await invoicing.jobs.list({ queues: ['awaiting-invoice'] })).items.map((job) => job.id)).toEqual([
     context.pricedJob.id,
   ]);
   await expect(invoicing.jobs.get({ id: context.completedJob.id })).resolves.toMatchObject({
@@ -353,10 +353,27 @@ test('enforces the Job queue role matrix and strips money from Foreman reads', a
 
   for (const role of ['driver', 'mechanic'] as const)
     await expect(
-      context.createCaller(contractingSession(role)).contractingJobs.jobs.list({ queue: 'upcoming' }),
+      context.createCaller(contractingSession(role)).contractingJobs.jobs.list({ queues: ['upcoming'] }),
     ).rejects.toMatchObject({ code: 'FORBIDDEN' });
-  await expect(context.createAnonCaller().contractingJobs.jobs.list({ queue: 'upcoming' })).rejects.toMatchObject({
+  await expect(context.createAnonCaller().contractingJobs.jobs.list({ queues: ['upcoming'] })).rejects.toMatchObject({
     code: 'UNAUTHORIZED',
+  });
+});
+
+test('lists several queues in one page, searched on the server', async ({ context }) => {
+  const manager = context.createCaller(contractingSession('contracting-manager')).contractingJobs.jobs;
+  const open = ['upcoming', 'active', 'looks-finished', 'awaiting-pricing', 'awaiting-invoice'] as const;
+  const listed = await manager.list({ queues: [...open] });
+  expect(listed.total).toBe(4);
+  expect(listed.items.map((job) => job.id)).toEqual(
+    expect.arrayContaining([context.ownJob.id, context.otherJob.id, context.completedJob.id, context.pricedJob.id]),
+  );
+  const searched = await manager.list({ queues: [...open], search: context.pricedJob.jobNumber });
+  expect(searched).toMatchObject({ total: 1, items: [{ id: context.pricedJob.id }] });
+
+  const invoicing = context.createCaller(contractingSession('contracting-invoicing')).contractingJobs.jobs;
+  await expect(invoicing.list({ queues: ['awaiting-pricing', 'active'] })).rejects.toMatchObject({
+    code: 'FORBIDDEN',
   });
 });
 
@@ -393,24 +410,25 @@ test('counts queue tabs by read mode and exposes capture evidence on Job details
     invoiced: 0,
   });
   expect(await invoicing.queueCounts()).toMatchObject({ upcoming: 0, active: 0, 'awaiting-pricing': 1 });
-  expect(await manager.activeAttention()).toBe(false);
-  expect(await foreman.activeAttention()).toBe(false);
-  expect(await invoicing.activeAttention()).toBe(false);
+  // A missing photo is a notice, so it never needs a look.
+  expect(await manager.activeAttention()).toBeNull();
+  expect(await foreman.activeAttention()).toBeNull();
+  expect(await invoicing.activeAttention()).toBeNull();
   expect(await manager.get({ id: context.otherJob.id })).toMatchObject({
     assignments: [
-      { arrival: { comment: null, aiConfidence: null, capturedByName: 'Other', needsALook: ['missing-photo'] } },
+      { arrival: { comment: null, aiConfidence: null, capturedByName: 'Other', attention: ['missing-photo'] } },
     ],
   });
   const arrivalId = (await manager.get({ id: context.otherJob.id })).assignments[0]?.arrival?.id;
   if (!arrivalId) throw new Error('Expected arrival reading');
   await context.db
     .update(contractingHourReadings)
-    .set({ aiValue: 101, aiConfidence: 0.87, aiVerification: 'pending' })
+    .set({ aiValue: 101, aiConfidence: 0.87, aiVerification: 'disagrees' })
     .where(eq(contractingHourReadings.id, arrivalId));
-  expect(await manager.activeAttention()).toBe(true);
-  expect(await foreman.activeAttention()).toBe(false);
+  expect(await manager.activeAttention()).toBe('warning');
+  expect(await foreman.activeAttention()).toBeNull();
   expect(await manager.get({ id: context.otherJob.id })).toMatchObject({
-    assignments: [{ arrival: { aiConfidence: 0.87, needsALook: ['ai-pending', 'missing-photo'] } }],
+    assignments: [{ arrival: { aiConfidence: 0.87, attention: ['ai-disagrees', 'missing-photo'] } }],
   });
   const departure = {
     machineId: context.otherMachine.id,
@@ -463,10 +481,10 @@ test('lets Invoicing list, read and stamp Priced Jobs while every other write st
   context,
 }) => {
   const invoicing = context.createCaller(contractingSession('contracting-invoicing')).contractingJobs;
-  expect(await invoicing.jobs.list({ queue: 'awaiting-invoice' })).toMatchObject([
+  expect((await invoicing.jobs.list({ queues: ['awaiting-invoice'] })).items).toMatchObject([
     { id: context.pricedJob.id, pricedTotal: 100, pricedAt: expect.any(String), invoiceNumber: null },
   ]);
-  await expect(invoicing.jobs.list({ queue: 'active' })).rejects.toMatchObject({ code: 'FORBIDDEN' });
+  await expect(invoicing.jobs.list({ queues: ['active'] })).rejects.toMatchObject({ code: 'FORBIDDEN' });
   await expect(invoicing.jobs.get({ id: context.pricedJob.id })).resolves.toMatchObject({ pricedTotal: 100 });
   for (const attempt of [
     () => invoicing.pricing.markPriced({ id: context.completedJob.id, expectedTotal: 0 }),
@@ -476,7 +494,7 @@ test('lets Invoicing list, read and stamp Priced Jobs while every other write st
     await expect(attempt()).rejects.toMatchObject({ code: 'FORBIDDEN' });
 
   const manager = context.createCaller(contractingSession('contracting-manager')).contractingJobs;
-  expect(await manager.jobs.list({ queue: 'awaiting-invoice' })).toMatchObject([{ pricedTotal: 100 }]);
+  expect((await manager.jobs.list({ queues: ['awaiting-invoice'] })).items).toMatchObject([{ pricedTotal: 100 }]);
   await expect(
     manager.invoicing.stamp({ id: context.pricedJob.id, invoiceNumber: 'INV-1', expectedTotal: 100 }),
   ).rejects.toMatchObject({ code: 'FORBIDDEN' });
@@ -500,21 +518,37 @@ test('lets Invoicing list, read and stamp Priced Jobs while every other write st
   ).rejects.toMatchObject({ code: 'FORBIDDEN' });
 });
 
-test('filters the Invoiced queue by the South African month it was stamped in, and no other queue', async ({
-  context,
-}) => {
+test('filters the Invoiced queue by the South African days it was stamped on, newest first', async ({ context }) => {
   // 23:30 UTC on 31 August is 01:30 on 1 September in Johannesburg.
   await context.db
     .update(contractingJobs)
     .set({ status: 'invoiced', invoiceNumber: 'INV-9', invoicedAt: new Date('2026-08-31T23:30:00Z') })
     .where(eq(contractingJobs.id, context.pricedJob.id));
+  await context.db
+    .update(contractingJobs)
+    .set({
+      status: 'invoiced',
+      pricedAt: new Date('2026-08-19T10:00:00Z'),
+      pricedSubtotal: 50,
+      pricedTotal: 50,
+      invoiceNumber: 'INV-8',
+      invoicedAt: new Date('2026-08-20T10:00:00Z'),
+    })
+    .where(eq(contractingJobs.id, context.completedJob.id));
   const invoicing = context.createCaller(contractingSession('contracting-invoicing')).contractingJobs.jobs;
-  const invoicedIn = async (month: string) =>
-    (await invoicing.list({ queue: 'invoiced', invoicedInMonth: month })).map((job) => job.id);
+  const invoiced = async (range: { invoicedFrom?: string; invoicedTo?: string }) =>
+    (await invoicing.list({ queues: ['invoiced'], sortBy: 'invoicedAt', sortDirection: 'desc', ...range })).items.map(
+      (job) => job.id,
+    );
 
-  expect(await invoicedIn('2026-09-01')).toEqual([context.pricedJob.id]);
-  expect(await invoicedIn('2026-08-01')).toEqual([]);
+  expect(await invoiced({})).toEqual([context.pricedJob.id, context.completedJob.id]);
+  expect(await invoiced({ invoicedFrom: '2026-09-01', invoicedTo: '2026-09-30' })).toEqual([context.pricedJob.id]);
+  expect(await invoiced({ invoicedFrom: '2026-08-01', invoicedTo: '2026-08-31' })).toEqual([context.completedJob.id]);
+  expect(await invoiced({ invoicedTo: '2026-08-19' })).toEqual([]);
+  // A range only keeps invoiced Jobs, so an un-invoiced stage listed beside them drops out.
   expect(
-    (await invoicing.list({ queue: 'awaiting-pricing', invoicedInMonth: '2026-08-01' })).map((job) => job.id),
-  ).toEqual([context.completedJob.id]);
+    (await invoicing.list({ queues: ['awaiting-invoice', 'invoiced'], invoicedFrom: '2026-09-01' })).items.map(
+      (job) => job.id,
+    ),
+  ).toEqual([context.pricedJob.id]);
 });

@@ -1,11 +1,12 @@
 import { z } from 'zod';
 import { AuthId } from '../../auth/auth-id.js';
 import { DateIso, DateOnlyIso } from '../../common/date.js';
+import { createCursorQueryResult, createSearchedSortedCursorQueryInput } from '../../common/pagination.js';
 import { nullableTrimmedTextInput, nullableTrimmedTextInputOptional, requiredTrimmedText } from '../../common/text.js';
 import { UUID } from '../../common/uuid.js';
 import { CategoryColour, CategoryIconKey, FleetCode, FleetName } from '../fleet/fleet.js';
 import { RateBasis } from '../rate-card/rate-card.js';
-import { HourReading } from '../readings/reading.js';
+import { HourReading, ReadingValue } from '../readings/reading.js';
 import { JobActions } from './job-actions.js';
 import { assignmentStates, discountKinds, jobQueues, jobStatuses } from './job-enums.js';
 
@@ -64,15 +65,17 @@ export const JobCompleteInput = z
   });
 export type JobCompleteInput = z.infer<typeof JobCompleteInput>;
 
-export const JobListInput = z
-  .object({
-    queue: z.enum(jobQueues),
-    limit: z.number().int().positive().max(200).default(50),
-    offset: z.number().int().nonnegative().default(0),
-    /** First day of a month; filters the invoiced queue to Jobs stamped in that South African month. */
-    invoicedInMonth: DateOnlyIso.optional(),
-  })
-  .strict();
+export const JobSortBy = z.enum(['jobNumber', 'invoicedAt']);
+export const JobListInput = createSearchedSortedCursorQueryInput({
+  shape: {
+    queues: z.array(z.enum(jobQueues)).min(1),
+    /** Keep only Jobs invoiced on or after this South African calendar day; a Job not yet invoiced drops out. */
+    invoicedFrom: DateOnlyIso.optional(),
+    /** Keep only Jobs invoiced on or before this South African calendar day; a Job not yet invoiced drops out. */
+    invoicedTo: DateOnlyIso.optional(),
+  },
+  sortBy: JobSortBy.default('jobNumber'),
+});
 export type JobListInput = z.infer<typeof JobListInput>;
 export const JobLookupInput = z.union([z.object({ id: UUID }).strict(), z.object({ code: JobNumber }).strict()]);
 export type JobLookupInput = z.infer<typeof JobLookupInput>;
@@ -148,6 +151,7 @@ export const jobReadingAttentionKinds = [
   'ai-low-confidence',
   'missing-photo',
 ] as const;
+export type JobReadingAttentionKind = (typeof jobReadingAttentionKinds)[number];
 /** The sign-off projection carries evidence without exposing photo storage metadata. */
 export const JobReading = HourReading.pick({
   id: true,
@@ -169,7 +173,9 @@ export const JobReading = HourReading.pick({
 }).extend({
   photoBacked: z.boolean(),
   capturedByName: z.string().nullable(),
-  needsALook: z.array(z.enum(jobReadingAttentionKinds)),
+  amendedByName: z.string().nullable(),
+  /** Every attention kind on the reading, notices included; the domain assigns each its level. */
+  attention: z.array(z.enum(jobReadingAttentionKinds)),
 });
 export type JobReading = z.infer<typeof JobReading>;
 
@@ -209,10 +215,21 @@ export const StintPricing = z.discriminatedUnion('kind', [
 ]);
 export type StintPricing = z.infer<typeof StintPricing>;
 
+/** The Machine's departure that opens an Assignment's Hour Gap, and the Job it left. */
+export const PreviousDeparture = z.object({
+  value: ReadingValue,
+  capturedAt: DateIso,
+  /** Null when this reader may not see that Job. */
+  job: z.object({ jobNumber: JobNumber, customerName: z.string(), farmName: z.string() }).nullable(),
+});
+export type PreviousDeparture = z.infer<typeof PreviousDeparture>;
+
 export const Assignment = z.object({
   ...assignmentIdentityShape,
   arrival: JobReading.nullable(),
   departure: JobReading.nullable(),
+  /** Null before arrival, and for a Machine's first arrival, which has no Hour Gap. */
+  previousDeparture: PreviousDeparture.nullable(),
   travelIncluded: z.boolean(),
   workHours: Hours.nullable(),
   gapHours: Hours.nullable(),
@@ -252,7 +269,8 @@ const jobSummaryShape = {
   leftStints: z.number().int().nonnegative(),
   looksFinished: z.boolean(),
   openGapFlags: z.number().int().nonnegative(),
-  needsALook: z.number().int().nonnegative(),
+  /** The Job's Machine Assignment attention that needs a look, counted at each level: notices never count. */
+  assignmentAttention: z.object({ critical: z.number().int().nonnegative(), warning: z.number().int().nonnegative() }),
   startDate: DateOnlyIso.nullable(),
   endDate: DateOnlyIso.nullable(),
   pricedAt: DateIso.nullable(),
@@ -264,6 +282,8 @@ const jobSummaryShape = {
 };
 export const JobSummary = z.object(jobSummaryShape);
 export type JobSummary = z.infer<typeof JobSummary>;
+export const JobListResult = createCursorQueryResult(JobSummary);
+export type JobListResult = z.infer<typeof JobListResult>;
 
 export const PricingGate = z.object({
   ok: z.boolean(),

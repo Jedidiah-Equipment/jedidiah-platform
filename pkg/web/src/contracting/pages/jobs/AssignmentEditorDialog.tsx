@@ -27,6 +27,7 @@ export function AssignmentEditorDialog({
   error,
   canSave = true,
   submitLabel = 'Save assignment',
+  triggerVariant = 'ghost',
 }: {
   stint: Assignment;
   implementOptions: readonly SearchableComboboxOption[];
@@ -36,6 +37,8 @@ export function AssignmentEditorDialog({
   error?: unknown;
   canSave?: boolean;
   submitLabel?: string;
+  /** Outline where the pencil sits among a timeline's other row buttons. */
+  triggerVariant?: 'ghost' | 'outline';
 }) {
   const [open, setOpen] = useState(false);
   return (
@@ -49,7 +52,7 @@ export function AssignmentEditorDialog({
         size="icon-sm"
         title="Edit implement and driver"
         type="button"
-        variant="ghost"
+        variant={triggerVariant}
       >
         <IconPencil aria-hidden="true" />
       </Button>

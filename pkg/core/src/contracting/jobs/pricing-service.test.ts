@@ -3,6 +3,7 @@ import { auditEvents } from '@pkg/db';
 import { contractingJobs, contractingMachineAssignments } from '@pkg/db/contracting';
 import { stintAmount } from '@pkg/domain/contracting';
 import { accessForRole } from '@pkg/domain/testing';
+import { JobListInput } from '@pkg/schema/contracting';
 import { and, eq } from 'drizzle-orm';
 import { describe, expect } from 'vitest';
 import { createTester } from '../../test/create-tester.js';
@@ -403,11 +404,9 @@ describe('Mark as Priced', () => {
         await listJobs({
           db,
           actor: accessForRole('contracting-admin', 'reader'),
-          queue: 'awaiting-invoice',
-          limit: 50,
-          offset: 0,
+          input: JobListInput.parse({ queues: ['awaiting-invoice'] }),
         })
-      ).map((job) => job.id),
+      ).items.map((job) => job.id),
     ).toEqual([jobId]);
   });
 });
@@ -464,11 +463,9 @@ describe('a reading amendment on a Priced Job', () => {
         await listJobs({
           db,
           actor: accessForRole('contracting-admin', 'reader'),
-          queue: 'awaiting-pricing',
-          limit: 50,
-          offset: 0,
+          input: JobListInput.parse({ queues: ['awaiting-pricing'] }),
         })
-      ).map((job) => job.id),
+      ).items.map((job) => job.id),
     ).toEqual([jobId]);
 
     await markPriced({ db, actor: admin, input: { id: jobId, expectedTotal: 5_400 } });

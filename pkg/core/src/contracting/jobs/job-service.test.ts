@@ -3,6 +3,7 @@ import { auditEvents, user } from '@pkg/db';
 import { contractingMachineAssignments, contractingMeasures } from '@pkg/db/contracting';
 import { accessForRole } from '@pkg/domain/testing';
 import { DateOnlyIso } from '@pkg/schema';
+import { JobListInput, type JobQueue } from '@pkg/schema/contracting';
 import { eq } from 'drizzle-orm';
 import { describe, expect } from 'vitest';
 import { createTester } from '../../test/create-tester.js';
@@ -412,26 +413,16 @@ describe('Machine Assignment lifecycle', () => {
       },
     });
     expect((await getJob({ db: context.db, id: secondJob.id })).status).toBe('active');
-    expect(
+    const listed = async (queue: JobQueue) =>
       (
         await listJobs({
           db: context.db,
           actor: accessForRole('contracting-admin', 'reader'),
-          queue: 'looks-finished',
-          limit: 50,
-          offset: 0,
+          input: JobListInput.parse({ queues: [queue] }),
         })
-      ).map((job) => job.id),
-    ).toEqual([firstJob.id]);
-    expect(
-      await listJobs({
-        db: context.db,
-        actor: accessForRole('contracting-admin', 'reader'),
-        queue: 'active',
-        limit: 1,
-        offset: 1,
-      }),
-    ).toHaveLength(1);
+      ).items.map((job) => job.id);
+    expect(await listed('looks-finished')).toEqual([firstJob.id]);
+    expect(await listed('active')).toEqual([secondJob.id]);
 
     await captureReading({
       db: context.db,
@@ -684,6 +675,17 @@ describe('Completion and billable facts', () => {
         comment: 'Photo unavailable',
       },
     });
+    const [gapped] = (await getJob({ db: context.db, id: secondJob.id })).assignments;
+    expect(gapped).toMatchObject({
+      gapFlag: true,
+      gapHours: 10,
+      previousDeparture: {
+        value: 310,
+        capturedAt: new Date('2026-09-04T17:00:00+02:00').toISOString(),
+        job: { jobNumber: firstJob.jobNumber, customerName: expect.any(String), farmName: expect.any(String) },
+      },
+    });
+    expect((await getJob({ db: context.db, id: firstJob.id })).assignments[0]?.previousDeparture).toBeNull();
     await expect(
       completeJob({
         db: context.db,

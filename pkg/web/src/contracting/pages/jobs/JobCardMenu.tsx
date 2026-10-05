@@ -1,8 +1,6 @@
-import { jobCardFilename } from '@pkg/domain/contracting';
 import type { JobCardVariant, JobDetail } from '@pkg/schema/contracting';
 import { IconChevronDown, IconFileText } from '@tabler/icons-react';
-import { useCallback, useState } from 'react';
-import { FilePreviewSheet } from '@/components/file-preview/FilePreviewSheet.js';
+import { useState } from 'react';
 import { HelpLink } from '@/components/help/index.js';
 import { Button } from '@/components/ui/button.js';
 import {
@@ -14,21 +12,11 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu.js';
 import { jobCardUrl } from '@/contracting/lib/contracting-http-paths.js';
-
-const variantLabels: Record<JobCardVariant, string> = { customer: 'Customer copy', internal: 'Internal copy' };
+import { JobCardPreviewSheet, jobCardVariantLabels as variantLabels } from './JobCardPreviewSheet.js';
 
 /** Opens either Job Card variant in a new tab, where the browser prints it, or previews it beside the Job. */
 export function JobCardMenu({ job }: { job: Pick<JobDetail, 'jobNumber' | 'updatedAt'> }) {
   const [preview, setPreview] = useState<JobCardVariant | null>(null);
-  const variant = preview ?? 'customer';
-  const fetchBlob = useCallback(
-    async ({ signal }: { signal: AbortSignal }) => {
-      const response = await fetch(jobCardUrl(job.jobNumber, variant), { signal, credentials: 'include' });
-      if (!response.ok) throw new Error('Unable to preview the Job Card.');
-      return response.blob();
-    },
-    [job.jobNumber, variant],
-  );
   return (
     <>
       <DropdownMenu>
@@ -59,18 +47,10 @@ export function JobCardMenu({ job }: { job: Pick<JobDetail, 'jobNumber' | 'updat
         </DropdownMenuContent>
       </DropdownMenu>
       <HelpLink label="How to print a Job Card" topic="contractingJobCard" />
-      <FilePreviewSheet
-        open={preview !== null}
-        onOpenChange={(open) => {
-          if (!open) setPreview(null);
-        }}
-        description={variantLabels[variant]}
-        downloadFilename={jobCardFilename(job.jobNumber, variant)}
-        fetchBlob={fetchBlob}
-        kind="pdf"
-        queryKey={['job-card', job.jobNumber, variant, job.updatedAt]}
-        subject="Job Card"
-        title={`${job.jobNumber} Job Card`}
+      <JobCardPreviewSheet
+        job={preview ? job : null}
+        variant={preview ?? 'customer'}
+        onClose={() => setPreview(null)}
       />
     </>
   );

@@ -1,22 +1,53 @@
+import type { JobQueueCounts } from '@pkg/schema/contracting';
 import { describe, expect, it } from 'vitest';
-import { InvoicingSearch, invoicedInMonth, invoicedMonthOptions } from './types.js';
+import { invoicedRange, listedInvoicingStages } from './types.js';
 
-describe('the Invoiced month filter', () => {
-  it('offers the last 24 South African months, newest first', () => {
-    // 22:30 UTC on 30 September is already 1 October in Johannesburg.
-    const options = invoicedMonthOptions(new Date('2026-09-30T22:30:00Z'));
-    expect(options).toHaveLength(24);
-    expect(options.slice(0, 2)).toEqual([
-      { value: '2026-10', label: 'October 2026' },
-      { value: '2026-09', label: 'September 2026' },
-    ]);
-    expect(options.at(-1)).toEqual({ value: '2024-11', label: 'November 2024' });
+const counts = (awaiting: number): JobQueueCounts => ({
+  upcoming: 0,
+  active: 0,
+  'looks-finished': 0,
+  'awaiting-pricing': 0,
+  'awaiting-invoice': awaiting,
+  invoiced: 3,
+  cancelled: 0,
+});
+const stage = (value: unknown) => [{ id: 'stage', value }];
+
+describe('listedInvoicingStages', () => {
+  it('lists Awaiting invoice by default, and both stages once nothing is waiting', () => {
+    expect(listedInvoicingStages([], counts(2))).toEqual(['awaiting-invoice']);
+    expect(listedInvoicingStages([], undefined)).toEqual(['awaiting-invoice']);
+    expect(listedInvoicingStages([], counts(0))).toEqual(['awaiting-invoice', 'invoiced']);
   });
 
-  it('round-trips ?month to the first day of that month and drops a malformed one', () => {
-    expect(InvoicingSearch.parse({ tab: 'invoiced', month: '2026-08' })).toEqual({ tab: 'invoiced', month: '2026-08' });
-    expect(invoicedInMonth('2026-08')).toBe('2026-08-01');
-    expect(InvoicingSearch.parse({ month: '08-2026' })).toEqual({ tab: 'awaiting-invoice' });
-    expect(InvoicingSearch.parse({ tab: 'active' })).toEqual({ tab: 'awaiting-invoice' });
+  it('lists the picked Invoicing stages and ignores any other stage', () => {
+    expect(listedInvoicingStages(stage(['invoiced', 'awaiting-invoice']), counts(2))).toEqual([
+      'awaiting-invoice',
+      'invoiced',
+    ]);
+    expect(listedInvoicingStages(stage(['upcoming']), counts(2))).toEqual(['awaiting-invoice']);
+  });
+});
+
+describe('invoicedRange', () => {
+  const filter = (value: unknown) => [{ id: 'invoicedAt', value }];
+
+  it('lists every invoice until a range is picked', () => {
+    expect(invoicedRange([])).toEqual({});
+    expect(invoicedRange(filter({}))).toEqual({});
+  });
+
+  it('passes the picked days through, either end on its own', () => {
+    expect(invoicedRange(filter({ start: '2026-09-01', end: '2026-09-30' }))).toEqual({
+      invoicedFrom: '2026-09-01',
+      invoicedTo: '2026-09-30',
+    });
+    expect(invoicedRange(filter({ start: '2026-09-01' }))).toEqual({ invoicedFrom: '2026-09-01' });
+    expect(invoicedRange(filter({ end: '2026-09-30' }))).toEqual({ invoicedTo: '2026-09-30' });
+  });
+
+  it('ignores a malformed value', () => {
+    expect(invoicedRange(filter({ start: '01/09/2026' }))).toEqual({});
+    expect(invoicedRange(filter(['2026-09-01']))).toEqual({});
   });
 });

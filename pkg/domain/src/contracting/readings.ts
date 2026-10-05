@@ -1,11 +1,18 @@
 import {
   type AiFlaggedVerification,
   aiFlaggedVerifications,
+  type JobReadingAttentionKind,
+  type NeedsALookLevel,
   type ReadingExceptionType,
   type ReadingRole,
   type ReadingVerification,
 } from '@pkg/schema/contracting';
-import { type BadgeColorClassNames, statusBadgeColorClassNames } from '../theme/status-badge.js';
+import {
+  aiVerificationLevel,
+  assignmentAttentionKindLevels,
+  highestAssignmentAttentionLevel,
+  needsALook,
+} from './assignment-attention.js';
 
 export const readingRoleLabels: Record<ReadingRole, string> = {
   baseline: 'Baseline',
@@ -21,12 +28,6 @@ export const readingExceptionTypeLabels = {
   'ai-flagged': 'AI flagged',
   disputed: 'Disputed',
 } as const;
-
-/** Reading exception colors shared by every contracting surface. */
-export const readingExceptionTypeColorClassNames: Record<ReadingExceptionType, BadgeColorClassNames> = {
-  'ai-flagged': statusBadgeColorClassNames.yellow,
-  disputed: statusBadgeColorClassNames.red,
-};
 
 /** The API route that captures an Hour Reading, relative to the API origin. */
 export const READING_CAPTURE_PATH = '/api/contracting/readings';
@@ -71,9 +72,35 @@ export function readingAttention(reading: ReadingAttentionFacts): {
   };
 }
 
-export function readingNeedsALook(reading: ReadingAttentionFacts): boolean {
+/** Each attention kind on a reading, notices included; a reading without a photo carries `missing-photo`. */
+export function readingAttentionKinds(
+  reading: ReadingAttentionFacts & { photoBacked: boolean },
+): JobReadingAttentionKind[] {
   const { disputed, aiFlagged } = readingAttention(reading);
-  return disputed || aiFlagged !== null;
+  return [
+    ...(disputed ? (['disputed'] as const) : []),
+    ...(aiFlagged ? ([`ai-${aiFlagged}`] as const) : []),
+    ...(reading.photoBacked ? [] : (['missing-photo'] as const)),
+  ];
+}
+
+/** The loudest level on a reading that needs a look, or null when nothing does. Core's SQL twins this. */
+export function readingNeedsALookLevel(reading: ReadingAttentionFacts): NeedsALookLevel | null {
+  const level = highestAssignmentAttentionLevel(
+    readingAttentionKinds({ ...reading, photoBacked: true }).map((kind) => assignmentAttentionKindLevels[kind]),
+  );
+  return level !== null && needsALook(level) ? level : null;
+}
+
+export const readingNeedsALook = (reading: ReadingAttentionFacts): boolean => readingNeedsALookLevel(reading) !== null;
+
+/** Why a reading is on the Reading Exceptions list: only the kinds that need a look. */
+export function readingExceptionTypes(reading: ReadingAttentionFacts): ReadingExceptionType[] {
+  const { disputed, aiFlagged } = readingAttention(reading);
+  return [
+    ...(disputed && needsALook(assignmentAttentionKindLevels.disputed) ? (['disputed'] as const) : []),
+    ...(aiFlagged && needsALook(aiVerificationLevel(aiFlagged)) ? (['ai-flagged'] as const) : []),
+  ];
 }
 
 export function meterDisagreementHint({

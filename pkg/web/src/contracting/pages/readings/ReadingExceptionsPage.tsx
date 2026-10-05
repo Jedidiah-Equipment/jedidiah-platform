@@ -1,5 +1,9 @@
 import { formatDate, formatHours, toSentenceCase } from '@pkg/domain';
-import { readingExceptionTypeColorClassNames, readingExceptionTypeLabels } from '@pkg/domain/contracting';
+import {
+  assignmentAttentionLevelColorClassNames,
+  readingExceptionTypeLabels,
+  readingExceptionTypeLevels,
+} from '@pkg/domain/contracting';
 import type { ReadingException } from '@pkg/schema/contracting';
 import { IconEye } from '@tabler/icons-react';
 import { useQuery } from '@tanstack/react-query';
@@ -15,18 +19,22 @@ import { CategoryLabel } from '@/contracting/components/CategoryIcon.js';
 import { MeterPhotoPreview } from '@/contracting/components/MeterPhotoPreview.js';
 import { NoReadableMeterResult, readingEvidence } from '@/contracting/components/ReadingEvidence.js';
 import { useReadingReview } from '@/contracting/hooks/use-reading-review.js';
-import { ReadingAmendDialog } from '@/contracting/pages/jobs/ReadingAmendDialog.js';
+import { ReadingDialog } from '@/contracting/pages/jobs/ReadingDialog.js';
+import { useCan } from '@/hooks/use-access.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { cn } from '@/lib/utils.js';
 
 export function ReadingExceptionsPage() {
   const trpc = useTRPC();
-  const [selected, setSelected] = useState<ReadingException | null>(null);
+  const canAmend = useCan('contracting_reading:update').can;
+  // Tracked by id so the dialog follows the refreshed row, and closes once an amendment resolves the exception.
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [previewReading, setPreviewReading] = useState<ReadingException | null>(null);
   const [globalFilter, setGlobalFilter] = useState('');
   const query = useQuery(trpc.contractingReadings.listExceptions.queryOptions());
-  const { amend, reverify } = useReadingReview();
+  const { reverify } = useReadingReview();
+  const selected = query.data?.find((row) => row.id === selectedId) ?? null;
   const showError = useApiMutationErrorToast();
   const columns = useMemo<DataTableColumnDef<ReadingException>[]>(
     () => [
@@ -57,8 +65,8 @@ export function ReadingExceptionsPage() {
               <Badge
                 key={type}
                 className={cn(
-                  readingExceptionTypeColorClassNames[type].chip,
-                  readingExceptionTypeColorClassNames[type].text,
+                  assignmentAttentionLevelColorClassNames[readingExceptionTypeLevels[type]].chip,
+                  assignmentAttentionLevelColorClassNames[readingExceptionTypeLevels[type]].text,
                 )}
                 variant="outline"
               >
@@ -132,18 +140,9 @@ export function ReadingExceptionsPage() {
       {
         id: 'actions',
         header: 'Actions',
+        meta: { cellClassName: 'text-right', headerClassName: 'text-right' },
         cell: ({ row }) => (
-          <div className="flex flex-wrap items-center gap-1">
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => {
-                amend.reset();
-                setSelected(row.original);
-              }}
-            >
-              Resolve
-            </Button>
+          <div className="flex flex-wrap items-center justify-end gap-1">
             <Button
               size="sm"
               variant="outline"
@@ -157,11 +156,14 @@ export function ReadingExceptionsPage() {
             >
               Re-verify
             </Button>
+            <Button size="sm" onClick={() => setSelectedId(row.original.id)}>
+              Resolve
+            </Button>
           </div>
         ),
       },
     ],
-    [amend.reset, reverify.isPending, reverify.mutate, showError],
+    [reverify.isPending, reverify.mutate, showError],
   );
   const table = useDataTable({
     data: query.data ?? [],
@@ -182,17 +184,13 @@ export function ReadingExceptionsPage() {
           globalFilterPlaceholder="Search machines..."
         />
       </PageLayout>
-      <ReadingAmendDialog
-        reading={selected}
-        machine={selected}
-        open={!!selected}
-        onOpenChange={(open) => {
-          if (!open) setSelected(null);
-        }}
-        description="Check the photo and both disputed readings. Confirm or correct the value and give a reason. This acknowledges the current evidence warning."
-        onAmend={(input) => amend.mutateAsync(input)}
-        onAmended={() => setSelected(null)}
-        error={amend.error}
+      <ReadingDialog
+        selected={
+          selected ? { reading: { ...selected, photoBacked: selected.photo !== null }, machine: selected } : null
+        }
+        onClose={() => setSelectedId(null)}
+        amendReadings={canAmend}
+        amendDescription="Check the photo and both disputed readings. Confirm or correct the value and give a reason. This acknowledges the current evidence warning."
       />
       <MeterPhotoPreview
         photo={previewReading ? { readingId: previewReading.id, machineCode: previewReading.machineCode } : null}

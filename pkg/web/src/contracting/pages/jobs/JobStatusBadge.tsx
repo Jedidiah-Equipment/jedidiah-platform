@@ -1,5 +1,10 @@
-import { jobStatusColorClassNames, jobStatusLabels } from '@pkg/domain/contracting';
-import type { JobStatus } from '@pkg/schema/contracting';
+import {
+  jobQueueColorClassNames,
+  jobQueueLabels,
+  jobStatusColorClassNames,
+  jobStatusLabels,
+} from '@pkg/domain/contracting';
+import type { JobQueue, JobStatus } from '@pkg/schema/contracting';
 import type React from 'react';
 
 import { Badge } from '@/components/ui/badge.js';
@@ -16,5 +21,12 @@ export const JobStatusBadge: React.FC<JobStatusBadgeProps> = ({ className, statu
     {...props}
   >
     {jobStatusLabels[status]}
+  </Badge>
+);
+
+/** The workflow stage a Job sits in, which can differ from its stored status. */
+export const JobQueueBadge: React.FC<{ queue: JobQueue }> = ({ queue }) => (
+  <Badge className={cn(jobQueueColorClassNames[queue].chip, jobQueueColorClassNames[queue].text)} variant="outline">
+    {jobQueueLabels[queue]}
   </Badge>
 );

@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import type { DatabaseTransaction, Db, StoredFile } from '@pkg/db';
+import { type DatabaseTransaction, type Db, type StoredFile, user } from '@pkg/db';
 import {
   contractingCategories,
   contractingHourReadings,
@@ -17,18 +17,14 @@ import {
   judgeCapture,
   meterDisagreementHint,
   READING_PHOTO_POLICY,
-  readingAttention,
+  readingExceptionTypes,
   readingVerification,
   resolveReadingAmendment,
 } from '@pkg/domain/contracting';
 import type { AuthId } from '@pkg/schema';
-import {
-  FieldReading,
-  ReadingAmendInput,
-  ReadingCaptureInput,
-  type ReadingExceptionType,
-} from '@pkg/schema/contracting';
+import { FieldReading, ReadingAmendInput, ReadingCaptureInput } from '@pkg/schema/contracting';
 import { and, asc, desc, eq, getTableColumns, gt, inArray, or } from 'drizzle-orm';
+import { alias } from 'drizzle-orm/pg-core';
 import { defineAuditDescriptor, recordAuditCreate } from '../../audit/audit-writer.js';
 import { mutateEntity } from '../../audit/mutate-entity.js';
 import { FilePolicyViolationError } from '../../files/file-errors.js';
@@ -42,11 +38,6 @@ import { readingToWire } from './reading-wire.js';
 
 const notFound = () => new ReadingError('reading.not_found', 'Hour Reading not found.');
 type Row = typeof contractingHourReadings.$inferSelect;
-
-function getReadingExceptionTypes(row: Row): ReadingExceptionType[] {
-  const { disputed, aiFlagged } = readingAttention(row);
-  return [...(disputed ? (['disputed'] as const) : []), ...(aiFlagged ? (['ai-flagged'] as const) : [])];
-}
 
 function withHint<T extends Row>(row: T) {
   return { ...row, aiHint: meterDisagreementHint(row) };
@@ -229,6 +220,9 @@ export async function captureReading({
   }
 }
 
+const capturer = alias(user, 'exception_capturer');
+const amender = alias(user, 'exception_amender');
+
 export async function listReadingExceptions({ db }: { db: Db }) {
   const rows = await db
     .select({
@@ -236,13 +230,17 @@ export async function listReadingExceptions({ db }: { db: Db }) {
       machineCode: contractingMachines.code,
       categoryIcon: contractingCategories.icon,
       categoryColour: contractingCategories.colour,
+      capturedByName: capturer.name,
+      amendedByName: amender.name,
     })
     .from(contractingHourReadings)
     .innerJoin(contractingMachines, eq(contractingMachines.id, contractingHourReadings.machineId))
     .innerJoin(contractingCategories, eq(contractingCategories.id, contractingMachines.categoryId))
+    .leftJoin(capturer, eq(capturer.id, contractingHourReadings.capturedByUserId))
+    .leftJoin(amender, eq(amender.id, contractingHourReadings.amendedBy))
     .where(readingNeedsALookSql(contractingHourReadings))
     .orderBy(desc(contractingHourReadings.sequence));
-  return rows.map((row) => ({ ...withHint(row), exceptionTypes: getReadingExceptionTypes(row) }));
+  return rows.map((row) => ({ ...withHint(row), exceptionTypes: readingExceptionTypes(row) }));
 }
 // The machine lock serializes captures and amendments. Pair resolution changes multiple rows in
 // the same transaction, so each resulting row is diffed and audited after that resolution.

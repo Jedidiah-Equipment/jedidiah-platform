@@ -1,8 +1,21 @@
 import type { AssignmentState } from '@pkg/schema/contracting';
 import { toPlantDateOnly } from '../formatting/date.js';
+import { formatHours } from '../formatting/number.js';
 import { countPhrase } from './count-phrase.js';
 
+/** A Hour Gap longer than this raises a Gap Flag: more than a Machine normally spends travelling between Jobs. */
 export const GAP_FLAG_THRESHOLD_HOURS = 4;
+
+/** The gap is longer than the window, so it raises a Gap Flag until it is resolved. */
+export const isOverGapWindow = (gapHours: number, threshold = GAP_FLAG_THRESHOLD_HOURS) => gapHours > threshold;
+
+/** What an Hour Gap is and, naming the window, why it was or was not flagged, wherever someone splits it. */
+export const hourGapExplanation = (gapHours: number) =>
+  `The hour meter ran ${formatHours(gapHours)} between the Machine's departure from its previous Job and its arrival here. ${
+    isOverGapWindow(gapHours)
+      ? `Any gap over ${formatHours(GAP_FLAG_THRESHOLD_HOURS)} is flagged, because that is longer than a Machine normally spends travelling between Jobs.`
+      : `Gaps up to ${formatHours(GAP_FLAG_THRESHOLD_HOURS)} are not flagged and count as travel by default.`
+  }`;
 
 export type StintReadings = {
   arrival: { value: number; capturedAt: string } | null;
@@ -55,7 +68,7 @@ export function deriveStintHours(stint: StintReadings, threshold = GAP_FLAG_THRE
     gapHours,
     travelHours,
     unaccountedHours,
-    gapFlag: gapHours !== null && gapHours > threshold && stint.gap === null,
+    gapFlag: gapHours !== null && isOverGapWindow(gapHours, threshold) && stint.gap === null,
     billableHours: workHours === null ? null : round1(workHours + travelHours),
   };
 }

@@ -1,4 +1,5 @@
 import {
+  activeJobAttentionLevel,
   cancelJob,
   clearStintRate,
   completeJob,
@@ -8,7 +9,6 @@ import {
   createJob,
   findJobsByInvoiceNumber,
   getReadableJob,
-  hasActiveJobAttention,
   listFieldDrivers,
   listFieldImplements,
   listFieldJobs,
@@ -57,6 +57,7 @@ import {
   MeasureRemoveInput,
   MeasureSetInput,
   MeasureType,
+  needsALookLevels,
   StintAmountSetInput,
   StintRateClearInput,
   StintRateSetInput,
@@ -88,9 +89,9 @@ export const contractingJobsRouter = router({
   }),
   jobs: router({
     activeAttention: authorizedProcedure(readPermissions)
-      .output(z.boolean())
+      .output(z.enum(needsALookLevels).nullable())
       .query(({ ctx }) =>
-        mapCoreErrors(() => hasActiveJobAttention({ db: ctx.db, actor: ctx.access }), jobErrorFamily),
+        mapCoreErrors(() => activeJobAttentionLevel({ db: ctx.db, actor: ctx.access }), jobErrorFamily),
       ),
     queueCounts: authorizedProcedure(readPermissions)
       .output(JobQueueCounts)
@@ -98,7 +99,7 @@ export const contractingJobsRouter = router({
     list: authorizedProcedure(readPermissions)
       .input(JobListInput)
       .query(({ ctx, input }) =>
-        mapCoreErrors(() => listJobs({ db: ctx.db, actor: ctx.access, ...input }), jobErrorFamily),
+        mapCoreErrors(() => listJobs({ db: ctx.db, actor: ctx.access, input }), jobErrorFamily),
       ),
     get: authorizedProcedure(readPermissions)
       .input(JobLookupInput)

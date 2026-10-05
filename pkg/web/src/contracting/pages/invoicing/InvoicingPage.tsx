@@ -1,171 +1,217 @@
 import { formatCurrency, formatDate, formatNumber } from '@pkg/domain';
-import { jobQueueLabels } from '@pkg/domain/contracting';
-import type { JobSummary } from '@pkg/schema/contracting';
-import { useQuery } from '@tanstack/react-query';
+import { jobQueueColorClassNames, jobQueueLabels, jobQueueOf } from '@pkg/domain/contracting';
+import type { JobListInput, JobSummary } from '@pkg/schema/contracting';
+import { keepPreviousData, useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
-import { useMemo, useState } from 'react';
-import { EnumSelect } from '@/components/common/EnumSelect.js';
-import { ErrorMessage } from '@/components/common/ErrorMessage.js';
-import { ClientDataTable } from '@/components/data-table/ClientDataTable.js';
-import type { DataTableColumnDef } from '@/components/data-table/features.js';
+import type { ColumnFiltersState } from '@tanstack/react-table';
+import { useCallback, useMemo, useState } from 'react';
+import { cursorInfiniteQueryOptions, useCombinedCursorQueryPages } from '@/components/data-table/cursor-query.js';
+import { DataTable } from '@/components/data-table/DataTable.js';
+import { type DataTableColumnDef, useDataTable } from '@/components/data-table/features.js';
+import { useServerSideTableController } from '@/components/data-table/hooks/use-server-side-table-controller.js';
+import { createPersistedDataTableStore } from '@/components/data-table/store.js';
+import type { SortOptions } from '@/components/data-table/table-state.js';
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
 import { Button } from '@/components/ui/button.js';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs.js';
-import { jobCardUrl } from '@/contracting/lib/contracting-http-paths.js';
 import { useCan } from '@/hooks/use-access.js';
+import { getApiQueryErrorMessage } from '@/lib/api-errors.js';
 import { useTRPC } from '@/lib/trpc.js';
-import { JobQueueLoadMore, useJobQueuePages } from '../jobs/use-job-queue-pages.js';
+import { cn } from '@/lib/utils.js';
+import { JobCardPreviewSheet } from '../jobs/JobCardPreviewSheet.js';
+import { JobQueueBadge } from '../jobs/JobStatusBadge.js';
+import { STAGE_COLUMN_ID, stagesCount, toggleQuickFilter, toggleStages } from '../jobs/job-stage-filter.js';
+import { QuickFilterButton } from '../jobs/QuickFilterButton.js';
 import { type StampableJob, StampInvoiceDialog } from './StampInvoiceDialog.js';
 import {
-  type InvoicingTab,
-  invoicedInMonth,
-  invoicedMonthOptions,
-  invoicingTabs,
-  monthKey,
-  monthLabel,
+  INVOICED_COLUMN_ID,
+  invoicedRange,
+  invoicingStages,
+  listedInvoicingStages,
+  showsAwaitingQuickFilter,
 } from './types.js';
 
-export function InvoicingPage({ tab, month: requestedMonth }: { tab: InvoicingTab; month: string | undefined }) {
+const useInvoicingTableStore = createPersistedDataTableStore({
+  initialState: { sorting: [{ id: INVOICED_COLUMN_ID, desc: true }] },
+  persistName: 'contracting-invoicing-table',
+});
+
+const invoicingSortOptions: SortOptions<JobListInput> = {
+  allowedSortIds: [INVOICED_COLUMN_ID, 'jobNumber'],
+  defaultSort: { id: INVOICED_COLUMN_ID, desc: true },
+};
+
+const stageFilterOptions = invoicingStages.map((queue) => ({ value: queue, label: jobQueueLabels[queue] }));
+
+export function InvoicingPage() {
   const trpc = useTRPC();
   const navigate = useNavigate();
   const canStamp = useCan('contracting_invoice:update').can;
-  const [now] = useState(() => new Date());
-  const month = requestedMonth ?? monthKey(now);
-  const monthOptions = useMemo(() => invoicedMonthOptions(now), [now]);
-  const monthLabels = useMemo(
-    () => Object.fromEntries(monthOptions.map((option) => [option.value, option.label])),
-    [monthOptions],
-  );
   const [stamping, setStamping] = useState<StampableJob | null>(null);
+  const [previewing, setPreviewing] = useState<JobSummary | null>(null);
   const counts = useQuery(trpc.contractingJobs.jobs.queueCounts.queryOptions());
-  const view = tab === 'invoiced' ? `invoiced:${month}` : tab;
-  const jobs = useJobQueuePages(
-    tab === 'invoiced' ? { queue: tab, invoicedInMonth: invoicedInMonth(month) } : { queue: tab },
-    tab === 'invoiced' ? undefined : counts.data?.[tab],
+  const getListInputExtras = useCallback(
+    (columnFilters: ColumnFiltersState) => ({
+      queues: listedInvoicingStages(columnFilters, counts.data),
+      ...invoicedRange(columnFilters),
+    }),
+    [counts.data],
   );
+  const tableController = useServerSideTableController({
+    store: useInvoicingTableStore,
+    sortOptions: invoicingSortOptions,
+    getListInputExtras,
+  });
+  const listed = listedInvoicingStages(tableController.columnFilters, counts.data);
+  const jobsQuery = useInfiniteQuery(
+    trpc.contractingJobs.jobs.list.infiniteQueryOptions(tableController.listInput, {
+      ...cursorInfiniteQueryOptions,
+      placeholderData: keepPreviousData,
+    }),
+  );
+  const { items: jobs, total } = useCombinedCursorQueryPages(jobsQuery.data?.pages);
   const columns = useMemo<DataTableColumnDef<JobSummary>[]>(
     () => [
       {
+        accessorKey: INVOICED_COLUMN_ID,
+        header: 'Invoiced',
+        enableColumnFilter: true,
+        enableSorting: true,
+        meta: { filterVariant: 'date-range', headerClassName: 'min-w-36' },
+        cell: ({ row }) => formatDate(row.original.invoicedAt, 'short', '—'),
+      },
+      {
         accessorKey: 'jobNumber',
         header: 'Job',
+        enableColumnFilter: false,
         enableSorting: true,
         cell: ({ row }) => <span className="font-mono font-semibold">{row.original.jobNumber}</span>,
       },
       {
+        id: STAGE_COLUMN_ID,
+        accessorFn: jobQueueOf,
+        header: 'Stage',
+        enableColumnFilter: true,
+        enableSorting: false,
+        meta: { filterOptions: stageFilterOptions, filterVariant: 'multi-select', headerClassName: 'min-w-36' },
+        cell: ({ row }) => <JobQueueBadge queue={jobQueueOf(row.original)} />,
+      },
+      {
         id: 'customer',
         header: 'Customer · Farm',
-        accessorFn: (job) => `${job.customerName} · ${job.farmName}`,
+        cell: ({ row }) => `${row.original.customerName} · ${row.original.farmName}`,
       },
-      { accessorKey: 'workTypeName', header: 'Work type' },
+      { id: 'work-type', header: 'Work type', cell: ({ row }) => row.original.workTypeName },
       {
         id: 'total',
         header: 'Total ex VAT',
         cell: ({ row }) => (row.original.pricedTotal === null ? '—' : formatCurrency(row.original.pricedTotal)),
       },
-      ...(tab === 'awaiting-invoice'
-        ? [
-            {
-              id: 'priced',
-              header: 'Priced',
-              cell: ({ row }) => formatDate(row.original.pricedAt, 'short', '—'),
-            } satisfies DataTableColumnDef<JobSummary>,
-            {
-              id: 'stamp',
-              header: 'Invoice №',
-              cell: ({ row }) => {
-                const { pricedTotal } = row.original;
-                return canStamp && pricedTotal !== null ? (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      setStamping({ ...row.original, pricedTotal });
-                    }}
-                  >
-                    Stamp
-                  </Button>
-                ) : null;
-              },
-            } satisfies DataTableColumnDef<JobSummary>,
-          ]
-        : [
-            {
-              accessorKey: 'invoiceNumber',
-              header: 'Invoice №',
-              cell: ({ row }) => <span className="font-mono">{row.original.invoiceNumber}</span>,
-            } satisfies DataTableColumnDef<JobSummary>,
-            {
-              id: 'invoiced',
-              header: 'Invoiced',
-              cell: ({ row }) => formatDate(row.original.invoicedAt, 'short', '—'),
-            } satisfies DataTableColumnDef<JobSummary>,
-          ]),
+      { id: 'priced', header: 'Priced', cell: ({ row }) => formatDate(row.original.pricedAt, 'short', '—') },
+      {
+        id: 'invoice-number',
+        header: 'Invoice №',
+        cell: ({ row }) => {
+          const { invoiceNumber, pricedTotal } = row.original;
+          if (invoiceNumber) return <span className="font-mono">{invoiceNumber}</span>;
+          return canStamp && pricedTotal !== null ? (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={(event) => {
+                event.stopPropagation();
+                setStamping({ ...row.original, pricedTotal });
+              }}
+            >
+              Stamp
+            </Button>
+          ) : null;
+        },
+      },
       {
         id: 'job-card',
         header: 'Job card',
+        meta: { cellClassName: 'text-right', headerClassName: 'text-right' },
         cell: ({ row }) => (
           <Button
-            render={
-              <a
-                href={jobCardUrl(row.original.jobNumber, 'customer')}
-                rel="noreferrer"
-                target="_blank"
-                onClick={(event) => event.stopPropagation()}
-              />
-            }
             size="sm"
             variant="outline"
+            onClick={(event) => {
+              event.stopPropagation();
+              setPreviewing(row.original);
+            }}
           >
             Job card
           </Button>
         ),
       },
     ],
-    [tab, canStamp],
+    [canStamp],
   );
+  const table = useDataTable({
+    columns,
+    data: jobs,
+    enableSortingRemoval: false,
+    manualFiltering: true,
+    manualSorting: true,
+    onColumnFiltersChange: tableController.setColumnFilters,
+    onGlobalFilterChange: tableController.setGlobalFilter,
+    onSortingChange: tableController.setSorting,
+    state: {
+      columnFilters: tableController.columnFilters,
+      globalFilter: tableController.globalFilter,
+      sorting: tableController.sorting,
+    },
+  });
+  const awaitingCount = counts.data?.['awaiting-invoice'] ?? 0;
+  const awaitingOnly = listed.length === 1 && listed[0] === 'awaiting-invoice';
   return (
     <PageLayout title="Invoicing" description="Stamp invoice numbers and review invoiced Jobs." size="full">
-      <ErrorMessage error={counts.error ?? jobs.error} fallbackMessage="Unable to load Invoicing." />
-      <Tabs
-        value={tab}
-        onValueChange={(value) =>
-          void navigate({ to: '/contracting/invoicing', search: { tab: value as InvoicingTab } })
-        }
-      >
-        <TabsList>
-          {invoicingTabs.map((item) => (
-            <TabsTrigger key={item} value={item}>
-              {item === 'awaiting-invoice'
-                ? `${jobQueueLabels[item]} (${formatNumber(counts.data?.[item] ?? 0)})`
-                : 'Invoiced'}
-            </TabsTrigger>
-          ))}
-        </TabsList>
-      </Tabs>
-      <ClientDataTable
-        key={view}
-        columns={columns}
-        rows={jobs.rows}
-        loading={jobs.isPending}
-        emptyMessage={
-          tab === 'invoiced' ? `No Jobs were invoiced in ${monthLabel(month)}.` : 'Nothing is waiting for an invoice.'
-        }
-        searchPlaceholder="Search Jobs…"
-        controls={
-          tab === 'invoiced' ? (
-            <EnumSelect
-              aria-label="Invoiced in"
-              labels={{ ...monthLabels, [month]: monthLabel(month) }}
-              options={monthOptions.map((option) => option.value)}
-              value={month}
-              onChange={(next) => void navigate({ to: '/contracting/invoicing', search: { tab, month: next } })}
+      <fieldset className="scrollbar-none flex gap-1.5 overflow-x-auto" aria-label="Invoicing stages">
+        {showsAwaitingQuickFilter(tableController.columnFilters, counts.data) ? (
+          <QuickFilterButton
+            count={awaitingCount}
+            pressed={awaitingOnly}
+            onClick={() =>
+              tableController.setColumnFilters((current) => toggleQuickFilter(current, 'awaiting-invoice'))
+            }
+          >
+            <span
+              aria-hidden="true"
+              className={cn('size-2 rounded-full', jobQueueColorClassNames['awaiting-invoice'].dot)}
             />
-          ) : undefined
+            <span>{jobQueueLabels['awaiting-invoice']}</span>
+          </QuickFilterButton>
+        ) : null}
+        <QuickFilterButton
+          count={stagesCount(counts.data, invoicingStages)}
+          pressed={listed.length === invoicingStages.length}
+          onClick={() => tableController.setColumnFilters((current) => toggleStages(current, invoicingStages))}
+        >
+          <span>All</span>
+        </QuickFilterButton>
+      </fieldset>
+      <DataTable
+        emptyMessage={awaitingOnly ? 'Nothing is waiting for an invoice.' : 'No Jobs found.'}
+        errorMessage={
+          getApiQueryErrorMessage(jobsQuery.error, 'Unable to load Invoicing.') ??
+          getApiQueryErrorMessage(counts.error, 'Unable to load Invoicing counts.')
         }
-        onOpen={(job) => void navigate({ to: '/contracting/jobs/$code', params: { code: job.jobNumber } })}
+        getRowAriaLabel={(job) => `Open ${job.jobNumber}`}
+        globalFilterPlaceholder="Search Jobs…"
+        isLoading={jobsQuery.isPending}
+        paginationMode="cursor"
+        loadMore={{
+          hasNextPage: jobsQuery.hasNextPage,
+          isFetchingNextPage: jobsQuery.isFetchingNextPage,
+          loadedCount: jobs.length,
+          onLoadMore: () => void jobsQuery.fetchNextPage(),
+        }}
+        onRowClick={(job) => void navigate({ to: '/contracting/jobs/$code', params: { code: job.jobNumber } })}
+        table={table}
+        total={total}
+        totalLabel={(value) => `${formatNumber(value)} ${value === 1 ? 'Job' : 'Jobs'}`}
       />
-      <JobQueueLoadMore pages={jobs} />
+      <JobCardPreviewSheet job={previewing} variant="customer" onClose={() => setPreviewing(null)} />
       {stamping ? (
         <StampInvoiceDialog
           job={stamping}

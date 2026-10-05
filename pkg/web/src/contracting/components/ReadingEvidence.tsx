@@ -1,6 +1,6 @@
 import { formatHours, formatPercent } from '@pkg/domain';
-import { MISSING_PHOTO_EVIDENCE } from '@pkg/domain/contracting';
-import type { JobReading } from '@pkg/schema/contracting';
+import { assignmentAttentionKindLevels, MISSING_PHOTO_EVIDENCE } from '@pkg/domain/contracting';
+import type { AssignmentAttentionLevel, JobReading, JobReadingAttentionKind } from '@pkg/schema/contracting';
 import { IconInfoCircle } from '@tabler/icons-react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip.js';
 
@@ -20,14 +20,15 @@ export function readingEvidenceState(reading: Omit<EvidenceReading, 'value'>): R
   return { state: 'agrees', aiValue: reading.aiValue };
 }
 
-export type AssessmentTone = 'success' | 'warning' | 'destructive' | 'info' | 'neutral';
+/** A reading assessment's tone: its attention kind's level, or success when the AI confirmed the value. */
+export type AssessmentTone = AssignmentAttentionLevel | 'success';
 
 /** Each surface's wording for an evidence state. The list and the dialog deliberately differ; do not merge them here. */
 const presentation = {
   'no-photo': {
     list: { evidence: MISSING_PHOTO_EVIDENCE, result: () => 'No photo verification' },
     dialog: {
-      tone: 'neutral',
+      kind: 'missing-photo',
       badge: 'No AI result',
       title: 'No photo to analyse',
       description: () => 'The recorded reading has no meter photo, so AI cannot check its value.',
@@ -37,7 +38,7 @@ const presentation = {
   pending: {
     list: { evidence: 'Photo-backed · Verification pending', result: () => 'Verification pending' },
     dialog: {
-      tone: 'info',
+      kind: 'ai-pending',
       badge: 'Checking photo',
       title: 'Photo analysis pending',
       description: () => 'The captured photo is available, but AI has not returned a result yet.',
@@ -47,7 +48,7 @@ const presentation = {
   unreadable: {
     list: { evidence: 'Photo-backed', result: () => 'No readable meter detected' },
     dialog: {
-      tone: 'destructive',
+      kind: 'ai-low-confidence',
       badge: 'Cannot verify from photo',
       title: 'No readable meter found',
       description: (value: number) =>
@@ -58,7 +59,7 @@ const presentation = {
   'low-confidence': {
     list: { evidence: 'Photo-backed · Low extraction confidence', result: (aiValue: number) => formatHours(aiValue) },
     dialog: {
-      tone: 'warning',
+      kind: 'ai-low-confidence',
       badge: 'Uncertain result',
       title: 'Possible reading, not reliable',
       description: (value: number, aiValue: number) =>
@@ -69,7 +70,7 @@ const presentation = {
   disagrees: {
     list: { evidence: 'Photo-backed · Extracted value differs', result: (aiValue: number) => formatHours(aiValue) },
     dialog: {
-      tone: 'destructive',
+      kind: 'ai-disagrees',
       badge: 'Different value found',
       title: 'AI reading differs',
       description: (value: number, aiValue: number) =>
@@ -80,7 +81,7 @@ const presentation = {
   agrees: {
     list: { evidence: 'Photo-backed · AI-verified', result: (aiValue: number) => formatHours(aiValue) },
     dialog: {
-      tone: 'success',
+      kind: null,
       badge: 'Same value found',
       title: 'AI reading matches',
       description: (_value: number, aiValue: number) =>
@@ -93,7 +94,8 @@ const presentation = {
   {
     list: { evidence: string; result: (aiValue: number) => string };
     dialog: {
-      tone: AssessmentTone;
+      /** The attention kind this evidence state raises; null when the AI confirmed the value. */
+      kind: JobReadingAttentionKind | null;
       badge: string;
       title: string;
       description: (value: number, aiValue: number) => string;
@@ -128,7 +130,7 @@ export function readingAssessment(reading: EvidenceReading) {
   const { dialog } = presentation[evidence.state];
   const aiValue = aiValueOf(evidence);
   return {
-    tone: dialog.tone as AssessmentTone,
+    tone: dialog.kind ? assignmentAttentionKindLevels[dialog.kind] : ('success' as const),
     badge: dialog.badge,
     title: dialog.title,
     description: dialog.description(reading.value, aiValue),
@@ -143,15 +145,7 @@ export function readingAssessment(reading: EvidenceReading) {
   };
 }
 
-/** The stint card's tooltip wording for each served attention kind. */
-export const readingAttentionLabels: Record<JobReading['needsALook'][number], string> = {
-  disputed: 'disputed',
-  'ai-pending': 'AI verification pending',
-  'ai-disagrees': 'AI value differs',
-  'ai-low-confidence': 'AI confidence low',
-  'missing-photo': 'missing photo',
-};
-
+/** The AI meter result when no readable meter was found, with its confidence on hover. */
 export function NoReadableMeterResult({ confidencePercent }: { confidencePercent: number }) {
   return (
     <Tooltip>

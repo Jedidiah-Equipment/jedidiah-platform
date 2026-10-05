@@ -60,7 +60,7 @@ describe('reading evidence', () => {
   it.each([
     {
       overrides: { photoBacked: false, aiVerification: 'not-applicable', aiValue: null, aiConfidence: null },
-      tone: 'neutral',
+      tone: 'notice',
       badge: 'No AI result',
       title: 'No photo to analyse',
       description: 'The recorded reading has no meter photo, so AI cannot check its value.',
@@ -69,7 +69,7 @@ describe('reading evidence', () => {
     },
     {
       overrides: { aiVerification: 'pending', aiValue: null, aiConfidence: null },
-      tone: 'info',
+      tone: 'notice',
       badge: 'Checking photo',
       title: 'Photo analysis pending',
       description: 'The captured photo is available, but AI has not returned a result yet.',
@@ -78,7 +78,7 @@ describe('reading evidence', () => {
     },
     {
       overrides: { aiVerification: 'low-confidence', aiValue: null, aiConfidence: 0.88 },
-      tone: 'destructive',
+      tone: 'warning',
       badge: 'Cannot verify from photo',
       title: 'No readable meter found',
       description: 'AI could not find a readable hour meter in the photo. This does not confirm the recorded 120.4 h.',
@@ -96,7 +96,7 @@ describe('reading evidence', () => {
     },
     {
       overrides: { aiVerification: 'disagrees' },
-      tone: 'destructive',
+      tone: 'warning',
       badge: 'Different value found',
       title: 'AI reading differs',
       description: 'AI read 412.3 h from the photo; the recorded reading is 120.4 h. Review the photo before amending.',

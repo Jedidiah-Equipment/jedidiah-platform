@@ -14,9 +14,11 @@ import {
   statusBadgeColorClassNames,
 } from '../theme/status-badge.js';
 
-const JOB_NUMBER_PREFIX = 'CJOB-';
+export const JOB_NUMBER_PREFIX = 'CJOB-';
+/** The Job code is zero-padded to at least this many digits. */
+export const JOB_NUMBER_DIGITS = 5;
 
-export const formatJobNumber = (code: number) => `${JOB_NUMBER_PREFIX}${String(code).padStart(5, '0')}`;
+export const formatJobNumber = (code: number) => `${JOB_NUMBER_PREFIX}${String(code).padStart(JOB_NUMBER_DIGITS, '0')}`;
 
 /** The Job code inside a Job Number such as CJOB-00037. */
 export const parseJobNumber = (jobNumber: string) => Number(jobNumber.slice(JOB_NUMBER_PREFIX.length));
@@ -79,7 +81,7 @@ export const jobStatusColorClassNames: Record<JobStatus, BadgeColorClassNames> =
   cancelled: cancelledBadgeColorClassNames,
 };
 
-/** The status every Job in a queue holds; Looks finished is the part of Active whose machines have all stopped. */
+/** The status every Job in a queue holds; Looks finished splits off the Active Jobs whose machines have all stopped. */
 export const jobQueueStatus: Record<JobQueue, JobStatus> = {
   upcoming: 'upcoming',
   active: 'active',
@@ -89,6 +91,28 @@ export const jobQueueStatus: Record<JobQueue, JobStatus> = {
   invoiced: 'invoiced',
   cancelled: 'cancelled',
 };
+
+/** The queues still moving toward an invoice; Invoiced and Cancelled are only listed when asked for. */
+export const openJobQueues = [
+  'upcoming',
+  'active',
+  'looks-finished',
+  'awaiting-pricing',
+  'awaiting-invoice',
+] as const satisfies readonly JobQueue[];
+
+const statusQueue: Record<JobStatus, JobQueue> = {
+  upcoming: 'upcoming',
+  active: 'active',
+  completed: 'awaiting-pricing',
+  priced: 'awaiting-invoice',
+  invoiced: 'invoiced',
+  cancelled: 'cancelled',
+};
+
+/** The one queue a Job sits in. */
+export const jobQueueOf = (job: { status: JobStatus; looksFinished: boolean }): JobQueue =>
+  job.status === 'active' && job.looksFinished ? 'looks-finished' : statusQueue[job.status];
 
 export const jobQueueLabels: Record<JobQueue, string> = {
   upcoming: 'Upcoming',
@@ -110,12 +134,6 @@ export const jobQueueColorClassNames = {
   invoiced: statusBadgeColorClassNames.green,
   cancelled: cancelledBadgeColorClassNames,
 } satisfies Record<JobQueue, BadgeColorClassNames & { dot: string }>;
-
-/** A Job needing review uses the same warning tint across its list surfaces. */
-export const jobAttentionColorClassNames = statusBadgeColorClassNames.orange;
-
-/** Standalone warning icons use the theme warning colour instead of the chip's pale text. */
-export const jobAttentionIconColorClassName = 'text-warning';
 
 /** Machine Assignment badges share the same status palette on web and mobile. */
 export const assignmentStateColorClassNames: Record<AssignmentState, BadgeColorClassNames> = {

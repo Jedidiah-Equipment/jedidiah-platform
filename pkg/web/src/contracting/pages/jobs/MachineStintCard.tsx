@@ -1,11 +1,29 @@
-import { formatHours, formatNumber } from '@pkg/domain';
-import { assignmentStateColorClassNames, judgeAssignmentAction } from '@pkg/domain/contracting';
-import type { Assignment, JobReading } from '@pkg/schema/contracting';
+import { formatDate, formatHours, formatNumber } from '@pkg/domain';
+import {
+  assignmentAttentionKindLabels,
+  assignmentAttentionKindLevels,
+  assignmentAttentionLevelColorClassNames,
+  assignmentNeedsALookLevel,
+  assignmentStateColorClassNames,
+  GAP_FLAG_THRESHOLD_HOURS,
+  isOverGapWindow,
+  judgeAssignmentAction,
+  needsALook,
+} from '@pkg/domain/contracting';
+import type {
+  Assignment,
+  AssignmentAttentionLevel,
+  JobReading,
+  JobReadingAttentionKind,
+  NeedsALookLevel,
+} from '@pkg/schema/contracting';
 import {
   IconAlertTriangle,
   IconChevronDown,
-  IconCircleCheck,
   IconEye,
+  IconHourglass,
+  IconPencil,
+  IconPencilCheck,
   IconPhotoOff,
   IconPlayerPlay,
   IconPlayerStop,
@@ -26,7 +44,7 @@ import {
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip.js';
 import { CategoryIcon } from '@/contracting/components/CategoryIcon.js';
 import { MachineDialogTitle } from '@/contracting/components/MachineDialogTitle.js';
-import { readingAttentionLabels, readingEvidence } from '@/contracting/components/ReadingEvidence.js';
+import { readingEvidence } from '@/contracting/components/ReadingEvidence.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { cn } from '@/lib/utils.js';
 import { AddMeasureDialog } from './AddMeasureDialog.js';
@@ -36,7 +54,7 @@ import { useJobWrite } from './use-job-write.js';
 
 type Opens = { onOpen: (dialog: MachineDialog) => void };
 
-type DotTone = 'done' | 'current' | 'empty';
+type DotTone = 'done' | 'current' | 'empty' | NeedsALookLevel;
 
 function TimelineRow({
   title,
@@ -58,6 +76,8 @@ function TimelineRow({
           tone === 'done' && 'border-emerald-500 bg-emerald-500',
           tone === 'current' && 'border-primary bg-primary',
           tone === 'empty' && 'border-muted-foreground bg-card',
+          (tone === 'warning' || tone === 'critical') &&
+            `border-transparent ${assignmentAttentionLevelColorClassNames[tone].dot}`,
         )}
       />
       <div className="min-w-0">
@@ -73,12 +93,13 @@ function IconAction({
   label,
   icon: Icon,
   onClick,
-  tone,
+  level,
 }: {
   label: string;
   icon: TablerIcon;
   onClick: () => void;
-  tone?: 'warning' | 'danger' | 'success';
+  /** Paints the button in an assignment attention level's colours. */
+  level?: AssignmentAttentionLevel;
 }) {
   return (
     <Tooltip>
@@ -86,12 +107,7 @@ function IconAction({
         render={
           <Button
             aria-label={label}
-            className={cn(
-              tone === 'warning' &&
-                'border-warning/60 bg-warning/15 text-warning hover:bg-warning/25 dark:border-warning/60 dark:bg-warning/15 dark:hover:bg-warning/25',
-              tone === 'danger' && 'border-destructive/50 bg-destructive/10 text-destructive',
-              tone === 'success' && 'border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-300',
-            )}
+            className={level ? assignmentAttentionLevelColorClassNames[level].button : undefined}
             onClick={onClick}
             size="icon-sm"
             type="button"
@@ -106,63 +122,171 @@ function IconAction({
   );
 }
 
+const readingAttentionIcons: Record<JobReadingAttentionKind, TablerIcon> = {
+  disputed: IconAlertTriangle,
+  'ai-disagrees': IconAlertTriangle,
+  'ai-low-confidence': IconAlertTriangle,
+  'ai-pending': IconHourglass,
+  'missing-photo': IconPhotoOff,
+};
+
 function ReadingActions({ reading, stint, onOpen }: { reading: JobReading; stint: Assignment } & Opens) {
   const role = reading.role === 'arrival' ? 'arrival' : 'departure';
-  if (!reading.needsALook.length)
+  // An amendment settles the reading's notices, so only what still needs a look keeps its own icon.
+  const shown = reading.amendedAt
+    ? reading.attention.filter((kind) => needsALook(assignmentAttentionKindLevels[kind]))
+    : reading.attention;
+  if (!shown.length)
     return (
       <IconAction
-        icon={IconEye}
-        label={`View ${role} reading`}
+        icon={reading.amendedAt ? IconPencilCheck : IconEye}
+        label={reading.amendedAt ? `View amended ${role} reading` : `View ${role} reading`}
         onClick={() => onOpen({ kind: 'reading', stintId: stint.id, role })}
       />
     );
-  return reading.needsALook.map((kind) => (
+  return shown.map((kind) => (
     <IconAction
-      icon={kind === 'missing-photo' ? IconPhotoOff : IconAlertTriangle}
+      icon={readingAttentionIcons[kind]}
       key={kind}
-      label={`Review ${role} · ${readingAttentionLabels[kind]}`}
+      label={`Review ${role} · ${assignmentAttentionKindLabels[kind]}`}
+      level={assignmentAttentionKindLevels[kind]}
       onClick={() => onOpen({ kind: 'reading', stintId: stint.id, role })}
-      tone={kind === 'disputed' ? 'danger' : 'warning'}
     />
   ));
 }
 
+/** When, by whom and why a reading was amended, or null when it never was. */
+function amendmentSummary(reading: JobReading) {
+  if (!reading.amendedAt) return null;
+  const by = reading.amendedByName ? ` by ${reading.amendedByName}` : '';
+  const why = reading.amendmentReason ? ` · ${reading.amendmentReason}` : '';
+  return `Amended ${formatDate(reading.amendedAt, 'medium')}${by}${why}`;
+}
+
 function ReadingDetail({ reading }: { reading: JobReading }) {
   const evidence = readingEvidence(reading);
+  const amendment = amendmentSummary(reading);
   return (
     <span className="block truncate" title={`${formatHours(reading.value)} · ${evidence.evidenceLabel}`}>
-      <span className="font-medium text-primary">{formatHours(reading.value)}</span> · {evidence.evidenceLabel}
+      <span className="font-medium text-primary">{formatHours(reading.value)}</span>
+      {amendment ? (
+        <>
+          {' · '}
+          <Tooltip>
+            <TooltipTrigger render={<button className="text-foreground" type="button" />}>Amended</TooltipTrigger>
+            <TooltipContent>{amendment}</TooltipContent>
+          </Tooltip>
+        </>
+      ) : null}
+      {' · '}
+      {evidence.evidenceLabel}
     </span>
   );
 }
 
-function GapAction({ stint, sheet, onOpen }: { stint: Assignment; sheet: JobSheet } & Opens) {
+function GapStatus({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <Tooltip>
+      <TooltipTrigger render={<button aria-label={label} className="inline-flex p-1" type="button" />}>
+        {children}
+      </TooltipTrigger>
+      <TooltipContent>{label}</TooltipContent>
+    </Tooltip>
+  );
+}
+
+const gapFlagLevel = assignmentAttentionKindLevels['gap-flag'];
+
+function previousJobLabel(stint: Assignment) {
+  const job = stint.previousDeparture?.job;
+  return job ? `since leaving ${job.jobNumber}` : 'since its last departure';
+}
+
+/** One truncated line: the gap's hours, an optional lead phrase, then its details, with the full text on hover. */
+function GapDetail({
+  hours,
+  hoursClassName,
+  lead,
+  parts,
+}: {
+  hours: string;
+  hoursClassName: string;
+  lead?: string;
+  parts: string[];
+}) {
+  const head = lead ? ` ${lead}` : '';
+  const tail = parts.map((part) => ` · ${part}`).join('');
+  return (
+    <span className="block truncate" title={`${hours}${head}${tail}`}>
+      <span className={cn('font-medium', hoursClassName)}>{hours}</span>
+      {head}
+      {tail}
+    </span>
+  );
+}
+
+/** The Hour Gap between the Machine's previous departure and this arrival: flagged, resolved, or counted as travel. */
+function GapRow({ stint, sheet, onOpen }: { stint: Assignment; sheet: JobSheet } & Opens) {
+  const gapHours = stint.gapHours;
+  if (gapHours === null || gapHours === 0) return null;
+  const verdict = judgeAssignmentAction('resolveGap', stint);
+  const why = !sheet.can('resolveGaps') ? sheet.refusal('resolveGaps') : verdict.allowed ? null : verdict.message;
+  const open = () => onOpen({ kind: 'gap', stintId: stint.id });
+  const edit = why ? null : <IconAction icon={IconPencil} label="Edit gap split" onClick={open} />;
+  const hours = formatHours(gapHours);
+  // A gap over the window keeps the Gap Flag's colour on its dot, open or resolved.
+  const tone = isOverGapWindow(gapHours) && needsALook(gapFlagLevel) ? gapFlagLevel : ('done' as const);
+
   if (stint.gapFlag)
-    return sheet.can('resolveGaps') && judgeAssignmentAction('resolveGap', stint).allowed ? (
-      <IconAction
-        icon={IconAlertTriangle}
-        label={`Resolve gap · ${formatHours(stint.gapHours ?? 0)}`}
-        onClick={() => onOpen({ kind: 'gap', stintId: stint.id })}
-        tone="warning"
-      />
-    ) : (
-      <Badge className="border-warning/50 text-warning-foreground" variant="outline">
-        Gap flag
-      </Badge>
-    );
-  if (stint.gapResolved)
     return (
-      <Tooltip>
-        <TooltipTrigger render={<button aria-label="Gap resolved" className="inline-flex" type="button" />}>
-          <IconCircleCheck aria-hidden="true" className="size-5 text-emerald-500" />
-        </TooltipTrigger>
-        <TooltipContent>
-          {formatHours(stint.travelHours)} travel · {formatHours(stint.unaccountedHours)} unaccounted
-          {stint.gapReason ? ` · ${stint.gapReason}` : ''}
-        </TooltipContent>
-      </Tooltip>
+      <TimelineRow
+        actions={
+          why ? (
+            <GapStatus label={`${assignmentAttentionKindLabels['gap-flag']} · ${hours} gap · ${why}`}>
+              <IconAlertTriangle
+                aria-hidden="true"
+                className={cn('size-5', assignmentAttentionLevelColorClassNames[gapFlagLevel].icon)}
+              />
+            </GapStatus>
+          ) : (
+            <IconAction icon={IconAlertTriangle} label={`Resolve gap · ${hours}`} level={gapFlagLevel} onClick={open} />
+          )
+        }
+        detail={
+          <GapDetail
+            hours={hours}
+            hoursClassName={assignmentAttentionLevelColorClassNames[gapFlagLevel].text}
+            lead={previousJobLabel(stint)}
+            parts={[`over the ${formatHours(GAP_FLAG_THRESHOLD_HOURS)} window`]}
+          />
+        }
+        title="Gap"
+        tone={tone}
+      />
     );
-  return null;
+
+  return (
+    <TimelineRow
+      actions={edit}
+      detail={
+        <GapDetail
+          hours={hours}
+          hoursClassName="text-foreground"
+          parts={
+            stint.gapResolved
+              ? [
+                  `${formatHours(stint.travelHours)} travel`,
+                  `${formatHours(stint.unaccountedHours)} unaccounted`,
+                  ...(stint.gapReason ? [stint.gapReason] : []),
+                ]
+              : [stint.travelIncluded ? 'counted as travel' : 'not billed, travel excluded']
+          }
+        />
+      }
+      title="Gap"
+      tone={tone}
+    />
+  );
 }
 
 function MeasureDetail({ stint }: { stint: Assignment }) {
@@ -177,11 +301,6 @@ function MeasureDetail({ stint }: { stint: Assignment }) {
         .join(', ')}
     </>
   );
-}
-
-/** A Machine Assignment with an open Gap Flag or a flagged reading; a missing photo counts here. */
-export function stintNeedsALook(stint: Assignment): boolean {
-  return stint.gapFlag || !!stint.arrival?.needsALook.length || !!stint.departure?.needsALook.length;
 }
 
 export function MachineStintCard({
@@ -200,11 +319,17 @@ export function MachineStintCard({
   );
   const planned = stint.state === 'planned';
   const onSite = stint.state === 'on-site';
-  const needsALook = stintNeedsALook(stint);
+  const lookLevel = assignmentNeedsALookLevel(stint);
   const stintLabel =
     stintNumber === 1 ? 'First stint' : stintNumber === 2 ? 'Second stint' : `Stint ${formatNumber(stintNumber)}`;
   return (
-    <Card className={cn('gap-0 overflow-visible data-[size=sm]:gap-0', needsALook && 'border-warning/60')} size="sm">
+    <Card
+      className={cn(
+        'gap-0 overflow-visible data-[size=sm]:gap-0',
+        lookLevel && assignmentAttentionLevelColorClassNames[lookLevel].border,
+      )}
+      size="sm"
+    >
       <CardHeader className="grid grid-cols-[auto_minmax(0,1fr)_auto] gap-2 pb-4">
         <CategoryIcon colour={stint.categoryColour} icon={stint.categoryIcon} size={20} />
         <div className="min-w-0">
@@ -224,8 +349,8 @@ export function MachineStintCard({
           {planned ? 'Planned' : onSite ? 'On site' : 'Left site'}
         </Badge>
       </CardHeader>
-      <CardContent>
-        <ol className="ml-2 space-y-3 border-l border-border pl-5">
+      <CardContent className="flex flex-1 flex-col">
+        <ol className="mb-4 ml-2 space-y-3 border-l border-border pl-5">
           <TimelineRow
             actions={
               sheet.can('assign') && judgeAssignmentAction('changeResources', stint).allowed ? (
@@ -250,13 +375,11 @@ export function MachineStintCard({
             title="Planned"
             tone="done"
           />
+          <GapRow onOpen={onOpen} sheet={sheet} stint={stint} />
           <TimelineRow
             actions={
               stint.arrival ? (
-                <>
-                  <ReadingActions reading={stint.arrival} stint={stint} onOpen={onOpen} />
-                  <GapAction stint={stint} sheet={sheet} onOpen={onOpen} />
-                </>
+                <ReadingActions reading={stint.arrival} stint={stint} onOpen={onOpen} />
               ) : sheet.can('capture') ? (
                 <IconAction
                   icon={IconPlayerPlay}
@@ -296,7 +419,7 @@ export function MachineStintCard({
             tone={stint.measures.length ? 'done' : 'empty'}
           />
         </ol>
-        <div className="mt-4 flex min-h-7 flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t border-border pt-3 text-xs text-muted-foreground">
+        <div className="mt-auto flex min-h-7 flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t border-border pt-3 text-xs text-muted-foreground">
           {stint.workHours !== null ? (
             <span>
               Work <strong className="text-foreground">{formatHours(stint.workHours)}</strong>

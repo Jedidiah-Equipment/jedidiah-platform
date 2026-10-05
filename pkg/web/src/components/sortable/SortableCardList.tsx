@@ -123,7 +123,10 @@ function SortableCard({
           }
         : {})}
     >
-      <CardHeader className={headerClassName}>{children(grip)}</CardHeader>
+      {/* The description sits inside a column here, so CardHeader's second description row would stay empty. */}
+      <CardHeader className={cn('has-data-[slot=card-description]:grid-rows-none', headerClassName)}>
+        {children(grip)}
+      </CardHeader>
     </Card>
   );
 }

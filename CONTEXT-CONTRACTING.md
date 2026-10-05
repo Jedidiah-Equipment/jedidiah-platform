@@ -155,8 +155,9 @@ the photo itself and records its own value and confidence: a reading is **photo-
 carries a photo and **AI-verified** when the server's read agrees with the typed value.
 Disagreements, low confidence, and disputes surface to management as **Reading Exceptions** — a
 reading is **Disputed** when it belongs to an unresolved out-of-sequence pair and **AI flagged**
-when its verification is pending, disagrees, or has low confidence and has not been reviewed. A
-reading can carry both exception types. Exceptions never return to the Foreman, who is never
+when its verification is pending, disagrees, or has low confidence and has not been reviewed. Only
+a disagreement or low confidence puts an AI flagged reading on the list: a pending verification is
+only a notice. A reading can carry both exception types. Exceptions never return to the Foreman, who is never
 re-interrupted in the field. A reading may carry the Foreman's
 optional **capture comment**, shown wherever management reviews it; the capture screen shows the
 minimum value the meter can now read. A field reading plays one of three roles:
@@ -188,6 +189,15 @@ sign-off and blocking nothing in the field — the Job cannot be Completed while
 management resolves it by splitting the gap into billable Travel
 Hours and an **Unaccounted Interval** with a mandatory reason, which clears the flag. Time in the
 yard is an Unaccounted Interval — there are no internal Jobs.
+
+**Assignment Attention** is everything that flags a Machine Assignment for a person, each kind at one
+of three levels: a **notice** is worth knowing with nothing to do (a pending AI verification, Missing
+Photo Evidence); a **warning** means the evidence does not confirm the value and someone should review
+it (AI value differs, AI confidence low); **critical** means the hours are wrong or contradictory, or
+it stops the Job moving on (an open Gap Flag, a Disputed reading). Warning and critical **need a
+look** — they are counted on the Jobs list, filtered for, and border the Assignment's card — while a
+notice never does. Each level has one colour everywhere: notice purple, warning orange, critical red.
+_Avoid_: bare "attention", alert, issue
 
 **Field Note** is evidence a Foreman keeps on his phone when the app cannot take a capture —
 without signal, typically — for entry once it can: a description, one or more photos, and the

@@ -1,18 +1,20 @@
 import { formatNumber } from '@pkg/domain';
-import { groupStints } from '@pkg/domain/contracting';
+import { assignmentNeedsALookLevel, assignmentStateDisplayOrder, groupStints } from '@pkg/domain/contracting';
 import type { JobDetail } from '@pkg/schema/contracting';
 import { useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button.js';
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@/components/ui/card.js';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs.js';
 import { ArrivalCaptureDialog } from './ArrivalCaptureDialog.js';
 import { DepartureCaptureDialog } from './DepartureCaptureDialog.js';
 import { GapResolveDialog } from './GapResolveDialog.js';
-import { MachineStintCard, stintNeedsALook } from './MachineStintCard.js';
+import { MachineStintCard } from './MachineStintCard.js';
 import { PlanMachineDialog } from './PlanMachineDialog.js';
 import { ReadingDialog } from './ReadingDialog.js';
 import type { JobSheet, MachineDialog } from './types.js';
 
 type MachineFilter = 'all' | 'planned' | 'on-site' | 'attention' | 'left' | 'repeat';
+type NumberedStint = { stint: JobDetail['assignments'][number]; stintNumber: number };
 const filters: { value: MachineFilter; label: string }[] = [
   { value: 'all', label: 'All' },
   { value: 'planned', label: 'Planned' },
@@ -21,6 +23,21 @@ const filters: { value: MachineFilter; label: string }[] = [
   { value: 'left', label: 'Left' },
   { value: 'repeat', label: 'Repeat stint' },
 ];
+
+function matches(filter: MachineFilter, { stint, stintNumber }: NumberedStint) {
+  if (filter === 'all') return true;
+  if (filter === 'attention') return assignmentNeedsALookLevel(stint) !== null;
+  if (filter === 'repeat') return stintNumber > 1;
+  return stint.state === filter;
+}
+
+/** All, plus each filter that narrows the list without emptying it. */
+const offeredFilters = (stints: readonly NumberedStint[]) =>
+  filters.filter(({ value }) => {
+    if (value === 'all') return true;
+    const count = stints.filter((stint) => matches(value, stint)).length;
+    return count > 0 && count < stints.length;
+  });
 
 export function MachinesCard({ job, sheet }: { job: JobDetail; sheet: JobSheet }) {
   const planAction = sheet.action('assign');
@@ -33,21 +50,19 @@ export function MachinesCard({ job, sheet }: { job: JobDetail; sheet: JobSheet }
   const stints = useMemo(() => {
     const { machines, planned } = groupStints(job.assignments);
     const numbers = new Map<string, number>();
-    return [...machines.flatMap((machine) => machine.stints), ...planned].map((stint) => {
-      const stintNumber = (numbers.get(stint.machineId) ?? 0) + 1;
-      numbers.set(stint.machineId, stintNumber);
-      return { stint, stintNumber };
-    });
+    return [...machines.flatMap((machine) => machine.stints), ...planned]
+      .map((stint) => {
+        const stintNumber = (numbers.get(stint.machineId) ?? 0) + 1;
+        numbers.set(stint.machineId, stintNumber);
+        return { stint, stintNumber };
+      })
+      .sort(
+        (left, right) => assignmentStateDisplayOrder[left.stint.state] - assignmentStateDisplayOrder[right.stint.state],
+      );
   }, [job.assignments]);
-  const visible = stints.filter(({ stint, stintNumber }) =>
-    filter === 'all'
-      ? true
-      : filter === 'attention'
-        ? stintNeedsALook(stint)
-        : filter === 'repeat'
-          ? stintNumber > 1
-          : stint.state === filter,
-  );
+  const offered = offeredFilters(stints);
+  const active = offered.some(({ value }) => value === filter) ? filter : 'all';
+  const visible = stints.filter((stint) => matches(active, stint));
   return (
     <>
       <Card>
@@ -64,24 +79,20 @@ export function MachinesCard({ job, sheet }: { job: JobDetail; sheet: JobSheet }
         <CardContent className="space-y-4">
           {stints.length ? (
             <>
-              <fieldset aria-label="Filter machines" className="flex flex-wrap items-center gap-1">
-                {filters.map(({ value, label }) => (
-                  <Button
-                    aria-pressed={filter === value}
-                    className="h-7 px-2.5"
-                    key={value}
-                    onClick={() => setFilter(value)}
-                    size="sm"
-                    type="button"
-                    variant={filter === value ? 'secondary' : 'ghost'}
-                  >
-                    {label}
-                  </Button>
-                ))}
+              <div className="flex flex-wrap items-center gap-2">
+                <Tabs value={active} onValueChange={(value) => setFilter(value as MachineFilter)}>
+                  <TabsList aria-label="Filter machines">
+                    {offered.map(({ value, label }) => (
+                      <TabsTrigger key={value} value={value}>
+                        {label}
+                      </TabsTrigger>
+                    ))}
+                  </TabsList>
+                </Tabs>
                 <span className="ml-auto text-xs text-muted-foreground">
                   {formatNumber(visible.length)} of {formatNumber(stints.length)}
                 </span>
-              </fieldset>
+              </div>
               {visible.length ? (
                 <div className="grid grid-cols-1 items-stretch gap-3 md:grid-cols-2">
                   {visible.map(({ stint, stintNumber }) => (
@@ -114,7 +125,7 @@ export function MachinesCard({ job, sheet }: { job: JobDetail; sheet: JobSheet }
       <GapResolveDialog stint={dialog?.kind === 'gap' ? stint : null} onClose={close} />
       <DepartureCaptureDialog stint={dialog?.kind === 'departure' ? stint : null} onClose={close} />
       <ReadingDialog
-        selected={stint && reading ? { stint, reading } : null}
+        selected={stint && reading ? { machine: stint, reading } : null}
         onClose={close}
         amendReadings={sheet.can('amendReadings')}
       />

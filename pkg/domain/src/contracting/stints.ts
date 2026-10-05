@@ -1,4 +1,4 @@
-import type { Assignment } from '@pkg/schema/contracting';
+import type { Assignment, AssignmentState } from '@pkg/schema/contracting';
 import { round1 } from './hours.js';
 import { round2, stintAmount } from './pricing.js';
 
@@ -9,6 +9,9 @@ export type MachineStints = {
   /** Present only when the Machine has more than one stint. */
   subtotal: { workHours: number; travelHours: number; amount: number } | null;
 };
+
+/** The order Machine Assignment cards are listed in: what is on site now, then what is coming, then what has left. */
+export const assignmentStateDisplayOrder: Record<AssignmentState, number> = { 'on-site': 0, planned: 1, left: 2 };
 
 /** Arrived stints grouped per Machine in first-arrival order, and the planned ones that never arrived. */
 export function groupStints(assignments: readonly Assignment[]): { machines: MachineStints[]; planned: Assignment[] } {

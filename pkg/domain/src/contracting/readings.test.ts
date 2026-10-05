@@ -3,7 +3,10 @@ import {
   type AmendableReading,
   type ReadingAttentionFacts,
   readingAttention,
+  readingAttentionKinds,
+  readingExceptionTypes,
   readingNeedsALook,
+  readingNeedsALookLevel,
   readingPhotoPath,
   readingVerification,
   resolveReadingAmendment,
@@ -110,10 +113,24 @@ describe('readingAttention', () => {
     expect(readingNeedsALook(reading)).toBe(true);
   });
 
-  it.each(['pending', 'disagrees', 'low-confidence'] as const)('flags an unreviewed %s reading', (aiVerification) => {
+  it.each(['disagrees', 'low-confidence'] as const)('flags an unreviewed %s reading as a warning', (aiVerification) => {
     const reading = facts({ aiVerification });
     expect(readingAttention(reading)).toEqual({ disputed: false, aiFlagged: aiVerification });
-    expect(readingNeedsALook(reading)).toBe(true);
+    expect(readingNeedsALookLevel(reading)).toBe('warning');
+    expect(readingExceptionTypes(reading)).toEqual(['ai-flagged']);
+  });
+
+  it('keeps a pending verification as a notice that needs no look', () => {
+    const reading = facts({ aiVerification: 'pending' });
+    expect(readingAttentionKinds({ ...reading, photoBacked: false })).toEqual(['ai-pending', 'missing-photo']);
+    expect(readingNeedsALook(reading)).toBe(false);
+    expect(readingExceptionTypes(reading)).toEqual([]);
+  });
+
+  it('puts a disputed reading at critical, above its AI warning', () => {
+    const reading = facts({ disputed: true, aiVerification: 'disagrees' });
+    expect(readingNeedsALookLevel(reading)).toBe('critical');
+    expect(readingExceptionTypes(reading)).toEqual(['disputed', 'ai-flagged']);
   });
 
   it('stops flagging once the evidence is reviewed', () => {

@@ -43,12 +43,27 @@ export function ChargeLinesTable({
         id: 'description',
         header: 'Description',
         cell: ({ row }) => (
-          <ChargeLineDescription
-            key={row.original.id}
-            line={row.original}
-            editable={editable}
-            onSave={(description) => patch.mutate({ id: row.original.id, description })}
-          />
+          <div className="flex items-center gap-2">
+            <div className="min-w-0 flex-1">
+              <ChargeLineDescription
+                key={row.original.id}
+                line={row.original}
+                editable={editable}
+                onSave={(description) => patch.mutate({ id: row.original.id, description })}
+              />
+            </div>
+            {editable ? (
+              <RemoveEntityButton
+                title="Remove Charge Line"
+                description="Remove this Charge Line?"
+                triggerIconOnly
+                triggerLabel={`Remove ${row.original.description}`}
+                triggerSize="icon-sm"
+                isPending={remove.isPending}
+                onConfirm={() => remove.mutate({ id: row.original.id })}
+              />
+            ) : null}
+          </div>
         ),
       },
       {
@@ -69,22 +84,6 @@ export function ChargeLinesTable({
           ) : (
             <span>{formatCurrency(row.original.amount)}</span>
           ),
-      },
-      {
-        id: 'actions',
-        header: '',
-        cell: ({ row }) =>
-          editable ? (
-            <RemoveEntityButton
-              title="Remove Charge Line"
-              description="Remove this Charge Line?"
-              triggerIconOnly
-              triggerLabel={`Remove ${row.original.description}`}
-              triggerSize="icon-sm"
-              isPending={remove.isPending}
-              onConfirm={() => remove.mutate({ id: row.original.id })}
-            />
-          ) : null,
       },
     ],
     [editable, amountEditable, missingAmount, patch.mutate, remove.isPending, remove.mutate],

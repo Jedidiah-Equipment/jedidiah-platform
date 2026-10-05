@@ -5,15 +5,18 @@ import {
   deriveStintHours,
   formatJobNumber,
   type JobActor,
+  jobAssignmentAttentionCounts,
   jobReadSeesMoney,
+  jobReadStatuses,
   looksFinished,
   parseJobNumber,
   priceJob,
-  readingAttention,
-  readingNeedsALook,
+  readingAttentionKinds,
+  readingNeedsALookLevel,
   type StoredStintPricing,
+  tallyAssignmentAttention,
 } from '@pkg/domain/contracting';
-import { type Assignment, type JobDetail, JobFacts, type JobReading } from '@pkg/schema/contracting';
+import { type Assignment, hasJobStatus, type JobDetail, JobFacts, type JobStatus } from '@pkg/schema/contracting';
 import { asc, eq } from 'drizzle-orm';
 import { readingToWire } from '../readings/reading-wire.js';
 import { assertOwner, jobNotFound } from './job-errors.js';
@@ -28,23 +31,20 @@ import {
   selectJobs,
   stintNames,
 } from './job-load.js';
-import { assertReadableStatus, readerFor } from './job-readers.js';
+import { assertReadableStatus, type JobReader, readerFor } from './job-readers.js';
 
 export type JobLookup = { id: string } | { code: string };
 type LoadedReading = typeof contractingHourReadings.$inferSelect;
 
-function jobReadingAttention(row: LoadedReading): JobReading['needsALook'] {
-  const { disputed, aiFlagged } = readingAttention(row);
-  return [
-    ...(disputed ? (['disputed'] as const) : []),
-    ...(aiFlagged ? ([`ai-${aiFlagged}`] as const) : []),
-    // Missing photo belongs in sign-off's strip, but does not count toward the queue's needsALook total.
-    ...(row.photo === null ? (['missing-photo'] as const) : []),
-  ];
-}
-
-function mapJobReading(row: LoadedReading | null, capturedByName: string | null) {
-  return row ? { ...readingToWire(row), capturedByName, needsALook: jobReadingAttention(row) } : null;
+function mapJobReading(row: LoadedReading | null, capturedByName: string | null, amendedByName: string | null) {
+  return row
+    ? {
+        ...readingToWire(row),
+        capturedByName,
+        amendedByName,
+        attention: readingAttentionKinds({ ...row, photoBacked: row.photo !== null }),
+      }
+    : null;
 }
 
 /** The stored Rate snapshot: no Rate amount is un-priced, no Rate id is No charge. */
@@ -66,20 +66,31 @@ function storedPricing(row: LoadedStint): StoredStintPricing | null {
   };
 }
 
+function previousJobOf({
+  jobCode,
+  jobStatus,
+  customerName,
+  farmName,
+}: { jobCode: number | null; jobStatus: JobStatus | null } & Record<'customerName' | 'farmName', string | null>) {
+  return jobCode === null || jobStatus === null || customerName === null || farmName === null
+    ? null
+    : { jobNumber: formatJobNumber(jobCode), status: jobStatus, customerName, farmName };
+}
+
 function mapAssignment(
   row: LoadedStint,
   measures: readonly LoadedMeasure[],
-  previousDepartures: ReadonlyMap<string, number>,
+  previousDepartures: Awaited<ReturnType<typeof loadPreviousDepartures>>,
 ) {
   const { stint } = row;
-  const arrival = mapJobReading(row.arrival, row.arrivalCapturedByName);
-  const departure = mapJobReading(row.departure, row.departureCapturedByName);
+  const arrival = mapJobReading(row.arrival, row.arrivalCapturedByName, row.arrivalAmendedByName);
+  const departure = mapJobReading(row.departure, row.departureCapturedByName, row.departureAmendedByName);
   const gapResolved = stint.gapResolvedAt !== null;
   const previousDeparture = previousDepartures.get(stint.id);
   const derived = deriveStintHours({
     arrival,
     departure,
-    previousDeparture: previousDeparture === undefined ? null : { value: previousDeparture },
+    previousDeparture: previousDeparture ?? null,
     travelIncluded: stint.travelIncluded,
     gap: gapResolved
       ? { travelHours: stint.gapTravelHours ?? 0, unaccountedHours: stint.gapUnaccountedHours ?? 0 }
@@ -91,6 +102,13 @@ function mapAssignment(
     createdAt: stint.createdAt.toISOString(),
     arrival,
     departure,
+    previousDeparture: previousDeparture
+      ? {
+          value: previousDeparture.value,
+          capturedAt: previousDeparture.capturedAt.toISOString(),
+          job: previousJobOf(previousDeparture),
+        }
+      : null,
     ...derived,
     gapResolved,
     measures,
@@ -146,9 +164,14 @@ export async function getJob({ db, ...lookup }: { db: DbOrTx } & JobLookup): Pro
   const assignments = stints.map(({ assignment }, index) => ({ ...assignment, pricing: priced.stints[index] }));
   const states = assignments.map((assignment) => assignment.state);
   const openGapFlags = assignments.filter((assignment) => assignment.gapFlag).length;
-  const flaggedReadings = assignments
-    .flatMap((assignment) => [assignment.arrival, assignment.departure])
-    .filter((reading) => reading !== null && readingNeedsALook(reading)).length;
+  const flaggedReadings = tallyAssignmentAttention(
+    assignments
+      .flatMap((assignment) => [assignment.arrival, assignment.departure])
+      .flatMap((reading) => {
+        const level = reading ? readingNeedsALookLevel(reading) : null;
+        return level ? [level] : [];
+      }),
+  );
   return JobFacts.parse({
     ...job,
     ...names,
@@ -158,7 +181,7 @@ export async function getJob({ db, ...lookup }: { db: DbOrTx } & JobLookup): Pro
     leftStints: states.filter((state) => state === 'left').length,
     looksFinished: looksFinished(job, states),
     openGapFlags,
-    needsALook: openGapFlags + flaggedReadings,
+    assignmentAttention: jobAssignmentAttentionCounts(openGapFlags, flaggedReadings),
     createdAt: job.createdAt.toISOString(),
     updatedAt: job.updatedAt.toISOString(),
     completedAt: job.completedAt?.toISOString() ?? null,
@@ -191,7 +214,26 @@ export async function getReadableJob({
   if (reader.mode === 'own') assertOwner(job, reader.actorUserId);
   assertReadableStatus(job.status, reader);
   const read = { ...job, actions: deriveJobActions(job, actor) };
-  return jobReadSeesMoney(reader.mode) ? read : redactMoney(read);
+  const scoped = hideUnreadablePreviousJobs(read, reader);
+  return jobReadSeesMoney(reader.mode) ? scoped : redactMoney(scoped);
+}
+
+/**
+ * The Job a Machine left before arriving is named only to a reader who could open it: never to a Foreman, who
+ * reads only his own Jobs, and to Invoicing only once it is Completed or later.
+ */
+function hideUnreadablePreviousJobs(job: JobDetail, reader: JobReader): JobDetail {
+  const readable = (status: JobStatus) => reader.mode !== 'own' && hasJobStatus(jobReadStatuses[reader.mode], status);
+  return {
+    ...job,
+    assignments: job.assignments.map(({ previousDeparture, ...assignment }) => ({
+      ...assignment,
+      previousDeparture:
+        previousDeparture?.job && !readable(previousDeparture.job.status)
+          ? { ...previousDeparture, job: null }
+          : previousDeparture,
+    })),
+  };
 }
 
 export function redactMoney(job: JobDetail): JobDetail {

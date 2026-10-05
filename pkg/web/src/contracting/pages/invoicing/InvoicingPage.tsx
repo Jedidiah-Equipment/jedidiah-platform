@@ -22,7 +22,13 @@ import { JobQueueBadge } from '../jobs/JobStatusBadge.js';
 import { STAGE_COLUMN_ID, stagesCount, toggleQuickFilter, toggleStages } from '../jobs/job-stage-filter.js';
 import { QuickFilterButton } from '../jobs/QuickFilterButton.js';
 import { type StampableJob, StampInvoiceDialog } from './StampInvoiceDialog.js';
-import { INVOICED_COLUMN_ID, invoicedRange, invoicingStages, listedInvoicingStages } from './types.js';
+import {
+  INVOICED_COLUMN_ID,
+  invoicedRange,
+  invoicingStages,
+  listedInvoicingStages,
+  showsAwaitingQuickFilter,
+} from './types.js';
 
 const useInvoicingTableStore = createPersistedDataTableStore({
   initialState: { sorting: [{ id: INVOICED_COLUMN_ID, desc: true }] },
@@ -161,7 +167,7 @@ export function InvoicingPage() {
   return (
     <PageLayout title="Invoicing" description="Stamp invoice numbers and review invoiced Jobs." size="full">
       <fieldset className="scrollbar-none flex gap-1.5 overflow-x-auto" aria-label="Invoicing stages">
-        {awaitingCount > 0 ? (
+        {showsAwaitingQuickFilter(tableController.columnFilters, counts.data) ? (
           <QuickFilterButton
             count={awaitingCount}
             pressed={awaitingOnly}

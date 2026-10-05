@@ -14,9 +14,11 @@ import {
   statusBadgeColorClassNames,
 } from '../theme/status-badge.js';
 
-const JOB_NUMBER_PREFIX = 'CJOB-';
+export const JOB_NUMBER_PREFIX = 'CJOB-';
+/** The Job code is zero-padded to at least this many digits. */
+export const JOB_NUMBER_DIGITS = 5;
 
-export const formatJobNumber = (code: number) => `${JOB_NUMBER_PREFIX}${String(code).padStart(5, '0')}`;
+export const formatJobNumber = (code: number) => `${JOB_NUMBER_PREFIX}${String(code).padStart(JOB_NUMBER_DIGITS, '0')}`;
 
 /** The Job code inside a Job Number such as CJOB-00037. */
 export const parseJobNumber = (jobNumber: string) => Number(jobNumber.slice(JOB_NUMBER_PREFIX.length));

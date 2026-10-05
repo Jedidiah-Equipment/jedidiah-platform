@@ -278,7 +278,7 @@ export function JobsPage() {
       sorting: tableController.sorting,
     },
   });
-  const quickStages = quickFilterStages(counts.data);
+  const quickStages = quickFilterStages(counts.data, tableController.columnFilters);
   return (
     <>
       <PageLayout

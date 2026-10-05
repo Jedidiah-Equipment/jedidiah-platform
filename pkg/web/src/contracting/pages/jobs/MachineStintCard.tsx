@@ -6,6 +6,7 @@ import {
   assignmentNeedsALookLevel,
   assignmentStateColorClassNames,
   GAP_FLAG_THRESHOLD_HOURS,
+  isOverGapWindow,
   judgeAssignmentAction,
   needsALook,
 } from '@pkg/domain/contracting';
@@ -131,7 +132,11 @@ const readingAttentionIcons: Record<JobReadingAttentionKind, TablerIcon> = {
 
 function ReadingActions({ reading, stint, onOpen }: { reading: JobReading; stint: Assignment } & Opens) {
   const role = reading.role === 'arrival' ? 'arrival' : 'departure';
-  if (!reading.attention.length)
+  // An amendment settles the reading's notices, so only what still needs a look keeps its own icon.
+  const shown = reading.amendedAt
+    ? reading.attention.filter((kind) => needsALook(assignmentAttentionKindLevels[kind]))
+    : reading.attention;
+  if (!shown.length)
     return (
       <IconAction
         icon={reading.amendedAt ? IconPencilCheck : IconEye}
@@ -139,7 +144,7 @@ function ReadingActions({ reading, stint, onOpen }: { reading: JobReading; stint
         onClick={() => onOpen({ kind: 'reading', stintId: stint.id, role })}
       />
     );
-  return reading.attention.map((kind) => (
+  return shown.map((kind) => (
     <IconAction
       icon={readingAttentionIcons[kind]}
       key={kind}
@@ -224,16 +229,13 @@ function GapDetail({
 function GapRow({ stint, sheet, onOpen }: { stint: Assignment; sheet: JobSheet } & Opens) {
   const gapHours = stint.gapHours;
   if (gapHours === null || gapHours === 0) return null;
-  const why = !sheet.can('resolveGaps')
-    ? sheet.refusal('resolveGaps')
-    : judgeAssignmentAction('resolveGap', stint).allowed
-      ? null
-      : 'Resolve it once the Machine has left';
+  const verdict = judgeAssignmentAction('resolveGap', stint);
+  const why = !sheet.can('resolveGaps') ? sheet.refusal('resolveGaps') : verdict.allowed ? null : verdict.message;
   const open = () => onOpen({ kind: 'gap', stintId: stint.id });
   const edit = why ? null : <IconAction icon={IconPencil} label="Edit gap split" onClick={open} />;
   const hours = formatHours(gapHours);
   // A gap over the window keeps the Gap Flag's colour on its dot, open or resolved.
-  const tone = gapHours > GAP_FLAG_THRESHOLD_HOURS && needsALook(gapFlagLevel) ? gapFlagLevel : ('done' as const);
+  const tone = isOverGapWindow(gapHours) && needsALook(gapFlagLevel) ? gapFlagLevel : ('done' as const);
 
   if (stint.gapFlag)
     return (

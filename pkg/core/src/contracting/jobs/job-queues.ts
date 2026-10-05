@@ -4,6 +4,8 @@ import { JOHANNESBURG_TIME_ZONE } from '@pkg/domain';
 import {
   countedAssignmentAttentionLevel,
   formatJobNumber,
+  JOB_NUMBER_DIGITS,
+  JOB_NUMBER_PREFIX,
   type JobActor,
   jobAssignmentAttentionCounts,
   jobQueueOf,
@@ -50,7 +52,7 @@ export async function activeJobAttentionLevel({ db, actor }: { db: Db; actor: Jo
       warning: sql<number>`coalesce(sum(${jobSql.readingsNeedingALookAt('warning')}), 0)::integer`,
     })
     .from(contractingJobs)
-    .where(and(eq(contractingJobs.status, 'active'), readableBy(reader)));
+    .where(and(inQueue('active'), readableBy(reader)));
   if (!totals) return null;
   const { openGapFlags, ...readings } = totals;
   return countedAssignmentAttentionLevel(jobAssignmentAttentionCounts(openGapFlags, readings));
@@ -67,7 +69,8 @@ function inQueue(queue: JobQueue): SQL | undefined {
   return status;
 }
 
-const jobNumberText = sql`'CJOB-' || lpad(${contractingJobs.code}::text, 5, '0')`;
+/** SQL twin of domain `formatJobNumber`, so a search for the Job Number finds the Job. */
+const jobNumberText = sql`${JOB_NUMBER_PREFIX} || lpad(${contractingJobs.code}::text, ${JOB_NUMBER_DIGITS}, '0')`;
 
 export async function listJobs({
   db,
@@ -104,8 +107,10 @@ export async function listJobs({
       leftStints: jobSql.stintCount('left'),
       looksFinished: jobSql.looksFinished,
       openGapFlags: jobSql.openGapFlags,
-      criticalReadings: jobSql.readingsNeedingALookAt('critical'),
-      warningReadings: jobSql.readingsNeedingALookAt('warning'),
+      readings: {
+        critical: jobSql.readingsNeedingALookAt('critical'),
+        warning: jobSql.readingsNeedingALookAt('warning'),
+      },
     })
     .from(contractingJobs)
     .innerJoin(contractingCustomers, eq(contractingCustomers.id, contractingJobs.customerId))
@@ -121,7 +126,7 @@ export async function listJobs({
       ...(input.sortBy === 'invoicedAt'
         ? [sql`${contractingJobs.invoicedAt} ${sql.raw(input.sortDirection)} nulls last`]
         : []),
-      getSortOrder(contractingJobs.code, input.sortBy === 'invoicedAt' ? 'desc' : input.sortDirection),
+      getSortOrder(contractingJobs.code, input.sortDirection),
       asc(contractingJobs.id),
     )
     .$dynamic();
@@ -144,14 +149,11 @@ export async function listJobs({
   ]);
   const total = totalRow?.total ?? 0;
   const seesMoney = jobReadSeesMoney(reader.mode);
-  const items = rows.map(({ job, criticalReadings, warningReadings, ...row }) =>
+  const items = rows.map(({ job, readings, ...row }) =>
     JobSummary.parse({
       ...job,
       ...row,
-      assignmentAttention: jobAssignmentAttentionCounts(row.openGapFlags, {
-        critical: criticalReadings,
-        warning: warningReadings,
-      }),
+      assignmentAttention: jobAssignmentAttentionCounts(row.openGapFlags, readings),
       jobNumber: formatJobNumber(job.code),
       pricedTotal: seesMoney ? job.pricedTotal : null,
       pricedAt: job.pricedAt?.toISOString() ?? null,

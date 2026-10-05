@@ -134,7 +134,11 @@ export function GapResolveDialog({ stint, onClose }: { stint: Assignment | null;
               {(field) => (
                 <field.NumberField
                   label="Travel Hours"
-                  description={`Billed to the client, up to ${formatHours(gapHours)}`}
+                  description={
+                    stint?.travelIncluded
+                      ? `Billed to the client, up to ${formatHours(gapHours)}`
+                      : `Not billed while travel is excluded; up to ${formatHours(gapHours)}`
+                  }
                   decimals={1}
                   min={0}
                   emptyValue={0}

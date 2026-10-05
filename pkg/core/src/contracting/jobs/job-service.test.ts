@@ -20,7 +20,7 @@ import { createWorkType } from '../work-types/work-type-service.js';
 import { patchAssignment, removeAssignment, resolveGap } from './assignment-service.js';
 import { listFieldJobs } from './field-read.js';
 import { listJobs } from './job-queues.js';
-import { getJob } from './job-read.js';
+import { getJob, getReadableJob } from './job-read.js';
 import { cancelJob, completeJob, createJob, patchJob } from './job-service.js';
 import { setMeasure } from './measure-service.js';
 
@@ -686,6 +686,10 @@ describe('Completion and billable facts', () => {
       },
     });
     expect((await getJob({ db: context.db, id: firstJob.id })).assignments[0]?.previousDeparture).toBeNull();
+    // A Foreman reads only his own Jobs, so the Job the Machine left is not named to him.
+    expect(
+      (await getReadableJob({ db: context.db, actor: foreman, id: secondJob.id })).assignments[0]?.previousDeparture,
+    ).toMatchObject({ value: 310, job: null });
     await expect(
       completeJob({
         db: context.db,

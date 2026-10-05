@@ -37,6 +37,10 @@ describe('quickFilterStages', () => {
     expect(quickFilterStages(counts)).toEqual(['upcoming', 'looks-finished']);
     expect(quickFilterStages(undefined)).toEqual([]);
   });
+
+  it('keeps the quick filter of a stage picked on its own after it empties', () => {
+    expect(quickFilterStages(undefined, stage(['awaiting-pricing']))).toEqual(['awaiting-pricing']);
+  });
 });
 
 describe('toggleQuickFilter', () => {

@@ -220,7 +220,9 @@ export const PreviousDeparture = z.object({
   value: ReadingValue,
   capturedAt: DateIso,
   /** Null when this reader may not see that Job. */
-  job: z.object({ jobNumber: JobNumber, customerName: z.string(), farmName: z.string() }).nullable(),
+  job: z
+    .object({ jobNumber: JobNumber, status: z.enum(jobStatuses), customerName: z.string(), farmName: z.string() })
+    .nullable(),
 });
 export type PreviousDeparture = z.infer<typeof PreviousDeparture>;
 

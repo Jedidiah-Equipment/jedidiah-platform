@@ -22,9 +22,12 @@ export function listedStages(
   return picked.length ? picked : [...defaults];
 }
 
-/** Quick filters cover the open stages that hold a Job; Invoiced and Cancelled stay in the column filter. */
-export const quickFilterStages = (counts: JobQueueCounts | undefined): JobQueue[] =>
-  openJobQueues.filter((queue) => (counts?.[queue] ?? 0) > 0);
+/**
+ * Quick filters cover the open stages that hold a Job; Invoiced and Cancelled stay in the column filter. A stage
+ * picked on its own keeps its quick filter even once it empties, so pressing it again can clear it.
+ */
+export const quickFilterStages = (counts: JobQueueCounts | undefined, columnFilters: ColumnFiltersState = []) =>
+  openJobQueues.filter((queue) => (counts?.[queue] ?? 0) > 0 || isOnlyStage(columnFilters, queue));
 
 export const isOnlyStage = (columnFilters: ColumnFiltersState, queue: JobQueue) => {
   const picked = pickedStages(columnFilters);

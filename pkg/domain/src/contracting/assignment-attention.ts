@@ -60,6 +60,12 @@ export function highestAssignmentAttentionLevel(
 
 export type AssignmentAttentionCounts = Record<NeedsALookLevel, number>;
 
+/** The loudest of these levels when it needs a look, or null when none does. */
+export function loudestNeedingALook(levels: Iterable<AssignmentAttentionLevel>): NeedsALookLevel | null {
+  const level = highestAssignmentAttentionLevel(levels);
+  return level !== null && needsALook(level) ? level : null;
+}
+
 /** The level a count of items needing a look shows at, or null when nothing needs a look. */
 export const countedAssignmentAttentionLevel = (counts: AssignmentAttentionCounts): NeedsALookLevel | null =>
   counts.critical > 0 ? 'critical' : counts.warning > 0 ? 'warning' : null;
@@ -100,12 +106,8 @@ export function assignmentAttentionItems(assignment: {
 }
 
 /** The loudest level on a Machine Assignment that needs a look, or null when nothing does. */
-export function assignmentNeedsALookLevel(
-  assignment: Parameters<typeof assignmentAttentionItems>[0],
-): NeedsALookLevel | null {
-  const level = highestAssignmentAttentionLevel(assignmentAttentionItems(assignment).map((item) => item.level));
-  return level !== null && needsALook(level) ? level : null;
-}
+export const assignmentNeedsALookLevel = (assignment: Parameters<typeof assignmentAttentionItems>[0]) =>
+  loudestNeedingALook(assignmentAttentionItems(assignment).map((item) => item.level));
 
 /** Every class an attention surface paints with: chip, text, dot, a bare icon, a card border, and an icon button. */
 export type AssignmentAttentionColorClassNames = BadgeColorClassNames & {

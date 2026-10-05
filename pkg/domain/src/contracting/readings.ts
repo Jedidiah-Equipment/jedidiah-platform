@@ -10,7 +10,7 @@ import {
 import {
   aiVerificationLevel,
   assignmentAttentionKindLevels,
-  highestAssignmentAttentionLevel,
+  loudestNeedingALook,
   needsALook,
 } from './assignment-attention.js';
 
@@ -85,12 +85,10 @@ export function readingAttentionKinds(
 }
 
 /** The loudest level on a reading that needs a look, or null when nothing does. Core's SQL twins this. */
-export function readingNeedsALookLevel(reading: ReadingAttentionFacts): NeedsALookLevel | null {
-  const level = highestAssignmentAttentionLevel(
+export const readingNeedsALookLevel = (reading: ReadingAttentionFacts): NeedsALookLevel | null =>
+  loudestNeedingALook(
     readingAttentionKinds({ ...reading, photoBacked: true }).map((kind) => assignmentAttentionKindLevels[kind]),
   );
-  return level !== null && needsALook(level) ? level : null;
-}
 
 export const readingNeedsALook = (reading: ReadingAttentionFacts): boolean => readingNeedsALookLevel(reading) !== null;
 

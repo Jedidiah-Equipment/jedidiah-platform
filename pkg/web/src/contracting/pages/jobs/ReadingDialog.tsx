@@ -111,7 +111,7 @@ export function ReadingDialog({
     setAmending(true);
   };
   // An amendment that acknowledged the current AI finding is the latest word on the reading; a re-verify reopens it.
-  const amendmentLeads = !!reading?.amendedAt && !!reading.evidenceReviewedAt;
+  const amendmentSettledFinding = !!reading?.amendedAt && !!reading.evidenceReviewedAt;
 
   return (
     <>
@@ -203,7 +203,7 @@ export function ReadingDialog({
                       {reading.amendmentReason ? (
                         <blockquote className="mt-3 border-l-2 pl-2.5 text-sm">{reading.amendmentReason}</blockquote>
                       ) : null}
-                      {amendmentLeads ? (
+                      {amendmentSettledFinding ? (
                         <p className="mt-3 text-xs text-muted-foreground">
                           This amendment acknowledged the AI assessment below.
                         </p>
@@ -212,12 +212,12 @@ export function ReadingDialog({
                   </section>
                 ) : null}
                 <Collapsible
-                  key={`${reading.id}:${amendmentLeads}`}
-                  defaultOpen={!amendmentLeads}
+                  key={`${reading.id}:${amendmentSettledFinding}`}
+                  defaultOpen={!amendmentSettledFinding}
                   render={<section aria-labelledby="ai-assessment-heading" className="border-t pt-4" />}
                 >
                   <div className="mb-3 flex items-center justify-between gap-3">
-                    {amendmentLeads ? (
+                    {amendmentSettledFinding ? (
                       <CollapsibleTrigger
                         className="group/ai flex min-w-0 items-center gap-2 text-left"
                         render={<button type="button" />}

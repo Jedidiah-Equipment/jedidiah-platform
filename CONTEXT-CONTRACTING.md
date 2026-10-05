@@ -155,8 +155,9 @@ the photo itself and records its own value and confidence: a reading is **photo-
 carries a photo and **AI-verified** when the server's read agrees with the typed value.
 Disagreements, low confidence, and disputes surface to management as **Reading Exceptions** — a
 reading is **Disputed** when it belongs to an unresolved out-of-sequence pair and **AI flagged**
-when its verification disagrees or has low confidence and has not been reviewed; a pending
-verification is only a notice and stays off the list. A reading can carry both exception types. Exceptions never return to the Foreman, who is never
+when its verification is pending, disagrees, or has low confidence and has not been reviewed. Only
+a disagreement or low confidence puts an AI flagged reading on the list: a pending verification is
+only a notice. A reading can carry both exception types. Exceptions never return to the Foreman, who is never
 re-interrupted in the field. A reading may carry the Foreman's
 optional **capture comment**, shown wherever management reviews it; the capture screen shows the
 minimum value the meter can now read. A field reading plays one of three roles:

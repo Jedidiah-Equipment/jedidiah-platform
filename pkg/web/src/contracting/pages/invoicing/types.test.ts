@@ -1,6 +1,6 @@
 import type { JobQueueCounts } from '@pkg/schema/contracting';
 import { describe, expect, it } from 'vitest';
-import { invoicedRange, listedInvoicingStages } from './types.js';
+import { invoicedRange, listedInvoicingStages, showsAwaitingQuickFilter } from './types.js';
 
 const counts = (awaiting: number): JobQueueCounts => ({
   upcoming: 0,
@@ -26,6 +26,18 @@ describe('listedInvoicingStages', () => {
       'invoiced',
     ]);
     expect(listedInvoicingStages(stage(['upcoming']), counts(2))).toEqual(['awaiting-invoice']);
+  });
+
+  it('lists the invoiced Jobs when only a date range is picked, since only they have an invoice date', () => {
+    expect(listedInvoicingStages([{ id: 'invoicedAt', value: { start: '2026-09-01' } }], counts(2))).toEqual([
+      'invoiced',
+    ]);
+  });
+
+  it('keeps the Awaiting invoice quick filter while it holds a Job or is picked on its own', () => {
+    expect(showsAwaitingQuickFilter([], counts(2))).toBe(true);
+    expect(showsAwaitingQuickFilter([], counts(0))).toBe(false);
+    expect(showsAwaitingQuickFilter(stage(['awaiting-invoice']), counts(0))).toBe(true);
   });
 });
 

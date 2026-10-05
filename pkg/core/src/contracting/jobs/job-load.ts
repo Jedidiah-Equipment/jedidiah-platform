@@ -122,6 +122,7 @@ export async function loadPreviousDepartures(db: DbOrTx, jobId: string) {
       value: previousReading.value,
       capturedAt: previousReading.capturedAt,
       jobCode: previousJob.code,
+      jobStatus: previousJob.status,
       customerName: previousCustomer.name,
       farmName: previousFarm.name,
     })

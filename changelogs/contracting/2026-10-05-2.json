@@ -1,0 +1,44 @@
+{
+  "business": "contracting",
+  "releasedAt": "2026-10-05T13:15:05.907Z",
+  "sections": [
+    {
+      "surface": "app",
+      "entries": [
+        {
+          "title": "Find Jobs by stage",
+          "description": "Search, sort and filter Jobs by stage, with quick filters for work in progress. Colour-coded attention counts highlight the Jobs that need review."
+        },
+        {
+          "title": "Filter invoicing and preview Job Cards",
+          "description": "Find Jobs awaiting invoices or filter by stage and invoiced date. Preview and download a customer Job Card beside the invoicing list."
+        },
+        {
+          "title": "Resolve hour gaps with clearer context",
+          "description": "Machine cards now show gaps in the reading timeline. Review why a gap was flagged, see available previous Job details, and enter or edit the split between billable travel and unaccounted hours."
+        },
+        {
+          "title": "Review reading exceptions more easily",
+          "description": "A navigation indicator highlights readings needing attention, and Resolve opens the reading, photo and amendment controls together. Amended readings are clearly marked, while pending photo checks update automatically on the Job page."
+        }
+      ]
+    },
+    {
+      "surface": "mobile",
+      "entries": [
+        {
+          "title": "Capture readings with fewer interruptions",
+          "description": "Take or select a meter photo in a compact form, with Save kept above the keyboard. Readings save without waiting for the background photo check, and a comment explains any missing photo."
+        },
+        {
+          "title": "Search and filter your Jobs",
+          "description": "Search by Job, customer or farm, filter by stage, and sort by Newest or Name. More Jobs load as you scroll."
+        },
+        {
+          "title": "Find out sooner when a record is missing",
+          "description": "Opening a record that cannot be found now shows the result without waiting through repeated loading attempts."
+        }
+      ]
+    }
+  ]
+}

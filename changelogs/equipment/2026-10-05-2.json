@@ -1,0 +1,15 @@
+{
+  "business": "equipment",
+  "releasedAt": "2026-10-05T13:15:05.907Z",
+  "sections": [
+    {
+      "surface": "mobile",
+      "entries": [
+        {
+          "title": "Find out sooner when a record is missing",
+          "description": "Opening a record that cannot be found now shows the result without waiting through repeated loading attempts."
+        }
+      ]
+    }
+  ]
+}

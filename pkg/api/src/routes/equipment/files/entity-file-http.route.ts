@@ -25,8 +25,7 @@ export type EntityFileRouteConfig = {
   // Maps an owner error raised by the binding (e.g. ProductNotFoundError) to a route response, or returns
   // undefined to let it propagate. Keeps entity-specific error knowledge out of this generic registrar.
   mapOwnerError: (error: unknown) => RouteHttpError | undefined;
-  // The entity's file policy cap, applied to the upload stream so an oversized file is refused before it
-  // is buffered.
+  // Applied to the upload stream, so an oversized file is refused before it is buffered.
   maxUploadBytes: number;
   noFileMessage: string;
   read: (args: { rawParams: unknown; rawQuery: unknown }) => Promise<StoredObject>;

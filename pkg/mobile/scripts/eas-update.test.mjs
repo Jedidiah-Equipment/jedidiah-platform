@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   assertCompatibleBuilds,
+  assertFirebaseConfig,
   resolveExportCommand,
   resolveReleaseEnvironment,
   resolveSourceMapUploadCommand,
@@ -295,6 +296,16 @@ describe('assertCompatibleBuilds', () => {
         },
       }),
     ).toThrow('OTA compatibility; update not published');
+  });
+});
+
+describe('assertFirebaseConfig', () => {
+  it('refuses an Android OTA without the local google-services.json the build fingerprint hashed', () => {
+    expect(() => assertFirebaseConfig(['android', 'ios'], () => false)).toThrow('google-services.json');
+  });
+
+  it('lets an iOS-only OTA through without the Firebase file', () => {
+    expect(() => assertFirebaseConfig(['ios'], () => false)).not.toThrow();
   });
 });
 

@@ -13,11 +13,13 @@ import { useCallback, useEffect, useRef } from 'react';
 const MIN_RECORDING_MS = 500;
 
 export type VoiceRecorder = {
-  supported: boolean;
   recording: boolean;
   seconds: number;
-  /** Starts recording. A press that had to ask for the microphone records nothing: `allowed` or `denied` says why. */
-  start: () => Promise<'recording' | 'allowed' | 'denied'>;
+  /**
+   * Starts recording. A press that records nothing says why: `allowed` or `denied` after asking for the microphone,
+   * `unsupported` on a build that cannot record.
+   */
+  start: () => Promise<'recording' | 'allowed' | 'denied' | 'unsupported'>;
   /** Stops and hands back the recording, or null when there is none worth sending. */
   stop: () => Promise<{ uri: string; seconds: number } | null>;
 };
@@ -67,7 +69,6 @@ export function useVoiceRecorder(): VoiceRecorder {
   );
 
   return {
-    supported: true,
     recording: state.isRecording,
     seconds: Math.floor(state.durationMillis / 1000),
     start,

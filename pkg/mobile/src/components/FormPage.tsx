@@ -1,7 +1,8 @@
-import type { ReactNode } from 'react';
+import { type ReactNode, useState } from 'react';
 import { Platform, ScrollView, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { SECONDARY_PAGE_CONTENT_STYLE } from '@/components/page-frame';
+import { ScrollLockContext } from '@/components/scroll-lock';
 import { Text } from '@/components/ui/text';
 import { useKeyboardBottomPadding } from '@/lib/keyboard-padding';
 
@@ -24,6 +25,7 @@ export function FormPage({
   // The footer rides on the keyboard's full height, so Save stays visible while a field is being typed in. The page
   // leaves the bottom edge unpadded, so no safe area comes off it.
   const keyboardPadding = useKeyboardBottomPadding(0);
+  const [scrollLocked, setScrollLocked] = useState(false);
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top', 'left', 'right']}>
       {toolbar}
@@ -31,9 +33,10 @@ export function FormPage({
         <ScrollView
           keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
           keyboardShouldPersistTaps="handled"
+          scrollEnabled={!scrollLocked}
           contentContainerStyle={{ ...SECONDARY_PAGE_CONTENT_STYLE, gap: 16 }}
         >
-          {children}
+          <ScrollLockContext.Provider value={setScrollLocked}>{children}</ScrollLockContext.Provider>
         </ScrollView>
         <View
           className="gap-2 border-t border-border bg-background px-4 pt-3"

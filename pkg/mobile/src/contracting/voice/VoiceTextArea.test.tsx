@@ -1,7 +1,7 @@
 import { act, create, type ReactTestRenderer } from 'react-test-renderer';
 import { beforeEach, expect, test, vi } from 'vitest';
 
-const state = vi.hoisted(() => ({ offline: false, permitted: true, supported: true }));
+const state = vi.hoisted(() => ({ offline: false, permitted: true }));
 const stop = vi.hoisted(() => vi.fn(async () => null));
 vi.mock('react-native', () => ({ Pressable: 'Pressable', View: 'View' }));
 vi.mock('@tabler/icons-react-native', () => ({ IconMicrophone: 'IconMicrophone' }));
@@ -15,7 +15,6 @@ vi.mock('@/lib/auth-session', () => ({ useSessionPermission: () => state.permitt
 vi.mock('./transcribe-upload', () => ({ transcribeRecording: vi.fn(), TranscriptionRefusedError: Error }));
 vi.mock('./use-voice-recorder', () => ({
   useVoiceRecorder: () => ({
-    supported: state.supported,
     recording: false,
     seconds: 0,
     start: async () => 'recording',
@@ -49,7 +48,7 @@ const mics = (renderer: ReactTestRenderer) =>
 const micCount = () => mics(render()).length;
 
 beforeEach(() => {
-  Object.assign(state, { offline: false, permitted: true, supported: true });
+  Object.assign(state, { offline: false, permitted: true });
   stop.mockClear();
   voice.setBusy.mockClear();
 });
@@ -61,7 +60,6 @@ test('offers the mic online to a role that may use voice notes', () => {
 test.each([
   ['offline', { offline: true }],
   ['without the permission', { permitted: false }],
-  ['on the web build', { supported: false }],
 ])('is a plain text area %s', (_label, change) => {
   Object.assign(state, change);
   expect(micCount()).toBe(0);

@@ -7,7 +7,7 @@ import {
   useAudioRecorder,
   useAudioRecorderState,
 } from 'expo-audio';
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useRef } from 'react';
 
 /** Shorter than this is a tap, not a note. */
 const MIN_RECORDING_MS = 500;
@@ -16,7 +16,6 @@ export type VoiceRecorder = {
   supported: boolean;
   recording: boolean;
   seconds: number;
-  permissionDenied: boolean;
   /** Starts recording. A press that had to ask for the microphone records nothing: `allowed` or `denied` says why. */
   start: () => Promise<'recording' | 'allowed' | 'denied'>;
   /** Stops and hands back the recording, or null when there is none worth sending. */
@@ -27,7 +26,6 @@ export type VoiceRecorder = {
 export function useVoiceRecorder(): VoiceRecorder {
   const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
   const state = useAudioRecorderState(recorder, 500);
-  const [permissionDenied, setPermissionDenied] = useState(false);
   const starting = useRef<Promise<'recording' | 'allowed' | 'denied'> | null>(null);
   const startedAt = useRef(0);
 
@@ -37,10 +35,8 @@ export function useVoiceRecorder(): VoiceRecorder {
       if (!current.granted) {
         // The system prompt takes the press; the next hold records.
         const asked = await requestRecordingPermissionsAsync();
-        setPermissionDenied(!asked.granted);
         return asked.granted ? 'allowed' : 'denied';
       }
-      setPermissionDenied(false);
       await setAudioModeAsync({ allowsRecording: true, playsInSilentMode: true });
       await recorder.prepareToRecordAsync();
       recorder.record({ forDuration: VOICE_NOTE_MAX_SECONDS });
@@ -66,7 +62,6 @@ export function useVoiceRecorder(): VoiceRecorder {
     supported: true,
     recording: state.isRecording,
     seconds: Math.floor(state.durationMillis / 1000),
-    permissionDenied,
     start,
     stop,
   };

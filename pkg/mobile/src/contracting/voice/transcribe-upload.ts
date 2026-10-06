@@ -3,21 +3,13 @@ import { Transcription } from '@pkg/schema/contracting';
 import { z } from 'zod';
 import { authedFetch } from '@/lib/authed-fetch';
 import { audioPart } from './audio-part';
+import { TranscriptionRefusedError } from './transcription-refused';
+
+export { TranscriptionRefusedError };
 
 const RefusalBody = z
   .object({ message: z.string().optional(), data: z.object({ appCode: z.string().optional() }).nullish() })
   .catch({});
-
-/** The server answered with its own reason, such as no speech service or nothing heard. */
-export class TranscriptionRefusedError extends Error {
-  constructor(
-    readonly code: string,
-    message: string,
-  ) {
-    super(message);
-    this.name = 'TranscriptionRefusedError';
-  }
-}
 
 /** One recording in, its text out. A refusal throws {@link TranscriptionRefusedError}; anything else a plain Error. */
 export async function transcribeRecording(uri: string, purpose: string): Promise<Transcription> {

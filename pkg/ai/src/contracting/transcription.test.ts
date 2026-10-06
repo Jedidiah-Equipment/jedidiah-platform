@@ -1,6 +1,7 @@
+import { createOpenAI } from '@ai-sdk/openai';
 import { MockLanguageModelV4 } from 'ai/test';
 import { describe, expect, it } from 'vitest';
-import { createScribeModel, deriveTranscriptionHint, tidyTranscript, transcribeVoiceNote } from './transcription.js';
+import { deriveTranscriptionHint, tidyTranscript, transcribeVoiceNote } from './transcription.js';
 
 function answering(object: unknown) {
   return new MockLanguageModelV4({
@@ -19,20 +20,15 @@ function answering(object: unknown) {
 const HINT_ID = '2b8c0a52-6f0e-4d5e-9a43-3f7a0e1c9d11';
 
 describe('transcribeVoiceNote', () => {
-  it('sends the keyterms in the Scribe request body and returns the trimmed text and language', async () => {
+  it('biases the speech model with the keyterms as a json-format prompt and returns the trimmed text', async () => {
     let sent: FormData | undefined;
-    const model = createScribeModel({
+    const model = createOpenAI({
       apiKey: 'test-key',
-      model: 'scribe_v2',
       fetch: async (_input, init) => {
         sent = init?.body as FormData;
-        return Response.json({
-          text: ' Die hek by Rooikraal is oop. ',
-          language_code: 'afr',
-          language_probability: 0.9,
-        });
+        return Response.json({ text: ' Die hek by Rooikraal is oop. ' });
       },
-    });
+    }).transcription('gpt-transcribe');
 
     const heard = await transcribeVoiceNote({
       audio: new Uint8Array([0, 0, 0, 32, 0x66, 0x74, 0x79, 0x70]),
@@ -40,16 +36,19 @@ describe('transcribeVoiceNote', () => {
       model,
     });
 
-    expect(heard).toEqual({ text: 'Die hek by Rooikraal is oop.', language: 'afr' });
-    expect(sent?.getAll('keyterms')).toEqual(['Rooikraal', 'JD 6155M']);
-    expect(sent?.get('model_id')).toBe('scribe_v2');
-    expect(sent?.get('tag_audio_events')).toBe('false');
+    expect(heard).toEqual({ text: 'Die hek by Rooikraal is oop.', language: null });
+    expect(sent?.get('model')).toBe('gpt-transcribe');
+    expect(sent?.get('prompt')).toBe('Rooikraal, JD 6155M');
+    expect(sent?.get('response_format')).toBe('json');
+    // Pinned until the provider forwards them (see the TODO on the call).
+    expect(sent?.has('keywords')).toBe(false);
+    expect(sent?.has('timestamp_granularities[]')).toBe(false);
   });
 });
 
 describe('tidyTranscript', () => {
-  it('returns the tidied text and tells the model the purpose, language and hints', async () => {
-    const model = answering({ text: ' Die hek by Rooikraal is oop. ' });
+  it('returns the tidied text and spoken language, and tells the model the purpose, language and hints', async () => {
+    const model = answering({ text: ' Die hek by Rooikraal is oop. ', language: 'af' });
 
     const shown = await tidyTranscript({
       rawText: 'die hek by rooi kraal is oop',
@@ -59,7 +58,7 @@ describe('tidyTranscript', () => {
       model,
     });
 
-    expect(shown).toBe('Die hek by Rooikraal is oop.');
+    expect(shown).toEqual({ text: 'Die hek by Rooikraal is oop.', language: 'af' });
     const prompt = JSON.stringify(model.doGenerateCalls[0]?.prompt);
     expect(prompt).toContain('NEVER translate');
     expect(prompt).toContain('The farm is spelled Rooikraal, not Rooi Kraal.');

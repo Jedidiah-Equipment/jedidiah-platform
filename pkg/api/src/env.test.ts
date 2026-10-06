@@ -96,10 +96,7 @@ describe('API translation model config', () => {
 });
 
 describe('API voice note config', () => {
-  it('leaves voice notes off without a key and defaults the Scribe model', () => {
-    const config = ApiConfig.parse(baseEnv);
-
-    expect(config.ELEVENLABS_API_KEY).toBeUndefined();
-    expect(config.ELEVENLABS_TRANSCRIPTION_MODEL).toBe('scribe_v2');
+  it('defaults the transcription model', () => {
+    expect(ApiConfig.parse(baseEnv).OPENAI_TRANSCRIPTION_MODEL).toBe('gpt-transcribe');
   });
 });

@@ -15,8 +15,8 @@ vi.mock('../../../auth/session.js', async (original) => ({
 }));
 
 const engine: TranscriptionEngine = {
-  transcribe: async () => ({ text: 'die hek is oop', language: 'afr' }),
-  tidy: async () => 'Die hek is oop.',
+  transcribe: async () => ({ text: 'die hek is oop', language: null }),
+  tidy: async () => ({ text: 'Die hek is oop.', language: 'af' }),
   derive: async () => ({ action: 'none', reason: 'Not used here.' }),
 };
 
@@ -30,7 +30,7 @@ const test = createTester(async ({ db, auth }) => {
     createdAt: new Date(),
     updatedAt: new Date(),
   });
-  const appWith = async (withEngine: TranscriptionEngine | null) => {
+  const appWith = async (withEngine: TranscriptionEngine) => {
     const app = Fastify();
     app.decorate('auth', auth);
     await app.register(multipart);
@@ -72,7 +72,7 @@ test('a foreman’s voice note answers with the Transcription; other audio is re
     signInAs('foreman');
     const response = await app.inject(upload(M4A));
     expect(response.statusCode).toBe(201);
-    expect(response.json()).toEqual({ id: expect.any(String), text: 'Die hek is oop.', language: 'afr' });
+    expect(response.json()).toEqual({ id: expect.any(String), text: 'Die hek is oop.', language: 'af' });
 
     const png = await app.inject(upload(PNG));
     expect(png.statusCode).toBe(400);
@@ -82,9 +82,14 @@ test('a foreman’s voice note answers with the Transcription; other audio is re
   }
 });
 
-test('refuses roles without voice notes and answers unavailable without a speech key', async ({ context }) => {
+test('refuses roles without voice notes, and answers unavailable when the speech model fails', async ({ context }) => {
   const app = await context.appWith(engine);
-  const keyless = await context.appWith(null);
+  const failing = await context.appWith({
+    ...engine,
+    transcribe: async () => {
+      throw new Error('timeout');
+    },
+  });
   try {
     signInAs('contracting-invoicing');
     const forbidden = await app.inject(upload(M4A));
@@ -92,11 +97,11 @@ test('refuses roles without voice notes and answers unavailable without a speech
     expect(forbidden.json()).toMatchObject({ data: { appCode: 'transcription.forbidden' } });
 
     signInAs('foreman');
-    const unavailable = await keyless.inject(upload(M4A));
+    const unavailable = await failing.inject(upload(M4A));
     expect(unavailable.statusCode).toBe(503);
     expect(unavailable.json()).toMatchObject({ data: { appCode: 'transcription.unavailable' } });
   } finally {
     await app.close();
-    await keyless.close();
+    await failing.close();
   }
 });

@@ -28,7 +28,7 @@ function engineHearing(
       calls.keyterms.push(keyterms);
       return heard;
     },
-    tidy: async ({ rawText }) => `${rawText[0]?.toUpperCase()}${rawText.slice(1)}.`,
+    tidy: async ({ rawText }) => ({ text: `${rawText[0]?.toUpperCase()}${rawText.slice(1)}.`, language: 'en' }),
     derive: async () => {
       calls.derive += 1;
       return derivation;
@@ -56,10 +56,13 @@ async function noted(
   return { transcription, engine, calls };
 }
 
-test('keeps what was heard and shown, and stamps only the speaker’s first save', async ({ context: { db } }) => {
-  const { transcription, calls } = await noted(db, { text: 'the gate at rooi kraal is open', language: 'eng' });
+test('keeps what was heard, shown and its language, and stamps only the speaker’s first save', async ({
+  context: { db },
+}) => {
+  // The speech model named no language, so the tidy pass's tag is kept.
+  const { transcription, calls } = await noted(db, { text: 'the gate at rooi kraal is open', language: null });
 
-  expect(transcription).toEqual({ id: expect.any(String), text: 'The gate at rooi kraal is open.', language: 'eng' });
+  expect(transcription).toEqual({ id: expect.any(String), text: 'The gate at rooi kraal is open.', language: 'en' });
   expect(calls.keyterms).toEqual([['Rooikraal']]);
   const input = { id: transcription.id, text: 'The gate at Rooikraal is open.', purpose: 'capture comment' };
   await expect(recordTranscriptionSaved({ db, actorUserId: adminId, input })).rejects.toMatchObject({

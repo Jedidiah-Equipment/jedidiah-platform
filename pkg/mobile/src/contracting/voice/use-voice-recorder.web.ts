@@ -4,7 +4,6 @@ const unsupported: VoiceRecorder = {
   supported: false,
   recording: false,
   seconds: 0,
-  permissionDenied: false,
   start: async () => 'denied',
   stop: async () => null,
 };

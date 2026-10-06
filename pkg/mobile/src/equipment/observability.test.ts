@@ -6,7 +6,7 @@ import { EQUIPMENT_MUTATION_EVENTS, mutationEventProperties } from './observabil
 
 const MOBILE_ROOT = resolve(import.meta.dirname, '../..');
 
-function sourceFiles(directory = MOBILE_ROOT): string[] {
+function sourceFiles(directory: string): string[] {
   return readdirSync(directory).flatMap((name) => {
     const path = join(directory, name);
     // Contracting's folders are its own catalog's to cover (`src/contracting/observability.test.ts`).
@@ -19,7 +19,8 @@ function sourceFiles(directory = MOBILE_ROOT): string[] {
 describe('equipment mutation event catalog', () => {
   it('covers every tRPC mutation called by the mobile app', () => {
     const procedures = new Set<string>();
-    for (const file of sourceFiles()) {
+    // Source only: the local native prebuild (`ios/`, `android/`) is not the app's code.
+    for (const file of ['src', 'app'].flatMap((directory) => sourceFiles(join(MOBILE_ROOT, directory)))) {
       const source = readFileSync(file, 'utf8');
       for (const match of source.matchAll(/trpc\.([A-Za-z0-9_]+\.[A-Za-z0-9_]+)\.mutationOptions/g)) {
         procedures.add(match[1]);

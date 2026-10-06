@@ -2,7 +2,7 @@ import fastifyCors from '@fastify/cors';
 import fastifyMultipart from '@fastify/multipart';
 import { createOpenAiChatModel } from '@pkg/ai';
 import {
-  createScribeModel,
+  createTranscriptionModel,
   deriveTranscriptionHint,
   readMeterPhoto,
   tidyTranscript,
@@ -124,19 +124,18 @@ export async function buildServer(
     onError: (error, readingId) => log.ai.error({ error, readingId }, 'Reading verification failed'),
   });
   await registerReadingHttpRoutes(app, { db, storage, verifications: readingVerifications });
-  const scribe = config.ELEVENLABS_API_KEY
-    ? createScribeModel({ apiKey: config.ELEVENLABS_API_KEY, model: config.ELEVENLABS_TRANSCRIPTION_MODEL })
-    : null;
-  if (!scribe) log.ai.warn('ELEVENLABS_API_KEY is unset: voice notes disabled');
-  const transcriptionEngine: TranscriptionEngine | null = scribe && {
-    transcribe: (input) => transcribeVoiceNote({ ...input, model: scribe }),
+  const transcriptionModel = createTranscriptionModel({
+    apiKey: config.OPENAI_API_KEY,
+    model: config.OPENAI_TRANSCRIPTION_MODEL,
+  });
+  const transcriptionEngine: TranscriptionEngine = {
+    transcribe: (input) => transcribeVoiceNote({ ...input, model: transcriptionModel }),
     tidy: (input) => tidyTranscript({ ...input, model: openAiModel }),
     derive: (input) => deriveTranscriptionHint({ ...input, model: openAiModel }),
   };
   const keyterms = createKeytermCache(() => loadKeyterms({ db }));
   const hintDerivations = new BackgroundQueue<string>({
     run: async (id) => {
-      if (!transcriptionEngine) return;
       const outcome = await deriveHintFor({ db, id, engine: transcriptionEngine });
       // A new hint keyterm should reach the next note, not the next cache refresh.
       if (outcome?.action === 'add') keyterms.invalidate();
@@ -191,10 +190,9 @@ export async function buildServer(
   readingVerifications
     .resume(() => listReadingsAwaitingVerification({ db }))
     .catch((error: unknown) => log.ai.error({ error }, 'Resuming reading verifications failed'));
-  if (transcriptionEngine)
-    hintDerivations
-      .resume(() => listTranscriptionsAwaitingHints({ db }))
-      .catch((error: unknown) => log.ai.error({ error }, 'Resuming hint derivations failed'));
+  hintDerivations
+    .resume(() => listTranscriptionsAwaitingHints({ db }))
+    .catch((error: unknown) => log.ai.error({ error }, 'Resuming hint derivations failed'));
 
   return app;
 }

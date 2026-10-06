@@ -9,7 +9,8 @@ const CAMERA_PERMISSION =
   'Allow $(PRODUCT_NAME) to scan Part labels and stores badges, and photograph hour meters and Field Note evidence, with the camera.';
 const PHOTOS_PERMISSION =
   'Allow $(PRODUCT_NAME) to choose meter photos from, and save Field Note photos to, your photo library.';
-const MICROPHONE_PERMISSION = 'Jedidiah uses the microphone to record voice notes you turn into text.';
+const MICROPHONE_PERMISSION =
+  'Allow $(PRODUCT_NAME) to record voice notes, which it turns into text, with the microphone.';
 
 // `newArchEnabled` is a valid runtime field that this Expo version's ExpoConfig types omit.
 type AppConfig = ExpoConfig & { newArchEnabled?: boolean };

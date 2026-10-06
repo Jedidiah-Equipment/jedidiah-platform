@@ -14,10 +14,9 @@ import {
 } from '../../http-route-helpers.js';
 import { transcriptionErrorFamily } from '../contracting-error-families.js';
 
-/** `engine` is null when no speech service key is configured: the phone then shows "type it". */
 export async function registerTranscriptionHttpRoutes(
   app: FastifyInstance,
-  { db, engine, keyterms }: { db: Db; engine: TranscriptionEngine | null; keyterms: () => Promise<string[]> },
+  { db, engine, keyterms }: { db: Db; engine: TranscriptionEngine; keyterms: () => Promise<string[]> },
 ) {
   // Multipart caps bytes; the purpose cap counts UTF-16 units, so allow the widest UTF-8 encoding.
   const fieldSize = 4 * (TranscriptionPurpose.maxLength ?? 60);
@@ -48,12 +47,6 @@ export async function registerTranscriptionHttpRoutes(
       }
       if (audio === undefined) throw invalidMultipart();
       const { purpose } = TranscribeFields.parse(fields);
-      if (!engine)
-        throw new RouteHttpError({
-          statusCode: 503,
-          appCode: 'transcription.unavailable',
-          message: 'Voice notes are not set up. Type the note instead.',
-        });
       const transcription = await transcribeVoiceNote({
         db,
         actorUserId: auth.access.userId,

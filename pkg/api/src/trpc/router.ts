@@ -1,6 +1,5 @@
 import type { ReadMeterPhoto } from '@pkg/core/contracting';
 import type { BuiltRouter } from '@trpc/server/unstable-core-do-not-import';
-import type { BackgroundQueue } from '../background-queue.js';
 import type { TranslationMarker } from '../equipment/catalog-translations/translation-scheduler.js';
 import { auditRouter } from '../routes/audit/audit.router.js';
 import { authRouter } from '../routes/auth/auth.router.js';
@@ -10,7 +9,10 @@ import { contractingFleetRouter } from '../routes/contracting/fleet/fleet.router
 import { contractingJobsRouter } from '../routes/contracting/jobs/jobs.router.js';
 import { contractingRateCardRouter } from '../routes/contracting/rate-card/rate-card.router.js';
 import { createContractingReadingsRouter } from '../routes/contracting/readings/readings.router.js';
-import { createContractingTranscriptionsRouter } from '../routes/contracting/transcriptions/transcriptions.router.js';
+import {
+  createContractingTranscriptionsRouter,
+  type HintDerivations,
+} from '../routes/contracting/transcriptions/transcriptions.router.js';
 import { createCatalogTranslationsRouter } from '../routes/equipment/catalog-translations/catalog-translations.router.js';
 import { customersRouter } from '../routes/equipment/customers/customers.router.js';
 import { documentsRouter } from '../routes/equipment/documents/documents.router.js';
@@ -35,8 +37,7 @@ import { createCallerFactory, router } from './init.js';
 export type AppRouterDependencies = {
   catalogTranslationScheduler: TranslationMarker;
   readMeterPhoto: ReadMeterPhoto;
-  /** Transcription Hint derivations, scheduled once a corrected Transcription has been saved. */
-  hintDerivations: Pick<BackgroundQueue<string>, 'schedule'>;
+  hintDerivations: HintDerivations;
 };
 
 type AppRouterRootTypes = (typeof authRouter)['_def']['_config']['$types'];

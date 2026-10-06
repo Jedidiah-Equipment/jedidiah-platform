@@ -25,7 +25,7 @@ const test = createTester(async ({ db }) => {
       keyterms: async () => [],
       engine: {
         transcribe: async () => ({ text: 'the gate at rooi kraal is open', language }),
-        tidy: async ({ rawText }) => rawText,
+        tidy: async ({ rawText }) => ({ text: rawText, language: null }),
         derive: async () => ({ action: 'none', reason: 'Unused.' }),
       },
     });

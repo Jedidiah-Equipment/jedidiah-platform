@@ -17,7 +17,6 @@ vi.mock('./use-voice-recorder', () => ({
     supported: state.supported,
     recording: false,
     seconds: 0,
-    permissionDenied: false,
     start: async () => 'recording',
     stop: async () => null,
   }),

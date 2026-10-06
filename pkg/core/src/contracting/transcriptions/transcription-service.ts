@@ -24,7 +24,7 @@ export type TranscriptionEngine = {
     language: string | null;
     purpose: string;
     hints: readonly ActiveHint[];
-  }) => Promise<string>;
+  }) => Promise<VoiceTranscript>;
   derive: (input: {
     rawText: string;
     shownText: string;
@@ -36,6 +36,10 @@ export type TranscriptionEngine = {
 };
 
 const activeHint = isNull(contractingTranscriptionHints.retiredAt);
+const languageTag = (language: string | null) => {
+  const tag = language?.trim().toLowerCase() ?? '';
+  return /^[a-z]{2,3}(-[a-z0-9]{2,8})?$/.test(tag) ? tag : null;
+};
 const derivationDue = (row: { language: string | null; shownText: string; savedText: string | null }) =>
   row.savedText !== null &&
   isHintDerivationLanguage(row.language) &&
@@ -89,15 +93,17 @@ export async function transcribeVoiceNote({
       'Nothing was heard. Try again closer to the phone, or type the note.',
     );
   // The tidy pass is best effort: if it fails, the raw text is what the person sees.
-  const shown = await engine
+  const tidied = await engine
     .tidy({ rawText: heard.text, language: heard.language, purpose, hints })
-    .then((text) => text || heard.text)
-    .catch(() => heard.text);
+    .catch(() => ({ text: '', language: null }));
+  const shown = tidied.text || heard.text;
+  // The speech model may name no language; the tidy pass's guess then stands in, so the hint gate still works.
+  const language = languageTag(heard.language) ?? languageTag(tidied.language);
   const [row] = await db
     .insert(contractingTranscriptions)
-    .values({ createdByUserId: actorUserId, purpose, language: heard.language, rawText: heard.text, shownText: shown })
+    .values({ createdByUserId: actorUserId, purpose, language, rawText: heard.text, shownText: shown })
     .returning({ id: contractingTranscriptions.id });
-  return Transcription.parse({ id: row?.id, text: shown, language: heard.language });
+  return Transcription.parse({ id: row?.id, text: shown, language });
 }
 
 /** Stamps what the person kept. Returns whether a hint derivation is due, so the API can schedule it after the response. */

@@ -1,7 +1,7 @@
 import { formatClock } from '@pkg/domain';
 import { VOICE_NOTE_MAX_SECONDS } from '@pkg/domain/contracting';
 import { IconMicrophone } from '@tabler/icons-react-native';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { textareaStyle } from '@/components/form/fields/TextareaField';
 import { useScrollLock } from '@/components/scroll-lock';
@@ -19,6 +19,8 @@ import { withTranscript } from './voice-text';
 const UNAVAILABLE = 'Transcription unavailable — type the note.';
 const MAX_CLOCK = formatClock(VOICE_NOTE_MAX_SECONDS);
 const FRAMED_INPUT = { borderWidth: 0, backgroundColor: 'transparent' } as const;
+// A held finger drifting off the small mic must not end the note; only lifting it does.
+const HOLD_RETENTION = 1000;
 
 type Props = Omit<AppTextInputProps, 'value' | 'onChangeText' | 'multiline'> & {
   value: string;
@@ -47,28 +49,41 @@ export function VoiceTextArea({ value, onChangeText, voice, rows = 4, editable =
   const busy = holding || transcribing;
   const { setBusy } = voice;
   const { stop } = recorder;
+  // The page's scroll lock is shared, so only the field that took it releases it.
+  const scrollHeld = useRef(false);
+  const holdScroll = useCallback(
+    (held: boolean) => {
+      if (scrollHeld.current === held) return;
+      scrollHeld.current = held;
+      lockScroll(held);
+    },
+    [lockScroll],
+  );
 
   useEffect(() => {
     setBusy(busy);
   }, [busy, setBusy]);
   useEffect(() => () => setBusy(false), [setBusy]);
-  useEffect(() => lockScroll(holding), [holding, lockScroll]);
-  useEffect(() => () => lockScroll(false), [lockScroll]);
+  useEffect(() => () => holdScroll(false), [holdScroll]);
   // The mic can vanish mid-hold (the signal drops, the form locks) and its release then never fires: stop and drop it.
   useEffect(() => {
     if (showMic || !holding) return;
+    holdScroll(false);
     setHolding(false);
     void stop().catch(() => null);
-  }, [showMic, holding, stop]);
+  }, [showMic, holding, stop, holdScroll]);
 
   async function startRecording() {
     if (transcribing) return;
     setMessage(null);
     // Locked in the press itself, not an effect: a drag in the frames between would let the page take the touch.
-    lockScroll(true);
+    holdScroll(true);
     setHolding(true);
     const started = await recorder.start().catch(() => 'failed' as const);
-    if (started !== 'recording') setHolding(false);
+    if (started !== 'recording') {
+      holdScroll(false);
+      setHolding(false);
+    }
     if (started === 'allowed') setMessage('Microphone allowed. Hold the mic while you speak.');
     if (started === 'denied') setMessage('Allow the microphone in Settings to record voice notes.');
     if (started === 'unsupported') setMessage('Voice notes are not supported in the browser — use the app.');
@@ -76,6 +91,7 @@ export function VoiceTextArea({ value, onChangeText, voice, rows = 4, editable =
   }
 
   async function finishRecording() {
+    holdScroll(false);
     if (transcribing) return;
     const recording = await recorder.stop().catch(() => null);
     setTranscribing(recording !== null);
@@ -131,9 +147,10 @@ export function VoiceTextArea({ value, onChangeText, voice, rows = 4, editable =
           disabled={transcribing}
           hitSlop={8}
           cancelable={false}
+          pressRetentionOffset={HOLD_RETENTION}
           onPressIn={() => void startRecording()}
           onPressOut={() => void finishRecording()}
-          className={`h-10 w-10 items-center justify-center rounded-full ${recorder.recording ? 'bg-danger/15' : 'bg-elevated'}`}
+          className={`h-10 w-10 items-center justify-center rounded-full ${recorder.recording ? 'bg-danger/15' : 'bg-foreground/10'}`}
         >
           <Icon icon={IconMicrophone} className={recorder.recording ? 'text-danger' : 'text-foreground'} size={24} />
         </Pressable>

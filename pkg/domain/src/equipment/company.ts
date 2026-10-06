@@ -24,7 +24,7 @@ export const JEDIDIAH_INSTAGRAM_URL = 'https://www.instagram.com/jedidiahequipme
 
 // South African contact numbers stored as national significant numbers
 // (integers, no leading zero).
-export const JEDIDIAH_CONTACT_NUMBER = 450500545;
+export const JEDIDIAH_CONTACT_NUMBER = 833319183;
 export const JEDIDIAH_WHATSAPP_NUMBER = 824194464;
 
 const SA_COUNTRY_CODE = '27';

@@ -93,8 +93,8 @@ export default ({ config }: ConfigContext): AppConfig => {
     android: {
       package: variant.androidPackage,
       adaptiveIcon: variant.iconConfig.adaptiveIcon,
-      // FCM config for push. EAS supplies the variant's file through the `GOOGLE_SERVICES_JSON` file variable;
-      // a local `expo run:android` reads a gitignored copy beside this file.
+      // FCM config for push; one file lists both variants' packages. EAS builds get it from the secret
+      // `GOOGLE_SERVICES_JSON` file variable; local runs and OTA fingerprints read the gitignored copy here.
       googleServicesFile: process.env.GOOGLE_SERVICES_JSON ?? './google-services.json',
       // Google Play refuses an upload that declares photo or video read access without a policy declaration.
       // The system photo picker needs no grant, and saving our own camera photos to the album is write-only.

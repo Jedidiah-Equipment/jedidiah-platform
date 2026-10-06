@@ -5,7 +5,7 @@ ios/
 # EAS local credentials — the Play service-account key lives in an EAS secret, never the repo.
 credentials.json
 google-service-account*.json
-# Firebase app config, supplied to EAS builds as the GOOGLE_SERVICES_JSON file variable per environment.
+# Firebase app config for both variants; EAS builds get it from the GOOGLE_SERVICES_JSON secret file variable.
 google-services.json
 *.keystore
 

@@ -5,6 +5,25 @@ import { parseEnv } from 'node:util';
 
 const EAS_CONFIG_PATH = new URL('../eas.json', import.meta.url);
 const MOBILE_DIR = new URL('..', import.meta.url);
+const NATIVE_PLATFORMS = ['android', 'ios'];
+
+export function resolveUpdatePlatforms(args) {
+  const selections = args.flatMap((arg, index) => {
+    if (arg === '--platform' || arg === '-p') return [args[index + 1]];
+    if (arg.startsWith('--platform=')) return [arg.slice('--platform='.length)];
+    if (arg.startsWith('-p=')) return [arg.slice('-p='.length)];
+    if (arg.startsWith('-p')) return [arg.slice('-p'.length)];
+    return [];
+  });
+  if (selections.length > 1) {
+    throw new Error('Specify OTA --platform only once (android, ios, or all).');
+  }
+  if (selections.length === 0 || selections[0] === 'all') return NATIVE_PLATFORMS;
+  if (!NATIVE_PLATFORMS.includes(selections[0])) {
+    throw new Error('OTA --platform must be android, ios, or all.');
+  }
+  return [selections[0]];
+}
 
 /**
  * The `eas update` invocation for a build profile. `eas update` bundles on this machine and ignores
@@ -13,6 +32,7 @@ const MOBILE_DIR = new URL('..', import.meta.url);
  * transform cache can retain those inlined values across profiles, so every update also clears it.
  */
 export function resolveUpdateCommand({ args, commitSubject, easConfig, profile }) {
+  const platforms = resolveUpdatePlatforms(args);
   const build = easConfig.build?.[profile];
   if (!build?.channel) {
     const profiles = Object.keys(easConfig.build ?? {}).join(', ');
@@ -47,6 +67,7 @@ export function resolveUpdateCommand({ args, commitSubject, easConfig, profile }
       ...publishArgs,
     ],
     env: build.env ?? {},
+    platforms,
   };
 }
 
@@ -70,9 +91,9 @@ function readEasJson(args, env, runEas) {
   }
 }
 
-export function assertCompatibleBuilds({ profile, build, env, runEas = execFileSync }) {
+export function assertCompatibleBuilds({ profile, build, env, platforms = NATIVE_PLATFORMS, runEas = execFileSync }) {
   const incompatible = [];
-  for (const platform of ['android', 'ios']) {
+  for (const platform of platforms) {
     const builds = readEasJson(
       [
         'build:list',
@@ -160,7 +181,7 @@ function resolveBuildEnvironment(build) {
   return 'preview';
 }
 
-export function resolveExportCommand() {
+export function resolveExportCommand(platforms = NATIVE_PLATFORMS) {
   return {
     executable: 'pnpm',
     args: [
@@ -171,10 +192,7 @@ export function resolveExportCommand() {
       'dist',
       '--source-maps',
       '--dump-assetmap',
-      '--platform',
-      'ios',
-      '--platform',
-      'android',
+      ...platforms.flatMap((platform) => ['--platform', platform]),
       '--clear',
     ],
   };
@@ -215,8 +233,8 @@ function main() {
   const command = resolveUpdateCommand({ args, commitSubject, easConfig, profile });
   const releaseEnv = resolveReleaseEnvironment(profile);
   const updateEnv = { ...releaseEnv, ...command.env };
-  assertCompatibleBuilds({ profile, build: easConfig.build[profile], env: updateEnv });
-  const bundle = resolveExportCommand();
+  assertCompatibleBuilds({ profile, build: easConfig.build[profile], env: updateEnv, platforms: command.platforms });
+  const bundle = resolveExportCommand(command.platforms);
   // Bundle and upload before publishing because this script cannot roll an OTA back.
   const sourceMaps = resolveSourceMapUploadCommand(releaseEnv);
 

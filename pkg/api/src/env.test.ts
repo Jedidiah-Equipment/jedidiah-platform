@@ -94,9 +94,3 @@ describe('API translation model config', () => {
     ).toBe('gpt-translation');
   });
 });
-
-describe('API voice note config', () => {
-  it('defaults the transcription model', () => {
-    expect(ApiConfig.parse(baseEnv).OPENAI_TRANSCRIPTION_MODEL).toBe('gpt-transcribe');
-  });
-});

@@ -1,4 +1,4 @@
-import { JEDIDIAH_BUSINESS_DETAILS } from '@pkg/domain/equipment';
+import { formatContactNumber, JEDIDIAH_BUSINESS_DETAILS } from '@pkg/domain/equipment';
 import {
   type BrochureDocumentImage,
   type BrochureDocumentModel,
@@ -825,7 +825,9 @@ function Footer({ messages }: { messages: Messages }) {
       <Image src={jedidiahFooterBannerSrc} style={styles.footerBackground} />
       <View style={styles.footerContactBlock}>
         <View style={styles.footerContactGroup}>
-          <Text style={styles.footerContact}>{messages.phone}: 045 050 0545</Text>
+          <Text style={styles.footerContact}>
+            {messages.phone}: {formatContactNumber()}
+          </Text>
           <Text style={[styles.footerContact, styles.footerWebsite]}>www.jedidiahequipment.co.za</Text>
         </View>
         <View style={styles.footerContactGroup}>

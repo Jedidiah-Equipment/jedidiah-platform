@@ -11,6 +11,7 @@ const PHOTOS_PERMISSION =
   'Allow $(PRODUCT_NAME) to choose meter photos from, and save Field Note photos to, your photo library.';
 const MICROPHONE_PERMISSION =
   'Allow $(PRODUCT_NAME) to record voice notes, which it turns into text, with the microphone.';
+
 const LOCATION_PERMISSION = 'Allow $(PRODUCT_NAME) to record where a breakdown was reported.';
 
 // `newArchEnabled` is a valid runtime field that this Expo version's ExpoConfig types omit.
@@ -67,20 +68,20 @@ export default ({ config }: ConfigContext): AppConfig => {
       ],
       // Contracting voice notes: press-and-hold recording, turned into text by the API.
       ['expo-audio', { microphonePermission: MICROPHONE_PERMISSION }],
-      // Contracting breakdown reports attach the phone's position when the reporter allows it; foreground only,
-      // so the always-on and motion strings the plugin would otherwise default are removed.
+      // Contracting breakdown reports attach the phone's position when the reporter allows it; foreground only.
+      // The Always keys stay because the module's binary references those APIs and App Store upload flags a
+      // missing purpose string, which would cost another store build to fix.
       [
         'expo-location',
         {
           locationWhenInUsePermission: LOCATION_PERMISSION,
-          locationAlwaysAndWhenInUsePermission: false,
-          locationAlwaysPermission: false,
-          motionUsagePermission: false,
+          locationAlwaysAndWhenInUsePermission: LOCATION_PERMISSION,
+          locationAlwaysPermission: LOCATION_PERMISSION,
           isIosBackgroundLocationEnabled: false,
           isAndroidBackgroundLocationEnabled: false,
         },
       ],
-      // Workshop pushes (#1407). Final options now: the icon, colour and default channel are native and move the fingerprint.
+      // Workshop pushes. The icon, colour and default channel are native: changing them moves the fingerprint.
       ['expo-notifications', { icon: './assets/notification-icon.png', color: '#F5B700', defaultChannel: 'workshop' }],
       '@config-plugins/react-native-pdf',
       '@config-plugins/react-native-blob-util',

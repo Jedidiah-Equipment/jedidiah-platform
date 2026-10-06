@@ -25,11 +25,13 @@ export type CallerOverrides = {
   appEnv?: Context['appEnv'];
   catalogTranslationScheduler?: AppRouterDependencies['catalogTranslationScheduler'];
   changelogLoader?: ChangelogLoader;
+  hintDerivations?: AppRouterDependencies['hintDerivations'];
   readMeterPhoto?: AppRouterDependencies['readMeterPhoto'];
 };
 
 export const NOOP_ROUTER_DEPENDENCIES: AppRouterDependencies = {
   catalogTranslationScheduler: { mark: () => undefined, markNow: () => undefined },
+  hintDerivations: { schedule: () => undefined },
   readMeterPhoto: async () => {
     throw new Error('Meter reader not stubbed for this test');
   },
@@ -86,6 +88,7 @@ export function createTester<T extends object = Record<string, never>>(
               return createAppRouterCaller({
                 catalogTranslationScheduler:
                   overrides.catalogTranslationScheduler ?? NOOP_ROUTER_DEPENDENCIES.catalogTranslationScheduler,
+                hintDerivations: overrides.hintDerivations ?? NOOP_ROUTER_DEPENDENCIES.hintDerivations,
                 readMeterPhoto: overrides.readMeterPhoto ?? NOOP_ROUTER_DEPENDENCIES.readMeterPhoto,
               })({
                 access: overrides.access ?? createUserAccessSummaryForUser(session.user),

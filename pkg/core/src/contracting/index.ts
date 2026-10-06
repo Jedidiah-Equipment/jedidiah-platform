@@ -23,4 +23,7 @@ export * from './rate-card/rate-service.js';
 export * from './readings/reading-errors.js';
 export * from './readings/reading-evidence.js';
 export * from './readings/reading-service.js';
+export * from './transcriptions/keyterm-registry.js';
+export * from './transcriptions/transcription-errors.js';
+export * from './transcriptions/transcription-service.js';
 export * from './work-types/work-type-service.js';

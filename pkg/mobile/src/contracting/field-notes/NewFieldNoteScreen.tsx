@@ -9,6 +9,7 @@ import { useAppToast } from '@/components/ui/toast';
 import { CONTRACTING_TAB_HREF } from '@/contracting/lib/app-tabs';
 import { newLocalId } from '@/contracting/lib/local-id';
 import { recordFieldNoteCreated } from '@/contracting/observability';
+import { useVoiceSession } from '@/contracting/voice/use-voice-session';
 import { confirm } from '@/lib/confirm';
 import { FieldNoteFields } from './FieldNoteFields';
 import { GALLERY_HINT } from './FieldNotePhotoStrip';
@@ -27,6 +28,7 @@ export default function NewFieldNoteScreen() {
   const navigation = useNavigation();
   const showToast = useAppToast();
   const [description, setDescription] = useState('');
+  const voice = useVoiceSession('field note');
   const [photos, setPhotos] = useState<(PickedPhoto & { id: string })[]>([]);
   const [saved, setSaved] = useState(false);
   const { busy, error, act } = useFieldNoteAction();
@@ -50,12 +52,14 @@ export default function NewFieldNoteScreen() {
   const pick = (source: () => Promise<PickedPhoto[]>) => act(async () => addPicked(await source()), PICK_FAILED);
   const save = () =>
     act(async () => {
+      if (voice.busy) return;
       const { note, galleryFailed } = await store.create({ description, photos });
       recordFieldNoteCreated({
         hasPhoto: note.photos.length > 0,
         photoCount: note.photos.length,
         hasDescription: note.description.length > 0,
       });
+      voice.reportSaved(note.description);
       if (galleryFailed) showToast('success', `Field Note saved. ${GALLERY_HINT}`);
       setSaved(true);
     }, 'The Field Note could not be saved. Try again.');
@@ -78,7 +82,7 @@ export default function NewFieldNoteScreen() {
         <Button
           primary
           title={busy ? 'Saving…' : 'Save note'}
-          disabled={busy || !hasContent}
+          disabled={busy || voice.busy || !hasContent}
           onPress={() => {
             void save();
           }}
@@ -99,6 +103,7 @@ export default function NewFieldNoteScreen() {
         description={description}
         onDescriptionChange={setDescription}
         descriptionEditable={!busy}
+        voice={voice}
       />
     </FormPage>
   );

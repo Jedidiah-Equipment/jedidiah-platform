@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { formatCurrency, formatHours, formatNumber, formatPercent, toCsvAmount } from './number.js';
+import { formatClock, formatCurrency, formatHours, formatNumber, formatPercent, toCsvAmount } from './number.js';
 
 describe('formatNumber', () => {
   it('formats finite values with space grouping and no decimal places by default', () => {
@@ -64,6 +64,14 @@ describe('formatPercent', () => {
   it('formats non-finite values as empty text', () => {
     expect(formatPercent(NaN)).toBe('');
     expect(formatPercent(Infinity)).toBe('');
+  });
+});
+
+describe('formatClock', () => {
+  it('shows whole minutes and padded seconds', () => {
+    expect(formatClock(7.9)).toBe('0:07');
+    expect(formatClock(120)).toBe('2:00');
+    expect(formatClock(-1)).toBe('0:00');
   });
 });
 

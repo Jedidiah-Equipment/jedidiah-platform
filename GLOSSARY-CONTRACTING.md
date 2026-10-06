@@ -205,7 +205,8 @@ _Avoid_: bare "attention", alert, issue
 without signal, typically — for entry once it can: a description, one or more photos, and the
 moment it was made. It is **Open** until the Foreman has entered what it holds and closes it, and
 may be reopened; nothing closes it but him. A Field Note lives only on the phone, per signed-in
-user, and never reaches the server; its photos are also saved to the phone's gallery, which is
+user, and never reaches the server — save that a Voice Note recorded into its description sends the
+recording, and the description saved with it, as that Transcription's; its photos are also saved to the phone's gallery, which is
 where a later capture picks them up. It is not a capture, a queue, or a task: the app never reads
 a Field Note back into a Job or a Machine.
 _Avoid_: task, to-do, offline capture, queued reading

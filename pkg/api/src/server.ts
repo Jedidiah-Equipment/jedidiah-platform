@@ -1,9 +1,23 @@
 import fastifyCors from '@fastify/cors';
 import fastifyMultipart from '@fastify/multipart';
 import { createOpenAiChatModel } from '@pkg/ai';
-import { readMeterPhoto } from '@pkg/ai/contracting';
+import {
+  createTranscriptionModel,
+  deriveTranscriptionHint,
+  readMeterPhoto,
+  tidyTranscript,
+  transcribeVoiceNote,
+} from '@pkg/ai/contracting';
 import type { StorageAdapter } from '@pkg/core';
-import { listReadingsAwaitingVerification, verifyCapturedReading } from '@pkg/core/contracting';
+import {
+  createKeytermCache,
+  deriveHintFor,
+  listReadingsAwaitingVerification,
+  listTranscriptionsAwaitingHints,
+  loadKeyterms,
+  type TranscriptionEngine,
+  verifyCapturedReading,
+} from '@pkg/core/contracting';
 import { sweepJobCompletions } from '@pkg/core/equipment';
 import { db } from '@pkg/db';
 import { PRODUCT_DOCUMENT_MAX_BYTES } from '@pkg/domain/equipment';
@@ -12,6 +26,7 @@ import { type FastifyTRPCPluginOptions, fastifyTRPCPlugin } from '@trpc/server/a
 import Fastify, { type FastifyBaseLogger } from 'fastify';
 import { type Auth, auth as appAuth } from './app-auth.js';
 import { registerAuthHandler } from './auth/handler.js';
+import { BackgroundQueue } from './background-queue.js';
 import { ReadingVerificationQueue } from './contracting/readings/reading-verification-queue.js';
 import { type ApiConfig, getApiConfig } from './env.js';
 import { createCatalogTranslationRunner } from './equipment/catalog-translations/catalog-translation-runner.js';
@@ -23,6 +38,7 @@ import { createObservability, type Observability } from './observability.js';
 import { createFileChangelogLoader } from './routes/changelog/changelog-loader.js';
 import { registerJobCardHttpRoutes } from './routes/contracting/jobs/job-card-http.route.js';
 import { registerReadingHttpRoutes } from './routes/contracting/readings/readings-http.route.js';
+import { registerTranscriptionHttpRoutes } from './routes/contracting/transcriptions/transcriptions-http.route.js';
 import { registerAiChatRoute } from './routes/equipment/ai/ai-chat.route.js';
 import { registerDocumentHttpRoutes } from './routes/equipment/documents/document-http.route.js';
 import { registerEntityFileRoutes } from './routes/equipment/files/entity-file-http.route.js';
@@ -100,14 +116,34 @@ export async function buildServer(
       fileSize: PRODUCT_DOCUMENT_MAX_BYTES,
     },
   });
-  const meterModel = createOpenAiChatModel({ apiKey: config.OPENAI_API_KEY, model: config.OPENAI_MODEL });
+  const openAiModel = createOpenAiChatModel({ apiKey: config.OPENAI_API_KEY, model: config.OPENAI_MODEL });
   const meterReader = (input: { bytes: Uint8Array; contentType: string }) =>
-    readMeterPhoto({ ...input, model: meterModel });
+    readMeterPhoto({ ...input, model: openAiModel });
   const readingVerifications = new ReadingVerificationQueue({
     run: (id) => verifyCapturedReading({ db, id, storage, readPhoto: meterReader }),
     onError: (error, readingId) => log.ai.error({ error, readingId }, 'Reading verification failed'),
   });
   await registerReadingHttpRoutes(app, { db, storage, verifications: readingVerifications });
+  const transcriptionModel = createTranscriptionModel({
+    apiKey: config.OPENAI_API_KEY,
+    model: config.OPENAI_TRANSCRIPTION_MODEL,
+  });
+  const transcriptionEngine: TranscriptionEngine = {
+    transcribe: (input) => transcribeVoiceNote({ ...input, model: transcriptionModel }),
+    tidy: (input) => tidyTranscript({ ...input, model: openAiModel }),
+    derive: (input) => deriveTranscriptionHint({ ...input, model: openAiModel }),
+  };
+  const keyterms = createKeytermCache(() => loadKeyterms({ db }));
+  const hintDerivations = new BackgroundQueue<string>({
+    run: async (id) => {
+      const outcome = await deriveHintFor({ db, id, engine: transcriptionEngine });
+      // A new hint keyterm should reach the next note, not the next cache refresh.
+      if (outcome?.action === 'add') keyterms.invalidate();
+    },
+    onError: (error, transcriptionId) => log.ai.error({ error, transcriptionId }, 'Hint derivation failed'),
+    concurrency: 1,
+  });
+  await registerTranscriptionHttpRoutes(app, { db, engine: transcriptionEngine, keyterms: keyterms.current });
   await registerJobCardHttpRoutes(app, { db, pdfRenderer: renderJobCardPdf });
   await registerAiChatRoute(app, { storage });
   await registerDocumentHttpRoutes(app, storage);
@@ -121,7 +157,7 @@ export async function buildServer(
   await registerHealthRoutes(app, config);
 
   const trpcOptions = {
-    router: createAppRouter({ catalogTranslationScheduler, readMeterPhoto: meterReader }),
+    router: createAppRouter({ catalogTranslationScheduler, hintDerivations, readMeterPhoto: meterReader }),
     createContext: createContextFactory({
       appEnv: config.APP_ENV,
       changelogLoader: createFileChangelogLoader(),
@@ -145,6 +181,7 @@ export async function buildServer(
   app.addHook('onClose', async () => {
     catalogTranslationScheduler.dispose();
     await readingVerifications.dispose();
+    await hintDerivations.dispose();
     jobCompletionSweeper.dispose();
     await observability.flush();
   });
@@ -153,6 +190,9 @@ export async function buildServer(
   readingVerifications
     .resume(() => listReadingsAwaitingVerification({ db }))
     .catch((error: unknown) => log.ai.error({ error }, 'Resuming reading verifications failed'));
+  hintDerivations
+    .resume(() => listTranscriptionsAwaitingHints({ db }))
+    .catch((error: unknown) => log.ai.error({ error }, 'Resuming hint derivations failed'));
 
   return app;
 }

@@ -66,6 +66,7 @@ export const ApiConfig = z
     OPENAI_MODEL: z.string().min(1).default('gpt-5.5'),
     OPENAI_REASONING_EFFORT: z.enum(AI_REASONING_EFFORTS).default('low'),
     OPENAI_TRANSLATION_MODEL: z.string().min(1).optional(),
+    OPENAI_TRANSCRIPTION_MODEL: z.string().min(1).default('gpt-transcribe'),
     PORT: z.coerce.number().int().positive().default(7002),
     LOG_LEVEL: z.enum(['trace', 'debug', 'info', 'warn', 'error', 'fatal', 'silent']).default('info'),
     LOG_DOMAINS_DISABLED: z.string().optional(),

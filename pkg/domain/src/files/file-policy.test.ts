@@ -5,6 +5,8 @@ import { type FilePolicy, validateFile } from './file-policy.js';
 const PNG_HEADER = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
 const JPEG_HEADER = [0xff, 0xd8, 0xff];
 const PDF_HEADER = [0x25, 0x50, 0x44, 0x46, 0x2d];
+// Box size, then `ftyp`, then the `M4A ` major brand.
+const M4A_HEADER = [0x00, 0x00, 0x00, 0x20, 0x66, 0x74, 0x79, 0x70, 0x4d, 0x34, 0x41, 0x20];
 
 const POLICY: FilePolicy = { allowedContentTypes: ['image/png', 'image/jpeg'], maxBytes: 1024 };
 
@@ -88,6 +90,21 @@ describe('validateFile', () => {
       ok: false,
       code: 'file.content_type_not_allowed',
       message: 'Only PNG files can be uploaded.',
+    });
+  });
+
+  it('sniffs an M4A voice note from its ftyp box and names it in rejections', () => {
+    const policy: FilePolicy = { allowedContentTypes: ['audio/mp4'], maxBytes: 1024 };
+
+    expect(validateFile(bytesWithHeader(M4A_HEADER, 64), policy)).toEqual({
+      ok: true,
+      byteSize: 64,
+      contentType: 'audio/mp4',
+    });
+    expect(validateFile(bytesWithHeader(PNG_HEADER, 64), policy)).toEqual({
+      ok: false,
+      code: 'file.content_type_not_allowed',
+      message: 'Only M4A audio files can be uploaded.',
     });
   });
 });

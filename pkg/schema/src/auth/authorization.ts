@@ -123,6 +123,7 @@ export const APP_PERMISSIONS = [
   'contracting_rate:read',
   'contracting_rate:update',
   'contracting_report:read',
+  'contracting_transcription:use',
   'user:list',
   'user:create',
   'user:update',

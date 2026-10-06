@@ -9,6 +9,10 @@ import { contractingFleetRouter } from '../routes/contracting/fleet/fleet.router
 import { contractingJobsRouter } from '../routes/contracting/jobs/jobs.router.js';
 import { contractingRateCardRouter } from '../routes/contracting/rate-card/rate-card.router.js';
 import { createContractingReadingsRouter } from '../routes/contracting/readings/readings.router.js';
+import {
+  createContractingTranscriptionsRouter,
+  type HintDerivations,
+} from '../routes/contracting/transcriptions/transcriptions.router.js';
 import { createCatalogTranslationsRouter } from '../routes/equipment/catalog-translations/catalog-translations.router.js';
 import { customersRouter } from '../routes/equipment/customers/customers.router.js';
 import { documentsRouter } from '../routes/equipment/documents/documents.router.js';
@@ -33,6 +37,7 @@ import { createCallerFactory, router } from './init.js';
 export type AppRouterDependencies = {
   catalogTranslationScheduler: TranslationMarker;
   readMeterPhoto: ReadMeterPhoto;
+  hintDerivations: HintDerivations;
 };
 
 type AppRouterRootTypes = (typeof authRouter)['_def']['_config']['$types'];
@@ -43,6 +48,7 @@ type AppRouterRecord = {
   contractingFleet: (typeof contractingFleetRouter)['_def']['record'];
   contractingJobs: (typeof contractingJobsRouter)['_def']['record'];
   contractingRateCard: (typeof contractingRateCardRouter)['_def']['record'];
+  contractingTranscriptions: ReturnType<typeof createContractingTranscriptionsRouter>['_def']['record'];
   audit: (typeof auditRouter)['_def']['record'];
   auth: (typeof authRouter)['_def']['record'];
   catalogTranslations: ReturnType<typeof createCatalogTranslationsRouter>['_def']['record'];
@@ -69,12 +75,17 @@ type AppRouterRecord = {
 export type AppRouter = BuiltRouter<AppRouterRootTypes, AppRouterRecord>;
 
 // Naming the router shape keeps declaration emit from serializing the full nested tRPC type.
-export function createAppRouter({ catalogTranslationScheduler, readMeterPhoto }: AppRouterDependencies): AppRouter {
+export function createAppRouter({
+  catalogTranslationScheduler,
+  hintDerivations,
+  readMeterPhoto,
+}: AppRouterDependencies): AppRouter {
   return router({
     contractingReadings: createContractingReadingsRouter(readMeterPhoto),
     contractingFleet: contractingFleetRouter,
     contractingJobs: contractingJobsRouter,
     contractingRateCard: contractingRateCardRouter,
+    contractingTranscriptions: createContractingTranscriptionsRouter(hintDerivations),
     contractingDirectory: contractingDirectoryRouter,
     audit: auditRouter,
     auth: authRouter,

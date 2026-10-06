@@ -21,6 +21,7 @@ export const APP_CODE_PREFIXES = [
   'quote',
   'rate_card',
   'supplier',
+  'transcription',
   'user',
 ] as const;
 

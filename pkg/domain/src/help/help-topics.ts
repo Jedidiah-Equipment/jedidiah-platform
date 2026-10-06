@@ -19,6 +19,7 @@ export const HELP_TOPICS = {
   contractingMobileCapture: '/contracting/capture-a-reading',
   contractingMobileFieldNotes: '/contracting/keep-a-field-note',
   contractingMobileFieldNote: '/contracting/keep-a-field-note',
+  contractingVoiceNote: '/contracting/record-a-voice-note',
   contractingHome: '/contracting/',
   contractingJobs: '/contracting/set-up-a-job',
   contractingJobSignOff: '/contracting/sign-off-a-job',

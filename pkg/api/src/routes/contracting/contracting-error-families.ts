@@ -6,14 +6,16 @@ import {
   isJobError,
   isRateCardError,
   isReadingError,
+  isTranscriptionError,
   type JobError,
   type RateCardError,
   type ReadingError,
+  type TranscriptionError,
 } from '@pkg/core/contracting';
 
 import { defineCoreErrorFamily } from '../../trpc/errors.js';
 
-/** The Contracting boundary's error families, shared by the tRPC routers and the reading upload route. */
+/** The Contracting boundary's error families, shared by the tRPC routers and the upload routes. */
 
 export const fleetErrorFamily = defineCoreErrorFamily<FleetError>({
   codes: {
@@ -61,6 +63,17 @@ export const readingErrorFamily = defineCoreErrorFamily<ReadingError>({
   },
   is: isReadingError,
   metadata: (error) => error.refused,
+});
+
+export const transcriptionErrorFamily = defineCoreErrorFamily<TranscriptionError>({
+  codes: {
+    'transcription.already_saved': 'CONFLICT',
+    'transcription.forbidden': 'FORBIDDEN',
+    'transcription.invalid_upload': 'BAD_REQUEST',
+    'transcription.not_found': 'NOT_FOUND',
+    'transcription.unavailable': 'SERVICE_UNAVAILABLE',
+  },
+  is: isTranscriptionError,
 });
 
 export const jobErrorFamily = defineCoreErrorFamily<JobError>({

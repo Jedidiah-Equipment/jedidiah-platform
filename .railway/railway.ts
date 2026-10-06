@@ -75,6 +75,7 @@ export default defineRailway((ctx) => {
       'OPENAI_API_KEY',
       'OPENAI_MODEL',
       'OPENAI_REASONING_EFFORT',
+      'OPENAI_TRANSCRIPTION_MODEL',
       'OPENAI_TRANSLATION_MODEL',
       'PORT',
       'POSTHOG_ENABLED',

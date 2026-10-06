@@ -54,6 +54,13 @@ export function formatHours(value: number): string {
   return `${formatNumber(value, { decimals: 1 })} h`;
 }
 
+/** A running clock in whole minutes and seconds, as a recording timer shows it: `0:07`, `2:00`. */
+export function formatClock(seconds: number): string {
+  if (!Number.isFinite(seconds)) return '';
+  const whole = Math.max(0, Math.floor(seconds));
+  return `${Math.floor(whole / 60)}:${String(whole % 60).padStart(2, '0')}`;
+}
+
 /**
  * Money for a CSV cell: to the cent with no grouping or symbol, so a column sums without the reader
  * reformatting anything. A figure we do not have is an **empty cell**, never `0.00` — an unpriced cost

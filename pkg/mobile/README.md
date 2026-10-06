@@ -46,7 +46,10 @@ The named event catalog is:
   code, or `null` when saved), once per capture the server saves or refuses; `machine added to job` (`jobId`,
   `machineId`), emitted by the central mutation cache like the Equipment mutations; and `field note created` (`hasPhoto`, `photoCount`, `hasDescription`), `field note closed`,
   `field note reopened`, `field note deleted`, which never carry a note's words or photos. A capture that
-  fails any other way sends no event: its breadcrumb and exception cover it.
+  fails any other way sends no event: its breadcrumb and exception cover it. `voice note transcribed`
+  (`purpose` — the screen's label for the field, `language`, `seconds`, `outcome` — `transcribed`, `refused`
+  or `failed`) once per Voice Note sent for text, and `transcription saved` (`id`) from the mutation cache once
+  the owning form has saved; neither carries the words.
 - Equipment mutations: `quote created`, `quote updated`, `quote cancelled`, `quote document generated`,
   `department timing started`, `department timing updated`, `department timing completed`, `part checked out`,
   `part returned to store`, `part received`, `part returned to supplier`, `stock count posted`,

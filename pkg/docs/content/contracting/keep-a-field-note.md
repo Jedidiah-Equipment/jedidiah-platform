@@ -1,10 +1,10 @@
 # Keep a Field Note
 
-A Field Note stays on this phone and is never sent anywhere; the reading only exists once you capture it. Keep one when there is no signal to capture a reading.
+A Field Note stays on this phone; the reading only exists once you capture it. Only a Voice Note recorded into its description leaves the phone: the recording is turned into text, and the description you save with it improves later Voice Notes. Keep one when there is no signal to capture a reading.
 
 1. Open **Notes** and choose **New Field Note** (the **+**).
 2. Choose **Take photo** to photograph the hour meter, or **Choose from gallery** for a photo taken earlier. Photos you take here are also saved to the **Jedidiah** album in your gallery; allow photo library access if asked.
-3. Write what management needs: the Machine Code, the farm, and the meter value if you can read it.
+3. Write what management needs: the Machine Code, the farm, and the meter value if you can read it. Online, you can [say it as a Voice Note](./record-a-voice-note) instead.
 4. Choose **Save note**. The note is listed as Open.
 
 When you are back online:

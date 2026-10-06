@@ -1177,6 +1177,13 @@
       "when": 1790966334624,
       "tag": "0167_contracting_pricing_overrides",
       "breakpoints": true
+    },
+    {
+      "idx": 168,
+      "version": "7",
+      "when": 1791275199565,
+      "tag": "0168_contracting_transcriptions",
+      "breakpoints": true
     }
   ]
 }

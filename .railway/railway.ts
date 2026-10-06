@@ -67,6 +67,8 @@ export default defineRailway((ctx) => {
       'AUTH_TRUSTED_ORIGINS',
       'DATABASE_URL',
       ...documentStorage,
+      'ELEVENLABS_API_KEY',
+      'ELEVENLABS_TRANSCRIPTION_MODEL',
       'EMAIL_FROM',
       'EMAIL_PROVIDER',
       'LOG_DOMAINS_DISABLED',

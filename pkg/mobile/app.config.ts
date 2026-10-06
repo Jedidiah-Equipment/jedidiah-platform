@@ -9,6 +9,7 @@ const CAMERA_PERMISSION =
   'Allow $(PRODUCT_NAME) to scan Part labels and stores badges, and photograph hour meters and Field Note evidence, with the camera.';
 const PHOTOS_PERMISSION =
   'Allow $(PRODUCT_NAME) to choose meter photos from, and save Field Note photos to, your photo library.';
+const MICROPHONE_PERMISSION = 'Jedidiah uses the microphone to record voice notes you turn into text.';
 
 // `newArchEnabled` is a valid runtime field that this Expo version's ExpoConfig types omit.
 type AppConfig = ExpoConfig & { newArchEnabled?: boolean };
@@ -29,7 +30,7 @@ export default ({ config }: ConfigContext): AppConfig => {
     scheme: variant.scheme,
     // `version` is the human-facing string; EAS owns the Android `versionCode` remotely
     // (`cli.appVersionSource: remote` + per-profile `autoIncrement` in eas.json).
-    version: '1.70.0',
+    version: '1.71.0',
     orientation: 'portrait',
     userInterfaceStyle: 'automatic',
     newArchEnabled: true,
@@ -46,7 +47,7 @@ export default ({ config }: ConfigContext): AppConfig => {
       ['posthog-react-native/expo', { skipOnConflict: true }],
       // The stores tablet's camera fallback for a damaged Part label (spec §10), and Contracting's hour
       // meter photographs. Both ask for the permission only when the operator opens the camera.
-      ['expo-camera', { cameraPermission: CAMERA_PERMISSION }],
+      ['expo-camera', { cameraPermission: CAMERA_PERMISSION, microphonePermission: MICROPHONE_PERMISSION }],
       // Field Note photos and gallery meter photos; the system picker itself needs no library grant.
       [
         'expo-image-picker',
@@ -62,6 +63,8 @@ export default ({ config }: ConfigContext): AppConfig => {
           granularPermissions: [],
         },
       ],
+      // Contracting voice notes: press-and-hold recording, turned into text by the API.
+      ['expo-audio', { microphonePermission: MICROPHONE_PERMISSION }],
       '@config-plugins/react-native-pdf',
       '@config-plugins/react-native-blob-util',
       ['expo-secure-store', { faceIDPermission: false }],

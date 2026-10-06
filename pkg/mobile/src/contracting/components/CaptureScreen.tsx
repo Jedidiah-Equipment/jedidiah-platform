@@ -7,7 +7,6 @@ import { useRef, useState } from 'react';
 import { View } from 'react-native';
 import { FormPage } from '@/components/FormPage';
 import { FieldLabel, FieldShell } from '@/components/form/fields/FieldShell';
-import { textareaStyle } from '@/components/form/fields/TextareaField';
 import { SecondaryToolbar } from '@/components/TopToolbar';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
@@ -21,6 +20,8 @@ import { deriveCapture } from '@/contracting/readings/derive-capture';
 import { capturedAtFor, isBackdated, type ReadAtChoice, readAtAfterPhoto } from '@/contracting/readings/read-at';
 import { CAPTURE_FAILED, captureReading, ReadingRefusedError } from '@/contracting/readings/reading-upload';
 import { useFleet, useMachineReadings } from '@/contracting/readings/use-fleet';
+import { useVoiceSession } from '@/contracting/voice/use-voice-session';
+import { VoiceTextArea } from '@/contracting/voice/VoiceTextArea';
 import { useSessionPermission } from '@/lib/auth-session';
 import { captureSanitizedException } from '@/lib/observability';
 import { useTRPC } from '@/lib/trpc';
@@ -101,6 +102,7 @@ function CaptureForm({ target }: { target: CaptureTarget }) {
   // Judged once typing stops, as web does: a half-typed value is not yet below the previous reading.
   const [valueFocused, setValueFocused] = useState(false);
   const [comment, setComment] = useState('');
+  const voice = useVoiceSession('capture comment');
   const [disputedReadingId, setDisputedReadingId] = useState<string | null>(null);
   const overrides = useStintOverrides(target.kind === 'stint' ? target.planned : null);
   const action = useBusyAction();
@@ -181,6 +183,7 @@ function CaptureForm({ target }: { target: CaptureTarget }) {
         throw error;
       }
       recordReadingCaptured({ ...captured, refused: null });
+      voice.reportSaved(comment.trim());
       // The screens underneath stay mounted, so they refetch in place: the form leaves without waiting on them.
       void queryClient.invalidateQueries({ queryKey: trpc.contractingReadings.pathKey() });
       void queryClient.invalidateQueries({ queryKey: trpc.contractingJobs.pathKey() });
@@ -277,17 +280,16 @@ function CaptureForm({ target }: { target: CaptureTarget }) {
       </FieldShell>
       <Divider label={photo === null ? 'photo or' : null} />
       <FieldShell label={commentLabel(role, commentRequired)}>
-        <TextInput
+        {/* Sized by its rows, so swapping the placeholder when a photo is attached never moves the form. */}
+        <VoiceTextArea
           accessibilityLabel={commentLabel(role, commentRequired)}
           placeholder={photo === null ? 'No photo? Say why…' : 'Anything management should know about this reading'}
           value={comment}
           editable={!busy}
-          multiline
-          numberOfLines={COMMENT_ROWS}
+          rows={COMMENT_ROWS}
           maxLength={ReadingComment.maxLength ?? undefined}
           onChangeText={setComment}
-          // Its rows' height, so swapping the placeholder when a photo is attached never moves the form.
-          style={{ ...textareaStyle(COMMENT_ROWS), textAlignVertical: 'top' }}
+          voice={voice}
         />
       </FieldShell>
       {target.kind === 'stint' && target.role === 'arrival' ? (

@@ -4,7 +4,7 @@ A Field Note stays on this phone and is never sent anywhere; the reading only ex
 
 1. Open **Notes** and choose **New Field Note** (the **+**).
 2. Choose **Take photo** to photograph the hour meter, or **Choose from gallery** for a photo taken earlier. Photos you take here are also saved to the **Jedidiah** album in your gallery; allow photo library access if asked.
-3. Write what management needs: the Machine Code, the farm, and the meter value if you can read it.
+3. Write what management needs: the Machine Code, the farm, and the meter value if you can read it. Online, you can [say it as a Voice Note](./record-a-voice-note) instead.
 4. Choose **Save note**. The note is listed as Open.
 
 When you are back online:

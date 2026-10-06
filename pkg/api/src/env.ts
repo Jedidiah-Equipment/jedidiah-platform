@@ -66,6 +66,9 @@ export const ApiConfig = z
     OPENAI_MODEL: z.string().min(1).default('gpt-5.5'),
     OPENAI_REASONING_EFFORT: z.enum(AI_REASONING_EFFORTS).default('low'),
     OPENAI_TRANSLATION_MODEL: z.string().min(1).optional(),
+    // Unset turns voice notes off: the transcribe route answers 503 and the phone asks for typing.
+    ELEVENLABS_API_KEY: z.string().min(1).optional(),
+    ELEVENLABS_TRANSCRIPTION_MODEL: z.string().min(1).default('scribe_v2'),
     PORT: z.coerce.number().int().positive().default(7002),
     LOG_LEVEL: z.enum(['trace', 'debug', 'info', 'warn', 'error', 'fatal', 'silent']).default('info'),
     LOG_DOMAINS_DISABLED: z.string().optional(),

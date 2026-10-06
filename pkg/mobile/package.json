@@ -66,6 +66,7 @@
     "better-auth": "1.7.6",
     "expo": "~57.0.26",
     "expo-application": "~57.0.3",
+    "expo-audio": "~57.0.5",
     "expo-camera": "~57.0.6",
     "expo-clipboard": "~57.0.2",
     "expo-constants": "~57.0.20",

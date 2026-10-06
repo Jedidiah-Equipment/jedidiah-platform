@@ -3,7 +3,9 @@ export const DOCUMENT_PNG_CONTENT_TYPE = 'image/png';
 export const DOCUMENT_JPEG_CONTENT_TYPE = 'image/jpeg';
 export const DOCUMENT_WEBP_CONTENT_TYPE = 'image/webp';
 export const DOCUMENT_ZIP_CONTENT_TYPE = 'application/zip';
+export const AUDIO_M4A_CONTENT_TYPE = 'audio/mp4';
 export const DOCUMENT_CONTENT_TYPE_LABELS = {
+  [AUDIO_M4A_CONTENT_TYPE]: 'M4A audio',
   [DOCUMENT_JPEG_CONTENT_TYPE]: 'JPEG',
   [DOCUMENT_PDF_CONTENT_TYPE]: 'PDF',
   [DOCUMENT_PNG_CONTENT_TYPE]: 'PNG',
@@ -16,6 +18,8 @@ const PNG_MAGIC_BYTES = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a
 const JPEG_MAGIC_BYTES = new Uint8Array([0xff, 0xd8, 0xff]);
 const WEBP_RIFF_BYTES = new Uint8Array([0x52, 0x49, 0x46, 0x46]);
 const WEBP_FORMAT_BYTES = new Uint8Array([0x57, 0x45, 0x42, 0x50]);
+// ISO base-media files (M4A) carry the `ftyp` box type after a four-byte box size.
+const ISO_BASE_MEDIA_BOX_BYTES = new Uint8Array([0x66, 0x74, 0x79, 0x70]);
 // ZIP archives may begin with a local file header, an empty-archive marker, or a spanned-archive marker.
 const ZIP_MAGIC_BYTES = [
   new Uint8Array([0x50, 0x4b, 0x03, 0x04]),
@@ -102,6 +106,10 @@ export function sniffDocumentContentType(bytes: Uint8Array): string | null {
 
   if (ZIP_MAGIC_BYTES.some((signature) => startsWithBytes(bytes, signature))) {
     return DOCUMENT_ZIP_CONTENT_TYPE;
+  }
+
+  if (startsWithBytes(bytes.subarray(4), ISO_BASE_MEDIA_BOX_BYTES)) {
+    return AUDIO_M4A_CONTENT_TYPE;
   }
 
   return null;

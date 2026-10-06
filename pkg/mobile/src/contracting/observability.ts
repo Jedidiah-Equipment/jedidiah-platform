@@ -21,7 +21,22 @@ export const CONTRACTING_MUTATION_EVENTS = {
     event: 'machine added to job',
     properties: (variables) => pickRecordIds(variables, ['jobId', 'machineId']),
   },
+  'contractingTranscriptions.saved': {
+    event: 'transcription saved',
+    properties: (variables) => pickRecordIds(variables, ['id']),
+  },
 } satisfies MutationEventCatalog;
+
+/** Once per Voice Note sent for text: the purpose is the screen's label, never the words. */
+export function recordVoiceNoteTranscribed(properties: {
+  purpose: string;
+  language: string | null;
+  seconds: number;
+  outcome: 'transcribed' | 'refused' | 'failed';
+}): void {
+  addBreadcrumb('contracting', 'voice note transcribed', properties);
+  captureEvent('voice note transcribed', properties);
+}
 
 /** Field Note events carry counts and flags only: a note's words and photos never leave the phone. */
 export function recordFieldNoteCreated(properties: { hasPhoto: boolean; photoCount: number; hasDescription: boolean }) {

@@ -23,6 +23,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@ai-sdk/elevenlabs": "3.0.53",
     "@ai-sdk/openai": "4.0.82",
     "@pkg/core": "workspace:*",
     "@pkg/db": "workspace:*",

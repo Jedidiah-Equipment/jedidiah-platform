@@ -9,7 +9,8 @@ const MOBILE_ROOT = resolve(import.meta.dirname, '../..');
 function sourceFiles(directory = MOBILE_ROOT): string[] {
   return readdirSync(directory).flatMap((name) => {
     const path = join(directory, name);
-    if (name === 'node_modules' || name.startsWith('.')) return [];
+    // Contracting's folders are its own catalog's to cover (`src/contracting/observability.test.ts`).
+    if (name === 'node_modules' || name.startsWith('.') || name === 'contracting') return [];
     if (statSync(path).isDirectory()) return sourceFiles(path);
     return /\.(ts|tsx)$/.test(name) && !name.endsWith('.test.ts') && !name.endsWith('.test.tsx') ? [path] : [];
   });

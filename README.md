@@ -78,7 +78,8 @@ Seeded users all sign in with the shared password `test123`.
 
 Each runtime package has a committed `.env` with safe defaults. Package `.env.dev` files are gitignored;
 use them for secrets and developer-specific overrides. The API refuses to start without an
-`OPENAI_API_KEY`, so keep that in `pkg/api/.env.dev`.
+`OPENAI_API_KEY`, so keep that in `pkg/api/.env.dev`. Contracting voice notes need an `ELEVENLABS_API_KEY`
+there too; without it the transcribe route answers 503 and the phone asks for typing.
 
 ```txt
 DATABASE_URL=postgres://postgres:postgres@localhost:5432/jedidiah
@@ -98,6 +99,8 @@ DOCUMENT_STORAGE_SECRET_ACCESS_KEY=minioadmin
 OPENAI_API_KEY=sk-...
 OPENAI_MODEL=gpt-5.5
 OPENAI_REASONING_EFFORT=low
+ELEVENLABS_API_KEY=sk_...
+ELEVENLABS_TRANSCRIPTION_MODEL=scribe_v2
 ```
 
 ## Commands

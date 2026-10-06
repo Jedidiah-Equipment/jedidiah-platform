@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { CONTRACTING_TAB_HREF } from '@/contracting/lib/app-tabs';
 import { recordFieldNoteChanged } from '@/contracting/observability';
+import { useVoiceSession } from '@/contracting/voice/use-voice-session';
 import { confirm } from '@/lib/confirm';
 import { FieldNoteFields } from './FieldNoteFields';
 import { fieldNoteFiles, resolveFieldNotePhotoUri } from './files';
@@ -36,6 +37,8 @@ function FieldNoteDetail({ note, onLeave }: { note: FieldNote; onLeave: () => vo
   const [description, setDescription] = useState(note.description);
   const [galleryHint, setGalleryHint] = useState(false);
   const { busy, error, act, report } = useFieldNoteAction();
+  const voice = useVoiceSession('field note');
+  const { reportSaved } = voice;
   const open = note.status === 'open';
 
   const latest = useRef({ description, stored: note.description, setDescription: store.setDescription });
@@ -44,11 +47,14 @@ function FieldNoteDetail({ note, onLeave }: { note: FieldNote; onLeave: () => vo
     const { description, stored, setDescription: saveDescription } = latest.current;
     if (description.trim() === stored) return;
     // Not through `act`: a blur fired by tapping Close or a photo control must not swallow that tap.
-    saveDescription(note.id, description).catch((error) => {
-      setDescription(stored);
-      report(error, 'The description could not be saved.');
-    });
-  }, [report, note.id]);
+    saveDescription(note.id, description).then(
+      () => reportSaved(description.trim()),
+      (error) => {
+        setDescription(stored);
+        report(error, 'The description could not be saved.');
+      },
+    );
+  }, [report, reportSaved, note.id]);
   useFocusEffect(useCallback(() => commitDescription, [commitDescription]));
   useEffect(() => {
     setDescription(note.description);
@@ -133,6 +139,7 @@ function FieldNoteDetail({ note, onLeave }: { note: FieldNote; onLeave: () => vo
         onDescriptionChange={setDescription}
         onDescriptionBlur={commitDescription}
         descriptionEditable
+        voice={voice}
       />
     </FormPage>
   );

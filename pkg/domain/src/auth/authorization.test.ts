@@ -257,6 +257,7 @@ describe('getRolePermissions', () => {
       'contracting_report:read',
       'contracting_service:read',
       'contracting_service:update',
+      'contracting_transcription:use',
     ]);
     expect(getRolePermissions('workshop-manager')).toEqual([
       'contracting_breakdown:read',
@@ -267,12 +268,14 @@ describe('getRolePermissions', () => {
       'contracting_report:read',
       'contracting_service:read',
       'contracting_service:update',
+      'contracting_transcription:use',
     ]);
     expect(getRolePermissions('foreman')).toEqual([
       'contracting_assignment:update-own',
       'contracting_breakdown:report',
       'contracting_job:read-own',
       'contracting_reading:capture',
+      'contracting_transcription:use',
     ]);
     expect(getRolePermissions('contracting-invoicing')).toEqual([
       'contracting_invoice:update',
@@ -288,6 +291,13 @@ describe('getRolePermissions', () => {
 
     expect(holders('contracting_job:work-any')).toEqual(['contracting-admin', 'contracting-manager', 'super-admin']);
     expect(holders('contracting_reading:capture-baseline')).toEqual(['contracting-admin', 'super-admin']);
+    expect(holders('contracting_transcription:use')).toEqual([
+      'contracting-admin',
+      'contracting-manager',
+      'foreman',
+      'super-admin',
+      'workshop-manager',
+    ]);
   });
 });
 

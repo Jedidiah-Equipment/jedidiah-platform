@@ -131,6 +131,7 @@ export const permissionLabels = {
   'contracting_rate:read': 'View the Rate Card and Measure Types',
   'contracting_rate:update': 'Maintain the Rate Card and Measure Types',
   'contracting_report:read': 'View Contracting reports',
+  'contracting_transcription:use': 'Use voice notes',
   'user:create': 'Add users',
   'user:list': 'View users',
   'user:set-email': 'Change user emails',
@@ -234,6 +235,7 @@ export const permissionDescriptions = {
   'contracting_rate:read': 'View the Contracting Rate Card and Measure Types.',
   'contracting_rate:update': 'Create, edit, reorder, and remove Contracting Rates and Measure Types.',
   'contracting_report:read': 'View Contracting utilisation and mechanic-performance reports.',
+  'contracting_transcription:use': 'Turn a recorded voice note into text in any Contracting text area.',
   'user:create': 'Add new application users.',
   'user:list': 'View application users.',
   'user:set-email': 'Change application user email addresses and verification state.',
@@ -286,6 +288,7 @@ export const authorizationStatement = {
   contracting_service: ['read', 'update'],
   contracting_rate: ['read', 'update'],
   contracting_report: ['read'],
+  contracting_transcription: ['use'],
   user: ['list', 'create', 'update', 'set-email', 'set-role', 'set-password'],
 } as const;
 
@@ -340,6 +343,7 @@ const contractingAdminAccess = {
   contracting_service: ['read', 'update'],
   contracting_rate: ['read', 'update'],
   contracting_report: ['read'],
+  contracting_transcription: ['use'],
 } as const satisfies RoleAccess;
 
 // Invariant: any role granted `equipment_job:create` must also hold `equipment_job:schedule` — creating a
@@ -404,6 +408,7 @@ export const appRoleAccess = {
     contracting_breakdown: ['read', 'report', 'update'],
     contracting_service: ['read', 'update'],
     contracting_report: ['read'],
+    contracting_transcription: ['use'],
   },
   'workshop-manager': {
     contracting_job: ['read'],
@@ -411,12 +416,14 @@ export const appRoleAccess = {
     contracting_breakdown: ['read', 'report', 'update'],
     contracting_service: ['read', 'update'],
     contracting_report: ['read'],
+    contracting_transcription: ['use'],
   },
   foreman: {
     contracting_job: ['read-own'],
     contracting_assignment: ['update-own'],
     contracting_reading: ['capture'],
     contracting_breakdown: ['report'],
+    contracting_transcription: ['use'],
   },
   'contracting-invoicing': {
     contracting_job: ['read-priced'],

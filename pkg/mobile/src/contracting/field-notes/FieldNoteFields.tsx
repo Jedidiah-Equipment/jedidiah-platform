@@ -1,5 +1,6 @@
 import { Text } from '@/components/ui/text';
-import { TextInput } from '@/components/ui/text-input';
+import type { VoiceSession } from '@/contracting/voice/use-voice-session';
+import { VoiceTextArea } from '@/contracting/voice/VoiceTextArea';
 import { FieldNotePhotoStrip } from './FieldNotePhotoStrip';
 import { fieldNoteFiles } from './files';
 import { FIELD_NOTE_DESCRIPTION_MAX } from './store';
@@ -18,6 +19,7 @@ export function FieldNoteFields(props: {
   onDescriptionBlur?: () => void;
   /** A draft locks while it saves; a kept note stays editable so a blur can commit it. */
   descriptionEditable: boolean;
+  voice: VoiceSession;
 }) {
   return (
     <>
@@ -33,17 +35,16 @@ export function FieldNoteFields(props: {
       <Text className="text-foreground" weight="semibold">
         Description
       </Text>
-      <TextInput
+      <VoiceTextArea
         accessibilityLabel="Field Note description"
         placeholder="e.g. T12 at Rietfontein, meter 4211.5"
         value={props.description}
         editable={props.descriptionEditable}
-        multiline
+        rows={5}
         maxLength={FIELD_NOTE_DESCRIPTION_MAX}
         onChangeText={props.onDescriptionChange}
         onBlur={props.onDescriptionBlur}
-        className="min-h-28"
-        textAlignVertical="top"
+        voice={props.voice}
       />
     </>
   );

@@ -1,6 +1,7 @@
 import type { CatalogTranslationKey } from '@pkg/domain/equipment';
 
 import { ConcurrencyLimit } from '../../concurrency-limit.js';
+import type { RuntimeService } from '../../runtime-service.js';
 
 export type TranslationMarker = {
   mark: (key: CatalogTranslationKey) => void;
@@ -18,7 +19,7 @@ type TranslationSchedulerOptions = {
   setTimer?: (callback: () => void, delayMs: number) => unknown;
 };
 
-export class TranslationScheduler {
+export class TranslationScheduler implements RuntimeService {
   readonly #debounceMs: number;
   readonly #clearTimer: NonNullable<TranslationSchedulerOptions['clearTimer']>;
   readonly #entries = new Map<CatalogTranslationKey, Entry>();

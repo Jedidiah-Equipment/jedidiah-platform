@@ -89,7 +89,7 @@ const test = createTester(async ({ db }) => {
 describe('catalog translation overrides', () => {
   test('gets Product fields and manages manual Product and Assembly overrides', async ({ context }) => {
     const marker = { mark: vi.fn(), markNow: vi.fn() };
-    const caller = context.createCaller(undefined, { catalogTranslationScheduler: marker });
+    const caller = context.createCaller(undefined, { equipment: { catalogTranslationScheduler: marker } });
 
     await expect(caller.catalogTranslations.getProduct({ id: context.productId })).resolves.toMatchObject({
       assemblies: [
@@ -177,7 +177,7 @@ describe('catalog translation overrides', () => {
 
   test('gets and updates Range and Variant translation fields', async ({ context }) => {
     const marker = { mark: vi.fn(), markNow: vi.fn() };
-    const caller = context.createCaller(undefined, { catalogTranslationScheduler: marker });
+    const caller = context.createCaller(undefined, { equipment: { catalogTranslationScheduler: marker } });
 
     const range = await caller.catalogTranslations.updateRange({
       fields: { name: { isManual: true, value: 'My reeks' } },

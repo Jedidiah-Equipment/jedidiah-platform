@@ -38,7 +38,9 @@ test('a saved correction schedules one hint derivation; a kept or non-English no
   const scheduled: string[] = [];
   const session = mockSession(null);
   session.user.contractingRole = 'foreman';
-  const caller = context.createCaller(session, { hintDerivations: { schedule: (id) => scheduled.push(id) } });
+  const caller = context.createCaller(session, {
+    contracting: { hintDerivations: { schedule: (id) => scheduled.push(id) } },
+  });
   const corrected = await context.heard('eng');
   const kept = await context.heard('eng');
   const afrikaans = await context.heard('afr');

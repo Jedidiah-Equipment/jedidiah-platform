@@ -102,6 +102,14 @@ Staging builds use `APP_VARIANT=staging`, identifier `za.co.jedidiahequipment.op
 or iOS bundle identifier. Android sends staging builds to Google Play closed testing (`alpha`) and
 production builds to the `production` track.
 
+Android push needs the Firebase `google-services.json`. One Firebase project holds both Android apps, so one
+file lists both packages and serves both variants. EAS builds read it from the `GOOGLE_SERVICES_JSON` secret
+file variable in the `preview` and `production` environments. Secret variables never leave EAS, and both
+`eas update` and the `ota:*` fingerprint check hash the file's contents locally, so keep the same file,
+gitignored, at `pkg/mobile/google-services.json`: without it a local `expo run:android` fails and Android OTA
+updates fail the fingerprint check.
+iOS push uses the APNs key stored in the Expo credentials for each bundle identifier.
+
 Once an OTA update is published, running apps prompt for it — on launch, and on returning to the
 foreground (throttled) — and install it when the user accepts. Dismissing holds for that session and for
 that update only, so anything published after it asks again; expo applies a downloaded update on the next

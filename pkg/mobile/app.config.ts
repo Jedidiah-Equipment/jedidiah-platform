@@ -12,6 +12,8 @@ const PHOTOS_PERMISSION =
 const MICROPHONE_PERMISSION =
   'Allow $(PRODUCT_NAME) to record voice notes, which it turns into text, with the microphone.';
 
+const LOCATION_PERMISSION = 'Allow $(PRODUCT_NAME) to record where a breakdown was reported.';
+
 // `newArchEnabled` is a valid runtime field that this Expo version's ExpoConfig types omit.
 type AppConfig = ExpoConfig & { newArchEnabled?: boolean };
 
@@ -31,7 +33,7 @@ export default ({ config }: ConfigContext): AppConfig => {
     scheme: variant.scheme,
     // `version` is the human-facing string; EAS owns the Android `versionCode` remotely
     // (`cli.appVersionSource: remote` + per-profile `autoIncrement` in eas.json).
-    version: '1.73.0',
+    version: '1.74.0',
     orientation: 'portrait',
     userInterfaceStyle: 'automatic',
     newArchEnabled: true,
@@ -66,6 +68,21 @@ export default ({ config }: ConfigContext): AppConfig => {
       ],
       // Contracting voice notes: press-and-hold recording, turned into text by the API.
       ['expo-audio', { microphonePermission: MICROPHONE_PERMISSION }],
+      // Contracting breakdown reports attach the phone's position when the reporter allows it; foreground only.
+      // The Always keys stay because the module's binary references those APIs and App Store upload flags a
+      // missing purpose string, which would cost another store build to fix.
+      [
+        'expo-location',
+        {
+          locationWhenInUsePermission: LOCATION_PERMISSION,
+          locationAlwaysAndWhenInUsePermission: LOCATION_PERMISSION,
+          locationAlwaysPermission: LOCATION_PERMISSION,
+          isIosBackgroundLocationEnabled: false,
+          isAndroidBackgroundLocationEnabled: false,
+        },
+      ],
+      // Workshop pushes. The icon, colour and default channel are native: changing them moves the fingerprint.
+      ['expo-notifications', { icon: './assets/notification-icon.png', color: '#F5B700', defaultChannel: 'workshop' }],
       '@config-plugins/react-native-pdf',
       '@config-plugins/react-native-blob-util',
       ['expo-secure-store', { faceIDPermission: false }],
@@ -76,6 +93,9 @@ export default ({ config }: ConfigContext): AppConfig => {
     android: {
       package: variant.androidPackage,
       adaptiveIcon: variant.iconConfig.adaptiveIcon,
+      // FCM config for push; one file lists both variants' packages. EAS builds get it from the secret
+      // `GOOGLE_SERVICES_JSON` file variable; local runs and OTA fingerprints read the gitignored copy here.
+      googleServicesFile: process.env.GOOGLE_SERVICES_JSON ?? './google-services.json',
       // Google Play refuses an upload that declares photo or video read access without a policy declaration.
       // The system photo picker needs no grant, and saving our own camera photos to the album is write-only.
       blockedPermissions: [

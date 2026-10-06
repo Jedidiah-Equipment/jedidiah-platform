@@ -1,11 +1,12 @@
 import { execFileSync, spawnSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { parseEnv } from 'node:util';
 
 const EAS_CONFIG_PATH = new URL('../eas.json', import.meta.url);
 const MOBILE_DIR = new URL('..', import.meta.url);
 const NATIVE_PLATFORMS = ['android', 'ios'];
+const GOOGLE_SERVICES_PATH = new URL('../google-services.json', import.meta.url);
 
 export function resolveUpdatePlatforms(args) {
   const selections = args.flatMap((arg, index) => {
@@ -158,6 +159,18 @@ export function assertCompatibleBuilds({ profile, build, env, platforms = NATIVE
   }
 }
 
+/**
+ * The Android fingerprint hashes google-services.json, and EAS never hands the secret build copy back, so
+ * without an identical local file every Android fingerprint check fails with an unexplained mismatch.
+ */
+export function assertFirebaseConfig(platforms, fileExists = () => existsSync(GOOGLE_SERVICES_PATH)) {
+  if (platforms.includes('android') && !fileExists()) {
+    throw new Error(
+      'Android OTA needs pkg/mobile/google-services.json, identical to the GOOGLE_SERVICES_JSON file in EAS; add it or pass --platform ios.',
+    );
+  }
+}
+
 function releasePrefix(profile) {
   const prefixes = { staging: 'STAGING', production: 'PRODUCTION' };
   const prefix = prefixes[profile];
@@ -233,6 +246,7 @@ function main() {
   const command = resolveUpdateCommand({ args, commitSubject, easConfig, profile });
   const releaseEnv = resolveReleaseEnvironment(profile);
   const updateEnv = { ...releaseEnv, ...command.env };
+  assertFirebaseConfig(command.platforms);
   assertCompatibleBuilds({ profile, build: easConfig.build[profile], env: updateEnv, platforms: command.platforms });
   const bundle = resolveExportCommand(command.platforms);
   // Bundle and upload before publishing because this script cannot roll an OTA back.

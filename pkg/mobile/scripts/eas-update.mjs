@@ -12,6 +12,7 @@ export function resolveUpdatePlatforms(args) {
     if (arg === '--platform' || arg === '-p') return [args[index + 1]];
     if (arg.startsWith('--platform=')) return [arg.slice('--platform='.length)];
     if (arg.startsWith('-p=')) return [arg.slice('-p='.length)];
+    if (arg.startsWith('-p')) return [arg.slice('-p'.length)];
     return [];
   });
   if (selections.length > 1) {

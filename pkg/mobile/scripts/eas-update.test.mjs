@@ -110,7 +110,7 @@ describe('resolveUpdateCommand', () => {
 });
 
 describe('resolveUpdatePlatforms', () => {
-  it.each([[[]], [['--platform', 'all']]])('defaults to both native platforms (%j)', (args) => {
+  it.each([[[]], [['--platform', 'all']], [['-pall']]])('defaults to both native platforms (%j)', (args) => {
     expect(resolveUpdatePlatforms(args)).toEqual(['android', 'ios']);
   });
 
@@ -119,7 +119,9 @@ describe('resolveUpdatePlatforms', () => {
     [['--platform=ios'], 'ios'],
     [['-p', 'ios'], 'ios'],
     [['-p=ios'], 'ios'],
+    [['-pios'], 'ios'],
     [['--platform', 'android'], 'android'],
+    [['-pandroid'], 'android'],
   ])('uses the same selected platform for export and publish (%j)', (args, platform) => {
     const command = resolveUpdateCommand({ args, commitSubject: 'fix: thing', easConfig, profile: 'staging' });
     expect(command.platforms).toEqual([platform]);
@@ -138,7 +140,7 @@ describe('resolveUpdatePlatforms', () => {
     ]);
   });
 
-  it.each([[['--platform', 'web']], [['--platform']], [['--platform=']], [['-p']]])(
+  it.each([[['--platform', 'web']], [['--platform']], [['--platform=']], [['-p']], [['-pweb']]])(
     'rejects invalid or missing platform values (%j)',
     (args) => {
       expect(() => resolveUpdatePlatforms(args)).toThrow('OTA --platform must be android, ios, or all');
@@ -245,7 +247,7 @@ describe('assertCompatibleBuilds', () => {
         build,
         env: {},
         platforms: resolveUpdateCommand({
-          args: ['--platform', 'ios'],
+          args: ['-pios'],
           commitSubject: 'fix: thing',
           easConfig,
           profile: 'staging',

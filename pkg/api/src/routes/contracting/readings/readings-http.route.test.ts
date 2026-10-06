@@ -20,7 +20,7 @@ import Fastify from 'fastify';
 import { expect, vi } from 'vitest';
 import { createTester } from '@/test/create-tester.js';
 import { mockSession } from '@/test/test-utils.js';
-import { ReadingVerificationQueue } from '../../../contracting/readings/reading-verification-queue.js';
+import { BackgroundQueue } from '../../../background-queue.js';
 import { registerReadingHttpRoutes } from './readings-http.route.js';
 
 const state = vi.hoisted(() => ({ session: null as unknown }));
@@ -71,7 +71,7 @@ const test = createTester(async ({ db, auth }) => {
   const app = Fastify();
   app.decorate('auth', auth);
   await app.register(multipart);
-  const verifications = new ReadingVerificationQueue({
+  const verifications = new BackgroundQueue<string>({
     run: (id) =>
       verifyCapturedReading({ db, id, storage, readPhoto: async () => ({ value: 123.4, confidence: 0.91 }) }),
   });

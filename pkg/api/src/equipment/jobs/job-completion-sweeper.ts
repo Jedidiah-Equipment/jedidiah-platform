@@ -1,4 +1,5 @@
 import { addDateOnlyDays, JOHANNESBURG_TIME_ZONE, toPlantDateOnly, zonedDateStartToUtcInstant } from '@pkg/domain';
+import type { RuntimeService } from '../../runtime-service.js';
 
 const MILLISECONDS_PER_HOUR = 60 * 60 * 1000;
 
@@ -21,7 +22,7 @@ type JobCompletionSweeperOptions = {
  * Single-flight: a run that overruns its own window does not stack, the next wake-up is scheduled
  * only after the current run settles.
  */
-export class JobCompletionSweeper {
+export class JobCompletionSweeper implements RuntimeService {
   readonly #clearTimer: NonNullable<JobCompletionSweeperOptions['clearTimer']>;
   readonly #now: NonNullable<JobCompletionSweeperOptions['now']>;
   readonly #onError: NonNullable<JobCompletionSweeperOptions['onError']>;

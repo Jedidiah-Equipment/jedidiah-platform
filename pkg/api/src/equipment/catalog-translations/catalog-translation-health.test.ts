@@ -139,7 +139,7 @@ describe('catalog translation health', () => {
       return generatedJson({ name: 'Vertaalde Variant' });
     });
     const caller = context.createCaller(undefined, {
-      catalogTranslationScheduler: context.catalogTranslationScheduler,
+      equipment: { catalogTranslationScheduler: context.catalogTranslationScheduler },
     });
 
     await expect(caller.catalogTranslations.retranslateStale()).resolves.toEqual({ queued: 6 });

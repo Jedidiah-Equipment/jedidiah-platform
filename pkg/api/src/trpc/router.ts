@@ -1,6 +1,6 @@
-import type { ReadMeterPhoto } from '@pkg/core/contracting';
 import type { BuiltRouter } from '@trpc/server/unstable-core-do-not-import';
-import type { TranslationMarker } from '../equipment/catalog-translations/translation-scheduler.js';
+import type { ContractingRouterDependencies } from '../contracting/wiring.js';
+import type { EquipmentRouterDependencies } from '../equipment/wiring.js';
 import { auditRouter } from '../routes/audit/audit.router.js';
 import { authRouter } from '../routes/auth/auth.router.js';
 import { changelogRouter } from '../routes/changelog/changelog.router.js';
@@ -9,10 +9,7 @@ import { contractingFleetRouter } from '../routes/contracting/fleet/fleet.router
 import { contractingJobsRouter } from '../routes/contracting/jobs/jobs.router.js';
 import { contractingRateCardRouter } from '../routes/contracting/rate-card/rate-card.router.js';
 import { createContractingReadingsRouter } from '../routes/contracting/readings/readings.router.js';
-import {
-  createContractingTranscriptionsRouter,
-  type HintDerivations,
-} from '../routes/contracting/transcriptions/transcriptions.router.js';
+import { createContractingTranscriptionsRouter } from '../routes/contracting/transcriptions/transcriptions.router.js';
 import { createCatalogTranslationsRouter } from '../routes/equipment/catalog-translations/catalog-translations.router.js';
 import { customersRouter } from '../routes/equipment/customers/customers.router.js';
 import { documentsRouter } from '../routes/equipment/documents/documents.router.js';
@@ -33,11 +30,10 @@ import { userDepartmentsRouter } from '../routes/equipment/users/user-department
 import { usersRouter } from '../routes/users/users.router.js';
 import { createCallerFactory, router } from './init.js';
 
-/** Runtime services the business routers close over; supplied by the server, stubbed by tests. */
+/** Runtime services the business routers close over; built by each business's wiring, stubbed by tests. */
 export type AppRouterDependencies = {
-  catalogTranslationScheduler: TranslationMarker;
-  readMeterPhoto: ReadMeterPhoto;
-  hintDerivations: HintDerivations;
+  contracting: ContractingRouterDependencies;
+  equipment: EquipmentRouterDependencies;
 };
 
 type AppRouterRootTypes = (typeof authRouter)['_def']['_config']['$types'];
@@ -75,21 +71,17 @@ type AppRouterRecord = {
 export type AppRouter = BuiltRouter<AppRouterRootTypes, AppRouterRecord>;
 
 // Naming the router shape keeps declaration emit from serializing the full nested tRPC type.
-export function createAppRouter({
-  catalogTranslationScheduler,
-  hintDerivations,
-  readMeterPhoto,
-}: AppRouterDependencies): AppRouter {
+export function createAppRouter({ contracting, equipment }: AppRouterDependencies): AppRouter {
   return router({
-    contractingReadings: createContractingReadingsRouter(readMeterPhoto),
+    contractingReadings: createContractingReadingsRouter(contracting.readMeterPhoto),
     contractingFleet: contractingFleetRouter,
     contractingJobs: contractingJobsRouter,
     contractingRateCard: contractingRateCardRouter,
-    contractingTranscriptions: createContractingTranscriptionsRouter(hintDerivations),
+    contractingTranscriptions: createContractingTranscriptionsRouter(contracting.hintDerivations),
     contractingDirectory: contractingDirectoryRouter,
     audit: auditRouter,
     auth: authRouter,
-    catalogTranslations: createCatalogTranslationsRouter(catalogTranslationScheduler),
+    catalogTranslations: createCatalogTranslationsRouter(equipment.catalogTranslationScheduler),
     changelog: changelogRouter,
     customers: customersRouter,
     documents: documentsRouter,
@@ -100,9 +92,9 @@ export function createAppRouter({
     laborRates: laborRatesRouter,
     partCategories: partCategoriesRouter,
     parts: partsRouter,
-    productRanges: createProductRangesRouter(catalogTranslationScheduler),
+    productRanges: createProductRangesRouter(equipment.catalogTranslationScheduler),
     productUnits: productUnitsRouter,
-    products: createProductsRouter(catalogTranslationScheduler),
+    products: createProductsRouter(equipment.catalogTranslationScheduler),
     purchaseOrders: purchaseOrdersRouter,
     quotes: quotesRouter,
     suppliers: suppliersRouter,

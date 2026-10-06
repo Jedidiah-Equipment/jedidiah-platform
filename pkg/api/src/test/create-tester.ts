@@ -23,18 +23,19 @@ export type AppRouterCaller = ReturnType<AppRouter['createCaller']>;
 export type CallerOverrides = {
   access?: Context['access'];
   appEnv?: Context['appEnv'];
-  catalogTranslationScheduler?: AppRouterDependencies['catalogTranslationScheduler'];
   changelogLoader?: ChangelogLoader;
-  hintDerivations?: AppRouterDependencies['hintDerivations'];
-  readMeterPhoto?: AppRouterDependencies['readMeterPhoto'];
+  contracting?: Partial<AppRouterDependencies['contracting']>;
+  equipment?: Partial<AppRouterDependencies['equipment']>;
 };
 
 export const NOOP_ROUTER_DEPENDENCIES: AppRouterDependencies = {
-  catalogTranslationScheduler: { mark: () => undefined, markNow: () => undefined },
-  hintDerivations: { schedule: () => undefined },
-  readMeterPhoto: async () => {
-    throw new Error('Meter reader not stubbed for this test');
+  contracting: {
+    hintDerivations: { schedule: () => undefined },
+    readMeterPhoto: async () => {
+      throw new Error('Meter reader not stubbed for this test');
+    },
   },
+  equipment: { catalogTranslationScheduler: { mark: () => undefined, markNow: () => undefined } },
 };
 
 export type TesterScope = {
@@ -86,10 +87,8 @@ export function createTester<T extends object = Record<string, never>>(
               }),
             createCaller: (session = mockSession(), overrides = {}) => {
               return createAppRouterCaller({
-                catalogTranslationScheduler:
-                  overrides.catalogTranslationScheduler ?? NOOP_ROUTER_DEPENDENCIES.catalogTranslationScheduler,
-                hintDerivations: overrides.hintDerivations ?? NOOP_ROUTER_DEPENDENCIES.hintDerivations,
-                readMeterPhoto: overrides.readMeterPhoto ?? NOOP_ROUTER_DEPENDENCIES.readMeterPhoto,
+                contracting: { ...NOOP_ROUTER_DEPENDENCIES.contracting, ...overrides.contracting },
+                equipment: { ...NOOP_ROUTER_DEPENDENCIES.equipment, ...overrides.equipment },
               })({
                 access: overrides.access ?? createUserAccessSummaryForUser(session.user),
                 appEnv: overrides.appEnv ?? 'production',

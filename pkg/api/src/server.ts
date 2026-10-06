@@ -1,54 +1,18 @@
 import fastifyCors from '@fastify/cors';
 import fastifyMultipart from '@fastify/multipart';
-import { createOpenAiChatModel } from '@pkg/ai';
-import {
-  createTranscriptionModel,
-  deriveTranscriptionHint,
-  readMeterPhoto,
-  tidyTranscript,
-  transcribeVoiceNote,
-} from '@pkg/ai/contracting';
 import type { StorageAdapter } from '@pkg/core';
-import {
-  createKeytermCache,
-  deriveHintFor,
-  listReadingsAwaitingVerification,
-  listTranscriptionsAwaitingHints,
-  loadKeyterms,
-  type TranscriptionEngine,
-  verifyCapturedReading,
-} from '@pkg/core/contracting';
-import { sweepJobCompletions } from '@pkg/core/equipment';
-import { db } from '@pkg/db';
 import { PRODUCT_DOCUMENT_MAX_BYTES } from '@pkg/domain/equipment';
-import { renderJobCardPdf } from '@pkg/pdf/contracting';
 import { type FastifyTRPCPluginOptions, fastifyTRPCPlugin } from '@trpc/server/adapters/fastify';
 import Fastify, { type FastifyBaseLogger } from 'fastify';
 import { type Auth, auth as appAuth } from './app-auth.js';
 import { registerAuthHandler } from './auth/handler.js';
-import { BackgroundQueue } from './background-queue.js';
-import { ReadingVerificationQueue } from './contracting/readings/reading-verification-queue.js';
+import { registerContracting } from './contracting/wiring.js';
 import { type ApiConfig, getApiConfig } from './env.js';
-import { createCatalogTranslationRunner } from './equipment/catalog-translations/catalog-translation-runner.js';
-import { TranslationScheduler } from './equipment/catalog-translations/translation-scheduler.js';
-import { JobCompletionSweeper } from './equipment/jobs/job-completion-sweeper.js';
+import { registerEquipment } from './equipment/wiring.js';
 import { registerHealthRoutes } from './health.js';
 import { log } from './logger.js';
 import { createObservability, type Observability } from './observability.js';
 import { createFileChangelogLoader } from './routes/changelog/changelog-loader.js';
-import { registerJobCardHttpRoutes } from './routes/contracting/jobs/job-card-http.route.js';
-import { registerReadingHttpRoutes } from './routes/contracting/readings/readings-http.route.js';
-import { registerTranscriptionHttpRoutes } from './routes/contracting/transcriptions/transcriptions-http.route.js';
-import { registerAiChatRoute } from './routes/equipment/ai/ai-chat.route.js';
-import { registerDocumentHttpRoutes } from './routes/equipment/documents/document-http.route.js';
-import { registerEntityFileRoutes } from './routes/equipment/files/entity-file-http.route.js';
-import { registerPartLabelHttpRoutes } from './routes/equipment/parts/part-label-http.route.js';
-import {
-  createProductRangeImageRouteConfig,
-  createProductRangeLogoRouteConfig,
-} from './routes/equipment/product-ranges/product-range-image-routes.js';
-import { createProductImageRouteConfig } from './routes/equipment/products/product-image-routes.js';
-import { registerUserBadgeHttpRoutes } from './routes/equipment/users/user-badge-http.route.js';
 import { createDocumentStorageAdapter } from './storage/s3-storage-adapter.js';
 import { createContextFactory } from './trpc/context.js';
 import { serializeError, shouldLogTRPCError } from './trpc/errors.js';
@@ -61,24 +25,6 @@ export async function buildServer(
   auth: Auth = appAuth,
 ) {
   log.root.info({ config }, 'Building server');
-  const catalogTranslationScheduler = new TranslationScheduler({
-    onError: (error, key) => log.ai.error({ error, key }, 'Catalog translation failed'),
-    run: createCatalogTranslationRunner({
-      db,
-      model: createOpenAiChatModel({ apiKey: config.OPENAI_API_KEY, model: config.OPENAI_TRANSLATION_MODEL }),
-    }),
-  });
-
-  const jobCompletionSweeper = new JobCompletionSweeper({
-    onError: (error) => log.root.error({ error }, 'Job completion sweep failed'),
-    run: async () => {
-      const result = await sweepJobCompletions({ db });
-
-      if (result.completed > 0) {
-        log.root.info(result, 'Job completion sweep stamped Jobs');
-      }
-    },
-  });
 
   const app = Fastify({
     loggerInstance: log.http as FastifyBaseLogger,
@@ -109,55 +55,22 @@ export async function buildServer(
     ],
     maxAge: 86400,
   });
-
   await registerAuthHandler(app, auth);
   await app.register(fastifyMultipart, {
     limits: {
       fileSize: PRODUCT_DOCUMENT_MAX_BYTES,
     },
   });
-  const openAiModel = createOpenAiChatModel({ apiKey: config.OPENAI_API_KEY, model: config.OPENAI_MODEL });
-  const meterReader = (input: { bytes: Uint8Array; contentType: string }) =>
-    readMeterPhoto({ ...input, model: openAiModel });
-  const readingVerifications = new ReadingVerificationQueue({
-    run: (id) => verifyCapturedReading({ db, id, storage, readPhoto: meterReader }),
-    onError: (error, readingId) => log.ai.error({ error, readingId }, 'Reading verification failed'),
-  });
-  await registerReadingHttpRoutes(app, { db, storage, verifications: readingVerifications });
-  const transcriptionModel = createTranscriptionModel({
-    apiKey: config.OPENAI_API_KEY,
-    model: config.OPENAI_TRANSCRIPTION_MODEL,
-  });
-  const transcriptionEngine: TranscriptionEngine = {
-    transcribe: (input) => transcribeVoiceNote({ ...input, model: transcriptionModel }),
-    tidy: (input) => tidyTranscript({ ...input, model: openAiModel }),
-    derive: (input) => deriveTranscriptionHint({ ...input, model: openAiModel }),
-  };
-  const keyterms = createKeytermCache(() => loadKeyterms({ db }));
-  const hintDerivations = new BackgroundQueue<string>({
-    run: async (id) => {
-      const outcome = await deriveHintFor({ db, id, engine: transcriptionEngine });
-      // A new hint keyterm should reach the next note, not the next cache refresh.
-      if (outcome?.action === 'add') keyterms.invalidate();
-    },
-    onError: (error, transcriptionId) => log.ai.error({ error, transcriptionId }, 'Hint derivation failed'),
-    concurrency: 1,
-  });
-  await registerTranscriptionHttpRoutes(app, { db, engine: transcriptionEngine, keyterms: keyterms.current });
-  await registerJobCardHttpRoutes(app, { db, pdfRenderer: renderJobCardPdf });
-  await registerAiChatRoute(app, { storage });
-  await registerDocumentHttpRoutes(app, storage);
-  await registerPartLabelHttpRoutes(app);
-  await registerUserBadgeHttpRoutes(app);
-  await registerEntityFileRoutes(app, [
-    createProductImageRouteConfig(storage, { cacheDir: config.API_IMAGE_CACHE_DIR }),
-    createProductRangeImageRouteConfig(storage),
-    createProductRangeLogoRouteConfig(storage),
-  ]);
+
+  const equipment = await registerEquipment(app, { config, storage });
+  const contracting = await registerContracting(app, { config, storage });
   await registerHealthRoutes(app, config);
 
   const trpcOptions = {
-    router: createAppRouter({ catalogTranslationScheduler, hintDerivations, readMeterPhoto: meterReader }),
+    router: createAppRouter({
+      contracting: contracting.routerDependencies,
+      equipment: equipment.routerDependencies,
+    }),
     createContext: createContextFactory({
       appEnv: config.APP_ENV,
       changelogLoader: createFileChangelogLoader(),
@@ -178,21 +91,14 @@ export async function buildServer(
     trpcOptions,
   });
 
+  const services = [...equipment.services, ...contracting.services];
+
   app.addHook('onClose', async () => {
-    catalogTranslationScheduler.dispose();
-    await readingVerifications.dispose();
-    await hintDerivations.dispose();
-    jobCompletionSweeper.dispose();
+    for (const service of services) await service.dispose();
     await observability.flush();
   });
 
-  jobCompletionSweeper.start();
-  readingVerifications
-    .resume(() => listReadingsAwaitingVerification({ db }))
-    .catch((error: unknown) => log.ai.error({ error }, 'Resuming reading verifications failed'));
-  hintDerivations
-    .resume(() => listTranscriptionsAwaitingHints({ db }))
-    .catch((error: unknown) => log.ai.error({ error }, 'Resuming hint derivations failed'));
+  for (const service of services) service.start?.();
 
   return app;
 }

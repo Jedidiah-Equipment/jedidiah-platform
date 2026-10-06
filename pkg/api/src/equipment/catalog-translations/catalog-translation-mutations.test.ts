@@ -54,7 +54,7 @@ describe('catalog mutation translation triggers', () => {
       }),
     );
     const caller = context.createCaller(undefined, {
-      catalogTranslationScheduler: context.catalogTranslationScheduler,
+      equipment: { catalogTranslationScheduler: context.catalogTranslationScheduler },
     });
     const created = await createProduct(caller, context.rangeId);
 
@@ -95,7 +95,7 @@ describe('catalog mutation translation triggers', () => {
       );
     });
     const caller = context.createCaller(undefined, {
-      catalogTranslationScheduler: context.catalogTranslationScheduler,
+      equipment: { catalogTranslationScheduler: context.catalogTranslationScheduler },
     });
     const range = await caller.productRanges.create({ name: 'Harvest Trailers', description: 'Harvest equipment.' });
     const variant = await caller.productRanges.createVariant({ rangeId: range.id, name: 'Heavy Duty' });
@@ -125,7 +125,7 @@ describe('catalog mutation translation triggers', () => {
       return generatedJson(productTranslation('Jongste inhoud.'));
     });
     const caller = context.createCaller(undefined, {
-      catalogTranslationScheduler: context.catalogTranslationScheduler,
+      equipment: { catalogTranslationScheduler: context.catalogTranslationScheduler },
     });
     const created = await createProduct(caller, context.rangeId);
 
@@ -155,7 +155,7 @@ describe('catalog mutation translation triggers', () => {
       throw new Error('model unavailable');
     });
     const caller = context.createCaller(undefined, {
-      catalogTranslationScheduler: context.catalogTranslationScheduler,
+      equipment: { catalogTranslationScheduler: context.catalogTranslationScheduler },
     });
     const created = await createProduct(caller, context.rangeId);
 

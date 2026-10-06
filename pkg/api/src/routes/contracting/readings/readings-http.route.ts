@@ -10,7 +10,6 @@ import {
   readingCaptureFieldNames,
 } from '@pkg/schema/contracting';
 import type { FastifyInstance, FastifyReply } from 'fastify';
-import type { ReadingVerifications } from '../../../contracting/readings/reading-verification-queue.js';
 import {
   mapCoreErrorToRoute,
   RouteHttpError,
@@ -20,6 +19,9 @@ import {
   streamObjectBody,
 } from '../../http-route-helpers.js';
 import { readingErrorFamily } from '../contracting-error-families.js';
+
+/** Schedules a captured reading's AI check after the capture has answered. */
+export type ReadingVerifications = { schedule: (readingId: string) => void };
 
 export async function registerReadingHttpRoutes(
   app: FastifyInstance,

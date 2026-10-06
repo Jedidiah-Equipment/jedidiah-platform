@@ -222,11 +222,12 @@ workshop and puts it in the same-Job dispatch cross-reference), optional GPS, an
 (machine down) or **Code Green** (still working). Status runs **Open → In Progress → Solved**; the workshop manager owns every
 transition and closes with a mandatory close-out note. The subject's Breakdown history is
 permanent. The dispatch cross-reference — other fleet on the same Job with open Breakdowns —
-is derived, never stored. New Breakdowns notify the workshop manager by push notification;
-Code Red also notifies management.
+is derived, never stored. A new Breakdown notifies by push notification: Code Green reaches
+the workshop-manager role; Code Red also reaches contracting-manager, contracting-admin and
+super-admin. The reporter never receives their own ping.
 
-**Breakdown Note** is one entry in a Breakdown's append-only note thread: author, text (voice
-note supported), time. Contracting's own mechanism — never the Equipment context's Feedback.
+**Breakdown Note** is one entry in a Breakdown's append-only note thread: author, text (typed
+or from a Voice Note), time. Contracting's own mechanism — never the Equipment context's Feedback.
 
 **Mechanic** is a non-login user record, like Driver: mechanics take instructions and never sign
 in. Exactly one primary Mechanic is assigned per Breakdown by the workshop manager, possibly
@@ -240,7 +241,28 @@ deliberately not a Breakdown. **Closing a Service Record requires setting the Ma
 Service Due** — the number the mechanic prints on the dash sticker at that moment; the Machine's
 optional **Service Interval** only pre-fills it from the reading at service. **Service Due Soon** is the derived flag raised when the Machine's latest
 known Hour Reading comes within a threshold of Next Service Due — kept honest mid-job by spot
-readings from the field — and it notifies the workshop manager by push notification.
+readings from the field. It notifies the workshop manager by push notification once, at the
+capture that first brings the reading within the threshold; closing a Service Record moves the
+due point on and re-arms it.
+
+## Voice
+
+**Voice Note** is a recording a user makes into any multi-line text field of the Contracting
+mobile app to fill it by speech instead of typing; the field receives editable text in the
+language spoken, and the recording itself is never kept. Available only while online; the web
+app is typed-only.
+_Avoid_: dictation, audio note, voice memo
+
+**Transcription** is one Voice Note turned into text: the raw text the speech service heard, the
+tidied text the user was shown, the detected language, and — once the user saves the field — the
+text they kept. The tidied text is a minimal edit of the raw text and is never a translation.
+_Avoid_: transcript (bare), correction diff
+
+**Transcription Hint** is one short rule distilled from a Transcription whose saved text differs
+from the shown text — how a name is spelled, what a local word means — kept so future
+Transcriptions apply it. Derived only when the user corrected rather than rewrote, and only from
+English Transcriptions for now; applied to Transcriptions in every language.
+_Avoid_: rule, correction, vocabulary entry
 
 ## Access
 

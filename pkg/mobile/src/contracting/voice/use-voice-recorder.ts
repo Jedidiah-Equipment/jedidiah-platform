@@ -7,7 +7,7 @@ import {
   useAudioRecorder,
   useAudioRecorderState,
 } from 'expo-audio';
-import { useCallback, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 
 /** Shorter than this is a tap, not a note. */
 const MIN_RECORDING_MS = 500;
@@ -57,6 +57,14 @@ export function useVoiceRecorder(): VoiceRecorder {
     if (!recorder.uri || durationMs < MIN_RECORDING_MS) return null;
     return { uri: recorder.uri, seconds: Math.round(durationMs / 1000) };
   }, [recorder]);
+
+  // Leaving the screen mid-hold must not leave the microphone live until the cap.
+  useEffect(
+    () => () => {
+      if (starting.current) void stop().catch(() => null);
+    },
+    [stop],
+  );
 
   return {
     supported: true,

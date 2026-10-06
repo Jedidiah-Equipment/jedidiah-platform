@@ -52,6 +52,7 @@ export default function NewFieldNoteScreen() {
   const pick = (source: () => Promise<PickedPhoto[]>) => act(async () => addPicked(await source()), PICK_FAILED);
   const save = () =>
     act(async () => {
+      if (voice.busy) return;
       const { note, galleryFailed } = await store.create({ description, photos });
       recordFieldNoteCreated({
         hasPhoto: note.photos.length > 0,
@@ -81,7 +82,7 @@ export default function NewFieldNoteScreen() {
         <Button
           primary
           title={busy ? 'Saving…' : 'Save note'}
-          disabled={busy || !hasContent}
+          disabled={busy || voice.busy || !hasContent}
           onPress={() => {
             void save();
           }}

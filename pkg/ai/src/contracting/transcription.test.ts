@@ -97,6 +97,17 @@ describe('deriveTranscriptionHint', () => {
     expect(JSON.stringify(responseFormat)).not.toMatch(/oneOf|minLength|maxLength/);
   });
 
+  it('reads a blank or invented hint id to retire as none', async () => {
+    const model = answering({ action: 'add', reason: '', rule: 'Say Code Red.', keyterm: '', retireHintId: '' });
+
+    expect(await deriveTranscriptionHint({ ...input, model })).toEqual({
+      action: 'add',
+      rule: 'Say Code Red.',
+      keyterm: null,
+      retireHintId: null,
+    });
+  });
+
   it('answers none without the hint fields', async () => {
     const model = answering({ action: 'none', reason: 'A rewrite.', rule: null, keyterm: null, retireHintId: null });
 

@@ -123,7 +123,7 @@ function CaptureForm({ target }: { target: CaptureTarget }) {
     futureReadAt: readAt !== null && isFutureReadAt(readAt.at),
   });
   function save() {
-    if (!canSave || !parsed?.success) return;
+    if (!canSave || voice.busy || !parsed?.success) return;
     const reading = parsed.data;
     const stintOverrides = target.kind === 'stint' && target.role === 'arrival' ? overrides.value : undefined;
     // Name the latest only once history has loaded; the server then refuses a capture judged against an older one.
@@ -224,9 +224,9 @@ function CaptureForm({ target }: { target: CaptureTarget }) {
             </View>
           ) : null}
           <Button
-            primary={canSave && !busy}
+            primary={canSave && !busy && !voice.busy}
             title={busy ? 'Saving…' : 'Save reading'}
-            disabled={busy || !canSave}
+            disabled={busy || voice.busy || !canSave}
             onPress={() => {
               void save();
             }}

@@ -109,14 +109,14 @@ function FieldNoteDetail({ note, onLeave }: { note: FieldNote; onLeave: () => vo
         <View className="flex-row gap-2">
           {open ? null : (
             <View className="flex-1">
-              <Button destructive title="Delete" disabled={busy} onPress={() => void deleteNote()} />
+              <Button destructive title="Delete" disabled={busy || voice.busy} onPress={() => void deleteNote()} />
             </View>
           )}
           <View className="flex-1">
             <Button
               primary={open}
               title={open ? 'Close' : 'Reopen'}
-              disabled={busy}
+              disabled={busy || voice.busy}
               onPress={() =>
                 void act(async () => {
                   await (open ? store.close(note.id) : store.reopen(note.id));

@@ -1,7 +1,7 @@
 import { formatClock } from '@pkg/domain';
 import { VOICE_NOTE_MAX_SECONDS } from '@pkg/domain/contracting';
 import { IconMicrophone } from '@tabler/icons-react-native';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { textareaStyle } from '@/components/form/fields/TextareaField';
 import { Icon } from '@/components/ui/icon';
@@ -33,18 +33,34 @@ export function VoiceTextArea({ value, onChangeText, voice, rows = 4, editable =
   const canUse = useSessionPermission('contracting_transcription:use');
   const offline = useIsOffline();
   const recorder = useVoiceRecorder();
+  const [holding, setHolding] = useState(false);
   const [transcribing, setTranscribing] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   // The transcript lands after typing may have carried on, so it appends to the latest text.
   const latest = useRef(value);
   latest.current = value;
   const showMic = canUse && !offline && recorder.supported && editable;
-  const busy = transcribing || recorder.recording;
+  const busy = holding || transcribing;
+  const { setBusy } = voice;
+  const { stop } = recorder;
+
+  useEffect(() => {
+    setBusy(busy);
+  }, [busy, setBusy]);
+  useEffect(() => () => setBusy(false), [setBusy]);
+  // The mic can vanish mid-hold (the signal drops, the form locks) and its release then never fires: stop and drop it.
+  useEffect(() => {
+    if (showMic || !holding) return;
+    setHolding(false);
+    void stop().catch(() => null);
+  }, [showMic, holding, stop]);
 
   async function startRecording() {
     if (transcribing) return;
     setMessage(null);
+    setHolding(true);
     const started = await recorder.start().catch(() => 'failed' as const);
+    if (started !== 'recording') setHolding(false);
     if (started === 'allowed') setMessage('Microphone allowed. Hold the mic while you speak.');
     if (started === 'denied') setMessage('Allow the microphone in Settings to record voice notes.');
     if (started === 'failed') setMessage(UNAVAILABLE);
@@ -53,8 +69,9 @@ export function VoiceTextArea({ value, onChangeText, voice, rows = 4, editable =
   async function finishRecording() {
     if (transcribing) return;
     const recording = await recorder.stop().catch(() => null);
+    setTranscribing(recording !== null);
+    setHolding(false);
     if (!recording) return;
-    setTranscribing(true);
     const observed = { purpose: voice.purpose, seconds: recording.seconds };
     try {
       const transcription = await transcribeRecording(recording.uri, voice.purpose);

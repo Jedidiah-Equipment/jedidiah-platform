@@ -1,6 +1,7 @@
 import { createOpenAI } from '@ai-sdk/openai';
 import type { ActiveHint, VoiceTranscript } from '@pkg/core/contracting';
 import { promptFromKeyterms, TRANSCRIPTION_HINT_CAP } from '@pkg/domain/contracting';
+import { UUID } from '@pkg/schema';
 import { HintDerivation } from '@pkg/schema/contracting';
 import { generateObject, type LanguageModel, type TranscriptionModel, experimental_transcribe as transcribe } from 'ai';
 import { z } from 'zod';
@@ -124,6 +125,7 @@ export async function deriveTranscriptionHint({
     action: 'add',
     rule: object.rule,
     keyterm: object.keyterm?.trim() ? object.keyterm : null,
-    retireHintId: object.retireHintId,
+    // A blank or invented id retires nothing, the same as null; deriveHintFor also ignores ids no longer in force.
+    retireHintId: UUID.safeParse(object.retireHintId).success ? object.retireHintId : null,
   });
 }

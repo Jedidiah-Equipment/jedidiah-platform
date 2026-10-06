@@ -12,7 +12,7 @@ export const contractingTranscriptions = contractingSchema.table(
       .references(() => user.id),
     /** The control's label for what the text is for ("breakdown description"); prompt context, never shown. */
     purpose: text('purpose').notNull(),
-    /** Scribe's detected language code ("en", "af", "nso"); null when the provider gave none. */
+    /** The spoken language tag ("en", "af"), from the speech model or else the tidy pass; null when neither gave one. */
     language: text('language'),
     rawText: text('raw_text').notNull(),
     shownText: text('shown_text').notNull(),

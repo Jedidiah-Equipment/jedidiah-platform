@@ -5,7 +5,7 @@ export const TranscriptionPurpose = z.string().trim().min(1).max(60);
 export const TranscriptionText = z.string().max(4000);
 export const transcriptionLanguageTag = z.string().trim().min(2).max(16);
 export const transcriptionErrorCodes = [
-  // No provider key, provider failure or timeout.
+  // The speech model failed, timed out, or heard nothing.
   'transcription.unavailable',
   'transcription.invalid_upload',
   'transcription.not_found',

@@ -38,7 +38,7 @@ export function recordVoiceNoteTranscribed(properties: {
   captureEvent('voice note transcribed', properties);
 }
 
-/** Field Note events carry counts and flags only: a note's words and photos never leave the phone. */
+/** Field Note events carry counts and flags only: a note's words and photos never reach analytics. */
 export function recordFieldNoteCreated(properties: { hasPhoto: boolean; photoCount: number; hasDescription: boolean }) {
   addBreadcrumb('contracting', 'field note created', properties);
   captureEvent('field note created', properties);

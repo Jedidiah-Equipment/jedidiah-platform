@@ -1,7 +1,7 @@
 import fastifyCors from '@fastify/cors';
 import fastifyMultipart from '@fastify/multipart';
 import type { StorageAdapter } from '@pkg/core';
-import { PRODUCT_DOCUMENT_MAX_BYTES } from '@pkg/domain/equipment';
+import { UPLOAD_STREAM_CEILING_BYTES } from '@pkg/domain';
 import { type FastifyTRPCPluginOptions, fastifyTRPCPlugin } from '@trpc/server/adapters/fastify';
 import Fastify, { type FastifyBaseLogger } from 'fastify';
 import { type Auth, auth as appAuth } from './app-auth.js';
@@ -58,7 +58,7 @@ export async function buildServer(
   await registerAuthHandler(app, auth);
   await app.register(fastifyMultipart, {
     limits: {
-      fileSize: PRODUCT_DOCUMENT_MAX_BYTES,
+      fileSize: UPLOAD_STREAM_CEILING_BYTES,
     },
   });
 

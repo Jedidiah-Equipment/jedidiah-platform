@@ -5,6 +5,8 @@ import fastifyMultipart from '@fastify/multipart';
 import type { StorageAdapter, StoragePutInput, StoredObject } from '@pkg/core';
 import { type Db, user } from '@pkg/db';
 import { products } from '@pkg/db/equipment';
+import { UPLOAD_STREAM_CEILING_BYTES } from '@pkg/domain';
+import { PRODUCT_IMAGE_POLICY } from '@pkg/domain/equipment';
 import Fastify, { type FastifyInstance } from 'fastify';
 import { afterEach, beforeEach, describe, expect, vi } from 'vitest';
 import type { Auth } from '@/auth/auth.js';
@@ -141,6 +143,27 @@ describe('product brochure image HTTP routes', () => {
     expect(storage.objects.size).toBe(0);
   });
 
+  // Zero bytes sniff as no image, so core would answer content_type_not_allowed had it buffered them.
+  test('refuses an upload one byte over the Product Image cap on the stream, before core reads it', async ({
+    context,
+  }) => {
+    const storage = new MemoryStorage();
+    const app = await createApp(storage);
+
+    const response = await app.inject({
+      method: 'POST',
+      url: `/api/products/${context.product.id}/images/primary`,
+      ...buildMultipartUpload({ bytes: new Uint8Array(PRODUCT_IMAGE_POLICY.maxBytes + 1), filename: 'primary.png' }),
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toMatchObject({
+      data: { appCode: 'file.too_large' },
+      message: 'File must be 20 MB or smaller.',
+    });
+    expect(storage.objects.size).toBe(0);
+  });
+
   test('rejects an unknown slot', async ({ context }) => {
     const storage = new MemoryStorage();
     const app = await createApp(storage);
@@ -270,7 +293,7 @@ async function createApp(storage: StorageAdapter, imageOptions?: ProductImageRou
   const app = Fastify();
   app.decorate('auth', routeTestState.auth as Auth);
 
-  await app.register(fastifyMultipart);
+  await app.register(fastifyMultipart, { limits: { fileSize: UPLOAD_STREAM_CEILING_BYTES } });
   await registerEntityFileRoutes(app, [
     createProductImageRouteConfig(storage, imageOptions ?? { cacheDir: await createCacheDir() }),
   ]);

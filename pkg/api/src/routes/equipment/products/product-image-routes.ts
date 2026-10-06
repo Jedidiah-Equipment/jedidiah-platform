@@ -1,6 +1,7 @@
 import type { ImageCacheOptions, StorageAdapter } from '@pkg/core';
 import { isProductCoreError, readMobileProductImage, readProductImage, replaceProductImage } from '@pkg/core/equipment';
 import { db } from '@pkg/db';
+import { PRODUCT_IMAGE_POLICY } from '@pkg/domain/equipment';
 import { ProductImageSlotParams } from '@pkg/schema/equipment';
 import { z } from 'zod';
 
@@ -24,6 +25,7 @@ export function createProductImageRouteConfig(
     uploadForbiddenMessage: 'You do not have permission to update Product images.',
     readForbiddenMessage: 'You do not have permission to view this product image.',
     noFileMessage: 'Choose an image to upload.',
+    maxUploadBytes: PRODUCT_IMAGE_POLICY.maxBytes,
     // Owner-not-found surfaces as the Product's core error; this config owns that mapping so the generic
     // registrar stays free of Product specifics.
     mapOwnerError: (error) => {

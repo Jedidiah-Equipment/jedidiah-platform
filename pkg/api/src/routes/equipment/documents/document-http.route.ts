@@ -19,11 +19,12 @@ import {
   uploadSupplierInvoice,
 } from '@pkg/core/equipment';
 import { db } from '@pkg/db';
-import { validateDocumentPolicy } from '@pkg/domain/equipment';
+import { documentPolicies, validateDocumentPolicy } from '@pkg/domain/equipment';
 import { renderBrochurePdf, renderPurchaseOrderPdf } from '@pkg/pdf/equipment';
 import {
   CreditNoteSettlementInput,
   DocumentListByProductInput,
+  type DocumentOwnerType,
   JobDocumentInput,
   ProductDocumentInput,
   PurchaseOrderActionInput,
@@ -86,7 +87,7 @@ export async function registerDocumentHttpRoutes(
         'document.forbidden',
       );
       const params = DocumentListByProductInput.parse(request.params);
-      const file = await request.file();
+      const file = await request.file({ limits: { fileSize: documentPolicies.product.maxBytes } });
 
       if (!file) {
         reply.status(400).send({ message: 'Choose a document to upload.' });
@@ -111,7 +112,7 @@ export async function registerDocumentHttpRoutes(
 
       reply.status(201).send(document);
     } catch (error) {
-      sendDocumentHttpError(reply, error);
+      sendDocumentHttpError(reply, error, 'product');
     }
   });
 
@@ -141,7 +142,7 @@ export async function registerDocumentHttpRoutes(
       reply.header('Content-Disposition', createContentDisposition(result.document.filename));
       return reply.send(streamObjectBody(result.object.body));
     } catch (error) {
-      sendDocumentHttpError(reply, error);
+      sendDocumentHttpError(reply, error, 'product');
     }
   });
 
@@ -171,7 +172,7 @@ export async function registerDocumentHttpRoutes(
       reply.header('Content-Disposition', createContentDisposition(preview.filename, 'inline'));
       return reply.send(Buffer.from(preview.bytes));
     } catch (error) {
-      sendDocumentHttpError(reply, error);
+      sendDocumentHttpError(reply, error, 'product');
     }
   });
 
@@ -187,7 +188,7 @@ export async function registerDocumentHttpRoutes(
         'document.forbidden',
       );
       const params = JobDocumentUploadInput.parse(request.params);
-      const file = await request.file();
+      const file = await request.file({ limits: { fileSize: documentPolicies.job.maxBytes } });
 
       if (!file) {
         reply.status(400).send({ message: 'Choose a document to upload.' });
@@ -208,7 +209,7 @@ export async function registerDocumentHttpRoutes(
 
       reply.status(201).send(document);
     } catch (error) {
-      sendDocumentHttpError(reply, error);
+      sendDocumentHttpError(reply, error, 'job');
     }
   });
 
@@ -247,7 +248,7 @@ export async function registerDocumentHttpRoutes(
       reply.header('Content-Disposition', createContentDisposition(result.document.filename));
       return reply.send(streamObjectBody(result.object.body));
     } catch (error) {
-      sendDocumentHttpError(reply, error);
+      sendDocumentHttpError(reply, error, 'job');
     }
   });
 
@@ -277,7 +278,7 @@ export async function registerDocumentHttpRoutes(
       reply.header('Content-Disposition', createContentDisposition(result.document.filename));
       return reply.send(streamObjectBody(result.object.body));
     } catch (error) {
-      sendDocumentHttpError(reply, error);
+      sendDocumentHttpError(reply, error, 'quote');
     }
   });
 
@@ -308,7 +309,7 @@ export async function registerDocumentHttpRoutes(
       reply.header('Content-Disposition', createContentDisposition(preview.filename, 'inline'));
       return reply.send(Buffer.from(preview.bytes));
     } catch (error) {
-      sendDocumentHttpError(reply, error);
+      sendDocumentHttpError(reply, error, 'purchase_order');
     }
   });
 
@@ -330,7 +331,7 @@ export async function registerDocumentHttpRoutes(
         'document.forbidden',
       );
       const params = PurchaseOrderParams.parse(request.params);
-      const file = await request.file();
+      const file = await request.file({ limits: { fileSize: documentPolicies.purchase_order.maxBytes } });
 
       if (!file) {
         reply.status(400).send({ message: 'Choose a credit note to upload.' });
@@ -355,7 +356,7 @@ export async function registerDocumentHttpRoutes(
 
       reply.status(201).send(document);
     } catch (error) {
-      sendDocumentHttpError(reply, error);
+      sendDocumentHttpError(reply, error, 'purchase_order');
     }
   });
 
@@ -379,7 +380,7 @@ export async function registerDocumentHttpRoutes(
         'document.forbidden',
       );
       const params = PurchaseOrderParams.parse(request.params);
-      const file = await request.file();
+      const file = await request.file({ limits: { fileSize: documentPolicies.purchase_order.maxBytes } });
 
       if (!file) {
         reply.status(400).send({ message: 'Choose a Supplier invoice to upload.' });
@@ -410,7 +411,7 @@ export async function registerDocumentHttpRoutes(
 
       reply.status(201).send(document);
     } catch (error) {
-      sendDocumentHttpError(reply, error);
+      sendDocumentHttpError(reply, error, 'purchase_order');
     }
   });
 
@@ -446,7 +447,7 @@ export async function registerDocumentHttpRoutes(
       reply.header('Content-Disposition', createContentDisposition(result.document.filename));
       return reply.send(streamObjectBody(result.object.body));
     } catch (error) {
-      sendDocumentHttpError(reply, error);
+      sendDocumentHttpError(reply, error, 'purchase_order');
     }
   });
 }
@@ -536,7 +537,7 @@ function mapOwnerNotFound(
   });
 }
 
-function sendDocumentHttpError(reply: FastifyReply, error: unknown): void {
+function sendDocumentHttpError(reply: FastifyReply, error: unknown, ownerType: DocumentOwnerType): void {
   sendUploadHttpError(reply, error, {
     fallbackMessage: 'Document request failed.',
     invalidRequestMessage: 'Invalid document request.',
@@ -544,7 +545,7 @@ function sendDocumentHttpError(reply: FastifyReply, error: unknown): void {
       const result = validateDocumentPolicy({
         byteSize: Number.MAX_SAFE_INTEGER,
         contentType: 'application/pdf',
-        ownerType: 'product',
+        ownerType,
       });
 
       return {

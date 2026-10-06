@@ -1,0 +1,19 @@
+{
+  "business": "contracting",
+  "releasedAt": "2026-10-06T13:19:06.698Z",
+  "sections": [
+    {
+      "surface": "mobile",
+      "entries": [
+        {
+          "title": "Dictate reading comments and Field Notes",
+          "description": "While online, hold the microphone inside the text box and release it to add your speech as text in English, Afrikaans or both. Review and correct the text before saving; your corrections help future notes recognise names and local words."
+        },
+        {
+          "title": "Keep recording as your finger moves",
+          "description": "The page stays still while you hold the microphone, and slight finger movements no longer end your recording. Saving is paused until transcription finishes."
+        }
+      ]
+    }
+  ]
+}

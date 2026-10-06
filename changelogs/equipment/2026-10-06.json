@@ -1,0 +1,28 @@
+{
+  "business": "equipment",
+  "releasedAt": "2026-10-06T13:19:06.698Z",
+  "sections": [
+    {
+      "surface": "app",
+      "entries": [
+        {
+          "title": "See the size limit for oversized uploads",
+          "description": "When an image or logo is too large to upload, the error now tells you the maximum file size."
+        },
+        {
+          "title": "Share brochures with the current contact number",
+          "description": "Newly generated brochures now show 083 331 9183."
+        }
+      ]
+    },
+    {
+      "surface": "lander",
+      "entries": [
+        {
+          "title": "Call us on our updated number",
+          "description": "The website now displays 083 331 9183, with call links updated to match."
+        }
+      ]
+    }
+  ]
+}

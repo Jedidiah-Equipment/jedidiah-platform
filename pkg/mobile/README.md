@@ -92,7 +92,7 @@ query strings, or any form value.
 5. Capture one reading the server refuses (below the latest) with and without a photo. Confirm the
    `reading captured` event carries `refused`, `hasPhoto`, and `role` alongside the shared properties, and no
    machine, photo-path, or comment data.
-6. Publish with `ota:staging`. The script uploads `dist` Hermes maps after EAS Update; force another exception
+6. Publish with `ota:staging`. The script uploads `dist` Hermes maps before EAS Update; force another exception
    and confirm its OTA stack resolves to repository source.
 
 ## Release
@@ -111,7 +111,7 @@ prompts for.
 
 The runtime version is the native fingerprint with the store version left out (`fingerprint.config.js`),
 so the `version:bump` every mobile change set makes never blocks an OTA update on its own. Before exporting
-or publishing, the `ota:*` script queries the latest finished EAS store build for each platform on the
+or publishing, the `ota:*` script queries the latest finished EAS store build for each selected platform on the
 profile's channel and compares its runtime version to the current fingerprint. It stops if no build exists,
 EAS cannot verify it, or the fingerprints differ; in the last case, a full build and publish is required.
 EAS build completion does not establish that the build is available from the store or installed on phones,
@@ -129,10 +129,15 @@ given. Set `STAGING_POSTHOG_CLI_API_KEY`, `STAGING_POSTHOG_CLI_PROJECT_ID`, and
 `PRODUCTION_` names for production. Keep the unprefixed PostHog credentials in EAS for native builds.
 The script maps the selected profile's complete set to the names PostHog CLI expects. Leave all three
 values empty to use the release shell; a partial set stops the release. It refuses to publish without the
-required key and project ID, exports both native bundles, uploads their Hermes maps in symbol-set mode,
+required key and project ID, exports the selected native bundles, uploads their Hermes maps in symbol-set mode,
 and only then publishes that already-built `dist` directory:
 
 ```sh
 pnpm --filter @pkg/mobile ota:staging
+pnpm --filter @pkg/mobile ota:staging --platform ios
 pnpm --filter @pkg/mobile ota:production --message "..."
 ```
+
+Both platforms are selected by default. Pass `--platform ios` or `--platform android` (or `-p`) to check,
+export, and publish only that platform. A fingerprint mismatch on the other platform does not block a
+single-platform OTA; the selected platform must still match its latest finished build.

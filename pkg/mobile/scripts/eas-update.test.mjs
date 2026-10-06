@@ -6,6 +6,7 @@ import {
   resolveReleaseEnvironment,
   resolveSourceMapUploadCommand,
   resolveUpdateCommand,
+  resolveUpdatePlatforms,
 } from './eas-update.mjs';
 
 const easConfig = {
@@ -34,6 +35,7 @@ describe('resolveUpdateCommand', () => {
         'fix: thing',
       ],
       env: { APP_VARIANT: 'staging', EXPO_PUBLIC_API_BASE_URL: 'https://staging-api.example' },
+      platforms: ['android', 'ios'],
     });
   });
 
@@ -104,6 +106,49 @@ describe('resolveUpdateCommand', () => {
         profile: 'staging',
       }),
     ).toThrow('must match the staging build environment (preview)');
+  });
+});
+
+describe('resolveUpdatePlatforms', () => {
+  it.each([[[]], [['--platform', 'all']]])('defaults to both native platforms (%j)', (args) => {
+    expect(resolveUpdatePlatforms(args)).toEqual(['android', 'ios']);
+  });
+
+  it.each([
+    [['--platform', 'ios'], 'ios'],
+    [['--platform=ios'], 'ios'],
+    [['-p', 'ios'], 'ios'],
+    [['-p=ios'], 'ios'],
+    [['--platform', 'android'], 'android'],
+  ])('uses the same selected platform for export and publish (%j)', (args, platform) => {
+    const command = resolveUpdateCommand({ args, commitSubject: 'fix: thing', easConfig, profile: 'staging' });
+    expect(command.platforms).toEqual([platform]);
+    expect(command.args.slice(-args.length)).toEqual(args);
+    expect(resolveExportCommand(command.platforms).args).toEqual([
+      'exec',
+      'expo',
+      'export',
+      '--output-dir',
+      'dist',
+      '--source-maps',
+      '--dump-assetmap',
+      '--platform',
+      platform,
+      '--clear',
+    ]);
+  });
+
+  it.each([[['--platform', 'web']], [['--platform']], [['--platform=']], [['-p']]])(
+    'rejects invalid or missing platform values (%j)',
+    (args) => {
+      expect(() => resolveUpdatePlatforms(args)).toThrow('OTA --platform must be android, ios, or all');
+    },
+  );
+
+  it('rejects multiple platform flags rather than checking and publishing different platforms', () => {
+    expect(() => resolveUpdatePlatforms(['--platform', 'ios', '-p', 'android'])).toThrow(
+      'Specify OTA --platform only once',
+    );
   });
 });
 
@@ -185,6 +230,42 @@ describe('assertCompatibleBuilds', () => {
     );
   });
 
+  it('allows an iOS-only OTA when Android has a mismatched fingerprint', () => {
+    const calls = [];
+    const runEas = (executable, args) => {
+      calls.push(args);
+      return args[0] === 'fingerprint:generate' && args.includes('android')
+        ? JSON.stringify({ hash: 'android-new' })
+        : matchingEas(executable, args);
+    };
+
+    expect(() =>
+      assertCompatibleBuilds({
+        profile: 'staging',
+        build,
+        env: {},
+        platforms: resolveUpdateCommand({
+          args: ['--platform', 'ios'],
+          commitSubject: 'fix: thing',
+          easConfig,
+          profile: 'staging',
+        }).platforms,
+        runEas,
+      }),
+    ).not.toThrow();
+    expect(calls).toHaveLength(2);
+    expect(calls.every((args) => args.includes('ios') && !args.includes('android'))).toBe(true);
+  });
+
+  it('still blocks an iOS-only OTA when the iOS fingerprint changed', () => {
+    const runEas = (executable, args) =>
+      args[0] === 'fingerprint:generate' ? JSON.stringify({ hash: 'ios-new' }) : matchingEas(executable, args);
+
+    expect(() => assertCompatibleBuilds({ profile: 'staging', build, env: {}, platforms: ['ios'], runEas })).toThrow(
+      'Full build and publish required before staging OTA: ios fingerprint differs',
+    );
+  });
+
   it('rejects a build from the wrong channel even if EAS returns it', () => {
     const runEas = (_executable, args) => {
       const result = JSON.parse(matchingEas(_executable, args));
@@ -228,9 +309,9 @@ describe('resolveExportCommand', () => {
         '--source-maps',
         '--dump-assetmap',
         '--platform',
-        'ios',
-        '--platform',
         'android',
+        '--platform',
+        'ios',
         '--clear',
       ],
     });

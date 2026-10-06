@@ -7,6 +7,7 @@ import {
   replaceProductRangeLogo,
 } from '@pkg/core/equipment';
 import { db } from '@pkg/db';
+import { RANGE_IMAGE_POLICY, RANGE_LOGO_POLICY } from '@pkg/domain/equipment';
 import { ProductRangeImageParams, ProductRangeLogoParams } from '@pkg/schema/equipment';
 
 import { type EntityFileRouteConfig, RouteHttpError } from '../files/entity-file-http.route.js';
@@ -38,6 +39,7 @@ export function createProductRangeImageRouteConfig(storage: StorageAdapter): Ent
     uploadForbiddenMessage: 'You do not have permission to update Product Range images.',
     readForbiddenMessage: 'You do not have permission to view this Product Range image.',
     noFileMessage: 'Choose an image to upload.',
+    maxUploadBytes: RANGE_IMAGE_POLICY.maxBytes,
     mapOwnerError: mapProductRangeOwnerError,
     replace: ({ bytes, rawParams }) => {
       const params = ProductRangeImageParams.parse(rawParams);
@@ -63,6 +65,7 @@ export function createProductRangeLogoRouteConfig(storage: StorageAdapter): Enti
     uploadForbiddenMessage: 'You do not have permission to update Product Range logos.',
     readForbiddenMessage: 'You do not have permission to view this Product Range logo.',
     noFileMessage: 'Choose a logo to upload.',
+    maxUploadBytes: RANGE_LOGO_POLICY.maxBytes,
     mapOwnerError: mapProductRangeOwnerError,
     replace: ({ bytes, rawParams }) => {
       const params = ProductRangeLogoParams.parse(rawParams);

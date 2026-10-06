@@ -35,6 +35,10 @@ export type FilePolicy = {
   maxBytes: number;
 };
 
+// Business-blind backstop for the shared multipart plugin: the largest per-route cap in either business.
+// Every upload route passes its own policy's cap; none may rely on this one.
+export const UPLOAD_STREAM_CEILING_BYTES = 100 * 1024 * 1024;
+
 export type FilePolicyViolationCode = 'file.content_type_not_allowed' | 'file.too_large';
 
 export type FileValidationResult =

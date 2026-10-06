@@ -5,6 +5,7 @@ import fastifyMultipart from '@fastify/multipart';
 import type { StorageAdapter, StoragePutInput, StoredObject } from '@pkg/core';
 import { type Db, user } from '@pkg/db';
 import { products } from '@pkg/db/equipment';
+import { PRODUCT_IMAGE_MAX_BYTES } from '@pkg/schema/equipment';
 import Fastify, { type FastifyInstance } from 'fastify';
 import { afterEach, beforeEach, describe, expect, vi } from 'vitest';
 import type { Auth } from '@/auth/auth.js';
@@ -137,6 +138,24 @@ describe('product brochure image HTTP routes', () => {
     expect(response.json()).toMatchObject({
       data: { appCode: 'file.content_type_not_allowed' },
       message: 'Only PNG or JPEG files can be uploaded.',
+    });
+    expect(storage.objects.size).toBe(0);
+  });
+
+  test('refuses an image one byte over the Product Image cap on the stream', async ({ context }) => {
+    const storage = new MemoryStorage();
+    const app = await createApp(storage);
+
+    const response = await app.inject({
+      method: 'POST',
+      url: `/api/products/${context.product.id}/images/primary`,
+      ...buildMultipartUpload({ bytes: pngBytes(PRODUCT_IMAGE_MAX_BYTES + 1), filename: 'primary.png' }),
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toMatchObject({
+      data: { appCode: 'file.too_large' },
+      message: 'File must be 20 MB or smaller.',
     });
     expect(storage.objects.size).toBe(0);
   });

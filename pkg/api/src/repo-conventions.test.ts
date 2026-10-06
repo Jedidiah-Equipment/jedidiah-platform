@@ -86,6 +86,28 @@ describe('display formatting', () => {
   });
 });
 
+describe('multipart uploads', () => {
+  it('caps every route read at its own policy rather than the shared backstop', () => {
+    const result = spawnSync(
+      'git',
+      ['grep', '--untracked', '-lE', String.raw`request\.(file|parts)\(`, '--', 'pkg/api/src/routes/**', ':!*.test.ts'],
+      { cwd: repoRoot, encoding: 'utf8' },
+    );
+    const files = result.stdout.split('\n').filter((line) => line.length > 0);
+    const offenders = files.flatMap((file) =>
+      [...readFileSync(join(repoRoot, file), 'utf8').matchAll(/request\.(?:file|parts)\((?!\s*\{\s*limits\b)/g)].map(
+        (match) => `${file}: ${match[0]}`,
+      ),
+    );
+
+    expect(files.length).toBeGreaterThan(0);
+    expect(
+      offenders,
+      'Pass { limits: { fileSize: <policy maxBytes> } } to request.file() / request.parts(); the plugin ceiling in server.ts is a backstop only',
+    ).toEqual([]);
+  });
+});
+
 describe('Contracting Job Actions', () => {
   it('keeps the status groups out of web and mobile, which read Job Actions instead', () => {
     const result = spawnSync(

@@ -1,4 +1,5 @@
 import { FileNotFoundError, FilePolicyViolationError, type StoredObject } from '@pkg/core';
+import { fileTooLargeMessage } from '@pkg/domain';
 import type { AppPermission } from '@pkg/schema';
 import type { FastifyInstance, FastifyReply } from 'fastify';
 
@@ -24,6 +25,9 @@ export type EntityFileRouteConfig = {
   // Maps an owner error raised by the binding (e.g. ProductNotFoundError) to a route response, or returns
   // undefined to let it propagate. Keeps entity-specific error knowledge out of this generic registrar.
   mapOwnerError: (error: unknown) => RouteHttpError | undefined;
+  // The entity's file policy cap, applied to the upload stream so an oversized file is refused before it
+  // is buffered.
+  maxUploadBytes: number;
   noFileMessage: string;
   read: (args: { rawParams: unknown; rawQuery: unknown }) => Promise<StoredObject>;
   readForbiddenMessage: string;
@@ -51,7 +55,7 @@ function registerEntityFileConfig(app: FastifyInstance, config: EntityFileRouteC
 
     try {
       requirePermission(auth, config.uploadPermission, config.uploadForbiddenMessage, 'file.forbidden');
-      const file = await request.file();
+      const file = await request.file({ limits: { fileSize: config.maxUploadBytes } });
 
       if (!file) {
         reply.status(400).send({ message: config.noFileMessage });
@@ -88,7 +92,7 @@ function sendFileHttpError(reply: FastifyReply, error: unknown, config: EntityFi
   sendUploadHttpError(reply, toFileRouteError(error, config) ?? error, {
     fallbackMessage: 'File request failed.',
     invalidRequestMessage: 'Invalid file request.',
-    onFileTooLarge: () => ({ appCode: 'file.too_large', message: 'File is too large.' }),
+    onFileTooLarge: () => ({ appCode: 'file.too_large', message: fileTooLargeMessage(config.maxUploadBytes) }),
   });
 }
 

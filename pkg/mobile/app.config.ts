@@ -31,7 +31,7 @@ export default ({ config }: ConfigContext): AppConfig => {
     scheme: variant.scheme,
     // `version` is the human-facing string; EAS owns the Android `versionCode` remotely
     // (`cli.appVersionSource: remote` + per-profile `autoIncrement` in eas.json).
-    version: '1.71.0',
+    version: '1.72.0',
     orientation: 'portrait',
     userInterfaceStyle: 'automatic',
     newArchEnabled: true,

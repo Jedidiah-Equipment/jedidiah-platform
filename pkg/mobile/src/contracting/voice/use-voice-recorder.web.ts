@@ -1,14 +1,13 @@
 import type { VoiceRecorder } from './use-voice-recorder';
 
 const unsupported: VoiceRecorder = {
-  supported: false,
   recording: false,
   seconds: 0,
-  start: async () => 'denied',
+  start: async () => 'unsupported',
   stop: async () => null,
 };
 
-/** The mobile web build has no voice notes: the control is a plain text area there. */
+/** The mobile web build cannot record: the mic still shows, and a press explains that voice notes need the app. */
 export function useVoiceRecorder(): VoiceRecorder {
   return unsupported;
 }

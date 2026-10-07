@@ -96,3 +96,39 @@ export const ApiConfig = z
 export function getApiConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
   return ApiConfig.parse(env);
 }
+
+// Startup logs reach Railway, so only these keys are printed. An allowlist keeps a newly added secret out by default.
+const LOGGABLE_CONFIG_KEYS = [
+  'NODE_ENV',
+  'APP_ENV',
+  'APP_BASE_URL',
+  'API_BASE_URL',
+  'AUTH_TRUSTED_ORIGINS',
+  'EMAIL_PROVIDER',
+  'EMAIL_FROM',
+  'DOCUMENT_STORAGE_BUCKET',
+  'DOCUMENT_STORAGE_ENDPOINT',
+  'DOCUMENT_STORAGE_FORCE_PATH_STYLE',
+  'DOCUMENT_STORAGE_REGION',
+  'API_IMAGE_CACHE_DIR',
+  'OPENAI_MODEL',
+  'OPENAI_REASONING_EFFORT',
+  'OPENAI_TRANSLATION_MODEL',
+  'OPENAI_TRANSCRIPTION_MODEL',
+  'PORT',
+  'LOG_LEVEL',
+  'LOG_DOMAINS_DISABLED',
+  'POSTHOG_ENABLED',
+  'POSTHOG_HOST',
+  'RAILWAY_DEPLOYMENT_ID',
+  'RAILWAY_SNAPSHOT_ID',
+  'RAILWAY_SERVICE_NAME',
+  'RAILWAY_ENVIRONMENT_NAME',
+  'RAILWAY_GIT_COMMIT_SHA',
+] as const satisfies readonly (keyof ApiConfig)[];
+
+export type LoggableApiConfig = Pick<ApiConfig, (typeof LOGGABLE_CONFIG_KEYS)[number]>;
+
+export function loggableConfig(config: ApiConfig): LoggableApiConfig {
+  return Object.fromEntries(LOGGABLE_CONFIG_KEYS.map((key) => [key, config[key]])) as LoggableApiConfig;
+}

@@ -2,6 +2,7 @@ import type { StorageAdapter, StoragePutInput, StoredObject } from '@pkg/core';
 import { describe, expect, it, vi } from 'vitest';
 
 import type { ApiConfig } from './env.js';
+import { log } from './logger.js';
 import type { Observability } from './observability.js';
 import { buildServer } from './server.js';
 
@@ -54,6 +55,35 @@ describe('API server', () => {
     try {
       expect(app.hasRoute({ method: 'POST', url: '/ai/chat' })).toBe(true);
     } finally {
+      await app.close();
+    }
+  });
+
+  it('never writes a secret to the startup log', async () => {
+    const secrets = {
+      DATABASE_URL: 'postgres://app:db-password-canary@db.internal:5432/app',
+      TEST_DATABASE_URL: 'postgres://app:test-db-password-canary@db.internal:5432/app_test',
+      AUTH_SECRET: 'auth-secret-canary'.padEnd(32, 'x'),
+      RESEND_API_KEY: 'resend-key-canary',
+      DOCUMENT_STORAGE_ACCESS_KEY_ID: 'storage-access-key-canary',
+      DOCUMENT_STORAGE_SECRET_ACCESS_KEY: 'storage-secret-canary',
+      OPENAI_API_KEY: 'openai-key-canary',
+      POSTHOG_PROJECT_TOKEN: 'posthog-token-canary',
+    } satisfies Partial<ApiConfig>;
+    const info = vi.spyOn(log.root, 'info');
+    const app = await buildServer({ ...config, ...secrets }, observability, new MemoryStorage());
+
+    try {
+      const written = JSON.stringify(info.mock.calls);
+
+      expect(written).toContain('Building server');
+      expect(written).toContain(config.API_BASE_URL);
+      for (const [key, value] of Object.entries(secrets)) {
+        expect(written, key).not.toContain(value);
+      }
+      expect(written).not.toContain('canary');
+    } finally {
+      info.mockRestore();
       await app.close();
     }
   });

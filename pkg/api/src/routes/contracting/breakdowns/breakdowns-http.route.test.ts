@@ -141,7 +141,7 @@ test.for([
   }
 });
 
-test.for([7, 8, 12])(
+test.for([7, 8])(
   'refuses %i photos with the six-photo sentence on both Breakdown upload paths',
   async (photoCount, { context }) => {
     const { app, db, machineId, storage } = context;

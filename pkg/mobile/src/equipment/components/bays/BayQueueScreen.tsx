@@ -23,7 +23,6 @@ import {
   type BayQueueTimelineSlot,
   useBaySchedule,
 } from '@/equipment/lib/use-bay-schedule';
-import { useGlobalRefresh } from '@/lib/use-global-refresh';
 import { useColorMode } from '@/theme/use-color-mode';
 
 /** Tablet breakpoint: at/above this width the list and detail panes sit side by side. */
@@ -88,11 +87,10 @@ const timelineClasses = {
 export function BayQueueScreen({ bayId, onBack }: { bayId: string; onBack: () => void }) {
   const state = useBaySchedule(bayId);
   const isWide = useWindowDimensions().width >= WIDE_BREAKPOINT;
-  const refresh = useGlobalRefresh();
 
   if (state.status === 'pending') {
     return (
-      <Frame onBack={onBack} operator={null} refresh={refresh} title="Bay schedule">
+      <Frame onBack={onBack} operator={null} title="Bay schedule">
         <ScheduleSkeleton />
       </Frame>
     );
@@ -100,7 +98,7 @@ export function BayQueueScreen({ bayId, onBack }: { bayId: string; onBack: () =>
 
   if (state.status === 'forbidden') {
     return (
-      <Frame onBack={onBack} operator={null} refresh={refresh} title="Bay schedule">
+      <Frame onBack={onBack} operator={null} title="Bay schedule">
         <Text className="text-sm text-foreground" weight="semibold">
           You don’t have access to this Bay schedule.
         </Text>
@@ -113,7 +111,7 @@ export function BayQueueScreen({ bayId, onBack }: { bayId: string; onBack: () =>
 
   if (state.status === 'error') {
     return (
-      <Frame onBack={onBack} operator={null} refresh={refresh} title="Bay schedule">
+      <Frame onBack={onBack} operator={null} title="Bay schedule">
         <Text className="text-sm text-danger" weight="semibold">
           Couldn’t load this bay’s schedule.
         </Text>
@@ -124,7 +122,7 @@ export function BayQueueScreen({ bayId, onBack }: { bayId: string; onBack: () =>
 
   if (state.status === 'not-found') {
     return (
-      <Frame onBack={onBack} operator={null} refresh={refresh} title="Bay schedule">
+      <Frame onBack={onBack} operator={null} title="Bay schedule">
         <Text className="text-sm text-foreground" weight="semibold">
           Bay not found.
         </Text>
@@ -133,19 +131,17 @@ export function BayQueueScreen({ bayId, onBack }: { bayId: string; onBack: () =>
     );
   }
 
-  return <Ready isWide={isWide} onBack={onBack} refresh={refresh} state={state} />;
+  return <Ready isWide={isWide} onBack={onBack} state={state} />;
 }
 
 function Ready({
   state,
   isWide,
   onBack,
-  refresh,
 }: {
   state: Extract<BayQueueState, { status: 'ready' }>;
   isWide: boolean;
   onBack: () => void;
-  refresh: ReturnType<typeof useGlobalRefresh>;
 }) {
   const { bay, slotsById } = state;
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -196,7 +192,7 @@ function Ready({
           <ScrollView
             className="border-border"
             contentContainerStyle={SECONDARY_PAGE_CONTENT_STYLE}
-            refreshControl={<RefreshControl {...refresh} />}
+            refreshControl={<RefreshControl />}
             style={isWide ? { flex: 2, borderRightWidth: 1 } : { flex: 1 }}
           >
             <ListPane onSelect={select} selectedId={effectiveId} state={state} />
@@ -205,7 +201,7 @@ function Ready({
         {showDetail ? (
           <ScrollView
             contentContainerStyle={SECONDARY_PAGE_CONTENT_STYLE}
-            refreshControl={<RefreshControl {...refresh} />}
+            refreshControl={<RefreshControl />}
             style={isWide ? { flex: 3 } : { flex: 1 }}
           >
             {selected ? (
@@ -490,13 +486,11 @@ function Frame({
   title,
   operator,
   onBack,
-  refresh,
   children,
 }: {
   title: string;
   operator: BayOperator | null;
   onBack: () => void;
-  refresh: ReturnType<typeof useGlobalRefresh>;
   children: React.ReactNode;
 }) {
   return (
@@ -515,7 +509,7 @@ function Frame({
         subtitle="BAY SCHEDULE"
         title={title}
       />
-      <ScrollView contentContainerStyle={SECONDARY_PAGE_CONTENT_STYLE} refreshControl={<RefreshControl {...refresh} />}>
+      <ScrollView contentContainerStyle={SECONDARY_PAGE_CONTENT_STYLE} refreshControl={<RefreshControl />}>
         {children}
       </ScrollView>
     </>

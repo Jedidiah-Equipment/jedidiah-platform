@@ -12,13 +12,12 @@ import {
   ListDropdownControl,
   ListSearchControl,
 } from '@/components/ListControls';
-import { PaginatedList } from '@/components/PaginatedList';
+import { infiniteQueryPagination, TabRootList } from '@/components/TabRootList';
 import { MainToolbar } from '@/components/TopToolbar';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { Text } from '@/components/ui/text';
 import { contractingStorageKey } from '@/contracting/lib/contracting-storage';
 import { useDebouncedSearch } from '@/lib/use-debounced-search';
-import { useGlobalRefresh } from '@/lib/use-global-refresh';
 import { usePersistedState } from '@/lib/use-persisted-state';
 import { isStageFilter, readableStage, type StageFilter, stageOptions, stageQueues } from './job-stage-filter';
 import { type JobListSort, jobListSorts, useJobList, useJobListAccess, useJobQueueCounts } from './use-jobs';
@@ -36,7 +35,6 @@ const SORT_OPTIONS: readonly ListControlOption<JobListSort>[] = [
 export default function JobsScreen() {
   const { canRead, readable, open } = useJobListAccess();
   const counts = useJobQueueCounts();
-  const refresh = useGlobalRefresh();
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebouncedSearch(search);
   const [savedStage, setStage] = usePersistedState<StageFilter>(STAGE_KEY, 'open', isStageFilter);
@@ -47,7 +45,7 @@ export default function JobsScreen() {
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top', 'left', 'right']}>
       <MainToolbar title="Jobs" subtitle="CONTRACTING" helpTopic="contractingMobileJobs" />
-      <PaginatedList
+      <TabRootList
         header={
           <ListControlRow
             leading={
@@ -85,6 +83,7 @@ export default function JobsScreen() {
         }
         sections={[{ key: 'jobs', data: jobs }]}
         keyOf={(job) => job.id}
+        pagination={infiniteQueryPagination(list, 'Loading more Jobs…')}
         renderItem={(job) => <JobRow job={job} />}
         initialLoading={canRead && list.isPending}
         loadingContent={<Text className="text-muted-foreground">Loading Jobs…</Text>}
@@ -99,12 +98,6 @@ export default function JobsScreen() {
                   : 'No open Jobs.'}
           </Text>
         }
-        hasNextPage={list.hasNextPage}
-        loadingMore={list.isFetchingNextPage}
-        loadingMoreLabel="Loading more Jobs…"
-        onLoadMore={() => void list.fetchNextPage()}
-        refreshing={refresh.refreshing}
-        onRefresh={refresh.onRefresh}
       />
     </SafeAreaView>
   );

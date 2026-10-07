@@ -9,7 +9,6 @@ import { StoresActorHeader } from '@/equipment/components/stores/StoresActorHead
 import { SecondaryPageToolbar } from '@/equipment/components/TopToolbar';
 import { useStoresActor } from '@/equipment/lib/stores-actor';
 import { isNearVerticalScrollEnd } from '@/lib/scroll-pagination';
-import { useGlobalRefresh } from '@/lib/use-global-refresh';
 import { QuickSwitchModal } from './QuickSwitchModal';
 
 /**
@@ -36,7 +35,6 @@ export function StoresScreen({
   subtitle: string;
   title: string;
 }) {
-  const refresh = useGlobalRefresh();
   const { selectActor } = useStoresActor();
   const [quickSwitchOpen, setQuickSwitchOpen] = useState(false);
 
@@ -59,7 +57,7 @@ export function StoresScreen({
               }
             : undefined
         }
-        refreshControl={<RefreshControl {...refresh} />}
+        refreshControl={<RefreshControl />}
         scrollEventThrottle={onNearScrollEnd ? 100 : undefined}
       >
         <StoresActorHeader onSwitch={() => setQuickSwitchOpen(true)} />

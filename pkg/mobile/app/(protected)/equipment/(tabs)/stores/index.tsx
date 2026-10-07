@@ -16,7 +16,6 @@ import { MainTabToolbar } from '@/equipment/components/TopToolbar';
 import { useStoresActor } from '@/equipment/lib/stores-actor';
 import { MAIN_TAB_PARENTS } from '@/equipment/lib/toolbar-navigation';
 import { useStoresScan } from '@/equipment/lib/use-stores-scan';
-import { useGlobalRefresh } from '@/lib/use-global-refresh';
 
 /**
  * The tablet's home: who is at it, one scan field, and the two places a shift starts somewhere
@@ -28,7 +27,6 @@ import { useGlobalRefresh } from '@/lib/use-global-refresh';
  */
 export default function StoresScanHomeRoute() {
   const router = useRouter();
-  const refresh = useGlobalRefresh();
   const { keepAlive, selectActor } = useStoresActor();
   const { clearScanError, scan, scanError } = useStoresScan();
   const [quickSwitchOpen, setQuickSwitchOpen] = useState(false);
@@ -45,7 +43,7 @@ export default function StoresScanHomeRoute() {
       <ScrollView
         contentContainerStyle={{ ...MAIN_PAGE_CONTENT_STYLE, gap: 20 }}
         keyboardShouldPersistTaps="handled"
-        refreshControl={<RefreshControl {...refresh} />}
+        refreshControl={<RefreshControl />}
       >
         <StoresActorHeader onSwitch={() => setQuickSwitchOpen(true)} />
 

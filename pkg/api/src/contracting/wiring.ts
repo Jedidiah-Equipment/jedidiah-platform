@@ -27,6 +27,7 @@ import { registerJobCardHttpRoutes } from '../routes/contracting/jobs/job-card-h
 import { registerReadingHttpRoutes } from '../routes/contracting/readings/readings-http.route.js';
 import type { HintDerivations } from '../routes/contracting/transcriptions/transcriptions.router.js';
 import { registerTranscriptionHttpRoutes } from '../routes/contracting/transcriptions/transcriptions-http.route.js';
+import { serializeError } from '../trpc/errors.js';
 
 export type ContractingRouterDependencies = {
   hintDerivations: HintDerivations;
@@ -44,7 +45,11 @@ export async function registerContracting(
   });
   const readMeterPhoto: ReadMeterPhoto = (input) => readMeterPhotoWithModel({ ...input, model: chatModel });
   const engine: TranscriptionEngine = {
-    transcribe: (input) => transcribeVoiceNote({ ...input, model: transcriptionModel }),
+    transcribe: (input) =>
+      transcribeVoiceNote({ ...input, model: transcriptionModel }).catch((error: unknown) => {
+        log.root.error({ error: serializeError(error) }, 'Voice note transcription failed');
+        throw error;
+      }),
     tidy: (input) => tidyTranscript({ ...input, model: chatModel }),
     derive: (input) => deriveTranscriptionHint({ ...input, model: chatModel }),
   };

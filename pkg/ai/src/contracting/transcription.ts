@@ -3,7 +3,13 @@ import type { ActiveHint, VoiceTranscript } from '@pkg/core/contracting';
 import { promptFromKeyterms, TRANSCRIPTION_HINT_CAP } from '@pkg/domain/contracting';
 import { UUID } from '@pkg/schema';
 import { HintDerivation } from '@pkg/schema/contracting';
-import { generateObject, type LanguageModel, type TranscriptionModel, experimental_transcribe as transcribe } from 'ai';
+import {
+  generateObject,
+  type LanguageModel,
+  NoTranscriptGeneratedError,
+  type TranscriptionModel,
+  experimental_transcribe as transcribe,
+} from 'ai';
 import { z } from 'zod';
 
 export function createTranscriptionModel({ apiKey, model }: { apiKey: string; model: string }): TranscriptionModel {
@@ -31,6 +37,10 @@ export async function transcribeVoiceNote({
       // TODO(ai-sdk): send keyterms as providerOptions.openai.keywords and languages: ['en', 'af'] once the provider forwards them.
       openai: { prompt: promptFromKeyterms(keyterms), responseFormat: 'json', timestampGranularities: [] },
     },
+  }).catch((error: unknown) => {
+    // The SDK throws on an empty transcript; silence is an answer, not an outage.
+    if (NoTranscriptGeneratedError.isInstance(error)) return { text: '', language: undefined };
+    throw error;
   });
 
   return { text: result.text.trim(), language: result.language ?? null };

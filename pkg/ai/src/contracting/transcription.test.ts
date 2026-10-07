@@ -44,6 +44,17 @@ describe('transcribeVoiceNote', () => {
     expect(sent?.has('keywords')).toBe(false);
     expect(sent?.has('timestamp_granularities[]')).toBe(false);
   });
+
+  it('returns empty text when nothing was heard, so the caller can say so instead of reporting an outage', async () => {
+    const model = createOpenAI({
+      apiKey: 'test-key',
+      fetch: async () => Response.json({ text: '', languages: [] }),
+    }).transcription('gpt-transcribe');
+
+    await expect(
+      transcribeVoiceNote({ audio: new Uint8Array([0, 0, 0, 32, 0x66, 0x74, 0x79, 0x70]), keyterms: [], model }),
+    ).resolves.toEqual({ text: '', language: null });
+  });
 });
 
 describe('tidyTranscript', () => {

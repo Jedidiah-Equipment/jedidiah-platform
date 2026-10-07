@@ -5,7 +5,7 @@ export type AutosaveStatus = 'idle' | 'saving' | 'saved' | 'invalid' | 'error';
 
 export type AutosaveSnapshot<TValues> = {
   getValues: () => TValues;
-  save: (values: TValues) => Promise<void>;
+  save: (values: TValues, saved: TValues) => Promise<void>;
   serialize?: (values: TValues) => string;
   /** Every blocking problem with `values`; empty means saveable. */
   validate: (values: TValues) => readonly FormIssue[];
@@ -26,14 +26,15 @@ export type AutosaveControllerState = {
 
 type AutosaveStateListener = (state: AutosaveControllerState) => void;
 
-export function createAutosaveController<TValues>({
+export function createAutosaveController<TValues extends Record<string, unknown>>({
   getValues,
   save,
   serialize = stableSerialize,
   validate,
 }: AutosaveSnapshot<TValues>) {
   const listeners = new Set<AutosaveStateListener>();
-  let lastSavedSnapshot = serialize(getValues());
+  let lastSavedValues = getValues();
+  let lastSavedSnapshot = serialize(lastSavedValues);
   let pendingSnapshot: string | null = null;
   let savePromise: Promise<boolean> | null = null;
   let state: AutosaveControllerState = {
@@ -55,7 +56,7 @@ export function createAutosaveController<TValues>({
     const values = getValues();
     const currentSnapshot = serialize(values);
 
-    if (currentSnapshot === lastSavedSnapshot && state.status !== 'error') {
+    if (!savePromise && currentSnapshot === lastSavedSnapshot && state.status !== 'error') {
       updateState({
         errorMessage: null,
         hasUnsavedChanges: false,
@@ -81,6 +82,7 @@ export function createAutosaveController<TValues>({
     }
 
     if (savePromise) {
+      pendingSnapshot = currentSnapshot;
       return savePromise;
     }
 
@@ -93,10 +95,21 @@ export function createAutosaveController<TValues>({
       status: 'saving',
     });
 
-    const activeSavePromise = save(values)
+    const savedAtRequest = lastSavedValues;
+    const activeSavePromise = save(values, savedAtRequest)
       .then(() => {
-        lastSavedSnapshot = currentSnapshot;
-        if (pendingSnapshot !== null && pendingSnapshot !== currentSnapshot) {
+        // A refetch may have confirmed newer fields during the request. Acknowledge the request only
+        // where the baseline is still the one it started with; never acknowledge newer local edits.
+        const saved = { ...lastSavedValues };
+        for (const key of Object.keys(values) as (keyof TValues)[]) {
+          if (stableSerialize(lastSavedValues[key]) === stableSerialize(savedAtRequest[key])) {
+            saved[key] = values[key];
+          }
+        }
+        lastSavedValues = saved;
+        lastSavedSnapshot = serialize(saved);
+        const hasUnsavedChanges = serialize(getValues()) !== lastSavedSnapshot;
+        if (hasUnsavedChanges && pendingSnapshot !== null && pendingSnapshot !== currentSnapshot) {
           savePromise = null;
           return flush();
         }
@@ -104,10 +117,10 @@ export function createAutosaveController<TValues>({
         pendingSnapshot = null;
         updateState({
           errorMessage: null,
-          hasUnsavedChanges: false,
+          hasUnsavedChanges,
           issues: [],
           shouldBlockNavigation: false,
-          status: 'saved',
+          status: hasUnsavedChanges ? 'idle' : 'saved',
         });
         return true;
       })
@@ -134,10 +147,11 @@ export function createAutosaveController<TValues>({
   function markChanged() {
     const currentSnapshot = serialize(getValues());
     if (currentSnapshot === lastSavedSnapshot) {
+      pendingSnapshot = savePromise ? currentSnapshot : null;
       updateState({
-        hasUnsavedChanges: false,
+        hasUnsavedChanges: savePromise !== null,
         shouldBlockNavigation: false,
-        status: state.status === 'saving' ? 'saving' : 'saved',
+        status: savePromise ? 'saving' : 'saved',
       });
       return;
     }
@@ -152,6 +166,7 @@ export function createAutosaveController<TValues>({
 
   return {
     flush,
+    getSavedValues: () => lastSavedValues,
     getState: () => state,
     hasPendingChanges: () => state.hasUnsavedChanges || serialize(getValues()) !== lastSavedSnapshot,
     markChanged,
@@ -162,16 +177,17 @@ export function createAutosaveController<TValues>({
       return () => listeners.delete(listener);
     },
     updateSavedValues(values: TValues) {
+      lastSavedValues = values;
       lastSavedSnapshot = serialize(values);
-      if (pendingSnapshot === lastSavedSnapshot) {
-        pendingSnapshot = null;
-      }
+      // Refetching detects unsaved typing but does not commit it. Only markChanged/flush queue a save.
+      if (!savePromise && pendingSnapshot === lastSavedSnapshot) pendingSnapshot = null;
+      const hasUnsavedChanges = savePromise !== null || serialize(getValues()) !== lastSavedSnapshot;
       updateState({
-        errorMessage: null,
-        hasUnsavedChanges: pendingSnapshot !== null,
-        issues: [],
-        shouldBlockNavigation: false,
-        status: pendingSnapshot === null ? 'saved' : state.status,
+        errorMessage: hasUnsavedChanges ? state.errorMessage : null,
+        hasUnsavedChanges,
+        issues: hasUnsavedChanges ? state.issues : [],
+        shouldBlockNavigation: hasUnsavedChanges && state.shouldBlockNavigation,
+        status: savePromise ? 'saving' : hasUnsavedChanges ? state.status : 'saved',
       });
     },
   };

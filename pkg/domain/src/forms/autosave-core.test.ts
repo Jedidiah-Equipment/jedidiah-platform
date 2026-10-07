@@ -34,7 +34,7 @@ describe('createAutosaveController', () => {
     expect(controller.hasPendingChanges()).toBe(true);
     await expect(controller.flush()).resolves.toBe(true);
     expect(save).toHaveBeenCalledTimes(1);
-    expect(save).toHaveBeenCalledWith({ name: 'Bolt Co' });
+    expect(save).toHaveBeenCalledWith({ name: 'Bolt Co' }, { name: 'Acme' });
     expect(controller.getState()).toMatchObject({
       hasUnsavedChanges: false,
       shouldBlockNavigation: false,
@@ -75,6 +75,122 @@ describe('createAutosaveController', () => {
     expect(controller.getState()).toMatchObject({ hasUnsavedChanges: false, status: 'saved' });
   });
 
+  it('acknowledges a request without losing refreshed fields or resaving them', async () => {
+    let values = { name: 'Acme', due: 100 };
+    const firstSave = deferredSave();
+    const save = vi.fn().mockReturnValue(firstSave.promise);
+    const controller = createAutosaveController({ getValues: () => values, save, validate: () => [] });
+    values = { name: 'Bolt Co', due: 100 };
+    controller.markChanged();
+    const flush = controller.flush();
+    values = { name: 'Bolt Co', due: 200 };
+    controller.updateSavedValues({ name: 'Acme', due: 200 });
+    expect(controller.getState()).toMatchObject({ hasUnsavedChanges: true, status: 'saving' });
+    expect(controller.hasPendingChanges()).toBe(true);
+    firstSave.resolve();
+    await expect(flush).resolves.toBe(true);
+    expect(controller.getSavedValues()).toEqual({ name: 'Bolt Co', due: 200 });
+    expect(controller.getState()).toMatchObject({
+      hasUnsavedChanges: false,
+      shouldBlockNavigation: false,
+      status: 'saved',
+    });
+    expect(controller.hasPendingChanges()).toBe(false);
+    await expect(controller.flush()).resolves.toBe(true);
+    expect(save).toHaveBeenCalledTimes(1);
+  });
+
+  it.each(['', 'Bolt Co draft'])(
+    'does not flush uncommitted text "%s" when a refetch lands during a save',
+    async (draft) => {
+      let values = { name: 'Acme', due: 100 };
+      const firstSave = deferredSave();
+      const save = vi.fn().mockReturnValueOnce(firstSave.promise).mockResolvedValue(undefined);
+      const controller = createAutosaveController({
+        getValues: () => values,
+        save,
+        validate: (candidate) => (candidate.name ? [] : [NAME_REQUIRED]),
+      });
+      values = { name: 'Bolt Co', due: 100 };
+      controller.markChanged();
+      const flush = controller.flush();
+      values = { name: draft, due: 200 };
+      // Typing has not blurred or explicitly flushed, so it has not queued another save.
+      controller.updateSavedValues({ name: 'Acme', due: 200 });
+      firstSave.resolve();
+      await expect(flush).resolves.toBe(true);
+      expect(save).toHaveBeenCalledTimes(1);
+      expect(values).toEqual({ name: draft, due: 200 });
+      expect(controller.hasPendingChanges()).toBe(true);
+      expect(controller.getState()).toMatchObject({
+        hasUnsavedChanges: true,
+        shouldBlockNavigation: false,
+        status: 'idle',
+      });
+      values = { name: 'Bolt Co finished', due: 200 };
+      controller.markChanged();
+      await expect(controller.flush()).resolves.toBe(true);
+      expect(save).toHaveBeenLastCalledWith({ name: 'Bolt Co finished', due: 200 }, { name: 'Bolt Co', due: 200 });
+      expect(controller.hasPendingChanges()).toBe(false);
+    },
+  );
+
+  it('waits for an in-flight request even when a refetch already matches the form', async () => {
+    let values = { name: 'Acme' };
+    const firstSave = deferredSave();
+    const controller = createAutosaveController({
+      getValues: () => values,
+      save: () => firstSave.promise,
+      validate: () => [],
+    });
+    values = { name: 'Bolt Co' };
+    const firstFlush = controller.flush();
+    controller.updateSavedValues(values);
+    let finished = false;
+    const leaveFlush = controller.flush().then((saved) => {
+      finished = true;
+      return saved;
+    });
+    await Promise.resolve();
+    expect(finished).toBe(false);
+    expect(controller.hasPendingChanges()).toBe(true);
+    firstSave.resolve();
+    await expect(firstFlush).resolves.toBe(true);
+    await expect(leaveFlush).resolves.toBe(true);
+    expect(controller.hasPendingChanges()).toBe(false);
+  });
+
+  it('keeps an invalid edit made during a refetched save blocked until it can be retried', async () => {
+    let values = { name: 'Acme', due: 100 };
+    const firstSave = deferredSave();
+    const save = vi.fn().mockReturnValueOnce(firstSave.promise).mockResolvedValue(undefined);
+    const controller = createAutosaveController({
+      getValues: () => values,
+      save,
+      validate: (candidate) => (candidate.name ? [] : [NAME_REQUIRED]),
+    });
+    values = { name: 'Bolt Co', due: 100 };
+    controller.markChanged();
+    const flush = controller.flush();
+    values = { name: '', due: 200 };
+    controller.markChanged();
+    controller.updateSavedValues({ name: 'Acme', due: 200 });
+    firstSave.resolve();
+    await expect(flush).resolves.toBe(false);
+    expect(values).toEqual({ name: '', due: 200 });
+    expect(controller.getSavedValues()).toEqual({ name: 'Bolt Co', due: 200 });
+    expect(controller.getState()).toMatchObject({
+      hasUnsavedChanges: true,
+      shouldBlockNavigation: true,
+      status: 'invalid',
+    });
+    expect(controller.hasPendingChanges()).toBe(true);
+    values = { name: 'Bolt Co Updated', due: 200 };
+    await expect(controller.retry()).resolves.toBe(true);
+    expect(save).toHaveBeenLastCalledWith({ name: 'Bolt Co Updated', due: 200 }, { name: 'Bolt Co', due: 200 });
+    expect(controller.hasPendingChanges()).toBe(false);
+  });
+
   it('detects and saves changes nested below top-level fields', async () => {
     let values: NestedValues = {
       assemblies: [
@@ -104,7 +220,9 @@ describe('createAutosaveController', () => {
     expect(controller.hasPendingChanges()).toBe(true);
     await expect(controller.flush()).resolves.toBe(true);
     expect(save).toHaveBeenCalledTimes(1);
-    expect(save).toHaveBeenCalledWith(values);
+    expect(save).toHaveBeenCalledWith(values, {
+      assemblies: [{ name: 'Base', parts: [{ partId: 'part-1', quantity: 1 }] }],
+    });
   });
 
   it('blocks navigation when pending values are invalid', async () => {
@@ -174,7 +292,7 @@ describe('createAutosaveController', () => {
 
     await expect(controller.retry()).resolves.toBe(true);
     expect(save).toHaveBeenCalledTimes(2);
-    expect(save).toHaveBeenLastCalledWith({ name: 'Bolt Co' });
+    expect(save).toHaveBeenLastCalledWith({ name: 'Bolt Co' }, { name: 'Acme' });
     expect(controller.getState()).toMatchObject({
       hasUnsavedChanges: false,
       shouldBlockNavigation: false,
@@ -212,8 +330,16 @@ describe('createAutosaveController', () => {
     await expect(firstFlush).resolves.toBe(true);
     await expect(secondFlush).resolves.toBe(true);
     expect(save).toHaveBeenCalledTimes(2);
-    expect(save).toHaveBeenNthCalledWith(1, { name: 'Bolt Co' });
-    expect(save).toHaveBeenNthCalledWith(2, { name: 'Bolt Co Updated' });
+    expect(save).toHaveBeenNthCalledWith(1, { name: 'Bolt Co' }, { name: 'Acme' });
+    expect(save).toHaveBeenNthCalledWith(2, { name: 'Bolt Co Updated' }, { name: 'Bolt Co' });
     expect(controller.hasPendingChanges()).toBe(false);
   });
 });
+
+function deferredSave() {
+  let resolve: () => void = () => undefined;
+  const promise = new Promise<void>((done) => {
+    resolve = done;
+  });
+  return { promise, resolve };
+}

@@ -14,6 +14,7 @@ export const helpTopicForPath = createHelpTopicResolver(
     ['/contracting/measure-types', 'contractingMeasureTypes'],
     ['/contracting/users', 'contractingUsers'],
     ['/contracting/work-types', 'contractingWorkTypes'],
+    ['/contracting/workshop', 'contractingWorkshop'],
   ],
   'contractingHome',
 );

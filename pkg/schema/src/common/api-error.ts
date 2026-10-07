@@ -21,6 +21,7 @@ export const APP_CODE_PREFIXES = [
   'purchase_order',
   'quote',
   'rate_card',
+  'service',
   'supplier',
   'transcription',
   'user',

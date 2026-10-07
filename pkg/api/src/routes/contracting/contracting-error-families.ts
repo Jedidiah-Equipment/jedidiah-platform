@@ -8,10 +8,12 @@ import {
   isJobError,
   isRateCardError,
   isReadingError,
+  isServiceError,
   isTranscriptionError,
   type JobError,
   type RateCardError,
   type ReadingError,
+  type ServiceError,
   type TranscriptionError,
 } from '@pkg/core/contracting';
 
@@ -127,4 +129,16 @@ export const breakdownErrorFamily = defineCoreErrorFamily<BreakdownError>({
   },
   is: isBreakdownError,
   metadata: (error) => error.refused,
+});
+
+export const serviceErrorFamily = defineCoreErrorFamily<ServiceError>({
+  codes: {
+    'service.closed': 'CONFLICT',
+    'service.forbidden': 'FORBIDDEN',
+    'service.invalid_close': 'BAD_REQUEST',
+    'service.invalid_mechanic': 'BAD_REQUEST',
+    'service.not_found': 'NOT_FOUND',
+    'service.retired_machine': 'CONFLICT',
+  },
+  is: isServiceError,
 });

@@ -1,6 +1,6 @@
 import { createEscapedContainsSearchCondition, type DatabaseTransaction, type Db, user } from '@pkg/db';
 import { contractingJobs, contractingMachineAssignments, contractingMachines } from '@pkg/db/contracting';
-import { formatJobNumber } from '@pkg/domain/contracting';
+import { formatJobNumber, hoursToService, serviceDueStatus } from '@pkg/domain/contracting';
 import type { AuthId, ContractingRole } from '@pkg/schema';
 import {
   FieldMachine,
@@ -37,13 +37,28 @@ const descriptor = defineAuditDescriptor<Row>({
   }),
 });
 const related = { category: true, currentDriver: { columns: { name: true } } } as const;
-function mapMachine(row: Row & { category: CategoryRelation; currentDriver: { name: string } | null }) {
+/** The Machine's newest Hour Reading of any role, so a spot reading moves Service Due Soon as much as a stint does. */
+const latestReading = (machine: typeof contractingMachines._.columns) => ({
+  latestReadingHours: sql<number | null>`(
+    select latest.value::float8
+    from contracting.hour_reading latest
+    where latest.machine_id = ${machine.id}
+    order by latest.sequence desc
+    limit 1
+  )`.as('latest_reading_hours'),
+});
+function mapMachine(
+  row: Row & { category: CategoryRelation; currentDriver: { name: string } | null; latestReadingHours: number | null },
+) {
   const { category, currentDriver, ...fields } = row;
+  const facts = { latestReadingHours: row.latestReadingHours, nextServiceDueHours: row.nextServiceDueHours };
   return Machine.parse({
     ...fields,
     ...projectCategory(category),
     ...projectTimestamps(row),
     currentDriverName: currentDriver?.name ?? null,
+    hoursToService: hoursToService(facts),
+    serviceDueStatus: serviceDueStatus(facts),
   });
 }
 export async function listMachines({ db, input }: { db: Db; input: MachineListInput }) {
@@ -54,12 +69,17 @@ export async function listMachines({ db, input }: { db: Db; input: MachineListIn
       input.search ? createEscapedContainsSearchCondition(sql`${contractingMachines.code}`, input.search) : undefined,
     ),
     with: related,
+    extras: latestReading,
     orderBy: [asc(contractingMachines.code)],
   });
   return rows.map(mapMachine);
 }
 export async function getMachine({ db, id }: { db: Db | DatabaseTransaction; id: string }) {
-  const row = await db.query.contractingMachines.findFirst({ where: eq(contractingMachines.id, id), with: related });
+  const row = await db.query.contractingMachines.findFirst({
+    where: eq(contractingMachines.id, id),
+    with: related,
+    extras: latestReading,
+  });
   if (!row) throw notFound('Machine');
   return mapMachine(row);
 }
@@ -140,6 +160,30 @@ export async function patchMachine({
       project: (tx, row) => getMachine({ db: tx, id: row.id }),
     }),
   );
+}
+/** Closing a Service Record prints the sticker: it sets Next Service Due, audited as the Machine's own update. */
+export async function stampNextServiceDue({
+  db,
+  actorUserId,
+  machineId,
+  nextServiceDueHours,
+}: {
+  db: DatabaseTransaction;
+  actorUserId: AuthId;
+  machineId: string;
+  nextServiceDueHours: number;
+}) {
+  return mutateEntity({
+    db,
+    actorUserId,
+    descriptor,
+    table: contractingMachines,
+    id: machineId,
+    notFound: () => notFound('Machine'),
+    set: () => ({ nextServiceDueHours, updatedAt: new Date() }),
+    summary: 'Next Service Due set by Service Record',
+    project: () => undefined,
+  });
 }
 export async function retireMachine(args: { db: Db; actorUserId: AuthId; input: FleetRetireInput }) {
   return retireFleetEntry({

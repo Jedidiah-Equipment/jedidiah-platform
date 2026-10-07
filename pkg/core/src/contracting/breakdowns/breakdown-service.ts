@@ -285,6 +285,7 @@ async function toDetail(db: DbOrTx, actor: BreakdownActor, row: LoadedBreakdown)
     : [];
   return BreakdownDetail.parse({
     ...toBreakdownSummary(row),
+    solvedByName: row.solvedByName,
     description: breakdown.description,
     latitude: breakdown.latitude,
     longitude: breakdown.longitude,

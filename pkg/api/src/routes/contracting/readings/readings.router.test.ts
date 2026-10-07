@@ -70,6 +70,9 @@ test('foremen can find active Machines and read field history without fleet mana
       categoryColour: 'gray',
       currentDriverUserId: null,
       currentDriverName: null,
+      latestReadingHours: 100,
+      hoursToService: null,
+      serviceDueStatus: 'unknown',
       onSiteJobNumber: null,
     },
   ]);

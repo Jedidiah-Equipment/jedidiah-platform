@@ -1,13 +1,21 @@
 import { formatDate, formatHours } from '@pkg/domain';
-import { MISSING_PHOTO_EVIDENCE, readingRoleLabels } from '@pkg/domain/contracting';
+import {
+  MISSING_PHOTO_EVIDENCE,
+  readingRoleLabels,
+  serviceDueStatusColorClassNames,
+  serviceDueStatusLabels,
+} from '@pkg/domain/contracting';
 import { type Href, router, useLocalSearchParams } from 'expo-router';
 import { ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { SECONDARY_PAGE_CONTENT_STYLE } from '@/components/page-frame';
 import { SecondaryToolbar } from '@/components/TopToolbar';
 import { Button } from '@/components/ui/button';
+import { StatusBadge } from '@/components/ui/status-badge';
 import { Text } from '@/components/ui/text';
 import { useFleet, useMachineReadings } from '@/contracting/readings/use-fleet';
+import { useMachineBreakdowns } from '@/contracting/workshop/use-breakdowns';
+import { BreakdownRow } from '@/contracting/workshop/WorkshopScreen';
 import { useSessionPermission } from '@/lib/auth-session';
 import { CategoryIcon } from './CategoryIcon';
 
@@ -19,6 +27,8 @@ export default function MachineScreen() {
   const latest = readings.data?.[0];
   const canCapture = useSessionPermission('contracting_reading:capture');
   const canReport = useSessionPermission('contracting_breakdown:report');
+  const canReadBreakdowns = useSessionPermission('contracting_breakdown:read');
+  const breakdowns = useMachineBreakdowns(id);
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top', 'left', 'right']}>
       <SecondaryToolbar
@@ -42,6 +52,14 @@ export default function MachineScreen() {
           <Text className="text-3xl text-foreground" weight="bold">
             {latest ? formatHours(latest.value) : 'No known reading'}
           </Text>
+          {machine ? (
+            <View className="flex-row">
+              <StatusBadge
+                classNames={serviceDueStatusColorClassNames[machine.serviceDueStatus]}
+                label={serviceDueStatusLabels[machine.serviceDueStatus]}
+              />
+            </View>
+          ) : null}
         </View>
         {canCapture && machine ? (
           <Button
@@ -65,6 +83,25 @@ export default function MachineScreen() {
               })
             }
           />
+        ) : null}
+        {canReadBreakdowns ? (
+          <>
+            <Text className="text-lg text-foreground" weight="bold">
+              Open Breakdowns
+            </Text>
+            {breakdowns.data?.items.map((breakdown) => (
+              <BreakdownRow key={breakdown.id} breakdown={breakdown} />
+            ))}
+            {!breakdowns.data?.items.length ? (
+              <Text className="text-muted-foreground">
+                {breakdowns.isError
+                  ? 'Breakdowns could not be loaded.'
+                  : breakdowns.data
+                    ? 'No open Breakdowns.'
+                    : 'Loading Breakdowns…'}
+              </Text>
+            ) : null}
+          </>
         ) : null}
         <Text className="text-lg text-foreground" weight="bold">
           Reading history

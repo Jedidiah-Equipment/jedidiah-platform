@@ -433,6 +433,12 @@ export const snapshotTableDefinitions = [
     ],
   },
   {
+    fileName: 'contracting_service_record.json',
+    tableName: 'contracting_service_record',
+    timestampColumns: ['closedAt', 'createdAt', 'updatedAt'],
+    optionalReadTable: true,
+  },
+  {
     fileName: 'contracting_job.json',
     tableName: 'contracting_job',
     timestampColumns: ['cancelledAt', 'completedAt', 'createdAt', 'invoicedAt', 'pricedAt', 'reopenedAt', 'updatedAt'],

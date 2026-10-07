@@ -338,12 +338,14 @@ export async function recordAuditUpdate<TInput>({
   actorUserId,
   after,
   changes,
+  summary,
 }: {
   db: DatabaseTransaction;
   descriptor: AuditDescriptor<TInput>;
   actorUserId: string | null;
   after: TInput;
   changes: AuditChanges;
+  summary?: string;
 }): Promise<void> {
   await insertAuditRow({
     db,
@@ -353,6 +355,7 @@ export async function recordAuditUpdate<TInput>({
     entityId: descriptor.entityId(after),
     changes,
     label: recordLabel(descriptor, after, descriptor.toRecord(after)),
+    ...(summary === undefined ? {} : { summary }),
   });
 }
 

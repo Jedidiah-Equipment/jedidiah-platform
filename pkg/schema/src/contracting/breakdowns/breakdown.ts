@@ -155,6 +155,7 @@ export const BreakdownDetail = BreakdownSummary.extend({
   longitude: Longitude.nullable(),
   photos: BreakdownPhoto.array(),
   closeOutNote: CloseOutNote.nullable(),
+  solvedByName: z.string().nullable(),
   notes: BreakdownNote.array(),
   dispatchHints: BreakdownDispatchHint.array(),
   actions: BreakdownActions,

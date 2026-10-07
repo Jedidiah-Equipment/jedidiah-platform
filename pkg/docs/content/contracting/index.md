@@ -8,6 +8,8 @@ Help with fleet records and hour readings in Jedidiah Contracting. The Jobs and 
 - [Capture a reading](./capture-a-reading.md)
 - [Keep a Field Note](./keep-a-field-note.md)
 - [Report a Breakdown](./report-a-breakdown.md)
+- [Run the Workshop queue](./run-the-workshop-queue.md)
+- [Record a service](./record-a-service.md)
 - [Maintain Machines](./maintain-machines.md)
 - [Maintain Categories](./maintain-categories.md)
 - [Maintain Implements](./maintain-implements.md)

@@ -103,7 +103,7 @@ export type SendHttpErrorOptions = {
 export type SendUploadHttpErrorOptions = SendHttpErrorOptions & {
   // The route's own size cap words a stream refusal; the same policy's violations from core map to a 400.
   policy: FilePolicy;
-  upload?: Pick<MultipartUploadOptions, 'invalid' | 'tooManyFiles'>;
+  upload?: Pick<MultipartUploadOptions, 'invalid'> | undefined;
 };
 
 // Renders a thrown route error into a response. Callers map their own core errors into a
@@ -127,11 +127,6 @@ export function sendUploadHttpError(reply: FastifyReply, error: unknown, options
   }
 
   if (options.upload) {
-    const multipartErrors = reply.server.multipartErrors;
-    if (multipartErrors && error instanceof multipartErrors.FilesLimitError) {
-      sendNonUploadHttpError(reply, (options.upload.tooManyFiles ?? options.upload.invalid)(), options);
-      return;
-    }
     if (
       error instanceof z.ZodError ||
       (typeof error === 'object' &&
@@ -158,7 +153,7 @@ export type MultipartUploadOptions = {
   // The longest text field's schema cap, in characters; see {@link requireMaxLength}.
   fieldMaxLength: number;
   invalid: () => RouteHttpError;
-  tooManyFiles?: () => RouteHttpError;
+  tooManyFiles?: () => Error;
 };
 
 // Reads an upload of text fields plus up to `maxFiles` complete files under one field name. Every text
@@ -167,7 +162,7 @@ export type MultipartUploadOptions = {
 // the parts limit.
 export async function readMultipartUpload<T>(
   request: FastifyRequest,
-  { fileField, maxFiles, policy, textFields, fieldMaxLength, invalid }: MultipartUploadOptions,
+  { fileField, maxFiles, policy, textFields, fieldMaxLength, invalid, tooManyFiles }: MultipartUploadOptions,
   schema: z.ZodType<T>,
 ): Promise<{ input: T; files: Buffer[] }> {
   const fields: Record<string, string> = {};
@@ -194,6 +189,8 @@ export async function readMultipartUpload<T>(
       }
     }
   } catch (error) {
+    if (request.server.multipartErrors && error instanceof request.server.multipartErrors.FilesLimitError)
+      throw (tooManyFiles ?? invalid)();
     if (error instanceof RouteHttpError || (typeof error === 'object' && error !== null && 'statusCode' in error))
       throw error;
     const refusal = invalid();

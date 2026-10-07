@@ -9,7 +9,7 @@ import {
   contractingMachineAssignments,
   contractingMachines,
 } from '@pkg/db/contracting';
-import { formatNumber, hasPermission, validateFile } from '@pkg/domain';
+import { hasPermission, validateFile } from '@pkg/domain';
 import {
   BREAKDOWN_PHOTO_POLICY,
   type BreakdownActor,
@@ -53,6 +53,7 @@ import {
   BreakdownError,
   breakdownNotFound,
   invalidMechanic,
+  tooManyBreakdownPhotos,
   withBreakdownConstraints,
 } from './breakdown-errors.js';
 import {
@@ -72,11 +73,6 @@ type BreakdownPhoto = Row['photos'][number];
 /** Photos a Breakdown write stores: the bytes and where they are kept. */
 export type BreakdownEvidence = { storage: StorageAdapter; photos: Uint8Array[] };
 
-const tooManyPhotos = () =>
-  new BreakdownError(
-    'breakdown.too_many_photos',
-    `A Breakdown keeps at most ${formatNumber(BREAKDOWN_MAX_PHOTOS)} photos.`,
-  );
 const unsolved = inArray(contractingBreakdowns.status, [...unsolvedBreakdownStatuses]);
 const photoNotFound = () => new BreakdownError('breakdown.not_found', 'Photo not found.');
 
@@ -222,7 +218,7 @@ export async function reportBreakdown({
   const input = BreakdownReportInput.parse(raw);
   if (!hasPermission(actor, 'contracting_breakdown:report'))
     throw new BreakdownError('breakdown.forbidden', 'You cannot report Breakdowns.');
-  if ((evidence?.photos.length ?? 0) > BREAKDOWN_MAX_PHOTOS) throw tooManyPhotos();
+  if ((evidence?.photos.length ?? 0) > BREAKDOWN_MAX_PHOTOS) throw tooManyBreakdownPhotos();
   // A phone retry of an already delivered report returns the stored Breakdown instead of a duplicate.
   async function replay(db: DbOrTx) {
     if (!input.localId) return null;
@@ -576,7 +572,7 @@ export async function addBreakdownPhotos({
   id: string;
   evidence: BreakdownEvidence;
 }): Promise<BreakdownDetail> {
-  if (evidence.photos.length > BREAKDOWN_MAX_PHOTOS) throw tooManyPhotos();
+  if (evidence.photos.length > BREAKDOWN_MAX_PHOTOS) throw tooManyBreakdownPhotos();
   return withStoredPhotos(evidence, async (photos) => ({
     result: await writeBreakdown({
       db,
@@ -584,7 +580,7 @@ export async function addBreakdownPhotos({
       id,
       action: 'addPhotos',
       assert: async (_tx, before) => {
-        if (before.photos.length + photos.length > BREAKDOWN_MAX_PHOTOS) throw tooManyPhotos();
+        if (before.photos.length + photos.length > BREAKDOWN_MAX_PHOTOS) throw tooManyBreakdownPhotos();
       },
       set: (before) => ({ photos: [...before.photos, ...photos] }),
     }),

@@ -316,3 +316,14 @@ test('an oversized Hour Reading photo keeps the file policy refusal and stores n
     await app.close();
   }
 });
+
+test('a malformed photo download id retains its download refusal', async ({ context }) => {
+  try {
+    const response = await context.app.inject({ url: '/api/contracting/readings/not-a-uuid/photo' });
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toEqual({ message: 'Invalid Hour Reading.' });
+    expect(context.storage.objects.size).toBe(0);
+  } finally {
+    await context.app.close();
+  }
+});

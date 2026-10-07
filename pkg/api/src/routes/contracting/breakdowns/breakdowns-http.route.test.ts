@@ -222,3 +222,14 @@ test('an oversized Breakdown photo keeps the file policy refusal and stores noth
     await app.close();
   }
 });
+
+test('a malformed photo download id retains its download refusal', async ({ context }) => {
+  try {
+    const response = await context.app.inject({ url: '/api/contracting/breakdowns/not-a-uuid/photos/not-a-uuid' });
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toEqual({ message: 'Invalid Breakdown report.' });
+    expect(context.storage.objects.size).toBe(0);
+  } finally {
+    await context.app.close();
+  }
+});

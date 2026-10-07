@@ -1,5 +1,5 @@
 import type { StorageAdapter } from '@pkg/core';
-import { addBreakdownPhotos, getBreakdownPhoto, reportBreakdown } from '@pkg/core/contracting';
+import { addBreakdownPhotos, getBreakdownPhoto, reportBreakdown, tooManyBreakdownPhotos } from '@pkg/core/contracting';
 import type { Db } from '@pkg/db';
 import { formatNumber } from '@pkg/domain';
 import { BREAKDOWN_PHOTO_POLICY, BREAKDOWN_REPORT_PATH } from '@pkg/domain/contracting';
@@ -37,12 +37,7 @@ export async function registerBreakdownHttpRoutes(
     policy: BREAKDOWN_PHOTO_POLICY,
     textFields,
     fieldMaxLength: requireMaxLength(BreakdownDescription),
-    tooManyFiles: () =>
-      new RouteHttpError({
-        statusCode: 409,
-        appCode: 'breakdown.too_many_photos',
-        message: `A Breakdown keeps at most ${formatNumber(BREAKDOWN_MAX_PHOTOS)} photos.`,
-      }),
+    tooManyFiles: tooManyBreakdownPhotos,
     invalid: () =>
       new RouteHttpError({
         statusCode: 400,
@@ -78,7 +73,7 @@ export async function registerBreakdownHttpRoutes(
       const row = await addBreakdownPhotos({ db, actor: auth.access, id, evidence: { storage, photos } });
       return reply.status(201).send(row);
     } catch (error) {
-      return sendBreakdownError(reply, error, report);
+      return sendBreakdownError(reply, error, photosOnly);
     }
   });
   app.get(`${BREAKDOWN_REPORT_PATH}/:id/photos/:photoId`, async (request, reply) => {
@@ -94,12 +89,12 @@ export async function registerBreakdownHttpRoutes(
         .header('Cache-Control', 'private, no-store')
         .send(streamObjectBody(object.body));
     } catch (error) {
-      return sendBreakdownError(reply, error, report);
+      return sendBreakdownError(reply, error);
     }
   });
 }
 
-function sendBreakdownError(reply: FastifyReply, error: unknown, upload: MultipartUploadOptions) {
+function sendBreakdownError(reply: FastifyReply, error: unknown, upload?: MultipartUploadOptions) {
   return sendUploadHttpError(reply, mapCoreErrorToRoute(error, breakdownErrorFamily), {
     policy: BREAKDOWN_PHOTO_POLICY,
     upload,

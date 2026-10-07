@@ -1,5 +1,7 @@
+import { formatNumber } from '@pkg/domain';
 import { type BreakdownActionSubject, type BreakdownActor, judgeBreakdownAction } from '@pkg/domain/contracting';
 import type { BreakdownActionBlockedReason, BreakdownActionName, BreakdownErrorCode } from '@pkg/schema/contracting';
+import { BREAKDOWN_MAX_PHOTOS } from '@pkg/schema/contracting';
 import { translatingConstraintViolations } from '../../errors/constraint-violations.js';
 
 /** Which Breakdown Action a refusal refused, and why: public context a surface can branch on. */
@@ -17,6 +19,13 @@ export class BreakdownError extends Error {
 }
 export const isBreakdownError = (error: unknown): error is BreakdownError => error instanceof BreakdownError;
 export const breakdownNotFound = () => new BreakdownError('breakdown.not_found', 'Breakdown not found.');
+
+/** The same photo-count refusal answers both core writes and multipart stream limits. */
+export const tooManyBreakdownPhotos = () =>
+  new BreakdownError(
+    'breakdown.too_many_photos',
+    `A Breakdown keeps at most ${formatNumber(BREAKDOWN_MAX_PHOTOS)} photos.`,
+  );
 
 const refusalCodes: Record<BreakdownActionBlockedReason, BreakdownErrorCode> = {
   'no-permission': 'breakdown.forbidden',

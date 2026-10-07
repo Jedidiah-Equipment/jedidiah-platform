@@ -78,11 +78,11 @@ export async function registerReadingHttpRoutes(
         .header('Cache-Control', 'private, no-store')
         .send(streamObjectBody(object.body));
     } catch (error) {
-      return sendReadingError(reply, error, upload);
+      return sendReadingError(reply, error);
     }
   });
 }
-function sendReadingError(reply: FastifyReply, error: unknown, upload: MultipartUploadOptions) {
+function sendReadingError(reply: FastifyReply, error: unknown, upload?: MultipartUploadOptions) {
   return sendUploadHttpError(reply, mapCoreErrorToRoute(error, readingErrorFamily), {
     policy: READING_PHOTO_POLICY,
     upload,

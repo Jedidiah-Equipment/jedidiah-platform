@@ -14,6 +14,7 @@ import { mechanicFieldOptions } from '@/contracting/components/MechanicCombobox.
 import { useContractingWrite } from '@/contracting/hooks/use-contracting-write.js';
 import { useQueryInvalidation } from '@/contracting/hooks/use-query-invalidation.js';
 import { useCan } from '@/hooks/use-access.js';
+import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { cn } from '@/lib/utils.js';
 import { CloseServiceRecordDialog } from './CloseServiceRecordDialog.js';
@@ -163,6 +164,7 @@ function OpenServiceForm({
   onClose: () => void;
 }) {
   const trpc = useTRPC();
+  const showError = useApiMutationErrorToast();
   const write = useContractingWrite(useQueryInvalidation().invalidateServices);
   const patch = useMutation(trpc.contractingServices.patch.mutationOptions({ onSuccess: write.invalidate }));
   const defaultValues: OpenServiceValues = {
@@ -183,7 +185,15 @@ function OpenServiceForm({
         <span className="text-sm font-medium">In the workshop since {formatDate(record.startDate, 'short')}</span>
         <div className="flex items-center gap-2">
           <AutosaveStatus state={autosave.state} onRetry={() => void autosave.retry()} />
-          <Button size="sm" variant="outline" onClick={onClose}>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={async () => {
+              // The close dialog starts from the saved record, so a note typed a moment ago lands first.
+              if (await autosave.flush()) onClose();
+              else showError(new Error('Resolve unsaved changes before closing the service.'), 'Unable to close.');
+            }}
+          >
             Close
           </Button>
         </div>

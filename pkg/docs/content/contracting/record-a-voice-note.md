@@ -9,6 +9,6 @@ A Voice Note fills a text box by speech instead of typing: a reading's comment, 
 
 The first time, the phone asks to use the microphone; allow it, then hold the microphone again. If you refused, allow the microphone for Jedidiah in the phone's Settings.
 
-Voice Notes work only while the phone is online, and not in the web app. If **Transcription unavailable — type the note.** appears, type it instead.
+Voice Notes work only while the phone is online, and not in the web app. If **Nothing was heard. Try again closer to the phone, or type the note.** appears, record again closer to the phone, or type the note. If **Transcription is unavailable right now. Type the note instead.** or **Transcription unavailable — type the note.** appears, type the note.
 
 English and Afrikaans work, mixed in one note too, and the text stays in the language you spoke; it is never translated. Other languages are not supported yet and come back wrong, so type those notes.

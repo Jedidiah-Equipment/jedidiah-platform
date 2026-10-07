@@ -115,6 +115,7 @@ export const BreakdownSummary = z.object({
   subject: BreakdownSubject,
   jobId: UUID.nullable(),
   jobNumber: z.string().nullable(),
+  jobForemanUserId: AuthId.nullable(),
   farmName: z.string().nullable(),
   urgency: z.enum(breakdownUrgencies),
   status: z.enum(breakdownStatuses),

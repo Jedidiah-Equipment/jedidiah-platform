@@ -48,10 +48,14 @@ export async function registerBreakdownHttpRoutes(
         input,
         evidence: { storage, photos },
       });
-      reply.status(201).send(breakdown);
-      // A replayed report was announced the first time.
-      if (created) onReported(breakdown.id);
-      return reply;
+      // A replayed report was announced the first time; a failing hook never turns a saved report into an error.
+      if (created)
+        try {
+          onReported(breakdown.id);
+        } catch (error) {
+          request.log.error({ error, breakdownId: breakdown.id }, 'Breakdown report hook failed');
+        }
+      return reply.status(201).send(breakdown);
     } catch (error) {
       return sendBreakdownError(reply, error);
     }

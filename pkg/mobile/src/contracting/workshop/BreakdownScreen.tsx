@@ -17,7 +17,7 @@ import {
 import { IconCamera, IconMapPin, IconPhoto, IconX } from '@tabler/icons-react-native';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { type Href, router, useLocalSearchParams } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Image, Linking, Pressable, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { DateText } from '@/components/DateText';
@@ -114,7 +114,10 @@ function Card({ title, children }: { title?: string; children: React.ReactNode }
 }
 
 function HeaderCard({ breakdown }: { breakdown: BreakdownDetail }) {
-  const canOpenJobs = fieldJobAccessMode(useSessionAccessSummary()) !== null;
+  const access = useSessionAccessSummary();
+  const jobMode = fieldJobAccessMode(access);
+  // A Foreman opens only Jobs he is Foreman of; this Breakdown may be his report on someone else's.
+  const canOpenJob = jobMode === 'all' || (jobMode === 'own' && breakdown.jobForemanUserId === access?.userId);
   const { subject, latitude, longitude } = breakdown;
   return (
     <Card>
@@ -141,11 +144,11 @@ function HeaderCard({ breakdown }: { breakdown: BreakdownDetail }) {
       </View>
       {breakdown.jobId && breakdown.jobNumber ? (
         <Pressable
-          accessibilityRole={canOpenJobs ? 'link' : undefined}
-          disabled={!canOpenJobs}
+          accessibilityRole={canOpenJob ? 'link' : undefined}
+          disabled={!canOpenJob}
           onPress={() => router.navigate(`/contracting/jobs/${breakdown.jobId}` as Href)}
         >
-          <Text className={canOpenJobs ? 'text-primary' : 'text-foreground'} weight="semibold">
+          <Text className={canOpenJob ? 'text-primary' : 'text-foreground'} weight="semibold">
             {breakdown.jobNumber}
             {breakdown.farmName ? ` · ${breakdown.farmName}` : ''}
           </Text>
@@ -378,10 +381,20 @@ function WorkshopCard({ breakdown }: { breakdown: BreakdownDetail }) {
   const { busy, error, run } = useBusyAction();
   const [solving, setSolving] = useState(false);
   const { actions } = breakdown;
-  const picker = useAppForm({ defaultValues: { mechanicUserId: breakdown.primaryMechanicUserId ?? '' } });
+  const assigned = breakdown.primaryMechanicUserId ?? '';
+  const picker = useAppForm({ defaultValues: { mechanicUserId: assigned } });
+  // The picker shows the server's Mechanic: after a refetch, and again after a failed assignment.
+  useEffect(() => {
+    picker.setFieldValue('mechanicUserId', assigned);
+  }, [picker, assigned]);
   const assignMechanic = () =>
     run(async () => {
-      await assign.mutateAsync({ id: breakdown.id, mechanicUserId: picker.state.values.mechanicUserId || null });
+      try {
+        await assign.mutateAsync({ id: breakdown.id, mechanicUserId: picker.state.values.mechanicUserId || null });
+      } catch (error) {
+        picker.setFieldValue('mechanicUserId', assigned);
+        throw error;
+      }
       await invalidate();
     }, SAVE_FAILED);
   return (

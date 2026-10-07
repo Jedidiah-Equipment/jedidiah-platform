@@ -209,7 +209,7 @@ function StintCard({
         <CaptureButton icon={IconPlayerStop} label="Stop — capture departure" onPress={onStop} />
       ) : null}
       {stint.state === 'left' && canAdd ? <Button title="Re-add machine" onPress={onReadd} /> : null}
-      {canReport && stint.state !== 'left' ? (
+      {canReport ? (
         <View className="flex-row gap-2">
           <View className="flex-1">
             <Button title="Report a problem" onPress={() => onReport('machine', stint.machineId)} />

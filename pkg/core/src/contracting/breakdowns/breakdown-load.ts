@@ -102,6 +102,7 @@ export function toBreakdownSummary(row: LoadedBreakdown): BreakdownSummary {
     subject: breakdownSubjectOf(row),
     jobId: breakdown.jobId,
     jobNumber: row.jobCode === null ? null : formatJobNumber(row.jobCode),
+    jobForemanUserId: row.jobForemanUserId,
     farmName: row.farmName,
     urgency: breakdown.urgency,
     status: breakdown.status,

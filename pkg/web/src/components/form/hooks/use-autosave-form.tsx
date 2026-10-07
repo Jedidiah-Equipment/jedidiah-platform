@@ -47,18 +47,16 @@ export function useAutosaveForm<TValues extends Record<string, unknown>, TInput>
   });
   const formRef = useRef(form);
   formRef.current = form;
-  const savedValuesRef = useRef(defaultValues);
 
   const controllerRef = useRef<ReturnType<typeof createAutosaveController<TValues>> | null>(null);
   if (!controllerRef.current) {
     controllerRef.current = createAutosaveController<TValues>({
       getValues: () => formRef.current.state.values as TValues,
-      save: async (values) => {
-        const input = optionsRef.current.toInput(values, savedValuesRef.current);
+      save: async (values, saved) => {
+        const input = optionsRef.current.toInput(values, saved);
 
         try {
           await optionsRef.current.save(input);
-          savedValuesRef.current = values;
           await optionsRef.current.onSaved?.(input);
         } catch (error) {
           const message = getApiMutationErrorMessage(error, optionsRef.current.failureMessage);
@@ -102,7 +100,7 @@ export function useAutosaveForm<TValues extends Record<string, unknown>, TInput>
     const defaults = defaultValuesRef.current;
     syncedDefaultsRef.current = defaults;
     const values = formRef.current.state.values as TValues;
-    const saved = { ...savedValuesRef.current };
+    const saved = { ...controller.getSavedValues() };
     for (const key of Object.keys(defaults) as (keyof TValues & string)[]) {
       const current = stableSerialize(values[key]);
       if (current !== stableSerialize(defaults[key])) {
@@ -111,8 +109,7 @@ export function useAutosaveForm<TValues extends Record<string, unknown>, TInput>
       }
       saved[key] = defaults[key];
     }
-    if (stableSerialize(saved) === stableSerialize(savedValuesRef.current)) return;
-    savedValuesRef.current = saved;
+    if (stableSerialize(saved) === stableSerialize(controller.getSavedValues())) return;
     controller.updateSavedValues(saved);
   }, [controller, defaultSnapshot]);
 
@@ -152,7 +149,6 @@ export function useAutosaveForm<TValues extends Record<string, unknown>, TInput>
   const resetToSavedValues = useCallback(
     (values: TValues) => {
       formRef.current.reset(values);
-      savedValuesRef.current = values;
       controller.updateSavedValues(values);
     },
     [controller],

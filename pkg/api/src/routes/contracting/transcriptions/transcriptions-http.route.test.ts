@@ -1,6 +1,9 @@
 import multipart from '@fastify/multipart';
 import type { TranscriptionEngine } from '@pkg/core/contracting';
 import { user } from '@pkg/db';
+import { contractingTranscriptions } from '@pkg/db/contracting';
+import { fileTooLargeMessage } from '@pkg/domain';
+import { VOICE_NOTE_POLICY } from '@pkg/domain/contracting';
 import type { ContractingRole } from '@pkg/schema';
 import Fastify from 'fastify';
 import { expect, vi } from 'vitest';
@@ -37,7 +40,7 @@ const test = createTester(async ({ db, auth }) => {
     await registerTranscriptionHttpRoutes(app, { db, engine: withEngine, keyterms: async () => [] });
     return app;
   };
-  return { appWith };
+  return { appWith, db };
 });
 
 function signInAs(contractingRole: ContractingRole) {
@@ -49,20 +52,25 @@ function signInAs(contractingRole: ContractingRole) {
 const M4A = Buffer.from([0, 0, 0, 32, 0x66, 0x74, 0x79, 0x70, 0x4d, 0x34, 0x41, 0x20]);
 const PNG = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 
-function upload(audio: Buffer) {
+function upload(audio: Buffer | Buffer[], fields: Record<string, string> = { purpose: 'capture comment' }) {
   const boundary = 'voice-boundary';
+  const chunks: Buffer[] = Object.entries(fields).map(([key, value]) =>
+    Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="${key}"\r\n\r\n${value}\r\n`),
+  );
+  for (const bytes of Array.isArray(audio) ? audio : [audio])
+    chunks.push(
+      Buffer.from(
+        `--${boundary}\r\nContent-Disposition: form-data; name="audio"; filename="voice-note.m4a"\r\nContent-Type: audio/mp4\r\n\r\n`,
+      ),
+      bytes,
+      Buffer.from('\r\n'),
+    );
+  chunks.push(Buffer.from(`--${boundary}--\r\n`));
   return {
     method: 'POST' as const,
     url: '/api/contracting/transcriptions',
     headers: { 'content-type': `multipart/form-data; boundary=${boundary}` },
-    payload: Buffer.concat([
-      Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="purpose"\r\n\r\ncapture comment\r\n`),
-      Buffer.from(
-        `--${boundary}\r\nContent-Disposition: form-data; name="audio"; filename="voice-note.m4a"\r\nContent-Type: audio/mp4\r\n\r\n`,
-      ),
-      audio,
-      Buffer.from(`\r\n--${boundary}--\r\n`),
-    ]),
+    payload: Buffer.concat(chunks),
   };
 }
 
@@ -109,5 +117,66 @@ test('refuses roles without voice notes, and tells silence from a failing speech
     await app.close();
     await failing.close();
     await silent.close();
+  }
+});
+
+test.for([
+  ['missing purpose', {}],
+  ['blank purpose', { purpose: '' }],
+] as const)('refuses %s with the Voice Note upload sentence', async ([, fields], { context }) => {
+  const app = await context.appWith(engine);
+  try {
+    signInAs('foreman');
+    const response = await app.inject(upload(M4A, fields));
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toEqual({
+      data: { appCode: 'transcription.invalid_upload' },
+      message: 'Send a purpose and one complete voice note.',
+    });
+    expect(await context.db.select().from(contractingTranscriptions)).toEqual([]);
+  } finally {
+    await app.close();
+  }
+});
+
+test('refuses two audio parts and excess fields without a Transcription or calling the speech model', async ({
+  context,
+}) => {
+  const refusedEngine: TranscriptionEngine = {
+    ...engine,
+    transcribe: async () => {
+      throw new Error('Refused uploads must not reach the speech model');
+    },
+  };
+  const app = await context.appWith(refusedEngine);
+  try {
+    signInAs('foreman');
+    for (const request of [upload([M4A, M4A]), upload(M4A, { purpose: 'capture comment', extra: 'x' })]) {
+      const response = await app.inject(request);
+      expect(response.statusCode).toBe(400);
+      expect(response.json()).toEqual({
+        data: { appCode: 'transcription.invalid_upload' },
+        message: 'Send a purpose and one complete voice note.',
+      });
+      expect(await context.db.select().from(contractingTranscriptions)).toEqual([]);
+    }
+  } finally {
+    await app.close();
+  }
+});
+
+test('an oversized Voice Note keeps the file policy refusal and leaves no Transcription', async ({ context }) => {
+  const app = await context.appWith(engine);
+  try {
+    signInAs('foreman');
+    const response = await app.inject(upload(Buffer.alloc(VOICE_NOTE_POLICY.maxBytes + 1)));
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toEqual({
+      data: { appCode: 'file.too_large' },
+      message: fileTooLargeMessage(VOICE_NOTE_POLICY.maxBytes),
+    });
+    expect(await context.db.select().from(contractingTranscriptions)).toEqual([]);
+  } finally {
+    await app.close();
   }
 });

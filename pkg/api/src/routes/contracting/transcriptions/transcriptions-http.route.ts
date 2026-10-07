@@ -42,10 +42,10 @@ export async function registerTranscriptionHttpRoutes(
         'You cannot use voice notes.',
         'transcription.forbidden',
       );
-      const { fields, files } = await readMultipartUpload(request, upload);
+      const { input, files } = await readMultipartUpload(request, upload, TranscribeFields);
       const [audio] = files;
       if (audio === undefined) throw upload.invalid();
-      const { purpose } = TranscribeFields.parse(fields);
+      const { purpose } = input;
       const transcription = await transcribeVoiceNote({
         db,
         actorUserId: auth.access.userId,
@@ -56,13 +56,14 @@ export async function registerTranscriptionHttpRoutes(
       });
       return reply.status(201).send(transcription);
     } catch (error) {
-      return sendTranscriptionError(reply, error);
+      return sendTranscriptionError(reply, error, upload);
     }
   });
 }
-function sendTranscriptionError(reply: FastifyReply, error: unknown) {
+function sendTranscriptionError(reply: FastifyReply, error: unknown, upload: MultipartUploadOptions) {
   return sendUploadHttpError(reply, mapCoreErrorToRoute(error, transcriptionErrorFamily), {
     policy: VOICE_NOTE_POLICY,
+    upload,
     fallbackMessage: 'Transcription request failed.',
     invalidRequestMessage: 'Invalid voice note.',
   });

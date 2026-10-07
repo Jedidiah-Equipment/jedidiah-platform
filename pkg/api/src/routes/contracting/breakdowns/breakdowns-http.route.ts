@@ -12,6 +12,7 @@ import {
   breakdownReportFieldNames,
 } from '@pkg/schema/contracting';
 import type { FastifyInstance, FastifyReply } from 'fastify';
+import { z } from 'zod';
 import {
   type MultipartUploadOptions,
   mapCoreErrorToRoute,
@@ -36,6 +37,12 @@ export async function registerBreakdownHttpRoutes(
     policy: BREAKDOWN_PHOTO_POLICY,
     textFields,
     fieldMaxLength: requireMaxLength(BreakdownDescription),
+    tooManyFiles: () =>
+      new RouteHttpError({
+        statusCode: 409,
+        appCode: 'breakdown.too_many_photos',
+        message: `A Breakdown keeps at most ${formatNumber(BREAKDOWN_MAX_PHOTOS)} photos.`,
+      }),
     invalid: () =>
       new RouteHttpError({
         statusCode: 400,
@@ -50,8 +57,7 @@ export async function registerBreakdownHttpRoutes(
     if (!auth) return;
     try {
       requirePermission(auth, 'contracting_breakdown:report', 'You cannot report Breakdowns.', 'breakdown.forbidden');
-      const { fields, files: photos } = await readMultipartUpload(request, report);
-      const input = BreakdownReportMultipart.parse(fields);
+      const { input, files: photos } = await readMultipartUpload(request, report, BreakdownReportMultipart);
       const { breakdown } = await reportBreakdown({
         db,
         actor: auth.access,
@@ -60,7 +66,7 @@ export async function registerBreakdownHttpRoutes(
       });
       return reply.status(201).send(breakdown);
     } catch (error) {
-      return sendBreakdownError(reply, error);
+      return sendBreakdownError(reply, error, report);
     }
   });
   app.post(`${BREAKDOWN_REPORT_PATH}/:id/photos`, async (request, reply) => {
@@ -68,11 +74,11 @@ export async function registerBreakdownHttpRoutes(
     if (!auth) return;
     try {
       const { id } = BreakdownIdInput.parse(request.params);
-      const { files: photos } = await readMultipartUpload(request, photosOnly);
+      const { files: photos } = await readMultipartUpload(request, photosOnly, z.object({}).strict());
       const row = await addBreakdownPhotos({ db, actor: auth.access, id, evidence: { storage, photos } });
       return reply.status(201).send(row);
     } catch (error) {
-      return sendBreakdownError(reply, error);
+      return sendBreakdownError(reply, error, report);
     }
   });
   app.get(`${BREAKDOWN_REPORT_PATH}/:id/photos/:photoId`, async (request, reply) => {
@@ -88,14 +94,15 @@ export async function registerBreakdownHttpRoutes(
         .header('Cache-Control', 'private, no-store')
         .send(streamObjectBody(object.body));
     } catch (error) {
-      return sendBreakdownError(reply, error);
+      return sendBreakdownError(reply, error, report);
     }
   });
 }
 
-function sendBreakdownError(reply: FastifyReply, error: unknown) {
+function sendBreakdownError(reply: FastifyReply, error: unknown, upload: MultipartUploadOptions) {
   return sendUploadHttpError(reply, mapCoreErrorToRoute(error, breakdownErrorFamily), {
     policy: BREAKDOWN_PHOTO_POLICY,
+    upload,
     fallbackMessage: 'Breakdown request failed.',
     invalidRequestMessage: 'Invalid Breakdown report.',
   });

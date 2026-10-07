@@ -1,7 +1,7 @@
 import { FilePolicyViolationError, type StorageAdapter } from '@pkg/core';
 import { addBreakdownPhotos, getBreakdownPhoto, reportBreakdown } from '@pkg/core/contracting';
 import type { Db } from '@pkg/db';
-import { fileTooLargeMessage } from '@pkg/domain';
+import { fileTooLargeMessage, formatNumber } from '@pkg/domain';
 import { BREAKDOWN_PHOTO_POLICY, BREAKDOWN_REPORT_PATH } from '@pkg/domain/contracting';
 import {
   BREAKDOWN_MAX_PHOTOS,
@@ -122,7 +122,7 @@ function invalidMultipart() {
   return new RouteHttpError({
     statusCode: 400,
     appCode: 'breakdown.invalid_upload',
-    message: `Send the report fields and at most ${BREAKDOWN_MAX_PHOTOS} complete photos.`,
+    message: `Send the report fields and at most ${formatNumber(BREAKDOWN_MAX_PHOTOS)} complete photos.`,
   });
 }
 
@@ -137,7 +137,7 @@ function sendBreakdownError(reply: FastifyReply, error: unknown) {
         ? new RouteHttpError({
             statusCode: 409,
             appCode: 'breakdown.too_many_photos',
-            message: `A Breakdown keeps at most ${BREAKDOWN_MAX_PHOTOS} photos.`,
+            message: `A Breakdown keeps at most ${formatNumber(BREAKDOWN_MAX_PHOTOS)} photos.`,
           })
         : mapCoreErrorToRoute(error, breakdownErrorFamily);
   return sendUploadHttpError(reply, mapped, {

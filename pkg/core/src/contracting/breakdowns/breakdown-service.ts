@@ -8,7 +8,7 @@ import {
   contractingMachineAssignments,
   contractingMachines,
 } from '@pkg/db/contracting';
-import { hasPermission, validateFile } from '@pkg/domain';
+import { formatNumber, hasPermission, validateFile } from '@pkg/domain';
 import {
   BREAKDOWN_PHOTO_POLICY,
   type BreakdownActor,
@@ -68,7 +68,7 @@ type BreakdownPhoto = Row['photos'][number];
 export type BreakdownEvidence = { storage: StorageAdapter; photos: Uint8Array[] };
 
 const tooManyPhotos = () =>
-  new BreakdownError('breakdown.too_many_photos', `A Breakdown keeps at most ${BREAKDOWN_MAX_PHOTOS} photos.`);
+  new BreakdownError('breakdown.too_many_photos', `A Breakdown keeps at most ${formatNumber(BREAKDOWN_MAX_PHOTOS)} photos.`);
 const unsolved = inArray(contractingBreakdowns.status, [...unsolvedBreakdownStatuses]);
 
 /** Validates and stores every photo before the row is written; the caller deletes them if the write fails. */

@@ -1,12 +1,23 @@
 import { breakdownReadScope } from '@pkg/domain/contracting';
 import type { BreakdownStatus, BreakdownSubjectRef } from '@pkg/schema/contracting';
-import { keepPreviousData, skipToken, useInfiniteQuery, useQuery } from '@tanstack/react-query';
+import {
+  keepPreviousData,
+  skipToken,
+  useInfiniteQuery,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query';
+import type { DecorateMutationProcedure, ResolverDef } from '@trpc/tanstack-react-query';
 import { fieldQuery } from '@/contracting/lib/field-query';
 import { useSessionAccessSummary, useSessionPermission } from '@/lib/auth-session';
 import { useTRPC } from '@/lib/trpc';
 import { isNotFoundError } from '@/lib/trpc-errors';
 
 const PAGE_SIZE = 25;
+export const BREAKDOWN_SAVE_FAILED = 'Could not save. Check your connection and try again.';
+
+type BreakdownRoutes = ReturnType<typeof useTRPC>['contractingBreakdowns'];
 
 /** Every Breakdown for the workshop, a reporter's own for a Foreman, or none. */
 export function useBreakdownScope() {
@@ -37,6 +48,30 @@ export function useBreakdown(breakdownId: string) {
     trpc.contractingBreakdowns.get.queryOptions({ id: breakdownId }, { enabled: canRead && !!breakdownId }),
   );
   return { ...fieldQuery(canRead, query), gone: isNotFoundError(query.error) };
+}
+
+/**
+ * One Breakdown mutation whose success refetches every Breakdown read before it settles, so a screen's busy state
+ * covers the refetch and the detail it shows is the server's.
+ */
+export function useBreakdownMutation<TDef extends ResolverDef>(
+  select: (breakdowns: BreakdownRoutes) => DecorateMutationProcedure<TDef>,
+) {
+  const trpc = useTRPC();
+  const refetch = useRefetchBreakdowns();
+  return useMutation(select(trpc.contractingBreakdowns).mutationOptions({ onSuccess: refetch }));
+}
+
+/** The same for a Breakdown write that goes over plain HTTP, as the photo uploads do. */
+export function useBreakdownUpload<TVariables, TData>(upload: (variables: TVariables) => Promise<TData>) {
+  const refetch = useRefetchBreakdowns();
+  return useMutation({ mutationFn: upload, onSuccess: refetch });
+}
+
+function useRefetchBreakdowns() {
+  const trpc = useTRPC();
+  const queryClient = useQueryClient();
+  return () => queryClient.invalidateQueries({ queryKey: trpc.contractingBreakdowns.pathKey() });
 }
 
 /** Unsolved Breakdowns already reported on the chosen subject: the report screen's duplicate check. */

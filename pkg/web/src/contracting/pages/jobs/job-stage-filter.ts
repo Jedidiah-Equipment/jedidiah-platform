@@ -1,7 +1,7 @@
 import { isJobQueue, openJobQueues } from '@pkg/domain/contracting';
 import { type JobQueue, type JobQueueCounts, jobQueues } from '@pkg/schema/contracting';
 import type { ColumnFiltersState } from '@tanstack/react-table';
-import { readMultiSelectFilter } from '@/components/data-table/column-filter-values.js';
+import { isPickedExactly, readMultiSelectFilter, togglePick } from '@/components/data-table/column-filter-values.js';
 
 export const STAGE_COLUMN_ID = 'stage';
 
@@ -17,12 +17,9 @@ export function listedStages(columnFilters: ColumnFiltersState): JobQueue[] {
   return picked.length ? picked : [...openJobQueues];
 }
 
-const sameStages = (left: readonly JobQueue[], right: readonly JobQueue[]) =>
-  left.length === right.length && left.every((queue) => right.includes(queue));
-
 /** Exactly these stages are picked. */
 export const isPickedStages = (columnFilters: ColumnFiltersState, stages: readonly JobQueue[]) =>
-  sameStages(pickedStages(columnFilters), stages);
+  isPickedExactly(columnFilters, STAGE_COLUMN_ID, stages);
 
 /**
  * The quick filters among `stages`: each one holding a Job, and one picked on its own even once it empties, so
@@ -35,7 +32,5 @@ export const quickFilterStages = (
 ) => stages.filter((queue) => (counts?.[queue] ?? 0) > 0 || isPickedStages(columnFilters, [queue]));
 
 /** Picks exactly these stages; pressing again clears the pick. */
-export function toggleStages(columnFilters: ColumnFiltersState, stages: readonly JobQueue[]): ColumnFiltersState {
-  const others = columnFilters.filter((filter) => filter.id !== STAGE_COLUMN_ID);
-  return isPickedStages(columnFilters, stages) ? others : [...others, { id: STAGE_COLUMN_ID, value: [...stages] }];
-}
+export const toggleStages = (columnFilters: ColumnFiltersState, stages: readonly JobQueue[]) =>
+  togglePick(columnFilters, STAGE_COLUMN_ID, stages);

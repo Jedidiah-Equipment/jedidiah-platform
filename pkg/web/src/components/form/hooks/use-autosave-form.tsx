@@ -17,7 +17,8 @@ type UseAutosaveFormOptions<TValues extends Record<string, unknown>, TInput> = {
   failureMessage: string;
   onSaved?: (input: TInput) => Promise<void> | void;
   save: (input: TInput) => Promise<unknown>;
-  toInput: (values: TValues) => TInput;
+  /** The request for `values`; `saved` is what the server last confirmed, for a write that sends only what changed. */
+  toInput: (values: TValues, saved: TValues) => TInput;
   validator: z.ZodType<TValues, TValues>;
 };
 
@@ -46,16 +47,18 @@ export function useAutosaveForm<TValues extends Record<string, unknown>, TInput>
   });
   const formRef = useRef(form);
   formRef.current = form;
+  const savedValuesRef = useRef(defaultValues);
 
   const controllerRef = useRef<ReturnType<typeof createAutosaveController<TValues>> | null>(null);
   if (!controllerRef.current) {
     controllerRef.current = createAutosaveController<TValues>({
       getValues: () => formRef.current.state.values as TValues,
       save: async (values) => {
-        const input = optionsRef.current.toInput(values);
+        const input = optionsRef.current.toInput(values, savedValuesRef.current);
 
         try {
           await optionsRef.current.save(input);
+          savedValuesRef.current = values;
           await optionsRef.current.onSaved?.(input);
         } catch (error) {
           const message = getApiMutationErrorMessage(error, optionsRef.current.failureMessage);
@@ -87,15 +90,30 @@ export function useAutosaveForm<TValues extends Record<string, unknown>, TInput>
   );
   const autosaveState = useSyncExternalStore(subscribe, controller.getState, controller.getState);
 
-  // An untouched form adopts refetched defaults, so the saved snapshot follows them; otherwise the
-  // next flush posts server data back to the server as though someone had edited it.
+  // A field still at its previous default adopts a refetched one, so a sibling write lands in the form without the
+  // next flush posting server data back as though someone had edited it; a field someone is editing keeps the edit.
+  const defaultValuesRef = useRef(defaultValues);
+  defaultValuesRef.current = defaultValues;
   const defaultSnapshot = stableSerialize(defaultValues);
-  const syncedDefaultSnapshotRef = useRef(defaultSnapshot);
+  const syncedDefaultsRef = useRef(defaultValues);
   useEffect(() => {
-    if (syncedDefaultSnapshotRef.current === defaultSnapshot) return;
-    syncedDefaultSnapshotRef.current = defaultSnapshot;
+    const previous = syncedDefaultsRef.current;
+    if (stableSerialize(previous) === defaultSnapshot) return;
+    const defaults = defaultValuesRef.current;
+    syncedDefaultsRef.current = defaults;
     const values = formRef.current.state.values as TValues;
-    if (stableSerialize(values) === defaultSnapshot) controller.updateSavedValues(values);
+    const saved = { ...savedValuesRef.current };
+    for (const key of Object.keys(defaults) as (keyof TValues & string)[]) {
+      const current = stableSerialize(values[key]);
+      if (current !== stableSerialize(defaults[key])) {
+        if (current !== stableSerialize(previous[key])) continue;
+        formRef.current.setFieldValue(key, defaults[key] as never, { dontUpdateMeta: true });
+      }
+      saved[key] = defaults[key];
+    }
+    if (stableSerialize(saved) === stableSerialize(savedValuesRef.current)) return;
+    savedValuesRef.current = saved;
+    controller.updateSavedValues(saved);
   }, [controller, defaultSnapshot]);
 
   const flush = useCallback(async () => {
@@ -134,6 +152,7 @@ export function useAutosaveForm<TValues extends Record<string, unknown>, TInput>
   const resetToSavedValues = useCallback(
     (values: TValues) => {
       formRef.current.reset(values);
+      savedValuesRef.current = values;
       controller.updateSavedValues(values);
     },
     [controller],

@@ -7,8 +7,9 @@ import { Text } from '@/components/ui/text';
 
 export const GALLERY_HINT = 'Photo kept in the app; allow photo library access to see it in your gallery.';
 
-/** The note's photos with Take photo and Choose from gallery; `uri` here is already displayable. */
-export function FieldNotePhotoStrip({
+/** A form's photos with Take photo and Choose from gallery; `uri` here is already displayable. */
+export function PhotoStrip({
+  noun,
   photos,
   limit,
   busy,
@@ -16,9 +17,9 @@ export function FieldNotePhotoStrip({
   onTake,
   onChoose,
   onRemove,
-  noun = 'Field Note photo',
 }: {
-  noun?: string;
+  /** Names each photo for assistive tech, e.g. `Field Note photo`. */
+  noun: string;
   photos: readonly { id: string; uri: string }[];
   limit: number;
   busy: boolean;

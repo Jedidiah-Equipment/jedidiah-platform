@@ -1,6 +1,9 @@
 import { ConcurrencyLimit } from './concurrency-limit.js';
 import type { RuntimeService } from './runtime-service.js';
 
+/** What a request handler holds of a {@link BackgroundQueue}: it schedules, and never waits or disposes. */
+export type Scheduler<TKey> = Pick<BackgroundQueue<TKey>, 'schedule'>;
+
 type BackgroundQueueOptions<TKey> = {
   run: (key: TKey) => Promise<unknown>;
   onError?: (error: unknown, key: TKey) => void;

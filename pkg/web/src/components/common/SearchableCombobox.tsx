@@ -30,6 +30,15 @@ export type SearchableComboboxCreate = {
   toName?: ((inputValue: string) => string | undefined) | undefined;
 };
 
+/** `options` plus the current pick when the list no longer offers it, so a value on display never renders blank. */
+export function withCurrentOption(
+  options: readonly SearchableComboboxOption[],
+  value: string | null | undefined,
+  label: string,
+): SearchableComboboxOption[] {
+  return value && !options.some((option) => option.value === value) ? [...options, { value, label }] : [...options];
+}
+
 /** The value of the trailing "Create" item; never an option's value. */
 export const SEARCHABLE_COMBOBOX_CREATE_VALUE = '__searchable_combobox_create__';
 

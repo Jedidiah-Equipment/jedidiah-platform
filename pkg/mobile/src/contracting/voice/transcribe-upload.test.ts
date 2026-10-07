@@ -2,7 +2,7 @@ import { afterEach, expect, test, vi } from 'vitest';
 
 vi.mock('@/lib/api-base-url', () => ({ apiBaseUrl: 'https://api.jedidiah.test' }));
 vi.mock('@/lib/auth', () => ({ sessionCookieHeader: async () => 'better-auth.session_token=secret' }));
-vi.mock('./audio-part', () => ({ audioPart: async () => new Blob(['voice'], { type: 'audio/mp4' }) }));
+vi.mock('@/lib/file-part', () => ({ filePart: async () => new Blob(['voice'], { type: 'audio/mp4' }) }));
 
 import { transcribeRecording } from './transcribe-upload';
 
@@ -26,7 +26,7 @@ test('sends the purpose and recording with the session cookie and returns the te
   await expect(transcribeRecording('file:///voice.m4a', 'capture comment')).resolves.toEqual(transcription);
 });
 
-test('separates the server’s refusal from a failure', async () => {
+test('a speech outage is the server’s refusal, with its status for the trail', async () => {
   vi.stubGlobal('fetch', async () =>
     Response.json(
       { message: 'Voice notes are not set up. Type the note instead.', data: { appCode: 'transcription.unavailable' } },
@@ -34,26 +34,10 @@ test('separates the server’s refusal from a failure', async () => {
     ),
   );
   await expect(transcribeRecording('file:///voice.m4a', 'field note')).rejects.toMatchObject({
-    name: 'TranscriptionRefusedError',
-    code: 'transcription.unavailable',
+    name: 'UploadRefusedError',
+    data: { appCode: 'transcription.unavailable' },
     message: 'Voice notes are not set up. Type the note instead.',
     status: 503,
-  });
-
-  vi.stubGlobal('fetch', async () => new Response('<html>', { status: 500 }));
-  await expect(transcribeRecording('file:///voice.m4a', 'field note')).rejects.toMatchObject({
-    name: 'TranscriptionFailedError',
-    reason: 'server',
-    status: 500,
-  });
-
-  vi.stubGlobal('fetch', async () => {
-    throw new TypeError('Network request failed');
-  });
-  await expect(transcribeRecording('file:///voice.m4a', 'field note')).rejects.toMatchObject({
-    name: 'TranscriptionFailedError',
-    reason: 'network',
-    status: null,
   });
 });
 
@@ -65,7 +49,7 @@ test('gives up once the transcribe timeout passes', async () => {
       new Promise((_resolve, reject) => init.signal?.addEventListener('abort', () => reject(new Error('aborted')))),
   );
   const pending = expect(transcribeRecording('file:///voice.m4a', 'field note')).rejects.toMatchObject({
-    name: 'TranscriptionFailedError',
+    name: 'UploadFailedError',
     reason: 'timeout',
   });
   await vi.advanceTimersByTimeAsync(30_000);

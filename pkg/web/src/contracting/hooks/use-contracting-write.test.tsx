@@ -3,9 +3,8 @@
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, expect, it, vi } from 'vitest';
-import { useResetOnOpen } from './use-job-write.js';
+import { useResetOnOpen } from './use-contracting-write.js';
 
-vi.mock('@/contracting/hooks/use-query-invalidation.js', () => ({ useQueryInvalidation: () => ({}) }));
 vi.mock('@/hooks/use-api-mutation-error-toast.js', () => ({}));
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;

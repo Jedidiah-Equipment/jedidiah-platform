@@ -11,8 +11,9 @@ import { requiredSelection } from '@/components/form/utils/form-schema.js';
 import { Button } from '@/components/ui/button.js';
 import { Dialog, DialogClose, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog.js';
 import { MachineDialogTitle } from '@/contracting/components/MachineDialogTitle.js';
+import { useResetOnOpen } from '@/contracting/hooks/use-contracting-write.js';
 import { useTRPC } from '@/lib/trpc.js';
-import { useJobWrite, useResetOnOpen } from './use-job-write.js';
+import { useJobWrite } from './use-job-write.js';
 
 const MeasureValues = z.object({ measureTypeId: requiredSelection(UUID, 'Choose a Measure Type'), quantity: Quantity });
 
@@ -24,7 +25,7 @@ export function AddMeasureDialog({ stint }: { stint: Assignment }) {
   const set = useMutation(
     trpc.contractingJobs.measures.set.mutationOptions({
       onSuccess: async () => {
-        await write.invalidateJobs();
+        await write.invalidate();
         setOpen(false);
       },
       onError: write.report,

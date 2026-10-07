@@ -39,14 +39,13 @@ const test = createTester(async ({ db, auth }) => {
     input: MachineCreateInput.parse({ code: 'JD6140M-2', make: 'Deere', model: '6140M', categoryId: category.id }),
   });
   const storage = new InMemoryStorageAdapter();
-  const reported: string[] = [];
   const app = Fastify();
   app.decorate('auth', auth);
   await app.register(multipart);
-  await registerBreakdownHttpRoutes(app, { db, storage, onReported: (id) => reported.push(id) });
+  await registerBreakdownHttpRoutes(app, { db, storage });
   state.session = mockSession(null);
   (state.session as ReturnType<typeof mockSession>).user.contractingRole = 'foreman';
-  return { app, machineId: machine.id, reported, storage };
+  return { app, machineId: machine.id, storage };
 });
 
 function upload(machineId: string, photos: Buffer[]) {
@@ -79,13 +78,12 @@ function upload(machineId: string, photos: Buffer[]) {
 }
 
 test('reports a Breakdown with two photos, then serves each photo privately', async ({ context }) => {
-  const { app, machineId, reported, storage } = context;
+  const { app, machineId, storage } = context;
   try {
     const response = await app.inject(upload(machineId, [jpeg, png]));
     expect(response.statusCode).toBe(201);
     const body = response.json();
     expect(body).toMatchObject({ photoCount: 2, latitude: -25.7479, longitude: 28.2293, urgency: 'code-red' });
-    expect(reported).toEqual([body.id]);
     expect(storage.objects.size).toBe(2);
     const photo = await app.inject({ url: `/api/contracting/breakdowns/${body.id}/photos/${body.photos[1].id}` });
     expect(photo.statusCode).toBe(200);
@@ -96,7 +94,7 @@ test('reports a Breakdown with two photos, then serves each photo privately', as
 });
 
 test('refuses a seventh photo and anything but PNG or JPEG without keeping a row or an object', async ({ context }) => {
-  const { app, machineId, reported, storage } = context;
+  const { app, machineId, storage } = context;
   try {
     const tooMany = await app.inject(
       upload(
@@ -108,7 +106,6 @@ test('refuses a seventh photo and anything but PNG or JPEG without keeping a row
     expect(tooMany.json()).toMatchObject({ data: { appCode: 'breakdown.too_many_photos' } });
     const notAPhoto = await app.inject(upload(machineId, [Buffer.from('not a photo')]));
     expect(notAPhoto.statusCode).toBe(400);
-    expect(reported).toEqual([]);
     expect(storage.objects.size).toBe(0);
   } finally {
     await app.close();

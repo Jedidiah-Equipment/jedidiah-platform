@@ -2,7 +2,7 @@ import { UUID } from '@pkg/schema';
 import { z } from 'zod';
 import { contractingStorageKey } from '@/contracting/lib/contracting-storage';
 import { newLocalId } from '@/contracting/lib/local-id';
-import type { PhotoSource } from '@/lib/photo-picker';
+import type { PickedPhoto } from '@/lib/photo-picker';
 
 export const FIELD_NOTE_DESCRIPTION_MAX = 2000;
 const NEEDS_CONTENT = 'A Field Note needs a description or a photo.';
@@ -26,17 +26,16 @@ export const FieldNote = z
   .strict();
 export type FieldNote = z.infer<typeof FieldNote>;
 
-/** A photo the picker returned, still at the camera's or the gallery's temporary URI. */
-export type PickedPhoto = { uri: string; source: PhotoSource };
+/** What the store needs of a picked photo: where it is now, and whether the gallery already has it. */
+export type PhotoToKeep = Pick<PickedPhoto, 'uri' | 'inGallery'>;
 
 export type FieldNoteFiles = {
   photoLimit: number;
-  /** Copies the photo into the note's own storage; `inGallery` is false when a camera photo missed the album. */
-  keep(sourceUri: string, noteId: string, photoId: string, source: PhotoSource): Promise<KeptPhoto>;
+  /** Copies the photo into the note's own storage and answers the key the note stores for it. */
+  keep(sourceUri: string, noteId: string, photoId: string): Promise<string>;
   removePhoto(uri: string): Promise<void>;
   removeNote(noteId: string): Promise<void>;
 };
-type KeptPhoto = { uri: string; inGallery: boolean };
 
 export class FieldNoteError extends Error {
   constructor(message: string) {
@@ -121,7 +120,7 @@ export function createFieldNoteStore({ storage, key, files, now = () => new Date
       };
     },
     /** Mints the note, copies its photos, then writes it; nothing is written for a refused draft. */
-    async create(draft: { description: string; photos: readonly PickedPhoto[] }) {
+    async create(draft: { description: string; photos: readonly PhotoToKeep[] }) {
       const description = draft.description.trim().slice(0, FIELD_NOTE_DESCRIPTION_MAX);
       if (!description && draft.photos.length === 0) throw new FieldNoteError(NEEDS_CONTENT);
       const id = newLocalId();
@@ -142,7 +141,7 @@ export function createFieldNoteStore({ storage, key, files, now = () => new Date
         return { ...note, description };
       });
     },
-    async addPhotos(noteId: string, picked: readonly PickedPhoto[]) {
+    async addPhotos(noteId: string, picked: readonly PhotoToKeep[]) {
       const current = (await list()).find((note) => note.id === noteId);
       if (!current) throw new FieldNoteError(GONE);
       const room = Math.max(0, files.photoLimit - current.photos.length);
@@ -178,19 +177,19 @@ export function createFieldNoteStore({ storage, key, files, now = () => new Date
     },
   };
 
-  async function keepPhotos(noteId: string, picked: readonly PickedPhoto[]) {
-    const kept: { photo: FieldNotePhoto; inGallery: boolean }[] = [];
+  /** `galleryFailed` when a camera photo among them missed the Jedidiah album; the note keeps its own copy anyway. */
+  async function keepPhotos(noteId: string, picked: readonly PhotoToKeep[]) {
+    const photos: FieldNotePhoto[] = [];
     try {
-      for (const { uri, source } of picked) {
+      for (const { uri } of picked) {
         const id = newLocalId();
-        const result = await files.keep(uri, noteId, id, source);
-        kept.push({ photo: { id, uri: result.uri }, inGallery: result.inGallery });
+        photos.push({ id, uri: await files.keep(uri, noteId, id) });
       }
     } catch (error) {
-      await Promise.all(kept.map(({ photo }) => cleanup(photo.uri)));
+      await Promise.all(photos.map((photo) => cleanup(photo.uri)));
       throw error;
     }
-    return { photos: kept.map(({ photo }) => photo), galleryFailed: kept.some(({ inGallery }) => !inGallery) };
+    return { photos, galleryFailed: picked.some(({ inGallery }) => !inGallery) };
   }
   function cleanup(uri: string) {
     return files.removePhoto(uri).catch((error) => onError?.(error, 'cleanup_photo'));

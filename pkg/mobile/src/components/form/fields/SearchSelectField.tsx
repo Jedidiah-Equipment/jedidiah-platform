@@ -8,7 +8,7 @@ import { PickerDropdown } from '@/components/ui/picker-dropdown';
 import { Text } from '@/components/ui/text';
 import { TextInput } from '@/components/ui/text-input';
 import { useFieldContext } from '../hooks/form-context';
-import { getFieldErrors } from '../utils/field-errors';
+import { type FormFieldError, getFieldErrors } from '../utils/field-errors';
 import { fieldStateClassNames } from '../utils/field-style';
 import { FieldShell } from './FieldShell';
 
@@ -22,34 +22,41 @@ export type SearchSelectFieldOption = {
   value: string;
 };
 
-export type SearchSelectFieldProps = {
+export type SearchSelectProps = {
   disabled?: boolean;
   emptyMessage?: string;
+  errors?: FormFieldError[];
   label?: ReactNode;
-  onValueCommit?: () => void;
+  /** Called with a newly picked value; picking the current one again only closes the list. */
+  onChange: (value: string) => void;
   options: readonly SearchSelectFieldOption[];
   placeholder?: string;
   searchPlaceholder?: string;
+  value: string;
+};
+
+export type SearchSelectFieldProps = Omit<SearchSelectProps, 'errors' | 'onChange' | 'value'> & {
+  onValueCommit?: () => void;
 };
 
 /**
  * One choice from an in-memory list: collapsed to the current option, it opens into a search box over
  * a capped, scrolling list and closes again as soon as a row is picked.
  */
-export function SearchSelectField({
+export function SearchSelect({
   disabled = false,
   emptyMessage = 'No matches.',
+  errors = [],
   label,
-  onValueCommit,
+  onChange,
   options,
   placeholder = 'Select an option',
   searchPlaceholder = 'Search…',
-}: SearchSelectFieldProps) {
-  const field = useFieldContext<string>();
-  const errors = getFieldErrors(field.state.meta.errors);
+  value,
+}: SearchSelectProps) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
-  const selected = options.find((option) => option.value === field.state.value);
+  const selected = options.find((option) => option.value === value);
 
   const close = () => {
     setOpen(false);
@@ -58,10 +65,7 @@ export function SearchSelectField({
 
   const choose = (option: SearchSelectFieldOption) => {
     close();
-    if (option.value === field.state.value) return;
-
-    field.handleChange(option.value);
-    onValueCommit?.();
+    if (option.value !== value) onChange(option.value);
   };
 
   return (
@@ -116,7 +120,7 @@ export function SearchSelectField({
         open={open}
         pending={false}
         renderRow={(option) => {
-          const active = option.value === field.state.value;
+          const active = option.value === value;
           return (
             <>
               <OptionContent active={active} option={option} />
@@ -125,9 +129,25 @@ export function SearchSelectField({
           );
         }}
         rows={filterOptions(options, search)}
-        selectedKey={`option:${field.state.value}`}
+        selectedKey={`option:${value}`}
       />
     </FieldShell>
+  );
+}
+
+/** The form-registry field: `SearchSelect` bound to the field's value and errors. */
+export function SearchSelectField({ onValueCommit, ...props }: SearchSelectFieldProps) {
+  const field = useFieldContext<string>();
+  return (
+    <SearchSelect
+      {...props}
+      errors={getFieldErrors(field.state.meta.errors)}
+      value={field.state.value}
+      onChange={(value) => {
+        field.handleChange(value);
+        onValueCommit?.();
+      }}
+    />
   );
 }
 

@@ -11,10 +11,10 @@ import { CONTRACTING_TAB_HREF } from '@/contracting/lib/app-tabs';
 import { recordFieldNoteChanged } from '@/contracting/observability';
 import { useVoiceSession } from '@/contracting/voice/use-voice-session';
 import { confirm } from '@/lib/confirm';
+import { choosePhotos, type PickedPhoto, takePhoto } from '@/lib/photo-picker';
 import { FieldNoteFields } from './FieldNoteFields';
 import { fieldNoteFiles, resolveFieldNotePhotoUri } from './files';
-import { choosePhotos, takePhoto } from './pick-photos';
-import type { FieldNote, PickedPhoto } from './store';
+import { FIELD_NOTE_DESCRIPTION_MAX, type FieldNote } from './store';
 import { useFieldNoteAction } from './use-field-note-action';
 import { useFieldNotes } from './use-field-notes';
 
@@ -37,7 +37,11 @@ function FieldNoteDetail({ note, onLeave }: { note: FieldNote; onLeave: () => vo
   const [description, setDescription] = useState(note.description);
   const [galleryHint, setGalleryHint] = useState(false);
   const { busy, error, act, report } = useFieldNoteAction();
-  const voice = useVoiceSession('field note');
+  const voice = useVoiceSession('field note', {
+    value: description,
+    onChangeText: setDescription,
+    maxLength: FIELD_NOTE_DESCRIPTION_MAX,
+  });
   const { reportSaved } = voice;
   const open = note.status === 'open';
 
@@ -135,8 +139,6 @@ function FieldNoteDetail({ note, onLeave }: { note: FieldNote; onLeave: () => vo
         onTake={() => void add(takePhoto)}
         onChoose={() => void add(() => choosePhotos(fieldNoteFiles.photoLimit - note.photos.length))}
         onRemovePhoto={(photoId) => void removePhoto(photoId)}
-        description={description}
-        onDescriptionChange={setDescription}
         onDescriptionBlur={commitDescription}
         descriptionEditable
         voice={voice}

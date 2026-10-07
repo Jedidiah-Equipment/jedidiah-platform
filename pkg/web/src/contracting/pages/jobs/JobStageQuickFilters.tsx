@@ -1,4 +1,3 @@
-import { formatNumber } from '@pkg/domain';
 import {
   assignmentAttentionLevelColorClassNames,
   jobQueueColorClassNames,
@@ -8,8 +7,7 @@ import {
 import type { JobQueue, JobQueueSummary } from '@pkg/schema/contracting';
 import { IconAlertTriangle } from '@tabler/icons-react';
 import type { ColumnFiltersState, Updater } from '@tanstack/react-table';
-import type React from 'react';
-import { Button } from '@/components/ui/button.js';
+import { QuickFilterButton } from '@/contracting/components/QuickFilterButton.js';
 import { cn } from '@/lib/utils.js';
 import { isPickedStages, quickFilterStages, toggleStages } from './job-stage-filter.js';
 
@@ -65,34 +63,5 @@ export function JobStageQuickFilters({
         <span>All</span>
       </QuickFilterButton>
     </fieldset>
-  );
-}
-
-function QuickFilterButton({
-  count,
-  pressed,
-  onClick,
-  attention,
-  children,
-}: {
-  count: number;
-  pressed: boolean;
-  onClick: () => void;
-  attention?: React.ReactNode;
-  children: React.ReactNode;
-}) {
-  return (
-    <Button
-      aria-pressed={pressed}
-      className={cn('h-9 gap-1.5 px-2', pressed && 'border-muted-foreground/60 bg-muted text-foreground')}
-      onClick={onClick}
-      size="sm"
-      type="button"
-      variant="outline"
-    >
-      {children}
-      <span className="rounded bg-muted px-1 text-xs text-muted-foreground">{formatNumber(count)}</span>
-      {attention}
-    </Button>
   );
 }

@@ -1,32 +1,18 @@
 import * as FileSystem from 'expo-file-system/legacy';
-import { Album, Asset, requestPermissionsAsync } from 'expo-media-library';
-import { Platform } from 'react-native';
 import type { FieldNoteFiles } from './store';
 
 const DIRECTORY = 'field-notes/';
-const GALLERY_ALBUM = 'Jedidiah';
 
-/**
- * Every photo is copied into the app's sandbox, which is what the note renders. A photo the camera just
- * took also goes to the Jedidiah album so the capture screen can choose it later; one chosen from the
- * gallery is already there. A gallery failure is not an error: the note keeps its sandbox copy.
- */
+/** Every photo is copied into the app's sandbox, which is what the note renders. */
 export const fieldNoteFiles: FieldNoteFiles = {
   photoLimit: 12,
-  async keep(sourceUri, noteId, photoId, source) {
+  async keep(sourceUri, noteId, photoId) {
     const documents = documentDirectory();
     const directory = `${documents}${DIRECTORY}${noteId}/`;
     await FileSystem.makeDirectoryAsync(directory, { intermediates: true });
     await FileSystem.copyAsync({ from: sourceUri, to: `${directory}${photoId}.jpg` });
     // Sandbox-relative: iOS can move the data container between app versions while the files survive.
-    const uri = `${DIRECTORY}${noteId}/${photoId}.jpg`;
-    const inGallery =
-      source === 'gallery' ||
-      (await saveToGallery(sourceUri).then(
-        () => true,
-        () => false,
-      ));
-    return { uri, inGallery };
+    return `${DIRECTORY}${noteId}/${photoId}.jpg`;
   },
   async removePhoto(uri) {
     await FileSystem.deleteAsync(resolveFieldNotePhotoUri(uri), { idempotent: true });
@@ -40,20 +26,6 @@ export const fieldNoteFiles: FieldNoteFiles = {
 export function resolveFieldNotePhotoUri(key: string): string {
   if (!key.startsWith(DIRECTORY) || key.includes('..')) throw new Error('Not a Field Note photo.');
   return `${documentDirectory()}${key}`;
-}
-
-/** Puts a photo the camera just took into the Jedidiah album; throws when the library is unavailable. */
-export async function saveToGallery(uri: string) {
-  // iOS's add-only access cannot find or create an album, so the album needs read-write there.
-  const { granted } = await requestPermissionsAsync(Platform.OS !== 'ios', ['photo']);
-  if (!granted) throw new Error('Photo library access denied.');
-  const album = await Album.get(GALLERY_ALBUM);
-  if (album) {
-    await Asset.create(uri, album);
-    return;
-  }
-  // Moving (not copying) the new asset into the album keeps one copy of it in the library on Android.
-  await Album.create(GALLERY_ALBUM, [await Asset.create(uri)], true);
 }
 
 function documentDirectory(): string {

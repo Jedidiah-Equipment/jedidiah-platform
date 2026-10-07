@@ -2,10 +2,10 @@ import { View } from 'react-native';
 import { PhotoField } from '@/components/PhotoField';
 import { Text } from '@/components/ui/text';
 import { parseExifDateTime } from '@/contracting/readings/read-at';
-import type { PhotoSource } from '@/lib/photo-picker';
+import type { PickedPhoto } from '@/lib/photo-picker';
 import type { useBusyAction } from '@/lib/use-busy-action';
 
-export type MeterPhoto = { uri: string; source: PhotoSource };
+export type MeterPhoto = Pick<PickedPhoto, 'uri' | 'source'>;
 
 /** The hour meter's photo: the shared photo field, with a guide for the digits and the gallery photo's EXIF time. */
 export function MeterPhotoField({

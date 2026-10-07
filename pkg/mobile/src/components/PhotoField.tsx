@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { addBreadcrumb, captureException, captureSanitizedException } from '@/lib/observability';
-import { choosePhoto, PHOTO_QUALITY, type PhotoSource } from '@/lib/photo-picker';
+import { choosePhoto, PHOTO_QUALITY, type PickedPhoto } from '@/lib/photo-picker';
 import type { useBusyAction } from '@/lib/use-busy-action';
 
 /** Points, not rem: one height for the empty, camera and preview states, so the form never jumps. */
@@ -16,9 +16,6 @@ const CARD_HEIGHT = 224;
 const CAMERA_FAILURE = 'The camera could not take a photo. Try again or continue without a photo.';
 const GALLERY_FAILURE = 'The photo could not be opened. Try again or continue without a photo.';
 const CAMERA_UNAVAILABLE = 'Camera unavailable. Choose a photo from the gallery instead.';
-
-/** A photo just taken or chosen; `exif` comes only with a gallery photo. */
-export type PickedPhoto = { uri: string; source: PhotoSource; exif: Record<string, unknown> | null };
 
 /**
  * One photo slot, the native sibling of web's `AttachmentField`: a fixed-height card that offers Take photo and
@@ -79,7 +76,7 @@ export function PhotoField({
       });
       onCameraOpenChange(false);
       if (!result) throw new Error(CAMERA_FAILURE);
-      onChange({ uri: result.uri, source: 'camera', exif: null });
+      onChange({ uri: result.uri, source: 'camera', exif: null, inGallery: false });
     }, CAMERA_FAILURE);
   }
 
@@ -89,7 +86,7 @@ export function PhotoField({
         captureSanitizedException(error, 'Gallery pick failed', { source: 'gallery_pick' });
         throw new Error(GALLERY_FAILURE);
       });
-      if (chosen) onChange({ ...chosen, source: 'gallery' });
+      if (chosen) onChange(chosen);
     }, GALLERY_FAILURE);
   }
 

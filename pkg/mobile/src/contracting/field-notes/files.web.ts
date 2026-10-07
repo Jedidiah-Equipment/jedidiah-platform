@@ -5,7 +5,7 @@ export const fieldNoteFiles: FieldNoteFiles = {
   photoLimit: 2,
   async keep(sourceUri) {
     if (!sourceUri.startsWith('data:')) throw new Error('The picker did not return a photo that can be kept.');
-    return { uri: sourceUri, inGallery: true };
+    return sourceUri;
   },
   async removePhoto() {},
   async removeNote() {},
@@ -14,6 +14,3 @@ export const fieldNoteFiles: FieldNoteFiles = {
 export function resolveFieldNotePhotoUri(uri: string): string {
   return uri;
 }
-
-/** The browser has no photo library to add to. */
-export async function saveToGallery(_uri: string) {}

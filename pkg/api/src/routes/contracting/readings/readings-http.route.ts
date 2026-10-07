@@ -1,7 +1,6 @@
-import { FilePolicyViolationError, type StorageAdapter } from '@pkg/core';
+import type { StorageAdapter } from '@pkg/core';
 import { captureReading, getReadingForEvidence } from '@pkg/core/contracting';
 import type { Db } from '@pkg/db';
-import { fileTooLargeMessage } from '@pkg/domain';
 import { READING_CAPTURE_PATH, READING_PHOTO_POLICY } from '@pkg/domain/contracting';
 import {
   ReadingCaptureMultipart,
@@ -10,9 +9,13 @@ import {
   readingCaptureFieldNames,
 } from '@pkg/schema/contracting';
 import type { FastifyInstance, FastifyReply } from 'fastify';
+import type { Scheduler } from '../../../background-queue.js';
 import {
+  type MultipartUploadOptions,
   mapCoreErrorToRoute,
   RouteHttpError,
+  readMultipartUpload,
+  requireMaxLength,
   requirePermission,
   requireRouteAuth,
   sendUploadHttpError,
@@ -21,41 +24,32 @@ import {
 import { readingErrorFamily } from '../contracting-error-families.js';
 
 /** Schedules a captured reading's AI check after the capture has answered. */
-export type ReadingVerifications = { schedule: (readingId: string) => void };
+export type ReadingVerifications = Scheduler<string>;
 
 export async function registerReadingHttpRoutes(
   app: FastifyInstance,
   { db, storage, verifications }: { db: Db; storage: StorageAdapter; verifications: ReadingVerifications },
 ) {
-  const fieldCount = readingCaptureFieldNames.length;
-  // Multipart caps bytes; the comment cap counts UTF-16 units, so allow the widest UTF-8 encoding.
-  const fieldSize = 4 * (ReadingComment.maxLength ?? 1024);
+  const upload: MultipartUploadOptions = {
+    fileField: 'photo',
+    maxFiles: 1,
+    policy: READING_PHOTO_POLICY,
+    textFields: readingCaptureFieldNames,
+    fieldMaxLength: requireMaxLength(ReadingComment),
+    invalid: () =>
+      new RouteHttpError({
+        statusCode: 400,
+        appCode: 'reading.invalid_upload',
+        message: 'Send reading fields and at most one complete photo.',
+      }),
+  };
   app.post(READING_CAPTURE_PATH, async (request, reply) => {
     const auth = await requireRouteAuth(request, reply);
     if (!auth) return;
     try {
       requirePermission(auth, 'contracting_reading:capture', 'You cannot capture Hour Readings.', 'reading.forbidden');
-      const fields: Record<string, string> = {};
-      let photoBytes: Buffer | undefined;
-      for await (const part of request.parts({
-        limits: {
-          files: 1,
-          fields: fieldCount,
-          parts: fieldCount + 1,
-          fileSize: READING_PHOTO_POLICY.maxBytes,
-          fieldSize,
-        },
-      })) {
-        if (part.type === 'file') {
-          if (part.fieldname !== 'photo') throw invalidMultipart();
-          photoBytes = await part.toBuffer();
-          if (part.file.truncated) throw invalidMultipart();
-        } else {
-          if (part.fieldname in fields || part.valueTruncated || typeof part.value !== 'string')
-            throw invalidMultipart();
-          fields[part.fieldname] = part.value;
-        }
-      }
+      const { fields, files } = await readMultipartUpload(request, upload);
+      const [photoBytes] = files;
       const input = ReadingCaptureMultipart.parse(fields);
       const row = await captureReading({
         db,
@@ -89,21 +83,10 @@ export async function registerReadingHttpRoutes(
     }
   });
 }
-function invalidMultipart() {
-  return new RouteHttpError({
-    statusCode: 400,
-    appCode: 'reading.invalid_upload',
-    message: 'Send reading fields and at most one complete photo.',
-  });
-}
 function sendReadingError(reply: FastifyReply, error: unknown) {
-  const mapped =
-    error instanceof FilePolicyViolationError
-      ? new RouteHttpError({ statusCode: 400, appCode: error.code, message: error.message, cause: error })
-      : mapCoreErrorToRoute(error, readingErrorFamily);
-  return sendUploadHttpError(reply, mapped, {
+  return sendUploadHttpError(reply, mapCoreErrorToRoute(error, readingErrorFamily), {
+    policy: READING_PHOTO_POLICY,
     fallbackMessage: 'Reading request failed.',
     invalidRequestMessage: 'Invalid Hour Reading.',
-    onFileTooLarge: () => ({ appCode: 'file.too_large', message: fileTooLargeMessage(READING_PHOTO_POLICY.maxBytes) }),
   });
 }

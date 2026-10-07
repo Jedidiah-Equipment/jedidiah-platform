@@ -2,7 +2,7 @@ import { createDatabaseClient, eq, user } from '@pkg/db';
 import { AuthId } from '@pkg/schema';
 import { createSharedAuth } from '@/auth/auth.js';
 import { log } from '@/logger.js';
-import { driverRoleSafetyPlugin } from '../auth/driver-role-safety.js';
+import { contractingRoleSafetyPlugin } from '../auth/contracting-role-safety.js';
 import { parseFleetImport, readFleetImportFiles } from './fleet-import-csv.js';
 import { runFleetImport } from './fleet-import-runner.js';
 import { resolveFleetImportConfig } from './fleet-import-target.js';
@@ -20,7 +20,7 @@ try {
   );
   const summary = await runFleetImport({
     db: client.db,
-    auth: createSharedAuth(client.db, [driverRoleSafetyPlugin(client.db)]),
+    auth: createSharedAuth(client.db, [contractingRoleSafetyPlugin(client.db)]),
     actorUserId: AuthId.parse(actor.id),
     data,
   });

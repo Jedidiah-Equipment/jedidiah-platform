@@ -18,12 +18,12 @@ import { recordReadingCaptured } from '@/contracting/observability';
 import { type AttemptIdentity, captureAttempt, captureAttemptPayload } from '@/contracting/readings/capture-attempt';
 import { deriveCapture } from '@/contracting/readings/derive-capture';
 import { capturedAtFor, isBackdated, type ReadAtChoice, readAtAfterPhoto } from '@/contracting/readings/read-at';
-import { CAPTURE_FAILED, captureReading, ReadingRefusedError } from '@/contracting/readings/reading-upload';
+import { CAPTURE_FAILED, captureReading } from '@/contracting/readings/reading-upload';
 import { useFleet, useMachineReadings } from '@/contracting/readings/use-fleet';
 import { useVoiceSession } from '@/contracting/voice/use-voice-session';
 import { VoiceTextArea } from '@/contracting/voice/VoiceTextArea';
 import { useSessionPermission } from '@/lib/auth-session';
-import { captureSanitizedException } from '@/lib/observability';
+import { UploadRefusedError } from '@/lib/multipart-upload';
 import { useTRPC } from '@/lib/trpc';
 import { useBusyAction } from '@/lib/use-busy-action';
 
@@ -102,11 +102,15 @@ function CaptureForm({ target }: { target: CaptureTarget }) {
   // Judged once typing stops, as web does: a half-typed value is not yet below the previous reading.
   const [valueFocused, setValueFocused] = useState(false);
   const [comment, setComment] = useState('');
-  const voice = useVoiceSession('capture comment');
+  const voice = useVoiceSession('capture comment', {
+    value: comment,
+    onChangeText: setComment,
+    maxLength: ReadingComment.maxLength ?? undefined,
+  });
   const [disputedReadingId, setDisputedReadingId] = useState<string | null>(null);
   const overrides = useStintOverrides(target.kind === 'stint' ? target.planned : null);
   const action = useBusyAction();
-  const { busy, error, setError, run } = action;
+  const { busy, error, run } = action;
   const attempt = useRef<AttemptIdentity | null>(null);
   const latestRow = readings.data?.[0];
   const latest = latestRow ? { id: latestRow.id, value: latestRow.value } : null;
@@ -168,18 +172,16 @@ function CaptureForm({ target }: { target: CaptureTarget }) {
           photo?.uri ?? null,
         );
       } catch (error) {
-        if (error instanceof ReadingRefusedError) {
-          recordReadingCaptured({ ...captured, refused: error.code });
-          if (LEDGER_MOVED.has(error.code)) {
+        // The busy action shows a refusal's sentence and reports anything else; the ledger's own refusals also refetch.
+        if (error instanceof UploadRefusedError) {
+          recordReadingCaptured({ ...captured, refused: error.data.appCode });
+          if (LEDGER_MOVED.has(error.data.appCode)) {
             setDisputedReadingId(null);
             void queryClient.invalidateQueries({
               queryKey: trpc.contractingReadings.fieldHistory.queryKey({ machineId }),
             });
           }
-          setError(error.message);
-          return;
         }
-        captureSanitizedException(error, 'Reading capture failed', { source: 'reading_capture' });
         throw error;
       }
       recordReadingCaptured({ ...captured, refused: null });
@@ -284,11 +286,8 @@ function CaptureForm({ target }: { target: CaptureTarget }) {
         <VoiceTextArea
           accessibilityLabel={commentLabel(role, commentRequired)}
           placeholder={photo === null ? 'No photo? Say why…' : 'Anything management should know about this reading'}
-          value={comment}
           editable={!busy}
           rows={COMMENT_ROWS}
-          maxLength={ReadingComment.maxLength ?? undefined}
-          onChangeText={setComment}
           voice={voice}
         />
       </FieldShell>

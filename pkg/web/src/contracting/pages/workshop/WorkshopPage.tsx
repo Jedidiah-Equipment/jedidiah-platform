@@ -13,7 +13,6 @@ import type { ColumnFiltersState } from '@tanstack/react-table';
 import { useMemo } from 'react';
 import { DateDisplay } from '@/components/common/DateDisplay.js';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
-import { SearchableCombobox } from '@/components/common/SearchableCombobox.js';
 import { cursorInfiniteQueryOptions, useCombinedCursorQueryPages } from '@/components/data-table/cursor-query.js';
 import { DataTable } from '@/components/data-table/DataTable.js';
 import { type DataTableColumnDef, useDataTable } from '@/components/data-table/features.js';
@@ -23,13 +22,15 @@ import type { SortOptions } from '@/components/data-table/table-state.js';
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
 import { Badge } from '@/components/ui/badge.js';
 import { CategoryLabel } from '@/contracting/components/CategoryIcon.js';
+import { MechanicCombobox } from '@/contracting/components/MechanicCombobox.js';
+import { useContractingWrite } from '@/contracting/hooks/use-contracting-write.js';
+import { useQueryInvalidation } from '@/contracting/hooks/use-query-invalidation.js';
 import { useCan } from '@/hooks/use-access.js';
 import { getApiQueryErrorMessage } from '@/lib/api-errors.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { cn } from '@/lib/utils.js';
 import { BreakdownStatusQuickFilters } from './BreakdownStatusQuickFilters.js';
 import { listedStatuses, STATUS_COLUMN_ID } from './types.js';
-import { useWorkshopWrite } from './use-workshop-write.js';
 
 const useWorkshopTableStore = createPersistedDataTableStore({
   initialState: { sorting: [{ id: 'reportedAt', desc: true }] },
@@ -51,10 +52,9 @@ const statusFilterOptions = breakdownStatuses.map((status) => ({
 export function WorkshopPage() {
   const trpc = useTRPC();
   const navigate = useNavigate();
-  const write = useWorkshopWrite();
+  const write = useContractingWrite(useQueryInvalidation().invalidateWorkshop);
   const canManage = useCan('contracting_breakdown:update').can;
-  const readsQueue = useCan('contracting_breakdown:read').can;
-  const summary = useQuery(trpc.contractingBreakdowns.queueSummary.queryOptions(undefined, { enabled: readsQueue }));
+  const summary = useQuery(trpc.contractingBreakdowns.queueSummary.queryOptions());
   const tableController = useServerSideTableController({
     store: useWorkshopTableStore,
     sortOptions: breakdownSortOptions,
@@ -150,22 +150,13 @@ export function WorkshopPage() {
         header: 'Mechanic',
         cell: ({ row }) =>
           canManage && row.original.status !== 'solved' ? (
-            // biome-ignore lint/a11y/noStaticElementInteractions: keeps the picker from opening the row
-            // biome-ignore lint/a11y/useKeyWithClickEvents: the picker owns its keyboard handling
-            <div className="min-w-40" onClick={(event) => event.stopPropagation()}>
-              <SearchableCombobox
-                inputId={`mechanic-${row.original.id}`}
-                options={[
-                  { value: '', label: 'No mechanic' },
-                  ...(mechanics.data ?? []).map((person) => ({ value: person.id, label: person.name })),
-                ]}
-                placeholder="Assign mechanic…"
-                value={row.original.primaryMechanicUserId ?? ''}
-                onValueChange={(mechanicUserId) =>
-                  assign.mutate({ id: row.original.id, mechanicUserId: mechanicUserId || null })
-                }
-              />
-            </div>
+            <MechanicCombobox
+              inRow
+              inputId={`mechanic-${row.original.id}`}
+              options={(mechanics.data ?? []).map((person) => ({ value: person.id, label: person.name }))}
+              value={row.original.primaryMechanicUserId}
+              onValueChange={(mechanicUserId) => assign.mutate({ id: row.original.id, mechanicUserId })}
+            />
           ) : (
             <span className={row.original.mechanicName ? undefined : 'text-muted-foreground'}>
               {row.original.mechanicName ?? 'Unassigned'}

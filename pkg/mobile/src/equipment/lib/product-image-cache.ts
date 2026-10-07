@@ -6,10 +6,15 @@ export type ProductImageKey = {
   updatedAt: string;
 };
 
+export const PRODUCT_IMAGE_CACHE_DIR = 'product-images';
+
 /** A new upload changes `updatedAt`, so it naturally resolves to a new OS-managed cache file. */
+export function productImageCacheName(key: ProductImageKey): string {
+  const updatedAtMs = new Date(key.updatedAt).getTime();
+  return `${key.productId}-${key.slot}-${updatedAtMs}.webp`;
+}
+
 export function productImageCachePath(cacheDir: string, key: ProductImageKey): string {
   const normalizedCacheDir = cacheDir.endsWith('/') ? cacheDir : `${cacheDir}/`;
-  const updatedAtMs = new Date(key.updatedAt).getTime();
-
-  return `${normalizedCacheDir}product-images/${key.productId}-${key.slot}-${updatedAtMs}.webp`;
+  return `${normalizedCacheDir}${PRODUCT_IMAGE_CACHE_DIR}/${productImageCacheName(key)}`;
 }

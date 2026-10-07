@@ -22,11 +22,12 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog.js';
 import { MachineDialogTitle } from '@/contracting/components/MachineDialogTitle.js';
+import { useResetOnOpen } from '@/contracting/hooks/use-contracting-write.js';
 import { useQueryInvalidation } from '@/contracting/hooks/use-query-invalidation.js';
 import { getApiErrorAppCode } from '@/lib/api-errors.js';
 import { useTRPC } from '@/lib/trpc.js';
 import type { JobSheet } from './types.js';
-import { useJobWrite, useResetOnOpen } from './use-job-write.js';
+import { useJobWrite } from './use-job-write.js';
 
 const signOffFieldDefaults = { startDate: '', endDate: '', dieselLitres: 0, notes: '' };
 
@@ -110,13 +111,13 @@ function DraftSignOffDetails({ job, sheet }: { job: JobDetail; sheet: JobSheet }
   const complete = useMutation(
     trpc.contractingJobs.jobs.complete.mutationOptions({
       onSuccess: async () => {
-        await write.invalidateJobs();
+        await write.invalidate();
         toast.success('Job completed');
         setConfirm(false);
       },
       onError: async (error) => {
         write.report(error);
-        if (getApiErrorAppCode(error) === 'contracting_job.stint_not_planned') await write.invalidateJobs();
+        if (getApiErrorAppCode(error) === 'contracting_job.stint_not_planned') await write.invalidate();
       },
     }),
   );

@@ -1,8 +1,8 @@
 import type { Machine } from '@pkg/schema/contracting';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { useEffect } from 'react';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { QueryContent } from '@/components/common/QueryContent.js';
+import { withCurrentOption } from '@/components/common/SearchableCombobox.js';
 import { AutosaveFormCard } from '@/components/form/AutosaveFormCard.js';
 import { useAutosaveForm } from '@/components/form/index.js';
 import { EditFormFullWidth } from '@/components/page-layout/EditFormLayout.js';
@@ -57,17 +57,11 @@ function MachineForm({ machine }: { machine: Machine }) {
     toInput: (value) => machinePatchInput(machine.id, value),
     save: (value) => patch.mutateAsync(value),
   });
-  // Closing a Service Record sets Next Service Due behind the form's back; keep the next autosave from reverting it.
-  useEffect(() => {
-    const saved = machine.nextServiceDueHours ?? Number.NaN;
-    if (!Object.is(form.state.values.nextServiceDueHours, saved)) form.setFieldValue('nextServiceDueHours', saved);
-  }, [form, machine.nextServiceDueHours]);
-  const driverOptions = (options.data?.drivers ?? []).map((row) => ({ label: row.name, value: row.id }));
-  if (machine.currentDriverUserId && !driverOptions.some((row) => row.value === machine.currentDriverUserId))
-    driverOptions.push({
-      label: machine.currentDriverName ?? 'Unavailable driver',
-      value: machine.currentDriverUserId,
-    });
+  const driverOptions = withCurrentOption(
+    (options.data?.drivers ?? []).map((row) => ({ label: row.name, value: row.id })),
+    machine.currentDriverUserId,
+    machine.currentDriverName ?? 'Unavailable driver',
+  );
   return (
     <>
       <ErrorMessage error={categories.error ?? options.error} fallbackMessage="Unable to load fleet options." />

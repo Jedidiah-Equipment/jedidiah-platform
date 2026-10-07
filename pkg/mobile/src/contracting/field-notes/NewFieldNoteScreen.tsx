@@ -6,16 +6,16 @@ import { SecondaryToolbar } from '@/components/TopToolbar';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { useAppToast } from '@/components/ui/toast';
+import { GALLERY_HINT } from '@/contracting/components/PhotoStrip';
 import { CONTRACTING_TAB_HREF } from '@/contracting/lib/app-tabs';
 import { newLocalId } from '@/contracting/lib/local-id';
 import { recordFieldNoteCreated } from '@/contracting/observability';
 import { useVoiceSession } from '@/contracting/voice/use-voice-session';
 import { confirm } from '@/lib/confirm';
+import { choosePhotos, type PickedPhoto, takePhoto } from '@/lib/photo-picker';
 import { FieldNoteFields } from './FieldNoteFields';
-import { GALLERY_HINT } from './FieldNotePhotoStrip';
 import { fieldNoteFiles } from './files';
-import { choosePhotos, takePhoto } from './pick-photos';
-import type { PickedPhoto } from './store';
+import { FIELD_NOTE_DESCRIPTION_MAX } from './store';
 import { useFieldNoteAction } from './use-field-note-action';
 import { useFieldNotes } from './use-field-notes';
 
@@ -28,7 +28,11 @@ export default function NewFieldNoteScreen() {
   const navigation = useNavigation();
   const showToast = useAppToast();
   const [description, setDescription] = useState('');
-  const voice = useVoiceSession('field note');
+  const voice = useVoiceSession('field note', {
+    value: description,
+    onChangeText: setDescription,
+    maxLength: FIELD_NOTE_DESCRIPTION_MAX,
+  });
   const [photos, setPhotos] = useState<(PickedPhoto & { id: string })[]>([]);
   const [saved, setSaved] = useState(false);
   const { busy, error, act } = useFieldNoteAction();
@@ -100,8 +104,6 @@ export default function NewFieldNoteScreen() {
         onTake={() => void pick(takePhoto)}
         onChoose={() => void pick(() => choosePhotos(limit - photos.length))}
         onRemovePhoto={(photoId) => setPhotos((current) => current.filter((photo) => photo.id !== photoId))}
-        description={description}
-        onDescriptionChange={setDescription}
         descriptionEditable={!busy}
         voice={voice}
       />

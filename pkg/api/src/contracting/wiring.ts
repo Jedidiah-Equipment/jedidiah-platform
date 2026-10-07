@@ -1,6 +1,5 @@
-import { createOpenAiChatModel } from '@pkg/ai';
+import { createOpenAiChatModel, createOpenAiTranscriptionModel } from '@pkg/ai';
 import {
-  createTranscriptionModel,
   deriveTranscriptionHint,
   readMeterPhoto as readMeterPhotoWithModel,
   tidyTranscript,
@@ -39,19 +38,19 @@ export async function registerContracting(
   { config, storage }: BusinessWiringInput,
 ): Promise<BusinessWiring<ContractingRouterDependencies>> {
   const chatModel = createOpenAiChatModel({ apiKey: config.OPENAI_API_KEY, model: config.OPENAI_MODEL });
-  const transcriptionModel = createTranscriptionModel({
+  const transcriptionModel = createOpenAiTranscriptionModel({
     apiKey: config.OPENAI_API_KEY,
     model: config.OPENAI_TRANSCRIPTION_MODEL,
   });
   const readMeterPhoto: ReadMeterPhoto = (input) => readMeterPhotoWithModel({ ...input, model: chatModel });
   const engine: TranscriptionEngine = {
-    transcribe: (input) =>
-      transcribeVoiceNote({ ...input, model: transcriptionModel }).catch((error: unknown) => {
-        log.root.error({ error: serializeError(error) }, 'Voice note transcription failed');
-        throw error;
-      }),
-    tidy: (input) => tidyTranscript({ ...input, model: chatModel }),
-    derive: (input) => deriveTranscriptionHint({ ...input, model: chatModel }),
+    transcribe: logged('Voice note transcription failed', (input) =>
+      transcribeVoiceNote({ ...input, model: transcriptionModel }),
+    ),
+    tidy: logged('Transcript tidy failed', (input) => tidyTranscript({ ...input, model: chatModel })),
+    derive: logged('Transcription hint derivation failed', (input) =>
+      deriveTranscriptionHint({ ...input, model: chatModel }),
+    ),
   };
   const keyterms = createKeytermCache(() => loadKeyterms({ db }));
 
@@ -86,4 +85,12 @@ export async function registerContracting(
     routerDependencies: { hintDerivations, readMeterPhoto },
     services: [readingVerifications, hintDerivations],
   };
+}
+
+function logged<TInput, TOutput>(label: string, run: (input: TInput) => Promise<TOutput>) {
+  return (input: TInput) =>
+    run(input).catch((error: unknown) => {
+      log.root.error({ error: serializeError(error) }, label);
+      throw error;
+    });
 }

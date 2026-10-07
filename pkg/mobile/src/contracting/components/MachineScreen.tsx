@@ -14,8 +14,8 @@ import { Button } from '@/components/ui/button';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { Text } from '@/components/ui/text';
 import { useFleet, useMachineReadings } from '@/contracting/readings/use-fleet';
+import { BreakdownRow } from '@/contracting/workshop/BreakdownRow';
 import { useMachineBreakdowns } from '@/contracting/workshop/use-breakdowns';
-import { BreakdownRow } from '@/contracting/workshop/WorkshopScreen';
 import { useSessionPermission } from '@/lib/auth-session';
 import { CategoryIcon } from './CategoryIcon';
 

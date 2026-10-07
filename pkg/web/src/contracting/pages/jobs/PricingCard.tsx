@@ -21,6 +21,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog.js';
+import { useResetOnOpen } from '@/contracting/hooks/use-contracting-write.js';
 import { getApiErrorAppCode } from '@/lib/api-errors.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { AddChargeLineButton } from './ChargeLineEditing.js';
@@ -34,7 +35,7 @@ import {
 import { adjustmentRows, machinePricingRows } from './pricing.js';
 import { PricingContext, usePricingMutations } from './pricing-context.js';
 import type { JobSheet } from './types.js';
-import { useJobWrite, useResetOnOpen } from './use-job-write.js';
+import { useJobWrite } from './use-job-write.js';
 
 export function PricingCard({ job, sheet }: { job: JobDetail; sheet: JobSheet }) {
   const trpc = useTRPC();
@@ -168,13 +169,13 @@ function MarkPriced({ job, action }: { job: JobDetail; action: NonNullable<Retur
   const markPriced = useMutation(
     trpc.contractingJobs.pricing.markPriced.mutationOptions({
       onSuccess: async () => {
-        await write.invalidateJobs();
+        await write.invalidate();
         toast.success('Job priced');
         setConfirm(false);
       },
       onError: async (error) => {
         write.report(error);
-        if (getApiErrorAppCode(error) === 'contracting_job.total_changed') await write.invalidateJobs();
+        if (getApiErrorAppCode(error) === 'contracting_job.total_changed') await write.invalidate();
       },
     }),
   );

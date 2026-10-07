@@ -1,7 +1,7 @@
 import { formatDate, formatHours } from '@pkg/domain';
 import { breakdownStatusLabels, breakdownUrgencyLabels, readingRoleLabels } from '@pkg/domain/contracting';
 import { breakdownStatuses } from '@pkg/schema/contracting';
-import { useQuery } from '@tanstack/react-query';
+import { skipToken, useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import { useMemo } from 'react';
 import { DateDisplay } from '@/components/common/DateDisplay.js';
@@ -38,9 +38,7 @@ export function FleetHistoryCard({ subject }: { subject: { machineId: string } |
   const machineId = 'machineId' in subject ? subject.machineId : null;
   const readsBreakdowns = useCan('contracting_breakdown:read').can;
   const readsServices = useCan('contracting_service:read').can && machineId !== null;
-  const readings = useQuery(
-    trpc.contractingReadings.listByMachine.queryOptions({ machineId: machineId ?? '' }, { enabled: !!machineId }),
-  );
+  const readings = useQuery(trpc.contractingReadings.listByMachine.queryOptions(machineId ? { machineId } : skipToken));
   const breakdowns = useQuery(
     trpc.contractingBreakdowns.list.queryOptions(
       { ...subject, statuses: [...breakdownStatuses], limit: 0 },
@@ -48,7 +46,7 @@ export function FleetHistoryCard({ subject }: { subject: { machineId: string } |
     ),
   );
   const services = useQuery(
-    trpc.contractingServices.list.queryOptions({ machineId: machineId ?? '' }, { enabled: readsServices }),
+    trpc.contractingServices.list.queryOptions(readsServices && machineId ? { machineId } : skipToken),
   );
   const rows = useMemo<HistoryRow[]>(
     () =>

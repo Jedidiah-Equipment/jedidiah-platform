@@ -33,7 +33,7 @@ import { type AuditDescriptor, diffAuditUpdate, recordAuditUpdate } from './audi
  * - Labor Rate Card update — one audited entity spread over a settings row and five Department rows,
  *   locked and diffed as a whole; a per-row lock would audit one Save as six events.
  */
-export async function mutateEntity<TTable extends PgTable & { id: PgColumn }, TResult>({
+export async function mutateEntity<TTable extends PgTable & { id: PgColumn }, TResult, TPrepared = void>({
   actorUserId,
   assert,
   db,
@@ -50,9 +50,11 @@ export async function mutateEntity<TTable extends PgTable & { id: PgColumn }, TR
   actorUserId: AuthId | null;
   /**
    * Runs under the row lock, before the write. Domain gates (the cancelled-Job rule) and cross-entity
-   * pre-checks (a Part's supplier) live here; throw to abort with the transaction still open.
+   * pre-checks (a Part's supplier) live here; throw to abort with the transaction still open. What it
+   * returns reaches `set` as its second argument, so a value resolved under the lock (a re-pointed Job)
+   * never has to travel through a closure variable.
    */
-  assert?: (tx: DatabaseTransaction, before: TTable['$inferSelect']) => Promise<void> | void;
+  assert?: (tx: DatabaseTransaction, before: TTable['$inferSelect']) => Promise<TPrepared> | TPrepared;
   db: Db | DatabaseTransaction;
   descriptor: AuditDescriptor<TTable['$inferSelect']>;
   id: string;
@@ -67,7 +69,7 @@ export async function mutateEntity<TTable extends PgTable & { id: PgColumn }, TR
    * `patchXxxx`. Include `updatedAt: new Date()` here where the table has one — never automatic,
    * because `parts` has no timestamp columns at all.
    */
-  set: (before: TTable['$inferSelect']) => Partial<TTable['$inferInsert']>;
+  set: (before: TTable['$inferSelect'], prepared: TPrepared) => Partial<TTable['$inferInsert']>;
   /** Replaces the generated "Updated …" line when the write has a cause worth naming. */
   summary?: string;
   table: TTable;
@@ -83,9 +85,9 @@ export async function mutateEntity<TTable extends PgTable & { id: PgColumn }, TR
       throw notFound();
     }
 
-    await assert?.(tx, before);
+    const prepared = (await assert?.(tx, before)) as TPrepared;
 
-    const patch = set(before);
+    const patch = set(before, prepared);
     const after = { ...before, ...patch } as TTable['$inferSelect'];
     const changes = diffAuditUpdate(descriptor, before, after);
 

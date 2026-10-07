@@ -13,7 +13,7 @@ vi.mock('@/hooks/use-api-mutation-error-toast.js', () => ({
   useApiMutationErrorToast: () => () => undefined,
 }));
 vi.mock('@/contracting/hooks/use-query-invalidation.js', () => ({
-  useQueryInvalidation: () => ({ invalidateFleet: async () => undefined, invalidateWorkshop: async () => undefined }),
+  useQueryInvalidation: () => ({ invalidateServices: async () => undefined }),
 }));
 vi.mock('@/lib/trpc.js', () => ({
   useTRPC: () => ({ contractingServices: { close: { mutationOptions: (options: unknown) => options } } }),
@@ -28,6 +28,7 @@ const roots: Root[] = [];
 const record = {
   id: '00000000-0000-4000-8000-000000000001',
   primaryMechanicUserId: null,
+  mechanicName: null,
   notes: null,
 } as ServiceRecord;
 

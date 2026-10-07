@@ -46,6 +46,7 @@ import { mutateEntity } from '../../audit/mutate-entity.js';
 import { FilePolicyViolationError } from '../../files/file-errors.js';
 import type { StorageAdapter } from '../../storage/storage-adapter.js';
 import type { DbOrTx } from '../jobs/job-load.js';
+import { assertContractingMechanic } from '../mechanics.js';
 import { breakdownDescriptor } from './breakdown-audit.js';
 import {
   assertBreakdownAction,
@@ -58,6 +59,7 @@ import {
   breakdownActionSubject,
   breakdownReadableBy,
   breakdownSubjectOf,
+  breakdownSubjectRef,
   type LoadedBreakdown,
   loadReadableBreakdown,
   selectBreakdowns,
@@ -76,6 +78,7 @@ const tooManyPhotos = () =>
     `A Breakdown keeps at most ${formatNumber(BREAKDOWN_MAX_PHOTOS)} photos.`,
   );
 const unsolved = inArray(contractingBreakdowns.status, [...unsolvedBreakdownStatuses]);
+const photoNotFound = () => new BreakdownError('breakdown.not_found', 'Photo not found.');
 
 /** Validates and stores every photo before the row is written; the caller deletes them if the write fails. */
 async function storePhotos({ storage, photos }: BreakdownEvidence): Promise<BreakdownPhoto[]> {
@@ -134,8 +137,10 @@ async function withStoredPhotos<T>(
   }
 }
 
-const subjectColumn = (kind: BreakdownSubjectRef['kind']) =>
+const stintSubjectColumn = (kind: BreakdownSubjectRef['kind']) =>
   kind === 'machine' ? contractingMachineAssignments.machineId : contractingMachineAssignments.implementId;
+const breakdownSubjectColumn = (kind: BreakdownSubjectRef['kind']) =>
+  kind === 'machine' ? contractingBreakdowns.machineId : contractingBreakdowns.implementId;
 
 /** Locks the subject row and refuses an unknown or retired one. */
 async function lockSubject(tx: DatabaseTransaction, subject: BreakdownSubjectRef) {
@@ -164,7 +169,7 @@ async function resolveJob(
   jobId: string | null | undefined,
 ): Promise<string | null> {
   if (jobId === null) return null;
-  const onSubject = eq(subjectColumn(subject.kind), subject.id);
+  const onSubject = eq(stintSubjectColumn(subject.kind), subject.id);
   if (jobId === undefined) {
     const [stint] = await tx
       .select({ jobId: contractingMachineAssignments.jobId })
@@ -198,9 +203,6 @@ async function resolveJob(
   return jobId;
 }
 
-const subjectOfRow = (row: Pick<Row, 'machineId' | 'implementId'>): BreakdownSubjectRef =>
-  row.machineId ? { kind: 'machine', id: row.machineId } : { kind: 'implement', id: row.implementId ?? '' };
-
 /** `created` is false when a retried `localId` returned the Breakdown already delivered. */
 export type BreakdownReport = { breakdown: BreakdownDetail; created: boolean };
 
@@ -226,7 +228,7 @@ export async function reportBreakdown({
     if (!input.localId) return null;
     const [row] = await db.select().from(contractingBreakdowns).where(eq(contractingBreakdowns.id, input.localId));
     if (!row) return null;
-    const subject = subjectOfRow(row);
+    const subject = breakdownSubjectRef(row);
     if (row.reportedByUserId !== actor.userId || subject.kind !== input.subject.kind || subject.id !== input.subject.id)
       throw new BreakdownError('breakdown.report_id_conflict', 'This report identifier has already been used.');
     return getBreakdown({ db, actor, id: row.id });
@@ -371,7 +373,6 @@ export async function summarizeBreakdownQueue({
       codeRedUnsolved: sql<number>`count(*) filter (where ${contractingBreakdowns.urgency} = 'code-red' and ${contractingBreakdowns.status} <> 'solved')::integer`,
     })
     .from(contractingBreakdowns)
-    .leftJoin(contractingJobs, eq(contractingJobs.id, contractingBreakdowns.jobId))
     .where(breakdownReadableBy(actor));
   return counts ?? { open: 0, inProgress: 0, codeRedUnsolved: 0 };
 }
@@ -400,8 +401,11 @@ async function assertActionOn(
   );
 }
 
-/** An audited write to one Breakdown, gated by a Breakdown Action under the row lock; answers the fresh detail. */
-function writeBreakdown({
+/**
+ * An audited write to one Breakdown, gated by a Breakdown Action under the row lock; answers the fresh detail.
+ * What `assert` resolves under the lock reaches `set`, as `mutateEntity` hands it on.
+ */
+function writeBreakdown<TPrepared = void>({
   db,
   actor,
   id,
@@ -413,11 +417,11 @@ function writeBreakdown({
   actor: BreakdownActor;
   id: string;
   action: BreakdownActionName;
-  assert?: (tx: DatabaseTransaction, before: Row) => Promise<void>;
-  set: (before: Row) => Partial<typeof contractingBreakdowns.$inferInsert>;
+  assert?: (tx: DatabaseTransaction, before: Row) => Promise<TPrepared>;
+  set: (before: Row, prepared: TPrepared) => Partial<typeof contractingBreakdowns.$inferInsert>;
 }) {
   return withBreakdownConstraints(() =>
-    mutateEntity({
+    mutateEntity<typeof contractingBreakdowns, BreakdownDetail, TPrepared>({
       db,
       actorUserId: actor.userId,
       descriptor: breakdownDescriptor,
@@ -426,9 +430,9 @@ function writeBreakdown({
       notFound: breakdownNotFound,
       assert: async (tx, before) => {
         await assertActionOn(tx, action, before, actor);
-        await assert?.(tx, before);
+        return (await assert?.(tx, before)) as TPrepared;
       },
-      set: (before) => ({ ...set(before), updatedAt: new Date() }),
+      set: (before, prepared) => ({ ...set(before, prepared), updatedAt: new Date() }),
       project: (tx, row) => getBreakdown({ db: tx, actor, id: row.id }),
     }),
   );
@@ -444,33 +448,21 @@ export async function patchBreakdown({
   input: BreakdownPatchInput;
 }): Promise<BreakdownDetail> {
   const input = BreakdownPatchInput.parse(raw);
-  let jobId: string | null | undefined;
   return writeBreakdown({
     db,
     actor,
     id: input.id,
     action: 'editReport',
-    assert: async (tx, before) => {
-      jobId =
-        input.jobId === undefined || input.jobId === before.jobId
-          ? before.jobId
-          : await resolveJob(tx, actor, subjectOfRow(before), input.jobId);
-    },
-    set: (before) => ({
+    assert: (tx, before) =>
+      input.jobId === undefined || input.jobId === before.jobId
+        ? Promise.resolve(before.jobId)
+        : resolveJob(tx, actor, breakdownSubjectRef(before), input.jobId),
+    set: (before, jobId) => ({
       description: input.description ?? before.description,
       urgency: input.urgency ?? before.urgency,
-      jobId: jobId ?? null,
+      jobId,
     }),
   });
-}
-
-async function assertMechanic(tx: DatabaseTransaction, userId: AuthId) {
-  const [person] = await tx
-    .select({ role: user.contractingRole, isDevice: user.isDevice })
-    .from(user)
-    .where(eq(user.id, userId))
-    .for('share');
-  if (person?.role !== 'mechanic' || person.isDevice) throw invalidMechanic();
 }
 
 export async function assignMechanic({
@@ -489,7 +481,7 @@ export async function assignMechanic({
     id: input.id,
     action: 'assignMechanic',
     assert: async (tx) => {
-      if (input.mechanicUserId) await assertMechanic(tx, input.mechanicUserId);
+      if (input.mechanicUserId) await assertContractingMechanic(tx, input.mechanicUserId, invalidMechanic);
     },
     set: () => ({ primaryMechanicUserId: input.mechanicUserId }),
   });
@@ -612,19 +604,18 @@ export async function removeBreakdownPhoto({
   storage: StorageAdapter;
 }): Promise<BreakdownDetail> {
   const input = BreakdownPhotoRemoveInput.parse(raw);
-  let removed: BreakdownPhoto | undefined;
+  const photo = await getBreakdownPhoto({ db, actor, id: input.id, photoId: input.photoId });
   const detail = await writeBreakdown({
     db,
     actor,
     id: input.id,
     action: 'addPhotos',
     assert: async (_tx, before) => {
-      removed = before.photos.find((photo) => photo.id === input.photoId);
-      if (!removed) throw new BreakdownError('breakdown.not_found', 'Photo not found.');
+      if (!before.photos.some((candidate) => candidate.id === photo.id)) throw photoNotFound();
     },
-    set: (before) => ({ photos: before.photos.filter((photo) => photo.id !== input.photoId) }),
+    set: (before) => ({ photos: before.photos.filter((candidate) => candidate.id !== photo.id) }),
   });
-  if (removed) await storage.deleteObject(removed.storageKey);
+  await storage.deleteObject(photo.storageKey);
   return detail;
 }
 
@@ -641,17 +632,8 @@ export async function getBreakdownPhoto({
 }): Promise<BreakdownPhoto> {
   const row = await loadReadableBreakdown(db, actor, id);
   const photo = row?.breakdown.photos.find((candidate) => candidate.id === photoId);
-  if (!photo) throw new BreakdownError('breakdown.not_found', 'Photo not found.');
+  if (!photo) throw photoNotFound();
   return photo;
-}
-
-/** The people a workshop manager may assign: non-device users with the Contracting mechanic role. */
-export async function listMechanics({ db }: { db: Db }) {
-  return db
-    .select({ id: user.id, name: user.name })
-    .from(user)
-    .where(and(eq(user.contractingRole, 'mechanic'), eq(user.isDevice, false)))
-    .orderBy(asc(user.name));
 }
 
 /**
@@ -674,7 +656,7 @@ export async function listBreakdownJobOptions({
     .innerJoin(contractingFarms, eq(contractingFarms.id, contractingJobs.farmId))
     .where(
       and(
-        eq(subjectColumn(subject.kind), subject.id),
+        eq(stintSubjectColumn(subject.kind), subject.id),
         inArray(contractingJobs.status, [...openJobStatuses]),
         breakdownReadScope(actor) === 'own' ? eq(contractingJobs.foremanUserId, actor.userId) : undefined,
       ),
@@ -693,25 +675,9 @@ export async function listOpenBreakdownsOnSubject({
   db: Db;
   subject: BreakdownSubjectRef;
 }): Promise<BreakdownSummary[]> {
-  const column = subject.kind === 'machine' ? contractingBreakdowns.machineId : contractingBreakdowns.implementId;
   const rows = await selectBreakdowns(db)
-    .where(and(eq(column, subject.id), unsolved))
+    .where(and(eq(breakdownSubjectColumn(subject.kind), subject.id), unsolved))
     .orderBy(desc(contractingBreakdowns.reportedAt));
-  return rows.map(toBreakdownSummary);
-}
-
-export async function listBreakdownsForSubject({
-  db,
-  ...subject
-}: {
-  db: Db;
-} & ({ machineId: string; implementId?: never } | { implementId: string; machineId?: never })): Promise<
-  BreakdownSummary[]
-> {
-  const where = subject.machineId
-    ? eq(contractingBreakdowns.machineId, subject.machineId)
-    : eq(contractingBreakdowns.implementId, subject.implementId ?? '');
-  const rows = await selectBreakdowns(db).where(where).orderBy(desc(contractingBreakdowns.reportedAt));
   return rows.map(toBreakdownSummary);
 }
 

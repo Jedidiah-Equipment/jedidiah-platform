@@ -39,7 +39,7 @@ export function createProductRangeImageRouteConfig(storage: StorageAdapter): Ent
     uploadForbiddenMessage: 'You do not have permission to update Product Range images.',
     readForbiddenMessage: 'You do not have permission to view this Product Range image.',
     noFileMessage: 'Choose an image to upload.',
-    maxUploadBytes: RANGE_IMAGE_POLICY.maxBytes,
+    policy: RANGE_IMAGE_POLICY,
     mapOwnerError: mapProductRangeOwnerError,
     replace: ({ bytes, rawParams }) => {
       const params = ProductRangeImageParams.parse(rawParams);
@@ -65,7 +65,7 @@ export function createProductRangeLogoRouteConfig(storage: StorageAdapter): Enti
     uploadForbiddenMessage: 'You do not have permission to update Product Range logos.',
     readForbiddenMessage: 'You do not have permission to view this Product Range logo.',
     noFileMessage: 'Choose a logo to upload.',
-    maxUploadBytes: RANGE_LOGO_POLICY.maxBytes,
+    policy: RANGE_LOGO_POLICY,
     mapOwnerError: mapProductRangeOwnerError,
     replace: ({ bytes, rawParams }) => {
       const params = ProductRangeLogoParams.parse(rawParams);

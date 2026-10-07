@@ -27,6 +27,15 @@ export function useQueryInvalidation() {
     () => queryClient.invalidateQueries({ queryKey: trpc.contractingRateCard.pathKey() }),
     [queryClient, trpc],
   );
+  const invalidateServices = useCallback(
+    () =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: trpc.contractingServices.pathKey() }),
+        queryClient.invalidateQueries({ queryKey: trpc.contractingFleet.pathKey() }),
+        queryClient.invalidateQueries({ queryKey: trpc.contractingBreakdowns.pathKey() }),
+      ]),
+    [queryClient, trpc],
+  );
   const invalidateWorkshop = useCallback(
     () =>
       Promise.all([
@@ -43,8 +52,17 @@ export function useQueryInvalidation() {
       invalidateJobs,
       invalidateRateCard,
       invalidateReadings,
+      invalidateServices,
       invalidateWorkshop,
     }),
-    [invalidateDirectory, invalidateFleet, invalidateJobs, invalidateRateCard, invalidateReadings, invalidateWorkshop],
+    [
+      invalidateDirectory,
+      invalidateFleet,
+      invalidateJobs,
+      invalidateRateCard,
+      invalidateReadings,
+      invalidateServices,
+      invalidateWorkshop,
+    ],
   );
 }

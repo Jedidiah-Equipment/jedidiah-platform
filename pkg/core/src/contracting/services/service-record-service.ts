@@ -1,4 +1,4 @@
-import { type DatabaseTransaction, type Db, user } from '@pkg/db';
+import type { DatabaseTransaction, Db } from '@pkg/db';
 import { contractingMachines, contractingServiceRecords } from '@pkg/db/contracting';
 import type { AuthId } from '@pkg/schema';
 import {
@@ -12,6 +12,7 @@ import { desc, eq } from 'drizzle-orm';
 import { defineAuditDescriptor, recordAuditCreate } from '../../audit/audit-writer.js';
 import { mutateEntity } from '../../audit/mutate-entity.js';
 import { stampNextServiceDue } from '../fleet/machine-service.js';
+import { assertContractingMechanic } from '../mechanics.js';
 import {
   invalidServiceMechanic,
   ServiceError,
@@ -92,13 +93,7 @@ async function lockActiveMachine(tx: DatabaseTransaction, machineId: string) {
 }
 
 async function assertMechanic(tx: DatabaseTransaction, userId: AuthId | null | undefined) {
-  if (!userId) return;
-  const [person] = await tx
-    .select({ role: user.contractingRole, isDevice: user.isDevice })
-    .from(user)
-    .where(eq(user.id, userId))
-    .for('share');
-  if (person?.role !== 'mechanic' || person.isDevice) throw invalidServiceMechanic();
+  if (userId) await assertContractingMechanic(tx, userId, invalidServiceMechanic);
 }
 
 const assertOpen = (before: Row) => {

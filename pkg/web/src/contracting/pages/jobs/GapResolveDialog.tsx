@@ -14,9 +14,10 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert.js';
 import { Badge } from '@/components/ui/badge.js';
 import { Card, CardContent } from '@/components/ui/card.js';
 import { MachineDialogTitle } from '@/contracting/components/MachineDialogTitle.js';
+import { useResetOnOpen } from '@/contracting/hooks/use-contracting-write.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { cn } from '@/lib/utils.js';
-import { useJobWrite, useResetOnOpen } from './use-job-write.js';
+import { useJobWrite } from './use-job-write.js';
 
 const GapValues = GapResolveInput.omit({ id: true });
 const gapColors = assignmentAttentionLevelColorClassNames[assignmentAttentionKindLevels['gap-flag']];

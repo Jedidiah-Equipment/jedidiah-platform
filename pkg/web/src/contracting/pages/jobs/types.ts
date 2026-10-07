@@ -1,6 +1,7 @@
 import {
   type AssignmentActionName,
   type AssignmentActionVerdict,
+  actionSheet,
   hasJobCard,
   judgeAssignmentAction,
 } from '@pkg/domain/contracting';
@@ -43,23 +44,14 @@ export function toJobCreateInput(values: JobCreateValues): JobCreateInput {
  *   and a value that is on display renders read-only.
  */
 export function jobSheet(job: JobDetail) {
-  const verdict = (action: JobActionName) => job.actions[action];
-  const can = (action: JobActionName) => verdict(action).allowed;
-  const holds = (action: JobActionName) => {
-    const judged = verdict(action);
-    return judged.allowed || judged.reason !== 'no-permission';
-  };
-  const refusal = (action: JobActionName) => {
-    const judged = verdict(action);
-    return judged.allowed ? undefined : judged.message;
-  };
+  const sheet = actionSheet(job.actions);
   /** A Job Action on one Machine Assignment: the Job must allow it, then the Assignment's state. */
   const stintAction = (
     jobAction: JobActionName,
     assignmentAction: AssignmentActionName,
     stint: { state: AssignmentState },
   ): AssignmentActionVerdict => {
-    const judged = verdict(jobAction);
+    const judged = sheet.verdict(jobAction);
     return judged.allowed
       ? judgeAssignmentAction(assignmentAction, stint)
       : { allowed: false, message: judged.message };
@@ -68,20 +60,12 @@ export function jobSheet(job: JobDetail) {
   /** Work has started and the Job was not cancelled. */
   const started = job.status === 'active' || hasJobCard(job.status);
   return {
-    can,
-    /** The person holds the action's permission; only the Job's state or ownership can still refuse it. */
-    holds,
-    refusal,
+    ...sheet,
     stintAction,
-    /**
-     * A card action's props: null when the person lacks the permission (render nothing), otherwise disabled with the
-     * refusal while the Job refuses it. Row controls do not use this: they render only when `can` is true.
-     */
-    action: (name: JobActionName) => (holds(name) ? { disabled: !can(name), title: refusal(name) } : null),
     /** Money reaches only the readers the server sends it to, once there is a Job Card to price. */
     seesMoney,
     /** Which cards the sheet shows: presentation, not Job Actions. */
-    showsSignOff: started && holds('editSignOffDetails'),
+    showsSignOff: started && sheet.holds('editSignOffDetails'),
     showsChargeLines: job.status !== 'upcoming' && !seesMoney,
     showsInvoice: seesMoney && (job.status === 'priced' || job.status === 'invoiced'),
   };

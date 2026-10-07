@@ -1,10 +1,11 @@
 import { formatHours } from '@pkg/domain';
+import { READING_PHOTO_POLICY } from '@pkg/domain/contracting';
 import { IconArrowRight } from '@tabler/icons-react';
 import type React from 'react';
 import { NumberField } from '@/components/form/fields/NumberField.js';
 import { Card, CardContent } from '@/components/ui/card.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
-import { ReadingPhotoPicker } from './ReadingPhotoPicker.js';
+import { PhotoPicker } from '@/contracting/components/PhotoPicker.js';
 
 export function ReadingCaptureCard({
   previousValue,
@@ -88,7 +89,14 @@ export function ReadingCaptureDetails({
 }) {
   return (
     <div className="min-w-0 space-y-4 border-t pt-4">
-      <ReadingPhotoPicker id={id} photo={photo} onChange={onPhotoChange} onError={onError} />
+      <PhotoPicker
+        id={id}
+        label="Meter photo"
+        policy={READING_PHOTO_POLICY}
+        photo={photo}
+        onChange={onPhotoChange}
+        onError={onError}
+      />
       {error ? (
         <p role="alert" className="text-destructive">
           {error}

@@ -34,7 +34,7 @@ export function StampInvoiceDialog({
         if (getApiErrorAppCode(error) !== 'contracting_job.total_changed') return;
         toast.error('This Job was re-priced — review the new total');
         onOpenChange(false);
-        await write.invalidateJobs();
+        await write.invalidate();
       },
     }),
   );
@@ -61,7 +61,7 @@ export function StampInvoiceDialog({
       onCreated={async () => {
         onOpenChange(false);
         toast.success('Invoiced');
-        await write.invalidateJobs();
+        await write.invalidate();
       }}
     >
       {(form) => (

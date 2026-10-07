@@ -55,7 +55,71 @@ describe('useAutosaveForm', () => {
       });
     });
   });
+
+  it('adopts a refetched default per untouched field, keeps an edit in flight, and hands the saved values to toInput', async () => {
+    const save = vi.fn<(input: unknown) => Promise<void>>().mockResolvedValue();
+    const toInput = vi.fn((values: { quantity: number; due: number }, saved: { quantity: number; due: number }) => ({
+      values,
+      saved,
+    }));
+    const container = document.createElement('div');
+    document.body.append(container);
+    mountedContainers.push(container);
+    const root = createRoot(container);
+    mountedRoots.push(root);
+    const render = (due: number) =>
+      act(async () => {
+        root.render(<AutosavePairForm defaultValues={{ quantity: 5, due }} save={save} toInput={toInput} />);
+      });
+
+    await render(100);
+    const [quantity, due] = [...container.querySelectorAll('input')];
+    act(() => {
+      quantity?.focus();
+      setNativeInputValue(quantity as HTMLInputElement, '6');
+      quantity?.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+
+    // A sibling write moved Next Due on the server; the typed quantity is not flushed yet.
+    await render(200);
+    expect(due?.value).toBe('200');
+    expect(quantity?.value).toBe('6');
+    expect(save).not.toHaveBeenCalled();
+
+    act(() => quantity?.blur());
+    await act(async () => {
+      await vi.waitFor(() => {
+        expect(save).toHaveBeenCalledTimes(1);
+      });
+    });
+    expect(toInput).toHaveBeenLastCalledWith({ quantity: 6, due: 200 }, { quantity: 5, due: 200 });
+  });
 });
+
+function AutosavePairForm({
+  defaultValues,
+  save,
+  toInput,
+}: {
+  defaultValues: { quantity: number; due: number };
+  save: (input: unknown) => Promise<void>;
+  toInput: (values: { quantity: number; due: number }, saved: { quantity: number; due: number }) => unknown;
+}) {
+  const { form, formProps } = useAutosaveForm({
+    defaultValues,
+    failureMessage: 'Unable to save.',
+    save,
+    toInput,
+    validator: z.object({ quantity: z.number(), due: z.number() }),
+  });
+
+  return (
+    <form {...formProps}>
+      <form.AppField name="quantity">{(field) => <field.NumberField label="Quantity" />}</form.AppField>
+      <form.AppField name="due">{(field) => <field.NumberField label="Due" />}</form.AppField>
+    </form>
+  );
+}
 
 function AutosaveNumberForm({ save }: { save: (input: { quantity: number }) => Promise<void> }) {
   const { form, formProps } = useAutosaveForm({

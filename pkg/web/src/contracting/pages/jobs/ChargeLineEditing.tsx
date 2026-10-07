@@ -7,9 +7,10 @@ import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { CreateEntityDialog } from '@/components/form/index.js';
 import { Button } from '@/components/ui/button.js';
 import { Input } from '@/components/ui/input.js';
+import { useResetOnOpen } from '@/contracting/hooks/use-contracting-write.js';
 import { useTRPC } from '@/lib/trpc.js';
 import type { JobSheet } from './types.js';
-import { useJobWrite, useResetOnOpen } from './use-job-write.js';
+import { useJobWrite } from './use-job-write.js';
 
 const ChargeLineValues = z.object({ description: requiredTrimmedText('A description is required') });
 

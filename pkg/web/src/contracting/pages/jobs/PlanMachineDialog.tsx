@@ -5,9 +5,10 @@ import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { CreateEntityDialog } from '@/components/form/index.js';
 import { emptyStringOr, requiredSelection } from '@/components/form/utils/form-schema.js';
 import { CategoryIcon } from '@/contracting/components/CategoryIcon.js';
+import { useResetOnOpen } from '@/contracting/hooks/use-contracting-write.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { useAssignmentOptions } from './use-assignment-options.js';
-import { useJobWrite, useResetOnOpen } from './use-job-write.js';
+import { useJobWrite } from './use-job-write.js';
 
 const PlanValues = z.object({
   machineId: requiredSelection(UUID, 'Choose a Machine'),

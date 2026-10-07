@@ -55,7 +55,7 @@ function useNewJobFlow() {
   return useCreateEntityFlow({
     mutation: trpc.contractingJobs.jobs.create.mutationOptions(),
     errorMessage: 'Unable to create Job.',
-    invalidate: write.invalidateJobs,
+    invalidate: write.invalidate,
     navigateTo: (job) => ({ to: '/contracting/jobs/$code', params: { code: job.jobNumber } }),
   });
 }

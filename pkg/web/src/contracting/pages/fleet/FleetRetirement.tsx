@@ -3,16 +3,14 @@ import { IconArchive } from '@tabler/icons-react';
 import { type UseMutationOptions, useMutation } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import { useState } from 'react';
-import { z } from 'zod';
 import { EntityActionsFooter } from '@/components/common/EntityActionsFooter.js';
 import { RemoveEntityButton } from '@/components/common/RemoveEntityButton.js';
-import { CreateEntityDialog } from '@/components/form/index.js';
 import { Button } from '@/components/ui/button.js';
 import { type MachineDialogSubject, MachineDialogTitle } from '@/contracting/components/MachineDialogTitle.js';
+import { ReasonDialog } from '@/contracting/components/ReasonDialog.js';
 import { useQueryInvalidation } from '@/contracting/hooks/use-query-invalidation.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 
-const RetirementValues = z.object({ reason: FleetRetireInput.shape.reason });
 const listRoutes = { machine: '/contracting/fleet', implement: '/contracting/fleet/implements' } as const;
 
 type MutationFnOptions<TVariables> = Pick<
@@ -68,15 +66,15 @@ export function FleetRetirement({
         isPending={remove.isPending}
         onConfirm={() => remove.mutate({ id })}
       />
-      <CreateEntityDialog
+      <ReasonDialog
         open={open}
         onOpenChange={setOpen}
         title={machine ? <MachineDialogTitle machine={machine}>Retire {noun}</MachineDialogTitle> : `Retire ${noun}`}
         description="Retirement is permanent. History remains available, and this entry is hidden from active fleet pickers."
+        label="Retirement reason"
         submitLabel="Retire"
-        defaultValues={{ reason: '' }}
-        validator={RetirementValues}
-        onCreate={async ({ reason }) => {
+        schema={FleetRetireInput.shape.reason}
+        submit={async (reason) => {
           if (!(await autosave.flush())) {
             const error = new Error('Resolve unsaved changes before retiring.');
             showError(error, `Unable to retire ${noun}.`);
@@ -84,12 +82,7 @@ export function FleetRetirement({
           }
           return retire.mutateAsync({ id, reason });
         }}
-        onCreated={() => setOpen(false)}
-      >
-        {(form) => (
-          <form.AppField name="reason">{(field) => <field.TextareaField label="Retirement reason" />}</form.AppField>
-        )}
-      </CreateEntityDialog>
+      />
     </EntityActionsFooter>
   );
 }

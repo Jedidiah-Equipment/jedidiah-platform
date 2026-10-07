@@ -2,19 +2,22 @@ import { getPlantDateNow } from '@pkg/domain';
 import { suggestedNextServiceDue } from '@pkg/domain/contracting';
 import type { Machine, ServiceRecord } from '@pkg/schema/contracting';
 import { useMutation } from '@tanstack/react-query';
-import { useEffect, useRef } from 'react';
+import { useRef } from 'react';
 import { toast } from 'sonner';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import type { SearchableComboboxOption } from '@/components/common/SearchableCombobox.js';
 import { CreateEntityDialog } from '@/components/form/index.js';
 import { MachineDialogTitle } from '@/contracting/components/MachineDialogTitle.js';
+import { mechanicFieldOptions } from '@/contracting/components/MechanicCombobox.js';
+import { useContractingWrite } from '@/contracting/hooks/use-contracting-write.js';
 import { useQueryInvalidation } from '@/contracting/hooks/use-query-invalidation.js';
-import { useResetOnOpen } from '@/contracting/pages/jobs/use-job-write.js';
-import { useApiMutationErrorReport } from '@/hooks/use-api-mutation-error-toast.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { CloseServiceValues, closeServiceInput } from './types.js';
 
-/** Closing a service prints the sticker: the Next Service Due is required, and the interval only suggests it. */
+/**
+ * Closing a service prints the sticker: the Next Service Due is required, and the interval only suggests it. The
+ * parent mounts it for the one record being closed, keyed by that record, so it opens on a fresh form.
+ */
 export function CloseServiceRecordDialog({
   machine,
   record,
@@ -22,42 +25,24 @@ export function CloseServiceRecordDialog({
   onClose,
 }: {
   machine: Pick<Machine, 'code' | 'categoryIcon' | 'categoryColour' | 'serviceIntervalHours'>;
-  record: ServiceRecord | null;
+  record: ServiceRecord;
   mechanicOptions: readonly SearchableComboboxOption[];
   onClose: () => void;
 }) {
   const trpc = useTRPC();
-  const { invalidateFleet, invalidateWorkshop } = useQueryInvalidation();
-  const report = useApiMutationErrorReport();
-  const close = useMutation(
-    trpc.contractingServices.close.mutationOptions({
-      onSuccess: async () => {
-        await Promise.all([invalidateFleet(), invalidateWorkshop()]);
-        toast.success('Service recorded');
-      },
-      onError: report,
-    }),
-  );
-  useResetOnOpen(close, !!record);
+  const write = useContractingWrite(useQueryInvalidation().invalidateServices);
+  const close = useMutation(trpc.contractingServices.close.mutationOptions(write.dialog));
   const dueEdited = useRef(false);
-  const recordId = record?.id ?? null;
-  useEffect(() => {
-    if (recordId) dueEdited.current = false;
-  }, [recordId]);
-  const options = [...mechanicOptions];
-  if (record?.primaryMechanicUserId && !options.some((option) => option.value === record.primaryMechanicUserId))
-    options.push({ value: record.primaryMechanicUserId, label: record.mechanicName ?? 'Unavailable mechanic' });
   const defaultValues: CloseServiceValues = {
     endDate: getPlantDateNow(),
     readingAtServiceHours: Number.NaN,
-    primaryMechanicUserId: record?.primaryMechanicUserId ?? '',
-    notes: record?.notes ?? '',
+    primaryMechanicUserId: record.primaryMechanicUserId ?? '',
+    notes: record.notes ?? '',
     nextServiceDueHours: Number.NaN,
   };
   return (
     <CreateEntityDialog
-      key={record?.id ?? 'closed'}
-      open={!!record}
+      open
       onOpenChange={(open) => {
         if (!open) onClose();
       }}
@@ -76,8 +61,11 @@ export function CloseServiceRecordDialog({
       submitLabel="Close service"
       defaultValues={defaultValues}
       validator={CloseServiceValues}
-      onCreate={(values) => close.mutateAsync(closeServiceInput(record?.id ?? '', values))}
-      onCreated={onClose}
+      onCreate={(values) => close.mutateAsync(closeServiceInput(record.id, values))}
+      onCreated={() => {
+        toast.success('Service recorded');
+        onClose();
+      }}
     >
       {(form) => (
         <>
@@ -104,7 +92,7 @@ export function CloseServiceRecordDialog({
                 label="Mechanic"
                 placeholder="Search mechanics..."
                 emptyMessage="No mechanics found."
-                options={[{ label: 'No mechanic', value: '' }, ...options]}
+                options={mechanicFieldOptions(mechanicOptions, record)}
               />
             )}
           </form.AppField>

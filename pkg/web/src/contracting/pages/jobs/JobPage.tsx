@@ -3,15 +3,16 @@ import type { JobDetail } from '@pkg/schema/contracting';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { z } from 'zod';
 import { EntityActionsFooter } from '@/components/common/EntityActionsFooter.js';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { QueryContent } from '@/components/common/QueryContent.js';
 import { AutosaveFormCard } from '@/components/form/AutosaveFormCard.js';
-import { CreateEntityDialog, useAutosaveForm } from '@/components/form/index.js';
+import { useAutosaveForm } from '@/components/form/index.js';
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
 import { Button } from '@/components/ui/button.js';
+import { ReasonDialog } from '@/contracting/components/ReasonDialog.js';
 import { useAiVerdictRefetchInterval } from '@/contracting/hooks/use-ai-verdict-polling.js';
+import { useResetOnOpen } from '@/contracting/hooks/use-contracting-write.js';
 import { useQueryInvalidation } from '@/contracting/hooks/use-query-invalidation.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { ChargeLinesCard } from './ChargeLinesCard.js';
@@ -22,7 +23,7 @@ import { MachinesCard } from './MachinesCard.js';
 import { PricingCard } from './PricingCard.js';
 import { SignOffCard } from './SignOffCard.js';
 import { JobCreateValues, type JobSheet, jobSheet, toJobCreateInput } from './types.js';
-import { useJobWrite, useResetOnOpen } from './use-job-write.js';
+import { useJobWrite } from './use-job-write.js';
 
 export function JobPage({ code }: { code: string }) {
   const trpc = useTRPC();
@@ -165,7 +166,7 @@ function CancelJob({ job, sheet }: { job: JobDetail; sheet: JobSheet }) {
   const cancel = useMutation(
     trpc.contractingJobs.jobs.cancel.mutationOptions({
       onSuccess: async () => {
-        await write.invalidateJobs();
+        await write.invalidate();
         toast.success('Job cancelled');
       },
       onError: write.report,
@@ -179,23 +180,17 @@ function CancelJob({ job, sheet }: { job: JobDetail; sheet: JobSheet }) {
       <Button variant="destructive" {...cancelAction} onClick={() => setOpen(true)}>
         Cancel job
       </Button>
-      <CreateEntityDialog
+      <ReasonDialog
         open={open}
         onOpenChange={setOpen}
         title="Cancel job"
+        label="Reason"
         submitLabel="Cancel job"
-        defaultValues={{ reason: '' }}
-        validator={z.object({ reason: requiredTrimmedText('A reason is required') })}
-        onCreate={(values) => cancel.mutateAsync({ id: job.id, reason: values.reason })}
-        onCreated={() => setOpen(false)}
-      >
-        {(form) => (
-          <>
-            <form.AppField name="reason">{(field) => <field.TextareaField label="Reason" />}</form.AppField>
-            <ErrorMessage error={cancel.error} fallbackMessage="Unable to cancel Job." />
-          </>
-        )}
-      </CreateEntityDialog>
+        schema={requiredTrimmedText('A reason is required')}
+        submit={(reason) => cancel.mutateAsync({ id: job.id, reason })}
+        error={cancel.error}
+        fallbackMessage="Unable to cancel Job."
+      />
     </EntityActionsFooter>
   );
 }

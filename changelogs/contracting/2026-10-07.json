@@ -1,0 +1,64 @@
+{
+  "business": "contracting",
+  "releasedAt": "2026-10-07T13:16:01.758Z",
+  "sections": [
+    {
+      "surface": "app",
+      "entries": [
+        {
+          "title": "Manage Breakdowns from Workshop",
+          "description": "Review reports, photos and locations, assign Mechanics, and track repairs through to Solved. See other open Breakdowns on the same Job to coordinate repairs in one visit."
+        },
+        {
+          "title": "Record services and set the next service due",
+          "description": "Record workshop visits with dates, hour readings, Mechanics and notes. Closing a service updates Next Service Due, with alerts when servicing is due soon or overdue."
+        },
+        {
+          "title": "Review fleet history in one place",
+          "description": "View readings, Breakdowns and services together on a Machine, or Breakdowns on an Implement. History filters respect the records you can access, so unavailable saved filters no longer hide results."
+        },
+        {
+          "title": "Understand photo upload problems",
+          "description": "Rejected uploads now explain invalid details or photo limits instead of showing a general failure."
+        },
+        {
+          "title": "Keep edits safe during autosave",
+          "description": "Background updates during a save no longer cause newer edits to be mistaken for saved changes. Text you are still typing waits for the normal save action."
+        }
+      ]
+    },
+    {
+      "surface": "mobile",
+      "entries": [
+        {
+          "title": "Report and follow Breakdowns",
+          "description": "Report a Machine or Implement problem with urgency, photos and typed or spoken notes. Use the new Workshop tab to follow repairs and exchange notes."
+        },
+        {
+          "title": "Check a Machine’s maintenance status",
+          "description": "See when servicing is due soon or overdue, alongside the Machine’s open Breakdowns."
+        },
+        {
+          "title": "Follow voice recording progress",
+          "description": "The voice field border animates while recording and transcribing, and Android phones vibrate when recording starts. The listening indicator stops when the recording limit is reached."
+        },
+        {
+          "title": "Understand voice note and upload failures",
+          "description": "Silent voice notes now say that nothing was heard instead of reporting transcription as unavailable. Rejected uploads give clearer reasons, including photo limits."
+        },
+        {
+          "title": "Reopen in your last-used business",
+          "description": "The app remembers which business you last used and opens there while you still have access."
+        },
+        {
+          "title": "Pull to refresh across tabs",
+          "description": "Pull down on a main tab list to refresh app data. Only the list you pulled shows the refresh spinner, keeping other lists in place."
+        },
+        {
+          "title": "Recognise temporary server failures",
+          "description": "Temporary server failures now show as server errors instead of confusing response-reading errors."
+        }
+      ]
+    }
+  ]
+}

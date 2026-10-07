@@ -1,0 +1,32 @@
+{
+  "business": "equipment",
+  "releasedAt": "2026-10-07T13:16:01.758Z",
+  "sections": [
+    {
+      "surface": "app",
+      "entries": [
+        {
+          "title": "Keep edits safe during autosave",
+          "description": "Background updates during a save no longer cause newer edits to be mistaken for saved changes. Text you are still typing waits for the normal save action."
+        }
+      ]
+    },
+    {
+      "surface": "mobile",
+      "entries": [
+        {
+          "title": "Reopen in your last-used business",
+          "description": "The app remembers which business you last used and opens there while you still have access."
+        },
+        {
+          "title": "Pull to refresh across tabs",
+          "description": "Pull down on a main tab list to refresh app data. Only the list you pulled shows the refresh spinner, keeping other lists in place."
+        },
+        {
+          "title": "Recognise temporary server failures",
+          "description": "Temporary server failures now show as server errors instead of confusing response-reading errors."
+        }
+      ]
+    }
+  ]
+}

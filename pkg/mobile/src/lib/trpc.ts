@@ -20,15 +20,9 @@ export function createTrpcClient() {
         url: `${apiBaseUrl}/trpc`,
         async fetch(url, options) {
           const startedAt = Date.now();
+          let response: Response;
           try {
-            const response = await fetch(url, withSessionCookie(options, await sessionCookieHeader()));
-            addBreadcrumb('network', 'tRPC batch', {
-              durationMs: Date.now() - startedAt,
-              method: options?.method ?? 'GET',
-              procedurePath: trpcProcedurePath(url),
-              status: response.status,
-            });
-            return response;
+            response = await fetch(url, withSessionCookie(options, await sessionCookieHeader()));
           } catch (error) {
             addBreadcrumb('network', 'tRPC batch failed', {
               durationMs: Date.now() - startedAt,
@@ -38,10 +32,33 @@ export function createTrpcClient() {
             });
             throw error;
           }
+          addBreadcrumb('network', 'tRPC batch', {
+            durationMs: Date.now() - startedAt,
+            method: options?.method ?? 'GET',
+            procedurePath: trpcProcedurePath(url),
+            status: response.status,
+          });
+          if (response.status >= 500 && !isJsonResponse(response)) throw new ApiGatewayError(response.status);
+          return response;
         },
       }),
     ],
   });
+}
+
+/**
+ * The API's tRPC handler answers every request, errors included, with JSON. A 5xx without it came from a proxy in
+ * front of the API, so it is a transport failure like a dropped connection, not a response tRPC can parse.
+ */
+export class ApiGatewayError extends Error {
+  constructor(readonly status: number) {
+    super(`API gateway answered ${status} without a tRPC response`);
+    this.name = 'ApiGatewayError';
+  }
+}
+
+function isJsonResponse(response: Response): boolean {
+  return response.headers.get('content-type')?.includes('application/json') ?? false;
 }
 
 export function trpcProcedurePath(url: RequestInfo | URL): string {

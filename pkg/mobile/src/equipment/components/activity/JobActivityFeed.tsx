@@ -20,7 +20,6 @@ import { Text } from '@/components/ui/text';
 import { JobActivityEntry } from '@/equipment/components/activity/JobActivityEntry';
 import { useTRPC } from '@/lib/trpc';
 import { useDebouncedSearch } from '@/lib/use-debounced-search';
-import { useGlobalRefresh } from '@/lib/use-global-refresh';
 
 const ACTIVITY_BATCH_SIZE = 20;
 const ACTIVITY_REFETCH_INTERVAL_MS = 60_000;
@@ -50,7 +49,6 @@ export function JobActivityFeed({
   const [search, setSearch] = useState('');
   const [focused, setFocused] = useState(false);
   const debouncedSearch = useDebouncedSearch(search);
-  const refresh = useGlobalRefresh();
   const activity = useInfiniteQuery(
     trpc.jobActivity.list.infiniteQueryOptions(
       {
@@ -183,7 +181,7 @@ export function JobActivityFeed({
         }
         onEndReached={loadMore}
         onEndReachedThreshold={0.4}
-        refreshControl={<RefreshControl onRefresh={refresh.onRefresh} refreshing={refresh.refreshing} />}
+        refreshControl={<RefreshControl />}
         renderItem={({ index, item, section }) => (
           <JobActivityEntry item={item} last={index === section.data.length - 1} linkToJob={jobId === undefined} />
         )}

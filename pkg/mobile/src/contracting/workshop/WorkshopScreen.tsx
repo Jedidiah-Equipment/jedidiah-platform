@@ -6,12 +6,11 @@ import { useState } from 'react';
 import { View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { type ListControlOption, ListControlRow, ListDropdownControl } from '@/components/ListControls';
-import { PaginatedList } from '@/components/PaginatedList';
+import { infiniteQueryPagination, TabRootList } from '@/components/TabRootList';
 import { MainToolbar } from '@/components/TopToolbar';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { useSessionPermission } from '@/lib/auth-session';
-import { useGlobalRefresh } from '@/lib/use-global-refresh';
 import { BreakdownRow } from './BreakdownRow';
 import { useBreakdownList, useBreakdownScope } from './use-breakdowns';
 
@@ -30,14 +29,13 @@ const statusesFor = (filter: StatusFilter): BreakdownStatus[] =>
 export default function WorkshopScreen() {
   const scope = useBreakdownScope();
   const canReport = useSessionPermission('contracting_breakdown:report');
-  const refresh = useGlobalRefresh();
   const [status, setStatus] = useState<StatusFilter>('unsolved');
   const list = useBreakdownList(statusesFor(status));
   const breakdowns = list.data?.pages.flatMap((page) => page.items) ?? [];
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top', 'left', 'right']}>
       <MainToolbar title="Workshop" subtitle="CONTRACTING" helpTopic="contractingMobileWorkshop" />
-      <PaginatedList
+      <TabRootList
         header={
           <View className="gap-3">
             {canReport ? (
@@ -70,6 +68,7 @@ export default function WorkshopScreen() {
         }
         sections={[{ key: 'breakdowns', data: breakdowns }]}
         keyOf={(breakdown) => breakdown.id}
+        pagination={infiniteQueryPagination(list, 'Loading more Breakdowns…')}
         renderItem={(breakdown) => <BreakdownRow breakdown={breakdown} />}
         initialLoading={scope !== null && list.isPending}
         loadingContent={<Text className="text-muted-foreground">Loading Breakdowns…</Text>}
@@ -84,12 +83,6 @@ export default function WorkshopScreen() {
                   : 'No Breakdowns match this status.'}
           </Text>
         }
-        hasNextPage={list.hasNextPage}
-        loadingMore={list.isFetchingNextPage}
-        loadingMoreLabel="Loading more Breakdowns…"
-        onLoadMore={() => void list.fetchNextPage()}
-        refreshing={refresh.refreshing}
-        onRefresh={refresh.onRefresh}
       />
     </SafeAreaView>
   );

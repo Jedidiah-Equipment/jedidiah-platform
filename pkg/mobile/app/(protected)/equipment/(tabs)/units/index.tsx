@@ -2,7 +2,7 @@ import { keepPreviousData, useInfiniteQuery } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
 import { View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { PaginatedList } from '@/components/PaginatedList';
+import { infiniteQueryPagination, TabRootList } from '@/components/TabRootList';
 import { Text } from '@/components/ui/text';
 import { CatalogListSkeleton } from '@/equipment/components/CatalogList';
 import { MainTabToolbar } from '@/equipment/components/TopToolbar';
@@ -17,7 +17,6 @@ import {
 } from '@/equipment/lib/unit-presentation';
 import { useTRPC } from '@/lib/trpc';
 import { useDebouncedSearch } from '@/lib/use-debounced-search';
-import { useGlobalRefresh } from '@/lib/use-global-refresh';
 import { usePersistedState } from '@/lib/use-persisted-state';
 
 const UNIT_BATCH_SIZE = 20;
@@ -33,7 +32,6 @@ export default function UnitsRoute() {
     isUnitBuildStateFilter,
   );
   const [sort, setSort] = usePersistedState<UnitSort>('jedidiah-unit-sort', 'serial', isUnitSort);
-  const refresh = useGlobalRefresh();
   const units = useInfiniteQuery(
     trpc.productUnits.list.infiniteQueryOptions(
       {
@@ -69,9 +67,8 @@ export default function UnitsRoute() {
         subtitle={total === null ? 'Loading units…' : `${total} ${total === 1 ? 'unit' : 'units'}`}
         title="Units"
       />
-      <PaginatedList
+      <TabRootList
         emptyContent={emptyContent}
-        hasNextPage={units.hasNextPage}
         header={
           <UnitCatalogControls
             buildState={buildState}
@@ -85,11 +82,7 @@ export default function UnitsRoute() {
         initialLoading={units.isPending}
         keyOf={(unit) => unit.id}
         loadingContent={<CatalogListSkeleton />}
-        loadingMore={units.isFetchingNextPage}
-        loadingMoreLabel="Loading more units…"
-        onLoadMore={() => void units.fetchNextPage()}
-        onRefresh={refresh.onRefresh}
-        refreshing={refresh.refreshing}
+        pagination={infiniteQueryPagination(units, 'Loading more units…')}
         renderItem={(unit) => <UnitCatalogCard unit={unit} />}
         sections={[{ data: unitItems, key: 'units' }]}
       />

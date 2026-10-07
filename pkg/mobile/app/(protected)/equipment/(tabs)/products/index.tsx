@@ -2,7 +2,7 @@ import { keepPreviousData, useInfiniteQuery, useQuery } from '@tanstack/react-qu
 import { useMemo, useState } from 'react';
 import { View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { PaginatedList } from '@/components/PaginatedList';
+import { infiniteQueryPagination, TabRootList } from '@/components/TabRootList';
 import { Text } from '@/components/ui/text';
 import { CatalogListSkeleton } from '@/equipment/components/CatalogList';
 import { ProductCatalogCard, ProductCatalogControls } from '@/equipment/components/products/ProductCatalog';
@@ -18,7 +18,6 @@ import {
 import { MAIN_TAB_PARENTS } from '@/equipment/lib/toolbar-navigation';
 import { useTRPC } from '@/lib/trpc';
 import { useDebouncedSearch } from '@/lib/use-debounced-search';
-import { useGlobalRefresh } from '@/lib/use-global-refresh';
 import { usePersistedState } from '@/lib/use-persisted-state';
 
 const PRODUCT_BATCH_SIZE = 20;
@@ -31,7 +30,6 @@ export default function ProductsRoute() {
   const rangeOptions = useQuery(trpc.products.rangeOptions.queryOptions(undefined));
   const [range, setRange] = usePersistedState<RangeFilter>('jedidiah-product-range', 'all', isRangeFilter);
   const [sort, setSort] = usePersistedState<ProductSort>('jedidiah-product-sort', 'name', isProductSort);
-  const refresh = useGlobalRefresh();
   const ranges = rangeOptions.data?.ranges ?? [];
   // A persisted Range that no longer exists renders as "all"; storage self-heals the
   // next time the user picks a Range, so no write-back effect is needed.
@@ -77,9 +75,8 @@ export default function ProductsRoute() {
         subtitle={count === null ? 'Loading catalog…' : `${count} ${count === 1 ? 'product' : 'products'}`}
         title="Products"
       />
-      <PaginatedList
+      <TabRootList
         emptyContent={emptyContent}
-        hasNextPage={products.hasNextPage}
         header={
           pending || failed ? undefined : (
             <ProductCatalogControls
@@ -96,11 +93,7 @@ export default function ProductsRoute() {
         initialLoading={pending}
         keyOf={(product) => product.id}
         loadingContent={<CatalogListSkeleton />}
-        loadingMore={products.isFetchingNextPage}
-        loadingMoreLabel="Loading more products…"
-        onLoadMore={() => void products.fetchNextPage()}
-        onRefresh={refresh.onRefresh}
-        refreshing={refresh.refreshing}
+        pagination={infiniteQueryPagination(products, 'Loading more products…')}
         renderItem={(product) => <ProductCatalogCard product={product} />}
         sections={[{ data: productItems, key: 'products' }]}
       />

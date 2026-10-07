@@ -2,18 +2,16 @@ import { formatDate, formatNumber } from '@pkg/domain';
 import { IconFilter } from '@tabler/icons-react-native';
 import { type Href, router } from 'expo-router';
 import { useState } from 'react';
-import { FlatList, Pressable, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   type ListControlOption,
   ListControlRow,
   ListCreateControl,
   ListDropdownControl,
-  ListHeader,
-  ListRow,
   ListSearchControl,
 } from '@/components/ListControls';
-import { MAIN_PAGE_CONTENT_STYLE } from '@/components/page-frame';
+import { TabRootList } from '@/components/TabRootList';
 import { MainToolbar } from '@/components/TopToolbar';
 import { Text } from '@/components/ui/text';
 import { type FieldNoteStatusFilter, visibleFieldNotes } from './note-list';
@@ -33,58 +31,50 @@ export default function FieldNotesScreen() {
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top', 'left', 'right']}>
       <MainToolbar title="Notes" subtitle="CONTRACTING" helpTopic="contractingMobileFieldNotes" />
-      <FlatList
-        data={visible}
-        keyExtractor={(note) => note.id}
-        keyboardShouldPersistTaps="handled"
-        contentContainerStyle={MAIN_PAGE_CONTENT_STYLE}
-        ListHeaderComponent={
-          <ListHeader>
-            <ListControlRow
-              leading={
-                <ListSearchControl
-                  accessibilityLabel="Search Field Notes"
-                  onChangeText={setSearch}
-                  placeholder="Search by description…"
-                  value={search}
+      <TabRootList
+        header={
+          <ListControlRow
+            leading={
+              <ListSearchControl
+                accessibilityLabel="Search Field Notes"
+                onChangeText={setSearch}
+                placeholder="Search by description…"
+                value={search}
+              />
+            }
+            trailing={
+              <View className="flex-row items-center gap-2">
+                <ListDropdownControl
+                  accessibilityLabel="Filter Field Notes by status"
+                  defaultValue="open"
+                  dismissLabel="Dismiss Field Note status filter"
+                  icon={IconFilter}
+                  onChange={setStatus}
+                  options={STATUS_OPTIONS}
+                  value={status}
                 />
-              }
-              trailing={
-                <View className="flex-row items-center gap-2">
-                  <ListDropdownControl
-                    accessibilityLabel="Filter Field Notes by status"
-                    defaultValue="open"
-                    dismissLabel="Dismiss Field Note status filter"
-                    icon={IconFilter}
-                    onChange={setStatus}
-                    options={STATUS_OPTIONS}
-                    value={status}
-                  />
-                  <ListCreateControl
-                    label="New Field Note"
-                    onPress={() => router.push('/contracting/notes/new' as Href)}
-                  />
-                </View>
-              }
-            />
-          </ListHeader>
+                <ListCreateControl
+                  label="New Field Note"
+                  onPress={() => router.push('/contracting/notes/new' as Href)}
+                />
+              </View>
+            }
+          />
         }
-        ListEmptyComponent={
+        sections={[{ key: 'notes', data: visible }]}
+        keyOf={(note) => note.id}
+        renderItem={(note) => <FieldNoteRow note={note} />}
+        initialLoading={notes === null}
+        loadingContent={<Text className="text-muted-foreground">Loading Field Notes…</Text>}
+        emptyContent={
           <Text className="text-muted-foreground">
-            {notes === null
-              ? 'Loading Field Notes…'
-              : search.trim()
-                ? 'No Field Notes match your search.'
-                : status === 'open'
-                  ? 'No Open Field Notes. Keep one when you cannot capture a reading, and enter it when you are back online.'
-                  : 'No Closed Field Notes.'}
+            {search.trim()
+              ? 'No Field Notes match your search.'
+              : status === 'open'
+                ? 'No Open Field Notes. Keep one when you cannot capture a reading, and enter it when you are back online.'
+                : 'No Closed Field Notes.'}
           </Text>
         }
-        renderItem={({ item }) => (
-          <ListRow>
-            <FieldNoteRow note={item} />
-          </ListRow>
-        )}
       />
     </SafeAreaView>
   );

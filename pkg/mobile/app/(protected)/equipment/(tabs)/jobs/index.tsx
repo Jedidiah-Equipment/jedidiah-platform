@@ -2,7 +2,7 @@ import { keepPreviousData, useInfiniteQuery } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
 import { View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { PaginatedList } from '@/components/PaginatedList';
+import { infiniteQueryPagination, TabRootList } from '@/components/TabRootList';
 import { Text } from '@/components/ui/text';
 import { CatalogListSkeleton } from '@/equipment/components/CatalogList';
 import { JobCatalogCard, JobCatalogControls } from '@/equipment/components/jobs/JobCatalog';
@@ -17,7 +17,6 @@ import {
 import { MAIN_TAB_PARENTS } from '@/equipment/lib/toolbar-navigation';
 import { useTRPC } from '@/lib/trpc';
 import { useDebouncedSearch } from '@/lib/use-debounced-search';
-import { useGlobalRefresh } from '@/lib/use-global-refresh';
 import { usePersistedState } from '@/lib/use-persisted-state';
 
 const JOB_BATCH_SIZE = 20;
@@ -33,7 +32,6 @@ export default function JobsRoute() {
     isJobCompletionFilter,
   );
   const [sort, setSort] = usePersistedState<JobCatalogSort>('jedidiah-job-catalog-sort', 'schedule', isJobCatalogSort);
-  const refresh = useGlobalRefresh();
   const jobs = useInfiniteQuery(
     trpc.jobs.list.infiniteQueryOptions(
       {
@@ -70,9 +68,8 @@ export default function JobsRoute() {
         subtitle={total === null ? 'Loading Jobs…' : `${total} ${total === 1 ? 'Job' : 'Jobs'}`}
         title="Jobs"
       />
-      <PaginatedList
+      <TabRootList
         emptyContent={emptyContent}
-        hasNextPage={jobs.hasNextPage}
         header={
           <JobCatalogControls
             completion={completion}
@@ -86,11 +83,7 @@ export default function JobsRoute() {
         initialLoading={jobs.isPending}
         keyOf={(job) => job.id}
         loadingContent={<CatalogListSkeleton />}
-        loadingMore={jobs.isFetchingNextPage}
-        loadingMoreLabel="Loading more Jobs…"
-        onLoadMore={() => void jobs.fetchNextPage()}
-        onRefresh={refresh.onRefresh}
-        refreshing={refresh.refreshing}
+        pagination={infiniteQueryPagination(jobs, 'Loading more Jobs…')}
         renderItem={(job) => <JobCatalogCard job={job} />}
         sections={[{ data: items, key: 'jobs' }]}
       />

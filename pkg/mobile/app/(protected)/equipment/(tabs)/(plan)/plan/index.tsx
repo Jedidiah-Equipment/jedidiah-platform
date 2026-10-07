@@ -2,7 +2,7 @@ import { groupBaysByDepartmentPipeline } from '@pkg/domain/equipment';
 import { useMemo, useState } from 'react';
 import { View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { PaginatedList } from '@/components/PaginatedList';
+import { TabRootList } from '@/components/TabRootList';
 import { Text } from '@/components/ui/text';
 import { PlanCatalogCard, PlanCatalogControls, PlanDepartmentHeader } from '@/equipment/components/bays/PlanCatalog';
 import { CatalogListSkeleton } from '@/equipment/components/CatalogList';
@@ -10,14 +10,12 @@ import { MainTabToolbar } from '@/equipment/components/TopToolbar';
 import { type BaySort, filterBayCards, isBaySort, sortBayCards } from '@/equipment/lib/bay-sort';
 import { MAIN_TAB_PARENTS } from '@/equipment/lib/toolbar-navigation';
 import { useBayList } from '@/equipment/lib/use-bay-list';
-import { useGlobalRefresh } from '@/lib/use-global-refresh';
 import { usePersistedState } from '@/lib/use-persisted-state';
 
 /** Enabled Bays presented as the root Plan catalog. */
 export default function PlanRoute() {
   const [search, setSearch] = useState('');
   const [sort, setSort] = usePersistedState<BaySort>('jedidiah-bay-sort', 'days-left', isBaySort);
-  const refresh = useGlobalRefresh();
   const { state } = useBayList();
   const bays = useMemo(
     () => (state.status === 'ready' ? sortBayCards(filterBayCards(state.cards, search), sort) : []),
@@ -45,18 +43,12 @@ export default function PlanRoute() {
         subtitle={total === null ? 'Loading Plan…' : `${total} ${total === 1 ? 'Bay' : 'Bays'}`}
         title="Plan"
       />
-      <PaginatedList
+      <TabRootList
         emptyContent={emptyContent}
-        hasNextPage={false}
         header={<PlanCatalogControls onSearchChange={setSearch} onSortChange={setSort} search={search} sort={sort} />}
         initialLoading={state.status === 'pending'}
         keyOf={(bay) => bay.id}
         loadingContent={<CatalogListSkeleton />}
-        loadingMore={false}
-        loadingMoreLabel="Loading more Bays…"
-        onLoadMore={() => undefined}
-        onRefresh={refresh.onRefresh}
-        refreshing={refresh.refreshing}
         renderItem={(bay) => <PlanCatalogCard bay={bay} />}
         sections={departments.map((group) => ({
           data: group.bays,

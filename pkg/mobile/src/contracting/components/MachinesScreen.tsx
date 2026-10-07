@@ -1,9 +1,8 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { FlatList, Pressable, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ListHeader, ListRow } from '@/components/ListControls';
-import { MAIN_PAGE_CONTENT_STYLE } from '@/components/page-frame';
+import { TabRootList } from '@/components/TabRootList';
 import { MainToolbar } from '@/components/TopToolbar';
 import { Text } from '@/components/ui/text';
 import { contractingStorageKey } from '@/contracting/lib/contracting-storage';
@@ -37,63 +36,53 @@ export default function MachinesScreen() {
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top', 'left', 'right']}>
       <MainToolbar title="Machines" subtitle="CONTRACTING" helpTopic="contractingMobileMachines" />
-      <FlatList
-        data={machines}
-        keyExtractor={(item) => item.id}
-        keyboardShouldPersistTaps="handled"
-        contentContainerStyle={MAIN_PAGE_CONTENT_STYLE}
-        ListHeaderComponent={
-          <ListHeader>
-            <MachineCatalogControls
-              categories={categories}
-              category={category}
-              search={search}
-              sort={sort}
-              onCategoryChange={setCategory}
-              onSearchChange={setSearch}
-              onSortChange={setSort}
-            />
-          </ListHeader>
+      <TabRootList
+        header={
+          <MachineCatalogControls
+            categories={categories}
+            category={category}
+            search={search}
+            sort={sort}
+            onCategoryChange={setCategory}
+            onSearchChange={setSearch}
+            onSortChange={setSort}
+          />
         }
-        refreshing={fleet.isRefetching}
-        onRefresh={() => {
-          void fleet.refetch();
-        }}
-        ListEmptyComponent={
+        sections={[{ key: 'machines', data: machines }]}
+        keyOf={(machine) => machine.id}
+        renderItem={(machine) => (
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => router.push(`/contracting/machines/${machine.id}`)}
+            className="w-full gap-2 rounded-xl border border-border bg-surface p-4"
+          >
+            <View className="flex-row items-center justify-between gap-2">
+              <View className="flex-row items-center gap-3">
+                <CategoryIcon icon={machine.categoryIcon} colour={machine.categoryColour} size={20} />
+                <Text className="text-lg text-foreground" weight="bold">
+                  {machine.code}
+                </Text>
+              </View>
+              <Text className="rounded-full bg-muted px-3 py-1 text-xs text-foreground">
+                {machine.onSiteJobNumber ? `On Job · ${machine.onSiteJobNumber}` : 'In Yard'}
+              </Text>
+            </View>
+            <Text className="text-sm text-muted-foreground">
+              {machine.make} {machine.model} · {machine.categoryName}
+            </Text>
+          </Pressable>
+        )}
+        initialLoading={fleet.canRead && !fleet.data && !fleet.isError}
+        loadingContent={<Text className="text-muted-foreground">Loading Machines…</Text>}
+        emptyContent={
           <Text className="text-muted-foreground">
             {!fleet.canRead
               ? 'Your role cannot view field Machines.'
-              : fleet.data
-                ? 'No Machines match your search or Category filter.'
-                : fleet.isError
-                  ? 'Unable to load Machines. Pull to retry.'
-                  : 'Loading Machines…'}
+              : fleet.isError && !fleet.data
+                ? 'Unable to load Machines. Pull to retry.'
+                : 'No Machines match your search or Category filter.'}
           </Text>
         }
-        renderItem={({ item }) => (
-          <ListRow>
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => router.push(`/contracting/machines/${item.id}`)}
-              className="w-full gap-2 rounded-xl border border-border bg-surface p-4"
-            >
-              <View className="flex-row items-center justify-between gap-2">
-                <View className="flex-row items-center gap-3">
-                  <CategoryIcon icon={item.categoryIcon} colour={item.categoryColour} size={20} />
-                  <Text className="text-lg text-foreground" weight="bold">
-                    {item.code}
-                  </Text>
-                </View>
-                <Text className="rounded-full bg-muted px-3 py-1 text-xs text-foreground">
-                  {item.onSiteJobNumber ? `On Job · ${item.onSiteJobNumber}` : 'In Yard'}
-                </Text>
-              </View>
-              <Text className="text-sm text-muted-foreground">
-                {item.make} {item.model} · {item.categoryName}
-              </Text>
-            </Pressable>
-          </ListRow>
-        )}
       />
     </SafeAreaView>
   );

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { PaginatedList } from '@/components/PaginatedList';
+import { TabRootList } from '@/components/TabRootList';
 import { Text } from '@/components/ui/text';
 import { CatalogListSkeleton } from '@/equipment/components/CatalogList';
 import { NewQuoteModal } from '@/equipment/components/quotes/NewQuoteModal';
@@ -21,7 +21,6 @@ import { MAIN_TAB_PARENTS } from '@/equipment/lib/toolbar-navigation';
 import { useQuoteList } from '@/equipment/lib/use-quote-list';
 import { useCan } from '@/lib/use-access';
 import { useDebouncedSearch } from '@/lib/use-debounced-search';
-import { useGlobalRefresh } from '@/lib/use-global-refresh';
 import { usePersistedState } from '@/lib/use-persisted-state';
 
 /** Quote list. The Quotes layout owns the route-level permission gate. */
@@ -33,7 +32,6 @@ export default function QuotesRoute() {
   const debouncedSearch = useDebouncedSearch(search);
   const [status, setStatus] = usePersistedState<QuoteStatusFilter>('jedidiah-quote-status', 'all', isQuoteStatusFilter);
   const [sort, setSort] = usePersistedState<QuoteSort>('jedidiah-quote-sort', 'newest', isQuoteSort);
-  const refresh = useGlobalRefresh();
   const list = useQuoteList({ enabled: readAccess.can, search: debouncedSearch, sort, status });
   const displayedQuoteCount = list.priorityQuotes.length + list.mainQuotes.length;
   const hasCriteria = search.trim().length > 0 || status !== 'all';
@@ -59,9 +57,8 @@ export default function QuotesRoute() {
         }
         title="Quotes"
       />
-      <PaginatedList
+      <TabRootList
         emptyContent={emptyContent}
-        hasNextPage={list.hasNextPage}
         header={
           <QuoteCatalogControls
             canCreate={createAccess.can}
@@ -77,11 +74,12 @@ export default function QuotesRoute() {
         initialLoading={initialLoading}
         keyOf={(quote) => quote.id}
         loadingContent={<CatalogListSkeleton />}
-        loadingMore={list.loadingMore}
-        loadingMoreLabel="Loading more quotes…"
-        onLoadMore={list.loadNextPage}
-        onRefresh={refresh.onRefresh}
-        refreshing={refresh.refreshing}
+        pagination={{
+          hasNextPage: list.hasNextPage,
+          loadingMore: list.loadingMore,
+          loadingMoreLabel: 'Loading more quotes…',
+          onLoadMore: list.loadNextPage,
+        }}
         renderItem={(quote) => <QuoteCatalogCard quote={quote} />}
         sections={[
           ...(list.priorityQuotes.length > 0

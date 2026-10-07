@@ -22,10 +22,13 @@
     a bottom border. Never use generic history-only Back behavior.
   - Do not create route-local toolbar variants or add arbitrary toolbar actions. Put page-specific
     actions in page content and expose contextual Help through the profile menu.
-- The Equipment Jobs, Plan, Units, Products, and Quotes tab roots use the shared full-width card from
-  `src/equipment/components/CatalogList.tsx` and the paged list from `src/components/PaginatedList.tsx`, which
-  Contracting's Jobs tab shares. Do not add per-route catalog card variants or responsive card grids there.
-  Detail-page cards are intentionally outside this catalog contract.
+- Every list tab root in both businesses renders `src/components/TabRootList.tsx` (pagination optional), except
+  Equipment Activity's day-grouped timeline, which Job detail shares, and the Stores scan home. The
+  Equipment Jobs, Plan, Units, Products, and Quotes roots also use the shared full-width card from
+  `src/equipment/components/CatalogList.tsx`. Do not add per-route catalog card variants or responsive card grids
+  there. Detail-page cards are intentionally outside this catalog contract.
+- Pull to refresh is only `RefreshControl` from `src/components/ui/refresh-control.tsx`, which invalidates every
+  API query itself. Never pass `onRefresh`/`refreshing` or refetch a single query from a pull.
 - Every page content surface spans the full available width. Horizontal page padding is allowed, but
   do not center page content or cap it with `mx-auto`, `max-w-*`, or equivalent inline styles. This
   rule does not apply to dialogs, drawers, sheets, chat bubbles, or deliberately sized field content.

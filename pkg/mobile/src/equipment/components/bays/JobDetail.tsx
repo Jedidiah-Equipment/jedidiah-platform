@@ -17,7 +17,6 @@ import { GiveFeedbackButton } from '@/equipment/components/feedback/GiveFeedback
 import { SubTabControl, type SubTabOption } from '@/equipment/components/SubTabControl';
 import { SecondaryPageToolbar } from '@/equipment/components/TopToolbar';
 import { type JobDetailState, type JobRouteStopCard, useJobDetail } from '@/equipment/lib/use-job-detail';
-import { useGlobalRefresh } from '@/lib/use-global-refresh';
 import { createLiteralGuard, usePersistedState } from '@/lib/use-persisted-state';
 import { useColorMode } from '@/theme/use-color-mode';
 
@@ -47,11 +46,10 @@ const JOB_DETAIL_TABS: readonly SubTabOption<JobDetailTab>[] = [
 export function JobDetail({ jobId, onBack }: { jobId: string; onBack: () => void }) {
   const state = useJobDetail(jobId);
   const isWide = useWindowDimensions().width >= WIDE_BREAKPOINT;
-  const refresh = useGlobalRefresh();
 
   if (state.status === 'pending') {
     return (
-      <Frame onBack={onBack} refresh={refresh}>
+      <Frame onBack={onBack}>
         <DetailSkeleton />
       </Frame>
     );
@@ -59,7 +57,7 @@ export function JobDetail({ jobId, onBack }: { jobId: string; onBack: () => void
 
   if (state.status === 'forbidden') {
     return (
-      <Frame onBack={onBack} refresh={refresh}>
+      <Frame onBack={onBack}>
         <Text className="text-sm text-foreground" weight="semibold">
           You don’t have access to this Job.
         </Text>
@@ -72,7 +70,7 @@ export function JobDetail({ jobId, onBack }: { jobId: string; onBack: () => void
 
   if (state.status === 'error') {
     return (
-      <Frame onBack={onBack} refresh={refresh}>
+      <Frame onBack={onBack}>
         <Text className="text-sm text-danger" weight="semibold">
           Couldn’t load this Job.
         </Text>
@@ -83,7 +81,7 @@ export function JobDetail({ jobId, onBack }: { jobId: string; onBack: () => void
 
   if (state.status === 'not-found') {
     return (
-      <Frame onBack={onBack} refresh={refresh}>
+      <Frame onBack={onBack}>
         <Text className="text-sm text-foreground" weight="semibold">
           Job not found.
         </Text>
@@ -92,7 +90,7 @@ export function JobDetail({ jobId, onBack }: { jobId: string; onBack: () => void
     );
   }
 
-  return <Ready isWide={isWide} jobId={jobId} onBack={onBack} refresh={refresh} state={state} />;
+  return <Ready isWide={isWide} jobId={jobId} onBack={onBack} state={state} />;
 }
 
 function Ready({
@@ -100,13 +98,11 @@ function Ready({
   jobId,
   isWide,
   onBack,
-  refresh,
 }: {
   state: ReadyState;
   jobId: string;
   isWide: boolean;
   onBack: () => void;
-  refresh: ReturnType<typeof useGlobalRefresh>;
 }) {
   const [activeTab, setActiveTab] = usePersistedState<JobDetailTab>(
     'jedidiah-job-detail-tab',
@@ -135,24 +131,21 @@ function Ready({
             <ScrollView
               className="border-border"
               contentContainerStyle={SECONDARY_PAGE_CONTENT_STYLE}
-              refreshControl={<RefreshControl {...refresh} />}
+              refreshControl={<RefreshControl />}
               style={{ borderRightWidth: 1, flex: 42 }}
             >
               <RoutePane isCancelled={isJobCancelled(state)} route={state.route} />
             </ScrollView>
             <ScrollView
               contentContainerStyle={SECONDARY_PAGE_CONTENT_STYLE}
-              refreshControl={<RefreshControl {...refresh} />}
+              refreshControl={<RefreshControl />}
               style={{ flex: 58 }}
             >
               <DetailPane isWide jobId={jobId} state={state} />
             </ScrollView>
           </View>
         ) : (
-          <ScrollView
-            contentContainerStyle={SECONDARY_PAGE_CONTENT_STYLE}
-            refreshControl={<RefreshControl {...refresh} />}
-          >
+          <ScrollView contentContainerStyle={SECONDARY_PAGE_CONTENT_STYLE} refreshControl={<RefreshControl />}>
             <DetailPane isWide={false} jobId={jobId} state={state} />
           </ScrollView>
         )
@@ -163,10 +156,7 @@ function Ready({
           showControls={false}
         />
       ) : (
-        <ScrollView
-          contentContainerStyle={SECONDARY_PAGE_CONTENT_STYLE}
-          refreshControl={<RefreshControl {...refresh} />}
-        >
+        <ScrollView contentContainerStyle={SECONDARY_PAGE_CONTENT_STYLE} refreshControl={<RefreshControl />}>
           <WorkTimesPane jobId={jobId} state={state} />
         </ScrollView>
       )}
@@ -438,19 +428,11 @@ function jobStatus(progress: JobProgress | null, totalCount: number): { tone: St
 }
 
 /** Header + a single scroll for the non-ready states, mirroring the Bay schedule screen. */
-function Frame({
-  children,
-  onBack,
-  refresh,
-}: {
-  children: ReactNode;
-  onBack: () => void;
-  refresh: ReturnType<typeof useGlobalRefresh>;
-}) {
+function Frame({ children, onBack }: { children: ReactNode; onBack: () => void }) {
   return (
     <>
       <SecondaryPageToolbar helpTopic="jobs" onBack={onBack} parentLabel="Jobs" subtitle="JOB DETAIL" title="Job" />
-      <ScrollView contentContainerStyle={SECONDARY_PAGE_CONTENT_STYLE} refreshControl={<RefreshControl {...refresh} />}>
+      <ScrollView contentContainerStyle={SECONDARY_PAGE_CONTENT_STYLE} refreshControl={<RefreshControl />}>
         {children}
       </ScrollView>
     </>

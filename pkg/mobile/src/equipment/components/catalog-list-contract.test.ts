@@ -28,24 +28,15 @@ const CATALOG_SURFACES = [
 ] as const;
 
 describe('catalog list contract', () => {
-  test('uses the shared card and paginated list for every catalog root', () => {
+  test('uses the shared card for every catalog root', () => {
     for (const surface of CATALOG_SURFACES) {
       const route = source(surface.route);
       const component = source(surface.component);
 
-      expect(route).toContain("from '@/components/PaginatedList'");
-      expect(route).toContain('<PaginatedList');
       expect(component).toContain("from '@/equipment/components/CatalogList'");
       expect(component).toContain('<CatalogListCard');
       expect(`${route}\n${component}`).not.toContain('BoardGrid');
     }
-  });
-
-  test("shares the paginated list with Contracting's Jobs tab", () => {
-    const jobs = source('src/contracting/jobs/JobsScreen.tsx');
-
-    expect(jobs).toContain("from '@/components/PaginatedList'");
-    expect(jobs).toContain('<PaginatedList');
   });
 });
 

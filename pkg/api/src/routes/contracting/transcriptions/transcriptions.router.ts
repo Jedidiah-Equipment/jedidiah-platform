@@ -1,11 +1,12 @@
 import { recordTranscriptionSaved } from '@pkg/core/contracting';
 import { TranscriptionSavedInput } from '@pkg/schema/contracting';
+import type { Scheduler } from '../../../background-queue.js';
 import { mapCoreErrors } from '../../../trpc/errors.js';
 import { authorizedProcedure, router } from '../../../trpc/init.js';
 import { transcriptionErrorFamily } from '../contracting-error-families.js';
 
 /** Schedules a Transcription Hint derivation once a corrected Transcription has been saved. */
-export type HintDerivations = { schedule: (transcriptionId: string) => void };
+export type HintDerivations = Scheduler<string>;
 
 /** Transcribing goes through the multipart upload route; this router only hears that the owning form saved. */
 export function createContractingTranscriptionsRouter(hints: HintDerivations) {

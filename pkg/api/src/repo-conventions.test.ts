@@ -116,6 +116,20 @@ describe('multipart uploads', () => {
       'Pass { limits: { fileSize: <policy maxBytes> } } to every multipart read; the plugin value in server.ts is a backstop only',
     ).toEqual([]);
   });
+
+  it('streams fields-plus-files uploads through readMultipartUpload alone', () => {
+    const result = spawnSync(
+      'git',
+      ['grep', '--untracked', '-lE', String.raw`request\.parts\(`, '--', 'pkg/api/src/**', ':!*.test.ts'],
+      { cwd: repoRoot, encoding: 'utf8' },
+    );
+    const files = result.stdout.split('\n').filter((line) => line.length > 0);
+
+    expect(
+      files,
+      'Read a multipart body with readMultipartUpload from http-route-helpers.ts; its part rules and limits live in one place',
+    ).toEqual(['pkg/api/src/routes/http-route-helpers.ts']);
+  });
 });
 
 describe('Contracting Job Actions', () => {

@@ -19,7 +19,7 @@ import {
   uploadSupplierInvoice,
 } from '@pkg/core/equipment';
 import { db } from '@pkg/db';
-import { documentPolicies, validateDocumentPolicy } from '@pkg/domain/equipment';
+import { documentPolicies } from '@pkg/domain/equipment';
 import { renderBrochurePdf, renderPurchaseOrderPdf } from '@pkg/pdf/equipment';
 import {
   CreditNoteSettlementInput,
@@ -31,6 +31,8 @@ import {
   PurchaseOrderDocumentInput,
   QuoteDocumentInput,
 } from '@pkg/schema/equipment';
+import { TRPCError } from '@trpc/server';
+import { getHTTPStatusCodeFromError } from '@trpc/server/http';
 import type { FastifyInstance, FastifyReply } from 'fastify';
 import { z } from 'zod';
 
@@ -43,6 +45,7 @@ import {
   requireAnyPermission,
   requirePermission,
   requireRouteAuth,
+  sendHttpError,
   sendUploadHttpError,
   streamObjectBody,
 } from '@/routes/http-route-helpers.js';
@@ -112,7 +115,7 @@ export async function registerDocumentHttpRoutes(
 
       reply.status(201).send(document);
     } catch (error) {
-      sendDocumentHttpError(reply, error, 'product');
+      sendDocumentUploadError(reply, error, 'product');
     }
   });
 
@@ -142,7 +145,7 @@ export async function registerDocumentHttpRoutes(
       reply.header('Content-Disposition', createContentDisposition(result.document.filename));
       return reply.send(streamObjectBody(result.object.body));
     } catch (error) {
-      sendDocumentHttpError(reply, error, 'product');
+      sendDocumentHttpError(reply, error);
     }
   });
 
@@ -172,7 +175,7 @@ export async function registerDocumentHttpRoutes(
       reply.header('Content-Disposition', createContentDisposition(preview.filename, 'inline'));
       return reply.send(Buffer.from(preview.bytes));
     } catch (error) {
-      sendDocumentHttpError(reply, error, 'product');
+      sendDocumentHttpError(reply, error);
     }
   });
 
@@ -209,7 +212,7 @@ export async function registerDocumentHttpRoutes(
 
       reply.status(201).send(document);
     } catch (error) {
-      sendDocumentHttpError(reply, error, 'job');
+      sendDocumentUploadError(reply, error, 'job');
     }
   });
 
@@ -248,7 +251,7 @@ export async function registerDocumentHttpRoutes(
       reply.header('Content-Disposition', createContentDisposition(result.document.filename));
       return reply.send(streamObjectBody(result.object.body));
     } catch (error) {
-      sendDocumentHttpError(reply, error, 'job');
+      sendDocumentHttpError(reply, error);
     }
   });
 
@@ -278,7 +281,7 @@ export async function registerDocumentHttpRoutes(
       reply.header('Content-Disposition', createContentDisposition(result.document.filename));
       return reply.send(streamObjectBody(result.object.body));
     } catch (error) {
-      sendDocumentHttpError(reply, error, 'quote');
+      sendDocumentHttpError(reply, error);
     }
   });
 
@@ -309,7 +312,7 @@ export async function registerDocumentHttpRoutes(
       reply.header('Content-Disposition', createContentDisposition(preview.filename, 'inline'));
       return reply.send(Buffer.from(preview.bytes));
     } catch (error) {
-      sendDocumentHttpError(reply, error, 'purchase_order');
+      sendDocumentHttpError(reply, error);
     }
   });
 
@@ -356,7 +359,7 @@ export async function registerDocumentHttpRoutes(
 
       reply.status(201).send(document);
     } catch (error) {
-      sendDocumentHttpError(reply, error, 'purchase_order');
+      sendDocumentUploadError(reply, error, 'purchase_order');
     }
   });
 
@@ -411,7 +414,7 @@ export async function registerDocumentHttpRoutes(
 
       reply.status(201).send(document);
     } catch (error) {
-      sendDocumentHttpError(reply, error, 'purchase_order');
+      sendDocumentUploadError(reply, error, 'purchase_order');
     }
   });
 
@@ -447,7 +450,7 @@ export async function registerDocumentHttpRoutes(
       reply.header('Content-Disposition', createContentDisposition(result.document.filename));
       return reply.send(streamObjectBody(result.object.body));
     } catch (error) {
-      sendDocumentHttpError(reply, error, 'purchase_order');
+      sendDocumentHttpError(reply, error);
     }
   });
 }
@@ -484,7 +487,7 @@ async function mapHttpDocumentErrors<T>(action: () => Promise<T>): Promise<T> {
       throw new RouteHttpError({
         appCode: mapped.appCode,
         message: mapped.message,
-        statusCode: trpcCodeToHttpStatus(mapped.code),
+        statusCode: getHTTPStatusCodeFromError(new TRPCError({ code: mapped.code })),
       });
     }
 
@@ -537,30 +540,15 @@ function mapOwnerNotFound(
   });
 }
 
-function sendDocumentHttpError(reply: FastifyReply, error: unknown, ownerType: DocumentOwnerType): void {
-  sendUploadHttpError(reply, error, {
-    fallbackMessage: 'Document request failed.',
-    invalidRequestMessage: 'Invalid document request.',
-    onFileTooLarge: () => {
-      const result = validateDocumentPolicy({
-        byteSize: Number.MAX_SAFE_INTEGER,
-        contentType: 'application/pdf',
-        ownerType,
-      });
+const documentHttpErrorMessages = {
+  fallbackMessage: 'Document request failed.',
+  invalidRequestMessage: 'Invalid document request.',
+};
 
-      return {
-        appCode: result.ok ? undefined : result.code,
-        message: result.ok ? 'Document is too large.' : result.message,
-      };
-    },
-  });
+function sendDocumentHttpError(reply: FastifyReply, error: unknown): void {
+  sendHttpError(reply, error, documentHttpErrorMessages);
 }
 
-function trpcCodeToHttpStatus(code: string): number {
-  if (code === 'BAD_REQUEST') return 400;
-  if (code === 'CONFLICT') return 409;
-  if (code === 'FORBIDDEN') return 403;
-  if (code === 'NOT_FOUND') return 404;
-
-  return 500;
+function sendDocumentUploadError(reply: FastifyReply, error: unknown, ownerType: DocumentOwnerType): void {
+  sendUploadHttpError(reply, error, { ...documentHttpErrorMessages, policy: documentPolicies[ownerType] });
 }

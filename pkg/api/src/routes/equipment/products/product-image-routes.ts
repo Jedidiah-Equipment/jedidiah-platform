@@ -25,7 +25,7 @@ export function createProductImageRouteConfig(
     uploadForbiddenMessage: 'You do not have permission to update Product images.',
     readForbiddenMessage: 'You do not have permission to view this product image.',
     noFileMessage: 'Choose an image to upload.',
-    maxUploadBytes: PRODUCT_IMAGE_POLICY.maxBytes,
+    policy: PRODUCT_IMAGE_POLICY,
     // Owner-not-found surfaces as the Product's core error; this config owns that mapping so the generic
     // registrar stays free of Product specifics.
     mapOwnerError: (error) => {

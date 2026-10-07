@@ -1,6 +1,7 @@
 import { Readable } from 'node:stream';
 
-import { createUserAccessSummaryForUser, hasPermission } from '@pkg/domain';
+import { FilePolicyViolationError } from '@pkg/core';
+import { createUserAccessSummaryForUser, type FilePolicy, fileTooLargeMessage, hasPermission } from '@pkg/domain';
 import type { AppPermission } from '@pkg/schema';
 import { TRPCError } from '@trpc/server';
 import { getHTTPStatusCodeFromError } from '@trpc/server/http';
@@ -100,8 +101,8 @@ export type SendHttpErrorOptions = {
 };
 
 export type SendUploadHttpErrorOptions = SendHttpErrorOptions & {
-  // Upload routes own their entity-specific size policy and must word this response explicitly.
-  onFileTooLarge: () => { appCode: string | undefined; message: string };
+  // The route's own size cap words a stream refusal; the same policy's violations from core map to a 400.
+  policy: FilePolicy;
 };
 
 // Renders a thrown route error into a response. Callers map their own core errors into a
@@ -113,12 +114,69 @@ export function sendHttpError(reply: FastifyReply, error: unknown, options: Send
 
 export function sendUploadHttpError(reply: FastifyReply, error: unknown, options: SendUploadHttpErrorOptions): void {
   if (isMultipartFileTooLargeError(reply, error)) {
-    const { appCode, message } = options.onFileTooLarge();
-    reply.status(400).send({ data: { appCode }, message });
+    reply
+      .status(400)
+      .send({ data: { appCode: 'file.too_large' }, message: fileTooLargeMessage(options.policy.maxBytes) });
+    return;
+  }
+
+  if (error instanceof FilePolicyViolationError) {
+    reply.status(400).send({ data: { appCode: error.code }, message: error.message });
     return;
   }
 
   sendNonUploadHttpError(reply, error, options);
+}
+
+export type MultipartUploadOptions = {
+  // The only field name a file part may carry; a file under any other name refuses the whole request.
+  fileField: string;
+  maxFiles: number;
+  policy: FilePolicy;
+  textFields: readonly string[];
+  // The longest text field's schema cap, in characters; see {@link requireMaxLength}.
+  fieldMaxLength: number;
+  invalid: () => RouteHttpError;
+};
+
+// Reads an upload of text fields plus up to `maxFiles` complete files under one field name. Every text
+// field arrives once and whole; a truncated or misnamed part refuses the request with the caller's error.
+// The file-count and part-count limits leave one spare part so an extra file trips the files limit, not
+// the parts limit.
+export async function readMultipartUpload(
+  request: FastifyRequest,
+  { fileField, maxFiles, policy, textFields, fieldMaxLength, invalid }: MultipartUploadOptions,
+): Promise<{ fields: Record<string, string>; files: Buffer[] }> {
+  const fields: Record<string, string> = {};
+  const files: Buffer[] = [];
+  for await (const part of request.parts({
+    limits: {
+      files: maxFiles,
+      fields: textFields.length,
+      parts: textFields.length + maxFiles + 1,
+      fileSize: policy.maxBytes,
+      // Multipart caps bytes; the schema cap counts UTF-16 units, so allow the widest UTF-8 encoding.
+      fieldSize: 4 * fieldMaxLength,
+    },
+  })) {
+    if (part.type === 'file') {
+      if (part.fieldname !== fileField) throw invalid();
+      const bytes = await part.toBuffer();
+      if (part.file.truncated) throw invalid();
+      files.push(bytes);
+    } else {
+      if (part.fieldname in fields || part.valueTruncated || typeof part.value !== 'string') throw invalid();
+      fields[part.fieldname] = part.value;
+    }
+  }
+  return { fields, files };
+}
+
+// A string schema's `.max()` cap, failing at route registration when the schema has lost it, so the
+// multipart field limit is always derived from the schema rather than a local fallback.
+export function requireMaxLength(schema: { maxLength: number | null }): number {
+  if (schema.maxLength === null) throw new Error('Multipart text field schema must set a maximum length');
+  return schema.maxLength;
 }
 
 function sendNonUploadHttpError(reply: FastifyReply, error: unknown, options: SendHttpErrorOptions): void {

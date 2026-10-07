@@ -1,5 +1,5 @@
-import { FileNotFoundError, FilePolicyViolationError, type StoredObject } from '@pkg/core';
-import { fileTooLargeMessage } from '@pkg/domain';
+import { FileNotFoundError, type StoredObject } from '@pkg/core';
+import type { FilePolicy } from '@pkg/domain';
 import type { AppPermission } from '@pkg/schema';
 import type { FastifyInstance, FastifyReply } from 'fastify';
 
@@ -25,9 +25,9 @@ export type EntityFileRouteConfig = {
   // Maps an owner error raised by the binding (e.g. ProductNotFoundError) to a route response, or returns
   // undefined to let it propagate. Keeps entity-specific error knowledge out of this generic registrar.
   mapOwnerError: (error: unknown) => RouteHttpError | undefined;
-  // Applied to the upload stream, so an oversized file is refused before it is buffered.
-  maxUploadBytes: number;
   noFileMessage: string;
+  // Its cap is applied to the upload stream, so an oversized file is refused before it is buffered.
+  policy: FilePolicy;
   read: (args: { rawParams: unknown; rawQuery: unknown }) => Promise<StoredObject>;
   readForbiddenMessage: string;
   readPermission: AppPermission;
@@ -54,7 +54,7 @@ function registerEntityFileConfig(app: FastifyInstance, config: EntityFileRouteC
 
     try {
       requirePermission(auth, config.uploadPermission, config.uploadForbiddenMessage, 'file.forbidden');
-      const file = await request.file({ limits: { fileSize: config.maxUploadBytes } });
+      const file = await request.file({ limits: { fileSize: config.policy.maxBytes } });
 
       if (!file) {
         reply.status(400).send({ message: config.noFileMessage });
@@ -89,18 +89,14 @@ function registerEntityFileConfig(app: FastifyInstance, config: EntityFileRouteC
 
 function sendFileHttpError(reply: FastifyReply, error: unknown, config: EntityFileRouteConfig): void {
   sendUploadHttpError(reply, toFileRouteError(error, config) ?? error, {
+    policy: config.policy,
     fallbackMessage: 'File request failed.',
     invalidRequestMessage: 'Invalid file request.',
-    onFileTooLarge: () => ({ appCode: 'file.too_large', message: fileTooLargeMessage(config.maxUploadBytes) }),
   });
 }
 
-// Maps the generic file errors this layer owns, then defers owner-not-found and the like to the config.
+// Maps the generic file error this layer owns, then defers owner-not-found and the like to the config.
 function toFileRouteError(error: unknown, config: EntityFileRouteConfig): RouteHttpError | undefined {
-  if (error instanceof FilePolicyViolationError) {
-    return new RouteHttpError({ appCode: error.code, message: error.message, statusCode: 400 });
-  }
-
   if (error instanceof FileNotFoundError) {
     return new RouteHttpError({ appCode: error.code, message: 'File not found.', statusCode: 404 });
   }

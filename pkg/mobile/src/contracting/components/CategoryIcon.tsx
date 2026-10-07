@@ -5,14 +5,10 @@ import {
   categoryIcon,
 } from '@pkg/domain/contracting';
 import type { CategoryColour, CategoryIconKey } from '@pkg/schema/contracting';
-import { cssInterop } from 'nativewind';
 import { View } from 'react-native';
-import Svg, { Path } from 'react-native-svg';
+import { Path } from 'react-native-svg';
+import { StyledSvg } from '@/components/ui/svg';
 import { useColorMode } from '@/theme/use-color-mode';
-
-// The same seam as `ui/icon.tsx`: the class's resolved colour lands on the svg `color` prop, which
-// `currentColor` strokes read.
-const StyledSvg = cssInterop(Svg, { className: { target: 'style', nativeStyleToProp: { color: true } } });
 
 /** A category's glyph on its tinted disc, the thumbnail the field screens show. */
 export function CategoryIcon({

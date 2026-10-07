@@ -135,7 +135,7 @@ export function VoiceTextArea({ value, onChangeText, voice, rows = 4, editable =
 
   // The input drops its own frame so it and the mic row read as one field, mic in the bottom-right corner.
   return (
-    <VoiceFrame animating={recorder.recording || transcribing}>
+    <VoiceFrame animating={busy}>
       {input}
       <View className="flex-row items-center gap-3 pb-2 pl-3 pr-2">
         <Text accessibilityLiveRegion="polite" className="flex-1 text-xs text-muted-foreground">

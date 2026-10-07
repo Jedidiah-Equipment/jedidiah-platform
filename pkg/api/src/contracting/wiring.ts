@@ -1,6 +1,5 @@
-import { createOpenAiChatModel } from '@pkg/ai';
+import { createOpenAiChatModel, createOpenAiTranscriptionModel } from '@pkg/ai';
 import {
-  createTranscriptionModel,
   deriveTranscriptionHint,
   readMeterPhoto as readMeterPhotoWithModel,
   tidyTranscript,
@@ -39,7 +38,7 @@ export async function registerContracting(
   { config, storage }: BusinessWiringInput,
 ): Promise<BusinessWiring<ContractingRouterDependencies>> {
   const chatModel = createOpenAiChatModel({ apiKey: config.OPENAI_API_KEY, model: config.OPENAI_MODEL });
-  const transcriptionModel = createTranscriptionModel({
+  const transcriptionModel = createOpenAiTranscriptionModel({
     apiKey: config.OPENAI_API_KEY,
     model: config.OPENAI_TRANSCRIPTION_MODEL,
   });

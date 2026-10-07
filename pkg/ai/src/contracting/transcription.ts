@@ -1,4 +1,3 @@
-import { createOpenAI } from '@ai-sdk/openai';
 import type { ActiveHint, VoiceTranscript } from '@pkg/core/contracting';
 import { promptFromKeyterms, TRANSCRIPTION_HINT_CAP } from '@pkg/domain/contracting';
 import { UUID } from '@pkg/schema';
@@ -11,10 +10,6 @@ import {
   experimental_transcribe as transcribe,
 } from 'ai';
 import { z } from 'zod';
-
-export function createTranscriptionModel({ apiKey, model }: { apiKey: string; model: string }): TranscriptionModel {
-  return createOpenAI({ apiKey }).transcription(model);
-}
 
 export async function transcribeVoiceNote({
   audio,

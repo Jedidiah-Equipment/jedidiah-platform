@@ -1,9 +1,4 @@
-import {
-  assertDriverAccountChangeAllowed,
-  assertMechanicAccountChangeAllowed,
-  isBreakdownError,
-  isFleetError,
-} from '@pkg/core/contracting';
+import { assertContractingAccountChangeAllowed, isContractingAccountChangeRefusal } from '@pkg/core/contracting';
 import type { Db } from '@pkg/db';
 import { AuthId } from '@pkg/schema';
 import type { BetterAuthPlugin } from 'better-auth';
@@ -15,9 +10,9 @@ const AdminTarget = z.object({ userId: AuthId });
 const DeviceUpdate = z.object({ isDevice: z.boolean().optional() });
 
 // The database trigger remains the final concurrency guard; this is the friendly half.
-export function driverRoleSafetyPlugin(db: Db): BetterAuthPlugin {
+export function contractingRoleSafetyPlugin(db: Db): BetterAuthPlugin {
   return {
-    id: 'contracting-driver-role-safety',
+    id: 'contracting-role-safety',
     init: () => ({
       options: {
         databaseHooks: {
@@ -28,17 +23,15 @@ export function driverRoleSafetyPlugin(db: Db): BetterAuthPlugin {
                 const device = DeviceUpdate.safeParse(updatedUser);
                 if (!target.success || !device.success) return;
                 const change = getRoleChange(context?.path, context?.body);
-                const account = {
-                  db,
-                  userId: target.data.userId,
-                  contractingRole: spansBothBusinesses(change?.equipmentRole) ? null : change?.contractingRole,
-                  isDevice: device.data.isDevice,
-                };
                 try {
-                  await assertDriverAccountChangeAllowed(account);
-                  await assertMechanicAccountChangeAllowed(account);
+                  await assertContractingAccountChangeAllowed({
+                    db,
+                    userId: target.data.userId,
+                    contractingRole: spansBothBusinesses(change?.equipmentRole) ? null : change?.contractingRole,
+                    isDevice: device.data.isDevice,
+                  });
                 } catch (error) {
-                  if (isFleetError(error) || isBreakdownError(error))
+                  if (isContractingAccountChangeRefusal(error))
                     throw APIError.from('FORBIDDEN', { code: error.code, message: error.message });
                   throw error;
                 }

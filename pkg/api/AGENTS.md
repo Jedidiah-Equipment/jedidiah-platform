@@ -14,8 +14,8 @@
   `trpc/router.ts` by `createAppRouter({ equipment, contracting })`.
 - Role slots travel as `data.equipmentRole` / `data.contractingRole` on Better Auth create-user and update-user,
   and as `role` on set-role; `auth/role-slots.ts` parses them for every hook and remaps them onto the columns.
-  Business plugins (`equipment/auth/admin-user-safety.ts`, `contracting/auth/driver-role-safety.ts`) only add
-  policy. After a Better Auth upgrade, rerun `admin-user-safety.test.ts` and `driver-role-safety.test.ts`, which
+  Business plugins (`equipment/auth/admin-user-safety.ts`, `contracting/auth/contracting-role-safety.ts`) only add
+  policy. After a Better Auth upgrade, rerun `admin-user-safety.test.ts` and `contracting-role-safety.test.ts`, which
   exercise `role-slots.ts` through the real endpoints.
 
 Canonical examples: `src/routes/equipment/products/products.router.ts`, `src/trpc/init.ts`, `src/test/create-tester.ts`.

@@ -8,7 +8,7 @@ import {
   contractingMachines,
 } from '@pkg/db/contracting';
 import { type BreakdownActor, breakdownFirstLine, breakdownReadScope, formatJobNumber } from '@pkg/domain/contracting';
-import { BreakdownSummary } from '@pkg/schema/contracting';
+import { type BreakdownSubjectRef, BreakdownSummary } from '@pkg/schema/contracting';
 import { and, eq, getTableColumns, or, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import type { DbOrTx } from '../jobs/job-load.js';
@@ -74,18 +74,38 @@ export function selectBreakdowns(db: DbOrTx) {
 }
 export type LoadedBreakdown = Awaited<ReturnType<typeof selectBreakdowns>>[number];
 
-/** The Breakdowns this actor may read: every one, or for a `report` holder only, the ones that are theirs. */
+/**
+ * The Breakdowns this actor may read: every one, or for a `report` holder only, the ones that are theirs.
+ * Self-contained, so a count or a lock-select needs no Job join to use it.
+ */
 export function breakdownReadableBy(actor: BreakdownActor) {
   const scope = breakdownReadScope(actor);
   if (!scope) throw new BreakdownError('breakdown.forbidden', 'You do not have permission to view Breakdowns.');
   if (scope === 'all') return undefined;
-  return or(eq(contractingBreakdowns.reportedByUserId, actor.userId), eq(contractingJobs.foremanUserId, actor.userId));
+  return or(
+    eq(contractingBreakdowns.reportedByUserId, actor.userId),
+    sql`exists (
+      select 1
+      from contracting.job foreman_job
+      where foreman_job.id = ${contractingBreakdowns.jobId}
+        and foreman_job.foreman_user_id = ${actor.userId}
+    )`,
+  );
+}
+
+/** The one subject a Breakdown row names; the table's XOR check makes any other shape a corrupt row. */
+export function breakdownSubjectRef(row: {
+  machineId: string | null;
+  implementId: string | null;
+}): BreakdownSubjectRef {
+  if (row.machineId !== null && row.implementId === null) return { kind: 'machine', id: row.machineId };
+  if (row.implementId !== null && row.machineId === null) return { kind: 'implement', id: row.implementId };
+  throw new Error('Breakdown row names neither one Machine nor one Implement');
 }
 
 export const breakdownSubjectOf = (row: LoadedBreakdown) => ({
-  kind: row.breakdown.machineId ? ('machine' as const) : ('implement' as const),
-  id: row.breakdown.machineId ?? row.breakdown.implementId ?? '',
-  code: row.machineCode ?? row.implementCode ?? '',
+  ...breakdownSubjectRef(row.breakdown),
+  code: (row.breakdown.machineId ? row.machineCode : row.implementCode) ?? '',
   categoryName: row.categoryName,
   categoryIcon: row.categoryIcon,
   categoryColour: row.categoryColour,

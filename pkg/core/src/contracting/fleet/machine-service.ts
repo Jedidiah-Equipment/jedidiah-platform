@@ -1,5 +1,10 @@
 import { createEscapedContainsSearchCondition, type DatabaseTransaction, type Db, user } from '@pkg/db';
-import { contractingJobs, contractingMachineAssignments, contractingMachines } from '@pkg/db/contracting';
+import {
+  contractingJobs,
+  contractingMachineAssignments,
+  contractingMachines,
+  contractingServiceRecords,
+} from '@pkg/db/contracting';
 import { formatJobNumber, hoursToService, serviceDueStatus } from '@pkg/domain/contracting';
 import type { AuthId, ContractingRole } from '@pkg/schema';
 import {
@@ -192,6 +197,14 @@ export async function retireMachine(args: { db: Db; actorUserId: AuthId; input: 
     descriptor,
     noun: 'Machine',
     alsoSet: { currentDriverUserId: null },
+    assert: async (tx, row) => {
+      const [open] = await tx
+        .select({ id: contractingServiceRecords.id })
+        .from(contractingServiceRecords)
+        .where(and(eq(contractingServiceRecords.machineId, row.id), isNull(contractingServiceRecords.closedAt)))
+        .limit(1);
+      if (open) throw new FleetError('fleet.in_use', 'Close the service this Machine is in for before retiring it.');
+    },
     project: (tx, row) => getMachine({ db: tx, id: row.id }),
   });
 }

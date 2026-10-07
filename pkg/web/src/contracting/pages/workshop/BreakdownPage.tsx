@@ -11,7 +11,6 @@ import {
   breakdownStatusLabels,
   breakdownUrgencyColorClassNames,
   breakdownUrgencyLabels,
-  openJobQueues,
   reportToSolvedHours,
 } from '@pkg/domain/contracting';
 import {
@@ -25,7 +24,7 @@ import {
 import { IconExternalLink, IconPhoto, IconTrash } from '@tabler/icons-react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { z } from 'zod';
 import { AttachmentField } from '@/components/attachments/AttachmentField.js';
@@ -43,11 +42,10 @@ import { Button } from '@/components/ui/button.js';
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@/components/ui/card.js';
 import { CategoryLabel } from '@/contracting/components/CategoryIcon.js';
 import { breakdownPhotosUrl, breakdownPhotoUrl } from '@/contracting/lib/contracting-http-paths.js';
-import { useCan } from '@/hooks/use-access.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { cn } from '@/lib/utils.js';
 import { MarkSolvedDialog } from './MarkSolvedDialog.js';
-import { type BreakdownSheet, breakdownSheet } from './types.js';
+import { type BreakdownSheet, breakdownSheet, type ReportValues, reportPatchInput } from './types.js';
 import { useWorkshopWrite } from './use-workshop-write.js';
 
 // A Foreman can add a note or a photo from the field while the workshop has the Breakdown open.
@@ -112,7 +110,7 @@ export function BreakdownPage({ id }: { id: string }) {
   );
 }
 
-const ReportValues = z.object({
+const ReportFormValues = z.object({
   description: BreakdownDescription,
   urgency: z.enum(breakdownUrgencies),
   jobId: z.string(),
@@ -122,30 +120,37 @@ function ReportCard({ breakdown, sheet }: { breakdown: BreakdownDetail; sheet: B
   const trpc = useTRPC();
   const write = useWorkshopWrite();
   const editable = sheet.can('editReport');
-  const readsJobs = useCan('contracting_job:read').can;
   const jobs = useQuery(
-    trpc.contractingJobs.jobs.list.queryOptions(
-      { queues: [...openJobQueues], limit: 0 },
-      { enabled: editable && readsJobs },
+    trpc.contractingBreakdowns.options.jobs.queryOptions(
+      { kind: breakdown.subject.kind, id: breakdown.subject.id },
+      { enabled: editable },
     ),
   );
-  const jobOptions = (jobs.data?.items ?? []).map((job) => ({
+  const jobOptions = (jobs.data ?? []).map((job) => ({
     value: job.id,
     label: `${job.jobNumber} · ${job.farmName}`,
   }));
   if (breakdown.jobId && breakdown.jobNumber && !jobOptions.some((option) => option.value === breakdown.jobId))
     jobOptions.push({ value: breakdown.jobId, label: `${breakdown.jobNumber} · ${breakdown.farmName ?? ''}` });
   const patch = useMutation(trpc.contractingBreakdowns.patch.mutationOptions({ onSuccess: write.invalidateWorkshop }));
+  const defaultValues: ReportValues = {
+    description: breakdown.description,
+    urgency: breakdown.urgency,
+    jobId: breakdown.jobId ?? '',
+  };
+  const saved = useRef(defaultValues);
   const { autosave, form, formProps } = useAutosaveForm({
-    defaultValues: { description: breakdown.description, urgency: breakdown.urgency, jobId: breakdown.jobId ?? '' },
+    defaultValues,
     failureMessage: 'Unable to update the report.',
-    validator: ReportValues,
-    toInput: (values) => ({
-      id: breakdown.id,
-      description: values.description,
-      urgency: values.urgency,
-      jobId: values.jobId || null,
-    }),
+    validator: ReportFormValues,
+    toInput: (values) => reportPatchInput(breakdown.id, saved.current, values),
+    onSaved: (input) => {
+      saved.current = {
+        description: input.description ?? saved.current.description,
+        urgency: input.urgency ?? saved.current.urgency,
+        jobId: input.jobId === undefined ? saved.current.jobId : (input.jobId ?? ''),
+      };
+    },
     save: (input) => patch.mutateAsync(input),
   });
   return (

@@ -1,4 +1,10 @@
-import type { BreakdownActionName, BreakdownDetail, BreakdownStatus } from '@pkg/schema/contracting';
+import type {
+  BreakdownActionName,
+  BreakdownDetail,
+  BreakdownPatchInput,
+  BreakdownStatus,
+  BreakdownUrgency,
+} from '@pkg/schema/contracting';
 import { breakdownStatuses, unsolvedBreakdownStatuses } from '@pkg/schema/contracting';
 import type { ColumnFiltersState } from '@tanstack/react-table';
 import { readMultiSelectFilter } from '@/components/data-table/column-filter-values.js';
@@ -36,4 +42,19 @@ export function listedStatuses(columnFilters: ColumnFiltersState): BreakdownStat
   const picked = readMultiSelectFilter(columnFilters, STATUS_COLUMN_ID);
   const statuses = breakdownStatuses.filter((status) => picked.includes(status));
   return statuses.length ? statuses : [...unsolvedBreakdownStatuses];
+}
+
+export type ReportValues = { description: string; urgency: BreakdownUrgency; jobId: string };
+
+/**
+ * The report fields that differ from what was last saved, so a save never rewrites a field someone else may have
+ * changed since this page loaded; `patchBreakdown` keeps every omitted field.
+ */
+export function reportPatchInput(id: string, saved: ReportValues, values: ReportValues): BreakdownPatchInput {
+  return {
+    id,
+    ...(values.description === saved.description ? {} : { description: values.description }),
+    ...(values.urgency === saved.urgency ? {} : { urgency: values.urgency }),
+    ...(values.jobId === saved.jobId ? {} : { jobId: values.jobId || null }),
+  };
 }

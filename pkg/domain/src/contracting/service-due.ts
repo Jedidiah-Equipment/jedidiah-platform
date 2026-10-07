@@ -27,7 +27,7 @@ export const suggestedNextServiceDue = (readingAtServiceHours: number, serviceIn
   serviceIntervalHours === null ? null : round2(readingAtServiceHours + serviceIntervalHours);
 
 export const serviceDueStatusLabels: Record<ServiceDueStatus, string> = {
-  unknown: 'No reading yet',
+  unknown: 'Service due unknown',
   ok: 'Service on track',
   'due-soon': 'Service due soon',
   overdue: 'Service overdue',

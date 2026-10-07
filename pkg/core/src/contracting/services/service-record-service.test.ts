@@ -3,7 +3,7 @@ import { DateOnlyIso } from '@pkg/schema';
 import { and, eq, inArray } from 'drizzle-orm';
 import { describe, expect } from 'vitest';
 import { createTester } from '../../test/create-tester.js';
-import { getMachine, listMachines, patchMachine } from '../fleet/machine-service.js';
+import { getMachine, listMachines, patchMachine, retireMachine } from '../fleet/machine-service.js';
 import { captureReading } from '../readings/reading-service.js';
 import { admin, adminId, seedJobFixtures } from '../test/job-fixtures.js';
 import {
@@ -181,5 +181,18 @@ describe('Service Records', () => {
       input: { id: opened.id, primaryMechanicUserId: 'danie', notes: 'Waiting on a filter' },
     });
     expect(patched.notes).toBe('Waiting on a filter');
+  });
+
+  test('a Machine in for a service cannot be retired until the service is closed', async ({
+    context: { db, excavator },
+  }) => {
+    await openServiceRecord({
+      db,
+      actorUserId: adminId,
+      input: { machineId: excavator.id, startDate: day('2026-10-01'), notes: null },
+    });
+    await expect(
+      retireMachine({ db, actorUserId: adminId, input: { id: excavator.id, reason: 'Sold' } }),
+    ).rejects.toMatchObject({ code: 'fleet.in_use' });
   });
 });

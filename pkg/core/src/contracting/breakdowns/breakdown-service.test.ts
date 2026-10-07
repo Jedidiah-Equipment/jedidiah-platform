@@ -14,6 +14,7 @@ import {
   addBreakdownPhotos,
   assignMechanic,
   getBreakdown,
+  listBreakdownJobOptions,
   listBreakdowns,
   reportBreakdown,
   solveBreakdown,
@@ -97,6 +98,20 @@ test('defaults the Job from the on-site stint, and none for a Machine in the yar
   expect(onSite).toMatchObject({ jobId, jobNumber: expect.stringMatching(/^CJOB-/), farmName: 'Rooikraal' });
   expect(onSite.firstLine).toBe('Hydraulic hose burst');
   expect(inYard.jobId).toBeNull();
+});
+
+test('offers only the open Jobs the subject is on, and a Foreman only his own', async ({ context }) => {
+  const { db, excavator, tipper, jobId } = context;
+  await plannedStint(db, admin, { jobId, machineId: excavator.id, implementId: null });
+  const subject = { kind: 'machine', id: excavator.id } as const;
+  expect(await listBreakdownJobOptions({ db, actor: workshop, subject })).toEqual([
+    { id: jobId, jobNumber: expect.stringMatching(/^CJOB-/), farmName: 'Rooikraal' },
+  ]);
+  expect(await listBreakdownJobOptions({ db, actor: foreman, subject })).toHaveLength(1);
+  expect(await listBreakdownJobOptions({ db, actor: otherForeman, subject })).toEqual([]);
+  expect(await listBreakdownJobOptions({ db, actor: workshop, subject: { kind: 'machine', id: tipper.id } })).toEqual(
+    [],
+  );
 });
 
 test('an Implement reaches its Job through the stint it is attached to', async ({ context }) => {

@@ -1,4 +1,4 @@
-import { type DatabaseTransaction, type Db, user } from '@pkg/db';
+import { user } from '@pkg/db';
 import {
   contractingBreakdowns,
   contractingCategories,
@@ -11,9 +11,8 @@ import { type BreakdownActor, breakdownFirstLine, breakdownReadScope, formatJobN
 import { BreakdownSummary } from '@pkg/schema/contracting';
 import { and, eq, getTableColumns, or, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
+import type { DbOrTx } from '../jobs/job-load.js';
 import { BreakdownError } from './breakdown-errors.js';
-
-export type DbOrTx = Db | DatabaseTransaction;
 
 const reporter = alias(user, 'breakdown_reporter');
 const mechanic = alias(user, 'breakdown_mechanic');

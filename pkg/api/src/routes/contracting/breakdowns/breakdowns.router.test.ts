@@ -42,16 +42,18 @@ const test = createTester(async ({ db }) => {
     actorUserId: 'connor',
     input: MachineCreateInput.parse({ code: 'JD6140M-2', make: 'Deere', model: '6140M', categoryId: category.id }),
   });
-  const report = (reporter: string) =>
-    reportBreakdown({
-      db,
-      actor: accessForRole('foreman', reporter),
-      input: {
-        subject: { kind: 'machine', id: machine.id },
-        urgency: 'code-red',
-        description: `Reported by ${reporter}`,
-      },
-    });
+  const report = async (reporter: string) =>
+    (
+      await reportBreakdown({
+        db,
+        actor: accessForRole('foreman', reporter),
+        input: {
+          subject: { kind: 'machine', id: machine.id },
+          urgency: 'code-red',
+          description: `Reported by ${reporter}`,
+        },
+      })
+    ).breakdown;
   return { siphos: await report('sipho'), thabos: await report('thabo') };
 });
 

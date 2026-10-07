@@ -1,6 +1,6 @@
 import { formatHours } from '@pkg/domain';
 import { assignmentStateColorClassNames, canOpenJobCards, hasJobCard, judgeJobAction } from '@pkg/domain/contracting';
-import type { AssignmentState, FieldStint, JobCardVariant } from '@pkg/schema/contracting';
+import type { AssignmentState, BreakdownSubjectKind, FieldStint, JobCardVariant } from '@pkg/schema/contracting';
 import { IconPlayerPlay, IconPlayerStop, IconPlus, type Icon as TablerIcon } from '@tabler/icons-react-native';
 import { type Href, router, useLocalSearchParams } from 'expo-router';
 import { Pressable, ScrollView, View } from 'react-native';
@@ -33,7 +33,7 @@ export default function JobScreen() {
   const canAdd = job ? judgeJobAction('assign', job, access).allowed : false;
   const canShareJobCard = canOpenJobCards(access) && finished;
   const canReport = useSessionPermission('contracting_breakdown:report') && !finished;
-  const reportProblem = (subjectKind: 'machine' | 'implement', subjectId: string) =>
+  const reportProblem = (subjectKind: BreakdownSubjectKind, subjectId: string) =>
     router.push({ pathname: '/contracting/workshop/report', params: { subjectKind, subjectId, jobId } });
   const share = useBusyAction();
   const shareJobCard = (variant: JobCardVariant) => {
@@ -175,7 +175,7 @@ function StintCard({
   onStart: () => void;
   onStop: () => void;
   onReadd: () => void;
-  onReport: (subjectKind: 'machine' | 'implement', subjectId: string) => void;
+  onReport: (subjectKind: BreakdownSubjectKind, subjectId: string) => void;
 }) {
   return (
     <View className="gap-2 rounded-xl border border-border bg-surface p-4">

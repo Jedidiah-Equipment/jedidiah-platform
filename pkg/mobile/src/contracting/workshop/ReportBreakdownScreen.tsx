@@ -1,11 +1,12 @@
 import { formatDate } from '@pkg/domain';
-import { breakdownUrgencyLabels } from '@pkg/domain/contracting';
+import { breakdownSubjectKindLabels, breakdownUrgencyLabels } from '@pkg/domain/contracting';
 import {
   BREAKDOWN_MAX_PHOTOS,
   BreakdownDescription,
   type BreakdownSubjectKind,
   type BreakdownSubjectRef,
   type BreakdownUrgency,
+  breakdownSubjectKinds,
 } from '@pkg/schema/contracting';
 import { useStore } from '@tanstack/react-form';
 import { useQueryClient } from '@tanstack/react-query';
@@ -42,11 +43,12 @@ import { useOpenOnSubject } from './use-breakdowns';
 type Photo = { id: string; uri: string; source: PhotoSource };
 const PICK_FAILED = 'The photo could not be added. Try again.';
 const URGENCY_CHOICES: { urgency: BreakdownUrgency; label: string }[] = [
-  { urgency: 'code-red', label: 'Code Red — machine down' },
-  { urgency: 'code-green', label: 'Code Green — still working' },
+  { urgency: 'code-red', label: `${breakdownUrgencyLabels['code-red']} — machine down` },
+  { urgency: 'code-green', label: `${breakdownUrgencyLabels['code-green']} — still working` },
 ];
 
-const isSubjectKind = (value: unknown): value is BreakdownSubjectKind => value === 'machine' || value === 'implement';
+const isSubjectKind = (value: unknown): value is BreakdownSubjectKind =>
+  (breakdownSubjectKinds as readonly unknown[]).includes(value);
 
 /** `/contracting/workshop/report`: from the Workshop tab, a Machine, or a stint on a Job. */
 export default function ReportBreakdownScreen() {
@@ -106,7 +108,7 @@ export default function ReportBreakdownScreen() {
     }
     return implementsQuery.data?.find((row) => row.id === subject.id) ?? null;
   }, [subject, fleet.data, implementsQuery.data]);
-  const { canSend, photosLeft } = deriveReport(
+  const { canSend, photosLeft, messages } = deriveReport(
     { subject, urgency, description, photoCount: photos.length },
     { canReport, busy: busy || voice.busy },
   );
@@ -182,6 +184,9 @@ export default function ReportBreakdownScreen() {
       footer={
         <>
           {!canReport ? <Text className="text-danger">Your role cannot report Breakdowns.</Text> : null}
+          {canReport && !busy && !canSend ? (
+            <Text className="text-sm text-muted-foreground">{Object.values(messages)[0]}</Text>
+          ) : null}
           <Button
             primary={canSend}
             title={busy ? 'Sending…' : 'Send report'}
@@ -200,7 +205,7 @@ export default function ReportBreakdownScreen() {
           ) : null}
           <View className="min-w-0 flex-1">
             <Text className="text-lg text-foreground" weight="bold">
-              {subjectRow?.code ?? (prefilled.kind === 'machine' ? 'Machine' : 'Implement')}
+              {subjectRow?.code ?? breakdownSubjectKindLabels[prefilled.kind]}
             </Text>
             {subjectRow ? <Text className="text-sm text-muted-foreground">{subjectRow.categoryName}</Text> : null}
           </View>
@@ -208,10 +213,10 @@ export default function ReportBreakdownScreen() {
       ) : (
         <FieldShell label="What has the problem?">
           <View className="flex-row gap-2">
-            {(['machine', 'implement'] as const).map((option) => (
+            {breakdownSubjectKinds.map((option) => (
               <Toggle
                 key={option}
-                label={option === 'machine' ? 'Machine' : 'Implement'}
+                label={breakdownSubjectKindLabels[option]}
                 selected={kind === option}
                 disabled={busy}
                 onPress={() => {
@@ -225,8 +230,8 @@ export default function ReportBreakdownScreen() {
           <picker.AppField name="subjectId">
             {(field) => (
               <field.SearchSelectField
-                label={kind === 'machine' ? 'Machine' : 'Implement'}
-                placeholder={kind === 'machine' ? 'Choose a Machine' : 'Choose an Implement'}
+                label={breakdownSubjectKindLabels[kind]}
+                placeholder={`Choose the ${breakdownSubjectKindLabels[kind]}`}
                 searchPlaceholder="Search by code or category…"
                 emptyMessage="Nothing matches."
                 disabled={busy}

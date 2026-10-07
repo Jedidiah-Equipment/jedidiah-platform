@@ -2,6 +2,7 @@ import { formatNumber } from '@pkg/domain';
 import {
   breakdownStatusColorClassNames,
   breakdownStatusLabels,
+  breakdownSubjectKindLabels,
   breakdownUrgencyColorClassNames,
   breakdownUrgencyLabels,
   fieldJobAccessMode,
@@ -17,7 +18,7 @@ import { IconCamera, IconMapPin, IconPhoto, IconX } from '@tabler/icons-react-na
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { type Href, router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { Image, Linking, Modal, Pressable, ScrollView, View } from 'react-native';
+import { Image, Linking, Pressable, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { DateText } from '@/components/DateText';
 import { useAppForm } from '@/components/form';
@@ -28,6 +29,7 @@ import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/icon';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { Text } from '@/components/ui/text';
+import { ThemedModal } from '@/components/ui/themed-modal';
 import { CategoryIcon } from '@/contracting/components/CategoryIcon';
 import { saveToGallery } from '@/contracting/field-notes/files';
 import { choosePhotos, takePhoto } from '@/contracting/field-notes/pick-photos';
@@ -133,7 +135,7 @@ function HeaderCard({ breakdown }: { breakdown: BreakdownDetail }) {
             {subject.code}
           </Text>
           <Text className="text-sm text-muted-foreground">
-            {subject.kind === 'machine' ? 'Machine' : 'Implement'} · {subject.categoryName}
+            {breakdownSubjectKindLabels[subject.kind]} · {subject.categoryName}
           </Text>
         </View>
       </View>
@@ -330,19 +332,19 @@ function PhotosCard({ breakdown }: { breakdown: BreakdownDetail }) {
           />
         </>
       ) : null}
-      <Modal visible={viewing !== null} animationType="fade" onRequestClose={() => setViewing(null)}>
-        <SafeAreaView className="flex-1 bg-black">
+      <ThemedModal backdropLabel="Close photo" open={viewing !== null} onClose={() => setViewing(null)}>
+        <View className="w-full flex-1 overflow-hidden rounded-2xl bg-black">
+          {viewing ? <BreakdownPhoto breakdownId={breakdown.id} photoId={viewing} resizeMode="contain" /> : null}
           <Pressable
             accessibilityLabel="Close photo"
             accessibilityRole="button"
-            className="absolute right-4 top-12 z-10 h-10 w-10 items-center justify-center rounded-full bg-black/60"
+            className="absolute right-3 top-3 h-10 w-10 items-center justify-center rounded-full bg-black/60"
             onPress={() => setViewing(null)}
           >
             <Icon className="text-white" icon={IconX} size={20} />
           </Pressable>
-          {viewing ? <BreakdownPhoto breakdownId={breakdown.id} photoId={viewing} resizeMode="contain" /> : null}
-        </SafeAreaView>
-      </Modal>
+        </View>
+      </ThemedModal>
     </Card>
   );
 }
@@ -455,43 +457,41 @@ function SolveModal({ breakdownId, visible, onClose }: { breakdownId: string; vi
     onClose();
   };
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={close}>
-      <View className="flex-1 justify-end bg-black/50">
-        <SafeAreaView edges={['bottom']} className="gap-3 rounded-t-2xl bg-background p-4">
-          <Text className="text-lg text-foreground" weight="bold">
-            Mark solved
-          </Text>
-          <FieldShell label="Close-out note">
-            <VoiceTextArea
-              accessibilityLabel="Close-out note"
-              placeholder="What was wrong and what was done"
-              value={note}
-              editable={!busy}
-              rows={4}
-              maxLength={CloseOutNote.maxLength ?? undefined}
-              onChangeText={setNote}
-              voice={voice}
-            />
-          </FieldShell>
-          {error ? <Text className="text-danger">{error}</Text> : null}
-          <Button
-            destructive
-            title={busy ? 'Saving…' : 'Confirm solved'}
-            disabled={busy || voice.busy || !valid}
-            onPress={() =>
-              void run(async () => {
-                await solve.mutateAsync({ id: breakdownId, closeOutNote: note });
-                voice.reportSaved(note.trim());
-                setNote('');
-                onClose();
-                await invalidate();
-              }, SAVE_FAILED)
-            }
+    <ThemedModal backdropLabel="Cancel marking solved" open={visible} onClose={close} dismissDisabled={busy}>
+      <View className="w-full gap-3 rounded-2xl border border-border bg-background p-4">
+        <Text className="text-lg text-foreground" weight="bold">
+          Mark solved
+        </Text>
+        <FieldShell label="Close-out note">
+          <VoiceTextArea
+            accessibilityLabel="Close-out note"
+            placeholder="What was wrong and what was done"
+            value={note}
+            editable={!busy}
+            rows={4}
+            maxLength={CloseOutNote.maxLength ?? undefined}
+            onChangeText={setNote}
+            voice={voice}
           />
-          <Button title="Cancel" disabled={busy} onPress={close} />
-        </SafeAreaView>
+        </FieldShell>
+        {error ? <Text className="text-danger">{error}</Text> : null}
+        <Button
+          destructive
+          title={busy ? 'Saving…' : 'Confirm solved'}
+          disabled={busy || voice.busy || !valid}
+          onPress={() =>
+            void run(async () => {
+              await solve.mutateAsync({ id: breakdownId, closeOutNote: note });
+              voice.reportSaved(note.trim());
+              setNote('');
+              onClose();
+              await invalidate();
+            }, SAVE_FAILED)
+          }
+        />
+        <Button title="Cancel" disabled={busy} onPress={close} />
       </View>
-    </Modal>
+    </ThemedModal>
   );
 }
 

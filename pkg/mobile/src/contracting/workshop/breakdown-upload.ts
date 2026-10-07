@@ -34,7 +34,6 @@ export async function reportBreakdown(input: BreakdownReportRequest, photoUris: 
   return send(BREAKDOWN_REPORT_PATH, body, photoUris, REPORT_FAILED);
 }
 
-/** Adds photos to a Breakdown already reported. */
 export async function addBreakdownPhotos(breakdownId: string, photoUris: readonly string[]) {
   return send(breakdownPhotosPath(breakdownId), new FormData(), photoUris, PHOTOS_FAILED);
 }

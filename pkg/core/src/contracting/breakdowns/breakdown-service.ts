@@ -14,6 +14,7 @@ import {
   type BreakdownActor,
   breakdownFirstLine,
   breakdownReadScope,
+  breakdownSubjectKindLabels,
   deriveBreakdownActions,
 } from '@pkg/domain/contracting';
 import { type AuthId, type ContractingRole, getNextCursor } from '@pkg/schema';
@@ -41,6 +42,7 @@ import { recordAuditCreate } from '../../audit/audit-writer.js';
 import { mutateEntity } from '../../audit/mutate-entity.js';
 import { FilePolicyViolationError } from '../../files/file-errors.js';
 import type { StorageAdapter } from '../../storage/storage-adapter.js';
+import type { DbOrTx } from '../jobs/job-load.js';
 import { breakdownDescriptor } from './breakdown-audit.js';
 import {
   assertBreakdownAction,
@@ -53,7 +55,6 @@ import {
   breakdownActionSubject,
   breakdownReadableBy,
   breakdownSubjectOf,
-  type DbOrTx,
   type LoadedBreakdown,
   loadReadableBreakdown,
   selectBreakdowns,
@@ -187,12 +188,15 @@ async function resolveJob(
     .from(contractingMachineAssignments)
     .where(and(onSubject, eq(contractingMachineAssignments.jobId, jobId)))
     .limit(1);
-  if (!stint) throw invalidJob(`This ${subject.kind === 'machine' ? 'Machine' : 'Implement'} is not on that Job.`);
+  if (!stint) throw invalidJob(`This ${breakdownSubjectKindLabels[subject.kind]} is not on that Job.`);
   return jobId;
 }
 
 const subjectOfRow = (row: Pick<Row, 'machineId' | 'implementId'>): BreakdownSubjectRef =>
   row.machineId ? { kind: 'machine', id: row.machineId } : { kind: 'implement', id: row.implementId ?? '' };
+
+/** `created` is false when a retried `localId` returned the Breakdown already delivered. */
+export type BreakdownReport = { breakdown: BreakdownDetail; created: boolean };
 
 export async function reportBreakdown({
   db,
@@ -206,7 +210,7 @@ export async function reportBreakdown({
   input: BreakdownReportInput;
   evidence?: BreakdownEvidence;
   now?: Date;
-}): Promise<BreakdownDetail> {
+}): Promise<BreakdownReport> {
   const input = BreakdownReportInput.parse(raw);
   if (!hasPermission(actor, 'contracting_breakdown:report'))
     throw new BreakdownError('breakdown.forbidden', 'You cannot report Breakdowns.');
@@ -222,13 +226,13 @@ export async function reportBreakdown({
     return getBreakdown({ db, actor, id: row.id });
   }
   const delivered = await replay(db);
-  if (delivered) return delivered;
-  return withStoredPhotos(evidence, (photos) =>
+  if (delivered) return { breakdown: delivered, created: false };
+  return withStoredPhotos<BreakdownReport>(evidence, (photos) =>
     withBreakdownConstraints(() =>
       db.transaction(async (tx) => {
         await lockSubject(tx, input.subject);
         const delivered = await replay(tx);
-        if (delivered) return { result: delivered, kept: false };
+        if (delivered) return { result: { breakdown: delivered, created: false }, kept: false };
         const jobId = await resolveJob(tx, actor, input.subject, input.jobId);
         const [row] = await tx
           .insert(contractingBreakdowns)
@@ -248,7 +252,7 @@ export async function reportBreakdown({
           .returning();
         if (!row) throw new Error('Breakdown insert returned no row');
         await recordAuditCreate({ db: tx, actorUserId: actor.userId, descriptor: breakdownDescriptor, input: row });
-        return { result: await getBreakdown({ db: tx, actor, id: row.id }), kept: true };
+        return { result: { breakdown: await getBreakdown({ db: tx, actor, id: row.id }), created: true }, kept: true };
       }),
     ),
   );
@@ -272,12 +276,7 @@ async function toDetail(db: DbOrTx, actor: BreakdownActor, row: LoadedBreakdown)
   const hints = breakdown.jobId
     ? await selectBreakdowns(db)
         .where(
-          and(
-            eq(contractingBreakdowns.jobId, breakdown.jobId),
-            ne(contractingBreakdowns.id, breakdown.id),
-            unsolved,
-            breakdownReadableBy(actor),
-          ),
+          and(eq(contractingBreakdowns.jobId, breakdown.jobId), ne(contractingBreakdowns.id, breakdown.id), unsolved),
         )
         .orderBy(desc(contractingBreakdowns.reportedAt))
     : [];
@@ -458,7 +457,6 @@ export async function patchBreakdown({
   });
 }
 
-/** Locks the user and refuses anyone but a non-device Mechanic. */
 async function assertMechanic(tx: DatabaseTransaction, userId: AuthId) {
   const [person] = await tx
     .select({ role: user.contractingRole, isDevice: user.isDevice })
@@ -623,7 +621,6 @@ export async function removeBreakdownPhoto({
   return detail;
 }
 
-/** One photo of a Breakdown the actor may read, for the download route. */
 export async function getBreakdownPhoto({
   db,
   actor,
@@ -665,7 +662,6 @@ export async function listOpenBreakdownsOnSubject({
   return rows.map(toBreakdownSummary);
 }
 
-/** A Machine's or Implement's whole Breakdown history, newest first. */
 export async function listBreakdownsForSubject({
   db,
   ...subject

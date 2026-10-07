@@ -42,9 +42,15 @@ export async function registerBreakdownHttpRoutes(
       requirePermission(auth, 'contracting_breakdown:report', 'You cannot report Breakdowns.', 'breakdown.forbidden');
       const { fields, photos } = await readParts(request, breakdownReportFieldNames.length);
       const input = BreakdownReportMultipart.parse(fields);
-      const row = await reportBreakdown({ db, actor: auth.access, input, evidence: { storage, photos } });
-      reply.status(201).send(row);
-      onReported(row.id);
+      const { breakdown, created } = await reportBreakdown({
+        db,
+        actor: auth.access,
+        input,
+        evidence: { storage, photos },
+      });
+      reply.status(201).send(breakdown);
+      // A replayed report was announced the first time.
+      if (created) onReported(breakdown.id);
       return reply;
     } catch (error) {
       return sendBreakdownError(reply, error);

@@ -1,9 +1,13 @@
 import type { AuthId, UserAccessSummary } from '@pkg/schema';
-import type { BreakdownStatus, BreakdownUrgency } from '@pkg/schema/contracting';
+import type { BreakdownStatus, BreakdownSubjectKind, BreakdownUrgency } from '@pkg/schema/contracting';
 import { hasPermission } from '../auth/authorization.js';
 import { type BadgeColorClassNames, statusBadgeColorClassNames } from '../theme/status-badge.js';
 import { READING_PHOTO_POLICY } from './reading-photo-policy.js';
 
+export const breakdownSubjectKindLabels: Record<BreakdownSubjectKind, string> = {
+  machine: 'Machine',
+  implement: 'Implement',
+};
 export const breakdownUrgencyLabels: Record<BreakdownUrgency, string> = {
   'code-red': 'Code Red',
   'code-green': 'Code Green',
@@ -50,11 +54,9 @@ export function breakdownFirstLine(description: string, max = 120): string {
 /** The API route that reports a Breakdown with its photos, relative to the API origin. */
 export const BREAKDOWN_REPORT_PATH = '/api/contracting/breakdowns';
 
-/** The API route that adds photos to an existing Breakdown. */
 export const breakdownPhotosPath = (breakdownId: string) =>
   `${BREAKDOWN_REPORT_PATH}/${encodeURIComponent(breakdownId)}/photos`;
 
-/** The API route that serves one Breakdown photo. */
 export const breakdownPhotoPath = (breakdownId: string, photoId: string) =>
   `${breakdownPhotosPath(breakdownId)}/${encodeURIComponent(photoId)}`;
 

@@ -13,7 +13,6 @@ export function useBreakdownScope() {
   return breakdownReadScope(useSessionAccessSummary());
 }
 
-/** The Workshop tab's list, newest first, a page at a time. */
 export function useBreakdownList(statuses: readonly BreakdownStatus[]) {
   const canRead = useBreakdownScope() !== null;
   const trpc = useTRPC();
@@ -30,7 +29,7 @@ export function useBreakdownList(statuses: readonly BreakdownStatus[]) {
   );
 }
 
-/** One Breakdown with its notes and verdicts; gone once it is not this person's to read. */
+/** `gone` once it is not this person's to read. */
 export function useBreakdown(breakdownId: string) {
   const canRead = useBreakdownScope() !== null;
   const trpc = useTRPC();

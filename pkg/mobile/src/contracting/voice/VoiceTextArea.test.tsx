@@ -1,7 +1,7 @@
 import { act, create, type ReactTestRenderer } from 'react-test-renderer';
 import { beforeEach, expect, test, vi } from 'vitest';
 
-const state = vi.hoisted(() => ({ offline: false, permitted: true, started: 'recording' }));
+const state = vi.hoisted(() => ({ offline: false, permitted: true, started: 'recording', capped: false }));
 const stop = vi.hoisted(() => vi.fn(async (): Promise<{ uri: string; seconds: number } | null> => null));
 const transcribe = vi.hoisted(() => vi.fn());
 vi.mock('react-native', () => ({ Pressable: 'Pressable', View: 'View' }));
@@ -19,6 +19,7 @@ vi.mock('./use-voice-recorder', () => ({
   useVoiceRecorder: () => ({
     recording: false,
     seconds: 0,
+    capped: state.capped,
     start: async () => state.started,
     stop,
   }),
@@ -51,7 +52,7 @@ const mics = (renderer: ReactTestRenderer) =>
 const micCount = () => mics(render()).length;
 
 beforeEach(() => {
-  Object.assign(state, { offline: false, permitted: true, started: 'recording' });
+  Object.assign(state, { offline: false, permitted: true, started: 'recording', capped: false });
   stop.mockReset().mockResolvedValue(null);
   voice.setBusy.mockClear();
 });
@@ -125,5 +126,20 @@ test('animates the frame from the press until the transcript lands, whatever the
   expect(animating()).toBe(true);
 
   await act(async () => land({ text: 'Fence down by the dam.' }));
+  expect(animating()).toBe(false);
+});
+
+test('stops animating when the Voice Note limit cuts off a note the finger still holds', async () => {
+  const renderer = render();
+  const animating = () => renderer.root.findByType('VoiceFrame' as never).props.animating;
+  await act(async () => {
+    mics(renderer)[0]?.props.onPressIn();
+  });
+  expect(animating()).toBe(true);
+
+  state.capped = true;
+  act(() => {
+    renderer.update(<VoiceTextArea value="" onChangeText={() => undefined} voice={voice} />);
+  });
   expect(animating()).toBe(false);
 });

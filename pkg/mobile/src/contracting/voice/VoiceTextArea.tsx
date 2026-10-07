@@ -48,6 +48,8 @@ export function VoiceTextArea({ value, onChangeText, voice, rows = 4, editable =
   latest.current = value;
   const showMic = canUse && !offline && editable;
   const busy = holding || transcribing;
+  // The recorder's own flag is polled and lags; a held finger is the live signal until the limit cuts the note off.
+  const listening = holding && !recorder.capped;
   const { setBusy } = voice;
   const { stop } = recorder;
   // The page's scroll lock is shared, so only the field that took it releases it.
@@ -135,7 +137,7 @@ export function VoiceTextArea({ value, onChangeText, voice, rows = 4, editable =
 
   // The input drops its own frame so it and the mic row read as one field, mic in the bottom-right corner.
   return (
-    <VoiceFrame animating={busy}>
+    <VoiceFrame animating={listening || transcribing}>
       {input}
       <View className="flex-row items-center gap-3 pb-2 pl-3 pr-2">
         <Text accessibilityLiveRegion="polite" className="flex-1 text-xs text-muted-foreground">
@@ -151,9 +153,9 @@ export function VoiceTextArea({ value, onChangeText, voice, rows = 4, editable =
           pressRetentionOffset={HOLD_RETENTION}
           onPressIn={() => void startRecording()}
           onPressOut={() => void finishRecording()}
-          className={`h-10 w-10 items-center justify-center rounded-full ${recorder.recording ? 'bg-primary/15' : 'bg-foreground/10'}`}
+          className={`h-10 w-10 items-center justify-center rounded-full ${listening ? 'bg-primary/15' : 'bg-foreground/10'}`}
         >
-          <Icon icon={IconMicrophone} className={recorder.recording ? 'text-primary' : 'text-foreground'} size={24} />
+          <Icon icon={IconMicrophone} className={listening ? 'text-primary' : 'text-foreground'} size={24} />
         </Pressable>
       </View>
     </VoiceFrame>

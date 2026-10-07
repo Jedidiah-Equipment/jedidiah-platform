@@ -2,6 +2,7 @@ import type { RoleSlots } from '@pkg/domain';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 
+vi.mock('expo-router', () => ({ useFocusEffect: vi.fn() }));
 vi.mock('./observability', () => ({ addBreadcrumb: vi.fn() }));
 
 import { readLandingBusiness, rememberBusiness } from './last-business';

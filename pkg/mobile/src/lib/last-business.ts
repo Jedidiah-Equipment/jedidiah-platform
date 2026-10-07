@@ -1,7 +1,8 @@
 import { defaultBusiness, hasBusinessAccess, type RoleSlots } from '@pkg/domain';
 import { BUSINESSES, type Business } from '@pkg/schema';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useEffect } from 'react';
+import { useFocusEffect } from 'expo-router';
+import { useCallback } from 'react';
 
 import { addBreadcrumb } from './observability';
 import { createLiteralGuard } from './use-persisted-state';
@@ -31,9 +32,14 @@ export async function readLandingBusiness(access: RoleSlots | null): Promise<Bus
   }
 }
 
-/** Remembers `business` as the one to reopen in; null while the layout is about to redirect away. */
+/**
+ * Remembers `business` as the one to reopen in; null while the layout is about to redirect away. On focus, not
+ * mount: Back from the other business, pushed on top by a link, leaves this layout mounted underneath.
+ */
 export function useRememberBusiness(business: Business | null): void {
-  useEffect(() => {
-    if (business) void rememberBusiness(business);
-  }, [business]);
+  useFocusEffect(
+    useCallback(() => {
+      if (business) void rememberBusiness(business);
+    }, [business]),
+  );
 }

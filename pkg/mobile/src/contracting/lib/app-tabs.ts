@@ -3,7 +3,7 @@ import { fieldJobAccessMode } from '@pkg/domain/contracting';
 import type { UserAccessSummary } from '@pkg/schema';
 import type { Href } from 'expo-router';
 
-export type ContractingTab = 'jobs' | 'machines' | 'notes';
+export type ContractingTab = 'jobs' | 'machines' | 'workshop' | 'notes';
 
 /** Notes is every Contracting user's: a Field Note needs no permission and never leaves the phone. */
 export function visibleContractingTabs(access: UserAccessSummary | null | undefined): ContractingTab[] {
@@ -11,6 +11,8 @@ export function visibleContractingTabs(access: UserAccessSummary | null | undefi
   if (fieldJobAccessMode(access)) tabs.push('jobs');
   if (hasPermission(access, 'contracting_machine:read') || hasPermission(access, 'contracting_reading:capture'))
     tabs.push('machines');
+  if (hasPermission(access, 'contracting_breakdown:read') || hasPermission(access, 'contracting_breakdown:report'))
+    tabs.push('workshop');
   tabs.push('notes');
   return tabs;
 }
@@ -18,12 +20,14 @@ export function visibleContractingTabs(access: UserAccessSummary | null | undefi
 export const CONTRACTING_TAB_LABEL = {
   jobs: 'JOBS',
   machines: 'MACHINES',
+  workshop: 'WORKSHOP',
   notes: 'NOTES',
 } as const satisfies Record<ContractingTab, string>;
 
 export const CONTRACTING_TAB_HREF = {
   jobs: '/contracting/jobs' as Href,
   machines: '/contracting/machines' as Href,
+  workshop: '/contracting/workshop' as Href,
   notes: '/contracting/notes' as Href,
 } as const satisfies Record<ContractingTab, Href>;
 
@@ -33,5 +37,5 @@ export const contractingTabBadge = (tab: ContractingTab, notes: readonly { statu
 export function activeContractingTab(segments: readonly string[]): ContractingTab | null {
   const groupIndex = segments.indexOf('(tabs)');
   const segment = groupIndex === -1 ? undefined : segments[groupIndex + 1];
-  return segment === 'jobs' || segment === 'machines' || segment === 'notes' ? segment : null;
+  return segment === 'jobs' || segment === 'machines' || segment === 'workshop' || segment === 'notes' ? segment : null;
 }

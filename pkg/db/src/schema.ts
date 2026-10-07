@@ -5,6 +5,7 @@ import { getTableConfig, PgTable } from 'drizzle-orm/pg-core';
 import * as auditSchema from './schema/audit.js';
 import * as authSchema from './schema/auth.js';
 import * as changelogSchema from './schema/changelog.js';
+import * as contractingBreakdownSchema from './schema/contracting/breakdown.js';
 import * as contractingDirectorySchema from './schema/contracting/directory.js';
 import * as contractingFleetSchema from './schema/contracting/fleet.js';
 import * as contractingReadingSchema from './schema/contracting/hour-reading.js';
@@ -33,6 +34,7 @@ import * as supplierSchema from './schema/equipment/supplier.js';
 import * as userDepartmentSchema from './schema/equipment/user-department.js';
 
 export const schema = {
+  ...contractingBreakdownSchema,
   ...contractingDirectorySchema,
   ...contractingJobsSchema,
   ...contractingReadingSchema,

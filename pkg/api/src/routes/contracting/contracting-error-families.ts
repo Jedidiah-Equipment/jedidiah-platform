@@ -1,6 +1,8 @@
 import {
+  type BreakdownError,
   type DirectoryError,
   type FleetError,
+  isBreakdownError,
   isDirectoryError,
   isFleetError,
   isJobError,
@@ -107,4 +109,21 @@ export const rateCardErrorFamily = defineCoreErrorFamily<RateCardError>({
     'rate_card.reorder_mismatch': 'CONFLICT',
   },
   is: isRateCardError,
+});
+
+export const breakdownErrorFamily = defineCoreErrorFamily<BreakdownError>({
+  codes: {
+    'breakdown.forbidden': 'FORBIDDEN',
+    'breakdown.invalid_job': 'BAD_REQUEST',
+    'breakdown.invalid_mechanic': 'BAD_REQUEST',
+    'breakdown.invalid_subject': 'BAD_REQUEST',
+    'breakdown.invalid_upload': 'BAD_REQUEST',
+    'breakdown.not_found': 'NOT_FOUND',
+    'breakdown.report_id_conflict': 'CONFLICT',
+    'breakdown.solved': 'CONFLICT',
+    'breakdown.too_many_photos': 'CONFLICT',
+    'breakdown.wrong_status': 'CONFLICT',
+  },
+  is: isBreakdownError,
+  metadata: (error) => error.refused,
 });

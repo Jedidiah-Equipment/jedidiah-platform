@@ -19,6 +19,11 @@ describe('apiRoutePattern', () => {
     ],
     ['/api/products/product-secret/brochure-preview', '/api/products/[productId]/brochure-preview'],
     ['/api/products/product-secret/images/hero/download', '/api/products/[productId]/images/[slot]/download'],
+    ['/api/contracting/breakdowns/b-secret/photos', '/api/contracting/breakdowns/[breakdownId]/photos'],
+    [
+      '/api/contracting/breakdowns/b-secret/photos/p-secret',
+      '/api/contracting/breakdowns/[breakdownId]/photos/[photoId]',
+    ],
   ])('redacts record identifiers in %s', (path, expected) => {
     expect(apiRoutePattern(path)).toBe(expected);
   });

@@ -22,7 +22,7 @@ export const fieldNoteFiles: FieldNoteFiles = {
     const uri = `${DIRECTORY}${noteId}/${photoId}.jpg`;
     const inGallery =
       source === 'gallery' ||
-      (await saveToGalleryAlbum(sourceUri).then(
+      (await saveToGallery(sourceUri).then(
         () => true,
         () => false,
       ));
@@ -42,7 +42,8 @@ export function resolveFieldNotePhotoUri(key: string): string {
   return `${documentDirectory()}${key}`;
 }
 
-async function saveToGalleryAlbum(uri: string) {
+/** Puts a photo the camera just took into the Jedidiah album; throws when the library is unavailable. */
+export async function saveToGallery(uri: string) {
   // iOS's add-only access cannot find or create an album, so the album needs read-write there.
   const { granted } = await requestPermissionsAsync(Platform.OS !== 'ios', ['photo']);
   if (!granted) throw new Error('Photo library access denied.');

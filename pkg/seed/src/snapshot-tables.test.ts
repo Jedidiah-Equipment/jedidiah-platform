@@ -79,6 +79,8 @@ describe('snapshot table registry', () => {
       'contracting_hour_reading',
       'contracting_job',
       'contracting_machine_assignment',
+      'contracting_breakdown',
+      'contracting_breakdown_note',
       'contracting_measure',
       'contracting_charge_line',
     ]);
@@ -138,6 +140,8 @@ describe('snapshot table registry', () => {
       'contracting_hour_reading.json',
       'contracting_job.json',
       'contracting_machine_assignment.json',
+      'contracting_breakdown.json',
+      'contracting_breakdown_note.json',
       'contracting_measure.json',
       'contracting_charge_line.json',
     ]);
@@ -315,6 +319,8 @@ describe('snapshot table registry', () => {
       'contracting_hour_reading',
       'contracting_job',
       'contracting_machine_assignment',
+      'contracting_breakdown',
+      'contracting_breakdown_note',
       'contracting_measure',
       'contracting_charge_line',
     ]) {

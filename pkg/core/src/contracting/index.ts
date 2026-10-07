@@ -1,3 +1,5 @@
+export * from './breakdowns/breakdown-errors.js';
+export * from './breakdowns/breakdown-service.js';
 export * from './customers/customer-service.js';
 export * from './customers/farm-service.js';
 export * from './directory-errors.js';

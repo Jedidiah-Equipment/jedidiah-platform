@@ -49,7 +49,11 @@ The named event catalog is:
   fails any other way sends no event: its breadcrumb and exception cover it. `voice note transcribed`
   (`purpose` — the screen's label for the field, `language`, `seconds`, `outcome` — `transcribed`, `refused`
   or `failed`) once per Voice Note sent for text, and `transcription saved` (`id`) from the mutation cache once
-  the owning form has saved; neither carries the words.
+  the owning form has saved; neither carries the words. `breakdown reported` (`urgency`, `subjectKind`, `photoCount`, `hasGps`,
+  `hasJob`) once per Breakdown the server accepts; and from the mutation cache `breakdown updated` (`id`,
+  `urgency` when changed), `mechanic assigned` (`id`, `mechanicUserId`), `breakdown started` (`id`), `breakdown
+  solved` (`id`), `breakdown photo removed` (`id`, `photoId`) and `breakdown note added` (`breakdownId`). None
+  carries a description, a note, a close-out note or the coordinates.
 - Equipment mutations: `quote created`, `quote updated`, `quote cancelled`, `quote document generated`,
   `department timing started`, `department timing updated`, `department timing completed`, `part checked out`,
   `part returned to store`, `part received`, `part returned to supplier`, `stock count posted`,

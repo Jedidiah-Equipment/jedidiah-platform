@@ -28,6 +28,7 @@ export const AUDIT_ENTITY_TYPES = {
     'contracting_reading',
     'contracting_measure_type',
     'contracting_rate',
+    'contracting_breakdown',
   ],
   equipment: [
     'customer',

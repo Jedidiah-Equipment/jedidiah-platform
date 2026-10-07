@@ -14,3 +14,6 @@ export const fieldNoteFiles: FieldNoteFiles = {
 export function resolveFieldNotePhotoUri(uri: string): string {
   return uri;
 }
+
+/** The browser has no photo library to add to. */
+export async function saveToGallery(_uri: string) {}

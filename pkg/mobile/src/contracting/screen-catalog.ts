@@ -25,6 +25,15 @@ export const CONTRACTING_SCREEN_CATALOG = {
     business: 'contracting',
     name: '/contracting/machines/[id]/capture',
   },
+  '(protected)/contracting/(tabs)/workshop/index.tsx': { business: 'contracting', name: '/contracting/workshop' },
+  '(protected)/contracting/(tabs)/workshop/[breakdownId].tsx': {
+    business: 'contracting',
+    name: '/contracting/workshop/[breakdownId]',
+  },
+  '(protected)/contracting/(tabs)/workshop/report.tsx': {
+    business: 'contracting',
+    name: '/contracting/workshop/report',
+  },
   '(protected)/contracting/(tabs)/notes/index.tsx': { business: 'contracting', name: '/contracting/notes' },
   '(protected)/contracting/(tabs)/notes/new.tsx': { business: 'contracting', name: '/contracting/notes/new' },
   '(protected)/contracting/(tabs)/notes/[noteId].tsx': {

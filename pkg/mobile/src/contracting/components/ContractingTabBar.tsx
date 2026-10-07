@@ -1,4 +1,4 @@
-import { IconBriefcase2, IconNotes, IconTractor } from '@tabler/icons-react-native';
+import { IconBriefcase2, IconNotes, IconTool, IconTractor } from '@tabler/icons-react-native';
 import { useSegments } from 'expo-router';
 import { TabBar } from '@/components/tab-bar/TabBar';
 import { useFieldNotes } from '@/contracting/field-notes/use-field-notes';
@@ -11,7 +11,7 @@ import {
 } from '@/contracting/lib/app-tabs';
 import { useSessionAccessSummary } from '@/lib/auth-session';
 
-const ICONS = { jobs: IconBriefcase2, machines: IconTractor, notes: IconNotes } as const;
+const ICONS = { jobs: IconBriefcase2, machines: IconTractor, workshop: IconTool, notes: IconNotes } as const;
 
 export function ContractingTabBar() {
   const access = useSessionAccessSummary();

@@ -49,6 +49,7 @@ const auditEntityTypeLabels = {
   contracting_job: 'Job',
   contracting_assignment: 'Machine Assignment',
   contracting_measure: 'Measure',
+  contracting_breakdown: 'Breakdown',
   contracting_charge_line: 'Charge Line',
   contracting_machine: 'Machine',
   contracting_measure_type: 'Measure Type',

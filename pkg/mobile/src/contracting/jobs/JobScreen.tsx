@@ -13,7 +13,7 @@ import { StatusBadge } from '@/components/ui/status-badge';
 import { Text } from '@/components/ui/text';
 import { CategoryIcon } from '@/contracting/components/CategoryIcon';
 import { jobCardShareAction } from '@/contracting/lib/job-card';
-import { useSessionAccessSummary } from '@/lib/auth-session';
+import { useSessionAccessSummary, useSessionPermission } from '@/lib/auth-session';
 import { shareDocument } from '@/lib/document-actions';
 import { useBusyAction } from '@/lib/use-busy-action';
 import { JobStatusChip } from './JobStatusChip';
@@ -32,6 +32,9 @@ export default function JobScreen() {
   const canCapture = job ? judgeJobAction('capture', job, access).allowed : false;
   const canAdd = job ? judgeJobAction('assign', job, access).allowed : false;
   const canShareJobCard = canOpenJobCards(access) && finished;
+  const canReport = useSessionPermission('contracting_breakdown:report') && !finished;
+  const reportProblem = (subjectKind: 'machine' | 'implement', subjectId: string) =>
+    router.push({ pathname: '/contracting/workshop/report', params: { subjectKind, subjectId, jobId } });
   const share = useBusyAction();
   const shareJobCard = (variant: JobCardVariant) => {
     if (job)
@@ -117,7 +120,9 @@ export default function JobScreen() {
           <StintCard
             canAdd={canAdd}
             canCapture={canCapture}
+            canReport={canReport}
             key={stint.id}
+            onReport={reportProblem}
             stint={stint}
             onStart={() => openCapture(stint, 'arrival')}
             onStop={() => openCapture(stint, 'departure')}
@@ -157,16 +162,20 @@ function StintCard({
   stint,
   canCapture,
   canAdd,
+  canReport,
   onStart,
   onStop,
   onReadd,
+  onReport,
 }: {
   stint: FieldStint;
   canCapture: boolean;
   canAdd: boolean;
+  canReport: boolean;
   onStart: () => void;
   onStop: () => void;
   onReadd: () => void;
+  onReport: (subjectKind: 'machine' | 'implement', subjectId: string) => void;
 }) {
   return (
     <View className="gap-2 rounded-xl border border-border bg-surface p-4">
@@ -200,6 +209,21 @@ function StintCard({
         <CaptureButton icon={IconPlayerStop} label="Stop — capture departure" onPress={onStop} />
       ) : null}
       {stint.state === 'left' && canAdd ? <Button title="Re-add machine" onPress={onReadd} /> : null}
+      {canReport && stint.state !== 'left' ? (
+        <View className="flex-row gap-2">
+          <View className="flex-1">
+            <Button title="Report a problem" onPress={() => onReport('machine', stint.machineId)} />
+          </View>
+          {stint.implementId && stint.implementCode ? (
+            <View className="flex-1">
+              <Button
+                title={`Report a problem with ${stint.implementCode}`}
+                onPress={() => onReport('implement', stint.implementId ?? '')}
+              />
+            </View>
+          ) : null}
+        </View>
+      ) : null}
     </View>
   );
 }

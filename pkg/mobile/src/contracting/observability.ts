@@ -1,6 +1,6 @@
-import type { ReadingRole } from '@pkg/schema/contracting';
+import type { BreakdownSubjectKind, BreakdownUrgency, ReadingRole } from '@pkg/schema/contracting';
 import { addBreadcrumb, captureEvent } from '@/lib/observability';
-import { type MutationEventCatalog, pickRecordIds } from '@/lib/observability-contract';
+import { type MutationEventCatalog, type ObservabilityProperties, pickRecordIds } from '@/lib/observability-contract';
 import type { PhotoSource } from '@/lib/photo-picker';
 
 /** Once per capture the server saves or refuses: `refused` is the refusal's app code, null when saved. */
@@ -15,8 +15,49 @@ export function recordReadingCaptured(properties: {
   captureEvent('reading captured', properties);
 }
 
+/** Once per Breakdown the server accepts: counts and flags only, never the description or the coordinates. */
+export function recordBreakdownReported(properties: {
+  urgency: BreakdownUrgency;
+  subjectKind: BreakdownSubjectKind;
+  photoCount: number;
+  hasGps: boolean;
+  hasJob: boolean;
+}): void {
+  addBreadcrumb('contracting', 'breakdown reported', properties);
+  captureEvent('breakdown reported', properties);
+}
+
+const breakdownUrgency = (variables: unknown): ObservabilityProperties => {
+  const urgency = (variables as { urgency?: unknown } | null)?.urgency;
+  return urgency === 'code-red' || urgency === 'code-green' ? { urgency } : {};
+};
+
 /** Contracting's tRPC mutations that are events; the shared mutation cache emits each once on success. */
 export const CONTRACTING_MUTATION_EVENTS = {
+  'contractingBreakdowns.patch': {
+    event: 'breakdown updated',
+    properties: (variables) => ({ ...pickRecordIds(variables, ['id']), ...breakdownUrgency(variables) }),
+  },
+  'contractingBreakdowns.assignMechanic': {
+    event: 'mechanic assigned',
+    properties: (variables) => pickRecordIds(variables, ['id', 'mechanicUserId']),
+  },
+  'contractingBreakdowns.start': {
+    event: 'breakdown started',
+    properties: (variables) => pickRecordIds(variables, ['id']),
+  },
+  'contractingBreakdowns.solve': {
+    event: 'breakdown solved',
+    properties: (variables) => pickRecordIds(variables, ['id']),
+  },
+  'contractingBreakdowns.removePhoto': {
+    event: 'breakdown photo removed',
+    properties: (variables) => pickRecordIds(variables, ['id', 'photoId']),
+  },
+  'contractingBreakdowns.notes.add': {
+    event: 'breakdown note added',
+    properties: (variables) => pickRecordIds(variables, ['breakdownId']),
+  },
   'contractingJobs.assignments.add': {
     event: 'machine added to job',
     properties: (variables) => pickRecordIds(variables, ['jobId', 'machineId']),

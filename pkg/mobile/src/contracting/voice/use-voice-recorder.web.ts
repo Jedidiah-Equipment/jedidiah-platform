@@ -3,6 +3,7 @@ import type { VoiceRecorder } from './use-voice-recorder';
 const unsupported: VoiceRecorder = {
   recording: false,
   seconds: 0,
+  capped: false,
   start: async () => 'unsupported',
   stop: async () => null,
 };

@@ -8,7 +8,7 @@ let clock = Date.parse('2026-10-01T06:00:00Z');
 function fakeFiles(overrides: Partial<FieldNoteFiles> = {}) {
   const files: FieldNoteFiles = {
     photoLimit: 12,
-    keep: vi.fn(async (_source, noteId, photoId) => ({ uri: `field-notes/${noteId}/${photoId}.jpg`, inGallery: true })),
+    keep: vi.fn(async (_source, noteId, photoId) => `field-notes/${noteId}/${photoId}.jpg`),
     removePhoto: vi.fn(async () => {}),
     removeNote: vi.fn(async () => {}),
     ...overrides,
@@ -47,7 +47,7 @@ test('refuses an empty note and keeps a trimmed description or a photo', async (
   const { note: written } = await notes.create({ description: '  T12 at Rietfontein, 4211.5  ', photos: [] });
   const { note: photographed } = await notes.create({
     description: '',
-    photos: [{ uri: 'file:///camera/1.jpg', source: 'camera' }],
+    photos: [{ uri: 'file:///camera/1.jpg', inGallery: false }],
   });
 
   expect(written).toMatchObject({ description: 'T12 at Rietfontein, 4211.5', status: 'open', photos: [] });
@@ -78,8 +78,8 @@ test('refuses to remove the last photo of a note without a description', async (
   const { note } = await notes.create({
     description: '',
     photos: [
-      { uri: 'file:///camera/1.jpg', source: 'camera' },
-      { uri: 'file:///gallery/2.jpg', source: 'gallery' },
+      { uri: 'file:///camera/1.jpg', inGallery: false },
+      { uri: 'file:///gallery/2.jpg', inGallery: true },
     ],
   });
   const [first, second] = note.photos;
@@ -92,21 +92,15 @@ test('refuses to remove the last photo of a note without a description', async (
 });
 
 test('a photo the gallery refused stays on the note and is reported once', async () => {
-  const files = fakeFiles({
-    keep: vi.fn(async (_source, noteId, photoId, source) => ({
-      uri: `field-notes/${noteId}/${photoId}.jpg`,
-      inGallery: source === 'gallery',
-    })),
-  });
-  const notes = store(undefined, files);
+  const notes = store();
   const { note, galleryFailed } = await notes.create({
     description: '',
-    photos: [{ uri: 'file:///camera/1.jpg', source: 'camera' }],
+    photos: [{ uri: 'file:///camera/1.jpg', inGallery: false }],
   });
   expect(galleryFailed).toBe(true);
   expect(note.photos).toHaveLength(1);
 
-  const added = await notes.addPhotos(note.id, [{ uri: 'file:///gallery/2.jpg', source: 'gallery' }]);
+  const added = await notes.addPhotos(note.id, [{ uri: 'file:///gallery/2.jpg', inGallery: true }]);
   expect(added.galleryFailed).toBe(false);
   expect((await notes.list())[0]?.photos).toHaveLength(2);
 });
@@ -114,11 +108,11 @@ test('a photo the gallery refused stays on the note and is reported once', async
 test('keeps at most the photo limit on a note', async () => {
   const files = fakeFiles({ photoLimit: 2 });
   const notes = store(undefined, files);
-  const { note } = await notes.create({ description: 'x', photos: [{ uri: 'file:///1.jpg', source: 'camera' }] });
+  const { note } = await notes.create({ description: 'x', photos: [{ uri: 'file:///1.jpg', inGallery: false }] });
 
   await notes.addPhotos(note.id, [
-    { uri: 'file:///2.jpg', source: 'gallery' },
-    { uri: 'file:///3.jpg', source: 'gallery' },
+    { uri: 'file:///2.jpg', inGallery: true },
+    { uri: 'file:///3.jpg', inGallery: true },
   ]);
 
   expect((await notes.list())[0]?.photos).toHaveLength(2);

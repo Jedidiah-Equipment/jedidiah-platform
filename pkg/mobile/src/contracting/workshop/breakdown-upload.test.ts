@@ -3,11 +3,12 @@ import { beforeEach, describe, expect, test, vi } from 'vitest';
 const fetchMock = vi.hoisted(() => vi.fn());
 vi.mock('@/lib/authed-fetch', () => ({ authedFetch: fetchMock }));
 vi.mock('@/lib/observability', () => ({ addBreadcrumb: vi.fn() }));
-vi.mock('@/contracting/readings/reading-photo-part', () => ({
-  readingPhotoPart: async (uri: string) => new Blob([uri], { type: 'image/jpeg' }),
+vi.mock('@/lib/file-part', () => ({
+  filePart: async (uri: string) => new Blob([uri], { type: 'image/jpeg' }),
 }));
 
-import { BreakdownRefusedError, reportBreakdown } from './breakdown-upload';
+import { UploadRefusedError } from '@/lib/multipart-upload';
+import { reportBreakdown } from './breakdown-upload';
 
 const machineId = '0b7a4c84-7f0b-4b8e-9d55-0d6b8a0f0c11';
 const input = {
@@ -40,9 +41,9 @@ describe('reportBreakdown', () => {
       }),
     });
     const refusal = await reportBreakdown(input, []).catch((error: unknown) => error);
-    expect(refusal).toBeInstanceOf(BreakdownRefusedError);
+    expect(refusal).toBeInstanceOf(UploadRefusedError);
     expect(refusal).toMatchObject({
-      code: 'breakdown.too_many_photos',
+      data: { appCode: 'breakdown.too_many_photos' },
       message: 'A Breakdown keeps at most 6 photos.',
     });
   });

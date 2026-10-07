@@ -2,8 +2,8 @@ import { afterEach, expect, test, vi } from 'vitest';
 
 vi.mock('@/lib/api-base-url', () => ({ apiBaseUrl: 'https://api.jedidiah.test' }));
 vi.mock('@/lib/auth', () => ({ sessionCookieHeader: async () => 'better-auth.session_token=secret' }));
-vi.mock('./reading-photo-part', () => ({
-  readingPhotoPart: async () => new Blob(['meter'], { type: 'image/jpeg' }),
+vi.mock('@/lib/file-part', () => ({
+  filePart: async () => new Blob(['meter'], { type: 'image/jpeg' }),
 }));
 
 import { CAPTURE_FAILED, captureReading } from './reading-upload';
@@ -54,8 +54,8 @@ test('separates the server’s refusals from connection, sign-in and server fail
     Response.json({ data: { appCode: 'reading.below_latest' }, message: 'Retake or dispute' }, { status: 409 }),
   );
   await expect(captureReading(input, null)).rejects.toMatchObject({
-    name: 'ReadingRefusedError',
-    code: 'reading.below_latest',
+    name: 'UploadRefusedError',
+    data: { appCode: 'reading.below_latest' },
     message: 'Retake or dispute',
   });
   for (const status of [401, 408, 429, 500]) {

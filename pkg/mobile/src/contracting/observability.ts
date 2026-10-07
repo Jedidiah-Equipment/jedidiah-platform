@@ -1,8 +1,8 @@
 import type { BreakdownSubjectKind, BreakdownUrgency, ReadingRole } from '@pkg/schema/contracting';
+import { UploadFailedError, UploadRefusedError } from '@/lib/multipart-upload';
 import { addBreadcrumb, captureEvent, captureSanitizedException } from '@/lib/observability';
 import { type MutationEventCatalog, type ObservabilityProperties, pickRecordIds } from '@/lib/observability-contract';
 import type { PhotoSource } from '@/lib/photo-picker';
-import { TranscriptionFailedError, TranscriptionRefusedError } from './voice/transcription-errors';
 
 /** Once per capture the server saves or refuses: `refused` is the refusal's app code, null when saved. */
 export function recordReadingCaptured(properties: {
@@ -97,12 +97,12 @@ export function recordVoiceNoteTranscribed(attempt: VoiceNoteAttempt, language: 
 
 /** A refusal is the server's answer and only an event, unless the speech service is down; no answer is an exception. */
 export function recordVoiceNoteFailed(attempt: VoiceNoteAttempt, error: unknown): void {
-  if (error instanceof TranscriptionRefusedError) {
+  if (error instanceof UploadRefusedError) {
     const properties = {
       ...attempt,
       language: null,
       outcome: 'refused' as const,
-      code: error.code,
+      code: error.data.appCode,
       status: error.status,
       failure: null,
     };
@@ -110,7 +110,7 @@ export function recordVoiceNoteFailed(attempt: VoiceNoteAttempt, error: unknown)
     if (error.status >= 500) captureSanitizedException(error, 'Voice note transcription refused', properties);
     return;
   }
-  const failed = error instanceof TranscriptionFailedError;
+  const failed = error instanceof UploadFailedError;
   const properties = {
     ...attempt,
     language: null,

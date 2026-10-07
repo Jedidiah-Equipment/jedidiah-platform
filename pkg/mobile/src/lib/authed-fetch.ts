@@ -40,23 +40,21 @@ export async function authedFetch(path: string, init?: RequestInit): Promise<Res
   }
 }
 
+/** The non-tRPC mobile API routes that carry record identifiers, each with the pattern the trail shows instead. */
+const REDACTED_ROUTES: readonly [RegExp, string][] = [
+  [/^\/api\/jobs\/[^/]+\/documents\/[^/]+\/download$/, '/api/jobs/[jobId]/documents/[documentId]/download'],
+  [/^\/api\/quotes\/[^/]+\/documents\/[^/]+\/download$/, '/api/quotes/[quoteId]/documents/[documentId]/download'],
+  [/^\/api\/products\/[^/]+\/documents\/[^/]+\/download$/, '/api/products/[productId]/documents/[documentId]/download'],
+  [/^\/api\/products\/[^/]+\/brochure-preview$/, '/api/products/[productId]/brochure-preview'],
+  [/^\/api\/products\/[^/]+\/images\/[^/]+\/download$/, '/api/products/[productId]/images/[slot]/download'],
+  [
+    /^\/api\/contracting\/breakdowns\/[^/]+\/photos\/[^/]+$/,
+    '/api/contracting/breakdowns/[breakdownId]/photos/[photoId]',
+  ],
+  [/^\/api\/contracting\/breakdowns\/[^/]+\/photos$/, '/api/contracting/breakdowns/[breakdownId]/photos'],
+];
+
 /** Redacts business identifiers from the small set of non-tRPC mobile API routes. */
 export function apiRoutePattern(pathname: string): string {
-  return pathname
-    .replace(/^\/api\/jobs\/[^/]+\/documents\/[^/]+\/download$/, '/api/jobs/[jobId]/documents/[documentId]/download')
-    .replace(
-      /^\/api\/quotes\/[^/]+\/documents\/[^/]+\/download$/,
-      '/api/quotes/[quoteId]/documents/[documentId]/download',
-    )
-    .replace(
-      /^\/api\/products\/[^/]+\/documents\/[^/]+\/download$/,
-      '/api/products/[productId]/documents/[documentId]/download',
-    )
-    .replace(/^\/api\/products\/[^/]+\/brochure-preview$/, '/api/products/[productId]/brochure-preview')
-    .replace(/^\/api\/products\/[^/]+\/images\/[^/]+\/download$/, '/api/products/[productId]/images/[slot]/download')
-    .replace(
-      /^\/api\/contracting\/breakdowns\/[^/]+\/photos\/[^/]+$/,
-      '/api/contracting/breakdowns/[breakdownId]/photos/[photoId]',
-    )
-    .replace(/^\/api\/contracting\/breakdowns\/[^/]+\/photos$/, '/api/contracting/breakdowns/[breakdownId]/photos');
+  return REDACTED_ROUTES.find(([route]) => route.test(pathname))?.[1] ?? pathname;
 }

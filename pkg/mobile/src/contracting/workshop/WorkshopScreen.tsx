@@ -1,26 +1,18 @@
-import { formatNumber } from '@pkg/domain';
-import {
-  breakdownStatusColorClassNames,
-  breakdownStatusLabels,
-  breakdownUrgencyColorClassNames,
-  breakdownUrgencyLabels,
-} from '@pkg/domain/contracting';
-import { type BreakdownStatus, type BreakdownSummary, unsolvedBreakdownStatuses } from '@pkg/schema/contracting';
+import { breakdownStatusLabels } from '@pkg/domain/contracting';
+import { type BreakdownStatus, unsolvedBreakdownStatuses } from '@pkg/schema/contracting';
 import { IconFilter } from '@tabler/icons-react-native';
 import { type Href, router } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, View } from 'react-native';
+import { View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { DateText } from '@/components/DateText';
 import { type ListControlOption, ListControlRow, ListDropdownControl } from '@/components/ListControls';
 import { PaginatedList } from '@/components/PaginatedList';
 import { MainToolbar } from '@/components/TopToolbar';
 import { Button } from '@/components/ui/button';
-import { StatusBadge } from '@/components/ui/status-badge';
 import { Text } from '@/components/ui/text';
-import { CategoryIcon } from '@/contracting/components/CategoryIcon';
 import { useSessionPermission } from '@/lib/auth-session';
 import { useGlobalRefresh } from '@/lib/use-global-refresh';
+import { BreakdownRow } from './BreakdownRow';
 import { useBreakdownList, useBreakdownScope } from './use-breakdowns';
 
 type StatusFilter = 'unsolved' | BreakdownStatus;
@@ -100,50 +92,5 @@ export default function WorkshopScreen() {
         onRefresh={refresh.onRefresh}
       />
     </SafeAreaView>
-  );
-}
-
-export function BreakdownRow({ breakdown }: { breakdown: BreakdownSummary }) {
-  const { subject } = breakdown;
-  return (
-    <Pressable
-      accessibilityRole="button"
-      onPress={() =>
-        router.push({ pathname: '/contracting/workshop/[breakdownId]', params: { breakdownId: breakdown.id } })
-      }
-      className="w-full gap-2 rounded-xl border border-border bg-surface p-4"
-    >
-      <View className="flex-row items-center justify-between gap-2">
-        <View className="min-w-0 flex-1 flex-row items-center gap-2">
-          <CategoryIcon icon={subject.categoryIcon} colour={subject.categoryColour} size={20} />
-          <Text className="min-w-0 flex-1 text-lg text-foreground" weight="bold" numberOfLines={1}>
-            {subject.code}
-          </Text>
-        </View>
-        <View className="shrink-0 flex-row gap-1">
-          <StatusBadge
-            classNames={breakdownUrgencyColorClassNames[breakdown.urgency]}
-            label={breakdownUrgencyLabels[breakdown.urgency]}
-          />
-          <StatusBadge
-            classNames={breakdownStatusColorClassNames[breakdown.status]}
-            label={breakdownStatusLabels[breakdown.status]}
-          />
-        </View>
-      </View>
-      <Text className="text-foreground" numberOfLines={2}>
-        {breakdown.firstLine}
-      </Text>
-      <Text className="text-sm text-muted-foreground">
-        <DateText className="text-sm text-muted-foreground" date={breakdown.reportedAt} format="medium" /> ·{' '}
-        {breakdown.reporterName}
-        {breakdown.mechanicName ? ` · ${breakdown.mechanicName}` : ''}
-      </Text>
-      {breakdown.sameJobOpenCount > 0 ? (
-        <Text className="text-sm text-foreground" weight="semibold">
-          +{formatNumber(breakdown.sameJobOpenCount)} open on this Job
-        </Text>
-      ) : null}
-    </Pressable>
   );
 }

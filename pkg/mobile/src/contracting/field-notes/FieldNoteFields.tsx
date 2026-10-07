@@ -1,9 +1,8 @@
 import { Text } from '@/components/ui/text';
+import { PhotoStrip } from '@/contracting/components/PhotoStrip';
 import type { VoiceSession } from '@/contracting/voice/use-voice-session';
 import { VoiceTextArea } from '@/contracting/voice/VoiceTextArea';
-import { FieldNotePhotoStrip } from './FieldNotePhotoStrip';
 import { fieldNoteFiles } from './files';
-import { FIELD_NOTE_DESCRIPTION_MAX } from './store';
 
 /** The photos and the description, as both the new-note draft and a kept note edit them. */
 export function FieldNoteFields(props: {
@@ -14,16 +13,16 @@ export function FieldNoteFields(props: {
   onTake: () => void;
   onChoose: () => void;
   onRemovePhoto: (photoId: string) => void;
-  description: string;
-  onDescriptionChange: (text: string) => void;
   onDescriptionBlur?: () => void;
   /** A draft locks while it saves; a kept note stays editable so a blur can commit it. */
   descriptionEditable: boolean;
+  /** The description's voice session, which carries its text. */
   voice: VoiceSession;
 }) {
   return (
     <>
-      <FieldNotePhotoStrip
+      <PhotoStrip
+        noun="Field Note photo"
         photos={props.photos}
         limit={fieldNoteFiles.photoLimit}
         busy={props.busy}
@@ -38,11 +37,8 @@ export function FieldNoteFields(props: {
       <VoiceTextArea
         accessibilityLabel="Field Note description"
         placeholder="e.g. T12 at Rietfontein, meter 4211.5"
-        value={props.description}
         editable={props.descriptionEditable}
         rows={5}
-        maxLength={FIELD_NOTE_DESCRIPTION_MAX}
-        onChangeText={props.onDescriptionChange}
         onBlur={props.onDescriptionBlur}
         voice={props.voice}
       />

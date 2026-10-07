@@ -8,22 +8,19 @@ import {
   type BreakdownUrgency,
   breakdownSubjectKinds,
 } from '@pkg/schema/contracting';
-import { useStore } from '@tanstack/react-form';
-import { useQueryClient } from '@tanstack/react-query';
 import { type Href, router, useLocalSearchParams, useNavigation } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { FormPage } from '@/components/FormPage';
-import { useAppForm } from '@/components/form';
 import { FieldShell } from '@/components/form/fields/FieldShell';
+import { SearchSelect } from '@/components/form/fields/SearchSelectField';
 import { SecondaryToolbar } from '@/components/TopToolbar';
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 import { Text } from '@/components/ui/text';
 import { CategoryIcon } from '@/contracting/components/CategoryIcon';
 import { implementOption } from '@/contracting/components/implement-option';
-import { FieldNotePhotoStrip } from '@/contracting/field-notes/FieldNotePhotoStrip';
-import { saveToGallery } from '@/contracting/field-notes/files';
-import { choosePhotos, takePhoto } from '@/contracting/field-notes/pick-photos';
+import { PhotoStrip } from '@/contracting/components/PhotoStrip';
 import { useImplements } from '@/contracting/jobs/use-jobs';
 import { newLocalId } from '@/contracting/lib/local-id';
 import { recordBreakdownReported } from '@/contracting/observability';
@@ -31,16 +28,14 @@ import { useFleet } from '@/contracting/readings/use-fleet';
 import { useVoiceSession } from '@/contracting/voice/use-voice-session';
 import { VoiceTextArea } from '@/contracting/voice/VoiceTextArea';
 import { useSessionPermission } from '@/lib/auth-session';
-import { captureSanitizedException } from '@/lib/observability';
-import type { PhotoSource } from '@/lib/photo-picker';
-import { useTRPC } from '@/lib/trpc';
+import { choosePhotos, type PickedPhoto, takePhoto } from '@/lib/photo-picker';
 import { useBusyAction } from '@/lib/use-busy-action';
 import { deriveReport } from './breakdown-form';
-import { BreakdownRefusedError, REPORT_FAILED, reportBreakdown } from './breakdown-upload';
+import { type BreakdownReportRequest, REPORT_FAILED, reportBreakdown } from './breakdown-upload';
 import { currentPosition } from './location';
-import { useOpenOnSubject } from './use-breakdowns';
+import { useBreakdownUpload, useOpenOnSubject } from './use-breakdowns';
 
-type Photo = { id: string; uri: string; source: PhotoSource };
+type Photo = PickedPhoto & { id: string };
 const PICK_FAILED = 'The photo could not be added. Try again.';
 const URGENCY_CHOICES: { urgency: BreakdownUrgency; label: string }[] = [
   { urgency: 'code-red', label: `${breakdownUrgencyLabels['code-red']} — machine down` },
@@ -65,23 +60,26 @@ export default function ReportBreakdownScreen() {
   ) as Href;
   const parentLabel = jobId ? 'Job' : prefilled?.kind === 'machine' ? 'Machine' : 'Workshop';
   const navigation = useNavigation();
-  const queryClient = useQueryClient();
-  const trpc = useTRPC();
   const canReport = useSessionPermission('contracting_breakdown:report');
   const fleet = useFleet();
   const implementsQuery = useImplements();
+  const report = useBreakdownUpload((request: { input: BreakdownReportRequest; photoUris: string[] }) =>
+    reportBreakdown(request.input, request.photoUris),
+  );
   const [kind, setKind] = useState<BreakdownSubjectKind>(prefilled?.kind ?? 'machine');
-  const picker = useAppForm({ defaultValues: { subjectId: prefilled?.id ?? '' } });
-  const pickedId = useStore(picker.store, (state) => state.values.subjectId);
+  const [pickedId, setPickedId] = useState(prefilled?.id ?? '');
   const subject: BreakdownSubjectRef | null = prefilled ?? (pickedId ? { kind, id: pickedId } : null);
   const [urgency, setUrgency] = useState<BreakdownUrgency | null>(null);
   const [description, setDescription] = useState('');
-  const voice = useVoiceSession('breakdown description');
+  const voice = useVoiceSession('breakdown description', {
+    value: description,
+    onChangeText: setDescription,
+    maxLength: BreakdownDescription.maxLength ?? undefined,
+  });
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [galleryHint, setGalleryHint] = useState(false);
   const [position, setPosition] = useState<{ latitude: number; longitude: number } | null>(null);
-  const action = useBusyAction();
-  const { busy, error, setError, run } = action;
+  const { busy, error, setError, run } = useBusyAction();
   const existing = useOpenOnSubject(subject);
   // One identifier per subject, so a retry after a lost answer replays rather than reporting twice.
   const localId = useRef(newLocalId());
@@ -114,14 +112,13 @@ export default function ReportBreakdownScreen() {
   );
   const leave = () => router.navigate(returnTo);
 
-  async function addPhotos(pick: () => Promise<{ uri: string; source: PhotoSource }[]>) {
+  async function addPhotos(pick: () => Promise<PickedPhoto[]>) {
     try {
       const picked = await pick();
       setPhotos((current) =>
         [...current, ...picked.map((photo) => ({ ...photo, id: newLocalId() }))].slice(0, BREAKDOWN_MAX_PHOTOS),
       );
-      for (const photo of picked.filter((candidate) => candidate.source === 'camera'))
-        void saveToGallery(photo.uri).catch(() => setGalleryHint(true));
+      if (picked.some((photo) => !photo.inGallery)) setGalleryHint(true);
     } catch (pickError) {
       setError(pickError instanceof Error ? pickError.message : PICK_FAILED);
     }
@@ -139,20 +136,7 @@ export default function ReportBreakdownScreen() {
       longitude: position?.longitude ?? null,
     };
     return run(async () => {
-      let reported: Awaited<ReturnType<typeof reportBreakdown>>;
-      try {
-        reported = await reportBreakdown(
-          input,
-          photos.map((photo) => photo.uri),
-        );
-      } catch (sendError) {
-        if (sendError instanceof BreakdownRefusedError) {
-          setError(sendError.message);
-          return;
-        }
-        captureSanitizedException(sendError, 'Breakdown report failed', { source: 'breakdown_report' });
-        throw sendError;
-      }
+      const reported = await report.mutateAsync({ input, photoUris: photos.map((photo) => photo.uri) });
       voice.reportSaved(description.trim());
       recordBreakdownReported({
         urgency,
@@ -161,7 +145,6 @@ export default function ReportBreakdownScreen() {
         hasGps: position !== null,
         hasJob: reported.jobId !== null,
       });
-      void queryClient.invalidateQueries({ queryKey: trpc.contractingBreakdowns.pathKey() });
       if (navigation.isFocused())
         router.replace({ pathname: '/contracting/workshop/[breakdownId]', params: { breakdownId: reported.id } });
     }, REPORT_FAILED);
@@ -199,17 +182,19 @@ export default function ReportBreakdownScreen() {
       }
     >
       {prefilled ? (
-        <View className="flex-row items-center gap-3 rounded-xl border border-border bg-surface p-4">
-          {subjectRow ? (
-            <CategoryIcon icon={subjectRow.categoryIcon} colour={subjectRow.categoryColour} size={24} />
-          ) : null}
-          <View className="min-w-0 flex-1">
-            <Text className="text-lg text-foreground" weight="bold">
-              {subjectRow?.code ?? breakdownSubjectKindLabels[prefilled.kind]}
-            </Text>
-            {subjectRow ? <Text className="text-sm text-muted-foreground">{subjectRow.categoryName}</Text> : null}
+        <Card>
+          <View className="flex-row items-center gap-3">
+            {subjectRow ? (
+              <CategoryIcon icon={subjectRow.categoryIcon} colour={subjectRow.categoryColour} size={24} />
+            ) : null}
+            <View className="min-w-0 flex-1">
+              <Text className="text-lg text-foreground" weight="bold">
+                {subjectRow?.code ?? breakdownSubjectKindLabels[prefilled.kind]}
+              </Text>
+              {subjectRow ? <Text className="text-sm text-muted-foreground">{subjectRow.categoryName}</Text> : null}
+            </View>
           </View>
-        </View>
+        </Card>
       ) : (
         <FieldShell label="What has the problem?">
           <View className="flex-row gap-2">
@@ -222,34 +207,32 @@ export default function ReportBreakdownScreen() {
                 onPress={() => {
                   if (option === kind) return;
                   setKind(option);
-                  picker.setFieldValue('subjectId', '');
+                  setPickedId('');
                 }}
               />
             ))}
           </View>
-          <picker.AppField name="subjectId">
-            {(field) => (
-              <field.SearchSelectField
-                label={breakdownSubjectKindLabels[kind]}
-                placeholder={`Choose the ${breakdownSubjectKindLabels[kind]}`}
-                searchPlaceholder="Search by code or category…"
-                emptyMessage="Nothing matches."
-                disabled={busy}
-                options={
-                  kind === 'machine'
-                    ? (fleet.data ?? []).map((machine) => ({
-                        value: machine.id,
-                        label: machine.code,
-                        description: machine.onSiteJobNumber
-                          ? `${machine.categoryName} · On Job ${machine.onSiteJobNumber}`
-                          : machine.categoryName,
-                        icon: <CategoryIcon icon={machine.categoryIcon} colour={machine.categoryColour} size={16} />,
-                      }))
-                    : (implementsQuery.data ?? []).map(implementOption)
-                }
-              />
-            )}
-          </picker.AppField>
+          <SearchSelect
+            label={breakdownSubjectKindLabels[kind]}
+            placeholder={`Choose the ${breakdownSubjectKindLabels[kind]}`}
+            searchPlaceholder="Search by code or category…"
+            emptyMessage="Nothing matches."
+            disabled={busy}
+            value={pickedId}
+            onChange={setPickedId}
+            options={
+              kind === 'machine'
+                ? (fleet.data ?? []).map((machine) => ({
+                    value: machine.id,
+                    label: machine.code,
+                    description: machine.onSiteJobNumber
+                      ? `${machine.categoryName} · On Job ${machine.onSiteJobNumber}`
+                      : machine.categoryName,
+                    icon: <CategoryIcon icon={machine.categoryIcon} colour={machine.categoryColour} size={16} />,
+                  }))
+                : (implementsQuery.data ?? []).map(implementOption)
+            }
+          />
         </FieldShell>
       )}
       {subject ? (
@@ -297,15 +280,12 @@ export default function ReportBreakdownScreen() {
         <VoiceTextArea
           accessibilityLabel="What's wrong"
           placeholder="Describe the problem in your own words"
-          value={description}
           editable={!busy}
           rows={5}
-          maxLength={BreakdownDescription.maxLength ?? undefined}
-          onChangeText={setDescription}
           voice={voice}
         />
       </FieldShell>
-      <FieldNotePhotoStrip
+      <PhotoStrip
         noun="Breakdown photo"
         photos={photos}
         limit={BREAKDOWN_MAX_PHOTOS}

@@ -13,8 +13,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card.j
 import { readingEvidence } from '@/contracting/components/ReadingEvidence.js';
 import { useCan } from '@/hooks/use-access.js';
 import { useTRPC } from '@/lib/trpc.js';
+import { historyKindColumn, historyKindLabels } from './history-kind-column.js';
 
-const historyKindLabels = { reading: 'Readings', breakdown: 'Breakdowns', service: 'Services' } as const;
 type HistoryKind = keyof typeof historyKindLabels;
 type HistoryRow = {
   id: string;
@@ -28,8 +28,6 @@ type HistoryRow = {
   evidence?: string;
   breakdownId?: string;
 };
-
-const kindFilterOptions = Object.values(historyKindLabels).map((label) => ({ label, value: label }));
 
 /** One newest-first timeline of what happened to a Machine or Implement: readings, Breakdowns and services. */
 export function FleetHistoryCard({ subject }: { subject: { machineId: string } | { implementId: string } }) {
@@ -105,13 +103,7 @@ export function FleetHistoryCard({ subject }: { subject: { machineId: string } |
             <DateDisplay date={row.original.at} />
           ),
       },
-      {
-        accessorKey: 'kindLabel',
-        header: 'Kind',
-        enableColumnFilter: true,
-        filterFn: 'equalsString',
-        meta: { filterVariant: 'select', filterOptions: kindFilterOptions },
-      },
+      historyKindColumn({ isMachine: machineId !== null, readsBreakdowns, readsServices }),
       {
         accessorKey: 'summary',
         header: 'What happened',
@@ -130,7 +122,7 @@ export function FleetHistoryCard({ subject }: { subject: { machineId: string } |
         ),
       },
     ],
-    [],
+    [machineId, readsBreakdowns, readsServices],
   );
   // An Implement has no readings or services, so without Breakdowns there is no history to show.
   if (!machineId && !readsBreakdowns) return null;

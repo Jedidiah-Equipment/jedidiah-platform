@@ -1,8 +1,9 @@
 import { act, create, type ReactTestRenderer } from 'react-test-renderer';
 import { beforeEach, expect, test, vi } from 'vitest';
 
-const state = vi.hoisted(() => ({ offline: false, permitted: true, started: 'recording' }));
-const stop = vi.hoisted(() => vi.fn(async () => null));
+const state = vi.hoisted(() => ({ offline: false, permitted: true, started: 'recording', recording: false }));
+const stop = vi.hoisted(() => vi.fn(async (): Promise<{ uri: string; seconds: number } | null> => null));
+const transcribe = vi.hoisted(() => vi.fn());
 vi.mock('react-native', () => ({ Pressable: 'Pressable', View: 'View' }));
 vi.mock('@tabler/icons-react-native', () => ({ IconMicrophone: 'IconMicrophone' }));
 vi.mock('@/components/ui/icon', () => ({ Icon: 'Icon' }));
@@ -12,10 +13,11 @@ vi.mock('@/components/form/fields/TextareaField', () => ({ textareaStyle: () => 
 vi.mock('@/contracting/observability', () => ({ recordVoiceNoteTranscribed: vi.fn() }));
 vi.mock('@/lib/connectivity', () => ({ useIsOffline: () => state.offline }));
 vi.mock('@/lib/auth-session', () => ({ useSessionPermission: () => state.permitted }));
-vi.mock('./transcribe-upload', () => ({ transcribeRecording: vi.fn(), TranscriptionRefusedError: Error }));
+vi.mock('./transcribe-upload', () => ({ transcribeRecording: transcribe, TranscriptionRefusedError: Error }));
+vi.mock('./VoiceFrame', () => ({ VoiceFrame: 'VoiceFrame' }));
 vi.mock('./use-voice-recorder', () => ({
   useVoiceRecorder: () => ({
-    recording: false,
+    recording: state.recording,
     seconds: 0,
     start: async () => state.started,
     stop,
@@ -49,8 +51,8 @@ const mics = (renderer: ReactTestRenderer) =>
 const micCount = () => mics(render()).length;
 
 beforeEach(() => {
-  Object.assign(state, { offline: false, permitted: true, started: 'recording' });
-  stop.mockClear();
+  Object.assign(state, { offline: false, permitted: true, started: 'recording', recording: false });
+  stop.mockReset().mockResolvedValue(null);
   voice.setBusy.mockClear();
 });
 
@@ -102,4 +104,28 @@ test('says the web build cannot record, and hands the page its scroll back', asy
   expect(renderer.root.findByProps({ accessibilityLiveRegion: 'polite' }).props.children).toBe(
     'Voice notes are not supported in the browser — use the app.',
   );
+});
+
+test('animates the frame while recording and keeps it animating until the transcript lands', async () => {
+  let land!: (transcription: { text: string }) => void;
+  transcribe.mockReturnValue(new Promise((resolve) => (land = resolve)));
+  stop.mockResolvedValue({ uri: 'file://note.m4a', seconds: 3 });
+  const renderer = render();
+  const animating = () => renderer.root.findByType('VoiceFrame' as never).props.animating;
+  expect(animating()).toBe(false);
+
+  state.recording = true;
+  await act(async () => {
+    mics(renderer)[0]?.props.onPressIn();
+  });
+  expect(animating()).toBe(true);
+
+  state.recording = false;
+  await act(async () => {
+    mics(renderer)[0]?.props.onPressOut();
+  });
+  expect(animating()).toBe(true);
+
+  await act(async () => land({ text: 'Fence down by the dam.' }));
+  expect(animating()).toBe(false);
 });

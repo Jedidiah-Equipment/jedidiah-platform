@@ -14,6 +14,7 @@ import { useIsOffline } from '@/lib/connectivity';
 import { TranscriptionRefusedError, transcribeRecording } from './transcribe-upload';
 import { useVoiceRecorder } from './use-voice-recorder';
 import type { VoiceSession } from './use-voice-session';
+import { VoiceFrame } from './VoiceFrame';
 import { withTranscript } from './voice-text';
 
 const UNAVAILABLE = 'Transcription unavailable — type the note.';
@@ -134,7 +135,7 @@ export function VoiceTextArea({ value, onChangeText, voice, rows = 4, editable =
 
   // The input drops its own frame so it and the mic row read as one field, mic in the bottom-right corner.
   return (
-    <View className={`rounded-xl border bg-surface ${recorder.recording ? 'border-danger' : 'border-border'}`}>
+    <VoiceFrame animating={recorder.recording || transcribing}>
       {input}
       <View className="flex-row items-center gap-3 pb-2 pl-3 pr-2">
         <Text accessibilityLiveRegion="polite" className="flex-1 text-xs text-muted-foreground">
@@ -150,11 +151,11 @@ export function VoiceTextArea({ value, onChangeText, voice, rows = 4, editable =
           pressRetentionOffset={HOLD_RETENTION}
           onPressIn={() => void startRecording()}
           onPressOut={() => void finishRecording()}
-          className={`h-10 w-10 items-center justify-center rounded-full ${recorder.recording ? 'bg-danger/15' : 'bg-foreground/10'}`}
+          className={`h-10 w-10 items-center justify-center rounded-full ${recorder.recording ? 'bg-primary/15' : 'bg-foreground/10'}`}
         >
-          <Icon icon={IconMicrophone} className={recorder.recording ? 'text-danger' : 'text-foreground'} size={24} />
+          <Icon icon={IconMicrophone} className={recorder.recording ? 'text-primary' : 'text-foreground'} size={24} />
         </Pressable>
       </View>
-    </View>
+    </VoiceFrame>
   );
 }

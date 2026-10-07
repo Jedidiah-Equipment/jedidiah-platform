@@ -4,15 +4,17 @@ import { AppErrorBoundary } from '@/components/AppErrorBoundary';
 import { AssistantProvider } from '@/equipment/components/assistant/AssistantProvider';
 import { getSessionRoleSlots, useAuthSession } from '@/lib/auth-session';
 import { BUSINESS_HOME } from '@/lib/business-home';
+import { useRememberBusiness } from '@/lib/last-business';
 
 export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
   return <AppErrorBoundary error={error} retry={retry} />;
 }
 
 export default function EquipmentLayout() {
-  const session = useAuthSession();
+  const allowed = hasBusinessAccess(getSessionRoleSlots(useAuthSession()), 'equipment');
+  useRememberBusiness(allowed ? 'equipment' : null);
 
-  if (!hasBusinessAccess(getSessionRoleSlots(session), 'equipment')) {
+  if (!allowed) {
     return <Redirect href={BUSINESS_HOME.contracting} />;
   }
 

@@ -22,6 +22,7 @@ import type { FastifyInstance } from 'fastify';
 import { BackgroundQueue } from '../background-queue.js';
 import type { BusinessWiring, BusinessWiringInput } from '../business-wiring.js';
 import { log } from '../logger.js';
+import { registerBreakdownHttpRoutes } from '../routes/contracting/breakdowns/breakdowns-http.route.js';
 import { registerJobCardHttpRoutes } from '../routes/contracting/jobs/job-card-http.route.js';
 import { registerReadingHttpRoutes } from '../routes/contracting/readings/readings-http.route.js';
 import type { HintDerivations } from '../routes/contracting/transcriptions/transcriptions.router.js';
@@ -73,6 +74,7 @@ export async function registerContracting(
 
   await registerReadingHttpRoutes(app, { db, storage, verifications: readingVerifications });
   await registerTranscriptionHttpRoutes(app, { db, engine, keyterms: keyterms.current });
+  await registerBreakdownHttpRoutes(app, { db, storage });
   await registerJobCardHttpRoutes(app, { db, pdfRenderer: renderJobCardPdf });
 
   return {

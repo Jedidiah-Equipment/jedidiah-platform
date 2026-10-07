@@ -454,6 +454,19 @@ export const snapshotTableDefinitions = [
     optionalReadTable: true,
   },
   {
+    fileName: 'contracting_breakdown.json',
+    tableName: 'contracting_breakdown',
+    timestampColumns: ['reportedAt', 'startedAt', 'solvedAt', 'createdAt', 'updatedAt'],
+    optionalReadTable: true,
+    storageFiles: (row) => (Array.isArray(row.photos) ? row.photos : []).map(toStorageFile).filter(isStorageFile),
+  },
+  {
+    fileName: 'contracting_breakdown_note.json',
+    tableName: 'contracting_breakdown_note',
+    timestampColumns: ['createdAt'],
+    optionalReadTable: true,
+  },
+  {
     fileName: 'contracting_measure.json',
     tableName: 'contracting_measure',
     timestampColumns: standardTimestampColumns,

@@ -1,4 +1,9 @@
-import { assertDriverAccountChangeAllowed, isFleetError } from '@pkg/core/contracting';
+import {
+  assertDriverAccountChangeAllowed,
+  assertMechanicAccountChangeAllowed,
+  isBreakdownError,
+  isFleetError,
+} from '@pkg/core/contracting';
 import type { Db } from '@pkg/db';
 import { AuthId } from '@pkg/schema';
 import type { BetterAuthPlugin } from 'better-auth';
@@ -23,15 +28,17 @@ export function driverRoleSafetyPlugin(db: Db): BetterAuthPlugin {
                 const device = DeviceUpdate.safeParse(updatedUser);
                 if (!target.success || !device.success) return;
                 const change = getRoleChange(context?.path, context?.body);
+                const account = {
+                  db,
+                  userId: target.data.userId,
+                  contractingRole: spansBothBusinesses(change?.equipmentRole) ? null : change?.contractingRole,
+                  isDevice: device.data.isDevice,
+                };
                 try {
-                  await assertDriverAccountChangeAllowed({
-                    db,
-                    userId: target.data.userId,
-                    contractingRole: spansBothBusinesses(change?.equipmentRole) ? null : change?.contractingRole,
-                    isDevice: device.data.isDevice,
-                  });
+                  await assertDriverAccountChangeAllowed(account);
+                  await assertMechanicAccountChangeAllowed(account);
                 } catch (error) {
-                  if (isFleetError(error))
+                  if (isFleetError(error) || isBreakdownError(error))
                     throw APIError.from('FORBIDDEN', { code: error.code, message: error.message });
                   throw error;
                 }

@@ -53,5 +53,10 @@ export function apiRoutePattern(pathname: string): string {
       '/api/products/[productId]/documents/[documentId]/download',
     )
     .replace(/^\/api\/products\/[^/]+\/brochure-preview$/, '/api/products/[productId]/brochure-preview')
-    .replace(/^\/api\/products\/[^/]+\/images\/[^/]+\/download$/, '/api/products/[productId]/images/[slot]/download');
+    .replace(/^\/api\/products\/[^/]+\/images\/[^/]+\/download$/, '/api/products/[productId]/images/[slot]/download')
+    .replace(
+      /^\/api\/contracting\/breakdowns\/[^/]+\/photos\/[^/]+$/,
+      '/api/contracting/breakdowns/[breakdownId]/photos/[photoId]',
+    )
+    .replace(/^\/api\/contracting\/breakdowns\/[^/]+\/photos$/, '/api/contracting/breakdowns/[breakdownId]/photos');
 }

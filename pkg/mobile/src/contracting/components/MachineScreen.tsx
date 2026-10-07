@@ -18,6 +18,7 @@ export default function MachineScreen() {
   const readings = useMachineReadings(id);
   const latest = readings.data?.[0];
   const canCapture = useSessionPermission('contracting_reading:capture');
+  const canReport = useSessionPermission('contracting_breakdown:report');
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top', 'left', 'right']}>
       <SecondaryToolbar
@@ -50,6 +51,17 @@ export default function MachineScreen() {
               router.push({
                 pathname: '/contracting/machines/[id]/capture',
                 params: { id },
+              })
+            }
+          />
+        ) : null}
+        {canReport && machine ? (
+          <Button
+            title="Report a problem"
+            onPress={() =>
+              router.push({
+                pathname: '/contracting/workshop/report',
+                params: { subjectKind: 'machine', subjectId: id },
               })
             }
           />

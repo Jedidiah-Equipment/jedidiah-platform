@@ -16,7 +16,9 @@ export function FieldNotePhotoStrip({
   onTake,
   onChoose,
   onRemove,
+  noun = 'Field Note photo',
 }: {
+  noun?: string;
   photos: readonly { id: string; uri: string }[];
   limit: number;
   busy: boolean;
@@ -41,7 +43,7 @@ export function FieldNotePhotoStrip({
           {photos.map((photo, index) => (
             <View key={photo.id} className="h-28 w-28 overflow-hidden rounded-xl bg-image-backdrop">
               <Image
-                accessibilityLabel={`Field Note photo ${formatNumber(index + 1)}`}
+                accessibilityLabel={`${noun} ${formatNumber(index + 1)}`}
                 source={{ uri: photo.uri }}
                 className="h-full w-full"
                 resizeMode="cover"

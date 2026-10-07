@@ -20,7 +20,7 @@ function pageFiles(directory = CONTRACTING_APP_ROOT): string[] {
 describe('Contracting screen catalog', () => {
   it('covers every Contracting Expo Router page exactly once', () => {
     expect(Object.keys(CONTRACTING_SCREEN_CATALOG).sort()).toEqual(pageFiles().sort());
-    expect(Object.keys(CONTRACTING_SCREEN_CATALOG)).toHaveLength(11);
+    expect(Object.keys(CONTRACTING_SCREEN_CATALOG)).toHaveLength(14);
   });
 
   it('resolves a dynamic route to its pattern', () => {

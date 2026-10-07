@@ -8,12 +8,17 @@ describe('Contracting app tabs', () => {
       visibleContractingTabs(
         createUserAccessSummary({ userId: 'foreman', equipmentRole: null, contractingRole: 'foreman' }),
       ),
-    ).toEqual(['jobs', 'machines', 'notes']);
+    ).toEqual(['jobs', 'machines', 'workshop', 'notes']);
     expect(
       visibleContractingTabs(
         createUserAccessSummary({ userId: 'workshop', equipmentRole: null, contractingRole: 'workshop-manager' }),
       ),
-    ).toEqual(['machines', 'notes']);
+    ).toEqual(['machines', 'workshop', 'notes']);
+    expect(
+      visibleContractingTabs(
+        createUserAccessSummary({ userId: 'invoicing', equipmentRole: null, contractingRole: 'contracting-invoicing' }),
+      ),
+    ).toEqual(['notes']);
     expect(
       visibleContractingTabs(
         createUserAccessSummary({ userId: 'driver', equipmentRole: null, contractingRole: 'driver' }),
@@ -27,6 +32,9 @@ describe('Contracting app tabs', () => {
       'machines',
     );
     expect(activeContractingTab(['(protected)', 'contracting', '(tabs)', 'notes', '[noteId]'])).toBe('notes');
+    expect(activeContractingTab(['(protected)', 'contracting', '(tabs)', 'workshop', '[breakdownId]'])).toBe(
+      'workshop',
+    );
   });
 
   test('dots Notes while any Field Note is open', () => {

@@ -8,7 +8,11 @@ import { useScrollLock } from '@/components/scroll-lock';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { type AppTextInputProps, TextInput } from '@/components/ui/text-input';
-import { recordVoiceNoteTranscribed } from '@/contracting/observability';
+import {
+  recordVoiceNoteFailed,
+  recordVoiceNoteTranscribed,
+  recordVoiceRecorderFailed,
+} from '@/contracting/observability';
 import { useSessionPermission } from '@/lib/auth-session';
 import { useIsOffline } from '@/lib/connectivity';
 import { TranscriptionRefusedError, transcribeRecording } from './transcribe-upload';
@@ -73,7 +77,7 @@ export function VoiceTextArea({ value, onChangeText, voice, rows = 4, editable =
     if (showMic || !holding) return;
     holdScroll(false);
     setHolding(false);
-    void stop().catch(() => null);
+    void stop().catch((error: unknown) => recordVoiceRecorderFailed(error, 'stop'));
   }, [showMic, holding, stop, holdScroll]);
 
   async function startRecording() {
@@ -82,7 +86,10 @@ export function VoiceTextArea({ value, onChangeText, voice, rows = 4, editable =
     // Locked in the press itself, not an effect: a drag in the frames between would let the page take the touch.
     holdScroll(true);
     setHolding(true);
-    const started = await recorder.start().catch(() => 'failed' as const);
+    const started = await recorder.start().catch((error: unknown) => {
+      recordVoiceRecorderFailed(error, 'start');
+      return 'failed' as const;
+    });
     if (started !== 'recording') {
       holdScroll(false);
       setHolding(false);
@@ -96,20 +103,24 @@ export function VoiceTextArea({ value, onChangeText, voice, rows = 4, editable =
   async function finishRecording() {
     holdScroll(false);
     if (transcribing) return;
-    const recording = await recorder.stop().catch(() => null);
+    const recording = await recorder.stop().catch((error: unknown) => {
+      recordVoiceRecorderFailed(error, 'stop');
+      return null;
+    });
     setTranscribing(recording !== null);
     setHolding(false);
     if (!recording) return;
-    const observed = { purpose: voice.purpose, seconds: recording.seconds };
+    const { uri, ...measured } = recording;
+    const sentAt = Date.now();
+    const attempt = () => ({ purpose: voice.purpose, ...measured, requestMs: Date.now() - sentAt });
     try {
-      const transcription = await transcribeRecording(recording.uri, voice.purpose);
+      const transcription = await transcribeRecording(uri, voice.purpose);
       onChangeText(withTranscript(latest.current, transcription.text, inputProps.maxLength));
       voice.remember(transcription);
-      recordVoiceNoteTranscribed({ ...observed, language: transcription.language, outcome: 'transcribed' });
+      recordVoiceNoteTranscribed(attempt(), transcription.language);
     } catch (error) {
-      const refused = error instanceof TranscriptionRefusedError;
-      setMessage(refused ? error.message : UNAVAILABLE);
-      recordVoiceNoteTranscribed({ ...observed, language: null, outcome: refused ? 'refused' : 'failed' });
+      setMessage(error instanceof TranscriptionRefusedError ? error.message : UNAVAILABLE);
+      recordVoiceNoteFailed(attempt(), error);
     } finally {
       setTranscribing(false);
     }

@@ -2,7 +2,7 @@ import { act, create, type ReactTestRenderer } from 'react-test-renderer';
 import { beforeEach, expect, test, vi } from 'vitest';
 
 const state = vi.hoisted(() => ({ offline: false, permitted: true, started: 'recording', capped: false }));
-const stop = vi.hoisted(() => vi.fn(async (): Promise<{ uri: string; seconds: number } | null> => null));
+const stop = vi.hoisted(() => vi.fn(async (): Promise<VoiceRecording | null> => null));
 const transcribe = vi.hoisted(() => vi.fn());
 vi.mock('react-native', () => ({ Pressable: 'Pressable', View: 'View' }));
 vi.mock('@tabler/icons-react-native', () => ({ IconMicrophone: 'IconMicrophone' }));
@@ -10,7 +10,11 @@ vi.mock('@/components/ui/icon', () => ({ Icon: 'Icon' }));
 vi.mock('@/components/ui/text', () => ({ Text: 'Text' }));
 vi.mock('@/components/ui/text-input', () => ({ TextInput: 'TextInput' }));
 vi.mock('@/components/form/fields/TextareaField', () => ({ textareaStyle: () => ({}) }));
-vi.mock('@/contracting/observability', () => ({ recordVoiceNoteTranscribed: vi.fn() }));
+vi.mock('@/contracting/observability', () => ({
+  recordVoiceNoteFailed: vi.fn(),
+  recordVoiceNoteTranscribed: vi.fn(),
+  recordVoiceRecorderFailed: vi.fn(),
+}));
 vi.mock('@/lib/connectivity', () => ({ useIsOffline: () => state.offline }));
 vi.mock('@/lib/auth-session', () => ({ useSessionPermission: () => state.permitted }));
 vi.mock('./transcribe-upload', () => ({ transcribeRecording: transcribe, TranscriptionRefusedError: Error }));
@@ -26,6 +30,7 @@ vi.mock('./use-voice-recorder', () => ({
 }));
 
 import { ScrollLockContext } from '@/components/scroll-lock';
+import type { VoiceRecording } from './use-voice-recorder';
 import { VoiceTextArea } from './VoiceTextArea';
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -110,7 +115,7 @@ test('says the web build cannot record, and hands the page its scroll back', asy
 test('animates the frame from the press until the transcript lands, whatever the recorder last polled', async () => {
   let land!: (transcription: { text: string }) => void;
   transcribe.mockReturnValue(new Promise((resolve) => (land = resolve)));
-  stop.mockResolvedValue({ uri: 'file://note.m4a', seconds: 3 });
+  stop.mockResolvedValue({ uri: 'file://note.m4a', seconds: 3, durationMs: 3_100, peakDb: -20 });
   const renderer = render();
   const animating = () => renderer.root.findByType('VoiceFrame' as never).props.animating;
   expect(animating()).toBe(false);

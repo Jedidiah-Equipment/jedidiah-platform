@@ -73,6 +73,7 @@ export const transcriptionErrorFamily = defineCoreErrorFamily<TranscriptionError
     'transcription.forbidden': 'FORBIDDEN',
     'transcription.invalid_upload': 'BAD_REQUEST',
     'transcription.not_found': 'NOT_FOUND',
+    'transcription.nothing_heard': 'BAD_REQUEST',
     'transcription.unavailable': 'SERVICE_UNAVAILABLE',
   },
   is: isTranscriptionError,

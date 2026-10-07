@@ -85,7 +85,7 @@ test('keeps what was heard, shown and its language, and stamps only the speakerâ
   });
 });
 
-test('refuses audio that is not M4A and answers unavailable when nothing was heard', async ({ context: { db } }) => {
+test('refuses audio that is not M4A and says when nothing was heard', async ({ context: { db } }) => {
   const { engine } = engineHearing({ text: '', language: null });
   const transcribe = (audio: Uint8Array) =>
     transcribeVoiceNote({ db, actorUserId: foremanId, audio, purpose: 'field note', engine, keyterms: async () => [] });
@@ -93,7 +93,7 @@ test('refuses audio that is not M4A and answers unavailable when nothing was hea
   await expect(transcribe(new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))).rejects.toMatchObject({
     code: 'file.content_type_not_allowed',
   });
-  await expect(transcribe(M4A)).rejects.toMatchObject({ code: 'transcription.unavailable' });
+  await expect(transcribe(M4A)).rejects.toMatchObject({ code: 'transcription.nothing_heard' });
 });
 
 test('derives nothing from Afrikaans notes or from a save that kept the shown text', async ({ context: { db } }) => {

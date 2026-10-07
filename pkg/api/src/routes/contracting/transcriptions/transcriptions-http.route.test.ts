@@ -82,7 +82,7 @@ test('a foreman’s voice note answers with the Transcription; other audio is re
   }
 });
 
-test('refuses roles without voice notes, and answers unavailable when the speech model fails', async ({ context }) => {
+test('refuses roles without voice notes, and tells silence from a failing speech model', async ({ context }) => {
   const app = await context.appWith(engine);
   const failing = await context.appWith({
     ...engine,
@@ -90,6 +90,7 @@ test('refuses roles without voice notes, and answers unavailable when the speech
       throw new Error('timeout');
     },
   });
+  const silent = await context.appWith({ ...engine, transcribe: async () => ({ text: '', language: null }) });
   try {
     signInAs('contracting-invoicing');
     const forbidden = await app.inject(upload(M4A));
@@ -100,8 +101,13 @@ test('refuses roles without voice notes, and answers unavailable when the speech
     const unavailable = await failing.inject(upload(M4A));
     expect(unavailable.statusCode).toBe(503);
     expect(unavailable.json()).toMatchObject({ data: { appCode: 'transcription.unavailable' } });
+
+    const nothingHeard = await silent.inject(upload(M4A));
+    expect(nothingHeard.statusCode).toBe(400);
+    expect(nothingHeard.json()).toMatchObject({ data: { appCode: 'transcription.nothing_heard' } });
   } finally {
     await app.close();
     await failing.close();
+    await silent.close();
   }
 });

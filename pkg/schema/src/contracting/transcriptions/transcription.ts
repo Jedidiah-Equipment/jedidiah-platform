@@ -5,8 +5,10 @@ export const TranscriptionPurpose = z.string().trim().min(1).max(60);
 export const TranscriptionText = z.string().max(4000);
 export const transcriptionLanguageTag = z.string().trim().min(2).max(16);
 export const transcriptionErrorCodes = [
-  // The speech model failed, timed out, or heard nothing.
+  // The speech model failed or timed out.
   'transcription.unavailable',
+  // The speech model answered, but heard no words.
+  'transcription.nothing_heard',
   'transcription.invalid_upload',
   'transcription.not_found',
   // Reporting a save on someone else's Transcription.

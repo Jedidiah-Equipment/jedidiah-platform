@@ -47,9 +47,13 @@ The named event catalog is:
   `machineId`), emitted by the central mutation cache like the Equipment mutations; and `field note created` (`hasPhoto`, `photoCount`, `hasDescription`), `field note closed`,
   `field note reopened`, `field note deleted`, which never carry a note's words or photos. A capture that
   fails any other way sends no event: its breadcrumb and exception cover it. `voice note transcribed`
-  (`purpose` — the screen's label for the field, `language`, `seconds`, `outcome` — `transcribed`, `refused`
-  or `failed`) once per Voice Note sent for text, and `transcription saved` (`id`) from the mutation cache once
-  the owning form has saved; neither carries the words. `breakdown reported` (`urgency`, `subjectKind`, `photoCount`, `hasGps`,
+  (`purpose` — the screen's label for the field, `language`, `seconds`, `durationMs`, `peakDb` — the loudest
+  metered input, near -160 for a silent capture, `requestMs`, `outcome` — `transcribed`, `refused` or `failed`,
+  `code` — the refusal's app code, `status` — the HTTP status, and `failure` — `timeout`, `network`, `server`
+  or `recording`) once per Voice Note sent for text. A failure, or a refusal with a 5xx status, is also captured
+  as an exception. The recorder leaves `voice recording started` (`startMs` from the press), `voice recording
+  stopped` (`durationMs`, `peakDb`, `kept`) and `voice note upload` (`bytes`) breadcrumbs. `transcription saved`
+  (`id`) comes from the mutation cache once the owning form has saved; neither event carries the words. `breakdown reported` (`urgency`, `subjectKind`, `photoCount`, `hasGps`,
   `hasJob`) once per Breakdown the server accepts; and from the mutation cache `breakdown updated` (`id`,
   `urgency` when changed), `mechanic assigned` (`id`, `mechanicUserId`), `breakdown started` (`id`), `breakdown
   solved` (`id`), `breakdown photo removed` (`id`, `photoId`) and `breakdown note added` (`breakdownId`). None

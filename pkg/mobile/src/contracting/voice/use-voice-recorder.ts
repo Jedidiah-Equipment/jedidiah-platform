@@ -9,10 +9,15 @@ import {
 } from 'expo-audio';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Platform, Vibration } from 'react-native';
+import { addBreadcrumb } from '@/lib/observability';
 
 /** Shorter than this is a tap, not a note. */
 const MIN_RECORDING_MS = 500;
 const OPENED_PULSE_MS = 25;
+// Metering gives each note a peak input level, so a silent capture can be told from a model that heard nothing.
+const RECORDING_OPTIONS = { ...RecordingPresets.HIGH_QUALITY, isMeteringEnabled: true };
+
+export type VoiceRecording = { uri: string; seconds: number; durationMs: number; peakDb: number | null };
 
 export type VoiceRecorder = {
   recording: boolean;
@@ -25,31 +30,41 @@ export type VoiceRecorder = {
    */
   start: () => Promise<'recording' | 'allowed' | 'denied' | 'unsupported'>;
   /** Stops and hands back the recording, or null when there is none worth sending. */
-  stop: () => Promise<{ uri: string; seconds: number } | null>;
+  stop: () => Promise<VoiceRecording | null>;
 };
 
 /** Press-and-hold recording through expo-audio, capped at the Voice Note limit. */
 export function useVoiceRecorder(): VoiceRecorder {
-  const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
+  const recorder = useAudioRecorder(RECORDING_OPTIONS);
   const state = useAudioRecorderState(recorder, 500);
   const starting = useRef<Promise<'recording' | 'allowed' | 'denied'> | null>(null);
   const startedAt = useRef(0);
+  const peakDb = useRef<number | null>(null);
   const [capped, setCapped] = useState(false);
   const capTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
+  useEffect(() => {
+    if (state.isRecording) keepLoudest(peakDb, state.metering);
+  }, [state.isRecording, state.metering]);
+
   const start = useCallback(() => {
     setCapped(false);
+    const pressedAt = Date.now();
     starting.current = (async () => {
       const current = await getRecordingPermissionsAsync();
       if (!current.granted) {
         // The system prompt takes the press; the next hold records.
         const asked = await requestRecordingPermissionsAsync();
+        addBreadcrumb('contracting', 'microphone permission asked', { granted: asked.granted });
         return asked.granted ? 'allowed' : 'denied';
       }
       await setAudioModeAsync({ allowsRecording: true, playsInSilentMode: true });
       await recorder.prepareToRecordAsync();
       recorder.record({ forDuration: VOICE_NOTE_MAX_SECONDS });
       startedAt.current = Date.now();
+      peakDb.current = null;
+      // Words spoken before the mic opens are lost, so a slow start explains a clipped or empty note.
+      addBreadcrumb('contracting', 'voice recording started', { startMs: startedAt.current - pressedAt });
       capTimer.current = setTimeout(() => setCapped(true), VOICE_NOTE_MAX_SECONDS * 1000);
       // iOS needs expo-haptics, a native build away (#1668), and mutes haptics once the mic is open.
       if (Platform.OS === 'android') Vibration.vibrate(OPENED_PULSE_MS);
@@ -65,10 +80,14 @@ export function useVoiceRecorder(): VoiceRecorder {
     if (started !== 'recording') return null;
     // Wall time: the recorder's own duration is gone once the cap has stopped it.
     const durationMs = Math.min(Date.now() - startedAt.current, VOICE_NOTE_MAX_SECONDS * 1000);
+    keepLoudest(peakDb, recorder.getStatus().metering);
     await recorder.stop();
     await setAudioModeAsync({ allowsRecording: false }).catch(() => undefined);
-    if (!recorder.uri || durationMs < MIN_RECORDING_MS) return null;
-    return { uri: recorder.uri, seconds: Math.round(durationMs / 1000) };
+    const peak = peakDb.current === null ? null : Math.round(peakDb.current);
+    const uri = durationMs < MIN_RECORDING_MS ? null : recorder.uri || null;
+    addBreadcrumb('contracting', 'voice recording stopped', { durationMs, peakDb: peak, kept: uri !== null });
+    if (uri === null) return null;
+    return { uri, seconds: Math.round(durationMs / 1000), durationMs, peakDb: peak };
   }, [recorder]);
 
   // Leaving the screen mid-hold must not leave the microphone live until the cap.
@@ -86,4 +105,9 @@ export function useVoiceRecorder(): VoiceRecorder {
     start,
     stop,
   };
+}
+
+function keepLoudest(peak: { current: number | null }, level: number | undefined): void {
+  if (typeof level !== 'number' || !Number.isFinite(level)) return;
+  peak.current = peak.current === null ? level : Math.max(peak.current, level);
 }

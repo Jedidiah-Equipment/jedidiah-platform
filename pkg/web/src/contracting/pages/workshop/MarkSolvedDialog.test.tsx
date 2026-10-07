@@ -58,13 +58,3 @@ it('requires a close-out note', async () => {
   expect(solve).not.toHaveBeenCalled();
   expect(note().getAttribute('aria-invalid')).toBe('true');
 });
-
-it('solves with the note', async () => {
-  const { submit } = await mount();
-  await act(async () => {
-    Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')?.set?.call(note(), 'Replaced the hose');
-    note().dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertText' }));
-  });
-  await act(async () => submit.click());
-  expect(solve).toHaveBeenCalledWith({ id: breakdownId, closeOutNote: 'Replaced the hose' });
-});

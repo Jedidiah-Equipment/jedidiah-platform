@@ -179,7 +179,7 @@ test('takes over the named stack, preserves handwritten lines, and migrates both
   assert.match(f.read('pkg/api/.env.dev'), /^OPENAI_API_KEY=private-test-key\nPORT=1234\nAFTER=api\n/);
   assert.match(f.read('pkg/api/.env.dev'), /PORT=7202/);
   assert.doesNotMatch(f.read('pkg/api/.env.dev'), /worktree-setup/);
-  assert.match(f.read('pkg/api/.env.dev'), /AUTH_TRUSTED_ORIGINS=http:\/\/localhost:7201,http:\/\/localhost:7202,http:\/\/localhost:7203,jedidiahops:\/\//);
+  assert.match(f.read('pkg/api/.env.dev'), /^AUTH_TRUSTED_ORIGINS=http:\/\/localhost:7201,http:\/\/localhost:7202,http:\/\/localhost:7203,jedidiahops:\/\/,jedidiahopsstaging:\/\/$/m);
   assert.match(f.read('pkg/web/.env.dev'), /AUTH_BASE_URL=http:\/\/localhost:7202\/api\/auth/);
   assert.match(f.read('pkg/lander/.env.dev'), /PORT=7204/);
   assert.match(f.read('pkg/db/.env.dev'), /DATABASE_URL=.*:7205\/jedidiah\n/);

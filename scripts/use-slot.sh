@@ -142,7 +142,7 @@ AUTH_BASE_URL=http://localhost:${api_port}/api/auth"
   write_managed_block "$ROOT/pkg/api/.env.dev" "$slot" "PORT=${api_port}
 APP_BASE_URL=http://localhost:${web_port}
 API_BASE_URL=http://localhost:${api_port}
-AUTH_TRUSTED_ORIGINS=http://localhost:${web_port},http://localhost:${api_port},http://localhost:${expo_port},jedidiahops://
+AUTH_TRUSTED_ORIGINS=http://localhost:${web_port},http://localhost:${api_port},http://localhost:${expo_port},jedidiahops://,jedidiahopsstaging://
 DATABASE_URL=${db_host}/${DB}
 DOCUMENT_STORAGE_ENDPOINT=http://localhost:${minio_api_port}"
 

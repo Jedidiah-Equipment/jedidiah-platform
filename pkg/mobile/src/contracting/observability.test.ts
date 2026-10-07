@@ -1,11 +1,25 @@
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, resolve } from 'node:path';
-import { expect, test, vi } from 'vitest';
+import { beforeEach, expect, test, vi } from 'vitest';
 
-const observability = vi.hoisted(() => ({ addBreadcrumb: vi.fn(), captureEvent: vi.fn() }));
+const observability = vi.hoisted(() => ({
+  addBreadcrumb: vi.fn(),
+  captureEvent: vi.fn(),
+  captureSanitizedException: vi.fn(),
+}));
 vi.mock('@/lib/observability', () => observability);
 
-import { CONTRACTING_MUTATION_EVENTS, recordFieldNoteChanged, recordFieldNoteCreated } from './observability';
+import {
+  CONTRACTING_MUTATION_EVENTS,
+  recordFieldNoteChanged,
+  recordFieldNoteCreated,
+  recordVoiceNoteFailed,
+} from './observability';
+import { TranscriptionFailedError, TranscriptionRefusedError } from './voice/transcription-errors';
+
+beforeEach(() => {
+  vi.clearAllMocks();
+});
 
 const MOBILE_ROOT = resolve(import.meta.dirname, '../..');
 
@@ -52,4 +66,37 @@ test('machine added to job carries the Job and Machine ids only', () => {
     jobId: 'j',
     machineId: 'm',
   });
+});
+
+const attempt = { purpose: 'field note', seconds: 3, durationMs: 2_800, peakDb: -160, requestMs: 1_045 };
+
+test('a Voice Note refused as silence is an event, while a speech outage is also an exception', () => {
+  recordVoiceNoteFailed(
+    attempt,
+    new TranscriptionRefusedError('transcription.nothing_heard', 'Nothing was heard.', 400),
+  );
+  recordVoiceNoteFailed(attempt, new TranscriptionRefusedError('transcription.unavailable', 'Unavailable.', 503));
+
+  const refused = { ...attempt, language: null, outcome: 'refused', failure: null };
+  expect(observability.captureEvent.mock.calls).toEqual([
+    ['voice note transcribed', { ...refused, code: 'transcription.nothing_heard', status: 400 }],
+    ['voice note transcribed', { ...refused, code: 'transcription.unavailable', status: 503 }],
+  ]);
+  expect(observability.captureSanitizedException).toHaveBeenCalledTimes(1);
+  expect(observability.captureSanitizedException).toHaveBeenCalledWith(
+    expect.any(TranscriptionRefusedError),
+    'Voice note transcription refused',
+    { ...refused, code: 'transcription.unavailable', status: 503 },
+  );
+});
+
+test('a Voice Note that got no answer is an exception that says why', () => {
+  recordVoiceNoteFailed(attempt, new TranscriptionFailedError('timeout', null));
+  recordVoiceNoteFailed(attempt, new Error('The recording is no longer available. Record it again.'));
+
+  const failed = { ...attempt, language: null, outcome: 'failed', code: null, status: null };
+  expect(observability.captureSanitizedException.mock.calls).toEqual([
+    [expect.any(TranscriptionFailedError), 'Voice note transcription failed', { ...failed, failure: 'timeout' }],
+    [expect.any(Error), 'Voice note transcription failed', { ...failed, failure: 'recording' }],
+  ]);
 });

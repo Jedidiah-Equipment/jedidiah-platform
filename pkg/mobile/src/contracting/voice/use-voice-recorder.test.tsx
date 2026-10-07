@@ -4,13 +4,20 @@ import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 
 const platform = vi.hoisted(() => ({ OS: 'android' }));
 const vibrate = vi.hoisted(() => vi.fn());
+const addBreadcrumb = vi.hoisted(() => vi.fn());
+const recorder = vi.hoisted(() => ({
+  uri: 'file:///note.m4a' as string | null,
+  metering: -160,
+  prepareToRecordAsync: async () => undefined,
+  record: () => undefined,
+  stop: async () => undefined,
+  getStatus() {
+    return { metering: this.metering };
+  },
+}));
 vi.mock('react-native', () => ({ Platform: platform, Vibration: { vibrate } }));
+vi.mock('@/lib/observability', () => ({ addBreadcrumb }));
 vi.mock('expo-audio', () => {
-  const recorder = {
-    prepareToRecordAsync: async () => undefined,
-    record: () => undefined,
-    stop: async () => undefined,
-  };
   return {
     RecordingPresets: { HIGH_QUALITY: {} },
     getRecordingPermissionsAsync: async () => ({ granted: true }),
@@ -40,6 +47,8 @@ function renderRecorder() {
 beforeEach(() => {
   vi.useFakeTimers();
   vibrate.mockClear();
+  addBreadcrumb.mockClear();
+  recorder.metering = -160;
 });
 afterEach(() => vi.useRealTimers());
 
@@ -86,4 +95,43 @@ test('a recording released before the limit is never reported capped', async () 
     vi.advanceTimersByTime(VOICE_NOTE_MAX_SECONDS * 1000);
   });
   expect(recorder().capped).toBe(false);
+});
+
+test('hands back the length and loudest level of a note, and leaves both in the trail', async () => {
+  const voice = renderRecorder();
+  await act(async () => {
+    await voice().start();
+  });
+  recorder.metering = -18.4;
+  act(() => {
+    vi.advanceTimersByTime(2_300);
+  });
+
+  let stopped: Awaited<ReturnType<VoiceRecorder['stop']>> = null;
+  await act(async () => {
+    stopped = await voice().stop();
+  });
+
+  expect(stopped).toEqual({ uri: 'file:///note.m4a', seconds: 2, durationMs: 2_300, peakDb: -18 });
+  expect(addBreadcrumb).toHaveBeenLastCalledWith('contracting', 'voice recording stopped', {
+    durationMs: 2_300,
+    peakDb: -18,
+    kept: true,
+  });
+});
+
+test('drops a tap too short to be a note, and says so in the trail', async () => {
+  const voice = renderRecorder();
+  let stopped: Awaited<ReturnType<VoiceRecorder['stop']>> = null;
+  await act(async () => {
+    await voice().start();
+    stopped = await voice().stop();
+  });
+
+  expect(stopped).toBeNull();
+  expect(addBreadcrumb).toHaveBeenLastCalledWith('contracting', 'voice recording stopped', {
+    durationMs: 0,
+    peakDb: -160,
+    kept: false,
+  });
 });

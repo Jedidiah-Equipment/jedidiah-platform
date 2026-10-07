@@ -37,12 +37,23 @@ test('separates the server’s refusal from a failure', async () => {
     name: 'TranscriptionRefusedError',
     code: 'transcription.unavailable',
     message: 'Voice notes are not set up. Type the note instead.',
+    status: 503,
   });
 
   vi.stubGlobal('fetch', async () => new Response('<html>', { status: 500 }));
   await expect(transcribeRecording('file:///voice.m4a', 'field note')).rejects.toMatchObject({
-    name: 'Error',
-    message: 'Transcription failed',
+    name: 'TranscriptionFailedError',
+    reason: 'server',
+    status: 500,
+  });
+
+  vi.stubGlobal('fetch', async () => {
+    throw new TypeError('Network request failed');
+  });
+  await expect(transcribeRecording('file:///voice.m4a', 'field note')).rejects.toMatchObject({
+    name: 'TranscriptionFailedError',
+    reason: 'network',
+    status: null,
   });
 });
 
@@ -53,7 +64,10 @@ test('gives up once the transcribe timeout passes', async () => {
     (_url: string, init: RequestInit) =>
       new Promise((_resolve, reject) => init.signal?.addEventListener('abort', () => reject(new Error('aborted')))),
   );
-  const pending = expect(transcribeRecording('file:///voice.m4a', 'field note')).rejects.toThrow('aborted');
+  const pending = expect(transcribeRecording('file:///voice.m4a', 'field note')).rejects.toMatchObject({
+    name: 'TranscriptionFailedError',
+    reason: 'timeout',
+  });
   await vi.advanceTimersByTimeAsync(30_000);
   await pending;
 });

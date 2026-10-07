@@ -89,7 +89,7 @@ export async function transcribeVoiceNote({
   }
   if (heard.text === '')
     throw new TranscriptionError(
-      'transcription.unavailable',
+      'transcription.nothing_heard',
       'Nothing was heard. Try again closer to the phone, or type the note.',
     );
   // The tidy pass is best effort: if it fails, the raw text is what the person sees.

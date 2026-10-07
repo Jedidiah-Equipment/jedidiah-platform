@@ -179,9 +179,9 @@ export function createAutosaveController<TValues extends Record<string, unknown>
     updateSavedValues(values: TValues) {
       lastSavedValues = values;
       lastSavedSnapshot = serialize(values);
-      const currentSnapshot = serialize(getValues());
-      pendingSnapshot = currentSnapshot === lastSavedSnapshot ? null : currentSnapshot;
-      const hasUnsavedChanges = savePromise !== null || pendingSnapshot !== null;
+      // Refetching detects unsaved typing but does not commit it. Only markChanged/flush queue a save.
+      if (!savePromise && pendingSnapshot === lastSavedSnapshot) pendingSnapshot = null;
+      const hasUnsavedChanges = savePromise !== null || serialize(getValues()) !== lastSavedSnapshot;
       updateState({
         errorMessage: hasUnsavedChanges ? state.errorMessage : null,
         hasUnsavedChanges,

@@ -100,6 +100,41 @@ describe('createAutosaveController', () => {
     expect(save).toHaveBeenCalledTimes(1);
   });
 
+  it.each(['', 'Bolt Co draft'])(
+    'does not flush uncommitted text "%s" when a refetch lands during a save',
+    async (draft) => {
+      let values = { name: 'Acme', due: 100 };
+      const firstSave = deferredSave();
+      const save = vi.fn().mockReturnValueOnce(firstSave.promise).mockResolvedValue(undefined);
+      const controller = createAutosaveController({
+        getValues: () => values,
+        save,
+        validate: (candidate) => (candidate.name ? [] : [NAME_REQUIRED]),
+      });
+      values = { name: 'Bolt Co', due: 100 };
+      controller.markChanged();
+      const flush = controller.flush();
+      values = { name: draft, due: 200 };
+      // Typing has not blurred or explicitly flushed, so it has not queued another save.
+      controller.updateSavedValues({ name: 'Acme', due: 200 });
+      firstSave.resolve();
+      await expect(flush).resolves.toBe(true);
+      expect(save).toHaveBeenCalledTimes(1);
+      expect(values).toEqual({ name: draft, due: 200 });
+      expect(controller.hasPendingChanges()).toBe(true);
+      expect(controller.getState()).toMatchObject({
+        hasUnsavedChanges: true,
+        shouldBlockNavigation: false,
+        status: 'idle',
+      });
+      values = { name: 'Bolt Co finished', due: 200 };
+      controller.markChanged();
+      await expect(controller.flush()).resolves.toBe(true);
+      expect(save).toHaveBeenLastCalledWith({ name: 'Bolt Co finished', due: 200 }, { name: 'Bolt Co', due: 200 });
+      expect(controller.hasPendingChanges()).toBe(false);
+    },
+  );
+
   it('waits for an in-flight request even when a refetch already matches the form', async () => {
     let values = { name: 'Acme' };
     const firstSave = deferredSave();

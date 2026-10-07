@@ -87,47 +87,50 @@ describe('useAutosaveForm', () => {
     expect(save).not.toHaveBeenCalled();
   });
 
-  it('preserves an untouched refetched field when an in-flight save completes', async () => {
-    const firstSave = deferredSave();
-    const save = vi
-      .fn<(input: unknown) => Promise<void>>()
-      .mockReturnValueOnce(firstSave.promise)
-      .mockResolvedValue(undefined);
-    const toInput = vi.fn((values: { quantity: number; due: number }, saved: { quantity: number; due: number }) => ({
-      values,
-      saved,
-    }));
-    const container = document.createElement('div');
-    document.body.append(container);
-    mountedContainers.push(container);
-    const root = createRoot(container);
-    mountedRoots.push(root);
-    const render = (due: number) =>
-      act(async () => {
-        root.render(<AutosavePairForm defaultValues={{ quantity: 5, due }} save={save} toInput={toInput} />);
+  it.each([5, 7])(
+    'preserves refetched fields when a save completes, even if its edited field refetches as %s',
+    async (refetchedQuantity) => {
+      const firstSave = deferredSave();
+      const save = vi
+        .fn<(input: unknown) => Promise<void>>()
+        .mockReturnValueOnce(firstSave.promise)
+        .mockResolvedValue(undefined);
+      const toInput = vi.fn((values: { quantity: number; due: number }, saved: { quantity: number; due: number }) => ({
+        values,
+        saved,
+      }));
+      const container = document.createElement('div');
+      document.body.append(container);
+      mountedContainers.push(container);
+      const root = createRoot(container);
+      mountedRoots.push(root);
+      const render = (due: number, quantity = 5) =>
+        act(async () => {
+          root.render(<AutosavePairForm defaultValues={{ quantity, due }} save={save} toInput={toInput} />);
+        });
+      await render(100);
+      const [quantity, due] = [...container.querySelectorAll('input')];
+      const editQuantity = (value: string) =>
+        act(() => {
+          quantity?.focus();
+          setNativeInputValue(quantity as HTMLInputElement, value);
+          quantity?.dispatchEvent(new Event('input', { bubbles: true }));
+          quantity?.blur();
+        });
+      editQuantity('6');
+      await act(async () => {
+        await vi.waitFor(() => expect(save).toHaveBeenCalledTimes(1));
       });
-    await render(100);
-    const [quantity, due] = [...container.querySelectorAll('input')];
-    const editQuantity = (value: string) =>
-      act(() => {
-        quantity?.focus();
-        setNativeInputValue(quantity as HTMLInputElement, value);
-        quantity?.dispatchEvent(new Event('input', { bubbles: true }));
-        quantity?.blur();
+      await render(200, refetchedQuantity);
+      expect(due?.value).toBe('200');
+      await act(async () => firstSave.resolve());
+      editQuantity('7');
+      await act(async () => {
+        await vi.waitFor(() => expect(save).toHaveBeenCalledTimes(2));
       });
-    editQuantity('6');
-    await act(async () => {
-      await vi.waitFor(() => expect(save).toHaveBeenCalledTimes(1));
-    });
-    await render(200);
-    expect(due?.value).toBe('200');
-    await act(async () => firstSave.resolve());
-    editQuantity('7');
-    await act(async () => {
-      await vi.waitFor(() => expect(save).toHaveBeenCalledTimes(2));
-    });
-    expect(toInput).toHaveBeenLastCalledWith({ quantity: 7, due: 200 }, { quantity: 6, due: 200 });
-  });
+      expect(toInput).toHaveBeenLastCalledWith({ quantity: 7, due: 200 }, { quantity: 6, due: 200 });
+    },
+  );
 
   it('adopts a refetched default per untouched field, keeps an edit in flight, and hands the saved values to toInput', async () => {
     const save = vi.fn<(input: unknown) => Promise<void>>().mockResolvedValue();

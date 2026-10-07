@@ -7,7 +7,7 @@ import Fastify, { type FastifyBaseLogger } from 'fastify';
 import { type Auth, auth as appAuth } from './app-auth.js';
 import { registerAuthHandler } from './auth/handler.js';
 import { registerContracting } from './contracting/wiring.js';
-import { type ApiConfig, getApiConfig } from './env.js';
+import { type ApiConfig, getApiConfig, loggableConfig } from './env.js';
 import { registerEquipment } from './equipment/wiring.js';
 import { registerHealthRoutes } from './health.js';
 import { log } from './logger.js';
@@ -24,7 +24,7 @@ export async function buildServer(
   storage: StorageAdapter = createDocumentStorageAdapter(config),
   auth: Auth = appAuth,
 ) {
-  log.root.info({ config }, 'Building server');
+  log.root.info({ config: loggableConfig(config) }, 'Building server');
 
   const app = Fastify({
     loggerInstance: log.http as FastifyBaseLogger,

@@ -14,6 +14,8 @@ import {
   verifyCapturedReading,
 } from '@pkg/core/contracting';
 import { user } from '@pkg/db';
+import { fileTooLargeMessage } from '@pkg/domain';
+import { READING_PHOTO_POLICY } from '@pkg/domain/contracting';
 import { accessForRole } from '@pkg/domain/testing';
 import { MachineCreateInput } from '@pkg/schema/contracting';
 import Fastify from 'fastify';
@@ -80,18 +82,25 @@ const test = createTester(async ({ db, auth }) => {
   (state.session as ReturnType<typeof mockSession>).user.contractingRole = 'foreman';
   return { assignmentId: assignment.id, db, app, jobId: job.id, machineId: machine.id, storage, verifications };
 });
-function upload(machineId: string, photo: Buffer | null, close = true, extra: Record<string, string> = {}) {
+function upload(
+  machineId: string,
+  photo: Buffer | Buffer[] | null,
+  close = true,
+  extra: Record<string, string | undefined> = {},
+) {
   const boundary = 'reading-boundary';
   const fields = { machineId, role: 'spot', value: '123.4', capturedAt: '2026-09-07T08:00:00Z', ...extra };
-  const chunks: Buffer[] = Object.entries(fields).map(([key, value]) =>
-    Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="${key}"\r\n\r\n${value}\r\n`),
-  );
-  if (photo)
+  const chunks: Buffer[] = Object.entries(fields)
+    .filter(([, value]) => value !== undefined)
+    .map(([key, value]) =>
+      Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="${key}"\r\n\r\n${value}\r\n`),
+    );
+  for (const bytes of photo === null ? [] : Array.isArray(photo) ? photo : [photo])
     chunks.push(
       Buffer.from(
         `--${boundary}\r\nContent-Disposition: form-data; name="photo"; filename="meter.jpg"\r\nContent-Type: image/jpeg\r\n\r\n`,
       ),
-      photo,
+      bytes,
       Buffer.from('\r\n'),
     );
   if (close) chunks.push(Buffer.from(`--${boundary}--\r\n`));
@@ -112,7 +121,8 @@ test('atomic multipart stores the complete photo and AI outcome; rejects broken 
       upload(machineId, Buffer.from([255, 216, 255]), false),
     ]) {
       const response = await app.inject(request);
-      expect(response.statusCode).toBeGreaterThanOrEqual(400);
+      expect(response.statusCode).toBe(400);
+      expect(response.json().data.appCode).toEqual(expect.any(String));
       expect(await listReadingsByMachine({ db, machineId })).toEqual([]);
       expect(storage.objects.size).toBe(0);
     }
@@ -141,7 +151,12 @@ test('atomic multipart stores the complete photo and AI outcome; rejects broken 
 test('rejects unauthenticated and Equipment-only uploads before parsing their body', async ({ context }) => {
   try {
     state.session = null;
-    expect((await context.app.inject(upload(context.machineId, null))).statusCode).toBe(401);
+    const signedOut = await context.app.inject(upload(context.machineId, null));
+    expect(signedOut.statusCode).toBe(401);
+    expect(signedOut.json()).toEqual({
+      data: { appCode: 'auth.unauthenticated' },
+      message: 'Please sign in to continue.',
+    });
     state.session = mockSession('admin');
     expect((await context.app.inject(upload(context.machineId, null))).statusCode).toBe(403);
   } finally {
@@ -245,5 +260,70 @@ test('foremen can view photos for their own Job readings but not other readings'
     expect((await app.inject({ method: 'GET', url: ownPhotoUrl })).statusCode).toBe(200);
   } finally {
     await app.close();
+  }
+});
+
+test.for([
+  [{ role: 'arrival' }, 'Choose the Machine Assignment.'],
+  [{ value: undefined }, 'Send reading fields and at most one complete photo.'],
+] as const)('refuses invalid Hour Reading fields: %j', async ([fields, message], { context }) => {
+  const { app, db, machineId, storage } = context;
+  try {
+    const response = await app.inject(upload(machineId, Buffer.from([255, 216, 255]), true, fields));
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toEqual({ data: { appCode: 'reading.invalid_upload' }, message });
+    expect(await listReadingsByMachine({ db, machineId })).toEqual([]);
+    expect(storage.objects.size).toBe(0);
+  } finally {
+    await app.close();
+  }
+});
+
+test('refuses a second reading photo and excess fields with an app code and no saved evidence', async ({ context }) => {
+  const { app, db, machineId, storage } = context;
+  try {
+    const jpeg = Buffer.from([255, 216, 255]);
+    for (const request of [
+      upload(machineId, [jpeg, jpeg]),
+      upload(machineId, jpeg, true, Object.fromEntries(Array.from({ length: 12 }, (_, i) => [`extra${i}`, 'x']))),
+    ]) {
+      const response = await app.inject(request);
+      expect(response.statusCode).toBe(400);
+      expect(response.json()).toEqual({
+        data: { appCode: 'reading.invalid_upload' },
+        message: 'Send reading fields and at most one complete photo.',
+      });
+      expect(await listReadingsByMachine({ db, machineId })).toEqual([]);
+      expect(storage.objects.size).toBe(0);
+    }
+  } finally {
+    await app.close();
+  }
+});
+
+test('an oversized Hour Reading photo keeps the file policy refusal and stores nothing', async ({ context }) => {
+  const { app, db, machineId, storage } = context;
+  try {
+    const response = await app.inject(upload(machineId, Buffer.alloc(READING_PHOTO_POLICY.maxBytes + 1)));
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toEqual({
+      data: { appCode: 'file.too_large' },
+      message: fileTooLargeMessage(READING_PHOTO_POLICY.maxBytes),
+    });
+    expect(await listReadingsByMachine({ db, machineId })).toEqual([]);
+    expect(storage.objects.size).toBe(0);
+  } finally {
+    await app.close();
+  }
+});
+
+test('a malformed photo download id retains its download refusal', async ({ context }) => {
+  try {
+    const response = await context.app.inject({ url: '/api/contracting/readings/not-a-uuid/photo' });
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toEqual({ message: 'Invalid Hour Reading.' });
+    expect(context.storage.objects.size).toBe(0);
+  } finally {
+    await context.app.close();
   }
 });

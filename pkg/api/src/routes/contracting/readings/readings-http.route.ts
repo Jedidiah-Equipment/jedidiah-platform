@@ -48,9 +48,8 @@ export async function registerReadingHttpRoutes(
     if (!auth) return;
     try {
       requirePermission(auth, 'contracting_reading:capture', 'You cannot capture Hour Readings.', 'reading.forbidden');
-      const { fields, files } = await readMultipartUpload(request, upload);
+      const { input, files } = await readMultipartUpload(request, upload, ReadingCaptureMultipart);
       const [photoBytes] = files;
-      const input = ReadingCaptureMultipart.parse(fields);
       const row = await captureReading({
         db,
         actor: auth.access,
@@ -61,7 +60,7 @@ export async function registerReadingHttpRoutes(
       if (row.photo) verifications.schedule(row.id);
       return reply.status(201).send(row);
     } catch (error) {
-      return sendReadingError(reply, error);
+      return sendReadingError(reply, error, upload);
     }
   });
   app.get(`${READING_CAPTURE_PATH}/:id/photo`, async (request, reply) => {
@@ -83,9 +82,10 @@ export async function registerReadingHttpRoutes(
     }
   });
 }
-function sendReadingError(reply: FastifyReply, error: unknown) {
+function sendReadingError(reply: FastifyReply, error: unknown, upload?: MultipartUploadOptions) {
   return sendUploadHttpError(reply, mapCoreErrorToRoute(error, readingErrorFamily), {
     policy: READING_PHOTO_POLICY,
+    upload,
     fallbackMessage: 'Reading request failed.',
     invalidRequestMessage: 'Invalid Hour Reading.',
   });

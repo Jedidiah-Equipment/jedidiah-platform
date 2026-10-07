@@ -32,7 +32,7 @@ export class RouteHttpError extends Error {
     message,
     statusCode,
     cause,
-  }: { appCode?: string; message: string; statusCode: number; cause?: unknown }) {
+  }: { appCode?: string | undefined; message: string; statusCode: number; cause?: unknown }) {
     super(message, { cause });
     this.name = 'RouteHttpError';
     this.appCode = appCode;
@@ -61,7 +61,7 @@ export async function requireRouteAuth(request: FastifyRequest, reply: FastifyRe
   const session = await getSessionFromHeaders(request.headers, request.server.auth.api);
 
   if (!session) {
-    reply.status(401).send({ message: 'Please sign in to continue.' });
+    reply.status(401).send({ data: { appCode: 'auth.unauthenticated' }, message: 'Please sign in to continue.' });
     return null;
   }
 
@@ -103,6 +103,7 @@ export type SendHttpErrorOptions = {
 export type SendUploadHttpErrorOptions = SendHttpErrorOptions & {
   // The route's own size cap words a stream refusal; the same policy's violations from core map to a 400.
   policy: FilePolicy;
+  upload?: Pick<MultipartUploadOptions, 'invalid'> | undefined;
 };
 
 // Renders a thrown route error into a response. Callers map their own core errors into a
@@ -125,6 +126,21 @@ export function sendUploadHttpError(reply: FastifyReply, error: unknown, options
     return;
   }
 
+  if (options.upload) {
+    if (
+      error instanceof z.ZodError ||
+      (typeof error === 'object' &&
+        error !== null &&
+        'statusCode' in error &&
+        typeof error.statusCode === 'number' &&
+        error.statusCode >= 400 &&
+        error.statusCode < 500 &&
+        !(error instanceof RouteHttpError))
+    ) {
+      sendNonUploadHttpError(reply, options.upload.invalid(), options);
+      return;
+    }
+  }
   sendNonUploadHttpError(reply, error, options);
 }
 
@@ -137,39 +153,65 @@ export type MultipartUploadOptions = {
   // The longest text field's schema cap, in characters; see {@link requireMaxLength}.
   fieldMaxLength: number;
   invalid: () => RouteHttpError;
+  tooManyFiles?: () => Error;
 };
 
 // Reads an upload of text fields plus up to `maxFiles` complete files under one field name. Every text
 // field arrives once and whole; a truncated or misnamed part refuses the request with the caller's error.
 // The file-count and part-count limits leave one spare part so an extra file trips the files limit, not
 // the parts limit.
-export async function readMultipartUpload(
+export async function readMultipartUpload<T>(
   request: FastifyRequest,
-  { fileField, maxFiles, policy, textFields, fieldMaxLength, invalid }: MultipartUploadOptions,
-): Promise<{ fields: Record<string, string>; files: Buffer[] }> {
+  { fileField, maxFiles, policy, textFields, fieldMaxLength, invalid, tooManyFiles }: MultipartUploadOptions,
+  schema: z.ZodType<T>,
+): Promise<{ input: T; files: Buffer[] }> {
   const fields: Record<string, string> = {};
   const files: Buffer[] = [];
-  for await (const part of request.parts({
-    limits: {
-      files: maxFiles,
-      fields: textFields.length,
-      parts: textFields.length + maxFiles + 1,
-      fileSize: policy.maxBytes,
-      // Multipart caps bytes; the schema cap counts UTF-16 units, so allow the widest UTF-8 encoding.
-      fieldSize: 4 * fieldMaxLength,
-    },
-  })) {
-    if (part.type === 'file') {
-      if (part.fieldname !== fileField) throw invalid();
-      const bytes = await part.toBuffer();
-      if (part.file.truncated) throw invalid();
-      files.push(bytes);
-    } else {
-      if (part.fieldname in fields || part.valueTruncated || typeof part.value !== 'string') throw invalid();
-      fields[part.fieldname] = part.value;
+  try {
+    for await (const part of request.parts({
+      limits: {
+        files: maxFiles,
+        fields: textFields.length,
+        parts: textFields.length + maxFiles + 1,
+        fileSize: policy.maxBytes,
+        // Multipart caps bytes; the schema cap counts UTF-16 units, so allow the widest UTF-8 encoding.
+        fieldSize: 4 * fieldMaxLength,
+      },
+    })) {
+      if (part.type === 'file') {
+        if (part.fieldname !== fileField) throw invalid();
+        const bytes = await part.toBuffer();
+        if (part.file.truncated) throw invalid();
+        files.push(bytes);
+      } else {
+        if (part.fieldname in fields || part.valueTruncated || typeof part.value !== 'string') throw invalid();
+        fields[part.fieldname] = part.value;
+      }
     }
+  } catch (error) {
+    if (request.server.multipartErrors && error instanceof request.server.multipartErrors.FilesLimitError)
+      throw (tooManyFiles ?? invalid)();
+    if (error instanceof RouteHttpError || (typeof error === 'object' && error !== null && 'statusCode' in error))
+      throw error;
+    const refusal = invalid();
+    throw new RouteHttpError({
+      statusCode: refusal.statusCode,
+      appCode: refusal.appCode,
+      message: refusal.message,
+      cause: error,
+    });
   }
-  return { fields, files };
+  // Schema messages outrank this per-parse fallback. Default validator wording never becomes public.
+  const refusal = invalid();
+  const parsed = schema.safeParse(fields, { error: () => refusal.message });
+  if (!parsed.success)
+    throw new RouteHttpError({
+      statusCode: refusal.statusCode,
+      appCode: refusal.appCode,
+      message: parsed.error.issues[0]?.message ?? refusal.message,
+      cause: parsed.error,
+    });
+  return { input: parsed.data, files };
 }
 
 // A string schema's `.max()` cap, failing at route registration when the schema has lost it, so the

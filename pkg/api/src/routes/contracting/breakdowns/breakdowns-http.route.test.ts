@@ -2,6 +2,9 @@ import multipart from '@fastify/multipart';
 import { InMemoryStorageAdapter } from '@pkg/core';
 import { createCategory, createMachine } from '@pkg/core/contracting';
 import { user } from '@pkg/db';
+import { contractingBreakdowns } from '@pkg/db/contracting';
+import { fileTooLargeMessage } from '@pkg/domain';
+import { BREAKDOWN_PHOTO_POLICY } from '@pkg/domain/contracting';
 import { MachineCreateInput } from '@pkg/schema/contracting';
 import Fastify from 'fastify';
 import { expect, vi } from 'vitest';
@@ -45,10 +48,10 @@ const test = createTester(async ({ db, auth }) => {
   await registerBreakdownHttpRoutes(app, { db, storage });
   state.session = mockSession(null);
   (state.session as ReturnType<typeof mockSession>).user.contractingRole = 'foreman';
-  return { app, machineId: machine.id, storage };
+  return { app, db, machineId: machine.id, storage };
 });
 
-function upload(machineId: string, photos: Buffer[]) {
+function upload(machineId: string, photos: Buffer[], extra: Record<string, string | undefined> = {}) {
   const boundary = 'breakdown-boundary';
   const fields = {
     subject: JSON.stringify({ kind: 'machine', id: machineId }),
@@ -56,10 +59,13 @@ function upload(machineId: string, photos: Buffer[]) {
     description: 'Hydraulic hose burst',
     latitude: '-25.7479',
     longitude: '28.2293',
+    ...extra,
   };
-  const chunks: Buffer[] = Object.entries(fields).map(([key, value]) =>
-    Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="${key}"\r\n\r\n${value}\r\n`),
-  );
+  const chunks: Buffer[] = Object.entries(fields)
+    .filter(([, value]) => value !== undefined)
+    .map(([key, value]) =>
+      Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="${key}"\r\n\r\n${value}\r\n`),
+    );
   for (const [index, photo] of photos.entries())
     chunks.push(
       Buffer.from(
@@ -93,21 +99,137 @@ test('reports a Breakdown with two photos, then serves each photo privately', as
   }
 });
 
-test('refuses a seventh photo and anything but PNG or JPEG without keeping a row or an object', async ({ context }) => {
-  const { app, machineId, storage } = context;
+test('refuses anything but PNG or JPEG without keeping a Breakdown or object', async ({ context }) => {
+  const { app, db, machineId, storage } = context;
   try {
-    const tooMany = await app.inject(
-      upload(
-        machineId,
-        Array.from({ length: 7 }, () => jpeg),
-      ),
-    );
-    expect(tooMany.statusCode).toBe(409);
-    expect(tooMany.json()).toMatchObject({ data: { appCode: 'breakdown.too_many_photos' } });
-    const notAPhoto = await app.inject(upload(machineId, [Buffer.from('not a photo')]));
-    expect(notAPhoto.statusCode).toBe(400);
+    const response = await app.inject(upload(machineId, [Buffer.from('not a photo')]));
+    expect(response.statusCode).toBe(400);
+    expect(response.json().data.appCode).toBe('file.content_type_not_allowed');
+    expect(await db.select().from(contractingBreakdowns)).toEqual([]);
     expect(storage.objects.size).toBe(0);
   } finally {
     await app.close();
+  }
+});
+
+test('blank description uses the schema sentence and leaves no Breakdown or photo', async ({ context }) => {
+  const { app, db, machineId, storage } = context;
+  try {
+    const response = await app.inject(upload(machineId, [jpeg], { description: '' }));
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toEqual({ data: { appCode: 'breakdown.invalid_upload' }, message: 'Describe the problem' });
+    expect(await db.select().from(contractingBreakdowns)).toEqual([]);
+    expect(storage.objects.size).toBe(0);
+  } finally {
+    await app.close();
+  }
+});
+
+test.for([
+  [{ longitude: undefined }, 'Send both coordinates or neither.'],
+  [{ subject: '{broken' }, 'Send the report fields and at most 6 complete photos.'],
+] as const)('refuses invalid Breakdown fields: %j', async ([fields, message], { context }) => {
+  const { app, db, machineId, storage } = context;
+  try {
+    const response = await app.inject(upload(machineId, [jpeg], fields));
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toEqual({ data: { appCode: 'breakdown.invalid_upload' }, message });
+    expect(await db.select().from(contractingBreakdowns)).toEqual([]);
+    expect(storage.objects.size).toBe(0);
+  } finally {
+    await app.close();
+  }
+});
+
+test.for([7, 8])(
+  'refuses %i photos with the six-photo sentence on both Breakdown upload paths',
+  async (photoCount, { context }) => {
+    const { app, db, machineId, storage } = context;
+    try {
+      const response = await app.inject(
+        upload(
+          machineId,
+          Array.from({ length: photoCount }, () => jpeg),
+        ),
+      );
+      expect(response.statusCode).toBe(409);
+      expect(response.json()).toEqual({
+        data: { appCode: 'breakdown.too_many_photos' },
+        message: 'A Breakdown keeps at most 6 photos.',
+      });
+      expect(await db.select().from(contractingBreakdowns)).toEqual([]);
+      expect(storage.objects.size).toBe(0);
+      const created = await app.inject(upload(machineId, []));
+      expect(created.statusCode).toBe(201);
+      const photosRequest = upload(
+        machineId,
+        Array.from({ length: photoCount }, () => jpeg),
+        {
+          subject: undefined,
+          urgency: undefined,
+          description: undefined,
+          latitude: undefined,
+          longitude: undefined,
+        },
+      );
+      const added = await app.inject({
+        ...photosRequest,
+        url: `/api/contracting/breakdowns/${created.json().id}/photos`,
+      });
+      expect(added.statusCode).toBe(409);
+      expect(added.json()).toEqual({
+        data: { appCode: 'breakdown.too_many_photos' },
+        message: 'A Breakdown keeps at most 6 photos.',
+      });
+      expect(await db.select().from(contractingBreakdowns)).toMatchObject([{ id: created.json().id, photos: [] }]);
+      expect(storage.objects.size).toBe(0);
+    } finally {
+      await app.close();
+    }
+  },
+);
+
+test('refuses excess Breakdown fields with the upload sentence and leaves no stored evidence', async ({ context }) => {
+  const { app, db, machineId, storage } = context;
+  try {
+    const response = await app.inject(
+      upload(machineId, [jpeg], { localId: '78108c3d-4b34-44f1-bf87-4fcb00a6a233', jobId: '', extra: 'x' }),
+    );
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toEqual({
+      data: { appCode: 'breakdown.invalid_upload' },
+      message: 'Send the report fields and at most 6 complete photos.',
+    });
+    expect(await db.select().from(contractingBreakdowns)).toEqual([]);
+    expect(storage.objects.size).toBe(0);
+  } finally {
+    await app.close();
+  }
+});
+
+test('an oversized Breakdown photo keeps the file policy refusal and stores nothing', async ({ context }) => {
+  const { app, db, machineId, storage } = context;
+  try {
+    const response = await app.inject(upload(machineId, [Buffer.alloc(BREAKDOWN_PHOTO_POLICY.maxBytes + 1)]));
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toEqual({
+      data: { appCode: 'file.too_large' },
+      message: fileTooLargeMessage(BREAKDOWN_PHOTO_POLICY.maxBytes),
+    });
+    expect(await db.select().from(contractingBreakdowns)).toEqual([]);
+    expect(storage.objects.size).toBe(0);
+  } finally {
+    await app.close();
+  }
+});
+
+test('a malformed photo download id retains its download refusal', async ({ context }) => {
+  try {
+    const response = await context.app.inject({ url: '/api/contracting/breakdowns/not-a-uuid/photos/not-a-uuid' });
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toEqual({ message: 'Invalid Breakdown report.' });
+    expect(context.storage.objects.size).toBe(0);
+  } finally {
+    await context.app.close();
   }
 });

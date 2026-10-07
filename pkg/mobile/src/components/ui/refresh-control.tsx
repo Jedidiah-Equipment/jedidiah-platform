@@ -1,39 +1,34 @@
 import { type QueryClient, useQueryClient } from '@tanstack/react-query';
-import { useCallback, useSyncExternalStore } from 'react';
+import { useCallback, useState } from 'react';
 import { RefreshControl as NativeRefreshControl, type RefreshControlProps } from 'react-native';
 
 import { invalidateQueryCache } from '@/lib/query-client';
 import { useBrandForegroundColor } from '@/theme/use-brand-foreground';
 
-const refreshesInFlight = new WeakSet<QueryClient>();
-const listeners = new Set<() => void>();
+const refreshesInFlight = new WeakMap<QueryClient, Promise<void>>();
 
-function subscribe(listener: () => void) {
-  listeners.add(listener);
-  return () => listeners.delete(listener);
-}
-
-function setRefreshing(queryClient: QueryClient, refreshing: boolean) {
-  if (refreshing) refreshesInFlight.add(queryClient);
-  else refreshesInFlight.delete(queryClient);
-  for (const listener of listeners) listener();
+function refreshEverything(queryClient: QueryClient): Promise<void> {
+  let refresh = refreshesInFlight.get(queryClient);
+  if (!refresh) {
+    refresh = invalidateQueryCache(queryClient).finally(() => refreshesInFlight.delete(queryClient));
+    refreshesInFlight.set(queryClient, refresh);
+  }
+  return refresh;
 }
 
 /**
  * The app's one pull-to-refresh: a pull on any surface invalidates every API query, tinted by the brand accent for
- * the scheme currently painting. Every control shares one refresh, so a second pull while it runs only waits for it.
+ * the scheme currently painting. A pull during a refresh joins it rather than starting another.
  */
 export function RefreshControl(props: Omit<RefreshControlProps, 'colors' | 'onRefresh' | 'refreshing' | 'tintColor'>) {
   const color = useBrandForegroundColor();
   const queryClient = useQueryClient();
-  const isRefreshing = useCallback(() => refreshesInFlight.has(queryClient), [queryClient]);
-  const refreshing = useSyncExternalStore(subscribe, isRefreshing, isRefreshing);
+  // Only the pulled surface spins: on iOS a programmatic `refreshing` scrolls that list to reveal the spinner.
+  const [refreshing, setRefreshing] = useState(false);
 
   const onRefresh = useCallback(() => {
-    if (refreshesInFlight.has(queryClient)) return;
-
-    setRefreshing(queryClient, true);
-    void invalidateQueryCache(queryClient).finally(() => setRefreshing(queryClient, false));
+    setRefreshing(true);
+    void refreshEverything(queryClient).finally(() => setRefreshing(false));
   }, [queryClient]);
 
   return (

@@ -1,4 +1,4 @@
-import { AuthId, UUID } from '@pkg/schema';
+import { AuthId, DateOnlyIso, UUID } from '@pkg/schema';
 import {
   CategoryColour,
   CategoryIconKey,
@@ -15,7 +15,9 @@ import {
   MachineCreateInput,
   MachinePatchInput,
   MachineYear,
+  NEXT_SERVICE_DUE_BELOW_READING_MESSAGE,
   ServiceIntervalHours,
+  ServiceRecordCloseInput,
 } from '@pkg/schema/contracting';
 import { z } from 'zod';
 import { emptyStringOr, nanToNull, optionalNumber, requiredSelection } from '@/components/form/utils/form-schema.js';
@@ -89,3 +91,36 @@ export const implementPatchInput = (id: string, values: ImplementFormValues) =>
   ImplementPatchInput.parse({ ...values, id });
 export const createImplementInput = (values: z.infer<typeof ImplementCreateValues>) =>
   ImplementCreateInput.parse(values);
+
+const requiredHours = (message: string) => z.number({ error: message }).pipe(FleetHours);
+export const CloseServiceValues = z
+  .object({
+    endDate: requiredSelection(DateOnlyIso, 'Choose the end date'),
+    readingAtServiceHours: requiredHours('Enter the reading at service'),
+    primaryMechanicUserId: emptyStringOr(AuthId),
+    notes: z.string(),
+    nextServiceDueHours: requiredHours('Enter the next service due'),
+  })
+  .superRefine((values, ctx) => {
+    if (values.nextServiceDueHours < values.readingAtServiceHours)
+      ctx.addIssue({ code: 'custom', path: ['nextServiceDueHours'], message: NEXT_SERVICE_DUE_BELOW_READING_MESSAGE });
+  });
+export type CloseServiceValues = z.input<typeof CloseServiceValues>;
+export function closeServiceInput(id: string, values: CloseServiceValues): ServiceRecordCloseInput {
+  return ServiceRecordCloseInput.parse({
+    ...values,
+    id,
+    primaryMechanicUserId: values.primaryMechanicUserId || null,
+  });
+}
+export const OpenServiceValues = z.object({
+  startDate: requiredSelection(DateOnlyIso, 'Choose the start date'),
+  primaryMechanicUserId: emptyStringOr(AuthId),
+  notes: z.string(),
+});
+export type OpenServiceValues = z.input<typeof OpenServiceValues>;
+export const openServiceFields = (values: OpenServiceValues) => ({
+  startDate: DateOnlyIso.parse(values.startDate),
+  primaryMechanicUserId: values.primaryMechanicUserId || null,
+  notes: values.notes,
+});

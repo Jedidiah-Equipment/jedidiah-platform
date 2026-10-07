@@ -29,6 +29,7 @@ import { Route as AuthedContractingMeasureTypesRouteImport } from './../routes/_
 import { Route as AuthedContractingRatesRouteImport } from './../routes/_authed.contracting.rates'
 import { Route as AuthedContractingUsersRouteImport } from './../routes/_authed.contracting.users'
 import { Route as AuthedContractingWorkTypesRouteImport } from './../routes/_authed.contracting.work-types'
+import { Route as AuthedContractingWorkshopRouteImport } from './../routes/_authed.contracting.workshop'
 import { Route as AuthedEquipmentAuditRouteImport } from './../routes/_authed.equipment.audit'
 import { Route as AuthedEquipmentBaysRouteImport } from './../routes/_authed.equipment.bays'
 import { Route as AuthedEquipmentCatalogTranslationsRouteImport } from './../routes/_authed.equipment.catalog-translations'
@@ -58,6 +59,8 @@ import { Route as AuthedContractingMeasureTypesIndexRouteImport } from './../rou
 import { Route as AuthedContractingRatesIndexRouteImport } from './../routes/_authed.contracting.rates.index'
 import { Route as AuthedContractingReadingsExceptionsRouteImport } from './../routes/_authed.contracting.readings.exceptions'
 import { Route as AuthedContractingWorkTypesIndexRouteImport } from './../routes/_authed.contracting.work-types.index'
+import { Route as AuthedContractingWorkshopIndexRouteImport } from './../routes/_authed.contracting.workshop.index'
+import { Route as AuthedContractingWorkshopIdRouteImport } from './../routes/_authed.contracting.workshop.$id'
 import { Route as AuthedEquipmentCustomersIndexRouteImport } from './../routes/_authed.equipment.customers.index'
 import { Route as AuthedEquipmentInventoryIndexRouteImport } from './../routes/_authed.equipment.inventory.index'
 import { Route as AuthedEquipmentInventoryPartIdRouteImport } from './../routes/_authed.equipment.inventory.$partId'
@@ -203,6 +206,12 @@ const AuthedContractingWorkTypesRoute =
   AuthedContractingWorkTypesRouteImport.update({
     id: '/work-types',
     path: '/work-types',
+    getParentRoute: () => AuthedContractingRoute,
+  } as any)
+const AuthedContractingWorkshopRoute =
+  AuthedContractingWorkshopRouteImport.update({
+    id: '/workshop',
+    path: '/workshop',
     getParentRoute: () => AuthedContractingRoute,
   } as any)
 const AuthedEquipmentAuditRoute = AuthedEquipmentAuditRouteImport.update({
@@ -369,6 +378,18 @@ const AuthedContractingWorkTypesIndexRoute =
     id: '/',
     path: '/',
     getParentRoute: () => AuthedContractingWorkTypesRoute,
+  } as any)
+const AuthedContractingWorkshopIndexRoute =
+  AuthedContractingWorkshopIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AuthedContractingWorkshopRoute,
+  } as any)
+const AuthedContractingWorkshopIdRoute =
+  AuthedContractingWorkshopIdRouteImport.update({
+    id: '/$id',
+    path: '/$id',
+    getParentRoute: () => AuthedContractingWorkshopRoute,
   } as any)
 const AuthedEquipmentCustomersIndexRoute =
   AuthedEquipmentCustomersIndexRouteImport.update({
@@ -645,6 +666,7 @@ export interface FileRoutesByFullPath {
   '/contracting/rates': typeof AuthedContractingRatesRouteWithChildren
   '/contracting/users': typeof AuthedContractingUsersRoute
   '/contracting/work-types': typeof AuthedContractingWorkTypesRouteWithChildren
+  '/contracting/workshop': typeof AuthedContractingWorkshopRouteWithChildren
   '/equipment/audit': typeof AuthedEquipmentAuditRoute
   '/equipment/bays': typeof AuthedEquipmentBaysRoute
   '/equipment/catalog-translations': typeof AuthedEquipmentCatalogTranslationsRoute
@@ -668,6 +690,7 @@ export interface FileRoutesByFullPath {
   '/contracting/fleet/implements': typeof AuthedContractingFleetImplementsRouteWithChildren
   '/contracting/jobs/$code': typeof AuthedContractingJobsCodeRoute
   '/contracting/readings/exceptions': typeof AuthedContractingReadingsExceptionsRoute
+  '/contracting/workshop/$id': typeof AuthedContractingWorkshopIdRoute
   '/equipment/inventory/$partId': typeof AuthedEquipmentInventoryPartIdRoute
   '/equipment/inventory/buy-list': typeof AuthedEquipmentInventoryBuyListRoute
   '/equipment/inventory/close-out': typeof AuthedEquipmentInventoryCloseOutRouteWithChildren
@@ -687,6 +710,7 @@ export interface FileRoutesByFullPath {
   '/contracting/measure-types/': typeof AuthedContractingMeasureTypesIndexRoute
   '/contracting/rates/': typeof AuthedContractingRatesIndexRoute
   '/contracting/work-types/': typeof AuthedContractingWorkTypesIndexRoute
+  '/contracting/workshop/': typeof AuthedContractingWorkshopIndexRoute
   '/equipment/customers/': typeof AuthedEquipmentCustomersIndexRoute
   '/equipment/inventory/': typeof AuthedEquipmentInventoryIndexRoute
   '/equipment/jobs/': typeof AuthedEquipmentJobsIndexRoute
@@ -741,6 +765,7 @@ export interface FileRoutesByTo {
   '/contracting': typeof AuthedContractingIndexRoute
   '/contracting/jobs/$code': typeof AuthedContractingJobsCodeRoute
   '/contracting/readings/exceptions': typeof AuthedContractingReadingsExceptionsRoute
+  '/contracting/workshop/$id': typeof AuthedContractingWorkshopIdRoute
   '/equipment/inventory/$partId': typeof AuthedEquipmentInventoryPartIdRoute
   '/equipment/inventory/buy-list': typeof AuthedEquipmentInventoryBuyListRoute
   '/equipment/inventory/price-variance': typeof AuthedEquipmentInventoryPriceVarianceRoute
@@ -758,6 +783,7 @@ export interface FileRoutesByTo {
   '/contracting/measure-types': typeof AuthedContractingMeasureTypesIndexRoute
   '/contracting/rates': typeof AuthedContractingRatesIndexRoute
   '/contracting/work-types': typeof AuthedContractingWorkTypesIndexRoute
+  '/contracting/workshop': typeof AuthedContractingWorkshopIndexRoute
   '/equipment/customers': typeof AuthedEquipmentCustomersIndexRoute
   '/equipment/inventory': typeof AuthedEquipmentInventoryIndexRoute
   '/equipment/jobs': typeof AuthedEquipmentJobsIndexRoute
@@ -811,6 +837,7 @@ export interface FileRoutesById {
   '/_authed/contracting/rates': typeof AuthedContractingRatesRouteWithChildren
   '/_authed/contracting/users': typeof AuthedContractingUsersRoute
   '/_authed/contracting/work-types': typeof AuthedContractingWorkTypesRouteWithChildren
+  '/_authed/contracting/workshop': typeof AuthedContractingWorkshopRouteWithChildren
   '/_authed/equipment/audit': typeof AuthedEquipmentAuditRoute
   '/_authed/equipment/bays': typeof AuthedEquipmentBaysRoute
   '/_authed/equipment/catalog-translations': typeof AuthedEquipmentCatalogTranslationsRoute
@@ -834,6 +861,7 @@ export interface FileRoutesById {
   '/_authed/contracting/fleet/implements': typeof AuthedContractingFleetImplementsRouteWithChildren
   '/_authed/contracting/jobs/$code': typeof AuthedContractingJobsCodeRoute
   '/_authed/contracting/readings/exceptions': typeof AuthedContractingReadingsExceptionsRoute
+  '/_authed/contracting/workshop/$id': typeof AuthedContractingWorkshopIdRoute
   '/_authed/equipment/inventory/$partId': typeof AuthedEquipmentInventoryPartIdRoute
   '/_authed/equipment/inventory/buy-list': typeof AuthedEquipmentInventoryBuyListRoute
   '/_authed/equipment/inventory/close-out': typeof AuthedEquipmentInventoryCloseOutRouteWithChildren
@@ -853,6 +881,7 @@ export interface FileRoutesById {
   '/_authed/contracting/measure-types/': typeof AuthedContractingMeasureTypesIndexRoute
   '/_authed/contracting/rates/': typeof AuthedContractingRatesIndexRoute
   '/_authed/contracting/work-types/': typeof AuthedContractingWorkTypesIndexRoute
+  '/_authed/contracting/workshop/': typeof AuthedContractingWorkshopIndexRoute
   '/_authed/equipment/customers/': typeof AuthedEquipmentCustomersIndexRoute
   '/_authed/equipment/inventory/': typeof AuthedEquipmentInventoryIndexRoute
   '/_authed/equipment/jobs/': typeof AuthedEquipmentJobsIndexRoute
@@ -906,6 +935,7 @@ export interface FileRouteTypes {
     | '/contracting/rates'
     | '/contracting/users'
     | '/contracting/work-types'
+    | '/contracting/workshop'
     | '/equipment/audit'
     | '/equipment/bays'
     | '/equipment/catalog-translations'
@@ -929,6 +959,7 @@ export interface FileRouteTypes {
     | '/contracting/fleet/implements'
     | '/contracting/jobs/$code'
     | '/contracting/readings/exceptions'
+    | '/contracting/workshop/$id'
     | '/equipment/inventory/$partId'
     | '/equipment/inventory/buy-list'
     | '/equipment/inventory/close-out'
@@ -948,6 +979,7 @@ export interface FileRouteTypes {
     | '/contracting/measure-types/'
     | '/contracting/rates/'
     | '/contracting/work-types/'
+    | '/contracting/workshop/'
     | '/equipment/customers/'
     | '/equipment/inventory/'
     | '/equipment/jobs/'
@@ -1002,6 +1034,7 @@ export interface FileRouteTypes {
     | '/contracting'
     | '/contracting/jobs/$code'
     | '/contracting/readings/exceptions'
+    | '/contracting/workshop/$id'
     | '/equipment/inventory/$partId'
     | '/equipment/inventory/buy-list'
     | '/equipment/inventory/price-variance'
@@ -1019,6 +1052,7 @@ export interface FileRouteTypes {
     | '/contracting/measure-types'
     | '/contracting/rates'
     | '/contracting/work-types'
+    | '/contracting/workshop'
     | '/equipment/customers'
     | '/equipment/inventory'
     | '/equipment/jobs'
@@ -1071,6 +1105,7 @@ export interface FileRouteTypes {
     | '/_authed/contracting/rates'
     | '/_authed/contracting/users'
     | '/_authed/contracting/work-types'
+    | '/_authed/contracting/workshop'
     | '/_authed/equipment/audit'
     | '/_authed/equipment/bays'
     | '/_authed/equipment/catalog-translations'
@@ -1094,6 +1129,7 @@ export interface FileRouteTypes {
     | '/_authed/contracting/fleet/implements'
     | '/_authed/contracting/jobs/$code'
     | '/_authed/contracting/readings/exceptions'
+    | '/_authed/contracting/workshop/$id'
     | '/_authed/equipment/inventory/$partId'
     | '/_authed/equipment/inventory/buy-list'
     | '/_authed/equipment/inventory/close-out'
@@ -1113,6 +1149,7 @@ export interface FileRouteTypes {
     | '/_authed/contracting/measure-types/'
     | '/_authed/contracting/rates/'
     | '/_authed/contracting/work-types/'
+    | '/_authed/contracting/workshop/'
     | '/_authed/equipment/customers/'
     | '/_authed/equipment/inventory/'
     | '/_authed/equipment/jobs/'
@@ -1297,6 +1334,13 @@ declare module '@tanstack/react-router' {
       path: '/work-types'
       fullPath: '/contracting/work-types'
       preLoaderRoute: typeof AuthedContractingWorkTypesRouteImport
+      parentRoute: typeof AuthedContractingRoute
+    }
+    '/_authed/contracting/workshop': {
+      id: '/_authed/contracting/workshop'
+      path: '/workshop'
+      fullPath: '/contracting/workshop'
+      preLoaderRoute: typeof AuthedContractingWorkshopRouteImport
       parentRoute: typeof AuthedContractingRoute
     }
     '/_authed/equipment/audit': {
@@ -1501,6 +1545,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/contracting/work-types/'
       preLoaderRoute: typeof AuthedContractingWorkTypesIndexRouteImport
       parentRoute: typeof AuthedContractingWorkTypesRoute
+    }
+    '/_authed/contracting/workshop/': {
+      id: '/_authed/contracting/workshop/'
+      path: '/'
+      fullPath: '/contracting/workshop/'
+      preLoaderRoute: typeof AuthedContractingWorkshopIndexRouteImport
+      parentRoute: typeof AuthedContractingWorkshopRoute
+    }
+    '/_authed/contracting/workshop/$id': {
+      id: '/_authed/contracting/workshop/$id'
+      path: '/$id'
+      fullPath: '/contracting/workshop/$id'
+      preLoaderRoute: typeof AuthedContractingWorkshopIdRouteImport
+      parentRoute: typeof AuthedContractingWorkshopRoute
     }
     '/_authed/equipment/customers/': {
       id: '/_authed/equipment/customers/'
@@ -1961,6 +2019,22 @@ const AuthedContractingWorkTypesRouteWithChildren =
     AuthedContractingWorkTypesRouteChildren,
   )
 
+interface AuthedContractingWorkshopRouteChildren {
+  AuthedContractingWorkshopIdRoute: typeof AuthedContractingWorkshopIdRoute
+  AuthedContractingWorkshopIndexRoute: typeof AuthedContractingWorkshopIndexRoute
+}
+
+const AuthedContractingWorkshopRouteChildren: AuthedContractingWorkshopRouteChildren =
+  {
+    AuthedContractingWorkshopIdRoute: AuthedContractingWorkshopIdRoute,
+    AuthedContractingWorkshopIndexRoute: AuthedContractingWorkshopIndexRoute,
+  }
+
+const AuthedContractingWorkshopRouteWithChildren =
+  AuthedContractingWorkshopRoute._addFileChildren(
+    AuthedContractingWorkshopRouteChildren,
+  )
+
 interface AuthedContractingRouteChildren {
   AuthedContractingAuditRoute: typeof AuthedContractingAuditRoute
   AuthedContractingCustomersRoute: typeof AuthedContractingCustomersRouteWithChildren
@@ -1971,6 +2045,7 @@ interface AuthedContractingRouteChildren {
   AuthedContractingRatesRoute: typeof AuthedContractingRatesRouteWithChildren
   AuthedContractingUsersRoute: typeof AuthedContractingUsersRoute
   AuthedContractingWorkTypesRoute: typeof AuthedContractingWorkTypesRouteWithChildren
+  AuthedContractingWorkshopRoute: typeof AuthedContractingWorkshopRouteWithChildren
   AuthedContractingIndexRoute: typeof AuthedContractingIndexRoute
   AuthedContractingReadingsExceptionsRoute: typeof AuthedContractingReadingsExceptionsRoute
 }
@@ -1986,6 +2061,7 @@ const AuthedContractingRouteChildren: AuthedContractingRouteChildren = {
   AuthedContractingRatesRoute: AuthedContractingRatesRouteWithChildren,
   AuthedContractingUsersRoute: AuthedContractingUsersRoute,
   AuthedContractingWorkTypesRoute: AuthedContractingWorkTypesRouteWithChildren,
+  AuthedContractingWorkshopRoute: AuthedContractingWorkshopRouteWithChildren,
   AuthedContractingIndexRoute: AuthedContractingIndexRoute,
   AuthedContractingReadingsExceptionsRoute:
     AuthedContractingReadingsExceptionsRoute,

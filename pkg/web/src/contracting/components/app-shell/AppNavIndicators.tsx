@@ -25,3 +25,21 @@ export const ReadingExceptionsNavIndicator: React.FC = () => {
     />
   ) : null;
 };
+
+// A Foreman reports from the field with nobody at the desk acting, so the dot asks again.
+const WORKSHOP_REFETCH_INTERVAL_MS = 60_000;
+
+export const WorkshopNavIndicator: React.FC = () => {
+  const trpc = useTRPC();
+  const breakdownAccess = useCan('contracting_breakdown:read');
+  const summaryQuery = useQuery({
+    ...trpc.contractingBreakdowns.queueSummary.queryOptions(),
+    enabled: breakdownAccess.can,
+    refetchInterval: WORKSHOP_REFETCH_INTERVAL_MS,
+  });
+  const count = summaryQuery.data?.codeRedUnsolved ?? 0;
+
+  return count > 0 ? (
+    <NavWarningDot label={`${formatNumber(count)} Code Red ${count === 1 ? 'Breakdown' : 'Breakdowns'} unsolved`} />
+  ) : null;
+};

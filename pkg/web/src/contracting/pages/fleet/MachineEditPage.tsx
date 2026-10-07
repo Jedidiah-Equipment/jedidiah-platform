@@ -1,5 +1,6 @@
 import type { Machine } from '@pkg/schema/contracting';
 import { useMutation, useQuery } from '@tanstack/react-query';
+import { useEffect } from 'react';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { QueryContent } from '@/components/common/QueryContent.js';
 import { AutosaveFormCard } from '@/components/form/AutosaveFormCard.js';
@@ -11,7 +12,9 @@ import { useQueryInvalidation } from '@/contracting/hooks/use-query-invalidation
 import { useCan } from '@/hooks/use-access.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { CategoryPickerField } from './CategoryFields.js';
+import { FleetHistoryCard } from './FleetHistoryCard.js';
 import { FleetRetirement } from './FleetRetirement.js';
+import { MachineServiceCard } from './MachineServiceCard.js';
 import { MachineFormValues, machineFormValues, machinePatchInput } from './types.js';
 
 export function MachineEditPage({ id }: { id: string }) {
@@ -54,6 +57,11 @@ function MachineForm({ machine }: { machine: Machine }) {
     toInput: (value) => machinePatchInput(machine.id, value),
     save: (value) => patch.mutateAsync(value),
   });
+  // Closing a Service Record sets Next Service Due behind the form's back; keep the next autosave from reverting it.
+  useEffect(() => {
+    const saved = machine.nextServiceDueHours ?? Number.NaN;
+    if (!Object.is(form.state.values.nextServiceDueHours, saved)) form.setFieldValue('nextServiceDueHours', saved);
+  }, [form, machine.nextServiceDueHours]);
   const driverOptions = (options.data?.drivers ?? []).map((row) => ({ label: row.name, value: row.id }));
   if (machine.currentDriverUserId && !driverOptions.some((row) => row.value === machine.currentDriverUserId))
     driverOptions.push({
@@ -109,6 +117,10 @@ function MachineForm({ machine }: { machine: Machine }) {
           <form.AppField name="notes">{(field) => <field.TextareaField label="Notes" />}</form.AppField>
         </EditFormFullWidth>
       </AutosaveFormCard>
+      <div className="mt-5 space-y-5">
+        <MachineServiceCard machine={machine} />
+        <FleetHistoryCard subject={{ machineId: machine.id }} />
+      </div>
       {canEdit ? (
         <FleetRetirement
           machine={{

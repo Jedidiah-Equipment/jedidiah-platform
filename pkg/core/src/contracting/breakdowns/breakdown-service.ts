@@ -3,6 +3,7 @@ import { type DatabaseTransaction, type Db, getSortOrder, user, withPagination }
 import {
   contractingBreakdownNotes,
   contractingBreakdowns,
+  contractingFarms,
   contractingImplements,
   contractingJobs,
   contractingMachineAssignments,
@@ -16,6 +17,7 @@ import {
   breakdownReadScope,
   breakdownSubjectKindLabels,
   deriveBreakdownActions,
+  formatJobNumber,
 } from '@pkg/domain/contracting';
 import { type AuthId, type ContractingRole, getNextCursor } from '@pkg/schema';
 import {
@@ -23,6 +25,7 @@ import {
   type BreakdownActionName,
   BreakdownAssignMechanicInput,
   BreakdownDetail,
+  BreakdownJobOption,
   type BreakdownListInput,
   type BreakdownListResult,
   BreakdownNote,
@@ -285,6 +288,7 @@ async function toDetail(db: DbOrTx, actor: BreakdownActor, row: LoadedBreakdown)
     : [];
   return BreakdownDetail.parse({
     ...toBreakdownSummary(row),
+    solvedByName: row.solvedByName,
     description: breakdown.description,
     latitude: breakdown.latitude,
     longitude: breakdown.longitude,
@@ -648,6 +652,37 @@ export async function listMechanics({ db }: { db: Db }) {
     .from(user)
     .where(and(eq(user.contractingRole, 'mechanic'), eq(user.isDevice, false)))
     .orderBy(asc(user.name));
+}
+
+/**
+ * The Jobs `resolveJob` would accept for this subject: open, with the subject planned or on site on it, and for
+ * someone who reads only their own Breakdowns, a Job they are Foreman of.
+ */
+export async function listBreakdownJobOptions({
+  db,
+  actor,
+  subject,
+}: {
+  db: Db;
+  actor: BreakdownActor;
+  subject: BreakdownSubjectRef;
+}): Promise<BreakdownJobOption[]> {
+  const rows = await db
+    .selectDistinct({ id: contractingJobs.id, code: contractingJobs.code, farmName: contractingFarms.name })
+    .from(contractingMachineAssignments)
+    .innerJoin(contractingJobs, eq(contractingJobs.id, contractingMachineAssignments.jobId))
+    .innerJoin(contractingFarms, eq(contractingFarms.id, contractingJobs.farmId))
+    .where(
+      and(
+        eq(subjectColumn(subject.kind), subject.id),
+        inArray(contractingJobs.status, [...openJobStatuses]),
+        breakdownReadScope(actor) === 'own' ? eq(contractingJobs.foremanUserId, actor.userId) : undefined,
+      ),
+    )
+    .orderBy(asc(contractingJobs.code));
+  return rows.map((row) =>
+    BreakdownJobOption.parse({ id: row.id, jobNumber: formatJobNumber(row.code), farmName: row.farmName }),
+  );
 }
 
 /** Unsolved Breakdowns on one Machine or Implement: the report screen's duplicate check, open to every reporter. */

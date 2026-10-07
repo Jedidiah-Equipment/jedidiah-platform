@@ -3,6 +3,8 @@ import { AuthId } from '../../auth/auth-id.js';
 import { DateIso } from '../../common/date.js';
 import { nullableTrimmedTextInput, nullableTrimmedTextInputOptional, requiredTrimmedText } from '../../common/text.js';
 import { UUID } from '../../common/uuid.js';
+import { ReadingValue } from '../readings/reading-value.js';
+import { serviceDueStatuses } from '../services/service-enums.js';
 import { categoryColours, categoryIconKeys, categoryKinds } from './category-enums.js';
 
 export const FleetCode = requiredTrimmedText('Code is required').transform((value) => value.toUpperCase());
@@ -98,6 +100,10 @@ export const Machine = MachineCreateInput.extend({
   ...retirement,
   ...categoryProjection,
   currentDriverName: z.string().nullable(),
+  /** The newest Hour Reading of any role, spot readings included. */
+  latestReadingHours: ReadingValue.nullable(),
+  hoursToService: z.number().nullable(),
+  serviceDueStatus: z.enum(serviceDueStatuses),
 });
 export type Machine = z.infer<typeof Machine>;
 
@@ -131,6 +137,9 @@ export const FieldMachine = Machine.pick({
   categoryColour: true,
   currentDriverUserId: true,
   currentDriverName: true,
+  latestReadingHours: true,
+  hoursToService: true,
+  serviceDueStatus: true,
 })
   .extend({ onSiteJobNumber: z.string().nullable() })
   .strip();

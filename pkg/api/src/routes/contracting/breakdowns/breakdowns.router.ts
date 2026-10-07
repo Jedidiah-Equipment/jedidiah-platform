@@ -2,6 +2,7 @@ import {
   addBreakdownNote,
   assignMechanic,
   getBreakdown,
+  listBreakdownJobOptions,
   listBreakdowns,
   listMechanics,
   listOpenBreakdownsOnSubject,
@@ -15,6 +16,7 @@ import {
   BreakdownAssignMechanicInput,
   BreakdownDetail,
   BreakdownIdInput,
+  BreakdownJobOption,
   BreakdownListInput,
   BreakdownListResult,
   BreakdownNote,
@@ -96,6 +98,10 @@ export const contractingBreakdownsRouter = router({
       ),
   }),
   options: router({
+    jobs: authorizedProcedure(writers)
+      .input(BreakdownSubjectRef)
+      .output(BreakdownJobOption.array())
+      .query(({ ctx, input }) => listBreakdownJobOptions({ db: ctx.db, actor: ctx.access, subject: input })),
     mechanics: authorizedProcedure('contracting_breakdown:update')
       .output(Mechanic.array())
       .query(({ ctx }) => listMechanics({ db: ctx.db })),

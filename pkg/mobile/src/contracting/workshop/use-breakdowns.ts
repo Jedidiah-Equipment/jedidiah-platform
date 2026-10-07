@@ -57,3 +57,18 @@ export function useMechanics() {
     useQuery(trpc.contractingBreakdowns.options.mechanics.queryOptions(undefined, { enabled: canAssign })),
   );
 }
+
+/** A Machine's unsolved Breakdowns, newest first, for the workshop's view of the Machine. */
+export function useMachineBreakdowns(machineId: string) {
+  const canRead = useSessionPermission('contracting_breakdown:read');
+  const trpc = useTRPC();
+  return fieldQuery(
+    canRead && !!machineId,
+    useQuery(
+      trpc.contractingBreakdowns.list.queryOptions(
+        { machineId, limit: 0, sortBy: 'reportedAt', sortDirection: 'desc' },
+        { enabled: canRead && !!machineId },
+      ),
+    ),
+  );
+}

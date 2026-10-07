@@ -38,11 +38,14 @@ export async function retireFleetEntry<TTable extends FleetEntryTable, TResult>(
   descriptor,
   noun,
   alsoSet,
+  assert,
   project,
 }: {
   db: Db;
   actorUserId: AuthId;
   input: FleetRetireInput;
+  /** A further refusal under the row lock, such as a Machine still in for a service. */
+  assert?: (tx: DatabaseTransaction, row: TTable['$inferSelect']) => Promise<void>;
   table: TTable;
   descriptor: AuditDescriptor<TTable['$inferSelect']>;
   noun: string;
@@ -63,7 +66,10 @@ export async function retireFleetEntry<TTable extends FleetEntryTable, TResult>(
     table,
     id,
     notFound: () => notFound(noun),
-    assert: (_tx, row) => assertNotRetired(row as FleetEntryRow),
+    assert: async (tx, row) => {
+      assertNotRetired(row as FleetEntryRow);
+      await assert?.(tx, row);
+    },
     set: () => ({ ...retirement, ...alsoSet }),
     project,
   });

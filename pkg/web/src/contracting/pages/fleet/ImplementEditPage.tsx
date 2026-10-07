@@ -11,6 +11,7 @@ import { useQueryInvalidation } from '@/contracting/hooks/use-query-invalidation
 import { useCan } from '@/hooks/use-access.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { CategoryPickerField } from './CategoryFields.js';
+import { FleetHistoryCard } from './FleetHistoryCard.js';
 import { FleetRetirement } from './FleetRetirement.js';
 import { ImplementFormValues, implementFormValues, implementPatchInput } from './types.js';
 
@@ -72,6 +73,9 @@ function ImplementForm({ implement }: { implement: Implement }) {
           <form.AppField name="notes">{(field) => <field.TextareaField label="Notes" />}</form.AppField>
         </EditFormFullWidth>
       </AutosaveFormCard>
+      <div className="mt-5">
+        <FleetHistoryCard subject={{ implementId: implement.id }} />
+      </div>
       {canEdit ? (
         <FleetRetirement
           id={implement.id}

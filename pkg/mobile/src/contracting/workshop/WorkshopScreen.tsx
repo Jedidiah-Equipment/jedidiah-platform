@@ -103,7 +103,7 @@ export default function WorkshopScreen() {
   );
 }
 
-function BreakdownRow({ breakdown }: { breakdown: BreakdownSummary }) {
+export function BreakdownRow({ breakdown }: { breakdown: BreakdownSummary }) {
   const { subject } = breakdown;
   return (
     <Pressable

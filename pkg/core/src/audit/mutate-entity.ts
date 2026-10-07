@@ -43,6 +43,7 @@ export async function mutateEntity<TTable extends PgTable & { id: PgColumn }, TR
   notFound,
   project,
   set,
+  summary,
   table,
 }: {
   /** Null records the write as the System's. */
@@ -67,6 +68,8 @@ export async function mutateEntity<TTable extends PgTable & { id: PgColumn }, TR
    * because `parts` has no timestamp columns at all.
    */
   set: (before: TTable['$inferSelect']) => Partial<TTable['$inferInsert']>;
+  /** Replaces the generated "Updated …" line when the write has a cause worth naming. */
+  summary?: string;
   table: TTable;
 }): Promise<TResult> {
   return db.transaction(async (tx) => {
@@ -100,7 +103,14 @@ export async function mutateEntity<TTable extends PgTable & { id: PgColumn }, TR
       throw notFound();
     }
 
-    await recordAuditUpdate({ db: tx, descriptor, actorUserId, after: row, changes });
+    await recordAuditUpdate({
+      db: tx,
+      descriptor,
+      actorUserId,
+      after: row,
+      changes,
+      ...(summary === undefined ? {} : { summary }),
+    });
 
     return project(tx, row);
   });

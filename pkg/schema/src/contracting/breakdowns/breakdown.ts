@@ -155,6 +155,7 @@ export const BreakdownDetail = BreakdownSummary.extend({
   longitude: Longitude.nullable(),
   photos: BreakdownPhoto.array(),
   closeOutNote: CloseOutNote.nullable(),
+  solvedByName: z.string().nullable(),
   notes: BreakdownNote.array(),
   dispatchHints: BreakdownDispatchHint.array(),
   actions: BreakdownActions,
@@ -182,3 +183,6 @@ export const BreakdownQueueSummary = z.object({
 export type BreakdownQueueSummary = z.infer<typeof BreakdownQueueSummary>;
 export const Mechanic = z.object({ id: AuthId, name: z.string() });
 export type Mechanic = z.infer<typeof Mechanic>;
+/** An open Job a Breakdown's subject is planned or on site on: what its Job may be changed to. */
+export const BreakdownJobOption = z.object({ id: UUID, jobNumber: z.string(), farmName: z.string() });
+export type BreakdownJobOption = z.infer<typeof BreakdownJobOption>;

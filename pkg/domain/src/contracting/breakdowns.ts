@@ -2,6 +2,7 @@ import type { AuthId, UserAccessSummary } from '@pkg/schema';
 import type { BreakdownStatus, BreakdownSubjectKind, BreakdownUrgency } from '@pkg/schema/contracting';
 import { hasPermission } from '../auth/authorization.js';
 import { type BadgeColorClassNames, statusBadgeColorClassNames } from '../theme/status-badge.js';
+import { round1 } from './hours.js';
 import { READING_PHOTO_POLICY } from './reading-photo-policy.js';
 
 export const breakdownSubjectKindLabels: Record<BreakdownSubjectKind, string> = {
@@ -62,3 +63,9 @@ export const breakdownPhotoPath = (breakdownId: string, photoId: string) =>
 
 /** Breakdown photos follow the meter-photo limits: JPEG or PNG, at most 10 MB each. */
 export const BREAKDOWN_PHOTO_POLICY = READING_PHOTO_POLICY;
+
+/** Hours from report to Solved, the span a solved Breakdown shows as "Report to Solved"; null while unsolved. */
+export function reportToSolvedHours({ reportedAt, solvedAt }: { reportedAt: string; solvedAt: string | null }) {
+  if (solvedAt === null) return null;
+  return round1(Math.max(0, Date.parse(solvedAt) - Date.parse(reportedAt)) / 3_600_000);
+}

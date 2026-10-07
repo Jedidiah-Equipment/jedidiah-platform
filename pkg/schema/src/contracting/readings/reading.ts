@@ -4,8 +4,9 @@ import { DateIso } from '../../common/date.js';
 import { UUID } from '../../common/uuid.js';
 import { CategoryColour, CategoryIconKey } from '../fleet/fleet.js';
 import { readingExceptionTypes, readingMethods, readingRoles, readingVerifications } from './reading-enums.js';
+import { ReadingValue } from './reading-value.js';
 
-export const ReadingValue = z.number().nonnegative().max(999999999.9).multipleOf(0.1);
+export { ReadingValue };
 export const ReadingReason = z.string().trim().min(1, 'A reason is required').max(2000);
 export const ReadingComment = z.string().trim().min(1).max(2000);
 export const StintOverrides = z

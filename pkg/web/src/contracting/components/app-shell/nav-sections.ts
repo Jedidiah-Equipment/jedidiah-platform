@@ -7,6 +7,7 @@ import {
   IconGauge,
   IconReceipt,
   IconRuler2,
+  IconTool,
   IconTools,
   IconTractor,
   IconUsers,
@@ -14,7 +15,7 @@ import {
 import { linkOptions } from '@tanstack/react-router';
 
 import type { NavSection } from '@/components/app-shell/NavSections.js';
-import { ReadingExceptionsNavIndicator } from './AppNavIndicators.js';
+import { ReadingExceptionsNavIndicator, WorkshopNavIndicator } from './AppNavIndicators.js';
 
 const isCategoriesPath = (pathname: string) => pathname.startsWith('/contracting/fleet/categories');
 
@@ -23,6 +24,8 @@ export const isFleetNavPath = (pathname: string) =>
   pathname.startsWith('/contracting/fleet') && !isCategoriesPath(pathname);
 
 export const isImplementsNavPath = (pathname: string) => pathname.startsWith('/contracting/fleet/implements');
+
+export const isWorkshopNavPath = (pathname: string) => pathname.startsWith('/contracting/workshop');
 
 export const isMachinesNavPath = (pathname: string) => isFleetNavPath(pathname) && !isImplementsNavPath(pathname);
 
@@ -66,6 +69,14 @@ export const contractingNavSections = [
             isActive: isImplementsNavPath,
           },
         ],
+      },
+      {
+        title: 'Workshop',
+        permission: 'contracting_breakdown:read',
+        link: linkOptions({ to: '/contracting/workshop' }),
+        icon: IconTool,
+        isActive: isWorkshopNavPath,
+        indicator: WorkshopNavIndicator,
       },
       {
         title: 'Reading exceptions',

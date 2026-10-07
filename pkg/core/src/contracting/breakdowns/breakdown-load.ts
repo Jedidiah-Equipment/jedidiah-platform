@@ -16,6 +16,7 @@ import { BreakdownError } from './breakdown-errors.js';
 
 const reporter = alias(user, 'breakdown_reporter');
 const mechanic = alias(user, 'breakdown_mechanic');
+const solver = alias(user, 'breakdown_solver');
 
 const noteCount = sql<number>`(
   select count(*)::integer
@@ -45,6 +46,7 @@ const breakdownHeader = {
   farmName: contractingFarms.name,
   reporterName: reporter.name,
   mechanicName: mechanic.name,
+  solvedByName: solver.name,
   noteCount,
   sameJobOpenCount,
 };
@@ -67,6 +69,7 @@ export function selectBreakdowns(db: DbOrTx) {
     .leftJoin(contractingFarms, eq(contractingFarms.id, contractingJobs.farmId))
     .innerJoin(reporter, eq(reporter.id, contractingBreakdowns.reportedByUserId))
     .leftJoin(mechanic, eq(mechanic.id, contractingBreakdowns.primaryMechanicUserId))
+    .leftJoin(solver, eq(solver.id, contractingBreakdowns.solvedByUserId))
     .$dynamic();
 }
 export type LoadedBreakdown = Awaited<ReturnType<typeof selectBreakdowns>>[number];

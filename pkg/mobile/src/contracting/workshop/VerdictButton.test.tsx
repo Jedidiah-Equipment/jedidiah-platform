@@ -5,6 +5,7 @@ import { expect, test, vi } from 'vitest';
 vi.mock('react-native', () => ({ View: 'View' }));
 vi.mock('@/components/ui/button', () => ({ Button: 'Button' }));
 vi.mock('@/components/ui/text', () => ({ Text: 'Text' }));
+vi.mock('@/contracting/components/CaptureButton', () => ({ CaptureButton: 'CaptureButton' }));
 
 import { VerdictButton, VerdictGroup } from './VerdictButton';
 

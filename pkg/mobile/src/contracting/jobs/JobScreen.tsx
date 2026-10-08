@@ -1,7 +1,7 @@
 import { formatHours } from '@pkg/domain';
 import { assignmentStateColorClassNames, canOpenJobCards, hasJobCard, judgeJobAction } from '@pkg/domain/contracting';
 import type { AssignmentState, BreakdownSubjectKind, FieldStint, JobCardVariant } from '@pkg/schema/contracting';
-import { IconPlayerPlay, IconPlayerStop, IconPlus, type Icon as TablerIcon } from '@tabler/icons-react-native';
+import { IconPlayerPlay, IconPlayerStop, IconPlus } from '@tabler/icons-react-native';
 import { type Href, router, useLocalSearchParams } from 'expo-router';
 import { Pressable, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -11,6 +11,8 @@ import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/icon';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { Text } from '@/components/ui/text';
+import { BreakdownIcon } from '@/contracting/components/BreakdownSubjectIcons';
+import { CaptureButton } from '@/contracting/components/CaptureButton';
 import { CategoryIcon } from '@/contracting/components/CategoryIcon';
 import { jobCardShareAction } from '@/contracting/lib/job-card';
 import { useSessionAccessSummary, useSessionPermission } from '@/lib/auth-session';
@@ -210,35 +212,17 @@ function StintCard({
       ) : null}
       {stint.state === 'left' && canAdd ? <Button title="Re-add machine" onPress={onReadd} /> : null}
       {canReport ? (
-        <View className="flex-row gap-2">
-          <View className="flex-1">
-            <Button title="Report a problem" onPress={() => onReport('machine', stint.machineId)} />
-          </View>
+        <View className="gap-2">
+          <Button icon={BreakdownIcon} title="Report a problem" onPress={() => onReport('machine', stint.machineId)} />
           {stint.implementId && stint.implementCode ? (
-            <View className="flex-1">
-              <Button
-                title={`Report a problem with ${stint.implementCode}`}
-                onPress={() => onReport('implement', stint.implementId ?? '')}
-              />
-            </View>
+            <Button
+              icon={BreakdownIcon}
+              title={`Report a problem with ${stint.implementCode}`}
+              onPress={() => onReport('implement', stint.implementId ?? '')}
+            />
           ) : null}
         </View>
       ) : null}
     </View>
-  );
-}
-
-function CaptureButton({ icon, label, onPress }: { icon: TablerIcon; label: string; onPress: () => void }) {
-  return (
-    <Pressable
-      accessibilityRole="button"
-      className="flex-row items-center justify-center gap-2 rounded-lg border border-border bg-muted px-3 py-3 active:bg-surface"
-      onPress={onPress}
-    >
-      <Icon className="text-primary" icon={icon} size={16} />
-      <Text className="text-sm text-foreground" weight="semibold">
-        {label}
-      </Text>
-    </Pressable>
   );
 }

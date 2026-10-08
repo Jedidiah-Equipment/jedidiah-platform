@@ -7,7 +7,6 @@ import { toast } from 'sonner';
 import { ImageSelectionControl } from '@/components/attachments/ImageSelectionControl.js';
 import { Field, FieldDescription, FieldLabel } from '@/components/ui/field.js';
 import { FieldUsageLabel, PRODUCT_RANGE_FIELD_USAGE } from '@/equipment/components/catalog/index.js';
-import { useCredentialedImagePreviewState } from '@/equipment/hooks/use-credentialed-image-preview.js';
 import { useQueryInvalidation } from '@/equipment/hooks/use-query-invalidation.js';
 import {
   fetchProductRangeLogoBlob,
@@ -15,6 +14,7 @@ import {
   validateSelectedRangeLogo,
 } from '@/equipment/utils/range-logo.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
+import { useCredentialedImagePreviewState } from '@/hooks/use-credentialed-image-preview.js';
 import { getApiQueryErrorMessage } from '@/lib/api-errors.js';
 
 type RangeLogoUploadProps = {

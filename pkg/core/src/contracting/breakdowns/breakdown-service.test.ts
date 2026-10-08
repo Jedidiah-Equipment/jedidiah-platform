@@ -1,5 +1,6 @@
 import { auditEvents, user } from '@pkg/db';
 import { accessForRole } from '@pkg/domain/testing';
+import { BreakdownListInput } from '@pkg/schema/contracting';
 import { and, asc, eq } from 'drizzle-orm';
 import { expect } from 'vitest';
 import { InMemoryStorageAdapter } from '../../storage/in-memory-storage-adapter.js';
@@ -243,11 +244,5 @@ test('the report and each transition are audited; notes append without an audit 
 });
 
 function listInput() {
-  return {
-    cursor: 0,
-    limit: 25,
-    statuses: ['open' as const, 'in-progress' as const],
-    sortBy: 'reportedAt' as const,
-    sortDirection: 'desc' as const,
-  };
+  return BreakdownListInput.parse({});
 }

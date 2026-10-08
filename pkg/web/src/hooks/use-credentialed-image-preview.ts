@@ -1,8 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 
-// Fetches an entity image as a credentialed blob and exposes a temporary object URL for preview. Shared by
-// every entity that stores images in private object storage (brochure slots, Product Range image). Key the
+// Fetches an image as a credentialed blob and exposes a temporary object URL for preview. Shared by
+// every image kept in private object storage (brochure slots, Product Range image, Breakdown photos). Key the
 // query by the image's `updatedAt` so a replace busts the cache and the superseded object URL is revoked.
 export function useCredentialedImagePreviewState({
   enabled,

@@ -1,13 +1,6 @@
-import {
-  breakdownStatusColorClassNames,
-  breakdownStatusLabels,
-  breakdownSubjectKindLabels,
-  breakdownUrgencyColorClassNames,
-  breakdownUrgencyLabels,
-  fieldJobAccessMode,
-} from '@pkg/domain/contracting';
+import { breakdownSubjectKindLabels, fieldJobAccessMode, presentAction } from '@pkg/domain/contracting';
 import { BreakdownDescription, type BreakdownDetail } from '@pkg/schema/contracting';
-import { IconMapPin } from '@tabler/icons-react-native';
+import { IconMapPin, IconPencil } from '@tabler/icons-react-native';
 import { type Href, router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { Linking, Pressable, ScrollView, View } from 'react-native';
@@ -16,10 +9,9 @@ import { DateText } from '@/components/DateText';
 import { SECONDARY_PAGE_CONTENT_STYLE } from '@/components/page-frame';
 import { SecondaryToolbar } from '@/components/TopToolbar';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
-import { StatusBadge } from '@/components/ui/status-badge';
+import { Card, CardIconAction } from '@/components/ui/card';
 import { Text } from '@/components/ui/text';
-import { CategoryIcon } from '@/contracting/components/CategoryIcon';
+import { BreakdownStatusBadge, BreakdownSubjectIcons } from '@/contracting/components/BreakdownSubjectIcons';
 import { useVoiceSession } from '@/contracting/voice/use-voice-session';
 import { VoiceTextArea } from '@/contracting/voice/VoiceTextArea';
 import { useSessionAccessSummary } from '@/lib/auth-session';
@@ -28,7 +20,6 @@ import { BreakdownNotesCard } from './BreakdownNotesCard';
 import { BreakdownPhotosCard } from './BreakdownPhotosCard';
 import { BreakdownWorkshopCard } from './BreakdownWorkshopCard';
 import { BREAKDOWN_SAVE_FAILED, useBreakdown, useBreakdownMutation } from './use-breakdowns';
-import { VerdictButton } from './VerdictButton';
 
 export default function BreakdownScreen() {
   const { breakdownId } = useLocalSearchParams<{ breakdownId: string }>();
@@ -38,7 +29,7 @@ export default function BreakdownScreen() {
     <SafeAreaView className="flex-1 bg-background" edges={['top', 'left', 'right']}>
       <SecondaryToolbar
         title={breakdown?.subject.code ?? 'Breakdown'}
-        subtitle={breakdown ? breakdownUrgencyLabels[breakdown.urgency] : 'CONTRACTING'}
+        subtitle={breakdown ? breakdown.subject.categoryName : 'CONTRACTING'}
         parentLabel="Workshop"
         onBack={() => router.navigate('/contracting/workshop' as Href)}
         helpTopic="contractingMobileBreakdown"
@@ -69,10 +60,11 @@ function BreakdownSections({ breakdown }: { breakdown: BreakdownDetail }) {
   return (
     <>
       <HeaderCard breakdown={breakdown} />
-      {breakdown.dispatchHints.length ? <DispatchHints breakdown={breakdown} /> : null}
+      <BreakdownWorkshopCard breakdown={breakdown} />
       <DescriptionCard breakdown={breakdown} />
       <BreakdownPhotosCard breakdown={breakdown} />
-      <BreakdownWorkshopCard breakdown={breakdown} />
+      {breakdown.dispatchHints.length ? <DispatchHints breakdown={breakdown} /> : null}
+      <LocationCard breakdown={breakdown} />
       <BreakdownNotesCard breakdown={breakdown} />
     </>
   );
@@ -83,21 +75,11 @@ function HeaderCard({ breakdown }: { breakdown: BreakdownDetail }) {
   const jobMode = fieldJobAccessMode(access);
   // A Foreman opens only Jobs he is Foreman of; this Breakdown may be his report on someone else's.
   const canOpenJob = jobMode === 'all' || (jobMode === 'own' && breakdown.jobForemanUserId === access?.userId);
-  const { subject, latitude, longitude } = breakdown;
+  const { subject } = breakdown;
   return (
     <Card>
-      <View className="flex-row flex-wrap gap-1">
-        <StatusBadge
-          classNames={breakdownUrgencyColorClassNames[breakdown.urgency]}
-          label={breakdownUrgencyLabels[breakdown.urgency]}
-        />
-        <StatusBadge
-          classNames={breakdownStatusColorClassNames[breakdown.status]}
-          label={breakdownStatusLabels[breakdown.status]}
-        />
-      </View>
       <View className="flex-row items-center gap-3">
-        <CategoryIcon icon={subject.categoryIcon} colour={subject.categoryColour} size={24} />
+        <BreakdownSubjectIcons urgency={breakdown.urgency} subject={subject} size={24} />
         <View className="min-w-0 flex-1">
           <Text className="text-lg text-foreground" weight="bold">
             {subject.code}
@@ -105,6 +87,9 @@ function HeaderCard({ breakdown }: { breakdown: BreakdownDetail }) {
           <Text className="text-sm text-muted-foreground">
             {breakdownSubjectKindLabels[subject.kind]} · {subject.categoryName}
           </Text>
+        </View>
+        <View className="self-start">
+          <BreakdownStatusBadge status={breakdown.status} />
         </View>
       </View>
       {breakdown.jobId && breakdown.jobNumber ? (
@@ -125,13 +110,21 @@ function HeaderCard({ breakdown }: { breakdown: BreakdownDetail }) {
         Reported <DateText className="text-sm text-muted-foreground" date={breakdown.reportedAt} format="medium" /> by{' '}
         {breakdown.reporterName}
       </Text>
-      {latitude !== null && longitude !== null ? (
-        <Button
-          title="Open in Maps"
-          icon={IconMapPin}
-          onPress={() => void Linking.openURL(`https://maps.google.com/?q=${latitude},${longitude}`)}
-        />
-      ) : null}
+    </Card>
+  );
+}
+
+/** Where the phone was when the Breakdown was reported; absent when no position was attached. */
+function LocationCard({ breakdown }: { breakdown: BreakdownDetail }) {
+  const { latitude, longitude } = breakdown;
+  if (latitude === null || longitude === null) return null;
+  return (
+    <Card title="Location">
+      <Button
+        title="Open in Maps"
+        icon={IconMapPin}
+        onPress={() => void Linking.openURL(`https://maps.google.com/?q=${latitude},${longitude}`)}
+      />
     </Card>
   );
 }
@@ -148,10 +141,11 @@ function DispatchHints({ breakdown }: { breakdown: BreakdownDetail }) {
             router.push({ pathname: '/contracting/workshop/[breakdownId]', params: { breakdownId: hint.breakdownId } })
           }
         >
-          <CategoryIcon icon={hint.subject.categoryIcon} colour={hint.subject.categoryColour} size={16} />
+          <BreakdownSubjectIcons urgency={hint.urgency} subject={hint.subject} size={16} />
           <Text className="min-w-0 flex-1 text-sm text-foreground" numberOfLines={1}>
-            {hint.subject.code} · {breakdownUrgencyLabels[hint.urgency]} · {hint.firstLine}
+            {hint.subject.code} · {hint.firstLine}
           </Text>
+          <BreakdownStatusBadge status={hint.status} />
         </Pressable>
       ))}
     </Card>
@@ -176,17 +170,19 @@ function DescriptionCard({ breakdown }: { breakdown: BreakdownDetail }) {
       setDraft(null);
     }, BREAKDOWN_SAVE_FAILED);
   };
+  // Only an edit the reporter may make now earns the pencil; a refused one shows nothing, to keep the card short.
+  const canEdit = presentAction(breakdown.actions.editReport)?.disabled === false;
   return (
-    <Card title="Description">
+    <Card
+      title="Description"
+      action={
+        canEdit && draft === null ? (
+          <CardIconAction icon={IconPencil} label="Edit description" onPress={() => setDraft(breakdown.description)} />
+        ) : null
+      }
+    >
       {draft === null ? (
-        <>
-          <Text className="text-foreground">{breakdown.description}</Text>
-          <VerdictButton
-            verdict={breakdown.actions.editReport}
-            title="Edit"
-            onPress={() => setDraft(breakdown.description)}
-          />
-        </>
+        <Text className="text-foreground">{breakdown.description}</Text>
       ) : (
         <>
           <VoiceTextArea accessibilityLabel="What's wrong" editable={!busy} rows={5} voice={voice} />

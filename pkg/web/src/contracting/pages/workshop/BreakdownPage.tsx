@@ -1,10 +1,5 @@
 import { formatDate } from '@pkg/domain';
-import {
-  breakdownStatusColorClassNames,
-  breakdownStatusLabels,
-  breakdownUrgencyColorClassNames,
-  breakdownUrgencyLabels,
-} from '@pkg/domain/contracting';
+import { breakdownUrgencyColorClassNames, breakdownUrgencyLabels } from '@pkg/domain/contracting';
 import { BreakdownDescription, type BreakdownDetail, breakdownUrgencies } from '@pkg/schema/contracting';
 import { IconExternalLink } from '@tabler/icons-react';
 import { useMutation, useQuery } from '@tanstack/react-query';
@@ -15,8 +10,7 @@ import { QueryContent } from '@/components/common/QueryContent.js';
 import { AutosaveFormCard } from '@/components/form/AutosaveFormCard.js';
 import { useAutosaveForm } from '@/components/form/index.js';
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
-import { Badge } from '@/components/ui/badge.js';
-import { CategoryLabel } from '@/contracting/components/CategoryIcon.js';
+import { BreakdownStatusBadge, BreakdownSubjectLabel } from '@/contracting/components/BreakdownSubjectLabel.js';
 import { useQueryInvalidation } from '@/contracting/hooks/use-query-invalidation.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { cn } from '@/lib/utils.js';
@@ -35,15 +29,13 @@ export function BreakdownPage({ id }: { id: string }) {
     trpc.contractingBreakdowns.get.queryOptions({ id }, { refetchInterval: BREAKDOWN_REFETCH_INTERVAL_MS }),
   );
   const breakdown = query.data;
-  const urgencyColours = breakdown ? breakdownUrgencyColorClassNames[breakdown.urgency] : null;
-  const statusColours = breakdown ? breakdownStatusColorClassNames[breakdown.status] : null;
   return (
     <PageLayout
       title={
         breakdown ? (
-          <CategoryLabel
-            icon={breakdown.subject.categoryIcon}
-            colour={breakdown.subject.categoryColour}
+          <BreakdownSubjectLabel
+            urgency={breakdown.urgency}
+            subject={breakdown.subject}
             name={breakdown.subject.code}
             size={24}
           />
@@ -52,23 +44,10 @@ export function BreakdownPage({ id }: { id: string }) {
         )
       }
       description={
-        breakdown
-          ? `${breakdownUrgencyLabels[breakdown.urgency]} · reported ${formatDate(breakdown.reportedAt, 'medium')} by ${breakdown.reporterName}`
-          : undefined
+        breakdown ? `Reported ${formatDate(breakdown.reportedAt, 'medium')} by ${breakdown.reporterName}` : undefined
       }
       size="md"
-      actions={
-        breakdown && urgencyColours && statusColours ? (
-          <div className="flex items-center gap-2">
-            <Badge className={cn(urgencyColours.chip, urgencyColours.text)} variant="outline">
-              {breakdownUrgencyLabels[breakdown.urgency]}
-            </Badge>
-            <Badge className={cn(statusColours.chip, statusColours.text)} variant="outline">
-              {breakdownStatusLabels[breakdown.status]}
-            </Badge>
-          </div>
-        ) : null
-      }
+      actions={breakdown ? <BreakdownStatusBadge status={breakdown.status} /> : null}
     >
       <QueryContent errorMessage="Unable to load the Breakdown." query={query}>
         {(detail) => {
@@ -135,7 +114,15 @@ function ReportCard({ breakdown, sheet }: { breakdown: BreakdownDetail; sheet: B
               disabled={!editable}
               options={breakdownUrgencies.map((urgency) => ({
                 value: urgency,
-                label: breakdownUrgencyLabels[urgency],
+                label: (
+                  <span className="flex items-center gap-2">
+                    <span
+                      aria-hidden="true"
+                      className={cn('size-2 rounded-full', breakdownUrgencyColorClassNames[urgency].dot)}
+                    />
+                    {breakdownUrgencyLabels[urgency]}
+                  </span>
+                ),
               }))}
               onValueCommit={autosave.commit}
             />

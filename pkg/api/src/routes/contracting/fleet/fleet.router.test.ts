@@ -49,12 +49,12 @@ test('carries no rate, filters categories by kind and suggests implement codes f
     name: 'Tractors',
     kind: 'machine',
     icon: 'tractor',
-    colour: 'green',
+    colour: 'lime',
   });
-  expect(category).toMatchObject({ icon: 'tractor', colour: 'green' });
+  expect(category).toMatchObject({ icon: 'tractor', colour: 'lime' });
   expect(category).not.toHaveProperty('presetRate');
   const trailers = await manager.categories.create({ name: 'Gravel trailer', kind: 'implement' });
-  expect(trailers).toMatchObject({ icon: 'generic-implement', colour: 'gray' });
+  expect(trailers).toMatchObject({ icon: 'generic-implement', colour: 'indigo' });
   expect((await workshop.categories.list({ kind: 'implement' })).map((row) => row.id)).toEqual([trailers.id]);
   expect((await workshop.categories.list()).length).toBe(2);
   expect(await manager.implements.suggestCode({ categoryId: trailers.id })).toEqual({ code: 'GRAVEL-TRAILER-1' });

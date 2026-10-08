@@ -48,7 +48,7 @@ async function mount(serviceIntervalHours: number | null) {
   const machine = {
     code: 'JD6140M-2',
     categoryIcon: 'tractor',
-    categoryColour: 'green',
+    categoryColour: 'lime',
     serviceIntervalHours,
   } as const;
   await act(async () =>

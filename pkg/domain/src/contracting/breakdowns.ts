@@ -1,5 +1,11 @@
 import type { AuthId, UserAccessSummary } from '@pkg/schema';
-import type { BreakdownStatus, BreakdownSubjectKind, BreakdownUrgency } from '@pkg/schema/contracting';
+import {
+  type BreakdownStatus,
+  type BreakdownStatusCounts,
+  type BreakdownSubjectKind,
+  type BreakdownUrgency,
+  breakdownStatuses,
+} from '@pkg/schema/contracting';
 import { hasPermission } from '../auth/authorization.js';
 import { type BadgeColorClassNames, statusBadgeColorClassNames } from '../theme/status-badge.js';
 import { round1 } from './hours.js';
@@ -13,20 +19,29 @@ export const breakdownUrgencyLabels: Record<BreakdownUrgency, string> = {
   'code-red': 'Code Red',
   'code-green': 'Code Green',
 };
-export const breakdownUrgencyColorClassNames: Record<BreakdownUrgency, BadgeColorClassNames> = {
-  'code-red': statusBadgeColorClassNames.red,
-  'code-green': statusBadgeColorClassNames.green,
-};
+/** Urgency shows as a flag icon on its chip tint, the same on web and mobile; `icon` paints the flag. */
+export const breakdownUrgencyColorClassNames = {
+  'code-red': { ...statusBadgeColorClassNames.red, icon: 'text-red-500' },
+  'code-green': { ...statusBadgeColorClassNames.green, icon: 'text-emerald-500' },
+} satisfies Record<BreakdownUrgency, BadgeColorClassNames & { icon: string }>;
+/** What the screens call each status: the plain words the workshop uses, while the codes stay open / in-progress / solved. */
 export const breakdownStatusLabels: Record<BreakdownStatus, string> = {
-  open: 'Open',
-  'in-progress': 'In Progress',
-  solved: 'Solved',
+  open: 'Not fixed',
+  'in-progress': 'Fixing',
+  solved: 'Fixed',
 };
-export const breakdownStatusColorClassNames: Record<BreakdownStatus, BadgeColorClassNames> = {
-  open: statusBadgeColorClassNames.orange,
+/** The Equipment Job palette: waiting is green, under way is blue, done is grey. */
+export const breakdownStatusColorClassNames = {
+  open: statusBadgeColorClassNames.green,
   'in-progress': statusBadgeColorClassNames.blue,
-  solved: statusBadgeColorClassNames.green,
-};
+  solved: statusBadgeColorClassNames.gray,
+} satisfies Record<BreakdownStatus, BadgeColorClassNames & { dot: string }>;
+
+/** How many Breakdowns the status counts hold across these statuses. */
+export const breakdownStatusesCount = (
+  counts: BreakdownStatusCounts | undefined,
+  statuses: readonly BreakdownStatus[] = breakdownStatuses,
+) => statuses.reduce((total, status) => total + (counts?.[status] ?? 0), 0);
 
 /** Every Breakdown for `read`; for a `report` holder only, the ones that are theirs. */
 export function breakdownReadScope(access: UserAccessSummary | null | undefined): 'all' | 'own' | null {
@@ -64,7 +79,7 @@ export const breakdownPhotoPath = (breakdownId: string, photoId: string) =>
 /** Breakdown photos follow the meter-photo limits: JPEG or PNG, at most 10 MB each. */
 export const BREAKDOWN_PHOTO_POLICY = READING_PHOTO_POLICY;
 
-/** Hours from report to Solved, the span a solved Breakdown shows as "Report to Solved"; null while unsolved. */
+/** Hours from report to Fixed, the span a solved Breakdown shows as "Report to Fixed"; null while unsolved. */
 export function reportToSolvedHours({ reportedAt, solvedAt }: { reportedAt: string; solvedAt: string | null }) {
   if (solvedAt === null) return null;
   return round1(Math.max(0, Date.parse(solvedAt) - Date.parse(reportedAt)) / 3_600_000);

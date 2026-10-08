@@ -2,6 +2,7 @@ import {
   addBreakdownNote,
   assignMechanic,
   getBreakdown,
+  listBreakdownFilterOptions,
   listBreakdownJobOptions,
   listBreakdowns,
   listMechanics,
@@ -15,6 +16,7 @@ import {
 import {
   BreakdownAssignMechanicInput,
   BreakdownDetail,
+  BreakdownFilterOptions,
   BreakdownIdInput,
   BreakdownJobOption,
   BreakdownListInput,
@@ -102,6 +104,11 @@ export const contractingBreakdownsRouter = router({
       .input(BreakdownSubjectRef)
       .output(BreakdownJobOption.array())
       .query(({ ctx, input }) => listBreakdownJobOptions({ db: ctx.db, actor: ctx.access, subject: input })),
+    filters: authorizedProcedure('contracting_breakdown:read')
+      .output(BreakdownFilterOptions)
+      .query(({ ctx }) =>
+        mapCoreErrors(() => listBreakdownFilterOptions({ db: ctx.db, actor: ctx.access }), breakdownErrorFamily),
+      ),
     mechanics: authorizedProcedure('contracting_breakdown:update')
       .output(Mechanic.array())
       .query(({ ctx }) => listMechanics({ db: ctx.db })),

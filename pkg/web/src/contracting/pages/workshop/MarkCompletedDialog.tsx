@@ -6,7 +6,7 @@ import { useContractingWrite, useResetOnOpen } from '@/contracting/hooks/use-con
 import { useQueryInvalidation } from '@/contracting/hooks/use-query-invalidation.js';
 import { useTRPC } from '@/lib/trpc.js';
 
-export function MarkSolvedDialog({
+export function MarkCompletedDialog({
   breakdownId,
   open,
   onOpenChange,
@@ -21,7 +21,7 @@ export function MarkSolvedDialog({
     trpc.contractingBreakdowns.solve.mutationOptions({
       onSuccess: async () => {
         await write.invalidate();
-        toast.success('Breakdown solved');
+        toast.success('Breakdown completed');
       },
       onError: write.report,
     }),
@@ -31,14 +31,14 @@ export function MarkSolvedDialog({
     <ReasonDialog
       open={open}
       onOpenChange={onOpenChange}
-      title="Mark Breakdown solved"
-      description="Say what was wrong and what fixed it. Nothing on the Breakdown can change once it is Solved."
+      title="Mark Breakdown completed"
+      description="Say what was wrong and what fixed it. Nothing on the Breakdown can change once it is Fixed."
       label="Close-out note"
-      submitLabel="Mark solved"
+      submitLabel="Mark completed"
       schema={CloseOutNote}
       submit={(closeOutNote) => solve.mutateAsync({ id: breakdownId, closeOutNote })}
       error={solve.error}
-      fallbackMessage="Unable to mark the Breakdown solved."
+      fallbackMessage="Unable to mark the Breakdown completed."
     />
   );
 }

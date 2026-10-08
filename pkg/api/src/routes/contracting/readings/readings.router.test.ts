@@ -67,7 +67,7 @@ test('foremen can find active Machines and read field history without fleet mana
       categoryId: category.id,
       categoryName: 'Tractors',
       categoryIcon: 'generic-machine',
-      categoryColour: 'gray',
+      categoryColour: 'indigo',
       currentDriverUserId: null,
       currentDriverName: null,
       latestReadingHours: 100,

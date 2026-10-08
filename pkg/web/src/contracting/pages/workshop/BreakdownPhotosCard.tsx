@@ -1,10 +1,10 @@
 import { formatNumber } from '@pkg/domain';
 import { BREAKDOWN_PHOTO_POLICY } from '@pkg/domain/contracting';
 import { BREAKDOWN_MAX_PHOTOS, type BreakdownDetail, type BreakdownPhoto } from '@pkg/schema/contracting';
-import { IconPhoto, IconTrash } from '@tabler/icons-react';
+import { IconX } from '@tabler/icons-react';
 import { useMutation } from '@tanstack/react-query';
 import { useState } from 'react';
-import { Button } from '@/components/ui/button.js';
+import { RemoveEntityButton } from '@/components/common/RemoveEntityButton.js';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card.js';
 import { PhotoPicker } from '@/contracting/components/PhotoPicker.js';
 import { useContractingWrite } from '@/contracting/hooks/use-contracting-write.js';
@@ -12,7 +12,7 @@ import { useQueryInvalidation } from '@/contracting/hooks/use-query-invalidation
 import { breakdownPhotosUrl } from '@/contracting/lib/contracting-http-paths.js';
 import { postMultipart } from '@/contracting/lib/post-multipart.js';
 import { useTRPC } from '@/lib/trpc.js';
-import { BreakdownPhotoPreview } from './BreakdownPhotoPreview.js';
+import { BreakdownPhotoPreview, BreakdownPhotoThumbnail } from './BreakdownPhotoPreview.js';
 import type { BreakdownSheet } from './types.js';
 
 export function BreakdownPhotosCard({ breakdown, sheet }: { breakdown: BreakdownDetail; sheet: BreakdownSheet }) {
@@ -41,27 +41,34 @@ export function BreakdownPhotosCard({ breakdown, sheet }: { breakdown: Breakdown
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Photos</CardTitle>
+        <CardTitle>Photos · {formatNumber(breakdown.photos.length)}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         {breakdown.photos.length ? (
           <ul className="flex flex-wrap gap-2">
             {breakdown.photos.map((photo, index) => (
-              <li key={photo.id} className="flex items-center gap-1 rounded-md border p-1">
-                <Button size="sm" variant="ghost" onClick={() => setPreviewing(photo)}>
-                  <IconPhoto aria-hidden="true" />
-                  Photo {formatNumber(index + 1)}
-                </Button>
+              <li key={photo.id} className="relative size-28 overflow-hidden rounded-xl bg-muted">
+                <button
+                  aria-label={`Open photo ${formatNumber(index + 1)}`}
+                  className="size-full cursor-zoom-in"
+                  type="button"
+                  onClick={() => setPreviewing(photo)}
+                >
+                  <BreakdownPhotoThumbnail breakdownId={breakdown.id} photoId={photo.id} />
+                </button>
                 {canAdd ? (
-                  <Button
-                    aria-label={`Remove photo ${formatNumber(index + 1)}`}
-                    disabled={remove.isPending}
-                    size="icon-sm"
-                    variant="ghost"
-                    onClick={() => remove.mutate({ id: breakdown.id, photoId: photo.id })}
-                  >
-                    <IconTrash aria-hidden="true" />
-                  </Button>
+                  <RemoveEntityButton
+                    title="Remove photo"
+                    description="Remove this photo?"
+                    triggerClassName="absolute right-1 top-1 rounded-full bg-black/60 text-white hover:bg-black/75 hover:text-white"
+                    triggerIcon={IconX}
+                    triggerIconOnly
+                    triggerLabel={`Remove photo ${formatNumber(index + 1)}`}
+                    triggerSize="icon-sm"
+                    triggerVariant="ghost"
+                    isPending={remove.isPending}
+                    onConfirm={() => remove.mutate({ id: breakdown.id, photoId: photo.id })}
+                  />
                 ) : null}
               </li>
             ))}

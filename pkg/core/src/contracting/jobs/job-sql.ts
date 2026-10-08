@@ -1,5 +1,5 @@
 import { contractingHourReadings, contractingJobs } from '@pkg/db/contracting';
-import { GAP_FLAG_THRESHOLD_HOURS } from '@pkg/domain/contracting';
+import { GAP_FLAG_THRESHOLD_HOURS, JOB_NUMBER_DIGITS, JOB_NUMBER_PREFIX } from '@pkg/domain/contracting';
 import type { AssignmentState, NeedsALookLevel } from '@pkg/schema/contracting';
 import { type SQL, type SQLWrapper, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
@@ -70,3 +70,7 @@ export const looksFinished = sql<boolean>`(
   and ${stintCount('left')} > 0
   and ${stintCount('on-site')} = 0
 )`;
+
+/** SQL twin of domain `formatJobNumber`, so a search for the Job Number finds the Job. */
+// lpad truncates a longer value, so the width grows with the code as padStart does.
+export const jobNumberText = sql`${JOB_NUMBER_PREFIX} || lpad(${contractingJobs.code}::text, greatest(${JOB_NUMBER_DIGITS}, length(${contractingJobs.code}::text)), '0')`;

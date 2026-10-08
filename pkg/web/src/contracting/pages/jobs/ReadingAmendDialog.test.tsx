@@ -8,7 +8,7 @@ import { ReadingAmendDialog } from './ReadingAmendDialog.js';
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 const roots: Root[] = [];
 const reading = { id: '00000000-0000-4000-8000-000000000001', value: 120.4 };
-const machine = { machineCode: 'BEL14-1', categoryIcon: 'tractor', categoryColour: 'green' } as const;
+const machine = { machineCode: 'BEL14-1', categoryIcon: 'tractor', categoryColour: 'lime' } as const;
 
 afterEach(async () => {
   await act(async () => {

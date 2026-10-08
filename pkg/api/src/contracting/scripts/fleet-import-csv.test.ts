@@ -43,7 +43,7 @@ describe('parseFleetImport', () => {
 
   it('lets a category name repeat across kinds and resolves each reference by kind', async () => {
     const files = await sampleFiles();
-    files.categories = `${files.categories}Trailer,machine,tipper,green\nTrailer,implement,tip-trailer,blue\n`;
+    files.categories = `${files.categories}Trailer,machine,tipper,lime\nTrailer,implement,tip-trailer,cyan\n`;
     files.machines = `${files.machines}TR-1,Bell,1,,,Trailer,,,,\n`;
     files.implements = `${files.implements}Trailer,TR-2,\n`;
     const data = parseFleetImport(files);
@@ -68,7 +68,7 @@ describe('parseFleetImport', () => {
 
   it('rejects malformed cells with the file and line', async () => {
     const files = await sampleFiles();
-    files.categories = `${files.categories}Roller,machine,no-such-icon,pink\n`;
+    files.categories = `${files.categories}Roller,machine,no-such-icon,green\n`;
     files.people = `${files.people}Bad Phone,driver,12345\n`;
     expect(() => parseFleetImport(files)).toThrow(
       /categories\.csv line 6: icon[\s\S]*categories\.csv line 6: colour[\s\S]*people\.csv line 5: phone/,

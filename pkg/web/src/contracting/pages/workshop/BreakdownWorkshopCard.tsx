@@ -1,6 +1,7 @@
 import { formatHours } from '@pkg/domain';
 import { reportToSolvedHours } from '@pkg/domain/contracting';
 import type { BreakdownDetail } from '@pkg/schema/contracting';
+import { IconPlayerPlay, IconPlayerStop } from '@tabler/icons-react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { DateDisplay } from '@/components/common/DateDisplay.js';
@@ -12,7 +13,7 @@ import { MechanicCombobox } from '@/contracting/components/MechanicCombobox.js';
 import { useContractingWrite } from '@/contracting/hooks/use-contracting-write.js';
 import { useQueryInvalidation } from '@/contracting/hooks/use-query-invalidation.js';
 import { useTRPC } from '@/lib/trpc.js';
-import { MarkSolvedDialog } from './MarkSolvedDialog.js';
+import { MarkCompletedDialog } from './MarkCompletedDialog.js';
 import type { BreakdownSheet } from './types.js';
 
 export function BreakdownWorkshopCard({ breakdown, sheet }: { breakdown: BreakdownDetail; sheet: BreakdownSheet }) {
@@ -62,12 +63,17 @@ export function BreakdownWorkshopCard({ breakdown, sheet }: { breakdown: Breakdo
                 disabled={startAction.disabled || start.isPending}
                 onClick={() => start.mutate({ id: breakdown.id })}
               >
+                <IconPlayerPlay className="text-primary" data-icon="inline-start" />
                 Start work
               </Button>
             ) : null}
             {solveAction ? (
-              <Button {...solveAction} onClick={() => setSolving(true)}>
-                Mark solved
+              // Completing is the stop moment once work has started; before then it is a plain alternative to starting.
+              <Button variant="outline" {...solveAction} onClick={() => setSolving(true)}>
+                {breakdown.status === 'in-progress' ? (
+                  <IconPlayerStop className="text-primary" data-icon="inline-start" />
+                ) : null}
+                Mark completed
               </Button>
             ) : null}
           </div>
@@ -76,14 +82,14 @@ export function BreakdownWorkshopCard({ breakdown, sheet }: { breakdown: Breakdo
           <dl className="grid gap-x-4 gap-y-2 text-sm sm:grid-cols-[max-content_1fr]">
             <dt className="text-muted-foreground">Close-out note</dt>
             <dd className="whitespace-pre-wrap">{breakdown.closeOutNote}</dd>
-            <dt className="text-muted-foreground">Solved</dt>
+            <dt className="text-muted-foreground">Fixed</dt>
             <dd>
               <DateDisplay date={breakdown.solvedAt} format="medium" />
               {breakdown.solvedByName ? ` by ${breakdown.solvedByName}` : null}
             </dd>
             {solvedHours !== null ? (
               <>
-                <dt className="text-muted-foreground">Report to Solved</dt>
+                <dt className="text-muted-foreground">Report to Fixed</dt>
                 <dd>{formatHours(solvedHours)}</dd>
               </>
             ) : null}
@@ -94,7 +100,7 @@ export function BreakdownWorkshopCard({ breakdown, sheet }: { breakdown: Breakdo
           </p>
         ) : null}
       </CardContent>
-      <MarkSolvedDialog breakdownId={breakdown.id} open={solving} onOpenChange={setSolving} />
+      <MarkCompletedDialog breakdownId={breakdown.id} open={solving} onOpenChange={setSolving} />
     </Card>
   );
 }

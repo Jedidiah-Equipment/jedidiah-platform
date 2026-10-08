@@ -29,7 +29,10 @@ export const categoryIconKeys = [
   'tip-trailer',
 ] as const;
 
-/** The category colour palette: the eight shared status badge tokens, as keys. */
-export const categoryColours = ['blue', 'gray', 'green', 'orange', 'purple', 'red', 'teal', 'yellow'] as const;
+/**
+ * The category colour palette, in hue order. Red, green, blue and grey are left out on purpose: they carry
+ * Breakdown status and urgency, so a category never borrows a colour that means something.
+ */
+export const categoryColours = ['yellow', 'orange', 'lime', 'cyan', 'indigo', 'violet', 'fuchsia', 'pink'] as const;
 
 export const categoryKinds = ['machine', 'implement'] as const;

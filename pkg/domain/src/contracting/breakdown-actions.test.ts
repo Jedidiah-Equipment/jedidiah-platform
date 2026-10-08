@@ -23,8 +23,8 @@ const verdicts: Record<string, BreakdownActionVerdict> = {
 };
 
 /**
- * One row per action; one column per status, in the order Open, In Progress, Solved.
- * ✓ allowed · n no permission · o not yours · s wrong status · x Solved.
+ * One row per action; one column per status, in the order Not fixed, Fixing, Fixed.
+ * ✓ allowed · n no permission · o not yours · s wrong status · x Fixed.
  */
 type Matrix = Record<BreakdownActionName, string>;
 
@@ -90,9 +90,9 @@ describe('a refused verdict', () => {
     };
     const sipho = actor('foreman', 'sipho');
     const connor = actor('workshop-manager', 'connor');
-    expect(refusal('solve', 'open', sipho)).toBe('You do not have permission to mark it Solved.');
+    expect(refusal('solve', 'open', sipho)).toBe('You do not have permission to mark it Fixed.');
     expect(refusal('editReport', 'open', sipho, 'thabo')).toBe('This Breakdown was reported by someone else.');
-    expect(refusal('addPhotos', 'solved', connor)).toBe('This Breakdown is Solved, so nothing on it can change.');
-    expect(refusal('start', 'in-progress', connor)).toBe('You can only start work while the Breakdown is Open.');
+    expect(refusal('addPhotos', 'solved', connor)).toBe('This Breakdown is Fixed, so nothing on it can change.');
+    expect(refusal('start', 'in-progress', connor)).toBe('You can only start work while the Breakdown is Not fixed.');
   });
 });

@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { AuthId } from '../../auth/auth-id.js';
-import { DateIso } from '../../common/date.js';
-import { createCursorQueryResult, createSortedCursorQueryInput } from '../../common/pagination.js';
+import { DateIso, DateOnlyIso } from '../../common/date.js';
+import { createCursorQueryResult, createSearchedSortedCursorQueryInput } from '../../common/pagination.js';
 import { UUID } from '../../common/uuid.js';
 import { CategoryColour, CategoryIconKey } from '../fleet/fleet.js';
 import { BreakdownActions } from './breakdown-actions.js';
@@ -116,6 +116,7 @@ export const BreakdownSummary = z.object({
   jobId: UUID.nullable(),
   jobNumber: z.string().nullable(),
   jobForemanUserId: AuthId.nullable(),
+  farmId: UUID.nullable(),
   farmName: z.string().nullable(),
   urgency: z.enum(breakdownUrgencies),
   status: z.enum(breakdownStatuses),
@@ -127,6 +128,8 @@ export const BreakdownSummary = z.object({
   firstLine: z.string(),
   photoCount: z.number().int(),
   noteCount: z.number().int(),
+  /** The note's first line when there is exactly one, so a list can show it in place of a count. */
+  soleNote: z.string().nullable(),
   startedAt: DateIso.nullable(),
   solvedAt: DateIso.nullable(),
   /** Other unsolved Breakdowns on the same Job — the dispatch cross-reference, derived. */
@@ -146,6 +149,7 @@ export const BreakdownDispatchHint = z.object({
   breakdownId: UUID,
   subject: BreakdownSubject,
   urgency: z.enum(breakdownUrgencies),
+  status: z.enum(breakdownStatuses),
   firstLine: z.string(),
 });
 export type BreakdownDispatchHint = z.infer<typeof BreakdownDispatchHint>;
@@ -161,26 +165,47 @@ export const BreakdownDetail = BreakdownSummary.extend({
   actions: BreakdownActions,
 });
 export type BreakdownDetail = z.infer<typeof BreakdownDetail>;
-export const BreakdownListInput = createSortedCursorQueryInput({
+export const BreakdownListInput = createSearchedSortedCursorQueryInput({
   defaultSortDirection: 'desc',
   shape: {
     statuses: z.array(z.enum(breakdownStatuses)).default([...unsolvedBreakdownStatuses]),
+    urgencies: z.array(z.enum(breakdownUrgencies)).default([]),
     machineId: UUID.optional(),
     implementId: UUID.optional(),
     jobId: UUID.optional(),
-    mechanicUserId: AuthId.optional(),
+    /** Machines and Implements together: a Breakdown on any of them matches. */
+    machineIds: z.array(UUID).default([]),
+    implementIds: z.array(UUID).default([]),
+    jobIds: z.array(UUID).default([]),
+    farmIds: z.array(UUID).default([]),
+    reporterUserIds: z.array(AuthId).default([]),
+    mechanicUserIds: z.array(AuthId).default([]),
+    /** Keep only Breakdowns reported on or after this South African calendar day. */
+    reportedFrom: DateOnlyIso.optional(),
+    /** Keep only Breakdowns reported on or before this South African calendar day. */
+    reportedTo: DateOnlyIso.optional(),
   },
   sortBy: z.enum(['reportedAt', 'urgency']).default('reportedAt'),
 });
 export type BreakdownListInput = z.infer<typeof BreakdownListInput>;
 export const BreakdownListResult = createCursorQueryResult(BreakdownSummary);
 export type BreakdownListResult = z.infer<typeof BreakdownListResult>;
+export const BreakdownStatusCounts = z.record(z.enum(breakdownStatuses), z.number().int().nonnegative());
+export type BreakdownStatusCounts = z.infer<typeof BreakdownStatusCounts>;
+/** Each status's Breakdown count, and the unsolved Code Reds the nav warns about. */
 export const BreakdownQueueSummary = z.object({
-  open: z.number().int(),
-  inProgress: z.number().int(),
-  codeRedUnsolved: z.number().int(),
+  counts: BreakdownStatusCounts,
+  codeRedUnsolved: z.number().int().nonnegative(),
 });
 export type BreakdownQueueSummary = z.infer<typeof BreakdownQueueSummary>;
+/** What the Workshop table's column filters offer: only values some readable Breakdown carries. */
+export const BreakdownFilterOptions = z.object({
+  subjects: z.object({ kind: z.enum(breakdownSubjectKinds), id: UUID, code: z.string() }).array(),
+  jobs: z.object({ id: UUID, jobNumber: z.string() }).array(),
+  farms: z.object({ id: UUID, name: z.string() }).array(),
+  reporters: z.object({ id: AuthId, name: z.string() }).array(),
+});
+export type BreakdownFilterOptions = z.infer<typeof BreakdownFilterOptions>;
 export const Mechanic = z.object({ id: AuthId, name: z.string() });
 export type Mechanic = z.infer<typeof Mechanic>;
 /** An open Job a Breakdown's subject is planned or on site on: what its Job may be changed to. */

@@ -29,7 +29,7 @@ export const contractingCategories = contractingSchema.table(
     check('category_kind', sql`${table.kind} IN ('machine', 'implement')`),
     check(
       'category_colour',
-      sql`${table.colour} IN ('blue', 'gray', 'green', 'orange', 'purple', 'red', 'teal', 'yellow')`,
+      sql`${table.colour} IN ('yellow', 'orange', 'lime', 'cyan', 'indigo', 'violet', 'fuchsia', 'pink')`,
     ),
   ],
 );

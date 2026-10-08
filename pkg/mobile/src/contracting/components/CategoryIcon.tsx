@@ -1,7 +1,7 @@
 import {
   CATEGORY_ICON_STROKE_WIDTH,
   CATEGORY_ICON_VIEW_BOX,
-  categoryColourClassNames,
+  categoryColourTone,
   categoryIcon,
 } from '@pkg/domain/contracting';
 import type { CategoryColour, CategoryIconKey } from '@pkg/schema/contracting';
@@ -21,7 +21,7 @@ export function CategoryIcon({
   size?: 16 | 20 | 24;
 }) {
   const glyph = categoryIcon(icon);
-  const tone = categoryColourClassNames[colour];
+  const tone = categoryColourTone(colour);
   const { resolved } = useColorMode();
   return (
     <View

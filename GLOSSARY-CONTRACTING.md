@@ -220,8 +220,9 @@ a description in the reporter's own words (typed, or a transcribed voice note th
 edit), an optional link to the Job it happened on (defaulted from the subject's on-site
 Assignment — for an Implement, the Assignment it is attached to — which is what locates it for the
 workshop and puts it in the same-Job dispatch cross-reference), optional GPS, and an **urgency** — **Code Red**
-(machine down) or **Code Green** (still working). Status runs **Open → In Progress → Solved**; the workshop manager owns every
-transition and closes with a mandatory close-out note. The subject's Breakdown history is
+(machine down) or **Code Green** (still working). Status runs **Not fixed → Fixing → Fixed** (stored as `open` / `in-progress` / `solved`); the workshop manager owns every
+transition — **Start work** moves it to Fixing, **Mark completed** to Fixed — and closes with a mandatory
+close-out note. The subject's Breakdown history is
 permanent. The dispatch cross-reference — other fleet on the same Job with open Breakdowns —
 is derived, never stored. A new Breakdown notifies by push notification: Code Green reaches
 the workshop-manager role; Code Red also reaches contracting-manager, contracting-admin and
@@ -232,7 +233,7 @@ or from a Voice Note), time. Contracting's own mechanism — never the Equipment
 
 **Mechanic** is a non-login user record, like Driver: mechanics take instructions and never sign
 in. Exactly one primary Mechanic is assigned per Breakdown by the workshop manager, possibly
-himself; a second body on site is never recorded. Mechanic performance — report-to-Solved time —
+himself; a second body on site is never recorded. Mechanic performance — report-to-Fixed time —
 is derived, never stored.
 
 **Service Record** is the light digital counterpart of the paper service book, which stays the
@@ -315,6 +316,6 @@ never count). **Utilisation %**
 is active days over days in the window, counting only days the Machine was in the fleet — days,
 never hours, and month attribution is exact. **Fleet Load** is the share of Machines with at
 least one Active Day in the window. **Utilisation Target %** is the single global reference line
-management sets on the utilisation charts. Mechanic performance — solved count, average
-report-to-Solved time, open count — is derived from Breakdowns and never stored. Reporting is
+management sets on the utilisation charts. Mechanic performance — Fixed count, average
+report-to-Fixed time, Not fixed count — is derived from Breakdowns and never stored. Reporting is
 readable by every role that reads all Jobs; Foremen and invoicing never see it.

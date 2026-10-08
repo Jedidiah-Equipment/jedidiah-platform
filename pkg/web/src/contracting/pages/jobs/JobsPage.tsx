@@ -153,13 +153,15 @@ export function JobsPage() {
             {row.original.status === 'upcoming' &&
             row.original.foremanUserId === null &&
             canAssignForeman(row.original) ? (
-              <SearchableCombobox
-                inputId={`foreman-${row.original.id}`}
-                options={(foremen.data ?? []).map((person) => ({ value: person.id, label: person.name }))}
-                placeholder="Assign foreman…"
-                value=""
-                onValueChange={(foremanUserId) => assign.mutate({ id: row.original.id, foremanUserId })}
-              />
+              <div className="w-48">
+                <SearchableCombobox
+                  inputId={`foreman-${row.original.id}`}
+                  options={(foremen.data ?? []).map((person) => ({ value: person.id, label: person.name }))}
+                  placeholder="Assign foreman…"
+                  value=""
+                  onValueChange={(foremanUserId) => assign.mutate({ id: row.original.id, foremanUserId })}
+                />
+              </div>
             ) : (
               <div className="mt-1 text-xs text-muted-foreground">
                 {row.original.foremanName ?? 'Foreman unassigned'}

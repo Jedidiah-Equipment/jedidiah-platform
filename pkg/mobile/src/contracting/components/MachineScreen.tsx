@@ -17,6 +17,7 @@ import { useFleet, useMachineReadings } from '@/contracting/readings/use-fleet';
 import { BreakdownRow } from '@/contracting/workshop/BreakdownRow';
 import { useMachineBreakdowns } from '@/contracting/workshop/use-breakdowns';
 import { useSessionPermission } from '@/lib/auth-session';
+import { BreakdownIcon } from './BreakdownSubjectIcons';
 import { CategoryIcon } from './CategoryIcon';
 
 export default function MachineScreen() {
@@ -75,6 +76,7 @@ export default function MachineScreen() {
         ) : null}
         {canReport && machine ? (
           <Button
+            icon={BreakdownIcon}
             title="Report a problem"
             onPress={() =>
               router.push({
@@ -87,7 +89,7 @@ export default function MachineScreen() {
         {canReadBreakdowns ? (
           <>
             <Text className="text-lg text-foreground" weight="bold">
-              Open Breakdowns
+              Breakdowns to fix
             </Text>
             {breakdowns.data?.items.map((breakdown) => (
               <BreakdownRow key={breakdown.id} breakdown={breakdown} />
@@ -97,7 +99,7 @@ export default function MachineScreen() {
                 {breakdowns.isError
                   ? 'Breakdowns could not be loaded.'
                   : breakdowns.data
-                    ? 'No open Breakdowns.'
+                    ? 'Nothing is waiting to be fixed.'
                     : 'Loading Breakdowns…'}
               </Text>
             ) : null}

@@ -4,8 +4,6 @@ import { JOHANNESBURG_TIME_ZONE } from '@pkg/domain';
 import {
   countedAssignmentAttentionLevel,
   formatJobNumber,
-  JOB_NUMBER_DIGITS,
-  JOB_NUMBER_PREFIX,
   type JobActor,
   jobAssignmentAttentionCounts,
   jobQueueOf,
@@ -85,10 +83,6 @@ function jobListOrder({ sortBy, sortDirection }: Pick<JobListInput, 'sortBy' | '
   return byCode;
 }
 
-/** SQL twin of domain `formatJobNumber`, so a search for the Job Number finds the Job. */
-// lpad truncates a longer value, so the width grows with the code as padStart does.
-const jobNumberText = sql`${JOB_NUMBER_PREFIX} || lpad(${contractingJobs.code}::text, greatest(${JOB_NUMBER_DIGITS}, length(${contractingJobs.code}::text)), '0')`;
-
 export async function listJobs({
   db,
   actor,
@@ -107,7 +101,7 @@ export async function listJobs({
     input.invoicedTo ? sql`${invoicedDay} <= ${input.invoicedTo}::date` : undefined,
     readableBy(reader),
     createGlobalSearchCondition(input.search, [
-      jobNumberText,
+      jobSql.jobNumberText,
       sql`${contractingCustomers.name}`,
       sql`${contractingFarms.name}`,
       sql`${contractingWorkTypes.name}`,

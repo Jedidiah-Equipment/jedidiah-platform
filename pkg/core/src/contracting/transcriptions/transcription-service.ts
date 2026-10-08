@@ -193,7 +193,11 @@ export async function deriveHintFor({
     }
     await tx
       .update(contractingTranscriptions)
-      .set({ hintDerivedAt: now })
+      .set({
+        hintDerivedAt: now,
+        hintOutcome: outcome.action === 'add' ? 'added' : 'none',
+        hintNoneReason: outcome.action === 'none' ? outcome.reason : null,
+      })
       .where(eq(contractingTranscriptions.id, row.id));
     return outcome;
   });

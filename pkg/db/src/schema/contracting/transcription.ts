@@ -19,12 +19,19 @@ export const contractingTranscriptions = contractingSchema.table(
     savedText: text('saved_text'),
     savedAt: timestamp('saved_at', { withTimezone: true }),
     hintDerivedAt: timestamp('hint_derived_at', { withTimezone: true }),
+    /** What the derivation decided: `added` a hint or `none`; null before it ran, and for rows derived before it was kept. */
+    hintOutcome: text('hint_outcome').$type<'added' | 'none'>(),
+    hintNoneReason: text('hint_none_reason'),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   },
   (table) => [
     index('transcription_created_by_idx').on(table.createdByUserId, table.createdAt),
     check('transcription_saved_shape', sql`(${table.savedText} IS NULL) = (${table.savedAt} IS NULL)`),
     check('transcription_purpose_not_blank', sql`length(btrim(${table.purpose})) > 0`),
+    check(
+      'transcription_hint_outcome_shape',
+      sql`(${table.hintOutcome} IS NULL OR (${table.hintOutcome} IN ('added', 'none') AND ${table.hintDerivedAt} IS NOT NULL)) AND (${table.hintNoneReason} IS NULL OR ${table.hintOutcome} = 'none')`,
+    ),
   ],
 );
 

@@ -6,7 +6,7 @@ import { eq } from 'drizzle-orm';
 import { expect } from 'vitest';
 import { createTester } from '../../test/create-tester.js';
 import { adminId, foremanId, seedJobFixtures } from '../test/job-fixtures.js';
-import { loadKeyterms } from './keyterm-registry.js';
+import { loadKeytermCandidates, loadKeyterms } from './keyterm-registry.js';
 import {
   deriveHintFor,
   listActiveHints,
@@ -206,4 +206,11 @@ test('the keyterm registry names the working fleet, field people and taught keyt
   expect(keyterms).not.toContain('Yard Tablet');
   expect(keyterms).not.toContain('Vaalkop');
   expect(keyterms[0]).toBe('Bloemhof');
+  expect(await loadKeytermCandidates({ db, now })).toEqual(
+    expect.arrayContaining([
+      { keyterm: 'Bloemhof', source: 'hint' },
+      { keyterm: 'CAT320-1', source: 'machine' },
+      { keyterm: 'Thabo', source: 'person' },
+    ]),
+  );
 });

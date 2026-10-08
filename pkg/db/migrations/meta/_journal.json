@@ -1198,6 +1198,13 @@
       "when": 1791357799337,
       "tag": "0170_contracting_service_records",
       "breakpoints": true
+    },
+    {
+      "idx": 171,
+      "version": "7",
+      "when": 1791448894144,
+      "tag": "0171_contracting_transcription_hint_outcome",
+      "breakpoints": true
     }
   ]
 }

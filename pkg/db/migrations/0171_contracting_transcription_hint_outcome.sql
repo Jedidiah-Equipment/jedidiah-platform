@@ -1,0 +1,3 @@
+ALTER TABLE "contracting"."transcription" ADD COLUMN "hint_outcome" text;--> statement-breakpoint
+ALTER TABLE "contracting"."transcription" ADD COLUMN "hint_none_reason" text;--> statement-breakpoint
+ALTER TABLE "contracting"."transcription" ADD CONSTRAINT "transcription_hint_outcome_shape" CHECK (("contracting"."transcription"."hint_outcome" IS NULL OR ("contracting"."transcription"."hint_outcome" IN ('added', 'none') AND "contracting"."transcription"."hint_derived_at" IS NOT NULL)) AND ("contracting"."transcription"."hint_none_reason" IS NULL OR "contracting"."transcription"."hint_outcome" = 'none'));

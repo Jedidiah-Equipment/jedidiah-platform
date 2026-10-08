@@ -13,6 +13,7 @@ export const roleLabels = {
   'bay-operator': 'Bay Operator',
   'job-manager': 'Job Manager',
   'job-viewer': 'Job Viewer',
+  'app-store-tester': 'App Store Tester',
   'procurement-manager': 'Procurement manager',
   sales: 'Sales',
   stores: 'Stores',
@@ -31,6 +32,7 @@ export const roleDescriptions = {
   'bay-operator': 'Shop-floor personnel record for Bay assignment; this role is not enabled for sign-in.',
   'job-manager': 'View and update production Jobs.',
   'job-viewer': 'Read-only access to production Jobs.',
+  'app-store-tester': 'View Equipment Products, Product Ranges, and Product Units for app review.',
   'procurement-manager': 'Manage procurement records and sales Quotes, and view production Jobs.',
   sales: 'Create, read, and update sales Quotes, and send assistant-authored email.',
   stores: 'Run physical stock flows without access to inventory costs.',
@@ -381,6 +383,11 @@ export const appRoleAccess = {
   },
   'job-viewer': {
     equipment_job: ['read'],
+    equipment_product_unit: ['read'],
+  },
+  'app-store-tester': {
+    equipment_product: ['read'],
+    equipment_product_range: ['read'],
     equipment_product_unit: ['read'],
   },
   'job-manager': {

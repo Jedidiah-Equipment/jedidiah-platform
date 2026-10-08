@@ -16,6 +16,7 @@ const authRoles = {
   'bay-operator': ac.newRole(appRoleAccess['bay-operator']),
   'job-manager': ac.newRole(appRoleAccess['job-manager']),
   'job-viewer': ac.newRole(appRoleAccess['job-viewer']),
+  'app-store-tester': ac.newRole(appRoleAccess['app-store-tester']),
   'procurement-manager': ac.newRole(appRoleAccess['procurement-manager']),
   sales: ac.newRole(appRoleAccess.sales),
   stores: ac.newRole(appRoleAccess.stores),

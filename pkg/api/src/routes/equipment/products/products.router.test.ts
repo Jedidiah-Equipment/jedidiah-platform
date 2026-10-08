@@ -49,6 +49,28 @@ function createModelCode(name: string): string {
     .replace(/^-|-$/g, '');
 }
 
+test('App Store Tester can read the Equipment catalog but cannot change it or read Jobs', async ({ context }) => {
+  const product = await createProduct(context.createCaller(), 'Review Catalog', context.rangeId);
+  const caller = context.createCaller(mockSession('app-store-tester'));
+
+  await expect(caller.products.get({ id: product.id })).resolves.toMatchObject({ id: product.id });
+  await expect(caller.products.list({ search: 'Review Catalog' })).resolves.toMatchObject({ total: 1 });
+  await expect(caller.productRanges.get({ id: context.rangeId })).resolves.toMatchObject({ id: context.rangeId });
+  await expect(caller.productUnits.list({})).resolves.toMatchObject({ total: 0 });
+
+  await expect(caller.products.remove({ id: product.id })).rejects.toMatchObject({
+    code: 'FORBIDDEN',
+  });
+  await expect(caller.productRanges.update({ id: context.rangeId, name: 'Changed' })).rejects.toMatchObject({
+    code: 'FORBIDDEN',
+  });
+  await expect(caller.productUnits.remove({ id: product.id })).rejects.toMatchObject({ code: 'FORBIDDEN' });
+  await expect(caller.jobs.list({})).rejects.toMatchObject({ code: 'FORBIDDEN' });
+  await expect(context.createCaller().products.get({ id: product.id })).resolves.toMatchObject({
+    name: 'Review Catalog',
+  });
+});
+
 describe('products.create', () => {
   test('creates products', async ({ context }) => {
     const caller = context.createCaller();

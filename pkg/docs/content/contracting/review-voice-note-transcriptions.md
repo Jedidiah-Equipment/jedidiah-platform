@@ -26,7 +26,7 @@ people's corrections, and what the models are asked. It is read-only.
    - the hint that replaced it, if any;
    - the correction it was **Learned from**.
 6. Open **Prompts** to see the three model requests as they would be sent now, with the model each uses.
-   The highlighted `{{…}}` parts are filled from each Voice Note. Under **Speech-to-text**, **Keyterms cut
+   The highlighted parts in double braces are filled from each Voice Note. Under **Speech-to-text**, **Keyterms cut
    off** lists the names that did not fit in the prompt, with where each came from.
 
 The Transcriptions page is available to a Contracting Administrator and a Super Administrator, because it

@@ -5,7 +5,7 @@ import {
   categoryColours,
   categoryIconKeys,
 } from '@pkg/schema/contracting';
-import { type BadgeColorClassNames, statusBadgeColorClassNames } from '../../theme/status-badge.js';
+import type { BadgeColorClassNames } from '../../theme/status-badge.js';
 import type { CategoryIconGlyph } from './category-icon-glyph.js';
 import { bakkie } from './category-icons/bakkie.js';
 import { bulldozer } from './category-icons/bulldozer.js';
@@ -71,8 +71,59 @@ export function categoryIcon(key: string): CategoryIconGlyph {
 export function defaultCategoryIcon(kind: CategoryKind): CategoryIconKey {
   return kind === 'machine' ? 'generic-machine' : 'generic-implement';
 }
-export const DEFAULT_CATEGORY_COLOUR: CategoryColour = 'gray';
-/** The category colour palette is the shared status badge palette, keyed the same way. */
-export const categoryColourClassNames: Record<CategoryColour, BadgeColorClassNames & { dot: string }> =
-  statusBadgeColorClassNames;
+export const DEFAULT_CATEGORY_COLOUR: CategoryColour = 'indigo';
+/**
+ * The category palette: its own hues, apart from the status badge palette, whose red, green, blue and grey mean
+ * Breakdown status and urgency. Both scheme halves are literals so native gets a generated class for each.
+ */
+export const categoryColourClassNames = {
+  yellow: {
+    chip: 'border-yellow-500/50 bg-yellow-500/15',
+    dot: 'bg-yellow-500',
+    text: 'text-yellow-800 dark:text-yellow-200',
+    textByScheme: { dark: 'text-yellow-200', light: 'text-yellow-800' },
+  },
+  orange: {
+    chip: 'border-orange-500/50 bg-orange-500/15',
+    dot: 'bg-orange-500',
+    text: 'text-orange-800 dark:text-orange-200',
+    textByScheme: { dark: 'text-orange-200', light: 'text-orange-800' },
+  },
+  lime: {
+    chip: 'border-lime-500/50 bg-lime-500/15',
+    dot: 'bg-lime-500',
+    text: 'text-lime-800 dark:text-lime-200',
+    textByScheme: { dark: 'text-lime-200', light: 'text-lime-800' },
+  },
+  cyan: {
+    chip: 'border-cyan-500/50 bg-cyan-500/15',
+    dot: 'bg-cyan-500',
+    text: 'text-cyan-800 dark:text-cyan-200',
+    textByScheme: { dark: 'text-cyan-200', light: 'text-cyan-800' },
+  },
+  indigo: {
+    chip: 'border-indigo-500/50 bg-indigo-500/15',
+    dot: 'bg-indigo-500',
+    text: 'text-indigo-800 dark:text-indigo-200',
+    textByScheme: { dark: 'text-indigo-200', light: 'text-indigo-800' },
+  },
+  violet: {
+    chip: 'border-violet-500/50 bg-violet-500/15',
+    dot: 'bg-violet-500',
+    text: 'text-violet-800 dark:text-violet-200',
+    textByScheme: { dark: 'text-violet-200', light: 'text-violet-800' },
+  },
+  fuchsia: {
+    chip: 'border-fuchsia-500/50 bg-fuchsia-500/15',
+    dot: 'bg-fuchsia-500',
+    text: 'text-fuchsia-800 dark:text-fuchsia-200',
+    textByScheme: { dark: 'text-fuchsia-200', light: 'text-fuchsia-800' },
+  },
+  pink: {
+    chip: 'border-pink-500/50 bg-pink-500/15',
+    dot: 'bg-pink-500',
+    text: 'text-pink-800 dark:text-pink-200',
+    textByScheme: { dark: 'text-pink-200', light: 'text-pink-800' },
+  },
+} as const satisfies Record<CategoryColour, BadgeColorClassNames & { dot: string }>;
 export { categoryColours, categoryIconKeys };

@@ -35,7 +35,7 @@ const stint = {
   machineId: '00000000-0000-4000-8000-000000000002',
   machineCode: 'BEL14-1',
   categoryIcon: 'tractor',
-  categoryColour: 'green',
+  categoryColour: 'lime',
   arrival: { value: 120 },
 } as Assignment;
 

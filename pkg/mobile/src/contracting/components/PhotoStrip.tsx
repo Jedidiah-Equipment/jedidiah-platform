@@ -1,7 +1,8 @@
 import { formatNumber } from '@pkg/domain';
 import { IconCamera, IconPhoto, IconX } from '@tabler/icons-react-native';
-import { Image, Pressable, ScrollView, View } from 'react-native';
+import { Image, Pressable, View } from 'react-native';
 import { Button } from '@/components/ui/button';
+import { FadingScrollRow } from '@/components/ui/fading-scroll-row';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 
@@ -40,7 +41,7 @@ export function PhotoStrip({
         </Text>
       </View>
       {photos.length ? (
-        <ScrollView horizontal contentContainerStyle={{ gap: 8 }} showsHorizontalScrollIndicator={false}>
+        <FadingScrollRow fadeClassName="text-background">
           {photos.map((photo, index) => (
             <View key={photo.id} className="h-28 w-28 overflow-hidden rounded-xl bg-image-backdrop">
               <Image
@@ -60,7 +61,7 @@ export function PhotoStrip({
               </Pressable>
             </View>
           ))}
-        </ScrollView>
+        </FadingScrollRow>
       ) : null}
       {galleryHint ? <Text className="text-sm text-muted-foreground">{GALLERY_HINT}</Text> : null}
       <Button title="Take photo" icon={IconCamera} disabled={busy || full} onPress={onTake} />

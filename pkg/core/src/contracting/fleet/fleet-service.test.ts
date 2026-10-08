@@ -177,9 +177,9 @@ describe('drivers', () => {
 
 describe('categories', () => {
   test('default icon and colour by kind', async ({ context: { db, category } }) => {
-    expect(category).toMatchObject({ kind: 'machine', icon: 'generic-machine', colour: 'gray' });
+    expect(category).toMatchObject({ kind: 'machine', icon: 'generic-machine', colour: 'indigo' });
     const towed = await createCategory({ db, actorUserId, input: { name: 'Tractors', kind: 'implement' } });
-    expect(towed).toMatchObject({ icon: 'generic-implement', colour: 'gray' });
+    expect(towed).toMatchObject({ icon: 'generic-implement', colour: 'indigo' });
   });
 
   test('names are unique per kind, case-insensitively', async ({ context: { db } }) => {
@@ -191,12 +191,12 @@ describe('categories', () => {
   });
 
   test('patches preserve omitted fields', async ({ context: { db, category } }) => {
-    await patchCategory({ db, actorUserId, input: { id: category.id, icon: 'tractor', colour: 'green' } });
+    await patchCategory({ db, actorUserId, input: { id: category.id, icon: 'tractor', colour: 'lime' } });
     await patchCategory({ db, actorUserId, input: { id: category.id, name: 'Hauler tractors' } });
     expect(await getCategory({ db, id: category.id })).toMatchObject({
       name: 'Hauler tractors',
       icon: 'tractor',
-      colour: 'green',
+      colour: 'lime',
     });
   });
 

@@ -69,3 +69,8 @@ export function formatClock(seconds: number): string {
 export function toCsvAmount(value: number | null): string {
   return value === null ? '' : value.toFixed(2);
 }
+
+/** A GPS position as latitude, longitude: five decimals, about a metre. */
+export function formatCoordinates({ latitude, longitude }: { latitude: number; longitude: number }): string {
+  return `${formatNumber(latitude, { decimals: 5 })}, ${formatNumber(longitude, { decimals: 5 })}`;
+}

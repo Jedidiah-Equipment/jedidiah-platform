@@ -15,35 +15,35 @@ type Verdict = Parameters<typeof VerdictButton>[0]['verdict'];
 function render(verdict: Verdict) {
   let renderer!: ReactTestRenderer;
   act(() => {
-    renderer = create(<VerdictButton verdict={verdict} title="Mark solved" onPress={() => undefined} />);
+    renderer = create(<VerdictButton verdict={verdict} title="Mark completed" onPress={() => undefined} />);
   });
   return renderer;
 }
 
-test('Mark solved is absent for someone without the permission', () => {
+test('Mark completed is absent for someone without the permission', () => {
   const renderer = render({
     allowed: false,
     reason: 'no-permission',
-    message: 'You do not have permission to mark it Solved.',
+    message: 'You do not have permission to mark it Fixed.',
   });
   expect(renderer.root.findAllByType('Button' as never)).toHaveLength(0);
 });
 
-test('a refused Mark solved is disabled with the refusal under it', () => {
-  const message = 'This Breakdown is Solved, so nothing on it can change.';
+test('a refused Mark completed is disabled with the refusal under it', () => {
+  const message = 'This Breakdown is Fixed, so nothing on it can change.';
   const renderer = render({ allowed: false, reason: 'solved', message });
-  expect(renderer.root.findByType('Button' as never).props).toMatchObject({ title: 'Mark solved', disabled: true });
+  expect(renderer.root.findByType('Button' as never).props).toMatchObject({ title: 'Mark completed', disabled: true });
   expect(renderer.root.findByType('Text' as never).props.children).toBe(message);
 });
 
-test('an allowed Mark solved can be pressed', () => {
+test('an allowed Mark completed can be pressed', () => {
   const renderer = render({ allowed: true });
   expect(renderer.root.findByType('Button' as never).props.disabled).toBe(false);
   expect(renderer.root.findAllByType('Text' as never)).toHaveLength(0);
 });
 
 test('a group of controls shares one verdict and one sentence', () => {
-  const message = 'This Breakdown is Solved, so nothing on it can change.';
+  const message = 'This Breakdown is Fixed, so nothing on it can change.';
   let renderer!: ReactTestRenderer;
   act(() => {
     renderer = create(

@@ -44,7 +44,7 @@ const rules: Record<BreakdownActionName, Rule> = {
   addNote: { statuses: ['open', 'in-progress', 'solved'], ...reporting, verb: 'add a note' },
   assignMechanic: { statuses: unsolved, ...managing, verb: 'assign the Mechanic' },
   start: { statuses: ['open'], ...managing, verb: 'start work' },
-  solve: { statuses: unsolved, ...managing, verb: 'mark it Solved' },
+  solve: { statuses: unsolved, ...managing, verb: 'mark it Fixed' },
 };
 
 const joinOr = (items: readonly string[]) =>
@@ -57,7 +57,7 @@ function refusalMessage(rule: Rule, reason: BreakdownActionBlockedReason): strin
     case 'not-yours':
       return 'This Breakdown was reported by someone else.';
     case 'solved':
-      return 'This Breakdown is Solved, so nothing on it can change.';
+      return 'This Breakdown is Fixed, so nothing on it can change.';
     case 'wrong-status':
       return `You can only ${rule.verb} while the Breakdown is ${joinOr(rule.statuses.map((status) => breakdownStatusLabels[status]))}.`;
   }

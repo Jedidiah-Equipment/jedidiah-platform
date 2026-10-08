@@ -3,9 +3,10 @@ import { breakdownPhotoPath } from '@pkg/domain/contracting';
 import { BREAKDOWN_MAX_PHOTOS, type BreakdownDetail } from '@pkg/schema/contracting';
 import { IconCamera, IconPhoto, IconX } from '@tabler/icons-react-native';
 import { useState } from 'react';
-import { Image, Pressable, ScrollView, View } from 'react-native';
+import { Image, Pressable, View } from 'react-native';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { FadingScrollRow } from '@/components/ui/fading-scroll-row';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { ThemedModal } from '@/components/ui/themed-modal';
@@ -37,7 +38,7 @@ export function BreakdownPhotosCard({ breakdown }: { breakdown: BreakdownDetail 
   return (
     <Card title={`Photos · ${formatNumber(breakdown.photos.length)}`}>
       {breakdown.photos.length ? (
-        <ScrollView horizontal contentContainerStyle={{ gap: 8 }} showsHorizontalScrollIndicator={false}>
+        <FadingScrollRow>
           {breakdown.photos.map((photo, index) => (
             <View key={photo.id} className="h-28 w-28 overflow-hidden rounded-xl bg-image-backdrop">
               <Pressable
@@ -61,10 +62,8 @@ export function BreakdownPhotosCard({ breakdown }: { breakdown: BreakdownDetail 
               ) : null}
             </View>
           ))}
-        </ScrollView>
-      ) : (
-        <Text className="text-muted-foreground">No photos.</Text>
-      )}
+        </FadingScrollRow>
+      ) : null}
       {error ? <Text className="text-danger">{error}</Text> : null}
       {left > 0 ? (
         <VerdictGroup verdict={breakdown.actions.addPhotos}>

@@ -14,7 +14,6 @@ import { toast } from 'sonner';
 import { ImageSelectionControl } from '@/components/attachments/ImageSelectionControl.js';
 import { Field, FieldLabel } from '@/components/ui/field.js';
 import { type FieldUsage, FieldUsageLabel } from '@/equipment/components/catalog/index.js';
-import { useCredentialedImagePreviewState } from '@/equipment/hooks/use-credentialed-image-preview.js';
 import { useQueryInvalidation } from '@/equipment/hooks/use-query-invalidation.js';
 import {
   fetchProductImageBlob,
@@ -22,6 +21,7 @@ import {
   validateSelectedProductImage,
 } from '@/equipment/utils/product-image.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
+import { useCredentialedImagePreviewState } from '@/hooks/use-credentialed-image-preview.js';
 import { getApiQueryErrorMessage } from '@/lib/api-errors.js';
 
 type ProductImageSlotTileProps = {

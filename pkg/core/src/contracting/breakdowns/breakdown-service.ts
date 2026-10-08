@@ -1,5 +1,12 @@
 import { randomUUID } from 'node:crypto';
-import { type DatabaseTransaction, type Db, getSortOrder, user, withPagination } from '@pkg/db';
+import {
+  createGlobalSearchCondition,
+  type DatabaseTransaction,
+  type Db,
+  getSortOrder,
+  user,
+  withPagination,
+} from '@pkg/db';
 import {
   contractingBreakdownNotes,
   contractingBreakdowns,
@@ -9,7 +16,7 @@ import {
   contractingMachineAssignments,
   contractingMachines,
 } from '@pkg/db/contracting';
-import { hasPermission, validateFile } from '@pkg/domain';
+import { hasPermission, JOHANNESBURG_TIME_ZONE, validateFile } from '@pkg/domain';
 import {
   BREAKDOWN_PHOTO_POLICY,
   type BreakdownActor,
@@ -25,6 +32,7 @@ import {
   type BreakdownActionName,
   BreakdownAssignMechanicInput,
   BreakdownDetail,
+  type BreakdownFilterOptions,
   BreakdownJobOption,
   type BreakdownListInput,
   type BreakdownListResult,
@@ -40,7 +48,7 @@ import {
   openJobStatuses,
   unsolvedBreakdownStatuses,
 } from '@pkg/schema/contracting';
-import { and, asc, desc, eq, inArray, isNotNull, isNull, ne, type SQL, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, isNotNull, isNull, ne, or, type SQL, sql } from 'drizzle-orm';
 import { recordAuditCreate } from '../../audit/audit-writer.js';
 import { mutateEntity } from '../../audit/mutate-entity.js';
 import { FilePolicyViolationError } from '../../files/file-errors.js';
@@ -59,10 +67,12 @@ import {
 import {
   breakdownActionSubject,
   breakdownReadableBy,
+  breakdownSearchColumns,
   breakdownSubjectOf,
   breakdownSubjectRef,
   type LoadedBreakdown,
   loadReadableBreakdown,
+  reporter,
   selectBreakdowns,
   toBreakdownSummary,
 } from './breakdown-load.js';
@@ -297,6 +307,7 @@ async function toDetail(db: DbOrTx, actor: BreakdownActor, row: LoadedBreakdown)
       breakdownId: hint.breakdown.id,
       subject: breakdownSubjectOf(hint),
       urgency: hint.breakdown.urgency,
+      status: hint.breakdown.status,
       firstLine: breakdownFirstLine(hint.breakdown.description),
     })),
     actions: deriveBreakdownActions(breakdownActionSubject(row), actor),
@@ -325,6 +336,9 @@ function breakdownListOrder({ sortBy, sortDirection }: Pick<BreakdownListInput, 
   return [getSortOrder(contractingBreakdowns.reportedAt, sortDirection), asc(contractingBreakdowns.id)];
 }
 
+/** The South African calendar day a Breakdown was reported on. */
+const reportedDay = sql`(${contractingBreakdowns.reportedAt} at time zone ${JOHANNESBURG_TIME_ZONE})::date`;
+
 export async function listBreakdowns({
   db,
   actor,
@@ -336,11 +350,26 @@ export async function listBreakdowns({
 }): Promise<BreakdownListResult> {
   const where = and(
     input.statuses.length ? inArray(contractingBreakdowns.status, input.statuses) : undefined,
+    input.urgencies.length ? inArray(contractingBreakdowns.urgency, input.urgencies) : undefined,
+    input.machineIds.length || input.implementIds.length
+      ? or(
+          input.machineIds.length ? inArray(contractingBreakdowns.machineId, input.machineIds) : undefined,
+          input.implementIds.length ? inArray(contractingBreakdowns.implementId, input.implementIds) : undefined,
+        )
+      : undefined,
+    input.jobIds.length ? inArray(contractingBreakdowns.jobId, input.jobIds) : undefined,
+    input.farmIds.length ? inArray(contractingJobs.farmId, input.farmIds) : undefined,
+    input.reporterUserIds.length ? inArray(contractingBreakdowns.reportedByUserId, input.reporterUserIds) : undefined,
+    input.reportedFrom ? sql`${reportedDay} >= ${input.reportedFrom}::date` : undefined,
+    input.reportedTo ? sql`${reportedDay} <= ${input.reportedTo}::date` : undefined,
     input.machineId ? eq(contractingBreakdowns.machineId, input.machineId) : undefined,
     input.implementId ? eq(contractingBreakdowns.implementId, input.implementId) : undefined,
     input.jobId ? eq(contractingBreakdowns.jobId, input.jobId) : undefined,
-    input.mechanicUserId ? eq(contractingBreakdowns.primaryMechanicUserId, input.mechanicUserId) : undefined,
+    input.mechanicUserIds.length
+      ? inArray(contractingBreakdowns.primaryMechanicUserId, input.mechanicUserIds)
+      : undefined,
     breakdownReadableBy(actor),
+    createGlobalSearchCondition(input.search, breakdownSearchColumns),
   );
   const matching = () =>
     selectBreakdowns(db)
@@ -352,6 +381,58 @@ export async function listBreakdowns({
   const total = counted?.total ?? 0;
   const items = rows.map(toBreakdownSummary);
   return { items, nextCursor: getNextCursor({ count: items.length, cursor: input.cursor, total }), total };
+}
+
+/** The subjects, Jobs, Farms and reporters the actor's readable Breakdowns carry, for the Workshop's column filters. */
+export async function listBreakdownFilterOptions({
+  db,
+  actor,
+}: {
+  db: Db;
+  actor: BreakdownActor;
+}): Promise<BreakdownFilterOptions> {
+  const rows = await db
+    .selectDistinct({
+      machineId: contractingBreakdowns.machineId,
+      machineCode: contractingMachines.code,
+      implementId: contractingBreakdowns.implementId,
+      implementCode: contractingImplements.code,
+      jobId: contractingBreakdowns.jobId,
+      jobCode: contractingJobs.code,
+      farmId: contractingFarms.id,
+      farmName: contractingFarms.name,
+      reporterId: reporter.id,
+      reporterName: reporter.name,
+    })
+    .from(contractingBreakdowns)
+    .leftJoin(contractingMachines, eq(contractingMachines.id, contractingBreakdowns.machineId))
+    .leftJoin(contractingImplements, eq(contractingImplements.id, contractingBreakdowns.implementId))
+    .leftJoin(contractingJobs, eq(contractingJobs.id, contractingBreakdowns.jobId))
+    .leftJoin(contractingFarms, eq(contractingFarms.id, contractingJobs.farmId))
+    .innerJoin(reporter, eq(reporter.id, contractingBreakdowns.reportedByUserId))
+    .where(breakdownReadableBy(actor));
+  const subjects = new Map<string, BreakdownFilterOptions['subjects'][number]>();
+  const jobs = new Map<string, BreakdownFilterOptions['jobs'][number]>();
+  const farms = new Map<string, BreakdownFilterOptions['farms'][number]>();
+  const reporters = new Map<string, BreakdownFilterOptions['reporters'][number]>();
+  for (const row of rows) {
+    if (row.machineId && row.machineCode)
+      subjects.set(row.machineId, { kind: 'machine', id: row.machineId, code: row.machineCode });
+    if (row.implementId && row.implementCode)
+      subjects.set(row.implementId, { kind: 'implement', id: row.implementId, code: row.implementCode });
+    if (row.jobId && row.jobCode !== null)
+      jobs.set(row.jobId, { id: row.jobId, jobNumber: formatJobNumber(row.jobCode) });
+    if (row.farmId && row.farmName) farms.set(row.farmId, { id: row.farmId, name: row.farmName });
+    reporters.set(row.reporterId, { id: row.reporterId, name: row.reporterName });
+  }
+  const byLabel = <T>(values: Iterable<T>, label: (value: T) => string) =>
+    [...values].sort((left, right) => label(left).localeCompare(label(right)));
+  return {
+    subjects: byLabel(subjects.values(), (subject) => subject.code),
+    jobs: byLabel(jobs.values(), (job) => job.jobNumber),
+    farms: byLabel(farms.values(), (farm) => farm.name),
+    reporters: byLabel(reporters.values(), (person) => person.name),
+  };
 }
 
 /** The workshop queue's counts across every Breakdown the actor may read. */
@@ -366,11 +447,15 @@ export async function summarizeBreakdownQueue({
     .select({
       open: sql<number>`count(*) filter (where ${contractingBreakdowns.status} = 'open')::integer`,
       inProgress: sql<number>`count(*) filter (where ${contractingBreakdowns.status} = 'in-progress')::integer`,
+      solved: sql<number>`count(*) filter (where ${contractingBreakdowns.status} = 'solved')::integer`,
       codeRedUnsolved: sql<number>`count(*) filter (where ${contractingBreakdowns.urgency} = 'code-red' and ${contractingBreakdowns.status} <> 'solved')::integer`,
     })
     .from(contractingBreakdowns)
     .where(breakdownReadableBy(actor));
-  return counts ?? { open: 0, inProgress: 0, codeRedUnsolved: 0 };
+  return {
+    counts: { open: counts?.open ?? 0, 'in-progress': counts?.inProgress ?? 0, solved: counts?.solved ?? 0 },
+    codeRedUnsolved: counts?.codeRedUnsolved ?? 0,
+  };
 }
 
 async function jobForemanOf(tx: DatabaseTransaction, jobId: string | null) {

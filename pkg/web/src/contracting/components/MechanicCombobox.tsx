@@ -17,7 +17,7 @@ export function mechanicFieldOptions(
   return [NO_MECHANIC, ...offered];
 }
 
-/** Assigns a Mechanic in place; `inRow` keeps the picker from opening the table row it sits in. */
+/** Assigns a Mechanic in place; `inRow` keeps the picker from opening the table row it sits in, at a name's width. */
 export function MechanicCombobox({
   inputId,
   options,
@@ -44,7 +44,7 @@ export function MechanicCombobox({
   return (
     // biome-ignore lint/a11y/noStaticElementInteractions: keeps the picker from opening the row
     // biome-ignore lint/a11y/useKeyWithClickEvents: the picker owns its keyboard handling
-    <div className="min-w-40" onClick={(event) => event.stopPropagation()}>
+    <div className="w-48" onClick={(event) => event.stopPropagation()}>
       {combobox}
     </div>
   );

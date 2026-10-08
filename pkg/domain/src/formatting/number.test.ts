@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest';
 
-import { formatClock, formatCurrency, formatHours, formatNumber, formatPercent, toCsvAmount } from './number.js';
+import {
+  formatClock,
+  formatCoordinates,
+  formatCurrency,
+  formatHours,
+  formatNumber,
+  formatPercent,
+  toCsvAmount,
+} from './number.js';
 
 describe('formatNumber', () => {
   it('formats finite values with space grouping and no decimal places by default', () => {
@@ -89,5 +97,11 @@ describe('toCsvAmount', () => {
     expect(toCsvAmount(1234.5)).toBe('1234.50');
     expect(toCsvAmount(0)).toBe('0.00');
     expect(toCsvAmount(null)).toBe('');
+  });
+});
+
+describe('formatCoordinates', () => {
+  it('shows latitude then longitude to five decimals', () => {
+    expect(formatCoordinates({ latitude: -26.2041028, longitude: 28.0473051 })).toBe('-26.20410, 28.04731');
   });
 });

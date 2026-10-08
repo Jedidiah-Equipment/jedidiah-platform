@@ -1,5 +1,6 @@
 import { presentAction } from '@pkg/domain/contracting';
 import { type BreakdownDetail, CloseOutNote } from '@pkg/schema/contracting';
+import { IconPlayerPlay, IconPlayerStop } from '@tabler/icons-react-native';
 import { useState } from 'react';
 import { View } from 'react-native';
 import { DateText } from '@/components/DateText';
@@ -28,7 +29,7 @@ export function BreakdownWorkshopCard({ breakdown }: { breakdown: BreakdownDetai
       await assign.mutateAsync({ id: breakdown.id, mechanicUserId: mechanicUserId || null });
     }, BREAKDOWN_SAVE_FAILED);
   return (
-    <Card title="Workshop">
+    <Card>
       {presentAction(actions.assignMechanic) ? (
         <VerdictGroup verdict={actions.assignMechanic}>
           {(disabled) => (
@@ -57,7 +58,7 @@ export function BreakdownWorkshopCard({ breakdown }: { breakdown: BreakdownDetai
       ) : null}
       {breakdown.solvedAt ? (
         <Text className="text-sm text-muted-foreground">
-          Solved <DateText className="text-sm text-muted-foreground" date={breakdown.solvedAt} format="medium" />
+          Fixed <DateText className="text-sm text-muted-foreground" date={breakdown.solvedAt} format="medium" />
         </Text>
       ) : null}
       {breakdown.closeOutNote ? (
@@ -70,6 +71,8 @@ export function BreakdownWorkshopCard({ breakdown }: { breakdown: BreakdownDetai
         <VerdictButton
           verdict={actions.start}
           title="Start work"
+          icon={IconPlayerPlay}
+          capture
           busy={busy}
           onPress={() =>
             void run(async () => {
@@ -78,7 +81,15 @@ export function BreakdownWorkshopCard({ breakdown }: { breakdown: BreakdownDetai
           }
         />
       ) : null}
-      <VerdictButton verdict={actions.solve} title="Mark solved" primary busy={busy} onPress={() => setSolving(true)} />
+      {/* Completing is the stop moment once work has started; before then it is a plain alternative to starting. */}
+      <VerdictButton
+        verdict={actions.solve}
+        title="Mark completed"
+        icon={breakdown.status === 'in-progress' ? IconPlayerStop : undefined}
+        capture={breakdown.status === 'in-progress'}
+        busy={busy}
+        onPress={() => setSolving(true)}
+      />
       <SolveModal breakdownId={breakdown.id} visible={solving} onClose={() => setSolving(false)} />
     </Card>
   );
@@ -102,10 +113,10 @@ function SolveModal({ breakdownId, visible, onClose }: { breakdownId: string; vi
     onClose();
   };
   return (
-    <ThemedModal backdropLabel="Cancel marking solved" open={visible} onClose={close} dismissDisabled={busy}>
+    <ThemedModal backdropLabel="Cancel marking completed" open={visible} onClose={close} dismissDisabled={busy}>
       <View className="w-full gap-3 rounded-2xl border border-border bg-background p-4">
         <Text className="text-lg text-foreground" weight="bold">
-          Mark solved
+          Mark completed
         </Text>
         <FieldShell label="Close-out note">
           <VoiceTextArea
@@ -119,7 +130,7 @@ function SolveModal({ breakdownId, visible, onClose }: { breakdownId: string; vi
         {error ? <Text className="text-danger">{error}</Text> : null}
         <Button
           destructive
-          title={busy ? 'Saving…' : 'Confirm solved'}
+          title={busy ? 'Saving…' : 'Confirm completed'}
           disabled={busy || voice.busy || !valid}
           onPress={() =>
             void run(async () => {

@@ -1,4 +1,4 @@
-import { IconLoader2, IconTrash } from '@tabler/icons-react';
+import { IconLoader2, IconTrash, type Icon as TablerIcon } from '@tabler/icons-react';
 import type React from 'react';
 import { useState } from 'react';
 
@@ -20,6 +20,9 @@ type RemoveEntityButtonProps = {
   isPending: boolean;
   onConfirm: () => void;
   title: React.ReactNode;
+  triggerClassName?: string;
+  /** The trigger's glyph; a trash can unless the surface calls for another, such as a close mark on a tile. */
+  triggerIcon?: TablerIcon;
   triggerIconOnly?: boolean;
   triggerLabel: string;
   triggerSize?: React.ComponentProps<typeof Button>['size'];
@@ -32,6 +35,8 @@ export const RemoveEntityButton: React.FC<RemoveEntityButtonProps> = ({
   isPending,
   onConfirm,
   title,
+  triggerClassName,
+  triggerIcon: TriggerIcon = IconTrash,
   triggerIconOnly = false,
   triggerLabel,
   triggerSize,
@@ -45,6 +50,7 @@ export const RemoveEntityButton: React.FC<RemoveEntityButtonProps> = ({
         render={
           <Button
             aria-label={triggerIconOnly ? triggerLabel : undefined}
+            className={triggerClassName}
             size={triggerSize}
             title={triggerIconOnly ? triggerLabel : undefined}
             type="button"
@@ -52,7 +58,7 @@ export const RemoveEntityButton: React.FC<RemoveEntityButtonProps> = ({
           />
         }
       >
-        <IconTrash data-icon={triggerIconOnly ? undefined : 'inline-start'} />
+        <TriggerIcon data-icon={triggerIconOnly ? undefined : 'inline-start'} />
         {triggerIconOnly ? null : triggerLabel}
       </DialogTrigger>
       <DialogContent>

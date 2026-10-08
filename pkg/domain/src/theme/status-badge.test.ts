@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { categoryColourClassNames } from '../contracting/fleet/category-icons.js';
 import { statusBadgeColorClassNames } from './status-badge.js';
 
 describe('shared badge palette', () => {
@@ -10,7 +11,7 @@ describe('shared badge palette', () => {
    * Both halves are literals here so both are generated; this is what keeps them saying one thing.
    */
   it('composes its authored halves back into the two-tone class web reads', () => {
-    for (const palette of Object.values(statusBadgeColorClassNames)) {
+    for (const palette of [...Object.values(statusBadgeColorClassNames), ...Object.values(categoryColourClassNames)]) {
       expect(`${palette.textByScheme.light} dark:${palette.textByScheme.dark}`).toBe(palette.text);
     }
   });

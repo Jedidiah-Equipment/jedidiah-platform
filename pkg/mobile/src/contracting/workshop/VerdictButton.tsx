@@ -5,6 +5,7 @@ import type { ReactNode } from 'react';
 import { View } from 'react-native';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
+import { CaptureButton } from '@/contracting/components/CaptureButton';
 
 /**
  * Controls under one Breakdown Action verdict, read the way the domain presents it: absent for someone the action is
@@ -34,6 +35,7 @@ export function VerdictButton({
   title,
   icon,
   primary,
+  capture = false,
   busy = false,
   onPress,
 }: {
@@ -41,20 +43,26 @@ export function VerdictButton({
   title: string;
   icon?: TablerIcon;
   primary?: boolean;
+  /** Draws it as a field capture moment, the way arrival and departure are captured; needs an icon. */
+  capture?: boolean;
   busy?: boolean;
   onPress: () => void;
 }) {
   return (
     <VerdictGroup verdict={verdict}>
-      {(disabled) => (
-        <Button
-          primary={primary && !disabled}
-          title={title}
-          icon={icon}
-          disabled={busy || disabled}
-          onPress={onPress}
-        />
-      )}
+      {(disabled) =>
+        capture && icon ? (
+          <CaptureButton icon={icon} label={title} disabled={busy || disabled} onPress={onPress} />
+        ) : (
+          <Button
+            primary={primary && !disabled}
+            title={title}
+            icon={icon}
+            disabled={busy || disabled}
+            onPress={onPress}
+          />
+        )
+      }
     </VerdictGroup>
   );
 }

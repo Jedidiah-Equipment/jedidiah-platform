@@ -24,12 +24,27 @@ export function useBreakdownScope() {
   return breakdownReadScope(useSessionAccessSummary());
 }
 
-export function useBreakdownList(statuses: readonly BreakdownStatus[]) {
+export function useBreakdownList({
+  search,
+  statuses,
+  mechanicUserIds,
+}: {
+  search: string;
+  statuses: readonly BreakdownStatus[];
+  mechanicUserIds: readonly string[];
+}) {
   const canRead = useBreakdownScope() !== null;
   const trpc = useTRPC();
   return useInfiniteQuery(
     trpc.contractingBreakdowns.list.infiniteQueryOptions(
-      { statuses: [...statuses], limit: PAGE_SIZE, sortBy: 'reportedAt', sortDirection: 'desc' },
+      {
+        search,
+        statuses: [...statuses],
+        mechanicUserIds: [...mechanicUserIds],
+        limit: PAGE_SIZE,
+        sortBy: 'reportedAt',
+        sortDirection: 'desc',
+      },
       {
         enabled: canRead,
         getNextPageParam: (page) => page.nextCursor,
@@ -37,6 +52,18 @@ export function useBreakdownList(statuses: readonly BreakdownStatus[]) {
         placeholderData: keepPreviousData,
       },
     ),
+  );
+}
+
+/** Each status's Breakdown count, for the workshop's status filter; a Foreman reading only his own gets none. */
+export function useBreakdownStatusCounts() {
+  const canReadAll = useBreakdownScope() === 'all';
+  const trpc = useTRPC();
+  return useQuery(
+    trpc.contractingBreakdowns.queueSummary.queryOptions(undefined, {
+      enabled: canReadAll,
+      select: (summary) => summary.counts,
+    }),
   );
 }
 

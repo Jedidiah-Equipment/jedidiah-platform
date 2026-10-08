@@ -14,7 +14,7 @@ const stint = {
   id: '00000000-0000-4000-8000-000000000001',
   machineCode: 'BEL14-1',
   categoryIcon: 'tractor',
-  categoryColour: 'green',
+  categoryColour: 'lime',
   implementId: 'implement-1',
   driverUserId: 'driver-1',
 } as Assignment;

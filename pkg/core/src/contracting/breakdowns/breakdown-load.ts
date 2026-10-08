@@ -12,9 +12,10 @@ import { type BreakdownSubjectRef, BreakdownSummary } from '@pkg/schema/contract
 import { and, eq, getTableColumns, or, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import type { DbOrTx } from '../jobs/job-load.js';
+import { jobNumberText } from '../jobs/job-sql.js';
 import { BreakdownError } from './breakdown-errors.js';
 
-const reporter = alias(user, 'breakdown_reporter');
+export const reporter = alias(user, 'breakdown_reporter');
 const mechanic = alias(user, 'breakdown_mechanic');
 const solver = alias(user, 'breakdown_solver');
 
@@ -22,6 +23,14 @@ const noteCount = sql<number>`(
   select count(*)::integer
   from contracting.breakdown_note summary_note
   where summary_note.breakdown_id = ${contractingBreakdowns.id}
+)`;
+
+const firstNoteText = sql<string | null>`(
+  select first_note.text
+  from contracting.breakdown_note first_note
+  where first_note.breakdown_id = ${contractingBreakdowns.id}
+  order by first_note.created_at, first_note.id
+  limit 1
 )`;
 
 /** Other unsolved Breakdowns on the same Job: the dispatch cross-reference, derived. */
@@ -43,13 +52,26 @@ const breakdownHeader = {
   categoryColour: contractingCategories.colour,
   jobCode: contractingJobs.code,
   jobForemanUserId: contractingJobs.foremanUserId,
+  farmId: contractingFarms.id,
   farmName: contractingFarms.name,
   reporterName: reporter.name,
   mechanicName: mechanic.name,
   solvedByName: solver.name,
   noteCount,
+  firstNoteText,
   sameJobOpenCount,
 };
+
+/** What the Workshop search box looks in: the subject, the Job and its Farm, the people, and the report. */
+export const breakdownSearchColumns = [
+  sql`${contractingMachines.code}`,
+  sql`${contractingImplements.code}`,
+  jobNumberText,
+  sql`${contractingFarms.name}`,
+  sql`${reporter.name}`,
+  sql`${mechanic.name}`,
+  sql`${contractingBreakdowns.description}`,
+];
 
 /** Breakdowns joined to everything a summary names; the caller adds its filter, order and paging. */
 export function selectBreakdowns(db: DbOrTx) {
@@ -126,6 +148,7 @@ export function toBreakdownSummary(row: LoadedBreakdown): BreakdownSummary {
     jobId: breakdown.jobId,
     jobNumber: row.jobCode === null ? null : formatJobNumber(row.jobCode),
     jobForemanUserId: row.jobForemanUserId,
+    farmId: row.farmId,
     farmName: row.farmName,
     urgency: breakdown.urgency,
     status: breakdown.status,
@@ -137,6 +160,7 @@ export function toBreakdownSummary(row: LoadedBreakdown): BreakdownSummary {
     firstLine: breakdownFirstLine(breakdown.description),
     photoCount: breakdown.photos.length,
     noteCount: row.noteCount,
+    soleNote: row.noteCount === 1 && row.firstNoteText ? breakdownFirstLine(row.firstNoteText) : null,
     startedAt: breakdown.startedAt?.toISOString() ?? null,
     solvedAt: breakdown.solvedAt?.toISOString() ?? null,
     sameJobOpenCount: row.sameJobOpenCount,

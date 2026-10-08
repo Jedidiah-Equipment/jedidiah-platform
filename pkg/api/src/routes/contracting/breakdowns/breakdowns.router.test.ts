@@ -70,7 +70,10 @@ test('a Foreman lists only his own Breakdowns; the workshop manager lists and so
   expect((await connor.list({})).total).toBe(2);
   const solved = await connor.solve({ id: context.siphos.id, closeOutNote: 'Replaced the hose' });
   expect(solved).toMatchObject({ status: 'solved', actions: { solve: { allowed: false, reason: 'solved' } } });
-  expect(await connor.queueSummary()).toEqual({ open: 1, inProgress: 0, codeRedUnsolved: 1 });
+  expect(await connor.queueSummary()).toEqual({
+    counts: { open: 1, 'in-progress': 0, solved: 1 },
+    codeRedUnsolved: 1,
+  });
 });
 
 test('Contracting invoicing cannot see Breakdowns', async ({ context }) => {

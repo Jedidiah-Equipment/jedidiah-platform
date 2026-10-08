@@ -1,17 +1,14 @@
-import { breakdownStatusColorClassNames, breakdownStatusLabels } from '@pkg/domain/contracting';
+import { breakdownStatusColorClassNames, breakdownStatusesCount, breakdownStatusLabels } from '@pkg/domain/contracting';
 import { type BreakdownQueueSummary, type BreakdownStatus, breakdownStatuses } from '@pkg/schema/contracting';
 import type { ColumnFiltersState, Updater } from '@tanstack/react-table';
-import { isPickedExactly, togglePick } from '@/components/data-table/column-filter-values.js';
 import { QuickFilterButton } from '@/contracting/components/QuickFilterButton.js';
 import { cn } from '@/lib/utils.js';
-import { STATUS_COLUMN_ID } from './types.js';
+import { isPickedStatuses, quickFilterStatuses, toggleStatuses } from './types.js';
 
-const counted: Partial<Record<BreakdownStatus, keyof BreakdownQueueSummary>> = {
-  open: 'open',
-  'in-progress': 'inProgress',
-};
-
-/** One chip per status: pressing picks exactly that status, pressing again goes back to every unsolved one. */
+/**
+ * The quick filters above the Workshop: one per unsolved status that holds a Breakdown, then All, Solved included. Each presses only while
+ * exactly its statuses are picked, and pressing it again goes back to every unsolved one.
+ */
 export function BreakdownStatusQuickFilters({
   summary,
   columnFilters,
@@ -21,27 +18,28 @@ export function BreakdownStatusQuickFilters({
   columnFilters: ColumnFiltersState;
   onColumnFiltersChange: (updater: Updater<ColumnFiltersState>) => void;
 }) {
-  const toggle = (status: BreakdownStatus) =>
-    onColumnFiltersChange((current) => togglePick(current, STATUS_COLUMN_ID, [status]));
+  const toggle = (picked: readonly BreakdownStatus[]) =>
+    onColumnFiltersChange((current) => toggleStatuses(current, picked));
   return (
     <fieldset className="scrollbar-none flex gap-1.5 overflow-x-auto" aria-label="Breakdown statuses">
-      {breakdownStatuses.map((status) => {
-        const countKey = counted[status];
-        return (
-          <QuickFilterButton
-            key={status}
-            count={countKey && summary ? summary[countKey] : undefined}
-            pressed={isPickedExactly(columnFilters, STATUS_COLUMN_ID, [status])}
-            onClick={() => toggle(status)}
-          >
-            <span
-              aria-hidden="true"
-              className={cn('size-2 rounded-full border', breakdownStatusColorClassNames[status].chip)}
-            />
-            <span>{breakdownStatusLabels[status]}</span>
-          </QuickFilterButton>
-        );
-      })}
+      {quickFilterStatuses(summary?.counts, columnFilters).map((status) => (
+        <QuickFilterButton
+          key={status}
+          count={summary?.counts[status] ?? 0}
+          pressed={isPickedStatuses(columnFilters, [status])}
+          onClick={() => toggle([status])}
+        >
+          <span aria-hidden="true" className={cn('size-2 rounded-full', breakdownStatusColorClassNames[status].dot)} />
+          <span>{breakdownStatusLabels[status]}</span>
+        </QuickFilterButton>
+      ))}
+      <QuickFilterButton
+        count={breakdownStatusesCount(summary?.counts)}
+        pressed={isPickedStatuses(columnFilters, breakdownStatuses)}
+        onClick={() => toggle(breakdownStatuses)}
+      >
+        <span>All</span>
+      </QuickFilterButton>
     </fieldset>
   );
 }

@@ -90,9 +90,9 @@ describe('a refused verdict', () => {
     };
     const sipho = actor('foreman', 'sipho');
     const connor = actor('workshop-manager', 'connor');
-    expect(refusal('solve', 'open', sipho)).toBe('You do not have permission to mark it Solved.');
+    expect(refusal('solve', 'open', sipho)).toBe('You do not have permission to mark it Fixed.');
     expect(refusal('editReport', 'open', sipho, 'thabo')).toBe('This Breakdown was reported by someone else.');
-    expect(refusal('addPhotos', 'solved', connor)).toBe('This Breakdown is Solved, so nothing on it can change.');
+    expect(refusal('addPhotos', 'solved', connor)).toBe('This Breakdown is Fixed, so nothing on it can change.');
     expect(refusal('start', 'in-progress', connor)).toBe('You can only start work while the Breakdown is Open.');
   });
 });

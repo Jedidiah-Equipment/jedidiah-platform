@@ -1,5 +1,9 @@
-import { formatDate } from '@pkg/domain';
-import { breakdownSubjectKindLabels, breakdownUrgencyLabels } from '@pkg/domain/contracting';
+import { formatCoordinates, formatDate } from '@pkg/domain';
+import {
+  breakdownSubjectKindLabels,
+  breakdownUrgencyColorClassNames,
+  breakdownUrgencyLabels,
+} from '@pkg/domain/contracting';
 import {
   BREAKDOWN_MAX_PHOTOS,
   BreakdownDescription,
@@ -9,7 +13,7 @@ import {
   breakdownSubjectKinds,
 } from '@pkg/schema/contracting';
 import { type Href, router, useLocalSearchParams, useNavigation } from 'expo-router';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { FormPage } from '@/components/FormPage';
 import { FieldShell } from '@/components/form/fields/FieldShell';
@@ -17,7 +21,9 @@ import { SearchSelect } from '@/components/form/fields/SearchSelectField';
 import { SecondaryToolbar } from '@/components/TopToolbar';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import type { StatusBadgeClassNames } from '@/components/ui/status-badge';
 import { Text } from '@/components/ui/text';
+import { BreakdownStatusBadge, BreakdownUrgencyIcon } from '@/contracting/components/BreakdownSubjectIcons';
 import { CategoryIcon } from '@/contracting/components/CategoryIcon';
 import { implementOption } from '@/contracting/components/implement-option';
 import { PhotoStrip } from '@/contracting/components/PhotoStrip';
@@ -30,6 +36,7 @@ import { VoiceTextArea } from '@/contracting/voice/VoiceTextArea';
 import { useSessionPermission } from '@/lib/auth-session';
 import { choosePhotos, type PickedPhoto, takePhoto } from '@/lib/photo-picker';
 import { useBusyAction } from '@/lib/use-busy-action';
+import { useColorMode } from '@/theme/use-color-mode';
 import { deriveReport } from './breakdown-form';
 import { type BreakdownReportRequest, REPORT_FAILED, reportBreakdown } from './breakdown-upload';
 import { currentPosition } from './location';
@@ -145,8 +152,7 @@ export default function ReportBreakdownScreen() {
         hasGps: position !== null,
         hasJob: reported.jobId !== null,
       });
-      if (navigation.isFocused())
-        router.replace({ pathname: '/contracting/workshop/[breakdownId]', params: { breakdownId: reported.id } });
+      if (navigation.isFocused()) leave();
     }, REPORT_FAILED);
   }
 
@@ -255,9 +261,13 @@ export default function ReportBreakdownScreen() {
                 router.push({ pathname: '/contracting/workshop/[breakdownId]', params: { breakdownId: row.id } })
               }
             >
-              <Text className="text-sm text-foreground" numberOfLines={2}>
-                {breakdownUrgencyLabels[row.urgency]} · {row.firstLine} ({formatDate(row.reportedAt, 'duration')})
-              </Text>
+              <View className="flex-row items-center gap-2">
+                <BreakdownUrgencyIcon urgency={row.urgency} size={16} />
+                <Text className="min-w-0 flex-1 text-sm text-foreground" numberOfLines={2}>
+                  {row.firstLine} ({formatDate(row.reportedAt, 'duration')})
+                </Text>
+                <BreakdownStatusBadge status={row.status} />
+              </View>
             </Pressable>
           ))}
         </FieldShell>
@@ -268,8 +278,9 @@ export default function ReportBreakdownScreen() {
             <Toggle
               key={choice.urgency}
               label={choice.label}
+              leading={<BreakdownUrgencyIcon urgency={choice.urgency} size={16} />}
               selected={urgency === choice.urgency}
-              tone={choice.urgency === 'code-red' ? 'danger' : 'default'}
+              selectedClassNames={breakdownUrgencyColorClassNames[choice.urgency]}
               disabled={busy}
               onPress={() => setUrgency(choice.urgency)}
             />
@@ -295,34 +306,41 @@ export default function ReportBreakdownScreen() {
         onChoose={() => void addPhotos(() => choosePhotos(photosLeft))}
         onRemove={(photoId) => setPhotos((current) => current.filter((photo) => photo.id !== photoId))}
       />
-      {position ? <Text className="text-sm text-muted-foreground">Location attached</Text> : null}
+      {position ? (
+        <Text className="text-sm text-muted-foreground">Location attached: {formatCoordinates(position)}</Text>
+      ) : null}
     </FormPage>
   );
 }
 
+/** A choice button: primary when picked, or the choice's own domain palette when it has one. */
 function Toggle({
   label,
+  leading,
   selected,
+  selectedClassNames,
   disabled,
-  tone = 'default',
   onPress,
 }: {
   label: string;
+  leading?: ReactNode;
   selected: boolean;
+  selectedClassNames?: StatusBadgeClassNames;
   disabled: boolean;
-  tone?: 'default' | 'danger';
   onPress: () => void;
 }) {
-  const selectedClass = tone === 'danger' ? 'border-danger bg-danger' : 'border-primary bg-primary';
-  const selectedText = tone === 'danger' ? 'text-danger-foreground' : 'text-primary-foreground';
+  const { resolved } = useColorMode();
+  const selectedClass = selectedClassNames ? selectedClassNames.chip : 'border-primary bg-primary';
+  const selectedText = selectedClassNames ? selectedClassNames.textByScheme[resolved] : 'text-primary-foreground';
   return (
     <Pressable
       accessibilityRole="radio"
       accessibilityState={{ selected, disabled }}
       disabled={disabled}
       onPress={onPress}
-      className={`min-h-12 flex-1 items-center justify-center rounded-xl border px-4 py-3 ${selected ? selectedClass : 'border-border bg-surface'}`}
+      className={`min-h-12 flex-1 flex-row items-center justify-center gap-2 rounded-xl border px-4 py-3 ${selected ? selectedClass : 'border-border bg-surface'}`}
     >
+      {leading}
       <Text className={`text-center ${selected ? selectedText : 'text-foreground'}`} weight="semibold">
         {label}
       </Text>

@@ -1,0 +1,26 @@
+diff --git a/dist/metro/index.js b/dist/metro/index.js
+index 8a0c01eae15deb3b7b70218db0dfa7466e1ce1ee..b1176de51bbfedf9c1c48c93f591206b199557c8 100644
+--- a/dist/metro/index.js
++++ b/dist/metro/index.js
+@@ -17,7 +17,7 @@ let haste;
+ let fileSystem;
+ let virtualModulesPossible = undefined;
+ const virtualModules = new Map();
+-const outputDirectory = path_1.default.resolve(__dirname, "../../.cache");
++const outputDirectory = path_1.default.resolve(process.env.NATIVEWIND_CACHE_DIR || path_1.default.resolve(__dirname, "../../.cache"));
+ const isRadonIDE = "REACT_NATIVE_IDE_LIB_PATH" in process.env;
+ function withCssInterop(config, options) {
+     return typeof config === "function"
+diff --git a/src/metro/index.ts b/src/metro/index.ts
+index 4cb015e82cdd1b8e1a175994413d03cf2d32c8da..280da0f6d42b29947dcbbf3bb53772a5e86f1966 100644
+--- a/src/metro/index.ts
++++ b/src/metro/index.ts
+@@ -82,7 +82,7 @@ let fileSystem: FileSystem | undefined;
+ 
+ let virtualModulesPossible: undefined | Promise<void> = undefined;
+ const virtualModules = new Map<string, Promise<string | Buffer>>();
+-const outputDirectory = path.resolve(__dirname, "../../.cache");
++const outputDirectory = path.resolve(process.env.NATIVEWIND_CACHE_DIR || path.resolve(__dirname, "../../.cache"));
+ const isRadonIDE = "REACT_NATIVE_IDE_LIB_PATH" in process.env;
+ 
+ export function withCssInterop(

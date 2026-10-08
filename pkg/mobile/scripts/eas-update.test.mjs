@@ -10,6 +10,8 @@ import {
   resolveUpdatePlatforms,
 } from './eas-update.mjs';
 
+const outputDir = '/release/staging/run-test/bundle';
+
 const easConfig = {
   build: {
     staging: {
@@ -22,14 +24,16 @@ const easConfig = {
 
 describe('resolveUpdateCommand', () => {
   it("publishes to the profile's channel with the profile's build env", () => {
-    expect(resolveUpdateCommand({ args: [], commitSubject: 'fix: thing', easConfig, profile: 'staging' })).toEqual({
+    expect(
+      resolveUpdateCommand({ outputDir, args: [], commitSubject: 'fix: thing', easConfig, profile: 'staging' }),
+    ).toEqual({
       args: [
         'update',
         '--channel',
         'staging',
         '--skip-bundler',
         '--input-dir',
-        'dist',
+        outputDir,
         '--environment',
         'production',
         '--message',
@@ -44,6 +48,7 @@ describe('resolveUpdateCommand', () => {
     'keeps a caller message instead of the commit subject (%j)',
     (args) => {
       const { args: commandArgs } = resolveUpdateCommand({
+        outputDir,
         args,
         commitSubject: 'fix: thing',
         easConfig,
@@ -56,7 +61,7 @@ describe('resolveUpdateCommand', () => {
         'staging',
         '--skip-bundler',
         '--input-dir',
-        'dist',
+        outputDir,
         '--environment',
         'production',
         ...args,
@@ -66,6 +71,7 @@ describe('resolveUpdateCommand', () => {
 
   it('uses a caller-provided cache reset during the owned export rather than publish', () => {
     const { args } = resolveUpdateCommand({
+      outputDir,
       args: ['--clear-cache'],
       commitSubject: 'fix: thing',
       easConfig,
@@ -78,7 +84,7 @@ describe('resolveUpdateCommand', () => {
       'staging',
       '--skip-bundler',
       '--input-dir',
-      'dist',
+      outputDir,
       '--environment',
       'production',
       '--message',
@@ -87,20 +93,27 @@ describe('resolveUpdateCommand', () => {
   });
 
   it('rejects a profile eas.json does not define', () => {
-    expect(() => resolveUpdateCommand({ args: [], commitSubject: '', easConfig, profile: 'preview' })).toThrow(
-      'received preview',
-    );
+    expect(() =>
+      resolveUpdateCommand({ outputDir, args: [], commitSubject: '', easConfig, profile: 'preview' }),
+    ).toThrow('received preview');
   });
 
   it('rejects caller overrides of the pre-publish bundle', () => {
     expect(() =>
-      resolveUpdateCommand({ args: ['--input-dir', 'other'], commitSubject: '', easConfig, profile: 'staging' }),
+      resolveUpdateCommand({
+        outputDir,
+        args: ['--input-dir', 'other'],
+        commitSubject: '',
+        easConfig,
+        profile: 'staging',
+      }),
     ).toThrow('owns --skip-bundler and --input-dir');
   });
 
   it('rejects an EAS environment that differs from the build profile', () => {
     expect(() =>
       resolveUpdateCommand({
+        outputDir,
         args: ['--environment', 'production'],
         commitSubject: '',
         easConfig: { build: { staging: { ...easConfig.build.staging, environment: 'preview' } } },
@@ -124,15 +137,21 @@ describe('resolveUpdatePlatforms', () => {
     [['--platform', 'android'], 'android'],
     [['-pandroid'], 'android'],
   ])('uses the same selected platform for export and publish (%j)', (args, platform) => {
-    const command = resolveUpdateCommand({ args, commitSubject: 'fix: thing', easConfig, profile: 'staging' });
+    const command = resolveUpdateCommand({
+      outputDir,
+      args,
+      commitSubject: 'fix: thing',
+      easConfig,
+      profile: 'staging',
+    });
     expect(command.platforms).toEqual([platform]);
     expect(command.args.slice(-args.length)).toEqual(args);
-    expect(resolveExportCommand(command.platforms).args).toEqual([
+    expect(resolveExportCommand(command.platforms, outputDir).args).toEqual([
       'exec',
       'expo',
       'export',
       '--output-dir',
-      'dist',
+      outputDir,
       '--source-maps',
       '--dump-assetmap',
       '--platform',
@@ -248,6 +267,7 @@ describe('assertCompatibleBuilds', () => {
         build,
         env: {},
         platforms: resolveUpdateCommand({
+          outputDir,
           args: ['-pios'],
           commitSubject: 'fix: thing',
           easConfig,
@@ -311,14 +331,14 @@ describe('assertFirebaseConfig', () => {
 
 describe('resolveExportCommand', () => {
   it('exports both native Hermes bundles with source maps before publish', () => {
-    expect(resolveExportCommand()).toEqual({
+    expect(resolveExportCommand(['android', 'ios'], outputDir)).toEqual({
       executable: 'pnpm',
       args: [
         'exec',
         'expo',
         'export',
         '--output-dir',
-        'dist',
+        outputDir,
         '--source-maps',
         '--dump-assetmap',
         '--platform',
@@ -333,14 +353,16 @@ describe('resolveExportCommand', () => {
 
 describe('resolveSourceMapUploadCommand', () => {
   it('uploads Hermes source maps when both PostHog credentials are present', () => {
-    expect(resolveSourceMapUploadCommand({ POSTHOG_CLI_API_KEY: 'phx_test', POSTHOG_CLI_PROJECT_ID: '123' })).toEqual({
-      args: ['exec', 'posthog-cli', 'hermes', 'upload', '--directory', 'dist', '--release-mode', 'symbol-set'],
+    expect(
+      resolveSourceMapUploadCommand({ POSTHOG_CLI_API_KEY: 'phx_test', POSTHOG_CLI_PROJECT_ID: '123' }, outputDir),
+    ).toEqual({
+      args: ['exec', 'posthog-cli', 'hermes', 'upload', '--directory', outputDir, '--release-mode', 'symbol-set'],
       executable: 'pnpm',
     });
   });
 
   it('refuses to publish an OTA when source-map credentials are absent', () => {
-    expect(() => resolveSourceMapUploadCommand({})).toThrow(
+    expect(() => resolveSourceMapUploadCommand({}, outputDir)).toThrow(
       'PostHog source-map upload requires POSTHOG_CLI_API_KEY and POSTHOG_CLI_PROJECT_ID',
     );
   });
@@ -372,7 +394,7 @@ describe('resolveReleaseEnvironment', () => {
     });
     expect(env).not.toHaveProperty('STAGING_POSTHOG_CLI_API_KEY');
     expect(env).not.toHaveProperty('PRODUCTION_POSTHOG_CLI_API_KEY');
-    expect(() => resolveSourceMapUploadCommand(env)).not.toThrow();
+    expect(() => resolveSourceMapUploadCommand(env, outputDir)).not.toThrow();
   });
 
   it('keeps shell values when file entries are empty', () => {

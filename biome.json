@@ -13,6 +13,7 @@
       "!pkg/db/migrations",
       "!pkg/seed/snapshot/products.json",
       "!**/.expo",
+      "!pkg/mobile/android",
       "!pkg/mobile/ios",
       "!pkg/mobile/expo-env.d.ts",
       "!pkg/mobile/google-services.json",

@@ -2,6 +2,7 @@ import { execFileSync, spawnSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { parseEnv } from 'node:util';
+import { createReleaseRun } from './release-run.mjs';
 
 const EAS_CONFIG_PATH = new URL('../eas.json', import.meta.url);
 const MOBILE_DIR = new URL('..', import.meta.url);
@@ -32,7 +33,7 @@ export function resolveUpdatePlatforms(args) {
  * env is applied here, over the caller's, or the update ships local defaults to store builds. Metro's
  * transform cache can retain those inlined values across profiles, so every update also clears it.
  */
-export function resolveUpdateCommand({ args, commitSubject, easConfig, profile }) {
+export function resolveUpdateCommand({ args, commitSubject, easConfig, profile, outputDir }) {
   const platforms = resolveUpdatePlatforms(args);
   const build = easConfig.build?.[profile];
   if (!build?.channel) {
@@ -62,7 +63,7 @@ export function resolveUpdateCommand({ args, commitSubject, easConfig, profile }
       build.channel,
       '--skip-bundler',
       '--input-dir',
-      'dist',
+      outputDir,
       ...(environments.length > 0 ? [] : ['--environment', buildEnvironment]),
       ...(hasMessage ? [] : ['--message', commitSubject]),
       ...publishArgs,
@@ -194,7 +195,7 @@ function resolveBuildEnvironment(build) {
   return 'preview';
 }
 
-export function resolveExportCommand(platforms = NATIVE_PLATFORMS) {
+export function resolveExportCommand(platforms, outputDir) {
   return {
     executable: 'pnpm',
     args: [
@@ -202,7 +203,7 @@ export function resolveExportCommand(platforms = NATIVE_PLATFORMS) {
       'expo',
       'export',
       '--output-dir',
-      'dist',
+      outputDir,
       '--source-maps',
       '--dump-assetmap',
       ...platforms.flatMap((platform) => ['--platform', platform]),
@@ -211,14 +212,14 @@ export function resolveExportCommand(platforms = NATIVE_PLATFORMS) {
   };
 }
 
-export function resolveSourceMapUploadCommand(env) {
+export function resolveSourceMapUploadCommand(env, outputDir) {
   const missing = ['POSTHOG_CLI_API_KEY', 'POSTHOG_CLI_PROJECT_ID'].filter((name) => !env[name]);
   if (missing.length > 0) {
     throw new Error(`PostHog source-map upload requires ${missing.join(' and ')} in the release environment.`);
   }
   return {
     executable: 'pnpm',
-    args: ['exec', 'posthog-cli', 'hermes', 'upload', '--directory', 'dist', '--release-mode', 'symbol-set'],
+    args: ['exec', 'posthog-cli', 'hermes', 'upload', '--directory', outputDir, '--release-mode', 'symbol-set'],
   };
 }
 
@@ -241,16 +242,26 @@ export function resolveReleaseEnvironment(profile, env = process.env, readFile =
 
 function main() {
   const [profile, ...args] = process.argv.slice(2);
+  const run = createReleaseRun('ota', profile);
+  console.log(`OTA output: ${run.outputDir}`);
+  try {
+    publishUpdate(profile, args, run);
+  } finally {
+    run.cleanup();
+  }
+}
+
+function publishUpdate(profile, args, run) {
   const easConfig = JSON.parse(readFileSync(EAS_CONFIG_PATH, 'utf8'));
   const commitSubject = execFileSync('git', ['log', '-1', '--format=%s'], { encoding: 'utf8' }).trim();
-  const command = resolveUpdateCommand({ args, commitSubject, easConfig, profile });
+  const command = resolveUpdateCommand({ args, commitSubject, easConfig, profile, outputDir: run.outputDir });
   const releaseEnv = resolveReleaseEnvironment(profile);
-  const updateEnv = { ...releaseEnv, ...command.env };
+  const updateEnv = { ...releaseEnv, ...command.env, ...run.env };
   assertFirebaseConfig(command.platforms);
   assertCompatibleBuilds({ profile, build: easConfig.build[profile], env: updateEnv, platforms: command.platforms });
-  const bundle = resolveExportCommand(command.platforms);
+  const bundle = resolveExportCommand(command.platforms, run.outputDir);
   // Bundle and upload before publishing because this script cannot roll an OTA back.
-  const sourceMaps = resolveSourceMapUploadCommand(releaseEnv);
+  const sourceMaps = resolveSourceMapUploadCommand(releaseEnv, run.outputDir);
 
   const bundleResult = spawnSync(bundle.executable, bundle.args, {
     cwd: MOBILE_DIR,
@@ -265,7 +276,7 @@ function main() {
 
   const upload = spawnSync(sourceMaps.executable, sourceMaps.args, {
     cwd: MOBILE_DIR,
-    env: releaseEnv,
+    env: updateEnv,
     stdio: 'inherit',
   });
   if (upload.error) throw upload.error;

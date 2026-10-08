@@ -29,3 +29,7 @@ overrides:
   "patch-package>tmp": 0.2.7
   # xcode asks for ^7 and requires CommonJS; uuid 11 is the last CommonJS release.
   "xcode>uuid": 11.1.1
+
+patchedDependencies:
+  # NativeWind 4 otherwise shares generated styles across every concurrent export/build.
+  react-native-css-interop@0.2.7: patches/react-native-css-interop@0.2.7.patch

@@ -12,9 +12,8 @@ export const TRANSCRIBE_PATH = '/api/contracting/transcriptions';
 export const TRANSCRIBE_TIMEOUT_MS = 30_000;
 export const TRANSCRIPTION_HINT_CAP = 100;
 const KEYTERM_MAX_LENGTH = 50;
-/** The speech model's prompt budget: whisper-1 caps it at 224 tokens. */
-export const KEYTERM_PROMPT_MAX_CHARS = 600;
-const KEYTERM_CAP = 300;
+/** Keyterms per speech call, sent as `keywords`: gpt-transcribe refuses a form of more than 1,000 fields (measured 2026-10-08), the audio and options included. */
+export const SPEECH_KEYTERM_CAP = 900;
 /** Marks a per-note part of a prompt the Transcriptions page shows in place of a real note. */
 export const promptPlaceholder = (name: string) => `{{${name}}}`;
 export const PROMPT_PLACEHOLDER_PATTERN = /(\{\{[^}]+\}\})/;
@@ -37,11 +36,8 @@ export function transcriptionWasCorrected(shown: string, saved: string): boolean
   return saved.trim() !== '' && saved.trim() !== shown.trim();
 }
 
-/** Keyterm hygiene for the speech service: trimmed, at most 50 characters, unique ignoring case, capped. */
-function shapeKeytermCandidates<T extends { keyterm: string | null | undefined }>(
-  candidates: readonly T[],
-  cap: number,
-): (T & { keyterm: string })[] {
+/** Keyterm hygiene for the speech service: one line, trimmed, at most 50 characters, no angle brackets (the API refuses them), unique ignoring case. */
+function shapeKeytermCandidates<T extends { keyterm: string | null | undefined }>(candidates: readonly T[]) {
   const seen = new Set<string>();
   const shaped: (T & { keyterm: string })[] = [];
 
@@ -49,55 +45,31 @@ function shapeKeytermCandidates<T extends { keyterm: string | null | undefined }
     const keyterm = candidate.keyterm?.replace(/\s+/g, ' ').trim() ?? '';
     const key = keyterm.toLowerCase();
 
-    if (keyterm === '' || keyterm.length > KEYTERM_MAX_LENGTH || seen.has(key)) {
+    if (keyterm === '' || keyterm.length > KEYTERM_MAX_LENGTH || /[<>]/.test(keyterm) || seen.has(key)) {
       continue;
     }
 
     seen.add(key);
     shaped.push({ ...candidate, keyterm });
-
-    if (shaped.length === cap) {
-      break;
-    }
   }
 
   return shaped;
 }
 
-function fitKeyterms(keyterms: readonly string[], maxChars: number): { prompt: string; fitted: number } {
-  let prompt = '';
-  let fitted = 0;
-
-  for (const keyterm of keyterms) {
-    const next = prompt === '' ? keyterm : `${prompt}, ${keyterm}`;
-
-    if (next.length > maxChars) {
-      break;
-    }
-
-    prompt = next;
-    fitted += 1;
-  }
-
-  return { prompt, fitted };
-}
-
 /**
- * The speech call's free-text prompt from the sourced keyterm registry: comma-separated in registry order, so the
- * terms that come first (taught keyterms, fleet, people) survive and farm names drop off when the budget runs out.
- * Also every keyterm the cap or the budget left out, with its source.
+ * The keyterms the speech call sends, from the sourced registry in its order so taught keyterms come first and the
+ * cap drops the tail. Also every keyterm the cap left out, with its source.
  */
-export function speechKeytermPrompt(candidates: readonly KeytermCandidate[]): {
-  prompt: string;
+export function speechKeyterms(candidates: readonly KeytermCandidate[]): {
+  keyterms: string[];
   cutOff: KeytermCandidate[];
 } {
-  const shaped = shapeKeytermCandidates(candidates, Number.POSITIVE_INFINITY);
-  const { prompt, fitted } = fitKeyterms(
-    shaped.slice(0, KEYTERM_CAP).map((candidate) => candidate.keyterm),
-    KEYTERM_PROMPT_MAX_CHARS,
-  );
+  const shaped = shapeKeytermCandidates(candidates);
 
-  return { prompt, cutOff: shaped.slice(fitted).map(({ keyterm, source }) => ({ keyterm, source })) };
+  return {
+    keyterms: shaped.slice(0, SPEECH_KEYTERM_CAP).map((candidate) => candidate.keyterm),
+    cutOff: shaped.slice(SPEECH_KEYTERM_CAP).map(({ keyterm, source }) => ({ keyterm, source })),
+  };
 }
 
 /** Where a Transcription's hint derivation stands; the hints it left prove the outcome even where none was kept. */

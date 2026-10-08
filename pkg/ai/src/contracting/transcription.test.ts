@@ -1,7 +1,7 @@
-import { createOpenAI } from '@ai-sdk/openai';
-import { promptPlaceholder } from '@pkg/domain/contracting';
+import { promptPlaceholder, SPEECH_KEYTERM_CAP } from '@pkg/domain/contracting';
 import { MockLanguageModelV4 } from 'ai/test';
 import { describe, expect, it } from 'vitest';
+import { createOpenAiTranscriptionModel } from '../ai-sdk-model.js';
 import { deriveTranscriptionHint, tidyTranscript, transcribeVoiceNote, transcriptionPrompts } from './transcription.js';
 
 function answering(object: unknown) {
@@ -19,20 +19,30 @@ function answering(object: unknown) {
 }
 
 const HINT_ID = '2b8c0a52-6f0e-4d5e-9a43-3f7a0e1c9d11';
+const M4A = new Uint8Array([0, 0, 0, 32, 0x66, 0x74, 0x79, 0x70]);
+
+/** The real provider wiring, answering from `reply` and keeping the form and headers each request sent. */
+function speechModel(model: string, reply: unknown = { text: 'heard' }) {
+  const requests: { form: FormData; headers: Headers }[] = [];
+  return {
+    requests,
+    model: createOpenAiTranscriptionModel({
+      apiKey: 'test-key',
+      model,
+      fetch: async (_input, init) => {
+        requests.push({ form: init?.body as FormData, headers: new Headers(init?.headers) });
+        return Response.json(reply);
+      },
+    }),
+  };
+}
 
 describe('transcribeVoiceNote', () => {
-  it('biases the speech model with the keyterms as a json-format prompt and returns the trimmed text', async () => {
-    let sent: FormData | undefined;
-    const model = createOpenAI({
-      apiKey: 'test-key',
-      fetch: async (_input, init) => {
-        sent = init?.body as FormData;
-        return Response.json({ text: ' Die hek by Rooikraal is oop. ' });
-      },
-    }).transcription('gpt-transcribe');
+  it('sends gpt-transcribe the keyterms as keywords, no prompt, and returns the trimmed text', async () => {
+    const { model, requests } = speechModel('gpt-transcribe', { text: ' Die hek by Rooikraal is oop. ' });
 
     const heard = await transcribeVoiceNote({
-      audio: new Uint8Array([0, 0, 0, 32, 0x66, 0x74, 0x79, 0x70]),
+      audio: M4A,
       keyterms: [
         { keyterm: 'Rooikraal', source: 'hint' },
         { keyterm: 'JD 6155M', source: 'machine' },
@@ -41,23 +51,30 @@ describe('transcribeVoiceNote', () => {
     });
 
     expect(heard).toEqual({ text: 'Die hek by Rooikraal is oop.', language: null });
-    expect(sent?.get('model')).toBe('gpt-transcribe');
-    expect(sent?.get('prompt')).toBe('Rooikraal, JD 6155M');
-    expect(sent?.get('response_format')).toBe('json');
-    // Pinned until the provider forwards them (see the TODO on the call).
-    expect(sent?.has('keywords')).toBe(false);
-    expect(sent?.has('timestamp_granularities[]')).toBe(false);
+    const [{ form, headers } = { form: new FormData(), headers: new Headers() }] = requests;
+    expect(form.get('model')).toBe('gpt-transcribe');
+    expect(form.getAll('keywords[]')).toEqual(['Rooikraal', 'JD 6155M']);
+    expect(form.has('prompt')).toBe(false);
+    expect(form.get('response_format')).toBe('json');
+    expect(form.has('timestamp_granularities[]')).toBe(false);
+    expect([...headers.keys()].filter((name) => name.startsWith('x-transcription'))).toEqual([]);
+  });
+
+  it('sends an older speech model no keywords, which it would refuse', async () => {
+    const { model, requests } = speechModel('gpt-4o-transcribe');
+
+    await transcribeVoiceNote({ audio: M4A, keyterms: [{ keyterm: 'Rooikraal', source: 'hint' }], model });
+
+    expect(requests[0]?.form.has('keywords[]')).toBe(false);
   });
 
   it('returns empty text when nothing was heard, so the caller can say so instead of reporting an outage', async () => {
-    const model = createOpenAI({
-      apiKey: 'test-key',
-      fetch: async () => Response.json({ text: '', languages: [] }),
-    }).transcription('gpt-transcribe');
+    const { model } = speechModel('gpt-transcribe', { text: '', languages: [] });
 
-    await expect(
-      transcribeVoiceNote({ audio: new Uint8Array([0, 0, 0, 32, 0x66, 0x74, 0x79, 0x70]), keyterms: [], model }),
-    ).resolves.toEqual({ text: '', language: null });
+    await expect(transcribeVoiceNote({ audio: M4A, keyterms: [], model })).resolves.toEqual({
+      text: '',
+      language: null,
+    });
   });
 });
 
@@ -203,7 +220,10 @@ describe('transcriptionPrompts', () => {
   const hints = [{ id: HINT_ID, rule: 'The farm is spelled Rooikraal, not Rooi Kraal.' }];
   const keyterms = [
     { keyterm: 'Rooikraal', source: 'hint' as const },
-    ...Array.from({ length: 80 }, (_, index) => ({ keyterm: `Tractor ${index}`, source: 'machine' as const })),
+    ...Array.from({ length: SPEECH_KEYTERM_CAP }, (_, index) => ({
+      keyterm: `Tractor ${index}`,
+      source: 'machine' as const,
+    })),
   ];
   const shown = transcriptionPrompts({
     hints,
@@ -229,23 +249,16 @@ describe('transcriptionPrompts', () => {
     return { system: system?.content, prompt: user?.role === 'user' ? user.content[0] : undefined };
   };
 
-  it('shows the speech prompt the call sends, after the cut', async () => {
-    let prompt: unknown;
-    const model = createOpenAI({
-      apiKey: 'test-key',
-      fetch: async (_input, init) => {
-        prompt = (init?.body as FormData | undefined)?.get('prompt');
-        return Response.json({ text: 'heard' });
-      },
-    }).transcription('gpt-transcribe');
-    await transcribeVoiceNote({
-      audio: new Uint8Array([0, 0, 0, 32, 0x66, 0x74, 0x79, 0x70]),
-      keyterms,
-      model,
-    });
+  it('shows the speech keyterms the call sends, after the cap', async () => {
+    const { model, requests } = speechModel('gpt-transcribe');
+    await transcribeVoiceNote({ audio: M4A, keyterms, model });
 
-    expect(shown.speech).toMatchObject({ model: 'gpt-transcribe', prompt, maxChars: 600 });
-    expect(shown.speech.cutOff[0]?.source).toBe('machine');
+    expect(shown.speech).toMatchObject({
+      model: 'gpt-transcribe',
+      keyterms: requests[0]?.form.getAll('keywords[]'),
+      maxKeyterms: SPEECH_KEYTERM_CAP,
+    });
+    expect(shown.speech.cutOff).toEqual([{ keyterm: `Tractor ${SPEECH_KEYTERM_CAP - 1}`, source: 'machine' }]);
   });
 
   it('shows the tidy and derivation prompts the calls send, with the note in placeholders', async () => {

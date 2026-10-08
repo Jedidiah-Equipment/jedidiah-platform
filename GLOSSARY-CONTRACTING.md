@@ -271,7 +271,7 @@ _Avoid_: rule, correction, vocabulary entry
 
 **Keyterm** is one proper noun the speech service is told to expect — a Machine code, make or model,
 an Implement code, a Category, a field person's name, a recent Farm or Customer, or a Transcription
-Hint's keyterm — sent as a comma-separated prompt that is cut at a fixed length, taught keyterms first.
+Hint's keyterm — sent with every Voice Note as a list, taught keyterms first, cut only past a fixed count.
 _Avoid_: keyword, vocabulary
 
 ## Access

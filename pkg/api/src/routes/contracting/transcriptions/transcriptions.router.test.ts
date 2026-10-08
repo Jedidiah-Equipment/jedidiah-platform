@@ -88,7 +88,7 @@ test('only a holder of contracting_transcription:read reviews Transcriptions, hi
   });
   expect(await caller.contractingTranscriptions.hints()).toEqual({ cap: 100, activeCount: 0, hints: [] });
   expect(await caller.contractingTranscriptions.prompts()).toMatchObject({
-    speech: { model: 'test-transcription-model', prompt: 'Rooikraal', cutOff: [] },
+    speech: { model: 'test-transcription-model', keyterms: ['Rooikraal'], cutOff: [] },
     tidy: { model: 'test-chat-model', prompt: expect.stringContaining('{{raw transcript}}') },
     derivation: { model: 'test-chat-model', prompt: expect.stringContaining('{{saved text}}') },
   });

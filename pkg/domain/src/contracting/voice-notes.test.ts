@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest';
 import {
   appendTranscript,
   isHintDerivationLanguage,
-  speechKeytermPrompt,
+  SPEECH_KEYTERM_CAP,
+  speechKeyterms,
   transcriptionHintStatus,
   transcriptionWasCorrected,
 } from './voice-notes.js';
@@ -33,28 +34,39 @@ describe('appendTranscript', () => {
   });
 });
 
-describe('speechKeytermPrompt', () => {
-  it('trims, drops blanks and over-long terms, and de-duplicates ignoring case', () => {
+describe('speechKeyterms', () => {
+  it('trims, drops blanks, over-long terms and ones the API refuses, and de-duplicates ignoring case', () => {
     const machine = (keyterm: string) => ({ keyterm, source: 'machine' as const });
     expect(
-      speechKeytermPrompt([machine('  JD   6155M '), machine(''), machine('jd 6155m'), machine('x'.repeat(51))]).prompt,
-    ).toBe('JD 6155M');
+      speechKeyterms([
+        machine('  JD   6155M '),
+        machine(''),
+        machine('jd 6155m'),
+        machine('x'.repeat(51)),
+        machine('<Bell>'),
+        machine('Line\nbreak'),
+      ]).keyterms,
+    ).toEqual(['JD 6155M', 'Line break']);
   });
 
-  it('joins keyterms in registry order within the budget and names each one cut off with its source', () => {
+  it('keeps registry order up to the cap and names each one cut off with its source', () => {
     const candidates = [
       { keyterm: 'Bloemhof', source: 'hint' as const },
       { keyterm: 'Thabo Nkosi', source: 'person' as const },
-      ...Array.from({ length: 400 }, (_, index) => ({ keyterm: `Farm ${index}`, source: 'farm' as const })),
+      ...Array.from({ length: SPEECH_KEYTERM_CAP }, (_, index) => ({
+        keyterm: `Farm ${index}`,
+        source: 'farm' as const,
+      })),
     ];
 
-    const { prompt, cutOff } = speechKeytermPrompt(candidates);
+    const { keyterms, cutOff } = speechKeyterms(candidates);
 
-    expect(prompt.startsWith('Bloemhof, Thabo Nkosi, Farm 0, Farm 1')).toBe(true);
-    expect(prompt.length).toBeLessThanOrEqual(600);
-    const sent = prompt.split(', ').length;
-    expect(cutOff[0]).toEqual({ keyterm: `Farm ${sent - 2}`, source: 'farm' });
-    expect(cutOff).toHaveLength(402 - sent);
+    expect(keyterms).toHaveLength(SPEECH_KEYTERM_CAP);
+    expect(keyterms.slice(0, 3)).toEqual(['Bloemhof', 'Thabo Nkosi', 'Farm 0']);
+    expect(cutOff).toEqual([
+      { keyterm: `Farm ${SPEECH_KEYTERM_CAP - 2}`, source: 'farm' },
+      { keyterm: `Farm ${SPEECH_KEYTERM_CAP - 1}`, source: 'farm' },
+    ]);
   });
 });
 

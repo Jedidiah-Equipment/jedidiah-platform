@@ -1,8 +1,8 @@
 import type { ActiveHint, VoiceTranscript } from '@pkg/core/contracting';
 import {
-  KEYTERM_PROMPT_MAX_CHARS,
   promptPlaceholder,
-  speechKeytermPrompt,
+  SPEECH_KEYTERM_CAP,
+  speechKeyterms,
   TRANSCRIPTION_HINT_CAP,
   TRANSCRIPTION_HINTS_PER_CORRECTION,
 } from '@pkg/domain/contracting';
@@ -21,6 +21,7 @@ import {
   experimental_transcribe as transcribe,
 } from 'ai';
 import { z } from 'zod';
+import { TRANSCRIPTION_KEYWORDS_HEADER } from '../ai-sdk-model.js';
 
 export async function transcribeVoiceNote({
   audio,
@@ -36,12 +37,14 @@ export async function transcribeVoiceNote({
     audio,
     maxRetries: 0,
     abortSignal: AbortSignal.timeout(20_000),
+    // gpt-transcribe takes literal terms as `keywords`; the provider cannot send them yet, so its fetch does.
+    headers: { [TRANSCRIPTION_KEYWORDS_HEADER]: encodeURIComponent(JSON.stringify(speechKeyterms(keyterms).keyterms)) },
     providerOptions: {
-      // OpenAI biases through a free-text prompt, not a keyterm list. `responseFormat: 'json'` is mandatory: the
-      // provider only knows the gpt-4o-* ids and would ask any other model for verbose_json, which newer models
-      // reject; an empty `timestampGranularities` keeps it from sending segment timestamps with plain json.
-      // TODO(ai-sdk): send keyterms as providerOptions.openai.keywords and languages: ['en', 'af'] once the provider forwards them.
-      openai: { prompt: speechKeytermPrompt(keyterms).prompt, responseFormat: 'json', timestampGranularities: [] },
+      // `responseFormat: 'json'` is mandatory: the provider only knows the gpt-4o-* ids and would ask any other model
+      // for verbose_json, which newer models reject; an empty `timestampGranularities` keeps it from sending segment
+      // timestamps with plain json.
+      // TODO(ai-sdk): send languages: ['en', 'af'] once the provider forwards them.
+      openai: { responseFormat: 'json', timestampGranularities: [] },
     },
   }).catch((error: unknown) => {
     // The SDK throws on an empty transcript; silence is an answer, not an outage.
@@ -207,9 +210,8 @@ export function transcriptionPrompts({
     purpose: promptPlaceholder('purpose'),
     hints,
   };
-  const speech = speechKeytermPrompt(keyterms);
   return {
-    speech: { model: models.transcription, maxChars: KEYTERM_PROMPT_MAX_CHARS, ...speech },
+    speech: { model: models.transcription, maxKeyterms: SPEECH_KEYTERM_CAP, ...speechKeyterms(keyterms) },
     tidy: { model: models.chat, ...tidyPrompt(note) },
     derivation: {
       model: models.chat,

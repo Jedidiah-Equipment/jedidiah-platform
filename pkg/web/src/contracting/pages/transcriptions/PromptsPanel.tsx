@@ -88,7 +88,7 @@ function CutOffKeyterms({ cutOff }: { cutOff: KeytermCandidate[] }) {
     <div className="grid gap-1">
       <span className="text-xs text-muted-foreground">Keyterms cut off</span>
       <DataTable
-        emptyMessage="Every keyterm fits."
+        emptyMessage="Every keyterm is sent."
         hideGlobalFilter
         paginationMode="incremental"
         table={table}
@@ -112,9 +112,12 @@ export function PromptsPanel() {
       <PromptCard
         title="1. Speech-to-text"
         model={speech.model}
-        description={`No system prompt. The speech model is biased by the keyterms, comma-separated and cut at ${formatNumber(speech.maxChars)} characters.`}
+        description={`No prompt. The speech model is sent the keyterms as a list, taught keyterms first, at most ${formatNumber(speech.maxKeyterms)}.`}
       >
-        <PromptText label="Keyterm prompt" text={speech.prompt} />
+        <PromptText
+          label={`Keyterms sent (${formatNumber(speech.keyterms.length)})`}
+          text={speech.keyterms.join(', ')}
+        />
         <CutOffKeyterms cutOff={speech.cutOff} />
       </PromptCard>
       <PromptCard

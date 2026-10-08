@@ -1,7 +1,7 @@
 import { categoryColours, categoryIconKeys } from '@pkg/schema/contracting';
 import { describe, expect, it } from 'vitest';
 import { statusBadgeColorClassNames } from '../../theme/status-badge.js';
-import { categoryColourClassNames, categoryIcon, categoryIcons } from './category-icons.js';
+import { categoryColourClassNames, categoryColourTone, categoryIcon, categoryIcons } from './category-icons.js';
 
 // SVG path data only: commands, numbers, separators. Anything else (a `fill`, a `<g>`, a colour)
 // has no place in a stroke-only glyph.
@@ -46,6 +46,10 @@ describe('category icons', () => {
       const { chip } = statusBadgeColorClassNames[meaning];
       expect(Object.values(categoryColourClassNames).map((palette) => palette.chip)).not.toContain(chip);
     }
+  });
+  it('paints a colour this build does not know in the default', () => {
+    expect(categoryColourTone('green')).toBe(categoryColourClassNames.indigo);
+    expect(categoryColourTone('lime')).toBe(categoryColourClassNames.lime);
   });
   it('composes the authored halves of each colour back into the two-tone class web reads', () => {
     for (const palette of Object.values(categoryColourClassNames)) {

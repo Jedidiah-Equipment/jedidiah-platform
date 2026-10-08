@@ -126,4 +126,11 @@ export const categoryColourClassNames = {
     textByScheme: { dark: 'text-pink-200', light: 'text-pink-800' },
   },
 } as const satisfies Record<CategoryColour, BadgeColorClassNames & { dot: string }>;
+/**
+ * Never throws, like `categoryIcon`: across a palette change an installed mobile build and the server can disagree on
+ * the keys, so a colour this build does not know paints in the default instead.
+ */
+export function categoryColourTone(key: string) {
+  return categoryColourClassNames[key as CategoryColour] ?? categoryColourClassNames[DEFAULT_CATEGORY_COLOUR];
+}
 export { categoryColours, categoryIconKeys };

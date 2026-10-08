@@ -28,10 +28,10 @@
     "android": "APP_VARIANT=staging expo run:android",
     "android:staging-api": "APP_VARIANT=staging EXPO_PUBLIC_API_BASE_URL=https://staging-api.jedidiahequipment.co.za expo run:android",
     "doctor": "APP_VARIANT=staging pnpm dlx expo-doctor",
-    "android-eas-submit-production": "APP_VARIANT=production eas build --profile production --platform android --auto-submit",
-    "ios-eas-submit-production": "APP_VARIANT=production eas build --profile production --platform ios --auto-submit",
-    "android-eas-submit-staging": "APP_VARIANT=staging eas build --profile staging --platform android --auto-submit",
-    "ios-eas-submit-staging": "APP_VARIANT=staging eas build --profile staging --platform ios --auto-submit",
+    "android-eas-submit-production": "node scripts/eas-build.mjs production --platform android --auto-submit",
+    "ios-eas-submit-production": "node scripts/eas-build.mjs production --platform ios --auto-submit",
+    "android-eas-submit-staging": "node scripts/eas-build.mjs staging --platform android --auto-submit",
+    "ios-eas-submit-staging": "node scripts/eas-build.mjs staging --platform ios --auto-submit",
     "ota:production": "node scripts/eas-update.mjs production",
     "ota:staging": "node scripts/eas-update.mjs staging",
     "version:bump": "node scripts/bump-version.mjs",
@@ -41,7 +41,9 @@
     "ios:staging-api": "APP_VARIANT=staging EXPO_PUBLIC_API_BASE_URL=https://staging-api.jedidiahequipment.co.za expo run:ios",
     "dev": "APP_VARIANT=staging expo start --dev-client",
     "dev:staging-api": "APP_VARIANT=staging EXPO_PUBLIC_API_BASE_URL=https://staging-api.jedidiahequipment.co.za expo start --dev-client --clear",
-    "test": "vitest run"
+    "test": "vitest run",
+    "build:staging": "node scripts/eas-build.mjs staging",
+    "build:production": "node scripts/eas-build.mjs production"
   },
   "dependencies": {
     "@ai-sdk/react": "4.0.126",

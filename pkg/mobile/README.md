@@ -12,7 +12,10 @@ All are `pnpm --filter @pkg/mobile <script>`:
 - `doctor` — Expo Doctor for the staging variant
 - `typecheck`, `test`
 - `version:bump patch` — bump the store-facing app version (`minor` and `major` are also supported)
-- `android-eas-build-staging` / `ios-eas-build-staging` and the matching `…-eas-submit-staging` scripts
+- `build:staging` / `build:production` — EAS builds; pass `--platform ios` or `--platform android`,
+  and `--local` to compile on this machine
+- `android-eas-submit-staging` / `ios-eas-submit-staging` and the matching `…-production` scripts —
+  EAS cloud builds with automatic store submission
 
 ## Local API
 
@@ -100,10 +103,34 @@ query strings, or any form value.
 5. Capture one reading the server refuses (below the latest) with and without a photo. Confirm the
    `reading captured` event carries `refused`, `hasPhoto`, and `role` alongside the shared properties, and no
    machine, photo-path, or comment data.
-6. Publish with `ota:staging`. The script uploads `dist` Hermes maps before EAS Update; force another exception
+6. Publish with `ota:staging`. The script uploads that run's Hermes maps before EAS Update; force another exception
    and confirm its OTA stack resolves to repository source.
 
 ## Release
+
+Each release owns a unique, gitignored directory under `pkg/mobile/dist`, printed before it starts:
+
+```text
+dist/
+  ota/<staging|production>/run-<id>/bundle/       # exported bundle and source maps
+  native/<staging|production>/run-<id>/artifacts/ # local .ipa/.aab/.apk output
+```
+
+The OTA export, PostHog upload, and EAS publish all use the same run's `bundle` directory. Runs also have
+private temporary directories for Metro's transform/file-map caches and NativeWind's generated styles;
+those caches are removed when the command finishes, while bundles and artifacts stay for inspection.
+Staging and production can run concurrently, as can separate runs of the same profile.
+
+EAS cloud builds already use isolated workers. The build scripts also isolate their local temporary
+files; with `--local`, EAS receives a separate native working directory and artifact directory for each
+run. EAS cleans its native working directory unless `EAS_LOCAL_BUILD_SKIP_CLEANUP=1` is set. Local builds
+still need the platform tools and secrets required by EAS; cloud builds continue to read their EAS secrets.
+The development `android`/`ios` commands retain Expo's generated native projects in this checkout.
+
+```sh
+pnpm --filter @pkg/mobile build:staging --platform ios
+pnpm --filter @pkg/mobile build:production --platform android --local
+```
 
 Staging builds use `APP_VARIANT=staging`, identifier `za.co.jedidiahequipment.ops.staging`, and the EAS
 `staging` channel. EAS Submit uses the platform credentials stored in Expo for the matching Android package
@@ -126,7 +153,8 @@ the native fingerprint is not an OTA update and reaches users through the store 
 prompts for.
 
 The runtime version is the native fingerprint with the store version left out (`fingerprint.config.js`),
-so the `version:bump` every mobile change set makes never blocks an OTA update on its own. Before exporting
+so the `version:bump` every mobile change set makes never blocks an OTA update on its own. Expo also hashes
+package scripts: changes to the release commands require new native builds before the next OTA. Before exporting
 or publishing, the `ota:*` script queries the latest finished EAS store build for each selected platform on the
 profile's channel and compares its runtime version to the current fingerprint. It stops if no build exists,
 EAS cannot verify it, or the fingerprints differ; in the last case, a full build and publish is required.
@@ -146,7 +174,7 @@ given. Set `STAGING_POSTHOG_CLI_API_KEY`, `STAGING_POSTHOG_CLI_PROJECT_ID`, and
 The script maps the selected profile's complete set to the names PostHog CLI expects. Leave all three
 values empty to use the release shell; a partial set stops the release. It refuses to publish without the
 required key and project ID, exports the selected native bundles, uploads their Hermes maps in symbol-set mode,
-and only then publishes that already-built `dist` directory:
+and only then publishes that run's already-built `bundle` directory:
 
 ```sh
 pnpm --filter @pkg/mobile ota:staging

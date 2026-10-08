@@ -67,12 +67,12 @@ import {
 import {
   breakdownActionSubject,
   breakdownReadableBy,
+  breakdownReporter,
   breakdownSearchColumns,
   breakdownSubjectOf,
   breakdownSubjectRef,
   type LoadedBreakdown,
   loadReadableBreakdown,
-  reporter,
   selectBreakdowns,
   toBreakdownSummary,
 } from './breakdown-load.js';
@@ -401,15 +401,15 @@ export async function listBreakdownFilterOptions({
       jobCode: contractingJobs.code,
       farmId: contractingFarms.id,
       farmName: contractingFarms.name,
-      reporterId: reporter.id,
-      reporterName: reporter.name,
+      reporterId: breakdownReporter.id,
+      reporterName: breakdownReporter.name,
     })
     .from(contractingBreakdowns)
     .leftJoin(contractingMachines, eq(contractingMachines.id, contractingBreakdowns.machineId))
     .leftJoin(contractingImplements, eq(contractingImplements.id, contractingBreakdowns.implementId))
     .leftJoin(contractingJobs, eq(contractingJobs.id, contractingBreakdowns.jobId))
     .leftJoin(contractingFarms, eq(contractingFarms.id, contractingJobs.farmId))
-    .innerJoin(reporter, eq(reporter.id, contractingBreakdowns.reportedByUserId))
+    .innerJoin(breakdownReporter, eq(breakdownReporter.id, contractingBreakdowns.reportedByUserId))
     .where(breakdownReadableBy(actor));
   const subjects = new Map<string, BreakdownFilterOptions['subjects'][number]>();
   const jobs = new Map<string, BreakdownFilterOptions['jobs'][number]>();

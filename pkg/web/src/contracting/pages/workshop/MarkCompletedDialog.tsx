@@ -6,7 +6,7 @@ import { useContractingWrite, useResetOnOpen } from '@/contracting/hooks/use-con
 import { useQueryInvalidation } from '@/contracting/hooks/use-query-invalidation.js';
 import { useTRPC } from '@/lib/trpc.js';
 
-export function MarkSolvedDialog({
+export function MarkCompletedDialog({
   breakdownId,
   open,
   onOpenChange,

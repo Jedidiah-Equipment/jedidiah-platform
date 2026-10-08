@@ -221,7 +221,8 @@ edit), an optional link to the Job it happened on (defaulted from the subject's 
 Assignment — for an Implement, the Assignment it is attached to — which is what locates it for the
 workshop and puts it in the same-Job dispatch cross-reference), optional GPS, and an **urgency** — **Code Red**
 (machine down) or **Code Green** (still working). Status runs **Not fixed → Fixing → Fixed** (stored as `open` / `in-progress` / `solved`); the workshop manager owns every
-transition and closes with a mandatory close-out note. The subject's Breakdown history is
+transition — **Start work** moves it to Fixing, **Mark completed** to Fixed — and closes with a mandatory
+close-out note. The subject's Breakdown history is
 permanent. The dispatch cross-reference — other fleet on the same Job with open Breakdowns —
 is derived, never stored. A new Breakdown notifies by push notification: Code Green reaches
 the workshop-manager role; Code Red also reaches contracting-manager, contracting-admin and
@@ -315,6 +316,6 @@ never count). **Utilisation %**
 is active days over days in the window, counting only days the Machine was in the fleet — days,
 never hours, and month attribution is exact. **Fleet Load** is the share of Machines with at
 least one Active Day in the window. **Utilisation Target %** is the single global reference line
-management sets on the utilisation charts. Mechanic performance — solved count, average
+management sets on the utilisation charts. Mechanic performance — Fixed count, average
 report-to-Fixed time, Not fixed count — is derived from Breakdowns and never stored. Reporting is
 readable by every role that reads all Jobs; Foremen and invoicing never see it.

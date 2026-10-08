@@ -15,7 +15,7 @@ import type { DbOrTx } from '../jobs/job-load.js';
 import { jobNumberText } from '../jobs/job-sql.js';
 import { BreakdownError } from './breakdown-errors.js';
 
-export const reporter = alias(user, 'breakdown_reporter');
+export const breakdownReporter = alias(user, 'breakdown_reporter');
 const mechanic = alias(user, 'breakdown_mechanic');
 const solver = alias(user, 'breakdown_solver');
 
@@ -54,7 +54,7 @@ const breakdownHeader = {
   jobForemanUserId: contractingJobs.foremanUserId,
   farmId: contractingFarms.id,
   farmName: contractingFarms.name,
-  reporterName: reporter.name,
+  reporterName: breakdownReporter.name,
   mechanicName: mechanic.name,
   solvedByName: solver.name,
   noteCount,
@@ -68,7 +68,7 @@ export const breakdownSearchColumns = [
   sql`${contractingImplements.code}`,
   jobNumberText,
   sql`${contractingFarms.name}`,
-  sql`${reporter.name}`,
+  sql`${breakdownReporter.name}`,
   sql`${mechanic.name}`,
   sql`${contractingBreakdowns.description}`,
 ];
@@ -89,7 +89,7 @@ export function selectBreakdowns(db: DbOrTx) {
     )
     .leftJoin(contractingJobs, eq(contractingJobs.id, contractingBreakdowns.jobId))
     .leftJoin(contractingFarms, eq(contractingFarms.id, contractingJobs.farmId))
-    .innerJoin(reporter, eq(reporter.id, contractingBreakdowns.reportedByUserId))
+    .innerJoin(breakdownReporter, eq(breakdownReporter.id, contractingBreakdowns.reportedByUserId))
     .leftJoin(mechanic, eq(mechanic.id, contractingBreakdowns.primaryMechanicUserId))
     .leftJoin(solver, eq(solver.id, contractingBreakdowns.solvedByUserId))
     .$dynamic();

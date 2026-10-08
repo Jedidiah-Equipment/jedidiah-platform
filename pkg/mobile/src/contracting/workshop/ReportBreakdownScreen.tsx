@@ -117,7 +117,12 @@ export default function ReportBreakdownScreen() {
     { subject, urgency, description, photoCount: photos.length },
     { canReport, busy: busy || voice.busy },
   );
-  const leave = () => router.navigate(returnTo);
+  // The report lives in the Workshop tab's stack: empty it first, so a report opened from a Job or Machine does not
+  // stay behind there, then go where it started.
+  const leave = () => {
+    if (router.canDismiss()) router.dismissAll();
+    router.navigate(returnTo);
+  };
 
   async function addPhotos(pick: () => Promise<PickedPhoto[]>) {
     try {

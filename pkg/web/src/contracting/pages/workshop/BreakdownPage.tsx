@@ -44,9 +44,7 @@ export function BreakdownPage({ id }: { id: string }) {
         )
       }
       description={
-        breakdown
-          ? `${breakdownUrgencyLabels[breakdown.urgency]} · reported ${formatDate(breakdown.reportedAt, 'medium')} by ${breakdown.reporterName}`
-          : undefined
+        breakdown ? `Reported ${formatDate(breakdown.reportedAt, 'medium')} by ${breakdown.reporterName}` : undefined
       }
       size="md"
       actions={breakdown ? <BreakdownStatusBadge status={breakdown.status} /> : null}

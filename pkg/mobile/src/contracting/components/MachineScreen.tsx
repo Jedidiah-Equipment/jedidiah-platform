@@ -89,7 +89,7 @@ export default function MachineScreen() {
         {canReadBreakdowns ? (
           <>
             <Text className="text-lg text-foreground" weight="bold">
-              Open Breakdowns
+              Breakdowns to fix
             </Text>
             {breakdowns.data?.items.map((breakdown) => (
               <BreakdownRow key={breakdown.id} breakdown={breakdown} />

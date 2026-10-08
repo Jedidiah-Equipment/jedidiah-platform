@@ -40,6 +40,8 @@ export const WorkshopNavIndicator: React.FC = () => {
   const count = summaryQuery.data?.codeRedUnsolved ?? 0;
 
   return count > 0 ? (
-    <NavWarningDot label={`${formatNumber(count)} Code Red ${count === 1 ? 'Breakdown' : 'Breakdowns'} unsolved`} />
+    <NavWarningDot
+      label={`${formatNumber(count)} Code Red ${count === 1 ? 'Breakdown' : 'Breakdowns'} not yet Fixed`}
+    />
   ) : null;
 };

@@ -235,7 +235,7 @@ export function WorkshopPage() {
           row.original.sameJobOpenCount > 0 ? (
             <span
               className="flex items-center gap-1 text-sm font-medium"
-              title="Other fleet on the same Job has open Breakdowns — one trip, several fixes"
+              title="Other fleet on the same Job has Breakdowns not yet Fixed — one trip, several fixes"
             >
               <IconAlertTriangle aria-hidden="true" className="size-4 text-amber-600 dark:text-amber-400" />+
               {formatNumber(row.original.sameJobOpenCount)} on this Job

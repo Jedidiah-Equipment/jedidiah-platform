@@ -33,34 +33,24 @@ export function VerdictGroup({
 export function VerdictButton({
   verdict,
   title,
-  icon,
-  primary,
-  capture = false,
+  captureIcon,
   busy = false,
   onPress,
 }: {
   verdict: BreakdownActionVerdict;
   title: string;
-  icon?: TablerIcon;
-  primary?: boolean;
-  /** Draws it as a field capture moment, the way arrival and departure are captured; needs an icon. */
-  capture?: boolean;
+  /** Draws it as a field capture moment with this glyph, the way arrival and departure are captured. */
+  captureIcon?: TablerIcon;
   busy?: boolean;
   onPress: () => void;
 }) {
   return (
     <VerdictGroup verdict={verdict}>
       {(disabled) =>
-        capture && icon ? (
-          <CaptureButton icon={icon} label={title} disabled={busy || disabled} onPress={onPress} />
+        captureIcon ? (
+          <CaptureButton icon={captureIcon} label={title} disabled={busy || disabled} onPress={onPress} />
         ) : (
-          <Button
-            primary={primary && !disabled}
-            title={title}
-            icon={icon}
-            disabled={busy || disabled}
-            onPress={onPress}
-          />
+          <Button title={title} disabled={busy || disabled} onPress={onPress} />
         )
       }
     </VerdictGroup>

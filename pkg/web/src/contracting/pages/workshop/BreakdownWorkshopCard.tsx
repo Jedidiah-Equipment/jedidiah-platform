@@ -13,7 +13,7 @@ import { MechanicCombobox } from '@/contracting/components/MechanicCombobox.js';
 import { useContractingWrite } from '@/contracting/hooks/use-contracting-write.js';
 import { useQueryInvalidation } from '@/contracting/hooks/use-query-invalidation.js';
 import { useTRPC } from '@/lib/trpc.js';
-import { MarkSolvedDialog } from './MarkSolvedDialog.js';
+import { MarkCompletedDialog } from './MarkCompletedDialog.js';
 import type { BreakdownSheet } from './types.js';
 
 export function BreakdownWorkshopCard({ breakdown, sheet }: { breakdown: BreakdownDetail; sheet: BreakdownSheet }) {
@@ -100,7 +100,7 @@ export function BreakdownWorkshopCard({ breakdown, sheet }: { breakdown: Breakdo
           </p>
         ) : null}
       </CardContent>
-      <MarkSolvedDialog breakdownId={breakdown.id} open={solving} onOpenChange={setSolving} />
+      <MarkCompletedDialog breakdownId={breakdown.id} open={solving} onOpenChange={setSolving} />
     </Card>
   );
 }

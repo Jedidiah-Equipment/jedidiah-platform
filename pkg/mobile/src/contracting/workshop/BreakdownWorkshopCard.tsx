@@ -71,8 +71,7 @@ export function BreakdownWorkshopCard({ breakdown }: { breakdown: BreakdownDetai
         <VerdictButton
           verdict={actions.start}
           title="Start work"
-          icon={IconPlayerPlay}
-          capture
+          captureIcon={IconPlayerPlay}
           busy={busy}
           onPress={() =>
             void run(async () => {
@@ -85,18 +84,25 @@ export function BreakdownWorkshopCard({ breakdown }: { breakdown: BreakdownDetai
       <VerdictButton
         verdict={actions.solve}
         title="Mark completed"
-        icon={breakdown.status === 'in-progress' ? IconPlayerStop : undefined}
-        capture={breakdown.status === 'in-progress'}
+        captureIcon={breakdown.status === 'in-progress' ? IconPlayerStop : undefined}
         busy={busy}
         onPress={() => setSolving(true)}
       />
-      <SolveModal breakdownId={breakdown.id} visible={solving} onClose={() => setSolving(false)} />
+      <CompleteModal breakdownId={breakdown.id} visible={solving} onClose={() => setSolving(false)} />
     </Card>
   );
 }
 
 /** Solving needs a close-out note, so a plain confirm is not enough. */
-function SolveModal({ breakdownId, visible, onClose }: { breakdownId: string; visible: boolean; onClose: () => void }) {
+function CompleteModal({
+  breakdownId,
+  visible,
+  onClose,
+}: {
+  breakdownId: string;
+  visible: boolean;
+  onClose: () => void;
+}) {
   const solve = useBreakdownMutation((breakdowns) => breakdowns.solve);
   const [note, setNote] = useState('');
   const voice = useVoiceSession('close-out note', {

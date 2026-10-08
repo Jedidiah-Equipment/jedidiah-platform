@@ -1,9 +1,4 @@
-import {
-  breakdownSubjectKindLabels,
-  breakdownUrgencyLabels,
-  fieldJobAccessMode,
-  presentAction,
-} from '@pkg/domain/contracting';
+import { breakdownSubjectKindLabels, fieldJobAccessMode, presentAction } from '@pkg/domain/contracting';
 import { BreakdownDescription, type BreakdownDetail } from '@pkg/schema/contracting';
 import { IconMapPin, IconPencil } from '@tabler/icons-react-native';
 import { type Href, router, useLocalSearchParams } from 'expo-router';
@@ -34,7 +29,7 @@ export default function BreakdownScreen() {
     <SafeAreaView className="flex-1 bg-background" edges={['top', 'left', 'right']}>
       <SecondaryToolbar
         title={breakdown?.subject.code ?? 'Breakdown'}
-        subtitle={breakdown ? breakdownUrgencyLabels[breakdown.urgency] : 'CONTRACTING'}
+        subtitle={breakdown ? breakdown.subject.categoryName : 'CONTRACTING'}
         parentLabel="Workshop"
         onBack={() => router.navigate('/contracting/workshop' as Href)}
         helpTopic="contractingMobileBreakdown"

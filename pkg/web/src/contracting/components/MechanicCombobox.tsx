@@ -17,7 +17,7 @@ export function mechanicFieldOptions(
   return [NO_MECHANIC, ...offered];
 }
 
-/** Assigns a Mechanic in place; `inRow` keeps the picker from opening the table row it sits in, at a name's width. */
+/** Assigns a Mechanic in place; `inRow` keeps the picker from opening the table row it sits in. */
 export function MechanicCombobox({
   inputId,
   options,

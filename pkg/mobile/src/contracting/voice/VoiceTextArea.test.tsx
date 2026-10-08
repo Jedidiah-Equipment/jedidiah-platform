@@ -23,6 +23,7 @@ const voice: VoiceSession = {
   value: '',
   onChangeText: vi.fn(),
   reportSaved: vi.fn(),
+  snapshotSaved: vi.fn(),
   reset: vi.fn(),
   busy: false,
   transcribing: false,

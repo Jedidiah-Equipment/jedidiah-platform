@@ -81,3 +81,23 @@ test('letters typed onto the end of a transcript’s last word belong to it; a n
 
   expect(keptTexts(spans)).toEqual([{ id: 'a', text: 'Borehole at Vredefort.' }]);
 });
+
+test('a transcript’s last or first word deleted and retyped is kept as its correction', () => {
+  const retype = (start: FieldSpans, steps: string[]) => steps.reduce(typed, start);
+  const last = retype(insertTranscript(EMPTY, 'a', 'Borehole at Vrede.'), [
+    'Borehole at Vrede',
+    'Borehole at ',
+    'Borehole at V',
+    'Borehole at Vreede',
+    'Borehole at Vreede.',
+  ]);
+  expect(keptTexts(last)).toEqual([{ id: 'a', text: 'Borehole at Vreede.' }]);
+
+  const first = retype(insertTranscript(typed(EMPTY, 'Fence down.'), 'a', 'Gate is open.'), [
+    'Fence down. ate is open.',
+    'Fence down.  is open.',
+    'Fence down. F is open.',
+    'Fence down. Fate is open.',
+  ]);
+  expect(keptTexts(first)).toEqual([{ id: 'a', text: 'Fate is open.' }]);
+});

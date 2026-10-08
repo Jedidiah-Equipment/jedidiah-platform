@@ -93,6 +93,20 @@ test('reports each Transcription once with the text kept in place of its own tra
   ]);
 });
 
+test('a snapshot taken as a save begins reports the saved text, not what was typed since', async () => {
+  const { session } = renderSession();
+  await record(session, { id: 'a', text: 'Borehole at Vrede.' });
+  const reportSaved = session().snapshotSaved();
+  act(() => session().onChangeText('Borehole at Vreede.'));
+
+  reportSaved();
+  reportSaved();
+
+  expect(mutate.mock.calls.map(([variables]) => variables)).toEqual([
+    { id: 'a', text: 'Borehole at Vrede.', purpose: 'field note' },
+  ]);
+});
+
 test('follows text the form sets itself, so a transcript it removed reports empty', async () => {
   const { session, setText } = renderSession('Fence down.');
   await record(session, { id: 'a', text: 'Gate is open.' });

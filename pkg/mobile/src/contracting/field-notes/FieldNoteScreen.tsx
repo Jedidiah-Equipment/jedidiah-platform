@@ -42,7 +42,7 @@ function FieldNoteDetail({ note, onLeave }: { note: FieldNote; onLeave: () => vo
     onChangeText: setDescription,
     maxLength: FIELD_NOTE_DESCRIPTION_MAX,
   });
-  const { reportSaved } = voice;
+  const { snapshotSaved } = voice;
   const open = note.status === 'open';
 
   const latest = useRef({ description, stored: note.description, setDescription: store.setDescription });
@@ -50,6 +50,7 @@ function FieldNoteDetail({ note, onLeave }: { note: FieldNote; onLeave: () => vo
   const commitDescription = useCallback(() => {
     const { description, stored, setDescription: saveDescription } = latest.current;
     if (description.trim() === stored) return;
+    const reportSaved = snapshotSaved();
     // Not through `act`: a blur fired by tapping Close or a photo control must not swallow that tap.
     saveDescription(note.id, description).then(
       () => reportSaved(),
@@ -58,7 +59,7 @@ function FieldNoteDetail({ note, onLeave }: { note: FieldNote; onLeave: () => vo
         report(error, 'The description could not be saved.');
       },
     );
-  }, [report, reportSaved, note.id]);
+  }, [report, snapshotSaved, note.id]);
   useFocusEffect(useCallback(() => commitDescription, [commitDescription]));
   useEffect(() => {
     setDescription(note.description);

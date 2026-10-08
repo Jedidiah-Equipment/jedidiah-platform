@@ -27,6 +27,11 @@ export type VoiceSession = VoiceField & {
   purpose: string;
   /** Call after the owning form's save succeeded: each Transcription reports what was kept in its place. Fire-and-forget. */
   reportSaved: () => void;
+  /**
+   * For a field that stays editable while its form saves: call as the save begins, and call what it returns once the
+   * save succeeded, so each Transcription reports the text that was saved rather than what was typed since.
+   */
+  snapshotSaved: () => () => void;
   /** Forgets the Transcriptions that fed the field, when the form drops its draft. */
   reset: () => void;
   /** True while the field is recording or transcribing: the owning form holds its save until the text has landed. */
@@ -96,11 +101,17 @@ export function useVoiceSession(purpose: string, field: VoiceField): VoiceSessio
   const reset = useCallback(() => {
     applyEdit((current) => ({ text: current.text, spans: [] }));
   }, [applyEdit]);
-  const reportSaved = useCallback(() => {
+  const snapshotSaved = useCallback(() => {
     const kept = keptTexts(applyEdit((current) => current));
-    reset();
-    for (const { id, text } of kept) mutate({ id, text, purpose }, { onError: () => undefined });
-  }, [mutate, purpose, applyEdit, reset]);
+    return () => {
+      const tracked = new Set(track.current.spans.map((span) => span.id));
+      const reporting = kept.filter(({ id }) => tracked.has(id));
+      const reported = new Set(reporting.map(({ id }) => id));
+      applyEdit((current) => ({ text: current.text, spans: current.spans.filter((span) => !reported.has(span.id)) }));
+      for (const { id, text } of reporting) mutate({ id, text, purpose }, { onError: () => undefined });
+    };
+  }, [mutate, purpose, applyEdit]);
+  const reportSaved = useCallback(() => snapshotSaved()(), [snapshotSaved]);
 
   const onPressIn = useCallback(() => {
     void (async () => {
@@ -170,6 +181,7 @@ export function useVoiceSession(purpose: string, field: VoiceField): VoiceSessio
       onChangeText,
       maxLength,
       reportSaved,
+      snapshotSaved,
       reset,
       busy,
       transcribing,
@@ -185,6 +197,7 @@ export function useVoiceSession(purpose: string, field: VoiceField): VoiceSessio
       onChangeText,
       maxLength,
       reportSaved,
+      snapshotSaved,
       reset,
       busy,
       transcribing,

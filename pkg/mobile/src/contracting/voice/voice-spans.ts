@@ -30,25 +30,28 @@ const isWordCharacter = (character: string | undefined) => character !== undefin
  * Moves the spans through one edit. The common prefix and suffix of the old and new text leave a single edited
  * range: an edit before a span shifts it, one inside resizes it, and one straddling a boundary extends the span over
  * it. Where an insert or delete could sit on either side of a boundary, it stays outside the span, so typing in front
- * of a transcript or where a deleted one stood never joins it; only letters typed onto its last word do.
+ * of a transcript or where a deleted one stood never joins it. Letters typed onto its end do join it, as do letters
+ * typed where its first word was deleted (the span then starts at the space that followed it).
  */
 export function trackEdit({ text, spans }: FieldSpans, next: string): FieldSpans {
   if (next === text) return { text, spans };
   const delta = next.length - text.length;
   const alignments = [editBetween(text, next, 'right'), editBetween(text, next, 'left')];
-  const extendsLastWord = (span: Span, edit: Edit) =>
-    edit.start === span.end &&
-    edit.end === span.end &&
+  const insertsAt = (edit: Edit, at: number) => edit.start === at && edit.end === at && delta > 0;
+  const joins = (span: Span, edit: Edit) =>
     span.start < span.end &&
-    isWordCharacter(text[span.end - 1]) &&
-    isWordCharacter(next[edit.start]);
+    ((insertsAt(edit, span.end) && isWordCharacter(next[edit.start])) ||
+      (insertsAt(edit, span.start) &&
+        !isWordCharacter(text[span.start]) &&
+        isWordCharacter(next[edit.start + delta - 1])));
 
   return {
     text: next,
     spans: spans.map((span) => {
       for (const edit of alignments) {
+        if (joins(span, edit)) break;
         if (edit.end <= span.start) return { ...span, start: span.start + delta, end: span.end + delta };
-        if (edit.start >= span.end && !extendsLastWord(span, edit)) return span;
+        if (edit.start >= span.end) return span;
       }
       const [edit] = alignments as [Edit, Edit];
       return { ...span, start: Math.min(span.start, edit.start), end: Math.max(span.end, edit.end) + delta };

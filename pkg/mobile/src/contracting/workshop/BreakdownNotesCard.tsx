@@ -56,7 +56,7 @@ export function BreakdownNotesCard({ breakdown }: { breakdown: BreakdownDetail }
             onPress={() =>
               void run(async () => {
                 await add.mutateAsync({ breakdownId: breakdown.id, text });
-                voice.reportSaved(text.trim());
+                voice.reportSaved();
                 setText('');
               }, BREAKDOWN_SAVE_FAILED)
             }

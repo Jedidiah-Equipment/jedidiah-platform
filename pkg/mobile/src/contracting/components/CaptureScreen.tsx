@@ -185,7 +185,7 @@ function CaptureForm({ target }: { target: CaptureTarget }) {
         throw error;
       }
       recordReadingCaptured({ ...captured, refused: null });
-      voice.reportSaved(comment.trim());
+      voice.reportSaved();
       // The screens underneath stay mounted, so they refetch in place: the form leaves without waiting on them.
       void queryClient.invalidateQueries({ queryKey: trpc.contractingReadings.pathKey() });
       void queryClient.invalidateQueries({ queryKey: trpc.contractingJobs.pathKey() });

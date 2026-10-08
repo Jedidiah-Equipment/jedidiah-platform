@@ -172,7 +172,7 @@ function DescriptionCard({ breakdown }: { breakdown: BreakdownDetail }) {
     if (draft === null || !valid) return;
     void run(async () => {
       await patch.mutateAsync({ id: breakdown.id, description: draft });
-      voice.reportSaved(draft.trim());
+      voice.reportSaved();
       setDraft(null);
     }, BREAKDOWN_SAVE_FAILED);
   };

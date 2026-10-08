@@ -1,0 +1,103 @@
+import { expect, test } from 'vitest';
+import { type FieldSpans, insertTranscript, keptTexts, trackEdit } from './voice-spans';
+
+const EMPTY: FieldSpans = { text: '', spans: [] };
+
+function typed(spans: FieldSpans, text: string) {
+  return trackEdit(spans, text);
+}
+
+test('typed text before a transcript leaves the transcript as its own kept text', () => {
+  let spans = typed(EMPTY, 'Fence down.');
+  spans = insertTranscript(spans, 'a', 'Gate is open.');
+  spans = typed(spans, `Arrived late. ${spans.text}`);
+
+  expect(spans.text).toBe('Arrived late. Fence down. Gate is open.');
+  expect(keptTexts(spans)).toEqual([{ id: 'a', text: 'Gate is open.' }]);
+});
+
+test('a correction inside one transcript is kept by that transcript only', () => {
+  let spans = insertTranscript(EMPTY, 'a', 'Gate is open.');
+  spans = insertTranscript(spans, 'b', 'Borehole at Vrede.');
+  spans = typed(spans, spans.text.replace('Vrede', 'Vreede'));
+
+  expect(keptTexts(spans)).toEqual([
+    { id: 'a', text: 'Gate is open.' },
+    { id: 'b', text: 'Borehole at Vreede.' },
+  ]);
+});
+
+test('an edit straddling a transcript boundary extends the transcript to cover it', () => {
+  let spans = typed(EMPTY, 'Fence');
+  spans = insertTranscript(spans, 'a', 'down by dam.');
+
+  spans = typed(spans, 'Fence is down by dam.');
+  expect(keptTexts(spans)).toEqual([{ id: 'a', text: 'down by dam.' }]);
+
+  spans = typed(spans, 'Fence is broken by dam.');
+  expect(keptTexts(spans)).toEqual([{ id: 'a', text: 'broken by dam.' }]);
+
+  spans = typed(spans, 'Fence was smashed by dam.');
+  expect(keptTexts(spans)).toEqual([{ id: 'a', text: 'was smashed by dam.' }]);
+});
+
+test('a deleted transcript keeps empty text, and typing where it stood does not revive it', () => {
+  let spans = typed(EMPTY, 'Fence down.');
+  spans = insertTranscript(spans, 'a', 'Gate is open.');
+  spans = typed(spans, 'Fence down. ');
+  spans = typed(spans, 'Fence down. Cows out.');
+
+  expect(keptTexts(spans)).toEqual([{ id: 'a', text: '' }]);
+});
+
+test('a transcript the field limit cut short is never kept', () => {
+  const spans = insertTranscript(typed(EMPTY, 'Arrived late.'), 'a', 'Gate is open.', 20);
+
+  expect(spans.text).toBe('Arrived late. Gate i');
+  expect(keptTexts(spans)).toEqual([]);
+});
+
+test('typing in front of a transcript stays outside it, even when it starts with the same letter', () => {
+  let spans = insertTranscript(EMPTY, 'a', 'Gate is open.');
+  for (const typedSoFar of ['G', 'Go', 'Good', 'Good news. ']) spans = typed(spans, `${typedSoFar}Gate is open.`);
+
+  expect(keptTexts(spans)).toEqual([{ id: 'a', text: 'Gate is open.' }]);
+});
+
+test('deleting typed text in front of a transcript leaves the transcript whole', () => {
+  let spans = insertTranscript(typed(EMPTY, 'Gate'), 'a', 'Gate open');
+  for (const left of ['Gat Gate open', 'G Gate open', 'GGate open', 'Gate open']) spans = typed(spans, left);
+
+  expect(keptTexts(spans)).toEqual([{ id: 'a', text: 'Gate open' }]);
+});
+
+test('letters typed onto the end of a transcript’s last word belong to it; a new sentence does not', () => {
+  let spans = insertTranscript(EMPTY, 'a', 'Borehole at Vrede');
+  spans = typed(spans, 'Borehole at Vredef');
+  spans = typed(spans, 'Borehole at Vredefort');
+  spans = typed(spans, 'Borehole at Vredefort.');
+  spans = typed(spans, 'Borehole at Vredefort. ');
+  spans = typed(spans, 'Borehole at Vredefort. Pump off.');
+
+  expect(keptTexts(spans)).toEqual([{ id: 'a', text: 'Borehole at Vredefort.' }]);
+});
+
+test('a transcript’s last or first word deleted and retyped is kept as its correction', () => {
+  const retype = (start: FieldSpans, steps: string[]) => steps.reduce(typed, start);
+  const last = retype(insertTranscript(EMPTY, 'a', 'Borehole at Vrede.'), [
+    'Borehole at Vrede',
+    'Borehole at ',
+    'Borehole at V',
+    'Borehole at Vreede',
+    'Borehole at Vreede.',
+  ]);
+  expect(keptTexts(last)).toEqual([{ id: 'a', text: 'Borehole at Vreede.' }]);
+
+  const first = retype(insertTranscript(typed(EMPTY, 'Fence down.'), 'a', 'Gate is open.'), [
+    'Fence down. ate is open.',
+    'Fence down.  is open.',
+    'Fence down. F is open.',
+    'Fence down. Fate is open.',
+  ]);
+  expect(keptTexts(first)).toEqual([{ id: 'a', text: 'Fate is open.' }]);
+});

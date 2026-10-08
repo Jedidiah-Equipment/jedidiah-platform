@@ -1,8 +1,7 @@
 import { formatClock } from '@pkg/domain';
 import { VOICE_NOTE_MAX_SECONDS } from '@pkg/domain/contracting';
-import type { Transcription } from '@pkg/schema/contracting';
 import { useMutation } from '@tanstack/react-query';
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   recordVoiceNoteFailed,
   recordVoiceNoteTranscribed,
@@ -12,7 +11,7 @@ import { UploadRefusedError } from '@/lib/multipart-upload';
 import { useTRPC } from '@/lib/trpc';
 import { transcribeRecording } from './transcribe-upload';
 import { useVoiceRecorder } from './use-voice-recorder';
-import { withTranscript } from './voice-text';
+import { type FieldSpans, insertTranscript, keptTexts, trackEdit } from './voice-spans';
 
 const UNAVAILABLE = 'Transcription unavailable — type the note.';
 const MAX_CLOCK = formatClock(VOICE_NOTE_MAX_SECONDS);
@@ -26,8 +25,13 @@ export type VoiceField = {
 
 export type VoiceSession = VoiceField & {
   purpose: string;
-  /** Call after the owning form's save succeeded, with the field's final text. Fire-and-forget. */
-  reportSaved: (text: string) => void;
+  /** Call after the owning form's save succeeded: each Transcription reports what was kept in its place. Fire-and-forget. */
+  reportSaved: () => void;
+  /**
+   * For a field that stays editable while its form saves: call as the save begins, and call what it returns once the
+   * save succeeded, so each Transcription reports the text that was saved rather than what was typed since.
+   */
+  snapshotSaved: () => () => void;
   /** Forgets the Transcriptions that fed the field, when the form drops its draft. */
   reset: () => void;
   /** True while the field is recording or transcribing: the owning form holds its save until the text has landed. */
@@ -45,7 +49,8 @@ export type VoiceSession = VoiceField & {
 
 /**
  * One field's voice: the press-and-hold recorder, the transcript appended to the field, and the Transcriptions that
- * fed it, reported once the form that owns the field has saved.
+ * fed it, each reported once the form that owns the field has saved with the text that stands where its transcript
+ * was inserted.
  */
 export function useVoiceSession(purpose: string, field: VoiceField): VoiceSession {
   const trpc = useTRPC();
@@ -56,30 +61,57 @@ export function useVoiceSession(purpose: string, field: VoiceField): VoiceSessio
   const [message, setMessage] = useState<string | null>(null);
   // Refs, not state: a save reports what was remembered even when it lands in the same render as the transcript, and
   // the transcript appends to the text as it is once the request answers, not as it was when the finger lifted.
-  const transcriptions = useRef<Transcription[]>([]);
   const latest = useRef(field);
   latest.current = field;
+  const track = useRef<FieldSpans>({ text: field.value, spans: [] });
+  const lastSeenValue = useRef(field.value);
   const held = useRef(false);
-  const { value, onChangeText, maxLength } = field;
+  const { value, maxLength } = field;
   const { start, stop } = recorder;
+
+  // The owning form may also set the text itself (a revert, a reload); those edits move the spans too. Only a value
+  // the field has newly taken counts: until the form re-renders, it still holds the text from before our own edit.
+  const followField = useCallback(() => {
+    const { value } = latest.current;
+    if (value === lastSeenValue.current) return;
+    lastSeenValue.current = value;
+    track.current = trackEdit(track.current, value);
+  }, []);
+  useEffect(() => {
+    if (value !== lastSeenValue.current) followField();
+  }, [value, followField]);
+  const applyEdit = useCallback(
+    (edit: (current: FieldSpans) => FieldSpans) => {
+      followField();
+      track.current = edit(track.current);
+      return track.current;
+    },
+    [followField],
+  );
+  const onChangeText = useCallback(
+    (text: string) => latest.current.onChangeText(applyEdit((current) => trackEdit(current, text)).text),
+    [applyEdit],
+  );
 
   const hold = useCallback((holding: boolean) => {
     held.current = holding;
     setHolding(holding);
   }, []);
 
-  const reportSaved = useCallback(
-    (text: string) => {
-      const pending = transcriptions.current;
-      transcriptions.current = [];
-      for (const transcription of pending)
-        mutate({ id: transcription.id, text, purpose }, { onError: () => undefined });
-    },
-    [mutate, purpose],
-  );
   const reset = useCallback(() => {
-    transcriptions.current = [];
-  }, []);
+    applyEdit((current) => ({ text: current.text, spans: [] }));
+  }, [applyEdit]);
+  const snapshotSaved = useCallback(() => {
+    const kept = keptTexts(applyEdit((current) => current));
+    return () => {
+      const tracked = new Set(track.current.spans.map((span) => span.id));
+      const reporting = kept.filter(({ id }) => tracked.has(id));
+      const reported = new Set(reporting.map(({ id }) => id));
+      applyEdit((current) => ({ text: current.text, spans: current.spans.filter((span) => !reported.has(span.id)) }));
+      for (const { id, text } of reporting) mutate({ id, text, purpose }, { onError: () => undefined });
+    };
+  }, [mutate, purpose, applyEdit]);
+  const reportSaved = useCallback(() => snapshotSaved()(), [snapshotSaved]);
 
   const onPressIn = useCallback(() => {
     void (async () => {
@@ -113,9 +145,10 @@ export function useVoiceSession(purpose: string, field: VoiceField): VoiceSessio
       const attempt = () => ({ purpose, ...measured, requestMs: Date.now() - sentAt });
       try {
         const transcription = await transcribeRecording(uri, purpose);
-        const target = latest.current;
-        target.onChangeText(withTranscript(target.value, transcription.text, target.maxLength));
-        transcriptions.current = [...transcriptions.current, transcription];
+        const { text } = applyEdit((current) =>
+          insertTranscript(current, transcription.id, transcription.text, latest.current.maxLength),
+        );
+        latest.current.onChangeText(text);
         recordVoiceNoteTranscribed(attempt(), transcription.language);
       } catch (error) {
         setMessage(error instanceof UploadRefusedError ? error.message : UNAVAILABLE);
@@ -124,7 +157,7 @@ export function useVoiceSession(purpose: string, field: VoiceField): VoiceSessio
         setTranscribing(false);
       }
     })();
-  }, [transcribing, hold, stop, purpose]);
+  }, [transcribing, hold, stop, purpose, applyEdit]);
 
   const cancel = useCallback(() => {
     if (!held.current) return;
@@ -148,6 +181,7 @@ export function useVoiceSession(purpose: string, field: VoiceField): VoiceSessio
       onChangeText,
       maxLength,
       reportSaved,
+      snapshotSaved,
       reset,
       busy,
       transcribing,
@@ -163,6 +197,7 @@ export function useVoiceSession(purpose: string, field: VoiceField): VoiceSessio
       onChangeText,
       maxLength,
       reportSaved,
+      snapshotSaved,
       reset,
       busy,
       transcribing,

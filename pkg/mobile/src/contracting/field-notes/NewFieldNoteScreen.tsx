@@ -63,7 +63,7 @@ export default function NewFieldNoteScreen() {
         photoCount: note.photos.length,
         hasDescription: note.description.length > 0,
       });
-      voice.reportSaved(note.description);
+      voice.reportSaved();
       if (galleryFailed) showToast('success', `Field Note saved. ${GALLERY_HINT}`);
       setSaved(true);
     }, 'The Field Note could not be saved. Try again.');

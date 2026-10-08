@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { act, create, type ReactTestRenderer } from 'react-test-renderer';
 import { beforeEach, expect, test, vi } from 'vitest';
 
@@ -35,12 +36,22 @@ import { useVoiceSession, type VoiceSession } from './use-voice-session';
 
 const RECORDING = { uri: 'file://note.m4a', seconds: 3, durationMs: 3_100, peakDb: -20 };
 
-function renderSession(value = '') {
+function renderSession(initial = '') {
   const onChangeText = vi.fn();
   let session!: VoiceSession;
+  let setText!: (text: string) => void;
   let renderer!: ReactTestRenderer;
   function Probe() {
-    session = useVoiceSession('field note', { value, onChangeText, maxLength: 2000 });
+    const [value, setValue] = useState(initial);
+    setText = setValue;
+    session = useVoiceSession('field note', {
+      value,
+      onChangeText: (text) => {
+        onChangeText(text);
+        setValue(text);
+      },
+      maxLength: 2000,
+    });
     return null;
   }
   act(() => {
@@ -50,7 +61,7 @@ function renderSession(value = '') {
     act(() => {
       renderer.update(<Probe />);
     });
-  return { session: () => session, rerender, onChangeText };
+  return { session: () => session, rerender, onChangeText, setText: (text: string) => act(() => setText(text)) };
 }
 
 beforeEach(() => {
@@ -60,24 +71,50 @@ beforeEach(() => {
   mutate.mockClear();
 });
 
-test('reports each Transcription that fed the field once with the saved text, then forgets them', async () => {
-  const { session } = renderSession('Fence down.');
-  transcribe
-    .mockResolvedValueOnce({ id: 'a', text: 'one', language: 'eng' })
-    .mockResolvedValueOnce({ id: 'b', text: 'two', language: 'eng' });
+async function record(session: () => VoiceSession, transcription: { id: string; text: string }) {
+  transcribe.mockResolvedValueOnce({ ...transcription, language: 'eng' });
   stop.mockResolvedValue(RECORDING);
-  for (let note = 0; note < 2; note++) {
-    await act(async () => session().onPressIn());
-    await act(async () => session().onPressOut());
-  }
+  await act(async () => session().onPressIn());
+  await act(async () => session().onPressOut());
+}
 
-  session().reportSaved('One. Two.');
-  session().reportSaved('One. Two. Three.');
+test('reports each Transcription once with the text kept in place of its own transcript, then forgets them', async () => {
+  const { session } = renderSession('Fence down.');
+  await record(session, { id: 'a', text: 'Gate is open.' });
+  await record(session, { id: 'b', text: 'Borehole at Vrede.' });
+  act(() => session().onChangeText(session().value.replace('Vrede', 'Vreede')));
+
+  session().reportSaved();
+  session().reportSaved();
 
   expect(mutate.mock.calls.map(([variables]) => variables)).toEqual([
-    { id: 'a', text: 'One. Two.', purpose: 'field note' },
-    { id: 'b', text: 'One. Two.', purpose: 'field note' },
+    { id: 'a', text: 'Gate is open.', purpose: 'field note' },
+    { id: 'b', text: 'Borehole at Vreede.', purpose: 'field note' },
   ]);
+});
+
+test('a snapshot taken as a save begins reports the saved text, not what was typed since', async () => {
+  const { session } = renderSession();
+  await record(session, { id: 'a', text: 'Borehole at Vrede.' });
+  const reportSaved = session().snapshotSaved();
+  act(() => session().onChangeText('Borehole at Vreede.'));
+
+  reportSaved();
+  reportSaved();
+
+  expect(mutate.mock.calls.map(([variables]) => variables)).toEqual([
+    { id: 'a', text: 'Borehole at Vrede.', purpose: 'field note' },
+  ]);
+});
+
+test('follows text the form sets itself, so a transcript it removed reports empty', async () => {
+  const { session, setText } = renderSession('Fence down.');
+  await record(session, { id: 'a', text: 'Gate is open.' });
+  setText('Fence down.');
+
+  session().reportSaved();
+
+  expect(mutate).toHaveBeenCalledWith({ id: 'a', text: '', purpose: 'field note' }, expect.anything());
 });
 
 test('holds the form from the press until the transcript lands, then appends it to the field', async () => {

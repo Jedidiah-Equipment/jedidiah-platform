@@ -1,12 +1,12 @@
 import { user } from '@pkg/db';
 import { contractingMachines, contractingTranscriptionHints, contractingTranscriptions } from '@pkg/db/contracting';
 import { TRANSCRIPTION_HINT_CAP } from '@pkg/domain/contracting';
-import type { HintDerivation } from '@pkg/schema/contracting';
+import type { HintDerivation, KeytermCandidate } from '@pkg/schema/contracting';
 import { eq } from 'drizzle-orm';
 import { expect } from 'vitest';
 import { createTester } from '../../test/create-tester.js';
 import { adminId, foremanId, seedJobFixtures } from '../test/job-fixtures.js';
-import { loadKeyterms } from './keyterm-registry.js';
+import { loadKeytermCandidates } from './keyterm-registry.js';
 import {
   deriveHintFor,
   listActiveHints,
@@ -16,13 +16,14 @@ import {
   transcribeVoiceNote,
 } from './transcription-service.js';
 
+const ROOIKRAAL: KeytermCandidate = { keyterm: 'Rooikraal', source: 'hint' };
 const M4A = new Uint8Array([0, 0, 0, 32, 0x66, 0x74, 0x79, 0x70, 0x4d, 0x34, 0x41, 0x20]);
 
 function engineHearing(
   heard: { text: string; language: string | null },
   derivation: HintDerivation = { action: 'none', reason: 'No rule.' },
 ) {
-  const calls = { keyterms: [] as (readonly string[])[], derive: 0 };
+  const calls = { keyterms: [] as (readonly KeytermCandidate[])[], derive: 0 };
   const engine: TranscriptionEngine = {
     transcribe: async ({ keyterms }) => {
       calls.keyterms.push(keyterms);
@@ -51,7 +52,7 @@ async function noted(
     audio: M4A,
     purpose: 'capture comment',
     engine,
-    keyterms: async () => ['Rooikraal'],
+    keyterms: async () => [ROOIKRAAL],
   });
   return { transcription, engine, calls };
 }
@@ -63,7 +64,7 @@ test('keeps what was heard, shown and its language, and stamps only the speakerâ
   const { transcription, calls } = await noted(db, { text: 'the gate at rooi kraal is open', language: null });
 
   expect(transcription).toEqual({ id: expect.any(String), text: 'The gate at rooi kraal is open.', language: 'en' });
-  expect(calls.keyterms).toEqual([['Rooikraal']]);
+  expect(calls.keyterms).toEqual([[ROOIKRAAL]]);
   const input = { id: transcription.id, text: 'The gate at Rooikraal is open.', purpose: 'capture comment' };
   await expect(recordTranscriptionSaved({ db, actorUserId: adminId, input })).rejects.toMatchObject({
     code: 'transcription.forbidden',
@@ -199,11 +200,18 @@ test('the keyterm registry names the working fleet, field people and taught keyt
     { rule: 'Old rule.', keyterm: 'Vaalkop', retiredAt: now },
   ]);
 
-  const keyterms = await loadKeyterms({ db, now });
+  const candidates = await loadKeytermCandidates({ db, now });
+  const keyterms = candidates.map((candidate) => candidate.keyterm);
 
   expect(keyterms).toEqual(expect.arrayContaining(['CAT320-1', 'Thabo Nkosi', 'Thabo', 'Sipho', 'Bloemhof']));
   expect(keyterms).not.toEqual(expect.arrayContaining(['TIP-7']));
   expect(keyterms).not.toContain('Yard Tablet');
   expect(keyterms).not.toContain('Vaalkop');
-  expect(keyterms[0]).toBe('Bloemhof');
+  expect(candidates[0]).toEqual({ keyterm: 'Bloemhof', source: 'hint' });
+  expect(candidates).toEqual(
+    expect.arrayContaining([
+      { keyterm: 'CAT320-1', source: 'machine' },
+      { keyterm: 'Thabo', source: 'person' },
+    ]),
+  );
 });

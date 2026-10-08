@@ -1,7 +1,8 @@
 import { createOpenAI } from '@ai-sdk/openai';
+import { promptPlaceholder } from '@pkg/domain/contracting';
 import { MockLanguageModelV4 } from 'ai/test';
 import { describe, expect, it } from 'vitest';
-import { deriveTranscriptionHint, tidyTranscript, transcribeVoiceNote } from './transcription.js';
+import { deriveTranscriptionHint, tidyTranscript, transcribeVoiceNote, transcriptionPrompts } from './transcription.js';
 
 function answering(object: unknown) {
   return new MockLanguageModelV4({
@@ -32,7 +33,10 @@ describe('transcribeVoiceNote', () => {
 
     const heard = await transcribeVoiceNote({
       audio: new Uint8Array([0, 0, 0, 32, 0x66, 0x74, 0x79, 0x70]),
-      keyterms: ['Rooikraal', 'JD 6155M'],
+      keyterms: [
+        { keyterm: 'Rooikraal', source: 'hint' },
+        { keyterm: 'JD 6155M', source: 'machine' },
+      ],
       model,
     });
 
@@ -123,5 +127,73 @@ describe('deriveTranscriptionHint', () => {
     const model = answering({ action: 'none', reason: 'A rewrite.', rule: null, keyterm: null, retireHintId: null });
 
     expect(await deriveTranscriptionHint({ ...input, model })).toEqual({ action: 'none', reason: 'A rewrite.' });
+  });
+});
+
+describe('transcriptionPrompts', () => {
+  const hints = [{ id: HINT_ID, rule: 'The farm is spelled Rooikraal, not Rooi Kraal.' }];
+  const keyterms = [
+    { keyterm: 'Rooikraal', source: 'hint' as const },
+    ...Array.from({ length: 80 }, (_, index) => ({ keyterm: `Tractor ${index}`, source: 'machine' as const })),
+  ];
+  const shown = transcriptionPrompts({
+    hints,
+    keyterms,
+    models: { chat: 'gpt-chat', transcription: 'gpt-transcribe' },
+  });
+  const note = {
+    rawText: 'the gate at rooi kraal is open',
+    shownText: 'The gate at Rooi Kraal is open.',
+    savedText: 'The gate at Rooikraal is open.',
+    language: 'eng',
+    purpose: 'capture comment',
+  };
+  const fill = (template: string) =>
+    template
+      .replace(promptPlaceholder('purpose'), note.purpose)
+      .replace(promptPlaceholder('detected language'), note.language)
+      .replace(promptPlaceholder('raw transcript'), note.rawText)
+      .replace(promptPlaceholder('shown text'), note.shownText)
+      .replace(promptPlaceholder('saved text'), note.savedText);
+  const sent = (model: MockLanguageModelV4) => {
+    const [system, user] = model.doGenerateCalls[0]?.prompt ?? [];
+    return { system: system?.content, prompt: user?.role === 'user' ? user.content[0] : undefined };
+  };
+
+  it('shows the speech prompt the call sends, after the cut', async () => {
+    let prompt: unknown;
+    const model = createOpenAI({
+      apiKey: 'test-key',
+      fetch: async (_input, init) => {
+        prompt = (init?.body as FormData | undefined)?.get('prompt');
+        return Response.json({ text: 'heard' });
+      },
+    }).transcription('gpt-transcribe');
+    await transcribeVoiceNote({
+      audio: new Uint8Array([0, 0, 0, 32, 0x66, 0x74, 0x79, 0x70]),
+      keyterms,
+      model,
+    });
+
+    expect(shown.speech).toMatchObject({ model: 'gpt-transcribe', prompt, maxChars: 600 });
+    expect(shown.speech.cutOff[0]?.source).toBe('machine');
+  });
+
+  it('shows the tidy and derivation prompts the calls send, with the note in placeholders', async () => {
+    const tidy = answering({ text: 'The gate.', language: 'en' });
+    const derive = answering({ action: 'none', reason: 'A rewrite.', rule: null, keyterm: null, retireHintId: null });
+    await tidyTranscript({ ...note, hints, model: tidy });
+    await deriveTranscriptionHint({ ...note, hints, model: derive });
+
+    expect(sent(tidy)).toEqual({
+      system: shown.tidy.system,
+      prompt: { type: 'text', text: fill(shown.tidy.prompt) },
+    });
+    expect(sent(derive)).toEqual({
+      system: shown.derivation.system,
+      prompt: { type: 'text', text: fill(shown.derivation.prompt) },
+    });
+    expect(shown.derivation.system).toContain(`- ${HINT_ID}: The farm is spelled Rooikraal`);
+    expect(shown.tidy.model).toBe('gpt-chat');
   });
 });

@@ -267,6 +267,11 @@ Transcriptions apply it. Derived only when the user corrected rather than rewrot
 English Transcriptions for now; applied to Transcriptions in every language.
 _Avoid_: rule, correction, vocabulary entry
 
+**Keyterm** is one proper noun the speech service is told to expect — a Machine code, make or model,
+an Implement code, a Category, a field person's name, a recent Farm or Customer, or a Transcription
+Hint's keyterm — sent as a comma-separated prompt that is cut at a fixed length, taught keyterms first.
+_Avoid_: keyword, vocabulary
+
 ## Access
 
 A user's contracting role fills one of the two role slots defined in
@@ -292,6 +297,10 @@ checks are UX only.
 The Contracting **Audit Log** shows the Audit Events of Contracting records — Categories, Machines,
 Implements, Hour Readings, Customers, Farms, Work Types — and of Users who hold a Contracting role and
 no Equipment role, under `contracting_audit:read`, which contracting-admin and super-admin hold.
+
+The **Transcriptions** page shows every user's Transcriptions, the Transcription Hints and the prompts
+the models are sent, read-only, under `contracting_transcription:read`, which contracting-admin and
+super-admin hold; it shows everyone's Voice Note text, so it stays this narrow.
 
 Drivers and Mechanics are non-login user records holding permissionless contracting roles. Pricing
 and the Rate Card deliberately sit with contracting-admin and super-admin alone; foremen are

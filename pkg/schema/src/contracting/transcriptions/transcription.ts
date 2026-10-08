@@ -1,4 +1,6 @@
 import { z } from 'zod';
+import { DateIso } from '../../common/date.js';
+import { CursorQueryInput, createCursorQueryResult } from '../../common/pagination.js';
 import { UUID } from '../../common/uuid.js';
 
 export const TranscriptionPurpose = z.string().trim().min(1).max(60);
@@ -42,3 +44,73 @@ export const HintDerivation = z.discriminatedUnion('action', [
   }),
 ]);
 export type HintDerivation = z.infer<typeof HintDerivation>;
+
+/** What a hint derivation decided, kept on the Transcription. */
+export const transcriptionHintOutcomes = ['added', 'none'] as const;
+export type TranscriptionHintOutcome = (typeof transcriptionHintOutcomes)[number];
+
+/** Where a Transcription's hint derivation stands, as the Transcriptions page reads it. */
+export const TranscriptionHintStatus = z.discriminatedUnion('kind', [
+  z.object({ kind: z.literal('not_saved') }),
+  z.object({ kind: z.literal('no_correction') }),
+  z.object({ kind: z.literal('not_english') }),
+  z.object({ kind: z.literal('pending') }),
+  z.object({ kind: z.literal('hint_added'), hintId: UUID }),
+  z.object({ kind: z.literal('no_hint'), reason: z.string() }),
+  // Derived before the outcome was kept.
+  z.object({ kind: z.literal('unknown') }),
+]);
+export type TranscriptionHintStatus = z.infer<typeof TranscriptionHintStatus>;
+export const TranscriptionReviewItem = z.object({
+  id: UUID,
+  createdAt: DateIso,
+  createdByName: z.string(),
+  purpose: z.string(),
+  language: z.string().nullable(),
+  rawText: z.string(),
+  shownText: z.string(),
+  savedText: z.string().nullable(),
+  hintStatus: TranscriptionHintStatus,
+});
+export type TranscriptionReviewItem = z.infer<typeof TranscriptionReviewItem>;
+export const TranscriptionListInput = CursorQueryInput;
+export type TranscriptionListInput = z.infer<typeof TranscriptionListInput>;
+export const TranscriptionListResult = createCursorQueryResult(TranscriptionReviewItem);
+export type TranscriptionListResult = z.infer<typeof TranscriptionListResult>;
+
+export const TranscriptionHintRow = z.object({
+  id: UUID,
+  rule: z.string(),
+  keyterm: z.string().nullable(),
+  createdAt: DateIso,
+  retiredAt: DateIso.nullable(),
+  supersededBy: z.object({ id: UUID, rule: z.string() }).nullable(),
+  source: z
+    .object({ id: UUID, rawText: z.string(), shownText: z.string(), savedText: z.string().nullable() })
+    .nullable(),
+});
+export type TranscriptionHintRow = z.infer<typeof TranscriptionHintRow>;
+export const TranscriptionHintList = z.object({
+  cap: z.number().int(),
+  activeCount: z.number().int(),
+  hints: TranscriptionHintRow.array(),
+});
+export type TranscriptionHintList = z.infer<typeof TranscriptionHintList>;
+
+export const keytermSources = ['hint', 'machine', 'implement', 'category', 'person', 'farm', 'customer'] as const;
+export const KeytermSource = z.enum(keytermSources);
+export type KeytermSource = z.infer<typeof KeytermSource>;
+export const KeytermCandidate = z.object({ keyterm: z.string(), source: KeytermSource });
+export type KeytermCandidate = z.infer<typeof KeytermCandidate>;
+/** The three model calls as they would be sent now; per-note parts are `{{placeholders}}`. */
+export const TranscriptionPrompts = z.object({
+  speech: z.object({
+    model: z.string(),
+    prompt: z.string(),
+    maxChars: z.number().int(),
+    cutOff: KeytermCandidate.array(),
+  }),
+  tidy: z.object({ model: z.string(), system: z.string(), prompt: z.string() }),
+  derivation: z.object({ model: z.string(), system: z.string(), prompt: z.string() }),
+});
+export type TranscriptionPrompts = z.infer<typeof TranscriptionPrompts>;

@@ -1,4 +1,5 @@
 import { createOpenAiChatModel, createOpenAiTranscriptionModel } from '@pkg/ai';
+import type { TranscriptionModels } from '@pkg/ai/contracting';
 import {
   deriveTranscriptionHint,
   readMeterPhoto as readMeterPhotoWithModel,
@@ -10,13 +11,14 @@ import {
   deriveHintFor,
   listReadingsAwaitingVerification,
   listTranscriptionsAwaitingHints,
-  loadKeyterms,
+  loadKeytermCandidates,
   type ReadMeterPhoto,
   type TranscriptionEngine,
   verifyCapturedReading,
 } from '@pkg/core/contracting';
 import { db } from '@pkg/db';
 import { renderJobCardPdf } from '@pkg/pdf/contracting';
+import type { KeytermCandidate } from '@pkg/schema/contracting';
 import type { FastifyInstance } from 'fastify';
 import { BackgroundQueue } from '../background-queue.js';
 import type { BusinessWiring, BusinessWiringInput } from '../business-wiring.js';
@@ -31,6 +33,8 @@ import { serializeError } from '../trpc/errors.js';
 export type ContractingRouterDependencies = {
   hintDerivations: HintDerivations;
   readMeterPhoto: ReadMeterPhoto;
+  keyterms: () => Promise<KeytermCandidate[]>;
+  transcriptionModels: TranscriptionModels;
 };
 
 export async function registerContracting(
@@ -52,7 +56,7 @@ export async function registerContracting(
       deriveTranscriptionHint({ ...input, model: chatModel }),
     ),
   };
-  const keyterms = createKeytermCache(() => loadKeyterms({ db }));
+  const keyterms = createKeytermCache(() => loadKeytermCandidates({ db }));
 
   const readingVerifications = new BackgroundQueue<string>({
     run: (id) => verifyCapturedReading({ db, id, storage, readPhoto: readMeterPhoto }),
@@ -82,7 +86,12 @@ export async function registerContracting(
   await registerJobCardHttpRoutes(app, { db, pdfRenderer: renderJobCardPdf });
 
   return {
-    routerDependencies: { hintDerivations, readMeterPhoto },
+    routerDependencies: {
+      hintDerivations,
+      readMeterPhoto,
+      keyterms: keyterms.current,
+      transcriptionModels: { chat: config.OPENAI_MODEL, transcription: config.OPENAI_TRANSCRIPTION_MODEL },
+    },
     services: [readingVerifications, hintDerivations],
   };
 }

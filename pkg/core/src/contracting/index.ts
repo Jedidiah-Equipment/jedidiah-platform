@@ -31,5 +31,6 @@ export * from './services/service-errors.js';
 export * from './services/service-record-service.js';
 export * from './transcriptions/keyterm-registry.js';
 export * from './transcriptions/transcription-errors.js';
+export * from './transcriptions/transcription-review.js';
 export * from './transcriptions/transcription-service.js';
 export * from './work-types/work-type-service.js';

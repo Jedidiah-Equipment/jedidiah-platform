@@ -8,7 +8,12 @@ import {
   VOICE_NOTE_POLICY,
 } from '@pkg/domain/contracting';
 import type { AuthId } from '@pkg/schema';
-import { type HintDerivation, Transcription, TranscriptionSavedInput } from '@pkg/schema/contracting';
+import {
+  type HintDerivation,
+  type KeytermCandidate,
+  Transcription,
+  TranscriptionSavedInput,
+} from '@pkg/schema/contracting';
 import { and, asc, eq, inArray, isNotNull, isNull, sql } from 'drizzle-orm';
 import { FilePolicyViolationError } from '../../files/file-errors.js';
 import { TranscriptionError } from './transcription-errors.js';
@@ -18,7 +23,7 @@ export type ActiveHint = { id: string; rule: string };
 
 /** The speech service and the language model behind a Voice Note, injected by the API. */
 export type TranscriptionEngine = {
-  transcribe: (input: { audio: Uint8Array; keyterms: readonly string[] }) => Promise<VoiceTranscript>;
+  transcribe: (input: { audio: Uint8Array; keyterms: readonly KeytermCandidate[] }) => Promise<VoiceTranscript>;
   tidy: (input: {
     rawText: string;
     language: string | null;
@@ -72,7 +77,7 @@ export async function transcribeVoiceNote({
   audio: Uint8Array;
   purpose: string;
   engine: TranscriptionEngine;
-  keyterms: () => Promise<string[]>;
+  keyterms: () => Promise<KeytermCandidate[]>;
 }): Promise<Transcription> {
   const validation = validateFile(audio, VOICE_NOTE_POLICY);
   if (!validation.ok) throw new FilePolicyViolationError(validation);
@@ -193,7 +198,11 @@ export async function deriveHintFor({
     }
     await tx
       .update(contractingTranscriptions)
-      .set({ hintDerivedAt: now })
+      .set({
+        hintDerivedAt: now,
+        hintOutcome: outcome.action === 'add' ? 'added' : 'none',
+        hintNoneReason: outcome.action === 'none' ? outcome.reason : null,
+      })
       .where(eq(contractingTranscriptions.id, row.id));
     return outcome;
   });

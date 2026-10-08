@@ -56,3 +56,28 @@ test('a transcript the field limit cut short is never kept', () => {
   expect(spans.text).toBe('Arrived late. Gate i');
   expect(keptTexts(spans)).toEqual([]);
 });
+
+test('typing in front of a transcript stays outside it, even when it starts with the same letter', () => {
+  let spans = insertTranscript(EMPTY, 'a', 'Gate is open.');
+  for (const typedSoFar of ['G', 'Go', 'Good', 'Good news. ']) spans = typed(spans, `${typedSoFar}Gate is open.`);
+
+  expect(keptTexts(spans)).toEqual([{ id: 'a', text: 'Gate is open.' }]);
+});
+
+test('deleting typed text in front of a transcript leaves the transcript whole', () => {
+  let spans = insertTranscript(typed(EMPTY, 'Gate'), 'a', 'Gate open');
+  for (const left of ['Gat Gate open', 'G Gate open', 'GGate open', 'Gate open']) spans = typed(spans, left);
+
+  expect(keptTexts(spans)).toEqual([{ id: 'a', text: 'Gate open' }]);
+});
+
+test('letters typed onto the end of a transcript’s last word belong to it; a new sentence does not', () => {
+  let spans = insertTranscript(EMPTY, 'a', 'Borehole at Vrede');
+  spans = typed(spans, 'Borehole at Vredef');
+  spans = typed(spans, 'Borehole at Vredefort');
+  spans = typed(spans, 'Borehole at Vredefort.');
+  spans = typed(spans, 'Borehole at Vredefort. ');
+  spans = typed(spans, 'Borehole at Vredefort. Pump off.');
+
+  expect(keptTexts(spans)).toEqual([{ id: 'a', text: 'Borehole at Vredefort.' }]);
+});

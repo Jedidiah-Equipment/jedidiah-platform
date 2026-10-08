@@ -1,4 +1,4 @@
-import type { KeytermCandidate, TranscriptionHintStatus } from '@pkg/schema/contracting';
+import type { KeytermCandidate, TranscriptionHintOutcome, TranscriptionHintStatus } from '@pkg/schema/contracting';
 import { AUDIO_M4A_CONTENT_TYPE } from '../files/file-policy.js';
 
 export const VOICE_NOTE_MAX_SECONDS = 120;
@@ -13,6 +13,9 @@ const KEYTERM_MAX_LENGTH = 50;
 /** The speech model's prompt budget: whisper-1 caps it at 224 tokens. */
 export const KEYTERM_PROMPT_MAX_CHARS = 600;
 const KEYTERM_CAP = 300;
+/** Marks a per-note part of a prompt the Transcriptions page shows in place of a real note. */
+export const promptPlaceholder = (name: string) => `{{${name}}}`;
+export const PROMPT_PLACEHOLDER_PATTERN = /(\{\{[^}]+\}\})/;
 
 /** Hints are distilled from English notes only for now; the gate is the provider's language tag. */
 export const hintDerivationLanguages = ['en', 'eng'] as const;
@@ -33,13 +36,6 @@ export function transcriptionWasCorrected(shown: string, saved: string): boolean
 }
 
 /** Keyterm hygiene for the speech service: trimmed, at most 50 characters, unique ignoring case, capped. */
-export function shapeKeyterms(candidates: readonly (string | null | undefined)[], cap = KEYTERM_CAP): string[] {
-  return shapeKeytermCandidates(
-    candidates.map((keyterm) => ({ keyterm })),
-    cap,
-  ).map((candidate) => candidate.keyterm);
-}
-
 function shapeKeytermCandidates<T extends { keyterm: string | null | undefined }>(
   candidates: readonly T[],
   cap: number,
@@ -66,14 +62,6 @@ function shapeKeytermCandidates<T extends { keyterm: string | null | undefined }
   return shaped;
 }
 
-/**
- * The keyterms as the free-text prompt the speech model is biased by: comma-separated in registry order, so the
- * learned hint keyterms survive the cut, and stopped before the budget is spent.
- */
-export function promptFromKeyterms(keyterms: readonly string[], maxChars = KEYTERM_PROMPT_MAX_CHARS): string {
-  return fitKeyterms(keyterms, maxChars).prompt;
-}
-
 function fitKeyterms(keyterms: readonly string[], maxChars: number): { prompt: string; fitted: number } {
   let prompt = '';
   let fitted = 0;
@@ -92,7 +80,11 @@ function fitKeyterms(keyterms: readonly string[], maxChars: number): { prompt: s
   return { prompt, fitted };
 }
 
-/** The speech call's prompt from the sourced keyterm registry, and every keyterm the cap or the budget left out. */
+/**
+ * The speech call's free-text prompt from the sourced keyterm registry: comma-separated in registry order, so the
+ * terms that come first (taught keyterms, fleet, people) survive and farm names drop off when the budget runs out.
+ * Also every keyterm the cap or the budget left out, with its source.
+ */
 export function speechKeytermPrompt(candidates: readonly KeytermCandidate[]): {
   prompt: string;
   cutOff: KeytermCandidate[];
@@ -112,7 +104,7 @@ export function transcriptionHintStatus(row: {
   shownText: string;
   savedText: string | null;
   hintDerivedAt: Date | null;
-  hintOutcome: 'added' | 'none' | null;
+  hintOutcome: TranscriptionHintOutcome | null;
   hintNoneReason: string | null;
   hintId: string | null;
 }): TranscriptionHintStatus {

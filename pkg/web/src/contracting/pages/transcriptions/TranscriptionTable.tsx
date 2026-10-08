@@ -1,6 +1,6 @@
 import { formatNumber } from '@pkg/domain';
 import type { TranscriptionHintStatus, TranscriptionReviewItem } from '@pkg/schema/contracting';
-import { keepPreviousData, useInfiniteQuery } from '@tanstack/react-query';
+import { useInfiniteQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import { useMemo } from 'react';
 import { DateDisplay } from '@/components/common/DateDisplay.js';
@@ -10,7 +10,7 @@ import { type DataTableColumnDef, useDataTable } from '@/components/data-table/f
 import { Badge } from '@/components/ui/badge.js';
 import { getApiQueryErrorMessage } from '@/lib/api-errors.js';
 import { useTRPC } from '@/lib/trpc.js';
-import { LabelledText, TextChange } from './TextChange.js';
+import { TranscriptionTexts } from './TranscriptionTexts.js';
 
 const PAGE_SIZE = 25;
 
@@ -37,8 +37,8 @@ function HintStatus({ status }: { status: TranscriptionHintStatus }) {
           View the hint
         </Link>
       ) : null}
-      {status.kind === 'no_hint' && status.reason ? (
-        <span className="text-sm text-muted-foreground">{status.reason}</span>
+      {status.kind === 'no_hint' ? (
+        <span className="text-sm text-muted-foreground">{status.reason || 'No reason given.'}</span>
       ) : null}
     </div>
   );
@@ -48,10 +48,7 @@ function HintStatus({ status }: { status: TranscriptionHintStatus }) {
 export function TranscriptionTable() {
   const trpc = useTRPC();
   const query = useInfiniteQuery(
-    trpc.contractingTranscriptions.list.infiniteQueryOptions(
-      { limit: PAGE_SIZE },
-      { ...cursorInfiniteQueryOptions, placeholderData: keepPreviousData },
-    ),
+    trpc.contractingTranscriptions.list.infiniteQueryOptions({ limit: PAGE_SIZE }, cursorInfiniteQueryOptions),
   );
   const { items, total } = useCombinedCursorQueryPages(query.data?.pages);
   const columns = useMemo<DataTableColumnDef<TranscriptionReviewItem>[]>(
@@ -79,18 +76,7 @@ export function TranscriptionTable() {
       {
         id: 'text',
         header: 'Heard → shown → kept',
-        cell: ({ row }) => {
-          const { rawText, shownText, savedText } = row.original;
-          return (
-            <div className="grid min-w-96 max-w-3xl gap-2">
-              <LabelledText label="Heard">{rawText}</LabelledText>
-              <LabelledText label="Shown">{shownText}</LabelledText>
-              <LabelledText label="Kept">
-                {savedText === null ? '—' : <TextChange shown={shownText} saved={savedText} />}
-              </LabelledText>
-            </div>
-          );
-        },
+        cell: ({ row }) => <TranscriptionTexts {...row.original} />,
       },
       {
         id: 'hint',

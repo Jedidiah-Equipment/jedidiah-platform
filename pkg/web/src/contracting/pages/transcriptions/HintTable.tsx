@@ -9,7 +9,7 @@ import { type DataTableColumnDef, useDataTable } from '@/components/data-table/f
 import { Badge } from '@/components/ui/badge.js';
 import { getApiQueryErrorMessage } from '@/lib/api-errors.js';
 import { useTRPC } from '@/lib/trpc.js';
-import { LabelledText, TextChange } from './TextChange.js';
+import { TranscriptionTexts } from './TranscriptionTexts.js';
 
 /** Every Transcription Hint, those in force first, each beside the correction it was learned from. */
 export function HintTable({ selectedHintId }: { selectedHintId: string | undefined }) {
@@ -65,15 +65,7 @@ export function HintTable({ selectedHintId }: { selectedHintId: string | undefin
         cell: ({ row }) => {
           const { source } = row.original;
           if (!source) return <span className="text-sm text-muted-foreground">No source Transcription</span>;
-          return (
-            <div className="grid min-w-96 max-w-3xl gap-2">
-              <LabelledText label="Heard">{source.rawText}</LabelledText>
-              <LabelledText label="Shown">{source.shownText}</LabelledText>
-              <LabelledText label="Kept">
-                {source.savedText === null ? '—' : <TextChange shown={source.shownText} saved={source.savedText} />}
-              </LabelledText>
-            </div>
-          );
+          return <TranscriptionTexts {...source} />;
         },
       },
     ],

@@ -45,6 +45,10 @@ export const HintDerivation = z.discriminatedUnion('action', [
 ]);
 export type HintDerivation = z.infer<typeof HintDerivation>;
 
+/** What a hint derivation decided, kept on the Transcription. */
+export const transcriptionHintOutcomes = ['added', 'none'] as const;
+export type TranscriptionHintOutcome = (typeof transcriptionHintOutcomes)[number];
+
 /** Where a Transcription's hint derivation stands, as the Transcriptions page reads it. */
 export const TranscriptionHintStatus = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('not_saved') }),

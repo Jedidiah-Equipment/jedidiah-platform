@@ -1,14 +1,8 @@
 import { createOpenAI } from '@ai-sdk/openai';
-import { shapeKeyterms } from '@pkg/domain/contracting';
+import { promptPlaceholder } from '@pkg/domain/contracting';
 import { MockLanguageModelV4 } from 'ai/test';
 import { describe, expect, it } from 'vitest';
-import {
-  deriveTranscriptionHint,
-  promptPlaceholder,
-  tidyTranscript,
-  transcribeVoiceNote,
-  transcriptionPrompts,
-} from './transcription.js';
+import { deriveTranscriptionHint, tidyTranscript, transcribeVoiceNote, transcriptionPrompts } from './transcription.js';
 
 function answering(object: unknown) {
   return new MockLanguageModelV4({
@@ -39,7 +33,10 @@ describe('transcribeVoiceNote', () => {
 
     const heard = await transcribeVoiceNote({
       audio: new Uint8Array([0, 0, 0, 32, 0x66, 0x74, 0x79, 0x70]),
-      keyterms: ['Rooikraal', 'JD 6155M'],
+      keyterms: [
+        { keyterm: 'Rooikraal', source: 'hint' },
+        { keyterm: 'JD 6155M', source: 'machine' },
+      ],
       model,
     });
 
@@ -174,7 +171,7 @@ describe('transcriptionPrompts', () => {
     }).transcription('gpt-transcribe');
     await transcribeVoiceNote({
       audio: new Uint8Array([0, 0, 0, 32, 0x66, 0x74, 0x79, 0x70]),
-      keyterms: shapeKeyterms(keyterms.map((candidate) => candidate.keyterm)),
+      keyterms,
       model,
     });
 

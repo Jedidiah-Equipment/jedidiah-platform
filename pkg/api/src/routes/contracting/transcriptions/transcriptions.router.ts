@@ -1,12 +1,12 @@
-import { transcriptionPrompts } from '@pkg/ai/contracting';
+import { type TranscriptionModels, transcriptionPrompts } from '@pkg/ai/contracting';
 import {
   listActiveHints,
   listTranscriptionHints,
   listTranscriptionReviews,
-  loadKeytermCandidates,
   recordTranscriptionSaved,
 } from '@pkg/core/contracting';
 import {
+  type KeytermCandidate,
   TranscriptionHintList,
   TranscriptionListInput,
   TranscriptionListResult,
@@ -20,17 +20,18 @@ import { transcriptionErrorFamily } from '../contracting-error-families.js';
 
 /** Schedules a Transcription Hint derivation once a corrected Transcription has been saved. */
 export type HintDerivations = Scheduler<string>;
-/** The configured model ids, shown beside the prompts they are sent. */
-export type TranscriptionModels = { chat: string; transcription: string };
 
 const reviewer = authorizedProcedure('contracting_transcription:read');
 
 /** Transcribing goes through the multipart upload route; this router hears that the owning form saved, and serves the read-only review. */
 export function createContractingTranscriptionsRouter({
   hintDerivations,
+  keyterms,
   models,
 }: {
   hintDerivations: HintDerivations;
+  /** The keyterm registry the speech calls are biased by, from the same cache. */
+  keyterms: () => Promise<KeytermCandidate[]>;
   models: TranscriptionModels;
 }) {
   return router({
@@ -50,11 +51,8 @@ export function createContractingTranscriptionsRouter({
       .query(({ ctx, input }) => listTranscriptionReviews({ db: ctx.db, input })),
     hints: reviewer.output(TranscriptionHintList).query(({ ctx }) => listTranscriptionHints({ db: ctx.db })),
     prompts: reviewer.output(TranscriptionPrompts).query(async ({ ctx }) => {
-      const [hints, keyterms] = await Promise.all([
-        listActiveHints({ db: ctx.db }),
-        loadKeytermCandidates({ db: ctx.db }),
-      ]);
-      return transcriptionPrompts({ hints, keyterms, models });
+      const [hints, registry] = await Promise.all([listActiveHints({ db: ctx.db }), keyterms()]);
+      return transcriptionPrompts({ hints, keyterms: registry, models });
     }),
   });
 }

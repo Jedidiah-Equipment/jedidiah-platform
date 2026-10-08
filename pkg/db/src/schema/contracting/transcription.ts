@@ -1,3 +1,4 @@
+import type { TranscriptionHintOutcome } from '@pkg/schema/contracting';
 import { sql } from 'drizzle-orm';
 import { type AnyPgColumn, check, index, text, timestamp, uuid } from 'drizzle-orm/pg-core';
 import { user } from '../auth.js';
@@ -20,7 +21,7 @@ export const contractingTranscriptions = contractingSchema.table(
     savedAt: timestamp('saved_at', { withTimezone: true }),
     hintDerivedAt: timestamp('hint_derived_at', { withTimezone: true }),
     /** What the derivation decided: `added` a hint or `none`; null before it ran, and for rows derived before it was kept. */
-    hintOutcome: text('hint_outcome').$type<'added' | 'none'>(),
+    hintOutcome: text('hint_outcome').$type<TranscriptionHintOutcome>(),
     hintNoneReason: text('hint_none_reason'),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   },

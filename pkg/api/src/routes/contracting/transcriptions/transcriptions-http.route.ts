@@ -1,7 +1,7 @@
 import { type TranscriptionEngine, transcribeVoiceNote } from '@pkg/core/contracting';
 import type { Db } from '@pkg/db';
 import { TRANSCRIBE_PATH, VOICE_NOTE_POLICY } from '@pkg/domain/contracting';
-import { TranscribeFields, TranscriptionPurpose } from '@pkg/schema/contracting';
+import { type KeytermCandidate, TranscribeFields, TranscriptionPurpose } from '@pkg/schema/contracting';
 import type { FastifyInstance, FastifyReply } from 'fastify';
 import {
   type MultipartUploadOptions,
@@ -17,7 +17,7 @@ import { transcriptionErrorFamily } from '../contracting-error-families.js';
 
 export async function registerTranscriptionHttpRoutes(
   app: FastifyInstance,
-  { db, engine, keyterms }: { db: Db; engine: TranscriptionEngine; keyterms: () => Promise<string[]> },
+  { db, engine, keyterms }: { db: Db; engine: TranscriptionEngine; keyterms: () => Promise<KeytermCandidate[]> },
 ) {
   const upload: MultipartUploadOptions = {
     fileField: 'audio',

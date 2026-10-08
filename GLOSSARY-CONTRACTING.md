@@ -265,6 +265,11 @@ Transcriptions apply it. Derived only when the user corrected rather than rewrot
 English Transcriptions for now; applied to Transcriptions in every language.
 _Avoid_: rule, correction, vocabulary entry
 
+**Keyterm** is one proper noun the speech service is told to expect — a Machine code, make or model,
+an Implement code, a Category, a field person's name, a recent Farm or Customer, or a Transcription
+Hint's keyterm — sent as a comma-separated prompt that is cut at a fixed length, taught keyterms first.
+_Avoid_: keyword, vocabulary
+
 ## Access
 
 A user's contracting role fills one of the two role slots defined in

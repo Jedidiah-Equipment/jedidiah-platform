@@ -34,6 +34,7 @@ export const NOOP_ROUTER_DEPENDENCIES: AppRouterDependencies = {
     readMeterPhoto: async () => {
       throw new Error('Meter reader not stubbed for this test');
     },
+    keyterms: async () => [],
     transcriptionModels: { chat: 'test-chat-model', transcription: 'test-transcription-model' },
   },
   equipment: { catalogTranslationScheduler: { mark: () => undefined, markNow: () => undefined } },

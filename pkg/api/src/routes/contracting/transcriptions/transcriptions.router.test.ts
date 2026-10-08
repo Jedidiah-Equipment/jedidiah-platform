@@ -79,14 +79,16 @@ test('only a holder of contracting_transcription:read reviews Transcriptions, hi
   await expect(context.createCaller(foreman).contractingTranscriptions.prompts()).rejects.toMatchObject({
     code: 'FORBIDDEN',
   });
-  const caller = context.createCaller(admin);
+  const caller = context.createCaller(admin, {
+    contracting: { keyterms: async () => [{ keyterm: 'Rooikraal', source: 'hint' }] },
+  });
   expect(await caller.contractingTranscriptions.list({})).toMatchObject({
     total: 1,
     items: [{ id: note.id, createdByName: 'Test User', hintStatus: { kind: 'pending' } }],
   });
   expect(await caller.contractingTranscriptions.hints()).toEqual({ cap: 100, activeCount: 0, hints: [] });
   expect(await caller.contractingTranscriptions.prompts()).toMatchObject({
-    speech: { model: 'test-transcription-model', prompt: expect.stringContaining('Test User') },
+    speech: { model: 'test-transcription-model', prompt: 'Rooikraal', cutOff: [] },
     tidy: { model: 'test-chat-model', prompt: expect.stringContaining('{{raw transcript}}') },
     derivation: { model: 'test-chat-model', prompt: expect.stringContaining('{{saved text}}') },
   });

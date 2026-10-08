@@ -85,6 +85,7 @@ export function createAppRouter({ contracting, equipment }: AppRouterDependencie
     contractingServices: contractingServicesRouter,
     contractingTranscriptions: createContractingTranscriptionsRouter({
       hintDerivations: contracting.hintDerivations,
+      keyterms: contracting.keyterms,
       models: contracting.transcriptionModels,
     }),
     contractingDirectory: contractingDirectoryRouter,

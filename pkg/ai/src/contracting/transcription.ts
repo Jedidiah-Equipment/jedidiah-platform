@@ -1,7 +1,7 @@
 import type { ActiveHint, VoiceTranscript } from '@pkg/core/contracting';
 import {
   KEYTERM_PROMPT_MAX_CHARS,
-  promptFromKeyterms,
+  promptPlaceholder,
   speechKeytermPrompt,
   TRANSCRIPTION_HINT_CAP,
 } from '@pkg/domain/contracting';
@@ -22,7 +22,7 @@ export async function transcribeVoiceNote({
   model,
 }: {
   audio: Uint8Array;
-  keyterms: readonly string[];
+  keyterms: readonly KeytermCandidate[];
   model: TranscriptionModel;
 }): Promise<VoiceTranscript> {
   const result = await transcribe({
@@ -35,7 +35,7 @@ export async function transcribeVoiceNote({
       // provider only knows the gpt-4o-* ids and would ask any other model for verbose_json, which newer models
       // reject; an empty `timestampGranularities` keeps it from sending segment timestamps with plain json.
       // TODO(ai-sdk): send keyterms as providerOptions.openai.keywords and languages: ['en', 'af'] once the provider forwards them.
-      openai: { prompt: promptFromKeyterms(keyterms), responseFormat: 'json', timestampGranularities: [] },
+      openai: { prompt: speechKeytermPrompt(keyterms).prompt, responseFormat: 'json', timestampGranularities: [] },
     },
   }).catch((error: unknown) => {
     // The SDK throws on an empty transcript; silence is an answer, not an outage.
@@ -147,8 +147,8 @@ export async function deriveTranscriptionHint({
   });
 }
 
-/** Marks a per-note part of a prompt the Transcriptions page shows in place of a real note. */
-export const promptPlaceholder = (name: string) => `{{${name}}}`;
+/** The configured model ids, shown beside the prompts they are sent. */
+export type TranscriptionModels = { chat: string; transcription: string };
 
 /** The three model calls as they would be sent now, from the same builders the calls use. */
 export function transcriptionPrompts({
@@ -158,7 +158,7 @@ export function transcriptionPrompts({
 }: {
   hints: readonly ActiveHint[];
   keyterms: readonly KeytermCandidate[];
-  models: { chat: string; transcription: string };
+  models: TranscriptionModels;
 }): TranscriptionPrompts {
   const note = {
     rawText: promptPlaceholder('raw transcript'),

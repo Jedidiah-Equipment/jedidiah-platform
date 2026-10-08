@@ -8,20 +8,16 @@ import {
   contractingMachines,
   contractingTranscriptionHints,
 } from '@pkg/db/contracting';
-import { shapeKeyterms } from '@pkg/domain/contracting';
 import type { KeytermCandidate, KeytermSource } from '@pkg/schema/contracting';
 import { and, eq, gte, inArray, isNotNull, isNull, or } from 'drizzle-orm';
 
 const RECENT_JOB_DAYS = 90;
 const FIELD_ROLES = ['driver', 'mechanic', 'foreman'] as const;
 
-/** Proper nouns the speech service should expect: fleet, people, places. Deterministic; the hint keyterms join it. */
-export async function loadKeyterms({ db, now = new Date() }: { db: Db; now?: Date }): Promise<string[]> {
-  const candidates = await loadKeytermCandidates({ db, now });
-  return shapeKeyterms(candidates.map((candidate) => candidate.keyterm));
-}
-
-/** The registry before shaping, each keyterm with where it came from, in the order the speech prompt takes them. */
+/**
+ * Proper nouns the speech service should expect — fleet, people, places — each with where it came from, in the order
+ * the speech prompt takes them. Deterministic; the hint keyterms join it.
+ */
 export async function loadKeytermCandidates({
   db,
   now = new Date(),
@@ -67,41 +63,41 @@ export async function loadKeytermCandidates({
       .orderBy(contractingFarms.name, contractingCustomers.name),
   ]);
 
-  const from = (source: KeytermSource, keyterms: readonly (string | null)[]) =>
+  const sourced = (source: KeytermSource, keyterms: readonly (string | null)[]) =>
     keyterms.flatMap((keyterm) => (keyterm === null ? [] : [{ keyterm, source }]));
   // Learned hints come first so the cap never crowds out a correction someone taught.
   return [
-    ...from(
+    ...sourced(
       'hint',
       hints.map((hint) => hint.keyterm),
     ),
-    ...from(
+    ...sourced(
       'machine',
       machines.flatMap((machine) => [machine.code, machine.make, machine.model]),
     ),
-    ...from(
+    ...sourced(
       'implement',
       implementCodes.map((implement) => implement.code),
     ),
-    ...from(
+    ...sourced(
       'category',
       categories.map((category) => category.name),
     ),
-    ...from(
+    ...sourced(
       'person',
       people.flatMap((person) => [person.name, person.name.trim().split(/\s+/)[0] ?? null]),
     ),
-    ...places.flatMap((place) => [...from('farm', [place.farm]), ...from('customer', [place.customer])]),
+    ...places.flatMap((place) => [...sourced('farm', [place.farm]), ...sourced('customer', [place.customer])]),
   ];
 }
 
 /** Serves one registry per TTL so a note never costs a fleet sweep. */
 export function createKeytermCache(
-  load: () => Promise<string[]>,
+  load: () => Promise<KeytermCandidate[]>,
   ttlMs = 5 * 60_000,
   clock: () => number = Date.now,
-): { current: () => Promise<string[]>; invalidate: () => void } {
-  let cached: { at: number; keyterms: Promise<string[]> } | null = null;
+): { current: () => Promise<KeytermCandidate[]>; invalidate: () => void } {
+  let cached: { at: number; keyterms: Promise<KeytermCandidate[]> } | null = null;
 
   return {
     current: () => {

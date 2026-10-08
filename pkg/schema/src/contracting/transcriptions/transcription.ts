@@ -124,8 +124,8 @@ export type KeytermCandidate = z.infer<typeof KeytermCandidate>;
 export const TranscriptionPrompts = z.object({
   speech: z.object({
     model: z.string(),
-    prompt: z.string(),
-    maxChars: z.number().int(),
+    keyterms: z.string().array(),
+    maxKeyterms: z.number().int(),
     cutOff: KeytermCandidate.array(),
   }),
   tidy: z.object({ model: z.string(), system: z.string(), prompt: z.string() }),

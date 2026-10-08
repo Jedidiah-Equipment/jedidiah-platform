@@ -33,7 +33,7 @@ export default ({ config }: ConfigContext): AppConfig => {
     scheme: variant.scheme,
     // `version` is the human-facing string; EAS owns the Android `versionCode` remotely
     // (`cli.appVersionSource: remote` + per-profile `autoIncrement` in eas.json).
-    version: '1.80.0',
+    version: '1.81.0',
     orientation: 'portrait',
     userInterfaceStyle: 'automatic',
     newArchEnabled: true,
@@ -54,7 +54,12 @@ export default ({ config }: ConfigContext): AppConfig => {
       // Field Note photos and gallery meter photos; the system picker itself needs no library grant.
       [
         'expo-image-picker',
-        { cameraPermission: CAMERA_PERMISSION, photosPermission: PHOTOS_PERMISSION, microphonePermission: false },
+        {
+          cameraPermission: CAMERA_PERMISSION,
+          photosPermission: PHOTOS_PERMISSION,
+          // `false` blocks RECORD_AUDIO app-wide, including the voice-note recorder.
+          microphonePermission: MICROPHONE_PERMISSION,
+        },
       ],
       // Saves camera-taken Field Note photos to the Jedidiah album, photos only.
       [
@@ -67,7 +72,15 @@ export default ({ config }: ConfigContext): AppConfig => {
         },
       ],
       // Contracting voice notes: press-and-hold recording, turned into text by the API.
-      ['expo-audio', { microphonePermission: MICROPHONE_PERMISSION }],
+      [
+        'expo-audio',
+        {
+          microphonePermission: MICROPHONE_PERMISSION,
+          // Voice notes are recorded in the foreground; disable the default playback service.
+          enableBackgroundPlayback: false,
+          enableBackgroundRecording: false,
+        },
+      ],
       // Contracting breakdown reports attach the phone's position when the reporter allows it; foreground only.
       // The Always keys stay because the module's binary references those APIs and App Store upload flags a
       // missing purpose string, which would cost another store build to fix.

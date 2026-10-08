@@ -168,7 +168,7 @@ describe('transcriptionPrompts', () => {
     const model = createOpenAI({
       apiKey: 'test-key',
       fetch: async (_input, init) => {
-        prompt = (init?.body as FormData).get('prompt');
+        prompt = (init?.body as FormData | undefined)?.get('prompt');
         return Response.json({ text: 'heard' });
       },
     }).transcription('gpt-transcribe');

@@ -31,6 +31,8 @@
     "db:seed:staging": "pnpm --filter @pkg/seed seed:write:staging",
     "db:studio": "pnpm --filter @pkg/db db:studio",
     "use-slot": "sh scripts/use-slot.sh",
+    "mobile:build:staging": "pnpm --filter @pkg/mobile exec node scripts/eas-build.mjs staging",
+    "mobile:build:production": "pnpm --filter @pkg/mobile exec node scripts/eas-build.mjs production",
     "release:production": "sh scripts/release-production.sh",
     "release:production:check": "sh scripts/release-production.sh --dry-run",
     "update-package-versions": "pnpm up --recursive --interactive",

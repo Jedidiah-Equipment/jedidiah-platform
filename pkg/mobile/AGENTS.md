@@ -5,6 +5,8 @@
   `pnpm --filter @pkg/mobile version:bump minor` exactly once. `fingerprint.config.js` keeps the version
   out of the runtime version so the bump never blocks OTA updates; publish those with `ota:<profile>`,
   not a bare `eas update`.
+- The runtime fingerprint hashes this package's `package.json` scripts, so editing, adding, or removing one
+  strands installed builds from OTA. Put new release entry points in the root `package.json`.
 - `APP_VARIANT` is required. Variant identity lives in `src/lib/app-variant.ts`; keep
   `app.config.ts` thin and keep its explicit `.ts` resolver import.
 - Routes live under `app/`; all other source lives under `src/` and imports through `@/*`.

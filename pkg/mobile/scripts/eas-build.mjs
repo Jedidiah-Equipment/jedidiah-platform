@@ -7,7 +7,7 @@ export function resolveBuildCommand(profile, args, easConfig) {
   const build = easConfig.build?.[profile];
   if (!build) throw new Error(`Unknown EAS build profile: ${profile}.`);
   if (args.some((arg) => arg === '--profile' || arg === '-e' || arg.startsWith('--profile=') || arg.startsWith('-e'))) {
-    throw new Error('The build script owns --profile; use build:staging or build:production.');
+    throw new Error('The build script owns --profile; use mobile:build:staging or mobile:build:production.');
   }
   if (args.some((arg) => arg === '--output' || arg.startsWith('--output='))) {
     throw new Error('The build script owns local artifact paths; output is printed before the build.');

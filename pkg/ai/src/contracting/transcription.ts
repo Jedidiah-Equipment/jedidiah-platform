@@ -124,13 +124,17 @@ export function derivationPrompt({ rawText, shownText, savedText, language, purp
   };
 }
 
+/** Whether the text holds the term as a whole word, in exactly that case. */
+const mentions = (text: string, term: string) => {
+  const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return new RegExp(`(?<![\\p{L}\\p{N}])${escaped}(?![\\p{L}\\p{N}])`, 'u').test(text);
+};
+
 /** The model's rules that are safe to keep: one per keyterm ignoring case, none teaching what the person removed, at most the per-correction limit. */
 function usableHints(
   answer: HintDerivationAnswer['hints'],
   { shownText, savedText }: { shownText: string; savedText: string },
 ): DerivedTranscriptionHint[] {
-  const shown = shownText.toLowerCase();
-  const saved = savedText.toLowerCase();
   const keyterms = new Set<string>();
   return answer
     .flatMap(({ rule, keyterm, retireHintId }) => {
@@ -144,10 +148,11 @@ function usableHints(
       const whole = DerivedTranscriptionHint.safeParse(draft);
       const parsed = whole.success ? whole : DerivedTranscriptionHint.safeParse({ ...draft, keyterm: null });
       if (!parsed.success) return [];
-      const key = parsed.data.keyterm?.toLowerCase();
+      const { keyterm: term } = parsed.data;
+      // A keyterm the person removed means the rule is backwards: it would teach the shown spelling.
+      if (term && mentions(shownText, term) && !mentions(savedText, term)) return [];
+      const key = term?.toLowerCase();
       if (key !== undefined) {
-        // A keyterm the person removed means the rule is backwards: it would teach the shown spelling.
-        if (shown.includes(key) && !saved.includes(key)) return [];
         if (keyterms.has(key)) return [];
         keyterms.add(key);
       }

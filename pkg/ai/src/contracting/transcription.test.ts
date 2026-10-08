@@ -170,6 +170,22 @@ describe('deriveTranscriptionHint', () => {
     });
   });
 
+  it.each([
+    ['a name lengthened', 'Call Jon about the tipper.', 'Call Jonathan about the tipper.', 'Jon', 'Jonathan'],
+    ['a name capitalised', 'The gate at rooikraal.', 'The gate at Rooikraal.', 'rooikraal', 'Rooikraal'],
+  ])('tells %s apart by whole words and exact case', async (_, shownText, savedText, removed, kept) => {
+    const model = answering({
+      action: 'add',
+      reason: '',
+      hints: [ruled(`Spell it ${removed}, not ${kept}.`, removed), ruled(`Spell it ${kept}, not ${removed}.`, kept)],
+    });
+
+    expect(await deriveTranscriptionHint({ ...input, shownText, savedText, model })).toEqual({
+      action: 'add',
+      hints: [{ rule: `Spell it ${kept}, not ${removed}.`, keyterm: kept, retireHintId: null }],
+    });
+  });
+
   it('reads an add with no usable rule as none', async () => {
     const model = answering({ action: 'add', reason: '', hints: [ruled(''), ruled(null, 'Rooikraal')] });
 

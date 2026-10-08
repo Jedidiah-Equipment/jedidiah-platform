@@ -145,6 +145,47 @@ describe('deriveTranscriptionHint', () => {
     });
   });
 
+  it('drops a rule whose keyterm is the text the person removed, so a hint never teaches the shown spelling', async () => {
+    const model = answering({
+      action: 'add',
+      reason: '',
+      hints: [
+        ruled('The place is spelled Stony Brook, not Stoneybrook.', 'Stony Brook'),
+        ruled('The place is spelled Stoneybrook, not Stony Brook.', 'stoneybrook'),
+      ],
+    });
+
+    expect(
+      await deriveTranscriptionHint({
+        ...input,
+        shownText: 'Things are getting crazy down at Stony Brook.',
+        savedText: 'Things are getting crazy down at Stoneybrook.',
+        model,
+      }),
+    ).toEqual({
+      action: 'add',
+      hints: [
+        { rule: 'The place is spelled Stoneybrook, not Stony Brook.', keyterm: 'stoneybrook', retireHintId: null },
+      ],
+    });
+  });
+
+  it.each([
+    ['a name lengthened', 'Call Jon about the tipper.', 'Call Jonathan about the tipper.', 'Jon', 'Jonathan'],
+    ['a name capitalised', 'The gate at rooikraal.', 'The gate at Rooikraal.', 'rooikraal', 'Rooikraal'],
+  ])('tells %s apart by whole words and exact case', async (_, shownText, savedText, removed, kept) => {
+    const model = answering({
+      action: 'add',
+      reason: '',
+      hints: [ruled(`Spell it ${removed}, not ${kept}.`, removed), ruled(`Spell it ${kept}, not ${removed}.`, kept)],
+    });
+
+    expect(await deriveTranscriptionHint({ ...input, shownText, savedText, model })).toEqual({
+      action: 'add',
+      hints: [{ rule: `Spell it ${kept}, not ${removed}.`, keyterm: kept, retireHintId: null }],
+    });
+  });
+
   it('reads an add with no usable rule as none', async () => {
     const model = answering({ action: 'add', reason: '', hints: [ruled(''), ruled(null, 'Rooikraal')] });
 

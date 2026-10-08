@@ -112,6 +112,7 @@ export function derivationPrompt({ rawText, shownText, savedText, language, purp
     system: [
       'A person corrected a transcript. Look at every change between the shown and the saved text, and decide which teach a reusable rule for future transcriptions.',
       `Answer "add" with one short rule in plain English per distinct reusable correction ("The farm is spelled Rooikraal, not Rooi Kraal"), at most ${TRANSCRIPTION_HINTS_PER_CORRECTION}, most useful first. Each rule states one fact; set its keyterm to the proper noun it is about, else null. Leave reason empty.`,
+      'The saved text is always right, even when the shown text looks like a better-known name: each rule teaches the saved wording, never the shown one ("spelled <as saved>, not <as shown>"), and its keyterm is spelled as saved.',
       'Leave out changes that are rewrites rather than corrections, that are specific to this note, or that an existing hint already covers.',
       'Answer "none" with a short reason only when no change teaches a reusable rule. With "none", hints is empty.',
       `There are ${hints.length} active hints; the cap is ${TRANSCRIPTION_HINT_CAP}. Each rule may name one existing hint it replaces, or one to retire when adding would exceed the cap, as its retireHintId, else null.`,
@@ -123,8 +124,17 @@ export function derivationPrompt({ rawText, shownText, savedText, language, purp
   };
 }
 
-/** The model's rules that are safe to keep: one per keyterm ignoring case, at most the per-correction limit. */
-function usableHints(answer: HintDerivationAnswer['hints']): DerivedTranscriptionHint[] {
+/** Whether the text holds the term as a whole word, in exactly that case. */
+const mentions = (text: string, term: string) => {
+  const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return new RegExp(`(?<![\\p{L}\\p{N}])${escaped}(?![\\p{L}\\p{N}])`, 'u').test(text);
+};
+
+/** The model's rules that are safe to keep: one per keyterm ignoring case, none teaching what the person removed, at most the per-correction limit. */
+function usableHints(
+  answer: HintDerivationAnswer['hints'],
+  { shownText, savedText }: { shownText: string; savedText: string },
+): DerivedTranscriptionHint[] {
   const keyterms = new Set<string>();
   return answer
     .flatMap(({ rule, keyterm, retireHintId }) => {
@@ -138,7 +148,10 @@ function usableHints(answer: HintDerivationAnswer['hints']): DerivedTranscriptio
       const whole = DerivedTranscriptionHint.safeParse(draft);
       const parsed = whole.success ? whole : DerivedTranscriptionHint.safeParse({ ...draft, keyterm: null });
       if (!parsed.success) return [];
-      const key = parsed.data.keyterm?.toLowerCase();
+      const { keyterm: term } = parsed.data;
+      // A keyterm the person removed means the rule is backwards: it would teach the shown spelling.
+      if (term && mentions(shownText, term) && !mentions(savedText, term)) return [];
+      const key = term?.toLowerCase();
       if (key !== undefined) {
         if (keyterms.has(key)) return [];
         keyterms.add(key);
@@ -169,7 +182,7 @@ export async function deriveTranscriptionHint({
   if (object.action === 'none') {
     return HintDerivation.parse({ action: 'none', reason: object.reason.slice(0, 200) });
   }
-  const added = usableHints(object.hints);
+  const added = usableHints(object.hints, { shownText, savedText });
   if (added.length === 0) return { action: 'none', reason: 'No usable rule.' };
 
   return HintDerivation.parse({ action: 'add', hints: added });

@@ -1,18 +1,35 @@
 import { formatNumber } from '@pkg/domain';
-import type { TranscriptionHintStatus, TranscriptionReviewItem } from '@pkg/schema/contracting';
-import { useInfiniteQuery } from '@tanstack/react-query';
+import type { TranscriptionHintStatus, TranscriptionListInput, TranscriptionReviewItem } from '@pkg/schema/contracting';
+import { keepPreviousData, useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
+import type { ColumnFiltersState } from '@tanstack/react-table';
 import { useMemo } from 'react';
 import { DateDisplay } from '@/components/common/DateDisplay.js';
+import { readMultiSelectFilter } from '@/components/data-table/column-filter-values.js';
 import { cursorInfiniteQueryOptions, useCombinedCursorQueryPages } from '@/components/data-table/cursor-query.js';
 import { DataTable } from '@/components/data-table/DataTable.js';
 import { type DataTableColumnDef, useDataTable } from '@/components/data-table/features.js';
+import { useServerSideTableController } from '@/components/data-table/hooks/use-server-side-table-controller.js';
+import { createPersistedDataTableStore } from '@/components/data-table/store.js';
+import type { SortOptions } from '@/components/data-table/table-state.js';
 import { Badge } from '@/components/ui/badge.js';
 import { getApiQueryErrorMessage } from '@/lib/api-errors.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { TranscriptionTexts } from './TranscriptionTexts.js';
 
-const PAGE_SIZE = 25;
+const useTranscriptionTableStore = createPersistedDataTableStore({
+  initialState: { sorting: [{ id: 'createdAt', desc: true }] },
+  persistName: 'contracting-transcriptions-table',
+});
+
+const transcriptionSortOptions: SortOptions<TranscriptionListInput> = {
+  allowedSortIds: ['createdAt'],
+  defaultSort: { id: 'createdAt', desc: true },
+};
+
+const transcriptionListInputExtras = (columnFilters: ColumnFiltersState) => ({
+  createdByUserIds: readMultiSelectFilter(columnFilters, 'createdByUserId'),
+});
 
 const hintStatusLabels = {
   not_saved: 'Not saved yet',
@@ -50,25 +67,45 @@ function HintStatus({ id, status }: { id: string; status: TranscriptionHintStatu
 /** Every user's Transcriptions, newest first: heard, shown, kept, and where the hint derivation stands. */
 export function TranscriptionTable() {
   const trpc = useTRPC();
+  const tableController = useServerSideTableController({
+    store: useTranscriptionTableStore,
+    sortOptions: transcriptionSortOptions,
+    getListInputExtras: transcriptionListInputExtras,
+  });
   const query = useInfiniteQuery(
-    trpc.contractingTranscriptions.list.infiniteQueryOptions({ limit: PAGE_SIZE }, cursorInfiniteQueryOptions),
+    trpc.contractingTranscriptions.list.infiniteQueryOptions(tableController.listInput, {
+      ...cursorInfiniteQueryOptions,
+      placeholderData: keepPreviousData,
+    }),
   );
   const { items, total } = useCombinedCursorQueryPages(query.data?.pages);
+  const users = useQuery(trpc.contractingTranscriptions.users.queryOptions());
+  const userOptions = useMemo(
+    () => (users.data ?? []).map((person) => ({ label: person.name, value: person.id })),
+    [users.data],
+  );
   const columns = useMemo<DataTableColumnDef<TranscriptionReviewItem>[]>(
     () => [
       {
         accessorKey: 'createdAt',
         header: 'When',
-        cell: ({ row }) => (
-          <div className="grid min-w-32 gap-0.5">
-            <DateDisplay date={row.original.createdAt} format="medium" />
-            <span className="text-sm text-muted-foreground">{row.original.createdByName}</span>
-          </div>
-        ),
+        enableColumnFilter: false,
+        enableSorting: true,
+        cell: ({ row }) => <DateDisplay date={row.original.createdAt} format="medium" />,
+      },
+      {
+        accessorKey: 'createdByUserId',
+        header: 'Recorded by',
+        enableColumnFilter: true,
+        enableSorting: false,
+        meta: { filterOptions: userOptions, filterVariant: 'multi-select' },
+        cell: ({ row }) => <span className="min-w-28">{row.original.createdByName}</span>,
       },
       {
         accessorKey: 'purpose',
         header: 'Purpose',
+        enableColumnFilter: false,
+        enableSorting: false,
         cell: ({ row }) => (
           <div className="grid min-w-28 gap-0.5">
             <span>{row.original.purpose}</span>
@@ -79,17 +116,30 @@ export function TranscriptionTable() {
       {
         id: 'text',
         header: 'Heard → shown → kept',
+        enableColumnFilter: false,
+        enableSorting: false,
         cell: ({ row }) => <TranscriptionTexts {...row.original} />,
       },
       {
         id: 'hint',
         header: 'Hint',
+        enableColumnFilter: false,
+        enableSorting: false,
         cell: ({ row }) => <HintStatus id={row.original.id} status={row.original.hintStatus} />,
       },
     ],
-    [],
+    [userOptions],
   );
-  const table = useDataTable({ columns, data: items, enableSorting: false, enableColumnFilters: false });
+  const table = useDataTable({
+    columns,
+    data: items,
+    enableSortingRemoval: false,
+    manualFiltering: true,
+    manualSorting: true,
+    onColumnFiltersChange: tableController.setColumnFilters,
+    onSortingChange: tableController.setSorting,
+    state: { columnFilters: tableController.columnFilters, sorting: tableController.sorting },
+  });
   return (
     <DataTable
       emptyMessage="No Voice Notes yet."

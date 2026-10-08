@@ -8,11 +8,12 @@ import {
   type TranscriptionListInput,
   type TranscriptionListResult,
   TranscriptionReviewItem,
+  TranscriptionUser,
 } from '@pkg/schema/contracting';
-import { asc, desc, eq, isNull, sql } from 'drizzle-orm';
+import { asc, desc, eq, exists, inArray, isNull, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 
-/** Every user's Transcriptions, newest first, with where each one's hint derivation stands. */
+/** Every user's Transcriptions, or only those the chosen people recorded, with where each one's hint derivation stands. */
 export async function listTranscriptionReviews({
   db,
   input,
@@ -20,10 +21,16 @@ export async function listTranscriptionReviews({
   db: Db;
   input: TranscriptionListInput;
 }): Promise<TranscriptionListResult> {
+  const filter =
+    input.createdByUserIds.length > 0
+      ? inArray(contractingTranscriptions.createdByUserId, input.createdByUserIds)
+      : undefined;
+  const order = input.sortDirection === 'asc' ? asc : desc;
   const query = db
     .select({
       id: contractingTranscriptions.id,
       createdAt: contractingTranscriptions.createdAt,
+      createdByUserId: contractingTranscriptions.createdByUserId,
       createdByName: user.name,
       purpose: contractingTranscriptions.purpose,
       language: contractingTranscriptions.language,
@@ -42,11 +49,26 @@ export async function listTranscriptionReviews({
     })
     .from(contractingTranscriptions)
     .innerJoin(user, eq(user.id, contractingTranscriptions.createdByUserId))
-    .orderBy(desc(contractingTranscriptions.createdAt), desc(contractingTranscriptions.id))
+    .where(filter)
+    .orderBy(order(contractingTranscriptions.createdAt), order(contractingTranscriptions.id))
     .$dynamic();
-  const [rows, total] = await Promise.all([withPagination(query, input), db.$count(contractingTranscriptions)]);
+  const [rows, total] = await Promise.all([withPagination(query, input), db.$count(contractingTranscriptions, filter)]);
   const items = rows.map((row) => TranscriptionReviewItem.parse({ ...row, hintStatus: transcriptionHintStatus(row) }));
   return { items, nextCursor: getNextCursor({ count: items.length, cursor: input.cursor, total }), total };
+}
+
+/** The people who have recorded a Voice Note, by name: the choices for filtering the Transcriptions. */
+export async function listTranscriptionUsers({ db }: { db: Db }): Promise<TranscriptionUser[]> {
+  const recorded = db
+    .select({ recorded: sql`1` })
+    .from(contractingTranscriptions)
+    .where(eq(contractingTranscriptions.createdByUserId, user.id));
+  const rows = await db
+    .select({ id: user.id, name: user.name })
+    .from(user)
+    .where(exists(recorded))
+    .orderBy(asc(user.name), asc(user.id));
+  return rows.map((row) => TranscriptionUser.parse(row));
 }
 
 /** Every Transcription Hint, those in force first and newest first within each, with its successor and its source. */

@@ -1,6 +1,7 @@
 import { z } from 'zod';
+import { AuthId } from '../../auth/auth-id.js';
 import { DateIso } from '../../common/date.js';
-import { CursorQueryInput, createCursorQueryResult } from '../../common/pagination.js';
+import { createCursorQueryResult, createSortedCursorQueryInput } from '../../common/pagination.js';
 import { UUID } from '../../common/uuid.js';
 
 export const TranscriptionPurpose = z.string().trim().min(1).max(60);
@@ -73,6 +74,7 @@ export type TranscriptionHintStatus = z.infer<typeof TranscriptionHintStatus>;
 export const TranscriptionReviewItem = z.object({
   id: UUID,
   createdAt: DateIso,
+  createdByUserId: AuthId,
   createdByName: z.string(),
   purpose: z.string(),
   language: z.string().nullable(),
@@ -82,10 +84,17 @@ export const TranscriptionReviewItem = z.object({
   hintStatus: TranscriptionHintStatus,
 });
 export type TranscriptionReviewItem = z.infer<typeof TranscriptionReviewItem>;
-export const TranscriptionListInput = CursorQueryInput;
+export const TranscriptionListInput = createSortedCursorQueryInput({
+  defaultSortDirection: 'desc',
+  shape: { createdByUserIds: z.array(AuthId).default([]) },
+  sortBy: z.enum(['createdAt']).default('createdAt'),
+});
 export type TranscriptionListInput = z.infer<typeof TranscriptionListInput>;
 export const TranscriptionListResult = createCursorQueryResult(TranscriptionReviewItem);
 export type TranscriptionListResult = z.infer<typeof TranscriptionListResult>;
+/** Someone who has recorded a Voice Note, for filtering the Transcriptions by who recorded them. */
+export const TranscriptionUser = z.object({ id: AuthId, name: z.string() });
+export type TranscriptionUser = z.infer<typeof TranscriptionUser>;
 
 export const TranscriptionHintRow = z.object({
   id: UUID,

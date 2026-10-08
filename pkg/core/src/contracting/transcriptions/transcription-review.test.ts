@@ -1,9 +1,9 @@
 import { contractingTranscriptionHints } from '@pkg/db/contracting';
-import type { HintDerivation } from '@pkg/schema/contracting';
+import { type HintDerivation, TranscriptionListInput } from '@pkg/schema/contracting';
 import { expect } from 'vitest';
 import { createTester } from '../../test/create-tester.js';
-import { foremanId, seedJobFixtures } from '../test/job-fixtures.js';
-import { listTranscriptionHints, listTranscriptionReviews } from './transcription-review.js';
+import { adminId, foremanId, seedJobFixtures } from '../test/job-fixtures.js';
+import { listTranscriptionHints, listTranscriptionReviews, listTranscriptionUsers } from './transcription-review.js';
 import {
   deriveHintFor,
   recordTranscriptionSaved,
@@ -12,6 +12,8 @@ import {
 } from './transcription-service.js';
 
 const M4A = new Uint8Array([0, 0, 0, 32, 0x66, 0x74, 0x79, 0x70, 0x4d, 0x34, 0x41, 0x20]);
+
+const listInput = (input: Partial<TranscriptionListInput>) => TranscriptionListInput.parse(input);
 
 const test = createTester(async ({ db }) => ({ fixtures: await seedJobFixtures(db) }));
 
@@ -22,6 +24,7 @@ async function note(
   heard: { text: string; language: string },
   save?: string,
   derivation: HintDerivation = { action: 'none', reason: 'Specific to this note.' },
+  actorUserId = foremanId,
 ) {
   const engine: TranscriptionEngine = {
     transcribe: async () => heard,
@@ -30,7 +33,7 @@ async function note(
   };
   const transcription = await transcribeVoiceNote({
     db,
-    actorUserId: foremanId,
+    actorUserId,
     audio: M4A,
     purpose: 'capture comment',
     engine,
@@ -39,7 +42,7 @@ async function note(
   if (save !== undefined)
     await recordTranscriptionSaved({
       db,
-      actorUserId: foremanId,
+      actorUserId,
       input: { id: transcription.id, text: save, purpose: 'capture comment' },
     });
   return { id: transcription.id, derive: () => deriveHintFor({ db, id: transcription.id, engine }) };
@@ -61,7 +64,7 @@ test('shows each Transcription newest first with where its hint derivation stand
   await declined.derive();
   await added.derive();
 
-  const page = await listTranscriptionReviews({ db, input: { cursor: 0, limit: 5 } });
+  const page = await listTranscriptionReviews({ db, input: listInput({ cursor: 0, limit: 5 }) });
 
   // The hint list is newest first, so creation order is its reverse.
   const hintIds = (await listTranscriptionHints({ db })).hints.map((hint) => hint.id).reverse();
@@ -80,9 +83,29 @@ test('shows each Transcription newest first with where its hint derivation stand
     shownText: 'pump at the dam.',
     savedText: 'Pump at the top dam.',
   });
-  expect((await listTranscriptionReviews({ db, input: { cursor: 5, limit: 5 } })).items).toEqual([
+  expect((await listTranscriptionReviews({ db, input: listInput({ cursor: 5, limit: 5 }) })).items).toEqual([
     expect.objectContaining({ id: unsaved.id, hintStatus: { kind: 'not_saved' } }),
   ]);
+});
+
+test('filters by who recorded them, counts only those, and offers only people who have recorded', async ({
+  context: { db },
+}) => {
+  const foremanNotes = [
+    await note(db, { text: 'gate open', language: 'en' }),
+    await note(db, { text: 'pump off', language: 'en' }),
+  ];
+  const adminNote = await note(db, { text: 'tipper fixed', language: 'en' }, undefined, undefined, adminId);
+
+  const foreman = await listTranscriptionReviews({ db, input: listInput({ createdByUserIds: [foremanId], limit: 1 }) });
+  const both = await listTranscriptionReviews({
+    db,
+    input: listInput({ createdByUserIds: [foremanId, adminId], sortDirection: 'asc' }),
+  });
+
+  expect(foreman).toMatchObject({ total: 2, nextCursor: 1, items: [{ id: foremanNotes[1]?.id }] });
+  expect(both.items.map((item) => item.id)).toEqual([...foremanNotes.map((item) => item.id), adminNote.id]);
+  expect((await listTranscriptionUsers({ db })).map((person) => person.id).sort()).toEqual([adminId, foremanId].sort());
 });
 
 test('lists hints in force first, each with its successor and the Transcription it came from', async ({

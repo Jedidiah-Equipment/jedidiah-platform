@@ -38,6 +38,7 @@ export const HELP_TOPICS = {
   contractingImplements: '/contracting/maintain-implements',
   contractingUsers: '/contracting/manage-users',
   contractingAudit: '/contracting/trace-a-change-in-the-audit-log',
+  contractingTranscriptions: '/contracting/review-voice-note-transcriptions',
   bays: '/production/delete-a-bay',
   customerCreate: '/sales/choose-a-customer',
   customerMerge: '/sales/merge-duplicate-customers',

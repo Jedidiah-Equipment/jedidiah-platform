@@ -5,6 +5,7 @@ import {
   IconClipboardList,
   IconCoins,
   IconGauge,
+  IconMicrophone,
   IconReceipt,
   IconRuler2,
   IconTool,
@@ -125,6 +126,12 @@ export const contractingNavSections = [
         permission: 'contracting_rate:read',
         link: linkOptions({ to: '/contracting/measure-types' }),
         icon: IconRuler2,
+      },
+      {
+        title: 'Transcriptions',
+        permission: 'contracting_transcription:read',
+        link: linkOptions({ to: '/contracting/transcriptions' }),
+        icon: IconMicrophone,
       },
       {
         title: 'Audit',

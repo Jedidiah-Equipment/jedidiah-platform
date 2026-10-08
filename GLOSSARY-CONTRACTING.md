@@ -291,6 +291,10 @@ The Contracting **Audit Log** shows the Audit Events of Contracting records — 
 Implements, Hour Readings, Customers, Farms, Work Types — and of Users who hold a Contracting role and
 no Equipment role, under `contracting_audit:read`, which contracting-admin and super-admin hold.
 
+The **Transcriptions** page shows every user's Transcriptions, the Transcription Hints and the prompts
+the models are sent, read-only, under `contracting_transcription:read`, which contracting-admin and
+super-admin hold; it shows everyone's Voice Note text, so it stays this narrow.
+
 Drivers and Mechanics are non-login user records holding permissionless contracting roles. Pricing
 and the Rate Card deliberately sit with contracting-admin and super-admin alone; foremen are
 money-blind by design.

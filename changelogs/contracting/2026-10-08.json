@@ -1,0 +1,40 @@
+{
+  "business": "contracting",
+  "releasedAt": "2026-10-08T14:01:40.346Z",
+  "sections": [
+    {
+      "surface": "app",
+      "entries": [
+        {
+          "title": "Review voice note transcriptions",
+          "description": "Administrators can compare what was heard, shown and saved, filter recordings by person, and review hints learned from corrections. The new read-only Transcriptions page also shows the instructions and names used for transcription."
+        },
+        {
+          "title": "Find and prioritise workshop work",
+          "description": "Search the Workshop queue and filter by urgency, job, farm, reporter, mechanic and status. Photo thumbnails, urgency flags and the statuses Not fixed, Fixing and Fixed make reports easier to scan."
+        }
+      ]
+    },
+    {
+      "surface": "mobile",
+      "entries": [
+        {
+          "title": "Teach voice notes from your corrections",
+          "description": "Corrections to English voice notes can now teach several hints at once, following the wording you saved. Each recording learns from its own corrected text, keeping surrounding typed text and other recordings separate."
+        },
+        {
+          "title": "Use more familiar names in voice notes",
+          "description": "Voice transcription now considers a larger list of farm, customer, people and fleet names, with learned spellings given priority."
+        },
+        {
+          "title": "Find breakdowns and track repairs",
+          "description": "Search Workshop reports and filter by status or mechanic, with clearer urgency flags and Not fixed, Fixing and Fixed labels. Breakdown screens now group location details together and make Start work and Mark completed easier to find."
+        },
+        {
+          "title": "Report a problem and return to your work",
+          "description": "Use the plus button in Workshop to report a breakdown. After sending the report, you return to the job, machine or Workshop screen where you started."
+        }
+      ]
+    }
+  ]
+}

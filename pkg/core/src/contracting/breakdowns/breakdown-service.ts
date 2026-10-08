@@ -783,6 +783,6 @@ export async function assertMechanicAccountChangeAllowed({
   if (assigned)
     throw new BreakdownError(
       'breakdown.invalid_mechanic',
-      "Reassign this mechanic's open Breakdowns before changing their role.",
+      "Reassign this mechanic's Breakdowns that are not yet Fixed before changing their role.",
     );
 }

@@ -1,9 +1,9 @@
 import { expect, test } from 'vitest';
-import { insertTranscript, keptTexts, trackEdit, type VoiceSpans } from './voice-spans';
+import { type FieldSpans, insertTranscript, keptTexts, trackEdit } from './voice-spans';
 
-const EMPTY: VoiceSpans = { text: '', spans: [] };
+const EMPTY: FieldSpans = { text: '', spans: [] };
 
-function typed(spans: VoiceSpans, text: string) {
+function typed(spans: FieldSpans, text: string) {
   return trackEdit(spans, text);
 }
 

@@ -124,7 +124,7 @@ function SolveModal({ breakdownId, visible, onClose }: { breakdownId: string; vi
           onPress={() =>
             void run(async () => {
               await solve.mutateAsync({ id: breakdownId, closeOutNote: note });
-              voice.reportSaved(note.trim());
+              voice.reportSaved();
               setNote('');
               onClose();
             }, BREAKDOWN_SAVE_FAILED)

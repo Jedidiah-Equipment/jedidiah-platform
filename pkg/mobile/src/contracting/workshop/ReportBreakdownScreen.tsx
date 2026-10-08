@@ -137,7 +137,7 @@ export default function ReportBreakdownScreen() {
     };
     return run(async () => {
       const reported = await report.mutateAsync({ input, photoUris: photos.map((photo) => photo.uri) });
-      voice.reportSaved(description.trim());
+      voice.reportSaved();
       recordBreakdownReported({
         urgency,
         subjectKind: subject.kind,

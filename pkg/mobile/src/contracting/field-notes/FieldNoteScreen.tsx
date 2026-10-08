@@ -52,7 +52,7 @@ function FieldNoteDetail({ note, onLeave }: { note: FieldNote; onLeave: () => vo
     if (description.trim() === stored) return;
     // Not through `act`: a blur fired by tapping Close or a photo control must not swallow that tap.
     saveDescription(note.id, description).then(
-      () => reportSaved(description.trim()),
+      () => reportSaved(),
       (error) => {
         setDescription(stored);
         report(error, 'The description could not be saved.');

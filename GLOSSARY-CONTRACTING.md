@@ -256,7 +256,9 @@ _Avoid_: dictation, audio note, voice memo
 
 **Transcription** is one Voice Note turned into text: the raw text the speech service heard, the
 tidied text the user was shown, the detected language, and — once the user saves the field — the
-text they kept. The tidied text is a minimal edit of the raw text and is never a translation.
+text they kept in place of that transcript, not the whole field: typed text and other Voice Notes in
+the same field are not part of it, a deleted transcript kept nothing, and one cut short by the
+field's limit reports nothing. The tidied text is a minimal edit of the raw text and is never a translation.
 _Avoid_: transcript (bare), correction diff
 
 **Transcription Hint** is one short rule distilled from a Transcription whose saved text differs

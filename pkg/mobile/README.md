@@ -12,10 +12,13 @@ All are `pnpm --filter @pkg/mobile <script>`:
 - `doctor` — Expo Doctor for the staging variant
 - `typecheck`, `test`
 - `version:bump patch` — bump the store-facing app version (`minor` and `major` are also supported)
-- `build:staging` / `build:production` — EAS builds; pass `--platform ios` or `--platform android`,
-  and `--local` to compile on this machine
 - `android-eas-submit-staging` / `ios-eas-submit-staging` and the matching `…-production` scripts —
   EAS cloud builds with automatic store submission
+
+Isolated release builds run from the repository root as `pnpm mobile:build:staging` /
+`pnpm mobile:build:production`; pass `--platform ios` or `--platform android`, `--local` to compile on this
+machine, and `--auto-submit` to submit. They live at the root because the runtime fingerprint hashes this
+package's scripts: editing a script here strands every installed build from OTA updates.
 
 ## Local API
 
@@ -128,8 +131,8 @@ still need the platform tools and secrets required by EAS; cloud builds continue
 The development `android`/`ios` commands retain Expo's generated native projects in this checkout.
 
 ```sh
-pnpm --filter @pkg/mobile build:staging --platform ios
-pnpm --filter @pkg/mobile build:production --platform android --local
+pnpm mobile:build:staging --platform ios
+pnpm mobile:build:production --platform android --local
 ```
 
 Staging builds use `APP_VARIANT=staging`, identifier `za.co.jedidiahequipment.ops.staging`, and the EAS

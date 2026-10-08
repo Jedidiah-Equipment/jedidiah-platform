@@ -24,13 +24,17 @@ import { log } from '../logger.js';
 import { registerBreakdownHttpRoutes } from '../routes/contracting/breakdowns/breakdowns-http.route.js';
 import { registerJobCardHttpRoutes } from '../routes/contracting/jobs/job-card-http.route.js';
 import { registerReadingHttpRoutes } from '../routes/contracting/readings/readings-http.route.js';
-import type { HintDerivations } from '../routes/contracting/transcriptions/transcriptions.router.js';
+import type {
+  HintDerivations,
+  TranscriptionModels,
+} from '../routes/contracting/transcriptions/transcriptions.router.js';
 import { registerTranscriptionHttpRoutes } from '../routes/contracting/transcriptions/transcriptions-http.route.js';
 import { serializeError } from '../trpc/errors.js';
 
 export type ContractingRouterDependencies = {
   hintDerivations: HintDerivations;
   readMeterPhoto: ReadMeterPhoto;
+  transcriptionModels: TranscriptionModels;
 };
 
 export async function registerContracting(
@@ -82,7 +86,11 @@ export async function registerContracting(
   await registerJobCardHttpRoutes(app, { db, pdfRenderer: renderJobCardPdf });
 
   return {
-    routerDependencies: { hintDerivations, readMeterPhoto },
+    routerDependencies: {
+      hintDerivations,
+      readMeterPhoto,
+      transcriptionModels: { chat: config.OPENAI_MODEL, transcription: config.OPENAI_TRANSCRIPTION_MODEL },
+    },
     services: [readingVerifications, hintDerivations],
   };
 }

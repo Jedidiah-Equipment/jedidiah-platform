@@ -58,3 +58,36 @@ test('a saved correction schedules one hint derivation; a kept or non-English no
     caller.contractingTranscriptions.saved({ id: corrected.id, text: 'Again.', purpose: 'field note' }),
   ).rejects.toMatchObject({ code: 'CONFLICT' });
 });
+
+test('only a holder of contracting_transcription:read reviews Transcriptions, hints and prompts', async ({
+  context,
+}) => {
+  const foreman = mockSession(null);
+  foreman.user.contractingRole = 'foreman';
+  const admin = mockSession(null);
+  admin.user.contractingRole = 'contracting-admin';
+  const note = await context.heard('eng');
+  await context.createCaller(foreman).contractingTranscriptions.saved({
+    id: note.id,
+    text: 'The gate at Rooikraal is open.',
+    purpose: 'field note',
+  });
+
+  await expect(context.createCaller(foreman).contractingTranscriptions.list({})).rejects.toMatchObject({
+    code: 'FORBIDDEN',
+  });
+  await expect(context.createCaller(foreman).contractingTranscriptions.prompts()).rejects.toMatchObject({
+    code: 'FORBIDDEN',
+  });
+  const caller = context.createCaller(admin);
+  expect(await caller.contractingTranscriptions.list({})).toMatchObject({
+    total: 1,
+    items: [{ id: note.id, createdByName: 'Test User', hintStatus: { kind: 'pending' } }],
+  });
+  expect(await caller.contractingTranscriptions.hints()).toEqual({ cap: 100, activeCount: 0, hints: [] });
+  expect(await caller.contractingTranscriptions.prompts()).toMatchObject({
+    speech: { model: 'test-transcription-model', prompt: expect.stringContaining('Test User') },
+    tidy: { model: 'test-chat-model', prompt: expect.stringContaining('{{raw transcript}}') },
+    derivation: { model: 'test-chat-model', prompt: expect.stringContaining('{{saved text}}') },
+  });
+});

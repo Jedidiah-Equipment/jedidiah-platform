@@ -310,6 +310,7 @@ describe('getRolePermissions', () => {
       'super-admin',
       'workshop-manager',
     ]);
+    expect(holders('contracting_transcription:read')).toEqual(['contracting-admin', 'super-admin']);
   });
 });
 

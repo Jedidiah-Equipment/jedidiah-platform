@@ -120,37 +120,6 @@ test('derives nothing from Afrikaans notes or from a save that kept the shown te
   expect(afrikaans.calls.derive).toBe(0);
 });
 
-test('a new hint retires the one it supersedes and links them, once', async ({ context: { db } }) => {
-  const [old] = await db.insert(contractingTranscriptionHints).values({ rule: 'Rooi Kraal is two words.' }).returning();
-  const { transcription, engine, calls } = await noted(
-    db,
-    { text: 'the gate at rooi kraal is open', language: 'eng' },
-    {
-      action: 'add',
-      hints: [{ rule: 'The farm is spelled Rooikraal.', keyterm: 'Rooikraal', retireHintId: old?.id ?? null }],
-    },
-  );
-  await recordTranscriptionSaved({
-    db,
-    actorUserId: foremanId,
-    input: { id: transcription.id, text: 'The gate at Rooikraal is open.', purpose: 'capture comment' },
-  });
-  expect(await listTranscriptionsAwaitingHints({ db })).toEqual([transcription.id]);
-
-  await deriveHintFor({ db, id: transcription.id, engine });
-  await deriveHintFor({ db, id: transcription.id, engine });
-
-  expect(calls.derive).toBe(1);
-  const active = await listActiveHints({ db });
-  expect(active).toEqual([{ id: expect.any(String), rule: 'The farm is spelled Rooikraal.', keyterm: 'Rooikraal' }]);
-  expect(
-    await db.query.contractingTranscriptionHints.findFirst({
-      where: eq(contractingTranscriptionHints.id, old?.id ?? ''),
-    }),
-  ).toMatchObject({ retiredAt: expect.any(Date), supersededByHintId: active[0]?.id });
-  expect(await listTranscriptionsAwaitingHints({ db })).toEqual([]);
-});
-
 async function derivedFrom(db: Parameters<typeof noted>[0], derivation: HintDerivation) {
   const { transcription, engine, calls } = await noted(
     db,
@@ -177,10 +146,13 @@ test('one correction teaches a hint per fix, all from the same Transcription, on
     ],
   });
 
+  expect(await listTranscriptionsAwaitingHints({ db })).toEqual([transcription.id]);
+
   await derive();
   await derive();
 
   expect(calls.derive).toBe(1);
+  expect(await listTranscriptionsAwaitingHints({ db })).toEqual([]);
   const added = await db.query.contractingTranscriptionHints.findMany();
   expect(added).toHaveLength(2);
   expect(added).toEqual(

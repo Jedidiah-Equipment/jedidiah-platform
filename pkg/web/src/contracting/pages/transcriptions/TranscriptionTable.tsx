@@ -24,17 +24,20 @@ const hintStatusLabels = {
   unknown: 'Derived before outcomes were kept',
 } as const satisfies Record<TranscriptionHintStatus['kind'], string>;
 
-function HintStatus({ status }: { status: TranscriptionHintStatus }) {
+function HintStatus({ id, status }: { id: string; status: TranscriptionHintStatus }) {
+  const many = status.kind === 'hint_added' && status.hintIds.length > 1;
   return (
     <div className="grid min-w-36 gap-1">
-      <Badge variant={status.kind === 'hint_added' ? 'default' : 'outline'}>{hintStatusLabels[status.kind]}</Badge>
+      <Badge variant={status.kind === 'hint_added' ? 'default' : 'outline'}>
+        {many ? `${formatNumber(status.hintIds.length)} hints added` : hintStatusLabels[status.kind]}
+      </Badge>
       {status.kind === 'hint_added' ? (
         <Link
           className="text-sm underline underline-offset-2"
           to="/contracting/transcriptions"
-          search={{ tab: 'hints', hint: status.hintId }}
+          search={{ tab: 'hints', from: id }}
         >
-          View the hint
+          {many ? 'View the hints' : 'View the hint'}
         </Link>
       ) : null}
       {status.kind === 'no_hint' ? (
@@ -81,7 +84,7 @@ export function TranscriptionTable() {
       {
         id: 'hint',
         header: 'Hint',
-        cell: ({ row }) => <HintStatus status={row.original.hintStatus} />,
+        cell: ({ row }) => <HintStatus id={row.original.id} status={row.original.hintStatus} />,
       },
     ],
     [],

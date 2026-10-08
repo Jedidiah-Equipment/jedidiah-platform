@@ -51,21 +51,24 @@ test('shows each Transcription newest first with where its hint derivation stand
   const afrikaans = await note(db, { text: 'hek oop', language: 'af' }, 'Die hek is oop.');
   const pending = await note(db, { text: 'rooi kraal', language: 'en' }, 'Rooikraal.');
   const declined = await note(db, { text: 'pump at the dam', language: 'en' }, 'Pump at the top dam.');
-  const added = await note(db, { text: 'bloem hof', language: 'en' }, 'Bloemhof.', {
+  const added = await note(db, { text: 'bloem hof by vaal kop', language: 'en' }, 'Bloemhof by Vaalkop.', {
     action: 'add',
-    rule: 'Bloemhof is one word.',
-    keyterm: 'Bloemhof',
-    retireHintId: null,
+    hints: [
+      { rule: 'Bloemhof is one word.', keyterm: 'Bloemhof', retireHintId: null },
+      { rule: 'Vaalkop is one word.', keyterm: 'Vaalkop', retireHintId: null },
+    ],
   });
   await declined.derive();
   await added.derive();
 
   const page = await listTranscriptionReviews({ db, input: { cursor: 0, limit: 5 } });
 
-  const hint = (await listTranscriptionHints({ db })).hints[0];
+  // The hint list is newest first, so creation order is its reverse.
+  const hintIds = (await listTranscriptionHints({ db })).hints.map((hint) => hint.id).reverse();
+  expect(hintIds).toHaveLength(2);
   expect(page).toMatchObject({ total: 6, nextCursor: 5 });
   expect(page.items.map((item) => [item.id, item.hintStatus])).toEqual([
-    [added.id, { kind: 'hint_added', hintId: hint?.id }],
+    [added.id, { kind: 'hint_added', hintIds }],
     [declined.id, { kind: 'no_hint', reason: 'Specific to this note.' }],
     [pending.id, { kind: 'pending' }],
     [afrikaans.id, { kind: 'not_english' }],
@@ -91,9 +94,7 @@ test('lists hints in force first, each with its successor and the Transcription 
     .returning();
   const source = await note(db, { text: 'bloem hof', language: 'en' }, 'Bloemhof.', {
     action: 'add',
-    rule: 'Bloemhof is one word.',
-    keyterm: 'Bloemhof',
-    retireHintId: older?.id ?? null,
+    hints: [{ rule: 'Bloemhof is one word.', keyterm: 'Bloemhof', retireHintId: older?.id ?? null }],
   });
   await source.derive();
 

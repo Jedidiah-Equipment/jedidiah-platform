@@ -12,16 +12,24 @@ import { useTRPC } from '@/lib/trpc.js';
 import { TranscriptionTexts } from './TranscriptionTexts.js';
 
 /** Every Transcription Hint, those in force first, each beside the correction it was learned from. */
-export function HintTable({ selectedHintId }: { selectedHintId: string | undefined }) {
+export function HintTable({
+  selectedHintId,
+  fromTranscriptionId,
+}: {
+  selectedHintId: string | undefined;
+  fromTranscriptionId: string | undefined;
+}) {
   const trpc = useTRPC();
   const query = useQuery(trpc.contractingTranscriptions.hints.queryOptions());
   const hints = query.data?.hints ?? [];
   const container = useRef<HTMLDivElement>(null);
-  // A hint opened from its Transcription may sit far down the list.
+  const isSelected = (hint: TranscriptionHintRow) =>
+    hint.id === selectedHintId || (fromTranscriptionId !== undefined && hint.source?.id === fromTranscriptionId);
+  // The hints opened from their Transcription may sit far down the list.
   useEffect(() => {
-    if (selectedHintId && query.data)
+    if ((selectedHintId || fromTranscriptionId) && query.data)
       container.current?.querySelector('[data-state="selected"]')?.scrollIntoView({ block: 'center' });
-  }, [selectedHintId, query.data]);
+  }, [selectedHintId, fromTranscriptionId, query.data]);
   const columns = useMemo<DataTableColumnDef<TranscriptionHintRow>[]>(
     () => [
       {
@@ -94,7 +102,7 @@ export function HintTable({ selectedHintId }: { selectedHintId: string | undefin
       <DataTable
         emptyMessage="No hints learned yet."
         errorMessage={getApiQueryErrorMessage(query.error, 'Unable to load hints.')}
-        getRowState={(hint) => (hint.id === selectedHintId ? 'selected' : undefined)}
+        getRowState={(hint) => (isSelected(hint) ? 'selected' : undefined)}
         hideGlobalFilter
         isLoading={query.isPending}
         paginationMode="complete"

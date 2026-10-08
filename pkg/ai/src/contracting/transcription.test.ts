@@ -92,39 +92,67 @@ describe('deriveTranscriptionHint', () => {
     hints: [{ id: HINT_ID, rule: 'Say Code Red, not code read.' }],
   };
 
-  it('asks with a plain object schema OpenAI strict mode accepts and returns a new hint', async () => {
+  const ruled = (rule: string | null, keyterm: string | null = null, retireHintId: string | null = null) => ({
+    rule,
+    keyterm,
+    retireHintId,
+  });
+
+  it('asks with a plain object schema OpenAI strict mode accepts and returns a hint per correction', async () => {
     const model = answering({
       action: 'add',
       reason: '',
-      rule: 'The farm is spelled Rooikraal, not Rooi Kraal.',
-      keyterm: 'Rooikraal',
-      retireHintId: HINT_ID,
+      hints: [
+        ruled("The farm is spelled Bassi's, not Barsey's.", "Bassi's Farm", HINT_ID),
+        ruled('Stoneybrook is one word.', 'Stoneybrook'),
+      ],
     });
 
     expect(await deriveTranscriptionHint({ ...input, model })).toEqual({
       action: 'add',
-      rule: 'The farm is spelled Rooikraal, not Rooi Kraal.',
-      keyterm: 'Rooikraal',
-      retireHintId: HINT_ID,
+      hints: [
+        { rule: "The farm is spelled Bassi's, not Barsey's.", keyterm: "Bassi's Farm", retireHintId: HINT_ID },
+        { rule: 'Stoneybrook is one word.', keyterm: 'Stoneybrook', retireHintId: null },
+      ],
     });
     const responseFormat = model.doGenerateCalls[0]?.responseFormat;
     expect(responseFormat).toMatchObject({ type: 'json', schema: { type: 'object' } });
-    expect(JSON.stringify(responseFormat)).not.toMatch(/oneOf|minLength|maxLength/);
+    expect(JSON.stringify(responseFormat)).not.toMatch(/oneOf|anyOf|minLength|maxLength|minItems|maxItems/);
   });
 
-  it('reads a blank or invented hint id to retire as none', async () => {
-    const model = answering({ action: 'add', reason: '', rule: 'Say Code Red.', keyterm: '', retireHintId: '' });
+  it('keeps the first three usable rules, one per keyterm ignoring case', async () => {
+    const model = answering({
+      action: 'add',
+      reason: '',
+      hints: [
+        ruled('Bloemhof is one word.', 'Bloemhof'),
+        ruled('  '),
+        ruled(`Spell it ${'Rooikraal '.repeat(40)}`, 'Rooikraal'),
+        ruled('Write BLOEMHOF in capitals.', ' bloemhof '),
+        ruled('Say Code Red.', '', 'not-a-hint'),
+        ruled('Vaalkop is one word.', `Vaalkop ${'farm '.repeat(12)}`, ''),
+        ruled('Rooikraal is one word.', 'Rooikraal'),
+      ],
+    });
 
     expect(await deriveTranscriptionHint({ ...input, model })).toEqual({
       action: 'add',
-      rule: 'Say Code Red.',
-      keyterm: null,
-      retireHintId: null,
+      hints: [
+        { rule: 'Bloemhof is one word.', keyterm: 'Bloemhof', retireHintId: null },
+        { rule: 'Say Code Red.', keyterm: null, retireHintId: null },
+        { rule: 'Vaalkop is one word.', keyterm: null, retireHintId: null },
+      ],
     });
   });
 
+  it('reads an add with no usable rule as none', async () => {
+    const model = answering({ action: 'add', reason: '', hints: [ruled(''), ruled(null, 'Rooikraal')] });
+
+    expect(await deriveTranscriptionHint({ ...input, model })).toEqual({ action: 'none', reason: 'No usable rule.' });
+  });
+
   it('answers none without the hint fields', async () => {
-    const model = answering({ action: 'none', reason: 'A rewrite.', rule: null, keyterm: null, retireHintId: null });
+    const model = answering({ action: 'none', reason: 'A rewrite.', hints: [] });
 
     expect(await deriveTranscriptionHint({ ...input, model })).toEqual({ action: 'none', reason: 'A rewrite.' });
   });
@@ -181,7 +209,7 @@ describe('transcriptionPrompts', () => {
 
   it('shows the tidy and derivation prompts the calls send, with the note in placeholders', async () => {
     const tidy = answering({ text: 'The gate.', language: 'en' });
-    const derive = answering({ action: 'none', reason: 'A rewrite.', rule: null, keyterm: null, retireHintId: null });
+    const derive = answering({ action: 'none', reason: 'A rewrite.', hints: [] });
     await tidyTranscript({ ...note, hints, model: tidy });
     await deriveTranscriptionHint({ ...note, hints, model: derive });
 
@@ -194,6 +222,7 @@ describe('transcriptionPrompts', () => {
       prompt: { type: 'text', text: fill(shown.derivation.prompt) },
     });
     expect(shown.derivation.system).toContain(`- ${HINT_ID}: The farm is spelled Rooikraal`);
+    expect(shown.derivation.system).toContain('at most 3, most useful first');
     expect(shown.tidy.model).toBe('gpt-chat');
   });
 });

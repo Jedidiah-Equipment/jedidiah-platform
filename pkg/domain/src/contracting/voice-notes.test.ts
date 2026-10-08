@@ -66,7 +66,7 @@ describe('transcriptionHintStatus', () => {
     hintDerivedAt: new Date(),
     hintOutcome: 'none' as const,
     hintNoneReason: 'Specific to this note.',
-    hintId: null,
+    hintIds: [],
   };
 
   it('walks a Transcription from unsaved to its derivation outcome', () => {
@@ -77,15 +77,18 @@ describe('transcriptionHintStatus', () => {
     expect(transcriptionHintStatus({ ...row, language: 'af' })).toEqual({ kind: 'not_english' });
     expect(transcriptionHintStatus({ ...row, hintDerivedAt: null, hintOutcome: null })).toEqual({ kind: 'pending' });
     expect(transcriptionHintStatus(row)).toEqual({ kind: 'no_hint', reason: 'Specific to this note.' });
-    expect(transcriptionHintStatus({ ...row, hintOutcome: 'added', hintNoneReason: null, hintId: 'h1' })).toEqual({
+    expect(transcriptionHintStatus({ ...row, hintOutcome: 'added', hintNoneReason: null, hintIds: ['h1'] })).toEqual({
       kind: 'hint_added',
-      hintId: 'h1',
+      hintIds: ['h1'],
     });
   });
 
   it('reads a derivation from before outcomes were kept by the hint it left, else as unknown', () => {
     const before = { ...row, hintOutcome: null, hintNoneReason: null };
     expect(transcriptionHintStatus(before)).toEqual({ kind: 'unknown' });
-    expect(transcriptionHintStatus({ ...before, hintId: 'h1' })).toEqual({ kind: 'hint_added', hintId: 'h1' });
+    expect(transcriptionHintStatus({ ...before, hintIds: ['h1', 'h2'] })).toEqual({
+      kind: 'hint_added',
+      hintIds: ['h1', 'h2'],
+    });
   });
 });

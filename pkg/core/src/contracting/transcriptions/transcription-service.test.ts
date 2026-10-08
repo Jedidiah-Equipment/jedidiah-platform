@@ -120,58 +120,108 @@ test('derives nothing from Afrikaans notes or from a save that kept the shown te
   expect(afrikaans.calls.derive).toBe(0);
 });
 
-test('a new hint retires the one it supersedes and links them, once', async ({ context: { db } }) => {
-  const [old] = await db.insert(contractingTranscriptionHints).values({ rule: 'Rooi Kraal is two words.' }).returning();
+async function derivedFrom(db: Parameters<typeof noted>[0], derivation: HintDerivation) {
   const { transcription, engine, calls } = await noted(
     db,
-    { text: 'the gate at rooi kraal is open', language: 'eng' },
-    { action: 'add', rule: 'The farm is spelled Rooikraal.', keyterm: 'Rooikraal', retireHintId: old?.id ?? null },
+    { text: "at barsey's farm heading to stony brook", language: 'eng' },
+    derivation,
   );
   await recordTranscriptionSaved({
     db,
     actorUserId: foremanId,
-    input: { id: transcription.id, text: 'The gate at Rooikraal is open.', purpose: 'capture comment' },
+    input: { id: transcription.id, text: "At Bassi's Farm, heading to Stoneybrook.", purpose: 'capture comment' },
   });
+  return { derive: () => deriveHintFor({ db, id: transcription.id, engine }), transcription, calls };
+}
+
+const findHint = (db: Parameters<typeof noted>[0], id: string | undefined) =>
+  db.query.contractingTranscriptionHints.findFirst({ where: eq(contractingTranscriptionHints.id, id ?? '') });
+
+test('one correction teaches a hint per fix, all from the same Transcription, once', async ({ context: { db } }) => {
+  const { derive, transcription, calls } = await derivedFrom(db, {
+    action: 'add',
+    hints: [
+      { rule: "The farm is spelled Bassi's, not Barsey's.", keyterm: "Bassi's Farm", retireHintId: null },
+      { rule: 'Stoneybrook is one word.', keyterm: 'Stoneybrook', retireHintId: null },
+    ],
+  });
+
   expect(await listTranscriptionsAwaitingHints({ db })).toEqual([transcription.id]);
 
-  await deriveHintFor({ db, id: transcription.id, engine });
-  await deriveHintFor({ db, id: transcription.id, engine });
+  await derive();
+  await derive();
 
   expect(calls.derive).toBe(1);
-  const active = await listActiveHints({ db });
-  expect(active).toEqual([{ id: expect.any(String), rule: 'The farm is spelled Rooikraal.', keyterm: 'Rooikraal' }]);
-  expect(
-    await db.query.contractingTranscriptionHints.findFirst({
-      where: eq(contractingTranscriptionHints.id, old?.id ?? ''),
-    }),
-  ).toMatchObject({ retiredAt: expect.any(Date), supersededByHintId: active[0]?.id });
   expect(await listTranscriptionsAwaitingHints({ db })).toEqual([]);
+  const added = await db.query.contractingTranscriptionHints.findMany();
+  expect(added).toHaveLength(2);
+  expect(added).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({ keyterm: "Bassi's Farm", sourceTranscriptionId: transcription.id }),
+      expect.objectContaining({ keyterm: 'Stoneybrook', sourceTranscriptionId: transcription.id }),
+    ]),
+  );
+  expect(added[0]?.createdAt).toEqual(added[1]?.createdAt);
+  expect(
+    await db.query.contractingTranscriptions.findFirst({
+      where: eq(contractingTranscriptions.id, transcription.id),
+    }),
+  ).toMatchObject({ hintDerivedAt: expect.any(Date), hintOutcome: 'added' });
 });
 
-test('a full hint list retires its oldest hint to make room', async ({ context: { db } }) => {
+test('each new hint retires the one it names, and a hint named twice is retired once for the first', async ({
+  context: { db },
+}) => {
+  const [farm, brook, kept] = await db
+    .insert(contractingTranscriptionHints)
+    .values([{ rule: 'Barsey is a farm.' }, { rule: 'Stony Brook is two words.' }, { rule: 'Say Code Red.' }])
+    .returning();
+  const { derive } = await derivedFrom(db, {
+    action: 'add',
+    hints: [
+      { rule: "The farm is spelled Bassi's.", keyterm: "Bassi's Farm", retireHintId: farm?.id ?? null },
+      { rule: 'Stoneybrook is one word.', keyterm: 'Stoneybrook', retireHintId: brook?.id ?? null },
+      { rule: 'Bassi is a surname too.', keyterm: 'Bassi', retireHintId: farm?.id ?? null },
+    ],
+  });
+
+  await derive();
+
+  const active = await listActiveHints({ db });
+  const successor = (keyterm: string) => active.find((hint) => hint.keyterm === keyterm)?.id;
+  expect(active).toHaveLength(4);
+  expect(await findHint(db, farm?.id)).toMatchObject({
+    retiredAt: expect.any(Date),
+    supersededByHintId: successor("Bassi's Farm"),
+  });
+  expect(await findHint(db, brook?.id)).toMatchObject({
+    retiredAt: expect.any(Date),
+    supersededByHintId: successor('Stoneybrook'),
+  });
+  expect(await findHint(db, kept?.id)).toMatchObject({ retiredAt: null });
+});
+
+test('a full hint list retires its oldest hints to make room, never a new one', async ({ context: { db } }) => {
   await db.insert(contractingTranscriptionHints).values(
     Array.from({ length: TRANSCRIPTION_HINT_CAP }, (_, index) => ({
       rule: `Rule ${index}`,
       createdAt: new Date(Date.UTC(2026, 0, 1, 0, index)),
     })),
   );
-  const { transcription, engine } = await noted(
-    db,
-    { text: 'code read on the tipper', language: 'eng' },
-    { action: 'add', rule: 'Say Code Red, not code read.', keyterm: null, retireHintId: null },
-  );
-  await recordTranscriptionSaved({
-    db,
-    actorUserId: foremanId,
-    input: { id: transcription.id, text: 'Code Red on the tipper.', purpose: 'capture comment' },
+  const { derive } = await derivedFrom(db, {
+    action: 'add',
+    hints: [
+      { rule: "The farm is spelled Bassi's.", keyterm: "Bassi's Farm", retireHintId: null },
+      { rule: 'Stoneybrook is one word.', keyterm: 'Stoneybrook', retireHintId: null },
+    ],
   });
 
-  await deriveHintFor({ db, id: transcription.id, engine });
+  await derive();
 
   const active = await listActiveHints({ db });
   expect(active).toHaveLength(TRANSCRIPTION_HINT_CAP);
-  expect(active[0]?.rule).toBe('Rule 1');
-  expect(active.at(-1)?.rule).toBe('Say Code Red, not code read.');
+  expect(active[0]?.rule).toBe('Rule 2');
+  expect(active.slice(-2).map((hint) => hint.keyterm)).toEqual(expect.arrayContaining(["Bassi's Farm", 'Stoneybrook']));
 });
 
 test('the keyterm registry names the working fleet, field people and taught keyterms', async ({

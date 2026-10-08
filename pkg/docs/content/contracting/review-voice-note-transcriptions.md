@@ -15,7 +15,9 @@ people's corrections, and what the models are asked. It is read-only.
    - **No correction**: the person kept the text as shown, or deleted it.
    - **Not English, so skipped**: hints are learned from English Voice Notes only.
    - **Pending**: the correction is waiting to be read.
-   - **Hint added**: choose **View the hint** to jump to it.
+   - **Hint added**: choose **View the hint** to jump to it. A correction that fixed several things can
+     read **2 hints added** or **3 hints added**; choose **View the hints** to open **Hints** with all of
+     them marked.
    - **No hint**: the correction taught nothing reusable; the reason is shown below it.
    - **Derived before outcomes were kept**: an older correction whose outcome was not recorded.
 5. Open **Hints** to see every Transcription Hint, those in force first, each beside the correction it was

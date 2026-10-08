@@ -11,10 +11,12 @@ export type TranscriptionTab = (typeof transcriptionTabs)[number];
 export function TranscriptionsPage({
   tab,
   selectedHintId,
+  fromTranscriptionId,
   onTabChange,
 }: {
   tab: TranscriptionTab;
   selectedHintId: string | undefined;
+  fromTranscriptionId: string | undefined;
   onTabChange: (tab: TranscriptionTab) => void;
 }) {
   return (
@@ -33,7 +35,7 @@ export function TranscriptionsPage({
           <TranscriptionTable />
         </TabsContent>
         <TabsContent className="pt-4" value="hints">
-          <HintTable selectedHintId={selectedHintId} />
+          <HintTable selectedHintId={selectedHintId} fromTranscriptionId={fromTranscriptionId} />
         </TabsContent>
         <TabsContent className="pt-4" value="prompts">
           <PromptsPanel />

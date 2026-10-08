@@ -79,7 +79,13 @@ export function HintTable({ selectedHintId }: { selectedHintId: string | undefin
     ],
     [],
   );
-  const table = useDataTable({ columns, data: hints, getRowId: (hint) => hint.id });
+  const table = useDataTable({
+    columns,
+    data: hints,
+    enableSorting: false,
+    enableColumnFilters: false,
+    getRowId: (hint) => hint.id,
+  });
   return (
     <div className="grid gap-3">
       {query.data ? (

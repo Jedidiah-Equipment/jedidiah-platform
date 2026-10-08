@@ -85,17 +85,17 @@ function CutOffKeyterms({ cutOff }: { cutOff: KeytermCandidate[] }) {
     ],
     [],
   );
-  const table = useDataTable({ columns, data: cutOff });
+  const table = useDataTable({ columns, data: cutOff, enableSorting: false, enableColumnFilters: false });
   return (
     <div className="grid gap-1">
       <span className="text-xs text-muted-foreground">Keyterms cut off</span>
       <DataTable
         emptyMessage="Every keyterm fits."
         hideGlobalFilter
-        paginationMode="complete"
+        paginationMode="incremental"
         table={table}
         total={cutOff.length}
-        totalLabel={(value) => `${formatNumber(value)} ${value === 1 ? 'keyterm' : 'keyterms'} cut off`}
+        totalLabel={(value) => `${formatNumber(value)} ${value === 1 ? 'keyterm' : 'keyterms'}`}
       />
     </div>
   );

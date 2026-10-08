@@ -100,7 +100,7 @@ export function TranscriptionTable() {
     ],
     [],
   );
-  const table = useDataTable({ columns, data: items, manualFiltering: true, manualSorting: true });
+  const table = useDataTable({ columns, data: items, enableSorting: false, enableColumnFilters: false });
   return (
     <DataTable
       emptyMessage="No Voice Notes yet."

@@ -4,6 +4,9 @@ import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 
 const platform = vi.hoisted(() => ({ OS: 'android' }));
 const vibrate = vi.hoisted(() => vi.fn());
+const impactAsync = vi.hoisted(() => vi.fn(async (_style: string) => undefined));
+const setAudioModeAsync = vi.hoisted(() => vi.fn(async (_mode: object) => undefined));
+const permission = vi.hoisted(() => ({ granted: true }));
 const addBreadcrumb = vi.hoisted(() => vi.fn());
 const recorder = vi.hoisted(() => ({
   uri: 'file:///note.m4a' as string | null,
@@ -17,12 +20,13 @@ const recorder = vi.hoisted(() => ({
 }));
 vi.mock('react-native', () => ({ Platform: platform, Vibration: { vibrate } }));
 vi.mock('@/lib/observability', () => ({ addBreadcrumb }));
+vi.mock('expo-haptics', () => ({ impactAsync, ImpactFeedbackStyle: { Light: 'light' } }));
 vi.mock('expo-audio', () => {
   return {
     RecordingPresets: { HIGH_QUALITY: {} },
-    getRecordingPermissionsAsync: async () => ({ granted: true }),
+    getRecordingPermissionsAsync: async () => ({ granted: permission.granted }),
     requestRecordingPermissionsAsync: async () => ({ granted: true }),
-    setAudioModeAsync: async () => undefined,
+    setAudioModeAsync,
     useAudioRecorder: () => recorder,
     useAudioRecorderState: () => ({ isRecording: false, durationMillis: 0 }),
   };
@@ -47,21 +51,49 @@ function renderRecorder() {
 beforeEach(() => {
   vi.useFakeTimers();
   vibrate.mockClear();
+  impactAsync.mockClear();
+  setAudioModeAsync.mockClear();
+  permission.granted = true;
   addBreadcrumb.mockClear();
   recorder.metering = -160;
 });
 afterEach(() => vi.useRealTimers());
 
 test.each([
-  ['android', 1],
-  ['ios', 0],
-])('pulses the phone as the mic opens on %s %i time(s)', async (os, pulses) => {
+  ['android', 1, 0],
+  ['ios', 0, 1],
+  ['web', 0, 0],
+])('taps the phone once as recording starts on %s: %i pulse(s), %i haptic(s)', async (os, pulses, haptics) => {
   platform.OS = os;
   const recorder = renderRecorder();
   await act(async () => {
     await recorder().start();
   });
   expect(vibrate).toHaveBeenCalledTimes(pulses);
+  expect(impactAsync).toHaveBeenCalledTimes(haptics);
+});
+
+test('taps an iPhone before the recording audio mode mutes haptics', async () => {
+  platform.OS = 'ios';
+  const recorder = renderRecorder();
+  await act(async () => {
+    await recorder().start();
+  });
+  expect(impactAsync).toHaveBeenCalledWith('light');
+  expect(impactAsync.mock.invocationCallOrder[0]).toBeLessThan(setAudioModeAsync.mock.invocationCallOrder[0]);
+});
+
+test.each(['android', 'ios'])('a press that only asks for the microphone gives no tap on %s', async (os) => {
+  platform.OS = os;
+  permission.granted = false;
+  const recorder = renderRecorder();
+  let started: Awaited<ReturnType<VoiceRecorder['start']>> | undefined;
+  await act(async () => {
+    started = await recorder().start();
+  });
+  expect(started).toBe('allowed');
+  expect(vibrate).not.toHaveBeenCalled();
+  expect(impactAsync).not.toHaveBeenCalled();
 });
 
 test('reports the cap once the Voice Note limit stops a held recording, and clears it on the next press', async () => {

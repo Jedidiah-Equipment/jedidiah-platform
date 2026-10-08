@@ -7,6 +7,7 @@ import {
   useAudioRecorder,
   useAudioRecorderState,
 } from 'expo-audio';
+import { ImpactFeedbackStyle, impactAsync } from 'expo-haptics';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Platform, Vibration } from 'react-native';
 import { addBreadcrumb } from '@/lib/observability';
@@ -58,6 +59,8 @@ export function useVoiceRecorder(): VoiceRecorder {
         addBreadcrumb('contracting', 'microphone permission asked', { granted: asked.granted });
         return asked.granted ? 'allowed' : 'denied';
       }
+      // iOS mutes haptics once the recording audio mode is set, so its tap lands just before the mic opens.
+      if (Platform.OS === 'ios') await impactAsync(ImpactFeedbackStyle.Light).catch(() => undefined);
       await setAudioModeAsync({ allowsRecording: true, playsInSilentMode: true });
       await recorder.prepareToRecordAsync();
       recorder.record({ forDuration: VOICE_NOTE_MAX_SECONDS });
@@ -66,7 +69,6 @@ export function useVoiceRecorder(): VoiceRecorder {
       // Words spoken before the mic opens are lost, so a slow start explains a clipped or empty note.
       addBreadcrumb('contracting', 'voice recording started', { startMs: startedAt.current - pressedAt });
       capTimer.current = setTimeout(() => setCapped(true), VOICE_NOTE_MAX_SECONDS * 1000);
-      // iOS needs expo-haptics, a native build away (#1668), and mutes haptics once the mic is open.
       if (Platform.OS === 'android') Vibration.vibrate(OPENED_PULSE_MS);
       return 'recording' as const;
     })();

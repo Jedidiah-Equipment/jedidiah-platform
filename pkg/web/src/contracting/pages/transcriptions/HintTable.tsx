@@ -2,7 +2,7 @@ import { formatNumber } from '@pkg/domain';
 import type { TranscriptionHintRow } from '@pkg/schema/contracting';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
-import { useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { DateDisplay } from '@/components/common/DateDisplay.js';
 import { DataTable } from '@/components/data-table/DataTable.js';
 import { type DataTableColumnDef, useDataTable } from '@/components/data-table/features.js';
@@ -16,6 +16,12 @@ export function HintTable({ selectedHintId }: { selectedHintId: string | undefin
   const trpc = useTRPC();
   const query = useQuery(trpc.contractingTranscriptions.hints.queryOptions());
   const hints = query.data?.hints ?? [];
+  const container = useRef<HTMLDivElement>(null);
+  // A hint opened from its Transcription may sit far down the list.
+  useEffect(() => {
+    if (selectedHintId && query.data)
+      container.current?.querySelector('[data-state="selected"]')?.scrollIntoView({ block: 'center' });
+  }, [selectedHintId, query.data]);
   const columns = useMemo<DataTableColumnDef<TranscriptionHintRow>[]>(
     () => [
       {
@@ -37,7 +43,7 @@ export function HintTable({ selectedHintId }: { selectedHintId: string | undefin
           const { createdAt, retiredAt, supersededBy } = row.original;
           return (
             <div className="grid min-w-40 gap-1 text-sm">
-              <Badge variant={retiredAt ? 'outline' : 'default'}>{retiredAt ? 'Retired' : 'Active'}</Badge>
+              <Badge variant={retiredAt ? 'outline' : 'default'}>{retiredAt ? 'Retired' : 'In force'}</Badge>
               <span className="text-muted-foreground">
                 Added <DateDisplay date={createdAt} format="medium" />
               </span>
@@ -79,7 +85,7 @@ export function HintTable({ selectedHintId }: { selectedHintId: string | undefin
     getRowId: (hint) => hint.id,
   });
   return (
-    <div className="grid gap-3">
+    <div ref={container} className="grid gap-3">
       {query.data ? (
         <p className="text-sm text-muted-foreground">
           {formatNumber(query.data.activeCount)} of {formatNumber(query.data.cap)} hints in force.

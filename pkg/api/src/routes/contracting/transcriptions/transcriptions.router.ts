@@ -3,6 +3,7 @@ import {
   listActiveHints,
   listTranscriptionHints,
   listTranscriptionReviews,
+  listTranscriptionUsers,
   recordTranscriptionSaved,
 } from '@pkg/core/contracting';
 import {
@@ -12,6 +13,7 @@ import {
   TranscriptionListResult,
   TranscriptionPrompts,
   TranscriptionSavedInput,
+  TranscriptionUser,
 } from '@pkg/schema/contracting';
 import type { Scheduler } from '../../../background-queue.js';
 import { mapCoreErrors } from '../../../trpc/errors.js';
@@ -49,6 +51,7 @@ export function createContractingTranscriptionsRouter({
       .input(TranscriptionListInput)
       .output(TranscriptionListResult)
       .query(({ ctx, input }) => listTranscriptionReviews({ db: ctx.db, input })),
+    users: reviewer.output(TranscriptionUser.array()).query(({ ctx }) => listTranscriptionUsers({ db: ctx.db })),
     hints: reviewer.output(TranscriptionHintList).query(({ ctx }) => listTranscriptionHints({ db: ctx.db })),
     prompts: reviewer.output(TranscriptionPrompts).query(async ({ ctx }) => {
       const [hints, registry] = await Promise.all([listActiveHints({ db: ctx.db }), keyterms()]);

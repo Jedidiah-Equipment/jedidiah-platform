@@ -6,8 +6,9 @@ people's corrections, and what the models are asked. It is read-only.
 ## Steps
 
 1. Open **Transcriptions** under **Admin**.
-2. On **Transcriptions**, the newest Voice Note appears first, with what was **Heard**, what was **Shown**,
-   and what was **Kept**.
+2. On **Transcriptions**, the newest Voice Note appears first, with who it was **Recorded by** and what was
+   **Heard**, what was **Shown**, and what was **Kept**. To see only some people's Voice Notes, filter
+   **Recorded by**; select **When** to show the oldest first.
 3. Read **Kept** to see the correction. Words the person removed are struck through; words they added are
    highlighted. Kept is only that Voice Note's part of the field, not anything typed around it.
 4. Read **Hint** to see what the correction led to:

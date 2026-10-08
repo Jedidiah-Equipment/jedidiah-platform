@@ -69,6 +69,7 @@ export function useVoiceRecorder(): VoiceRecorder {
       // Words spoken before the mic opens are lost, so a slow start explains a clipped or empty note.
       addBreadcrumb('contracting', 'voice recording started', { startMs: startedAt.current - pressedAt });
       capTimer.current = setTimeout(() => setCapped(true), VOICE_NOTE_MAX_SECONDS * 1000);
+      // Android has no such mute, so its pulse waits until the mic is actually open.
       if (Platform.OS === 'android') Vibration.vibrate(OPENED_PULSE_MS);
       return 'recording' as const;
     })();

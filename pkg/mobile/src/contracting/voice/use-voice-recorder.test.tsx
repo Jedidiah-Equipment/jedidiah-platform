@@ -63,7 +63,7 @@ test.each([
   ['android', 1, 0],
   ['ios', 0, 1],
   ['web', 0, 0],
-])('taps the phone once as recording starts on %s: %i pulse(s), %i haptic(s)', async (os, pulses, haptics) => {
+])('gives one start tap on native and none on web: %s gets %i pulse(s), %i haptic(s)', async (os, pulses, haptics) => {
   platform.OS = os;
   const recorder = renderRecorder();
   await act(async () => {

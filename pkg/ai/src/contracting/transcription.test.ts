@@ -129,9 +129,9 @@ describe('deriveTranscriptionHint', () => {
         ruled('  '),
         ruled(`Spell it ${'Rooikraal '.repeat(40)}`, 'Rooikraal'),
         ruled('Write BLOEMHOF in capitals.', ' bloemhof '),
-        ruled('Say Code Red.', ''),
-        ruled('Rooikraal is one word.', 'Rooikraal', ''),
-        ruled('Vaalkop is one word.', 'Vaalkop', 'not-a-hint'),
+        ruled('Say Code Red.', '', 'not-a-hint'),
+        ruled('Vaalkop is one word.', `Vaalkop ${'farm '.repeat(12)}`, ''),
+        ruled('Rooikraal is one word.', 'Rooikraal'),
       ],
     });
 
@@ -140,7 +140,7 @@ describe('deriveTranscriptionHint', () => {
       hints: [
         { rule: 'Bloemhof is one word.', keyterm: 'Bloemhof', retireHintId: null },
         { rule: 'Say Code Red.', keyterm: null, retireHintId: null },
-        { rule: 'Rooikraal is one word.', keyterm: 'Rooikraal', retireHintId: null },
+        { rule: 'Vaalkop is one word.', keyterm: null, retireHintId: null },
       ],
     });
   });

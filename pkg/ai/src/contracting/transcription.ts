@@ -128,12 +128,15 @@ function usableHints(answer: HintDerivationAnswer['hints']): DerivedTranscriptio
   const keyterms = new Set<string>();
   return answer
     .flatMap(({ rule, keyterm, retireHintId }) => {
-      const parsed = DerivedTranscriptionHint.safeParse({
+      const draft = {
         rule,
         keyterm: keyterm?.trim() ? keyterm : null,
         // A blank or invented id retires nothing, the same as null; deriveHintFor also ignores ids no longer in force.
         retireHintId: UUID.safeParse(retireHintId).success ? retireHintId : null,
-      });
+      };
+      // A keyterm too long to keep costs the rule its keyterm, never the rule itself.
+      const whole = DerivedTranscriptionHint.safeParse(draft);
+      const parsed = whole.success ? whole : DerivedTranscriptionHint.safeParse({ ...draft, keyterm: null });
       if (!parsed.success) return [];
       const key = parsed.data.keyterm?.toLowerCase();
       if (key !== undefined) {

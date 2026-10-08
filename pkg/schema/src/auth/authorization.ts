@@ -7,6 +7,7 @@ export const EQUIPMENT_ROLES = [
   'procurement-manager',
   'job-manager',
   'job-viewer',
+  'app-store-tester',
   'sales',
   'stores',
   'bay-operator',

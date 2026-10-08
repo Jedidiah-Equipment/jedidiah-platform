@@ -72,7 +72,7 @@ export const HELP_TOPICS = {
   supplierMerge: '/inventory/merge-duplicate-suppliers',
   unitReassignment: '/sales/reassign-a-unit',
   units: '/production/remove-a-unit',
-  users: '/admin/manage-users',
+  users: '/admin/manage-users', // Includes assigning App Store Tester to dedicated review accounts.
 } as const satisfies Record<string, string>;
 
 export type HelpTopic = keyof typeof HELP_TOPICS;

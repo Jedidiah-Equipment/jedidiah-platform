@@ -22,10 +22,14 @@ although `admin` holds `user:set-role` and manages every other role, granting `s
 removing it from another user, requires the actor to already be a `super-admin` (the Feedback
 escalation path ADR 0010 closes).
 
-The equipment role shape carries over from ADR 0001 unchanged: `admin` (full operational access,
-less what is reserved to `super-admin`), `procurement-manager`, `job-manager`, `job-viewer`,
+The equipment role shape carries over from ADR 0001 and adds `app-store-tester`: `admin` (full
+operational access, less what is reserved to `super-admin`), `procurement-manager`, `job-manager`,
+`job-viewer`, `app-store-tester` (Product, Product Range, and Product Unit read permissions only),
 `sales`, `stores`, and `bay-operator` (no permissions), with the Inventory v1 permission grants as
-previously recorded. The contracting role shape: `contracting-admin` (every contracting
+previously recorded. App Store Tester grants no Job access or Contracting permissions; the
+Equipment-wide Feedback submission exception in ADR 0010 still applies.
+
+The contracting role shape: `contracting-admin` (every contracting
 permission `super-admin` has — Pricing and Preset Rates included — without user administration),
 `contracting-manager` (all operations, no Pricing or Preset Rates), `workshop-manager` (reads all
 contracting; writes breakdowns and servicing), `foreman` (own jobs, captures readings, reports

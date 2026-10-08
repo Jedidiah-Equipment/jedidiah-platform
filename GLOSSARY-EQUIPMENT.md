@@ -154,7 +154,8 @@ Equipment's own addition to that page, descriptive only, and must not be used to
 - **admin**: full operational access; owns Bay scheduling, calendar updates, Job creation and updates, admin Bay configuration, Suppliers, Product Unit identity and Ownership Transfers — recording a Transfer by hand is admin-only, since it asserts ownership with no commercial document behind it. Sees General Feedback on subjects it can read, like any subject reader; cannot see Corrective Feedback.
 - **procurement-manager**: full Purchase Order access except approval, including posting a PO-bound Return to Supplier; inventory read/adjust and cost read/revalue, but no general inventory move; Customer directory and Product, Part, and Supplier management; Quote create/read/update, but not cancelling a Locked Quote; Product Unit and Job reads; no scheduling mutation.
 - **job-manager**: Job updates, including Department Timing stamps, plus Job and Product Unit reads; cannot create, schedule, calendar-manage, or cancel Jobs.
-- **job-viewer**: Job, Product Unit, and Bay schedule reads only.
+- **job-viewer**: Job, Product Unit, and Bay schedule read permissions; Feedback submission remains available under ADR 0010.
+- **app-store-tester**: Product, Product Range, and Product Unit reads for app review; no Job access or operational write permissions. Equipment-only. The Equipment-wide Feedback submission exception in ADR 0010 still applies.
 - **sales**: Quote create/read/update, Product Unit reads (stock must be selectable on a Quote), and assistant-authored email sending.
 - **stores**: Purchase Order read/receive and physical inventory read/move/adjust/count/build/close-out; cannot read inventory costs.
 - **bay-operator**: no Equipment permissions. It cannot enable sign-in by itself, but the same User may sign

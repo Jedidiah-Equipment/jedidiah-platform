@@ -198,6 +198,18 @@ describe('getRolePermissions', () => {
     expect(getRolePermissions('job-viewer')).toEqual(['equipment_job:read', 'equipment_product_unit:read']);
   });
 
+  it('limits App Store Tester to Equipment catalog reads', () => {
+    const tester = accessForRole('app-store-tester', 'reviewer');
+    expect(tester.permissions).toEqual([
+      'equipment_product:read',
+      'equipment_product_range:read',
+      'equipment_product_unit:read',
+    ]);
+    expect(hasBusinessAccess(tester, 'equipment')).toBe(true);
+    expect(hasBusinessAccess(tester, 'contracting')).toBe(false);
+    expect(isRoleSlotsSignInEligible(tester)).toBe(true);
+  });
+
   it('grants Job reads and updates to job managers', () => {
     expect(getRolePermissions('job-manager')).toEqual([
       'equipment_job:read',

@@ -261,10 +261,12 @@ Notes in the same field are not part of it, deleting the inserted text keeps not
 the field's limit cut short reports nothing. The tidied text is a minimal edit of the raw text and is never a translation.
 _Avoid_: transcript (bare), correction diff
 
-**Transcription Hint** is one short rule distilled from a Transcription whose saved text differs
-from the shown text — how a name is spelled, what a local word means — kept so future
-Transcriptions apply it. Derived only when the user corrected rather than rewrote, and only from
-English Transcriptions for now; applied to Transcriptions in every language.
+**Transcription Hint** is one short rule about one thing, distilled from one correction in a
+Transcription whose saved text differs from the shown text — how a name is spelled, what a local word
+means — kept so future Transcriptions apply it. A Transcription teaches at most three hints, one per
+distinct reusable correction, each with at most one keyterm and retired on its own. Derived only when
+the user corrected rather than rewrote, and only from English Transcriptions for now; applied to
+Transcriptions in every language.
 _Avoid_: rule, correction, vocabulary entry
 
 **Keyterm** is one proper noun the speech service is told to expect — a Machine code, make or model,

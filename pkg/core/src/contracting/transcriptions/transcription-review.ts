@@ -33,14 +33,15 @@ export async function listTranscriptionReviews({
       hintDerivedAt: contractingTranscriptions.hintDerivedAt,
       hintOutcome: contractingTranscriptions.hintOutcome,
       hintNoneReason: contractingTranscriptions.hintNoneReason,
-      hintId: contractingTranscriptionHints.id,
+      // Aggregated, not joined: one Transcription may teach several hints and must still list as one row.
+      hintIds: sql<string[]>`array(
+        select ${contractingTranscriptionHints.id} from ${contractingTranscriptionHints}
+        where ${contractingTranscriptionHints.sourceTranscriptionId} = ${contractingTranscriptions.id}
+        order by ${contractingTranscriptionHints.createdAt}, ${contractingTranscriptionHints.id}
+      )`,
     })
     .from(contractingTranscriptions)
     .innerJoin(user, eq(user.id, contractingTranscriptions.createdByUserId))
-    .leftJoin(
-      contractingTranscriptionHints,
-      eq(contractingTranscriptionHints.sourceTranscriptionId, contractingTranscriptions.id),
-    )
     .orderBy(desc(contractingTranscriptions.createdAt), desc(contractingTranscriptions.id))
     .$dynamic();
   const [rows, total] = await Promise.all([withPagination(query, input), db.$count(contractingTranscriptions)]);

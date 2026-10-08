@@ -176,25 +176,40 @@ export async function deriveHintFor({
       hints,
     });
     if (outcome.action === 'add') {
-      // A retirement the model names counts only when it is a hint still in force.
-      const superseded = hints.find((hint) => hint.id === outcome.retireHintId) ?? null;
-      const remaining = hints.filter((hint) => hint !== superseded);
-      const crowdedOut = remaining.slice(0, Math.max(0, remaining.length - TRANSCRIPTION_HINT_CAP + 1));
-      const retiring = [...(superseded ? [superseded] : []), ...crowdedOut].map((hint) => hint.id);
+      // A retirement the model names counts only when it is a hint still in force, and only once.
+      const superseding = new Map<string, number>();
+      outcome.hints.forEach(({ retireHintId }, index) => {
+        if (retireHintId && !superseding.has(retireHintId) && hints.some((hint) => hint.id === retireHintId))
+          superseding.set(retireHintId, index);
+      });
+      const remaining = hints.filter((hint) => !superseding.has(hint.id));
+      const crowdedOut = remaining.slice(
+        0,
+        Math.max(0, remaining.length - TRANSCRIPTION_HINT_CAP + outcome.hints.length),
+      );
+      const retiring = [...superseding.keys(), ...crowdedOut.map((hint) => hint.id)];
       if (retiring.length > 0)
         await tx
           .update(contractingTranscriptionHints)
           .set({ retiredAt: now })
           .where(inArray(contractingTranscriptionHints.id, retiring));
-      const [added] = await tx
-        .insert(contractingTranscriptionHints)
-        .values({ rule: outcome.rule, keyterm: outcome.keyterm, sourceTranscriptionId: row.id, createdAt: now })
-        .returning({ id: contractingTranscriptionHints.id });
-      if (superseded && added)
-        await tx
-          .update(contractingTranscriptionHints)
-          .set({ supersededByHintId: added.id })
-          .where(eq(contractingTranscriptionHints.id, superseded.id));
+      // One insert per hint keeps each new id beside the entry that names what it supersedes.
+      const added: string[] = [];
+      for (const { rule, keyterm } of outcome.hints) {
+        const [hint] = await tx
+          .insert(contractingTranscriptionHints)
+          .values({ rule, keyterm, sourceTranscriptionId: row.id, createdAt: now })
+          .returning({ id: contractingTranscriptionHints.id });
+        if (hint) added.push(hint.id);
+      }
+      for (const [retiredId, index] of superseding) {
+        const successorId = added[index];
+        if (successorId)
+          await tx
+            .update(contractingTranscriptionHints)
+            .set({ supersededByHintId: successorId })
+            .where(eq(contractingTranscriptionHints.id, retiredId));
+      }
     }
     await tx
       .update(contractingTranscriptions)

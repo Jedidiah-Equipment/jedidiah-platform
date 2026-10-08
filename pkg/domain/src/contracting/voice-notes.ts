@@ -1,6 +1,8 @@
 import type { KeytermCandidate, TranscriptionHintOutcome, TranscriptionHintStatus } from '@pkg/schema/contracting';
 import { AUDIO_M4A_CONTENT_TYPE } from '../files/file-policy.js';
 
+export { TRANSCRIPTION_HINTS_PER_CORRECTION } from '@pkg/schema/contracting';
+
 export const VOICE_NOTE_MAX_SECONDS = 120;
 export const VOICE_NOTE_POLICY = {
   allowedContentTypes: [AUDIO_M4A_CONTENT_TYPE],
@@ -98,7 +100,7 @@ export function speechKeytermPrompt(candidates: readonly KeytermCandidate[]): {
   return { prompt, cutOff: shaped.slice(fitted).map(({ keyterm, source }) => ({ keyterm, source })) };
 }
 
-/** Where a Transcription's hint derivation stands; a hint it left proves the outcome even where none was kept. */
+/** Where a Transcription's hint derivation stands; the hints it left prove the outcome even where none was kept. */
 export function transcriptionHintStatus(row: {
   language: string | null;
   shownText: string;
@@ -106,10 +108,10 @@ export function transcriptionHintStatus(row: {
   hintDerivedAt: Date | null;
   hintOutcome: TranscriptionHintOutcome | null;
   hintNoneReason: string | null;
-  hintId: string | null;
+  hintIds: string[];
 }): TranscriptionHintStatus {
   if (row.savedText === null) return { kind: 'not_saved' };
-  if (row.hintId !== null) return { kind: 'hint_added', hintId: row.hintId };
+  if (row.hintIds.length > 0) return { kind: 'hint_added', hintIds: row.hintIds };
   if (!transcriptionWasCorrected(row.shownText, row.savedText)) return { kind: 'no_correction' };
   if (!isHintDerivationLanguage(row.language)) return { kind: 'not_english' };
   if (row.hintDerivedAt === null) return { kind: 'pending' };

@@ -33,14 +33,23 @@ export const TranscriptionSavedInput = z
   .strict();
 export type TranscriptionSavedInput = z.infer<typeof TranscriptionSavedInput>;
 
+/** The most hints one corrected Transcription may teach, one per distinct reusable correction. */
+export const TRANSCRIPTION_HINTS_PER_CORRECTION = 3;
+
+/** One fact a correction teaches: a rule, the proper noun it is about, and the hint it replaces. */
+export const DerivedTranscriptionHint = z.object({
+  rule: z.string().trim().min(1).max(300),
+  keyterm: z.string().trim().min(1).max(50).nullable(),
+  retireHintId: UUID.nullable(),
+});
+export type DerivedTranscriptionHint = z.infer<typeof DerivedTranscriptionHint>;
+
 /** What the derivation model may answer; parsed with the schema so a stray field is refused. No `.default()` — OpenAI strict mode rejects it. */
 export const HintDerivation = z.discriminatedUnion('action', [
   z.object({ action: z.literal('none'), reason: z.string().max(200) }),
   z.object({
     action: z.literal('add'),
-    rule: z.string().trim().min(1).max(300),
-    keyterm: z.string().trim().min(1).max(50).nullable(),
-    retireHintId: UUID.nullable(),
+    hints: DerivedTranscriptionHint.array().min(1).max(TRANSCRIPTION_HINTS_PER_CORRECTION),
   }),
 ]);
 export type HintDerivation = z.infer<typeof HintDerivation>;
@@ -55,7 +64,7 @@ export const TranscriptionHintStatus = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('no_correction') }),
   z.object({ kind: z.literal('not_english') }),
   z.object({ kind: z.literal('pending') }),
-  z.object({ kind: z.literal('hint_added'), hintId: UUID }),
+  z.object({ kind: z.literal('hint_added'), hintIds: UUID.array().min(1) }),
   z.object({ kind: z.literal('no_hint'), reason: z.string() }),
   // Derived before the outcome was kept.
   z.object({ kind: z.literal('unknown') }),

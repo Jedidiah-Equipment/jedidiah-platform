@@ -15,6 +15,7 @@
       "!**/.expo",
       "!pkg/mobile/ios",
       "!pkg/mobile/expo-env.d.ts",
+      "!pkg/mobile/google-services.json",
       "!pkg/web/src/app/route-tree.gen.ts",
       "!pkg/lander/src/routeTree.gen.ts",
       "!docs",

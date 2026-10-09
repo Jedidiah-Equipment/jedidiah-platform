@@ -1,4 +1,5 @@
 import {
+  BREAKDOWN_REPORT_PATH,
   breakdownPhotoPath,
   breakdownPhotosPath,
   jobCardPath,
@@ -18,6 +19,10 @@ export function readingPhotoUrl(readingId: string): string {
 
 export function jobCardUrl(code: string, variant: JobCardVariant): string {
   return `${getClientConfig().apiBaseUrl}${jobCardPath(code, variant)}`;
+}
+
+export function breakdownReportUrl(): string {
+  return `${getClientConfig().apiBaseUrl}${BREAKDOWN_REPORT_PATH}`;
 }
 
 export function breakdownPhotosUrl(breakdownId: string): string {

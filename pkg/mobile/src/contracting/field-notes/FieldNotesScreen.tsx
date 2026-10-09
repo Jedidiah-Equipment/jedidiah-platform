@@ -1,9 +1,10 @@
-import { formatDate, formatNumber } from '@pkg/domain';
+import { formatNumber, getDateDisplayParts, statusBadgeColorClassNames } from '@pkg/domain';
 import { IconFilter } from '@tabler/icons-react-native';
 import { type Href, router } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, View } from 'react-native';
+import { View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { CatalogListCard } from '@/components/CatalogList';
 import {
   type ListControlOption,
   ListControlRow,
@@ -13,6 +14,7 @@ import {
 } from '@/components/ListControls';
 import { TabRootList } from '@/components/TabRootList';
 import { MainToolbar } from '@/components/TopToolbar';
+import { StatusBadge } from '@/components/ui/status-badge';
 import { Text } from '@/components/ui/text';
 import { type FieldNoteStatusFilter, visibleFieldNotes } from './note-list';
 import type { FieldNote } from './store';
@@ -83,19 +85,22 @@ export default function FieldNotesScreen() {
 function FieldNoteRow({ note }: { note: FieldNote }) {
   const firstLine = note.description.split('\n')[0]?.trim();
   const photoCount = note.photos.length;
+  const open = note.status === 'open';
+  const title = firstLine || 'Photo note';
   return (
-    <Pressable
-      accessibilityRole="button"
+    <CatalogListCard
+      accessibilityHint="Opens the Field Note"
+      accessibilityLabel={`Field Note ${title}`}
+      mainText={title}
+      monoText={getDateDisplayParts({ date: note.createdAt, format: 'medium' }).label}
       onPress={() => router.push(`/contracting/notes/${note.id}` as Href)}
-      className="w-full gap-1 rounded-xl border border-border bg-surface p-4"
-    >
-      <Text className="text-sm text-muted-foreground">{formatDate(note.createdAt, 'medium')}</Text>
-      <Text className="text-foreground" weight="semibold" numberOfLines={1}>
-        {firstLine || 'Photo note'}
-      </Text>
-      <Text className="text-sm text-muted-foreground">
-        {formatNumber(photoCount)} {photoCount === 1 ? 'photo' : 'photos'}
-      </Text>
-    </Pressable>
+      subText={`${formatNumber(photoCount)} ${photoCount === 1 ? 'photo' : 'photos'}`}
+      trailing={
+        <StatusBadge
+          classNames={open ? statusBadgeColorClassNames.orange : statusBadgeColorClassNames.gray}
+          label={open ? 'Open' : 'Closed'}
+        />
+      }
+    />
   );
 }

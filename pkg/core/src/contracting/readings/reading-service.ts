@@ -21,9 +21,14 @@ import {
   readingVerification,
   resolveReadingAmendment,
 } from '@pkg/domain/contracting';
-import type { AuthId } from '@pkg/schema';
-import { FieldReading, ReadingAmendInput, ReadingCaptureInput } from '@pkg/schema/contracting';
-import { and, asc, desc, eq, getTableColumns, gt, inArray, or } from 'drizzle-orm';
+import { type AuthId, getNextCursor } from '@pkg/schema';
+import {
+  FieldReading,
+  type FieldReadingPageInput,
+  ReadingAmendInput,
+  ReadingCaptureInput,
+} from '@pkg/schema/contracting';
+import { and, asc, desc, eq, getTableColumns, gt, inArray, or, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { defineAuditDescriptor, recordAuditCreate } from '../../audit/audit-writer.js';
 import { mutateEntity } from '../../audit/mutate-entity.js';
@@ -505,4 +510,25 @@ export async function listFieldReadings({ db, machineId }: { db: Db; machineId: 
     .where(eq(contractingHourReadings.machineId, machineId))
     .orderBy(desc(contractingHourReadings.sequence));
   return rows.map((row) => FieldReading.parse(readingToWire(row)));
+}
+
+/** A page of a Machine's Hour Readings, newest first; `listFieldReadings` stays whole for the capture screens. */
+export async function listFieldReadingsPage({ db, input }: { db: Db; input: FieldReadingPageInput }) {
+  const onMachine = eq(contractingHourReadings.machineId, input.machineId);
+  const [rows, [counted]] = await Promise.all([
+    db
+      .select()
+      .from(contractingHourReadings)
+      .where(onMachine)
+      .orderBy(desc(contractingHourReadings.sequence))
+      .limit(input.limit)
+      .offset(input.cursor),
+    db.select({ total: sql<number>`count(*)::integer` }).from(contractingHourReadings).where(onMachine),
+  ]);
+  const total = counted?.total ?? 0;
+  return {
+    items: rows.map((row) => FieldReading.parse(readingToWire(row))),
+    nextCursor: getNextCursor({ count: rows.length, cursor: input.cursor, total }),
+    total,
+  };
 }

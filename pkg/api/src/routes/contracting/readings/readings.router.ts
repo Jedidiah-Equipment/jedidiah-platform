@@ -2,6 +2,7 @@ import {
   amendReading,
   listFieldMachines,
   listFieldReadings,
+  listFieldReadingsPage,
   listReadingExceptions,
   listReadingsByMachine,
   type ReadMeterPhoto,
@@ -10,6 +11,8 @@ import {
 import {
   FieldMachine,
   FieldReading,
+  FieldReadingPage,
+  FieldReadingPageInput,
   HourReading,
   ReadingAmendInput,
   ReadingException,
@@ -30,6 +33,10 @@ export function createContractingReadingsRouter(readPhoto: ReadMeterPhoto) {
       .input(ReadingMachineInput)
       .output(FieldReading.array())
       .query(({ ctx, input }) => listFieldReadings({ db: ctx.db, ...input })),
+    fieldHistoryPage: authorizedProcedure(['contracting_machine:read', 'contracting_reading:capture'])
+      .input(FieldReadingPageInput)
+      .output(FieldReadingPage)
+      .query(({ ctx, input }) => listFieldReadingsPage({ db: ctx.db, input })),
     listByMachine: authorizedProcedure('contracting_machine:read')
       .input(ReadingMachineInput)
       .output(HourReading.array())

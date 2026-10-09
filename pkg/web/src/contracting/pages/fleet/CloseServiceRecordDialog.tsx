@@ -83,7 +83,7 @@ export function CloseServiceRecordDialog({
                 },
               }}
             >
-              {(field) => <field.NumberField label="Reading at service (hours)" decimals={2} min={0} />}
+              {(field) => <field.NumberField label="Reading at service" decimals={2} min={0} unit="hours" />}
             </form.AppField>
           </div>
           <form.AppField name="primaryMechanicUserId">
@@ -107,7 +107,8 @@ export function CloseServiceRecordDialog({
           >
             {(field) => (
               <field.NumberField
-                label="Next service due (hours)"
+                label="Next service due"
+                unit="hours"
                 description={
                   machine.serviceIntervalHours === null
                     ? 'The hour reading printed on the sticker.'

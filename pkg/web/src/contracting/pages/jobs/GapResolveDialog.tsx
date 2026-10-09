@@ -136,6 +136,7 @@ export function GapResolveDialog({ stint, onClose }: { stint: Assignment | null;
               {(field) => (
                 <field.NumberField
                   label="Travel Hours"
+                  unit="hours"
                   description={`Billed to the client, up to ${formatHours(gapHours)}`}
                   decimals={1}
                   min={0}

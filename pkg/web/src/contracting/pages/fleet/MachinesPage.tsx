@@ -1,7 +1,10 @@
+import { formatHours } from '@pkg/domain';
+import { serviceDueStatusColorClassNames } from '@pkg/domain/contracting';
 import type { FleetListInput, Machine } from '@pkg/schema/contracting';
 import { useQuery } from '@tanstack/react-query';
-import { useNavigate } from '@tanstack/react-router';
+import { Link, useNavigate } from '@tanstack/react-router';
 import { useMemo, useState } from 'react';
+import { DateDisplay } from '@/components/common/DateDisplay.js';
 import { EnumSelect } from '@/components/common/EnumSelect.js';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { ClientDataTable } from '@/components/data-table/ClientDataTable.js';
@@ -15,6 +18,7 @@ import { CategoryLabel } from '@/contracting/components/CategoryIcon.js';
 import { useQueryInvalidation } from '@/contracting/hooks/use-query-invalidation.js';
 import { useCan } from '@/hooks/use-access.js';
 import { useTRPC } from '@/lib/trpc.js';
+import { cn } from '@/lib/utils.js';
 import { CategoryPickerField } from './CategoryFields.js';
 import { createMachineInput, fleetStatusLabels, fleetStatusOptions, MachineCreateValues } from './types.js';
 
@@ -23,6 +27,7 @@ export function MachinesPage() {
   const navigate = useNavigate();
   const { invalidateFleet } = useQueryInvalidation();
   const canEdit = useCan('contracting_machine:update').can;
+  const readsJobs = useCan('contracting_job:read').can;
   const [status, setStatus] = useState<FleetListInput['status']>('active');
   const query = useQuery(trpc.contractingFleet.machines.list.queryOptions({ status }));
   const categories = useQuery(trpc.contractingFleet.categories.list.queryOptions({ kind: 'machine' }));
@@ -36,14 +41,6 @@ export function MachinesPage() {
   const columns = useMemo<DataTableColumnDef<Machine>[]>(
     () => [
       {
-        accessorKey: 'code',
-        header: 'Code',
-        enableSorting: true,
-        cell: ({ row }) => <span className="font-medium">{row.original.code}</span>,
-      },
-      { accessorKey: 'make', header: 'Make', enableGlobalFilter: false },
-      { accessorKey: 'model', header: 'Model', enableGlobalFilter: false },
-      {
         accessorKey: 'categoryName',
         header: 'Category',
         enableGlobalFilter: false,
@@ -53,33 +50,121 @@ export function MachinesPage() {
           <CategoryLabel
             icon={row.original.categoryIcon}
             colour={row.original.categoryColour}
-            name={row.original.categoryName}
+            name={
+              <span className="truncate" title={row.original.categoryName}>
+                {row.original.categoryName}
+              </span>
+            }
+            className="min-w-0"
           />
         ),
         meta: {
           filterVariant: 'select',
           filterOptions: (categories.data ?? []).map((row) => ({ label: row.name, value: row.name })),
+          headerClassName: 'w-52',
+          cellClassName: 'w-52 max-w-52',
         },
       },
+      {
+        accessorKey: 'code',
+        header: 'Code',
+        enableSorting: true,
+        cell: ({ row }) => <span className="font-medium">{row.original.code}</span>,
+      },
+      { accessorKey: 'make', header: 'Make', enableGlobalFilter: false },
+      { accessorKey: 'model', header: 'Model', enableGlobalFilter: false },
       { accessorKey: 'currentDriverName', header: 'Driver', enableGlobalFilter: false },
       {
-        id: 'status',
-        header: 'Status',
-        cell: ({ row }) => (
-          <Badge variant={row.original.retiredAt ? 'outline' : 'secondary'}>
-            {row.original.retiredAt ? 'Retired' : 'In Yard'}
-          </Badge>
-        ),
+        id: 'busyWith',
+        header: 'Busy with',
+        accessorFn: (machine) =>
+          machine.busyOnJob ? `${machine.busyOnJob.customerName} · ${machine.busyOnJob.farmName}` : '',
+        enableSorting: true,
+        enableGlobalFilter: false,
+        cell: ({ row }) => {
+          const { busyOnJob, retiredAt } = row.original;
+          if (retiredAt) return <Badge variant="outline">Retired</Badge>;
+          if (!busyOnJob) return <span className="text-muted-foreground">Free</span>;
+          const label = (
+            <span
+              className="flex min-w-0 flex-col"
+              title={`${busyOnJob.jobNumber} · ${busyOnJob.customerName} · ${busyOnJob.farmName}`}
+            >
+              <span className="truncate font-medium">{busyOnJob.customerName}</span>
+              <span className="truncate text-xs text-muted-foreground">{busyOnJob.farmName}</span>
+            </span>
+          );
+          return readsJobs ? (
+            <Link
+              className="block hover:underline"
+              onClick={(event) => event.stopPropagation()}
+              params={{ code: busyOnJob.jobNumber }}
+              to="/contracting/jobs/$code"
+            >
+              {label}
+            </Link>
+          ) : (
+            label
+          );
+        },
+      },
+      {
+        id: 'lastReading',
+        header: 'Last reading',
+        accessorFn: (machine) => machine.latestReadingHours ?? -1,
+        enableSorting: true,
+        enableGlobalFilter: false,
+        cell: ({ row }) =>
+          row.original.latestReadingHours === null ? (
+            <span className="text-muted-foreground">No reading</span>
+          ) : (
+            <span className="flex flex-col">
+              <span className="tabular-nums">{formatHours(row.original.latestReadingHours)}</span>
+              {row.original.latestReadingAt ? (
+                <span className="text-xs text-muted-foreground">
+                  <DateDisplay date={row.original.latestReadingAt} format="medium" />
+                </span>
+              ) : null}
+            </span>
+          ),
+      },
+      {
+        id: 'nextServiceDue',
+        header: 'Next service due',
+        accessorFn: (machine) => machine.hoursToService ?? Number.POSITIVE_INFINITY,
+        enableSorting: true,
+        enableGlobalFilter: false,
+        cell: ({ row }) => {
+          const { nextServiceDueHours, hoursToService, serviceDueStatus } = row.original;
+          if (nextServiceDueHours === null) return <span className="text-muted-foreground">Not set</span>;
+          const flagged = serviceDueStatus === 'due-soon' || serviceDueStatus === 'overdue';
+          return (
+            <span className="flex flex-col">
+              <span className="tabular-nums">{formatHours(nextServiceDueHours)}</span>
+              {hoursToService !== null ? (
+                <span
+                  className={cn(
+                    'text-xs',
+                    flagged ? serviceDueStatusColorClassNames[serviceDueStatus].text : 'text-muted-foreground',
+                  )}
+                >
+                  {hoursToService < 0
+                    ? `Overdue by ${formatHours(-hoursToService)}`
+                    : `${formatHours(hoursToService)} to go`}
+                </span>
+              ) : null}
+            </span>
+          );
+        },
       },
     ],
-    [categories.data],
+    [categories.data, readsJobs],
   );
   return (
     <>
       <PageLayout
         title="Machines"
         description="Manage the Contracting fleet and Machine Yard."
-        size="lg"
         actions={canEdit ? <Button onClick={flow.open}>New machine</Button> : undefined}
       >
         <ErrorMessage

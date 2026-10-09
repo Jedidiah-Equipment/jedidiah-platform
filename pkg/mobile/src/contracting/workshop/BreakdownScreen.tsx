@@ -28,8 +28,8 @@ export default function BreakdownScreen() {
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top', 'left', 'right']}>
       <SecondaryToolbar
-        title={breakdown?.subject.code ?? 'Breakdown'}
-        subtitle={breakdown ? breakdown.subject.categoryName : 'CONTRACTING'}
+        title="Breakdown"
+        subtitle={breakdown?.subject.code ?? 'CONTRACTING'}
         parentLabel="Workshop"
         onBack={() => router.navigate('/contracting/workshop' as Href)}
         helpTopic="contractingMobileBreakdown"
@@ -98,7 +98,7 @@ function HeaderCard({ breakdown }: { breakdown: BreakdownDetail }) {
           disabled={!canOpenJob}
           onPress={() => router.navigate(`/contracting/jobs/${breakdown.jobId}` as Href)}
         >
-          <Text className={canOpenJob ? 'text-primary' : 'text-foreground'} weight="semibold">
+          <Text className="text-foreground" weight="semibold">
             {breakdown.jobNumber}
             {breakdown.farmName ? ` · ${breakdown.farmName}` : ''}
           </Text>

@@ -66,6 +66,7 @@ export function ReadingValueField({
       label={<span className="text-xs">{label}</span>}
       decimals={1}
       min={min}
+      unit="hours"
       className="text-lg font-semibold md:text-lg"
       onInput={onInput}
     />

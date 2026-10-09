@@ -102,10 +102,10 @@ function MachineForm({ machine }: { machine: Machine }) {
           )}
         </form.AppField>
         <form.AppField name="serviceIntervalHours">
-          {(field) => <field.NumberField label="Service interval (hours)" />}
+          {(field) => <field.NumberField label="Service interval" unit="hours" />}
         </form.AppField>
         <form.AppField name="nextServiceDueHours">
-          {(field) => <field.NumberField label="Next service due (hours)" />}
+          {(field) => <field.NumberField label="Next service due" unit="hours" />}
         </form.AppField>
         <EditFormFullWidth>
           <form.AppField name="notes">{(field) => <field.TextareaField label="Notes" />}</form.AppField>

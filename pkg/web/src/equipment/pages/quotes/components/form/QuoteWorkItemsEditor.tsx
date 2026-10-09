@@ -137,6 +137,7 @@ export const QuoteWorkItemsEditor: React.FC<QuoteWorkItemsEditorProps> = ({
                             disabled={readOnly}
                             emptyValue={Number.NaN}
                             label="Hours"
+                            unit="hours"
                             min={0}
                             step="0.01"
                           />

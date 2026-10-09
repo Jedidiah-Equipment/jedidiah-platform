@@ -102,8 +102,22 @@ export const Machine = MachineCreateInput.extend({
   currentDriverName: z.string().nullable(),
   /** The newest Hour Reading of any role, spot readings included. */
   latestReadingHours: ReadingValue.nullable(),
+  /** When that newest Hour Reading was captured. */
+  latestReadingAt: DateIso.nullable(),
   hoursToService: z.number().nullable(),
   serviceDueStatus: z.enum(serviceDueStatuses),
+  /** The Job the Machine is on site on now (arrived, not yet departed), or null when it is free. */
+  busyOnJob: z
+    .object({
+      id: UUID,
+      jobNumber: z.string(),
+      customerName: z.string(),
+      farmName: z.string(),
+      workTypeName: z.string(),
+      /** When the arrival reading of that on-site stint was captured. */
+      arrivedAt: DateIso,
+    })
+    .nullable(),
 });
 export type Machine = z.infer<typeof Machine>;
 
@@ -138,8 +152,12 @@ export const FieldMachine = Machine.pick({
   currentDriverUserId: true,
   currentDriverName: true,
   latestReadingHours: true,
+  latestReadingAt: true,
+  serviceIntervalHours: true,
+  nextServiceDueHours: true,
   hoursToService: true,
   serviceDueStatus: true,
+  busyOnJob: true,
 })
   .extend({ onSiteJobNumber: z.string().nullable() })
   .strip();

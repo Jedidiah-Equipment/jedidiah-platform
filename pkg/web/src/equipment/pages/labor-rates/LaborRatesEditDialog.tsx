@@ -73,7 +73,7 @@ export function LaborRatesEditDialog({ card, onClose }: { card: LaborRateCardVie
                 {(field) => <field.NumberField label="Management overhead (%)" />}
               </form.AppField>
               <form.AppField name="hoursPerWorkingDay">
-                {(field) => <field.NumberField label="Hours per working day" />}
+                {(field) => <field.NumberField label="Hours per working day" unit="hours" />}
               </form.AppField>
             </div>
             {card.rates.map((rate, index) => (

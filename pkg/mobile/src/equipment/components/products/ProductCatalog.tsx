@@ -3,6 +3,7 @@ import type { Product, ProductRangeOption } from '@pkg/schema/equipment';
 import { IconArrowsSort, IconFilter } from '@tabler/icons-react-native';
 import { useRouter } from 'expo-router';
 import { View } from 'react-native';
+import { CatalogListCard } from '@/components/CatalogList';
 import {
   type ListControlOption,
   ListControlRow,
@@ -10,7 +11,6 @@ import {
   ListSearchControl,
 } from '@/components/ListControls';
 import { Text } from '@/components/ui/text';
-import { CatalogListCard } from '@/equipment/components/CatalogList';
 import type { ProductSort, RangeFilter } from '@/equipment/lib/product-presentation';
 
 const PRODUCT_SORT_OPTIONS: readonly ListControlOption<ProductSort>[] = [

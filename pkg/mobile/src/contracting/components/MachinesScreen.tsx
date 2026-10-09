@@ -1,7 +1,10 @@
+import { formatHours } from '@pkg/domain';
+import type { FieldMachine } from '@pkg/schema/contracting';
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, View } from 'react-native';
+import { View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { CatalogListCard } from '@/components/CatalogList';
 import { TabRootList } from '@/components/TabRootList';
 import { MainToolbar } from '@/components/TopToolbar';
 import { Text } from '@/components/ui/text';
@@ -16,11 +19,51 @@ import {
 } from '@/contracting/lib/machine-catalog';
 import { useFleet } from '@/contracting/readings/use-fleet';
 import { usePersistedState } from '@/lib/use-persisted-state';
-import { CategoryIcon } from './CategoryIcon';
+import { useColorMode } from '@/theme/use-color-mode';
+import { categoryTileProps } from './list-tiles';
 import { MachineCatalogControls } from './MachineCatalogControls';
 
 const CATEGORY_FILTER_KEY = contractingStorageKey('machines', 'category');
 const SORT_KEY = contractingStorageKey('machines', 'sort');
+
+/** Who the Machine is working for right now, stacked on the right; nothing when it is on no Job. */
+function BusyWith({ machine }: { machine: FieldMachine }) {
+  const job = machine.busyOnJob ?? null;
+  // An API from before busyOnJob sends only the Job Number.
+  if (!job && !machine.onSiteJobNumber) return null;
+  return (
+    <View className="max-w-36 items-end">
+      <Text className="text-[10px] text-muted-foreground">Busy with</Text>
+      <Text className="text-right text-[13px] text-foreground" weight="semibold" numberOfLines={1}>
+        {job ? job.customerName : machine.onSiteJobNumber}
+      </Text>
+      {job ? (
+        <Text className="text-right text-[11px] text-muted-foreground" numberOfLines={1}>
+          {job.farmName}
+        </Text>
+      ) : null}
+    </View>
+  );
+}
+
+function MachineCard({ machine }: { machine: FieldMachine }) {
+  const { resolved } = useColorMode();
+  const tile = categoryTileProps(machine.categoryIcon, machine.categoryColour, resolved);
+  return (
+    <CatalogListCard
+      accessibilityHint="Opens the Machine"
+      accessibilityLabel={`Machine ${machine.code}`}
+      avatarClassName={tile.className}
+      avatarFallback={tile.fallback}
+      avatarName={machine.code}
+      mainText={machine.code}
+      monoText={machine.latestReadingHours === null ? 'No reading' : formatHours(machine.latestReadingHours)}
+      onPress={() => router.push(`/contracting/machines/${machine.id}`)}
+      subText={`${machine.make} ${machine.model} · ${machine.categoryName}`}
+      trailing={<BusyWith machine={machine} />}
+    />
+  );
+}
 
 export default function MachinesScreen() {
   const fleet = useFleet();
@@ -50,28 +93,7 @@ export default function MachinesScreen() {
         }
         sections={[{ key: 'machines', data: machines }]}
         keyOf={(machine) => machine.id}
-        renderItem={(machine) => (
-          <Pressable
-            accessibilityRole="button"
-            onPress={() => router.push(`/contracting/machines/${machine.id}`)}
-            className="w-full gap-2 rounded-xl border border-border bg-surface p-4"
-          >
-            <View className="flex-row items-center justify-between gap-2">
-              <View className="flex-row items-center gap-3">
-                <CategoryIcon icon={machine.categoryIcon} colour={machine.categoryColour} size={20} />
-                <Text className="text-lg text-foreground" weight="bold">
-                  {machine.code}
-                </Text>
-              </View>
-              <Text className="rounded-full bg-muted px-3 py-1 text-xs text-foreground">
-                {machine.onSiteJobNumber ? `On Job · ${machine.onSiteJobNumber}` : 'In Yard'}
-              </Text>
-            </View>
-            <Text className="text-sm text-muted-foreground">
-              {machine.make} {machine.model} · {machine.categoryName}
-            </Text>
-          </Pressable>
-        )}
+        renderItem={(machine) => <MachineCard machine={machine} />}
         initialLoading={fleet.canRead && !fleet.data && !fleet.isError}
         loadingContent={<Text className="text-muted-foreground">Loading Machines…</Text>}
         emptyContent={

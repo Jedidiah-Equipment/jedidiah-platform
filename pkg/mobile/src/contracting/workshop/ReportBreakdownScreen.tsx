@@ -11,6 +11,8 @@ import {
   type BreakdownSubjectRef,
   type BreakdownUrgency,
   breakdownSubjectKinds,
+  type CategoryColour,
+  type CategoryIconKey,
 } from '@pkg/schema/contracting';
 import { type Href, router, useLocalSearchParams, useNavigation } from 'expo-router';
 import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
@@ -54,9 +56,19 @@ const isSubjectKind = (value: unknown): value is BreakdownSubjectKind =>
 
 /** `/contracting/workshop/report`: from the Workshop tab, a Machine, or a stint on a Job. */
 export default function ReportBreakdownScreen() {
-  const params = useLocalSearchParams<{ subjectKind?: string; subjectId?: string; jobId?: string }>();
+  const params = useLocalSearchParams<{
+    subjectKind?: string;
+    subjectId?: string;
+    /** From a Job's stint: the Implement the Machine tows, offered beside it. */
+    implementId?: string;
+    jobId?: string;
+  }>();
   const prefilled: BreakdownSubjectRef | null =
     isSubjectKind(params.subjectKind) && params.subjectId ? { kind: params.subjectKind, id: params.subjectId } : null;
+  const towedImplementId = prefilled?.kind === 'machine' && params.implementId ? params.implementId : null;
+  const [towedChoice, setTowedChoice] = useState<BreakdownSubjectKind>('machine');
+  const fixed: BreakdownSubjectRef | null =
+    towedImplementId && towedChoice === 'implement' ? { kind: 'implement', id: towedImplementId } : prefilled;
   const jobId = params.jobId || null;
   const returnTo = (
     jobId
@@ -75,7 +87,7 @@ export default function ReportBreakdownScreen() {
   );
   const [kind, setKind] = useState<BreakdownSubjectKind>(prefilled?.kind ?? 'machine');
   const [pickedId, setPickedId] = useState(prefilled?.id ?? '');
-  const subject: BreakdownSubjectRef | null = prefilled ?? (pickedId ? { kind, id: pickedId } : null);
+  const subject: BreakdownSubjectRef | null = fixed ?? (pickedId ? { kind, id: pickedId } : null);
   const [urgency, setUrgency] = useState<BreakdownUrgency | null>(null);
   const [description, setDescription] = useState('');
   const voice = useVoiceSession('breakdown description', {
@@ -192,7 +204,29 @@ export default function ReportBreakdownScreen() {
         </>
       }
     >
-      {prefilled ? (
+      {prefilled && towedImplementId ? (
+        <FieldShell label="What has the problem?">
+          <View className="flex-row gap-3">
+            {breakdownSubjectKinds.map((option) => {
+              const id = option === 'machine' ? prefilled.id : towedImplementId;
+              const row =
+                option === 'machine'
+                  ? fleet.data?.find((entry) => entry.id === id)
+                  : implementsQuery.data?.find((entry) => entry.id === id);
+              return (
+                <SubjectChoice
+                  key={option}
+                  kind={breakdownSubjectKindLabels[option]}
+                  row={row ?? null}
+                  selected={towedChoice === option}
+                  disabled={busy}
+                  onPress={() => setTowedChoice(option)}
+                />
+              );
+            })}
+          </View>
+        </FieldShell>
+      ) : prefilled ? (
         <Card>
           <View className="flex-row items-center gap-3">
             {subjectRow ? (
@@ -315,6 +349,45 @@ export default function ReportBreakdownScreen() {
         <Text className="text-sm text-muted-foreground">Location attached: {formatCoordinates(position)}</Text>
       ) : null}
     </FormPage>
+  );
+}
+
+/** One of a stint's two subjects as a card, side by side with the other, as the web report dialog shows them. */
+function SubjectChoice({
+  kind,
+  row,
+  selected,
+  disabled,
+  onPress,
+}: {
+  kind: string;
+  row: { code: string; categoryName: string; categoryIcon: CategoryIconKey; categoryColour: CategoryColour } | null;
+  selected: boolean;
+  disabled: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      accessibilityRole="radio"
+      accessibilityState={{ selected, disabled }}
+      accessibilityLabel={`${kind} ${row?.code ?? ''}`}
+      disabled={disabled}
+      onPress={onPress}
+      className={`min-w-0 flex-1 flex-row items-center gap-3 rounded-xl border p-3 ${selected ? 'border-primary bg-primary/10' : 'border-border bg-surface'}`}
+    >
+      {row ? <CategoryIcon icon={row.categoryIcon} colour={row.categoryColour} size={20} /> : null}
+      <View className="min-w-0 flex-1">
+        <Text className="text-xs text-muted-foreground">{kind}</Text>
+        <Text className="text-foreground" weight="bold" numberOfLines={1}>
+          {row?.code ?? kind}
+        </Text>
+        {row ? (
+          <Text className="text-xs text-muted-foreground" numberOfLines={1}>
+            {row.categoryName}
+          </Text>
+        ) : null}
+      </View>
+    </Pressable>
   );
 }
 

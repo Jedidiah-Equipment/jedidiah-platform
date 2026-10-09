@@ -15,6 +15,7 @@ export function photoRefusal(policy: FilePolicy, photo: File): string | undefine
 export function PhotoPicker({
   id,
   label,
+  hideHeader,
   policy,
   photo,
   pending = false,
@@ -24,6 +25,7 @@ export function PhotoPicker({
 }: {
   id?: string | undefined;
   label: string;
+  hideHeader?: boolean;
   policy: FilePolicy;
   photo: File | null;
   pending?: boolean;
@@ -35,6 +37,7 @@ export function PhotoPicker({
     <AttachmentField
       id={id}
       label={label}
+      {...(hideHeader ? { hideHeader } : {})}
       file={photo}
       pending={pending}
       policy={policy}

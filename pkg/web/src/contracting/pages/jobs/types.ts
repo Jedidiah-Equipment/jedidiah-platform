@@ -7,7 +7,10 @@ import {
 } from '@pkg/domain/contracting';
 import { UUID } from '@pkg/schema';
 import {
+  type Assignment,
   type AssignmentState,
+  type BreakdownSummary,
+  type BreakdownUrgency,
   type JobActionName,
   type JobCreateInput,
   JobDescription,
@@ -78,4 +81,32 @@ export type JobSheet = ReturnType<typeof jobSheet>;
 export type MachineDialog =
   | { kind: 'plan' }
   | { kind: 'arrival' | 'departure' | 'gap'; stintId: string }
-  | { kind: 'reading'; stintId: string; role: 'arrival' | 'departure' };
+  | { kind: 'reading'; stintId: string; role: 'arrival' | 'departure' }
+  | { kind: 'breakdown'; stintId: string; urgency: BreakdownUrgency };
+
+type StintOnJob = Pick<Assignment, 'id' | 'machineId' | 'implementId'> & {
+  createdAt: string;
+  arrival: { capturedAt: string } | null;
+};
+
+/**
+ * Each stint's Breakdowns on this Job. A Breakdown names a Machine or Implement and the Job, not a stint, so it
+ * lands on the latest stint of its subject that had started by the time it was reported, or the earliest one.
+ */
+export function breakdownsByStint<
+  TBreakdown extends { subject: Pick<BreakdownSummary['subject'], 'kind' | 'id'>; reportedAt: string },
+>(stints: readonly StintOnJob[], breakdowns: readonly TBreakdown[]): Map<string, TBreakdown[]> {
+  const byStint = new Map<string, TBreakdown[]>();
+  const startOf = (stint: StintOnJob) => stint.arrival?.capturedAt ?? stint.createdAt;
+  for (const breakdown of breakdowns) {
+    const { kind, id } = breakdown.subject;
+    const candidates = stints
+      .filter((stint) => (kind === 'machine' ? stint.machineId : stint.implementId) === id)
+      .sort((left, right) => startOf(left).localeCompare(startOf(right)));
+    const stint =
+      candidates.findLast((candidate) => startOf(candidate) <= breakdown.reportedAt) ?? candidates[0] ?? null;
+    if (!stint) continue;
+    byStint.set(stint.id, [...(byStint.get(stint.id) ?? []), breakdown]);
+  }
+  return byStint;
+}

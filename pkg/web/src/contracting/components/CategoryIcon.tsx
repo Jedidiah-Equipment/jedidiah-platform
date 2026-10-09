@@ -8,7 +8,7 @@ import type { CategoryColour, CategoryIconKey } from '@pkg/schema/contracting';
 import type React from 'react';
 import { cn } from '@/lib/utils.js';
 
-/** A category's glyph on its tinted disc, the thumbnail every fleet surface shows. */
+/** A category's glyph on its tinted tile, the thumbnail every fleet surface shows; records are squares, people circles. */
 export function CategoryIcon({
   icon,
   colour,
@@ -25,7 +25,7 @@ export function CategoryIcon({
   return (
     <span
       className={cn(
-        'inline-flex shrink-0 items-center justify-center rounded-full border',
+        'inline-flex shrink-0 items-center justify-center rounded-md border',
         tone.chip,
         tone.text,
         className,

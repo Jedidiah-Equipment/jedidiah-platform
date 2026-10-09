@@ -1,6 +1,8 @@
-import { presentAction } from '@pkg/domain/contracting';
+import { formatHours } from '@pkg/domain';
+import { presentAction, reportToSolvedHours } from '@pkg/domain/contracting';
 import { type BreakdownDetail, CloseOutNote } from '@pkg/schema/contracting';
 import { IconPlayerPlay, IconPlayerStop } from '@tabler/icons-react-native';
+import type React from 'react';
 import { useState } from 'react';
 import { View } from 'react-native';
 import { DateText } from '@/components/DateText';
@@ -16,6 +18,55 @@ import { useBusyAction } from '@/lib/use-busy-action';
 import { BREAKDOWN_SAVE_FAILED, useBreakdownMutation, useMechanics } from './use-breakdowns';
 import { VerdictButton, VerdictGroup } from './VerdictButton';
 
+function DetailRow({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <View className="flex-row items-baseline justify-between gap-3">
+      <Text className="text-muted-foreground">{label}</Text>
+      <View className="min-w-0 shrink items-end">{children}</View>
+    </View>
+  );
+}
+
+/** A Fixed Breakdown is settled: who fixed it, when work ran, and the close-out note, with nothing left to press. */
+function FixedSummary({ breakdown }: { breakdown: BreakdownDetail }) {
+  const hours = reportToSolvedHours(breakdown);
+  return (
+    <Card>
+      <DetailRow label="Mechanic">
+        <Text className="text-right text-foreground" weight="semibold">
+          {breakdown.mechanicName ?? 'None assigned'}
+        </Text>
+      </DetailRow>
+      <DetailRow label="Started">
+        {breakdown.startedAt ? (
+          <DateText className="text-right text-foreground" date={breakdown.startedAt} format="medium" />
+        ) : (
+          <Text className="text-right text-muted-foreground">Went straight to Fixed</Text>
+        )}
+      </DetailRow>
+      <DetailRow label="Fixed">
+        <DateText className="text-right text-foreground" date={breakdown.solvedAt} format="medium" />
+      </DetailRow>
+      {breakdown.solvedByName ? (
+        <DetailRow label="Closed out by">
+          <Text className="text-right text-foreground">{breakdown.solvedByName}</Text>
+        </DetailRow>
+      ) : null}
+      {hours !== null ? (
+        <DetailRow label="Report to Fixed">
+          <Text className="text-right text-foreground">{formatHours(hours)}</Text>
+        </DetailRow>
+      ) : null}
+      {breakdown.closeOutNote ? (
+        <View className="gap-1 border-l-2 border-emerald-500/60 pl-3">
+          <Text className="text-xs text-muted-foreground">Close-out note</Text>
+          <Text className="text-foreground">{breakdown.closeOutNote}</Text>
+        </View>
+      ) : null}
+    </Card>
+  );
+}
+
 export function BreakdownWorkshopCard({ breakdown }: { breakdown: BreakdownDetail }) {
   const assign = useBreakdownMutation((breakdowns) => breakdowns.assignMechanic);
   const start = useBreakdownMutation((breakdowns) => breakdowns.start);
@@ -28,6 +79,7 @@ export function BreakdownWorkshopCard({ breakdown }: { breakdown: BreakdownDetai
     run(async () => {
       await assign.mutateAsync({ id: breakdown.id, mechanicUserId: mechanicUserId || null });
     }, BREAKDOWN_SAVE_FAILED);
+  if (breakdown.status === 'solved') return <FixedSummary breakdown={breakdown} />;
   return (
     <Card>
       {presentAction(actions.assignMechanic) ? (
@@ -52,19 +104,9 @@ export function BreakdownWorkshopCard({ breakdown }: { breakdown: BreakdownDetai
         <Text className="text-foreground">Mechanic: {breakdown.mechanicName ?? 'not assigned yet'}</Text>
       )}
       {breakdown.startedAt ? (
-        <Text className="text-sm text-muted-foreground">
-          Started <DateText className="text-sm text-muted-foreground" date={breakdown.startedAt} format="medium" />
-        </Text>
-      ) : null}
-      {breakdown.solvedAt ? (
-        <Text className="text-sm text-muted-foreground">
-          Fixed <DateText className="text-sm text-muted-foreground" date={breakdown.solvedAt} format="medium" />
-        </Text>
-      ) : null}
-      {breakdown.closeOutNote ? (
-        <FieldShell label="Close-out note">
-          <Text className="text-foreground">{breakdown.closeOutNote}</Text>
-        </FieldShell>
+        <DetailRow label="Started">
+          <DateText className="text-right text-foreground" date={breakdown.startedAt} format="medium" />
+        </DetailRow>
       ) : null}
       {error ? <Text className="text-danger">{error}</Text> : null}
       {breakdown.status === 'open' ? (
@@ -135,7 +177,7 @@ function CompleteModal({
         </FieldShell>
         {error ? <Text className="text-danger">{error}</Text> : null}
         <Button
-          destructive
+          primary={!busy && !voice.busy && valid}
           title={busy ? 'Saving…' : 'Confirm completed'}
           disabled={busy || voice.busy || !valid}
           onPress={() =>

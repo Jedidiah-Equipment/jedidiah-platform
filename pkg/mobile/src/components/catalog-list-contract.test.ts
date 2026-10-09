@@ -3,7 +3,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, test } from 'vitest';
 
-const MOBILE_DIR = join(dirname(fileURLToPath(import.meta.url)), '../../..');
+const MOBILE_DIR = join(dirname(fileURLToPath(import.meta.url)), '../..');
 const CATALOG_SURFACES = [
   {
     component: 'src/equipment/components/jobs/JobCatalog.tsx',
@@ -25,6 +25,22 @@ const CATALOG_SURFACES = [
     component: 'src/equipment/components/units/UnitCatalog.tsx',
     route: 'app/(protected)/equipment/(tabs)/units/index.tsx',
   },
+  {
+    component: 'src/contracting/jobs/JobsScreen.tsx',
+    route: 'app/(protected)/contracting/(tabs)/jobs/index.tsx',
+  },
+  {
+    component: 'src/contracting/components/MachinesScreen.tsx',
+    route: 'app/(protected)/contracting/(tabs)/machines/index.tsx',
+  },
+  {
+    component: 'src/contracting/workshop/BreakdownRow.tsx',
+    route: 'app/(protected)/contracting/(tabs)/workshop/index.tsx',
+  },
+  {
+    component: 'src/contracting/field-notes/FieldNotesScreen.tsx',
+    route: 'app/(protected)/contracting/(tabs)/notes/index.tsx',
+  },
 ] as const;
 
 describe('catalog list contract', () => {
@@ -33,7 +49,7 @@ describe('catalog list contract', () => {
       const route = source(surface.route);
       const component = source(surface.component);
 
-      expect(component).toContain("from '@/equipment/components/CatalogList'");
+      expect(component).toContain("from '@/components/CatalogList'");
       expect(component).toContain('<CatalogListCard');
       expect(`${route}\n${component}`).not.toContain('BoardGrid');
     }

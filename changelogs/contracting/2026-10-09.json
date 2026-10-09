@@ -1,0 +1,48 @@
+{
+  "business": "contracting",
+  "releasedAt": "2026-10-09T10:42:31.802Z",
+  "sections": [
+    {
+      "surface": "app",
+      "entries": [
+        {
+          "title": "Check machine assignments and service needs at a glance",
+          "description": "The Machines table now shows the current job, customer and farm, the latest reading with its date, and the next service due. Open the linked job directly from the table."
+        },
+        {
+          "title": "Follow each machine’s progress on a job",
+          "description": "Machine stint timelines bring planned work, arrival, departure, measures and breakdowns together in time order. Use the + menu to add a measure or report a Code Green or Code Red problem."
+        },
+        {
+          "title": "Report breakdowns from Jobs or Workshop",
+          "description": "Choose the machine or implement, set the urgency and attach photos directly from either screen. Check the Already reported list before submitting another report."
+        },
+        {
+          "title": "Track repairs from report to completion",
+          "description": "Workshop breakdown cards now show a timeline covering Reported, Mechanic, Fixing and Fixed, making repair progress easier to follow."
+        }
+      ]
+    },
+    {
+      "surface": "mobile",
+      "entries": [
+        {
+          "title": "Check machine details, service needs and readings",
+          "description": "Machine screens now have separate Details and Readings tabs, with service information and the current job shown on dedicated cards. Load older readings as you browse the history."
+        },
+        {
+          "title": "Report a problem from one place on each stint",
+          "description": "Use Report a problem, then choose whether the issue affects the machine or its attached implement."
+        },
+        {
+          "title": "Review completed repairs",
+          "description": "Fixed breakdowns now show a read-only summary so you can review the completed repair."
+        },
+        {
+          "title": "Scan lists more easily",
+          "description": "Machine, job, field note and workshop lists now use a consistent card layout."
+        }
+      ]
+    }
+  ]
+}

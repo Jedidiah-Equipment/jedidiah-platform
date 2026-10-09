@@ -24,6 +24,7 @@ export {
   isUniqueViolation,
   LIKE_SEARCH_ESCAPE,
   notRemoved,
+  onCalendarDays,
   withPagination,
 } from './query-utils.js';
 export * from './schema/audit.js';

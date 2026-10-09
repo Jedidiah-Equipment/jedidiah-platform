@@ -1,4 +1,4 @@
-import { createGlobalSearchCondition, type Db, getSortOrder, withPagination } from '@pkg/db';
+import { createGlobalSearchCondition, type Db, getSortOrder, onCalendarDays, withPagination } from '@pkg/db';
 import { contractingCustomers, contractingFarms, contractingJobs, contractingWorkTypes } from '@pkg/db/contracting';
 import { JOHANNESBURG_TIME_ZONE } from '@pkg/domain';
 import {
@@ -55,9 +55,6 @@ export async function summarizeJobQueues({ db, actor }: { db: Db; actor: JobActo
   });
 }
 
-/** The South African calendar day a Job was invoiced on. */
-const invoicedDay = sql`(${contractingJobs.invoicedAt} at time zone ${JOHANNESBURG_TIME_ZONE})::date`;
-
 /** Looks finished is carved out of Active, so each Job matches exactly one queue. */
 function inQueue(queue: JobQueue): SQL | undefined {
   const status = eq(contractingJobs.status, jobQueueStatus[queue]);
@@ -97,8 +94,10 @@ export async function listJobs({
   for (const queue of input.queues) assertReadableStatus(jobQueueStatus[queue], reader);
   const where = and(
     or(...input.queues.map(inQueue)),
-    input.invoicedFrom ? sql`${invoicedDay} >= ${input.invoicedFrom}::date` : undefined,
-    input.invoicedTo ? sql`${invoicedDay} <= ${input.invoicedTo}::date` : undefined,
+    onCalendarDays(contractingJobs.invoicedAt, JOHANNESBURG_TIME_ZONE, {
+      from: input.invoicedFrom,
+      to: input.invoicedTo,
+    }),
     readableBy(reader),
     createGlobalSearchCondition(input.search, [
       jobSql.jobNumberText,

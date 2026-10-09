@@ -1,7 +1,6 @@
-import { DateOnlyIso } from '@pkg/schema';
 import type { JobListInput, JobQueue, JobQueueCounts } from '@pkg/schema/contracting';
 import type { ColumnFiltersState } from '@tanstack/react-table';
-import { readDateRangeFilter } from '@/components/data-table/column-filter-values.js';
+import { readDateOnlyRangeFilter } from '@/components/data-table/column-filter-values.js';
 import { pickedStages } from '../jobs/job-stage-filter.js';
 
 export const INVOICED_COLUMN_ID = 'invoicedAt' as const;
@@ -24,9 +23,5 @@ export function listedInvoicingStages(columnFilters: ColumnFiltersState, counts:
 }
 
 /** The Invoiced column's date-range filter, as the South African calendar days the list narrows to. */
-export function invoicedRange(columnFilters: ColumnFiltersState): Pick<JobListInput, 'invoicedFrom' | 'invoicedTo'> {
-  const { start, end } = readDateRangeFilter(columnFilters, INVOICED_COLUMN_ID);
-  const invoicedFrom = DateOnlyIso.safeParse(start).data;
-  const invoicedTo = DateOnlyIso.safeParse(end).data;
-  return { ...(invoicedFrom ? { invoicedFrom } : {}), ...(invoicedTo ? { invoicedTo } : {}) };
-}
+export const invoicedRange = (columnFilters: ColumnFiltersState): Pick<JobListInput, 'invoicedFrom' | 'invoicedTo'> =>
+  readDateOnlyRangeFilter(columnFilters, INVOICED_COLUMN_ID, ['invoicedFrom', 'invoicedTo']);

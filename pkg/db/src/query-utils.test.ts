@@ -9,6 +9,7 @@ import {
   getSortOrder,
   isUniqueViolation,
   LIKE_SEARCH_ESCAPE,
+  onCalendarDays,
 } from './query-utils.js';
 
 describe('createLikeSearchPattern', () => {
@@ -41,6 +42,14 @@ describe('escaped search conditions', () => {
     expect(createGlobalSearchCondition('', [sql`name`])).toBeUndefined();
     expect(createGlobalSearchCondition('loader', [])).toBeUndefined();
     expect(createGlobalSearchCondition('loader', [sql`name`, sql`model_code`])).toBeDefined();
+  });
+});
+
+describe('onCalendarDays', () => {
+  it('is no condition without ends and a condition once either end is given', () => {
+    expect(onCalendarDays(sql`invoiced_at`, 'Africa/Johannesburg', {})).toBeUndefined();
+    expect(onCalendarDays(sql`invoiced_at`, 'Africa/Johannesburg', { from: '2026-10-01' })).toBeDefined();
+    expect(onCalendarDays(sql`invoiced_at`, 'Africa/Johannesburg', { to: '2026-10-08' })).toBeDefined();
   });
 });
 

@@ -128,8 +128,8 @@ export const BreakdownSummary = z.object({
   firstLine: z.string(),
   photoCount: z.number().int(),
   noteCount: z.number().int(),
-  /** The note's first line when there is exactly one, so a list can show it in place of a count. */
-  soleNote: z.string().nullable(),
+  /** The earliest note's first line; null while there are no notes. */
+  firstNote: z.string().nullable(),
   startedAt: DateIso.nullable(),
   solvedAt: DateIso.nullable(),
   /** Other unsolved Breakdowns on the same Job — the dispatch cross-reference, derived. */
@@ -170,9 +170,6 @@ export const BreakdownListInput = createSearchedSortedCursorQueryInput({
   shape: {
     statuses: z.array(z.enum(breakdownStatuses)).default([...unsolvedBreakdownStatuses]),
     urgencies: z.array(z.enum(breakdownUrgencies)).default([]),
-    machineId: UUID.optional(),
-    implementId: UUID.optional(),
-    jobId: UUID.optional(),
     /** Machines and Implements together: a Breakdown on any of them matches. */
     machineIds: z.array(UUID).default([]),
     implementIds: z.array(UUID).default([]),

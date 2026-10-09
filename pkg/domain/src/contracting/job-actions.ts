@@ -100,7 +100,7 @@ const rules: Record<JobActionName, Rule> = {
     anyJob: 'contracting_job:work-any',
     verb: 'capture readings',
   },
-  // Mirrors the server's check on a report that names this Job: open, and the reporter's own unless they read every Breakdown.
+  // The core report judges a report that names a Job by this same rule, so the Job sheet and the server agree.
   reportBreakdown: {
     statuses: openJobStatuses,
     permissions: ['contracting_breakdown:report'],

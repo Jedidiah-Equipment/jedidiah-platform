@@ -26,7 +26,6 @@ import {
   breakdownSubjectKindLabels,
   deriveBreakdownActions,
   formatJobNumber,
-  judgeJobAction,
 } from '@pkg/domain/contracting';
 import { type AuthId, type ContractingRole, getNextCursor } from '@pkg/schema';
 import {
@@ -62,9 +61,11 @@ import { assertContractingMechanic } from '../mechanics.js';
 import { breakdownDescriptor } from './breakdown-audit.js';
 import {
   assertBreakdownAction,
+  assertReportBreakdownJobAction,
   BreakdownError,
   breakdownNotFound,
   invalidMechanic,
+  reportBreakdownRefused,
   tooManyBreakdownPhotos,
   withBreakdownConstraints,
 } from './breakdown-errors.js';
@@ -89,6 +90,7 @@ export type BreakdownEvidence = { storage: StorageAdapter; photos: Uint8Array[] 
 
 const unsolved = inArray(contractingBreakdowns.status, [...unsolvedBreakdownStatuses]);
 const photoNotFound = () => new BreakdownError('breakdown.not_found', 'Photo not found.');
+const CANNOT_REPORT = 'You cannot report Breakdowns.';
 
 /** Validates and stores every photo before the row is written; the caller deletes them if the write fails. */
 async function storePhotos({ storage, photos }: BreakdownEvidence): Promise<BreakdownPhoto[]> {
@@ -201,14 +203,7 @@ async function resolveJob(
     .where(eq(contractingJobs.id, jobId))
     .for('share');
   if (!job) throw invalidJob('Choose an Upcoming or Active Job.');
-  // The Job sheet serves this same verdict, so its Code Green and Code Red show exactly when this accepts them.
-  const verdict = judgeJobAction('reportBreakdown', job, actor);
-  if (!verdict.allowed)
-    throw new BreakdownError(
-      verdict.reason === 'no-permission' ? 'breakdown.forbidden' : 'breakdown.invalid_job',
-      verdict.message,
-      { action: 'reportBreakdown', reason: verdict.reason },
-    );
+  assertReportBreakdownJobAction(job, actor);
   const [stint] = await tx
     .select({ id: contractingMachineAssignments.id })
     .from(contractingMachineAssignments)
@@ -236,11 +231,9 @@ export async function reportBreakdown({
 }): Promise<BreakdownReport> {
   const input = BreakdownReportInput.parse(raw);
   if (!hasPermission(actor, 'contracting_breakdown:report'))
-    throw new BreakdownError(
-      'breakdown.forbidden',
-      'You cannot report Breakdowns.',
-      input.jobId ? { action: 'reportBreakdown', reason: 'no-permission' } : undefined,
-    );
+    throw input.jobId
+      ? reportBreakdownRefused('no-permission', CANNOT_REPORT)
+      : new BreakdownError('breakdown.forbidden', CANNOT_REPORT);
   if ((evidence?.photos.length ?? 0) > BREAKDOWN_MAX_PHOTOS) throw tooManyBreakdownPhotos();
   // A phone retry of an already delivered report returns the stored Breakdown instead of a duplicate.
   async function replay(db: DbOrTx) {

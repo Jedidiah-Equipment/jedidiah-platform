@@ -1,4 +1,5 @@
 import { formatHours } from '@pkg/domain';
+import { machineBusyWith } from '@pkg/domain/contracting';
 import type { FieldMachine } from '@pkg/schema/contracting';
 import { router } from 'expo-router';
 import { useState } from 'react';
@@ -28,14 +29,14 @@ const SORT_KEY = contractingStorageKey('machines', 'sort');
 
 /** Who the Machine is working for right now, stacked on the right; nothing when it is on no Job. */
 function BusyWith({ machine }: { machine: FieldMachine }) {
-  const job = machine.busyOnJob ?? null;
-  // Only the Job Number arrives for another Foreman's Job, or from an API before busyOnJob.
-  if (!job && !machine.onSiteJobNumber) return null;
+  const busy = machineBusyWith(machine);
+  if (!busy) return null;
+  const { job, jobNumber } = busy;
   return (
     <View className="max-w-36 items-end">
       <Text className="text-[10px] text-muted-foreground">Busy with</Text>
       <Text className="text-right text-[13px] text-foreground" weight="semibold" numberOfLines={1}>
-        {job ? job.customerName : machine.onSiteJobNumber}
+        {job ? job.customerName : jobNumber}
       </Text>
       {job ? (
         <Text className="text-right text-[11px] text-muted-foreground" numberOfLines={1}>

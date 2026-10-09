@@ -101,7 +101,6 @@ export function MachinesCard({ job, sheet }: { job: JobDetail; sheet: JobSheet }
     () => breakdownsByStint(job.assignments, breakdowns.data?.items ?? []),
     [job.assignments, breakdowns.data],
   );
-  const canReport = sheet.can('reportBreakdown');
   const [dialog, setDialog] = useState<MachineDialog | null>(null);
   const [filter, setFilter] = useState<MachineFilter>('all');
   const close = () => setDialog(null);
@@ -160,7 +159,6 @@ export function MachinesCard({ job, sheet }: { job: JobDetail; sheet: JobSheet }
                   {visible.map(({ stint, stintNumber }) => (
                     <MachineStintCard
                       breakdowns={placed.byStint.get(stint.id) ?? []}
-                      canReport={canReport}
                       key={stint.id}
                       stint={stint}
                       stintNumber={stintNumber}

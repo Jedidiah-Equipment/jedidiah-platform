@@ -9,6 +9,7 @@ import {
   breakdownUrgencies,
 } from '@pkg/schema/contracting';
 import { IconX } from '@tabler/icons-react';
+import { useMutation } from '@tanstack/react-query';
 import type React from 'react';
 import { useEffect, useState } from 'react';
 import { z } from 'zod';
@@ -16,8 +17,9 @@ import { Button } from '@/components/ui/button.js';
 import { Field, FieldLabel } from '@/components/ui/field.js';
 import { BreakdownUrgencyIcon } from '@/contracting/components/BreakdownSubjectLabel.js';
 import { PhotoPicker } from '@/contracting/components/PhotoPicker.js';
+import { useQueryInvalidation } from '@/contracting/hooks/use-query-invalidation.js';
 import { breakdownReportUrl } from '@/contracting/lib/contracting-http-paths.js';
-import { postMultipartJson } from '@/contracting/lib/post-multipart.js';
+import { postMultipart } from '@/contracting/lib/post-multipart.js';
 import { cn } from '@/lib/utils.js';
 
 /** What each urgency means in the reporter's words, and the tint its banner and choice card wear. */
@@ -186,16 +188,31 @@ export function ReportPhotosField({
 }
 
 const ReportedBreakdown = z.object({ id: UUID });
+export type ReportFields = Parameters<typeof breakdownReportMultipartFields>[0] & Pick<BreakdownReportInput, 'subject'>;
 
 /** Reports one Breakdown with its photos through the multipart route, answering the stored Breakdown's id. */
-export async function sendBreakdownReport(
-  fields: Parameters<typeof breakdownReportMultipartFields>[0] & Pick<BreakdownReportInput, 'subject'>,
-  photos: readonly ReportPhoto[],
-) {
+async function sendBreakdownReport(fields: ReportFields, photos: readonly ReportPhoto[]) {
   const body = new FormData();
   for (const [name, value] of breakdownReportMultipartFields(fields)) body.append(name, value);
   for (const photo of photos) body.append('photo', photo.file, photo.file.name);
-  return ReportedBreakdown.parse(
-    await postMultipartJson(breakdownReportUrl(), body, 'Unable to report the Breakdown.'),
-  );
+  const response = await postMultipart(breakdownReportUrl(), body, 'Unable to report the Breakdown.');
+  return ReportedBreakdown.parse(await response.json());
+}
+
+/**
+ * One report in the making: its photos, picked outside the form because they are files, and the send that carries
+ * them. `reset` clears both when the dialog closes; a successful send refreshes the Workshop.
+ */
+export function useBreakdownReport() {
+  const { invalidateWorkshop } = useQueryInvalidation();
+  const [photos, setPhotos] = useState<ReportPhoto[]>([]);
+  const send = useMutation({
+    mutationFn: (fields: ReportFields) => sendBreakdownReport(fields, photos),
+    onSuccess: () => invalidateWorkshop(),
+  });
+  const reset = () => {
+    send.reset();
+    setPhotos([]);
+  };
+  return { photos, setPhotos, send, reset };
 }

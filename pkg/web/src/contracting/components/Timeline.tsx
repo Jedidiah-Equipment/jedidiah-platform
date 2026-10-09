@@ -1,5 +1,5 @@
-import { assignmentAttentionLevelColorClassNames } from '@pkg/domain/contracting';
-import type { AssignmentAttentionLevel, NeedsALookLevel } from '@pkg/schema/contracting';
+import { assignmentAttentionLevelColorClassNames, breakdownUrgencyColorClassNames } from '@pkg/domain/contracting';
+import type { AssignmentAttentionLevel, BreakdownUrgency, NeedsALookLevel } from '@pkg/schema/contracting';
 import type { Icon as TablerIcon } from '@tabler/icons-react';
 import type React from 'react';
 import { Button } from '@/components/ui/button.js';
@@ -11,22 +11,30 @@ export function Timeline({ className, children }: { className?: string; children
   return <ol className={cn('ml-2 space-y-3 border-l border-border pl-5', className)}>{children}</ol>;
 }
 
-export type DotTone = 'done' | 'current' | 'empty' | NeedsALookLevel;
+/** A step's dot: where it stands, an attention level, or a Breakdown's urgency, each in its domain colour. */
+export type DotTone = 'done' | 'current' | 'empty' | NeedsALookLevel | BreakdownUrgency;
+
+const dotClassNames: Record<DotTone, string> = {
+  done: 'border-emerald-500 bg-emerald-500',
+  current: 'border-primary bg-primary',
+  empty: 'border-muted-foreground bg-card',
+  warning: `border-transparent ${assignmentAttentionLevelColorClassNames.warning.dot}`,
+  critical: `border-transparent ${assignmentAttentionLevelColorClassNames.critical.dot}`,
+  'code-red': `border-transparent ${breakdownUrgencyColorClassNames['code-red'].dot}`,
+  'code-green': `border-transparent ${breakdownUrgencyColorClassNames['code-green'].dot}`,
+};
 
 /** One step on a vertical timeline: a dot on the rail, a title and detail, and its actions on the right. */
 export function TimelineRow({
   title,
   detail,
   tone,
-  dotClassName,
   dotContent,
   actions,
 }: {
   title: React.ReactNode;
   detail: React.ReactNode;
   tone: DotTone;
-  /** Paints the dot instead of the tone's colours. */
-  dotClassName?: string;
   /** A glyph drawn inside the dot, such as a resolved row's tick. */
   dotContent?: React.ReactNode;
   actions?: React.ReactNode;
@@ -37,13 +45,7 @@ export function TimelineRow({
         aria-hidden="true"
         className={cn(
           'absolute -left-[27px] top-1 flex size-3 items-center justify-center rounded-full border-2',
-          dotClassName,
-          !dotClassName && tone === 'done' && 'border-emerald-500 bg-emerald-500',
-          !dotClassName && tone === 'current' && 'border-primary bg-primary',
-          !dotClassName && tone === 'empty' && 'border-muted-foreground bg-card',
-          !dotClassName &&
-            (tone === 'warning' || tone === 'critical') &&
-            `border-transparent ${assignmentAttentionLevelColorClassNames[tone].dot}`,
+          dotClassNames[tone],
         )}
       >
         {dotContent}

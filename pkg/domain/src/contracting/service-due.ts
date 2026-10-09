@@ -1,4 +1,5 @@
 import type { ServiceDueStatus } from '@pkg/schema/contracting';
+import { formatHours } from '../formatting/number.js';
 import { type BadgeColorClassNames, statusBadgeColorClassNames } from '../theme/status-badge.js';
 import { round1 } from './hours.js';
 import { round2 } from './pricing.js';
@@ -28,6 +29,21 @@ export const suggestedNextServiceDue = (readingAtServiceHours: number, serviceIn
 
 /** Due soon or overdue: the statuses a screen paints in their warning colour. */
 export const serviceDueNeedsAttention = (status: ServiceDueStatus) => status === 'due-soon' || status === 'overdue';
+
+/** What is left before Next Service Due, in the reader's words, on every surface that shows it. */
+export const hoursToServiceLabel = (hoursToService: number) =>
+  hoursToService < 0 ? `Overdue by ${formatHours(-hoursToService)}` : `${formatHours(hoursToService)} to go`;
+
+/** Who a Machine is busy with: the Job when the reader may see it, else its Job Number alone. */
+export const machineBusyWith = <TJob extends { jobNumber: string }>(machine: {
+  busyOnJob: TJob | null;
+  onSiteJobNumber: string | null;
+}): { job: TJob | null; jobNumber: string } | null =>
+  machine.busyOnJob
+    ? { job: machine.busyOnJob, jobNumber: machine.busyOnJob.jobNumber }
+    : machine.onSiteJobNumber
+      ? { job: null, jobNumber: machine.onSiteJobNumber }
+      : null;
 
 export const serviceDueStatusLabels: Record<ServiceDueStatus, string> = {
   unknown: 'Service due unknown',

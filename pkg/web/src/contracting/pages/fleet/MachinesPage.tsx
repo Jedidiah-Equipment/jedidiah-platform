@@ -1,5 +1,9 @@
 import { formatHours } from '@pkg/domain';
-import { serviceDueNeedsAttention, serviceDueStatusColorClassNames } from '@pkg/domain/contracting';
+import {
+  hoursToServiceLabel,
+  serviceDueNeedsAttention,
+  serviceDueStatusColorClassNames,
+} from '@pkg/domain/contracting';
 import type { FleetListInput, Machine } from '@pkg/schema/contracting';
 import { useQuery } from '@tanstack/react-query';
 import { Link, useNavigate } from '@tanstack/react-router';
@@ -148,9 +152,7 @@ export function MachinesPage() {
                     flagged ? serviceDueStatusColorClassNames[serviceDueStatus].text : 'text-muted-foreground',
                   )}
                 >
-                  {hoursToService < 0
-                    ? `Overdue by ${formatHours(-hoursToService)}`
-                    : `${formatHours(hoursToService)} to go`}
+                  {hoursToServiceLabel(hoursToService)}
                 </span>
               ) : null}
             </span>

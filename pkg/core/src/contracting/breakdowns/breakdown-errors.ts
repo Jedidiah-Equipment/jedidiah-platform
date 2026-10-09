@@ -3,6 +3,7 @@ import { type BreakdownActionSubject, type BreakdownActor, judgeBreakdownAction 
 import type { BreakdownActionBlockedReason, BreakdownActionName, BreakdownErrorCode } from '@pkg/schema/contracting';
 import { BREAKDOWN_MAX_PHOTOS } from '@pkg/schema/contracting';
 import { translatingConstraintViolations } from '../../errors/constraint-violations.js';
+import type { RefusedJobAction } from '../jobs/job-errors.js';
 
 /** Which Breakdown Action a refusal refused, and why: public context a surface can branch on. */
 export type RefusedBreakdownAction = { action: BreakdownActionName; reason: BreakdownActionBlockedReason };
@@ -11,7 +12,8 @@ export class BreakdownError extends Error {
   constructor(
     readonly code: BreakdownErrorCode,
     message: string,
-    readonly refused?: RefusedBreakdownAction,
+    /** A Breakdown Action's refusal, or the Job's when a report names a Job that refuses it. */
+    readonly refused?: RefusedBreakdownAction | RefusedJobAction,
   ) {
     super(message);
     this.name = 'BreakdownError';

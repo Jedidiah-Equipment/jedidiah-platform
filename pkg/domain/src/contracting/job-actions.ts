@@ -100,6 +100,13 @@ const rules: Record<JobActionName, Rule> = {
     anyJob: 'contracting_job:work-any',
     verb: 'capture readings',
   },
+  // Mirrors the server's check on a report that names this Job: open, and the reporter's own unless they read every Breakdown.
+  reportBreakdown: {
+    statuses: openJobStatuses,
+    permissions: ['contracting_breakdown:report'],
+    anyJob: 'contracting_breakdown:read',
+    verb: 'report a Breakdown',
+  },
 };
 
 const joinOr = (items: readonly string[]) =>

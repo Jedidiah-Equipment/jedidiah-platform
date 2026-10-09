@@ -18,6 +18,7 @@ export const jobActionNames = [
   'stampInvoice',
   'amendReadings',
   'capture',
+  'reportBreakdown',
 ] as const;
 export type JobActionName = (typeof jobActionNames)[number];
 

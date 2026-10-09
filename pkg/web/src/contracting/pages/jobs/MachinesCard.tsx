@@ -5,7 +5,7 @@ import {
   breakdownsByStint,
   groupStints,
 } from '@pkg/domain/contracting';
-import { breakdownStatuses, hasJobStatus, type JobDetail, openJobStatuses } from '@pkg/schema/contracting';
+import { breakdownStatuses, type JobDetail } from '@pkg/schema/contracting';
 import { useQuery } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
@@ -64,8 +64,7 @@ export function MachinesCard({ job, sheet }: { job: JobDetail; sheet: JobSheet }
     () => breakdownsByStint(job.assignments, breakdowns.data?.items ?? []),
     [job.assignments, breakdowns.data],
   );
-  // The server takes a report only on an open Job its subject is on.
-  const canReport = reportsBreakdowns && hasJobStatus(openJobStatuses, job.status);
+  const canReport = sheet.can('reportBreakdown');
   const [dialog, setDialog] = useState<MachineDialog | null>(null);
   const [filter, setFilter] = useState<MachineFilter>('all');
   const close = () => setDialog(null);

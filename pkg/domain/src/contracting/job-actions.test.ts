@@ -41,11 +41,25 @@ const manager: Matrix = {
   stampInvoice: 'nnnnnn',
   amendReadings: '✓✓✓✓cc',
   capture: '✓✓sscc',
+  reportBreakdown: '✓✓sscc',
 };
 const admin: Matrix = { ...manager, priceChargeLines: 's✓✓pcc', price: 'ss✓pcc', stampInvoice: 'sss✓cc' };
 const none: Matrix = Object.fromEntries(jobActionNames.map((action) => [action, 'nnnnnn'])) as Matrix;
-const foremanOnOwnJob: Matrix = { ...none, assign: '✓✓sscc', patchTravel: '✓✓sscc', capture: '✓✓sscc' };
-const foremanOnAnotherJob: Matrix = { ...none, assign: 'oooooo', patchTravel: 'oooooo', capture: 'oooooo' };
+const foremanOnOwnJob: Matrix = {
+  ...none,
+  assign: '✓✓sscc',
+  patchTravel: '✓✓sscc',
+  capture: '✓✓sscc',
+  reportBreakdown: '✓✓sscc',
+};
+const foremanOnAnotherJob: Matrix = {
+  ...none,
+  assign: 'oooooo',
+  patchTravel: 'oooooo',
+  capture: 'oooooo',
+  reportBreakdown: 'oooooo',
+};
+const workshopManager: Matrix = { ...none, reportBreakdown: '✓✓sscc' };
 const invoicing: Matrix = { ...none, stampInvoice: 'sss✓cc' };
 
 const cases: [string, JobActor, string | null, Matrix][] = [
@@ -55,7 +69,7 @@ const cases: [string, JobActor, string | null, Matrix][] = [
   ['the Foreman on their own Job', actor('foreman', 'sipho'), 'sipho', foremanOnOwnJob],
   ['a Foreman on another Foreman’s Job', actor('foreman', 'sipho'), 'thabo', foremanOnAnotherJob],
   ['contracting invoicing', actor('contracting-invoicing'), 'someone', invoicing],
-  ['the workshop manager', actor('workshop-manager'), 'someone', none],
+  ['the workshop manager', actor('workshop-manager'), 'someone', workshopManager],
 ];
 
 describe('deriveJobActions', () => {

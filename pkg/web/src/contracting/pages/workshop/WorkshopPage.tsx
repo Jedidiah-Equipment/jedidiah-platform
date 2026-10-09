@@ -2,6 +2,7 @@ import { formatNumber } from '@pkg/domain';
 import type { BreakdownListInput } from '@pkg/schema/contracting';
 import { keepPreviousData, useInfiniteQuery, useMutation, useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
+import { useState } from 'react';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { cursorInfiniteQueryOptions, useCombinedCursorQueryPages } from '@/components/data-table/cursor-query.js';
 import { DataTable } from '@/components/data-table/DataTable.js';
@@ -10,12 +11,14 @@ import { useServerSideTableController } from '@/components/data-table/hooks/use-
 import { createPersistedDataTableStore } from '@/components/data-table/store.js';
 import type { SortOptions } from '@/components/data-table/table-state.js';
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
+import { Button } from '@/components/ui/button.js';
 import { useContractingWrite } from '@/contracting/hooks/use-contracting-write.js';
 import { useQueryInvalidation } from '@/contracting/hooks/use-query-invalidation.js';
 import { useCan } from '@/hooks/use-access.js';
 import { getApiQueryErrorMessage } from '@/lib/api-errors.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { BreakdownStatusQuickFilters } from './BreakdownStatusQuickFilters.js';
+import { ReportProblemDialog } from './ReportProblemDialog.js';
 import { workshopListFilters } from './types.js';
 import { useWorkshopColumns } from './workshop-columns.js';
 
@@ -34,6 +37,8 @@ export function WorkshopPage() {
   const navigate = useNavigate();
   const write = useContractingWrite(useQueryInvalidation().invalidateWorkshop);
   const canManage = useCan('contracting_breakdown:update').can;
+  const canReport = useCan('contracting_breakdown:report').can;
+  const [reporting, setReporting] = useState(false);
   const summary = useQuery(trpc.contractingBreakdowns.queueSummary.queryOptions());
   const tableController = useServerSideTableController({
     store: useWorkshopTableStore,
@@ -80,6 +85,7 @@ export function WorkshopPage() {
       title="Workshop"
       description="Breakdowns reported from the field, newest first. One trip can fix several."
       size="full"
+      actions={canReport ? <Button onClick={() => setReporting(true)}>Report a problem</Button> : undefined}
     >
       <ErrorMessage
         error={summary.error ?? filters.error ?? mechanics.error}
@@ -108,6 +114,7 @@ export function WorkshopPage() {
         total={total}
         totalLabel={(value) => `${formatNumber(value)} ${value === 1 ? 'Breakdown' : 'Breakdowns'}`}
       />
+      <ReportProblemDialog open={reporting} onOpenChange={setReporting} />
     </PageLayout>
   );
 }

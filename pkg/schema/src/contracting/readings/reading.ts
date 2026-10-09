@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { AuthId } from '../../auth/auth-id.js';
 import { DateIso } from '../../common/date.js';
+import { CursorQueryInput, createCursorQueryResult } from '../../common/pagination.js';
 import { UUID } from '../../common/uuid.js';
 import { CategoryColour, CategoryIconKey } from '../fleet/fleet.js';
 import { readingExceptionTypes, readingMethods, readingRoles, readingVerifications } from './reading-enums.js';
@@ -136,3 +137,8 @@ export const FieldReading = HourReading.pick({
   disputed: true,
 }).extend({ photoBacked: z.boolean() });
 export type FieldReading = z.infer<typeof FieldReading>;
+/** One page of a Machine's Hour Readings, newest first, for the phone's Readings tab. */
+export const FieldReadingPageInput = CursorQueryInput.extend({ machineId: UUID });
+export type FieldReadingPageInput = z.infer<typeof FieldReadingPageInput>;
+export const FieldReadingPage = createCursorQueryResult(FieldReading);
+export type FieldReadingPage = z.infer<typeof FieldReadingPage>;

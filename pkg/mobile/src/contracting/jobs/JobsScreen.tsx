@@ -4,8 +4,9 @@ import type { JobSummary } from '@pkg/schema/contracting';
 import { IconArrowsSort, IconFilter } from '@tabler/icons-react-native';
 import { type Href, router } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, View } from 'react-native';
+import { View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { CatalogListCard } from '@/components/CatalogList';
 import {
   type ListControlOption,
   ListControlRow,
@@ -107,22 +108,14 @@ function JobRow({ job }: { job: JobSummary }) {
   const queue = jobQueueOf(job);
   const machines = job.plannedStints + job.onSiteStints + job.leftStints;
   return (
-    <Pressable
-      accessibilityRole="button"
+    <CatalogListCard
+      accessibilityHint="Opens the Job"
+      accessibilityLabel={`Job ${job.jobNumber}`}
+      mainText={job.customerName}
+      monoText={`${job.jobNumber} · ${formatNumber(machines)} machines · ${formatNumber(job.onSiteStints)} running`}
       onPress={() => router.push(`/contracting/jobs/${job.id}` as Href)}
-      className="w-full gap-2 rounded-xl border border-border bg-surface p-4"
-    >
-      <View className="flex-row items-center justify-between gap-2">
-        <Text className="min-w-0 flex-1 text-lg text-foreground" weight="bold" numberOfLines={1}>
-          {job.customerName} · {job.farmName}
-        </Text>
-        <View className="shrink-0">
-          <StatusBadge classNames={jobQueueColorClassNames[queue]} label={jobQueueLabels[queue]} />
-        </View>
-      </View>
-      <Text className="text-sm text-muted-foreground">
-        {job.workTypeName} · {formatNumber(machines)} machines · {formatNumber(job.onSiteStints)} running
-      </Text>
-    </Pressable>
+      subText={`${job.farmName} · ${job.workTypeName}`}
+      trailing={<StatusBadge classNames={jobQueueColorClassNames[queue]} label={jobQueueLabels[queue]} />}
+    />
   );
 }

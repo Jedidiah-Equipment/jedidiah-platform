@@ -4,6 +4,7 @@ import type { JobSummary } from '@pkg/schema/equipment';
 import { IconArrowsSort, IconCheck, IconFilter } from '@tabler/icons-react-native';
 import { useRouter } from 'expo-router';
 import { View } from 'react-native';
+import { CatalogListCard } from '@/components/CatalogList';
 import {
   type ListControlOption,
   ListControlRow,
@@ -13,7 +14,6 @@ import {
 import { Icon } from '@/components/ui/icon';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { Text } from '@/components/ui/text';
-import { CatalogListCard } from '@/equipment/components/CatalogList';
 import { offeringAvatarProps } from '@/equipment/components/OfferingAvatar';
 import { StockBadge } from '@/equipment/components/StockBadge';
 import { getJobSchedulePresentation, type JobCatalogSort, type JobCompletionFilter } from '@/equipment/lib/job-catalog';

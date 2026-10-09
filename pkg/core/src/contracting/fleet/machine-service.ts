@@ -1,12 +1,7 @@
 import { createEscapedContainsSearchCondition, type DatabaseTransaction, type Db, user } from '@pkg/db';
-import {
-  contractingJobs,
-  contractingMachineAssignments,
-  contractingMachines,
-  contractingServiceRecords,
-} from '@pkg/db/contracting';
-import { formatJobNumber, hoursToService, serviceDueStatus } from '@pkg/domain/contracting';
-import type { AuthId, ContractingRole } from '@pkg/schema';
+import { contractingMachines, contractingServiceRecords } from '@pkg/db/contracting';
+import { fieldJobAccessMode, formatJobNumber, hoursToService, serviceDueStatus } from '@pkg/domain/contracting';
+import type { AuthId, ContractingRole, UserAccessSummary } from '@pkg/schema';
 import {
   FieldMachine,
   FleetCode,
@@ -16,7 +11,7 @@ import {
   type MachineListInput,
   type MachinePatchInput,
 } from '@pkg/schema/contracting';
-import { and, asc, eq, inArray, isNotNull, isNull, sql } from 'drizzle-orm';
+import { and, asc, eq, isNull, sql } from 'drizzle-orm';
 import { defineAuditDescriptor, recordAuditCreate } from '../../audit/audit-writer.js';
 import { mutateEntity } from '../../audit/mutate-entity.js';
 import { assertCategoryKind } from './category-service.js';
@@ -42,6 +37,15 @@ const descriptor = defineAuditDescriptor<Row>({
   }),
 });
 const related = { category: true, currentDriver: { columns: { name: true } } } as const;
+type BusyOnJobRow = {
+  id: string;
+  code: number;
+  customerName: string;
+  farmName: string;
+  workTypeName: string;
+  foremanUserId: string | null;
+  arrivedAt: string;
+};
 /** The Machine's newest Hour Reading of any role, so a spot reading moves Service Due Soon as much as a stint does. */
 const latestReading = (machine: typeof contractingMachines._.columns) => ({
   latestReadingHours: sql<number | null>`(
@@ -51,11 +55,45 @@ const latestReading = (machine: typeof contractingMachines._.columns) => ({
     order by latest.sequence desc
     limit 1
   )`.as('latest_reading_hours'),
+  latestReadingAt: sql<string | null>`(
+    select to_json(latest.captured_at) #>> '{}'
+    from contracting.hour_reading latest
+    where latest.machine_id = ${machine.id}
+    order by latest.sequence desc
+    limit 1
+  )`.as('latest_reading_at'),
+  busyOnJob: sql<BusyOnJobRow | null>`(
+    select json_build_object(
+      'id', job.id,
+      'code', job.code,
+      'customerName', customer.name,
+      'farmName', farm.name,
+      'workTypeName', work_type.name,
+      'foremanUserId', job.foreman_user_id,
+      'arrivedAt', arrival.captured_at
+    )
+    from contracting.machine_assignment stint
+    join contracting.job job on job.id = stint.job_id
+    join contracting.customer customer on customer.id = job.customer_id
+    join contracting.farm farm on farm.id = job.farm_id
+    join contracting.work_type work_type on work_type.id = job.work_type_id
+    join contracting.hour_reading arrival on arrival.id = stint.arrival_reading_id
+    where stint.machine_id = ${machine.id}
+      and stint.arrival_reading_id is not null
+      and stint.departure_reading_id is null
+    limit 1
+  )`.as('busy_on_job'),
 });
 function mapMachine(
-  row: Row & { category: CategoryRelation; currentDriver: { name: string } | null; latestReadingHours: number | null },
+  row: Row & {
+    category: CategoryRelation;
+    currentDriver: { name: string } | null;
+    latestReadingHours: number | null;
+    latestReadingAt: string | null;
+    busyOnJob: BusyOnJobRow | null;
+  },
 ) {
-  const { category, currentDriver, ...fields } = row;
+  const { category, currentDriver, busyOnJob, ...fields } = row;
   const facts = { latestReadingHours: row.latestReadingHours, nextServiceDueHours: row.nextServiceDueHours };
   return Machine.parse({
     ...fields,
@@ -64,6 +102,17 @@ function mapMachine(
     currentDriverName: currentDriver?.name ?? null,
     hoursToService: hoursToService(facts),
     serviceDueStatus: serviceDueStatus(facts),
+    busyOnJob: busyOnJob
+      ? {
+          id: busyOnJob.id,
+          jobNumber: formatJobNumber(busyOnJob.code),
+          customerName: busyOnJob.customerName,
+          farmName: busyOnJob.farmName,
+          workTypeName: busyOnJob.workTypeName,
+          foremanUserId: busyOnJob.foremanUserId,
+          arrivedAt: busyOnJob.arrivedAt,
+        }
+      : null,
   });
 }
 export async function listMachines({ db, input }: { db: Db; input: MachineListInput }) {
@@ -253,26 +302,18 @@ export async function assertDriverAccountChangeAllowed({
     );
 }
 
-export async function listFieldMachines({ db }: { db: Db }) {
+/**
+ * The phone's Machine picker. Every on-site Machine names its Job Number; the customer and farm behind it reach only
+ * someone who works every Job, or the Foreman of that Job, as the field Job reads themselves do.
+ */
+export async function listFieldMachines({ db, actor }: { db: Db; actor: UserAccessSummary }) {
   const machines = await listMachines({ db, input: { status: 'active', search: '' } });
-  const onSite = machines.length
-    ? await db
-        .select({ machineId: contractingMachineAssignments.machineId, jobCode: contractingJobs.code })
-        .from(contractingMachineAssignments)
-        .innerJoin(contractingJobs, eq(contractingJobs.id, contractingMachineAssignments.jobId))
-        .where(
-          and(
-            inArray(
-              contractingMachineAssignments.machineId,
-              machines.map((machine) => machine.id),
-            ),
-            isNotNull(contractingMachineAssignments.arrivalReadingId),
-            isNull(contractingMachineAssignments.departureReadingId),
-          ),
-        )
-    : [];
-  const jobByMachine = new Map(onSite.map((row) => [row.machineId, formatJobNumber(row.jobCode)]));
-  return machines.map((machine) =>
-    FieldMachine.parse({ ...machine, onSiteJobNumber: jobByMachine.get(machine.id) ?? null }),
+  const mode = fieldJobAccessMode(actor);
+  return machines.map(({ busyOnJob, ...machine }) =>
+    FieldMachine.parse({
+      ...machine,
+      busyOnJob: busyOnJob && (mode === 'all' || busyOnJob.foremanUserId === actor.userId) ? busyOnJob : null,
+      onSiteJobNumber: busyOnJob?.jobNumber ?? null,
+    }),
   );
 }

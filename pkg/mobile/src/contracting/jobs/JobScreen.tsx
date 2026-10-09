@@ -1,6 +1,6 @@
 import { formatHours } from '@pkg/domain';
 import { assignmentStateColorClassNames, canOpenJobCards, hasJobCard, judgeJobAction } from '@pkg/domain/contracting';
-import type { AssignmentState, BreakdownSubjectKind, FieldStint, JobCardVariant } from '@pkg/schema/contracting';
+import type { AssignmentState, FieldStint, JobCardVariant } from '@pkg/schema/contracting';
 import { IconPlayerPlay, IconPlayerStop, IconPlus } from '@tabler/icons-react-native';
 import { type Href, router, useLocalSearchParams } from 'expo-router';
 import { Pressable, ScrollView, View } from 'react-native';
@@ -35,8 +35,12 @@ export default function JobScreen() {
   const canAdd = job ? judgeJobAction('assign', job, access).allowed : false;
   const canShareJobCard = canOpenJobCards(access) && finished;
   const canReport = useSessionPermission('contracting_breakdown:report') && !finished;
-  const reportProblem = (subjectKind: BreakdownSubjectKind, subjectId: string) =>
-    router.push({ pathname: '/contracting/workshop/report', params: { subjectKind, subjectId, jobId } });
+  // The towed Implement rides along, so the report screen can offer it beside the Machine.
+  const reportProblem = (stint: FieldStint) =>
+    router.push({
+      pathname: '/contracting/workshop/report',
+      params: { subjectKind: 'machine', subjectId: stint.machineId, implementId: stint.implementId ?? '', jobId },
+    });
   const share = useBusyAction();
   const shareJobCard = (variant: JobCardVariant) => {
     if (job)
@@ -76,7 +80,7 @@ export default function JobScreen() {
           <View className="gap-2 rounded-xl border border-border bg-surface p-4">
             <View className="flex-row items-center justify-between gap-2">
               <Text className="min-w-0 flex-1 text-xl text-foreground" weight="bold" numberOfLines={1}>
-                {job.customerName} · {job.farmName}
+                {job.customerName}
               </Text>
               {finished ? (
                 <View className="shrink-0">
@@ -84,8 +88,9 @@ export default function JobScreen() {
                 </View>
               ) : null}
             </View>
-            <Text className="text-foreground">{job.workTypeName}</Text>
-            <Text className="text-muted-foreground">{job.jobNumber}</Text>
+            <Text className="text-muted-foreground" numberOfLines={1}>
+              {job.farmName} · {job.workTypeName}
+            </Text>
             {job.description ? <Text className="text-muted-foreground">{job.description}</Text> : null}
           </View>
         ) : (
@@ -124,7 +129,7 @@ export default function JobScreen() {
             canCapture={canCapture}
             canReport={canReport}
             key={stint.id}
-            onReport={reportProblem}
+            onReport={() => reportProblem(stint)}
             stint={stint}
             onStart={() => openCapture(stint, 'arrival')}
             onStop={() => openCapture(stint, 'departure')}
@@ -177,7 +182,7 @@ function StintCard({
   onStart: () => void;
   onStop: () => void;
   onReadd: () => void;
-  onReport: (subjectKind: BreakdownSubjectKind, subjectId: string) => void;
+  onReport: () => void;
 }) {
   return (
     <View className="gap-2 rounded-xl border border-border bg-surface p-4">
@@ -211,18 +216,7 @@ function StintCard({
         <CaptureButton icon={IconPlayerStop} label="Stop — capture departure" onPress={onStop} />
       ) : null}
       {stint.state === 'left' && canAdd ? <Button title="Re-add machine" onPress={onReadd} /> : null}
-      {canReport ? (
-        <View className="gap-2">
-          <Button icon={BreakdownIcon} title="Report a problem" onPress={() => onReport('machine', stint.machineId)} />
-          {stint.implementId && stint.implementCode ? (
-            <Button
-              icon={BreakdownIcon}
-              title={`Report a problem with ${stint.implementCode}`}
-              onPress={() => onReport('implement', stint.implementId ?? '')}
-            />
-          ) : null}
-        </View>
-      ) : null}
+      {canReport ? <Button icon={BreakdownIcon} title="Report a problem" onPress={onReport} /> : null}
     </View>
   );
 }

@@ -3,6 +3,7 @@ import * as React from 'react';
 
 import { Field, FieldDescription, FieldError } from '@/components/ui/field.js';
 import { Input } from '@/components/ui/input.js';
+import { InputGroup, InputGroupAddon, InputGroupInput, InputGroupText } from '@/components/ui/input-group.js';
 import { useFieldContext } from '../hooks/form-context.js';
 import { getFieldErrors } from '../utils/field-errors.js';
 import { type FieldHelp, FieldLabelRow } from './FieldLabelRow.js';
@@ -23,6 +24,8 @@ export type NumberFieldProps = {
   help?: FieldHelp;
   label: React.ReactNode;
   orientation?: React.ComponentProps<typeof Field>['orientation'];
+  /** A unit shown inside the input on the right, such as `hours`, the way `CurrencyField` shows its symbol. */
+  unit?: string;
 } & NumberFieldInputProps;
 
 export function NumberField({
@@ -34,6 +37,7 @@ export function NumberField({
   inputMode = 'decimal',
   label,
   orientation,
+  unit,
   ...inputProps
 }: NumberFieldProps) {
   const field = useFieldContext<number>();
@@ -65,6 +69,26 @@ export function NumberField({
     // The guard above makes a re-run on an unstable `handleChange` identity a no-op.
   }, [decimals, field.handleChange, field.state.value]);
 
+  const input = {
+    'aria-invalid': isInvalid,
+    id: field.name,
+    inputMode,
+    name: field.name,
+    onBlur: () => {
+      const roundedValue = roundNumberFieldValue(field.state.value, decimals);
+      if (hasNumberFieldValueChanged(field.state.value, roundedValue)) commitValue(roundedValue);
+      field.handleBlur();
+      setDisplayValue(formatNumberFieldValue(roundedValue, decimals));
+    },
+    onChange: (event: React.ChangeEvent<HTMLInputElement>) => {
+      setDisplayValue(event.target.value);
+      commitValue(parseNumberFieldValue(event.target.value, emptyValue));
+    },
+    type: 'text',
+    value: displayValue,
+    ...inputProps,
+  };
+
   return (
     <Field
       data-disabled={inputProps.disabled}
@@ -75,25 +99,16 @@ export function NumberField({
       <FieldLabelRow help={help} htmlFor={field.name}>
         {label}
       </FieldLabelRow>
-      <Input
-        aria-invalid={isInvalid}
-        id={field.name}
-        inputMode={inputMode}
-        name={field.name}
-        onBlur={() => {
-          const roundedValue = roundNumberFieldValue(field.state.value, decimals);
-          if (hasNumberFieldValueChanged(field.state.value, roundedValue)) commitValue(roundedValue);
-          field.handleBlur();
-          setDisplayValue(formatNumberFieldValue(roundedValue, decimals));
-        }}
-        onChange={(event) => {
-          setDisplayValue(event.target.value);
-          commitValue(parseNumberFieldValue(event.target.value, emptyValue));
-        }}
-        type="text"
-        value={displayValue}
-        {...inputProps}
-      />
+      {unit ? (
+        <InputGroup>
+          <InputGroupInput {...input} />
+          <InputGroupAddon align="inline-end">
+            <InputGroupText>{unit}</InputGroupText>
+          </InputGroupAddon>
+        </InputGroup>
+      ) : (
+        <Input {...input} />
+      )}
       {description ? <FieldDescription>{description}</FieldDescription> : null}
       <FieldError errors={fieldErrors} />
     </Field>

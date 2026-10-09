@@ -1,38 +1,42 @@
+import { breakdownSubjectKindLabels, breakdownUrgencyLabels } from '@pkg/domain/contracting';
 import type { BreakdownSummary } from '@pkg/schema/contracting';
 import { router } from 'expo-router';
-import { Pressable, View } from 'react-native';
+import { CatalogListCard } from '@/components/CatalogList';
 import { DateText } from '@/components/DateText';
 import { Text } from '@/components/ui/text';
-import { BreakdownStatusBadge, BreakdownSubjectIcons } from '@/contracting/components/BreakdownSubjectIcons';
+import { BreakdownStatusBadge } from '@/contracting/components/BreakdownSubjectIcons';
+import { urgencyTileProps } from '@/contracting/components/list-tiles';
 
 /** One Breakdown in a list, opening its detail: the Workshop tab's rows and a Machine's open Breakdowns. */
 export function BreakdownRow({ breakdown }: { breakdown: BreakdownSummary }) {
   const { subject } = breakdown;
+  const tile = urgencyTileProps(breakdown.urgency);
   return (
-    <Pressable
-      accessibilityRole="button"
+    <CatalogListCard
+      accessibilityHint="Opens the Breakdown"
+      accessibilityLabel={`${breakdownUrgencyLabels[breakdown.urgency]} on ${breakdownSubjectKindLabels[subject.kind]} ${subject.code}`}
+      avatarClassName={tile.className}
+      avatarFallback={tile.fallback}
+      avatarName={subject.code}
+      mainText={subject.code}
+      metadata={
+        <>
+          <DateText
+            className="shrink-0 text-[10px] text-muted-foreground"
+            date={breakdown.reportedAt}
+            format="medium"
+            mono
+          />
+          <Text className="min-w-0 flex-1 text-[10px] text-muted-foreground" mono numberOfLines={1}>
+            {` · ${[breakdown.reporterName, breakdown.mechanicName].filter(Boolean).join(' · ')}`}
+          </Text>
+        </>
+      }
       onPress={() =>
         router.push({ pathname: '/contracting/workshop/[breakdownId]', params: { breakdownId: breakdown.id } })
       }
-      className="w-full gap-2 rounded-xl border border-border bg-surface p-4"
-    >
-      <View className="flex-row items-center justify-between gap-2">
-        <View className="min-w-0 flex-1 flex-row items-center gap-2">
-          <BreakdownSubjectIcons urgency={breakdown.urgency} subject={subject} />
-          <Text className="min-w-0 flex-1 text-lg text-foreground" weight="bold" numberOfLines={1}>
-            {subject.code}
-          </Text>
-        </View>
-        <BreakdownStatusBadge status={breakdown.status} />
-      </View>
-      <Text className="text-foreground" numberOfLines={2}>
-        {breakdown.firstLine}
-      </Text>
-      <Text className="text-sm text-muted-foreground">
-        <DateText className="text-sm text-muted-foreground" date={breakdown.reportedAt} format="medium" /> ·{' '}
-        {breakdown.reporterName}
-        {breakdown.mechanicName ? ` · ${breakdown.mechanicName}` : ''}
-      </Text>
-    </Pressable>
+      subText={breakdown.firstLine}
+      trailing={<BreakdownStatusBadge status={breakdown.status} />}
+    />
   );
 }

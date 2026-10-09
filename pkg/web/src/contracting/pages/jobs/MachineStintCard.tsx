@@ -5,30 +5,41 @@ import {
   assignmentAttentionLevelColorClassNames,
   assignmentNeedsALookLevel,
   assignmentStateColorClassNames,
+  breakdownPhases,
+  breakdownStatusColorClassNames,
+  breakdownStatusLabels,
+  breakdownUrgencyColorClassNames,
+  breakdownUrgencyLabels,
   GAP_FLAG_THRESHOLD_HOURS,
   isOverGapWindow,
   shownReadingAttention,
 } from '@pkg/domain/contracting';
 import type {
   Assignment,
-  AssignmentAttentionLevel,
+  BreakdownSummary,
+  BreakdownUrgency,
   JobReading,
   JobReadingAttentionKind,
-  NeedsALookLevel,
 } from '@pkg/schema/contracting';
 import {
   IconAlertTriangle,
+  IconCheck,
   IconChevronDown,
   IconEye,
+  IconFlagFilled,
   IconHourglass,
   IconPencil,
   IconPencilCheck,
   IconPhotoOff,
   IconPlayerPlay,
   IconPlayerStop,
+  IconPlus,
+  IconRuler2,
   type Icon as TablerIcon,
 } from '@tabler/icons-react';
 import { useMutation } from '@tanstack/react-query';
+import { Link, useNavigate } from '@tanstack/react-router';
+import { useState } from 'react';
 import { RemoveEntityButton } from '@/components/common/RemoveEntityButton.js';
 import { Badge } from '@/components/ui/badge.js';
 import { Button } from '@/components/ui/button.js';
@@ -36,6 +47,7 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card.js';
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuItem,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
@@ -44,6 +56,8 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { CategoryIcon } from '@/contracting/components/CategoryIcon.js';
 import { MachineDialogTitle } from '@/contracting/components/MachineDialogTitle.js';
 import { readingEvidence } from '@/contracting/components/ReadingEvidence.js';
+import { IconAction, Timeline, TimelineRow } from '@/contracting/components/Timeline.js';
+import { useCan } from '@/hooks/use-access.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { cn } from '@/lib/utils.js';
 import { AddMeasureDialog } from './AddMeasureDialog.js';
@@ -52,74 +66,6 @@ import type { JobSheet, MachineDialog } from './types.js';
 import { useJobWrite } from './use-job-write.js';
 
 type Opens = { onOpen: (dialog: MachineDialog) => void };
-
-type DotTone = 'done' | 'current' | 'empty' | NeedsALookLevel;
-
-function TimelineRow({
-  title,
-  detail,
-  tone,
-  actions,
-}: {
-  title: string;
-  detail: React.ReactNode;
-  tone: DotTone;
-  actions?: React.ReactNode;
-}) {
-  return (
-    <li className="relative flex min-h-9 items-start justify-between gap-2">
-      <span
-        aria-hidden="true"
-        className={cn(
-          'absolute -left-[27px] top-1 size-3 rounded-full border-2',
-          tone === 'done' && 'border-emerald-500 bg-emerald-500',
-          tone === 'current' && 'border-primary bg-primary',
-          tone === 'empty' && 'border-muted-foreground bg-card',
-          (tone === 'warning' || tone === 'critical') &&
-            `border-transparent ${assignmentAttentionLevelColorClassNames[tone].dot}`,
-        )}
-      />
-      <div className="min-w-0">
-        <strong className="block text-sm leading-5 font-medium">{title}</strong>
-        <div className="text-xs leading-4 text-muted-foreground">{detail}</div>
-      </div>
-      {actions ? <div className="flex shrink-0 items-start gap-1">{actions}</div> : null}
-    </li>
-  );
-}
-
-function IconAction({
-  label,
-  icon: Icon,
-  onClick,
-  level,
-}: {
-  label: string;
-  icon: TablerIcon;
-  onClick: () => void;
-  /** Paints the button in an assignment attention level's colours. */
-  level?: AssignmentAttentionLevel;
-}) {
-  return (
-    <Tooltip>
-      <TooltipTrigger
-        render={
-          <Button
-            aria-label={label}
-            className={level ? assignmentAttentionLevelColorClassNames[level].button : undefined}
-            onClick={onClick}
-            size="icon-sm"
-            type="button"
-            variant="outline"
-          />
-        }
-      >
-        <Icon aria-hidden="true" />
-      </TooltipTrigger>
-      <TooltipContent>{label}</TooltipContent>
-    </Tooltip>
-  );
-}
 
 const readingAttentionIcons: Record<JobReadingAttentionKind, TablerIcon> = {
   disputed: IconAlertTriangle,
@@ -286,7 +232,6 @@ function GapRow({ stint, sheet, onOpen }: { stint: Assignment; sheet: JobSheet }
 }
 
 function MeasureDetail({ stint }: { stint: Assignment }) {
-  if (!stint.measures.length) return <>None recorded</>;
   return (
     <>
       {stint.measures
@@ -299,13 +244,116 @@ function MeasureDetail({ stint }: { stint: Assignment }) {
   );
 }
 
+/** A Breakdown's dot keeps its urgency's colour; a Fixed one carries a tick. */
+const breakdownDotClassNames: Record<BreakdownUrgency, string> = {
+  'code-red': 'border-red-500 bg-red-500',
+  'code-green': 'border-emerald-500 bg-emerald-500',
+};
+
+function BreakdownRow({ breakdown }: { breakdown: BreakdownSummary }) {
+  const navigate = useNavigate();
+  const urgency = breakdownUrgencyLabels[breakdown.urgency];
+  const status = breakdownStatusLabels[breakdown.status];
+  const statusTone = breakdownStatusColorClassNames[breakdown.status];
+  const fixed = breakdown.status === 'solved';
+  const subject = breakdown.subject.kind === 'implement' ? `${breakdown.subject.code} · ` : '';
+  const when = fixed && breakdown.solvedAt ? `Fixed ${formatDate(breakdown.solvedAt, 'day')} · ` : '';
+  return (
+    <TimelineRow
+      actions={
+        <IconAction
+          icon={IconPencil}
+          label={`Edit ${urgency} in the Workshop`}
+          onClick={() => void navigate({ to: '/contracting/workshop/$id', params: { id: breakdown.id } })}
+        />
+      }
+      detail={
+        <span className="block truncate" title={`${when}${subject}${breakdown.firstLine}`}>
+          {when}
+          {subject}
+          {breakdown.firstLine}
+        </span>
+      }
+      dotClassName={breakdownDotClassNames[breakdown.urgency]}
+      dotContent={fixed ? <IconCheck aria-hidden="true" className="size-2.5 text-white" stroke={4} /> : null}
+      title={
+        <span className="flex items-center gap-2">
+          {urgency}
+          <Badge className={cn('h-4 px-1.5 text-[0.65rem]', statusTone.chip, statusTone.text)} variant="outline">
+            {status}
+          </Badge>
+        </span>
+      }
+      tone="done"
+    />
+  );
+}
+
+/** The plus under the timeline: adds a Measure or reports a Code Green or Code Red. */
+function AddMenu({
+  stint,
+  onMeasure,
+  canMeasure,
+  canReport,
+  onOpen,
+}: { stint: Assignment; onMeasure: () => void; canMeasure: boolean; canReport: boolean } & Opens) {
+  if (!canMeasure && !canReport) return null;
+  const report = (urgency: BreakdownUrgency) => onOpen({ kind: 'breakdown', stintId: stint.id, urgency });
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger
+        aria-label={`Add to ${stint.machineCode}`}
+        render={<Button size="icon-sm" type="button" variant="outline" />}
+      >
+        <IconPlus aria-hidden="true" />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-44">
+        {canMeasure ? (
+          <DropdownMenuItem onClick={onMeasure}>
+            <IconRuler2 aria-hidden="true" />
+            Add measure
+          </DropdownMenuItem>
+        ) : null}
+        {canReport ? (
+          <>
+            <DropdownMenuItem onClick={() => report('code-green')}>
+              <IconFlagFilled aria-hidden="true" className={breakdownUrgencyColorClassNames['code-green'].icon} />
+              {breakdownUrgencyLabels['code-green']}
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => report('code-red')}>
+              <IconFlagFilled aria-hidden="true" className={breakdownUrgencyColorClassNames['code-red'].icon} />
+              {breakdownUrgencyLabels['code-red']}
+            </DropdownMenuItem>
+          </>
+        ) : null}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
 export function MachineStintCard({
   stint,
   stintNumber,
   sheet,
+  breakdowns,
+  canReport,
   onOpen,
-}: { stint: Assignment; stintNumber: number; sheet: JobSheet } & Opens) {
+}: {
+  stint: Assignment;
+  stintNumber: number;
+  sheet: JobSheet;
+  /** This stint's Breakdowns on the Job, oldest first. */
+  breakdowns: readonly BreakdownSummary[];
+  /** Whether the reader may report a Breakdown on this Job. */
+  canReport: boolean;
+} & Opens) {
   const trpc = useTRPC();
+  const [measuring, setMeasuring] = useState(false);
+  const readsMachines = useCan('contracting_machine:read').can;
+  const canMeasure = sheet.stintAction('editMeasures', 'editMeasures', stint).allowed;
+  const phases = breakdownPhases(stint, breakdowns);
+  const breakdownRows = (phase: readonly BreakdownSummary[]) =>
+    phase.map((breakdown) => <BreakdownRow breakdown={breakdown} key={breakdown.id} />);
   const write = useJobWrite();
   const travel = useMutation(
     trpc.contractingJobs.assignments.patch.mutationOptions(write.card('Unable to update Machine Assignment.')),
@@ -329,7 +377,17 @@ export function MachineStintCard({
       <CardHeader className="grid grid-cols-[auto_minmax(0,1fr)_auto] gap-2 pb-4">
         <CategoryIcon colour={stint.categoryColour} icon={stint.categoryIcon} size={20} />
         <div className="min-w-0">
-          <strong className="block truncate text-base leading-5 font-semibold">{stint.machineCode}</strong>
+          {readsMachines ? (
+            <Link
+              className="block truncate text-base leading-5 font-semibold hover:underline"
+              params={{ id: stint.machineId }}
+              to="/contracting/fleet/$id/edit"
+            >
+              {stint.machineCode}
+            </Link>
+          ) : (
+            <strong className="block truncate text-base leading-5 font-semibold">{stint.machineCode}</strong>
+          )}
           <span className="block truncate text-xs text-muted-foreground">
             {stint.categoryName} · {stintLabel}
           </span>
@@ -346,7 +404,7 @@ export function MachineStintCard({
         </Badge>
       </CardHeader>
       <CardContent className="flex flex-1 flex-col">
-        <ol className="mb-4 ml-2 space-y-3 border-l border-border pl-5">
+        <Timeline className="mb-3">
           <TimelineRow
             actions={
               sheet.stintAction('assign', 'changeResources', stint).allowed ? (
@@ -372,6 +430,7 @@ export function MachineStintCard({
             tone="done"
           />
           <GapRow onOpen={onOpen} sheet={sheet} stint={stint} />
+          {breakdownRows(phases.beforeArrival)}
           <TimelineRow
             actions={
               stint.arrival ? (
@@ -388,6 +447,7 @@ export function MachineStintCard({
             title="Arrival"
             tone={stint.arrival ? 'done' : planned ? 'current' : 'empty'}
           />
+          {breakdownRows(phases.onSite)}
           <TimelineRow
             actions={
               stint.departure ? (
@@ -404,17 +464,30 @@ export function MachineStintCard({
             title="Departure"
             tone={stint.departure ? 'done' : onSite ? 'current' : 'empty'}
           />
-          <TimelineRow
-            actions={
-              sheet.stintAction('editMeasures', 'editMeasures', stint).allowed ? (
-                <AddMeasureDialog stint={stint} />
-              ) : null
-            }
-            detail={<MeasureDetail stint={stint} />}
-            title="Measures"
-            tone={stint.measures.length ? 'done' : 'empty'}
+          {breakdownRows(phases.afterDeparture)}
+          {stint.measures.length ? (
+            <TimelineRow
+              actions={
+                canMeasure ? (
+                  <IconAction icon={IconPencil} label="Edit measures" onClick={() => setMeasuring(true)} />
+                ) : null
+              }
+              detail={<MeasureDetail stint={stint} />}
+              title="Measures"
+              tone="done"
+            />
+          ) : null}
+        </Timeline>
+        <div className="-mt-1 mb-4 flex justify-end">
+          <AddMenu
+            canMeasure={canMeasure}
+            canReport={canReport}
+            onMeasure={() => setMeasuring(true)}
+            onOpen={onOpen}
+            stint={stint}
           />
-        </ol>
+        </div>
+        {canMeasure ? <AddMeasureDialog onOpenChange={setMeasuring} open={measuring} stint={stint} /> : null}
         <div className="mt-auto flex min-h-7 flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t border-border pt-3 text-xs text-muted-foreground">
           {stint.workHours !== null ? (
             <span>

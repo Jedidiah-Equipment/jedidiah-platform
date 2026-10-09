@@ -7,7 +7,7 @@ import {
   breakdownUrgencies,
   type Mechanic,
 } from '@pkg/schema/contracting';
-import { IconAlertTriangle, IconFlag } from '@tabler/icons-react';
+import { IconAlertTriangle } from '@tabler/icons-react';
 import { Link } from '@tanstack/react-router';
 import { useMemo } from 'react';
 import { DateDisplay } from '@/components/common/DateDisplay.js';
@@ -72,16 +72,16 @@ export function useWorkshopColumns({
         header: 'Reported',
         enableColumnFilter: true,
         enableSorting: true,
-        meta: { filterVariant: 'date-range', headerClassName: 'min-w-36' },
+        meta: { filterVariant: 'date-range', headerClassName: 'w-36', cellClassName: 'w-36 whitespace-nowrap' },
         cell: ({ row }) => <DateDisplay date={row.original.reportedAt} format="medium" />,
       },
       {
         id: URGENCY_COLUMN_ID,
         accessorKey: 'urgency',
-        header: () => <IconFlag aria-label="Urgency" className="size-4" role="img" />,
+        header: 'Code',
         enableColumnFilter: true,
         enableSorting: true,
-        meta: { filterOptions: urgencyFilterOptions, filterVariant: 'multi-select', headerClassName: 'w-0' },
+        meta: { filterOptions: urgencyFilterOptions, filterVariant: 'multi-select', headerClassName: 'w-32' },
         cell: ({ row }) => <BreakdownUrgencyIcon urgency={row.original.urgency} />,
       },
       {

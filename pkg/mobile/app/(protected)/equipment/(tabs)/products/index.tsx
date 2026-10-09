@@ -2,9 +2,9 @@ import { keepPreviousData, useInfiniteQuery, useQuery } from '@tanstack/react-qu
 import { useMemo, useState } from 'react';
 import { View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { CatalogListSkeleton } from '@/components/CatalogList';
 import { infiniteQueryPagination, TabRootList } from '@/components/TabRootList';
 import { Text } from '@/components/ui/text';
-import { CatalogListSkeleton } from '@/equipment/components/CatalogList';
 import { ProductCatalogCard, ProductCatalogControls } from '@/equipment/components/products/ProductCatalog';
 import { MainTabToolbar } from '@/equipment/components/TopToolbar';
 import {

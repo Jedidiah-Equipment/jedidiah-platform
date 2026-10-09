@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 import { ScrollView, useWindowDimensions, View } from 'react-native';
 import { Avatar } from '@/components/Avatar';
 import { SECONDARY_PAGE_CONTENT_STYLE } from '@/components/page-frame';
+import { SubTabControl, type SubTabOption } from '@/components/SubTabControl';
 import { Pulse } from '@/components/ui/pulse';
 import { RefreshControl } from '@/components/ui/refresh-control';
 import { StatusBadge } from '@/components/ui/status-badge';
@@ -14,7 +15,6 @@ import { JobDetailSections } from '@/equipment/components/bays/JobDetailSections
 import { JobWorkCard } from '@/equipment/components/bays/JobWorkCard';
 import { DaysLeftChip, STATUS_TONE, StatusChip, type StatusTone } from '@/equipment/components/bays/status-chip';
 import { GiveFeedbackButton } from '@/equipment/components/feedback/GiveFeedbackButton';
-import { SubTabControl, type SubTabOption } from '@/equipment/components/SubTabControl';
 import { SecondaryPageToolbar } from '@/equipment/components/TopToolbar';
 import { type JobDetailState, type JobRouteStopCard, useJobDetail } from '@/equipment/lib/use-job-detail';
 import { createLiteralGuard, usePersistedState } from '@/lib/use-persisted-state';

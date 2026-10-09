@@ -8,6 +8,7 @@ import {
 import { UUID } from '@pkg/schema';
 import {
   type AssignmentState,
+  type BreakdownUrgency,
   type JobActionName,
   type JobCreateInput,
   JobDescription,
@@ -78,4 +79,5 @@ export type JobSheet = ReturnType<typeof jobSheet>;
 export type MachineDialog =
   | { kind: 'plan' }
   | { kind: 'arrival' | 'departure' | 'gap'; stintId: string }
-  | { kind: 'reading'; stintId: string; role: 'arrival' | 'departure' };
+  | { kind: 'reading'; stintId: string; role: 'arrival' | 'departure' }
+  | { kind: 'breakdown'; stintId: string; urgency: BreakdownUrgency };

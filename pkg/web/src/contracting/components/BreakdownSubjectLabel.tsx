@@ -13,7 +13,7 @@ import { CategoryIcon } from './CategoryIcon.js';
 
 type IconSize = 14 | 16 | 20 | 24;
 
-/** A Breakdown's urgency: a red or green flag on a tinted disc the size of a `CategoryIcon`. */
+/** A Breakdown's urgency: a red or green flag on a tinted tile the size of a `CategoryIcon`. */
 export function BreakdownUrgencyIcon({ urgency, size = 20 }: { urgency: BreakdownUrgency; size?: IconSize }) {
   const tone = breakdownUrgencyColorClassNames[urgency];
   const label = breakdownUrgencyLabels[urgency];
@@ -23,7 +23,7 @@ export function BreakdownUrgencyIcon({ urgency, size = 20 }: { urgency: Breakdow
       role="img"
       aria-label={label}
       title={label}
-      className={cn('inline-flex shrink-0 items-center justify-center rounded-full border', tone.chip, tone.icon)}
+      className={cn('inline-flex shrink-0 items-center justify-center rounded-md border', tone.chip, tone.icon)}
       style={{ width: size + 10, height: size + 10 }}
     >
       <IconFlagFilled aria-hidden="true" style={{ width: glyph, height: glyph }} />

@@ -54,7 +54,7 @@ function TilePickerField<T extends string>({
           title={selected?.label}
           className={cn(
             buttonVariants({ variant: 'ghost', size: 'icon' }),
-            'size-8! self-start rounded-full border-0 p-0 [&>span]:size-full!',
+            'size-8! self-start rounded-md border-0 p-0 [&>span]:size-full!',
           )}
         >
           {selected?.tile ?? <IconCategory />}

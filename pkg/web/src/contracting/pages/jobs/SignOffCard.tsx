@@ -49,7 +49,7 @@ function SignOffFields({
       </form.AppField>
       <form.AppField name="dieselLitres">
         {(field) => (
-          <field.NumberField label="Diesel supplied (litres)" decimals={2} min={0} disabled={!dieselEditable} />
+          <field.NumberField label="Diesel supplied" decimals={2} min={0} unit="litres" disabled={!dieselEditable} />
         )}
       </form.AppField>
       <form.AppField name="notes">{(field) => <field.TextareaField label="Site notes" />}</form.AppField>

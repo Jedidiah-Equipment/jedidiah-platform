@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { type DatabaseTransaction, type Db, type StoredFile, user } from '@pkg/db';
+import { type DatabaseTransaction, type Db, type StoredFile, user, withPagination } from '@pkg/db';
 import {
   contractingCategories,
   contractingHourReadings,
@@ -21,8 +21,13 @@ import {
   readingVerification,
   resolveReadingAmendment,
 } from '@pkg/domain/contracting';
-import type { AuthId } from '@pkg/schema';
-import { FieldReading, ReadingAmendInput, ReadingCaptureInput } from '@pkg/schema/contracting';
+import { type AuthId, getNextCursor } from '@pkg/schema';
+import {
+  FieldReading,
+  type FieldReadingPageInput,
+  ReadingAmendInput,
+  ReadingCaptureInput,
+} from '@pkg/schema/contracting';
 import { and, asc, desc, eq, getTableColumns, gt, inArray, or } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { defineAuditDescriptor, recordAuditCreate } from '../../audit/audit-writer.js';
@@ -505,4 +510,24 @@ export async function listFieldReadings({ db, machineId }: { db: Db; machineId: 
     .where(eq(contractingHourReadings.machineId, machineId))
     .orderBy(desc(contractingHourReadings.sequence));
   return rows.map((row) => FieldReading.parse(readingToWire(row)));
+}
+
+/** A page of a Machine's Hour Readings, newest first; `listFieldReadings` stays whole for the capture screens. */
+export async function listFieldReadingsPage({ db, input }: { db: Db; input: FieldReadingPageInput }) {
+  const onMachine = eq(contractingHourReadings.machineId, input.machineId);
+  const query = db
+    .select()
+    .from(contractingHourReadings)
+    .where(onMachine)
+    .orderBy(desc(contractingHourReadings.sequence))
+    .$dynamic();
+  const [rows, total] = await Promise.all([
+    withPagination(query, input),
+    db.$count(contractingHourReadings, onMachine),
+  ]);
+  return {
+    items: rows.map((row) => FieldReading.parse(readingToWire(row))),
+    nextCursor: getNextCursor({ count: rows.length, cursor: input.cursor, total }),
+    total,
+  };
 }

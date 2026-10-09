@@ -18,6 +18,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useAutosaveForm } from '@/components/form';
 import { SECONDARY_PAGE_CONTENT_STYLE } from '@/components/page-frame';
+import { SubTabControl, type SubTabOption } from '@/components/SubTabControl';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { useAppToast } from '@/components/ui/toast';
@@ -30,7 +31,6 @@ import { QuoteStatusChip } from '@/equipment/components/quotes/QuoteStatusChip';
 import { QuoteSummaryDrawer } from '@/equipment/components/quotes/QuoteSummaryDrawer';
 import { QuoteWorkItemsEditor } from '@/equipment/components/quotes/QuoteWorkItemsEditor';
 import { SalespersonSelectField } from '@/equipment/components/quotes/SalespersonSelectField';
-import { SubTabControl, type SubTabOption } from '@/equipment/components/SubTabControl';
 import { SecondaryPageToolbar } from '@/equipment/components/TopToolbar';
 import {
   getQuoteEditFormValuesValidator,

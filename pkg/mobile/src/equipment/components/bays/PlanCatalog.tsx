@@ -4,6 +4,7 @@ import type { Department } from '@pkg/schema/equipment';
 import { IconArrowsSort } from '@tabler/icons-react-native';
 import { useRouter } from 'expo-router';
 import { View } from 'react-native';
+import { CatalogListCard } from '@/components/CatalogList';
 import {
   type ListControlOption,
   ListControlRow,
@@ -11,7 +12,6 @@ import {
   ListSearchControl,
 } from '@/components/ListControls';
 import { Text } from '@/components/ui/text';
-import { CatalogListCard } from '@/equipment/components/CatalogList';
 import { DepartmentIcon } from '@/equipment/components/departments/DepartmentIcon';
 import { StockBadge } from '@/equipment/components/StockBadge';
 import type { BaySort } from '@/equipment/lib/bay-sort';

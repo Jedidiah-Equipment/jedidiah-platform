@@ -23,6 +23,8 @@ type AttachmentFieldProps = {
   disabled?: boolean;
   error?: string;
   file: File | null;
+  /** The owner draws its own heading and file rules above the drop area; the label still names the input. */
+  hideHeader?: boolean;
   id?: string | undefined;
   label: string;
   onChange: (file: File | null) => void;
@@ -37,6 +39,7 @@ export function AttachmentField({
   disabled,
   error,
   file,
+  hideHeader = false,
   id,
   label,
   onChange,
@@ -119,15 +122,17 @@ export function AttachmentField({
 
   return (
     <Field className="min-w-0" data-invalid={!!error}>
-      <div className="flex flex-wrap items-baseline justify-between gap-x-2 gap-y-1">
-        <FieldLabel htmlFor={inputId} className="text-xs">
-          {label}
-        </FieldLabel>
-        <span className="text-[0.65rem] text-muted-foreground">
-          {describeFileContentTypes(policy.allowedContentTypes)}
-          {policy.maxBytes !== undefined ? ` · up to ${formatBytes(policy.maxBytes)}` : ''}
-        </span>
-      </div>
+      {hideHeader ? null : (
+        <div className="flex flex-wrap items-baseline justify-between gap-x-2 gap-y-1">
+          <FieldLabel htmlFor={inputId} className="text-xs">
+            {label}
+          </FieldLabel>
+          <span className="text-[0.65rem] text-muted-foreground">
+            {describeFileContentTypes(policy.allowedContentTypes)}
+            {policy.maxBytes !== undefined ? ` · up to ${formatBytes(policy.maxBytes)}` : ''}
+          </span>
+        </div>
+      )}
       <Input
         ref={input}
         id={inputId}

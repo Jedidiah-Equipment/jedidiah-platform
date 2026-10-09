@@ -16,7 +16,7 @@ type IconSize = 16 | 20 | 24;
 /** The Breakdown glyph: urgency, and every action that reports a problem. */
 export const BreakdownIcon = IconFlagFilled;
 
-/** A Breakdown's urgency: a red or green flag on a tinted disc the size of a `CategoryIcon`, as web draws it. */
+/** A Breakdown's urgency: a red or green flag on a tinted tile the size of a `CategoryIcon`, as web draws it. */
 export function BreakdownUrgencyIcon({ urgency, size = 20 }: { urgency: BreakdownUrgency; size?: IconSize }) {
   const tone = breakdownUrgencyColorClassNames[urgency];
   return (
@@ -24,7 +24,7 @@ export function BreakdownUrgencyIcon({ urgency, size = 20 }: { urgency: Breakdow
       accessibilityLabel={breakdownUrgencyLabels[urgency]}
       accessibilityRole="image"
       accessible
-      className={`shrink-0 items-center justify-center rounded-full border ${tone.chip}`}
+      className={`shrink-0 items-center justify-center rounded-lg border ${tone.chip}`}
       style={{ width: size + 10, height: size + 10 }}
     >
       <Icon className={tone.icon} icon={BreakdownIcon} size={Math.round(size * 0.8)} />

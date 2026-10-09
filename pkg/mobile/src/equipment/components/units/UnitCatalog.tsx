@@ -3,9 +3,9 @@ import type { ProductUnitSummary } from '@pkg/schema/equipment';
 import { IconArrowsSort, IconFilter } from '@tabler/icons-react-native';
 import { useRouter } from 'expo-router';
 import { View } from 'react-native';
+import { CatalogListCard } from '@/components/CatalogList';
 import { ListControlRow, ListDropdownControl, ListSearchControl } from '@/components/ListControls';
 import { Text } from '@/components/ui/text';
-import { CatalogListCard } from '@/equipment/components/CatalogList';
 import { StockBadge } from '@/equipment/components/StockBadge';
 import { UnitBuildStateChip } from '@/equipment/components/units/UnitBuildStateChip';
 import {

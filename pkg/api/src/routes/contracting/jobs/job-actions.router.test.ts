@@ -12,9 +12,11 @@ import {
   createRate,
   createWorkType,
   getJob,
+  isBreakdownError,
   isReadingError,
   markPriced,
   patchChargeLine,
+  reportBreakdown,
   setStintRate,
 } from '@pkg/core/contracting';
 import { type Db, user } from '@pkg/db';
@@ -208,12 +210,24 @@ const attempts: Record<
         disputePrevious: false,
       },
     }),
+  // Reporting arrives over multipart HTTP too, so it is judged at the core report.
+  reportBreakdown: (_caller, { job, stint }, { db }, role) =>
+    reportBreakdown({
+      db,
+      actor: accessForRole(role, callerId),
+      input: {
+        subject: { kind: 'machine', id: stint.machineId },
+        jobId: job.id,
+        urgency: 'code-green',
+        description: 'Leaking',
+      },
+    }),
 };
 
 /** The Job Action a write was refused under, if a Job Action refused it. */
 function refusalOf(error: unknown): { action: string; reason: string } | undefined {
   if (error instanceof TRPCError) return getTRPCPublicMetadata(error) as { action: string; reason: string } | undefined;
-  if (isReadingError(error)) return error.refused;
+  if (isReadingError(error) || isBreakdownError(error)) return error.refused;
   return undefined;
 }
 

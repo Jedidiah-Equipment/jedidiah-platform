@@ -26,6 +26,7 @@ import {
   breakdownSubjectKindLabels,
   deriveBreakdownActions,
   formatJobNumber,
+  judgeJobAction,
 } from '@pkg/domain/contracting';
 import { type AuthId, type ContractingRole, getNextCursor } from '@pkg/schema';
 import {
@@ -199,10 +200,15 @@ async function resolveJob(
     .from(contractingJobs)
     .where(eq(contractingJobs.id, jobId))
     .for('share');
-  if (!job || !(openJobStatuses as readonly string[]).includes(job.status))
-    throw invalidJob('Choose an Upcoming or Active Job.');
-  if (breakdownReadScope(actor) === 'own' && job.foremanUserId !== actor.userId)
-    throw invalidJob('Choose a Job you are Foreman of.');
+  if (!job) throw invalidJob('Choose an Upcoming or Active Job.');
+  // The Job sheet serves this same verdict, so its Code Green and Code Red show exactly when this accepts them.
+  const verdict = judgeJobAction('reportBreakdown', job, actor);
+  if (!verdict.allowed)
+    throw new BreakdownError(
+      verdict.reason === 'no-permission' ? 'breakdown.forbidden' : 'breakdown.invalid_job',
+      verdict.message,
+      { action: 'reportBreakdown', reason: verdict.reason },
+    );
   const [stint] = await tx
     .select({ id: contractingMachineAssignments.id })
     .from(contractingMachineAssignments)
@@ -230,7 +236,11 @@ export async function reportBreakdown({
 }): Promise<BreakdownReport> {
   const input = BreakdownReportInput.parse(raw);
   if (!hasPermission(actor, 'contracting_breakdown:report'))
-    throw new BreakdownError('breakdown.forbidden', 'You cannot report Breakdowns.');
+    throw new BreakdownError(
+      'breakdown.forbidden',
+      'You cannot report Breakdowns.',
+      input.jobId ? { action: 'reportBreakdown', reason: 'no-permission' } : undefined,
+    );
   if ((evidence?.photos.length ?? 0) > BREAKDOWN_MAX_PHOTOS) throw tooManyBreakdownPhotos();
   // A phone retry of an already delivered report returns the stored Breakdown instead of a duplicate.
   async function replay(db: DbOrTx) {

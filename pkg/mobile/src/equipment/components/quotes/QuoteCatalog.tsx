@@ -4,6 +4,7 @@ import type { QuoteSummary } from '@pkg/schema/equipment';
 import { IconAlertTriangle, IconArrowsSort, IconFilter } from '@tabler/icons-react-native';
 import { useRouter } from 'expo-router';
 import { View } from 'react-native';
+import { CatalogListCard } from '@/components/CatalogList';
 import {
   type ListControlOption,
   ListControlRow,
@@ -13,7 +14,6 @@ import {
 } from '@/components/ListControls';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
-import { CatalogListCard } from '@/equipment/components/CatalogList';
 import { offeringAvatarProps } from '@/equipment/components/OfferingAvatar';
 import { QuoteStatusChip } from '@/equipment/components/quotes/QuoteStatusChip';
 import { QUOTE_STATUS_OPTIONS, type QuoteSort, type QuoteStatusFilter } from '@/equipment/lib/quote-presentation';

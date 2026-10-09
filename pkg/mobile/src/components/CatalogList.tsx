@@ -28,7 +28,8 @@ export function CatalogListCard({
   /** Tile styling that rides with `avatarFallback`, e.g. an offering kind's tint. */
   avatarClassName?: string;
   avatarFallback?: ReactNode;
-  avatarName: string;
+  /** Names the tile; omit it for a list whose rows have nothing worth a tile, and the card starts with its text. */
+  avatarName?: string;
   avatarUri?: string | null;
   mainText: string;
   metadata?: ReactNode;
@@ -45,13 +46,15 @@ export function CatalogListCard({
       className={`${CATALOG_CARD_FRAME_CLASS_NAME} active:opacity-80`}
       onPress={onPress}
     >
-      <Avatar
-        className={`h-11 w-11 shrink-0 rounded-lg ${avatarClassName}`}
-        fallback={avatarFallback}
-        name={avatarName}
-        textClassName="text-[10px]"
-        uri={avatarUri}
-      />
+      {avatarName === undefined ? null : (
+        <Avatar
+          className={`h-11 w-11 shrink-0 rounded-lg ${avatarClassName}`}
+          fallback={avatarFallback}
+          name={avatarName}
+          textClassName="text-[10px]"
+          uri={avatarUri}
+        />
+      )}
       <View className="min-w-0 flex-1">
         <Text className="text-[15px] leading-5 text-foreground" numberOfLines={1} weight="semibold">
           {mainText}

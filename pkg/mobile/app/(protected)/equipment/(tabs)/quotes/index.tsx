@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { CatalogListSkeleton } from '@/components/CatalogList';
 import { TabRootList } from '@/components/TabRootList';
 import { Text } from '@/components/ui/text';
-import { CatalogListSkeleton } from '@/equipment/components/CatalogList';
 import { NewQuoteModal } from '@/equipment/components/quotes/NewQuoteModal';
 import {
   QuoteCatalogCard,

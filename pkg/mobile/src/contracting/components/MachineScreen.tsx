@@ -176,7 +176,7 @@ export default function MachineScreen() {
   const breakdowns = useMachineBreakdowns(id);
   const canOpenJobs = useCanReadJobs();
   const [tab, setTab] = usePersistedState<MachineTab>(contractingStorageKey('machine-tab'), 'details', isMachineTab);
-  // An API from before busyOnJob sends only the Job Number, which the section then names on its own.
+  // Only the Job Number arrives for another Foreman's Job, or from an API before busyOnJob; the section names it alone.
   const busyOnJob = machine?.busyOnJob ?? null;
   const openBreakdowns = canReadBreakdowns ? (breakdowns.data?.items ?? []) : [];
   return (

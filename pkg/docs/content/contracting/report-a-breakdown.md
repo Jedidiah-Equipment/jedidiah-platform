@@ -25,4 +25,4 @@ Foremen see only the Breakdowns they reported and those on their own Jobs. The w
 3. Choose **Start work** when the Mechanic starts. The Breakdown is Fixing, and **Started** shows when.
 4. Choose **Mark completed**, write the **Close-out note** — what was wrong and what was done — and choose **Confirm completed**. The Breakdown is then Fixed. A Breakdown can go straight to Fixed from Not fixed.
 
-A Fixed Breakdown shows its Mechanic, when work started and was fixed, who closed it out, and the close-out note; nothing on it can change.
+A Fixed Breakdown shows its Mechanic, when work started and was fixed, who closed it out, and the close-out note; only notes can still be added.

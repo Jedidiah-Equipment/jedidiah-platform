@@ -2,18 +2,24 @@ import { formatNumber } from '@pkg/domain';
 import {
   assignmentNeedsALookLevel,
   assignmentStateDisplayOrder,
+  breakdownStatusColorClassNames,
+  breakdownStatusLabels,
   breakdownsByStint,
   groupStints,
 } from '@pkg/domain/contracting';
-import { breakdownStatuses, type JobDetail } from '@pkg/schema/contracting';
+import { type BreakdownSummary, breakdownStatuses, type JobDetail } from '@pkg/schema/contracting';
 import { useQuery } from '@tanstack/react-query';
+import { Link } from '@tanstack/react-router';
 import { useMemo, useState } from 'react';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
+import { Badge } from '@/components/ui/badge.js';
 import { Button } from '@/components/ui/button.js';
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@/components/ui/card.js';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs.js';
+import { BreakdownUrgencyIcon } from '@/contracting/components/BreakdownSubjectLabel.js';
 import { useCan } from '@/hooks/use-access.js';
 import { useTRPC } from '@/lib/trpc.js';
+import { cn } from '@/lib/utils.js';
 import { ArrivalCaptureDialog } from './ArrivalCaptureDialog.js';
 import { DepartureCaptureDialog } from './DepartureCaptureDialog.js';
 import { GapResolveDialog } from './GapResolveDialog.js';
@@ -49,6 +55,37 @@ const offeredFilters = (stints: readonly NumberedStint[]) =>
     return count > 0 && count < stints.length;
   });
 
+/** The Job's Breakdowns whose Machine or Implement is on none of its stints any more, so no stint card shows them. */
+function OtherBreakdowns({ breakdowns }: { breakdowns: readonly BreakdownSummary[] }) {
+  if (!breakdowns.length) return null;
+  return (
+    <section className="space-y-2">
+      <h3 className="text-sm font-medium">Other Breakdowns on this Job</h3>
+      <ul className="grid gap-2">
+        {breakdowns.map((breakdown) => {
+          const tone = breakdownStatusColorClassNames[breakdown.status];
+          return (
+            <li key={breakdown.id}>
+              <Link
+                className="flex items-center gap-3 rounded-lg border p-2 text-sm hover:bg-muted/50"
+                params={{ id: breakdown.id }}
+                to="/contracting/workshop/$id"
+              >
+                <BreakdownUrgencyIcon size={14} urgency={breakdown.urgency} />
+                <span className="shrink-0 font-medium">{breakdown.subject.code}</span>
+                <span className="min-w-0 flex-1 truncate text-muted-foreground">{breakdown.firstLine}</span>
+                <Badge className={cn('shrink-0', tone.chip, tone.text)} variant="outline">
+                  {breakdownStatusLabels[breakdown.status]}
+                </Badge>
+              </Link>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
+  );
+}
+
 export function MachinesCard({ job, sheet }: { job: JobDetail; sheet: JobSheet }) {
   const trpc = useTRPC();
   const planAction = sheet.action('assign');
@@ -60,7 +97,7 @@ export function MachinesCard({ job, sheet }: { job: JobDetail; sheet: JobSheet }
       { enabled: readsBreakdowns || reportsBreakdowns },
     ),
   );
-  const stintBreakdowns = useMemo(
+  const placed = useMemo(
     () => breakdownsByStint(job.assignments, breakdowns.data?.items ?? []),
     [job.assignments, breakdowns.data],
   );
@@ -122,7 +159,7 @@ export function MachinesCard({ job, sheet }: { job: JobDetail; sheet: JobSheet }
                 <div className="grid grid-cols-1 items-stretch gap-3 md:grid-cols-2">
                   {visible.map(({ stint, stintNumber }) => (
                     <MachineStintCard
-                      breakdowns={stintBreakdowns.get(stint.id) ?? []}
+                      breakdowns={placed.byStint.get(stint.id) ?? []}
                       canReport={canReport}
                       key={stint.id}
                       stint={stint}
@@ -139,6 +176,7 @@ export function MachinesCard({ job, sheet }: { job: JobDetail; sheet: JobSheet }
           ) : (
             <p className="py-4 text-sm text-muted-foreground">No Machines planned.</p>
           )}
+          <OtherBreakdowns breakdowns={placed.unplaced} />
         </CardContent>
       </Card>
       <PlanMachineDialog

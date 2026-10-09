@@ -27,7 +27,7 @@ describe('breakdownsByStint', () => {
     const onSite = stint('on-site', '2026-10-02T08:00:00.000Z');
     const planned = stint('planned', null);
     const reported = breakdown('2026-10-02T10:00:00.000Z');
-    expect(breakdownsByStint([planned, onSite], [reported]).get('on-site')).toEqual([reported]);
+    expect(breakdownsByStint([planned, onSite], [reported]).byStint.get('on-site')).toEqual([reported]);
   });
 
   test('splits repeat stints by when each was on site, and follows the Implement', () => {
@@ -36,16 +36,23 @@ describe('breakdownsByStint', () => {
     const early = breakdown('2026-10-02T10:00:00.000Z');
     const afterLeaving = breakdown('2026-10-04T10:00:00.000Z');
     const late = breakdown('2026-10-06T10:00:00.000Z', 'implement', implementId);
-    const placed = breakdownsByStint([second, first], [early, afterLeaving, late]);
+    const placed = breakdownsByStint([second, first], [early, afterLeaving, late]).byStint;
     expect(placed.get('first')).toEqual([early, afterLeaving]);
     expect(placed.get('second')).toEqual([late]);
   });
 
   test('falls back to the earliest planned stint when reported before any arrival', () => {
-    expect(breakdownsByStint([stint('only', null)], [breakdown('2026-09-30T10:00:00.000Z')]).get('only')).toHaveLength(
-      1,
-    );
+    expect(
+      breakdownsByStint([stint('only', null)], [breakdown('2026-09-30T10:00:00.000Z')]).byStint.get('only'),
+    ).toHaveLength(1);
   });
+});
+
+test('keeps a Breakdown whose subject is on no stint any more as unplaced', () => {
+  const swapped = breakdown('2026-10-02T10:00:00.000Z', 'implement', 'swapped-out');
+  const placed = breakdownsByStint([stint('s', '2026-10-02T08:00:00.000Z', null, implementId)], [swapped]);
+  expect(placed.byStint.size).toBe(0);
+  expect(placed.unplaced).toEqual([swapped]);
 });
 
 describe('breakdownPhases', () => {

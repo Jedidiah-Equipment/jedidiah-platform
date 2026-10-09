@@ -29,7 +29,7 @@ const SORT_KEY = contractingStorageKey('machines', 'sort');
 /** Who the Machine is working for right now, stacked on the right; nothing when it is on no Job. */
 function BusyWith({ machine }: { machine: FieldMachine }) {
   const job = machine.busyOnJob ?? null;
-  // An API from before busyOnJob sends only the Job Number.
+  // Only the Job Number arrives for another Foreman's Job, or from an API before busyOnJob.
   if (!job && !machine.onSiteJobNumber) return null;
   return (
     <View className="max-w-36 items-end">

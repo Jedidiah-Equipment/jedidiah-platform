@@ -19,13 +19,15 @@ const onSiteAt = (stint: PlacedStint, at: string) =>
 /**
  * Each stint's Breakdowns on one Job. A Breakdown names its Machine or Implement and the Job, not a stint, so it goes
  * to the stint of its subject that was on site when it was reported; failing that, the last one that had arrived by
- * then; failing that (reported before any arrival), the earliest planned one.
+ * then; failing that (reported before any arrival), the earliest planned one. A Breakdown whose subject is on no stint
+ * any more — its Implement swapped out, its planned stint removed — is `unplaced`, never dropped.
  */
 export function breakdownsByStint<TBreakdown extends PlacedBreakdown>(
   stints: readonly PlacedStint[],
   breakdowns: readonly TBreakdown[],
-): Map<string, TBreakdown[]> {
+): { byStint: Map<string, TBreakdown[]>; unplaced: TBreakdown[] } {
   const byStint = new Map<string, TBreakdown[]>();
+  const unplaced: TBreakdown[] = [];
   for (const breakdown of breakdowns) {
     const { kind, id } = breakdown.subject;
     const candidates = stints.filter((stint) => (kind === 'machine' ? stint.machineId : stint.implementId) === id);
@@ -36,10 +38,10 @@ export function breakdownsByStint<TBreakdown extends PlacedBreakdown>(
       candidates.find((candidate) => onSiteAt(candidate, breakdown.reportedAt)) ??
       arrivedBefore.at(-1) ??
       [...candidates].sort((left, right) => left.createdAt.localeCompare(right.createdAt))[0];
-    if (!stint) continue;
-    byStint.set(stint.id, [...(byStint.get(stint.id) ?? []), breakdown]);
+    if (stint) byStint.set(stint.id, [...(byStint.get(stint.id) ?? []), breakdown]);
+    else unplaced.push(breakdown);
   }
-  return byStint;
+  return { byStint, unplaced };
 }
 
 /** A stint's Breakdowns, oldest first, split around its arrival and departure by when each was reported. */

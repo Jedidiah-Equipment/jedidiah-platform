@@ -4,6 +4,7 @@ import {
   type DatabaseTransaction,
   type Db,
   getSortOrder,
+  onCalendarDays,
   user,
   withPagination,
 } from '@pkg/db';
@@ -32,7 +33,7 @@ import {
   type BreakdownActionName,
   BreakdownAssignMechanicInput,
   BreakdownDetail,
-  type BreakdownFilterOptions,
+  BreakdownFilterOptions,
   BreakdownJobOption,
   type BreakdownListInput,
   type BreakdownListResult,
@@ -40,11 +41,13 @@ import {
   BreakdownNoteCreateInput,
   BreakdownPatchInput,
   BreakdownPhotoRemoveInput,
-  type BreakdownQueueSummary,
+  BreakdownQueueSummary,
   BreakdownReportInput,
   BreakdownSolveInput,
+  type BreakdownStatus,
   type BreakdownSubjectRef,
   type BreakdownSummary,
+  breakdownStatuses,
   openJobStatuses,
   unsolvedBreakdownStatuses,
 } from '@pkg/schema/contracting';
@@ -336,9 +339,6 @@ function breakdownListOrder({ sortBy, sortDirection }: Pick<BreakdownListInput, 
   return [getSortOrder(contractingBreakdowns.reportedAt, sortDirection), asc(contractingBreakdowns.id)];
 }
 
-/** The South African calendar day a Breakdown was reported on. */
-const reportedDay = sql`(${contractingBreakdowns.reportedAt} at time zone ${JOHANNESBURG_TIME_ZONE})::date`;
-
 export async function listBreakdowns({
   db,
   actor,
@@ -351,20 +351,17 @@ export async function listBreakdowns({
   const where = and(
     input.statuses.length ? inArray(contractingBreakdowns.status, input.statuses) : undefined,
     input.urgencies.length ? inArray(contractingBreakdowns.urgency, input.urgencies) : undefined,
-    input.machineIds.length || input.implementIds.length
-      ? or(
-          input.machineIds.length ? inArray(contractingBreakdowns.machineId, input.machineIds) : undefined,
-          input.implementIds.length ? inArray(contractingBreakdowns.implementId, input.implementIds) : undefined,
-        )
-      : undefined,
+    or(
+      input.machineIds.length ? inArray(contractingBreakdowns.machineId, input.machineIds) : undefined,
+      input.implementIds.length ? inArray(contractingBreakdowns.implementId, input.implementIds) : undefined,
+    ),
     input.jobIds.length ? inArray(contractingBreakdowns.jobId, input.jobIds) : undefined,
     input.farmIds.length ? inArray(contractingJobs.farmId, input.farmIds) : undefined,
     input.reporterUserIds.length ? inArray(contractingBreakdowns.reportedByUserId, input.reporterUserIds) : undefined,
-    input.reportedFrom ? sql`${reportedDay} >= ${input.reportedFrom}::date` : undefined,
-    input.reportedTo ? sql`${reportedDay} <= ${input.reportedTo}::date` : undefined,
-    input.machineId ? eq(contractingBreakdowns.machineId, input.machineId) : undefined,
-    input.implementId ? eq(contractingBreakdowns.implementId, input.implementId) : undefined,
-    input.jobId ? eq(contractingBreakdowns.jobId, input.jobId) : undefined,
+    onCalendarDays(contractingBreakdowns.reportedAt, JOHANNESBURG_TIME_ZONE, {
+      from: input.reportedFrom,
+      to: input.reportedTo,
+    }),
     input.mechanicUserIds.length
       ? inArray(contractingBreakdowns.primaryMechanicUserId, input.mechanicUserIds)
       : undefined,
@@ -391,48 +388,44 @@ export async function listBreakdownFilterOptions({
   db: Db;
   actor: BreakdownActor;
 }): Promise<BreakdownFilterOptions> {
-  const rows = await db
-    .selectDistinct({
-      machineId: contractingBreakdowns.machineId,
-      machineCode: contractingMachines.code,
-      implementId: contractingBreakdowns.implementId,
-      implementCode: contractingImplements.code,
-      jobId: contractingBreakdowns.jobId,
-      jobCode: contractingJobs.code,
-      farmId: contractingFarms.id,
-      farmName: contractingFarms.name,
-      reporterId: breakdownReporter.id,
-      reporterName: breakdownReporter.name,
-    })
-    .from(contractingBreakdowns)
-    .leftJoin(contractingMachines, eq(contractingMachines.id, contractingBreakdowns.machineId))
-    .leftJoin(contractingImplements, eq(contractingImplements.id, contractingBreakdowns.implementId))
-    .leftJoin(contractingJobs, eq(contractingJobs.id, contractingBreakdowns.jobId))
-    .leftJoin(contractingFarms, eq(contractingFarms.id, contractingJobs.farmId))
-    .innerJoin(breakdownReporter, eq(breakdownReporter.id, contractingBreakdowns.reportedByUserId))
-    .where(breakdownReadableBy(actor));
-  const subjects = new Map<string, BreakdownFilterOptions['subjects'][number]>();
-  const jobs = new Map<string, BreakdownFilterOptions['jobs'][number]>();
-  const farms = new Map<string, BreakdownFilterOptions['farms'][number]>();
-  const reporters = new Map<string, BreakdownFilterOptions['reporters'][number]>();
-  for (const row of rows) {
-    if (row.machineId && row.machineCode)
-      subjects.set(row.machineId, { kind: 'machine', id: row.machineId, code: row.machineCode });
-    if (row.implementId && row.implementCode)
-      subjects.set(row.implementId, { kind: 'implement', id: row.implementId, code: row.implementCode });
-    if (row.jobId && row.jobCode !== null)
-      jobs.set(row.jobId, { id: row.jobId, jobNumber: formatJobNumber(row.jobCode) });
-    if (row.farmId && row.farmName) farms.set(row.farmId, { id: row.farmId, name: row.farmName });
-    reporters.set(row.reporterId, { id: row.reporterId, name: row.reporterName });
-  }
-  const byLabel = <T>(values: Iterable<T>, label: (value: T) => string) =>
-    [...values].sort((left, right) => label(left).localeCompare(label(right)));
-  return {
-    subjects: byLabel(subjects.values(), (subject) => subject.code),
-    jobs: byLabel(jobs.values(), (job) => job.jobNumber),
-    farms: byLabel(farms.values(), (farm) => farm.name),
-    reporters: byLabel(reporters.values(), (person) => person.name),
-  };
+  const readable = breakdownReadableBy(actor);
+  const subjectKind = sql<string>`case when ${contractingBreakdowns.machineId} is null then 'implement' else 'machine' end`;
+  const subjectId = sql<string>`coalesce(${contractingBreakdowns.machineId}, ${contractingBreakdowns.implementId})`;
+  const subjectCode = sql<string>`coalesce(${contractingMachines.code}, ${contractingImplements.code})`;
+  const [subjects, jobs, farms, reporters] = await Promise.all([
+    db
+      .selectDistinct({ kind: subjectKind, id: subjectId, code: subjectCode })
+      .from(contractingBreakdowns)
+      .leftJoin(contractingMachines, eq(contractingMachines.id, contractingBreakdowns.machineId))
+      .leftJoin(contractingImplements, eq(contractingImplements.id, contractingBreakdowns.implementId))
+      .where(readable)
+      .orderBy(asc(subjectCode)),
+    db
+      .selectDistinct({ id: contractingJobs.id, code: contractingJobs.code })
+      .from(contractingBreakdowns)
+      .innerJoin(contractingJobs, eq(contractingJobs.id, contractingBreakdowns.jobId))
+      .where(readable)
+      .orderBy(asc(contractingJobs.code)),
+    db
+      .selectDistinct({ id: contractingFarms.id, name: contractingFarms.name })
+      .from(contractingBreakdowns)
+      .innerJoin(contractingJobs, eq(contractingJobs.id, contractingBreakdowns.jobId))
+      .innerJoin(contractingFarms, eq(contractingFarms.id, contractingJobs.farmId))
+      .where(readable)
+      .orderBy(asc(contractingFarms.name)),
+    db
+      .selectDistinct({ id: breakdownReporter.id, name: breakdownReporter.name })
+      .from(contractingBreakdowns)
+      .innerJoin(breakdownReporter, eq(breakdownReporter.id, contractingBreakdowns.reportedByUserId))
+      .where(readable)
+      .orderBy(asc(breakdownReporter.name)),
+  ]);
+  return BreakdownFilterOptions.parse({
+    subjects,
+    jobs: jobs.map((job) => ({ id: job.id, jobNumber: formatJobNumber(job.code) })),
+    farms,
+    reporters,
+  });
 }
 
 /** The workshop queue's counts across every Breakdown the actor may read. */
@@ -443,19 +436,20 @@ export async function summarizeBreakdownQueue({
   db: Db;
   actor: BreakdownActor;
 }): Promise<BreakdownQueueSummary> {
-  const [counts] = await db
+  const rows = await db
     .select({
-      open: sql<number>`count(*) filter (where ${contractingBreakdowns.status} = 'open')::integer`,
-      inProgress: sql<number>`count(*) filter (where ${contractingBreakdowns.status} = 'in-progress')::integer`,
-      solved: sql<number>`count(*) filter (where ${contractingBreakdowns.status} = 'solved')::integer`,
-      codeRedUnsolved: sql<number>`count(*) filter (where ${contractingBreakdowns.urgency} = 'code-red' and ${contractingBreakdowns.status} <> 'solved')::integer`,
+      status: contractingBreakdowns.status,
+      count: sql<number>`count(*)::integer`,
+      codeRed: sql<number>`count(*) filter (where ${contractingBreakdowns.urgency} = 'code-red')::integer`,
     })
     .from(contractingBreakdowns)
-    .where(breakdownReadableBy(actor));
-  return {
-    counts: { open: counts?.open ?? 0, 'in-progress': counts?.inProgress ?? 0, solved: counts?.solved ?? 0 },
-    codeRedUnsolved: counts?.codeRedUnsolved ?? 0,
-  };
+    .where(breakdownReadableBy(actor))
+    .groupBy(contractingBreakdowns.status);
+  const of = (status: BreakdownStatus) => rows.find((row) => row.status === status);
+  return BreakdownQueueSummary.parse({
+    counts: Object.fromEntries(breakdownStatuses.map((status) => [status, of(status)?.count ?? 0])),
+    codeRedUnsolved: unsolvedBreakdownStatuses.reduce((total, status) => total + (of(status)?.codeRed ?? 0), 0),
+  });
 }
 
 async function jobForemanOf(tx: DatabaseTransaction, jobId: string | null) {

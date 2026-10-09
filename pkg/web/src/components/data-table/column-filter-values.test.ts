@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isPickedExactly, togglePick } from './column-filter-values.js';
+import { isPickedExactly, readDateOnlyRangeFilter, togglePick } from './column-filter-values.js';
 
 const status = (value: unknown) => [{ id: 'status', value }];
 
@@ -9,6 +9,16 @@ describe('isPickedExactly', () => {
     expect(isPickedExactly(status(['open', 'solved']), 'status', ['solved', 'open'])).toBe(true);
     expect(isPickedExactly(status(['open', 'solved']), 'status', ['open'])).toBe(false);
     expect(isPickedExactly([], 'status', ['open'])).toBe(false);
+  });
+});
+
+describe('readDateOnlyRangeFilter', () => {
+  it('names each valid end after the list input field and leaves an invalid or missing end out', () => {
+    const range = [{ id: 'reportedAt', value: { start: '2026-10-01', end: 'soon' } }];
+    expect(readDateOnlyRangeFilter(range, 'reportedAt', ['reportedFrom', 'reportedTo'])).toEqual({
+      reportedFrom: '2026-10-01',
+    });
+    expect(readDateOnlyRangeFilter([], 'reportedAt', ['reportedFrom', 'reportedTo'])).toEqual({});
   });
 });
 

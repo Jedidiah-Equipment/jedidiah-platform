@@ -128,8 +128,8 @@ export const BreakdownSummary = z.object({
   firstLine: z.string(),
   photoCount: z.number().int(),
   noteCount: z.number().int(),
-  /** The note's first line when there is exactly one, so a list can show it in place of a count. */
-  soleNote: z.string().nullable(),
+  /** The earliest note's first line; null while there are no notes. */
+  firstNote: z.string().nullable(),
   startedAt: DateIso.nullable(),
   solvedAt: DateIso.nullable(),
   /** Other unsolved Breakdowns on the same Job — the dispatch cross-reference, derived. */
@@ -170,12 +170,13 @@ export const BreakdownListInput = createSearchedSortedCursorQueryInput({
   shape: {
     statuses: z.array(z.enum(breakdownStatuses)).default([...unsolvedBreakdownStatuses]),
     urgencies: z.array(z.enum(breakdownUrgencies)).default([]),
-    machineId: UUID.optional(),
-    implementId: UUID.optional(),
-    jobId: UUID.optional(),
     /** Machines and Implements together: a Breakdown on any of them matches. */
     machineIds: z.array(UUID).default([]),
     implementIds: z.array(UUID).default([]),
+    /** @deprecated Mobile builds up to 1.85 send one subject this way; it folds into the list above. */
+    machineId: UUID.optional(),
+    /** @deprecated Mobile builds up to 1.85 send one subject this way; it folds into the list above. */
+    implementId: UUID.optional(),
     jobIds: z.array(UUID).default([]),
     farmIds: z.array(UUID).default([]),
     reporterUserIds: z.array(AuthId).default([]),
@@ -186,7 +187,12 @@ export const BreakdownListInput = createSearchedSortedCursorQueryInput({
     reportedTo: DateOnlyIso.optional(),
   },
   sortBy: z.enum(['reportedAt', 'urgency']).default('reportedAt'),
-});
+}).transform(({ machineId, implementId, ...input }) => ({
+  ...input,
+  machineIds: machineId ? [...input.machineIds, machineId] : input.machineIds,
+  implementIds: implementId ? [...input.implementIds, implementId] : input.implementIds,
+}));
+/** What the server works with: the deprecated singular subject already folded into its list. */
 export type BreakdownListInput = z.infer<typeof BreakdownListInput>;
 export const BreakdownListResult = createCursorQueryResult(BreakdownSummary);
 export type BreakdownListResult = z.infer<typeof BreakdownListResult>;

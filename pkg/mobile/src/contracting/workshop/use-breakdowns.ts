@@ -128,7 +128,7 @@ export function useMachineBreakdowns(machineId: string) {
     canRead && !!machineId,
     useQuery(
       trpc.contractingBreakdowns.list.queryOptions(
-        { machineId, limit: 0, sortBy: 'reportedAt', sortDirection: 'desc' },
+        { machineIds: [machineId], limit: 0, sortBy: 'reportedAt', sortDirection: 'desc' },
         { enabled: canRead && !!machineId },
       ),
     ),

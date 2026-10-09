@@ -1,5 +1,4 @@
 import { actionSheet } from '@pkg/domain/contracting';
-import { DateOnlyIso } from '@pkg/schema';
 import type {
   BreakdownDetail,
   BreakdownListInput,
@@ -13,7 +12,7 @@ import { breakdownStatuses, breakdownUrgencies, unsolvedBreakdownStatuses } from
 import type { ColumnFiltersState } from '@tanstack/react-table';
 import {
   isPickedExactly,
-  readDateRangeFilter,
+  readDateOnlyRangeFilter,
   readMultiSelectFilter,
   togglePick,
 } from '@/components/data-table/column-filter-values.js';
@@ -40,9 +39,6 @@ export function workshopListFilters(columnFilters: ColumnFiltersState) {
   const subjects = readMultiSelectFilter(columnFilters, SUBJECT_COLUMN_ID);
   const idsOf = (kind: BreakdownSubjectRef['kind']) =>
     subjects.filter((value) => value.startsWith(`${kind}:`)).map((value) => value.slice(kind.length + 1));
-  const { start, end } = readDateRangeFilter(columnFilters, REPORTED_COLUMN_ID);
-  const reportedFrom = DateOnlyIso.safeParse(start).data;
-  const reportedTo = DateOnlyIso.safeParse(end).data;
   return {
     statuses: listedStatuses(columnFilters),
     urgencies: listedUrgencies(columnFilters),
@@ -52,8 +48,7 @@ export function workshopListFilters(columnFilters: ColumnFiltersState) {
     farmIds: readMultiSelectFilter(columnFilters, FARM_COLUMN_ID),
     reporterUserIds: readMultiSelectFilter(columnFilters, REPORTER_COLUMN_ID),
     mechanicUserIds: readMultiSelectFilter(columnFilters, MECHANIC_COLUMN_ID),
-    ...(reportedFrom ? { reportedFrom } : {}),
-    ...(reportedTo ? { reportedTo } : {}),
+    ...readDateOnlyRangeFilter(columnFilters, REPORTED_COLUMN_ID, ['reportedFrom', 'reportedTo']),
   } satisfies Partial<BreakdownListInput>;
 }
 

@@ -15,6 +15,7 @@ import {
   addBreakdownPhotos,
   assignMechanic,
   getBreakdown,
+  listBreakdownFilterOptions,
   listBreakdownJobOptions,
   listBreakdowns,
   reportBreakdown,
@@ -142,6 +143,16 @@ test('a Foreman reads only his own Breakdowns and another Foreman finds nothing'
   expect((await listBreakdowns({ db, actor: workshop, input: listInput() })).items.map((row) => row.id)).toEqual([
     mine.id,
   ]);
+  expect(await listBreakdownFilterOptions({ db, actor: otherForeman })).toEqual({
+    subjects: [],
+    jobs: [],
+    farms: [],
+    reporters: [],
+  });
+  expect(await listBreakdownFilterOptions({ db, actor: workshop })).toMatchObject({
+    subjects: [{ kind: 'machine', id: excavator.id, code: 'CAT320-1' }],
+    reporters: [{ id: foremanId }],
+  });
 });
 
 test('solving straight from Open stamps both dates and needs a close-out note', async ({ context }) => {

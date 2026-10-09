@@ -1,5 +1,5 @@
 import type { CursorQueryInput, SortDirection } from '@pkg/schema';
-import { asc, desc, isNull, or, type SQL, type SQLWrapper, sql } from 'drizzle-orm';
+import { and, asc, desc, isNull, or, type SQL, type SQLWrapper, sql } from 'drizzle-orm';
 import type { PgSelect } from 'drizzle-orm/pg-core';
 
 export const LIKE_SEARCH_ESCAPE = '!';
@@ -18,6 +18,19 @@ export function createGlobalSearchCondition(search: string, expressions: readonl
   }
 
   return or(...expressions.map((expression) => createEscapedContainsSearchCondition(expression, search)));
+}
+
+/**
+ * `column` falls on a calendar day in `timeZone` from `from` to `to`, both ISO dates and inclusive; an absent end
+ * leaves that side open, and no ends at all is no condition.
+ */
+export function onCalendarDays(
+  column: SQLWrapper,
+  timeZone: string,
+  { from, to }: { from?: string | undefined; to?: string | undefined },
+): SQL | undefined {
+  const day = sql`(${column} at time zone ${timeZone})::date`;
+  return and(from ? sql`${day} >= ${from}::date` : undefined, to ? sql`${day} <= ${to}::date` : undefined);
 }
 
 export function getPaginationQueryOptions({ cursor, limit }: CursorQueryInput): {

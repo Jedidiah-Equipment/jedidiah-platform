@@ -39,7 +39,11 @@ export function FleetHistoryCard({ subject }: { subject: { machineId: string } |
   const readings = useQuery(trpc.contractingReadings.listByMachine.queryOptions(machineId ? { machineId } : skipToken));
   const breakdowns = useQuery(
     trpc.contractingBreakdowns.list.queryOptions(
-      { ...subject, statuses: [...breakdownStatuses], limit: 0 },
+      {
+        ...('machineId' in subject ? { machineIds: [subject.machineId] } : { implementIds: [subject.implementId] }),
+        statuses: [...breakdownStatuses],
+        limit: 0,
+      },
       { enabled: readsBreakdowns },
     ),
   );

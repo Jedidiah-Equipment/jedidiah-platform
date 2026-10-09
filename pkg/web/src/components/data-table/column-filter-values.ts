@@ -1,3 +1,4 @@
+import { DateOnlyIso } from '@pkg/schema';
 import type { ColumnFiltersState } from '@tanstack/react-table';
 
 export type DateRangeFilterValue = { end?: string; start?: string };
@@ -27,6 +28,24 @@ export const readDateRangeFilter = (columnFilters: ColumnFiltersState, id: strin
 
 export const readMultiSelectFilter = (columnFilters: ColumnFiltersState, id: string) =>
   toMultiSelectFilterValue(columnFilterValue(columnFilters, id));
+
+/**
+ * A date-range filter as the two calendar-day fields a list input takes, named by `keys`; an end the column does not
+ * hold as a valid date is left out rather than sent as undefined.
+ */
+export function readDateOnlyRangeFilter<FromKey extends string, ToKey extends string>(
+  columnFilters: ColumnFiltersState,
+  id: string,
+  [fromKey, toKey]: readonly [FromKey, ToKey],
+): Partial<Record<FromKey | ToKey, DateOnlyIso>> {
+  const { start, end } = readDateRangeFilter(columnFilters, id);
+  const range: Partial<Record<FromKey | ToKey, DateOnlyIso>> = {};
+  const from = DateOnlyIso.safeParse(start).data;
+  const to = DateOnlyIso.safeParse(end).data;
+  if (from) range[fromKey] = from;
+  if (to) range[toKey] = to;
+  return range;
+}
 
 const sameValues = (left: readonly string[], right: readonly string[]) =>
   left.length === right.length && left.every((value) => right.includes(value));

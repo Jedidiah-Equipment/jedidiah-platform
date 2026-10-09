@@ -160,7 +160,7 @@ export function toBreakdownSummary(row: LoadedBreakdown): BreakdownSummary {
     firstLine: breakdownFirstLine(breakdown.description),
     photoCount: breakdown.photos.length,
     noteCount: row.noteCount,
-    soleNote: row.noteCount === 1 && row.firstNoteText ? breakdownFirstLine(row.firstNoteText) : null,
+    firstNote: row.firstNoteText === null ? null : breakdownFirstLine(row.firstNoteText),
     startedAt: breakdown.startedAt?.toISOString() ?? null,
     solvedAt: breakdown.solvedAt?.toISOString() ?? null,
     sameJobOpenCount: row.sameJobOpenCount,

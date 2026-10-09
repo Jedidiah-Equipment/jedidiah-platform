@@ -6,7 +6,7 @@ import {
   jobActionNames,
 } from '@pkg/schema/contracting';
 import { describe, expect, it } from 'vitest';
-import { breakdownsByStint, jobSheet, toJobCreateInput } from './types.js';
+import { jobSheet, toJobCreateInput } from './types.js';
 
 const allowed: JobActionVerdict = { allowed: true };
 
@@ -73,40 +73,5 @@ describe('jobSheet refusal', () => {
   it('reads a refusal from the served verdict', () => {
     const sheet = jobSheet(job('priced', { cancel: { allowed: false, reason: 'priced', message: 'X' } }));
     expect([sheet.can('cancel'), sheet.holds('cancel'), sheet.refusal('cancel')]).toEqual([false, true, 'X']);
-  });
-});
-
-describe('breakdownsByStint', () => {
-  const machineId = '5f1c2d3e-0001-4a00-8000-0000000000aa';
-  const implementId = '5f1c2d3e-0001-4a00-8000-0000000000bb';
-  const stint = (id: string, arrivedAt: string | null, implement: string | null = null) => ({
-    id,
-    machineId,
-    implementId: implement,
-    createdAt: '2026-10-01T06:00:00.000Z',
-    arrival: arrivedAt ? { capturedAt: arrivedAt } : null,
-  });
-  const breakdown = (kind: 'machine' | 'implement', id: string, reportedAt: string) => ({
-    subject: { kind, id },
-    reportedAt,
-  });
-
-  it('puts a Breakdown on the stint of its subject that had started when it was reported', () => {
-    const first = stint('first', '2026-10-02T06:00:00.000Z');
-    const second = stint('second', '2026-10-05T06:00:00.000Z', implementId);
-    const early = breakdown('machine', machineId, '2026-10-03T10:00:00.000Z');
-    const late = breakdown('machine', machineId, '2026-10-06T10:00:00.000Z');
-    const implement = breakdown('implement', implementId, '2026-10-06T11:00:00.000Z');
-    const result = breakdownsByStint([second, first], [early, late, implement]);
-    expect(result.get('first')).toEqual([early]);
-    expect(result.get('second')).toEqual([late, implement]);
-  });
-
-  it('falls back to the earliest stint when reported before any arrival', () => {
-    const result = breakdownsByStint(
-      [stint('only', null)],
-      [breakdown('machine', machineId, '2026-09-30T10:00:00.000Z')],
-    );
-    expect(result.get('only')).toHaveLength(1);
   });
 });

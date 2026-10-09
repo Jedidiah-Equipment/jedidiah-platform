@@ -1,10 +1,11 @@
-import { formatNumber, getDateDisplayParts, statusBadgeColorClassNames } from '@pkg/domain';
+import { formatNumber, statusBadgeColorClassNames } from '@pkg/domain';
 import { IconFilter } from '@tabler/icons-react-native';
 import { type Href, router } from 'expo-router';
 import { useState } from 'react';
 import { View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { CatalogListCard } from '@/components/CatalogList';
+import { DateText } from '@/components/DateText';
 import {
   type ListControlOption,
   ListControlRow,
@@ -92,7 +93,15 @@ function FieldNoteRow({ note }: { note: FieldNote }) {
       accessibilityHint="Opens the Field Note"
       accessibilityLabel={`Field Note ${title}`}
       mainText={title}
-      monoText={getDateDisplayParts({ date: note.createdAt, format: 'medium' }).label}
+      metadata={
+        <DateText
+          className="text-[10px] text-muted-foreground"
+          date={note.createdAt}
+          format="medium"
+          mono
+          numberOfLines={1}
+        />
+      }
       onPress={() => router.push(`/contracting/notes/${note.id}` as Href)}
       subText={`${formatNumber(photoCount)} ${photoCount === 1 ? 'photo' : 'photos'}`}
       trailing={

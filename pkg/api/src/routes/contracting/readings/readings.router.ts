@@ -28,7 +28,7 @@ export function createContractingReadingsRouter(readPhoto: ReadMeterPhoto) {
   return router({
     fieldMachines: authorizedProcedure(['contracting_machine:read', 'contracting_reading:capture'])
       .output(FieldMachine.array())
-      .query(({ ctx }) => listFieldMachines({ db: ctx.db })),
+      .query(({ ctx }) => listFieldMachines({ db: ctx.db, actor: ctx.access })),
     fieldHistory: authorizedProcedure(['contracting_machine:read', 'contracting_reading:capture'])
       .input(ReadingMachineInput)
       .output(FieldReading.array())

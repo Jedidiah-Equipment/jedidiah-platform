@@ -5,6 +5,7 @@ import {
   assignmentAttentionLevelColorClassNames,
   assignmentNeedsALookLevel,
   assignmentStateColorClassNames,
+  breakdownPhases,
   breakdownStatusColorClassNames,
   breakdownStatusLabels,
   breakdownUrgencyColorClassNames,
@@ -286,21 +287,6 @@ function BreakdownRow({ breakdown }: { breakdown: BreakdownSummary }) {
       tone="done"
     />
   );
-}
-
-/** Splits the stint's Breakdowns, oldest first, around its arrival and departure by when each was reported. */
-function breakdownPhases(stint: Assignment, breakdowns: readonly BreakdownSummary[]) {
-  const sorted = [...breakdowns].sort((left, right) => left.reportedAt.localeCompare(right.reportedAt));
-  const arrivedAt = stint.arrival?.capturedAt ?? null;
-  const departedAt = stint.departure?.capturedAt ?? null;
-  return {
-    beforeArrival: sorted.filter(({ reportedAt }) => arrivedAt === null || reportedAt < arrivedAt),
-    onSite: sorted.filter(
-      ({ reportedAt }) =>
-        arrivedAt !== null && reportedAt >= arrivedAt && (departedAt === null || reportedAt < departedAt),
-    ),
-    afterDeparture: sorted.filter(({ reportedAt }) => departedAt !== null && reportedAt >= departedAt),
-  };
 }
 
 /** The plus under the timeline: adds a Measure or reports a Code Green or Code Red. */

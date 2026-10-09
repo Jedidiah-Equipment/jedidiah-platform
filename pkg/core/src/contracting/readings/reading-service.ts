@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { type DatabaseTransaction, type Db, type StoredFile, user } from '@pkg/db';
+import { type DatabaseTransaction, type Db, type StoredFile, user, withPagination } from '@pkg/db';
 import {
   contractingCategories,
   contractingHourReadings,
@@ -28,7 +28,7 @@ import {
   ReadingAmendInput,
   ReadingCaptureInput,
 } from '@pkg/schema/contracting';
-import { and, asc, desc, eq, getTableColumns, gt, inArray, or, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, getTableColumns, gt, inArray, or } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { defineAuditDescriptor, recordAuditCreate } from '../../audit/audit-writer.js';
 import { mutateEntity } from '../../audit/mutate-entity.js';
@@ -515,17 +515,16 @@ export async function listFieldReadings({ db, machineId }: { db: Db; machineId: 
 /** A page of a Machine's Hour Readings, newest first; `listFieldReadings` stays whole for the capture screens. */
 export async function listFieldReadingsPage({ db, input }: { db: Db; input: FieldReadingPageInput }) {
   const onMachine = eq(contractingHourReadings.machineId, input.machineId);
-  const [rows, [counted]] = await Promise.all([
-    db
-      .select()
-      .from(contractingHourReadings)
-      .where(onMachine)
-      .orderBy(desc(contractingHourReadings.sequence))
-      .limit(input.limit)
-      .offset(input.cursor),
-    db.select({ total: sql<number>`count(*)::integer` }).from(contractingHourReadings).where(onMachine),
+  const query = db
+    .select()
+    .from(contractingHourReadings)
+    .where(onMachine)
+    .orderBy(desc(contractingHourReadings.sequence))
+    .$dynamic();
+  const [rows, total] = await Promise.all([
+    withPagination(query, input),
+    db.$count(contractingHourReadings, onMachine),
   ]);
-  const total = counted?.total ?? 0;
   return {
     items: rows.map((row) => FieldReading.parse(readingToWire(row))),
     nextCursor: getNextCursor({ count: rows.length, cursor: input.cursor, total }),

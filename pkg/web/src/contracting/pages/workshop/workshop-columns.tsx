@@ -72,7 +72,7 @@ export function useWorkshopColumns({
         header: 'Reported',
         enableColumnFilter: true,
         enableSorting: true,
-        meta: { filterVariant: 'date-range', headerClassName: 'w-40', cellClassName: 'w-40 whitespace-nowrap' },
+        meta: { filterVariant: 'date-range', headerClassName: 'w-36', cellClassName: 'w-36 whitespace-nowrap' },
         cell: ({ row }) => <DateDisplay date={row.original.reportedAt} format="medium" />,
       },
       {

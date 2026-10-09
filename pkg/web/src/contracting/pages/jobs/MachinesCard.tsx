@@ -1,5 +1,10 @@
 import { formatNumber } from '@pkg/domain';
-import { assignmentNeedsALookLevel, assignmentStateDisplayOrder, groupStints } from '@pkg/domain/contracting';
+import {
+  assignmentNeedsALookLevel,
+  assignmentStateDisplayOrder,
+  breakdownsByStint,
+  groupStints,
+} from '@pkg/domain/contracting';
 import { breakdownStatuses, hasJobStatus, type JobDetail, openJobStatuses } from '@pkg/schema/contracting';
 import { useQuery } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
@@ -16,7 +21,7 @@ import { MachineStintCard } from './MachineStintCard.js';
 import { PlanMachineDialog } from './PlanMachineDialog.js';
 import { ReadingDialog } from './ReadingDialog.js';
 import { ReportBreakdownDialog } from './ReportBreakdownDialog.js';
-import { breakdownsByStint, type JobSheet, type MachineDialog } from './types.js';
+import type { JobSheet, MachineDialog } from './types.js';
 
 type MachineFilter = 'all' | 'planned' | 'on-site' | 'attention' | 'left' | 'repeat';
 type NumberedStint = { stint: JobDetail['assignments'][number]; stintNumber: number };

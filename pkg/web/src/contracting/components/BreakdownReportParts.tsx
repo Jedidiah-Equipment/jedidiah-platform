@@ -6,6 +6,7 @@ import {
   type BreakdownReportInput,
   type BreakdownUrgency,
   breakdownReportMultipartFields,
+  breakdownUrgencies,
 } from '@pkg/schema/contracting';
 import { IconX } from '@tabler/icons-react';
 import type React from 'react';
@@ -93,7 +94,7 @@ export function UrgencyChoice({
 }) {
   return (
     <fieldset aria-label="How bad is it" className="grid grid-cols-2 gap-3">
-      {(['code-red', 'code-green'] as const).map((urgency) => (
+      {breakdownUrgencies.map((urgency) => (
         <ChoiceCard
           detail={urgencyPresentation[urgency].detail}
           icon={<BreakdownUrgencyIcon size={20} urgency={urgency} />}

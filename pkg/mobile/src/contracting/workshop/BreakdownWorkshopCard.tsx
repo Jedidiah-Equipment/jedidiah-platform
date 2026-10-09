@@ -2,7 +2,6 @@ import { formatHours } from '@pkg/domain';
 import { presentAction, reportToSolvedHours } from '@pkg/domain/contracting';
 import { type BreakdownDetail, CloseOutNote } from '@pkg/schema/contracting';
 import { IconPlayerPlay, IconPlayerStop } from '@tabler/icons-react-native';
-import type React from 'react';
 import { useState } from 'react';
 import { View } from 'react-native';
 import { DateText } from '@/components/DateText';
@@ -12,20 +11,12 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Text } from '@/components/ui/text';
 import { ThemedModal } from '@/components/ui/themed-modal';
+import { DetailRow } from '@/contracting/components/DetailRow';
 import { useVoiceSession } from '@/contracting/voice/use-voice-session';
 import { VoiceTextArea } from '@/contracting/voice/VoiceTextArea';
 import { useBusyAction } from '@/lib/use-busy-action';
 import { BREAKDOWN_SAVE_FAILED, useBreakdownMutation, useMechanics } from './use-breakdowns';
 import { VerdictButton, VerdictGroup } from './VerdictButton';
-
-function DetailRow({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <View className="flex-row items-baseline justify-between gap-3">
-      <Text className="text-muted-foreground">{label}</Text>
-      <View className="min-w-0 shrink items-end">{children}</View>
-    </View>
-  );
-}
 
 /** A Fixed Breakdown is settled: who fixed it, when work ran, and the close-out note, with nothing left to press. */
 function FixedSummary({ breakdown }: { breakdown: BreakdownDetail }) {

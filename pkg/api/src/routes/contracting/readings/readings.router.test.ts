@@ -71,8 +71,12 @@ test('foremen can find active Machines and read field history without fleet mana
       currentDriverUserId: null,
       currentDriverName: null,
       latestReadingHours: 100,
+      latestReadingAt: expect.any(String),
+      serviceIntervalHours: null,
+      nextServiceDueHours: null,
       hoursToService: null,
       serviceDueStatus: 'unknown',
+      busyOnJob: null,
       onSiteJobNumber: null,
     },
   ]);

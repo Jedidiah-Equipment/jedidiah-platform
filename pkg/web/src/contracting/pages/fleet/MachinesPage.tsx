@@ -1,5 +1,5 @@
 import { formatHours } from '@pkg/domain';
-import { serviceDueStatusColorClassNames } from '@pkg/domain/contracting';
+import { serviceDueNeedsAttention, serviceDueStatusColorClassNames } from '@pkg/domain/contracting';
 import type { FleetListInput, Machine } from '@pkg/schema/contracting';
 import { useQuery } from '@tanstack/react-query';
 import { Link, useNavigate } from '@tanstack/react-router';
@@ -137,7 +137,7 @@ export function MachinesPage() {
         cell: ({ row }) => {
           const { nextServiceDueHours, hoursToService, serviceDueStatus } = row.original;
           if (nextServiceDueHours === null) return <span className="text-muted-foreground">Not set</span>;
-          const flagged = serviceDueStatus === 'due-soon' || serviceDueStatus === 'overdue';
+          const flagged = serviceDueNeedsAttention(serviceDueStatus);
           return (
             <span className="flex flex-col">
               <span className="tabular-nums">{formatHours(nextServiceDueHours)}</span>

@@ -114,6 +114,7 @@ export const Machine = MachineCreateInput.extend({
       customerName: z.string(),
       farmName: z.string(),
       workTypeName: z.string(),
+      foremanUserId: AuthId.nullable(),
       /** When the arrival reading of that on-site stint was captured. */
       arrivedAt: DateIso,
     })

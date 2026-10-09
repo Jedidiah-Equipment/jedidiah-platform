@@ -26,6 +26,9 @@ export function serviceDueStatus(
 export const suggestedNextServiceDue = (readingAtServiceHours: number, serviceIntervalHours: number | null) =>
   serviceIntervalHours === null ? null : round2(readingAtServiceHours + serviceIntervalHours);
 
+/** Due soon or overdue: the statuses a screen paints in their warning colour. */
+export const serviceDueNeedsAttention = (status: ServiceDueStatus) => status === 'due-soon' || status === 'overdue';
+
 export const serviceDueStatusLabels: Record<ServiceDueStatus, string> = {
   unknown: 'Service due unknown',
   ok: 'Service on track',

@@ -1,7 +1,8 @@
-import { formatDate, formatHours } from '@pkg/domain';
+import { formatHours } from '@pkg/domain';
 import {
   MISSING_PHOTO_EVIDENCE,
   readingRoleLabels,
+  serviceDueNeedsAttention,
   serviceDueStatusColorClassNames,
   serviceDueStatusLabels,
 } from '@pkg/domain/contracting';
@@ -28,6 +29,7 @@ import { useSessionPermission } from '@/lib/auth-session';
 import { usePersistedState } from '@/lib/use-persisted-state';
 import { BreakdownIcon } from './BreakdownSubjectIcons';
 import { CategoryIcon } from './CategoryIcon';
+import { DetailRow } from './DetailRow';
 
 type MachineTab = 'details' | 'readings';
 const MACHINE_TABS: readonly SubTabOption<MachineTab>[] = [
@@ -44,42 +46,33 @@ function SectionTitle({ children }: { children: string }) {
   );
 }
 
-function ServiceRow({ label, value, tone }: { label: string; value: string; tone?: string }) {
-  return (
-    <View className="flex-row items-baseline justify-between gap-3">
-      <Text className="text-muted-foreground">{label}</Text>
-      <Text className={tone ?? 'text-foreground'} weight="semibold">
-        {value}
-      </Text>
-    </View>
-  );
-}
-
 /** Where the Machine stands against its dash sticker: the due status, the due point, what is left, and the interval. */
 function ServiceCard({ machine }: { machine: FieldMachine }) {
   const colours = serviceDueStatusColorClassNames[machine.serviceDueStatus];
   const remaining = machine.hoursToService;
-  const flagged = machine.serviceDueStatus === 'due-soon' || machine.serviceDueStatus === 'overdue';
+  const flagged = serviceDueNeedsAttention(machine.serviceDueStatus);
   return (
     <View className="gap-3 rounded-xl border border-border bg-surface p-4">
       <View className="flex-row">
         <StatusBadge classNames={colours} label={serviceDueStatusLabels[machine.serviceDueStatus]} />
       </View>
-      <ServiceRow
-        label="Next service due"
-        value={machine.nextServiceDueHours === null ? 'Not set' : formatHours(machine.nextServiceDueHours)}
-      />
+      <DetailRow label="Next service due">
+        <Text className="text-foreground" weight="semibold">
+          {machine.nextServiceDueHours === null ? 'Not set' : formatHours(machine.nextServiceDueHours)}
+        </Text>
+      </DetailRow>
       {remaining !== null ? (
-        <ServiceRow
-          label={remaining < 0 ? 'Overdue by' : 'Hours to go'}
-          tone={flagged ? colours.text : undefined}
-          value={formatHours(Math.abs(remaining))}
-        />
+        <DetailRow label={remaining < 0 ? 'Overdue by' : 'Hours to go'}>
+          <Text className={flagged ? colours.text : 'text-foreground'} weight="semibold">
+            {formatHours(Math.abs(remaining))}
+          </Text>
+        </DetailRow>
       ) : null}
-      <ServiceRow
-        label="Service interval"
-        value={machine.serviceIntervalHours === null ? 'Not set' : formatHours(machine.serviceIntervalHours)}
-      />
+      <DetailRow label="Service interval">
+        <Text className="text-foreground" weight="semibold">
+          {machine.serviceIntervalHours === null ? 'Not set' : formatHours(machine.serviceIntervalHours)}
+        </Text>
+      </DetailRow>
     </View>
   );
 }
@@ -90,7 +83,7 @@ function ReadingCard({ reading }: { reading: FieldReading }) {
       <Text className="text-foreground" weight="semibold">
         {formatHours(reading.value)} · {readingRoleLabels[reading.role]}
       </Text>
-      <Text className="text-sm text-muted-foreground">{formatDate(reading.capturedAt, 'medium')}</Text>
+      <DateText className="text-sm text-muted-foreground" date={reading.capturedAt} format="medium" />
       <Text className="text-sm text-muted-foreground">
         {reading.photoBacked ? 'Photo-backed' : MISSING_PHOTO_EVIDENCE}
         {reading.disputed ? ' · Disputed' : ''}
@@ -269,6 +262,9 @@ export default function MachineScreen() {
                 </>
               ) : null}
             </>
+          ) : null}
+          {canReadBreakdowns && breakdowns.isError && !breakdowns.data ? (
+            <Text className="text-muted-foreground">Breakdowns could not be loaded. Pull to retry.</Text>
           ) : null}
           {openBreakdowns.length ? (
             <>

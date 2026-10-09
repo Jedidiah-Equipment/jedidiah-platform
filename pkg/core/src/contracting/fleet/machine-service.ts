@@ -1,12 +1,7 @@
 import { createEscapedContainsSearchCondition, type DatabaseTransaction, type Db, user } from '@pkg/db';
-import {
-  contractingJobs,
-  contractingMachineAssignments,
-  contractingMachines,
-  contractingServiceRecords,
-} from '@pkg/db/contracting';
-import { formatJobNumber, hoursToService, serviceDueStatus } from '@pkg/domain/contracting';
-import type { AuthId, ContractingRole } from '@pkg/schema';
+import { contractingMachines, contractingServiceRecords } from '@pkg/db/contracting';
+import { fieldJobAccessMode, formatJobNumber, hoursToService, serviceDueStatus } from '@pkg/domain/contracting';
+import type { AuthId, ContractingRole, UserAccessSummary } from '@pkg/schema';
 import {
   FieldMachine,
   FleetCode,
@@ -16,7 +11,7 @@ import {
   type MachineListInput,
   type MachinePatchInput,
 } from '@pkg/schema/contracting';
-import { and, asc, eq, inArray, isNotNull, isNull, sql } from 'drizzle-orm';
+import { and, asc, eq, isNull, sql } from 'drizzle-orm';
 import { defineAuditDescriptor, recordAuditCreate } from '../../audit/audit-writer.js';
 import { mutateEntity } from '../../audit/mutate-entity.js';
 import { assertCategoryKind } from './category-service.js';
@@ -48,6 +43,7 @@ type BusyOnJobRow = {
   customerName: string;
   farmName: string;
   workTypeName: string;
+  foremanUserId: string | null;
   arrivedAt: string;
 };
 /** The Machine's newest Hour Reading of any role, so a spot reading moves Service Due Soon as much as a stint does. */
@@ -73,6 +69,7 @@ const latestReading = (machine: typeof contractingMachines._.columns) => ({
       'customerName', customer.name,
       'farmName', farm.name,
       'workTypeName', work_type.name,
+      'foremanUserId', job.foreman_user_id,
       'arrivedAt', arrival.captured_at
     )
     from contracting.machine_assignment stint
@@ -112,6 +109,7 @@ function mapMachine(
           customerName: busyOnJob.customerName,
           farmName: busyOnJob.farmName,
           workTypeName: busyOnJob.workTypeName,
+          foremanUserId: busyOnJob.foremanUserId,
           arrivedAt: busyOnJob.arrivedAt,
         }
       : null,
@@ -304,26 +302,18 @@ export async function assertDriverAccountChangeAllowed({
     );
 }
 
-export async function listFieldMachines({ db }: { db: Db }) {
+/**
+ * The phone's Machine picker. Every on-site Machine names its Job Number; the customer and farm behind it reach only
+ * someone who works every Job, or the Foreman of that Job, as the field Job reads themselves do.
+ */
+export async function listFieldMachines({ db, actor }: { db: Db; actor: UserAccessSummary }) {
   const machines = await listMachines({ db, input: { status: 'active', search: '' } });
-  const onSite = machines.length
-    ? await db
-        .select({ machineId: contractingMachineAssignments.machineId, jobCode: contractingJobs.code })
-        .from(contractingMachineAssignments)
-        .innerJoin(contractingJobs, eq(contractingJobs.id, contractingMachineAssignments.jobId))
-        .where(
-          and(
-            inArray(
-              contractingMachineAssignments.machineId,
-              machines.map((machine) => machine.id),
-            ),
-            isNotNull(contractingMachineAssignments.arrivalReadingId),
-            isNull(contractingMachineAssignments.departureReadingId),
-          ),
-        )
-    : [];
-  const jobByMachine = new Map(onSite.map((row) => [row.machineId, formatJobNumber(row.jobCode)]));
-  return machines.map((machine) =>
-    FieldMachine.parse({ ...machine, onSiteJobNumber: jobByMachine.get(machine.id) ?? null }),
+  const mode = fieldJobAccessMode(actor);
+  return machines.map(({ busyOnJob, ...machine }) =>
+    FieldMachine.parse({
+      ...machine,
+      busyOnJob: busyOnJob && (mode === 'all' || busyOnJob.foremanUserId === actor.userId) ? busyOnJob : null,
+      onSiteJobNumber: busyOnJob?.jobNumber ?? null,
+    }),
   );
 }

@@ -173,6 +173,10 @@ export const BreakdownListInput = createSearchedSortedCursorQueryInput({
     /** Machines and Implements together: a Breakdown on any of them matches. */
     machineIds: z.array(UUID).default([]),
     implementIds: z.array(UUID).default([]),
+    /** @deprecated Mobile builds up to 1.85 send one subject this way; it folds into the list above. */
+    machineId: UUID.optional(),
+    /** @deprecated Mobile builds up to 1.85 send one subject this way; it folds into the list above. */
+    implementId: UUID.optional(),
     jobIds: z.array(UUID).default([]),
     farmIds: z.array(UUID).default([]),
     reporterUserIds: z.array(AuthId).default([]),
@@ -183,7 +187,12 @@ export const BreakdownListInput = createSearchedSortedCursorQueryInput({
     reportedTo: DateOnlyIso.optional(),
   },
   sortBy: z.enum(['reportedAt', 'urgency']).default('reportedAt'),
-});
+}).transform(({ machineId, implementId, ...input }) => ({
+  ...input,
+  machineIds: machineId ? [...input.machineIds, machineId] : input.machineIds,
+  implementIds: implementId ? [...input.implementIds, implementId] : input.implementIds,
+}));
+/** What the server works with: the deprecated singular subject already folded into its list. */
 export type BreakdownListInput = z.infer<typeof BreakdownListInput>;
 export const BreakdownListResult = createCursorQueryResult(BreakdownSummary);
 export type BreakdownListResult = z.infer<typeof BreakdownListResult>;

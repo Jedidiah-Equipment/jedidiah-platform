@@ -81,6 +81,7 @@ const latestReading = (machine: typeof contractingMachines._.columns) => ({
     where stint.machine_id = ${machine.id}
       and stint.arrival_reading_id is not null
       and stint.departure_reading_id is null
+    order by arrival.captured_at desc
     limit 1
   )`.as('busy_on_job'),
 });
@@ -95,6 +96,10 @@ function mapMachine(
 ) {
   const { category, currentDriver, busyOnJob, ...fields } = row;
   const facts = { latestReadingHours: row.latestReadingHours, nextServiceDueHours: row.nextServiceDueHours };
+  const busy = (job: BusyOnJobRow) => {
+    const { code, ...rest } = job;
+    return { ...rest, jobNumber: formatJobNumber(code) };
+  };
   return Machine.parse({
     ...fields,
     ...projectCategory(category),
@@ -102,17 +107,7 @@ function mapMachine(
     currentDriverName: currentDriver?.name ?? null,
     hoursToService: hoursToService(facts),
     serviceDueStatus: serviceDueStatus(facts),
-    busyOnJob: busyOnJob
-      ? {
-          id: busyOnJob.id,
-          jobNumber: formatJobNumber(busyOnJob.code),
-          customerName: busyOnJob.customerName,
-          farmName: busyOnJob.farmName,
-          workTypeName: busyOnJob.workTypeName,
-          foremanUserId: busyOnJob.foremanUserId,
-          arrivedAt: busyOnJob.arrivedAt,
-        }
-      : null,
+    busyOnJob: busyOnJob ? busy(busyOnJob) : null,
   });
 }
 export async function listMachines({ db, input }: { db: Db; input: MachineListInput }) {

@@ -1,6 +1,18 @@
 import { formatNumber } from '@pkg/domain';
-import { type BreakdownActionSubject, type BreakdownActor, judgeBreakdownAction } from '@pkg/domain/contracting';
-import type { BreakdownActionBlockedReason, BreakdownActionName, BreakdownErrorCode } from '@pkg/schema/contracting';
+import {
+  type BreakdownActionSubject,
+  type BreakdownActor,
+  type JobActionSubject,
+  type JobActor,
+  judgeBreakdownAction,
+  judgeJobAction,
+} from '@pkg/domain/contracting';
+import type {
+  BreakdownActionBlockedReason,
+  BreakdownActionName,
+  BreakdownErrorCode,
+  JobActionBlockedReason,
+} from '@pkg/schema/contracting';
 import { BREAKDOWN_MAX_PHOTOS } from '@pkg/schema/contracting';
 import { translatingConstraintViolations } from '../../errors/constraint-violations.js';
 import type { RefusedJobAction } from '../jobs/job-errors.js';
@@ -45,6 +57,19 @@ export function assertBreakdownAction(
   const verdict = judgeBreakdownAction(action, breakdown, actor);
   if (verdict.allowed) return;
   throw new BreakdownError(refusalCodes[verdict.reason], verdict.message, { action, reason: verdict.reason });
+}
+
+/** A report refused under the Job it names, carrying the Job Action so the Job sheet and the server agree. */
+export const reportBreakdownRefused = (reason: JobActionBlockedReason, message: string) =>
+  new BreakdownError(reason === 'no-permission' ? 'breakdown.forbidden' : 'breakdown.invalid_job', message, {
+    action: 'reportBreakdown',
+    reason,
+  });
+
+/** Refuses a report naming a Job the actor may not report on now; the Job sheet serves this same verdict. */
+export function assertReportBreakdownJobAction(job: JobActionSubject, actor: JobActor) {
+  const verdict = judgeJobAction('reportBreakdown', job, actor);
+  if (!verdict.allowed) throw reportBreakdownRefused(verdict.reason, verdict.message);
 }
 
 export const invalidMechanic = () =>

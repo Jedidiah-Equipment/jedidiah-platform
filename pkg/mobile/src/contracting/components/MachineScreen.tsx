@@ -1,12 +1,17 @@
 import { formatHours } from '@pkg/domain';
 import {
+  hoursToServiceLabel,
   MISSING_PHOTO_EVIDENCE,
+  machineBusyWith,
   readingRoleLabels,
   serviceDueNeedsAttention,
   serviceDueStatusColorClassNames,
   serviceDueStatusLabels,
 } from '@pkg/domain/contracting';
 import type { FieldMachine, FieldReading } from '@pkg/schema/contracting';
+
+type BusyWith = { job: NonNullable<FieldMachine['busyOnJob']> | null; jobNumber: string };
+
 import { IconGauge } from '@tabler/icons-react-native';
 import { type Href, router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef } from 'react';
@@ -62,9 +67,9 @@ function ServiceCard({ machine }: { machine: FieldMachine }) {
         </Text>
       </DetailRow>
       {remaining !== null ? (
-        <DetailRow label={remaining < 0 ? 'Overdue by' : 'Hours to go'}>
+        <DetailRow label="To service">
           <Text className={flagged ? colours.text : 'text-foreground'} weight="semibold">
-            {formatHours(Math.abs(remaining))}
+            {hoursToServiceLabel(remaining)}
           </Text>
         </DetailRow>
       ) : null}
@@ -137,7 +142,9 @@ function ReadingsTab({ machineId }: { machineId: string }) {
 }
 
 /** The Job the Machine is on site on now, opening that Job like a Breakdown row opens its Breakdown. */
-function BusyWithCard({ job, canOpen }: { job: NonNullable<FieldMachine['busyOnJob']>; canOpen: boolean }) {
+function BusyWithCard({ busy, canOpen }: { busy: BusyWith; canOpen: boolean }) {
+  const { job, jobNumber } = busy;
+  if (!job) return <Text className="text-muted-foreground">On site on {jobNumber}.</Text>;
   const body = (
     <>
       <Text className="text-lg text-foreground" weight="bold" numberOfLines={1}>
@@ -155,7 +162,7 @@ function BusyWithCard({ job, canOpen }: { job: NonNullable<FieldMachine['busyOnJ
   return canOpen ? (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`Open ${job.jobNumber}`}
+      accessibilityLabel={`Open ${jobNumber}`}
       onPress={() => router.push(`/contracting/jobs/${job.id}` as Href)}
       className={className}
     >
@@ -176,8 +183,7 @@ export default function MachineScreen() {
   const breakdowns = useMachineBreakdowns(id);
   const canOpenJobs = useCanReadJobs();
   const [tab, setTab] = usePersistedState<MachineTab>(contractingStorageKey('machine-tab'), 'details', isMachineTab);
-  // Only the Job Number arrives for another Foreman's Job, or from an API before busyOnJob; the section names it alone.
-  const busyOnJob = machine?.busyOnJob ?? null;
+  const busy = machine ? machineBusyWith(machine) : null;
   const openBreakdowns = canReadBreakdowns ? (breakdowns.data?.items ?? []) : [];
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top', 'left', 'right']}>
@@ -250,15 +256,10 @@ export default function MachineScreen() {
             <>
               <SectionTitle>Service</SectionTitle>
               <ServiceCard machine={machine} />
-              {busyOnJob ? (
+              {busy ? (
                 <>
                   <SectionTitle>Busy with</SectionTitle>
-                  <BusyWithCard canOpen={canOpenJobs} job={busyOnJob} />
-                </>
-              ) : machine.onSiteJobNumber ? (
-                <>
-                  <SectionTitle>Busy with</SectionTitle>
-                  <Text className="text-muted-foreground">On site on {machine.onSiteJobNumber}.</Text>
+                  <BusyWithCard busy={busy} canOpen={canOpenJobs} />
                 </>
               ) : null}
             </>

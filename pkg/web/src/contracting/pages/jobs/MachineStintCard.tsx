@@ -245,11 +245,6 @@ function MeasureDetail({ stint }: { stint: Assignment }) {
 }
 
 /** A Breakdown's dot keeps its urgency's colour; a Fixed one carries a tick. */
-const breakdownDotClassNames: Record<BreakdownUrgency, string> = {
-  'code-red': 'border-red-500 bg-red-500',
-  'code-green': 'border-emerald-500 bg-emerald-500',
-};
-
 function BreakdownRow({ breakdown }: { breakdown: BreakdownSummary }) {
   const navigate = useNavigate();
   const urgency = breakdownUrgencyLabels[breakdown.urgency];
@@ -274,7 +269,6 @@ function BreakdownRow({ breakdown }: { breakdown: BreakdownSummary }) {
           {breakdown.firstLine}
         </span>
       }
-      dotClassName={breakdownDotClassNames[breakdown.urgency]}
       dotContent={fixed ? <IconCheck aria-hidden="true" className="size-2.5 text-white" stroke={4} /> : null}
       title={
         <span className="flex items-center gap-2">
@@ -284,7 +278,7 @@ function BreakdownRow({ breakdown }: { breakdown: BreakdownSummary }) {
           </Badge>
         </span>
       }
-      tone="done"
+      tone={breakdown.urgency}
     />
   );
 }
@@ -336,7 +330,6 @@ export function MachineStintCard({
   stintNumber,
   sheet,
   breakdowns,
-  canReport,
   onOpen,
 }: {
   stint: Assignment;
@@ -344,13 +337,12 @@ export function MachineStintCard({
   sheet: JobSheet;
   /** This stint's Breakdowns on the Job, oldest first. */
   breakdowns: readonly BreakdownSummary[];
-  /** Whether the reader may report a Breakdown on this Job. */
-  canReport: boolean;
 } & Opens) {
   const trpc = useTRPC();
   const [measuring, setMeasuring] = useState(false);
   const readsMachines = useCan('contracting_machine:read').can;
   const canMeasure = sheet.stintAction('editMeasures', 'editMeasures', stint).allowed;
+  const canReport = sheet.can('reportBreakdown');
   const phases = breakdownPhases(stint, breakdowns);
   const breakdownRows = (phase: readonly BreakdownSummary[]) =>
     phase.map((breakdown) => <BreakdownRow breakdown={breakdown} key={breakdown.id} />);

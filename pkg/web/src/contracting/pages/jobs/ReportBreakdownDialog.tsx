@@ -5,22 +5,19 @@ import {
   type BreakdownUrgency,
   breakdownSubjectKinds,
 } from '@pkg/schema/contracting';
-import { useMutation, useQuery } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { z } from 'zod';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { CreateEntityDialog } from '@/components/form/index.js';
 import { Field, FieldLabel } from '@/components/ui/field.js';
 import {
   ChoiceCard,
-  type ReportPhoto,
   ReportPhotosField,
-  sendBreakdownReport,
   UrgencyBanner,
+  useBreakdownReport,
 } from '@/contracting/components/BreakdownReportParts.js';
 import { CategoryIcon } from '@/contracting/components/CategoryIcon.js';
 import { MachineDialogTitle } from '@/contracting/components/MachineDialogTitle.js';
-import { useQueryInvalidation } from '@/contracting/hooks/use-query-invalidation.js';
 import { useTRPC } from '@/lib/trpc.js';
 
 const ReportValues = z.object({ subjectKind: z.enum(breakdownSubjectKinds), description: BreakdownDescription });
@@ -35,43 +32,18 @@ export function ReportBreakdownDialog({
   onClose: () => void;
 }) {
   const trpc = useTRPC();
-  const { invalidateWorkshop } = useQueryInvalidation();
-  const [photos, setPhotos] = useState<ReportPhoto[]>([]);
+  const { photos, setPhotos, send, reset } = useBreakdownReport();
   const implementId = report?.stint.implementId ?? null;
   // Only for the Implement's icon and category; the card falls back to its code alone.
   const implementsList = useQuery(
     trpc.contractingJobs.field.implements.queryOptions(undefined, { enabled: !!implementId }),
   );
   const implement = implementsList.data?.find((entry) => entry.id === implementId) ?? null;
-  const send = useMutation({
-    mutationFn: async ({
-      stint,
-      urgency,
-      values,
-    }: {
-      stint: Assignment;
-      urgency: BreakdownUrgency;
-      values: ReportValues;
-    }) => {
-      const subjectId = values.subjectKind === 'implement' ? stint.implementId : stint.machineId;
-      if (!subjectId) throw new Error('This stint has no Implement.');
-      return sendBreakdownReport(
-        {
-          subject: { kind: values.subjectKind, id: subjectId },
-          jobId: stint.jobId,
-          urgency,
-          description: values.description,
-        },
-        photos,
-      );
-    },
-  });
   const stint = report?.stint ?? null;
   const urgency = report?.urgency ?? null;
   const label = urgency ? breakdownUrgencyLabels[urgency] : '';
   const close = () => {
-    send.reset();
-    setPhotos([]);
+    reset();
     onClose();
   };
   return (
@@ -81,8 +53,14 @@ export function ReportBreakdownDialog({
       disableSubmitWhenInvalid
       onCreate={async (values) => {
         if (!report) throw new Error('No Machine Assignment selected.');
-        await send.mutateAsync({ ...report, values });
-        await invalidateWorkshop();
+        const subjectId = values.subjectKind === 'implement' ? report.stint.implementId : report.stint.machineId;
+        if (!subjectId) throw new Error('This stint has no Implement.');
+        await send.mutateAsync({
+          subject: { kind: values.subjectKind, id: subjectId },
+          jobId: report.stint.jobId,
+          urgency: report.urgency,
+          description: values.description,
+        });
         return true;
       }}
       onCreated={close}

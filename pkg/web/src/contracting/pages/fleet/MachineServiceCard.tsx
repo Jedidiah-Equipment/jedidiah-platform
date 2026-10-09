@@ -1,5 +1,5 @@
 import { formatDate, formatHours, getPlantDateNow } from '@pkg/domain';
-import { serviceDueStatusColorClassNames, serviceDueStatusLabels } from '@pkg/domain/contracting';
+import { hoursToServiceLabel, serviceDueStatusColorClassNames, serviceDueStatusLabels } from '@pkg/domain/contracting';
 import type { Machine, ServiceRecord } from '@pkg/schema/contracting';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
@@ -21,13 +21,6 @@ import { CloseServiceRecordDialog } from './CloseServiceRecordDialog.js';
 import { OpenServiceValues, openServiceFields } from './types.js';
 
 const hoursOrDash = (hours: number | null) => (hours === null ? '—' : formatHours(hours));
-
-function toService(hoursToService: number | null) {
-  if (hoursToService === null) return null;
-  return hoursToService < 0
-    ? `Overdue by ${formatHours(-hoursToService)}`
-    : `${formatHours(hoursToService)} to service`;
-}
 
 /** Where the Machine stands on service, and the services still in the workshop; the History card lists the past ones. */
 export function MachineServiceCard({ machine }: { machine: Machine }) {
@@ -65,8 +58,8 @@ export function MachineServiceCard({ machine }: { machine: Machine }) {
           </Badge>
           <span>Latest reading {hoursOrDash(machine.latestReadingHours)}</span>
           <span>Next service due {hoursOrDash(machine.nextServiceDueHours)}</span>
-          {toService(machine.hoursToService) ? (
-            <span className="font-medium">{toService(machine.hoursToService)}</span>
+          {machine.hoursToService !== null ? (
+            <span className="font-medium">{hoursToServiceLabel(machine.hoursToService)}</span>
           ) : null}
           {canRecord ? (
             <Button className="ml-auto" onClick={() => setOpening(true)}>

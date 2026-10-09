@@ -15,7 +15,7 @@ import {
   type CategoryIconKey,
 } from '@pkg/schema/contracting';
 import { type Href, router, useLocalSearchParams, useNavigation } from 'expo-router';
-import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
+import { type ReactNode, useEffect, useRef, useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { FormPage } from '@/components/FormPage';
 import { FieldShell } from '@/components/form/fields/FieldShell';
@@ -53,6 +53,7 @@ const URGENCY_CHOICES: { urgency: BreakdownUrgency; label: string }[] = [
 
 const isSubjectKind = (value: unknown): value is BreakdownSubjectKind =>
   (breakdownSubjectKinds as readonly unknown[]).includes(value);
+const implementRef = (id: string): BreakdownSubjectRef => ({ kind: 'implement', id });
 
 /** `/contracting/workshop/report`: from the Workshop tab, a Machine, or a stint on a Job. */
 export default function ReportBreakdownScreen() {
@@ -65,10 +66,10 @@ export default function ReportBreakdownScreen() {
   }>();
   const prefilled: BreakdownSubjectRef | null =
     isSubjectKind(params.subjectKind) && params.subjectId ? { kind: params.subjectKind, id: params.subjectId } : null;
-  const towedImplementId = prefilled?.kind === 'machine' && params.implementId ? params.implementId : null;
-  const [towedChoice, setTowedChoice] = useState<BreakdownSubjectKind>('machine');
-  const fixed: BreakdownSubjectRef | null =
-    towedImplementId && towedChoice === 'implement' ? { kind: 'implement', id: towedImplementId } : prefilled;
+  // What the way in offers: a stint's Machine and the Implement it tows, a Machine alone, or nothing from the Workshop.
+  const offered: readonly BreakdownSubjectRef[] = prefilled
+    ? [prefilled, ...(prefilled.kind === 'machine' && params.implementId ? [implementRef(params.implementId)] : [])]
+    : [];
   const jobId = params.jobId || null;
   const returnTo = (
     jobId
@@ -85,9 +86,9 @@ export default function ReportBreakdownScreen() {
   const report = useBreakdownUpload((request: { input: BreakdownReportRequest; photoUris: string[] }) =>
     reportBreakdown(request.input, request.photoUris),
   );
-  const [kind, setKind] = useState<BreakdownSubjectKind>(prefilled?.kind ?? 'machine');
-  const [pickedId, setPickedId] = useState(prefilled?.id ?? '');
-  const subject: BreakdownSubjectRef | null = fixed ?? (pickedId ? { kind, id: pickedId } : null);
+  const [subject, setSubject] = useState<BreakdownSubjectRef | null>(prefilled);
+  // The Workshop picker's open tab, which outlives the pick it clears.
+  const [pickerKind, setPickerKind] = useState<BreakdownSubjectKind>('machine');
   const [urgency, setUrgency] = useState<BreakdownUrgency | null>(null);
   const [description, setDescription] = useState('');
   const voice = useVoiceSession('breakdown description', {
@@ -117,14 +118,9 @@ export default function ReportBreakdownScreen() {
     };
   }, []);
 
-  const subjectRow = useMemo(() => {
-    if (!subject) return null;
-    if (subject.kind === 'machine') {
-      const machine = fleet.data?.find((row) => row.id === subject.id);
-      return machine ?? null;
-    }
-    return implementsQuery.data?.find((row) => row.id === subject.id) ?? null;
-  }, [subject, fleet.data, implementsQuery.data]);
+  const rowOf = (ref: BreakdownSubjectRef) =>
+    (ref.kind === 'machine' ? fleet.data : implementsQuery.data)?.find((row) => row.id === ref.id) ?? null;
+  const subjectRow = subject ? rowOf(subject) : null;
   const { canSend, photosLeft, messages } = deriveReport(
     { subject, urgency, description, photoCount: photos.length },
     { canReport, busy: busy || voice.busy },
@@ -204,26 +200,19 @@ export default function ReportBreakdownScreen() {
         </>
       }
     >
-      {prefilled && towedImplementId ? (
+      {offered.length > 1 ? (
         <FieldShell label="What has the problem?">
           <View className="flex-row gap-3">
-            {breakdownSubjectKinds.map((option) => {
-              const id = option === 'machine' ? prefilled.id : towedImplementId;
-              const row =
-                option === 'machine'
-                  ? fleet.data?.find((entry) => entry.id === id)
-                  : implementsQuery.data?.find((entry) => entry.id === id);
-              return (
-                <SubjectChoice
-                  key={option}
-                  kind={breakdownSubjectKindLabels[option]}
-                  row={row ?? null}
-                  selected={towedChoice === option}
-                  disabled={busy}
-                  onPress={() => setTowedChoice(option)}
-                />
-              );
-            })}
+            {offered.map((option) => (
+              <SubjectChoice
+                key={option.kind}
+                kind={breakdownSubjectKindLabels[option.kind]}
+                row={rowOf(option)}
+                selected={subject?.kind === option.kind}
+                disabled={busy}
+                onPress={() => setSubject(option)}
+              />
+            ))}
           </View>
         </FieldShell>
       ) : prefilled ? (
@@ -247,26 +236,26 @@ export default function ReportBreakdownScreen() {
               <Toggle
                 key={option}
                 label={breakdownSubjectKindLabels[option]}
-                selected={kind === option}
+                selected={pickerKind === option}
                 disabled={busy}
                 onPress={() => {
-                  if (option === kind) return;
-                  setKind(option);
-                  setPickedId('');
+                  if (option === pickerKind) return;
+                  setPickerKind(option);
+                  setSubject(null);
                 }}
               />
             ))}
           </View>
           <SearchSelect
-            label={breakdownSubjectKindLabels[kind]}
-            placeholder={`Choose the ${breakdownSubjectKindLabels[kind]}`}
+            label={breakdownSubjectKindLabels[pickerKind]}
+            placeholder={`Choose the ${breakdownSubjectKindLabels[pickerKind]}`}
             searchPlaceholder="Search by code or category…"
             emptyMessage="Nothing matches."
             disabled={busy}
-            value={pickedId}
-            onChange={setPickedId}
+            value={subject?.id ?? ''}
+            onChange={(id) => setSubject(id ? { kind: pickerKind, id } : null)}
             options={
-              kind === 'machine'
+              pickerKind === 'machine'
                 ? (fleet.data ?? []).map((machine) => ({
                     value: machine.id,
                     label: machine.code,

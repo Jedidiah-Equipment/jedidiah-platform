@@ -1,5 +1,5 @@
 import { formatHours } from '@pkg/domain';
-import { breakdownUrgencyColorClassNames, reportToSolvedHours } from '@pkg/domain/contracting';
+import { reportToSolvedHours } from '@pkg/domain/contracting';
 import type { BreakdownDetail } from '@pkg/schema/contracting';
 import { IconCheck, IconPencil, IconPlayerPlay, IconPlayerStop, IconUserPlus } from '@tabler/icons-react';
 import { useMutation, useQuery } from '@tanstack/react-query';
@@ -105,9 +105,8 @@ export function BreakdownWorkshopCard({ breakdown, sheet }: { breakdown: Breakdo
                 <DateDisplay date={breakdown.reportedAt} format="medium" /> by {breakdown.reporterName}
               </>
             }
-            dotClassName={`border-transparent ${breakdownUrgencyColorClassNames[breakdown.urgency].dot}`}
             title="Reported"
-            tone="done"
+            tone={breakdown.urgency}
           />
           <TimelineRow
             actions={mechanicAction}

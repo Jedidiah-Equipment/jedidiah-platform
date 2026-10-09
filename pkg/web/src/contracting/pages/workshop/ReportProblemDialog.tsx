@@ -8,24 +8,17 @@ import {
   type FieldImplement,
   type FieldMachine,
 } from '@pkg/schema/contracting';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { Link, useNavigate } from '@tanstack/react-router';
-import { useState } from 'react';
 import { z } from 'zod';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { CreateEntityDialog } from '@/components/form/index.js';
 import { requiredSelection } from '@/components/form/utils/form-schema.js';
 import { Field, FieldDescription, FieldLabel } from '@/components/ui/field.js';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs.js';
-import {
-  type ReportPhoto,
-  ReportPhotosField,
-  sendBreakdownReport,
-  UrgencyChoice,
-} from '@/contracting/components/BreakdownReportParts.js';
+import { ReportPhotosField, UrgencyChoice, useBreakdownReport } from '@/contracting/components/BreakdownReportParts.js';
 import { BreakdownUrgencyIcon } from '@/contracting/components/BreakdownSubjectLabel.js';
 import { CategoryIcon } from '@/contracting/components/CategoryIcon.js';
-import { useQueryInvalidation } from '@/contracting/hooks/use-query-invalidation.js';
 import { useTRPC } from '@/lib/trpc.js';
 
 const Urgency = z.enum(breakdownUrgencies);
@@ -38,12 +31,12 @@ const ReportValues = z.object({
 type ReportValues = z.infer<typeof ReportValues>;
 const emptyValues: ReportValues = { subjectKind: 'machine', subjectId: '', urgency: '', description: '' };
 
-type Subject = (FieldMachine | FieldImplement) & { busyOnJob?: FieldMachine['busyOnJob'] };
+type Subject = FieldMachine | FieldImplement;
 
 /** Where the server will file the report: the Job the subject is on site on, if any. */
 function attachHint(subject: Subject | undefined) {
   if (!subject) return null;
-  const job = subject.busyOnJob ?? null;
+  const job = 'busyOnJob' in subject ? subject.busyOnJob : null;
   if (job) return `Attaches to ${job.customerName} · ${job.farmName} (${job.jobNumber}), where it is on site.`;
   if (subject.onSiteJobNumber) return `Attaches to ${subject.onSiteJobNumber}, where it is on site.`;
   return 'Not on site on a Job, so it is filed without one.';
@@ -87,26 +80,13 @@ function AlreadyReported({ kind, id }: { kind: BreakdownSubjectKind; id: string 
 export function ReportProblemDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
   const trpc = useTRPC();
   const navigate = useNavigate();
-  const { invalidateWorkshop } = useQueryInvalidation();
-  const [photos, setPhotos] = useState<ReportPhoto[]>([]);
+  const { photos, setPhotos, send, reset } = useBreakdownReport();
   const machines = useQuery(trpc.contractingReadings.fieldMachines.queryOptions(undefined, { enabled: open }));
   const implementList = useQuery(trpc.contractingJobs.field.implements.queryOptions(undefined, { enabled: open }));
-  const send = useMutation({
-    mutationFn: (values: ReportValues) =>
-      sendBreakdownReport(
-        {
-          subject: { kind: values.subjectKind, id: values.subjectId },
-          urgency: Urgency.parse(values.urgency),
-          description: values.description,
-        },
-        photos,
-      ),
-  });
   const subjectsOf = (kind: BreakdownSubjectKind): Subject[] =>
     (kind === 'machine' ? machines.data : implementList.data) ?? [];
   const close = () => {
-    send.reset();
-    setPhotos([]);
+    reset();
     onOpenChange(false);
   };
   return (
@@ -115,11 +95,13 @@ export function ReportProblemDialog({ open, onOpenChange }: { open: boolean; onO
       contentClassName="sm:max-w-lg"
       defaultValues={emptyValues}
       disableSubmitWhenInvalid
-      onCreate={async (values) => {
-        const reported = await send.mutateAsync(values);
-        await invalidateWorkshop();
-        return reported;
-      }}
+      onCreate={(values) =>
+        send.mutateAsync({
+          subject: { kind: values.subjectKind, id: values.subjectId },
+          urgency: Urgency.parse(values.urgency),
+          description: values.description,
+        })
+      }
       onCreated={(reported) => {
         close();
         void navigate({ to: '/contracting/workshop/$id', params: { id: reported.id } });

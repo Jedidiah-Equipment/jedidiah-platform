@@ -1,5 +1,11 @@
 import { describe, expect, test } from 'vitest';
-import { hoursToService, serviceDueStatus, suggestedNextServiceDue } from './service-due.js';
+import {
+  hoursToService,
+  hoursToServiceLabel,
+  machineBusyWith,
+  serviceDueStatus,
+  suggestedNextServiceDue,
+} from './service-due.js';
 
 describe('serviceDueStatus', () => {
   test('is unknown until the Machine has both a reading and a Next Service Due', () => {
@@ -24,5 +30,21 @@ describe('suggestedNextServiceDue', () => {
   test('adds the interval to the reading at service, or suggests nothing without one', () => {
     expect(suggestedNextServiceDue(1450.5, 250)).toBe(1700.5);
     expect(suggestedNextServiceDue(1450.5, null)).toBeNull();
+  });
+});
+
+describe('hoursToServiceLabel', () => {
+  test('says what is left before the service, or how far past it the meter is', () => {
+    expect(hoursToServiceLabel(88)).toBe('88.0 h to go');
+    expect(hoursToServiceLabel(-12.5)).toBe('Overdue by 12.5 h');
+  });
+});
+
+describe('machineBusyWith', () => {
+  const job = { jobNumber: 'CJOB-7', customerName: 'Rowley' };
+  test('names the Job when the reader may see it, else only its Job Number', () => {
+    expect(machineBusyWith({ busyOnJob: job, onSiteJobNumber: 'CJOB-7' })).toEqual({ job, jobNumber: 'CJOB-7' });
+    expect(machineBusyWith({ busyOnJob: null, onSiteJobNumber: 'CJOB-7' })).toEqual({ job: null, jobNumber: 'CJOB-7' });
+    expect(machineBusyWith({ busyOnJob: null, onSiteJobNumber: null })).toBeNull();
   });
 });

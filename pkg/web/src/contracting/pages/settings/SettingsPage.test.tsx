@@ -120,7 +120,8 @@ test('saves only on an explicit Save, resets to the saved row, and keeps a refus
     expect(saved.serviceDueSoonThresholdHours).toBe(100);
     expect(field('serviceDueSoonThresholdHours').value).toBe('150');
     expect(save().disabled).toBe(false);
-    expect(container.textContent).toContain('Settings are locked');
+    // The mutation settles before React paints its error, so wait for the message rather than assert at once.
+    await vi.waitFor(() => expect(container.textContent).toContain('Settings are locked'));
     refuseNextSave = false;
     await submit();
     expect(saved.serviceDueSoonThresholdHours).toBe(150);

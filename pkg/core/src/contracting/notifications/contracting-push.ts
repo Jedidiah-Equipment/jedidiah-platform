@@ -1,24 +1,24 @@
 import { type Db, user } from '@pkg/db';
-import { contractingBreakdowns, contractingHourReadings, contractingMachines } from '@pkg/db/contracting';
+import { contractingBreakdowns } from '@pkg/db/contracting';
 import {
   breakdownPushMessage,
   breakdownPushRecipients,
   type ContractingPushContent,
   type ContractingPushEvent,
-  type ContractingPushRecipients,
-  hoursToService,
+  type ContractingPushRole,
   SERVICE_DUE_SOON_THRESHOLD_HOURS,
   serviceDueSoonPushMessage,
   serviceDueSoonPushRecipients,
 } from '@pkg/domain/contracting';
-import { and, desc, eq, inArray, ne, or, sql } from 'drizzle-orm';
+import { and, eq, inArray, ne, sql } from 'drizzle-orm';
 import { deliverPush, type PushDelivery, type PushMessage, type PushSender } from '../../push/push-sender.js';
 import { listPushTokensForUsers } from '../../push/push-token-service.js';
+import { contractingBusinessRole } from '../../users/business-role.js';
 import { selectBreakdowns, toBreakdownSummary } from '../breakdowns/breakdown-load.js';
+import { getMachine } from '../fleet/machine-service.js';
 
 /** The people holding a recipient role, never a shared device or a banned account, and never the actor. */
-async function recipientUserIds(db: Db, recipients: ContractingPushRecipients, excludeUserId: string | null) {
-  if (recipients.contractingRoles.length === 0 && !recipients.superAdmin) return [];
+async function recipientUserIds(db: Db, roles: readonly ContractingPushRole[], excludeUserId: string | null) {
   const rows = await db
     .select({ id: user.id })
     .from(user)
@@ -26,13 +26,8 @@ async function recipientUserIds(db: Db, recipients: ContractingPushRecipients, e
       and(
         eq(user.isDevice, false),
         sql`${user.banned} is not true`,
+        inArray(contractingBusinessRole(), [...roles]),
         excludeUserId === null ? undefined : ne(user.id, excludeUserId),
-        or(
-          recipients.contractingRoles.length > 0
-            ? inArray(user.contractingRole, [...recipients.contractingRoles])
-            : undefined,
-          recipients.superAdmin ? eq(user.role, 'super-admin') : undefined,
-        ),
       ),
     );
   return rows.map((row) => row.id);
@@ -40,11 +35,11 @@ async function recipientUserIds(db: Db, recipients: ContractingPushRecipients, e
 
 async function addressed(
   db: Db,
-  recipients: ContractingPushRecipients,
+  roles: readonly ContractingPushRole[],
   excludeUserId: string | null,
   content: ContractingPushContent,
 ): Promise<PushMessage[]> {
-  const tokens = await listPushTokensForUsers({ db, userIds: await recipientUserIds(db, recipients, excludeUserId) });
+  const tokens = await listPushTokensForUsers({ db, userIds: await recipientUserIds(db, roles, excludeUserId) });
   return tokens.map(({ token }) => ({ to: token, ...content }));
 }
 
@@ -68,33 +63,15 @@ export async function buildContractingPush({
       breakdownPushMessage({ ...breakdown, subjectCode: breakdown.subject.code }),
     );
   }
-  const [machine] = await db
-    .select({
-      id: contractingMachines.id,
-      code: contractingMachines.code,
-      nextServiceDueHours: contractingMachines.nextServiceDueHours,
-    })
-    .from(contractingMachines)
-    .where(eq(contractingMachines.id, event.machineId));
-  if (!machine) return [];
-  const [latest] = await db
-    .select({ value: contractingHourReadings.value })
-    .from(contractingHourReadings)
-    .where(eq(contractingHourReadings.machineId, machine.id))
-    .orderBy(desc(contractingHourReadings.sequence))
-    .limit(1);
-  const remaining = hoursToService({
-    latestReadingHours: latest?.value ?? null,
-    nextServiceDueHours: machine.nextServiceDueHours,
-  });
+  const machine = await getMachine({ db, id: event.machineId });
   // Queued work runs after commit: a service closed in between leaves nothing to say.
-  if (remaining === null || remaining > SERVICE_DUE_SOON_THRESHOLD_HOURS) return [];
+  if (machine.hoursToService === null || machine.hoursToService > SERVICE_DUE_SOON_THRESHOLD_HOURS) return [];
   // Nobody is excluded: the capturer is usually a Foreman, and a workshop manager who captured it still wants it.
   return addressed(
     db,
     serviceDueSoonPushRecipients,
     null,
-    serviceDueSoonPushMessage({ id: machine.id, code: machine.code, hoursToService: remaining }),
+    serviceDueSoonPushMessage({ id: machine.id, code: machine.code, hoursToService: machine.hoursToService }),
   );
 }
 

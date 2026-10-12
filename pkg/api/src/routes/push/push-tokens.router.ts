@@ -1,5 +1,5 @@
-import { isPushError, type PushError, registerPushToken, unregisterPushToken } from '@pkg/core';
-import { PushTokenRegisterInput, PushTokenUnregisterInput } from '@pkg/schema';
+import { isPushError, type PushError, registerPushToken } from '@pkg/core';
+import { PushTokenRegisterInput } from '@pkg/schema';
 import { defineCoreErrorFamily, mapCoreErrors } from '../../trpc/errors.js';
 import { protectedProcedure, router } from '../../trpc/init.js';
 
@@ -8,7 +8,10 @@ export const pushErrorFamily = defineCoreErrorFamily<PushError>({
   is: isPushError,
 });
 
-/** Any signed-in person may register their install; who is pinged is each business's decision, server-side. */
+/**
+ * Any signed-in person may register their install; who is pinged is each business's decision, server-side. Nothing
+ * unregisters: the row is bound to the session and goes when the session does.
+ */
 export const pushTokensRouter = router({
   register: protectedProcedure
     .input(PushTokenRegisterInput)
@@ -18,7 +21,4 @@ export const pushTokensRouter = router({
         pushErrorFamily,
       ),
     ),
-  unregister: protectedProcedure
-    .input(PushTokenUnregisterInput)
-    .mutation(({ ctx, input }) => unregisterPushToken({ db: ctx.db, userId: ctx.session.user.id, token: input.token })),
 });

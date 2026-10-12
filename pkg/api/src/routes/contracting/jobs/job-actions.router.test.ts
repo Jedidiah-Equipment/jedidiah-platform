@@ -134,7 +134,7 @@ const test = createTester(async ({ db }) => {
       stints: [{ ...stint, state: 'planned' }],
     };
     if (status === 'upcoming') return fixture;
-    fixture.arrivalReadingId = (await capture('arrival', 100)).id;
+    fixture.arrivalReadingId = (await capture('arrival', 100)).reading.id;
     const plan = async () => {
       const added = await machine();
       await createAssignment({ db, actor: setup, input: { jobId: job.id, machineId: added.id, implementId: null } });

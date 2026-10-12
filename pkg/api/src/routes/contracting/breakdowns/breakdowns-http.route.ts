@@ -2,7 +2,7 @@ import type { StorageAdapter } from '@pkg/core';
 import { addBreakdownPhotos, getBreakdownPhoto, reportBreakdown, tooManyBreakdownPhotos } from '@pkg/core/contracting';
 import type { Db } from '@pkg/db';
 import { formatNumber } from '@pkg/domain';
-import { BREAKDOWN_PHOTO_POLICY, BREAKDOWN_REPORT_PATH, type ContractingPushEvent } from '@pkg/domain/contracting';
+import { BREAKDOWN_PHOTO_POLICY, BREAKDOWN_REPORT_PATH } from '@pkg/domain/contracting';
 import {
   BREAKDOWN_MAX_PHOTOS,
   BreakdownDescription,
@@ -13,7 +13,6 @@ import {
 } from '@pkg/schema/contracting';
 import type { FastifyInstance, FastifyReply } from 'fastify';
 import { z } from 'zod';
-import type { Scheduler } from '../../../background-queue.js';
 import {
   type MultipartUploadOptions,
   mapCoreErrorToRoute,
@@ -26,10 +25,11 @@ import {
   streamObjectBody,
 } from '../../http-route-helpers.js';
 import { breakdownErrorFamily } from '../contracting-error-families.js';
+import type { ContractingPushScheduler } from '../contracting-push-scheduler.js';
 
 export async function registerBreakdownHttpRoutes(
   app: FastifyInstance,
-  { db, storage, push }: { db: Db; storage: StorageAdapter; push: Scheduler<ContractingPushEvent> },
+  { db, storage, push }: { db: Db; storage: StorageAdapter; push: ContractingPushScheduler },
 ) {
   // One photo over the cap is collected so core's own refusal, not the stream limit, answers it.
   const upload = (textFields: readonly string[]): MultipartUploadOptions => ({

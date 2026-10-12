@@ -6,7 +6,7 @@ import { PushError } from './push-errors.js';
 /**
  * Records that this install may be pinged for `userId` while `sessionId` lasts. A token is one phone, so a second
  * user signing in on it takes the row over: pushes follow whoever signed in last, and stop when that session ends.
- * A shared device account never registers.
+ * A shared device account never registers. There is no unregister: the row cascades away with its session.
  */
 export async function registerPushToken({
   db,
@@ -30,11 +30,6 @@ export async function registerPushToken({
       target: pushTokens.token,
       set: { userId, sessionId, platform: input.platform, lastSeenAt: sql`now()` },
     });
-}
-
-/** Forgets this install for `userId` on sign-out; a token another user has since taken over is left alone. */
-export async function unregisterPushToken({ db, userId, token }: { db: Db; userId: string; token: string }) {
-  await db.delete(pushTokens).where(and(eq(pushTokens.token, token), eq(pushTokens.userId, userId)));
 }
 
 /** The installs these users can be pinged on: only those whose registering session has not expired. */

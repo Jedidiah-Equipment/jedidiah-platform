@@ -123,8 +123,8 @@ export async function leftStint(db: Db, jobId: string, machineId: string, arriva
         ...(role === 'departure' ? { comment: 'Photo unavailable' } : {}),
       },
     });
-  const arrived = await capture('arrival', arrival);
-  const departed = await capture('departure', departure);
+  const { reading: arrived } = await capture('arrival', arrival);
+  const { reading: departed } = await capture('departure', departure);
   return { id: planned.id, arrivalReadingId: arrived.id, departureReadingId: departed.id };
 }
 

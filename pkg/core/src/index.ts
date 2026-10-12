@@ -15,5 +15,6 @@ export * from './push/push-sender.js';
 export * from './push/push-token-service.js';
 export { InMemoryStorageAdapter } from './storage/in-memory-storage-adapter.js';
 export * from './storage/storage-adapter.js';
+export * from './users/business-role.js';
 export * from './users/user-errors.js';
 export * from './users/user-service.js';

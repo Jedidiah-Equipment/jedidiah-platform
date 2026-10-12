@@ -1,7 +1,7 @@
 import type { StorageAdapter } from '@pkg/core';
 import { captureReading, getReadingForEvidence } from '@pkg/core/contracting';
 import type { Db } from '@pkg/db';
-import { type ContractingPushEvent, READING_CAPTURE_PATH, READING_PHOTO_POLICY } from '@pkg/domain/contracting';
+import { READING_CAPTURE_PATH, READING_PHOTO_POLICY } from '@pkg/domain/contracting';
 import {
   ReadingCaptureMultipart,
   ReadingComment,
@@ -22,6 +22,7 @@ import {
   streamObjectBody,
 } from '../../http-route-helpers.js';
 import { readingErrorFamily } from '../contracting-error-families.js';
+import type { ContractingPushScheduler } from '../contracting-push-scheduler.js';
 
 /** Schedules a captured reading's AI check after the capture has answered. */
 export type ReadingVerifications = Scheduler<string>;
@@ -33,12 +34,7 @@ export async function registerReadingHttpRoutes(
     storage,
     verifications,
     push,
-  }: {
-    db: Db;
-    storage: StorageAdapter;
-    verifications: ReadingVerifications;
-    push: Scheduler<ContractingPushEvent>;
-  },
+  }: { db: Db; storage: StorageAdapter; verifications: ReadingVerifications; push: ContractingPushScheduler },
 ) {
   const upload: MultipartUploadOptions = {
     fileField: 'photo',
@@ -60,16 +56,16 @@ export async function registerReadingHttpRoutes(
       requirePermission(auth, 'contracting_reading:capture', 'You cannot capture Hour Readings.', 'reading.forbidden');
       const { input, files } = await readMultipartUpload(request, upload, ReadingCaptureMultipart);
       const [photoBytes] = files;
-      const row = await captureReading({
+      const { reading, serviceDueSoonCrossed } = await captureReading({
         db,
         actor: auth.access,
         input,
         ...(photoBytes === undefined ? {} : { evidence: { storage, photoBytes } }),
-        signals: { serviceDueSoon: ({ id }) => push.schedule({ kind: 'machine.service-due-soon', machineId: id }) },
       });
-      // Answer at once; the photo's AI check follows in the background.
-      if (row.photo) verifications.schedule(row.id);
-      return reply.status(201).send(row);
+      // Answer at once; the photo's AI check and any workshop alert follow in the background.
+      if (reading.photo) verifications.schedule(reading.id);
+      if (serviceDueSoonCrossed) push.schedule({ kind: 'machine.service-due-soon', machineId: input.machineId });
+      return reply.status(201).send(reading);
     } catch (error) {
       return sendReadingError(reply, error, upload);
     }

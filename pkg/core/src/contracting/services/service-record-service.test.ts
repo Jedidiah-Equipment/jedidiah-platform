@@ -63,13 +63,11 @@ describe('Service Due Soon', () => {
     expect(listed).toMatchObject({ latestReadingHours: 1449, hoursToService: 51, serviceDueStatus: 'due-soon' });
   });
 
-  test('signals the crossing once, after commit, and again after a service re-arms it', async ({
-    context: { db, excavator },
-  }) => {
+  test('reports the crossing once, and again after a service re-arms it', async ({ context: { db, excavator } }) => {
     await patchMachine({ db, actorUserId: adminId, input: { id: excavator.id, nextServiceDueHours: 1500 } });
-    const signalled: string[] = [];
-    const capture = (value: number) =>
-      captureReading({
+    const crossed: number[] = [];
+    const capture = async (value: number) => {
+      const { serviceDueSoonCrossed } = await captureReading({
         db,
         actor: admin,
         input: {
@@ -79,8 +77,9 @@ describe('Service Due Soon', () => {
           capturedAt: '2026-09-07T08:00:00Z',
           disputePrevious: false,
         },
-        signals: { serviceDueSoon: ({ code }) => signalled.push(`${code}@${value}`) },
       });
+      if (serviceDueSoonCrossed) crossed.push(value);
+    };
 
     await capture(1300);
     await capture(1449);
@@ -105,7 +104,7 @@ describe('Service Due Soon', () => {
     await capture(1700);
     await capture(1870);
 
-    expect(signalled).toEqual(['CAT320-1@1449', 'CAT320-1@1870']);
+    expect(crossed).toEqual([1449, 1870]);
   });
 });
 

@@ -1,8 +1,13 @@
-import { PUSH_DEVICE_NOT_REGISTERED, type PushOutcome, type PushSender } from '@pkg/core';
-import { Expo, type ExpoPushMessage } from 'expo-server-sdk';
+import { PUSH_DEVICE_NOT_REGISTERED, type PushMessage, type PushOutcome, type PushSender } from '@pkg/core';
+import { Expo, type ExpoPushTicket } from 'expo-server-sdk';
 
 /** The slice of the Expo client the sender uses, so a test can stand in for the push service. */
 export type ExpoPushClient = Pick<Expo, 'chunkPushNotifications' | 'sendPushNotificationsAsync'>;
+
+const outcomeOf = (to: string, ticket: ExpoPushTicket | undefined): PushOutcome => {
+  if (!ticket) return { to, ok: false, error: 'no ticket' };
+  return ticket.status === 'ok' ? { to, ok: true } : { to, ok: false, error: ticket.details?.error ?? ticket.message };
+};
 
 /**
  * Sends through Expo's push service and reports one outcome per message, in Expo's words. A token Expo would not
@@ -17,28 +22,24 @@ export function createExpoPushSender({
   expo?: ExpoPushClient;
 }): PushSender {
   return async (messages) => {
-    const valid: ExpoPushMessage[] = messages.filter((message) => Expo.isExpoPushToken(message.to));
-    const outcomes: PushOutcome[] = messages
-      .filter((message) => !Expo.isExpoPushToken(message.to))
-      .map((message) => ({ to: message.to, ok: false, error: PUSH_DEVICE_NOT_REGISTERED }));
-    for (const chunk of expo.chunkPushNotifications(valid)) {
+    const outcomes: PushOutcome[] = [];
+    const accepted: PushMessage[] = [];
+    for (const message of messages) {
+      if (Expo.isExpoPushToken(message.to)) accepted.push(message);
+      else outcomes.push({ to: message.to, ok: false, error: PUSH_DEVICE_NOT_REGISTERED });
+    }
+    // Expo chunks `accepted` into consecutive slices, so each ticket's recipient is read back from there, as the
+    // single token a PushMessage carries.
+    let offset = 0;
+    for (const chunk of expo.chunkPushNotifications(accepted)) {
+      const batch = accepted.slice(offset, offset + chunk.length);
+      offset += chunk.length;
       try {
         const tickets = await expo.sendPushNotificationsAsync(chunk);
-        tickets.forEach((ticket, index) => {
-          const to = String(chunk[index]?.to);
-          outcomes.push(
-            ticket.status === 'ok'
-              ? { to, ok: true }
-              : { to, ok: false, error: ticket.details?.error ?? ticket.message },
-          );
-        });
+        outcomes.push(...batch.map((message, index) => outcomeOf(message.to, tickets[index])));
       } catch (error) {
-        for (const message of chunk)
-          outcomes.push({
-            to: String(message.to),
-            ok: false,
-            error: error instanceof Error ? error.message : 'send failed',
-          });
+        const reason = error instanceof Error ? error.message : 'send failed';
+        outcomes.push(...batch.map((message): PushOutcome => ({ to: message.to, ok: false, error: reason })));
       }
     }
     return outcomes;

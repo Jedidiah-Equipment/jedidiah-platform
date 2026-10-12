@@ -3,7 +3,7 @@ import { describe, expect } from 'vitest';
 import { createTester } from '../test/create-tester.js';
 import { isPushError } from './push-errors.js';
 import { deliverPush, type PushMessage } from './push-sender.js';
-import { listPushTokensForUsers, registerPushToken, unregisterPushToken } from './push-token-service.js';
+import { listPushTokensForUsers, registerPushToken } from './push-token-service.js';
 
 const test = createTester();
 
@@ -62,17 +62,6 @@ describe('push tokens', () => {
     await registerPushToken({ db, userId: 'ben', sessionId: 'ben', input: { token: tokenA, platform: 'ios' } });
 
     expect(await tokensOf(db)).toEqual([{ userId: 'ben', token: tokenA }]);
-  });
-
-  test('signing out leaves a token another user has taken over', async ({ context: { db } }) => {
-    await seedUsers(db);
-    await registerPushToken({ db, userId: 'anna', sessionId: 'anna', input: { token: tokenA, platform: 'ios' } });
-    await registerPushToken({ db, userId: 'ben', sessionId: 'ben', input: { token: tokenB, platform: 'android' } });
-
-    await unregisterPushToken({ db, userId: 'anna', token: tokenB });
-    await unregisterPushToken({ db, userId: 'anna', token: tokenA });
-
-    expect(await listPushTokensForUsers({ db, userIds: ['anna', 'ben'] })).toEqual([{ userId: 'ben', token: tokenB }]);
   });
 
   test('an install stops being pinged when the session that registered it ends', async ({ context: { db } }) => {

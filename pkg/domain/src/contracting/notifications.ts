@@ -1,5 +1,6 @@
-import type { ContractingRole, UserAccessSummary } from '@pkg/schema';
+import type { AppRole, ContractingRole, UserAccessSummary } from '@pkg/schema';
 import type { BreakdownUrgency } from '@pkg/schema/contracting';
+import { getBusinessRole } from '../auth/authorization.js';
 import { formatHours } from '../formatting/number.js';
 import { breakdownUrgencyLabels } from './breakdowns.js';
 import { serviceDueStatusLabels } from './service-due.js';
@@ -7,36 +8,24 @@ import { serviceDueStatusLabels } from './service-due.js';
 /** The one Android channel workshop pushes ring on; the native default channel carries the same id. */
 export const WORKSHOP_PUSH_CHANNEL_ID = 'workshop';
 
-/**
- * Who a Contracting push reaches. `super-admin` spans both businesses and is stored in the Equipment slot, so it is
- * matched on its own flag rather than a contracting role.
- */
-export type ContractingPushRecipients = { contractingRoles: readonly ContractingRole[]; superAdmin: boolean };
+/** A role a Contracting push can name: Contracting's own, or super-admin, which spans both businesses. */
+export type ContractingPushRole = ContractingRole | 'super-admin';
 
-export const breakdownPushRecipients: Record<BreakdownUrgency, ContractingPushRecipients> = {
-  'code-green': { contractingRoles: ['workshop-manager'], superAdmin: false },
-  'code-red': {
-    contractingRoles: ['workshop-manager', 'contracting-manager', 'contracting-admin'],
-    superAdmin: true,
-  },
+export const breakdownPushRecipients: Record<BreakdownUrgency, readonly ContractingPushRole[]> = {
+  'code-green': ['workshop-manager'],
+  'code-red': ['workshop-manager', 'contracting-manager', 'contracting-admin', 'super-admin'],
 };
 
-export const serviceDueSoonPushRecipients: ContractingPushRecipients = {
-  contractingRoles: ['workshop-manager'],
-  superAdmin: false,
-};
+export const serviceDueSoonPushRecipients: readonly ContractingPushRole[] = ['workshop-manager'];
 
-const pushRecipientRoles = new Set<ContractingRole>(
-  [...Object.values(breakdownPushRecipients), serviceDueSoonPushRecipients].flatMap(
-    (recipients) => recipients.contractingRoles,
-  ),
-);
+const pushRecipientRoles = new Set<AppRole | null>([
+  ...Object.values(breakdownPushRecipients).flat(),
+  ...serviceDueSoonPushRecipients,
+]);
 
 /** Role membership is the opt-in: someone a workshop push can reach, and so the only one asked for notifications. */
 export const isPushRecipient = (access: UserAccessSummary | null | undefined) =>
-  !!access &&
-  (access.equipmentRole === 'super-admin' ||
-    (access.contractingRole !== null && pushRecipientRoles.has(access.contractingRole)));
+  pushRecipientRoles.has(getBusinessRole(access, 'contracting'));
 
 export type ContractingPushEvent =
   | { kind: 'breakdown.reported'; breakdownId: string }

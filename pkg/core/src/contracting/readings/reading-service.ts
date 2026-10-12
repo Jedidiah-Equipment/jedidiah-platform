@@ -94,8 +94,11 @@ async function storeMeterPhoto({ storage, photoBytes }: ReadingEvidence): Promis
   return photo;
 }
 
-/** What a committed capture tells the caller about, so the caller decides who hears of it. */
-export type CaptureSignals = { serviceDueSoon?: (machine: { id: string; code: string }) => void };
+/**
+ * `serviceDueSoonCrossed` is true when this capture, never a replay, took the Machine into Service Due Soon; the
+ * caller decides who hears of it, once the write has committed.
+ */
+export type ReadingCapture = { reading: ReturnType<typeof withHint>; serviceDueSoonCrossed: boolean };
 
 export async function captureReading({
   db,
@@ -103,19 +106,17 @@ export async function captureReading({
   input: raw,
   evidence,
   now = new Date(),
-  signals,
 }: {
   db: Db;
   actor: JobActor;
   input: ReadingCaptureInput;
   evidence?: ReadingEvidence;
   now?: Date;
-  signals?: CaptureSignals;
-}) {
+}): Promise<ReadingCapture> {
   const actorUserId = actor.userId;
   const input = ReadingCaptureInput.parse(raw);
   // A mobile retry of an already delivered capture returns the stored row instead of a duplicate.
-  async function replay(db: Db | DatabaseTransaction) {
+  async function replay(db: Db | DatabaseTransaction): Promise<ReadingCapture | null> {
     if (!input.localId) return null;
     const row = await db.query.contractingHourReadings.findFirst({
       where: eq(contractingHourReadings.id, input.localId),
@@ -128,19 +129,15 @@ export async function captureReading({
       row.capturedAt.getTime() !== Date.parse(input.capturedAt)
     )
       throw new ReadingError('reading.capture_id_conflict', 'This capture identifier has already been used.');
-    return withHint(row);
+    return { reading: withHint(row), serviceDueSoonCrossed: false };
   }
   const delivered = await replay(db);
   if (delivered) return delivered;
   const photo = evidence ? await storeMeterPhoto(evidence) : null;
-  // Read inside the transaction, signalled only once it has committed.
-  let serviceDueSoon = null as { id: string; code: string } | null;
-  let result: Awaited<ReturnType<typeof replay>> & {};
   try {
     const verdict = photo ? awaitingVerdict : manualVerdict;
-    result = await withCaptureConstraints(() =>
-      db.transaction(async (tx) => {
-        serviceDueSoon = null;
+    const result = await withCaptureConstraints(() =>
+      db.transaction(async (tx): Promise<ReadingCapture> => {
         const [machine] = await tx
           .select()
           .from(contractingMachines)
@@ -206,14 +203,6 @@ export async function captureReading({
           .returning();
         if (!row) throw new Error('Reading insert returned no row');
         await recordAuditCreate({ db: tx, actorUserId, descriptor, input: row });
-        if (
-          serviceDueSoonCrossed({
-            previousHours: latest?.value ?? null,
-            newHours: row.value,
-            nextServiceDueHours: machine.nextServiceDueHours,
-          })
-        )
-          serviceDueSoon = { id: machine.id, code: machine.code };
         if (stint)
           await attachReadingToStint(tx, {
             ...stint,
@@ -222,13 +211,21 @@ export async function captureReading({
             input,
             readingId: row.id,
           });
-        return withHint(row);
+        return {
+          reading: withHint(row),
+          serviceDueSoonCrossed: serviceDueSoonCrossed({
+            previousHours: latest?.value ?? null,
+            newHours: row.value,
+            nextServiceDueHours: machine.nextServiceDueHours,
+          }),
+        };
       }),
     );
     // A replay that won the lock inside the transaction leaves this upload orphaned.
-    if (photo && evidence && result.photo?.storageKey !== photo.storageKey) {
+    if (photo && evidence && result.reading.photo?.storageKey !== photo.storageKey) {
       await evidence.storage.deleteObject(photo.storageKey);
     }
+    return result;
   } catch (error) {
     if (photo && evidence) {
       try {
@@ -239,8 +236,6 @@ export async function captureReading({
     }
     throw error;
   }
-  if (serviceDueSoon) signals?.serviceDueSoon?.(serviceDueSoon);
-  return result;
 }
 
 const capturer = alias(user, 'exception_capturer');

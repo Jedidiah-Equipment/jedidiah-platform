@@ -1,10 +1,7 @@
 import type { DateOnlyIso } from '@pkg/schema';
-import type { ReportWindow, ReportWindowInput, ReportWindowKind } from '@pkg/schema/contracting';
+import { type ReportWindow, ReportWindowInput, type ReportWindowKind } from '@pkg/schema/contracting';
 import { formatDate, parseDateOnlyParts } from '../formatting/date.js';
 import { addDateOnlyDays, addDateOnlyMonths, diffDateOnlyDays } from '../formatting/date-only.js';
-
-const MIN_YEAR = 2020;
-const MAX_YEAR = 2100;
 
 const isoMonthStart = (year: number, month: number) => `${year}-${String(month).padStart(2, '0')}-01` as DateOnlyIso;
 const lastDayOf = (year: number, month: number) =>
@@ -59,21 +56,19 @@ export function currentReportWindow(kind: ReportWindowKind, today: DateOnlyIso):
   return windowInput(kind, year, month);
 }
 
-/** Reads a window from the URL; anything it cannot read opens the current month. */
+/** Reads a window from the URL; anything the window schema refuses opens the current month. */
 export function parseReportWindowParam(value: string | undefined, today: DateOnlyIso): ReportWindowInput {
-  const match = /^(?<year>\d{4})(?:-(?:(?<month>\d{2})|Q(?<quarter>\d)))?$/.exec(value ?? '');
-  const year = Number(match?.groups?.year);
-  if (!match?.groups || year < MIN_YEAR || year > MAX_YEAR) return currentReportWindow('month', today);
-  const { month, quarter } = match.groups;
-  if (month !== undefined) {
-    const period = Number(month);
-    return period >= 1 && period <= 12 ? { kind: 'month', year, period } : currentReportWindow('month', today);
-  }
-  if (quarter !== undefined) {
-    const period = Number(quarter);
-    return period >= 1 && period <= 4 ? { kind: 'quarter', year, period } : currentReportWindow('month', today);
-  }
-  return { kind: 'year', year };
+  const groups = /^(?<year>\d{4})(?:-(?:(?<month>\d{2})|Q(?<quarter>\d)))?$/.exec(value ?? '')?.groups;
+  if (!groups) return currentReportWindow('month', today);
+  const year = Number(groups.year);
+  const candidate =
+    groups.month !== undefined
+      ? { kind: 'month', year, period: Number(groups.month) }
+      : groups.quarter !== undefined
+        ? { kind: 'quarter', year, period: Number(groups.quarter) }
+        : { kind: 'year', year };
+  const parsed = ReportWindowInput.safeParse(candidate);
+  return parsed.success ? parsed.data : currentReportWindow('month', today);
 }
 
 /** The neighbouring period of the same kind. */

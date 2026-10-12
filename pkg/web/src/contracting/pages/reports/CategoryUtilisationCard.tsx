@@ -1,5 +1,10 @@
-import { formatHours, formatNumber, formatPercent } from '@pkg/domain';
-import type { CategoryUtilisation, MachineUtilisation, UtilisationTrendSubject } from '@pkg/schema/contracting';
+import { formatHours, formatNumber } from '@pkg/domain';
+import type {
+  CategoryUtilisation,
+  HourKindTotals,
+  MachineUtilisation,
+  UtilisationTrendSubject,
+} from '@pkg/schema/contracting';
 import { IconChevronDown } from '@tabler/icons-react';
 import { Link } from '@tanstack/react-router';
 import type { SortingState } from '@tanstack/react-table';
@@ -12,11 +17,10 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card.js';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible.js';
 import { CategoryLabel } from '@/contracting/components/CategoryIcon.js';
 import { cn } from '@/lib/utils.js';
-
-const percent = (value: number | null) => (value === null ? '—' : formatPercent(value));
+import { percentOrDash as percent } from './report-format.js';
 
 const hoursColumn = (
-  key: 'workHours' | 'travelHours' | 'unaccountedHours' | 'unresolvedHours',
+  key: keyof HourKindTotals,
   header: NonNullable<DataTableColumnDef<MachineUtilisation>['header']>,
 ): DataTableColumnDef<MachineUtilisation> => ({
   accessorKey: key,
@@ -91,7 +95,7 @@ export function CategoryUtilisationCard({
             <CategoryLabel icon={category.icon} colour={category.colour} name={category.name} className="font-medium" />
             <span className="text-sm tabular-nums">{percent(category.utilisationPercent)}</span>
             <span className="text-sm text-muted-foreground">
-              {formatNumber(category.activeMachineCount)} of {formatNumber(category.machineCount)} machines
+              {formatNumber(category.activeMachineCount)} of {formatNumber(category.machineCount)} Machines
             </span>
           </CollapsibleTrigger>
           <Button

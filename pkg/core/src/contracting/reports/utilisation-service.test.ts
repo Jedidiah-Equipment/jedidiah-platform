@@ -16,12 +16,8 @@ const july = { kind: 'month', year: 2026, period: 7 } as const;
 
 const test = createTester(async ({ db }) => {
   const fixtures = await seedJobFixtures(db);
-  // Both Machines joined the fleet at the start of the year; the tipper retired on 10 June.
+  // Both Machines joined the fleet at the start of the year.
   await db.update(contractingMachines).set({ createdAt: new Date('2026-01-01T08:00:00+02:00') });
-  await db
-    .update(contractingMachines)
-    .set({ retiredAt: new Date('2026-06-10T12:00:00+02:00'), retiredReason: 'Sold' })
-    .where(eq(contractingMachines.id, fixtures.tipper.id));
   const newJob = () =>
     createJob({
       db,
@@ -54,6 +50,13 @@ const test = createTester(async ({ db }) => {
         ...(role === 'departure' ? { comment: 'Photo unavailable' } : {}),
       },
     });
+  // The tipper has readings but never a stint, then retired on 10 June.
+  await capture(fixtures.tipper.id, 'spot', 900, '2026-06-02T08:00:00+02:00');
+  await capture(fixtures.tipper.id, 'spot', 912.5, '2026-06-08T08:00:00+02:00');
+  await db
+    .update(contractingMachines)
+    .set({ retiredAt: new Date('2026-06-10T12:00:00+02:00'), retiredReason: 'Sold' })
+    .where(eq(contractingMachines.id, fixtures.tipper.id));
   // The excavator: on site 28 Jun to 3 Jul with a spot read on 30 Jun, then an 8.8 h gap, then 6 to 7 Jul.
   const excavator = fixtures.excavator.id;
   const first = await plannedStint(db, admin, { jobId: (await newJob()).id, machineId: excavator, implementId: null });
@@ -83,13 +86,16 @@ test('derives day counts and hours by kind from the captured ledger, pro-rated a
       travelHours: 0,
       unresolvedHours: 0,
     }),
-    // Retired on 10 June: in the window for ten days, never worked, no hours.
+    // Readings but no stint, retired on 10 June: in the window for ten days, never worked, no hours of any kind.
     expect.objectContaining({
       code: 'TIP-7',
       activeDays: 0,
       fleetDays: 10,
       utilisationPercent: 0,
       workHours: 0,
+      travelHours: 0,
+      unaccountedHours: 0,
+      unresolvedHours: 0,
       retiredAt: expect.any(String),
     }),
   ]);

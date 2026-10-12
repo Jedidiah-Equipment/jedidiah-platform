@@ -2,8 +2,7 @@ import { formatNumber, formatPercent } from '@pkg/domain';
 import type { FleetUtilisation } from '@pkg/schema/contracting';
 import { StatCard } from '@/components/common/StatCard.js';
 import { Card, CardContent } from '@/components/ui/card.js';
-
-const percent = (value: number | null) => (value === null ? '—' : formatPercent(value));
+import { percentOrDash as percent } from './report-format.js';
 
 /** Fleet Load and fleet Utilisation % for the window; the target sits beside the one it is drawn on. */
 export function UtilisationHeadline({ fleet, target }: { fleet: FleetUtilisation; target: number | null }) {
@@ -13,7 +12,7 @@ export function UtilisationHeadline({ fleet, target }: { fleet: FleetUtilisation
         <StatCard
           label="Fleet Load"
           value={percent(fleet.fleetLoadPercent)}
-          sublabel={`${formatNumber(fleet.activeMachineCount)} of ${formatNumber(fleet.machineCount)} machines worked`}
+          sublabel={`${formatNumber(fleet.activeMachineCount)} of ${formatNumber(fleet.machineCount)} Machines worked`}
         />
         <StatCard
           label="Utilisation"

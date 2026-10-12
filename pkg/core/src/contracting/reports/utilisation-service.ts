@@ -15,6 +15,7 @@ import {
   hourSegments,
   type LedgerStint,
   resolveReportWindow,
+  round1,
   trailingMonthWindows,
   utilisationPercent,
 } from '@pkg/domain/contracting';
@@ -160,7 +161,7 @@ function aggregate(rows: readonly MachineRow[]) {
   const activeDays = rows.reduce((sum, row) => sum + row.activeDays, 0);
   const fleetDays = rows.reduce((sum, row) => sum + row.fleetDays, 0);
   const hours = Object.fromEntries(
-    hourKinds.map((kind) => [kind, Math.round(rows.reduce((sum, row) => sum + row[kind], 0) * 10) / 10]),
+    hourKinds.map((kind) => [kind, round1(rows.reduce((sum, row) => sum + row[kind], 0))]),
   ) as HourKindTotals;
   const machineCount = rows.length;
   const activeMachineCount = rows.filter((row) => row.activeDays > 0).length;

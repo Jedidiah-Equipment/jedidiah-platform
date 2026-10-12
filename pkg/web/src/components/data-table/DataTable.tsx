@@ -235,11 +235,13 @@ function DataTableRow<TData extends RowData>({
   onRowClick?: ((item: TData) => void) | undefined;
   row: DataTableRowInstance<TData>;
 }) {
+  const state = getRowState?.(row.original);
   return (
     <TableRow
+      aria-current={state === 'selected' ? 'true' : undefined}
       aria-label={getRowAriaLabel?.(row.original)}
       className={cn(getRowClassName?.(row.original), onRowClick ? 'cursor-pointer' : undefined)}
-      data-state={getRowState?.(row.original)}
+      data-state={state}
       onClick={(event) => {
         if (!onRowClick || shouldIgnoreRowEvent(event.currentTarget, event.target)) {
           return;

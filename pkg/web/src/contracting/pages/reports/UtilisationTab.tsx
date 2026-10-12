@@ -26,9 +26,7 @@ export function UtilisationTab({
   const report = useQuery(
     trpc.contractingReports.utilisation.queryOptions(window, { placeholderData: keepPreviousData }),
   );
-  const trend = useQuery(
-    trpc.contractingReports.utilisationTrend.queryOptions({ window, subject }, { placeholderData: keepPreviousData }),
-  );
+  const trend = useQuery(trpc.contractingReports.utilisationTrend.queryOptions({ window, subject }));
   const choose = (next: UtilisationTrendSubject) => onSubjectChange(formatReportSubject(next));
 
   if (report.isPending)

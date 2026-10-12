@@ -6,7 +6,7 @@ import {
   shiftReportWindow,
 } from '@pkg/domain/contracting';
 import type { DateOnlyIso } from '@pkg/schema';
-import { type ReportWindowInput, type ReportWindowKind, reportWindowKinds } from '@pkg/schema/contracting';
+import { ReportWindowInput, type ReportWindowKind, reportWindowKinds } from '@pkg/schema/contracting';
 import { IconChevronLeft, IconChevronRight } from '@tabler/icons-react';
 import { EnumSelect } from '@/components/common/EnumSelect.js';
 import { Button } from '@/components/ui/button.js';
@@ -23,6 +23,7 @@ export function ReportWindowPicker({
   today: DateOnlyIso;
   onChange: (param: string) => void;
 }) {
+  const previous = shiftReportWindow(window, -1);
   const next = shiftReportWindow(window, 1);
   const nextIsFuture = resolveReportWindow(next, today).days === 0;
   const go = (input: ReportWindowInput) => onChange(formatReportWindowParam(input));
@@ -39,7 +40,9 @@ export function ReportWindowPicker({
         aria-label="Previous period"
         size="icon"
         variant="outline"
-        onClick={() => go(shiftReportWindow(window, -1))}
+        // The schema's first report year: a window before it would be refused and reopen today.
+        disabled={!ReportWindowInput.safeParse(previous).success}
+        onClick={() => go(previous)}
       >
         <IconChevronLeft />
       </Button>

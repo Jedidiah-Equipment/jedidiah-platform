@@ -33,7 +33,9 @@ const stint = (
   gap,
 });
 const nonZero = (segments: HourSegment[]) =>
-  segments.filter((segment) => segment.hours > 0).map(({ kind, hours }) => ({ kind, hours }));
+  segments
+    .filter((segment) => segment.hours > 0)
+    .map(({ kind, hours }) => ({ kind, hours: Math.round(hours * 10) / 10 }));
 
 describe('hourSegments and allocateHours', () => {
   // Scenario 2 of #1378: a 37.4 h gap resolved as 1.6 h travel and 35.8 h of yard time.
@@ -113,6 +115,20 @@ describe('hourSegments and allocateHours', () => {
       { kind: 'travel', hours: 4 },
       { kind: 'unaccounted', hours: 2 },
     ]);
+  });
+
+  test('a small resolved split over many runs keeps its stored totals', () => {
+    const a = reading('arrival', 0, '2026-06-01T08:00:00+02:00');
+    const d = reading('departure', 1, '2026-06-01T09:00:00+02:00');
+    const yard1 = reading('spot', 1.1, '2026-06-01T10:00:00+02:00');
+    const yard2 = reading('spot', 1.2, '2026-06-01T11:00:00+02:00');
+    const b = reading('arrival', 1.3, '2026-06-01T12:00:00+02:00');
+    const segments = hourSegments(
+      [a, d, yard1, yard2, b],
+      [stint(a, d), stint(b, null, { travelHours: 0.1, unaccountedHours: 0.2 })],
+      threshold,
+    );
+    expect(allocateHours(segments, june)).toMatchObject({ travelHours: 0.1, unaccountedHours: 0.2 });
   });
 
   test('a disputed pair running backwards counts zero and changes no phase', () => {

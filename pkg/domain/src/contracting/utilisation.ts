@@ -43,12 +43,15 @@ export type LedgerStint = {
   gap: { travelHours: number; unaccountedHours: number } | null;
 };
 export type HourKind = 'work' | 'travel' | 'unaccounted' | 'unresolved';
-/** One stretch of the meter with a kind and the instants it ran between; `hours` is one decimal. */
+/**
+ * One stretch of the meter with a kind and the instants it ran between. A gap run's share is kept unrounded so a
+ * resolved split survives many small runs; `allocateHours` rounds each total once.
+ */
 export type HourSegment = { kind: HourKind; hours: number; from: string; to: string };
 
 type GapRun = { from: string; to: string; hours: number };
 
-/** Splits a closed Hour Gap over its runs by each run's share of the gap's hours. */
+/** Splits a closed Hour Gap over its runs by each run's share of the gap's hours, unrounded. */
 function splitGapRuns(runs: readonly GapRun[], closing: LedgerStint, gapFlagThresholdHours: number): HourSegment[] {
   const gapHours = round1(runs.reduce((sum, run) => sum + run.hours, 0));
   const split: Record<Exclude<HourKind, 'work'>, number> = closing.gap !== null
@@ -59,7 +62,7 @@ function splitGapRuns(runs: readonly GapRun[], closing: LedgerStint, gapFlagThre
   return runs.flatMap((run) => {
     const share = gapHours === 0 ? 0 : run.hours / gapHours;
     return (['travel', 'unaccounted', 'unresolved'] as const).flatMap((kind) =>
-      split[kind] > 0 ? [{ kind, hours: round1(split[kind] * share), from: run.from, to: run.to }] : [],
+      split[kind] > 0 ? [{ kind, hours: split[kind] * share, from: run.from, to: run.to }] : [],
     );
   });
 }

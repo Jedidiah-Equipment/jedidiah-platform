@@ -12,6 +12,7 @@ import { registerEquipment } from './equipment/wiring.js';
 import { registerHealthRoutes } from './health.js';
 import { log } from './logger.js';
 import { createObservability, type Observability } from './observability.js';
+import { createExpoPushSender } from './push/expo-push-sender.js';
 import { createFileChangelogLoader } from './routes/changelog/changelog-loader.js';
 import { createDocumentStorageAdapter } from './storage/s3-storage-adapter.js';
 import { createContextFactory } from './trpc/context.js';
@@ -62,8 +63,9 @@ export async function buildServer(
     },
   });
 
-  const equipment = await registerEquipment(app, { config, storage });
-  const contracting = await registerContracting(app, { config, storage });
+  const push = createExpoPushSender({ accessToken: config.EXPO_ACCESS_TOKEN });
+  const equipment = await registerEquipment(app, { config, storage, push });
+  const contracting = await registerContracting(app, { config, storage, push });
   await registerHealthRoutes(app, config);
 
   const trpcOptions = {

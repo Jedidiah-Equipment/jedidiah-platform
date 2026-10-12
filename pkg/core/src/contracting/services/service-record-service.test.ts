@@ -62,6 +62,51 @@ describe('Service Due Soon', () => {
     );
     expect(listed).toMatchObject({ latestReadingHours: 1449, hoursToService: 51, serviceDueStatus: 'due-soon' });
   });
+
+  test('signals the crossing once, after commit, and again after a service re-arms it', async ({
+    context: { db, excavator },
+  }) => {
+    await patchMachine({ db, actorUserId: adminId, input: { id: excavator.id, nextServiceDueHours: 1500 } });
+    const signalled: string[] = [];
+    const capture = (value: number) =>
+      captureReading({
+        db,
+        actor: admin,
+        input: {
+          machineId: excavator.id,
+          role: 'spot',
+          value,
+          capturedAt: '2026-09-07T08:00:00Z',
+          disputePrevious: false,
+        },
+        signals: { serviceDueSoon: ({ code }) => signalled.push(`${code}@${value}`) },
+      });
+
+    await capture(1300);
+    await capture(1449);
+    await capture(1460);
+    const opened = await openServiceRecord({
+      db,
+      actorUserId: adminId,
+      input: { machineId: excavator.id, startDate: day('2026-10-01'), primaryMechanicUserId: 'danie', notes: null },
+    });
+    await closeServiceRecord({
+      db,
+      actorUserId: adminId,
+      input: {
+        id: opened.id,
+        endDate: day('2026-10-02'),
+        readingAtServiceHours: 1460,
+        primaryMechanicUserId: 'danie',
+        notes: null,
+        nextServiceDueHours: 1960,
+      },
+    });
+    await capture(1700);
+    await capture(1870);
+
+    expect(signalled).toEqual(['CAT320-1@1449', 'CAT320-1@1870']);
+  });
 });
 
 describe('Service Records', () => {

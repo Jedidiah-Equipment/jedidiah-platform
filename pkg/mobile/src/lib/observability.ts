@@ -1,5 +1,5 @@
 import { appEnv } from './app-env';
-import type { ObservabilityProperties } from './observability-contract';
+import { type MutationEventCatalog, type ObservabilityProperties, pickStringFields } from './observability-contract';
 import { isStagingRuntimeApp } from './runtime-app-identity';
 import type { MobileScreen } from './screen-catalog';
 
@@ -8,6 +8,14 @@ const MAX_BREADCRUMB_PROPERTIES = 12;
 const MAX_PROPERTY_LENGTH = 240;
 const projectToken = process.env.EXPO_PUBLIC_POSTHOG_PROJECT_TOKEN?.trim();
 const ingestHost = process.env.EXPO_PUBLIC_POSTHOG_HOST?.trim() || 'https://us.i.posthog.com';
+
+/** Business-blind tRPC mutations that are events; spread before each business's own catalog. */
+export const SHARED_MUTATION_EVENTS = {
+  'pushTokens.register': {
+    event: 'push token registered',
+    properties: (variables) => pickStringFields(variables, [['platform', 'platform']]),
+  },
+} satisfies MutationEventCatalog;
 
 export type BreadcrumbCategory =
   | 'auth'

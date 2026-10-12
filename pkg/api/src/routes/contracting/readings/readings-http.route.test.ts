@@ -11,11 +11,12 @@ import {
   getJob,
   getReading,
   listReadingsByMachine,
+  patchMachine,
   verifyCapturedReading,
 } from '@pkg/core/contracting';
 import { user } from '@pkg/db';
 import { fileTooLargeMessage } from '@pkg/domain';
-import { READING_PHOTO_POLICY } from '@pkg/domain/contracting';
+import { type ContractingPushEvent, READING_PHOTO_POLICY } from '@pkg/domain/contracting';
 import { accessForRole } from '@pkg/domain/testing';
 import { MachineCreateInput } from '@pkg/schema/contracting';
 import Fastify from 'fastify';
@@ -77,10 +78,16 @@ const test = createTester(async ({ db, auth }) => {
     run: (id) =>
       verifyCapturedReading({ db, id, storage, readPhoto: async () => ({ value: 123.4, confidence: 0.91 }) }),
   });
-  await registerReadingHttpRoutes(app, { db, storage, verifications });
+  const pushes: ContractingPushEvent[] = [];
+  await registerReadingHttpRoutes(app, {
+    db,
+    storage,
+    verifications,
+    push: { schedule: (event) => pushes.push(event) },
+  });
   state.session = mockSession(null);
   (state.session as ReturnType<typeof mockSession>).user.contractingRole = 'foreman';
-  return { assignmentId: assignment.id, db, app, jobId: job.id, machineId: machine.id, storage, verifications };
+  return { assignmentId: assignment.id, db, app, jobId: job.id, machineId: machine.id, pushes, storage, verifications };
 });
 function upload(
   machineId: string,
@@ -197,6 +204,20 @@ test('accepts every mobile multipart field and retries a photo capture without d
     expect((await app.inject(request)).json().id).toBe(localId);
     expect(await listReadingsByMachine({ db, machineId })).toHaveLength(1);
     expect(storage.objects.size).toBe(1);
+  } finally {
+    await app.close();
+  }
+});
+
+test('schedules Service Due Soon for the capture that crosses into the window, once', async ({ context }) => {
+  const { app, db, machineId, pushes } = context;
+  try {
+    await patchMachine({ db, actorUserId: 'test-user-id', input: { id: machineId, nextServiceDueHours: 200 } });
+    const crossing = upload(machineId, null, true, { localId: '5f0d7a8e-12c4-4c55-9a43-6a2b8d1e7f10' });
+    expect((await app.inject(crossing)).statusCode).toBe(201);
+    expect((await app.inject(crossing)).statusCode).toBe(201);
+    expect((await app.inject(upload(machineId, null, true, { value: '130' }))).statusCode).toBe(201);
+    expect(pushes).toEqual([{ kind: 'machine.service-due-soon', machineId }]);
   } finally {
     await app.close();
   }

@@ -1,15 +1,20 @@
 import { isStoredUserSignInEligible } from '@pkg/domain';
+import { isPushRecipient, WORKSHOP_PUSH_CHANNEL_ID } from '@pkg/domain/contracting';
+import { useMutation } from '@tanstack/react-query';
 import { type ErrorBoundaryProps, Redirect, Stack } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Text, View } from 'react-native';
+import { ActivityIndicator, AppState, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppErrorBoundary } from '@/components/AppErrorBoundary';
 import { purgeLegacyContractingStorage } from '@/contracting/lib/purge-legacy-storage';
 import { signOut, useSession } from '@/lib/auth';
-import { AuthSessionProvider } from '@/lib/auth-session';
+import { AuthSessionProvider, useSessionAccessSummary } from '@/lib/auth-session';
 import { useIsOffline } from '@/lib/connectivity';
 import { addBreadcrumb, identifyObservabilityUser } from '@/lib/observability';
+import { useSettlePendingPushPath } from '@/lib/push/push-response';
+import { registerForPush } from '@/lib/push/register-push';
 import { isHydratedSession } from '@/lib/session-state';
+import { useTRPC } from '@/lib/trpc';
 
 export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
   return <AppErrorBoundary error={error} retry={retry} />;
@@ -81,6 +86,7 @@ export default function ProtectedLayout() {
   return (
     <AuthSessionProvider session={session}>
       <SessionObservability userId={session.user.id} />
+      <PushRegistration userId={session.user.id} />
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="contracting" />
         <Stack.Screen name="equipment" />
@@ -102,6 +108,44 @@ function SessionObservability({ userId }: { userId: string }) {
     addBreadcrumb('auth', 'session resolved');
     identifyObservabilityUser(userId);
   }, [userId]);
+
+  return null;
+}
+
+/**
+ * Every sign-in claims this install, so a phone stops pinging whoever used it before. Role membership is the opt-in:
+ * only a workshop push recipient is asked for notifications, and the server pings no one else.
+ */
+function PushRegistration({ userId }: { userId: string }) {
+  const mayAsk = isPushRecipient(useSessionAccessSummary());
+  useSettlePendingPushPath();
+  const trpc = useTRPC();
+  const { mutateAsync: register } = useMutation(trpc.pushTokens.register.mutationOptions());
+
+  useEffect(() => {
+    // Turning notifications on in the phone's settings does not restart the app, and a failed call is worth another
+    // go: until this install is registered, every return to the foreground tries again.
+    let settled = false;
+    let running = false;
+    const attempt = () => {
+      if (settled || running) return;
+      running = true;
+      registerForPush({ userId, channel: { id: WORKSHOP_PUSH_CHANNEL_ID, name: 'Workshop' }, mayAsk, register })
+        .then((outcome) => {
+          settled = outcome !== 'denied';
+          addBreadcrumb('lifecycle', 'push registration', { outcome });
+        })
+        .catch(() => addBreadcrumb('lifecycle', 'push registration failed'))
+        .finally(() => {
+          running = false;
+        });
+    };
+    attempt();
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state === 'active') attempt();
+    });
+    return () => subscription.remove();
+  }, [mayAsk, userId, register]);
 
   return null;
 }

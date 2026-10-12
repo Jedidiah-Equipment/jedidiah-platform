@@ -19,6 +19,7 @@ import {
   readingExceptionTypes,
   readingVerification,
   resolveReadingAmendment,
+  serviceDueSoonCrossed,
 } from '@pkg/domain/contracting';
 import { type AuthId, getNextCursor } from '@pkg/schema';
 import {
@@ -93,18 +94,23 @@ async function storeMeterPhoto({ storage, photoBytes }: ReadingEvidence): Promis
   return photo;
 }
 
+/** What a committed capture tells the caller about, so the caller decides who hears of it. */
+export type CaptureSignals = { serviceDueSoon?: (machine: { id: string; code: string }) => void };
+
 export async function captureReading({
   db,
   actor,
   input: raw,
   evidence,
   now = new Date(),
+  signals,
 }: {
   db: Db;
   actor: JobActor;
   input: ReadingCaptureInput;
   evidence?: ReadingEvidence;
   now?: Date;
+  signals?: CaptureSignals;
 }) {
   const actorUserId = actor.userId;
   const input = ReadingCaptureInput.parse(raw);
@@ -127,10 +133,14 @@ export async function captureReading({
   const delivered = await replay(db);
   if (delivered) return delivered;
   const photo = evidence ? await storeMeterPhoto(evidence) : null;
+  // Read inside the transaction, signalled only once it has committed.
+  let serviceDueSoon = null as { id: string; code: string } | null;
+  let result: Awaited<ReturnType<typeof replay>> & {};
   try {
     const verdict = photo ? awaitingVerdict : manualVerdict;
-    const result = await withCaptureConstraints(() =>
+    result = await withCaptureConstraints(() =>
       db.transaction(async (tx) => {
+        serviceDueSoon = null;
         const [machine] = await tx
           .select()
           .from(contractingMachines)
@@ -196,6 +206,14 @@ export async function captureReading({
           .returning();
         if (!row) throw new Error('Reading insert returned no row');
         await recordAuditCreate({ db: tx, actorUserId, descriptor, input: row });
+        if (
+          serviceDueSoonCrossed({
+            previousHours: latest?.value ?? null,
+            newHours: row.value,
+            nextServiceDueHours: machine.nextServiceDueHours,
+          })
+        )
+          serviceDueSoon = { id: machine.id, code: machine.code };
         if (stint)
           await attachReadingToStint(tx, {
             ...stint,
@@ -211,7 +229,6 @@ export async function captureReading({
     if (photo && evidence && result.photo?.storageKey !== photo.storageKey) {
       await evidence.storage.deleteObject(photo.storageKey);
     }
-    return result;
   } catch (error) {
     if (photo && evidence) {
       try {
@@ -222,6 +239,8 @@ export async function captureReading({
     }
     throw error;
   }
+  if (serviceDueSoon) signals?.serviceDueSoon?.(serviceDueSoon);
+  return result;
 }
 
 const capturer = alias(user, 'exception_capturer');

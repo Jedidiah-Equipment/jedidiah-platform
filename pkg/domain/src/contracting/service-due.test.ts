@@ -3,6 +3,7 @@ import {
   hoursToService,
   hoursToServiceLabel,
   machineBusyWith,
+  serviceDueSoonCrossed,
   serviceDueStatus,
   suggestedNextServiceDue,
 } from './service-due.js';
@@ -46,5 +47,25 @@ describe('machineBusyWith', () => {
     expect(machineBusyWith({ busyOnJob: job, onSiteJobNumber: 'CJOB-7' })).toEqual({ job, jobNumber: 'CJOB-7' });
     expect(machineBusyWith({ busyOnJob: null, onSiteJobNumber: 'CJOB-7' })).toEqual({ job: null, jobNumber: 'CJOB-7' });
     expect(machineBusyWith({ busyOnJob: null, onSiteJobNumber: null })).toBeNull();
+  });
+});
+
+describe('serviceDueSoonCrossed', () => {
+  const due = 1500;
+  const crossed = (previousHours: number | null, newHours: number, nextServiceDueHours: number | null = due) =>
+    serviceDueSoonCrossed({ previousHours, newHours, nextServiceDueHours });
+
+  test('fires once, on the capture that first lands inside the window', () => {
+    expect(crossed(null, 1450)).toBe(true);
+    expect(crossed(1300, 1450)).toBe(true);
+    expect(crossed(1300, 1550)).toBe(true);
+    expect(crossed(1450, 1460)).toBe(false);
+    expect(crossed(1300, 1350)).toBe(false);
+  });
+
+  test('stays quiet without a Next Service Due, and re-arms when it moves on', () => {
+    expect(crossed(null, 1450, null)).toBe(false);
+    expect(crossed(1460, 1470, 2000)).toBe(false);
+    expect(crossed(1470, 1910, 2000)).toBe(true);
   });
 });

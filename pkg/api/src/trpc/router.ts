@@ -29,6 +29,7 @@ import { purchaseOrdersRouter } from '../routes/equipment/purchase-orders/purcha
 import { quotesRouter } from '../routes/equipment/quotes/quotes.router.js';
 import { suppliersRouter } from '../routes/equipment/suppliers/suppliers.router.js';
 import { userDepartmentsRouter } from '../routes/equipment/users/user-departments.router.js';
+import { pushTokensRouter } from '../routes/push/push-tokens.router.js';
 import { usersRouter } from '../routes/users/users.router.js';
 import { createCallerFactory, router } from './init.js';
 
@@ -66,6 +67,7 @@ type AppRouterRecord = {
   productUnits: (typeof productUnitsRouter)['_def']['record'];
   products: ReturnType<typeof createProductsRouter>['_def']['record'];
   purchaseOrders: (typeof purchaseOrdersRouter)['_def']['record'];
+  pushTokens: (typeof pushTokensRouter)['_def']['record'];
   quotes: (typeof quotesRouter)['_def']['record'];
   suppliers: (typeof suppliersRouter)['_def']['record'];
   userDepartments: (typeof userDepartmentsRouter)['_def']['record'];
@@ -106,6 +108,7 @@ export function createAppRouter({ contracting, equipment }: AppRouterDependencie
     productUnits: productUnitsRouter,
     products: createProductsRouter(equipment.catalogTranslationScheduler),
     purchaseOrders: purchaseOrdersRouter,
+    pushTokens: pushTokensRouter,
     quotes: quotesRouter,
     suppliers: suppliersRouter,
     userDepartments: userDepartmentsRouter,

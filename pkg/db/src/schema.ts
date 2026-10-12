@@ -33,6 +33,7 @@ import * as stockMovementSchema from './schema/equipment/stock-movement.js';
 import * as stocktakeSchema from './schema/equipment/stocktake.js';
 import * as supplierSchema from './schema/equipment/supplier.js';
 import * as userDepartmentSchema from './schema/equipment/user-department.js';
+import * as pushTokenSchema from './schema/push-token.js';
 
 export const schema = {
   ...contractingBreakdownSchema,
@@ -58,6 +59,7 @@ export const schema = {
   ...productRangeSchema,
   ...productSchema,
   ...productUnitSchema,
+  ...pushTokenSchema,
   ...purchaseOrderAmendmentSchema,
   ...purchaseOrderLineArrivalSchema,
   ...purchaseOrderSchema,

@@ -17,9 +17,10 @@ import {
   type ImplementCreateInput,
   type ImplementPatchInput,
 } from '@pkg/schema/contracting';
-import { and, asc, eq, ilike, inArray, isNotNull, isNull, sql } from 'drizzle-orm';
+import { and, asc, eq, ilike, inArray, sql } from 'drizzle-orm';
 import { defineAuditDescriptor, recordAuditCreate } from '../../audit/audit-writer.js';
 import { mutateEntity } from '../../audit/mutate-entity.js';
+import { stintOnSite } from '../jobs/job-sql.js';
 import { assertCategoryKind } from './category-service.js';
 import {
   type CategoryRelation,
@@ -71,8 +72,7 @@ export async function listFieldImplements({ db }: { db: Db }) {
               contractingMachineAssignments.implementId,
               implements_.map((implement) => implement.id),
             ),
-            isNotNull(contractingMachineAssignments.arrivalReadingId),
-            isNull(contractingMachineAssignments.departureReadingId),
+            stintOnSite(contractingMachineAssignments),
           ),
         )
     : [];

@@ -2,11 +2,11 @@ import {
   addBreakdownNote,
   assignMechanic,
   getBreakdown,
+  getBreakdownReportContext,
   listBreakdownFilterOptions,
   listBreakdownJobOptions,
   listBreakdowns,
   listMechanics,
-  listOpenBreakdownsOnSubject,
   patchBreakdown,
   removeBreakdownPhoto,
   solveBreakdown,
@@ -26,10 +26,10 @@ import {
   BreakdownPatchInput,
   BreakdownPhotoRemoveInput,
   BreakdownQueueSummary,
+  BreakdownReportContext,
   BreakdownSolveInput,
   BreakdownStartInput,
   BreakdownSubjectRef,
-  BreakdownSummary,
   Mechanic,
 } from '@pkg/schema/contracting';
 import { mapCoreErrors } from '../../../trpc/errors.js';
@@ -114,9 +114,9 @@ export const contractingBreakdownsRouter = router({
       .query(({ ctx }) => listMechanics({ db: ctx.db })),
   }),
   field: router({
-    openOnSubject: authorizedProcedure('contracting_breakdown:report')
+    reportContext: authorizedProcedure('contracting_breakdown:report')
       .input(BreakdownSubjectRef)
-      .output(BreakdownSummary.array())
-      .query(({ ctx, input }) => listOpenBreakdownsOnSubject({ db: ctx.db, subject: input })),
+      .output(BreakdownReportContext)
+      .query(({ ctx, input }) => getBreakdownReportContext({ db: ctx.db, actor: ctx.access, subject: input })),
   }),
 });

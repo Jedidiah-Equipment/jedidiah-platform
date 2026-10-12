@@ -1,4 +1,15 @@
-import { createCategory, createMachine, reportBreakdown } from '@pkg/core/contracting';
+import {
+  captureReading,
+  createAssignment,
+  createCategory,
+  createCustomer,
+  createFarm,
+  createJob,
+  createMachine,
+  createWorkType,
+  getJob,
+  reportBreakdown,
+} from '@pkg/core/contracting';
 import { user } from '@pkg/db';
 import { accessForRole } from '@pkg/domain/testing';
 import type { ContractingRole } from '@pkg/schema';
@@ -54,7 +65,7 @@ const test = createTester(async ({ db }) => {
         },
       })
     ).breakdown;
-  return { siphos: await report('sipho'), thabos: await report('thabo') };
+  return { db, machine, siphos: await report('sipho'), thabos: await report('thabo') };
 });
 
 test('a Foreman lists only his own Breakdowns; the workshop manager lists and solves every one', async ({
@@ -84,4 +95,61 @@ test('Contracting invoicing cannot see Breakdowns', async ({ context }) => {
 test('the mechanic picker leaves out Device Accounts', async ({ context }) => {
   const connor = context.createCaller(sessionAs('connor', 'workshop-manager')).contractingBreakdowns;
   expect(await connor.options.mechanics()).toEqual([{ id: 'danie', name: 'danie' }]);
+});
+
+test('serves where a report files and what is open, naming the Job only for a reader who may open it', async ({
+  context,
+}) => {
+  const { db, machine } = context;
+  const subject = { kind: 'machine', id: machine.id } as const;
+  const asSipho = context.createCaller(sessionAs('sipho', 'foreman')).contractingBreakdowns.field;
+  expect(await asSipho.reportContext(subject)).toMatchObject({
+    defaultJob: null,
+    open: expect.arrayContaining([expect.objectContaining({ id: context.siphos.id })]),
+  });
+
+  const admin = accessForRole('contracting-admin', 'connor');
+  const customer = await createCustomer({ db, actorUserId: 'connor', input: { name: 'Rowley' } });
+  const farm = await createFarm({ db, actorUserId: 'connor', input: { customerId: customer.id, name: 'Rooikraal' } });
+  const workType = await createWorkType({ db, actorUserId: 'connor', input: { name: 'Dam building' } });
+  const job = await createJob({
+    db,
+    actor: admin,
+    input: {
+      customerId: customer.id,
+      farmId: farm.id,
+      workTypeId: workType.id,
+      description: null,
+      foremanUserId: 'sipho',
+    },
+  });
+  await createAssignment({ db, actor: admin, input: { jobId: job.id, machineId: machine.id, implementId: null } });
+  const [stint] = (await getJob({ db, id: job.id })).assignments;
+  if (!stint) throw new Error('Expected Machine Assignment');
+  await captureReading({
+    db,
+    actor: admin,
+    input: {
+      machineId: machine.id,
+      assignmentId: stint.id,
+      role: 'arrival',
+      value: 100,
+      capturedAt: '2026-09-01T06:00:00Z',
+      disputePrevious: false,
+    },
+  });
+
+  const names = { id: job.id, customerName: 'Rowley', farmName: 'Rooikraal', workTypeName: 'Dam building' };
+  expect((await asSipho.reportContext(subject)).defaultJob).toEqual({ jobNumber: job.jobNumber, job: names });
+  const asThabo = context.createCaller(sessionAs('thabo', 'foreman')).contractingBreakdowns.field;
+  expect((await asThabo.reportContext(subject)).defaultJob).toEqual({ jobNumber: job.jobNumber, job: null });
+  const asManager = context.createCaller(sessionAs('karen', 'contracting-manager')).contractingBreakdowns.field;
+  expect((await asManager.reportContext(subject)).defaultJob).toEqual({ jobNumber: job.jobNumber, job: names });
+
+  const filed = await reportBreakdown({
+    db,
+    actor: accessForRole('foreman', 'sipho'),
+    input: { subject, urgency: 'code-green', description: 'Leaking' },
+  });
+  expect(filed.breakdown.jobNumber).toBe(job.jobNumber);
 });

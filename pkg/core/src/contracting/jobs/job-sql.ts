@@ -1,4 +1,4 @@
-import { contractingHourReadings, contractingJobs } from '@pkg/db/contracting';
+import { contractingHourReadings, contractingJobs, contractingMachineAssignments } from '@pkg/db/contracting';
 import { GAP_FLAG_THRESHOLD_HOURS, JOB_NUMBER_DIGITS, JOB_NUMBER_PREFIX } from '@pkg/domain/contracting';
 import type { AssignmentState, NeedsALookLevel } from '@pkg/schema/contracting';
 import { type SQL, type SQLWrapper, sql } from 'drizzle-orm';
@@ -28,17 +28,26 @@ export const previousDepartureValue = (machineId: SQLWrapper, arrivalSequence: S
 export const previousDepartureId = (machineId: SQLWrapper, arrivalSequence: SQLWrapper) =>
   previousDeparture('id', machineId, arrivalSequence);
 
-const assignmentInState: Record<AssignmentState, SQL> = {
-  planned: sql`summary_assignment.arrival_reading_id is null`,
-  'on-site': sql`summary_assignment.arrival_reading_id is not null and summary_assignment.departure_reading_id is null`,
-  left: sql`summary_assignment.departure_reading_id is not null`,
+/** A Machine Assignment's reading columns, on the table or on an alias of it. */
+type StintColumns = { arrivalReadingId: SQLWrapper; departureReadingId: SQLWrapper };
+
+/** The on-site Assignment: arrival captured, no departure yet. The partial unique indexes allow one per subject. */
+export const stintOnSite = (stint: StintColumns): SQL =>
+  sql`${stint.arrivalReadingId} is not null and ${stint.departureReadingId} is null`;
+
+const assignmentInState: Record<AssignmentState, (stint: StintColumns) => SQL> = {
+  planned: (stint) => sql`${stint.arrivalReadingId} is null`,
+  'on-site': stintOnSite,
+  left: (stint) => sql`${stint.departureReadingId} is not null`,
 };
+
+const summaryAssignment = alias(contractingMachineAssignments, 'summary_assignment');
 
 export const stintCount = (state: AssignmentState) => sql<number>`(
   select count(*)::integer
   from contracting.machine_assignment summary_assignment
   where summary_assignment.job_id = ${contractingJobs.id}
-    and ${assignmentInState[state]}
+    and ${assignmentInState[state](summaryAssignment)}
 )`;
 
 export const openGapFlags = sql<number>`(

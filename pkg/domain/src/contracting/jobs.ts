@@ -34,6 +34,10 @@ export function fieldJobAccessMode(access: UserAccessSummary | null | undefined)
   return hasPermission(access, 'contracting_job:read-own') ? 'own' : null;
 }
 
+/** Whether a field reader may see a Job's names: whoever works every Job, or that Job's Foreman. Else the Job Number. */
+export const fieldReaderSeesJob = (access: UserAccessSummary, job: { foremanUserId: string | null }): boolean =>
+  fieldJobAccessMode(access) === 'all' || job.foremanUserId === access.userId;
+
 /** Every Job, a Foreman's own Jobs without money, or Invoicing's Completed-onward Jobs. */
 export type JobReadMode = 'all' | 'own' | 'priced';
 

@@ -1,3 +1,4 @@
+import { serviceDueNeedsAttention } from '@pkg/domain/contracting';
 import { AuthId, DateOnlyIso, UUID } from '@pkg/schema';
 import {
   CategoryColour,
@@ -16,6 +17,7 @@ import {
   MachinePatchInput,
   MachineYear,
   NEXT_SERVICE_DUE_BELOW_READING_MESSAGE,
+  type ServiceDueStatus,
   ServiceIntervalHours,
   ServiceRecordCloseInput,
 } from '@pkg/schema/contracting';
@@ -124,3 +126,15 @@ export const openServiceFields = (values: OpenServiceValues) => ({
   primaryMechanicUserId: values.primaryMechanicUserId || null,
   notes: values.notes,
 });
+
+export const SERVICE_COLUMN_ID = 'nextServiceDue';
+/** The Machines list's Service filter: Needs attention is due soon or overdue, the rest name one status. */
+export const serviceFilterValues = ['attention', 'ok', 'unknown'] as const;
+export type ServiceFilterValue = (typeof serviceFilterValues)[number];
+export const serviceFilterOptions: { label: string; value: ServiceFilterValue }[] = [
+  { label: 'Needs attention', value: 'attention' },
+  { label: 'On track', value: 'ok' },
+  { label: 'Unknown', value: 'unknown' },
+];
+export const serviceFilterMatches = (status: ServiceDueStatus, value: unknown) =>
+  value === 'attention' ? serviceDueNeedsAttention(status) : status === value;

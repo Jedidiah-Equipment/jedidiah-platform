@@ -2,14 +2,16 @@ import { formatCurrency, formatDate } from '@pkg/domain';
 import type { StaleSentQuote } from '@pkg/schema/equipment';
 import { useQuery } from '@tanstack/react-query';
 import type React from 'react';
-
+import {
+  DashboardList,
+  DashboardListItem,
+  DashboardListScrollArea,
+} from '@/components/common/dashboard/DashboardList.js';
+import { DashboardWidgetEmpty, DashboardWidgetError } from '@/components/common/dashboard/DashboardWidgetCard.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
 import { useCan } from '@/hooks/use-access.js';
 import { useTRPC } from '@/lib/trpc.js';
-
-import { DashboardList, DashboardListItem, DashboardListScrollArea } from '../DashboardList.js';
 import { DashboardQuoteIdentity } from '../DashboardQuoteIdentity.js';
-import { DashboardWidgetEmpty, DashboardWidgetError } from '../DashboardWidgetCard.js';
 
 const STALE_SENT_SKELETON_ROWS = ['first', 'second', 'third', 'fourth', 'fifth'] as const;
 

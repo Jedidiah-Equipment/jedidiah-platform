@@ -99,6 +99,7 @@ export async function listJobs({
       to: input.invoicedTo,
     }),
     readableBy(reader),
+    input.needsALook ? jobSql.needsALook : undefined,
     createGlobalSearchCondition(input.search, [
       jobSql.jobNumberText,
       sql`${contractingCustomers.name}`,

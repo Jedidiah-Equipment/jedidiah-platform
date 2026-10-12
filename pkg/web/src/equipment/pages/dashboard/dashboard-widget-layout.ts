@@ -1,2 +1,1 @@
-export const QUOTE_LIST_CARD_HEIGHT_PX = 320;
 export const SHOP_FLOOR_BAND_HEIGHT_PX = 384;

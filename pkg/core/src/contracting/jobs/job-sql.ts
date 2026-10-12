@@ -75,6 +75,13 @@ export const readingsNeedingALookAt = (level: NeedsALookLevel) => sql<number>`(
     and ${readingNeedsALookLevelSql(summaryReading)} = ${level}
 )`;
 
+/** The Job has Machine Assignment attention that needs a look: an open Gap Flag, or a warning or critical reading. */
+export const needsALook = sql<boolean>`(
+  ${openGapFlags} > 0
+  or ${readingsNeedingALookAt('critical')} > 0
+  or ${readingsNeedingALookAt('warning')} > 0
+)`;
+
 /** Parameter-free, so the queue counts can group by it. */
 export const looksFinished = sql<boolean>`(
   ${contractingJobs.status} = 'active'

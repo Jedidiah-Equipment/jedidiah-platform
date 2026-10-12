@@ -1,8 +1,8 @@
 import { accessForRole } from '@pkg/domain/testing';
 import { describe, expect, it, vi } from 'vitest';
 
-import type { DashboardWidget } from './dashboard-widget-types.js';
-import { filterDashboardWidgets } from './dashboard-widget-types.js';
+import type { DashboardWidget } from '@/components/common/dashboard/dashboard-widget-types.js';
+import { filterDashboardWidgets } from '@/components/common/dashboard/dashboard-widget-types.js';
 import { dashboardWidgets } from './dashboard-widgets.js';
 
 vi.mock('./widgets/ActiveJobsWidget.js', () => ({ ActiveJobsWidget: () => null }));

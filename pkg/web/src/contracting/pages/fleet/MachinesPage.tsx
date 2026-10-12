@@ -24,9 +24,23 @@ import { useCan } from '@/hooks/use-access.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { cn } from '@/lib/utils.js';
 import { CategoryPickerField } from './CategoryFields.js';
-import { createMachineInput, fleetStatusLabels, fleetStatusOptions, MachineCreateValues } from './types.js';
+import {
+  createMachineInput,
+  fleetStatusLabels,
+  fleetStatusOptions,
+  MachineCreateValues,
+  SERVICE_COLUMN_ID,
+  type ServiceFilterValue,
+  serviceFilterMatches,
+  serviceFilterOptions,
+} from './types.js';
 
-export function MachinesPage() {
+export function MachinesPage({
+  service,
+}: {
+  /** The Service filter the Dashboard opens the list with; the table owns it from then on. */
+  service?: ServiceFilterValue | undefined;
+} = {}) {
   const trpc = useTRPC();
   const navigate = useNavigate();
   const { invalidateFleet } = useQueryInvalidation();
@@ -133,11 +147,14 @@ export function MachinesPage() {
           ),
       },
       {
-        id: 'nextServiceDue',
+        id: SERVICE_COLUMN_ID,
         header: 'Next service due',
         accessorFn: (machine) => machine.hoursToService ?? Number.POSITIVE_INFINITY,
         enableSorting: true,
         enableGlobalFilter: false,
+        enableColumnFilter: true,
+        filterFn: (row, _columnId, value) => serviceFilterMatches(row.original.serviceDueStatus, value),
+        meta: { filterVariant: 'select', filterOptions: serviceFilterOptions },
         cell: ({ row }) => {
           const { nextServiceDueHours, hoursToService, serviceDueStatus } = row.original;
           if (nextServiceDueHours === null) return <span className="text-muted-foreground">Not set</span>;
@@ -189,6 +206,7 @@ export function MachinesPage() {
             />
           }
           onOpen={(row) => void navigate({ to: '/contracting/fleet/$id/edit', params: { id: row.id } })}
+          {...(service ? { defaultColumnFilters: [{ id: SERVICE_COLUMN_ID, value: service }] } : {})}
         />
       </PageLayout>
       <CreateEntityDialog

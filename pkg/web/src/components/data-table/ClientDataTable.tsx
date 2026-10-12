@@ -15,6 +15,7 @@ export function ClientDataTable<T extends RowData>({
   searchPlaceholder,
   hideGlobalFilter = false,
   getRowId,
+  defaultColumnFilters = [],
 }: {
   rows: T[];
   columns: DataTableColumnDef<T>[];
@@ -25,9 +26,11 @@ export function ClientDataTable<T extends RowData>({
   searchPlaceholder?: string;
   hideGlobalFilter?: boolean;
   getRowId?: (row: T) => string;
+  /** The column filters the table opens with; the user owns them from then on. */
+  defaultColumnFilters?: ColumnFiltersState;
 }) {
   const [globalFilter, setGlobalFilter] = useState('');
-  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
+  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>(defaultColumnFilters);
   const [sorting, setSorting] = useState<SortingState>([]);
   const table = useDataTable({
     columns,

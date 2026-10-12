@@ -6,12 +6,11 @@ import { Link } from '@tanstack/react-router';
 import type React from 'react';
 
 import { DateDisplay } from '@/components/common/DateDisplay.js';
+import { DashboardList, DashboardListItem } from '@/components/common/dashboard/DashboardList.js';
+import { DashboardWidgetEmpty, DashboardWidgetError } from '@/components/common/dashboard/DashboardWidgetCard.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
 import { useAccess } from '@/hooks/use-access.js';
 import { useTRPC } from '@/lib/trpc.js';
-
-import { DashboardList, DashboardListItem } from '../DashboardList.js';
-import { DashboardWidgetEmpty, DashboardWidgetError } from '../DashboardWidgetCard.js';
 
 const RECENT_QUOTES_LIST_INPUT = {
   filters: {

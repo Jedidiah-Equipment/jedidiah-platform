@@ -1,10 +1,8 @@
 import type React from 'react';
-
+import { DashboardWidgetCard } from '@/components/common/dashboard/DashboardWidgetCard.js';
+import { filterDashboardWidgets } from '@/components/common/dashboard/dashboard-widget-types.js';
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
 import { useAccess } from '@/hooks/use-access.js';
-
-import { DashboardWidgetCard } from './DashboardWidgetCard.js';
-import { filterDashboardWidgets } from './dashboard-widget-types.js';
 import { dashboardWidgets } from './dashboard-widgets.js';
 
 type DashboardPageProps = Record<string, never>;

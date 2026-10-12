@@ -12,12 +12,10 @@ import type { DateOnlyIso } from '@pkg/schema';
 import type { ProjectedBayQueue } from '@pkg/schema/equipment';
 import type React from 'react';
 import { Bar, BarChart, CartesianGrid, LabelList, XAxis, YAxis } from 'recharts';
-
+import { DashboardWidgetEmpty, DashboardWidgetError } from '@/components/common/dashboard/DashboardWidgetCard.js';
 import { type ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart.js';
 import { ScrollArea } from '@/components/ui/scroll-area.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
-
-import { DashboardWidgetEmpty, DashboardWidgetError } from '../DashboardWidgetCard.js';
 import { SHOP_FLOOR_BAND_HEIGHT_PX } from '../dashboard-widget-layout.js';
 import { useShopFloorBays } from '../use-shop-floor-bays.js';
 

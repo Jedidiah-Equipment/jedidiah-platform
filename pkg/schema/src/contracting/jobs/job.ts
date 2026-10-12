@@ -74,6 +74,8 @@ export const JobListInput = createSearchedSortedCursorQueryInput({
     invoicedFrom: DateOnlyIso.optional(),
     /** Keep only Jobs invoiced on or before this South African calendar day; a Job not yet invoiced drops out. */
     invoicedTo: DateOnlyIso.optional(),
+    /** Keep only Jobs whose Machine Assignment attention needs a look: an open Gap Flag, or a warning or critical reading. */
+    needsALook: z.boolean().optional(),
   },
   sortBy: JobSortBy.default('jobNumber'),
 });

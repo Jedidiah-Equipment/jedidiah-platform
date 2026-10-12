@@ -8,14 +8,13 @@ import {
 } from '@pkg/domain/equipment';
 import type { JobSummary } from '@pkg/schema/equipment';
 import type React from 'react';
+import { DashboardList, DashboardListItem } from '@/components/common/dashboard/DashboardList.js';
+import { DashboardWidgetEmpty, DashboardWidgetError } from '@/components/common/dashboard/DashboardWidgetCard.js';
 import { ScrollArea } from '@/components/ui/scroll-area.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
 import { OfferingThumbnail } from '@/equipment/components/thumbnail/OfferingThumbnail.js';
 import { JobCodeDisplay } from '@/equipment/pages/jobs/components/JobCodeDisplay.js';
 import { useCan } from '@/hooks/use-access.js';
-
-import { DashboardList, DashboardListItem } from '../DashboardList.js';
-import { DashboardWidgetEmpty, DashboardWidgetError } from '../DashboardWidgetCard.js';
 import { useShopFloorBays } from '../use-shop-floor-bays.js';
 
 const SCHEDULED_JOBS_MAX_ROWS = 10;

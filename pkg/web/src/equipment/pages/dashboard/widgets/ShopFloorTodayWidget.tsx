@@ -14,6 +14,8 @@ import type { DateOnlyIso } from '@pkg/schema';
 import type { JobSummary, OffDay, ProjectedBayQueue } from '@pkg/schema/equipment';
 import { Link } from '@tanstack/react-router';
 import type React from 'react';
+import { DashboardList, DashboardListItem } from '@/components/common/dashboard/DashboardList.js';
+import { DashboardWidgetEmpty, DashboardWidgetError } from '@/components/common/dashboard/DashboardWidgetCard.js';
 import { Badge } from '@/components/ui/badge.js';
 import { ScrollArea } from '@/components/ui/scroll-area.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
@@ -21,8 +23,6 @@ import { BayOperatorIndicator } from '@/equipment/components/bays/index.js';
 import { OfferingThumbnail } from '@/equipment/components/thumbnail/OfferingThumbnail.js';
 import { getSlotLabel } from '@/equipment/pages/jobs/components/board-summary.js';
 import { cn } from '@/lib/utils.js';
-import { DashboardList, DashboardListItem } from '../DashboardList.js';
-import { DashboardWidgetEmpty, DashboardWidgetError } from '../DashboardWidgetCard.js';
 import { SHOP_FLOOR_BAND_HEIGHT_PX } from '../dashboard-widget-layout.js';
 import { useShopFloorBays } from '../use-shop-floor-bays.js';
 

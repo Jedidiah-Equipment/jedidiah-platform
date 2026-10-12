@@ -19,7 +19,7 @@ import { getApiQueryErrorMessage } from '@/lib/api-errors.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { BreakdownStatusQuickFilters } from './BreakdownStatusQuickFilters.js';
 import { ReportProblemDialog } from './ReportProblemDialog.js';
-import { focusOnMechanic, workshopListFilters } from './types.js';
+import { focusOnMechanic, focusOnUnsolved, workshopListFilters } from './types.js';
 import { useWorkshopColumns } from './workshop-columns.js';
 
 const useWorkshopTableStore = createPersistedDataTableStore({
@@ -30,6 +30,11 @@ const useWorkshopTableStore = createPersistedDataTableStore({
 /** Writes one Mechanic's work, every status, into the saved filters; the Reports page opens the Workshop this way. */
 export function focusWorkshopOnMechanic(mechanicUserId: string) {
   useWorkshopTableStore.getState().setColumnFilters((current) => focusOnMechanic(current, mechanicUserId));
+}
+
+/** Drops a saved status pick so the Breakdowns not yet Fixed list; the Dashboard opens the Workshop this way. */
+export function focusWorkshopOnUnsolved() {
+  useWorkshopTableStore.getState().setColumnFilters(focusOnUnsolved);
 }
 
 const breakdownSortOptions: SortOptions<BreakdownListInput> = {

@@ -8,11 +8,9 @@ import {
 import type { Department } from '@pkg/schema/equipment';
 import type React from 'react';
 import { Label, PolarAngleAxis, PolarRadiusAxis, RadialBar, RadialBarChart } from 'recharts';
-
+import { DashboardWidgetEmpty, DashboardWidgetError } from '@/components/common/dashboard/DashboardWidgetCard.js';
 import { type ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
-
-import { DashboardWidgetEmpty, DashboardWidgetError } from '../DashboardWidgetCard.js';
 import { useShopFloorBays } from '../use-shop-floor-bays.js';
 
 export const BAY_LOAD_CHART_CONFIG = {

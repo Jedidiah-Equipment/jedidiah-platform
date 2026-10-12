@@ -1,19 +1,16 @@
 import { formatCurrency, formatDate, formatNumber } from '@pkg/domain';
 import {
-  assignmentAttentionLevelColorClassNames,
   countedAssignmentAttentionLevel,
   jobQueueLabels,
   jobQueueOf,
   judgeJobAction,
   openJobQueues,
 } from '@pkg/domain/contracting';
-import type { JobListInput, JobSummary } from '@pkg/schema/contracting';
+import type { JobListInput, JobQueue, JobSummary } from '@pkg/schema/contracting';
 import { CustomerName, FarmName, JobSortBy, jobQueues, WorkTypeName } from '@pkg/schema/contracting';
-import { IconAlertTriangle } from '@tabler/icons-react';
 import { keepPreviousData, useInfiniteQuery, useMutation, useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
-import type { ColumnFiltersState } from '@tanstack/react-table';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { DateDisplay } from '@/components/common/DateDisplay.js';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { SearchableCombobox, type SearchableComboboxCreate } from '@/components/common/SearchableCombobox.js';
@@ -26,17 +23,23 @@ import type { SortOptions } from '@/components/data-table/table-state.js';
 import { useCreateEntityFlow } from '@/components/form/hooks/use-create-entity-flow.js';
 import { CreateEntityDialog } from '@/components/form/index.js';
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
-import { Badge } from '@/components/ui/badge.js';
 import { Button } from '@/components/ui/button.js';
 import { useQueryInvalidation } from '@/contracting/hooks/use-query-invalidation.js';
 import { useAccess, useCan } from '@/hooks/use-access.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { getApiQueryErrorMessage } from '@/lib/api-errors.js';
 import { useTRPC } from '@/lib/trpc.js';
-import { cn } from '@/lib/utils.js';
+import { JobAttentionBadge } from './JobAttentionBadge.js';
 import { JobStageQuickFilters } from './JobStageQuickFilters.js';
 import { JobQueueBadge } from './JobStatusBadge.js';
-import { listedStages, STAGE_COLUMN_ID } from './job-stage-filter.js';
+import {
+  ATTENTION_COLUMN_ID,
+  focusOnNeedsALook,
+  focusOnStage,
+  jobListFilters,
+  NEEDS_A_LOOK,
+  STAGE_COLUMN_ID,
+} from './job-stage-filter.js';
 import { JobCreateValues, toJobCreateInput } from './types.js';
 import { useJobWrite } from './use-job-write.js';
 
@@ -70,11 +73,13 @@ const jobSortOptions: SortOptions<JobListInput> = {
   defaultSort: { id: 'jobNumber' },
 };
 
-const jobListInputExtras = (columnFilters: ColumnFiltersState) => ({ queues: listedStages(columnFilters) });
-
 const stageFilterOptions = jobQueues.map((queue) => ({ value: queue, label: jobQueueLabels[queue] }));
+const attentionFilterOptions = [{ value: NEEDS_A_LOOK, label: 'Needs a look' }];
 
-export function JobsPage() {
+/** Where the Dashboard opens the list, once; the persisted filters own it from then on. */
+export type JobsFocus = { stage?: JobQueue | undefined; needsALook?: boolean | undefined };
+
+export function JobsPage({ focus, onFocusApplied }: { focus?: JobsFocus; onFocusApplied?: () => void } = {}) {
   const trpc = useTRPC();
   const navigate = useNavigate();
   const write = useJobWrite();
@@ -90,8 +95,17 @@ export function JobsPage() {
   const tableController = useServerSideTableController({
     store: useJobsTableStore,
     sortOptions: jobSortOptions,
-    getListInputExtras: jobListInputExtras,
+    getListInputExtras: jobListFilters,
   });
+  const { setColumnFilters } = tableController;
+  const focusStage = focus?.stage;
+  const focusNeedsALook = focus?.needsALook;
+  useEffect(() => {
+    if (focusNeedsALook) setColumnFilters(focusOnNeedsALook);
+    else if (focusStage) setColumnFilters((current) => focusOnStage(current, focusStage));
+    else return;
+    onFocusApplied?.();
+  }, [focusNeedsALook, focusStage, onFocusApplied, setColumnFilters]);
   const jobsQuery = useInfiniteQuery(
     trpc.contractingJobs.jobs.list.infiniteQueryOptions(tableController.listInput, {
       ...cursorInfiniteQueryOptions,
@@ -185,31 +199,18 @@ export function JobsPage() {
         ),
       },
       {
-        id: 'attention',
+        id: ATTENTION_COLUMN_ID,
+        // A column filters only with an accessor; the server owns the filtering itself.
+        accessorFn: (job) => (countedAssignmentAttentionLevel(job.assignmentAttention) ? NEEDS_A_LOOK : ''),
         header: 'Needs a look',
-        cell: ({ row }) => {
-          const { assignmentAttention } = row.original;
-          const level = countedAssignmentAttentionLevel(assignmentAttention);
-          const items = assignmentAttention.critical + assignmentAttention.warning;
-          return (
-            <div className="min-w-36">
-              {level ? (
-                <Badge
-                  className={cn(
-                    assignmentAttentionLevelColorClassNames[level].chip,
-                    assignmentAttentionLevelColorClassNames[level].text,
-                  )}
-                  variant="outline"
-                >
-                  <IconAlertTriangle aria-hidden="true" />
-                  {formatNumber(items)} {items === 1 ? 'item' : 'items'} to review
-                </Badge>
-              ) : (
-                <span className="text-muted-foreground">No issues</span>
-              )}
-            </div>
-          );
-        },
+        enableColumnFilter: true,
+        enableSorting: false,
+        meta: { filterOptions: attentionFilterOptions, filterVariant: 'select' },
+        cell: ({ row }) => (
+          <div className="min-w-36">
+            <JobAttentionBadge attention={row.original.assignmentAttention} />
+          </div>
+        ),
       },
       {
         id: 'dates',

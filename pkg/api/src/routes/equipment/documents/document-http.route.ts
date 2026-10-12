@@ -18,7 +18,7 @@ import {
   uploadCreditNote,
   uploadSupplierInvoice,
 } from '@pkg/core/equipment';
-import { db } from '@pkg/db';
+import type { Db } from '@pkg/db';
 import { documentPolicies } from '@pkg/domain/equipment';
 import { renderBrochurePdf, renderPurchaseOrderPdf } from '@pkg/pdf/equipment';
 import {
@@ -63,6 +63,7 @@ export type RegisterDocumentHttpRoutesOptions = {
 
 export async function registerDocumentHttpRoutes(
   app: FastifyInstance,
+  db: Db,
   storage: StorageAdapter,
   options: RegisterDocumentHttpRoutesOptions = {},
 ): Promise<void> {

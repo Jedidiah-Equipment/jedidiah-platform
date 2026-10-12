@@ -6,7 +6,7 @@ import {
   replaceProductRangeImage,
   replaceProductRangeLogo,
 } from '@pkg/core/equipment';
-import { db } from '@pkg/db';
+import type { Db } from '@pkg/db';
 import { RANGE_IMAGE_POLICY, RANGE_LOGO_POLICY } from '@pkg/domain/equipment';
 import { ProductRangeImageParams, ProductRangeLogoParams } from '@pkg/schema/equipment';
 
@@ -30,7 +30,7 @@ function mapProductRangeOwnerError(error: unknown): RouteHttpError | undefined {
 
 // The Product Range presentation image, wired into the generic entity-file registrar. Uploads use the
 // same permission as editing a Range; previews use Range read access.
-export function createProductRangeImageRouteConfig(storage: StorageAdapter): EntityFileRouteConfig {
+export function createProductRangeImageRouteConfig(db: Db, storage: StorageAdapter): EntityFileRouteConfig {
   return {
     uploadPath: '/api/product-ranges/:rangeId/image',
     downloadPath: '/api/product-ranges/:rangeId/image/download',
@@ -56,7 +56,7 @@ export function createProductRangeImageRouteConfig(storage: StorageAdapter): Ent
 
 // The Product Range brochure logo, wired into the generic entity-file registrar. Mirrors the image
 // config; uploads use the Range-update permission, previews use Range read access.
-export function createProductRangeLogoRouteConfig(storage: StorageAdapter): EntityFileRouteConfig {
+export function createProductRangeLogoRouteConfig(db: Db, storage: StorageAdapter): EntityFileRouteConfig {
   return {
     uploadPath: '/api/product-ranges/:rangeId/logo',
     downloadPath: '/api/product-ranges/:rangeId/logo/download',

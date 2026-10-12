@@ -1,5 +1,5 @@
 import { isUserCoreError, renderUserBadge } from '@pkg/core/equipment';
-import { db } from '@pkg/db';
+import type { Db } from '@pkg/db';
 import { renderUserBadgesPdf } from '@pkg/pdf/equipment';
 import { AuthId } from '@pkg/schema';
 import type { UserBadgePdfRenderer } from '@pkg/schema/equipment';
@@ -26,7 +26,7 @@ const UserBadgeParams = z.object({ userId: AuthId });
  */
 export async function registerUserBadgeHttpRoutes(
   app: FastifyInstance,
-  { pdfRenderer = renderUserBadgesPdf }: { pdfRenderer?: UserBadgePdfRenderer } = {},
+  { db, pdfRenderer = renderUserBadgesPdf }: { db: Db; pdfRenderer?: UserBadgePdfRenderer },
 ): Promise<void> {
   app.get('/api/users/:userId/badge', async (request, reply) => {
     const auth = await requireRouteAuth(request, reply);

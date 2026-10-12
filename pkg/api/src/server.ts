@@ -78,6 +78,7 @@ export async function buildServer(
     createContext: createContextFactory({
       appEnv: config.APP_ENV,
       changelogLoader: createFileChangelogLoader(),
+      db,
       storage,
     }),
     onError({ ctx, error, path, type }) {

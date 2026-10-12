@@ -1,5 +1,5 @@
 import { isPartCoreError, renderPartLabel, renderPartLabelBatch } from '@pkg/core/equipment';
-import { db } from '@pkg/db';
+import type { Db } from '@pkg/db';
 import { renderPartLabelsPdf } from '@pkg/pdf/equipment';
 import { UUID } from '@pkg/schema';
 import {
@@ -23,7 +23,7 @@ const PartLabelParams = z.object({ partId: UUID });
 
 export async function registerPartLabelHttpRoutes(
   app: FastifyInstance,
-  { pdfRenderer = renderPartLabelsPdf }: { pdfRenderer?: PartLabelPdfRenderer } = {},
+  { db, pdfRenderer = renderPartLabelsPdf }: { db: Db; pdfRenderer?: PartLabelPdfRenderer },
 ): Promise<void> {
   const sendPartLabelBatch = async (
     request: FastifyRequest,

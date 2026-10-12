@@ -1,5 +1,5 @@
 import type { StorageAdapter } from '@pkg/core';
-import { db } from '@pkg/db';
+import type { Db } from '@pkg/db';
 import { createUserAccessSummaryForUser } from '@pkg/domain';
 import type { AppEnv, Changelog, UserAccessSummary } from '@pkg/schema';
 import type { CreateFastifyContextOptions } from '@trpc/server/adapters/fastify';
@@ -13,6 +13,7 @@ export type ChangelogLoader = () => Changelog[];
 export type ContextDependencies = {
   appEnv: AppEnv;
   changelogLoader: ChangelogLoader;
+  db: Db;
   storage: StorageAdapter;
 };
 
@@ -21,7 +22,7 @@ export type Context = {
   appEnv: AppEnv;
   auth: Auth;
   changelogLoader: ChangelogLoader;
-  db: typeof db;
+  db: Db;
   log: CreateFastifyContextOptions['req']['log'];
   mobileObservability: MobileObservabilityCorrelation;
   session: AppSession | null;
@@ -44,7 +45,7 @@ export function createContextFactory(dependencies: ContextDependencies) {
       appEnv: dependencies.appEnv,
       auth,
       changelogLoader: dependencies.changelogLoader,
-      db,
+      db: dependencies.db,
       log: req.log,
       mobileObservability: readMobileObservabilityCorrelation(req.headers),
       session,

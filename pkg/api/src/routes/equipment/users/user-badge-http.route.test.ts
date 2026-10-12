@@ -15,20 +15,6 @@ const routeTestState = vi.hoisted(() => ({
   session: null as unknown,
 }));
 
-vi.mock('@pkg/db', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@pkg/db')>();
-  const dbProxy = new Proxy({} as Db, {
-    get(_target, property) {
-      const db = routeTestState.db as Db | null;
-      if (!db) throw new Error('Route test database was not initialised');
-      const value = db[property as keyof Db];
-      return typeof value === 'function' ? value.bind(db) : value;
-    },
-  });
-
-  return { ...actual, db: dbProxy };
-});
-
 vi.mock('../../../auth/session.js', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../../auth/session.js')>();
   return { ...actual, getSessionFromHeaders: vi.fn(async () => routeTestState.session) };
@@ -117,7 +103,7 @@ async function createApp(pdfRenderer: UserBadgePdfRenderer) {
   const app = Fastify();
   app.decorate('auth', routeTestState.auth as Auth);
   await app.register(fastifyMultipart);
-  await registerUserBadgeHttpRoutes(app, { pdfRenderer });
+  await registerUserBadgeHttpRoutes(app, { db: routeTestState.db as Db, pdfRenderer });
   await app.ready();
   openApps.push(app);
   return app;

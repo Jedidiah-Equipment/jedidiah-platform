@@ -40,14 +40,14 @@ export async function registerEquipment(
     },
   });
 
-  await registerAiChatRoute(app, { storage });
-  await registerDocumentHttpRoutes(app, storage);
-  await registerPartLabelHttpRoutes(app);
-  await registerUserBadgeHttpRoutes(app);
+  await registerAiChatRoute(app, { db, storage });
+  await registerDocumentHttpRoutes(app, db, storage);
+  await registerPartLabelHttpRoutes(app, { db });
+  await registerUserBadgeHttpRoutes(app, { db });
   await registerEntityFileRoutes(app, [
-    createProductImageRouteConfig(storage, { cacheDir: config.API_IMAGE_CACHE_DIR }),
-    createProductRangeImageRouteConfig(storage),
-    createProductRangeLogoRouteConfig(storage),
+    createProductImageRouteConfig(db, storage, { cacheDir: config.API_IMAGE_CACHE_DIR }),
+    createProductRangeImageRouteConfig(db, storage),
+    createProductRangeLogoRouteConfig(db, storage),
   ]);
 
   return {

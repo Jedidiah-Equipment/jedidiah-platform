@@ -14,12 +14,13 @@ export function useFleet() {
   );
 }
 
-export function useMachineReadings(machineId: string) {
+/** The Machine's latest reading, the one a capture is judged against; null while its ledger is empty. */
+export function useLatestReading(machineId: string) {
   const canRead = useSessionPermission(...FIELD_READ_PERMISSIONS);
   const trpc = useTRPC();
   return fieldQuery(
     canRead,
-    useQuery(trpc.contractingReadings.fieldHistory.queryOptions({ machineId }, { enabled: canRead })),
+    useQuery(trpc.contractingReadings.latest.queryOptions({ machineId }, { enabled: canRead })),
   );
 }
 

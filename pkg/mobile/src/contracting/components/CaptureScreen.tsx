@@ -1,5 +1,5 @@
 import { formatHours } from '@pkg/domain';
-import { captureNeedsComment, captureRefusals, isFutureReadAt } from '@pkg/domain/contracting';
+import { captureRefusals, deriveCaptureForm } from '@pkg/domain/contracting';
 import { ReadingComment, type ReadingErrorCode, type ReadingRole } from '@pkg/schema/contracting';
 import { useQueryClient } from '@tanstack/react-query';
 import { type Href, router, useLocalSearchParams, useNavigation } from 'expo-router';
@@ -16,10 +16,9 @@ import { ReadAtField } from '@/contracting/components/ReadAtField';
 import { type PlannedStint, StintOverrideCard, useStintOverrides } from '@/contracting/components/StintOverrideCard';
 import { recordReadingCaptured } from '@/contracting/observability';
 import { type AttemptIdentity, captureAttempt, captureAttemptPayload } from '@/contracting/readings/capture-attempt';
-import { deriveCapture } from '@/contracting/readings/derive-capture';
 import { capturedAtFor, isBackdated, type ReadAtChoice, readAtAfterPhoto } from '@/contracting/readings/read-at';
 import { CAPTURE_FAILED, captureReading } from '@/contracting/readings/reading-upload';
-import { useFleet, useMachineReadings } from '@/contracting/readings/use-fleet';
+import { useFleet, useLatestReading } from '@/contracting/readings/use-fleet';
 import { useVoiceSession } from '@/contracting/voice/use-voice-session';
 import { VoiceTextArea } from '@/contracting/voice/VoiceTextArea';
 import { useSessionPermission } from '@/lib/auth-session';
@@ -89,7 +88,7 @@ function CaptureForm({ target }: { target: CaptureTarget }) {
   const navigation = useNavigation();
   const fleet = useFleet();
   const machine = fleet.data?.find((row) => row.id === machineId);
-  const readings = useMachineReadings(machineId);
+  const latestQuery = useLatestReading(machineId);
   const queryClient = useQueryClient();
   const trpc = useTRPC();
   const canCapture = useSessionPermission('contracting_reading:capture');
@@ -112,33 +111,25 @@ function CaptureForm({ target }: { target: CaptureTarget }) {
   const action = useBusyAction();
   const { busy, error, run } = action;
   const attempt = useRef<AttemptIdentity | null>(null);
-  const latestRow = readings.data?.[0];
-  const latest = latestRow ? { id: latestRow.id, value: latestRow.value } : null;
-  const commentRequired = captureNeedsComment(role, { management, hasPhoto: photo !== null });
-  const { parsed, below, disputeConfirmed, canSave } = deriveCapture({
-    value,
-    latest,
-    disputedReadingId,
-    comment,
-    commentRequired,
-    canCapture,
-    machineKnown: !!machine,
-    cameraOpen,
-    futureReadAt: readAt !== null && isFutureReadAt(readAt.at),
-  });
+  // Undefined while it loads: the request then names no latest, and the server judges against its own.
+  const latest = latestQuery.canRead ? latestQuery.data : undefined;
+  const stintOverrides = target.kind === 'stint' && target.role === 'arrival' ? overrides.value : undefined;
+  const form = deriveCaptureForm(
+    { latest, management, hasPhoto: photo !== null, now: new Date() },
+    { role, value, disputedReadingId, comment, readAt: readAt?.at ?? null, stintOverrides },
+  );
+  const { parsed, below, disputeConfirmed, commentRequired, futureReadAt } = form;
+  const canSave = form.request !== null && canCapture && !!machine && !cameraOpen;
   function save() {
-    if (!canSave || voice.busy || !parsed?.success) return;
-    const reading = parsed.data;
-    const stintOverrides = target.kind === 'stint' && target.role === 'arrival' ? overrides.value : undefined;
-    // Name the latest only once history has loaded; the server then refuses a capture judged against an older one.
-    const expectedPreviousId = readings.data ? (latest?.id ?? null) : undefined;
-    // Only what the Foreman entered: a reconnect refetches history, and a retry after it must still replay.
+    const request = form.request;
+    if (!canSave || voice.busy || !request) return;
+    // Only what the Foreman entered: a reconnect refetches the latest, and a retry after it must still replay.
     attempt.current = captureAttempt(
       attempt.current,
       captureAttemptPayload({
         role,
         assignmentId,
-        value: reading,
+        value: request.value,
         photo: photo?.uri ?? null,
         comment,
         disputedReadingId,
@@ -157,18 +148,7 @@ function CaptureForm({ target }: { target: CaptureTarget }) {
     return run(async () => {
       try {
         await captureReading(
-          {
-            localId,
-            machineId,
-            role,
-            ...(assignmentId ? { assignmentId } : {}),
-            ...(stintOverrides ? { stintOverrides } : {}),
-            value: reading,
-            capturedAt,
-            comment: comment.trim() || null,
-            disputePrevious: disputeConfirmed,
-            ...(expectedPreviousId !== undefined ? { expectedPreviousId } : {}),
-          },
+          { localId, machineId, ...(assignmentId ? { assignmentId } : {}), ...request, capturedAt },
           photo?.uri ?? null,
         );
       } catch (error) {
@@ -178,7 +158,7 @@ function CaptureForm({ target }: { target: CaptureTarget }) {
           if (LEDGER_MOVED.has(error.data.appCode)) {
             setDisputedReadingId(null);
             void queryClient.invalidateQueries({
-              queryKey: trpc.contractingReadings.fieldHistory.queryKey({ machineId }),
+              queryKey: trpc.contractingReadings.latest.queryKey({ machineId }),
             });
           }
         }
@@ -261,7 +241,7 @@ function CaptureForm({ target }: { target: CaptureTarget }) {
           </View>
         }
         errors={
-          !valueFocused && value && !parsed?.success
+          !valueFocused && value && parsed === null
             ? [{ message: 'Enter a non-negative value with at most one decimal place.' }]
             : []
         }
@@ -294,10 +274,7 @@ function CaptureForm({ target }: { target: CaptureTarget }) {
       {target.kind === 'stint' && target.role === 'arrival' ? (
         <StintOverrideCard planned={target.planned} overrides={overrides} />
       ) : null}
-      <FieldShell
-        label="Read At"
-        errors={readAt && isFutureReadAt(readAt.at) ? [{ message: captureRefusals['future-read-at'].message }] : []}
-      >
+      <FieldShell label="Read At" errors={futureReadAt ? [{ message: captureRefusals['future-read-at'].message }] : []}>
         <ReadAtField
           value={readAt?.at ?? null}
           disabled={busy}

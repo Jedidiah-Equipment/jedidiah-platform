@@ -8,6 +8,4 @@
 6. Add a **Comment** if management should know something about this reading, such as a damaged meter or a replaced display. A departure asks for a **Reason** instead, and requires one when management captures it without a photo. You can [say it as a Voice Note](./record-a-voice-note) instead of typing it.
 7. Choose **Save reading**. The reading is saved on the server at once; if it is refused, the reason is shown and you can correct the value or dispute the previous reading.
 
-**Previous reading** for a departure is the arrival you captured.
-
 Capturing needs a connection. Without one, [keep a Field Note](./keep-a-field-note) and capture the reading when you are back online. Management reviews photo verification on web; you do not need to wait for it.

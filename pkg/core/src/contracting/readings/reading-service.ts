@@ -11,7 +11,6 @@ import { hasPermission, validateFile } from '@pkg/domain';
 import {
   assignmentState,
   FUTURE_READ_AT_TOLERANCE_MS,
-  isFutureReadAt,
   type JobActor,
   jobReadStatuses,
   judgeCapture,
@@ -25,6 +24,7 @@ import { type AuthId, getNextCursor } from '@pkg/schema';
 import {
   FieldReading,
   type FieldReadingPageInput,
+  LatestReading,
   ReadingAmendInput,
   ReadingCaptureInput,
 } from '@pkg/schema/contracting';
@@ -36,7 +36,7 @@ import { FilePolicyViolationError } from '../../files/file-errors.js';
 import { readStoredObject, type StorageAdapter } from '../../storage/storage-adapter.js';
 import { reopenPricingWithin } from '../jobs/pricing-service.js';
 import { attachReadingToStint, resolveCaptureStint } from './capture-stint.js';
-import { assertReadingJobAction, captureRefused, ReadingError, withCaptureConstraints } from './reading-errors.js';
+import { assertAmendReadings, ReadingError, withCaptureConstraints } from './reading-errors.js';
 import { type MeterMeasurement, measureMeterPhoto, type ReadMeterPhoto } from './reading-evidence.js';
 import { readingNeedsALookSql } from './reading-sql.js';
 import { readingToWire } from './reading-wire.js';
@@ -108,8 +108,6 @@ export async function captureReading({
 }) {
   const actorUserId = actor.userId;
   const input = ReadingCaptureInput.parse(raw);
-  if (input.role === 'baseline' && !hasPermission(actor, 'contracting_reading:capture-baseline'))
-    throw new ReadingError('reading.forbidden', 'Only a Contracting administrator can capture a Baseline Reading.');
   // A mobile retry of an already delivered capture returns the stored row instead of a duplicate.
   async function replay(db: Db | DatabaseTransaction) {
     if (!input.localId) return null;
@@ -128,8 +126,6 @@ export async function captureReading({
   }
   const delivered = await replay(db);
   if (delivered) return delivered;
-  if (isFutureReadAt(new Date(input.capturedAt), now, FUTURE_READ_AT_TOLERANCE_MS))
-    throw captureRefused('future-read-at');
   const photo = evidence ? await storeMeterPhoto(evidence) : null;
   try {
     const verdict = photo ? awaitingVerdict : manualVerdict;
@@ -143,8 +139,6 @@ export async function captureReading({
         if (!machine) throw new ReadingError('reading.not_found', 'Machine not found.');
         const delivered = await replay(tx);
         if (delivered) return delivered;
-        if (machine.retiredAt)
-          throw new ReadingError('reading.retired_machine', 'Cannot capture readings for a retired Machine.');
         const stint = await resolveCaptureStint(tx, { actor, input });
         const [latest] = await tx
           .select()
@@ -156,20 +150,26 @@ export async function captureReading({
           {
             latest: latest ? { id: latest.id, value: latest.value } : null,
             stint: stint ? assignmentState(stint.stint) : null,
+            jobVerdict: stint?.jobVerdict ?? null,
             management: hasPermission(actor, 'contracting_job:work-any'),
+            mayBaseline: hasPermission(actor, 'contracting_reading:capture-baseline'),
+            machineRetired: machine.retiredAt !== null,
+            implementValid: stint?.implementValid ?? true,
+            driverValid: stint?.driverValid ?? true,
             hasPhoto: !!evidence,
+            now,
+            futureToleranceMs: FUTURE_READ_AT_TOLERANCE_MS,
           },
           {
             role: input.role,
             value: input.value,
+            readAt: new Date(input.capturedAt),
             disputePrevious: input.disputePrevious,
             expectedPreviousId: input.expectedPreviousId,
             comment: input.comment ?? null,
           },
         );
-        if (!judgement.ok) throw new ReadingError(judgement.reason, judgement.message);
-        if (input.role === 'baseline' && latest)
-          throw new ReadingError('reading.baseline_exists', 'A Baseline Reading must be the first reading.');
+        if (!judgement.ok) throw new ReadingError(judgement.reason, judgement.message, judgement.refused);
         const disputed = judgement.disputes !== null;
         if (disputed && latest)
           await updateAudited(tx, actorUserId, latest, {
@@ -282,7 +282,7 @@ export async function amendReading({ db, actor, input: raw }: { db: Db; actor: J
       .for('update');
     if (!machine) throw notFound();
     const affected = await lockJobsMovedBy(tx, owner);
-    for (const job of affected) assertReadingJobAction('amendReadings', job, actor);
+    for (const job of affected) assertAmendReadings(job, actor);
     const rows = await tx
       .select()
       .from(contractingHourReadings)
@@ -503,16 +503,18 @@ export async function reverifyReading({
   return recordVerdict(db, owner, measurement, actorUserId);
 }
 
-export async function listFieldReadings({ db, machineId }: { db: Db; machineId: string }) {
-  const rows = await db
+/** The Machine's latest accepted reading, the one every capture is judged against; null while the ledger is empty. */
+export async function latestReading({ db, machineId }: { db: Db; machineId: string }) {
+  const [row] = await db
     .select()
     .from(contractingHourReadings)
     .where(eq(contractingHourReadings.machineId, machineId))
-    .orderBy(desc(contractingHourReadings.sequence));
-  return rows.map((row) => FieldReading.parse(readingToWire(row)));
+    .orderBy(desc(contractingHourReadings.sequence))
+    .limit(1);
+  return row ? LatestReading.parse(readingToWire(row)) : null;
 }
 
-/** A page of a Machine's Hour Readings, newest first; `listFieldReadings` stays whole for the capture screens. */
+/** A page of a Machine's Hour Readings, newest first. */
 export async function listFieldReadingsPage({ db, input }: { db: Db; input: FieldReadingPageInput }) {
   const onMachine = eq(contractingHourReadings.machineId, input.machineId);
   const query = db

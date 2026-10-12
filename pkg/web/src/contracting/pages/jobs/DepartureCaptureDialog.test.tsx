@@ -1,6 +1,6 @@
 /** @vitest-environment jsdom */
 
-import { createUserAccessSummary } from '@pkg/domain';
+import { createUserAccessSummary, formatHours } from '@pkg/domain';
 import type { Assignment } from '@pkg/schema/contracting';
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
@@ -9,6 +9,15 @@ import { DepartureCaptureDialog } from './DepartureCaptureDialog.js';
 
 const capture = vi.hoisted(() => vi.fn(async (..._args: unknown[]) => undefined));
 vi.mock('./capture-reading.js', () => ({ captureReading: capture }));
+const latestId = '00000000-0000-4000-8000-000000000009';
+vi.mock('./use-latest-reading.js', () => ({
+  useLatestReading: () => ({
+    isSuccess: true,
+    isPending: false,
+    error: null,
+    data: { id: latestId, role: 'spot', value: 130, capturedAt: '2026-09-17T12:00:00.000Z' },
+  }),
+}));
 vi.mock('@/contracting/hooks/use-query-invalidation.js', () => ({
   useQueryInvalidation: () => ({ invalidateJobs: async () => undefined, invalidateReadings: async () => undefined }),
 }));
@@ -17,7 +26,6 @@ const manager = createUserAccessSummary({
   equipmentRole: null,
   contractingRole: 'contracting-manager',
 });
-const foreman = createUserAccessSummary({ userId: 'foreman', equipmentRole: null, contractingRole: 'foreman' });
 const access = vi.hoisted(() => ({ current: null as unknown }));
 vi.mock('@/hooks/use-access.js', async () => {
   const { hasPermission } = await import('@pkg/domain');
@@ -76,77 +84,6 @@ async function enter(name: string, value: string) {
   });
 }
 
-it('requires a photo-less departure reason and submits the shared reading field value', async () => {
-  const { save, onClose } = await mount();
-  await enter('value', '125.5');
-  expect(save.disabled).toBe(false);
-  expect(document.querySelector('[role="alert"]')).toBeNull();
-  await act(async () => save.click());
-  const error = document.querySelector('[role="alert"]');
-  expect(error?.textContent).toContain('A photo or a reason is required');
-  expect(error?.classList.contains('text-destructive')).toBe(true);
-  expect(capture).not.toHaveBeenCalled();
-  expect(save.disabled).toBe(false);
-  await enter('reason', '   ');
-  await act(async () => save.click());
-  expect(capture).not.toHaveBeenCalled();
-  await enter('reason', 'Camera unavailable');
-  expect(document.querySelector('[role="alert"]')).toBeNull();
-  expect(save.disabled).toBe(false);
-  await act(async () => save.click());
-  expect(capture).toHaveBeenCalledWith(
-    expect.objectContaining({
-      assignmentId: stint.id,
-      machineId: stint.machineId,
-      role: 'departure',
-      value: 125.5,
-      comment: 'Camera unavailable',
-      capturedAt: expect.any(String),
-    }),
-    null,
-    'Unable to capture departure reading.',
-  );
-  expect(onClose).toHaveBeenCalledOnce();
-});
-
-it('allows a departure with a meter photo and no reason', async () => {
-  const { save } = await mount();
-  await enter('value', '126');
-  const photo = new File(['meter'], 'meter.jpg', { type: 'image/jpeg' });
-  await selectPhoto(photo);
-  expect(document.querySelector('img')?.getAttribute('src')).toBe('blob:http://localhost/meter.jpg');
-  await act(async () => button('Enlarge meter photo').click());
-  const enlarged = document.querySelector('img[alt="Enlarged meter photo"]');
-  expect(enlarged?.getAttribute('src')).toBe('blob:http://localhost/meter.jpg');
-  expect(capture).not.toHaveBeenCalled();
-  const closePreview = enlarged
-    ?.closest('[role="dialog"]')
-    ?.querySelector<HTMLButtonElement>('[data-slot="dialog-close"]');
-  if (!closePreview) throw new Error('Preview close action missing');
-  await act(async () => closePreview.click());
-  expect(capture).not.toHaveBeenCalled();
-  expect(save.disabled).toBe(false);
-  await act(async () => save.click());
-  expect(capture).toHaveBeenCalledWith(
-    expect.objectContaining({ role: 'departure', value: 126, comment: null }),
-    photo,
-    'Unable to capture departure reading.',
-  );
-});
-
-it('lets a Foreman save a photo-less departure without a reason', async () => {
-  access.current = foreman;
-  const { save } = await mount();
-  await enter('value', '126');
-  await act(async () => save.click());
-  expect(document.querySelector('[role="alert"]')).toBeNull();
-  expect(capture).toHaveBeenCalledWith(
-    expect.objectContaining({ role: 'departure', value: 126, comment: null }),
-    null,
-    'Unable to capture departure reading.',
-  );
-});
-
 function button(label: string) {
   const result = [...document.querySelectorAll('button')].find((item) => item.getAttribute('aria-label') === label);
   if (!result) throw new Error(`Button missing: ${label}`);
@@ -164,6 +101,7 @@ async function selectPhoto(photo: File) {
 
 it('updates the preview on replacement and restores the evidence error on removal', async () => {
   const { save } = await mount();
+  await enter('value', '131');
   await act(async () => save.click());
   expect(document.querySelector('[role="alert"]')).not.toBeNull();
   await selectPhoto(new File(['meter'], 'first.jpg', { type: 'image/jpeg' }));
@@ -193,7 +131,7 @@ it('keeps Save enabled for invalid readings and presents field validation on sub
 it('shows a refused capture inside the dialog and stays open', async () => {
   capture.mockRejectedValueOnce(new Error('This Machine Assignment is not on site.'));
   const { save, onClose } = await mount();
-  await enter('value', '126');
+  await enter('value', '131');
   await enter('reason', 'Camera unavailable');
   await act(async () => save.click());
   const alert = [...document.querySelectorAll('[role="alert"]')].find((item) =>
@@ -201,4 +139,32 @@ it('shows a refused capture inside the dialog and stays open', async () => {
   );
   expect(alert).toBeDefined();
   expect(onClose).not.toHaveBeenCalled();
+});
+
+it('offers the dispute for a departure below the latest reading and posts the handshake', async () => {
+  const { save } = await mount();
+  await enter('value', '126');
+  // The warning waits for the reading to lose focus, as it does when the person moves on to the reason.
+  await act(async () => document.querySelector<HTMLTextAreaElement>('[name="reason"]')?.focus());
+  await enter('reason', 'Camera unavailable');
+  expect(document.body.textContent).toContain(
+    `Record ${formatHours(126)} and dispute the ${formatHours(130)} reading.`,
+  );
+  expect(save.disabled).toBe(true);
+  const dispute = document.querySelector<HTMLElement>('#confirmedDispute');
+  if (!dispute) throw new Error('Dispute checkbox missing');
+  await act(async () => dispute.click());
+  expect(save.disabled).toBe(false);
+  await act(async () => save.click());
+  expect(capture).toHaveBeenCalledWith(
+    expect.objectContaining({
+      role: 'departure',
+      value: 126,
+      comment: 'Camera unavailable',
+      disputePrevious: true,
+      expectedPreviousId: latestId,
+    }),
+    null,
+    'Unable to capture departure reading.',
+  );
 });

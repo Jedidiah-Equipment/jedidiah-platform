@@ -4,6 +4,8 @@ import { IconArrowRight } from '@tabler/icons-react';
 import type React from 'react';
 import { NumberField } from '@/components/form/fields/NumberField.js';
 import { Card, CardContent } from '@/components/ui/card.js';
+import { Checkbox } from '@/components/ui/checkbox.js';
+import { Field, FieldContent, FieldDescription, FieldLabel } from '@/components/ui/field.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
 import { PhotoPicker } from '@/contracting/components/PhotoPicker.js';
 
@@ -48,6 +50,42 @@ export function ReadingCaptureCard({
         {warning}
       </CardContent>
     </Card>
+  );
+}
+
+/** The below-latest warning: confirming the previous reading is wrong records the value and disputes it. */
+export function DisputeField({
+  id,
+  value,
+  previous,
+  checked,
+  onCheckedChange,
+  onBlur,
+}: {
+  id: string;
+  value: number;
+  previous: number;
+  checked: boolean;
+  onCheckedChange: (checked: boolean) => void;
+  onBlur?: () => void;
+}) {
+  return (
+    <div className="rounded-lg border border-warning/45 bg-warning/10 p-3">
+      <Field orientation="horizontal">
+        <Checkbox
+          checked={checked}
+          id={id}
+          onBlur={onBlur}
+          onCheckedChange={(next) => onCheckedChange(next === true)}
+        />
+        <FieldContent>
+          <FieldLabel htmlFor={id}>The previous reading is wrong</FieldLabel>
+          <FieldDescription>
+            Record {formatHours(value)} and dispute the {formatHours(previous)} reading.
+          </FieldDescription>
+        </FieldContent>
+      </Field>
+    </div>
   );
 }
 

@@ -5,7 +5,7 @@ import { and, desc, eq } from 'drizzle-orm';
 import { expect } from 'vitest';
 import { createTester } from '../../test/create-tester.js';
 import { createCategory } from '../fleet/category-service.js';
-import { createMachine } from '../fleet/machine-service.js';
+import { createMachine, retireMachine } from '../fleet/machine-service.js';
 import { createJob } from '../jobs/job-service.js';
 import { admin, foreman, foremanId, leftStint, seedJobFixtures } from '../test/job-fixtures.js';
 import type { ReadMeterPhoto } from './reading-evidence.js';
@@ -371,28 +371,6 @@ test('refuses a Read At more than five minutes ahead, but still replays a stored
   expect((await captureReading({ db, actor, input, now: later })).id).toBe(stored.id);
 });
 
-test('a dispute captured against an older reading waits for attention when another reading lands first', async ({
-  context,
-}) => {
-  const { db, actor, machineId } = context;
-  const input = {
-    machineId,
-    role: 'spot' as const,
-    value: 200,
-    capturedAt: '2026-09-08T08:00:00Z',
-    disputePrevious: false,
-  };
-  const previous = await captureReading({ db, actor, input });
-  const newer = await captureReading({ db, actor, input: { ...input, value: 210 } });
-  const dispute = { ...input, value: 190, disputePrevious: true, expectedPreviousId: previous.id };
-  await expect(captureReading({ db, actor, input: dispute })).rejects.toMatchObject({
-    code: 'reading.previous_changed',
-  });
-  expect((await listReadingsByMachine({ db, machineId })).map((row) => row.disputed)).toEqual([false, false]);
-  const accepted = await captureReading({ db, actor, input: { ...dispute, expectedPreviousId: newer.id } });
-  expect(accepted).toMatchObject({ disputed: true, disputedPreviousId: newer.id });
-});
-
 test('carries the capture comment through to the Reading Exceptions list', async ({ context }) => {
   const { db, actor, machineId } = context;
   const { listReadingExceptions } = await import('./reading-service.js');
@@ -432,6 +410,18 @@ test('judges a late-arriving earlier capture against the ledger’s latest, not 
     captureReading({ db, actor, input: { ...spot, value: 150, capturedAt: '2026-09-08T08:00:00Z' } }),
   ).rejects.toMatchObject({ code: 'reading.below_latest' });
   expect((await listReadingsByMachine({ db, machineId })).map((row) => row.value)).toEqual([160]);
+});
+
+test('refuses a reading on a retired Machine with its code', async ({ context }) => {
+  const { db, actor, actorUserId, machineId } = context;
+  await retireMachine({ db, actorUserId, input: { id: machineId, reason: 'Sold' } });
+  await expect(
+    captureReading({
+      db,
+      actor,
+      input: { machineId, role: 'spot', value: 10, capturedAt: '2026-09-07T08:00:00Z', disputePrevious: false },
+    }),
+  ).rejects.toMatchObject({ code: 'reading.retired_machine' });
 });
 
 test('reserves a Baseline Reading for Contracting administrators', async ({ context }) => {

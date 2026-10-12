@@ -1,7 +1,7 @@
 import {
   amendReading,
+  latestReading,
   listFieldMachines,
-  listFieldReadings,
   listFieldReadingsPage,
   listReadingExceptions,
   listReadingsByMachine,
@@ -10,10 +10,10 @@ import {
 } from '@pkg/core/contracting';
 import {
   FieldMachine,
-  FieldReading,
   FieldReadingPage,
   FieldReadingPageInput,
   HourReading,
+  LatestReading,
   ReadingAmendInput,
   ReadingException,
   ReadingIdInput,
@@ -29,10 +29,10 @@ export function createContractingReadingsRouter(readPhoto: ReadMeterPhoto) {
     fieldMachines: authorizedProcedure(['contracting_machine:read', 'contracting_reading:capture'])
       .output(FieldMachine.array())
       .query(({ ctx }) => listFieldMachines({ db: ctx.db, actor: ctx.access })),
-    fieldHistory: authorizedProcedure(['contracting_machine:read', 'contracting_reading:capture'])
+    latest: authorizedProcedure(['contracting_machine:read', 'contracting_reading:capture'])
       .input(ReadingMachineInput)
-      .output(FieldReading.array())
-      .query(({ ctx, input }) => listFieldReadings({ db: ctx.db, ...input })),
+      .output(LatestReading.nullable())
+      .query(({ ctx, input }) => latestReading({ db: ctx.db, ...input })),
     fieldHistoryPage: authorizedProcedure(['contracting_machine:read', 'contracting_reading:capture'])
       .input(FieldReadingPageInput)
       .output(FieldReadingPage)

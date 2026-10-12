@@ -128,6 +128,10 @@ export const ReadingException = HourReading.extend({
 });
 export type ReadingException = z.infer<typeof ReadingException>;
 
+/** The Machine's latest reading, the one a capture is judged against. */
+export const LatestReading = HourReading.pick({ id: true, role: true, value: true, capturedAt: true });
+export type LatestReading = z.infer<typeof LatestReading>;
+
 export const FieldReading = HourReading.pick({
   id: true,
   machineId: true,

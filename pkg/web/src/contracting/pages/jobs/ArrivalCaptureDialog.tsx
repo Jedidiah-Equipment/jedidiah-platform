@@ -1,41 +1,31 @@
-import { formatHours } from '@pkg/domain';
-import { captureIsBelowLatest } from '@pkg/domain/contracting';
 import { AuthId, UUID } from '@pkg/schema';
 import { type Assignment, ReadingComment, ReadingValue } from '@pkg/schema/contracting';
-import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { z } from 'zod';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { CreateEntityDialog } from '@/components/form/index.js';
 import { emptyStringOr } from '@/components/form/utils/form-schema.js';
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@/components/ui/card.js';
-import { Checkbox } from '@/components/ui/checkbox.js';
-import { Field, FieldContent, FieldDescription, FieldLabel } from '@/components/ui/field.js';
 import { MachineDialogTitle } from '@/contracting/components/MachineDialogTitle.js';
-import { useTRPC } from '@/lib/trpc.js';
 import { AssignmentEditorDialog, changesAssignment } from './AssignmentEditorDialog.js';
-import { ReadingCaptureCard, ReadingCaptureDetails, ReadingValueField } from './ReadingCaptureFields.js';
+import { DisputeField, ReadingCaptureCard, ReadingCaptureDetails, ReadingValueField } from './ReadingCaptureFields.js';
 import { useAssignmentOptions } from './use-assignment-options.js';
-import { useReadingCapture } from './use-reading-capture.js';
+import { ConfirmedDispute, useReadingCapture } from './use-reading-capture.js';
 
 const ArrivalValues = z.object({
   value: ReadingValue,
   comment: z.union([z.string().trim().length(0), ReadingComment]),
-  confirmedDispute: z.object({ value: ReadingValue, previousId: UUID }).nullable(),
+  confirmedDispute: ConfirmedDispute,
   implementId: emptyStringOr(UUID),
   driverUserId: emptyStringOr(AuthId),
 });
 
 export function ArrivalCaptureDialog({ stint, onClose }: { stint: Assignment | null; onClose: () => void }) {
-  const trpc = useTRPC();
-  const capture = useReadingCapture('arrival');
+  const capture = useReadingCapture('arrival', stint);
   const [readingFocused, setReadingFocused] = useState(false);
   // A refetch can change the live stint mid-capture; the form starts from, and overrides compare against, the opened one.
   const [opened, setOpened] = useState(stint);
   if (stint?.id !== opened?.id) setOpened(stint);
-  const history = useQuery(
-    trpc.contractingReadings.fieldHistory.queryOptions({ machineId: stint?.machineId ?? '' }, { enabled: !!stint }),
-  );
   const options = useAssignmentOptions({
     enabled: !!stint,
     stint,
@@ -43,12 +33,16 @@ export function ArrivalCaptureDialog({ stint, onClose }: { stint: Assignment | n
     noDriverLabel: 'No driver',
     freeImplementsOnly: true,
   });
-  const latest = history.data?.[0];
+  const { latestQuery, latest } = capture;
+  const judge = (values: z.infer<typeof ArrivalValues>) =>
+    capture.judge({
+      ...values,
+      stintOverrides: changesAssignment(opened, values)
+        ? { implementId: values.implementId || null, driverUserId: values.driverUserId || null }
+        : undefined,
+    });
   const canCapture = (values: z.infer<typeof ArrivalValues>) =>
-    history.isSuccess &&
-    (!changesAssignment(opened, values) || options.ready) &&
-    (!captureIsBelowLatest(values.value, latest) ||
-      (values.confirmedDispute?.value === values.value && values.confirmedDispute.previousId === latest?.id));
+    latestQuery.isSuccess && (!changesAssignment(opened, values) || options.ready) && judge(values).request !== null;
 
   return (
     <CreateEntityDialog
@@ -75,21 +69,9 @@ export function ArrivalCaptureDialog({ stint, onClose }: { stint: Assignment | n
       disableSubmitWhenInvalid
       onBeforeCreate={canCapture}
       onCreate={async (values) => {
-        if (!stint) throw new Error('No Machine Assignment selected.');
-        await capture.submit({
-          machineId: stint.machineId,
-          assignmentId: stint.id,
-          value: values.value,
-          comment: values.comment.trim() || null,
-          disputePrevious:
-            captureIsBelowLatest(values.value, latest) &&
-            values.confirmedDispute?.value === values.value &&
-            values.confirmedDispute.previousId === latest?.id,
-          expectedPreviousId: latest?.id ?? null,
-          stintOverrides: changesAssignment(opened, values)
-            ? { implementId: values.implementId || null, driverUserId: values.driverUserId || null }
-            : undefined,
-        });
+        const { request } = judge(values);
+        if (!request) throw new Error('This reading cannot be captured yet.');
+        await capture.submit(request);
         return true;
       }}
       onCreated={() => {
@@ -100,38 +82,31 @@ export function ArrivalCaptureDialog({ stint, onClose }: { stint: Assignment | n
     >
       {(form) => (
         <>
-          <ErrorMessage error={history.error} fallbackMessage="Unable to load the Machine's previous reading." />
+          <ErrorMessage error={latestQuery.error} fallbackMessage="Unable to load the Machine's previous reading." />
           <ReadingCaptureCard
-            previousValue={history.isSuccess ? (latest?.value ?? null) : undefined}
-            loading={history.isPending}
+            previousValue={latest === undefined ? undefined : (latest?.value ?? null)}
+            loading={latestQuery.isPending}
             warning={
-              <form.Subscribe selector={(state) => state.values.value}>
-                {(value) =>
-                  !readingFocused && latest && captureIsBelowLatest(value, latest) ? (
-                    <div className="rounded-lg border border-warning/45 bg-warning/10 p-3">
-                      <form.AppField name="confirmedDispute">
-                        {(field) => (
-                          <Field orientation="horizontal">
-                            <Checkbox
-                              checked={field.state.value?.value === value && field.state.value.previousId === latest.id}
-                              id={field.name}
-                              onBlur={field.handleBlur}
-                              onCheckedChange={(checked) =>
-                                field.handleChange(checked === true ? { value, previousId: latest.id } : null)
-                              }
-                            />
-                            <FieldContent>
-                              <FieldLabel htmlFor={field.name}>The previous reading is wrong</FieldLabel>
-                              <FieldDescription>
-                                Record {formatHours(value)} and dispute the {formatHours(latest.value)} reading.
-                              </FieldDescription>
-                            </FieldContent>
-                          </Field>
-                        )}
-                      </form.AppField>
-                    </div>
-                  ) : null
-                }
+              <form.Subscribe selector={(state) => state.values}>
+                {(values) => {
+                  const verdict = judge(values);
+                  return !readingFocused && latest && verdict.below ? (
+                    <form.AppField name="confirmedDispute">
+                      {(field) => (
+                        <DisputeField
+                          checked={verdict.disputeConfirmed}
+                          id={field.name}
+                          onBlur={field.handleBlur}
+                          onCheckedChange={(checked) =>
+                            field.handleChange(checked ? { value: values.value, previousId: latest.id } : null)
+                          }
+                          previous={latest.value}
+                          value={values.value}
+                        />
+                      )}
+                    </form.AppField>
+                  ) : null;
+                }}
               </form.Subscribe>
             }
           >

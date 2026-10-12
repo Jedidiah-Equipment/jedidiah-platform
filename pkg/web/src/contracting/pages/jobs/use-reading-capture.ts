@@ -1,30 +1,80 @@
+import { type CaptureRequest, deriveCaptureForm } from '@pkg/domain/contracting';
+import { UUID } from '@pkg/schema';
+import { type Assignment, type ReadingCaptureInput, ReadingValue } from '@pkg/schema/contracting';
 import { useState } from 'react';
 import { toast } from 'sonner';
+import { z } from 'zod';
 import { useQueryInvalidation } from '@/contracting/hooks/use-query-invalidation.js';
-import { captureReading, type ReadingCaptureFields } from './capture-reading.js';
+import { useCan } from '@/hooks/use-access.js';
+import { captureReading } from './capture-reading.js';
+import { useLatestReading } from './use-latest-reading.js';
 
 const copy = {
   arrival: { failed: 'Unable to capture arrival reading.', done: 'Arrival reading captured' },
   departure: { failed: 'Unable to capture departure reading.', done: 'Departure reading captured' },
 } as const;
 
-/** A capture dialog's meter photo, its refusal, and the submit that posts the reading. */
-export function useReadingCapture(role: keyof typeof copy) {
+/** A dispute the person confirmed, tied to the value it was confirmed for: changing the value clears it. */
+export const ConfirmedDispute = z.object({ value: ReadingValue, previousId: UUID }).nullable();
+export type ConfirmedDispute = z.infer<typeof ConfirmedDispute>;
+
+/** What a capture dialog's form holds, as the shared form brain reads it. */
+export type CaptureFormValues = {
+  value: number;
+  comment: string;
+  confirmedDispute: ConfirmedDispute;
+  stintOverrides?: ReadingCaptureInput['stintOverrides'];
+};
+
+/**
+ * A capture dialog's served latest reading, its meter photo and refusal, the domain's judgement of the form, and
+ * the submit that posts the request that judgement built.
+ */
+export function useReadingCapture(role: keyof typeof copy, stint: Assignment | null) {
   const { invalidateJobs, invalidateReadings } = useQueryInvalidation();
+  const latestQuery = useLatestReading(stint?.machineId ?? null);
+  const management = useCan('contracting_job:work-any').can;
   const [photo, setPhoto] = useState<File | null>(null);
   const [error, setError] = useState('');
+  const latest = latestQuery.isSuccess ? latestQuery.data : undefined;
+  const judge = (values: CaptureFormValues) =>
+    deriveCaptureForm(
+      { latest, management, hasPhoto: photo !== null, now: new Date() },
+      {
+        role,
+        value: Number.isFinite(values.value) ? String(values.value) : '',
+        disputedReadingId: values.confirmedDispute?.value === values.value ? values.confirmedDispute.previousId : null,
+        comment: values.comment,
+        readAt: null,
+        stintOverrides: values.stintOverrides,
+      },
+    );
   return {
+    latestQuery,
+    /** The latest once loaded: null when the ledger is empty, undefined while loading or failed. */
+    latest,
     photo,
+    judge,
     /** Spread onto `ReadingCaptureDetails`. */
     details: { photo, onPhotoChange: setPhoto, error, onError: setError },
     reset: () => {
       setPhoto(null);
       setError('');
     },
-    submit: async (fields: Omit<ReadingCaptureFields, 'role' | 'capturedAt'>) => {
+    submit: async (request: CaptureRequest) => {
+      if (!stint) throw new Error('No Machine Assignment selected.');
       setError('');
       try {
-        await captureReading({ ...fields, role, capturedAt: new Date().toISOString() }, photo, copy[role].failed);
+        await captureReading(
+          {
+            ...request,
+            machineId: stint.machineId,
+            assignmentId: stint.id,
+            capturedAt: new Date().toISOString(),
+          },
+          photo,
+          copy[role].failed,
+        );
         await Promise.all([invalidateJobs(), invalidateReadings()]);
       } catch (cause) {
         setError(cause instanceof Error ? cause.message : copy[role].failed);

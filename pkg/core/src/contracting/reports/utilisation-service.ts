@@ -140,7 +140,7 @@ const noHours: HourKindTotals = { workHours: 0, travelHours: 0, unaccountedHours
 const hourKinds = Object.keys(noHours) as (keyof HourKindTotals)[];
 
 const dayCounts = (machine: LedgerMachine, window: ReportWindow, today: DateOnlyIso) => {
-  const activeDays = activeDaysIn(machine.spans, window, today);
+  const activeDays = activeDaysIn(machine.spans, window, today, machine);
   const fleetDays = fleetDaysIn(machine, window);
   return { activeDays, fleetDays, utilisationPercent: utilisationPercent(activeDays, fleetDays) };
 };
@@ -241,7 +241,7 @@ export async function getUtilisationTrend({
     throw new ReportError('report.not_found', 'That Category or Machine does not exist.');
   const label = subject.kind === 'fleet' ? 'Fleet' : subject.kind === 'category' ? first?.category.name : first?.code;
   const months = trailingMonthWindows(resolveReportWindow(input.window, today), today).map((window) => {
-    const activeDays = members.reduce((sum, machine) => sum + activeDaysIn(machine.spans, window, today), 0);
+    const activeDays = members.reduce((sum, machine) => sum + activeDaysIn(machine.spans, window, today, machine), 0);
     const fleetDays = members.reduce((sum, machine) => sum + fleetDaysIn(machine, window), 0);
     return {
       month: window.start.slice(0, 7),

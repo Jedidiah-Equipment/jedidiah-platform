@@ -10,23 +10,34 @@ export type ActiveSpan = { arrivalDate: DateOnlyIso; departureDate: DateOnlyIso 
 const earlier = (a: DateOnlyIso, b: DateOnlyIso) => (a <= b ? a : b);
 const later = (a: DateOnlyIso, b: DateOnlyIso) => (a >= b ? a : b);
 
-/** Distinct window days covered by any span; `today` closes an open span. Inclusive on both ends. */
-export function activeDaysIn(spans: readonly ActiveSpan[], window: ReportWindow, today: DateOnlyIso): number {
+/** The days a Machine belongs to the fleet: from its creation date through its retirement date. */
+export type FleetSpan = { createdDate: DateOnlyIso; retiredDate: DateOnlyIso | null };
+
+/**
+ * Distinct window days covered by any span, inclusive on both ends; `today` closes an open span. Days outside the
+ * Machine's fleet span never count, so a Machine retired while on site, or a Read At back-dated before its creation,
+ * cannot have more active days than fleet days.
+ */
+export function activeDaysIn(
+  spans: readonly ActiveSpan[],
+  window: ReportWindow,
+  today: DateOnlyIso,
+  fleet: FleetSpan,
+): number {
   if (window.days === 0) return 0;
+  const first = later(fleet.createdDate, window.start);
+  const last = earlier(fleet.retiredDate ?? window.end, window.end);
   const days = new Set<DateOnlyIso>();
   for (const span of spans) {
-    const from = later(span.arrivalDate, window.start);
-    const to = earlier(span.departureDate ?? today, window.end);
+    const from = later(span.arrivalDate, first);
+    const to = earlier(span.departureDate ?? today, last);
     for (let day = from; day <= to; day = addDateOnlyDays(day, 1)) days.add(day);
   }
   return days.size;
 }
 
 /** Window days from the Machine's creation date through its retirement date, or the window end. */
-export function fleetDaysIn(
-  machine: { createdDate: DateOnlyIso; retiredDate: DateOnlyIso | null },
-  window: ReportWindow,
-): number {
+export function fleetDaysIn(machine: FleetSpan, window: ReportWindow): number {
   if (window.days === 0) return 0;
   const from = later(machine.createdDate, window.start);
   const to = earlier(machine.retiredDate ?? window.end, window.end);

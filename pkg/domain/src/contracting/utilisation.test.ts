@@ -153,9 +153,13 @@ describe('hourSegments and allocateHours', () => {
   });
 });
 
+const always = { createdDate: date('2020-01-01'), retiredDate: null };
+
 describe('activeDaysIn and fleetDaysIn', () => {
   test('counts distinct window days inclusive of arrival and departure, and an open stint through today', () => {
-    expect(activeDaysIn([{ arrivalDate: date('2026-06-28'), departureDate: date('2026-07-03') }], june, today)).toBe(3);
+    expect(
+      activeDaysIn([{ arrivalDate: date('2026-06-28'), departureDate: date('2026-07-03') }], june, today, always),
+    ).toBe(3);
     expect(
       activeDaysIn(
         [
@@ -164,11 +168,25 @@ describe('activeDaysIn and fleetDaysIn', () => {
         ],
         june,
         today,
+        always,
       ),
     ).toBe(6);
     const october = resolveReportWindow({ kind: 'month', year: 2026, period: 10 }, today);
-    expect(activeDaysIn([{ arrivalDate: date('2026-10-10'), departureDate: null }], october, today)).toBe(3);
-    expect(activeDaysIn([], june, today)).toBe(0);
+    expect(activeDaysIn([{ arrivalDate: date('2026-10-10'), departureDate: null }], october, today, always)).toBe(3);
+    expect(activeDaysIn([], june, today, always)).toBe(0);
+  });
+
+  test('never counts an active day outside the Machine’s fleet days', () => {
+    const october = resolveReportWindow({ kind: 'month', year: 2026, period: 10 }, today);
+    // Retired on 5 Oct while still on site since 1 Oct: 5 fleet days, so at most 5 active days, never 240%.
+    const retired = { createdDate: date('2020-01-01'), retiredDate: date('2026-10-05') };
+    const onSite = [{ arrivalDate: date('2026-10-01'), departureDate: null }];
+    expect(activeDaysIn(onSite, october, today, retired)).toBe(5);
+    expect(fleetDaysIn(retired, october)).toBe(5);
+    // A Read At back-dated before the Machine joined counts only from its creation date.
+    const joined = { createdDate: date('2026-06-10'), retiredDate: null };
+    const early = [{ arrivalDate: date('2026-06-05'), departureDate: date('2026-06-12') }];
+    expect(activeDaysIn(early, june, today, joined)).toBe(3);
   });
 
   test('counts window days from creation through retirement or the window end', () => {

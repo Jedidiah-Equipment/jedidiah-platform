@@ -5,7 +5,7 @@ when it comes depends on what happened in the field.
 
 ## Who gets which alert
 
-| Role | Code Red Breakdown | Code Green Breakdown | Service Due Soon |
+| Role | Code Red Breakdown | Code Green Breakdown | Service Due Soon (100 h before service) |
 | --- | :---: | :---: | :---: |
 | Workshop Manager | ✓ | ✓ | ✓ |
 | Contracting Manager | ✓ | — | — |

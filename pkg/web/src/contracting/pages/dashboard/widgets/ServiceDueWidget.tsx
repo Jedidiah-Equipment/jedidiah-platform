@@ -8,13 +8,13 @@ import {
 import type { Machine } from '@pkg/schema/contracting';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
-import { DASHBOARD_REFETCH_INTERVAL_MS } from '@/components/common/dashboard/dashboard-refresh.js';
 import { PrimaryLink } from '@/components/common/PrimaryLink.js';
 import { CategoryLabel } from '@/contracting/components/CategoryIcon.js';
+import { DASHBOARD_REFETCH_INTERVAL_MS } from '@/contracting/pages/dashboard/dashboard-refresh.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { cn } from '@/lib/utils.js';
 
-import { DashboardListBlock, dashboardRowLinkClassName } from './DashboardListBlock.js';
+import { DashboardListBlock, dashboardRowClassName, dashboardRowLinkClassName } from './DashboardListBlock.js';
 
 export function ServiceDueWidget() {
   const trpc = useTRPC();
@@ -43,7 +43,7 @@ export function ServiceDueWidget() {
 
 export function ServiceDueRow({ machine }: { machine: Machine }) {
   return (
-    <div className="grid min-w-0 grid-cols-[1fr_auto] items-center gap-x-4 gap-y-1 text-sm">
+    <div className={dashboardRowClassName}>
       <span className="min-w-0">
         <CategoryLabel
           icon={machine.categoryIcon}

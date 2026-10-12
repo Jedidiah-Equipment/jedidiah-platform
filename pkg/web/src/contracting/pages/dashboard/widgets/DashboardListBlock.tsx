@@ -5,7 +5,6 @@ import {
   DashboardListItem,
   DashboardListScrollArea,
 } from '@/components/common/dashboard/DashboardList.js';
-import { DashboardListHeading } from '@/components/common/dashboard/DashboardListHeading.js';
 import {
   DashboardWidgetEmpty,
   DashboardWidgetError,
@@ -36,7 +35,10 @@ export function DashboardListBlock<T>({
   if (!rows) return <DashboardWidgetSkeleton />;
   return (
     <>
-      <DashboardListHeading count={count(rows.length)} action={viewAll} />
+      <div className="mb-3 flex items-center justify-between gap-4 text-sm">
+        <span className="text-muted-foreground tabular-nums">{count(rows.length)}</span>
+        {viewAll}
+      </div>
       <DashboardListScrollArea>
         {rows.length ? (
           <DashboardList className="pr-3">
@@ -52,4 +54,5 @@ export function DashboardListBlock<T>({
   );
 }
 
+export const dashboardRowClassName = 'grid min-w-0 grid-cols-[1fr_auto] items-center gap-x-4 gap-y-1 text-sm';
 export const dashboardRowLinkClassName = 'block truncate font-medium text-foreground hover:underline';

@@ -3,7 +3,7 @@ import type { ComponentProps } from 'react';
 import { ScrollArea } from '@/components/ui/scroll-area.js';
 import { cn } from '@/lib/utils.js';
 
-export const DASHBOARD_LIST_HEIGHT_PX = 320;
+const DASHBOARD_LIST_HEIGHT_PX = 320;
 
 export function DashboardList({ className, ...props }: ComponentProps<'ul'>) {
   return <ul className={cn('flex flex-col divide-y', className)} data-slot="dashboard-list" {...props} />;

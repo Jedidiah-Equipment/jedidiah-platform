@@ -3,7 +3,7 @@
 The Dashboard is the first screen of Jedidiah Contracting on the web. It shows only what needs a person now and refreshes itself every minute.
 
 1. In Jedidiah Contracting, open **Dashboard**.
-2. Read the counts across the top. Select one to open its list already filtered:
+2. Read the counts. Select one to open its list already filtered:
    - **Looks finished** counts the Jobs whose Machines have all left, waiting for sign-off.
    - **Awaiting pricing** counts the Completed Jobs waiting to be priced.
    - **Awaiting invoice** counts the Priced Jobs waiting for an Invoice Number.

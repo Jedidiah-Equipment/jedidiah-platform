@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import type React from 'react';
 
 import { NavWarningDot } from '@/components/app-shell/NavWarningDot.js';
-import { DASHBOARD_REFETCH_INTERVAL_MS } from '@/components/common/dashboard/dashboard-refresh.js';
+import { DASHBOARD_REFETCH_INTERVAL_MS } from '@/contracting/pages/dashboard/dashboard-refresh.js';
 import { useCan } from '@/hooks/use-access.js';
 import { useTRPC } from '@/lib/trpc.js';
 

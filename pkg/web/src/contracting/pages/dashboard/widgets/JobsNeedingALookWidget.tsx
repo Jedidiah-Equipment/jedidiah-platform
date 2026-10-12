@@ -2,12 +2,12 @@ import { countPhrase, openJobQueues, orderJobsNeedingALook } from '@pkg/domain/c
 import type { JobSummary } from '@pkg/schema/contracting';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
-import { DASHBOARD_REFETCH_INTERVAL_MS } from '@/components/common/dashboard/dashboard-refresh.js';
 import { PrimaryLink } from '@/components/common/PrimaryLink.js';
+import { DASHBOARD_REFETCH_INTERVAL_MS } from '@/contracting/pages/dashboard/dashboard-refresh.js';
 import { JobAttentionBadge } from '@/contracting/pages/jobs/JobAttentionBadge.js';
 import { useTRPC } from '@/lib/trpc.js';
 
-import { DashboardListBlock, dashboardRowLinkClassName } from './DashboardListBlock.js';
+import { DashboardListBlock, dashboardRowClassName, dashboardRowLinkClassName } from './DashboardListBlock.js';
 
 export function JobsNeedingALookWidget() {
   const trpc = useTRPC();
@@ -36,7 +36,7 @@ export function JobsNeedingALookWidget() {
 
 function JobNeedingALookRow({ job }: { job: JobSummary }) {
   return (
-    <div className="grid min-w-0 grid-cols-[1fr_auto] items-center gap-x-4 gap-y-1 text-sm">
+    <div className={dashboardRowClassName}>
       <span className="min-w-0">
         <Link className={dashboardRowLinkClassName} to="/contracting/jobs/$code" params={{ code: job.jobNumber }}>
           <span className="font-mono font-semibold">{job.jobNumber}</span> {job.customerName} · {job.farmName}

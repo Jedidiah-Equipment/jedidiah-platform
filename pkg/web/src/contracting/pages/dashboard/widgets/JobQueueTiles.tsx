@@ -3,7 +3,7 @@ import type { JobQueue } from '@pkg/schema/contracting';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 
-import { DASHBOARD_REFETCH_INTERVAL_MS } from '@/components/common/dashboard/dashboard-refresh.js';
+import { DASHBOARD_REFETCH_INTERVAL_MS } from '@/contracting/pages/dashboard/dashboard-refresh.js';
 import { useTRPC } from '@/lib/trpc.js';
 
 import { DashboardTile, dashboardTileLinkClassName } from './DashboardTile.js';
@@ -18,13 +18,13 @@ function useQueueCount(queue: JobQueue) {
   return { count, error: query.error, errorMessage: 'Unable to load Job counts.' };
 }
 
-export function LooksFinishedTile() {
+function JobsStageTile({ stage, sublabel }: { stage: 'looks-finished' | 'awaiting-pricing'; sublabel: string }) {
   return (
     <DashboardTile
-      {...useQueueCount('looks-finished')}
-      sublabel="Need sign-off"
+      {...useQueueCount(stage)}
+      sublabel={sublabel}
       link={(body) => (
-        <Link className={dashboardTileLinkClassName} to="/contracting/jobs" search={{ stage: 'looks-finished' }}>
+        <Link className={dashboardTileLinkClassName} to="/contracting/jobs" search={{ stage }}>
           {body}
         </Link>
       )}
@@ -32,19 +32,9 @@ export function LooksFinishedTile() {
   );
 }
 
-export function AwaitingPricingTile() {
-  return (
-    <DashboardTile
-      {...useQueueCount('awaiting-pricing')}
-      sublabel="Need pricing"
-      link={(body) => (
-        <Link className={dashboardTileLinkClassName} to="/contracting/jobs" search={{ stage: 'awaiting-pricing' }}>
-          {body}
-        </Link>
-      )}
-    />
-  );
-}
+export const LooksFinishedTile = () => <JobsStageTile stage="looks-finished" sublabel="Need sign-off" />;
+
+export const AwaitingPricingTile = () => <JobsStageTile stage="awaiting-pricing" sublabel="Need pricing" />;
 
 export function AwaitingInvoiceTile() {
   return (

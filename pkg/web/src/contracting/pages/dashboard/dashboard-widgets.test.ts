@@ -30,7 +30,14 @@ it('shows each role only the blocks whose data it may read, tiles first', () => 
     'service-due',
   ]);
   // Awaiting invoice is gated like the Invoicing page, which the manager does not open.
-  expect(visibleTo('contracting-manager')).not.toContain('awaiting-invoice');
+  expect(visibleTo('contracting-manager')).toEqual([
+    'looks-finished',
+    'awaiting-pricing',
+    'reading-exceptions',
+    'jobs-needing-a-look',
+    'workshop',
+    'service-due',
+  ]);
   // The workshop manager reads every Job, but has no Reading Exceptions to resolve and no invoice to stamp.
   expect(visibleTo('workshop-manager')).toEqual([
     'looks-finished',

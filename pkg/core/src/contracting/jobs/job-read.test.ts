@@ -102,4 +102,12 @@ test('lists only the Jobs needing a look when asked: an open Gap Flag or a readi
   expect(new Set(await listed(admin))).toEqual(new Set([gapped.id, unconfirmed.id]));
   // Still reader-scoped: the Foreman's own Jobs only.
   expect(await listed(foreman)).toEqual([gapped.id]);
+
+  // Judged against the current threshold: a 10 h gap is not over 12 h.
+  await updateContractingSettings({
+    db,
+    actorUserId: adminId,
+    input: { ...(await getContractingSettings({ db })), gapFlagThresholdHours: 12 },
+  });
+  expect(await listed(admin)).toEqual([unconfirmed.id]);
 });

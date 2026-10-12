@@ -2,7 +2,7 @@ import { formatNumber } from '@pkg/domain';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 
-import { DASHBOARD_REFETCH_INTERVAL_MS } from '@/components/common/dashboard/dashboard-refresh.js';
+import { DASHBOARD_REFETCH_INTERVAL_MS } from '@/contracting/pages/dashboard/dashboard-refresh.js';
 import { useTRPC } from '@/lib/trpc.js';
 
 import { DashboardTile, dashboardTileLinkClassName } from './DashboardTile.js';

@@ -6,7 +6,6 @@ import { ReadingExceptionsTile } from './widgets/ReadingExceptionsTile.js';
 import { ServiceDueWidget } from './widgets/ServiceDueWidget.js';
 import { WorkshopWidget } from './widgets/WorkshopWidget.js';
 
-/** What needs a person now, tiles first; each block shows only to a role that may read what it lists. */
 export const contractingDashboardWidgets = [
   {
     Component: LooksFinishedTile,

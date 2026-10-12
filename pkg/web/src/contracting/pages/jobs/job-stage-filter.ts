@@ -36,13 +36,11 @@ export const toggleStages = (columnFilters: ColumnFiltersState, stages: readonly
   togglePick(columnFilters, STAGE_COLUMN_ID, stages);
 
 export const ATTENTION_COLUMN_ID = 'attention';
-/** The Needs a look column filter's one value. */
 export const NEEDS_A_LOOK = 'needs-a-look';
 
 const needsALookPicked = (columnFilters: ColumnFiltersState) =>
   columnFilters.some((filter) => filter.id === ATTENTION_COLUMN_ID && filter.value === NEEDS_A_LOOK);
 
-/** What the Jobs list's filters ask the server for. */
 export const jobListFilters = (columnFilters: ColumnFiltersState) => ({
   queues: listedStages(columnFilters),
   ...(needsALookPicked(columnFilters) ? { needsALook: true } : {}),

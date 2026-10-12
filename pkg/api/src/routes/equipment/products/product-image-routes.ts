@@ -1,6 +1,6 @@
 import type { ImageCacheOptions, StorageAdapter } from '@pkg/core';
 import { isProductCoreError, readMobileProductImage, readProductImage, replaceProductImage } from '@pkg/core/equipment';
-import { db } from '@pkg/db';
+import type { Db } from '@pkg/db';
 import { PRODUCT_IMAGE_POLICY } from '@pkg/domain/equipment';
 import { ProductImageSlotParams } from '@pkg/schema/equipment';
 import { z } from 'zod';
@@ -14,6 +14,7 @@ export type ProductImageRouteOptions = ImageCacheOptions;
 const ProductImageDownloadQuery = z.object({ variant: z.literal('mobile').optional() });
 
 export function createProductImageRouteConfig(
+  db: Db,
   storage: StorageAdapter,
   imageOptions: ProductImageRouteOptions,
 ): EntityFileRouteConfig {

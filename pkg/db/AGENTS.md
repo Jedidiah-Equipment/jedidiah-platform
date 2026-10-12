@@ -12,5 +12,7 @@
 - DB-backed Vitest configs run `src/test-global-setup.ts` to sweep databases from dead test processes,
   then install `src/test-setup.ts` to drain the current file's tracked ephemeral databases in `afterAll`,
   and take `testTimeout`/`hookTimeout` from `databaseTestTimeout` (`src/test-timeout.ts`).
+- The default `db`/`queryClient` throws under Vitest: its test URL is the template every clone copies, and a
+  session left there fails concurrent clones. Inject a database from a tester or `createEphemeralTestDatabase`.
 
 Canonical examples: `src/schema/equipment/product.ts`, `src/database-client.ts`, `src/query-utils.ts`.

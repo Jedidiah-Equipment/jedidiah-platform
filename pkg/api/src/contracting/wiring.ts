@@ -17,7 +17,6 @@ import {
   type TranscriptionEngine,
   verifyCapturedReading,
 } from '@pkg/core/contracting';
-import { db } from '@pkg/db';
 import type { ContractingPushEvent } from '@pkg/domain/contracting';
 import { renderJobCardPdf } from '@pkg/pdf/contracting';
 import type { KeytermCandidate } from '@pkg/schema/contracting';
@@ -41,7 +40,7 @@ export type ContractingRouterDependencies = {
 
 export async function registerContracting(
   app: FastifyInstance,
-  { config, storage, push }: BusinessWiringInput,
+  { config, db, storage, push }: BusinessWiringInput,
 ): Promise<BusinessWiring<ContractingRouterDependencies>> {
   const chatModel = createOpenAiChatModel({ apiKey: config.OPENAI_API_KEY, model: config.OPENAI_MODEL });
   const transcriptionModel = createOpenAiTranscriptionModel({

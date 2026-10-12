@@ -1,6 +1,5 @@
 import { createOpenAiChatModel } from '@pkg/ai';
 import { sweepJobCompletions } from '@pkg/core/equipment';
-import { db } from '@pkg/db';
 import type { FastifyInstance } from 'fastify';
 import type { BusinessWiring, BusinessWiringInput } from '../business-wiring.js';
 import { log } from '../logger.js';
@@ -24,7 +23,7 @@ export type EquipmentRouterDependencies = {
 
 export async function registerEquipment(
   app: FastifyInstance,
-  { config, storage }: BusinessWiringInput,
+  { config, db, storage }: BusinessWiringInput,
 ): Promise<BusinessWiring<EquipmentRouterDependencies>> {
   const catalogTranslationScheduler = new TranslationScheduler({
     onError: (error, key) => log.ai.error({ error, key }, 'Catalog translation failed'),
@@ -41,14 +40,14 @@ export async function registerEquipment(
     },
   });
 
-  await registerAiChatRoute(app, { storage });
-  await registerDocumentHttpRoutes(app, storage);
-  await registerPartLabelHttpRoutes(app);
-  await registerUserBadgeHttpRoutes(app);
+  await registerAiChatRoute(app, { db, storage });
+  await registerDocumentHttpRoutes(app, db, storage);
+  await registerPartLabelHttpRoutes(app, { db });
+  await registerUserBadgeHttpRoutes(app, { db });
   await registerEntityFileRoutes(app, [
-    createProductImageRouteConfig(storage, { cacheDir: config.API_IMAGE_CACHE_DIR }),
-    createProductRangeImageRouteConfig(storage),
-    createProductRangeLogoRouteConfig(storage),
+    createProductImageRouteConfig(db, storage, { cacheDir: config.API_IMAGE_CACHE_DIR }),
+    createProductRangeImageRouteConfig(db, storage),
+    createProductRangeLogoRouteConfig(db, storage),
   ]);
 
   return {

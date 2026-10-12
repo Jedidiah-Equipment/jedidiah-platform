@@ -4,6 +4,7 @@ import { Readable } from 'node:stream';
 import { type AiChatModel, createOpenAiChatModel } from '@pkg/ai';
 import { type AiContext, streamAiChat, validateAiUiMessages } from '@pkg/ai/equipment';
 import type { StorageAdapter } from '@pkg/core';
+import type { Db } from '@pkg/db';
 import type { AiReasoningEffort } from '@pkg/schema';
 import { AiChatInput } from '@pkg/schema/equipment';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
@@ -19,6 +20,7 @@ const STREAM_TIMEOUT_MS = 60_000;
 export type RegisterAiChatRouteOptions = {
   buildContext?: (req: FastifyRequest) => Promise<AiContext>;
   createModel?: () => AiChatModel;
+  db?: Db;
   reasoningEffort?: AiReasoningEffort;
   storage?: StorageAdapter;
 };
@@ -36,7 +38,7 @@ export async function registerAiChatRoute(
       const config = getApiConfig();
       return createOpenAiChatModel({ apiKey: config.OPENAI_API_KEY, model: config.OPENAI_MODEL });
     });
-  const createContext = options.buildContext ?? createDefaultContextBuilder(options.storage);
+  const createContext = options.buildContext ?? createDefaultContextBuilder(options.db, options.storage);
 
   app.post('/ai/chat', async (request, reply) => {
     const ctx = await createContext(request);
@@ -92,12 +94,12 @@ export async function registerAiChatRoute(
   });
 }
 
-function createDefaultContextBuilder(storage: StorageAdapter | undefined) {
-  if (!storage) {
-    throw new Error('AI document storage is required when buildContext is not provided.');
+function createDefaultContextBuilder(db: Db | undefined, storage: StorageAdapter | undefined) {
+  if (!db || !storage) {
+    throw new Error('AI database and document storage are required when buildContext is not provided.');
   }
 
-  return (request: FastifyRequest) => buildAiContext(request, { storage });
+  return (request: FastifyRequest) => buildAiContext(request, { db, storage });
 }
 
 // Writes a web `Response` (headers + streamed body) onto the raw Node reply, preserving the

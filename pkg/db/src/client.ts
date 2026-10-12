@@ -4,6 +4,12 @@ import { getDatabaseUrl } from './env.js';
 let defaultClient: DatabaseClient | null = null;
 
 function getDefaultClient(): DatabaseClient {
+  // Under test the default URL is the template every ephemeral database clones from; a session left on it
+  // makes concurrent clones fail with "source database is being accessed by other users".
+  if (process.env.VITEST) {
+    throw new Error('The default database client is unavailable under Vitest; use an ephemeral test database');
+  }
+
   defaultClient ??= createDatabaseClient(getDatabaseUrl());
 
   return defaultClient;

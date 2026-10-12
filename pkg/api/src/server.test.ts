@@ -1,10 +1,11 @@
 import type { StorageAdapter, StoragePutInput, StoredObject } from '@pkg/core';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, vi } from 'vitest';
 
 import type { ApiConfig } from './env.js';
 import { log } from './logger.js';
 import type { Observability } from './observability.js';
 import { buildServer } from './server.js';
+import { createTester } from './test/create-tester.js';
 
 vi.mock('./auth/session.js', async (importOriginal) => {
   const actual = await importOriginal<typeof import('./auth/session.js')>();
@@ -48,18 +49,24 @@ const observability: Observability = {
   flush: vi.fn(async () => undefined),
 };
 
+// The server starts its background services on build, so they get an ephemeral database like any other test.
+const test = createTester(({ auth, db }) => ({ auth, db }));
+
 describe('API server', () => {
-  it.each(['development', 'staging', 'production'] as const)('registers the assistant in %s', async (APP_ENV) => {
-    const app = await buildServer({ ...config, APP_ENV }, observability, new MemoryStorage());
+  test.for(['development', 'staging', 'production'] as const)(
+    'registers the assistant in %s',
+    async (APP_ENV, { context: { auth, db } }) => {
+      const app = await buildServer({ ...config, APP_ENV }, observability, new MemoryStorage(), auth, db);
 
-    try {
-      expect(app.hasRoute({ method: 'POST', url: '/ai/chat' })).toBe(true);
-    } finally {
-      await app.close();
-    }
-  });
+      try {
+        expect(app.hasRoute({ method: 'POST', url: '/ai/chat' })).toBe(true);
+      } finally {
+        await app.close();
+      }
+    },
+  );
 
-  it('never writes a secret to the startup log', async () => {
+  test('never writes a secret to the startup log', async ({ context: { auth, db } }) => {
     const secrets = {
       DATABASE_URL: 'postgres://app:db-password-canary@db.internal:5432/app',
       TEST_DATABASE_URL: 'postgres://app:test-db-password-canary@db.internal:5432/app_test',
@@ -72,7 +79,7 @@ describe('API server', () => {
       EXPO_ACCESS_TOKEN: 'expo-access-token-canary',
     } satisfies Partial<ApiConfig>;
     const info = vi.spyOn(log.root, 'info');
-    const app = await buildServer({ ...config, ...secrets }, observability, new MemoryStorage());
+    const app = await buildServer({ ...config, ...secrets }, observability, new MemoryStorage(), auth, db);
 
     try {
       const written = JSON.stringify(info.mock.calls);
@@ -89,8 +96,8 @@ describe('API server', () => {
     }
   });
 
-  it('routes long tRPC GET batch paths', async () => {
-    const app = await buildServer(config, observability, new MemoryStorage());
+  test('routes long tRPC GET batch paths', async ({ context: { auth, db } }) => {
+    const app = await buildServer(config, observability, new MemoryStorage(), auth, db);
     const path = [
       'auth.session',
       'auth.session',
@@ -117,8 +124,8 @@ describe('API server', () => {
   // Only the Lander belongs in search results. Google crawls this host already — it reports the 404 at `/` —
   // and `/health` answers 200 to anyone, so the directive has to ride every response rather than the routes
   // someone remembered to annotate. There is no HTML here to carry a meta tag, so the header is all there is.
-  it('marks every response noindex, whatever its route or status', async () => {
-    const app = await buildServer(config, observability, new MemoryStorage());
+  test('marks every response noindex, whatever its route or status', async ({ context: { auth, db } }) => {
+    const app = await buildServer(config, observability, new MemoryStorage(), auth, db);
 
     try {
       for (const url of ['/health', '/', '/trpc/auth.session']) {
@@ -131,8 +138,8 @@ describe('API server', () => {
     }
   });
 
-  it('allows the local Expo dev server through CORS', async () => {
-    const app = await buildServer(config, observability, new MemoryStorage());
+  test('allows the local Expo dev server through CORS', async ({ context: { auth, db } }) => {
+    const app = await buildServer(config, observability, new MemoryStorage(), auth, db);
 
     try {
       const response = await app.inject({
@@ -150,8 +157,8 @@ describe('API server', () => {
     }
   });
 
-  it('allows PostHog trace correlation headers through browser preflight', async () => {
-    const app = await buildServer(config, observability, new MemoryStorage());
+  test('allows PostHog trace correlation headers through browser preflight', async ({ context: { auth, db } }) => {
+    const app = await buildServer(config, observability, new MemoryStorage(), auth, db);
 
     try {
       const response = await app.inject({

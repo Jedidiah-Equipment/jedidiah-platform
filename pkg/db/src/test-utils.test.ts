@@ -1,5 +1,6 @@
 import { spawnSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
+import { setTimeout } from 'node:timers/promises';
 
 import postgres from 'postgres';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -80,6 +81,69 @@ describe('ephemeral test database cleanup', () => {
     expect(await databaseExists(staleDatabaseName)).toBe(false);
   });
 });
+
+describe('ephemeral test database clone', () => {
+  it('retries a clone refused while another session holds the template', async () => {
+    const templateDatabaseName = createTestDatabaseName('jedidiah_scratch_template');
+    const databaseName = createTestDatabaseName('jedidiah_ephemeral');
+    databaseNamesToCleanUp.add(templateDatabaseName);
+    databaseNamesToCleanUp.add(databaseName);
+    await createUntrackedDatabase(templateDatabaseName);
+    const templateDatabaseUrl = buildDatabaseUrl(templateDatabaseName, getTestTemplateDatabaseUrl());
+    const holder = postgres(templateDatabaseUrl, { max: 1 });
+
+    try {
+      await holder`SELECT 1`;
+      const clone = createEphemeralTestDatabase({ databaseName, templateDatabaseUrl });
+      const stopWatching = new AbortController();
+      // Postgres waits ~5s before refusing the first attempt; a second CREATE DATABASE proves the retry.
+      const watching = waitForCloneAttempts(databaseName, 2, stopWatching.signal);
+
+      try {
+        await Promise.race([watching, clone]);
+      } finally {
+        stopWatching.abort();
+        await watching;
+      }
+
+      await holder.end();
+      await clone;
+    } finally {
+      await holder.end();
+    }
+
+    expect(await databaseExists(databaseName)).toBe(true);
+  });
+
+  it('rethrows a clone failure that is not a busy template', async () => {
+    const templateDatabaseUrl = buildDatabaseUrl(
+      createTestDatabaseName('jedidiah_missing'),
+      getTestTemplateDatabaseUrl(),
+    );
+
+    await expect(createEphemeralTestDatabase({ templateDatabaseUrl })).rejects.toMatchObject({ code: '3D000' });
+  });
+});
+
+async function waitForCloneAttempts(databaseName: string, attempts: number, signal: AbortSignal): Promise<void> {
+  const adminClient = createAdminClient();
+  const attemptStarts = new Set<string>();
+
+  try {
+    while (attemptStarts.size < attempts && !signal.aborted) {
+      const clones = await adminClient<{ queryStart: string }[]>`
+        SELECT query_start::text AS "queryStart"
+        FROM pg_stat_activity
+        WHERE state = 'active'
+          AND query LIKE ${`CREATE DATABASE "${databaseName}" %`}
+      `;
+      for (const { queryStart } of clones) attemptStarts.add(queryStart);
+      await setTimeout(50);
+    }
+  } finally {
+    await adminClient.end();
+  }
+}
 
 function createDatabaseNameSuffix(): string {
   return randomUUID().replaceAll('-', '').slice(0, 12);

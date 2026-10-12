@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs';
+import { setTimeout } from 'node:timers/promises';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import { migrate } from 'drizzle-orm/postgres-js/migrator';
 import postgres from 'postgres';
@@ -12,6 +13,10 @@ const ephemeralTestDatabaseNamePattern = /^jedidiah_ephemeral_(\d+)_[a-f0-9]{12}
 const staleDatabaseSweepLockNamespace = 0x4a_45_44;
 const staleDatabaseSweepLockKey = 1;
 const createdEphemeralTestDatabases = new Map<string, string>();
+// Postgres already waits ~5s for other sessions to leave the template before refusing a clone, so a
+// refusal means a session lingered; a few more rounds outlast a short-lived one rather than failing a test.
+const templateCloneAttempts = 5;
+const templateInUseErrorCode = '55006';
 
 export type EphemeralTestDatabase = {
   databaseName: string;
@@ -74,7 +79,7 @@ export async function createEphemeralTestDatabase({
     const quotedDatabaseName = quoteIdentifier(databaseName);
     const quotedTemplateDatabaseName = quoteIdentifier(templateDatabaseName);
 
-    await adminClient.unsafe(`CREATE DATABASE ${quotedDatabaseName} TEMPLATE ${quotedTemplateDatabaseName}`);
+    await cloneTemplateDatabase(adminClient, quotedDatabaseName, quotedTemplateDatabaseName);
     createdEphemeralTestDatabases.set(databaseName, templateDatabaseUrl);
 
     return {
@@ -84,6 +89,29 @@ export async function createEphemeralTestDatabase({
   } finally {
     await adminClient.end();
   }
+}
+
+async function cloneTemplateDatabase(
+  adminClient: postgres.Sql,
+  quotedDatabaseName: string,
+  quotedTemplateDatabaseName: string,
+): Promise<void> {
+  for (let attempt = 1; ; attempt++) {
+    try {
+      await adminClient.unsafe(`CREATE DATABASE ${quotedDatabaseName} TEMPLATE ${quotedTemplateDatabaseName}`);
+      return;
+    } catch (error) {
+      if (attempt >= templateCloneAttempts || !isTemplateInUseError(error)) {
+        throw error;
+      }
+
+      await setTimeout(50 + Math.random() * 200);
+    }
+  }
+}
+
+function isTemplateInUseError(error: unknown): boolean {
+  return error instanceof postgres.PostgresError && error.code === templateInUseErrorCode;
 }
 
 export async function dropTrackedTestDatabases(): Promise<void> {

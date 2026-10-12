@@ -1,6 +1,6 @@
 import type { AiContext, AiSession } from '@pkg/ai/equipment';
 import type { StorageAdapter } from '@pkg/core';
-import { db } from '@pkg/db';
+import type { Db } from '@pkg/db';
 import { createUserAccessSummaryForUser } from '@pkg/domain';
 import { renderBrochurePdf, renderQuoteDocumentPdf } from '@pkg/pdf/equipment';
 import type { UserAccessSummary } from '@pkg/schema';
@@ -18,6 +18,7 @@ export type CreateAiContextInput = {
 };
 
 export type AiContextDependencies = {
+  db: Db;
   storage: StorageAdapter;
 };
 
@@ -54,5 +55,5 @@ export async function buildAiContext(req: FastifyRequest, dependencies: AiContex
   const session = await getSessionFromHeaders(req.headers, req.server.auth.api);
   const access = session ? createUserAccessSummaryForUser(session.user) : null;
 
-  return createAiContext({ access, db, session, storage: dependencies.storage });
+  return createAiContext({ access, db: dependencies.db, session, storage: dependencies.storage });
 }

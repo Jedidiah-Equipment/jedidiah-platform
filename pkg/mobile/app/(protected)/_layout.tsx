@@ -3,7 +3,7 @@ import { isPushRecipient, WORKSHOP_PUSH_CHANNEL_ID } from '@pkg/domain/contracti
 import { useMutation } from '@tanstack/react-query';
 import { type ErrorBoundaryProps, Redirect, Stack } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Text, View } from 'react-native';
+import { ActivityIndicator, AppState, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppErrorBoundary } from '@/components/AppErrorBoundary';
 import { purgeLegacyContractingStorage } from '@/contracting/lib/purge-legacy-storage';
@@ -121,9 +121,28 @@ function PushRegistration({ userId }: { userId: string }) {
   const { mutateAsync: register } = useMutation(trpc.pushTokens.register.mutationOptions());
 
   useEffect(() => {
-    registerForPush({ userId, channel: { id: WORKSHOP_PUSH_CHANNEL_ID, name: 'Workshop' }, mayAsk, register })
-      .then((outcome) => addBreadcrumb('lifecycle', 'push registration', { outcome }))
-      .catch(() => addBreadcrumb('lifecycle', 'push registration failed'));
+    // Turning notifications on in the phone's settings does not restart the app, and a failed call is worth another
+    // go: until this install is registered, every return to the foreground tries again.
+    let settled = false;
+    let running = false;
+    const attempt = () => {
+      if (settled || running) return;
+      running = true;
+      registerForPush({ userId, channel: { id: WORKSHOP_PUSH_CHANNEL_ID, name: 'Workshop' }, mayAsk, register })
+        .then((outcome) => {
+          settled = outcome !== 'denied';
+          addBreadcrumb('lifecycle', 'push registration', { outcome });
+        })
+        .catch(() => addBreadcrumb('lifecycle', 'push registration failed'))
+        .finally(() => {
+          running = false;
+        });
+    };
+    attempt();
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state === 'active') attempt();
+    });
+    return () => subscription.remove();
   }, [mayAsk, userId, register]);
 
   return null;

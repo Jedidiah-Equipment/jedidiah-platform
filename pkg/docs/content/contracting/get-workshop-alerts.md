@@ -22,4 +22,4 @@ If you chose **Don't Allow**, the app does not ask again.
 2. Turn **Notifications** on.
 3. Open the app again; alerts start arriving from then on.
 
-Signing out stops alerts to that phone. A phone delivers alerts to whoever signed in on it last.
+Signing out while online stops alerts to that phone. A phone delivers alerts to whoever signed in on it last.

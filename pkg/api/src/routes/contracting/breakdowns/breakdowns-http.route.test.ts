@@ -4,7 +4,7 @@ import { createCategory, createMachine } from '@pkg/core/contracting';
 import { user } from '@pkg/db';
 import { contractingBreakdowns } from '@pkg/db/contracting';
 import { fileTooLargeMessage } from '@pkg/domain';
-import { BREAKDOWN_PHOTO_POLICY } from '@pkg/domain/contracting';
+import { BREAKDOWN_PHOTO_POLICY, type ContractingPushEvent } from '@pkg/domain/contracting';
 import { MachineCreateInput } from '@pkg/schema/contracting';
 import Fastify from 'fastify';
 import { expect, vi } from 'vitest';
@@ -45,10 +45,11 @@ const test = createTester(async ({ db, auth }) => {
   const app = Fastify();
   app.decorate('auth', auth);
   await app.register(multipart);
-  await registerBreakdownHttpRoutes(app, { db, storage });
+  const pushes: ContractingPushEvent[] = [];
+  await registerBreakdownHttpRoutes(app, { db, storage, push: { schedule: (event) => pushes.push(event) } });
   state.session = mockSession(null);
   (state.session as ReturnType<typeof mockSession>).user.contractingRole = 'foreman';
-  return { app, db, machineId: machine.id, storage };
+  return { app, db, machineId: machine.id, pushes, storage };
 });
 
 function upload(machineId: string, photos: Buffer[], extra: Record<string, string | undefined> = {}) {
@@ -94,6 +95,19 @@ test('reports a Breakdown with two photos, then serves each photo privately', as
     const photo = await app.inject({ url: `/api/contracting/breakdowns/${body.id}/photos/${body.photos[1].id}` });
     expect(photo.statusCode).toBe(200);
     expect(photo.headers).toMatchObject({ 'content-type': 'image/png', 'cache-control': 'private, no-store' });
+  } finally {
+    await app.close();
+  }
+});
+
+test('pings the workshop for the first delivery of a report, never for its replay', async ({ context }) => {
+  const { app, machineId, pushes } = context;
+  try {
+    const request = upload(machineId, [jpeg], { localId: '78108c3d-4b34-44f1-bf87-4fcb00a6a233' });
+    const first = await app.inject(request);
+    const replay = await app.inject(request);
+    expect([first.statusCode, replay.statusCode]).toEqual([201, 201]);
+    expect(pushes).toEqual([{ kind: 'breakdown.reported', breakdownId: first.json().id }]);
   } finally {
     await app.close();
   }

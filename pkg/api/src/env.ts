@@ -67,6 +67,8 @@ export const ApiConfig = z
     OPENAI_REASONING_EFFORT: z.enum(AI_REASONING_EFFORTS).default('low'),
     OPENAI_TRANSLATION_MODEL: z.string().min(1).optional(),
     OPENAI_TRANSCRIPTION_MODEL: z.string().min(1).default('gpt-transcribe'),
+    // Only needed once the Expo project enforces push security; a secret, so never in the startup log.
+    EXPO_ACCESS_TOKEN: OptionalEnvString,
     PORT: z.coerce.number().int().positive().default(7002),
     LOG_LEVEL: z.enum(['trace', 'debug', 'info', 'warn', 'error', 'fatal', 'silent']).default('info'),
     LOG_DOMAINS_DISABLED: z.string().optional(),

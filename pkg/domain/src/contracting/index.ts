@@ -12,6 +12,7 @@ export * from './job-actions.js';
 export * from './job-card.js';
 export * from './job-transitions.js';
 export * from './jobs.js';
+export * from './notifications.js';
 export * from './pricing.js';
 export * from './reading-photo-policy.js';
 export * from './readings.js';

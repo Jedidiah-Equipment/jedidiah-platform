@@ -2,6 +2,7 @@ import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
+import { SHARED_MUTATION_EVENTS } from '@/lib/observability';
 import { EQUIPMENT_MUTATION_EVENTS, mutationEventProperties } from './observability';
 
 const MOBILE_ROOT = resolve(import.meta.dirname, '../..');
@@ -17,6 +18,7 @@ function sourceFiles(directory: string): string[] {
 }
 
 describe('equipment mutation event catalog', () => {
+  // Outside Contracting's folders a mutation is Equipment's or business-blind, so the two catalogs share the check.
   it('covers every tRPC mutation called by the mobile app', () => {
     const procedures = new Set<string>();
     // Source only: the local native prebuild (`ios/`, `android/`) is not the app's code.
@@ -27,7 +29,9 @@ describe('equipment mutation event catalog', () => {
       }
     }
 
-    expect(Object.keys(EQUIPMENT_MUTATION_EVENTS).sort()).toEqual([...procedures].sort());
+    expect(Object.keys({ ...SHARED_MUTATION_EVENTS, ...EQUIPMENT_MUTATION_EVENTS }).sort()).toEqual(
+      [...procedures].sort(),
+    );
   });
 
   it('keeps sensitive mutation fields out of event properties', () => {

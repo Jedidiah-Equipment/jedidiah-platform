@@ -30,6 +30,7 @@ export {
 export * from './schema/audit.js';
 export * from './schema/auth.js';
 export * from './schema/changelog.js';
+export * from './schema/push-token.js';
 export * from './schema/stored-file.js';
 export { applicationSchemas, schema } from './schema.js';
 export {

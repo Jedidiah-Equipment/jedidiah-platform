@@ -11,6 +11,7 @@ import { signOut, useSession } from '@/lib/auth';
 import { AuthSessionProvider, useSessionAccessSummary } from '@/lib/auth-session';
 import { useIsOffline } from '@/lib/connectivity';
 import { addBreadcrumb, identifyObservabilityUser } from '@/lib/observability';
+import { useSettlePendingPushPath } from '@/lib/push/push-response';
 import { registerForPush } from '@/lib/push/register-push';
 import { isHydratedSession } from '@/lib/session-state';
 import { useTRPC } from '@/lib/trpc';
@@ -117,6 +118,7 @@ function SessionObservability({ userId }: { userId: string }) {
  */
 function PushRegistration({ userId }: { userId: string }) {
   const mayAsk = isPushRecipient(useSessionAccessSummary());
+  useSettlePendingPushPath();
   const trpc = useTRPC();
   const { mutateAsync: register } = useMutation(trpc.pushTokens.register.mutationOptions());
 

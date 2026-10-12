@@ -9,8 +9,12 @@ import {
   UNASSIGNED_MECHANIC_LABEL,
 } from '@pkg/domain/contracting';
 import type { DateOnlyIso } from '@pkg/schema';
-import { MechanicPerformanceReport, MechanicPerformanceRow, type ReportWindowInput } from '@pkg/schema/contracting';
-import { and, eq, gte, inArray, isNotNull, lt, sql } from 'drizzle-orm';
+import {
+  MechanicPerformanceReport,
+  type MechanicPerformanceRow,
+  type ReportWindowInput,
+} from '@pkg/schema/contracting';
+import { and, eq, gte, inArray, lt, sql } from 'drizzle-orm';
 import { listMechanics } from '../mechanics.js';
 
 /**
@@ -34,8 +38,7 @@ export async function getMechanicPerformance({
     db
       .selectDistinct({ id: user.id, name: user.name })
       .from(contractingBreakdowns)
-      .innerJoin(user, eq(user.id, contractingBreakdowns.primaryMechanicUserId))
-      .where(isNotNull(contractingBreakdowns.primaryMechanicUserId)),
+      .innerJoin(user, eq(user.id, contractingBreakdowns.primaryMechanicUserId)),
     window.days === 0
       ? Promise.resolve([])
       : db
@@ -61,7 +64,7 @@ export async function getMechanicPerformance({
   const roster = new Map([...mechanics, ...everAssigned].map((person) => [person.id, person.name]));
   const solvedBy = groupBy(solved, (row) => row.mechanicUserId);
   const notSolvedBy = new Map(notSolved.map((row) => [row.mechanicUserId, row.count]));
-  const rowFor = (mechanicUserId: string | null, name: string) => {
+  const rowFor = (mechanicUserId: string | null, name: string): MechanicPerformanceRow => {
     const pairs = (solvedBy.get(mechanicUserId) ?? []).flatMap((row) =>
       row.solvedAt ? [{ reportedAt: row.reportedAt.toISOString(), solvedAt: row.solvedAt.toISOString() }] : [],
     );
@@ -76,6 +79,6 @@ export async function getMechanicPerformance({
   const rows = [...[...roster].map(([id, name]) => rowFor(id, name)), rowFor(null, UNASSIGNED_MECHANIC_LABEL)];
   return MechanicPerformanceReport.parse({
     window,
-    rows: orderMechanicPerformance(MechanicPerformanceRow.array().parse(rows)),
+    rows: orderMechanicPerformance(rows),
   });
 }

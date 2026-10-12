@@ -1,5 +1,6 @@
 import { AuthId } from '@pkg/schema';
 import { createFileRoute } from '@tanstack/react-router';
+import { useCallback } from 'react';
 import { z } from 'zod';
 import { WorkshopPage } from '@/contracting/pages/workshop/WorkshopPage.js';
 import { requireRoutePermission } from '@/lib/route-auth.js';
@@ -15,5 +16,6 @@ export const Route = createFileRoute('/_authed/contracting/workshop/')({
 function WorkshopRoute() {
   const { mechanic } = Route.useSearch();
   const navigate = Route.useNavigate();
-  return <WorkshopPage mechanic={mechanic} onMechanicApplied={() => void navigate({ search: {}, replace: true })} />;
+  const clearMechanic = useCallback(() => void navigate({ search: {}, replace: true }), [navigate]);
+  return <WorkshopPage mechanic={mechanic} onMechanicApplied={clearMechanic} />;
 }

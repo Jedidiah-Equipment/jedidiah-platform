@@ -65,10 +65,13 @@ are both closed: no Job Action is open on either. A check that judges what a wri
 Job — the Mark as Priced gate, the invoice total, a departure reading without a photo — is not a Job Action
 and stays with the write that reads that input.
 
-**Assignment Actions** are the verdicts of what a Machine Assignment's state allows, whoever asks: a planned
-Assignment can be removed; its Implement and Driver can change until it has left; Measures are recorded once
-it has arrived; its Hour Gap is resolved, and it is priced, once it has left. A write passes the Job Action
-first and the Assignment Action second, and a screen offers a control only when both allow it.
+**Assignment Actions** are the verdicts of what one person may do to one Machine Assignment now: remove it
+while planned; change its Implement and Driver until it has left; capture its arrival while planned and its
+departure while on site; record Measures once it has arrived; resolve its Hour Gap and price it once it has
+left. Each is judged as its Job Action first and the Assignment's state second, and served on every Machine
+Assignment of the Job detail beside the Job's own verdicts, so a screen offers a control only when the served
+verdict allows it; a refused verdict carries the one sentence that says why. Re-adding a Machine that has left
+is the Job's assign action on a new Assignment, not an Assignment Action on the old one.
 
 **Charge Line** is a non-hourly amount on a Job — transport (e.g. a low-bed move), a supplied
 part, or a fixed quoted total — a description management writes from Active onward, usually at Completion, with an amount
@@ -151,7 +154,9 @@ describes a reading; it never orders them. A Machine's readings are ordered by a
 reading whatever its Read At, and a late-entered reading takes its place after it. An Hour Gap
 reads the two readings its Assignments name, so a backdated Read At moves no hour between
 Jobs. Capture needs a connection: the server judges every capture as the ledger's truth, and a
-Foreman without signal keeps a Field Note instead. Once a capture has landed the server reads
+Foreman without signal keeps a Field Note instead. Every way a capture is refused is one rule in one
+ordered table, judged under the Machine lock; the phone and the web stop only what that table says the
+server would refuse, and show its sentence when it does. Once a capture has landed the server reads
 the photo itself and records its own value and confidence as the System, so capturing never waits on it; a check
 that fails leaves the reading pending until Re-verify or the API's next start-up checks it again. A reading is
 **photo-backed** when it

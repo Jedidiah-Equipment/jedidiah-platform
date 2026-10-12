@@ -88,7 +88,7 @@ const test = createTester(async ({ db }) => {
 
   /**
    * A fresh Job in the given status, with one worked stint on its own Machine and a spare Machine to add. An Active
-   * Job also holds a planned stint, added after the first arrival, so a stint can be judged planned while the Job runs.
+   * Job also holds a planned stint and one that has already left, so every stint state is judged while the Job runs.
    */
   async function jobAt(status: JobStatus) {
     const [worked, spare] = [await machine(), await machine()];
@@ -111,13 +111,13 @@ const test = createTester(async ({ db }) => {
     const [planned] = (await getJob({ db, id: job.id })).assignments;
     if (!planned) throw new Error('Expected Machine Assignment');
     const stint = { id: planned.id, machineId: worked.id };
-    const capture = (role: 'arrival' | 'departure', value: number) =>
+    const capture = (role: 'arrival' | 'departure', value: number, on: { id: string; machineId: string } = stint) =>
       captureReading({
         db,
         actor: setup,
         input: {
-          machineId: worked.id,
-          assignmentId: stint.id,
+          machineId: on.machineId,
+          assignmentId: on.id,
           role,
           value,
           capturedAt: new Date(Date.parse('2026-09-01T06:00:00Z') + ++sequence * 60_000).toISOString(),
@@ -135,13 +135,21 @@ const test = createTester(async ({ db }) => {
     };
     if (status === 'upcoming') return fixture;
     fixture.arrivalReadingId = (await capture('arrival', 100)).id;
-    const waiting = await machine();
-    await createAssignment({ db, actor: setup, input: { jobId: job.id, machineId: waiting.id, implementId: null } });
-    const later = (await getJob({ db, id: job.id })).assignments.find((each) => each.machineId === waiting.id);
-    if (!later) throw new Error('Expected planned Machine Assignment');
+    const plan = async () => {
+      const added = await machine();
+      await createAssignment({ db, actor: setup, input: { jobId: job.id, machineId: added.id, implementId: null } });
+      const found = (await getJob({ db, id: job.id })).assignments.find((each) => each.machineId === added.id);
+      if (!found) throw new Error('Expected planned Machine Assignment');
+      return { id: found.id, machineId: added.id };
+    };
+    const gone = await plan();
+    await capture('arrival', 10, gone);
+    await capture('departure', 20, gone);
+    const later = await plan();
     fixture.stints = [
       { ...stint, state: 'on-site' },
-      { id: later.id, machineId: waiting.id, state: 'planned' },
+      { ...later, state: 'planned' },
+      { ...gone, state: 'left' },
     ];
     await createChargeLine({ db, actor: setup, input: { jobId: job.id, description: 'Low-bed' } });
     const [line] = (await getJob({ db, id: job.id })).chargeLines;
@@ -162,9 +170,13 @@ const test = createTester(async ({ db }) => {
         removePlannedAssignmentIds: [later.id],
       },
     });
-    fixture.stints = [{ ...stint, state: 'left' }];
+    fixture.stints = [
+      { ...stint, state: 'left' },
+      { ...gone, state: 'left' },
+    ];
     if (status === 'completed') return fixture;
-    await setStintRate({ db, actor: setup, input: { assignmentId: stint.id, rateId: rate.id } });
+    for (const each of [stint, gone])
+      await setStintRate({ db, actor: setup, input: { assignmentId: each.id, rateId: rate.id } });
     const total = (await getJob({ db, id: job.id })).pricing.total;
     await markPriced({ db, actor: setup, input: { id: job.id, expectedTotal: total } });
     return fixture;

@@ -121,28 +121,31 @@ function mapMachine(
   });
 }
 export async function listMachines({ db, input }: { db: Db; input: MachineListInput }) {
-  // One Settings read per list, not per Machine.
-  const { serviceDueSoonThresholdHours } = await getContractingSettings({ db });
-  const rows = await db.query.contractingMachines.findMany({
-    where: and(
-      retirementFilter(contractingMachines, input.status),
-      input.categoryId ? eq(contractingMachines.categoryId, input.categoryId) : undefined,
-      input.search ? createEscapedContainsSearchCondition(sql`${contractingMachines.code}`, input.search) : undefined,
-    ),
-    with: related,
-    extras: latestReading,
-    orderBy: [asc(contractingMachines.code)],
-  });
+  const [{ serviceDueSoonThresholdHours }, rows] = await Promise.all([
+    getContractingSettings({ db }),
+    db.query.contractingMachines.findMany({
+      where: and(
+        retirementFilter(contractingMachines, input.status),
+        input.categoryId ? eq(contractingMachines.categoryId, input.categoryId) : undefined,
+        input.search ? createEscapedContainsSearchCondition(sql`${contractingMachines.code}`, input.search) : undefined,
+      ),
+      with: related,
+      extras: latestReading,
+      orderBy: [asc(contractingMachines.code)],
+    }),
+  ]);
   return rows.map((row) => mapMachine(row, serviceDueSoonThresholdHours));
 }
 export async function getMachine({ db, id }: { db: Db | DatabaseTransaction; id: string }) {
-  const row = await db.query.contractingMachines.findFirst({
-    where: eq(contractingMachines.id, id),
-    with: related,
-    extras: latestReading,
-  });
+  const [row, { serviceDueSoonThresholdHours }] = await Promise.all([
+    db.query.contractingMachines.findFirst({
+      where: eq(contractingMachines.id, id),
+      with: related,
+      extras: latestReading,
+    }),
+    getContractingSettings({ db }),
+  ]);
   if (!row) throw notFound('Machine');
-  const { serviceDueSoonThresholdHours } = await getContractingSettings({ db });
   return mapMachine(row, serviceDueSoonThresholdHours);
 }
 async function assertDriver(tx: DatabaseTransaction, id: string | null | undefined) {

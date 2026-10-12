@@ -1,17 +1,19 @@
 import { getPlantDateNow } from '@pkg/domain';
-import { parseReportWindowParam } from '@pkg/domain/contracting';
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs.js';
 import { MechanicsTab } from './MechanicsTab.js';
 import { ReportWindowPicker } from './ReportWindowPicker.js';
-import { parseReportSubject } from './report-subject.js';
+import {
+  formatReportSubject,
+  formatReportWindowParam,
+  parseReportSubject,
+  parseReportWindowParam,
+  type ReportsSearch,
+  type ReportTab,
+} from './report-search.js';
 import { UtilisationTab } from './UtilisationTab.js';
 
-export const reportTabs = ['utilisation', 'mechanics'] as const;
-export type ReportTab = (typeof reportTabs)[number];
-export type ReportsSearch = { tab?: ReportTab | undefined; window?: string | undefined; subject?: string | undefined };
-
-/** Fleet utilisation and mechanic performance; one window picker serves both tabs. */
+/** Fleet utilisation and mechanic performance; one window picker serves both tabs. The URL is decoded here only. */
 export function ReportsPage({
   search,
   onSearchChange,
@@ -24,7 +26,11 @@ export function ReportsPage({
   const subject = parseReportSubject(search.subject);
   return (
     <PageLayout title="Reports" description="How hard the fleet works and how fast the workshop fixes it." size="full">
-      <ReportWindowPicker window={window} today={today} onChange={(next) => onSearchChange({ window: next })} />
+      <ReportWindowPicker
+        window={window}
+        today={today}
+        onChange={(next) => onSearchChange({ window: formatReportWindowParam(next) })}
+      />
       <Tabs
         value={search.tab ?? 'utilisation'}
         onValueChange={(value) => onSearchChange({ tab: value as ReportTab })}
@@ -38,7 +44,7 @@ export function ReportsPage({
           <UtilisationTab
             window={window}
             subject={subject}
-            onSubjectChange={(next) => onSearchChange({ subject: next })}
+            onSubjectChange={(next) => onSearchChange({ subject: formatReportSubject(next) })}
           />
         </TabsContent>
         <TabsContent className="pt-4" value="mechanics">

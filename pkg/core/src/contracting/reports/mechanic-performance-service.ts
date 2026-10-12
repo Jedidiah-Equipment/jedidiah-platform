@@ -1,4 +1,4 @@
-import { type Db, user } from '@pkg/db';
+import type { Db } from '@pkg/db';
 import { contractingBreakdowns } from '@pkg/db/contracting';
 import { getPlantDateNow, groupBy } from '@pkg/domain';
 import {
@@ -15,6 +15,7 @@ import {
   type ReportWindowInput,
 } from '@pkg/schema/contracting';
 import { and, eq, gte, inArray, lt, sql } from 'drizzle-orm';
+import { namedMechanics } from '../breakdowns/breakdown-load.js';
 import { listMechanics } from '../mechanics.js';
 
 /**
@@ -34,12 +35,8 @@ export async function getMechanicPerformance({
   const range = reportWindowInstants(window);
   const [mechanics, everAssigned, solved, notSolved] = await Promise.all([
     listMechanics({ db }),
-    // Anyone still named as a Breakdown's primary Mechanic keeps their row after a role change; every count
-    // follows the current primary Mechanic, so someone replaced everywhere has nothing to show.
-    db
-      .selectDistinct({ id: user.id, name: user.name })
-      .from(contractingBreakdowns)
-      .innerJoin(user, eq(user.id, contractingBreakdowns.primaryMechanicUserId)),
+    // Every count follows the current primary Mechanic, so someone replaced everywhere has nothing to show.
+    namedMechanics(db),
     window.days === 0
       ? Promise.resolve([])
       : db

@@ -2,7 +2,7 @@ import { formatNumber } from '@pkg/domain';
 import type { BreakdownListInput } from '@pkg/schema/contracting';
 import { keepPreviousData, useInfiniteQuery, useMutation, useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { cursorInfiniteQueryOptions, useCombinedCursorQueryPages } from '@/components/data-table/cursor-query.js';
 import { DataTable } from '@/components/data-table/DataTable.js';
@@ -27,22 +27,22 @@ const useWorkshopTableStore = createPersistedDataTableStore({
   persistName: 'contracting-workshop-table',
 });
 
+/** Writes one Mechanic's work, every status, into the saved filters; the Reports page opens the Workshop this way. */
+export function focusWorkshopOnMechanic(mechanicUserId: string) {
+  useWorkshopTableStore.getState().setColumnFilters((current) => focusOnMechanic(current, mechanicUserId));
+}
+
+/** Drops a saved status pick so the Breakdowns not yet Fixed list; the Dashboard opens the Workshop this way. */
+export function focusWorkshopOnUnsolved() {
+  useWorkshopTableStore.getState().setColumnFilters(focusOnUnsolved);
+}
+
 const breakdownSortOptions: SortOptions<BreakdownListInput> = {
   allowedSortIds: ['reportedAt', 'urgency'],
   defaultSort: { id: 'reportedAt', desc: true },
 };
 
-export function WorkshopPage({
-  mechanic,
-  unsolved,
-  onFocusApplied,
-}: {
-  /** One Mechanic's work, every status, opened from the Reports page; the persisted filters own it from then on. */
-  mechanic?: string | undefined;
-  /** The Breakdowns not yet Fixed, opened from the Dashboard; the persisted filters own it from then on. */
-  unsolved?: boolean | undefined;
-  onFocusApplied?: () => void;
-} = {}) {
+export function WorkshopPage() {
   const trpc = useTRPC();
   const navigate = useNavigate();
   const write = useContractingWrite(useQueryInvalidation().invalidateWorkshop);
@@ -55,13 +55,6 @@ export function WorkshopPage({
     sortOptions: breakdownSortOptions,
     getListInputExtras: workshopListFilters,
   });
-  const { setColumnFilters } = tableController;
-  useEffect(() => {
-    if (mechanic) setColumnFilters((current) => focusOnMechanic(current, mechanic));
-    else if (unsolved) setColumnFilters(focusOnUnsolved);
-    else return;
-    onFocusApplied?.();
-  }, [mechanic, onFocusApplied, setColumnFilters, unsolved]);
   const breakdownsQuery = useInfiniteQuery(
     trpc.contractingBreakdowns.list.infiniteQueryOptions(tableController.listInput, {
       ...cursorInfiniteQueryOptions,

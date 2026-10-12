@@ -8,7 +8,6 @@ import { Empty, EmptyHeader, EmptyIcon, EmptyTitle } from '@/components/ui/empty
 import { Skeleton } from '@/components/ui/skeleton.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { CategoryUtilisationCard } from './CategoryUtilisationCard.js';
-import { formatReportSubject } from './report-subject.js';
 import { UtilisationHeadline } from './UtilisationHeadline.js';
 import { UtilisationTrendChart } from './UtilisationTrendChart.js';
 
@@ -20,14 +19,13 @@ export function UtilisationTab({
 }: {
   window: ReportWindowInput;
   subject: UtilisationTrendSubject;
-  onSubjectChange: (subject: string | undefined) => void;
+  onSubjectChange: (subject: UtilisationTrendSubject) => void;
 }) {
   const trpc = useTRPC();
   const report = useQuery(
     trpc.contractingReports.utilisation.queryOptions(window, { placeholderData: keepPreviousData }),
   );
   const trend = useQuery(trpc.contractingReports.utilisationTrend.queryOptions({ window, subject }));
-  const choose = (next: UtilisationTrendSubject) => onSubjectChange(formatReportSubject(next));
 
   if (report.isPending)
     return (
@@ -62,7 +60,7 @@ export function UtilisationTab({
           <CardTitle>Utilisation % by month · {trend.data?.label ?? '…'}</CardTitle>
           {subject.kind === 'fleet' ? null : (
             <CardAction>
-              <Button variant="ghost" size="sm" onClick={() => choose({ kind: 'fleet' })}>
+              <Button variant="ghost" size="sm" onClick={() => onSubjectChange({ kind: 'fleet' })}>
                 Show the fleet
               </Button>
             </CardAction>
@@ -83,7 +81,7 @@ export function UtilisationTab({
           key={category.categoryId}
           category={category}
           subject={subject}
-          onSubjectChange={choose}
+          onSubjectChange={onSubjectChange}
         />
       ))}
     </div>

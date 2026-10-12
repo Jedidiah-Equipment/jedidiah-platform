@@ -5,6 +5,7 @@ import {
   focusOnUnsolved,
   isPickedStatuses,
   listedStatuses,
+  mechanicFilterPeople,
   quickFilterStatuses,
   reportPatchInput,
   STATUS_COLUMN_ID,
@@ -44,6 +45,16 @@ describe('focusOnMechanic', () => {
       statuses: [...breakdownStatuses],
       urgencies: ['code-red'],
     });
+  });
+});
+
+describe('mechanicFilterPeople', () => {
+  it("merges today's Mechanics with everyone named on a Breakdown, once each, by name", () => {
+    const anele = { id: 'anele', name: 'Anele' };
+    const sipho = { id: 'sipho', name: 'Sipho' };
+    const left = { id: 'left', name: 'Bongani (left)' };
+    expect(mechanicFilterPeople([sipho, anele], [anele, left])).toEqual([anele, left, sipho]);
+    expect(mechanicFilterPeople(undefined, undefined)).toEqual([]);
   });
 });
 

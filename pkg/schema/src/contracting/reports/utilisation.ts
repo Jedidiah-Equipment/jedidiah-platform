@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { DateIso } from '../../common/date.js';
+import { DateIso, DateOnlyIso } from '../../common/date.js';
 import { UUID } from '../../common/uuid.js';
 import { CategoryColour, CategoryIconKey } from '../fleet/fleet.js';
 import { UtilisationTargetPercent } from '../settings/settings.js';
@@ -64,9 +64,10 @@ export type UtilisationTrendSubject = z.infer<typeof UtilisationTrendSubject>;
 export const UtilisationTrendInput = z.object({ window: ReportWindowInput, subject: UtilisationTrendSubject }).strict();
 export type UtilisationTrendInput = z.infer<typeof UtilisationTrendInput>;
 
-/** Twelve calendar months, oldest first, ending at the window's last month; each one a month window. */
-export const UtilisationTrendPoint = DayCounts.extend({ month: z.string().regex(/^\d{4}-\d{2}$/) });
+/** One calendar month of the trend, named by its first day. */
+export const UtilisationTrendPoint = DayCounts.extend({ month: DateOnlyIso });
 export type UtilisationTrendPoint = z.infer<typeof UtilisationTrendPoint>;
+/** Twelve calendar months, oldest first, ending at the window's last month. */
 export const UtilisationTrend = z.object({
   subject: UtilisationTrendSubject,
   label: z.string(),

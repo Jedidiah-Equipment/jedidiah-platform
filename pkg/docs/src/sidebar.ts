@@ -46,6 +46,10 @@ export const CONTRACTING_SECTIONS: DocsSection[] = [
       { text: 'Review Voice Note Transcriptions', link: '/contracting/review-voice-note-transcriptions' },
     ],
   },
+  {
+    text: 'Contracting concepts',
+    items: [{ text: 'Who gets workshop alerts', link: '/contracting/who-gets-workshop-alerts' }],
+  },
 ];
 
 export const EQUIPMENT_SECTIONS: DocsSection[] = [

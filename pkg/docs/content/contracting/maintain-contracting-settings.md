@@ -8,4 +8,4 @@ Settings is the one row of Contracting-wide values every screen reads live; noth
 4. Change **Utilisation Target (%)**. Drawn as the reference line on the Utilisation report. Leave empty to draw no line.
 5. Choose **Save**. Nothing changes until you do, and each save is one entry in the Audit Log under Settings.
 
-Only a **Contracting Administrator** can open this page or save it.
+Only a **Contracting Administrator** or a **Super Administrator** can open this page or save it.

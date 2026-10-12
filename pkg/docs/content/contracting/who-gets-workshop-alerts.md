@@ -5,7 +5,7 @@ when it comes depends on what happened in the field.
 
 ## Who gets which alert
 
-| Role | Code Red Breakdown | Code Green Breakdown | Service Due Soon (100 h before service) |
+| Role | Code Red Breakdown | Code Green Breakdown | Service Due Soon (the Settings threshold before service, 100 h unless changed) |
 | --- | :---: | :---: | :---: |
 | Workshop Manager | ✓ | ✓ | ✓ |
 | Contracting Manager | ✓ | — | — |
@@ -23,7 +23,7 @@ Administrator get none either.
 | --- | --- | --- | --- |
 | Code Red | A Code Red Breakdown is reported, from the phone or the web. | The Machine or Implement, the first line of the problem, the Farm and Job, and who reported it. | The Breakdown |
 | Code Green | A Code Green Breakdown is reported, from the phone or the web. | The same as Code Red. | The Breakdown |
-| Service Due Soon | A reading first brings a Machine within 100 hours of its Next Service Due. | The Machine and the hours left before its service, or how far past it the reading already is. | The Machine |
+| Service Due Soon | A reading first brings a Machine within the Service Due Soon threshold in **Settings** (100 hours unless changed) of its Next Service Due. | The Machine and the hours left before its service, or how far past it the reading already is. | The Machine |
 
 Each event alerts once. Sending the same Breakdown report again from a phone that lost signal does not
 alert again. A Machine already Service Due Soon does not alert again at its next reading; it alerts

@@ -8,4 +8,4 @@ A Service Record is the light digital copy of the paper service book: when a Mac
 4. When it leaves, choose **Close** on the service. Enter the **End date**, the **Reading at service**, the **Mechanic** and the **Notes**.
 5. Enter the **Next service due** hours you print on the sticker. When the Machine has a **Service interval**, the reading plus the interval is suggested; change it if the sticker says otherwise.
 6. Choose **Close service**. The Machine's **Next service due** becomes the number you entered.
-7. Check the **Service** card: **Service due soon** means the latest reading is within 100 hours of Next service due, and **Service overdue** means the meter has passed it. A spot reading counts too, so [capture one](./capture-a-reading) to keep it current between Jobs.
+7. Check the **Service** card: **Service due soon** means the latest reading is within the Service Due Soon threshold in **Settings** (100 hours unless changed) of Next service due, and **Service overdue** means the meter has passed it. A spot reading counts too, so [capture one](./capture-a-reading) to keep it current between Jobs.

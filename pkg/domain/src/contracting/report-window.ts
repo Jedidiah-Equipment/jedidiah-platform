@@ -1,6 +1,11 @@
 import type { DateOnlyIso } from '@pkg/schema';
 import { type ReportWindow, ReportWindowInput, type ReportWindowKind } from '@pkg/schema/contracting';
-import { formatDate, parseDateOnlyParts } from '../formatting/date.js';
+import {
+  formatDate,
+  JOHANNESBURG_TIME_ZONE,
+  parseDateOnlyParts,
+  zonedDateStartToUtcInstant,
+} from '../formatting/date.js';
 import { addDateOnlyDays, addDateOnlyMonths, diffDateOnlyDays } from '../formatting/date-only.js';
 
 const isoMonthStart = (year: number, month: number) => `${year}-${String(month).padStart(2, '0')}-01` as DateOnlyIso;
@@ -32,6 +37,14 @@ export function resolveReportWindow(input: ReportWindowInput, today: DateOnlyIso
   const end = periodEnd < today ? periodEnd : today;
   const days = end < start ? 0 : diffDateOnlyDays(end, start) + 1;
   return { kind, year, period: input.period ?? null, start, end, days };
+}
+
+/** The window's plant-time instant range: its first day's midnight up to, not including, the midnight after its last day. */
+export function reportWindowInstants(window: ReportWindow): { from: Date; to: Date } {
+  return {
+    from: zonedDateStartToUtcInstant(window.start, JOHANNESBURG_TIME_ZONE),
+    to: zonedDateStartToUtcInstant(addDateOnlyDays(window.end, 1), JOHANNESBURG_TIME_ZONE),
+  };
 }
 
 /** The twelve month windows ending in the month that holds `window.end`, oldest first. */

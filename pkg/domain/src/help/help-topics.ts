@@ -41,6 +41,7 @@ export const HELP_TOPICS = {
   contractingTranscriptions: '/contracting/review-voice-note-transcriptions',
   contractingSettings: '/contracting/maintain-contracting-settings',
   contractingReports: '/contracting/review-fleet-utilisation',
+  contractingReportsMechanics: '/contracting/review-mechanic-performance',
   bays: '/production/delete-a-bay',
   customerCreate: '/sales/choose-a-customer',
   customerMerge: '/sales/merge-duplicate-customers',

@@ -1,8 +1,8 @@
 import { getPlantDateNow } from '@pkg/domain';
 import { parseReportWindowParam } from '@pkg/domain/contracting';
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
-import { Empty, EmptyDescription, EmptyHeader, EmptyIcon, EmptyTitle } from '@/components/ui/empty.js';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs.js';
+import { MechanicsTab } from './MechanicsTab.js';
 import { ReportWindowPicker } from './ReportWindowPicker.js';
 import { parseReportSubject } from './report-subject.js';
 import { UtilisationTab } from './UtilisationTab.js';
@@ -11,7 +11,7 @@ export const reportTabs = ['utilisation', 'mechanics'] as const;
 export type ReportTab = (typeof reportTabs)[number];
 export type ReportsSearch = { tab?: ReportTab | undefined; window?: string | undefined; subject?: string | undefined };
 
-/** Fleet utilisation now, mechanic performance next (#1723); one window picker serves both tabs. */
+/** Fleet utilisation and mechanic performance; one window picker serves both tabs. */
 export function ReportsPage({
   search,
   onSearchChange,
@@ -42,13 +42,7 @@ export function ReportsPage({
           />
         </TabsContent>
         <TabsContent className="pt-4" value="mechanics">
-          <Empty>
-            <EmptyHeader>
-              <EmptyIcon />
-              <EmptyTitle>Coming soon</EmptyTitle>
-              <EmptyDescription>Mechanic performance lands here next.</EmptyDescription>
-            </EmptyHeader>
-          </Empty>
+          <MechanicsTab window={window} />
         </TabsContent>
       </Tabs>
     </PageLayout>

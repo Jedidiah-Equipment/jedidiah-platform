@@ -78,6 +78,18 @@ export const quickFilterStatuses = (counts: BreakdownStatusCounts | undefined, c
     (status) => (counts?.[status] ?? 0) > 0 || isPickedStatuses(columnFilters, [status]),
   );
 
+/**
+ * The queue as a Mechanic's work, every status included: the Mechanic filter set to them alone and Solved shown too.
+ * The Reports page opens the Workshop this way; every other filter is kept.
+ */
+export function focusOnMechanic(columnFilters: ColumnFiltersState, mechanicUserId: string): ColumnFiltersState {
+  return [
+    ...columnFilters.filter((filter) => filter.id !== MECHANIC_COLUMN_ID && filter.id !== STATUS_COLUMN_ID),
+    { id: MECHANIC_COLUMN_ID, value: [mechanicUserId] },
+    { id: STATUS_COLUMN_ID, value: [...breakdownStatuses] },
+  ];
+}
+
 /** Picks exactly these statuses; pressing again clears the pick. */
 export const toggleStatuses = (columnFilters: ColumnFiltersState, statuses: readonly BreakdownStatus[]) =>
   togglePick(columnFilters, STATUS_COLUMN_ID, statuses);

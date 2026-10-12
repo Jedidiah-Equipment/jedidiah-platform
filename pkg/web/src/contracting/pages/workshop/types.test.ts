@@ -1,6 +1,7 @@
 import { breakdownStatuses } from '@pkg/schema/contracting';
 import { describe, expect, it } from 'vitest';
 import {
+  focusOnMechanic,
   isPickedStatuses,
   listedStatuses,
   quickFilterStatuses,
@@ -24,6 +25,24 @@ describe('quickFilterStatuses', () => {
     expect(quickFilterStatuses({ open: 2, 'in-progress': 0, solved: 5 }, [])).toEqual(['open']);
     expect(quickFilterStatuses(undefined, [])).toEqual([]);
     expect(quickFilterStatuses(undefined, status(['in-progress']))).toEqual(['in-progress']);
+  });
+});
+
+describe('focusOnMechanic', () => {
+  it('shows only that Mechanic, across every status, and keeps the other filters', () => {
+    const filters = focusOnMechanic(
+      [
+        { id: 'mechanic', value: ['someone-else'] },
+        { id: 'status', value: ['open'] },
+        { id: 'urgency', value: ['code-red'] },
+      ],
+      'anele',
+    );
+    expect(workshopListFilters(filters)).toMatchObject({
+      mechanicUserIds: ['anele'],
+      statuses: [...breakdownStatuses],
+      urgencies: ['code-red'],
+    });
   });
 });
 

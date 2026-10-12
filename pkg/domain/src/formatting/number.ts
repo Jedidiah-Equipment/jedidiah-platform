@@ -54,6 +54,12 @@ export function formatHours(value: number): string {
   return `${formatNumber(value, { decimals: 1 })} h`;
 }
 
+/** A duration in days, as the workshop reads a turnaround: one decimal and a `days` suffix. */
+export function formatDays(value: number): string {
+  if (!Number.isFinite(value)) return '';
+  return `${formatNumber(value, { decimals: 1 })} days`;
+}
+
 /** A running clock in whole minutes and seconds, as a recording timer shows it: `0:07`, `2:00`. */
 export function formatClock(seconds: number): string {
   if (!Number.isFinite(seconds)) return '';

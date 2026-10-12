@@ -2,7 +2,7 @@ import { formatNumber } from '@pkg/domain';
 import type { BreakdownListInput } from '@pkg/schema/contracting';
 import { keepPreviousData, useInfiniteQuery, useMutation, useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { cursorInfiniteQueryOptions, useCombinedCursorQueryPages } from '@/components/data-table/cursor-query.js';
 import { DataTable } from '@/components/data-table/DataTable.js';
@@ -19,7 +19,7 @@ import { getApiQueryErrorMessage } from '@/lib/api-errors.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { BreakdownStatusQuickFilters } from './BreakdownStatusQuickFilters.js';
 import { ReportProblemDialog } from './ReportProblemDialog.js';
-import { workshopListFilters } from './types.js';
+import { focusOnMechanic, workshopListFilters } from './types.js';
 import { useWorkshopColumns } from './workshop-columns.js';
 
 const useWorkshopTableStore = createPersistedDataTableStore({
@@ -32,7 +32,14 @@ const breakdownSortOptions: SortOptions<BreakdownListInput> = {
   defaultSort: { id: 'reportedAt', desc: true },
 };
 
-export function WorkshopPage() {
+export function WorkshopPage({
+  mechanic,
+  onMechanicApplied,
+}: {
+  /** One Mechanic's work, every status, opened from the Reports page; the persisted filters own it from then on. */
+  mechanic?: string | undefined;
+  onMechanicApplied?: () => void;
+} = {}) {
   const trpc = useTRPC();
   const navigate = useNavigate();
   const write = useContractingWrite(useQueryInvalidation().invalidateWorkshop);
@@ -45,6 +52,12 @@ export function WorkshopPage() {
     sortOptions: breakdownSortOptions,
     getListInputExtras: workshopListFilters,
   });
+  const { setColumnFilters } = tableController;
+  useEffect(() => {
+    if (!mechanic) return;
+    setColumnFilters((current) => focusOnMechanic(current, mechanic));
+    onMechanicApplied?.();
+  }, [mechanic, onMechanicApplied, setColumnFilters]);
   const breakdownsQuery = useInfiniteQuery(
     trpc.contractingBreakdowns.list.infiniteQueryOptions(tableController.listInput, {
       ...cursorInfiniteQueryOptions,

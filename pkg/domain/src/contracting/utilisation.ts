@@ -1,8 +1,8 @@
 import type { DateOnlyIso } from '@pkg/schema';
 import type { HourKindTotals, ReadingRole, ReportWindow } from '@pkg/schema/contracting';
-import { JOHANNESBURG_TIME_ZONE, zonedDateStartToUtcInstant } from '../formatting/date.js';
 import { addDateOnlyDays, diffDateOnlyDays } from '../formatting/date-only.js';
 import { round1 } from './hours.js';
+import { reportWindowInstants } from './report-window.js';
 
 /** One Machine's stint as the day count sees it: plant dates of its readings, departure open while on site. */
 export type ActiveSpan = { arrivalDate: DateOnlyIso; departureDate: DateOnlyIso | null };
@@ -120,19 +120,12 @@ export function hourSegments(
   return segments;
 }
 
-/** The window's plant-time instant range: its first day's midnight up to the midnight after its last day. */
-function windowInstants(window: ReportWindow) {
-  return {
-    from: zonedDateStartToUtcInstant(window.start, JOHANNESBURG_TIME_ZONE).getTime(),
-    to: zonedDateStartToUtcInstant(addDateOnlyDays(window.end, 1), JOHANNESBURG_TIME_ZONE).getTime(),
-  };
-}
-
 /** Each segment's hours in proportion to its overlap with the window's plant-time instant range. */
 export function allocateHours(segments: readonly HourSegment[], window: ReportWindow): HourKindTotals {
   const totals: Record<HourKind, number> = { work: 0, travel: 0, unaccounted: 0, unresolved: 0 };
   if (window.days > 0) {
-    const range = windowInstants(window);
+    const instants = reportWindowInstants(window);
+    const range = { from: instants.from.getTime(), to: instants.to.getTime() };
     for (const segment of segments) {
       const from = Date.parse(segment.from);
       const to = Date.parse(segment.to);

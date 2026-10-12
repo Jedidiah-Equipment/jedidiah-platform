@@ -4,7 +4,7 @@ import { keepPreviousData, useInfiniteQuery, useQuery } from '@tanstack/react-qu
 import { fieldQuery } from '@/contracting/lib/field-query';
 import { useSessionAccessSummary, useSessionPermission } from '@/lib/auth-session';
 import { useTRPC } from '@/lib/trpc';
-import { isNotFoundError } from '@/lib/trpc-errors';
+import { isForbiddenError, isNotFoundError, trpcErrorMessage } from '@/lib/trpc-errors';
 
 const PAGE_SIZE = 25;
 
@@ -16,7 +16,7 @@ const sortInput: Record<JobListSort, Pick<JobListInput, 'sortBy' | 'sortDirectio
   name: { sortBy: 'customerName', sortDirection: 'asc' },
 };
 
-/** Whether this person may open a field Job: management works every Job, a Foreman their own. */
+/** Whether this person may open a Job on the phone: management works every Job, a Foreman their own. */
 export function useCanReadJobs() {
   return fieldJobAccessMode(useSessionAccessSummary()) !== null;
 }
@@ -64,13 +64,20 @@ export function useJobQueueCounts() {
   );
 }
 
-/** One field Job, without money, read on its own so it opens whichever page of the list it came from. */
+/** One Job as the server serves it to this person: redacted for a Foreman, with the Job Actions already judged. */
 export function useJob(jobId: string) {
   const canRead = useCanReadJobs();
   const trpc = useTRPC();
-  const query = useQuery(trpc.contractingJobs.field.job.queryOptions({ id: jobId }, { enabled: canRead && !!jobId }));
-  // Not found once it has left this person's Jobs: finished for a Foreman, or reassigned.
-  return { ...fieldQuery(canRead, query), gone: isNotFoundError(query.error) };
+  const query = useQuery(trpc.contractingJobs.jobs.get.queryOptions({ id: jobId }, { enabled: canRead && !!jobId }));
+  // Gone once it has left this person's view: finished for a Foreman, reassigned, or deleted. The server says which.
+  const gone = isForbiddenError(query.error) || isNotFoundError(query.error);
+  // A refetch that is refused keeps the last good data in the cache; the screen must stop using it.
+  return {
+    ...fieldQuery(canRead && !gone, query),
+    canRead,
+    gone,
+    goneReason: gone ? trpcErrorMessage(query.error) : undefined,
+  };
 }
 
 export function useImplements() {

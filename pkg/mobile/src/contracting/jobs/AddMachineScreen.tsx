@@ -1,4 +1,3 @@
-import { judgeJobAction } from '@pkg/domain/contracting';
 import { IconPlus } from '@tabler/icons-react-native';
 import { useStore } from '@tanstack/react-form';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -14,7 +13,6 @@ import { CategoryIcon } from '@/contracting/components/CategoryIcon';
 import { implementOption } from '@/contracting/components/implement-option';
 import { getVisibleMachines } from '@/contracting/lib/machine-catalog';
 import { useFleet } from '@/contracting/readings/use-fleet';
-import { useSessionAccessSummary } from '@/lib/auth-session';
 import { useTRPC } from '@/lib/trpc';
 import { useDrivers, useImplements, useJob } from './use-jobs';
 
@@ -27,11 +25,10 @@ export default function AddMachineScreen() {
   const fleet = useFleet();
   const implementQuery = useImplements();
   const drivers = useDrivers();
-  const access = useSessionAccessSummary();
   const trpc = useTRPC();
   const queryClient = useQueryClient();
   const job = useJob(params.jobId).data;
-  const canAdd = job ? judgeJobAction('assign', job, access).allowed : false;
+  const canAdd = job ? job.actions.assign.allowed : false;
   const backToJob = () => router.dismissTo(`/contracting/jobs/${params.jobId}` as Href);
   const add = useMutation(
     trpc.contractingJobs.assignments.add.mutationOptions({

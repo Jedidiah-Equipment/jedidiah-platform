@@ -58,7 +58,8 @@ change its setup, Foreman, Machine Assignments, travel, Measures, Charge Lines a
 sign-off details and diesel litres; complete, cancel, price or stamp it; amend its readings; capture on it.
 They are computed, never stored, and judged for the person asking — a Foreman works only his own Jobs, while
 open — and they are the same answer the server's write gates apply, so a screen shows a control
-when its verdict allows it and hides it when the person lacks the permission. A refused verdict carries the
+when its verdict allows it and hides it when the person lacks the permission. Both the web and the phone read
+the verdicts the server serves; no surface derives its own. A refused verdict carries the
 one sentence that says why; the server's refusal and the screen show that sentence. Invoiced and Cancelled
 are both closed: no Job Action is open on either. A check that judges what a write carries rather than the
 Job — the Mark as Priced gate, the invoice total, a departure reading without a photo — is not a Job Action

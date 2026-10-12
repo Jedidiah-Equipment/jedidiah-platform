@@ -13,7 +13,7 @@ const allowed: JobActionVerdict = { allowed: true };
 function job(status: JobStatus, verdicts: Partial<Record<JobActionName, JobActionVerdict>> = {}) {
   return {
     status,
-    pricing: {},
+    seesMoney: true,
     actions: Object.fromEntries(jobActionNames.map((name) => [name, verdicts[name] ?? allowed])),
   } as unknown as JobDetail;
 }

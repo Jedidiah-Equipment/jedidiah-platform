@@ -5,6 +5,7 @@ import {
   assignmentAttentionLevelColorClassNames,
   assignmentNeedsALookLevel,
   assignmentStateColorClassNames,
+  assignmentStateLabels,
   breakdownPhases,
   breakdownStatusColorClassNames,
   breakdownStatusLabels,
@@ -392,7 +393,7 @@ export function MachineStintCard({
           )}
           variant="outline"
         >
-          {planned ? 'Planned' : onSite ? 'On site' : 'Left site'}
+          {assignmentStateLabels[stint.state]}
         </Badge>
       </CardHeader>
       <CardContent className="flex flex-1 flex-col">

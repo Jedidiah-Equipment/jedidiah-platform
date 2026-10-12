@@ -40,3 +40,34 @@ export const JobActions = z.object(
   >,
 );
 export type JobActions = z.infer<typeof JobActions>;
+
+/** Every write a person can ask of one Machine Assignment, each judged under a Job Action first. */
+export const assignmentActionNames = [
+  'remove',
+  'changeResources',
+  'captureArrival',
+  'captureDeparture',
+  'editMeasures',
+  'resolveGap',
+  'price',
+] as const;
+export type AssignmentActionName = (typeof assignmentActionNames)[number];
+
+/** A Job refusal passes through with its own reason; `wrong-state` is the Assignment's state refusing. */
+export const AssignmentActionBlockedReason = z.enum([...JobActionBlockedReason.options, 'wrong-state']);
+export type AssignmentActionBlockedReason = z.infer<typeof AssignmentActionBlockedReason>;
+
+export const AssignmentActionVerdict = z.discriminatedUnion('allowed', [
+  z.object({ allowed: z.literal(true) }),
+  z.object({ allowed: z.literal(false), reason: AssignmentActionBlockedReason, message: z.string() }),
+]);
+export type AssignmentActionVerdict = z.infer<typeof AssignmentActionVerdict>;
+
+/** The Assignment Actions verdicts for the person asking: Job Action first, then the Assignment's state. */
+export const AssignmentActions = z.object(
+  Object.fromEntries(assignmentActionNames.map((name) => [name, AssignmentActionVerdict])) as Record<
+    AssignmentActionName,
+    typeof AssignmentActionVerdict
+  >,
+);
+export type AssignmentActions = z.infer<typeof AssignmentActions>;

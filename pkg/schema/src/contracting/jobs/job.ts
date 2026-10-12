@@ -7,7 +7,7 @@ import { UUID } from '../../common/uuid.js';
 import { CategoryColour, CategoryIconKey, FleetCode, FleetName } from '../fleet/fleet.js';
 import { RateBasis } from '../rate-card/rate-card.js';
 import { HourReading, ReadingValue } from '../readings/reading.js';
-import { JobActions } from './job-actions.js';
+import { AssignmentActions, JobActions } from './job-actions.js';
 import { assignmentStates, discountKinds, jobQueues, jobStatuses, needsALookLevels } from './job-enums.js';
 
 export const Hours = z.number().nonnegative().max(999999999.9).multipleOf(0.1);
@@ -326,8 +326,13 @@ export const JobFacts = z.object({
 });
 export type JobFacts = z.infer<typeof JobFacts>;
 
+/** A Machine Assignment as the person asking reads it: the facts and their verdicts. */
+export const AssignmentDetail = Assignment.extend({ actions: AssignmentActions });
+export type AssignmentDetail = z.infer<typeof AssignmentDetail>;
+
 /** One Job as the person asking reads it: the facts, their verdicts, and whether money reached them. */
 export const JobDetail = JobFacts.extend({
+  assignments: AssignmentDetail.array(),
   pricing: JobPricing.nullable(),
   actions: JobActions,
   /** False for a reader the server redacts money from (a Foreman); the Job Card and every amount follow it. */

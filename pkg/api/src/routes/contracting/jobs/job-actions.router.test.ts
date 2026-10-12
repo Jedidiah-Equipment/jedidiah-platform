@@ -24,12 +24,20 @@ import { jobReadMode, jobReadSeesMoney } from '@pkg/domain/contracting';
 import { accessForRole } from '@pkg/domain/testing';
 import type { ContractingRole } from '@pkg/schema';
 import { DateOnlyIso } from '@pkg/schema';
-import type { JobActionName, JobActionVerdict, JobStatus } from '@pkg/schema/contracting';
+import {
+  type AssignmentActionName,
+  type AssignmentActionVerdict,
+  type AssignmentState,
+  assignmentActionNames,
+  type JobActionName,
+  type JobActionVerdict,
+  type JobStatus,
+} from '@pkg/schema/contracting';
 import { TRPCError } from '@trpc/server';
 import { describe, expect } from 'vitest';
 import { type AppRouterCaller, createTester } from '@/test/create-tester.js';
 import { mockSession } from '@/test/test-utils.js';
-import { getTRPCPublicMetadata } from '@/trpc/errors.js';
+import { getTRPCAppCode, getTRPCPublicMetadata } from '@/trpc/errors.js';
 
 /** Every caller signs in as this person; the Jobs name them as Foreman, so a Foreman caller works their own. */
 const callerId = 'test-user-id';
@@ -78,7 +86,10 @@ const test = createTester(async ({ db }) => {
       },
     });
 
-  /** A fresh Job in the given status, with one stint on its own Machine and a spare Machine to add. */
+  /**
+   * A fresh Job in the given status, with one worked stint on its own Machine and a spare Machine to add. An Active
+   * Job also holds a planned stint, added after the first arrival, so a stint can be judged planned while the Job runs.
+   */
   async function jobAt(status: JobStatus) {
     const [worked, spare] = [await machine(), await machine()];
     const job = await createJob({
@@ -109,14 +120,29 @@ const test = createTester(async ({ db }) => {
           assignmentId: stint.id,
           role,
           value,
-          capturedAt: new Date(Date.parse('2026-09-01T06:00:00Z') + ++sequence * 3_600_000).toISOString(),
+          capturedAt: new Date(Date.parse('2026-09-01T06:00:00Z') + ++sequence * 60_000).toISOString(),
           disputePrevious: false,
           ...(role === 'departure' ? { comment: 'Photo unavailable' } : {}),
         },
       });
-    const fixture: Fixture = { job, stint, spare, arrivalReadingId: null, chargeLineId: null };
+    const fixture: Fixture = {
+      job,
+      stint,
+      spare,
+      arrivalReadingId: null,
+      chargeLineId: null,
+      stints: [{ ...stint, state: 'planned' }],
+    };
     if (status === 'upcoming') return fixture;
     fixture.arrivalReadingId = (await capture('arrival', 100)).id;
+    const waiting = await machine();
+    await createAssignment({ db, actor: setup, input: { jobId: job.id, machineId: waiting.id, implementId: null } });
+    const later = (await getJob({ db, id: job.id })).assignments.find((each) => each.machineId === waiting.id);
+    if (!later) throw new Error('Expected planned Machine Assignment');
+    fixture.stints = [
+      { ...stint, state: 'on-site' },
+      { id: later.id, machineId: waiting.id, state: 'planned' },
+    ];
     await createChargeLine({ db, actor: setup, input: { jobId: job.id, description: 'Low-bed' } });
     const [line] = (await getJob({ db, id: job.id })).chargeLines;
     if (!line) throw new Error('Expected Charge Line');
@@ -133,9 +159,10 @@ const test = createTester(async ({ db }) => {
         endDate: DateOnlyIso.parse('2026-09-02'),
         dieselLitres: 0,
         notes: null,
-        removePlannedAssignmentIds: [],
+        removePlannedAssignmentIds: [later.id],
       },
     });
+    fixture.stints = [{ ...stint, state: 'left' }];
     if (status === 'completed') return fixture;
     await setStintRate({ db, actor: setup, input: { assignmentId: stint.id, rateId: rate.id } });
     const total = (await getJob({ db, id: job.id })).pricing.total;
@@ -143,17 +170,20 @@ const test = createTester(async ({ db }) => {
     return fixture;
   }
 
-  return { db, jobAt, loadsId: loads.id };
+  return { db, jobAt, loadsId: loads.id, rateId: rate.id };
 });
 
+type StintFixture = { id: string; machineId: string; state: AssignmentState };
 type Fixture = {
   job: { id: string };
   stint: { id: string; machineId: string };
   spare: { id: string };
   arrivalReadingId: string | null;
   chargeLineId: string | null;
+  /** Every stint on the Job, in each state it holds one. */
+  stints: StintFixture[];
 };
-type Seeded = { db: Db; loadsId: string };
+type Seeded = { db: Db; loadsId: string; rateId: string };
 
 /** One write per Job Action, as a surface asks for it; null where the fixture has nothing to act on. */
 const attempts: Record<
@@ -296,5 +326,87 @@ describe('money reaches only the readers the server sends it to', () => {
     for (const field of moneyFields) expect(job[field], field).toBeNull();
     for (const stint of job.assignments) expect(stint.pricing).toBeNull();
     for (const line of job.chargeLines) expect(line.amount).toBeNull();
+  });
+});
+
+const stintCapture = (db: Db, role: ContractingRole, stint: StintFixture, reading: 'arrival' | 'departure') =>
+  captureReading({
+    db,
+    actor: accessForRole(role, callerId),
+    input: {
+      machineId: stint.machineId,
+      assignmentId: stint.id,
+      role: reading,
+      value: reading === 'arrival' ? 500 : 600,
+      capturedAt: reading === 'arrival' ? '2026-09-20T08:00:00Z' : '2026-09-21T08:00:00Z',
+      disputePrevious: false,
+      comment: 'Photo unavailable',
+    },
+  });
+
+/** One write per Assignment Action, as a surface asks for it on one stint. */
+const stintAttempts: Record<
+  AssignmentActionName,
+  (caller: AppRouterCaller, stint: StintFixture, seeded: Seeded, role: ContractingRole) => Promise<unknown>
+> = {
+  remove: (caller, stint) => caller.contractingJobs.assignments.remove({ id: stint.id }),
+  changeResources: (caller, stint) => caller.contractingJobs.assignments.patch({ id: stint.id, driverUserId: null }),
+  // Capture arrives over multipart HTTP, so it is judged where that route hands over: the core capture.
+  captureArrival: (_caller, stint, { db }, role) => stintCapture(db, role, stint, 'arrival'),
+  captureDeparture: (_caller, stint, { db }, role) => stintCapture(db, role, stint, 'departure'),
+  editMeasures: (caller, stint, { loadsId }) =>
+    caller.contractingJobs.measures.set({ assignmentId: stint.id, measureTypeId: loadsId, quantity: 3 }),
+  resolveGap: (caller, stint) =>
+    caller.contractingJobs.assignments.resolveGap({
+      id: stint.id,
+      travelHours: 0,
+      unaccountedHours: 0,
+      reason: 'Yard',
+    }),
+  price: (caller, stint, { rateId }) => caller.contractingJobs.pricing.setStintRate({ assignmentId: stint.id, rateId }),
+};
+
+const isCapture = (action: AssignmentActionName) => action === 'captureArrival' || action === 'captureDeparture';
+
+function errorCode(error: unknown): string | undefined {
+  if (error instanceof TRPCError) return getTRPCAppCode(error);
+  if (isReadingError(error)) return error.code;
+  return undefined;
+}
+
+function expectStintAgreement(
+  action: AssignmentActionName,
+  verdict: AssignmentActionVerdict,
+  error: unknown,
+  label: string,
+) {
+  const stateCode = isCapture(action) ? 'reading.invalid_role' : 'contracting_job.wrong_status';
+  if (verdict.allowed || verdict.reason !== 'wrong-state') {
+    expectAgreement(verdict as JobActionVerdict, error, label);
+    // A state refusal names no Job Action, so `expectAgreement` alone would let one through an allowed verdict.
+    if (verdict.allowed) expect(errorCode(error), label).not.toBe(stateCode);
+    return;
+  }
+  // The state refused: the write's own family's wrong-state code, and no Job Action named.
+  expect(errorCode(error), label).toBe(stateCode);
+  expect(error instanceof Error ? error.message : undefined, label).toBe(verdict.message);
+  expect(refusalOf(error), label).toBeUndefined();
+}
+
+describe('Assignment Actions served on each stint agree with what the server does', () => {
+  test.for(cases)('%s on a %s Job', async ([role, status], { context }) => {
+    const session = mockSession(null);
+    session.user.contractingRole = role;
+    const caller = context.createCaller(session);
+    const shown = await caller.contractingJobs.jobs.get({ id: (await context.jobAt(status)).job.id });
+    for (const assignment of shown.assignments) {
+      for (const action of assignmentActionNames) {
+        const stint = (await context.jobAt(status)).stints.find((each) => each.state === assignment.state);
+        if (!stint) throw new Error(`Expected a ${assignment.state} stint`);
+        const write = stintAttempts[action](caller, stint, context, role);
+        const label = `${role} · ${status} · ${assignment.state} · ${action}`;
+        expectStintAgreement(action, assignment.actions[action], await settle(write), label);
+      }
+    }
   });
 });

@@ -1,5 +1,6 @@
 import { formatDate, formatHours, formatNumber } from '@pkg/domain';
 import {
+  actionSheet,
   assignmentAttentionKindLabels,
   assignmentAttentionKindLevels,
   assignmentAttentionLevelColorClassNames,
@@ -17,6 +18,7 @@ import {
 } from '@pkg/domain/contracting';
 import type {
   Assignment,
+  AssignmentDetail,
   BreakdownSummary,
   BreakdownUrgency,
   JobReading,
@@ -169,10 +171,10 @@ function GapDetail({
 }
 
 /** The Hour Gap between the Machine's previous departure and this arrival: flagged, resolved, or counted as travel. */
-function GapRow({ stint, sheet, onOpen }: { stint: Assignment; sheet: JobSheet } & Opens) {
+function GapRow({ stint, onOpen }: { stint: AssignmentDetail } & Opens) {
   const gapHours = stint.gapHours;
   if (gapHours === null || gapHours === 0) return null;
-  const verdict = sheet.stintAction('resolveGaps', 'resolveGap', stint);
+  const verdict = actionSheet(stint.actions).verdict('resolveGap');
   const why = verdict.allowed ? null : verdict.message;
   const open = () => onOpen({ kind: 'gap', stintId: stint.id });
   const edit = why ? null : <IconAction icon={IconPencil} label="Edit gap split" onClick={open} />;
@@ -333,7 +335,7 @@ export function MachineStintCard({
   breakdowns,
   onOpen,
 }: {
-  stint: Assignment;
+  stint: AssignmentDetail;
   stintNumber: number;
   sheet: JobSheet;
   /** This stint's Breakdowns on the Job, oldest first. */
@@ -342,7 +344,8 @@ export function MachineStintCard({
   const trpc = useTRPC();
   const [measuring, setMeasuring] = useState(false);
   const readsMachines = useCan('contracting_machine:read').can;
-  const canMeasure = sheet.stintAction('editMeasures', 'editMeasures', stint).allowed;
+  const stintSheet = actionSheet(stint.actions);
+  const canMeasure = stintSheet.can('editMeasures');
   const canReport = sheet.can('reportBreakdown');
   const phases = breakdownPhases(stint, breakdowns);
   const breakdownRows = (phase: readonly BreakdownSummary[]) =>
@@ -400,10 +403,10 @@ export function MachineStintCard({
         <Timeline className="mb-3">
           <TimelineRow
             actions={
-              sheet.stintAction('assign', 'changeResources', stint).allowed ? (
+              stintSheet.can('changeResources') ? (
                 <>
                   <AssignmentEditDialog stint={stint} />
-                  {sheet.stintAction('assign', 'remove', stint).allowed ? (
+                  {stintSheet.can('remove') ? (
                     <RemoveEntityButton
                       description="Remove this Machine Assignment?"
                       isPending={remove.isPending}
@@ -422,13 +425,13 @@ export function MachineStintCard({
             title="Planned"
             tone="done"
           />
-          <GapRow onOpen={onOpen} sheet={sheet} stint={stint} />
+          <GapRow onOpen={onOpen} stint={stint} />
           {breakdownRows(phases.beforeArrival)}
           <TimelineRow
             actions={
               stint.arrival ? (
                 <ReadingActions reading={stint.arrival} stint={stint} onOpen={onOpen} />
-              ) : sheet.can('capture') ? (
+              ) : stintSheet.can('captureArrival') ? (
                 <IconAction
                   icon={IconPlayerPlay}
                   label="Start — capture arrival"
@@ -445,7 +448,7 @@ export function MachineStintCard({
             actions={
               stint.departure ? (
                 <ReadingActions reading={stint.departure} stint={stint} onOpen={onOpen} />
-              ) : onSite && sheet.can('capture') ? (
+              ) : stintSheet.can('captureDeparture') ? (
                 <IconAction
                   icon={IconPlayerStop}
                   label="Stop — capture departure"

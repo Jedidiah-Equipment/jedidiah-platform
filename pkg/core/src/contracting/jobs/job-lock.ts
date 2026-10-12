@@ -1,9 +1,9 @@
 import type { DatabaseTransaction } from '@pkg/db';
 import { contractingJobs, contractingMachineAssignments, contractingMachines } from '@pkg/db/contracting';
 import type { JobActor } from '@pkg/domain/contracting';
-import type { JobActionName } from '@pkg/schema/contracting';
+import type { AssignmentActionName, JobActionName } from '@pkg/schema/contracting';
 import { eq } from 'drizzle-orm';
-import { assertJobAction, jobNotFound } from './job-errors.js';
+import { assertJobAction, assertStintAction, jobNotFound } from './job-errors.js';
 
 export async function lockJob(tx: DatabaseTransaction, id: string) {
   const [job] = await tx.select().from(contractingJobs).where(eq(contractingJobs.id, id)).for('update');
@@ -40,14 +40,14 @@ export async function lockAssignment(
   return { job, stint, machineCode: reference.machineCode };
 }
 
-/** Locks a Machine Assignment and its Job, and refuses unless this actor may take this Job Action on the Job now. */
+/** Locks a Machine Assignment and its Job, and refuses unless this actor may take this Assignment Action on it now. */
 export async function lockStintFor(
   tx: DatabaseTransaction,
   assignmentId: string,
-  action: JobActionName,
+  action: AssignmentActionName,
   actor: JobActor,
 ) {
   const locked = await lockAssignment(tx, assignmentId);
-  assertJobAction(action, locked.job, actor);
+  assertStintAction(action, locked.job, locked.stint, actor);
   return locked;
 }

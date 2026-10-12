@@ -7,7 +7,7 @@ import type { AssignmentPatchInput, AssignmentPlanInput, GapResolveInput } from 
 import { eq } from 'drizzle-orm';
 import { recordAuditCreate, recordAuditDelete } from '../../audit/audit-writer.js';
 import { assignmentDescriptor } from './job-audit.js';
-import { assertAssignmentAction, assertJobAction, JobError } from './job-errors.js';
+import { assertAssignmentState, assertJobAction, assertStintAction, JobError } from './job-errors.js';
 import { lockAssignment, lockJobFor, lockStintFor } from './job-lock.js';
 import { assignmentIn, getJob } from './job-read.js';
 import { jobTransaction, writeAssignment } from './job-write.js';
@@ -61,9 +61,9 @@ export async function patchAssignment({
     const { job, stint, machineCode } = await lockAssignment(tx, input.id);
     const changesResources = input.implementId !== undefined || input.driverUserId !== undefined;
     const changesTravel = input.travelIncluded !== undefined && input.travelIncluded !== stint.travelIncluded;
-    if (changesResources || !changesTravel) assertJobAction('assign', job, actor);
+    if (changesResources) assertStintAction('changeResources', job, stint, actor);
+    else if (!changesTravel) assertJobAction('assign', job, actor);
     if (changesTravel) assertJobAction('patchTravel', job, actor);
-    if (changesResources) assertAssignmentAction('changeResources', stint);
     await writeAssignment(tx, actor.userId, machineCode, input.id, (before) => ({
       implementId: input.implementId === undefined ? before.implementId : input.implementId,
       driverUserId: input.driverUserId === undefined ? before.driverUserId : input.driverUserId,
@@ -79,14 +79,14 @@ export async function deletePlannedAssignment(
   stint: Row,
   machineCode: string,
 ): Promise<void> {
-  assertAssignmentAction('remove', stint);
+  assertAssignmentState('remove', stint);
   await tx.delete(contractingMachineAssignments).where(eq(contractingMachineAssignments.id, stint.id));
   await recordAuditDelete({ db: tx, actorUserId, descriptor: assignmentDescriptor(machineCode), input: stint });
 }
 
 export async function removeAssignment({ db, actor, id }: { db: Db; actor: JobActor; id: string }): Promise<void> {
   await jobTransaction(db, async (tx) => {
-    const { stint, machineCode } = await lockStintFor(tx, id, 'assign', actor);
+    const { stint, machineCode } = await lockStintFor(tx, id, 'remove', actor);
     await deletePlannedAssignment(tx, actor.userId, stint, machineCode);
   });
 }
@@ -101,8 +101,7 @@ export async function resolveGap({
   input: GapResolveInput;
 }): Promise<void> {
   await jobTransaction(db, async (tx) => {
-    const { job, stint, machineCode } = await lockStintFor(tx, input.id, 'resolveGaps', actor);
-    assertAssignmentAction('resolveGap', stint);
+    const { job, stint, machineCode } = await lockStintFor(tx, input.id, 'resolveGap', actor);
     const { gapHours } = assignmentIn(await getJob({ db: tx, id: job.id }), stint.id);
     if (gapHours === null)
       throw new JobError('contracting_job.invalid_reference', 'This Machine Assignment has no Hour Gap.');

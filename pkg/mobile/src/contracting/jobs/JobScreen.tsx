@@ -6,7 +6,7 @@ import {
   assignmentStateLabels,
   hasJobCard,
 } from '@pkg/domain/contracting';
-import type { Assignment, JobCardVariant } from '@pkg/schema/contracting';
+import type { AssignmentDetail, JobCardVariant } from '@pkg/schema/contracting';
 import { IconPlayerPlay, IconPlayerStop, IconPlus } from '@tabler/icons-react-native';
 import { type Href, router, useLocalSearchParams } from 'expo-router';
 import { Pressable, ScrollView, View } from 'react-native';
@@ -32,12 +32,11 @@ export default function JobScreen() {
   const job = jobQuery.data;
   const sheet = job ? actionSheet(job.actions) : null;
   const finished = job ? hasJobCard(job.status) : false;
-  const canCapture = sheet?.can('capture') ?? false;
   const canAdd = sheet?.can('assign') ?? false;
   const canReport = sheet?.can('reportBreakdown') ?? false;
   const canShareJobCard = (job?.seesMoney ?? false) && finished;
   // The towed Implement rides along, so the report screen can offer it beside the Machine.
-  const reportProblem = (stint: Assignment) =>
+  const reportProblem = (stint: AssignmentDetail) =>
     router.push({
       pathname: '/contracting/workshop/report',
       params: { subjectKind: 'machine', subjectId: stint.machineId, implementId: stint.implementId ?? '', jobId },
@@ -54,7 +53,7 @@ export default function JobScreen() {
       left.createdAt.localeCompare(right.createdAt),
   );
 
-  const openCapture = (stint: Assignment, role: 'arrival' | 'departure') =>
+  const openCapture = (stint: AssignmentDetail, role: 'arrival' | 'departure') =>
     router.push({
       pathname: '/contracting/jobs/[jobId]/capture',
       params: {
@@ -129,7 +128,6 @@ export default function JobScreen() {
         {stints.map((stint) => (
           <StintCard
             canAdd={canAdd}
-            canCapture={canCapture}
             canReport={canReport}
             key={stint.id}
             onReport={() => reportProblem(stint)}
@@ -170,7 +168,6 @@ export default function JobScreen() {
 
 function StintCard({
   stint,
-  canCapture,
   canAdd,
   canReport,
   onStart,
@@ -178,8 +175,7 @@ function StintCard({
   onReadd,
   onReport,
 }: {
-  stint: Assignment;
-  canCapture: boolean;
+  stint: AssignmentDetail;
   canAdd: boolean;
   canReport: boolean;
   onStart: () => void;
@@ -187,6 +183,7 @@ function StintCard({
   onReadd: () => void;
   onReport: () => void;
 }) {
+  const stintSheet = actionSheet(stint.actions);
   return (
     <View className="gap-2 rounded-xl border border-border bg-surface p-4">
       <View className="flex-row items-center justify-between gap-2">
@@ -215,10 +212,10 @@ function StintCard({
       {stint.departure ? (
         <Text className="text-sm text-muted-foreground">Departed {formatHours(stint.departure.value)}</Text>
       ) : null}
-      {stint.state === 'planned' && canCapture ? (
+      {stintSheet.can('captureArrival') ? (
         <CaptureButton icon={IconPlayerPlay} label="Start — capture arrival" onPress={onStart} />
       ) : null}
-      {stint.state === 'on-site' && canCapture ? (
+      {stintSheet.can('captureDeparture') ? (
         <CaptureButton icon={IconPlayerStop} label="Stop — capture departure" onPress={onStop} />
       ) : null}
       {stint.state === 'left' && canAdd ? <Button title="Re-add machine" onPress={onReadd} /> : null}

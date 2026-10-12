@@ -1,12 +1,14 @@
 import {
-  type AssignmentActionName,
+  assignmentActionJobAction,
+  assignmentActionRefusal,
   assignmentState,
+  assignmentStateAllows,
   type JobActionSubject,
   type JobActor,
   judgeAssignmentAction,
   judgeJobAction,
 } from '@pkg/domain/contracting';
-import type { JobActionBlockedReason, JobActionName } from '@pkg/schema/contracting';
+import type { AssignmentActionName, JobActionBlockedReason, JobActionName } from '@pkg/schema/contracting';
 import { translatingConstraintViolations } from '../../errors/constraint-violations.js';
 
 export type JobErrorCode =
@@ -84,13 +86,27 @@ export function assertJobAction(action: JobActionName, job: JobActionSubject, ac
     throw new JobError(refusalCodes[verdict.reason], verdict.message, { action, reason: verdict.reason });
 }
 
-/** Refuses unless the Machine Assignment's state allows this Assignment Action; the Job Action is asserted first. */
-export function assertAssignmentAction(
+type StintStateRow = { arrivalReadingId: string | null; departureReadingId: string | null };
+
+/** Refuses unless this actor may take this Assignment Action on this stint now: its Job Action first, then its state. */
+export function assertStintAction(
   action: AssignmentActionName,
-  stint: { arrivalReadingId: string | null; departureReadingId: string | null },
+  job: JobActionSubject,
+  stint: StintStateRow,
+  actor: JobActor,
 ) {
-  const verdict = judgeAssignmentAction(action, { state: assignmentState(stint) });
-  if (!verdict.allowed) throw wrongStatus(verdict.message);
+  const jobAction = assignmentActionJobAction[action];
+  const verdict = judgeAssignmentAction(action, judgeJobAction(jobAction, job, actor), {
+    state: assignmentState(stint),
+  });
+  if (verdict.allowed) return;
+  if (verdict.reason === 'wrong-state') throw wrongStatus(verdict.message);
+  throw new JobError(refusalCodes[verdict.reason], verdict.message, { action: jobAction, reason: verdict.reason });
+}
+
+/** The state half alone, for a write whose Job Action is something else (completing a Job removes its planned stints). */
+export function assertAssignmentState(action: AssignmentActionName, stint: StintStateRow) {
+  if (!assignmentStateAllows(action, assignmentState(stint))) throw wrongStatus(assignmentActionRefusal(action));
 }
 
 /** A read-side check: a Foreman reads only the Jobs they are Foreman on. */

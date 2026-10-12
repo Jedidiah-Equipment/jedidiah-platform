@@ -86,7 +86,8 @@ export async function registerContracting(
   const contractingPush = new BackgroundQueue<ContractingPushEvent>({
     run: async (event) => {
       const delivery = await dispatchContractingPush({ db, event, sender: push });
-      log.push.info({ event, ...delivery }, 'Contracting push delivered');
+      if (delivery.failed > 0) log.push.warn({ event, ...delivery }, 'Contracting push partly failed');
+      else log.push.info({ event, ...delivery }, 'Contracting push delivered');
     },
     onError: (error, event) => log.push.error({ error: serializeError(error), event }, 'Contracting push failed'),
     concurrency: 1,

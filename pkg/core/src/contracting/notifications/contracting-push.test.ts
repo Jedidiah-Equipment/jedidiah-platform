@@ -1,4 +1,4 @@
-import { type Db, pushTokens, user } from '@pkg/db';
+import { type Db, pushTokens, session, user } from '@pkg/db';
 import { accessForRole } from '@pkg/domain/testing';
 import type { ContractingRole } from '@pkg/schema';
 import { describe, expect } from 'vitest';
@@ -36,8 +36,19 @@ const test = createTester(async ({ db }) => {
       person('bay-tablet', { contractingRole: 'workshop-manager' }, { isDevice: true }),
       person('quiet', { contractingRole: 'workshop-manager' }),
     ]);
+  await db.insert(session).values(
+    ['wendy', 'mo', 'sam', 'bay-tablet', adminId].map((id) => ({
+      id,
+      userId: id,
+      token: `${id}-session`,
+      expiresAt: new Date(Date.now() + 60 * 60 * 1000),
+      createdAt: now,
+      updatedAt: now,
+    })),
+  );
   const token = (userId: string, name: string) => ({
     userId,
+    sessionId: userId,
     token: `ExponentPushToken[${name}]`,
     platform: 'android' as const,
   });
@@ -106,7 +117,7 @@ describe('Contracting push fan-out', () => {
       },
     });
 
-    expect(delivery).toEqual({ sent: 2, pruned: 0, failed: 0 });
+    expect(delivery).toEqual({ sent: 2, pruned: 0, failed: 0, failures: {} });
     expect(sent[0]).toMatchObject({ title: 'Service due soon · CAT320-1', body: '51.0 h to next service.' });
 
     // A service closed before the queue ran moved the due point on: there is nothing left to say.

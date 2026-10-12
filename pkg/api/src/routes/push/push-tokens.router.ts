@@ -13,7 +13,10 @@ export const pushTokensRouter = router({
   register: protectedProcedure
     .input(PushTokenRegisterInput)
     .mutation(({ ctx, input }) =>
-      mapCoreErrors(() => registerPushToken({ db: ctx.db, userId: ctx.session.user.id, input }), pushErrorFamily),
+      mapCoreErrors(
+        () => registerPushToken({ db: ctx.db, userId: ctx.session.user.id, sessionId: ctx.session.session.id, input }),
+        pushErrorFamily,
+      ),
     ),
   unregister: protectedProcedure
     .input(PushTokenUnregisterInput)

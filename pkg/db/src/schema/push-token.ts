@@ -2,11 +2,12 @@ import { pushPlatforms } from '@pkg/schema';
 import { relations, sql } from 'drizzle-orm';
 import { check, index, pgTable, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
 
-import { user } from './auth.js';
+import { session, user } from './auth.js';
 
 // One row per installed app that may receive pushes, keyed by its Expo token and re-pointed to whoever
-// signed in last on that phone. Business-blind mechanism in `public` (ADR 0016): who is pinged, and why,
-// is each business's own decision.
+// signed in last on that phone. The row lives only as long as the session that registered it, so signing
+// out (or a session ending any other way) stops the pushes without the phone's help. Business-blind
+// mechanism in `public` (ADR 0016): who is pinged, and why, is each business's own decision.
 export const pushTokens = pgTable(
   'push_token',
   {
@@ -14,6 +15,9 @@ export const pushTokens = pgTable(
     userId: text('user_id')
       .notNull()
       .references(() => user.id, { onDelete: 'cascade' }),
+    sessionId: text('session_id')
+      .notNull()
+      .references(() => session.id, { onDelete: 'cascade' }),
     token: text('token').notNull(),
     platform: text('platform', { enum: pushPlatforms }).notNull(),
     createdAt: timestamp('created_at', { mode: 'date', withTimezone: true }).defaultNow().notNull(),
@@ -22,6 +26,7 @@ export const pushTokens = pgTable(
   (table) => [
     uniqueIndex('push_token_token_unique').on(table.token),
     index('push_token_user_idx').on(table.userId),
+    index('push_token_session_idx').on(table.sessionId),
     check('push_token_platform', sql`${table.platform} IN ('ios', 'android')`),
   ],
 );

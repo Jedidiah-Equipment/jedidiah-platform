@@ -1,19 +1,22 @@
-import { type Db, pushTokens, user } from '@pkg/db';
+import { type Db, pushTokens, session, user } from '@pkg/db';
 import { PushTokenRegisterInput } from '@pkg/schema';
-import { and, eq, inArray, sql } from 'drizzle-orm';
+import { and, eq, gt, inArray, sql } from 'drizzle-orm';
 import { PushError } from './push-errors.js';
 
 /**
- * Records that this install may be pinged for `userId`. A token is one phone, so a second user signing in on
- * it takes the row over: pushes follow whoever signed in last. A shared device account never registers.
+ * Records that this install may be pinged for `userId` while `sessionId` lasts. A token is one phone, so a second
+ * user signing in on it takes the row over: pushes follow whoever signed in last, and stop when that session ends.
+ * A shared device account never registers.
  */
 export async function registerPushToken({
   db,
   userId,
+  sessionId,
   input: raw,
 }: {
   db: Db;
   userId: string;
+  sessionId: string;
   input: PushTokenRegisterInput;
 }): Promise<void> {
   const input = PushTokenRegisterInput.parse(raw);
@@ -22,10 +25,10 @@ export async function registerPushToken({
     throw new PushError('push.device_account', 'A shared device account does not receive notifications.');
   await db
     .insert(pushTokens)
-    .values({ userId, token: input.token, platform: input.platform })
+    .values({ userId, sessionId, token: input.token, platform: input.platform })
     .onConflictDoUpdate({
       target: pushTokens.token,
-      set: { userId, platform: input.platform, lastSeenAt: sql`now()` },
+      set: { userId, sessionId, platform: input.platform, lastSeenAt: sql`now()` },
     });
 }
 
@@ -34,6 +37,7 @@ export async function unregisterPushToken({ db, userId, token }: { db: Db; userI
   await db.delete(pushTokens).where(and(eq(pushTokens.token, token), eq(pushTokens.userId, userId)));
 }
 
+/** The installs these users can be pinged on: only those whose registering session has not expired. */
 export async function listPushTokensForUsers({
   db,
   userIds,
@@ -45,6 +49,7 @@ export async function listPushTokensForUsers({
   return db
     .select({ userId: pushTokens.userId, token: pushTokens.token })
     .from(pushTokens)
+    .innerJoin(session, and(eq(session.id, pushTokens.sessionId), gt(session.expiresAt, sql`now()`)))
     .where(inArray(pushTokens.userId, [...userIds]))
     .orderBy(pushTokens.userId, pushTokens.token);
 }

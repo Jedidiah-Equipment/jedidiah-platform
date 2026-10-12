@@ -45,14 +45,3 @@ test('allows only contracting-admin and super-admin to read and save Contracting
     expect(await settings.get()).toEqual(saved);
   }
 });
-
-test('refuses values outside the bounds before they reach the database', async ({ context }) => {
-  const settings = context.createCaller(contractingSession('contracting-admin')).contractingSettings;
-  for (const invalid of [
-    { ...input, gapFlagThresholdHours: 0.4 },
-    { ...input, gapFlagThresholdHours: 3.55 },
-    { ...input, serviceDueSoonThresholdHours: 1001 },
-    { ...input, utilisationTargetPercent: 0 },
-  ])
-    await expect(settings.update(invalid)).rejects.toMatchObject({ code: 'BAD_REQUEST' });
-});

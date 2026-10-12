@@ -5,26 +5,28 @@ export const reportWindowKinds = ['month', 'quarter', 'year'] as const;
 export const ReportWindowKind = z.enum(reportWindowKinds);
 export type ReportWindowKind = z.infer<typeof ReportWindowKind>;
 
-/** One calendar period: `period` is the month 1–12, the quarter 1–4, or absent for a year. */
-export const ReportWindowInput = z
-  .object({ kind: ReportWindowKind, year: z.int().min(2020).max(2100), period: z.int().min(1).max(12).optional() })
-  .strict()
-  .superRefine((value, ctx) => {
-    const max = value.kind === 'month' ? 12 : value.kind === 'quarter' ? 4 : 0;
-    if (max === 0 && value.period !== undefined)
-      ctx.addIssue({ code: 'custom', path: ['period'], message: 'A year window has no period' });
-    if (max > 0 && (value.period === undefined || value.period > max))
-      ctx.addIssue({ code: 'custom', path: ['period'], message: `Choose a period from 1 to ${max}` });
-  });
+/** The first report year; a window before it is refused. */
+const ReportYear = z.int().min(2020).max(2100);
+
+const MonthWindow = z.object({ kind: z.literal('month'), year: ReportYear, period: z.int().min(1).max(12) });
+const QuarterWindow = z.object({ kind: z.literal('quarter'), year: ReportYear, period: z.int().min(1).max(4) });
+const YearWindow = z.object({ kind: z.literal('year'), year: ReportYear });
+
+/** One calendar period: `period` is the month 1–12 or the quarter 1–4; a year has none. */
+export const ReportWindowInput = z.discriminatedUnion('kind', [
+  MonthWindow.strict(),
+  QuarterWindow.strict(),
+  YearWindow.strict(),
+]);
 export type ReportWindowInput = z.infer<typeof ReportWindowInput>;
 
-/** The window as served: inclusive plant-date bounds after the today cap, and its day count. */
-export const ReportWindow = z.object({
-  kind: ReportWindowKind,
-  year: z.int(),
-  period: z.int().nullable(),
-  start: DateOnlyIso,
-  end: DateOnlyIso,
-  days: z.int().nonnegative(),
-});
+/** Inclusive plant-date bounds after the today cap, and the day count. */
+const ResolvedBounds = { start: DateOnlyIso, end: DateOnlyIso, days: z.int().nonnegative() };
+
+/** The window as served: the period it was asked for, with its resolved bounds. */
+export const ReportWindow = z.discriminatedUnion('kind', [
+  MonthWindow.extend(ResolvedBounds),
+  QuarterWindow.extend(ResolvedBounds),
+  YearWindow.extend(ResolvedBounds),
+]);
 export type ReportWindow = z.infer<typeof ReportWindow>;

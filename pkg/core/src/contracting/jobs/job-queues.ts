@@ -20,7 +20,6 @@ import {
   jobQueues,
 } from '@pkg/schema/contracting';
 import { and, asc, eq, not, or, type SQL, type SQLWrapper, sql } from 'drizzle-orm';
-import { getContractingSettings } from '../settings/settings-service.js';
 import { foreman, invoicer, jobHeader } from './job-load.js';
 import { assertReadableStatus, readableBy, readerFor } from './job-readers.js';
 import * as jobSql from './job-sql.js';
@@ -28,13 +27,12 @@ import * as jobSql from './job-sql.js';
 /** Each queue's Job count, and the loudest Machine Assignment attention needing a look across its Jobs. */
 export async function summarizeJobQueues({ db, actor }: { db: Db; actor: JobActor }): Promise<JobQueueSummary> {
   const reader = readerFor(actor);
-  const { gapFlagThresholdHours } = await getContractingSettings({ db });
   const rows = await db
     .select({
       status: contractingJobs.status,
       looksFinished: jobSql.looksFinished,
       count: sql<number>`count(*)::integer`,
-      openGapFlags: sql<number>`sum(${jobSql.openGapFlags(gapFlagThresholdHours)})::integer`,
+      openGapFlags: sql<number>`sum(${jobSql.openGapFlags})::integer`,
       critical: sql<number>`sum(${jobSql.readingsNeedingALookAt('critical')})::integer`,
       warning: sql<number>`sum(${jobSql.readingsNeedingALookAt('warning')})::integer`,
     })
@@ -94,7 +92,6 @@ export async function listJobs({
 }): Promise<JobListResult> {
   const reader = readerFor(actor);
   for (const queue of input.queues) assertReadableStatus(jobQueueStatus[queue], reader);
-  const { gapFlagThresholdHours } = await getContractingSettings({ db });
   const where = and(
     or(...input.queues.map(inQueue)),
     onCalendarDays(contractingJobs.invoicedAt, JOHANNESBURG_TIME_ZONE, {
@@ -120,7 +117,7 @@ export async function listJobs({
         onSiteStints: jobSql.stintCount('on-site'),
         leftStints: jobSql.stintCount('left'),
         looksFinished: jobSql.looksFinished,
-        openGapFlags: jobSql.openGapFlags(gapFlagThresholdHours),
+        openGapFlags: jobSql.openGapFlags,
         total: sql<number>`count(*) over ()`.mapWith(Number),
         readings: {
           critical: jobSql.readingsNeedingALookAt('critical'),

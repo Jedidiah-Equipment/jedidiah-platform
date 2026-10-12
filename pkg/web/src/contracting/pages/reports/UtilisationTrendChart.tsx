@@ -1,4 +1,4 @@
-import { formatDate, formatNumber, formatPercent } from '@pkg/domain';
+import { formatDate, formatNumber, formatPercent, parseDateOnlyParts } from '@pkg/domain';
 import type { UtilisationTrend, UtilisationTrendPoint } from '@pkg/schema/contracting';
 import { Bar, BarChart, CartesianGrid, ReferenceLine, XAxis, YAxis } from 'recharts';
 import { type ChartConfig, ChartContainer, ChartTooltip } from '@/components/ui/chart.js';
@@ -9,14 +9,14 @@ const chartConfig = {
 
 /** `Oct`, with the year on the first bar and every January. */
 const monthTick = (month: string, index: number) =>
-  formatDate(`${month}-01`, index === 0 || month.endsWith('-01') ? 'monthAbbrYear' : 'monthAbbr');
+  formatDate(month, index === 0 || parseDateOnlyParts(month).month === 1 ? 'monthAbbrYear' : 'monthAbbr');
 
 function TrendTooltip({ active, payload }: { active?: boolean; payload?: { payload: UtilisationTrendPoint }[] }) {
   const point = payload?.[0]?.payload;
   if (!active || !point) return null;
   return (
     <div className="grid gap-1 rounded-lg border bg-background px-2.5 py-1.5 text-xs shadow-xl">
-      <span className="font-medium">{formatDate(`${point.month}-01`, 'month')}</span>
+      <span className="font-medium">{formatDate(point.month, 'month')}</span>
       <span>{point.utilisationPercent === null ? 'Not in the fleet' : formatPercent(point.utilisationPercent)}</span>
       <span className="text-muted-foreground">
         {formatNumber(point.activeDays)} active days of {formatNumber(point.fleetDays)}
@@ -35,7 +35,7 @@ export function UtilisationTrendChart({ trend }: { trend: UtilisationTrend }) {
         aria-label={trend.months
           .map(
             (point) =>
-              `${formatDate(`${point.month}-01`, 'month')}: ${
+              `${formatDate(point.month, 'month')}: ${
                 point.utilisationPercent === null ? 'not in the fleet' : formatPercent(point.utilisationPercent)
               }`,
           )

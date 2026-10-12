@@ -3,8 +3,6 @@ import { describe, expect, test } from 'vitest';
 import {
   changeReportWindowKind,
   currentReportWindow,
-  formatReportWindowParam,
-  parseReportWindowParam,
   reportWindowLabel,
   resolveReportWindow,
   shiftReportWindow,
@@ -28,8 +26,9 @@ describe('resolveReportWindow', () => {
       end: '2026-10-12',
       days: 12,
     });
-    expect(resolveReportWindow({ kind: 'year', year: 2026 }, today)).toMatchObject({
-      period: null,
+    expect(resolveReportWindow({ kind: 'year', year: 2026 }, today)).toEqual({
+      kind: 'year',
+      year: 2026,
       start: '2026-01-01',
       end: '2026-10-12',
       days: 285,
@@ -62,25 +61,7 @@ describe('trailingMonthWindows', () => {
   });
 });
 
-describe('report window params', () => {
-  test('round-trips each kind through its URL form', () => {
-    for (const input of [
-      { kind: 'month', year: 2026, period: 10 },
-      { kind: 'quarter', year: 2026, period: 4 },
-      { kind: 'year', year: 2026 },
-    ] as const) {
-      const param = formatReportWindowParam(input);
-      expect(parseReportWindowParam(param, today)).toEqual(input);
-    }
-    expect(formatReportWindowParam({ kind: 'month', year: 2026, period: 3 })).toBe('2026-03');
-    expect(formatReportWindowParam({ kind: 'quarter', year: 2026, period: 4 })).toBe('2026-Q4');
-  });
-
-  test('falls back to the current month on anything it cannot read', () => {
-    for (const param of [undefined, 'nonsense', '2026-13', '2026-Q5', '1999'])
-      expect(parseReportWindowParam(param, today)).toEqual({ kind: 'month', year: 2026, period: 10 });
-  });
-
+describe('report window steps and labels', () => {
   test('steps across year boundaries and labels each kind', () => {
     expect(shiftReportWindow({ kind: 'month', year: 2026, period: 1 }, -1)).toEqual({
       kind: 'month',

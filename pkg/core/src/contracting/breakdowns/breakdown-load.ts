@@ -9,16 +9,27 @@ import {
 } from '@pkg/db/contracting';
 import { type BreakdownActor, breakdownFirstLine, breakdownReadScope, formatJobNumber } from '@pkg/domain/contracting';
 import { type BreakdownSubjectRef, BreakdownSummary } from '@pkg/schema/contracting';
-import { and, eq, getTableColumns, or, sql } from 'drizzle-orm';
+import { and, asc, eq, getTableColumns, or, type SQL, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import type { DbOrTx } from '../jobs/job-load.js';
 import { jobNumberText } from '../jobs/job-sql.js';
 import { BreakdownError } from './breakdown-errors.js';
 
 export const breakdownReporter = alias(user, 'breakdown_reporter');
-export const breakdownMechanic = alias(user, 'breakdown_mechanic');
-const mechanic = breakdownMechanic;
+const breakdownMechanic = alias(user, 'breakdown_mechanic');
 const solver = alias(user, 'breakdown_solver');
+
+/**
+ * Everyone named as primary Mechanic on a Breakdown that matches `where`, by name. A role change never drops them:
+ * the Workshop's Mechanic filter and the Mechanics report both keep a name for anyone still on a Breakdown.
+ */
+export const namedMechanics = (db: DbOrTx, where?: SQL) =>
+  db
+    .selectDistinct({ id: breakdownMechanic.id, name: breakdownMechanic.name })
+    .from(contractingBreakdowns)
+    .innerJoin(breakdownMechanic, eq(breakdownMechanic.id, contractingBreakdowns.primaryMechanicUserId))
+    .where(where)
+    .orderBy(asc(breakdownMechanic.name));
 
 const noteCount = sql<number>`(
   select count(*)::integer
@@ -56,7 +67,7 @@ const breakdownHeader = {
   farmId: contractingFarms.id,
   farmName: contractingFarms.name,
   reporterName: breakdownReporter.name,
-  mechanicName: mechanic.name,
+  mechanicName: breakdownMechanic.name,
   solvedByName: solver.name,
   noteCount,
   firstNoteText,
@@ -70,7 +81,7 @@ export const breakdownSearchColumns = [
   jobNumberText,
   sql`${contractingFarms.name}`,
   sql`${breakdownReporter.name}`,
-  sql`${mechanic.name}`,
+  sql`${breakdownMechanic.name}`,
   sql`${contractingBreakdowns.description}`,
 ];
 
@@ -91,7 +102,7 @@ export function selectBreakdowns(db: DbOrTx) {
     .leftJoin(contractingJobs, eq(contractingJobs.id, contractingBreakdowns.jobId))
     .leftJoin(contractingFarms, eq(contractingFarms.id, contractingJobs.farmId))
     .innerJoin(breakdownReporter, eq(breakdownReporter.id, contractingBreakdowns.reportedByUserId))
-    .leftJoin(mechanic, eq(mechanic.id, contractingBreakdowns.primaryMechanicUserId))
+    .leftJoin(breakdownMechanic, eq(breakdownMechanic.id, contractingBreakdowns.primaryMechanicUserId))
     .leftJoin(solver, eq(solver.id, contractingBreakdowns.solvedByUserId))
     .$dynamic();
 }

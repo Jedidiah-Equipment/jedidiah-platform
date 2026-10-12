@@ -50,15 +50,16 @@ export const stintCount = (state: AssignmentState) => sql<number>`(
     and ${assignmentInState[state](summaryAssignment)}
 )`;
 
-/** Open Gap Flags against the Gap Flag threshold in Settings, read by the caller for the whole query. */
-export const openGapFlags = (threshold: number) => sql<number>`(
+/** Open Gap Flags against the Gap Flag threshold as Settings holds it now: the SQL twin of `deriveStintHours`. */
+export const openGapFlags = sql<number>`(
   select count(*)::integer
   from contracting.machine_assignment summary_assignment
   join contracting.hour_reading summary_arrival
     on summary_arrival.id = summary_assignment.arrival_reading_id
+  cross join contracting.settings
   where summary_assignment.job_id = ${contractingJobs.id}
     and summary_assignment.gap_resolved_at is null
-    and summary_arrival.value - ${previousDepartureValue(sql`summary_assignment.machine_id`, sql`summary_arrival.sequence`)} > ${threshold}
+    and summary_arrival.value - ${previousDepartureValue(sql`summary_assignment.machine_id`, sql`summary_arrival.sequence`)} > contracting.settings.gap_flag_threshold_hours
 )`;
 
 const summaryReading = alias(contractingHourReadings, 'summary_reading');

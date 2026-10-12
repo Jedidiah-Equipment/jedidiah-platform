@@ -7,6 +7,7 @@ import type {
   BreakdownStatusCounts,
   BreakdownSubjectRef,
   BreakdownUrgency,
+  Mechanic,
 } from '@pkg/schema/contracting';
 import { breakdownStatuses, breakdownUrgencies, unsolvedBreakdownStatuses } from '@pkg/schema/contracting';
 import type { ColumnFiltersState } from '@tanstack/react-table';
@@ -88,6 +89,18 @@ export function focusOnMechanic(columnFilters: ColumnFiltersState, mechanicUserI
     { id: MECHANIC_COLUMN_ID, value: [mechanicUserId] },
     { id: STATUS_COLUMN_ID, value: [...breakdownStatuses] },
   ];
+}
+
+/**
+ * Who the Mechanic column filter offers: today's Mechanics plus anyone named on a Breakdown, by name, so a link from
+ * the Reports page to someone whose role changed shows their name rather than an id.
+ */
+export function mechanicFilterPeople(
+  mechanics: readonly Mechanic[] | undefined,
+  named: readonly Mechanic[] | undefined,
+): Mechanic[] {
+  const byId = new Map([...(mechanics ?? []), ...(named ?? [])].map((person) => [person.id, person]));
+  return [...byId.values()].sort((left, right) => left.name.localeCompare(right.name));
 }
 
 /** Picks exactly these statuses; pressing again clears the pick. */

@@ -73,7 +73,6 @@ import {
 } from './breakdown-errors.js';
 import {
   breakdownActionSubject,
-  breakdownMechanic,
   breakdownReadableBy,
   breakdownReporter,
   breakdownSearchColumns,
@@ -81,6 +80,7 @@ import {
   breakdownSubjectRef,
   type LoadedBreakdown,
   loadReadableBreakdown,
+  namedMechanics,
   selectBreakdowns,
   toBreakdownSummary,
 } from './breakdown-load.js';
@@ -413,12 +413,7 @@ export async function listBreakdownFilterOptions({
       .innerJoin(breakdownReporter, eq(breakdownReporter.id, contractingBreakdowns.reportedByUserId))
       .where(readable)
       .orderBy(asc(breakdownReporter.name)),
-    db
-      .selectDistinct({ id: breakdownMechanic.id, name: breakdownMechanic.name })
-      .from(contractingBreakdowns)
-      .innerJoin(breakdownMechanic, eq(breakdownMechanic.id, contractingBreakdowns.primaryMechanicUserId))
-      .where(readable)
-      .orderBy(asc(breakdownMechanic.name)),
+    namedMechanics(db, readable),
   ]);
   return BreakdownFilterOptions.parse({
     subjects,

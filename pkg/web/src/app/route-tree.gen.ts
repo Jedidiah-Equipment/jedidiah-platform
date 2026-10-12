@@ -27,6 +27,7 @@ import { Route as AuthedContractingInvoicingRouteImport } from './../routes/_aut
 import { Route as AuthedContractingJobsRouteImport } from './../routes/_authed.contracting.jobs'
 import { Route as AuthedContractingMeasureTypesRouteImport } from './../routes/_authed.contracting.measure-types'
 import { Route as AuthedContractingRatesRouteImport } from './../routes/_authed.contracting.rates'
+import { Route as AuthedContractingReportsRouteImport } from './../routes/_authed.contracting.reports'
 import { Route as AuthedContractingSettingsRouteImport } from './../routes/_authed.contracting.settings'
 import { Route as AuthedContractingTranscriptionsRouteImport } from './../routes/_authed.contracting.transcriptions'
 import { Route as AuthedContractingUsersRouteImport } from './../routes/_authed.contracting.users'
@@ -60,6 +61,7 @@ import { Route as AuthedContractingJobsCodeRouteImport } from './../routes/_auth
 import { Route as AuthedContractingMeasureTypesIndexRouteImport } from './../routes/_authed.contracting.measure-types.index'
 import { Route as AuthedContractingRatesIndexRouteImport } from './../routes/_authed.contracting.rates.index'
 import { Route as AuthedContractingReadingsExceptionsRouteImport } from './../routes/_authed.contracting.readings.exceptions'
+import { Route as AuthedContractingReportsIndexRouteImport } from './../routes/_authed.contracting.reports.index'
 import { Route as AuthedContractingWorkTypesIndexRouteImport } from './../routes/_authed.contracting.work-types.index'
 import { Route as AuthedContractingWorkshopIndexRouteImport } from './../routes/_authed.contracting.workshop.index'
 import { Route as AuthedContractingWorkshopIdRouteImport } from './../routes/_authed.contracting.workshop.$id'
@@ -199,6 +201,12 @@ const AuthedContractingRatesRoute = AuthedContractingRatesRouteImport.update({
   path: '/rates',
   getParentRoute: () => AuthedContractingRoute,
 } as any)
+const AuthedContractingReportsRoute =
+  AuthedContractingReportsRouteImport.update({
+    id: '/reports',
+    path: '/reports',
+    getParentRoute: () => AuthedContractingRoute,
+  } as any)
 const AuthedContractingSettingsRoute =
   AuthedContractingSettingsRouteImport.update({
     id: '/settings',
@@ -386,6 +394,12 @@ const AuthedContractingReadingsExceptionsRoute =
     id: '/readings/exceptions',
     path: '/readings/exceptions',
     getParentRoute: () => AuthedContractingRoute,
+  } as any)
+const AuthedContractingReportsIndexRoute =
+  AuthedContractingReportsIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AuthedContractingReportsRoute,
   } as any)
 const AuthedContractingWorkTypesIndexRoute =
   AuthedContractingWorkTypesIndexRouteImport.update({
@@ -678,6 +692,7 @@ export interface FileRoutesByFullPath {
   '/contracting/jobs': typeof AuthedContractingJobsRouteWithChildren
   '/contracting/measure-types': typeof AuthedContractingMeasureTypesRouteWithChildren
   '/contracting/rates': typeof AuthedContractingRatesRouteWithChildren
+  '/contracting/reports': typeof AuthedContractingReportsRouteWithChildren
   '/contracting/settings': typeof AuthedContractingSettingsRoute
   '/contracting/transcriptions': typeof AuthedContractingTranscriptionsRoute
   '/contracting/users': typeof AuthedContractingUsersRoute
@@ -725,6 +740,7 @@ export interface FileRoutesByFullPath {
   '/contracting/jobs/': typeof AuthedContractingJobsIndexRoute
   '/contracting/measure-types/': typeof AuthedContractingMeasureTypesIndexRoute
   '/contracting/rates/': typeof AuthedContractingRatesIndexRoute
+  '/contracting/reports/': typeof AuthedContractingReportsIndexRoute
   '/contracting/work-types/': typeof AuthedContractingWorkTypesIndexRoute
   '/contracting/workshop/': typeof AuthedContractingWorkshopIndexRoute
   '/equipment/customers/': typeof AuthedEquipmentCustomersIndexRoute
@@ -800,6 +816,7 @@ export interface FileRoutesByTo {
   '/contracting/jobs': typeof AuthedContractingJobsIndexRoute
   '/contracting/measure-types': typeof AuthedContractingMeasureTypesIndexRoute
   '/contracting/rates': typeof AuthedContractingRatesIndexRoute
+  '/contracting/reports': typeof AuthedContractingReportsIndexRoute
   '/contracting/work-types': typeof AuthedContractingWorkTypesIndexRoute
   '/contracting/workshop': typeof AuthedContractingWorkshopIndexRoute
   '/equipment/customers': typeof AuthedEquipmentCustomersIndexRoute
@@ -853,6 +870,7 @@ export interface FileRoutesById {
   '/_authed/contracting/jobs': typeof AuthedContractingJobsRouteWithChildren
   '/_authed/contracting/measure-types': typeof AuthedContractingMeasureTypesRouteWithChildren
   '/_authed/contracting/rates': typeof AuthedContractingRatesRouteWithChildren
+  '/_authed/contracting/reports': typeof AuthedContractingReportsRouteWithChildren
   '/_authed/contracting/settings': typeof AuthedContractingSettingsRoute
   '/_authed/contracting/transcriptions': typeof AuthedContractingTranscriptionsRoute
   '/_authed/contracting/users': typeof AuthedContractingUsersRoute
@@ -900,6 +918,7 @@ export interface FileRoutesById {
   '/_authed/contracting/jobs/': typeof AuthedContractingJobsIndexRoute
   '/_authed/contracting/measure-types/': typeof AuthedContractingMeasureTypesIndexRoute
   '/_authed/contracting/rates/': typeof AuthedContractingRatesIndexRoute
+  '/_authed/contracting/reports/': typeof AuthedContractingReportsIndexRoute
   '/_authed/contracting/work-types/': typeof AuthedContractingWorkTypesIndexRoute
   '/_authed/contracting/workshop/': typeof AuthedContractingWorkshopIndexRoute
   '/_authed/equipment/customers/': typeof AuthedEquipmentCustomersIndexRoute
@@ -953,6 +972,7 @@ export interface FileRouteTypes {
     | '/contracting/jobs'
     | '/contracting/measure-types'
     | '/contracting/rates'
+    | '/contracting/reports'
     | '/contracting/settings'
     | '/contracting/transcriptions'
     | '/contracting/users'
@@ -1000,6 +1020,7 @@ export interface FileRouteTypes {
     | '/contracting/jobs/'
     | '/contracting/measure-types/'
     | '/contracting/rates/'
+    | '/contracting/reports/'
     | '/contracting/work-types/'
     | '/contracting/workshop/'
     | '/equipment/customers/'
@@ -1075,6 +1096,7 @@ export interface FileRouteTypes {
     | '/contracting/jobs'
     | '/contracting/measure-types'
     | '/contracting/rates'
+    | '/contracting/reports'
     | '/contracting/work-types'
     | '/contracting/workshop'
     | '/equipment/customers'
@@ -1127,6 +1149,7 @@ export interface FileRouteTypes {
     | '/_authed/contracting/jobs'
     | '/_authed/contracting/measure-types'
     | '/_authed/contracting/rates'
+    | '/_authed/contracting/reports'
     | '/_authed/contracting/settings'
     | '/_authed/contracting/transcriptions'
     | '/_authed/contracting/users'
@@ -1174,6 +1197,7 @@ export interface FileRouteTypes {
     | '/_authed/contracting/jobs/'
     | '/_authed/contracting/measure-types/'
     | '/_authed/contracting/rates/'
+    | '/_authed/contracting/reports/'
     | '/_authed/contracting/work-types/'
     | '/_authed/contracting/workshop/'
     | '/_authed/equipment/customers/'
@@ -1346,6 +1370,13 @@ declare module '@tanstack/react-router' {
       path: '/rates'
       fullPath: '/contracting/rates'
       preLoaderRoute: typeof AuthedContractingRatesRouteImport
+      parentRoute: typeof AuthedContractingRoute
+    }
+    '/_authed/contracting/reports': {
+      id: '/_authed/contracting/reports'
+      path: '/reports'
+      fullPath: '/contracting/reports'
+      preLoaderRoute: typeof AuthedContractingReportsRouteImport
       parentRoute: typeof AuthedContractingRoute
     }
     '/_authed/contracting/settings': {
@@ -1578,6 +1609,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/contracting/readings/exceptions'
       preLoaderRoute: typeof AuthedContractingReadingsExceptionsRouteImport
       parentRoute: typeof AuthedContractingRoute
+    }
+    '/_authed/contracting/reports/': {
+      id: '/_authed/contracting/reports/'
+      path: '/'
+      fullPath: '/contracting/reports/'
+      preLoaderRoute: typeof AuthedContractingReportsIndexRouteImport
+      parentRoute: typeof AuthedContractingReportsRoute
     }
     '/_authed/contracting/work-types/': {
       id: '/_authed/contracting/work-types/'
@@ -2042,6 +2080,20 @@ const AuthedContractingRatesRouteWithChildren =
     AuthedContractingRatesRouteChildren,
   )
 
+interface AuthedContractingReportsRouteChildren {
+  AuthedContractingReportsIndexRoute: typeof AuthedContractingReportsIndexRoute
+}
+
+const AuthedContractingReportsRouteChildren: AuthedContractingReportsRouteChildren =
+  {
+    AuthedContractingReportsIndexRoute: AuthedContractingReportsIndexRoute,
+  }
+
+const AuthedContractingReportsRouteWithChildren =
+  AuthedContractingReportsRoute._addFileChildren(
+    AuthedContractingReportsRouteChildren,
+  )
+
 interface AuthedContractingWorkTypesRouteChildren {
   AuthedContractingWorkTypesIndexRoute: typeof AuthedContractingWorkTypesIndexRoute
   AuthedContractingWorkTypesIdEditRoute: typeof AuthedContractingWorkTypesIdEditRoute
@@ -2083,6 +2135,7 @@ interface AuthedContractingRouteChildren {
   AuthedContractingJobsRoute: typeof AuthedContractingJobsRouteWithChildren
   AuthedContractingMeasureTypesRoute: typeof AuthedContractingMeasureTypesRouteWithChildren
   AuthedContractingRatesRoute: typeof AuthedContractingRatesRouteWithChildren
+  AuthedContractingReportsRoute: typeof AuthedContractingReportsRouteWithChildren
   AuthedContractingSettingsRoute: typeof AuthedContractingSettingsRoute
   AuthedContractingTranscriptionsRoute: typeof AuthedContractingTranscriptionsRoute
   AuthedContractingUsersRoute: typeof AuthedContractingUsersRoute
@@ -2101,6 +2154,7 @@ const AuthedContractingRouteChildren: AuthedContractingRouteChildren = {
   AuthedContractingMeasureTypesRoute:
     AuthedContractingMeasureTypesRouteWithChildren,
   AuthedContractingRatesRoute: AuthedContractingRatesRouteWithChildren,
+  AuthedContractingReportsRoute: AuthedContractingReportsRouteWithChildren,
   AuthedContractingSettingsRoute: AuthedContractingSettingsRoute,
   AuthedContractingTranscriptionsRoute: AuthedContractingTranscriptionsRoute,
   AuthedContractingUsersRoute: AuthedContractingUsersRoute,

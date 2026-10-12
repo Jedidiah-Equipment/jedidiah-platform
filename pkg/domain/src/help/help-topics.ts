@@ -40,6 +40,7 @@ export const HELP_TOPICS = {
   contractingAudit: '/contracting/trace-a-change-in-the-audit-log',
   contractingTranscriptions: '/contracting/review-voice-note-transcriptions',
   contractingSettings: '/contracting/maintain-contracting-settings',
+  contractingReports: '/contracting/review-fleet-utilisation',
   bays: '/production/delete-a-bay',
   customerCreate: '/sales/choose-a-customer',
   customerMerge: '/sales/merge-duplicate-customers',

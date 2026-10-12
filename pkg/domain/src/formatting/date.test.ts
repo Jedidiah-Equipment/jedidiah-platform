@@ -77,6 +77,8 @@ describe('formatDate', () => {
     expect(formatDate(instant, 'day')).toBe('3 Jun');
     expect(formatDate(instant, 'time')).toBe('14:05');
     expect(formatDate(instant, 'month')).toBe('June 2026');
+    expect(formatDate(instant, 'monthAbbr')).toBe('Jun');
+    expect(formatDate(instant, 'monthAbbrYear')).toBe('Jun 2026');
   });
 });
 

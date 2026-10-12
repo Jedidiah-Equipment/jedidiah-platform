@@ -8,11 +8,13 @@ import {
   isJobError,
   isRateCardError,
   isReadingError,
+  isReportError,
   isServiceError,
   isTranscriptionError,
   type JobError,
   type RateCardError,
   type ReadingError,
+  type ReportError,
   type ServiceError,
   type TranscriptionError,
 } from '@pkg/core/contracting';
@@ -141,4 +143,9 @@ export const serviceErrorFamily = defineCoreErrorFamily<ServiceError>({
     'service.retired_machine': 'CONFLICT',
   },
   is: isServiceError,
+});
+
+export const reportErrorFamily = defineCoreErrorFamily<ReportError>({
+  codes: { 'report.not_found': 'NOT_FOUND' },
+  is: isReportError,
 });

@@ -1,9 +1,9 @@
 import { formatCurrency } from '@pkg/domain';
 import { useQuery } from '@tanstack/react-query';
 import type React from 'react';
+import { DashboardWidgetError } from '@/components/common/dashboard/DashboardWidgetCard.js';
 import { StatCard, StatCardSkeleton } from '@/components/common/StatCard.js';
 import { useTRPC } from '@/lib/trpc.js';
-import { DashboardWidgetError } from '../DashboardWidgetCard.js';
 
 export const OpenPipelineWidget: React.FC = () => {
   const trpc = useTRPC();

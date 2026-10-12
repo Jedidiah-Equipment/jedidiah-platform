@@ -1,7 +1,15 @@
 import { openJobQueues } from '@pkg/domain/contracting';
 import { jobQueues } from '@pkg/schema/contracting';
 import { describe, expect, it } from 'vitest';
-import { isPickedStages, listedStages, quickFilterStages, toggleStages } from './job-stage-filter.js';
+import {
+  focusOnNeedsALook,
+  focusOnStage,
+  isPickedStages,
+  jobListFilters,
+  listedStages,
+  quickFilterStages,
+  toggleStages,
+} from './job-stage-filter.js';
 
 const stage = (value: unknown) => [{ id: 'stage', value }];
 
@@ -51,5 +59,30 @@ describe('toggleStages', () => {
     expect(every).toEqual(stage([...jobQueues]));
     expect(isPickedStages(every, jobQueues)).toBe(true);
     expect(isPickedStages(stage(['active']), jobQueues)).toBe(false);
+  });
+});
+
+describe('the Dashboard hand-offs', () => {
+  const saved = [
+    { id: 'stage', value: ['upcoming', 'active'] },
+    { id: 'attention', value: 'needs-a-look' },
+    { id: 'foreman', value: ['sipho'] },
+  ];
+
+  it('focuses on one stage, dropping the attention pick and keeping the other filters', () => {
+    expect(focusOnStage(saved, 'looks-finished')).toEqual([
+      { id: 'foreman', value: ['sipho'] },
+      { id: 'stage', value: ['looks-finished'] },
+    ]);
+    expect(jobListFilters(focusOnStage(saved, 'looks-finished'))).toEqual({ queues: ['looks-finished'] });
+  });
+
+  it('focuses on the Jobs needing a look across every open stage', () => {
+    const focused = focusOnNeedsALook(saved);
+    expect(focused).toEqual([
+      { id: 'foreman', value: ['sipho'] },
+      { id: 'attention', value: 'needs-a-look' },
+    ]);
+    expect(jobListFilters(focused)).toEqual({ queues: [...openJobQueues], needsALook: true });
   });
 });

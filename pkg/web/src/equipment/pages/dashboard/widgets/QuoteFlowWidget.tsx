@@ -3,7 +3,7 @@ import type { QuoteWeeklyFlowSummary } from '@pkg/schema/equipment';
 import { useQuery } from '@tanstack/react-query';
 import type React from 'react';
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from 'recharts';
-
+import { DashboardWidgetEmpty, DashboardWidgetError } from '@/components/common/dashboard/DashboardWidgetCard.js';
 import {
   type ChartConfig,
   ChartContainer,
@@ -14,8 +14,6 @@ import {
 } from '@/components/ui/chart.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
 import { useTRPC } from '@/lib/trpc.js';
-
-import { DashboardWidgetEmpty, DashboardWidgetError } from '../DashboardWidgetCard.js';
 
 const QUOTE_FLOW_CHART_CONFIG = {
   acceptedCount: {

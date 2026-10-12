@@ -1,4 +1,4 @@
-import type { DashboardWidget } from './dashboard-widget-types.js';
+import type { DashboardWidget } from '@/components/common/dashboard/dashboard-widget-types.js';
 import { ActiveJobsWidget } from './widgets/ActiveJobsWidget.js';
 import { AwaitingJobCreationWidget } from './widgets/AwaitingJobCreationWidget.js';
 import { BayLoadTodayWidget } from './widgets/BayLoadTodayWidget.js';

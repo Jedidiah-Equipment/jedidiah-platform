@@ -2,6 +2,7 @@
 
 Help with fleet records and hour readings in Jedidiah Contracting. The Jobs and Machines screens on the phone need a connection; without one, [keep a Field Note](./keep-a-field-note).
 
+- [Start from the Dashboard](./start-from-the-dashboard.md)
 - [Work a Job](./work-a-job.md)
 - [Find a Machine](./find-a-machine.md)
 - [Read Machine hours](./read-machine-hours.md)

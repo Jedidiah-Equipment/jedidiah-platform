@@ -1,6 +1,6 @@
 import type { JobQueueCounts } from '@pkg/schema/contracting';
 import { describe, expect, it } from 'vitest';
-import { invoicedRange, listedInvoicingStages } from './types.js';
+import { focusOnInvoicingStage, invoicedRange, listedInvoicingStages } from './types.js';
 
 const stage = (value: unknown) => [{ id: 'stage', value }];
 const counts = (awaiting: number): JobQueueCounts => ({
@@ -54,5 +54,16 @@ describe('invoicedRange', () => {
   it('ignores a malformed value', () => {
     expect(invoicedRange(filter({ start: '01/09/2026' }))).toEqual({});
     expect(invoicedRange(filter(['2026-09-01']))).toEqual({});
+  });
+});
+
+describe('focusOnInvoicingStage', () => {
+  it('lists only that stage, clearing the invoiced range that would hide Jobs not yet invoiced', () => {
+    const focused = focusOnInvoicingStage(
+      [...stage(['invoiced']), { id: 'invoicedAt', value: { start: '2026-09-01', end: '2026-09-30' } }],
+      'awaiting-invoice',
+    );
+    expect(listedInvoicingStages(focused, counts(0))).toEqual(['awaiting-invoice']);
+    expect(invoicedRange(focused)).toEqual({});
   });
 });

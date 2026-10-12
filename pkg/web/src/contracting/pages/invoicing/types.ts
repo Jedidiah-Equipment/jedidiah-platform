@@ -1,7 +1,7 @@
 import type { JobListInput, JobQueue, JobQueueCounts } from '@pkg/schema/contracting';
 import type { ColumnFiltersState } from '@tanstack/react-table';
 import { readDateOnlyRangeFilter } from '@/components/data-table/column-filter-values.js';
-import { pickedStages } from '../jobs/job-stage-filter.js';
+import { focusOnStage, pickedStages } from '../jobs/job-stage-filter.js';
 
 export const INVOICED_COLUMN_ID = 'invoicedAt' as const;
 
@@ -25,3 +25,12 @@ export function listedInvoicingStages(columnFilters: ColumnFiltersState, counts:
 /** The Invoiced column's date-range filter, as the South African calendar days the list narrows to. */
 export const invoicedRange = (columnFilters: ColumnFiltersState): Pick<JobListInput, 'invoicedFrom' | 'invoicedTo'> =>
   readDateOnlyRangeFilter(columnFilters, INVOICED_COLUMN_ID, ['invoicedFrom', 'invoicedTo']);
+
+export type InvoicingStage = (typeof invoicingStages)[number];
+
+/** The Dashboard opens Invoicing on one stage this way; the invoiced range goes too, or it would hide the waiting Jobs. */
+export const focusOnInvoicingStage = (columnFilters: ColumnFiltersState, stage: InvoicingStage) =>
+  focusOnStage(
+    columnFilters.filter((filter) => filter.id !== INVOICED_COLUMN_ID),
+    stage,
+  );

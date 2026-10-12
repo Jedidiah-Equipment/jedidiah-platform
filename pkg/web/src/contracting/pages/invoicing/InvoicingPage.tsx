@@ -4,7 +4,7 @@ import { type JobListInput, type JobQueueCounts, type JobSummary, jobQueues } fr
 import { keepPreviousData, useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import type { ColumnFiltersState } from '@tanstack/react-table';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { cursorInfiniteQueryOptions, useCombinedCursorQueryPages } from '@/components/data-table/cursor-query.js';
 import { DataTable } from '@/components/data-table/DataTable.js';
 import { type DataTableColumnDef, useDataTable } from '@/components/data-table/features.js';
@@ -21,7 +21,14 @@ import { JobStageQuickFilters } from '../jobs/JobStageQuickFilters.js';
 import { JobQueueBadge } from '../jobs/JobStatusBadge.js';
 import { STAGE_COLUMN_ID } from '../jobs/job-stage-filter.js';
 import { type StampableJob, StampInvoiceDialog } from './StampInvoiceDialog.js';
-import { INVOICED_COLUMN_ID, invoicedRange, invoicingStages, listedInvoicingStages } from './types.js';
+import {
+  focusOnInvoicingStage,
+  INVOICED_COLUMN_ID,
+  type InvoicingStage,
+  invoicedRange,
+  invoicingStages,
+  listedInvoicingStages,
+} from './types.js';
 
 /** Awaiting invoice is Invoicing's only quick filter; Invoiced stays in the Stage column filter. */
 const awaitingStages = ['awaiting-invoice'] as const;
@@ -40,7 +47,14 @@ const invoicingSortOptions: SortOptions<JobListInput> = {
 
 const stageFilterOptions = invoicingStages.map((queue) => ({ value: queue, label: jobQueueLabels[queue] }));
 
-export function InvoicingPage() {
+export function InvoicingPage({
+  stage,
+  onStageApplied,
+}: {
+  /** The stage the Dashboard opens the list on, once; the persisted filters own it from then on. */
+  stage?: InvoicingStage | undefined;
+  onStageApplied?: () => void;
+} = {}) {
   const trpc = useTRPC();
   const navigate = useNavigate();
   const canStamp = useCan('contracting_invoice:update').can;
@@ -61,6 +75,12 @@ export function InvoicingPage() {
     sortOptions: invoicingSortOptions,
     getListInputExtras,
   });
+  const { setColumnFilters } = tableController;
+  useEffect(() => {
+    if (!stage) return;
+    setColumnFilters((current) => focusOnInvoicingStage(current, stage));
+    onStageApplied?.();
+  }, [onStageApplied, setColumnFilters, stage]);
   const jobsQuery = useInfiniteQuery(
     trpc.contractingJobs.jobs.list.infiniteQueryOptions(tableController.listInput, {
       ...cursorInfiniteQueryOptions,

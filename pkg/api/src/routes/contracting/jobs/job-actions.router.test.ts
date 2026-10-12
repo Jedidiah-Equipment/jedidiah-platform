@@ -281,7 +281,7 @@ describe('Job Actions served on the Job agree with what the server does', () => 
   });
 });
 
-const moneyFields = ['diesel', 'discount', 'pricedTotal', 'pricing'] as const;
+const moneyFields = ['diesel', 'discount', 'pricedTotal', 'reopenedAt', 'repricingNote', 'pricing'] as const;
 
 describe('money reaches only the readers the server sends it to', () => {
   test.for(cases)('%s on a %s Job', async ([role, status], { context }) => {

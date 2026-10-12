@@ -4,7 +4,7 @@ function trpcErrorCode(error: unknown): unknown {
   return data && typeof data === 'object' && 'code' in data ? data.code : undefined;
 }
 
-/** A tRPC error the server answered with NOT_FOUND: the record is gone, or this person may not open it. */
+/** A tRPC error the server answered with NOT_FOUND: the record is gone. */
 export function isNotFoundError(error: unknown): boolean {
   return trpcErrorCode(error) === 'NOT_FOUND';
 }

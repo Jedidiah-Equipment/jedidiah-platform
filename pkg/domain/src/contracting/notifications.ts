@@ -32,8 +32,8 @@ const pushRecipientRoles = new Set<ContractingRole>(
   ),
 );
 
-/** Role membership is the opt-in: only someone a workshop push can reach is asked for notifications. */
-export const shouldRegisterForPush = (access: UserAccessSummary | null | undefined) =>
+/** Role membership is the opt-in: someone a workshop push can reach, and so the only one asked for notifications. */
+export const isPushRecipient = (access: UserAccessSummary | null | undefined) =>
   !!access &&
   (access.equipmentRole === 'super-admin' ||
     (access.contractingRole !== null && pushRecipientRoles.has(access.contractingRole)));
@@ -64,7 +64,7 @@ export function breakdownPushMessage(breakdown: {
   reporterName: string;
 }): ContractingPushContent {
   const where = [breakdown.farmName, breakdown.jobNumber].filter((part) => part !== null).join(', ');
-  const what = breakdown.firstLine.replace(/[.!?\s]+$/, '');
+  const what = breakdown.firstLine.replace(/[.!?…\s]+$/, '');
   return {
     title: `${breakdownUrgencyLabels[breakdown.urgency]} · ${breakdown.subjectCode}`,
     body: `${what}${where ? ` at ${where}` : ''}. Reported by ${breakdown.reporterName}.`,

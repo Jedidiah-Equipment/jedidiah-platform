@@ -1,12 +1,12 @@
 # Get workshop alerts
 
-The phone app alerts the workshop when a Breakdown is reported and when a Machine comes up for a service, so nobody has to watch the queue.
+The phone app sends the workshop a push notification when a Breakdown is reported and when a Machine becomes Service Due Soon, so nobody has to watch the queue.
 
 Who gets which alert:
 
 - **Code Green** Breakdown: the workshop manager.
 - **Code Red** Breakdown: the workshop manager, the contracting managers and admins, and super-admins.
-- **Service due soon**: the workshop manager, once, at the reading that first brings a Machine within its service window. Recording the next service moves the due point on, and the alert comes again at the next one.
+- **Service Due Soon**: the workshop manager, once, at the reading that first brings a Machine within reach of its Next Service Due. Closing a Service Record moves Next Service Due on, and the alert comes again when the Machine nears it.
 
 Whoever reported a Breakdown never gets their own alert. Foremen get no alerts.
 

@@ -1,14 +1,14 @@
 import { APP_ROLES } from '@pkg/schema';
 import { describe, expect, test } from 'vitest';
 import { accessForRole } from '../testing/index.js';
-import { breakdownPushMessage, serviceDueSoonPushMessage, shouldRegisterForPush } from './notifications.js';
+import { breakdownPushMessage, isPushRecipient, serviceDueSoonPushMessage } from './notifications.js';
 
-describe('shouldRegisterForPush', () => {
-  test('asks only the roles a workshop push can reach', () => {
-    const asked = APP_ROLES.filter((role) => shouldRegisterForPush(accessForRole(role, 'u')));
+describe('isPushRecipient', () => {
+  test('names only the roles a workshop push can reach', () => {
+    const asked = APP_ROLES.filter((role) => isPushRecipient(accessForRole(role, 'u')));
 
     expect(asked.sort()).toEqual(['contracting-admin', 'contracting-manager', 'super-admin', 'workshop-manager']);
-    expect(shouldRegisterForPush(null)).toBe(false);
+    expect(isPushRecipient(null)).toBe(false);
   });
 });
 

@@ -13,16 +13,19 @@ export type PushRegistrationOutcome = 'registered' | 'denied' | 'unsupported';
 export type PushChannel = { id: string; name: string };
 
 /**
- * Registers this install for pushes once the OS allows them. The OS prompt is shown at most once per user; after
- * that the phone's settings are the only way back, so a denial is never nagged about.
+ * Registers this install for whoever signed in, once the OS allows pushes, so the server re-points it from the last
+ * user. Only a user who `mayAsk` (a push recipient) is shown the OS prompt, and at most once; after that the phone's
+ * settings are the only way back, so a denial is never nagged about.
  */
 export async function registerForPush({
   userId,
   channel,
+  mayAsk,
   register,
 }: {
   userId: string;
   channel: PushChannel;
+  mayAsk: boolean;
   register: (input: PushTokenRegisterInput) => Promise<unknown>;
 }): Promise<PushRegistrationOutcome> {
   if (!Device.isDevice) return 'unsupported';
@@ -34,7 +37,7 @@ export async function registerForPush({
       vibrationPattern: [0, 250, 250, 250],
     });
   let { status } = await Notifications.getPermissionsAsync();
-  if (status !== 'granted' && !(await hasAskedBefore(userId))) {
+  if (status !== 'granted' && mayAsk && !(await hasAskedBefore(userId))) {
     await markAsked(userId);
     ({ status } = await Notifications.requestPermissionsAsync());
   }
@@ -46,16 +49,25 @@ export async function registerForPush({
   return 'registered';
 }
 
-/** Forgets this install on the server before sign-out. Best effort: a failure never blocks signing out. */
+const UNREGISTER_TIMEOUT_MS = 5_000;
+
+/** Forgets this install on the server before sign-out. Best effort: a failure or a slow network never blocks it. */
 export async function unregisterPush(unregister: (input: PushTokenUnregisterInput) => Promise<unknown>) {
   const token = await readRegisteredToken();
   if (!token) return;
+  let timer: ReturnType<typeof setTimeout> | undefined;
   try {
-    await unregister({ token });
+    await Promise.race([
+      unregister({ token }),
+      new Promise((_, reject) => {
+        timer = setTimeout(() => reject(new Error('Push unregister timed out')), UNREGISTER_TIMEOUT_MS);
+      }),
+    ]);
     captureEvent('push token unregistered');
   } catch {
     addBreadcrumb('lifecycle', 'push token unregister failed');
   } finally {
+    clearTimeout(timer);
     await rememberRegisteredToken(null);
   }
 }

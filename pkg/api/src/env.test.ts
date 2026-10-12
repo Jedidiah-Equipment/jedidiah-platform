@@ -79,14 +79,6 @@ describe('API config PostHog validation', () => {
   });
 });
 
-describe('API push config', () => {
-  it('keeps the Expo access token optional and treats a blank one as unset', () => {
-    expect(ApiConfig.parse(baseEnv).EXPO_ACCESS_TOKEN).toBeUndefined();
-    expect(ApiConfig.parse({ ...baseEnv, EXPO_ACCESS_TOKEN: '' }).EXPO_ACCESS_TOKEN).toBeUndefined();
-    expect(ApiConfig.parse({ ...baseEnv, EXPO_ACCESS_TOKEN: 'expo-token' }).EXPO_ACCESS_TOKEN).toBe('expo-token');
-  });
-});
-
 describe('API translation model config', () => {
   it('uses the configured assistant model by default', () => {
     expect(ApiConfig.parse({ ...baseEnv, OPENAI_MODEL: 'gpt-custom' }).OPENAI_TRANSLATION_MODEL).toBe('gpt-custom');

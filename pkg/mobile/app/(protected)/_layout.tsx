@@ -1,5 +1,5 @@
 import { isStoredUserSignInEligible } from '@pkg/domain';
-import { shouldRegisterForPush, WORKSHOP_PUSH_CHANNEL_ID } from '@pkg/domain/contracting';
+import { isPushRecipient, WORKSHOP_PUSH_CHANNEL_ID } from '@pkg/domain/contracting';
 import { useMutation } from '@tanstack/react-query';
 import { type ErrorBoundaryProps, Redirect, Stack } from 'expo-router';
 import { useEffect, useState } from 'react';
@@ -111,18 +111,20 @@ function SessionObservability({ userId }: { userId: string }) {
   return null;
 }
 
-/** Role membership is the opt-in: only a workshop push recipient is asked, once, and registered when allowed. */
+/**
+ * Every sign-in claims this install, so a phone stops pinging whoever used it before. Role membership is the opt-in:
+ * only a workshop push recipient is asked for notifications, and the server pings no one else.
+ */
 function PushRegistration({ userId }: { userId: string }) {
-  const eligible = shouldRegisterForPush(useSessionAccessSummary());
+  const mayAsk = isPushRecipient(useSessionAccessSummary());
   const trpc = useTRPC();
   const { mutateAsync: register } = useMutation(trpc.pushTokens.register.mutationOptions());
 
   useEffect(() => {
-    if (!eligible) return;
-    registerForPush({ userId, channel: { id: WORKSHOP_PUSH_CHANNEL_ID, name: 'Workshop' }, register })
+    registerForPush({ userId, channel: { id: WORKSHOP_PUSH_CHANNEL_ID, name: 'Workshop' }, mayAsk, register })
       .then((outcome) => addBreadcrumb('lifecycle', 'push registration', { outcome }))
       .catch(() => addBreadcrumb('lifecycle', 'push registration failed'));
-  }, [eligible, userId, register]);
+  }, [mayAsk, userId, register]);
 
   return null;
 }

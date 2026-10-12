@@ -7,6 +7,7 @@ import {
   type ContractingPushEvent,
   type ContractingPushRecipients,
   hoursToService,
+  SERVICE_DUE_SOON_THRESHOLD_HOURS,
   serviceDueSoonPushMessage,
   serviceDueSoonPushRecipients,
 } from '@pkg/domain/contracting';
@@ -17,6 +18,7 @@ import { selectBreakdowns, toBreakdownSummary } from '../breakdowns/breakdown-lo
 
 /** The people holding a recipient role, never a shared device or a banned account, and never the actor. */
 async function recipientUserIds(db: Db, recipients: ContractingPushRecipients, excludeUserId: string | null) {
+  if (recipients.contractingRoles.length === 0 && !recipients.superAdmin) return [];
   const rows = await db
     .select({ id: user.id })
     .from(user)
@@ -85,7 +87,8 @@ export async function buildContractingPush({
     latestReadingHours: latest?.value ?? null,
     nextServiceDueHours: machine.nextServiceDueHours,
   });
-  if (remaining === null) return [];
+  // Queued work runs after commit: a service closed in between leaves nothing to say.
+  if (remaining === null || remaining > SERVICE_DUE_SOON_THRESHOLD_HOURS) return [];
   // Nobody is excluded: the capturer is usually a Foreman, and a workshop manager who captured it still wants it.
   return addressed(
     db,

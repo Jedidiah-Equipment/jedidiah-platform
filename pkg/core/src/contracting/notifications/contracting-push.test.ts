@@ -108,5 +108,11 @@ describe('Contracting push fan-out', () => {
 
     expect(delivery).toEqual({ sent: 2, pruned: 0, failed: 0 });
     expect(sent[0]).toMatchObject({ title: 'Service due soon · CAT320-1', body: '51.0 h to next service.' });
+
+    // A service closed before the queue ran moved the due point on: there is nothing left to say.
+    await patchMachine({ db, actorUserId: adminId, input: { id: excavator.id, nextServiceDueHours: 2000 } });
+    expect(
+      await buildContractingPush({ db, event: { kind: 'machine.service-due-soon', machineId: excavator.id } }),
+    ).toEqual([]);
   });
 });

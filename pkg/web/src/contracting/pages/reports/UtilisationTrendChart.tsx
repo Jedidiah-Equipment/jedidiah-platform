@@ -7,12 +7,9 @@ const chartConfig = {
   utilisationPercent: { label: 'Utilisation', color: 'var(--chart-1)' },
 } satisfies ChartConfig;
 
-/** `Oct`, with the year on the first bar and every January: the month name always comes from `formatDate`. */
-function monthTick(month: string, index: number): string {
-  const name = formatDate(`${month}-01`, 'month');
-  const short = name.slice(0, 3);
-  return index === 0 || month.endsWith('-01') ? `${short} ${month.slice(0, 4)}` : short;
-}
+/** `Oct`, with the year on the first bar and every January. */
+const monthTick = (month: string, index: number) =>
+  formatDate(`${month}-01`, index === 0 || month.endsWith('-01') ? 'monthAbbrYear' : 'monthAbbr');
 
 function TrendTooltip({ active, payload }: { active?: boolean; payload?: { payload: UtilisationTrendPoint }[] }) {
   const point = payload?.[0]?.payload;

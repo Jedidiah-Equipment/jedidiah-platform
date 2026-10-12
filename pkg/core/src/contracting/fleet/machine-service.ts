@@ -1,6 +1,6 @@
 import { createEscapedContainsSearchCondition, type DatabaseTransaction, type Db, user } from '@pkg/db';
 import { contractingMachines, contractingServiceRecords } from '@pkg/db/contracting';
-import { fieldJobAccessMode, formatJobNumber, hoursToService, serviceDueStatus } from '@pkg/domain/contracting';
+import { fieldReaderSeesJob, formatJobNumber, hoursToService, serviceDueStatus } from '@pkg/domain/contracting';
 import type { AuthId, ContractingRole, UserAccessSummary } from '@pkg/schema';
 import {
   FieldMachine,
@@ -14,6 +14,7 @@ import {
 import { and, asc, eq, isNull, sql } from 'drizzle-orm';
 import { defineAuditDescriptor, recordAuditCreate } from '../../audit/audit-writer.js';
 import { mutateEntity } from '../../audit/mutate-entity.js';
+import { stintOnSite } from '../jobs/job-sql.js';
 import { assertCategoryKind } from './category-service.js';
 import {
   type CategoryRelation,
@@ -45,6 +46,14 @@ type BusyOnJobRow = {
   workTypeName: string;
   foremanUserId: string | null;
   arrivedAt: string;
+};
+/**
+ * The busy subquery's stint, named as its raw SQL joins it: a relational query re-roots Drizzle column references
+ * in `extras` onto its own table, so the on-site predicate gets the alias's columns as plain SQL.
+ */
+const busyStint = {
+  arrivalReadingId: sql`stint.arrival_reading_id`,
+  departureReadingId: sql`stint.departure_reading_id`,
 };
 /** The Machine's newest Hour Reading of any role, so a spot reading moves Service Due Soon as much as a stint does. */
 const latestReading = (machine: typeof contractingMachines._.columns) => ({
@@ -79,8 +88,7 @@ const latestReading = (machine: typeof contractingMachines._.columns) => ({
     join contracting.work_type work_type on work_type.id = job.work_type_id
     join contracting.hour_reading arrival on arrival.id = stint.arrival_reading_id
     where stint.machine_id = ${machine.id}
-      and stint.arrival_reading_id is not null
-      and stint.departure_reading_id is null
+      and ${stintOnSite(busyStint)}
     order by arrival.captured_at desc
     limit 1
   )`.as('busy_on_job'),
@@ -303,11 +311,10 @@ export async function assertDriverAccountChangeAllowed({
  */
 export async function listFieldMachines({ db, actor }: { db: Db; actor: UserAccessSummary }) {
   const machines = await listMachines({ db, input: { status: 'active', search: '' } });
-  const mode = fieldJobAccessMode(actor);
   return machines.map(({ busyOnJob, ...machine }) =>
     FieldMachine.parse({
       ...machine,
-      busyOnJob: busyOnJob && (mode === 'all' || busyOnJob.foremanUserId === actor.userId) ? busyOnJob : null,
+      busyOnJob: busyOnJob && fieldReaderSeesJob(actor, busyOnJob) ? busyOnJob : null,
       onSiteJobNumber: busyOnJob?.jobNumber ?? null,
     }),
   );

@@ -1,6 +1,7 @@
 import { breakdownStatusLabels, breakdownSubjectKindLabels, breakdownUrgencyLabels } from '@pkg/domain/contracting';
 import { UUID } from '@pkg/schema';
 import {
+  type BreakdownDefaultJob,
   BreakdownDescription,
   type BreakdownSubjectKind,
   breakdownSubjectKinds,
@@ -33,43 +34,56 @@ const emptyValues: ReportValues = { subjectKind: 'machine', subjectId: '', urgen
 
 type Subject = FieldMachine | FieldImplement;
 
-/** Where the server will file the report: the Job the subject is on site on, if any. */
-function attachHint(subject: Subject | undefined) {
-  if (!subject) return null;
-  const job = 'busyOnJob' in subject ? subject.busyOnJob : null;
-  if (job) return `Attaches to ${job.customerName} · ${job.farmName} (${job.jobNumber}), where it is on site.`;
-  if (subject.onSiteJobNumber) return `Attaches to ${subject.onSiteJobNumber}, where it is on site.`;
-  return 'Not on site on a Job, so it is filed without one.';
+/** Where the server will file the report when it names no Job, as the reader may see that Job. */
+function attachHint(defaultJob: BreakdownDefaultJob | null) {
+  if (!defaultJob) return 'Not on site on a Job, so it is filed without one.';
+  const { job, jobNumber } = defaultJob;
+  return job
+    ? `Attaches to ${job.customerName} · ${job.farmName} (${jobNumber}), where it is on site.`
+    : `Attaches to ${jobNumber}, where it is on site.`;
 }
 
-/** The subject's open Breakdowns, so a problem already in the Workshop is not reported twice. */
-function AlreadyReported({ kind, id }: { kind: BreakdownSubjectKind; id: string }) {
+/**
+ * What the server serves about the chosen subject before the report: where it files, and its open Breakdowns, so a
+ * problem already in the Workshop is not reported twice.
+ */
+function ReportContext({ kind, id }: { kind: BreakdownSubjectKind; id: string }) {
   const trpc = useTRPC();
-  const open = useQuery(trpc.contractingBreakdowns.field.openOnSubject.queryOptions({ kind, id }, { enabled: !!id }));
-  if (!open.data?.length) return null;
+  const context = useQuery(
+    trpc.contractingBreakdowns.field.reportContext.queryOptions({ kind, id }, { enabled: !!id }),
+  );
+  if (!context.data) return null;
+  const { defaultJob, open } = context.data;
   return (
-    <Field>
-      <FieldLabel>Already reported</FieldLabel>
-      <FieldDescription>
-        If the problem is listed here, open it and add a note instead of reporting it again.
-      </FieldDescription>
-      <ul className="grid gap-2">
-        {open.data.map((breakdown) => (
-          <li key={breakdown.id}>
-            <Link
-              className="flex items-center gap-2 rounded-lg border p-2 text-sm hover:bg-muted/50"
-              params={{ id: breakdown.id }}
-              target="_blank"
-              to="/contracting/workshop/$id"
-            >
-              <BreakdownUrgencyIcon size={14} urgency={breakdown.urgency} />
-              <span className="min-w-0 flex-1 truncate">{breakdown.firstLine}</span>
-              <span className="shrink-0 text-xs text-muted-foreground">{breakdownStatusLabels[breakdown.status]}</span>
-            </Link>
-          </li>
-        ))}
-      </ul>
-    </Field>
+    <>
+      <FieldDescription>{attachHint(defaultJob)}</FieldDescription>
+      {open.length ? (
+        <Field>
+          <FieldLabel>Already reported</FieldLabel>
+          <FieldDescription>
+            If the problem is listed here, open it and add a note instead of reporting it again.
+          </FieldDescription>
+          <ul className="grid gap-2">
+            {open.map((breakdown) => (
+              <li key={breakdown.id}>
+                <Link
+                  className="flex items-center gap-2 rounded-lg border p-2 text-sm hover:bg-muted/50"
+                  params={{ id: breakdown.id }}
+                  target="_blank"
+                  to="/contracting/workshop/$id"
+                >
+                  <BreakdownUrgencyIcon size={14} urgency={breakdown.urgency} />
+                  <span className="min-w-0 flex-1 truncate">{breakdown.firstLine}</span>
+                  <span className="shrink-0 text-xs text-muted-foreground">
+                    {breakdownStatusLabels[breakdown.status]}
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </Field>
+      ) : null}
+    </>
   );
 }
 
@@ -154,15 +168,7 @@ export function ReportProblemDialog({ open, onOpenChange }: { open: boolean; onO
                         placeholder={`Choose the ${breakdownSubjectKindLabels[kind]}`}
                       />
                       <form.Subscribe selector={(state) => state.values.subjectId}>
-                        {(id) => {
-                          const hint = attachHint(subjectsOf(kind).find((subject) => subject.id === id));
-                          return (
-                            <>
-                              {hint ? <FieldDescription>{hint}</FieldDescription> : null}
-                              <AlreadyReported id={id} kind={kind} />
-                            </>
-                          );
-                        }}
+                        {(id) => (id ? <ReportContext id={id} kind={kind} /> : null)}
                       </form.Subscribe>
                     </>
                   )}

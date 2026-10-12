@@ -42,7 +42,7 @@ import { useColorMode } from '@/theme/use-color-mode';
 import { deriveReport } from './breakdown-form';
 import { type BreakdownReportRequest, REPORT_FAILED, reportBreakdown } from './breakdown-upload';
 import { currentPosition } from './location';
-import { useBreakdownUpload, useOpenOnSubject } from './use-breakdowns';
+import { useBreakdownUpload, useReportContext } from './use-breakdowns';
 
 type Photo = PickedPhoto & { id: string };
 const PICK_FAILED = 'The photo could not be added. Try again.';
@@ -100,7 +100,7 @@ export default function ReportBreakdownScreen() {
   const [galleryHint, setGalleryHint] = useState(false);
   const [position, setPosition] = useState<{ latitude: number; longitude: number } | null>(null);
   const { busy, error, setError, run } = useBusyAction();
-  const existing = useOpenOnSubject(subject);
+  const context = useReportContext(subject);
   // One identifier per subject, so a retry after a lost answer replays rather than reporting twice.
   const localId = useRef(newLocalId());
   const subjectKey = subject ? `${subject.kind}:${subject.id}` : '';
@@ -269,18 +269,18 @@ export default function ReportBreakdownScreen() {
           />
         </FieldShell>
       )}
-      {subject ? (
+      {subject && (jobId || context.data) ? (
         <Text className="text-sm text-muted-foreground">
           {jobId
             ? 'Reported on this Job.'
-            : subjectRow?.onSiteJobNumber
-              ? `Attaches to ${subjectRow.onSiteJobNumber}, where it is on site.`
+            : context.data?.defaultJob
+              ? `Attaches to ${context.data.defaultJob.jobNumber}, where it is on site.`
               : 'Not on site on a Job.'}
         </Text>
       ) : null}
-      {existing.data?.length ? (
+      {context.data?.open.length ? (
         <FieldShell label="Already reported">
-          {existing.data.map((row) => (
+          {context.data.open.map((row) => (
             <Pressable
               key={row.id}
               accessibilityRole="button"

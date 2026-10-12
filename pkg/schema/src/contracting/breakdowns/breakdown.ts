@@ -4,6 +4,7 @@ import { DateIso, DateOnlyIso } from '../../common/date.js';
 import { createCursorQueryResult, createSearchedSortedCursorQueryInput } from '../../common/pagination.js';
 import { UUID } from '../../common/uuid.js';
 import { CategoryColour, CategoryIconKey } from '../fleet/fleet.js';
+import { JobNumber } from '../jobs/job.js';
 import { BreakdownActions } from './breakdown-actions.js';
 import {
   breakdownStatuses,
@@ -214,6 +215,22 @@ export const BreakdownFilterOptions = z.object({
 export type BreakdownFilterOptions = z.infer<typeof BreakdownFilterOptions>;
 export const Mechanic = z.object({ id: AuthId, name: z.string() });
 export type Mechanic = z.infer<typeof Mechanic>;
+/** Where a report of this subject files when it names no Job, as the reader may see that Job. */
+export const BreakdownDefaultJob = z.object({
+  jobNumber: JobNumber,
+  /** Null when the reader may not open that Job: the Job Number alone. */
+  job: z.object({ id: UUID, customerName: z.string(), farmName: z.string(), workTypeName: z.string() }).nullable(),
+});
+export type BreakdownDefaultJob = z.infer<typeof BreakdownDefaultJob>;
+
+/** What a report screen shows before the person types: where the report files, and what is already open. */
+export const BreakdownReportContext = z.object({
+  defaultJob: BreakdownDefaultJob.nullable(),
+  /** Unsolved Breakdowns already reported on the subject. */
+  open: z.array(BreakdownSummary),
+});
+export type BreakdownReportContext = z.infer<typeof BreakdownReportContext>;
+
 /** An open Job a Breakdown's subject is planned or on site on: what its Job may be changed to. */
 export const BreakdownJobOption = z.object({ id: UUID, jobNumber: z.string(), farmName: z.string() });
 export type BreakdownJobOption = z.infer<typeof BreakdownJobOption>;

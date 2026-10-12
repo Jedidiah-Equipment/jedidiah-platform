@@ -101,13 +101,13 @@ function useRefetchBreakdowns() {
   return () => queryClient.invalidateQueries({ queryKey: trpc.contractingBreakdowns.pathKey() });
 }
 
-/** Unsolved Breakdowns already reported on the chosen subject: the report screen's duplicate check. */
-export function useOpenOnSubject(subject: BreakdownSubjectRef | null) {
+/** Where a report of the chosen subject files when it names no Job, and what is already open on it. */
+export function useReportContext(subject: BreakdownSubjectRef | null) {
   const canReport = useSessionPermission('contracting_breakdown:report');
   const trpc = useTRPC();
   return fieldQuery(
     canReport && subject !== null,
-    useQuery(trpc.contractingBreakdowns.field.openOnSubject.queryOptions(canReport && subject ? subject : skipToken)),
+    useQuery(trpc.contractingBreakdowns.field.reportContext.queryOptions(canReport && subject ? subject : skipToken)),
   );
 }
 

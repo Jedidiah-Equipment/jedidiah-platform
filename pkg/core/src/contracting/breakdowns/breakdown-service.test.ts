@@ -5,8 +5,7 @@ import { and, asc, eq } from 'drizzle-orm';
 import { expect } from 'vitest';
 import { InMemoryStorageAdapter } from '../../storage/in-memory-storage-adapter.js';
 import { createTester } from '../../test/create-tester.js';
-import { createCategory } from '../fleet/category-service.js';
-import { createImplement } from '../fleet/implement-service.js';
+import { onSiteAssignment } from '../fleet/on-site-assignment.js';
 import { createJob } from '../jobs/job-service.js';
 import { captureReading } from '../readings/reading-service.js';
 import { admin, foreman, foremanId, plannedStint, seedJobFixtures } from '../test/job-fixtures.js';
@@ -92,14 +91,17 @@ const report = (subject: { kind: 'machine' | 'implement'; id: string }, extra: R
   ...extra,
 });
 
-test('defaults the Job from the on-site stint, and none for a Machine in the yard', async ({ context }) => {
+test('files an omitted Job on the subject’s on-site Assignment, and none in the yard', async ({ context }) => {
   const { db, excavator, tipper, jobId } = context;
   await arrive(db, jobId, excavator.id);
-  const onSite = await reportNew({ db, actor: foreman, input: report({ kind: 'machine', id: excavator.id }) });
-  const inYard = await reportNew({ db, actor: foreman, input: report({ kind: 'machine', id: tipper.id }) });
-  expect(onSite).toMatchObject({ jobId, jobNumber: expect.stringMatching(/^CJOB-/), farmName: 'Rooikraal' });
-  expect(onSite.firstLine).toBe('Hydraulic hose burst');
-  expect(inYard.jobId).toBeNull();
+  const onSite = { kind: 'machine', id: excavator.id } as const;
+  const inYard = { kind: 'machine', id: tipper.id } as const;
+  const filed = await reportNew({ db, actor: foreman, input: report(onSite) });
+  expect(filed.jobId).toBe((await onSiteAssignment({ db, subject: onSite }))?.jobId);
+  expect(filed).toMatchObject({ jobId, jobNumber: expect.stringMatching(/^CJOB-/), farmName: 'Rooikraal' });
+  expect(filed.firstLine).toBe('Hydraulic hose burst');
+  expect(await onSiteAssignment({ db, subject: inYard })).toBeNull();
+  expect((await reportNew({ db, actor: foreman, input: report(inYard) })).jobId).toBeNull();
 });
 
 test('offers only the open Jobs the subject is on, and a Foreman only his own', async ({ context }) => {
@@ -114,23 +116,6 @@ test('offers only the open Jobs the subject is on, and a Foreman only his own', 
   expect(await listBreakdownJobOptions({ db, actor: workshop, subject: { kind: 'machine', id: tipper.id } })).toEqual(
     [],
   );
-});
-
-test('an Implement reaches its Job through the stint it is attached to', async ({ context }) => {
-  const { db, excavator, jobId } = context;
-  const category = await createCategory({
-    db,
-    actorUserId: admin.userId,
-    input: { name: 'Rippers', kind: 'implement' },
-  });
-  const ripper = await createImplement({
-    db,
-    actorUserId: admin.userId,
-    input: { code: 'RIP-1', categoryId: category.id, notes: null },
-  });
-  await arrive(db, jobId, excavator.id, ripper.id);
-  const breakdown = await reportNew({ db, actor: foreman, input: report({ kind: 'implement', id: ripper.id }) });
-  expect(breakdown).toMatchObject({ jobId, subject: { kind: 'implement', code: 'RIP-1', categoryName: 'Rippers' } });
 });
 
 test('a Foreman reads only his own Breakdowns and another Foreman finds nothing', async ({ context }) => {

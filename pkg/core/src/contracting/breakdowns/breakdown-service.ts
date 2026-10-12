@@ -25,6 +25,7 @@ import {
   breakdownReadScope,
   breakdownSubjectKindLabels,
   deriveBreakdownActions,
+  fieldReaderSeesJob,
   formatJobNumber,
 } from '@pkg/domain/contracting';
 import { type AuthId, type ContractingRole, getNextCursor } from '@pkg/schema';
@@ -42,21 +43,22 @@ import {
   BreakdownPatchInput,
   BreakdownPhotoRemoveInput,
   BreakdownQueueSummary,
+  BreakdownReportContext,
   BreakdownReportInput,
   BreakdownSolveInput,
   type BreakdownStatus,
   type BreakdownSubjectRef,
-  type BreakdownSummary,
   breakdownStatuses,
   openJobStatuses,
   unsolvedBreakdownStatuses,
 } from '@pkg/schema/contracting';
-import { and, asc, desc, eq, inArray, isNotNull, isNull, ne, or, type SQL, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, ne, or, type SQL, sql } from 'drizzle-orm';
 import { recordAuditCreate } from '../../audit/audit-writer.js';
 import { mutateEntity } from '../../audit/mutate-entity.js';
 import { FilePolicyViolationError } from '../../files/file-errors.js';
 import type { StorageAdapter } from '../../storage/storage-adapter.js';
-import type { DbOrTx } from '../jobs/job-load.js';
+import { onSiteAssignment, stintSubjectColumn } from '../fleet/on-site-assignment.js';
+import { type DbOrTx, selectJobs } from '../jobs/job-load.js';
 import { assertContractingMechanic } from '../mechanics.js';
 import { breakdownDescriptor } from './breakdown-audit.js';
 import {
@@ -149,8 +151,6 @@ async function withStoredPhotos<T>(
   }
 }
 
-const stintSubjectColumn = (kind: BreakdownSubjectRef['kind']) =>
-  kind === 'machine' ? contractingMachineAssignments.machineId : contractingMachineAssignments.implementId;
 const breakdownSubjectColumn = (kind: BreakdownSubjectRef['kind']) =>
   kind === 'machine' ? contractingBreakdowns.machineId : contractingBreakdowns.implementId;
 
@@ -181,21 +181,8 @@ async function resolveJob(
   jobId: string | null | undefined,
 ): Promise<string | null> {
   if (jobId === null) return null;
+  if (jobId === undefined) return (await onSiteAssignment({ db: tx, subject }))?.jobId ?? null;
   const onSubject = eq(stintSubjectColumn(subject.kind), subject.id);
-  if (jobId === undefined) {
-    const [stint] = await tx
-      .select({ jobId: contractingMachineAssignments.jobId })
-      .from(contractingMachineAssignments)
-      .where(
-        and(
-          onSubject,
-          isNotNull(contractingMachineAssignments.arrivalReadingId),
-          isNull(contractingMachineAssignments.departureReadingId),
-        ),
-      )
-      .limit(1);
-    return stint?.jobId ?? null;
-  }
   const invalidJob = (message: string) => new BreakdownError('breakdown.invalid_job', message);
   const [job] = await tx
     .select({ status: contractingJobs.status, foremanUserId: contractingJobs.foremanUserId })
@@ -745,18 +732,48 @@ export async function listBreakdownJobOptions({
   );
 }
 
-/** Unsolved Breakdowns on one Machine or Implement: the report screen's duplicate check, open to every reporter. */
-export async function listOpenBreakdownsOnSubject({
+/**
+ * What a report screen shows before the person types, open to every reporter: the Job the report files on when it
+ * names none (with that Job's names only for a reader who may open it), and the subject's unsolved Breakdowns.
+ */
+export async function getBreakdownReportContext({
   db,
+  actor,
   subject,
 }: {
   db: Db;
+  actor: BreakdownActor;
   subject: BreakdownSubjectRef;
-}): Promise<BreakdownSummary[]> {
-  const rows = await selectBreakdowns(db)
-    .where(and(eq(breakdownSubjectColumn(subject.kind), subject.id), unsolved))
-    .orderBy(desc(contractingBreakdowns.reportedAt));
-  return rows.map(toBreakdownSummary);
+}): Promise<BreakdownReportContext> {
+  const [onSite, open] = await Promise.all([
+    onSiteAssignment({ db, subject }),
+    selectBreakdowns(db)
+      .where(and(eq(breakdownSubjectColumn(subject.kind), subject.id), unsolved))
+      .orderBy(desc(contractingBreakdowns.reportedAt)),
+  ]);
+  /**
+   * The Job's names for a reader who may see them, judged on the same row the names come from, so a Foreman
+   * reassigned since the on-site read is neither shown stale names nor refused fresh ones.
+   */
+  const visibleJobNames = async (jobId: string) => {
+    const [header] = await selectJobs(db).where(eq(contractingJobs.id, jobId));
+    if (!header || !fieldReaderSeesJob(actor, header.job)) return null;
+    return {
+      id: jobId,
+      customerName: header.customerName,
+      farmName: header.farmName,
+      workTypeName: header.workTypeName,
+    };
+  };
+  return BreakdownReportContext.parse({
+    defaultJob: onSite
+      ? {
+          jobNumber: formatJobNumber(onSite.jobCode),
+          job: await visibleJobNames(onSite.jobId),
+        }
+      : null,
+    open: open.map(toBreakdownSummary),
+  });
 }
 
 /** Refuses a role or device change that would strand a Mechanic's unsolved Breakdowns. */

@@ -240,7 +240,7 @@ or from a Voice Note), time. Contracting's own mechanism — never the Equipment
 
 **Mechanic** is a non-login user record, like Driver: mechanics take instructions and never sign
 in. Exactly one primary Mechanic is assigned per Breakdown by the workshop manager, possibly
-himself; a second body on site is never recorded. Mechanic performance — report-to-Fixed time —
+himself; a second body on site is never recorded. Mechanic performance — report-to-Solved time —
 is derived, never stored.
 
 **Service Record** is the light digital counterpart of the paper service book, which stays the
@@ -331,6 +331,7 @@ management sets in Settings; empty draws no line. **Hour totals by kind** are a 
 in a window as **Work** (inside a stint), **Travel** and **Unaccounted** (its Hour Gaps, as resolved
 or, under the threshold, all travel) and **Unresolved**, derived from consecutive readings — spot
 readings included — and spread across months by elapsed time; hours before a Machine's first arrival
-and in a gap no arrival has closed count nowhere. Mechanic performance — Fixed count, average
-report-to-Fixed time, Not fixed count — is derived from Breakdowns and never stored. Reporting is
+and in a gap no arrival has closed count nowhere. Mechanic performance — Solved count, average
+report-to-Solved time in days, Not solved count — is derived from Breakdowns over the window (Not solved
+ignores it) and never stored; **Solved** counts the `solved` status the Workshop shows as Fixed. Reporting is
 readable by every role that reads all Jobs; Foremen and invoicing never see it.

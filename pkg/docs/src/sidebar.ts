@@ -35,6 +35,7 @@ export const CONTRACTING_SECTIONS: DocsSection[] = [
       { text: 'Record a service', link: '/contracting/record-a-service' },
       { text: 'Resolve Reading Exceptions', link: '/contracting/resolve-reading-exceptions' },
       { text: 'Review fleet utilisation', link: '/contracting/review-fleet-utilisation' },
+      { text: 'Review mechanic performance', link: '/contracting/review-mechanic-performance' },
       { text: 'Maintain Customers and Farms', link: '/contracting/maintain-customers-and-farms' },
       { text: 'Maintain Work Types', link: '/contracting/maintain-work-types' },
       { text: 'Maintain the Rate Card', link: '/contracting/maintain-the-rate-card' },

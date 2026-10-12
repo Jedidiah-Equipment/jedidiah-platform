@@ -16,7 +16,8 @@ import { jobNumberText } from '../jobs/job-sql.js';
 import { BreakdownError } from './breakdown-errors.js';
 
 export const breakdownReporter = alias(user, 'breakdown_reporter');
-const mechanic = alias(user, 'breakdown_mechanic');
+export const breakdownMechanic = alias(user, 'breakdown_mechanic');
+const mechanic = breakdownMechanic;
 const solver = alias(user, 'breakdown_solver');
 
 const noteCount = sql<number>`(

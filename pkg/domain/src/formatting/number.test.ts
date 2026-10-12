@@ -4,6 +4,7 @@ import {
   formatClock,
   formatCoordinates,
   formatCurrency,
+  formatDays,
   formatHours,
   formatNumber,
   formatPercent,
@@ -80,6 +81,14 @@ describe('formatClock', () => {
     expect(formatClock(7.9)).toBe('0:07');
     expect(formatClock(120)).toBe('2:00');
     expect(formatClock(-1)).toBe('0:00');
+  });
+});
+
+describe('formatDays', () => {
+  it('formats a turnaround to one decimal with a days suffix', () => {
+    expect(formatDays(0.8)).toBe('0.8 days');
+    expect(formatDays(12)).toBe('12.0 days');
+    expect(formatDays(NaN)).toBe('');
   });
 });
 

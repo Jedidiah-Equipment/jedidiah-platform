@@ -24,7 +24,9 @@ function contractingSession(role: ContractingRole) {
 
 const window = { kind: 'month', year: 2026, period: 6 } as const;
 
-test('lets every role that reads all Jobs read the Utilisation report, and nobody else', async ({ context }) => {
+test('lets every role that reads all Jobs read the Utilisation and Mechanics reports, and nobody else', async ({
+  context,
+}) => {
   for (const session of [
     mockSession('admin'),
     ...(['foreman', 'contracting-invoicing', 'driver', 'mechanic'] as const).map(contractingSession),
@@ -34,6 +36,7 @@ test('lets every role that reads all Jobs read the Utilisation report, and nobod
     await expect(reports.utilisationTrend({ window, subject: { kind: 'fleet' } })).rejects.toMatchObject({
       code: 'FORBIDDEN',
     });
+    await expect(reports.mechanicPerformance(window)).rejects.toMatchObject({ code: 'FORBIDDEN' });
   }
   for (const session of [
     ...(['contracting-admin', 'contracting-manager', 'workshop-manager'] as const).map(contractingSession),
@@ -42,6 +45,10 @@ test('lets every role that reads all Jobs read the Utilisation report, and nobod
     const reports = context.createCaller(session).contractingReports;
     expect((await reports.utilisation(window)).window).toMatchObject({ start: '2026-06-01', end: '2026-06-30' });
     expect((await reports.utilisationTrend({ window, subject: { kind: 'fleet' } })).months).toHaveLength(12);
+    expect((await reports.mechanicPerformance(window)).rows.at(-1)).toMatchObject({
+      mechanicUserId: null,
+      name: 'Unassigned',
+    });
   }
   await expect(
     context.createCaller(contractingSession('contracting-manager')).contractingReports.utilisationTrend({

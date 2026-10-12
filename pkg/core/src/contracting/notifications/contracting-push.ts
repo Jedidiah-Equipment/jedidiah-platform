@@ -13,7 +13,7 @@ import {
 import { and, eq, inArray, ne, sql } from 'drizzle-orm';
 import { deliverPush, type PushDelivery, type PushMessage, type PushSender } from '../../push/push-sender.js';
 import { listPushTokensForUsers } from '../../push/push-token-service.js';
-import { contractingBusinessRole } from '../../users/business-role.js';
+import { businessRoleSql } from '../../users/business-role.js';
 import { selectBreakdowns, toBreakdownSummary } from '../breakdowns/breakdown-load.js';
 import { getMachine } from '../fleet/machine-service.js';
 
@@ -26,7 +26,7 @@ async function recipientUserIds(db: Db, roles: readonly ContractingPushRole[], e
       and(
         eq(user.isDevice, false),
         sql`${user.banned} is not true`,
-        inArray(contractingBusinessRole(), [...roles]),
+        inArray(businessRoleSql('contracting'), [...roles]),
         excludeUserId === null ? undefined : ne(user.id, excludeUserId),
       ),
     );

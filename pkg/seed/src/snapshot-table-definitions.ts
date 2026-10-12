@@ -1,6 +1,6 @@
 import { contractingJobCodeSequence } from '@pkg/db/contracting';
 import { jobCodeSequence, quoteCodeSequence } from '@pkg/db/equipment';
-import { computeDieselAmount } from '@pkg/domain/contracting';
+import { CONTRACTING_SETTINGS_DEFAULTS, computeDieselAmount } from '@pkg/domain/contracting';
 import { LEGACY_QUOTE_CANCELLATION_REASON } from '@pkg/schema/equipment';
 import type { PgSequence, PgTable } from 'drizzle-orm/pg-core';
 
@@ -389,14 +389,7 @@ export const snapshotTableDefinitions = [
     timestampColumns: standardTimestampColumns,
     optionalReadTable: true,
     // The migration seeds this row; a re-seed must put it back, or every threshold read breaks.
-    emptySnapshotRows: [
-      {
-        id: 'contracting',
-        gapFlagThresholdHours: 4,
-        serviceDueSoonThresholdHours: 100,
-        utilisationTargetPercent: null,
-      },
-    ],
+    emptySnapshotRows: [{ id: 'contracting', ...CONTRACTING_SETTINGS_DEFAULTS }],
   },
   {
     fileName: 'contracting_work_type.json',

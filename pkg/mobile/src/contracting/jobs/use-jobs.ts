@@ -71,7 +71,13 @@ export function useJob(jobId: string) {
   const query = useQuery(trpc.contractingJobs.jobs.get.queryOptions({ id: jobId }, { enabled: canRead && !!jobId }));
   // Gone once it has left this person's view: finished for a Foreman, reassigned, or deleted. The server says which.
   const gone = isForbiddenError(query.error) || isNotFoundError(query.error);
-  return { ...fieldQuery(canRead, query), gone, goneReason: gone ? trpcErrorMessage(query.error) : undefined };
+  // A refetch that is refused keeps the last good data in the cache; the screen must stop using it.
+  return {
+    ...fieldQuery(canRead && !gone, query),
+    canRead,
+    gone,
+    goneReason: gone ? trpcErrorMessage(query.error) : undefined,
+  };
 }
 
 export function useImplements() {

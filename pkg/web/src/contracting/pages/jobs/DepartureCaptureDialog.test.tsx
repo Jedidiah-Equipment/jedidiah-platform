@@ -10,8 +10,10 @@ import { DepartureCaptureDialog } from './DepartureCaptureDialog.js';
 const capture = vi.hoisted(() => vi.fn(async (..._args: unknown[]) => undefined));
 vi.mock('./capture-reading.js', () => ({ captureReading: capture }));
 const latestId = '00000000-0000-4000-8000-000000000009';
+const refetchLatest = vi.hoisted(() => vi.fn(async () => undefined));
 vi.mock('./use-latest-reading.js', () => ({
   useLatestReading: () => ({
+    refetch: refetchLatest,
     isSuccess: true,
     isPending: false,
     error: null,
@@ -59,6 +61,7 @@ afterEach(async () => {
   });
   document.body.replaceChildren();
   capture.mockClear();
+  refetchLatest.mockClear();
   vi.restoreAllMocks();
 });
 
@@ -139,6 +142,8 @@ it('shows a refused capture inside the dialog and stays open', async () => {
   );
   expect(alert).toBeDefined();
   expect(onClose).not.toHaveBeenCalled();
+  // The ledger may have moved: the dialog judges the retry against a fresh latest.
+  expect(refetchLatest).toHaveBeenCalledOnce();
 });
 
 it('offers the dispute for a departure below the latest reading and posts the handshake', async () => {

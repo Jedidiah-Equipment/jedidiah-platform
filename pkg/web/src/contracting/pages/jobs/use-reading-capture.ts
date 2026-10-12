@@ -78,6 +78,8 @@ export function useReadingCapture(role: keyof typeof copy, stint: Assignment | n
         await Promise.all([invalidateJobs(), invalidateReadings()]);
       } catch (cause) {
         setError(cause instanceof Error ? cause.message : copy[role].failed);
+        // The ledger may have moved under the dialog: a newer latest re-judges the value and drops a stale dispute.
+        void latestQuery.refetch();
         throw cause;
       }
       toast.success(copy[role].done);

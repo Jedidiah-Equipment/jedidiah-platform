@@ -90,6 +90,10 @@ export function focusOnMechanic(columnFilters: ColumnFiltersState, mechanicUserI
   ];
 }
 
+/** The Dashboard opens the Workshop on the Breakdowns not yet Fixed this way; every other filter is kept. */
+export const focusOnUnsolved = (columnFilters: ColumnFiltersState): ColumnFiltersState =>
+  columnFilters.filter((filter) => filter.id !== STATUS_COLUMN_ID);
+
 /** Picks exactly these statuses; pressing again clears the pick. */
 export const toggleStatuses = (columnFilters: ColumnFiltersState, statuses: readonly BreakdownStatus[]) =>
   togglePick(columnFilters, STATUS_COLUMN_ID, statuses);

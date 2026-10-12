@@ -7,15 +7,15 @@ import { requireRoutePermission } from '@/lib/route-auth.js';
 
 export const Route = createFileRoute('/_authed/contracting/workshop/')({
   beforeLoad: ({ context }) => requireRoutePermission(context, 'contracting_breakdown:read'),
-  /** `mechanic` arrives from the Reports page once; the page applies it to the saved filters and clears it. */
-  validateSearch: z.object({ mechanic: AuthId.optional() }),
+  /** `mechanic` (Reports) and `unsolved` (Dashboard) arrive once; the page applies them to the saved filters and clears them. */
+  validateSearch: z.object({ mechanic: AuthId.optional(), unsolved: z.boolean().optional() }),
   component: WorkshopRoute,
   staticData: { pageLabel: 'Workshop' },
 });
 
 function WorkshopRoute() {
-  const { mechanic } = Route.useSearch();
+  const { mechanic, unsolved } = Route.useSearch();
   const navigate = Route.useNavigate();
-  const clearMechanic = useCallback(() => void navigate({ search: {}, replace: true }), [navigate]);
-  return <WorkshopPage mechanic={mechanic} onMechanicApplied={clearMechanic} />;
+  const clearFocus = useCallback(() => void navigate({ search: {}, replace: true }), [navigate]);
+  return <WorkshopPage mechanic={mechanic} unsolved={unsolved} onFocusApplied={clearFocus} />;
 }

@@ -1,8 +1,8 @@
-import { formatDate } from '@pkg/domain';
 import { countPhrase, orderUnsolvedBreakdowns, UNASSIGNED_MECHANIC_LABEL } from '@pkg/domain/contracting';
 import type { BreakdownSummary } from '@pkg/schema/contracting';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
+import { DateDisplay } from '@/components/common/DateDisplay.js';
 import { PrimaryLink } from '@/components/common/PrimaryLink.js';
 import { BreakdownStatusBadge, BreakdownSubjectLabel } from '@/contracting/components/BreakdownSubjectLabel.js';
 import { DASHBOARD_REFETCH_INTERVAL_MS } from '@/contracting/pages/dashboard/dashboard-refresh.js';
@@ -23,7 +23,11 @@ export function WorkshopWidget() {
       error={query.error}
       errorMessage="Unable to load Breakdowns."
       count={(total) => countPhrase(total, 'Breakdown not yet Fixed', 'Breakdowns not yet Fixed')}
-      viewAll={<PrimaryLink to="/contracting/workshop">View all</PrimaryLink>}
+      viewAll={
+        <PrimaryLink to="/contracting/workshop" search={{ unsolved: true }}>
+          View all
+        </PrimaryLink>
+      }
       empty="Every Breakdown is Fixed."
       rowKey={(breakdown) => breakdown.id}
       renderRow={(breakdown) => <OpenBreakdownRow breakdown={breakdown} />}
@@ -47,7 +51,7 @@ function OpenBreakdownRow({ breakdown }: { breakdown: BreakdownSummary }) {
           }
         />
         <span className="mt-1 block truncate text-muted-foreground text-xs">
-          Reported {formatDate(breakdown.reportedAt, 'duration')} by {breakdown.reporterName}
+          Reported <DateDisplay date={breakdown.reportedAt} format="duration" /> by {breakdown.reporterName}
           {breakdown.jobNumber ? ` · ${breakdown.jobNumber}` : ''}
         </span>
       </span>

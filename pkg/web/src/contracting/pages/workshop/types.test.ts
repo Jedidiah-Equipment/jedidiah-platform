@@ -2,6 +2,7 @@ import { breakdownStatuses } from '@pkg/schema/contracting';
 import { describe, expect, it } from 'vitest';
 import {
   focusOnMechanic,
+  focusOnUnsolved,
   isPickedStatuses,
   listedStatuses,
   quickFilterStatuses,
@@ -81,5 +82,15 @@ describe('reportPatchInput', () => {
       urgency: 'code-green',
     });
     expect(reportPatchInput('b', saved, { ...saved, jobId: '' })).toEqual({ id: 'b', jobId: null });
+  });
+});
+
+describe('focusOnUnsolved', () => {
+  it('drops a saved status pick so the Breakdowns not yet Fixed list, and keeps the other filters', () => {
+    const focused = focusOnUnsolved([
+      { id: 'status', value: ['solved'] },
+      { id: 'urgency', value: ['code-red'] },
+    ]);
+    expect(workshopListFilters(focused)).toMatchObject({ statuses: ['open', 'in-progress'], urgencies: ['code-red'] });
   });
 });

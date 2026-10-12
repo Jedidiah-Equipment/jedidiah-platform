@@ -19,7 +19,7 @@ import { getApiQueryErrorMessage } from '@/lib/api-errors.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { BreakdownStatusQuickFilters } from './BreakdownStatusQuickFilters.js';
 import { ReportProblemDialog } from './ReportProblemDialog.js';
-import { focusOnMechanic, workshopListFilters } from './types.js';
+import { focusOnMechanic, focusOnUnsolved, workshopListFilters } from './types.js';
 import { useWorkshopColumns } from './workshop-columns.js';
 
 const useWorkshopTableStore = createPersistedDataTableStore({
@@ -34,11 +34,14 @@ const breakdownSortOptions: SortOptions<BreakdownListInput> = {
 
 export function WorkshopPage({
   mechanic,
-  onMechanicApplied,
+  unsolved,
+  onFocusApplied,
 }: {
   /** One Mechanic's work, every status, opened from the Reports page; the persisted filters own it from then on. */
   mechanic?: string | undefined;
-  onMechanicApplied?: () => void;
+  /** The Breakdowns not yet Fixed, opened from the Dashboard; the persisted filters own it from then on. */
+  unsolved?: boolean | undefined;
+  onFocusApplied?: () => void;
 } = {}) {
   const trpc = useTRPC();
   const navigate = useNavigate();
@@ -54,10 +57,11 @@ export function WorkshopPage({
   });
   const { setColumnFilters } = tableController;
   useEffect(() => {
-    if (!mechanic) return;
-    setColumnFilters((current) => focusOnMechanic(current, mechanic));
-    onMechanicApplied?.();
-  }, [mechanic, onMechanicApplied, setColumnFilters]);
+    if (mechanic) setColumnFilters((current) => focusOnMechanic(current, mechanic));
+    else if (unsolved) setColumnFilters(focusOnUnsolved);
+    else return;
+    onFocusApplied?.();
+  }, [mechanic, onFocusApplied, setColumnFilters, unsolved]);
   const breakdownsQuery = useInfiniteQuery(
     trpc.contractingBreakdowns.list.infiniteQueryOptions(tableController.listInput, {
       ...cursorInfiniteQueryOptions,

@@ -6,6 +6,7 @@ import {
   type ContractingPushContent,
   type ContractingPushEvent,
   type ContractingPushRole,
+  serviceDueNeedsAttention,
   serviceDueSoonPushMessage,
   serviceDueSoonPushRecipients,
 } from '@pkg/domain/contracting';
@@ -15,7 +16,6 @@ import { listPushTokensForUsers } from '../../push/push-token-service.js';
 import { businessRoleSql } from '../../users/business-role.js';
 import { selectBreakdowns, toBreakdownSummary } from '../breakdowns/breakdown-load.js';
 import { getMachine } from '../fleet/machine-service.js';
-import { getContractingSettings } from '../settings/settings-service.js';
 
 /** The people holding a recipient role, never a shared device or a banned account, and never the actor. */
 async function recipientUserIds(db: Db, roles: readonly ContractingPushRole[], excludeUserId: string | null) {
@@ -65,8 +65,8 @@ export async function buildContractingPush({
   }
   const machine = await getMachine({ db, id: event.machineId });
   // Queued work runs after commit: a service closed in between, or a raised threshold, leaves nothing to say.
-  const { serviceDueSoonThresholdHours } = await getContractingSettings({ db });
-  if (machine.hoursToService === null || machine.hoursToService > serviceDueSoonThresholdHours) return [];
+  // The Machine read already judged its status against the Service Due Soon threshold in Settings.
+  if (machine.hoursToService === null || !serviceDueNeedsAttention(machine.serviceDueStatus)) return [];
   // Nobody is excluded: the capturer is usually a Foreman, and a workshop manager who captured it still wants it.
   return addressed(
     db,

@@ -21,6 +21,9 @@ const descriptor = defineAuditDescriptor<typeof contractingSettings.$inferSelect
   }),
 });
 
+/** The migration seeds the row, so a miss is a broken database, not a user error. */
+const notInitialized = () => new Error('Contracting Settings are not initialized.');
+
 const toSettings = (row: typeof contractingSettings.$inferSelect): ContractingSettings =>
   ContractingSettings.parse({
     gapFlagThresholdHours: row.gapFlagThresholdHours,
@@ -29,10 +32,10 @@ const toSettings = (row: typeof contractingSettings.$inferSelect): ContractingSe
     updatedAt: row.updatedAt.toISOString(),
   });
 
-/** The one row; the migration seeds it, so a miss is a broken database, not a user error. */
+/** The one row. */
 export async function getContractingSettings({ db }: { db: DbOrTx }): Promise<ContractingSettings> {
   const [row] = await db.select().from(contractingSettings).where(eq(contractingSettings.id, CONTRACTING_SETTINGS_ID));
-  if (!row) throw new Error('Contracting Settings are not initialized.');
+  if (!row) throw notInitialized();
   return toSettings(row);
 }
 
@@ -50,7 +53,7 @@ export async function updateContractingSettings({
     db,
     descriptor,
     id: CONTRACTING_SETTINGS_ID,
-    notFound: () => new Error('Contracting Settings are not initialized.'),
+    notFound: notInitialized,
     project: (_tx, row) => toSettings(row),
     set: () => ({ ...input, updatedAt: new Date() }),
     table: contractingSettings,

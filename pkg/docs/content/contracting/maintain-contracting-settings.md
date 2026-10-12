@@ -1,6 +1,6 @@
 # Maintain Contracting Settings
 
-Settings is the one row of Contracting-wide values management edits: the Gap Flag threshold, the Service Due Soon threshold and the Utilisation Target. Every screen reads the current value; nothing already stored is re-judged.
+Settings is the one row of Contracting-wide values every screen reads live; nothing already stored is re-judged.
 
 1. In Jedidiah Contracting, open **Settings** under Admin.
 2. Change **Gap Flag threshold (hours)**. An Hour Gap longer than this is flagged at sign-off. Applies to every open gap at once; resolved gaps keep their split.
@@ -8,4 +8,4 @@ Settings is the one row of Contracting-wide values management edits: the Gap Fla
 4. Change **Utilisation Target (%)**. Drawn as the reference line on the Utilisation report. Leave empty to draw no line.
 5. Choose **Save**. Nothing changes until you do, and each save is one entry in the Audit Log under Settings.
 
-Only a Contracting administrator can open this page or save it. The Gap Flag threshold runs from 0.5 to 48 hours in tenths, the Service Due Soon threshold from 0 to 1 000 whole hours, and the Utilisation Target from 1 to 100 whole percent.
+Only a **Contracting Administrator** can open this page or save it.

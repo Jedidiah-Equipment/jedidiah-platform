@@ -5,7 +5,7 @@ import type { MeasureRemoveInput, MeasureSetInput } from '@pkg/schema/contractin
 import { and, eq } from 'drizzle-orm';
 import { defineAuditDescriptor, recordAuditCreate, recordAuditDelete } from '../../audit/audit-writer.js';
 import { mutateEntity } from '../../audit/mutate-entity.js';
-import { assertAssignmentAction, jobNotFound } from './job-errors.js';
+import { jobNotFound } from './job-errors.js';
 import { lockStintFor } from './job-lock.js';
 import { jobTransaction } from './job-write.js';
 
@@ -27,12 +27,6 @@ async function getMeasureTypeName(tx: DatabaseTransaction, id: string) {
     .where(eq(contractingMeasureTypes.id, id));
   if (!measureType) throw jobNotFound('Measure Type');
   return measureType.name;
-}
-
-/** Locks the stint and its Job, and checks its Measures may change. */
-async function lockMeasurable(tx: DatabaseTransaction, assignmentId: string, actor: JobActor) {
-  const { stint } = await lockStintFor(tx, assignmentId, 'editMeasures', actor);
-  assertAssignmentAction('editMeasures', stint);
 }
 
 async function lockMeasure(tx: DatabaseTransaction, { assignmentId, measureTypeId }: MeasureRemoveInput) {
@@ -58,7 +52,7 @@ export async function setMeasure({
 }): Promise<void> {
   const actorUserId = actor.userId;
   await jobTransaction(db, async (tx) => {
-    await lockMeasurable(tx, input.assignmentId, actor);
+    await lockStintFor(tx, input.assignmentId, 'editMeasures', actor);
     const descriptor = measureDescriptor(await getMeasureTypeName(tx, input.measureTypeId));
     const before = await lockMeasure(tx, input);
     if (before) {
@@ -91,7 +85,7 @@ export async function removeMeasure({
 }): Promise<void> {
   const actorUserId = actor.userId;
   await jobTransaction(db, async (tx) => {
-    await lockMeasurable(tx, input.assignmentId, actor);
+    await lockStintFor(tx, input.assignmentId, 'editMeasures', actor);
     const row = await lockMeasure(tx, input);
     if (!row) throw jobNotFound('Measure');
     const descriptor = measureDescriptor(await getMeasureTypeName(tx, row.measureTypeId));

@@ -2,10 +2,10 @@ import type { Assignment, AssignmentState } from '@pkg/schema/contracting';
 import { round1 } from './hours.js';
 import { round2, stintAmount } from './pricing.js';
 
-export type MachineStints = {
+export type MachineStints<T extends Assignment = Assignment> = {
   machineId: string;
   machineCode: string;
-  stints: Assignment[];
+  stints: T[];
   /** Present only when the Machine has more than one stint. */
   subtotal: { workHours: number; travelHours: number; amount: number } | null;
 };
@@ -14,15 +14,17 @@ export type MachineStints = {
 export const assignmentStateDisplayOrder: Record<AssignmentState, number> = { 'on-site': 0, planned: 1, left: 2 };
 
 /** Arrived stints grouped per Machine in first-arrival order, and the planned ones that never arrived. */
-export function groupStints(assignments: readonly Assignment[]): { machines: MachineStints[]; planned: Assignment[] } {
-  const visited = new Map<string, Assignment[]>();
+export function groupStints<T extends Assignment>(
+  assignments: readonly T[],
+): { machines: MachineStints<T>[]; planned: T[] } {
+  const visited = new Map<string, T[]>();
   for (const stint of assignments) {
     if (stint.state === 'planned') continue;
     const group = visited.get(stint.machineId) ?? [];
     group.push(stint);
     visited.set(stint.machineId, group);
   }
-  const firstArrival = (group: Assignment[]) =>
+  const firstArrival = (group: readonly Assignment[]) =>
     group.reduce((earliest, stint) => {
       const arrival = stint.arrival?.capturedAt ?? '';
       return earliest === '' || (arrival !== '' && arrival < earliest) ? arrival : earliest;

@@ -1,4 +1,5 @@
 import type { AssignmentState, ReadingErrorCode, ReadingRole } from '@pkg/schema/contracting';
+import { assignmentActionRefusal, assignmentStateAllows } from './assignment-actions.js';
 
 /** What an Hour Reading capture is judged against: the server's rows under the Machine lock. */
 export type CaptureWorld = {
@@ -40,8 +41,8 @@ export const captureRefusals: Record<CaptureRule, { code: ReadingErrorCode; mess
     code: 'reading.invalid_role',
     message: 'A reason is required for a photo-less departure reading.',
   },
-  'already-arrived': { code: 'reading.invalid_role', message: 'This Machine Assignment already arrived.' },
-  'not-on-site': { code: 'reading.invalid_role', message: 'This Machine Assignment is not on site.' },
+  'already-arrived': { code: 'reading.invalid_role', message: assignmentActionRefusal('captureArrival') },
+  'not-on-site': { code: 'reading.invalid_role', message: assignmentActionRefusal('captureDeparture') },
   'previous-changed': {
     code: 'reading.previous_changed',
     message: 'Another reading landed first. Review the latest reading before resubmitting a dispute.',
@@ -82,8 +83,11 @@ export const captureNeedsComment = (role: ReadingRole, world: Pick<CaptureWorld,
 /** Whether this capture may land on the Machine's ledger as the server holds it under the lock. */
 export function judgeCapture(world: CaptureWorld, capture: CaptureAttempt): CaptureVerdict {
   if (captureNeedsComment(capture.role, world) && !capture.comment?.trim()) return refuse('comment-required');
-  if (capture.role === 'arrival' && world.stint !== null && world.stint !== 'planned') return refuse('already-arrived');
-  if (capture.role === 'departure' && world.stint !== 'on-site') return refuse('not-on-site');
+  // A null stint is a Machine arriving on a Job it was never planned on, which is still an arrival.
+  if (capture.role === 'arrival' && world.stint !== null && !assignmentStateAllows('captureArrival', world.stint))
+    return refuse('already-arrived');
+  if (capture.role === 'departure' && (world.stint === null || !assignmentStateAllows('captureDeparture', world.stint)))
+    return refuse('not-on-site');
   if (
     capture.disputePrevious &&
     capture.expectedPreviousId !== undefined &&

@@ -1,6 +1,7 @@
 import { type Db, user } from '@pkg/db';
 import { type contractingHourReadings, contractingJobs } from '@pkg/db/contracting';
 import {
+  deriveAssignmentActions,
   deriveJobActions,
   deriveStintHours,
   formatJobNumber,
@@ -203,7 +204,16 @@ export async function getReadableJob({
   if (reader.mode === 'own') assertOwner(job, reader.actorUserId);
   assertReadableStatus(job.status, reader);
   const seesMoney = jobReadSeesMoney(reader.mode);
-  const read = { ...job, actions: deriveJobActions(job, actor), seesMoney };
+  const actions = deriveJobActions(job, actor);
+  const read = {
+    ...job,
+    actions,
+    seesMoney,
+    assignments: job.assignments.map((assignment) => ({
+      ...assignment,
+      actions: deriveAssignmentActions(actions, assignment),
+    })),
+  };
   const named = withPreviousJobs(read, await loadPreviousJobs(db, job.id, reader));
   return seesMoney ? named : redactMoney(named);
 }

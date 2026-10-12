@@ -155,8 +155,13 @@ const rowleyPricing: NonNullable<JobDetail['pricing']> = {
   gate: { ok: true, unpricedStints: 0, chargeLinesWithoutAmount: 0, dieselUnpriced: false },
 };
 
-/** Spec #1378 scenario 1: Mr Rowley's dam, Priced at R 77,265.00 ex VAT. */
-function rowleyDam(overrides: Partial<JobDetail> = {}): JobDetail {
+/**
+ * Spec #1378 scenario 1: Mr Rowley's dam, Priced at R 77,265.00 ex VAT. The Job Card reads no verdicts, so the
+ * fixture's Machine Assignments carry none.
+ */
+function rowleyDam(
+  overrides: Partial<Omit<JobDetail, 'assignments'>> & { assignments?: Assignment[] } = {},
+): JobDetail {
   return {
     id: 'job',
     code: 42,

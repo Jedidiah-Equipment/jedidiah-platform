@@ -1,19 +1,6 @@
-import {
-  type AssignmentActionName,
-  type AssignmentActionVerdict,
-  actionSheet,
-  hasJobCard,
-  judgeAssignmentAction,
-} from '@pkg/domain/contracting';
+import { actionSheet, hasJobCard } from '@pkg/domain/contracting';
 import { UUID } from '@pkg/schema';
-import {
-  type AssignmentState,
-  type BreakdownUrgency,
-  type JobActionName,
-  type JobCreateInput,
-  JobDescription,
-  type JobDetail,
-} from '@pkg/schema/contracting';
+import { type BreakdownUrgency, type JobCreateInput, JobDescription, type JobDetail } from '@pkg/schema/contracting';
 import { z } from 'zod';
 import { requiredSelection } from '@/components/form/utils/form-schema.js';
 
@@ -46,24 +33,12 @@ export function toJobCreateInput(values: JobCreateValues): JobCreateInput {
  */
 export function jobSheet(job: JobDetail) {
   const sheet = actionSheet(job.actions);
-  /** A Job Action on one Machine Assignment: the Job must allow it, then the Assignment's state. */
-  const stintAction = (
-    jobAction: JobActionName,
-    assignmentAction: AssignmentActionName,
-    stint: { state: AssignmentState },
-  ): AssignmentActionVerdict => {
-    const judged = sheet.verdict(jobAction);
-    return judged.allowed
-      ? judgeAssignmentAction(assignmentAction, stint)
-      : { allowed: false, message: judged.message };
-  };
   /** Money reaches only the readers the server sends it to, once there is a Job Card to price. */
   const seesMoney = hasJobCard(job.status) && job.seesMoney;
   /** Work has started and the Job was not cancelled. */
   const started = job.status === 'active' || hasJobCard(job.status);
   return {
     ...sheet,
-    stintAction,
     seesMoney,
     /** Which cards the sheet shows: presentation, not Job Actions. */
     showsSignOff: started && sheet.holds('editSignOffDetails'),

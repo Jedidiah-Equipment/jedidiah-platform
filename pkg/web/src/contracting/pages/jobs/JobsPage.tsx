@@ -1,5 +1,11 @@
 import { formatCurrency, formatDate, formatNumber } from '@pkg/domain';
-import { jobQueueLabels, jobQueueOf, judgeJobAction, openJobQueues } from '@pkg/domain/contracting';
+import {
+  countedAssignmentAttentionLevel,
+  jobQueueLabels,
+  jobQueueOf,
+  judgeJobAction,
+  openJobQueues,
+} from '@pkg/domain/contracting';
 import type { JobListInput, JobQueue, JobSummary } from '@pkg/schema/contracting';
 import { CustomerName, FarmName, JobSortBy, jobQueues, WorkTypeName } from '@pkg/schema/contracting';
 import { keepPreviousData, useInfiniteQuery, useMutation, useQuery } from '@tanstack/react-query';
@@ -194,6 +200,8 @@ export function JobsPage({ focus, onFocusApplied }: { focus?: JobsFocus; onFocus
       },
       {
         id: ATTENTION_COLUMN_ID,
+        // A column filters only with an accessor; the server owns the filtering itself.
+        accessorFn: (job) => (countedAssignmentAttentionLevel(job.assignmentAttention) ? NEEDS_A_LOOK : ''),
         header: 'Needs a look',
         enableColumnFilter: true,
         enableSorting: false,

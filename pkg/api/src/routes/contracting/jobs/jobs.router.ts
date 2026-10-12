@@ -6,7 +6,6 @@ import {
   createChargeLine,
   createJob,
   findJobsByInvoiceNumber,
-  getFieldJob,
   getReadableJob,
   listFieldDrivers,
   listFieldImplements,
@@ -29,7 +28,6 @@ import {
   stampInvoice,
   summarizeJobQueues,
 } from '@pkg/core/contracting';
-import { UUID } from '@pkg/schema';
 import {
   AssignmentIdInput,
   AssignmentPatchInput,
@@ -41,7 +39,6 @@ import {
   DiscountSetInput,
   FieldDriver,
   FieldImplement,
-  FieldJob,
   GapResolveInput,
   InvoiceNumberLookupInput,
   JobCancelInput,
@@ -60,7 +57,6 @@ import {
   StintRateClearInput,
   StintRateSetInput,
 } from '@pkg/schema/contracting';
-import { z } from 'zod';
 import { mapCoreErrors } from '../../../trpc/errors.js';
 import { authorizedProcedure, router } from '../../../trpc/init.js';
 import { jobErrorFamily } from '../contracting-error-families.js';
@@ -69,12 +65,6 @@ const readPermissions = ['contracting_job:read', 'contracting_job:read-own', 'co
 
 export const contractingJobsRouter = router({
   field: router({
-    job: authorizedProcedure(['contracting_job:read', 'contracting_job:read-own'])
-      .input(z.object({ id: UUID }).strict())
-      .output(FieldJob)
-      .query(({ ctx, input }) =>
-        mapCoreErrors(() => getFieldJob({ db: ctx.db, actor: ctx.access, id: input.id }), jobErrorFamily),
-      ),
     implements: authorizedProcedure(['contracting_machine:read', 'contracting_assignment:update-own'])
       .output(FieldImplement.array())
       .query(({ ctx }) => listFieldImplements({ db: ctx.db })),

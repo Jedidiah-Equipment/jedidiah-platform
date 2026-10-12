@@ -1,5 +1,4 @@
 import { describe, expect, test } from 'vitest';
-import { FieldJob, FieldStint } from './field.js';
 import { Assignment, JobListInput, JobNumber } from './job.js';
 
 describe('Contracting Job inputs', () => {
@@ -23,39 +22,8 @@ describe('Contracting Job inputs', () => {
   });
 });
 
-describe('field Job projection', () => {
-  test('strips every management and money field from the phone shape', () => {
-    const job = FieldJob.parse({
-      id: '5f1c2d3e-0001-4a00-8000-000000000001',
-      code: 41,
-      jobNumber: 'CJOB-00041',
-      status: 'active',
-      customerName: 'Scott',
-      farmName: 'Scott Farm',
-      workTypeName: 'Dam building',
-      description: null,
-      foremanUserId: 'foreman-1',
-      stints: [],
-      dieselLitres: 500,
-      pricedTotal: 100_000,
-    });
-
-    expect(job).toEqual({
-      id: '5f1c2d3e-0001-4a00-8000-000000000001',
-      code: 41,
-      jobNumber: 'CJOB-00041',
-      status: 'active',
-      customerName: 'Scott',
-      farmName: 'Scott Farm',
-      workTypeName: 'Dam building',
-      description: null,
-      foremanUserId: 'foreman-1',
-      stints: [],
-    });
-  });
-
+describe('Machine Assignment', () => {
   test("names a stint with the fleet's own code rules", () => {
-    expect(FieldStint.shape.machineCode.parse(' cat-1 ')).toBe('CAT-1');
     expect(Assignment.shape.machineCode.parse(' cat-1 ')).toBe('CAT-1');
   });
 });

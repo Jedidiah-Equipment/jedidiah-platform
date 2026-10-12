@@ -57,13 +57,13 @@ export function jobSheet(job: JobDetail) {
       ? judgeAssignmentAction(assignmentAction, stint)
       : { allowed: false, message: judged.message };
   };
-  const seesMoney = hasJobCard(job.status) && job.pricing !== null;
+  /** Money reaches only the readers the server sends it to, once there is a Job Card to price. */
+  const seesMoney = hasJobCard(job.status) && job.seesMoney;
   /** Work has started and the Job was not cancelled. */
   const started = job.status === 'active' || hasJobCard(job.status);
   return {
     ...sheet,
     stintAction,
-    /** Money reaches only the readers the server sends it to, once there is a Job Card to price. */
     seesMoney,
     /** Which cards the sheet shows: presentation, not Job Actions. */
     showsSignOff: started && sheet.holds('editSignOffDetails'),

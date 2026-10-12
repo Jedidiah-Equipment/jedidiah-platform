@@ -185,23 +185,6 @@ export const JobReading = HourReading.pick({
 });
 export type JobReading = z.infer<typeof JobReading>;
 
-/** What names a Machine Assignment on every read: the Job sheet's Assignment and the phone's FieldStint. */
-export const assignmentIdentityShape = {
-  id: UUID,
-  jobId: UUID,
-  machineId: UUID,
-  machineCode: FleetCode,
-  categoryName: FleetName,
-  categoryIcon: CategoryIconKey,
-  categoryColour: CategoryColour,
-  implementId: UUID.nullable(),
-  implementCode: FleetCode.nullable(),
-  driverUserId: AuthId.nullable(),
-  driverName: z.string().nullable(),
-  state: z.enum(assignmentStates),
-  createdAt: DateIso,
-};
-
 export const StintPricing = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('no-charge') }),
   z.object({
@@ -233,7 +216,19 @@ export const PreviousDeparture = z.object({
 export type PreviousDeparture = z.infer<typeof PreviousDeparture>;
 
 export const Assignment = z.object({
-  ...assignmentIdentityShape,
+  id: UUID,
+  jobId: UUID,
+  machineId: UUID,
+  machineCode: FleetCode,
+  categoryName: FleetName,
+  categoryIcon: CategoryIconKey,
+  categoryColour: CategoryColour,
+  implementId: UUID.nullable(),
+  implementCode: FleetCode.nullable(),
+  driverUserId: AuthId.nullable(),
+  driverName: z.string().nullable(),
+  state: z.enum(assignmentStates),
+  createdAt: DateIso,
   arrival: JobReading.nullable(),
   departure: JobReading.nullable(),
   /** Null before arrival, and for a Machine's first arrival, which has no Hour Gap. */
@@ -253,8 +248,7 @@ export const Assignment = z.object({
 });
 export type Assignment = z.infer<typeof Assignment>;
 
-/** What names a Job on every read: the queues' JobSummary and the phone's FieldJob. */
-export const jobIdentityShape = {
+const jobSummaryShape = {
   id: UUID,
   code: z.number().int().positive(),
   jobNumber: JobNumber,
@@ -264,10 +258,6 @@ export const jobIdentityShape = {
   workTypeName: z.string(),
   description: z.string().nullable(),
   foremanUserId: AuthId.nullable(),
-};
-
-const jobSummaryShape = {
-  ...jobIdentityShape,
   customerId: UUID,
   farmId: UUID,
   workTypeId: UUID,
@@ -336,6 +326,11 @@ export const JobFacts = z.object({
 });
 export type JobFacts = z.infer<typeof JobFacts>;
 
-/** One Job as the person asking reads it: the facts, what they may do to it, and no money for a Foreman. */
-export const JobDetail = JobFacts.extend({ pricing: JobPricing.nullable(), actions: JobActions });
+/** One Job as the person asking reads it: the facts, their verdicts, and whether money reached them. */
+export const JobDetail = JobFacts.extend({
+  pricing: JobPricing.nullable(),
+  actions: JobActions,
+  /** False for a reader the server redacts money from (a Foreman); the Job Card and every amount follow it. */
+  seesMoney: z.boolean(),
+});
 export type JobDetail = z.infer<typeof JobDetail>;

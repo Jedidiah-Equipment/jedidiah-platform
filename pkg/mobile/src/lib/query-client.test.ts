@@ -70,7 +70,7 @@ describe('query observability', () => {
 });
 
 describe('query retries', () => {
-  it('asks again after a failed read, but never for a record that is not found', () => {
+  it('asks again after a failed read, but never for a record that is not found or refused', () => {
     const retry = createQueryClient().getDefaultOptions().queries?.retry as (
       failures: number,
       error: unknown,
@@ -79,5 +79,6 @@ describe('query retries', () => {
     expect(retry(0, new Error('offline'))).toBe(true);
     expect(retry(3, new Error('offline'))).toBe(false);
     expect(retry(0, { data: { code: 'NOT_FOUND' } })).toBe(false);
+    expect(retry(0, { data: { code: 'FORBIDDEN' } })).toBe(false);
   });
 });

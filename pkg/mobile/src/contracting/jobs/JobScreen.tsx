@@ -1,6 +1,12 @@
 import { formatHours } from '@pkg/domain';
-import { assignmentStateColorClassNames, canOpenJobCards, hasJobCard, judgeJobAction } from '@pkg/domain/contracting';
-import type { AssignmentState, FieldStint, JobCardVariant } from '@pkg/schema/contracting';
+import {
+  actionSheet,
+  assignmentStateColorClassNames,
+  assignmentStateDisplayOrder,
+  assignmentStateLabels,
+  hasJobCard,
+} from '@pkg/domain/contracting';
+import type { Assignment, JobCardVariant } from '@pkg/schema/contracting';
 import { IconPlayerPlay, IconPlayerStop, IconPlus } from '@tabler/icons-react-native';
 import { type Href, router, useLocalSearchParams } from 'expo-router';
 import { Pressable, ScrollView, View } from 'react-native';
@@ -15,28 +21,23 @@ import { BreakdownIcon } from '@/contracting/components/BreakdownSubjectIcons';
 import { CaptureButton } from '@/contracting/components/CaptureButton';
 import { CategoryIcon } from '@/contracting/components/CategoryIcon';
 import { jobCardShareAction } from '@/contracting/lib/job-card';
-import { useSessionAccessSummary, useSessionPermission } from '@/lib/auth-session';
 import { shareDocument } from '@/lib/document-actions';
 import { useBusyAction } from '@/lib/use-busy-action';
 import { JobStatusChip } from './JobStatusChip';
 import { useJob } from './use-jobs';
 
-const ORDER: Record<AssignmentState, number> = { 'on-site': 0, planned: 1, left: 2 };
-const LABELS: Record<AssignmentState, string> = { planned: 'Planned', 'on-site': 'Running', left: 'Left site' };
-
 export default function JobScreen() {
   const { jobId } = useLocalSearchParams<{ jobId: string }>();
   const jobQuery = useJob(jobId);
-  const access = useSessionAccessSummary();
   const job = jobQuery.data;
+  const sheet = job ? actionSheet(job.actions) : null;
   const finished = job ? hasJobCard(job.status) : false;
-  const gone = jobQuery.gone;
-  const canCapture = job ? judgeJobAction('capture', job, access).allowed : false;
-  const canAdd = job ? judgeJobAction('assign', job, access).allowed : false;
-  const canShareJobCard = canOpenJobCards(access) && finished;
-  const canReport = useSessionPermission('contracting_breakdown:report') && !finished;
+  const canCapture = sheet?.can('capture') ?? false;
+  const canAdd = sheet?.can('assign') ?? false;
+  const canReport = sheet?.can('reportBreakdown') ?? false;
+  const canShareJobCard = (job?.seesMoney ?? false) && finished;
   // The towed Implement rides along, so the report screen can offer it beside the Machine.
-  const reportProblem = (stint: FieldStint) =>
+  const reportProblem = (stint: Assignment) =>
     router.push({
       pathname: '/contracting/workshop/report',
       params: { subjectKind: 'machine', subjectId: stint.machineId, implementId: stint.implementId ?? '', jobId },
@@ -47,11 +48,13 @@ export default function JobScreen() {
       void share.run(() => shareDocument(jobCardShareAction(job.jobNumber, variant)), 'Unable to share the Job Card.');
   };
   // A copy: sorting the query's own array would reorder the cached Job.
-  const stints = [...(job?.stints ?? [])].sort(
-    (left, right) => ORDER[left.state] - ORDER[right.state] || left.createdAt.localeCompare(right.createdAt),
+  const stints = [...(job?.assignments ?? [])].sort(
+    (left, right) =>
+      assignmentStateDisplayOrder[left.state] - assignmentStateDisplayOrder[right.state] ||
+      left.createdAt.localeCompare(right.createdAt),
   );
 
-  const openCapture = (stint: FieldStint, role: 'arrival' | 'departure') =>
+  const openCapture = (stint: Assignment, role: 'arrival' | 'departure') =>
     router.push({
       pathname: '/contracting/jobs/[jobId]/capture',
       params: {
@@ -97,8 +100,8 @@ export default function JobScreen() {
           <Text className="text-muted-foreground">
             {!jobQuery.canRead
               ? 'Your role cannot view this Job.'
-              : gone
-                ? 'This Job is no longer open.'
+              : jobQuery.gone
+                ? (jobQuery.goneReason ?? 'This Job is no longer open.')
                 : jobQuery.isError
                   ? 'This Job could not be loaded.'
                   : 'Loading Job…'}
@@ -175,7 +178,7 @@ function StintCard({
   onReadd,
   onReport,
 }: {
-  stint: FieldStint;
+  stint: Assignment;
   canCapture: boolean;
   canAdd: boolean;
   canReport: boolean;
@@ -193,7 +196,10 @@ function StintCard({
             {stint.machineCode}
           </Text>
         </View>
-        <StatusBadge classNames={assignmentStateColorClassNames[stint.state]} label={LABELS[stint.state]} />
+        <StatusBadge
+          classNames={assignmentStateColorClassNames[stint.state]}
+          label={assignmentStateLabels[stint.state]}
+        />
       </View>
       <Text className="text-sm text-muted-foreground">
         {stint.categoryName}

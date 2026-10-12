@@ -20,6 +20,7 @@ import {
   setStintRate,
 } from '@pkg/core/contracting';
 import { type Db, user } from '@pkg/db';
+import { jobReadMode, jobReadSeesMoney } from '@pkg/domain/contracting';
 import { accessForRole } from '@pkg/domain/testing';
 import type { ContractingRole } from '@pkg/schema';
 import { DateOnlyIso } from '@pkg/schema';
@@ -277,5 +278,23 @@ describe('Job Actions served on the Job agree with what the server does', () => 
       if (write === null) continue;
       expectAgreement(actions[action], await settle(write), `${role} · ${status} · ${action}`);
     }
+  });
+});
+
+const moneyFields = ['diesel', 'discount', 'pricedTotal', 'pricing'] as const;
+
+describe('money reaches only the readers the server sends it to', () => {
+  test.for(cases)('%s on a %s Job', async ([role, status], { context }) => {
+    const session = mockSession(null);
+    session.user.contractingRole = role;
+    const job = await context
+      .createCaller(session)
+      .contractingJobs.jobs.get({ id: (await context.jobAt(status)).job.id });
+    const seesMoney = jobReadSeesMoney(jobReadMode(accessForRole(role, callerId)) ?? 'all');
+    expect(job.seesMoney).toBe(seesMoney);
+    if (seesMoney) return;
+    for (const field of moneyFields) expect(job[field], field).toBeNull();
+    for (const stint of job.assignments) expect(stint.pricing).toBeNull();
+    for (const line of job.chargeLines) expect(line.amount).toBeNull();
   });
 });

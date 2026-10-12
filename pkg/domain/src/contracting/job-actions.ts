@@ -23,7 +23,7 @@ import { jobStatusLabels } from './jobs.js';
  */
 export type JobActor = UserAccessSummary;
 
-/** The least of a Job the verdict needs, so a core row, a JobDetail and the phone's FieldJob all satisfy it. */
+/** The least of a Job the verdict needs, so a core row and a JobDetail both satisfy it. */
 export type JobActionSubject = { status: JobStatus; foremanUserId: AuthId | null };
 
 type Rule = {

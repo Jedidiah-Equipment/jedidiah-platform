@@ -15,8 +15,8 @@ import {
   type StoredStintPricing,
   tallyAssignmentAttention,
 } from '@pkg/domain/contracting';
-import { type Assignment, type JobDetail, JobFacts } from '@pkg/schema/contracting';
-import { asc, eq } from 'drizzle-orm';
+import { type Assignment, FieldDriver, type JobDetail, JobFacts } from '@pkg/schema/contracting';
+import { and, asc, eq } from 'drizzle-orm';
 import { readingToWire } from '../readings/reading-wire.js';
 import { assertOwner, jobNotFound } from './job-errors.js';
 import {
@@ -192,7 +192,7 @@ export function assignmentIn(job: JobFacts, id: string): Assignment {
   return assignment;
 }
 
-/** One Job as the person asking reads it: their read mode's view, and what they may do to it. */
+/** One Job as the person asking reads it: their read mode's view, what they may do to it, and whether money reached them. */
 export async function getReadableJob({
   db,
   actor,
@@ -202,9 +202,10 @@ export async function getReadableJob({
   const job = await getJob({ db, ...lookup });
   if (reader.mode === 'own') assertOwner(job, reader.actorUserId);
   assertReadableStatus(job.status, reader);
-  const read = { ...job, actions: deriveJobActions(job, actor) };
+  const seesMoney = jobReadSeesMoney(reader.mode);
+  const read = { ...job, actions: deriveJobActions(job, actor), seesMoney };
   const named = withPreviousJobs(read, await loadPreviousJobs(db, job.id, reader));
-  return jobReadSeesMoney(reader.mode) ? named : redactMoney(named);
+  return seesMoney ? named : redactMoney(named);
 }
 
 /** Names the Job each Machine left before arriving, where the reader could open it. */
@@ -241,4 +242,13 @@ export async function listForemen({ db }: { db: Db }) {
     .from(user)
     .where(eq(user.contractingRole, 'foreman'))
     .orderBy(asc(user.name));
+}
+
+export async function listFieldDrivers({ db }: { db: Db }) {
+  return db
+    .select({ id: user.id, name: user.name })
+    .from(user)
+    .where(and(eq(user.contractingRole, 'driver'), eq(user.isDevice, false)))
+    .orderBy(asc(user.name))
+    .then((rows) => rows.map((row) => FieldDriver.parse(row)));
 }

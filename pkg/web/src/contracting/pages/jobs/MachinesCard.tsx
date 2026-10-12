@@ -2,6 +2,7 @@ import { formatNumber } from '@pkg/domain';
 import {
   assignmentNeedsALookLevel,
   assignmentStateDisplayOrder,
+  assignmentStateLabels,
   breakdownStatusColorClassNames,
   breakdownStatusLabels,
   breakdownsByStint,
@@ -33,10 +34,10 @@ type MachineFilter = 'all' | 'planned' | 'on-site' | 'attention' | 'left' | 'rep
 type NumberedStint = { stint: JobDetail['assignments'][number]; stintNumber: number };
 const filters: { value: MachineFilter; label: string }[] = [
   { value: 'all', label: 'All' },
-  { value: 'planned', label: 'Planned' },
-  { value: 'on-site', label: 'On site' },
+  { value: 'planned', label: assignmentStateLabels.planned },
+  { value: 'on-site', label: assignmentStateLabels['on-site'] },
   { value: 'attention', label: 'Needs a look' },
-  { value: 'left', label: 'Left' },
+  { value: 'left', label: assignmentStateLabels.left },
   { value: 'repeat', label: 'Repeat stint' },
 ];
 

@@ -7,6 +7,7 @@ import { Platform } from 'react-native';
 
 import { apiBaseUrl } from './api-base-url';
 import { addBreadcrumb, captureEvent, identifyObservabilityUser, resetObservability } from './observability';
+import { unregisterPush } from './push/register-push';
 import { resolveRuntimeScheme } from './runtime-app-identity';
 
 const authBaseUrl = `${apiBaseUrl}/api/auth`;
@@ -86,6 +87,12 @@ export async function signIn(input: { email: string; password: string }): Promis
 export async function signOut(reason: 'ineligible session' | 'signed out' = 'signed out') {
   const startedAt = Date.now();
   let failureRecorded = false;
+  // While the session still stands, so the server knows whose install to forget. Imported late: the tRPC client
+  // reads this module's session cookie.
+  await unregisterPush(async (input) => {
+    const { createTrpcClient } = await import('./trpc');
+    return createTrpcClient().pushTokens.unregister.mutate(input);
+  });
   try {
     const result = await authClient.signOut();
     if (result.error) {

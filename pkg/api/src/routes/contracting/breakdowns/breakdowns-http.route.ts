@@ -2,7 +2,7 @@ import type { StorageAdapter } from '@pkg/core';
 import { addBreakdownPhotos, getBreakdownPhoto, reportBreakdown, tooManyBreakdownPhotos } from '@pkg/core/contracting';
 import type { Db } from '@pkg/db';
 import { formatNumber } from '@pkg/domain';
-import { BREAKDOWN_PHOTO_POLICY, BREAKDOWN_REPORT_PATH } from '@pkg/domain/contracting';
+import { BREAKDOWN_PHOTO_POLICY, BREAKDOWN_REPORT_PATH, type ContractingPushEvent } from '@pkg/domain/contracting';
 import {
   BREAKDOWN_MAX_PHOTOS,
   BreakdownDescription,
@@ -13,6 +13,7 @@ import {
 } from '@pkg/schema/contracting';
 import type { FastifyInstance, FastifyReply } from 'fastify';
 import { z } from 'zod';
+import type { Scheduler } from '../../../background-queue.js';
 import {
   type MultipartUploadOptions,
   mapCoreErrorToRoute,
@@ -28,7 +29,7 @@ import { breakdownErrorFamily } from '../contracting-error-families.js';
 
 export async function registerBreakdownHttpRoutes(
   app: FastifyInstance,
-  { db, storage }: { db: Db; storage: StorageAdapter },
+  { db, storage, push }: { db: Db; storage: StorageAdapter; push: Scheduler<ContractingPushEvent> },
 ) {
   // One photo over the cap is collected so core's own refusal, not the stream limit, answers it.
   const upload = (textFields: readonly string[]): MultipartUploadOptions => ({
@@ -53,12 +54,14 @@ export async function registerBreakdownHttpRoutes(
     try {
       requirePermission(auth, 'contracting_breakdown:report', 'You cannot report Breakdowns.', 'breakdown.forbidden');
       const { input, files: photos } = await readMultipartUpload(request, report, BreakdownReportMultipart);
-      const { breakdown } = await reportBreakdown({
+      const { breakdown, created } = await reportBreakdown({
         db,
         actor: auth.access,
         input,
         evidence: { storage, photos },
       });
+      // A phone retry of a delivered report replays it; only the first delivery pings the workshop.
+      if (created) push.schedule({ kind: 'breakdown.reported', breakdownId: breakdown.id });
       return reply.status(201).send(breakdown);
     } catch (error) {
       return sendBreakdownError(reply, error, report);

@@ -9,6 +9,7 @@ import {
 import {
   createKeytermCache,
   deriveHintFor,
+  dispatchContractingPush,
   listReadingsAwaitingVerification,
   listTranscriptionsAwaitingHints,
   loadKeytermCandidates,
@@ -17,6 +18,7 @@ import {
   verifyCapturedReading,
 } from '@pkg/core/contracting';
 import { db } from '@pkg/db';
+import type { ContractingPushEvent } from '@pkg/domain/contracting';
 import { renderJobCardPdf } from '@pkg/pdf/contracting';
 import type { KeytermCandidate } from '@pkg/schema/contracting';
 import type { FastifyInstance } from 'fastify';
@@ -39,7 +41,7 @@ export type ContractingRouterDependencies = {
 
 export async function registerContracting(
   app: FastifyInstance,
-  { config, storage }: BusinessWiringInput,
+  { config, storage, push }: BusinessWiringInput,
 ): Promise<BusinessWiring<ContractingRouterDependencies>> {
   const chatModel = createOpenAiChatModel({ apiKey: config.OPENAI_API_KEY, model: config.OPENAI_MODEL });
   const transcriptionModel = createOpenAiTranscriptionModel({
@@ -80,9 +82,19 @@ export async function registerContracting(
     },
   });
 
-  await registerReadingHttpRoutes(app, { db, storage, verifications: readingVerifications });
+  // Fire-and-forget after commit by decision: no `resume`, so a restart drops what was still queued.
+  const contractingPush = new BackgroundQueue<ContractingPushEvent>({
+    run: async (event) => {
+      const delivery = await dispatchContractingPush({ db, event, sender: push });
+      log.push.info({ event, ...delivery }, 'Contracting push delivered');
+    },
+    onError: (error, event) => log.push.error({ error: serializeError(error), event }, 'Contracting push failed'),
+    concurrency: 1,
+  });
+
+  await registerReadingHttpRoutes(app, { db, storage, verifications: readingVerifications, push: contractingPush });
   await registerTranscriptionHttpRoutes(app, { db, engine, keyterms: keyterms.current });
-  await registerBreakdownHttpRoutes(app, { db, storage });
+  await registerBreakdownHttpRoutes(app, { db, storage, push: contractingPush });
   await registerJobCardHttpRoutes(app, { db, pdfRenderer: renderJobCardPdf });
 
   return {
@@ -92,7 +104,7 @@ export async function registerContracting(
       keyterms: keyterms.current,
       transcriptionModels: { chat: config.OPENAI_MODEL, transcription: config.OPENAI_TRANSCRIPTION_MODEL },
     },
-    services: [readingVerifications, hintDerivations],
+    services: [readingVerifications, hintDerivations, contractingPush],
   };
 }
 

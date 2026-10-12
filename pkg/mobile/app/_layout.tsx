@@ -1,4 +1,5 @@
 import '../global.css';
+import '@/lib/push/notification-handler';
 
 import { useFonts } from 'expo-font';
 import { type ErrorBoundaryProps, router, Stack, usePathname, useSegments } from 'expo-router';
@@ -17,7 +18,13 @@ import { EQUIPMENT_MUTATION_EVENTS } from '@/equipment/observability';
 import { EQUIPMENT_SCREEN_CATALOG } from '@/equipment/screen-catalog';
 import { ApiProvider } from '@/lib/ApiProvider';
 import { ConnectivityProvider } from '@/lib/connectivity';
-import { initializeObservability, prepareScreenContext, trackScreen } from '@/lib/observability';
+import {
+  initializeObservability,
+  prepareScreenContext,
+  SHARED_MUTATION_EVENTS,
+  trackScreen,
+} from '@/lib/observability';
+import { usePushResponseNavigation } from '@/lib/push/push-response';
 import { createScreenResolver, SHARED_SCREEN_CATALOG } from '@/lib/screen-catalog';
 import { ColorModeProvider } from '@/theme/ColorModeProvider';
 import { useColorMode } from '@/theme/use-color-mode';
@@ -37,7 +44,7 @@ const screenForSegments = createScreenResolver([
   CONTRACTING_SCREEN_CATALOG,
   EQUIPMENT_SCREEN_CATALOG,
 ]);
-const MUTATION_EVENTS = { ...EQUIPMENT_MUTATION_EVENTS, ...CONTRACTING_MUTATION_EVENTS };
+const MUTATION_EVENTS = { ...SHARED_MUTATION_EVENTS, ...EQUIPMENT_MUTATION_EVENTS, ...CONTRACTING_MUTATION_EVENTS };
 
 export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
   return <AppErrorBoundary error={error} retry={retry} />;
@@ -61,6 +68,8 @@ export default function RootLayout() {
 
 function ThemedAppShell() {
   const { preference } = useColorMode();
+  // In the component that renders the route stack, so its effect runs once the navigator has mounted.
+  usePushResponseNavigation();
 
   return (
     <GluestackUIProvider mode={preference}>

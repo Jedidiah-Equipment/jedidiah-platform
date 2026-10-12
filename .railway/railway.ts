@@ -69,6 +69,7 @@ export default defineRailway((ctx) => {
       ...documentStorage,
       'EMAIL_FROM',
       'EMAIL_PROVIDER',
+      'EXPO_ACCESS_TOKEN',
       'LOG_DOMAINS_DISABLED',
       'LOG_LEVEL',
       'NODE_ENV',

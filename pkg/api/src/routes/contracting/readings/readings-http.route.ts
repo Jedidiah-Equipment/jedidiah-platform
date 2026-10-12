@@ -1,7 +1,7 @@
 import type { StorageAdapter } from '@pkg/core';
 import { captureReading, getReadingForEvidence } from '@pkg/core/contracting';
 import type { Db } from '@pkg/db';
-import { READING_CAPTURE_PATH, READING_PHOTO_POLICY } from '@pkg/domain/contracting';
+import { type ContractingPushEvent, READING_CAPTURE_PATH, READING_PHOTO_POLICY } from '@pkg/domain/contracting';
 import {
   ReadingCaptureMultipart,
   ReadingComment,
@@ -28,7 +28,17 @@ export type ReadingVerifications = Scheduler<string>;
 
 export async function registerReadingHttpRoutes(
   app: FastifyInstance,
-  { db, storage, verifications }: { db: Db; storage: StorageAdapter; verifications: ReadingVerifications },
+  {
+    db,
+    storage,
+    verifications,
+    push,
+  }: {
+    db: Db;
+    storage: StorageAdapter;
+    verifications: ReadingVerifications;
+    push: Scheduler<ContractingPushEvent>;
+  },
 ) {
   const upload: MultipartUploadOptions = {
     fileField: 'photo',
@@ -55,6 +65,7 @@ export async function registerReadingHttpRoutes(
         actor: auth.access,
         input,
         ...(photoBytes === undefined ? {} : { evidence: { storage, photoBytes } }),
+        signals: { serviceDueSoon: ({ id }) => push.schedule({ kind: 'machine.service-due-soon', machineId: id }) },
       });
       // Answer at once; the photo's AI check follows in the background.
       if (row.photo) verifications.schedule(row.id);

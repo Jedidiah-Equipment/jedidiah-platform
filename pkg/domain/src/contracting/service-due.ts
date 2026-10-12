@@ -23,6 +23,24 @@ export function serviceDueStatus(
   return remaining <= threshold ? 'due-soon' : 'ok';
 }
 
+/**
+ * The Service Due Soon edge one capture can cross: the new latest reading needs attention while the one before it
+ * (or no reading at all) did not. A second reading still inside does not cross it; a higher Next Service Due re-arms it.
+ */
+export const serviceDueSoonCrossed = ({
+  previousHours,
+  newHours,
+  nextServiceDueHours,
+  threshold = SERVICE_DUE_SOON_THRESHOLD_HOURS,
+}: {
+  previousHours: number | null;
+  newHours: number;
+  nextServiceDueHours: number | null;
+  threshold?: number;
+}) =>
+  serviceDueNeedsAttention(serviceDueStatus({ latestReadingHours: newHours, nextServiceDueHours }, threshold)) &&
+  !serviceDueNeedsAttention(serviceDueStatus({ latestReadingHours: previousHours, nextServiceDueHours }, threshold));
+
 /** Pre-fill for the sticker: the reading at service plus the interval, when the Machine has one. */
 export const suggestedNextServiceDue = (readingAtServiceHours: number, serviceIntervalHours: number | null) =>
   serviceIntervalHours === null ? null : round2(readingAtServiceHours + serviceIntervalHours);

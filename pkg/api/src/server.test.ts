@@ -69,6 +69,7 @@ describe('API server', () => {
       DOCUMENT_STORAGE_SECRET_ACCESS_KEY: 'storage-secret-canary',
       OPENAI_API_KEY: 'openai-key-canary',
       POSTHOG_PROJECT_TOKEN: 'posthog-token-canary',
+      EXPO_ACCESS_TOKEN: 'expo-access-token-canary',
     } satisfies Partial<ApiConfig>;
     const info = vi.spyOn(log.root, 'info');
     const app = await buildServer({ ...config, ...secrets }, observability, new MemoryStorage());

@@ -99,6 +99,8 @@ OPENAI_API_KEY=sk-...
 OPENAI_MODEL=gpt-5.5
 OPENAI_REASONING_EFFORT=low
 OPENAI_TRANSCRIPTION_MODEL=gpt-transcribe
+# Optional: an Expo access token, needed once the Expo project enforces push security
+# EXPO_ACCESS_TOKEN=
 ```
 
 ## Commands

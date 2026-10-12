@@ -1,4 +1,6 @@
 import { isStoredUserSignInEligible } from '@pkg/domain';
+import { shouldRegisterForPush, WORKSHOP_PUSH_CHANNEL_ID } from '@pkg/domain/contracting';
+import { useMutation } from '@tanstack/react-query';
 import { type ErrorBoundaryProps, Redirect, Stack } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Text, View } from 'react-native';
@@ -6,10 +8,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppErrorBoundary } from '@/components/AppErrorBoundary';
 import { purgeLegacyContractingStorage } from '@/contracting/lib/purge-legacy-storage';
 import { signOut, useSession } from '@/lib/auth';
-import { AuthSessionProvider } from '@/lib/auth-session';
+import { AuthSessionProvider, useSessionAccessSummary } from '@/lib/auth-session';
 import { useIsOffline } from '@/lib/connectivity';
 import { addBreadcrumb, identifyObservabilityUser } from '@/lib/observability';
+import { registerForPush } from '@/lib/push/register-push';
 import { isHydratedSession } from '@/lib/session-state';
+import { useTRPC } from '@/lib/trpc';
 
 export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
   return <AppErrorBoundary error={error} retry={retry} />;
@@ -81,6 +85,7 @@ export default function ProtectedLayout() {
   return (
     <AuthSessionProvider session={session}>
       <SessionObservability userId={session.user.id} />
+      <PushRegistration userId={session.user.id} />
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="contracting" />
         <Stack.Screen name="equipment" />
@@ -102,6 +107,22 @@ function SessionObservability({ userId }: { userId: string }) {
     addBreadcrumb('auth', 'session resolved');
     identifyObservabilityUser(userId);
   }, [userId]);
+
+  return null;
+}
+
+/** Role membership is the opt-in: only a workshop push recipient is asked, once, and registered when allowed. */
+function PushRegistration({ userId }: { userId: string }) {
+  const eligible = shouldRegisterForPush(useSessionAccessSummary());
+  const trpc = useTRPC();
+  const { mutateAsync: register } = useMutation(trpc.pushTokens.register.mutationOptions());
+
+  useEffect(() => {
+    if (!eligible) return;
+    registerForPush({ userId, channel: { id: WORKSHOP_PUSH_CHANNEL_ID, name: 'Workshop' }, register })
+      .then((outcome) => addBreadcrumb('lifecycle', 'push registration', { outcome }))
+      .catch(() => addBreadcrumb('lifecycle', 'push registration failed'));
+  }, [eligible, userId, register]);
 
   return null;
 }

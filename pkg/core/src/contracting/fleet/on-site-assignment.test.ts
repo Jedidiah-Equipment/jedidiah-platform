@@ -52,7 +52,7 @@ test('names the on-site stint and its Job, and nothing for a planned, left or ya
   const stint = { id: planned.id, machineId: excavator.id };
   expect(await onSiteAssignment({ db, subject })).toBeNull();
 
-  const arrival = await capture(db, stint, 'arrival', 100);
+  const { reading: arrival } = await capture(db, stint, 'arrival', 100);
   expect(await onSiteAssignment({ db, subject })).toEqual({
     stintId: planned.id,
     jobId: job.id,

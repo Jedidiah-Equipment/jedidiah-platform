@@ -23,6 +23,7 @@ import { and, asc, eq, isNotNull, isNull, or, type SQL, sql } from 'drizzle-orm'
 
 import { defineAuditDescriptor } from '../audit/audit-writer.js';
 import { mutateEntity } from '../audit/mutate-entity.js';
+import { businessRoleSql } from './business-role.js';
 import { UserNotFoundError } from './user-errors.js';
 
 type UserAuditInput = Pick<
@@ -128,10 +129,7 @@ export async function listUsers({
   extraSearch?: SQL | undefined;
   extraFilter?: SQL | undefined;
 }): Promise<UserListResult> {
-  const role =
-    input.business === 'contracting'
-      ? sql`case when ${user.role} = 'super-admin' then ${user.role} else ${user.contractingRole} end`
-      : sql`${user.role}`;
+  const role = businessRoleSql(input.business ?? 'equipment');
   const roleLabel = sql`case ${role} ${sql.join(
     Object.entries(roleLabels).map(([value, label]) => sql`when ${value} then ${label}`),
     sql` `,

@@ -259,11 +259,11 @@ describe('Machine Assignment lifecycle', () => {
       disputePrevious: false,
     };
 
-    const first = await captureReading({ db: context.db, actor: foreman, input });
+    const { reading: first } = await captureReading({ db: context.db, actor: foreman, input });
     expect((await getJob({ db: context.db, id: job.id })).assignments).toMatchObject([
       { id: planned.id, driverUserId: null, state: 'on-site', arrival: { id: first.id } },
     ]);
-    expect((await captureReading({ db: context.db, actor: foreman, input })).id).toBe(first.id);
+    expect((await captureReading({ db: context.db, actor: foreman, input })).reading.id).toBe(first.id);
 
     await expect(
       captureReading({
@@ -287,7 +287,7 @@ describe('Machine Assignment lifecycle', () => {
       machineId: context.machine.id,
       implementId: null,
     });
-    const arrival = await captureReading({
+    const { reading: arrival } = await captureReading({
       db: context.db,
       actor: foreman,
       input: {

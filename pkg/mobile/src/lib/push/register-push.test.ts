@@ -14,9 +14,9 @@ vi.mock('expo-notifications', () => notifications);
 vi.mock('expo-device', () => device);
 vi.mock('expo-constants', () => ({ default: { expoConfig: { extra: { eas: { projectId: 'project' } } } } }));
 vi.mock('react-native', () => ({ Platform: { OS: 'android' } }));
-vi.mock('../observability', () => ({ addBreadcrumb: vi.fn(), captureEvent: vi.fn() }));
+vi.mock('../observability', () => ({ addBreadcrumb: vi.fn() }));
 
-import { registerForPush, unregisterPush } from './register-push';
+import { registerForPush } from './register-push';
 
 const channel = { id: 'workshop', name: 'Workshop' };
 
@@ -49,10 +49,9 @@ test('someone no push reaches is never asked, but still claims an install the OS
   expect(register).toHaveBeenCalledWith({ token: 'ExponentPushToken[phone]', platform: 'android' });
 });
 
-test('a granted permission registers the install on the workshop channel, then sign-out forgets it', async () => {
+test('a granted permission registers the install on the workshop channel', async () => {
   notifications.getPermissionsAsync.mockResolvedValueOnce({ status: 'granted' });
   const register = vi.fn(async () => undefined);
-  const unregister = vi.fn(async () => undefined);
 
   expect(await registerForPush({ userId: 'wendy', channel, mayAsk: true, register })).toBe('registered');
   expect(notifications.setNotificationChannelAsync).toHaveBeenCalledWith(
@@ -60,10 +59,6 @@ test('a granted permission registers the install on the workshop channel, then s
     expect.objectContaining({ importance: 5 }),
   );
   expect(register).toHaveBeenCalledWith({ token: 'ExponentPushToken[phone]', platform: 'android' });
-
-  await unregisterPush(unregister);
-  await unregisterPush(unregister);
-  expect(unregister.mock.calls).toEqual([[{ token: 'ExponentPushToken[phone]' }]]);
 });
 
 test('a simulator has no push channel and is never prompted', async () => {

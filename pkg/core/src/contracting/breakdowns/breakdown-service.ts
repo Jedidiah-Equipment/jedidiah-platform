@@ -751,18 +751,25 @@ export async function getBreakdownReportContext({
       .where(and(eq(breakdownSubjectColumn(subject.kind), subject.id), unsolved))
       .orderBy(desc(contractingBreakdowns.reportedAt)),
   ]);
-  /** A second read: the Job's names, only for a reader who may see them. */
-  const loadJobNames = async (jobId: string) => {
+  /**
+   * The Job's names for a reader who may see them, judged on the same row the names come from, so a Foreman
+   * reassigned since the on-site read is neither shown stale names nor refused fresh ones.
+   */
+  const visibleJobNames = async (jobId: string) => {
     const [header] = await selectJobs(db).where(eq(contractingJobs.id, jobId));
-    return header
-      ? { id: jobId, customerName: header.customerName, farmName: header.farmName, workTypeName: header.workTypeName }
-      : null;
+    if (!header || !fieldReaderSeesJob(actor, header.job)) return null;
+    return {
+      id: jobId,
+      customerName: header.customerName,
+      farmName: header.farmName,
+      workTypeName: header.workTypeName,
+    };
   };
   return BreakdownReportContext.parse({
     defaultJob: onSite
       ? {
           jobNumber: formatJobNumber(onSite.jobCode),
-          job: fieldReaderSeesJob(actor, onSite) ? await loadJobNames(onSite.jobId) : null,
+          job: await visibleJobNames(onSite.jobId),
         }
       : null,
     open: open.map(toBreakdownSummary),

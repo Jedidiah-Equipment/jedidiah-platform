@@ -3,18 +3,15 @@ import { toPlantDateOnly } from '../formatting/date.js';
 import { formatHours } from '../formatting/number.js';
 import { countPhrase } from './count-phrase.js';
 
-/** A Hour Gap longer than this raises a Gap Flag: more than a Machine normally spends travelling between Jobs. */
-export const GAP_FLAG_THRESHOLD_HOURS = 4;
+/** The gap is longer than the Gap Flag threshold in Settings, so it raises a Gap Flag until it is resolved. */
+export const isOverGapWindow = (gapHours: number, threshold: number) => gapHours > threshold;
 
-/** The gap is longer than the window, so it raises a Gap Flag until it is resolved. */
-export const isOverGapWindow = (gapHours: number, threshold = GAP_FLAG_THRESHOLD_HOURS) => gapHours > threshold;
-
-/** What an Hour Gap is and, naming the window, why it was or was not flagged, wherever someone splits it. */
-export const hourGapExplanation = (gapHours: number) =>
+/** What an Hour Gap is and, naming the threshold, why it was or was not flagged, wherever someone splits it. */
+export const hourGapExplanation = (gapHours: number, threshold: number) =>
   `The hour meter ran ${formatHours(gapHours)} between the Machine's departure from its previous Job and its arrival here. ${
-    isOverGapWindow(gapHours)
-      ? `Any gap over ${formatHours(GAP_FLAG_THRESHOLD_HOURS)} is flagged, because that is longer than a Machine normally spends travelling between Jobs.`
-      : `Gaps up to ${formatHours(GAP_FLAG_THRESHOLD_HOURS)} are not flagged and count as travel by default.`
+    isOverGapWindow(gapHours, threshold)
+      ? `Any gap over ${formatHours(threshold)} is flagged, because that is longer than a Machine normally spends travelling between Jobs.`
+      : `Gaps up to ${formatHours(threshold)} are not flagged and count as travel by default.`
   }`;
 
 export type StintReadings = {
@@ -50,7 +47,7 @@ export const assignmentState = (stint: {
   departureReadingId: string | null;
 }): AssignmentState => stateOf(stint.arrivalReadingId !== null, stint.departureReadingId !== null);
 
-export function deriveStintHours(stint: StintReadings, threshold = GAP_FLAG_THRESHOLD_HOURS): StintHours {
+export function deriveStintHours(stint: StintReadings, threshold: number): StintHours {
   const state = stateOf(stint.arrival !== null, stint.departure !== null);
   // A disputed reading may deliberately move the ledger backwards. Keep the Job readable while the
   // evidence is reviewed, but do not present a negative duration as meaningful operational hours.

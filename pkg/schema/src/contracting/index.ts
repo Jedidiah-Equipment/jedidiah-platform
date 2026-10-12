@@ -17,5 +17,6 @@ export * from './readings/reading.js';
 export * from './readings/reading-enums.js';
 export * from './services/service-enums.js';
 export * from './services/service-record.js';
+export * from './settings/settings.js';
 export * from './transcriptions/transcription.js';
 export * from './work-types/work-type.js';

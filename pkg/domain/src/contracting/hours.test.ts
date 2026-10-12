@@ -5,10 +5,14 @@ import {
   completionGateReasons,
   deriveStintHours,
   gapSplitTotals,
+  hourGapExplanation,
   splitGap,
   suggestJobDates,
 } from './hours.js';
 import { formatJobNumber, looksFinished } from './jobs.js';
+import { CONTRACTING_SETTINGS_DEFAULTS } from './settings.js';
+
+const threshold = CONTRACTING_SETTINGS_DEFAULTS.gapFlagThresholdHours;
 
 describe('contracting stint hours', () => {
   test.each([
@@ -35,25 +39,31 @@ describe('contracting stint hours', () => {
     },
   ])('derives the scenario-one $name stint', ({ arrival, departure, previous, expected }) => {
     expect(
-      deriveStintHours({
-        arrival: { value: arrival, capturedAt: '2026-09-01T08:00:00+02:00' },
-        departure: { value: departure, capturedAt: '2026-09-02T17:00:00+02:00' },
-        previousDeparture: { value: previous },
-        travelIncluded: true,
-        gap: null,
-      }),
+      deriveStintHours(
+        {
+          arrival: { value: arrival, capturedAt: '2026-09-01T08:00:00+02:00' },
+          departure: { value: departure, capturedAt: '2026-09-02T17:00:00+02:00' },
+          previousDeparture: { value: previous },
+          travelIncluded: true,
+          gap: null,
+        },
+        threshold,
+      ),
     ).toMatchObject(expected);
   });
 
   test('opens a first machine ledger without a gap or travel', () => {
     expect(
-      deriveStintHours({
-        arrival: { value: 100, capturedAt: '2026-09-01T08:00:00+02:00' },
-        departure: null,
-        previousDeparture: null,
-        travelIncluded: true,
-        gap: null,
-      }),
+      deriveStintHours(
+        {
+          arrival: { value: 100, capturedAt: '2026-09-01T08:00:00+02:00' },
+          departure: null,
+          previousDeparture: null,
+          travelIncluded: true,
+          gap: null,
+        },
+        threshold,
+      ),
     ).toEqual({
       state: 'on-site',
       workHours: null,
@@ -72,8 +82,8 @@ describe('contracting stint hours', () => {
       previousDeparture: { value: 100 },
       travelIncluded: false,
     } as const;
-    expect(deriveStintHours({ ...stint, gap: null })).toMatchObject({ travelHours: 0, gapFlag: true });
-    expect(deriveStintHours({ ...stint, gap: { travelHours: 2.5, unaccountedHours: 7.5 } })).toMatchObject({
+    expect(deriveStintHours({ ...stint, gap: null }, threshold)).toMatchObject({ travelHours: 0, gapFlag: true });
+    expect(deriveStintHours({ ...stint, gap: { travelHours: 2.5, unaccountedHours: 7.5 } }, threshold)).toMatchObject({
       travelHours: 2.5,
       unaccountedHours: 7.5,
       gapFlag: false,
@@ -83,13 +93,16 @@ describe('contracting stint hours', () => {
 
   test('keeps disputed backwards readings readable without inventing negative hours', () => {
     expect(
-      deriveStintHours({
-        arrival: { value: 5_000, capturedAt: '2026-09-01T08:00:00+02:00' },
-        departure: { value: 4_900, capturedAt: '2026-09-01T17:00:00+02:00' },
-        previousDeparture: { value: 5_100 },
-        travelIncluded: true,
-        gap: null,
-      }),
+      deriveStintHours(
+        {
+          arrival: { value: 5_000, capturedAt: '2026-09-01T08:00:00+02:00' },
+          departure: { value: 4_900, capturedAt: '2026-09-01T17:00:00+02:00' },
+          previousDeparture: { value: 5_100 },
+          travelIncluded: true,
+          gap: null,
+        },
+        threshold,
+      ),
     ).toMatchObject({
       workHours: null,
       gapHours: null,
@@ -100,18 +113,28 @@ describe('contracting stint hours', () => {
   });
 
   test.each([
-    [4, false],
-    [4.1, true],
-  ])('flags only gaps above the threshold (%s)', (gap, expected) => {
+    [4, threshold, false],
+    [4.1, threshold, true],
+    [3, threshold, false],
+    [3, 2, true],
+  ])('flags only gaps above the threshold it is given (%s h at %s h)', (gap, at, expected) => {
     expect(
-      deriveStintHours({
-        arrival: { value: 100 + gap, capturedAt: '2026-09-01T08:00:00+02:00' },
-        departure: null,
-        previousDeparture: { value: 100 },
-        travelIncluded: true,
-        gap: null,
-      }).gapFlag,
+      deriveStintHours(
+        {
+          arrival: { value: 100 + gap, capturedAt: '2026-09-01T08:00:00+02:00' },
+          departure: null,
+          previousDeparture: { value: 100 },
+          travelIncluded: true,
+          gap: null,
+        },
+        at,
+      ).gapFlag,
     ).toBe(expected);
+  });
+
+  test('explains a gap against the threshold it was judged with', () => {
+    expect(hourGapExplanation(3, 4)).toContain('Gaps up to 4.0 h are not flagged');
+    expect(hourGapExplanation(3, 2)).toContain('Any gap over 2.0 h is flagged');
   });
 
   test('derives assignment state and completion blockers', () => {
@@ -121,13 +144,16 @@ describe('contracting stint hours', () => {
     expect(
       canComplete([
         {
-          ...deriveStintHours({
-            arrival: null,
-            departure: null,
-            previousDeparture: null,
-            travelIncluded: true,
-            gap: null,
-          }),
+          ...deriveStintHours(
+            {
+              arrival: null,
+              departure: null,
+              previousDeparture: null,
+              travelIncluded: true,
+              gap: null,
+            },
+            threshold,
+          ),
         },
       ]),
     ).toEqual({ ok: true });

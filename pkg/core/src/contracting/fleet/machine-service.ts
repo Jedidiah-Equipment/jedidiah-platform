@@ -15,6 +15,7 @@ import { and, asc, eq, isNull, sql } from 'drizzle-orm';
 import { defineAuditDescriptor, recordAuditCreate } from '../../audit/audit-writer.js';
 import { mutateEntity } from '../../audit/mutate-entity.js';
 import { stintOnSite } from '../jobs/job-sql.js';
+import { getContractingSettings } from '../settings/settings-service.js';
 import { assertCategoryKind } from './category-service.js';
 import {
   type CategoryRelation,
@@ -101,6 +102,7 @@ function mapMachine(
     latestReadingAt: string | null;
     busyOnJob: BusyOnJobRow | null;
   },
+  serviceDueSoonThresholdHours: number,
 ) {
   const { category, currentDriver, busyOnJob, ...fields } = row;
   const facts = { latestReadingHours: row.latestReadingHours, nextServiceDueHours: row.nextServiceDueHours };
@@ -114,11 +116,13 @@ function mapMachine(
     ...projectTimestamps(row),
     currentDriverName: currentDriver?.name ?? null,
     hoursToService: hoursToService(facts),
-    serviceDueStatus: serviceDueStatus(facts),
+    serviceDueStatus: serviceDueStatus(facts, serviceDueSoonThresholdHours),
     busyOnJob: busyOnJob ? busy(busyOnJob) : null,
   });
 }
 export async function listMachines({ db, input }: { db: Db; input: MachineListInput }) {
+  // One Settings read per list, not per Machine.
+  const { serviceDueSoonThresholdHours } = await getContractingSettings({ db });
   const rows = await db.query.contractingMachines.findMany({
     where: and(
       retirementFilter(contractingMachines, input.status),
@@ -129,7 +133,7 @@ export async function listMachines({ db, input }: { db: Db; input: MachineListIn
     extras: latestReading,
     orderBy: [asc(contractingMachines.code)],
   });
-  return rows.map(mapMachine);
+  return rows.map((row) => mapMachine(row, serviceDueSoonThresholdHours));
 }
 export async function getMachine({ db, id }: { db: Db | DatabaseTransaction; id: string }) {
   const row = await db.query.contractingMachines.findFirst({
@@ -138,7 +142,8 @@ export async function getMachine({ db, id }: { db: Db | DatabaseTransaction; id:
     extras: latestReading,
   });
   if (!row) throw notFound('Machine');
-  return mapMachine(row);
+  const { serviceDueSoonThresholdHours } = await getContractingSettings({ db });
+  return mapMachine(row, serviceDueSoonThresholdHours);
 }
 async function assertDriver(tx: DatabaseTransaction, id: string | null | undefined) {
   if (!id) return;

@@ -6,7 +6,7 @@ import {
   type ContractingPushContent,
   type ContractingPushEvent,
   type ContractingPushRole,
-  SERVICE_DUE_SOON_THRESHOLD_HOURS,
+  serviceDueNeedsAttention,
   serviceDueSoonPushMessage,
   serviceDueSoonPushRecipients,
 } from '@pkg/domain/contracting';
@@ -64,8 +64,9 @@ export async function buildContractingPush({
     );
   }
   const machine = await getMachine({ db, id: event.machineId });
-  // Queued work runs after commit: a service closed in between leaves nothing to say.
-  if (machine.hoursToService === null || machine.hoursToService > SERVICE_DUE_SOON_THRESHOLD_HOURS) return [];
+  // Queued work runs after commit: a service closed in between, or a raised threshold, leaves nothing to say.
+  // The Machine read already judged its status against the Service Due Soon threshold in Settings.
+  if (machine.hoursToService === null || !serviceDueNeedsAttention(machine.serviceDueStatus)) return [];
   // Nobody is excluded: the capturer is usually a Foreman, and a workshop manager who captured it still wants it.
   return addressed(
     db,

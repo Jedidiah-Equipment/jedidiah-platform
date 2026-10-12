@@ -76,7 +76,16 @@ function HourMeterCard({ stint, gapHours }: { stint: Assignment; gapHours: numbe
   );
 }
 
-export function GapResolveDialog({ stint, onClose }: { stint: Assignment | null; onClose: () => void }) {
+export function GapResolveDialog({
+  stint,
+  gapFlagThresholdHours,
+  onClose,
+}: {
+  stint: Assignment | null;
+  /** The Gap Flag threshold the server judged this gap against, named in the explanation. */
+  gapFlagThresholdHours: number;
+  onClose: () => void;
+}) {
   const trpc = useTRPC();
   const write = useJobWrite();
   const resolve = useMutation(trpc.contractingJobs.assignments.resolveGap.mutationOptions(write.dialog));
@@ -94,7 +103,7 @@ export function GapResolveDialog({ stint, onClose }: { stint: Assignment | null;
           {stint?.gapResolved ? 'Edit' : 'Resolve'} {formatHours(gapHours)} gap
         </MachineDialogTitle>
       }
-      description={hourGapExplanation(gapHours)}
+      description={hourGapExplanation(gapHours, gapFlagThresholdHours)}
       contentClassName="sm:max-w-xl"
       defaultValues={
         stint?.gapResolved

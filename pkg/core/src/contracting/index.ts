@@ -29,6 +29,7 @@ export * from './readings/reading-evidence.js';
 export * from './readings/reading-service.js';
 export * from './services/service-errors.js';
 export * from './services/service-record-service.js';
+export * from './settings/settings-service.js';
 export * from './transcriptions/keyterm-registry.js';
 export * from './transcriptions/transcription-errors.js';
 export * from './transcriptions/transcription-review.js';

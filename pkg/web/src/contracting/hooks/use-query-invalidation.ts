@@ -36,6 +36,17 @@ export function useQueryInvalidation() {
       ]),
     [queryClient, trpc],
   );
+  // A threshold change moves Gap Flags and Service Due badges on every screen that shows them.
+  const invalidateSettings = useCallback(
+    () =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: trpc.contractingSettings.pathKey() }),
+        queryClient.invalidateQueries({ queryKey: trpc.contractingJobs.pathKey() }),
+        queryClient.invalidateQueries({ queryKey: trpc.contractingFleet.pathKey() }),
+        queryClient.invalidateQueries({ queryKey: trpc.contractingBreakdowns.pathKey() }),
+      ]),
+    [queryClient, trpc],
+  );
   const invalidateWorkshop = useCallback(
     () =>
       Promise.all([
@@ -53,6 +64,7 @@ export function useQueryInvalidation() {
       invalidateRateCard,
       invalidateReadings,
       invalidateServices,
+      invalidateSettings,
       invalidateWorkshop,
     }),
     [
@@ -62,6 +74,7 @@ export function useQueryInvalidation() {
       invalidateRateCard,
       invalidateReadings,
       invalidateServices,
+      invalidateSettings,
       invalidateWorkshop,
     ],
   );

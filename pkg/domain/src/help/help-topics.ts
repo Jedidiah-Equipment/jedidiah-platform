@@ -39,6 +39,7 @@ export const HELP_TOPICS = {
   contractingUsers: '/contracting/manage-users',
   contractingAudit: '/contracting/trace-a-change-in-the-audit-log',
   contractingTranscriptions: '/contracting/review-voice-note-transcriptions',
+  contractingSettings: '/contracting/maintain-contracting-settings',
   bays: '/production/delete-a-bay',
   customerCreate: '/sales/choose-a-customer',
   customerMerge: '/sales/merge-duplicate-customers',

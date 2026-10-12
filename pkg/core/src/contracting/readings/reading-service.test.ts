@@ -5,8 +5,9 @@ import { and, desc, eq } from 'drizzle-orm';
 import { expect } from 'vitest';
 import { createTester } from '../../test/create-tester.js';
 import { createCategory } from '../fleet/category-service.js';
-import { createMachine, retireMachine } from '../fleet/machine-service.js';
+import { createMachine, patchMachine, retireMachine } from '../fleet/machine-service.js';
 import { createJob } from '../jobs/job-service.js';
+import { getContractingSettings, updateContractingSettings } from '../settings/settings-service.js';
 import { admin, foreman, foremanId, leftStint, seedJobFixtures } from '../test/job-fixtures.js';
 import type { ReadMeterPhoto } from './reading-evidence.js';
 import {
@@ -537,4 +538,26 @@ test('a background check lands on a pending reading against its current value, a
   });
   // An amend made before the AI had looked still leaves its disagreement for Reading Exceptions.
   expect(disagreed).toMatchObject({ value: 171, aiVerification: 'disagrees', evidenceReviewedAt: null });
+});
+
+test('crosses the Service Due Soon edge the threshold in Settings draws at capture time', async ({ context }) => {
+  const { db, actor, actorUserId, machineId } = context;
+  const sticker = (nextServiceDueHours: number) =>
+    patchMachine({ db, actorUserId, input: { id: machineId, nextServiceDueHours } });
+  const capture = (value: number, capturedAt: string) =>
+    captureReading({ db, actor, input: { machineId, role: 'spot', value, capturedAt, disputePrevious: false } });
+  await sticker(1500);
+  expect((await capture(1300, '2026-09-07T08:00:00Z')).serviceDueSoonCrossed).toBe(false);
+  // 120 h to go is outside the default 100 h threshold.
+  expect((await capture(1380, '2026-09-07T09:00:00Z')).serviceDueSoonCrossed).toBe(false);
+
+  await sticker(2000);
+  await updateContractingSettings({
+    db,
+    actorUserId,
+    input: { ...(await getContractingSettings({ db })), serviceDueSoonThresholdHours: 150 },
+  });
+  // Raising the threshold sends nothing by itself; 120 h to go now crosses at the next capture, once.
+  expect((await capture(1880, '2026-09-07T10:00:00Z')).serviceDueSoonCrossed).toBe(true);
+  expect((await capture(1881, '2026-09-07T11:00:00Z')).serviceDueSoonCrossed).toBe(false);
 });

@@ -10,6 +10,7 @@ export const helpTopicForPath = createHelpTopicResolver(
     ['/contracting/invoicing', 'contractingInvoicing'],
     ['/contracting/jobs', 'contractingJobs'],
     ['/contracting/readings', 'contractingReadings'],
+    ['/contracting/settings', 'contractingSettings'],
     ['/contracting/transcriptions', 'contractingTranscriptions'],
     ['/contracting/rates', 'contractingRates'],
     ['/contracting/measure-types', 'contractingMeasureTypes'],

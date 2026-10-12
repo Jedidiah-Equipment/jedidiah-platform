@@ -12,7 +12,6 @@ import {
   breakdownStatusLabels,
   breakdownUrgencyColorClassNames,
   breakdownUrgencyLabels,
-  GAP_FLAG_THRESHOLD_HOURS,
   isOverGapWindow,
   shownReadingAttention,
 } from '@pkg/domain/contracting';
@@ -171,7 +170,11 @@ function GapDetail({
 }
 
 /** The Hour Gap between the Machine's previous departure and this arrival: flagged, resolved, or counted as travel. */
-function GapRow({ stint, onOpen }: { stint: AssignmentDetail } & Opens) {
+function GapRow({
+  stint,
+  gapFlagThresholdHours,
+  onOpen,
+}: { stint: AssignmentDetail; gapFlagThresholdHours: number } & Opens) {
   const gapHours = stint.gapHours;
   if (gapHours === null || gapHours === 0) return null;
   const verdict = actionSheet(stint.actions).verdict('resolveGap');
@@ -180,7 +183,7 @@ function GapRow({ stint, onOpen }: { stint: AssignmentDetail } & Opens) {
   const edit = why ? null : <IconAction icon={IconPencil} label="Edit gap split" onClick={open} />;
   const hours = formatHours(gapHours);
   // A gap over the window keeps the Gap Flag's colour on its dot, open or resolved.
-  const tone = isOverGapWindow(gapHours) ? gapFlagLevel : ('done' as const);
+  const tone = isOverGapWindow(gapHours, gapFlagThresholdHours) ? gapFlagLevel : ('done' as const);
 
   if (stint.gapFlag)
     return (
@@ -202,7 +205,7 @@ function GapRow({ stint, onOpen }: { stint: AssignmentDetail } & Opens) {
             hours={hours}
             hoursClassName={assignmentAttentionLevelColorClassNames[gapFlagLevel].text}
             lead={previousJobLabel(stint)}
-            parts={[`over the ${formatHours(GAP_FLAG_THRESHOLD_HOURS)} window`]}
+            parts={[`over the ${formatHours(gapFlagThresholdHours)} window`]}
           />
         }
         title="Gap"
@@ -333,6 +336,7 @@ export function MachineStintCard({
   stintNumber,
   sheet,
   breakdowns,
+  gapFlagThresholdHours,
   onOpen,
 }: {
   stint: AssignmentDetail;
@@ -340,6 +344,8 @@ export function MachineStintCard({
   sheet: JobSheet;
   /** This stint's Breakdowns on the Job, oldest first. */
   breakdowns: readonly BreakdownSummary[];
+  /** The Gap Flag threshold the server judged this Job's stints against. */
+  gapFlagThresholdHours: number;
 } & Opens) {
   const trpc = useTRPC();
   const [measuring, setMeasuring] = useState(false);
@@ -425,7 +431,7 @@ export function MachineStintCard({
             title="Planned"
             tone="done"
           />
-          <GapRow onOpen={onOpen} stint={stint} />
+          <GapRow onOpen={onOpen} stint={stint} gapFlagThresholdHours={gapFlagThresholdHours} />
           {breakdownRows(phases.beforeArrival)}
           <TimelineRow
             actions={

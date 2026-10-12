@@ -47,7 +47,7 @@ async function mount() {
   document.body.append(container);
   const root = createRoot(container);
   roots.push(root);
-  await act(async () => root.render(<GapResolveDialog stint={stint} onClose={vi.fn()} />));
+  await act(async () => root.render(<GapResolveDialog stint={stint} gapFlagThresholdHours={4} onClose={vi.fn()} />));
   const save = [...document.querySelectorAll('button')].find((button) => button.textContent?.trim() === 'Save');
   if (!save) throw new Error('Save action missing');
   return { save };

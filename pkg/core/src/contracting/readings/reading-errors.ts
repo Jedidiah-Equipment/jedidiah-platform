@@ -1,11 +1,12 @@
 import {
-  type CaptureRule,
+  type CaptureConstraintRule,
   captureRefusals,
   type JobActionSubject,
   type JobActor,
   judgeJobAction,
+  readingCodeForJobRefusal,
 } from '@pkg/domain/contracting';
-import type { JobActionName, ReadingErrorCode } from '@pkg/schema/contracting';
+import type { ReadingErrorCode } from '@pkg/schema/contracting';
 import { translatingConstraintViolations } from '../../errors/constraint-violations.js';
 import type { RefusedJobAction } from '../jobs/job-errors.js';
 
@@ -23,27 +24,20 @@ export class ReadingError extends Error {
 export const isReadingError = (error: unknown): error is ReadingError => error instanceof ReadingError;
 
 /**
- * A Job Action refused as a Reading error, because the phone and the exceptions list report Reading
- * codes: an Invoiced Job keeps its own code for amendments, which the Job sheet names.
+ * The amendment's Job Action refused as a Reading error, because the exceptions list reports Reading codes: an
+ * Invoiced Job keeps its own code, which the Job sheet names. Capture's Job verdict is judged in `judgeCapture`.
  */
-export function assertReadingJobAction(
-  action: Extract<JobActionName, 'capture' | 'amendReadings'>,
-  job: JobActionSubject,
-  actor: JobActor,
-) {
-  const verdict = judgeJobAction(action, job, actor);
+export function assertAmendReadings(job: JobActionSubject, actor: JobActor) {
+  const verdict = judgeJobAction('amendReadings', job, actor);
   if (verdict.allowed) return;
+  const jobCode = readingCodeForJobRefusal(verdict.reason);
   const code: ReadingErrorCode =
-    verdict.reason === 'no-permission' || verdict.reason === 'not-your-job'
-      ? 'reading.forbidden'
-      : action === 'amendReadings' && job.status === 'invoiced'
-        ? 'reading.job_invoiced'
-        : 'reading.wrong_status';
-  throw new ReadingError(code, verdict.message, { action, reason: verdict.reason });
+    jobCode === 'reading.wrong_status' && job.status === 'invoiced' ? 'reading.job_invoiced' : jobCode;
+  throw new ReadingError(code, verdict.message, { action: 'amendReadings', reason: verdict.reason });
 }
 
-/** A capture refusal as the Reading error the phone reports. */
-export const captureRefused = (rule: CaptureRule) =>
+/** A stint constraint's refusal as the Reading error the phone reports. */
+const captureRefused = (rule: CaptureConstraintRule) =>
   new ReadingError(captureRefusals[rule].code, captureRefusals[rule].message);
 
 /** Capture's reading of the stint constraints: the phone reports these, so they stay Reading errors. */

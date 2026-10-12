@@ -80,15 +80,17 @@ test('foremen can find active Machines and read field history without fleet mana
       onSiteJobNumber: null,
     },
   ]);
-  const history = await foreman.contractingReadings.fieldHistory({ machineId: machine.id });
-  expect(history[0]).toMatchObject({ value: 100, photoBacked: false });
-  expect(history[0]).not.toHaveProperty('aiConfidence');
-  expect(history[0]).not.toHaveProperty('aiVerification');
+  expect(await foreman.contractingReadings.latest({ machineId: machine.id })).toEqual({
+    id: expect.any(String),
+    role: 'spot',
+    value: 100,
+    capturedAt: '2026-09-08T08:00:00.000Z',
+  });
   await expect(foreman.contractingFleet.machines.list({})).rejects.toMatchObject({ code: 'FORBIDDEN' });
   await expect(context.createCaller(mockSession('admin')).contractingReadings.fieldMachines()).rejects.toMatchObject({
     code: 'FORBIDDEN',
   });
   await expect(
-    context.createCaller(mockSession('admin')).contractingReadings.fieldHistory({ machineId: machine.id }),
+    context.createCaller(mockSession('admin')).contractingReadings.latest({ machineId: machine.id }),
   ).rejects.toMatchObject({ code: 'FORBIDDEN' });
 });

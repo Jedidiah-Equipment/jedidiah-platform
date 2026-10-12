@@ -31,7 +31,7 @@ export function WorkshopWidget() {
   );
 }
 
-export function OpenBreakdownRow({ breakdown }: { breakdown: BreakdownSummary }) {
+function OpenBreakdownRow({ breakdown }: { breakdown: BreakdownSummary }) {
   const { subject } = breakdown;
   return (
     <div className={dashboardRowClassName}>

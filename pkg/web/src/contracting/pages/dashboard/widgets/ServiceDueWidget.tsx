@@ -41,7 +41,7 @@ export function ServiceDueWidget() {
   );
 }
 
-export function ServiceDueRow({ machine }: { machine: Machine }) {
+function ServiceDueRow({ machine }: { machine: Machine }) {
   return (
     <div className={dashboardRowClassName}>
       <span className="min-w-0">

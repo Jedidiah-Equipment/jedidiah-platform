@@ -31,17 +31,24 @@ describe('judgeAssignmentAction', () => {
     }
   });
 
-  test('refuses a wrong state with the rule its own sentence', () => {
-    expect(judgeAssignmentAction('remove', allowed, { state: 'on-site' })).toEqual({
-      allowed: false,
-      reason: 'wrong-state',
-      message: 'Only a planned Machine Assignment can be removed.',
-    });
-    expect(judgeAssignmentAction('captureDeparture', allowed, { state: 'planned' })).toEqual({
-      allowed: false,
-      reason: 'wrong-state',
-      message: 'This Machine Assignment is not on site.',
-    });
+  test("refuses a wrong state with the rule's own sentence", () => {
+    const sentences: Record<AssignmentActionName, [AssignmentState, string]> = {
+      remove: ['on-site', 'Only a planned Machine Assignment can be removed.'],
+      changeResources: ['left', 'The Implement and Driver cannot change after the Machine has left.'],
+      captureArrival: ['on-site', 'This Machine Assignment already arrived.'],
+      captureDeparture: ['planned', 'This Machine Assignment is not on site.'],
+      editMeasures: ['planned', 'Measures can only be recorded after the Machine has arrived.'],
+      resolveGap: ['on-site', 'The Machine Assignment must have left the Job.'],
+      price: ['on-site', 'Only a Machine Assignment that has left can be priced.'],
+    };
+    for (const action of assignmentActionNames) {
+      const [state, message] = sentences[action];
+      expect(judgeAssignmentAction(action, allowed, { state })).toEqual({
+        allowed: false,
+        reason: 'wrong-state',
+        message,
+      });
+    }
   });
 
   test('passes a refused Job verdict through untouched', () => {

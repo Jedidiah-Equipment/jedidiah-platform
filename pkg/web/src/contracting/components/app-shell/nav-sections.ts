@@ -1,6 +1,7 @@
 import {
   IconBuilding,
   IconCategory,
+  IconChartBar,
   IconClipboardCheck,
   IconClipboardList,
   IconCoins,
@@ -92,6 +93,12 @@ export const contractingNavSections = [
         permission: 'contracting_directory:read',
         link: linkOptions({ to: '/contracting/customers' }),
         icon: IconBuilding,
+      },
+      {
+        title: 'Reports',
+        permission: 'contracting_report:read',
+        link: linkOptions({ to: '/contracting/reports' }),
+        icon: IconChartBar,
       },
     ],
   },

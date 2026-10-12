@@ -22,6 +22,7 @@ export const APP_CODE_PREFIXES = [
   'push',
   'quote',
   'rate_card',
+  'report',
   'service',
   'supplier',
   'transcription',

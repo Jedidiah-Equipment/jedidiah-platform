@@ -27,6 +27,8 @@ export * from './rate-card/rate-service.js';
 export * from './readings/reading-errors.js';
 export * from './readings/reading-evidence.js';
 export * from './readings/reading-service.js';
+export * from './reports/report-errors.js';
+export * from './reports/utilisation-service.js';
 export * from './services/service-errors.js';
 export * from './services/service-record-service.js';
 export * from './settings/settings-service.js';

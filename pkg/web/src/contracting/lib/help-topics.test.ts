@@ -9,6 +9,7 @@ describe('helpTopicForPath', () => {
     expect(helpTopicForPath('/contracting/audit')).toBe('contractingAudit');
     expect(helpTopicForPath('/contracting/transcriptions')).toBe('contractingTranscriptions');
     expect(helpTopicForPath('/contracting/settings')).toBe('contractingSettings');
+    expect(helpTopicForPath('/contracting/reports')).toBe('contractingReports');
     expect(helpTopicForPath('/contracting/customers/42/edit')).toBe('contractingCustomers');
     expect(helpTopicForPath('/contracting/work-types/42/edit')).toBe('contractingWorkTypes');
     expect(helpTopicForPath('/contracting/rates/42/edit')).toBe('contractingRates');

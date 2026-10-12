@@ -196,7 +196,8 @@ has a zero gap. A gap above the **Gap Flag threshold** in Settings (4 h unless c
 sign-off and blocking nothing in the field — the Job cannot be Completed while one is open;
 management resolves it by splitting the gap into billable Travel
 Hours and an **Unaccounted Interval** with a mandatory reason, which clears the flag. Time in the
-yard is an Unaccounted Interval — there are no internal Jobs.
+yard is an Unaccounted Interval — there are no internal Jobs. An unresolved gap over the threshold
+reports its hours as **Unresolved** until management splits it.
 
 **Assignment Attention** is everything that flags a Machine Assignment for a person, each kind at one
 of three levels: a **notice** is worth knowing with nothing to do (a pending AI verification, Missing
@@ -326,6 +327,10 @@ never count). **Utilisation %**
 is active days over days in the window, counting only days the Machine was in the fleet — days,
 never hours, and month attribution is exact. **Fleet Load** is the share of Machines with at
 least one Active Day in the window. **Utilisation Target %** is the single global reference line
-management sets in Settings; empty draws no line. Mechanic performance — Fixed count, average
+management sets in Settings; empty draws no line. **Hour totals by kind** are a Machine's meter hours
+in a window as **Work** (inside a stint), **Travel** and **Unaccounted** (its Hour Gaps, as resolved
+or, under the threshold, all travel) and **Unresolved**, derived from consecutive readings — spot
+readings included — and spread across months by elapsed time; hours before a Machine's first arrival
+and in a gap no arrival has closed count nowhere. Mechanic performance — Fixed count, average
 report-to-Fixed time, Not fixed count — is derived from Breakdowns and never stored. Reporting is
 readable by every role that reads all Jobs; Foremen and invoicing never see it.

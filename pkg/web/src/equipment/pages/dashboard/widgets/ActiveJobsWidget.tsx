@@ -1,8 +1,7 @@
 import { countActiveJobs } from '@pkg/domain/equipment';
 import type React from 'react';
-
+import { StatCard, StatCardSkeleton } from '@/components/common/StatCard.js';
 import { DashboardWidgetError } from '../DashboardWidgetCard.js';
-import { StatCard, StatCardSkeleton } from '../StatCard.js';
 import { useShopFloorBays } from '../use-shop-floor-bays.js';
 
 export const ActiveJobsWidget: React.FC = () => {

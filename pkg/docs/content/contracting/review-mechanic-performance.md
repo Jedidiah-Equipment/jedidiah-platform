@@ -11,4 +11,4 @@ Mechanic performance shows how much Breakdown work each Mechanic solved in a per
 4. Read the **Unassigned** row: Breakdowns with no Mechanic, the queue's backlog.
 5. Select a Mechanic's name to open the Workshop showing only their Breakdowns, solved ones included.
 
-Every Mechanic appears, and so does anyone who was ever a Breakdown's Mechanic, even after their role changed.
+Every Mechanic appears, and so does anyone still named as a Breakdown's Mechanic, even after their role changed.

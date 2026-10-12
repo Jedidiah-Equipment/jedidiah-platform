@@ -34,7 +34,8 @@ export async function getMechanicPerformance({
   const range = reportWindowInstants(window);
   const [mechanics, everAssigned, solved, notSolved] = await Promise.all([
     listMechanics({ db }),
-    // Anyone ever primary Mechanic keeps their row after a role change.
+    // Anyone still named as a Breakdown's primary Mechanic keeps their row after a role change; every count
+    // follows the current primary Mechanic, so someone replaced everywhere has nothing to show.
     db
       .selectDistinct({ id: user.id, name: user.name })
       .from(contractingBreakdowns)

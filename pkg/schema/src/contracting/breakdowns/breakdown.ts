@@ -211,7 +211,7 @@ export const BreakdownFilterOptions = z.object({
   jobs: z.object({ id: UUID, jobNumber: z.string() }).array(),
   farms: z.object({ id: UUID, name: z.string() }).array(),
   reporters: z.object({ id: AuthId, name: z.string() }).array(),
-  /** Everyone ever primary Mechanic on a readable Breakdown, whatever their role is now. */
+  /** Everyone named as primary Mechanic on a readable Breakdown, whatever their role is now. */
   mechanics: z.object({ id: AuthId, name: z.string() }).array(),
 });
 export type BreakdownFilterOptions = z.infer<typeof BreakdownFilterOptions>;

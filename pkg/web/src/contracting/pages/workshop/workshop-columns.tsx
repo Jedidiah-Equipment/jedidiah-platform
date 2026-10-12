@@ -63,7 +63,7 @@ export function useWorkshopColumns({
     }),
     [filters],
   );
-  // Assigning offers today's Mechanics; filtering also names anyone ever assigned, so a link from the Reports page
+  // Assigning offers today's Mechanics; filtering also names anyone on a Breakdown, so a link from the Reports page
   // to someone whose role changed shows their name rather than an id.
   const mechanicOptions = useMemo(() => (mechanics ?? []).map(toOption), [mechanics]);
   const mechanicFilterOptions = useMemo(

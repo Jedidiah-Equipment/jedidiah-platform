@@ -373,7 +373,7 @@ export async function listBreakdowns({
 
 /**
  * The subjects, Jobs, Farms, reporters and primary Mechanics the actor's readable Breakdowns carry, for the Workshop's
- * column filters. Mechanics include anyone ever assigned, so a filter on someone whose role changed still has a name.
+ * column filters. Mechanics include anyone named on a Breakdown, so a filter on someone whose role changed still has a name.
  */
 export async function listBreakdownFilterOptions({
   db,

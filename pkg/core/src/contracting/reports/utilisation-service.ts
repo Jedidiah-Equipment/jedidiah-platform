@@ -11,8 +11,8 @@ import {
   activeDaysIn,
   allocateHours,
   fleetDaysIn,
-  type HourSegment,
   hourSegments,
+  type LedgerReading,
   type LedgerStint,
   resolveReportWindow,
   round1,
@@ -22,20 +22,21 @@ import {
 import type { DateOnlyIso } from '@pkg/schema';
 import {
   type CategoryUtilisation,
-  type HourKindTotals,
+  type MachineUtilisation,
   type ReportWindow,
   type ReportWindowInput,
   UtilisationReport,
   UtilisationTrend,
   type UtilisationTrendInput,
+  type UtilisationTrendSubject,
 } from '@pkg/schema/contracting';
-import { asc, eq, isNotNull } from 'drizzle-orm';
+import { asc, eq } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { getContractingSettings } from '../settings/settings-service.js';
 import { ReportError } from './report-errors.js';
 
-/** One Machine with everything the day counts and the ledger walk need, read once for every window. */
-type LedgerMachine = {
+/** One Machine with its fleet span, its stints as plant dates, and its whole reading ledger in `sequence` order. */
+type FleetMachine = {
   id: string;
   code: string;
   categoryId: string;
@@ -44,18 +45,19 @@ type LedgerMachine = {
   retiredDate: DateOnlyIso | null;
   retiredAt: string | null;
   spans: ActiveSpan[];
-  segments: HourSegment[];
+  readings: LedgerReading[];
+  stints: LedgerStint[];
 };
 
 const arrival = alias(contractingHourReadings, 'report_arrival');
 const departure = alias(contractingHourReadings, 'report_departure');
 
 /**
- * Three queries for the whole fleet, retired Machines included, and nothing per Machine. The walk needs the readings
- * either side of a window boundary, so the whole ledger is read; at ~80 Machines and a few readings a stint that is
- * small. If it ever grows, bound the reading load to the trend's twelve months plus one reading either side first.
+ * Three queries for the whole fleet, retired Machines included, and nothing per Machine. The ledger walk needs the
+ * readings either side of a window boundary, so the whole ledger is read; at ~80 Machines and a few readings a stint
+ * that is small. If it ever grows, bound the reading load to the trend's twelve months plus one reading either side.
  */
-async function loadFleetLedger(db: Db, gapFlagThresholdHours: number): Promise<LedgerMachine[]> {
+async function loadFleet(db: Db): Promise<FleetMachine[]> {
   const [machines, readings, stints] = await Promise.all([
     db
       .select({
@@ -84,7 +86,7 @@ async function loadFleetLedger(db: Db, gapFlagThresholdHours: number): Promise<L
     db
       .select({
         machineId: contractingMachineAssignments.machineId,
-        arrivalReadingId: contractingMachineAssignments.arrivalReadingId,
+        arrivalReadingId: arrival.id,
         departureReadingId: contractingMachineAssignments.departureReadingId,
         gapResolvedAt: contractingMachineAssignments.gapResolvedAt,
         gapTravelHours: contractingMachineAssignments.gapTravelHours,
@@ -94,31 +96,12 @@ async function loadFleetLedger(db: Db, gapFlagThresholdHours: number): Promise<L
       })
       .from(contractingMachineAssignments)
       .innerJoin(arrival, eq(arrival.id, contractingMachineAssignments.arrivalReadingId))
-      .leftJoin(departure, eq(departure.id, contractingMachineAssignments.departureReadingId))
-      .where(isNotNull(contractingMachineAssignments.arrivalReadingId)),
+      .leftJoin(departure, eq(departure.id, contractingMachineAssignments.departureReadingId)),
   ]);
   const readingsByMachine = groupBy(readings, (reading) => reading.machineId);
   const stintsByMachine = groupBy(stints, (stint) => stint.machineId);
   return machines.map((machine) => {
     const own = stintsByMachine.get(machine.id) ?? [];
-    const ledgerStints: LedgerStint[] = own.flatMap((stint) =>
-      stint.arrivalReadingId
-        ? [
-            {
-              arrivalReadingId: stint.arrivalReadingId,
-              departureReadingId: stint.departureReadingId,
-              gap:
-                stint.gapResolvedAt === null
-                  ? null
-                  : { travelHours: stint.gapTravelHours ?? 0, unaccountedHours: stint.gapUnaccountedHours ?? 0 },
-            },
-          ]
-        : [],
-    );
-    const ledger = (readingsByMachine.get(machine.id) ?? []).map((reading) => ({
-      ...reading,
-      capturedAt: reading.capturedAt.toISOString(),
-    }));
     return {
       id: machine.id,
       code: machine.code,
@@ -131,47 +114,62 @@ async function loadFleetLedger(db: Db, gapFlagThresholdHours: number): Promise<L
         arrivalDate: toPlantDateOnly(stint.arrivalAt),
         departureDate: stint.departureAt ? toPlantDateOnly(stint.departureAt) : null,
       })),
-      segments: hourSegments(ledger, ledgerStints, gapFlagThresholdHours),
+      readings: (readingsByMachine.get(machine.id) ?? []).map((reading) => ({
+        ...reading,
+        capturedAt: reading.capturedAt.toISOString(),
+      })),
+      stints: own.map((stint) => ({
+        arrivalReadingId: stint.arrivalReadingId,
+        departureReadingId: stint.departureReadingId,
+        gap:
+          stint.gapResolvedAt === null
+            ? null
+            : { travelHours: stint.gapTravelHours ?? 0, unaccountedHours: stint.gapUnaccountedHours ?? 0 },
+      })),
     };
   });
 }
 
-const noHours: HourKindTotals = { workHours: 0, travelHours: 0, unaccountedHours: 0, unresolvedHours: 0 };
-const hourKinds = Object.keys(noHours) as (keyof HourKindTotals)[];
-
-const dayCounts = (machine: LedgerMachine, window: ReportWindow, today: DateOnlyIso) => {
-  const activeDays = activeDaysIn(machine.spans, window, today, machine);
-  const fleetDays = fleetDaysIn(machine, window);
-  return { activeDays, fleetDays, utilisationPercent: utilisationPercent(activeDays, fleetDays) };
-};
-
 /** A Machine row before the final parse brands its timestamp. */
-type MachineRow = HourKindTotals & {
-  machineId: string;
-  code: string;
-  categoryId: string;
-  retiredAt: string | null;
-  activeDays: number;
-  fleetDays: number;
-  utilisationPercent: number | null;
-};
+type MachineRow = Omit<MachineUtilisation, 'retiredAt'> & { retiredAt: string | null };
+
+/** The Machine's day counts and hours by kind for the window; null when it was not in the fleet during it. */
+function machineRow(
+  machine: FleetMachine,
+  window: ReportWindow,
+  today: DateOnlyIso,
+  gapFlagThresholdHours: number,
+): MachineRow | null {
+  const fleetDays = fleetDaysIn(machine, window);
+  if (fleetDays === 0) return null;
+  const activeDays = activeDaysIn(machine.spans, window, today, machine);
+  return {
+    machineId: machine.id,
+    code: machine.code,
+    categoryId: machine.categoryId,
+    retiredAt: machine.retiredAt,
+    activeDays,
+    fleetDays,
+    utilisationPercent: utilisationPercent(activeDays, fleetDays),
+    ...allocateHours(hourSegments(machine.readings, machine.stints, gapFlagThresholdHours), window),
+  };
+}
 
 /** Day-weighted totals: the sums of the members' days and hours, never a mean of their percentages. */
 function aggregate(rows: readonly MachineRow[]) {
-  const activeDays = rows.reduce((sum, row) => sum + row.activeDays, 0);
-  const fleetDays = rows.reduce((sum, row) => sum + row.fleetDays, 0);
-  const hours = Object.fromEntries(
-    hourKinds.map((kind) => [kind, round1(rows.reduce((sum, row) => sum + row[kind], 0))]),
-  ) as HourKindTotals;
-  const machineCount = rows.length;
-  const activeMachineCount = rows.filter((row) => row.activeDays > 0).length;
+  const sum = (of: (row: MachineRow) => number) => rows.reduce((total, row) => total + of(row), 0);
+  const activeDays = sum((row) => row.activeDays);
+  const fleetDays = sum((row) => row.fleetDays);
   return {
     activeDays,
     fleetDays,
     utilisationPercent: utilisationPercent(activeDays, fleetDays),
-    machineCount,
-    activeMachineCount,
-    ...hours,
+    machineCount: rows.length,
+    activeMachineCount: rows.filter((row) => row.activeDays > 0).length,
+    workHours: round1(sum((row) => row.workHours)),
+    travelHours: round1(sum((row) => row.travelHours)),
+    unaccountedHours: round1(sum((row) => row.unaccountedHours)),
+    unresolvedHours: round1(sum((row) => row.unresolvedHours)),
   };
 }
 
@@ -184,42 +182,33 @@ export async function getUtilisationReport({
   input: ReportWindowInput;
   today?: DateOnlyIso;
 }): Promise<UtilisationReport> {
-  const settings = await getContractingSettings({ db });
+  const [settings, fleet] = await Promise.all([getContractingSettings({ db }), loadFleet(db)]);
   const window = resolveReportWindow(input, today);
-  const machines = await loadFleetLedger(db, settings.gapFlagThresholdHours);
-  const rows = machines.flatMap((machine): (MachineRow & { category: LedgerMachine['category'] })[] => {
-    const counts = dayCounts(machine, window, today);
-    if (counts.fleetDays === 0) return [];
-    return [
-      {
-        machineId: machine.id,
-        code: machine.code,
-        categoryId: machine.categoryId,
-        retiredAt: machine.retiredAt,
-        category: machine.category,
-        ...counts,
-        ...(window.days === 0 ? noHours : allocateHours(machine.segments, window)),
-      },
-    ];
+  // Machines arrive ordered by Category name then code, so the Categories and their rows keep that order.
+  const categories = [...groupBy(fleet, (machine) => machine.categoryId)].flatMap(([categoryId, members]) => {
+    const machines = members.flatMap(
+      (machine) => machineRow(machine, window, today, settings.gapFlagThresholdHours) ?? [],
+    );
+    if (machines.length === 0) return [];
+    return [{ categoryId, ...members[0].category, ...aggregate(machines), machines }];
   });
-  const categories = [...groupBy(rows, (row) => row.categoryId)].map(([categoryId, members]) => {
-    const machinesInCategory = members.map(({ category: _category, ...row }) => row);
-    return {
-      categoryId,
-      ...members[0].category,
-      ...aggregate(machinesInCategory),
-      machines: machinesInCategory,
-    };
-  });
-  const fleet = aggregate(rows);
+  const totals = aggregate(categories.flatMap((category) => category.machines));
   return UtilisationReport.parse({
     window,
-    fleet: { ...fleet, fleetLoadPercent: utilisationPercent(fleet.activeMachineCount, fleet.machineCount) },
+    fleet: { ...totals, fleetLoadPercent: utilisationPercent(totals.activeMachineCount, totals.machineCount) },
     categories,
     utilisationTargetPercent: settings.utilisationTargetPercent,
   });
 }
 
+function trendLabel(subject: UtilisationTrendSubject, members: readonly FleetMachine[]): string {
+  if (subject.kind === 'fleet') return 'Fleet';
+  const [first] = members;
+  if (!first) throw new ReportError('report.not_found', 'That Category or Machine does not exist.');
+  return subject.kind === 'category' ? first.category.name : first.code;
+}
+
+/** Day counts only: the trend never walks the ledger, so a subject click costs the fleet read and nothing more. */
 export async function getUtilisationTrend({
   db,
   input,
@@ -229,22 +218,18 @@ export async function getUtilisationTrend({
   input: UtilisationTrendInput;
   today?: DateOnlyIso;
 }): Promise<UtilisationTrend> {
-  const settings = await getContractingSettings({ db });
-  const machines = await loadFleetLedger(db, settings.gapFlagThresholdHours);
+  const [settings, fleet] = await Promise.all([getContractingSettings({ db }), loadFleet(db)]);
   const { subject } = input;
   const members =
     subject.kind === 'fleet'
-      ? machines
-      : machines.filter((machine) => (subject.kind === 'category' ? machine.categoryId : machine.id) === subject.id);
-  const first = members[0];
-  if (subject.kind !== 'fleet' && !first)
-    throw new ReportError('report.not_found', 'That Category or Machine does not exist.');
-  const label = subject.kind === 'fleet' ? 'Fleet' : subject.kind === 'category' ? first?.category.name : first?.code;
+      ? fleet
+      : fleet.filter((machine) => (subject.kind === 'category' ? machine.categoryId : machine.id) === subject.id);
+  const label = trendLabel(subject, members);
   const months = trailingMonthWindows(resolveReportWindow(input.window, today), today).map((window) => {
     const activeDays = members.reduce((sum, machine) => sum + activeDaysIn(machine.spans, window, today, machine), 0);
     const fleetDays = members.reduce((sum, machine) => sum + fleetDaysIn(machine, window), 0);
     return {
-      month: window.start.slice(0, 7),
+      month: window.start,
       activeDays,
       fleetDays,
       utilisationPercent: utilisationPercent(activeDays, fleetDays),

@@ -19,6 +19,7 @@ import {
   FARM_COLUMN_ID,
   JOB_COLUMN_ID,
   MECHANIC_COLUMN_ID,
+  mechanicFilterPeople,
   REPORTED_COLUMN_ID,
   REPORTER_COLUMN_ID,
   STATUS_COLUMN_ID,
@@ -63,14 +64,9 @@ export function useWorkshopColumns({
     }),
     [filters],
   );
-  // Assigning offers today's Mechanics; filtering also names anyone on a Breakdown, so a link from the Reports page
-  // to someone whose role changed shows their name rather than an id.
   const mechanicOptions = useMemo(() => (mechanics ?? []).map(toOption), [mechanics]);
   const mechanicFilterOptions = useMemo(
-    () =>
-      [...new Map([...(mechanics ?? []), ...(filters?.mechanics ?? [])].map((person) => [person.id, person])).values()]
-        .sort((left, right) => left.name.localeCompare(right.name))
-        .map(toOption),
+    () => mechanicFilterPeople(mechanics, filters?.mechanics).map(toOption),
     [mechanics, filters],
   );
   return useMemo<DataTableColumnDef<BreakdownSummary>[]>(

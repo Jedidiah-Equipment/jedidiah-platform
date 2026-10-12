@@ -1,6 +1,5 @@
 import {
   changeReportWindowKind,
-  formatReportWindowParam,
   reportWindowLabel,
   resolveReportWindow,
   shiftReportWindow,
@@ -21,12 +20,11 @@ export function ReportWindowPicker({
 }: {
   window: ReportWindowInput;
   today: DateOnlyIso;
-  onChange: (param: string) => void;
+  onChange: (window: ReportWindowInput) => void;
 }) {
   const previous = shiftReportWindow(window, -1);
   const next = shiftReportWindow(window, 1);
   const nextIsFuture = resolveReportWindow(next, today).days === 0;
-  const go = (input: ReportWindowInput) => onChange(formatReportWindowParam(input));
   return (
     <div className="flex flex-wrap items-center gap-2">
       <EnumSelect
@@ -34,7 +32,7 @@ export function ReportWindowPicker({
         labels={kindLabels}
         options={reportWindowKinds}
         value={window.kind}
-        onChange={(kind) => go(changeReportWindowKind(window, kind))}
+        onChange={(kind) => onChange(changeReportWindowKind(window, kind))}
       />
       <Button
         aria-label="Previous period"
@@ -42,12 +40,18 @@ export function ReportWindowPicker({
         variant="outline"
         // The schema's first report year: a window before it would be refused and reopen today.
         disabled={!ReportWindowInput.safeParse(previous).success}
-        onClick={() => go(previous)}
+        onClick={() => onChange(previous)}
       >
         <IconChevronLeft />
       </Button>
       <span className="min-w-32 text-center text-sm font-medium tabular-nums">{reportWindowLabel(window)}</span>
-      <Button aria-label="Next period" size="icon" variant="outline" disabled={nextIsFuture} onClick={() => go(next)}>
+      <Button
+        aria-label="Next period"
+        size="icon"
+        variant="outline"
+        disabled={nextIsFuture}
+        onClick={() => onChange(next)}
+      >
         <IconChevronRight />
       </Button>
     </div>

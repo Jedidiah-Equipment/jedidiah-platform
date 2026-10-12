@@ -133,18 +133,18 @@ test('the trend runs twelve months to the window month for its subject and carri
   const { db } = context;
   const trend = await getUtilisationTrend({ db, input: { window: july, subject: { kind: 'fleet' } }, today });
   expect(trend.months.map((month) => month.month)).toEqual([
-    '2025-08',
-    '2025-09',
-    '2025-10',
-    '2025-11',
-    '2025-12',
-    '2026-01',
-    '2026-02',
-    '2026-03',
-    '2026-04',
-    '2026-05',
-    '2026-06',
-    '2026-07',
+    '2025-08-01',
+    '2025-09-01',
+    '2025-10-01',
+    '2025-11-01',
+    '2025-12-01',
+    '2026-01-01',
+    '2026-02-01',
+    '2026-03-01',
+    '2026-04-01',
+    '2026-05-01',
+    '2026-06-01',
+    '2026-07-01',
   ]);
   expect(trend.months[0]).toMatchObject({ fleetDays: 0, utilisationPercent: null });
   expect(trend.months.at(-1)).toMatchObject({ activeDays: 5, fleetDays: 31 });
@@ -156,7 +156,7 @@ test('the trend runs twelve months to the window month for its subject and carri
     today,
   });
   expect(machine.label).toBe('CAT320-1');
-  expect(machine.months.at(-1)).toMatchObject({ month: '2026-06', activeDays: 3, utilisationPercent: 10 });
+  expect(machine.months.at(-1)).toMatchObject({ month: '2026-06-01', activeDays: 3, utilisationPercent: 10 });
 
   await updateContractingSettings({
     db,

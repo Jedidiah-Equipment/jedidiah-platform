@@ -13,6 +13,14 @@ const later = (a: DateOnlyIso, b: DateOnlyIso) => (a >= b ? a : b);
 /** The days a Machine belongs to the fleet: from its creation date through its retirement date. */
 export type FleetSpan = { createdDate: DateOnlyIso; retiredDate: DateOnlyIso | null };
 
+/** The window days the Machine belongs to the fleet, or null when it belongs to none of them. */
+function fleetBounds(fleet: FleetSpan, window: ReportWindow): { from: DateOnlyIso; to: DateOnlyIso } | null {
+  if (window.days === 0) return null;
+  const from = later(fleet.createdDate, window.start);
+  const to = earlier(fleet.retiredDate ?? window.end, window.end);
+  return to < from ? null : { from, to };
+}
+
 /**
  * Distinct window days covered by any span, inclusive on both ends; `today` closes an open span. Days outside the
  * Machine's fleet span never count, so a Machine retired while on site, or a Read At back-dated before its creation,
@@ -24,13 +32,12 @@ export function activeDaysIn(
   today: DateOnlyIso,
   fleet: FleetSpan,
 ): number {
-  if (window.days === 0) return 0;
-  const first = later(fleet.createdDate, window.start);
-  const last = earlier(fleet.retiredDate ?? window.end, window.end);
+  const bounds = fleetBounds(fleet, window);
+  if (!bounds) return 0;
   const days = new Set<DateOnlyIso>();
   for (const span of spans) {
-    const from = later(span.arrivalDate, first);
-    const to = earlier(span.departureDate ?? today, last);
+    const from = later(span.arrivalDate, bounds.from);
+    const to = earlier(span.departureDate ?? today, bounds.to);
     for (let day = from; day <= to; day = addDateOnlyDays(day, 1)) days.add(day);
   }
   return days.size;
@@ -38,10 +45,8 @@ export function activeDaysIn(
 
 /** Window days from the Machine's creation date through its retirement date, or the window end. */
 export function fleetDaysIn(machine: FleetSpan, window: ReportWindow): number {
-  if (window.days === 0) return 0;
-  const from = later(machine.createdDate, window.start);
-  const to = earlier(machine.retiredDate ?? window.end, window.end);
-  return to < from ? 0 : diffDateOnlyDays(to, from) + 1;
+  const bounds = fleetBounds(machine, window);
+  return bounds ? diffDateOnlyDays(bounds.to, bounds.from) + 1 : 0;
 }
 
 export const utilisationPercent = (activeDays: number, fleetDays: number): number | null =>

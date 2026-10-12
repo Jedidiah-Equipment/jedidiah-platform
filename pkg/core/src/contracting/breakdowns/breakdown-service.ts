@@ -73,6 +73,7 @@ import {
 } from './breakdown-errors.js';
 import {
   breakdownActionSubject,
+  breakdownMechanic,
   breakdownReadableBy,
   breakdownReporter,
   breakdownSearchColumns,
@@ -370,7 +371,10 @@ export async function listBreakdowns({
   return { items, nextCursor: getNextCursor({ count: items.length, cursor: input.cursor, total }), total };
 }
 
-/** The subjects, Jobs, Farms and reporters the actor's readable Breakdowns carry, for the Workshop's column filters. */
+/**
+ * The subjects, Jobs, Farms, reporters and primary Mechanics the actor's readable Breakdowns carry, for the Workshop's
+ * column filters. Mechanics include anyone ever assigned, so a filter on someone whose role changed still has a name.
+ */
 export async function listBreakdownFilterOptions({
   db,
   actor,
@@ -382,7 +386,7 @@ export async function listBreakdownFilterOptions({
   const subjectKind = sql<string>`case when ${contractingBreakdowns.machineId} is null then 'implement' else 'machine' end`;
   const subjectId = sql<string>`coalesce(${contractingBreakdowns.machineId}, ${contractingBreakdowns.implementId})`;
   const subjectCode = sql<string>`coalesce(${contractingMachines.code}, ${contractingImplements.code})`;
-  const [subjects, jobs, farms, reporters] = await Promise.all([
+  const [subjects, jobs, farms, reporters, mechanics] = await Promise.all([
     db
       .selectDistinct({ kind: subjectKind, id: subjectId, code: subjectCode })
       .from(contractingBreakdowns)
@@ -409,12 +413,19 @@ export async function listBreakdownFilterOptions({
       .innerJoin(breakdownReporter, eq(breakdownReporter.id, contractingBreakdowns.reportedByUserId))
       .where(readable)
       .orderBy(asc(breakdownReporter.name)),
+    db
+      .selectDistinct({ id: breakdownMechanic.id, name: breakdownMechanic.name })
+      .from(contractingBreakdowns)
+      .innerJoin(breakdownMechanic, eq(breakdownMechanic.id, contractingBreakdowns.primaryMechanicUserId))
+      .where(readable)
+      .orderBy(asc(breakdownMechanic.name)),
   ]);
   return BreakdownFilterOptions.parse({
     subjects,
     jobs: jobs.map((job) => ({ id: job.id, jobNumber: formatJobNumber(job.code) })),
     farms,
     reporters,
+    mechanics,
   });
 }
 

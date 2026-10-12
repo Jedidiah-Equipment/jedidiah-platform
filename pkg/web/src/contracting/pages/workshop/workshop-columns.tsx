@@ -1,5 +1,5 @@
 import { formatNumber } from '@pkg/domain';
-import { breakdownStatusLabels, breakdownUrgencyLabels } from '@pkg/domain/contracting';
+import { breakdownStatusLabels, breakdownUrgencyLabels, UNASSIGNED_MECHANIC_LABEL } from '@pkg/domain/contracting';
 import {
   type BreakdownFilterOptions,
   type BreakdownSummary,
@@ -63,7 +63,16 @@ export function useWorkshopColumns({
     }),
     [filters],
   );
+  // Assigning offers today's Mechanics; filtering also names anyone ever assigned, so a link from the Reports page
+  // to someone whose role changed shows their name rather than an id.
   const mechanicOptions = useMemo(() => (mechanics ?? []).map(toOption), [mechanics]);
+  const mechanicFilterOptions = useMemo(
+    () =>
+      [...new Map([...(mechanics ?? []), ...(filters?.mechanics ?? [])].map((person) => [person.id, person])).values()]
+        .sort((left, right) => left.name.localeCompare(right.name))
+        .map(toOption),
+    [mechanics, filters],
+  );
   return useMemo<DataTableColumnDef<BreakdownSummary>[]>(
     () => [
       {
@@ -165,7 +174,7 @@ export function useWorkshopColumns({
         header: 'Mechanic',
         enableColumnFilter: canManage,
         enableSorting: false,
-        meta: { filterOptions: mechanicOptions, filterVariant: 'multi-select' },
+        meta: { filterOptions: mechanicFilterOptions, filterVariant: 'multi-select' },
         cell: ({ row }) =>
           canManage && row.original.status !== 'solved' ? (
             <MechanicCombobox
@@ -177,7 +186,7 @@ export function useWorkshopColumns({
             />
           ) : (
             <span className={row.original.mechanicName ? undefined : 'text-muted-foreground'}>
-              {row.original.mechanicName ?? 'Unassigned'}
+              {row.original.mechanicName ?? UNASSIGNED_MECHANIC_LABEL}
             </span>
           ),
       },
@@ -220,6 +229,6 @@ export function useWorkshopColumns({
         },
       },
     ],
-    [canManage, filterOptions, mechanicOptions, onAssignMechanic],
+    [canManage, filterOptions, mechanicFilterOptions, mechanicOptions, onAssignMechanic],
   );
 }

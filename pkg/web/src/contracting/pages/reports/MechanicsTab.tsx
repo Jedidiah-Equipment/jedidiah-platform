@@ -31,7 +31,10 @@ const columns: DataTableColumnDef<MechanicPerformanceRow>[] = [
   },
   { accessorKey: 'solvedCount', header: 'Solved', cell: ({ row }) => formatNumber(row.original.solvedCount) },
   {
-    accessorKey: 'averageReportToSolvedDays',
+    // No solved work sorts after the fastest turnaround, not as if it were zero days.
+    accessorFn: (row) => row.averageReportToSolvedDays ?? undefined,
+    id: 'averageReportToSolvedDays',
+    sortUndefined: 'last',
     header: 'Report-to-Solved',
     cell: ({ row }) =>
       row.original.averageReportToSolvedDays === null ? '—' : formatDays(row.original.averageReportToSolvedDays),

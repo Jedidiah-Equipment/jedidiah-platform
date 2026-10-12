@@ -133,6 +133,7 @@ test('a Foreman reads only his own Breakdowns and another Foreman finds nothing'
     jobs: [],
     farms: [],
     reporters: [],
+    mechanics: [],
   });
   expect(await listBreakdownFilterOptions({ db, actor: workshop })).toMatchObject({
     subjects: [{ kind: 'machine', id: excavator.id, code: 'CAT320-1' }],
@@ -171,6 +172,11 @@ test('only a Mechanic can be the primary Mechanic', async ({ context }) => {
   ).rejects.toMatchObject({ code: 'breakdown.invalid_mechanic' });
   const assigned = await assignMechanic({ db, actor: workshop, input: { id: breakdown.id, mechanicUserId: 'danie' } });
   expect(assigned).toMatchObject({ primaryMechanicUserId: 'danie', mechanicName: 'Danie' });
+  // Moved off the mechanic role, Danie still names the Workshop's Mechanic filter for the work he was given.
+  await db.update(user).set({ contractingRole: 'workshop-manager' }).where(eq(user.id, 'danie'));
+  expect((await listBreakdownFilterOptions({ db, actor: workshop })).mechanics).toEqual([
+    { id: 'danie', name: 'Danie' },
+  ]);
 });
 
 test('a replayed report returns the delivered Breakdown and drops the duplicate photos', async ({ context }) => {

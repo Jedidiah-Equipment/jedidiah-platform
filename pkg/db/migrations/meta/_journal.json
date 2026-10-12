@@ -1219,6 +1219,13 @@
       "when": 1791789576697,
       "tag": "0173_push_tokens",
       "breakpoints": true
+    },
+    {
+      "idx": 174,
+      "version": "7",
+      "when": 1791801266354,
+      "tag": "0174_contracting_settings",
+      "breakpoints": true
     }
   ]
 }

@@ -133,6 +133,7 @@ export const permissionLabels = {
   'contracting_rate:read': 'View the Rate Card and Measure Types',
   'contracting_rate:update': 'Maintain the Rate Card and Measure Types',
   'contracting_report:read': 'View Contracting reports',
+  'contracting_settings:update': 'Maintain Contracting settings',
   'contracting_transcription:read': 'View voice note transcriptions and hints',
   'contracting_transcription:use': 'Use voice notes',
   'user:create': 'Add users',
@@ -238,6 +239,8 @@ export const permissionDescriptions = {
   'contracting_rate:read': 'View the Contracting Rate Card and Measure Types.',
   'contracting_rate:update': 'Create, edit, reorder, and remove Contracting Rates and Measure Types.',
   'contracting_report:read': 'View Contracting utilisation and mechanic-performance reports.',
+  'contracting_settings:update':
+    'Edit the Gap Flag threshold, the Service Due Soon threshold and the Utilisation Target.',
   'contracting_transcription:read':
     "Read every user's voice note text, the transcription hints learned from it, and the prompts sent to the models.",
   'contracting_transcription:use': 'Turn a recorded voice note into text in any Contracting text area.',
@@ -293,6 +296,7 @@ export const authorizationStatement = {
   contracting_service: ['read', 'update'],
   contracting_rate: ['read', 'update'],
   contracting_report: ['read'],
+  contracting_settings: ['update'],
   contracting_transcription: ['read', 'use'],
   user: ['list', 'create', 'update', 'set-email', 'set-role', 'set-password'],
 } as const;
@@ -348,6 +352,7 @@ const contractingAdminAccess = {
   contracting_service: ['read', 'update'],
   contracting_rate: ['read', 'update'],
   contracting_report: ['read'],
+  contracting_settings: ['update'],
   contracting_transcription: ['read', 'use'],
 } as const satisfies RoleAccess;
 

@@ -384,6 +384,21 @@ export const snapshotTableDefinitions = [
     optionalReadTable: true,
   },
   {
+    fileName: 'contracting_settings.json',
+    tableName: 'contracting_settings',
+    timestampColumns: standardTimestampColumns,
+    optionalReadTable: true,
+    // The migration seeds this row; a re-seed must put it back, or every threshold read breaks.
+    emptySnapshotRows: [
+      {
+        id: 'contracting',
+        gapFlagThresholdHours: 4,
+        serviceDueSoonThresholdHours: 100,
+        utilisationTargetPercent: null,
+      },
+    ],
+  },
+  {
     fileName: 'contracting_work_type.json',
     tableName: 'contracting_work_type',
     timestampColumns: [],

@@ -15,6 +15,7 @@ import {
   contractingMeasureTypes,
   contractingRates,
   contractingServiceRecords,
+  contractingSettings,
   contractingWorkTypes,
 } from '@pkg/db/contracting';
 import {
@@ -85,6 +86,7 @@ const dbTablesByName = {
   contracting_measure_type: contractingMeasureTypes,
   contracting_rate: contractingRates,
   contracting_service_record: contractingServiceRecords,
+  contracting_settings: contractingSettings,
   contracting_job: contractingJobs,
   contracting_work_type: contractingWorkTypes,
   customers,

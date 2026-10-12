@@ -164,6 +164,7 @@ export function MachinesCard({ job, sheet }: { job: JobDetail; sheet: JobSheet }
                       stint={stint}
                       stintNumber={stintNumber}
                       sheet={sheet}
+                      gapFlagThresholdHours={job.gapFlagThresholdHours}
                       onOpen={setDialog}
                     />
                   ))}
@@ -186,7 +187,11 @@ export function MachinesCard({ job, sheet }: { job: JobDetail; sheet: JobSheet }
         }}
       />
       <ArrivalCaptureDialog stint={dialog?.kind === 'arrival' ? stint : null} onClose={close} />
-      <GapResolveDialog stint={dialog?.kind === 'gap' ? stint : null} onClose={close} />
+      <GapResolveDialog
+        stint={dialog?.kind === 'gap' ? stint : null}
+        gapFlagThresholdHours={job.gapFlagThresholdHours}
+        onClose={close}
+      />
       <DepartureCaptureDialog stint={dialog?.kind === 'departure' ? stint : null} onClose={close} />
       <ReportBreakdownDialog
         report={dialog?.kind === 'breakdown' && stint ? { stint, urgency: dialog.urgency } : null}

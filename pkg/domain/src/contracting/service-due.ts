@@ -4,19 +4,14 @@ import { type BadgeColorClassNames, statusBadgeColorClassNames } from '../theme/
 import { round1 } from './hours.js';
 import { round2 } from './pricing.js';
 
-/** Within this many hours of Next Service Due a Machine is Service Due Soon, so filters can be ordered in time. */
-export const SERVICE_DUE_SOON_THRESHOLD_HOURS = 100;
-
 export type ServiceDueFacts = { latestReadingHours: number | null; nextServiceDueHours: number | null };
 
 /** Hours left on the meter before Next Service Due; negative once it has passed. */
 export const hoursToService = ({ latestReadingHours, nextServiceDueHours }: ServiceDueFacts) =>
   latestReadingHours === null || nextServiceDueHours === null ? null : round1(nextServiceDueHours - latestReadingHours);
 
-export function serviceDueStatus(
-  facts: ServiceDueFacts,
-  threshold = SERVICE_DUE_SOON_THRESHOLD_HOURS,
-): ServiceDueStatus {
+/** `threshold` is the Service Due Soon threshold in Settings: within that many hours of Next Service Due is due soon. */
+export function serviceDueStatus(facts: ServiceDueFacts, threshold: number): ServiceDueStatus {
   const remaining = hoursToService(facts);
   if (remaining === null) return 'unknown';
   if (remaining < 0) return 'overdue';
@@ -31,12 +26,12 @@ export const serviceDueSoonCrossed = ({
   previousHours,
   newHours,
   nextServiceDueHours,
-  threshold = SERVICE_DUE_SOON_THRESHOLD_HOURS,
+  threshold,
 }: {
   previousHours: number | null;
   newHours: number;
   nextServiceDueHours: number | null;
-  threshold?: number;
+  threshold: number;
 }) =>
   serviceDueNeedsAttention(serviceDueStatus({ latestReadingHours: newHours, nextServiceDueHours }, threshold)) &&
   !serviceDueNeedsAttention(serviceDueStatus({ latestReadingHours: previousHours, nextServiceDueHours }, threshold));

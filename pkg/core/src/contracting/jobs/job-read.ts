@@ -19,6 +19,7 @@ import {
 import { type Assignment, FieldDriver, type JobDetail, JobFacts } from '@pkg/schema/contracting';
 import { and, asc, eq } from 'drizzle-orm';
 import { readingToWire } from '../readings/reading-wire.js';
+import { getContractingSettings } from '../settings/settings-service.js';
 import { assertOwner, jobNotFound } from './job-errors.js';
 import {
   type DbOrTx,
@@ -71,21 +72,25 @@ function mapAssignment(
   row: LoadedStint,
   measures: readonly LoadedMeasure[],
   previousDepartures: Awaited<ReturnType<typeof loadPreviousDepartures>>,
+  gapFlagThresholdHours: number,
 ) {
   const { stint } = row;
   const arrival = mapJobReading(row.arrival, row.arrivalCapturedByName, row.arrivalAmendedByName);
   const departure = mapJobReading(row.departure, row.departureCapturedByName, row.departureAmendedByName);
   const gapResolved = stint.gapResolvedAt !== null;
   const previousDeparture = previousDepartures.get(stint.id);
-  const derived = deriveStintHours({
-    arrival,
-    departure,
-    previousDeparture: previousDeparture ?? null,
-    travelIncluded: stint.travelIncluded,
-    gap: gapResolved
-      ? { travelHours: stint.gapTravelHours ?? 0, unaccountedHours: stint.gapUnaccountedHours ?? 0 }
-      : null,
-  });
+  const derived = deriveStintHours(
+    {
+      arrival,
+      departure,
+      previousDeparture: previousDeparture ?? null,
+      travelIncluded: stint.travelIncluded,
+      gap: gapResolved
+        ? { travelHours: stint.gapTravelHours ?? 0, unaccountedHours: stint.gapUnaccountedHours ?? 0 }
+        : null,
+    },
+    gapFlagThresholdHours,
+  );
   return {
     ...stint,
     ...stintNames(row),
@@ -113,11 +118,12 @@ export async function getJob({ db, ...lookup }: { db: DbOrTx } & JobLookup): Pro
   );
   if (!header) throw jobNotFound();
   const { job, ...names } = header;
-  const [rows, previousDepartures, measures, chargeLines] = await Promise.all([
+  const [rows, previousDepartures, measures, chargeLines, settings] = await Promise.all([
     loadStints(db, [job.id]),
     loadPreviousDepartures(db, job.id),
     loadMeasures(db, job.id),
     loadChargeLines(db, job.id),
+    getContractingSettings({ db }),
   ]);
   const sorted = rows.sort(
     (left, right) =>
@@ -128,6 +134,7 @@ export async function getJob({ db, ...lookup }: { db: DbOrTx } & JobLookup): Pro
       row,
       measures.filter((measure) => measure.assignmentId === row.stint.id),
       previousDepartures,
+      settings.gapFlagThresholdHours,
     ),
     stored: storedPricing(row),
   }));
@@ -183,6 +190,7 @@ export async function getJob({ db, ...lookup }: { db: DbOrTx } & JobLookup): Pro
     pricing: priced.pricing,
     assignments,
     chargeLines,
+    gapFlagThresholdHours: settings.gapFlagThresholdHours,
   });
 }
 

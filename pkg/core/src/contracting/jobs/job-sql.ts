@@ -1,5 +1,5 @@
 import { contractingHourReadings, contractingJobs, contractingMachineAssignments } from '@pkg/db/contracting';
-import { GAP_FLAG_THRESHOLD_HOURS, JOB_NUMBER_DIGITS, JOB_NUMBER_PREFIX } from '@pkg/domain/contracting';
+import { JOB_NUMBER_DIGITS, JOB_NUMBER_PREFIX } from '@pkg/domain/contracting';
 import type { AssignmentState, NeedsALookLevel } from '@pkg/schema/contracting';
 import { type SQL, type SQLWrapper, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
@@ -50,14 +50,15 @@ export const stintCount = (state: AssignmentState) => sql<number>`(
     and ${assignmentInState[state](summaryAssignment)}
 )`;
 
-export const openGapFlags = sql<number>`(
+/** Open Gap Flags against the Gap Flag threshold in Settings, read by the caller for the whole query. */
+export const openGapFlags = (threshold: number) => sql<number>`(
   select count(*)::integer
   from contracting.machine_assignment summary_assignment
   join contracting.hour_reading summary_arrival
     on summary_arrival.id = summary_assignment.arrival_reading_id
   where summary_assignment.job_id = ${contractingJobs.id}
     and summary_assignment.gap_resolved_at is null
-    and summary_arrival.value - ${previousDepartureValue(sql`summary_assignment.machine_id`, sql`summary_arrival.sequence`)} > ${GAP_FLAG_THRESHOLD_HOURS}
+    and summary_arrival.value - ${previousDepartureValue(sql`summary_assignment.machine_id`, sql`summary_arrival.sequence`)} > ${threshold}
 )`;
 
 const summaryReading = alias(contractingHourReadings, 'summary_reading');

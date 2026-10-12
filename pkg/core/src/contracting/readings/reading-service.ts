@@ -36,6 +36,7 @@ import { mutateEntity } from '../../audit/mutate-entity.js';
 import { FilePolicyViolationError } from '../../files/file-errors.js';
 import { readStoredObject, type StorageAdapter } from '../../storage/storage-adapter.js';
 import { reopenPricingWithin } from '../jobs/pricing-service.js';
+import { getContractingSettings } from '../settings/settings-service.js';
 import { attachReadingToStint, resolveCaptureStint } from './capture-stint.js';
 import { assertAmendReadings, ReadingError, withCaptureConstraints } from './reading-errors.js';
 import { type MeterMeasurement, measureMeterPhoto, type ReadMeterPhoto } from './reading-evidence.js';
@@ -183,6 +184,7 @@ export async function captureReading({
             disputed: true,
             disputeReason: 'The next capture disputes this reading.',
           });
+        const { serviceDueSoonThresholdHours } = await getContractingSettings({ db: tx });
         const [row] = await tx
           .insert(contractingHourReadings)
           .values({
@@ -217,6 +219,7 @@ export async function captureReading({
             previousHours: latest?.value ?? null,
             newHours: row.value,
             nextServiceDueHours: machine.nextServiceDueHours,
+            threshold: serviceDueSoonThresholdHours,
           }),
         };
       }),

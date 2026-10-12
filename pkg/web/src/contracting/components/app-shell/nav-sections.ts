@@ -8,6 +8,7 @@ import {
   IconMicrophone,
   IconReceipt,
   IconRuler2,
+  IconSettings,
   IconTool,
   IconTools,
   IconTractor,
@@ -132,6 +133,12 @@ export const contractingNavSections = [
         permission: 'contracting_transcription:read',
         link: linkOptions({ to: '/contracting/transcriptions' }),
         icon: IconMicrophone,
+      },
+      {
+        title: 'Settings',
+        permission: 'contracting_settings:update',
+        link: linkOptions({ to: '/contracting/settings' }),
+        icon: IconSettings,
       },
       {
         title: 'Audit',

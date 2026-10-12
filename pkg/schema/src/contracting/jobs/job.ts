@@ -7,6 +7,7 @@ import { UUID } from '../../common/uuid.js';
 import { CategoryColour, CategoryIconKey, FleetCode, FleetName } from '../fleet/fleet.js';
 import { RateBasis } from '../rate-card/rate-card.js';
 import { HourReading, ReadingValue } from '../readings/reading.js';
+import { GapFlagThresholdHours } from '../settings/settings.js';
 import { AssignmentActions, JobActions } from './job-actions.js';
 import { assignmentStates, discountKinds, jobQueues, jobStatuses, needsALookLevels } from './job-enums.js';
 
@@ -323,6 +324,8 @@ export const JobFacts = z.object({
   pricing: JobPricing,
   assignments: z.array(Assignment),
   chargeLines: z.array(ChargeLine),
+  /** The Gap Flag threshold every stint above was judged against, so a screen names the value, never a constant. */
+  gapFlagThresholdHours: GapFlagThresholdHours,
 });
 export type JobFacts = z.infer<typeof JobFacts>;
 

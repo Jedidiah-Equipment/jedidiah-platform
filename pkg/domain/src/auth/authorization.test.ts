@@ -311,6 +311,7 @@ describe('getRolePermissions', () => {
       'workshop-manager',
     ]);
     expect(holders('contracting_transcription:read')).toEqual(['contracting-admin', 'super-admin']);
+    expect(holders('contracting_settings:update')).toEqual(['contracting-admin', 'super-admin']);
   });
 });
 

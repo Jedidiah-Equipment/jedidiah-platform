@@ -192,7 +192,7 @@ Machine has a reading nothing derives for it — no Hour Gap, no Travel Hours, n
 next arrival reading; spot readings never bound a gap, and a Machine's first arrival has no
 preceding departure, so it opens the ledger with no gap and no Travel Hours. By default the whole gap is **Travel Hours**, billed to the destination Job
 at the Assignment's rate under an include toggle that defaults on; a machine moved by truck simply
-has a zero gap. A gap above the single global threshold raises a **Gap Flag**, surfaced at
+has a zero gap. A gap above the **Gap Flag threshold** in Settings (4 h unless changed) raises a **Gap Flag**, surfaced at
 sign-off and blocking nothing in the field — the Job cannot be Completed while one is open;
 management resolves it by splitting the gap into billable Travel
 Hours and an **Unaccounted Interval** with a mandatory reason, which clears the flag. Time in the
@@ -248,7 +248,7 @@ service, the primary Mechanic, and free-text notes. A Service is a recurring, ex
 deliberately not a Breakdown. **Closing a Service Record requires setting the Machine's Next
 Service Due** — the number the mechanic prints on the dash sticker at that moment; the Machine's
 optional **Service Interval** only pre-fills it from the reading at service. **Service Due Soon** is the derived flag raised when the Machine's latest
-known Hour Reading comes within a threshold of Next Service Due — kept honest mid-job by spot
+known Hour Reading comes within the **Service Due Soon threshold** in Settings (100 h unless changed) of Next Service Due — kept honest mid-job by spot
 readings from the field. It notifies the workshop manager by push notification once, at the
 capture that first brings the reading within the threshold; closing a Service Record moves the
 due point on and re-arms it.
@@ -315,6 +315,10 @@ Drivers and Mechanics are non-login user records holding permissionless contract
 and the Rate Card deliberately sit with contracting-admin and super-admin alone; foremen are
 money-blind by design.
 
+**Settings** is the one row of Contracting-wide values management edits on the web: the Gap Flag
+threshold, the Service Due Soon threshold and the Utilisation Target %. Every derived read takes the
+current value; nothing stored is re-judged.
+
 ## Reporting
 
 An **Active Day** is a calendar day on which a Machine had an on-site Assignment (planned stints
@@ -322,6 +326,6 @@ never count). **Utilisation %**
 is active days over days in the window, counting only days the Machine was in the fleet — days,
 never hours, and month attribution is exact. **Fleet Load** is the share of Machines with at
 least one Active Day in the window. **Utilisation Target %** is the single global reference line
-management sets on the utilisation charts. Mechanic performance — Fixed count, average
+management sets in Settings on the utilisation charts; empty draws no line. Mechanic performance — Fixed count, average
 report-to-Fixed time, Not fixed count — is derived from Breakdowns and never stored. Reporting is
 readable by every role that reads all Jobs; Foremen and invoicing never see it.

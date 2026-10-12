@@ -1,6 +1,7 @@
 import fastifyCors from '@fastify/cors';
 import fastifyMultipart from '@fastify/multipart';
 import type { StorageAdapter } from '@pkg/core';
+import { db as appDb, type Db } from '@pkg/db';
 import { UPLOAD_STREAM_CEILING_BYTES } from '@pkg/domain';
 import { type FastifyTRPCPluginOptions, fastifyTRPCPlugin } from '@trpc/server/adapters/fastify';
 import Fastify, { type FastifyBaseLogger } from 'fastify';
@@ -23,6 +24,7 @@ export async function buildServer(
   observability: Observability = createObservability(config),
   storage: StorageAdapter = createDocumentStorageAdapter(config),
   auth: Auth = appAuth,
+  db: Db = appDb,
 ) {
   log.root.info({ config: loggableConfig(config) }, 'Building server');
 
@@ -62,8 +64,8 @@ export async function buildServer(
     },
   });
 
-  const equipment = await registerEquipment(app, { config, storage });
-  const contracting = await registerContracting(app, { config, storage });
+  const equipment = await registerEquipment(app, { config, db, storage });
+  const contracting = await registerContracting(app, { config, db, storage });
   await registerHealthRoutes(app, config);
 
   const trpcOptions = {

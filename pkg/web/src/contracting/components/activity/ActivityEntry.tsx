@@ -130,9 +130,7 @@ function EventEntry({ item, target }: { item: ActivityEventItem; target: EntryTa
       <div className="min-w-0">
         <p className="text-sm leading-6">{presentation.sentence}</p>
         {presentation.detail === null ? null : (
-          <p className="line-clamp-2 text-sm leading-6 text-muted-foreground whitespace-pre-wrap">
-            {presentation.detail}
-          </p>
+          <p className="text-sm leading-6 text-muted-foreground whitespace-pre-wrap">{presentation.detail}</p>
         )}
       </div>
     </ActivityEntryShell>

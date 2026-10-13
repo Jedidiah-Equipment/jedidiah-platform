@@ -84,6 +84,7 @@ export function SignOffCard({ job, sheet }: { job: JobDetail; sheet: JobSheet })
 function DraftSignOffDetails({ job, sheet }: { job: JobDetail; sheet: JobSheet }) {
   const trpc = useTRPC();
   const write = useJobWrite();
+  const { invalidateActivity } = useQueryInvalidation();
   const { planned } = groupStints(job.assignments);
   const plannedIds = planned.map((stint) => stint.id);
   const remove = useMutation(
@@ -111,7 +112,7 @@ function DraftSignOffDetails({ job, sheet }: { job: JobDetail; sheet: JobSheet }
   const complete = useMutation(
     trpc.contractingJobs.jobs.complete.mutationOptions({
       onSuccess: async () => {
-        await write.invalidate();
+        await Promise.all([write.invalidate(), invalidateActivity()]);
         toast.success('Job completed');
         setConfirm(false);
       },

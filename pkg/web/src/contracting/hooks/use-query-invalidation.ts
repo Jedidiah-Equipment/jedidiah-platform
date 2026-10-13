@@ -7,7 +7,7 @@ export function useQueryInvalidation() {
   const queryClient = useQueryClient();
   const trpc = useTRPC();
 
-  // Activity reads its items off Jobs, Breakdowns and readings, so every write to those refreshes the feed and its dot.
+  // Activity reads its items off Jobs, Breakdowns and readings: a write that adds or changes one refreshes the feed and its dot.
   const invalidateActivity = useCallback(
     () => queryClient.invalidateQueries({ queryKey: trpc.contractingActivity.pathKey() }),
     [queryClient, trpc],
@@ -21,13 +21,16 @@ export function useQueryInvalidation() {
     [queryClient, trpc],
   );
   const invalidateReadings = useCallback(
-    () => queryClient.invalidateQueries({ queryKey: trpc.contractingReadings.pathKey() }),
-    [queryClient, trpc],
+    () =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: trpc.contractingReadings.pathKey() }),
+        invalidateActivity(),
+      ]),
+    [queryClient, trpc, invalidateActivity],
   );
   const invalidateJobs = useCallback(
-    () =>
-      Promise.all([queryClient.invalidateQueries({ queryKey: trpc.contractingJobs.pathKey() }), invalidateActivity()]),
-    [queryClient, trpc, invalidateActivity],
+    () => queryClient.invalidateQueries({ queryKey: trpc.contractingJobs.pathKey() }),
+    [queryClient, trpc],
   );
   const invalidateRateCard = useCallback(
     () => queryClient.invalidateQueries({ queryKey: trpc.contractingRateCard.pathKey() }),

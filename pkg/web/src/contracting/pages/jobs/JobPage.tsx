@@ -164,11 +164,12 @@ function SetupCard({ job, sheet }: { job: JobDetail; sheet: JobSheet }) {
 function CancelJob({ job, sheet }: { job: JobDetail; sheet: JobSheet }) {
   const trpc = useTRPC();
   const write = useJobWrite();
+  const { invalidateActivity } = useQueryInvalidation();
   const [open, setOpen] = useState(false);
   const cancel = useMutation(
     trpc.contractingJobs.jobs.cancel.mutationOptions({
       onSuccess: async () => {
-        await write.invalidate();
+        await Promise.all([write.invalidate(), invalidateActivity()]);
         toast.success('Job cancelled');
       },
       onError: write.report,

@@ -27,7 +27,7 @@ The note appears in the thread and in **Activity**. A Foreman can add a Job Note
 
 1. Open **Activity**.
 2. Choose **All**, **Notes**, **Breakdowns**, **Jobs** or **Hours** to narrow the feed, and type in the search box to find something, as on the phone. Scroll down to load older entries.
-3. To open the Breakdown or Job an entry is about, choose the entry, or the Job or Breakdown named under a note. A Job opens only for people who work Jobs on the web.
+3. To open the Breakdown or Job an entry is about, choose the entry, or the Job or Breakdown named under a note. A Job opens only for people who see every Job on the web.
 
 The orange dot on **Activity** works as on the phone: it means something new arrived, and it clears when you open **Activity** on **All** with nothing in the search box.
 

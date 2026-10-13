@@ -1,4 +1,4 @@
-import type { presentAction } from '@pkg/domain/contracting';
+import { canSeeActivity, type presentAction } from '@pkg/domain/contracting';
 import type { UUID } from '@pkg/schema';
 import { BreakdownNoteText, JobNoteText } from '@pkg/schema/contracting';
 import { IconActivity, IconMessagePlus } from '@tabler/icons-react';
@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button.js';
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@/components/ui/card.js';
 import { useContractingWrite, useResetOnOpen } from '@/contracting/hooks/use-contracting-write.js';
 import { useQueryInvalidation } from '@/contracting/hooks/use-query-invalidation.js';
+import { useAccess } from '@/hooks/use-access.js';
 import { useTRPC } from '@/lib/trpc.js';
 
 import { ReasonDialog } from '../ReasonDialog.js';
@@ -27,6 +28,9 @@ export function ActivityCard({
   addNote: ReturnType<typeof presentAction>;
 }) {
   const [open, setOpen] = useState(false);
+  // Invoicing opens the Job page but has no Activity: a card there could only fail to load.
+  const seesActivity = canSeeActivity(useAccess().data);
+  if (!seesActivity) return null;
   return (
     <Card>
       <CardHeader>
@@ -59,8 +63,11 @@ function AddNoteDialog({
   scope: ActivityCardScope;
 }) {
   const trpc = useTRPC();
-  const { invalidateJobs, invalidateWorkshop } = useQueryInvalidation();
-  const write = useContractingWrite('jobId' in scope ? invalidateJobs : invalidateWorkshop);
+  const { invalidateActivity, invalidateJobs, invalidateWorkshop } = useQueryInvalidation();
+  // Workshop refreshes carry Activity already; a Job Note refreshes the Job's own reads beside it.
+  const write = useContractingWrite(
+    'jobId' in scope ? () => Promise.all([invalidateJobs(), invalidateActivity()]) : invalidateWorkshop,
+  );
   const onSuccess = async () => {
     await write.invalidate();
     toast.success('Note added');

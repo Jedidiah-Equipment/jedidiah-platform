@@ -1,5 +1,4 @@
 import { isStoredUserSignInEligible } from '@pkg/domain';
-import { isPushRecipient, WORKSHOP_PUSH_CHANNEL_ID } from '@pkg/domain/contracting';
 import { type ErrorBoundaryProps, Redirect, Stack } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Text, View } from 'react-native';
@@ -7,16 +6,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppErrorBoundary } from '@/components/AppErrorBoundary';
 import { purgeLegacyContractingStorage } from '@/contracting/lib/purge-legacy-storage';
 import { signOut, useSession } from '@/lib/auth';
-import { AuthSessionProvider, useSessionAccessSummary } from '@/lib/auth-session';
+import { AuthSessionProvider } from '@/lib/auth-session';
 import { useIsOffline } from '@/lib/connectivity';
 import { addBreadcrumb, identifyObservabilityUser } from '@/lib/observability';
 import { useSettlePendingPushPath } from '@/lib/push/push-response';
-import type { PushChannel } from '@/lib/push/register-push';
 import { usePushRegistration } from '@/lib/push/use-push-registration';
 import { isHydratedSession } from '@/lib/session-state';
-
-// The one business-specific line of push wiring: which channel workshop alerts ring on.
-const WORKSHOP_PUSH_CHANNEL: PushChannel = { id: WORKSHOP_PUSH_CHANNEL_ID, name: 'Workshop' };
 
 export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
   return <AppErrorBoundary error={error} retry={retry} />;
@@ -88,10 +83,11 @@ export default function ProtectedLayout() {
   return (
     <AuthSessionProvider session={session}>
       <SessionObservability userId={session.user.id} />
-      <PushRegistration userId={session.user.id} />
+      <PushRegistration />
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="contracting" />
         <Stack.Screen name="equipment" />
+        <Stack.Screen name="settings" />
       </Stack>
     </AuthSessionProvider>
   );
@@ -114,9 +110,9 @@ function SessionObservability({ userId }: { userId: string }) {
   return null;
 }
 
-/** Role membership is the opt-in: only a workshop push recipient is asked for notifications. */
-function PushRegistration({ userId }: { userId: string }) {
-  usePushRegistration({ userId, channel: WORKSHOP_PUSH_CHANNEL, mayAsk: isPushRecipient(useSessionAccessSummary()) });
+/** Role membership is the opt-in: only someone a Push Kind can reach is asked for notifications. */
+function PushRegistration() {
+  usePushRegistration();
   useSettlePendingPushPath();
   return null;
 }

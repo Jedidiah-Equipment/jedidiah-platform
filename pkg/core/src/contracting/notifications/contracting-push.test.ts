@@ -2,6 +2,7 @@ import { type Db, pushTokens, session, user } from '@pkg/db';
 import { accessForRole } from '@pkg/domain/testing';
 import type { ContractingRole } from '@pkg/schema';
 import { describe, expect } from 'vitest';
+import { setPushPreferences } from '../../push/push-preference-service.js';
 import type { PushMessage } from '../../push/push-sender.js';
 import { createTester } from '../../test/create-tester.js';
 import { reportBreakdown } from '../breakdowns/breakdown-service.js';
@@ -91,6 +92,13 @@ describe('Contracting push fan-out', () => {
     const messages = await report(db, excavator.id, 'code-red', accessForRole('workshop-manager', 'wendy'));
 
     expect(recipients(messages)).toEqual(['ExponentPushToken[jed]', 'ExponentPushToken[mo]', 'ExponentPushToken[sam]']);
+  });
+
+  test('a workshop manager who muted Code Green still gets Code Red', async ({ context: { db, excavator } }) => {
+    await setPushPreferences({ db, userId: 'wendy', input: { muted: ['contracting.breakdown.code-green'] } });
+
+    expect(await report(db, excavator.id, 'code-green')).toEqual([]);
+    expect(recipients(await report(db, excavator.id, 'code-red'))).toContain('ExponentPushToken[wendy-1]');
   });
 
   test('Service Due Soon reaches the workshop managers with the hours left', async ({ context: { db, excavator } }) => {

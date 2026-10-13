@@ -1,0 +1,1 @@
+ALTER TABLE "user" ADD COLUMN "muted_push_kinds" jsonb DEFAULT '[]'::jsonb NOT NULL;

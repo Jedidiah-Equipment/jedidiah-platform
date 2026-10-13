@@ -93,6 +93,7 @@ const SIGNED_IN_ROUTE_TOOLBARS = {
   'equipment/(tabs)/units/index.tsx': toolbar('main', 'app/(protected)/equipment/(tabs)/units/index.tsx'),
   'equipment/assistant.tsx': toolbar('secondary', 'app/(protected)/equipment/assistant.tsx'),
   'equipment/documents/[documentId].tsx': toolbar('secondary', 'app/(protected)/equipment/documents/[documentId].tsx'),
+  'settings.tsx': toolbar('secondary', 'src/settings/SettingsScreen.tsx'),
 } as const;
 
 const REDIRECT_ONLY_ROUTES = new Set(['index.tsx', 'contracting/index.tsx']);
@@ -158,9 +159,10 @@ type ToolbarKind = 'main' | 'secondary';
 type ToolbarContract = { kind: ToolbarKind; owner: string };
 
 // Equipment pages go through their business wrapper; Contracting has no business-specific actions yet, so
-// its pages render the shared frame directly.
+// its pages render the shared frame directly, as do the business-blind pages (App Settings).
+const SHARED_TOOLBARS = { main: 'MainToolbar', secondary: 'SecondaryToolbar' } as const;
 const TOOLBAR_COMPONENTS = {
-  contracting: { main: 'MainToolbar', secondary: 'SecondaryToolbar' },
+  contracting: SHARED_TOOLBARS,
   equipment: { main: 'MainTabToolbar', secondary: 'SecondaryPageToolbar' },
 } as const;
 
@@ -170,7 +172,7 @@ function toolbar(kind: ToolbarKind, owner: string): ToolbarContract {
 
 function toolbarComponent(route: string, kind: ToolbarKind): string {
   const business = route.split('/')[0];
-  if (business !== 'contracting' && business !== 'equipment') throw new Error(`No business toolbar for ${route}`);
+  if (business !== 'contracting' && business !== 'equipment') return SHARED_TOOLBARS[kind];
   return TOOLBAR_COMPONENTS[business][kind];
 }
 

@@ -1,7 +1,7 @@
 import { type Db, pushTokens, session, user } from '@pkg/db';
 import { PushTokenRegisterInput } from '@pkg/schema';
 import { and, eq, gt, inArray, sql } from 'drizzle-orm';
-import { PushError } from './push-errors.js';
+import { refuseDeviceAccount } from './push-errors.js';
 
 /**
  * Records that this install may be pinged for `userId` while `sessionId` lasts. A token is one phone, so a second
@@ -21,8 +21,7 @@ export async function registerPushToken({
 }): Promise<void> {
   const input = PushTokenRegisterInput.parse(raw);
   const [account] = await db.select({ isDevice: user.isDevice }).from(user).where(eq(user.id, userId));
-  if (account?.isDevice)
-    throw new PushError('push.device_account', 'A shared device account does not receive notifications.');
+  refuseDeviceAccount(account);
   await db
     .insert(pushTokens)
     .values({ userId, sessionId, token: input.token, platform: input.platform })

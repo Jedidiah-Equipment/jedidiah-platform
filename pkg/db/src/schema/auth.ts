@@ -31,6 +31,8 @@ export const user = pgTable(
      * started every existing account's Contracting key at the rollout for the same reason.
      */
     lastActivitySeen: jsonb('last_activity_seen').$type<ActivityViewMap>().default({}).notNull(),
+    /** Push Kinds this person has muted in App Settings. Unknown kinds are dropped on read, never refused. */
+    mutedPushKinds: jsonb('muted_push_kinds').$type<string[]>().default([]).notNull(),
     banned: boolean('banned').default(false),
     banReason: text('ban_reason'),
     banExpires: timestamp('ban_expires', { mode: 'date' }),

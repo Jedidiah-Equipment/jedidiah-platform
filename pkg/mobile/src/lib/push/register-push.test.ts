@@ -16,9 +16,9 @@ vi.mock('expo-constants', () => ({ default: { expoConfig: { extra: { eas: { proj
 vi.mock('react-native', () => ({ Platform: { OS: 'android' } }));
 vi.mock('../observability', () => ({ addBreadcrumb: vi.fn() }));
 
-import { registerForPush } from './register-push';
+import { registerForPush, requestNotificationsAndRegister } from './register-push';
 
-const channel = { id: 'workshop', name: 'Workshop' };
+const channels = [{ id: 'workshop', name: 'Workshop' }];
 
 beforeEach(async () => {
   vi.clearAllMocks();
@@ -29,11 +29,11 @@ beforeEach(async () => {
 test('a denial is asked once per user and never again', async () => {
   const register = vi.fn(async () => undefined);
 
-  expect(await registerForPush({ userId: 'wendy', channel, mayAsk: true, register })).toBe('denied');
-  expect(await registerForPush({ userId: 'wendy', channel, mayAsk: true, register })).toBe('denied');
+  expect(await registerForPush({ userId: 'wendy', channels, mayAsk: true, register })).toBe('denied');
+  expect(await registerForPush({ userId: 'wendy', channels, mayAsk: true, register })).toBe('denied');
   expect(notifications.requestPermissionsAsync).toHaveBeenCalledTimes(1);
 
-  await registerForPush({ userId: 'mo', channel, mayAsk: true, register });
+  await registerForPush({ userId: 'mo', channels, mayAsk: true, register });
   expect(notifications.requestPermissionsAsync).toHaveBeenCalledTimes(2);
   expect(register).not.toHaveBeenCalled();
 });
@@ -41,11 +41,11 @@ test('a denial is asked once per user and never again', async () => {
 test('someone no push reaches is never asked, but still claims an install the OS already allows', async () => {
   const register = vi.fn(async () => undefined);
 
-  expect(await registerForPush({ userId: 'sipho', channel, mayAsk: false, register })).toBe('denied');
+  expect(await registerForPush({ userId: 'sipho', channels, mayAsk: false, register })).toBe('denied');
   expect(notifications.requestPermissionsAsync).not.toHaveBeenCalled();
 
   notifications.getPermissionsAsync.mockResolvedValueOnce({ status: 'granted' });
-  expect(await registerForPush({ userId: 'sipho', channel, mayAsk: false, register })).toBe('registered');
+  expect(await registerForPush({ userId: 'sipho', channels, mayAsk: false, register })).toBe('registered');
   expect(register).toHaveBeenCalledWith({ token: 'ExponentPushToken[phone]', platform: 'android' });
 });
 
@@ -53,7 +53,7 @@ test('a granted permission registers the install on the workshop channel', async
   notifications.getPermissionsAsync.mockResolvedValueOnce({ status: 'granted' });
   const register = vi.fn(async () => undefined);
 
-  expect(await registerForPush({ userId: 'wendy', channel, mayAsk: true, register })).toBe('registered');
+  expect(await registerForPush({ userId: 'wendy', channels, mayAsk: true, register })).toBe('registered');
   expect(notifications.setNotificationChannelAsync).toHaveBeenCalledWith(
     'workshop',
     expect.objectContaining({ importance: 5 }),
@@ -61,9 +61,19 @@ test('a granted permission registers the install on the workshop channel', async
   expect(register).toHaveBeenCalledWith({ token: 'ExponentPushToken[phone]', platform: 'android' });
 });
 
+test('Allow on the Settings page asks again whenever the OS still can, then registers', async () => {
+  const register = vi.fn(async () => undefined);
+  await registerForPush({ userId: 'wendy', channels, mayAsk: true, register });
+  notifications.requestPermissionsAsync.mockResolvedValueOnce({ status: 'granted' });
+
+  expect(await requestNotificationsAndRegister({ userId: 'wendy', channels, register })).toBe('registered');
+  expect(notifications.requestPermissionsAsync).toHaveBeenCalledTimes(2);
+  expect(register).toHaveBeenCalledWith({ token: 'ExponentPushToken[phone]', platform: 'android' });
+});
+
 test('a simulator has no push channel and is never prompted', async () => {
   device.isDevice = false;
 
-  expect(await registerForPush({ userId: 'wendy', channel, mayAsk: true, register: vi.fn() })).toBe('unsupported');
+  expect(await registerForPush({ userId: 'wendy', channels, mayAsk: true, register: vi.fn() })).toBe('unsupported');
   expect(notifications.getPermissionsAsync).not.toHaveBeenCalled();
 });

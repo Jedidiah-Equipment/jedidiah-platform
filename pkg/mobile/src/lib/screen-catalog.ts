@@ -8,6 +8,7 @@ export const SHARED_SCREEN_CATALOG: ScreenCatalog = {
   'forgot-password.tsx': { business: null, name: '/forgot-password' },
   'login.tsx': { business: null, name: '/login' },
   '(protected)/index.tsx': { business: null, name: '/' },
+  '(protected)/settings.tsx': { business: null, name: '/settings' },
 };
 
 export function createScreenResolver(catalogs: readonly ScreenCatalog[]) {

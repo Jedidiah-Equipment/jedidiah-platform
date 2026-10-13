@@ -1,12 +1,8 @@
-import { isPushError, type PushError, registerPushToken } from '@pkg/core';
+import { registerPushToken } from '@pkg/core';
 import { PushTokenRegisterInput } from '@pkg/schema';
-import { defineCoreErrorFamily, mapCoreErrors } from '../../trpc/errors.js';
+import { mapCoreErrors } from '../../trpc/errors.js';
 import { protectedProcedure, router } from '../../trpc/init.js';
-
-export const pushErrorFamily = defineCoreErrorFamily<PushError>({
-  codes: { 'push.device_account': 'FORBIDDEN' },
-  is: isPushError,
-});
+import { pushErrorFamily } from './push-errors.js';
 
 /**
  * Any signed-in person may register their install; who is pinged is each business's decision, server-side. Nothing

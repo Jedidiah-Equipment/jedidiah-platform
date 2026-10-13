@@ -11,6 +11,13 @@ const ingestHost = process.env.EXPO_PUBLIC_POSTHOG_HOST?.trim() || 'https://us.i
 
 /** Business-blind tRPC mutations that are events; spread before each business's own catalog. */
 export const SHARED_MUTATION_EVENTS = {
+  'pushPreferences.set': {
+    event: 'push preferences set',
+    properties: (variables) => {
+      const muted = (variables as { muted?: unknown } | undefined)?.muted;
+      return { mutedCount: Array.isArray(muted) ? muted.length : null };
+    },
+  },
   'pushTokens.register': {
     event: 'push token registered',
     properties: (variables) => pickStringFields(variables, [['platform', 'platform']]),

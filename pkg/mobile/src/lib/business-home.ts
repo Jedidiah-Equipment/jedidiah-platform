@@ -6,3 +6,5 @@ export const BUSINESS_HOME = {
   contracting: '/contracting',
   equipment: '/equipment',
 } as const satisfies Record<Business, Href>;
+
+export const BUSINESS_LABELS: Record<Business, string> = { contracting: 'Contracting', equipment: 'Equipment' };

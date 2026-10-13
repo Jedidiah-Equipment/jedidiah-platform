@@ -1,6 +1,6 @@
 import { type HelpTopic, hasBothBusinessAccess, helpUrl } from '@pkg/domain';
 import type { Business } from '@pkg/schema';
-import { IconHelpCircle, IconLogout, IconSwitchHorizontal } from '@tabler/icons-react-native';
+import { IconHelpCircle, IconLogout, IconSettings, IconSwitchHorizontal } from '@tabler/icons-react-native';
 import Constants from 'expo-constants';
 import * as Linking from 'expo-linking';
 import { router, usePathname } from 'expo-router';
@@ -15,7 +15,7 @@ import { useAppToast } from '@/components/ui/toast';
 import { docsOrigin } from '@/lib/app-env';
 import { signOut } from '@/lib/auth';
 import { getSessionRoleSlots, useAuthSession } from '@/lib/auth-session';
-import { BUSINESS_HOME } from '@/lib/business-home';
+import { BUSINESS_HOME, BUSINESS_LABELS } from '@/lib/business-home';
 import { captureException } from '@/lib/observability';
 import { formatAppVersion } from '@/lib/runtime-app-identity';
 import type { ColorModePreference } from '@/theme/ColorModeProvider';
@@ -25,8 +25,6 @@ const THEME_OPTIONS: { label: string; value: ColorModePreference }[] = [
   { label: 'Dark', value: 'dark' },
   { label: 'Light', value: 'light' },
 ];
-
-const BUSINESS_LABELS: Record<Business, string> = { contracting: 'Contracting', equipment: 'Equipment' };
 
 function currentBusiness(pathname: string): Business {
   return pathname.startsWith(BUSINESS_HOME.contracting) ? 'contracting' : 'equipment';
@@ -40,7 +38,7 @@ type ProfileUser = {
 
 /**
  * Overflow menu shared across screens: an {@link AnchoredMenu} pinned top-right
- * with optional contextual Help, the theme toggle, and Log out.
+ * with App Settings, optional contextual Help, the theme toggle, and Log out.
  */
 export function ProfileMenu({
   helpTopic,
@@ -54,8 +52,12 @@ export function ProfileMenu({
   const insets = useSafeAreaInsets();
   const showToast = useAppToast();
   const helpOrigin = docsOrigin;
-  const showBusinessSwitcher = hasBothBusinessAccess(getSessionRoleSlots(useAuthSession()));
-  const otherBusiness = currentBusiness(usePathname()) === 'contracting' ? 'equipment' : 'contracting';
+  const pathname = usePathname();
+  // App Settings belongs to neither business, so it offers no switch and does not reopen itself.
+  const onAppSettings = pathname === '/settings';
+  const session = useAuthSession();
+  const showBusinessSwitcher = !onAppSettings && hasBothBusinessAccess(getSessionRoleSlots(session));
+  const otherBusiness = currentBusiness(pathname) === 'contracting' ? 'equipment' : 'contracting';
   const appVersion = formatAppVersion(Constants.expoConfig?.version);
 
   return (
@@ -90,6 +92,24 @@ export function ProfileMenu({
           </Pressable>
         </View>
       ) : null}
+
+      {onAppSettings ? null : (
+        <View className="border-b border-border p-1.5">
+          <Pressable
+            accessibilityRole="button"
+            className="flex-row items-center gap-3 rounded-xl px-3 py-3 active:bg-muted"
+            onPress={() => {
+              onClose();
+              router.push('/settings');
+            }}
+          >
+            <Icon className="text-muted-foreground" icon={IconSettings} size={18} />
+            <Text className="text-sm text-surface-foreground" weight="semibold">
+              Settings
+            </Text>
+          </Pressable>
+        </View>
+      )}
 
       {helpTopic && helpOrigin ? (
         <View className="border-b border-border p-1.5">

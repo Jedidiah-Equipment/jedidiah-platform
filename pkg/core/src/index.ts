@@ -11,6 +11,7 @@ export * from './media/image-cache.js';
 export * from './media/image-optimizer.js';
 export * from './media/image-transform.js';
 export * from './push/push-errors.js';
+export * from './push/push-preference-service.js';
 export * from './push/push-sender.js';
 export * from './push/push-token-service.js';
 export { InMemoryStorageAdapter } from './storage/in-memory-storage-adapter.js';

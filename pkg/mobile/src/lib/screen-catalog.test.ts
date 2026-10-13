@@ -18,7 +18,7 @@ describe('mobile screen catalog', () => {
   it('covers every shared Expo Router page exactly once', () => {
     const sharedPages = [...directPageFiles(APP_ROOT), ...directPageFiles(join(APP_ROOT, '(protected)'))];
     expect(Object.keys(SHARED_SCREEN_CATALOG).sort()).toEqual(sharedPages.sort());
-    expect(Object.keys(SHARED_SCREEN_CATALOG)).toHaveLength(3);
+    expect(Object.keys(SHARED_SCREEN_CATALOG)).toHaveLength(4);
   });
 
   it('resolves shared index routes', () => {

@@ -4,3 +4,7 @@ import type { PushRegistrationOutcome } from './register-push';
 export async function registerForPush(_options: unknown): Promise<PushRegistrationOutcome> {
   return 'unsupported';
 }
+
+export async function requestNotificationsAndRegister(_options: unknown): Promise<PushRegistrationOutcome> {
+  return 'unsupported';
+}

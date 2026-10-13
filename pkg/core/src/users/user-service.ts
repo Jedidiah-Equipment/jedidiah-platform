@@ -28,7 +28,7 @@ import { UserNotFoundError } from './user-errors.js';
 
 type UserAuditInput = Pick<
   typeof user.$inferSelect,
-  'id' | 'email' | 'image' | 'isDevice' | 'lastActivitySeen' | 'phoneNumber'
+  'id' | 'email' | 'image' | 'isDevice' | 'lastActivitySeen' | 'mutedPushKinds' | 'phoneNumber'
 >;
 
 // `email` is the summary label, not an audited field on these paths, so it lives in `label` rather
@@ -42,6 +42,7 @@ export const userAuditDescriptor = defineAuditDescriptor<UserAuditInput>({
   toRecord: (row) => ({
     isDevice: row.isDevice,
     lastActivitySeen: row.lastActivitySeen,
+    mutedPushKinds: row.mutedPushKinds,
     phoneNumber: row.phoneNumber,
     thumbnailDataUrl: row.image,
   }),

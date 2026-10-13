@@ -33,6 +33,8 @@ again only after a Service Record is closed and the Machine nears its new Next S
 
 - Whoever reported the Breakdown, even when their role would otherwise get it.
 - A shared device, such as a tablet signed in as itself.
+- Someone who turned that alert off in the phone app's **Settings**; their other alerts still come. See
+  [Choose your alerts](./choose-your-alerts).
 - A phone whose notifications are turned off, or where nobody is signed in. A phone only gets the alerts
   of whoever signed in on it last.
 

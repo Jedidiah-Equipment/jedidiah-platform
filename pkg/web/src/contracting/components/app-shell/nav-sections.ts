@@ -1,4 +1,6 @@
+import { activityPermissions } from '@pkg/domain/contracting';
 import {
+  IconActivity,
   IconBuilding,
   IconCategory,
   IconChartBar,
@@ -16,9 +18,8 @@ import {
   IconUsers,
 } from '@tabler/icons-react';
 import { linkOptions } from '@tanstack/react-router';
-
 import type { NavSection } from '@/components/app-shell/NavSections.js';
-import { ReadingExceptionsNavIndicator, WorkshopNavIndicator } from './AppNavIndicators.js';
+import { ActivityUnreadNavIndicator, ReadingExceptionsNavIndicator, WorkshopNavIndicator } from './AppNavIndicators.js';
 
 const isCategoriesPath = (pathname: string) => pathname.startsWith('/contracting/fleet/categories');
 
@@ -40,6 +41,13 @@ export const contractingNavSections = [
         title: 'Dashboard',
         link: linkOptions({ activeOptions: { exact: true }, to: '/contracting' }),
         icon: IconGauge,
+      },
+      {
+        title: 'Activity',
+        permissionAnyOf: activityPermissions,
+        link: linkOptions({ to: '/contracting/activity' }),
+        icon: IconActivity,
+        indicator: ActivityUnreadNavIndicator,
       },
     ],
   },

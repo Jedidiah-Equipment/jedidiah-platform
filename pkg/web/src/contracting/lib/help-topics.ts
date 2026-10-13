@@ -2,6 +2,7 @@ import { createHelpTopicResolver } from '@/lib/help-topics.js';
 
 export const helpTopicForPath = createHelpTopicResolver(
   [
+    ['/contracting/activity', 'contractingActivity'],
     ['/contracting/audit', 'contractingAudit'],
     ['/contracting/customers', 'contractingCustomers'],
     ['/contracting/fleet', 'contractingFleet'],

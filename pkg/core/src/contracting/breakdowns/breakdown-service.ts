@@ -266,16 +266,6 @@ export async function reportBreakdown({
   );
 }
 
-async function listNotes(db: DbOrTx, breakdownId: string): Promise<BreakdownNote[]> {
-  const rows = await db
-    .select({ note: contractingBreakdownNotes, authorName: user.name })
-    .from(contractingBreakdownNotes)
-    .innerJoin(user, eq(user.id, contractingBreakdownNotes.authorUserId))
-    .where(eq(contractingBreakdownNotes.breakdownId, breakdownId))
-    .orderBy(asc(contractingBreakdownNotes.createdAt), asc(contractingBreakdownNotes.id));
-  return rows.map(({ note, authorName }) => toNote(note, authorName));
-}
-
 const toNote = (note: typeof contractingBreakdownNotes.$inferSelect, authorName: string) =>
   BreakdownNote.parse({ ...note, authorName, createdAt: note.createdAt.toISOString() });
 
@@ -296,7 +286,6 @@ async function toDetail(db: DbOrTx, actor: BreakdownActor, row: LoadedBreakdown)
     longitude: breakdown.longitude,
     photos: breakdown.photos,
     closeOutNote: breakdown.closeOutNote,
-    notes: await listNotes(db, breakdown.id),
     dispatchHints: hints.map((hint) => ({
       breakdownId: hint.breakdown.id,
       subject: breakdownSubjectOf(hint),

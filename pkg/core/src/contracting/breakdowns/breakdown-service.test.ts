@@ -1,10 +1,11 @@
 import { auditEvents, user } from '@pkg/db';
 import { accessForRole } from '@pkg/domain/testing';
-import { BreakdownListInput } from '@pkg/schema/contracting';
+import { ActivityListInput, BreakdownListInput } from '@pkg/schema/contracting';
 import { and, asc, eq } from 'drizzle-orm';
 import { expect } from 'vitest';
 import { InMemoryStorageAdapter } from '../../storage/in-memory-storage-adapter.js';
 import { createTester } from '../../test/create-tester.js';
+import { listActivity } from '../activity/activity-service.js';
 import { onSiteAssignment } from '../fleet/on-site-assignment.js';
 import { createJob } from '../jobs/job-service.js';
 import { captureReading } from '../readings/reading-service.js';
@@ -238,10 +239,14 @@ test('the report and each transition are audited; notes append without an audit 
     { action: 'updated', actorUserId: 'connor' },
     { action: 'updated', actorUserId: 'connor' },
   ]);
-  const detail = await getBreakdown({ db, actor: foreman, id: breakdown.id });
-  expect(detail.notes.map((note) => [note.authorName, note.text])).toEqual([
-    ['Connor', 'Which hose?'],
+  const notes = await listActivity({
+    db,
+    actor: foreman,
+    input: ActivityListInput.parse({ breakdownId: breakdown.id, filter: 'notes' }),
+  });
+  expect(notes.items.map((note) => [note.actor.name, 'text' in note ? note.text : null])).toEqual([
     ['Sipho', 'The boom ram one'],
+    ['Connor', 'Which hose?'],
   ]);
 });
 

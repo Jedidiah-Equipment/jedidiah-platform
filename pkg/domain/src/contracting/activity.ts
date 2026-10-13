@@ -1,9 +1,9 @@
-import type { UserAccessSummary } from '@pkg/schema';
+import type { AppPermission, UserAccessSummary } from '@pkg/schema';
 import type { ActivityFilter, ActivityItem, ActivityItemType, ActivityJobRef } from '@pkg/schema/contracting';
+import { hasPermission } from '../auth/authorization.js';
 import { formatDate } from '../formatting/date.js';
 import { formatHours } from '../formatting/number.js';
-import { breakdownReadScope, breakdownUrgencyLabels } from './breakdowns.js';
-import { fieldJobAccessMode } from './jobs.js';
+import { breakdownUrgencyLabels } from './breakdowns.js';
 
 export const activityFilterLabels: Record<ActivityFilter, string> = {
   all: 'All',
@@ -28,9 +28,19 @@ export const activityItemCategory: Record<ActivityItemType, Exclude<ActivityFilt
   'machine-left': 'hours',
 };
 
-/** Who may open Activity at all: anyone with a Jobs or a Workshop reach. The API, the phone tab and the web nav all ask this. */
+/**
+ * Who may open Activity at all: a Jobs reach (work any Job, or read one's own) or a Workshop reach (read every
+ * Breakdown, or report one's own). The API, the phone tab, the web route and the web nav all ask this one rule.
+ */
+export const activityPermissions = [
+  'contracting_job:work-any',
+  'contracting_job:read-own',
+  'contracting_breakdown:read',
+  'contracting_breakdown:report',
+] as const satisfies readonly [AppPermission, ...AppPermission[]];
+
 export const canSeeActivity = (access: UserAccessSummary | null | undefined) =>
-  fieldJobAccessMode(access) !== null || breakdownReadScope(access) !== null;
+  activityPermissions.some((permission) => hasPermission(access, permission));
 
 /** How an event reads at a glance; each app picks its own icon and colour for it. */
 export type ActivityEventTone = 'danger' | 'warning' | 'next' | 'in-progress' | 'done' | 'muted';

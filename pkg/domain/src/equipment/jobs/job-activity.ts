@@ -1,12 +1,10 @@
-import { DateIso, type DateOnlyIso } from '@pkg/schema';
+import type { DateIso, DateOnlyIso } from '@pkg/schema';
 import type {
-  JobActivityItem,
   JobChangeActivityItem,
   JobWorkTimeActivityAction,
   JobWorkTimeActivityState,
   WorkItemDepartment,
 } from '@pkg/schema/equipment';
-import { type ActivityDayGroup, groupActivityByDay } from '../../activity/day-groups.js';
 import { formatDate, toPlantDateOnly } from '../../formatting/date.js';
 import { getFirstName } from '../../formatting/text.js';
 import type { StatusBadgeColor } from '../../theme/status-badge.js';
@@ -131,12 +129,3 @@ function jobWorkTimeActivityDetail({
 }
 
 export { hasUnreadActivity } from '../../activity/activity-view.js';
-
-/** One calendar day of the feed, in the order the feed delivered it. */
-export type JobActivityDayGroup = ActivityDayGroup<JobActivityItem>;
-
-/** Equipment's feed split into day headings; see {@link groupActivityByDay}. */
-export const groupJobActivityByDay = (
-  items: readonly JobActivityItem[],
-  now: DateIso = DateIso.parse(new Date()),
-): JobActivityDayGroup[] => groupActivityByDay(items, now);

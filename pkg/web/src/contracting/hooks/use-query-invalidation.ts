@@ -7,6 +7,11 @@ export function useQueryInvalidation() {
   const queryClient = useQueryClient();
   const trpc = useTRPC();
 
+  // Activity reads its items off Jobs, Breakdowns and readings: a write that adds or changes one refreshes the feed and its dot.
+  const invalidateActivity = useCallback(
+    () => queryClient.invalidateQueries({ queryKey: trpc.contractingActivity.pathKey() }),
+    [queryClient, trpc],
+  );
   const invalidateDirectory = useCallback(
     () => queryClient.invalidateQueries({ queryKey: trpc.contractingDirectory.pathKey() }),
     [queryClient, trpc],
@@ -16,8 +21,12 @@ export function useQueryInvalidation() {
     [queryClient, trpc],
   );
   const invalidateReadings = useCallback(
-    () => queryClient.invalidateQueries({ queryKey: trpc.contractingReadings.pathKey() }),
-    [queryClient, trpc],
+    () =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: trpc.contractingReadings.pathKey() }),
+        invalidateActivity(),
+      ]),
+    [queryClient, trpc, invalidateActivity],
   );
   const invalidateJobs = useCallback(
     () => queryClient.invalidateQueries({ queryKey: trpc.contractingJobs.pathKey() }),
@@ -52,12 +61,14 @@ export function useQueryInvalidation() {
       Promise.all([
         queryClient.invalidateQueries({ queryKey: trpc.contractingBreakdowns.pathKey() }),
         queryClient.invalidateQueries({ queryKey: trpc.contractingServices.pathKey() }),
+        invalidateActivity(),
       ]),
-    [queryClient, trpc],
+    [queryClient, trpc, invalidateActivity],
   );
 
   return useMemo(
     () => ({
+      invalidateActivity,
       invalidateDirectory,
       invalidateFleet,
       invalidateJobs,
@@ -68,6 +79,7 @@ export function useQueryInvalidation() {
       invalidateWorkshop,
     }),
     [
+      invalidateActivity,
       invalidateDirectory,
       invalidateFleet,
       invalidateJobs,

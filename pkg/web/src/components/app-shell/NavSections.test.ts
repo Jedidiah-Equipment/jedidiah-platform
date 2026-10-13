@@ -11,6 +11,12 @@ const sections: NavSection[] = [
     items: [
       { title: 'Users', permission: 'user:list', link: { to: '/' }, icon: IconGauge },
       {
+        title: 'Either',
+        permissionAnyOf: ['contracting_job:read-own', 'contracting_breakdown:report'],
+        link: { to: '/' },
+        icon: IconGauge,
+      },
+      {
         title: 'Parent',
         link: { to: '/' },
         icon: IconGauge,
@@ -36,6 +42,13 @@ describe('getVisibleNavSections', () => {
     expect(visibleTitles(['user:list'])).toEqual([
       { label: '', titles: ['Home'] },
       { label: 'Gated', titles: ['Users', 'Parent'] },
+    ]);
+  });
+
+  it('shows an any-of item to whoever holds one of its permissions', () => {
+    expect(visibleTitles(['contracting_breakdown:report'])).toEqual([
+      { label: '', titles: ['Home'] },
+      { label: 'Gated', titles: ['Either'] },
     ]);
   });
 });

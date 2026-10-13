@@ -12,6 +12,7 @@ export const HELP_TOPICS = {
   contractingWorkTypes: '/contracting/maintain-work-types',
   contractingRates: '/contracting/maintain-the-rate-card',
   contractingMeasureTypes: '/contracting/maintain-measure-types',
+  contractingActivity: '/contracting/catch-up-on-activity',
   contractingMobileActivity: '/contracting/catch-up-on-activity',
   contractingMobileMachines: '/contracting/find-a-machine',
   contractingMobileJobs: '/contracting/work-a-job',

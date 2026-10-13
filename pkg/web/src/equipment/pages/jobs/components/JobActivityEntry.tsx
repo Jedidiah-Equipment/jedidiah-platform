@@ -1,53 +1,22 @@
-import { formatDate, getFirstName, statusBadgeColorClassNames } from '@pkg/domain';
+import { getFirstName, statusBadgeColorClassNames } from '@pkg/domain';
 import { presentJobActivityEvent } from '@pkg/domain/equipment';
 import type { GeneralFeedbackActivityItem, JobActivityItem, JobChangeActivityItem } from '@pkg/schema/equipment';
 import { IconCheck, IconClock, IconFileText, IconPencil, IconPlus, IconSubtask } from '@tabler/icons-react';
 import { Link } from '@tanstack/react-router';
 import type React from 'react';
-import { useEffect, useRef, useState } from 'react';
+import {
+  ActivityEntryShell,
+  ActivityEventMarker,
+  ActivityNoteMarker,
+  activityEntryLinkClassName,
+} from '@/components/activity/ActivityEntryShell.js';
+import { ActivityNoteBubble } from '@/components/activity/ActivityNoteBubble.js';
 import { EntityThumbnail } from '@/components/thumbnail/EntityThumbnail.js';
 import { Button } from '@/components/ui/button.js';
 import { Separator } from '@/components/ui/separator.js';
 import { StockBadge } from '@/equipment/components/common/StockBadge.js';
 import { OfferingThumbnail } from '@/equipment/components/thumbnail/OfferingThumbnail.js';
 import { cn } from '@/lib/utils.js';
-
-/**
- * Whether the clamped feedback is actually hiding anything, measured rather than guessed from the
- * text: how many lines a note wraps to depends on the column it lands in, so a character count
- * offers a toggle that reveals nothing on a wide screen and withholds one on a narrow screen.
- * Only meaningful while clamped — an expanded paragraph always reports that it fits.
- */
-function useIsTextClipped(enabled: boolean): [React.RefObject<HTMLParagraphElement | null>, boolean] {
-  const ref = useRef<HTMLParagraphElement>(null);
-  const [clipped, setClipped] = useState(false);
-
-  useEffect(() => {
-    const element = ref.current;
-
-    if (!element || !enabled) {
-      return;
-    }
-
-    const measure = () => setClipped(element.scrollHeight > element.clientHeight);
-
-    measure();
-
-    // Re-measure when the column changes under a still window (the Job Sheet opening beside the
-    // feed) and when the window itself changes: the clamp holds the paragraph's height fixed, so
-    // its box can report no change while the text inside it reflows across the clamp boundary.
-    const observer = new ResizeObserver(measure);
-    observer.observe(element);
-    window.addEventListener('resize', measure);
-
-    return () => {
-      observer.disconnect();
-      window.removeEventListener('resize', measure);
-    };
-  }, [enabled]);
-
-  return [ref, clipped];
-}
 
 /** One feed entry, rendered by its discriminator. A new activity type adds a case here. */
 export const JobActivityEntry: React.FC<{ hideDetail?: boolean; item: JobActivityItem }> = ({
@@ -69,81 +38,49 @@ export const JobActivityEntry: React.FC<{ hideDetail?: boolean; item: JobActivit
 const GeneralFeedbackEntry: React.FC<{ hideDetail: boolean; item: GeneralFeedbackActivityItem }> = ({
   hideDetail,
   item,
-}) => {
-  const [expanded, setExpanded] = useState(false);
-  const [textRef, clipped] = useIsTextClipped(!expanded);
-  // Keep the toggle once expanded: the unclamped paragraph reads as fitting, and dropping it there
-  // would strand the reader with no way back.
-  const expandable = expanded || clipped;
-
-  return (
-    <ActivityRow
-      item={item}
-      linkToJob={!hideDetail}
-      marker={<span className="size-2.5 rounded-full bg-primary ring-4 ring-background" />}
-      who={
-        <EntityThumbnail
-          className="z-10"
-          label={getFirstName(item.feedback.submitter.name)}
-          shape="circle"
-          thumbnailDataUrl={item.feedback.submitter.thumbnailDataUrl}
-        />
-      }
-    >
-      <div className="relative w-fit max-w-full">
-        {/*
-          A rotated square rather than a border-drawn triangle: it carries the bubble's own border on
-          the two edges that face out and its own background over the edge it sits on, so the tail
-          keeps the bubble's outline instead of being a differently-coloured wedge beside it.
-        */}
-        <span
-          aria-hidden
-          className="absolute top-4 -left-1 size-2.5 rotate-45 border-b border-l border-border/70 bg-card transition-colors group-hover:border-foreground/25"
-        />
-        <div className="overflow-hidden rounded-xl border border-border/70 bg-card transition-colors group-hover:border-foreground/25">
-          <p
-            className={cn('px-3.5 py-2.5 text-sm leading-6 whitespace-pre-wrap', !expanded && 'line-clamp-4')}
-            ref={textRef}
-          >
-            {item.feedback.text}
-          </p>
-          {expandable ? (
-            <Button
-              className="relative z-10 mx-3.5 mb-1 px-0"
-              onClick={() => setExpanded((open) => !open)}
+}) => (
+  <ActivityRow
+    item={item}
+    linkToJob={!hideDetail}
+    marker={<ActivityNoteMarker />}
+    who={
+      <EntityThumbnail
+        className="z-10"
+        label={getFirstName(item.feedback.submitter.name)}
+        shape="circle"
+        thumbnailDataUrl={item.feedback.submitter.thumbnailDataUrl}
+      />
+    }
+  >
+    <ActivityNoteBubble
+      footer={
+        hideDetail ? null : (
+          <div className="flex items-center gap-2 border-t border-border/70 bg-muted/40 py-1 pe-1.5 ps-3 text-xs">
+            <OfferingThumbnail
+              className="size-5"
+              kind={item.job.offeringKind}
+              label={item.job.displayName}
+              preview={false}
               size="sm"
-              variant="link"
-            >
-              {expanded ? 'Show less' : 'Show more'}
-            </Button>
-          ) : null}
-          {hideDetail ? null : (
-            <div className="flex items-center gap-2 border-t border-border/70 bg-muted/40 py-1 pe-1.5 ps-3 text-xs">
-              <OfferingThumbnail
-                className="size-5"
-                kind={item.job.offeringKind}
-                label={item.job.displayName}
-                preview={false}
-                size="sm"
-                thumbnailDataUrl={item.job.thumbnailDataUrl}
-              />
-              <JobLabel job={item.job} />
-              <span className="ms-auto flex shrink-0 items-center gap-1.5">
-                {item.job.customerCompanyName ? (
-                  <span className="truncate text-muted-foreground">{item.job.customerCompanyName}</span>
-                ) : (
-                  <StockBadge />
-                )}
-                <Separator className="h-4 self-center" orientation="vertical" />
-                <GanttButton job={item.job} />
-              </span>
-            </div>
-          )}
-        </div>
-      </div>
-    </ActivityRow>
-  );
-};
+              thumbnailDataUrl={item.job.thumbnailDataUrl}
+            />
+            <JobLabel job={item.job} />
+            <span className="ms-auto flex shrink-0 items-center gap-1.5">
+              {item.job.customerCompanyName ? (
+                <span className="truncate text-muted-foreground">{item.job.customerCompanyName}</span>
+              ) : (
+                <StockBadge />
+              )}
+              <Separator className="h-4 self-center" orientation="vertical" />
+              <GanttButton job={item.job} />
+            </span>
+          </div>
+        )
+      }
+      text={item.feedback.text}
+    />
+  </ActivityRow>
+);
 
 /**
  * What was done, in two flat lines beside a hollow node: who did what, then which Job it happened
@@ -160,9 +97,7 @@ const JobChangeEntry: React.FC<{ hideDetail: boolean; item: JobChangeActivityIte
       dense
       item={item}
       linkToJob={!hideDetail}
-      marker={
-        <span className="size-2.5 rounded-full border border-muted-foreground/50 bg-background ring-4 ring-background" />
-      }
+      marker={<ActivityEventMarker />}
       who={
         <span
           className={cn('flex size-8 items-center justify-center rounded-full border', iconTone.chip, iconTone.text)}
@@ -210,11 +145,7 @@ const jobActivityEventIcons = {
   'job-work-time-updated': IconClock,
 } satisfies Record<JobChangeActivityItem['type'], React.ElementType>;
 
-/**
- * The four-column shell every entry shares: the node on the spine, the time it happened, who or what
- * it was, and the entry itself. The first three sit in a fixed-height head so that they centre on
- * the entry's opening line rather than drifting with however tall the entry turns out to be.
- */
+/** The shared entry shell, linked as a whole to the Job Sheet unless the feed already sits on that Job. */
 const ActivityRow: React.FC<{
   children: React.ReactNode;
   dense?: boolean;
@@ -222,54 +153,26 @@ const ActivityRow: React.FC<{
   linkToJob: boolean;
   marker: React.ReactNode;
   who: React.ReactNode;
-}> = ({ children, dense = false, item, linkToJob, marker, who }) => {
-  const head = dense ? 'h-9' : 'h-11';
-
-  return (
-    <div className="group relative">
-      {/*
-        Each entry draws the spine across its own height and a little past it, into the gap the next
-        entry starts on the other side of. Spanning the row rather than reaching for the next node is
-        what keeps the line unbroken however tall either neighbour turns out to be; the day's first
-        and last entries stop at their own node, which is where the day itself starts and ends.
-      */}
-      <span
-        aria-hidden
-        className={cn(
-          // Half the gap either side, so one entry's line meets the next one's in the middle of it.
-          'absolute -top-2.5 -bottom-2.5 left-3 w-px -translate-x-1/2 bg-border',
-          dense
-            ? 'group-first:top-[1.125rem] group-last:bottom-[calc(100%-1.125rem)]'
-            : 'group-first:top-[1.375rem] group-last:bottom-[calc(100%-1.375rem)]',
-        )}
-      />
-      <div className="grid grid-cols-[1.5rem_3.5rem_2.5rem_minmax(0,1fr)] items-start gap-x-3">
-        <span className={cn('flex items-center justify-center', head)}>{marker}</span>
-        <time
-          className={cn('flex items-center font-mono text-xs tabular-nums text-muted-foreground', head)}
-          dateTime={item.occurredAt}
-        >
-          {formatDate(item.occurredAt, 'time')}
-        </time>
-        <span className={cn('flex items-center justify-center', head)}>{who}</span>
-        <div className="flex min-w-0 items-start gap-2">{children}</div>
-      </div>
-      {/*
-        A stretched link rather than a click handler on the row: the whole entry then behaves like
-        the link it is — focusable, cmd-clickable — and the controls above it stay clickable on their
-        own because they sit later in the stacking order, not because a handler swallowed the event.
-      */}
-      {linkToJob ? (
+}> = ({ children, dense = false, item, linkToJob, marker, who }) => (
+  <ActivityEntryShell
+    dense={dense}
+    link={
+      linkToJob ? (
         <Link
           aria-label={`Open ${formatJobLabel(item.job)}`}
-          className="absolute inset-0 rounded-lg focus-rings:focus-visible:ring-2 focus-rings:focus-visible:ring-ring focus-rings:focus-visible:outline-none"
+          className={activityEntryLinkClassName}
           search={{ job: item.job.id }}
           to="/equipment/jobs/activity"
         />
-      ) : null}
-    </div>
-  );
-};
+      ) : null
+    }
+    marker={marker}
+    occurredAt={item.occurredAt}
+    who={who}
+  >
+    {children}
+  </ActivityEntryShell>
+);
 
 /** Which Job an entry is about: its code, then what is being built. */
 const JobLabel: React.FC<{ className?: string; job: JobActivityItem['job'] }> = ({ className, job }) => (

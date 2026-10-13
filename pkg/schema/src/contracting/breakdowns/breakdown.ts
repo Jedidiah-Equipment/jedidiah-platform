@@ -161,7 +161,6 @@ export const BreakdownDetail = BreakdownSummary.extend({
   photos: BreakdownPhoto.array(),
   closeOutNote: CloseOutNote.nullable(),
   solvedByName: z.string().nullable(),
-  notes: BreakdownNote.array(),
   dispatchHints: BreakdownDispatchHint.array(),
   actions: BreakdownActions,
 });

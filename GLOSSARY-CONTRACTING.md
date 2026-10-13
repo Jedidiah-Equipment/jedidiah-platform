@@ -53,6 +53,14 @@ dispute trail of readings and amounts that shows **one total hours figure per li
 work/travel split**. Reading values print; meter photos stay in the app. Diesel is shown
 VAT-exempt. Its ex-VAT total is a works summary — a Job Card is never an invoice.
 
+**Job Note** is one entry in a Job's append-only note thread: author, text (typed or from a Voice
+Note), time. Anyone whose Jobs reach includes the Job may add one, in every status — a note moves no Job
+data, so the Invoiced wall does not stop it. It is added from the Job's Activity, appears in Activity as a
+note, and pushes the Job's participants — its Foreman, everyone who has noted it, and the
+contracting-manager, contracting-admin and super-admin roles — never its author. It is not the Job's
+**sign-off notes**, the one free-text field management fills at Completion.
+_Avoid_: comment, message, chat message, feedback
+
 **Job Actions** are the derived verdicts of what one person may do to a Job in its current status:
 change its setup, Foreman, Machine Assignments, travel, Measures, Charge Lines and their amounts, Hour Gaps,
 sign-off details and diesel litres; complete, cancel, price or stamp it; amend its readings; capture on it.
@@ -215,8 +223,9 @@ may be reopened; nothing closes it but him. A Field Note lives only on the phone
 user, and never reaches the server — save that a Voice Note recorded into its description sends the
 recording, and the description saved with it, as that Transcription's; its photos are also saved to the phone's gallery, which is
 where a later capture picks them up. It is not a capture, a queue, or a task: the app never reads
-a Field Note back into a Job or a Machine.
-_Avoid_: task, to-do, offline capture, queued reading
+a Field Note back into a Job or a Machine. Its phone tab is **Field Notes**, never "Notes": a Note is a
+Job Note or a Breakdown Note.
+_Avoid_: task, to-do, offline capture, queued reading, note
 
 ## Workshop
 
@@ -233,10 +242,15 @@ close-out note. The subject's Breakdown history is
 permanent. The dispatch cross-reference — other fleet on the same Job with open Breakdowns —
 is derived, never stored. A new Breakdown notifies by push notification: Code Green reaches
 the workshop-manager role; Code Red also reaches contracting-manager, contracting-admin and
-super-admin. The reporter never receives their own ping.
+super-admin. The reporter never receives their own ping, and anyone may mute a Push Kind in App
+Settings (see [GLOSSARY-MAP.md](GLOSSARY-MAP.md)).
 
 **Breakdown Note** is one entry in a Breakdown's append-only note thread: author, text (typed
-or from a Voice Note), time. Contracting's own mechanism — never the Equipment context's Feedback.
+or from a Voice Note), time. It is added from the Breakdown's Activity, appears in Activity as a note, and
+pushes the Breakdown's participants — its reporter, the Foreman of its Job, everyone who has noted it,
+and the workshop-manager role — never its author. Contracting's own mechanism — never the Equipment
+context's Feedback.
+_Avoid_: comment, message, chat message
 
 **Mechanic** is a non-login user record, like Driver: mechanics take instructions and never sign
 in. Exactly one primary Mechanic is assigned per Breakdown by the workshop manager, possibly
@@ -324,6 +338,28 @@ The **Dashboard** is the web home: counts and lists of what needs a person now �
 Breakdowns not yet Fixed, the Machines Service Due Soon or overdue, the Jobs waiting for sign-off, pricing or an
 Invoice Number, and the Reading Exceptions. Each block shows only to a role holding the permission that reads what
 it lists, and it refreshes every minute. It never shows anything over a period; that is Reporting's.
+
+## Activity
+
+**Activity** is the cross-Job feed of what has happened and what has been said across Jobs and
+Breakdowns, newest first — the phone's first tab and a web page under the Dashboard. An **activity
+item** is one entry in it, in one of four filter categories: **Notes** (Job Notes and Breakdown Notes),
+**Breakdowns** (reported, Mechanic assigned, fixing started, fixed), **Jobs** (started — the first
+arrival on it — completed, cancelled) and **Hours** (a Machine arriving on site and leaving, each with
+its reading). Every item is one stored record read as itself; the feed stores nothing of its own and
+reads no Audit Event (ADR 0023). A person sees exactly the items on the Jobs and Breakdowns their reach
+already shows them — a Foreman his own Jobs and his own Breakdowns, workshop-manager and up everything;
+contracting-invoicing has none. Spot and Baseline readings, amendments, disputes, Upcoming, Priced,
+Invoiced, reopening, Measures, Charge Lines, photos, report edits, Service Records, Service Due Soon
+and Field Notes are not Activity. A Job's own Activity is everything on it, its Breakdowns included; a
+Breakdown's is only its own. Across contexts, say **Contracting Activity**; Equipment's is Job Activity.
+_Avoid_: timeline, history, feed (as a noun for the whole), chat, log
+
+**Activity View** is the per-user, per-business high-water mark of Activity: the occurrence time of the
+newest item that user has received in the unfiltered feed. An item newer than it is **Unread Activity**,
+which badges the phone tab and dots the web nav item. A client advances the mark only to the newest item
+it displayed, and only on the unfiltered, unsearched view. The two businesses' marks are independent
+(see [GLOSSARY-MAP.md](GLOSSARY-MAP.md)).
 
 ## Reporting
 

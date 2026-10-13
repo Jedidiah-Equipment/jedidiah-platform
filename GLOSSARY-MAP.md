@@ -26,6 +26,19 @@ Customer) for different concepts; never treat a same-named term as shared.
   audit read permission. A User event belongs to exactly one log: Contracting's when the User holds a
   Contracting role and no Equipment role, Equipment's otherwise (a super-admin's, a role-less or
   removed User's), because most audited User facts are Equipment ones — Department Membership, the
-  shared device flag, Job Activity's last-seen stamp. The business is
+  shared device flag, the Activity View map, the muted Push Kinds. The business is
   derived on read, so the log stores none of its own — and a User who moves wholly to the other
   business takes their event history with them.
+- **Activity View** is one User fact holding one mark per business: Equipment's Job Activity and
+  Contracting's Activity each advance and read their own, so catching up in one business never clears
+  the other's unread badge. A business with no mark yet reads from the account's creation.
+- **Push Kind** is one kind of push notification the platform can send, owned by one business, with the
+  roles it can reach; today every kind is Contracting's. Role membership decides who a kind can reach
+  and who the phone asks for notification permission; a User may **mute** any kind that can reach them
+  in App Settings, which stops that kind's pushes to them and nothing else — badges, feeds and the
+  Dashboard are untouched.
+- **App Settings** is the phone's own settings page, reached from the profile menu in either business:
+  the OS permissions the app uses (notifications, camera, microphone, location, photos) with a way to
+  ask or to open the phone's settings, and the mute toggles for the Push Kinds that can reach the
+  signed-in User. It belongs to neither business. It is **not** Contracting's **Settings**, the one web
+  row of Contracting-wide thresholds; that collision is deliberate on the phone's menu label only.

@@ -90,11 +90,17 @@ test('keeps the table read-only and opens current rates in a separate dialog wit
     expect(container.querySelector('input')).toBeNull();
     await openEditor();
     expect(document.querySelector('[role=dialog]')?.textContent).toContain('Edit Labor rates');
+    const save = () => document.querySelector<HTMLButtonElement>('button[type="submit"]');
+    expect(save()?.disabled).toBe(true);
+    await edit('rates[1].consumablesPercentage', '65');
+    expect(save()?.disabled).toBe(false);
+    await edit('rates[1].consumablesPercentage', '60');
+    expect(save()?.disabled).toBe(true);
     await edit('rates[0].billingRate', '600');
     await edit('hoursPerWorkingDay', '8');
     await edit('managementOverheadPercentage', '55');
     await act(async () => {
-      document.querySelector<HTMLButtonElement>('button[type="submit"]')?.click();
+      save()?.click();
       await vi.waitFor(() => expect(queryClient.isMutating()).toBe(0));
     });
     await vi.waitFor(() => expect(document.querySelector('[role=dialog]')).toBeNull());

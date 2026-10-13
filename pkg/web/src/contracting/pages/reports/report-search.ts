@@ -6,29 +6,33 @@ import { z } from 'zod';
 export const reportTabs = ['utilisation', 'mechanics'] as const;
 export type ReportTab = (typeof reportTabs)[number];
 
-/** The Reports page URL: a tab, a window such as `2026-10` / `2026-Q4` / `2026`, and the trend's subject. */
+/**
+ * The Reports page URL: a tab, a window such as `2026-10` / `2026-Q4` / `2026`, and the trend's subject.
+ * The router JSON-parses each value, so a bare year arrives as a number; a malformed value is dropped, never refused.
+ */
 export const ReportsSearch = z.object({
-  tab: z.enum(reportTabs).optional(),
-  window: z.string().optional(),
+  tab: z.enum(reportTabs).optional().catch(undefined),
+  window: z.union([z.string(), z.number().int()]).optional().catch(undefined),
   /** `category:<uuid>` | `machine:<uuid>`; absent is the fleet. */
-  subject: z.string().optional(),
+  subject: z.string().optional().catch(undefined),
 });
 export type ReportsSearch = z.infer<typeof ReportsSearch>;
 
-export function formatReportWindowParam(input: ReportWindowInput): string {
+/** A year stays a number so the router writes `window=2026`, not a quoted string. */
+export function formatReportWindowParam(input: ReportWindowInput): NonNullable<ReportsSearch['window']> {
   switch (input.kind) {
     case 'month':
       return `${input.year}-${String(input.period).padStart(2, '0')}`;
     case 'quarter':
       return `${input.year}-Q${input.period}`;
     case 'year':
-      return String(input.year);
+      return input.year;
   }
 }
 
 /** Anything the window schema refuses opens the current month. */
-export function parseReportWindowParam(value: string | undefined, today: DateOnlyIso): ReportWindowInput {
-  const groups = /^(?<year>\d{4})(?:-(?:(?<month>\d{2})|Q(?<quarter>\d)))?$/.exec(value ?? '')?.groups;
+export function parseReportWindowParam(value: ReportsSearch['window'], today: DateOnlyIso): ReportWindowInput {
+  const groups = /^(?<year>\d{4})(?:-(?:(?<month>\d{2})|Q(?<quarter>\d)))?$/.exec(String(value ?? ''))?.groups;
   if (!groups) return currentReportWindow('month', today);
   const year = Number(groups.year);
   const candidate =

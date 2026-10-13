@@ -1,4 +1,4 @@
-import type { UserAccessSummary } from '@pkg/schema';
+import type { AppPermission, UserAccessSummary } from '@pkg/schema';
 import type { ActivityFilter, ActivityItem, ActivityItemType, ActivityJobRef } from '@pkg/schema/contracting';
 import { formatDate } from '../formatting/date.js';
 import { formatHours } from '../formatting/number.js';
@@ -31,6 +31,14 @@ export const activityItemCategory: Record<ActivityItemType, Exclude<ActivityFilt
 /** Who may open Activity at all: anyone with a Jobs or a Workshop reach. The API, the phone tab and the web nav all ask this. */
 export const canSeeActivity = (access: UserAccessSummary | null | undefined) =>
   fieldJobAccessMode(access) !== null || breakdownReadScope(access) !== null;
+
+/** {@link canSeeActivity} as the any-of list a route guard or a nav item takes. */
+export const activityPermissions = [
+  'contracting_job:work-any',
+  'contracting_job:read-own',
+  'contracting_breakdown:read',
+  'contracting_breakdown:report',
+] as const satisfies readonly [AppPermission, ...AppPermission[]];
 
 /** How an event reads at a glance; each app picks its own icon and colour for it. */
 export type ActivityEventTone = 'danger' | 'warning' | 'next' | 'in-progress' | 'done' | 'muted';

@@ -34,6 +34,8 @@ export type NavSubItem = {
 export type MainNavItem = {
   title: string;
   permission?: AppPermission;
+  /** Shown to whoever holds any one of these, for an area two reaches open (Activity: Jobs or Workshop). */
+  permissionAnyOf?: readonly AppPermission[];
   link: NavLinkProps;
   icon: TablerIcon;
   isActive?: (pathname: string) => boolean;
@@ -259,7 +261,7 @@ export function getVisibleNavSections(
     .map((section) => ({
       ...section,
       items: section.items.flatMap((item): MainNavItem[] => {
-        if (!canSee(item.permission)) {
+        if (!canSee(item.permission) || (item.permissionAnyOf && !item.permissionAnyOf.some(canSee))) {
           return [];
         }
 

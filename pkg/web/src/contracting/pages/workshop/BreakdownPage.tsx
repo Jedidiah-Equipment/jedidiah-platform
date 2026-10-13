@@ -10,11 +10,11 @@ import { QueryContent } from '@/components/common/QueryContent.js';
 import { AutosaveFormCard } from '@/components/form/AutosaveFormCard.js';
 import { useAutosaveForm } from '@/components/form/index.js';
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
+import { ActivityCard } from '@/contracting/components/ActivityCard.js';
 import { BreakdownStatusBadge, BreakdownSubjectLabel } from '@/contracting/components/BreakdownSubjectLabel.js';
 import { useQueryInvalidation } from '@/contracting/hooks/use-query-invalidation.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { cn } from '@/lib/utils.js';
-import { BreakdownNotesCard } from './BreakdownNotesCard.js';
 import { BreakdownPhotosCard } from './BreakdownPhotosCard.js';
 import { BreakdownWorkshopCard } from './BreakdownWorkshopCard.js';
 import { DispatchHintsCard } from './DispatchHintsCard.js';
@@ -58,7 +58,7 @@ export function BreakdownPage({ id }: { id: string }) {
               <BreakdownPhotosCard breakdown={detail} sheet={sheet} />
               <BreakdownWorkshopCard breakdown={detail} sheet={sheet} />
               <DispatchHintsCard breakdown={detail} />
-              <BreakdownNotesCard breakdown={detail} sheet={sheet} />
+              <ActivityCard scope={{ breakdownId: detail.id }} addNote={sheet.action('addNote')} />
             </div>
           );
         }}

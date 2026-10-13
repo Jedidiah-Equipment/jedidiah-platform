@@ -8,7 +8,7 @@ The Workshop queue is every Breakdown reported from the field, for the workshop 
 4. Open a Breakdown. Read the **Report** and **Photos**; choose **Open in Google Maps** to see where it was reported. **Also open on this Job** lists the other Breakdowns on the same Job that are not yet Fixed, so one Mechanic can take them all.
 5. On the **Workshop** card's **Mechanic** step, choose **Assign mechanic** (or **Change mechanic**) and pick the Mechanic who will fix it. You can also assign one straight from the queue.
 6. Choose **Start work** on the **Fixing** step when the Mechanic starts. The Breakdown is Fixing.
-7. Keep the conversation with the Foreman under **Notes**: write it and choose **Add note**.
+7. Keep the conversation with the Foreman under **Activity**: choose **Add Note**, write it, and choose **Send**. The card also lists everything else that happened on the Breakdown.
 8. Choose **Mark completed** on the **Fixed** step, write the **Close-out note** — what was wrong and what was done — and choose **Mark completed**. The Breakdown is then Fixed. A Breakdown can go straight to Fixed from Not fixed. Once Fixed, only notes can be added.
 
 Foremen follow their own Breakdowns on the phone: see [Report a Breakdown](./report-a-breakdown). New Breakdowns also alert the workshop manager's phone: see [Get workshop alerts](./get-workshop-alerts).

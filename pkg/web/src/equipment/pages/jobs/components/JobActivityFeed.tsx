@@ -2,15 +2,14 @@ import type { DateIso, UUID } from '@pkg/schema';
 import type { JobActivityFilter } from '@pkg/schema/equipment';
 import { keepPreviousData, useInfiniteQuery } from '@tanstack/react-query';
 import type React from 'react';
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 
-import { ErrorMessage } from '@/components/common/ErrorMessage.js';
+import { ActivityTimeline } from '@/components/activity/ActivityTimeline.js';
 import { WEB_LIST_BATCH_SIZE } from '@/components/data-table/constants.js';
 import { cursorInfiniteQueryOptions, useCombinedCursorQueryPages } from '@/components/data-table/cursor-query.js';
-import { Skeleton } from '@/components/ui/skeleton.js';
 import { useTRPC } from '@/lib/trpc.js';
 
-import { JobActivityTimeline } from './JobActivityTimeline.js';
+import { JobActivityEntry } from './JobActivityEntry.js';
 
 /** How often an open feed picks up activity submitted elsewhere. */
 const ACTIVITY_REFETCH_INTERVAL_MS = 60_000;
@@ -35,7 +34,6 @@ export const JobActivityFeed: React.FC<{
   );
   const { items } = useCombinedCursorQueryPages(activityQuery.data?.pages);
   const latestActivityAt = items[0]?.occurredAt;
-  const loadMoreRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (activityQuery.isSuccess && latestActivityAt !== undefined && filter === 'all' && !jobId && !search) {
@@ -43,39 +41,14 @@ export const JobActivityFeed: React.FC<{
     }
   }, [activityQuery.isSuccess, filter, jobId, latestActivityAt, onGlobalFeedViewed, search]);
 
-  useEffect(() => {
-    const loadMore = loadMoreRef.current;
-
-    if (!loadMore || !activityQuery.hasNextPage) {
-      return;
-    }
-
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry?.isIntersecting && !activityQuery.isFetchingNextPage) {
-          void activityQuery.fetchNextPage();
-        }
-      },
-      { rootMargin: '256px 0px' },
-    );
-
-    observer.observe(loadMore);
-
-    return () => observer.disconnect();
-  }, [activityQuery.fetchNextPage, activityQuery.hasNextPage, activityQuery.isFetchingNextPage]);
-
   return (
-    <div className="grid gap-6">
-      <ErrorMessage error={activityQuery.error} fallbackMessage="Unable to load job activity." />
-      {activityQuery.isPending ? <Skeleton className="h-24" /> : null}
-      {activityQuery.isSuccess && items.length === 0 ? (
-        <p className="text-sm text-muted-foreground">
-          {getEmptyMessage({ filter, filteredToJob: jobId !== undefined, searching: search.length > 0 })}
-        </p>
-      ) : null}
-      {items.length > 0 ? <JobActivityTimeline hideDetail={hideDetail} items={items} /> : null}
-      {activityQuery.hasNextPage ? <div aria-hidden className="h-px" ref={loadMoreRef} /> : null}
-    </div>
+    <ActivityTimeline
+      emptyMessage={getEmptyMessage({ filter, filteredToJob: jobId !== undefined, searching: search.length > 0 })}
+      errorMessage="Unable to load job activity."
+      items={items}
+      query={activityQuery}
+      renderItem={(item) => <JobActivityEntry hideDetail={hideDetail} item={item} />}
+    />
   );
 };
 

@@ -10,6 +10,7 @@ import { AutosaveFormCard } from '@/components/form/AutosaveFormCard.js';
 import { useAutosaveForm } from '@/components/form/index.js';
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
 import { Button } from '@/components/ui/button.js';
+import { ActivityCard } from '@/contracting/components/ActivityCard.js';
 import { ReasonDialog } from '@/contracting/components/ReasonDialog.js';
 import { useAiVerdictRefetchInterval } from '@/contracting/hooks/use-ai-verdict-polling.js';
 import { useResetOnOpen } from '@/contracting/hooks/use-contracting-write.js';
@@ -55,6 +56,7 @@ export function JobPage({ code }: { code: string }) {
             <div className="space-y-5">
               {job.cancellationReason ? <p>Cancelled: {job.cancellationReason}</p> : null}
               <SetupCard key={`setup-${job.id}`} job={job} sheet={sheet} />
+              <ActivityCard scope={{ jobId: job.id }} addNote={sheet.action('addNote')} />
               <MachinesCard job={job} sheet={sheet} />
               {sheet.showsSignOff ? <SignOffCard job={job} sheet={sheet} /> : null}
               <PricingCard job={job} sheet={sheet} />

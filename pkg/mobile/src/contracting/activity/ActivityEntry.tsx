@@ -6,7 +6,7 @@ import {
   isActivityNote,
   presentActivityEvent,
 } from '@pkg/domain/contracting';
-import type { ActivityItem, ActivityItemType } from '@pkg/schema/contracting';
+import type { ActivityItem, ActivityItemType, ActivityJobRef } from '@pkg/schema/contracting';
 import {
   IconArrowBarToDown,
   IconArrowBarUp,
@@ -28,8 +28,11 @@ import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { useColorMode } from '@/theme/use-color-mode';
 
-/** The thread an entry sits in: a link back to that same Job or Breakdown would go nowhere. */
-export type ActivityScope = { jobId?: string; breakdownId?: string };
+/**
+ * The thread an entry sits in (a link back to that same Job or Breakdown would go nowhere), and whether this person's
+ * phone opens a Job: the workshop reads every Job's Activity but has no Job screen.
+ */
+export type ActivityScope = { jobId?: string; breakdownId?: string; canOpenJob: (job: ActivityJobRef) => boolean };
 
 const NOTE_CLAMP_CHARACTERS = 180;
 
@@ -41,8 +44,11 @@ export function ActivityEntry({ item, last, scope }: { item: ActivityItem; last:
   );
 }
 
-/** Where tapping an entry goes: its Breakdown when it has one, else its Job; null inside that same thread. */
-function entryTarget(item: ActivityItem, scope: ActivityScope): { href: Href; label: string } | null {
+/**
+ * What an entry points at: its Breakdown when it has one, else its Job. Null inside that same thread; `href` null for
+ * a Job this phone does not open, so the entry still names it without a dead link.
+ */
+function entryTarget(item: ActivityItem, scope: ActivityScope): { href: Href | null; label: string } | null {
   if ('breakdown' in item) {
     if (scope.breakdownId === item.breakdown.id) return null;
     return {
@@ -52,7 +58,9 @@ function entryTarget(item: ActivityItem, scope: ActivityScope): { href: Href; la
   }
   if (scope.jobId === item.job.id) return null;
   return {
-    href: { pathname: '/contracting/jobs/[jobId]', params: { jobId: item.job.id } } as Href,
+    href: scope.canOpenJob(item.job)
+      ? ({ pathname: '/contracting/jobs/[jobId]', params: { jobId: item.job.id } } as Href)
+      : null,
     label: `${item.job.jobNumber} · ${item.job.farmName}`,
   };
 }
@@ -97,21 +105,31 @@ function NoteEntry({ item, last, scope }: { item: ActivityNoteItem; last: boolea
               </Text>
             </Pressable>
           ) : null}
-          {target ? (
-            <Pressable
-              accessibilityRole="link"
-              accessibilityLabel={`Open ${target.label}`}
-              className="border-t border-border bg-muted/50 px-2.5 py-1.5 active:bg-muted"
-              onPress={() => router.push(target.href)}
-            >
-              <Text className="text-[11px] text-muted-foreground" mono numberOfLines={1}>
-                {target.label}
-              </Text>
-            </Pressable>
-          ) : null}
+          {target ? <NoteFooter target={target} /> : null}
         </View>
       </View>
     </ActivityEntryShell>
+  );
+}
+
+function NoteFooter({ target }: { target: { href: Href | null; label: string } }) {
+  const label = (
+    <Text className="text-[11px] text-muted-foreground" mono numberOfLines={1}>
+      {target.label}
+    </Text>
+  );
+  const { href } = target;
+  return href ? (
+    <Pressable
+      accessibilityRole="link"
+      accessibilityLabel={`Open ${target.label}`}
+      className="border-t border-border bg-muted/50 px-2.5 py-1.5 active:bg-muted"
+      onPress={() => router.push(href)}
+    >
+      {label}
+    </Pressable>
+  ) : (
+    <View className="border-t border-border bg-muted/50 px-2.5 py-1.5">{label}</View>
   );
 }
 
@@ -119,7 +137,7 @@ function EventEntry({ item, last, scope }: { item: ActivityEventItem; last: bool
   const { resolved } = useColorMode();
   const presentation = presentActivityEvent(item);
   const tone = statusBadgeColorClassNames[TONE_COLOUR[presentation.tone]];
-  const target = entryTarget(item, scope);
+  const href = entryTarget(item, scope)?.href ?? null;
   const content = (
     <>
       <Text className="text-sm leading-5 text-foreground" numberOfLines={3}>
@@ -144,13 +162,13 @@ function EventEntry({ item, last, scope }: { item: ActivityEventItem; last: bool
         </View>
       }
     >
-      {target ? (
+      {href ? (
         <Pressable
           accessibilityHint="Opens the record"
           accessibilityLabel={presentation.sentence}
           accessibilityRole="button"
           className="min-w-0 flex-1 rounded-lg px-1 active:bg-muted"
-          onPress={() => router.push(target.href)}
+          onPress={() => router.push(href)}
         >
           {content}
         </Pressable>

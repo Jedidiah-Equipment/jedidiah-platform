@@ -8,8 +8,10 @@ CREATE TABLE "contracting"."job_note" (
 );
 --> statement-breakpoint
 ALTER TABLE "user" ADD COLUMN "last_activity_seen_map" jsonb DEFAULT '{}'::jsonb NOT NULL;--> statement-breakpoint
+-- Equipment keeps its mark; Contracting starts at the rollout, so an existing account never finds the history unread.
 UPDATE "user" SET "last_activity_seen_map" = jsonb_build_object(
-	'equipment', to_char("last_activity_seen" AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'));--> statement-breakpoint
+	'equipment', to_char("last_activity_seen" AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'),
+	'contracting', to_char(now() AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'));--> statement-breakpoint
 ALTER TABLE "user" DROP COLUMN "last_activity_seen";--> statement-breakpoint
 ALTER TABLE "user" RENAME COLUMN "last_activity_seen_map" TO "last_activity_seen";--> statement-breakpoint
 ALTER TABLE "contracting"."breakdown" ADD COLUMN "mechanic_assigned_at" timestamp with time zone;--> statement-breakpoint

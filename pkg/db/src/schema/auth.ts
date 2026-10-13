@@ -27,7 +27,8 @@ export const user = pgTable(
     quoteSalesperson: boolean('quote_salesperson').default(false).notNull(),
     /**
      * Per-business Activity View: the newest feed instant the user has received, keyed by business. A missing key
-     * reads as the account's creation, so a rollout or a new account never treats the whole history as unread.
+     * reads as the account's creation, so a new account never treats the history before it as unread; migration 0175
+     * started every existing account's Contracting key at the rollout for the same reason.
      */
     lastActivitySeen: jsonb('last_activity_seen').$type<ActivityViewMap>().default({}).notNull(),
     banned: boolean('banned').default(false),

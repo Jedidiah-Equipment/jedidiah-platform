@@ -61,9 +61,10 @@ function NoteModal({ subject, onClose }: { subject: NoteSubject; onClose: () => 
       showToast('success', 'Note added');
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: trpc.contractingActivity.pathKey() }),
-        queryClient.invalidateQueries({
-          queryKey: subject.job ? trpc.contractingJobs.pathKey() : trpc.contractingBreakdowns.pathKey(),
-        }),
+        // A Job Note changes nothing on the Job; a Breakdown Note moves the Breakdown's note count.
+        subject.job
+          ? queryClient.invalidateQueries({ queryKey: trpc.contractingJobs.jobs.get.queryKey({ id: subject.job.id }) })
+          : queryClient.invalidateQueries({ queryKey: trpc.contractingBreakdowns.pathKey() }),
       ]);
     }, NOTE_SAVE_FAILED);
 

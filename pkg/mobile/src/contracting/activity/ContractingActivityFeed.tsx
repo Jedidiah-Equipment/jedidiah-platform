@@ -1,4 +1,4 @@
-import { activityFilterLabels } from '@pkg/domain/contracting';
+import { activityFilterLabels, fieldJobAccessMode, fieldReaderSeesJob } from '@pkg/domain/contracting';
 import type { DateIso } from '@pkg/schema';
 import { type ActivityFilter, activityFilters } from '@pkg/schema/contracting';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -6,6 +6,7 @@ import type { ReactNode } from 'react';
 import { useCallback, useMemo, useState } from 'react';
 import { ActivityTimeline } from '@/components/activity/ActivityTimeline';
 import type { ListControlOption } from '@/components/ListControls';
+import { useSessionAccessSummary } from '@/lib/auth-session';
 import { useTRPC } from '@/lib/trpc';
 import { useDebouncedSearch } from '@/lib/use-debounced-search';
 import { ActivityEntry } from './ActivityEntry';
@@ -52,7 +53,20 @@ export function ContractingActivityFeed({
     },
     [markSeen, trackGlobalView, unfiltered],
   );
-  const scope = useMemo(() => ({ jobId, breakdownId }), [jobId, breakdownId]);
+  const access = useSessionAccessSummary();
+  const scope = useMemo(
+    () => ({
+      jobId,
+      breakdownId,
+      // The phone's Job screen reads through the field Job gate, which the workshop does not pass.
+      canOpenJob: (job: { foremanUserId: string | null }) =>
+        access !== null &&
+        access !== undefined &&
+        fieldJobAccessMode(access) !== null &&
+        fieldReaderSeesJob(access, job),
+    }),
+    [access, jobId, breakdownId],
+  );
   const subject = breakdownId ? 'this Breakdown' : jobId ? 'this Job' : 'your Jobs and Breakdowns';
 
   return (

@@ -80,6 +80,7 @@ describe('snapshot table registry', () => {
       'contracting_hour_reading',
       'contracting_service_record',
       'contracting_job',
+      'contracting_job_note',
       'contracting_machine_assignment',
       'contracting_breakdown',
       'contracting_breakdown_note',
@@ -143,6 +144,7 @@ describe('snapshot table registry', () => {
       'contracting_hour_reading.json',
       'contracting_service_record.json',
       'contracting_job.json',
+      'contracting_job_note.json',
       'contracting_machine_assignment.json',
       'contracting_breakdown.json',
       'contracting_breakdown_note.json',
@@ -269,6 +271,8 @@ describe('snapshot table registry', () => {
     const migrated = {
       ...legacy,
       status: 'completed',
+      activatedAt: null,
+      activatedByUserId: null,
       dieselAmount: null,
       dieselAmountOverride: null,
       discountAmount: null,
@@ -276,6 +280,16 @@ describe('snapshot table registry', () => {
       repricingNote: null,
     };
     expect(prepareSnapshotRow(jobConfig, migrated, 0)).toEqual(migrated);
+  });
+
+  it('reads a pre-Activity-View user row as its Equipment mark', () => {
+    const seen = '2026-08-18T11:28:56.498Z';
+    expect(prepareSnapshotRow(configFor('user'), { id: 'u', lastActivitySeen: seen }, 0)).toMatchObject({
+      lastActivitySeen: { equipment: seen },
+    });
+    expect(
+      prepareSnapshotRow(configFor('user'), { id: 'u', lastActivitySeen: { contracting: seen } }, 0),
+    ).toMatchObject({ lastActivitySeen: { contracting: seen } });
   });
 
   it('recovers a stint override from a pre-migration row', () => {
@@ -324,6 +338,7 @@ describe('snapshot table registry', () => {
       'contracting_hour_reading',
       'contracting_service_record',
       'contracting_job',
+      'contracting_job_note',
       'contracting_machine_assignment',
       'contracting_breakdown',
       'contracting_breakdown_note',

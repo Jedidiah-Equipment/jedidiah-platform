@@ -12,6 +12,7 @@ export const breakdownDescriptor = defineAuditDescriptor<typeof contractingBreak
     reportedAt: row.reportedAt.toISOString(),
     startedAt: row.startedAt?.toISOString() ?? null,
     solvedAt: row.solvedAt?.toISOString() ?? null,
+    mechanicAssignedAt: row.mechanicAssignedAt?.toISOString() ?? null,
     photos: row.photos.map((photo) => photo.id),
   }),
 });

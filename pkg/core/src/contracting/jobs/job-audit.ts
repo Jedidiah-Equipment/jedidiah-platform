@@ -10,6 +10,7 @@ export const jobDescriptor = defineAuditDescriptor<typeof contractingJobs.$infer
   entityId: (row) => row.id,
   toRecord: ({ id: _id, createdAt: _createdAt, updatedAt: _updatedAt, ...row }) => ({
     ...row,
+    activatedAt: row.activatedAt?.toISOString() ?? null,
     completedAt: row.completedAt?.toISOString() ?? null,
     pricedAt: row.pricedAt?.toISOString() ?? null,
     reopenedAt: row.reopenedAt?.toISOString() ?? null,

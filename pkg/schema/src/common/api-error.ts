@@ -1,4 +1,5 @@
 export const APP_CODE_PREFIXES = [
+  'activity',
   'auth',
   'breakdown',
   'changelog',

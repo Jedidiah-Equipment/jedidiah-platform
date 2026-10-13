@@ -18,7 +18,7 @@ import { FIELD_NOTE_DESCRIPTION_MAX, type FieldNote } from './store';
 import { useFieldNoteAction } from './use-field-note-action';
 import { useFieldNotes } from './use-field-notes';
 
-const backToNotes = () => router.replace(CONTRACTING_TAB_HREF.notes);
+const backToNotes = () => router.replace(CONTRACTING_TAB_HREF['field-notes']);
 
 export default function FieldNoteScreen() {
   const { noteId } = useLocalSearchParams<{ noteId: string }>();
@@ -27,7 +27,7 @@ export default function FieldNoteScreen() {
   const [leaving, setLeaving] = useState(false);
   if (notes === null || leaving) return <SafeAreaView className="flex-1 bg-background" />;
   // Deleted on this phone, or a link to a note this operator never kept.
-  if (!note) return <Redirect href={CONTRACTING_TAB_HREF.notes} />;
+  if (!note) return <Redirect href={CONTRACTING_TAB_HREF['field-notes']} />;
   return <FieldNoteDetail key={note.id} note={note} onLeave={() => setLeaving(true)} />;
 }
 

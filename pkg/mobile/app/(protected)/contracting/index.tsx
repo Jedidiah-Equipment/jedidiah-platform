@@ -3,6 +3,6 @@ import { CONTRACTING_TAB_HREF, visibleContractingTabs } from '@/contracting/lib/
 import { useSessionAccessSummary } from '@/lib/auth-session';
 
 export default function ContractingIndex() {
-  const [first = 'notes'] = visibleContractingTabs(useSessionAccessSummary());
+  const [first = 'field-notes'] = visibleContractingTabs(useSessionAccessSummary());
   return <Redirect href={CONTRACTING_TAB_HREF[first]} />;
 }

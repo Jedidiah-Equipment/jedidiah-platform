@@ -44,9 +44,12 @@ export const contractingHourReadings = contractingSchema.table(
     amendedBy: text('amended_by').references(() => user.id),
     amendedAt: timestamp('amended_at', { withTimezone: true }),
     amendmentReason: text('amendment_reason'),
+    /** Acceptance time — when the server took the reading. Read At (`capturedAt`) may be backdated; this never is. */
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   },
   (table) => [
     index('hour_reading_machine_sequence_idx').on(table.machineId, table.sequence),
+    index('hour_reading_created_idx').on(table.createdAt, table.id),
     check('hour_reading_role', sql`${table.role} IN (${quotedList(readingRoles)})`),
     check('hour_reading_value', sql`${table.value} >= 0 AND (${table.aiValue} IS NULL OR ${table.aiValue} >= 0)`),
     check('hour_reading_confidence', sql`${table.aiConfidence} BETWEEN 0 AND 1`),

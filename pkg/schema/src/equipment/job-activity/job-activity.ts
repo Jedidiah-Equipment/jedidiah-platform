@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+import { ActivitySeenInput } from '../../activity/activity-view.js';
 import { DateIso, DateOnlyIso } from '../../common/date.js';
 import { createCursorQueryResult, createSearchedSortedCursorQueryInput } from '../../common/pagination.js';
 import { NullableThumbnailDataUrl } from '../../common/thumbnail.js';
@@ -147,10 +148,8 @@ export const JobActivitySortBy = z.enum(['occurredAt']);
 export type JobActivityFilter = z.infer<typeof JobActivityFilter>;
 export const JobActivityFilter = z.enum(['all', 'user-feedback', 'job-events', 'work-times']);
 
-export type JobActivitySeenInput = z.infer<typeof JobActivitySeenInput>;
-export const JobActivitySeenInput = z.object({
-  seenAt: DateIso,
-});
+export type JobActivitySeenInput = ActivitySeenInput;
+export const JobActivitySeenInput = ActivitySeenInput;
 
 export type JobActivityListInput = z.infer<typeof JobActivityListInput>;
 export const JobActivityListInput = createSearchedSortedCursorQueryInput({

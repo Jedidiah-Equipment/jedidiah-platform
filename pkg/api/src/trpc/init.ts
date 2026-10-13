@@ -43,7 +43,10 @@ export const protectedProcedure = t.procedure.use(({ ctx, next }) => {
 });
 
 /** Throws the standard forbidden error unless the caller holds `business`. */
-export function requireBusinessAccess(access: Context['access'], business: Business): void {
+export function requireBusinessAccess(
+  access: Context['access'],
+  business: Business,
+): asserts access is NonNullable<Context['access']> {
   if (!hasBusinessAccess(access, business)) {
     throw createAuthTRPCError({
       appCode: 'auth.forbidden',
@@ -68,8 +71,9 @@ export function requirePermission(access: Context['access'], permission: AppPerm
  * Gates on role presence in a business rather than on a permission. This is the exception, not the
  * rule: procedures are gated by permission (`authorizedProcedure`), and a shared read that takes a
  * business as input (user admin, the changelog) does not refuse a business the caller lacks. Reach
- * for this only where the model itself says presence is the gate — Feedback submission (ADR 0010)
- * is the one such place today.
+ * for this only where the model itself says presence is the gate — Feedback submission (ADR 0010),
+ * Contracting Activity, whose reach is an either-of the service judges, and a Job Note, whose Job Action
+ * is the gate.
  */
 export function businessProcedure(business: Business) {
   return protectedProcedure.use(({ ctx, next }) => {

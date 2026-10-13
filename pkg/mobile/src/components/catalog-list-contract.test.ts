@@ -39,7 +39,7 @@ const CATALOG_SURFACES = [
   },
   {
     component: 'src/contracting/field-notes/FieldNotesScreen.tsx',
-    route: 'app/(protected)/contracting/(tabs)/notes/index.tsx',
+    route: 'app/(protected)/contracting/(tabs)/field-notes/index.tsx',
   },
 ] as const;
 

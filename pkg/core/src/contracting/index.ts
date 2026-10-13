@@ -1,4 +1,6 @@
 export * from './account-change.js';
+export * from './activity/activity-errors.js';
+export * from './activity/activity-service.js';
 export * from './breakdowns/breakdown-errors.js';
 export * from './breakdowns/breakdown-service.js';
 export * from './customers/customer-service.js';
@@ -14,6 +16,7 @@ export * from './jobs/charge-line-service.js';
 export * from './jobs/invoicing-service.js';
 export * from './jobs/job-card-service.js';
 export * from './jobs/job-errors.js';
+export * from './jobs/job-note-service.js';
 export * from './jobs/job-queues.js';
 export * from './jobs/job-read.js';
 export * from './jobs/job-service.js';

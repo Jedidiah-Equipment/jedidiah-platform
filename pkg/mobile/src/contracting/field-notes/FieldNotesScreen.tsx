@@ -33,7 +33,7 @@ export default function FieldNotesScreen() {
   const visible = visibleFieldNotes(notes ?? [], { status, search });
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top', 'left', 'right']}>
-      <MainToolbar title="Notes" subtitle="CONTRACTING" helpTopic="contractingMobileFieldNotes" />
+      <MainToolbar title="Field Notes" subtitle="CONTRACTING" helpTopic="contractingMobileFieldNotes" />
       <TabRootList
         header={
           <ListControlRow
@@ -58,7 +58,7 @@ export default function FieldNotesScreen() {
                 />
                 <ListCreateControl
                   label="New Field Note"
-                  onPress={() => router.push('/contracting/notes/new' as Href)}
+                  onPress={() => router.push('/contracting/field-notes/new' as Href)}
                 />
               </View>
             }
@@ -102,7 +102,7 @@ function FieldNoteRow({ note }: { note: FieldNote }) {
           numberOfLines={1}
         />
       }
-      onPress={() => router.push(`/contracting/notes/${note.id}` as Href)}
+      onPress={() => router.push(`/contracting/field-notes/${note.id}` as Href)}
       subText={`${formatNumber(photoCount)} ${photoCount === 1 ? 'photo' : 'photos'}`}
       trailing={
         <StatusBadge

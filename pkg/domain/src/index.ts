@@ -1,3 +1,5 @@
+export * from './activity/activity-view.js';
+export * from './activity/day-groups.js';
 export * from './auth/authorization.js';
 export * from './brand.js';
 export * from './collections/group-by.js';

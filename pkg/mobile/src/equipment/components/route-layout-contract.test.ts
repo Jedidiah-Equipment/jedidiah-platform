@@ -25,14 +25,29 @@ describe('route layout contract', () => {
       'utf8',
     );
     const activityRoute = readFileSync(join(MOBILE_DIR, 'app/(protected)/equipment/(tabs)/activity/index.tsx'), 'utf8');
+    const timeline = readFileSync(join(MOBILE_DIR, 'src/components/activity/ActivityTimeline.tsx'), 'utf8');
 
     expect(tabBar).toContain('trpc.jobActivity.getLastActivitySeen.queryOptions()');
     expect(tabBar).toContain("badge: tab === 'activity' && activityUnread");
     expect(sharedTabBar).toContain('<TabBadge />');
     expect(sharedTabBar).toContain('bg-orange-500');
     expect(activityFeed).toContain('trpc.jobActivity.setLastActivitySeen.mutationOptions');
-    expect(activityFeed).toContain('useFocusEffect');
+    expect(activityFeed).toContain('<ActivityTimeline');
+    expect(timeline).toContain('useFocusEffect');
     expect(activityRoute).toContain('trackGlobalView');
+  });
+
+  test('keeps Contracting’s unread Activity on its own last-seen endpoints', () => {
+    const read = (file: string) => readFileSync(join(MOBILE_DIR, file), 'utf8');
+    const hooks = read('src/contracting/activity/use-activity.ts');
+    const feed = read('src/contracting/activity/ContractingActivityFeed.tsx');
+
+    expect(read('src/contracting/components/ContractingTabBar.tsx')).toContain('useActivityUnread()');
+    expect(hooks).toContain('trpc.contractingActivity.getLastSeen.queryOptions()');
+    expect(hooks).not.toContain('jobActivity');
+    expect(feed).toContain('trpc.contractingActivity.setLastSeen.mutationOptions');
+    expect(feed).toContain('<ActivityTimeline');
+    expect(read('src/contracting/activity/ActivityScreen.tsx')).toContain('trackGlobalView');
   });
 
   test('configures each explicit Stack initial route with its full registered child name', () => {
@@ -79,6 +94,7 @@ describe('route layout contract', () => {
       'app/login.tsx',
       'src/components/ForgotPasswordScreen.tsx',
       'src/components/ListControls.tsx',
+      'src/contracting/activity/AddNoteButton.tsx',
       'src/equipment/components/bays/JobDepartmentTimingCard.tsx',
       'src/equipment/components/feedback/GiveFeedbackButton.tsx',
       'src/equipment/components/quotes/GenerateQuoteDocumentModal.tsx',

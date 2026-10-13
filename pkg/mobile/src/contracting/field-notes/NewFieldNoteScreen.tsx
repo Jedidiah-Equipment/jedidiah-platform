@@ -20,7 +20,7 @@ import { useFieldNoteAction } from './use-field-note-action';
 import { useFieldNotes } from './use-field-notes';
 
 const PICK_FAILED = 'The photo could not be added. Try again.';
-const backToNotes = () => router.replace(CONTRACTING_TAB_HREF.notes);
+const backToNotes = () => router.replace(CONTRACTING_TAB_HREF['field-notes']);
 
 /** A draft in component state: nothing reaches storage, the sandbox, or the gallery until Save note. */
 export default function NewFieldNoteScreen() {

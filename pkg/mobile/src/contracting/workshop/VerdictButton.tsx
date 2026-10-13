@@ -1,5 +1,4 @@
-import { presentAction } from '@pkg/domain/contracting';
-import type { BreakdownActionVerdict } from '@pkg/schema/contracting';
+import { type ActionVerdict, presentAction } from '@pkg/domain/contracting';
 import type { Icon as TablerIcon } from '@tabler/icons-react-native';
 import type { ReactNode } from 'react';
 import { View } from 'react-native';
@@ -8,7 +7,7 @@ import { Text } from '@/components/ui/text';
 import { CaptureButton } from '@/contracting/components/CaptureButton';
 
 /**
- * Controls under one Breakdown Action verdict, read the way the domain presents it: absent for someone the action is
+ * Controls under one action verdict (a Breakdown's or a Job's), read the way the domain presents it: absent for someone the action is
  * never theirs to take, otherwise shown, and when refused for now rendered disabled with the refusal's sentence under
  * them (the phone's stand-in for web's title).
  */
@@ -16,7 +15,7 @@ export function VerdictGroup({
   verdict,
   children,
 }: {
-  verdict: BreakdownActionVerdict;
+  verdict: ActionVerdict;
   children: (disabled: boolean) => ReactNode;
 }) {
   const action = presentAction(verdict);
@@ -29,16 +28,18 @@ export function VerdictGroup({
   );
 }
 
-/** One Breakdown Action as a button, under its verdict. */
+/** One action as a button, under its verdict. */
 export function VerdictButton({
   verdict,
   title,
   captureIcon,
+  primary = false,
   busy = false,
   onPress,
 }: {
-  verdict: BreakdownActionVerdict;
+  verdict: ActionVerdict;
   title: string;
+  primary?: boolean;
   /** Draws it as a field capture moment with this glyph, the way arrival and departure are captured. */
   captureIcon?: TablerIcon;
   busy?: boolean;
@@ -50,7 +51,7 @@ export function VerdictButton({
         captureIcon ? (
           <CaptureButton icon={captureIcon} label={title} disabled={busy || disabled} onPress={onPress} />
         ) : (
-          <Button title={title} disabled={busy || disabled} onPress={onPress} />
+          <Button primary={primary} title={title} disabled={busy || disabled} onPress={onPress} />
         )
       }
     </VerdictGroup>

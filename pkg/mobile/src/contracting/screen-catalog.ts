@@ -34,10 +34,14 @@ export const CONTRACTING_SCREEN_CATALOG = {
     business: 'contracting',
     name: '/contracting/workshop/report',
   },
-  '(protected)/contracting/(tabs)/notes/index.tsx': { business: 'contracting', name: '/contracting/notes' },
-  '(protected)/contracting/(tabs)/notes/new.tsx': { business: 'contracting', name: '/contracting/notes/new' },
-  '(protected)/contracting/(tabs)/notes/[noteId].tsx': {
+  '(protected)/contracting/(tabs)/activity/index.tsx': { business: 'contracting', name: '/contracting/activity' },
+  '(protected)/contracting/(tabs)/field-notes/index.tsx': { business: 'contracting', name: '/contracting/field-notes' },
+  '(protected)/contracting/(tabs)/field-notes/new.tsx': {
     business: 'contracting',
-    name: '/contracting/notes/[noteId]',
+    name: '/contracting/field-notes/new',
+  },
+  '(protected)/contracting/(tabs)/field-notes/[noteId].tsx': {
+    business: 'contracting',
+    name: '/contracting/field-notes/[noteId]',
   },
 } satisfies ScreenCatalog;

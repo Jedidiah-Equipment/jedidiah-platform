@@ -540,10 +540,12 @@ export async function assignMechanic({
   db,
   actor,
   input: raw,
+  now = new Date(),
 }: {
   db: Db;
   actor: BreakdownActor;
   input: BreakdownAssignMechanicInput;
+  now?: Date;
 }): Promise<BreakdownDetail> {
   const input = BreakdownAssignMechanicInput.parse(raw);
   return writeBreakdown({
@@ -554,7 +556,15 @@ export async function assignMechanic({
     assert: async (tx) => {
       if (input.mechanicUserId) await assertContractingMechanic(tx, input.mechanicUserId, invalidMechanic);
     },
-    set: () => ({ primaryMechanicUserId: input.mechanicUserId }),
+    // Only a change is an assignment: naming the same Mechanic again stamps nothing and stays a no-op.
+    set: (before) =>
+      before.primaryMechanicUserId === input.mechanicUserId
+        ? {}
+        : {
+            primaryMechanicUserId: input.mechanicUserId,
+            mechanicAssignedAt: now,
+            mechanicAssignedByUserId: actor.userId,
+          },
   });
 }
 

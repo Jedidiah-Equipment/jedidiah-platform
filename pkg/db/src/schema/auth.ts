@@ -1,6 +1,6 @@
-import type { ContractingRole, EquipmentRole } from '@pkg/schema';
+import type { ActivityViewMap, ContractingRole, EquipmentRole } from '@pkg/schema';
 import { relations } from 'drizzle-orm';
-import { boolean, index, pgTable, text, timestamp, uniqueIndex } from 'drizzle-orm/pg-core';
+import { boolean, index, jsonb, pgTable, text, timestamp, uniqueIndex } from 'drizzle-orm/pg-core';
 
 export const user = pgTable(
   'user',
@@ -25,9 +25,11 @@ export const user = pgTable(
     assistantEnabled: boolean('assistant_enabled').default(false).notNull(),
     // Whether a Quote may name this User as its salesperson. Not a role and grants nothing.
     quoteSalesperson: boolean('quote_salesperson').default(false).notNull(),
-    // Server-owned high-water mark for the cross-Job Activity feed. The default prevents a rollout
-    // or newly created account from treating the complete historical feed as unread.
-    lastActivitySeen: timestamp('last_activity_seen', { mode: 'date', withTimezone: true }).defaultNow().notNull(),
+    /**
+     * Per-business Activity View: the newest feed instant the user has received, keyed by business. A missing key
+     * reads as the account's creation, so a rollout or a new account never treats the whole history as unread.
+     */
+    lastActivitySeen: jsonb('last_activity_seen').$type<ActivityViewMap>().default({}).notNull(),
     banned: boolean('banned').default(false),
     banReason: text('ban_reason'),
     banExpires: timestamp('ban_expires', { mode: 'date' }),

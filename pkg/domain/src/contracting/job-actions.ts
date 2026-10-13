@@ -8,6 +8,7 @@ import {
   type JobActionVerdict,
   type JobStatus,
   jobActionNames,
+  jobStatuses,
   openJobStatuses,
   signedOffJobStatuses,
   unclosedJobStatuses,
@@ -35,6 +36,8 @@ type Rule = {
   anyJob?: AppPermission;
   /** The narrower statuses someone reaching only their own Jobs may act in. */
   ownStatuses?: readonly JobStatus[];
+  /** Open on a closed Job too: saying something about a Job never changes it. */
+  evenWhenClosed?: boolean;
   /** What the refusal copy calls the action: "You can only <verb> while …". */
   verb: string;
 };
@@ -107,6 +110,15 @@ const rules: Record<JobActionName, Rule> = {
     anyJob: 'contracting_breakdown:read',
     verb: 'report a Breakdown',
   },
+  // Whoever reads a Job may say something on it; a Foreman reads his Jobs only until they are Priced.
+  addNote: {
+    statuses: jobStatuses,
+    permissions: ['contracting_job:read', 'contracting_job:read-own'],
+    anyJob: 'contracting_job:read',
+    ownStatuses: unpricedJobStatuses,
+    evenWhenClosed: true,
+    verb: 'add a note',
+  },
 };
 
 const joinOr = (items: readonly string[]) =>
@@ -152,7 +164,7 @@ export function judgeJobAction(action: JobActionName, job: JobActionSubject, act
   });
   if (!holdsAny(actor, rule.permissions)) return blocked('no-permission');
   if (!everyJob && job.foremanUserId !== actor.userId) return blocked('not-your-job');
-  if (hasJobStatus(closedJobStatuses, job.status)) return blocked('closed');
+  if (!rule.evenWhenClosed && hasJobStatus(closedJobStatuses, job.status)) return blocked('closed');
   if (hasJobStatus(statuses, job.status)) return { allowed: true };
   if (job.status === 'priced' && statuses.includes('completed')) return blocked('priced');
   return blocked('wrong-status');

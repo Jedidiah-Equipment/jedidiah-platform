@@ -54,7 +54,8 @@ const descriptor = defineAuditDescriptor<Row>({
   noun: 'Hour Reading',
   primaryLabelField: 'id',
   entityId: (row) => row.id,
-  toRecord: (row) => ({
+  // Acceptance time never changes, so it stays out of the record like any row's own stamp.
+  toRecord: ({ createdAt: _createdAt, ...row }) => ({
     ...row,
     capturedAt: row.capturedAt.toISOString(),
     amendedAt: row.amendedAt?.toISOString() ?? null,
@@ -212,6 +213,7 @@ export async function captureReading({
             machineCode: machine.code,
             input,
             readingId: row.id,
+            acceptedAt: row.createdAt,
           });
         return {
           reading: withHint(row),

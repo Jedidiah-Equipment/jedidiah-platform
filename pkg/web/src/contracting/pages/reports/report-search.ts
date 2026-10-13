@@ -18,7 +18,6 @@ export const ReportsSearch = z.object({
 });
 export type ReportsSearch = z.infer<typeof ReportsSearch>;
 
-/** A year stays a number so the router writes `window=2026`, not a quoted string. */
 export function formatReportWindowParam(input: ReportWindowInput): NonNullable<ReportsSearch['window']> {
   switch (input.kind) {
     case 'month':

@@ -1,5 +1,3 @@
-import { createUserAccessSummaryForUser, type PushChannel, pushChannelsFor, pushKindsFor } from '@pkg/domain';
-import type { PushKind } from '@pkg/schema';
 import { useMutation } from '@tanstack/react-query';
 import { useCallback, useEffect, useMemo } from 'react';
 import { AppState } from 'react-native';
@@ -7,24 +5,15 @@ import { AppState } from 'react-native';
 import { useAuthSession } from '../auth-session';
 import { addBreadcrumb } from '../observability';
 import { useTRPC } from '../trpc';
+import { type PushAudience, pushAudienceFor } from './push-audience';
 import { registerForPush, requestNotificationsAndRegister } from './register-push';
 
-export type PushAudience = {
-  userId: string;
-  /** The Push Kinds the signed-in person's roles can receive, in registry order. */
-  kinds: readonly PushKind[];
-  channels: readonly PushChannel[];
-  /** Whether any kind reaches them: the only people asked for notification permission. */
-  mayAsk: boolean;
-};
-
+/** Who the signed-in person is to push; keyed on the fields it reads, since a session refetch replaces the object. */
 export function usePushAudience(): PushAudience {
-  const { user } = useAuthSession();
-  return useMemo(() => {
-    const access = createUserAccessSummaryForUser(user);
-    const kinds = pushKindsFor(access);
-    return { userId: user.id, kinds, channels: pushChannelsFor(access), mayAsk: kinds.length > 0 };
-  }, [user]);
+  const {
+    user: { id, role, contractingRole, isDevice },
+  } = useAuthSession();
+  return useMemo(() => pushAudienceFor({ id, role, contractingRole, isDevice }), [id, role, contractingRole, isDevice]);
 }
 
 function useRegisterPushToken() {

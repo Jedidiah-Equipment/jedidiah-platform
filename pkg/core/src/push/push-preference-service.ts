@@ -40,7 +40,9 @@ export function setPushPreferences({
     id: userId,
     notFound: () => new UserNotFoundError(userId),
     project: (_tx, account) => ({ muted: knownKinds(account.mutedPushKinds) }),
-    set: () => ({ mutedPushKinds: muted, updatedAt: new Date() }),
+    // The audit diff compares arrays by identity, so an unchanged set must write nothing.
+    set: (account) =>
+      account.mutedPushKinds.join() === muted.join() ? {} : { mutedPushKinds: muted, updatedAt: new Date() },
     table: user,
   });
 }

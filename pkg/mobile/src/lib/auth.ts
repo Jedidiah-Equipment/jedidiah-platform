@@ -32,6 +32,7 @@ const authClient = createAuthClient({
       user: {
         assistantEnabled: { type: 'boolean' },
         contractingRole: { type: 'string' },
+        isDevice: { type: 'boolean' },
       },
     }),
   ],

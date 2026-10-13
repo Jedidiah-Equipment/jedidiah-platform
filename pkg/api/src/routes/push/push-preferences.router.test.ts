@@ -48,6 +48,11 @@ describe('pushPreferences', () => {
       muted: ['contracting.breakdown.code-green', 'contracting.service-due-soon'],
     });
 
+    // Saving the same set again, in any order, is not a change.
+    await connor.pushPreferences.set({
+      muted: ['contracting.service-due-soon', 'contracting.breakdown.code-green'],
+    });
+
     const log = await context
       .createCaller(sessionAs('jed', 'contracting-admin'))
       .audit.list({ business: 'contracting', filters: { entityIds: ['connor'] } });

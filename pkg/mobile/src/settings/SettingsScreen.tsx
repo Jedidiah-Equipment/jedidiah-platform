@@ -1,6 +1,6 @@
 import { groupBy, PUSH_KINDS, statusBadgeColorClassNames } from '@pkg/domain';
 import type { PushKind, PushPreferences } from '@pkg/schema';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useIsMutating, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import { useMemo } from 'react';
 import { ScrollView, View } from 'react-native';
@@ -35,7 +35,7 @@ export default function SettingsScreen() {
       <SecondaryToolbar
         title="Settings"
         subtitle={user.email}
-        parentLabel="Back"
+        parentLabel="previous screen"
         onBack={leave}
         helpTopic="appSettings"
       />
@@ -85,7 +85,7 @@ function PermissionRow({ row, onAction }: { row: AppPermissionRow; onAction: () 
 }
 
 function NotificationsCard() {
-  const { kinds } = usePushAudience();
+  const { kinds, isDevice } = usePushAudience();
   const groups = useMemo(() => [...groupBy(kinds, (kind) => PUSH_KINDS[kind].business)], [kinds]);
   const trpc = useTRPC();
   const queryClient = useQueryClient();
@@ -107,18 +107,22 @@ function NotificationsCard() {
       onSuccess: (saved) => queryClient.setQueryData(preferencesKey, saved),
     }),
   );
+  // One save at a time, even one still running from an earlier visit, so saves never land out of order and a failed
+  // save's rollback never undoes a later toggle.
+  const saving = useIsMutating({ mutationKey: trpc.pushPreferences.set.mutationKey() }) > 0;
 
   if (kinds.length === 0)
     return (
       <Card title="Notifications">
-        <Text className="text-sm text-muted-foreground">Your role gets no notifications.</Text>
+        <Text className="text-sm text-muted-foreground">
+          {isDevice ? 'This shared device gets no notifications.' : 'Your role gets no notifications.'}
+        </Text>
       </Card>
     );
 
   const muted = preferences.data?.muted;
-  // One save at a time, so a failed save's rollback never undoes a later toggle.
   const toggle = (kind: PushKind, on: boolean) => {
-    if (!muted || save.isPending) return;
+    if (!muted || saving) return;
     save.mutate({ muted: on ? muted.filter((other) => other !== kind) : [...muted, kind] });
   };
 
@@ -139,7 +143,7 @@ function NotificationsCard() {
               </View>
               <Switch
                 accessibilityLabel={PUSH_KINDS[kind].label}
-                disabled={!muted || save.isPending}
+                disabled={!muted || saving}
                 onValueChange={(on: boolean) => toggle(kind, on)}
                 value={muted ? !muted.includes(kind) : true}
               />

@@ -92,9 +92,9 @@ test('keeps the table read-only and opens current rates in a separate dialog wit
     expect(document.querySelector('[role=dialog]')?.textContent).toContain('Edit Labor rates');
     const save = () => document.querySelector<HTMLButtonElement>('button[type="submit"]');
     expect(save()?.disabled).toBe(true);
-    await edit('rates[1].consumablesPercentage', '65');
+    await edit('rates[1].billingRate', '575');
     expect(save()?.disabled).toBe(false);
-    await edit('rates[1].consumablesPercentage', '60');
+    await edit('rates[1].billingRate', '550');
     expect(save()?.disabled).toBe(true);
     await edit('rates[0].billingRate', '600');
     await edit('hoursPerWorkingDay', '8');

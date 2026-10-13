@@ -49,17 +49,22 @@ export function ActivityEntry({ item, last, scope }: { item: ActivityItem; last:
  * a Job this phone does not open, so the entry still names it without a dead link.
  */
 function entryTarget(item: ActivityItem, scope: ActivityScope): { href: Href | null; label: string } | null {
+  // A note opens on its thread, where the reply goes; an event opens on the record's Details.
+  const tab = isActivityNote(item) ? { tab: 'activity' } : {};
   if ('breakdown' in item) {
     if (scope.breakdownId === item.breakdown.id) return null;
     return {
-      href: { pathname: '/contracting/workshop/[breakdownId]', params: { breakdownId: item.breakdown.id } } as Href,
+      href: {
+        pathname: '/contracting/workshop/[breakdownId]',
+        params: { breakdownId: item.breakdown.id, ...tab },
+      } as Href,
       label: item.job ? `${item.breakdown.subject.code} · ${item.job.jobNumber}` : item.breakdown.subject.code,
     };
   }
   if (scope.jobId === item.job.id) return null;
   return {
     href: scope.canOpenJob(item.job)
-      ? ({ pathname: '/contracting/jobs/[jobId]', params: { jobId: item.job.id } } as Href)
+      ? ({ pathname: '/contracting/jobs/[jobId]', params: { jobId: item.job.id, ...tab } } as Href)
       : null,
     label: `${item.job.jobNumber} · ${item.job.farmName}`,
   };

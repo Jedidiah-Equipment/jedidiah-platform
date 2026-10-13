@@ -59,7 +59,10 @@ describe('ActivityEntry', () => {
     expect(renderer.root.findByType('Avatar' as never).props.name).toBe('Sipho');
     expect(texts(renderer)).toEqual(expect.arrayContaining(['Gate code is 4471', 'CJOB-00037 · Rietvlei']));
     await act(async () => renderer.root.findByProps({ accessibilityRole: 'link' }).props.onPress());
-    expect(push).toHaveBeenCalledWith({ pathname: '/contracting/jobs/[jobId]', params: { jobId: job.id } });
+    expect(push).toHaveBeenCalledWith({
+      pathname: '/contracting/jobs/[jobId]',
+      params: { jobId: job.id, tab: 'activity' },
+    });
   });
 
   test('inside its own Job’s thread a note links nowhere', async () => {
@@ -75,8 +78,10 @@ describe('ActivityEntry', () => {
     expect(event.root.findAllByProps({ accessibilityRole: 'button' })).toEqual([]);
   });
 
-  test('an event is a record tile with the domain’s sentence', async () => {
+  test('an event is a record tile with the domain’s sentence, opening the record’s Details', async () => {
     const renderer = await render(cancelled);
+    await act(async () => renderer.root.findByProps({ accessibilityRole: 'button' }).props.onPress());
+    expect(push).toHaveBeenLastCalledWith({ pathname: '/contracting/jobs/[jobId]', params: { jobId: job.id } });
     expect(renderer.root.findAllByType('Avatar' as never)).toEqual([]);
     expect(renderer.root.findByProps({ icon: 'IconX' })).toBeDefined();
     expect(texts(renderer)).toEqual(expect.arrayContaining(['Sipho cancelled CJOB-00037', 'Rain']));

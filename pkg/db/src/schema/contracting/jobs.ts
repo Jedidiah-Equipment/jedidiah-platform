@@ -49,6 +49,9 @@ export const contractingJobs = contractingSchema.table(
     discountAmount: money('discount_amount'),
     pricedSubtotal: money('priced_subtotal'),
     pricedTotal: money('priced_total'),
+    /** When the first arrival capture moved the Job to Active, and who captured it. Null while Upcoming. */
+    activatedAt: timestamp('activated_at', { withTimezone: true }),
+    activatedByUserId: text('activated_by_user_id').references(() => user.id),
     completedAt: timestamp('completed_at', { withTimezone: true }),
     completedByUserId: text('completed_by_user_id').references(() => user.id),
     pricedAt: timestamp('priced_at', { withTimezone: true }),
@@ -67,6 +70,10 @@ export const contractingJobs = contractingSchema.table(
     uniqueIndex('job_code_unique').on(table.code),
     index('job_status_idx').on(table.status),
     index('job_foreman_idx').on(table.foremanUserId),
+    // Each stamp the Activity feed orders by gets (stamp, id), so its branch walks an index.
+    index('job_activated_idx').on(table.activatedAt, table.id),
+    index('job_completed_idx').on(table.completedAt, table.id),
+    index('job_cancelled_idx').on(table.cancelledAt, table.id),
     foreignKey({
       columns: [table.farmId, table.customerId],
       foreignColumns: [contractingFarms.id, contractingFarms.customerId],

@@ -19,6 +19,7 @@ const SIGNED_IN_PERMISSION_LOADING_SURFACES = {
 } as const;
 
 const SIGNED_IN_ROUTE_TOOLBARS = {
+  'contracting/(tabs)/activity/index.tsx': toolbar('main', 'src/contracting/activity/ActivityScreen.tsx'),
   'contracting/(tabs)/jobs/index.tsx': toolbar('main', 'src/contracting/jobs/JobsScreen.tsx'),
   'contracting/(tabs)/jobs/[jobId].tsx': toolbar('secondary', 'src/contracting/jobs/JobScreen.tsx'),
   'contracting/(tabs)/jobs/[jobId]/add-machine.tsx': toolbar('secondary', 'src/contracting/jobs/AddMachineScreen.tsx'),
@@ -29,9 +30,12 @@ const SIGNED_IN_ROUTE_TOOLBARS = {
   'contracting/(tabs)/workshop/index.tsx': toolbar('main', 'src/contracting/workshop/WorkshopScreen.tsx'),
   'contracting/(tabs)/workshop/[breakdownId].tsx': toolbar('secondary', 'src/contracting/workshop/BreakdownScreen.tsx'),
   'contracting/(tabs)/workshop/report.tsx': toolbar('secondary', 'src/contracting/workshop/ReportBreakdownScreen.tsx'),
-  'contracting/(tabs)/notes/index.tsx': toolbar('main', 'src/contracting/field-notes/FieldNotesScreen.tsx'),
-  'contracting/(tabs)/notes/new.tsx': toolbar('secondary', 'src/contracting/field-notes/NewFieldNoteScreen.tsx'),
-  'contracting/(tabs)/notes/[noteId].tsx': toolbar('secondary', 'src/contracting/field-notes/FieldNoteScreen.tsx'),
+  'contracting/(tabs)/field-notes/index.tsx': toolbar('main', 'src/contracting/field-notes/FieldNotesScreen.tsx'),
+  'contracting/(tabs)/field-notes/new.tsx': toolbar('secondary', 'src/contracting/field-notes/NewFieldNoteScreen.tsx'),
+  'contracting/(tabs)/field-notes/[noteId].tsx': toolbar(
+    'secondary',
+    'src/contracting/field-notes/FieldNoteScreen.tsx',
+  ),
   'equipment/(tabs)/(plan)/bays/[bayId].tsx': toolbar('secondary', 'src/equipment/components/bays/BayQueueScreen.tsx'),
   'equipment/(tabs)/(plan)/plan/index.tsx': toolbar('main', 'app/(protected)/equipment/(tabs)/(plan)/plan/index.tsx'),
   'equipment/(tabs)/activity/index.tsx': toolbar('main', 'app/(protected)/equipment/(tabs)/activity/index.tsx'),

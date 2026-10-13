@@ -79,7 +79,12 @@ describe('jobActivity last seen', () => {
     const initial = new Date('2026-08-17T08:00:00.000Z');
     const viewedAt = DateIso.parse('2026-08-18T08:00:00.000Z');
     const unseenAt = DateIso.parse('2026-08-18T08:00:01.000Z');
-    await context.db.update(user).set({ lastActivitySeen: initial }).where(eq(user.id, 'test-user-id'));
+    // Contracting keeps its own mark: acknowledging Equipment's feed never touches it.
+    const contractingSeen = DateIso.parse('2026-08-01T08:00:00.000Z');
+    await context.db
+      .update(user)
+      .set({ lastActivitySeen: { equipment: DateIso.parse(initial), contracting: contractingSeen } })
+      .where(eq(user.id, 'test-user-id'));
     await createJobGeneralFeedback(context, { createdAt: viewedAt, text: 'Already loaded by the viewer.' });
     const caller = context.createCaller(mockSession('job-viewer'));
 
@@ -97,7 +102,12 @@ describe('jobActivity last seen', () => {
       .from(auditEvents)
       .where(eq(auditEvents.entityId, 'test-user-id'));
     expect(activityViewAudits).toContainEqual({
-      changes: { lastActivitySeen: { from: initial.toISOString(), to: viewedAt } },
+      changes: {
+        lastActivitySeen: {
+          from: { equipment: initial.toISOString(), contracting: contractingSeen },
+          to: { equipment: viewedAt, contracting: contractingSeen },
+        },
+      },
     });
   });
 

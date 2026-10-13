@@ -1,9 +1,11 @@
-import { IconBriefcase2, IconNotes, IconTool, IconTractor } from '@tabler/icons-react-native';
+import { IconActivity, IconBriefcase2, IconNotes, IconTool, IconTractor } from '@tabler/icons-react-native';
 import { useSegments } from 'expo-router';
 import { TabBar } from '@/components/tab-bar/TabBar';
+import { useActivityUnread } from '@/contracting/activity/use-activity';
 import { useFieldNotes } from '@/contracting/field-notes/use-field-notes';
 import {
   activeContractingTab,
+  CONTRACTING_TAB_BADGE_LABEL,
   CONTRACTING_TAB_HREF,
   CONTRACTING_TAB_LABEL,
   contractingTabBadge,
@@ -11,13 +13,21 @@ import {
 } from '@/contracting/lib/app-tabs';
 import { useSessionAccessSummary } from '@/lib/auth-session';
 
-const ICONS = { jobs: IconBriefcase2, machines: IconTractor, workshop: IconTool, notes: IconNotes } as const;
+const ICONS = {
+  activity: IconActivity,
+  jobs: IconBriefcase2,
+  machines: IconTractor,
+  workshop: IconTool,
+  'field-notes': IconNotes,
+} as const;
 
 export function ContractingTabBar() {
   const access = useSessionAccessSummary();
   const { notes } = useFieldNotes();
+  const unreadActivity = useActivityUnread();
   const tabs = visibleContractingTabs(access);
   const active = activeContractingTab(useSegments());
+  const badges = { openFieldNotes: (notes ?? []).some((note) => note.status === 'open'), unreadActivity };
   return (
     <TabBar
       activeKey={active}
@@ -26,8 +36,8 @@ export function ContractingTabBar() {
         label: CONTRACTING_TAB_LABEL[tab],
         icon: ICONS[tab],
         href: CONTRACTING_TAB_HREF[tab],
-        badge: contractingTabBadge(tab, notes ?? []),
-        badgeLabel: 'open field notes',
+        badge: contractingTabBadge(tab, badges),
+        badgeLabel: CONTRACTING_TAB_BADGE_LABEL[tab],
       }))}
     />
   );

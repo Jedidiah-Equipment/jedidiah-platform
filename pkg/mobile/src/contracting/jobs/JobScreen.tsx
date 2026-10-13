@@ -17,6 +17,9 @@ import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/icon';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { Text } from '@/components/ui/text';
+import { AddNoteButton } from '@/contracting/activity/AddNoteButton';
+import { ContractingActivityFeed } from '@/contracting/activity/ContractingActivityFeed';
+import { RecordTabBar, useRecordTab } from '@/contracting/activity/RecordTabs';
 import { BreakdownIcon } from '@/contracting/components/BreakdownSubjectIcons';
 import { CaptureButton } from '@/contracting/components/CaptureButton';
 import { CategoryIcon } from '@/contracting/components/CategoryIcon';
@@ -29,6 +32,7 @@ import { useJob } from './use-jobs';
 export default function JobScreen() {
   const { jobId } = useLocalSearchParams<{ jobId: string }>();
   const jobQuery = useJob(jobId);
+  const [tab, setTab] = useRecordTab();
   const job = jobQuery.data;
   const sheet = job ? actionSheet(job.actions) : null;
   const finished = job ? hasJobCard(job.status) : false;
@@ -77,91 +81,96 @@ export default function JobScreen() {
         onBack={() => router.replace('/contracting/jobs' as Href)}
         helpTopic="contractingMobileJob"
       />
-      <ScrollView contentContainerStyle={{ ...SECONDARY_PAGE_CONTENT_STYLE, gap: 16 }}>
-        {job ? (
-          <View className="gap-2 rounded-xl border border-border bg-surface p-4">
-            <View className="flex-row items-center justify-between gap-2">
-              <Text className="min-w-0 flex-1 text-xl text-foreground" weight="bold" numberOfLines={1}>
-                {job.customerName}
+      {job ? <RecordTabBar value={tab} onChange={setTab} /> : null}
+      {job && tab === 'activity' ? (
+        <ContractingActivityFeed jobId={job.id} listHeader={<AddNoteButton job={job} />} showControls={false} />
+      ) : (
+        <ScrollView contentContainerStyle={{ ...SECONDARY_PAGE_CONTENT_STYLE, gap: 16 }}>
+          {job ? (
+            <View className="gap-2 rounded-xl border border-border bg-surface p-4">
+              <View className="flex-row items-center justify-between gap-2">
+                <Text className="min-w-0 flex-1 text-xl text-foreground" weight="bold" numberOfLines={1}>
+                  {job.customerName}
+                </Text>
+                {finished ? (
+                  <View className="shrink-0">
+                    <JobStatusChip status={job.status} />
+                  </View>
+                ) : null}
+              </View>
+              <Text className="text-muted-foreground" numberOfLines={1}>
+                {job.farmName} · {job.workTypeName}
               </Text>
-              {finished ? (
-                <View className="shrink-0">
-                  <JobStatusChip status={job.status} />
-                </View>
+              {job.description ? <Text className="text-muted-foreground">{job.description}</Text> : null}
+            </View>
+          ) : (
+            <Text className="text-muted-foreground">
+              {!jobQuery.canRead
+                ? 'Your role cannot view this Job.'
+                : jobQuery.gone
+                  ? (jobQuery.goneReason ?? 'This Job is no longer open.')
+                  : jobQuery.isError
+                    ? 'This Job could not be loaded.'
+                    : 'Loading Job…'}
+            </Text>
+          )}
+
+          {job ? (
+            <View className="-mb-2 flex-row items-center justify-between gap-2">
+              <Text className="text-lg text-foreground" weight="bold">
+                Machines
+              </Text>
+              {canAdd ? (
+                <Pressable
+                  accessibilityLabel="Add machine"
+                  accessibilityRole="button"
+                  className="h-10 w-10 items-center justify-center rounded-xl border border-border bg-surface active:bg-muted"
+                  onPress={() => router.push(`/contracting/jobs/${job.id}/add-machine` as Href)}
+                >
+                  <Icon className="text-foreground" icon={IconPlus} size={20} />
+                </Pressable>
               ) : null}
             </View>
-            <Text className="text-muted-foreground" numberOfLines={1}>
-              {job.farmName} · {job.workTypeName}
+          ) : null}
+
+          {stints.map((stint) => (
+            <StintCard
+              canAdd={canAdd}
+              canReport={canReport}
+              key={stint.id}
+              onReport={() => reportProblem(stint)}
+              stint={stint}
+              onStart={() => openCapture(stint, 'arrival')}
+              onStop={() => openCapture(stint, 'departure')}
+              onReadd={() =>
+                router.push({
+                  pathname: '/contracting/jobs/[jobId]/add-machine',
+                  params: {
+                    jobId,
+                    machineId: stint.machineId,
+                    implementId: stint.implementId ?? '',
+                  },
+                } as unknown as Href)
+              }
+            />
+          ))}
+
+          {job && stints.length === 0 ? (
+            <Text className="text-muted-foreground">
+              {job.status === 'upcoming'
+                ? 'No machines planned yet — add the first one to start this Job.'
+                : 'No Machines are assigned to this Job.'}
             </Text>
-            {job.description ? <Text className="text-muted-foreground">{job.description}</Text> : null}
-          </View>
-        ) : (
-          <Text className="text-muted-foreground">
-            {!jobQuery.canRead
-              ? 'Your role cannot view this Job.'
-              : jobQuery.gone
-                ? (jobQuery.goneReason ?? 'This Job is no longer open.')
-                : jobQuery.isError
-                  ? 'This Job could not be loaded.'
-                  : 'Loading Job…'}
-          </Text>
-        )}
-
-        {job ? (
-          <View className="-mb-2 flex-row items-center justify-between gap-2">
-            <Text className="text-lg text-foreground" weight="bold">
-              Machines
-            </Text>
-            {canAdd ? (
-              <Pressable
-                accessibilityLabel="Add machine"
-                accessibilityRole="button"
-                className="h-10 w-10 items-center justify-center rounded-xl border border-border bg-surface active:bg-muted"
-                onPress={() => router.push(`/contracting/jobs/${job.id}/add-machine` as Href)}
-              >
-                <Icon className="text-foreground" icon={IconPlus} size={20} />
-              </Pressable>
-            ) : null}
-          </View>
-        ) : null}
-
-        {stints.map((stint) => (
-          <StintCard
-            canAdd={canAdd}
-            canReport={canReport}
-            key={stint.id}
-            onReport={() => reportProblem(stint)}
-            stint={stint}
-            onStart={() => openCapture(stint, 'arrival')}
-            onStop={() => openCapture(stint, 'departure')}
-            onReadd={() =>
-              router.push({
-                pathname: '/contracting/jobs/[jobId]/add-machine',
-                params: {
-                  jobId,
-                  machineId: stint.machineId,
-                  implementId: stint.implementId ?? '',
-                },
-              } as unknown as Href)
-            }
-          />
-        ))}
-
-        {job && stints.length === 0 ? (
-          <Text className="text-muted-foreground">
-            {job.status === 'upcoming'
-              ? 'No machines planned yet — add the first one to start this Job.'
-              : 'No Machines are assigned to this Job.'}
-          </Text>
-        ) : null}
-        {canShareJobCard ? (
-          <View className="gap-2">
-            <Button primary title="Share Job Card" disabled={share.busy} onPress={() => shareJobCard('customer')} />
-            <Button title="Share internal copy" disabled={share.busy} onPress={() => shareJobCard('internal')} />
-            {share.error ? <Text className="text-danger">{share.error}</Text> : null}
-          </View>
-        ) : null}
-      </ScrollView>
+          ) : null}
+          {canShareJobCard ? (
+            <View className="gap-2">
+              <Button primary title="Share Job Card" disabled={share.busy} onPress={() => shareJobCard('customer')} />
+              <Button title="Share internal copy" disabled={share.busy} onPress={() => shareJobCard('internal')} />
+              {share.error ? <Text className="text-danger">{share.error}</Text> : null}
+            </View>
+          ) : null}
+        </ScrollView>
+      )}
     </SafeAreaView>
   );
 }

@@ -5,8 +5,14 @@ describe('jobTransitions', () => {
   const at = new Date('2026-09-23T10:00:00Z');
 
   test('starts an Upcoming Job when its first machine arrives, and leaves an Active one alone', () => {
-    expect(jobTransitions.activate({ status: 'upcoming' })).toEqual({ status: 'active' });
-    expect(() => jobTransitions.activate({ status: 'completed' })).toThrow('Cannot activate a Job that is Completed.');
+    expect(jobTransitions.activate({ status: 'upcoming' }, { at, byUserId: 'sipho' })).toEqual({
+      status: 'active',
+      activatedAt: at,
+      activatedByUserId: 'sipho',
+    });
+    expect(() => jobTransitions.activate({ status: 'completed' }, { at, byUserId: 'sipho' })).toThrow(
+      'Cannot activate a Job that is Completed.',
+    );
   });
 
   test('stamps each status with the columns that travel with it, and clears the ones that may not', () => {

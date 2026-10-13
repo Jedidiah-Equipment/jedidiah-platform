@@ -59,6 +59,11 @@ export const CONTRACTING_MUTATION_EVENTS = {
     event: 'breakdown note added',
     properties: (variables) => pickRecordIds(variables, ['breakdownId']),
   },
+  'contractingJobs.notes.add': {
+    event: 'job note added',
+    properties: (variables) => pickRecordIds(variables, ['jobId']),
+  },
+  'contractingActivity.setLastSeen': { event: 'activity seen', properties: () => ({}) },
   'contractingJobs.assignments.add': {
     event: 'machine added to job',
     properties: (variables) => pickRecordIds(variables, ['jobId', 'machineId']),

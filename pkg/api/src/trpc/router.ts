@@ -4,6 +4,7 @@ import type { EquipmentRouterDependencies } from '../equipment/wiring.js';
 import { auditRouter } from '../routes/audit/audit.router.js';
 import { authRouter } from '../routes/auth/auth.router.js';
 import { changelogRouter } from '../routes/changelog/changelog.router.js';
+import { contractingActivityRouter } from '../routes/contracting/activity/activity.router.js';
 import { contractingBreakdownsRouter } from '../routes/contracting/breakdowns/breakdowns.router.js';
 import { contractingDirectoryRouter } from '../routes/contracting/directory/directory.router.js';
 import { contractingFleetRouter } from '../routes/contracting/fleet/fleet.router.js';
@@ -44,6 +45,7 @@ export type AppRouterDependencies = {
 type AppRouterRootTypes = (typeof authRouter)['_def']['_config']['$types'];
 
 type AppRouterRecord = {
+  contractingActivity: (typeof contractingActivityRouter)['_def']['record'];
   contractingBreakdowns: (typeof contractingBreakdownsRouter)['_def']['record'];
   contractingDirectory: (typeof contractingDirectoryRouter)['_def']['record'];
   contractingReadings: ReturnType<typeof createContractingReadingsRouter>['_def']['record'];
@@ -83,6 +85,7 @@ export type AppRouter = BuiltRouter<AppRouterRootTypes, AppRouterRecord>;
 // Naming the router shape keeps declaration emit from serializing the full nested tRPC type.
 export function createAppRouter({ contracting, equipment }: AppRouterDependencies): AppRouter {
   return router({
+    contractingActivity: contractingActivityRouter,
     contractingBreakdowns: contractingBreakdownsRouter,
     contractingReadings: createContractingReadingsRouter(contracting.readMeterPhoto),
     contractingReports: contractingReportsRouter,

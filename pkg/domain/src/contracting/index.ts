@@ -1,4 +1,5 @@
 export * from './action-verdicts.js';
+export * from './activity.js';
 export * from './assignment-actions.js';
 export * from './assignment-attention.js';
 export * from './breakdown-actions.js';

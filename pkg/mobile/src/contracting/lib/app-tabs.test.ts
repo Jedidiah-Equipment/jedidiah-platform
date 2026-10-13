@@ -2,28 +2,15 @@ import { createUserAccessSummary } from '@pkg/domain';
 import { describe, expect, test } from 'vitest';
 import { activeContractingTab, contractingTabBadge, visibleContractingTabs } from './app-tabs';
 
+const tabsFor = (contractingRole: Parameters<typeof createUserAccessSummary>[0]['contractingRole']) =>
+  visibleContractingTabs(createUserAccessSummary({ userId: 'someone', equipmentRole: null, contractingRole }));
+
 describe('Contracting app tabs', () => {
-  test('shows Jobs and Machines only when their field permissions are useful, and Notes to everyone', () => {
-    expect(
-      visibleContractingTabs(
-        createUserAccessSummary({ userId: 'foreman', equipmentRole: null, contractingRole: 'foreman' }),
-      ),
-    ).toEqual(['jobs', 'machines', 'workshop', 'notes']);
-    expect(
-      visibleContractingTabs(
-        createUserAccessSummary({ userId: 'workshop', equipmentRole: null, contractingRole: 'workshop-manager' }),
-      ),
-    ).toEqual(['machines', 'workshop', 'notes']);
-    expect(
-      visibleContractingTabs(
-        createUserAccessSummary({ userId: 'invoicing', equipmentRole: null, contractingRole: 'contracting-invoicing' }),
-      ),
-    ).toEqual(['notes']);
-    expect(
-      visibleContractingTabs(
-        createUserAccessSummary({ userId: 'driver', equipmentRole: null, contractingRole: 'driver' }),
-      ),
-    ).toEqual(['notes']);
+  test('leads with Activity for Job or Breakdown readers, and gives Field Notes to everyone', () => {
+    expect(tabsFor('foreman')).toEqual(['activity', 'jobs', 'machines', 'workshop', 'field-notes']);
+    expect(tabsFor('workshop-manager')).toEqual(['activity', 'machines', 'workshop', 'field-notes']);
+    expect(tabsFor('contracting-invoicing')).toEqual(['field-notes']);
+    expect(tabsFor('driver')).toEqual(['field-notes']);
   });
 
   test('keeps detail routes active under their owning tab', () => {
@@ -31,15 +18,20 @@ describe('Contracting app tabs', () => {
     expect(activeContractingTab(['(protected)', 'contracting', '(tabs)', 'machines', '[id]', 'capture'])).toBe(
       'machines',
     );
-    expect(activeContractingTab(['(protected)', 'contracting', '(tabs)', 'notes', '[noteId]'])).toBe('notes');
+    expect(activeContractingTab(['(protected)', 'contracting', '(tabs)', 'field-notes', '[noteId]'])).toBe(
+      'field-notes',
+    );
+    expect(activeContractingTab(['(protected)', 'contracting', '(tabs)', 'activity'])).toBe('activity');
     expect(activeContractingTab(['(protected)', 'contracting', '(tabs)', 'workshop', '[breakdownId]'])).toBe(
       'workshop',
     );
   });
 
-  test('dots Notes while any Field Note is open', () => {
-    expect(contractingTabBadge('notes', [{ status: 'closed' }, { status: 'open' }])).toBe(true);
-    expect(contractingTabBadge('notes', [{ status: 'closed' }])).toBe(false);
-    expect(contractingTabBadge('jobs', [{ status: 'open' }])).toBe(false);
+  test('dots Field Notes while any is open, and Activity while something is unread', () => {
+    const none = { openFieldNotes: false, unreadActivity: false };
+    expect(contractingTabBadge('field-notes', { ...none, openFieldNotes: true })).toBe(true);
+    expect(contractingTabBadge('field-notes', none)).toBe(false);
+    expect(contractingTabBadge('activity', { ...none, unreadActivity: true })).toBe(true);
+    expect(contractingTabBadge('jobs', { openFieldNotes: true, unreadActivity: true })).toBe(false);
   });
 });

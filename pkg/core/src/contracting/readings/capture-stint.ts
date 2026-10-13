@@ -74,7 +74,10 @@ export async function resolveCaptureStint(
   return { job, stint, jobVerdict: judgeJobAction('capture', job, actor), ...resources };
 }
 
-/** Points the stint at its new reading; an arrival also applies the phone's overrides and starts the Job. */
+/**
+ * Points the stint at its new reading; an arrival also applies the phone's overrides and starts the Job, stamped
+ * with the instant the server accepted the reading (never its Read At, which may be backdated).
+ */
 export async function attachReadingToStint(
   tx: DatabaseTransaction,
   {
@@ -82,9 +85,16 @@ export async function attachReadingToStint(
     machineCode,
     input,
     readingId,
+    acceptedAt,
     job,
     stint,
-  }: CaptureStint & { actor: JobActor; machineCode: string; input: ReadingCaptureInput; readingId: string },
+  }: CaptureStint & {
+    actor: JobActor;
+    machineCode: string;
+    input: ReadingCaptureInput;
+    readingId: string;
+    acceptedAt: Date;
+  },
 ) {
   await writeAssignment(tx, actor.userId, machineCode, stint.id, () =>
     input.role === 'arrival'
@@ -92,5 +102,7 @@ export async function attachReadingToStint(
       : { departureReadingId: readingId },
   );
   if (input.role === 'arrival' && job.status === 'upcoming')
-    await writeJobRow(tx, actor.userId, job.id, (before) => jobTransitions.activate(before));
+    await writeJobRow(tx, actor.userId, job.id, (before) =>
+      jobTransitions.activate(before, { at: acceptedAt, byUserId: actor.userId }),
+    );
 }

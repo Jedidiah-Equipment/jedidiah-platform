@@ -1,4 +1,5 @@
 import {
+  addJobNote,
   cancelJob,
   clearStintRate,
   completeJob,
@@ -47,6 +48,7 @@ import {
   JobListInput,
   JobLookupInput,
   JobMarkPricedInput,
+  JobNoteCreateInput,
   JobPatchInput,
   JobQueueSummary,
   JobStampInvoiceInput,
@@ -58,7 +60,7 @@ import {
   StintRateSetInput,
 } from '@pkg/schema/contracting';
 import { mapCoreErrors } from '../../../trpc/errors.js';
-import { authorizedProcedure, router } from '../../../trpc/init.js';
+import { authorizedProcedure, businessProcedure, router } from '../../../trpc/init.js';
 import { jobErrorFamily } from '../contracting-error-families.js';
 
 const readPermissions = ['contracting_job:read', 'contracting_job:read-own', 'contracting_job:read-priced'] as const;
@@ -105,6 +107,14 @@ export const contractingJobsRouter = router({
       .input(JobCancelInput)
       .mutation(({ ctx, input }) =>
         mapCoreErrors(() => cancelJob({ db: ctx.db, actor: ctx.access, input }), jobErrorFamily),
+      ),
+  }),
+  // The Job Action `addNote` is the gate, judged inside `addJobNote`: it is open to every Job reader.
+  notes: router({
+    add: businessProcedure('contracting')
+      .input(JobNoteCreateInput)
+      .mutation(({ ctx, input }) =>
+        mapCoreErrors(() => addJobNote({ db: ctx.db, actor: ctx.access, input }), jobErrorFamily),
       ),
   }),
   assignments: router({

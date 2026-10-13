@@ -1,3 +1,4 @@
+export * from './activity/activity-view.js';
 export * from './ai/reasoning-effort.js';
 export * from './audit/audit.js';
 export * from './auth/auth-id.js';

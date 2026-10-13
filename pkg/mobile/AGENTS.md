@@ -25,8 +25,9 @@
   - Do not create route-local toolbar variants or add arbitrary toolbar actions. Put page-specific
     actions in page content and expose contextual Help through the profile menu.
 - Every list tab root in both businesses renders `src/components/TabRootList.tsx` (pagination optional), except
-  Equipment Activity's day-grouped timeline, which Job detail shares, and the Stores scan home. The
-  Equipment Jobs, Plan, Units, Products, and Quotes roots and the Contracting Jobs, Machines, Workshop and Notes
+  each business's Activity, a day-grouped `src/components/activity/ActivityTimeline.tsx` that its Job (and
+  Contracting's Breakdown) detail shares, and the Stores scan home. The
+  Equipment Jobs, Plan, Units, Products, and Quotes roots and the Contracting Jobs, Machines, Workshop and Field Notes
   roots also use the shared full-width card from `src/components/CatalogList.tsx`. Do not add per-route catalog card
   variants or responsive card grids there. Detail-page cards are intentionally outside this catalog contract.
 - Icon tiles and avatars for records are rounded squares in both businesses; a circle means a person.

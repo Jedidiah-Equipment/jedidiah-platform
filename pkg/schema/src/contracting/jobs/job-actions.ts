@@ -19,6 +19,7 @@ export const jobActionNames = [
   'amendReadings',
   'capture',
   'reportBreakdown',
+  'addNote',
 ] as const;
 export type JobActionName = (typeof jobActionNames)[number];
 

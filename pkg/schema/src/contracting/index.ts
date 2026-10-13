@@ -1,3 +1,4 @@
+export * from './activity/activity.js';
 export * from './breakdowns/breakdown.js';
 export * from './breakdowns/breakdown-actions.js';
 export * from './breakdowns/breakdown-enums.js';
@@ -11,6 +12,7 @@ export * from './jobs/job.js';
 export * from './jobs/job-actions.js';
 export * from './jobs/job-card.js';
 export * from './jobs/job-enums.js';
+export * from './jobs/job-note.js';
 export * from './jobs/pricing.js';
 export * from './rate-card/rate-card.js';
 export * from './readings/reading.js';

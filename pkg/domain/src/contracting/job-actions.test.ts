@@ -42,6 +42,7 @@ const manager: Matrix = {
   amendReadings: '✓✓✓✓cc',
   capture: '✓✓sscc',
   reportBreakdown: '✓✓sscc',
+  addNote: '✓✓✓✓✓✓',
 };
 const admin: Matrix = { ...manager, priceChargeLines: 's✓✓pcc', price: 'ss✓pcc', stampInvoice: 'sss✓cc' };
 const none: Matrix = Object.fromEntries(jobActionNames.map((action) => [action, 'nnnnnn'])) as Matrix;
@@ -51,6 +52,7 @@ const foremanOnOwnJob: Matrix = {
   patchTravel: '✓✓sscc',
   capture: '✓✓sscc',
   reportBreakdown: '✓✓sscc',
+  addNote: '✓✓✓pss',
 };
 const foremanOnAnotherJob: Matrix = {
   ...none,
@@ -58,8 +60,9 @@ const foremanOnAnotherJob: Matrix = {
   patchTravel: 'oooooo',
   capture: 'oooooo',
   reportBreakdown: 'oooooo',
+  addNote: 'oooooo',
 };
-const workshopManager: Matrix = { ...none, reportBreakdown: '✓✓sscc' };
+const workshopManager: Matrix = { ...none, reportBreakdown: '✓✓sscc', addNote: '✓✓✓✓✓✓' };
 const invoicing: Matrix = { ...none, stampInvoice: 'sss✓cc' };
 
 const cases: [string, JobActor, string | null, Matrix][] = [
@@ -106,6 +109,10 @@ describe('a refused verdict', () => {
     );
     expect(refusal('editSignOffDetails', 'active', admin)).toBe(
       'You can only change sign-off details while the Job is Completed or Priced.',
+    );
+    expect(refusal('addNote', 'priced', sipho)).toBe('This Job is Priced, so you can no longer add a note.');
+    expect(refusal('addNote', 'active', actor('contracting-invoicing'))).toBe(
+      'You do not have permission to add a note.',
     );
     expect(refusal('assignForeman', 'completed', manager)).toBe(
       'You can only assign the Foreman while the Job is Upcoming or Active.',

@@ -11,12 +11,14 @@ import { SecondaryToolbar } from '@/components/TopToolbar';
 import { Button } from '@/components/ui/button';
 import { Card, CardIconAction } from '@/components/ui/card';
 import { Text } from '@/components/ui/text';
+import { AddNoteButton } from '@/contracting/activity/AddNoteButton';
+import { ContractingActivityFeed } from '@/contracting/activity/ContractingActivityFeed';
+import { RecordTabBar, useRecordTab } from '@/contracting/activity/RecordTabs';
 import { BreakdownStatusBadge, BreakdownSubjectIcons } from '@/contracting/components/BreakdownSubjectIcons';
 import { useVoiceSession } from '@/contracting/voice/use-voice-session';
 import { VoiceTextArea } from '@/contracting/voice/VoiceTextArea';
 import { useSessionAccessSummary } from '@/lib/auth-session';
 import { useBusyAction } from '@/lib/use-busy-action';
-import { BreakdownNotesCard } from './BreakdownNotesCard';
 import { BreakdownPhotosCard } from './BreakdownPhotosCard';
 import { BreakdownWorkshopCard } from './BreakdownWorkshopCard';
 import { BREAKDOWN_SAVE_FAILED, useBreakdown, useBreakdownMutation } from './use-breakdowns';
@@ -25,6 +27,7 @@ export default function BreakdownScreen() {
   const { breakdownId } = useLocalSearchParams<{ breakdownId: string }>();
   const query = useBreakdown(breakdownId);
   const breakdown = query.data;
+  const [tab, setTab] = useRecordTab();
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top', 'left', 'right']}>
       <SecondaryToolbar
@@ -34,24 +37,33 @@ export default function BreakdownScreen() {
         onBack={() => router.navigate('/contracting/workshop' as Href)}
         helpTopic="contractingMobileBreakdown"
       />
-      <ScrollView
-        keyboardShouldPersistTaps="handled"
-        contentContainerStyle={{ ...SECONDARY_PAGE_CONTENT_STYLE, gap: 16 }}
-      >
-        {breakdown ? (
-          <BreakdownSections breakdown={breakdown} />
-        ) : (
-          <Text className="text-muted-foreground">
-            {!query.canRead
-              ? 'Your role cannot view Breakdowns.'
-              : query.gone
-                ? 'This Breakdown is not one of yours, or it no longer exists.'
-                : query.isError
-                  ? 'This Breakdown could not be loaded.'
-                  : 'Loading Breakdown…'}
-          </Text>
-        )}
-      </ScrollView>
+      {breakdown ? <RecordTabBar value={tab} onChange={setTab} /> : null}
+      {breakdown && tab === 'activity' ? (
+        <ContractingActivityFeed
+          breakdownId={breakdown.id}
+          listHeader={<AddNoteButton breakdown={breakdown} />}
+          showControls={false}
+        />
+      ) : (
+        <ScrollView
+          keyboardShouldPersistTaps="handled"
+          contentContainerStyle={{ ...SECONDARY_PAGE_CONTENT_STYLE, gap: 16 }}
+        >
+          {breakdown ? (
+            <BreakdownSections breakdown={breakdown} />
+          ) : (
+            <Text className="text-muted-foreground">
+              {!query.canRead
+                ? 'Your role cannot view Breakdowns.'
+                : query.gone
+                  ? 'This Breakdown is not one of yours, or it no longer exists.'
+                  : query.isError
+                    ? 'This Breakdown could not be loaded.'
+                    : 'Loading Breakdown…'}
+            </Text>
+          )}
+        </ScrollView>
+      )}
     </SafeAreaView>
   );
 }
@@ -65,7 +77,6 @@ function BreakdownSections({ breakdown }: { breakdown: BreakdownDetail }) {
       <BreakdownPhotosCard breakdown={breakdown} />
       {breakdown.dispatchHints.length ? <DispatchHints breakdown={breakdown} /> : null}
       <LocationCard breakdown={breakdown} />
-      <BreakdownNotesCard breakdown={breakdown} />
     </>
   );
 }

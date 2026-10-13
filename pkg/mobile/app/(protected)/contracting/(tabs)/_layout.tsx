@@ -12,10 +12,14 @@ export default function ContractingTabsLayout() {
   const colors = navigationColors[resolved];
   return (
     <Tabs
-      initialRouteName="jobs"
+      initialRouteName="activity"
       screenOptions={{ headerShown: false, sceneStyle: { backgroundColor: colors.background } }}
       tabBar={() => <ContractingTabBar />}
     >
+      <Tabs.Screen
+        name="activity"
+        options={{ href: tabs.includes('activity') ? undefined : null, title: CONTRACTING_TAB_LABEL.activity }}
+      />
       <Tabs.Screen
         name="jobs"
         options={{ href: tabs.includes('jobs') ? undefined : null, title: CONTRACTING_TAB_LABEL.jobs }}
@@ -28,7 +32,7 @@ export default function ContractingTabsLayout() {
         name="workshop"
         options={{ href: tabs.includes('workshop') ? undefined : null, title: CONTRACTING_TAB_LABEL.workshop }}
       />
-      <Tabs.Screen name="notes" options={{ title: CONTRACTING_TAB_LABEL.notes }} />
+      <Tabs.Screen name="field-notes" options={{ title: CONTRACTING_TAB_LABEL['field-notes'] }} />
     </Tabs>
   );
 }

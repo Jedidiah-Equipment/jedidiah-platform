@@ -110,7 +110,7 @@ export const snapshotTableDefinitions = [
     // phase-zero seed read remains compatible across that deployment boundary.
     fileName: 'user.json',
     tableName: 'user',
-    timestampColumns: ['lastActivitySeen', ...authTimestampColumns],
+    timestampColumns: authTimestampColumns,
     omitReadColumns: ['assistantEnabled'],
     optionalReadColumns: ['quoteSalesperson', 'contractingRole'],
     seedRowDefaults: (row) => ({
@@ -118,6 +118,12 @@ export const snapshotTableDefinitions = [
       contractingRole: null,
       quoteSalesperson: row.role === 'admin' || row.role === 'super-admin' || row.role === 'sales',
     }),
+    // Sources read before the per-business Activity View store one Equipment instant. Delete once every
+    // snapshot source has been re-read.
+    seedRowTransform: (row) =>
+      typeof row.lastActivitySeen === 'string'
+        ? { ...row, lastActivitySeen: { equipment: row.lastActivitySeen } }
+        : row,
   },
   {
     fileName: 'user_department.json',
@@ -414,8 +420,11 @@ export const snapshotTableDefinitions = [
     // order and the writer, which cannot send it back, reissues it in the same order.
     fileName: 'contracting_hour_reading.json',
     tableName: 'contracting_hour_reading',
-    timestampColumns: ['amendedAt', 'capturedAt', 'evidenceReviewedAt'],
+    timestampColumns: ['amendedAt', 'capturedAt', 'createdAt', 'evidenceReviewedAt'],
     optionalReadTable: true,
+    optionalReadColumns: ['createdAt'],
+    // A source that predates acceptance stamps accepted each reading at its Read At, as the migration did.
+    seedRowDefaults: (row) => ({ createdAt: row.capturedAt }),
     readOrderColumn: 'sequence',
     storageFiles: (row) => [row.photo].map(toStorageFile).filter(isStorageFile),
     writableColumns: [
@@ -438,6 +447,7 @@ export const snapshotTableDefinitions = [
       'amendedBy',
       'amendedAt',
       'amendmentReason',
+      'createdAt',
     ],
   },
   {
@@ -449,14 +459,35 @@ export const snapshotTableDefinitions = [
   {
     fileName: 'contracting_job.json',
     tableName: 'contracting_job',
-    timestampColumns: ['cancelledAt', 'completedAt', 'createdAt', 'invoicedAt', 'pricedAt', 'reopenedAt', 'updatedAt'],
-    optionalReadColumns: ['dieselAmountOverride', 'reopenedAt', 'repricingNote'],
-    seedRowDefaults: () => ({ dieselAmountOverride: null, reopenedAt: null, repricingNote: null }),
+    timestampColumns: [
+      'activatedAt',
+      'cancelledAt',
+      'completedAt',
+      'createdAt',
+      'invoicedAt',
+      'pricedAt',
+      'reopenedAt',
+      'updatedAt',
+    ],
+    optionalReadColumns: ['activatedAt', 'activatedByUserId', 'dieselAmountOverride', 'reopenedAt', 'repricingNote'],
+    seedRowDefaults: () => ({
+      activatedAt: null,
+      activatedByUserId: null,
+      dieselAmountOverride: null,
+      reopenedAt: null,
+      repricingNote: null,
+    }),
     // Snapshots read before the pricing-overrides migration store amounts on every status. Delete once
     // every snapshot source has been re-read.
     seedRowTransform: legacyJobPricing,
     optionalReadTable: true,
     resetSequence: { sequence: contractingJobCodeSequence, columnName: 'code' },
+  },
+  {
+    fileName: 'contracting_job_note.json',
+    tableName: 'contracting_job_note',
+    timestampColumns: ['createdAt'],
+    optionalReadTable: true,
   },
   {
     fileName: 'contracting_machine_assignment.json',
@@ -470,8 +501,10 @@ export const snapshotTableDefinitions = [
   {
     fileName: 'contracting_breakdown.json',
     tableName: 'contracting_breakdown',
-    timestampColumns: ['reportedAt', 'startedAt', 'solvedAt', 'createdAt', 'updatedAt'],
+    timestampColumns: ['reportedAt', 'startedAt', 'solvedAt', 'mechanicAssignedAt', 'createdAt', 'updatedAt'],
     optionalReadTable: true,
+    optionalReadColumns: ['mechanicAssignedAt', 'mechanicAssignedByUserId'],
+    seedRowDefaults: () => ({ mechanicAssignedAt: null, mechanicAssignedByUserId: null }),
     storageFiles: (row) => (Array.isArray(row.photos) ? row.photos : []).map(toStorageFile).filter(isStorageFile),
   },
   {

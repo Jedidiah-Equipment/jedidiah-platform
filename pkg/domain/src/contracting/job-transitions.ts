@@ -19,8 +19,12 @@ const edge =
   };
 
 export const jobTransitions = {
-  // biome-ignore lint/suspicious/noConfusingVoidType: a void event lets `activate` take no second argument
-  activate: edge('activate', ['upcoming'], (_event: void) => ({ status: 'active' }) as const),
+  activate: edge(
+    'activate',
+    ['upcoming'],
+    (event: { at: Date; byUserId: AuthId }) =>
+      ({ status: 'active', activatedAt: event.at, activatedByUserId: event.byUserId }) as const,
+  ),
   complete: edge(
     'complete',
     ['active'],

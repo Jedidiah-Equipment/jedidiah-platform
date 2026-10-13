@@ -28,6 +28,9 @@ export const contractingBreakdowns = contractingSchema.table(
       .notNull()
       .default([]),
     primaryMechanicUserId: text('primary_mechanic_user_id').references(() => user.id, { onDelete: 'restrict' }),
+    /** The latest Mechanic assignment (or clearing); the Activity feed reads it, reassignment overwrites it. */
+    mechanicAssignedAt: timestamp('mechanic_assigned_at', { withTimezone: true }),
+    mechanicAssignedByUserId: text('mechanic_assigned_by_user_id').references(() => user.id),
     startedAt: timestamp('started_at', { withTimezone: true }),
     startedByUserId: text('started_by_user_id').references(() => user.id),
     solvedAt: timestamp('solved_at', { withTimezone: true }),
@@ -50,6 +53,10 @@ export const contractingBreakdowns = contractingSchema.table(
     index('breakdown_job_idx').on(table.jobId),
     index('breakdown_status_idx').on(table.status, table.reportedAt),
     index('breakdown_mechanic_idx').on(table.primaryMechanicUserId),
+    index('breakdown_reported_idx').on(table.reportedAt, table.id),
+    index('breakdown_started_idx').on(table.startedAt, table.id),
+    index('breakdown_solved_idx').on(table.solvedAt, table.id),
+    index('breakdown_mechanic_assigned_idx').on(table.mechanicAssignedAt, table.id),
   ],
 );
 
@@ -68,6 +75,7 @@ export const contractingBreakdownNotes = contractingSchema.table(
   },
   (table) => [
     index('breakdown_note_breakdown_idx').on(table.breakdownId, table.createdAt),
+    index('breakdown_note_created_idx').on(table.createdAt, table.id),
     check('breakdown_note_text_not_blank', sql`length(btrim(${table.text})) > 0`),
   ],
 );

@@ -8,13 +8,13 @@ A Breakdown is one problem on one Machine or Implement. Reporting one needs a co
    - Anywhere else, open **Workshop** and choose **+** (Report a problem), then pick **Machine** or **Implement** and choose it from the list.
 
    On the web, [report it from Workshop or the Job page](./run-the-workshop-queue#report-a-problem-on-the-web) instead.
-2. Check **Already reported**. If the problem is listed, it has been reported: do not report it again. When the report is yours or on your Job, open it and add a note instead.
+2. Check **Already reported**. If the problem is listed, it has been reported: do not report it again. When the report is yours or on your Job, open it and [add a note](./catch-up-on-activity#add-a-note-to-a-job-or-breakdown) instead.
 3. Choose **Code Red — machine down** when it cannot work, or **Code Green — still working** when it can carry on for now.
 4. Under **What's wrong**, describe the problem in your own words. You can [say it as a Voice Note](./record-a-voice-note) instead of typing.
 5. Choose **Take photo** or **Choose from gallery** to add up to six photos. Photos you take here are also saved to the **Jedidiah** album in your gallery.
 6. Choose **Send report**. The phone attaches your location when it can.
 
-Once it is sent, you go back to where you started — the Job, the Machine or **Workshop** — and the workshop manager sees it in the Workshop queue. Follow it from **Workshop**: questions and answers go under **Notes** — choose **Add note**, typed or as a Voice Note. You can change the description and add photos until the Breakdown is Fixed.
+Once it is sent, you go back to where you started — the Job, the Machine or **Workshop** — and the workshop manager sees it in the Workshop queue. Follow it from **Workshop** or **Activity**: questions and answers go on the Breakdown's **Activity** — choose **Add Note**, typed or as a Voice Note, and **Send**. You can change the description and add photos until the Breakdown is Fixed.
 
 Foremen see only the Breakdowns they reported and those on their own Jobs. The workshop manager sees them all.
 

@@ -1,5 +1,4 @@
-import { getActivityView, setActivityView } from '@pkg/core';
-import { listActivity } from '@pkg/core/contracting';
+import { getContractingActivityView, listActivity, markContractingActivitySeen } from '@pkg/core/contracting';
 import { ActivitySeenInput } from '@pkg/schema';
 import { ActivityListInput } from '@pkg/schema/contracting';
 import { mapCoreErrors } from '../../../trpc/errors.js';
@@ -17,24 +16,14 @@ export const contractingActivityRouter = router({
       mapCoreErrors(() => listActivity({ db: ctx.db, actor: ctx.access, input }), activityErrorFamily),
     ),
   getLastSeen: businessProcedure('contracting').query(({ ctx }) =>
-    getActivityView({ db: ctx.db, userId: ctx.session.user.id, business: 'contracting' }),
+    getContractingActivityView({ db: ctx.db, actor: ctx.access }),
   ),
   setLastSeen: businessProcedure('contracting')
     .input(ActivitySeenInput)
     .mutation(({ ctx, input }) =>
-      mapCoreErrors(async () => {
-        const latest = await listActivity({
-          db: ctx.db,
-          actor: ctx.access,
-          input: ActivityListInput.parse({ limit: 1 }),
-        });
-        return setActivityView({
-          db: ctx.db,
-          userId: ctx.session.user.id,
-          business: 'contracting',
-          seenAt: input.seenAt,
-          latestActivityAt: latest.items[0]?.occurredAt ?? null,
-        });
-      }, activityErrorFamily),
+      mapCoreErrors(
+        () => markContractingActivitySeen({ db: ctx.db, actor: ctx.access, seenAt: input.seenAt }),
+        activityErrorFamily,
+      ),
     ),
 });

@@ -65,7 +65,7 @@ export function ContractingActivityFeed({
               onFilterChange: setFilter,
               search,
               onSearchChange: setSearch,
-              searchPlaceholder: 'Search notes, people, Jobs, machines or farms…',
+              searchPlaceholder: 'Search notes, people, Jobs, Machines or Farms…',
             }
           : undefined
       }
@@ -79,6 +79,7 @@ export function ContractingActivityFeed({
       onViewedLatest={onViewedLatest}
       query={activity}
       renderItem={(item, last) => <ActivityEntry item={item} last={last} scope={scope} />}
+      underSecondaryToolbar={jobId !== undefined || breakdownId !== undefined}
     />
   );
 }

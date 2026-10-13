@@ -11,7 +11,7 @@ import {
   ListDropdownControl,
   ListSearchControl,
 } from '@/components/ListControls';
-import { MAIN_PAGE_CONTENT_STYLE } from '@/components/page-frame';
+import { MAIN_PAGE_CONTENT_STYLE, SECONDARY_PAGE_CONTENT_STYLE } from '@/components/page-frame';
 import { Pulse } from '@/components/ui/pulse';
 import { RefreshControl } from '@/components/ui/refresh-control';
 import { Text } from '@/components/ui/text';
@@ -41,6 +41,7 @@ export function ActivityTimeline<
   listHeader,
   onViewedLatest,
   renderItem,
+  underSecondaryToolbar = false,
 }: {
   query: ActivityTimelineQuery;
   items: readonly TItem[];
@@ -58,6 +59,8 @@ export function ActivityTimeline<
   /** Called with the newest item's instant while the screen is focused and the feed has loaded. */
   onViewedLatest?: (occurredAt: DateIso) => void;
   renderItem: (item: TItem, last: boolean) => ReactElement;
+  /** A detail page's thread sits under a secondary toolbar, a tab root under a main one. */
+  underSecondaryToolbar?: boolean;
 }) {
   const [focused, setFocused] = useState(false);
   const sections = useMemo(
@@ -93,7 +96,7 @@ export function ActivityTimeline<
     <SectionList
       className="flex-1"
       // NativeWind does not remap contentContainerClassName for SectionList.
-      contentContainerStyle={MAIN_PAGE_CONTENT_STYLE}
+      contentContainerStyle={underSecondaryToolbar ? SECONDARY_PAGE_CONTENT_STYLE : MAIN_PAGE_CONTENT_STYLE}
       initialNumToRender={12}
       keyExtractor={activityKey}
       keyboardShouldPersistTaps="handled"

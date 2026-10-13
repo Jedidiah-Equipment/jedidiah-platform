@@ -18,22 +18,22 @@ import {
   breakdownReadScope,
   canSeeActivity,
   formatJobNumber,
-  JOB_NUMBER_DIGITS,
-  JOB_NUMBER_PREFIX,
   type JobActor,
   jobReadMode,
 } from '@pkg/domain/contracting';
+import type { DateIso } from '@pkg/schema';
 import {
   ActivityCursor,
   ActivityItem,
   type ActivityItemType,
   type ActivityJobRef,
-  type ActivityListInput,
+  ActivityListInput,
   type ActivityListResult,
   type ActivityMachineRef,
 } from '@pkg/schema/contracting';
 import { and, eq, inArray, isNotNull, ne, or, type SQL, type SQLWrapper, sql } from 'drizzle-orm';
 import { alias, type PgColumn } from 'drizzle-orm/pg-core';
+import { getActivityView, setActivityView } from '../../users/activity-view-service.js';
 import {
   breakdownReadableBy,
   breakdownSubjectOf,
@@ -41,6 +41,7 @@ import {
   selectBreakdowns,
 } from '../breakdowns/breakdown-load.js';
 import { readableBy, readerFor } from '../jobs/job-readers.js';
+import { jobNumberSql } from '../jobs/job-sql.js';
 import { ActivityError } from './activity-errors.js';
 
 /**
@@ -84,7 +85,7 @@ const jobMatches = (jobId: SQLWrapper, search: string) => sql`exists (
   where ${searchJob.id} = ${jobId}
     and ${
       createGlobalSearchCondition(search, [
-        sql`${JOB_NUMBER_PREFIX} || lpad(${searchJob.code}::text, greatest(${JOB_NUMBER_DIGITS}, length(${searchJob.code}::text)), '0')`,
+        jobNumberSql(searchJob.code),
         sql`${searchFarm.name}`,
         sql`${searchCustomer.name}`,
       ]) ?? nothing
@@ -681,4 +682,29 @@ export async function listActivity({
     nextCursor:
       keys.length === input.limit && last ? ActivityCursor.parse({ occurredAt: last.cursorAt, id: last.id }) : null,
   };
+}
+
+/** The caller's Contracting Activity View. */
+export function getContractingActivityView({ db, actor }: { db: Db; actor: JobActor }): Promise<DateIso> {
+  return getActivityView({ db, userId: actor.userId, business: 'contracting' });
+}
+
+/** Acknowledges the feed through `seenAt`, clamped to the newest item this caller can see. */
+export async function markContractingActivitySeen({
+  db,
+  actor,
+  seenAt,
+}: {
+  db: Db;
+  actor: JobActor;
+  seenAt: DateIso;
+}): Promise<DateIso> {
+  const latest = await listActivity({ db, actor, input: ActivityListInput.parse({ limit: 1 }) });
+  return setActivityView({
+    db,
+    userId: actor.userId,
+    business: 'contracting',
+    seenAt,
+    latestActivityAt: latest.items[0]?.occurredAt ?? null,
+  });
 }

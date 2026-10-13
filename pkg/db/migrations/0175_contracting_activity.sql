@@ -15,6 +15,7 @@ ALTER TABLE "user" RENAME COLUMN "last_activity_seen_map" TO "last_activity_seen
 ALTER TABLE "contracting"."breakdown" ADD COLUMN "mechanic_assigned_at" timestamp with time zone;--> statement-breakpoint
 ALTER TABLE "contracting"."breakdown" ADD COLUMN "mechanic_assigned_by_user_id" text;--> statement-breakpoint
 ALTER TABLE "contracting"."hour_reading" ADD COLUMN "created_at" timestamp with time zone DEFAULT now();--> statement-breakpoint
+-- History never recorded acceptance apart from Read At, so the past reads as accepted when it was read.
 UPDATE "contracting"."hour_reading" SET "created_at" = "captured_at";--> statement-breakpoint
 ALTER TABLE "contracting"."hour_reading" ALTER COLUMN "created_at" SET NOT NULL;--> statement-breakpoint
 ALTER TABLE "contracting"."job" ADD COLUMN "activated_at" timestamp with time zone;--> statement-breakpoint

@@ -102,6 +102,12 @@ test('saves only on an explicit Save, resets to the saved row, and keeps a refus
     expect(field('utilisationTargetPercent').value).toBe('70');
     expect(save().disabled).toBe(true);
 
+    // Save is enabled only while the draft differs from the saved row.
+    await edit('gapFlagThresholdHours', '4.5');
+    expect(save().disabled).toBe(false);
+    await edit('gapFlagThresholdHours', '4.0');
+    expect(save().disabled).toBe(true);
+
     // Typing changes nothing on the server until Save; clearing the target saves it as empty.
     await edit('gapFlagThresholdHours', '2.5');
     await edit('utilisationTargetPercent', '');
@@ -112,6 +118,15 @@ test('saves only on an explicit Save, resets to the saved row, and keeps a refus
     await vi.waitFor(() => expect(save().disabled).toBe(true));
     expect(field('gapFlagThresholdHours').value).toBe('2.5');
     expect(field('utilisationTargetPercent').value).toBe('');
+
+    // The saved row is the new baseline, and a cleared target matches an empty one.
+    await edit('gapFlagThresholdHours', '4');
+    expect(save().disabled).toBe(false);
+    await edit('gapFlagThresholdHours', '2.5');
+    await edit('utilisationTargetPercent', '25');
+    expect(save().disabled).toBe(false);
+    await edit('utilisationTargetPercent', '');
+    expect(save().disabled).toBe(true);
 
     // A refused save keeps the draft on screen with the error, ready to retry.
     refuseNextSave = true;

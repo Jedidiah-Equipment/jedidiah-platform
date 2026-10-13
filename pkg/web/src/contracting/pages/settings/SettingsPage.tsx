@@ -90,10 +90,12 @@ function SettingsForm({ settings }: { settings: ContractingSettings }) {
           </fieldset>
           <ErrorMessage className="mt-4" error={save.error} fallbackMessage="Unable to save Settings." />
         </CardContent>
-        <form.Subscribe selector={(state) => ({ isDirty: state.isDirty, isSubmitting: state.isSubmitting })}>
-          {({ isDirty, isSubmitting }) => (
+        <form.Subscribe
+          selector={(state) => ({ isDefaultValue: state.isDefaultValue, isSubmitting: state.isSubmitting })}
+        >
+          {({ isDefaultValue, isSubmitting }) => (
             <CardFooter className="justify-end">
-              <Button type="submit" disabled={!isDirty || isSubmitting}>
+              <Button type="submit" disabled={isDefaultValue || isSubmitting}>
                 {isSubmitting ? 'Saving…' : 'Save'}
               </Button>
             </CardFooter>

@@ -92,13 +92,15 @@ export function LaborRatesEditDialog({ card, onClose }: { card: LaborRateCardVie
             ))}
           </fieldset>
           <ErrorMessage error={save.error} fallbackMessage="Unable to save Labor rates." />
-          <form.Subscribe selector={(state) => ({ isDirty: state.isDirty, isSubmitting: state.isSubmitting })}>
-            {({ isDirty, isSubmitting }) => (
+          <form.Subscribe
+            selector={(state) => ({ isDefaultValue: state.isDefaultValue, isSubmitting: state.isSubmitting })}
+          >
+            {({ isDefaultValue, isSubmitting }) => (
               <DialogFooter>
                 <Button type="button" variant="outline" disabled={isSubmitting} onClick={close}>
                   Cancel
                 </Button>
-                <Button type="submit" disabled={!isDirty || isSubmitting}>
+                <Button type="submit" disabled={isDefaultValue || isSubmitting}>
                   {isSubmitting ? 'Saving…' : 'Save'}
                 </Button>
               </DialogFooter>

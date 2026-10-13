@@ -7,6 +7,9 @@ import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
 import { cn } from '@/lib/utils.js';
 
+/** How often an open feed, or the unread dot beside its nav item, picks up activity recorded elsewhere. */
+export const ACTIVITY_REFETCH_INTERVAL_MS = 60_000;
+
 type ActivityTimelineItem = { id: string; occurredAt: DateIso; type: string };
 
 /** The slice of an infinite query the timeline reads: its state, and how to fetch the next page. */

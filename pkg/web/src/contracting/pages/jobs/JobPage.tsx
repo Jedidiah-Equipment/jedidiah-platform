@@ -10,7 +10,7 @@ import { AutosaveFormCard } from '@/components/form/AutosaveFormCard.js';
 import { useAutosaveForm } from '@/components/form/index.js';
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
 import { Button } from '@/components/ui/button.js';
-import { ActivityCard } from '@/contracting/components/ActivityCard.js';
+import { ActivityCard } from '@/contracting/components/activity/ActivityCard.js';
 import { ReasonDialog } from '@/contracting/components/ReasonDialog.js';
 import { useAiVerdictRefetchInterval } from '@/contracting/hooks/use-ai-verdict-polling.js';
 import { useResetOnOpen } from '@/contracting/hooks/use-contracting-write.js';

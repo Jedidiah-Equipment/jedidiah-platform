@@ -25,11 +25,11 @@ The note appears in the thread and in **Activity**. A Foreman can add a Job Note
 
 ## Catch up on the web
 
-1. Open **Activity**, directly under **Dashboard**. An orange dot beside it means something new arrived since you last read it.
+1. Open **Activity**.
 2. Choose **All**, **Notes**, **Breakdowns**, **Jobs** or **Hours** to narrow the feed, and type in the search box to find something, as on the phone. Scroll down to load older entries.
-3. Choose an entry to open its Breakdown, or its Job when you work Jobs on the web.
+3. To open the Breakdown or Job an entry is about, choose the entry, or the Job or Breakdown named under a note. A Job opens only for people who work Jobs on the web.
 
-The dot clears when you open **Activity** on **All** with nothing in the search box.
+The orange dot on **Activity** works as on the phone: it means something new arrived, and it clears when you open **Activity** on **All** with nothing in the search box.
 
 To add a note on the web, open the Job or the Breakdown, choose **Add Note** on its **Activity** card, write the note, and choose **Send**. A Job's card lists everything on that Job, its Breakdowns included; a Breakdown's card lists only that Breakdown.
 

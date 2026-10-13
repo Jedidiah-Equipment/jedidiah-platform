@@ -3,15 +3,13 @@ import type { ActivityFilter } from '@pkg/schema/contracting';
 import { keepPreviousData, useInfiniteQuery } from '@tanstack/react-query';
 import { useEffect, useMemo } from 'react';
 
-import { ActivityTimeline } from '@/components/activity/ActivityTimeline.js';
+import { ACTIVITY_REFETCH_INTERVAL_MS, ActivityTimeline } from '@/components/activity/ActivityTimeline.js';
 import { useCan } from '@/hooks/use-access.js';
 import { useTRPC } from '@/lib/trpc.js';
 
 import { ActivityEntry } from './ActivityEntry.js';
 
 const ACTIVITY_PAGE_SIZE = 20;
-/** How often an open feed picks up activity from the phones. */
-export const ACTIVITY_REFETCH_INTERVAL_MS = 60_000;
 
 /**
  * The Contracting feed, keyset-paged newest first: everything the reader reaches, or one Job's thread (its Breakdowns

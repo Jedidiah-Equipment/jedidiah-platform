@@ -3,8 +3,8 @@ import { canSeeActivity } from '@pkg/domain/contracting';
 import { useQuery } from '@tanstack/react-query';
 import type React from 'react';
 
+import { ACTIVITY_REFETCH_INTERVAL_MS } from '@/components/activity/ActivityTimeline.js';
 import { NavWarningDot } from '@/components/app-shell/NavWarningDot.js';
-import { ACTIVITY_REFETCH_INTERVAL_MS } from '@/contracting/pages/activity/ActivityFeed.js';
 import { DASHBOARD_REFETCH_INTERVAL_MS } from '@/contracting/pages/dashboard/dashboard-refresh.js';
 import { useAccess, useCan } from '@/hooks/use-access.js';
 import { useTRPC } from '@/lib/trpc.js';

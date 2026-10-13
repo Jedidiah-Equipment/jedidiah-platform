@@ -4,15 +4,12 @@ import { keepPreviousData, useInfiniteQuery } from '@tanstack/react-query';
 import type React from 'react';
 import { useEffect } from 'react';
 
-import { ActivityTimeline } from '@/components/activity/ActivityTimeline.js';
+import { ACTIVITY_REFETCH_INTERVAL_MS, ActivityTimeline } from '@/components/activity/ActivityTimeline.js';
 import { WEB_LIST_BATCH_SIZE } from '@/components/data-table/constants.js';
 import { cursorInfiniteQueryOptions, useCombinedCursorQueryPages } from '@/components/data-table/cursor-query.js';
 import { useTRPC } from '@/lib/trpc.js';
 
 import { JobActivityEntry } from './JobActivityEntry.js';
-
-/** How often an open feed picks up activity submitted elsewhere. */
-const ACTIVITY_REFETCH_INTERVAL_MS = 60_000;
 
 export const JobActivityFeed: React.FC<{
   filter?: JobActivityFilter;

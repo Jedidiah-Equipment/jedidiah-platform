@@ -9,9 +9,8 @@ import { useCallback, useState } from 'react';
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
 import { Input } from '@/components/ui/input.js';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs.js';
+import { ActivityFeed } from '@/contracting/components/activity/ActivityFeed.js';
 import { useTRPC } from '@/lib/trpc.js';
-
-import { ActivityFeed } from './ActivityFeed.js';
 
 export function ActivityPage() {
   const trpc = useTRPC();

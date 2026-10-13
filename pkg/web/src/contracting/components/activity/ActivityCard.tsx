@@ -1,3 +1,4 @@
+import type { presentAction } from '@pkg/domain/contracting';
 import type { UUID } from '@pkg/schema';
 import { BreakdownNoteText, JobNoteText } from '@pkg/schema/contracting';
 import { IconActivity, IconMessagePlus } from '@tabler/icons-react';
@@ -9,10 +10,10 @@ import { Button } from '@/components/ui/button.js';
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@/components/ui/card.js';
 import { useContractingWrite, useResetOnOpen } from '@/contracting/hooks/use-contracting-write.js';
 import { useQueryInvalidation } from '@/contracting/hooks/use-query-invalidation.js';
-import { ActivityFeed } from '@/contracting/pages/activity/ActivityFeed.js';
 import { useTRPC } from '@/lib/trpc.js';
 
-import { ReasonDialog } from './ReasonDialog.js';
+import { ReasonDialog } from '../ReasonDialog.js';
+import { ActivityFeed } from './ActivityFeed.js';
 
 type ActivityCardScope = { jobId: UUID } | { breakdownId: UUID };
 
@@ -23,7 +24,7 @@ export function ActivityCard({
 }: {
   scope: ActivityCardScope;
   /** The verdict behind the button: `sheet.action('addNote')`, or null to hide it. */
-  addNote: { disabled: boolean; title?: string | undefined } | null;
+  addNote: ReturnType<typeof presentAction>;
 }) {
   const [open, setOpen] = useState(false);
   return (

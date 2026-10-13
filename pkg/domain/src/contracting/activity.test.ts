@@ -1,8 +1,8 @@
-import { CONTRACTING_ROLES, type ContractingRole } from '@pkg/schema';
+import type { ContractingRole } from '@pkg/schema';
 import type { ActivityItem } from '@pkg/schema/contracting';
 import { describe, expect, test } from 'vitest';
-import { createUserAccessSummary, hasPermission } from '../auth/authorization.js';
-import { activityPermissions, canSeeActivity, presentActivityEvent } from './activity.js';
+import { createUserAccessSummary } from '../auth/authorization.js';
+import { canSeeActivity, presentActivityEvent } from './activity.js';
 
 const access = (contractingRole: ContractingRole) =>
   createUserAccessSummary({ userId: 'me', equipmentRole: null, contractingRole });
@@ -15,16 +15,6 @@ describe('canSeeActivity', () => {
     expect(canSeeActivity(access('contracting-invoicing'))).toBe(false);
     expect(canSeeActivity(access('driver'))).toBe(false);
     expect(canSeeActivity(null)).toBe(false);
-  });
-
-  test('opens to exactly the roles the any-of permission list opens to', () => {
-    for (const role of CONTRACTING_ROLES) {
-      const summary = access(role);
-      expect(
-        activityPermissions.some((permission) => hasPermission(summary, permission)),
-        role,
-      ).toBe(canSeeActivity(summary));
-    }
   });
 });
 

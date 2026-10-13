@@ -64,7 +64,10 @@ test('a Job Note lands in the Activity of everyone who reaches its Job, and invo
     ['sipho', 'foreman'],
     ['connor', 'workshop-manager'],
   ] as const) {
-    const feed = await context.createCaller(sessionAs(id, role)).contractingActivity.list({ jobId: context.jobId });
+    // The phone's infinite query sends tRPC's `direction` beside the list's own fields.
+    const feed = await context
+      .createCaller(sessionAs(id, role))
+      .contractingActivity.list({ jobId: context.jobId, direction: 'forward' } as never);
     expect(feed, role).toMatchObject({ items: [{ type: 'job-note', id: note.id }], nextCursor: null });
   }
 

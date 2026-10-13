@@ -124,17 +124,16 @@ export type ActivityItemType = ActivityItem['type'];
 /** Keyset cursor: the last item of the previous page. Offsets re-scan the union; this never does. */
 export const ActivityCursor = z.object({ occurredAt: DateIso, id: UUID }).strict();
 export type ActivityCursor = z.infer<typeof ActivityCursor>;
-export const ActivityListInput = z
-  .object({
-    filter: ActivityFilter.default('all'),
-    search: SearchText.optional(),
-    jobId: UUID.optional(),
-    breakdownId: UUID.optional(),
-    limit: z.coerce.number().int().min(1).max(100).default(20),
-    /** Null is tRPC's initial page param. */
-    cursor: ActivityCursor.nullable().optional(),
-  })
-  .strict();
+/** Not strict: an infinite query also sends tRPC's own `direction`, which the list ignores. */
+export const ActivityListInput = z.object({
+  filter: ActivityFilter.default('all'),
+  search: SearchText.optional(),
+  jobId: UUID.optional(),
+  breakdownId: UUID.optional(),
+  limit: z.coerce.number().int().min(1).max(100).default(20),
+  /** Null is tRPC's initial page param. */
+  cursor: ActivityCursor.nullable().optional(),
+});
 export type ActivityListInput = z.infer<typeof ActivityListInput>;
 /** No total: counting the union grows slower every month, and nothing shows it. */
 export const ActivityListResult = z.object({ items: z.array(ActivityItem), nextCursor: ActivityCursor.nullable() });

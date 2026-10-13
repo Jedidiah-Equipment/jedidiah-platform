@@ -10,13 +10,13 @@ The phone app sends the workshop a push notification when a Breakdown is reporte
 
 If you chose **Don't Allow**, the app does not ask again by itself.
 
-1. Tap the **⋯** menu at the top right, then **Settings**.
+1. Open the menu and choose **Settings**.
 2. Under **Permissions**, tap **Allow** beside **Notifications**. If the button reads **Open Settings**, tap it, turn **Notifications** on in the phone's settings, and come back to the app.
 3. **Notifications** reads **Allowed**; alerts start arriving from then on.
 
 ## Mute an alert
 
-1. Tap the **⋯** menu at the top right, then **Settings**.
+1. Open the menu and choose **Settings**.
 2. Under **Notifications**, turn off the alert you no longer want, such as **Code Green breakdowns**.
 
 The other alerts keep coming. See [Choose your alerts](./choose-your-alerts).

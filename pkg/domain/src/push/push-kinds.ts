@@ -1,13 +1,11 @@
 import { type AppRole, type Business, type PushKind, pushKinds, type UserAccessSummary } from '@pkg/schema';
 import { getBusinessRole } from '../auth/authorization.js';
 
-/** The one Android channel workshop pushes ring on; the native default channel carries the same id. */
-export const WORKSHOP_PUSH_CHANNEL_ID = 'workshop';
-
 /** An Android channel a Push Kind rings on, with the name the phone's notification settings show. */
 export type PushChannel = { id: string; name: string };
 
-const WORKSHOP_PUSH_CHANNEL: PushChannel = { id: WORKSHOP_PUSH_CHANNEL_ID, name: 'Workshop' };
+// The native default channel (`defaultChannel` in app.config.ts) carries the same id.
+const WORKSHOP_PUSH_CHANNEL: PushChannel = { id: 'workshop', name: 'Workshop' };
 
 export type PushKindDefinition = {
   business: Business;

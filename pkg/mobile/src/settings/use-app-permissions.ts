@@ -1,4 +1,3 @@
-import { createUserAccessSummaryForUser, isPushRecipient } from '@pkg/domain';
 import { getRecordingPermissionsAsync, requestRecordingPermissionsAsync } from 'expo-audio';
 import { Camera } from 'expo-camera';
 import * as Device from 'expo-device';
@@ -6,17 +5,17 @@ import * as Linking from 'expo-linking';
 import * as Location from 'expo-location';
 import * as MediaLibrary from 'expo-media-library';
 import * as Notifications from 'expo-notifications';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { AppState, Platform } from 'react-native';
 
-import { useAuthSession } from '@/lib/auth-session';
 import { addBreadcrumb } from '@/lib/observability';
-import { useRequestNotifications } from '@/lib/push/use-push-registration';
+import { usePushAudience, useRequestNotifications } from '@/lib/push/use-push-registration';
 import {
   APP_PERMISSION_KEYS,
   type AppPermissionKey,
   type AppPermissionReading,
   type AppPermissionRow,
+  type AppPermissions,
   appPermissionRow,
 } from './app-permission-rows';
 
@@ -45,13 +44,8 @@ const ASKERS: Record<Exclude<AppPermissionKey, 'notifications'>, () => Promise<u
  * person may have changed them in the phone's settings. Notifications are listed only for someone a Push Kind can
  * reach, the same people sign-in asks.
  */
-export function useAppPermissions(): {
-  rows: AppPermissionRow[];
-  ask: (key: AppPermissionKey) => Promise<void>;
-  openSettings: () => Promise<void>;
-} {
-  const { user } = useAuthSession();
-  const isRecipient = useMemo(() => isPushRecipient(createUserAccessSummaryForUser(user)), [user]);
+export function useAppPermissions(): AppPermissions {
+  const { mayAsk: isRecipient } = usePushAudience();
   const requestNotifications = useRequestNotifications();
   const [rows, setRows] = useState<AppPermissionRow[]>([]);
 

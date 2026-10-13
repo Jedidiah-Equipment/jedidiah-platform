@@ -1,10 +1,4 @@
-import {
-  createUserAccessSummaryForUser,
-  groupBy,
-  PUSH_KINDS,
-  pushKindsFor,
-  statusBadgeColorClassNames,
-} from '@pkg/domain';
+import { groupBy, PUSH_KINDS, statusBadgeColorClassNames } from '@pkg/domain';
 import type { PushKind, PushPreferences } from '@pkg/schema';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { router } from 'expo-router';
@@ -23,6 +17,7 @@ import { Text } from '@/components/ui/text';
 import { useAppToast } from '@/components/ui/toast';
 import { useAuthSession } from '@/lib/auth-session';
 import { BUSINESS_LABELS } from '@/lib/business-home';
+import { usePushAudience } from '@/lib/push/use-push-registration';
 import { useTRPC } from '@/lib/trpc';
 import type { AppPermissionRow } from './app-permission-rows';
 import { useAppPermissions } from './use-app-permissions';
@@ -90,8 +85,7 @@ function PermissionRow({ row, onAction }: { row: AppPermissionRow; onAction: () 
 }
 
 function NotificationsCard() {
-  const { user } = useAuthSession();
-  const kinds = useMemo(() => pushKindsFor(createUserAccessSummaryForUser(user)), [user]);
+  const { kinds } = usePushAudience();
   const groups = useMemo(() => [...groupBy(kinds, (kind) => PUSH_KINDS[kind].business)], [kinds]);
   const trpc = useTRPC();
   const queryClient = useQueryClient();
@@ -122,8 +116,9 @@ function NotificationsCard() {
     );
 
   const muted = preferences.data?.muted;
+  // One save at a time, so a failed save's rollback never undoes a later toggle.
   const toggle = (kind: PushKind, on: boolean) => {
-    if (!muted) return;
+    if (!muted || save.isPending) return;
     save.mutate({ muted: on ? muted.filter((other) => other !== kind) : [...muted, kind] });
   };
 
@@ -144,7 +139,7 @@ function NotificationsCard() {
               </View>
               <Switch
                 accessibilityLabel={PUSH_KINDS[kind].label}
-                disabled={!muted}
+                disabled={!muted || save.isPending}
                 onValueChange={(on: boolean) => toggle(kind, on)}
                 value={muted ? !muted.includes(kind) : true}
               />

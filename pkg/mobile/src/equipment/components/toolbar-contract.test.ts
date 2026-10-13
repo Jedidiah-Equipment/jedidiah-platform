@@ -159,8 +159,9 @@ type ToolbarKind = 'main' | 'secondary';
 type ToolbarContract = { kind: ToolbarKind; owner: string };
 
 // Equipment pages go through their business wrapper; Contracting has no business-specific actions yet, so
-// its pages render the shared frame directly, as do the business-blind pages (App Settings).
+// its pages render the shared frame directly, as do the business-blind pages.
 const SHARED_TOOLBARS = { main: 'MainToolbar', secondary: 'SecondaryToolbar' } as const;
+const BUSINESS_BLIND_ROUTES = new Set(['settings.tsx']);
 const TOOLBAR_COMPONENTS = {
   contracting: SHARED_TOOLBARS,
   equipment: { main: 'MainTabToolbar', secondary: 'SecondaryPageToolbar' },
@@ -172,7 +173,8 @@ function toolbar(kind: ToolbarKind, owner: string): ToolbarContract {
 
 function toolbarComponent(route: string, kind: ToolbarKind): string {
   const business = route.split('/')[0];
-  if (business !== 'contracting' && business !== 'equipment') return SHARED_TOOLBARS[kind];
+  if (BUSINESS_BLIND_ROUTES.has(route)) return SHARED_TOOLBARS[kind];
+  if (business !== 'contracting' && business !== 'equipment') throw new Error(`No business toolbar for ${route}`);
   return TOOLBAR_COMPONENTS[business][kind];
 }
 

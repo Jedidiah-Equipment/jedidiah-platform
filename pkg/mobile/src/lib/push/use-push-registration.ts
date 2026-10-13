@@ -1,4 +1,5 @@
-import { createUserAccessSummaryForUser, isPushRecipient, type PushChannel, pushChannelsFor } from '@pkg/domain';
+import { createUserAccessSummaryForUser, type PushChannel, pushChannelsFor, pushKindsFor } from '@pkg/domain';
+import type { PushKind } from '@pkg/schema';
 import { useMutation } from '@tanstack/react-query';
 import { useCallback, useEffect, useMemo } from 'react';
 import { AppState } from 'react-native';
@@ -8,13 +9,27 @@ import { addBreadcrumb } from '../observability';
 import { useTRPC } from '../trpc';
 import { registerForPush, requestNotificationsAndRegister } from './register-push';
 
-/** Whom the signed-in person's Push Kinds make them: asked for notifications at all, and on which channels. */
-function usePushAudience(): { userId: string; channels: readonly PushChannel[]; mayAsk: boolean } {
+export type PushAudience = {
+  userId: string;
+  /** The Push Kinds the signed-in person's roles can receive, in registry order. */
+  kinds: readonly PushKind[];
+  channels: readonly PushChannel[];
+  /** Whether any kind reaches them: the only people asked for notification permission. */
+  mayAsk: boolean;
+};
+
+export function usePushAudience(): PushAudience {
   const { user } = useAuthSession();
   return useMemo(() => {
     const access = createUserAccessSummaryForUser(user);
-    return { userId: user.id, channels: pushChannelsFor(access), mayAsk: isPushRecipient(access) };
+    const kinds = pushKindsFor(access);
+    return { userId: user.id, kinds, channels: pushChannelsFor(access), mayAsk: kinds.length > 0 };
   }, [user]);
+}
+
+function useRegisterPushToken() {
+  const trpc = useTRPC();
+  return useMutation(trpc.pushTokens.register.mutationOptions()).mutateAsync;
 }
 
 /**
@@ -24,8 +39,7 @@ function usePushAudience(): { userId: string; channels: readonly PushChannel[]; 
  * only to someone a Push Kind can reach.
  */
 export function usePushRegistration(): void {
-  const trpc = useTRPC();
-  const { mutateAsync: register } = useMutation(trpc.pushTokens.register.mutationOptions());
+  const register = useRegisterPushToken();
   const { userId, channels, mayAsk } = usePushAudience();
 
   useEffect(() => {
@@ -54,8 +68,7 @@ export function usePushRegistration(): void {
 
 /** App Settings' Allow for notifications: the OS prompt again when it is still on offer, then this install claimed. */
 export function useRequestNotifications(): () => Promise<void> {
-  const trpc = useTRPC();
-  const { mutateAsync: register } = useMutation(trpc.pushTokens.register.mutationOptions());
+  const register = useRegisterPushToken();
   const { userId, channels } = usePushAudience();
 
   return useCallback(async () => {

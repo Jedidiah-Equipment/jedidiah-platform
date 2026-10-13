@@ -1,6 +1,7 @@
 import type { StatusBadgeColor } from '@pkg/domain';
 
-export type AppPermissionKey = 'notifications' | 'camera' | 'microphone' | 'location' | 'photos';
+export const APP_PERMISSION_KEYS = ['notifications', 'camera', 'microphone', 'location', 'photos'] as const;
+export type AppPermissionKey = (typeof APP_PERMISSION_KEYS)[number];
 
 /** What the OS reports for one permission, or that this phone has nothing to ask for. */
 export type AppPermissionReading = { status: string; canAskAgain?: boolean } | 'unavailable';
@@ -16,13 +17,11 @@ export type AppPermissionRow = {
   action: AppPermissionAction | null;
 };
 
-export const APP_PERMISSION_KEYS: readonly AppPermissionKey[] = [
-  'notifications',
-  'camera',
-  'microphone',
-  'location',
-  'photos',
-];
+export type AppPermissions = {
+  rows: AppPermissionRow[];
+  ask: (key: AppPermissionKey) => Promise<void>;
+  openSettings: () => Promise<void>;
+};
 
 const PERMISSIONS: Record<AppPermissionKey, { label: string; description: string }> = {
   notifications: { label: 'Notifications', description: 'Alerts the app sends you.' },

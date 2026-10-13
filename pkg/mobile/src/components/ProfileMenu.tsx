@@ -52,8 +52,12 @@ export function ProfileMenu({
   const insets = useSafeAreaInsets();
   const showToast = useAppToast();
   const helpOrigin = docsOrigin;
-  const showBusinessSwitcher = hasBothBusinessAccess(getSessionRoleSlots(useAuthSession()));
-  const otherBusiness = currentBusiness(usePathname()) === 'contracting' ? 'equipment' : 'contracting';
+  const pathname = usePathname();
+  // App Settings belongs to neither business, so it offers no switch and does not reopen itself.
+  const onAppSettings = pathname === '/settings';
+  const session = useAuthSession();
+  const showBusinessSwitcher = !onAppSettings && hasBothBusinessAccess(getSessionRoleSlots(session));
+  const otherBusiness = currentBusiness(pathname) === 'contracting' ? 'equipment' : 'contracting';
   const appVersion = formatAppVersion(Constants.expoConfig?.version);
 
   return (
@@ -89,21 +93,23 @@ export function ProfileMenu({
         </View>
       ) : null}
 
-      <View className="border-b border-border p-1.5">
-        <Pressable
-          accessibilityRole="button"
-          className="flex-row items-center gap-3 rounded-xl px-3 py-3 active:bg-muted"
-          onPress={() => {
-            onClose();
-            router.push('/settings');
-          }}
-        >
-          <Icon className="text-muted-foreground" icon={IconSettings} size={18} />
-          <Text className="text-sm text-surface-foreground" weight="semibold">
-            Settings
-          </Text>
-        </Pressable>
-      </View>
+      {onAppSettings ? null : (
+        <View className="border-b border-border p-1.5">
+          <Pressable
+            accessibilityRole="button"
+            className="flex-row items-center gap-3 rounded-xl px-3 py-3 active:bg-muted"
+            onPress={() => {
+              onClose();
+              router.push('/settings');
+            }}
+          >
+            <Icon className="text-muted-foreground" icon={IconSettings} size={18} />
+            <Text className="text-sm text-surface-foreground" weight="semibold">
+              Settings
+            </Text>
+          </Pressable>
+        </View>
+      )}
 
       {helpTopic && helpOrigin ? (
         <View className="border-b border-border p-1.5">

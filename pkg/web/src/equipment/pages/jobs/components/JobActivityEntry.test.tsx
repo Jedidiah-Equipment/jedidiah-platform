@@ -214,6 +214,7 @@ function buildItem(
 ): GeneralFeedbackActivityItem {
   return {
     type: 'general-feedback',
+    purchaseOrder: null,
     id: '10000000-0000-4000-8000-000000000000' as GeneralFeedbackActivityItem['id'],
     occurredAt: '2026-08-10T09:00:00.000Z' as GeneralFeedbackActivityItem['occurredAt'],
     job: {

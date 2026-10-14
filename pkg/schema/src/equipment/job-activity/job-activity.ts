@@ -29,7 +29,7 @@ export const JobActivityJobRef = z.object({
 export type GeneralFeedbackActivityItem = z.infer<typeof GeneralFeedbackActivityItem>;
 export const GeneralFeedbackActivityItem = z.object({
   type: z.literal('general-feedback'),
-  purchaseOrder: FeedbackPurchaseOrder.nullable().optional(),
+  purchaseOrder: FeedbackPurchaseOrder.nullable(),
   id: UUID,
   occurredAt: DateIso,
   job: JobActivityJobRef,

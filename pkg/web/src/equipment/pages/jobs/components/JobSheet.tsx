@@ -36,6 +36,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs.j
 import { StockBadge } from '@/equipment/components/common/StockBadge.js';
 import { DocumentCardList } from '@/equipment/components/documents/DocumentCardList.js';
 import { GiveFeedbackButton } from '@/equipment/components/feedback/GiveFeedbackButton.js';
+import { PurchaseOrderFeedbackButton } from '@/equipment/components/feedback/PurchaseOrderFeedbackButton.js';
 import { OfferingThumbnail } from '@/equipment/components/thumbnail/OfferingThumbnail.js';
 import { useQueryInvalidation } from '@/equipment/hooks/use-query-invalidation.js';
 import { JobVarianceTab } from '@/equipment/pages/inventory/job-variance/components/JobVarianceTab.js';
@@ -205,11 +206,7 @@ const JobDetailsTab: React.FC<{ canOpenQuote: boolean; job: JobDetail; onOpenQuo
       <Section
         action={
           <div className="flex flex-wrap gap-2">
-            <GiveFeedbackButton
-              purchaseOrders={job.purchaseOrders}
-              subject={{ subjectType: 'job', jobId: job.id }}
-              subjectLabel={job.code}
-            />
+            <PurchaseOrderFeedbackButton job={job} />
             {!isJobCancelled(job) ? (
               <GiveFeedbackButton subject={{ subjectType: 'job', jobId: job.id }} subjectLabel={job.code} />
             ) : null}

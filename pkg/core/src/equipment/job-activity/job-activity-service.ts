@@ -50,6 +50,7 @@ import { and, asc, desc, eq, inArray, or, type SQL, sql } from 'drizzle-orm';
 import { unionAll } from 'drizzle-orm/pg-core';
 
 import { getActivityView, setActivityView } from '../../users/activity-view-service.js';
+import { feedbackPurchaseOrderRelation, toFeedbackPurchaseOrder } from '../feedback/feedback-purchase-order.js';
 
 /**
  * The said half of the feed. Quote general feedback is still private to the `/feedback` inbox and
@@ -335,7 +336,7 @@ const jobActivityJobRead = {
 } as const;
 
 const feedbackReadRelations = {
-  purchaseOrder: { columns: { id: true, code: true }, with: { supplier: { columns: { companyName: true } } } },
+  purchaseOrder: feedbackPurchaseOrderRelation,
   submitter: {
     columns: {
       email: true,
@@ -361,7 +362,9 @@ export async function listJobActivity({
 }): Promise<JobActivityListResult> {
   const { includeAudit, includeFeedback } = activitySources(input.filter);
   const [feedbackTotal, auditTotal, keys] = await Promise.all([
-    includeFeedback ? db.$count(feedbackActivityKeys(db, input).as('feedback_count')) : Promise.resolve(0),
+    includeFeedback
+      ? db.$count(feedbackActivityKeys(db, jobGeneralFeedbackFilter(input)).as('feedback_count'))
+      : Promise.resolve(0),
     includeAudit ? db.$count(auditEvents, jobChangeEventFilter(input)) : Promise.resolve(0),
     findActivityKeys(db, input),
   ]);
@@ -383,7 +386,7 @@ export async function listJobActivity({
 async function findActivityKeys(db: Db, input: JobActivityListInput): Promise<ActivityKey[]> {
   const { includeAudit, includeFeedback } = activitySources(input.filter);
   const keys = unionAll(
-    feedbackActivityKeys(db, input, includeFeedback),
+    feedbackActivityKeys(db, includeFeedback ? jobGeneralFeedbackFilter(input) : sql`false`),
     db
       .select({
         id: auditEvents.id,
@@ -410,8 +413,11 @@ async function findActivityKeys(db: Db, input: JobActivityListInput): Promise<Ac
   );
 }
 
-/** One row per currently linked Job, without duplicating the Feedback record. */
-function feedbackActivityKeys(db: Db, input: JobActivityListInput, enabled = true) {
+/**
+ * One row per Job a note shows on: its own Job, or each Job its Purchase Order is linked to now. The joins are what
+ * `feedbackJobId` and the PO search read, so every feedback filter runs through here.
+ */
+function feedbackActivityKeys(db: Db, where: SQL) {
   return db
     .select({
       id: feedback.id,
@@ -422,7 +428,7 @@ function feedbackActivityKeys(db: Db, input: JobActivityListInput, enabled = tru
     .from(feedback)
     .leftJoin(purchaseOrderJobLinks, eq(purchaseOrderJobLinks.purchaseOrderId, feedback.purchaseOrderId))
     .leftJoin(purchaseOrders, eq(purchaseOrders.id, feedback.purchaseOrderId))
-    .where(enabled ? jobGeneralFeedbackFilter(input) : sql`false`);
+    .where(where);
 }
 
 function activitySources(filter: JobActivityListInput['filter']): {
@@ -671,9 +677,7 @@ function mapGeneralFeedbackActivityItem(row: FeedbackActivityRow, job: JobActivi
     id: row.id,
     occurredAt: row.createdAt.toISOString(),
     job: mapJobActivityJobRef(job),
-    purchaseOrder: row.purchaseOrder
-      ? { id: row.purchaseOrder.id, code: row.purchaseOrder.code, supplierName: row.purchaseOrder.supplier.companyName }
-      : null,
+    purchaseOrder: toFeedbackPurchaseOrder(row.purchaseOrder),
     feedback: {
       submitter: {
         email: row.submitter.email,

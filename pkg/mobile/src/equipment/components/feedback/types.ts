@@ -51,13 +51,8 @@ export const FEEDBACK_DEFAULT_VALUES: FeedbackFormValues = {
 };
 
 /** Map the form values to the API payload. Mobile feedback is always about a job. */
-export function toSubmitInput(
-  values: FeedbackFormValues,
-  subjectOrJobId: string | FeedbackSubmitInput['subject'],
-): FeedbackSubmitInput {
-  const subject =
-    typeof subjectOrJobId === 'string' ? { subjectType: 'job' as const, jobId: subjectOrJobId } : subjectOrJobId;
-  if (subject.subjectType === 'purchase-order') return { kind: 'general', subject, text: values.text };
+export function toSubmitInput(values: FeedbackFormValues, jobId: string): FeedbackSubmitInput {
+  const subject = { subjectType: 'job', jobId } as const;
 
   if (values.kind === 'corrective-feedback-department') {
     return { kind: values.kind, subject, text: values.text, departments: values.departments };

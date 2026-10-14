@@ -89,6 +89,7 @@ function buildItem(occurredAt: string, feedback = false): JobActivityItem {
     ...(feedback
       ? {
           type: 'general-feedback',
+          purchaseOrder: null,
           feedback: {
             submitter: { email: 'thabo@example.com', id: 'user-1', name: 'Thabo Mokoena', thumbnailDataUrl: null },
             text: 'Paint bay handover was missed.',

@@ -163,7 +163,7 @@ export const FeedbackPurchaseOrder = z.object({ id: UUID, code: PurchaseOrderCod
 
 export type JobFeedbackItem = z.infer<typeof JobFeedbackItem>;
 export const JobFeedbackItem = z.object({
-  purchaseOrder: FeedbackPurchaseOrder.nullable().optional(),
+  purchaseOrder: FeedbackPurchaseOrder.nullable(),
   id: UUID,
   createdAt: DateIso,
   status: FeedbackStatus,

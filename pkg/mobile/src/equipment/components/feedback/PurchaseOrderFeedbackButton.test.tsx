@@ -47,7 +47,7 @@ vi.mock('@/components/form/fields/SegmentedField', () => ({ SegmentedField: 'Seg
 vi.mock('@/components/form/fields/TextField', () => ({ TextField: 'TextField' }));
 
 import { TRPCProvider } from '@/lib/trpc';
-import { GiveFeedbackButton } from './GiveFeedbackButton';
+import { PurchaseOrderFeedbackButton } from './PurchaseOrderFeedbackButton';
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 const cleanups: Array<() => void> = [];
@@ -59,7 +59,6 @@ const order = FeedbackPurchaseOrder.parse({
   code: 42,
   supplierName: 'Mount Fifty',
 });
-const job = { jobId: '00000000-0000-4000-8000-000000000001', jobCode: 'JOB-00001' };
 
 test('hides Send PO Feedback without linked orders', async () => {
   const renderer = await mount([]);
@@ -112,7 +111,7 @@ async function mount(purchaseOrders: FeedbackPurchaseOrder[], sent: unknown[] = 
     renderer = create(
       <QueryClientProvider client={client}>
         <TRPCProvider queryClient={client} trpcClient={trpcClient}>
-          <GiveFeedbackButton {...job} purchaseOrders={purchaseOrders} />
+          <PurchaseOrderFeedbackButton jobCode="JOB-00001" purchaseOrders={purchaseOrders} />
         </TRPCProvider>
       </QueryClientProvider>,
     );

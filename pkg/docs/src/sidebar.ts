@@ -100,6 +100,7 @@ export const EQUIPMENT_SECTIONS: DocsSection[] = [
     text: 'Inventory tasks',
     items: [
       { text: 'Work the stores tablet', link: '/inventory/work-the-stores-tablet' },
+      { text: 'Send Feedback on a Purchase Order', link: '/inventory/send-feedback-on-a-purchase-order' },
       { text: 'Approve a Purchase Order', link: '/inventory/approve-a-purchase-order' },
       { text: 'Add a Custom Line to a Purchase Order', link: '/inventory/add-a-custom-line-to-a-purchase-order' },
       { text: 'Receive a delivery', link: '/inventory/post-a-receipt' },

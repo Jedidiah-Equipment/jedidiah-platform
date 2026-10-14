@@ -17,6 +17,7 @@ import { ActivityEntryShell } from '@/components/activity/ActivityEntryShell';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { CustomerName } from '@/equipment/components/CustomerName';
+import { PurchaseOrderFeedbackMarker } from '@/equipment/components/feedback/PurchaseOrderFeedbackMarker';
 import { OfferingAvatar } from '@/equipment/components/OfferingAvatar';
 import { useColorMode } from '@/theme/use-color-mode';
 
@@ -83,6 +84,7 @@ function FeedbackEntry({
             </Pressable>
           ) : null}
           <JobDetail item={item} linkToJob={linkToJob} />
+          {item.purchaseOrder ? <PurchaseOrderFeedbackMarker purchaseOrder={item.purchaseOrder} /> : null}
         </View>
       </View>
     </ActivityEntryShell>

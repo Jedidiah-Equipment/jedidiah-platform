@@ -204,9 +204,16 @@ const JobDetailsTab: React.FC<{ canOpenQuote: boolean; job: JobDetail; onOpenQuo
       <JobDepartmentTimingCards job={job} />
       <Section
         action={
-          !isJobCancelled(job) ? (
-            <GiveFeedbackButton subject={{ subjectType: 'job', jobId: job.id }} subjectLabel={job.code} />
-          ) : undefined
+          <div className="flex flex-wrap gap-2">
+            <GiveFeedbackButton
+              purchaseOrders={job.purchaseOrders}
+              subject={{ subjectType: 'job', jobId: job.id }}
+              subjectLabel={job.code}
+            />
+            {!isJobCancelled(job) ? (
+              <GiveFeedbackButton subject={{ subjectType: 'job', jobId: job.id }} subjectLabel={job.code} />
+            ) : null}
+          </div>
         }
         icon={<IconActivity />}
         title="Activity"

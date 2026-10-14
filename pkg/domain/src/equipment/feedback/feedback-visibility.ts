@@ -14,6 +14,7 @@ export type FeedbackVisibilityNotice = {
 const feedbackSubjectNouns = {
   job: 'Job',
   quote: 'Quote',
+  'purchase-order': 'Purchase Order',
 } as const satisfies Record<FeedbackSubjectType, string>;
 
 export function getFeedbackVisibilityNotice(
@@ -21,6 +22,14 @@ export function getFeedbackVisibilityNotice(
   subjectType: FeedbackSubjectType,
 ): FeedbackVisibilityNotice {
   if (kind === 'general') {
+    if (subjectType === 'purchase-order') {
+      return {
+        description: 'Everyone who can view this Purchase Order or its linked Jobs will see it.',
+        submitLabel: 'Submit Feedback',
+        title: 'PUBLIC',
+        visibility: 'public',
+      };
+    }
     if (subjectType === 'quote') {
       return {
         description: 'Only Super Administrators will see this feedback.',

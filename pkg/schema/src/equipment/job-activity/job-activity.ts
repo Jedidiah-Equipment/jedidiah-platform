@@ -8,7 +8,7 @@ import { UUID } from '../../common/uuid.js';
 import { WorkItemDepartment } from '../common/departments.js';
 import { JobCode } from '../common/public-code.js';
 import { DocumentContentType, DocumentFilename } from '../documents/document.js';
-import { FeedbackSubmitter, FeedbackText } from '../feedback/feedback.js';
+import { FeedbackPurchaseOrder, FeedbackSubmitter, FeedbackText } from '../feedback/feedback.js';
 import { JobDescription } from '../jobs/job.js';
 import { QuoteKind } from '../quotes/quote-shared.js';
 
@@ -29,6 +29,7 @@ export const JobActivityJobRef = z.object({
 export type GeneralFeedbackActivityItem = z.infer<typeof GeneralFeedbackActivityItem>;
 export const GeneralFeedbackActivityItem = z.object({
   type: z.literal('general-feedback'),
+  purchaseOrder: FeedbackPurchaseOrder.nullable().optional(),
   id: UUID,
   occurredAt: DateIso,
   job: JobActivityJobRef,

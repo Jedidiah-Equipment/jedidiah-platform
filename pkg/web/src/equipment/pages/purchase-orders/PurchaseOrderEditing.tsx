@@ -60,12 +60,14 @@ export function PurchaseOrderEditing({ purchaseOrder, children }: PurchaseOrderE
   const canPrintPartLabels =
     hasPermission(accessQuery.data, 'equipment_part:read') ||
     hasPermission(accessQuery.data, 'equipment_inventory:read');
-  const { invalidatePurchaseOrders, invalidateJobs } = useQueryInvalidation();
+  const { invalidatePurchaseOrders, invalidateJobs, invalidateFeedback, invalidateJobActivity } =
+    useQueryInvalidation();
   const [isLifecycleActionPending, setIsLifecycleActionPending] = useState(false);
 
   const saveMutation = useMutation(
     trpc.purchaseOrders.saveDraft.mutationOptions({
-      onSuccess: () => Promise.all([invalidatePurchaseOrders(), invalidateJobs()]),
+      onSuccess: () =>
+        Promise.all([invalidatePurchaseOrders(), invalidateJobs(), invalidateFeedback(), invalidateJobActivity()]),
     }),
   );
   const editor = useAutosaveForm({

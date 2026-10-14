@@ -35,6 +35,7 @@ export function ActivityTimeline<
   TFilter extends string,
 >({
   query,
+  getItemKey = activityKey,
   items,
   controls,
   emptyMessage,
@@ -43,6 +44,7 @@ export function ActivityTimeline<
   renderItem,
   underSecondaryToolbar = false,
 }: {
+  getItemKey?: (item: TItem) => string;
   query: ActivityTimelineQuery;
   items: readonly TItem[];
   /** The filter and search row; absent on a scoped thread that shows everything. */
@@ -98,7 +100,7 @@ export function ActivityTimeline<
       // NativeWind does not remap contentContainerClassName for SectionList.
       contentContainerStyle={underSecondaryToolbar ? SECONDARY_PAGE_CONTENT_STYLE : MAIN_PAGE_CONTENT_STYLE}
       initialNumToRender={12}
-      keyExtractor={activityKey}
+      keyExtractor={getItemKey}
       keyboardShouldPersistTaps="handled"
       ListEmptyComponent={
         <View className="pt-4">

@@ -9,6 +9,19 @@ function values(overrides: Partial<FeedbackFormValuesType> = {}): FeedbackFormVa
 }
 
 describe('toSubmitInput', () => {
+  it('submits PO feedback as General Feedback without corrective targets', () => {
+    expect(
+      toSubmitInput(values({ kind: 'corrective-feedback-user', userIds: ['ignored'] }), {
+        subjectType: 'purchase-order',
+        purchaseOrderId: JOB_ID,
+      }),
+    ).toEqual({
+      kind: 'general',
+      subject: { subjectType: 'purchase-order', purchaseOrderId: JOB_ID },
+      text: 'It works',
+    });
+  });
+
   it('maps general feedback to a job subject without targets', () => {
     expect(toSubmitInput(values(), JOB_ID)).toEqual({
       kind: 'general',

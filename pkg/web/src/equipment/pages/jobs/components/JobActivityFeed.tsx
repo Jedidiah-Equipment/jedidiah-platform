@@ -7,6 +7,7 @@ import { useEffect } from 'react';
 import { ACTIVITY_REFETCH_INTERVAL_MS, ActivityTimeline } from '@/components/activity/ActivityTimeline.js';
 import { WEB_LIST_BATCH_SIZE } from '@/components/data-table/constants.js';
 import { cursorInfiniteQueryOptions, useCombinedCursorQueryPages } from '@/components/data-table/cursor-query.js';
+import { useCan } from '@/hooks/use-access.js';
 import { useTRPC } from '@/lib/trpc.js';
 
 import { JobActivityEntry } from './JobActivityEntry.js';
@@ -19,6 +20,7 @@ export const JobActivityFeed: React.FC<{
   search?: string;
 }> = ({ filter = 'all', hideDetail = false, jobId, onGlobalFeedViewed, search = '' }) => {
   const trpc = useTRPC();
+  const purchaseOrderAccess = useCan('equipment_purchase_order:read');
   const activityQuery = useInfiniteQuery(
     trpc.jobActivity.list.infiniteQueryOptions(
       { filter, limit: WEB_LIST_BATCH_SIZE, search, ...(jobId ? { jobId } : {}) },
@@ -43,8 +45,11 @@ export const JobActivityFeed: React.FC<{
       emptyMessage={getEmptyMessage({ filter, filteredToJob: jobId !== undefined, searching: search.length > 0 })}
       errorMessage="Unable to load job activity."
       items={items}
+      getItemKey={(item) => `${item.type}:${item.id}:${item.job.id}`}
       query={activityQuery}
-      renderItem={(item) => <JobActivityEntry hideDetail={hideDetail} item={item} />}
+      renderItem={(item) => (
+        <JobActivityEntry canReadPurchaseOrder={purchaseOrderAccess.can} hideDetail={hideDetail} item={item} />
+      )}
     />
   );
 };

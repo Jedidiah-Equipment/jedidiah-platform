@@ -95,6 +95,7 @@ export function JobActivityFeed({
             : { title: 'No activity matches', detail: 'Try another search or filter.' }
         }
         items={items}
+        getItemKey={(item) => `${item.type}:${item.id}:${item.job.id}`}
         listHeader={listHeader}
         onViewedLatest={onViewedLatest}
         query={activity}

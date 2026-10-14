@@ -8,6 +8,7 @@ import { Text } from '@/components/ui/text';
 import { FactCard } from '@/equipment/components/bays/job-facts';
 import { GiveFeedbackButton } from '@/equipment/components/feedback/GiveFeedbackButton';
 import { useTRPC } from '@/lib/trpc';
+import { PurchaseOrderFeedbackMarker } from './PurchaseOrderFeedbackMarker';
 
 /**
  * A Job's public (general) feedback, newest first, read-only. Mirrors web's `JobFeedbackList`;
@@ -39,6 +40,7 @@ export function JobFeedbackList({ jobCode, jobId }: { jobCode: string; jobId: st
               <DateText className="text-[10px] text-muted-foreground" date={item.createdAt} mono />
             </View>
             <Text className="text-sm leading-5 text-surface-foreground">{item.text}</Text>
+            {item.purchaseOrder ? <PurchaseOrderFeedbackMarker purchaseOrder={item.purchaseOrder} /> : null}
           </View>
         ))}
       </View>

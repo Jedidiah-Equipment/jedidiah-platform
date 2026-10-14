@@ -9,6 +9,7 @@ import { UserAccount } from '../../users/user.js';
 import { DEPARTMENTS, Department, WORK_ITEM_DEPARTMENTS, WorkItemDepartment } from '../common/departments.js';
 import { JobCode, QuoteCode } from '../common/public-code.js';
 import { JobVisibleDocument } from '../documents/document.js';
+import { FeedbackPurchaseOrder } from '../feedback/feedback.js';
 import { PartUnitOfMeasure } from '../parts/part.js';
 import { ProductBuildTimeDays } from '../products/product-shared.js';
 import { QuoteKind, QuoteWorkTitle } from '../quotes/quote-shared.js';
@@ -782,6 +783,7 @@ export const JobDepartmentTimingCorrectionValues = z
 
 export type JobDetail = z.infer<typeof JobDetail>;
 export const JobDetail = JobSummary.extend({
+  purchaseOrders: z.array(FeedbackPurchaseOrder),
   departmentTimings: z.array(JobDepartmentTiming).length(WORK_ITEM_DEPARTMENTS.length),
   workRows: z.array(JobWorkRow),
   cfo: z.array(

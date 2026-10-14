@@ -9,6 +9,29 @@ import { JobActivityEntry } from './JobActivityEntry.js';
 const THUMBNAIL_DATA_URL = 'data:image/webp;base64,YWN0b3I=';
 
 describe('JobActivityEntry', () => {
+  it('links the PO marker only for a reader with PO access', async () => {
+    const item = {
+      ...buildItem(),
+      purchaseOrder: { id: '00000000-0000-4000-8000-000000000042', code: 42, supplierName: 'Mount Fifty' },
+    };
+    const allowed = await renderWithRouter(<JobActivityEntry canReadPurchaseOrder item={item} />);
+    const denied = await renderWithRouter(<JobActivityEntry item={item} />);
+    expect(allowed).toContain('href="/equipment/purchase-orders/00000000-0000-4000-8000-000000000042"');
+    expect(denied).not.toContain('href="/equipment/purchase-orders/');
+    expect(denied).toContain('PO-00042');
+  });
+
+  it('keeps the PO marker when the Job reference is hidden', async () => {
+    const item = {
+      ...buildItem(),
+      purchaseOrder: { id: '00000000-0000-4000-8000-000000000042', code: 42, supplierName: 'Mount Fifty' },
+    };
+    const html = await renderWithRouter(<JobActivityEntry hideDetail item={item} />);
+    expect(html).toContain('PO-00042');
+    expect(html).toContain('Mount Fifty');
+    expect(html).not.toContain('>JOB-00042<');
+  });
+
   // Placing the entry — which Job, which offering, whose it is — is what the feed adds over the Job's
   // own feedback list, and nothing below this card pins that those facts reach the screen.
   it('places the entry by offering, Job, Product, and Customer without its serial', async () => {

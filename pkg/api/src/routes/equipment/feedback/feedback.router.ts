@@ -6,6 +6,7 @@ import {
   listFeedback,
   listFeedbackTargetUsers,
   listJobFeedback,
+  listPurchaseOrderFeedback,
   submitFeedback,
   updateFeedback,
   updateJobFeedback,
@@ -17,6 +18,7 @@ import {
   FeedbackUpdateInput,
   JobFeedbackListInput,
   JobFeedbackUpdateInput,
+  PurchaseOrderFeedbackListInput,
 } from '@pkg/schema/equipment';
 
 import { type CoreErrorMapping, mapKnownCoreError } from '../../../trpc/errors.js';
@@ -45,6 +47,9 @@ export const feedbackRouter = router({
     .mutation(({ ctx, input }) => mapFeedbackErrors(() => updateFeedback({ db: ctx.db, input }))),
   // A Job's `general` feedback is public to job readers, and job writers may move its status;
   // corrective feedback and internal notes stay behind `equipment_feedback:read`/`equipment_feedback:update` (ADR 0010).
+  listPurchaseOrderFeedback: authorizedProcedure('equipment_purchase_order:read')
+    .input(PurchaseOrderFeedbackListInput)
+    .query(({ ctx, input }) => listPurchaseOrderFeedback({ db: ctx.db, input })),
   listJobFeedback: authorizedProcedure('equipment_job:read')
     .input(JobFeedbackListInput)
     .query(({ ctx, input }) => listJobFeedback({ db: ctx.db, input })),
@@ -69,6 +74,6 @@ function mapFeedbackCoreError(error: FeedbackCoreError): CoreErrorMapping<Feedba
   return {
     appCode: error.code,
     code: 'NOT_FOUND',
-    message: 'The Quote or Job this feedback is about could not be found.',
+    message: 'The Quote, Job or Purchase Order this feedback is about could not be found.',
   };
 }

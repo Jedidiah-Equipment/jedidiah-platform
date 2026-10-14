@@ -21,8 +21,10 @@ import {
   products,
   productUnits,
   purchaseOrderJobLinks,
+  purchaseOrders,
   quotes,
   quoteWorkItems,
+  supplier,
 } from '@pkg/db/equipment';
 import { getPlantDateNow } from '@pkg/domain';
 import {
@@ -593,16 +595,24 @@ export async function getJob({ db, id }: { db: Db | DatabaseTransaction; id: UUI
     throw new JobNotFoundError(id);
   }
 
-  const [cfo, documents, workRows, schedule, departmentTimings] = await Promise.all([
+  const [cfo, documents, workRows, schedule, departmentTimings, linkedOrders] = await Promise.all([
     listJobCfo({ db, jobId: row.id }),
     listJobDocumentRows({ db, jobId: row.id }),
     listJobWorkRows(row.quote),
     getJobSchedule({ db, jobId: row.id }),
     listJobDepartmentTimings({ db, jobId: row.id }),
+    db
+      .select({ id: purchaseOrders.id, code: purchaseOrders.code, supplierName: supplier.companyName })
+      .from(purchaseOrderJobLinks)
+      .innerJoin(purchaseOrders, eq(purchaseOrders.id, purchaseOrderJobLinks.purchaseOrderId))
+      .innerJoin(supplier, eq(supplier.id, purchaseOrders.supplierId))
+      .where(eq(purchaseOrderJobLinks.jobId, row.id))
+      .orderBy(desc(purchaseOrders.code)),
   ]);
 
   return {
     ...mapJobSummary(row),
+    purchaseOrders: linkedOrders,
     cfo,
     departmentTimings,
     documents,

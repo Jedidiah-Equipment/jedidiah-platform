@@ -152,7 +152,12 @@ function Ready({
       ) : activeTab === 'activity' ? (
         <JobActivityFeed
           jobId={jobId}
-          listHeader={<GiveFeedbackButton jobCode={state.jobCode} jobId={jobId} />}
+          listHeader={
+            <View className="flex-row flex-wrap items-center gap-3">
+              <GiveFeedbackButton jobCode={state.jobCode} jobId={jobId} purchaseOrders={state.purchaseOrders} />
+              <GiveFeedbackButton jobCode={state.jobCode} jobId={jobId} />
+            </View>
+          }
           showControls={false}
         />
       ) : (

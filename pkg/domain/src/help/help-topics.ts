@@ -70,6 +70,7 @@ export const HELP_TOPICS = {
   plan: '/production/open-a-bay-plan',
   products: '/inventory/maintain-a-product-cost-estimate',
   productBuildTimes: '/production/read-product-build-times',
+  purchaseOrderFeedback: '/inventory/send-feedback-on-a-purchase-order',
   purchaseOrders: '/inventory/approve-a-purchase-order',
   purchaseOrderCustomLines: '/inventory/add-a-custom-line-to-a-purchase-order',
   quotes: '/sales/change-an-accepted-quote',

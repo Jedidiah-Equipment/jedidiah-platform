@@ -40,6 +40,7 @@ export type JobDetailReadyState = {
   status: 'ready';
   cancelledAt: string | null;
   completedOn: DateOnlyIso | null;
+  purchaseOrders: JobDetail['purchaseOrders'];
   jobCode: string;
   quoteCode: string;
   jobDisplayName: string;
@@ -97,6 +98,7 @@ export function projectJobDetail(job: JobDetail, board: BoardListResult): JobDet
     status: 'ready',
     cancelledAt: job.cancelledAt,
     completedOn: job.completedOn,
+    purchaseOrders: job.purchaseOrders ?? [],
     jobCode: job.code,
     // A Stock Build has no Quote; the Customer field already reads Stock, so the code just blanks.
     quoteCode: job.quoteCode ?? '—',

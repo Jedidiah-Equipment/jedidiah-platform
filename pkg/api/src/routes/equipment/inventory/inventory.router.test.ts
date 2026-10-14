@@ -104,8 +104,10 @@ describe('inventory procedure permissions', () => {
   });
 
   test('enforces read, adjust, and revalue permissions at their procedure boundaries', async ({ context }) => {
-    await expect(context.createAnonCaller().inventory.stockOnHand()).rejects.toMatchObject({ code: 'UNAUTHORIZED' });
-    await expect(context.createCaller(mockSession('sales')).inventory.stockOnHand()).rejects.toMatchObject({
+    await expect(context.createAnonCaller().inventory.stockOnHand({ limit: 0 })).rejects.toMatchObject({
+      code: 'UNAUTHORIZED',
+    });
+    await expect(context.createCaller(mockSession('sales')).inventory.stockOnHand({ limit: 0 })).rejects.toMatchObject({
       code: 'FORBIDDEN',
     });
 
@@ -349,8 +351,10 @@ describe('inventory cost projection', () => {
       unitCost: 25,
     });
 
-    const procurement = await context.createCaller(mockSession('procurement-manager')).inventory.stockOnHand();
-    const stores = await context.createCaller(mockSession('stores')).inventory.stockOnHand();
+    const procurement = await context
+      .createCaller(mockSession('procurement-manager'))
+      .inventory.stockOnHand({ limit: 0 });
+    const stores = await context.createCaller(mockSession('stores')).inventory.stockOnHand({ limit: 0 });
 
     expect(procurement.items[0]).toMatchObject({ averageUnitCost: 25, quantity: 10, totalValue: 250 });
     expect(stores.items[0]).toMatchObject({ averageUnitCost: null, quantity: 10, totalValue: null });
@@ -936,5 +940,85 @@ describe('stocktake procedures', () => {
       appCode: 'inventory.actor_required',
       code: 'BAD_REQUEST',
     });
+  });
+});
+
+describe('stock on hand pages', () => {
+  test('sorts derived stock across pages, keeps length buckets together, and redacts costs', async ({ context }) => {
+    const { id: _id, ...base } = context.part;
+    const [linear] = await context.db
+      .insert(parts)
+      .values({
+        ...base,
+        code: 'Z-PIPE',
+        name: 'Pipe',
+        unitOfMeasure: 'mm',
+        standardPurchaseLengthMm: 6000,
+      })
+      .returning();
+    if (!linear) throw new Error('Expected pipe');
+    const admin = context.createCaller().inventory;
+    await admin.postAdjustment({ delta: 2, partId: context.part.id, reason: 'opening-balance', unitCost: 25 });
+    await admin.postAdjustment({
+      delta: 3,
+      lengthMm: 6000,
+      partId: linear.id,
+      reason: 'opening-balance',
+      unitCost: 60,
+    });
+    await admin.postAdjustment({
+      delta: 1,
+      lengthMm: 3000,
+      partId: linear.id,
+      reason: 'opening-balance',
+      unitCost: 30,
+    });
+    const first = await admin.stockOnHand({ limit: 1, sortBy: 'quantity', sortDirection: 'desc' });
+    expect(first).toMatchObject({
+      total: 2,
+      nextCursor: 1,
+      items: [{ partCode: 'Z-PIPE', quantity: 4, totalValue: 210 }],
+    });
+    expect(first.items[0]?.buckets).toHaveLength(2);
+    expect(await admin.stockOnHand({ limit: 1, cursor: 1, sortBy: 'quantity', sortDirection: 'desc' })).toMatchObject({
+      nextCursor: null,
+      items: [{ partCode: 'P-100', quantity: 2 }],
+    });
+    expect(await admin.stockOnHand({ limit: 1, sortBy: 'totalValue', sortDirection: 'desc' })).toMatchObject({
+      items: [{ partCode: 'Z-PIPE', totalValue: 210 }],
+    });
+    const stores = await context.createCaller(mockSession('stores')).inventory.stockOnHand({ search: 'Z-PIPE' });
+    expect(stores.items[0]).toMatchObject({ averageUnitCost: null, totalValue: null, quantity: 4 });
+    expect(stores.items[0]?.buckets.map((bucket) => bucket.totalValue)).toEqual([null, null]);
+  });
+
+  test('pages whole Parts with deterministic ordering and searches beyond the first page', async ({ context }) => {
+    const { id: _id, ...part } = context.part;
+    await context.db.insert(parts).values([
+      { ...part, code: 'P-200', name: 'Bearing' },
+      { ...part, code: 'Z-300', name: 'Zinc washer' },
+    ]);
+    const inventory = context.createCaller(mockSession('stores')).inventory;
+    const first = await inventory.stockOnHand({ limit: 1 });
+    expect(first).toMatchObject({ total: 3, nextCursor: 1, items: [{ partCode: 'P-100', averageUnitCost: null }] });
+    const second = await inventory.stockOnHand({ limit: 1, cursor: first.nextCursor });
+    expect(second).toMatchObject({ total: 3, nextCursor: 2, items: [{ partCode: 'P-200' }] });
+    const last = await inventory.stockOnHand({ limit: 1, cursor: second.nextCursor });
+    expect(last).toMatchObject({ total: 3, nextCursor: null, items: [{ partCode: 'Z-300' }] });
+    expect(await inventory.stockOnHand({ search: 'zinc', limit: 1 })).toMatchObject({
+      total: 1,
+      nextCursor: null,
+      items: [{ partCode: 'Z-300' }],
+    });
+    expect(await inventory.stockOnHand({ search: 'P-200' })).toMatchObject({
+      total: 1,
+      items: [{ partCode: 'P-200' }],
+    });
+    expect(await inventory.stockOnHand({ sortDirection: 'desc', limit: 1 })).toMatchObject({
+      items: [{ partCode: 'Z-300' }],
+    });
+    expect(await inventory.stockOnHand({ limit: 0 })).toMatchObject({ total: 3, nextCursor: null });
+    expect((await inventory.stockOnHand({ limit: 0 })).items).toHaveLength(3);
+    expect(await inventory.stockOnHand({ cursor: 99 })).toMatchObject({ total: 3, nextCursor: null, items: [] });
   });
 });

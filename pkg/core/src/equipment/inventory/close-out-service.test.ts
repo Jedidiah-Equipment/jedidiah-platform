@@ -12,12 +12,12 @@ import {
 } from '@pkg/db/equipment';
 import { eq } from 'drizzle-orm';
 import { describe, expect } from 'vitest';
-
 import { createTester } from '../../test/create-tester.js';
 import { seedPartCategory } from '../test/part-fixtures.js';
 import { JobAlreadyClosedOutError, JobClosedOutError, JobNotCompletedError } from './close-out-errors.js';
 import { closeOutJob, listCloseOutQueue } from './close-out-service.js';
-import { listJobStock, listStockOnHand, postAdjustment, postJobMovement } from './stock-movement-service.js';
+import { listJobStock, postAdjustment, postJobMovement } from './stock-movement-service.js';
+import { listStockOnHand } from './stock-on-hand-list.js';
 
 const actorUserId = 'close-out-test-user';
 const clock = () => new Date('2026-08-04T08:00:00.000Z');

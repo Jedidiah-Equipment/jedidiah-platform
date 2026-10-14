@@ -78,7 +78,8 @@ import {
   StockMovementHistoryRowCostFields,
   StockMovementPostResult,
   StockOnHandBucketCostFields,
-  StockOnHandResult,
+  StockOnHandListInput,
+  StockOnHandListResult,
   StockOnHandRow,
   StockOnHandRowCostFields,
   StocktakeOverdueResult,
@@ -130,11 +131,11 @@ export const inventoryRouter = router({
     .query(({ ctx }) => getInventoryKpis({ db: ctx.db })),
 
   stockOnHand: authorizedProcedure('equipment_inventory:read')
-    .output(StockOnHandResult)
-    .query(async ({ ctx }) => {
-      const result = await listStockOnHand({ db: ctx.db });
-
-      return { items: result.items.map((row) => projectStockOnHandRow(row, ctx.access)) };
+    .input(StockOnHandListInput)
+    .output(StockOnHandListResult)
+    .query(async ({ ctx, input }) => {
+      const result = await listStockOnHand({ db: ctx.db, input });
+      return { ...result, items: result.items.map((row) => projectStockOnHandRow(row, ctx.access)) };
     }),
 
   /**

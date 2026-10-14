@@ -24,7 +24,7 @@ export function useStockMovementDialogs({
   // The stock-on-hand report replays the whole ledger; only the dialogs' Part pickers need it, so
   // the page does not pay for it until one opens.
   const stockOnHandQuery = useQuery(
-    trpc.inventory.stockOnHand.queryOptions(undefined, { enabled: canMove && movementType !== null }),
+    trpc.inventory.stockOnHand.queryOptions({ limit: 0 }, { enabled: canMove && movementType !== null }),
   );
   const items = useMemo(() => stockOnHandQuery.data?.items ?? [], [stockOnHandQuery.data?.items]);
   const parts = useMemo(

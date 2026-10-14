@@ -33,7 +33,7 @@ export function JobCloseOutPage({ jobId }: { jobId: UUID }) {
   // The stock-on-hand report replays the whole ledger; only a return needs it, so the screen does
   // not pay for it until one opens.
   const stockOnHandQuery = useQuery(
-    trpc.inventory.stockOnHand.queryOptions(undefined, { enabled: canMove && returningPartId !== null }),
+    trpc.inventory.stockOnHand.queryOptions({ limit: 0 }, { enabled: canMove && returningPartId !== null }),
   );
   const parts = useMemo(
     () => partOptionsAllowing(stockOnHandQuery.data?.items ?? [], 'returnToStore'),

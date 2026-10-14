@@ -50,11 +50,16 @@ type PartLabelBatchPart = { code: string; id: string; name: string };
 
 type PartLabelBatchDialogProps = {
   buttonSize?: ButtonSize;
+  partSource?: 'catalog' | 'inventory';
   /** Parts to choose from when the page already holds them; omitted, the priced catalog is read instead. */
   parts?: readonly PartLabelBatchPart[];
 };
 
-export const PartLabelBatchDialog: React.FC<PartLabelBatchDialogProps> = ({ buttonSize = 'default', parts }) => {
+export const PartLabelBatchDialog: React.FC<PartLabelBatchDialogProps> = ({
+  buttonSize = 'default',
+  parts,
+  partSource,
+}) => {
   const [isOpen, setIsOpen] = useState(false);
   // A fresh key per opening starts every choice over, as the dialog always has.
   const [openCount, setOpenCount] = useState(0);
@@ -72,7 +77,13 @@ export const PartLabelBatchDialog: React.FC<PartLabelBatchDialogProps> = ({ butt
         <IconPrinter data-icon="inline-start" />
         Print labels
       </Button>
-      <PartLabelBatchPrintDialog key={openCount} onOpenChange={setIsOpen} open={isOpen} parts={parts} />
+      <PartLabelBatchPrintDialog
+        key={openCount}
+        onOpenChange={setIsOpen}
+        open={isOpen}
+        parts={parts}
+        partSource={partSource}
+      />
     </>
   );
 };
@@ -80,6 +91,7 @@ export const PartLabelBatchDialog: React.FC<PartLabelBatchDialogProps> = ({ butt
 type PartLabelBatchPrintDialogProps = {
   /** Opens straight onto one Part Import Batch, as the import's own shortcut does. */
   initialImportBatchId?: string | undefined;
+  partSource?: 'catalog' | 'inventory' | undefined;
   onOpenChange: (open: boolean) => void;
   open: boolean;
   parts?: readonly PartLabelBatchPart[] | undefined;
@@ -90,6 +102,7 @@ export function PartLabelBatchPrintDialog({
   onOpenChange,
   open,
   parts: pageParts,
+  partSource = 'catalog',
 }: PartLabelBatchPrintDialogProps) {
   const trpc = useTRPC();
   const [mode, setMode] = useState<PartLabelBatchMode>(initialImportBatchId ? 'importBatch' : 'all');
@@ -102,7 +115,10 @@ export function PartLabelBatchPrintDialog({
   const [previewSelection, setPreviewSelection] = useState<PartLabelBatchSelection | null>(null);
   const categories = usePartCategoryOptions();
   const locations = usePartStorageLocationOptions();
-  const catalogParts = usePartOptions({ enabled: open && mode === 'ids' && !pageParts, limit: 0 });
+  const catalogParts = usePartOptions({
+    enabled: open && mode === 'ids' && !pageParts && partSource === 'catalog',
+    limit: 0,
+  });
   // Read on its own rather than from the page's Parts: a Part imported moments ago has no stock yet.
   const importBatchQuery = useQuery(
     trpc.parts.importBatch.queryOptions(
@@ -110,7 +126,23 @@ export function PartLabelBatchPrintDialog({
       { enabled: open && mode === 'importBatch' && importBatchId !== null },
     ),
   );
-  const parts = pageParts ?? catalogParts.items;
+  const inventoryParts = useQuery(
+    trpc.inventory.stockOnHand.queryOptions(
+      { limit: 0 },
+      {
+        enabled: open && mode === 'ids' && !pageParts && partSource === 'inventory',
+      },
+    ),
+  );
+  const parts =
+    pageParts ??
+    (partSource === 'inventory'
+      ? (inventoryParts.data?.items ?? []).map((part) => ({
+          id: part.partId,
+          code: part.partCode,
+          name: part.partName,
+        }))
+      : catalogParts.items);
   const partLabels = useMemo(() => new Map(parts.map((part) => [part.id, `${part.code} · ${part.name}`])), [parts]);
   const urlSelection = mode === 'importBatch' ? null : resolveSelection({ categoryId, mode, partIds, storageLocation });
   const importSelection: PartLabelBatchSelection | null =

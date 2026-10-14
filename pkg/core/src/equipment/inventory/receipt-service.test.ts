@@ -1,9 +1,9 @@
 import { describe, expect } from 'vitest';
-
 import { actorUserId, adjustmentInput, seedSentPurchaseOrder, test } from '../test/inventory-fixtures.js';
 import { postReceipt } from './receipt-service.js';
 import { getStockMovementHistory } from './stock-movement-history-read.js';
-import { listStockOnHand, postAdjustment } from './stock-movement-service.js';
+import { postAdjustment } from './stock-movement-service.js';
+import { listStockOnHand } from './stock-on-hand-list.js';
 
 describe('postReceipt', () => {
   test('posts a receipt at the line price and feeds it into stock on hand and the moving average', async ({

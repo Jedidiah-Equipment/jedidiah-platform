@@ -27,6 +27,7 @@ export * from './inventory/source-checkout-read.js';
 export * from './inventory/stock-movement-errors.js';
 export * from './inventory/stock-movement-history-read.js';
 export * from './inventory/stock-movement-service.js';
+export * from './inventory/stock-on-hand-list.js';
 export * from './inventory/stocktake-errors.js';
 export * from './inventory/stocktake-service.js';
 export * from './job-activity/job-activity-service.js';

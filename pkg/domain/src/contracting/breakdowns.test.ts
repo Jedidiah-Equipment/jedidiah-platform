@@ -19,5 +19,6 @@ describe('breakdownFirstLine', () => {
   test('takes the first non-blank line and cuts it with an ellipsis', () => {
     expect(breakdownFirstLine('\n  Brake light out  \nAlso a leak')).toBe('Brake light out');
     expect(breakdownFirstLine('a'.repeat(130), 10)).toBe(`${'a'.repeat(9)}…`);
+    expect(breakdownFirstLine('👨‍👩‍👧'.repeat(5), 3)).toBe('👨‍👩‍👧👨‍👩‍👧…');
   });
 });

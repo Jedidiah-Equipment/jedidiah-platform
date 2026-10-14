@@ -7,7 +7,6 @@ import { useServerSideTableController } from '@/components/data-table/hooks/use-
 import { createPersistedDataTableStore } from '@/components/data-table/store.js';
 
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
-import { PartLabelBatchDialog } from '@/equipment/pages/parts/PartLabelBatchDialog.js';
 import { inventoryPageDescription } from '@/equipment/utils/page-descriptions.js';
 import { useAccess } from '@/hooks/use-access.js';
 import { getApiQueryErrorMessage } from '@/lib/api-errors.js';
@@ -48,16 +47,13 @@ export function InventoryPage() {
   return (
     <PageLayout
       actions={
-        <>
-          <PartLabelBatchDialog partSource="inventory" />
-          <StockMovementActions
-            canAdjust={canAdjust}
-            canBuild={canBuild}
-            canMove={canMove}
-            canReadCost={showCosts}
-            canRevalue={canRevalue}
-          />
-        </>
+        <StockMovementActions
+          canAdjust={canAdjust}
+          canBuild={canBuild}
+          canMove={canMove}
+          canReadCost={showCosts}
+          canRevalue={canRevalue}
+        />
       }
       description={inventoryPageDescription}
       title="Stock on hand"

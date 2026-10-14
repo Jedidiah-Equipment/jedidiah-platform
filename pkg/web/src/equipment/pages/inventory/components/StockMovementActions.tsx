@@ -1,8 +1,18 @@
 import { derivePartStockActions } from '@pkg/domain/equipment';
-import { IconAdjustments, IconArrowDown, IconArrowUp, IconCash, IconTool, IconUserMinus } from '@tabler/icons-react';
+import {
+  IconAdjustments,
+  IconArrowDown,
+  IconArrowUp,
+  IconCash,
+  IconPrinter,
+  IconTool,
+  IconUserMinus,
+} from '@tabler/icons-react';
 import { useQuery } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
+import { type PageHeaderAction, PageHeaderActions } from '@/components/page-layout/PageHeaderActions.js';
 import { Button } from '@/components/ui/button.js';
+import { PartLabelBatchPrintDialog } from '@/equipment/pages/parts/PartLabelBatchDialog.js';
 import { getApiQueryErrorMessage } from '@/lib/api-errors.js';
 import { useTRPC } from '@/lib/trpc.js';
 
@@ -27,6 +37,8 @@ export function StockMovementActions({
   canRevalue: boolean;
   canMove: boolean;
 }) {
+  const [labelsOpen, setLabelsOpen] = useState(false);
+  const [labelOpenCount, setLabelOpenCount] = useState(0);
   const [adjustmentOpen, setAdjustmentOpen] = useState(false);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [revaluationOpen, setRevaluationOpen] = useState(false);
@@ -49,6 +61,57 @@ export function StockMovementActions({
   const returnParts = useMemo(() => partOptionsAllowing(items, 'returnToStore'), [items]);
   const revaluableParts = useMemo(() => partOptionsAllowing(items, 'revalue'), [items]);
 
+  const actions: PageHeaderAction[] = [
+    {
+      label: 'Print labels',
+      icon: <IconPrinter data-icon="inline-start" />,
+      onClick: () => {
+        setLabelOpenCount((count) => count + 1);
+        setLabelsOpen(true);
+      },
+    },
+    ...(canMove
+      ? [
+          {
+            label: 'Check out',
+            icon: <IconArrowDown data-icon="inline-start" />,
+            onClick: () => setCheckoutOpen(true),
+          },
+          {
+            label: 'Return to store',
+            icon: <IconArrowUp data-icon="inline-start" />,
+            onClick: () => setReturnOpen(true),
+          },
+          {
+            label: 'Return without a Job',
+            icon: <IconUserMinus data-icon="inline-start" />,
+            onClick: () => setReturnFromCheckoutOpen(true),
+          },
+        ]
+      : []),
+    ...(canBuild
+      ? [{ label: 'Build stock', icon: <IconTool data-icon="inline-start" />, onClick: () => setBuildOpen(true) }]
+      : []),
+    ...(canAdjust
+      ? [
+          {
+            label: 'Post adjustment',
+            icon: <IconAdjustments data-icon="inline-start" />,
+            onClick: () => setAdjustmentOpen(true),
+          },
+        ]
+      : []),
+    ...(canRevalue
+      ? [
+          {
+            label: 'Revalue Part',
+            icon: <IconCash data-icon="inline-start" />,
+            onClick: () => setRevaluationOpen(true),
+          },
+        ]
+      : []),
+  ];
+
   return (
     <>
       {stockQuery.isFetching ? <span role="status">Loading Parts…</span> : null}
@@ -60,42 +123,13 @@ export function StockMovementActions({
           </Button>
         </div>
       ) : null}
-      {canMove ? (
-        <Button onClick={() => setCheckoutOpen(true)} variant="outline">
-          <IconArrowDown data-icon="inline-start" />
-          Check out
-        </Button>
-      ) : null}
-      {canMove ? (
-        <Button onClick={() => setReturnOpen(true)} variant="outline">
-          <IconArrowUp data-icon="inline-start" />
-          Return to store
-        </Button>
-      ) : null}
-      {canMove ? (
-        <Button onClick={() => setReturnFromCheckoutOpen(true)} variant="outline">
-          <IconUserMinus data-icon="inline-start" />
-          Return without a Job
-        </Button>
-      ) : null}
-      {canBuild ? (
-        <Button onClick={() => setBuildOpen(true)} variant="outline">
-          <IconTool data-icon="inline-start" />
-          Build stock
-        </Button>
-      ) : null}
-      {canAdjust ? (
-        <Button onClick={() => setAdjustmentOpen(true)} variant="outline">
-          <IconAdjustments data-icon="inline-start" />
-          Post adjustment
-        </Button>
-      ) : null}
-      {canRevalue ? (
-        <Button onClick={() => setRevaluationOpen(true)} variant="outline">
-          <IconCash data-icon="inline-start" />
-          Revalue Part
-        </Button>
-      ) : null}
+      <PageHeaderActions actions={actions} collapseBelow="80rem" title="Stock on hand" />
+      <PartLabelBatchPrintDialog
+        key={labelOpenCount}
+        onOpenChange={setLabelsOpen}
+        open={labelsOpen}
+        partSource="inventory"
+      />
       {buildOpen && stockQuery.isSuccess ? (
         <StockBuildDialog buildableParts={buildableParts} items={items} onOpenChange={setBuildOpen} open />
       ) : null}

@@ -50,16 +50,11 @@ type PartLabelBatchPart = { code: string; id: string; name: string };
 
 type PartLabelBatchDialogProps = {
   buttonSize?: ButtonSize;
-  partSource?: 'catalog' | 'inventory';
   /** Parts to choose from when the page already holds them; omitted, the priced catalog is read instead. */
   parts?: readonly PartLabelBatchPart[];
 };
 
-export const PartLabelBatchDialog: React.FC<PartLabelBatchDialogProps> = ({
-  buttonSize = 'default',
-  parts,
-  partSource,
-}) => {
+export const PartLabelBatchDialog: React.FC<PartLabelBatchDialogProps> = ({ buttonSize = 'default', parts }) => {
   const [isOpen, setIsOpen] = useState(false);
   // A fresh key per opening starts every choice over, as the dialog always has.
   const [openCount, setOpenCount] = useState(0);
@@ -77,13 +72,7 @@ export const PartLabelBatchDialog: React.FC<PartLabelBatchDialogProps> = ({
         <IconPrinter data-icon="inline-start" />
         Print labels
       </Button>
-      <PartLabelBatchPrintDialog
-        key={openCount}
-        onOpenChange={setIsOpen}
-        open={isOpen}
-        parts={parts}
-        partSource={partSource}
-      />
+      <PartLabelBatchPrintDialog key={openCount} onOpenChange={setIsOpen} open={isOpen} parts={parts} />
     </>
   );
 };

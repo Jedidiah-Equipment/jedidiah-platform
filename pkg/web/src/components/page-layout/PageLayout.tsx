@@ -48,7 +48,7 @@ export const PageLayout: React.FC<PageLayoutProps> = ({
 
   return (
     <div className="flex flex-1 flex-col p-4 pt-6">
-      <div className={cn('flex flex-col gap-4', getPageLayoutSizeClassName(size))}>
+      <div className={cn('@container/page-header flex flex-col gap-4', getPageLayoutSizeClassName(size))}>
         {title !== undefined ? (
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex min-w-0 flex-col gap-1">

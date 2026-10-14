@@ -4,7 +4,7 @@ Use **Jobs → Activity** on the web or the **Activity** tab on mobile to read w
 done across every Job, newest first, without opening each Job in turn.
 
 1. On the web, choose **Jobs**, then **Activity**. On mobile, choose the **Activity** tab.
-2. Search the visible activity text, person, Job, PO number, Product or Customer, or use the filter to show
+2. Search the visible activity text, person, Job, PO number, Supplier, Product or Customer, or use the filter to show
    **All**, **User Feedback**, **Job Events**, or **Work Times**.
 3. Read down the feed. Each entry names who it was, when it happened, and the Job it is about.
 4. Choose **Show more** on a long piece of feedback to read the rest of it.

@@ -117,6 +117,7 @@ describe('Purchase Order Feedback', () => {
       text: 'Ordinary Job Feedback',
     });
     expect((await reader.jobActivity.list({ filter: 'user-feedback', search: 'PO-' })).total).toBe(2);
+    expect((await reader.jobActivity.list({ filter: 'user-feedback', search: 'Linked supplier' })).total).toBe(2);
     const first = await reader.jobActivity.list({ filter: 'user-feedback', search: 'PO-00042', limit: 1 });
     expect(first.total).toBe(2);
     expect(first.items).toHaveLength(1);

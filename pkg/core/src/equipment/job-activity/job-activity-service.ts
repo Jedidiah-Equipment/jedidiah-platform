@@ -16,6 +16,7 @@ import {
   purchaseOrderJobLinks,
   purchaseOrders,
   quotes,
+  supplier,
 } from '@pkg/db/equipment';
 import {
   departmentLabels,
@@ -163,9 +164,16 @@ function jobGeneralFeedbackSearch(search: string): SQL {
     jobActivityJobSearch(sql`${feedbackJobId}::text`, search),
     and(
       sql`${purchaseOrders.id} is not null`,
-      createEscapedContainsSearchCondition(
-        sql`concat('PO-', lpad(${purchaseOrders.code}::text, greatest(5, length(${purchaseOrders.code}::text)), '0'))`,
-        search,
+      or(
+        createEscapedContainsSearchCondition(
+          sql`concat('PO-', lpad(${purchaseOrders.code}::text, greatest(5, length(${purchaseOrders.code}::text)), '0'))`,
+          search,
+        ),
+        sql`exists (
+          select 1 from ${supplier}
+          where ${supplier.id} = ${purchaseOrders.supplierId}
+            and ${createEscapedContainsSearchCondition(sql`${supplier.companyName}`, search)}
+        )`,
       ),
     ),
   ) as SQL;

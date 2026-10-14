@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { FeedbackFormValues, type FeedbackFormValues as FeedbackFormValuesType, toSubmitInput } from './types';
 
+const PURCHASE_ORDER_ID = '22222222-2222-4222-8222-222222222222';
 const JOB_ID = '11111111-1111-4111-8111-111111111111';
 
 function values(overrides: Partial<FeedbackFormValuesType> = {}): FeedbackFormValuesType {
@@ -13,11 +14,11 @@ describe('toSubmitInput', () => {
     expect(
       toSubmitInput(values({ kind: 'corrective-feedback-user', userIds: ['ignored'] }), {
         subjectType: 'purchase-order',
-        purchaseOrderId: JOB_ID,
+        purchaseOrderId: PURCHASE_ORDER_ID,
       }),
     ).toEqual({
       kind: 'general',
-      subject: { subjectType: 'purchase-order', purchaseOrderId: JOB_ID },
+      subject: { subjectType: 'purchase-order', purchaseOrderId: PURCHASE_ORDER_ID },
       text: 'It works',
     });
   });

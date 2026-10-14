@@ -80,7 +80,7 @@ export function JobActivityFeed({
                 onFilterChange: setFilter,
                 search,
                 onSearchChange: setSearch,
-                searchPlaceholder: 'Search by text, user, job, product, or customer…',
+                searchPlaceholder: 'Search by text, user, Job, PO, Supplier, Product, or Customer…',
               }
             : undefined
         }
